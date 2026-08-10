@@ -48,6 +48,30 @@ export async function fetchArtists(
   return (data ?? []) as Artist[];
 }
 
+/**
+ * How many ACTIVE artists the org has on its roster. A server-side head count, so no row
+ * data crosses the wire and there is no PostgREST max-rows truncation to misread as an
+ * empty roster (see fetchPendingConfirmationsCount).
+ *
+ * Scoped to `status = 'active'` because that is exactly the population the offer engine
+ * reads (open-offer-tier filters the same way, as does fetchActiveArtistOptions). This
+ * count drives the booking-setup readiness gate, so counting inactive or on-leave rows
+ * would clear the gate for an org whose whole roster is parked while a tier would still
+ * open to nobody.
+ */
+export async function fetchArtistCount(
+  client: SupabaseClient<Database>,
+  orgId: string,
+): Promise<number> {
+  const { count, error } = await client
+    .from("artists")
+    .select("*", { count: "exact", head: true })
+    .eq("org_id", orgId)
+    .eq("status", "active");
+  if (error) throw error;
+  return count ?? 0;
+}
+
 /** Minimal active-artist options for the direct-book / eligibility pickers. */
 export async function fetchActiveArtistOptions(
   client: SupabaseClient<Database>,

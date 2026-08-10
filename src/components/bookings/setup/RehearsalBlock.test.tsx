@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { screen, waitFor, fireEvent } from "@testing-library/react";
+import { screen, waitFor, fireEvent, cleanup } from "@testing-library/react";
+import { QueryClient } from "@tanstack/react-query";
 import { renderWithProviders } from "@/test/renderWithProviders";
 
 const { flowRef, canRef, nextRef, dryRun } = vi.hoisted(() => ({
@@ -38,6 +39,24 @@ describe("RehearsalBlock", () => {
     flowRef.value = { artist_acceptance: false, offer_delivery: "digest" };
     const { container } = renderWithProviders(<RehearsalBlock orgId="org-1" />);
     await waitFor(() => expect(container).toBeEmptyDOMElement());
+  });
+
+  it("renders nothing until the flow is known", async () => {
+    // Same rule as TimingStep's narrative: the flow query resolves after first paint, and
+    // defaulting it to acceptance-on would flash a whole offer rehearsal at a direct-book
+    // org. Staged through a shared, caching QueryClient so the date read is already
+    // resolved on the second mount: that is the exact race (warm date, cold flow), and it
+    // makes the assertion synchronous instead of a poll that passes before anything loads.
+    const qc = new QueryClient({
+      defaultOptions: { queries: { retry: false, staleTime: Infinity, gcTime: Infinity } },
+    });
+    renderWithProviders(<RehearsalBlock orgId="org-1" />, { queryClient: qc });
+    expect(await screen.findByText("See it run before it runs")).toBeInTheDocument();
+
+    cleanup();
+    flowRef.value = undefined as unknown as Record<string, unknown>;
+    const { container } = renderWithProviders(<RehearsalBlock orgId="org-1" />, { queryClient: qc });
+    expect(container).toBeEmptyDOMElement();
   });
 
   it("renders nothing when no future date has a city", async () => {

@@ -2,15 +2,19 @@
 import type { ReactNode } from "react";
 import type { FeatureKey } from "@/lib/entitlements";
 
-/** The two capability actions this feature's step CTAs gate on. Kept as a local
- *  union (useCan takes a bare string; capabilities.ts exports no action type). */
-export type StepCapability = "edit_booking_settings" | "edit_hire_order_settings";
+/** The capability actions this feature's step CTAs gate on. Kept as a local union
+ *  (useCan takes a bare string; capabilities.ts exports no action type); every member is
+ *  checked against CAPABILITY_DEFS in moduleOnboarding.test.ts, since an action that does
+ *  not exist resolves to `false` for every non-admin and silently hides the CTA. */
+export type StepCapability = "edit_booking_settings" | "edit_hire_order_settings" | "add_artists";
 
 export type DashboardRole = "admin" | "producer" | "artist";
 
-/** Booking BlockKind ("offers"/"filling") plus "issuing" for hire-order steps
- *  (letterhead/terms) that block issuing, so the rail chips them for parity. */
-export type SetupBlock = "offers" | "filling" | "issuing" | null;
+/** Booking BlockKind ("offers"/"booking"/"filling") plus "issuing" for hire-order steps
+ *  (letterhead/terms) that block issuing, so the rail chips them for parity.
+ *  "booking" is the direct-book org's wording of the same hard gate "offers" names for an
+ *  offers org: see `blockFor` in src/lib/bookings/setupStatus.ts. */
+export type SetupBlock = "offers" | "booking" | "filling" | "issuing" | null;
 
 export interface OnboardingStepMeta {
   title: string;

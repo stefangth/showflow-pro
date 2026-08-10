@@ -1,12 +1,30 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { renderWithProviders } from "@/test/renderWithProviders";
 
 vi.mock("@/hooks/useAllCities", () => ({ useAllCities: () => ({ data: [{ id: "c1", name: "Hamburg" }] }) }));
 
+// The panel reads the org's flow for the SAME reason TimingStep does, and its test mocks
+// the hook the same way: a real, fully normalized BookingFlow built from a shipped preset,
+// held in a hoisted ref so each test can swap the org's flow without a provider dance.
+const { flowRef, flowOrgSpy } = vi.hoisted(() => ({
+  flowRef: { value: null as unknown },
+  flowOrgSpy: vi.fn(),
+}));
+vi.mock("@/hooks/useBookingFlow", () => ({
+  useBookingFlow: (orgId?: string | null) => { flowOrgSpy(orgId); return { data: flowRef.value }; },
+}));
+
 import { LadderStep } from "./LadderStep";
+import { ROUTES } from "@/config/app.config";
+import { BOOKING_FLOW_DEFAULTS, applyPreset } from "@/lib/bookingFlow";
 import type { LadderCoverageInputs } from "@/lib/bookings/setupStatus";
+
+beforeEach(() => {
+  flowOrgSpy.mockClear();
+  flowRef.value = applyPreset(BOOKING_FLOW_DEFAULTS, "classic");
+});
 
 describe("LadderStep", () => {
   it("shows the ranked-count copy when the org list has a tier-1 cast", () => {
@@ -16,7 +34,7 @@ describe("LadderStep", () => {
       cityPriorities: [{ cityId: "c1", castId: "k1", priority: 1 }],
     };
     renderWithProviders(
-      <MemoryRouter><LadderStep coverage={coverage} /></MemoryRouter>,
+      <MemoryRouter><LadderStep coverage={coverage} orgId="org-1" /></MemoryRouter>,
     );
     expect(screen.getByText(/1 tier ranked/)).toBeInTheDocument();
   });
@@ -31,7 +49,7 @@ describe("LadderStep", () => {
       cityPriorities: [],
     };
     renderWithProviders(
-      <MemoryRouter><LadderStep coverage={coverage} /></MemoryRouter>,
+      <MemoryRouter><LadderStep coverage={coverage} orgId="org-1" /></MemoryRouter>,
     );
     expect(screen.getByText(/Ranked per show/)).toBeInTheDocument();
     expect(screen.queryByText(/No casts ranked/)).not.toBeInTheDocument();
@@ -49,10 +67,25 @@ describe("LadderStep", () => {
       cityPriorities: [{ cityId: "c1", castId: "k1", priority: 1 }],
     };
     renderWithProviders(
-      <MemoryRouter><LadderStep coverage={coverage} /></MemoryRouter>,
+      <MemoryRouter><LadderStep coverage={coverage} orgId="org-1" /></MemoryRouter>,
     );
     expect(screen.getByText(/1 tier ranked/)).toBeInTheDocument();
     expect(screen.getByText(/Some shows here use their own cast list/)).toBeInTheDocument();
+  });
+
+  it("offers the concept explanation next to the edit link, deep-linked to Documentation", () => {
+    // "Tier", "cast" and "ladder" are all house vocabulary. The panel names them, so it
+    // also has to say where they are explained. The label names the destination because
+    // the link lands on the whole guide, not on a section: promising a specific answer and
+    // delivering a manual is the thing to avoid.
+    const coverage: LadderCoverageInputs = { futurePairs: [], showPriorities: [], cityPriorities: [] };
+    renderWithProviders(
+      <MemoryRouter><LadderStep coverage={coverage} orgId="org-1" /></MemoryRouter>,
+    );
+    expect(screen.getByRole("link", { name: /how casts and tiers work, in the app logic guide/i })).toHaveAttribute(
+      "href",
+      `${ROUTES.SETTINGS}?tab=docs`,
+    );
   });
 
   it("shows no per-show caveat when the city has no show-scoped overrides", () => {
@@ -62,8 +95,41 @@ describe("LadderStep", () => {
       cityPriorities: [{ cityId: "c1", castId: "k1", priority: 1 }],
     };
     renderWithProviders(
-      <MemoryRouter><LadderStep coverage={coverage} /></MemoryRouter>,
+      <MemoryRouter><LadderStep coverage={coverage} orgId="org-1" /></MemoryRouter>,
     );
     expect(screen.queryByText(/use their own cast list/)).not.toBeInTheDocument();
+  });
+
+  const empty: LadderCoverageInputs = { futurePairs: [], showPriorities: [], cityPriorities: [] };
+
+  it("reads the flow for the org it was handed, not for whatever org the shell is on", () => {
+    // Same rule as TimingStep: the rail passes this panel an orgId, so resolving the flow
+    // from AuthContext instead would let one org's ranking be narrated with another org's
+    // flow during a switch (the switcher lives in the shell and unmounts nothing).
+    renderWithProviders(<MemoryRouter><LadderStep coverage={empty} orgId="org-9" /></MemoryRouter>);
+    expect(flowOrgSpy).toHaveBeenCalledWith("org-9");
+  });
+
+  it("tells an offers org what the ranking decides", () => {
+    renderWithProviders(<MemoryRouter><LadderStep coverage={empty} orgId="org-1" /></MemoryRouter>);
+    expect(screen.getByText(/Tier 1 is asked first/)).toBeInTheDocument();
+  });
+
+  it("tells a direct-book org that nothing reads this ranking", () => {
+    // The panel used to open with "The order offers go out in. Tier 1 is asked first..."
+    // for every org. A direct-book org never opens a tier, and its picker
+    // (deriveDirectBookList over useEligibleArtists) ignores priority entirely, so that
+    // sentence sent it off to rank casts for an effect it will never see.
+    flowRef.value = applyPreset(BOOKING_FLOW_DEFAULTS, "direct");
+    renderWithProviders(<MemoryRouter><LadderStep coverage={empty} orgId="org-1" /></MemoryRouter>);
+    expect(screen.getByText(/nothing reads this ranking today/)).toBeInTheDocument();
+    expect(screen.queryByText(/asked first/)).not.toBeInTheDocument();
+  });
+
+  it("narrates no pipeline at all while the flow is still being read", () => {
+    flowRef.value = undefined;
+    renderWithProviders(<MemoryRouter><LadderStep coverage={empty} orgId="org-1" /></MemoryRouter>);
+    expect(screen.getByText("Your casts ranked per city, tier 1 first.")).toBeInTheDocument();
+    expect(screen.queryByText(/asked first,/)).not.toBeInTheDocument();
   });
 });

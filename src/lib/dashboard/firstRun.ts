@@ -74,20 +74,58 @@ export function welcomeCopy(
     const pendingBody = pending === 0
       ? "No confirmations are waiting on you right now."
       : `${pending} artist${pending === 1 ? "" : "s"} ${pending === 1 ? "is" : "are"} waiting on a confirm from you.`;
+    // Branched, not flattened: this function DOES take ctx (the artist branch below already
+    // reads it), so an org that runs offers keeps the fuller list. A direct-book org never
+    // opens a tier, so listing offers among what "appears here" named a stage of a pipeline
+    // it does not run, on the card sitting on top of a rail whose chips say "Blocks booking".
+    const emptyBody = ctx.artistAcceptance
+      ? "Dates, offers and confirmations appear here the moment the first import lands."
+      : "Dates and bookings appear here the moment the first import lands.";
     return complete
       ? { ...base, headline: `You have joined ${org}`, body: pendingBody, primaryLabel: "How this org works", secondaryLabel: "Dismiss", progressLabel: `Set up · ${progress.total} of ${progress.total}`, progressHint: "The rules you inherited" }
-      : { ...base, headline: `${org} is still being set up`, body: "Dates, offers and confirmations appear here the moment the first import lands.", primaryLabel: canEditSetup ? "Start setup" : "See what is outstanding", secondaryLabel: "Later", progressLabel: `Org setup · ${progress.filled} of ${progress.total}`, progressHint: canEditSetup ? "About 15 minutes" : "Only an admin can do these" };
+      : { ...base, headline: `${org} is still being set up`, body: emptyBody, primaryLabel: canEditSetup ? "Start setup" : "See what is outstanding", secondaryLabel: "Later", progressLabel: `Org setup · ${progress.filled} of ${progress.total}`, progressHint: canEditSetup ? "About 15 minutes" : "Only an admin can do these" };
   }
   // artist
+  //
+  // Branched on the flow, because this card sits directly on top of the rules block and
+  // that block already branches: at a direct-book org (artist_acceptance false) no tier is
+  // ever opened, so ARTIST_ONBOARDING tells this artist "You are booked directly" while the
+  // headline above it announced offers on their way. One surface, two products.
+  //
+  // The primary label carries no flow at all. It opens the rules block, and it renders in
+  // both, so naming a pipeline there would be the same claim in a place that cannot branch.
+  const offers = ctx.artistAcceptance;
   return complete
-    ? { ...base, headline: "Your first offers are on their way", body: "Your account is set up. A few rules decide when an offer reaches you and how long you have to answer.", primaryLabel: "How offers work here", secondaryLabel: "Dismiss", progressLabel: `Set up · ${progress.total} of ${progress.total}`, progressHint: "The rules you inherited" }
-    : { ...base, headline: `${org} added you to the roster`, body: "Offers arrive by email and land on this page. Block the dates you cannot play first, so you only get asked about dates that work.", primaryLabel: "Start setup", secondaryLabel: "Later", progressLabel: `Set up · ${progress.filled} of ${progress.total}`, progressHint: "About 2 minutes" };
+    ? {
+        ...base,
+        headline: offers ? "Your first offers are on their way" : "Your first dates are on their way",
+        body: offers
+          ? "Your account is set up. A few rules decide when an offer reaches you and how long you have to answer."
+          : "Your account is set up. A few rules decide how this org books you, and blocking dates is your part of it.",
+        primaryLabel: "How booking works here", secondaryLabel: "Dismiss",
+        progressLabel: `Set up · ${progress.total} of ${progress.total}`, progressHint: "The rules you inherited",
+      }
+    : {
+        ...base,
+        headline: `${org} added you to the roster`,
+        body: offers
+          ? "Offers arrive by email and land on this page. Block the dates you cannot play first, so you only get asked about dates that work."
+          : "Your producer books you directly, and confirmed dates land on this page. Block the dates you cannot play first, so they come off the list before anyone books you.",
+        primaryLabel: "Start setup", secondaryLabel: "Later",
+        progressLabel: `Set up · ${progress.filled} of ${progress.total}`, progressHint: "About 2 minutes",
+      };
 }
 
+// The artist strings below take no flow, and neither of these functions receives ctx, so
+// they render unchanged at a direct-book org. That is exactly why they name no pipeline:
+// "How offers work here" is itself a claim that offers exist, and it labelled a rules list
+// whose first line said they do not. "Booking" is true under every preset.
+// (The admin/producer strings are untouched: their rails cover the whole org, and both
+// roles can see a direct-book org's offer settings are simply unused.)
 export function railHeaderCopy(role: DashboardRole, complete: boolean, canEditSetup = false) {
   if (complete) {
     return {
-      eyebrow: role === "artist" ? "How offers work here" : "How this org works",
+      eyebrow: role === "artist" ? "How booking works here" : "How this org works",
       title: "The rules you inherited",
       // Admins can always reach Settings; a producer can too when granted the edit_*
       // capabilities. Everyone else (producer without the grant, artist) cannot.
@@ -95,18 +133,23 @@ export function railHeaderCopy(role: DashboardRole, complete: boolean, canEditSe
         ? "You can change them in Settings, but every number on this page follows them today."
         : role === "producer"
           ? "You cannot change these, but every number on this page follows them."
-          : "You cannot change these. Every offer you get follows them.",
+          : "You cannot change these. Every date you are booked on follows them.",
     };
   }
-  if (role === "admin") return { eyebrow: "Set up", title: "Get the workspace running", body: "Some of these block the first offer. Nothing here stops you using the rest of the app." };
+  // Flow-neutral for the same reason the artist labels above are: this function takes no
+  // ctx, so these bodies render unchanged at a direct-book org, which never opens a tier.
+  // They sit directly on top of step rows the engine chips "Blocks booking" for that org
+  // (blockFor, src/lib/bookings/setupStatus.ts), so naming an offer here contradicted the
+  // rows underneath. "The first booking" is the same gate under every preset.
+  if (role === "admin") return { eyebrow: "Set up", title: "Get the workspace running", body: "Some of these block the first booking. Nothing here stops you using the rest of the app." };
   if (role === "producer") return canEditSetup
-    ? { eyebrow: "Org setup", title: "What is still outstanding", body: "Some of these block the first offer. Nothing here stops you using the rest of the app." }
+    ? { eyebrow: "Org setup", title: "What is still outstanding", body: "Some of these block the first booking. Nothing here stops you using the rest of the app." }
     : { eyebrow: "Org setup", title: "What is still outstanding", body: "Only an admin can do these. This is here so you know why the page is empty, not so you can fix it." };
-  return { eyebrow: "Set up", title: "Before your first offer", body: "None of this blocks anything. It just makes the offers you get worth answering." };
+  return { eyebrow: "Set up", title: "Before your first booking", body: "None of this blocks anything. It just keeps the dates you cannot play out of the way." };
 }
 
 export function collapsedCopy(role: DashboardRole, complete: boolean, remaining: number) {
-  if (complete) return { label: "Set up · done", hint: role === "artist" ? "How offers reach you" : "Booking flow, dates, cast slots, your team", cta: role === "artist" ? "How offers work here" : "How this org works" };
+  if (complete) return { label: "Set up · done", hint: role === "artist" ? "How this org books you" : "Booking flow, dates, cast slots, your team", cta: role === "artist" ? "How booking works here" : "How this org works" };
   return {
     label: role === "producer" ? "Org setup in progress" : "Set up in progress",
     hint: `${remaining} step${remaining === 1 ? "" : "s"} left`,

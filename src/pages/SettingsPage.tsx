@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { ROUTES, BOOKING_ENGINE_DEFAULTS, roleLabel } from '@/config/app.config';
+import { resolveInitialTab } from '@/lib/settingsTabs';
 import { useSettingsWarnings } from '@/hooks/useSettingsWarnings';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -156,7 +157,31 @@ export default function SettingsPage() {
 
   // Controlled so we know which tab is active: the Booking flow tab renders its own
   // scoped Save/Discard in FlowRail, and the page-level control must defer to it there.
-  const [activeTab, setActiveTab] = useState(isAdmin ? 'organization' : 'scheduling');
+  //
+  // `?tab=` seeds the initial value (lazy useState initializer), so a deep link from a
+  // notification or a setup step lands on the right section without pinning the page there:
+  // a manual switch is plain local state and the URL is left alone.
+  //
+  // The seed alone runs once per MOUNT, which is not the same thing as "per deep link".
+  // Every link that ships on this branch (the concept links in LadderStep/EligibilityStep)
+  // is rendered off Settings, so it always remounts the page, but a notification deep-link
+  // clicked while the user is already sitting on Settings only changes the URL: without the
+  // effect below the page would ignore it. The effect keys on the raw param, so a manual
+  // switch (which does not touch the URL) is never undone by a re-render. It also re-runs on
+  // `isAdmin`, which is what a producer switching orgs needs: an admin-only tab resolves back
+  // to their default rather than leaving them on a pane with no trigger and no content.
+  //
+  // Widened to `string` on purpose: the seed is a SettingsTabParam, but Tabs.onValueChange
+  // hands back a plain string (and "hire-orders", deliberately not a deep-link target, is a
+  // reachable tab), so narrowing the state to the whitelist would reject legitimate switches.
+  const [searchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab');
+  const [activeTab, setActiveTab] = useState<string>(() => resolveInitialTab(tabParam, isAdmin));
+  useEffect(() => {
+    // No param means "wherever you were": a link into plain /settings must not drag someone
+    // off the tab they are working on back to the role default.
+    if (tabParam) setActiveTab(resolveInitialTab(tabParam, isAdmin));
+  }, [tabParam, isAdmin]);
   // Keep the Tabs ARIA orientation matched to the actual layout axis: the nav rail is
   // vertical on md+ but a horizontal scroll row below md, so arrow-key roving (Up/Down
   // vs Left/Right) follows the visual direction at each breakpoint. Breakpoint (768px)

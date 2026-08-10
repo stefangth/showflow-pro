@@ -6,7 +6,7 @@ import { useCan } from "@/hooks/useCapabilities";
 import { dryRunOfferTier, type DryRunResult } from "@/data/bookings";
 import { fetchNextRehearsalDate } from "@/data/showDates";
 import { DEFAULT_FLOW_TIMES } from "@/data/settings";
-import { hh, BOOKING_FLOW_DEFAULTS } from "@/lib/bookingFlow";
+import { hh } from "@/lib/bookingFlow";
 import { toDateKey, formatDateWithWeekday } from "@/lib/dates";
 import { Button } from "@/components/ui/button";
 
@@ -35,12 +35,15 @@ export function RehearsalBlock({ orgId }: { orgId: string | null }) {
     onError: (e: Error) => toast.error(`Could not run the rehearsal. ${e.message}`),
   });
 
-  const acceptance = (flow ?? BOOKING_FLOW_DEFAULTS).artist_acceptance;
-  if (!acceptance) return null;          // Direct book: nothing to rehearse.
+  // No default while the flow is unread: BOOKING_FLOW_DEFAULTS has acceptance on, so a
+  // direct-book org with its next date already cached would get a whole offer rehearsal
+  // flashed at it until the settings read lands. Same rule as TimingStep's narrative.
+  if (!flow) return null;
+  if (!flow.artist_acceptance) return null;  // Direct book: nothing to rehearse.
   if (next.isLoading) return null;
   if (!next.data) return null;           // No future date with a city.
 
-  const delivery = (flow ?? BOOKING_FLOW_DEFAULTS).offer_delivery;
+  const delivery = flow.offer_delivery;
   const t = times ?? DEFAULT_FLOW_TIMES;
   const foot = delivery === "immediate"
     ? `Would email immediately, window closes +${t.windowHours} h`
