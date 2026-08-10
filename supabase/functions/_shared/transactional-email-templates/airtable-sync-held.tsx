@@ -82,7 +82,12 @@ const AirtableSyncHeld = ({
       ? (heldCount === 1
         ? applyEmailTokens(copy["airtable-sync-held.topReasonLineSingle"], { ...values, topReasonLabel })
         : applyEmailTokens(copy["airtable-sync-held.topReasonLineAll"], { ...values, topReasonLabel }))
-      : applyEmailTokens(copy["airtable-sync-held.topReasonLine"], { ...values, topReasonCount, topReasonLabel })
+      // A partial breakdown counting exactly one record takes the singular verb form:
+      // "1 of the 2 are" would pair a singular count with a plural verb.
+      : applyEmailTokens(
+        copy[topReasonCount === 1 ? "airtable-sync-held.topReasonLineOne" : "airtable-sync-held.topReasonLine"],
+        { ...values, topReasonCount, topReasonLabel },
+      )
     : null;
   // Singular vs. plural, and whether topReasonLine above already answered "why": a lone
   // held record is "it", never "which ones" (see followupHeldSingle*), and once the

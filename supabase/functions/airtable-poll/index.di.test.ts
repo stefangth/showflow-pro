@@ -1298,6 +1298,12 @@ Deno.test("airtable-poll: a newly-held record notifies org admins (one notificat
   assertEquals(message.includes("could not be matched"), false, "held has more than one cause; must not assert a single one");
   assertEquals(message.includes("could not be brought into ShowFlow"), true, "states the outcome without asserting a cause");
   assertEquals(message.includes("Open the sync report"), true, "points the admin at the sync report for the actual reason");
+  // This run holds exactly one record, so the followup clause must agree with the noun
+  // the same sentence just singularized: "1 Airtable record ... see which ones" pairs a
+  // singular subject with a plural clause. The email's followupHeldSingle already makes
+  // this distinction; the in-app message must too.
+  assertEquals(message.includes("which ones"), false, "one held record is never 'which ones'");
+  assertEquals(message.includes("see why"), true, "singular followup still promises the reason");
 
   // Same admin also gets emailed the airtable-sync-held alert, once.
   const emailCalls = invokeCalls.filter((c) => c.name === "send-transactional-email");

@@ -217,8 +217,13 @@ async function notifyAdminsOnSyncProblem(
   // `held += 1` sites above in syncOrg), so this must not assert a single one ("could
   // not be matched" is only true for the mapping cause). The sync report, linked via
   // related_entity_type below, carries the actual per-record reason.
+  // The followup clause agrees with the count the same sentence just singularized:
+  // one held record is "see why" (there is nothing to pick "which ones" from), matching
+  // the email's followupHeldSingle.
   const message = cur.heldIds.length > 0
-    ? `${cur.heldIds.length} Airtable ${cur.heldIds.length === 1 ? "record" : "records"} could not be brought into ShowFlow. Open the sync report to see which ones and why.`
+    ? (cur.heldIds.length === 1
+      ? `1 Airtable record could not be brought into ShowFlow. Open the sync report to see why.`
+      : `${cur.heldIds.length} Airtable records could not be brought into ShowFlow. Open the sync report to see which ones and why.`)
     : `The Airtable sync ran but imported nothing this time, even though there is data waiting. Open the sync report to see what happened.`;
   await deps.admin.from("notifications").insert(recipients.map((uid) => ({
     org_id: orgId,

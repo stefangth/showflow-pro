@@ -308,6 +308,10 @@ export const EMAIL_COPY_DEFAULTS = {
   // ever naming a reason it can't back up. Phrased as a clause ("are {{topReasonLabel}}"),
   // not a report label ("N of M: reason"), so it reads like the rest of the email.
   "airtable-sync-held.topReasonLine": "{{topReasonCount}} of the {{heldCount}} are {{topReasonLabel}}.",
+  // The partial breakdown's singular form: the smallest mixed-cause held set (two
+  // records, two different reasons) makes the majority category count exactly one, and
+  // "1 of the 2 are" is subject-verb disagreement. Same shape, singular verb.
+  "airtable-sync-held.topReasonLineOne": "{{topReasonCount}} of the {{heldCount}} is {{topReasonLabel}}.",
   // Two redundant-fraction cases the plain N-of-M line above never should render:
   // a single held record (its one reason IS the whole story, so "1 of 1" is noise),
   // and a held set where every record shares the same reason ("N of N" always means

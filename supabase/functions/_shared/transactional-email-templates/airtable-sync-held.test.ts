@@ -139,6 +139,22 @@ Deno.test("airtable-sync-held email: names the most common held reason as a quan
   assert(html.includes("2 of the 3 are not linked to one of your shows"), "states the count and reason for the majority category as a sentence, not a report label");
 });
 
+// The minimal mixed-cause case is completely ordinary (two held records, one blank
+// date cell, one unlinked program): the majority category then counts exactly one
+// record, and "1 of the 2 are" is subject-verb disagreement. The partial-breakdown
+// line needs a singular form, not just the redundant-fraction shortcuts below.
+Deno.test("airtable-sync-held email: a partial breakdown counting one record agrees in number", async () => {
+  const html = await renderAlert({
+    orgName: "Riverdance Co",
+    heldCount: 2,
+    topReasonCategory: "missing_date",
+    topReasonCount: 1,
+    settingsUrl: "https://app.showflow.pro/settings?tab=airtable",
+  });
+  assert(html.includes("1 of the 2 is missing a date"), "singular count takes a singular verb");
+  assert(!(html.includes("1 of the 2 are")), "never pairs a singular count with a plural verb");
+});
+
 // A single held record has exactly one reason: "1 of 1" is a robotic way to say
 // "this one". State it directly instead of a redundant fraction.
 Deno.test("airtable-sync-held email: a single held record states its reason directly, not as a 1-of-1 fraction", async () => {
