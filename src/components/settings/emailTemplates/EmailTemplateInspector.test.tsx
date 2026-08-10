@@ -23,8 +23,8 @@ describe("EmailTemplateInspector", () => {
     );
 
     expect(screen.getByText("Applies to all emails.")).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText("Intro"), { target: { value: "A current draft" } });
-    expect(onCopyChange).toHaveBeenCalledWith({ "org-invitation.intro": "A current draft" });
+    fireEvent.change(screen.getByLabelText("Product intro"), { target: { value: "A current draft" } });
+    expect(onCopyChange).toHaveBeenCalledWith({ "org-invitation.productIntro": "A current draft" });
   });
 
   it("keeps singular and plural intro copy in the body role", () => {

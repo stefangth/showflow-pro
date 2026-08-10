@@ -116,21 +116,21 @@ describe("EmailTemplateEditorPage", () => {
   });
 
   it("round-trips copy and shared theme drafts to preview and preserves dirt across refetch", async () => {
-    seedClient(settingRows({ "org-invitation.intro": "Stored intro" }, { roles: { body: { size: 16 } } }));
+    seedClient(settingRows({ "org-invitation.productIntro": "Stored intro" }, { roles: { body: { size: 16 } } }));
     const { queryClient } = renderPage();
     fireEvent.click(await outlineEntry("Body"));
-    fireEvent.change(screen.getByLabelText("Intro"), { target: { value: "Unsaved intro" } });
+    fireEvent.change(screen.getByLabelText("Product intro"), { target: { value: "Unsaved intro" } });
     fireEvent.change(screen.getByLabelText("Size"), { target: { value: "18" } });
 
     await waitFor(() => {
       const requests = (client.calls as RecordedCall[]).filter((call) => call.table === "fn:preview-transactional-email");
       const latest = requests.at(-1)?.args[0] as { copyOverride?: Record<string, unknown>; themeOverride?: { roles?: Record<string, unknown> } } | undefined;
-      expect(latest?.copyOverride?.["org-invitation.intro"]).toBe("Unsaved intro");
+      expect(latest?.copyOverride?.["org-invitation.productIntro"]).toBe("Unsaved intro");
       expect(latest?.themeOverride?.roles?.body).toEqual({ size: 18 });
     });
 
     await queryClient.invalidateQueries({ queryKey: ["app-settings"] });
-    expect(screen.getByLabelText("Intro")).toHaveValue("Unsaved intro");
+    expect(screen.getByLabelText("Product intro")).toHaveValue("Unsaved intro");
     expect(screen.getByLabelText("Size")).toHaveValue(18);
   });
 

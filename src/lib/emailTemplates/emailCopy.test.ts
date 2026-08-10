@@ -48,6 +48,43 @@ describe("resolveEmailCopy", () => {
     expect(resolved["offer-immediate.footer"]).toBe("Questions? Reach out to your point of contact and they'll be glad to help.");
     expect(EMAIL_COPY_DEFAULTS["offer-immediate.heading"]).toBe("You have a new offer");
   });
+
+  it("carries a stored org-invitation.intro override forward onto the new productIntro slot", () => {
+    // Regression: this WP retired org-invitation.intro (and roleSuffix) in favor of
+    // productIntro/roleIntro*. An org that had customized the old key must not silently
+    // revert to the stock copy the moment this ships.
+    const resolved = resolveEmailCopy({
+      "org-invitation.intro": "Welcome to the Acme crew on ShowFlow.",
+    } as never);
+
+    expect(resolved["org-invitation.productIntro"]).toBe("Welcome to the Acme crew on ShowFlow.");
+  });
+
+  it("prefers an explicit productIntro override over a carried-forward legacy intro", () => {
+    const resolved = resolveEmailCopy({
+      "org-invitation.intro": "Stale legacy sentence.",
+      "org-invitation.productIntro": "Fresh sentence chosen after the migration.",
+    } as never);
+
+    expect(resolved["org-invitation.productIntro"]).toBe("Fresh sentence chosen after the migration.");
+  });
+
+  it("ignores a blank legacy org-invitation.intro override", () => {
+    const resolved = resolveEmailCopy({ "org-invitation.intro": "   " } as never);
+    expect(resolved["org-invitation.productIntro"]).toBe(EMAIL_COPY_DEFAULTS["org-invitation.productIntro"]);
+  });
+
+  it("carries the legacy value forward when the new key is present but blank, since blank means not set everywhere else in this function", () => {
+    // Regression: the carry-forward guard used to check only `typeof raw[newKey] !== "string"`,
+    // so a stored productIntro of all-whitespace (typeof is still "string") blocked the legacy
+    // value AND then got rejected by the main loop's own blank check, landing on the stock
+    // default instead of the org's real customization.
+    const resolved = resolveEmailCopy({
+      "org-invitation.intro": "Legacy sentence for Acme.",
+      "org-invitation.productIntro": "   ",
+    } as never);
+    expect(resolved["org-invitation.productIntro"]).toBe("Legacy sentence for Acme.");
+  });
 });
 
 describe("compactEmailCopy", () => {
@@ -57,6 +94,33 @@ describe("compactEmailCopy", () => {
       "offer-immediate.footer": " ",
       "offer-immediate.ctaLabel": "Answer now",
     })).toEqual({ "offer-immediate.ctaLabel": "Answer now" });
+  });
+
+  it("migrates a legacy org-invitation.intro value onto productIntro instead of dropping it", () => {
+    // Regression: the email-template editor seeds its draft (and later re-saves it) via
+    // compactEmailCopy(settingsQuery.data.copy). Before this fix, compactEmailCopy filtered
+    // out any key that isn't in EMAIL_COPY_DEFAULTS, so a stored legacy org-invitation.intro
+    // value vanished the instant the editor loaded, even though sendOrgInvitationEmail still
+    // honors it via resolveEmailCopy's own carry-forward. The first save of ANY field would
+    // then persist the draft without it, permanently destroying the org's customization.
+    expect(compactEmailCopy({
+      "org-invitation.intro": "Welcome to the Acme crew on ShowFlow.",
+    } as never)).toEqual({
+      "org-invitation.productIntro": "Welcome to the Acme crew on ShowFlow.",
+    });
+  });
+
+  it("prefers an explicit productIntro over a legacy intro value when compacting", () => {
+    expect(compactEmailCopy({
+      "org-invitation.intro": "Stale legacy sentence.",
+      "org-invitation.productIntro": "Fresh sentence chosen after the migration.",
+    } as never)).toEqual({
+      "org-invitation.productIntro": "Fresh sentence chosen after the migration.",
+    });
+  });
+
+  it("does not migrate a blank legacy org-invitation.intro value", () => {
+    expect(compactEmailCopy({ "org-invitation.intro": "   " } as never)).toEqual({});
   });
 });
 

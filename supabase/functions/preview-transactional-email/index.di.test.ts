@@ -462,7 +462,7 @@ Deno.test("preview-transactional-email DI: applies copy, theme, and highlight ov
       templateName: "org-invitation",
       copyOverride: {
         "org-invitation.subject": "Welcome {{orgName}}",
-        "org-invitation.intro": "A custom invitation for {{orgName}}.",
+        "org-invitation.productIntro": "A custom invitation for {{orgName}}.",
       },
       themeOverride: { base: { colors: { pageBg: "#010203" } } },
       highlightRole: "heading",
