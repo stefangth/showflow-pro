@@ -16,6 +16,14 @@ export function useBookingFlow(orgOverride?: string | null) {
   const orgId = orgOverride !== undefined ? orgOverride : currentOrg?.id ?? null;
   return useQuery({
     queryKey: ["app-settings", "booking-flow", orgId],
+    // No org, no flow: fetchBookingFlow(client, null) reads the PLATFORM default
+    // settings row and returns a flow belonging to no org. Every null-org caller
+    // (AcceptInvitePage before its invites resolve, the setup panels for a
+    // super-admin outside any org) discards that result, so the read was one stray
+    // app_settings query per mount. Disabled, the query reports isLoading false, so
+    // callers folding it into a readiness gate are not held up by an org they
+    // don't have.
+    enabled: orgId !== null,
     queryFn: () => fetchBookingFlow(supabase, orgId),
   });
 }

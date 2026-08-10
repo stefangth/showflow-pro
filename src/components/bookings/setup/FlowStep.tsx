@@ -34,10 +34,10 @@ export function FlowStep({ orgId, onDone }: { orgId: string | null; onDone: () =
   // (which does not unmount this panel) could open the panel on one org's preset and write
   // it to another. The "in practice" hours already keyed on the prop.
   //
-  // `orgId ? ... : null` because `useBookingFlow` has no `enabled` gate: with a null org
-  // fetchBookingFlow still runs and returns the PLATFORM DEFAULT flow, which would suggest
-  // a preset from settings belonging to no org. With no org there is nothing to suggest
-  // and nothing to save to (the button below is disabled for the same reason).
+  // `orgId ? ... : null` as defense in depth: `useBookingFlow` now disables its own query
+  // for a null org (nothing is fetched), but the narrowing also documents the intent here:
+  // with no org there is nothing to suggest and nothing to save to (the button below is
+  // disabled for the same reason).
   const flowQ = useBookingFlow(orgId);
   const { isError, error } = flowQ;
   const flow = orgId ? flowQ.data : null;

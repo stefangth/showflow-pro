@@ -253,13 +253,11 @@ export default function AcceptInvitePage() {
   // setup status, or render the offers/direct line, before swapping to the correct 'off'
   // state once the real entitlement lands.
   const { isLoading: entitlementsLoading } = useEntitlements();
-  // useBookingFlow(joined?.orgId ?? null) is called unconditionally too and has no
-  // `enabled` gate of its own (that hook is shared, out of this page's file list), so it
-  // does issue one `app_settings` read for orgId=null on first mount and on the
-  // unauthenticated bounce-to-login path. Left deliberately: fetchBookingFlow(client,
-  // null) is a cheap platform-default lookup, not a per-user query, and it lands (and is
-  // ignored) well before `joined` is ever set, so it never affects what renders. Gating it
-  // properly needs an `enabled` option on the shared hook, which is out of scope here.
+  // useBookingFlow(joined?.orgId ?? null) is called unconditionally too; the shared hook
+  // gates itself off for a null org (enabled: orgId !== null), so no `app_settings` read
+  // fires on first mount or on the unauthenticated bounce-to-login path. A disabled query
+  // reports isLoading false, so `nextStepReady` below is not held up before `joined`
+  // exists; the moment it is set the query starts and the readiness gate takes over.
   const bookingModuleOn = useFeature('booking_flow');
   const { data: bookingFlow, isLoading: bookingFlowLoading } = useBookingFlow(joined?.orgId ?? null);
   // Producer-only capability gate for the 'offers' next-step line (see
