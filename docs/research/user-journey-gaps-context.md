@@ -20,6 +20,10 @@ Statuses: `open` · `in progress` · `shipped (branch)` · `merged` · `supersed
 
 ## Constraints (apply to every gap session)
 
+0. **Visual approval first (standing owner directive, 2026-08-10).** Before implementing any
+   user-facing change, show the owner a before/after mockup and get explicit approval; the
+   approved visual is the spec the implementation (and its critics) are held to.
+
 1. **TDD, superpowers-style.** Failing test first; tests import the real module; use the
    harnesses (`src/test/supabaseFake.ts`, `renderWithProviders`, `castHelpers`;
    `_shared/testing.ts` + `makeFakeDeps` for edge). Plans live in `docs/superpowers/plans/`.
@@ -43,17 +47,17 @@ Statuses: `open` · `in progress` · `shipped (branch)` · `merged` · `supersed
 
 | ID | Item | Status | Notes |
 |---|---|---|---|
-| A0.1 | Email: what is ShowFlow | in progress (WP1) | productIntro copy key |
-| A0.2 | Email: what does "admin" mean | in progress (WP1) | ROLE_DESCRIPTIONS registry, mirrored |
-| A0.3 | Email: who invited me | in progress (WP1) | inviter display name, fallback email |
-| A0.4 | Email: expiry prominence | in progress (WP1) | expiresOn from the invitation row |
-| A1.1 | Account-vs-login narration | largely superseded by PR #238 | magic-link CTA works for both; WP1 adds ctaHint |
-| A1.2 | Org/role preview on accept | re-scoped (WP2) | #239 creates membership at invite time, so no confirm gate; success card instead |
-| A1.3 | What did accepting commit me to | in progress (WP2) | success card: org, role, next steps |
-| A3.1 | Concepts not linked from rail steps | in progress (WP3) | docs-tab deep link from ladder/eligibility |
-| A3.2 | No invite-your-people step | in progress (WP3) | new `people` step: done = ≥1 catalog artist |
-| A3.3 | "What happens tonight" narrative | in progress (WP3) | describeTonight() in TimingStep, reads settings |
-| A3.4 | Artist-side preview never suggested | in progress (WP3) | admin-only view-as rule in complete state |
+| A0.1 | Email: what is ShowFlow | shipped (branch) | productIntro copy key; WP1 capped at 7 rounds, exit A/0 blockers |
+| A0.2 | Email: what does "admin" mean | shipped (branch) | per-role copy keys + ROLE_DESCRIPTIONS in the mirrored block |
+| A0.3 | Email: who invited me | shipped (branch) | inviter display name via resolveInviterName, fallback email |
+| A0.4 | Email: expiry prominence | shipped (branch) | expiresOn from the row; expired invite = honest 409 on resend |
+| A1.1 | Account-vs-login narration | shipped (branch) | #238 mechanics + isNewUser-aware ctaHint (two truthful variants) |
+| A1.2 | Org/role preview on accept | re-scoped (WP2, wave 2) | #239 creates membership at invite time, so no confirm gate; success card instead |
+| A1.3 | What did accepting commit me to | in progress (WP2, wave 2) | success card: org, role, next steps |
+| A3.1 | Concepts not linked from rail steps | shipped (branch) | docs-tab deep link; SettingsPage ?tab= enabler |
+| A3.2 | No invite-your-people step | shipped (branch) | `people` step, done = ≥1 ACTIVE artist, flow-aware chip via blockFor |
+| A3.3 | "What happens tonight" narrative | shipped (branch) | describeTonight reads the full flow (off/immediate/digest states) |
+| A3.4 | Artist-side preview never suggested | shipped (branch) | admin-only rule, scoped to what the picker can actually do |
 | A4.1 | Notifications don't deep-link | in progress (WP4a) | entityRoutes map; benefits all roles |
 | A4.2 | Airtable sync-held has no email | in progress (WP4b) | new template + send in airtable-poll |
 | A4.3 | Member-change consequences | partially superseded by PR #239 | remove dialog now narrates; WP4a adds role descriptions to role menu |
@@ -94,6 +98,18 @@ email CTA · R5.4 deletion: hire orders/in-flight offers. All `open`.
   producer items P3.2/P3.6/P5.2 should reuse the same helper/pattern.
 
 ## Decision log
+
+- 2026-08-10 (wave 1 done): WP1 and WP3 both capped at 7 implementer+critic rounds
+  (commits 04c35c2/907cb9f + support files cb85e10/9543215 + residuals 09f651a). Recurring
+  critic lesson worth keeping: **static copy must hold in every reachable org state**
+  (direct book, immediate delivery, digests off, unregistered artists); when a surface
+  cannot read the flow, name what the row HOLDS, not what one pipeline does with it
+  (see moduleOnboarding's comments and the OFFER_CLAIM test sweep).
+- 2026-08-10: main independently shipped resend delivery-gating + resent-at stamp
+  (eaf4931/2687833); merged so a resend sends the rich email, returns honest 422/502 on
+  failure, and stamps mark_invitation_resent only after confirmed delivery.
+- 2026-08-10: resend does NOT extend expires_at (DB row stays the single expiry source);
+  an already-expired pending invite gets a 409 telling the admin to revoke + re-invite.
 
 - 2026-08-10: PR #239 made membership form at invite time → A1.2 re-scoped from "confirm
   gate" to "success card" (a gate would fight the architecture). A4.3 remove-dialog half was
