@@ -53,7 +53,14 @@ export function scheduleChangeNote(
   if (!bookingFlowEnabled || !flow || flow.active === false) return null;
   const at = `${hh(confirmationDigestHour)} Berlin`;
   if (flow.confirmation_digest) {
-    return `Session times go out in the daily summary at ${at}. Artists with an account also see the change in the app. Anyone with no email and no account is not told.`;
+    // "are also notified in the app", not "see the change in the app": the change itself
+    // is live in the artist's schedule the moment it is saved; what arrives at the hour is
+    // the notification (timingCopy.ts states the same distinction for the timing panel).
+    return `Session times go out in the daily summary at ${at}. Artists with an account are also notified in the app. Anyone with no email and no account is not told.`;
   }
-  return `Session times show up in the app, in the daily summary at ${at}, for artists with an account. Anyone without one is not told.`;
+  // This branch must not say "the daily summary": that is the product's user-facing name
+  // for the confirmation digest EMAIL (FlowTimeline's toggle: "Confirmation digest" /
+  // "Daily summary email..."), and this branch only renders when that toggle is off. The
+  // in-app notice still waits for the same Berlin hour, so the hour stays.
+  return `Session times reach booked artists in the app at ${at}. That notice only goes to artists with an account. Anyone without one is not told.`;
 }

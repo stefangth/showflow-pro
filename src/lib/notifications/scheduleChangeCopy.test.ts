@@ -22,16 +22,19 @@ describe("scheduleChangeNote", () => {
   // that artist is told nothing by either channel. The note must say so instead of
   // implying every booked artist sees the change "in the app".
   //
-  // Copy voice: leads with the consequence (what happens), not a qualifier (who it happens
-  // to) — matching moduleOnboarding.ts's house voice of one short, direct sentence per
-  // consequence. "Anyone without one is not told" replaces the earlier "hear nothing",
-  // which read as legal-appendix filler rather than plain narration.
-  it("names the account condition and the residual risk when the confirmation digest email is off", () => {
+  // Regression (round-7 critic): this branch must never say "the daily summary" — that is
+  // the product's own user-facing name for the confirmation digest EMAIL (FlowTimeline
+  // renders the toggle as "Confirmation digest" / "Daily summary email..."), and this
+  // branch only renders when that toggle is OFF. An earlier rewrite claimed session times
+  // arrive "in the daily summary" to an admin who had just switched the daily summary off.
+  it("names the account condition and the residual risk, and never names the off email, when the confirmation digest is off", () => {
     const note = scheduleChangeNote(true, { ...BOOKING_FLOW_DEFAULTS, confirmation_digest: false }, 21);
     expect(note).toBe(
-      "Session times show up in the app, in the daily summary at 21:00 Berlin, for artists with an account. " +
+      "Session times reach booked artists in the app at 21:00 Berlin. " +
+      "That notice only goes to artists with an account. " +
       "Anyone without one is not told.",
     );
+    expect(note).not.toMatch(/daily summary|by email/i);
   });
 
   // The email channel resolves a recipient address from the artist record itself
@@ -52,11 +55,16 @@ describe("scheduleChangeNote", () => {
   // English. Every fact survives the rewrite: the digest still names who it reaches (an
   // email on file), the in-app row still names its own narrower condition (an account), and
   // the closing sentence still names the exact residual gap (neither).
+  // "are also notified in the app", not "also see the change in the app": timingCopy.ts
+  // establishes that what arrives at the digest hour is the NOTIFICATION — the change
+  // itself is live in the artist's schedule the moment it is saved. Right after a sentence
+  // that fixes a Berlin hour, "see the change" would invite the reading that in-app
+  // visibility waits for that hour.
   it("splits the email and in-app claims, and names the residual gap, when the confirmation digest email is on", () => {
     const note = scheduleChangeNote(true, { ...BOOKING_FLOW_DEFAULTS, confirmation_digest: true }, 21);
     expect(note).toBe(
       "Session times go out in the daily summary at 21:00 Berlin. " +
-      "Artists with an account also see the change in the app. " +
+      "Artists with an account are also notified in the app. " +
       "Anyone with no email and no account is not told.",
     );
   });

@@ -113,7 +113,7 @@ describe("ShowDateFormDialog", () => {
     mockFlowTimes = { windowHours: 48, offerDigestHour: 19, confirmationDigestHour: 21 };
     renderWithProviders(<ShowDateFormDialog open onOpenChange={() => {}} mode="edit" showDate={editShowDate} />);
     expect(screen.getByText(/session times go out in the daily summary at 21:00 berlin\./i)).toBeInTheDocument();
-    expect(screen.getByText(/artists with an account also see the change in the app/i)).toBeInTheDocument();
+    expect(screen.getByText(/artists with an account are also notified in the app/i)).toBeInTheDocument();
     expect(screen.getByText(/anyone with no email and no account is not told/i)).toBeInTheDocument();
   });
 
@@ -164,13 +164,18 @@ describe("ShowDateFormDialog", () => {
   // The old copy said "in the app" as if every booked artist were covered, which is false
   // for an artist added to the roster but not yet invited: with email off, nobody tells
   // them. The note must name the account condition and the resulting gap.
+  //
+  // Regression: it must also not say "the daily summary" — that is the product's own name
+  // for the confirmation digest EMAIL (FlowTimeline's toggle subtitle), which is exactly
+  // what this branch's admin just turned off.
   it("names the account condition and the residual gap when the confirmation digest is off", () => {
     mockFlow = { ...BOOKING_FLOW_DEFAULTS, confirmation_digest: false };
     mockFlowTimes = { windowHours: 48, offerDigestHour: 19, confirmationDigestHour: 21 };
     renderWithProviders(<ShowDateFormDialog open onOpenChange={() => {}} mode="edit" showDate={editShowDate} />);
-    expect(screen.getByText(/session times show up in the app, in the daily summary at 21:00 berlin, for artists with an account\./i)).toBeInTheDocument();
+    expect(screen.getByText(/session times reach booked artists in the app at 21:00 berlin\./i)).toBeInTheDocument();
     expect(screen.getByText(/anyone without one is not told/i)).toBeInTheDocument();
     expect(screen.queryByText(/by email/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/daily summary/i)).not.toBeInTheDocument();
   });
 
   // Regression: `log_show_date_schedule_change` fires `AFTER UPDATE OF session_1,
