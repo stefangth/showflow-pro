@@ -3,7 +3,7 @@ import { EMAIL_TEMPLATE_CATEGORY } from "@/lib/notificationCategories";
 import { EMAIL_TEMPLATE_COVERAGE } from "./coverage";
 
 describe("EMAIL_TEMPLATE_COVERAGE", () => {
-  it("lists the approved eleven delivered templates plus the external password reset in registry order", () => {
+  it("lists the approved twelve delivered templates plus the external password reset in registry order", () => {
     expect(EMAIL_TEMPLATE_COVERAGE.map((template) => template.key)).toEqual([
       "offer-immediate",
       "artist-offer-digest",
@@ -17,6 +17,7 @@ describe("EMAIL_TEMPLATE_COVERAGE", () => {
       "magic-link",
       "password-reset",
       "cron-health-alert",
+      "airtable-sync-held",
     ]);
   });
 
@@ -51,6 +52,22 @@ describe("EMAIL_TEMPLATE_COVERAGE", () => {
       status: "internal",
       category: "critical",
     });
+  });
+
+  it("keeps the airtable sync alert un-editable but visible to its org-admin audience", () => {
+    expect(EMAIL_TEMPLATE_COVERAGE.find((template) => template.key === "airtable-sync-held")).toMatchObject({
+      displayName: "Airtable sync held",
+      group: "System",
+      family: "violet",
+      trigger: "A record is newly held, or a sync stops importing (airtable-poll)",
+      recipient: "Org admins",
+      status: "internal",
+      audience: "org",
+      category: "internal",
+    });
+    // cron-health-alert and magic-link stay platform-only: no `audience` override.
+    expect(EMAIL_TEMPLATE_COVERAGE.find((template) => template.key === "cron-health-alert")?.audience).toBeUndefined();
+    expect(EMAIL_TEMPLATE_COVERAGE.find((template) => template.key === "magic-link")?.audience).toBeUndefined();
   });
 
   it("takes opt-out categories from the shared email category registry", () => {

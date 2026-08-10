@@ -1227,7 +1227,7 @@ Deno.test("airtable-poll: unlinked city is non-fatal — record still imports wi
 
 // ─── Held-set change → admin notification ──────────────────────────────────────
 
-Deno.test("airtable-poll: a newly-held record notifies org admins (one notification per admin)", async () => {
+Deno.test("airtable-poll: a newly-held record notifies org admins (one notification per admin) and emails them the alert", async () => {
   const notificationInserts: unknown[] = [];
 
   const records = [
@@ -1239,13 +1239,22 @@ Deno.test("airtable-poll: a newly-held record notifies org admins (one notificat
 
   // Seed an admin recipient and an empty previous-run held set (prev log exists with held_count 0,
   // and the previous held-record select returns []), so this held record is NEW vs. the last run.
-  const { deps } = makeFakeDeps({
+  const { deps, invokeCalls } = makeFakeDeps({
+    // getUserById resolves the admin's login email for the sync-held email (mirrors
+    // expire-offers' cast-escalation-requested recipient resolution).
+    usersById: { "admin-1": { email: "admin1@example.com" } },
     tables: {
       app_settings: [
         { when: { key: "cron_secret" }, data: { value: "secret123" } },
         ...ENABLED_SETTINGS,
       ],
-      organizations: { data: [{ id: ORG }], error: null },
+      // Two distinct queries against "organizations": getActiveOrgs' fan-out list
+      // (.eq('status','active')) and notifyAdminsOnSyncProblem's single org-name
+      // lookup (.eq('id', orgId)) — disambiguated by `when`.
+      organizations: [
+        { when: { status: "active" }, data: [{ id: ORG }] },
+        { when: { id: ORG }, data: { name: "Riverdance Co" } },
+      ],
       shows: { data: [{ id: "show-uuid-1", airtable_program_key: "TestShow" }], error: null },
       cities: { data: [{ id: "city-uuid-berlin", airtable_city_key: "berlin" }], error: null },
       show_dates: { data: [], error: null },
@@ -1280,6 +1289,644 @@ Deno.test("airtable-poll: a newly-held record notifies org admins (one notificat
   assertEquals(rows[0].user_id, "admin-1");
   assertEquals(rows[0].type, "airtable_sync_held");
   assertEquals(rows[0].related_entity_id, "log-1");
+
+  // The in-app message stays cause-neutral, matching the email: held_unresolved has more
+  // than one cause (an unmapped program, but also a blank date cell — grep "held += 1" in
+  // this file), and only the second is "could not be matched". Asserting a single cause
+  // here would be false for the first, so the message defers the reason to the sync report.
+  const message = String(rows[0].message);
+  assertEquals(message.includes("could not be matched"), false, "held has more than one cause; must not assert a single one");
+  assertEquals(message.includes("could not be brought into ShowFlow"), true, "states the outcome without asserting a cause");
+  assertEquals(message.includes("Open the sync report"), true, "points the admin at the sync report for the actual reason");
+
+  // Same admin also gets emailed the airtable-sync-held alert, once.
+  const emailCalls = invokeCalls.filter((c) => c.name === "send-transactional-email");
+  assertEquals(emailCalls.length, 1, "admins should be emailed exactly once");
+  const emailBody = emailCalls[0].body as {
+    template_name?: string;
+    recipient_email?: string;
+    org_id?: string;
+    templateData?: Record<string, unknown>;
+    idempotency_key?: string;
+  };
+  assertEquals(emailBody.template_name, "airtable-sync-held");
+  assertEquals(emailBody.recipient_email, "admin1@example.com");
+  assertEquals(emailBody.org_id, ORG);
+  assertEquals(emailBody.templateData?.orgName, "Riverdance Co");
+  assertEquals(emailBody.templateData?.heldCount, 1);
+  assertEquals(emailBody.templateData?.settingsUrl, "https://app.showflow.pro/settings?tab=airtable");
+  // Deterministic per org/recipient/problem-shape/day so a double-fired poll (e.g. an
+  // overlapping cron tick and a manual "Sync now" landing within the same window) that
+  // observes the same held set is deduplicated by send-transactional-email's
+  // Idempotency-Key header, rather than mailing the same admin twice. The signature is
+  // `held-<count>-<16 hex chars>` — a digest of the SORTED held-record-id set, not just
+  // the count, so two runs at the same count but a DIFFERENT held set (see the dedicated
+  // test below) still get distinct keys.
+  const key = String(emailBody.idempotency_key);
+  const prefix = `airtable-sync-held-${ORG}-admin-1-held-1-`;
+  assertEquals(key.startsWith(prefix), true, `expected key to start with "${prefix}", got "${key}"`);
+  const rest = key.slice(prefix.length);
+  assertEquals(/^[0-9a-f]{16}-2026-06-01$/.test(rest), true, `expected a 16-hex-char digest then the date, got "${rest}"`);
+});
+
+Deno.test("airtable-poll: two overlapping runs for the same org/day/problem-shape produce the same idempotency key (dedup-able by send-transactional-email)", async () => {
+  const records = [
+    makeRecord("recNEWHELDX", { Date: "2026-09-18", SubProgram: "NeverLinkedShow" }),
+  ];
+  const makeDeps = () => makeFakeDeps({
+    usersById: { "admin-1": { email: "admin1@example.com" } },
+    tables: {
+      app_settings: [
+        { when: { key: "cron_secret" }, data: { value: "secret123" } },
+        ...ENABLED_SETTINGS,
+      ],
+      organizations: [
+        { when: { status: "active" }, data: [{ id: ORG }] },
+        { when: { id: ORG }, data: { name: "Riverdance Co" } },
+      ],
+      shows: { data: [{ id: "show-uuid-1", airtable_program_key: "TestShow" }], error: null },
+      cities: { data: [{ id: "city-uuid-berlin", airtable_city_key: "berlin" }], error: null },
+      show_dates: { data: [], error: null },
+      airtable_sync_log: { data: { id: "log-1" }, error: null },
+      airtable_sync_record_log: { data: [], error: null },
+      org_memberships: { data: [{ user_id: "admin-1" }], error: null },
+      notifications: { data: null, error: null },
+    },
+    rpcs: { get_org_airtable_key: { data: "key", error: null }, get_cron_secret: { data: "secret123", error: null } },
+    fetchImpl: () => Promise.resolve(makeAirtableResponse(records)) as Promise<Response>,
+  });
+
+  const first = makeDeps();
+  const second = makeDeps();
+  await handle(authReq(), first.deps);
+  await handle(authReq(), second.deps);
+
+  const key = (calls: typeof first.invokeCalls) =>
+    (calls.find((c) => c.name === "send-transactional-email")?.body as { idempotency_key?: string })?.idempotency_key;
+  const keyA = key(first.invokeCalls);
+  const keyB = key(second.invokeCalls);
+  assertExists(keyA);
+  assertEquals(keyA, keyB, "same org, day and held-set shape must produce the same idempotency key across two independent runs");
+});
+
+Deno.test("airtable-poll: a different newly-held record at the SAME count gets its own idempotency key, not deduped against the earlier alert", async () => {
+  // Reproduces the case a count-only signature would collapse: an admin was already
+  // emailed earlier today about a held record (prev held-set = 1 record, "recOLDHELD").
+  // That record then clears and a DIFFERENT record is newly held instead — still a
+  // held count of exactly 1, so a signature keyed on count alone would produce the
+  // SAME idempotency key as the earlier alert and Resend would silently swallow this
+  // genuinely new admin-facing problem.
+  const makeRunDeps = (heldRecordId: string) => {
+    const records = [makeRecord(heldRecordId, { Date: "2026-09-10", SubProgram: "NeverLinkedShow" })];
+    return makeFakeDeps({
+      usersById: { "admin-1": { email: "admin1@example.com" } },
+      tables: {
+        app_settings: [
+          { when: { key: "cron_secret" }, data: { value: "secret123" } },
+          ...ENABLED_SETTINGS,
+        ],
+        organizations: [
+          { when: { status: "active" }, data: [{ id: ORG }] },
+          { when: { id: ORG }, data: { name: "Riverdance Co" } },
+        ],
+        shows: { data: [{ id: "show-uuid-1", airtable_program_key: "TestShow" }], error: null },
+        cities: { data: [{ id: "city-uuid-berlin", airtable_city_key: "berlin" }], error: null },
+        show_dates: { data: [], error: null },
+        // Both runs share the SAME previous held set (one, DIFFERENT, already-alerted
+        // record) so the "vs. previous run" shape and the count line up — only the
+        // CURRENTLY held record's own id differs between the two runs below.
+        airtable_sync_log: { data: { id: "log-swap", held_count: 1, imported_count: 0 }, error: null },
+        airtable_sync_record_log: { data: [{ airtable_record_id: "recOLDHELD" }], error: null },
+        org_memberships: { data: [{ user_id: "admin-1" }], error: null },
+        notifications: { data: null, error: null },
+      },
+      rpcs: { get_org_airtable_key: { data: "key", error: null }, get_cron_secret: { data: "secret123", error: null } },
+      fetchImpl: () => Promise.resolve(makeAirtableResponse(records)) as Promise<Response>,
+    });
+  };
+
+  const runA = makeRunDeps("recNEWHELD_A");
+  const runB = makeRunDeps("recNEWHELD_B");
+  await handle(authReq(), runA.deps);
+  await handle(authReq(), runB.deps);
+
+  const keyOf = (calls: typeof runA.invokeCalls) =>
+    (calls.find((c) => c.name === "send-transactional-email")?.body as { idempotency_key?: string })?.idempotency_key;
+  const keyA = keyOf(runA.invokeCalls);
+  const keyB = keyOf(runB.invokeCalls);
+  assertExists(keyA);
+  assertExists(keyB);
+  assertEquals(keyA === keyB, false, "two different newly-held records at the same count must not share an idempotency key, or the second admin alert would be silently deduped away");
+});
+
+Deno.test("airtable-poll: an org-name lookup that throws still emails every admin (distinct from the not-found case above)", async () => {
+  const records = [
+    makeRecord("recNAMELOOKUPFAIL", { Date: "2026-09-10", SubProgram: "NeverLinkedShow" }),
+  ];
+
+  const { deps, invokeCalls } = makeFakeDeps({
+    usersById: { "admin-1": { email: "admin1@example.com" } },
+    tables: {
+      app_settings: [
+        { when: { key: "cron_secret" }, data: { value: "secret123" } },
+        ...ENABLED_SETTINGS,
+      ],
+      // Only the fan-out query (.eq('status','active'), read via .then()) is seeded here.
+      // notifyAdminsOnSyncProblem's one-off org-name lookup uses .maybeSingle(), which is
+      // overridden below to reject, simulating a transient read failure on just that call.
+      organizations: [{ when: { status: "active" }, data: [{ id: ORG }] }],
+      shows: { data: [{ id: "show-uuid-1", airtable_program_key: "TestShow" }], error: null },
+      cities: { data: [{ id: "city-uuid-berlin", airtable_city_key: "berlin" }], error: null },
+      show_dates: { data: [], error: null },
+      airtable_sync_log: { data: { id: "log-namefail" }, error: null },
+      airtable_sync_record_log: { data: [], error: null },
+      org_memberships: { data: [{ user_id: "admin-1" }], error: null },
+      notifications: { data: null, error: null },
+    },
+    rpcs: { get_org_airtable_key: { data: "key", error: null }, get_cron_secret: { data: "secret123", error: null } },
+    fetchImpl: () => Promise.resolve(makeAirtableResponse(records)) as Promise<Response>,
+  });
+
+  const originalFrom = bindFakeFrom(deps.admin);
+  setFakeFrom(deps.admin, (table: string) => {
+    const chain = originalFrom(table);
+    if (table === "organizations") {
+      chain.maybeSingle = () => Promise.reject(new Error("db unavailable"));
+    }
+    return chain;
+  });
+
+  const res = await handle(authReq(), deps);
+  assertEquals(res.status, 200);
+
+  const emailCalls = invokeCalls.filter((c) => c.name === "send-transactional-email");
+  assertEquals(emailCalls.length, 1, "a failing org-name lookup must not skip emailing the admins about the actual sync problem");
+  const emailBody = emailCalls[0].body as { templateData?: Record<string, unknown> };
+  assertEquals(emailBody.templateData?.orgName, undefined, "orgName falls back to undefined (the template's own generic-name copy) when the lookup fails");
+});
+
+Deno.test("airtable-poll: an unchanged held set does not re-email admins", async () => {
+  const records = [
+    // Imports fine (existing date, update path) — keeps `processed` above 0 so the
+    // zero-import branch never fires, isolating the held-count-unchanged path below.
+    makeRecord("recEXIST001", {
+      Date: "2026-07-15",
+      SubProgram: "TestShow",
+      City: "Berlin",
+      "Session 1": "T20:00:00",
+    }),
+    // Same held record as the previous run — not new, not a rising count.
+    makeRecord("recSAMEHELD", {
+      Date: "2026-09-10",
+      SubProgram: "NeverLinkedShow",
+    }),
+  ];
+
+  const { deps, invokeCalls } = makeFakeDeps({
+    usersById: { "admin-1": { email: "admin1@example.com" } },
+    tables: {
+      app_settings: [
+        { when: { key: "cron_secret" }, data: { value: "secret123" } },
+        ...ENABLED_SETTINGS,
+      ],
+      organizations: [
+        { when: { status: "active" }, data: [{ id: ORG }] },
+        { when: { id: ORG }, data: { name: "Riverdance Co" } },
+      ],
+      shows: { data: [{ id: "show-uuid-1", airtable_program_key: "TestShow" }], error: null },
+      cities: { data: [{ id: "city-uuid-berlin", airtable_city_key: "berlin" }], error: null },
+      show_dates: { data: [{ id: "sd-exist-1", airtable_record_id: "recEXIST001", status: "open" }], error: null },
+      // Previous run: same held record, held_count 1, and it was already importing.
+      airtable_sync_log: { data: { id: "log-1", held_count: 1, imported_count: 1 }, error: null },
+      airtable_sync_record_log: { data: [{ airtable_record_id: "recSAMEHELD" }], error: null },
+      org_memberships: { data: [{ user_id: "admin-1" }], error: null },
+      notifications: { data: null, error: null },
+    },
+    rpcs: { get_org_airtable_key: { data: "key", error: null }, get_cron_secret: { data: "secret123", error: null } },
+    fetchImpl: () => Promise.resolve(makeAirtableResponse(records)) as Promise<Response>,
+  });
+
+  const res = await handle(authReq(), deps);
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.held, 1);
+  assertEquals(body.updated, 1);
+
+  const emailCalls = invokeCalls.filter((c) => c.name === "send-transactional-email");
+  assertEquals(emailCalls.length, 0, "an unchanged held set should stay quiet");
+});
+
+Deno.test("airtable-poll: a zero-import run (all records error, none held) emails admins the zeroImport branch, not heldCount", async () => {
+  const records = [
+    // Linked program + valid date, so it is NOT held — the show_dates insert itself
+    // fails (DB error), landing it in the "error" outcome bucket. recordsSeen=1,
+    // processed=0, held=0 → importedZeroFromNonEmpty without any held record, which
+    // is the only way to isolate the zeroImport branch from the held branch (held
+    // always takes priority in notifyAdminsOnSyncProblem when heldIds is non-empty).
+    makeRecord("recERR001", {
+      Date: "2026-09-11",
+      SubProgram: "TestShow",
+    }),
+  ];
+
+  const { deps, invokeCalls } = makeFakeDeps({
+    usersById: { "admin-1": { email: "admin1@example.com" } },
+    tables: {
+      app_settings: [
+        { when: { key: "cron_secret" }, data: { value: "secret123" } },
+        ...ENABLED_SETTINGS,
+      ],
+      organizations: [
+        { when: { status: "active" }, data: [{ id: ORG }] },
+        { when: { id: ORG }, data: { name: "Riverdance Co" } },
+      ],
+      shows: { data: [{ id: "show-uuid-1", airtable_program_key: "TestShow" }], error: null },
+      cities: { data: [{ id: "city-uuid-berlin", airtable_city_key: "berlin" }], error: null },
+      // Read (no existing show_dates) vs. insert (fails) disambiguated by __write.
+      show_dates: [
+        { when: { __write: true }, data: null, error: { message: "insert failed" } },
+        { when: { __write: false }, data: [], error: null },
+      ],
+      // No previous run at all → prev.exists is false, which alone satisfies
+      // newlyZeroImport regardless of prev.imported.
+      airtable_sync_log: [
+        { when: { __write: false }, data: null, error: null },
+        { when: { __write: true }, data: { id: "log-1" }, error: null },
+      ],
+      airtable_sync_record_log: { data: [], error: null },
+      org_memberships: { data: [{ user_id: "admin-1" }], error: null },
+      notifications: { data: null, error: null },
+    },
+    rpcs: { get_org_airtable_key: { data: "key", error: null }, get_cron_secret: { data: "secret123", error: null } },
+    fetchImpl: () => Promise.resolve(makeAirtableResponse(records)) as Promise<Response>,
+  });
+
+  const res = await handle(authReq(), deps);
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.held, 0);
+  assertEquals(body.processed, 0);
+
+  const emailCalls = invokeCalls.filter((c) => c.name === "send-transactional-email");
+  assertEquals(emailCalls.length, 1, "the zero-import run should still alert admins by email");
+  const emailBody = emailCalls[0].body as { templateData?: Record<string, unknown> };
+  assertEquals(emailBody.templateData?.zeroImport, true);
+  assertEquals(emailBody.templateData?.heldCount, undefined, "zeroImport and heldCount are mutually exclusive");
+});
+
+Deno.test("airtable-poll: emails every admin with a resolvable login email, skipping one that has none, without throwing", async () => {
+  const records = [
+    makeRecord("recNEWHELD2", {
+      Date: "2026-09-12",
+      SubProgram: "NeverLinkedShow", // unlinked → held
+    }),
+  ];
+
+  const notificationInserts: unknown[] = [];
+
+  const { deps, invokeCalls } = makeFakeDeps({
+    // admin-1 has a resolvable login email; admin-2 does not (getUserById resolves
+    // no user for an id absent from usersById) and must be skipped, not thrown on.
+    usersById: { "admin-1": { email: "admin1@example.com" } },
+    tables: {
+      app_settings: [
+        { when: { key: "cron_secret" }, data: { value: "secret123" } },
+        ...ENABLED_SETTINGS,
+      ],
+      organizations: [
+        { when: { status: "active" }, data: [{ id: ORG }] },
+        { when: { id: ORG }, data: { name: "Riverdance Co" } },
+      ],
+      shows: { data: [{ id: "show-uuid-1", airtable_program_key: "TestShow" }], error: null },
+      cities: { data: [{ id: "city-uuid-berlin", airtable_city_key: "berlin" }], error: null },
+      show_dates: { data: [], error: null },
+      airtable_sync_log: { data: { id: "log-1" }, error: null },
+      airtable_sync_record_log: { data: [], error: null },
+      org_memberships: { data: [{ user_id: "admin-1" }, { user_id: "admin-2" }], error: null },
+      notifications: { data: null, error: null },
+    },
+    rpcs: { get_org_airtable_key: { data: "key", error: null }, get_cron_secret: { data: "secret123", error: null } },
+    fetchImpl: () => Promise.resolve(makeAirtableResponse(records)) as Promise<Response>,
+  });
+
+  const originalFrom = bindFakeFrom(deps.admin);
+  setFakeFrom(deps.admin, (table: string) => {
+    const chain = originalFrom(table);
+    if (table === "notifications") {
+      const orig = chain.insert.bind(chain);
+      chain.insert = (p: unknown) => { notificationInserts.push(p); return (orig as (x: unknown) => ReturnType<typeof orig>)(p); };
+    }
+    return chain;
+  });
+
+  const res = await handle(authReq(), deps);
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.held, 1);
+
+  // Both admins get the in-app notification regardless of whether they have an email.
+  const rows = notificationInserts[0] as Array<Record<string, unknown>>;
+  assertEquals(rows.length, 2);
+
+  // Only admin-1 (resolvable email) gets emailed; admin-2 is skipped without throwing.
+  const emailCalls = invokeCalls.filter((c) => c.name === "send-transactional-email");
+  assertEquals(emailCalls.length, 1, "only the admin with a resolvable login email is emailed");
+  const emailBody = emailCalls[0].body as { recipient_email?: string };
+  assertEquals(emailBody.recipient_email, "admin1@example.com");
+});
+
+Deno.test("airtable-poll: a getUserById throw for one admin does not stop the remaining admins from being emailed", async () => {
+  // Unlike "no resolvable email" (a clean, expected outcome for one recipient), this
+  // is a real client call throwing mid-loop. Per-recipient isolation is required:
+  // one admin's directory lookup blowing up must not silently drop every admin after
+  // them in iteration order, since the org's sync + in-app notifications already
+  // succeeded by this point.
+  const records = [
+    makeRecord("recNEWHELD3", {
+      Date: "2026-09-13",
+      SubProgram: "NeverLinkedShow", // unlinked → held
+    }),
+  ];
+
+  const { deps, invokeCalls } = makeFakeDeps({
+    usersById: { "admin-2": { email: "admin2@example.com" } },
+    tables: {
+      app_settings: [
+        { when: { key: "cron_secret" }, data: { value: "secret123" } },
+        ...ENABLED_SETTINGS,
+      ],
+      organizations: [
+        { when: { status: "active" }, data: [{ id: ORG }] },
+        { when: { id: ORG }, data: { name: "Riverdance Co" } },
+      ],
+      shows: { data: [{ id: "show-uuid-1", airtable_program_key: "TestShow" }], error: null },
+      cities: { data: [{ id: "city-uuid-berlin", airtable_city_key: "berlin" }], error: null },
+      show_dates: { data: [], error: null },
+      airtable_sync_log: { data: { id: "log-1" }, error: null },
+      airtable_sync_record_log: { data: [], error: null },
+      // admin-1 sorts before admin-2 (Set preserves insertion order): the throw hits
+      // the FIRST recipient, so the test only passes if the loop actually recovers.
+      org_memberships: { data: [{ user_id: "admin-1" }, { user_id: "admin-2" }], error: null },
+      notifications: { data: null, error: null },
+    },
+    rpcs: { get_org_airtable_key: { data: "key", error: null }, get_cron_secret: { data: "secret123", error: null } },
+    fetchImpl: () => Promise.resolve(makeAirtableResponse(records)) as Promise<Response>,
+  });
+
+  const originalGetUserById = deps.admin.auth.admin.getUserById.bind(deps.admin.auth.admin);
+  (deps.admin.auth.admin as { getUserById: unknown }).getUserById = (id: string) => {
+    if (id === "admin-1") return Promise.reject(new Error("directory down"));
+    return originalGetUserById(id);
+  };
+
+  const res = await handle(authReq(), deps);
+  assertEquals(res.status, 200, "the sync itself must not fail because the email side threw");
+  const body = await res.json();
+  assertEquals(body.held, 1);
+
+  // admin-2's email still goes out despite admin-1's lookup throwing.
+  const emailCalls = invokeCalls.filter((c) => c.name === "send-transactional-email");
+  assertEquals(emailCalls.length, 1, "the remaining admin is still emailed after the earlier throw");
+  const emailBody = emailCalls[0].body as { recipient_email?: string };
+  assertEquals(emailBody.recipient_email, "admin2@example.com");
+});
+
+Deno.test("airtable-poll: a held-worse run with zero org admin members sends no notification and no email", async () => {
+  const records = [
+    makeRecord("recNOOADMIN", { Date: "2026-09-19", SubProgram: "NeverLinkedShow" }),
+  ];
+
+  const notificationInserts: unknown[] = [];
+  const { deps, invokeCalls } = makeFakeDeps({
+    tables: {
+      app_settings: [
+        { when: { key: "cron_secret" }, data: { value: "secret123" } },
+        ...ENABLED_SETTINGS,
+      ],
+      organizations: [
+        { when: { status: "active" }, data: [{ id: ORG }] },
+        { when: { id: ORG }, data: { name: "Riverdance Co" } },
+      ],
+      shows: { data: [{ id: "show-uuid-1", airtable_program_key: "TestShow" }], error: null },
+      cities: { data: [{ id: "city-uuid-berlin", airtable_city_key: "berlin" }], error: null },
+      show_dates: { data: [], error: null },
+      airtable_sync_log: { data: { id: "log-1" }, error: null },
+      airtable_sync_record_log: { data: [], error: null },
+      // No admin memberships at all for this org (e.g. every admin left/was demoted).
+      org_memberships: { data: [], error: null },
+      notifications: { data: null, error: null },
+    },
+    rpcs: { get_org_airtable_key: { data: "key", error: null }, get_cron_secret: { data: "secret123", error: null } },
+    fetchImpl: () => Promise.resolve(makeAirtableResponse(records)) as Promise<Response>,
+  });
+
+  const originalFrom = bindFakeFrom(deps.admin);
+  setFakeFrom(deps.admin, (table: string) => {
+    const chain = originalFrom(table);
+    if (table === "notifications") {
+      const orig = chain.insert.bind(chain);
+      chain.insert = (p: unknown) => { notificationInserts.push(p); return (orig as (x: unknown) => ReturnType<typeof orig>)(p); };
+    }
+    return chain;
+  });
+
+  const res = await handle(authReq(), deps);
+  assertEquals(res.status, 200, "the sync itself must not fail when the org has no admin to notify");
+  const body = await res.json();
+  assertEquals(body.held, 1);
+
+  assertEquals(notificationInserts.length, 0, "no recipients means no notifications insert at all");
+  const emailCalls = invokeCalls.filter((c) => c.name === "send-transactional-email");
+  assertEquals(emailCalls.length, 0, "no recipients means no email is sent");
+});
+
+Deno.test("airtable-poll: a failed org-name lookup still emails admins, falling back to the subject's default org name", async () => {
+  const records = [
+    makeRecord("recNOORGNAME", { Date: "2026-09-20", SubProgram: "NeverLinkedShow" }),
+  ];
+
+  const { deps, invokeCalls } = makeFakeDeps({
+    usersById: { "admin-1": { email: "admin1@example.com" } },
+    tables: {
+      app_settings: [
+        { when: { key: "cron_secret" }, data: { value: "secret123" } },
+        ...ENABLED_SETTINGS,
+      ],
+      organizations: [
+        { when: { status: "active" }, data: [{ id: ORG }] },
+        // The one-off org-name lookup (.eq('id', orgId).maybeSingle()) finds no row —
+        // a real, non-throwing Supabase outcome (e.g. the row vanished mid-run) — so
+        // `org?.name` resolves to undefined, exercising the subject's own fallback
+        // ("your organization") end to end, not just at the registry-presentation
+        // layer (see registry.presentation.test.ts's "subject falls back" test, which
+        // only covers the template in isolation).
+        { when: { id: ORG }, data: null, error: null },
+      ],
+      shows: { data: [{ id: "show-uuid-1", airtable_program_key: "TestShow" }], error: null },
+      cities: { data: [{ id: "city-uuid-berlin", airtable_city_key: "berlin" }], error: null },
+      show_dates: { data: [], error: null },
+      airtable_sync_log: { data: { id: "log-1" }, error: null },
+      airtable_sync_record_log: { data: [], error: null },
+      org_memberships: { data: [{ user_id: "admin-1" }], error: null },
+      notifications: { data: null, error: null },
+    },
+    rpcs: { get_org_airtable_key: { data: "key", error: null }, get_cron_secret: { data: "secret123", error: null } },
+    fetchImpl: () => Promise.resolve(makeAirtableResponse(records)) as Promise<Response>,
+  });
+
+  const res = await handle(authReq(), deps);
+  assertEquals(res.status, 200, "a missing org row must not fail the sync");
+  const body = await res.json();
+  assertEquals(body.held, 1);
+
+  const emailCalls = invokeCalls.filter((c) => c.name === "send-transactional-email");
+  assertEquals(emailCalls.length, 1, "the admin is still emailed even though the org name could not be resolved");
+  const emailBody = emailCalls[0].body as { templateData?: Record<string, unknown> };
+  assertEquals(emailBody.templateData?.orgName, undefined, "no org row means templateData carries no orgName");
+});
+
+Deno.test("airtable-poll: a legitimately skipped sync-held email (suppressed address) is not logged as a delivery error", async () => {
+  // send-transactional-email's real shape for an opted-out recipient: HTTP 200,
+  // invokeFunction's own `error` stays null, and `data` is `{ success: false, reason }`
+  // (see send-transactional-email/index.ts and emailWasSent in _shared/deps.ts). An
+  // admin who used the one-click unsubscribe link is not a delivery failure and must
+  // not be logged as one.
+  const records = [
+    makeRecord("recSUPPRESSED1", {
+      Date: "2026-09-14",
+      SubProgram: "NeverLinkedShow", // unlinked → held
+    }),
+  ];
+
+  const { deps } = makeFakeDeps({
+    usersById: { "admin-1": { email: "admin1@example.com" } },
+    tables: {
+      app_settings: [
+        { when: { key: "cron_secret" }, data: { value: "secret123" } },
+        ...ENABLED_SETTINGS,
+      ],
+      organizations: [
+        { when: { status: "active" }, data: [{ id: ORG }] },
+        { when: { id: ORG }, data: { name: "Riverdance Co" } },
+      ],
+      shows: { data: [{ id: "show-uuid-1", airtable_program_key: "TestShow" }], error: null },
+      cities: { data: [{ id: "city-uuid-berlin", airtable_city_key: "berlin" }], error: null },
+      show_dates: { data: [], error: null },
+      airtable_sync_log: { data: { id: "log-1" }, error: null },
+      airtable_sync_record_log: { data: [], error: null },
+      org_memberships: { data: [{ user_id: "admin-1" }], error: null },
+      notifications: { data: null, error: null },
+    },
+    rpcs: { get_org_airtable_key: { data: "key", error: null }, get_cron_secret: { data: "secret123", error: null } },
+    fetchImpl: () => Promise.resolve(makeAirtableResponse(records)) as Promise<Response>,
+    emailResult: { data: { success: false, reason: "email_suppressed" }, error: null },
+  });
+
+  const errorLogs: unknown[][] = [];
+  const originalConsoleError = console.error;
+  console.error = (...args: unknown[]) => { errorLogs.push(args); };
+  let res: Response;
+  try {
+    res = await handle(authReq(), deps);
+  } finally {
+    console.error = originalConsoleError;
+  }
+
+  assertEquals(res.status, 200, "the sync itself must not fail because a recipient opted out");
+  const loggedAsError = errorLogs.some(
+    (args) => typeof args[0] === "string" && args[0].includes("sync-held email not sent"),
+  );
+  assertEquals(loggedAsError, false, "a legitimate skip (suppressed address) must not read as a delivery error");
+});
+
+Deno.test("airtable-poll: sync-held email names which held reason is most common", async () => {
+  const records = [
+    makeRecord("recTOPREASON1", { SubProgram: "NeverLinkedShow" }), // no Date → held: "missing date"
+    makeRecord("recTOPREASON2", { Date: "2026-09-15", SubProgram: "AlsoNeverLinked" }), // held: program not linked
+    makeRecord("recTOPREASON3", { Date: "2026-09-16", SubProgram: "StillNeverLinked" }), // held: program not linked
+  ];
+
+  const { deps, invokeCalls } = makeFakeDeps({
+    usersById: { "admin-1": { email: "admin1@example.com" } },
+    tables: {
+      app_settings: [
+        { when: { key: "cron_secret" }, data: { value: "secret123" } },
+        ...ENABLED_SETTINGS,
+      ],
+      organizations: [
+        { when: { status: "active" }, data: [{ id: ORG }] },
+        { when: { id: ORG }, data: { name: "Riverdance Co" } },
+      ],
+      shows: { data: [{ id: "show-uuid-1", airtable_program_key: "TestShow" }], error: null },
+      cities: { data: [{ id: "city-uuid-berlin", airtable_city_key: "berlin" }], error: null },
+      show_dates: { data: [], error: null },
+      airtable_sync_log: { data: { id: "log-1" }, error: null },
+      airtable_sync_record_log: { data: [], error: null },
+      org_memberships: { data: [{ user_id: "admin-1" }], error: null },
+      notifications: { data: null, error: null },
+    },
+    rpcs: { get_org_airtable_key: { data: "key", error: null }, get_cron_secret: { data: "secret123", error: null } },
+    fetchImpl: () => Promise.resolve(makeAirtableResponse(records)) as Promise<Response>,
+  });
+
+  const res = await handle(authReq(), deps);
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.held, 3);
+
+  const emailCalls = invokeCalls.filter((c) => c.name === "send-transactional-email");
+  assertEquals(emailCalls.length, 1);
+  const emailBody = emailCalls[0].body as { templateData?: Record<string, unknown> };
+  assertEquals(emailBody.templateData?.heldCount, 3);
+  // 2 of the 3 are held for the same reason (program not linked); that's the majority.
+  assertEquals(emailBody.templateData?.topReasonCategory, "unlinked_program");
+  assertEquals(emailBody.templateData?.topReasonCount, 2);
+});
+
+Deno.test("airtable-poll: a zero-import run carries no topReasonCategory (nothing was held)", async () => {
+  const records = [
+    makeRecord("recZEROTOPREASON", { Date: "2026-09-17", SubProgram: "TestShow" }),
+  ];
+
+  const { deps, invokeCalls } = makeFakeDeps({
+    usersById: { "admin-1": { email: "admin1@example.com" } },
+    tables: {
+      app_settings: [
+        { when: { key: "cron_secret" }, data: { value: "secret123" } },
+        ...ENABLED_SETTINGS,
+      ],
+      organizations: [
+        { when: { status: "active" }, data: [{ id: ORG }] },
+        { when: { id: ORG }, data: { name: "Riverdance Co" } },
+      ],
+      shows: { data: [{ id: "show-uuid-1", airtable_program_key: "TestShow" }], error: null },
+      cities: { data: [{ id: "city-uuid-berlin", airtable_city_key: "berlin" }], error: null },
+      show_dates: [
+        { when: { __write: true }, data: null, error: { message: "insert failed" } },
+        { when: { __write: false }, data: [], error: null },
+      ],
+      airtable_sync_log: [
+        { when: { __write: false }, data: null, error: null },
+        { when: { __write: true }, data: { id: "log-1" }, error: null },
+      ],
+      airtable_sync_record_log: { data: [], error: null },
+      org_memberships: { data: [{ user_id: "admin-1" }], error: null },
+      notifications: { data: null, error: null },
+    },
+    rpcs: { get_org_airtable_key: { data: "key", error: null }, get_cron_secret: { data: "secret123", error: null } },
+    fetchImpl: () => Promise.resolve(makeAirtableResponse(records)) as Promise<Response>,
+  });
+
+  const res = await handle(authReq(), deps);
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.held, 0);
+
+  const emailCalls = invokeCalls.filter((c) => c.name === "send-transactional-email");
+  assertEquals(emailCalls.length, 1);
+  const emailBody = emailCalls[0].body as { templateData?: Record<string, unknown> };
+  assertEquals(emailBody.templateData?.zeroImport, true);
+  assertEquals(emailBody.templateData?.topReasonCategory, undefined, "no held records exist in a zero-import run, so there is no held reason to report");
 });
 
 // ─── Interval gate (cron path) ────────────────────────────────────────────────

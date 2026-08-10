@@ -6,6 +6,7 @@ import { TEMPLATES } from "./registry.ts";
 
 const LIVE_TEMPLATE_KEYS = [
   "account-email-changed",
+  "airtable-sync-held",
   "artist-confirmation-digest",
   "artist-offer-digest",
   "cast-escalation-requested",
@@ -18,7 +19,7 @@ const LIVE_TEMPLATE_KEYS = [
   "org-invitation",
 ].sort();
 
-Deno.test("the registry contains exactly the eleven live templates with a family", () => {
+Deno.test("the registry contains exactly the twelve live templates with a family", () => {
   assertEquals(Object.keys(TEMPLATES).sort(), LIVE_TEMPLATE_KEYS);
   for (const key of LIVE_TEMPLATE_KEYS) {
     assertEquals(typeof TEMPLATES[key].family, "string", `${key} has a family`);
@@ -32,6 +33,7 @@ const SHELL_TEMPLATES = [
   { key: "org-invitation", family: "violet", fallback: "#322685", detail: "Cirque Lumière" },
   { key: "account-email-changed", family: "steel", fallback: "#2A2D48", detail: "new@example.com" },
   { key: "cron-health-alert", family: "steel", fallback: "#2A2D48", detail: "send-offer-digest" },
+  { key: "airtable-sync-held", family: "violet", fallback: "#322685", detail: "Riverdance Co" },
 ] as const;
 
 for (const expected of SHELL_TEMPLATES) {

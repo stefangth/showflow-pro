@@ -34,4 +34,8 @@ describe("notification category model", () => {
     expect(categoryForTemplate("hire-order-issued")).toBe("hire_orders");
     expect(categoryForTemplate("hire-order-countersigned")).toBe("hire_orders");
   });
+
+  it("leaves airtable-sync-held uncategorized (always send, like other internal ops alerts)", () => {
+    expect(categoryForTemplate("airtable-sync-held")).toBeNull();
+  });
 });

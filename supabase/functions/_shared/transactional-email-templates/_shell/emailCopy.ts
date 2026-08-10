@@ -20,6 +20,7 @@ export const EMAIL_TEMPLATE_KEYS = [
   "account-email-changed",
   "magic-link",
   "cron-health-alert",
+  "airtable-sync-held",
 ] as const;
 
 export type EmailTemplateKey = typeof EMAIL_TEMPLATE_KEYS[number];
@@ -279,6 +280,73 @@ export const EMAIL_COPY_DEFAULTS = {
   "cron-health-alert.lastHealthyLabel": "Last healthy",
   "cron-health-alert.jobFallback": "a scheduled job",
   "cron-health-alert.valueFallback": "unknown",
+
+  // Rendered from defaults only, never exposed to the per-org copy editor (see
+  // EMAIL_TEMPLATE_COPY_FIELDS in emailTemplateMeta.ts, which deliberately has no
+  // entry for this template, and coverage.ts's "airtable-sync-held" row, status:
+  // "internal"). Unlike cron-health-alert/magic-link, the row stays visible to its
+  // org-admin recipients in Settings > Email templates (coverage.ts's audience:
+  // "org"), but like cron-health-alert it always sends: an operational status alert
+  // about the org's own data pipeline isn't preference-gated, only the blunt
+  // one-click unsubscribe link opts an address out.
+  "airtable-sync-held.subject": "Airtable sync needs attention in {{orgName}}",
+  "airtable-sync-held.heading": "Airtable sync needs attention",
+  "airtable-sync-held.heldRecordSingular": "record",
+  "airtable-sync-held.heldRecordPlural": "records",
+  // Mutually exclusive with introZeroImport/followupZeroImport: notifyAdminsOnSyncProblem
+  // (airtable-poll) passes heldCount when records were held, else zeroImport, mirroring
+  // the in-app notification message's own branching. "could not be brought into
+  // ShowFlow" reads correctly for a count of 1 or many, so heldCount never needs its
+  // own verb form. Cause-neutral on purpose: held_unresolved has more than one cause
+  // (an unmapped program, but also a blank date cell), and the fix differs per cause
+  // (a mapping edit vs. an Airtable data fix), so the email can't assert either one.
+  // The sync report (linked by the CTA) carries the real per-record reason.
+  "airtable-sync-held.introHeld": "{{heldCount}} Airtable {{heldRecord}} in {{orgName}} could not be brought into ShowFlow.",
+  // Quantified, not a blanket claim: unlike introHeld above, this line only ever states
+  // the count for the ONE category it names ("{{topReasonCount}} of the {{heldCount}}"),
+  // so it stays truthful even when the held set has mixed causes. topReasonMissingDate /
+  // topReasonUnlinkedProgram are the only two categories syncOrg's held_unresolved
+  // branches emit (see topHeldReason in airtable-poll/index.ts); an unrecognized reason
+  // is excluded from the tally there, so this line simply does not render rather than
+  // ever naming a reason it can't back up. Phrased as a clause ("are {{topReasonLabel}}"),
+  // not a report label ("N of M: reason"), so it reads like the rest of the email.
+  "airtable-sync-held.topReasonLine": "{{topReasonCount}} of the {{heldCount}} are {{topReasonLabel}}.",
+  // Two redundant-fraction cases the plain N-of-M line above never should render:
+  // a single held record (its one reason IS the whole story, so "1 of 1" is noise),
+  // and a held set where every record shares the same reason ("N of N" always means
+  // "all of them"). Both state the fact directly instead of a fraction that reduces
+  // to "all".
+  "airtable-sync-held.topReasonLineSingle": "It's {{topReasonLabel}}.",
+  "airtable-sync-held.topReasonLineAll": "All {{heldCount}} are {{topReasonLabel}}.",
+  "airtable-sync-held.topReasonMissingDate": "missing a date",
+  "airtable-sync-held.topReasonUnlinkedProgram": "not linked to one of your shows",
+  // Four variants, chosen in the template by (heldCount === 1) x (does a topReasonLine
+  // above already name the reason for EVERY held record). A single record is "it", never
+  // "which ones" (there is only one), and once the reason line above has already said
+  // why, the followup must not ask "why" again: "1 record... It's missing a date. Open
+  // the sync report to see which ones and why..." was both ungrammatical (plural "ones"
+  // for one record) and self-contradicting (re-promising a "why" the sentence right
+  // before it just gave).
+  "airtable-sync-held.followupHeld": "Open the sync report to see which ones and why, then fix them so they come in on the next sync.",
+  "airtable-sync-held.followupHeldSingle": "Open the sync report to see why, then fix it so it comes in on the next sync.",
+  "airtable-sync-held.followupHeldKnownReason": "Open the sync report to see which ones, then fix them so they come in on the next sync.",
+  "airtable-sync-held.followupHeldSingleKnownReason": "Fix it in the sync report so it comes in on the next sync.",
+  // Scoped to Airtable itself, not to staffing: an admin or producer can still create
+  // and staff a show date manually in-app while a sync is stalled ("no offers can go
+  // out" and "no new dates can be staffed" are both false claims for that reason).
+  // "Nothing from Airtable will reach ShowFlow" stays true in every reachable org state.
+  "airtable-sync-held.introZeroImport": "The Airtable sync in {{orgName}} ran but brought in zero dates this time, even though there is data waiting. Nothing from Airtable will reach ShowFlow until this is fixed.",
+  "airtable-sync-held.followupZeroImport": "Open the sync report to see what happened on this run, then fix it so your dates start coming in again.",
+  "airtable-sync-held.ctaLabel": "Review the sync report",
+  "airtable-sync-held.footer": "The ShowFlow team",
+  "airtable-sync-held.previewTextHeld": "{{heldCount}} Airtable {{heldRecord}} waiting on you in {{orgName}}.",
+  // Two overclaims a previous draft made here, both false in every reachable state:
+  // "Here's why" promised a reason the body deliberately withholds (see introZeroImport's
+  // own comment on why the cause can't be asserted); "Today's" implied a daily cadence,
+  // but airtable-poll runs every airtable_poll_interval_minutes (5-min floor), at any
+  // hour, not once a day. The inbox snippet must not claim more than the body does.
+  "airtable-sync-held.previewTextZeroImport": "The Airtable sync in {{orgName}} brought in nothing this time.",
+  "airtable-sync-held.orgFallback": "your organization",
 } as const;
 
 export type EmailCopyKey = keyof typeof EMAIL_COPY_DEFAULTS;

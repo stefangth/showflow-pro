@@ -18,6 +18,7 @@ const APP_LINK_TEMPLATES = [
   "offer-expiry-reminder",
   "hire-order-issued",
   "account-email-changed",
+  "airtable-sync-held",
 ];
 
 for (const name of APP_LINK_TEMPLATES) {

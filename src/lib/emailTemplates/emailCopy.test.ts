@@ -130,7 +130,11 @@ describe("email copy registry", () => {
       fields.map(({ key }) => key),
     ).sort();
     const editableDefaultKeys = Object.keys(EMAIL_COPY_DEFAULTS)
-      .filter((key) => !key.startsWith("cron-health-alert.") && !key.startsWith("magic-link."))
+      .filter((key) =>
+        !key.startsWith("cron-health-alert.") &&
+        !key.startsWith("magic-link.") &&
+        !key.startsWith("airtable-sync-held."),
+      )
       .sort();
 
     expect(editableDefaultKeys).toEqual(metadataKeys);
@@ -144,11 +148,43 @@ describe("email copy registry", () => {
     )).toBe(false);
   });
 
+  it("keeps internal airtable sync copy deliverable without exposing it to the editor", () => {
+    // Rendered from defaults only (mirrors cron-health-alert/magic-link): the
+    // recipients are org admins, but the wording is an operational status alert,
+    // not something per-org customization should touch. See coverage.ts's
+    // "airtable-sync-held" row (status: "internal").
+    expect(EMAIL_COPY_DEFAULTS["airtable-sync-held.heading"])
+      .toBe("Airtable sync needs attention");
+    expect(EMAIL_TEMPLATE_COPY_FIELDS.some(
+      ({ templateKey }) => templateKey === "airtable-sync-held",
+    )).toBe(false);
+  });
+
   it("keeps dynamic plural branches as explicit singular and plural entries", () => {
     expect(EMAIL_COPY_DEFAULTS["artist-offer-digest.pendingOfferSingular"])
       .toBe("pending offer");
     expect(EMAIL_COPY_DEFAULTS["artist-offer-digest.pendingOfferPlural"])
       .toBe("pending offers");
+    expect(EMAIL_COPY_DEFAULTS["airtable-sync-held.heldRecordSingular"])
+      .toBe("record");
+    expect(EMAIL_COPY_DEFAULTS["airtable-sync-held.heldRecordPlural"])
+      .toBe("records");
+  });
+
+  it("never renders a literal plural marker like record(s) anywhere in the copy registry", () => {
+    for (const value of Object.values(EMAIL_COPY_DEFAULTS)) {
+      expect(value).not.toMatch(/\(s\)/);
+    }
+  });
+
+  it("gives the airtable sync alert its own held vs zero-import copy in user voice", () => {
+    // Held branch names the token, not a bare "record(s)".
+    expect(EMAIL_COPY_DEFAULTS["airtable-sync-held.introHeld"]).toContain("{{heldRecord}}");
+    expect(EMAIL_COPY_DEFAULTS["airtable-sync-held.introHeld"]).not.toContain("non-empty table");
+    // Zero-import gets its own intro and followup, not a shared "these records" reference.
+    expect(EMAIL_COPY_DEFAULTS["airtable-sync-held.introZeroImport"]).not.toBe(EMAIL_COPY_DEFAULTS["airtable-sync-held.introHeld"]);
+    expect(EMAIL_COPY_DEFAULTS["airtable-sync-held.followupZeroImport"]).not.toBe(EMAIL_COPY_DEFAULTS["airtable-sync-held.followupHeld"]);
+    expect(EMAIL_COPY_DEFAULTS["airtable-sync-held.introZeroImport"]).not.toContain("non-empty table");
   });
 
   it("contains no unicode em or en dashes in user-editable defaults", () => {

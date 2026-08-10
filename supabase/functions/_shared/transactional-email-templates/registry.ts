@@ -37,6 +37,7 @@ import { template as hireOrderIssued } from './hire-order-issued.tsx'
 import { template as hireOrderCountersigned } from './hire-order-countersigned.tsx'
 import { template as accountEmailChanged } from './account-email-changed.tsx'
 import { template as magicLink } from './magic-link.tsx'
+import { template as airtableSyncHeld } from './airtable-sync-held.tsx'
 
 type RegisteredTemplateEntry = TemplateEntry & { family: EmailFamily }
 
@@ -52,6 +53,7 @@ export const TEMPLATES: Record<string, RegisteredTemplateEntry> = {
   'hire-order-countersigned': { ...hireOrderCountersigned, family: 'steel' },
   'account-email-changed': { ...accountEmailChanged, family: 'steel' },
   'magic-link': { ...magicLink, family: 'violet' },
+  'airtable-sync-held': { ...airtableSyncHeld, family: 'violet' },
 }
 
 export interface TemplatePresentation {
@@ -136,6 +138,9 @@ const SUBJECT_RESOLVERS = {
     statusCode: String(data.status_code ?? '?'),
   }),
   'magic-link': (_data, copy) => copy['magic-link.subject'],
+  'airtable-sync-held': (data, copy) => applyEmailTokens(copy['airtable-sync-held.subject'], {
+    orgName: String(data.orgName || copy['airtable-sync-held.orgFallback']),
+  }),
 } satisfies Record<EmailTemplateKey, SubjectResolver>
 
 /** Extract the historical generic subject field without extending its lifetime. */

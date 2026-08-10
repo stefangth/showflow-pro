@@ -2,13 +2,14 @@ import { preflight, json } from "../_shared/http.ts";
 import { requireCronSecret, requireOrgRole } from "../_shared/auth.ts";
 import { requireCapability } from "../_shared/capabilities.ts";
 import type { Json, TablesInsert, TablesUpdate } from "../_shared/database.types.ts";
-import { realDeps, type Deps } from "../_shared/deps.ts";
+import { realDeps, emailWasSent, type Deps } from "../_shared/deps.ts";
 import { getActiveOrgs, resolveOrgSetting } from "../_shared/settings.ts";
 import { checkFeature } from "../_shared/entitlements.ts";
 import { resolveBookingFlow } from "../_shared/bookingFlow.ts";
 import { buildProgramKey, buildCityKey } from "../_shared/airtableKey.ts";
 import { coerceCustomValue, type CustomFieldType } from "../_shared/customFields.ts";
 import { isCancelledStatus } from "../_shared/airtableStatus.ts";
+import { appUrl } from "../_shared/app-url.ts";
 
 /** Max concurrent open-offer-tier invocations per batch to avoid exhausting the DB connection pool. */
 const OFFER_TIER_BATCH_SIZE = 10;
@@ -143,6 +144,49 @@ async function openOfferTierBatch(deps: Deps, ids: string[]): Promise<number> {
   return opened;
 }
 
+/** The two causes syncOrg's held_unresolved branches actually emit (grep "held += 1" in
+ *  this file: a blank date cell, or a sub_program that isn't linked to a show). An
+ *  unrecognized reason string (a future third cause) maps to null and is excluded from
+ *  the tally in topHeldReason rather than mislabeled. */
+type HeldReasonCategory = "missing_date" | "unlinked_program";
+function categorizeHeldReason(reason: string | null): HeldReasonCategory | null {
+  if (reason === "missing date") return "missing_date";
+  if (reason && reason.startsWith("program '") && reason.endsWith("' not linked")) return "unlinked_program";
+  return null;
+}
+
+/** The most common recognized held reason among CURRENTLY held records, for the email's
+ *  "top reason" line (a quantified "N of M: <reason>", never a blanket single-cause claim
+ *  — see notifyAdminsOnSyncProblem's own cause-neutral intro for why the email otherwise
+ *  avoids asserting one cause for the whole held set). Ties break missing_date-first
+ *  (arbitrary but deterministic). Returns null when nothing is recognized (nothing to report). */
+function topHeldReason(reasons: Array<string | null>): { category: HeldReasonCategory; count: number } | null {
+  const counts: Record<HeldReasonCategory, number> = { missing_date: 0, unlinked_program: 0 };
+  for (const r of reasons) {
+    const cat = categorizeHeldReason(r);
+    if (cat) counts[cat] += 1;
+  }
+  if (counts.missing_date === 0 && counts.unlinked_program === 0) return null;
+  return counts.missing_date >= counts.unlinked_program
+    ? { category: "missing_date", count: counts.missing_date }
+    : { category: "unlinked_program", count: counts.unlinked_program };
+}
+
+/** Short, deterministic digest of a held-record-id SET, for the sync-held email's
+ *  Idempotency-Key (see notifyAdminsOnSyncProblem). Two runs that observe the SAME held
+ *  set (an overlapping cron tick and a manual "Sync now", or a caller retry) hash to the
+ *  same value, so send-transactional-email/Resend collapses the duplicate. Two runs that
+ *  observe a DIFFERENT held set, even at an unchanged COUNT (one record clears while a
+ *  different one is newly held), hash to different values, so the second, genuinely-new
+ *  alert is never silently deduped away by the first — a plain `held-${count}` signature
+ *  could not tell those two cases apart. The set is hashed rather than embedded raw so
+ *  the header stays a bounded length regardless of how many records are held. */
+async function heldSetDigest(ids: string[]): Promise<string> {
+  const sorted = [...ids].sort();
+  const bytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(sorted.join(",")));
+  return Array.from(new Uint8Array(bytes)).map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 16);
+}
+
 /** Notify org admins when a sync problem is NEW or worse vs. the previous run:
  *  a newly-held record (or rising held count), OR a non-empty table that just stopped
  *  importing anything (catches all-error / all-held / all-stale runs). Quiet while a
@@ -151,7 +195,7 @@ async function notifyAdminsOnSyncProblem(
   deps: Deps,
   orgId: string,
   syncLogId: string,
-  cur: { heldIds: string[]; importedZeroFromNonEmpty: boolean },
+  cur: { heldIds: string[]; heldReasons: Array<string | null>; importedZeroFromNonEmpty: boolean },
   prev: { heldIds: Set<string>; heldCount: number; imported: number; exists: boolean },
 ): Promise<void> {
   const problem = cur.heldIds.length > 0 || cur.importedZeroFromNonEmpty;
@@ -168,9 +212,14 @@ async function notifyAdminsOnSyncProblem(
   const recipients = Array.from(new Set((admins ?? []).map((a: { user_id: string }) => a.user_id)));
   if (recipients.length === 0) return;
 
+  // Cause-neutral, mirroring the airtable-sync-held email: held_unresolved has more than
+  // one cause (an unmapped program, but also a blank date cell — see the two
+  // `held += 1` sites above in syncOrg), so this must not assert a single one ("could
+  // not be matched" is only true for the mapping cause). The sync report, linked via
+  // related_entity_type below, carries the actual per-record reason.
   const message = cur.heldIds.length > 0
-    ? `${cur.heldIds.length} Airtable record(s) couldn't be matched and were held. Review the Last sync report in Settings → Airtable.`
-    : `The Airtable sync imported 0 records from a non-empty table. Review the Last sync report in Settings → Airtable.`;
+    ? `${cur.heldIds.length} Airtable ${cur.heldIds.length === 1 ? "record" : "records"} could not be brought into ShowFlow. Open the sync report to see which ones and why.`
+    : `The Airtable sync ran but imported nothing this time, even though there is data waiting. Open the sync report to see what happened.`;
   await deps.admin.from("notifications").insert(recipients.map((uid) => ({
     org_id: orgId,
     user_id: uid,
@@ -180,6 +229,84 @@ async function notifyAdminsOnSyncProblem(
     related_entity_type: "airtable_sync_log",
     related_entity_id: syncLogId,
   })));
+
+  // Email each admin the same alert (best-effort — mirrors expire-offers' recipient
+  // resolution for cast-escalation-requested: getUserById per recipient, skip a uid
+  // with no resolvable login email). By this point the org's sync + in-app
+  // notifications already succeeded, so nothing on the email side may make the
+  // caller's per-org try/catch (in handle()) count an otherwise-successful sync as a
+  // failed org — every step below is individually guarded rather than wrapped in one
+  // shared try/catch, so a single failing step (e.g. the org-name lookup) degrades
+  // gracefully instead of skipping every admin's email.
+  let orgName: string | undefined;
+  try {
+    const { data: org } = await deps.admin.from("organizations").select("name").eq("id", orgId).maybeSingle();
+    orgName = org?.name;
+  } catch (e) {
+    // orgName is optional — the subject/greeting fall back to a generic "your
+    // organization" (EMAIL_COPY_DEFAULTS["airtable-sync-held.orgFallback"]) — so a
+    // failed lookup must not cost every admin their alert about the actual sync problem.
+    console.error("airtable-poll: org-name lookup for sync-held email failed", { org: orgId, error: (e as Error).message });
+  }
+  const settingsUrl = `${appUrl(deps.env)}/settings?tab=airtable`;
+  // Quantified, not a blanket claim (see topHeldReason): only computed for the held
+  // branch — a zero-import run has no held records, so there is no held reason to report.
+  const topReason = cur.heldIds.length > 0 ? topHeldReason(cur.heldReasons) : null;
+  // A day-scoped signature of the problem SHAPE (not the sync log id, which is always
+  // fresh per run and so can never dedupe across two runs): if a poll is double-fired
+  // for this org (an overlapping cron tick and a manual "Sync now", or a caller retry)
+  // and both observe the SAME held set, send-transactional-email's Idempotency-Key
+  // header collapses the duplicate rather than mailing the same admin twice the same
+  // day. Signed with a digest of the held-id SET, not just its count: a plain
+  // `held-${count}` signature would collide two DIFFERENT held sets that happen to be
+  // the same size (one record clears while a different one is newly held), silently
+  // deduping away the second, genuinely-new admin alert.
+  const dateSlice = deps.now().toISOString().slice(0, 10);
+  let problemSignature: string;
+  try {
+    problemSignature = cur.heldIds.length > 0 ? `held-${cur.heldIds.length}-${await heldSetDigest(cur.heldIds)}` : "zero";
+  } catch (e) {
+    console.error("airtable-poll: held-set digest failed for sync-held email; falling back to a count-only signature", { org: orgId, error: (e as Error).message });
+    problemSignature = cur.heldIds.length > 0 ? `held-${cur.heldIds.length}` : "zero";
+  }
+  // Per-recipient isolation: unlike sendEmail/invokeFunction (which never throw — see
+  // _shared/deps.ts), getUserById is a real client call that CAN throw, and a bare
+  // for-loop with one shared try/catch would let one recipient's throw abort every
+  // recipient after it in iteration order. Each recipient gets its own catch.
+  for (const uid of recipients) {
+    try {
+      const { data: userResp } = await deps.admin.auth.admin.getUserById(uid);
+      const recipientEmail = userResp?.user?.email;
+      if (!recipientEmail) continue;
+      const result = await deps.sendEmail({
+        template_name: "airtable-sync-held",
+        recipient_email: recipientEmail,
+        org_id: orgId,
+        templateData: {
+          orgName,
+          ...(cur.heldIds.length > 0 ? { heldCount: cur.heldIds.length } : { zeroImport: true }),
+          ...(topReason ? { topReasonCategory: topReason.category, topReasonCount: topReason.count } : {}),
+          settingsUrl,
+        },
+        idempotency_key: `airtable-sync-held-${orgId}-${uid}-${problemSignature}-${dateSlice}`,
+      });
+      if (!emailWasSent(result)) {
+        // send-transactional-email returns HTTP 200 { success: false, reason } for a
+        // LEGITIMATE skip (suppressed address / already-used unsubscribe token — see
+        // emailWasSent in _shared/deps.ts), distinct from a real delivery failure
+        // (invokeFunction's own `error` populated). Only the latter is an error: an
+        // admin who opted out via the one-click unsubscribe link is expected, not broken.
+        const skipReason = (result.data as { reason?: string } | null | undefined)?.reason;
+        if (result.error == null && skipReason) {
+          console.warn("airtable-poll: sync-held email skipped", { org: orgId, uid, reason: skipReason });
+        } else {
+          console.error("airtable-poll: sync-held email not sent", { org: orgId, uid, error: result.error });
+        }
+      }
+    } catch (e) {
+      console.error("airtable-poll: sync-held email failed for recipient", { org: orgId, uid, error: (e as Error).message });
+    }
+  }
 }
 
 /** Sync one org's Airtable base into its show_dates using the field map + catalog-link keys.
@@ -498,7 +625,9 @@ async function syncOrg(deps: Deps, orgId: string, baseId: string, tableName: str
   }).select("id").single();
   const syncLogId = (logRow as { id?: string } | null)?.id ?? null;
 
-  const heldIds = outcomes.filter((o) => o.action === "held_unresolved").map((o) => o.airtable_record_id);
+  const heldOutcomes = outcomes.filter((o) => o.action === "held_unresolved");
+  const heldIds = heldOutcomes.map((o) => o.airtable_record_id);
+  const heldReasons = heldOutcomes.map((o) => o.reason);
   if (syncLogId && outcomes.length) {
     // org_id is derived by trg_derive_org_id from sync_log_id (20260617164248) —
     // the generated Insert type can't know that, hence the Omit + single cast.
@@ -514,7 +643,7 @@ async function syncOrg(deps: Deps, orgId: string, baseId: string, tableName: str
     const importedZeroFromNonEmpty = recordsSeen > 0 && processed === 0;
     await notifyAdminsOnSyncProblem(
       deps, orgId, syncLogId,
-      { heldIds, importedZeroFromNonEmpty },
+      { heldIds, heldReasons, importedZeroFromNonEmpty },
       { heldIds: prevHeldIds, heldCount: prevHeldCount, imported: prevImported, exists: !!prevLog?.id },
     );
   }
