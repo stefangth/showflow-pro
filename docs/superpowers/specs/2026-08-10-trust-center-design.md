@@ -133,6 +133,25 @@ English signals it was not written for them.
 Nothing may be published until this phase lands. Two documentation changes, one code
 change, one drafting task.
 
+**Sequencing: 1c ships first, on its own.** It does not depend on 1a, 1b, or 1d, and 1d is
+legal drafting that will not move at engineering pace. Holding a small self-contained fix
+behind a contract review would be the wrong trade on its own merits, and there is a second
+reason here: this repository is public, so this document describes an unpatched gap by
+policy name and column in a place anyone can read.
+
+Worth being accurate about how much that costs, in both directions. The policy itself is
+already public in `20260702120001_restrict_profiles_select_shared_org.sql`, and `phone` on
+`profiles` is visible in the generated types, so this spec adds convenience rather than new
+information. The exposure is also within a single workspace, not across tenants; the
+RESTRICTIVE `org_isolation` policy is untouched and no customer can reach another
+customer's data. What is exposed is an optional self-entered phone number, to people who
+already share a workspace with you, which several well-known products treat as intended
+behaviour.
+
+None of that makes it not worth fixing promptly. It means the right response is to land 1c
+as its own small PR now rather than to write the gap up more vaguely, which would only make
+the spec less useful without making the system safer.
+
 ### 1a. Reconcile the privacy policy with the current schema
 
 `docs/legal/privacy-policy.en.md` and `docs/legal/privacy-policy.de.md`.
@@ -175,10 +194,24 @@ Assertions, all of which must fail before the fix:
 4. As a super-admin: any row readable.
 5. As the second-org user: no rows for A, phone or otherwise.
 
-**Step 2, the RPC.** Add `list_org_display_names(p_user_ids uuid[])`, `SECURITY DEFINER`,
-returning `user_id, display_name` for users sharing an org with the caller. Add pgTAP
-coverage: returns names for co-org users, returns nothing for users in another org, and is
-not callable to enumerate arbitrary user ids.
+**Step 2, the RPC.** Add `list_org_display_names(p_org uuid, p_user_ids uuid[])`,
+`SECURITY DEFINER`, returning `user_id, display_name`.
+
+Take the org explicitly rather than resolving "any org the caller shares with this user".
+A multi-org caller makes those two different, and the looser version would authorize on a
+shared org that has nothing to do with the chat or audit log the call site is actually
+scoped to. Every call site already knows its org, the rest of the codebase passes `p_org`
+the same way (`list_org_members`, `list_pending_invited_artists`), and the tighter
+semantic is the one worth asserting in a test. The body checks that the caller is a member
+of `p_org`, then returns only those of `p_user_ids` who are also members of `p_org`.
+
+Note this is not redundant with `list_org_members`, which is admin-guarded and so cannot
+serve a plain member reading chat author names.
+
+pgTAP coverage: returns names for co-members of `p_org`; returns nothing for user ids in
+another org even when the caller is a member of both; returns nothing when the caller is
+not a member of `p_org`; and cannot be used to enumerate, meaning an arbitrary id that
+shares no org yields no row rather than an error that would confirm the id exists.
 
 **Step 3, the migration.** Narrow the `profiles` SELECT policy to own-row plus super-admin.
 Generated through the migration tool, never hand-edited.
