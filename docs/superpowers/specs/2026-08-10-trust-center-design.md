@@ -116,6 +116,14 @@ and serve the co-org display-name need through a `SECURITY DEFINER` RPC returnin
 columns. Fallback if an unmovable direct-read path turns up during implementation: move
 `phone` to a `profile_contacts` table with own-row-only RLS.
 
+Explicitly ruled out: column-level `GRANT` and `REVOKE`. Read
+`20260809120000_document_artist_contact_pii.sql` before touching this. It records that the
+same idea was tried on `artists` in April 2026 and was dead on arrival, because a
+table-level grant covers every column and because `admin`, `producer`, and plain members
+are all the same Postgres `authenticated` role, so grants cannot tell them apart. The
+schema ended up implying a protection it did not provide. Row-level security is the only
+tool that expresses this distinction.
+
 **D5. Publish in German and English.** The privacy policy already declares the German
 version controlling. A trust page for German institutional buyers that exists only in
 English signals it was not written for them.
@@ -174,6 +182,13 @@ not callable to enumerate arbitrary user ids.
 
 **Step 3, the migration.** Narrow the `profiles` SELECT policy to own-row plus super-admin.
 Generated through the migration tool, never hand-edited.
+
+In the same migration, add a `COMMENT ON COLUMN public.profiles.phone` recording that
+row-level security is the control and that column grants do not gate it. This copies what
+`20260809120000_document_artist_contact_pii.sql` did for `artists.email` and
+`artists.phone`, and it exists for the same reason: the next person to read the schema
+should find the real control written down, rather than infer a protection from grant
+machinery that cannot provide one.
 
 **Step 4, move the three call sites.** `ChatPanel.tsx`, `src/data/settingsAudit.ts`, and
 `src/data/orgs.ts` each move from a direct `profiles` select to the new RPC. Data-access
