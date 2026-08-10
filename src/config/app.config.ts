@@ -260,6 +260,14 @@ export const APP_META = {
   VERSION: '1.15.0',
   /** Public marketing site — used for the "Book a demo" CTA on the login page. */
   MARKETING_URL: 'https://showflow.pro',
+  /**
+   * Public support contact for surfaces that reach a person entirely outside their
+   * own organization (e.g. SuspendedOrgScreen, where the org's own admins may be
+   * unreachable). No public support address exists yet — setting a real one is an
+   * owner decision, so this ships dark (null) and every consumer must treat null as
+   * "say nothing" rather than render a broken contact line.
+   */
+  SUPPORT_EMAIL: null as string | null,
 } as const;
 
 /**

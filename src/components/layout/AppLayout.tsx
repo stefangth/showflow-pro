@@ -357,7 +357,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 sideOffset={8}
                 className="w-80 p-0"
               >
-                <NotificationsList />
+                <NotificationsList onNavigate={() => setNotifOpen(false)} />
               </PopoverContent>
             </Popover>
           </div>

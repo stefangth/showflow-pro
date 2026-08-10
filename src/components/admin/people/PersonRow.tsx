@@ -1,6 +1,6 @@
 import { format } from "date-fns";
 import { Copy, X, RefreshCw, Mail, Settings as SettingsIcon } from "lucide-react";
-import { type AppRole, roleLabel } from "@/config/app.config";
+import { type AppRole, roleLabel, ROLE_DESCRIPTIONS } from "@/config/app.config";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -142,7 +142,7 @@ export function PersonRow({
                     <SettingsIcon className="h-4 w-4" />Roles
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-52">
+                <DropdownMenuContent align="end" className="w-72">
                   <DropdownMenuLabel>Roles</DropdownMenuLabel>
                   {ROLE_OPTIONS.map((r) => {
                     const has = person.roles.includes(r);
@@ -153,8 +153,16 @@ export function PersonRow({
                         disabled={setRolePending}
                         onSelect={(e) => e.preventDefault()}
                         onCheckedChange={() => onSetRole({ userId: person.userId!, role: r, action: has ? "remove" : "add" })}
+                        // Two-line content (label + description): top-align it so the
+                        // absolutely-positioned check indicator, which otherwise centers
+                        // on the whole item, lands beside the role name instead of the
+                        // description underneath it.
+                        className="items-start"
                       >
-                        {roleLabel(r)}
+                        <div className="flex flex-col gap-0.5">
+                          <span>{roleLabel(r)}</span>
+                          <span className="text-xs text-muted-foreground">{ROLE_DESCRIPTIONS[r]}</span>
+                        </div>
                       </DropdownMenuCheckboxItem>
                     );
                   })}

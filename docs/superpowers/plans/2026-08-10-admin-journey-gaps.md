@@ -127,13 +127,14 @@ Closes A1.2/A1.3 as re-scoped: membership now exists at invite time (#239), so t
 
 ### WP4a: Steady-state surfaces answer "so what happens now?"
 
-Closes A4.1 (notification deep-links), A4.3 residue (role meaning at role-change), A4.4 (schedule-change narration), A5.1 (suspended-screen contact mechanism).
+Closes A4.1 (notification deep-links), A4.3 residue (role meaning at role-change), A4.4 (schedule-change narration). A5.1 (suspended-screen contact) ships as mechanism-ready-but-dark, not closed: `SupportContactLine` renders correctly for either state of `APP_META.SUPPORT_EMAIL`, but that value ships `null` (see "Out of scope" below), so a suspended user still lands on the unchanged "contact your platform administrator" copy with no reachable contact until an owner sets a real address.
 
-**Files:**
+**Files:** (amended after implementation — like WP3, the original list undercounted the branch's real footprint. `scheduleChangeNote`'s reasoning about which channel reaches which artist, and under what account condition, outgrew an inline string and was extracted to its own pure, independently-tested module rather than duplicated between `ShowDateFormDialog` and its test. The set below is what the branch actually carries; the commit agent must land all of it or `ShowDateFormDialog.tsx`'s import of `scheduleChangeNote` fails to resolve.)
 - Create: `src/lib/notifications/entityRoutes.ts` + test
-- Modify: `src/components/layout/NotificationsList.tsx` (+ its test), `src/components/layout/AppLayout.tsx` (popover close on navigate)
+- Create: `src/lib/notifications/scheduleChangeCopy.ts` + test (extracted from the edit-mode digest line below — the channel/account reasoning needed its own home and its own regression tests, see A4.4)
+- Modify: `src/components/layout/NotificationsList.tsx` (+ its test), `src/components/layout/AppLayout.tsx` (popover close on navigate, + new co-located `AppLayout.test.tsx` pinning that wiring)
 - Modify: `src/components/admin/people/PersonRow.tsx` (role descriptions subtext, from WP1)
-- Modify: `src/components/shows/ShowDateFormDialog.tsx` (edit-mode digest line)
+- Modify: `src/components/shows/ShowDateFormDialog.tsx` (edit-mode digest line, via `scheduleChangeNote`)
 - Modify: `src/config/app.config.ts` (`APP_META.SUPPORT_EMAIL: string | null = null` — OUTSIDE the mirror block), `src/pages/SuspendedOrgScreen.tsx` + test
 
 **Interfaces (produced):**
@@ -158,11 +159,13 @@ export function notificationTarget(n: { related_entity_type: string | null; rela
 
 Closes A4.2. Follow the `cast-escalation-requested` pattern in `expire-offers` for recipient resolution and sending.
 
-**Files:**
+**Files:** (amended after implementation — coverage.ts's new `audience: "org"` field only has meaning if something reads it: Settings > Email templates is where an org admin would actually find out this alert exists, and its pre-WP4b visibility gate (`status !== "internal" || isSuperAdmin`) hid every internal row, including this new one, from the org admins it is now about. Fixing that gate is a two-line change confined to `EmailTemplatesTab.tsx`'s own local helpers, not a redesign of the page, so it stays inside this WP rather than becoming a sixth work package. The commit agent must land the full set below or `coverage.ts`'s `audience` field ships as dead code and `EmailTemplatesTab.test.tsx`'s WP4b assertions fail to resolve.)
 - Create: `supabase/functions/_shared/transactional-email-templates/airtable-sync-held.tsx`
 - Modify: `supabase/functions/_shared/transactional-email-templates/registry.ts`, `src/lib/emailTemplates/emailCopy.ts` (+ sync mirror), `src/lib/emailTemplates/coverage.ts`
 - Modify: `supabase/functions/airtable-poll/index.ts` (`notifyAdminsOnSyncProblem` also emails)
-- Test: extend `airtable-poll`'s Deno tests (`makeFakeDeps`), template registry test, coverage registry test
+- Modify: `src/components/settings/emailTemplates/EmailTemplatesTab.tsx` (+ its test) — `isVisibleTemplate` gains the `audience: "org"` exception so the new row is not silently invisible to the admins it is about; while in the file, also fixed a pre-existing bug the new row exposed most: a `render_failed` preview response (HTTP 200, empty `html`, an `errorMessage`) rendered a blank iframe with no explanation instead of surfacing why
+- Modify: `src/lib/notificationCategories.test.ts` — additive coverage for `categoryForTemplate("airtable-sync-held")`; no production file in this pair changes, `categoryForTemplate` already falls through to `null` for any key absent from `EMAIL_TEMPLATE_CATEGORY`
+- Test: extend `airtable-poll`'s Deno tests (`makeFakeDeps`), template registry test, coverage registry test, `EmailTemplatesTab.test.tsx`, `app-links.test.ts` (the app-host-vs-marketing-host regression guard, so the newest CTA-bearing template is covered)
 
 **Interfaces:** template key `airtable-sync-held`; templateData `{ orgName, heldCount?, zeroImport?, settingsUrl }`; `settingsUrl` = `` `${APP_URL}/settings?tab=airtable` `` (WP3's deep link) via `_shared/app-url.ts`.
 
