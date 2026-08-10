@@ -44,9 +44,24 @@ understated. Phase 2 publishes the page. Phase 3 makes it live rather than stati
   SELECT policy on `artists` and reads zero other-artist rows. See
   `2026-08-08-artist-contact-privacy-design.md`, which established the pattern this spec
   follows: treat RLS as the control, and make it un-rot-able with pgTAP.
-- **`profiles` is the remaining gap.** Its SELECT policy is own-row OR super-admin OR any
-  co-org member. The row carries `display_name` and `phone`, so every co-org member,
-  including other artists, can read another user's personal phone number.
+- **`profiles` is the remaining gap, and the current state is deliberate rather than
+  overlooked.** Its SELECT policy is own-row OR super-admin OR any co-org member. The row
+  carries `display_name` and `phone`, so every co-org member, including other artists, can
+  read another user's personal phone number.
+
+  Read `20260702120001_restrict_profiles_select_shared_org.sql` before proposing to change
+  this. That migration, from 2026-07-02, is itself a security fix: the original policy was
+  `"Anyone authenticated can view profiles" USING (true)`, which let any authenticated user
+  enumerate the name and phone of every user on the platform. C2 closed that genuine
+  cross-tenant leak and chose shared-org as the new boundary. Its pgTAP file
+  `supabase/tests/rls/profiles_read_scope.sql` asserts the co-org read explicitly, with the
+  comment "name+phone still visible".
+
+  So 1c is not fixing an oversight. It is proposing to move a boundary that was set five
+  weeks ago on purpose, from shared-org to own-row. That is a defensible change, because
+  nothing reads the column and the trust matrix reads better without it, but it should be
+  argued rather than assumed, and whoever approves it should know they are revisiting a
+  recent decision rather than closing a bug.
 - **Nothing in the product actually reads another user's `profiles.phone`.** Verified across
   both repos: `list_org_members` returns `display_name`, `email`, `roles`,
   `last_sign_in_at` and no phone; `ChatPanel`, `src/data/settingsAudit.ts`, and
@@ -181,25 +196,53 @@ Same two documents, section 5 and section 6.
 The only code change in Phase 1. TDD, following the pattern in
 `2026-08-08-artist-contact-privacy-design.md`.
 
-**Step 1, failing test first.** New `supabase/tests/rls/profiles_contact_privacy.sql`,
-matching the harness in `supabase/tests/rls/artists_contact_privacy.sql`. Fixture: two users
-in one org, one user in a second org.
+**Step 1, amend the existing test first.** Do not add a new file. There is already a pgTAP
+file that owns this policy's scope, `supabase/tests/rls/profiles_read_scope.sql`, and it
+asserts the behaviour 1c removes:
 
-Two of these are red tests and three are regression guards. Expect 3 to 5 to pass on the
-first run against the current policy, which is the point of them, so do not go looking for a
-broken harness when they come up green.
+```sql
+SELECT is(
+  (SELECT count(*)::int FROM public.profiles WHERE user_id = '…0003…'),
+  1, 'a user can read a co-org member''s profile (name+phone still visible)');
+```
 
-Must fail before the fix, since they are the bug:
+Flip that assertion to `0` and update its message. Adding a second file alongside it would
+leave two pgTAP files making opposite claims about the same policy, and the older one would
+go red the moment the migration lands, which is how an implementer ends up debugging a test
+they did not know existed.
 
-1. As co-org member B: `select phone from profiles where user_id = A` returns empty.
-2. As co-org member B: `select display_name from profiles where user_id = A` returns empty
-   (direct table read is no longer the path).
+Keep the "cross-org phone is not enumerable" case at lines 72 to 74. It is a weaker
+assertion after the change, since a stranger's row is now unreadable by two independent
+routes rather than one, but it still guards enumeration by phone number and costs nothing.
 
-Already true today, and must stay true after:
+The file's fixture already provides what is needed: a super-admin, two users sharing org A,
+and one user in org B. Its `plan(7)` count stays the same if assertions are flipped rather
+than added; adjust it if you add any.
 
-3. As user A: own row still readable, `phone` included.
-4. As a super-admin: any row readable.
-5. As the second-org user: no rows for A, phone or otherwise.
+Most of what 1c needs to assert is already in that file and already passing. The work is
+one flip plus one addition, not a new suite.
+
+Flip, and this is the only red test in the step:
+
+- The co-org read at lines 63 to 65 goes from `1` to `0`, message updated to say a co-org
+  member can no longer read another member's profile row.
+
+Add, because the point of 1c is the column and the current file only counts rows:
+
+- As the org-A user, `select count(*) from profiles where phone = '+1003'` returns `0`,
+  proving the co-org member's phone is unreachable by value as well as by user id. Bump
+  `plan(7)` to `plan(8)`.
+
+Already in the file, already green, and must stay green:
+
+- Own profile readable, including `phone` (lines 59 to 61).
+- Cross-org read returns nothing (lines 67 to 69).
+- Cross-org phone not enumerable (lines 72 to 74).
+- The org-B user sees only itself (lines 82 to 89).
+
+Expect everything except the flipped assertion to pass on the first run. That is the point
+of them, so do not go looking for a broken harness when they come up green. Super-admin
+coverage lives in the same file's later section; leave it as is.
 
 **Step 2, the RPC.** Add `list_org_display_names(p_org uuid, p_user_ids uuid[])`,
 `SECURITY DEFINER`, returning `user_id, display_name`.
@@ -361,7 +404,7 @@ tests at the category and trigger level.
 
 | Change | Layer | Written first |
 |---|---|---|
-| `profiles` policy narrowing | pgTAP | yes, must fail before the migration |
+| `profiles` policy narrowing | pgTAP, amending `profiles_read_scope.sql` | yes, one flipped assertion fails before the migration |
 | `list_org_display_names` | pgTAP | yes |
 | Moved `profiles` call sites | vitest, `supabaseFake` | yes |
 | Trust matrix fixture | vitest | yes |
