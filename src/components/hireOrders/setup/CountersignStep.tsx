@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,6 +9,7 @@ import { CountersignFields } from "@/components/settings/hireOrders/fields/Count
 import type { Json } from "@/integrations/supabase/types";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useDerivedDraft } from "@/hooks/useDerivedDraft";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 /** The rail's countersign panel. Unlike the other two steps this one is not a blocker:
@@ -23,13 +24,10 @@ export function CountersignStep({ orgId, onDone }: { orgId: string | null; onDon
       resolveOrgSetting<HireOrderCountersign>(supabase, orgId, "hire_order_countersign", COUNTERSIGN_DEFAULT),
   });
 
-  const [form, setForm] = useState<HireOrderCountersign>(COUNTERSIGN_DEFAULT);
-  const seededRef = useRef(false);
-  useEffect(() => {
-    if (!stored.data || seededRef.current) return;
-    seededRef.current = true;
-    setForm(stored.data);
-  }, [stored.data]);
+  // A view of the stored setting, not a copy seeded into state by an effect: Confirm
+  // persists the form verbatim (merged onto the stored value), and a seeded copy is
+  // still the blank DEFAULT in the commit that opens the isLoading gate below.
+  const [form, setForm] = useDerivedDraft<HireOrderCountersign>(stored.data, COUNTERSIGN_DEFAULT);
 
   const save = useMutation({
     mutationFn: () => {

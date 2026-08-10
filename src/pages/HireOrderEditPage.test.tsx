@@ -12,6 +12,13 @@ import { createFakeSupabase, type ArraySeedEntry, type TableSeed } from "@/test/
 const { client } = vi.hoisted(() => ({ client: {} as Record<string, unknown> }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: client }));
 vi.mock("@/features/auth/AuthContext", () => ({ useAuth: vi.fn() }));
+// Spy, not a stub: the REAL rows still render, but the props each field row is
+// handed are recorded per render. Unlike the DOM this keeps a history, so the
+// FIRST interactive render stays inspectable after act() settles everything.
+vi.mock("@/components/hireOrders/edit/FieldSection", async (orig) => {
+  const actual = await orig<typeof import("@/components/hireOrders/edit/FieldSection")>();
+  return { ...actual, FieldSection: vi.fn(actual.FieldSection) };
+});
 
 function seedClient(seed: Record<string, TableSeed>) {
   for (const key of Object.keys(client)) delete client[key];
@@ -20,6 +27,7 @@ function seedClient(seed: Record<string, TableSeed>) {
 
 import { useAuth } from "@/features/auth/AuthContext";
 import HireOrderEditPage from "./HireOrderEditPage";
+import { FieldSection } from "@/components/hireOrders/edit/FieldSection";
 import { createSingleFlightRunner } from "@/lib/singleFlight";
 
 function authAs(role: "admin" | "producer" = "producer", orgId = "org-1") {
@@ -695,6 +703,28 @@ describe("HireOrderEditPage", () => {
     renderPage();
     expect(await screen.findByRole("alert")).toBeInTheDocument();
     expect(screen.getByText(/could not load/i)).toBeInTheDocument();
+  });
+
+  // The editable snapshot was a COPY of the order, seeded a commit AFTER the one
+  // where `order` arrived and the isLoading gate opened. In between the builder was
+  // fully interactive over `resolvedData === null`, so "Save draft" -- whose only
+  // guard is `if (!order) return`, and `order` is exactly what is present in that
+  // window -- wrote a snapshot resolved from nothing, plus terms_variant "", over the
+  // order's real stored fields. Priming the cache puts the order in the FIRST render,
+  // where a lagging snapshot is visible; asserting on the settled DOM only ever sees
+  // the state after the effect ran.
+  it("builds the first interactive render from the order's own fields, not an empty snapshot", async () => {
+    seedFor(order());
+    const queryClient = createTestQueryClient();
+    queryClient.setQueryData(["hire-orders", "detail", "ho-1"], order());
+    vi.mocked(FieldSection).mockClear();
+
+    renderPage("ho-1", { queryClient });
+
+    const firstArtistRow = vi.mocked(FieldSection).mock.calls
+      .map((call) => call[0])
+      .find((props) => props.fieldKey === "artist_name");
+    expect(firstArtistRow?.source).toBe("showflow");
   });
 });
 

@@ -2,10 +2,15 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { screen, fireEvent, waitFor } from "@testing-library/react";
 import { renderWithProviders } from "@/test/renderWithProviders";
 
-const { upsertOrgSetting } = vi.hoisted(() => ({ upsertOrgSetting: vi.fn(() => Promise.resolve()) }));
+const { upsertOrgSetting, timesRef } = vi.hoisted(() => ({
+  upsertOrgSetting: vi.fn(() => Promise.resolve()),
+  // Ref-held so a test can put the query back in its loading state (data
+  // undefined), which is where the step used to offer a Save.
+  timesRef: { value: { windowHours: 48, offerDigestHour: 19, confirmationDigestHour: 20 } as unknown },
+}));
 vi.mock("@/data/settings", () => ({ upsertOrgSetting }));
 vi.mock("@/hooks/useBookingFlow", () => ({
-  useFlowTimes: () => ({ data: { windowHours: 48, offerDigestHour: 19, confirmationDigestHour: 20 } }),
+  useFlowTimes: () => ({ data: timesRef.value }),
 }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: {} }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
@@ -14,6 +19,7 @@ import { TimingStep } from "./TimingStep";
 import { toast } from "sonner";
 
 beforeEach(() => {
+  timesRef.value = { windowHours: 48, offerDigestHour: 19, confirmationDigestHour: 20 };
   upsertOrgSetting.mockClear();
   vi.mocked(toast.success).mockClear();
   vi.mocked(toast.error).mockClear();
@@ -50,5 +56,29 @@ describe("TimingStep", () => {
       expect(toast.error).toHaveBeenCalledWith("Enter a window of at least 1 hour and digest hours between 0 and 23."),
     );
     expect(upsertOrgSetting).not.toHaveBeenCalled();
+  });
+
+  // The worst instance of the seed-once pattern in the tree, because this step had no
+  // loading gate at all: the three inputs rendered pre-filled with BOOKING_ENGINE
+  // defaults (48 / 19 / 20) and Save was enabled for the WHOLE fetch, not one commit.
+  // An org running a 72h window that opened the rail and hit Save before the read
+  // landed had its real timing replaced by the code defaults, with nothing on screen
+  // to suggest the values shown were not its own.
+  it("offers no Save while the org's stored timing is still loading", () => {
+    timesRef.value = undefined;
+    renderWithProviders(<TimingStep orgId="org-1" onDone={() => {}} />);
+
+    expect(screen.queryByRole("button", { name: /save timing/i })).not.toBeInTheDocument();
+    expect(screen.queryByDisplayValue("48")).not.toBeInTheDocument();
+  });
+
+  // The step is reachable with no active org (a super-admin bypasses the org gate),
+  // where the query never runs and so never resolves. That must not be an eternal
+  // skeleton - Save is already disabled without an org.
+  it("still renders without an active org, where the query never runs", () => {
+    timesRef.value = undefined;
+    renderWithProviders(<TimingStep orgId={null} onDone={() => {}} />);
+
+    expect(screen.getByRole("button", { name: /save timing/i })).toBeDisabled();
   });
 });

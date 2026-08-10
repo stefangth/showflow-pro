@@ -26,4 +26,23 @@ describe("FlowStep", () => {
     // Classic lifecycle chips: Offered / Soft booked / Confirmed
     expect(screen.getByText("Soft booked")).toBeInTheDocument();
   });
+
+  // Like TimingStep, this step had no loading gate: `base` fell back to
+  // BOOKING_FLOW_DEFAULTS and `selected` to "classic" while the read was in flight,
+  // and Save was enabled the whole time. Saving there wrote the classic preset over
+  // the org's real flow AND silently dropped any non-preset customization, because
+  // applyPreset was layered onto the defaults instead of onto the org's own flow.
+  it("offers no Save while the org's stored flow is still loading", () => {
+    flowRef.value = undefined;
+    renderWithProviders(<FlowStep orgId="org-1" onDone={() => {}} />);
+
+    expect(screen.queryByRole("button", { name: /^use /i })).not.toBeInTheDocument();
+  });
+
+  it("still renders without an active org, where the query never runs", () => {
+    flowRef.value = undefined;
+    renderWithProviders(<FlowStep orgId={null} onDone={() => {}} />);
+
+    expect(screen.getByRole("button", { name: /^use /i })).toBeDisabled();
+  });
 });

@@ -233,3 +233,35 @@ describe("TermsVariantsCard", () => {
     expect(screen.queryByDisplayValue("Lean")).not.toBeInTheDocument();
   });
 });
+
+describe("TermsVariantsCard hydration", () => {
+  // Same root cause as the one-commit window at first load: the form was a COPY of
+  // the stored terms seeded once behind a ref, so an org switch (HireOrdersTab is
+  // not keyed by org) left the previous org's whole terms library on screen, ready
+  // for Save to write it into the new org.
+  it("follows the org when the active one changes under an untouched form", async () => {
+    seedClient({
+      app_settings: {
+        data: [
+          {
+            key: "hire_order_terms",
+            org_id: "org-1",
+            value: { templates: [{ id: "t1", name: "Aurora terms", clauses: [] }], default_id: "t1" },
+          },
+          {
+            key: "hire_order_terms",
+            org_id: "org-2",
+            value: { templates: [{ id: "t2", name: "Nord terms", clauses: [] }], default_id: "t2" },
+          },
+        ],
+        error: null,
+      },
+    });
+    const { rerender } = renderWithProviders(<TermsVariantsCard orgId="org-1" />);
+    await waitFor(() => expect(screen.getByLabelText("Template 1 name")).toHaveValue("Aurora terms"));
+
+    rerender(<TermsVariantsCard orgId="org-2" />);
+
+    await waitFor(() => expect(screen.getByLabelText("Template 1 name")).toHaveValue("Nord terms"));
+  });
+});

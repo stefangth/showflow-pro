@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,6 +11,7 @@ import { linesFromText, mergeLetterhead, serializeLines } from "@/lib/hireOrders
 import type { Json } from "@/integrations/supabase/types";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useDerivedDraft } from "@/hooks/useDerivedDraft";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 /** The rail's letterhead panel. Writes the SAME app_settings key through the SAME
@@ -24,15 +25,14 @@ export function LetterheadStep({ orgId, onDone }: { orgId: string | null; onDone
   const qc = useQueryClient();
   const stored = useOrgLetterhead(orgId);
 
-  const [form, setForm] = useState<Letterhead>(LETTERHEAD_DEFAULT);
-  const [addressText, setAddressText] = useState("");
-  const seededRef = useRef(false);
-  useEffect(() => {
-    if (!stored.data || seededRef.current) return;
-    seededRef.current = true;
-    setForm(stored.data);
-    setAddressText(serializeLines(stored.data.address_lines));
-  }, [stored.data]);
+  // A view of the stored setting, not a copy seeded into state by an effect: Confirm
+  // persists the form verbatim (merged onto the stored value), and a seeded copy is
+  // still the blank DEFAULT in the commit that opens the isLoading gate below.
+  const [form, setForm] = useDerivedDraft<Letterhead>(stored.data, LETTERHEAD_DEFAULT);
+  const [addressText, setAddressText] = useDerivedDraft(
+    stored.data && serializeLines(stored.data.address_lines),
+    "",
+  );
 
   const save = useMutation({
     mutationFn: () => {

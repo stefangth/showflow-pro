@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { resolveOrgSetting, upsertOrgSetting } from "@/data/settings";
+import { useDerivedDraft } from "@/hooks/useDerivedDraft";
 import { COUNTERSIGN_DEFAULT } from "./defaults";
 import type { Json } from "@/integrations/supabase/types";
 import { CountersignFields } from "./fields/CountersignFields";
@@ -28,14 +28,12 @@ export function CountersignCard({ orgId, readOnly = false }: { orgId: string | n
     enabled: Boolean(orgId),
   });
 
-  const [form, setForm] = useState<HireOrderCountersign>(COUNTERSIGN_DEFAULT);
-  const seededRef = useRef(false);
-  useEffect(() => {
-    if (data && !seededRef.current) {
-      seededRef.current = true;
-      setForm(data);
-    }
-  }, [data]);
+  // A view of the stored setting, not a copy seeded into state by an effect: Save
+  // persists `form` verbatim, and a seeded copy is still the DEFAULT in the commit
+  // that opens the `isLoading` gate below, and never re-seeds when the active org
+  // changes underneath the card. An unrelated refetch still cannot clobber edits in
+  // progress -- see useDerivedDraft.
+  const [form, setForm] = useDerivedDraft<HireOrderCountersign>(data, COUNTERSIGN_DEFAULT);
 
   const save = useMutation({
     mutationFn: () => {

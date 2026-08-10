@@ -84,3 +84,28 @@ describe("OrderDefaultsCard fee basis", () => {
     expect(screen.getByLabelText("Fee basis")).toHaveTextContent("Total for all dates");
   });
 });
+
+describe("OrderDefaultsCard hydration", () => {
+  // The form was a COPY of the stored defaults, seeded once by an effect behind a
+  // ref, so it never re-seeded when the active org changed underneath it -- and
+  // HireOrdersTab is not keyed by org. Save persists the form verbatim, so the
+  // previous org's fee would have been written into the new org. Same root cause as
+  // the one-commit window between the isLoading gate opening and the effect running.
+  it("follows the org when the active one changes under an untouched form", async () => {
+    seedClient({
+      app_settings: {
+        data: [
+          { key: "hire_order_defaults", org_id: "org-1", value: { default_fee: 250, currency: "EUR", default_fee_basis: "per_date" } },
+          { key: "hire_order_defaults", org_id: "org-2", value: { default_fee: 900, currency: "EUR", default_fee_basis: "per_date" } },
+        ],
+        error: null,
+      },
+    });
+    const { rerender } = renderWithProviders(<OrderDefaultsCard orgId="org-1" />);
+    await waitFor(() => expect(screen.getByLabelText("Default fee")).toHaveValue(250));
+
+    rerender(<OrderDefaultsCard orgId="org-2" />);
+
+    await waitFor(() => expect(screen.getByLabelText("Default fee")).toHaveValue(900));
+  });
+});

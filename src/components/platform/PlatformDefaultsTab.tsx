@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,6 +11,7 @@ import { BOOKING_ENGINE_DEFAULTS } from "@/config/app.config";
 import type { Json } from "@/integrations/supabase/types";
 import { FEATURE_KEYS, FEATURE_REGISTRY, type FeatureKey } from "@/lib/entitlements";
 import { TERMS_LIBRARY_KEY } from "@/data/hireOrders";
+import { useDerivedDraft } from "@/hooks/useDerivedDraft";
 import { HIRE_ORDER_STARTER_TERMS } from "@/lib/hireOrders/starterTerms";
 import type { HireOrderTemplate } from "@/lib/hireOrders/terms";
 import { parseLines, serializeLines, parseCasts, serializeCasts } from "./templateText";
@@ -44,21 +45,15 @@ function StarterCatalogCard() {
     queryFn: () => resolveOrgSetting<StarterCatalogTemplate>(supabase, null, "starter_catalog_template", EMPTY_STARTER_TEMPLATE),
   });
 
-  const [skills, setSkills] = useState("");
-  const [cities, setCities] = useState("");
-  const [casts, setCasts] = useState("");
-
-  // Seed the editable fields once, when server data first arrives. Re-seeding on
-  // every `data` identity change would let an unrelated refetch (e.g. window
-  // refocus) wipe in-progress edits. Save's own refetch already matches the form.
-  const seededRef = useRef(false);
-  useEffect(() => {
-    if (!data || seededRef.current) return;
-    seededRef.current = true;
-    setSkills(serializeLines(data.skills ?? []));
-    setCities(serializeLines(data.cities ?? []));
-    setCasts(serializeCasts(data.casts ?? []));
-  }, [data]);
+  // Views of the stored template, not copies seeded into state by an effect. Save
+  // persists these three verbatim, and a seeded copy is still empty in the commit
+  // that opens the isLoading gate below - a click there wrote an EMPTY starter
+  // catalog, which every org provisioned afterwards would then be seeded from. An
+  // unrelated refetch (window refocus) still cannot wipe edits in progress, and a
+  // stale tab no longer reverts what another super-admin just saved.
+  const [skills, setSkills] = useDerivedDraft(data && serializeLines(data.skills ?? []), "");
+  const [cities, setCities] = useDerivedDraft(data && serializeLines(data.cities ?? []), "");
+  const [casts, setCasts] = useDerivedDraft(data && serializeCasts(data.casts ?? []), "");
 
   const save = useMutation({
     mutationFn: () => savePlatformSetting(supabase, "starter_catalog_template", {
@@ -100,13 +95,12 @@ function BookingEngineDefaultsCard() {
     queryFn: () => fetchPlatformBookingDefaults(supabase),
   });
 
-  const [form, setForm] = useState<BookingEngineDefaults>({ ...BOOKING_ENGINE_DEFAULTS });
-  // Seed once when server data first arrives; a later unrelated refetch must not
-  // clobber in-progress edits (the save's own refetch already matches the form).
-  const seededRef = useRef(false);
-  useEffect(() => {
-    if (data && !seededRef.current) { seededRef.current = true; setForm(data); }
-  }, [data]);
+  // A view of the stored defaults, not a copy seeded into state by an effect. These
+  // cascade to every org that has not overridden them, and a seeded copy is still
+  // BOOKING_ENGINE_DEFAULTS in the commit that opens the isLoading gate below, so a
+  // Save there replaced the platform's real values with the code fallbacks. Edits in
+  // progress are still pinned against an unrelated refetch.
+  const [form, setForm] = useDerivedDraft<BookingEngineDefaults>(data, BOOKING_ENGINE_DEFAULTS);
 
   const save = useMutation({
     mutationFn: () => {
@@ -310,14 +304,14 @@ function HireOrderTermsLibraryCard() {
       }),
   });
 
-  const [text, setText] = useState("");
+  // A view of the stored library, not a copy seeded into state by an effect: Save
+  // parses and persists this text verbatim, and a seeded copy is still empty in the
+  // commit that opens the isLoading gate below.
+  const [text, setText] = useDerivedDraft(
+    data && JSON.stringify(data.templates ?? HIRE_ORDER_STARTER_TERMS, null, 2),
+    "",
+  );
   const [parseError, setParseError] = useState<string | null>(null);
-  const seededRef = useRef(false);
-  useEffect(() => {
-    if (!data || seededRef.current) return;
-    seededRef.current = true;
-    setText(JSON.stringify(data.templates ?? HIRE_ORDER_STARTER_TERMS, null, 2));
-  }, [data]);
 
   const save = useMutation({
     mutationFn: () => {

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,6 +10,7 @@ import {
 } from "@/lib/bookingFlow";
 import { FlowPresets } from "@/components/settings/bookingFlow/FlowPresets";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import type { Json } from "@/integrations/supabase/types";
 
@@ -31,18 +32,18 @@ export function FlowStep({ orgId, onDone }: { orgId: string | null; onDone: () =
   const base = flow ?? BOOKING_FLOW_DEFAULTS;
   const t = times ?? DEFAULT_FLOW_TIMES;
 
-  const [selected, setSelected] = useState<PresetName>("classic");
-  const seeded = useRef(false);
-  useEffect(() => {
-    if (!flow || seeded.current) return;
-    seeded.current = true;
-    const m = matchPreset(flow);
-    // "off" is not offered in onboarding, so an org sitting in the seeded-off state
-    // defaults the suggestion to a real preset rather than an unselectable Off.
-    if (m !== "custom" && m !== "off") setSelected(m);
-  }, [flow]);
+  // The suggestion is a VIEW of the org's current flow until the producer picks
+  // something else. Seeding it into state through an effect meant `selected` was
+  // "classic" and `base` was BOOKING_FLOW_DEFAULTS while the read was in flight, so a
+  // Save there wrote the classic preset over the org's real flow and dropped any
+  // non-preset customization with it (applyPreset layered onto the defaults rather
+  // than onto the org's own flow). "off" is not offered in onboarding, so an org
+  // sitting in that state gets a real preset suggested rather than an unselectable Off.
+  const suggested = flow ? matchPreset(flow) : undefined;
+  const [selected, setSelected] = useState<PresetName | null>(null);
+  const active: PresetName = selected ?? (suggested && suggested !== "custom" && suggested !== "off" ? suggested : "classic");
 
-  const preview = normalizeBookingFlow(applyPreset(base, selected));
+  const preview = normalizeBookingFlow(applyPreset(base, active));
   const chips = lifecycleChips(preview);
   const rows = inPracticeRows(preview, t);
 
@@ -53,18 +54,24 @@ export function FlowStep({ orgId, onDone }: { orgId: string | null; onDone: () =
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["app-settings"] });
-      toast.success(`Booking flow set to ${PRESET_NAMES[selected]}`);
+      toast.success(`Booking flow set to ${PRESET_NAMES[active]}`);
       onDone();
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  // Nothing to derive from while the read is in flight: the presets would be scored
+  // against BOOKING_FLOW_DEFAULTS rather than the org's own flow, and Save would
+  // persist that. Withhold until the flow exists. Skipped without an active org (a
+  // super-admin bypasses the org gate), where Save is already disabled.
+  if (orgId && !flow) return <Skeleton className="h-40 w-full" />;
 
   return (
     <div className="space-y-3">
       <p className="text-xs text-muted-foreground">
         This decides what artists see and what the app calls things. Pick one, read what it does, change it any time in Settings.
       </p>
-      <FlowPresets active={selected} onSelect={(p) => setSelected(p)} showOff={false} />
+      <FlowPresets active={active} onSelect={(p) => setSelected(p)} showOff={false} />
       <div>
         <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">A booking then goes</p>
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
@@ -85,7 +92,7 @@ export function FlowStep({ orgId, onDone }: { orgId: string | null; onDone: () =
         ))}
       </div>
       <Button size="sm" disabled={save.isPending || !orgId} onClick={() => save.mutate()}>
-        Use {PRESET_NAMES[selected]}
+        Use {PRESET_NAMES[active]}
       </Button>
     </div>
   );

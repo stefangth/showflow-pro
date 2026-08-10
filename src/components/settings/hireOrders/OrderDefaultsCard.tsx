@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from "react";
+import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { resolveOrgSetting, upsertOrgSetting } from "@/data/settings";
 import type { Json } from "@/integrations/supabase/types";
 import { type FeeBasis, isFeeBasis } from "@/lib/hireOrders/feeBasis";
+import { useDerivedDraft } from "@/hooks/useDerivedDraft";
 import { ORDER_DEFAULTS_DEFAULT } from "./defaults";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -34,26 +35,23 @@ export function OrderDefaultsCard({ orgId, readOnly = false }: { orgId: string |
     enabled: Boolean(orgId),
   });
 
-  const [form, setForm] = useState<HireOrderDefaults>(ORDER_DEFAULTS_DEFAULT);
-  // Seed once when server data first arrives; a later unrelated refetch must not
-  // clobber in-progress edits (the save's own refetch already matches the form).
-  const seededRef = useRef(false);
-  useEffect(() => {
-    if (data && !seededRef.current) {
-      seededRef.current = true;
-      // resolveOrgSetting replaces the fallback wholesale on a match rather than
-      // merging field-by-field, so an org that saved this setting before
-      // default_fee_basis existed comes back with the key entirely absent — and
-      // nothing validates this hand-editable JSON on the way in, so it can also
-      // hold "" or "weekly". Validate with the same predicate the server uses
-      // (a bare `??` would let those through and render the Select blank while
-      // the server bills per_date), so the control shows what will happen.
-      setForm({
-        ...data,
-        default_fee_basis: isFeeBasis(data.default_fee_basis) ? data.default_fee_basis : "per_date",
-      });
-    }
-  }, [data]);
+  // resolveOrgSetting replaces the fallback wholesale on a match rather than
+  // merging field-by-field, so an org that saved this setting before
+  // default_fee_basis existed comes back with the key entirely absent — and
+  // nothing validates this hand-editable JSON on the way in, so it can also
+  // hold "" or "weekly". Validate with the same predicate the server uses
+  // (a bare `??` would let those through and render the Select blank while
+  // the server bills per_date), so the control shows what will happen.
+  const stored = useMemo(
+    () => (data ? { ...data, default_fee_basis: isFeeBasis(data.default_fee_basis) ? data.default_fee_basis : "per_date" } : undefined),
+    [data],
+  );
+  // A view of the stored setting, not a copy seeded into state by an effect: Save
+  // persists `form` verbatim, and a seeded copy is still the DEFAULT in the commit
+  // that opens the `isLoading` gate below, and never re-seeds when the active org
+  // changes underneath the card. An unrelated refetch still cannot clobber edits in
+  // progress -- see useDerivedDraft.
+  const [form, setForm] = useDerivedDraft<HireOrderDefaults>(stored, ORDER_DEFAULTS_DEFAULT);
 
   const save = useMutation({
     mutationFn: () => {

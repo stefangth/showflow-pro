@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import { useRef, useState, type ChangeEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { resolveOrgSetting, upsertOrgSetting } from "@/data/settings";
 import { uploadAgentSignature, fetchAgentSignatureUrl } from "@/data/hireOrders";
 import type { Json } from "@/integrations/supabase/types";
+import { useDerivedDraft } from "@/hooks/useDerivedDraft";
 import { LETTERHEAD_DEFAULT } from "./defaults";
 import { linesFromText, serializeLines } from "@/lib/hireOrders/letterhead";
 import { LetterheadFields } from "./fields/LetterheadFields";
@@ -37,18 +38,15 @@ export function LetterheadCard({ orgId, readOnly = false }: { orgId: string | nu
     enabled: Boolean(orgId),
   });
 
-  const [form, setForm] = useState<Letterhead>(LETTERHEAD_DEFAULT);
-  const [addressText, setAddressText] = useState<string>("");
-  // Seed once when server data first arrives; a later unrelated refetch must not
-  // clobber in-progress edits (the save's own refetch already matches the form).
-  const seededRef = useRef(false);
-  useEffect(() => {
-    if (data && !seededRef.current) {
-      seededRef.current = true;
-      setForm(data);
-      setAddressText(serializeLines(data.address_lines));
-    }
-  }, [data]);
+  // A view of the stored letterhead, not a copy seeded into state by an effect:
+  // Save persists `form` verbatim, and a seeded copy is still the blank default
+  // in the commit that opens the `isLoading` gate below. An unrelated refetch
+  // still cannot clobber edits in progress -- see useDerivedDraft.
+  const [form, setForm] = useDerivedDraft<Letterhead>(data, LETTERHEAD_DEFAULT);
+  const [addressText, setAddressText] = useDerivedDraft<string>(
+    data ? serializeLines(data.address_lines) : undefined,
+    "",
+  );
 
   const save = useMutation({
     mutationFn: () => {
