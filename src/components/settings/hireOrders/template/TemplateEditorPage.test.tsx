@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { renderWithProviders } from "@/test/renderWithProviders";
+import { createTestQueryClient } from "@/test/queryClient";
 import { createFakeSupabase, type TableSeed } from "@/test/supabaseFake";
 
 // Same harness as HireOrdersTab.test.tsx / SettingsPage.test.tsx: a call-recording
@@ -35,13 +36,13 @@ import { useAuth } from "@/features/auth/AuthContext";
 import { useCan } from "@/hooks/useCapabilities";
 import TemplateEditorPage from "./TemplateEditorPage";
 import { TEMPLATE_SECTIONS } from "./templateMeta";
-import { THEME_ROLE_KEYS, type HireOrderThemeOverride } from "@/lib/hireOrders/pdf/pdfTheme";
+import { HIRE_ORDER_THEME_DEFAULTS, THEME_ROLE_KEYS, type HireOrderThemeOverride } from "@/lib/hireOrders/pdf/pdfTheme";
 import { HIRE_ORDER_COPY_DEFAULTS, type CopyKey } from "@/lib/hireOrders/pdf/pdfCopy";
 import { SAMPLE_LETTERHEAD, SAMPLE_TERMS, sampleRenderInput } from "@/lib/hireOrders/pdf/sampleDocument";
 
-function authAs() {
+function authAs(orgId = "org-1") {
   vi.mocked(useAuth).mockReturnValue({
-    currentOrg: { id: "org-1", name: "Test Org", slug: "test-org" },
+    currentOrg: { id: orgId, name: "Test Org", slug: "test-org" },
     hasRole: () => true,
   } as never);
 }
@@ -105,29 +106,32 @@ async function savedThemeValue(): Promise<HireOrderThemeOverride> {
   });
 }
 
-/** Waits until the page has SEEDED its drafts from the settings queries, not
- *  merely rendered them. The seeding runs in an effect, so it lands a commit
- *  AFTER the outline first appears: waiting on the outline alone lets a Save
- *  fire against a still-empty `themeDraft` and persist `{}` over the org's real
- *  theme. That window is sub-frame for a human but trivially reachable by a
- *  test, and it is timing-dependent - it stayed closed under one set of
- *  rendering costs and opened under another when the Radix primitives moved.
- *  Every caller below seeds a feeLabel override, so the outline's "modified"
- *  marker for that role is a signal that themeDraft actually holds the stored
- *  theme, rather than a sleep that happens to be long enough.
+/** Waits until the editor is interactive, which is now the same thing as its
+ *  drafts holding the org's stored settings: the page derives them from the
+ *  settings queries, so it has no interactive render where they are empty.
  *
- *  Queried by TEXT, not by role+name. The ", modified" suffix is plain visible
- *  text inside the outline button, so both locate the same node - but this page
- *  renders 41 buttons and a role+name query recomputes the accessible name of
- *  every one of them on each attempt: 189ms per query, against 1ms for the text
- *  query (measured on this page). Inside a findBy* retry loop that is actively
- *  self-defeating, because one attempt blocks the event loop for longer than the
- *  50ms poll interval and so delays the very effect being waited on. It burned
- *  the whole 5s test timeout on CI instead of failing cleanly, which is how it
- *  reached main looking like an unrelated flake. Keep expensive role+name
- *  queries out of polling loops. */
-function awaitSeededDraft() {
-  return screen.findByText(/Fee row label, modified/);
+ *  It was not always so. The drafts were seeded into state by an effect that
+ *  landed a commit AFTER the outline appeared, so this helper had to wait on
+ *  the stored override showing up in the outline instead - waiting on the
+ *  outline alone let a Save fire against a still-empty `themeDraft` and persist
+ *  `{}` over the org's real theme. The window was sub-frame for a human but
+ *  trivially reachable by a test, and timing-dependent: it stayed closed under
+ *  one set of rendering costs and opened under another when the Radix
+ *  primitives moved. What now pins that invariant is "is hydrated in the first
+ *  render, before any effect runs", which cannot go quiet the way this wait
+ *  could.
+ *
+ *  Kept as one helper so the wait stays in a single place, and querying a
+ *  landmark rather than a button by name. This page renders 41 buttons and a
+ *  role+name query recomputes the accessible name of every one of them per
+ *  attempt: 189ms against 1ms for a text query (measured here). Inside a
+ *  findBy* retry loop that is self-defeating - one attempt blocks the event
+ *  loop for longer than the 50ms poll interval - and it burned the whole 5s
+ *  test timeout on CI instead of failing cleanly, which is how it reached main
+ *  looking like an unrelated flake. Keep expensive role+name queries out of
+ *  polling loops. */
+function awaitEditor() {
+  return screen.findByRole("navigation", { name: "Document outline" });
 }
 
 describe("templateMeta", () => {
@@ -224,6 +228,73 @@ describe("TemplateEditorPage", () => {
     });
   });
 
+  // The draft used to be a COPY of the settings — `useState({})` filled in by a
+  // seed-once effect — rather than a view of them. Two ways that loses data, both
+  // through the same Save button: it persists the draft verbatim, so any moment
+  // the draft is not the active org's stored settings is a moment Save writes the
+  // wrong thing over them.
+  describe("binding the draft to the loaded settings", () => {
+    // The seeding effect landed a commit AFTER the loading gate opened, so the
+    // page had a fully interactive render whose themeDraft was still `{}`. A Save
+    // there wrote `{}` over the org's real theme. Sub-frame for a human, but a
+    // test hit it deterministically once the Radix bump changed render costs.
+    // Deterministic where the flake was not: the settings are already in the
+    // query cache, so `themeQuery.data` exists during the FIRST render and the
+    // first composition the page hands its preview is inspectable before any
+    // effect has run. A draft that lags the settings by an effect shows the
+    // default weight there; a draft derived from them shows the stored one.
+    // Asserting through act() instead would only ever see the settled state,
+    // which is precisely why this bug reached main.
+    it("is hydrated in the first render, before any effect runs", () => {
+      const stored = { roles: { feeLabel: { weight: 500 } } };
+      expect(HIRE_ORDER_THEME_DEFAULTS.roles.feeLabel.weight).not.toBe(500);
+      seedTheme(stored);
+      // The suite does not clear mocks between tests, and this assertion reads
+      // the FIRST recorded composition rather than the last.
+      vi.mocked(sampleRenderInput).mockClear();
+      const queryClient = createTestQueryClient();
+      queryClient.setQueryData(["app-settings", "hire_order_theme", "org-1"], stored);
+      queryClient.setQueryData(["app-settings", "hire_order_copy", "org-1"], {});
+      renderWithProviders(
+        <MemoryRouter><TemplateEditorPage /></MemoryRouter>,
+        { queryClient },
+      );
+
+      const first = vi.mocked(sampleRenderInput).mock.results[0];
+      if (!first || first.type !== "return") throw new Error("the page composed no preview input");
+      expect(first.value.theme.roles.feeLabel.weight).toBe(500);
+    });
+
+    // Same root cause, but permanent rather than sub-frame: switching orgs from
+    // the sidebar re-keys the queries without unmounting this page, and the
+    // seed-once ref had already fired for the previous org.
+    it("follows the active org when it changes under the open editor", async () => {
+      seedClient({
+        app_settings: [
+          {
+            when: { key: "hire_order_theme" },
+            data: [
+              { key: "hire_order_theme", org_id: "org-1", value: { roles: { feeLabel: { weight: 500 } } } },
+              { key: "hire_order_theme", org_id: "org-2", value: { roles: { totalLabel: { weight: 700 } } } },
+            ],
+          },
+          { when: { key: "hire_order_copy" }, data: [] },
+          { data: [] },
+        ],
+      });
+      const { rerender } = renderPage();
+      await awaitEditor();
+
+      authAs("org-2");
+      rerender(<MemoryRouter><TemplateEditorPage /></MemoryRouter>);
+
+      expect(await screen.findByText(/Total label, modified/)).toBeInTheDocument();
+      expect(screen.queryByText(/Fee row label, modified/)).not.toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: "Save template" }));
+      expect(await savedThemeValue()).toEqual({ roles: { totalLabel: { weight: 700 } } });
+    });
+  });
+
   // The theme draft is saved as-is, unlike the copy draft (which goes
   // through compactCopy first). A role can end up hollow - `{}` - by being
   // cleared one field at a time (TemplateInspector's per-field "Document
@@ -236,7 +307,7 @@ describe("TemplateEditorPage", () => {
     it("drops a role hollowed out by field-by-field clearing, keeping an unrelated real override", async () => {
       seedTheme({ roles: { totalLabel: {}, feeLabel: { weight: 500 } } });
       renderPage();
-      await awaitSeededDraft();
+      await awaitEditor();
       fireEvent.click(screen.getByRole("button", { name: "Save template" }));
 
       const value = await savedThemeValue();
@@ -247,7 +318,7 @@ describe("TemplateEditorPage", () => {
     it("drops an empty base, keeping a real role override", async () => {
       seedTheme({ base: {}, roles: { feeLabel: { weight: 500 } } });
       renderPage();
-      await awaitSeededDraft();
+      await awaitEditor();
       fireEvent.click(screen.getByRole("button", { name: "Save template" }));
 
       const value = await savedThemeValue();
@@ -258,7 +329,7 @@ describe("TemplateEditorPage", () => {
     it("keeps a real base and a real role override intact", async () => {
       seedTheme({ base: { scale: 1.1 }, roles: { feeLabel: { weight: 500 } } });
       renderPage();
-      await awaitSeededDraft();
+      await awaitEditor();
       fireEvent.click(screen.getByRole("button", { name: "Save template" }));
 
       const value = await savedThemeValue();
@@ -272,7 +343,7 @@ describe("TemplateEditorPage", () => {
     it("compacts the theme override sent by Open exact PDF, like the copy beside it", async () => {
       seedTheme({ base: {}, roles: { totalLabel: {}, feeLabel: { weight: 500 } } });
       renderPage();
-      await awaitSeededDraft();
+      await awaitEditor();
       fireEvent.click(screen.getByRole("button", { name: "Open exact PDF" }));
 
       const body = await waitFor(() => {
@@ -288,9 +359,7 @@ describe("TemplateEditorPage", () => {
     it("drops every hollow role and an empty base when the draft has nothing real left", async () => {
       seedTheme({ base: {}, roles: { totalLabel: {}, feeLabel: {} } });
       renderPage();
-      await waitFor(() =>
-        expect(screen.getByRole("navigation", { name: "Document outline" })).toBeInTheDocument(),
-      );
+      await awaitEditor();
       fireEvent.click(screen.getByRole("button", { name: "Save template" }));
 
       const value = await savedThemeValue();

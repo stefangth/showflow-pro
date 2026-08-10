@@ -189,11 +189,22 @@ export default function HireOrderEditPage() {
 
   // Seed the editable snapshot once, from the order that just loaded. A later
   // background refetch (e.g. the debounced preview's own persist) must not
-  // clobber in-progress edits — same convention as LetterheadCard.
-  const seededRef = useRef(false);
+  // clobber in-progress edits.
+  //
+  // State, not a ref, because the builder must not render before it runs. The
+  // effect lands a commit AFTER the one where `order` arrived and the isLoading
+  // gate opened, and in between every control was live over `resolvedData ===
+  // null`: "Save draft" only guards `if (!order) return`, and `order` is exactly
+  // what IS present in that window, so a click there wrote a snapshot resolved
+  // from nothing (plus terms_variant "") over the order's real stored fields.
+  // Elsewhere this is fixed by deriving the draft from the query (useDerivedDraft);
+  // here the seed also primes `clearedFields` and `termsVariant`, and a second
+  // effect re-seeds the variant once the org's terms resolve, so gating the render
+  // on the seed closes the same window without unpicking that.
+  const [hydrated, setHydrated] = useState(false);
   useEffect(() => {
-    if (order && !seededRef.current) {
-      seededRef.current = true;
+    if (order && !hydrated) {
+      setHydrated(true);
       const data = (order.data ?? {}) as OrderData;
       setResolvedData(data);
       setTermsVariant(order.terms_variant || defaultTemplateId(terms) || "");
@@ -209,10 +220,10 @@ export default function HireOrderEditPage() {
       if (initiallyCleared.size > 0) setClearedFields(initiallyCleared);
     }
     // `terms` is read only for its effective-default fallback on the very first
-    // seed (guarded by seededRef, so a later terms refetch never re-runs this
+    // seed (guarded by `hydrated`, so a later terms refetch never re-runs this
     // block) -- the dedicated re-seed effect below corrects the selection once
     // the REAL terms setting resolves for an order with no stored variant.
-  }, [order, terms]);
+  }, [order, terms, hydrated]);
 
   // The seed above may have used the HIRE_ORDER_DEFAULT_TERMS fallback (id
   // "standard") for `termsVariant` because the org's real terms setting was
@@ -408,7 +419,10 @@ export default function HireOrderEditPage() {
     }
   }
 
-  if (isLoading) {
+  // `order && !hydrated` is the one-commit window above: hold the skeleton for it.
+  // Conditioned on `order` so a failed read still falls through to the alert below
+  // rather than showing a skeleton forever.
+  if (isLoading || (order && !hydrated)) {
     return (
       <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6">
         <Skeleton className="h-10 w-64" />

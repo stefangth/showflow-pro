@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
@@ -6,6 +6,7 @@ import { ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/features/auth/AuthContext";
 import { useCan } from "@/hooks/useCapabilities";
+import { useDerivedDraft } from "@/hooks/useDerivedDraft";
 import { resolveOrgSetting, upsertOrgSetting } from "@/data/settings";
 import { invokeHireOrderAction } from "@/data/hireOrders";
 import { openPdfBase64 } from "@/lib/hireOrders/openPdf";
@@ -66,7 +67,20 @@ export default function TemplateEditorPage({ readOnly: readOnlyProp }: { readOnl
   const { currentOrg } = useAuth();
   const orgId = currentOrg?.id ?? null;
   const canEdit = useCan("edit_hire_order_settings");
-  const readOnly = readOnlyProp ?? !canEdit;
+  // Keyed by org. Switching orgs in the sidebar re-keys the settings queries but
+  // does NOT unmount this page, and an edit belongs to the org it was made in:
+  // without the key, the previous org's unsaved draft would sit over the new
+  // org's settings and Save would write it into the wrong org.
+  return (
+    <TemplateEditorWorkspace
+      key={orgId ?? "no-org"}
+      orgId={orgId}
+      readOnly={readOnlyProp ?? !canEdit}
+    />
+  );
+}
+
+function TemplateEditorWorkspace({ orgId, readOnly }: { orgId: string | null; readOnly: boolean }) {
   const qc = useQueryClient();
 
   const copyQuery = useQuery({
@@ -97,20 +111,18 @@ export default function TemplateEditorPage({ readOnly: readOnlyProp }: { readOnl
   // different defaults would make whichever ran first win the cache.
   const termsQuery = useHireOrderTerms(orgId);
 
-  // Draft overrides. Seeded once when server data first arrives (same
-  // seeded-ref pattern as PdfCopyCard); a later unrelated refetch must not
-  // clobber in-progress edits.
-  const [copyDraft, setCopyDraft] = useState<Partial<HireOrderCopy>>({});
-  const [themeDraft, setThemeDraft] = useState<HireOrderThemeOverride>({});
+  // Draft overrides as a VIEW of the stored settings rather than a copy of them.
+  // Seeding a copy into state through an effect left a window — one commit wide,
+  // between the loading gate opening and the effect running — where the editor
+  // was fully interactive but the draft was still `{}`. Save persists the draft
+  // verbatim, so a click landing in that window wrote `{}` over the org's real
+  // copy and theme, and "Open exact PDF" previewed the same nothing. See
+  // useDerivedDraft: it removes the unhydrated state rather than gating the
+  // buttons against it, and still pins the draft once edited so an unrelated
+  // refetch cannot clobber work in progress.
+  const [copyDraft, setCopyDraft] = useDerivedDraft<Partial<HireOrderCopy>>(copyQuery.data, COPY_DEFAULT);
+  const [themeDraft, setThemeDraft] = useDerivedDraft<HireOrderThemeOverride>(themeQuery.data, THEME_DEFAULT);
   const [selected, setSelected] = useState<RoleKey | "document">("document");
-  const seeded = useRef(false);
-  useEffect(() => {
-    if (!seeded.current && copyQuery.data && themeQuery.data) {
-      seeded.current = true;
-      setCopyDraft(copyQuery.data);
-      setThemeDraft(themeQuery.data);
-    }
-  }, [copyQuery.data, themeQuery.data]);
 
   const copy = useMemo(() => resolveHireOrderCopy(copyDraft), [copyDraft]);
   const theme = useMemo(() => resolveHireOrderTheme(themeDraft), [themeDraft]);

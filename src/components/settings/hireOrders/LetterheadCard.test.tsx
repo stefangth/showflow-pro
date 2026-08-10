@@ -1,10 +1,19 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { renderWithProviders } from "@/test/renderWithProviders";
+import { createTestQueryClient } from "@/test/queryClient";
 import { createFakeSupabase, type TableSeed } from "@/test/supabaseFake";
 
 const { client } = vi.hoisted(() => ({ client: {} as Record<string, unknown> }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: client }));
+// Spy, not a stub: the REAL fields still render, but the card's draft is
+// recorded per render. This is the seam where the card hands over the value its
+// Save would persist, and unlike the DOM it keeps a history — so the FIRST
+// render is still inspectable after everything has settled.
+vi.mock("./fields/LetterheadFields", async (orig) => {
+  const actual = await orig<typeof import("./fields/LetterheadFields")>();
+  return { ...actual, LetterheadFields: vi.fn(actual.LetterheadFields) };
+});
 
 function seedClient(seed: Record<string, TableSeed>) {
   for (const key of Object.keys(client)) delete client[key];
@@ -12,6 +21,7 @@ function seedClient(seed: Record<string, TableSeed>) {
 }
 
 import { LetterheadCard } from "./LetterheadCard";
+import { LetterheadFields } from "./fields/LetterheadFields";
 
 beforeEach(() => seedClient({ app_settings: { data: [], error: null } }));
 
@@ -36,6 +46,62 @@ describe("LetterheadCard readOnly (capability floor)", () => {
     renderWithProviders(<LetterheadCard orgId="org-1" readOnly={false} />);
     expect(await screen.findByLabelText("Legal name")).toBeEnabled();
     expect(screen.getByRole("button", { name: "Save letterhead" })).toBeEnabled();
+  });
+});
+
+describe("LetterheadCard hydration", () => {
+  const STORED = {
+    legal_name: "Aurora Productions GmbH",
+    address_lines: ["Rosenthaler Str. 1", "10119 Berlin"],
+    registration_line: "HRB 1 B",
+  };
+
+  function seedStored(orgId = "org-1", value = STORED) {
+    seedClient({ app_settings: { data: [{ key: "hire_order_letterhead", org_id: orgId, value }], error: null } });
+  }
+
+  // The form used to be a COPY of the stored letterhead - `useState(LETTERHEAD_DEFAULT)`
+  // filled in by a seed-once effect - so the commit that opened the `isLoading` gate
+  // rendered a fully interactive form whose `form` was still the blank default. Save
+  // persists `form` verbatim, so a click there wrote empty strings over the org's real
+  // letterhead: exactly the failure the isError branch already guards against, one
+  // commit wide instead of permanent.
+  //
+  // Priming the cache is what makes that deterministic. The card then has its data
+  // during the FIRST render, so the value it hands the fields is the unhydrated one
+  // if anything lags. Asserting on the settled DOM instead only ever sees the state
+  // after act() flushed the effect, which is why this class of bug stays invisible.
+  it("hands the stored letterhead to the fields in the first render, before any effect", async () => {
+    seedStored();
+    const queryClient = createTestQueryClient();
+    queryClient.setQueryData(["app-settings", "hire_order_letterhead", "org-1"], STORED);
+    vi.mocked(LetterheadFields).mockClear();
+
+    renderWithProviders(<LetterheadCard orgId="org-1" />, { queryClient });
+
+    expect(vi.mocked(LetterheadFields).mock.calls[0]?.[0].value).toEqual(STORED);
+    expect(await screen.findByLabelText("Legal name")).toHaveValue(STORED.legal_name);
+  });
+
+  // Same root cause, permanent rather than sub-frame: HireOrdersTab is not keyed by
+  // org (only BookingFlowTab is), so switching orgs re-keys this card's query without
+  // unmounting it - and the seed-once ref had already fired for the previous org.
+  it("follows the org when the active one changes under an untouched form", async () => {
+    seedClient({
+      app_settings: {
+        data: [
+          { key: "hire_order_letterhead", org_id: "org-1", value: STORED },
+          { key: "hire_order_letterhead", org_id: "org-2", value: { ...STORED, legal_name: "Nord Productions GmbH" } },
+        ],
+        error: null,
+      },
+    });
+    const { rerender } = renderWithProviders(<LetterheadCard orgId="org-1" />);
+    expect(await screen.findByLabelText("Legal name")).toHaveValue("Aurora Productions GmbH");
+
+    rerender(<LetterheadCard orgId="org-2" />);
+
+    await waitFor(() => expect(screen.getByLabelText("Legal name")).toHaveValue("Nord Productions GmbH"));
   });
 });
 

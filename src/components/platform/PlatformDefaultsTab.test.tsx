@@ -144,3 +144,70 @@ describe("PlatformDefaultsTab — settings-read failure guards", () => {
     expect(screen.queryAllByRole("switch")).toHaveLength(0);
   });
 });
+
+// Each of these three cards held a COPY of its platform setting, seeded once by an
+// effect behind a ref. The copy is what Save persists, so any moment it is not the
+// stored value is a moment Save writes the wrong thing over it -- including the
+// commit that opens the isLoading gate, where the copy is still the code default.
+// (The booking-defaults test above works around exactly that window: "findByLabelText
+// resolves the moment the input exists -- during the loading render, when it still
+// holds the fallback value.")
+//
+// The permanent, deterministic half of the same root cause is a refetch. These are
+// PLATFORM settings with several super-admins, so a tab left open goes stale and its
+// Save silently reverts whatever the other admin just changed. Deriving the draft
+// fixes both, and has to keep the guarantee the ref was there for: once edited, the
+// form is pinned and no refetch may wipe work in progress.
+describe("PlatformDefaultsTab — drafts track the stored settings", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("booking defaults follow a refetch while untouched, and pin once edited", async () => {
+    (fetchPlatformBookingDefaults as ReturnType<typeof vi.fn>).mockResolvedValue(DEFAULTS);
+    const { queryClient } = renderWithProviders(<PlatformDefaultsTab />);
+    const windowInput = await screen.findByLabelText("Offer response window (hours)");
+    await waitFor(() => expect((windowInput as HTMLInputElement).value).toBe("36"));
+
+    (fetchPlatformBookingDefaults as ReturnType<typeof vi.fn>).mockResolvedValue({ ...DEFAULTS, offer_response_window_hours: 72 });
+    await queryClient.invalidateQueries({ queryKey: ["platform", "booking-defaults"] });
+    await waitFor(() => expect((windowInput as HTMLInputElement).value).toBe("72"));
+
+    fireEvent.change(windowInput, { target: { value: "12" } });
+    (fetchPlatformBookingDefaults as ReturnType<typeof vi.fn>).mockResolvedValue({ ...DEFAULTS, offer_response_window_hours: 99 });
+    await queryClient.invalidateQueries({ queryKey: ["platform", "booking-defaults"] });
+    expect((windowInput as HTMLInputElement).value).toBe("12");
+  });
+
+  it("the starter catalog follows a refetch while untouched", async () => {
+    const { queryClient } = renderWithProviders(<PlatformDefaultsTab />);
+    const skills = await screen.findByLabelText("Skills");
+    await waitFor(() => expect((skills as HTMLTextAreaElement).value).toBe(""));
+
+    (resolveOrgSetting as ReturnType<typeof vi.fn>).mockImplementation((_c: unknown, _o: unknown, key: string) => {
+      if (key === "default_entitlements") return Promise.resolve({ booking_flow: true, hire_orders: false });
+      return Promise.resolve({ skills: ["Juggling"], cities: [], casts: [] });
+    });
+    await queryClient.invalidateQueries({ queryKey: ["platform", "starter-template"] });
+
+    await waitFor(() => expect((skills as HTMLTextAreaElement).value).toBe("Juggling"));
+  });
+
+  it("the terms library follows a refetch while untouched", async () => {
+    (resolveOrgSetting as ReturnType<typeof vi.fn>).mockImplementation((_c: unknown, _o: unknown, key: string) => {
+      if (key === "default_entitlements") return Promise.resolve({ booking_flow: true, hire_orders: false });
+      if (key === "hire_order_terms_library") return Promise.resolve({ templates: [{ id: "a", name: "First", clauses: [] }] });
+      return Promise.resolve({ skills: [], cities: [], casts: [] });
+    });
+    const { queryClient } = renderWithProviders(<PlatformDefaultsTab />);
+    const json = await screen.findByLabelText("Templates (JSON)");
+    await waitFor(() => expect((json as HTMLTextAreaElement).value).toContain("First"));
+
+    (resolveOrgSetting as ReturnType<typeof vi.fn>).mockImplementation((_c: unknown, _o: unknown, key: string) => {
+      if (key === "default_entitlements") return Promise.resolve({ booking_flow: true, hire_orders: false });
+      if (key === "hire_order_terms_library") return Promise.resolve({ templates: [{ id: "b", name: "Second", clauses: [] }] });
+      return Promise.resolve({ skills: [], cities: [], casts: [] });
+    });
+    await queryClient.invalidateQueries({ queryKey: ["platform", "terms-library"] });
+
+    await waitFor(() => expect((json as HTMLTextAreaElement).value).toContain("Second"));
+  });
+});

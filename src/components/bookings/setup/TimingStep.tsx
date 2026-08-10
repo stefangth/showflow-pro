@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,23 +8,33 @@ import { BOOKING_ENGINE_DEFAULTS } from "@/config/app.config";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useDerivedDraft } from "@/hooks/useDerivedDraft";
 
-/** The rail's timing panel: offer window and the two Berlin digest hours, seeded from the
- *  live values (defaults 48h / 19:00 / 20:00), written as the three settings keys. */
+/** The rail's timing panel: offer window and the two Berlin digest hours, shown as the
+ *  org's live values and written as the three settings keys. The code defaults
+ *  (48h / 19:00 / 20:00) are never displayed as if they were the org's own -- the
+ *  panel waits for the read, see the gate below. */
 export function TimingStep({ orgId, onDone }: { orgId: string | null; onDone: () => void }) {
   const qc = useQueryClient();
-  const { data: times } = useFlowTimes(orgId);
-  const [win, setWin] = useState(String(BOOKING_ENGINE_DEFAULTS.offer_response_window_hours));
-  const [offer, setOffer] = useState(String(BOOKING_ENGINE_DEFAULTS.offer_digest_hour_berlin));
-  const [conf, setConf] = useState(String(BOOKING_ENGINE_DEFAULTS.confirmation_digest_hour_berlin));
-  const seeded = useRef(false);
-  useEffect(() => {
-    if (!times || seeded.current) return;
-    seeded.current = true;
-    setWin(String(times.windowHours));
-    setOffer(String(times.offerDigestHour));
-    setConf(String(times.confirmationDigestHour));
-  }, [times]);
+  const { data: times, isError, error } = useFlowTimes(orgId);
+  // Views of the org's stored timing, not copies seeded into state by an effect.
+  // Save persists these three verbatim, so a copy that still held the code defaults
+  // wrote 48/19/20 over the org's real timing -- and with no gate below, that was
+  // true for the whole fetch, not one commit.
+  const [win, setWin] = useDerivedDraft(
+    times && String(times.windowHours),
+    String(BOOKING_ENGINE_DEFAULTS.offer_response_window_hours),
+  );
+  const [offer, setOffer] = useDerivedDraft(
+    times && String(times.offerDigestHour),
+    String(BOOKING_ENGINE_DEFAULTS.offer_digest_hour_berlin),
+  );
+  const [conf, setConf] = useDerivedDraft(
+    times && String(times.confirmationDigestHour),
+    String(BOOKING_ENGINE_DEFAULTS.confirmation_digest_hour_berlin),
+  );
 
   const save = useMutation({
     mutationFn: async () => {
@@ -52,6 +62,27 @@ export function TimingStep({ orgId, onDone }: { orgId: string | null; onDone: ()
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  // A failed read must say so rather than fall through, for the same reason the
+  // panel waits below: the inputs would show the code defaults as if they were the
+  // org's own. It must also not fall through to that skeleton, which `data` being
+  // undefined forever (React Query keeps no data on error) would make permanent --
+  // a silent dead end in the rail. Same guard as LetterheadStep/CountersignStep.
+  if (isError) {
+    return (
+      <Alert variant="destructive">
+        <AlertDescription>
+          Could not load the timing settings. {(error as Error)?.message}
+        </AlertDescription>
+      </Alert>
+    );
+  }
+  // Deriving alone is not enough here: while the read is in flight there is nothing
+  // to derive FROM, so the inputs would show the code defaults as if they were the
+  // org's own and Save would persist them. Withhold the whole panel until the values
+  // exist. Skipped when there is no active org (a super-admin bypasses the org gate),
+  // where the query never runs and Save is already disabled.
+  if (orgId && !times) return <Skeleton className="h-28 w-full" />;
 
   return (
     <div className="space-y-3">

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 import { toast } from "sonner";
@@ -22,6 +22,7 @@ import { fetchEmailTemplateSettings } from "@/data/emailTemplates";
 import { upsertOrgSetting } from "@/data/settings";
 import { useAuth } from "@/features/auth/AuthContext";
 import { useCan } from "@/hooks/useCapabilities";
+import { useDerivedDraft } from "@/hooks/useDerivedDraft";
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 import {
@@ -40,30 +41,39 @@ import {
 
 interface WorkspaceProps {
   template: EmailTemplateCopyFields;
+  orgId: string | null;
   readOnly: boolean;
 }
 
-function EmailTemplateEditorWorkspace({ template, readOnly }: WorkspaceProps) {
-  const { currentOrg } = useAuth();
-  const orgId = currentOrg?.id ?? null;
+const EMPTY_COPY: Partial<Record<EmailCopyKey, string>> = {};
+const EMPTY_THEME: EmailThemeOverride = {};
+
+function EmailTemplateEditorWorkspace({ template, orgId, readOnly }: WorkspaceProps) {
   const queryClient = useQueryClient();
   const settingsQuery = useQuery({
     queryKey: ["app-settings", "email-templates", orgId],
     queryFn: () => fetchEmailTemplateSettings(supabase, orgId),
     enabled: Boolean(orgId),
   });
-  const [copyDraft, setCopyDraft] = useState<Partial<Record<EmailCopyKey, string>>>({});
-  const [themeDraft, setThemeDraft] = useState<EmailThemeOverride>({});
+  // Memoized because EmailPreviewPane re-runs its debounced render on override
+  // IDENTITY: a fresh compaction per render would re-fetch the preview forever.
+  const storedCopy = useMemo(
+    () => (settingsQuery.data ? compactEmailCopy(settingsQuery.data.copy) : undefined),
+    [settingsQuery.data],
+  );
+  const storedTheme = useMemo(
+    () => (settingsQuery.data ? compactEmailTheme(settingsQuery.data.theme) : undefined),
+    [settingsQuery.data],
+  );
+  // Drafts as a VIEW of the stored settings rather than a copy of them. Seeding a
+  // copy into state through an effect left a window — one commit wide, between the
+  // loading gate opening and the effect running — where the editor was fully
+  // interactive but both drafts were still `{}`. Save persists them verbatim, and
+  // `copyDraft` is the ORG-WIDE email_copy map, so a click landing in that window
+  // wiped EVERY template's copy, not just this one's. See useDerivedDraft.
+  const [copyDraft, setCopyDraft] = useDerivedDraft<Partial<Record<EmailCopyKey, string>>>(storedCopy, EMPTY_COPY);
+  const [themeDraft, setThemeDraft] = useDerivedDraft<EmailThemeOverride>(storedTheme, EMPTY_THEME);
   const [selected, setSelected] = useState<EmailEditorSelection>("document");
-  const seeded = useRef(false);
-
-  useEffect(() => {
-    if (!seeded.current && settingsQuery.data) {
-      seeded.current = true;
-      setCopyDraft(compactEmailCopy(settingsQuery.data.copy));
-      setThemeDraft(compactEmailTheme(settingsQuery.data.theme));
-    }
-  }, [settingsQuery.data]);
 
   const save = useMutation({
     mutationFn: async () => {
@@ -112,7 +122,7 @@ function EmailTemplateEditorWorkspace({ template, readOnly }: WorkspaceProps) {
             size="sm"
             disabled={readOnly}
             onClick={() => {
-              // copyDraft is seeded from the org-wide email_copy map, so clearing it
+              // copyDraft is the org-wide email_copy map, so clearing it
               // wholesale would wipe every other template's copy. Reset only this
               // template's copy keys, plus the shared theme this editor also edits.
               setCopyDraft((prev) => {
@@ -161,6 +171,7 @@ function EmailTemplateEditorWorkspace({ template, readOnly }: WorkspaceProps) {
 
 export default function EmailTemplateEditorPage({ readOnly: readOnlyProp }: { readOnly?: boolean } = {}) {
   const { templateKey } = useParams<{ templateKey: string }>();
+  const { currentOrg } = useAuth();
   const canEdit = useCan("edit_email_templates");
   const template = EMAIL_TEMPLATE_COPY_FIELDS.find((entry) => entry.templateKey === templateKey);
 
@@ -173,9 +184,14 @@ export default function EmailTemplateEditorPage({ readOnly: readOnlyProp }: { re
   }
 
   return (
+    // Keyed by template AND org. Switching orgs in the sidebar re-keys the
+    // settings query but does NOT unmount this page, and an edit belongs to the
+    // org it was made in: without the org in the key, the previous org's unsaved
+    // draft would sit over the new org's settings and Save would write it there.
     <EmailTemplateEditorWorkspace
-      key={template.templateKey}
+      key={`${template.templateKey}:${currentOrg?.id ?? "no-org"}`}
       template={template}
+      orgId={currentOrg?.id ?? null}
       readOnly={readOnlyProp ?? !canEdit}
     />
   );

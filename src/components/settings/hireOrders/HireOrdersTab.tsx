@@ -98,7 +98,17 @@ export function HireOrdersTab({ readOnly = false }: Props) {
 
   return (
     <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
-      <div className="space-y-4">
+      {/* Keyed by org. Each card derives its draft from its own query, so an
+          UNTOUCHED card already follows an org switch; an EDITED one cannot,
+          because pinning edits is what stops an unrelated refetch wiping work in
+          progress. That edit belongs to the org it was made in, so it has to be
+          dropped here or Save would write it into the new org. Today the
+          entitlement gate above happens to unmount this subtree while the new
+          org's entitlements load (hire_orders ships default-off, and useFeature
+          reports the registry default while loading) - this key is what makes the
+          behavior deliberate rather than a side effect of that flicker.
+          SettingsPage keys BookingFlowTab the same way. */}
+      <div key={orgId ?? "no-org"} className="space-y-4">
         <LetterheadCard orgId={orgId} readOnly={readOnly} />
         <OrderDefaultsCard orgId={orgId} readOnly={readOnly} />
         <NumberingCard orgId={orgId} readOnly={readOnly} />

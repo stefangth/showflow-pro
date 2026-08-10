@@ -282,4 +282,35 @@ describe("HireOrdersTab", () => {
     expect(within(standardSection).queryAllByLabelText(/standard clause \d+ title/i)).toHaveLength(0);
     expect(within(standardSection).getByText(/no clauses yet/i)).toBeInTheDocument();
   });
+
+  // Deriving each card's draft from its query already makes an UNTOUCHED card follow
+  // an org switch. An edited one cannot: its edits are pinned, by design, so an
+  // unrelated refetch can't wipe work in progress. That leaves the edit belonging to
+  // the org it was made in, so the tab has to drop it when the active org changes --
+  // otherwise Save writes the previous org's value into the new one.
+  //
+  // This passed before the tab was keyed by org, but only incidentally: the
+  // entitlement gate unmounts the subtree while the new org's entitlements load,
+  // because hire_orders ships default-off and useFeature reports the registry
+  // default during that window. It pins the BEHAVIOR, which the key now provides
+  // deliberately, rather than that flicker.
+  it("drops an unsaved edit when the active org changes", async () => {
+    // A second entitled org: the tab renders nothing for one it isn't entitled to.
+    seedClient({
+      ...OK_SEED,
+      org_entitlements: [
+        { when: { org_id: "org-on" }, data: [{ feature: "hire_orders", enabled: true }], error: null },
+        { when: { org_id: "org-two" }, data: [{ feature: "hire_orders", enabled: true }], error: null },
+      ],
+    });
+    authAs("org-on");
+    const { rerender } = renderTab();
+    const legalName = await screen.findByLabelText("Legal name");
+    fireEvent.change(legalName, { target: { value: "Typed but never saved" } });
+
+    authAs("org-two");
+    rerender(<MemoryRouter><HireOrdersTab /></MemoryRouter>);
+
+    await waitFor(() => expect(screen.getByLabelText("Legal name")).not.toHaveValue("Typed but never saved"));
+  });
 });

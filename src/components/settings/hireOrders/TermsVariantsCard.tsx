@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Plus, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { resolveOrgSetting, upsertOrgSetting } from "@/data/settings";
 import type { Json } from "@/integrations/supabase/types";
+import { useDerivedDraft } from "@/hooks/useDerivedDraft";
 import { HIRE_ORDER_DEFAULT_TERMS } from "@/config/app.config";
 import {
   normalizeTermsSetting,
@@ -114,14 +115,15 @@ export function TermsVariantsCard({ orgId, readOnly = false }: { orgId: string |
     enabled: Boolean(orgId),
   });
 
-  const [form, setForm] = useState<HireOrderTermsSetting>(HIRE_ORDER_DEFAULT_TERMS);
-  const seededRef = useRef(false);
-  useEffect(() => {
-    if (data && !seededRef.current) {
-      seededRef.current = true;
-      setForm(normalizeTermsSetting(data));
-    }
-  }, [data]);
+  // Normalized again on the way in, as the seed used to: the queryFn already does
+  // it, and the two must not be able to drift.
+  const stored = useMemo(() => (data ? normalizeTermsSetting(data) : undefined), [data]);
+  // A view of the stored setting, not a copy seeded into state by an effect: Save
+  // persists `form` verbatim, and a seeded copy is still the DEFAULT in the commit
+  // that opens the `isLoading` gate below, and never re-seeds when the active org
+  // changes underneath the card. An unrelated refetch still cannot clobber edits in
+  // progress -- see useDerivedDraft.
+  const [form, setForm] = useDerivedDraft<HireOrderTermsSetting>(stored, HIRE_ORDER_DEFAULT_TERMS);
 
   const [picked, setPicked] = useState<string[]>([]);
   const library = useTermsLibrary();
