@@ -6,12 +6,21 @@ type Body = { email?: string; app_origin?: string; redirect_path?: string };
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const COOLDOWN_SECONDS = 60;
 
+/** Backslash, plus every C0 control and DEL: the characters the URL parser folds or strips.
+ *  Mirrors UNSAFE_REDIRECT_CHARS in src/features/auth/resetPassword.ts. */
+// eslint-disable-next-line no-control-regex -- matching control characters is the entire point
+const UNSAFE_REDIRECT_CHARS = /[\\\u0000-\u001F\u007F]/;
+
 /** Clamp the caller-supplied post-login destination to a safe in-app relative path;
- *  anything absolute / protocol-relative / missing falls back to the dashboard. Mirrors
- *  safeRelativeRedirect in src/features/auth/resetPassword.ts (AuthCallbackPage re-clamps
- *  this same value before navigating, so this is defense-in-depth, not the only guard). */
+ *  anything absolute / protocol-relative / missing falls back to the dashboard, as does
+ *  anything the URL parser would rewrite before the `//` check can mean anything: `\` is
+ *  folded into `/`, and tab/LF/CR are removed outright, so both `/\evil.example` and
+ *  `/<TAB>/evil.example` escape the origin. Mirrors safeRelativeRedirect in
+ *  src/features/auth/resetPassword.ts (AuthCallbackPage re-clamps this same value before
+ *  navigating, so this is defense-in-depth, not the only guard). */
 function safeRedirectPath(p: string | undefined): string {
-  return p && p.startsWith("/") && !p.startsWith("//") ? p : "/dashboard";
+  if (!p || !p.startsWith("/") || p.startsWith("//") || UNSAFE_REDIRECT_CHARS.test(p)) return "/dashboard";
+  return p;
 }
 
 // Note on the no-enumeration guarantee: it holds at the RESPONSE-SHAPE level — every branch
