@@ -205,6 +205,24 @@ it("narrates the offer pipeline in no step hint except the flow choice itself", 
   }
 });
 
+it("keeps the timing step flow-neutral like its siblings", () => {
+  // "Response window and digests" was the last offer-shaped survivor: a direct-book org
+  // (artist_acceptance false) has no response window, and the OFFER_CLAIM sweep above never
+  // caught it because the phrase dodges the word itself. Like ladder and eligibility, the
+  // copy names what the row holds (send hours, an answer window); TimingStep's own panel
+  // reads the real flow and narrates what THIS org does with them.
+  expect(bookingOnboarding.steps.timing.title).toBe("Email timing");
+  expect(bookingOnboarding.steps.timing.todoHint).toBe("When booking email goes out, and the answer window.");
+  expect(bookingOnboarding.steps.timing.doneHint).toBe("Hours set. Change them any time in Settings.");
+});
+
+it("labels the coverage CTAs by what they open, not the page they sit on", () => {
+  // "Open bookings" is circular on the bookings page itself, where these buttons open the
+  // inline checklist Sheet in place. The label must say what happens on every surface.
+  expect(bookingOnboarding.steps.ladder.ctaLabel).toBe("Review coverage");
+  expect(bookingOnboarding.steps.eligibility.ctaLabel).toBe("Review coverage");
+});
+
 it("keeps the flow step naming both options it is asking the reader to choose between", () => {
   // The exemption above is only sound while that step really is the choice: if the word
   // ever leaves it, the exemption is dead code hiding the guard.

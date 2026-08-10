@@ -84,7 +84,7 @@ export const STEP_TITLES: Record<BookingSetupStepKey, string> = {
   slots: "Slots per show",
   ladder: "Cast priorities per city",
   eligibility: "Who is eligible",
-  timing: "Response window and digests",
+  timing: "Email timing",
 };
 
 const STEP_ORDER: BookingSetupStepKey[] = ["flow", "people", "slots", "ladder", "eligibility", "timing"];

@@ -50,7 +50,7 @@ describe("BookingSetupRail", () => {
     expect(screen.getByText("Slots per show")).toBeInTheDocument();
     expect(screen.getByText("Cast priorities per city")).toBeInTheDocument();
     expect(screen.getByText("Who is eligible")).toBeInTheDocument();
-    expect(screen.getByText("Response window and digests")).toBeInTheDocument();
+    expect(screen.getByText("Email timing")).toBeInTheDocument();
     // people and ladder both block offers HERE, because this org runs them. Awaited, not
     // read synchronously: both chips follow the org's flow, and until that read lands
     // people carries the flow-neutral "Blocks booking" while ladder carries none at all
@@ -99,7 +99,7 @@ describe("BookingSetupRail", () => {
 
   it("opens the step named by initialStep", async () => {
     renderWithProviders(<MemoryRouter><BookingSetupRail orgId="org-1" initialStep="timing" /></MemoryRouter>);
-    const timingToggle = await screen.findByRole("button", { name: /Response window and digests/ });
+    const timingToggle = await screen.findByRole("button", { name: /Email timing/ });
     expect(timingToggle).toHaveAttribute("aria-expanded", "true");
     const flowToggle = screen.getByRole("button", { name: /Booking flow/ });
     expect(flowToggle).toHaveAttribute("aria-expanded", "false");

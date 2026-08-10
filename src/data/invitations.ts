@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import type { AppRole } from "@/config/app.config";
+import { readEdgeError } from "@/lib/edgeErrors";
 
 export interface Invitation {
   id: string;
@@ -138,7 +139,10 @@ export async function acceptInvitation(
   return { orgId: r.org_id ?? "", artistLinked: r.artist_linked !== false };
 }
 
-/** Re-send a pending org invitation (org admin or super-admin). */
+/** Re-send a pending org invitation (org admin or super-admin). The edge function's 422
+ *  (suppressed address) and 502 (delivery failure) bodies carry sentences written for the
+ *  admin's toast, and supabase-js hides them behind an opaque invoke error, so read the
+ *  body back out (see src/lib/edgeErrors.ts) instead of rethrowing the husk. */
 export async function resendInvitation(
   client: SupabaseClient<Database>,
   invitationId: string,
@@ -146,5 +150,5 @@ export async function resendInvitation(
   const { error } = await client.functions.invoke("resend-invitation", {
     body: { invitation_id: invitationId, app_origin: window.location.origin },
   });
-  if (error) throw error;
+  if (error) throw new Error(await readEdgeError(error));
 }

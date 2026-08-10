@@ -64,9 +64,16 @@ export const bookingOnboarding: ModuleOnboardingDef<BookingSetupStepKey> = {
     // The consequence, which is the half that really does differ, is stated by the panels
     // these hints sit above: LadderStep and EligibilityStep read the org's flow and say what
     // an unranked city or an unmatched show costs THIS org (src/lib/bookings/coverageCopy.ts).
-    ladder: { title: STEP_TITLES.ladder, todoHint: "Your casts ranked per city, tier 1 first.", doneHint: "Every scheduled city has a tier-1 cast.", ctaLabel: "Open bookings", ctaRoute: ROUTES.BOOKINGS, ctaCapability: "edit_booking_settings" },
-    eligibility: { title: STEP_TITLES.eligibility, todoHint: "Which casts belong to which show, in which city.", doneHint: "Every scheduled show and city has a cast.", ctaLabel: "Open bookings", ctaRoute: ROUTES.BOOKINGS, ctaCapability: "edit_booking_settings" },
-    timing: { title: STEP_TITLES.timing, todoHint: "How long artists get, and when mail goes out.", doneHint: "Window and digest hours set.", ctaLabel: "Set timing", ctaRoute: ROUTES.SETTINGS, ctaCapability: "edit_booking_settings" },
+    // "Review coverage" over "Open bookings": on the bookings page itself these buttons
+    // open the inline checklist Sheet in place, so a label naming the page they already
+    // sit on read as a no-op. The label says what happens on every surface.
+    ladder: { title: STEP_TITLES.ladder, todoHint: "Your casts ranked per city, tier 1 first.", doneHint: "Every scheduled city has a tier-1 cast.", ctaLabel: "Review coverage", ctaRoute: ROUTES.BOOKINGS, ctaCapability: "edit_booking_settings" },
+    eligibility: { title: STEP_TITLES.eligibility, todoHint: "Which casts belong to which show, in which city.", doneHint: "Every scheduled show and city has a cast.", ctaLabel: "Review coverage", ctaRoute: ROUTES.BOOKINGS, ctaCapability: "edit_booking_settings" },
+    // Like ladder and eligibility above, the hint names what the row HOLDS (send hours and
+    // an answer window), not what one flow does with it: "how long artists get" presumed a
+    // pipeline where artists answer, which a direct-book org does not run. TimingStep's own
+    // panel reads the real flow and narrates what THIS org does with these hours.
+    timing: { title: STEP_TITLES.timing, todoHint: "When booking email goes out, and the answer window.", doneHint: "Hours set. Change them any time in Settings.", ctaLabel: "Set timing", ctaRoute: ROUTES.SETTINGS, ctaCapability: "edit_booking_settings" },
   },
   // This block is the rail's COMPLETE state: it narrates how this org works, as fact. Rule
   // one already branches on the flow, so every rule under it has to branch too. A
