@@ -89,6 +89,21 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
         .limit(1)
         .maybeSingle();
       if (membership) {
+        // Membership is now created at invite time (migration 20260809170001), so a
+        // still-PENDING invitee already has an org_memberships row and would trip this
+        // member check. Prefer the accurate "pending invitation" message when a live
+        // invite exists; only a genuine member (no pending invite) gets the member 409.
+        const { data: pendingInvite } = await admin
+          .from("org_invitations")
+          .select("id")
+          .eq("org_id", body.org_id)
+          .eq("email", email)
+          .eq("status", "pending")
+          .limit(1)
+          .maybeSingle();
+        if (pendingInvite) {
+          return json({ error: "That email already has a pending invitation." }, 409);
+        }
         return json({ error: "That email already belongs to a member of this organization." }, 409);
       }
     }

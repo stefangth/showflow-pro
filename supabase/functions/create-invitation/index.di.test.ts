@@ -269,12 +269,42 @@ Deno.test("create-invitation DI: admin still invites a producer → 200 (unchang
 
 Deno.test("create-invitation DI: email already belongs to an org member → 409", async () => {
   // get_user_id_by_email resolves the invitee to u2; the org_memberships seed (which
-  // also authorizes the admin caller) means u2 is a member of the org → reject.
-  const { deps, calls } = adminDeps({ authUsersByEmail: { "invitee@x.com": { id: "u2" } } });
+  // also authorizes the admin caller) means u2 is a member of the org → reject. With
+  // no PENDING invite (org_invitations → null), this is a genuine member, so the
+  // member 409 wins over the pending-invitation branch.
+  const { deps, calls } = adminDeps({
+    authUsersByEmail: { "invitee@x.com": { id: "u2" } },
+    tables: {
+      org_memberships: { data: { role: "admin" }, error: null },
+      org_invitations: { data: null, error: null },
+      organizations: { data: { name: "Acme" }, error: null },
+    },
+  });
   const res = await handle(inviteReq({ org_id: "org-1", email: "invitee@x.com", role: "producer" }), deps);
   assertEquals(res.status, 409);
   const body = await res.json() as { error: string };
   assertEquals(/already belongs to a member/i.test(body.error), true);
+  // Rejected before any insert.
+  assertEquals(calls.some((c) => c.table === "org_invitations" && c.method === "insert"), false);
+});
+
+Deno.test("create-invitation DI: re-inviting a still-PENDING invitee → 409 pending (not member)", async () => {
+  // Membership is now created at invite time (migration 20260809170001), so a
+  // still-pending invitee already has an org_memberships row and would trip the
+  // member check. When a live pending invite exists we must return the accurate
+  // "already has a pending invitation" message, NOT the generic member 409.
+  const { deps, calls } = adminDeps({
+    authUsersByEmail: { "invitee@x.com": { id: "u2" } }, // invite-time auth account
+    tables: {
+      org_memberships: { data: { role: "admin" }, error: null }, // authorizes admin + invite-time membership row
+      org_invitations: { data: { id: "inv-pending", org_id: "org-1", email: "invitee@x.com", status: "pending" }, error: null },
+      organizations: { data: { name: "Acme" }, error: null },
+    },
+  });
+  const res = await handle(inviteReq({ org_id: "org-1", email: "invitee@x.com", role: "producer" }), deps);
+  assertEquals(res.status, 409);
+  const body = await res.json() as { error: string };
+  assertEquals(/already has a pending invitation/i.test(body.error), true);
   // Rejected before any insert.
   assertEquals(calls.some((c) => c.table === "org_invitations" && c.method === "insert"), false);
 });
