@@ -30,6 +30,26 @@ updates:
       - dependency-name: "typescript"
         update-types: ["version-update:semver-major"]
     groups:
+      # Radix MUST move as one family, and this group must stay FIRST — a dependency joins the
+      # first group it matches, so `runtime-patches` below would otherwise claim the patch-level
+      # Radix bumps and leave the minors behind.
+      #
+      # Why it matters: Radix's ~27 public packages share internals (react-dismissable-layer,
+      # react-primitive, react-popper, …) whose versions must agree. Splitting them by
+      # update-type strands the family across PRs whose caret ranges npm cannot dedupe, so the
+      # tree ends up with two copies of a shared internal. That is not cosmetic: PR #245 split
+      # `react-dismissable-layer` into 1.1.11 (under react-dialog) and 1.1.19 (under
+      # react-popover), and because DismissableLayer coordinates nested layers through
+      # module-scoped state, two copies meant two registries — a Dialog then treated a nested
+      # Popover's own opening click as an outside click and dismissed it. Every combobox inside
+      # a dialog or sheet stopped opening, in real Chromium, not just jsdom. 28 of 55 internals
+      # were duplicated; `npm dedupe` cannot repair it because the un-bumped packages' ranges
+      # genuinely cannot reach the new internals. Bumping the family together dedupes to 0.
+      #
+      # Includes minors deliberately: a patch-only rule is exactly what caused the split.
+      radix:
+        patterns: ["@radix-ui/*"]
+        update-types: ["minor", "patch"]
       # Build/test tooling: vite, vitest, eslint, tailwind, playwright, types. Never ships to
       # a user, so these can move together and are safe to merge on a green CI run.
       dev-tooling:
