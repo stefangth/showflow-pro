@@ -53,6 +53,10 @@ understated. Phase 2 publishes the page. Phase 3 makes it live rather than stati
   `src/data/orgs.ts` each select only `user_id, display_name`; `fetchMyProfile` is scoped to
   the caller's own `user_id`; `platform-list-users` goes through the service-role client.
   The exposure is latent, not live.
+- **`profiles` has a fourth consumer that reads no phone but does depend on the policy.**
+  `src/features/auth/realtimeInvalidations.ts` subscribes to the table by name to refresh
+  chat author names. Realtime applies row-level security per subscriber, so the policy
+  change reaches it even though it never selects a column. Handled in Phase 1c, Step 5.
 - **Uptime history is durable and already computed.** `health_daily` is recomputed every 15
   minutes by the `health-rollup` cron, holds 30 days, recomputes whole days so it is
   idempotent, and declines to write when its source is unavailable. It is currently
@@ -169,11 +173,34 @@ Generated through the migration tool, never hand-edited.
 functions get vitest coverage with `src/test/supabaseFake.ts` first, asserting the RPC is
 called with the right arguments and the rows map correctly. Then the change.
 
-**Step 5, regenerate types** with `supabase gen types` plus `npm run sync:mirrors`, and run
+**Step 5, decide what happens to the realtime invalidation.** There is a fourth consumer
+that a grep for `.from('profiles')` does not find: `src/features/auth/realtimeInvalidations.ts`
+registers `{ table: 'profiles', keys: [['chat-author-profiles']] }`, feeding the query
+`ChatPanel.tsx` uses for author names. Supabase realtime applies row-level security per
+subscriber, so once the policy narrows, a member stops receiving change events for anyone
+else's row. The entry keeps working for your own row, which is the one case it is not
+needed for.
+
+The recommendation is to accept this rather than engineer around it. Display names change
+rarely, and the alternative is a broadcast channel carrying identity data, which is more
+machinery and more surface than the problem deserves. Concretely: leave the entry in place,
+give the new RPC-backed query in `ChatPanel` a sensible `staleTime` so names refresh on
+their own, and add a comment at that line in `realtimeInvalidations.ts` recording that it
+is intentionally self-only. Anyone reading the file later will otherwise assume it is
+broken.
+
+If instant propagation turns out to matter, the fallback is to invalidate on the existing
+`chat_messages` realtime entry instead, since a stale name is only visible next to a
+message.
+
+**Step 6, regenerate types** with `supabase gen types` plus `npm run sync:mirrors`, and run
 all three typecheck projects.
 
 **Verification before merge:** grep both repos for any remaining direct `profiles` read on a
-user-JWT client. If one exists that cannot move to the RPC, fall back to D4's alternative.
+user-JWT client, and separately check `realtimeInvalidations.ts` and any other place that
+names a table as a string rather than calling `.from()`. A grep for reads will not find a
+realtime subscription, which is how the one in Step 5 was nearly missed. If a consumer turns
+up that cannot move to the RPC, fall back to D4's alternative.
 
 ### 1d. Draft the AVV and the Art. 32 TOMs annex
 
@@ -287,8 +314,11 @@ tests at the category and trigger level.
 ## Risks
 
 - **Narrowing the `profiles` policy could break a read path not found in this sweep.**
-  Mitigated by the pre-merge grep and by D4's fallback. Realtime respects RLS, so a
-  subscription on `profiles` would also narrow; check for one during implementation.
+  One such path already exists and is handled in Step 5: the realtime subscription in
+  `realtimeInvalidations.ts`, which a grep for reads does not surface. That it was nearly
+  missed is the useful part of this risk, so the pre-merge check now covers table names
+  given as strings as well as `.from()` calls. D4's fallback remains if something else
+  turns up.
 - **The AVV is legal drafting and will not move at engineering pace.** It blocks Phase 2's
   documents section but nothing else. Start it at the top of Phase 1 and let the rest of
   the phase run alongside.
