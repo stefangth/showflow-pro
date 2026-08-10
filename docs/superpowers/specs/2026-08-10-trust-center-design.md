@@ -50,9 +50,16 @@ understated. Phase 2 publishes the page. Phase 3 makes it live rather than stati
 - **Nothing in the product actually reads another user's `profiles.phone`.** Verified across
   both repos: `list_org_members` returns `display_name`, `email`, `roles`,
   `last_sign_in_at` and no phone; `ChatPanel`, `src/data/settingsAudit.ts`, and
-  `src/data/orgs.ts` each select only `user_id, display_name`; `fetchMyProfile` is scoped to
-  the caller's own `user_id`; `platform-list-users` goes through the service-role client.
-  The exposure is latent, not live.
+  `src/data/orgs.ts` each select only `user_id, display_name`; `platform-list-users` goes
+  through the service-role client. The exposure is latent, not live.
+- **`fetchMyProfile` is the one function that does select `phone`, and it is worth being
+  precise about.** It is an ordinary `fetchX(client, args)` function taking `userId` as a
+  parameter, not a function that scopes itself to the caller. Its only call site,
+  `useMyProfile.ts`, passes the signed-in user's id, and row-level security is what actually
+  stops it returning someone else's row. Today that policy would permit a co-org read if it
+  were ever called with another id. After 1c it cannot. This is an argument for the fix
+  rather than against it, but the sweep should not be read as saying the function guards
+  itself.
 - **`profiles` has a fourth consumer that reads no phone but does depend on the policy.**
   `src/features/auth/realtimeInvalidations.ts` subscribes to the table by name to refresh
   chat author names. Realtime applies row-level security per subscriber, so the policy
