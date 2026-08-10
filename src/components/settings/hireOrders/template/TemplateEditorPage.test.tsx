@@ -105,6 +105,20 @@ async function savedThemeValue(): Promise<HireOrderThemeOverride> {
   });
 }
 
+/** Waits until the page has SEEDED its drafts from the settings queries, not
+ *  merely rendered them. The seeding runs in an effect, so it lands a commit
+ *  AFTER the outline first appears: waiting on the outline alone lets a Save
+ *  fire against a still-empty `themeDraft` and persist `{}` over the org's real
+ *  theme. That window is sub-frame for a human but trivially reachable by a
+ *  test, and it is timing-dependent - it stayed closed under one set of
+ *  rendering costs and opened under another when the Radix primitives moved.
+ *  Every caller below seeds a feeLabel override, so the outline's "modified"
+ *  marker for that role is a signal that themeDraft actually holds the stored
+ *  theme, rather than a sleep that happens to be long enough. */
+function awaitSeededDraft() {
+  return screen.findByRole("button", { name: /Fee row label, modified/ });
+}
+
 describe("templateMeta", () => {
   it("places every theme role in exactly one section", () => {
     const placed = TEMPLATE_SECTIONS.flatMap((s) => s.roles.map((r) => r.key));
@@ -211,9 +225,7 @@ describe("TemplateEditorPage", () => {
     it("drops a role hollowed out by field-by-field clearing, keeping an unrelated real override", async () => {
       seedTheme({ roles: { totalLabel: {}, feeLabel: { weight: 500 } } });
       renderPage();
-      await waitFor(() =>
-        expect(screen.getByRole("navigation", { name: "Document outline" })).toBeInTheDocument(),
-      );
+      await awaitSeededDraft();
       fireEvent.click(screen.getByRole("button", { name: "Save template" }));
 
       const value = await savedThemeValue();
@@ -224,9 +236,7 @@ describe("TemplateEditorPage", () => {
     it("drops an empty base, keeping a real role override", async () => {
       seedTheme({ base: {}, roles: { feeLabel: { weight: 500 } } });
       renderPage();
-      await waitFor(() =>
-        expect(screen.getByRole("navigation", { name: "Document outline" })).toBeInTheDocument(),
-      );
+      await awaitSeededDraft();
       fireEvent.click(screen.getByRole("button", { name: "Save template" }));
 
       const value = await savedThemeValue();
@@ -237,9 +247,7 @@ describe("TemplateEditorPage", () => {
     it("keeps a real base and a real role override intact", async () => {
       seedTheme({ base: { scale: 1.1 }, roles: { feeLabel: { weight: 500 } } });
       renderPage();
-      await waitFor(() =>
-        expect(screen.getByRole("navigation", { name: "Document outline" })).toBeInTheDocument(),
-      );
+      await awaitSeededDraft();
       fireEvent.click(screen.getByRole("button", { name: "Save template" }));
 
       const value = await savedThemeValue();
@@ -253,9 +261,7 @@ describe("TemplateEditorPage", () => {
     it("compacts the theme override sent by Open exact PDF, like the copy beside it", async () => {
       seedTheme({ base: {}, roles: { totalLabel: {}, feeLabel: { weight: 500 } } });
       renderPage();
-      await waitFor(() =>
-        expect(screen.getByRole("navigation", { name: "Document outline" })).toBeInTheDocument(),
-      );
+      await awaitSeededDraft();
       fireEvent.click(screen.getByRole("button", { name: "Open exact PDF" }));
 
       const body = await waitFor(() => {
