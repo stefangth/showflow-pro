@@ -114,9 +114,20 @@ async function savedThemeValue(): Promise<HireOrderThemeOverride> {
  *  rendering costs and opened under another when the Radix primitives moved.
  *  Every caller below seeds a feeLabel override, so the outline's "modified"
  *  marker for that role is a signal that themeDraft actually holds the stored
- *  theme, rather than a sleep that happens to be long enough. */
+ *  theme, rather than a sleep that happens to be long enough.
+ *
+ *  Queried by TEXT, not by role+name. The ", modified" suffix is plain visible
+ *  text inside the outline button, so both locate the same node - but this page
+ *  renders 41 buttons and a role+name query recomputes the accessible name of
+ *  every one of them on each attempt: 189ms per query, against 1ms for the text
+ *  query (measured on this page). Inside a findBy* retry loop that is actively
+ *  self-defeating, because one attempt blocks the event loop for longer than the
+ *  50ms poll interval and so delays the very effect being waited on. It burned
+ *  the whole 5s test timeout on CI instead of failing cleanly, which is how it
+ *  reached main looking like an unrelated flake. Keep expensive role+name
+ *  queries out of polling loops. */
 function awaitSeededDraft() {
-  return screen.findByRole("button", { name: /Fee row label, modified/ });
+  return screen.findByText(/Fee row label, modified/);
 }
 
 describe("templateMeta", () => {
