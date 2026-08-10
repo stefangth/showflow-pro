@@ -11,6 +11,7 @@ import {
 import { FlowPresets } from "@/components/settings/bookingFlow/FlowPresets";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
 import type { Json } from "@/integrations/supabase/types";
 
@@ -27,7 +28,7 @@ const CHIP_TONE: Record<LifecycleChip["tone"], string> = {
  *  consequences (the real policy, not static prose), save through the settings path. */
 export function FlowStep({ orgId, onDone }: { orgId: string | null; onDone: () => void }) {
   const qc = useQueryClient();
-  const { data: flow } = useBookingFlow();
+  const { data: flow, isError, error } = useBookingFlow();
   const { data: times } = useFlowTimes(orgId);
   const base = flow ?? BOOKING_FLOW_DEFAULTS;
   const t = times ?? DEFAULT_FLOW_TIMES;
@@ -60,6 +61,19 @@ export function FlowStep({ orgId, onDone }: { orgId: string | null; onDone: () =
     onError: (e: Error) => toast.error(e.message),
   });
 
+  // A failed read must say so rather than fall through to the presets scored against
+  // BOOKING_FLOW_DEFAULTS, and must not fall through to the skeleton below either --
+  // `data` stays undefined once React Query has exhausted its retries, so that would
+  // be a permanent dead end in the rail. Same guard as LetterheadStep/CountersignStep.
+  if (isError) {
+    return (
+      <Alert variant="destructive">
+        <AlertDescription>
+          Could not load the booking flow. {(error as Error)?.message}
+        </AlertDescription>
+      </Alert>
+    );
+  }
   // Nothing to derive from while the read is in flight: the presets would be scored
   // against BOOKING_FLOW_DEFAULTS rather than the org's own flow, and Save would
   // persist that. Withhold until the flow exists. Skipped without an active org (a

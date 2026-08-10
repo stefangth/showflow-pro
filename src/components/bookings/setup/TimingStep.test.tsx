@@ -2,15 +2,21 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { screen, fireEvent, waitFor } from "@testing-library/react";
 import { renderWithProviders } from "@/test/renderWithProviders";
 
-const { upsertOrgSetting, timesRef } = vi.hoisted(() => ({
+const { upsertOrgSetting, timesRef, timesErrorRef } = vi.hoisted(() => ({
   upsertOrgSetting: vi.fn(() => Promise.resolve()),
   // Ref-held so a test can put the query back in its loading state (data
-  // undefined), which is where the step used to offer a Save.
+  // undefined), which is where the step used to offer a Save, or into its
+  // error state, where data is undefined FOREVER.
   timesRef: { value: { windowHours: 48, offerDigestHour: 19, confirmationDigestHour: 20 } as unknown },
+  timesErrorRef: { value: null as Error | null },
 }));
 vi.mock("@/data/settings", () => ({ upsertOrgSetting }));
 vi.mock("@/hooks/useBookingFlow", () => ({
-  useFlowTimes: () => ({ data: timesRef.value }),
+  useFlowTimes: () => ({
+    data: timesRef.value,
+    isError: Boolean(timesErrorRef.value),
+    error: timesErrorRef.value,
+  }),
 }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: {} }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
@@ -20,6 +26,7 @@ import { toast } from "sonner";
 
 beforeEach(() => {
   timesRef.value = { windowHours: 48, offerDigestHour: 19, confirmationDigestHour: 20 };
+  timesErrorRef.value = null;
   upsertOrgSetting.mockClear();
   vi.mocked(toast.success).mockClear();
   vi.mocked(toast.error).mockClear();
@@ -80,5 +87,20 @@ describe("TimingStep", () => {
     renderWithProviders(<TimingStep orgId={null} onDone={() => {}} />);
 
     expect(screen.getByRole("button", { name: /save timing/i })).toBeDisabled();
+  });
+
+  // Withholding the panel until the read lands turns a failed read into an
+  // indefinite skeleton, because `data` stays undefined once React Query has
+  // exhausted its retries -- a silent dead end in the rail with nothing to explain
+  // it. The siblings fixed alongside this one (LetterheadStep, CountersignStep)
+  // already show an alert for the same case.
+  it("surfaces the failed read instead of holding the skeleton forever", () => {
+    timesRef.value = undefined;
+    timesErrorRef.value = new Error("permission denied");
+    renderWithProviders(<TimingStep orgId="org-1" onDone={() => {}} />);
+
+    expect(screen.getByRole("alert")).toHaveTextContent(/could not load the timing/i);
+    expect(screen.getByRole("alert")).toHaveTextContent("permission denied");
+    expect(screen.queryByRole("button", { name: /save timing/i })).not.toBeInTheDocument();
   });
 });
