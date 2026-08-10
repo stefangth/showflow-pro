@@ -17,6 +17,18 @@ updates:
     commit-message:
       prefix: "deps"
       prefix-development: "deps-dev"
+    # TypeScript majors are held back by the lint toolchain, not by preference. Every
+    # published typescript-eslint (8.66.0 as of Aug 2026) still peers `typescript <6.1.0`,
+    # so a bump to 7.x leaves `npm ci` unresolvable: PR #247 failed lint, typecheck, unit,
+    # e2e AND the Vercel preview at dependency resolution, before one build step ran. There
+    # is no version of the toolchain that accepts it, so the PR could not be made green by
+    # bumping anything alongside it. Closing it alone would not hold — Dependabot re-raises
+    # a closed PR for the next version, so 7.0.3 would return this Monday.
+    # Remove this entry once typescript-eslint's peer range admits the major you want;
+    # nothing else will remind you, which is the accepted cost of the ignore.
+    ignore:
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
     groups:
       # Build/test tooling: vite, vitest, eslint, tailwind, playwright, types. Never ships to
       # a user, so these can move together and are safe to merge on a green CI run.

@@ -33,9 +33,20 @@ jobs:
     # A fork PR cannot see repository secrets, so the job would fail on a missing
     # token rather than on real drift. Skip it there instead of showing a red check
     # that says nothing about the migrations.
+    #
+    # Dependabot PRs are skipped for the same reason via a different route: GitHub runs
+    # them against the *Dependabot* secret store rather than the Actions one, so
+    # SUPABASE_ACCESS_TOKEN arrives empty and every Dependabot PR fails on the token
+    # instead of on drift. The fork guard above does not catch this, because Dependabot
+    # branches live in this repo and so pass the `head.repo.full_name` test. Copying a
+    # production Supabase token into that second store would hand it to dependency-update
+    # runs to satisfy a check a lockfile bump can never fail — drift comes from applying
+    # out of band, which Dependabot does not do. Scoped to `pull_request` so the
+    # post-merge alarm on `push` keeps running unconditionally.
     if: >-
       github.event_name != 'pull_request' ||
-      github.event.pull_request.head.repo.full_name == github.repository
+      (github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.user.login != 'dependabot[bot]')
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
