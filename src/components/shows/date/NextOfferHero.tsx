@@ -56,10 +56,12 @@ function buildBodySentence(
   requiredSkillNames: string[],
 ): string {
   const label = targetLabel(target);
-  const skillList = requiredSkillNames.length > 0 ? requiredSkillNames.join(", ") : "no required skills";
   const artistWord = counts.castTotal === 1 ? "artist" : "artists";
-  const haveWord = counts.matchCount === 1 ? "has" : "have";
-  const first = `${counts.matchCount} of ${counts.castTotal} ${artistWord} in ${label} ${haveWord} ${skillList}.`;
+  // With no required skills, "have {skillList}" would read "have no required skills"
+  // (as if the artists lacked skills); state availability instead.
+  const first = requiredSkillNames.length > 0
+    ? `${counts.matchCount} of ${counts.castTotal} ${artistWord} in ${label} ${counts.matchCount === 1 ? "has" : "have"} ${requiredSkillNames.join(", ")}.`
+    : `${counts.matchCount} of ${counts.castTotal} ${artistWord} in ${label} ${counts.matchCount === 1 ? "is" : "are"} available.`;
 
   const priorTier = target.tier - 1;
   if (priorTier <= 0) {
@@ -113,7 +115,7 @@ export function NextOfferHero({
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1">
             <p className="text-xs font-semibold uppercase tracking-wide text-accent-700">
-              NEXT OFFER · TIER {target.tier}
+              NEXT OFFER · {target.tier === 99 ? "AD-HOC CASTS" : `TIER ${target.tier}`}
             </p>
             <p className="font-display text-xl font-semibold tracking-tight text-foreground">{title}</p>
           </div>
@@ -144,7 +146,7 @@ export function NextOfferHero({
         )}
 
         <div className="flex flex-wrap items-center gap-2 pt-1">
-          <Button type="button" onClick={onOpen}>{primaryLabel}</Button>
+          <Button type="button" onClick={onOpen} disabled={counts.matchCount === 0}>{primaryLabel}</Button>
           <Button type="button" variant="ghost" size="sm" onClick={onSeeArtists}>
             See the {counts.matchCount} artists
           </Button>

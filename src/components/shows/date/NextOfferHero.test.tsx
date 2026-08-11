@@ -71,7 +71,8 @@ describe("NextOfferHero", () => {
     renderHero({ target: { kind: "tier", tier: 99 }, counts: { ...CAST_COUNTS, tier: 99 } });
 
     expect(screen.getByText("Ad-hoc casts")).toBeInTheDocument();
-    expect(screen.getByText("NEXT OFFER · TIER 99")).toBeInTheDocument();
+    expect(screen.getByText("NEXT OFFER · AD-HOC CASTS")).toBeInTheDocument();
+    expect(screen.queryByText("NEXT OFFER · TIER 99")).not.toBeInTheDocument();
   });
 
   it("shows the eyebrow with the next tier number", () => {
