@@ -218,6 +218,17 @@ Verify at 375, 768, 1024, 1280 and 1440 in both themes before reporting DONE.
    currently renders as unstyled body text under the toggle and reads as leftover
    markup.
 
+7. **Land the two contract fields Task 5 added, in this same change.** APP
+   `facts.ts` split the cross-org matrix claim into a short cell plus a
+   qualifying footnote, so `public/trust.json` now carries
+   `crossOrgExceptionsNote` and a per-cell `qualifiedByExceptionsNote`.
+   Regenerating LAND's `trustFallback.ts` **without** also rendering them
+   publishes the unqualified over-claim ("a restrictive policy on every table")
+   with its four exclusions dropped. Regenerate and render must ship together.
+   Mirror the in-app treatment: a visible marker on the qualified cell, the
+   footnote below the matrix, and a programmatic association between them in
+   every rendering the page has (wide table and any restacked form).
+
 ## Task 7 — Density and rhythm
 
 Blind-verdict gaps 1, 3, 8, 10 (the parts that are not open items), and
