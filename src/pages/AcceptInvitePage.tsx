@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, KeyRound, Mail } from 'lucide-react';
 import { useAuth } from '@/features/auth/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { acceptInvitation, exchangeInvitation, InvitationExchangeError } from '@/data/invitations';
@@ -18,6 +18,8 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import { StageMark } from '@/components/brand/StageMark';
+import { usePasswordStatus } from '@/hooks/usePasswordStatus';
+import { PasswordSetupForm } from '@/components/auth/PasswordSetupForm';
 
 interface AcceptInviteError {
   message: string;
@@ -205,6 +207,110 @@ interface JoinedState {
    *  that and stop asserting facts (org name, role) that were only ever true for the
    *  person who actually accepted. */
   userId: string;
+}
+
+function PostAcceptanceHandoff({
+  dashboardIsDeadEnd,
+  onDashboard,
+}: {
+  dashboardIsDeadEnd: boolean;
+  onDashboard: () => void;
+}) {
+  const passwordStatus = usePasswordStatus();
+  const [showSetup, setShowSetup] = useState(false);
+  const [setupComplete, setSetupComplete] = useState(false);
+  const setupContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!showSetup) return;
+    const heading = setupContainerRef.current?.querySelector<HTMLElement>('h1, h2, h3, h4, h5, h6');
+    heading?.setAttribute('tabindex', '-1');
+    heading?.focus();
+  }, [showSetup]);
+
+  if (passwordStatus.isLoading) {
+    return <Skeleton aria-label="Checking sign-in methods" className="mx-auto h-11 w-full" />;
+  }
+
+  if (passwordStatus.isError) {
+    return (
+      <>
+        <p role="status" className="text-sm text-muted-foreground">
+          Your invitation was accepted. You can manage sign-in methods from your profile.
+        </p>
+        <Button variant={dashboardIsDeadEnd ? 'outline' : 'default'} onClick={onDashboard}>
+          Go to dashboard
+        </Button>
+      </>
+    );
+  }
+
+  if (passwordStatus.data || setupComplete) {
+    return (
+      <>
+        {setupComplete && (
+          <p role="status" className="text-sm font-medium text-foreground">
+            Your password is ready. You can also keep using magic links.
+          </p>
+        )}
+        <Button variant={dashboardIsDeadEnd ? 'outline' : 'default'} onClick={onDashboard}>
+          Go to dashboard
+        </Button>
+      </>
+    );
+  }
+
+  return (
+    <>
+      {!showSetup && (
+        <div data-testid="sign-in-choices" className="space-y-3 text-left">
+          <p className="text-center text-sm font-medium text-foreground">
+            How would you like to sign in next time?
+          </p>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <Button
+              type="button"
+              variant="outline"
+              aria-pressed="false"
+              className="min-h-11 h-auto justify-start whitespace-normal px-3 py-3 text-left transition-colors motion-reduce:transition-none focus-visible:ring-2"
+              onClick={() => setShowSetup(true)}
+            >
+              <KeyRound aria-hidden="true" className="shrink-0" />
+              <span><span className="block">Create a password</span><span className="block text-xs font-normal text-muted-foreground">Add it now, without changing your magic links.</span></span>
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              aria-pressed="false"
+              className="min-h-11 h-auto justify-start whitespace-normal px-3 py-3 text-left transition-colors motion-reduce:transition-none focus-visible:ring-2"
+              onClick={onDashboard}
+            >
+              <Mail aria-hidden="true" className="shrink-0" />
+              <span><span className="block">Continue with magic links</span><span className="block text-xs font-normal text-muted-foreground">Use email links now and add a password later.</span></span>
+            </Button>
+          </div>
+        </div>
+      )}
+      {showSetup && (
+        <div
+          ref={setupContainerRef}
+          aria-live="polite"
+          className="animate-in fade-in-0 duration-200 motion-reduce:animate-none text-left"
+        >
+          <PasswordSetupForm
+            mode="setup"
+            onSuccess={() => { setSetupComplete(true); setShowSetup(false); }}
+            onCancel={() => setShowSetup(false)}
+          />
+        </div>
+      )}
+      {!showSetup && (
+        <Button variant={dashboardIsDeadEnd ? 'outline' : 'default'} onClick={onDashboard}>
+          Go to dashboard
+        </Button>
+      )}
+    </>
+  );
 }
 
 /**
@@ -418,6 +524,9 @@ export default function AcceptInvitePage() {
         <Card className="w-full max-w-md">
           <CardHeader className="text-center space-y-3">
             <div className="mx-auto"><StageMark variant="tile" size={52} /></div>
+            <div aria-label="Invitation accepted" className="mx-auto flex h-8 w-8 items-center justify-center rounded-full bg-success/10 text-success">
+              <CheckCircle2 aria-hidden="true" className="h-5 w-5" />
+            </div>
             <CardTitle className="font-display text-2xl font-semibold tracking-tight">
               You've joined {orgName}
             </CardTitle>
@@ -471,12 +580,10 @@ export default function AcceptInvitePage() {
                 <Skeleton data-testid="next-step-line-loading" className="mx-auto h-4 w-3/4" />
               )
             )}
-            <Button
-              variant={dashboardIsDeadEnd ? 'outline' : 'default'}
-              onClick={() => navigate(ROUTES.DASHBOARD, { replace: true })}
-            >
-              Go to dashboard
-            </Button>
+            <PostAcceptanceHandoff
+              dashboardIsDeadEnd={dashboardIsDeadEnd}
+              onDashboard={() => navigate(ROUTES.DASHBOARD, { replace: true })}
+            />
           </CardContent>
         </Card>
       </div>

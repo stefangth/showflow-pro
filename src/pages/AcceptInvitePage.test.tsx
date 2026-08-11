@@ -152,6 +152,27 @@ vi.mock("@/hooks/useBookingSetup", () => ({
   useBookingSetupStatus: (orgId: string | null) => bookingSetupStatusMock(orgId),
 }));
 
+const passwordStatusHolder: { data: boolean | undefined; isLoading: boolean; isError: boolean } = {
+  data: true,
+  isLoading: false,
+  isError: false,
+};
+const passwordStatusMock = vi.fn(() => passwordStatusHolder);
+vi.mock("@/hooks/usePasswordStatus", () => ({
+  usePasswordStatus: () => passwordStatusMock(),
+}));
+
+vi.mock("@/components/auth/PasswordSetupForm", () => ({
+  PasswordSetupForm: ({ onSuccess, onCancel }: { onSuccess: () => void; onCancel?: () => void }) => (
+    <section aria-labelledby="password-setup-heading">
+      <h3 id="password-setup-heading" tabIndex={-1}>Set a password</h3>
+      <p role="alert">Password requirements</p>
+      <button onClick={onSuccess}>Complete password setup</button>
+      <button onClick={onCancel}>Cancel</button>
+    </section>
+  ),
+}));
+
 const org1: Organization = { id: "org-1", name: "Riverside Opera", slug: "riverside", status: "active" };
 const oldOrg: Organization = { id: "org-0", name: "Old Org", slug: "old-org", status: "active" };
 
@@ -207,6 +228,10 @@ beforeEach(() => {
   bookingSetupHolder.complete = false;
   bookingSetupLoadingHolder.loading = false;
   bookingSetupStatusMock.mockClear();
+  passwordStatusHolder.data = true;
+  passwordStatusHolder.isLoading = false;
+  passwordStatusHolder.isError = false;
+  passwordStatusMock.mockClear();
   hooksMode.real = false;
   authState = {
     user: { id: "u1", email: "singer@example.com" },
@@ -366,6 +391,101 @@ describe("AcceptInvitePage error paths (unchanged)", () => {
 });
 
 describe("AcceptInvitePage success screen", () => {
+  describe("calm sign-in handoff", () => {
+    it("queries password status only after membership acceptance succeeds", async () => {
+      let resolveAcceptance!: (value: { orgId: string; artistLinked: boolean }) => void;
+      acceptInvitationMock.mockReturnValue(new Promise((resolve) => { resolveAcceptance = resolve; }));
+      renderAt(`${ROUTES.ACCEPT_INVITE}?token=abc123`);
+      expect(passwordStatusMock).not.toHaveBeenCalled();
+      resolveAcceptance({ orgId: org1.id, artistLinked: true });
+      await screen.findByRole("heading", { name: /you've joined/i });
+      expect(passwordStatusMock).toHaveBeenCalled();
+    });
+
+    it("offers passwordless users two equal, unselected sign-in choices", async () => {
+      passwordStatusHolder.data = false;
+      acceptInvitationMock.mockResolvedValueOnce({ orgId: org1.id, artistLinked: true });
+      renderAt(`${ROUTES.ACCEPT_INVITE}?token=abc123`);
+      const create = await screen.findByRole("button", { name: /create a password/i });
+      const magic = screen.getByRole("button", { name: /continue with magic links/i });
+      expect(create.className).toBe(magic.className);
+      expect(create).toHaveAttribute("aria-pressed", "false");
+      expect(magic).toHaveAttribute("aria-pressed", "false");
+      expect(create.className).toContain("min-h-11");
+      expect(create.className).toContain("focus-visible:ring-2");
+      expect(create.className).toContain("motion-reduce:transition-none");
+    });
+
+    it("opens password setup inline, retains invite context, and moves focus to its heading", async () => {
+      passwordStatusHolder.data = false;
+      acceptInvitationMock.mockResolvedValueOnce({ orgId: org1.id, artistLinked: true });
+      renderAt(`${ROUTES.ACCEPT_INVITE}?token=abc123`);
+      fireEvent.click(await screen.findByRole("button", { name: /create a password/i }));
+      const heading = screen.getByRole("heading", { name: /set a password/i });
+      await waitFor(() => expect(heading).toHaveFocus());
+      expect(screen.getByRole("heading", { name: /you've joined riverside opera/i })).toBeInTheDocument();
+      expect(screen.getByLabelText(/invitation accepted/i)).toBeInTheDocument();
+      expect(screen.getByText(/your role: admin/i)).toBeInTheDocument();
+      expect(screen.getByText(/password requirements/i).closest('[aria-live="polite"]')).toBeInTheDocument();
+    });
+
+    it("keeps the stored token when membership acceptance fails", async () => {
+      acceptInvitationMock.mockRejectedValueOnce(new Error("Invitation expired"));
+      renderAt(`${ROUTES.ACCEPT_INVITE}?token=abc123`);
+      await screen.findByText(/invalid or has expired/i);
+      expect(sessionStorage.getItem("showflow.pendingInvitationToken")).toBe("abc123");
+    });
+
+    it("keeps the current dashboard action for users who already have a password", async () => {
+      acceptInvitationMock.mockResolvedValueOnce({ orgId: org1.id, artistLinked: true });
+      renderAt(`${ROUTES.ACCEPT_INVITE}?token=abc123`);
+      expect(await screen.findByRole("button", { name: /go to dashboard/i })).toBeInTheDocument();
+      expect(screen.queryByText(/sign in next time/i)).not.toBeInTheDocument();
+    });
+
+    it("continues with magic links directly to the dashboard", async () => {
+      passwordStatusHolder.data = false;
+      acceptInvitationMock.mockResolvedValueOnce({ orgId: org1.id, artistLinked: true });
+      renderAt(`${ROUTES.ACCEPT_INVITE}?token=abc123`);
+      fireEvent.click(await screen.findByRole("button", { name: /continue with magic links/i }));
+      expect(navigateSpy).toHaveBeenCalledWith(ROUTES.DASHBOARD, { replace: true });
+    });
+
+    it("confirms successful password setup before offering the dashboard", async () => {
+      passwordStatusHolder.data = false;
+      acceptInvitationMock.mockResolvedValueOnce({ orgId: org1.id, artistLinked: true });
+      renderAt(`${ROUTES.ACCEPT_INVITE}?token=abc123`);
+      fireEvent.click(await screen.findByRole("button", { name: /create a password/i }));
+      fireEvent.click(screen.getByRole("button", { name: /complete password setup/i }));
+      expect(screen.getByRole("status")).toHaveTextContent(/password is ready/i);
+      fireEvent.click(screen.getByRole("button", { name: /go to dashboard/i }));
+      expect(navigateSpy).toHaveBeenCalledWith(ROUTES.DASHBOARD, { replace: true });
+    });
+
+    it("treats password-status failure as non-blocking without guessing", async () => {
+      passwordStatusHolder.data = undefined;
+      passwordStatusHolder.isError = true;
+      acceptInvitationMock.mockResolvedValueOnce({ orgId: org1.id, artistLinked: true });
+      renderAt(`${ROUTES.ACCEPT_INVITE}?token=abc123`);
+      expect(await screen.findByText("Your invitation was accepted. You can manage sign-in methods from your profile.")).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /create a password/i })).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /go to dashboard/i })).toBeInTheDocument();
+    });
+
+    it("keeps mobile DOM order as context, choices, then action and never mentions methods before acceptance", async () => {
+      passwordStatusHolder.data = false;
+      let resolveAcceptance!: (value: { orgId: string; artistLinked: boolean }) => void;
+      acceptInvitationMock.mockReturnValue(new Promise((resolve) => { resolveAcceptance = resolve; }));
+      renderAt(`${ROUTES.ACCEPT_INVITE}?token=abc123`);
+      expect(screen.queryByText(/sign in next time/i)).not.toBeInTheDocument();
+      resolveAcceptance({ orgId: org1.id, artistLinked: true });
+      const context = await screen.findByText(/your role: admin/i);
+      const choices = screen.getByTestId("sign-in-choices");
+      const action = screen.getByRole("button", { name: /go to dashboard/i });
+      expect(context.compareDocumentPosition(choices) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(choices.compareDocumentPosition(action) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+  });
   it("clears the pending token after signed-in acceptance succeeds", async () => {
     acceptInvitationMock.mockResolvedValueOnce({ orgId: org1.id, artistLinked: true });
     renderAt(`${ROUTES.ACCEPT_INVITE}?token=abc123`);
