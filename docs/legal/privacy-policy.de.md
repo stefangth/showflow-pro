@@ -1,6 +1,6 @@
 # Datenschutzerklärung
 
-_Stand: 28. Mai 2026_
+_Stand: 11. August 2026_
 
 Diese Datenschutzerklärung erläutert, wie ShowFlow Pro ("**wir**", "**uns**", "**ShowFlow Pro**") personenbezogene Daten verarbeitet, wenn Sie die Web-Anwendung von ShowFlow Pro und die zugehörigen transaktionalen E-Mails (zusammen der "**Dienst**") nutzen. Sie ist nach den Anforderungen der Artikel 12–14 der Datenschutz-Grundverordnung (DSGVO) und § 25 des Telekommunikation-Telemedien-Datenschutz-Gesetzes (TTDSG) verfasst.
 
@@ -92,9 +92,12 @@ Darüber hinaus setzen wir folgende Auftragsverarbeiter gemäß Art. 28 DSGVO ei
 | Supabase Inc. | Datenbank, Authentifizierung, Datei-Speicher, Edge Functions | USA und EU-Regionen | Nutzung der EU-Region, soweit verfügbar; Zertifizierung nach dem EU-US Data Privacy Framework (DPF) und EU-Standardvertragsklauseln (SCC) für US-Übermittlungen. |
 | Resend, Inc. | Transaktionaler E-Mail-Versand | USA | DPF und SCC. |
 | Vercel, Inc. | Hosting der Web-Anwendung und Edge-Netzwerk | USA und EU | DPF und SCC. |
+| Google LLC | Auslieferung der Web-Schriften (Geist und Geist Mono, abgerufen von fonts.googleapis.com und fonts.gstatic.com) | USA | DPF und SCC. |
 | Airtable, Inc. | Show-Datensynchronisation (derzeit deaktiviert; wird aktiviert, sobald die Airtable-Integration in Betrieb geht) | USA | DPF und SCC. |
 | Functional Software, Inc. dba Sentry | Clientseitige Fehlerverfolgung | EU- und US-Regionen | EU-Region soweit verfügbar; DPF und SCC für US-Übermittlungen. |
 | PostHog, Inc. | Produktanalyse und Session-Replay | EU- und US-Regionen | EU-Region soweit verfügbar; DPF und SCC für US-Übermittlungen. |
+
+Die Web-Schriften werden bereits während des Seitenaufbaus abgerufen, also bevor eine Einwilligungsentscheidung gespeichert ist. Google erhält dadurch bei jedem Seitenaufruf Ihre IP-Adresse und Ihren User-Agent, auch auf den Seiten, die die Einwilligung abfragen. Der Abruf setzt kein Cookie und speichert nichts auf Ihrem Gerät.
 
 Wir verkaufen keine personenbezogenen Daten und geben sie nicht an Werbenetzwerke weiter.
 
@@ -117,12 +120,12 @@ Wir speichern Ihre personenbezogenen Daten nur so lange, wie es für die in dies
 
 - **Konto- und Profildaten:** für die Dauer Ihres Kontos zuzüglich 30 Tage nach Löschung, um versehentliche Löschungen wiederherstellen zu können.
 - **Buchungen und Audit-Log:** drei (3) Jahre ab dem jeweiligen Showtermin, zur kaufmännischen Beweisführung und Streitbeilegung.
-- **Chatnachrichten:** 30 Tage nach dem Showtermin in der Chat-Liste ausgeblendet (`CHAT_ARCHIVE_DAYS`); endgültige Löschung nach 12 Monaten. Admins behalten innerhalb des Archivzeitraums Lesezugriff.
+- **Chatnachrichten:** 30 Tage nach dem Showtermin in der Chat-Liste ausgeblendet (`CHAT_ARCHIVE_DAYS`); endgültige Löschung nach 12 Monaten. Die Datenbank gewährt Admins und dem Produktionsteam bis zur Löschung Zugriff auf einen Thread. Nach Ablauf des Archivzeitraums entfernt der Dienst den Thread für alle aus der Chat-Liste, zeigt Admins die Nachrichten nur noch lesend an und blendet die Nachrichten für das Produktionsteam aus.
 - **E-Mail-Versandprotokoll und Sperrliste:** 24 Monate, zur Berücksichtigung Ihres Abmeldewunsches und zur Wahrung der Absenderreputation.
 - **Hosting-/Supabase-Logs:** gemäß Standardrichtlinien unserer Anbieter (typischerweise 7–30 Tage).
 - **Sentry-Fehlerberichte:** 90 Tage.
 - **PostHog-Events und Session-Replays:** 12 Monate.
-- **Sicherungen (Backups):** rollierender 30-Tage-Zeitraum; in der Live-Datenbank gelöschte Daten werden innerhalb dieses Zeitraums auch aus Backups entfernt.
+- **Sicherungen (Backups):** Aufbewahrung höchstens 30 Tage; in der Live-Datenbank gelöschte Daten werden innerhalb dieses Zeitraums auch aus Backups entfernt. Dies ist eine Höchstspeicherdauer und keine Zusage, dass 30 Tage wiederherstellbarer Sicherungen vorgehalten werden.
 
 Nach Ablauf dieser Fristen werden die Daten gelöscht oder vollständig anonymisiert.
 

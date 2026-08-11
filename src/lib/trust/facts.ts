@@ -42,6 +42,22 @@ export interface MatrixRow {
   artist: AccessCell;
 }
 
+/** The cross-organisation answer, stated once for all three roles.
+ *
+ *  Written narrowly on purpose. "A restrictive policy on every table" is not
+ *  true and the evidence this page cites says so out loud:
+ *  supabase/tests/rls/org_coverage.sql:11-19 lists four org_id-carrying
+ *  tables it deliberately excludes from the org_isolation assertion. A
+ *  reviewer who greps org_isolation finds fewer tables than "every" promises
+ *  and stops trusting the rest of the page. The answer itself does not move:
+ *  all four still refuse the cross-organisation read, by a different
+ *  mechanism, and this says which. */
+const NO_CROSS_ORG_NOTE =
+  "A restrictive policy blocks the read on every table that carries your organisation's records. " +
+  "Four sit outside it by name: membership and invitation rows, which are checked against the same " +
+  "organisation instead because gating them on the membership they define would be circular, and two " +
+  "platform logs no organisation member can read at all.";
+
 /** Who can read what, and the mechanism that decides it.
  *  Each cell is asserted against the RLS policy that produces it. */
 export const VISIBILITY_MATRIX: MatrixRow[] = [
@@ -79,7 +95,11 @@ export const VISIBILITY_MATRIX: MatrixRow[] = [
   {
     object: "Hire-order fees",
     admin: { value: "Full", tone: "full", note: "Letterhead, numbering, and terms included." },
-    producer: { value: "Grant-gated", tone: "gated", note: "Issuing and voiding are sensitive rights, confirmed twice." },
+    producer: {
+      value: "Full",
+      tone: "full",
+      note: "Every hire order in this organisation, fee included. Issuing and voiding are separate sensitive rights.",
+    },
     artist: { value: "Own order", tone: "scoped", note: "Your own hire order and its PDF only." },
   },
   {
@@ -87,23 +107,108 @@ export const VISIBILITY_MATRIX: MatrixRow[] = [
     // is_chat_participant() returns true for any org admin or producer on any
     // chat in their org, and the INSERT policy calls the same function — so
     // neither role is read-only nor participant-limited.
-    admin: { value: "Full", tone: "full", note: "Any thread in this organisation. Hidden from the list 30 days after the show date." },
-    producer: { value: "Full", tone: "full", note: "Any thread in this organisation." },
+    //
+    // The archive window is an interface rule layered on top of that grant, and
+    // it is not symmetric: ChatPanel.tsx:141 returns a placeholder instead of
+    // the messages for every non-admin once the show date is more than
+    // CHAT_ARCHIVE_DAYS old, while an admin keeps the thread with the composer
+    // disabled (ChatPanel.tsx:160,187-193). ChatsListPage.tsx:33 drops it from
+    // the list for everyone. An earlier draft said the archive "only hides it
+    // from the chats list", which was false on both counts.
+    admin: {
+      value: "Full",
+      tone: "full",
+      note: "Any thread in this organisation. The database sets no time limit; 30 days after the show date the interface turns the thread read-only.",
+    },
+    producer: {
+      value: "Full",
+      tone: "full",
+      note: "Any thread in this organisation. The database sets no time limit; 30 days after the show date the interface stops showing the thread.",
+    },
     artist: { value: "Own dates", tone: "scoped", note: "Only threads for dates you are cast on." },
   },
   {
     object: "Booking audit log",
-    admin: { value: "Full", tone: "full", note: "Actor, action, reason, timestamp." },
-    producer: { value: "Read-only", tone: "scoped", note: "Writes to it and reads it. No policy allows altering a row." },
+    // Both roles hold the same SELECT and INSERT policies, so they get the
+    // same answer. See supabase/migrations/20260416115633_d565d983-e98a-468a
+    // -a272-cbac9f2bdb89.sql:267-273 for the symmetric SELECT grants.
+    admin: {
+      value: "Append-only",
+      tone: "scoped",
+      note: "Reads every row and appends new ones. No policy allows altering or deleting a row.",
+    },
+    producer: {
+      value: "Append-only",
+      tone: "scoped",
+      note: "Reads every row and appends new ones. No policy allows altering or deleting a row.",
+    },
     artist: { value: "No access", tone: "none", note: "Not exposed." },
   },
   {
     object: "Another organisation's data",
-    admin: { value: "No access", tone: "none", note: "A restrictive policy on every table blocks the read." },
-    producer: { value: "No access", tone: "none", note: "A restrictive policy on every table blocks the read." },
-    artist: { value: "No access", tone: "none", note: "A restrictive policy on every table blocks the read." },
+    // "Every table" was false and its own cited evidence said so:
+    // supabase/tests/rls/org_coverage.sql:11-19 names four org_id-carrying
+    // tables deliberately outside the org_isolation assertion. The outcome
+    // still holds on all four, which is why the value stays "No access":
+    // org_memberships / org_invitations are gated on is_org_member and
+    // has_org_role for the same org (20260603120000_add_platform_tables_and
+    // _org_helpers.sql:85-93), and platform_audit_log
+    // (20260723002902_platform_audit_log.sql:16-19) and email_send_log
+    // (20260710231816_email_delivery_tables.sql:65) grant SELECT to
+    // super-admins only, so no organisation member reads either one at all.
+    // The note now states the mechanism a reviewer will actually find.
+    admin: { value: "No access", tone: "none", note: NO_CROSS_ORG_NOTE },
+    producer: { value: "No access", tone: "none", note: NO_CROSS_ORG_NOTE },
+    artist: { value: "No access", tone: "none", note: NO_CROSS_ORG_NOTE },
   },
 ];
+
+export interface Subprocessor {
+  name: string;
+  purpose: string;
+  region: string;
+  transfer: string;
+  status: "Core" | "Consent" | "Off";
+  tone: AccessTone;
+}
+
+/** Mirrors section 5 of docs/legal/privacy-policy.en.md. Asserted by test.
+ *  Sentry and PostHog are "Off": the consent toggles exist in the UI, but
+ *  neither SDK is in the dependency tree today, so nothing is loaded even
+ *  after consent. Flip both to "Consent" the day the packages ship.
+ *
+ *  Google is here because the hero promises "every outside processor that
+ *  ever touches it" and this page's own network tab falsified that: both
+ *  index.html files load Geist and Geist Mono from fonts.googleapis.com and
+ *  fonts.gstatic.com (app index.html:32-34, landing index.html:53-55),
+ *  unconditionally and before the consent banner is answered, so Google LLC
+ *  receives every visitor's IP address and user agent on the trust page
+ *  itself. Naming it is the honest reading of the claim; the alternative is
+ *  to self-host the two families and drop this row. Status is "Core" because
+ *  no consent gate stands in front of it today, not because a webfont is
+ *  strictly necessary. */
+export const SUBPROCESSORS: Subprocessor[] = [
+  { name: "Supabase", purpose: "Database, authentication, storage", region: "EU · US", transfer: "EU region in use · DPF + SCCs", status: "Core", tone: "full" },
+  { name: "Vercel", purpose: "Application hosting, edge network", region: "EU · US", transfer: "DPF + SCCs", status: "Core", tone: "full" },
+  { name: "Resend", purpose: "Transactional email", region: "US", transfer: "DPF + SCCs", status: "Core", tone: "full" },
+  { name: "Google", purpose: "Web fonts (Geist, Geist Mono)", region: "US", transfer: "DPF + SCCs", status: "Core", tone: "full" },
+  { name: "Sentry", purpose: "Client error reports", region: "EU · US", transfer: "EU region where available · SCCs", status: "Off", tone: "none" },
+  { name: "PostHog", purpose: "Analytics, session replay", region: "EU · US", transfer: "EU region where available · SCCs", status: "Off", tone: "none" },
+  { name: "Airtable", purpose: "Show-data sync", region: "US", transfer: "DPF + SCCs", status: "Off", tone: "none" },
+];
+
+/** Derived, never hand-typed: the KPI tile and the documents-list meta line
+ *  both print this, and both must move automatically the day a processor is
+ *  added, removed, or its consent status changes.
+ *
+ *  The second half counts "Off", not "Consent". Splitting on "Consent" was
+ *  splitting on an empty set, so the KPI announced "0 consent-only" and said
+ *  nothing about the three processors that are named but process nothing
+ *  today — which is the number a reviewer scanning the hero actually needs,
+ *  and the one the table two sections down would otherwise contradict. */
+export const SUBPROCESSOR_SUMMARY = `${SUBPROCESSORS.length} named, ${
+  SUBPROCESSORS.filter((s) => s.status === "Off").length
+} not in use`;
 
 export interface Kpi {
   icon: string;
@@ -113,15 +218,65 @@ export interface Kpi {
 
 /** The four facts a reviewer scans first. Each is checkable. */
 export const TRUST_KPIS: Kpi[] = [
-  { icon: "lock", label: "Tenant isolation", value: "Row-level, asserted on every commit" },
+  { icon: "lock", label: "Tenant isolation", value: "Row-level, asserted on every pull request" },
   // Scoped to the database on purpose. The Postgres project is eu-west-1, but
   // hosting and transactional email are US processors under DPF + SCCs, so a
   // bare "Data residency: EU" would overclaim. The subprocessor table carries
   // the per-processor regions.
   { icon: "globe", label: "Database region", value: "European Union (Ireland)" },
-  { icon: "server", label: "Subprocessors", value: "6 named, 2 consent-only" },
+  { icon: "server", label: "Subprocessors", value: SUBPROCESSOR_SUMMARY },
   { icon: "users", label: "Access control", value: "28 rights, 9 sensitive, 9 off by default" },
 ];
+
+export interface RetentionRow {
+  item: string;
+  period: string;
+}
+
+/** Mirrors section 7 of docs/legal/privacy-policy.en.md. Asserted by test.
+ *  The first three are the ones people actually ask about; the summary view
+ *  on the public page shows only those.
+ *
+ *  Defined ahead of CONTROLS so the Auditability control can quote this
+ *  table's own retention period instead of restating it as a second literal. */
+export const RETENTION: RetentionRow[] = [
+  { item: "Bookings and audit log", period: "3 years from show date" },
+  { item: "Show-date chat", period: "Archived 30 days · deleted 12 months" },
+  // A ceiling, not a window. The Supabase organisation behind this deployment
+  // is on the free plan, which carries no restorable daily-backup window at
+  // all (daily backups start at Pro, and 30 days of them needs Enterprise or
+  // the PITR add-on). "Rolling 30 days" read as a durability promise nobody
+  // could keep. What is true, and what section 7 now states, is the deletion
+  // ceiling: nothing the provider holds outlives 30 days.
+  { item: "Backups", period: "No longer than 30 days" },
+  { item: "Account and profile", period: "Life of account + 30 days" },
+  { item: "Email send log and suppressions", period: "24 months" },
+  { item: "Hosting and database logs", period: "7–30 days" },
+  // Sentry and PostHog are "Off" (see SUBPROCESSORS below): neither SDK ships
+  // today, so nothing is collected yet. The periods below are what the
+  // privacy policy commits to for the day either is switched on, not a
+  // description of current collection — the qualifier says so rather than
+  // publishing a live-sounding number for a control that is not live.
+  { item: "Error reports", period: "90 days, once error tracking is enabled" },
+  { item: "Analytics and session replay", period: "12 months, once analytics is enabled" },
+];
+
+/** The one concession this page makes about enforcement, stated once.
+ *
+ *  It was hand-written three times — here, in CapabilitiesCard.tsx, and as a
+ *  JSX literal in the landing repo's Trust.tsx, which is outside trust.json
+ *  and therefore outside every drift gate. That is the worst possible claim
+ *  to duplicate: the day one of those three rights gains a database policy,
+ *  the public page keeps publishing a gap that has been closed, with CI
+ *  green. It now ships in the contract as `capabilities.note`
+ *  (scripts/build-trust-json.mjs) so both surfaces render the same string.
+ *
+ *  The set is exactly `archive_productions`, `reorder_productions` and
+ *  `edit_scheduling`: the only entries in src/lib/capabilities.ts with
+ *  neither an is_capability_enabled call in SQL nor a requireCapability in an
+ *  edge function. */
+export const CAPABILITY_INTERFACE_ONLY_NOTE =
+  "Three rights that reorder or archive the production catalog and edit its scheduling are enforced by the interface today, not yet by a database policy.";
 
 export interface Control {
   icon: string;
@@ -136,18 +291,27 @@ export const CONTROLS: Control[] = [
   {
     icon: "lock",
     title: "Tenant isolation",
+    // "One restrictive database policy per table" said more than the cited
+    // test does: org_coverage.sql names four org_id-carrying tables it
+    // excludes on purpose. Naming them here costs a clause and keeps the
+    // claim checkable against the file it points at. See NO_CROSS_ORG_NOTE.
     claim:
-      "Every table holding your data carries its organisation, down to individual chat messages and audit rows. One restrictive database policy per table means a session reads only organisations it belongs to. Restrictive policies filter; they never grant.",
+      "Every table holding your data carries its organisation, down to individual chat messages and audit rows. One restrictive database policy on each of them means a session reads only organisations it belongs to. Four tables sit outside that policy by name, and refuse the cross-organisation read another way: membership and invitation rows are checked against the same organisation, and two platform logs are readable by no organisation member. Restrictive policies filter; they never grant.",
     evidence:
-      "supabase/tests/rls/org_isolation.sql asserts org A reads and writes zero rows of org B, even holding a global producer role. It runs on every pull request.",
+      "supabase/tests/rls/org_isolation.sql asserts org A reads and writes zero rows of org B on shows and show_dates, even holding a global producer role. supabase/tests/rls/org_coverage.sql confirms the same restrictive policy exists on every table in its list, including chat_messages and booking_audit_log, and names the four it excludes with the reason for each. Both run on every pull request.",
   },
   {
     icon: "users",
     title: "Roles and rights",
+    // The "two nines are different sets" clause lives in `claim`, not
+    // `evidence`, on purpose: the public page renders `evidence` only in Full
+    // inventory mode, and Summary is what a reviewer lands on. Left in
+    // `evidence` it produced exactly the conflation this build exists to kill:
+    // two nines side by side reading as one set.
     claim:
-      "Three roles per organisation. Every read and write is authorised in the database; the interface only decides what to draw. Nine rights are marked sensitive and ask for a second confirmation before they take effect. Nine ship switched off until an administrator turns them on.",
+      `Three roles per organisation. Every read is authorised in the database. Most writes are too. ${CAPABILITY_INTERFACE_ONLY_NOTE} Nine rights are marked sensitive and ask for a second confirmation before they take effect. Nine ship switched off until an administrator turns them on. The two nines are different sets: issuing and voiding hire orders are sensitive yet ship on, because a production team that cannot issue an order cannot work.`,
     evidence:
-      "28 rights across 8 groups. The two sets overlap but are not the same: issuing and voiding hire orders are sensitive yet on, because a production team that cannot issue an order cannot work.",
+      "28 rights across 8 groups, declared in src/lib/capabilities.ts and folded into the inventory this page prints.",
   },
   {
     icon: "key",
@@ -161,8 +325,8 @@ export const CONTROLS: Control[] = [
     icon: "file-text",
     title: "Auditability",
     claim:
-      "Booking changes are appended to a log: who acted, what changed, the reason given, the timestamp. Administrators and the production team can read it; no policy on the table permits an update or a delete.",
-    evidence: "Retained three years from the show date, per section 7 of the privacy policy.",
+      "Booking changes are appended to a log: who acted, what changed, the timestamp. Administrators and the production team can read it; no policy on the table permits an update or a delete.",
+    evidence: `Retained ${RETENTION.find((r) => r.item === "Bookings and audit log")!.period}, per section 7 of the privacy policy.`,
   },
   {
     icon: "shield",
@@ -170,57 +334,19 @@ export const CONTROLS: Control[] = [
     claim:
       "Role checks run as security-definer database functions rather than being scattered through queries. Every pull request is scanned for committed secrets, and dependency updates arrive as grouped weekly pull requests.",
     evidence:
-      "Checks concentrated in has_org_role, is_org_member, is_capability_enabled, is_feature_enabled, and capability_default — one place to audit.",
+      "Checks concentrated in has_org_role, is_org_member, is_capability_enabled, is_feature_enabled, and capability_default: one place to audit.",
   },
   {
     icon: "database",
     title: "Backups",
     claim:
-      "Managed Postgres with a rolling 30-day backup window. Data deleted from the live database leaves the backups inside that window.",
+      "Managed Postgres, hosted by Supabase. Backups are retained no longer than 30 days, so data deleted from the live database leaves them inside that window. That is a deletion ceiling, not a promise that 30 days of restore points are kept.",
     evidence: "Stated in section 7 of the privacy policy.",
   },
 ];
 
-export interface Subprocessor {
-  name: string;
-  purpose: string;
-  region: string;
-  transfer: string;
-  status: "Core" | "Consent" | "Off";
-  tone: AccessTone;
-}
-
-/** Mirrors section 6 of docs/legal/privacy-policy.en.md. Asserted by test. */
-export const SUBPROCESSORS: Subprocessor[] = [
-  { name: "Supabase", purpose: "Database, authentication, storage", region: "EU · US", transfer: "EU region in use · DPF + SCCs", status: "Core", tone: "full" },
-  { name: "Vercel", purpose: "Application hosting, edge network", region: "EU · US", transfer: "DPF + SCCs", status: "Core", tone: "full" },
-  { name: "Resend", purpose: "Transactional email", region: "US", transfer: "DPF + SCCs", status: "Core", tone: "full" },
-  { name: "Sentry", purpose: "Client error reports", region: "EU · US", transfer: "EU region where available · SCCs", status: "Consent", tone: "scoped" },
-  { name: "PostHog", purpose: "Analytics, session replay", region: "EU · US", transfer: "EU region where available · SCCs", status: "Consent", tone: "scoped" },
-  { name: "Airtable", purpose: "Show-data sync", region: "US", transfer: "DPF + SCCs", status: "Off", tone: "none" },
-];
-
 export const TRANSFER_BASIS_NOTE =
   "Adequacy decision of 10 July 2023 (EU–US Data Privacy Framework) or the Standard Contractual Clauses of 4 June 2021, with encryption in transit and at rest.";
-
-export interface RetentionRow {
-  item: string;
-  period: string;
-}
-
-/** Mirrors section 7 of docs/legal/privacy-policy.en.md. Asserted by test.
- *  The first three are the ones people actually ask about; the summary view
- *  on the public page shows only those. */
-export const RETENTION: RetentionRow[] = [
-  { item: "Bookings and audit log", period: "3 years from show date" },
-  { item: "Show-date chat", period: "Archived 30 days · deleted 12 months" },
-  { item: "Backups", period: "Rolling 30 days" },
-  { item: "Account and profile", period: "Life of account + 30 days" },
-  { item: "Email send log and suppressions", period: "24 months" },
-  { item: "Hosting and database logs", period: "7–30 days" },
-  { item: "Error reports", period: "90 days" },
-  { item: "Analytics and session replay", period: "12 months" },
-];
 
 export interface SelfServeRight {
   icon: string;
@@ -233,17 +359,19 @@ export const SELF_SERVE_RIGHTS: SelfServeRight[] = [
   {
     icon: "download",
     title: "Export your data",
-    detail: "A machine-readable export of everything tied to your account, from your profile page. Art. 15 and 20.",
+    detail:
+      "A machine-readable export of your profile, memberships, bookings, blocked dates, messages and notifications, from your profile page. Art. 15 and 20.",
   },
   {
     icon: "eye",
     title: "Withdraw analytics consent",
-    detail: "Analytics, session replay, and error tracking stop immediately. Art. 7(3).",
+    detail:
+      "Turns off analytics, session replay, and error tracking if and when any of them is enabled, from Manage cookie preferences. Art. 7(3).",
   },
   {
     icon: "alert",
     title: "Delete your account",
-    detail: "Removes your account and anonymises what must be retained for booking records. Art. 17.",
+    detail: "Removes your account and anonymises what must be retained for booking records, from your profile page. Art. 17.",
   },
   {
     icon: "mail",
@@ -279,7 +407,15 @@ const MARKETING_HOST = "https://showflow.pro";
 export const DOCUMENTS: TrustDocument[] = [
   {
     title: "Privacy policy",
-    meta: "Web · updated May 28, 2026",
+    // The meta names the scope because two documents called "Privacy policy"
+    // are reachable from the public Trust page: this one, and the marketing
+    // site's, which the shared footer links to. They are different documents
+    // with different dates. This one opens "how ShowFlow Pro collects, uses,
+    // and shares personal data when you use the ShowFlow Pro web application
+    // and related transactional emails"; the site policy opens "The data
+    // controller for this website (showflow.pro)". A reviewer establishing
+    // which statements are authoritative should not have to guess.
+    meta: "Web · covers the app, not the showflow.pro website · updated August 11, 2026",
     href: `${APP_HOST}/privacy`,
     cta: "Read",
   },
@@ -292,7 +428,7 @@ export const DOCUMENTS: TrustDocument[] = [
   { title: "Imprint", meta: "Web · § 5 DDG", href: `${APP_HOST}/impressum`, cta: "Read" },
   {
     title: "Subprocessor list",
-    meta: "Section 5 of the privacy policy · 6 entries",
+    meta: `Section 5 of the privacy policy · ${SUBPROCESSORS.length} entries`,
     href: `${APP_HOST}/privacy`,
     cta: "Read",
   },
@@ -306,5 +442,19 @@ export const DOCUMENTS: TrustDocument[] = [
 
 export const TRUST_CONTACT = "contact@showflow.pro";
 
-/** Shown next to the documents list. There is no gate, and we say so. */
-export const DOCUMENTS_NOTE = "No form, no NDA, no email gate.";
+/** Shown next to the documents list. Everything but the DPA is a public web
+ *  page; the DPA is a reply by email, not a download form, and this says so
+ *  rather than claiming no document here ever requires an email. */
+export const DOCUMENTS_NOTE = "Everything below is public. The DPA is a reply by email, not a download form.";
+
+/** The date the claims on this page were last reviewed, in `YYYY-MM-DD`
+ *  form. Bump this by hand in the same commit as any change to a claim
+ *  table in this file or to `src/lib/capabilities.ts`.
+ *
+ *  Deliberately NOT derived from `git log` (a commit date is only assigned
+ *  when `git commit` runs, which is after `sync:mirrors` has already
+ *  written this file into the commit, so the two can never agree byte for
+ *  byte — see the `generatedAt` finding). A hand-bumped value lives in the
+ *  tree, survives rebase/amend/squash, and stays stable under repeated
+ *  `--check` runs, which is what the drift gate needs. */
+export const FACTS_LAST_REVIEWED = "2026-08-11";

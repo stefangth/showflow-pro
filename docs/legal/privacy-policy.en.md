@@ -1,6 +1,6 @@
 # Privacy Policy
 
-_Last updated: 28 May 2026_
+_Last updated: 11 August 2026_
 
 This privacy policy explains how ShowFlow Pro ("**we**", "**us**", "**ShowFlow Pro**") collects, uses, and shares personal data when you use the ShowFlow Pro web application and related transactional emails (together, the "**Service**"). It is written to satisfy Articles 12–14 of the EU General Data Protection Regulation (GDPR) and §§ 25 of the German Telecommunications Telemedia Data Protection Act (TTDSG).
 
@@ -94,9 +94,12 @@ In addition, the following processors act on our behalf under Article 28 GDPR da
 | Supabase Inc. | Database, authentication, file storage, edge functions | United States and European Union regions | EU storage option in use where available; EU–US Data Privacy Framework (DPF) certification and EU Standard Contractual Clauses (SCCs) for any US transfers. |
 | Resend, Inc. | Transactional email delivery | United States | DPF certification and SCCs. |
 | Vercel, Inc. | Web application hosting and edge network | United States and European Union | DPF certification and SCCs. |
+| Google LLC | Web font delivery (the Geist and Geist Mono typefaces, requested from fonts.googleapis.com and fonts.gstatic.com) | United States | DPF certification and SCCs. |
 | Airtable, Inc. | Show-data sync (currently disabled; will be enabled if and when the Airtable integration is turned on) | United States | DPF certification and SCCs. |
 | Functional Software, Inc. dba Sentry | Client-side error tracking | European Union and United States regions | EU region used where available; DPF and SCCs for US transfers. |
 | PostHog, Inc. | Product analytics and session replay | European Union and United States regions | EU region used where available; DPF and SCCs for US transfers. |
+
+The web fonts are requested while the page is still loading, before any consent decision is recorded, so Google receives your IP address and user agent on every page view, including the pages that ask for consent. The request sets no cookie and stores nothing on your device.
 
 We do not sell personal data and we do not share it with advertising networks.
 
@@ -119,12 +122,12 @@ We keep your personal data only for as long as necessary for the purposes descri
 
 - **Account and profile data:** for the lifetime of your account, plus 30 days after deletion to allow recovery in case of mistaken deletion.
 - **Bookings and audit log:** three (3) years from the relevant show date, for commercial record-keeping and dispute resolution.
-- **Chat messages:** hidden from the chats list 30 days after the show date (`CHAT_ARCHIVE_DAYS`); permanently deleted after 12 months. Admins retain read-only access during the archive window.
+- **Chat messages:** hidden from the chats list 30 days after the show date (`CHAT_ARCHIVE_DAYS`); permanently deleted after 12 months. The database grants administrators and the production team access to a thread until it is deleted. Once the archive window passes, the Service drops the thread from the chats list for everyone, shows administrators the messages read only, and stops showing the messages to the production team.
 - **Email send log and suppression list:** 24 months, to honour your unsubscribe preferences and maintain sender reputation.
 - **Hosting / Supabase logs:** retained according to our providers' standard policies (typically 7–30 days).
 - **Sentry error reports:** 90 days.
 - **PostHog analytics events and session replays:** 12 months.
-- **Backups:** rolling 30-day window; data deleted from the live database is removed from backups within this period.
+- **Backups:** retained no longer than 30 days; data deleted from the live database is removed from backups within this period. This is a maximum retention period, not a guarantee that 30 days of restorable backups are kept.
 
 After these periods, data is deleted or fully anonymised.
 

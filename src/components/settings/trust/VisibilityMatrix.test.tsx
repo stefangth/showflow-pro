@@ -1,0 +1,96 @@
+import { describe, expect, it } from "vitest";
+import { screen, within } from "@testing-library/react";
+import { renderWithProviders } from "@/test/renderWithProviders";
+import { VISIBILITY_MATRIX } from "@/lib/trust/facts";
+import { VisibilityMatrix } from "./VisibilityMatrix";
+
+describe("VisibilityMatrix responsive breakpoint", () => {
+  // Settings > Trust & data always renders inside the app sidebar plus the
+  // settings nav column, so at a 768px viewport the tab itself only has
+  // ~460px to work with. Restacking at `sm` (640px) left a dead band between
+  // 640 and ~1024px where the table rendered clipped, with no scroll
+  // affordance, cutting off the Mechanism column this page exists to show.
+  // The restack must happen at `lg`, not `sm`, so the card list owns that
+  // whole band instead.
+  it("restacks the table into cards at lg, not sm", () => {
+    const { container } = renderWithProviders(<VisibilityMatrix />);
+
+    const tableRegion = container.querySelector('[role="region"][aria-label$="scrollable"]');
+    expect(tableRegion).not.toBeNull();
+    expect(tableRegion!.className).toMatch(/\blg:block\b/);
+    expect(tableRegion!.className).not.toMatch(/\bsm:block\b/);
+
+    const cardList = container.querySelector(".divide-y.divide-border");
+    expect(cardList).not.toBeNull();
+    expect(cardList!.className).toMatch(/\blg:hidden\b/);
+    expect(cardList!.className).not.toMatch(/\bsm:hidden\b/);
+  });
+
+  // Moving the restack to `lg` without lowering the table's min-width only
+  // moved the dead band: measured live in the settings tab, a 1024px viewport
+  // leaves the table 470px, so a 560px floor still clipped the Mechanism
+  // column by ~98px from 1024 up to ~1130. The floor has to fit inside the
+  // narrowest width at which the table is shown at all.
+  it("keeps the table's min-width inside the 470px the tab has at lg", () => {
+    const { container } = renderWithProviders(<VisibilityMatrix />);
+
+    const table = container.querySelector("table");
+    expect(table).not.toBeNull();
+    const minWidth = table!.className.match(/\bmin-w-\[(\d+)px\]/);
+    expect(minWidth, "the table must declare an explicit min-width").not.toBeNull();
+    expect(Number(minWidth![1])).toBeLessThanOrEqual(470);
+  });
+});
+
+describe("VisibilityMatrix access tones", () => {
+  /** The pill rendered inside the table row for a given data object. */
+  function pill(object: string) {
+    const row = screen
+      .getAllByRole("row")
+      .find((r) => within(r).queryByRole("rowheader", { name: object }));
+    if (!row) throw new Error(`No matrix row for "${object}"`);
+    const cell = within(row).getAllByRole("cell")[0];
+    return cell.firstElementChild as HTMLElement;
+  }
+
+  // The Access column exists to be scanned. Mapping both `scoped` and `none`
+  // to the same `neutral` badge collapsed the whole artist column into
+  // identical grey pills — "Own record", "Own dates", "Own booking" and
+  // "No access" all looked the same, so the column carried no signal and the
+  // reader had to read every label. It also put the two Trust Center surfaces
+  // into disagreement: the public page has always drawn `scoped` filled and
+  // `none` outlined (`Trust.tsx` TONE_STYLE).
+  it("draws a `none` cell differently from a `scoped` cell", () => {
+    // Derived from the claim table rather than hardcoded, so this keeps
+    // testing the real tones as rows are added or corrected.
+    const scoped = VISIBILITY_MATRIX.find((r) => r.artist.tone === "scoped");
+    const none = VISIBILITY_MATRIX.find((r) => r.artist.tone === "none");
+    expect(scoped, "no scoped artist cell to compare").toBeDefined();
+    expect(none, "no none artist cell to compare").toBeDefined();
+
+    renderWithProviders(<VisibilityMatrix />); // defaults to the artist view
+
+    expect(pill(none!.object).className).not.toEqual(pill(scoped!.object).className);
+  });
+
+  // `--ring` is the focus colour. Painting the selected chip in it meant a
+  // keyboard user saw the same accent ring whether or not the control was
+  // focused; and `ring-inset` set `--tw-ring-inset: inset` unconditionally,
+  // which Tailwind composes into the ring-offset shadow too, so
+  // `focus-visible:ring-2 ring-offset-2` rendered INSIDE the chip a pixel
+  // from an identical ring. The roving tabindex makes the selected chip the
+  // only tab stop in the group, so that was the first focus state a keyboard
+  // user met here.
+  it("does not decorate the selected role chip with the focus-ring colour", () => {
+    renderWithProviders(<VisibilityMatrix />);
+
+    const selected = screen.getAllByRole("radio").find((r) => r.getAttribute("aria-checked") === "true");
+    expect(selected).toBeDefined();
+    // Only unconditional classes: `focus-visible:ring-ring` is the ring this
+    // control is supposed to have, and must survive.
+    const unconditional = selected!.className.split(/\s+/).filter((c) => !c.includes(":"));
+    expect(unconditional).not.toContain("ring-ring");
+    expect(unconditional).not.toContain("ring-inset");
+    expect(selected!.className).toMatch(/\bfocus-visible:ring-ring\b/);
+  });
+});

@@ -5,6 +5,7 @@
 // the database checks.
 
 import { CAPABILITY_DEFS, type CapabilityDef } from "@/lib/capabilities";
+import { CAPABILITY_INTERFACE_ONLY_NOTE } from "@/lib/trust/facts";
 
 export interface InventoryEntry {
   label: string;
@@ -35,6 +36,11 @@ export interface CapabilityInventory {
   totalDefaultOff: number;
   /** e.g. "28 rights · 8 groups · 9 sensitive" */
   headline: string;
+  /** The interface-only carve-out, carried in the inventory rather than
+   *  retyped by each renderer. `scripts/build-trust-json.mjs` puts the same
+   *  string on `capabilities.note`, so the landing page reads it out of the
+   *  published contract instead of holding its own JSX copy. */
+  note: string;
 }
 
 /** Group the registry in declaration order — the registry is authored in a
@@ -74,5 +80,6 @@ export function buildCapabilityInventory(defs: CapabilityDef[] = CAPABILITY_DEFS
     totalSensitive,
     totalDefaultOff,
     headline: `${defs.length} rights · ${groups.length} groups · ${totalSensitive} sensitive`,
+    note: CAPABILITY_INTERFACE_ONLY_NOTE,
   };
 }

@@ -7,6 +7,7 @@ import { VisibilityMatrix } from "./VisibilityMatrix";
 import { RetentionCard } from "./RetentionCard";
 import { YourDataCard } from "./YourDataCard";
 import { DocumentsCard } from "./DocumentsCard";
+import { CapabilitiesCard } from "./CapabilitiesCard";
 
 /** Settings > Trust & data.
  *
@@ -41,13 +42,22 @@ export function TrustDataTab() {
         </CardContent>
       </Card>
 
-      <div className="grid items-start gap-4 lg:grid-cols-2">
+      {/* `xl:`, not `lg:` — same viewport-vs-container trap as the tile grid in
+       *  `OrgDataCard`. At a 1024px viewport this tab's content column is 504px
+       *  wide, so `lg:grid-cols-2` split it into 246px halves and the
+       *  "Request an organisation export" button in `YourDataCard` overflowed
+       *  its own Card by 21px (measured in the running app). At `xl` the column
+       *  is 760px, giving 374px halves, which the widest control in either
+       *  card fits inside. */}
+      <div className="grid items-start gap-4 xl:grid-cols-2">
         <RetentionCard />
         <div className="space-y-4">
           <YourDataCard />
           <DocumentsCard />
         </div>
       </div>
+
+      <CapabilitiesCard />
     </div>
   );
 }

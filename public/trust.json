@@ -1,5 +1,6 @@
 {
   "schema": 1,
+  "generatedAt": "2026-08-11",
   "roles": [
     {
       "value": "admin",
@@ -18,7 +19,7 @@
     {
       "icon": "lock",
       "label": "Tenant isolation",
-      "value": "Row-level, asserted on every commit"
+      "value": "Row-level, asserted on every pull request"
     },
     {
       "icon": "globe",
@@ -28,7 +29,7 @@
     {
       "icon": "server",
       "label": "Subprocessors",
-      "value": "6 named, 2 consent-only"
+      "value": "7 named, 3 not in use"
     },
     {
       "icon": "users",
@@ -40,14 +41,14 @@
     {
       "icon": "lock",
       "title": "Tenant isolation",
-      "claim": "Every table holding your data carries its organisation, down to individual chat messages and audit rows. One restrictive database policy per table means a session reads only organisations it belongs to. Restrictive policies filter; they never grant.",
-      "evidence": "supabase/tests/rls/org_isolation.sql asserts org A reads and writes zero rows of org B, even holding a global producer role. It runs on every pull request."
+      "claim": "Every table holding your data carries its organisation, down to individual chat messages and audit rows. One restrictive database policy on each of them means a session reads only organisations it belongs to. Four tables sit outside that policy by name, and refuse the cross-organisation read another way: membership and invitation rows are checked against the same organisation, and two platform logs are readable by no organisation member. Restrictive policies filter; they never grant.",
+      "evidence": "supabase/tests/rls/org_isolation.sql asserts org A reads and writes zero rows of org B on shows and show_dates, even holding a global producer role. supabase/tests/rls/org_coverage.sql confirms the same restrictive policy exists on every table in its list, including chat_messages and booking_audit_log, and names the four it excludes with the reason for each. Both run on every pull request."
     },
     {
       "icon": "users",
       "title": "Roles and rights",
-      "claim": "Three roles per organisation. Every read and write is authorised in the database; the interface only decides what to draw. Nine rights are marked sensitive and ask for a second confirmation before they take effect. Nine ship switched off until an administrator turns them on.",
-      "evidence": "28 rights across 8 groups. The two sets overlap but are not the same: issuing and voiding hire orders are sensitive yet on, because a production team that cannot issue an order cannot work."
+      "claim": "Three roles per organisation. Every read is authorised in the database. Most writes are too. Three rights that reorder or archive the production catalog and edit its scheduling are enforced by the interface today, not yet by a database policy. Nine rights are marked sensitive and ask for a second confirmation before they take effect. Nine ship switched off until an administrator turns them on. The two nines are different sets: issuing and voiding hire orders are sensitive yet ship on, because a production team that cannot issue an order cannot work.",
+      "evidence": "28 rights across 8 groups, declared in src/lib/capabilities.ts and folded into the inventory this page prints."
     },
     {
       "icon": "key",
@@ -58,19 +59,19 @@
     {
       "icon": "file-text",
       "title": "Auditability",
-      "claim": "Booking changes are appended to a log: who acted, what changed, the reason given, the timestamp. Administrators and the production team can read it; no policy on the table permits an update or a delete.",
-      "evidence": "Retained three years from the show date, per section 7 of the privacy policy."
+      "claim": "Booking changes are appended to a log: who acted, what changed, the timestamp. Administrators and the production team can read it; no policy on the table permits an update or a delete.",
+      "evidence": "Retained 3 years from show date, per section 7 of the privacy policy."
     },
     {
       "icon": "shield",
       "title": "Application security",
       "claim": "Role checks run as security-definer database functions rather than being scattered through queries. Every pull request is scanned for committed secrets, and dependency updates arrive as grouped weekly pull requests.",
-      "evidence": "Checks concentrated in has_org_role, is_org_member, is_capability_enabled, is_feature_enabled, and capability_default — one place to audit."
+      "evidence": "Checks concentrated in has_org_role, is_org_member, is_capability_enabled, is_feature_enabled, and capability_default: one place to audit."
     },
     {
       "icon": "database",
       "title": "Backups",
-      "claim": "Managed Postgres with a rolling 30-day backup window. Data deleted from the live database leaves the backups inside that window.",
+      "claim": "Managed Postgres, hosted by Supabase. Backups are retained no longer than 30 days, so data deleted from the live database leaves them inside that window. That is a deletion ceiling, not a promise that 30 days of restore points are kept.",
       "evidence": "Stated in section 7 of the privacy policy."
     }
   ],
@@ -155,9 +156,9 @@
         "note": "Letterhead, numbering, and terms included."
       },
       "producer": {
-        "value": "Grant-gated",
-        "tone": "gated",
-        "note": "Issuing and voiding are sensitive rights, confirmed twice."
+        "value": "Full",
+        "tone": "full",
+        "note": "Every hire order in this organisation, fee included. Issuing and voiding are separate sensitive rights."
       },
       "artist": {
         "value": "Own order",
@@ -170,12 +171,12 @@
       "admin": {
         "value": "Full",
         "tone": "full",
-        "note": "Any thread in this organisation. Hidden from the list 30 days after the show date."
+        "note": "Any thread in this organisation. The database sets no time limit; 30 days after the show date the interface turns the thread read-only."
       },
       "producer": {
         "value": "Full",
         "tone": "full",
-        "note": "Any thread in this organisation."
+        "note": "Any thread in this organisation. The database sets no time limit; 30 days after the show date the interface stops showing the thread."
       },
       "artist": {
         "value": "Own dates",
@@ -186,14 +187,14 @@
     {
       "object": "Booking audit log",
       "admin": {
-        "value": "Full",
-        "tone": "full",
-        "note": "Actor, action, reason, timestamp."
+        "value": "Append-only",
+        "tone": "scoped",
+        "note": "Reads every row and appends new ones. No policy allows altering or deleting a row."
       },
       "producer": {
-        "value": "Read-only",
+        "value": "Append-only",
         "tone": "scoped",
-        "note": "Writes to it and reads it. No policy allows altering a row."
+        "note": "Reads every row and appends new ones. No policy allows altering or deleting a row."
       },
       "artist": {
         "value": "No access",
@@ -206,17 +207,17 @@
       "admin": {
         "value": "No access",
         "tone": "none",
-        "note": "A restrictive policy on every table blocks the read."
+        "note": "A restrictive policy blocks the read on every table that carries your organisation's records. Four sit outside it by name: membership and invitation rows, which are checked against the same organisation instead because gating them on the membership they define would be circular, and two platform logs no organisation member can read at all."
       },
       "producer": {
         "value": "No access",
         "tone": "none",
-        "note": "A restrictive policy on every table blocks the read."
+        "note": "A restrictive policy blocks the read on every table that carries your organisation's records. Four sit outside it by name: membership and invitation rows, which are checked against the same organisation instead because gating them on the membership they define would be circular, and two platform logs no organisation member can read at all."
       },
       "artist": {
         "value": "No access",
         "tone": "none",
-        "note": "A restrictive policy on every table blocks the read."
+        "note": "A restrictive policy blocks the read on every table that carries your organisation's records. Four sit outside it by name: membership and invitation rows, which are checked against the same organisation instead because gating them on the membership they define would be circular, and two platform logs no organisation member can read at all."
       }
     }
   ],
@@ -246,20 +247,28 @@
       "tone": "full"
     },
     {
+      "name": "Google",
+      "purpose": "Web fonts (Geist, Geist Mono)",
+      "region": "US",
+      "transfer": "DPF + SCCs",
+      "status": "Core",
+      "tone": "full"
+    },
+    {
       "name": "Sentry",
       "purpose": "Client error reports",
       "region": "EU · US",
       "transfer": "EU region where available · SCCs",
-      "status": "Consent",
-      "tone": "scoped"
+      "status": "Off",
+      "tone": "none"
     },
     {
       "name": "PostHog",
       "purpose": "Analytics, session replay",
       "region": "EU · US",
       "transfer": "EU region where available · SCCs",
-      "status": "Consent",
-      "tone": "scoped"
+      "status": "Off",
+      "tone": "none"
     },
     {
       "name": "Airtable",
@@ -282,7 +291,7 @@
     },
     {
       "item": "Backups",
-      "period": "Rolling 30 days"
+      "period": "No longer than 30 days"
     },
     {
       "item": "Account and profile",
@@ -298,28 +307,28 @@
     },
     {
       "item": "Error reports",
-      "period": "90 days"
+      "period": "90 days, once error tracking is enabled"
     },
     {
       "item": "Analytics and session replay",
-      "period": "12 months"
+      "period": "12 months, once analytics is enabled"
     }
   ],
   "selfServeRights": [
     {
       "icon": "download",
       "title": "Export your data",
-      "detail": "A machine-readable export of everything tied to your account, from your profile page. Art. 15 and 20."
+      "detail": "A machine-readable export of your profile, memberships, bookings, blocked dates, messages and notifications, from your profile page. Art. 15 and 20."
     },
     {
       "icon": "eye",
       "title": "Withdraw analytics consent",
-      "detail": "Analytics, session replay, and error tracking stop immediately. Art. 7(3)."
+      "detail": "Turns off analytics, session replay, and error tracking if and when any of them is enabled, from Manage cookie preferences. Art. 7(3)."
     },
     {
       "icon": "alert",
       "title": "Delete your account",
-      "detail": "Removes your account and anonymises what must be retained for booking records. Art. 17."
+      "detail": "Removes your account and anonymises what must be retained for booking records, from your profile page. Art. 17."
     },
     {
       "icon": "mail",
@@ -330,7 +339,7 @@
   "documents": [
     {
       "title": "Privacy policy",
-      "meta": "Web · updated May 28, 2026",
+      "meta": "Web · covers the app, not the showflow.pro website · updated August 11, 2026",
       "href": "https://app.showflow.pro/privacy",
       "cta": "Read"
     },
@@ -348,7 +357,7 @@
     },
     {
       "title": "Subprocessor list",
-      "meta": "Section 5 of the privacy policy · 6 entries",
+      "meta": "Section 5 of the privacy policy · 7 entries",
       "href": "https://app.showflow.pro/privacy",
       "cta": "Read"
     },
@@ -359,7 +368,7 @@
       "cta": "Request"
     }
   ],
-  "documentsNote": "No form, no NDA, no email gate.",
+  "documentsNote": "Everything below is public. The DPA is a reply by email, not a download form.",
   "contact": "contact@showflow.pro",
   "capabilities": {
     "groups": [
@@ -620,6 +629,7 @@
     "totalGroups": 8,
     "totalSensitive": 9,
     "totalDefaultOff": 9,
-    "headline": "28 rights · 8 groups · 9 sensitive"
+    "headline": "28 rights · 8 groups · 9 sensitive",
+    "note": "Three rights that reorder or archive the production catalog and edit its scheduling are enforced by the interface today, not yet by a database policy."
   }
 }

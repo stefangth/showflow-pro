@@ -68,10 +68,17 @@ for (const group of groups) {
 const totalSensitive = CAPABILITY_DEFS.filter((d) => d.risk === "sensitive").length;
 const totalDefaultOff = CAPABILITY_DEFS.filter((d) => !d.defaultEnabled).length;
 
+if (!/^\d{4}-\d{2}-\d{2}$/.test(facts.FACTS_LAST_REVIEWED ?? "")) {
+  throw new Error(
+    "src/lib/trust/facts.ts must export FACTS_LAST_REVIEWED as a YYYY-MM-DD string.",
+  );
+}
+
 const payload = {
-  // No timestamp. A build clock would make every rebuild a diff and turn the
-  // --check gate into noise; the git history already records when this changed.
   schema: 1,
+  // A hand-bumped date living in facts.ts, not git history or Date.now() —
+  // see FACTS_LAST_REVIEWED's doc comment for why.
+  generatedAt: facts.FACTS_LAST_REVIEWED,
   roles: facts.TRUST_ROLES,
   kpis: facts.TRUST_KPIS,
   controls: facts.CONTROLS,
@@ -90,20 +97,66 @@ const payload = {
     totalSensitive,
     totalDefaultOff,
     headline: `${CAPABILITY_DEFS.length} rights · ${groups.length} groups · ${totalSensitive} sensitive`,
+    // The interface-only carve-out travels in the contract rather than being
+    // retyped in the landing repo, where no drift gate can see it. See
+    // CAPABILITY_INTERFACE_ONLY_NOTE in src/lib/trust/facts.ts.
+    note: facts.CAPABILITY_INTERFACE_ONLY_NOTE,
   },
 };
 
+if (typeof payload.capabilities.note !== "string" || !payload.capabilities.note) {
+  throw new Error(
+    "src/lib/trust/facts.ts must export CAPABILITY_INTERFACE_ONLY_NOTE as a non-empty string.",
+  );
+}
+
 const serialized = `${JSON.stringify(payload, null, 2)}\n`;
 
-if (process.argv.includes("--check")) {
-  let current = "";
+let committedRaw = null;
+try {
+  committedRaw = readFileSync(OUT, "utf8");
+} catch {
+  committedRaw = null;
+}
+
+// Staleness gate: FACTS_LAST_REVIEWED is a hand-bumped promise that the
+// claims were checked as of that date. Nothing previously forced it to move
+// when a claim actually changed, so a regenerate could carry new claims
+// forward under an old, no-longer-accurate date with every other check still
+// green (see the FACTS_LAST_REVIEWED finding). Catch that here: if the
+// payload differs from what is committed anywhere other than the stamp
+// itself, the stamp must equal today, or this refuses to proceed. This does
+// not touch how the stamp is produced (still a hand-bumped literal in
+// facts.ts, not derived from git or Date.now(), for the reasons documented
+// on FACTS_LAST_REVIEWED) — it only validates that a same-day bump happened.
+if (committedRaw !== null) {
   try {
-    current = readFileSync(OUT, "utf8");
+    const withoutStamp = (p) => {
+      const { generatedAt, ...rest } = p;
+      return JSON.stringify(rest);
+    };
+    const committed = JSON.parse(committedRaw);
+    const contentChanged = withoutStamp(committed) !== withoutStamp(payload);
+    const today = new Date().toISOString().slice(0, 10);
+    if (contentChanged && facts.FACTS_LAST_REVIEWED !== today) {
+      console.error(
+        `A trust.json claim changed but FACTS_LAST_REVIEWED (${facts.FACTS_LAST_REVIEWED}) is not today (${today}).\n` +
+          "Bump FACTS_LAST_REVIEWED in src/lib/trust/facts.ts to today's date, then regenerate.",
+      );
+      process.exit(1);
+    }
   } catch {
+    // Malformed committed file: fall through to the checks below, which
+    // handle a missing/garbled public/trust.json on their own.
+  }
+}
+
+if (process.argv.includes("--check")) {
+  if (committedRaw === null) {
     console.error("public/trust.json is missing. Run `npm run sync:mirrors`.");
     process.exit(1);
   }
-  if (current !== serialized) {
+  if (committedRaw !== serialized) {
     console.error(
       "public/trust.json is stale — src/lib/trust/facts.ts or the capability registry changed.\n" +
         "Run `npm run sync:mirrors` and commit the result.",

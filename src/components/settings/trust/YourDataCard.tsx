@@ -41,7 +41,7 @@ export function YourDataCard() {
         </div>
         <p className="text-xs leading-4 text-muted-foreground">
           Deleting your account anonymises what booking records must retain, then removes the
-          account. Backups age out on the rolling 30-day window.
+          account. Backups age out within 30 days, the longest any backup is kept.
         </p>
       </CardContent>
     </Card>

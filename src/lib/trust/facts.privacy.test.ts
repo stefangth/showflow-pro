@@ -9,9 +9,16 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { RETENTION, SUBPROCESSORS } from "./facts";
+import { RETENTION, SUBPROCESSORS, SUBPROCESSOR_SUMMARY, TRUST_KPIS, DOCUMENTS } from "./facts";
 
 const POLICY = readFileSync(resolve(process.cwd(), "docs/legal/privacy-policy.en.md"), "utf8");
+
+/** The German twin. `privacy-policy.en.md:7` states the German version
+ *  controls, so the translation is the document that legally binds while
+ *  every assertion above reads the English one. Nothing kept the two in step:
+ *  a retention period could be corrected in English and left stale in the
+ *  binding text with CI green. See the EN/DE parity block at the bottom. */
+const POLICY_DE = readFileSync(resolve(process.cwd(), "docs/legal/privacy-policy.de.md"), "utf8");
 
 /** Section 5 ("Recipients and processors") holds the Art. 28 processor table.
  *  Scope the parse to that section: section 9's cookie table names some of the
@@ -24,13 +31,28 @@ function processorSection(): string {
   return POLICY.slice(start, end);
 }
 
-/** One row per processor; the first cell is the legal entity name. */
-function policyProcessorNames(): string[] {
+/** One row per processor, split into its table cells. */
+function policyProcessorRows(): string[][] {
   return processorSection()
     .split("\n")
     .filter((line) => line.startsWith("|") && !line.includes("---"))
-    .map((line) => line.split("|")[1]?.trim() ?? "")
-    .filter((cell) => cell.length > 0 && cell !== "Processor");
+    .map((line) => line.split("|").map((cell) => cell.trim()))
+    .filter((cells) => cells[1]?.length > 0 && cells[1] !== "Processor");
+}
+
+/** One row per processor; the first cell is the legal entity name. */
+function policyProcessorNames(): string[] {
+  return policyProcessorRows().map((cells) => cells[1]);
+}
+
+/** The policy table row for one of our SUBPROCESSORS entries, matched by
+ *  product name against the policy's legal entity name (the policy uses
+ *  "Functional Software, Inc. dba Sentry"; the page uses "Sentry"). */
+function policyRowFor(name: string): { location: string; transfer: string } {
+  const row = policyProcessorRows().find((cells) => cells[1].includes(name));
+  expect(row, `no policy row names ${name}`).toBeDefined();
+  // Columns: ["", Processor, Service, Location, Transfer mechanism, ""]
+  return { location: row![3], transfer: row![4] };
 }
 
 describe("subprocessor table matches the privacy policy", () => {
@@ -62,21 +84,71 @@ describe("subprocessor table matches the privacy policy", () => {
     expect(SUBPROCESSORS.find((s) => s.name === "Airtable")?.status).toBe("Off");
   });
 
-  it("marks exactly the two consent-gated processors as consent-only", () => {
-    const consent = SUBPROCESSORS.filter((s) => s.status === "Consent").map((s) => s.name);
-    // Section 4 records both of these under Art. 6(1)(a) consent.
-    expect(consent).toEqual(["Sentry", "PostHog"]);
+  it("marks Sentry and PostHog off, because neither SDK is wired up yet", () => {
+    // The policy documents the consent-gated legal basis these two would
+    // operate under (Art. 6(1)(a)) if they were live, but no Sentry or
+    // PostHog package exists in the dependency tree and nothing in
+    // ConsentContext.tsx loads or unloads a tracker with the stored flags —
+    // so today they behave exactly like Airtable: named, not processing.
+    // Flip both to "Consent" the day the integration ships.
+    for (const name of ["Sentry", "PostHog"]) {
+      expect(SUBPROCESSORS.find((s) => s.name === name)?.status).toBe("Off");
+    }
     expect(POLICY).toMatch(/Client-side error tracking \(Sentry\)[\s\S]*?your consent/);
     expect(POLICY).toMatch(/Product analytics including session replay \(PostHog\)[\s\S]*?your consent/);
+  });
+
+  // Each processor's region and transfer basis are printed on both surfaces,
+  // and neither was ever compared to section 5's Location / Transfer
+  // mechanism columns — only the processor names were. A region or basis
+  // could drift silently from the table it claims to mirror. Match on
+  // keywords rather than prose, matching this suite's existing convention of
+  // checking facts, not wording: "EU" in our region column must correspond to
+  // "European Union" in the policy's Location cell, and vice versa; "DPF" /
+  // "SCC" in our transfer column must correspond to the same abbreviations
+  // (or their spelled-out forms) in the policy's Transfer mechanism cell.
+  it("matches each processor's region and transfer basis against section 5", () => {
+    for (const sub of SUBPROCESSORS) {
+      const { location, transfer } = policyRowFor(sub.name);
+      const regionTokens = sub.region.split("·").map((t) => t.trim());
+
+      expect(regionTokens.includes("EU")).toBe(/European Union/.test(location));
+      expect(regionTokens.includes("US")).toBe(/United States/.test(location));
+
+      if (sub.transfer.includes("DPF")) {
+        expect(transfer).toMatch(/DPF|Data Privacy Framework/);
+      }
+      if (sub.transfer.includes("SCC")) {
+        expect(transfer).toMatch(/SCCs?|Standard Contractual Clauses/);
+      }
+    }
+  });
+
+  // The subprocessor count is printed twice (the hero KPI and the documents
+  // list) and both must move automatically with the table, never be typed by
+  // hand — the exact failure mode this test exists to catch is a processor
+  // added to SUBPROCESSORS without either printed count being touched.
+  it("derives the subprocessor KPI and documents-list count from the table, never a literal", () => {
+    const notInUse = SUBPROCESSORS.filter((s) => s.status === "Off").length;
+    expect(SUBPROCESSOR_SUMMARY).toBe(`${SUBPROCESSORS.length} named, ${notInUse} not in use`);
+
+    const kpi = TRUST_KPIS.find((k) => k.label === "Subprocessors");
+    expect(kpi?.value).toBe(SUBPROCESSOR_SUMMARY);
+
+    const doc = DOCUMENTS.find((d) => d.title === "Subprocessor list");
+    expect(doc?.meta).toBe(`Section 5 of the privacy policy · ${SUBPROCESSORS.length} entries`);
   });
 });
 
 describe("retention table matches the privacy policy", () => {
-  // Each page row is anchored to a phrase that must survive in section 7.
+  // Each page row is anchored to a phrase that must survive in section 7. The
+  // capture group isolates the number+unit fragment the anchor is guarding,
+  // so it can be compared against RETENTION[item].period below rather than
+  // only proving the surrounding words still exist.
   const ANCHORS: Record<string, RegExp> = {
     "Bookings and audit log": /Bookings and audit log:\*\* three \(3\) years from the relevant show date/,
     "Show-date chat": /Chat messages:\*\*[\s\S]*?30 days after the show date[\s\S]*?deleted after 12 months/,
-    Backups: /Backups:\*\* rolling 30-day window/,
+    Backups: /Backups:\*\* retained no longer than 30 days/,
     "Account and profile": /Account and profile data:\*\*[\s\S]*?plus 30 days after deletion/,
     "Email send log and suppressions": /Email send log and suppression list:\*\* 24 months/,
     "Hosting and database logs": /Hosting \/ Supabase logs:\*\*[\s\S]*?7–30 days/,
@@ -84,12 +156,48 @@ describe("retention table matches the privacy policy", () => {
     "Analytics and session replay": /PostHog analytics events and session replays:\*\* 12 months/,
   };
 
+  /** All "<number> <day|month|year>[s]" fragments in a string, singularised
+   *  and sorted, so "3 years" and "three (3) years from the show date" (once
+   *  parens are stripped) both reduce to the same comparable token — and so a
+   *  changed number, not just changed wording, is what this test can catch. */
+  function periodNumbers(text: string): string[] {
+    const cleaned = text.replace(/[()]/g, "");
+    const matches = cleaned.match(/\d+(?:–\d+)?-?\s*(?:days?|months?|years?)/gi) ?? [];
+    return matches
+      .map((m) => m.toLowerCase().replace(/-/g, " ").replace(/\s+/g, " ").trim().replace(/s$/, ""))
+      .sort();
+  }
+
   it("covers every retention category the policy states, and no others", () => {
     expect(RETENTION.map((r) => r.item).sort()).toEqual(Object.keys(ANCHORS).sort());
   });
 
-  it.each(RETENTION)("$item is still stated in the policy", ({ item }) => {
-    expect(POLICY).toMatch(ANCHORS[item]);
+  // A category added to section 7 with no matching RETENTION row (or removed
+  // from section 7 with a stale RETENTION row left behind) is invisible to
+  // the item-name comparison above, because that comparison only checks
+  // RETENTION against this file's own ANCHORS keys, never against the
+  // document. Counting the policy's own bullet list closes that gap.
+  it("has exactly as many rows as section 7 states, so a new policy category cannot go unnoticed", () => {
+    const start = POLICY.indexOf("## 7. Retention");
+    const end = POLICY.indexOf("## 8. Your rights");
+    expect(start, "section 7 heading moved or was renamed").toBeGreaterThan(-1);
+    expect(end, "section 8 heading moved or was renamed").toBeGreaterThan(start);
+    const section = POLICY.slice(start, end);
+    const bulletCount = [...section.matchAll(/^- \*\*.+?:\*\*/gm)].length;
+    expect(RETENTION).toHaveLength(bulletCount);
+  });
+
+  it.each(RETENTION)("$item is still stated in the policy, with the same period", ({ item, period }) => {
+    const anchor = ANCHORS[item];
+    expect(POLICY).toMatch(anchor);
+    const match = POLICY.match(anchor);
+    expect(match, `anchor for ${item} did not capture a match`).not.toBeNull();
+    // The number(s) printed on the page must be the same number(s) the
+    // policy states, not just present in a page that also happens to mention
+    // that phrase elsewhere. Fails if RETENTION[item].period drifts to a
+    // different figure (e.g. "3 years" -> "10 years") without the anchored
+    // policy text changing too.
+    expect(periodNumbers(period)).toEqual(periodNumbers(match![0]));
   });
 
   it("leads with the three periods people actually ask about", () => {
@@ -100,5 +208,89 @@ describe("retention table matches the privacy policy", () => {
       "Show-date chat",
       "Backups",
     ]);
+  });
+});
+
+// This build rewrote section 7 of BOTH policies so the Trust Center's chat and
+// backup claims would have an artefact to cite, but only the English file was
+// ever parsed by a test. The German one is the version the policy itself says
+// controls, so the untested file is the binding one. These assertions compare
+// the two documents' section 7 structurally: same number of categories, same
+// numbers in the same order. They compare digits rather than prose so the
+// translation stays free to read like German.
+describe("the German privacy policy tracks the English one", () => {
+  /** Section 7 of one policy, sliced between its own headings. */
+  function retentionSection(text: string, from: string, to: string): string {
+    const start = text.indexOf(from);
+    const end = text.indexOf(to);
+    expect(start, `${from} moved or was renamed`).toBeGreaterThan(-1);
+    expect(end, `${to} moved or was renamed`).toBeGreaterThan(start);
+    return text.slice(start, end);
+  }
+
+  const EN_SECTION_7 = () => retentionSection(POLICY, "## 7. Retention", "## 8. Your rights");
+  const DE_SECTION_7 = () => retentionSection(POLICY_DE, "## 7. Speicherdauer", "## 8. Ihre Rechte");
+
+  /** The bullet bodies of a section, one string per category. */
+  function bullets(section: string): string[] {
+    return section.split("\n").filter((line) => /^- \*\*.+?:\*\*/.test(line));
+  }
+
+  /** Every number in a bullet, in the order it appears. "three (3) years" and
+   *  "drei (3) Jahre" both reduce to ["3"], so a period corrected in one
+   *  language and not the other is what this catches. */
+  function digits(line: string): string[] {
+    return line.match(/\d+/g) ?? [];
+  }
+
+  it("states the same number of retention categories in both languages", () => {
+    expect(bullets(DE_SECTION_7())).toHaveLength(bullets(EN_SECTION_7()).length);
+    // …and the page's own table still matches, so all three move together.
+    expect(bullets(DE_SECTION_7())).toHaveLength(RETENTION.length);
+  });
+
+  it("states the same retention periods, category by category", () => {
+    const en = bullets(EN_SECTION_7());
+    const de = bullets(DE_SECTION_7());
+    en.forEach((line, index) => {
+      expect(digits(de[index]), `section 7 bullet ${index + 1} differs between EN and DE`).toEqual(
+        digits(line),
+      );
+    });
+  });
+
+  it("names the same processors in both section 5 tables", () => {
+    const deSection = retentionSection(
+      POLICY_DE,
+      "## 5. Empfänger und Auftragsverarbeiter",
+      "## 6. Übermittlungen in Drittländer",
+    );
+    const deNames = deSection
+      .split("\n")
+      .filter((line) => line.startsWith("|") && !line.includes("---"))
+      .map((line) => line.split("|")[1].trim())
+      .filter((name) => name.length > 0 && name !== "Auftragsverarbeiter");
+    expect(deNames).toHaveLength(SUBPROCESSORS.length);
+    for (const sub of SUBPROCESSORS) {
+      expect(deNames.find((n) => n.includes(sub.name)), `no DE policy row names ${sub.name}`).toBeDefined();
+    }
+  });
+
+  // The chat bullet is the one claim on this page that a previous round got
+  // backwards in the policy while the page had it right: the policy said the
+  // archive window "only hides it from the chats list", which is false against
+  // ChatPanel.tsx:141 (a producer is shown a placeholder, not the messages)
+  // and :160,187-193 (an admin's composer is disabled). A trust page that
+  // cites an artefact stating the opposite of its own claim is worse than one
+  // that says nothing, so both directions are pinned here.
+  it("does not restate the archive window as a mere list filter", () => {
+    const enChat = bullets(EN_SECTION_7()).find((l) => l.includes("Chat messages"));
+    const deChat = bullets(DE_SECTION_7()).find((l) => l.includes("Chatnachrichten"));
+    expect(enChat).toBeDefined();
+    expect(deChat).toBeDefined();
+    expect(enChat).not.toMatch(/only hides it from the chats list/i);
+    expect(deChat).not.toMatch(/lediglich aus der Chat-Liste/i);
+    expect(enChat).toMatch(/read only/i);
+    expect(deChat).toMatch(/lesend/i);
   });
 });

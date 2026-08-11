@@ -24,7 +24,12 @@ export function DocumentsCard() {
                 <span className="flex min-w-0 items-center gap-2.5">
                   <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                   <span className="min-w-0">
-                    <span className="block truncate text-sm font-medium">{doc.title}</span>
+                    {/* Never truncate: at a 1024px viewport "Data processing
+                     *  agreement" rendered as "Data processing…". A documents
+                     *  list on a trust page cannot elide the document's name —
+                     *  the title is what a reviewer is here to identify. It
+                     *  wraps instead. */}
+                    <span className="block text-sm font-medium">{doc.title}</span>
                     <span className="block font-mono text-xs text-muted-foreground">{doc.meta}</span>
                   </span>
                 </span>

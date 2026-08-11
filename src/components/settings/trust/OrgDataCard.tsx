@@ -18,7 +18,10 @@ function TileValue({
   value: string;
 }) {
   if (isLoading) return <Skeleton className="h-5 w-24" />;
-  if (isError) {
+  // Any state that is not a loaded value degrades to the same honest dash:
+  // an explicit error, or a query that never resolved (offline, disabled,
+  // paused) and left `value` empty. Neither is a "0", which would be false.
+  if (isError || !value) {
     return (
       <span className="font-mono text-sm text-muted-foreground" title="Could not be read just now">
         —
@@ -45,7 +48,15 @@ function Tile({
         {label}
       </div>
       <TileValue {...state} />
-      <div className="text-xs leading-4 text-muted-foreground">{note}</div>
+      {/* `break-words` is load-bearing, not tidiness: the Outside-reach note
+       *  carries `supabase/tests/rls/org_isolation.sql`, a single token with no
+       *  natural break opportunity. Without it the token overflowed the tile,
+       *  the Card and the settings column at every desktop width (measured:
+       *  the tab's content column is 772px wide while its subtree reported a
+       *  791px scrollWidth), and was clipped at the viewport edge at 1024.
+       *  The citation is the whole evidentiary content of that tile, so it has
+       *  to survive rather than be shortened. */}
+      <div className="break-words text-xs leading-4 text-muted-foreground">{note}</div>
     </div>
   );
 }
@@ -53,12 +64,27 @@ function Tile({
 /** "This organisation's data" — what the active org holds, where it sits, and
  *  who outside it can reach the rows. */
 export function OrgDataCard() {
-  const { currentOrg } = useAuth();
+  const { currentOrg, hasRole } = useAuth();
+  const isAdmin = hasRole("admin");
   const stats = useOrgDataStats();
-  const members = useOrgMembers(currentOrg?.id);
+  // list_org_members is admin-only server-side (see
+  // supabase/migrations/20260622164208_list_org_members_last_sign_in.sql), so
+  // a production-team viewer's read is a permanent authorization boundary,
+  // not a transient failure. Withhold the org id rather than the viewer's
+  // role: firing the RPC anyway would 42501 on every mount and the tile would
+  // render the generic "could not be read" dash, misstating why.
+  const members = useOrgMembers(isAdmin ? currentOrg?.id : undefined);
 
+  // Counts of role holders, not a partition of the headline. `list_org_members`
+  // aggregates a user's roles, so one person can appear in two of these, and
+  // the three together are the whole roster only when nobody holds two roles.
+  // The note says "Roles held" for exactly that reason: the earlier
+  // "N administrators · M production team" read as a breakdown of the headline
+  // and silently dropped every artist, so the tile appeared to be concealing
+  // members in every organisation that has any.
   const admins = members.data?.filter((m) => m.roles.includes("admin")).length ?? 0;
   const producers = members.data?.filter((m) => m.roles.includes("producer")).length ?? 0;
+  const artists = members.data?.filter((m) => m.roles.includes("artist")).length ?? 0;
 
   return (
     <Card>
@@ -66,11 +92,24 @@ export function OrgDataCard() {
         <div className="space-y-1">
           <h3 className="text-base font-semibold tracking-tight">This organisation's data</h3>
           <p className="text-sm text-muted-foreground">
-            What {currentOrg?.name ?? "this workspace"} holds today, where it sits, and who outside
-            your organisation can reach it. Nobody.
+            What {currentOrg?.name ?? "this workspace"} holds today, where it sits, and which other
+            organisations on ShowFlow Pro can reach it. None.
           </p>
         </div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {/* Two-up is the ceiling here, and `lg:grid-cols-4` was the trap
+         *  `VisibilityMatrix.tsx` documents one file over: Tailwind's `lg:` is
+         *  a VIEWPORT query, but this tab renders inside the app sidebar plus
+         *  the settings nav column, and `SettingsPage`'s `max-w-5xl` caps the
+         *  content column at 772px no matter how wide the display is.
+         *  Measured live in the running app (content column / tile width):
+         *    768 -> 468 / 207   1024 -> 504 / 107   1280 -> 760 / 171
+         *    1440 -> 772 / 174  1920 -> 772 / 174
+         *  So a 4-up row never had more than 174px per tile and had 107px at
+         *  1024, where "OUTSIDE REACH" wrapped its own label and the citation
+         *  was cut at the card edge. Pushing the 4-up to `xl:`/`2xl:` would
+         *  not help: the column is already at its 772px maximum there. Two-up
+         *  gives 366px at the maximum and 226px at 1024. */}
+        <div className="grid gap-3 sm:grid-cols-2">
           <Tile
             label="Region"
             value="EU · Ireland"
@@ -91,19 +130,21 @@ export function OrgDataCard() {
           />
           <Tile
             label="Members"
-            value={members.data ? `${members.data.length} people` : ""}
+            value={!isAdmin ? "Admin only" : members.data ? `${members.data.length} people` : ""}
             note={
-              members.data
-                ? `${admins} ${admins === 1 ? "administrator" : "administrators"} · ${producers} ${roleLabel("producer").toLowerCase()}.`
-                : "People with a login to this organisation."
+              !isAdmin
+                ? "Visible to organisation administrators."
+                : members.data
+                  ? `Roles held: ${admins} ${admins === 1 ? "administrator" : "administrators"} · ${producers} ${roleLabel("producer").toLowerCase()} · ${artists} ${artists === 1 ? "artist" : "artists"}.`
+                  : "People with a login to this organisation."
             }
-            isLoading={members.isLoading}
-            isError={members.isError}
+            isLoading={isAdmin && members.isLoading}
+            isError={isAdmin && members.isError}
           />
           <Tile
             label="Outside reach"
             value="None"
-            note="No other organisation can read a row."
+            note="No other organisation can read a row, asserted by supabase/tests/rls/org_isolation.sql on every pull request."
             isLoading={false}
             isError={false}
           />

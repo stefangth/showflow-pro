@@ -21,7 +21,7 @@ export function RetentionCard() {
           ))}
         </dl>
         <p className="text-xs leading-4 text-muted-foreground">
-          Deleted data leaves the rolling 30-day backup window inside that window.
+          Deleted data leaves the backups within 30 days, the longest any backup is kept.
         </p>
       </CardContent>
     </Card>

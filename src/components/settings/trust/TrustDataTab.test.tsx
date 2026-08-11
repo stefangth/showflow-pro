@@ -5,7 +5,7 @@ import { renderWithProviders } from "@/test/renderWithProviders";
 import { VISIBILITY_MATRIX } from "@/lib/trust/facts";
 
 vi.mock("@/features/auth/AuthContext", () => ({
-  useAuth: () => ({ currentOrg: { id: "org-1", name: "Berlin Ensemble" } }),
+  useAuth: () => ({ currentOrg: { id: "org-1", name: "Berlin Ensemble" }, hasRole: (r: string) => r === "admin" }),
 }));
 
 // The counts themselves are covered against the recording fake in
@@ -91,19 +91,22 @@ describe("TrustDataTab", () => {
     }
   });
 
-  // The source design claimed the production team cannot read the audit log.
-  // The RLS policy grants it SELECT, so the page says so. Locking this down
-  // because it is exactly the sentence a reviewer would test against the API.
-  it("tells the truth about the production team and the audit log", () => {
+  // The source design claimed the production team cannot read the audit log,
+  // and an earlier draft of this page implied a "Read-only" vs "Full"
+  // hierarchy between admin and production team. The RLS policies are
+  // symmetric (same SELECT, same INSERT), so both roles get the same answer.
+  it("gives the production team and the administrator the same audit-log answer", () => {
     renderTab();
 
     fireEvent.click(screen.getByRole("radio", { name: "Production team" }));
+    const producerRow = matrixRow("Booking audit log");
+    expect(within(producerRow).getByText("Append-only")).toBeInTheDocument();
+    expect(within(producerRow).queryByText("No access")).toBeNull();
+    expect(producerRow).toHaveTextContent(/no policy allows altering or deleting a row/i);
 
-    const row = matrixRow("Booking audit log");
-    expect(within(row).getByText("Read-only")).toBeInTheDocument();
-    expect(within(row).queryByText("No access")).toBeNull();
-    // It reads the log, but the append-only property still has to be stated.
-    expect(row).toHaveTextContent(/no policy allows altering a row/i);
+    fireEvent.click(screen.getByRole("radio", { name: "Administrator" }));
+    const adminRow = matrixRow("Booking audit log");
+    expect(within(adminRow).getByText("Append-only")).toBeInTheDocument();
   });
 
   // Likewise: notes live on the artist's own booking row, so the own-row SELECT
@@ -155,6 +158,28 @@ describe("TrustDataTab", () => {
       "href",
       expect.stringContaining("mailto:"),
     );
+  });
+
+  // Tailwind's `lg:` is a VIEWPORT query, but this tab renders inside the app
+  // sidebar plus the settings nav column and SettingsPage's `max-w-5xl` caps
+  // its content column at 772px. Measured in the running app: `lg:grid-cols-2`
+  // split a 504px column into 246px halves at a 1024px viewport, and the
+  // "Request an organisation export" button overflowed its own Card by 21px —
+  // a control sitting outside the container it belongs to. At `xl` the column
+  // is 760px, so each half is 374px and the widest control fits. jsdom cannot
+  // re-measure that, so this pins the breakpoint the measurement chose.
+  it("splits into two columns at xl, not lg, because the column is only 504px at lg", () => {
+    const { container } = renderTab();
+
+    // The row that holds Retention beside the Export/Documents stack — found
+    // by the card it contains, not by a class, so the selector cannot drift
+    // onto OrgDataCard's tile grid.
+    const retention = screen.getByRole("heading", { name: "Retention" });
+    const split = retention.closest("div.grid");
+    expect(split, "the Retention / Export row must still be a grid").not.toBeNull();
+    expect(split!.className).toMatch(/\bxl:grid-cols-2\b/);
+    expect(split!.className).not.toMatch(/\blg:grid-cols-2\b/);
+    expect(container.querySelectorAll("div.grid").length).toBeGreaterThan(0);
   });
 
   it("labels the request-only document as a request, not a download", () => {
