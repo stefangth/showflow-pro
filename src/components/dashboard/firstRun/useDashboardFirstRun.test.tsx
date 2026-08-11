@@ -79,7 +79,7 @@ describe("useDashboardFirstRun", () => {
     expect(s.show).toBe(true);
     expect(s.complete).toBe(false);
     // hire_orders is not entitled, so only the booking module contributes.
-    expect(s.steps.map((x) => x.key)).toEqual(["flow", "people", "slots", "ladder", "eligibility", "timing"]);
+    expect(s.steps.map((x) => x.key)).toEqual(["shows", "slots", "flow", "people", "ladder", "eligibility", "timing"]);
     expect(s.welcome.headline).toContain("Halle Kollektiv");
     expect(s.offFooters).toContain("Hire orders is off for this org. Ask your account manager to switch it on.");
   });
