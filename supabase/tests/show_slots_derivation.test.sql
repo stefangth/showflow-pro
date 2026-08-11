@@ -5,7 +5,7 @@
 --   99999999-…-0001 main slot        99999999-…-0002 understudy slot
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT plan(9);
+SELECT plan(10);
 
 INSERT INTO public.organizations (id, name, slug) VALUES
   ('66666666-0002-4002-8002-000000000001','Show Slots Derivation Org','show-slots-derivation-org');
@@ -53,28 +53,39 @@ SELECT ok(
    FROM public.show_required_skills WHERE show_id = '77777777-0002-4002-8002-000000000001'),
   'show_required_skills contains exactly Vocals and Stage combat');
 
--- 5. Updating the main slot's count recomputes main_cast_slots.
+-- 6. A SECOND main slot proves main_cast_slots is a SUM across rows, not a
+-- single slot's count (a max()/LIMIT-1 implementation would fail this).
+INSERT INTO public.show_slots (id, show_id, name, slot_count, kind, sort_order) VALUES
+  ('99999999-0002-4002-8002-000000000003','77777777-0002-4002-8002-000000000001','Main cast (2)',2,'main',2);
+SELECT is(
+  (SELECT main_cast_slots FROM public.shows WHERE id = '77777777-0002-4002-8002-000000000001'),
+  5::smallint, 'main_cast_slots sums across multiple main slot rows (3 + 2 = 5)');
+-- Clean up: remove the second slot so the rest of the test's arithmetic
+-- (single main slot going 3 -> 5 below) is unaffected.
+DELETE FROM public.show_slots WHERE id = '99999999-0002-4002-8002-000000000003';
+
+-- 7. Updating the main slot's count recomputes main_cast_slots.
 UPDATE public.show_slots SET slot_count = 5
   WHERE id = '99999999-0002-4002-8002-000000000001';
 SELECT is(
   (SELECT main_cast_slots FROM public.shows WHERE id = '77777777-0002-4002-8002-000000000001'),
   5::smallint, 'updating the main slot count recomputes main_cast_slots (5)');
 
--- 6. Deleting the last understudy slot sets understudy_slots back to NULL
+-- 8. Deleting the last understudy slot sets understudy_slots back to NULL
 -- (sum() over zero rows is NULL -- the unconfigured state, not 0).
 DELETE FROM public.show_slots WHERE id = '99999999-0002-4002-8002-000000000002';
 SELECT ok(
   (SELECT understudy_slots IS NULL FROM public.shows WHERE id = '77777777-0002-4002-8002-000000000001'),
   'deleting the last understudy slot sets understudy_slots back to NULL');
 
--- That delete cascades its slot skill (Vocals on the understudy slot) away, but
--- Vocals is still required via the main slot, so the union is unaffected (still 2).
+-- 9. That delete cascades its slot skill (Vocals on the understudy slot) away,
+-- but Vocals is still required via the main slot, so the union is unaffected (still 2).
 SELECT is(
   (SELECT count(*)::int FROM public.show_required_skills
    WHERE show_id = '77777777-0002-4002-8002-000000000001'),
   2, 'show_required_skills unaffected by the understudy slot delete (Vocals still required via the main slot)');
 
--- 7. Deleting a slot skill (Stage combat off the main slot) shrinks the union to 1,
+-- 10. Deleting a slot skill (Stage combat off the main slot) shrinks the union to 1,
 -- leaving only Vocals.
 DELETE FROM public.show_slot_required_skills
   WHERE slot_id = '99999999-0002-4002-8002-000000000001'

@@ -20,6 +20,18 @@
 -- show_slots itself only has a BEFORE INSERT org-derivation trigger and a
 -- BEFORE UPDATE updated_at trigger -- no AFTER triggers, so recompute's own
 -- writes never re-fire the two triggers defined below. No cycle.
+--
+-- Reparenting: an UPDATE that moves a slot (or a slot-skill row, transitively)
+-- to a different show must recompute BOTH the old and the new show, or the old
+-- show's cache goes stale. Both trigger functions below branch on TG_OP/
+-- OLD-vs-NEW show id and recompute every distinct affected show.
+--
+-- recompute_show_slot_derivations is SECURITY DEFINER and REVOKEd from
+-- public/anon/authenticated immediately below -- it must never be reachable
+-- via PostgREST RPC by an ordinary org member, who could otherwise pass any
+-- show UUID (including one from a different org) and, for a show with zero
+-- show_slots rows, NULL its main_cast_slots/understudy_slots and delete its
+-- show_required_skills.
 
 CREATE OR REPLACE FUNCTION public.recompute_show_slot_derivations(p_show_id uuid)
 RETURNS void
@@ -54,7 +66,13 @@ BEGIN
 END;
 $$;
 
--- Trigger on show_slots: any insert/update/delete of a slot recomputes its show.
+-- Only the trigger functions below (running as this function's SECURITY
+-- DEFINER owner) may call this; no direct RPC/PostgREST access for any role.
+REVOKE ALL ON FUNCTION public.recompute_show_slot_derivations(uuid) FROM public, anon, authenticated;
+
+-- Trigger on show_slots: any insert/update/delete of a slot recomputes its
+-- show. A reparenting UPDATE (show_id changed) recomputes both the old and
+-- the new show, so neither is left with a stale cache.
 CREATE OR REPLACE FUNCTION public.trg_fn_recompute_show_slot_derivations()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -62,7 +80,12 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
-  PERFORM public.recompute_show_slot_derivations(COALESCE(NEW.show_id, OLD.show_id));
+  IF TG_OP = 'UPDATE' AND OLD.show_id IS DISTINCT FROM NEW.show_id THEN
+    PERFORM public.recompute_show_slot_derivations(OLD.show_id);
+    PERFORM public.recompute_show_slot_derivations(NEW.show_id);
+  ELSE
+    PERFORM public.recompute_show_slot_derivations(COALESCE(NEW.show_id, OLD.show_id));
+  END IF;
   RETURN NULL;
 END;
 $$;
@@ -72,12 +95,14 @@ CREATE TRIGGER trg_recompute_show_slot_derivations
   AFTER INSERT OR UPDATE OR DELETE ON public.show_slots
   FOR EACH ROW EXECUTE FUNCTION public.trg_fn_recompute_show_slot_derivations();
 
--- Trigger on show_slot_required_skills: resolve the owning show via the slot,
--- then recompute. On a cascade delete triggered by the slot itself being
--- deleted, the slot row is already gone by the time this fires, so the lookup
--- returns NULL and the recompute is skipped here -- harmless, because the
--- show_slots AFTER DELETE trigger above already recomputes the show (and its
--- rebuild of show_required_skills naturally excludes skills whose slot no
+-- Trigger on show_slot_required_skills: resolve the owning show(s) via the
+-- slot(s), then recompute each distinct non-null show. A reparenting UPDATE
+-- (slot_id moved to a slot under a different show) recomputes both the old
+-- and the new show. On a cascade delete triggered by the slot itself being
+-- deleted, the slot row is already gone by the time this fires, so the OLD
+-- lookup returns NULL and the recompute is skipped here -- harmless, because
+-- the show_slots AFTER DELETE trigger above already recomputes the show (and
+-- its rebuild of show_required_skills naturally excludes skills whose slot no
 -- longer exists via the JOIN in recompute_show_slot_derivations).
 CREATE OR REPLACE FUNCTION public.trg_fn_recompute_show_slot_derivations_from_skill()
 RETURNS trigger
@@ -86,13 +111,23 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-  v_show_id uuid;
+  v_old_show_id uuid;
+  v_new_show_id uuid;
 BEGIN
-  SELECT show_id INTO v_show_id FROM public.show_slots
-  WHERE id = COALESCE(NEW.slot_id, OLD.slot_id);
+  IF TG_OP = 'DELETE' THEN
+    SELECT show_id INTO v_old_show_id FROM public.show_slots WHERE id = OLD.slot_id;
+  ELSIF TG_OP = 'INSERT' THEN
+    SELECT show_id INTO v_new_show_id FROM public.show_slots WHERE id = NEW.slot_id;
+  ELSE -- UPDATE
+    SELECT show_id INTO v_old_show_id FROM public.show_slots WHERE id = OLD.slot_id;
+    SELECT show_id INTO v_new_show_id FROM public.show_slots WHERE id = NEW.slot_id;
+  END IF;
 
-  IF v_show_id IS NOT NULL THEN
-    PERFORM public.recompute_show_slot_derivations(v_show_id);
+  IF v_old_show_id IS NOT NULL THEN
+    PERFORM public.recompute_show_slot_derivations(v_old_show_id);
+  END IF;
+  IF v_new_show_id IS NOT NULL AND v_new_show_id IS DISTINCT FROM v_old_show_id THEN
+    PERFORM public.recompute_show_slot_derivations(v_new_show_id);
   END IF;
 
   RETURN NULL;
