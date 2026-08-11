@@ -84,9 +84,14 @@ export function BookingSetupRail({ orgId, initialStep }: { orgId: string | null;
           </div>
           <p className="mt-1.5 font-display text-base font-semibold">{HEADER.title}</p>
           <p className="mt-1 text-xs leading-[19px] text-muted-foreground">{HEADER.body}</p>
+          {/* Count-based fill, left to right (mirrors DashboardWelcome's progress dots): the
+              first `doneCount` segments light regardless of WHICH steps are done, so the rail
+              reads like a normal progress bar. Per-step fill lit a later done step while an
+              earlier undone one stayed grey (e.g. artists done, booking flow not), which reads
+              as broken. The numbered rows below still show exactly which step is done. */}
           <div className="mt-3 flex gap-1">
-            {status.steps.map((s) => (
-              <span key={s.key} className={`h-[3px] w-full rounded-full ${s.done ? "bg-accent-500" : "bg-muted"}`} />
+            {status.steps.map((s, i) => (
+              <span key={s.key} className={`h-[3px] w-full rounded-full ${i < status.doneCount ? "bg-accent-500" : "bg-muted"}`} />
             ))}
           </div>
         </div>
