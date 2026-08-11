@@ -57,22 +57,29 @@ export function SkillsCard({ canEnter }: { canEnter: boolean }) {
 
   if (!canEnter) return null;
 
+  // Case-insensitive name-collision guard shared by Add and Rename. Checks the loaded
+  // catalog (which includes archived rows) before hitting the DB: the org_id+name unique
+  // index would otherwise surface as a raw constraint-violation error, and for an archived
+  // match there is a better answer than "failed": restore it instead. Renaming passes its
+  // own id as excludeId so re-saving a skill's own name is not treated as a collision.
+  // Returns true when it surfaced a toast and the caller should stop.
+  const blockOnNameCollision = (name: string, excludeId?: string): boolean => {
+    const existing = rows.find(
+      (r) => r.id !== excludeId && r.name.toLowerCase() === name.toLowerCase(),
+    );
+    if (!existing) return false;
+    toast.error(
+      existing.archivedAt !== null
+        ? `A skill named "${name}" is archived. Use Restore to bring it back.`
+        : `A skill named "${name}" already exists.`,
+    );
+    return true;
+  };
+
   const handleAdd = async () => {
     const trimmed = newName.trim();
     if (!trimmed) return;
-    // Check the loaded catalog (which includes archived rows) for a case-insensitive
-    // name collision before hitting the DB — the org_id+name unique index would
-    // otherwise surface as a raw constraint-violation error, and for an archived
-    // match there is a better answer than "failed": restore it instead.
-    const existing = rows.find((r) => r.name.toLowerCase() === trimmed.toLowerCase());
-    if (existing) {
-      if (existing.archivedAt !== null) {
-        toast.error(`A skill named "${trimmed}" is archived. Use Restore to bring it back.`);
-      } else {
-        toast.error(`A skill named "${trimmed}" already exists.`);
-      }
-      return;
-    }
+    if (blockOnNameCollision(trimmed)) return;
     try {
       await createSkill.mutateAsync(trimmed);
       setNewName('');
@@ -93,6 +100,7 @@ export function SkillsCard({ canEnter }: { canEnter: boolean }) {
   const saveRename = () => {
     const trimmed = editingName.trim();
     if (!trimmed || !editingId) return;
+    if (blockOnNameCollision(trimmed, editingId)) return;
     renameSkill.mutate(
       { id: editingId, name: trimmed },
       {

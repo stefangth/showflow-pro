@@ -204,6 +204,56 @@ describe("SkillsCard", () => {
     });
   });
 
+  it("renaming to an existing active skill's name shows a toast and issues no rename", async () => {
+    // saveRename runs the same case-insensitive collision guard as Add, so a rename that
+    // would hit skills_org_name_uniq is caught with friendly copy instead of a raw
+    // Postgres constraint error surfacing through the toast.
+    renderCard(); // ROWS: active "Vocals" (skill-1), active "Aerial silks" (skill-2)
+    const silksRow = screen.getByTestId("skill-row-skill-2");
+    fireEvent.click(within(silksRow).getByRole("button", { name: "Rename" }));
+    fireEvent.change(within(silksRow).getByDisplayValue("Aerial silks"), { target: { value: "vocals" } });
+    fireEvent.click(within(silksRow).getByRole("button", { name: "Save name" }));
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('A skill named "vocals" already exists.');
+    });
+    expect(toast.success).not.toHaveBeenCalled();
+    const calls = (client.calls ?? []) as { table: string; method: string }[];
+    expect(calls.find((c) => c.table === "skills" && c.method === "update")).toBeUndefined();
+  });
+
+  it("renaming to an archived skill's name shows the restore-hint toast and issues no rename", async () => {
+    renderCard(); // ROWS includes archived "Puppetry" (skill-3)
+    const silksRow = screen.getByTestId("skill-row-skill-2");
+    fireEvent.click(within(silksRow).getByRole("button", { name: "Rename" }));
+    fireEvent.change(within(silksRow).getByDisplayValue("Aerial silks"), { target: { value: "Puppetry" } });
+    fireEvent.click(within(silksRow).getByRole("button", { name: "Save name" }));
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('A skill named "Puppetry" is archived. Use Restore to bring it back.');
+    });
+    const calls = (client.calls ?? []) as { table: string; method: string }[];
+    expect(calls.find((c) => c.table === "skills" && c.method === "update")).toBeUndefined();
+  });
+
+  it("renaming a skill to a case variant of its own name is not a collision and saves", async () => {
+    // excludeId keeps a skill's own row out of the collision check, so a case-only edit
+    // (or a no-op re-save) is not blocked.
+    renderCard();
+    const vocalsRow = screen.getByTestId("skill-row-skill-1");
+    fireEvent.click(within(vocalsRow).getByRole("button", { name: "Rename" }));
+    fireEvent.change(within(vocalsRow).getByDisplayValue("Vocals"), { target: { value: "VOCALS" } });
+    fireEvent.click(within(vocalsRow).getByRole("button", { name: "Save name" }));
+
+    await waitFor(() => {
+      const calls = (client.calls ?? []) as { table: string; method: string; args: unknown[] }[];
+      const update = calls.find((c) => c.table === "skills" && c.method === "update");
+      expect(update).toBeDefined();
+      expect((update!.args[0] as { name: string }).name).toBe("VOCALS");
+    });
+    expect(toast.error).not.toHaveBeenCalled();
+  });
+
   it("typing an archived skill's name and clicking Add shows the restore-hint toast and issues no insert (Finding 4)", async () => {
     renderCard(); // ROWS includes archived "Puppetry" (skill-3)
     fireEvent.change(screen.getByPlaceholderText("New skill name"), { target: { value: "puppetry" } });
