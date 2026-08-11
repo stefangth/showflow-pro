@@ -319,19 +319,19 @@ export interface Subprocessor {
 
 /** Mirrors section 5 of docs/legal/privacy-policy.en.md. Asserted by test.
  *
- *  Sentry, PostHog and Airtable used to be "Off" and are not any more. The
- *  case for "Off" was the dependency tree: no error-tracking or analytics
- *  package is installed in either repository, so nothing could be loaded even
- *  after consent. That premise still holds and is still asserted by test — it
- *  is why nothing on this page says a client package ships — but it was the
- *  wrong premise to answer this column with. The column asks whether a
- *  processor receives data, which is a question about the deployment and not
- *  about package.json, and the answer for all three is yes.
+ *  PostHog and Airtable used to be "Off" and are not any more. The case for
+ *  "Off" was the dependency tree — nothing was installed, so nothing could be
+ *  loaded even after consent. The column asks a different question, though:
+ *  whether a processor receives data, which is about the deployment and not
+ *  about package.json, and the answer for both is yes. (posthog-js is now in
+ *  the application's dependency tree; the consent-gated init is in
+ *  src/features/analytics/.)
  *
- *  Sentry and PostHog are therefore "Consent": they receive nothing unless a
- *  reader accepts error tracking or analytics, which is the gate the consent
- *  banner and dialog record (src/components/consent/) and the basis sections
- *  4(g), 4(h) and 4(j) of the privacy policy state. Airtable is "Optional":
+ *  PostHog is therefore "Consent": it receives nothing — product analytics,
+ *  session replay, or error reports — unless a reader accepts the matching
+ *  category, which is the gate the consent banner and dialog record
+ *  (src/components/consent/) and the basis sections 4(g), 4(h) and 4(j) of the
+ *  privacy policy state. Airtable is "Optional":
  *  an organisation connects its own base and the sync then runs server side
  *  on a schedule (supabase/functions/airtable-poll/index.ts), with no cookie
  *  and nothing stored on a device, which is why it belongs in the privacy
@@ -364,8 +364,8 @@ export interface Subprocessor {
 // The `transfer` column mirrors section 5's "Transfer mechanism" cell, and
 // three rows used to differ from it in ways a reader would notice. Supabase's
 // cell reads "EU storage option in use WHERE AVAILABLE", and dropping the hedge
-// published a firmer commitment than the policy makes. Sentry's and PostHog's
-// read "EU region used where available; DPF and SCCs for US transfers", and
+// published a firmer commitment than the policy makes. PostHog's reads
+// "EU region used where available; DPF and SCCs for US transfers", and
 // naming only the SCCs dropped a transfer basis the policy asserts — an
 // under-claim, but a divergence from the artefact all the same. The
 // facts.privacy.test.ts assertion that should have caught it only checked one
@@ -377,8 +377,7 @@ export const SUBPROCESSORS: Subprocessor[] = [
   { name: "Vercel Web Analytics", purpose: "Page-view analytics on the showflow.pro website", region: "EU · US", transfer: "DPF + SCCs", status: "Consent", tone: "gated" },
   { name: "Resend", purpose: "Transactional email", region: "US", transfer: "DPF + SCCs", status: "Core", tone: "full" },
   { name: "Google", purpose: "Web fonts", region: "US", transfer: "DPF + SCCs", status: "Core", tone: "full" },
-  { name: "Sentry", purpose: "Client error reports", region: "EU · US", transfer: "EU region where available · DPF + SCCs", status: "Consent", tone: "gated" },
-  { name: "PostHog", purpose: "Product analytics, session replay", region: "EU · US", transfer: "EU region where available · DPF + SCCs", status: "Consent", tone: "gated" },
+  { name: "PostHog", purpose: "Product analytics, session replay, error reports", region: "EU · US", transfer: "EU region where available · DPF + SCCs", status: "Consent", tone: "gated" },
   { name: "Airtable", purpose: "Show-data sync, for organisations that connect it", region: "US", transfer: "DPF + SCCs", status: "Optional", tone: "gated" },
 ];
 
@@ -537,21 +536,19 @@ export const RETENTION: RetentionRow[] = [
     period: "7-30 days",
     basis: "These are the hosting and database providers' own logs, and they set the period. Nothing we run retains or expires them.",
   },
-  // These two rows carried their condition in the `period` cell for a while
-  // ("90 days, once error tracking is enabled", "12 months, once PostHog is
-  // enabled"), then in the basis line as a denial ("no package ships, so
-  // nothing is collected"). Both are gone. The periods are stated flat,
-  // because both processors are in use: the subprocessor table above now
-  // carries Sentry and PostHog at status "Consent", and a retention table
-  // that hedged a period for a processor the page discloses as live would
-  // contradict itself two sections apart.
+  // This row carried its condition in the `period` cell for a while
+  // ("12 months, once PostHog is enabled"), then in the basis line as a denial
+  // ("no package ships, so nothing is collected"). Both are gone. The period
+  // is stated flat, because the processor is in use: the subprocessor table
+  // above carries PostHog at status "Consent" (product analytics, session
+  // replay, and error reports), and a retention table that hedged a period for
+  // a processor the page discloses as live would contradict itself two
+  // sections apart.
   //
-  // WHAT THESE SENTENCES DELIBERATELY DO NOT SAY. No error-tracking or
-  // analytics package is installed in either repository, and no script tag,
-  // hosting setting, or environment variable committed here wires one up.
-  // That is asserted by retentionBasis.test.ts and publishedClaims.test.ts,
-  // and it is why neither basis names a client library, an SDK, or a
-  // mechanism: describing one would be inventing it. What they state instead
+  // WHAT THIS SENTENCE DELIBERATELY DOES NOT SAY. posthog-js is installed and
+  // consent-gated (src/features/analytics/), but the basis still names no
+  // client library, SDK, or mechanism — the trust page owes a reader the
+  // processing and the gate, not the implementation. What it states instead
   // is the processing and the gate in front of it, both of which the privacy
   // policy asserts (sections 4(g), 4(h), 4(j) and 9) and the consent banner
   // and dialog in src/components/consent/ record.
@@ -564,21 +561,16 @@ export const RETENTION: RetentionRow[] = [
   // ours — both are quoted from Vercel's own documentation, which is what the
   // basis line says.
   {
-    item: "Error reports",
-    period: "90 days",
-    basis:
-      "Set at the provider that receives the reports. Nothing is sent unless you accept error tracking, and nothing we run deletes or expires a report.",
-  },
-  {
-    item: "Analytics and session replay",
+    item: "Analytics, session replay and error reports",
     period: "12 months",
-    // Still scoped to product analytics and session replay rather than to
-    // "analytics", because the page-view beacon on the public website is a
-    // different processor with a different period and its own row at the foot
-    // of this table. Collapsing the two would publish one figure for two
-    // things that are retained differently.
+    // Scoped to the product-analytics processor (PostHog: page-view/feature
+    // events, session replays, and the exception reports error tracking sends)
+    // rather than to "analytics", because the page-view beacon on the public
+    // website is a different processor with a different period and its own row
+    // at the foot of this table. Collapsing the two would publish one figure
+    // for things that are retained differently.
     basis:
-      "Set at the provider that receives the events. Nothing is sent unless you accept analytics, and nothing we run deletes or expires an event or a replay.",
+      "Set at the provider that receives the events. Nothing is sent unless you accept analytics or error tracking, and nothing we run deletes or expires an event, a replay, or a report.",
   },
   {
     // The one processor on this page that IS collecting something today, and
@@ -857,12 +849,12 @@ export const SELF_SERVE_RIGHTS: SelfServeRight[] = [
     //
     // The app clause then said "records a separate choice ... and loads none
     // of the three", which was the honest reading while the subprocessor table
-    // carried Sentry and PostHog at "Off". It is not the reading any more: the
-    // table discloses both as processors that receive data after consent, so a
-    // right that told the same reader nothing is loaded would contradict the
-    // section above it. What the clause states now is the right itself — three
-    // separate choices, changeable at any time — which is what Art. 7(3) is
-    // about, and which asserts no mechanism this repository cannot show.
+    // carried PostHog at "Off". It is not the reading any more: the table
+    // discloses PostHog as a processor that receives data after consent (and
+    // AnalyticsBridge now reads useConsent() to load and unload it), so a right
+    // that told the same reader nothing is loaded would contradict the section
+    // above it. What the clause states now is the right itself — three separate
+    // choices, changeable at any time — which is what Art. 7(3) is about.
     title: "Withdraw analytics consent",
     detail:
       "On showflow.pro, Cookie settings in the footer stops the page-view analytics that loads only after you accept. In the app, analytics, session replay, and error tracking each take their own choice, and Manage cookie preferences changes any of them at any time. Art. 7(3).",

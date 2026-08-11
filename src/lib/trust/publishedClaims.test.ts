@@ -160,8 +160,8 @@ describe("every right the matrix quotes is a right Settings shows", () => {
 //
 // Then, correcting it: "The app records a separate choice … and loads none of
 // the three". True of the dependency tree, and it was the honest reading while
-// the subprocessor table carried Sentry and PostHog at "Off". They are at
-// "Consent" now — named as processors that receive data once a reader accepts
+// the subprocessor table carried PostHog at "Off". It is at
+// "Consent" now — named as a processor that receives data once a reader accepts
 // — so a right that tells the same reader nothing is loaded contradicts the
 // section above it.
 //
@@ -204,27 +204,25 @@ describe("the consent-withdrawal right describes what exists today", () => {
     // apart on one page, and they must not disagree about whether the app's
     // three categories are collected at all.
     expect(right!.detail).not.toMatch(/loads none of the three/i);
-    for (const name of ["Sentry", "PostHog"]) {
-      expect(SUBPROCESSORS.find((s) => s.name === name)?.status).not.toBe("Off");
-    }
+    expect(SUBPROCESSORS.find((s) => s.name === "PostHog")?.status).not.toBe("Off");
   });
 });
 
 // ── The mechanism the repository cannot show ──────────────────────────────
 //
-// Sentry and PostHog are disclosed as processors that receive data after
-// consent. No package for either is installed in this repository, and no
-// script tag, hosting setting or environment variable committed here wires one
-// up. That is a gap between what the page says and what this tree can
-// demonstrate, and the only honest way to hold it is to describe the
+// PostHog is disclosed as the processor that receives product analytics,
+// session replay, and error reports after consent. posthog-js is now installed
+// and consent-gated (src/features/analytics/), but nothing committed here
+// proves the deployment wiring end to end — no environment key, no hosting
+// setting. The honest way to hold that residual gap is to describe the
 // PROCESSING and the GATE — both of which the privacy policy asserts — and
-// never the implementation.
+// never claim more of the implementation than the tree can show.
 //
 // So: derive the premise, then ban the sentence that would fill the gap with an
 // invention — but only for as long as the gap exists. An earlier revision
 // asserted the absence outright, which made this a tripwire on somebody else's
-// work: PostHog is being integrated in a separate branch, and the moment that
-// merges a hard "no tracker is installed" assertion fails the build for a
+// work: PostHog was being integrated in a separate branch, and the moment that
+// merged a hard "no tracker is installed" assertion failed the build for a
 // change that did nothing wrong. The ban is the part worth keeping, so it is
 // now conditional on the premise rather than asserting it.
 //

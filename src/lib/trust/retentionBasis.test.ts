@@ -1,8 +1,8 @@
-// RETENTION publishes nine periods. facts.privacy.test.ts already proves each
+// RETENTION publishes eight periods. facts.privacy.test.ts already proves each
 // one matches section 7 of the privacy policy — but matching the policy is not
 // the same as being true of the deployment, and for most of these rows nothing
 // in the repo applies the period at all. Printed bare, a period reads as a
-// schedule; six of the nine have no schedule behind them and one (the email
+// schedule; five of the eight have no schedule behind them and one (the email
 // row) had a configured prune pointing at a shorter window than the number on
 // the page.
 //
@@ -191,15 +191,14 @@ describe("the rows that concede no schedule are still conceding accurately", () 
   // pretend otherwise: state the processing and the gate, never a mechanism.
   // publishedClaims.test.ts enforces the no-mechanism half across the whole
   // contract; this pins the premise it rests on.
-  // Amended when PostHog landed on main. Asserting the absence outright made
-  // this a tripwire on somebody else's work: the product-analytics integration
-  // merged and this went red for a change that did nothing wrong. Error
-  // tracking is still unshipped, so its half stands; the analytics half now
-  // records which world we are in rather than insisting on one. When a
-  // processor's client is actually in the tree the honest move is to describe
-  // how it works, so the no-mechanism rule these rows follow should be revisited
-  // for that row rather than left at today's deliberately mechanism-free wording.
-  it("ships no error-tracking package, which is why that basis names no mechanism", () => {
+  // Amended when PostHog landed on main, and again when error tracking was
+  // folded onto PostHog. Error reports, product analytics and session replay
+  // now all reach one processor (posthog-js, consent-gated in
+  // src/features/analytics/), which is why the retention row is a single
+  // combined entry. There is deliberately no separate Sentry client: this pins
+  // that, so a stray @sentry/* dependency — which would reintroduce a
+  // processor the page no longer discloses — fails the build.
+  it("ships no separate Sentry client; error reports ride on the disclosed PostHog", () => {
     const manifest = JSON.parse(readFileSync(resolve(ROOT, "package.json"), "utf8")) as {
       dependencies?: Record<string, string>;
       devDependencies?: Record<string, string>;
@@ -210,7 +209,7 @@ describe("the rows that concede no schedule are still conceding accurately", () 
   });
 
   it("states both consent-gated periods flat, with the gate and no mechanism", () => {
-    for (const item of ["Error reports", "Analytics and session replay"]) {
+    for (const item of ["Analytics, session replay and error reports"]) {
       const { period, basis } = row(item);
       // A bare figure, no condition riding in the value column.
       expect(period).toMatch(/^\d+\s+(?:days|months)$/);
@@ -239,13 +238,13 @@ describe("the rows that concede no schedule are still conceding accurately", () 
       "the two analytics processors collapsed into one — re-read this row's scope",
     ).toBeGreaterThan(1);
 
-    const { basis } = row("Analytics and session replay");
+    const { basis } = row("Analytics, session replay and error reports");
     expect(basis).toMatch(/event/i);
     expect(basis).toMatch(/replay/i);
 
     // …and the page-view beacon keeps its own row and its own numbers.
     const beacon = row("Vercel Web Analytics");
-    expect(beacon.period).not.toBe(row("Analytics and session replay").period);
+    expect(beacon.period).not.toBe(row("Analytics, session replay and error reports").period);
   });
 
   it("keeps the two provider-set rows attributed to the provider, not to us", () => {

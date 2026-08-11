@@ -22,16 +22,14 @@ export function CookieConsentBanner() {
               *  underneath it is not informed. "A single privacy-friendly
               *  analytics cookie" named none of them and undercounted the
               *  categories the dialog behind this banner actually offers:
-              *  product analytics and session replay go to PostHog, error
-              *  reports go to Sentry, and each takes its own toggle.
+              *  product analytics, session replay, and error reports all go to
+              *  PostHog, and each takes its own toggle.
               *
               *  Deliberately phrased as collection rather than as script
-              *  loading. No analytics or error-tracking package is in this
-              *  repository's dependency tree, so a sentence about what the
-              *  app "loads" would describe a mechanism nothing here shows. */}
+              *  loading. */}
             <p className="flex-1 text-sm text-muted-foreground">
               We ask before collecting any product analytics, session replay, or error reports.
-              Analytics and session replay go to PostHog, error reports to Sentry. Sign-in cookies
+              Analytics, session replay, and error reports go to PostHog. Sign-in cookies
               are strictly necessary and always on. No advertising, no cross-site tracking. See our {' '}
               <Link to={ROUTES.PRIVACY} className="underline text-foreground hover:text-primary whitespace-nowrap">
                 Privacy policy

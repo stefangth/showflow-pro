@@ -47,7 +47,7 @@ function policyProcessorNames(): string[] {
 
 /** The policy table row for one of our SUBPROCESSORS entries, matched by
  *  product name against the policy's legal entity name (the policy uses
- *  "Functional Software, Inc. dba Sentry"; the page uses "Sentry"). */
+ *  "PostHog, Inc."; the page uses "PostHog"). */
 function policyRowFor(name: string): { location: string; transfer: string } {
   const row = policyProcessorRows().find((cells) => cells[1].includes(name));
   expect(row, `no policy row names ${name}`).toBeDefined();
@@ -60,9 +60,9 @@ describe("subprocessor table matches the privacy policy", () => {
     const policyNames = policyProcessorNames();
     expect(policyNames).toHaveLength(SUBPROCESSORS.length);
 
-    // The policy uses legal entity names ("Functional Software, Inc. dba
-    // Sentry"); the page uses the product name a reviewer recognises. Match on
-    // the product name being present in the legal name.
+    // The policy uses legal entity names ("PostHog, Inc."); the page uses the
+    // product name a reviewer recognises. Match on the product name being
+    // present in the legal name.
     for (const sub of SUBPROCESSORS) {
       const match = policyNames.find((n) => n.includes(sub.name));
       expect(match, `no policy row names ${sub.name}`).toBeDefined();
@@ -76,7 +76,7 @@ describe("subprocessor table matches the privacy policy", () => {
     }
   });
 
-  // Airtable, Sentry and PostHog were all "Off" and are all in use now. The
+  // Airtable and PostHog were both "Off" and are in use now. The
   // two assertions this replaces pinned the old answer to the policy's own
   // forward-looking wording ("currently disabled"), which is exactly the
   // right way round: the page may not say a processor is off unless the
@@ -101,17 +101,15 @@ describe("subprocessor table matches the privacy policy", () => {
     }
   });
 
-  it("marks Sentry and PostHog as consent-gated, matching section 4's legal basis", () => {
-    // Both are processors that receive data, and both receive it only after
-    // the reader accepts — which is the basis sections 4(g), 4(h) and 4(j)
-    // assert and the status this column exists to publish. NOT asserted here
-    // (or anywhere, because nothing in this repository can show it): how the
-    // data reaches them. See publishedClaims.test.ts, which is what stops a
-    // sentence about an SDK or a package being written to fill that gap.
-    for (const name of ["Sentry", "PostHog"]) {
-      expect(SUBPROCESSORS.find((s) => s.name === name)?.status).toBe("Consent");
-    }
-    expect(POLICY).toMatch(/Client-side error tracking \(Sentry\)[\s\S]*?your consent/);
+  it("marks PostHog as consent-gated, matching section 4's legal basis", () => {
+    // PostHog receives product analytics, session replay, and error reports,
+    // and receives them only after the reader accepts — which is the basis
+    // sections 4(g), 4(h) and 4(j) assert and the status this column exists to
+    // publish. NOT asserted here: how the data reaches it. See
+    // publishedClaims.test.ts, which stops a sentence about an SDK or a
+    // package being written to fill that gap.
+    expect(SUBPROCESSORS.find((s) => s.name === "PostHog")?.status).toBe("Consent");
+    expect(POLICY).toMatch(/Client-side error tracking \(PostHog\)[\s\S]*?your consent/);
     expect(POLICY).toMatch(/Product analytics including session replay \(PostHog\)[\s\S]*?your consent/);
   });
 
@@ -144,7 +142,7 @@ describe("subprocessor table matches the privacy policy", () => {
   // (or their spelled-out forms) in the policy's Transfer mechanism cell.
   // BOTH DIRECTIONS. The first form of this checked only page -> policy ("if
   // the page says DPF, the policy must too"), which is structurally incapable
-  // of seeing an OMISSION: Sentry's and PostHog's policy rows assert "DPF and
+  // of seeing an OMISSION: PostHog's policy row asserts "DPF and
   // SCCs for US transfers" while the page printed SCCs alone, and the
   // assertion that exists to compare them passed. An under-claim is still a
   // divergence from the artefact the page says it mirrors, and on a page whose
@@ -275,8 +273,7 @@ describe("retention table matches the privacy policy", () => {
     "Account and profile": /Account and profile data:\*\*[\s\S]*?plus 30 days after deletion/,
     "Email send log and suppressions": /Email send log and suppression list:\*\* 24 months/,
     "Hosting and database logs": /Hosting \/ Supabase logs:\*\*[\s\S]*?7-30 days/,
-    "Error reports": /Sentry error reports:\*\* 90 days/,
-    "Analytics and session replay": /PostHog analytics events and session replays:\*\* 12 months/,
+    "Analytics, session replay and error reports": /PostHog analytics events, session replays, and error reports:\*\* 12 months/,
     // Two figures, and the anchor has to reach both: the 24-hour discard of
     // the visitor identifier and the 1-to-24-month reporting window. Neither
     // is ours — both are quoted from Vercel's documentation — so what this
