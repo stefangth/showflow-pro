@@ -32,7 +32,7 @@ BEGIN;
 
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 
-SELECT plan(17);
+SELECT plan(19);
 
 -- ────────────────────────────────────────────────────────────────────────────
 -- Fixture setup (as postgres superuser)
@@ -223,6 +223,30 @@ SELECT is(
 );
 
 RESET ROLE;
+
+-- 8b/8c. The Trust Center's "Append-only" claim for this table (no policy
+--        anywhere permits altering or deleting a row) is otherwise untested:
+--        tests 6-8 above only assert SELECT visibility. Checked as metadata
+--        rather than by attempting an UPDATE/DELETE as each role, so a future
+--        migration that adds either policy for ANY role fails this test
+--        immediately rather than only when someone happens to exercise it.
+--        `permissive = 'PERMISSIVE'` excludes the restrictive org_isolation
+--        (cmd = 'ALL') policy, which narrows access but never grants it.
+SELECT is(
+  (SELECT count(*)::int FROM pg_policies
+   WHERE schemaname = 'public' AND tablename = 'booking_audit_log'
+     AND permissive = 'PERMISSIVE' AND cmd IN ('UPDATE', 'ALL')),
+  0,
+  'booking_audit_log has no permissive UPDATE (or ALL) policy for any role'
+);
+
+SELECT is(
+  (SELECT count(*)::int FROM pg_policies
+   WHERE schemaname = 'public' AND tablename = 'booking_audit_log'
+     AND permissive = 'PERMISSIVE' AND cmd IN ('DELETE', 'ALL')),
+  0,
+  'booking_audit_log has no permissive DELETE (or ALL) policy for any role'
+);
 
 -- ────────────────────────────────────────────────────────────────────────────
 -- "Artists can respond to own offers" UPDATE policy

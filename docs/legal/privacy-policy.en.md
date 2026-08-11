@@ -1,6 +1,6 @@
 # Privacy Policy
 
-_Last updated: 28 May 2026_
+_Last updated: 11 August 2026_
 
 This privacy policy explains how ShowFlow Pro ("**we**", "**us**", "**ShowFlow Pro**") collects, uses, and shares personal data when you use the ShowFlow Pro web application and related transactional emails (together, the "**Service**"). It is written to satisfy Articles 12–14 of the EU General Data Protection Regulation (GDPR) and §§ 25 of the German Telecommunications Telemedia Data Protection Act (TTDSG).
 
@@ -28,6 +28,7 @@ We have not appointed a Data Protection Officer because we are not required to d
 This policy applies to:
 
 - the ShowFlow Pro web application accessed through our domains;
+- our public website at showflow.pro, including its trust page;
 - the transactional emails we send you (offers, confirmations, digests, account notifications); and
 - the in-app messaging and notification surfaces inside the Service.
 
@@ -66,7 +67,7 @@ We do **not** intentionally collect special categories of personal data (e.g. he
 
 | # | Purpose | Categories | Legal basis |
 |---|---|---|---|
-| a | Providing the Service: account creation, authentication, role-based access, displaying shows/dates/availability, scheduling bookings, sending transactional emails (offers, confirmations, digests). | 3.1–3.5 | Art. 6(1)(b) GDPR — performance of a contract with you (or with the organisation that has invited you to the Service). |
+| a | Providing the Service: account creation, authentication, role-based access, displaying shows/dates/availability, scheduling bookings, sending transactional emails (offers, confirmations, digests), and synchronising show dates from an organisation's connected Airtable base. | 3.1–3.5 | Art. 6(1)(b) GDPR — performance of a contract with you (or with the organisation that has invited you to the Service). |
 | b | Admin approval and role assignment for new accounts. | 3.1 | Art. 6(1)(b) GDPR and Art. 6(1)(f) GDPR — our legitimate interest in preventing unauthorised access to producer/admin functions. |
 | c | Operating the in-app chat per show date. | 3.4 | Art. 6(1)(b) GDPR. |
 | d | Maintaining a booking audit log and preventing abuse. | 3.3 | Art. 6(1)(c) GDPR (record-keeping) and Art. 6(1)(f) GDPR — our legitimate interest in being able to investigate disputes and security incidents. |
@@ -91,12 +92,20 @@ In addition, the following processors act on our behalf under Article 28 GDPR da
 
 | Processor | Service | Location | Transfer mechanism |
 |---|---|---|---|
-| Supabase Inc. | Database, authentication, file storage, edge functions | United States and European Union regions | EU storage option in use where available; EU–US Data Privacy Framework (DPF) certification and EU Standard Contractual Clauses (SCCs) for any US transfers. |
+| Supabase Inc. | Database, authentication, file storage, edge functions | United States and European Union regions | EU storage option in use where available; EU-US Data Privacy Framework (DPF) certification and EU Standard Contractual Clauses (SCCs) for any US transfers. |
 | Resend, Inc. | Transactional email delivery | United States | DPF certification and SCCs. |
 | Vercel, Inc. | Web application hosting and edge network | United States and European Union | DPF certification and SCCs. |
-| Airtable, Inc. | Show-data sync (currently disabled; will be enabled if and when the Airtable integration is turned on) | United States | DPF certification and SCCs. |
+| Vercel, Inc. (Vercel Web Analytics) | Aggregated page-view statistics for our public website at showflow.pro, including its trust page; loaded only after you accept in that site's consent banner, and never inside the web application | United States and European Union | DPF certification and SCCs. |
+| Google LLC | Web font delivery (the Geist and Geist Mono typefaces, requested from fonts.googleapis.com and fonts.gstatic.com) | United States | DPF certification and SCCs. |
+| Airtable, Inc. | Show-data sync for organisations that have connected their own Airtable base | United States | DPF certification and SCCs. |
 | Functional Software, Inc. dba Sentry | Client-side error tracking | European Union and United States regions | EU region used where available; DPF and SCCs for US transfers. |
 | PostHog, Inc. | Product analytics and session replay | European Union and United States regions | EU region used where available; DPF and SCCs for US transfers. |
+
+The web fonts are requested while the page is still loading, before any consent decision is recorded, so Google receives your IP address and user agent on every page view, including the pages that ask for consent. The request sets no cookie and stores nothing on your device.
+
+Vercel Web Analytics is listed separately from Vercel's hosting because it operates on a different basis. It runs only on our public website at showflow.pro, including the trust page there, and is never loaded by the web application. On that site it is loaded only after you accept in the consent banner: if you reject, or make no decision, it is not loaded at all. It records aggregated page-view statistics (pages visited, referrer, country), with no personal identifiers and no cross-site tracking. You can withdraw that consent at any time via the "Cookie settings" link in the footer of showflow.pro, and the website's own privacy notice describes this processing in full.
+
+Airtable is used only by organisations that have connected their own Airtable base to the Service. Where one has, our servers read that base on a schedule and copy the show dates it holds into the Service, so that the two stay in step. The sync reads only; nothing is written back to Airtable. It runs entirely on our servers: no Airtable code runs in your browser and nothing is stored on your device. Which fields are read is chosen by that organisation's administrator, so personal data reaches us by this route only where the organisation has put personal data into the fields it has mapped.
 
 We do not sell personal data and we do not share it with advertising networks.
 
@@ -106,7 +115,7 @@ We do not sell personal data and we do not share it with advertising networks.
 
 Some of our processors are established in the United States. Where personal data is transferred to a country outside the European Economic Area, we rely on one or more of the following safeguards under Chapter V GDPR:
 
-- the adequacy decision adopted by the European Commission on 10 July 2023 in respect of the EU–US Data Privacy Framework (where the recipient is certified), or
+- the adequacy decision adopted by the European Commission on 10 July 2023 in respect of the EU-US Data Privacy Framework (where the recipient is certified), or
 - the European Commission's Standard Contractual Clauses (SCCs) of 4 June 2021, supplemented where necessary by technical and organisational measures (encryption in transit, encryption at rest, pseudonymisation of user identifiers).
 
 You may request a copy of the relevant safeguards by writing to contact@showflow.pro.
@@ -119,12 +128,13 @@ We keep your personal data only for as long as necessary for the purposes descri
 
 - **Account and profile data:** for the lifetime of your account, plus 30 days after deletion to allow recovery in case of mistaken deletion.
 - **Bookings and audit log:** three (3) years from the relevant show date, for commercial record-keeping and dispute resolution.
-- **Chat messages:** hidden from the chats list 30 days after the show date (`CHAT_ARCHIVE_DAYS`); permanently deleted after 12 months. Admins retain read-only access during the archive window.
+- **Chat messages:** hidden from the chats list 30 days after the show date (`CHAT_ARCHIVE_DAYS`); permanently deleted after 12 months. The database grants administrators and the production team access to a thread until it is deleted. Once the archive window passes, the Service drops the thread from the chats list for everyone, shows administrators the messages read only, and stops showing the messages to the production team.
 - **Email send log and suppression list:** 24 months, to honour your unsubscribe preferences and maintain sender reputation.
-- **Hosting / Supabase logs:** retained according to our providers' standard policies (typically 7–30 days).
+- **Hosting / Supabase logs:** retained according to our providers' standard policies (typically 7-30 days).
 - **Sentry error reports:** 90 days.
 - **PostHog analytics events and session replays:** 12 months.
-- **Backups:** rolling 30-day window; data deleted from the live database is removed from backups within this period.
+- **Vercel Web Analytics (public website):** Vercel discards the visitor identifier it derives from each request after 24 hours. The aggregated page-view statistics are retained for Vercel's published reporting window, which runs from 1 to 24 months depending on the plan in use; Vercel states that this window is the period for which the data is guaranteed to remain available, and that it may hold the data for longer.
+- **Backups:** retained no longer than 30 days; data deleted from the live database is removed from backups within this period. This is a maximum retention period, not a guarantee that 30 days of restorable backups are kept.
 
 After these periods, data is deleted or fully anonymised.
 
