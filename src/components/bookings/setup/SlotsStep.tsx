@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchShowsWithSlots } from "@/data/settings";
 import { updateShow } from "@/data/shows";
@@ -8,6 +9,7 @@ import { showSlots, activeShows } from "@/lib/settings";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ROUTES } from "@/config/app.config";
 
 type Draft = Record<string, { main: string; us: string }>;
 
@@ -48,6 +50,24 @@ export function SlotsStep({ orgId, onDone }: { orgId: string | null; onDone: () 
   });
 
   if (shows.isLoading) return <Skeleton className="h-24 w-full" />;
+
+  if (unset.length === 0) {
+    return (
+      <div className="space-y-3">
+        <p className="text-xs text-muted-foreground">
+          A date with no slot count never reads as full, so it can't reach fully filled or auto-draft a hire order.
+        </p>
+        <div className="flex items-center gap-2.5 rounded-md border border-dashed border-border p-3">
+          <span className="min-w-0 flex-1 text-sm text-muted-foreground">
+            No shows yet. Add a show first, then set its slot counts here.
+          </span>
+          <Button asChild size="sm" variant="outline">
+            <Link to={ROUTES.PRODUCTIONS}>Add a show</Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-3">
