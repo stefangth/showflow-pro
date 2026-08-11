@@ -47,8 +47,8 @@
     {
       "icon": "users",
       "title": "Roles and rights",
-      "claim": "Three roles per organisation and 28 rights on top. 25 are checked on the server, three only by the interface. Nine rights are marked sensitive, so changing one asks an administrator to confirm; a different nine ship switched off until an administrator turns them on.",
-      "evidence": "28 rights across 8 groups, declared in src/lib/capabilities.ts. Of the 25 checked on the server, 19 sit inside the database and 6 in an edge function. Issuing and voiding hire orders are sensitive yet ship on, and two standard rights ship off, so the two nines are different sets."
+      "claim": "Three roles per organisation and 28 rights on top. 26 are checked on the server, two only by the interface. Nine rights are marked sensitive, so changing one asks an administrator to confirm; a different nine ship switched off until an administrator turns them on.",
+      "evidence": "28 rights across 8 groups, declared in src/lib/capabilities.ts. Of the 26 checked on the server, 20 sit inside the database and 6 in an edge function. Issuing and voiding hire orders are sensitive yet ship on, and two standard rights ship off, so the two nines are different sets."
     },
     {
       "icon": "key",
@@ -643,6 +643,6 @@
     "totalSensitive": 9,
     "totalDefaultOff": 9,
     "headline": "28 rights · 8 groups · 9 sensitive",
-    "note": "25 of the 28 rights are checked on the server: 19 inside the database, by the row-level policy that guards the write or by the function that performs it, and 6 more by an edge function that asks the same database check before it acts. The remaining three reorder or archive the production catalog and edit its scheduling; only the interface enforces those."
+    "note": "26 of the 28 rights are checked on the server: 20 inside the database, by the row-level policy that guards the write or by the function that performs it, and 6 more by an edge function that asks the same database check before it acts. The remaining two reorder or archive the production catalog; only the interface enforces those."
   }
 }
