@@ -27,7 +27,9 @@ function supabaseTargetBanner(url: string | undefined): Plugin {
 export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
-    port: 8080,
+    // 8080 by default, but honour PORT so two worktrees can run `npm run dev`
+    // at once — a hardcoded port makes the second one fail to bind.
+    port: Number(process.env.PORT) || 8080,
     hmr: {
       overlay: false,
     },

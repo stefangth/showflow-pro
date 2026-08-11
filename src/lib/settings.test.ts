@@ -32,10 +32,17 @@ describe("showSlots", () => {
     });
   });
 
-  it("treats explicit 0/0 as configured (not null)", () => {
-    expect(showSlots({ main_cast_slots: 0, understudy_slots: 0 })).toEqual({
+  it("treats explicit 0/0 as unconfigured (matches compute_show_date_status)", () => {
+    // main=0 with no understudy is "nothing to fill" -- the DB status function treats it
+    // as unconfigured (never fully_filled), so showSlots must agree.
+    expect(showSlots({ main_cast_slots: 0, understudy_slots: 0 })).toBeNull();
+    expect(showSlots({ main_cast_slots: 0, understudy_slots: null })).toBeNull();
+  });
+
+  it("treats main=0 with a positive understudy cap as configured", () => {
+    expect(showSlots({ main_cast_slots: 0, understudy_slots: 2 })).toEqual({
       main_cast: 0,
-      understudies: 0,
+      understudies: 2,
     });
   });
 });
@@ -84,10 +91,19 @@ describe("computeSchedulingWarnings", () => {
   it("reports zero when all shows are configured", () => {
     const w = computeSchedulingWarnings([
       { main_cast_slots: 2, understudy_slots: 1 },
-      { main_cast_slots: 0, understudy_slots: 0 },
+      { main_cast_slots: 0, understudy_slots: 2 },
     ]);
     expect(w.schedulingWarnings).toBe(0);
     expect(w.hasAnyWarning).toBe(false);
+  });
+
+  it("counts a main=0/understudy=0 show as unconfigured", () => {
+    const w = computeSchedulingWarnings([
+      { main_cast_slots: 2, understudy_slots: 1 },
+      { main_cast_slots: 0, understudy_slots: 0 },
+    ]);
+    expect(w.schedulingWarnings).toBe(1);
+    expect(w.hasAnyWarning).toBe(true);
   });
 });
 

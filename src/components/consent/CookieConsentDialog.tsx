@@ -75,9 +75,9 @@ export function CookieConsentDialog() {
 
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="text-sm font-medium">Error tracking (Sentry)</p>
+              <p className="text-sm font-medium">Error tracking (PostHog)</p>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Crash reports sent to Sentry to help us fix bugs.
+                Crash reports sent to PostHog to help us fix bugs.
               </p>
             </div>
             <Switch

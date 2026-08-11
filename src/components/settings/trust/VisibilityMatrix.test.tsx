@@ -1,0 +1,250 @@
+import { describe, expect, it } from "vitest";
+import { screen, within } from "@testing-library/react";
+import { renderWithProviders } from "@/test/renderWithProviders";
+import { CROSS_ORG_EXCEPTIONS_NOTE, VISIBILITY_MATRIX } from "@/lib/trust/facts";
+import { VisibilityMatrix } from "./VisibilityMatrix";
+
+describe("VisibilityMatrix responsive breakpoint", () => {
+  // Settings > Trust & data always renders inside the app sidebar plus the
+  // settings nav column, so the table gets far less than the viewport:
+  // measured live, 1358px of a 1920 viewport, 878 of 1440, 718 of 1280 and
+  // only 462 of 1024. Restacking at `sm` (640px) left a dead band where the
+  // table rendered clipped with no scroll affordance; restacking at `lg`
+  // (1024px) closed that but left the table trying to draw three columns in
+  // 462px, which is where five of eight Data labels wrapped.
+  //
+  // With a declared Data column (see the next test) 462px leaves the Mechanism
+  // column 197px — three and four lines a cell, the ragged rhythm the fixed
+  // layout exists to remove, arriving by a different door. So the restack is
+  // `xl`: 1024 and 1180 get the card list, which the audit's design lane
+  // called the most readable rendering of this table anyway.
+  it("restacks the table into cards at xl, not lg or sm", () => {
+    const { container } = renderWithProviders(<VisibilityMatrix />);
+
+    const tableRegion = container.querySelector('[role="region"][aria-label$="scrollable"]');
+    expect(tableRegion).not.toBeNull();
+    expect(tableRegion!.className).toMatch(/\bxl:block\b/);
+    expect(tableRegion!.className).not.toMatch(/\b(sm|md|lg):block\b/);
+
+    const cardList = container.querySelector(".divide-y.divide-border");
+    expect(cardList).not.toBeNull();
+    expect(cardList!.className).toMatch(/\bxl:hidden\b/);
+    expect(cardList!.className).not.toMatch(/\b(sm|md|lg):hidden\b/);
+  });
+
+  // Auto layout hands the width to whichever Mechanism cell happens to be
+  // longest, and that cell changes with the ROLE — measured on the public
+  // page at 1440, the Data column was 314.5px on Artist and 259.2px on
+  // Administrator, so the grid re-flowed under a control that is supposed to
+  // change only the answers. Declared widths make it stand still.
+  it("declares its column widths instead of letting content bid for them", () => {
+    const { container } = renderWithProviders(<VisibilityMatrix />);
+
+    const table = container.querySelector("table");
+    expect(table).not.toBeNull();
+    expect(table!.className, "auto layout is what let one cell starve the Data column").toMatch(
+      /\btable-fixed\b/,
+    );
+
+    const cols = [...container.querySelectorAll("colgroup col")];
+    expect(cols, "Data, Access and Mechanism").toHaveLength(3);
+    // 34% of the narrowest table this branch renders (718px at 1280) is
+    // 244.1px, less 16px of padding-right; the widest label is "Notes and
+    // cancellation reasons" at 205.7px intrinsic, so 22.4px of headroom.
+    expect(cols[0].className.split(/\s+/)).toContain("w-[34%]");
+    // The widest pill across all three roles is "Own booking" at 84.5px
+    // against a 96px content box. Across all three roles, not just the
+    // Administrator column: the values change with the role, and measuring one
+    // of them is how an earlier draft of this comment came to name
+    // "Append-only" (83px), which is only the widest that one column shows.
+    expect(cols[1].className.split(/\s+/)).toContain("w-[108px]");
+  });
+
+  // One row height, all eight rows, every width and every role. `h-[50px]` on
+  // a table row is a floor rather than a cap, so a cell that ever needed a
+  // third line would still get it instead of clipping; nothing does, because
+  // factsDensity.test.ts caps a mechanism note at 110 characters and that is
+  // two lines of the narrowest Mechanism column this branch renders.
+  it("gives every row the same height", () => {
+    const { container } = renderWithProviders(<VisibilityMatrix />);
+
+    const rows = [...container.querySelectorAll("tbody tr")];
+    expect(rows).toHaveLength(VISIBILITY_MATRIX.length);
+    for (const row of rows) expect(row.className.split(/\s+/)).toContain("h-[50px]");
+    // The badge lines up with the first line of the mechanism it explains.
+    for (const row of rows) expect(row.className).toMatch(/\balign-top\b/);
+  });
+});
+
+describe("VisibilityMatrix enforcement claim", () => {
+  // The subhead used to say what each role can read is "enforced in the
+  // database, not the interface", which the table two rows down falsifies:
+  // the Show-date chat cells credit the interface with turning the thread
+  // read-only (admin) and hiding it (production team) 30 days after the show
+  // date, and ChatPanel.tsx:141 does exactly that. The public page's
+  // equivalent line has always read "not just the interface".
+  //
+  // Both halves are pinned. If the interface stops being part of the answer,
+  // the first assertion fails and the sentence can be tightened again; if
+  // someone tightens it while the interface is still part of the answer, the
+  // second fails.
+  it("does not claim database-only enforcement while the matrix credits the interface", () => {
+    const cells = VISIBILITY_MATRIX.flatMap((row) => [row.admin, row.producer, row.artist]);
+    // Case-insensitive: the clause now opens its own sentence in the chat
+    // cells ("The interface turns it read-only...") rather than sitting
+    // mid-sentence, which a case-sensitive match silently stopped seeing.
+    const interfaceEnforced = cells.filter((c) => /\bthe interface\b/i.test(c.note));
+    expect(
+      interfaceEnforced.length,
+      "no cell credits the interface any more — the subhead may drop 'just'",
+    ).toBeGreaterThan(0);
+
+    renderWithProviders(<VisibilityMatrix />);
+
+    const subhead = screen.getByText(/enforced in the database/i);
+    expect(subhead).toHaveTextContent(/not just the interface/i);
+  });
+});
+
+describe("VisibilityMatrix access tones", () => {
+  /** The pill rendered inside the table row for a given data object. */
+  function pill(object: string) {
+    const row = screen
+      .getAllByRole("row")
+      .find((r) => within(r).queryByRole("rowheader", { name: object }));
+    if (!row) throw new Error(`No matrix row for "${object}"`);
+    const cell = within(row).getAllByRole("cell")[0];
+    return cell.firstElementChild as HTMLElement;
+  }
+
+  // The Access column exists to be scanned. Mapping both `scoped` and `none`
+  // to the same `neutral` badge collapsed the whole artist column into
+  // identical grey pills — "Own record", "Own dates", "Own booking" and
+  // "No access" all looked the same, so the column carried no signal and the
+  // reader had to read every label. It also put the two Trust Center surfaces
+  // into disagreement: the public page has always drawn `scoped` filled and
+  // `none` outlined (`Trust.tsx` TONE_STYLE).
+  it("draws a `none` cell differently from a `scoped` cell", () => {
+    // Derived from the claim table rather than hardcoded, so this keeps
+    // testing the real tones as rows are added or corrected.
+    const scoped = VISIBILITY_MATRIX.find((r) => r.artist.tone === "scoped");
+    const none = VISIBILITY_MATRIX.find((r) => r.artist.tone === "none");
+    expect(scoped, "no scoped artist cell to compare").toBeDefined();
+    expect(none, "no none artist cell to compare").toBeDefined();
+
+    renderWithProviders(<VisibilityMatrix />); // defaults to the artist view
+
+    expect(pill(none!.object).className).not.toEqual(pill(scoped!.object).className);
+  });
+
+  // The hire-order row describes a module that ships OFF (`hire_orders` has
+  // `defaultEnabled: false`), so for most organisations its three answers
+  // describe nothing that exists — and the tab this table sits in bills itself
+  // as narrowed to the organisation you are signed in to. `gated` is the tone
+  // for that, and it was a dead branch in this file until the row used it.
+  //
+  // Two halves, and both are needed. The tone has to be visually distinct or
+  // the row reads like every other row; and the note has to SAY the condition,
+  // because a colour on its own is not a claim and the public page renders the
+  // same data through a different palette.
+  it("marks a module-conditional row as gated, in the tone and in the words", () => {
+    const gated = VISIBILITY_MATRIX.filter((r) =>
+      (["admin", "producer", "artist"] as const).some((role) => r[role].tone === "gated"),
+    );
+    expect(gated.length, "no row is module-gated — has hire_orders shipped on?").toBeGreaterThan(0);
+
+    for (const row of gated) {
+      for (const role of ["admin", "producer", "artist"] as const) {
+        // A row is gated for every role or for none: the module is off for the
+        // whole organisation, not per person.
+        expect(row[role].tone, `${row.object} / ${role}`).toBe("gated");
+        expect(row[role].note, `${row.object} / ${role} states no condition`).toMatch(
+          /only if your organisation turns on/i,
+        );
+      }
+    }
+
+    renderWithProviders(<VisibilityMatrix />); // defaults to the artist view
+
+    const plain = VISIBILITY_MATRIX.find((r) => r.artist.tone === "scoped");
+    expect(plain, "no ungated scoped row to compare against").toBeDefined();
+    expect(pill(gated[0].object).className).not.toEqual(pill(plain!.object).className);
+  });
+
+  // `--ring` is the focus colour. Painting the selected chip in it meant a
+  // keyboard user saw the same accent ring whether or not the control was
+  // focused; and `ring-inset` set `--tw-ring-inset: inset` unconditionally,
+  // which Tailwind composes into the ring-offset shadow too, so
+  // `focus-visible:ring-2 ring-offset-2` rendered INSIDE the chip a pixel
+  // from an identical ring. The roving tabindex makes the selected chip the
+  // only tab stop in the group, so that was the first focus state a keyboard
+  // user met here.
+  it("does not decorate the selected role chip with the focus-ring colour", () => {
+    renderWithProviders(<VisibilityMatrix />);
+
+    const selected = screen.getAllByRole("radio").find((r) => r.getAttribute("aria-checked") === "true");
+    expect(selected).toBeDefined();
+    // Only unconditional classes: `focus-visible:ring-ring` is the ring this
+    // control is supposed to have, and must survive.
+    const unconditional = selected!.className.split(/\s+/).filter((c) => !c.includes(":"));
+    expect(unconditional).not.toContain("ring-ring");
+    expect(unconditional).not.toContain("ring-inset");
+    expect(selected!.className).toMatch(/\bfocus-visible:ring-ring\b/);
+  });
+});
+
+describe("VisibilityMatrix mechanism column budget", () => {
+  // Both tables laid out `auto` when the qualifier was moved, so the widest
+  // Mechanism cell took the width. The cross-organisation cell used to carry
+  // the four-table exclusion list in one 54-word run while every other cell is
+  // 3-15 words. Measured in the running app at 1440: the Data column collapsed
+  // to 147px and five of eight row labels wrapped to two and three lines,
+  // running the table to 542px tall where a short note gives 233px and 434px.
+  // Both tables are `fixed` now, which is why the cap below is the thing
+  // holding the rhythm rather than the layout policing itself. The qualifier
+  // is not dropped — it renders as a footnote under the table, where it can be
+  // read without a 486px column.
+  it("keeps every mechanism cell to a clause a table column can hold", () => {
+    const words = (s: string) => s.trim().split(/\s+/).length;
+    const cells = VISIBILITY_MATRIX.flatMap((row) => [row.admin, row.producer, row.artist]);
+
+    for (const cell of cells) {
+      expect(words(cell.note), `mechanism note too long for a cell: "${cell.note}"`).toBeLessThanOrEqual(25);
+    }
+  });
+
+  it("renders the cross-organisation exclusions once, outside the table", () => {
+    const { container } = renderWithProviders(<VisibilityMatrix />);
+
+    const footnotes = screen.getAllByText(CROSS_ORG_EXCEPTIONS_NOTE);
+    expect(footnotes, "one footnote, shared by the table and the restacked list").toHaveLength(1);
+    expect(footnotes[0].closest("table"), "the qualifier must not sit in a cell").toBeNull();
+    // It belongs to the matrix, not to whichever card follows it.
+    expect(container.contains(footnotes[0])).toBe(true);
+  });
+
+  // Moving the qualifier out of the cell is only honest if the cell still
+  // points at it. A reader traversing the row hears "every table that carries
+  // your organisation's records" and, without the association, would meet the
+  // four exceptions only by continuing past the table — or never, since the
+  // note sits after eight rows. Both renderings of the row carry it: the
+  // table cell at >=lg and the card list below it.
+  it("associates every qualified cell with the footnote", () => {
+    const qualified = VISIBILITY_MATRIX.filter((row) => row.artist.qualifiedByExceptionsNote);
+    expect(qualified.length, "no cell claims a qualifier — this test is vacuous").toBeGreaterThan(0);
+
+    const { container } = renderWithProviders(<VisibilityMatrix />);
+
+    const note = screen.getByText(CROSS_ORG_EXCEPTIONS_NOTE).closest("[id]");
+    expect(note?.id, "the footnote needs an id to be referenced by").toBeTruthy();
+
+    const described = [...container.querySelectorAll("[aria-describedby]")];
+    expect(described.length, "one table cell and one card, per qualified row").toBe(
+      qualified.length * 2,
+    );
+    for (const el of described) {
+      expect(el.getAttribute("aria-describedby")).toBe(note!.id);
+      expect(el.textContent, "the marker is what a sighted reader follows").toContain("1");
+    }
+  });
+});

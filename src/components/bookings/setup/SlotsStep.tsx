@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchShowsWithSlots } from "@/data/settings";
-import { saveShowSlots, type SlotDraft } from "@/data/slots";
+import { fetchShowSlots, saveShowSlots, type SlotDraft } from "@/data/slots";
 import { showSlots, activeShows } from "@/lib/settings";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,15 +39,32 @@ export function SlotsStep({ orgId, onDone }: { orgId: string | null; onDone: () 
         .filter((e) => e.main !== undefined && e.main !== "");
       if (edits.length === 0) throw new Error("Enter a main cast count");
       await Promise.all(
-        edits.map((e) => {
-          // A Main cast slot always; an Understudy slot only when a positive u/s count is
-          // entered. Client-minted ids make a retry idempotent (saveShowSlots resolves an
-          // already-landed row to a no-op update instead of a duplicate insert).
-          const slots: SlotDraft[] = [
-            { id: crypto.randomUUID(), name: "Main cast", count: Number(e.main), kind: "main", skillIds: [] },
-          ];
+        edits.map(async (e) => {
+          // Seed from the show's EXISTING slots, never an empty array. saveShowSlots
+          // deletes any current row absent from the submitted list, so building from
+          // scratch would silently wipe a slot the show already has. A show reaches this
+          // rail because it has no Main slot (main_cast_slots is NULL), but it may still
+          // carry an Understudy slot -- added in ShowFormDialog, or left behind when the
+          // last Main slot was removed -- along with that slot's required skills.
+          const slots: SlotDraft[] = (await fetchShowSlots(supabase, e.id)).map((s) => ({ ...s }));
+          // Set the Main count: update an existing main slot in place (keeping its id, so
+          // a re-save is idempotent) or add one under a client-minted id.
+          const mainSlot = slots.find((s) => s.kind === "main");
+          if (mainSlot) {
+            mainSlot.count = Number(e.main);
+          } else {
+            slots.push({ id: crypto.randomUUID(), name: "Main cast", count: Number(e.main), kind: "main", skillIds: [] });
+          }
+          // Understudy stays optional: a positive count updates or creates the Understudy
+          // slot; a blank or zero leaves any pre-existing understudy slot untouched (it is
+          // preserved by the seed above, never dropped).
           if (e.us !== undefined && e.us !== "" && Number(e.us) > 0) {
-            slots.push({ id: crypto.randomUUID(), name: "Understudy", count: Number(e.us), kind: "understudy", skillIds: [] });
+            const usSlot = slots.find((s) => s.kind === "understudy");
+            if (usSlot) {
+              usSlot.count = Number(e.us);
+            } else {
+              slots.push({ id: crypto.randomUUID(), name: "Understudy", count: Number(e.us), kind: "understudy", skillIds: [] });
+            }
           }
           return saveShowSlots(supabase, { showId: e.id, orgId, slots });
         }),

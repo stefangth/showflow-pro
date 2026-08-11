@@ -2,6 +2,14 @@
 
 What's new in ShowFlow, newest first.
 
+## 1.16.0 — August 11, 2026
+
+*Answering "who can see our data" without leaving the app*
+
+### New
+- **Trust and data** — A new section in Settings shows what your organization holds, who can read each kind of record, and how long every category is kept. Pick a role to see exactly what it reads and the mechanism that decides it, so you can answer an artist manager on the call instead of promising to check.
+- **A public trust center** — The same controls are published at showflow.pro/trust for anyone reviewing ShowFlow before they sign. No form, no NDA, no email gate.
+
 ## 1.15.0 — August 8, 2026
 
 *A guided first run on your dashboard*

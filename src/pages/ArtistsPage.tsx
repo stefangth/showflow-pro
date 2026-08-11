@@ -364,17 +364,38 @@ export default function ArtistsPage() {
                       })()}
                     </div>
                     {skills.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mb-2">
-                        {skills.map(s => (
-                          <Badge key={s.id} variant="outline" className="text-xs">{s.name}</Badge>
-                        ))}
+                      <div className="grid grid-cols-[52px_1fr] items-start gap-2 mb-2.5">
+                        <p className="text-[11px] font-semibold uppercase leading-5 tracking-[1.6px] text-muted-foreground">SKILLS</p>
+                        <div className="flex flex-wrap gap-1">
+                          {skills.slice(0, 3).map(s => (
+                            <span
+                              key={s.id}
+                              className="inline-flex h-5 items-center rounded-[4px] bg-accent-100 px-1.5 text-[11px] font-medium text-accent-700"
+                            >
+                              {s.name}
+                            </span>
+                          ))}
+                          {skills.length > 3 && (
+                            <span className="inline-flex h-5 items-center rounded-[4px] px-1.5 font-mono text-[11px] font-medium text-muted-foreground">
+                              +{skills.length - 3}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     )}
                     {artistCasts?.get(artist.id) && artistCasts.get(artist.id)!.length > 0 && (
-                      <div className="flex flex-wrap gap-1 pt-2 border-t border-border mt-2">
-                        {artistCasts.get(artist.id)!.map(c => (
-                          <Badge key={c.id} variant="secondary" className="text-xs">{c.name}</Badge>
-                        ))}
+                      <div className="grid grid-cols-[52px_1fr] items-start gap-2 border-t border-border pt-2.5 mt-2.5">
+                        <p className="text-[11px] font-semibold uppercase leading-5 tracking-[1.6px] text-muted-foreground">CASTS</p>
+                        <div className="flex flex-wrap gap-1">
+                          {artistCasts.get(artist.id)!.map(c => (
+                            <span
+                              key={c.id}
+                              className="inline-flex h-5 items-center rounded-[4px] border-[0.5px] border-[var(--line-strong)] px-1.5 text-[11px] font-medium text-muted-foreground"
+                            >
+                              {c.name}
+                            </span>
+                          ))}
+                        </div>
                       </div>
                     )}
                   </CardContent>
