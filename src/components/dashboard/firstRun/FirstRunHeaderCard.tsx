@@ -31,7 +31,7 @@ export function FirstRunHeaderCard(props: {
           <button
             type="button"
             onClick={onGhost}
-            className="rounded-m border-[0.5px] border-border bg-transparent px-4 py-[9px] text-[13px] font-medium text-foreground hover:bg-muted"
+            className="rounded-m border-[0.5px] border-[var(--line-strong)] bg-transparent px-4 py-[9px] text-[13px] font-medium text-foreground hover:bg-muted"
           >
             {ghost}
           </button>

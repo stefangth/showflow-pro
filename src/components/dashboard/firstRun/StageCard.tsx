@@ -103,7 +103,7 @@ function StepsBlock({ steps, hot }: { steps: DockedStep[]; hot: boolean }) {
   if (!steps.length) return null;
   return (
     <div
-      className={`mt-3 flex flex-col gap-[7px] border-t pt-2.5 ${hot ? "" : "border-border"}`}
+      className={`mt-3 flex flex-col gap-[7px] border-t-[0.5px] pt-2.5 ${hot ? "" : "border-border"}`}
       style={hot ? { borderColor: HOT_LINE } : undefined}
     >
       {steps.map((step) => (

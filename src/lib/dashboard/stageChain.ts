@@ -10,7 +10,11 @@
 // verbatim, with the demo's hardcoded toggle-harness state (role10/bf10/ho10/
 // canEdit10/...) replaced by real reads from `input`. See the task brief for
 // the exact seam list (done-ness, step labels/hints, admin marker, metrics,
-// timing literals, provenance line, em-dash stripping).
+// timing literals, provenance line). Every authored string below is dash-free
+// by construction (house rule: no em/en dashes in copy). There is no
+// post-hoc stripping step, so a future edit that introduces one fails the
+// "no em-dashes anywhere in composed copy" test directly instead of being
+// silently rewritten.
 //
 // Stays pure: no react/hooks/supabase imports. The caller (DashboardFirstRun)
 // maps `StageAction` to navigate()/openSetup().
@@ -56,26 +60,6 @@ function rulesByLine(p: FirstRunProvenance): string {
   if (p.actorName && p.changedAt) return `Rules set by ${p.actorName} · ${fmtDate(p.changedAt)}`;
   if (p.actorName) return `Rules set by ${p.actorName}`;
   return "Rules set in Settings · Booking flow";
-}
-
-/** Seam: strip every em/en dash from emitted copy. The strings below are
- *  authored without dashes already; this is a defensive backstop so nothing
- *  can slip through. */
-function stripDash(s: string): string {
-  return s.replace(/[—–]/g, ".");
-}
-
-function deepStripDash<T>(value: T): T {
-  if (typeof value === "string") return stripDash(value) as unknown as T;
-  if (Array.isArray(value)) return value.map((v) => deepStripDash(v)) as unknown as T;
-  if (value && typeof value === "object") {
-    const out: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
-      out[k] = deepStripDash(v);
-    }
-    return out as T;
-  }
-  return value;
 }
 
 // ---------------------------------------------------------------------------
@@ -299,7 +283,7 @@ export function composeStageChain(input: StageChainInput): StageChainResult {
     rawStages = [
       bf
         ? (imported
-            ? rawStage({ key: "dates", n: "01", name: "Dates", card: true, done: true, tag: "Shows and bookings", line: `${m.datesIn} dates synced from Airtable overnight.`, metric: String(m.datesIn), metricLabel: "dates in", steps: [showsStep, slotsStep], chip: datesChipIsBlocked ? "Open dates" : "Set slots", action: datesChipIsBlocked ? { kind: "route", to: ROUTES.PRODUCTIONS } : { kind: "openSetup", feature: bookingOnboarding.key, step: "slots" } })
+            ? rawStage({ key: "dates", n: "01", name: "Dates", card: true, done: true, tag: "Shows and bookings", line: `${m.datesIn} dates are in your catalog.`, metric: String(m.datesIn), metricLabel: "dates in", steps: [showsStep, slotsStep], chip: datesChipIsBlocked ? "Open dates" : "Set slots", action: datesChipIsBlocked ? { kind: "route", to: ROUTES.PRODUCTIONS } : { kind: "openSetup", feature: bookingOnboarding.key, step: "slots" } })
             : rawStage({ key: "dates", n: "01", name: "Dates", card: true, act: true, tag: "Shows and bookings", line: "Nothing downstream can mean anything until shows exist.", metric: "0", metricLabel: "dates in", steps: [showsStep, slotsStep], primary: admin ? "Import dates" : "Add a show", action: { kind: "route", to: ROUTES.PRODUCTIONS } }))
         : rawStage({ key: "dates", n: "01", name: "Dates", tag: "Booking flow · off", line: "Dates and bookings do not run in ShowFlow for this org.", ...NOT_ON }),
       bf
@@ -363,9 +347,16 @@ export function composeStageChain(input: StageChainInput): StageChainResult {
       progressHint = "Also counts as done once you have opened Availability. An empty calendar is a valid answer.";
     } else {
       headline = `${orgName} added you to the roster`;
-      body = "One step is yours, and it is two minutes. Everything else on this page is set by the org.";
-      hint = "About 2 minutes";
-      progressHint = "None of this blocks anything. It keeps unplayable dates out of the way.";
+      // Guard: "one step is yours" is only true when a step actually exists (bf on).
+      // An artist at a booking-off org (e.g. hire-orders-only) has zero docked steps,
+      // so the claim would be false.
+      body = hasSteps
+        ? "One step is yours, and it is two minutes. Everything else on this page is set by the org."
+        : "Everything on this page is set by the org. There is nothing here for you to do.";
+      hint = hasSteps ? "About 2 minutes" : "Nothing to do here";
+      progressHint = hasSteps
+        ? "None of this blocks anything. It keeps unplayable dates out of the way."
+        : "There is nothing to set up on your side.";
     }
     ghost = "How booking works here";
     side = offers
@@ -446,5 +437,5 @@ export function composeStageChain(input: StageChainInput): StageChainResult {
     nothingOn,
   };
 
-  return deepStripDash(result);
+  return result;
 }

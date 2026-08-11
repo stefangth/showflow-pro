@@ -40,7 +40,7 @@ export function FirstRunQueue(props: {
             {row.cta && (
               <button
                 type="button"
-                className="rounded-m border-[0.5px] border-border bg-transparent px-[11px] py-[5px] text-xs font-medium text-foreground"
+                className="rounded-m border-[0.5px] border-[var(--line-strong)] bg-transparent px-[11px] py-[5px] text-xs font-medium text-foreground"
               >
                 {row.cta}
               </button>

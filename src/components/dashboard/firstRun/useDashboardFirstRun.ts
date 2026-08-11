@@ -54,7 +54,7 @@ export interface DashboardFirstRunState {
 export function useDashboardFirstRun(role: DashboardRole): DashboardFirstRunState {
   const { currentOrg } = useAuth();
   const orgId = currentOrg?.id ?? null;
-  const orgName = currentOrg?.name ?? "";
+  const orgName = currentOrg?.name ?? "your workspace";
 
   const { features, isLoading } = useEntitlements();
   const bookingEntitled = features.has("booking_flow");

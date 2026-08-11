@@ -261,6 +261,39 @@ describe("useDashboardFirstRun", () => {
     expect(h.undismissFn).toHaveBeenCalledTimes(1);
   });
 
+  it("assembled queueRows (admin sample, producer sample, and every artist branch) never contain an em/en dash", () => {
+    // queueRows are hook-assembled from SAMPLE_PREVIEW + artist strings, bypassing the
+    // composer's own copy path entirely, so they need their own direct dash check.
+    const hasDash = (rows: { title: string; hint: string; when: string; cta: string }[]) =>
+      rows.some((r) => [r.title, r.hint, r.when, r.cta].some((f) => /[—–]/.test(f)));
+
+    expect(hasDash(renderHook(() => useDashboardFirstRun("admin")).result.current.queueRows)).toBe(false);
+    expect(hasDash(renderHook(() => useDashboardFirstRun("producer")).result.current.queueRows)).toBe(false);
+
+    // Artist, imported + offers on.
+    h.metrics.mockReturnValue({
+      metrics: { ...h.defaultMetrics().metrics, eligibleDates: 4, arriving: 3, blockedDates: 2 },
+      timing: { digestHourBerlin: 7, responseWindowHours: 24 },
+      isLoading: false,
+    });
+    h.flow.mockReturnValue({ data: { artist_acceptance: true }, isLoading: false });
+    expect(hasDash(renderHook(() => useDashboardFirstRun("artist")).result.current.queueRows)).toBe(false);
+
+    // Artist, imported + direct booking.
+    h.metrics.mockReturnValue({
+      metrics: { ...h.defaultMetrics().metrics, eligibleDates: 4, confirmed: 4, arriving: 0 },
+      timing: { digestHourBerlin: 19, responseWindowHours: 48 },
+      isLoading: false,
+    });
+    h.flow.mockReturnValue({ data: { artist_acceptance: false }, isLoading: false });
+    expect(hasDash(renderHook(() => useDashboardFirstRun("artist")).result.current.queueRows)).toBe(false);
+
+    // Artist, not imported (the placeholder row).
+    h.metrics.mockImplementation(h.defaultMetrics);
+    h.flow.mockReturnValue({ data: { artist_acceptance: true }, isLoading: false });
+    expect(hasDash(renderHook(() => useDashboardFirstRun("artist")).result.current.queueRows)).toBe(false);
+  });
+
   it("exposes openSetupAt as a callable passthrough (the real opener is owned by the page, wired in C3)", () => {
     const { result } = renderHook(() => useDashboardFirstRun("admin"));
     expect(typeof result.current.openSetupAt).toBe("function");

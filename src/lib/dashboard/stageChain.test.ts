@@ -98,3 +98,44 @@ it("artist with artistBlockDatesDone → Availability stage is done, not the hot
   expect(availability.variant).not.toBe("hot");
   expect(availability.running).toBe(true);
 });
+
+it("artist with no docked steps (bf off, ho on) never claims a step is theirs", () => {
+  const r = composeStageChain({ ...base, role: "artist", bookingEntitled: false, hireEntitled: true });
+  expect(r.hasSteps).toBe(false);
+  expect(r.headline).not.toContain("One step is yours");
+  expect(r.body).not.toContain("One step is yours");
+  expect(JSON.stringify(r)).not.toContain("One step is yours");
+});
+
+// rulesByLine: exercise all four provenance branches directly, including fmtDate.
+it("rulesBy: byYou wins regardless of actor/date", () => {
+  const r = composeStageChain({
+    ...base,
+    provenance: { byYou: true, actorName: "Jamie Cole", changedAt: "2026-07-20T09:00:00Z" },
+  });
+  expect(r.rulesBy).toBe("Rules set by you · Settings · Booking flow");
+});
+
+it("rulesBy: actorName + changedAt formats the date (exercises fmtDate)", () => {
+  const r = composeStageChain({
+    ...base,
+    provenance: { byYou: false, actorName: "Jamie Cole", changedAt: "2026-07-20T09:00:00Z" },
+  });
+  expect(r.rulesBy).toBe("Rules set by Jamie Cole · 20 Jul");
+});
+
+it("rulesBy: actorName only, no changedAt, omits the date", () => {
+  const r = composeStageChain({
+    ...base,
+    provenance: { byYou: false, actorName: "Jamie Cole", changedAt: null },
+  });
+  expect(r.rulesBy).toBe("Rules set by Jamie Cole");
+});
+
+it("rulesBy: neither byYou nor a known actor falls back to the generic line", () => {
+  const r = composeStageChain({
+    ...base,
+    provenance: { byYou: false, actorName: null, changedAt: null },
+  });
+  expect(r.rulesBy).toBe("Rules set in Settings · Booking flow");
+});

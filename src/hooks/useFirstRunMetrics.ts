@@ -153,6 +153,12 @@ export function useFirstRunMetrics(role: FirstRunRole): {
       showId: d.show_id,
       cityId: d.city_id,
       hasSession: !!(d.session_1 || d.session_2 || d.session_3),
+      // Intentionally stricter than computeBookingSetupStatus's own "slots done" check
+      // (setupStatus.ts: `main_cast_slots != null`, understudy_slots included). "Ready
+      // to offer" additionally requires `> 0`: a date with 0 main cast slots satisfies
+      // the setup-status step (a number is configured) but can never actually open a
+      // tier-1 offer, since there is nothing to fill. Do not loosen this to `!= null`
+      // to "match" the setup step — the setup step is deliberately more permissive.
       slotsSet: d.show?.main_cast_slots != null && d.show.main_cast_slots > 0,
     }));
 
