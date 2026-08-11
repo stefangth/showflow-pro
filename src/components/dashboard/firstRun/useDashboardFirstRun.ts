@@ -16,9 +16,8 @@ import type { QueueRow, StageChainInput, StageChainResult } from "@/lib/dashboar
 import { useArtistOnboardingStatus } from "./useArtistOnboardingStatus";
 
 /** The return shape of {@link useDashboardFirstRun}. Supersedes the pre-stage-chain
- *  `DashboardFirstRunState` in `@/lib/dashboard/types` (still on disk, unused by this
- *  hook as of this rewire, pending its retirement alongside the old welcome/rail/sample
- *  surface in task C3). */
+ *  `DashboardFirstRunState` that used to live in `@/lib/dashboard/types` (retired in
+ *  task C3 alongside the old welcome/rail/sample surface it described). */
 export interface DashboardFirstRunState {
   show: boolean;
   result: StageChainResult;

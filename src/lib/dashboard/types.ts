@@ -95,31 +95,6 @@ export interface ComposeResult {
   offFooters: string[];
 }
 
-export interface DashboardFirstRunState {
-  show: boolean;
-  complete: boolean;
-  dismissed: boolean;
-  steps: ComposedStep[];
-  rules: InheritedRule[];
-  offFooters: string[];
-  welcome: WelcomeCopy;
-  // Admin/producer only (the empty-org sample preview). Absent for the artist role,
-  // whose dashboard body always renders live.
-  sample?: SamplePreviewData;
-  sectionTitle?: string;
-  sectionHint?: string;
-  railEyebrow: string;
-  railTitle: string;
-  railBody: string;
-  collapsedLabel: string;
-  collapsedHint: string;
-  collapsedCta: string;
-  railOpen: boolean;
-  openRail: () => void;
-  closeRail: () => void;
-  dismiss: () => void;
-}
-
 // Component prop contracts (Wave A components bind to these).
 export interface DashboardWelcomeProps { welcome: WelcomeCopy; onPrimary: () => void; onSecondary: () => void; }
 export interface DashboardWelcomeCollapsedProps { label: string; hint: string; ctaLabel: string; onOpen: () => void; }
