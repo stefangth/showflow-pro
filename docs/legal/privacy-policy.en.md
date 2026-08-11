@@ -94,7 +94,7 @@ In addition, the following processors act on our behalf under Article 28 GDPR da
 | Supabase Inc. | Database, authentication, file storage, edge functions | United States and European Union regions | EU storage option in use where available; EU–US Data Privacy Framework (DPF) certification and EU Standard Contractual Clauses (SCCs) for any US transfers. |
 | Resend, Inc. | Transactional email delivery | United States | DPF certification and SCCs. |
 | Vercel, Inc. | Web application hosting and edge network | United States and European Union | DPF certification and SCCs. |
-| Vercel, Inc. (Vercel Web Analytics) | Aggregated page-view statistics for our public website at showflow.pro, including its trust page; loaded only after you accept analytics cookies on that site, and never inside the web application | United States and European Union | DPF certification and SCCs. |
+| Vercel, Inc. (Vercel Web Analytics) | Aggregated page-view statistics for our public website at showflow.pro, including its trust page; loaded only after you accept in that site's consent banner, and never inside the web application | United States and European Union | DPF certification and SCCs. |
 | Google LLC | Web font delivery (the Geist and Geist Mono typefaces, requested from fonts.googleapis.com and fonts.gstatic.com) | United States | DPF certification and SCCs. |
 | Airtable, Inc. | Show-data sync (currently disabled; will be enabled if and when the Airtable integration is turned on) | United States | DPF certification and SCCs. |
 | Functional Software, Inc. dba Sentry | Client-side error tracking | European Union and United States regions | EU region used where available; DPF and SCCs for US transfers. |

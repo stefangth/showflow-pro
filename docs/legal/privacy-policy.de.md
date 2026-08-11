@@ -92,7 +92,7 @@ Darüber hinaus setzen wir folgende Auftragsverarbeiter gemäß Art. 28 DSGVO ei
 | Supabase Inc. | Datenbank, Authentifizierung, Datei-Speicher, Edge Functions | USA und EU-Regionen | Nutzung der EU-Region, soweit verfügbar; Zertifizierung nach dem EU-US Data Privacy Framework (DPF) und EU-Standardvertragsklauseln (SCC) für US-Übermittlungen. |
 | Resend, Inc. | Transaktionaler E-Mail-Versand | USA | DPF und SCC. |
 | Vercel, Inc. | Hosting der Web-Anwendung und Edge-Netzwerk | USA und EU | DPF und SCC. |
-| Vercel, Inc. (Vercel Web Analytics) | Aggregierte Seitenaufruf-Statistik für unsere öffentliche Website showflow.pro einschließlich der dortigen Trust-Center-Seite; wird erst nach Ihrer Einwilligung auf dieser Website geladen und niemals innerhalb der Web-Anwendung | USA und EU | DPF und SCC. |
+| Vercel, Inc. (Vercel Web Analytics) | Aggregierte Seitenaufruf-Statistik für unsere öffentliche Website showflow.pro einschließlich der dortigen Trust-Center-Seite; wird erst geladen, nachdem Sie im Einwilligungsbanner dieser Website zugestimmt haben, und niemals innerhalb der Web-Anwendung | USA und EU | DPF und SCC. |
 | Google LLC | Auslieferung der Web-Schriften (Geist und Geist Mono, abgerufen von fonts.googleapis.com und fonts.gstatic.com) | USA | DPF und SCC. |
 | Airtable, Inc. | Show-Datensynchronisation (derzeit deaktiviert; wird aktiviert, sobald die Airtable-Integration in Betrieb geht) | USA | DPF und SCC. |
 | Functional Software, Inc. dba Sentry | Clientseitige Fehlerverfolgung | EU- und US-Regionen | EU-Region soweit verfügbar; DPF und SCC für US-Übermittlungen. |
