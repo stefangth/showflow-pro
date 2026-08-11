@@ -3,18 +3,22 @@ import { screen, fireEvent, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { renderWithProviders } from "@/test/renderWithProviders";
 
-const { showsRef, saveShowSlots } = vi.hoisted(() => ({
+type SlotArg = { id?: string; name: string; count: number; kind: string; skillIds: string[] };
+const { showsRef, saveShowSlots, fetchShowSlots } = vi.hoisted(() => ({
   showsRef: { value: [] as unknown[] },
-  saveShowSlots: vi.fn(() => Promise.resolve()),
+  saveShowSlots: vi.fn((_client: unknown, _args: { showId: string; orgId: string; slots: SlotArg[] }) => Promise.resolve()),
+  fetchShowSlots: vi.fn((_client: unknown, _showId: string) => Promise.resolve([] as SlotArg[])),
 }));
 vi.mock("@/data/settings", () => ({ fetchShowsWithSlots: () => Promise.resolve(showsRef.value) }));
-vi.mock("@/data/slots", () => ({ saveShowSlots }));
+vi.mock("@/data/slots", () => ({ saveShowSlots, fetchShowSlots }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: {} }));
 
 import { SlotsStep } from "./SlotsStep";
 
 beforeEach(() => {
   saveShowSlots.mockClear();
+  fetchShowSlots.mockClear();
+  fetchShowSlots.mockResolvedValue([]);
   showsRef.value = [
     { id: "s1", program: "Winterreise", sub_program: "Ensemble", main_cast_slots: null, understudy_slots: null, status: "active" },
     { id: "s2", program: "Set", sub_program: "Done", main_cast_slots: 4, understudy_slots: 2, status: "active" },
@@ -71,6 +75,37 @@ describe("SlotsStep", () => {
         slots: [expect.objectContaining({ name: "Main cast", count: 3, kind: "main", skillIds: [] })],
       }),
     );
+  });
+
+  it("preserves a pre-existing understudy slot when only the main count is entered", async () => {
+    // s1 reaches this rail because main_cast_slots is NULL, but it already has an
+    // Understudy slot (added in ShowFormDialog, or left after the last Main slot was
+    // removed) and that slot's skills. saveShowSlots deletes any current row absent from
+    // the submitted array, so seeding from the existing slots (not []) is what stops the
+    // rail from silently wiping the understudy slot.
+    fetchShowSlots.mockResolvedValue([
+      { id: "us-1", name: "Understudy", count: 2, kind: "understudy", skillIds: ["sk-1"] },
+    ]);
+    renderWithProviders(<SlotsStep orgId="org-1" onDone={() => {}} />);
+    await screen.findByText(/Winterreise/);
+
+    const [mainInput] = screen.getAllByRole("spinbutton");
+    fireEvent.change(mainInput, { target: { value: "3" } });
+    fireEvent.click(screen.getByRole("button", { name: /save slot counts/i }));
+
+    // The submitted array keeps the existing understudy (id + skills intact) and adds the
+    // Main slot -- exactly two rows, so the understudy was neither dropped nor duplicated.
+    await waitFor(() =>
+      expect(saveShowSlots).toHaveBeenCalledWith(expect.anything(), {
+        showId: "s1",
+        orgId: "org-1",
+        slots: [
+          { id: "us-1", name: "Understudy", count: 2, kind: "understudy", skillIds: ["sk-1"] },
+          expect.objectContaining({ name: "Main cast", count: 3, kind: "main", skillIds: [] }),
+        ],
+      }),
+    );
+    expect(fetchShowSlots).toHaveBeenCalledWith(expect.anything(), "s1");
   });
 
   it("shows an empty state and no save button when there are no shows to set", async () => {
