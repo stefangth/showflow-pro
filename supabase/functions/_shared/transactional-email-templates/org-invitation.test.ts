@@ -247,12 +247,21 @@ Deno.test("org-invitation email: an artist invite stays flow-neutral by default,
   const html = await renderInvite({ orgName: "Cirque Lumière", role: "Artist", roleKey: "artist", token: "tok" });
   assert(html.includes(EMAIL_COPY_DEFAULTS["org-invitation.roleIntroArtist"]), "renders the flow-neutral action line by default");
   assert(!html.includes(EMAIL_COPY_DEFAULTS["org-invitation.roleIntroArtistOffers"]), "does not also render the offers-aware line");
+  assert(html.includes("You are on the roster."), "renders the new roster framing shared by both artist lines");
+  assert(
+    !EMAIL_COPY_DEFAULTS["org-invitation.roleIntroArtist"].toLowerCase().includes("email"),
+    "flow-neutral line makes no offer promise (renders for direct-book/paused/unentitled orgs too)",
+  );
 });
 
 Deno.test("org-invitation email: offersExpected: true renders the offers-aware line, for the (majority) org where it is actually confirmed", async () => {
   const html = await renderInvite({ orgName: "Cirque Lumière", role: "Artist", roleKey: "artist", token: "tok", offersExpected: true });
   assert(html.includes(EMAIL_COPY_DEFAULTS["org-invitation.roleIntroArtistOffers"]), "renders the offers-aware action line");
   assert(!html.includes(EMAIL_COPY_DEFAULTS["org-invitation.roleIntroArtist"]), "does not also render the flow-neutral line");
+  assert(
+    html.includes("booking offers by email, accept or decline each in one tap"),
+    "offers line carries the by-email, one-tap benefit that the flow-neutral line withholds",
+  );
 });
 
 Deno.test("org-invitation email: offersExpected: false never claims an offer step the org does not have", async () => {
