@@ -143,7 +143,9 @@ export function SkillsCard({ canEnter }: { canEnter: boolean }) {
           {rows.map((row) => {
             const isEditing = editingId === row.id;
             const isArchived = row.archivedAt !== null;
-            const showDeleteTrash = canDelete && row.requiredByCount === 0;
+            // Trash is offered only on active rows; archived rows show Restore only,
+            // per the brief and the design's archived (Puppetry) example.
+            const showDeleteTrash = canDelete && !isArchived && row.requiredByCount === 0;
             const showBlockedTrash = canDelete && !isArchived && row.requiredByCount > 0;
 
             return (
@@ -210,25 +212,11 @@ export function SkillsCard({ canEnter }: { canEnter: boolean }) {
                       </Button>
                     </>
                   ) : isArchived ? (
-                    <>
-                      <Button variant="ghost" size="sm" disabled={!canManage} onClick={() => handleRestore(row.id)}>
-                        Restore
-                      </Button>
-                      {showDeleteTrash && (
-                        <IconTooltip label="Not required by any production, safe to delete">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            aria-label={`Delete ${row.name}`}
-                            disabled={!canManage || deleteSkill.isPending}
-                            className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                            onClick={() => handleDelete(row.id)}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </IconTooltip>
-                      )}
-                    </>
+                    // Archived rows offer Restore only, never a trash/delete control
+                    // (the brief and the design's archived example both specify this).
+                    <Button variant="ghost" size="sm" disabled={!canManage} onClick={() => handleRestore(row.id)}>
+                      Restore
+                    </Button>
                   ) : (
                     <>
                       <Button variant="ghost" size="sm" disabled={!canManage} onClick={() => startRename(row)}>

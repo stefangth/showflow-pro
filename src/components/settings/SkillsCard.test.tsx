@@ -74,11 +74,24 @@ describe("SkillsCard", () => {
     expect(within(archivedRow).getByText("Archived")).toBeInTheDocument();
     expect(within(archivedRow).getByText("3 artists")).toBeInTheDocument();
     expect(within(archivedRow).getByText("Hidden from pickers")).toBeInTheDocument();
-    // Archived rows only offer Restore (+ trash, but skill-3 has requiredByCount 0 so
-    // trash is also present for an admin), never Rename/Archive.
+    // Archived rows only ever offer Restore, never Rename/Archive/delete, even for
+    // an admin and even when the skill is unused (requiredByCount 0).
     expect(within(archivedRow).getByRole("button", { name: "Restore" })).toBeInTheDocument();
     expect(within(archivedRow).queryByRole("button", { name: "Rename" })).not.toBeInTheDocument();
     expect(within(archivedRow).queryByRole("button", { name: "Archive" })).not.toBeInTheDocument();
+    expect(within(archivedRow).queryByLabelText("Delete Puppetry")).not.toBeInTheDocument();
+  });
+
+  it("archived, unused row (requiredByCount 0) renders only Restore, no delete button, for an admin", () => {
+    renderCard();
+    const archivedRow = screen.getByTestId("skill-row-skill-3");
+    expect(within(archivedRow).getByRole("button", { name: "Restore" })).toBeInTheDocument();
+    // Deleting is offered only on active rows per the design's archived example
+    // (Puppetry): archiving is the only path off an in-use-or-not skill once it's
+    // archived. Query by the delete aria-label / IconTooltip trigger and assert
+    // it is entirely absent, not merely disabled.
+    expect(within(archivedRow).queryByLabelText("Delete Puppetry")).not.toBeInTheDocument();
+    expect(within(archivedRow).queryByRole("button", { name: /delete/i })).not.toBeInTheDocument();
   });
 
   it("disables the delete button when requiredByCount > 0 and enables it when 0 (admin)", () => {
