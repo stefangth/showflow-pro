@@ -4,9 +4,12 @@
 -- show_required_skills, added in 20260812130000/20260812130100) keep reading
 -- back EXACTLY their pre-backfill values.
 --
--- THE load-bearing invariant: for every existing show, main_cast_slots,
--- understudy_slots, and the set of show_required_skills must be byte-for-byte
--- unchanged after this runs. A show with a NULL count MUST stay NULL, never 0.
+-- THE load-bearing invariant: for every existing show, main_cast_slots and
+-- understudy_slots must read back unchanged, and show_required_skills must hold
+-- the same skill_id set. (recompute DELETEs + re-INSERTs those rows, so each
+-- gets a fresh id/created_at; nothing FKs show_required_skills.id, so the
+-- skill_id set is what matters, not row identity. The counts are genuinely
+-- unchanged.) A show with a NULL count MUST stay NULL, never 0.
 -- sum() over zero slot rows is NULL, which is the "unconfigured" state
 -- compute_show_date_status/auto_cancel_on_slot_fill special-case, so a show that
 -- was NULL for a given kind must end up with zero slots of that kind (not a
@@ -31,13 +34,20 @@ DECLARE
   v_recompute_ids uuid[] := ARRAY[]::uuid[];
   v_show_id       uuid;
 BEGIN
-  -- Suppress the derivation triggers during the bulk insert so the caches are
-  -- not perturbed mid-flight; they are recomputed explicitly at the end. This
-  -- runs as the SECURITY DEFINER owner (a superuser in migration context), so
-  -- session_replication_role = replica is acceptable and the simplest lever.
-  -- Note it ALSO disables the BEFORE INSERT org-derivation trigger, so we set
-  -- org_id ourselves (from the show) on every insert below.
-  SET LOCAL session_replication_role = replica;
+  -- Suppress ONLY the two AFTER-write derivation triggers during the bulk
+  -- insert so the caches are not perturbed mid-flight; they are recomputed once,
+  -- explicitly, at the end. ALTER TABLE ... DISABLE TRIGGER needs only
+  -- table-owner privilege, which the migration role has (it created these tables
+  -- in 20260812130000), so this works under the production apply role. The
+  -- BEFORE INSERT org-derivation trigger and the same-org guards stay ACTIVE, so
+  -- we still pass org_id explicitly on every insert below (the derivation would
+  -- set the same value; passing it lets the guards validate it). DDL here is
+  -- transactional: if this function raises before the ENABLE below, the rollback
+  -- leaves the triggers on.
+  ALTER TABLE public.show_slots
+    DISABLE TRIGGER trg_recompute_show_slot_derivations;
+  ALTER TABLE public.show_slot_required_skills
+    DISABLE TRIGGER trg_recompute_show_slot_derivations;
 
   -- Only shows with zero show_slots rows: a second run is a no-op, and a show
   -- someone has already authored slots on is never overwritten.
@@ -89,8 +99,11 @@ BEGIN
     v_recompute_ids := array_append(v_recompute_ids, r.id);
   END LOOP;
 
-  -- Re-enable triggers before recomputing so the derivation runs normally.
-  SET LOCAL session_replication_role = DEFAULT;
+  -- Re-enable the derivation triggers before recomputing so it runs normally.
+  ALTER TABLE public.show_slots
+    ENABLE TRIGGER trg_recompute_show_slot_derivations;
+  ALTER TABLE public.show_slot_required_skills
+    ENABLE TRIGGER trg_recompute_show_slot_derivations;
 
   -- Recompute ONLY shows that got slots. Each Main slot's count equals the
   -- show's original main_cast_slots (ditto understudy) and every required skill
