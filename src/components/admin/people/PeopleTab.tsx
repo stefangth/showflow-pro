@@ -6,8 +6,13 @@ import { Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/features/auth/AuthContext";
 import { fetchOrgInvitations, acceptInviteUrl } from "@/data/invitations";
-import { useOrgMembers, useRemoveOrgMember, useSetOrgMemberRole } from "@/hooks/useOrgMembers";
+import {
+  useOrgMembers, useRemoveOrgMember, useSetOrgMemberRole,
+  useRemovedMembers, useRestoreOrgMember, useClearRemovedMember, usePurgeRemovedUser,
+} from "@/hooks/useOrgMembers";
 import { useInvitationMutations } from "@/hooks/useInvitationMutations";
+import { toErrorMessage } from "@/lib/errors";
+import type { RemovedMember } from "@/data/members";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -21,6 +26,7 @@ import { InviteBar } from "./InviteBar";
 import { BulkInviteDialog } from "./BulkInviteDialog";
 import { InviteRow } from "./InviteRow"; // still used by the read-only history card
 import { PersonRow } from "./PersonRow";
+import { RemovedPersonRow } from "./RemovedPersonRow";
 
 /** One searchable people directory: invite bar on top, pending + members below. */
 export function PeopleTab() {
@@ -29,6 +35,8 @@ export function PeopleTab() {
   const [bulkOpen, setBulkOpen] = useState(false);
   const [target, setTarget] = useState<{ user_id: string; email: string | null } | null>(null);
   const [revokeTarget, setRevokeTarget] = useState<{ id: string; email: string | null } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<RemovedMember | null>(null);
+  const [deleteText, setDeleteText] = useState("");
 
   const { data: invites, isError: invitesError, isLoading: invitesLoading } = useQuery({
     queryKey: ["org-invitations", currentOrg?.id],
@@ -36,8 +44,12 @@ export function PeopleTab() {
     queryFn: () => fetchOrgInvitations(supabase, currentOrg!.id),
   });
   const { data: members, isLoading, isError, error } = useOrgMembers(currentOrg?.id);
+  const { data: removed } = useRemovedMembers(currentOrg?.id);
   const remove = useRemoveOrgMember(currentOrg?.id ?? "");
   const setRole = useSetOrgMemberRole(currentOrg?.id ?? "");
+  const restore = useRestoreOrgMember(currentOrg?.id ?? "");
+  const clearRemoved = useClearRemovedMember(currentOrg?.id ?? "");
+  const purge = usePurgeRemovedUser(currentOrg?.id ?? "");
   const { resend, revoke } = useInvitationMutations(currentOrg?.id);
 
   const allMembers = useMemo(() => members ?? [], [members]);
@@ -57,6 +69,14 @@ export function PeopleTab() {
   const activePeople = useMemo(() => filteredPeople.filter((p) => p.status === "active"), [filteredPeople]);
   // Search scopes the whole pane: history responds to the same query (empty query passes through).
   const filteredHistory = useMemo(() => filterInvitesByEmail(search, historyInvites), [search, historyInvites]);
+  const removedMembers = useMemo(() => removed ?? [], [removed]);
+  const filteredRemoved = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return removedMembers;
+    return removedMembers.filter(
+      (r) => (r.display_name ?? "").toLowerCase().includes(q) || (r.email ?? "").toLowerCase().includes(q),
+    );
+  }, [search, removedMembers]);
   const hasSearch = search.trim().length > 0;
   // Duplicate detection needs both lists; if either query is still loading or has
   // errored (a state that never self-resolves), hold invites so a real duplicate
@@ -85,7 +105,7 @@ export function PeopleTab() {
       onRevoke={(id) => setRevokeTarget({ id, email: p.email })}
       onSetRole={(vars) => setRole.mutate(vars, {
         onSuccess: () => toast.success("Role updated"),
-        onError: (e) => toast.error((e as Error).message),
+        onError: (e) => toast.error(toErrorMessage(e)),
       })}
       onRequestRemove={setTarget}
       resendPending={resend.isPending && resend.variables === p.invitation?.id}
@@ -138,7 +158,7 @@ export function PeopleTab() {
             <div className="space-y-2"><Skeleton className="h-14 w-full" /><Skeleton className="h-14 w-full" /></div>
           ) : isError ? (
             <Alert variant="destructive"><AlertDescription>{(error as Error).message}</AlertDescription></Alert>
-          ) : filteredPeople.length === 0 ? (
+          ) : filteredPeople.length === 0 && filteredRemoved.length === 0 ? (
             <p className="py-6 text-center text-sm text-muted-foreground">
               {hasSearch
                 ? (filteredHistory.length > 0
@@ -156,6 +176,26 @@ export function PeopleTab() {
               {activePeople.length > 0 && (
                 <PeopleGroup label="Members" count={activePeople.length}>
                   {activePeople.map(renderPerson)}
+                </PeopleGroup>
+              )}
+              {filteredRemoved.length > 0 && (
+                <PeopleGroup label="Recently removed" count={filteredRemoved.length}>
+                  {filteredRemoved.map((m) => (
+                    <RemovedPersonRow
+                      key={m.user_id}
+                      member={m}
+                      undoPending={restore.isPending && restore.variables === m.user_id}
+                      onUndo={(uid) => restore.mutate(uid, {
+                        onSuccess: () => toast.success("Member restored"),
+                        onError: (e) => toast.error(toErrorMessage(e)),
+                      })}
+                      onClear={(rm) => clearRemoved.mutate(rm.user_id, {
+                        onSuccess: () => toast.success("Removed from list"),
+                        onError: (e) => toast.error(toErrorMessage(e)),
+                      })}
+                      onDelete={(rm) => { setDeleteTarget(rm); setDeleteText(""); }}
+                    />
+                  ))}
                 </PeopleGroup>
               )}
             </>
@@ -183,16 +223,25 @@ export function PeopleTab() {
           <AlertDialogHeader>
             <AlertDialogTitle>Remove member?</AlertDialogTitle>
             <AlertDialogDescription>
-              {target?.email} will lose access to this organization. Their bookings and artist profile are kept.
+              {target?.email} loses access to this organization now. Their account, artist profile, and bookings are kept, and you can undo this from the list.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={() => {
               if (!target) return;
-              remove.mutate(target.user_id, {
-                onSuccess: () => toast.success("Member removed"),
-                onError: (e) => toast.error((e as Error).message),
+              const uid = target.user_id;
+              remove.mutate(uid, {
+                onSuccess: () => toast.success("Member removed", {
+                  action: {
+                    label: "Undo",
+                    onClick: () => restore.mutate(uid, {
+                      onSuccess: () => toast.success("Member restored"),
+                      onError: (e) => toast.error(toErrorMessage(e)),
+                    }),
+                  },
+                }),
+                onError: (e) => toast.error(toErrorMessage(e)),
               });
               setTarget(null);
             }}>Remove</AlertDialogAction>
@@ -217,6 +266,47 @@ export function PeopleTab() {
               revoke.mutate(revokeTarget.id);
               setRevokeTarget(null);
             }}>Revoke</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={deleteTarget !== null}
+        onOpenChange={(o) => { if (!o) { setDeleteTarget(null); setDeleteText(""); } }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this account?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteTarget?.email} has no other organization, so this erases their account everywhere: login removed and personal data anonymized. This cannot be undone. Type{" "}
+              <span className="font-medium">{deleteTarget?.email}</span> to confirm.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <Input
+            placeholder={deleteTarget?.email ?? ""}
+            value={deleteText}
+            onChange={(e) => setDeleteText(e.target.value)}
+            aria-label="Type the email to confirm deletion"
+          />
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={!deleteTarget || deleteText !== deleteTarget.email || purge.isPending}
+              onClick={(e) => {
+                e.preventDefault();
+                if (!deleteTarget) return;
+                purge.mutate(deleteTarget.user_id, {
+                  onSuccess: (res) => {
+                    toast.success(res.retained ? "Removed from list (account kept)" : "Account deleted");
+                    setDeleteTarget(null);
+                    setDeleteText("");
+                  },
+                  onError: (err) => toast.error(toErrorMessage(err)),
+                });
+              }}
+            >
+              Delete account
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
