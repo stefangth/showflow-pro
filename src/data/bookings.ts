@@ -488,3 +488,27 @@ export async function fetchBookingsLight(
   if (error) throw error;
   return (data ?? []) as unknown as BookingJoin[];
 }
+
+/** Row shape of the fetchOpenedTier1DateIds select below. */
+interface OpenedTier1Row { show_date_id: string }
+
+/**
+ * Distinct show_date ids in this org that already have tier 1 opened — existence
+ * of a `show_date_offer_tiers` row with `tier = 1`, regardless of `closed_at`
+ * (a re-closed tier still counts as "opened"; mirrors the `openedTiers.some(t =>
+ * t.tier === 1)` check `shouldAutoOpenTier1` does in src/lib/bookings.ts). Feeds
+ * the dashboard first-run "ready to offer" aggregate (src/lib/bookings/readyToOffer.ts).
+ */
+export async function fetchOpenedTier1DateIds(
+  client: SupabaseClient<Database>,
+  orgId: string,
+): Promise<string[]> {
+  const { data, error } = await client
+    .from("show_date_offer_tiers")
+    .select("show_date_id")
+    .eq("org_id", orgId)
+    .eq("tier", 1);
+  if (error) throw error;
+  const rows = (data ?? []) as unknown as OpenedTier1Row[];
+  return Array.from(new Set(rows.map((r) => r.show_date_id)));
+}

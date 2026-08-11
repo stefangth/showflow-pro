@@ -1,0 +1,648 @@
+{
+  "schema": 1,
+  "generatedAt": "2026-08-11",
+  "roles": [
+    {
+      "value": "admin",
+      "label": "Administrator"
+    },
+    {
+      "value": "producer",
+      "label": "Production team"
+    },
+    {
+      "value": "artist",
+      "label": "Artist"
+    }
+  ],
+  "kpis": [
+    {
+      "icon": "lock",
+      "label": "Tenant isolation",
+      "value": "Row-level, asserted on every pull request"
+    },
+    {
+      "icon": "globe",
+      "label": "Database region",
+      "value": "European Union (Ireland)"
+    },
+    {
+      "icon": "server",
+      "label": "Subprocessors",
+      "value": "7 named, 4 always on"
+    },
+    {
+      "icon": "users",
+      "label": "Access control",
+      "value": "28 rights, 9 sensitive, 9 off by default"
+    }
+  ],
+  "controls": [
+    {
+      "icon": "lock",
+      "title": "Tenant isolation",
+      "claim": "Every table holding your data carries its organisation, and a restrictive database policy on each one means a session reads only organisations it belongs to. Four named tables sit outside it, and refuse the cross-organisation read another way.",
+      "evidence": "supabase/tests/rls/org_isolation.sql asserts org A reads and writes zero rows of org B on shows and show_dates, even holding a global producer role. org_coverage.sql lists every table carrying the policy, including chat_messages and booking_audit_log, and names the four exceptions. Both run on every pull request; restrictive policies filter, never grant."
+    },
+    {
+      "icon": "users",
+      "title": "Roles and rights",
+      "claim": "Three roles per organisation and 28 rights on top. 25 are checked on the server, three only by the interface. Nine rights are marked sensitive, so changing one asks an administrator to confirm; a different nine ship switched off until an administrator turns them on.",
+      "evidence": "28 rights across 8 groups, declared in src/lib/capabilities.ts. Of the 25 checked on the server, 19 sit inside the database and 6 in an edge function. Issuing and voiding hire orders are sensitive yet ship on, and two standard rights ship off, so the two nines are different sets."
+    },
+    {
+      "icon": "key",
+      "title": "Encryption and secrets",
+      "claim": "TLS in transit, encryption at rest in managed Postgres. Integration keys live in a secrets vault and are readable only by server functions, never by members of your organisation.",
+      "evidence": "The Airtable key is written to Supabase Vault by the admin-guarded set_org_airtable_key and never read back to a client: EXECUTE on the reader, get_org_airtable_key, is revoked from authenticated and granted to the service role only."
+    },
+    {
+      "icon": "file-text",
+      "title": "Auditability",
+      "claim": "Every change to a booking's status is appended to a log: old status, new status, who acted, when. Nothing else about a booking is logged; automated transitions have no person to record as the actor. Account, show-date and organisation deletions clear fields or remove rows.",
+      "evidence": "Written by notify_booking_transition, which returns without writing unless the status changed, so editing its notes leaves no row; promote_understudy_on_cancellation writes the automated path. No policy grants an update or a delete; account anonymisation, organisation deletion and booking_id's ON DELETE SET NULL get past it. Retained 3 years from show date."
+    },
+    {
+      "icon": "shield",
+      "title": "Application security",
+      "claim": "Role checks are centralised in a handful of database functions rather than scattered through the queries that use them, so there is one place to audit. Every pull request is scanned for committed secrets, and dependency updates arrive as grouped weekly pull requests.",
+      "evidence": "Checks concentrated in has_org_role, is_org_member, is_capability_enabled, is_feature_enabled, and capability_default: one place to audit. scripts/scan-secrets.mjs runs in the same lint job, and .github/dependabot.yml opens the weekly grouped updates."
+    },
+    {
+      "icon": "database",
+      "title": "Backups",
+      "claim": "Managed Postgres, hosted by Supabase. Backups are retained no longer than 30 days, so data deleted from the live database leaves them inside that window. That is a deletion ceiling, not a promise that 30 days of restore points are kept.",
+      "evidence": "Stated in section 7 of the privacy policy. Nothing in this repository writes or expires a backup: the window is set by the managed database provider."
+    }
+  ],
+  "matrix": [
+    {
+      "object": "Artist contact details",
+      "admin": {
+        "value": "Full",
+        "tone": "full",
+        "note": "Every artist record in this organisation."
+      },
+      "producer": {
+        "value": "Full",
+        "tone": "full",
+        "note": "Editing needs the \"Edit artist details, skills, and status\" right."
+      },
+      "artist": {
+        "value": "Own record",
+        "tone": "scoped",
+        "note": "A row-level policy limits reads to your own profile."
+      }
+    },
+    {
+      "object": "Availability and blocked dates",
+      "admin": {
+        "value": "Full",
+        "tone": "full",
+        "note": "Needed to route dates."
+      },
+      "producer": {
+        "value": "Full",
+        "tone": "full",
+        "note": "Needed to route dates."
+      },
+      "artist": {
+        "value": "Own dates",
+        "tone": "scoped",
+        "note": "You declare them; no other organisation's members read them."
+      }
+    },
+    {
+      "object": "Booking status and offers",
+      "admin": {
+        "value": "Full",
+        "tone": "full",
+        "note": "Across every production."
+      },
+      "producer": {
+        "value": "Full",
+        "tone": "full",
+        "note": "Confirming needs the \"Confirm bookings\" right."
+      },
+      "artist": {
+        "value": "Own offers",
+        "tone": "scoped",
+        "note": "You see your own tier, never another artist's."
+      }
+    },
+    {
+      "object": "Notes and cancellation reasons",
+      "admin": {
+        "value": "Full",
+        "tone": "full",
+        "note": "Free text written by the production team."
+      },
+      "producer": {
+        "value": "Full",
+        "tone": "full",
+        "note": "Free text written by the production team."
+      },
+      "artist": {
+        "value": "Own booking",
+        "tone": "scoped",
+        "note": "Fields on your own booking row, returned with it. Another artist's never are."
+      }
+    },
+    {
+      "object": "Hire-order fees",
+      "admin": {
+        "value": "Full",
+        "tone": "gated",
+        "note": "Only if your organisation turns on hire orders. Letterhead, numbering, and terms included."
+      },
+      "producer": {
+        "value": "Full",
+        "tone": "gated",
+        "note": "Only if your organisation turns on hire orders. Every order and fee; issuing and voiding are sensitive."
+      },
+      "artist": {
+        "value": "Own order",
+        "tone": "gated",
+        "note": "Only if your organisation turns on hire orders. Your own order and its PDF, once it is issued."
+      }
+    },
+    {
+      "object": "Show-date chat",
+      "admin": {
+        "value": "Full",
+        "tone": "full",
+        "note": "Every thread, no database time limit. The interface turns it read-only 30 days after the show date."
+      },
+      "producer": {
+        "value": "Full",
+        "tone": "full",
+        "note": "Every thread, no database time limit. The interface stops showing it 30 days after the show date."
+      },
+      "artist": {
+        "value": "Own dates",
+        "tone": "scoped",
+        "note": "Only threads for dates you are cast on."
+      }
+    },
+    {
+      "object": "Booking audit log",
+      "admin": {
+        "value": "Append-only",
+        "tone": "scoped",
+        "note": "Reads every row and appends. Account, show-date and organisation deletions clear fields or remove rows."
+      },
+      "producer": {
+        "value": "Append-only",
+        "tone": "scoped",
+        "note": "Reads every row and appends. Account, show-date and organisation deletions clear fields or remove rows."
+      },
+      "artist": {
+        "value": "No access",
+        "tone": "none",
+        "note": "Not exposed."
+      }
+    },
+    {
+      "object": "Another organisation's data",
+      "admin": {
+        "value": "No access",
+        "tone": "none",
+        "note": "A restrictive policy blocks the read on every table that carries your organisation's records.",
+        "qualifiedByExceptionsNote": true
+      },
+      "producer": {
+        "value": "No access",
+        "tone": "none",
+        "note": "A restrictive policy blocks the read on every table that carries your organisation's records.",
+        "qualifiedByExceptionsNote": true
+      },
+      "artist": {
+        "value": "No access",
+        "tone": "none",
+        "note": "A restrictive policy blocks the read on every table that carries your organisation's records.",
+        "qualifiedByExceptionsNote": true
+      }
+    }
+  ],
+  "crossOrgExceptionsNote": "Four tables sit outside that restrictive policy by name: membership and invitation rows, which are checked against the same organisation instead because gating them on the membership they define would be circular, and two platform logs no organisation member can read at all.",
+  "subprocessors": [
+    {
+      "name": "Supabase",
+      "purpose": "Database, authentication, storage",
+      "region": "EU · US",
+      "transfer": "EU region in use where available · DPF + SCCs",
+      "status": "Core",
+      "tone": "full"
+    },
+    {
+      "name": "Vercel",
+      "purpose": "Application hosting, edge network",
+      "region": "EU · US",
+      "transfer": "DPF + SCCs",
+      "status": "Core",
+      "tone": "full"
+    },
+    {
+      "name": "Vercel Web Analytics",
+      "purpose": "Page-view analytics on the showflow.pro website",
+      "region": "EU · US",
+      "transfer": "DPF + SCCs",
+      "status": "Consent",
+      "tone": "gated"
+    },
+    {
+      "name": "Resend",
+      "purpose": "Transactional email",
+      "region": "US",
+      "transfer": "DPF + SCCs",
+      "status": "Core",
+      "tone": "full"
+    },
+    {
+      "name": "Google",
+      "purpose": "Web fonts",
+      "region": "US",
+      "transfer": "DPF + SCCs",
+      "status": "Core",
+      "tone": "full"
+    },
+    {
+      "name": "PostHog",
+      "purpose": "Product analytics, session replay, error reports",
+      "region": "EU · US",
+      "transfer": "EU region where available · DPF + SCCs",
+      "status": "Consent",
+      "tone": "gated"
+    },
+    {
+      "name": "Airtable",
+      "purpose": "Show-data sync, for organisations that connect it",
+      "region": "US",
+      "transfer": "DPF + SCCs",
+      "status": "Optional",
+      "tone": "gated"
+    }
+  ],
+  "transferBasisNote": "Adequacy decision of 10 July 2023 (EU-US Data Privacy Framework) or the Standard Contractual Clauses of 4 June 2021, with encryption in transit and at rest.",
+  "retention": [
+    {
+      "item": "Bookings and audit log",
+      "period": "3 years from show date",
+      "basis": "A policy commitment. No scheduled job deletes these rows; they go when the organisation itself is deleted."
+    },
+    {
+      "item": "Show-date chat",
+      "period": "Archived 30 days · deleted 12 months",
+      "basis": "The 30 day archive is applied by the product itself. The 12 month deletion is a policy commitment; no scheduled job performs it."
+    },
+    {
+      "item": "Backups",
+      "period": "30 days maximum",
+      "basis": "Set by the managed database provider. Nothing we run writes or expires a backup."
+    },
+    {
+      "item": "Account and profile",
+      "period": "Life of account + 30 days",
+      "basis": "Deletion runs on request: it anonymises what booking records must keep, then removes the login. The 30 days is the backup ceiling above."
+    },
+    {
+      "item": "Email send log and suppressions",
+      "period": "24 months",
+      "basis": "A ceiling, not a schedule. The send log is pruned nightly at a shorter configured window, 90 days by default. The suppression list has no scheduled prune, so 24 months is a commitment for it."
+    },
+    {
+      "item": "Hosting and database logs",
+      "period": "7-30 days",
+      "basis": "These are the hosting and database providers' own logs, and they set the period. Nothing we run retains or expires them."
+    },
+    {
+      "item": "Analytics, session replay and error reports",
+      "period": "12 months",
+      "basis": "Set at the provider that receives the events. Nothing is sent unless you accept analytics or error tracking, and nothing we run deletes or expires an event, a replay, or a report."
+    },
+    {
+      "item": "Vercel Web Analytics",
+      "period": "24 hours · 1 to 24 months",
+      "basis": "Set by Vercel, not by us. Its documentation states the visitor identifier is discarded after 24 hours and that the reporting window runs 1 to 24 months by plan, and that the window is a guarantee of availability rather than a deletion deadline. The beacon runs on the showflow.pro website only, after consent."
+    }
+  ],
+  "retentionBasisNote": "The note under each period says what applies it: a mechanism in the product, a setting held by a provider, or a commitment with nothing scheduled behind it.",
+  "selfServeRights": [
+    {
+      "icon": "download",
+      "title": "Export your data",
+      "detail": "A machine-readable export of your profile, memberships, bookings, blocked dates, messages and notifications, from your profile page. Art. 15 and 20."
+    },
+    {
+      "icon": "eye",
+      "title": "Withdraw analytics consent",
+      "detail": "On showflow.pro, Cookie settings in the footer stops the page-view analytics that loads only after you accept. In the app, analytics, session replay, and error tracking each take their own choice, and Manage cookie preferences changes any of them at any time. Art. 7(3)."
+    },
+    {
+      "icon": "alert",
+      "title": "Delete your account",
+      "detail": "Removes your account and anonymises what must be retained for booking records, from your profile page. Art. 17."
+    },
+    {
+      "icon": "mail",
+      "title": "Object or restrict",
+      "detail": "One address, one month to answer, no ticket queue. Art. 18 and 21."
+    }
+  ],
+  "documents": [
+    {
+      "title": "Privacy policy",
+      "meta": "Web · the product policy, covering the app and the showflow.pro website · updated 11 August 2026",
+      "href": "https://app.showflow.pro/privacy",
+      "cta": "Read"
+    },
+    {
+      "title": "Terms of service",
+      "meta": "Web · updated 15 May 2026",
+      "href": "https://showflow.pro/terms",
+      "cta": "Read"
+    },
+    {
+      "title": "Imprint",
+      "meta": "Web · § 5 DDG",
+      "href": "https://app.showflow.pro/impressum",
+      "cta": "Read"
+    },
+    {
+      "title": "Subprocessor list",
+      "meta": "Section 5 of the privacy policy · 7 entries",
+      "href": "https://app.showflow.pro/privacy",
+      "cta": "Read"
+    },
+    {
+      "title": "Data processing agreement",
+      "meta": "On request · Art. 28 GDPR",
+      "href": "mailto:contact@showflow.pro?subject=Data%20processing%20agreement",
+      "cta": "Request"
+    }
+  ],
+  "documentsNote": "Everything below is public. The DPA is a reply by email, not a download form.",
+  "contact": "contact@showflow.pro",
+  "capabilities": {
+    "groups": [
+      {
+        "group": "Members & access",
+        "entries": [
+          {
+            "label": "Invite artists to the app",
+            "description": "Producers can send app-login invites to artists.",
+            "sensitive": false,
+            "defaultEnabled": true,
+            "defaultLabel": "On by default"
+          },
+          {
+            "label": "Revoke or resend artist invitations",
+            "description": "Producers can revoke or resend pending artist invitations.",
+            "sensitive": false,
+            "defaultEnabled": true,
+            "defaultLabel": "On by default"
+          }
+        ],
+        "sensitiveCount": 0,
+        "countLabel": "2"
+      },
+      {
+        "group": "Productions & show dates",
+        "entries": [
+          {
+            "label": "Create and edit productions",
+            "description": "Producers can create and edit productions.",
+            "sensitive": false,
+            "defaultEnabled": true,
+            "defaultLabel": "On by default"
+          },
+          {
+            "label": "Archive productions",
+            "description": "Producers can archive and unarchive productions.",
+            "sensitive": false,
+            "defaultEnabled": true,
+            "defaultLabel": "On by default"
+          },
+          {
+            "label": "Reorder productions",
+            "description": "Producers can drag to reorder the production list.",
+            "sensitive": false,
+            "defaultEnabled": true,
+            "defaultLabel": "On by default"
+          },
+          {
+            "label": "Delete productions",
+            "description": "Producers can permanently delete productions.",
+            "sensitive": true,
+            "defaultEnabled": false,
+            "defaultLabel": "Off by default"
+          },
+          {
+            "label": "Create and edit show dates",
+            "description": "Producers can create and edit show dates.",
+            "sensitive": false,
+            "defaultEnabled": true,
+            "defaultLabel": "On by default"
+          },
+          {
+            "label": "Delete show dates",
+            "description": "Producers can permanently delete show dates.",
+            "sensitive": true,
+            "defaultEnabled": false,
+            "defaultLabel": "Off by default"
+          }
+        ],
+        "sensitiveCount": 2,
+        "countLabel": "6 · 2 sensitive"
+      },
+      {
+        "group": "Bookings & engine",
+        "entries": [
+          {
+            "label": "Manage casts",
+            "description": "Producers can create, edit, and delete casts.",
+            "sensitive": false,
+            "defaultEnabled": true,
+            "defaultLabel": "On by default"
+          },
+          {
+            "label": "Open and close offer tiers",
+            "description": "Producers can open and close offer tiers.",
+            "sensitive": false,
+            "defaultEnabled": true,
+            "defaultLabel": "On by default"
+          },
+          {
+            "label": "Confirm bookings",
+            "description": "Producers can confirm soft-booked artists.",
+            "sensitive": false,
+            "defaultEnabled": true,
+            "defaultLabel": "On by default"
+          },
+          {
+            "label": "Edit booking-engine settings",
+            "description": "Producers can change booking-engine settings.",
+            "sensitive": true,
+            "defaultEnabled": false,
+            "defaultLabel": "Off by default"
+          }
+        ],
+        "sensitiveCount": 1,
+        "countLabel": "4 · 1 sensitive"
+      },
+      {
+        "group": "Artists",
+        "entries": [
+          {
+            "label": "Add and import artists",
+            "description": "Producers can add single artists and bulk-import.",
+            "sensitive": false,
+            "defaultEnabled": true,
+            "defaultLabel": "On by default"
+          },
+          {
+            "label": "Edit artist details, skills, and status",
+            "description": "Producers can edit artist records.",
+            "sensitive": false,
+            "defaultEnabled": true,
+            "defaultLabel": "On by default"
+          },
+          {
+            "label": "Resend linked-account invites",
+            "description": "Producers can resend an artist's app-login invite.",
+            "sensitive": false,
+            "defaultEnabled": true,
+            "defaultLabel": "On by default"
+          }
+        ],
+        "sensitiveCount": 0,
+        "countLabel": "3"
+      },
+      {
+        "group": "Hire orders",
+        "entries": [
+          {
+            "label": "Generate and draft hire orders",
+            "description": "Producers can draft hire orders.",
+            "sensitive": false,
+            "defaultEnabled": true,
+            "defaultLabel": "On by default"
+          },
+          {
+            "label": "Issue hire orders",
+            "description": "Producers can issue hire orders and email the PDF to artists.",
+            "sensitive": true,
+            "defaultEnabled": true,
+            "defaultLabel": "On by default"
+          },
+          {
+            "label": "Void hire orders",
+            "description": "Producers can void issued hire orders.",
+            "sensitive": true,
+            "defaultEnabled": true,
+            "defaultLabel": "On by default"
+          },
+          {
+            "label": "Manage countersign",
+            "description": "Producers can manage the countersign step.",
+            "sensitive": false,
+            "defaultEnabled": true,
+            "defaultLabel": "On by default"
+          },
+          {
+            "label": "Edit hire-order settings",
+            "description": "Producers can change letterhead, numbering, and terms.",
+            "sensitive": true,
+            "defaultEnabled": false,
+            "defaultLabel": "Off by default"
+          }
+        ],
+        "sensitiveCount": 3,
+        "countLabel": "5 · 3 sensitive"
+      },
+      {
+        "group": "Settings & organization",
+        "entries": [
+          {
+            "label": "Rename the organization",
+            "description": "Producers can rename the organization.",
+            "sensitive": true,
+            "defaultEnabled": false,
+            "defaultLabel": "Off by default"
+          },
+          {
+            "label": "Manage production ownership",
+            "description": "Producers can assign production ownership.",
+            "sensitive": false,
+            "defaultEnabled": true,
+            "defaultLabel": "On by default"
+          },
+          {
+            "label": "Manage casts and cities",
+            "description": "Producers can manage the casts and cities lists.",
+            "sensitive": false,
+            "defaultEnabled": true,
+            "defaultLabel": "On by default"
+          },
+          {
+            "label": "Edit filter and notification defaults",
+            "description": "Producers can change org filter and notification defaults.",
+            "sensitive": false,
+            "defaultEnabled": false,
+            "defaultLabel": "Off by default"
+          },
+          {
+            "label": "Edit scheduling settings",
+            "description": "Producers can change scheduling settings.",
+            "sensitive": false,
+            "defaultEnabled": true,
+            "defaultLabel": "On by default"
+          }
+        ],
+        "sensitiveCount": 1,
+        "countLabel": "5 · 1 sensitive"
+      },
+      {
+        "group": "Integrations",
+        "entries": [
+          {
+            "label": "Configure Airtable sync",
+            "description": "Producers can edit the Airtable mapping and keys.",
+            "sensitive": true,
+            "defaultEnabled": false,
+            "defaultLabel": "Off by default"
+          },
+          {
+            "label": "Trigger a manual sync",
+            "description": "Producers can run an on-demand Airtable sync.",
+            "sensitive": false,
+            "defaultEnabled": false,
+            "defaultLabel": "Off by default"
+          }
+        ],
+        "sensitiveCount": 1,
+        "countLabel": "2 · 1 sensitive"
+      },
+      {
+        "group": "Email",
+        "entries": [
+          {
+            "label": "Edit email templates",
+            "description": "Producers can change email copy and branding.",
+            "sensitive": true,
+            "defaultEnabled": false,
+            "defaultLabel": "Off by default"
+          }
+        ],
+        "sensitiveCount": 1,
+        "countLabel": "1 · 1 sensitive"
+      }
+    ],
+    "totalRights": 28,
+    "totalGroups": 8,
+    "totalSensitive": 9,
+    "totalDefaultOff": 9,
+    "headline": "28 rights · 8 groups · 9 sensitive",
+    "note": "25 of the 28 rights are checked on the server: 19 inside the database, by the row-level policy that guards the write or by the function that performs it, and 6 more by an edge function that asks the same database check before it acts. The remaining three reorder or archive the production catalog and edit its scheduling; only the interface enforces those."
+  }
+}
