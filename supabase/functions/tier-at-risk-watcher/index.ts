@@ -226,14 +226,16 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
 
     // Best-effort producer email for each newly at-risk (tier, user) pair, mirroring
     // expire-offers' cast-escalation-requested send. Email lives on auth.users —
-    // `profiles` has no email column. A failed lookup or send is logged and skipped;
-    // it must never abort the scan or leave the notification unwritten (that already
-    // happened above).
+    // `profiles` has no email column. The WHOLE per-recipient path (the getUserById
+    // lookup AND the send) is inside the try/catch: a lookup failure (auth service
+    // outage) must be swallowed exactly like a send failure, never propagate and
+    // abort the rest of the scan. The notification write above already happened, so
+    // nothing here can undo it either way.
     for (const uid of newRecipientIds) {
-      const { data: userResp } = await admin.auth.admin.getUserById(uid)
-      const recipientEmail = userResp?.user?.email
-      if (!recipientEmail) continue
       try {
+        const { data: userResp } = await admin.auth.admin.getUserById(uid)
+        const recipientEmail = userResp?.user?.email
+        if (!recipientEmail) continue
         await deps.sendEmail({
           template_name: 'tier-at-risk',
           recipient_email: recipientEmail,

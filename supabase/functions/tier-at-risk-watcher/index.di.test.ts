@@ -1563,3 +1563,92 @@ Deno.test("tier-at-risk-watcher DI: recipient with no email on file → skipped 
   const emailCalls = invokeCalls.filter((c) => c.name === "send-transactional-email");
   assertEquals(emailCalls.length, 0, "no email attempted without a resolvable address");
 });
+
+Deno.test("tier-at-risk-watcher DI: a throwing getUserById does not abort the scan — notification still written, scan still completes", async () => {
+  // Fix (code review): the getUserById lookup used to sit OUTSIDE the try/catch, so a
+  // thrown lookup (auth service outage) would propagate out of handle() entirely — the
+  // notification write for THIS row already happened above, but the request itself
+  // would fail and never return a response. The whole per-recipient path (lookup AND
+  // send) must be inside the try/catch, exactly like a sendEmail throw.
+  const tierId = "tier-getuser-fail";
+  const sdId = "sd-getuser-fail";
+
+  const { deps, calls, invokeCalls } = makeFakeDeps({
+    tables: {
+      app_settings: makeBaseSettings(),
+      show_date_offer_tiers: { data: [makeTier(tierId, sdId)], error: null },
+      notifications: { data: [], error: null },
+      show_dates: { data: makeShowDate(sdId, "MusicalA", "MainShow"), error: null },
+      bookings: { data: [{ status: "suggested" }], error: null },
+    },
+    rpcs: { resolve_show_assignments: { data: [{ producer_user_id: "prod-1" }], error: null } },
+    usersById: { "prod-1": { email: "prod1@example.com" } },
+  });
+
+  // Force the auth lookup itself to throw, as an auth-service outage would.
+  (deps.admin.auth.admin as unknown as { getUserById: () => Promise<unknown> }).getUserById = () => {
+    throw new Error("auth lookup down");
+  };
+
+  const res = await handle(makeRequest({ headers: CRON_OK }), deps);
+  assertEquals(res.status, 200, "a thrown getUserById must not fail the request");
+  const body = await res.json();
+  assertEquals(body.at_risk_count, 1, "tier is still counted at-risk");
+
+  const insertCalls = calls.filter((c) => c.table === "notifications" && c.method === "insert");
+  assertEquals(insertCalls.length, 1, "notification is still written despite the lookup failure");
+
+  const emailCalls = invokeCalls.filter((c) => c.name === "send-transactional-email");
+  assertEquals(emailCalls.length, 0, "no email sent when the recipient lookup itself fails");
+});
+
+Deno.test("tier-at-risk-watcher DI: a per-recipient getUserById throw does not abort OTHER tiers in the same run", async () => {
+  // Two independent at-risk tiers in the same scan. The first recipient lookup throws;
+  // the second succeeds. Both tiers' notifications must still be written, and the
+  // second tier's email must still go out — the throw must not unwind the whole loop.
+  const tierA = "tier-getuser-multi-a";
+  const tierB = "tier-getuser-multi-b";
+  const sdA = "sd-getuser-multi-a";
+  const sdB = "sd-getuser-multi-b";
+  const org = "00000000-0000-0000-0000-000000000001";
+
+  const { deps, calls, invokeCalls } = makeFakeDeps({
+    tables: {
+      app_settings: makeBaseSettings(),
+      show_date_offer_tiers: {
+        data: [makeTier(tierA, sdA), makeTier(tierB, sdB)],
+        error: null,
+      },
+      notifications: { data: [], error: null },
+      show_dates: [
+        { when: { id: sdA }, data: makeShowDate(sdA, "MusicalA", "MainShow", "2026-07-01", org, 2, 0) },
+        { when: { id: sdB }, data: makeShowDate(sdB, "MusicalB", "MainShow", "2026-07-01", org, 2, 0) },
+      ],
+      bookings: [
+        { when: { show_date_id: sdA }, data: [{ status: "suggested" }] }, // 1 < 2 → at-risk
+        { when: { show_date_id: sdB }, data: [{ status: "suggested" }] }, // 1 < 2 → at-risk
+      ],
+    },
+    rpcs: { resolve_show_assignments: { data: [{ producer_user_id: "prod-1" }], error: null } },
+  });
+
+  // First call throws (tier A's recipient lookup); every subsequent call succeeds
+  // (tier B's recipient lookup) — proves the loop keeps going after the throw.
+  let callCount = 0;
+  (deps.admin.auth.admin as unknown as { getUserById: (id: string) => Promise<unknown> }).getUserById = (id: string) => {
+    callCount += 1;
+    if (callCount === 1) throw new Error("auth lookup down");
+    return Promise.resolve({ data: { user: { id, email: `${id}@example.com` } }, error: null });
+  };
+
+  const res = await handle(makeRequest({ headers: CRON_OK }), deps);
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.at_risk_count, 2, "both tiers are still counted at-risk");
+
+  const insertCalls = calls.filter((c) => c.table === "notifications" && c.method === "insert");
+  assertEquals(insertCalls.length, 2, "both tiers' notifications are written, including the one whose email path threw");
+
+  const emailCalls = invokeCalls.filter((c) => c.name === "send-transactional-email");
+  assertEquals(emailCalls.length, 1, "the second tier's email still goes out after the first tier's lookup threw");
+});
