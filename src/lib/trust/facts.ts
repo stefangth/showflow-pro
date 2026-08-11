@@ -186,10 +186,25 @@ export interface Subprocessor {
  *  itself. Naming it is the honest reading of the claim; the alternative is
  *  to self-host the two families and drop this row. Status is "Core" because
  *  no consent gate stands in front of it today, not because a webfont is
- *  strictly necessary. */
+ *  strictly necessary.
+ *
+ *  Vercel appears twice, as two rows with two statuses, because one company
+ *  runs two things here on two different legal bases and a single row could
+ *  only tell the truth about one of them. Hosting is unconditional. Vercel
+ *  Web Analytics is a separate product with its own package: the landing
+ *  repo's src/App.tsx imports `@vercel/analytics/react` and renders
+ *  `{analyticsOn && <Analytics />}`, where `analyticsOn` follows
+ *  `readConsent() === "accept"` from src/components/CookieBanner.tsx. So no
+ *  beacon fires before the banner is answered and none fires at all if it is
+ *  rejected, but one does fire on the trust page once a reader accepts. That
+ *  is exactly what "Consent" means in this column, and it is the status
+ *  Sentry and PostHog take the day their SDKs ship. It runs on the public
+ *  showflow.pro website only, never inside the application, which is why the
+ *  purpose column names the site. */
 export const SUBPROCESSORS: Subprocessor[] = [
   { name: "Supabase", purpose: "Database, authentication, storage", region: "EU · US", transfer: "EU region in use · DPF + SCCs", status: "Core", tone: "full" },
   { name: "Vercel", purpose: "Application hosting, edge network", region: "EU · US", transfer: "DPF + SCCs", status: "Core", tone: "full" },
+  { name: "Vercel Web Analytics", purpose: "Page-view analytics on the showflow.pro website", region: "EU · US", transfer: "DPF + SCCs", status: "Consent", tone: "gated" },
   { name: "Resend", purpose: "Transactional email", region: "US", transfer: "DPF + SCCs", status: "Core", tone: "full" },
   { name: "Google", purpose: "Web fonts (Geist, Geist Mono)", region: "US", transfer: "DPF + SCCs", status: "Core", tone: "full" },
   { name: "Sentry", purpose: "Client error reports", region: "EU · US", transfer: "EU region where available · SCCs", status: "Off", tone: "none" },
@@ -201,11 +216,12 @@ export const SUBPROCESSORS: Subprocessor[] = [
  *  both print this, and both must move automatically the day a processor is
  *  added, removed, or its consent status changes.
  *
- *  The second half counts "Off", not "Consent". Splitting on "Consent" was
- *  splitting on an empty set, so the KPI announced "0 consent-only" and said
- *  nothing about the three processors that are named but process nothing
- *  today — which is the number a reviewer scanning the hero actually needs,
- *  and the one the table two sections down would otherwise contradict. */
+ *  The second half counts "Off", not "Consent". When "Consent" was an empty
+ *  set that choice was forced; it is still the right one now that Vercel Web
+ *  Analytics fills it, because "not in use" is the number a reviewer scanning
+ *  the hero actually needs, and the one the table two sections down would
+ *  otherwise contradict. A consented processor is in use, so it is counted on
+ *  the named side and not discounted on the second. */
 export const SUBPROCESSOR_SUMMARY = `${SUBPROCESSORS.length} named, ${
   SUBPROCESSORS.filter((s) => s.status === "Off").length
 } not in use`;
@@ -257,8 +273,18 @@ export const RETENTION: RetentionRow[] = [
   // privacy policy commits to for the day either is switched on, not a
   // description of current collection — the qualifier says so rather than
   // publishing a live-sounding number for a control that is not live.
+  //
+  // The second qualifier names PostHog rather than saying "once analytics is
+  // enabled", which was false the moment Vercel Web Analytics was disclosed:
+  // analytics IS enabled on the public site, after consent, on this very
+  // page. What is not enabled is PostHog's product analytics and session
+  // replay, and that is the pair this 12-month commitment (section 7) covers.
+  // Vercel Web Analytics has no row here because it has no row in section 7:
+  // it is page-view data on the marketing site, described in section 5, and
+  // inventing a retention figure for it would be a claim with no artefact
+  // behind it.
   { item: "Error reports", period: "90 days, once error tracking is enabled" },
-  { item: "Analytics and session replay", period: "12 months, once analytics is enabled" },
+  { item: "Analytics and session replay", period: "12 months, once PostHog is enabled" },
 ];
 
 /** The one concession this page makes about enforcement, stated once.
@@ -364,9 +390,16 @@ export const SELF_SERVE_RIGHTS: SelfServeRight[] = [
   },
   {
     icon: "eye",
+    // This detail used to read "Turns off analytics, session replay, and
+    // error tracking if and when any of them is enabled", which told a reader
+    // of this page that no analytics was running while a page-view beacon was
+    // running on the page they were reading it on. The two surfaces have two
+    // separate consent stores and two separate controls, and only one of them
+    // has anything to switch off today, so the string now names both rather
+    // than averaging them into something true of neither.
     title: "Withdraw analytics consent",
     detail:
-      "Turns off analytics, session replay, and error tracking if and when any of them is enabled, from Manage cookie preferences. Art. 7(3).",
+      "On showflow.pro, Cookie settings in the footer stops the page-view analytics that loads only after you accept. In the app, Manage cookie preferences turns off analytics, session replay, and error tracking if and when any of them is enabled. Art. 7(3).",
   },
   {
     icon: "alert",

@@ -94,12 +94,15 @@ In addition, the following processors act on our behalf under Article 28 GDPR da
 | Supabase Inc. | Database, authentication, file storage, edge functions | United States and European Union regions | EU storage option in use where available; EU–US Data Privacy Framework (DPF) certification and EU Standard Contractual Clauses (SCCs) for any US transfers. |
 | Resend, Inc. | Transactional email delivery | United States | DPF certification and SCCs. |
 | Vercel, Inc. | Web application hosting and edge network | United States and European Union | DPF certification and SCCs. |
+| Vercel, Inc. (Vercel Web Analytics) | Aggregated page-view statistics for our public website at showflow.pro, including its trust page; loaded only after you accept analytics cookies on that site, and never inside the web application | United States and European Union | DPF certification and SCCs. |
 | Google LLC | Web font delivery (the Geist and Geist Mono typefaces, requested from fonts.googleapis.com and fonts.gstatic.com) | United States | DPF certification and SCCs. |
 | Airtable, Inc. | Show-data sync (currently disabled; will be enabled if and when the Airtable integration is turned on) | United States | DPF certification and SCCs. |
 | Functional Software, Inc. dba Sentry | Client-side error tracking | European Union and United States regions | EU region used where available; DPF and SCCs for US transfers. |
 | PostHog, Inc. | Product analytics and session replay | European Union and United States regions | EU region used where available; DPF and SCCs for US transfers. |
 
 The web fonts are requested while the page is still loading, before any consent decision is recorded, so Google receives your IP address and user agent on every page view, including the pages that ask for consent. The request sets no cookie and stores nothing on your device.
+
+Vercel Web Analytics is listed separately from Vercel's hosting because it operates on a different basis. It runs only on our public website at showflow.pro, including the trust page there, and is never loaded by the web application. On that site it is loaded only after you accept in the consent banner: if you reject, or make no decision, it is not loaded at all. It records aggregated page-view statistics (pages visited, referrer, country), with no personal identifiers and no cross-site tracking. You can withdraw that consent at any time via the "Cookie settings" link in the footer of showflow.pro, and the website's own privacy notice describes this processing in full.
 
 We do not sell personal data and we do not share it with advertising networks.
 

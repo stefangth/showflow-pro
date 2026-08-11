@@ -29,7 +29,7 @@
     {
       "icon": "server",
       "label": "Subprocessors",
-      "value": "7 named, 3 not in use"
+      "value": "8 named, 3 not in use"
     },
     {
       "icon": "users",
@@ -239,6 +239,14 @@
       "tone": "full"
     },
     {
+      "name": "Vercel Web Analytics",
+      "purpose": "Page-view analytics on the showflow.pro website",
+      "region": "EU · US",
+      "transfer": "DPF + SCCs",
+      "status": "Consent",
+      "tone": "gated"
+    },
+    {
       "name": "Resend",
       "purpose": "Transactional email",
       "region": "US",
@@ -311,7 +319,7 @@
     },
     {
       "item": "Analytics and session replay",
-      "period": "12 months, once analytics is enabled"
+      "period": "12 months, once PostHog is enabled"
     }
   ],
   "selfServeRights": [
@@ -323,7 +331,7 @@
     {
       "icon": "eye",
       "title": "Withdraw analytics consent",
-      "detail": "Turns off analytics, session replay, and error tracking if and when any of them is enabled, from Manage cookie preferences. Art. 7(3)."
+      "detail": "On showflow.pro, Cookie settings in the footer stops the page-view analytics that loads only after you accept. In the app, Manage cookie preferences turns off analytics, session replay, and error tracking if and when any of them is enabled. Art. 7(3)."
     },
     {
       "icon": "alert",
@@ -357,7 +365,7 @@
     },
     {
       "title": "Subprocessor list",
-      "meta": "Section 5 of the privacy policy · 7 entries",
+      "meta": "Section 5 of the privacy policy · 8 entries",
       "href": "https://app.showflow.pro/privacy",
       "cta": "Read"
     },

@@ -92,12 +92,15 @@ Darüber hinaus setzen wir folgende Auftragsverarbeiter gemäß Art. 28 DSGVO ei
 | Supabase Inc. | Datenbank, Authentifizierung, Datei-Speicher, Edge Functions | USA und EU-Regionen | Nutzung der EU-Region, soweit verfügbar; Zertifizierung nach dem EU-US Data Privacy Framework (DPF) und EU-Standardvertragsklauseln (SCC) für US-Übermittlungen. |
 | Resend, Inc. | Transaktionaler E-Mail-Versand | USA | DPF und SCC. |
 | Vercel, Inc. | Hosting der Web-Anwendung und Edge-Netzwerk | USA und EU | DPF und SCC. |
+| Vercel, Inc. (Vercel Web Analytics) | Aggregierte Seitenaufruf-Statistik für unsere öffentliche Website showflow.pro einschließlich der dortigen Trust-Center-Seite; wird erst nach Ihrer Einwilligung auf dieser Website geladen und niemals innerhalb der Web-Anwendung | USA und EU | DPF und SCC. |
 | Google LLC | Auslieferung der Web-Schriften (Geist und Geist Mono, abgerufen von fonts.googleapis.com und fonts.gstatic.com) | USA | DPF und SCC. |
 | Airtable, Inc. | Show-Datensynchronisation (derzeit deaktiviert; wird aktiviert, sobald die Airtable-Integration in Betrieb geht) | USA | DPF und SCC. |
 | Functional Software, Inc. dba Sentry | Clientseitige Fehlerverfolgung | EU- und US-Regionen | EU-Region soweit verfügbar; DPF und SCC für US-Übermittlungen. |
 | PostHog, Inc. | Produktanalyse und Session-Replay | EU- und US-Regionen | EU-Region soweit verfügbar; DPF und SCC für US-Übermittlungen. |
 
 Die Web-Schriften werden bereits während des Seitenaufbaus abgerufen, also bevor eine Einwilligungsentscheidung gespeichert ist. Google erhält dadurch bei jedem Seitenaufruf Ihre IP-Adresse und Ihren User-Agent, auch auf den Seiten, die die Einwilligung abfragen. Der Abruf setzt kein Cookie und speichert nichts auf Ihrem Gerät.
+
+Vercel Web Analytics ist getrennt vom Hosting durch Vercel aufgeführt, weil es auf einer anderen Grundlage arbeitet. Es läuft ausschließlich auf unserer öffentlichen Website showflow.pro, einschließlich der dortigen Trust-Center-Seite, und wird von der Web-Anwendung niemals geladen. Auf dieser Website wird es erst geladen, nachdem Sie im Einwilligungsbanner zugestimmt haben: Wenn Sie ablehnen oder keine Entscheidung treffen, wird es überhaupt nicht geladen. Erfasst werden aggregierte Seitenaufruf-Statistiken (aufgerufene Seiten, Referrer, Land), ohne personenbezogene Kennungen und ohne seitenübergreifendes Tracking. Sie können diese Einwilligung jederzeit über den Link „Cookie settings" im Footer von showflow.pro widerrufen; die Datenschutzerklärung dieser Website beschreibt die Verarbeitung vollständig.
 
 Wir verkaufen keine personenbezogenen Daten und geben sie nicht an Werbenetzwerke weiter.
 
