@@ -136,7 +136,7 @@ export function ShowFormDialog({
       toast.error("Failed to save slots", { description: (e as Error).message });
       return false;
     } finally {
-      queryClient.invalidateQueries({ queryKey: ["show-slots", targetShowId] });
+      queryClient.invalidateQueries({ queryKey: ["show-slots"] });
       queryClient.invalidateQueries({ queryKey: ["shows"] });
       queryClient.invalidateQueries({ queryKey: ["show-dates"] });
       queryClient.invalidateQueries({ queryKey: ["eligibility"] });

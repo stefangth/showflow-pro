@@ -48,9 +48,10 @@ begin
   into v_conf_main, v_conf_us, v_active
   from bookings where show_date_id = p_show_date_id;
 
-  -- Unconfigured = no main slot. A NULL understudy cap is a configured main-only show
-  -- (0 understudies required), so it can still reach fully_filled.
-  if v_main_cap is null then
+  -- Unconfigured = no main slot, or a main cap of 0 (nothing to fill, so it must never
+  -- read as fully_filled and auto-draft an empty hire order). A NULL understudy cap is a
+  -- configured main-only show (0 understudies required), so it can still reach fully_filled.
+  if v_main_cap is null or v_main_cap <= 0 then
     v_new := case when v_active > 0 then 'partially_filled' else 'open' end;
   elsif v_conf_main >= v_main_cap and v_conf_us >= coalesce(v_us_cap, 0) then
     v_new := 'fully_filled';

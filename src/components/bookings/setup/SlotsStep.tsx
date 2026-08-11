@@ -54,6 +54,7 @@ export function SlotsStep({ orgId, onDone }: { orgId: string | null; onDone: () 
       );
     },
     onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["show-slots"] });
       qc.invalidateQueries({ queryKey: ["shows"] });
       qc.invalidateQueries({ queryKey: ["show-dates"] });
       toast.success("Slot counts saved");
