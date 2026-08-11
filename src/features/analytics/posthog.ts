@@ -7,11 +7,18 @@ import type { ConsentChoices } from '@/features/consent/ConsentContext';
  * `ConsentChoices` onto PostHog's capture state so nothing is loaded, no
  * identity cookie is written, and no event is sent before consent is given:
  *
- *   - PostHog is not even initialized until `analytics` OR `errorTracking` is granted.
+ *   - PostHog is not initialized until `analytics` is granted.
  *   - `analytics`      → autocapture + pageviews.
  *   - `sessionReplay`  → session recording (requires `analytics`, matching the consent UI).
- *   - `errorTracking`  → exception capture (independent category).
  *   - all withdrawn    → opt out + reset (clears the distinct id / persistence).
+ *
+ * `errorTracking` is intentionally NOT wired to PostHog. That consent category is
+ * disclosed to users as Sentry — "Error tracking (Sentry)" in the cookie dialog,
+ * and the privacy policy names Sentry as the processor with 90-day retention and
+ * "Sentry SDK identifiers". Routing it to PostHog (a different processor, 12-month
+ * retention) would make that consent uninformed under GDPR Art. 6(1)(a). It stays
+ * inert until a real Sentry integration lands, or the category is relabelled to
+ * PostHog and the privacy policy updated to match.
  *
  * The state machine (`applyConsent`) is pure over an injected `AnalyticsClient`
  * so it can be unit-tested without loading posthog-js. The real wiring lives in
@@ -70,16 +77,17 @@ export function applyConsent(
 ): void {
   if (!config.key) return; // PostHog not configured for this environment — no-op.
 
-  const active = choices.analytics || choices.errorTracking;
+  // Only `analytics` drives PostHog. `errorTracking` is deliberately excluded —
+  // see the module comment above (disclosed as Sentry, not PostHog).
+  const active = choices.analytics;
 
   if (!initialized) {
-    // Don't load PostHog at all until at least one telemetry category is consented.
+    // Don't load PostHog at all until analytics is consented.
     if (!active) return;
     client.init(config.key, {
       api_host: config.host,
       autocapture: choices.analytics,
       capture_pageview: choices.analytics,
-      capture_exceptions: choices.errorTracking,
       disable_session_recording: true, // toggled below via start/stopSessionRecording
       opt_out_capturing_by_default: true, // capture only after the explicit opt-in below
     });
@@ -88,7 +96,6 @@ export function applyConsent(
     client.set_config({
       autocapture: choices.analytics,
       capture_pageview: choices.analytics,
-      capture_exceptions: choices.errorTracking,
     });
   }
 

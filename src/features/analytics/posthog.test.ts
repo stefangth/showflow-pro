@@ -78,10 +78,11 @@ describe('applyConsent', () => {
       api_host: HOST,
       autocapture: true,
       capture_pageview: true,
-      capture_exceptions: false,
       disable_session_recording: true,
       opt_out_capturing_by_default: true,
     });
+    // errorTracking is disclosed as Sentry, so it must never be wired to PostHog.
+    expect(opts).not.toHaveProperty('capture_exceptions');
     expect(client.opt_in_capturing).toHaveBeenCalledTimes(1);
     expect(client.stopSessionRecording).toHaveBeenCalled();
     expect(client.startSessionRecording).not.toHaveBeenCalled();
@@ -94,13 +95,12 @@ describe('applyConsent', () => {
     expect(client.stopSessionRecording).not.toHaveBeenCalled();
   });
 
-  it('captures exceptions for error-tracking-only consent without pageviews or autocapture', () => {
+  it('does NOT initialize PostHog for error-tracking-only consent (disclosed as Sentry)', () => {
     const client = makeClient();
     applyConsent(client, configured, choices({ errorTracking: true }));
 
-    const [, opts] = (client.init as ReturnType<typeof vi.fn>).mock.calls[0];
-    expect(opts).toMatchObject({ autocapture: false, capture_pageview: false, capture_exceptions: true });
-    expect(client.opt_in_capturing).toHaveBeenCalledTimes(1);
+    expect(client.init).not.toHaveBeenCalled();
+    expect(client.opt_in_capturing).not.toHaveBeenCalled();
     expect(client.startSessionRecording).not.toHaveBeenCalled();
   });
 
@@ -110,10 +110,10 @@ describe('applyConsent', () => {
     applyConsent(client, configured, choices({ analytics: true, sessionReplay: true, errorTracking: true }));
 
     expect(client.init).toHaveBeenCalledTimes(1);
+    // errorTracking is ignored — never appears in the PostHog config.
     expect(client.set_config).toHaveBeenLastCalledWith({
       autocapture: true,
       capture_pageview: true,
-      capture_exceptions: true,
     });
     expect(client.startSessionRecording).toHaveBeenCalled();
   });
