@@ -273,6 +273,20 @@ describe("computeBookingSetupStatus", () => {
     expect(s.complete).toBe(true);
   });
 
+  it("slots outstanding when a show's only cap is main=0 (matches compute_show_date_status)", () => {
+    // 0/0 is "nothing to fill" -- unconfigured everywhere else in this PR (showSlots,
+    // compute_show_date_status), so the rail must not read it as configured.
+    const s = computeBookingSetupStatus({ ...base, shows: [{ main_cast_slots: 0, understudy_slots: 0 }] });
+    expect(s.steps.find((x) => x.key === "slots")!.done).toBe(false);
+    expect(s.complete).toBe(false);
+  });
+
+  it("slots done when main=0 is paired with a positive understudy cap", () => {
+    const s = computeBookingSetupStatus({ ...base, shows: [{ main_cast_slots: 0, understudy_slots: 2 }] });
+    expect(s.steps.find((x) => x.key === "slots")!.done).toBe(true);
+    expect(s.complete).toBe(true);
+  });
+
   it("ladder outstanding blocks offers; eligibility also fails on a null city", () => {
     const s = computeBookingSetupStatus({
       ...base,
