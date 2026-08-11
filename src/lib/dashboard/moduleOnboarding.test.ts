@@ -1,9 +1,19 @@
 import { it, expect } from "vitest";
-import { ARTIST_ONBOARDING, ARTIST_STEP_KEYS, MODULE_ONBOARDING, VIEW_AS_ARTIST_TIP, bookingOnboarding, hireOrderOnboarding } from "./moduleOnboarding";
+import {
+  ARTIST_ONBOARDING,
+  ARTIST_STEP_KEYS,
+  MODULE_ONBOARDING,
+  VIEW_AS_ARTIST_TIP,
+  PRODUCER_ROLE_NOTE,
+  ROLE_EXPLAINER_LINK_LABEL,
+  ROLE_EXPLAINER_LINK_ROUTE,
+  bookingOnboarding,
+  hireOrderOnboarding,
+} from "./moduleOnboarding";
 import { FEATURE_KEYS } from "@/lib/entitlements";
 import { computeBookingSetupStatus } from "@/lib/bookings/setupStatus";
 import { computeSetupStatus } from "@/lib/hireOrders/setupStatus";
-import { ROUTES } from "@/config/app.config";
+import { ROLE_DESCRIPTIONS, ROUTES } from "@/config/app.config";
 import { SETTINGS_TAB_PARAMS } from "@/lib/settingsTabs";
 import { CAPABILITY_DEFS } from "@/lib/capabilities";
 
@@ -401,4 +411,45 @@ it("artist CTA routes are real ROUTES values and no copy uses em/en dashes", () 
     expect(Object.values(ROUTES)).toContain(routePath(s.ctaRoute));
     expect(`${s.title}${s.todoHint}${s.doneHint}${s.ctaLabel}`).not.toMatch(/[—–]/);
   }
+});
+
+// P0.2: a producer had no reachable explanation of what "Production Team" covers versus
+// the admin. The rail's complete-state rules are the one place every role's narrative
+// already lives (VIEW_AS_ARTIST_TIP above is the admin-only precedent), so the explainer
+// joins that block rather than opening a new surface.
+it("gives a producer a reachable explanation of their role, absent for admin", () => {
+  const ctx = ctxFor(true);
+  const producerRules = bookingOnboarding.rules("producer", ctx);
+  const explainer = producerRules.find((r) => r.hint === PRODUCER_ROLE_NOTE);
+  expect(explainer).toBeDefined();
+  expect(explainer!.title).toBe(ROLE_EXPLAINER_LINK_LABEL);
+
+  const adminRules = bookingOnboarding.rules("admin", ctx);
+  expect(adminRules.some((r) => r.hint === PRODUCER_ROLE_NOTE)).toBe(false);
+  expect(adminRules.some((r) => r.title === ROLE_EXPLAINER_LINK_LABEL)).toBe(false);
+});
+
+it("carries the producer role explainer under a direct-book org too", () => {
+  // Rule 1 already branches on ctx.artistAcceptance; the explainer does not describe the
+  // org's pipeline at all, so it has to survive that branch unchanged.
+  const producerRules = bookingOnboarding.rules("producer", ctxFor(false));
+  expect(producerRules.some((r) => r.hint === PRODUCER_ROLE_NOTE)).toBe(true);
+});
+
+it("points the role explainer link at Settings, Documentation", () => {
+  expect(ROLE_EXPLAINER_LINK_ROUTE).toBe(`${ROUTES.SETTINGS}?tab=docs`);
+  expect(SETTINGS_TAB_PARAMS as readonly string[]).toContain("docs");
+});
+
+it("keeps the producer role note dash free", () => {
+  expect(PRODUCER_ROLE_NOTE).not.toMatch(/[—–]/);
+  expect(ROLE_EXPLAINER_LINK_LABEL).not.toMatch(/[—–]/);
+});
+
+// P0.1 regression pin: ROLE_DESCRIPTIONS.producer is consumed elsewhere in this
+// initiative (the People pane role dropdown, the accept-invite screen); this task does
+// not change it, so pin that it stays a real, dash-free sentence.
+it("keeps ROLE_DESCRIPTIONS.producer non-empty and dash free (regression pin)", () => {
+  expect(ROLE_DESCRIPTIONS.producer.length).toBeGreaterThan(0);
+  expect(ROLE_DESCRIPTIONS.producer).not.toMatch(/[—–]/);
 });

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import type { BlockKind, BookingSetupStep } from "@/lib/bookings/setupStatus";
@@ -10,13 +10,27 @@ vi.mock("@/hooks/useCapabilities", async (orig) => ({
 }));
 
 // The embedded PeopleStep reads the role for its admin-only "invite the rest of your team"
-// line (ROUTES.ADMIN is admin-gated). This card is the NON-editor surface, so its viewer is
-// a producer and that line is expected to stay off.
+// line (ROUTES.ADMIN is admin-gated), and the card itself now reads it for the producer
+// role-explainer note. This card is the NON-editor surface, so its viewer defaults to a
+// producer; `authRef.value.role` flips to "admin" in the one test that needs it.
+const { authRef } = vi.hoisted(() => ({ authRef: { value: { role: "producer" as "producer" | "admin" } } }));
 vi.mock("@/features/auth/AuthContext", () => ({
-  useAuth: () => ({ hasRole: (r: string) => r === "producer" }),
+  useAuth: () => ({
+    hasRole: (r: string) => r === authRef.value.role,
+    currentOrg: { id: "org-1", name: "Test Org", slug: "test-org", status: "active" },
+  }),
+}));
+
+// list_org_admin_names is fetched through this hook; stubbed rather than routed through the
+// real supabase singleton (never vi.mock the client). `namesRef` lets each test pick its own
+// admin roster without a new mock factory.
+const { namesRef } = vi.hoisted(() => ({ namesRef: { value: [] as string[] } }));
+vi.mock("@/hooks/useOrgAdminNames", () => ({
+  useOrgAdminNames: () => ({ data: namesRef.value }),
 }));
 
 import { useCan } from "@/hooks/useCapabilities";
+import { PRODUCER_ROLE_NOTE, ROLE_EXPLAINER_LINK_LABEL, ROLE_EXPLAINER_LINK_ROUTE } from "@/lib/dashboard/moduleOnboarding";
 import { BookingProducerWaitingCard } from "./BookingProducerWaitingCard";
 
 // `hard` is the wording computeBookingSetupStatus gives the two hard blockers, and it
@@ -44,6 +58,8 @@ const render = (s: BookingSetupStep[], count: number | null, inactive: number | 
 
 beforeEach(() => {
   vi.mocked(useCan).mockReturnValue(true);
+  authRef.value.role = "producer";
+  namesRef.value = [];
 });
 
 describe("BookingProducerWaitingCard", () => {
@@ -114,13 +130,20 @@ describe("BookingProducerWaitingCard", () => {
     // hold under every preset. PeopleStep inside it already states the consequence that
     // way; a frame that still says "offer later" around it describes a different product
     // from the panel it wraps.
+    //
+    // Scoped to the eyebrow/heading/description block (the "Plan dates now, book later"
+    // paragraph's own parent), not the whole card: the producer role-explainer note added
+    // below it is allowed to say "run offers" (a role's general capabilities, not this
+    // org's pipeline) without tripping this guard on the framing sentence itself.
     const waitingOnAdmin = render(steps(), 0);
-    expect(waitingOnAdmin.container.textContent).not.toMatch(/offer|\btiers?\b/i);
+    const waitingIntro = within(waitingOnAdmin.container).getByText("Plan dates now, book later").parentElement;
+    expect(waitingIntro?.textContent).not.toMatch(/offer|\btiers?\b/i);
     expect(waitingOnAdmin.container.textContent).toContain("Plan dates now, book later");
     expect(waitingOnAdmin.container.textContent).toContain("before anyone can be booked");
 
     const yourMove = render(steps({ slots: true, ladder: true }), 0);
-    expect(yourMove.container.textContent).not.toMatch(/offer|\btiers?\b/i);
+    const yourMoveIntro = within(yourMove.container).getByText("Plan dates now, book later").parentElement;
+    expect(yourMoveIntro?.textContent).not.toMatch(/offer|\btiers?\b/i);
     expect(yourMove.container.textContent).toContain("blocking the first booking");
   });
 
@@ -129,8 +152,12 @@ describe("BookingProducerWaitingCard", () => {
     // flow whose org would never have been shown the reworded sentences in the first place.
     // A direct-book org (artist_acceptance false) reaches this card with `block: "booking"`
     // on the same two rows, so the wording is pinned under those props too.
+    //
+    // Scoped the same way as the test above, for the same reason: the role-explainer note
+    // is allowed to say "run offers" without tripping the framing sentence's own guard.
     const waitingOnAdmin = render(steps({}, "booking"), 0);
-    expect(waitingOnAdmin.container.textContent).not.toMatch(/offer|\btiers?\b/i);
+    const waitingIntro = within(waitingOnAdmin.container).getByText("Plan dates now, book later").parentElement;
+    expect(waitingIntro?.textContent).not.toMatch(/offer|\btiers?\b/i);
     expect(waitingOnAdmin.container.textContent).toContain("Plan dates now, book later");
     expect(waitingOnAdmin.container.textContent).toContain("before anyone can be booked");
     // The hard blockers still list as locked: "booking" and "offers" are one gate, so which
@@ -138,7 +165,8 @@ describe("BookingProducerWaitingCard", () => {
     expect(waitingOnAdmin.container.textContent).toContain("Cast priorities per city");
 
     const yourMove = render(steps({ slots: true, ladder: true }, "booking"), 0);
-    expect(yourMove.container.textContent).not.toMatch(/offer|\btiers?\b/i);
+    const yourMoveIntro = within(yourMove.container).getByText("Plan dates now, book later").parentElement;
+    expect(yourMoveIntro?.textContent).not.toMatch(/offer|\btiers?\b/i);
     expect(yourMove.container.textContent).toContain("Your move");
     expect(yourMove.container.textContent).toContain("blocking the first booking");
   });
@@ -160,5 +188,49 @@ describe("BookingProducerWaitingCard", () => {
     expect(screen.queryByRole("link", { name: /add or import artists/i })).not.toBeInTheDocument();
     expect(screen.getByText(/only artists on this roster whose status is active can be booked/i)).toBeInTheDocument();
     expect(screen.getByText(/no active artists right now/i)).toBeInTheDocument();
+  });
+
+  // P2.3: today the waiting body names a nameless "an admin". list_org_admin_names gives it
+  // the org's real admin display names, via useOrgAdminNames + adminAskLine.
+  describe("naming the org's admins", () => {
+    it("asks the real admins by name when list_org_admin_names returns them", () => {
+      namesRef.value = ["Nadia Okonkwo", "Tom Reeve"];
+      render(steps(), 0);
+      expect(
+        screen.getByText(
+          "Nothing stops you adding dates and sessions. Ask Nadia Okonkwo or Tom Reeve to finish setup before anyone can be booked.",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("falls back to the existing generic copy, unchanged, when there are no admin names yet", () => {
+      namesRef.value = [];
+      render(steps(), 0);
+      expect(
+        screen.getByText(
+          "Nothing stops you adding dates and sessions. An admin has to finish setup before anyone can be booked.",
+        ),
+      ).toBeInTheDocument();
+    });
+  });
+
+  // P0.2: a producer had no reachable explanation of what "Production Team" covers versus
+  // the admin. This card is the surface a producer actually lands on while blocked, so it
+  // carries the same PRODUCER_ROLE_NOTE the dashboard rail's complete-state rules do
+  // (see moduleOnboarding.test.ts), plus a real link to the full breakdown.
+  describe("role explainer", () => {
+    it("tells a producer what the Production Team role covers, with a link to the full breakdown", () => {
+      render(steps(), 0);
+      expect(screen.getByText(new RegExp(PRODUCER_ROLE_NOTE.slice(0, 30)))).toBeInTheDocument();
+      const link = screen.getByRole("link", { name: ROLE_EXPLAINER_LINK_LABEL });
+      expect(link).toHaveAttribute("href", ROLE_EXPLAINER_LINK_ROUTE);
+    });
+
+    it("is absent for an admin viewer", () => {
+      authRef.value.role = "admin";
+      render(steps(), 0);
+      expect(screen.queryByText(new RegExp(PRODUCER_ROLE_NOTE.slice(0, 30)))).not.toBeInTheDocument();
+      expect(screen.queryByRole("link", { name: ROLE_EXPLAINER_LINK_LABEL })).not.toBeInTheDocument();
+    });
   });
 });
