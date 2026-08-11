@@ -45,7 +45,7 @@ function requirementFactSentence(requiredSkillNames: string[], qualifying: numbe
 export function EligibilityBookList({
   artists, bookedArtistIds, onBook, booking, loading = false, error = false,
   skills, selectedSkillIds, onSkillFilterChange, unrestricted = false, orgName,
-  requiredSkillNames, totalArtistCount,
+  requiredSkillNames, totalArtistCount, requiredSkillIds,
 }: {
   /** `skillIds` is optional. When at least one listed artist carries it, each narrowing
    *  chip shows a live per-skill count computed from this list. When no artist carries it
@@ -71,6 +71,11 @@ export function EligibilityBookList({
   /** Size of the full artist pool the qualifying count (`artists.length`) is measured
    *  against. Omit (along with requiredSkillNames) to skip the sentence entirely. */
   totalArtistCount?: number;
+  /** Ids of the skills this date already requires. The narrowing chips (design 1h) are
+   *  EXTRA skills only, so these are excluded from the chip list: a required skill is
+   *  never a useful narrower (every qualifying artist already holds it). Omit to render
+   *  every listed skill as a chip. */
+  requiredSkillIds?: string[];
 }) {
   const [understudy, setUnderstudy] = useState(false);
   const [confirmTarget, setConfirmTarget] = useState<{ id: string; name: string } | null>(null);
@@ -100,7 +105,14 @@ export function EligibilityBookList({
           {requirementFactSentence(requiredSkillNames ?? [], artists.length, totalArtistCount)}
         </p>
       )}
-      {skills && skills.length > 0 && onSkillFilterChange && (() => {
+      {skills && onSkillFilterChange && (() => {
+        // Design 1h: the narrowing chips are EXTRA (non-required) skills only. An
+        // already-required skill is a no-op narrower (every qualifying artist already
+        // holds it), so exclude it rather than render a chip whose count is the whole
+        // list. When nothing extra remains, drop the whole section (no empty heading).
+        const requiredSet = new Set(requiredSkillIds ?? []);
+        const narrowSkills = skills.filter((s) => !requiredSet.has(s.id));
+        if (narrowSkills.length === 0) return null;
         // Only claim a count when at least one listed artist actually carries skillIds —
         // otherwise every chip would read a hard-coded "0", which is a false claim rather
         // than an honest "we don't know" (a caller that hasn't wired skill data through
@@ -110,7 +122,7 @@ export function EligibilityBookList({
           <div className="space-y-1">
             <p className="text-xs text-muted-foreground">Narrow the list further</p>
             <div className="flex flex-wrap gap-1.5">
-              {skills.map((s) => {
+              {narrowSkills.map((s) => {
                 const on = (selectedSkillIds ?? []).includes(s.id);
                 const count = artists.filter((a) => (a.skillIds ?? []).includes(s.id)).length;
                 return (

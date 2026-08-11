@@ -979,6 +979,10 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: P
                               // which keeps the sentence hidden instead of claiming "of 0").
                               requiredSkillNames={skillChips}
                               totalArtistCount={orgArtists?.length}
+                              // 1h: the narrowing chips are EXTRA skills only. Exclude the
+                              // date's already-required skills so they don't render as no-op
+                              // chips whose count equals the whole qualifying list.
+                              requiredSkillIds={requiredSkillsQ.data?.all ?? []}
                             />
                           )}
                         </CardContent>

@@ -156,6 +156,52 @@ describe("EligibilityBookList", () => {
     expect(onSkillFilterChange).toHaveBeenCalledWith("piano");
   });
 
+  // 1h: the narrowing chips are EXTRA (non-required) skills only. An already-required
+  // skill is a no-op narrower (every qualifying artist already holds it), so it must be
+  // excluded from the chip list rather than rendered as a chip whose count is the whole list.
+  it("excludes already-required skills from the narrowing chips", () => {
+    renderWithProviders(
+      <EligibilityBookList
+        artists={[
+          { id: "a1", name: "Marta", skillIds: ["vocals", "combat", "piano"] },
+          { id: "a2", name: "Jonas", skillIds: ["vocals", "combat"] },
+        ]}
+        bookedArtistIds={new Set()}
+        onBook={vi.fn()}
+        booking={false}
+        skills={[
+          { id: "vocals", name: "Vocals" },
+          { id: "combat", name: "Stage combat" },
+          { id: "piano", name: "Piano" },
+        ]}
+        selectedSkillIds={[]}
+        onSkillFilterChange={vi.fn()}
+        requiredSkillIds={["vocals", "combat"]}
+      />,
+    );
+    // Piano is a real narrower (not every qualifying artist holds it), so it stays a chip.
+    expect(screen.getByRole("button", { name: /^Piano/ })).toBeInTheDocument();
+    // Vocals / Stage combat are already required, so they are no-op narrowers and excluded.
+    expect(screen.queryByRole("button", { name: /^Vocals/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Stage combat/ })).not.toBeInTheDocument();
+  });
+
+  it("hides the whole narrowing section when every listed skill is already required", () => {
+    renderWithProviders(
+      <EligibilityBookList
+        artists={[{ id: "a1", name: "Marta", skillIds: ["vocals"] }]}
+        bookedArtistIds={new Set()}
+        onBook={vi.fn()}
+        booking={false}
+        skills={[{ id: "vocals", name: "Vocals" }]}
+        selectedSkillIds={[]}
+        onSkillFilterChange={vi.fn()}
+        requiredSkillIds={["vocals"]}
+      />,
+    );
+    expect(screen.queryByText("Narrow the list further")).not.toBeInTheDocument();
+  });
+
   // 1h: the requirement-as-fact sentence replaces the old (wrong-in-direct-mode) label.
   it("shows the requirement-as-fact sentence when required skills and a total pool size are given", () => {
     renderWithProviders(
