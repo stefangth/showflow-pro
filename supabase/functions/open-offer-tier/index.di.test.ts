@@ -1476,3 +1476,128 @@ Deno.test("open-offer-tier: 403s when booking_flow entitlement is off", async ()
   assertEquals((await res.json()).error, "feature_disabled");
   assertEquals(calls.some((c) => c.table === "bookings" && c.method === "insert"), false);
 });
+
+// ---------------------------------------------------------------------------
+// Phase C2: named exclusions (excludedDetail) on the dry-run response
+//
+// The aggregate `excluded` counts are unchanged (DryRunDialog depends on them).
+// `excludedDetail` additionally names WHO was excluded and WHY — the FIRST
+// waterfall step that eliminated them. Capped at 50 with an explicit
+// `excludedDetailTruncated` flag rather than a silent shortfall.
+// ---------------------------------------------------------------------------
+
+Deno.test("open-offer-tier: dry_run excludedDetail names excluded artists with their first-elimination reason", async () => {
+  // cast-a has 4 members: ar-1 survives; ar-2 and ar-3 miss the required skill;
+  // ar-4 is blocked on this date — eliminated before the skill check even runs,
+  // even though it also holds the skill (proving blocked wins as the FIRST reason).
+  const { deps } = makeFakeDeps({
+    envVars,
+    tables: {
+      show_dates: { data: { ...SHOW_DATE_OPEN, org_id: "org-A" }, error: null },
+      app_settings: { data: [], error: null },
+      cast_city_priority: { data: [{ cast_id: "cast-a", priority: 1 }], error: null },
+      cast_members: {
+        data: [
+          { artist_id: "ar-1" }, { artist_id: "ar-2" }, { artist_id: "ar-3" }, { artist_id: "ar-4" },
+        ],
+        error: null,
+      },
+      artists: [
+        { when: { status: "active" }, data: [{ id: "ar-1" }, { id: "ar-2" }, { id: "ar-3" }, { id: "ar-4" }], error: null },
+        {
+          data: [
+            { id: "ar-1", name: "Ar One" }, { id: "ar-2", name: "Ar Two" },
+            { id: "ar-3", name: "Ar Three" }, { id: "ar-4", name: "Ar Four" },
+          ],
+          error: null,
+        },
+      ],
+      show_required_skills: { data: [{ skill_id: "sk-1" }], error: null },
+      show_date_required_skills: { data: [], error: null },
+      artist_skills: {
+        data: [
+          { artist_id: "ar-1", skill_id: "sk-1" },
+          { artist_id: "ar-4", skill_id: "sk-1" }, // holds the skill but is blocked first
+        ],
+        error: null,
+      },
+      bookings: { data: [], error: null },
+      blocked_dates: { data: [{ artist_id: "ar-4" }], error: null },
+    },
+  });
+  const res = await handle(
+    makeRequest({ headers: SVC, body: { show_date_id: "d1", tier: 1, dry_run: true } }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.dry_run, true);
+  assertEquals(body.candidates, [{ id: "ar-1", name: "Ar One" }]);
+
+  // Aggregate counts stay exactly as before (backward-compatible with DryRunDialog).
+  assertEquals(body.excluded, {
+    already_booked: 0, blocked: 1, inactive: 0, not_eligible: 0, missing_skills: 2,
+  });
+
+  assertEquals(body.excludedDetailTruncated, false);
+  const detail = body.excludedDetail as Array<{ id: string; name: string; reason: string }>;
+  assertEquals(detail.length, 3);
+  const byId = new Map(detail.map((d) => [d.id, d]));
+  assertEquals(byId.get("ar-2"), { id: "ar-2", name: "Ar Two", reason: "missing_skills" });
+  assertEquals(byId.get("ar-3"), { id: "ar-3", name: "Ar Three", reason: "missing_skills" });
+  assertEquals(byId.get("ar-4"), { id: "ar-4", name: "Ar Four", reason: "blocked" });
+});
+
+Deno.test("open-offer-tier: dry_run excludedDetail caps at 50 and flags truncation instead of silently shortening", async () => {
+  // 60 blocked artists + 1 survivor. The aggregate count still reports all 60;
+  // the detail array is capped, and the cap is signaled rather than hidden.
+  const blockedIds = Array.from({ length: 60 }, (_, i) => `blocked-${i}`);
+  const allArtistIds = ["ar-ok", ...blockedIds];
+  const { deps } = makeFakeDeps({
+    envVars,
+    tables: {
+      show_dates: { data: { ...SHOW_DATE_OPEN, org_id: "org-A" }, error: null },
+      app_settings: { data: [], error: null },
+      cast_city_priority: { data: [{ cast_id: "cast-a", priority: 1 }], error: null },
+      cast_members: { data: allArtistIds.map((id) => ({ artist_id: id })), error: null },
+      artists: [
+        { when: { status: "active" }, data: allArtistIds.map((id) => ({ id })), error: null },
+        { data: [{ id: "ar-ok", name: "Ar Ok" }], error: null },
+      ],
+      bookings: { data: [], error: null },
+      blocked_dates: { data: blockedIds.map((id) => ({ artist_id: id })), error: null },
+    },
+  });
+  const res = await handle(
+    makeRequest({ headers: SVC, body: { show_date_id: "d1", tier: 1, dry_run: true } }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.excluded.blocked, 60, "aggregate count reflects ALL 60, not just the capped detail");
+  assertEquals(body.excludedDetailTruncated, true);
+  assertEquals(body.excludedDetail.length, 50, "detail array is capped at 50 even though 60 were excluded");
+});
+
+Deno.test("open-offer-tier: non-dry-run responses never carry excludedDetail (additive to dry-run only)", async () => {
+  // All eligible artists already booked, in normal (non-dry-run) mode: the benign
+  // exit must stay the pre-existing { offers_created, message } shape.
+  const { deps } = makeFakeDeps({
+    envVars,
+    tables: {
+      show_dates: { data: SHOW_DATE_OPEN, error: null },
+      cast_city_priority: { data: [{ cast_id: "cast-a", priority: 1 }], error: null },
+      cast_members: { data: [{ artist_id: "art-1" }], error: null },
+      artists: { data: [{ id: "art-1" }], error: null },
+      bookings: [
+        { when: { show_date_id: "d1" }, data: [{ artist_id: "art-1" }], error: null },
+        { data: [], error: null },
+      ],
+    },
+  });
+  const res = await handle(makeRequest({ headers: SVC, body: { show_date_id: "d1", tier: 1 } }), deps);
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals("excludedDetail" in body, false);
+  assertEquals("excludedDetailTruncated" in body, false);
+});

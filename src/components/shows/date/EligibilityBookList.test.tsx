@@ -101,11 +101,155 @@ describe("EligibilityBookList", () => {
         onSkillFilterChange={onSkillFilterChange}
       />,
     );
-    expect(screen.getByText("Only offer to artists with")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Improv" })).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByRole("button", { name: "Singing" })).toHaveAttribute("aria-pressed", "false");
-    fireEvent.click(screen.getByRole("button", { name: "Singing" }));
+    expect(screen.getByText("Narrow the list further")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Improv/ })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: /^Singing/ })).toHaveAttribute("aria-pressed", "false");
+    fireEvent.click(screen.getByRole("button", { name: /^Singing/ }));
     expect(onSkillFilterChange).toHaveBeenCalledWith("s2");
+    expect(screen.queryByText("Only offer to artists with")).not.toBeInTheDocument();
+  });
+
+  // Hiding the count (rather than showing a hard-coded "0") when the caller has not wired
+  // skillIds through at all: a false "0" would read as "nobody qualifies", which this
+  // component cannot actually claim to know when it was never handed the data.
+  it("hides the per-skill count, rather than showing 0, when no listed artist carries skillIds", () => {
+    renderWithProviders(
+      <EligibilityBookList
+        artists={[{ id: "a1", name: "Lena" }, { id: "a2", name: "Marco" }]}
+        bookedArtistIds={new Set()}
+        onBook={vi.fn()}
+        booking={false}
+        skills={[{ id: "s1", name: "Piano" }]}
+        selectedSkillIds={[]}
+        onSkillFilterChange={vi.fn()}
+      />,
+    );
+    const pianoChip = screen.getByRole("button", { name: "Piano" });
+    expect(pianoChip.textContent).toBe("Piano");
+  });
+
+  // 1h: direct mode never offers anything, so "Only offer to artists with" was actively
+  // wrong here. The narrowing chips carry a per-skill count of the currently-listed
+  // (already-qualifying, unblocked) artists who also hold that skill.
+  it("shows a per-skill count on each narrowing chip, computed from the listed artists", () => {
+    const onSkillFilterChange = vi.fn();
+    renderWithProviders(
+      <EligibilityBookList
+        artists={[
+          { id: "a1", name: "Marta", skillIds: ["piano"] },
+          { id: "a2", name: "Jonas", skillIds: [] },
+          { id: "a3", name: "Lena", skillIds: ["piano", "acting"] },
+        ]}
+        bookedArtistIds={new Set()}
+        onBook={vi.fn()}
+        booking={false}
+        skills={[{ id: "piano", name: "Piano" }, { id: "acting", name: "Acting" }]}
+        selectedSkillIds={[]}
+        onSkillFilterChange={onSkillFilterChange}
+      />,
+    );
+    const pianoChip = screen.getByRole("button", { name: /^Piano/ });
+    expect(pianoChip).toHaveTextContent("2");
+    const actingChip = screen.getByRole("button", { name: /^Acting/ });
+    expect(actingChip).toHaveTextContent("1");
+    fireEvent.click(pianoChip);
+    expect(onSkillFilterChange).toHaveBeenCalledWith("piano");
+  });
+
+  // 1h: the narrowing chips are EXTRA (non-required) skills only. An already-required
+  // skill is a no-op narrower (every qualifying artist already holds it), so it must be
+  // excluded from the chip list rather than rendered as a chip whose count is the whole list.
+  it("excludes already-required skills from the narrowing chips", () => {
+    renderWithProviders(
+      <EligibilityBookList
+        artists={[
+          { id: "a1", name: "Marta", skillIds: ["vocals", "combat", "piano"] },
+          { id: "a2", name: "Jonas", skillIds: ["vocals", "combat"] },
+        ]}
+        bookedArtistIds={new Set()}
+        onBook={vi.fn()}
+        booking={false}
+        skills={[
+          { id: "vocals", name: "Vocals" },
+          { id: "combat", name: "Stage combat" },
+          { id: "piano", name: "Piano" },
+        ]}
+        selectedSkillIds={[]}
+        onSkillFilterChange={vi.fn()}
+        requiredSkillIds={["vocals", "combat"]}
+      />,
+    );
+    // Piano is a real narrower (not every qualifying artist holds it), so it stays a chip.
+    expect(screen.getByRole("button", { name: /^Piano/ })).toBeInTheDocument();
+    // Vocals / Stage combat are already required, so they are no-op narrowers and excluded.
+    expect(screen.queryByRole("button", { name: /^Vocals/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Stage combat/ })).not.toBeInTheDocument();
+  });
+
+  it("hides the whole narrowing section when every listed skill is already required", () => {
+    renderWithProviders(
+      <EligibilityBookList
+        artists={[{ id: "a1", name: "Marta", skillIds: ["vocals"] }]}
+        bookedArtistIds={new Set()}
+        onBook={vi.fn()}
+        booking={false}
+        skills={[{ id: "vocals", name: "Vocals" }]}
+        selectedSkillIds={[]}
+        onSkillFilterChange={vi.fn()}
+        requiredSkillIds={["vocals"]}
+      />,
+    );
+    expect(screen.queryByText("Narrow the list further")).not.toBeInTheDocument();
+  });
+
+  // 1h: the requirement-as-fact sentence replaces the old (wrong-in-direct-mode) label.
+  it("shows the requirement-as-fact sentence when required skills and a total pool size are given", () => {
+    renderWithProviders(
+      <EligibilityBookList
+        artists={[
+          { id: "a1", name: "Marta" }, { id: "a2", name: "Jonas" }, { id: "a3", name: "Lena" },
+          { id: "a4", name: "Ana" }, { id: "a5", name: "Ben" }, { id: "a6", name: "Cara" }, { id: "a7", name: "Dan" },
+        ]}
+        bookedArtistIds={new Set()}
+        onBook={vi.fn()}
+        booking={false}
+        requiredSkillNames={["Vocals", "Stage combat"]}
+        totalArtistCount={24}
+      />,
+    );
+    expect(
+      screen.getByText("This date requires Vocals and Stage combat · 7 of 24 artists qualify and are not blocked."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Only offer to artists with")).not.toBeInTheDocument();
+  });
+
+  it("states there are no skill requirements when the date requires none", () => {
+    renderWithProviders(
+      <EligibilityBookList
+        artists={[{ id: "a1", name: "Lena" }]}
+        bookedArtistIds={new Set()}
+        onBook={vi.fn()}
+        booking={false}
+        requiredSkillNames={[]}
+        totalArtistCount={5}
+      />,
+    );
+    expect(
+      screen.getByText("This date has no skill requirements · 1 of 5 artists qualify and are not blocked."),
+    ).toBeInTheDocument();
+  });
+
+  it("omits the requirement-as-fact sentence when no total pool size is given", () => {
+    renderWithProviders(
+      <EligibilityBookList
+        artists={[{ id: "a1", name: "Lena" }]}
+        bookedArtistIds={new Set()}
+        onBook={vi.fn()}
+        booking={false}
+        requiredSkillNames={["Vocals"]}
+      />,
+    );
+    expect(screen.queryByText(/This date requires/)).not.toBeInTheDocument();
   });
 
   // P3.5: when the date has no cast/city eligibility restriction, deriveDirectBookList
@@ -148,7 +292,7 @@ describe("EligibilityBookList", () => {
         booking={false}
       />,
     );
-    expect(screen.queryByText("Only offer to artists with")).not.toBeInTheDocument();
+    expect(screen.queryByText("Narrow the list further")).not.toBeInTheDocument();
 
     rerender(
       <EligibilityBookList
@@ -161,6 +305,6 @@ describe("EligibilityBookList", () => {
         onSkillFilterChange={vi.fn()}
       />,
     );
-    expect(screen.queryByText("Only offer to artists with")).not.toBeInTheDocument();
+    expect(screen.queryByText("Narrow the list further")).not.toBeInTheDocument();
   });
 });

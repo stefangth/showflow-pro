@@ -333,6 +333,43 @@ describe("dryRunOfferTier", () => {
     const res = await dryRunOfferTier(fake as never, { showDateId: "d1", tier: 1 });
     expect(res.excluded).toEqual({ alreadyBooked: 1, blocked: 0, inactive: 0, notEligible: 2, missingSkills: 3 });
   });
+  it("surfaces excludedDetail and excludedDetailTruncated typed, alongside the unchanged aggregate counts", async () => {
+    const fake = createFakeSupabase({ "fn:open-offer-tier": { data: {
+      dry_run: true,
+      candidates: [{ id: "a1", name: "Lena" }],
+      excluded: { already_booked: 0, blocked: 1, inactive: 0, not_eligible: 0, missing_skills: 2 },
+      excludedDetail: [
+        { id: "a2", name: "Marta Feld", reason: "missing_skills" },
+        { id: "a3", name: "Jonas Trier", reason: "missing_skills" },
+        { id: "a4", name: "Nadia Sorel", reason: "blocked" },
+      ],
+      excludedDetailTruncated: false,
+    }, error: null } });
+    const res = await dryRunOfferTier(fake as never, { showDateId: "d1", tier: 1 });
+    expect(res.excluded).toEqual({ alreadyBooked: 0, blocked: 1, inactive: 0, notEligible: 0, missingSkills: 2 });
+    expect(res.excludedDetail).toEqual([
+      { id: "a2", name: "Marta Feld", reason: "missing_skills" },
+      { id: "a3", name: "Jonas Trier", reason: "missing_skills" },
+      { id: "a4", name: "Nadia Sorel", reason: "blocked" },
+    ]);
+    expect(res.excludedDetailTruncated).toBe(false);
+  });
+  it("surfaces excludedDetailTruncated:true when the edge fn caps the detail array", async () => {
+    const fake = createFakeSupabase({ "fn:open-offer-tier": { data: {
+      dry_run: true, candidates: [],
+      excluded: { already_booked: 0, blocked: 60, inactive: 0, not_eligible: 0, missing_skills: 0 },
+      excludedDetail: [{ id: "a2", name: "Marta Feld", reason: "blocked" }],
+      excludedDetailTruncated: true,
+    }, error: null } });
+    const res = await dryRunOfferTier(fake as never, { showDateId: "d1", tier: 1 });
+    expect(res.excludedDetailTruncated).toBe(true);
+  });
+  it("defaults excludedDetail to [] and excludedDetailTruncated to false when the edge fn omits them", async () => {
+    const fake = createFakeSupabase({ "fn:open-offer-tier": { data: { dry_run: true, candidates: [], excluded: {} }, error: null } });
+    const res = await dryRunOfferTier(fake as never, { showDateId: "d1", tier: 1 });
+    expect(res.excludedDetail).toEqual([]);
+    expect(res.excludedDetailTruncated).toBe(false);
+  });
   it("passes skill_filter_ids only when non-empty", async () => {
     const fake = createFakeSupabase({ "fn:open-offer-tier": { data: { dry_run: true, candidates: [], excluded: {} }, error: null } });
     await dryRunOfferTier(fake as never, { showDateId: "d1", tier: 1, skillFilterIds: ["s1", "s2"] });

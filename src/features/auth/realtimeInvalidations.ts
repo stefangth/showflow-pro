@@ -8,7 +8,9 @@ export const REALTIME_INVALIDATIONS: Array<{ table: string; keys: unknown[][] }>
   // ['hire-orders'] on bookings + show_dates keeps the hire-order readiness query
   // (['hire-orders','ready',org] — the bookings banner + per-row CTA/chip) fresh
   // when a booking confirm/cancel flips a date's fully_filled status.
-  { table: 'bookings',                   keys: [['bookings'], ['hire-orders']] },
+  // ['tier-ladder'] keeps the Offers cockpit's per-tier headcounts (useTierLadderCounts)
+  // fresh — an offer/booking/response changes who still matches a tier.
+  { table: 'bookings',                   keys: [['bookings'], ['hire-orders'], ['tier-ladder']] },
   { table: 'show_dates',                 keys: [['show-dates'], ['dashboard-upcoming-dates'], ['artist-eligible-dates'], ['hire-orders'], ['eligibility']] },
   { table: 'hire_orders',                keys: [['hire-orders']] },
   { table: 'show_date_cast_eligibility', keys: [['show-date-cast-eligibility'], ['eligible-artists'], ['artist-eligible-dates']] },
@@ -28,4 +30,13 @@ export const REALTIME_INVALIDATIONS: Array<{ table: string; keys: unknown[][] }>
   { table: 'chats',                      keys: [['chat'], ['my-chats']] },
   { table: 'booking_audit_log',          keys: [['admin-audit']] },
   { table: 'airtable_sync_log',          keys: [['admin-sync']] },
+  // blocked_dates and show_date_required_skills both feed fetchTierLadderCounts'
+  // waterfall (blocked exclusion, required-skill match). Both were added to the
+  // supabase_realtime publication in 20260812190100, so cross-client refresh for
+  // both rows is live.
+  { table: 'blocked_dates',              keys: [['blocked-dates'], ['tier-ladder']] },
+  { table: 'show_date_required_skills',  keys: [['eligibility'], ['tier-ladder']] },
+  // A drop subtracts from the effective required-skill union (fetchRequiredSkillIds),
+  // which fetchTierLadderCounts reads — same rationale as show_date_required_skills above.
+  { table: 'show_date_skill_drops',      keys: [['eligibility'], ['tier-ladder']] },
 ];

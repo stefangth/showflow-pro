@@ -32,7 +32,10 @@ import {
   deriveBookingGroups, computeInheritedCastIds,
   offerResultToast, closeResultToast, deriveDirectBookList,
 } from '@/lib/bookings';
-import { computeUpNext, computeFunnel, computeHeaderCta, buildActivity, computeHireFooter } from '@/lib/bookingCockpit';
+import { computeUpNext, computeFunnel, computeHeaderCta, buildActivity, computeHireFooter, tierFillCounts } from '@/lib/bookingCockpit';
+import { resolveNextOfferTarget } from '@/lib/offerTarget';
+import { useShowSlots } from '@/hooks/useShowSlots';
+import { useTierCastMap, useTierLadderCounts } from '@/hooks/useTierLadder';
 import { BOOKING_FLOW_DEFAULTS, referenceLabel, type FlowTimes } from '@/lib/bookingFlow';
 import { ROUTES, BOOKING_ENGINE_DEFAULTS } from '@/config/app.config';
 import { formatDateDMY, parseDateOnly } from '@/lib/dates';
@@ -42,6 +45,7 @@ import {
 } from '@/data/bookings';
 import {
   fetchRequiredSkillIds, fetchSkillEligibleArtistIds, addShowDateRequiredSkill, removeShowDateRequiredSkill,
+  fetchShowDateSkillDrops, addShowDateSkillDrop, removeShowDateSkillDrop,
 } from '@/data/eligibility';
 import { unionSkillIds } from '@/lib/eligibility';
 import { resolveOrgSetting } from '@/data/settings';
@@ -346,6 +350,13 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: P
     enabled: !!showDate?.show_id && !!showDateId,
     queryFn: () => fetchRequiredSkillIds(supabase, { showId: showDate!.show_id, showDateId: showDateId! }),
   });
+  // Show-level skills dropped on this date (a drop only bites when the skill is a
+  // show requirement; the raw list is filtered against showSkillIds at render).
+  const dropsQ = useQuery({
+    queryKey: ['eligibility', 'date-skill-drops', showDateId],
+    enabled: !!showDateId,
+    queryFn: () => fetchShowDateSkillDrops(supabase, showDateId!),
+  });
 
   // Ad-hoc skill chips the producer picks on the direct-book list, union'd with the
   // date's hard skill requirements into a single set to resolve eligibility against.
@@ -372,6 +383,24 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: P
     enabled: canManage && !!showDateId,
     queryFn: () => fetchOpenedTiers(supabase, showDateId!),
   });
+
+  // Offers-tab cockpit data (design 1e). Gated to the tiered offers path so the
+  // direct-book / artist / module-off surfaces never fetch it. Each hook's own
+  // `enabled` also stays disabled until its ids resolve.
+  const tieredOffersActive = canManage && flow.artist_acceptance;
+  const { data: showSlotsData } = useShowSlots(tieredOffersActive ? showId : null);
+  const { data: tierMapData } = useTierCastMap(
+    tieredOffersActive ? showId : null,
+    tieredOffersActive ? cityId : null,
+  );
+  const { data: ladderRowsData } = useTierLadderCounts(
+    tieredOffersActive ? showId : null,
+    tieredOffersActive ? showDateId : null,
+    tieredOffersActive ? cityId : null,
+    orgId,
+  );
+  const tierMap = tierMapData ?? [];
+  const ladderRows = ladderRowsData ?? [];
 
   const [dryRun, setDryRun] = useState<{ tier: number; skillFilterIds: string[] } | null>(null);
   const [editOpen, setEditOpen] = useState(false);
@@ -477,6 +506,10 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: P
     queryClient.invalidateQueries({ queryKey: ['eligible-artists'] });
     queryClient.invalidateQueries({ queryKey: ['artist-eligible-dates'] });
     queryClient.invalidateQueries({ queryKey: ['offer-tiers'] });
+    // A date-skill add/remove/drop/restore/reset changes fetchRequiredSkillIds'
+    // effective union, which fetchTierLadderCounts reads — bust the Offers-cockpit
+    // hero/ladder counts locally too, not only via realtime (see realtimeInvalidations.ts).
+    queryClient.invalidateQueries({ queryKey: ['tier-ladder'] });
   };
   const addDateSkill = useMutation({
     mutationFn: (skillId: string) =>
@@ -489,6 +522,32 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: P
       removeShowDateRequiredSkill(supabase, { showDateId: showDateId!, skillId }),
     onSuccess: () => { invalidateEligibility(); toast.success('Required skill removed'); },
     onError: (e: Error) => toast.error('Failed to remove required skill', { description: e.message }),
+  });
+  const dropDateSkill = useMutation({
+    mutationFn: (skillId: string) =>
+      addShowDateSkillDrop(supabase, { showDateId: showDateId!, skillId, orgId: currentOrg!.id }),
+    onSuccess: () => { invalidateEligibility(); toast.success('Skill dropped on this date'); },
+    onError: (e: Error) => toast.error('Failed to drop skill', { description: e.message }),
+  });
+  const restoreDateSkill = useMutation({
+    mutationFn: (skillId: string) =>
+      removeShowDateSkillDrop(supabase, { showDateId: showDateId!, skillId }),
+    onSuccess: () => { invalidateEligibility(); toast.success('Skill restored on this date'); },
+    onError: (e: Error) => toast.error('Failed to restore skill', { description: e.message }),
+  });
+  // RequiredSkillsCard "Reset to computed": drop every date-add and restore every
+  // drop in one pass, then invalidate once (rather than one toast per skill).
+  const resetDateSkills = useMutation({
+    mutationFn: async () => {
+      const dateAdds = requiredSkillsQ.data?.dateSkillIds ?? [];
+      const drops = dropsQ.data ?? [];
+      await Promise.all([
+        ...dateAdds.map((id) => removeShowDateRequiredSkill(supabase, { showDateId: showDateId!, skillId: id })),
+        ...drops.map((id) => removeShowDateSkillDrop(supabase, { showDateId: showDateId!, skillId: id })),
+      ]);
+    },
+    onSuccess: () => { invalidateEligibility(); toast.success('Reset to computed skills'); },
+    onError: (e: Error) => toast.error('Failed to reset skills', { description: e.message }),
   });
 
   const createBookingMutation = useMutation({
@@ -589,14 +648,28 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: P
   const highestOpenedTier = (openedQ.data ?? [])
     .reduce<number | null>((m, t) => Math.max(m ?? 0, t.tier), null);
 
+  // Single source of truth for "the next tier to offer to": the header CTA, the
+  // Offers-tab hero, and the ladder ring all read this.
+  // Gap-aware next tier: the smallest ladder tier strictly greater than the highest
+  // opened tier (mirrors the escalation engine's nextTierAfter). A non-contiguous
+  // priority set (e.g. ladder tiers 1 and 3) then still surfaces the hero and an open
+  // path for tier 3 once tier 1 is opened. null when every ladder tier has been opened.
+  const nextTier = ladderRows
+    .map((r) => r.tier)
+    .filter((t) => t > (highestOpenedTier ?? 0))
+    .reduce<number | null>((min, t) => (min == null ? t : Math.min(min, t)), null);
+  const nextTierTarget = nextTier != null ? resolveNextOfferTarget(tierMap, nextTier) : null;
+  const nextTierCounts = nextTier != null ? (ladderRows.find((r) => r.tier === nextTier) ?? null) : null;
+
   // Primary booking-workflow action for the header (hire-order terminal is the
   // separate showGenerateHireOrderCta button below).
   const workflowCta = computeHeaderCta({
     artistAcceptance: flow.artist_acceptance,
     acceptedCount, confirmedCount, totalSlots,
-    openTier: highestOpenedTier,
     currentTierOpen: highestOpenTier != null,
-    maxTier: tiersQ.data?.priorities.length ?? 3,
+    nextTier,
+    // RELABEL the CTA to the cast when the next tier resolves to a single one.
+    nextTierCastName: nextTierTarget?.kind === 'cast' ? nextTierTarget.cast.name : null,
   });
   const ctaAllowed =
     workflowCta.kind === 'confirm' ? canConfirmBookings :
@@ -615,7 +688,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: P
         // opening it on a single header click — the actual offer-send is confirmed
         // from the dry-run dialog, never fired directly from here.
         setActiveTab('offers');
-        setDryRun({ tier: (highestOpenedTier ?? 0) + 1, skillFilterIds: [] });
+        setDryRun({ tier: nextTier ?? (highestOpenedTier ?? 0) + 1, skillFilterIds: [] });
         break;
       case 'book':
       case 'reviewOffers':
@@ -665,6 +738,28 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: P
   }
 
   const activity = buildActivity({ bookings, openedTiers: openedQ.data ?? [] });
+
+  // Per-opened-tier status counts for the tier ladder. One entry per OPENED tier
+  // (a missing entry degrades that ladder row), so iterate openedQ, not bookings.
+  // `sent` = every offer ever made in the tier; `cancelled` = the cancelled ones
+  // (a decline OR a producer/system withdrawal — the status alone can't distinguish).
+  const statusByTier = (openedQ.data ?? []).map((o) => {
+    const counts = tierFillCounts(bookings, o.tier);
+    const inTier = bookings.filter((b) => b.offer_tier === o.tier);
+    return {
+      tier: o.tier,
+      sent: inTier.length,
+      accepted: counts.accepted,
+      pending: counts.pending,
+      cancelled: inTier.filter((b) => b.status === 'cancelled').length,
+    };
+  });
+
+  // The hero's avatar row + the cast-aware confirm's "Not offered" line reuse the
+  // dry-run already in scope, but only when it's the preview for the NEXT tier.
+  const nextTierDryRun = dryRun?.tier === nextTier ? dryRunQ.data : undefined;
+  const nextTierCandidates = nextTierDryRun?.candidates ?? [];
+  const nextTierExcludedDetail = nextTierDryRun?.excludedDetail;
 
   // showDate-dependent presentational values (safe fallbacks when unloaded).
   const title = showDate
@@ -901,23 +996,37 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: P
                             <>
                               <TierTimeline
                                 showDateId={showDate.id}
-                                cityId={cityId}
                                 dateLabel={formatDateDMY(showDate.date)}
                                 flow={flow}
                                 bookings={bookingsForDate ?? []}
                                 canManage={canRunOfferEngine}
                                 hasSession={hasSession}
-                                tiers={tiersQ.data ?? { priorities: [], hasAdHoc: false }}
                                 ladderSource={tiersQ.data?.source ?? "org"}
                                 skills={orgSkills ?? []}
                                 openedTiers={openedQ.data ?? []}
-                                isLoadingTiers={tiersQ.isLoading}
-                                isLoadingOpened={openedQ.isLoading}
                                 openPending={openOffers.isPending}
                                 closePending={closeOffers.isPending}
                                 onOpenTier={(tier, skillFilterIds) => openOffers.mutate({ tier, skillFilterIds })}
                                 onCloseTier={(tier, withdraw) => closeOffers.mutate({ tier, withdraw })}
                                 onPreviewTier={(tier, skillFilterIds) => setDryRun({ tier, skillFilterIds })}
+                                // design 1e cockpit cards
+                                show={showDate.show?.program ?? ''}
+                                slots={showSlotsData ?? []}
+                                showSkillIds={requiredSkillsQ.data?.showSkillIds ?? []}
+                                dateSkillIds={requiredSkillsQ.data?.dateSkillIds ?? []}
+                                droppedSkillIds={dropsQ.data ?? []}
+                                onResetSkills={() => resetDateSkills.mutate()}
+                                onEditSkills={() => setActiveTab('setup')}
+                                ladderRows={ladderRows}
+                                cityName={showDate.city?.name ?? ''}
+                                statusByTier={statusByTier}
+                                nextTier={nextTier}
+                                nextTierTarget={nextTierTarget}
+                                nextTierCounts={nextTierCounts}
+                                requiredSkillNames={skillChips}
+                                requiredSkillIds={requiredSkillsQ.data?.all ?? []}
+                                candidates={nextTierCandidates}
+                                excludedDetail={nextTierExcludedDetail}
                               />
                               <DryRunDialog
                                 open={Boolean(dryRun)}
@@ -952,6 +1061,21 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: P
                               // reads to tell the producer the picker is wide open on purpose.
                               unrestricted={eligibility?.artistIds == null}
                               orgName={currentOrg?.name}
+                              // 1h requirement-as-fact sentence: skillChips is the same
+                              // required-skill NAME list the rail already shows, reused here
+                              // rather than recomputed. totalArtistCount is the pool the
+                              // qualifying count is measured against: the date's eligible cast
+                              // set when the date is cast/city-restricted, else the org's whole
+                              // active roster. Using the whole roster for a restricted date
+                              // would count never-eligible artists as "not qualifying".
+                              // Undefined while orgArtists is still loading keeps the sentence
+                              // hidden instead of claiming "of 0".
+                              requiredSkillNames={skillChips}
+                              totalArtistCount={eligibility?.artistIds ? eligibility.artistIds.size : orgArtists?.length}
+                              // 1h: the narrowing chips are EXTRA skills only. Exclude the
+                              // date's already-required skills so they don't render as no-op
+                              // chips whose count equals the whole qualifying list.
+                              requiredSkillIds={requiredSkillsQ.data?.all ?? []}
                             />
                           )}
                         </CardContent>
@@ -1066,9 +1190,13 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: P
                           skills={orgSkills ?? []}
                           showSkillIds={requiredSkillsQ.data?.showSkillIds ?? []}
                           dateSkillIds={requiredSkillsQ.data?.dateSkillIds ?? []}
+                          droppedSkillIds={dropsQ.data ?? []}
                           onAdd={(id) => addDateSkill.mutate(id)}
                           onRemove={(id) => removeDateSkill.mutate(id)}
-                          pending={addDateSkill.isPending || removeDateSkill.isPending}
+                          onDrop={(id) => dropDateSkill.mutate(id)}
+                          onRestore={(id) => restoreDateSkill.mutate(id)}
+                          pending={addDateSkill.isPending || removeDateSkill.isPending
+                            || dropDateSkill.isPending || restoreDateSkill.isPending}
                         />
                       </CardContent>
                     </Card>

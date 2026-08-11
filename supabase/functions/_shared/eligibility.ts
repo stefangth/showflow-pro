@@ -83,7 +83,18 @@ export async function fetchGateArtistIds(
   return new Set(((members ?? []) as Array<{ artist_id: string }>).map((m) => m.artist_id));
 }
 
-/** Union of show-level and date-level required skills, deduped, stable order. */
+/** Effective required skills for a date, deduped, stable order.
+ *
+ *  Effective union = (show ∪ dateAdded) \ (dateDropped ∩ show): a per-date skill
+ *  drop (show_date_skill_drops) removes a show-level requirement on this date only.
+ *  A drop is provenance-aware — it subtracts a skill ONLY when that skill is
+ *  show-level (drops are offered only on inherited/show-level chips in the UI), so
+ *  a stale drop row for a date-added skill is inert and can't silently negate a
+ *  later date-add.
+ *
+ *  TWIN of src/data/eligibility.ts `fetchRequiredSkillIds`. The set math is
+ *  identical; only the client mechanics differ. These are NOT mirror-managed, so
+ *  any change to the union math must be made in both by hand. */
 export async function fetchRequiredSkillIds(
   admin: Admin,
   args: { showId: string; showDateId: string },
@@ -96,11 +107,21 @@ export async function fetchRequiredSkillIds(
     .from("show_date_required_skills")
     .select("skill_id")
     .eq("show_date_id", args.showDateId);
+  const { data: dropSkills } = await admin
+    .from("show_date_skill_drops")
+    .select("skill_id")
+    .eq("show_date_id", args.showDateId);
+  const dropped = new Set(
+    ((dropSkills ?? []) as Array<{ skill_id: string }>).map((r) => r.skill_id),
+  );
+  const showSet = new Set(
+    ((showSkills ?? []) as Array<{ skill_id: string }>).map((r) => r.skill_id),
+  );
   const all = [
     ...((showSkills ?? []) as Array<{ skill_id: string }>).map((r) => r.skill_id),
     ...((dateSkills ?? []) as Array<{ skill_id: string }>).map((r) => r.skill_id),
   ];
-  return [...new Set(all)];
+  return [...new Set(all)].filter((id) => !(dropped.has(id) && showSet.has(id)));
 }
 
 /** Artists (of artistIds) holding ALL of requiredSkillIds. Empty requirements pass everyone. */

@@ -104,6 +104,39 @@ Deno.test("fetchRequiredSkillIds unions show and date rows", async () => {
   assertEquals(await fetchRequiredSkillIds(deps.admin, { showId: "s", showDateId: "d" }), ["sk-1", "sk-2"]);
 });
 
+Deno.test("fetchRequiredSkillIds subtracts date-dropped skills: (show union dateAdded) minus dateDropped", async () => {
+  // Twin of the src/data/eligibility.ts case: show {sk-1, sk-2}, date adds {sk-3},
+  // date drops {sk-2} => required = {sk-1, sk-3}. Identical set math to the frontend.
+  const { deps } = makeFakeDeps({ tables: {
+    show_required_skills: { data: [{ skill_id: "sk-1" }, { skill_id: "sk-2" }] },
+    show_date_required_skills: { data: [{ skill_id: "sk-3" }] },
+    show_date_skill_drops: { data: [{ skill_id: "sk-2" }] },
+  } });
+  assertEquals(await fetchRequiredSkillIds(deps.admin, { showId: "s", showDateId: "d" }), ["sk-1", "sk-3"]);
+});
+
+Deno.test("fetchRequiredSkillIds: a drop only subtracts a SHOW-level skill", async () => {
+  // show {sk-1, sk-2}, date adds nothing, date drops {sk-2} (show-level) => {sk-1}.
+  const { deps } = makeFakeDeps({ tables: {
+    show_required_skills: { data: [{ skill_id: "sk-1" }, { skill_id: "sk-2" }] },
+    show_date_required_skills: { data: [] },
+    show_date_skill_drops: { data: [{ skill_id: "sk-2" }] },
+  } });
+  assertEquals(await fetchRequiredSkillIds(deps.admin, { showId: "s", showDateId: "d" }), ["sk-1"]);
+});
+
+Deno.test("fetchRequiredSkillIds: a drop for a DATE-ADDED-only skill is inert", async () => {
+  // show {sk-1}, date adds {sk-2}, a stale drop names {sk-2} (date-added-only, not
+  // a show-level requirement). Provenance-aware: the drop only bites show-level ids,
+  // so sk-2 stays required => {sk-1, sk-2}. Identical set math to the frontend twin.
+  const { deps } = makeFakeDeps({ tables: {
+    show_required_skills: { data: [{ skill_id: "sk-1" }] },
+    show_date_required_skills: { data: [{ skill_id: "sk-2" }] },
+    show_date_skill_drops: { data: [{ skill_id: "sk-2" }] },
+  } });
+  assertEquals(await fetchRequiredSkillIds(deps.admin, { showId: "s", showDateId: "d" }), ["sk-1", "sk-2"]);
+});
+
 Deno.test("filterArtistIdsBySkills keeps only artists holding ALL required skills", async () => {
   const { deps } = makeFakeDeps({ tables: {
     artist_skills: { data: [

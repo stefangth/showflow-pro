@@ -14,6 +14,8 @@ describe("DryRunDialog", () => {
         result={{
           candidates: [{ id: "a1", name: "Lena" }],
           excluded: { alreadyBooked: 1, blocked: 2, inactive: 0, notEligible: 0, missingSkills: 0 },
+          excludedDetail: [],
+          excludedDetailTruncated: false,
         }}
         loading={false}
         flow={{ offer_delivery: "digest" }}
@@ -34,7 +36,7 @@ describe("DryRunDialog", () => {
         open
         onOpenChange={() => {}}
         tier={1}
-        result={{ candidates: [], excluded: { alreadyBooked: 0, blocked: 0, inactive: 0, notEligible: 0, missingSkills: 0 }, message: "No sessions configured for this date" }}
+        result={{ candidates: [], excluded: { alreadyBooked: 0, blocked: 0, inactive: 0, notEligible: 0, missingSkills: 0 }, excludedDetail: [], excludedDetailTruncated: false, message: "No sessions configured for this date" }}
         loading={false}
         flow={{ offer_delivery: "immediate" }}
         onConfirm={vi.fn()}
@@ -55,7 +57,7 @@ describe("DryRunDialog", () => {
         open
         onOpenChange={() => {}}
         tier={1}
-        result={{ candidates: [], excluded: { alreadyBooked: 3, blocked: 0, inactive: 0, notEligible: 0, missingSkills: 0 } }}
+        result={{ candidates: [], excluded: { alreadyBooked: 3, blocked: 0, inactive: 0, notEligible: 0, missingSkills: 0 }, excludedDetail: [], excludedDetailTruncated: false }}
         loading={false}
         flow={{ offer_delivery: "digest" }}
         onConfirm={vi.fn()}
@@ -75,6 +77,8 @@ describe("DryRunDialog", () => {
         result={{
           candidates: [{ id: "a1", name: "Lena" }],
           excluded: { alreadyBooked: 0, blocked: 0, inactive: 0, notEligible: 0, missingSkills: 0 },
+          excludedDetail: [],
+          excludedDetailTruncated: false,
         }}
         loading={false}
         flow={{ offer_delivery: "digest" }}
@@ -110,6 +114,8 @@ describe("DryRunDialog", () => {
         result={{
           candidates: [],
           excluded: { alreadyBooked: 0, blocked: 0, inactive: 0, notEligible: 2, missingSkills: 1 },
+          excludedDetail: [],
+          excludedDetailTruncated: false,
         }}
         loading={false}
         flow={{ offer_delivery: "digest" }}

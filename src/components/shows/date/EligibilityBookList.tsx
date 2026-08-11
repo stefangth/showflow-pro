@@ -8,8 +8,30 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
-import { SkillPicker } from "@/components/skills/SkillPicker";
+import { cn } from "@/lib/utils";
 import { unrestrictedEligibilityNote } from "@/lib/bookings/actionCopy";
+
+/** Joins strings for prose: "A", "A and B", "A, B, and C". No em dashes (house style). */
+function joinNames(names: string[]): string {
+  if (names.length === 0) return "";
+  if (names.length === 1) return names[0];
+  if (names.length === 2) return `${names[0]} and ${names[1]}`;
+  return `${names.slice(0, -1).join(", ")}, and ${names[names.length - 1]}`;
+}
+
+/**
+ * The direct-book list's requirement-as-fact sentence (design 1h). Direct mode never offers
+ * anything, so the list's old "Only offer to artists with" framing was actively wrong here;
+ * this states what the date requires and how the roster measures up, as a fact rather than
+ * an instruction. `qualifying` is the caller's already-filtered `artists` count (this list
+ * IS the qualifying, unblocked set) against `total`, the full artist pool.
+ */
+function requirementFactSentence(requiredSkillNames: string[], qualifying: number, total: number): string {
+  const requirement = requiredSkillNames.length > 0
+    ? `This date requires ${joinNames(requiredSkillNames)}`
+    : "This date has no skill requirements";
+  return `${requirement} · ${qualifying} of ${total} artists qualify and are not blocked.`;
+}
 
 /**
  * Direct-mode booking list: shows every eligible artist for a show date with a
@@ -23,8 +45,13 @@ import { unrestrictedEligibilityNote } from "@/lib/bookings/actionCopy";
 export function EligibilityBookList({
   artists, bookedArtistIds, onBook, booking, loading = false, error = false,
   skills, selectedSkillIds, onSkillFilterChange, unrestricted = false, orgName,
+  requiredSkillNames, totalArtistCount, requiredSkillIds,
 }: {
-  artists: { id: string; name: string }[];
+  /** `skillIds` is optional. When at least one listed artist carries it, each narrowing
+   *  chip shows a live per-skill count computed from this list. When no artist carries it
+   *  (the caller has not wired skill data through), the count is hidden rather than shown
+   *  as a false "0". */
+  artists: { id: string; name: string; skillIds?: string[] }[];
   bookedArtistIds: Set<string>;
   onBook: (artistId: string, isUnderstudy: boolean) => void;
   booking: boolean;
@@ -38,6 +65,17 @@ export function EligibilityBookList({
   unrestricted?: boolean;
   /** Needed only to name the org in the unrestricted note; omit and the note stays silent. */
   orgName?: string | null;
+  /** Names of the skills this date requires, for the requirement-as-fact sentence (design
+   *  1h). Pass `[]` (not undefined) to state explicitly that the date requires none. */
+  requiredSkillNames?: string[];
+  /** Size of the full artist pool the qualifying count (`artists.length`) is measured
+   *  against. Omit (along with requiredSkillNames) to skip the sentence entirely. */
+  totalArtistCount?: number;
+  /** Ids of the skills this date already requires. The narrowing chips (design 1h) are
+   *  EXTRA skills only, so these are excluded from the chip list: a required skill is
+   *  never a useful narrower (every qualifying artist already holds it). Omit to render
+   *  every listed skill as a chip. */
+  requiredSkillIds?: string[];
 }) {
   const [understudy, setUnderstudy] = useState(false);
   const [confirmTarget, setConfirmTarget] = useState<{ id: string; name: string } | null>(null);
@@ -62,16 +100,55 @@ export function EligibilityBookList({
         <Checkbox checked={understudy} onCheckedChange={(v) => setUnderstudy(v === true)} />
         Book as understudy
       </label>
-      {skills && skills.length > 0 && onSkillFilterChange && (
-        <div className="space-y-1">
-          <p className="text-xs text-muted-foreground">Only offer to artists with</p>
-          <SkillPicker
-            skills={skills}
-            selectedIds={selectedSkillIds ?? []}
-            onToggle={onSkillFilterChange}
-          />
-        </div>
+      {typeof totalArtistCount === "number" && (
+        <p className="text-xs text-muted-foreground">
+          {requirementFactSentence(requiredSkillNames ?? [], artists.length, totalArtistCount)}
+        </p>
       )}
+      {skills && onSkillFilterChange && (() => {
+        // Design 1h: the narrowing chips are EXTRA (non-required) skills only. An
+        // already-required skill is a no-op narrower (every qualifying artist already
+        // holds it), so exclude it rather than render a chip whose count is the whole
+        // list. When nothing extra remains, drop the whole section (no empty heading).
+        const requiredSet = new Set(requiredSkillIds ?? []);
+        const narrowSkills = skills.filter((s) => !requiredSet.has(s.id));
+        if (narrowSkills.length === 0) return null;
+        // Only claim a count when at least one listed artist actually carries skillIds —
+        // otherwise every chip would read a hard-coded "0", which is a false claim rather
+        // than an honest "we don't know" (a caller that hasn't wired skill data through
+        // still gets working, just uncounted, chips).
+        const hasSkillData = artists.some((a) => a.skillIds !== undefined);
+        return (
+          <div className="space-y-1">
+            <p className="text-xs text-muted-foreground">Narrow the list further</p>
+            <div className="flex flex-wrap gap-1.5">
+              {narrowSkills.map((s) => {
+                const on = (selectedSkillIds ?? []).includes(s.id);
+                const count = artists.filter((a) => (a.skillIds ?? []).includes(s.id)).length;
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    aria-pressed={on}
+                    onClick={() => onSkillFilterChange(s.id)}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs transition-colors",
+                      on
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-border bg-background text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    {s.name}
+                    {hasSkillData && (
+                      <span className="font-mono text-[11px] opacity-75">{count}</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
       {unrestricted && orgName && (
         <p className="text-xs text-muted-foreground">{unrestrictedEligibilityNote(orgName)}</p>
       )}

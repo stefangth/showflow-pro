@@ -93,9 +93,29 @@ export async function fetchOpenedTiers(
   return (data ?? []).map((r) => ({ tier: r.tier, openedAt: r.opened_at, closedAt: r.closed_at }));
 }
 
+/** The first waterfall step that eliminated an artist from a dry-run preview.
+ *  Mirrors the edge function's ExcludedReason (open-offer-tier/index.ts) — kept as a
+ *  hand-maintained twin rather than a mirror-manifest entry since it's a tiny literal
+ *  union, not worth a generated block. */
+export type ExcludedReason = "missing_skills" | "blocked" | "already_booked" | "inactive" | "not_eligible";
+
+export interface ExcludedDetailEntry {
+  id: string;
+  name: string;
+  reason: ExcludedReason;
+}
+
 export interface DryRunResult {
   candidates: { id: string; name: string }[];
   excluded: { alreadyBooked: number; blocked: number; inactive: number; notEligible: number; missingSkills: number };
+  /** Named, per-artist exclusion detail (id/name/reason), capped server-side.
+   *  Additive alongside `excluded` — the aggregate counts above are the source of
+   *  truth for totals; this is only for naming who and why in the UI. */
+  excludedDetail: ExcludedDetailEntry[];
+  /** True when more artists were excluded than `excludedDetail` lists (see the
+   *  edge function's EXCLUDED_DETAIL_CAP). The aggregate `excluded` counts are
+   *  never truncated — only this per-artist detail array is. */
+  excludedDetailTruncated: boolean;
   message?: string;
 }
 
@@ -114,6 +134,8 @@ export async function dryRunOfferTier(
       already_booked?: number; blocked?: number; inactive?: number;
       not_eligible?: number; missing_skills?: number;
     };
+    excludedDetail?: ExcludedDetailEntry[];
+    excludedDetailTruncated?: boolean;
     message?: string;
   };
   return {
@@ -125,6 +147,8 @@ export async function dryRunOfferTier(
       notEligible: payload?.excluded?.not_eligible ?? 0,
       missingSkills: payload?.excluded?.missing_skills ?? 0,
     },
+    excludedDetail: payload?.excludedDetail ?? [],
+    excludedDetailTruncated: payload?.excludedDetailTruncated ?? false,
     message: payload?.message,
   };
 }
