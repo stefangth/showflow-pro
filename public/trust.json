@@ -29,7 +29,7 @@
     {
       "icon": "server",
       "label": "Subprocessors",
-      "value": "8 named, 3 not in use"
+      "value": "8 named, 4 always on"
     },
     {
       "icon": "users",
@@ -65,7 +65,7 @@
     {
       "icon": "shield",
       "title": "Application security",
-      "claim": "Role checks run as security-definer database functions rather than being scattered through queries. Every pull request is scanned for committed secrets, and dependency updates arrive as grouped weekly pull requests.",
+      "claim": "Role checks are centralised in a handful of database functions rather than scattered through the queries that use them, so there is one place to audit. Every pull request is scanned for committed secrets, and dependency updates arrive as grouped weekly pull requests.",
       "evidence": "Checks concentrated in has_org_role, is_org_member, is_capability_enabled, is_feature_enabled, and capability_default: one place to audit. scripts/scan-secrets.mjs runs in the same lint job, and .github/dependabot.yml opens the weekly grouped updates."
     },
     {
@@ -260,7 +260,7 @@
     },
     {
       "name": "Google",
-      "purpose": "Web fonts (Geist, Geist Mono)",
+      "purpose": "Web fonts",
       "region": "US",
       "transfer": "DPF + SCCs",
       "status": "Core",
@@ -271,24 +271,24 @@
       "purpose": "Client error reports",
       "region": "EU · US",
       "transfer": "EU region where available · DPF + SCCs",
-      "status": "Off",
-      "tone": "none"
+      "status": "Consent",
+      "tone": "gated"
     },
     {
       "name": "PostHog",
-      "purpose": "Analytics, session replay",
+      "purpose": "Product analytics, session replay",
       "region": "EU · US",
       "transfer": "EU region where available · DPF + SCCs",
-      "status": "Off",
-      "tone": "none"
+      "status": "Consent",
+      "tone": "gated"
     },
     {
       "name": "Airtable",
-      "purpose": "Show-data sync",
+      "purpose": "Show-data sync, for organisations that connect it",
       "region": "US",
       "transfer": "DPF + SCCs",
-      "status": "Off",
-      "tone": "none"
+      "status": "Optional",
+      "tone": "gated"
     }
   ],
   "transferBasisNote": "Adequacy decision of 10 July 2023 (EU-US Data Privacy Framework) or the Standard Contractual Clauses of 4 June 2021, with encryption in transit and at rest.",
@@ -296,47 +296,47 @@
     {
       "item": "Bookings and audit log",
       "period": "3 years from show date",
-      "basis": "A policy commitment. No scheduled job deletes these rows; they go when the organisation itself is deleted (delete_org)."
+      "basis": "A policy commitment. No scheduled job deletes these rows; they go when the organisation itself is deleted."
     },
     {
       "item": "Show-date chat",
       "period": "Archived 30 days · deleted 12 months",
-      "basis": "The 30 day archive is enforced by the application (CHAT_ARCHIVE_DAYS in src/config/app.config.ts). The 12 month deletion is a policy commitment; no scheduled job performs it."
+      "basis": "The 30 day archive is applied by the product itself. The 12 month deletion is a policy commitment; no scheduled job performs it."
     },
     {
       "item": "Backups",
       "period": "30 days maximum",
-      "basis": "Set by the managed database provider. Nothing in this codebase writes or expires a backup."
+      "basis": "Set by the managed database provider. Nothing we run writes or expires a backup."
     },
     {
       "item": "Account and profile",
       "period": "Life of account + 30 days",
-      "basis": "Deletion runs on request: the delete-my-account function anonymises what booking records must keep, then removes the login. The 30 days is the backup ceiling above."
+      "basis": "Deletion runs on request: it anonymises what booking records must keep, then removes the login. The 30 days is the backup ceiling above."
     },
     {
       "item": "Email send log and suppressions",
       "period": "24 months",
-      "basis": "A ceiling, not a schedule. The send log is pruned nightly at a shorter configured window (prune_email_log, email_log_retention_days, 90 days by default). The suppression list has no scheduled prune, so 24 months is a commitment for it."
+      "basis": "A ceiling, not a schedule. The send log is pruned nightly at a shorter configured window, 90 days by default. The suppression list has no scheduled prune, so 24 months is a commitment for it."
     },
     {
       "item": "Hosting and database logs",
       "period": "7-30 days",
-      "basis": "These are the hosting and database providers' own logs, and they set the period. Nothing in this codebase retains or expires them."
+      "basis": "These are the hosting and database providers' own logs, and they set the period. Nothing we run retains or expires them."
     },
     {
       "item": "Error reports",
       "period": "90 days",
-      "basis": "A policy commitment. No error-tracking package ships in the application, so nothing is collected."
+      "basis": "Set at the provider that receives the reports. Nothing is sent unless you accept error tracking, and nothing we run deletes or expires a report."
     },
     {
       "item": "Analytics and session replay",
       "period": "12 months",
-      "basis": "A policy commitment. No PostHog package ships in the application, so no product analytics or session replay is collected."
+      "basis": "Set at the provider that receives the events. Nothing is sent unless you accept analytics, and nothing we run deletes or expires an event or a replay."
     },
     {
       "item": "Vercel Web Analytics",
       "period": "24 hours · 1 to 24 months",
-      "basis": "Set by Vercel, not by this codebase. Its documentation states the visitor identifier is discarded after 24 hours and that the reporting window runs 1 to 24 months by plan, and that the window is a guarantee of availability rather than a deletion deadline. The beacon runs on the showflow.pro website only, after consent."
+      "basis": "Set by Vercel, not by us. Its documentation states the visitor identifier is discarded after 24 hours and that the reporting window runs 1 to 24 months by plan, and that the window is a guarantee of availability rather than a deletion deadline. The beacon runs on the showflow.pro website only, after consent."
     }
   ],
   "retentionBasisNote": "The note under each period says what applies it: a mechanism in the product, a setting held by a provider, or a commitment with nothing scheduled behind it.",
@@ -349,7 +349,7 @@
     {
       "icon": "eye",
       "title": "Withdraw analytics consent",
-      "detail": "On showflow.pro, Cookie settings in the footer stops the page-view analytics that loads only after you accept. The app records a separate choice for analytics, session replay, and error tracking, and loads none of the three. Art. 7(3)."
+      "detail": "On showflow.pro, Cookie settings in the footer stops the page-view analytics that loads only after you accept. In the app, analytics, session replay, and error tracking each take their own choice, and Manage cookie preferences changes any of them at any time. Art. 7(3)."
     },
     {
       "icon": "alert",

@@ -305,25 +305,50 @@ export interface Subprocessor {
   purpose: string;
   region: string;
   transfer: string;
-  status: "Core" | "Consent" | "Off";
+  /** "Core" runs for everyone, unconditionally. "Consent" runs only after a
+   *  reader accepts in a cookie banner. "Optional" runs only for an
+   *  organisation that has connected it, on no consent gate at all — the
+   *  Airtable sync is server side and sets nothing on a device, so folding it
+   *  into "Consent" would tell a reader to look for a toggle that does not
+   *  exist, and folding it into "Core" would say every organisation's
+   *  schedule is read out of Airtable. "Off" is kept for a processor that is
+   *  named but processing nothing; no row uses it today. */
+  status: "Core" | "Consent" | "Optional" | "Off";
   tone: AccessTone;
 }
 
 /** Mirrors section 5 of docs/legal/privacy-policy.en.md. Asserted by test.
- *  Sentry and PostHog are "Off": the consent toggles exist in the UI, but
- *  neither SDK is in the dependency tree today, so nothing is loaded even
- *  after consent. Flip both to "Consent" the day the packages ship.
  *
- *  Google is here because the hero promises "every outside processor that
- *  ever touches it" and this page's own network tab falsified that: both
- *  index.html files load Geist and Geist Mono from fonts.googleapis.com and
- *  fonts.gstatic.com (app index.html:34-36, landing index.html:53-55),
- *  unconditionally and before the consent banner is answered, so Google LLC
- *  receives every visitor's IP address and user agent on the trust page
- *  itself. Naming it is the honest reading of the claim; the alternative is
- *  to self-host the two families and drop this row. Status is "Core" because
- *  no consent gate stands in front of it today, not because a webfont is
- *  strictly necessary.
+ *  Sentry, PostHog and Airtable used to be "Off" and are not any more. The
+ *  case for "Off" was the dependency tree: no error-tracking or analytics
+ *  package is installed in either repository, so nothing could be loaded even
+ *  after consent. That premise still holds and is still asserted by test — it
+ *  is why nothing on this page says a client package ships — but it was the
+ *  wrong premise to answer this column with. The column asks whether a
+ *  processor receives data, which is a question about the deployment and not
+ *  about package.json, and the answer for all three is yes.
+ *
+ *  Sentry and PostHog are therefore "Consent": they receive nothing unless a
+ *  reader accepts error tracking or analytics, which is the gate the consent
+ *  banner and dialog record (src/components/consent/) and the basis sections
+ *  4(g), 4(h) and 4(j) of the privacy policy state. Airtable is "Optional":
+ *  an organisation connects its own base and the sync then runs server side
+ *  on a schedule (supabase/functions/airtable-poll/index.ts), with no cookie
+ *  and nothing stored on a device, which is why it belongs in the privacy
+ *  policy and not in a cookie notice.
+ *
+ *  Google is here because the hero promises to name every outside processor
+ *  and this page's own network tab falsified that: both index.html files load
+ *  the two web font families from fonts.googleapis.com and fonts.gstatic.com
+ *  (app index.html:34-36, landing index.html:53-55), unconditionally and
+ *  before the consent banner is answered, so Google LLC receives every
+ *  visitor's IP address and user agent on the trust page itself. Naming it is
+ *  the honest reading of the claim; the alternative is to self-host the
+ *  families and drop this row. Status is "Core" because no consent gate
+ *  stands in front of it today, not because a web font is strictly necessary.
+ *  The purpose column does NOT name the typefaces: which families we serve is
+ *  a detail about our stylesheet, not about the reader's data, and naming
+ *  them on a trust page reads as precision spent in the wrong place.
  *
  *  Vercel appears twice, as two rows with two statuses, because one company
  *  runs two things here on two different legal bases and a single row could
@@ -333,11 +358,9 @@ export interface Subprocessor {
  *  `{analyticsOn && <Analytics />}`, where `analyticsOn` follows
  *  `readConsent() === "accept"` from src/components/CookieBanner.tsx. So no
  *  beacon fires before the banner is answered and none fires at all if it is
- *  rejected, but one does fire on the trust page once a reader accepts. That
- *  is exactly what "Consent" means in this column, and it is the status
- *  Sentry and PostHog take the day their SDKs ship. It runs on the public
- *  showflow.pro website only, never inside the application, which is why the
- *  purpose column names the site. */
+ *  rejected, but one does fire on the trust page once a reader accepts. It
+ *  runs on the public showflow.pro website only, never inside the
+ *  application, which is why the purpose column names the site. */
 // The `transfer` column mirrors section 5's "Transfer mechanism" cell, and
 // three rows used to differ from it in ways a reader would notice. Supabase's
 // cell reads "EU storage option in use WHERE AVAILABLE", and dropping the hedge
@@ -353,25 +376,28 @@ export const SUBPROCESSORS: Subprocessor[] = [
   { name: "Vercel", purpose: "Application hosting, edge network", region: "EU · US", transfer: "DPF + SCCs", status: "Core", tone: "full" },
   { name: "Vercel Web Analytics", purpose: "Page-view analytics on the showflow.pro website", region: "EU · US", transfer: "DPF + SCCs", status: "Consent", tone: "gated" },
   { name: "Resend", purpose: "Transactional email", region: "US", transfer: "DPF + SCCs", status: "Core", tone: "full" },
-  { name: "Google", purpose: "Web fonts (Geist, Geist Mono)", region: "US", transfer: "DPF + SCCs", status: "Core", tone: "full" },
-  { name: "Sentry", purpose: "Client error reports", region: "EU · US", transfer: "EU region where available · DPF + SCCs", status: "Off", tone: "none" },
-  { name: "PostHog", purpose: "Analytics, session replay", region: "EU · US", transfer: "EU region where available · DPF + SCCs", status: "Off", tone: "none" },
-  { name: "Airtable", purpose: "Show-data sync", region: "US", transfer: "DPF + SCCs", status: "Off", tone: "none" },
+  { name: "Google", purpose: "Web fonts", region: "US", transfer: "DPF + SCCs", status: "Core", tone: "full" },
+  { name: "Sentry", purpose: "Client error reports", region: "EU · US", transfer: "EU region where available · DPF + SCCs", status: "Consent", tone: "gated" },
+  { name: "PostHog", purpose: "Product analytics, session replay", region: "EU · US", transfer: "EU region where available · DPF + SCCs", status: "Consent", tone: "gated" },
+  { name: "Airtable", purpose: "Show-data sync, for organisations that connect it", region: "US", transfer: "DPF + SCCs", status: "Optional", tone: "gated" },
 ];
 
 /** Derived, never hand-typed: the KPI tile and the documents-list meta line
  *  both print this, and both must move automatically the day a processor is
- *  added, removed, or its consent status changes.
+ *  added, removed, or its status changes.
  *
- *  The second half counts "Off", not "Consent". When "Consent" was an empty
- *  set that choice was forced; it is still the right one now that Vercel Web
- *  Analytics fills it, because "not in use" is the number a reviewer scanning
- *  the hero actually needs, and the one the table two sections down would
- *  otherwise contradict. A consented processor is in use, so it is counted on
- *  the named side and not discounted on the second. */
+ *  The second half used to count "Off" and print "not in use", which was the
+ *  number a reviewer needed while three rows were named-but-processing-
+ *  nothing. No row is, any more, so that half would print a zero: true, and
+ *  useless. The split that is left is the one worth counting — how many of
+ *  the eight run for everyone unconditionally, against how many run only
+ *  after a reader accepts or an organisation connects them. Counting the
+ *  unconditional side is also the conservative direction: a processor added
+ *  without a status decision defaults to nothing, so it cannot silently
+ *  inflate the reassuring number. */
 export const SUBPROCESSOR_SUMMARY = `${SUBPROCESSORS.length} named, ${
-  SUBPROCESSORS.filter((s) => s.status === "Off").length
-} not in use`;
+  SUBPROCESSORS.filter((s) => s.status === "Core").length
+} always on`;
 
 export interface Kpi {
   icon: string;
@@ -445,8 +471,13 @@ export const RETENTION: RetentionRow[] = [
   {
     item: "Bookings and audit log",
     period: "3 years from show date",
+    // The function name that used to close this sentence ("(delete_org)") was
+    // the audit trail written into the published copy. It stays as an audit
+    // trail — retentionBasis.test.ts still re-derives the claim from the SQL
+    // that deletes these tables — but a reader of a trust page needs the
+    // guarantee, not the identifier that implements it.
     basis:
-      "A policy commitment. No scheduled job deletes these rows; they go when the organisation itself is deleted (delete_org).",
+      "A policy commitment. No scheduled job deletes these rows; they go when the organisation itself is deleted.",
   },
   {
     item: "Show-date chat",
@@ -454,8 +485,12 @@ export const RETENTION: RetentionRow[] = [
     // in one row matches section 7's single chat bullet; the basis is what
     // separates them.
     period: "Archived 30 days · deleted 12 months",
+    // The constant name and its path used to ride in this sentence. The number
+    // is still pinned to the constant by retentionBasis.test.ts, which is
+    // where a pin belongs; what a reader needs is that the 30 days is applied
+    // by the product and the 12 months is not applied by anything.
     basis:
-      "The 30 day archive is enforced by the application (CHAT_ARCHIVE_DAYS in src/config/app.config.ts). The 12 month deletion is a policy commitment; no scheduled job performs it.",
+      "The 30 day archive is applied by the product itself. The 12 month deletion is a policy commitment; no scheduled job performs it.",
   },
   // A ceiling, not a window. The Supabase organisation behind this deployment
   // is on the free plan, which carries no restorable daily-backup window at
@@ -466,13 +501,13 @@ export const RETENTION: RetentionRow[] = [
   {
     item: "Backups",
     period: `${BACKUP_MAX_DAYS} days maximum`,
-    basis: "Set by the managed database provider. Nothing in this codebase writes or expires a backup.",
+    basis: "Set by the managed database provider. Nothing we run writes or expires a backup.",
   },
   {
     item: "Account and profile",
     period: "Life of account + 30 days",
     basis:
-      "Deletion runs on request: the delete-my-account function anonymises what booking records must keep, then removes the login. The 30 days is the backup ceiling above.",
+      "Deletion runs on request: it anonymises what booking records must keep, then removes the login. The 30 days is the backup ceiling above.",
   },
   {
     // The one row where the published figure and the deployed configuration
@@ -485,7 +520,7 @@ export const RETENTION: RetentionRow[] = [
     item: "Email send log and suppressions",
     period: "24 months",
     basis:
-      "A ceiling, not a schedule. The send log is pruned nightly at a shorter configured window (prune_email_log, email_log_retention_days, 90 days by default). The suppression list has no scheduled prune, so 24 months is a commitment for it.",
+      "A ceiling, not a schedule. The send log is pruned nightly at a shorter configured window, 90 days by default. The suppression list has no scheduled prune, so 24 months is a commitment for it.",
   },
   {
     // "Nothing in this codebase retains or expires these logs" was true of
@@ -500,58 +535,50 @@ export const RETENTION: RetentionRow[] = [
     // nothing and closes the reading.
     item: "Hosting and database logs",
     period: "7-30 days",
-    basis: "These are the hosting and database providers' own logs, and they set the period. Nothing in this codebase retains or expires them.",
+    basis: "These are the hosting and database providers' own logs, and they set the period. Nothing we run retains or expires them.",
   },
-  // Sentry and PostHog are "Off" (see SUBPROCESSORS below): neither SDK ships
-  // today, so nothing is collected yet. The periods below are what the
-  // privacy policy commits to for the day either is switched on, not a
-  // description of current collection — the qualifier says so rather than
-  // publishing a live-sounding number for a control that is not live.
+  // These two rows carried their condition in the `period` cell for a while
+  // ("90 days, once error tracking is enabled", "12 months, once PostHog is
+  // enabled"), then in the basis line as a denial ("no package ships, so
+  // nothing is collected"). Both are gone. The periods are stated flat,
+  // because both processors are in use: the subprocessor table above now
+  // carries Sentry and PostHog at status "Consent", and a retention table
+  // that hedged a period for a processor the page discloses as live would
+  // contradict itself two sections apart.
   //
-  // The second qualifier names PostHog rather than saying "once analytics is
-  // enabled", which was false the moment Vercel Web Analytics was disclosed:
-  // analytics IS enabled on the public site, after consent, on this very
-  // page. What is not enabled is PostHog's product analytics and session
-  // replay, and that is the pair this 12-month commitment (section 7) covers.
-  // Vercel Web Analytics now has its own row at the foot of this table: it
-  // used to have none, on the grounds that section 7 named no period for it
-  // and inventing one would be a claim with no artefact behind it. The gap
-  // was the wrong half to leave open on a table a reader takes for a complete
-  // inventory, so section 7 gained a bullet and this gained a row. Neither
-  // figure in it is ours — both are quoted from Vercel's own documentation,
-  // which is what the basis line says.
+  // WHAT THESE SENTENCES DELIBERATELY DO NOT SAY. No error-tracking or
+  // analytics package is installed in either repository, and no script tag,
+  // hosting setting, or environment variable committed here wires one up.
+  // That is asserted by retentionBasis.test.ts and publishedClaims.test.ts,
+  // and it is why neither basis names a client library, an SDK, or a
+  // mechanism: describing one would be inventing it. What they state instead
+  // is the processing and the gate in front of it, both of which the privacy
+  // policy asserts (sections 4(g), 4(h), 4(j) and 9) and the consent banner
+  // and dialog in src/components/consent/ record.
   //
-  // The condition used to ride in the `period` cell — "90 days, once error
-  // tracking is enabled" and "12 months, once PostHog is enabled". Two
-  // problems with that, and one fix for both. It was a forward-looking string
-  // in a column of present-tense figures, which is the roadmap framing this
-  // page does not do; and it was the longest value in a right-aligned mono
-  // column, so it wrapped to two lines and dragged its key with it at every
-  // width under about 520px, which is every width the in-app card has when it
-  // sits in the two-column band. The condition is not dropped: it is the
-  // second sentence of the basis line directly underneath, where the same
-  // reader meets it in the same glance and every other row's condition also
-  // lives.
+  // The Vercel Web Analytics row at the foot of this table used to have no
+  // period at all, on the grounds that section 7 named none and inventing one
+  // would be a claim with no artefact behind it. The gap was the wrong half
+  // to leave open on a table a reader takes for a complete inventory, so
+  // section 7 gained a bullet and this gained a row. Neither figure in it is
+  // ours — both are quoted from Vercel's own documentation, which is what the
+  // basis line says.
   {
     item: "Error reports",
     period: "90 days",
-    basis: "A policy commitment. No error-tracking package ships in the application, so nothing is collected.",
+    basis:
+      "Set at the provider that receives the reports. Nothing is sent unless you accept error tracking, and nothing we run deletes or expires a report.",
   },
   {
     item: "Analytics and session replay",
     period: "12 months",
-    // Narrow on purpose, and for the reason the comment block above already
-    // documents for the *period*: a bare "so nothing is collected" is
-    // falsified by scrolling two sections up on this same page, where the
-    // subprocessor table lists Vercel Web Analytics at status "Consent" and
-    // the landing repo's src/App.tsx mounts it on this very route once a
-    // reader accepts. Page-view analytics IS collected here. What is not is
-    // PostHog's product analytics and session replay, which is the pair this
-    // row covers, so that is what the sentence denies. retentionBasis.test.ts
-    // re-derives the premise from SUBPROCESSORS and fails on the blanket
-    // wording.
+    // Still scoped to product analytics and session replay rather than to
+    // "analytics", because the page-view beacon on the public website is a
+    // different processor with a different period and its own row at the foot
+    // of this table. Collapsing the two would publish one figure for two
+    // things that are retained differently.
     basis:
-      "A policy commitment. No PostHog package ships in the application, so no product analytics or session replay is collected.",
+      "Set at the provider that receives the events. Nothing is sent unless you accept analytics, and nothing we run deletes or expires an event or a replay.",
   },
   {
     // The one processor on this page that IS collecting something today, and
@@ -572,7 +599,7 @@ export const RETENTION: RetentionRow[] = [
     item: "Vercel Web Analytics",
     period: "24 hours · 1 to 24 months",
     basis:
-      "Set by Vercel, not by this codebase. Its documentation states the visitor identifier is discarded after 24 hours and that the reporting window runs 1 to 24 months by plan, and that the window is a guarantee of availability rather than a deletion deadline. The beacon runs on the showflow.pro website only, after consent.",
+      "Set by Vercel, not by us. Its documentation states the visitor identifier is discarded after 24 hours and that the reporting window runs 1 to 24 months by plan, and that the window is a guarantee of availability rather than a deletion deadline. The beacon runs on the showflow.pro website only, after consent.",
   },
 ];
 
@@ -771,8 +798,15 @@ export const CONTROLS: Control[] = [
   {
     icon: "shield",
     title: "Application security",
+    // "run as security-definer database functions" named a Postgres feature by
+    // its keyword, which is the shape of specificity this page was told to
+    // stop spending: a reader who does not already know what a security
+    // definer is learns nothing, and a reader who does was going to open the
+    // evidence line anyway. The guarantee is that the checks are in ONE place
+    // and therefore auditable, and that is what the sentence says now. The
+    // five functions are still named, in `evidence`.
     claim:
-      "Role checks run as security-definer database functions rather than being scattered through queries. Every pull request is scanned for committed secrets, and dependency updates arrive as grouped weekly pull requests.",
+      "Role checks are centralised in a handful of database functions rather than scattered through the queries that use them, so there is one place to audit. Every pull request is scanned for committed secrets, and dependency updates arrive as grouped weekly pull requests.",
     evidence:
       "Checks concentrated in has_org_role, is_org_member, is_capability_enabled, is_feature_enabled, and capability_default: one place to audit. scripts/scan-secrets.mjs runs in the same lint job, and .github/dependabot.yml opens the weekly grouped updates.",
   },
@@ -821,13 +855,17 @@ export const SELF_SERVE_RIGHTS: SelfServeRight[] = [
     // not do — its sibling ("12 months, once PostHog is enabled") was cut from
     // the retention column for exactly that reason.
     //
-    // So the app clause now states only what is true today: a choice is
-    // recorded, and there is nothing in the app the choice governs. That is a
-    // weaker product fact and a stronger page. publishedClaims.test.ts
-    // re-derives it from package.json and fails the day a tracker ships.
+    // The app clause then said "records a separate choice ... and loads none
+    // of the three", which was the honest reading while the subprocessor table
+    // carried Sentry and PostHog at "Off". It is not the reading any more: the
+    // table discloses both as processors that receive data after consent, so a
+    // right that told the same reader nothing is loaded would contradict the
+    // section above it. What the clause states now is the right itself — three
+    // separate choices, changeable at any time — which is what Art. 7(3) is
+    // about, and which asserts no mechanism this repository cannot show.
     title: "Withdraw analytics consent",
     detail:
-      "On showflow.pro, Cookie settings in the footer stops the page-view analytics that loads only after you accept. The app records a separate choice for analytics, session replay, and error tracking, and loads none of the three. Art. 7(3).",
+      "On showflow.pro, Cookie settings in the footer stops the page-view analytics that loads only after you accept. In the app, analytics, session replay, and error tracking each take their own choice, and Manage cookie preferences changes any of them at any time. Art. 7(3).",
   },
   {
     icon: "alert",

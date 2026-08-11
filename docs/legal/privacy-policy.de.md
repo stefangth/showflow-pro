@@ -67,7 +67,7 @@ Wir erheben **keine** besonderen Kategorien personenbezogener Daten (z. B. Gesun
 
 | Nr. | Zweck | Kategorien | Rechtsgrundlage |
 |---|---|---|---|
-| a | Bereitstellung des Dienstes: Konto, Authentifizierung, rollenbasierter Zugriff, Anzeige von Shows/Terminen/Verfügbarkeit, Buchungsabwicklung, Versand transaktionaler E-Mails. | 3.1–3.5 | Art. 6 Abs. 1 lit. b DSGVO — Vertragserfüllung. |
+| a | Bereitstellung des Dienstes: Konto, Authentifizierung, rollenbasierter Zugriff, Anzeige von Shows/Terminen/Verfügbarkeit, Buchungsabwicklung, Versand transaktionaler E-Mails sowie Synchronisation der Showtermine aus einer von der Organisation verbundenen Airtable-Base. | 3.1–3.5 | Art. 6 Abs. 1 lit. b DSGVO — Vertragserfüllung. |
 | b | Admin-Freigabe und Rollenvergabe für neue Konten. | 3.1 | Art. 6 Abs. 1 lit. b DSGVO und Art. 6 Abs. 1 lit. f DSGVO — berechtigtes Interesse an der Verhinderung unbefugter Zugriffe auf Producer-/Admin-Funktionen. |
 | c | Betrieb des In-App-Chats je Showtermin. | 3.4 | Art. 6 Abs. 1 lit. b DSGVO. |
 | d | Führung des Buchungs-Audit-Logs und Missbrauchsprävention. | 3.3 | Art. 6 Abs. 1 lit. c DSGVO (Aufbewahrungspflichten) und Art. 6 Abs. 1 lit. f DSGVO — berechtigtes Interesse an der Aufklärung von Streitfällen und Sicherheitsvorfällen. |
@@ -95,13 +95,15 @@ Darüber hinaus setzen wir folgende Auftragsverarbeiter gemäß Art. 28 DSGVO ei
 | Vercel, Inc. | Hosting der Web-Anwendung und Edge-Netzwerk | USA und EU | DPF und SCC. |
 | Vercel, Inc. (Vercel Web Analytics) | Aggregierte Seitenaufruf-Statistik für unsere öffentliche Website showflow.pro einschließlich der dortigen Trust-Center-Seite; wird erst geladen, nachdem Sie im Einwilligungsbanner dieser Website zugestimmt haben, und niemals innerhalb der Web-Anwendung | USA und EU | DPF und SCC. |
 | Google LLC | Auslieferung der Web-Schriften (Geist und Geist Mono, abgerufen von fonts.googleapis.com und fonts.gstatic.com) | USA | DPF und SCC. |
-| Airtable, Inc. | Show-Datensynchronisation (derzeit deaktiviert; wird aktiviert, sobald die Airtable-Integration in Betrieb geht) | USA | DPF und SCC. |
+| Airtable, Inc. | Show-Datensynchronisation für Organisationen, die ihre eigene Airtable-Base verbunden haben | USA | DPF und SCC. |
 | Functional Software, Inc. dba Sentry | Clientseitige Fehlerverfolgung | EU- und US-Regionen | EU-Region soweit verfügbar; DPF und SCC für US-Übermittlungen. |
 | PostHog, Inc. | Produktanalyse und Session-Replay | EU- und US-Regionen | EU-Region soweit verfügbar; DPF und SCC für US-Übermittlungen. |
 
 Die Web-Schriften werden bereits während des Seitenaufbaus abgerufen, also bevor eine Einwilligungsentscheidung gespeichert ist. Google erhält dadurch bei jedem Seitenaufruf Ihre IP-Adresse und Ihren User-Agent, auch auf den Seiten, die die Einwilligung abfragen. Der Abruf setzt kein Cookie und speichert nichts auf Ihrem Gerät.
 
 Vercel Web Analytics ist getrennt vom Hosting durch Vercel aufgeführt, weil es auf einer anderen Grundlage arbeitet. Es läuft ausschließlich auf unserer öffentlichen Website showflow.pro, einschließlich der dortigen Trust-Center-Seite, und wird von der Web-Anwendung niemals geladen. Auf dieser Website wird es erst geladen, nachdem Sie im Einwilligungsbanner zugestimmt haben: Wenn Sie ablehnen oder keine Entscheidung treffen, wird es überhaupt nicht geladen. Erfasst werden aggregierte Seitenaufruf-Statistiken (aufgerufene Seiten, Referrer, Land), ohne personenbezogene Kennungen und ohne seitenübergreifendes Tracking. Sie können diese Einwilligung jederzeit über den Link „Cookie settings" im Footer von showflow.pro widerrufen; die Datenschutzerklärung dieser Website beschreibt die Verarbeitung vollständig.
+
+Airtable wird ausschließlich von Organisationen genutzt, die ihre eigene Airtable-Base mit dem Dienst verbunden haben. Ist eine Base verbunden, lesen unsere Server sie planmäßig aus und übernehmen die dort geführten Showtermine in den Dienst, damit beide Seiten übereinstimmen. Die Synchronisation liest ausschließlich; nach Airtable wird nichts zurückgeschrieben. Sie läuft vollständig auf unseren Servern: In Ihrem Browser wird kein Airtable-Code ausgeführt, und auf Ihrem Endgerät wird nichts gespeichert. Welche Felder gelesen werden, legt die Administration der jeweiligen Organisation fest; personenbezogene Daten gelangen auf diesem Weg also nur dann zu uns, wenn die Organisation personenbezogene Daten in die von ihr zugeordneten Felder eingetragen hat.
 
 Wir verkaufen keine personenbezogenen Daten und geben sie nicht an Werbenetzwerke weiter.
 

@@ -76,26 +76,61 @@ describe("subprocessor table matches the privacy policy", () => {
     }
   });
 
-  it("marks Airtable as off, matching the policy's 'currently disabled'", () => {
-    const airtableRow = processorSection()
-      .split("\n")
-      .find((l) => l.startsWith("| Airtable"));
-    expect(airtableRow).toMatch(/currently disabled/i);
-    expect(SUBPROCESSORS.find((s) => s.name === "Airtable")?.status).toBe("Off");
+  // Airtable, Sentry and PostHog were all "Off" and are all in use now. The
+  // two assertions this replaces pinned the old answer to the policy's own
+  // forward-looking wording ("currently disabled"), which is exactly the
+  // right way round: the page may not say a processor is off unless the
+  // document behind it says so too. So the pin survives, inverted — the page
+  // may not say a processor is in use while the policy still hedges it.
+  it("states no processor prospectively, on the page or in the policy", () => {
+    // Nothing on the page is "Off" any more, so nothing may be published as
+    // named-but-not-processing.
+    expect(SUBPROCESSORS.filter((s) => s.status === "Off")).toEqual([]);
+
+    // …and section 5 may not describe any processor as pending, disabled, or
+    // about to be switched on. This is the shape, not the string: "currently
+    // disabled; will be enabled if and when" was the wording that shipped, and
+    // banning that phrase alone would catch only a verbatim recurrence.
+    const forwardLooking =
+      /\b(currently disabled|not (?:yet|currently) (?:enabled|in use)|will be enabled|if and when|once .{0,30} is (?:enabled|turned on)|planned)\b/i;
+    for (const row of policyProcessorRows()) {
+      expect(
+        row.join(" | "),
+        `section 5 still describes a processor prospectively: ${row[1]}`,
+      ).not.toMatch(forwardLooking);
+    }
   });
 
-  it("marks Sentry and PostHog off, because neither SDK is wired up yet", () => {
-    // The policy documents the consent-gated legal basis these two would
-    // operate under (Art. 6(1)(a)) if they were live, but no Sentry or
-    // PostHog package exists in the dependency tree and nothing in
-    // ConsentContext.tsx loads or unloads a tracker with the stored flags —
-    // so today they behave exactly like Airtable: named, not processing.
-    // Flip both to "Consent" the day the integration ships.
+  it("marks Sentry and PostHog as consent-gated, matching section 4's legal basis", () => {
+    // Both are processors that receive data, and both receive it only after
+    // the reader accepts — which is the basis sections 4(g), 4(h) and 4(j)
+    // assert and the status this column exists to publish. NOT asserted here
+    // (or anywhere, because nothing in this repository can show it): how the
+    // data reaches them. See publishedClaims.test.ts, which is what stops a
+    // sentence about an SDK or a package being written to fill that gap.
     for (const name of ["Sentry", "PostHog"]) {
-      expect(SUBPROCESSORS.find((s) => s.name === name)?.status).toBe("Off");
+      expect(SUBPROCESSORS.find((s) => s.name === name)?.status).toBe("Consent");
     }
     expect(POLICY).toMatch(/Client-side error tracking \(Sentry\)[\s\S]*?your consent/);
     expect(POLICY).toMatch(/Product analytics including session replay \(PostHog\)[\s\S]*?your consent/);
+  });
+
+  it("marks Airtable optional rather than consent-gated, because it sets nothing on a device", () => {
+    // The sync is server side: supabase/functions/airtable-poll/index.ts polls
+    // the base an organisation has connected. There is no browser request and
+    // no stored identifier, so it is disclosed in the privacy policy and
+    // deliberately NOT in either cookie notice. "Consent" would send a reader
+    // hunting for a toggle that does not exist; "Core" would say every
+    // organisation's schedule is read out of Airtable.
+    expect(SUBPROCESSORS.find((s) => s.name === "Airtable")?.status).toBe("Optional");
+    const airtableRow = processorSection()
+      .split("\n")
+      .find((l) => l.startsWith("| Airtable"));
+    expect(airtableRow, "section 5 no longer has an Airtable row").toBeDefined();
+    expect(airtableRow).toMatch(/organisations that have connected/i);
+    // And section 5 explains the shape of it, so "Optional" has a document
+    // behind it rather than only a status word.
+    expect(POLICY).toMatch(/nothing is written back to Airtable/i);
   });
 
   // Each processor's region and transfer basis are printed on both surfaces,
@@ -148,8 +183,14 @@ describe("subprocessor table matches the privacy policy", () => {
   // hand — the exact failure mode this test exists to catch is a processor
   // added to SUBPROCESSORS without either printed count being touched.
   it("derives the subprocessor KPI and documents-list count from the table, never a literal", () => {
-    const notInUse = SUBPROCESSORS.filter((s) => s.status === "Off").length;
-    expect(SUBPROCESSOR_SUMMARY).toBe(`${SUBPROCESSORS.length} named, ${notInUse} not in use`);
+    // The second figure counts the UNCONDITIONAL processors. It used to count
+    // the ones that were named but processing nothing, which is a number no
+    // row produces any more. Counting "Core" is also the safe direction: a row
+    // added without a considered status cannot inflate the reassuring half.
+    const alwaysOn = SUBPROCESSORS.filter((s) => s.status === "Core").length;
+    expect(alwaysOn, "no processor is unconditional — has the table been emptied?").toBeGreaterThan(0);
+    expect(alwaysOn).toBeLessThan(SUBPROCESSORS.length);
+    expect(SUBPROCESSOR_SUMMARY).toBe(`${SUBPROCESSORS.length} named, ${alwaysOn} always on`);
 
     const kpi = TRUST_KPIS.find((k) => k.label === "Subprocessors");
     expect(kpi?.value).toBe(SUBPROCESSOR_SUMMARY);

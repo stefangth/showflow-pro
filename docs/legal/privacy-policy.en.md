@@ -67,7 +67,7 @@ We do **not** intentionally collect special categories of personal data (e.g. he
 
 | # | Purpose | Categories | Legal basis |
 |---|---|---|---|
-| a | Providing the Service: account creation, authentication, role-based access, displaying shows/dates/availability, scheduling bookings, sending transactional emails (offers, confirmations, digests). | 3.1–3.5 | Art. 6(1)(b) GDPR — performance of a contract with you (or with the organisation that has invited you to the Service). |
+| a | Providing the Service: account creation, authentication, role-based access, displaying shows/dates/availability, scheduling bookings, sending transactional emails (offers, confirmations, digests), and synchronising show dates from an organisation's connected Airtable base. | 3.1–3.5 | Art. 6(1)(b) GDPR — performance of a contract with you (or with the organisation that has invited you to the Service). |
 | b | Admin approval and role assignment for new accounts. | 3.1 | Art. 6(1)(b) GDPR and Art. 6(1)(f) GDPR — our legitimate interest in preventing unauthorised access to producer/admin functions. |
 | c | Operating the in-app chat per show date. | 3.4 | Art. 6(1)(b) GDPR. |
 | d | Maintaining a booking audit log and preventing abuse. | 3.3 | Art. 6(1)(c) GDPR (record-keeping) and Art. 6(1)(f) GDPR — our legitimate interest in being able to investigate disputes and security incidents. |
@@ -97,13 +97,15 @@ In addition, the following processors act on our behalf under Article 28 GDPR da
 | Vercel, Inc. | Web application hosting and edge network | United States and European Union | DPF certification and SCCs. |
 | Vercel, Inc. (Vercel Web Analytics) | Aggregated page-view statistics for our public website at showflow.pro, including its trust page; loaded only after you accept in that site's consent banner, and never inside the web application | United States and European Union | DPF certification and SCCs. |
 | Google LLC | Web font delivery (the Geist and Geist Mono typefaces, requested from fonts.googleapis.com and fonts.gstatic.com) | United States | DPF certification and SCCs. |
-| Airtable, Inc. | Show-data sync (currently disabled; will be enabled if and when the Airtable integration is turned on) | United States | DPF certification and SCCs. |
+| Airtable, Inc. | Show-data sync for organisations that have connected their own Airtable base | United States | DPF certification and SCCs. |
 | Functional Software, Inc. dba Sentry | Client-side error tracking | European Union and United States regions | EU region used where available; DPF and SCCs for US transfers. |
 | PostHog, Inc. | Product analytics and session replay | European Union and United States regions | EU region used where available; DPF and SCCs for US transfers. |
 
 The web fonts are requested while the page is still loading, before any consent decision is recorded, so Google receives your IP address and user agent on every page view, including the pages that ask for consent. The request sets no cookie and stores nothing on your device.
 
 Vercel Web Analytics is listed separately from Vercel's hosting because it operates on a different basis. It runs only on our public website at showflow.pro, including the trust page there, and is never loaded by the web application. On that site it is loaded only after you accept in the consent banner: if you reject, or make no decision, it is not loaded at all. It records aggregated page-view statistics (pages visited, referrer, country), with no personal identifiers and no cross-site tracking. You can withdraw that consent at any time via the "Cookie settings" link in the footer of showflow.pro, and the website's own privacy notice describes this processing in full.
+
+Airtable is used only by organisations that have connected their own Airtable base to the Service. Where one has, our servers read that base on a schedule and copy the show dates it holds into the Service, so that the two stay in step. The sync reads only; nothing is written back to Airtable. It runs entirely on our servers: no Airtable code runs in your browser and nothing is stored on your device. Which fields are read is chosen by that organisation's administrator, so personal data reaches us by this route only where the organisation has put personal data into the fields it has mapped.
 
 We do not sell personal data and we do not share it with advertising networks.
 

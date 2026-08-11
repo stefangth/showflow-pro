@@ -15,7 +15,13 @@ import { CAPABILITY_DEFS } from "@/lib/capabilities";
 import {
   CONTROLS,
   CROSS_ORG_EXCEPTIONS_NOTE,
+  DOCUMENTS_NOTE,
+  RETENTION,
+  RETENTION_BASIS_NOTE,
   SELF_SERVE_RIGHTS,
+  SUBPROCESSORS,
+  TRANSFER_BASIS_NOTE,
+  TRUST_KPIS,
   VISIBILITY_MATRIX,
 } from "./facts";
 
@@ -146,14 +152,22 @@ describe("every right the matrix quotes is a right Settings shows", () => {
 
 // ── The withdrawal right ──────────────────────────────────────────────────
 //
-// "In the app, Manage cookie preferences turns off analytics, session replay,
-// and error tracking if and when any of them is enabled" was wrong three ways:
-// the control is on the public privacy page and the login page rather than
-// inside the signed-in app, nothing reads the stored consent to load or unload
-// a tracker, and "if and when" is the forward-looking framing this page does
-// not do. The replacement states only what is true today, and the premise
-// behind it is re-derived here so it goes red the day a tracker ships instead
-// of quietly becoming an under-claim.
+// This clause has been wrong twice, in opposite directions.
+//
+// First: "In the app, Manage cookie preferences turns off analytics, session
+// replay, and error tracking if and when any of them is enabled" — three
+// defects, one of them the forward-looking framing this page does not do.
+//
+// Then, correcting it: "The app records a separate choice … and loads none of
+// the three". True of the dependency tree, and it was the honest reading while
+// the subprocessor table carried Sentry and PostHog at "Off". They are at
+// "Consent" now — named as processors that receive data once a reader accepts
+// — so a right that tells the same reader nothing is loaded contradicts the
+// section above it.
+//
+// What is left is the right itself: three separate choices, changeable at any
+// time. That is what Art. 7(3) is about, and it asserts no mechanism this
+// repository cannot show.
 describe("the consent-withdrawal right describes what exists today", () => {
   const right = SELF_SERVE_RIGHTS.find((r) => r.title === "Withdraw analytics consent");
 
@@ -167,24 +181,143 @@ describe("the consent-withdrawal right describes what exists today", () => {
 
   it("credits the withdrawal to the surface that actually has something to stop", () => {
     // The landing site's beacon is real (its beforeSend gate is pinned in that
-    // repo by src/analyticsConsent.test.ts). Naming it is what stops the
-    // app-side concession reading as "no analytics anywhere".
+    // repo by src/analyticsConsent.test.ts), and it is the one withdrawal this
+    // repository can point at end to end.
     expect(right!.detail).toMatch(/showflow\.pro/);
     expect(right!.detail).toMatch(/Cookie settings/);
   });
 
-  it("concedes that the app loads none of the three, and is right about it", () => {
-    expect(right!.detail).toMatch(/loads none of the three/i);
+  it("names all three app-side choices and the control that changes them", () => {
+    for (const category of ["analytics", "session replay", "error tracking"]) {
+      expect(right!.detail.toLowerCase(), `the ${category} choice is not named`).toContain(category);
+    }
+    // The control exists and is reachable: PrivacyPage renders it, and the
+    // banner mounted in App.tsx opens the same dialog.
+    expect(right!.detail).toMatch(/Manage cookie preferences/);
+    const privacyPage = readFileSync(resolve(ROOT, "src/pages/PrivacyPage.tsx"), "utf8");
+    expect(privacyPage).toContain("Manage cookie preferences");
+    expect(privacyPage).toContain("openPreferences");
+  });
 
-    // The premise. An analytics, session-replay or error-tracking package
-    // landing in the app makes that concession false, and this is the only
-    // assertion that would notice.
+  it("no longer denies collection the subprocessor table discloses", () => {
+    // The specific regression: this clause and SUBPROCESSORS are two sections
+    // apart on one page, and they must not disagree about whether the app's
+    // three categories are collected at all.
+    expect(right!.detail).not.toMatch(/loads none of the three/i);
+    for (const name of ["Sentry", "PostHog"]) {
+      expect(SUBPROCESSORS.find((s) => s.name === name)?.status).not.toBe("Off");
+    }
+  });
+});
+
+// ── The mechanism the repository cannot show ──────────────────────────────
+//
+// Sentry and PostHog are disclosed as processors that receive data after
+// consent. No package for either is installed in this repository, and no
+// script tag, hosting setting or environment variable committed here wires one
+// up. That is a gap between what the page says and what this tree can
+// demonstrate, and the only honest way to hold it is to describe the
+// PROCESSING and the GATE — both of which the privacy policy asserts — and
+// never the implementation.
+//
+// So: pin the premise, then ban the sentence that would fill the gap with an
+// invention. Both halves matter. Without the premise this test cannot tell
+// whether the ban is still needed; without the ban a later round writes "the
+// Sentry SDK is loaded after consent" and nothing notices.
+describe("no published claim asserts a client integration this repository does not carry", () => {
+  it("still has no error-tracking or analytics package installed", () => {
     const manifest = JSON.parse(readFileSync(resolve(ROOT, "package.json"), "utf8")) as {
       dependencies?: Record<string, string>;
       devDependencies?: Record<string, string>;
     };
     const installed = Object.keys({ ...manifest.dependencies, ...manifest.devDependencies });
-    expect(installed.filter((p) => /sentry|posthog|analytics|replay/i.test(p))).toEqual([]);
+    expect(
+      installed.filter((p) => /sentry|posthog/i.test(p)),
+      "a tracker shipped — the published claims may now describe how it works, so re-read them",
+    ).toEqual([]);
+  });
+
+  it("describes no SDK, package, or script in public/trust.json", () => {
+    const contract = JSON.parse(readFileSync(resolve(ROOT, "public/trust.json"), "utf8")) as unknown;
+    const strings: string[] = [];
+    const walk = (node: unknown) => {
+      if (typeof node === "string") strings.push(node);
+      else if (Array.isArray(node)) node.forEach(walk);
+      else if (node && typeof node === "object") Object.values(node).forEach(walk);
+    };
+    walk(contract);
+    expect(strings.length, "the contract walk found no strings").toBeGreaterThan(50);
+
+    const MECHANISM = /\b(SDK|npm|script tag|is loaded into|loads the tracker)\b/i;
+    const offenders = strings.filter((s) => MECHANISM.test(s));
+    expect(
+      offenders,
+      "a published claim describes a client integration nothing in this repository shows",
+    ).toEqual([]);
+  });
+});
+
+// ── The register the public page is written in ────────────────────────────
+//
+// Every string in this block renders on showflow.pro/trust, where the reader
+// is a prospective customer rather than an auditor with the repository open.
+// Naming the file, function, constant or typeface behind a claim spends
+// precision on the wrong question: it answers "which line of code does this"
+// when the reader asked "what are you promising me".
+//
+// `Control.evidence` is deliberately NOT in this set. It is the audit trail,
+// it still names everything it always named, and it is no longer rendered on
+// the public page at all — the landing repo's Trust.tsx dropped it. The
+// separation is the whole point: the citations survive, in the one field that
+// does not face the public.
+describe("no publicly rendered claim names the code behind it", () => {
+  /** The strings the public trust page actually renders. */
+  function publicStrings(): { where: string; text: string }[] {
+    const out: { where: string; text: string }[] = [];
+    for (const kpi of TRUST_KPIS) out.push({ where: `kpi ${kpi.label}`, text: kpi.value });
+    for (const control of CONTROLS) out.push({ where: `control ${control.title}`, text: control.claim });
+    for (const row of VISIBILITY_MATRIX) {
+      for (const role of ["admin", "producer", "artist"] as const) {
+        out.push({ where: `matrix ${row.object} / ${role}`, text: row[role].note });
+      }
+    }
+    out.push({ where: "crossOrgExceptionsNote", text: CROSS_ORG_EXCEPTIONS_NOTE });
+    for (const sub of SUBPROCESSORS) {
+      out.push({ where: `subprocessor ${sub.name} purpose`, text: sub.purpose });
+      out.push({ where: `subprocessor ${sub.name} transfer`, text: sub.transfer });
+    }
+    for (const retention of RETENTION) {
+      out.push({ where: `retention ${retention.item} period`, text: retention.period });
+      out.push({ where: `retention ${retention.item} basis`, text: retention.basis });
+    }
+    for (const right of SELF_SERVE_RIGHTS) out.push({ where: `right ${right.title}`, text: right.detail });
+    out.push({ where: "TRANSFER_BASIS_NOTE", text: TRANSFER_BASIS_NOTE });
+    out.push({ where: "RETENTION_BASIS_NOTE", text: RETENTION_BASIS_NOTE });
+    out.push({ where: "DOCUMENTS_NOTE", text: DOCUMENTS_NOTE });
+    return out;
+  }
+
+  it("collects the whole public surface, so the assertions below cannot pass vacuously", () => {
+    expect(publicStrings().length).toBeGreaterThan(40);
+  });
+
+  /** A path (`src/config/app.config.ts`), a snake_case identifier
+   *  (`prune_email_log`), a SCREAMING_SNAKE constant (`CHAT_ARCHIVE_DAYS`), or
+   *  a kebab-case edge-function folder (`delete-my-account`). */
+  const IDENTIFIER =
+    /\b[A-Za-z0-9_]+\.(?:tsx?|jsx?|sql|mjs|cjs|json|md|toml|ya?ml)\b|\b[a-z0-9]+(?:\/[a-z0-9._-]+)+\b|\b[a-z]+(?:_[a-z0-9]+)+\b|\b[A-Z]{2,}(?:_[A-Z0-9]+)+\b|\b[a-z]+-my-[a-z]+\b/;
+
+  it.each(publicStrings())("$where names no file, function, or constant", ({ text }) => {
+    const hit = text.match(IDENTIFIER);
+    expect(hit?.[0], `"${text}" names ${hit?.[0]}`).toBeUndefined();
+  });
+
+  /** Typeface families we serve. Naming which ones on a trust page was the
+   *  owner's worked example of specificity spent in the wrong place. */
+  const TYPEFACES = /\bGeist(?:\s+Mono)?\b/;
+
+  it.each(publicStrings())("$where names no typeface", ({ text }) => {
+    expect(text, `"${text}" names a typeface`).not.toMatch(TYPEFACES);
   });
 });
 

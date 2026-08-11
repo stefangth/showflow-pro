@@ -47,10 +47,23 @@ describe("every retention row says what applies its period", () => {
 
 // The two rows that name a mechanism must name one that exists, and quote the
 // number it actually uses.
+//
+// THE IDENTIFIERS MOVED OUT OF THE PUBLISHED SENTENCES, NOT OUT OF THIS FILE.
+// These bases used to close with the constant, function and setting names that
+// implement them ("CHAT_ARCHIVE_DAYS in src/config/app.config.ts",
+// "prune_email_log, email_log_retention_days", "the delete-my-account
+// function", "(delete_org)"), and the assertions below were string
+// containments against those names. A trust page owes a reader the guarantee,
+// not the identifier, so the names are gone from the copy — but the pin is the
+// point of this file, so every one of them is now asserted against the code
+// directly and the published FIGURE is what is compared. That is a stronger
+// gate than a containment: a sentence could always name prune_email_log while
+// quoting the wrong number.
 describe("the rows that claim enforcement point at code that enforces it", () => {
   it("pins the chat archive window to CHAT_ARCHIVE_DAYS", () => {
     const { basis } = row("Show-date chat");
-    expect(basis).toContain("CHAT_ARCHIVE_DAYS");
+    // The product applies this one, and says so.
+    expect(basis).toMatch(/applied by the product/i);
     const days = basis.match(/(\d+)\s*day/)?.[1];
     expect(days, "the chat basis stopped stating the archive window").toBeDefined();
     expect(Number(days)).toBe(CHAT_ARCHIVE_DAYS);
@@ -58,8 +71,6 @@ describe("the rows that claim enforcement point at code that enforces it", () =>
 
   it("pins the email prune to prune_email_log and its seeded retention setting", () => {
     const { basis } = row("Email send log and suppressions");
-    expect(basis).toContain("prune_email_log");
-    expect(basis).toContain("email_log_retention_days");
 
     // The function exists, deletes the table the basis says it deletes, and is
     // on a schedule.
@@ -92,18 +103,49 @@ describe("the rows that claim enforcement point at code that enforces it", () =>
   });
 
   it("pins the account-deletion path to the function that runs it", () => {
+    // The basis promises two steps in one order: anonymise what booking
+    // records must keep, THEN remove the login. That order is the claim.
     const { basis } = row("Account and profile");
-    expect(basis).toContain("delete-my-account");
+    expect(basis).toMatch(/anonymises what booking records must keep, then removes the login/i);
+
     const fn = readFileSync(resolve(ROOT, "supabase/functions/delete-my-account/index.ts"), "utf8");
     expect(fn).toContain("anonymize_user");
     expect(fn).toContain("deleteUser");
+    expect(
+      fn.indexOf("anonymize_user"),
+      "the function removes the login before anonymising — the published order is wrong",
+    ).toBeLessThan(fn.indexOf("deleteUser"));
   });
 
-  it("pins the two rows that cite delete_org to a function that deletes those tables", () => {
-    expect(row("Bookings and audit log").basis).toContain("delete_org");
+  it("pins the bookings row to a function that deletes those tables with the organisation", () => {
+    // "they go when the organisation itself is deleted" is the claim; the
+    // function that makes it true used to be named in the sentence and is
+    // asserted here instead.
+    expect(row("Bookings and audit log").basis).toMatch(
+      /they go when the organisation itself is deleted/i,
+    );
     for (const table of ["bookings", "booking_audit_log", "chat_messages"]) {
       expect(SQL).toContain(`delete from public.${table} where org_id = p_org`);
     }
+  });
+});
+
+// ── The register the public page is held to ───────────────────────────────
+//
+// A retention basis renders on the public trust page in both detail modes, so
+// it is one of the strings a prospective customer reads first. Naming the
+// constant, the function or the file that applies a period tells that reader
+// nothing they can act on and reads as a page written for its own authors.
+// Every one of those names is still asserted, above, against the code itself.
+describe("no retention basis names the code that applies it", () => {
+  /** The identifiers that used to ride in these sentences, plus the shapes
+   *  that would bring them back: a path, a snake_case function or setting, a
+   *  SCREAMING_SNAKE constant, or a kebab-case edge-function folder. */
+  const IDENTIFIER = /\b[a-z0-9]+(?:\/[a-z0-9._-]+)+\b|\b[a-z]+(?:_[a-z0-9]+)+\b|\b[A-Z]{2,}(?:_[A-Z0-9]+)+\b|\bdelete-my-account\b/;
+
+  it.each(RETENTION)("$item states its basis without an identifier", ({ basis }) => {
+    const hit = basis.match(IDENTIFIER);
+    expect(hit?.[0], `"${basis}" names ${hit?.[0]}`).toBeUndefined();
   });
 });
 
@@ -136,7 +178,20 @@ describe("the rows that concede no schedule are still conceding accurately", () 
     expect(SQL).not.toMatch(/DELETE FROM public\.suppressed_emails/i);
   });
 
-  it("ships no error-tracking or product-analytics package, which is why those two rows are conditional", () => {
+  // These two rows used to READ as denials — "no error-tracking package ships
+  // in the application, so nothing is collected", "no PostHog package ships …
+  // so no product analytics or session replay is collected" — on the strength
+  // of the package-absence check below. Both processors are in use now
+  // (SUBPROCESSORS carries them at "Consent"), so the denials are gone and the
+  // periods are stated flat.
+  //
+  // The package check is NOT gone, and it has changed job rather than lost
+  // one. Nothing in this repository shows how the data reaches either
+  // processor, so the constraint these rows are held to is that they must not
+  // pretend otherwise: state the processing and the gate, never a mechanism.
+  // publishedClaims.test.ts enforces the no-mechanism half across the whole
+  // contract; this pins the premise it rests on.
+  it("still ships no error-tracking or product-analytics package, which is why no basis names one", () => {
     const manifest = JSON.parse(readFileSync(resolve(ROOT, "package.json"), "utf8")) as {
       dependencies?: Record<string, string>;
       devDependencies?: Record<string, string>;
@@ -145,37 +200,51 @@ describe("the rows that concede no schedule are still conceding accurately", () 
 
     expect(installed.filter((p) => /sentry/i.test(p))).toEqual([]);
     expect(installed.filter((p) => /posthog/i.test(p))).toEqual([]);
-
-    // No error tracking runs anywhere on either surface, so the unqualified
-    // form is true for this row.
-    expect(row("Error reports").basis).toMatch(/nothing is collected/i);
   });
 
-  // The analytics row cannot borrow the error row's wording. Analytics IS
-  // running on the public trust page: SUBPROCESSORS discloses Vercel Web
-  // Analytics at status "Consent", and the landing repo mounts it on this very
-  // route once a reader accepts. A blanket "so nothing is collected" would be
-  // falsified by scrolling two sections up on the same page. The row is about
-  // PostHog's product analytics and session replay, and that is the pair the
-  // sentence must deny.
-  it("denies product analytics and session replay specifically, not analytics as a whole", () => {
-    const inUse = SUBPROCESSORS.filter((s) => /analytics/i.test(s.purpose) && s.status !== "Off");
+  it("states both consent-gated periods flat, with the gate and no mechanism", () => {
+    for (const item of ["Error reports", "Analytics and session replay"]) {
+      const { period, basis } = row(item);
+      // A bare figure, no condition riding in the value column.
+      expect(period).toMatch(/^\d+\s+(?:days|months)$/);
+      // Attributed to the provider that holds it, which is what makes it a
+      // period rather than a promise we cannot keep.
+      expect(basis).toMatch(/set at the provider/i);
+      // The gate, stated. Dropping it would publish these as unconditional
+      // collection, which contradicts the "Consent" status two sections up.
+      expect(basis).toMatch(/nothing is sent unless you accept/i);
+      // And no residue of the denial these rows used to carry.
+      expect(basis, `${item} still denies the collection it now discloses`).not.toMatch(
+        /nothing is collected|is collected\b(?!.)/i,
+      );
+    }
+  });
+
+  // The analytics row still cannot borrow a blanket word. Two different
+  // analytics processors are disclosed with two different periods: PostHog's
+  // product analytics and session replay here, and the public website's
+  // page-view beacon in its own row. One figure for both would be wrong for
+  // one of them.
+  it("keeps the analytics row scoped to product analytics and session replay", () => {
+    const analytics = SUBPROCESSORS.filter((s) => /analytics/i.test(s.purpose));
     expect(
-      inUse.length,
-      "no analytics processor is in use any more — this row may drop the qualifier",
-    ).toBeGreaterThan(0);
+      analytics.length,
+      "the two analytics processors collapsed into one — re-read this row's scope",
+    ).toBeGreaterThan(1);
 
     const { basis } = row("Analytics and session replay");
-    expect(basis).toMatch(/no product analytics or session replay is collected/i);
-    expect(basis, "a blanket denial contradicts the subprocessor table two sections up").not.toMatch(
-      /so nothing is collected/i,
-    );
+    expect(basis).toMatch(/event/i);
+    expect(basis).toMatch(/replay/i);
+
+    // …and the page-view beacon keeps its own row and its own numbers.
+    const beacon = row("Vercel Web Analytics");
+    expect(beacon.period).not.toBe(row("Analytics and session replay").period);
   });
 
-  it("keeps the two provider-set rows attributed to the provider, not to this codebase", () => {
+  it("keeps the two provider-set rows attributed to the provider, not to us", () => {
     for (const item of ["Backups", "Hosting and database logs"]) {
       expect(row(item).basis).toMatch(/provider/i);
-      expect(row(item).basis).toMatch(/[Nn]othing in this codebase/);
+      expect(row(item).basis).toMatch(/[Nn]othing we run/);
     }
   });
 
