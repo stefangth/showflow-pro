@@ -43,6 +43,25 @@ export function confirmConsequenceNote(
   return "Confirm places the booking and notifies the artist in the app right away.";
 }
 
+/** The flow field that decides what accepting an offer does. */
+type AcceptFlow = Pick<BookingFlow, "producer_confirmation">;
+
+/**
+ * What accepting an offer actually does, said at the toast. Mirrors the accept branch of
+ * respondToOffer: producer_confirmation true soft-books (a hold, producer confirms next);
+ * false confirms instantly. Undefined reads as the classic hold flow (respondToOffer's own
+ * `?? true` default), so an unknown flow never over-promises "you're booked".
+ */
+export function acceptConsequenceNote(flow: AcceptFlow | null | undefined): {
+  title: string;
+  description?: string;
+} {
+  const holds = flow?.producer_confirmation ?? true;
+  return holds
+    ? { title: "Offer accepted", description: "Hold placed. Your producer confirms next." }
+    : { title: "Offer accepted. You're booked." };
+}
+
 /** What the cockpit's "Accepted" badge means, and the module-off "Soft-booked" badge means
  *  the same thing: the artist said yes, the slot is held, and nothing is booked until a
  *  producer confirms it. */

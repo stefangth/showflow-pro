@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   confirmConsequenceNote, cancelBookingCopy, unrestrictedEligibilityNote,
+  acceptConsequenceNote,
   SOFT_BOOKED_MEANING, TIER_CONCEPT_NOTE, DATE_SOURCE_NOTE,
 } from "./actionCopy";
 import { BOOKING_FLOW_DEFAULTS, applyPreset } from "@/lib/bookingFlow";
@@ -131,6 +132,26 @@ describe("cancelBookingCopy", () => {
   });
 });
 
+describe("acceptConsequenceNote", () => {
+  it("hold-then-confirm flow tells the artist a hold is placed", () => {
+    expect(acceptConsequenceNote({ producer_confirmation: true })).toEqual({
+      title: "Offer accepted",
+      description: "Hold placed. Your producer confirms next.",
+    });
+  });
+
+  it("auto-confirm flow tells the artist they are booked", () => {
+    expect(acceptConsequenceNote({ producer_confirmation: false })).toEqual({
+      title: "Offer accepted. You're booked.",
+    });
+  });
+
+  it("defaults to hold-then-confirm when the flow is unknown", () => {
+    expect(acceptConsequenceNote(null).description).toBe("Hold placed. Your producer confirms next.");
+    expect(acceptConsequenceNote(undefined).description).toBe("Hold placed. Your producer confirms next.");
+  });
+});
+
 describe("unrestrictedEligibilityNote", () => {
   it("names the org in the unrestricted-eligibility note", () => {
     expect(unrestrictedEligibilityNote("Cirque Lumiere")).toBe(
@@ -180,4 +201,9 @@ it("uses no em or en dashes in any branch or constant", () => {
   expect(SOFT_BOOKED_MEANING).not.toMatch(/[—–]/);
   expect(TIER_CONCEPT_NOTE).not.toMatch(/[—–]/);
   expect(DATE_SOURCE_NOTE).not.toMatch(/[—–]/);
+  for (const flow of [{ producer_confirmation: true }, { producer_confirmation: false }, null, undefined]) {
+    const note = acceptConsequenceNote(flow);
+    expect(note.title).not.toMatch(/[—–]/);
+    if (note.description) expect(note.description).not.toMatch(/[—–]/);
+  }
 });
