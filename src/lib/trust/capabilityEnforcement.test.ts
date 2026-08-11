@@ -66,6 +66,51 @@ function databaseCheckedViaSettingsMap(files: string[], allSql: string): Set<str
   return new Set([...body.matchAll(/then\s*'(producer_can_[a-z_]+)'/g)].map((m) => m[1]));
 }
 
+/** Strip `//` and block comments so a key mentioned in prose cannot count as
+ *  enforcement.
+ *
+ *  GUARD HOLE, closed. The scan below matched a key anywhere in a file that
+ *  contained `requireCapability` anywhere, and it read the file raw — so a bare
+ *  comment naming a key ("// TODO: gate producer_can_edit_scheduling here")
+ *  flipped that right out of the interface-only set and out of the published
+ *  three, with CI green. Proved by mutation: adding exactly that line to
+ *  supabase/functions/open-offer-tier/index.ts turned the split into 19/7/2 and
+ *  nothing failed except the counts, which would have been "fixed" by editing
+ *  the sentence.
+ *
+ *  String-literal-aware rather than a naive `//` strip, because a URL inside a
+ *  string ("https://…") would otherwise swallow the rest of its line. */
+function stripComments(source: string): string {
+  let out = "";
+  let i = 0;
+  let quote: string | null = null;
+  while (i < source.length) {
+    const c = source[i];
+    const next = source[i + 1];
+    if (quote) {
+      if (c === "\\") { out += c + (next ?? ""); i += 2; continue; }
+      if (c === quote) quote = null;
+      out += c;
+      i += 1;
+      continue;
+    }
+    if (c === '"' || c === "'" || c === "`") { quote = c; out += c; i += 1; continue; }
+    if (c === "/" && next === "/") {
+      while (i < source.length && source[i] !== "\n") i += 1;
+      continue;
+    }
+    if (c === "/" && next === "*") {
+      i += 2;
+      while (i < source.length && !(source[i] === "*" && source[i + 1] === "/")) i += 1;
+      i += 2;
+      continue;
+    }
+    out += c;
+    i += 1;
+  }
+  return out;
+}
+
 /** Capabilities gated by `requireCapability` in an edge function. Matched by
  *  key presence in a file that imports the gate rather than by call shape,
  *  because generate-hire-orders picks its key into a variable first
@@ -80,7 +125,7 @@ function edgeChecked(dir: string, out = new Set<string>()): Set<string> {
       continue;
     }
     if (!entry.name.endsWith(".ts") || entry.name.endsWith(".test.ts")) continue;
-    const source = readFileSync(path, "utf8");
+    const source = stripComments(readFileSync(path, "utf8"));
     if (!source.includes("requireCapability")) continue;
     for (const key of KEYS) if (source.includes(`"${key}"`)) out.add(key);
   }
@@ -188,5 +233,36 @@ describe("capability enforcement split", () => {
     // The evidence line carries the breakdown the claim no longer has room for.
     expect(control!.evidence).toContain(`${database.length} sit inside the database`);
     expect(control!.evidence).toContain(`${edgeOnly.length} in an edge function`);
+  });
+
+  // The claim used to say nine sensitive rights "ask for a second
+  // confirmation". Sitting next to the word "sensitive", that reads as
+  // step-up confirmation AT USE TIME — a producer clicking Issue meets an
+  // extra prompt. There is no such step anywhere. The confirmation guards an
+  // ADMINISTRATOR changing the grant in Settings > Roles and permissions, and
+  // it does not apply to the platform-default path at all. Pinned to the file
+  // that implements it so the sentence cannot drift back to describing the
+  // wrong actor.
+  it("describes the sensitive-right confirmation as the grant change it actually is", () => {
+    const source = readFileSync(
+      resolve(ROOT, "src/components/settings/permissions/PermissionsMatrix.tsx"),
+      "utf8",
+    );
+    // The gate: a sensitive key routes the ORG-MODE override through a pending
+    // state instead of writing, and the pending state opens an AlertDialog.
+    expect(source).toMatch(/risk === "sensitive"/);
+    expect(source).toMatch(/setPending\(\{\s*cell,\s*enabled\s*\}\)/);
+    expect(source).toMatch(/<AlertDialog\b/);
+    // …and it is on `onToggleOverride` only. `onSetPlatformDefault` writes
+    // straight through, which is the other reason "a second confirmation" was
+    // too broad a description of what exists.
+    expect(source).toMatch(/onSetPlatformDefault=\{\(enabled\) => writePolicy\.mutate/);
+
+    const control = CONTROLS.find((c) => c.title === "Roles and rights");
+    expect(control!.claim).toMatch(/changing one asks an administrator to confirm/i);
+    expect(
+      control!.claim,
+      "'ask for a second confirmation' reads as step-up confirmation at use time",
+    ).not.toMatch(/second confirmation/i);
   });
 });

@@ -137,6 +137,40 @@ describe("VisibilityMatrix access tones", () => {
     expect(pill(none!.object).className).not.toEqual(pill(scoped!.object).className);
   });
 
+  // The hire-order row describes a module that ships OFF (`hire_orders` has
+  // `defaultEnabled: false`), so for most organisations its three answers
+  // describe nothing that exists — and the tab this table sits in bills itself
+  // as narrowed to the organisation you are signed in to. `gated` is the tone
+  // for that, and it was a dead branch in this file until the row used it.
+  //
+  // Two halves, and both are needed. The tone has to be visually distinct or
+  // the row reads like every other row; and the note has to SAY the condition,
+  // because a colour on its own is not a claim and the public page renders the
+  // same data through a different palette.
+  it("marks a module-conditional row as gated, in the tone and in the words", () => {
+    const gated = VISIBILITY_MATRIX.filter((r) =>
+      (["admin", "producer", "artist"] as const).some((role) => r[role].tone === "gated"),
+    );
+    expect(gated.length, "no row is module-gated — has hire_orders shipped on?").toBeGreaterThan(0);
+
+    for (const row of gated) {
+      for (const role of ["admin", "producer", "artist"] as const) {
+        // A row is gated for every role or for none: the module is off for the
+        // whole organisation, not per person.
+        expect(row[role].tone, `${row.object} / ${role}`).toBe("gated");
+        expect(row[role].note, `${row.object} / ${role} states no condition`).toMatch(
+          /only if your organisation turns on/i,
+        );
+      }
+    }
+
+    renderWithProviders(<VisibilityMatrix />); // defaults to the artist view
+
+    const plain = VISIBILITY_MATRIX.find((r) => r.artist.tone === "scoped");
+    expect(plain, "no ungated scoped row to compare against").toBeDefined();
+    expect(pill(gated[0].object).className).not.toEqual(pill(plain!.object).className);
+  });
+
   // `--ring` is the focus colour. Painting the selected chip in it meant a
   // keyboard user saw the same accent ring whether or not the control was
   // focused; and `ring-inset` set `--tw-ring-inset: inset` unconditionally,
@@ -160,14 +194,16 @@ describe("VisibilityMatrix access tones", () => {
 });
 
 describe("VisibilityMatrix mechanism column budget", () => {
-  // Both tables lay out `auto`, so the widest Mechanism cell takes the width.
-  // The cross-organisation cell used to carry the four-table exclusion list in
-  // one 54-word run while every other cell is 3-15 words. Measured in the
-  // running app at 1440: the Data column collapsed to 147px and five of eight
-  // row labels wrapped to two and three lines, running the table to 542px tall
-  // where a short note gives 233px and 434px. The qualifier is not dropped —
-  // it renders as a footnote under the table, where it can be read without a
-  // 486px column.
+  // Both tables laid out `auto` when the qualifier was moved, so the widest
+  // Mechanism cell took the width. The cross-organisation cell used to carry
+  // the four-table exclusion list in one 54-word run while every other cell is
+  // 3-15 words. Measured in the running app at 1440: the Data column collapsed
+  // to 147px and five of eight row labels wrapped to two and three lines,
+  // running the table to 542px tall where a short note gives 233px and 434px.
+  // Both tables are `fixed` now, which is why the cap below is the thing
+  // holding the rhythm rather than the layout policing itself. The qualifier
+  // is not dropped — it renders as a footnote under the table, where it can be
+  // read without a 486px column.
   it("keeps every mechanism cell to a clause a table column can hold", () => {
     const words = (s: string) => s.trim().split(/\s+/).length;
     const cells = VISIBILITY_MATRIX.flatMap((row) => [row.admin, row.producer, row.artist]);

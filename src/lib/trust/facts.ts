@@ -60,12 +60,16 @@ export interface MatrixRow {
 
 /** The cross-organisation answer, stated once for all three roles.
  *
- *  One clause, because this is a table cell. Both surfaces lay the matrix out
- *  `auto`, so the widest Mechanism cell takes the width: carrying the
- *  exclusion list here as well made this cell 54 words against 3-15 everywhere
- *  else, which collapsed the Data column to 147px in the app and wrapped five
- *  of eight row labels. The qualifier is not dropped — it is
- *  CROSS_ORG_EXCEPTIONS_NOTE below, rendered under the table. */
+ *  One clause, because this is a table cell. Both surfaces USED TO lay the
+ *  matrix out `auto`, so the widest Mechanism cell took the width: carrying
+ *  the exclusion list here as well made this cell 54 words against 3-15
+ *  everywhere else, which collapsed the Data column to 147px in the app and
+ *  wrapped five of eight row labels. Both are `fixed` now (see AccessCell.note
+ *  above), so an over-long cell no longer starves its neighbours — it breaks
+ *  the row rhythm instead, which is why the 110-character cap replaced the
+ *  self-policing the auto layout used to provide. Either way the qualifier is
+ *  not dropped — it is CROSS_ORG_EXCEPTIONS_NOTE below, rendered under the
+ *  table. */
 const NO_CROSS_ORG_NOTE =
   "A restrictive policy blocks the read on every table that carries your organisation's records.";
 
@@ -91,19 +95,43 @@ export const VISIBILITY_MATRIX: MatrixRow[] = [
   {
     object: "Artist contact details",
     admin: { value: "Full", tone: "full", note: "Every artist record in this organisation." },
-    producer: { value: "Full", tone: "full", note: 'Editing needs the "edit artists" right.' },
+    // The quoted string is the LABEL Settings > Roles and permissions shows,
+    // not the action key behind it: a reader told to look for "edit artists"
+    // finds no such row. publishedClaims.test.ts pins every quoted right in
+    // this table to a CAPABILITY_DEFS label.
+    producer: { value: "Full", tone: "full", note: 'Editing needs the "Edit artist details, skills, and status" right.' },
     artist: { value: "Own record", tone: "scoped", note: "A row-level policy limits reads to your own profile." },
   },
   {
     object: "Availability and blocked dates",
     admin: { value: "Full", tone: "full", note: "Needed to route dates." },
     producer: { value: "Full", tone: "full", note: "Needed to route dates." },
-    artist: { value: "Own dates", tone: "scoped", note: "You declare them; nobody outside the organisation reads them." },
+    // "nobody outside the organisation reads them" was the one absolute in
+    // this table that reached past the three roles the table declares, and it
+    // is false. `public.is_org_member` opens `select public.is_super_admin(_uid)
+    // or …` (20260603120200_org_isolation_rls.sql:18-23), so the RESTRICTIVE
+    // org_isolation policy does not filter a platform administrator, and
+    // `public.has_org_role` opens the same way
+    // (20260603120000_add_platform_tables_and_org_helpers.sql:64-69), so the
+    // permissive "Admins and producers can view blocked_dates" SELECT policy
+    // admits one too. `blocked_dates` carries no compensating predicate. The
+    // repo asserts the equivalent affirmatively one table over:
+    // supabase/tests/rls/artists_contact_privacy.sql:88 proves a super-admin
+    // CAN read an artist's email.
+    //
+    // Dropping the ShowFlow-staff column from this table is silence, and
+    // silence is fine. An affirmative "nobody" is a claim. So the denial is
+    // scoped to the population the table is about — other organisations'
+    // members — which is exactly what org_isolation delivers.
+    // publishedClaims.test.ts re-derives the premise from those two helpers
+    // and rejects an absolute quantifier anywhere in the published claims, so
+    // this cannot come back a third time.
+    artist: { value: "Own dates", tone: "scoped", note: "You declare them; no other organisation's members read them." },
   },
   {
     object: "Booking status and offers",
     admin: { value: "Full", tone: "full", note: "Across every production." },
-    producer: { value: "Full", tone: "full", note: 'Confirming needs the "confirm bookings" right.' },
+    producer: { value: "Full", tone: "full", note: 'Confirming needs the "Confirm bookings" right.' },
     artist: { value: "Own offers", tone: "scoped", note: "You see your own tier, never another artist's." },
   },
   {
@@ -126,14 +154,43 @@ export const VISIBILITY_MATRIX: MatrixRow[] = [
     },
   },
   {
+    // The only row on this table describing a module an organisation may not
+    // have. `hire_orders` ships with `defaultEnabled: false`
+    // (src/lib/entitlements.ts), so for most organisations these three answers
+    // describe nothing that exists — and the in-app tab bills itself as
+    // "narrowed to the organisation you are signed in to" (TrustDataTab.tsx),
+    // which makes an unmarked row read as a statement about the reader's own
+    // workspace. That is what the `gated` tone is for, and it was a dead
+    // branch on both surfaces until this row used it: it is the third answer
+    // this column can give, alongside access and no access, and it means "only
+    // if this is switched on for you".
+    //
+    // The condition is repeated in all three cells rather than footnoted,
+    // because the role picker shows exactly ONE of them at a time — a reader
+    // never sees the repetition, and a reader who lands on the artist column
+    // must not be the one who misses it.
     object: "Hire-order fees",
-    admin: { value: "Full", tone: "full", note: "Letterhead, numbering, and terms included." },
+    admin: {
+      value: "Full",
+      tone: "gated",
+      note: "Only if your organisation turns on hire orders. Letterhead, numbering, and terms included.",
+    },
     producer: {
       value: "Full",
-      tone: "full",
-      note: "Every order in this organisation, fee included. Issuing and voiding are separate sensitive rights.",
+      tone: "gated",
+      note: "Only if your organisation turns on hire orders. Every order and fee; issuing and voiding are sensitive.",
     },
-    artist: { value: "Own order", tone: "scoped", note: "Your own hire order and its PDF only." },
+    // "Your own hire order and its PDF only" was wider than the policy that
+    // produces it: "Artists read own issued orders"
+    // (20260717102508_hire_orders.sql:108-113) restricts the SELECT to
+    // `status in ('issued','countersigned')`, so a draft of your own order is
+    // invisible to you. "once it is issued" is the qualifier that makes the
+    // sentence true of the policy.
+    artist: {
+      value: "Own order",
+      tone: "gated",
+      note: "Only if your organisation turns on hire orders. Your own order and its PDF, once it is issued.",
+    },
   },
   {
     object: "Show-date chat",
@@ -171,17 +228,36 @@ export const VISIBILITY_MATRIX: MatrixRow[] = [
   {
     object: "Booking audit log",
     // Both roles hold the same SELECT and INSERT policies, so they get the
-    // same answer. See supabase/migrations/20260416115633_d565d983-e98a-468a
-    // -a272-cbac9f2bdb89.sql:267-273 for the symmetric SELECT grants.
+    // same answer. The citation this comment used to carry pointed at code
+    // deleted in June: the two SELECT grants were created at
+    // 20260416115633_d565d983-e98a-468a-a272-cbac9f2bdb89.sql:268-274 (the old
+    // line range was off by one at both ends — 267 is blank and 273 truncates
+    // the producer policy), but both were DROPped and recreated with
+    // has_org_role by the programmatic rewrite in
+    // 20260603130200_org_scoped_role_gating.sql:16-48, and the
+    // has_role(uuid, app_role) they called was dropped outright at
+    // 20260603150000_drop_user_roles_and_has_role.sql:26. The live pair is
+    // whatever that rewrite produced, so the rewrite is what a reviewer has to
+    // read; the original is cited only as its input.
+    //
+    // "No policy allows altering or deleting a row" was true and read as
+    // immutability, which the system does not deliver: `anonymize_user`
+    // UPDATEs performed_by to NULL (20260723183038_hire_order_user_fks_set_
+    // null.sql:32) and `delete_org` DELETEs the rows
+    // (20260622193255_delete_org.sql:13). Both are SECURITY DEFINER, so no
+    // policy is consulted, and the first runs whenever any user deletes their
+    // own account. Those two are the ONLY writers of an update or a delete in
+    // the tree, so the honest sentence is not a weaker hedge — it is a
+    // stronger, exhaustive one. bookingAudit.test.ts re-derives both halves.
     admin: {
       value: "Append-only",
       tone: "scoped",
-      note: "Reads every row and appends new ones. No policy allows altering or deleting a row.",
+      note: "Reads every row and appends new ones. Only account or organisation deletion ever alters one.",
     },
     producer: {
       value: "Append-only",
       tone: "scoped",
-      note: "Reads every row and appends new ones. No policy allows altering or deleting a row.",
+      note: "Reads every row and appends new ones. Only account or organisation deletion ever alters one.",
     },
     artist: { value: "No access", tone: "none", note: "Not exposed." },
   },
@@ -221,7 +297,7 @@ export interface Subprocessor {
  *  Google is here because the hero promises "every outside processor that
  *  ever touches it" and this page's own network tab falsified that: both
  *  index.html files load Geist and Geist Mono from fonts.googleapis.com and
- *  fonts.gstatic.com (app index.html:32-34, landing index.html:53-55),
+ *  fonts.gstatic.com (app index.html:34-36, landing index.html:53-55),
  *  unconditionally and before the consent banner is answered, so Google LLC
  *  receives every visitor's IP address and user agent on the trust page
  *  itself. Naming it is the honest reading of the claim; the alternative is
@@ -242,14 +318,24 @@ export interface Subprocessor {
  *  Sentry and PostHog take the day their SDKs ship. It runs on the public
  *  showflow.pro website only, never inside the application, which is why the
  *  purpose column names the site. */
+// The `transfer` column mirrors section 5's "Transfer mechanism" cell, and
+// three rows used to differ from it in ways a reader would notice. Supabase's
+// cell reads "EU storage option in use WHERE AVAILABLE", and dropping the hedge
+// published a firmer commitment than the policy makes. Sentry's and PostHog's
+// read "EU region used where available; DPF and SCCs for US transfers", and
+// naming only the SCCs dropped a transfer basis the policy asserts — an
+// under-claim, but a divergence from the artefact all the same. The
+// facts.privacy.test.ts assertion that should have caught it only checked one
+// direction (page says DPF -> policy must too), so an omission was structurally
+// invisible to it; it now compares both ways.
 export const SUBPROCESSORS: Subprocessor[] = [
-  { name: "Supabase", purpose: "Database, authentication, storage", region: "EU · US", transfer: "EU region in use · DPF + SCCs", status: "Core", tone: "full" },
+  { name: "Supabase", purpose: "Database, authentication, storage", region: "EU · US", transfer: "EU region in use where available · DPF + SCCs", status: "Core", tone: "full" },
   { name: "Vercel", purpose: "Application hosting, edge network", region: "EU · US", transfer: "DPF + SCCs", status: "Core", tone: "full" },
   { name: "Vercel Web Analytics", purpose: "Page-view analytics on the showflow.pro website", region: "EU · US", transfer: "DPF + SCCs", status: "Consent", tone: "gated" },
   { name: "Resend", purpose: "Transactional email", region: "US", transfer: "DPF + SCCs", status: "Core", tone: "full" },
   { name: "Google", purpose: "Web fonts (Geist, Geist Mono)", region: "US", transfer: "DPF + SCCs", status: "Core", tone: "full" },
-  { name: "Sentry", purpose: "Client error reports", region: "EU · US", transfer: "EU region where available · SCCs", status: "Off", tone: "none" },
-  { name: "PostHog", purpose: "Analytics, session replay", region: "EU · US", transfer: "EU region where available · SCCs", status: "Off", tone: "none" },
+  { name: "Sentry", purpose: "Client error reports", region: "EU · US", transfer: "EU region where available · DPF + SCCs", status: "Off", tone: "none" },
+  { name: "PostHog", purpose: "Analytics, session replay", region: "EU · US", transfer: "EU region where available · DPF + SCCs", status: "Off", tone: "none" },
   { name: "Airtable", purpose: "Show-data sync", region: "US", transfer: "DPF + SCCs", status: "Off", tone: "none" },
 ];
 
@@ -382,9 +468,19 @@ export const RETENTION: RetentionRow[] = [
       "A ceiling, not a schedule. The send log is pruned nightly at a shorter configured window (prune_email_log, email_log_retention_days, 90 days by default). The suppression list has no scheduled prune, so 24 months is a commitment for it.",
   },
   {
+    // "Nothing in this codebase retains or expires these logs" was true of
+    // what this row is about — section 7's "Hosting / Supabase logs", which
+    // are the providers' own — but the row is titled "Hosting and database
+    // logs", and this repo does prune two operational tables whose names end
+    // in _log: cron-health-watcher/index.ts:181-185 deletes
+    // cron_health_dispatch after a day and cron_health_log after 30. Those are
+    // not provider logs and are not what section 7 commits to, so the claim
+    // was not false; it was ambiguous enough that a reviewer grepping for a
+    // prune found one. The sentence now says whose logs it means, which costs
+    // nothing and closes the reading.
     item: "Hosting and database logs",
     period: "7–30 days",
-    basis: "Set by the hosting and database providers. Nothing in this codebase retains or expires these logs.",
+    basis: "These are the hosting and database providers' own logs, and they set the period. Nothing in this codebase retains or expires them.",
   },
   // Sentry and PostHog are "Off" (see SUBPROCESSORS below): neither SDK ships
   // today, so nothing is collected yet. The periods below are what the
@@ -519,14 +615,21 @@ export const CONTROLS: Control[] = [
     // "on shows and show_dates" is NOT trimmable, and was trimmed once by a
     // density pass that should not have touched it. org_isolation.sql exercises
     // exactly two tenant tables (public.shows fifteen times, public.show_dates
-    // twice; its three other public.* references are fixture setup) out of 34
-    // that carry org_id. Without the scope the sentence reads as a
+    // twice; its three other public.* references are fixture setup) out of the
+    // 38 that carry org_id. Without the scope the sentence reads as a
     // table-agnostic cross-org result, which is the failure mode the header of
     // CROSS_ORG_EXCEPTIONS_NOTE describes: a reviewer greps the cited file,
     // finds less than the citation promised, and stops trusting the page. The
     // breadth comes from the NEXT sentence and a different artefact —
     // org_coverage.sql, which is the one that walks every table — so narrowing
     // this one costs the card nothing.
+    //
+    // 38, not the 34 an earlier round wrote, and this is the denominator the
+    // shipped four-exception footnote rests on: org_coverage.sql's
+    // _tenant_tables list is 34 names it ASSERTS org_isolation on, and its
+    // header names 4 more that carry org_id and are excluded on purpose
+    // (org_memberships, org_invitations, platform_audit_log, email_send_log).
+    // 34 is the size of the assertion, not of the population.
     evidence:
       "supabase/tests/rls/org_isolation.sql asserts org A reads and writes zero rows of org B on shows and show_dates, even holding a global producer role. org_coverage.sql lists every table carrying the policy, including chat_messages and booking_audit_log, and names the four exceptions. Both run on every pull request; restrictive policies filter, never grant.",
   },
@@ -548,10 +651,25 @@ export const CONTROLS: Control[] = [
     //    exactly the conflation this build exists to kill: two nines side by
     //    side reading as one set. "a different nine" does that inline in two
     //    words; `evidence` carries the example that proves it.
+    //
+    // "and ask for a second confirmation" described the wrong action, next to
+    // the word "sensitive", which is where a reviewer reads step-up
+    // confirmation AT USE TIME. There is no such step: the confirmation guards
+    // an ADMINISTRATOR changing the grant in Settings > Roles and permissions
+    // (PermissionsMatrix.tsx:46-49 routes a sensitive key to `setPending`, the
+    // AlertDialog at :81-101 is the dialog), and a producer exercising a right
+    // it has been granted meets nothing extra. capabilityEnforcement.test.ts
+    // pins the sentence to that file.
     claim:
-      "Three roles per organisation and 28 rights on top. 25 are checked on the server, three only by the interface. Nine rights are marked sensitive and ask for a second confirmation; a different nine ship switched off until an administrator turns them on.",
+      "Three roles per organisation and 28 rights on top. 25 are checked on the server, three only by the interface. Nine rights are marked sensitive, so changing one asks an administrator to confirm; a different nine ship switched off until an administrator turns them on.",
+    // "which is why the two nines differ" gave half the reason and a reviewer
+    // doing the arithmetic landed on 7: the hire-order pair is sensitive-yet-on,
+    // which takes 9 sensitive down to 7 also-off, and the sets only meet at
+    // nine again because edit_filter_settings and trigger_sync are standard yet
+    // ship off. Both directions are named now, and capabilityInventory.test.ts
+    // re-derives both counts from the registry.
     evidence:
-      "28 rights across 8 groups, declared in src/lib/capabilities.ts. Of the 25 checked on the server, 19 sit inside the database and 6 in an edge function. Issuing and voiding hire orders are sensitive yet ship on, which is why the two nines differ.",
+      "28 rights across 8 groups, declared in src/lib/capabilities.ts. Of the 25 checked on the server, 19 sit inside the database and 6 in an edge function. Issuing and voiding hire orders are sensitive yet ship on, and two standard rights ship off, so the two nines are different sets.",
   },
   {
     icon: "key",
@@ -585,9 +703,20 @@ export const CONTROLS: Control[] = [
     // the worked example of the limitation ("editing its notes leaves no
     // row"), which belongs beside the trigger that causes it.
     title: "Auditability",
+    // "No policy permits an update or a delete" was literally true and read as
+    // immutability, which is the exact true-but-misleading shape this page
+    // rewrote "checked in the database" into a 19/6/3 split to avoid. Two
+    // SECURITY DEFINER functions bypass the policy layer entirely:
+    // `anonymize_user` UPDATEs performed_by to NULL, reachable by ANY user
+    // deleting their own account, and `delete_org` DELETEs the rows. They are
+    // also the only two writers of an update or a delete anywhere in the tree,
+    // which is why the replacement is an exhaustive "only" rather than a
+    // hedge — a stronger sentence, not a weaker one. The policy fact is not
+    // dropped; it moves to `evidence` beside the two functions that get past
+    // it, which is where a reviewer can act on it.
     claim:
-      "Every change to a booking's status is appended to a log: old status, new status, who acted, when. Nothing else about a booking is logged, and automated transitions have no person to record as the actor. No policy permits an update or a delete.",
-    evidence: `Written by the notify_booking_transition trigger, which returns without writing unless the status actually changed, so editing a booking's notes leaves no row; promote_understudy_on_cancellation writes the automated path. Administrators and the production team can read it. Retained ${RETENTION.find((r) => r.item === "Bookings and audit log")!.period}, per section 7 of the privacy policy.`,
+      "Every change to a booking's status is appended to a log: old status, new status, who acted, when. Nothing else about a booking is logged, and automated transitions have no person to record as the actor. Only account or organisation deletion ever changes a row.",
+    evidence: `Written by the notify_booking_transition trigger, which returns without writing unless the status actually changed, so editing a booking's notes leaves no row; promote_understudy_on_cancellation writes the automated path. No policy grants an update or a delete: anonymize_user and delete_org bypass row-level security. Retained ${RETENTION.find((r) => r.item === "Bookings and audit log")!.period}.`,
   },
   {
     icon: "shield",
@@ -625,16 +754,30 @@ export const SELF_SERVE_RIGHTS: SelfServeRight[] = [
   },
   {
     icon: "eye",
-    // This detail used to read "Turns off analytics, session replay, and
-    // error tracking if and when any of them is enabled", which told a reader
-    // of this page that no analytics was running while a page-view beacon was
-    // running on the page they were reading it on. The two surfaces have two
-    // separate consent stores and two separate controls, and only one of them
-    // has anything to switch off today, so the string now names both rather
-    // than averaging them into something true of neither.
+    // The two surfaces have two separate consent stores and two separate
+    // controls, and only one of them has anything to switch off, so this names
+    // both rather than averaging them into something true of neither.
+    //
+    // The app half went through two wrong drafts. It first read "Turns off
+    // analytics, session replay, and error tracking if and when any of them is
+    // enabled", which told a reader of this page that no analytics was running
+    // while a page-view beacon was running on the page they were reading it
+    // on. Naming the surfaces separately fixed that half and left three
+    // defects in the app clause: the "Manage cookie preferences" control is on
+    // the PUBLIC privacy page (PrivacyPage.tsx:51-55) and the login page, not
+    // inside the signed-in app; nothing anywhere reads `useConsent().consent`
+    // to load or unload a tracker, so it turns nothing off; and "if and when
+    // any of them is enabled" is the forward-looking framing this page does
+    // not do — its sibling ("12 months, once PostHog is enabled") was cut from
+    // the retention column for exactly that reason.
+    //
+    // So the app clause now states only what is true today: a choice is
+    // recorded, and there is nothing in the app the choice governs. That is a
+    // weaker product fact and a stronger page. publishedClaims.test.ts
+    // re-derives it from package.json and fails the day a tracker ships.
     title: "Withdraw analytics consent",
     detail:
-      "On showflow.pro, Cookie settings in the footer stops the page-view analytics that loads only after you accept. In the app, Manage cookie preferences turns off analytics, session replay, and error tracking if and when any of them is enabled. Art. 7(3).",
+      "On showflow.pro, Cookie settings in the footer stops the page-view analytics that loads only after you accept. The app records a separate choice for analytics, session replay, and error tracking, and loads none of the three. Art. 7(3).",
   },
   {
     icon: "alert",

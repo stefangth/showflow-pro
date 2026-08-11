@@ -2,7 +2,7 @@
 
 What's new in ShowFlow, newest first.
 
-## 1.16.0 — August 10, 2026
+## 1.16.0 — August 11, 2026
 
 *Answering "who can see our data" without leaving the app*
 

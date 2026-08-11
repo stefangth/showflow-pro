@@ -65,7 +65,20 @@ describe("the rows that claim enforcement point at code that enforces it", () =>
     // on a schedule.
     expect(SQL).toMatch(/CREATE OR REPLACE FUNCTION public\.prune_email_log/i);
     expect(SQL).toMatch(/DELETE FROM public\.email_send_log/i);
-    expect(SQL).toMatch(/cron\.schedule\(\s*'email-log-prune'/);
+
+    // GUARD HOLE, closed: asserting only that a job by this NAME exists let
+    // "pruned nightly" survive the schedule being changed to weekly or
+    // monthly. The expression is what the word "nightly" is a claim about, so
+    // the expression is what gets asserted — a five-field cron whose
+    // day-of-month, month and day-of-week are all wildcards runs every day.
+    const expression = SQL.match(/cron\.schedule\(\s*'email-log-prune'\s*,\s*'([^']+)'/)?.[1];
+    expect(expression, "no cron job named email-log-prune is scheduled").toBeDefined();
+    const [, , dayOfMonth, month, dayOfWeek] = expression!.trim().split(/\s+/);
+    expect(
+      [dayOfMonth, month, dayOfWeek],
+      `email-log-prune runs on "${expression}", which is not nightly`,
+    ).toEqual(["*", "*", "*"]);
+    expect(basis).toMatch(/nightly/i);
 
     // ...at the number the page prints. Both the seeded app_settings value and
     // the function's own COALESCE fallback are that number, so neither can
@@ -164,5 +177,27 @@ describe("the rows that concede no schedule are still conceding accurately", () 
       expect(row(item).basis).toMatch(/provider/i);
       expect(row(item).basis).toMatch(/[Nn]othing in this codebase/);
     }
+  });
+
+  // The logs row is titled "Hosting and database logs" and its basis denies
+  // that anything here expires them. Section 7 means the PROVIDERS' logs by
+  // that phrase, but this repo does prune two operational tables whose names
+  // end in _log (cron-health-watcher deletes cron_health_dispatch after a day
+  // and cron_health_log after thirty), and a reviewer grepping for a prune
+  // finds them. The row is not about those, so the sentence says whose logs it
+  // means; this is what keeps the scope on it.
+  it("scopes the hosting-log denial to the providers' own logs", () => {
+    const { basis } = row("Hosting and database logs");
+    expect(basis).toMatch(/providers' own logs/i);
+
+    // The premise for why the scope is needed: this codebase really does prune
+    // something with "log" in its name. If that ever stops being true the
+    // qualifier is merely redundant rather than wrong, so this only documents
+    // it rather than asserting the count.
+    const watcher = readFileSync(
+      resolve(ROOT, "supabase/functions/cron-health-watcher/index.ts"),
+      "utf8",
+    );
+    expect(watcher).toMatch(/from\("cron_health_log"\)\s*\.delete\(\)/);
   });
 });

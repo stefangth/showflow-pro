@@ -7,8 +7,15 @@ import { roleLabel } from "@/config/app.config";
 import { DATABASE_REGION } from "@/lib/trust/facts";
 
 /** A tile's value: a loaded string, or the loading/failed state.
- *  A failed count renders as an em-dash rather than a zero — this card exists
- *  to be accurate, and "0 bookings" would be a false statement, not a gap. */
+ *  A failed count renders as a word rather than a zero: this card exists to be
+ *  accurate, and "0 bookings" would be a false statement, not a gap.
+ *
+ *  The word, not a bare em-dash, which is what it used to be. Two reasons and
+ *  either is sufficient. Product copy in this repo carries no em- or en-dashes,
+ *  and a lone U+2014 as a tile's whole value is the most conspicuous place to
+ *  break that. And a dash is not self-describing: it depends entirely on the
+ *  `title` attribute, which a touch reader never sees and a screen reader
+ *  announces as "em dash" before anything else. */
 function TileValue({
   isLoading,
   isError,
@@ -19,13 +26,13 @@ function TileValue({
   value: string;
 }) {
   if (isLoading) return <Skeleton className="h-5 w-24" />;
-  // Any state that is not a loaded value degrades to the same honest dash:
+  // Any state that is not a loaded value degrades to the same honest answer:
   // an explicit error, or a query that never resolved (offline, disabled,
   // paused) and left `value` empty. Neither is a "0", which would be false.
   if (isError || !value) {
     return (
       <span className="font-mono text-sm text-muted-foreground" title="Could not be read just now">
-        —
+        Unavailable
       </span>
     );
   }

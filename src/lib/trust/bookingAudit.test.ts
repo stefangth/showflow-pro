@@ -16,7 +16,7 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { CONTROLS } from "./facts";
+import { CONTROLS, VISIBILITY_MATRIX } from "./facts";
 
 const MIGRATIONS = resolve(process.cwd(), "supabase/migrations");
 
@@ -91,16 +91,58 @@ describe("booking audit log — what the trigger actually records", () => {
     expect(statement).not.toContain("auth.uid()");
   });
 
-  it("never grants an update or a delete on the log", () => {
-    const mutating = FILES.filter((f) =>
-      /create\s+policy[\s\S]{0,200}?on\s+public\.booking_audit_log\s+for\s+(update|delete)/i.test(f.sql),
-    );
-    expect(mutating.map((f) => f.name)).toEqual([]);
+  // GUARD HOLE, closed: the old form of this required an explicit
+  // `FOR update|delete`, and a policy with no FOR clause defaults to ALL. So
+  // `create policy "…" on public.booking_audit_log to authenticated using
+  // (true)` — a policy that grants every command including update and delete —
+  // matched nothing and passed, while falsifying the published claim. Every
+  // policy on the table is enumerated instead, and any command other than
+  // SELECT or INSERT fails, whether it was named or defaulted into.
+  it("never grants an update or a delete on the log, including by defaulting to ALL", () => {
+    const granted: { file: string; policy: string; command: string }[] = [];
+    for (const { name, sql } of FILES) {
+      for (const match of sql.matchAll(
+        /create\s+policy\s+("(?:[^"]+)"|[a-z_]+)\s+on\s+public\.booking_audit_log\b([\s\S]{0,120}?)(?:\bto\b|\busing\b|\bwith\s+check\b|;)/gi,
+      )) {
+        const preamble = match[2];
+        // `as restrictive` narrows, it never grants, so it cannot widen the
+        // claim; anything else with no FOR clause is a PostgreSQL `FOR ALL`.
+        if (/\bas\s+restrictive\b/i.test(preamble)) continue;
+        const command = preamble.match(/\bfor\s+(all|select|insert|update|delete)\b/i)?.[1] ?? "all (defaulted)";
+        granted.push({ file: name, policy: match[1], command: command.toLowerCase() });
+      }
+    }
+    expect(granted.length, "no policy on booking_audit_log found — the scan pattern has drifted").toBeGreaterThan(0);
+    expect(
+      granted.filter((g) => g.command !== "select" && g.command !== "insert"),
+      "a policy grants more than select/insert on booking_audit_log",
+    ).toEqual([]);
+  });
+
+  // The other half of the append-only claim, and the reason it is no longer
+  // phrased as "no policy permits an update or a delete". Two SECURITY DEFINER
+  // functions bypass the policy layer: anonymize_user NULLs the actor (any user
+  // deleting their own account reaches it) and delete_org removes the rows.
+  // They are also the ONLY writers of an update or a delete in the tree, which
+  // is what lets the published sentence be an exhaustive "only" rather than a
+  // hedge — so this asserts both that they exist and that nothing else does.
+  it("names the only two paths that ever change a row after it is written", () => {
+    const mutators = new Set<string>();
+    for (const { sql } of FILES) {
+      for (const match of sql.matchAll(
+        /create or replace function public\.([a-z_]+)\s*\([\s\S]*?\$\$([\s\S]*?)\$\$/gi,
+      )) {
+        const body = match[2];
+        if (/\b(update|delete\s+from)\s+public\.booking_audit_log\b/i.test(body)) mutators.add(match[1]);
+      }
+    }
+    expect([...mutators].sort()).toEqual(["anonymize_user", "delete_org"]);
   });
 });
 
 describe("the published Auditability control", () => {
   const control = CONTROLS.find((c) => c.title === "Auditability");
+  const matrixRow = VISIBILITY_MATRIX.find((r) => r.object === "Booking audit log");
 
   it("scopes the claim to status changes and names the automated path", () => {
     expect(control, "CONTROLS has no 'Auditability' entry").toBeDefined();
@@ -124,5 +166,44 @@ describe("the published Auditability control", () => {
     // detail rather than a qualifier — the claim still states the limitation —
     // but it is the sentence that makes it concrete, so it must not evaporate.
     expect(control!.evidence).toContain("leaves no row");
+  });
+
+  // "No policy permits an update or a delete" was true at the policy layer and
+  // read as immutability at the system layer, which is exactly the
+  // true-but-misleading shape this page rewrote "checked in the database" into
+  // a 19/6/3 split to avoid. Both the card and the matrix pill made it. This is
+  // what stops either of them making it again: the SUMMARY-visible sentence
+  // (`claim`, and the matrix cell — the public page hides `evidence` behind
+  // Full inventory) has to name the exception, and neither may state the
+  // policy fact as though it settled the question.
+  it("does not let the append-only claim read as immutability", () => {
+    for (const [where, text] of [
+      ["the Auditability claim", control!.claim],
+      ["the Booking audit log matrix cell", matrixRow!.admin.note],
+      ["the Booking audit log matrix cell", matrixRow!.producer.note],
+    ] as const) {
+      expect(text, `${where} no longer names the two paths that change a row`).toMatch(
+        /account or organisation deletion/i,
+      );
+      expect(text, `${where} states the policy fact as though it settled it`).not.toMatch(
+        /no policy (permits|allows) an? (update|edit)/i,
+      );
+    }
+    // The policy fact is not dropped, only relocated to where a reviewer can
+    // act on it: beside the two functions that get past it.
+    expect(control!.evidence).toMatch(/no policy grants an update or a delete/i);
+    expect(control!.evidence).toContain("anonymize_user");
+    expect(control!.evidence).toContain("delete_org");
+  });
+
+  // The pill still says "Append-only", and that is correct: the Access column
+  // answers what a ROLE can do, and neither role can update or delete. The
+  // width of that column is a declared 108px justified against this exact
+  // string, so a well-meaning rewrite to something longer would break the
+  // fixed layout rather than the claim.
+  it("keeps the append-only answer on the role, where it is true", () => {
+    expect(matrixRow, "the Booking audit log matrix row was renamed").toBeDefined();
+    expect(matrixRow!.admin.value).toBe("Append-only");
+    expect(matrixRow!.producer.value).toBe("Append-only");
   });
 });

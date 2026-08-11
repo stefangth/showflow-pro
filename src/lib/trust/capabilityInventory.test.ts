@@ -33,13 +33,28 @@ describe("buildCapabilityInventory", () => {
     expect(perGroupSum).toBe(inventory.totalSensitive);
   });
 
+  // TAUTOLOGY, closed. This used to rebuild the expected label out of
+  // `group.entries.length` and `group.sensitiveCount` — the builder's own
+  // output — so it proved the format string and nothing about the numbers: a
+  // fold that dropped a right would produce a wrong count and a label that
+  // matched it. Both sides now come from CAPABILITY_DEFS.
   it("labels a group's count with its sensitive share, and omits it when there is none", () => {
+    const seen = new Set<string>();
     for (const group of inventory.groups) {
-      const expected = group.sensitiveCount
-        ? `${group.entries.length} · ${group.sensitiveCount} sensitive`
-        : String(group.entries.length);
-      expect(group.countLabel).toBe(expected);
+      const registry = CAPABILITY_DEFS.filter((d) => d.group === group.group);
+      expect(registry.length, `no registry rights in group "${group.group}"`).toBeGreaterThan(0);
+      const sensitive = registry.filter((d) => d.risk === "sensitive").length;
+      expect(group.countLabel).toBe(
+        sensitive ? `${registry.length} · ${sensitive} sensitive` : String(registry.length),
+      );
+      seen.add(group.group);
     }
+    // …and every registry group produced a label, so a group silently missing
+    // from the fold cannot pass by never being iterated.
+    expect(seen).toEqual(new Set(CAPABILITY_DEFS.map((d) => d.group)));
+    // At least one group of each shape, or half the branch above is untested.
+    expect(inventory.groups.some((g) => g.countLabel.includes("sensitive"))).toBe(true);
+    expect(inventory.groups.some((g) => !g.countLabel.includes("sensitive"))).toBe(true);
   });
 
   it("reports each right's shipped default", () => {
@@ -53,9 +68,15 @@ describe("buildCapabilityInventory", () => {
     expect(deleteProductions?.defaultLabel).toBe("Off by default");
   });
 
+  // TAUTOLOGY, closed, for the same reason as the group label above: this
+  // rebuilt the headline out of the three fields it was checking. The public
+  // page prints this string verbatim, so the numbers in it have to be pinned to
+  // the registry, not to themselves.
   it("derives a headline the marketing page can print verbatim", () => {
+    const groups = new Set(CAPABILITY_DEFS.map((d) => d.group)).size;
+    const sensitive = CAPABILITY_DEFS.filter((d) => d.risk === "sensitive").length;
     expect(inventory.headline).toBe(
-      `${inventory.totalRights} rights · ${inventory.totalGroups} groups · ${inventory.totalSensitive} sensitive`,
+      `${CAPABILITY_DEFS.length} rights · ${groups} groups · ${sensitive} sensitive`,
     );
   });
 
@@ -104,6 +125,32 @@ describe("buildCapabilityInventory", () => {
     );
     expect(control!.claim).toContain(`${inventory.totalRights} rights`);
     expect(control!.evidence).toContain(`${inventory.totalRights} rights across ${inventory.totalGroups} groups`);
+  });
+
+  // "Issuing and voiding hire orders are sensitive yet ship on, which is why
+  // the two nines differ" gave half the reason, and a reviewer checking the
+  // arithmetic landed on seven: 9 sensitive minus the 2 that ship on is 7, and
+  // the sets only meet at nine again because two STANDARD rights also ship off.
+  // Both directions are now stated, and both are re-derived here — so the
+  // sentence goes red if either side of the overlap moves, which is exactly
+  // what would happen the day one of those four rights changes its default.
+  it("explains both directions of the sensitive / off-by-default overlap", () => {
+    const sensitiveButOn = CAPABILITY_DEFS.filter((d) => d.risk === "sensitive" && d.defaultEnabled);
+    const offButStandard = CAPABILITY_DEFS.filter((d) => d.risk !== "sensitive" && !d.defaultEnabled);
+
+    // The arithmetic the published sentence has to survive.
+    expect(inventory.totalSensitive - sensitiveButOn.length + offButStandard.length).toBe(
+      inventory.totalDefaultOff,
+    );
+    expect(sensitiveButOn).toHaveLength(2);
+    expect(offButStandard).toHaveLength(2);
+
+    const control = CONTROLS.find((c) => c.title === "Roles and rights");
+    expect(control!.evidence).toMatch(/sensitive yet ship on/i);
+    expect(
+      control!.evidence,
+      "naming only the sensitive-yet-on pair leaves a reviewer's arithmetic at seven",
+    ).toMatch(/two standard rights ship off/i);
   });
 
   // scripts/build-trust-json.mjs cannot import this module (it loads facts.ts

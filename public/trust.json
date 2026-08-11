@@ -47,8 +47,8 @@
     {
       "icon": "users",
       "title": "Roles and rights",
-      "claim": "Three roles per organisation and 28 rights on top. 25 are checked on the server, three only by the interface. Nine rights are marked sensitive and ask for a second confirmation; a different nine ship switched off until an administrator turns them on.",
-      "evidence": "28 rights across 8 groups, declared in src/lib/capabilities.ts. Of the 25 checked on the server, 19 sit inside the database and 6 in an edge function. Issuing and voiding hire orders are sensitive yet ship on, which is why the two nines differ."
+      "claim": "Three roles per organisation and 28 rights on top. 25 are checked on the server, three only by the interface. Nine rights are marked sensitive, so changing one asks an administrator to confirm; a different nine ship switched off until an administrator turns them on.",
+      "evidence": "28 rights across 8 groups, declared in src/lib/capabilities.ts. Of the 25 checked on the server, 19 sit inside the database and 6 in an edge function. Issuing and voiding hire orders are sensitive yet ship on, and two standard rights ship off, so the two nines are different sets."
     },
     {
       "icon": "key",
@@ -59,8 +59,8 @@
     {
       "icon": "file-text",
       "title": "Auditability",
-      "claim": "Every change to a booking's status is appended to a log: old status, new status, who acted, when. Nothing else about a booking is logged, and automated transitions have no person to record as the actor. No policy permits an update or a delete.",
-      "evidence": "Written by the notify_booking_transition trigger, which returns without writing unless the status actually changed, so editing a booking's notes leaves no row; promote_understudy_on_cancellation writes the automated path. Administrators and the production team can read it. Retained 3 years from show date, per section 7 of the privacy policy."
+      "claim": "Every change to a booking's status is appended to a log: old status, new status, who acted, when. Nothing else about a booking is logged, and automated transitions have no person to record as the actor. Only account or organisation deletion ever changes a row.",
+      "evidence": "Written by the notify_booking_transition trigger, which returns without writing unless the status actually changed, so editing a booking's notes leaves no row; promote_understudy_on_cancellation writes the automated path. No policy grants an update or a delete: anonymize_user and delete_org bypass row-level security. Retained 3 years from show date."
     },
     {
       "icon": "shield",
@@ -86,7 +86,7 @@
       "producer": {
         "value": "Full",
         "tone": "full",
-        "note": "Editing needs the \"edit artists\" right."
+        "note": "Editing needs the \"Edit artist details, skills, and status\" right."
       },
       "artist": {
         "value": "Own record",
@@ -109,7 +109,7 @@
       "artist": {
         "value": "Own dates",
         "tone": "scoped",
-        "note": "You declare them; nobody outside the organisation reads them."
+        "note": "You declare them; no other organisation's members read them."
       }
     },
     {
@@ -122,7 +122,7 @@
       "producer": {
         "value": "Full",
         "tone": "full",
-        "note": "Confirming needs the \"confirm bookings\" right."
+        "note": "Confirming needs the \"Confirm bookings\" right."
       },
       "artist": {
         "value": "Own offers",
@@ -152,18 +152,18 @@
       "object": "Hire-order fees",
       "admin": {
         "value": "Full",
-        "tone": "full",
-        "note": "Letterhead, numbering, and terms included."
+        "tone": "gated",
+        "note": "Only if your organisation turns on hire orders. Letterhead, numbering, and terms included."
       },
       "producer": {
         "value": "Full",
-        "tone": "full",
-        "note": "Every order in this organisation, fee included. Issuing and voiding are separate sensitive rights."
+        "tone": "gated",
+        "note": "Only if your organisation turns on hire orders. Every order and fee; issuing and voiding are sensitive."
       },
       "artist": {
         "value": "Own order",
-        "tone": "scoped",
-        "note": "Your own hire order and its PDF only."
+        "tone": "gated",
+        "note": "Only if your organisation turns on hire orders. Your own order and its PDF, once it is issued."
       }
     },
     {
@@ -189,12 +189,12 @@
       "admin": {
         "value": "Append-only",
         "tone": "scoped",
-        "note": "Reads every row and appends new ones. No policy allows altering or deleting a row."
+        "note": "Reads every row and appends new ones. Only account or organisation deletion ever alters one."
       },
       "producer": {
         "value": "Append-only",
         "tone": "scoped",
-        "note": "Reads every row and appends new ones. No policy allows altering or deleting a row."
+        "note": "Reads every row and appends new ones. Only account or organisation deletion ever alters one."
       },
       "artist": {
         "value": "No access",
@@ -230,7 +230,7 @@
       "name": "Supabase",
       "purpose": "Database, authentication, storage",
       "region": "EU · US",
-      "transfer": "EU region in use · DPF + SCCs",
+      "transfer": "EU region in use where available · DPF + SCCs",
       "status": "Core",
       "tone": "full"
     },
@@ -270,7 +270,7 @@
       "name": "Sentry",
       "purpose": "Client error reports",
       "region": "EU · US",
-      "transfer": "EU region where available · SCCs",
+      "transfer": "EU region where available · DPF + SCCs",
       "status": "Off",
       "tone": "none"
     },
@@ -278,7 +278,7 @@
       "name": "PostHog",
       "purpose": "Analytics, session replay",
       "region": "EU · US",
-      "transfer": "EU region where available · SCCs",
+      "transfer": "EU region where available · DPF + SCCs",
       "status": "Off",
       "tone": "none"
     },
@@ -321,7 +321,7 @@
     {
       "item": "Hosting and database logs",
       "period": "7–30 days",
-      "basis": "Set by the hosting and database providers. Nothing in this codebase retains or expires these logs."
+      "basis": "These are the hosting and database providers' own logs, and they set the period. Nothing in this codebase retains or expires them."
     },
     {
       "item": "Error reports",
@@ -344,7 +344,7 @@
     {
       "icon": "eye",
       "title": "Withdraw analytics consent",
-      "detail": "On showflow.pro, Cookie settings in the footer stops the page-view analytics that loads only after you accept. In the app, Manage cookie preferences turns off analytics, session replay, and error tracking if and when any of them is enabled. Art. 7(3)."
+      "detail": "On showflow.pro, Cookie settings in the footer stops the page-view analytics that loads only after you accept. The app records a separate choice for analytics, session replay, and error tracking, and loads none of the three. Art. 7(3)."
     },
     {
       "icon": "alert",

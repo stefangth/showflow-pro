@@ -24,8 +24,18 @@ import type { AccessTone } from "@/lib/trust/facts";
  *
  *  `full` and `scoped` therefore share one neutral fill — the pill's own text
  *  already says "Full" against "Own record", so the fill has nothing left to
- *  distinguish — and the one distinction the column does draw visually is the
- *  one worth drawing: access against no access. */
+ *  distinguish — and the distinctions the column does draw visually are the
+ *  ones worth drawing.
+ *
+ *  `gated` is the second of them, and it is the one exception to the paragraph
+ *  above: it does carry a state a reader must act on. It marks a row whose
+ *  answer is conditional on a module the organisation may not have — today the
+ *  hire-order fees row, since `hire_orders` ships with `defaultEnabled: false`
+ *  (src/lib/entitlements.ts). "Full" printed in the same neutral fill as every
+ *  other row tells an administrator of an organisation without the module
+ *  something about their own workspace that is not true of it. The accent is
+ *  the same one the public page gives the tone (landing Trust.tsx's
+ *  ACCESS_TONE_STYLE), so the two surfaces read the same. */
 const TONE_BADGE_VARIANT: Record<AccessTone, "confirmed" | "neutral" | "accent" | "outline"> = {
   full: "neutral",
   scoped: "neutral",
@@ -337,14 +347,17 @@ export function VisibilityMatrix() {
       </div>
 
       {/* The four-table exclusion behind the cross-organisation row, held out
-       *  of the table on purpose. Both surfaces lay the matrix out `auto`, so
-       *  the widest Mechanism cell takes the width: as a 54-word cell against
-       *  3-15 words everywhere else it squeezed the Data column to 147px at a
-       *  1440px viewport and wrapped five of the eight row labels onto two and
-       *  three lines, running the table 108px taller. It is the same sentence
-       *  and it is still published — one row below, where it has room to be
-       *  read, and where it serves the restacked card list as well as the
-       *  table.
+       *  of the table on purpose. Both surfaces laid the matrix out `auto`
+       *  when it was moved, so the widest Mechanism cell took the width: as a
+       *  54-word cell against 3-15 words everywhere else it squeezed the Data
+       *  column to 147px at a 1440px viewport and wrapped five of the eight
+       *  row labels onto two and three lines, running the table 108px taller.
+       *  Both are `fixed` now (see the colgroup above), which removes that
+       *  particular damage but not the reason to keep the sentence out here:
+       *  at 54 words it would blow through the 110-character cell cap and take
+       *  the row rhythm with it. It is the same sentence and it is still
+       *  published — one row below, where it has room to be read, and where it
+       *  serves the restacked card list as well as the table.
        *
        *  It is drawn AS a footnote rather than as another paragraph: the
        *  numbered marker pairs it with the cells that depend on it, and the

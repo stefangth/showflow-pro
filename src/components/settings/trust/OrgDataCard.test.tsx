@@ -146,15 +146,21 @@ describe("OrgDataCard", () => {
     }
   });
 
-  it("shows the dash on error, and does not blank the rest of the card", () => {
+  it("names the failed read on error, and does not blank the rest of the card", () => {
     statsMock.mockReturnValue({ data: undefined, isLoading: false, isError: true });
     membersMock.mockReturnValue({ data: undefined, isLoading: false, isError: true });
 
     renderWithProviders(<OrgDataCard />);
 
-    const dashes = screen.getAllByTitle("Could not be read just now");
-    expect(dashes).toHaveLength(2);
-    for (const dash of dashes) expect(dash).toHaveTextContent("—");
+    const failed = screen.getAllByTitle("Could not be read just now");
+    expect(failed).toHaveLength(2);
+    for (const tile of failed) expect(tile).toHaveTextContent("Unavailable");
+    // A word, not a dash. Product copy in this repo carries no em- or
+    // en-dashes, and a bare U+2014 as a tile's whole value is both the most
+    // conspicuous place to break that and the least self-describing thing to
+    // put there: it says nothing without the `title` a touch reader never
+    // sees. This is the assertion that stops it coming back.
+    for (const tile of failed) expect(tile.textContent).not.toMatch(/[–—]/);
     // The card heading, and the two tiles that do not depend on a query, still render.
     expect(screen.getByText("This organisation's data")).toBeInTheDocument();
     // Asserted through the constant, not a literal: the tile must keep
@@ -166,8 +172,8 @@ describe("OrgDataCard", () => {
   // A query that never settles (offline, or the org-scoped query disabled
   // because currentOrg is briefly undefined) leaves isLoading and isError both
   // false with data undefined. That state must degrade to the same honest
-  // dash rather than rendering an empty tile.
-  it("shows the dash when a query is neither loading, errored, nor resolved", () => {
+  // answer rather than rendering an empty tile.
+  it("names the failed read when a query is neither loading, errored, nor resolved", () => {
     statsMock.mockReturnValue({ data: undefined, isLoading: false, isError: false });
     membersMock.mockReturnValue({ data: undefined, isLoading: false, isError: false });
 

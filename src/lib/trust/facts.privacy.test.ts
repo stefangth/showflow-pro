@@ -107,6 +107,14 @@ describe("subprocessor table matches the privacy policy", () => {
   // "European Union" in the policy's Location cell, and vice versa; "DPF" /
   // "SCC" in our transfer column must correspond to the same abbreviations
   // (or their spelled-out forms) in the policy's Transfer mechanism cell.
+  // BOTH DIRECTIONS. The first form of this checked only page -> policy ("if
+  // the page says DPF, the policy must too"), which is structurally incapable
+  // of seeing an OMISSION: Sentry's and PostHog's policy rows assert "DPF and
+  // SCCs for US transfers" while the page printed SCCs alone, and the
+  // assertion that exists to compare them passed. An under-claim is still a
+  // divergence from the artefact the page says it mirrors, and on a page whose
+  // whole premise is that its claims are checkable it is the kind a reviewer
+  // finds first. The membership of each basis is now compared as a set.
   it("matches each processor's region and transfer basis against section 5", () => {
     for (const sub of SUBPROCESSORS) {
       const { location, transfer } = policyRowFor(sub.name);
@@ -115,12 +123,23 @@ describe("subprocessor table matches the privacy policy", () => {
       expect(regionTokens.includes("EU")).toBe(/European Union/.test(location));
       expect(regionTokens.includes("US")).toBe(/United States/.test(location));
 
-      if (sub.transfer.includes("DPF")) {
-        expect(transfer).toMatch(/DPF|Data Privacy Framework/);
-      }
-      if (sub.transfer.includes("SCC")) {
-        expect(transfer).toMatch(/SCCs?|Standard Contractual Clauses/);
-      }
+      expect(
+        sub.transfer.includes("DPF"),
+        `${sub.name}: page transfer "${sub.transfer}" vs policy "${transfer}" disagree on DPF`,
+      ).toBe(/DPF|Data Privacy Framework/.test(transfer));
+      expect(
+        sub.transfer.includes("SCC"),
+        `${sub.name}: page transfer "${sub.transfer}" vs policy "${transfer}" disagree on SCCs`,
+      ).toBe(/SCCs?|Standard Contractual Clauses/.test(transfer));
+
+      // The policy hedges two of these rows ("EU storage option in use WHERE
+      // AVAILABLE", "EU region used where available"). Dropping the hedge
+      // publishes a firmer commitment than the document behind it makes, which
+      // is the same defect in the opposite direction, so it is compared too.
+      expect(
+        /where available/i.test(sub.transfer),
+        `${sub.name}: the policy hedges this basis with "where available" and the page does not`,
+      ).toBe(/where available/i.test(transfer));
     }
   });
 
