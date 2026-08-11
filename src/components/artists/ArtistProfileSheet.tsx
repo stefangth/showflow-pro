@@ -193,6 +193,10 @@ export function ArtistProfileSheet({ artistId, open, onOpenChange }: Props) {
   const skillCatalog = allSkills ?? [];
   const heldSkillIds = new Set(selectedSkills.map((s) => s.id));
   const addableSkills = skillCatalog.filter((s) => !heldSkillIds.has(s.id));
+  // useSkills() only returns ACTIVE skills, so a held skill that was later
+  // archived is not in skillCatalog. Union the two id sets for the denominator
+  // so the header can never read e.g. "3 of 2" when a held skill is archived.
+  const catalogDenominator = new Set([...skillCatalog.map((s) => s.id), ...heldSkillIds]).size;
   // Never surface the per-skill "N upcoming dates" count to an artist role,
   // this sheet is admin/producer-only today, but gate it defensively anyway.
   const showSkillCounts = !hasRole('artist');
@@ -289,7 +293,7 @@ export function ArtistProfileSheet({ artistId, open, onOpenChange }: Props) {
               <div className="flex items-baseline justify-between gap-3">
                 <label className="text-sm font-medium">Skills</label>
                 <p className="font-mono text-[11px] tabular-nums text-muted-foreground">
-                  {selectedSkills.length} of {skillCatalog.length} in the catalog
+                  {selectedSkills.length} of {catalogDenominator} in the catalog
                 </p>
               </div>
               {canEdit && (

@@ -131,6 +131,19 @@ describe("ArtistProfileSheet — skills editor (design 1i)", () => {
     expect(screen.getByText("2 of 4 in the catalog")).toBeInTheDocument();
   });
 
+  it("never shows a held count above the catalog denominator when a held skill has been archived out of the active catalog", () => {
+    // Finding 3 regression: useSkills() returns ACTIVE skills only, so a held
+    // skill that was later archived is absent from the catalog list. The
+    // denominator must union held + active-catalog ids, not just count the
+    // (now smaller) active catalog, or the header reads "2 of 1".
+    renderSheet({
+      held: HELD, // s-vocals, s-combat
+      catalog: [{ id: "s-vocals", name: "Vocals" }], // s-combat archived out of the active catalog
+    });
+    expect(screen.getByText("2 of 2 in the catalog")).toBeInTheDocument();
+    expect(screen.queryByText("2 of 1 in the catalog")).not.toBeInTheDocument();
+  });
+
   it("an unheld catalog skill appears as an add-chip, and clicking it adds a held row", () => {
     renderSheet();
 

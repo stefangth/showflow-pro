@@ -18,13 +18,17 @@ export async function fetchSkills(
 }
 
 /** One catalog row for the admin Skills card: the skill plus its usage counts.
- *  `requiredByCount` is the number of distinct productions (shows) requiring it. */
+ *  `requiredByCount` is the number of distinct productions (shows) requiring it;
+ *  `requiredByDateCount` is the number of distinct show_dates requiring it at the
+ *  date level. Both FKs (show_required_skills, show_date_required_skills) are
+ *  ON DELETE RESTRICT, so both must be zero before a delete can succeed. */
 export type SkillCatalogRow = {
   id: string;
   name: string;
   archivedAt: string | null;
   artistCount: number;
   requiredByCount: number;
+  requiredByDateCount: number;
 };
 
 /** Every skill in the org (including archived), alphabetical, with usage counts.
@@ -34,14 +38,16 @@ export async function fetchSkillCatalog(
   orgId: string | null,
 ): Promise<SkillCatalogRow[]> {
   if (!orgId) return [];
-  const [skillsRes, artistRes, showReqRes] = await Promise.all([
+  const [skillsRes, artistRes, showReqRes, dateReqRes] = await Promise.all([
     client.from("skills").select("id, name, archived_at").eq("org_id", orgId).order("name"),
     client.from("artist_skills").select("skill_id").eq("org_id", orgId),
     client.from("show_required_skills").select("skill_id, show_id").eq("org_id", orgId),
+    client.from("show_date_required_skills").select("skill_id, show_date_id").eq("org_id", orgId),
   ]);
   if (skillsRes.error) throw skillsRes.error;
   if (artistRes.error) throw artistRes.error;
   if (showReqRes.error) throw showReqRes.error;
+  if (dateReqRes.error) throw dateReqRes.error;
 
   const artistCounts = new Map<string, number>();
   for (const r of (artistRes.data ?? []) as { skill_id: string }[])
@@ -54,12 +60,20 @@ export async function fetchSkillCatalog(
     reqShows.set(r.skill_id, set);
   }
 
+  const reqDates = new Map<string, Set<string>>();
+  for (const r of (dateReqRes.data ?? []) as { skill_id: string; show_date_id: string }[]) {
+    const set = reqDates.get(r.skill_id) ?? new Set<string>();
+    set.add(r.show_date_id);
+    reqDates.set(r.skill_id, set);
+  }
+
   return ((skillsRes.data ?? []) as { id: string; name: string; archived_at: string | null }[]).map((s) => ({
     id: s.id,
     name: s.name,
     archivedAt: s.archived_at,
     artistCount: artistCounts.get(s.id) ?? 0,
     requiredByCount: reqShows.get(s.id)?.size ?? 0,
+    requiredByDateCount: reqDates.get(s.id)?.size ?? 0,
   }));
 }
 

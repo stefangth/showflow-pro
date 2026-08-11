@@ -28,9 +28,9 @@ function seedClient(seed: Record<string, TableSeed> = { skills: { data: [], erro
 }
 
 const ROWS: SkillCatalogRow[] = [
-  { id: "skill-1", name: "Vocals", archivedAt: null, artistCount: 18, requiredByCount: 4 },
-  { id: "skill-2", name: "Aerial silks", archivedAt: null, artistCount: 2, requiredByCount: 0 },
-  { id: "skill-3", name: "Puppetry", archivedAt: "2026-01-01T00:00:00.000Z", artistCount: 3, requiredByCount: 0 },
+  { id: "skill-1", name: "Vocals", archivedAt: null, artistCount: 18, requiredByCount: 4, requiredByDateCount: 0 },
+  { id: "skill-2", name: "Aerial silks", archivedAt: null, artistCount: 2, requiredByCount: 0, requiredByDateCount: 0 },
+  { id: "skill-3", name: "Puppetry", archivedAt: "2026-01-01T00:00:00.000Z", artistCount: 3, requiredByCount: 0, requiredByDateCount: 0 },
 ];
 
 // Prime the react-query cache for ['skills','catalog',orgId] so the catalog rows
@@ -100,6 +100,26 @@ describe("SkillsCard", () => {
     const vocalsRow = screen.getByTestId("skill-row-skill-1");
     expect(within(vocalsRow).getByLabelText("Delete Vocals")).toBeDisabled();
 
+    const silksRow = screen.getByTestId("skill-row-skill-2");
+    expect(within(silksRow).getByLabelText("Delete Aerial silks")).not.toBeDisabled();
+  });
+
+  it("disables the delete button when only requiredByDateCount > 0 (date-level requirement, show-level 0)", () => {
+    // Finding 1 regression: a skill required only by a show_date (not the show
+    // itself) must still be delete-blocked, since show_date_required_skills is
+    // also ON DELETE RESTRICT. The "Required by" column copy is unaffected.
+    const dateOnlyRow: SkillCatalogRow = {
+      id: "skill-4", name: "Fire spinning", archivedAt: null, artistCount: 1,
+      requiredByCount: 0, requiredByDateCount: 1,
+    };
+    renderCard([...ROWS, dateOnlyRow]);
+
+    const row = screen.getByTestId("skill-row-skill-4");
+    expect(within(row).getByLabelText("Delete Fire spinning")).toBeDisabled();
+    // The "Required by" column display stays show-level copy per the design.
+    expect(within(row).getByText("Not required yet")).toBeInTheDocument();
+
+    // Both counts zero (Aerial silks) stays enabled.
     const silksRow = screen.getByTestId("skill-row-skill-2");
     expect(within(silksRow).getByLabelText("Delete Aerial silks")).not.toBeDisabled();
   });

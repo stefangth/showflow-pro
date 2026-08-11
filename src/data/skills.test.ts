@@ -21,11 +21,12 @@ describe("fetchSkills", () => {
 });
 
 describe("fetchSkillCatalog", () => {
-  it("composes artist and required-by counts and keeps archived rows", async () => {
+  it("composes artist, show-level, and date-level required-by counts and keeps archived rows", async () => {
     const fake = createFakeSupabase({
       skills: { data: [
         { id: "s1", name: "Vocals", archived_at: null },
         { id: "s2", name: "Puppetry", archived_at: "2026-01-01T00:00:00Z" },
+        { id: "s3", name: "Acrobatics", archived_at: null },
       ], error: null },
       artist_skills: { data: [
         { skill_id: "s1" }, { skill_id: "s1" }, { skill_id: "s2" },
@@ -34,11 +35,18 @@ describe("fetchSkillCatalog", () => {
         { skill_id: "s1", show_id: "sh1" }, { skill_id: "s1", show_id: "sh2" },
         { skill_id: "s1", show_id: "sh1" }, // duplicate show -> counted once
       ], error: null },
+      // s3 is required only at the date level (no show-level requirement), the
+      // exact case Finding 1 covers: show-level requiredByCount must stay 0.
+      show_date_required_skills: { data: [
+        { skill_id: "s3", show_date_id: "d1" }, { skill_id: "s3", show_date_id: "d2" },
+        { skill_id: "s3", show_date_id: "d1" }, // duplicate date -> counted once
+      ], error: null },
     });
     const rows = await fetchSkillCatalog(asSupabase(fake), "o1");
     expect(rows).toEqual([
-      { id: "s1", name: "Vocals", archivedAt: null, artistCount: 2, requiredByCount: 2 },
-      { id: "s2", name: "Puppetry", archivedAt: "2026-01-01T00:00:00Z", artistCount: 1, requiredByCount: 0 },
+      { id: "s1", name: "Vocals", archivedAt: null, artistCount: 2, requiredByCount: 2, requiredByDateCount: 0 },
+      { id: "s2", name: "Puppetry", archivedAt: "2026-01-01T00:00:00Z", artistCount: 1, requiredByCount: 0, requiredByDateCount: 0 },
+      { id: "s3", name: "Acrobatics", archivedAt: null, artistCount: 0, requiredByCount: 0, requiredByDateCount: 2 },
     ]);
   });
 

@@ -22,7 +22,11 @@ import { cn } from '@/lib/utils';
 const ROW_GRID = 'grid grid-cols-[1fr_130px_150px_190px] gap-3';
 
 function errorMessage(e: unknown, fallback: string): string {
-  return e instanceof Error ? e.message : fallback;
+  if (e instanceof Error) return e.message;
+  if (e && typeof e === 'object' && typeof (e as { message?: unknown }).message === 'string') {
+    return (e as { message: string }).message;
+  }
+  return fallback;
 }
 
 /**
@@ -144,9 +148,15 @@ export function SkillsCard({ canEnter }: { canEnter: boolean }) {
             const isEditing = editingId === row.id;
             const isArchived = row.archivedAt !== null;
             // Trash is offered only on active rows; archived rows show Restore only,
-            // per the brief and the design's archived (Puppetry) example.
-            const showDeleteTrash = canDelete && !isArchived && row.requiredByCount === 0;
-            const showBlockedTrash = canDelete && !isArchived && row.requiredByCount > 0;
+            // per the brief and the design's archived (Puppetry) example. Both the
+            // show-level and date-level required-skill FKs are ON DELETE RESTRICT,
+            // so the delete is only truly safe when BOTH counts are zero.
+            const isUnused = row.requiredByCount === 0 && row.requiredByDateCount === 0;
+            const showDeleteTrash = canDelete && !isArchived && isUnused;
+            const showBlockedTrash = canDelete && !isArchived && !isUnused;
+            const blockedTooltip = row.requiredByCount > 0
+              ? `In use by ${row.requiredByCount} productions, archive it instead`
+              : 'Required by upcoming dates, archive it instead';
 
             return (
               <div
@@ -226,7 +236,7 @@ export function SkillsCard({ canEnter }: { canEnter: boolean }) {
                         Archive
                       </Button>
                       {showBlockedTrash && (
-                        <IconTooltip label={`In use by ${row.requiredByCount} productions, archive it instead`}>
+                        <IconTooltip label={blockedTooltip}>
                           <Button
                             variant="ghost"
                             size="icon"
