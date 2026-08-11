@@ -223,7 +223,12 @@ export interface HeaderCta { kind: HeaderCtaKind; label: string }
  *  workflow itself is done. */
 export function computeHeaderCta(args: {
   artistAcceptance: boolean; acceptedCount: number; confirmedCount: number;
-  totalSlots: number | null; openTier: number | null; currentTierOpen: boolean; maxTier: number;
+  totalSlots: number | null; currentTierOpen: boolean;
+  /** The next tier to offer to, gap-aware (the smallest ladder tier strictly
+   *  greater than the highest opened tier) — the caller derives this once and
+   *  shares it with the Offers-tab hero + ladder ring, so it stays in lock-step
+   *  with a non-contiguous priority set. null once every ladder tier is opened. */
+  nextTier: number | null;
   /** Name of the single cast the next tier maps to (owner's RELABEL rule).
    *  Only the `openTier` branch reads this; every other branch is unaffected. */
   nextTierCastName?: string | null;
@@ -237,11 +242,8 @@ export function computeHeaderCta(args: {
   // engine's "escalate when a tier's window closes short" model), so the header
   // can never live-offer a second tier concurrently from one click.
   if (args.currentTierOpen) return { kind: "reviewOffers", label: "Review open offers" };
-  // Next tier to open: 1 when none has ever been opened (openTier null), else the
-  // tier after the highest opened. Offered only while it exists in the ladder.
-  const nextTier = (args.openTier ?? 0) + 1;
-  if (nextTier <= args.maxTier) {
-    return { kind: "openTier", label: args.nextTierCastName ? `Open offers to ${args.nextTierCastName}` : `Open tier ${nextTier}` };
+  if (args.nextTier != null) {
+    return { kind: "openTier", label: args.nextTierCastName ? `Open offers to ${args.nextTierCastName}` : `Open tier ${args.nextTier}` };
   }
   return { kind: "reviewOffers", label: "Review open offers" };
 }

@@ -649,10 +649,15 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: P
     .reduce<number | null>((m, t) => Math.max(m ?? 0, t.tier), null);
 
   // Single source of truth for "the next tier to offer to": the header CTA, the
-  // Offers-tab hero, and the ladder ring all read this. `(openTier ?? 0) + 1`
-  // clamped to the ladder — null when that tier isn't a ladder row (all opened).
-  const nextTierRaw = (highestOpenedTier ?? 0) + 1;
-  const nextTier = ladderRows.some((r) => r.tier === nextTierRaw) ? nextTierRaw : null;
+  // Offers-tab hero, and the ladder ring all read this.
+  // Gap-aware next tier: the smallest ladder tier strictly greater than the highest
+  // opened tier (mirrors the escalation engine's nextTierAfter). A non-contiguous
+  // priority set (e.g. ladder tiers 1 and 3) then still surfaces the hero and an open
+  // path for tier 3 once tier 1 is opened. null when every ladder tier has been opened.
+  const nextTier = ladderRows
+    .map((r) => r.tier)
+    .filter((t) => t > (highestOpenedTier ?? 0))
+    .reduce<number | null>((min, t) => (min == null ? t : Math.min(min, t)), null);
   const nextTierTarget = nextTier != null ? resolveNextOfferTarget(tierMap, nextTier) : null;
   const nextTierCounts = nextTier != null ? (ladderRows.find((r) => r.tier === nextTier) ?? null) : null;
 
@@ -661,9 +666,8 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: P
   const workflowCta = computeHeaderCta({
     artistAcceptance: flow.artist_acceptance,
     acceptedCount, confirmedCount, totalSlots,
-    openTier: highestOpenedTier,
     currentTierOpen: highestOpenTier != null,
-    maxTier: tiersQ.data?.priorities.length ?? 3,
+    nextTier,
     // RELABEL the CTA to the cast when the next tier resolves to a single one.
     nextTierCastName: nextTierTarget?.kind === 'cast' ? nextTierTarget.cast.name : null,
   });
@@ -684,7 +688,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: P
         // opening it on a single header click — the actual offer-send is confirmed
         // from the dry-run dialog, never fired directly from here.
         setActiveTab('offers');
-        setDryRun({ tier: (highestOpenedTier ?? 0) + 1, skillFilterIds: [] });
+        setDryRun({ tier: nextTier ?? (highestOpenedTier ?? 0) + 1, skillFilterIds: [] });
         break;
       case 'book':
       case 'reviewOffers':

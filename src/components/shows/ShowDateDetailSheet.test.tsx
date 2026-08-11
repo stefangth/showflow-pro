@@ -59,9 +59,12 @@ vi.mock("@/components/shows/date/DryRunDialog", () => ({ DryRunDialog: () => nul
 vi.mock("@/components/shows/date/EligibilityBookList", () => ({ EligibilityBookList: () => null }));
 // Stub exposes the exact `canManage` prop it was handed so the open/close-tier
 // gate (run_offer_engine) can be asserted without needing TierTimeline's own deps.
+// Also surfaces `nextTier` (the prop that gates the real NextOfferHero's
+// visibility: `canManage && nextTier != null && ...`) so the gap-aware
+// derivation can be asserted here without re-implementing the real component.
 vi.mock("@/components/shows/date/TierTimeline", () => ({
-  TierTimeline: ({ canManage }: { canManage: boolean }) =>
-    <div data-testid="tier-timeline-can-manage">{String(canManage)}</div>,
+  TierTimeline: ({ canManage, nextTier }: { canManage: boolean; nextTier: number | null }) =>
+    <div data-testid="tier-timeline-can-manage" data-next-tier={String(nextTier)}>{String(canManage)}</div>,
 }));
 
 function seedClient(seed: Record<string, TableSeed>) {
@@ -317,5 +320,66 @@ describe("ShowDateDetailSheet capability gates", () => {
     renderSheet();
     await screen.findByText("Main Hall");
     expect(screen.queryByRole("button", { name: /confirm .*accepted/i })).not.toBeInTheDocument();
+  });
+
+  // M-2: a non-contiguous ladder (tiers 1 and 3, no tier 2) used to leave the
+  // Offers-tab hero hidden and the header with no way to escalate to tier 3 once
+  // tier 1 closed short, because nextTier was derived as `(highestOpenedTier ?? 0)
+  // + 1` clamped to an exact ladder-row match. It's now the smallest ladder tier
+  // strictly greater than the highest opened tier, mirroring the escalation
+  // engine's nextTierAfter.
+  it("gap-aware next tier: ladder tiers {1, 3}, tier 1 closed -> nextTier skips the gap to 3", async () => {
+    seedClient({
+      show_dates: {
+        data: { ...SHOW_DATE, city_id: "city-1", city: { id: "city-1", name: "Berlin" } },
+        error: null,
+      },
+      bookings: { data: [], error: null },
+      casts: {
+        data: [
+          { id: "cast-1", name: "Cast A" },
+          { id: "cast-3", name: "Cast C" },
+        ],
+        error: null,
+      },
+      show_date_cast_eligibility: { data: [], error: null },
+      // No show-specific priorities -> fetchTierCastMap falls back to the
+      // org-wide city ladder (tiers 1 and 3; nothing at 2).
+      show_cast_eligibility: { data: [], error: null },
+      cast_city_priority: {
+        data: [
+          { cast_id: "cast-1", priority: 1, city_id: "city-1" },
+          { cast_id: "cast-3", priority: 3, city_id: "city-1" },
+        ],
+        error: null,
+      },
+      // Tier 1 was opened and has since closed short -> highestOpenedTier=1,
+      // highestOpenTier=null (currentTierOpen=false), so the header is free to
+      // escalate.
+      show_date_offer_tiers: {
+        data: [{ tier: 1, opened_at: "2026-02-20T10:00:00Z", closed_at: "2026-02-21T10:00:00Z" }],
+        error: null,
+      },
+      "fn:open-offer-tier": { data: { candidates: [], excluded: {} }, error: null },
+    });
+    renderSheet();
+    await clickTab(/^offers$/i);
+    // nextTier reaches the (mocked) TierTimeline as 3, not null -- the prop that
+    // gates the real NextOfferHero's visibility, so this proves the hero would
+    // render instead of disappearing into the gap.
+    expect(await screen.findByTestId("tier-timeline-can-manage")).toHaveAttribute("data-next-tier", "3");
+
+    // Tier 3 maps to exactly one cast (Cast C), so the RELABEL rule names it.
+    // Clicking it previews (dry-runs) tier 3 -- the real "open" action's target.
+    const cta = await screen.findByRole("button", { name: /open offers to cast c/i });
+    fireEvent.click(cta);
+    await waitFor(() => {
+      const calls = (client.calls ?? []) as { table: string; method: string; args: unknown[] }[];
+      const invoke = calls.find((c) => c.table === "fn:open-offer-tier" && c.method === "invoke");
+      expect(invoke).toBeDefined();
+      const body = invoke!.args[0] as { show_date_id: string; tier: number; dry_run: boolean };
+      expect(body.tier).toBe(3);
+      expect(body.show_date_id).toBe("sd-1");
+    });
   });
 });
