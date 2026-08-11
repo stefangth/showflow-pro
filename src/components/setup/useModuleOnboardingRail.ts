@@ -5,7 +5,7 @@ import { useHireOrderSetupStatus } from "@/hooks/useHireOrderSetup";
 import { useBookingSetupRailVisible } from "@/components/bookings/setup/useBookingSetupRailVisible";
 import { useSetupRailVisible } from "@/components/hireOrders/setup/useSetupRailVisible";
 import { useRailDismissed } from "@/components/setup/useRailDismissed";
-import { adminTeamStep, collapsedCopy, composeOnboarding } from "@/lib/dashboard/firstRun";
+import { collapsedCopy, composeOnboarding, injectAdminTeamStep } from "@/lib/dashboard/firstRun";
 import { MODULE_ONBOARDING } from "@/lib/dashboard/moduleOnboarding";
 import type { FeatureKey } from "@/lib/entitlements";
 import type { SetupRailMode } from "@/components/setup/setupRailMode";
@@ -99,13 +99,13 @@ export function useModuleOnboardingRail(feature: FeatureKey, orgId: string | nul
     { enabled: new Set<FeatureKey>([feature]), role, moduleStatuses, ctx },
     MODULE_ONBOARDING,
   );
-  // Admin-only, non-gating production-team nudge, injected only while incomplete (booking
-  // module only), exactly as useDashboardFirstRun does — so the banner, the dashboard rail
-  // and the checklist sheet all agree on the step set and the "N of M" count for an admin.
-  const showTeam = role === "admin" && feature === "booking_flow" && !composed.complete;
-  const steps = showTeam ? [adminTeamStep(producerCount), ...composed.steps] : composed.steps;
-  const filled = steps.filter((s) => s.done).length;
-  const total = steps.length;
+  // Admin-only, non-gating production-team nudge — same shared helper the dashboard rail uses,
+  // so the banner and the sheet cannot disagree on the step set or the "N of M" count.
+  const { steps, filled, total } = injectAdminTeamStep(composed, {
+    role,
+    bookingEnabled: feature === "booking_flow",
+    producerCount,
+  });
   const remaining = total - filled;
   const railHeader = MODULE_ONBOARDING[feature].railHeader;
   const viz = feature === "hire_orders" ? hireViz : bookingViz;

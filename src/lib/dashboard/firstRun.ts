@@ -7,11 +7,33 @@ import type {
   SamplePreviewData, WelcomeCopy,
 } from "./types";
 
+/** Whether the org has at least one producer-role member — the "Add your production team"
+ *  step's done-state. Single-sourced so `adminTeamStep` and BookingSetupRail's hand-rolled
+ *  count agree on when the nudge is satisfied. */
+export function hasProducerTeam(producerCount: number | null): boolean {
+  return (producerCount ?? 0) > 0;
+}
+
 /** The admin-only production-team nudge as a ComposedStep, so the dashboard rail (which
  *  renders ComposedStep generically) and any other consumer get title/hints/CTA for free.
  *  moduleKey is booking_flow (it rides the booking setup surface); block is null (non-gating). */
 export function adminTeamStep(producerCount: number | null): ComposedStep {
-  return { ...TEAM_STEP_META, key: TEAM_STEP_KEY, moduleKey: "booking_flow", done: (producerCount ?? 0) > 0, block: null };
+  return { ...TEAM_STEP_META, key: TEAM_STEP_KEY, moduleKey: "booking_flow", done: hasProducerTeam(producerCount), block: null };
+}
+
+/** Prepend the admin-only, non-gating production-team nudge to a composed booking step list
+ *  and return the augmented list plus its counts. The SINGLE home for this gate, so every
+ *  surface that composes booking steps (dashboard rail, Shows & Bookings banner) applies it
+ *  identically — the whole-branch review found the banner had drifted when this was inlined
+ *  per-surface. Admins only, booking module only, and only WHILE INCOMPLETE, so a complete
+ *  org's hero/rules view never over-counts. */
+export function injectAdminTeamStep(
+  composed: ComposeResult,
+  opts: { role: DashboardRole; bookingEnabled: boolean; producerCount: number | null },
+): { steps: ComposedStep[]; filled: number; total: number } {
+  const show = opts.role === "admin" && opts.bookingEnabled && !composed.complete;
+  const steps = show ? [adminTeamStep(opts.producerCount), ...composed.steps] : composed.steps;
+  return { steps, filled: steps.filter((s) => s.done).length, total: steps.length };
 }
 
 export function composeOnboarding(

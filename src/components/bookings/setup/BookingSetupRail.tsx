@@ -5,6 +5,7 @@ import { useCan } from "@/hooks/useCapabilities";
 import { useBookingSetupStatus, useInactiveArtistCount, useProducerCount } from "@/hooks/useBookingSetup";
 import { type BookingSetupStepKey } from "@/lib/bookings/setupStatus";
 import { bookingOnboarding, VIEW_AS_ARTIST_TIP, TEAM_STEP_META } from "@/lib/dashboard/moduleOnboarding";
+import { hasProducerTeam } from "@/lib/dashboard/firstRun";
 import { SETUP_BLOCK_CHIPS } from "@/lib/dashboard/setupBlocks";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -83,7 +84,7 @@ export function BookingSetupRail({ orgId, initialStep }: { orgId: string | null;
   // The team nudge is non-gating: it never enters the engine's status (setupStatus.ts), so it
   // does not affect canOffer/complete. For admins it is displayed as one extra row, so the
   // header count and the progress rail are augmented by hand here (and only here).
-  const teamDone = (producerCount ?? 0) > 0;
+  const teamDone = hasProducerTeam(producerCount);
   const doneCount = status.doneCount + (isAdmin && teamDone ? 1 : 0);
   const totalCount = status.totalCount + (isAdmin ? 1 : 0);
 

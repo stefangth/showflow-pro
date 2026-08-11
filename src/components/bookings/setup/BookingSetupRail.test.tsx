@@ -63,7 +63,7 @@ const parkedRoster: Record<string, TableSeed> = {
 };
 
 import { BookingSetupRail } from "./BookingSetupRail";
-import { bookingOnboarding, VIEW_AS_ARTIST_TIP } from "@/lib/dashboard/moduleOnboarding";
+import { bookingOnboarding, VIEW_AS_ARTIST_TIP, TEAM_STEP_META } from "@/lib/dashboard/moduleOnboarding";
 import { describeTonight, describeTonightStandalone } from "@/lib/bookings/timingCopy";
 import { BOOKING_FLOW_DEFAULTS, applyPreset, type FlowTimes } from "@/lib/bookingFlow";
 
@@ -374,5 +374,24 @@ describe("BookingSetupRail", () => {
     // hint: the reason has to be readable from the panel's own lines.
     expect(await screen.findByText(/no active artists right now/i)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /add or import artists/i })).toBeInTheDocument();
+  });
+
+  it("shows the admin the production-team row first and augments the count to 8", async () => {
+    // beforeEach seeds an admin + a blank org. The team nudge is admin-only, non-gating and the
+    // first row, so the header counts the seven engine steps plus it, and it opens by default.
+    renderWithProviders(<MemoryRouter><BookingSetupRail orgId="org-1" /></MemoryRouter>);
+    const teamToggle = await screen.findByRole("button", { name: new RegExp(TEAM_STEP_META.title) });
+    expect(teamToggle).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByText(/Set up · \d+ of 8/)).toBeInTheDocument();
+  });
+
+  it("hides the production-team row from a producer and keeps the count at seven", async () => {
+    // A producer with edit_booking_settings (default) sees the full rail, but the team nudge is
+    // admin-only, so their step set and count are unchanged from the pre-nudge seven.
+    authRef.value = { roles: ["producer"], isSuperAdmin: false };
+    renderWithProviders(<MemoryRouter><BookingSetupRail orgId="org-1" /></MemoryRouter>);
+    expect(await screen.findByText("Get your shows in")).toBeInTheDocument();
+    expect(screen.queryByText(TEAM_STEP_META.title)).not.toBeInTheDocument();
+    expect(screen.getByText(/Set up · \d+ of 7/)).toBeInTheDocument();
   });
 });

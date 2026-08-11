@@ -129,9 +129,8 @@ function blockFor(key: BookingSetupStepKey, artistAcceptance: boolean | null): B
       return artistAcceptance === true ? "offers" : null;
     case "slots":
       return "filling";
-    case "shows":
-      return null;
     default:
+      // shows/flow/eligibility/timing are all non-blocking (they never chip).
       return null;
   }
 }

@@ -130,7 +130,7 @@ export function useInactiveArtistCount(orgId: string | null, enabled: boolean): 
  *  nudge pay for the read; `enabled` is the caller's is-admin gate. Null while unread. */
 export function useProducerCount(orgId: string | null, enabled: boolean): number | null {
   const q = useQuery({
-    queryKey: ["members", orgId, "producer-count"],
+    queryKey: ["members", "producer-count", orgId],
     enabled: !!orgId && enabled,
     queryFn: () => fetchProducerCount(supabase, orgId!),
   });

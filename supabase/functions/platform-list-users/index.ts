@@ -24,7 +24,10 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       admin.from("organizations").select("id, name"),
       admin.from("artists").select("id, name, user_id, org_id"),
       admin.from("profiles").select("user_id, display_name"),
-      admin.from("org_invitations").select("org_id, email, status").eq("status", "pending"),
+      // Bounded: the user page is capped at 1000, so cap the pending-invite scan too rather
+      // than reading every pending invitation platform-wide. Only invites matching a user on
+      // this page are ever used; 5000 comfortably covers that while keeping the read finite.
+      admin.from("org_invitations").select("org_id, email, status").eq("status", "pending").limit(5000),
     ]);
     const M = (mships ?? []) as unknown as MembershipRow[];
     const orgName = new Map(((orgs ?? []) as unknown as OrgRow[]).map((o) => [o.id, o.name]));

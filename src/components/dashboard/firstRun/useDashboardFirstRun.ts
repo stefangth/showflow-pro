@@ -9,7 +9,7 @@ import { useBookingFlow } from "@/hooks/useBookingFlow";
 import { BOOKING_FLOW_DEFAULTS } from "@/lib/bookingFlow";
 import { useRailDismissed } from "@/components/setup/useRailDismissed";
 import {
-  adminTeamStep,
+  injectAdminTeamStep,
   composeArtist,
   composeOnboarding,
   welcomeCopy,
@@ -99,15 +99,14 @@ export function useDashboardFirstRun(role: DashboardRole): DashboardFirstRunStat
         ? composeArtist(artist.status, ARTIST_ONBOARDING, ctx)
         : { steps: [], complete: true, rules: [], offFooters: [] })
     : composeOnboarding({ enabled: features, role, moduleStatuses, ctx }, MODULE_ONBOARDING);
-  // The admin-only "Add your production team" nudge is prepended here, outside the engine, so
-  // it never touches composed.complete (non-gating). Only WHILE INCOMPLETE, so the
-  // complete-state hero/rules view is unaffected and never over-counts. Producers/artists
-  // never get it (role gate). `filled`/`total`/`remaining` now run over the augmented list so
-  // the progress copy counts the extra step for admins.
-  const showTeam = role === "admin" && features.has("booking_flow") && !composed.complete;
-  const steps = showTeam ? [adminTeamStep(producerCount), ...composed.steps] : composed.steps;
-  const filled = steps.filter((s) => s.done).length;
-  const total = steps.length;
+  // The admin-only "Add your production team" nudge, injected outside the engine (non-gating).
+  // injectAdminTeamStep is the single home for the gate + count so this surface, the bookings
+  // banner and the checklist sheet cannot drift apart.
+  const { steps, filled, total } = injectAdminTeamStep(composed, {
+    role,
+    bookingEnabled: features.has("booking_flow"),
+    producerCount,
+  });
   const remaining = total - filled;
 
   const welcome = welcomeCopy(role, composed.complete, ctx, { filled, total }, canEditSetup);
