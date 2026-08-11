@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { screen, fireEvent } from "@testing-library/react";
+import { screen, fireEvent, within } from "@testing-library/react";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { CockpitCastList, type CastGroup, type CastRow } from "./CockpitCastList";
@@ -118,5 +118,36 @@ describe("CockpitCastList per-row cancel confirmation", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Cancel booking" }));
     expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+});
+
+// C1 regression: DevCockpitHarness.tsx (a dev-only fixture harness, outside this WP's file
+// list) calls `<CockpitCastList groups={CAST_GROUPS} />` with none of the flow/entitlement
+// props — that call site has to keep type-checking and, independent of the type system,
+// must not throw when `Row` reads `flow.active` for every row.
+describe("CockpitCastList with no flow/entitlement props (mirrors DevCockpitHarness's call site)", () => {
+  it("renders without throwing, and degrades to the flow-off-safe defaults", async () => {
+    let result: ReturnType<typeof renderWithProviders> | undefined;
+    expect(() => {
+      result = renderWithProviders(<CockpitCastList groups={acceptedGroups()} />);
+    }).not.toThrow();
+    // Defaults to BOOKING_FLOW_DEFAULTS (active, confirmation_digest on) rather than any
+    // stripped-down "no flow" shape, so the consequence line still states something honest.
+    expect(result).toBeDefined();
+    expect(screen.getByText(/Confirm places the booking/)).toBeInTheDocument();
+
+    // The Cancel dialog also has to build without a real flow/entitlement: bookingFlowEnabled
+    // defaults to false (fail closed), so cancelBookingCopy falls back to the plain in-app
+    // claim rather than ever fabricating a digest-email sentence with no real hour behind it.
+    fireEvent.click(screen.getByRole("button", { name: /^cancel$/i }));
+    const dialog = screen.getByRole("alertdialog");
+    expect(within(dialog).getByText("Cancel Ada Lovelace's booking?")).toBeInTheDocument();
+    // The default flow (BOOKING_FLOW_DEFAULTS) still has understudy_promotion on, so that
+    // line is present too; the string this test cares about is the who-hears fallback.
+    // Scoped to the dialog: the always-shown confirm consequence line above the list
+    // legitimately DOES mention the daily summary (it reads `flow` alone, not
+    // `bookingFlowEnabled`), so an unscoped query would false-positive on that unrelated line.
+    expect(within(dialog).getByText(/The artist is notified in the app\./)).toBeInTheDocument();
+    expect(within(dialog).queryByText(/session times/i)).not.toBeInTheDocument();
   });
 });

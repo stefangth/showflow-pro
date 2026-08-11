@@ -5,7 +5,8 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import type { BookingFlow } from "@/lib/bookingFlow";
+import { BOOKING_FLOW_DEFAULTS, type BookingFlow } from "@/lib/bookingFlow";
+import { BOOKING_ENGINE_DEFAULTS } from "@/config/app.config";
 import { confirmConsequenceNote, cancelBookingCopy, SOFT_BOOKED_MEANING } from "@/lib/bookings/actionCopy";
 
 export type CastTone = "green" | "violet" | "amber";
@@ -201,17 +202,29 @@ function Row({
 
 export interface CockpitCastListProps {
   groups: CastGroup[];
-  flow: CockpitCastListFlow;
+  /** Optional so a caller with no real org flow to read (the dev cockpit harness,
+   *  `src/pages/DevCockpitHarness.tsx`, which renders fixture-only cast groups) still
+   *  type-checks and renders instead of crashing on `flow.active`. Defaults to
+   *  `BOOKING_FLOW_DEFAULTS`, the same fallback `ShowDateDetailSheet.tsx` itself uses when
+   *  its own flow query hasn't resolved yet. */
+  flow?: CockpitCastListFlow;
   /** The org's actual booking_flow entitlement (not the module-gate's super-admin-exempt
    *  read) — feeds cancelBookingCopy's who-hears line via scheduleChangeNote, which makes a
-   *  factual claim about what will happen, not a permission check. */
-  bookingFlowEnabled: boolean;
-  confirmationDigestHour: number;
+   *  factual claim about what will happen, not a permission check. Defaults to `false`
+   *  (fail closed) when the caller has no real entitlement to pass. */
+  bookingFlowEnabled?: boolean;
+  /** Defaults to the canonical fallback hour when the caller has no resolved org setting. */
+  confirmationDigestHour?: number;
 }
 
 /** The cockpit Cast tab: one card per group (main cast, understudies), each with
  *  a count header and artist/open-slot rows. Matches the prototype's Cast panel. */
-export function CockpitCastList({ groups, flow, bookingFlowEnabled, confirmationDigestHour }: CockpitCastListProps) {
+export function CockpitCastList({
+  groups,
+  flow = BOOKING_FLOW_DEFAULTS,
+  bookingFlowEnabled = false,
+  confirmationDigestHour = BOOKING_ENGINE_DEFAULTS.confirmation_digest_hour_berlin,
+}: CockpitCastListProps) {
   // Rendered once for the whole list, not per row: every accepted row's Confirm button does
   // the same thing, so repeating this line once per row would just be noise.
   const hasConfirmable = groups.some((g) => g.rows.some((r) => r.status === "accepted" && r.onConfirm));
