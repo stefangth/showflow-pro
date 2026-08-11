@@ -81,6 +81,11 @@ export const bookingOnboarding: ModuleOnboardingDef<BookingSetupStepKey> = {
     body: "Dates keep syncing and you can edit them now. These are what the first booking needs.",
   },
   steps: {
+    // First in the org's actual sequence: slots, cast priorities and eligibility all read
+    // from the shows already in the catalog, so a blank org has to clear this one before any
+    // of them can mean anything. No `ctaCapability`: both admins and producers can add shows
+    // via ProductionsPage, so the CTA should always render.
+    shows: { title: STEP_TITLES.shows, todoHint: "Sync from Airtable, import a sheet, or add a show by hand.", doneHint: "Your shows are in.", ctaLabel: "Add a show", ctaRoute: ROUTES.PRODUCTIONS },
     // Deep-linked, like the coverage links in LadderStep/EligibilityStep: the flow control
     // lives in Settings, Booking flow, and a bare ROUTES.SETTINGS opens Organization for an
     // admin and Scheduling for a producer, so "Choose flow" landed on a pane without it.

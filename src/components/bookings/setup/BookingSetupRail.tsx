@@ -10,6 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { SetupStepRow } from "@/components/setup/SetupStepRow";
 import { useRailDismissed } from "@/components/setup/useRailDismissed";
+import { ShowsStep } from "./ShowsStep";
 import { FlowStep } from "./FlowStep";
 import { PeopleStep } from "./PeopleStep";
 import { SlotsStep } from "./SlotsStep";
@@ -44,7 +45,7 @@ export function BookingSetupRail({ orgId, initialStep }: { orgId: string | null;
   const { roles, isSuperAdmin } = useAuth();
   const { status, coverage, artistCount, isLoading } = useBookingSetupStatus(orgId);
   const [, dismiss] = useRailDismissed("bookingSetup", orgId);
-  const [open, setOpen] = useState<BookingSetupStepKey | null>(initialStep ?? "flow");
+  const [open, setOpen] = useState<BookingSetupStepKey | null>(initialStep ?? "shows");
   // `!isLoading` is load-bearing, not belt-and-braces: an unread roster is reported
   // outstanding (the engine treats a null count as 0), so this is true for every org for the
   // first frame, and firing the read there would defeat the gate for all of them. Waiting
@@ -107,6 +108,7 @@ export function BookingSetupRail({ orgId, initialStep }: { orgId: string | null;
               expanded={open === s.key}
               onToggle={() => toggle(s.key)}
             >
+              {s.key === "shows" && <ShowsStep />}
               {s.key === "flow" && <FlowStep orgId={orgId} onDone={() => setOpen("people")} />}
               {s.key === "people" && (
                 <PeopleStep count={artistCount} inactiveCount={inactiveArtistCount} />
