@@ -60,20 +60,16 @@ export async function fetchSkillEligibleArtistIds(
   return out;
 }
 
-/** The show eligibility gate: union of show-level (show+city) and date-level cast
- *  rows, resolved to artist ids. Null = no gate rows at all = unrestricted.
- *
- *  ENGINE-PARITY TWIN of `supabase/functions/_shared/eligibility.ts`
- *  `fetchGateArtistIds` — same tables (`show_cast_eligibility` when a city is
- *  given, `show_date_cast_eligibility` always, resolved through `cast_members`),
- *  same null-when-empty rule. NOT mirror-managed, so any change to this logic
- *  must be made in both by hand. Consumed by `fetchTierLadderCounts` so the
- *  client-side tier-ladder counts apply the same gate the engine (open-offer-tier)
- *  applies before offering — see that file's waterfall comment. */
-export async function fetchGateArtistIds(
+/** The show eligibility gate's cast ids: the deduped union of show-level (show+city)
+ *  and date-level cast-eligibility rows. This is the single client-side home for the
+ *  gate's cast-source semantics — `fetchGateArtistIds` (tier-ladder counts) and
+ *  `useEligibleArtists` (direct-book list) both resolve their cast set through it, so
+ *  a change here reaches both. The edge keeps its own copy (`_shared/eligibility.ts`,
+ *  a different runtime/client), so cast-source changes are made in exactly two places. */
+export async function fetchGateCastIds(
   client: SupabaseClient<Database>,
   args: { showId: string; cityId: string | null; showDateId: string },
-): Promise<Set<string> | null> {
+): Promise<string[]> {
   const castIds: string[] = [];
   if (args.cityId) {
     const { data: showCasts, error: e1 } = await client
@@ -90,8 +86,22 @@ export async function fetchGateArtistIds(
     .eq("show_date_id", args.showDateId);
   if (e2) throw e2;
   for (const r of dateCasts ?? []) castIds.push(r.cast_id);
+  return [...new Set(castIds)];
+}
 
-  const uniq = [...new Set(castIds)];
+/** The show eligibility gate: the gate cast ids (see fetchGateCastIds) resolved to
+ *  artist ids. Null = no gate rows at all = unrestricted.
+ *
+ *  ENGINE-PARITY TWIN of `supabase/functions/_shared/eligibility.ts`
+ *  `fetchGateArtistIds` — same null-when-empty rule and cast-members resolution.
+ *  NOT mirror-managed, so any change must be made in both by hand. Consumed by
+ *  `fetchTierLadderCounts` so the client-side tier-ladder counts apply the same gate
+ *  the engine (open-offer-tier) applies before offering — see that file's waterfall. */
+export async function fetchGateArtistIds(
+  client: SupabaseClient<Database>,
+  args: { showId: string; cityId: string | null; showDateId: string },
+): Promise<Set<string> | null> {
+  const uniq = await fetchGateCastIds(client, args);
   if (uniq.length === 0) return null;
 
   const { data: members, error: e3 } = await client
