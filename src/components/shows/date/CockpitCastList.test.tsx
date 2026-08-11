@@ -113,6 +113,28 @@ describe("CockpitCastList per-row cancel confirmation", () => {
     expect(screen.queryByText("Cancel Ada Lovelace's booking?")).not.toBeInTheDocument();
   });
 
+  it("keeps the Cancel affordance on a booked row even when it arrives without a name, falling back to generic copy", () => {
+    // Regression: the Cancel button + dialog used to be gated on the cancel COPY being
+    // non-null, and the copy was only built when `row.name` was present. A booked row with
+    // an onCancel handler but no name (defensive: booked rows normally always have one)
+    // therefore silently lost its Cancel control. The affordance now keys on `onCancel`
+    // alone, and the copy degrades to a generic name.
+    const onCancel = vi.fn();
+    renderWithProviders(
+      <CockpitCastList
+        groups={acceptedGroups({ name: undefined, onCancel })}
+        flow={classic}
+        bookingFlowEnabled
+        confirmationDigestHour={21}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /^cancel$/i }));
+    const dialog = screen.getByRole("alertdialog");
+    expect(within(dialog).getByText("Cancel this artist's booking?")).toBeInTheDocument();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Cancel booking" }));
+    expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+
   it("omits the understudy line when understudy promotion is off, and fires cancel only on explicit confirm", () => {
     const onCancel = vi.fn();
     renderWithProviders(

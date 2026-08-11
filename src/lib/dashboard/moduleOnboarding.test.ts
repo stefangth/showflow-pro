@@ -5,6 +5,7 @@ import {
   MODULE_ONBOARDING,
   VIEW_AS_ARTIST_TIP,
   PRODUCER_ROLE_NOTE,
+  PRODUCER_ROLE_RULE_TITLE,
   ROLE_EXPLAINER_LINK_LABEL,
   ROLE_EXPLAINER_LINK_ROUTE,
   bookingOnboarding,
@@ -422,11 +423,15 @@ it("gives a producer a reachable explanation of their role, absent for admin", (
   const producerRules = bookingOnboarding.rules("producer", ctx);
   const explainer = producerRules.find((r) => r.hint === PRODUCER_ROLE_NOTE);
   expect(explainer).toBeDefined();
-  expect(explainer!.title).toBe(ROLE_EXPLAINER_LINK_LABEL);
+  // The rail renders rules as static title + hint (no href), so the title is a declarative
+  // phrase, NOT the clickable link label: a CTA-worded title with nothing to click reads as
+  // a broken affordance. The real link lives on BookingProducerWaitingCard.
+  expect(explainer!.title).toBe(PRODUCER_ROLE_RULE_TITLE);
+  expect(explainer!.title).not.toBe(ROLE_EXPLAINER_LINK_LABEL);
 
   const adminRules = bookingOnboarding.rules("admin", ctx);
   expect(adminRules.some((r) => r.hint === PRODUCER_ROLE_NOTE)).toBe(false);
-  expect(adminRules.some((r) => r.title === ROLE_EXPLAINER_LINK_LABEL)).toBe(false);
+  expect(adminRules.some((r) => r.title === PRODUCER_ROLE_RULE_TITLE)).toBe(false);
 });
 
 it("carries the producer role explainer under a direct-book org too", () => {
@@ -444,6 +449,7 @@ it("points the role explainer link at Settings, Documentation", () => {
 it("keeps the producer role note dash free", () => {
   expect(PRODUCER_ROLE_NOTE).not.toMatch(/[—–]/);
   expect(ROLE_EXPLAINER_LINK_LABEL).not.toMatch(/[—–]/);
+  expect(PRODUCER_ROLE_RULE_TITLE).not.toMatch(/[—–]/);
 });
 
 // P0.1 regression pin: ROLE_DESCRIPTIONS.producer is consumed elsewhere in this

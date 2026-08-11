@@ -202,6 +202,12 @@ export function ShowDateFormDialog({
   const changeNote = mode === "edit" && !synced && flowTimes !== undefined && !bookingFlowPending
     ? scheduleChangeNote(bookingFlowEnabled, flow, flowTimes.confirmationDigestHour)
     : null;
+  // A dialog gets ONE DialogDescription: Radix wires it to the dialog's aria-describedby, and
+  // two would emit two ids. changeNote is edit-only and DATE_SOURCE_NOTE create-only, so at
+  // most one is ever non-null today, but selecting the single description here makes that a
+  // structural guarantee rather than a coincidence a later edit to changeNote's mode gate
+  // could quietly break.
+  const dialogDescription = mode === "create" ? DATE_SOURCE_NOTE : changeNote;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -211,8 +217,7 @@ export function ShowDateFormDialog({
             {mode === "edit" ? "Edit date" : "New date"}
             {synced && <Badge variant="secondary" className="bg-muted text-muted-foreground">Synced from Airtable</Badge>}
           </DialogTitle>
-          {changeNote && <DialogDescription className="text-xs">{changeNote}</DialogDescription>}
-          {mode === "create" && <DialogDescription className="text-xs">{DATE_SOURCE_NOTE}</DialogDescription>}
+          {dialogDescription && <DialogDescription className="text-xs">{dialogDescription}</DialogDescription>}
         </DialogHeader>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-1.5">

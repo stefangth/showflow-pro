@@ -23,10 +23,17 @@ vi.mock("@/features/auth/AuthContext", () => ({
 
 // list_org_admin_names is fetched through this hook; stubbed rather than routed through the
 // real supabase singleton (never vi.mock the client). `namesRef` lets each test pick its own
-// admin roster without a new mock factory.
-const { namesRef } = vi.hoisted(() => ({ namesRef: { value: [] as string[] } }));
+// admin roster without a new mock factory. `adminNamesSpy` records the (orgId, options) the
+// card passes, so the enabled-gating (fetch only while waiting on an admin) can be asserted.
+const { namesRef, adminNamesSpy } = vi.hoisted(() => ({
+  namesRef: { value: [] as string[] },
+  adminNamesSpy: vi.fn(),
+}));
 vi.mock("@/hooks/useOrgAdminNames", () => ({
-  useOrgAdminNames: () => ({ data: namesRef.value }),
+  useOrgAdminNames: (orgId: string | undefined, options?: { enabled?: boolean }) => {
+    adminNamesSpy(orgId, options);
+    return { data: namesRef.value };
+  },
 }));
 
 import { useCan } from "@/hooks/useCapabilities";
@@ -60,6 +67,7 @@ beforeEach(() => {
   vi.mocked(useCan).mockReturnValue(true);
   authRef.value.role = "producer";
   namesRef.value = [];
+  adminNamesSpy.mockClear();
 });
 
 describe("BookingProducerWaitingCard", () => {
@@ -211,6 +219,18 @@ describe("BookingProducerWaitingCard", () => {
           "Nothing stops you adding dates and sessions. An admin has to finish setup before anyone can be booked.",
         ),
       ).toBeInTheDocument();
+    });
+
+    // Efficiency: the admin names feed only the "waiting on your admin" body, so the query is
+    // gated on that state. When the roster is the producer's own move, the fetch is skipped.
+    it("fetches admin names only while waiting on an admin", () => {
+      render(steps(), 0); // admin-gated blockers outstanding -> waiting on admin
+      expect(adminNamesSpy).toHaveBeenLastCalledWith("org-1", { enabled: true });
+    });
+
+    it("does not fetch admin names when the roster is the producer's own move", () => {
+      render(steps({ slots: true, ladder: true }), 0); // only the roster left, and canAdd -> your move
+      expect(adminNamesSpy).toHaveBeenLastCalledWith("org-1", { enabled: false });
     });
   });
 

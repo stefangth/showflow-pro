@@ -285,4 +285,29 @@ describe("ShowDateFormDialog", () => {
     renderWithProviders(<ShowDateFormDialog open onOpenChange={() => {}} mode="edit" showDate={editShowDate} />);
     expect(screen.queryByText(/You can add a show date by hand here/)).not.toBeInTheDocument();
   });
+
+  // Radix wires DialogDescription to the dialog's aria-describedby. Two descriptions in one
+  // dialog would either emit two ids or (worse) two nodes sharing one id. The create-only
+  // dates-source note and the edit-only schedule note are mutually exclusive, so a single
+  // description must back aria-describedby: assert the referenced id resolves to exactly one
+  // node in each mode.
+  const describedByCount = (baseElement: HTMLElement) => {
+    const dialog = baseElement.querySelector('[role="dialog"]');
+    const id = dialog?.getAttribute("aria-describedby");
+    if (!id) return 0;
+    return baseElement.querySelectorAll(`[id="${id}"]`).length;
+  };
+
+  it("backs the dialog's aria-describedby with exactly one description in edit mode", () => {
+    mockFlow = { ...BOOKING_FLOW_DEFAULTS, confirmation_digest: true };
+    mockFlowTimes = { windowHours: 48, offerDigestHour: 19, confirmationDigestHour: 21 };
+    const { baseElement } = renderWithProviders(<ShowDateFormDialog open onOpenChange={() => {}} mode="edit" showDate={editShowDate} />);
+    expect(describedByCount(baseElement)).toBe(1);
+  });
+
+  it("backs the dialog's aria-describedby with exactly one description in create mode", () => {
+    const { baseElement } = renderWithProviders(<ShowDateFormDialog open onOpenChange={() => {}} mode="create" />);
+    expect(describedByCount(baseElement)).toBe(1);
+    expect(screen.getByText(/You can add a show date by hand here/)).toBeInTheDocument();
+  });
 });

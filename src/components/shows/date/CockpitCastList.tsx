@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { IconTooltip } from "@/components/common/IconTooltip";
 import {
@@ -109,15 +109,23 @@ function Row({
   // Only an explicit active===false pauses promotion, matching the same convention used
   // throughout bookingFlow.ts and actionCopy.ts.
   const understudyPromotionEnabled = flow.active !== false && flow.understudy_promotion;
-  const cancelCopy = row.name
-    ? cancelBookingCopy({
-        artistName: row.name,
+  // Memoised, not rebuilt on every render: the inputs are stable for a given row, and these
+  // strings are only ever read inside the confirmation dialog below, so recomputing them each
+  // time a sibling row's dialog opens/closes (or any parent re-render) is pure waste. Falls
+  // back to a generic name so a booked row that somehow arrives without one still gets
+  // coherent copy — the Cancel affordance keys on `onCancel` (below), never on this being
+  // non-null, so it can no longer silently vanish just because `name` is absent.
+  const cancelCopy = useMemo(
+    () =>
+      cancelBookingCopy({
+        artistName: row.name ?? "this artist",
         understudyPromotionEnabled,
         bookingFlowEnabled,
         flow,
         confirmationDigestHour,
-      })
-    : null;
+      }),
+    [row.name, understudyPromotionEnabled, bookingFlowEnabled, flow, confirmationDigestHour],
+  );
 
   return (
     <div
@@ -157,7 +165,7 @@ function Row({
             {row.slotActionLabel}
           </button>
         )}
-        {!row.open && row.onCancel && cancelCopy && (
+        {!row.open && row.onCancel && (
           <>
             <button
               type="button"

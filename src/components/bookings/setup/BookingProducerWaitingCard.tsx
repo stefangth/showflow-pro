@@ -40,13 +40,7 @@ export function BookingProducerWaitingCard({
   // producer_can_add_artists off this viewer has no add control anywhere, so the roster is
   // an admin's job too and the card must not claim otherwise.
   const canAdd = useCan("add_artists");
-  // Real names for the waiting body: any member (incl. producer) may call
-  // list_org_admin_names, unlike the admin-guarded list_org_members. adminAskLine returns
-  // null with no admin names yet (nobody has set a display name), so the fallback below
-  // keeps the card's original generic wording rather than going blank.
   const { currentOrg, hasRole } = useAuth();
-  const { data: adminNames } = useOrgAdminNames(currentOrg?.id);
-  const askLine = adminAskLine(adminNames ?? []);
   const peopleOutstanding = steps.some((s) => s.key === "people" && !s.done);
   const outstanding = steps.filter((s) => !s.done && s.block !== null && s.key !== "people");
   // "Your move" is earned, not assumed: the roster has to be the only thing left AND
@@ -55,6 +49,14 @@ export function BookingProducerWaitingCard({
   // this surface for a non-editor the moment canOffer flips true.
   const yourMove = outstanding.length === 0 && peopleOutstanding && canAdd;
   const waitingOnAdmin = !yourMove;
+  // Real names for the waiting body: any member (incl. producer) may call
+  // list_org_admin_names, unlike the admin-guarded list_org_members. adminAskLine returns
+  // null with no admin names yet (nobody has set a display name), so the fallback below
+  // keeps the card's original generic wording rather than going blank. Fetched ONLY while
+  // waiting on an admin: the "Your move" branch never renders askLine, so gating the query
+  // on `waitingOnAdmin` skips an RPC round-trip whenever the roster is the producer's own job.
+  const { data: adminNames } = useOrgAdminNames(currentOrg?.id, { enabled: waitingOnAdmin });
+  const askLine = adminAskLine(adminNames ?? []);
   return (
     <Card>
       <CardContent className="space-y-3 p-4">

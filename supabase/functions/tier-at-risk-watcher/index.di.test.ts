@@ -1691,3 +1691,50 @@ Deno.test("tier-at-risk-watcher DI: a per-recipient getUserById throw does not a
   const emailCalls = invokeCalls.filter((c) => c.name === "send-transactional-email");
   assertEquals(emailCalls.length, 1, "the second tier's email still goes out after the first tier's lookup threw");
 });
+
+Deno.test("tier-at-risk-watcher DI: the same recipient's email is looked up once across tiers, but emailed per tier", async () => {
+  // Efficiency (code review): getUserById is an auth-admin round-trip, and the same producer
+  // is a recipient for many at-risk tiers in one scan. The lookup is cached per distinct user
+  // for the whole scan, so two at-risk tiers sharing one recipient resolve the address once,
+  // while each tier still sends its own email.
+  const tierA = "tier-dedupe-a";
+  const tierB = "tier-dedupe-b";
+  const sdA = "sd-dedupe-a";
+  const sdB = "sd-dedupe-b";
+  const org = "00000000-0000-0000-0000-000000000001";
+
+  const { deps, invokeCalls } = makeFakeDeps({
+    tables: {
+      app_settings: makeBaseSettings(),
+      show_date_offer_tiers: {
+        data: [makeTier(tierA, sdA), makeTier(tierB, sdB)],
+        error: null,
+      },
+      notifications: { data: [], error: null },
+      show_dates: [
+        { when: { id: sdA }, data: makeShowDate(sdA, "MusicalA", "MainShow", "2026-07-01", org, 2, 0) },
+        { when: { id: sdB }, data: makeShowDate(sdB, "MusicalB", "MainShow", "2026-07-01", org, 2, 0) },
+      ],
+      bookings: [
+        { when: { show_date_id: sdA }, data: [{ status: "suggested" }] }, // 1 < 2 → at-risk
+        { when: { show_date_id: sdB }, data: [{ status: "suggested" }] }, // 1 < 2 → at-risk
+      ],
+    },
+    // The SAME producer is the recipient for both tiers.
+    rpcs: { resolve_show_assignments: { data: [{ producer_user_id: "prod-1" }], error: null } },
+  });
+
+  // Count getUserById calls (the fake does not record them in `calls`).
+  let lookupCount = 0;
+  (deps.admin.auth.admin as unknown as { getUserById: (id: string) => Promise<unknown> }).getUserById = (id: string) => {
+    lookupCount += 1;
+    return Promise.resolve({ data: { user: { id, email: `${id}@example.com` } }, error: null });
+  };
+
+  const res = await handle(makeRequest({ headers: CRON_OK }), deps);
+  assertEquals(res.status, 200);
+
+  assertEquals(lookupCount, 1, "prod-1's email is resolved once, not once per tier");
+  const emailCalls = invokeCalls.filter((c) => c.name === "send-transactional-email");
+  assertEquals(emailCalls.length, 2, "each at-risk tier still emails the recipient");
+});

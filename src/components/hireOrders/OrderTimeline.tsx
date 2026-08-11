@@ -17,9 +17,9 @@ const STEPS = ["Created", "Issued to artist", "Seen", "Awaiting countersign", "C
 
 /**
  * Index of the currently-active (amber) step for a given status. Steps before
- * it read as done, steps after as upcoming. "Seen" (index 2) is deliberately
- * excluded from this progression — see the `seenAt` gate in the render loop
- * below, where it is reached independently of `active`.
+ * it read as done, steps after as upcoming. "Seen" (index 2) is only partly a
+ * positional milestone — see the render loop below, where its reached-state
+ * combines `active` with `seenAt`.
  *   draft / ready / void  -> Created is the live milestone
  *   issued                -> Awaiting countersign is live (issued step is done)
  *   countersigned         -> Countersigned reached (terminal)
@@ -53,17 +53,23 @@ function stepTimestamp(
  * Vertical five-step status timeline for a hire order. The active step is amber
  * (per the V3 design), completed steps show a check, upcoming steps are muted.
  *
- * "Seen" is the one step whose reached state does NOT follow from `index <
- * active`: an issued order sits at "Awaiting countersign" (active) whether or
- * not the artist has opened it, so Seen's own checkmark is gated on `seenAt`
- * being present, not on its position ahead of the active step.
+ * "Seen" (index 2) is the one step whose reached state does not follow from
+ * `index < active` alone. It is reached when the order has progressed past
+ * issuance AND either it has moved beyond Seen (a countersigned order, active 4,
+ * has self-evidently been seen in the workflow sense even when `viewed_at` was
+ * never stamped — every pre-`viewed_at` order and every manual-countersign flow)
+ * or the artist actually opened it in-app (`seenAt` present). It must never read
+ * as reached before the order was issued: a void order sits at active 0 yet may
+ * still carry a `seenAt` from before it was voided.
  */
 export function OrderTimeline({ status, createdAt, issuedAt, seenAt, countersignedAt }: Props) {
   const active = activeStepIndex(status);
   return (
     <ol className="space-y-0" aria-label="Order status timeline">
       {STEPS.map((label, i) => {
-        const done = i === 2 ? seenAt != null : i < active;
+        // active is only ever 0, 3 or 4 (see activeStepIndex): `active > 2` means the order
+        // was issued, `active > 3` means it was countersigned (past Seen).
+        const done = i === 2 ? active > 2 && (active > 3 || seenAt != null) : i < active;
         const isActive = i === active;
         const last = i === STEPS.length - 1;
         const ts = stepTimestamp(i, { createdAt, issuedAt, seenAt, countersignedAt });

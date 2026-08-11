@@ -96,6 +96,11 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   // Entitlement cache mirroring flowByOrg: several open tiers in one scan can
   // belong to the same org, and entitlement does not change mid-scan.
   const entitledByOrg = new Map<string, boolean>()
+  // Recipient email cache: the same producer is a recipient across many at-risk tiers in one
+  // scan, and getUserById is an auth-admin round-trip. Only SUCCESSFUL lookups are cached, so
+  // a transient lookup failure on one tier is retried on the next rather than being poisoned
+  // for the rest of the scan (matching the per-(tier,uid) resilience the DI tests pin).
+  const emailByUid = new Map<string, string>()
 
   for (const row of openTiers as Array<{ id: string; show_date_id: string; tier: number }>) {
     // Resolve show date + show meta (including slot capacity columns)
@@ -247,8 +252,15 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     for (const uid of newRecipientIds) {
       if (notificationInsertFailed) continue // no notification was written for this pair — don't email either
       try {
-        const { data: userResp } = await admin.auth.admin.getUserById(uid)
-        const recipientEmail = userResp?.user?.email
+        // Resolve the recipient's email at most once per distinct user across the whole scan.
+        // A cache hit skips the getUserById round-trip; a miss looks it up and caches only a
+        // real address, so a failed/absent lookup stays uncached and a later tier can retry.
+        let recipientEmail = emailByUid.get(uid)
+        if (recipientEmail === undefined) {
+          const { data: userResp } = await admin.auth.admin.getUserById(uid)
+          recipientEmail = userResp?.user?.email ?? undefined
+          if (recipientEmail) emailByUid.set(uid, recipientEmail)
+        }
         if (!recipientEmail) continue
         await deps.sendEmail({
           template_name: 'tier-at-risk',
