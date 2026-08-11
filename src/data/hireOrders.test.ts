@@ -8,6 +8,7 @@ import {
   fetchAwaitingCountersignCount,
   invokeHireOrderAction,
   updateHireOrderStatus,
+  markHireOrderSeen,
   updateHireOrderDraft,
   updateHireOrderReview,
   fetchShowflowLayerForOrder,
@@ -346,6 +347,23 @@ describe("updateHireOrderStatus", () => {
   it("throws on a supabase error", async () => {
     const fake = createFakeSupabase({ hire_orders: { data: null, error: { message: "boom" } } });
     await expect(updateHireOrderStatus(fake as never, "ho-1", "void")).rejects.toBeTruthy();
+  });
+});
+
+describe("markHireOrderSeen", () => {
+  it("calls the mark_hire_order_seen RPC with p_order", async () => {
+    const fake = createFakeSupabase({ "rpc:mark_hire_order_seen": { data: null, error: null } });
+    await markHireOrderSeen(fake as never, "ho-1");
+    expect(fake.calls).toContainEqual({
+      table: "rpc:mark_hire_order_seen",
+      method: "rpc",
+      args: [{ p_order: "ho-1" }],
+    });
+  });
+
+  it("throws on a supabase error", async () => {
+    const fake = createFakeSupabase({ "rpc:mark_hire_order_seen": { data: null, error: { message: "forbidden" } } });
+    await expect(markHireOrderSeen(fake as never, "ho-1")).rejects.toBeTruthy();
   });
 });
 

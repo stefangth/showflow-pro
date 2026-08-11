@@ -19,6 +19,7 @@ import {
   invokeHireOrderAction,
   updateHireOrderReview,
   updateHireOrderStatus,
+  markHireOrderSeen,
   updateHireOrderDraft,
   bulkImportHireOrders,
   createArtistLite,
@@ -420,6 +421,22 @@ export function useVoidHireOrder() {
     },
     onError: (error: Error) => {
       toast.error(error.message || "Could not void hire order");
+    },
+  });
+}
+
+/** Stamp the order as seen by the linked artist (idempotent RPC; the DB scopes
+ *  it to the linked artist on an issued/countersigned order). Fired from a
+ *  guarded effect on first view — silent both ways so opening a page never
+ *  pops a toast at the artist, and a failure here (e.g. a stale/edge race)
+ *  should not be treated as a user-facing error. */
+export function useMarkHireOrderSeen() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => markHireOrderSeen(supabase, id),
+    onSuccess: () => invalidateHireOrders(qc),
+    onError: (error: Error) => {
+      console.error("Could not mark hire order as seen", error);
     },
   });
 }

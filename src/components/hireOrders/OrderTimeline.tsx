@@ -6,16 +6,20 @@ interface Props {
   status: string;
   createdAt?: string | null;
   issuedAt?: string | null;
+  /** When the linked artist first opened this order in the app (`hire_orders.viewed_at`).
+   *  Drives the "Seen" step below — absent for a not-yet-opened order. */
+  seenAt?: string | null;
   countersignedAt?: string | null;
 }
 
-/** The four lifecycle milestones, in order. Deliberately four (not the mock's
- *  five) — v1 drops "Filed to settlement". */
-const STEPS = ["Created", "Issued to artist", "Awaiting countersign", "Countersigned"] as const;
+/** The five lifecycle milestones, in order. */
+const STEPS = ["Created", "Issued to artist", "Seen", "Awaiting countersign", "Countersigned"] as const;
 
 /**
  * Index of the currently-active (amber) step for a given status. Steps before
- * it read as done, steps after as upcoming.
+ * it read as done, steps after as upcoming. "Seen" (index 2) is deliberately
+ * excluded from this progression — see the `seenAt` gate in the render loop
+ * below, where it is reached independently of `active`.
  *   draft / ready / void  -> Created is the live milestone
  *   issued                -> Awaiting countersign is live (issued step is done)
  *   countersigned         -> Countersigned reached (terminal)
@@ -23,9 +27,9 @@ const STEPS = ["Created", "Issued to artist", "Awaiting countersign", "Countersi
 function activeStepIndex(status: string): number {
   switch (status) {
     case "issued":
-      return 2;
-    case "countersigned":
       return 3;
+    case "countersigned":
+      return 4;
     default:
       return 0;
   }
@@ -34,25 +38,35 @@ function activeStepIndex(status: string): number {
 /** A per-step timestamp shown beneath the label, when available. */
 function stepTimestamp(
   index: number,
-  { createdAt, issuedAt, countersignedAt }: Omit<Props, "status">,
+  { createdAt, issuedAt, seenAt, countersignedAt }: Omit<Props, "status">,
 ): string | null {
-  const raw = index === 0 ? createdAt : index === 1 ? issuedAt : index === 3 ? countersignedAt : null;
+  const raw =
+    index === 0 ? createdAt :
+    index === 1 ? issuedAt :
+    index === 2 ? seenAt :
+    index === 4 ? countersignedAt :
+    null;
   return raw ? formatTimestampDMY(raw) : null;
 }
 
 /**
- * Vertical four-step status timeline for a hire order. The active step is amber
+ * Vertical five-step status timeline for a hire order. The active step is amber
  * (per the V3 design), completed steps show a check, upcoming steps are muted.
+ *
+ * "Seen" is the one step whose reached state does NOT follow from `index <
+ * active`: an issued order sits at "Awaiting countersign" (active) whether or
+ * not the artist has opened it, so Seen's own checkmark is gated on `seenAt`
+ * being present, not on its position ahead of the active step.
  */
-export function OrderTimeline({ status, createdAt, issuedAt, countersignedAt }: Props) {
+export function OrderTimeline({ status, createdAt, issuedAt, seenAt, countersignedAt }: Props) {
   const active = activeStepIndex(status);
   return (
     <ol className="space-y-0" aria-label="Order status timeline">
       {STEPS.map((label, i) => {
-        const done = i < active;
+        const done = i === 2 ? seenAt != null : i < active;
         const isActive = i === active;
         const last = i === STEPS.length - 1;
-        const ts = stepTimestamp(i, { createdAt, issuedAt, countersignedAt });
+        const ts = stepTimestamp(i, { createdAt, issuedAt, seenAt, countersignedAt });
         return (
           <li key={label} className="flex gap-3">
             {/* Dot + connector rail */}

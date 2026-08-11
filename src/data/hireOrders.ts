@@ -591,6 +591,20 @@ export async function updateHireOrderStatus(
   if (error) throw error;
 }
 
+/**
+ * Stamp `hire_orders.viewed_at` the first time the linked artist opens an
+ * issued/countersigned order in the app. The RPC scopes the write to the
+ * linked artist + eligible statuses and no-ops once `viewed_at` is already
+ * set, so this is safe to call idempotently from a page-load effect.
+ */
+export async function markHireOrderSeen(
+  client: SupabaseClient<Database>,
+  id: string,
+): Promise<void> {
+  const { error } = await client.rpc("mark_hire_order_seen", { p_order: id });
+  if (error) throw error;
+}
+
 export interface SignHireOrderArgs {
   orgId: string;
   orderId: string;
