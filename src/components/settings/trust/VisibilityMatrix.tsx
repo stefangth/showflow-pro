@@ -47,6 +47,23 @@ const TONE_BADGE_CLASS: Partial<Record<AccessTone, string>> = {
   none: "border-muted-foreground/80 text-muted-foreground",
 };
 
+/** The one footnote this table has. Its id is what the qualified cells point
+ *  at, so a screen-reader user who lands on the cross-organisation cell is
+ *  read the exception note with it rather than meeting the unqualified claim
+ *  and only finding the qualifier if they keep going past the table. */
+const EXCEPTIONS_NOTE_ID = "trust-matrix-cross-org-exceptions";
+
+/** The marker that ties a cell to that footnote. `aria-hidden` because the
+ *  association is already carried by `aria-describedby`: without it a screen
+ *  reader reads a bare "1" at the end of the sentence and then the whole note. */
+function ExceptionsMark() {
+  return (
+    <sup aria-hidden="true" className="ml-0.5 font-mono text-[10px]">
+      1
+    </sup>
+  );
+}
+
 function ToneBadge({ tone, children }: { tone: AccessTone; children: string }) {
   return (
     <Badge variant={TONE_BADGE_VARIANT[tone]} className={cn("whitespace-nowrap", TONE_BADGE_CLASS[tone])}>
@@ -212,7 +229,13 @@ export function VisibilityMatrix() {
                   <td className="py-3 pr-3">
                     <ToneBadge tone={cell.tone}>{cell.value}</ToneBadge>
                   </td>
-                  <td className="py-3 text-xs leading-4 text-muted-foreground">{cell.note}</td>
+                  <td
+                    className="py-3 text-xs leading-4 text-muted-foreground"
+                    aria-describedby={cell.qualifiedByExceptionsNote ? EXCEPTIONS_NOTE_ID : undefined}
+                  >
+                    {cell.note}
+                    {cell.qualifiedByExceptionsNote ? <ExceptionsMark /> : null}
+                  </td>
                 </tr>
               );
             })}
@@ -233,7 +256,13 @@ export function VisibilityMatrix() {
                 <span className="text-sm font-medium">{row.object}</span>
                 <ToneBadge tone={cell.tone}>{cell.value}</ToneBadge>
               </div>
-              <p className="mt-1.5 text-xs leading-4 text-muted-foreground">{cell.note}</p>
+              <p
+                className="mt-1.5 text-xs leading-4 text-muted-foreground"
+                aria-describedby={cell.qualifiedByExceptionsNote ? EXCEPTIONS_NOTE_ID : undefined}
+              >
+                {cell.note}
+                {cell.qualifiedByExceptionsNote ? <ExceptionsMark /> : null}
+              </p>
             </div>
           );
         })}
@@ -245,10 +274,25 @@ export function VisibilityMatrix() {
        *  3-15 words everywhere else it squeezed the Data column to 147px at a
        *  1440px viewport and wrapped five of the eight row labels onto two and
        *  three lines, running the table 108px taller. It is the same sentence
-       *  and it is still published — one row below, where it has the column's
-       *  full width to be read in, and where it serves the restacked card list
-       *  as well as the table. */}
-      <p className="text-xs leading-4 text-muted-foreground">{CROSS_ORG_EXCEPTIONS_NOTE}</p>
+       *  and it is still published — one row below, where it has room to be
+       *  read, and where it serves the restacked card list as well as the
+       *  table.
+       *
+       *  It is drawn AS a footnote rather than as another paragraph: the
+       *  numbered marker pairs it with the cells that depend on it, and the
+       *  measure is capped for the same reason the lede above is (this tab
+       *  hands its width to the tables, so copy carries its own). Without the
+       *  cap it ran 877px at 1440, about 155 characters, one element below a
+       *  sibling deliberately held to 448px. */}
+      <p
+        id={EXCEPTIONS_NOTE_ID}
+        className="flex max-w-2xl gap-2 text-xs leading-4 text-muted-foreground"
+      >
+        <span aria-hidden="true" className="font-mono">
+          1
+        </span>
+        <span>{CROSS_ORG_EXCEPTIONS_NOTE}</span>
+      </p>
     </div>
   );
 }

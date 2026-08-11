@@ -17,7 +17,11 @@ export function CapabilitiesCard() {
   return (
     <Card>
       <CardContent className="space-y-3 p-5">
-        <div className="space-y-1">
+        {/* `max-w-2xl` on both paragraphs, not on the Card: this tab drops
+         *  the settings page's reading measure so its tables can use the
+         *  display, so running copy carries its own. 672px is about 96
+         *  characters here; uncapped it reached 1360px at a 1920px display. */}
+        <div className="max-w-2xl space-y-1">
           <h3 className="text-base font-semibold tracking-tight">Capabilities</h3>
           {/* The carve-out sentence is imported, not retyped. It used to exist
            *  in three hand-written copies (here, the Controls claim, and a JSX

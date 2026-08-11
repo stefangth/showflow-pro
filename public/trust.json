@@ -207,17 +207,20 @@
       "admin": {
         "value": "No access",
         "tone": "none",
-        "note": "A restrictive policy blocks the read on every table that carries your organisation's records."
+        "note": "A restrictive policy blocks the read on every table that carries your organisation's records.",
+        "qualifiedByExceptionsNote": true
       },
       "producer": {
         "value": "No access",
         "tone": "none",
-        "note": "A restrictive policy blocks the read on every table that carries your organisation's records."
+        "note": "A restrictive policy blocks the read on every table that carries your organisation's records.",
+        "qualifiedByExceptionsNote": true
       },
       "artist": {
         "value": "No access",
         "tone": "none",
-        "note": "A restrictive policy blocks the read on every table that carries your organisation's records."
+        "note": "A restrictive policy blocks the read on every table that carries your organisation's records.",
+        "qualifiedByExceptionsNote": true
       }
     }
   ],

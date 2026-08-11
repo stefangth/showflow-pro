@@ -149,4 +149,29 @@ describe("VisibilityMatrix mechanism column budget", () => {
     // It belongs to the matrix, not to whichever card follows it.
     expect(container.contains(footnotes[0])).toBe(true);
   });
+
+  // Moving the qualifier out of the cell is only honest if the cell still
+  // points at it. A reader traversing the row hears "every table that carries
+  // your organisation's records" and, without the association, would meet the
+  // four exceptions only by continuing past the table — or never, since the
+  // note sits after eight rows. Both renderings of the row carry it: the
+  // table cell at >=lg and the card list below it.
+  it("associates every qualified cell with the footnote", () => {
+    const qualified = VISIBILITY_MATRIX.filter((row) => row.artist.qualifiedByExceptionsNote);
+    expect(qualified.length, "no cell claims a qualifier — this test is vacuous").toBeGreaterThan(0);
+
+    const { container } = renderWithProviders(<VisibilityMatrix />);
+
+    const note = screen.getByText(CROSS_ORG_EXCEPTIONS_NOTE).closest("[id]");
+    expect(note?.id, "the footnote needs an id to be referenced by").toBeTruthy();
+
+    const described = [...container.querySelectorAll("[aria-describedby]")];
+    expect(described.length, "one table cell and one card, per qualified row").toBe(
+      qualified.length * 2,
+    );
+    for (const el of described) {
+      expect(el.getAttribute("aria-describedby")).toBe(note!.id);
+      expect(el.textContent, "the marker is what a sighted reader follows").toContain("1");
+    }
+  });
 });

@@ -181,6 +181,35 @@ describe("SettingsPage grouped vertical nav", () => {
   });
 });
 
+describe("SettingsPage content measure", () => {
+  // `max-w-5xl` used to sit on the page root, which held every tab's content
+  // column to 772px however wide the display was — measured in the running
+  // app, that left Settings 172px short of the viewport at 1440 and 396px at
+  // 1920 while the Trust & data matrix wrapped inside it. The measure now
+  // is per tab: the twelve form tabs keep it and the wide reference tabs drop
+  // it, so those run to `main`'s own padding at every display width. jsdom has
+  // no layout engine, so this pins which element owns the class and that
+  // changing tab actually changes it.
+  it("keeps the reading measure for form tabs and drops it for Trust & data", async () => {
+    vi.mocked(useAuth).mockReturnValue(DEFAULT_AUTH as never);
+    const { container } = renderWithProviders(<MemoryRouter><SettingsPage /></MemoryRouter>);
+
+    const page = () => container.querySelector("div.space-y-6")!;
+    await screen.findByRole("tab", { name: /trust & data/i });
+    expect(page().className, "a form tab keeps the measure").toMatch(/\bmax-w-5xl\b/);
+
+    fireEvent.mouseDown(screen.getByRole("tab", { name: /trust & data/i }));
+    await waitFor(() =>
+      expect(screen.getByRole("tab", { name: /trust & data/i })).toHaveAttribute("aria-selected", "true"),
+    );
+    expect(page().className, "the wide tab drops it").not.toMatch(/\bmax-w-5xl\b/);
+    // The page-level Save travels with it: capping the header while the panel
+    // ran wide put it and the tab's own top-right action on right edges 628px
+    // apart at 1920.
+    expect(container.querySelector("h1")!.closest("div.space-y-6")).toBe(page());
+  });
+});
+
 describe("SettingsPage producer capability read-only floor", () => {
   // The Filters and Notifications sections are rendered inline (not separate tab
   // components), so their read-only threading is exercised here rather than in a

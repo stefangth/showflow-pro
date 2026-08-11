@@ -17,6 +17,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
 import { Settings as SettingsIcon, Database, Bell, Wand2, Save, SlidersHorizontal, MapPin, Clock, BookOpen, UserCog, Building2, FileSignature, ShieldCheck, Lock } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { upsertOrgSetting, mergeOrgRows } from '@/data/settings';
 import { computeSettingsDirtyKeys } from '@/lib/settings';
 import { AirtableSyncTab } from '@/components/settings/AirtableSyncTab';
@@ -30,6 +31,17 @@ import { BOOKING_AUDIT_KEYS } from '@/components/settings/bookingFlow/auditKeys'
 import { HireOrdersTab } from '@/components/settings/hireOrders/HireOrdersTab';
 import { PermissionsTab } from '@/components/settings/permissions/PermissionsTab';
 import { EmailTemplatesTab } from '@/components/settings/emailTemplates/EmailTemplatesTab';
+
+// Tabs whose content is a wide reference surface rather than a form: they drop
+// the page's reading measure and run to `main`'s own 24px padding at every
+// display width. Everything else keeps `max-w-5xl`, which is what a column of
+// labelled inputs and toggle rows wants — Filters, measured uncapped at 1920,
+// separates each row's four toggles from the label they belong to by 1400px.
+// Trust & data is the opposite case: two tables and a claim matrix that wrapped
+// five of eight row labels inside the capped 772px column. The measure that
+// tabs in this set still need is applied to their own prose (see
+// `src/components/settings/trust/*`), not to the page.
+const WIDE_TABS = new Set(['trust']);
 
 type FilterKey = 'program' | 'timeframe' | 'sort' | 'status';
 const FILTER_KEYS: FilterKey[] = ['program', 'timeframe', 'sort', 'status'];
@@ -259,18 +271,21 @@ export default function SettingsPage() {
   ];
 
   return (
-    // The cap is a reading measure, not a frame: it has to leave the page
-    // flush with `main`'s own padding at the widths people actually use.
-    // `max-w-5xl` alone stopped this page 172px short of the viewport at 1440
-    // (measured: root 1024px ending at x=1268 with `main` padded to 1416)
-    // while every other page in the app, and Settings itself at 1280 and
-    // below, sits 24px from the edge. Since the nav rail and the 32px gap come
-    // out of this width, the tab's content column was held to 772px however
-    // wide the display was. Raising the cap at `xl` gives 1440 the same 24px
-    // margin as every narrower width and hands the tab 920px; the cap still
-    // exists so a 1920px display gets a 1028px column rather than a 1400px
-    // one, which is where paragraph lines stop being readable.
-    <div className="space-y-6 max-w-5xl xl:max-w-7xl">
+    // `max-w-5xl` is the right measure for twelve tabs of forms and lists and
+    // the wrong one for the thirteenth: it left the page 172px short of the
+    // viewport at 1440, 460px at 1728 and 652px at 1920 (`main` pads to 24px,
+    // and every other page in the app sits there), and since the 220px nav
+    // rail and the 32px gap come out of the same width it held every tab's
+    // content column to 772px however wide the display was — while Trust &
+    // data's matrix wrapped inside it. So the cap is now per tab. Raising it
+    // to a wider fixed value was tried first and rejected: a fixed cap only
+    // moves the void to a wider display (`xl:max-w-7xl` measured 204px at
+    // 1728, worse than the 172px this started from).
+    //
+    // The whole page, not just the panel, takes the active tab's measure:
+    // capping the header while the panel ran wide left the page-level Save and
+    // the tab's own top-right action on right edges 628px apart at 1920.
+    <div className={cn('space-y-6', !WIDE_TABS.has(activeTab) && 'max-w-5xl')}>
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="font-display text-[32px] font-semibold tracking-tight flex items-center gap-3">

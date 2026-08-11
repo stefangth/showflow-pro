@@ -102,7 +102,13 @@ export function OrgDataCard() {
       <CardContent className="space-y-4 p-5">
         <div className="space-y-1">
           <h3 className="text-base font-semibold tracking-tight">This organisation's data</h3>
-          <p className="text-sm text-muted-foreground">
+          {/* The card runs the width of the tab; the sentence inside it does
+           *  not. This tab is the one settings surface that drops the page's
+           *  reading measure so its tables can use the display, which leaves
+           *  running copy to carry its own: `max-w-2xl` is 672px, about 96
+           *  characters at this size, against 1360px and roughly 190 at a
+           *  1920px display. Same reason `VisibilityMatrix` caps its lede. */}
+          <p className="max-w-2xl text-sm text-muted-foreground">
             What {currentOrg?.name ?? "this workspace"} holds today, where it sits, and which other
             organisations on ShowFlow Pro can reach it. None.
           </p>

@@ -33,6 +33,13 @@ export interface AccessCell {
   tone: AccessTone;
   /** The mechanism — why the answer is what it is. */
   note: string;
+  /** Set when this cell's mechanism has a qualifier that will not fit in a
+   *  table cell, and is published as CROSS_ORG_EXCEPTIONS_NOTE below the
+   *  matrix instead. A renderer that ignores this flag prints "every table
+   *  that carries your organisation's records" with nothing pointing at the
+   *  four exceptions, which is the over-claim the note exists to prevent — so
+   *  both surfaces mark the cell and associate it with the note. */
+  qualifiedByExceptionsNote?: boolean;
 }
 
 export interface MatrixRow {
@@ -168,9 +175,9 @@ export const VISIBILITY_MATRIX: MatrixRow[] = [
     // (20260710231816_email_delivery_tables.sql:65) grant SELECT to
     // super-admins only, so no organisation member reads either one at all.
     // The note now states the mechanism a reviewer will actually find.
-    admin: { value: "No access", tone: "none", note: NO_CROSS_ORG_NOTE },
-    producer: { value: "No access", tone: "none", note: NO_CROSS_ORG_NOTE },
-    artist: { value: "No access", tone: "none", note: NO_CROSS_ORG_NOTE },
+    admin: { value: "No access", tone: "none", note: NO_CROSS_ORG_NOTE, qualifiedByExceptionsNote: true },
+    producer: { value: "No access", tone: "none", note: NO_CROSS_ORG_NOTE, qualifiedByExceptionsNote: true },
+    artist: { value: "No access", tone: "none", note: NO_CROSS_ORG_NOTE, qualifiedByExceptionsNote: true },
   },
 ];
 

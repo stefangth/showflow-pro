@@ -134,8 +134,11 @@ describe("OrgDataCard", () => {
     const tiles = [...grid!.children];
     expect(tiles).toHaveLength(4);
     for (const tile of tiles) {
+      // `\bborder\b` would also match `border-border` on its own, i.e. a tile
+      // that keeps the colour token but loses the width utility and therefore
+      // draws no edge at all. Match `border` as a whole class instead.
       expect(tile.className, "every tile needs a hairline or an elevation").toMatch(
-        /\bborder\b|\bshadow-/,
+        /(^|\s)border(\s|$)|(^|\s)shadow-/,
       );
       // A half-opacity fill on top of a borderless tile is what measured
       // 1.03:1. Whatever the fill is, it cannot be the only thing there.
