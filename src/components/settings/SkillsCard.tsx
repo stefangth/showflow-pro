@@ -60,6 +60,19 @@ export function SkillsCard({ canEnter }: { canEnter: boolean }) {
   const handleAdd = async () => {
     const trimmed = newName.trim();
     if (!trimmed) return;
+    // Check the loaded catalog (which includes archived rows) for a case-insensitive
+    // name collision before hitting the DB — the org_id+name unique index would
+    // otherwise surface as a raw constraint-violation error, and for an archived
+    // match there is a better answer than "failed": restore it instead.
+    const existing = rows.find((r) => r.name.toLowerCase() === trimmed.toLowerCase());
+    if (existing) {
+      if (existing.archivedAt !== null) {
+        toast.error(`A skill named "${trimmed}" is archived. Use Restore to bring it back.`);
+      } else {
+        toast.error(`A skill named "${trimmed}" already exists.`);
+      }
+      return;
+    }
     try {
       await createSkill.mutateAsync(trimmed);
       setNewName('');

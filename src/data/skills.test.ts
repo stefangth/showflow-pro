@@ -21,26 +21,19 @@ describe("fetchSkills", () => {
 });
 
 describe("fetchSkillCatalog", () => {
-  it("composes artist, show-level, and date-level required-by counts and keeps archived rows", async () => {
+  it("maps the skill_catalog RPC rows to camelCase SkillCatalogRow[], converting bigint counts with Number", async () => {
+    // Finding 5: the 4 full-table client-side-counted reads were replaced by a
+    // single server-side aggregate RPC. supabase-js returns Postgres bigint as a
+    // string, so the mapping must Number(...) each count column.
     const fake = createFakeSupabase({
-      skills: { data: [
-        { id: "s1", name: "Vocals", archived_at: null },
-        { id: "s2", name: "Puppetry", archived_at: "2026-01-01T00:00:00Z" },
-        { id: "s3", name: "Acrobatics", archived_at: null },
-      ], error: null },
-      artist_skills: { data: [
-        { skill_id: "s1" }, { skill_id: "s1" }, { skill_id: "s2" },
-      ], error: null },
-      show_required_skills: { data: [
-        { skill_id: "s1", show_id: "sh1" }, { skill_id: "s1", show_id: "sh2" },
-        { skill_id: "s1", show_id: "sh1" }, // duplicate show -> counted once
-      ], error: null },
-      // s3 is required only at the date level (no show-level requirement), the
-      // exact case Finding 1 covers: show-level requiredByCount must stay 0.
-      show_date_required_skills: { data: [
-        { skill_id: "s3", show_date_id: "d1" }, { skill_id: "s3", show_date_id: "d2" },
-        { skill_id: "s3", show_date_id: "d1" }, // duplicate date -> counted once
-      ], error: null },
+      "rpc:skill_catalog": {
+        data: [
+          { id: "s1", name: "Vocals", archived_at: null, artist_count: "2", required_by_count: "2", required_by_date_count: "0" },
+          { id: "s2", name: "Puppetry", archived_at: "2026-01-01T00:00:00Z", artist_count: "1", required_by_count: "0", required_by_date_count: "0" },
+          { id: "s3", name: "Acrobatics", archived_at: null, artist_count: "0", required_by_count: "0", required_by_date_count: "2" },
+        ],
+        error: null,
+      },
     });
     const rows = await fetchSkillCatalog(asSupabase(fake), "o1");
     expect(rows).toEqual([
@@ -48,6 +41,7 @@ describe("fetchSkillCatalog", () => {
       { id: "s2", name: "Puppetry", archivedAt: "2026-01-01T00:00:00Z", artistCount: 1, requiredByCount: 0, requiredByDateCount: 0 },
       { id: "s3", name: "Acrobatics", archivedAt: null, artistCount: 0, requiredByCount: 0, requiredByDateCount: 2 },
     ]);
+    expect(fake.calls).toContainEqual({ table: "rpc:skill_catalog", method: "rpc", args: [{ p_org: "o1" }] });
   });
 
   it("returns [] with no org", async () => {

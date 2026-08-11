@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { screen, within, fireEvent } from "@testing-library/react";
+import { screen, within, fireEvent, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import { createTestQueryClient } from "@/test/queryClient";
@@ -180,6 +180,40 @@ describe("ArtistProfileSheet — skills editor (design 1i)", () => {
     const vocalsRow = screen.getByTestId("skill-row-s-vocals");
     expect(within(vocalsRow).queryByText("4 upcoming dates")).not.toBeInTheDocument();
     expect(within(vocalsRow).queryByText("Not required yet")).not.toBeInTheDocument();
+  });
+
+  it("computes the save diff from the baseline captured at seed time, not a live artistSkills refetch (Finding 3 regression)", async () => {
+    const { queryClient } = renderSheet();
+
+    // User removes "Stage combat" (s-combat) from the held rows, in progress.
+    fireEvent.click(screen.getByLabelText("Remove Stage combat"));
+    expect(screen.queryByTestId("skill-row-s-combat")).not.toBeInTheDocument();
+
+    // A background refetch of the artistSkills query lands mid-edit (e.g. another
+    // admin's change syncing in) with a set that differs from BOTH the original
+    // seed and the user's in-progress selection. seededSkillsIdRef guards
+    // re-seeding selectedSkills for the same artist id, so this must not
+    // silently move the save diff's baseline on either the add or remove side.
+    queryClient.setQueryData(["skills", "for-artist", "a1"], [
+      { id: "s-vocals", name: "Vocals" },
+      { id: "s-piano", name: "Piano" },
+    ]);
+
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => {
+      const calls = (client.calls ?? []) as { table: string; method: string; args: unknown[] }[];
+      expect(calls.find((c) => c.table === "artist_skills" && c.method === "delete")).toBeDefined();
+    });
+
+    const calls = (client.calls ?? []) as { table: string; method: string; args: unknown[] }[];
+    // Only the skill the user actually removed (s-combat) is deleted — the
+    // background refetch introducing s-piano into the live artistSkills value
+    // must NOT be treated as a removal just because it isn't in `selectedSkills`.
+    const inCall = calls.find((c) => c.table === "artist_skills" && c.method === "in");
+    expect(inCall?.args).toEqual(["skill_id", ["s-combat"]]);
+    // s-vocals stayed held throughout, so no insert should fire either.
+    expect(calls.find((c) => c.table === "artist_skills" && c.method === "insert")).toBeUndefined();
   });
 
   it("read-only mode (canEdit false): rows render without remove buttons or add-chips", () => {

@@ -18,8 +18,10 @@ vi.mock("@/features/auth/AuthContext", () => ({
   useAuth: () => ({ currentOrg: { id: "org-1" }, hasRole: (r: string) => r === "admin" && authState.isAdmin }),
 }));
 vi.mock("@/hooks/useCapabilities", async (orig) => ({ ...(await orig<typeof import("@/hooks/useCapabilities")>()), useCan: vi.fn() }));
+vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 import { useCan } from "@/hooks/useCapabilities";
+import { toast } from "sonner";
 import { SkillsCard } from "./SkillsCard";
 
 function seedClient(seed: Record<string, TableSeed> = { skills: { data: [], error: null } }) {
@@ -46,6 +48,8 @@ function renderCard(rows: SkillCatalogRow[] = ROWS) {
 beforeEach(() => {
   authState.isAdmin = true;
   vi.mocked(useCan).mockReturnValue(true);
+  vi.mocked(toast.success).mockClear();
+  vi.mocked(toast.error).mockClear();
   seedClient();
 });
 
@@ -198,5 +202,33 @@ describe("SkillsCard", () => {
       expect(update).toBeDefined();
       expect((update!.args[0] as { name: string }).name).toBe("Singing");
     });
+  });
+
+  it("typing an archived skill's name and clicking Add shows the restore-hint toast and issues no insert (Finding 4)", async () => {
+    renderCard(); // ROWS includes archived "Puppetry" (skill-3)
+    fireEvent.change(screen.getByPlaceholderText("New skill name"), { target: { value: "puppetry" } });
+    fireEvent.click(screen.getByRole("button", { name: /add/i }));
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith(
+        'A skill named "puppetry" is archived. Use Restore to bring it back.',
+      );
+    });
+    expect(toast.success).not.toHaveBeenCalled();
+    const calls = (client.calls ?? []) as { table: string; method: string }[];
+    expect(calls.find((c) => c.table === "skills" && c.method === "insert")).toBeUndefined();
+  });
+
+  it("typing an existing active skill's name and clicking Add shows an already-exists toast and issues no insert", async () => {
+    renderCard(); // ROWS includes active "Vocals" (skill-1)
+    fireEvent.change(screen.getByPlaceholderText("New skill name"), { target: { value: "vocals" } });
+    fireEvent.click(screen.getByRole("button", { name: /add/i }));
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('A skill named "vocals" already exists.');
+    });
+    expect(toast.success).not.toHaveBeenCalled();
+    const calls = (client.calls ?? []) as { table: string; method: string }[];
+    expect(calls.find((c) => c.table === "skills" && c.method === "insert")).toBeUndefined();
   });
 });

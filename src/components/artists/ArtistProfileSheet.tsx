@@ -61,7 +61,10 @@ export function ArtistProfileSheet({ artistId, open, onOpenChange }: Props) {
 
   const { data: allSkills } = useSkills();
   const { data: artistSkills } = useArtistSkills(artistId);
-  const { data: upcomingDateCounts } = useUpcomingDateCountsBySkill();
+  // Gated on `open`: this sheet stays mounted at all times on the Artists page
+  // (`open={!!profileArtistId}`), so an unconditional query would fire the count
+  // read on every roster load, not just when the sheet is actually visible.
+  const { data: upcomingDateCounts } = useUpcomingDateCountsBySkill({ enabled: open });
 
   // Resolve the linked login account for the LinkedAccountPanel (admin-only).
   const linkedMember = artist?.user_id && orgMembers
@@ -133,15 +136,19 @@ export function ArtistProfileSheet({ artistId, open, onOpenChange }: Props) {
   // Skills load on a separate query and can resolve after the artist row; seed them
   // once per artist identity so a later ['skills'] invalidation for the same artist
   // doesn't clobber in-progress selections. A different artist (new id) re-seeds.
+  // The baseline used to diff on save is captured at the SAME moment (seed time),
+  // not re-derived from the live `artistSkills` query — otherwise a background
+  // refetch mid-edit (e.g. another admin's change landing via realtime) would
+  // silently move the save diff's goalposts on both the add and remove sides.
   const seededSkillsIdRef = useRef<string | null>(null);
+  const initialSkillIdsRef = useRef<Set<string>>(new Set());
   useEffect(() => {
     if (artist && artistSkills && seededSkillsIdRef.current !== artist.id) {
       seededSkillsIdRef.current = artist.id;
       setSelectedSkills(artistSkills.map((s) => ({ id: s.id, name: s.name })));
+      initialSkillIdsRef.current = new Set(artistSkills.map((s) => s.id));
     }
   }, [artist, artistSkills]);
-
-  const initialSkillIds = useMemo(() => new Set((artistSkills ?? []).map((s) => s.id)), [artistSkills]);
 
   const save = useMutation({
     mutationFn: async () => {
@@ -159,9 +166,10 @@ export function ArtistProfileSheet({ artistId, open, onOpenChange }: Props) {
         .eq('id', artistId!);
       if (updateErr) throw updateErr;
 
+      const initial = initialSkillIdsRef.current;
       const nextIds = new Set(selectedSkills.map((s) => s.id));
-      const toAdd = selectedSkills.filter((s) => !initialSkillIds.has(s.id));
-      const toRemove = (artistSkills ?? []).filter((s) => !nextIds.has(s.id));
+      const toAdd = selectedSkills.filter((s) => !initial.has(s.id));
+      const removeIds = [...initial].filter((id) => !nextIds.has(id));
 
       if (toAdd.length) {
         const { error } = await supabase
@@ -169,18 +177,19 @@ export function ArtistProfileSheet({ artistId, open, onOpenChange }: Props) {
           .insert(toAdd.map((s) => ({ artist_id: artistId!, skill_id: s.id, org_id: currentOrg.id })));
         if (error) throw error;
       }
-      if (toRemove.length) {
+      if (removeIds.length) {
         const { error } = await supabase
           .from('artist_skills')
           .delete()
           .eq('artist_id', artistId!)
-          .in('skill_id', toRemove.map((s) => s.id));
+          .in('skill_id', removeIds);
         if (error) throw error;
       }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['artists'] });
       qc.invalidateQueries({ queryKey: ['skills'] });
+      qc.invalidateQueries({ queryKey: ['artist-skills'] });
       toast({ title: 'Artist updated' });
       onOpenChange(false);
     },
@@ -319,7 +328,10 @@ export function ArtistProfileSheet({ artistId, open, onOpenChange }: Props) {
                         <Check className="h-[11px] w-[11px]" strokeWidth={3} />
                       </span>
                       <span className="flex-1 truncate text-sm font-medium text-accent-700">{skill.name}</span>
-                      {showSkillCounts && (
+                      {/* Render only once the counts query has data — while it's still
+                          loading, upcomingDateCounts is undefined and every row would
+                          otherwise flash the false "Not required yet" default. */}
+                      {showSkillCounts && upcomingDateCounts && (
                         <span className="font-mono text-[11px] tabular-nums text-accent-700">
                           {count > 0 ? `${count} upcoming dates` : 'Not required yet'}
                         </span>

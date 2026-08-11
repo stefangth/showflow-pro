@@ -2485,6 +2485,17 @@ export type Database = {
         Args: { p_category: string; p_channel: string; p_user: string }
         Returns: boolean
       }
+      skill_catalog: {
+        Args: { p_org: string }
+        Returns: {
+          archived_at: string
+          artist_count: number
+          id: string
+          name: string
+          required_by_count: number
+          required_by_date_count: number
+        }[]
+      }
       sole_admin_orgs: {
         Args: { p_user: string }
         Returns: {

@@ -31,49 +31,36 @@ export type SkillCatalogRow = {
   requiredByDateCount: number;
 };
 
+/** Row shape returned by the `skill_catalog` RPC (see migration
+ *  20260811120300_skill_catalog_rpc.sql). Postgres `bigint` counts arrive over
+ *  PostgREST as strings, so the mapper below Number()s them. */
+interface SkillCatalogRpcRow {
+  id: string;
+  name: string;
+  archived_at: string | null;
+  artist_count: number | string;
+  required_by_count: number | string;
+  required_by_date_count: number | string;
+}
+
 /** Every skill in the org (including archived), alphabetical, with usage counts.
- *  Powers Settings -> Casts & Cities -> Skills. */
+ *  Powers Settings -> Casts & Cities -> Skills. Backed by a single server-side
+ *  aggregate RPC (rather than 4 full-table reads counted client-side) so the
+ *  catalog stays cheap as artist_skills / required-skill rows grow. */
 export async function fetchSkillCatalog(
   client: SupabaseClient<Database>,
   orgId: string | null,
 ): Promise<SkillCatalogRow[]> {
   if (!orgId) return [];
-  const [skillsRes, artistRes, showReqRes, dateReqRes] = await Promise.all([
-    client.from("skills").select("id, name, archived_at").eq("org_id", orgId).order("name"),
-    client.from("artist_skills").select("skill_id").eq("org_id", orgId),
-    client.from("show_required_skills").select("skill_id, show_id").eq("org_id", orgId),
-    client.from("show_date_required_skills").select("skill_id, show_date_id").eq("org_id", orgId),
-  ]);
-  if (skillsRes.error) throw skillsRes.error;
-  if (artistRes.error) throw artistRes.error;
-  if (showReqRes.error) throw showReqRes.error;
-  if (dateReqRes.error) throw dateReqRes.error;
-
-  const artistCounts = new Map<string, number>();
-  for (const r of (artistRes.data ?? []) as { skill_id: string }[])
-    artistCounts.set(r.skill_id, (artistCounts.get(r.skill_id) ?? 0) + 1);
-
-  const reqShows = new Map<string, Set<string>>();
-  for (const r of (showReqRes.data ?? []) as { skill_id: string; show_id: string }[]) {
-    const set = reqShows.get(r.skill_id) ?? new Set<string>();
-    set.add(r.show_id);
-    reqShows.set(r.skill_id, set);
-  }
-
-  const reqDates = new Map<string, Set<string>>();
-  for (const r of (dateReqRes.data ?? []) as { skill_id: string; show_date_id: string }[]) {
-    const set = reqDates.get(r.skill_id) ?? new Set<string>();
-    set.add(r.show_date_id);
-    reqDates.set(r.skill_id, set);
-  }
-
-  return ((skillsRes.data ?? []) as { id: string; name: string; archived_at: string | null }[]).map((s) => ({
-    id: s.id,
-    name: s.name,
-    archivedAt: s.archived_at,
-    artistCount: artistCounts.get(s.id) ?? 0,
-    requiredByCount: reqShows.get(s.id)?.size ?? 0,
-    requiredByDateCount: reqDates.get(s.id)?.size ?? 0,
+  const { data, error } = await client.rpc("skill_catalog", { p_org: orgId });
+  if (error) throw error;
+  return ((data ?? []) as unknown as SkillCatalogRpcRow[]).map((r) => ({
+    id: r.id,
+    name: r.name,
+    archivedAt: r.archived_at,
+    artistCount: Number(r.artist_count),
+    requiredByCount: Number(r.required_by_count),
+    requiredByDateCount: Number(r.required_by_date_count),
   }));
 }
 
