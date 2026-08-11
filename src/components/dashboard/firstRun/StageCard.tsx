@@ -7,13 +7,18 @@
 // stay inline styles, exactly as the reproduction keeps them inline.
 import type { DockedStep, Stage, StageAction } from "@/lib/dashboard/stageChain.types";
 
-// HOT_* — color-mix constants ported verbatim from the reproduction's <script>.
-const HOT_MUTE = "color-mix(in srgb, var(--surface) 74%, var(--accent-700))";
-const HOT_SOFT = "color-mix(in srgb, var(--surface) 85%, var(--accent-700))";
-const HOT_LINE = "color-mix(in srgb, var(--surface) 22%, var(--accent-700))";
-const HOT_DOT = "color-mix(in srgb, var(--surface) 55%, var(--accent-700))";
-const HOT_CHIPBG = "color-mix(in srgb, var(--surface) 20%, var(--accent-700))";
-const HOT_CHIPBG2 = "color-mix(in srgb, var(--surface) 14%, var(--accent-700))";
+// HOT_* — foreground tints for the hot card. The card background is the IMMUTABLE
+// accent-700 violet in both themes, so these must anchor to a FIXED light base
+// (`#fff`), not `var(--surface)` — surface flips to near-black in dark mode, which
+// would paint dark-on-violet. Anchoring to white is a no-op in light mode (surface
+// IS white there) and keeps the card legible in night mode.
+const HOT_BASE = "#fff";
+const HOT_MUTE = `color-mix(in srgb, ${HOT_BASE} 74%, var(--accent-700))`;
+const HOT_SOFT = `color-mix(in srgb, ${HOT_BASE} 85%, var(--accent-700))`;
+const HOT_LINE = `color-mix(in srgb, ${HOT_BASE} 22%, var(--accent-700))`;
+const HOT_DOT = `color-mix(in srgb, ${HOT_BASE} 55%, var(--accent-700))`;
+const HOT_CHIPBG = `color-mix(in srgb, ${HOT_BASE} 20%, var(--accent-700))`;
+const HOT_CHIPBG2 = `color-mix(in srgb, ${HOT_BASE} 14%, var(--accent-700))`;
 
 /** stepRow(st, hot) */
 function StepRow({ step, hot }: { step: DockedStep; hot: boolean }) {
@@ -128,8 +133,8 @@ export function StageCard({ stage, onAction }: { stage: Stage; onAction: (action
   return (
     <>
       {stage.n !== "01" && (
-        <div className="flex w-[26px] shrink-0 items-center justify-center text-[var(--text-faint)]">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <div className="flex w-full shrink-0 items-center justify-center py-1 text-[var(--text-faint)] xl:w-[26px] xl:py-0">
+          <svg className="rotate-90 xl:rotate-0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
             <path d="M5 12h13" />
             <path d="M13 6l6 6-6 6" />
           </svg>
@@ -151,7 +156,7 @@ export function StageCard({ stage, onAction }: { stage: Stage; onAction: (action
           </div>
           <div className="flex-1" />
           {hot && (
-            <span className="rounded-xs bg-card px-1.5 py-0.5 text-[11px] font-semibold text-accent-700">Start here</span>
+            <span className="rounded-xs bg-accent-50 px-1.5 py-0.5 text-[11px] font-semibold text-accent-700">Start here</span>
           )}
           {plain && stage.running && (
             <span className="flex items-center gap-1 text-[11px] font-semibold text-muted-foreground">
@@ -210,7 +215,7 @@ export function StageCard({ stage, onAction }: { stage: Stage; onAction: (action
             <button
               type="button"
               onClick={handleClick}
-              className="mt-3 self-start rounded-m border-0 bg-card px-3.5 py-2 text-[13px] font-semibold text-accent-700 hover:bg-muted"
+              className="mt-3 self-start rounded-m border-0 bg-accent-50 px-3.5 py-2 text-[13px] font-semibold text-accent-700 hover:bg-accent-100"
             >
               {stage.ctaLabel}
             </button>

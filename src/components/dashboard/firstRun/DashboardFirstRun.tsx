@@ -81,8 +81,9 @@ export function DashboardFirstRun(props: {
             <div className="flex-1" />
             <div className="text-xs text-[var(--text-faint)]">{result.rulesBy}</div>
           </div>
-          {/* Own horizontal-scroll wrapper (in addition to DashboardChain's internal
-             overflow-x-auto) so a narrow viewport scrolls the chain, never the page body. */}
+          {/* Below xl the chain stacks vertically (full-width cards, no overflow). At xl
+             it lays out as a row; this wrapper lets that row scroll horizontally if it
+             ever exceeds the content width, so the page body never scrolls sideways. */}
           <div className="overflow-x-auto">
             <DashboardChain stages={result.stages} onAction={handleAction} />
           </div>
