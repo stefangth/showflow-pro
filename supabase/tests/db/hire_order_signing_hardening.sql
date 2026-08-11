@@ -53,7 +53,9 @@ SET session_replication_role = DEFAULT;
 -- ────────────────────────────────────────────────────────────────────────────
 -- T1: GDPR erasure. Both hire-order FKs to auth.users are ON DELETE SET NULL
 -- (confdeltype 'n'), so a user who signed or created a hire order can still be
--- deleted, and anonymize_user proactively nulls both columns before deletion.
+-- deleted, and the anonymize path proactively nulls both columns before deletion.
+-- The nulling statements live in the shared public._anonymize_user_data helper
+-- (20260811103008), which both anonymize_user and admin_anonymize_removed_user call.
 -- ────────────────────────────────────────────────────────────────────────────
 SELECT ok(
   (SELECT confdeltype = 'n' FROM pg_constraint WHERE conname = 'hire_order_signatures_signer_user_id_fkey'),
@@ -62,11 +64,11 @@ SELECT ok(
   (SELECT confdeltype = 'n' FROM pg_constraint WHERE conname = 'hire_orders_created_by_fkey'),
   'hire_orders.created_by FK is ON DELETE SET NULL');
 SELECT ok(
-  pg_get_functiondef('public.anonymize_user'::regproc) LIKE '%hire_order_signatures set signer_user_id = null%',
-  'anonymize_user nulls hire_order_signatures.signer_user_id');
+  pg_get_functiondef('public._anonymize_user_data'::regproc) LIKE '%hire_order_signatures set signer_user_id = null%',
+  'the anonymize helper nulls hire_order_signatures.signer_user_id');
 SELECT ok(
-  pg_get_functiondef('public.anonymize_user'::regproc) LIKE '%hire_orders set created_by = null%',
-  'anonymize_user nulls hire_orders.created_by');
+  pg_get_functiondef('public._anonymize_user_data'::regproc) LIKE '%hire_orders set created_by = null%',
+  'the anonymize helper nulls hire_orders.created_by');
 
 -- ────────────────────────────────────────────────────────────────────────────
 -- Electronic countersign gate: an electronic-mode order may only reach
