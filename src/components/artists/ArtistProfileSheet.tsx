@@ -239,6 +239,7 @@ export function ArtistProfileSheet({ artistId, open, onOpenChange }: Props) {
                   disabled={!canEdit}
                 />
                 <p className="text-xs text-muted-foreground">Separate from the login account.</p>
+                <p className="text-xs text-muted-foreground">Visible to admins and producers in this organization.</p>
               </div>
               <div className="space-y-1">
                 <label className="text-sm font-medium">Phone</label>
