@@ -62,8 +62,9 @@ ORDER BY tt.name;
 -- 3) the RESTRICTIVE org_isolation policy is present on every tenant table
 SELECT ok(
   EXISTS (SELECT 1 FROM pg_policies
-          WHERE schemaname='public' AND tablename = tt.name AND policyname='org_isolation'),
-  tt.name || ' has org_isolation policy')
+          WHERE schemaname='public' AND tablename = tt.name AND policyname='org_isolation'
+            AND permissive = 'RESTRICTIVE'),
+  tt.name || ' has a RESTRICTIVE org_isolation policy')
 FROM _tenant_tables tt
 ORDER BY tt.name;
 
