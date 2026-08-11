@@ -5,7 +5,16 @@ import type { LadderCoverageInputs } from "@/lib/bookings/setupStatus";
 
 export interface RequiredSkillIds { showSkillIds: string[]; dateSkillIds: string[]; all: string[] }
 
-/** Show-level and date-level required skills for a date, plus their union. */
+/** Show-level and date-level required skills for a date, plus their effective union.
+ *
+ *  Effective union = (show ∪ dateAdded) \ dateDropped: a per-date skill drop
+ *  (show_date_skill_drops) removes a show-level requirement on this date only.
+ *  `showSkillIds`/`dateSkillIds` stay the raw reads so callers can still render a
+ *  dropped show skill as struck-through; only `all` reflects the subtraction.
+ *
+ *  TWIN of supabase/functions/_shared/eligibility.ts `fetchRequiredSkillIds`.
+ *  The set math is identical; only the client mechanics differ. These are NOT
+ *  mirror-managed, so any change to the union math must be made in both by hand. */
 export async function fetchRequiredSkillIds(
   client: SupabaseClient<Database>,
   args: { showId: string; showDateId: string },
@@ -16,9 +25,14 @@ export async function fetchRequiredSkillIds(
   const { data: dateRows, error: e2 } = await client
     .from("show_date_required_skills").select("skill_id").eq("show_date_id", args.showDateId);
   if (e2) throw e2;
+  const { data: dropRows, error: e3 } = await client
+    .from("show_date_skill_drops").select("skill_id").eq("show_date_id", args.showDateId);
+  if (e3) throw e3;
   const showSkillIds = (showRows ?? []).map((r) => r.skill_id);
   const dateSkillIds = (dateRows ?? []).map((r) => r.skill_id);
-  return { showSkillIds, dateSkillIds, all: unionSkillIds(showSkillIds, dateSkillIds) };
+  const dropped = new Set((dropRows ?? []).map((r) => r.skill_id));
+  const all = unionSkillIds(showSkillIds, dateSkillIds).filter((id) => !dropped.has(id));
+  return { showSkillIds, dateSkillIds, all };
 }
 
 /** Artist ids holding ALL of requiredSkillIds; null when nothing is required (unrestricted).
@@ -134,6 +148,39 @@ export async function removeShowDateRequiredSkill(
   args: { showDateId: string; skillId: string },
 ): Promise<void> {
   const { error } = await client.from("show_date_required_skills")
+    .delete().eq("show_date_id", args.showDateId).eq("skill_id", args.skillId);
+  if (error) throw error;
+}
+
+/** Skill ids dropped on a date: a drop removes a show-level requirement on this
+ *  date only (see show_date_skill_drops + fetchRequiredSkillIds' effective union). */
+export async function fetchShowDateSkillDrops(
+  client: SupabaseClient<Database>,
+  showDateId: string,
+): Promise<string[]> {
+  const { data, error } = await client
+    .from("show_date_skill_drops").select("skill_id").eq("show_date_id", showDateId);
+  if (error) throw error;
+  return (data ?? []).map((r) => r.skill_id);
+}
+
+/** Drop a show-level skill on this date. org_id is passed to satisfy the Insert
+ *  type but the derive_org_id_from_show_date_id trigger overwrites it server-side. */
+export async function addShowDateSkillDrop(
+  client: SupabaseClient<Database>,
+  args: { showDateId: string; skillId: string; orgId: string },
+): Promise<void> {
+  const { error } = await client.from("show_date_skill_drops")
+    .insert({ show_date_id: args.showDateId, skill_id: args.skillId, org_id: args.orgId });
+  if (error) throw error;
+}
+
+/** Restore a dropped show-level skill on this date (delete the drop row). */
+export async function removeShowDateSkillDrop(
+  client: SupabaseClient<Database>,
+  args: { showDateId: string; skillId: string },
+): Promise<void> {
+  const { error } = await client.from("show_date_skill_drops")
     .delete().eq("show_date_id", args.showDateId).eq("skill_id", args.skillId);
   if (error) throw error;
 }

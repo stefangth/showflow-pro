@@ -2030,6 +2030,52 @@ export type Database = {
           },
         ]
       }
+      show_date_skill_drops: {
+        Row: {
+          created_at: string
+          id: string
+          org_id: string
+          show_date_id: string
+          skill_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          org_id: string
+          show_date_id: string
+          skill_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          org_id?: string
+          show_date_id?: string
+          skill_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "show_date_skill_drops_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "show_date_skill_drops_show_date_id_fkey"
+            columns: ["show_date_id"]
+            isOneToOne: false
+            referencedRelation: "show_dates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "show_date_skill_drops_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
+            referencedRelation: "skills"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       show_dates: {
         Row: {
           airtable_record_id: string | null

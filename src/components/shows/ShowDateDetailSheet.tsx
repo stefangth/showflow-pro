@@ -42,6 +42,7 @@ import {
 } from '@/data/bookings';
 import {
   fetchRequiredSkillIds, fetchSkillEligibleArtistIds, addShowDateRequiredSkill, removeShowDateRequiredSkill,
+  fetchShowDateSkillDrops, addShowDateSkillDrop, removeShowDateSkillDrop,
 } from '@/data/eligibility';
 import { unionSkillIds } from '@/lib/eligibility';
 import { resolveOrgSetting } from '@/data/settings';
@@ -346,6 +347,13 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: P
     enabled: !!showDate?.show_id && !!showDateId,
     queryFn: () => fetchRequiredSkillIds(supabase, { showId: showDate!.show_id, showDateId: showDateId! }),
   });
+  // Show-level skills dropped on this date (a drop only bites when the skill is a
+  // show requirement; the raw list is filtered against showSkillIds at render).
+  const dropsQ = useQuery({
+    queryKey: ['eligibility', 'date-skill-drops', showDateId],
+    enabled: !!showDateId,
+    queryFn: () => fetchShowDateSkillDrops(supabase, showDateId!),
+  });
 
   // Ad-hoc skill chips the producer picks on the direct-book list, union'd with the
   // date's hard skill requirements into a single set to resolve eligibility against.
@@ -489,6 +497,18 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: P
       removeShowDateRequiredSkill(supabase, { showDateId: showDateId!, skillId }),
     onSuccess: () => { invalidateEligibility(); toast.success('Required skill removed'); },
     onError: (e: Error) => toast.error('Failed to remove required skill', { description: e.message }),
+  });
+  const dropDateSkill = useMutation({
+    mutationFn: (skillId: string) =>
+      addShowDateSkillDrop(supabase, { showDateId: showDateId!, skillId, orgId: currentOrg!.id }),
+    onSuccess: () => { invalidateEligibility(); toast.success('Skill dropped on this date'); },
+    onError: (e: Error) => toast.error('Failed to drop skill', { description: e.message }),
+  });
+  const restoreDateSkill = useMutation({
+    mutationFn: (skillId: string) =>
+      removeShowDateSkillDrop(supabase, { showDateId: showDateId!, skillId }),
+    onSuccess: () => { invalidateEligibility(); toast.success('Skill restored on this date'); },
+    onError: (e: Error) => toast.error('Failed to restore skill', { description: e.message }),
   });
 
   const createBookingMutation = useMutation({
@@ -1073,9 +1093,13 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: P
                           skills={orgSkills ?? []}
                           showSkillIds={requiredSkillsQ.data?.showSkillIds ?? []}
                           dateSkillIds={requiredSkillsQ.data?.dateSkillIds ?? []}
+                          droppedSkillIds={dropsQ.data ?? []}
                           onAdd={(id) => addDateSkill.mutate(id)}
                           onRemove={(id) => removeDateSkill.mutate(id)}
-                          pending={addDateSkill.isPending || removeDateSkill.isPending}
+                          onDrop={(id) => dropDateSkill.mutate(id)}
+                          onRestore={(id) => restoreDateSkill.mutate(id)}
+                          pending={addDateSkill.isPending || removeDateSkill.isPending
+                            || dropDateSkill.isPending || restoreDateSkill.isPending}
                         />
                       </CardContent>
                     </Card>
