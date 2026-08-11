@@ -42,6 +42,32 @@ export const VIEW_AS_ARTIST_TIP: InheritedRule = {
   hint: "The pencil icon top right opens the editor bar, where you can switch to the artist view. Once an artist has an account, you can preview the app as that exact person.",
 };
 
+/**
+ * A producer's reachable explanation of what "Production Team" covers versus the admin.
+ * Co-located here, the one place a role's narrative already lives (see VIEW_AS_ARTIST_TIP
+ * above), and imported into BookingProducerWaitingCard so both surfaces state it the same
+ * way instead of drifting into two versions of the same fact.
+ *
+ * Rendered by the rules block below regardless of ctx.artistAcceptance: unlike the rules
+ * around it, this one describes what the ROLE does in general, not this org's pipeline, so
+ * it does not belong to either branch.
+ */
+export const PRODUCER_ROLE_NOTE =
+  "You are on the Production Team. You plan dates, run offers and confirm bookings. Inviting people, casts and settings stay with the admin.";
+
+/** Where the note points a producer who wants the full picture: every role's scope, side
+ *  by side. "docs" is a real destination for a producer, not an admin-gated dead end: it
+ *  has no entry in settingsTabs.ts's ADMIN_ONLY list.
+ *
+ *  LINK_LABEL is the text of an actual `<Link>` — only BookingProducerWaitingCard, which
+ *  renders one, may use it as clickable text. The rail's complete-state rules render title +
+ *  hint as static text with no href, so the producer rule below takes a declarative title
+ *  (RULE_TITLE) instead: a CTA-phrased "See what each role can do" with nothing to click
+ *  reads as a broken affordance there. */
+export const ROLE_EXPLAINER_LINK_LABEL = "See what each role can do";
+export const ROLE_EXPLAINER_LINK_ROUTE = `${ROUTES.SETTINGS}?tab=docs`;
+export const PRODUCER_ROLE_RULE_TITLE = "What your role covers";
+
 export const bookingOnboarding: ModuleOnboardingDef<BookingSetupStepKey> = {
   key: "booking_flow",
   // Flow-neutral, unlike the steps and rules below it. `railHeader` is a flat pair of
@@ -137,6 +163,12 @@ export const bookingOnboarding: ModuleOnboardingDef<BookingSetupStepKey> = {
     // Admins only, and the same object BookingSetupRail's footer renders (see
     // VIEW_AS_ARTIST_TIP above for why it is shared and why it is worded the way it is).
     ...(role === "admin" ? [VIEW_AS_ARTIST_TIP] : []),
+    // Producer only: an admin already has full visibility into every role, so telling
+    // them what the Production Team covers answers a question they never asked. The rail
+    // renders this as static title + hint (no href), so the title is declarative, not the
+    // clickable LINK_LABEL — the actual link to the full breakdown lives on
+    // BookingProducerWaitingCard, which renders a real <Link>.
+    ...(role === "producer" ? [{ title: PRODUCER_ROLE_RULE_TITLE, hint: PRODUCER_ROLE_NOTE }] : []),
   ]),
   offFooter: "Booking flow is off for this org. Ask your account manager to switch it on.",
 };

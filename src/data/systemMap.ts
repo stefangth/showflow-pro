@@ -299,7 +299,7 @@ export const SYSTEM_MAP_NODES: SystemMapNode[] = [
       Auth: "requireCronOrRole(admin,producer) · verify_jwt=false",
       Gate: "per org: the booking_flow entitlement (checked before resolveBookingFlow, which fails open to permissive defaults on an entitlement-check error) ∧ active ∧ at_risk_alerts ∧ artist_acceptance; a gated or unentitled tier is never marked still-at-risk, so its stale notification clears on the next run same as a recovered tier",
       Writes: "notifications (tier_at_risk), deduped per (tier,user), self-clearing on recovery",
-      Effects: "none, in-app only by design",
+      Effects: "best-effort tier-at-risk email to the same recipients, sent once per newly at-risk (tier,user) pair, not every run; a failed lookup or send is swallowed, never blocks the notification write",
       Cite: "tier-at-risk-watcher/index.ts:29-177",
     },
   },
@@ -988,6 +988,7 @@ export const SYSTEM_MAP_EDGES: SystemMapEdge[] = [
   { from: "f_offerdig", to: "f_send" },
   { from: "f_confdig", to: "f_send" },
   { from: "f_health", to: "f_send" },
+  { from: "f_risk", to: "f_send" },
   // fn → db writes
   { from: "f_poll", to: "d_showdates" },
   { from: "f_poll", to: "d_shows" },

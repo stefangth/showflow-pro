@@ -60,7 +60,7 @@ import { fetchBlockedArtistIds } from '@/data/blockedDates';
 import { ChatPanel } from '@/components/chat/ChatPanel';
 import { HireOrdersCard } from '@/components/shows/hireOrders/HireOrdersCard';
 import { useHireOrdersForDate, useHireOrderAction } from '@/hooks/useHireOrders';
-import { useFeature, useModuleGate } from '@/hooks/useEntitlements';
+import { useEntitlements, useFeature, useModuleGate } from '@/hooks/useEntitlements';
 import { ShowDateFormDialog } from '@/components/shows/ShowDateFormDialog';
 import { BookingRow } from '@/components/shows/BookingRow';
 import { useCancelShowDate, useDeleteShowDate } from '@/hooks/useShowDates';
@@ -194,6 +194,20 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: P
   // they follow the same module gate as the offers surface (super-admin exempt,
   // fails closed while entitlements load) rather than useFeature.
   const { allow: bookingModuleAllowed } = useModuleGate('booking_flow');
+  // The org's actual booking_flow entitlement, no super-admin bypass and no loading fail-open
+  // — feeds the cast list's cancel-confirmation who-hears line (cancelBookingCopy ->
+  // scheduleChangeNote), which makes a factual claim about what the schedule-change pipeline
+  // will do for THIS org, not a permission check. `useFeature` was the wrong hook here: it
+  // returns the feature's REGISTRY DEFAULT (true for booking_flow) while entitlements are
+  // still loading, and CockpitCastList can mount before that resolves for a non-impersonating
+  // super-admin (useModuleGate exempts super-admins unconditionally, even mid-load) — so a
+  // super-admin viewing an org WITHOUT the module could briefly see the digest-email sentence
+  // instead of the honest fallback. Reading useEntitlements() directly and gating on
+  // `!isLoading` has neither failure mode, exactly like ShowDateFormDialog.tsx's own
+  // `changeNote` already does for the identical problem ("a plausible but wrong claim is worse
+  // than a brief silence").
+  const { features: bookingEntitledFeatures, isLoading: bookingEntitlementsLoading } = useEntitlements();
+  const bookingFlowFeatureEnabled = !bookingEntitlementsLoading && bookingEntitledFeatures.has('booking_flow');
 
   const [activeTab, setActiveTab] = useState<CockpitTab>('cast');
   // The sheet instance is reused across dates (no key at the mount sites), so reset
@@ -505,10 +519,16 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: P
   const updateBookingStatus = useMutation({
     mutationFn: ({ bookingId, status }: { bookingId: string; status: 'confirmed' | 'cancelled' }) =>
       updateBookingStatusGuarded(supabase, { bookingId, status, now: new Date() }),
-    onSuccess: ({ affected }) => {
+    onSuccess: ({ affected }, variables) => {
       queryClient.invalidateQueries({ queryKey: ['bookings'] });
       if (affected === 0) {
         toast.error('This booking could not be updated. Refresh and retry.');
+      } else if (variables.status === 'confirmed') {
+        // Names the artist so the toast reads as a receipt ("Booked Ada Lovelace.") rather
+        // than a generic status ack — bookingsForDate (not the memoized `bookings`, which is
+        // declared further down) already carries the artist join this lookup needs.
+        const name = (bookingsForDate ?? []).find((b) => b.id === variables.bookingId)?.artist?.name;
+        toast.success(name ? `Booked ${name}.` : 'Booking updated');
       } else {
         toast.success('Booking updated');
       }
@@ -850,7 +870,12 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: P
             >
                 {activeTab === 'cast' && (
                   bookingModuleAllowed ? (
-                    <CockpitCastList groups={castGroups} />
+                    <CockpitCastList
+                      groups={castGroups}
+                      flow={flow}
+                      bookingFlowEnabled={bookingFlowFeatureEnabled}
+                      confirmationDigestHour={effectiveTimes.confirmationDigestHour}
+                    />
                   ) : (
                     <AssignedArtistsCard
                       bookings={bookings}
@@ -922,6 +947,11 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: P
                               onSkillFilterChange={(id) =>
                                 setDirectSkillFilterIds((prev) =>
                                   prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id])}
+                              // deriveDirectBookList treats a null artistIds set as "no
+                              // restriction" (src/lib/bookings.ts), the same signal this note
+                              // reads to tell the producer the picker is wide open on purpose.
+                              unrestricted={eligibility?.artistIds == null}
+                              orgName={currentOrg?.name}
                             />
                           )}
                         </CardContent>

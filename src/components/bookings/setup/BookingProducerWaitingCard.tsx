@@ -1,12 +1,19 @@
 import { Lock } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
+import { useAuth } from "@/features/auth/AuthContext";
 import { useCan } from "@/hooks/useCapabilities";
+import { useOrgAdminNames } from "@/hooks/useOrgAdminNames";
+import { adminAskLine } from "@/data/orgAdmins";
 import { STEP_TITLES, type BookingSetupStep } from "@/lib/bookings/setupStatus";
+import { PRODUCER_ROLE_NOTE, ROLE_EXPLAINER_LINK_LABEL, ROLE_EXPLAINER_LINK_ROUTE } from "@/lib/dashboard/moduleOnboarding";
 import { PeopleStep } from "./PeopleStep";
 
 /** Shown instead of the rail when the viewer lacks `edit_booking_settings`. Lists only
- *  steps that actually block something. Does not name the admin (list_org_members is
- *  admin-guarded). Adding dates and sessions is unaffected, which is the point.
+ *  steps that actually block something. Names the org's real admins where it can
+ *  (`list_org_admin_names`, unlike `list_org_members`, is not admin-guarded: any member
+ *  may call it), falling back to the generic "an admin" line when nobody has a display
+ *  name yet. Adding dates and sessions is unaffected, which is the point.
  *
  *  `people` is deliberately NOT in the locked list. Adding artists is roster work gated by
  *  `add_artists`, not by booking settings, and a producer reaches this card by pressing the
@@ -33,6 +40,7 @@ export function BookingProducerWaitingCard({
   // producer_can_add_artists off this viewer has no add control anywhere, so the roster is
   // an admin's job too and the card must not claim otherwise.
   const canAdd = useCan("add_artists");
+  const { currentOrg, hasRole } = useAuth();
   const peopleOutstanding = steps.some((s) => s.key === "people" && !s.done);
   const outstanding = steps.filter((s) => !s.done && s.block !== null && s.key !== "people");
   // "Your move" is earned, not assumed: the roster has to be the only thing left AND
@@ -41,6 +49,14 @@ export function BookingProducerWaitingCard({
   // this surface for a non-editor the moment canOffer flips true.
   const yourMove = outstanding.length === 0 && peopleOutstanding && canAdd;
   const waitingOnAdmin = !yourMove;
+  // Real names for the waiting body: any member (incl. producer) may call
+  // list_org_admin_names, unlike the admin-guarded list_org_members. adminAskLine returns
+  // null with no admin names yet (nobody has set a display name), so the fallback below
+  // keeps the card's original generic wording rather than going blank. Fetched ONLY while
+  // waiting on an admin: the "Your move" branch never renders askLine, so gating the query
+  // on `waitingOnAdmin` skips an RPC round-trip whenever the roster is the producer's own job.
+  const { data: adminNames } = useOrgAdminNames(currentOrg?.id, { enabled: waitingOnAdmin });
+  const askLine = adminAskLine(adminNames ?? []);
   return (
     <Card>
       <CardContent className="space-y-3 p-4">
@@ -64,10 +80,26 @@ export function BookingProducerWaitingCard({
                 booking also needs a chosen flow; what this viewer can be told is that the
                 roster is the last thing standing in its way. */}
             {waitingOnAdmin
-              ? "Nothing stops you adding dates and sessions. An admin has to finish setup before anyone can be booked."
+              ? `Nothing stops you adding dates and sessions. ${askLine ?? "An admin has to finish setup before anyone can be booked."}`
               : "Nothing stops you adding dates and sessions. The roster is the last thing blocking the first booking, and that one is yours."}
           </p>
         </div>
+        {/* A producer's reachable explanation of what "Production Team" covers versus the
+            admin (see PRODUCER_ROLE_NOTE). Gated on role rather than assumed: nothing in
+            CAPABILITY_DEFS lets an org revoke edit_booking_settings from an admin
+            (useCan short-circuits true for hasRole("admin")), so in practice only a
+            producer ever reaches this card, but the note stays keyed to the role it is
+            actually true for. */}
+        {!hasRole("admin") && (
+          <div className="rounded-md border border-border p-2.5">
+            <p className="text-xs text-muted-foreground">
+              {PRODUCER_ROLE_NOTE}{" "}
+              <Link to={ROLE_EXPLAINER_LINK_ROUTE} className="text-primary underline">
+                {ROLE_EXPLAINER_LINK_LABEL}
+              </Link>
+            </p>
+          </div>
+        )}
         {peopleOutstanding && (
           <div className="rounded-md border border-border p-2.5">
             <p className="text-sm">{STEP_TITLES.people}</p>

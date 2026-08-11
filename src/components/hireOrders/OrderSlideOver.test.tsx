@@ -202,6 +202,21 @@ describe("OrderSlideOver issue preflight", () => {
   });
 });
 
+describe("OrderSlideOver void dialog copy", () => {
+  it("points to the redraft path instead of reading as a dead end", () => {
+    renderWithProviders(<OrderSlideOver order={order({ id: "ho-1", status: "draft" })} open onOpenChange={() => {}} orgId="org-1" />);
+    fireEvent.click(screen.getByRole("button", { name: /^void$/i }));
+    const dialog = screen.getByRole("alertdialog");
+    expect(within(dialog).getByText("Void this hire order?")).toBeInTheDocument();
+    expect(
+      within(dialog).getByText(
+        "Voiding cancels this order for good. If the artist needs a corrected order, you can generate a fresh hire order for this date afterward.",
+      ),
+    ).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: /^void order$/i })).toBeInTheDocument();
+  });
+});
+
 describe("OrderSlideOver capability gates", () => {
   it("issue_hire_orders off: Issue and send is disabled on a draft order", () => {
     vi.mocked(useCan).mockImplementation((action: string) => action !== "issue_hire_orders");

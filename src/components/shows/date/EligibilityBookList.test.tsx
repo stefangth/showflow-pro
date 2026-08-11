@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { fireEvent, screen } from "@testing-library/react";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import { EligibilityBookList } from "./EligibilityBookList";
+import { unrestrictedEligibilityNote } from "@/lib/bookings/actionCopy";
 
 describe("EligibilityBookList", () => {
   it("books an artist after confirming the dialog and marks already-booked rows", () => {
@@ -105,6 +106,37 @@ describe("EligibilityBookList", () => {
     expect(screen.getByRole("button", { name: "Singing" })).toHaveAttribute("aria-pressed", "false");
     fireEvent.click(screen.getByRole("button", { name: "Singing" }));
     expect(onSkillFilterChange).toHaveBeenCalledWith("s2");
+  });
+
+  // P3.5: when the date has no cast/city eligibility restriction, deriveDirectBookList
+  // (src/lib/bookings.ts) opens the picker to the whole active roster — this note is the
+  // one place that says so, so "everyone showed up" doesn't read as a bug.
+  it("shows the unrestricted-eligibility note when the date has no cast limits", () => {
+    renderWithProviders(
+      <EligibilityBookList
+        artists={[{ id: "a1", name: "Lena" }]}
+        bookedArtistIds={new Set()}
+        onBook={vi.fn()}
+        booking={false}
+        unrestricted
+        orgName="Cirque Lumiere"
+      />,
+    );
+    expect(screen.getByText(unrestrictedEligibilityNote("Cirque Lumiere"))).toBeInTheDocument();
+  });
+
+  it("omits the unrestricted-eligibility note when the date has a cast/city restriction", () => {
+    renderWithProviders(
+      <EligibilityBookList
+        artists={[{ id: "a1", name: "Lena" }]}
+        bookedArtistIds={new Set()}
+        onBook={vi.fn()}
+        booking={false}
+        unrestricted={false}
+        orgName="Cirque Lumiere"
+      />,
+    );
+    expect(screen.queryByText(unrestrictedEligibilityNote("Cirque Lumiere"))).not.toBeInTheDocument();
   });
 
   it("renders no skill chips when skills are omitted or empty", () => {

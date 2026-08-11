@@ -1,6 +1,8 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { IconTooltip } from '@/components/common/IconTooltip';
 import { bookingStatusBadgeClass, bookingStatusDisplayLabel } from '@/lib/bookings';
+import { SOFT_BOOKED_MEANING } from '@/lib/bookings/actionCopy';
 import type { Booking, Artist } from '@/types';
 
 type BookingWithArtist = Booking & { artist: Pick<Artist, 'id' | 'name'> };
@@ -26,9 +28,15 @@ export function BookingRow({ booking: b, canManage, showConfirm, onConfirm, onCa
     <div className="flex items-center justify-between p-3 rounded-lg border border-border">
       <div>
         <p className="font-medium text-sm">{b.artist?.name}</p>
-        <Badge variant="secondary" className={`text-xs mt-1 ${bookingStatusBadgeClass(b.status)}`}>
-          {bookingStatusDisplayLabel(b.status)}
-        </Badge>
+        {/* Soft-booked is the module-off surface's name for the same state the cockpit
+            badges "Accepted": the artist said yes, but nothing is booked until a producer
+            confirms it. IconTooltip renders the badge unwrapped for any other status
+            (empty label = its own documented escape hatch). */}
+        <IconTooltip label={b.status === 'soft_booked' ? SOFT_BOOKED_MEANING : ''}>
+          <Badge variant="secondary" className={`text-xs mt-1 ${bookingStatusBadgeClass(b.status)}`}>
+            {bookingStatusDisplayLabel(b.status)}
+          </Badge>
+        </IconTooltip>
       </div>
       {canManage && (
         <div className="flex gap-2">

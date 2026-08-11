@@ -52,6 +52,7 @@ function order(overrides: Record<string, unknown> = {}) {
     created_at: "2026-01-10T09:00:00Z",
     issued_at: "2026-01-12T10:00:00Z",
     countersigned_at: null,
+    viewed_at: null,
     data: {
       artist_name: { value: "Ada Lovelace", source: "showflow" },
       recipient_email: { value: "ada@example.com", source: "showflow" },
@@ -150,17 +151,18 @@ describe("HireOrderDetailPage", () => {
     });
   });
 
-  it("renders the four-step timeline", async () => {
+  it("renders the five-step timeline, Seen included", async () => {
     authAs("producer");
     renderPage();
     await screen.findByText("Performance hire order");
     const timeline = screen.getByRole("list", { name: /order status timeline/i });
     expect(within(timeline).getByText("Created")).toBeInTheDocument();
     expect(within(timeline).getByText("Issued to artist")).toBeInTheDocument();
+    expect(within(timeline).getByText("Seen")).toBeInTheDocument();
     expect(within(timeline).getByText("Awaiting countersign")).toBeInTheDocument();
     expect(within(timeline).getByText("Countersigned")).toBeInTheDocument();
-    // Exactly four steps, no more (the mock's fifth "Filed to settlement" is dropped).
-    expect(within(timeline).getAllByRole("listitem")).toHaveLength(4);
+    // Exactly five steps, no more.
+    expect(within(timeline).getAllByRole("listitem")).toHaveLength(5);
   });
 
   it("renders the recipient card with the artist name and email", async () => {
@@ -325,6 +327,60 @@ describe("HireOrderDetailPage", () => {
     renderPage();
     expect(await screen.findByText(/couldn't load the document/i)).toBeInTheDocument();
     expect(screen.queryByTitle(/hire order document/i)).not.toBeInTheDocument();
+  });
+});
+
+describe("HireOrderDetailPage marks the order seen for the linked artist", () => {
+  function seenCalls() {
+    const calls = (client.calls ?? []) as { table: string; method: string; args: unknown[] }[];
+    return calls.filter((c) => c.table === "rpc:mark_hire_order_seen");
+  }
+
+  it("fires once for the linked artist viewing an issued order with viewed_at null", async () => {
+    authAs("artist");
+    seedClient({
+      hire_orders: { data: order(), error: null },
+      "fn:generate-hire-orders": { data: { url: SIGNED_URL }, error: null },
+      artists: { data: LINKED_ARTIST, error: null },
+    });
+    renderPage();
+    await screen.findByText("Performance hire order");
+    await waitFor(() => {
+      expect(seenCalls()).toHaveLength(1);
+      expect(seenCalls()[0].args[0]).toEqual({ p_order: "ho-1" });
+    });
+  });
+
+  it("does not fire for a producer viewer, even on the same issued order", async () => {
+    authAs("producer");
+    seedFor(order());
+    renderPage();
+    await screen.findByText("Performance hire order");
+    expect(seenCalls()).toHaveLength(0);
+  });
+
+  it("does not fire for a draft order, even for the linked artist", async () => {
+    authAs("artist");
+    seedClient({
+      hire_orders: { data: order({ status: "draft", pdf_path: null, issued_at: null }), error: null },
+      "fn:generate-hire-orders": { data: { url: SIGNED_URL }, error: null },
+      artists: { data: LINKED_ARTIST, error: null },
+    });
+    renderPage();
+    await screen.findByText(/not issued yet/i);
+    expect(seenCalls()).toHaveLength(0);
+  });
+
+  it("does not fire when viewed_at is already set", async () => {
+    authAs("artist");
+    seedClient({
+      hire_orders: { data: order({ viewed_at: "2026-01-12T11:00:00Z" }), error: null },
+      "fn:generate-hire-orders": { data: { url: SIGNED_URL }, error: null },
+      artists: { data: LINKED_ARTIST, error: null },
+    });
+    renderPage();
+    await screen.findByText("Performance hire order");
+    expect(seenCalls()).toHaveLength(0);
   });
 });
 

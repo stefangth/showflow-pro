@@ -14,6 +14,7 @@ const APP_LINK_TEMPLATES = [
   "artist-offer-digest",
   "offer-immediate",
   "cast-escalation-requested",
+  "tier-at-risk",
   "cron-health-alert",
   "offer-expiry-reminder",
   "hire-order-issued",
