@@ -147,4 +147,13 @@ describe("ArtistBookingsView flow-aware copy (Task 4)", () => {
     expect(screen.queryByText("Confirmed")).not.toBeInTheDocument();
     expect(screen.queryByText("No offer yet")).not.toBeInTheDocument();
   });
+
+  it("signposts how to cancel a confirmed date (R5.1)", async () => {
+    flowHolder.flow = BOOKING_FLOW_DEFAULTS;
+    renderWithProviders(<ArtistBookingsView />);
+
+    expect(
+      await screen.findByText(/need to cancel a date you confirmed\? message your producer in the date's chat/i),
+    ).toBeInTheDocument();
+  });
 });
