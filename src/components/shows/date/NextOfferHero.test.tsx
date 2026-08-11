@@ -49,7 +49,7 @@ describe("NextOfferHero", () => {
     expect(screen.getByText("Cast B")).toBeInTheDocument();
     expect(screen.getByText("7")).toBeInTheDocument();
     expect(
-      screen.getByText("7 of 9 artists in Cast B have Vocals. 1 blocked, 1 already holds a tier 1 offer."),
+      screen.getByText("7 of 9 artists in Cast B have Vocals. 1 blocked, 1 already booked or offered."),
     ).toBeInTheDocument();
 
     const button = screen.getByRole("button", { name: "Open offers to Cast B (7 artists)" });
@@ -79,7 +79,7 @@ describe("NextOfferHero", () => {
     expect(screen.getByText("NEXT OFFER · TIER 2")).toBeInTheDocument();
   });
 
-  it("omits the tier 0 clause when the next tier is 1, keeping only the blocked count", () => {
+  it("omits the already-booked-or-offered clause when the next tier is 1, keeping only the blocked count", () => {
     renderHero({
       target: { kind: "cast", tier: 1, cast: CAST_B },
       counts: { ...CAST_COUNTS, tier: 1, alreadyOfferedCount: 0 },
@@ -88,7 +88,7 @@ describe("NextOfferHero", () => {
     expect(
       screen.getByText("7 of 9 artists in Cast B have Vocals. 1 blocked."),
     ).toBeInTheDocument();
-    expect(screen.queryByText(/tier 0 offer/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/already booked or offered/)).not.toBeInTheDocument();
   });
 
   it("renders an avatar row naming candidates, with an overflow count past four", () => {

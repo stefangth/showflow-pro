@@ -63,13 +63,14 @@ function buildBodySentence(
 
   const priorTier = target.tier - 1;
   if (priorTier <= 0) {
-    // Tier 1 has no tier 0 to hold an offer for — drop that clause entirely
-    // rather than claim artists "already hold a tier 0 offer".
+    // Tier 1 has no earlier tier — drop the already-booked-or-offered clause
+    // entirely rather than imply this count is specific to a prior tier.
     return `${first} ${counts.blockedCount} blocked.`;
   }
-  const holdWord = counts.alreadyOfferedCount === 1 ? "holds" : "hold";
-  const second =
-    `${counts.blockedCount} blocked, ${counts.alreadyOfferedCount} already ${holdWord} a tier ${priorTier} offer.`;
+  // alreadyOfferedCount counts ANY non-cancelled booking for the date among the
+  // tier's members (confirmed/soft_booked/suggested), not specifically a
+  // prior-tier offer — keep the copy honest to what the data actually says.
+  const second = `${counts.blockedCount} blocked, ${counts.alreadyOfferedCount} already booked or offered.`;
   return `${first} ${second}`;
 }
 
