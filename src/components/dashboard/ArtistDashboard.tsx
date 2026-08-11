@@ -255,53 +255,62 @@ export function ArtistDashboard() {
               </div>
             </ModuleGate>
 
-            {hireOrdersEnabled && (myHireOrders?.length ?? 0) > 0 && (
+            {hireOrdersEnabled && (
               <Card>
                 <CardHeader>
                   <CardTitle className="font-display flex items-center gap-2 text-base">
                     <FileText className="h-4 w-4" />
                     Your hire orders
-                    <Badge variant="secondary">{myHireOrders!.length}</Badge>
+                    {(myHireOrders?.length ?? 0) > 0 && (
+                      <Badge variant="secondary">{myHireOrders!.length}</Badge>
+                    )}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2">
-                  {myHireOrders!.map((o) => {
-                    const data = (o.data ?? {}) as OrderData;
-                    const dateStr = snap(data, 'date');
-                    const venue = snap(data, 'venue');
-                    const subtitle = [dateStr ? formatDateDMY(dateStr) : null, venue || null]
-                      .filter(Boolean)
-                      .join(' · ');
-                    // dateStr is a resolved snapshot field, not always a clean YYYY-MM-DD
-                    // (see snap()) -- guard the shape before treating it as a date.
-                    const parsedDate = /^\d{4}-\d{2}-\d{2}$/.test(dateStr) ? parseDateOnly(dateStr) : null;
-                    return (
-                      <div
-                        key={o.id}
-                        className={cn(
-                          'flex items-center justify-between gap-3 rounded-lg border border-border p-3',
-                          pastRowClassName(parsedDate),
-                        )}
-                      >
-                        <Link to={ROUTES.HIRE_ORDER_DETAIL.replace(':id', o.id)} className="min-w-0 flex-1">
-                          <p className="text-sm font-mono font-medium text-foreground truncate">{o.order_no}</p>
-                          {subtitle && <p className="text-xs text-muted-foreground truncate">{subtitle}</p>}
-                        </Link>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <HireOrderStatusBadge status={o.status} />
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            aria-label="Download"
-                            onClick={() => handleDownloadHireOrder(o.id)}
-                            disabled={hireOrderAction.isPending}
-                          >
-                            <Download className="h-4 w-4" />
-                          </Button>
+                  {(myHireOrders?.length ?? 0) === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      Your booking paperwork shows up here. When a producer sends you a hire
+                      order, it arrives by email and you can review and sign it here.
+                    </p>
+                  ) : (
+                    myHireOrders!.map((o) => {
+                      const data = (o.data ?? {}) as OrderData;
+                      const dateStr = snap(data, 'date');
+                      const venue = snap(data, 'venue');
+                      const subtitle = [dateStr ? formatDateDMY(dateStr) : null, venue || null]
+                        .filter(Boolean)
+                        .join(' · ');
+                      // dateStr is a resolved snapshot field, not always a clean YYYY-MM-DD
+                      // (see snap()) -- guard the shape before treating it as a date.
+                      const parsedDate = /^\d{4}-\d{2}-\d{2}$/.test(dateStr) ? parseDateOnly(dateStr) : null;
+                      return (
+                        <div
+                          key={o.id}
+                          className={cn(
+                            'flex items-center justify-between gap-3 rounded-lg border border-border p-3',
+                            pastRowClassName(parsedDate),
+                          )}
+                        >
+                          <Link to={ROUTES.HIRE_ORDER_DETAIL.replace(':id', o.id)} className="min-w-0 flex-1">
+                            <p className="text-sm font-mono font-medium text-foreground truncate">{o.order_no}</p>
+                            {subtitle && <p className="text-xs text-muted-foreground truncate">{subtitle}</p>}
+                          </Link>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <HireOrderStatusBadge status={o.status} />
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              aria-label="Download"
+                              onClick={() => handleDownloadHireOrder(o.id)}
+                              disabled={hireOrderAction.isPending}
+                            >
+                              <Download className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })
+                  )}
                 </CardContent>
               </Card>
             )}
