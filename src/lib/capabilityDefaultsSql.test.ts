@@ -25,6 +25,7 @@ const EXPECTED_CAPABILITY_DEFAULTS = {
   producer_can_rename_org: false,
   producer_can_manage_ownership: true,
   producer_can_manage_cities: true,
+  producer_can_manage_skills: true,
   producer_can_edit_filter_settings: false,
   producer_can_edit_scheduling: true,
   producer_can_configure_airtable: false,
@@ -33,7 +34,7 @@ const EXPECTED_CAPABILITY_DEFAULTS = {
 };
 
 describe("effective capability_default SQL twin", () => {
-  it("has exactly the 28 approved defaults and fails closed for unknown keys", () => {
+  it("has exactly the 29 approved defaults and fails closed for unknown keys", () => {
     const effective = readEffectiveCaseMap("capability_default");
 
     expect(effective.mapping).toEqual(EXPECTED_CAPABILITY_DEFAULTS);

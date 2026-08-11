@@ -137,7 +137,7 @@ describe("useCapabilityMatrix", () => {
       policies: [{ capability: "producer_can_issue_hire_orders", enabled: false, locked: true }],
     });
     const { result } = renderHook(() => useCapabilityMatrix("org-1"), { wrapper: wrapper() });
-    await waitFor(() => expect(result.current.cells.length).toBe(28));
+    await waitFor(() => expect(result.current.cells.length).toBe(29));
     const rename = result.current.cells.find((c) => c.def.key === "producer_can_rename_org")!;
     expect(rename.effective).toBe(true);
     expect(rename.source).toBe("org");
