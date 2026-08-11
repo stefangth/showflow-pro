@@ -215,6 +215,13 @@ export function TierTimeline({
                 <AlertDialogTitle>{confirmCopy.title}</AlertDialogTitle>
                 <AlertDialogDescription>{confirmCopy.body}</AlertDialogDescription>
               </AlertDialogHeader>
+              {!hasSession && (
+                // The action below is disabled without a session time; state the reason
+                // inside the dialog so it is visible next to the greyed-out button.
+                <p className="text-sm text-muted-foreground">
+                  Add a session time to this date before opening offers.
+                </p>
+              )}
               <AlertDialogFooter>
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
                 <AlertDialogAction
