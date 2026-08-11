@@ -224,6 +224,9 @@ export interface HeaderCta { kind: HeaderCtaKind; label: string }
 export function computeHeaderCta(args: {
   artistAcceptance: boolean; acceptedCount: number; confirmedCount: number;
   totalSlots: number | null; openTier: number | null; currentTierOpen: boolean; maxTier: number;
+  /** Name of the single cast the next tier maps to (owner's RELABEL rule).
+   *  Only the `openTier` branch reads this; every other branch is unaffected. */
+  nextTierCastName?: string | null;
 }): HeaderCta {
   const none: HeaderCta = { kind: "none", label: "" };
   if (args.acceptedCount > 0) return { kind: "confirm", label: `Confirm ${args.acceptedCount} accepted` };
@@ -237,7 +240,9 @@ export function computeHeaderCta(args: {
   // Next tier to open: 1 when none has ever been opened (openTier null), else the
   // tier after the highest opened. Offered only while it exists in the ladder.
   const nextTier = (args.openTier ?? 0) + 1;
-  if (nextTier <= args.maxTier) return { kind: "openTier", label: `Open tier ${nextTier}` };
+  if (nextTier <= args.maxTier) {
+    return { kind: "openTier", label: args.nextTierCastName ? `Open offers to ${args.nextTierCastName}` : `Open tier ${nextTier}` };
+  }
   return { kind: "reviewOffers", label: "Review open offers" };
 }
 

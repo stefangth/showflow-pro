@@ -162,6 +162,125 @@ describe("offerConfirmCopy", () => {
     expect(withoutField.body).not.toContain("receive offers");
     expect(withEmptyArray.body).toEqual(withoutField.body);
   });
+
+  // Cast-aware path (C3.4): when the sheet resolves the next offer target to a
+  // single cast, the confirm copy names it instead of the bare tier noun.
+  describe("cast-aware (castName present)", () => {
+    const castArgs = {
+      tier: 2, dateLabel: "10 Jul 2026", alreadyOpened: false, offerDelivery: "immediate" as const,
+      castName: "Cast B", matchCount: 7, castTotal: 9, requiredSkillNames: ["Vocals"],
+    };
+
+    it("titles the dialog with the cast name", () => {
+      const c = offerConfirmCopy(castArgs);
+      expect(c.title).toBe("Open offers to Cast B?");
+    });
+
+    it("body states the match count against the cast total, for the date", () => {
+      const c = offerConfirmCopy(castArgs);
+      expect(c.body).toContain("7 of the 9 artists in Cast B get an offer for 10 Jul 2026.");
+    });
+
+    it("body states the required skills all matched artists have", () => {
+      const c = offerConfirmCopy(castArgs);
+      expect(c.body).toContain("All 7 have the skills this date requires: Vocals.");
+    });
+
+    it("immediate delivery mentions emails go out the moment the tier opens", () => {
+      const c = offerConfirmCopy(castArgs);
+      expect(c.body).toContain("Offers are emailed the moment the tier opens, and you can cancel any offer afterward.");
+    });
+
+    it("digest delivery swaps the delivery sentence", () => {
+      const c = offerConfirmCopy({ ...castArgs, offerDelivery: "digest" });
+      expect(c.body).toContain("They'll be emailed in the next daily offer digest, and you can cancel any offer afterward.");
+      expect(c.body).not.toContain("emailed the moment the tier opens");
+    });
+
+    it("drops the skills sentence entirely when requiredSkillNames is empty", () => {
+      const c = offerConfirmCopy({ ...castArgs, requiredSkillNames: [] });
+      expect(c.body).not.toContain("have the skills this date requires");
+    });
+
+    it("keeps the existing tier-phrased re-open note when alreadyOpened", () => {
+      const c = offerConfirmCopy({ ...castArgs, alreadyOpened: true });
+      expect(c.body).toContain("Tier 2 has already been opened");
+    });
+
+    it("appends a capped, friendly-reason Not offered line when excludedDetail is non-empty", () => {
+      const c = offerConfirmCopy({
+        ...castArgs,
+        excludedDetail: [
+          { id: "1", name: "Ana Ruiz", reason: "missing_skills" },
+          { id: "2", name: "Tom Vale", reason: "blocked" },
+        ],
+      });
+      expect(c.body.endsWith("Not offered: Ana Ruiz (missing a required skill) · Tom Vale (blocked on this date).")).toBe(true);
+    });
+
+    it("caps the Not offered line at 5 named entries, summarizing the rest", () => {
+      const c = offerConfirmCopy({
+        ...castArgs,
+        excludedDetail: [
+          { id: "1", name: "A", reason: "missing_skills" },
+          { id: "2", name: "B", reason: "blocked" },
+          { id: "3", name: "C", reason: "already_booked" },
+          { id: "4", name: "D", reason: "inactive" },
+          { id: "5", name: "E", reason: "not_eligible" },
+          { id: "6", name: "F", reason: "missing_skills" },
+          { id: "7", name: "G", reason: "missing_skills" },
+        ],
+      });
+      expect(c.body).toContain("A (missing a required skill) · B (blocked on this date) · C (already booked) · D (inactive) · E (not eligible) · and 2 more");
+    });
+
+    it("omits the Not offered line when excludedDetail is absent or empty", () => {
+      const absent = offerConfirmCopy(castArgs);
+      const empty = offerConfirmCopy({ ...castArgs, excludedDetail: [] });
+      expect(absent.body).not.toContain("Not offered");
+      expect(empty.body).not.toContain("Not offered");
+    });
+  });
+
+  // Backward compatibility: the multi-cast/ad-hoc/tier-fallback path (no castName)
+  // must render byte-for-byte the same copy as before this task.
+  describe("unchanged when castName is absent (regression pin)", () => {
+    it("first-open, digest, no skill filter", () => {
+      const c = offerConfirmCopy({ tier: 1, dateLabel: "10 Jul 2026", alreadyOpened: false, offerDelivery: "digest" });
+      expect(c).toEqual({
+        title: "Open tier 1 offers?",
+        body:
+          "This creates suggested bookings for all eligible artists in tier 1 for 10 Jul 2026. " +
+          "They'll be emailed in the next daily offer digest, and you can cancel any offer afterward.",
+      });
+    });
+
+    it("already-opened, immediate, with a skill filter", () => {
+      const c = offerConfirmCopy({
+        tier: 2, dateLabel: "10 Jul 2026", alreadyOpened: true, offerDelivery: "immediate",
+        skillFilterNames: ["judge", "aerial"],
+      });
+      expect(c).toEqual({
+        title: "Open tier 2 offers?",
+        body:
+          "This creates suggested bookings for all eligible artists in tier 2 for 10 Jul 2026. " +
+          "Offers are emailed the moment the tier opens, and you can cancel any offer afterward. " +
+          "Tier 2 has already been opened — re-opening only adds offers for artists who don't have one yet." +
+          " Only artists with all of these skills receive offers: judge, aerial.",
+      });
+    });
+
+    it("ad-hoc tier 99", () => {
+      const c = offerConfirmCopy({ tier: 99, dateLabel: "10 Jul 2026", alreadyOpened: true, offerDelivery: "digest" });
+      expect(c).toEqual({
+        title: "Open ad-hoc casts offers?",
+        body:
+          "This creates suggested bookings for all eligible artists in ad-hoc casts for 10 Jul 2026. " +
+          "They'll be emailed in the next daily offer digest, and you can cancel any offer afterward. " +
+          "Ad-hoc casts have already been opened — re-opening only adds offers for artists who don't have one yet.",
+      });
+    });
+  });
 });
 
 describe("pendingOfferCount", () => {

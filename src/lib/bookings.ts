@@ -2,6 +2,7 @@
  * Pure booking/eligibility derivations extracted from ShowDateDetailSheet.
  * No Supabase, no React — safe to unit-test directly.
  */
+import type { ExcludedDetailEntry } from "@/data/bookings";
 
 // ── Booking-status badge styling (single source of truth) ──────────────────────
 // Previously duplicated across BookingRow, ArtistBookingsView, and AvailabilityPage
@@ -132,7 +133,31 @@ export function offerResultToast(
   return { kind: "info", text: result.message ?? "No new offers created" };
 }
 
-/** Confirmation copy for opening a tier; re-open note explains the additive semantics. */
+/** Friendly, non-jargon phrasing for an ExcludedReason, used in the cast-aware
+ *  confirm copy's "Not offered" line. */
+const EXCLUDED_REASON_LABEL: Record<ExcludedDetailEntry["reason"], string> = {
+  missing_skills: "missing a required skill",
+  blocked: "blocked on this date",
+  already_booked: "already booked",
+  inactive: "inactive",
+  not_eligible: "not eligible",
+};
+
+/** Named, capped "Not offered: A (reason) · B (reason)." line. Empty string when
+ *  there's nothing to name. Caps at 5 named entries, summarizing the remainder. */
+function excludedDetailLine(excludedDetail: ExcludedDetailEntry[] | undefined): string {
+  if (!excludedDetail || excludedDetail.length === 0) return "";
+  const shown = excludedDetail.slice(0, 5);
+  const parts = shown.map((e) => `${e.name} (${EXCLUDED_REASON_LABEL[e.reason]})`);
+  const remainder = excludedDetail.length - shown.length;
+  if (remainder > 0) parts.push(`and ${remainder} more`);
+  return ` Not offered: ${parts.join(" · ")}.`;
+}
+
+/** Confirmation copy for opening a tier; re-open note explains the additive semantics.
+ *  When `castName` is supplied (the caller resolved the next offer target to a single
+ *  cast — owner's RELABEL rule), renders a cast-aware variant naming the cast and its
+ *  match count instead of the bare tier noun. Every other input is unused in that path. */
 export function offerConfirmCopy(
   input: {
     tier: number;
@@ -141,19 +166,45 @@ export function offerConfirmCopy(
     offerDelivery: "digest" | "immediate";
     /** Names of skills the offer is scoped to, if a producer applied a skill filter. */
     skillFilterNames?: string[];
+    /** Name of the single cast the next tier maps to. Presence switches to the
+     *  cast-aware copy below; absence keeps today's tier/ad-hoc copy unchanged. */
+    castName?: string;
+    /** How many artists in the cast actually match and will receive an offer. */
+    matchCount?: number;
+    /** Total artists in the cast (matched + excluded). */
+    castTotal?: number;
+    /** Skills this date requires, named for the "All N have the skills..." sentence. */
+    requiredSkillNames?: string[];
+    /** Named, per-artist exclusion detail for the "Not offered" line. */
+    excludedDetail?: ExcludedDetailEntry[];
   },
 ): { title: string; body: string } {
-  const noun = tierNoun(input.tier);
   const deliverySentence = input.offerDelivery === "immediate"
     ? "Offers are emailed the moment the tier opens, and you can cancel any offer afterward."
     : "They'll be emailed in the next daily offer digest, and you can cancel any offer afterward.";
-  const base =
-    `This creates suggested bookings for all eligible artists in ${noun} for ${input.dateLabel}. ` +
-    deliverySentence;
   const cap = input.tier === 99 ? "Ad-hoc casts have" : `Tier ${input.tier} has`;
   const reopen = input.alreadyOpened
     ? ` ${cap} already been opened — re-opening only adds offers for artists who don't have one yet.`
     : "";
+
+  if (input.castName) {
+    const matchSentence =
+      `${input.matchCount} of the ${input.castTotal} artists in ${input.castName} ` +
+      `get an offer for ${input.dateLabel}.`;
+    const skillSentence = input.requiredSkillNames && input.requiredSkillNames.length > 0
+      ? ` All ${input.matchCount} have the skills this date requires: ${input.requiredSkillNames.join(", ")}.`
+      : "";
+    const notOffered = excludedDetailLine(input.excludedDetail);
+    return {
+      title: `Open offers to ${input.castName}?`,
+      body: `${matchSentence}${skillSentence} ${deliverySentence}${reopen}${notOffered}`,
+    };
+  }
+
+  const noun = tierNoun(input.tier);
+  const base =
+    `This creates suggested bookings for all eligible artists in ${noun} for ${input.dateLabel}. ` +
+    deliverySentence;
   const skillCue = input.skillFilterNames && input.skillFilterNames.length > 0
     ? ` Only artists with all of these skills receive offers: ${input.skillFilterNames.join(", ")}.`
     : "";

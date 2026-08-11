@@ -32,4 +32,27 @@ describe("computeHeaderCta", () => {
 
   it("unconfigured slots -> none", () =>
     expect(computeHeaderCta({ ...base, totalSlots: null })).toEqual({ kind: "none", label: "" }));
+
+  // Cast-aware label (C3.4): openTier branch names the cast when the next tier
+  // maps to exactly one (owner's RELABEL rule). Every other branch is unaffected.
+  describe("cast-aware label (nextTierCastName)", () => {
+    it("openTier branch names the cast when nextTierCastName is supplied", () =>
+      expect(computeHeaderCta({ ...base, openTier: 1, nextTierCastName: "Cast B" }))
+        .toEqual({ kind: "openTier", label: "Open offers to Cast B" }));
+
+    it("openTier branch falls back to the tier noun when nextTierCastName is omitted", () =>
+      expect(computeHeaderCta({ ...base, openTier: 1 })).toEqual({ kind: "openTier", label: "Open tier 2" }));
+
+    it("openTier branch falls back to the tier noun when nextTierCastName is null", () =>
+      expect(computeHeaderCta({ ...base, openTier: 1, nextTierCastName: null }))
+        .toEqual({ kind: "openTier", label: "Open tier 2" }));
+
+    it("does not affect the confirm branch even when nextTierCastName is supplied", () =>
+      expect(computeHeaderCta({ ...base, acceptedCount: 2, nextTierCastName: "Cast B" }))
+        .toEqual({ kind: "confirm", label: "Confirm 2 accepted" }));
+
+    it("does not affect the reviewOffers branch (current tier still open) even when nextTierCastName is supplied", () =>
+      expect(computeHeaderCta({ ...base, openTier: 1, currentTierOpen: true, nextTierCastName: "Cast B" }))
+        .toEqual({ kind: "reviewOffers", label: "Review open offers" }));
+  });
 });
