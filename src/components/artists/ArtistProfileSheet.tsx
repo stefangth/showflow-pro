@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
+import { Check, Plus, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/features/auth/AuthContext';
 import { useEditorConfig } from '@/features/editor/EditorContext';
@@ -11,14 +13,14 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
-import { TagInput, type TagOption } from '@/components/ui/tag-input';
 import { useToast } from '@/hooks/use-toast';
-import { useSkills, useArtistSkills, useCreateSkill, type Skill } from '@/hooks/useSkills';
+import { useSkills, useArtistSkills, useUpcomingDateCountsBySkill, type Skill } from '@/hooks/useSkills';
 import { useOrgMembers } from '@/hooks/useOrgMembers';
 import { usePendingInvitedArtists } from '@/hooks/usePendingInvitedArtists';
 import { artistAccountState } from '@/lib/artistAccount';
 import { inviteArtistToApp, resendInvitation, fetchOrgInvitations } from '@/data/invitations';
 import { LinkedAccountPanel } from './LinkedAccountPanel';
+import { ROUTES } from '@/config/app.config';
 import type { Artist, ArtistStatus } from '@/types';
 
 interface Props {
@@ -59,7 +61,7 @@ export function ArtistProfileSheet({ artistId, open, onOpenChange }: Props) {
 
   const { data: allSkills } = useSkills();
   const { data: artistSkills } = useArtistSkills(artistId);
-  const createSkill = useCreateSkill();
+  const { data: upcomingDateCounts } = useUpcomingDateCountsBySkill();
 
   // Resolve the linked login account for the LinkedAccountPanel (admin-only).
   const linkedMember = artist?.user_id && orgMembers
@@ -108,7 +110,7 @@ export function ArtistProfileSheet({ artistId, open, onOpenChange }: Props) {
     bio: '',
     status: 'active' as ArtistStatus,
   });
-  const [selectedSkills, setSelectedSkills] = useState<TagOption[]>([]);
+  const [selectedSkills, setSelectedSkills] = useState<Skill[]>([]);
 
   // Seed the editable form only when the artist IDENTITY changes, not on every
   // refetch. A `['artists']` prefix invalidation (any artists write, incl. bulk
@@ -185,10 +187,16 @@ export function ArtistProfileSheet({ artistId, open, onOpenChange }: Props) {
     onError: (e: Error) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
 
-  async function handleCreateSkill(name: string): Promise<TagOption> {
-    const created: Skill = await createSkill.mutateAsync(name);
-    return { id: created.id, name: created.name };
-  }
+  // Design 1i: held skills as catalog-governed rows, remaining catalog skills
+  // as add-chips. Free-text creation is gone: an admin adds new skills from
+  // Settings -> Casts & Cities now (SkillsCard).
+  const skillCatalog = allSkills ?? [];
+  const heldSkillIds = new Set(selectedSkills.map((s) => s.id));
+  const addableSkills = skillCatalog.filter((s) => !heldSkillIds.has(s.id));
+  // Never surface the per-skill "N upcoming dates" count to an artist role,
+  // this sheet is admin/producer-only today, but gate it defensively anyway.
+  const showSkillCounts = !hasRole('artist');
+  const artistFirstName = artist?.name?.trim().split(/\s+/)[0];
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -277,23 +285,81 @@ export function ArtistProfileSheet({ artistId, open, onOpenChange }: Props) {
               />
             </div>
 
-            <div className="space-y-1">
-              <label className="text-sm font-medium">Skills</label>
-              {canEdit ? (
-                <TagInput
-                  options={(allSkills ?? []).map((s) => ({ id: s.id, name: s.name }))}
-                  value={selectedSkills}
-                  onChange={setSelectedSkills}
-                  onCreate={handleCreateSkill}
-                  placeholder="Add skills…"
-                />
-              ) : (
-                <div className="flex flex-wrap gap-1">
-                  {selectedSkills.length === 0 && <span className="text-sm text-muted-foreground">—</span>}
-                  {selectedSkills.map((s) => (
-                    <Badge key={s.id} variant="secondary">{s.name}</Badge>
-                  ))}
-                </div>
+            <div className="space-y-2">
+              <div className="flex items-baseline justify-between gap-3">
+                <label className="text-sm font-medium">Skills</label>
+                <p className="font-mono text-[11px] tabular-nums text-muted-foreground">
+                  {selectedSkills.length} of {skillCatalog.length} in the catalog
+                </p>
+              </div>
+              {canEdit && (
+                <p className="text-xs leading-[17px] text-muted-foreground">
+                  Skills decide which dates {artistFirstName || 'this artist'} can be offered.
+                  Removing one takes them out of any offer that requires it.
+                </p>
+              )}
+
+              <div className="flex flex-col gap-1">
+                {selectedSkills.length === 0 && (
+                  <p className="text-sm text-muted-foreground">No skills yet.</p>
+                )}
+                {selectedSkills.map((skill) => {
+                  const count = upcomingDateCounts?.get(skill.id) ?? 0;
+                  return (
+                    <div
+                      key={skill.id}
+                      data-testid={`skill-row-${skill.id}`}
+                      className="flex h-[34px] items-center gap-2.5 rounded-lg border border-accent-200 bg-accent-50 pl-2.5 pr-2"
+                    >
+                      <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-[4px] bg-primary text-primary-foreground">
+                        <Check className="h-[11px] w-[11px]" strokeWidth={3} />
+                      </span>
+                      <span className="flex-1 truncate text-sm font-medium text-accent-700">{skill.name}</span>
+                      {showSkillCounts && (
+                        <span className="font-mono text-[11px] tabular-nums text-accent-700">
+                          {count > 0 ? `${count} upcoming dates` : 'Not required yet'}
+                        </span>
+                      )}
+                      {canEdit && (
+                        <button
+                          type="button"
+                          aria-label={`Remove ${skill.name}`}
+                          onClick={() => setSelectedSkills((prev) => prev.filter((s) => s.id !== skill.id))}
+                          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-accent-700 hover:bg-destructive/10 hover:text-destructive"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {canEdit && (
+                <>
+                  {addableSkills.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 pt-0.5">
+                      {addableSkills.map((skill) => (
+                        <button
+                          key={skill.id}
+                          type="button"
+                          onClick={() => setSelectedSkills((prev) => [...prev, skill])}
+                          className="inline-flex h-[26px] items-center gap-1.5 rounded-md border border-input bg-background px-2.5 text-xs font-medium text-foreground hover:bg-accent-50"
+                        >
+                          <Plus className="h-3 w-3" />
+                          {skill.name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <p className="text-xs leading-[17px] text-muted-foreground">
+                    Need a skill that does not exist? An admin adds it in{' '}
+                    <Link to={`${ROUTES.SETTINGS}?tab=casts-cities`} className="text-primary underline">
+                      Settings, Casts &amp; Cities
+                    </Link>
+                    , so the catalog stays clean.
+                  </p>
+                </>
               )}
             </div>
 

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import { createFakeSupabase } from "@/test/supabaseFake";
 
@@ -28,7 +29,7 @@ vi.mock("@/hooks/use-toast", () => ({ useToast: () => ({ toast: vi.fn() }) }));
 vi.mock("@/hooks/useSkills", () => ({
   useSkills: () => ({ data: [] }),
   useArtistSkills: () => ({ data: [] }),
-  useCreateSkill: () => ({ mutateAsync: vi.fn() }),
+  useUpcomingDateCountsBySkill: () => ({ data: new Map() }),
 }));
 vi.mock("@/hooks/useOrgMembers", () => ({ useOrgMembers: () => ({ data: [], isLoading: false }) }));
 vi.mock("@/hooks/usePendingInvitedArtists", () => ({ usePendingInvitedArtists: () => ({ data: [] }) }));
@@ -56,7 +57,7 @@ describe("ArtistProfileSheet — Phase 4.4 capability gates", () => {
 
   it("edit_artists on: producer can edit fields and Save renders", async () => {
     mockUseCan({ edit_artists: true });
-    renderWithProviders(<ArtistProfileSheet artistId="a1" open onOpenChange={() => {}} />);
+    renderWithProviders(<MemoryRouter><ArtistProfileSheet artistId="a1" open onOpenChange={() => {}} /></MemoryRouter>);
     await waitFor(() => expect(screen.getByDisplayValue("Ada")).toBeInTheDocument());
     expect(screen.getByDisplayValue("Ada")).not.toBeDisabled();
     expect(screen.getByRole("button", { name: /save/i })).toBeInTheDocument();
@@ -64,7 +65,7 @@ describe("ArtistProfileSheet — Phase 4.4 capability gates", () => {
 
   it("edit_artists off: producer cannot edit fields, Save is absent (read stays)", async () => {
     mockUseCan({ edit_artists: false });
-    renderWithProviders(<ArtistProfileSheet artistId="a1" open onOpenChange={() => {}} />);
+    renderWithProviders(<MemoryRouter><ArtistProfileSheet artistId="a1" open onOpenChange={() => {}} /></MemoryRouter>);
     await waitFor(() => expect(screen.getByDisplayValue("Ada")).toBeInTheDocument());
     expect(screen.getByDisplayValue("Ada")).toBeDisabled();
     expect(screen.queryByRole("button", { name: /save/i })).not.toBeInTheDocument();
@@ -72,14 +73,14 @@ describe("ArtistProfileSheet — Phase 4.4 capability gates", () => {
 
   it("resend_account_invite on: producer sees the linked-account block for a registered artist", async () => {
     mockUseCan({ resend_account_invite: true });
-    renderWithProviders(<ArtistProfileSheet artistId="a1" open onOpenChange={() => {}} />);
+    renderWithProviders(<MemoryRouter><ArtistProfileSheet artistId="a1" open onOpenChange={() => {}} /></MemoryRouter>);
     await waitFor(() => expect(screen.getByText("Linked account")).toBeInTheDocument());
     expect(screen.getByText(/account details unavailable/i)).toBeInTheDocument();
   });
 
   it("resend_account_invite off: producer sees only the status chip, no account details (read stays)", async () => {
     mockUseCan({ resend_account_invite: false });
-    renderWithProviders(<ArtistProfileSheet artistId="a1" open onOpenChange={() => {}} />);
+    renderWithProviders(<MemoryRouter><ArtistProfileSheet artistId="a1" open onOpenChange={() => {}} /></MemoryRouter>);
     await waitFor(() => expect(screen.getByText("Linked account")).toBeInTheDocument());
     expect(screen.getByText("Active account")).toBeInTheDocument();
     expect(screen.queryByText(/account details unavailable/i)).not.toBeInTheDocument();
@@ -88,7 +89,7 @@ describe("ArtistProfileSheet — Phase 4.4 capability gates", () => {
   it("admin: canEdit and canSeeAccount/canResend are true even with useCan mocked false (admin real short-circuit is exercised elsewhere; here we assert via explicit useCan grants)", async () => {
     auth.role = "admin";
     mockUseCan({ edit_artists: true, resend_account_invite: true });
-    renderWithProviders(<ArtistProfileSheet artistId="a1" open onOpenChange={() => {}} />);
+    renderWithProviders(<MemoryRouter><ArtistProfileSheet artistId="a1" open onOpenChange={() => {}} /></MemoryRouter>);
     await waitFor(() => expect(screen.getByDisplayValue("Ada")).toBeInTheDocument());
     expect(screen.getByDisplayValue("Ada")).not.toBeDisabled();
     expect(screen.getByText(/account details unavailable/i)).toBeInTheDocument();
@@ -96,7 +97,7 @@ describe("ArtistProfileSheet — Phase 4.4 capability gates", () => {
 
   it("shows a contact-visibility note beside the org-browsed email field (R4.4)", async () => {
     mockUseCan({ edit_artists: false, resend_account_invite: false });
-    renderWithProviders(<ArtistProfileSheet artistId="a1" open onOpenChange={() => {}} />);
+    renderWithProviders(<MemoryRouter><ArtistProfileSheet artistId="a1" open onOpenChange={() => {}} /></MemoryRouter>);
     await waitFor(() => expect(screen.getByDisplayValue("Ada")).toBeInTheDocument());
     expect(screen.getByText(/visible to admins and producers in this organization/i)).toBeInTheDocument();
   });

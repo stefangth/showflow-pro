@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { screen, fireEvent, waitFor } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import { createFakeSupabase } from "@/test/supabaseFake";
 
@@ -40,7 +41,7 @@ vi.mock("@/hooks/use-toast", () => ({ useToast: () => ({ toast: vi.fn() }) }));
 vi.mock("@/hooks/useSkills", () => ({
   useSkills: () => ({ data: [] }),
   useArtistSkills: () => ({ data: [] }),
-  useCreateSkill: () => ({ mutateAsync: vi.fn() }),
+  useUpcomingDateCountsBySkill: () => ({ data: new Map() }),
 }));
 vi.mock("@/hooks/useOrgMembers", () => ({ useOrgMembers: () => ({ data: [], isLoading: false }) }));
 vi.mock("@/hooks/usePendingInvitedArtists", () => ({ usePendingInvitedArtists: () => ({ data: [] }) }));
@@ -56,7 +57,7 @@ describe("ArtistProfileSheet — draft reseed (H6)", () => {
 
   it("does not clobber an in-progress edit when the same artist refetches", async () => {
     const { queryClient, rerender } = renderWithProviders(
-      <ArtistProfileSheet artistId="a1" open onOpenChange={() => {}} />,
+      <MemoryRouter><ArtistProfileSheet artistId="a1" open onOpenChange={() => {}} /></MemoryRouter>,
     );
     // Form seeded from the server row.
     await waitFor(() => expect(screen.getByDisplayValue("Ada")).toBeInTheDocument());
@@ -67,7 +68,7 @@ describe("ArtistProfileSheet — draft reseed (H6)", () => {
 
     // A `['artists']` invalidation refetches the SAME artist id.
     await queryClient.invalidateQueries({ queryKey: ["artists"] });
-    rerender(<ArtistProfileSheet artistId="a1" open onOpenChange={() => {}} />);
+    rerender(<MemoryRouter><ArtistProfileSheet artistId="a1" open onOpenChange={() => {}} /></MemoryRouter>);
 
     // The in-progress edit survives — the refetch did NOT re-seed the form.
     await waitFor(() => expect(screen.getByDisplayValue("Ada Edited")).toBeInTheDocument());
@@ -76,12 +77,12 @@ describe("ArtistProfileSheet — draft reseed (H6)", () => {
 
   it("re-seeds the form when a different artist is opened", async () => {
     const { rerender } = renderWithProviders(
-      <ArtistProfileSheet artistId="a1" open onOpenChange={() => {}} />,
+      <MemoryRouter><ArtistProfileSheet artistId="a1" open onOpenChange={() => {}} /></MemoryRouter>,
     );
     await waitFor(() => expect(screen.getByDisplayValue("Ada")).toBeInTheDocument());
 
     // Switch to a different artist id → the form must adopt the new row.
-    rerender(<ArtistProfileSheet artistId="a2" open onOpenChange={() => {}} />);
+    rerender(<MemoryRouter><ArtistProfileSheet artistId="a2" open onOpenChange={() => {}} /></MemoryRouter>);
     await waitFor(() => expect(screen.getByDisplayValue("Grace")).toBeInTheDocument());
     expect(screen.queryByDisplayValue("Ada")).not.toBeInTheDocument();
   });
