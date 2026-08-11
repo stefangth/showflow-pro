@@ -18,16 +18,9 @@ import {
   type SkillCatalogRow,
 } from '@/hooks/useSkills';
 import { cn } from '@/lib/utils';
+import { toErrorMessage } from '@/lib/errors';
 
 const ROW_GRID = 'grid grid-cols-[1fr_130px_150px_190px] gap-3';
-
-function errorMessage(e: unknown, fallback: string): string {
-  if (e instanceof Error) return e.message;
-  if (e && typeof e === 'object' && typeof (e as { message?: unknown }).message === 'string') {
-    return (e as { message: string }).message;
-  }
-  return fallback;
-}
 
 /**
  * Settings → Casts & Cities, Skills card. Create / rename / archive / restore /
@@ -85,7 +78,7 @@ export function SkillsCard({ canEnter }: { canEnter: boolean }) {
       setNewName('');
       toast.success('Skill added');
     } catch (e) {
-      toast.error(errorMessage(e, 'Failed to add skill'));
+      toast.error(toErrorMessage(e, 'Failed to add skill'));
     }
   };
 
@@ -105,7 +98,7 @@ export function SkillsCard({ canEnter }: { canEnter: boolean }) {
       { id: editingId, name: trimmed },
       {
         onSuccess: () => { toast.success('Skill renamed'); cancelRename(); },
-        onError: (e) => toast.error(errorMessage(e, 'Failed to rename skill')),
+        onError: (e) => toast.error(toErrorMessage(e, 'Failed to rename skill')),
       },
     );
   };
@@ -113,19 +106,19 @@ export function SkillsCard({ canEnter }: { canEnter: boolean }) {
   const handleArchive = (id: string) => {
     archiveSkill.mutate(id, {
       onSuccess: () => toast.success('Skill archived'),
-      onError: (e) => toast.error(errorMessage(e, 'Failed to archive skill')),
+      onError: (e) => toast.error(toErrorMessage(e, 'Failed to archive skill')),
     });
   };
   const handleRestore = (id: string) => {
     restoreSkill.mutate(id, {
       onSuccess: () => toast.success('Skill restored'),
-      onError: (e) => toast.error(errorMessage(e, 'Failed to restore skill')),
+      onError: (e) => toast.error(toErrorMessage(e, 'Failed to restore skill')),
     });
   };
   const handleDelete = (id: string) => {
     deleteSkill.mutate(id, {
       onSuccess: () => toast.success('Skill deleted'),
-      onError: (e) => toast.error(errorMessage(e, 'Failed to delete skill')),
+      onError: (e) => toast.error(toErrorMessage(e, 'Failed to delete skill')),
     });
   };
 
