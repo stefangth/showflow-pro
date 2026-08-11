@@ -78,8 +78,8 @@ end;
 $$;
 
 -- list_removed_members: the "Recently removed" feed. deletable = the user now has NO
--- membership in ANY org (this was their last one), which also means they are not the
--- sole admin of any other org — so a full account delete affects nobody else.
+-- membership in ANY org (this was their last one, so a full delete affects nobody else)
+-- AND is not a platform admin (super-admins are never deletable from the org surface).
 create or replace function public.list_removed_members(p_org uuid)
 returns table (user_id uuid, email text, display_name text, roles app_role[],
                removed_at timestamptz, removed_by_name text, deletable boolean)
@@ -91,7 +91,8 @@ begin
   return query
     select r.user_id, r.email, r.display_name, r.roles, r.removed_at,
            actor.display_name as removed_by_name,
-           not exists (select 1 from public.org_memberships m where m.user_id = r.user_id) as deletable
+           (not exists (select 1 from public.org_memberships m where m.user_id = r.user_id)
+            and not public.is_super_admin(r.user_id)) as deletable
     from public.org_member_removals r
     left join public.profiles actor on actor.user_id = r.removed_by
     where r.org_id = p_org
@@ -202,6 +203,13 @@ begin
   end if;
   if exists (select 1 from public.org_memberships where user_id = p_user) then
     raise exception 'User still belongs to another organization' using errcode = 'P0001';
+  end if;
+  -- A platform admin (super-admin) may hold, or have held, an org membership independent of
+  -- their platform-admin status; deleting them here would let an org admin erase a super-admin
+  -- (potentially the last one). Platform-admin deletion is exclusively the platform console's
+  -- job (platform-manage-user, which guards the last super-admin).
+  if public.is_super_admin(p_user) then
+    raise exception 'Cannot delete a platform administrator' using errcode = 'P0001';
   end if;
   perform public._anonymize_user_data(p_user);
 end;

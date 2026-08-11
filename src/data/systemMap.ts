@@ -571,6 +571,22 @@ export const SYSTEM_MAP_NODES: SystemMapNode[] = [
     },
   },
   {
+    id: "f_purge",
+    column: "fn",
+    group: "GDPR & import",
+    kind: "fn",
+    label: "org-purge-removed-user",
+    sub: "org admin",
+    subsystems: ["gdpr", "platform"],
+    detail: {
+      Trigger: "Admin → People → Recently removed → Delete account",
+      Auth: "requireOrgRole(admin) · verify_jwt=true",
+      Guard: "full delete only when this was the user's LAST org AND they are not a platform admin; otherwise a no-op (retained), the tombstone stays",
+      Order: "tombstone exists → not platform_admin → no other membership → admin_anonymize_removed_user (caller JWT, shares _anonymize_user_data) → auth.admin.deleteUser",
+      Cite: "org-purge-removed-user/index.ts",
+    },
+  },
+  {
     id: "f_exportorg",
     column: "fn",
     kind: "fn",
@@ -959,6 +975,7 @@ export const SYSTEM_MAP_EDGES: SystemMapEdge[] = [
   { from: "c_healthrollup", to: "f_healthrollup" },
   // user → fn
   { from: "u_artist", to: "f_delacct" },
+  { from: "u_prod", to: "f_purge" },
   { from: "u_prod", to: "f_open" },
   { from: "u_prod", to: "f_close" },
   { from: "u_prod", to: "f_create_inv" },

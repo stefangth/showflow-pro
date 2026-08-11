@@ -28,6 +28,13 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     .from("org_member_removals").select("user_id").eq("org_id", orgId).eq("user_id", targetId).maybeSingle();
   if (!tomb) return json({ error: "not_removed" }, 404);
 
+  // Never let an org admin delete a platform admin's global account: a super-admin can hold
+  // (or have held) an org membership independent of their platform-admin status. Keep the
+  // account; platform-admin deletion is the platform console's job. (The RPC also hard-guards.)
+  const { data: superRow } = await deps.admin
+    .from("platform_admins").select("user_id").eq("user_id", targetId).maybeSingle();
+  if (superRow) return json({ retained: true, reason: "platform_admin" }, 200);
+
   // Safe-scope: a full delete only if this was their LAST org (no membership anywhere).
   const { data: other } = await deps.admin
     .from("org_memberships").select("org_id").eq("user_id", targetId).limit(1).maybeSingle();

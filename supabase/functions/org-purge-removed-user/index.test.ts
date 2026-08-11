@@ -40,6 +40,24 @@ Deno.test("deletes the account when this was the target's last org", async () =>
   assertEquals(calls.some((c) => c.table === "rpc:admin_anonymize_removed_user"), true);
 });
 
+Deno.test("retains a platform admin's account even with no org memberships", async () => {
+  const { deps, calls } = makeFakeDeps({
+    authUser: { id: CALLER },
+    tables: {
+      org_memberships: [
+        { when: { user_id: CALLER, org_id: ORG }, data: { role: "admin" } },
+        { when: { user_id: TARGET }, data: null },
+      ],
+      org_member_removals: { data: { org_id: ORG, user_id: TARGET } },
+      platform_admins: { data: { user_id: TARGET } },
+    },
+  });
+  const res = await handle(makeRequest({ headers: auth, body: { org_id: ORG, user_id: TARGET } }), deps);
+  assertEquals(res.status, 200);
+  assertEquals(await res.json(), { retained: true, reason: "platform_admin" });
+  assertEquals(calls.some((c) => c.table === "rpc:admin_anonymize_removed_user"), false);
+});
+
 Deno.test("returns not_removed when there is no tombstone", async () => {
   const deps = makeFakeDeps({
     authUser: { id: CALLER },

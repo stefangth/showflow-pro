@@ -4,7 +4,7 @@
 -- Source: 20260811103008_org_member_removals.sql.
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT plan(15);
+SELECT plan(17);
 
 CREATE OR REPLACE FUNCTION pg_temp.act_as(_uid text) RETURNS void LANGUAGE plpgsql AS $$
 BEGIN
@@ -148,6 +148,23 @@ INSERT INTO public.org_memberships (org_id, user_id, role)
 SELECT is_empty(
   $$ SELECT 1 FROM public.org_member_removals WHERE org_id='aaaaaaaa-0000-0000-0000-000000000001' AND user_id='33333333-3333-3333-3333-333333333333' $$,
   're-adding a membership clears the tombstone');
+
+-- 12-13. A platform admin (super-admin) is NEVER deletable via the org surface, even when
+--        this is their last org — an org admin must not be able to erase a super-admin.
+--        (33333333 is currently a re-added member of org A from test 11.)
+RESET ROLE;
+INSERT INTO public.platform_admins (user_id) VALUES ('33333333-3333-3333-3333-333333333333');
+SELECT pg_temp.act_as('11111111-1111-1111-1111-111111111111');
+SET LOCAL ROLE authenticated;
+SELECT public.remove_org_member('aaaaaaaa-0000-0000-0000-000000000001','33333333-3333-3333-3333-333333333333');
+SELECT is(
+  (SELECT deletable FROM public.list_removed_members('aaaaaaaa-0000-0000-0000-000000000001')
+     WHERE user_id='33333333-3333-3333-3333-333333333333'),
+  false, 'a platform admin is not deletable from the org surface');
+SELECT throws_ok(
+  $$ SELECT public.admin_anonymize_removed_user('aaaaaaaa-0000-0000-0000-000000000001','33333333-3333-3333-3333-333333333333') $$,
+  'P0001', 'Cannot delete a platform administrator',
+  'admin_anonymize refuses to delete a platform admin');
 
 SELECT * FROM finish();
 ROLLBACK;
