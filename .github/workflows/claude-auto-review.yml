@@ -22,11 +22,19 @@ jobs:
     # only triggers a re-review when it @claude-mentions on a pull request (not a plain issue).
     #
     # Every path is additionally gated on the actor being trusted, because the checkout step
-    # below pulls the PR head into the workspace root while `issue_comment` runs in the BASE
-    # repo context with this repo's secrets (CodeQL: actions/untrusted-checkout/high). The
-    # repo is public, so without this any fork author could aim the review agent at their own
-    # code. `workflow_dispatch` needs write access to trigger at all, so it needs no guard.
-    # This gate covers who may ASK; the "Refuse PRs from forks" step covers whose code runs.
+    # below pulls the PR head into the workspace root while the comment/dispatch paths run in
+    # the BASE repo context with this repo's secrets (CodeQL: actions/untrusted-checkout/high).
+    # The repo is public, so without this any fork author could aim the review agent at their
+    # own code. `workflow_dispatch` needs write access to trigger at all, so it needs no guard.
+    #
+    # Fork PRs: the automatic `pull_request` path never reviews a fork (GitHub withholds secrets
+    # from fork `pull_request` runs, and the author-association gate blocks non-collaborators),
+    # so the "Refuse un-requested fork PRs" step below fails it with a clear error. A trusted
+    # maintainer CAN review a fork PR on demand -- by @claude-commenting it or via
+    # workflow_dispatch -- because those paths gate on the maintainer, not the PR author; they
+    # deliberately check out untrusted fork code beside secrets, bounded by the tight
+    # --allowedTools list below. This gate covers who may ASK; the refuse step covers whose
+    # code the AUTOMATIC path will run.
     #
     # Known gap: Dependabot PRs have author_association CONTRIBUTOR, so they do NOT match and
     # are skipped silently. That is deliberate — GitHub withholds secrets from
@@ -46,18 +54,26 @@ jobs:
       pull-requests: write
       id-token: write
     steps:
-      # `refs/pull/N/head` resolves to the head commit even when it lives in a fork, and the
-      # comment/dispatch paths run in the BASE repo context with this repo's secrets. Refuse
-      # anything whose head is not a branch of this repo, per claude-code-action's
-      # docs/security.md ("Do not check out an untrusted ref into the workspace root").
-      - name: Refuse PRs from forks
+      # A fork's head is untrusted code. The automatic `pull_request` path never reviews it:
+      # GitHub withholds secrets from fork `pull_request` runs (the token would be empty), and
+      # the `if:` above already requires a trusted author. This step gives that path a clear
+      # error instead of a cryptic empty-token failure -- hence `if: pull_request` only.
+      #
+      # The `workflow_dispatch` and `@claude`-comment paths are gated on a trusted MAINTAINER
+      # (not the PR author), run in the BASE repo context with this repo's secrets, and DO
+      # check out the fork head via `refs/pull/N/head`. Those paths intentionally skip this
+      # step: a maintainer may review a fork PR on demand, accepting the untrusted checkout,
+      # which is bounded by the tight `--allowedTools` list below (no arbitrary Bash, no
+      # network egress). See claude-code-action's docs/security.md on untrusted refs.
+      - name: Refuse un-requested fork PRs
+        if: github.event_name == 'pull_request'
         env:
           GH_TOKEN: ${{ github.token }}
-          PR: ${{ github.event.pull_request.number || github.event.issue.number || inputs.pr }}
+          PR: ${{ github.event.pull_request.number }}
         run: |
           head_repo=$(gh api "repos/${{ github.repository }}/pulls/$PR" --jq .head.repo.full_name)
           if [ "$head_repo" != "${{ github.repository }}" ]; then
-            echo "::error::PR head lives in $head_repo, not ${{ github.repository }}. Refusing to check out untrusted code."
+            echo "::error::PR head lives in $head_repo, not ${{ github.repository }}. A trusted maintainer can review a fork PR on demand: comment @claude on it, or run this workflow via workflow_dispatch with its PR number."
             exit 1
           fi
 
