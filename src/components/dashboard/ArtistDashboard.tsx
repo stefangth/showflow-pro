@@ -25,6 +25,7 @@ import { useDashboardFirstRun } from '@/components/dashboard/firstRun/useDashboa
 import { DashboardWelcome } from '@/components/dashboard/firstRun/DashboardWelcome';
 import { DashboardWelcomeCollapsed } from '@/components/dashboard/firstRun/DashboardWelcomeCollapsed';
 import { DashboardSetupRail } from '@/components/dashboard/firstRun/DashboardSetupRail';
+import { UnlinkedArtistCard } from '@/components/artists/UnlinkedArtistCard';
 
 type BookingLite = { show_date_id: string; status: string };
 type CastMembershipRow = { id: string; cast: { id: string; name: string } | null };
@@ -124,27 +125,10 @@ export function ArtistDashboard() {
   }, [eligibleDates, bookingMap, meter]);
 
   if (!artist) {
-    const orgName = currentOrg?.name;
     return (
       <div className="space-y-6">
         <h1 className="font-display text-[32px] font-semibold tracking-tight">Dashboard</h1>
-        <Card>
-          <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-accent-100 text-accent-700">
-              <Theater className="h-6 w-6" />
-            </div>
-            <div className="space-y-1">
-              <p className="font-display text-lg font-semibold">
-                {orgName ? `You're on the ${orgName} roster` : "You're on the roster"}
-              </p>
-              <p className="mx-auto max-w-md text-sm text-muted-foreground">
-                Your account is set up. An admin still needs to link it to your artist profile before
-                your dates, casts and offers show up here. You'll get an email as soon as you're booked,
-                so there's nothing you need to do right now.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+        <UnlinkedArtistCard orgName={currentOrg?.name} />
       </div>
     );
   }
