@@ -10,7 +10,7 @@
 //
 // So the note now prints all three numbers, and this recomputes them from the
 // registry, the migrations and the edge tree. Add a database policy for one of
-// the three interface-only rights, or add a right with no enforcement at all,
+// the interface-only rights, or add a right with no enforcement at all,
 // and the numbers move and this fails.
 //
 // `facts.ts` cannot import `capabilities.ts` (scripts/build-trust-json.mjs
@@ -157,14 +157,14 @@ describe("capability enforcement split", () => {
   });
 
   // The named set, not just its size: the published sentence describes what
-  // these three rights DO ("reorder or archive the production catalog and edit
-  // its scheduling"), so a different three would make the description false
-  // while the count still read as correct.
-  it("leaves exactly the production-catalog and scheduling rights to the interface", () => {
+  // these three rights DO ("reorder or archive the production catalog, or
+  // manage the skills catalog"), so a different three would make the
+  // description false while the count still read as correct.
+  it("leaves exactly the production-catalog and skills-catalog rights to the interface", () => {
     expect(interfaceOnly).toEqual([
       "producer_can_archive_productions",
       "producer_can_reorder_productions",
-      "producer_can_edit_scheduling",
+      "producer_can_manage_skills",
     ]);
   });
 
@@ -183,7 +183,7 @@ describe("capability enforcement split", () => {
   });
 
   // The sentence says "the row-level policy that guards the write OR the
-  // function that performs it" because both shapes are in the 19. This pins
+  // function that performs it" because both shapes are in the 20. This pins
   // the one that is not a policy, so the clause cannot be quietly simplified
   // back to "a database policy" and become false again.
   it("counts the one right gated inside a security-definer function, not a policy", () => {
@@ -205,7 +205,7 @@ describe("capability enforcement split", () => {
     expect(CAPABILITY_INTERFACE_ONLY_NOTE).toContain(
       `${serverSide} of the ${CAPABILITY_DEFS.length} rights are checked on the server`,
     );
-    // "inside the database", not "by a database policy": 18 of the 19 are an
+    // "inside the database", not "by a database policy": 19 of the 20 are an
     // is_capability_enabled call in a row-level policy, and rename_org is the
     // same call inside the SECURITY DEFINER function that performs the write.
     // The derivation above counts both shapes, so the sentence names both.
@@ -221,7 +221,7 @@ describe("capability enforcement split", () => {
   // split — in its own words, and the full sentence renders on the
   // capabilities card. That restatement is a second hand-typed copy of the
   // same two numbers, so it needs the same gate: without this, closing one of
-  // the three interface-only gaps would leave "25 ... three" published on both
+  // the three interface-only gaps would leave "26 ... three" published on both
   // surfaces with the note beside it corrected and CI green.
   it("keeps the Roles and rights claim's split in step with the same derivation", () => {
     const control = CONTROLS.find((c) => c.title === "Roles and rights");

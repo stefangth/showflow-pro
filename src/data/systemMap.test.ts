@@ -10,7 +10,7 @@ describe("systemMap data", () => {
     expect(by("cron")).toBe(9);
     expect(by("user")).toBe(4);
     expect(by("fn")).toBe(26);
-    expect(by("db")).toBe(14);
+    expect(by("db")).toBe(15);
     expect(by("fx")).toBe(13);
   });
 

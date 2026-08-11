@@ -24,19 +24,20 @@ describe("shows data-access", () => {
     const fake = createFakeSupabase({ shows: { data: { id: "s9" }, error: null } });
     const res = await createShow(fake as never, {
       orgId: "org-1", createdBy: "u1", program: "Hamlet", subProgram: "Mat", category: "Drama",
-      description: "d", mainCastSlots: 3, understudySlots: 1, sortOrder: 5,
+      description: "d", sortOrder: 5,
     });
     expect(res).toEqual({ id: "s9" });
+    // Slot counts are omitted from the insert: they are derived from show_slots.
     expect(fake.calls).toContainEqual({ table: "shows", method: "insert", args: [{
       org_id: "org-1", created_by: "u1", program: "Hamlet", sub_program: "Mat", category: "Drama",
-      description: "d", main_cast_slots: 3, understudy_slots: 1, status: "active", sort_order: 5,
+      description: "d", status: "active", sort_order: 5,
     }] });
   });
 
   it("updateShow patches by id", async () => {
     const fake = createFakeSupabase({ shows: { data: null, error: null } });
-    await updateShow(fake as never, "s1", { main_cast_slots: 4, description: "x" });
-    expect(fake.calls).toContainEqual({ table: "shows", method: "update", args: [{ main_cast_slots: 4, description: "x" }] });
+    await updateShow(fake as never, "s1", { category: "Drama", description: "x" });
+    expect(fake.calls).toContainEqual({ table: "shows", method: "update", args: [{ category: "Drama", description: "x" }] });
     expect(fake.calls).toContainEqual({ table: "shows", method: "eq", args: ["id", "s1"] });
   });
 
@@ -67,7 +68,7 @@ describe("shows data-access", () => {
     const fake = createFakeSupabase({ shows: { data: null, error: { message: "denied" } } });
     await expect(createShow(fake as never, {
       orgId: "o", createdBy: null, program: "P", subProgram: null, category: null,
-      description: null, mainCastSlots: null, understudySlots: null, sortOrder: null,
+      description: null, sortOrder: null,
     })).rejects.toMatchObject({ message: "denied" });
   });
 });

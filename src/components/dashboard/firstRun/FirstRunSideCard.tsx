@@ -8,12 +8,12 @@ export function FirstRunSideCard(props: { title: string; body: string; links: Si
   const { title, body, links } = props;
 
   return (
-    <div className="flex shrink-0 items-start gap-6 rounded-[var(--radius-l)] border border-border bg-card p-4">
+    <div className="flex shrink-0 flex-col gap-4 rounded-[var(--radius-l)] border border-border bg-card p-4 lg:flex-row lg:items-start lg:gap-6">
       <div className="min-w-0 flex-1">
         <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-faint)]">{title}</div>
         <div className="mt-1.5 text-xs leading-[18px] text-muted-foreground text-pretty">{body}</div>
       </div>
-      <div className="flex w-[300px] shrink-0 flex-col gap-[9px]">
+      <div className="flex w-full shrink-0 flex-col gap-[9px] lg:w-[300px]">
         {links.map((link, i) => (
           <div key={i} className="flex items-start gap-2">
             <svg

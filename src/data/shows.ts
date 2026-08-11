@@ -25,17 +25,17 @@ export interface CreateShowArgs {
   subProgram: string | null;
   category: string | null;
   description: string | null;
-  mainCastSlots: number | null;
-  understudySlots: number | null;
   sortOrder: number | null;
 }
+// main_cast_slots/understudy_slots are trigger-maintained caches derived from
+// show_slots and are NOT patchable here: both authoring surfaces (ShowFormDialog and
+// the booking-setup rail's SlotsStep) write show_slots via saveShowSlots. They stay on
+// ShowRow/SHOW_COLS for reads.
 export interface UpdateShowPatch {
   program?: string | null;
   sub_program?: string | null;
   category?: string | null;
   description?: string | null;
-  main_cast_slots?: number | null;
-  understudy_slots?: number | null;
 }
 
 const SHOW_COLS =
@@ -90,10 +90,11 @@ export async function fetchShowsWithStats(
 }
 
 export async function createShow(client: SupabaseClient<Database>, a: CreateShowArgs): Promise<{ id: string }> {
+  // main_cast_slots/understudy_slots are omitted: a new show starts unconfigured
+  // (NULL) and its counts are derived once the caller saves its show_slots rows.
   const { data, error } = await client.from("shows").insert({
     org_id: a.orgId, created_by: a.createdBy, program: a.program, sub_program: a.subProgram,
-    category: a.category, description: a.description, main_cast_slots: a.mainCastSlots,
-    understudy_slots: a.understudySlots, status: "active", sort_order: a.sortOrder,
+    category: a.category, description: a.description, status: "active", sort_order: a.sortOrder,
   }).select("id").single();
   if (error) throw error;
   return data as { id: string };
