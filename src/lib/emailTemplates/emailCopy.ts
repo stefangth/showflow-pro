@@ -74,6 +74,7 @@ export const EMAIL_COPY_DEFAULTS = {
   "artist-confirmation-digest.greetingAnonymous": "Hi,",
   "artist-confirmation-digest.introUpdates": "Here's what changed on your bookings.",
   "artist-confirmation-digest.introConfirmed": "Here's what just got confirmed. We're excited to have you on stage!",
+  "artist-confirmation-digest.ctaLabel": "View your bookings",
   "artist-confirmation-digest.footer": "Questions? Reach out to your point of contact and they'll be glad to help.",
   "artist-confirmation-digest.cancelledHeading": "Cancelled",
   "artist-confirmation-digest.scheduleChangesHeading": "Schedule changes",
