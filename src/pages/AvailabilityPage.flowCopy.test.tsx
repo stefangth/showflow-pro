@@ -2,7 +2,8 @@ import { describe, it, expect, vi } from "vitest";
 import { screen } from "@testing-library/react";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import { createFakeSupabase } from "@/test/supabaseFake";
-import { BOOKING_FLOW_DEFAULTS, applyPreset, type BookingFlow } from "@/lib/bookingFlow";
+import { BOOKING_FLOW_DEFAULTS, applyPreset, type BookingFlow, type FlowTimes } from "@/lib/bookingFlow";
+import { DEFAULT_FLOW_TIMES } from "@/data/settings";
 
 /**
  * Task 4: AvailabilityPage's H1/subtitle and per-row status badge must derive
@@ -75,9 +76,11 @@ vi.mock("@/features/editor/useColumnHeaders", () => ({
 vi.mock("@/features/editor/ColumnLayoutEditor", () => ({ ColumnLayoutEditor: () => null }));
 
 const flowHolder = { flow: BOOKING_FLOW_DEFAULTS as BookingFlow };
+const timesHolder = { times: DEFAULT_FLOW_TIMES as FlowTimes };
 vi.mock("@/hooks/useBookingFlow", () => ({
   useBookingFlow: () => ({ data: flowHolder.flow }),
   useReferenceField: () => ({ reference: { source: "show" }, customFieldKey: null }),
+  useFlowTimes: () => ({ data: timesHolder.times }),
 }));
 
 import AvailabilityPage from "./AvailabilityPage";
@@ -100,5 +103,30 @@ describe("AvailabilityPage flow-aware copy (Task 4)", () => {
 
     expect(await screen.findByText("Not booked")).toBeInTheDocument();
     expect(screen.queryByText("No offer yet")).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * R2.1 + R4.7: a muted timing line under the blocking help text, sourced from the
+ * existing describeTonightStandalone(times, flow) helper — honest per org state, so
+ * it renders only when that helper has something true to say (never a fallback string).
+ */
+describe("AvailabilityPage timing line (R2.1/R4.7)", () => {
+  it("shows the response window and digest hour for an offer+digest org", async () => {
+    flowHolder.flow = { ...BOOKING_FLOW_DEFAULTS, artist_acceptance: true, offer_delivery: "digest", active: true };
+    timesHolder.times = DEFAULT_FLOW_TIMES;
+    renderWithProviders(<AvailabilityPage />);
+
+    expect(await screen.findByText(/48 hours to answer/i)).toBeInTheDocument();
+    expect(screen.getByText(/19:00 digest/i)).toBeInTheDocument();
+  });
+
+  it("shows no timing line for a direct-book org", async () => {
+    flowHolder.flow = { ...BOOKING_FLOW_DEFAULTS, artist_acceptance: false, active: true };
+    timesHolder.times = DEFAULT_FLOW_TIMES;
+    renderWithProviders(<AvailabilityPage />);
+
+    expect(await screen.findByRole("heading", { name: "My Dates" })).toBeInTheDocument();
+    expect(screen.queryByText(/hours to answer/i)).not.toBeInTheDocument();
   });
 });

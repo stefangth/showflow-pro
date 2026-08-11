@@ -28,8 +28,10 @@ import { formatDateDMY, parseDateOnly, isPastDate, pastRowClassName } from '@/li
 import { showIdentityLabel } from '@/types';
 import { fetchMyActiveBookedDates, mergeArtistActiveBookedDates, type ActiveBookedDateEntry } from '@/data/artists';
 import { cn } from '@/lib/utils';
-import { useBookingFlow, useReferenceField } from '@/hooks/useBookingFlow';
+import { useBookingFlow, useReferenceField, useFlowTimes } from '@/hooks/useBookingFlow';
 import { BOOKING_FLOW_DEFAULTS, referenceLabel } from '@/lib/bookingFlow';
+import { describeTonightStandalone } from '@/lib/bookings/timingCopy';
+import { DEFAULT_FLOW_TIMES } from '@/data/settings';
 import { availabilityPageCopy, bookingStatusLabels } from '@/lib/flowCopy';
 import { useColumnTemplate, useEditorConfig } from '@/features/editor/EditorContext';
 import { useColumnHeaders } from '@/features/editor/useColumnHeaders';
@@ -73,6 +75,17 @@ function ArtistAvailability() {
   const { reference, customFieldKey } = useReferenceField();
   const flowQ = useBookingFlow();
   const flow = flowQ.data ?? BOOKING_FLOW_DEFAULTS;
+  const orgId = currentOrg?.id ?? null;
+  // Org-scope discipline mirrors FirstOfferCard: with no active org, `flow` above
+  // has already fallen back to BOOKING_FLOW_DEFAULTS, and narrating that here would
+  // describe how offers work somewhere other than this artist's own org. Passing
+  // `flowQ.data` directly (undefined until a real org's row loads, and never read
+  // when orgId is null) keeps the timing line silent until there is an actual org
+  // flow to describe.
+  const timesQ = useFlowTimes(orgId);
+  const tonight = orgId
+    ? describeTonightStandalone(timesQ.data ?? DEFAULT_FLOW_TIMES, flowQ.data)
+    : null;
   const pageCopy = availabilityPageCopy(flow);
   const statusLabels = bookingStatusLabels(flow);
   const { orderedColumns, visibleCount } = useColumnTemplate('availability');
@@ -419,6 +432,9 @@ function ArtistAvailability() {
           <p className="text-sm text-muted-foreground">
             Mark dates you're unavailable so the system won't send you offers for those days.
           </p>
+          {tonight && (
+            <p className="text-xs text-muted-foreground mt-1">{tonight}</p>
+          )}
 
           <form
             className="flex flex-wrap items-end gap-3"
