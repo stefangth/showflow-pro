@@ -12,6 +12,7 @@ import { ConsentProvider } from "@/features/consent/ConsentContext";
 import { CookieConsentBanner } from "@/components/consent/CookieConsentBanner";
 import { AnalyticsBridge } from "@/features/analytics/AnalyticsBridge";
 import { ProtectedRoute, PlatformRoute } from "@/features/auth/ProtectedRoute";
+import { Analytics } from "@vercel/analytics/react";
 import PlatformPage from "./pages/PlatformPage";
 import AppLayout from "@/components/layout/AppLayout";
 import { ROUTES } from "@/config/app.config";
@@ -117,6 +118,7 @@ const App = () => (
         <CookieConsentBanner />
         </ConsentProvider>
       </BrowserRouter>
+      <Analytics />
     </TooltipProvider>
     </ThemeProvider>
   </QueryClientProvider>
