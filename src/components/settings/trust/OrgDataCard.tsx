@@ -4,6 +4,7 @@ import { useOrgDataStats } from "@/hooks/useTrustStats";
 import { useOrgMembers } from "@/hooks/useOrgMembers";
 import { useAuth } from "@/features/auth/AuthContext";
 import { roleLabel } from "@/config/app.config";
+import { DATABASE_REGION } from "@/lib/trust/facts";
 
 /** A tile's value: a loaded string, or the loading/failed state.
  *  A failed count renders as an em-dash rather than a zero — this card exists
@@ -110,9 +111,14 @@ export function OrgDataCard() {
          *  not help: the column is already at its 772px maximum there. Two-up
          *  gives 366px at the maximum and 226px at 1024. */}
         <div className="grid gap-3 sm:grid-cols-2">
+          {/* The region is imported, not retyped. It used to be a JSX literal
+           *  ("EU · Ireland") saying the same thing as the public page's KPI
+           *  in different words, which meant moving the project would have
+           *  left this tab publishing the old region with every check green.
+           *  factsSingleSource.test.ts fails if it comes back as a literal. */}
           <Tile
             label="Region"
-            value="EU · Ireland"
+            value={DATABASE_REGION}
             note="Managed Postgres, encrypted at rest."
             isLoading={false}
             isError={false}

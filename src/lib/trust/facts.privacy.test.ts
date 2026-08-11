@@ -140,6 +140,44 @@ describe("subprocessor table matches the privacy policy", () => {
   });
 });
 
+// Every other printed figure on this page is derived or pinned — the
+// subprocessor count, the capability counts, the retention numbers, the hosts.
+// The documents list's "updated …" dates were not: two hand-typed literals a
+// reader treats as fact, sitting outside every gate, on the one surface whose
+// whole premise is that its claims are checkable. The next policy edit would
+// have published a stale date on both surfaces with CI green.
+//
+// The privacy policy is a file this suite already opens, so its date is
+// derived here. The terms of service live in the landing repo and nothing in
+// this repo can read them; that date is pinned there instead, by
+// scripts/check-doc-dates.mjs against src/pages/Tos.tsx.
+describe("the documents list prints each document's own date", () => {
+  /** The `_Last updated: 11 August 2026_` line at the head of the policy. */
+  function policyDate(text: string, label: string): string {
+    const match = text.match(new RegExp(`^_${label}:?\\s*(.+?)_$`, "m"));
+    expect(match, `the "${label}" line at the head of the policy moved or was renamed`).not.toBeNull();
+    return match![1].trim();
+  }
+
+  it("names the date the English privacy policy carries", () => {
+    const doc = DOCUMENTS.find((d) => d.title === "Privacy policy");
+    expect(doc, "the Privacy policy document row was renamed").toBeDefined();
+    // Containment, not equality: the meta also carries the scope note. The
+    // date is printed in the document's own format so this stays a comparison
+    // rather than a reformatting step that could silently stop matching.
+    expect(doc!.meta).toContain(`updated ${policyDate(POLICY, "Last updated")}`);
+  });
+
+  it("keeps the binding German twin on the same day", () => {
+    // The German version controls (privacy-policy.en.md:7), so an English-only
+    // date bump would leave the authoritative document stale while the page
+    // published the newer date. Digits only, so "11 August 2026" and
+    // "11. August 2026" compare equal.
+    const digits = (s: string) => s.match(/\d+/g) ?? [];
+    expect(digits(policyDate(POLICY_DE, "Stand"))).toEqual(digits(policyDate(POLICY, "Last updated")));
+  });
+});
+
 describe("retention table matches the privacy policy", () => {
   // Each page row is anchored to a phrase that must survive in section 7. The
   // capture group isolates the number+unit fragment the anchor is guarding,

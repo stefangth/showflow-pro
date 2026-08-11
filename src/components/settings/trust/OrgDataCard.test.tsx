@@ -3,6 +3,7 @@ import { join, resolve } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { screen } from "@testing-library/react";
 import { renderWithProviders } from "@/test/renderWithProviders";
+import { DATABASE_REGION } from "@/lib/trust/facts";
 
 const hasRoleMock = vi.fn((role: string) => role === "admin");
 vi.mock("@/features/auth/AuthContext", () => ({
@@ -124,7 +125,9 @@ describe("OrgDataCard", () => {
     for (const dash of dashes) expect(dash).toHaveTextContent("—");
     // The card heading, and the two tiles that do not depend on a query, still render.
     expect(screen.getByText("This organisation's data")).toBeInTheDocument();
-    expect(screen.getByText("EU · Ireland")).toBeInTheDocument();
+    // Asserted through the constant, not a literal: the tile must keep
+    // rendering whatever facts.ts says the region is, not a copy of it.
+    expect(screen.getByText(DATABASE_REGION)).toBeInTheDocument();
     expect(screen.getByText("None")).toBeInTheDocument();
   });
 

@@ -291,37 +291,46 @@
   "retention": [
     {
       "item": "Bookings and audit log",
-      "period": "3 years from show date"
+      "period": "3 years from show date",
+      "basis": "A policy commitment. No scheduled job deletes these rows; they go when the organisation itself is deleted (delete_org)."
     },
     {
       "item": "Show-date chat",
-      "period": "Archived 30 days · deleted 12 months"
+      "period": "Archived 30 days · deleted 12 months",
+      "basis": "The 30 day archive is enforced by the application (CHAT_ARCHIVE_DAYS in src/config/app.config.ts). The 12 month deletion is a policy commitment; no scheduled job performs it."
     },
     {
       "item": "Backups",
-      "period": "No longer than 30 days"
+      "period": "No longer than 30 days",
+      "basis": "Set by the managed database provider. Nothing in this codebase writes or expires a backup."
     },
     {
       "item": "Account and profile",
-      "period": "Life of account + 30 days"
+      "period": "Life of account + 30 days",
+      "basis": "Deletion runs on request: the delete-my-account function anonymises what booking records must keep, then removes the login. The 30 days is the backup ceiling above."
     },
     {
       "item": "Email send log and suppressions",
-      "period": "24 months"
+      "period": "24 months",
+      "basis": "A ceiling, not a schedule. The send log is pruned nightly at a shorter configured window (prune_email_log, email_log_retention_days, 90 days by default). The suppression list has no scheduled prune, so 24 months is a commitment for it."
     },
     {
       "item": "Hosting and database logs",
-      "period": "7–30 days"
+      "period": "7–30 days",
+      "basis": "Set by the hosting and database providers. Nothing in this codebase retains or expires these logs."
     },
     {
       "item": "Error reports",
-      "period": "90 days, once error tracking is enabled"
+      "period": "90 days, once error tracking is enabled",
+      "basis": "A policy commitment. No error-tracking package ships in the application, so nothing is collected."
     },
     {
       "item": "Analytics and session replay",
-      "period": "12 months, once PostHog is enabled"
+      "period": "12 months, once PostHog is enabled",
+      "basis": "A policy commitment. No PostHog package ships in the application, so nothing is collected."
     }
   ],
+  "retentionBasisNote": "The note under each period says what applies it: a mechanism in the product, a setting held by a provider, or a commitment with nothing scheduled behind it.",
   "selfServeRights": [
     {
       "icon": "download",
@@ -347,13 +356,13 @@
   "documents": [
     {
       "title": "Privacy policy",
-      "meta": "Web · covers the app, not the showflow.pro website · updated August 11, 2026",
+      "meta": "Web · covers the app, not the showflow.pro website · updated 11 August 2026",
       "href": "https://app.showflow.pro/privacy",
       "cta": "Read"
     },
     {
       "title": "Terms of service",
-      "meta": "Web · updated May 2026",
+      "meta": "Web · updated 15 May 2026",
       "href": "https://showflow.pro/terms",
       "cta": "Read"
     },

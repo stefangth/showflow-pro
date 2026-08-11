@@ -232,6 +232,16 @@ export interface Kpi {
   value: string;
 }
 
+/** Where the Postgres project lives, stated once.
+ *
+ *  It was the KPI's value and, separately, a `value="EU · Ireland"` JSX literal
+ *  in OrgDataCard.tsx, which is outside trust.json and therefore outside every
+ *  drift gate: move the project and the in-app tab keeps publishing the old
+ *  region while the public page it links to publishes the new one, with CI
+ *  green. Both render this constant now, and factsSingleSource.test.ts fails if
+ *  a component retypes the region instead of importing it. */
+export const DATABASE_REGION = "European Union (Ireland)";
+
 /** The four facts a reviewer scans first. Each is checkable. */
 export const TRUST_KPIS: Kpi[] = [
   { icon: "lock", label: "Tenant isolation", value: "Row-level, asserted on every pull request" },
@@ -239,14 +249,43 @@ export const TRUST_KPIS: Kpi[] = [
   // hosting and transactional email are US processors under DPF + SCCs, so a
   // bare "Data residency: EU" would overclaim. The subprocessor table carries
   // the per-processor regions.
-  { icon: "globe", label: "Database region", value: "European Union (Ireland)" },
+  { icon: "globe", label: "Database region", value: DATABASE_REGION },
   { icon: "server", label: "Subprocessors", value: SUBPROCESSOR_SUMMARY },
   { icon: "users", label: "Access control", value: "28 rights, 9 sensitive, 9 off by default" },
 ];
 
+/** The backup deletion ceiling, as one number.
+ *
+ *  It governs three printed sentences: the Backups retention period, the
+ *  Backups control, and the footnote both in-app cards carry under "what
+ *  happens when you delete something". Two of those were hand-retyped JSX
+ *  ("Deleted data leaves the backups within 30 days…", "Backups age out
+ *  within 30 days…"), which put the figure outside trust.json and outside
+ *  every gate: lower the ceiling and the Settings tab keeps publishing 30
+ *  while the public page publishes the new number. */
+const BACKUP_MAX_DAYS = 30;
+
+/** The backup claim, stated once and rendered by every surface that makes it.
+ *  Composed into CONTROLS below, and imported directly by RetentionCard and
+ *  YourDataCard. */
+export const BACKUP_CEILING_NOTE =
+  `Backups are retained no longer than ${BACKUP_MAX_DAYS} days, so data deleted from the live database leaves them inside that window. ` +
+  `That is a deletion ceiling, not a promise that ${BACKUP_MAX_DAYS} days of restore points are kept.`;
+
 export interface RetentionRow {
   item: string;
   period: string;
+  /** What applies the period. Every row of this table used to print a bare
+   *  figure, which reads as "a timer deletes this on that schedule" — and for
+   *  five of the eight rows no such timer exists anywhere in the repo. Rather
+   *  than drop the rows (they are the periods the policy commits to, and the
+   *  commitment is real), each one now says which it is: a mechanism in the
+   *  product, a setting held by a provider, or a commitment with nothing
+   *  scheduled behind it. retentionBasis.test.ts pins the numbers quoted here
+   *  to the code they name and re-derives the "nothing scheduled" half from
+   *  the migrations, so a prune job added later turns this red instead of
+   *  leaving a stale concession published. */
+  basis: string;
 }
 
 /** Mirrors section 7 of docs/legal/privacy-policy.en.md. Asserted by test.
@@ -256,18 +295,56 @@ export interface RetentionRow {
  *  Defined ahead of CONTROLS so the Auditability control can quote this
  *  table's own retention period instead of restating it as a second literal. */
 export const RETENTION: RetentionRow[] = [
-  { item: "Bookings and audit log", period: "3 years from show date" },
-  { item: "Show-date chat", period: "Archived 30 days · deleted 12 months" },
+  {
+    item: "Bookings and audit log",
+    period: "3 years from show date",
+    basis:
+      "A policy commitment. No scheduled job deletes these rows; they go when the organisation itself is deleted (delete_org).",
+  },
+  {
+    item: "Show-date chat",
+    // Two claims in one row, and only the first has a mechanism. Keeping them
+    // in one row matches section 7's single chat bullet; the basis is what
+    // separates them.
+    period: "Archived 30 days · deleted 12 months",
+    basis:
+      "The 30 day archive is enforced by the application (CHAT_ARCHIVE_DAYS in src/config/app.config.ts). The 12 month deletion is a policy commitment; no scheduled job performs it.",
+  },
   // A ceiling, not a window. The Supabase organisation behind this deployment
   // is on the free plan, which carries no restorable daily-backup window at
   // all (daily backups start at Pro, and 30 days of them needs Enterprise or
   // the PITR add-on). "Rolling 30 days" read as a durability promise nobody
   // could keep. What is true, and what section 7 now states, is the deletion
   // ceiling: nothing the provider holds outlives 30 days.
-  { item: "Backups", period: "No longer than 30 days" },
-  { item: "Account and profile", period: "Life of account + 30 days" },
-  { item: "Email send log and suppressions", period: "24 months" },
-  { item: "Hosting and database logs", period: "7–30 days" },
+  {
+    item: "Backups",
+    period: `No longer than ${BACKUP_MAX_DAYS} days`,
+    basis: "Set by the managed database provider. Nothing in this codebase writes or expires a backup.",
+  },
+  {
+    item: "Account and profile",
+    period: "Life of account + 30 days",
+    basis:
+      "Deletion runs on request: the delete-my-account function anonymises what booking records must keep, then removes the login. The 30 days is the backup ceiling above.",
+  },
+  {
+    // The one row where the published figure and the deployed configuration
+    // pointed in opposite directions. Section 7 states 24 months and the page
+    // printed it as though something held the rows for that long; what
+    // actually exists is prune_email_log, a nightly job that deletes
+    // email_send_log at email_log_retention_days (seeded to 90), and no prune
+    // at all on suppressed_emails. Both facts sit inside a 24-month ceiling,
+    // so the number stays and the basis says which side of it each half is on.
+    item: "Email send log and suppressions",
+    period: "24 months",
+    basis:
+      "A ceiling, not a schedule. The send log is pruned nightly at a shorter configured window (prune_email_log, email_log_retention_days, 90 days by default). The suppression list has no scheduled prune, so 24 months is a commitment for it.",
+  },
+  {
+    item: "Hosting and database logs",
+    period: "7–30 days",
+    basis: "Set by the hosting and database providers. Nothing in this codebase retains or expires these logs.",
+  },
   // Sentry and PostHog are "Off" (see SUBPROCESSORS below): neither SDK ships
   // today, so nothing is collected yet. The periods below are what the
   // privacy policy commits to for the day either is switched on, not a
@@ -283,9 +360,22 @@ export const RETENTION: RetentionRow[] = [
   // it is page-view data on the marketing site, described in section 5, and
   // inventing a retention figure for it would be a claim with no artefact
   // behind it.
-  { item: "Error reports", period: "90 days, once error tracking is enabled" },
-  { item: "Analytics and session replay", period: "12 months, once PostHog is enabled" },
+  {
+    item: "Error reports",
+    period: "90 days, once error tracking is enabled",
+    basis: "A policy commitment. No error-tracking package ships in the application, so nothing is collected.",
+  },
+  {
+    item: "Analytics and session replay",
+    period: "12 months, once PostHog is enabled",
+    basis: "A policy commitment. No PostHog package ships in the application, so nothing is collected.",
+  },
 ];
+
+/** Shown above the table on both surfaces, so a reader knows what the second
+ *  line under each period is for. */
+export const RETENTION_BASIS_NOTE =
+  "The note under each period says what applies it: a mechanism in the product, a setting held by a provider, or a commitment with nothing scheduled behind it.";
 
 /** The one concession this page makes about enforcement, stated once.
  *
@@ -394,8 +484,7 @@ export const CONTROLS: Control[] = [
   {
     icon: "database",
     title: "Backups",
-    claim:
-      "Managed Postgres, hosted by Supabase. Backups are retained no longer than 30 days, so data deleted from the live database leaves them inside that window. That is a deletion ceiling, not a promise that 30 days of restore points are kept.",
+    claim: `Managed Postgres, hosted by Supabase. ${BACKUP_CEILING_NOTE}`,
     evidence: "Stated in section 7 of the privacy policy.",
   },
 ];
@@ -477,13 +566,27 @@ export const DOCUMENTS: TrustDocument[] = [
     // and related transactional emails"; the site policy opens "The data
     // controller for this website (showflow.pro)". A reviewer establishing
     // which statements are authoritative should not have to guess.
-    meta: "Web · covers the app, not the showflow.pro website · updated August 11, 2026",
+    //
+    // The date is printed in the document's own format ("11 August 2026") so
+    // the assertion against it is a string containment rather than a
+    // reformatting step that could quietly stop matching. It was a hand-typed
+    // literal nobody checked; facts.privacy.test.ts now parses the policy's
+    // `_Last updated:_` line and fails if the two disagree, and pins the
+    // German twin's `_Stand:_` to the same day.
+    meta: "Web · covers the app, not the showflow.pro website · updated 11 August 2026",
     href: `${APP_HOST}/privacy`,
     cta: "Read",
   },
   {
     title: "Terms of service",
-    meta: "Web · updated May 2026",
+    // The terms live in the landing repo (src/pages/Tos.tsx, "Last updated
+    // May 15, 2026"), which nothing in this repo can read — so this date was
+    // the one printed figure on the page with no gate at all, and it was
+    // rounded to the month on top of that. It now names the document's own
+    // day, and the landing repo's scripts/check-doc-dates.mjs (chained onto
+    // its blocking `npm run lint`) parses Tos.tsx and fails if the published
+    // contract stops matching it.
+    meta: "Web · updated 15 May 2026",
     href: `${MARKETING_HOST}/terms`,
     cta: "Read",
   },

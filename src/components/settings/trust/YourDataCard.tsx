@@ -3,7 +3,7 @@ import { Download, Mail } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ROUTES } from "@/config/app.config";
-import { TRUST_CONTACT } from "@/lib/trust/facts";
+import { BACKUP_CEILING_NOTE, TRUST_CONTACT } from "@/lib/trust/facts";
 
 /** Export and deletion, described as they actually work today.
  *
@@ -39,9 +39,12 @@ export function YourDataCard() {
             </a>
           </Button>
         </div>
+        {/* The backup sentence is imported, not retyped: the same string ships
+         *  in the Backups control, the Retention card and the public page, so
+         *  lowering the ceiling moves all four at once. */}
         <p className="text-xs leading-4 text-muted-foreground">
           Deleting your account anonymises what booking records must retain, then removes the
-          account. Backups age out within 30 days, the longest any backup is kept.
+          account. {BACKUP_CEILING_NOTE}
         </p>
       </CardContent>
     </Card>

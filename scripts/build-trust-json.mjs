@@ -86,6 +86,11 @@ const payload = {
   subprocessors: facts.SUBPROCESSORS,
   transferBasisNote: facts.TRANSFER_BASIS_NOTE,
   retention: facts.RETENTION,
+  // Travels in the contract rather than being retyped in the landing repo,
+  // for the same reason capabilities.note does: it introduces the per-row
+  // `basis` line, and a hand-copied lead-in could describe a table the page
+  // has stopped publishing. See RETENTION_BASIS_NOTE in src/lib/trust/facts.ts.
+  retentionBasisNote: facts.RETENTION_BASIS_NOTE,
   selfServeRights: facts.SELF_SERVE_RIGHTS,
   documents: facts.DOCUMENTS,
   documentsNote: facts.DOCUMENTS_NOTE,
@@ -108,6 +113,21 @@ if (typeof payload.capabilities.note !== "string" || !payload.capabilities.note)
   throw new Error(
     "src/lib/trust/facts.ts must export CAPABILITY_INTERFACE_ONLY_NOTE as a non-empty string.",
   );
+}
+
+if (typeof payload.retentionBasisNote !== "string" || !payload.retentionBasisNote) {
+  throw new Error("src/lib/trust/facts.ts must export RETENTION_BASIS_NOTE as a non-empty string.");
+}
+
+// A retention row without a basis publishes a bare period, which reads as a
+// schedule the product mostly does not run. Refuse to emit one.
+for (const row of payload.retention) {
+  if (typeof row.basis !== "string" || !row.basis) {
+    throw new Error(
+      `RETENTION row "${row.item}" has no basis. Every period must say what applies it — ` +
+        "see RetentionRow in src/lib/trust/facts.ts.",
+    );
+  }
 }
 
 const serialized = `${JSON.stringify(payload, null, 2)}\n`;

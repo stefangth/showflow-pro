@@ -3,7 +3,7 @@ import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { screen } from "@testing-library/react";
 import { renderWithProviders } from "@/test/renderWithProviders";
-import { RETENTION } from "@/lib/trust/facts";
+import { BACKUP_CEILING_NOTE, RETENTION } from "@/lib/trust/facts";
 import { RetentionCard } from "./RetentionCard";
 
 describe("RetentionCard", () => {
@@ -14,6 +14,28 @@ describe("RetentionCard", () => {
       expect(screen.getByText(row.item)).toBeInTheDocument();
       expect(screen.getByText(row.period)).toBeInTheDocument();
     }
+  });
+
+  // A period printed on its own reads as a schedule. Five of the eight have no
+  // schedule behind them (see the scheduled-jobs assertion below and
+  // src/lib/trust/retentionBasis.test.ts), so the line that says which is not
+  // decoration — it is what stops the table implying enforcement it lacks.
+  it("prints what applies each period, not the period alone", () => {
+    renderWithProviders(<RetentionCard />);
+
+    for (const row of RETENTION) {
+      expect(screen.getByText(row.basis), `${row.item} rendered no basis`).toBeInTheDocument();
+    }
+  });
+
+  // The backup ceiling used to be typed into this file ("Deleted data leaves
+  // the backups within 30 days, the longest any backup is kept.") — a second
+  // wording of a claim facts.ts already owned, outside trust.json and outside
+  // every drift gate. It is imported now, so the public page moves with it.
+  it("renders the backup ceiling from facts.ts rather than a local sentence", () => {
+    renderWithProviders(<RetentionCard />);
+
+    expect(screen.getByText(BACKUP_CEILING_NOTE)).toBeInTheDocument();
   });
 
   // The subhead used to read: Nothing is kept "just in case". That is a claim
