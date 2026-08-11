@@ -82,21 +82,24 @@ export interface SaveShowSlotsArgs {
  * Reconciles a production's `show_slots` (and each slot's
  * `show_slot_required_skills`) rows to match `slots`. Diffs against the
  * show's CURRENT rows, read fresh inside this call rather than a caller-held
- * baseline: a slot with an `id` matching a current row is updated only when a
- * tracked field actually changed; a slot without an `id` (or whose `id` no
- * longer matches a current row, e.g. concurrently deleted) is inserted;
- * current rows absent from `slots` are deleted (cascades to their
- * `show_slot_required_skills` rows). Each surviving/created slot's skill set
- * is then diffed the same way `applyRequiredSkillsDiff` diffs a show's
- * required skills in ShowFormDialog, just against a freshly-read baseline
- * instead of a component ref. `slots` order is authoritative for
- * `sort_order` (index-based).
+ * baseline. Insert-vs-update is decided by whether the slot's `id` already
+ * exists among the current DB rows, NOT by whether the draft carries an id:
+ *   - id present AND in the current rows -> UPDATE, but only when a tracked
+ *     field (name/count/kind/sort_order) actually changed;
+ *   - id present but NOT in the current rows -> INSERT using that exact id
+ *     (the client minted it, e.g. `crypto.randomUUID()` at Add-slot time);
+ *   - id absent -> INSERT and let the DB mint one (legacy callers);
+ *   - current rows absent from `slots` -> DELETE (cascades to their
+ *     `show_slot_required_skills` rows).
+ * Each surviving/created slot's skill set is then diffed against a
+ * freshly-read baseline. `slots` order is authoritative for `sort_order`
+ * (index-based).
  *
- * Note: because a brand-new slot has no `id` to correlate on, a blind retry
- * of the exact same `slots` array after a partial failure will re-insert any
- * new slots that already landed. Callers that need exactly-once semantics for
- * new rows should re-fetch (`fetchShowSlots`) before retrying, or track the
- * ids assigned on the first attempt.
+ * Retry-safe: because new rows are inserted under a caller-supplied id, a
+ * blind re-save of the exact same `slots` array after a partial failure sees
+ * the already-landed rows as current DB rows and resolves them to a no-op
+ * UPDATE instead of a duplicate INSERT. Callers should keep the same `slots`
+ * array (ids intact) across a retry.
  */
 export async function saveShowSlots(
   client: SupabaseClient<Database>,
@@ -137,6 +140,14 @@ export async function saveShowSlots(
         if (error) throw error;
       }
       resolvedIds.push(existing.id);
+    } else if (s.id) {
+      // Client-minted id not yet in the DB: insert USING it so a retry sees the
+      // landed row as current and resolves to a no-op update instead of a dup.
+      const { error } = await client
+        .from("show_slots")
+        .insert({ id: s.id, show_id: showId, org_id: orgId, name: s.name, slot_count: s.count, kind: s.kind, sort_order: i });
+      if (error) throw error;
+      resolvedIds.push(s.id);
     } else {
       const { data, error } = await client
         .from("show_slots")

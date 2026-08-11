@@ -150,4 +150,49 @@ describe("saveShowSlots", () => {
     await saveShowSlots(asSupabase(fake), { showId: "sh1", orgId: "o1", slots: [] });
     expect(fake.calls.some((c) => c.table === "show_slot_required_skills")).toBe(false);
   });
+
+  it("inserts a new slot under its client-provided id (id not yet in the DB)", async () => {
+    // ShowFormDialog assigns crypto.randomUUID() to a slot at Add-slot time, so a
+    // brand-new row arrives WITH an id that is not yet a current DB row. It must be
+    // inserted USING that id (not letting the DB mint a fresh one), which is what
+    // makes a blind retry idempotent.
+    const fake = createFakeSupabase({
+      show_slots: [{ when: { show_id: "sh1" }, data: [], error: null }],
+      show_slot_required_skills: { data: [], error: null },
+    });
+    const slots: SlotDraft[] = [{ id: "u1", name: "Ophelia", count: 1, kind: "main", skillIds: [] }];
+    await saveShowSlots(asSupabase(fake), { showId: "sh1", orgId: "o1", slots });
+    const ins = fake.calls.find((c) => c.table === "show_slots" && c.method === "insert");
+    expect(ins?.args[0]).toEqual({
+      id: "u1", show_id: "sh1", org_id: "o1", name: "Ophelia", slot_count: 1, kind: "main", sort_order: 0,
+    });
+  });
+
+  it("retry is idempotent: re-saving the same slots after they landed inserts nothing new", async () => {
+    // The dialog keeps its slot array (with the client ids) and re-submits it after a
+    // partial failure. Attempt 1: the slot is not in the DB yet, so it is inserted with
+    // its client id. Attempt 2: it is now a current DB row, so insert-vs-update resolves
+    // to UPDATE-if-changed and, being unchanged, writes nothing. No duplicate row.
+    const slots: SlotDraft[] = [{ id: "u1", name: "Ophelia", count: 1, kind: "main", skillIds: ["vocals"] }];
+
+    const first = createFakeSupabase({
+      show_slots: [{ when: { show_id: "sh1" }, data: [], error: null }],
+      show_slot_required_skills: { data: [], error: null },
+    });
+    await saveShowSlots(asSupabase(first), { showId: "sh1", orgId: "o1", slots });
+    const firstIns = first.calls.find((c) => c.table === "show_slots" && c.method === "insert");
+    expect(firstIns?.args[0]).toMatchObject({ id: "u1", show_id: "sh1", sort_order: 0 });
+    expect(first.calls.find((c) => c.table === "show_slot_required_skills" && c.method === "insert")?.args[0])
+      .toEqual({ slot_id: "u1", skill_id: "vocals", org_id: "o1" });
+
+    const second = createFakeSupabase({
+      show_slots: [{ when: { show_id: "sh1" }, data: [{ id: "u1", name: "Ophelia", slot_count: 1, kind: "main", sort_order: 0 }], error: null }],
+      show_slot_required_skills: { data: [{ slot_id: "u1", skill_id: "vocals" }], error: null },
+    });
+    await saveShowSlots(asSupabase(second), { showId: "sh1", orgId: "o1", slots });
+    expect(second.calls.some((c) => c.table === "show_slots" && c.method === "insert")).toBe(false);
+    expect(second.calls.some((c) => c.table === "show_slots" && c.method === "update")).toBe(false);
+    expect(second.calls.some((c) => c.table === "show_slot_required_skills" && c.method === "insert")).toBe(false);
+    expect(second.calls.some((c) => c.table === "show_slot_required_skills" && c.method === "delete")).toBe(false);
+  });
 });
