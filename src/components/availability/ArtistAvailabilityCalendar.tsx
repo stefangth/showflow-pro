@@ -151,6 +151,11 @@ export function ArtistAvailabilityCalendar({ artistId, eligibleDates }: Props) {
             Couldn't load your bookings or blocked dates — statuses may be incomplete. Please refresh.
           </p>
         )}
+        {eligibleDates.length === 0 && (
+          <p className="text-sm text-muted-foreground mb-4">
+            No eligible dates yet. Once you are added to a cast, offered dates appear here.
+          </p>
+        )}
         <div className="grid grid-cols-7 gap-1 mb-2">
           {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((d) => (
             <div key={d} className="text-center text-xs font-medium text-muted-foreground py-1">
@@ -228,7 +233,15 @@ export function ArtistAvailabilityCalendar({ artistId, eligibleDates }: Props) {
             );
 
             if (!isEligible) {
-              return <div key={dateStr}>{cell}</div>;
+              return (
+                <div
+                  key={dateStr}
+                  title="This date is not offered to you. Offered dates come from your casts."
+                  aria-label="This date is not offered to you. Offered dates come from your casts."
+                >
+                  {cell}
+                </div>
+              );
             }
 
             return (

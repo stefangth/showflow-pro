@@ -195,3 +195,73 @@ describe("ArtistAvailabilityCalendar — past-date tint (Plan B Task 3)", () => 
     expect(pastCell.className).not.toMatch(/pointer-events-none/);
   });
 });
+
+/**
+ * R3.4 + R3.5: an ineligible day gives no reason it's disabled (no title/aria-label
+ * on its non-interactive wrapper), and an artist with zero eligible dates sees a
+ * bare grid with no explanation that nothing is offered yet.
+ */
+describe("ArtistAvailabilityCalendar — ineligible-day explanation + empty state (R3.4/R3.5)", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+  });
+
+  function eligible(date: string) {
+    return {
+      id: `sd-${date}`,
+      date,
+      session_1: null,
+      session_2: null,
+      session_3: null,
+      status: "open",
+      city_id: null,
+      show_id: "show-1",
+      venue: null,
+      custom: null,
+      show: { id: "show-1", program: "Test Show", sub_program: null, status: "active" },
+    };
+  }
+
+  it("labels an ineligible day with why it is disabled", async () => {
+    vi.setSystemTime(new Date("2026-03-15T12:00:00Z"));
+
+    render(
+      React.createElement(ArtistAvailabilityCalendar, {
+        artistId: "artist-1",
+        // Only the 20th is eligible, so every other day in March renders ineligible.
+        eligibleDates: [eligible("2026-03-20")],
+      }),
+      { wrapper }
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("10")).toBeTruthy();
+    });
+
+    expect(
+      document.querySelector(
+        '[title="This date is not offered to you. Offered dates come from your casts."]'
+      )
+    ).toBeTruthy();
+  });
+
+  it("shows an empty state when there are zero eligible dates", async () => {
+    vi.setSystemTime(new Date("2026-03-15T12:00:00Z"));
+
+    render(
+      React.createElement(ArtistAvailabilityCalendar, {
+        artistId: "artist-1",
+        eligibleDates: [],
+      }),
+      { wrapper }
+    );
+
+    expect(
+      await screen.findByText(/no eligible dates yet\. once you are added to a cast/i)
+    ).toBeInTheDocument();
+  });
+});
