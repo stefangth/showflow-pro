@@ -41,4 +41,10 @@ describe("SignHireOrderDialog", () => {
     fireEvent.click(screen.getByRole("checkbox"));       // consent checked, no signature
     expect(signBtn()).toBeDisabled();
   });
+
+  it("summarizes the terms and what happens after signing (R4.5)", () => {
+    render(<SignHireOrderDialog orderId="ho1" orgId="o1" open onOpenChange={() => {}} />);
+    expect(screen.getByText(/you are agreeing to the fee, dates, and terms shown on this order/i)).toBeInTheDocument();
+    expect(screen.getByText(/countersigns and emails you the final pdf/i)).toBeInTheDocument();
+  });
 });
