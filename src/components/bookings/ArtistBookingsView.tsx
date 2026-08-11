@@ -169,6 +169,10 @@ export function ArtistBookingsView() {
     [filtered]
   );
 
+  // The confirm-cancel signpost only makes sense once the artist actually has a
+  // confirmed date to back out of.
+  const hasConfirmedBooking = (activeBookedDates ?? []).some((b) => b.status === 'confirmed');
+
   return (
     <div className="space-y-6">
       <div>
@@ -179,9 +183,11 @@ export function ArtistBookingsView() {
       <ModuleGate feature="booking_flow">
         {/* Inside the gate: these controls filter, sort and lay out the eligible-date
             table below, which does not exist at all without the booking module. */}
-        <p className="text-xs text-muted-foreground">
-          Need to cancel a date you confirmed? Message your producer in the date's chat and they will update the booking.
-        </p>
+        {hasConfirmedBooking && (
+          <p className="text-xs text-muted-foreground">
+            Need to cancel a date you confirmed? Message your producer in the date's chat and they will update the booking.
+          </p>
+        )}
         <div className="flex flex-wrap items-center gap-3">
           <TimeframeFilter value={timeframe} onChange={setTimeframe} />
           <SortControl value={sort} onChange={setSort} chronoLabel="Date" />

@@ -249,11 +249,19 @@ describe("ArtistAvailabilityCalendar — ineligible-day explanation + empty stat
       expect(screen.getByText("10")).toBeTruthy();
     });
 
-    // Mouse hover: a title attribute on the non-interactive wrapper.
+    // Mouse hover: a title attribute on the non-interactive wrapper (one per ineligible cell).
     expect(document.querySelector(`[title="${INELIGIBLE_REASON}"]`)).toBeTruthy();
-    // Assistive tech: a visually-hidden (sr-only) span carrying the same text, not
-    // an aria-label on the div (a plain div's aria-label is not reliably exposed).
-    expect(await screen.findAllByText(INELIGIBLE_REASON)).not.toHaveLength(0);
+    // Assistive tech: the reason is stated ONCE for the whole grid (a single sr-only note
+    // after the legend), not repeated as a text node on every disabled cell.
+    expect(
+      screen.getByText(
+        /dimmed dates are not offered to you\. offered dates come from your casts and their required skills\./i,
+      ),
+    ).toBeInTheDocument();
+    // The per-cell full sentence is no longer a repeated text node (only the hover title).
+    expect(screen.queryByText(INELIGIBLE_REASON)).not.toBeInTheDocument();
+    // With at least one eligible date, the "Eligible" legend entry is shown.
+    expect(screen.getByText("Eligible")).toBeInTheDocument();
   });
 
   it("shows an empty state when there are zero eligible dates", async () => {
@@ -270,5 +278,8 @@ describe("ArtistAvailabilityCalendar — ineligible-day explanation + empty stat
     expect(
       await screen.findByText(/no eligible dates yet\. once you are added to a cast/i)
     ).toBeInTheDocument();
+    // With nothing eligible, the "Eligible" legend swatch (which would match no cell)
+    // is hidden so the legend does not advertise a state the grid never shows.
+    expect(screen.queryByText("Eligible")).not.toBeInTheDocument();
   });
 });

@@ -150,4 +150,18 @@ describe("AvailabilityPage timing line (R2.1/R4.7)", () => {
     expect(await screen.findByRole("heading", { name: "Blocked Dates" })).toBeInTheDocument();
     expect(screen.queryByTestId("availability-timing")).not.toBeInTheDocument();
   });
+
+  it("shows the window but no digest hour for an immediate-delivery org", async () => {
+    // describeTonight takes a distinct branch for immediate delivery ('offers email
+    // straight away', no offer-digest hour); pin it so a future change that narrowed
+    // showTiming to digest-only would fail here instead of silently hiding the window.
+    flowHolder.flow = { ...BOOKING_FLOW_DEFAULTS, artist_acceptance: true, offer_delivery: "immediate", active: true };
+    timesHolder.times = DEFAULT_FLOW_TIMES;
+    renderWithProviders(<AvailabilityPage />);
+
+    const timing = await screen.findByTestId("availability-timing");
+    expect(timing).toHaveTextContent(/offers email straight away/i);
+    expect(timing).toHaveTextContent(/48 hours to answer/i);
+    expect(timing).not.toHaveTextContent(/digest/i);
+  });
 });

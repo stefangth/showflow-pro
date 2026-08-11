@@ -143,8 +143,10 @@ describe("ArtistDashboard hire-orders card (Task 14)", () => {
     renderWithProviders(<ArtistDashboard />);
 
     expect(await screen.findByText("Your hire orders")).toBeInTheDocument();
+    // The zero-state now renders only after the query resolves (not while loading /
+    // on error), so wait for it rather than asserting synchronously.
     expect(
-      screen.getByText(/your booking paperwork shows up here/i),
+      await screen.findByText(/your booking paperwork shows up here/i),
     ).toBeInTheDocument();
     // No em/en dashes in the zero-state copy.
     expect(document.body.textContent).not.toMatch(/[—–]/);

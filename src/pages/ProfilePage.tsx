@@ -156,7 +156,7 @@ export default function ProfilePage() {
                 {identity.formState.errors.phone && <p className="text-xs text-destructive">{identity.formState.errors.phone.message}</p>}
               </div>
               <p className="text-xs text-muted-foreground">
-                Admins and producers in your organization can see the contact details on your artist record so they can reach you about bookings.
+                Separate from the account details above: admins and producers in your organization can see the contact details on your artist record so they can reach you about bookings.
               </p>
               <Button type="submit" disabled={updateProfile.isPending}>{updateProfile.isPending ? "Saving…" : "Save"}</Button>
             </form>

@@ -239,15 +239,11 @@ export function ArtistAvailabilityCalendar({ artistId, eligibleDates }: Props) {
             );
 
             if (!isEligible) {
-              return (
-                // aria-label on a plain div (implicit role "generic") is not reliably
-                // exposed to screen readers, so the reason is carried by a visually-
-                // hidden sr-only span instead; `title` stays for mouse hover.
-                <div key={dateStr} title={INELIGIBLE_DAY_REASON}>
-                  {cell}
-                  <span className="sr-only">{INELIGIBLE_DAY_REASON}</span>
-                </div>
-              );
+              // `title` gives mouse users the reason on hover. The screen-reader
+              // explanation is stated ONCE for the whole grid (the sr-only note after
+              // the legend below), not repeated on every disabled cell, which would
+              // make an assistive-tech user hear the same sentence 25-30 times a month.
+              return <div key={dateStr} title={INELIGIBLE_DAY_REASON}>{cell}</div>;
             }
 
             return (
@@ -279,10 +275,12 @@ export function ArtistAvailabilityCalendar({ artistId, eligibleDates }: Props) {
         {/* Legend */}
         <div className="flex flex-wrap items-center gap-4 mt-4 pt-4 border-t border-border">
           <span className="text-xs text-muted-foreground">Legend:</span>
-          <div className="flex items-center gap-1.5">
-            <div className="h-3 w-3 rounded border-2 border-info" />
-            <span className="text-xs">Eligible</span>
-          </div>
+          {eligibleDates.length > 0 && (
+            <div className="flex items-center gap-1.5">
+              <div className="h-3 w-3 rounded border-2 border-info" />
+              <span className="text-xs">Eligible</span>
+            </div>
+          )}
           <div className="flex items-center gap-1.5">
             <div className="h-3 w-3 rounded bg-success/30" />
             <span className="text-xs">Confirmed</span>
@@ -300,6 +298,11 @@ export function ArtistAvailabilityCalendar({ artistId, eligibleDates }: Props) {
             <span className="text-xs">Blocked</span>
           </div>
         </div>
+        {/* Stated once for assistive tech (each disabled cell carries only a hover
+            `title`, not a repeated sr-only sentence). */}
+        <p className="sr-only">
+          Dimmed dates are not offered to you. Offered dates come from your casts and their required skills.
+        </p>
       </CardContent>
     </Card>
   );
