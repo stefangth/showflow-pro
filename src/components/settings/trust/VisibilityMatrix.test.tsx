@@ -48,10 +48,11 @@ describe("VisibilityMatrix responsive breakpoint", () => {
 
     const cols = [...container.querySelectorAll("colgroup col")];
     expect(cols, "Data, Access and Mechanism").toHaveLength(3);
-    // 34% of the narrowest table this branch renders (718px at 1280) is 244px,
-    // and the widest label is "Availability and blocked dates" at 195px.
+    // 34% of the narrowest table this branch renders (718px at 1280) is
+    // 244.1px, less 16px of padding-right; the widest label is "Notes and
+    // cancellation reasons" at 205.7px intrinsic, so 22.4px of headroom.
     expect(cols[0].className.split(/\s+/)).toContain("w-[34%]");
-    // The widest pill is "Append-only" at 96px.
+    // The widest pill is "Append-only" at 83px against a 96px content box.
     expect(cols[1].className.split(/\s+/)).toContain("w-[108px]");
   });
 

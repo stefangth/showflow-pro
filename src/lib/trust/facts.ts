@@ -516,8 +516,19 @@ export const CONTROLS: Control[] = [
     // the access matrix in both modes on both surfaces.
     claim:
       "Every table holding your data carries its organisation, and a restrictive database policy on each one means a session reads only organisations it belongs to. Four named tables sit outside it, and refuse the cross-organisation read another way.",
+    // "on shows and show_dates" is NOT trimmable, and was trimmed once by a
+    // density pass that should not have touched it. org_isolation.sql exercises
+    // exactly two tenant tables (public.shows fifteen times, public.show_dates
+    // twice; its three other public.* references are fixture setup) out of 34
+    // that carry org_id. Without the scope the sentence reads as a
+    // table-agnostic cross-org result, which is the failure mode the header of
+    // CROSS_ORG_EXCEPTIONS_NOTE describes: a reviewer greps the cited file,
+    // finds less than the citation promised, and stops trusting the page. The
+    // breadth comes from the NEXT sentence and a different artefact —
+    // org_coverage.sql, which is the one that walks every table — so narrowing
+    // this one costs the card nothing.
     evidence:
-      "supabase/tests/rls/org_isolation.sql asserts org A reads and writes zero rows of org B, even holding a global producer role. org_coverage.sql lists every table carrying the policy, including chat_messages and booking_audit_log, and names the four exceptions. Both run on every pull request; a restrictive policy can only filter, never grant.",
+      "supabase/tests/rls/org_isolation.sql asserts org A reads and writes zero rows of org B on shows and show_dates, even holding a global producer role. org_coverage.sql lists every table carrying the policy, including chat_messages and booking_audit_log, and names the four exceptions. Both run on every pull request; restrictive policies filter, never grant.",
   },
   {
     icon: "users",

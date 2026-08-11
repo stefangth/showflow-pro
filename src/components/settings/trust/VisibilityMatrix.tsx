@@ -221,11 +221,22 @@ export function VisibilityMatrix() {
        *  is supposed to change only the answers. Declared widths make the grid
        *  stand still while the content behind it changes.
        *
-       *  34% Data: the widest label is "Availability and blocked dates" at
-       *  195px, and 34% of the narrowest table this branch renders (718px at
-       *  1280) is 244px, less the cell's 16px of padding-right. Every label
-       *  clears it at every width with room to spare, so none of the eight
-       *  wraps. 108px Access: the widest pill is "Append-only" at 96px.
+       *  34% Data: the widest label is "Notes and cancellation reasons" at
+       *  205.7px intrinsic (14px/500), and 34% of the narrowest table this
+       *  branch renders (718px at 1280) is 244.1px, less the cell's 16px of
+       *  padding-right — 228.1px of content box, so 22.4px of headroom at the
+       *  tightest width and more everywhere above it. None of the eight wraps
+       *  at any width or role. 108px Access: the widest pill is "Append-only"
+       *  at 83px against a 96px content box.
+       *
+       *  Both figures are the RENAMED label and the MEASURED pill. An earlier
+       *  draft of this comment named "Availability and blocked dates" (194.9px,
+       *  the second widest) and put the pill at 96px, which was the auto
+       *  layout's whole column width rather than the pill inside it. The
+       *  numbers are the justification for the one dimension the fix rests on,
+       *  so they are re-measured rather than remembered: see
+       *  .superpowers/sdd/2026-08-11-trust-center-findings-fix/shots-density/
+       *  app-after-r2/measurements.json, `matrix.labelIntrinsic`/`pillWidths`.
        *
        *  min-w drops to 400px because a fixed layout no longer needs a floor
        *  to stop the Mechanism column collapsing — the declared widths are the
