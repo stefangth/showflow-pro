@@ -5,6 +5,7 @@ import { Check, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { respondToOffer } from '@/data/bookings';
 import { useBookingFlow } from '@/hooks/useBookingFlow';
+import { acceptConsequenceNote } from '@/lib/bookings/actionCopy';
 
 interface Props {
   bookingId: string;
@@ -35,9 +36,13 @@ export function OfferResponseButtons({ bookingId, size = 'default' }: Props) {
         return;
       }
       if (accept) {
-        toast({ title: autoConfirm ? 'Offer accepted. Booking confirmed.' : 'Offer accepted' });
+        const note = acceptConsequenceNote(flow);
+        toast({ title: note.title, description: note.description });
       } else {
-        toast({ title: 'Offer declined' });
+        toast({
+          title: 'Offer declined',
+          description: 'This just cancels this one offer. It will not affect future offers.',
+        });
       }
     },
     onError: (e: Error) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
