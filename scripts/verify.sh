@@ -31,6 +31,11 @@ esac
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
 
+cache_mode="${mode#--}"
+if ! node scripts/verify-cache.mjs clear "$cache_mode"; then
+  echo "verify: warning: could not clear the local verification cache" >&2
+fi
+
 names=()
 statuses=()
 overall=0
@@ -91,6 +96,9 @@ done
 echo "═════════════════════════════════════════════════"
 if [ "$overall" -eq 0 ]; then
   echo "✓ all layers passed"
+  if ! node scripts/verify-cache.mjs record "$cache_mode"; then
+    echo "verify: warning: passed, but could not record the local verification cache" >&2
+  fi
 else
   echo "✗ some layers failed or were skipped (see above)"
 fi

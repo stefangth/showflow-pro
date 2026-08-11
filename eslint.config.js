@@ -27,7 +27,7 @@ export default tseslint.config(
   // pooler URL, etc.), created whenever the local stack is running. Its generated,
   // single-line index.ts trips --max-warnings 0, so a running stack must not make
   // `npm run lint` fail — same reasoning as coverage/ above.
-  { ignores: ["dist", "coverage", "supabase/.temp"] },
+  { ignores: ["dist", "coverage", "supabase/.temp", ".claude/worktrees/**"] },
   // App, tests, e2e, scripts — browser runtime, Vite fast refresh.
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],

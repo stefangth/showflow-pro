@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 #
-# Pre-push hook — runs the Docker-free CI mirror (verify:fast) before a push so
-# the cheap layers (lint + mirror-sync, typecheck app+tools, build, unit tests +
-# coverage, Deno checks + tests) fail on your machine instead of burning a red
-# GitHub CI run.
+# Pre-push hook — requires the Docker-free CI mirror (verify:fast) before a push
+# so the cheap layers (lint + mirror-sync, typecheck app+tools, build, unit tests
+# + coverage, Deno checks + tests) fail locally instead of burning a red GitHub
+# CI run. An exact content fingerprint reuses a successful fast/full run.
 #
 # This is a convenience gate, NOT the source of truth. GitHub CI stays the
 # enforced gate: it runs on the merged commit regardless, and the prod
@@ -41,6 +41,11 @@ echo "pre-push: scanning pushed commits + tracked files for secrets…" >&2
 # commit's diff (so an add-then-remove within the push is still caught), plus a
 # tracked-tree snapshot. Mirrored by the CI "Lint" job for --no-verify bypasses.
 node scripts/scan-secrets.mjs --prepush || exit 1
+
+if node scripts/verify-cache.mjs check fast; then
+  echo "pre-push: source snapshot already passed verify:fast — skipping duplicate suite" >&2
+  exit 0
+fi
 
 echo "pre-push: running verify:fast (bypass with --no-verify or SHOWFLOW_SKIP_VERIFY=1)…" >&2
 npm run --silent verify:fast
