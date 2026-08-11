@@ -36,8 +36,8 @@ describe("shows data-access", () => {
 
   it("updateShow patches by id", async () => {
     const fake = createFakeSupabase({ shows: { data: null, error: null } });
-    await updateShow(fake as never, "s1", { main_cast_slots: 4, description: "x" });
-    expect(fake.calls).toContainEqual({ table: "shows", method: "update", args: [{ main_cast_slots: 4, description: "x" }] });
+    await updateShow(fake as never, "s1", { category: "Drama", description: "x" });
+    expect(fake.calls).toContainEqual({ table: "shows", method: "update", args: [{ category: "Drama", description: "x" }] });
     expect(fake.calls).toContainEqual({ table: "shows", method: "eq", args: ["id", "s1"] });
   });
 

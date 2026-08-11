@@ -62,6 +62,8 @@ describe("SlotsStep", () => {
     fireEvent.change(mainInput, { target: { value: "3" } });
     fireEvent.click(screen.getByRole("button", { name: /save slot counts/i }));
 
+    // The single-element slots array asserts no understudy slot was created (an extra
+    // element would fail the array match).
     await waitFor(() =>
       expect(saveShowSlots).toHaveBeenCalledWith(expect.anything(), {
         showId: "s1",
@@ -69,8 +71,6 @@ describe("SlotsStep", () => {
         slots: [expect.objectContaining({ name: "Main cast", count: 3, kind: "main", skillIds: [] })],
       }),
     );
-    // Exactly one slot row: no understudy slot was created.
-    expect(saveShowSlots.mock.calls[0][1].slots).toHaveLength(1);
   });
 
   it("shows an empty state and no save button when there are no shows to set", async () => {

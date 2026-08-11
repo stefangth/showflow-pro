@@ -28,16 +28,14 @@ export interface CreateShowArgs {
   sortOrder: number | null;
 }
 // main_cast_slots/understudy_slots are trigger-maintained caches derived from
-// show_slots (ShowFormDialog authors slots, not counts). They stay patchable here
-// because the booking-setup rail's SlotsStep still sets them directly as a
-// quick-fill shortcut; ShowFormDialog no longer writes them.
+// show_slots and are NOT patchable here: both authoring surfaces (ShowFormDialog and
+// the booking-setup rail's SlotsStep) write show_slots via saveShowSlots. They stay on
+// ShowRow/SHOW_COLS for reads.
 export interface UpdateShowPatch {
   program?: string | null;
   sub_program?: string | null;
   category?: string | null;
   description?: string | null;
-  main_cast_slots?: number | null;
-  understudy_slots?: number | null;
 }
 
 const SHOW_COLS =
