@@ -1539,6 +1539,45 @@ Deno.test("tier-at-risk-watcher DI: email send failure is swallowed — notifica
   assertEquals(insertCalls.length, 1, "notification is still written despite the email failure");
 });
 
+Deno.test("tier-at-risk-watcher DI: notification insert failure is logged and skips the email for that pair, without aborting the scan", async () => {
+  // Fix (M-2): the insert result's error used to go unchecked, so a silent notification
+  // write failure still emailed the producer (and would re-email every run after, since
+  // existingKeySet never picked up a row that was never actually written). The insert must
+  // now be checked; on error, log and skip the email for the pair it covers, but the scan
+  // still has to finish (no throw) and other tiers must be unaffected.
+  const tierId = "tier-insert-fail";
+  const sdId = "sd-insert-fail";
+
+  const { deps, calls, invokeCalls } = makeFakeDeps({
+    tables: {
+      app_settings: makeBaseSettings(),
+      show_date_offer_tiers: { data: [makeTier(tierId, sdId)], error: null },
+      // __write disambiguates the plain `.select()` existing-notifications read (used for
+      // idempotency + the recovery pass) from the `.insert(newRows)` write this test forces
+      // to fail — same pattern used by airtable-poll's insert-failure DI tests.
+      notifications: [
+        { when: { __write: true }, data: null, error: { message: "insert failed" } },
+        { when: { __write: false }, data: [], error: null },
+      ],
+      show_dates: { data: makeShowDate(sdId, "MusicalA", "MainShow"), error: null },
+      bookings: { data: [{ status: "suggested" }], error: null },
+    },
+    rpcs: { resolve_show_assignments: { data: [{ producer_user_id: "prod-1" }], error: null } },
+    usersById: { "prod-1": { email: "prod1@example.com" } },
+  });
+
+  const res = await handle(makeRequest({ headers: CRON_OK }), deps);
+  assertEquals(res.status, 200, "a notification insert error must not fail the request");
+  const body = await res.json();
+  assertEquals(body.at_risk_count, 1, "the tier is still counted at-risk despite the insert failure");
+
+  const insertCalls = calls.filter((c) => c.table === "notifications" && c.method === "insert");
+  assertEquals(insertCalls.length, 1, "the insert was attempted (and its error was observed)");
+
+  const emailCalls = invokeCalls.filter((c) => c.name === "send-transactional-email");
+  assertEquals(emailCalls.length, 0, "no email is sent for a pair whose notification insert failed");
+});
+
 Deno.test("tier-at-risk-watcher DI: recipient with no email on file → skipped for email, notification still inserted", async () => {
   const tierId = "tier-email-noaddr";
   const sdId = "sd-email-noaddr";

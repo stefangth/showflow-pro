@@ -60,6 +60,17 @@ describe("CockpitCastList confirm consequence line", () => {
     );
     expect(screen.getByText("Confirm places the booking.")).toBeInTheDocument();
   });
+
+  it("states only the bare consequence when the org has no booking_flow entitlement, even with the flow active and the confirmation digest on", () => {
+    // Same bug class as the per-row cancel dialog's who-hears line: a super-admin viewing an
+    // org without the booking_flow entitlement must not see a promise about a digest email
+    // that the entitlement-gated send-confirmation-digest cron will never send.
+    renderWithProviders(
+      <CockpitCastList groups={acceptedGroups()} flow={classic} bookingFlowEnabled={false} confirmationDigestHour={21} />,
+    );
+    expect(screen.getByText("Confirm places the booking.")).toBeInTheDocument();
+    expect(screen.queryByText(/daily summary/)).not.toBeInTheDocument();
+  });
 });
 
 describe("CockpitCastList Accepted badge tooltip", () => {
@@ -144,9 +155,9 @@ describe("CockpitCastList with no flow/entitlement props (mirrors DevCockpitHarn
     expect(within(dialog).getByText("Cancel Ada Lovelace's booking?")).toBeInTheDocument();
     // The default flow (BOOKING_FLOW_DEFAULTS) still has understudy_promotion on, so that
     // line is present too; the string this test cares about is the who-hears fallback.
-    // Scoped to the dialog: the always-shown confirm consequence line above the list
-    // legitimately DOES mention the daily summary (it reads `flow` alone, not
-    // `bookingFlowEnabled`), so an unscoped query would false-positive on that unrelated line.
+    // Scoped to the dialog since the confirm consequence line above the list also renders
+    // its own (now equally bookingFlowEnabled-gated, defaulting-false-here) sentence, and an
+    // unscoped query should not accidentally match text outside the dialog under test.
     expect(within(dialog).getByText(/The artist is notified in the app\./)).toBeInTheDocument();
     expect(within(dialog).queryByText(/session times/i)).not.toBeInTheDocument();
   });

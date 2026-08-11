@@ -220,8 +220,21 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       related_entity_id: row.id,
     }))
 
+    // The insert's error was previously unchecked: a silent write failure (e.g. an RLS
+    // or connectivity blip) still fell through to the email loop below, so the producer
+    // got emailed for a notification that was never actually written — and since
+    // existingKeySet only ever reflects rows that DID land, the same pair would be
+    // treated as "new" again next run and re-emailed forever. On error, log it and skip
+    // the email for every pair in this batch (never throw — the scan must still finish
+    // and move on to the next tier, same failure-swallowing posture as the email send
+    // and getUserById lookup below).
+    let notificationInsertFailed = false
     if (newRows.length > 0) {
-      await admin.from('notifications').insert(newRows)
+      const { error: insertErr } = await admin.from('notifications').insert(newRows)
+      if (insertErr) {
+        console.error('tier-at-risk-watcher: notification insert failed', { showDateId: row.show_date_id, tierId: row.id, error: insertErr.message })
+        notificationInsertFailed = true
+      }
     }
 
     // Best-effort producer email for each newly at-risk (tier, user) pair, mirroring
@@ -232,6 +245,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     // abort the rest of the scan. The notification write above already happened, so
     // nothing here can undo it either way.
     for (const uid of newRecipientIds) {
+      if (notificationInsertFailed) continue // no notification was written for this pair — don't email either
       try {
         const { data: userResp } = await admin.auth.admin.getUserById(uid)
         const recipientEmail = userResp?.user?.email

@@ -14,31 +14,38 @@ const digestOff = { ...classic, confirmation_digest: false };
 
 describe("confirmConsequenceNote", () => {
   it("states the app-and-digest consequence when the flow is active with the confirmation digest on", () => {
-    expect(confirmConsequenceNote(classic, 19)).toBe(
+    expect(confirmConsequenceNote(classic, 19, true)).toBe(
       "Confirm places the booking. The artist sees it in the app right away. The confirmation email goes out in the daily summary at 19:00 Berlin.",
     );
   });
 
   it("zero-pads a single-digit hour the same way scheduleChangeNote does", () => {
-    expect(confirmConsequenceNote(classic, 7)).toBe(
+    expect(confirmConsequenceNote(classic, 7, true)).toBe(
       "Confirm places the booking. The artist sees it in the app right away. The confirmation email goes out in the daily summary at 07:00 Berlin.",
     );
   });
 
   it("drops the email clause when the confirmation digest is off", () => {
-    expect(confirmConsequenceNote(digestOff, 19)).toBe(
+    expect(confirmConsequenceNote(digestOff, 19, true)).toBe(
       "Confirm places the booking and notifies the artist in the app right away.",
     );
   });
 
   it("states only the bare consequence when the flow is paused", () => {
-    expect(confirmConsequenceNote(off, 19)).toBe("Confirm places the booking.");
+    expect(confirmConsequenceNote(off, 19, true)).toBe("Confirm places the booking.");
     expect(off.active).toBe(false);
   });
 
   it("states only the bare consequence when the flow is unread", () => {
-    expect(confirmConsequenceNote(null, 19)).toBe("Confirm places the booking.");
-    expect(confirmConsequenceNote(undefined, 19)).toBe("Confirm places the booking.");
+    expect(confirmConsequenceNote(null, 19, true)).toBe("Confirm places the booking.");
+    expect(confirmConsequenceNote(undefined, 19, true)).toBe("Confirm places the booking.");
+  });
+
+  it("states only the bare consequence when the org has no booking_flow entitlement, even with the flow active and the confirmation digest on", () => {
+    // Same bug class as cancelBookingCopy's who-hears line: a super-admin viewing an org
+    // without the booking_flow entitlement must not see a promise about an email that
+    // send-confirmation-digest (entitlement-gated) will never send.
+    expect(confirmConsequenceNote(classic, 19, false)).toBe("Confirm places the booking.");
   });
 });
 
@@ -148,7 +155,9 @@ it("uses no em or en dashes in any branch or constant", () => {
   const flows = [classic, off, digestOff, null, undefined];
   for (const flow of flows) {
     for (const hour of [7, 19, 21]) {
-      expect(confirmConsequenceNote(flow, hour)).not.toMatch(/[—–]/);
+      for (const bookingFlowEnabled of [true, false]) {
+        expect(confirmConsequenceNote(flow, hour, bookingFlowEnabled)).not.toMatch(/[—–]/);
+      }
     }
   }
   for (const flow of flows) {

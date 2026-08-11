@@ -23,12 +23,20 @@ type ConfirmFlow = Pick<BookingFlow, "active" | "confirmation_digest">;
  * Only an explicit `active === false` reads as paused, matching the same convention used
  * throughout bookingFlow.ts (`lifecycleChips`, `timingScopeNote`): a flow missing the field
  * (a pre-`active` literal) still reads as on.
+ *
+ * `bookingFlowEnabled` is the org's real `booking_flow` entitlement, not the module-gate's
+ * super-admin-exempt read (mirrors `cancelBookingCopy`'s own `bookingFlowEnabled` param and
+ * its rationale): a super-admin can view an org lacking the entitlement and still see
+ * `flow.active`/`flow.confirmation_digest` reflect defaults, but the entitlement-gated
+ * `send-confirmation-digest` cron will never fire for that org, so any digest-email promise
+ * would be dishonest. When it is false, this always returns the bare consequence.
  */
 export function confirmConsequenceNote(
   flow: ConfirmFlow | null | undefined,
   confirmationDigestHour: number,
+  bookingFlowEnabled: boolean,
 ): string {
-  if (!flow || flow.active === false) return "Confirm places the booking.";
+  if (!bookingFlowEnabled || !flow || flow.active === false) return "Confirm places the booking.";
   if (flow.confirmation_digest) {
     return `Confirm places the booking. The artist sees it in the app right away. The confirmation email goes out in the daily summary at ${hh(confirmationDigestHour)} Berlin.`;
   }

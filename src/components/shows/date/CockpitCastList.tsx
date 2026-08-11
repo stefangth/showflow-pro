@@ -233,7 +233,7 @@ export function CockpitCastList({
     <div className="flex flex-col gap-4">
       {hasConfirmable && (
         <p className="text-xs text-muted-foreground">
-          {confirmConsequenceNote(flow, confirmationDigestHour)}
+          {confirmConsequenceNote(flow, confirmationDigestHour, bookingFlowEnabled)}
         </p>
       )}
       {groups.map((g) => (
