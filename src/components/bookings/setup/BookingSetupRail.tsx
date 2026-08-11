@@ -2,9 +2,9 @@ import { useState } from "react";
 import { useAuth } from "@/features/auth/AuthContext";
 import { canUseEditor } from "@/features/editor/editorAccess";
 import { useCan } from "@/hooks/useCapabilities";
-import { useBookingSetupStatus, useInactiveArtistCount } from "@/hooks/useBookingSetup";
+import { useBookingSetupStatus, useInactiveArtistCount, useProducerCount } from "@/hooks/useBookingSetup";
 import { type BookingSetupStepKey } from "@/lib/bookings/setupStatus";
-import { bookingOnboarding, VIEW_AS_ARTIST_TIP } from "@/lib/dashboard/moduleOnboarding";
+import { bookingOnboarding, VIEW_AS_ARTIST_TIP, TEAM_STEP_META } from "@/lib/dashboard/moduleOnboarding";
 import { SETUP_BLOCK_CHIPS } from "@/lib/dashboard/setupBlocks";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,7 @@ import { SlotsStep } from "./SlotsStep";
 import { LadderStep } from "./LadderStep";
 import { EligibilityStep } from "./EligibilityStep";
 import { TimingStep } from "./TimingStep";
+import { TeamStep } from "./TeamStep";
 import { TonightNote } from "./TonightNote";
 import { RehearsalBlock } from "./RehearsalBlock";
 import { BookingProducerWaitingCard } from "./BookingProducerWaitingCard";
@@ -42,10 +43,13 @@ export function BookingSetupRail({ orgId, initialStep }: { orgId: string | null;
   // Editor Mode is admin-or-super-admin, never a capability (see editorAccess.canUseEditor),
   // and `roles` is scoped to the active org, so the super-admin arm is what keeps the tip in
   // step with the toolbar for someone visiting an org they never joined.
-  const { roles, isSuperAdmin } = useAuth();
+  const { roles, isSuperAdmin, hasRole } = useAuth();
+  // The "Add your production team" nudge is admin-only: producers do the planning/offers/
+  // confirming this rail is about, but inviting the team is the admin's job (see TEAM_STEP_META).
+  const isAdmin = hasRole("admin");
   const { status, coverage, artistCount, isLoading } = useBookingSetupStatus(orgId);
   const [, dismiss] = useRailDismissed("bookingSetup", orgId);
-  const [open, setOpen] = useState<BookingSetupStepKey | null>(initialStep ?? "shows");
+  const [open, setOpen] = useState<BookingSetupStepKey | "team" | null>(initialStep ?? (isAdmin ? "team" : "shows"));
   // `!isLoading` is load-bearing, not belt-and-braces: an unread roster is reported
   // outstanding (the engine treats a null count as 0), so this is true for every org for the
   // first frame, and firing the read there would defeat the gate for all of them. Waiting
@@ -58,6 +62,9 @@ export function BookingSetupRail({ orgId, initialStep }: { orgId: string | null;
   // non-editor arm on `!canEdit` alone billed every producer for a head count their card was
   // never going to print. Declared before the early return so the hook order is fixed.
   const inactiveArtistCount = useInactiveArtistCount(orgId, canEdit ? open === "people" : peopleOutstanding);
+  // Admin-only, so a producer/artist rail never pays for this read. Declared before the early
+  // return so the hook order is fixed regardless of which branch renders below.
+  const producerCount = useProducerCount(orgId, isAdmin);
 
   // The roster step is not gated by `edit_booking_settings`, so the waiting card gets the
   // count and renders it as real work rather than as one more padlock.
@@ -73,13 +80,20 @@ export function BookingSetupRail({ orgId, initialStep }: { orgId: string | null;
 
   const toggle = (key: BookingSetupStepKey) => setOpen((cur) => (cur === key ? null : key));
 
+  // The team nudge is non-gating: it never enters the engine's status (setupStatus.ts), so it
+  // does not affect canOffer/complete. For admins it is displayed as one extra row, so the
+  // header count and the progress rail are augmented by hand here (and only here).
+  const teamDone = (producerCount ?? 0) > 0;
+  const doneCount = status.doneCount + (isAdmin && teamDone ? 1 : 0);
+  const totalCount = status.totalCount + (isAdmin ? 1 : 0);
+
   return (
     <Card className="overflow-hidden">
       <CardContent className="p-0">
         <div className="border-b border-border p-4">
           <div className="flex items-center justify-between">
             <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Set up · {status.doneCount} of {status.totalCount}
+              Set up · {doneCount} of {totalCount}
             </p>
             <Button variant="ghost" size="sm" className="h-auto p-1 text-xs" onClick={dismiss}>Hide</Button>
           </div>
@@ -91,16 +105,32 @@ export function BookingSetupRail({ orgId, initialStep }: { orgId: string | null;
               earlier undone one stayed grey (e.g. artists done, booking flow not), which reads
               as broken. The numbered rows below still show exactly which step is done. */}
           <div className="mt-3 flex gap-1">
-            {status.steps.map((s, i) => (
-              <span key={s.key} className={`h-[3px] w-full rounded-full ${i < status.doneCount ? "bg-accent-500" : "bg-muted"}`} />
+            {Array.from({ length: totalCount }).map((_, i) => (
+              <span key={i} className={`h-[3px] w-full rounded-full ${i < doneCount ? "bg-accent-500" : "bg-muted"}`} />
             ))}
           </div>
         </div>
         <div>
+          {/* Admin-only, non-gating, and first in the list: it precedes the engine rows and
+              offsets their 1-based index by one. It has its own inline onToggle because
+              `toggle` is typed to the engine keys; `block` is null so it never chips. */}
+          {isAdmin && (
+            <SetupStepRow
+              index={1}
+              title={TEAM_STEP_META.title}
+              hint={teamDone ? TEAM_STEP_META.doneHint : TEAM_STEP_META.todoHint}
+              done={teamDone}
+              block={null}
+              expanded={open === "team"}
+              onToggle={() => setOpen((cur) => (cur === "team" ? null : "team"))}
+            >
+              <TeamStep />
+            </SetupStepRow>
+          )}
           {status.steps.map((s, i) => (
             <SetupStepRow
               key={s.key}
-              index={i + 1}
+              index={i + 1 + (isAdmin ? 1 : 0)}
               title={META[s.key].title}
               hint={s.done ? META[s.key].doneHint : META[s.key].todoHint}
               done={s.done}

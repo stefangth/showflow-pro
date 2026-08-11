@@ -1,10 +1,18 @@
 // src/lib/dashboard/firstRun.ts
 import { FEATURE_KEYS, type FeatureKey } from "@/lib/entitlements";
+import { TEAM_STEP_KEY, TEAM_STEP_META } from "./moduleOnboarding";
 import type {
   ComposeInput, ComposeResult, ComposedStep, DashboardRole, InheritedRule,
   ModuleOnboardingDef, ModuleStatusLite, OnboardingCtx, OnboardingStepMeta,
   SamplePreviewData, WelcomeCopy,
 } from "./types";
+
+/** The admin-only production-team nudge as a ComposedStep, so the dashboard rail (which
+ *  renders ComposedStep generically) and any other consumer get title/hints/CTA for free.
+ *  moduleKey is booking_flow (it rides the booking setup surface); block is null (non-gating). */
+export function adminTeamStep(producerCount: number | null): ComposedStep {
+  return { ...TEAM_STEP_META, key: TEAM_STEP_KEY, moduleKey: "booking_flow", done: (producerCount ?? 0) > 0, block: null };
+}
 
 export function composeOnboarding(
   input: ComposeInput,

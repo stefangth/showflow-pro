@@ -1,6 +1,6 @@
 // src/lib/dashboard/firstRun.test.ts
 import { it, expect } from "vitest";
-import { composeArtist, composeOnboarding, welcomeCopy, railHeaderCopy, collapsedCopy } from "./firstRun";
+import { composeArtist, composeOnboarding, welcomeCopy, railHeaderCopy, collapsedCopy, adminTeamStep } from "./firstRun";
 import { ARTIST_ONBOARDING } from "./moduleOnboarding";
 import type { ComposeInput, DashboardRole, ModuleOnboardingDef, ModuleStatusLite, OnboardingCtx } from "./types";
 
@@ -74,6 +74,21 @@ const artistStatus: ModuleStatusLite = {
   ],
   complete: false,
 };
+
+it("adminTeamStep is a non-gating booking_flow step, done only with a producer", () => {
+  // done follows the producer count; null (unread) and 0 both read as not done.
+  expect(adminTeamStep(0).done).toBe(false);
+  expect(adminTeamStep(null).done).toBe(false);
+  expect(adminTeamStep(2).done).toBe(true);
+  const step = adminTeamStep(0);
+  expect(step.key).toBe("team");
+  expect(step.moduleKey).toBe("booking_flow");
+  // Non-gating: never chips, never counts against canOffer/complete.
+  expect(step.block).toBeNull();
+  // Carries the shared meta (title/CTA) so any generic consumer renders it.
+  expect(step.title).toBe("Add your production team");
+  expect(step.ctaLabel).toBe("Invite team");
+});
 
 it("composeArtist carries ARTIST_ONBOARDING metadata over booking_flow only", () => {
   const r = composeArtist(artistStatus, ARTIST_ONBOARDING, ctx);

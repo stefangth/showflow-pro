@@ -2,13 +2,14 @@ import { useState } from "react";
 import { useAuth } from "@/features/auth/AuthContext";
 import { useCan } from "@/hooks/useCapabilities";
 import { useEntitlements } from "@/hooks/useEntitlements";
-import { useBookingSetupStatus } from "@/hooks/useBookingSetup";
+import { useBookingSetupStatus, useProducerCount } from "@/hooks/useBookingSetup";
 import { useHireOrderSetupStatus } from "@/hooks/useHireOrderSetup";
 import { useNavCounts } from "@/hooks/useNavCounts";
 import { useBookingFlow } from "@/hooks/useBookingFlow";
 import { BOOKING_FLOW_DEFAULTS } from "@/lib/bookingFlow";
 import { useRailDismissed } from "@/components/setup/useRailDismissed";
 import {
+  adminTeamStep,
   composeArtist,
   composeOnboarding,
   welcomeCopy,
@@ -62,6 +63,9 @@ export function useDashboardFirstRun(role: DashboardRole): DashboardFirstRunStat
   // `flowQ.isLoading` is folded into `statusLoading` below for the same reason.
   const flowQ = useBookingFlow();
   const flow = flowQ.data ?? BOOKING_FLOW_DEFAULTS;
+  // Admin-only nudge (injected below), so only an admin dashboard pays for this read.
+  // Called unconditionally; `role === "admin"` is its enabled gate.
+  const producerCount = useProducerCount(orgId, role === "admin");
 
   const [railOpen, setRailOpen] = useState(false);
   const [dismissed, dismiss] = useRailDismissed("dashboardWelcome", orgId);
@@ -95,8 +99,15 @@ export function useDashboardFirstRun(role: DashboardRole): DashboardFirstRunStat
         ? composeArtist(artist.status, ARTIST_ONBOARDING, ctx)
         : { steps: [], complete: true, rules: [], offFooters: [] })
     : composeOnboarding({ enabled: features, role, moduleStatuses, ctx }, MODULE_ONBOARDING);
-  const filled = composed.steps.filter((s) => s.done).length;
-  const total = composed.steps.length;
+  // The admin-only "Add your production team" nudge is prepended here, outside the engine, so
+  // it never touches composed.complete (non-gating). Only WHILE INCOMPLETE, so the
+  // complete-state hero/rules view is unaffected and never over-counts. Producers/artists
+  // never get it (role gate). `filled`/`total`/`remaining` now run over the augmented list so
+  // the progress copy counts the extra step for admins.
+  const showTeam = role === "admin" && features.has("booking_flow") && !composed.complete;
+  const steps = showTeam ? [adminTeamStep(producerCount), ...composed.steps] : composed.steps;
+  const filled = steps.filter((s) => s.done).length;
+  const total = steps.length;
   const remaining = total - filled;
 
   const welcome = welcomeCopy(role, composed.complete, ctx, { filled, total }, canEditSetup);
@@ -137,7 +148,7 @@ export function useDashboardFirstRun(role: DashboardRole): DashboardFirstRunStat
     show,
     complete: composed.complete,
     dismissed,
-    steps: composed.steps,
+    steps,
     rules: composed.rules,
     offFooters: composed.offFooters,
     welcome,

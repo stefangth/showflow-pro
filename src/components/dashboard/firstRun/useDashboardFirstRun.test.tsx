@@ -13,6 +13,9 @@ const h = vi.hoisted(() => {
     defaultBooking,
     entitlements: vi.fn(() => ({ features: new Set(["booking_flow"]), isLoading: false })),
     bookingStatus: vi.fn(defaultBooking),
+    // The admin-only team nudge now runs useProducerCount. Default 0 so team is NOT done in
+    // the blank-org admin cases; individual tests override to a positive number for "done".
+    producerCount: vi.fn((): number | null => 0),
     hireStatus: vi.fn(() => ({ status: { steps: [], complete: true }, isLoading: false })),
     artistStatus: vi.fn(() => ({ status: { steps: [], complete: true }, isLoading: false })),
     // The org's flow is now half of what the welcome copy and the rules block SAY, so its
@@ -29,6 +32,7 @@ vi.mock("@/hooks/useEntitlements", () => ({
 }));
 vi.mock("@/hooks/useBookingSetup", () => ({
   useBookingSetupStatus: () => h.bookingStatus(),
+  useProducerCount: () => h.producerCount(),
 }));
 vi.mock("@/hooks/useHireOrderSetup", () => ({
   useHireOrderSetupStatus: () => h.hireStatus(),
@@ -67,6 +71,7 @@ function blankOrgStatus() {
 afterEach(() => {
   h.entitlements.mockReturnValue({ features: new Set(["booking_flow"]), isLoading: false });
   h.bookingStatus.mockImplementation(h.defaultBooking);
+  h.producerCount.mockReturnValue(0);
   h.hireStatus.mockReturnValue({ status: { steps: [], complete: true }, isLoading: false });
   h.artistStatus.mockReturnValue({ status: { steps: [], complete: true }, isLoading: false });
   h.flow.mockReturnValue({ data: { artist_acceptance: true }, isLoading: false });
@@ -78,18 +83,28 @@ describe("useDashboardFirstRun", () => {
     const s = result.current;
     expect(s.show).toBe(true);
     expect(s.complete).toBe(false);
-    // hire_orders is not entitled, so only the booking module contributes.
-    expect(s.steps.map((x) => x.key)).toEqual(["shows", "slots", "flow", "people", "ladder", "eligibility", "timing"]);
+    // hire_orders is not entitled, so only the booking module contributes. The admin-only
+    // team nudge is prepended (it is non-gating, injected outside the engine).
+    expect(s.steps.map((x) => x.key)).toEqual(["team", "shows", "slots", "flow", "people", "ladder", "eligibility", "timing"]);
     expect(s.welcome.headline).toContain("Halle Kollektiv");
     expect(s.offFooters).toContain("Hire orders is off for this org. Ask your account manager to switch it on.");
+  });
+
+  it("does not give a producer a team step (the nudge is admin-only)", () => {
+    const { result } = renderHook(() => useDashboardFirstRun("producer"));
+    const keys = result.current.steps.map((x) => x.key);
+    expect(keys).not.toContain("team");
+    // Byte-identical to the pre-nudge producer composition: only the engine's booking steps.
+    expect(keys).toEqual(["shows", "slots", "flow", "people", "ladder", "eligibility", "timing"]);
   });
 
   it("threads progress into welcome copy and section framing", () => {
     const { result } = renderHook(() => useDashboardFirstRun("admin"));
     const s = result.current;
-    // The user-facing "0 of N": N is whatever the engine reports, not a literal, so adding
-    // a step does not need a second edit here to stay true.
-    expect(s.welcome.progressTotal).toBe(blankOrgStatus().steps.length);
+    // The user-facing "0 of N": N is whatever the engine reports plus the admin team nudge
+    // (injected outside the engine). A blank org has no producer, so team is not done and
+    // progressFilled stays 0.
+    expect(s.welcome.progressTotal).toBe(blankOrgStatus().steps.length + 1);
     expect(s.welcome.progressFilled).toBe(0);
     expect(s.sectionTitle).toBe("What this page becomes");
     expect(s.railOpen).toBe(false);
