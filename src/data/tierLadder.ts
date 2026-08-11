@@ -1,5 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
+import { fetchCastMemberCounts } from "@/data/casts";
+import { fetchRequiredSkillIds, fetchSkillEligibleArtistIds } from "@/data/eligibility";
+import { fetchBlockedArtistIds } from "@/data/blockedDates";
 
 /**
  * Client-side mirror of the server's tier ladder resolver
@@ -68,4 +71,113 @@ export async function fetchTierCastMap(
   return [...byTier.entries()]
     .sort(([a], [b]) => a - b)
     .map(([tier, casts]) => ({ tier, casts }));
+}
+
+export interface TierLadderRow extends TierCast {
+  /** Raw member-position count across the tier's cast(s) (the "of M" denominator),
+   *  from `fetchCastMemberCounts` — independent of artist active status. */
+  castTotal: number;
+  /** Active members of the tier's cast(s) who hold every required skill, are not
+   *  blocked on the date, and do not already have a non-cancelled booking for it. */
+  matchCount: number;
+  /** Active, not-already-offered, not-blocked members who miss a required skill. */
+  missingSkillCount: number;
+  /** Active, not-already-offered members with a blocked_dates row for the date. */
+  blockedCount: number;
+  /** Active members who already hold a non-cancelled booking (any status) for the date. */
+  alreadyOfferedCount: number;
+}
+
+interface MemberRow { cast_id: string; artist_id: string }
+interface ArtistStatusRow { id: string; status: string }
+interface BookingArtistRow { artist_id: string }
+
+/**
+ * Per-tier headcounts for the show-specific ladder, computed in ONE client-side
+ * pass over already-readable tables rather than N per-tier dry-run edge calls
+ * (open-offer-tier). Mirrors open-offer-tier's elimination waterfall (already
+ * booked/offered -> blocked -> missing skills), minus the show-eligibility gate
+ * step: a tier's candidate pool is already exactly its cast(s)' members, and
+ * those cast ids come from the same show/date eligibility rows the gate itself
+ * reads, so the gate can never eliminate anyone here.
+ */
+export async function fetchTierLadderCounts(
+  client: SupabaseClient<Database>,
+  args: { showId: string; showDateId: string; cityId: string | null; orgId: string | null },
+): Promise<TierLadderRow[]> {
+  const tierMap = await fetchTierCastMap(client, { showId: args.showId, cityId: args.cityId });
+  if (tierMap.length === 0) return [];
+
+  const allCastIds = [...new Set(tierMap.flatMap((t) => t.casts.map((c) => c.id)))];
+
+  const memberCounts = await fetchCastMemberCounts(client, args.orgId);
+
+  const { data: memberRows, error: memberErr } = await client
+    .from("cast_members")
+    .select("cast_id, artist_id")
+    .in("cast_id", allCastIds);
+  if (memberErr) throw memberErr;
+  const members = (memberRows ?? []) as MemberRow[];
+
+  const allArtistIds = [...new Set(members.map((m) => m.artist_id))];
+
+  const { data: artistRows, error: artistErr } = await client
+    .from("artists")
+    .select("id, status")
+    .in("id", allArtistIds);
+  if (artistErr) throw artistErr;
+  const activeArtistIds = new Set(
+    ((artistRows ?? []) as ArtistStatusRow[]).filter((a) => a.status === "active").map((a) => a.id),
+  );
+
+  const { data: bookingRows, error: bookingErr } = await client
+    .from("bookings")
+    .select("artist_id")
+    .eq("show_date_id", args.showDateId)
+    .neq("status", "cancelled");
+  if (bookingErr) throw bookingErr;
+  const offeredArtistIds = new Set(((bookingRows ?? []) as BookingArtistRow[]).map((r) => r.artist_id));
+
+  const { data: dateRow, error: dateErr } = await client
+    .from("show_dates")
+    .select("date")
+    .eq("id", args.showDateId)
+    .maybeSingle();
+  if (dateErr) throw dateErr;
+  const date = (dateRow as { date: string } | null)?.date ?? null;
+  const blockedArtistIds = date
+    ? await fetchBlockedArtistIds(client, { date, orgId: args.orgId })
+    : new Set<string>();
+
+  const required = await fetchRequiredSkillIds(client, { showId: args.showId, showDateId: args.showDateId });
+  const skillEligible = await fetchSkillEligibleArtistIds(client, { requiredSkillIds: required.all });
+
+  return tierMap.map((t) => {
+    const tierCastIds = new Set(t.casts.map((c) => c.id));
+    const tierArtistIds = [...new Set(
+      members.filter((m) => tierCastIds.has(m.cast_id)).map((m) => m.artist_id),
+    )];
+    const castTotal = t.casts.reduce((sum, c) => sum + (memberCounts[c.id] ?? 0), 0);
+
+    // Waterfall, mirroring open-offer-tier: active -> not already offered/booked
+    // -> not blocked -> holds every required skill. Each artist lands in exactly
+    // one bucket, so the counts never double-count.
+    const active = tierArtistIds.filter((id) => activeArtistIds.has(id));
+    const alreadyOffered = active.filter((id) => offeredArtistIds.has(id));
+    const afterOffered = active.filter((id) => !offeredArtistIds.has(id));
+    const blocked = afterOffered.filter((id) => blockedArtistIds.has(id));
+    const afterBlocked = afterOffered.filter((id) => !blockedArtistIds.has(id));
+    const missing = skillEligible == null ? [] : afterBlocked.filter((id) => !skillEligible.has(id));
+    const match = skillEligible == null ? afterBlocked : afterBlocked.filter((id) => skillEligible.has(id));
+
+    return {
+      tier: t.tier,
+      casts: t.casts,
+      castTotal,
+      matchCount: match.length,
+      missingSkillCount: missing.length,
+      blockedCount: blocked.length,
+      alreadyOfferedCount: alreadyOffered.length,
+    };
+  });
 }
