@@ -21,17 +21,23 @@ export function adminTeamStep(producerCount: number | null): ComposedStep {
   return { ...TEAM_STEP_META, key: TEAM_STEP_KEY, moduleKey: "booking_flow", done: hasProducerTeam(producerCount), block: null };
 }
 
+/** The single rule for whether the admin-only production-team nudge shows alongside the
+ *  booking steps: admins only, booking module only, and only WHILE INCOMPLETE (so a complete
+ *  org's hero/rules view never over-counts). Shared by injectAdminTeamStep (the dashboard rail
+ *  and Shows & Bookings banner) and BookingSetupRail (the checklist sheet), so the three
+ *  surfaces cannot drift — the whole-branch review found the banner had drifted when the gate
+ *  was inlined per-surface. */
+export function showAdminTeamStep(opts: { role: DashboardRole; bookingEnabled: boolean; complete: boolean }): boolean {
+  return opts.role === "admin" && opts.bookingEnabled && !opts.complete;
+}
+
 /** Prepend the admin-only, non-gating production-team nudge to a composed booking step list
- *  and return the augmented list plus its counts. The SINGLE home for this gate, so every
- *  surface that composes booking steps (dashboard rail, Shows & Bookings banner) applies it
- *  identically — the whole-branch review found the banner had drifted when this was inlined
- *  per-surface. Admins only, booking module only, and only WHILE INCOMPLETE, so a complete
- *  org's hero/rules view never over-counts. */
+ *  and return the augmented list plus its counts. */
 export function injectAdminTeamStep(
   composed: ComposeResult,
   opts: { role: DashboardRole; bookingEnabled: boolean; producerCount: number | null },
 ): { steps: ComposedStep[]; filled: number; total: number } {
-  const show = opts.role === "admin" && opts.bookingEnabled && !composed.complete;
+  const show = showAdminTeamStep({ role: opts.role, bookingEnabled: opts.bookingEnabled, complete: composed.complete });
   const steps = show ? [adminTeamStep(opts.producerCount), ...composed.steps] : composed.steps;
   return { steps, filled: steps.filter((s) => s.done).length, total: steps.length };
 }

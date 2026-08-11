@@ -76,7 +76,7 @@ export const TEAM_STEP_KEY = "team";
 export const TEAM_STEP_META: OnboardingStepMeta = {
   title: "Add your production team",
   todoHint: "Invite the producers who plan dates, run offers and confirm bookings.",
-  doneHint: "Your production team is on board.",
+  doneHint: "Your production team is invited.",
   ctaLabel: "Invite team",
   ctaRoute: `${ROUTES.ADMIN}?tab=people`,
 };

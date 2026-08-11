@@ -5,7 +5,7 @@ import { useCan } from "@/hooks/useCapabilities";
 import { useBookingSetupStatus, useInactiveArtistCount, useProducerCount } from "@/hooks/useBookingSetup";
 import { type BookingSetupStepKey } from "@/lib/bookings/setupStatus";
 import { bookingOnboarding, VIEW_AS_ARTIST_TIP, TEAM_STEP_META } from "@/lib/dashboard/moduleOnboarding";
-import { hasProducerTeam } from "@/lib/dashboard/firstRun";
+import { hasProducerTeam, showAdminTeamStep } from "@/lib/dashboard/firstRun";
 import { SETUP_BLOCK_CHIPS } from "@/lib/dashboard/setupBlocks";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -89,11 +89,12 @@ export function BookingSetupRail({ orgId, initialStep }: { orgId: string | null;
   // does not affect canOffer/complete. For admins it is displayed as one extra row, so the
   // header count and the progress rail are augmented by hand here (and only here).
   const teamDone = hasProducerTeam(producerCount);
-  // Gated on !status.complete, the same gate injectAdminTeamStep applies to the dashboard rail
-  // and the Shows & Bookings banner. SetupChecklistSheet renders this component even when
-  // complete (the rail is demoted to a "button"), so without this gate a completed org with no
-  // producers would perpetually show "7 of 8" here while the other two surfaces read "7 of 7".
-  const showTeamRow = isAdmin && !status.complete;
+  // Same shared gate the dashboard rail and Shows & Bookings banner use (via injectAdminTeamStep):
+  // admin, booking module, and NOT complete. SetupChecklistSheet renders this component even when
+  // complete (the rail is demoted to a "button"), so without the !complete arm a completed org
+  // with no producer would perpetually show "7 of 8" here while the other two read "7 of 7".
+  // bookingEnabled is always true on this rail (it only renders for a booking_flow org).
+  const showTeamRow = showAdminTeamStep({ role: isAdmin ? "admin" : "producer", bookingEnabled: true, complete: status.complete });
   const doneCount = status.doneCount + (showTeamRow && teamDone ? 1 : 0);
   const totalCount = status.totalCount + (showTeamRow ? 1 : 0);
 
