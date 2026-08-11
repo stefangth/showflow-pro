@@ -64,4 +64,13 @@ describe("SlotsStep", () => {
       expect.stringContaining("/productions"),
     );
   });
+
+  it("says slots are already set when active shows exist but none need a count", async () => {
+    showsRef.value = [
+      { id: "s2", program: "Set", sub_program: "Done", main_cast_slots: 4, understudy_slots: 2, status: "active" },
+    ];
+    renderWithProviders(<MemoryRouter><SlotsStep orgId="org-1" onDone={() => {}} /></MemoryRouter>);
+    expect(await screen.findByText(/already has its slot counts set/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /save slot counts/i })).not.toBeInTheDocument();
+  });
 });

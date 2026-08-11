@@ -52,6 +52,7 @@ export function SlotsStep({ orgId, onDone }: { orgId: string | null; onDone: () 
   if (shows.isLoading) return <Skeleton className="h-24 w-full" />;
 
   if (unset.length === 0) {
+    const hasActiveShows = (activeShows(shows.data)?.length ?? 0) > 0;
     return (
       <div className="space-y-3">
         <p className="text-xs text-muted-foreground">
@@ -59,7 +60,9 @@ export function SlotsStep({ orgId, onDone }: { orgId: string | null; onDone: () 
         </p>
         <div className="flex items-center gap-2.5 rounded-md border border-dashed border-border p-3">
           <span className="min-w-0 flex-1 text-sm text-muted-foreground">
-            No shows yet. Add a show first, then set its slot counts here.
+            {hasActiveShows
+              ? "Every active show already has its slot counts set."
+              : "No shows yet. Add a show first, then set its slot counts here."}
           </span>
           <Button asChild size="sm" variant="outline">
             <Link to={ROUTES.PRODUCTIONS}>Add a show</Link>
