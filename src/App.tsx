@@ -10,6 +10,7 @@ import { AuthProvider } from "@/features/auth/AuthContext";
 import { EditorProvider } from "@/features/editor/EditorContext";
 import { ConsentProvider } from "@/features/consent/ConsentContext";
 import { CookieConsentBanner } from "@/components/consent/CookieConsentBanner";
+import { AnalyticsBridge } from "@/features/analytics/AnalyticsBridge";
 import { ProtectedRoute, PlatformRoute } from "@/features/auth/ProtectedRoute";
 import PlatformPage from "./pages/PlatformPage";
 import AppLayout from "@/components/layout/AppLayout";
@@ -56,6 +57,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <ConsentProvider>
+        <AnalyticsBridge />
         <AuthProvider>
           <EditorProvider>
           <Routes>
