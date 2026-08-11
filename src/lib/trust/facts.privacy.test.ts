@@ -233,18 +233,33 @@ describe("retention table matches the privacy policy", () => {
     Backups: /Backups:\*\* retained no longer than 30 days/,
     "Account and profile": /Account and profile data:\*\*[\s\S]*?plus 30 days after deletion/,
     "Email send log and suppressions": /Email send log and suppression list:\*\* 24 months/,
-    "Hosting and database logs": /Hosting \/ Supabase logs:\*\*[\s\S]*?7–30 days/,
+    "Hosting and database logs": /Hosting \/ Supabase logs:\*\*[\s\S]*?7-30 days/,
     "Error reports": /Sentry error reports:\*\* 90 days/,
     "Analytics and session replay": /PostHog analytics events and session replays:\*\* 12 months/,
+    // Two figures, and the anchor has to reach both: the 24-hour discard of
+    // the visitor identifier and the 1-to-24-month reporting window. Neither
+    // is ours — both are quoted from Vercel's documentation — so what this
+    // guards is that the page and the policy quote the SAME two.
+    "Vercel Web Analytics":
+      /Vercel Web Analytics \(public website\):\*\*[\s\S]*?24 hours[\s\S]*?from 1 to 24 months/,
   };
 
-  /** All "<number> <day|month|year>[s]" fragments in a string, singularised
-   *  and sorted, so "3 years" and "three (3) years from the show date" (once
-   *  parens are stripped) both reduce to the same comparable token — and so a
-   *  changed number, not just changed wording, is what this test can catch. */
+  /** All "<number> <hour|day|month|year>[s]" fragments in a string,
+   *  singularised and sorted, so "3 years" and "three (3) years from the show
+   *  date" (once parens are stripped) both reduce to the same comparable
+   *  token — and so a changed number, not just changed wording, is what this
+   *  test can catch.
+   *
+   *  Two widenings, both of which close a hole rather than open one. A range
+   *  written with an ASCII hyphen ("7-30 days", now that the en-dash is gone
+   *  from both surfaces) used to fall out of the pattern at the "7" and match
+   *  only "30 days", so the low end of every range was unguarded. And "hours"
+   *  was not a unit at all, so a figure stated in hours — the Vercel row's
+   *  24-hour visitor-identifier discard is the first — was invisible to the
+   *  comparison that exists to pin figures. */
   function periodNumbers(text: string): string[] {
     const cleaned = text.replace(/[()]/g, "");
-    const matches = cleaned.match(/\d+(?:–\d+)?-?\s*(?:days?|months?|years?)/gi) ?? [];
+    const matches = cleaned.match(/\d+(?:[–-]\d+)?-?\s*(?:hours?|days?|months?|years?)/gi) ?? [];
     return matches
       .map((m) => m.toLowerCase().replace(/-/g, " ").replace(/\s+/g, " ").trim().replace(/s$/, ""))
       .sort();

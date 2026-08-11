@@ -28,6 +28,7 @@ We have not appointed a Data Protection Officer because we are not required to d
 This policy applies to:
 
 - the ShowFlow Pro web application accessed through our domains;
+- our public website at showflow.pro, including its trust page;
 - the transactional emails we send you (offers, confirmations, digests, account notifications); and
 - the in-app messaging and notification surfaces inside the Service.
 
@@ -91,7 +92,7 @@ In addition, the following processors act on our behalf under Article 28 GDPR da
 
 | Processor | Service | Location | Transfer mechanism |
 |---|---|---|---|
-| Supabase Inc. | Database, authentication, file storage, edge functions | United States and European Union regions | EU storage option in use where available; EU–US Data Privacy Framework (DPF) certification and EU Standard Contractual Clauses (SCCs) for any US transfers. |
+| Supabase Inc. | Database, authentication, file storage, edge functions | United States and European Union regions | EU storage option in use where available; EU-US Data Privacy Framework (DPF) certification and EU Standard Contractual Clauses (SCCs) for any US transfers. |
 | Resend, Inc. | Transactional email delivery | United States | DPF certification and SCCs. |
 | Vercel, Inc. | Web application hosting and edge network | United States and European Union | DPF certification and SCCs. |
 | Vercel, Inc. (Vercel Web Analytics) | Aggregated page-view statistics for our public website at showflow.pro, including its trust page; loaded only after you accept in that site's consent banner, and never inside the web application | United States and European Union | DPF certification and SCCs. |
@@ -112,7 +113,7 @@ We do not sell personal data and we do not share it with advertising networks.
 
 Some of our processors are established in the United States. Where personal data is transferred to a country outside the European Economic Area, we rely on one or more of the following safeguards under Chapter V GDPR:
 
-- the adequacy decision adopted by the European Commission on 10 July 2023 in respect of the EU–US Data Privacy Framework (where the recipient is certified), or
+- the adequacy decision adopted by the European Commission on 10 July 2023 in respect of the EU-US Data Privacy Framework (where the recipient is certified), or
 - the European Commission's Standard Contractual Clauses (SCCs) of 4 June 2021, supplemented where necessary by technical and organisational measures (encryption in transit, encryption at rest, pseudonymisation of user identifiers).
 
 You may request a copy of the relevant safeguards by writing to contact@showflow.pro.
@@ -127,9 +128,10 @@ We keep your personal data only for as long as necessary for the purposes descri
 - **Bookings and audit log:** three (3) years from the relevant show date, for commercial record-keeping and dispute resolution.
 - **Chat messages:** hidden from the chats list 30 days after the show date (`CHAT_ARCHIVE_DAYS`); permanently deleted after 12 months. The database grants administrators and the production team access to a thread until it is deleted. Once the archive window passes, the Service drops the thread from the chats list for everyone, shows administrators the messages read only, and stops showing the messages to the production team.
 - **Email send log and suppression list:** 24 months, to honour your unsubscribe preferences and maintain sender reputation.
-- **Hosting / Supabase logs:** retained according to our providers' standard policies (typically 7–30 days).
+- **Hosting / Supabase logs:** retained according to our providers' standard policies (typically 7-30 days).
 - **Sentry error reports:** 90 days.
 - **PostHog analytics events and session replays:** 12 months.
+- **Vercel Web Analytics (public website):** Vercel discards the visitor identifier it derives from each request after 24 hours. The aggregated page-view statistics are retained for Vercel's published reporting window, which runs from 1 to 24 months depending on the plan in use; Vercel states that this window is the period for which the data is guaranteed to remain available, and that it may hold the data for longer.
 - **Backups:** retained no longer than 30 days; data deleted from the live database is removed from backups within this period. This is a maximum retention period, not a guarantee that 30 days of restorable backups are kept.
 
 After these periods, data is deleted or fully anonymised.

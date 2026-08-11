@@ -1,8 +1,8 @@
-// RETENTION publishes eight periods. facts.privacy.test.ts already proves each
+// RETENTION publishes nine periods. facts.privacy.test.ts already proves each
 // one matches section 7 of the privacy policy — but matching the policy is not
 // the same as being true of the deployment, and for most of these rows nothing
 // in the repo applies the period at all. Printed bare, a period reads as a
-// schedule; five of the eight have no schedule behind them and one (the email
+// schedule; six of the nine have no schedule behind them and one (the email
 // row) had a configured prune pointing at a shorter window than the number on
 // the page.
 //

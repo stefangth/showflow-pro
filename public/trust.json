@@ -291,7 +291,7 @@
       "tone": "none"
     }
   ],
-  "transferBasisNote": "Adequacy decision of 10 July 2023 (EU–US Data Privacy Framework) or the Standard Contractual Clauses of 4 June 2021, with encryption in transit and at rest.",
+  "transferBasisNote": "Adequacy decision of 10 July 2023 (EU-US Data Privacy Framework) or the Standard Contractual Clauses of 4 June 2021, with encryption in transit and at rest.",
   "retention": [
     {
       "item": "Bookings and audit log",
@@ -320,7 +320,7 @@
     },
     {
       "item": "Hosting and database logs",
-      "period": "7–30 days",
+      "period": "7-30 days",
       "basis": "These are the hosting and database providers' own logs, and they set the period. Nothing in this codebase retains or expires them."
     },
     {
@@ -332,6 +332,11 @@
       "item": "Analytics and session replay",
       "period": "12 months",
       "basis": "A policy commitment. No PostHog package ships in the application, so no product analytics or session replay is collected."
+    },
+    {
+      "item": "Vercel Web Analytics",
+      "period": "24 hours · 1 to 24 months",
+      "basis": "Set by Vercel, not by this codebase. Its documentation states the visitor identifier is discarded after 24 hours and that the reporting window runs 1 to 24 months by plan, and that the window is a guarantee of availability rather than a deletion deadline. The beacon runs on the showflow.pro website only, after consent."
     }
   ],
   "retentionBasisNote": "The note under each period says what applies it: a mechanism in the product, a setting held by a provider, or a commitment with nothing scheduled behind it.",
@@ -360,7 +365,7 @@
   "documents": [
     {
       "title": "Privacy policy",
-      "meta": "Web · covers the app, not the showflow.pro website · updated 11 August 2026",
+      "meta": "Web · the product policy, covering the app and the showflow.pro website · updated 11 August 2026",
       "href": "https://app.showflow.pro/privacy",
       "cta": "Read"
     },

@@ -190,20 +190,25 @@ describe("the consent-withdrawal right describes what exists today", () => {
 
 // ── The dash gate ─────────────────────────────────────────────────────────
 //
-// Product copy in this repo carries no em-dashes. There was no mechanical
-// guard for it in either repo, and an em-dash had reached the in-app Trust tab
-// as a tile's whole value. public/trust.json is the cheapest place to enforce
-// it that covers real reach: it is every string facts.ts publishes, on both
-// surfaces, with no source comments in it to produce false positives.
+// Product copy in this repo carries no em-dashes and no en-dashes. There was
+// no mechanical guard for it in either repo, and an em-dash had reached the
+// in-app Trust tab as a tile's whole value. public/trust.json is the cheapest
+// place to enforce it that covers real reach: it is every string facts.ts
+// publishes, on both surfaces, with no source comments in it to produce false
+// positives.
 //
-// EN-DASHES ARE NOT BANNED HERE. Two of them ("7–30 days", "EU–US Data Privacy
-// Framework") are mirrored from the privacy policy and are asserted against it
-// by facts.privacy.test.ts, so they cannot move without both policies moving
-// with them. That is an owner decision, not a copy slip.
-describe("the published contract carries no em-dashes", () => {
+// EN-DASHES USED TO BE EXEMPT here, on the grounds that the two that shipped
+// ("7–30 days", "EU–US Data Privacy Framework") were mirrored from the privacy
+// policy and so could not move without the policy moving with them. The owner
+// has since ruled the other way: both were rewritten with ASCII hyphens in
+// both policy files, in facts.ts, and in this suite's sibling anchors, and the
+// German policy had already been writing "EU-US" that way. So the exemption is
+// gone and the gate covers both characters — a range or a compound in a
+// published claim uses a hyphen.
+describe("the published contract carries no em-dashes or en-dashes", () => {
   it("finds none in public/trust.json", () => {
     const raw = readFileSync(resolve(ROOT, "public/trust.json"), "utf8");
-    const lines = raw.split("\n").filter((l) => l.includes("—"));
-    expect(lines, "an em-dash reached a published claim").toEqual([]);
+    const lines = raw.split("\n").filter((l) => /[—–]/.test(l));
+    expect(lines, "an em-dash or en-dash reached a published claim").toEqual([]);
   });
 });

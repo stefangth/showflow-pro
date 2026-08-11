@@ -16,7 +16,7 @@ describe("RetentionCard", () => {
     }
   });
 
-  // A period printed on its own reads as a schedule. Five of the eight have no
+  // A period printed on its own reads as a schedule. Six of the nine have no
   // schedule behind them (see the scheduled-jobs assertion below and
   // src/lib/trust/retentionBasis.test.ts), so the line that says which is not
   // decoration — it is what stops the table implying enforcement it lacks.

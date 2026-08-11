@@ -288,8 +288,8 @@ export const VISIBILITY_MATRIX: MatrixRow[] = [
     // tables deliberately outside the org_isolation assertion. The outcome
     // still holds on all four, which is why the value stays "No access":
     // org_memberships / org_invitations are gated on is_org_member and
-    // has_org_role for the same org (20260603120000_add_platform_tables_and
-    // _org_helpers.sql:85-93), and platform_audit_log
+    // has_org_role for the same org, lines 85-93 of
+    // 20260603120000_add_platform_tables_and_org_helpers.sql, and platform_audit_log
     // (20260723002902_platform_audit_log.sql:16-19) and email_send_log
     // (20260710231816_email_delivery_tables.sql:65) grant SELECT to
     // super-admins only, so no organisation member reads either one at all.
@@ -499,7 +499,7 @@ export const RETENTION: RetentionRow[] = [
     // prune found one. The sentence now says whose logs it means, which costs
     // nothing and closes the reading.
     item: "Hosting and database logs",
-    period: "7–30 days",
+    period: "7-30 days",
     basis: "These are the hosting and database providers' own logs, and they set the period. Nothing in this codebase retains or expires them.",
   },
   // Sentry and PostHog are "Off" (see SUBPROCESSORS below): neither SDK ships
@@ -513,10 +513,13 @@ export const RETENTION: RetentionRow[] = [
   // analytics IS enabled on the public site, after consent, on this very
   // page. What is not enabled is PostHog's product analytics and session
   // replay, and that is the pair this 12-month commitment (section 7) covers.
-  // Vercel Web Analytics has no row here because it has no row in section 7:
-  // it is page-view data on the marketing site, described in section 5, and
-  // inventing a retention figure for it would be a claim with no artefact
-  // behind it.
+  // Vercel Web Analytics now has its own row at the foot of this table: it
+  // used to have none, on the grounds that section 7 named no period for it
+  // and inventing one would be a claim with no artefact behind it. The gap
+  // was the wrong half to leave open on a table a reader takes for a complete
+  // inventory, so section 7 gained a bullet and this gained a row. Neither
+  // figure in it is ours — both are quoted from Vercel's own documentation,
+  // which is what the basis line says.
   //
   // The condition used to ride in the `period` cell — "90 days, once error
   // tracking is enabled" and "12 months, once PostHog is enabled". Two
@@ -549,6 +552,27 @@ export const RETENTION: RetentionRow[] = [
     // wording.
     basis:
       "A policy commitment. No PostHog package ships in the application, so no product analytics or session replay is collected.",
+  },
+  {
+    // The one processor on this page that IS collecting something today, and
+    // for five rounds the only one with no period next to it. The reason it
+    // had none was sound as far as it went — nothing in this repository sets
+    // or applies the figure, so a number typed here would have been invented
+    // — but a retention table that presents itself as an inventory and omits
+    // the live collector is a worse failure than a provider-set period stated
+    // as a provider-set period. Section 7 states it now, and both numbers are
+    // quoted from Vercel's published documentation rather than measured here:
+    // the 24-hour discard of the visitor hash is on Vercel's Web Analytics
+    // privacy and compliance page, and the reporting window (1 month on
+    // Hobby, 12 on Pro, 24 with the Plus add-on or Enterprise) is on its
+    // pricing page. That page also defines the window as the period the data
+    // is GUARANTEED to stay available, not a deletion deadline, so the basis
+    // says so — publishing it as a ceiling would repeat the mistake the
+    // Backups row was corrected for.
+    item: "Vercel Web Analytics",
+    period: "24 hours · 1 to 24 months",
+    basis:
+      "Set by Vercel, not by this codebase. Its documentation states the visitor identifier is discarded after 24 hours and that the reporting window runs 1 to 24 months by plan, and that the window is a guarantee of availability rather than a deletion deadline. The beacon runs on the showflow.pro website only, after consent.",
   },
 ];
 
@@ -762,7 +786,7 @@ export const CONTROLS: Control[] = [
 ];
 
 export const TRANSFER_BASIS_NOTE =
-  "Adequacy decision of 10 July 2023 (EU–US Data Privacy Framework) or the Standard Contractual Clauses of 4 June 2021, with encryption in transit and at rest.";
+  "Adequacy decision of 10 July 2023 (EU-US Data Privacy Framework) or the Standard Contractual Clauses of 4 June 2021, with encryption in transit and at rest.";
 
 export interface SelfServeRight {
   icon: string;
@@ -847,11 +871,17 @@ export const DOCUMENTS: TrustDocument[] = [
     // The meta names the scope because two documents called "Privacy policy"
     // are reachable from the public Trust page: this one, and the marketing
     // site's, which the shared footer links to. They are different documents
-    // with different dates. This one opens "how ShowFlow Pro collects, uses,
-    // and shares personal data when you use the ShowFlow Pro web application
-    // and related transactional emails"; the site policy opens "The data
-    // controller for this website (showflow.pro)". A reviewer establishing
-    // which statements are authoritative should not have to guess.
+    // with different dates, and a reviewer establishing which statements are
+    // authoritative should not have to guess.
+    //
+    // The scope note used to read "covers the app, not the showflow.pro
+    // website", which was true of section 2 as it then stood and is false of
+    // it now: section 2 lists the public website alongside the application,
+    // the emails and the in-app surfaces, because section 5 discloses two
+    // processors (web fonts, Vercel Web Analytics) that operate there. It
+    // still is not the *only* document covering that site — the marketing
+    // site publishes its own notice — so the note says which of the two this
+    // is rather than claiming exclusivity.
     //
     // The date is printed in the document's own format ("11 August 2026") so
     // the assertion against it is a string containment rather than a
@@ -859,7 +889,7 @@ export const DOCUMENTS: TrustDocument[] = [
     // literal nobody checked; facts.privacy.test.ts now parses the policy's
     // `_Last updated:_` line and fails if the two disagree, and pins the
     // German twin's `_Stand:_` to the same day.
-    meta: "Web · covers the app, not the showflow.pro website · updated 11 August 2026",
+    meta: "Web · the product policy, covering the app and the showflow.pro website · updated 11 August 2026",
     href: `${APP_HOST}/privacy`,
     cta: "Read",
   },

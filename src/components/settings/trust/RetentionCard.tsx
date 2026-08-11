@@ -28,7 +28,7 @@ export function RetentionCard() {
           {RETENTION_BASIS_NOTE}
         </p>
         {/* A bare period reads as "a timer deletes this on that schedule", and
-         *  for five of the eight rows nothing schedules anything — see the
+         *  for six of the nine rows nothing schedules anything — see the
          *  scheduled-retention-jobs assertion in this component's test and the
          *  per-row basis strings in facts.ts. The basis line is what stops the
          *  table implying enforcement it does not have. */}

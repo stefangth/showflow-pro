@@ -28,6 +28,7 @@ Wir haben keinen Datenschutzbeauftragten benannt, da wir hierzu nach Art. 37 DSG
 Diese Erklärung gilt für:
 
 - die ShowFlow-Pro-Web-Anwendung unter unseren Domains,
+- unsere öffentliche Website showflow.pro einschließlich der dortigen Trust-Center-Seite,
 - die transaktionalen E-Mails, die wir Ihnen senden (Angebote, Bestätigungen, Zusammenfassungen, Kontomeldungen), sowie
 - die In-App-Nachrichten- und Benachrichtigungsfunktionen des Dienstes.
 
@@ -125,9 +126,10 @@ Wir speichern Ihre personenbezogenen Daten nur so lange, wie es für die in dies
 - **Buchungen und Audit-Log:** drei (3) Jahre ab dem jeweiligen Showtermin, zur kaufmännischen Beweisführung und Streitbeilegung.
 - **Chatnachrichten:** 30 Tage nach dem Showtermin in der Chat-Liste ausgeblendet (`CHAT_ARCHIVE_DAYS`); endgültige Löschung nach 12 Monaten. Die Datenbank gewährt Admins und dem Produktionsteam bis zur Löschung Zugriff auf einen Thread. Nach Ablauf des Archivzeitraums entfernt der Dienst den Thread für alle aus der Chat-Liste, zeigt Admins die Nachrichten nur noch lesend an und blendet die Nachrichten für das Produktionsteam aus.
 - **E-Mail-Versandprotokoll und Sperrliste:** 24 Monate, zur Berücksichtigung Ihres Abmeldewunsches und zur Wahrung der Absenderreputation.
-- **Hosting-/Supabase-Logs:** gemäß Standardrichtlinien unserer Anbieter (typischerweise 7–30 Tage).
+- **Hosting-/Supabase-Logs:** gemäß Standardrichtlinien unserer Anbieter (typischerweise 7-30 Tage).
 - **Sentry-Fehlerberichte:** 90 Tage.
 - **PostHog-Events und Session-Replays:** 12 Monate.
+- **Vercel Web Analytics (öffentliche Website):** Vercel verwirft die aus der jeweiligen Anfrage abgeleitete Besucherkennung nach 24 Stunden. Die aggregierten Seitenaufruf-Statistiken werden für das von Vercel veröffentlichte Auswertungsfenster („reporting window") vorgehalten, das je nach genutztem Tarif zwischen 1 und 24 Monaten liegt; Vercel gibt an, dass dieses Fenster den Zeitraum bezeichnet, für den die Daten garantiert verfügbar bleiben, und dass die Daten auch länger gespeichert werden können.
 - **Sicherungen (Backups):** Aufbewahrung höchstens 30 Tage; in der Live-Datenbank gelöschte Daten werden innerhalb dieses Zeitraums auch aus Backups entfernt. Dies ist eine Höchstspeicherdauer und keine Zusage, dass 30 Tage wiederherstellbarer Sicherungen vorgehalten werden.
 
 Nach Ablauf dieser Fristen werden die Daten gelöscht oder vollständig anonymisiert.
