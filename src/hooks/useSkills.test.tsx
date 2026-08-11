@@ -46,7 +46,7 @@ describe("skills catalog hooks", () => {
     const { result } = renderHookWithProviders(() => useSkillCatalog());
     await waitFor(() => expect(result.current.data).toBeDefined());
     expect(result.current.data).toEqual([
-      { id: "s1", name: "Singing", archivedAt: null, artistCount: 1, requiredByCount: 1 },
+      { id: "s1", name: "Singing", archivedAt: null, artistCount: 1, requiredByCount: 1, requiredByDateCount: 0 },
     ]);
     expect(client.calls).toContainEqual({ table: "skills", method: "eq", args: ["org_id", "org-1"] });
   });
