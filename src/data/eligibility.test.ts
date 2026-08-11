@@ -18,6 +18,22 @@ describe("fetchRequiredSkillIds", () => {
     const res = await fetchRequiredSkillIds(fake as never, { showId: "sh1", showDateId: "d1" });
     expect(res).toEqual({ showSkillIds: ["s1"], dateSkillIds: ["s1", "s2"], all: ["s1", "s2"] });
   });
+
+  it("subtracts date-dropped skills from the union: (show union dateAdded) minus dateDropped", async () => {
+    // show requires {Vocals, German}, date adds {Stage combat}, date drops {German}
+    // => required union = {Vocals, Stage combat}. The raw show/date lists are kept
+    // as-is (so the UI can still render German as a struck-through dropped chip);
+    // only `all` reflects the drop.
+    const fake = createFakeSupabase({
+      show_required_skills: { data: [{ skill_id: "vocals" }, { skill_id: "german" }], error: null },
+      show_date_required_skills: { data: [{ skill_id: "combat" }], error: null },
+      show_date_skill_drops: { data: [{ skill_id: "german" }], error: null },
+    });
+    const res = await fetchRequiredSkillIds(fake as never, { showId: "sh1", showDateId: "d1" });
+    expect(res.showSkillIds).toEqual(["vocals", "german"]);
+    expect(res.dateSkillIds).toEqual(["combat"]);
+    expect(res.all).toEqual(["combat", "vocals"]); // sorted union, german dropped
+  });
 });
 
 describe("fetchShowRequiredSkillIds", () => {
