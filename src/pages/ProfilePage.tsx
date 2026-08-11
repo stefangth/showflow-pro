@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/features/auth/AuthContext";
 import { useMyProfile, useUpdateMyProfile } from "@/hooks/useMyProfile";
+import { useFeature } from "@/hooks/useEntitlements";
 import { updateMyPassword } from "@/data/profiles";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -49,6 +50,7 @@ export default function ProfilePage() {
   const { data: profile, isLoading } = useMyProfile();
   const updateProfile = useUpdateMyProfile();
   const navigate = useNavigate();
+  const hireOrdersEnabled = useFeature("hire_orders");
 
   const identity = useForm<IdentityValues>({ resolver: zodResolver(identitySchema), values: { display_name: profile?.display_name ?? "", phone: profile?.phone ?? "" } });
 
@@ -234,8 +236,8 @@ export default function ProfilePage() {
         <CardHeader><CardTitle className="font-display text-destructive">Delete account</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Permanently delete your account. Your personal details are removed; shared booking
-            history is kept but de-identified. This cannot be undone.
+            Permanently delete your account. Your personal details are removed. Your shared booking history, including any open offers, is kept but de-identified. This cannot be undone.
+            {hireOrdersEnabled ? " Signed hire orders are kept for the organization's records with your details removed." : ""}
           </p>
           <AlertDialog onOpenChange={(o) => { if (!o) { setConfirmText(""); setDeleting(false); } }}>
             <AlertDialogTrigger asChild>
