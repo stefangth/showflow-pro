@@ -17,7 +17,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { CHAT_ARCHIVE_DAYS } from "@/config/app.config";
-import { RETENTION, RETENTION_BASIS_NOTE } from "./facts";
+import { RETENTION, RETENTION_BASIS_NOTE, SUBPROCESSORS } from "./facts";
 
 const ROOT = process.cwd();
 const MIGRATIONS = resolve(ROOT, "supabase/migrations");
@@ -133,8 +133,30 @@ describe("the rows that concede no schedule are still conceding accurately", () 
     expect(installed.filter((p) => /sentry/i.test(p))).toEqual([]);
     expect(installed.filter((p) => /posthog/i.test(p))).toEqual([]);
 
+    // No error tracking runs anywhere on either surface, so the unqualified
+    // form is true for this row.
     expect(row("Error reports").basis).toMatch(/nothing is collected/i);
-    expect(row("Analytics and session replay").basis).toMatch(/nothing is collected/i);
+  });
+
+  // The analytics row cannot borrow the error row's wording. Analytics IS
+  // running on the public trust page: SUBPROCESSORS discloses Vercel Web
+  // Analytics at status "Consent", and the landing repo mounts it on this very
+  // route once a reader accepts. A blanket "so nothing is collected" would be
+  // falsified by scrolling two sections up on the same page. The row is about
+  // PostHog's product analytics and session replay, and that is the pair the
+  // sentence must deny.
+  it("denies product analytics and session replay specifically, not analytics as a whole", () => {
+    const inUse = SUBPROCESSORS.filter((s) => /analytics/i.test(s.purpose) && s.status !== "Off");
+    expect(
+      inUse.length,
+      "no analytics processor is in use any more — this row may drop the qualifier",
+    ).toBeGreaterThan(0);
+
+    const { basis } = row("Analytics and session replay");
+    expect(basis).toMatch(/no product analytics or session replay is collected/i);
+    expect(basis, "a blanket denial contradicts the subprocessor table two sections up").not.toMatch(
+      /so nothing is collected/i,
+    );
   });
 
   it("keeps the two provider-set rows attributed to the provider, not to this codebase", () => {

@@ -327,7 +327,7 @@
     {
       "item": "Analytics and session replay",
       "period": "12 months, once PostHog is enabled",
-      "basis": "A policy commitment. No PostHog package ships in the application, so nothing is collected."
+      "basis": "A policy commitment. No PostHog package ships in the application, so no product analytics or session replay is collected."
     }
   ],
   "retentionBasisNote": "The note under each period says what applies it: a mechanism in the product, a setting held by a provider, or a commitment with nothing scheduled behind it.",

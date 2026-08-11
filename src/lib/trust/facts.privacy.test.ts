@@ -168,13 +168,38 @@ describe("the documents list prints each document's own date", () => {
     expect(doc!.meta).toContain(`updated ${policyDate(POLICY, "Last updated")}`);
   });
 
+  // "11 August 2026" and "11. August 2026" are the same day written two ways,
+  // so the comparison has to normalise rather than compare strings. It must
+  // NOT normalise all the way down to digits, which was the first attempt:
+  // digits("11. Juli 2026") equals digits("11 August 2026"), so a month-only
+  // divergence — the most likely way these two files drift, since only the
+  // month name changes between most consecutive revisions — sailed through the
+  // assertion that exists to catch it. Month names are mapped to an index
+  // instead, and compared.
+  const EN_MONTHS = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December",
+  ];
+  const DE_MONTHS = [
+    "Januar", "Februar", "März", "April", "Mai", "Juni",
+    "Juli", "August", "September", "Oktober", "November", "Dezember",
+  ];
+
+  /** `{ day, month, year }` where `month` is a 0-based index, so the two
+   *  languages compare on the same scale. */
+  function parseDate(text: string, months: string[], where: string) {
+    const match = text.match(new RegExp(`^(\\d{1,2})\\.?\\s+(${months.join("|")})\\s+(\\d{4})$`));
+    expect(match, `could not read a ${where} date out of ${JSON.stringify(text)}`).not.toBeNull();
+    return { day: Number(match![1]), month: months.indexOf(match![2]), year: Number(match![3]) };
+  }
+
   it("keeps the binding German twin on the same day", () => {
     // The German version controls (privacy-policy.en.md:7), so an English-only
     // date bump would leave the authoritative document stale while the page
-    // published the newer date. Digits only, so "11 August 2026" and
-    // "11. August 2026" compare equal.
-    const digits = (s: string) => s.match(/\d+/g) ?? [];
-    expect(digits(policyDate(POLICY_DE, "Stand"))).toEqual(digits(policyDate(POLICY, "Last updated")));
+    // published the newer date.
+    expect(parseDate(policyDate(POLICY_DE, "Stand"), DE_MONTHS, "German")).toEqual(
+      parseDate(policyDate(POLICY, "Last updated"), EN_MONTHS, "English"),
+    );
   });
 });
 

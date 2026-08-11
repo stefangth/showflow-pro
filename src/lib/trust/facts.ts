@@ -368,7 +368,18 @@ export const RETENTION: RetentionRow[] = [
   {
     item: "Analytics and session replay",
     period: "12 months, once PostHog is enabled",
-    basis: "A policy commitment. No PostHog package ships in the application, so nothing is collected.",
+    // Narrow on purpose, and for the reason the comment block above already
+    // documents for the *period*: a bare "so nothing is collected" is
+    // falsified by scrolling two sections up on this same page, where the
+    // subprocessor table lists Vercel Web Analytics at status "Consent" and
+    // the landing repo's src/App.tsx mounts it on this very route once a
+    // reader accepts. Page-view analytics IS collected here. What is not is
+    // PostHog's product analytics and session replay, which is the pair this
+    // row covers, so that is what the sentence denies. retentionBasis.test.ts
+    // re-derives the premise from SUBPROCESSORS and fails on the blanket
+    // wording.
+    basis:
+      "A policy commitment. No PostHog package ships in the application, so no product analytics or session replay is collected.",
   },
 ];
 
