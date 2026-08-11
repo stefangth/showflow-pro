@@ -9,6 +9,10 @@ export interface PlatformUserMembership {
   org_name: string;
   roles: AppRole[];
   artist: { id: string; name: string } | null;
+  /** true when this org has a still-pending (unaccepted) invitation for the user's email.
+   *  Membership is created at invite time, so this is what separates an invited-but-not-yet-
+   *  onboarded person from a fully-onboarded member. */
+  invitePending: boolean;
 }
 export interface PlatformUser {
   id: string;

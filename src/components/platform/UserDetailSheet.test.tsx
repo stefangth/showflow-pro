@@ -57,7 +57,7 @@ const BASE_USER: PlatformUser = {
   last_sign_in_at: "2026-07-01T00:00:00.000Z",
   suspended: false,
   memberships: [
-    { org_id: "o1", org_name: "Acme", roles: ["admin"], artist: null },
+    { org_id: "o1", org_name: "Acme", roles: ["admin"], artist: null, invitePending: false },
   ],
 };
 
@@ -65,7 +65,7 @@ const LINKED_USER: PlatformUser = {
   ...BASE_USER,
   id: "u2",
   memberships: [
-    { org_id: "o1", org_name: "Acme", roles: ["producer"], artist: { id: "art1", name: "Grace Hopper" } },
+    { org_id: "o1", org_name: "Acme", roles: ["producer"], artist: { id: "art1", name: "Grace Hopper" }, invitePending: false },
   ],
 };
 
