@@ -152,6 +152,39 @@ export async function removeShowDateRequiredSkill(
   if (error) throw error;
 }
 
+/** Skill ids dropped on a date: a drop removes a show-level requirement on this
+ *  date only (see show_date_skill_drops + fetchRequiredSkillIds' effective union). */
+export async function fetchShowDateSkillDrops(
+  client: SupabaseClient<Database>,
+  showDateId: string,
+): Promise<string[]> {
+  const { data, error } = await client
+    .from("show_date_skill_drops").select("skill_id").eq("show_date_id", showDateId);
+  if (error) throw error;
+  return (data ?? []).map((r) => r.skill_id);
+}
+
+/** Drop a show-level skill on this date. org_id is passed to satisfy the Insert
+ *  type but the derive_org_id_from_show_date_id trigger overwrites it server-side. */
+export async function addShowDateSkillDrop(
+  client: SupabaseClient<Database>,
+  args: { showDateId: string; skillId: string; orgId: string },
+): Promise<void> {
+  const { error } = await client.from("show_date_skill_drops")
+    .insert({ show_date_id: args.showDateId, skill_id: args.skillId, org_id: args.orgId });
+  if (error) throw error;
+}
+
+/** Restore a dropped show-level skill on this date (delete the drop row). */
+export async function removeShowDateSkillDrop(
+  client: SupabaseClient<Database>,
+  args: { showDateId: string; skillId: string },
+): Promise<void> {
+  const { error } = await client.from("show_date_skill_drops")
+    .delete().eq("show_date_id", args.showDateId).eq("skill_id", args.skillId);
+  if (error) throw error;
+}
+
 /** The raw rows the booking-setup coverage rule needs, in one place so the pure
  *  `resolveCoverage` stays client-free. `today` is a YYYY-MM-DD cutoff (caller passes
  *  the local-tz `toDateKey(new Date())`); dates on or after it are "future". */

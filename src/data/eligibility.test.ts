@@ -7,6 +7,7 @@ import {
   addShowRequiredSkill, removeShowRequiredSkill,
   addShowDateRequiredSkill, removeShowDateRequiredSkill,
   fetchShowRequiredSkillIds, fetchLadderCoverageInputs,
+  fetchShowDateSkillDrops, addShowDateSkillDrop, removeShowDateSkillDrop,
 } from "./eligibility";
 
 describe("fetchRequiredSkillIds", () => {
@@ -139,6 +140,29 @@ describe("required-skill mutations", () => {
     expect(fake.calls.some((c) => c.table === "show_date_required_skills" && c.method === "delete")).toBe(true);
     expect(fake.calls).toContainEqual({ table: "show_date_required_skills", method: "eq", args: ["show_date_id", "d1"] });
     expect(fake.calls).toContainEqual({ table: "show_date_required_skills", method: "eq", args: ["skill_id", "s1"] });
+  });
+});
+
+describe("skill-drop mutations", () => {
+  it("fetchShowDateSkillDrops returns the dropped skill ids for a date", async () => {
+    const fake = createFakeSupabase({
+      show_date_skill_drops: { data: [{ skill_id: "s1" }, { skill_id: "s2" }], error: null },
+    });
+    expect(await fetchShowDateSkillDrops(fake as never, "d1")).toEqual(["s1", "s2"]);
+    expect(fake.calls).toContainEqual({ table: "show_date_skill_drops", method: "eq", args: ["show_date_id", "d1"] });
+  });
+  it("addShowDateSkillDrop inserts the pair (org_id passed, overwritten by the derive trigger)", async () => {
+    const fake = createFakeSupabase({ show_date_skill_drops: { data: null, error: null } });
+    await addShowDateSkillDrop(fake as never, { showDateId: "d1", skillId: "s1", orgId: "o1" });
+    const ins = fake.calls.find((c) => c.table === "show_date_skill_drops" && c.method === "insert");
+    expect(ins?.args[0]).toEqual({ show_date_id: "d1", skill_id: "s1", org_id: "o1" });
+  });
+  it("removeShowDateSkillDrop deletes by pair", async () => {
+    const fake = createFakeSupabase({ show_date_skill_drops: { data: null, error: null } });
+    await removeShowDateSkillDrop(fake as never, { showDateId: "d1", skillId: "s1" });
+    expect(fake.calls.some((c) => c.table === "show_date_skill_drops" && c.method === "delete")).toBe(true);
+    expect(fake.calls).toContainEqual({ table: "show_date_skill_drops", method: "eq", args: ["show_date_id", "d1"] });
+    expect(fake.calls).toContainEqual({ table: "show_date_skill_drops", method: "eq", args: ["skill_id", "s1"] });
   });
 });
 
