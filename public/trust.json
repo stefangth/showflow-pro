@@ -29,7 +29,7 @@
     {
       "icon": "server",
       "label": "Subprocessors",
-      "value": "8 named, 4 always on"
+      "value": "7 named, 4 always on"
     },
     {
       "icon": "users",
@@ -267,16 +267,8 @@
       "tone": "full"
     },
     {
-      "name": "Sentry",
-      "purpose": "Client error reports",
-      "region": "EU · US",
-      "transfer": "EU region where available · DPF + SCCs",
-      "status": "Consent",
-      "tone": "gated"
-    },
-    {
       "name": "PostHog",
-      "purpose": "Product analytics, session replay",
+      "purpose": "Product analytics, session replay, error reports",
       "region": "EU · US",
       "transfer": "EU region where available · DPF + SCCs",
       "status": "Consent",
@@ -324,14 +316,9 @@
       "basis": "These are the hosting and database providers' own logs, and they set the period. Nothing we run retains or expires them."
     },
     {
-      "item": "Error reports",
-      "period": "90 days",
-      "basis": "Set at the provider that receives the reports. Nothing is sent unless you accept error tracking, and nothing we run deletes or expires a report."
-    },
-    {
-      "item": "Analytics and session replay",
+      "item": "Analytics, session replay and error reports",
       "period": "12 months",
-      "basis": "Set at the provider that receives the events. Nothing is sent unless you accept analytics, and nothing we run deletes or expires an event or a replay."
+      "basis": "Set at the provider that receives the events. Nothing is sent unless you accept analytics or error tracking, and nothing we run deletes or expires an event, a replay, or a report."
     },
     {
       "item": "Vercel Web Analytics",
@@ -383,7 +370,7 @@
     },
     {
       "title": "Subprocessor list",
-      "meta": "Section 5 of the privacy policy · 8 entries",
+      "meta": "Section 5 of the privacy policy · 7 entries",
       "href": "https://app.showflow.pro/privacy",
       "cta": "Read"
     },
