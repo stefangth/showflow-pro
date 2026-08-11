@@ -44,8 +44,11 @@ describe("CastsCitiesTab - manage_cities capability gate", () => {
     renderTab();
     // Deleting a city is admin-only server-side, so the control is disabled for a producer.
     expect(await screen.findByLabelText("Remove Berlin")).toBeDisabled();
-    fireEvent.change(screen.getByPlaceholderText("New city name"), { target: { value: "Hamburg" } });
-    expect(screen.getByRole("button", { name: /add/i })).not.toBeDisabled();
+    const newCityInput = screen.getByPlaceholderText("New city name");
+    fireEvent.change(newCityInput, { target: { value: "Hamburg" } });
+    // Get the Add button for cities (type="submit") within the same form as the city input
+    const addCityButton = newCityInput.closest("form")!.querySelector('button[type="submit"]') as HTMLButtonElement;
+    expect(addCityButton).not.toBeDisabled();
   });
 
   it("admin: remove-city control is enabled", async () => {
@@ -59,8 +62,11 @@ describe("CastsCitiesTab - manage_cities capability gate", () => {
     renderTab();
     // The city row still renders (read-only floor) even with the capability off.
     expect(await screen.findByLabelText("Remove Berlin")).toBeInTheDocument();
-    fireEvent.change(screen.getByPlaceholderText("New city name"), { target: { value: "Hamburg" } });
-    expect(screen.getByRole("button", { name: /add/i })).toBeDisabled();
+    const newCityInput = screen.getByPlaceholderText("New city name");
+    fireEvent.change(newCityInput, { target: { value: "Hamburg" } });
+    // Get the Add button for cities (type="submit") within the same form as the city input
+    const addCityButton = newCityInput.closest("form")!.querySelector('button[type="submit"]') as HTMLButtonElement;
+    expect(addCityButton).toBeDisabled();
   });
 
   it("manage_cities off: the org-wide priority remove control is disabled, assignment still reads", async () => {
