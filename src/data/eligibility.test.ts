@@ -35,6 +35,31 @@ describe("fetchRequiredSkillIds", () => {
     expect(res.dateSkillIds).toEqual(["combat"]);
     expect(res.all).toEqual(["combat", "vocals"]); // sorted union, german dropped
   });
+
+  it("a drop only subtracts a SHOW-level skill (drops are only offered on inherited chips)", async () => {
+    // show requires {vocals, combat}; date adds nothing; date drops {combat}.
+    // combat is a show-level requirement, so the drop removes it => {vocals}.
+    const fake = createFakeSupabase({
+      show_required_skills: { data: [{ skill_id: "vocals" }, { skill_id: "combat" }], error: null },
+      show_date_required_skills: { data: [], error: null },
+      show_date_skill_drops: { data: [{ skill_id: "combat" }], error: null },
+    });
+    const res = await fetchRequiredSkillIds(fake as never, { showId: "sh1", showDateId: "d1" });
+    expect(res.all).toEqual(["vocals"]);
+  });
+
+  it("a drop row for a DATE-ADDED-only skill is inert (cannot negate a later date-add)", async () => {
+    // show requires {vocals, combat}; date adds {piano}; a stale drop row names {piano},
+    // which is date-added-only (not a show-level requirement). Provenance-aware: the drop
+    // only bites show-level ids, so piano stays required => {combat, piano, vocals}.
+    const fake = createFakeSupabase({
+      show_required_skills: { data: [{ skill_id: "vocals" }, { skill_id: "combat" }], error: null },
+      show_date_required_skills: { data: [{ skill_id: "piano" }], error: null },
+      show_date_skill_drops: { data: [{ skill_id: "piano" }], error: null },
+    });
+    const res = await fetchRequiredSkillIds(fake as never, { showId: "sh1", showDateId: "d1" });
+    expect(res.all).toEqual(["combat", "piano", "vocals"]); // sorted union, piano NOT dropped
+  });
 });
 
 describe("fetchShowRequiredSkillIds", () => {

@@ -7,10 +7,14 @@ export interface RequiredSkillIds { showSkillIds: string[]; dateSkillIds: string
 
 /** Show-level and date-level required skills for a date, plus their effective union.
  *
- *  Effective union = (show ∪ dateAdded) \ dateDropped: a per-date skill drop
- *  (show_date_skill_drops) removes a show-level requirement on this date only.
- *  `showSkillIds`/`dateSkillIds` stay the raw reads so callers can still render a
- *  dropped show skill as struck-through; only `all` reflects the subtraction.
+ *  Effective union = (show ∪ dateAdded) \ (dateDropped ∩ show): a per-date skill
+ *  drop (show_date_skill_drops) removes a show-level requirement on this date only.
+ *  A drop is provenance-aware — it subtracts a skill ONLY when that skill is
+ *  show-level (drops are offered only on inherited/show-level chips in the UI), so
+ *  a stale drop row for a date-added skill is inert and can't silently negate a
+ *  later date-add. `showSkillIds`/`dateSkillIds` stay the raw reads so callers can
+ *  still render a dropped show skill as struck-through; only `all` reflects the
+ *  subtraction.
  *
  *  TWIN of supabase/functions/_shared/eligibility.ts `fetchRequiredSkillIds`.
  *  The set math is identical; only the client mechanics differ. These are NOT
@@ -31,7 +35,9 @@ export async function fetchRequiredSkillIds(
   const showSkillIds = (showRows ?? []).map((r) => r.skill_id);
   const dateSkillIds = (dateRows ?? []).map((r) => r.skill_id);
   const dropped = new Set((dropRows ?? []).map((r) => r.skill_id));
-  const all = unionSkillIds(showSkillIds, dateSkillIds).filter((id) => !dropped.has(id));
+  const showSet = new Set(showSkillIds);
+  const all = unionSkillIds(showSkillIds, dateSkillIds)
+    .filter((id) => !(dropped.has(id) && showSet.has(id)));
   return { showSkillIds, dateSkillIds, all };
 }
 
