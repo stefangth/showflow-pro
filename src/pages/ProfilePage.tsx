@@ -237,7 +237,7 @@ export default function ProfilePage() {
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
             Permanently delete your account. Your personal details are removed. Your shared booking history, including any open offers, is kept but de-identified. This cannot be undone.
-            {hireOrdersEnabled ? " Signed hire orders are kept for the organization's records with your details removed." : ""}
+            {hireOrdersEnabled ? " Signed hire orders you already agreed to are kept for the organization's records." : ""}
           </p>
           <AlertDialog onOpenChange={(o) => { if (!o) { setConfirmText(""); setDeleting(false); } }}>
             <AlertDialogTrigger asChild>

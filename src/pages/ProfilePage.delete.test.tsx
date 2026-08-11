@@ -57,12 +57,19 @@ describe("ProfilePage delete account", () => {
   it("names open offers, and hire orders when the module is on (R5.4)", () => {
     renderProfilePage({ hireOrders: true });
     expect(screen.getByText(/including any open offers, is kept but de-identified/i)).toBeInTheDocument();
-    expect(screen.getByText(/signed hire orders are kept for the organization's records/i)).toBeInTheDocument();
+    // anonymize_user only nulls hire_orders.created_by / hire_order_signatures.signer_user_id
+    // (invisible provenance columns). It does NOT touch the frozen hire_orders.data
+    // snapshot or signer_name/signer_email a producer actually sees on the order. The
+    // copy must therefore make a retention-only claim and must NOT claim details are removed.
+    expect(
+      screen.getByText(/signed hire orders you already agreed to are kept for the organization's records/i),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/with your details removed/i)).not.toBeInTheDocument();
   });
 
   it("omits the hire-orders sentence when the module is off (R5.4)", () => {
     renderProfilePage({ hireOrders: false });
     expect(screen.getByText(/including any open offers, is kept but de-identified/i)).toBeInTheDocument();
-    expect(screen.queryByText(/signed hire orders are kept/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/signed hire orders/i)).not.toBeInTheDocument();
   });
 });
