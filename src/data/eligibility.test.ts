@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { createFakeSupabase } from "@/test/supabaseFake";
 import { asSupabase } from "@/test/castHelpers";
 import {
-  fetchRequiredSkillIds, fetchSkillEligibleArtistIds, fetchShowPriorityRows,
+  fetchRequiredSkillIds, fetchSkillEligibleArtistIds, fetchGateArtistIds, fetchShowPriorityRows,
   setShowCastPriority, clearShowCastPriority,
   addShowDateRequiredSkill, removeShowDateRequiredSkill,
   fetchShowRequiredSkillIds, fetchLadderCoverageInputs,
@@ -90,6 +90,65 @@ describe("fetchSkillEligibleArtistIds", () => {
     expect(res).not.toBeNull();
     expect(res).toBeInstanceOf(Set);
     expect(res!.size).toBe(0);
+  });
+});
+
+describe("fetchGateArtistIds", () => {
+  // Engine-parity twin of supabase/functions/_shared/eligibility.ts's
+  // fetchGateArtistIds; also mirrors src/hooks/useEligibleArtists.ts's inline
+  // query (see useEligibleArtists.test.ts for the equivalent hook-level cases).
+  it("returns null when there are no gate rows at all (unrestricted)", async () => {
+    const fake = createFakeSupabase({
+      show_cast_eligibility: { data: [], error: null },
+      show_date_cast_eligibility: { data: [], error: null },
+    });
+    const res = await fetchGateArtistIds(fake as never, { showId: "sh1", cityId: "c1", showDateId: "d1" });
+    expect(res).toBeNull();
+    expect(fake.calls.some((c) => c.table === "cast_members")).toBe(false);
+  });
+
+  it("unions show-level and date-level cast ids into member artist ids", async () => {
+    const fake = createFakeSupabase({
+      show_cast_eligibility: { data: [{ cast_id: "cast-a" }], error: null },
+      show_date_cast_eligibility: { data: [{ cast_id: "cast-b" }], error: null },
+      cast_members: {
+        data: [{ cast_id: "cast-a", artist_id: "a1" }, { cast_id: "cast-b", artist_id: "b1" }],
+        error: null,
+      },
+    });
+    const res = await fetchGateArtistIds(fake as never, { showId: "sh1", cityId: "c1", showDateId: "d1" });
+    expect(res).toBeInstanceOf(Set);
+    expect([...res!].sort()).toEqual(["a1", "b1"]);
+  });
+
+  it("skips the show_cast_eligibility query when cityId is null, using only the date-level override", async () => {
+    const fake = createFakeSupabase({
+      show_date_cast_eligibility: { data: [{ cast_id: "cast-x" }], error: null },
+      cast_members: { data: [{ cast_id: "cast-x", artist_id: "ax" }], error: null },
+    });
+    const res = await fetchGateArtistIds(fake as never, { showId: "sh1", cityId: null, showDateId: "d1" });
+    expect([...res!]).toEqual(["ax"]);
+    expect(fake.calls.some((c) => c.table === "show_cast_eligibility")).toBe(false);
+  });
+
+  it("dedupes a cast id appearing via both show-level and date-level rows before querying cast_members", async () => {
+    const fake = createFakeSupabase({
+      show_cast_eligibility: { data: [{ cast_id: "cast-a" }], error: null },
+      show_date_cast_eligibility: { data: [{ cast_id: "cast-a" }], error: null },
+      cast_members: { data: [{ cast_id: "cast-a", artist_id: "a1" }], error: null },
+    });
+    await fetchGateArtistIds(fake as never, { showId: "sh1", cityId: "c1", showDateId: "d1" });
+    const inCalls = fake.calls.filter((c) => c.table === "cast_members" && c.method === "in");
+    expect(inCalls).toEqual([{ table: "cast_members", method: "in", args: ["cast_id", ["cast-a"]] }]);
+  });
+
+  it("throws on a query error", async () => {
+    const fake = createFakeSupabase({
+      show_cast_eligibility: { data: null, error: { message: "boom" } },
+    });
+    await expect(
+      fetchGateArtistIds(fake as never, { showId: "sh1", cityId: "c1", showDateId: "d1" }),
+    ).rejects.toMatchObject({ message: "boom" });
   });
 });
 
