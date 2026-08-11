@@ -376,12 +376,11 @@ describe("BookingSetupRail", () => {
     expect(screen.getByRole("link", { name: /add or import artists/i })).toBeInTheDocument();
   });
 
-  it("shows the admin the production-team row first and augments the count to 8", async () => {
-    // beforeEach seeds an admin + a blank org. The team nudge is admin-only, non-gating and the
-    // first row, so the header counts the seven engine steps plus it, and it opens by default.
+  it("shows the admin the production-team row and augments the count to 8 while incomplete", async () => {
+    // beforeEach seeds an admin + a blank (incomplete) org, so the admin-only, non-gating team
+    // nudge is the first row and the header counts the seven engine steps plus it.
     renderWithProviders(<MemoryRouter><BookingSetupRail orgId="org-1" /></MemoryRouter>);
-    const teamToggle = await screen.findByRole("button", { name: new RegExp(TEAM_STEP_META.title) });
-    expect(teamToggle).toHaveAttribute("aria-expanded", "true");
+    expect(await screen.findByText(TEAM_STEP_META.title)).toBeInTheDocument();
     expect(screen.getByText(/Set up · \d+ of 8/)).toBeInTheDocument();
   });
 
@@ -393,5 +392,31 @@ describe("BookingSetupRail", () => {
     expect(await screen.findByText("Get your shows in")).toBeInTheDocument();
     expect(screen.queryByText(TEAM_STEP_META.title)).not.toBeInTheDocument();
     expect(screen.getByText(/Set up · \d+ of 7/)).toBeInTheDocument();
+  });
+
+  it("hides the team row and drops the admin count back to seven once setup is complete", async () => {
+    // Non-gating: SetupChecklistSheet renders this rail even when complete (button mode), so the
+    // team nudge must vanish there too, matching the dashboard rail + banner (injectAdminTeamStep)
+    // rather than perpetually showing "7 of 8" for an admin org with no producer. A direct-book
+    // flow (active) + a fully-slotted show + no upcoming dates + a roster clears every engine step.
+    seed({
+      app_settings: {
+        data: [
+          { key: "booking_flow", org_id: "org-1", value: { active: true, artist_acceptance: false } },
+          { key: "offer_response_window_hours", org_id: "org-1", value: 48 },
+          { key: "offer_digest_hour_berlin", org_id: "org-1", value: 19 },
+          { key: "confirmation_digest_hour_berlin", org_id: "org-1", value: 20 },
+        ],
+        error: null,
+      },
+      shows: { data: [{ id: "s1", program: "X", sub_program: null, main_cast_slots: 4, understudy_slots: 2, status: "active" }], error: null },
+      show_dates: { data: [], error: null },
+      show_cast_eligibility: { data: [], error: null },
+      cast_city_priority: { data: [], error: null },
+      artists: { data: null, error: null, count: 3 },
+    });
+    renderWithProviders(<MemoryRouter><BookingSetupRail orgId="org-1" /></MemoryRouter>);
+    await waitFor(() => expect(screen.getByText(/Set up · 7 of 7/)).toBeInTheDocument());
+    expect(screen.queryByText(TEAM_STEP_META.title)).not.toBeInTheDocument();
   });
 });

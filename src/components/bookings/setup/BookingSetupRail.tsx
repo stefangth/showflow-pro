@@ -50,7 +50,11 @@ export function BookingSetupRail({ orgId, initialStep }: { orgId: string | null;
   const isAdmin = hasRole("admin");
   const { status, coverage, artistCount, isLoading } = useBookingSetupStatus(orgId);
   const [, dismiss] = useRailDismissed("bookingSetup", orgId);
-  const [open, setOpen] = useState<BookingSetupStepKey | "team" | null>(initialStep ?? (isAdmin ? "team" : "shows"));
+  // Default to an always-rendered engine step. The team row is admin-only AND gated on
+  // !status.complete (see showTeamRow), so defaulting `open` to it could leave `open` pointing
+  // at a row that no longer renders (setup completes, or a live "view as" flip of isAdmin),
+  // silently collapsing every row. "shows" is always present.
+  const [open, setOpen] = useState<BookingSetupStepKey | "team" | null>(initialStep ?? "shows");
   // `!isLoading` is load-bearing, not belt-and-braces: an unread roster is reported
   // outstanding (the engine treats a null count as 0), so this is true for every org for the
   // first frame, and firing the read there would defeat the gate for all of them. Waiting
@@ -85,8 +89,13 @@ export function BookingSetupRail({ orgId, initialStep }: { orgId: string | null;
   // does not affect canOffer/complete. For admins it is displayed as one extra row, so the
   // header count and the progress rail are augmented by hand here (and only here).
   const teamDone = hasProducerTeam(producerCount);
-  const doneCount = status.doneCount + (isAdmin && teamDone ? 1 : 0);
-  const totalCount = status.totalCount + (isAdmin ? 1 : 0);
+  // Gated on !status.complete, the same gate injectAdminTeamStep applies to the dashboard rail
+  // and the Shows & Bookings banner. SetupChecklistSheet renders this component even when
+  // complete (the rail is demoted to a "button"), so without this gate a completed org with no
+  // producers would perpetually show "7 of 8" here while the other two surfaces read "7 of 7".
+  const showTeamRow = isAdmin && !status.complete;
+  const doneCount = status.doneCount + (showTeamRow && teamDone ? 1 : 0);
+  const totalCount = status.totalCount + (showTeamRow ? 1 : 0);
 
   return (
     <Card className="overflow-hidden">
@@ -115,7 +124,7 @@ export function BookingSetupRail({ orgId, initialStep }: { orgId: string | null;
           {/* Admin-only, non-gating, and first in the list: it precedes the engine rows and
               offsets their 1-based index by one. It has its own inline onToggle because
               `toggle` is typed to the engine keys; `block` is null so it never chips. */}
-          {isAdmin && (
+          {showTeamRow && (
             <SetupStepRow
               index={1}
               title={TEAM_STEP_META.title}
@@ -131,7 +140,7 @@ export function BookingSetupRail({ orgId, initialStep }: { orgId: string | null;
           {status.steps.map((s, i) => (
             <SetupStepRow
               key={s.key}
-              index={i + 1 + (isAdmin ? 1 : 0)}
+              index={i + 1 + (showTeamRow ? 1 : 0)}
               title={META[s.key].title}
               hint={s.done ? META[s.key].doneHint : META[s.key].todoHint}
               done={s.done}

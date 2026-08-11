@@ -133,10 +133,14 @@ export function UsersTab() {
             const visibleOrgs = u.memberships.slice(0, MAX_ORG_CHIPS);
             const overflowCount = u.memberships.length - visibleOrgs.length;
             const pendingOrgs = u.memberships.filter((m) => m.invitePending);
+            // Cap the named orgs the same way the Orgs cell caps its chips (MAX_ORG_CHIPS + "+N"),
+            // so a user pending in many orgs cannot render an unbounded string that wraps the row.
+            const pendingNames = pendingOrgs.slice(0, MAX_ORG_CHIPS).map((m) => m.org_name).join(", ");
+            const pendingExtra = pendingOrgs.length - Math.min(pendingOrgs.length, MAX_ORG_CHIPS);
             const inviteLabel = pendingOrgs.length === 0
               ? null
               : pendingOrgs.length < u.memberships.length
-                ? `Pending · ${pendingOrgs.map((m) => m.org_name).join(", ")}`
+                ? `Pending · ${pendingNames}${pendingExtra > 0 ? ` +${pendingExtra}` : ""}`
                 : "Pending";
             return (
               <TableRow

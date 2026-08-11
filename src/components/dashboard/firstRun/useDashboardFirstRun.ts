@@ -63,9 +63,10 @@ export function useDashboardFirstRun(role: DashboardRole): DashboardFirstRunStat
   // `flowQ.isLoading` is folded into `statusLoading` below for the same reason.
   const flowQ = useBookingFlow();
   const flow = flowQ.data ?? BOOKING_FLOW_DEFAULTS;
-  // Admin-only nudge (injected below), so only an admin dashboard pays for this read.
-  // Called unconditionally; `role === "admin"` is its enabled gate.
-  const producerCount = useProducerCount(orgId, role === "admin");
+  // Admin-only nudge (injected below) AND booking-only, so only an admin dashboard at a
+  // booking_flow org pays for this read — otherwise injectAdminTeamStep discards it anyway.
+  // Called unconditionally; the enabled flag is its gate.
+  const producerCount = useProducerCount(orgId, role === "admin" && features.has("booking_flow"));
 
   const [railOpen, setRailOpen] = useState(false);
   const [dismissed, dismiss] = useRailDismissed("dashboardWelcome", orgId);
