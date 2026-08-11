@@ -1,0 +1,111 @@
+import { useState } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useQueryClient } from "@tanstack/react-query";
+import { Eye, EyeOff } from "lucide-react";
+import { useForm } from "react-hook-form";
+import type { z } from "zod";
+import { changeMyPassword, requestPasswordReauthentication, setMyPassword } from "@/data/profiles";
+import { newPasswordSchema } from "@/features/auth/resetPassword";
+import { invalidatePasswordStatus } from "@/hooks/usePasswordStatus";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+
+type PasswordValues = z.infer<typeof newPasswordSchema>;
+
+export interface PasswordSetupFormProps {
+  mode: "setup" | "change";
+  onSuccess: () => void;
+  onCancel?: () => void;
+}
+
+function PasswordInput({ id, label, value, onChange, required = false }: { id: string; label: string; value?: string; onChange?: React.ChangeEventHandler<HTMLInputElement>; required?: boolean }) {
+  const [visible, setVisible] = useState(false);
+  return (
+    <div className="space-y-1.5">
+      <Label htmlFor={id}>{label}</Label>
+      <div className="relative">
+        <Input id={id} type={visible ? "text" : "password"} value={value} onChange={onChange} className="pr-10" required={required} />
+        <Button type="button" variant="ghost" size="icon" className="absolute right-0 top-0" aria-label={`${visible ? "Hide" : "Show"} ${label.toLowerCase()}`} onClick={() => setVisible((value) => !value)}>
+          {visible ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function needsReauthentication(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const authError = error as { code?: string; message?: string };
+  return authError.code === "reauthentication_needed" || /reauthentication needed/i.test(authError.message ?? "");
+}
+
+export function PasswordSetupForm({ mode, onSuccess, onCancel }: PasswordSetupFormProps) {
+  const queryClient = useQueryClient();
+  const form = useForm<PasswordValues>({ resolver: zodResolver(newPasswordSchema), defaultValues: { password: "", confirm: "" } });
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [nonce, setNonce] = useState("");
+  const [awaitingNonce, setAwaitingNonce] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const submit = form.handleSubmit(async ({ password }) => {
+    setError(null);
+    try {
+      if (mode === "setup") {
+        await setMyPassword(supabase, password);
+      } else {
+        await changeMyPassword(supabase, awaitingNonce ? { password, nonce } : { password, currentPassword });
+      }
+      await invalidatePasswordStatus(queryClient);
+      onSuccess();
+    } catch (caught) {
+      if (mode === "change" && !awaitingNonce && needsReauthentication(caught)) {
+        try {
+          await requestPasswordReauthentication(supabase);
+          setAwaitingNonce(true);
+          return;
+        } catch (reauthError) {
+          setError(reauthError instanceof Error ? reauthError.message : "Could not request a reauthentication code");
+          return;
+        }
+      }
+      setError(caught instanceof Error ? caught.message : "Could not update password");
+    }
+  });
+
+  const title = mode === "setup" ? "Set a password" : "Change password";
+  const submitLabel = mode === "setup" ? "Set password" : "Change password";
+  const pendingLabel = mode === "setup" ? "Setting password…" : "Changing password…";
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+        <CardDescription>{mode === "setup" ? "Add password sign-in to your account." : "Choose a new password for your account."}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={submit} className="space-y-4">
+          {mode === "change" && !awaitingNonce && <PasswordInput id="current-password" label="Current password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} required />}
+          {awaitingNonce && (
+            <div className="space-y-1.5">
+              <p className="text-sm text-muted-foreground">Check your email for the 6-digit code</p>
+              <Label htmlFor="password-nonce">6-digit code</Label>
+              <Input id="password-nonce" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} value={nonce} onChange={(event) => setNonce(event.target.value.replace(/\D/g, ""))} required />
+            </div>
+          )}
+          <PasswordInput id="new-password" label="New password" value={form.watch("password")} onChange={(event) => form.setValue("password", event.target.value, { shouldValidate: form.formState.isSubmitted })} />
+          {form.formState.errors.password && <p className="text-xs text-destructive">{form.formState.errors.password.message}</p>}
+          <PasswordInput id="confirm-password" label="Confirm new password" value={form.watch("confirm")} onChange={(event) => form.setValue("confirm", event.target.value, { shouldValidate: form.formState.isSubmitted })} />
+          {form.formState.errors.confirm && <p className="text-xs text-destructive">{form.formState.errors.confirm.message}</p>}
+          {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+          <div className="flex gap-2">
+            <Button type="submit" disabled={form.formState.isSubmitting || (awaitingNonce && nonce.length !== 6)}>{form.formState.isSubmitting ? pendingLabel : submitLabel}</Button>
+            {onCancel && <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>}
+          </div>
+        </form>
+      </CardContent>
+    </Card>
+  );
+}

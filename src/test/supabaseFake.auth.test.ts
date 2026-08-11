@@ -16,4 +16,12 @@ describe("createFakeSupabase auth stub", () => {
     expect(fake.calls).toContainEqual({ table: "auth", method: "updateUser", args: [{ password: "new" }] });
     expect(fake.calls).toContainEqual({ table: "auth", method: "resetPasswordForEmail", args: ["a@b.com", { redirectTo: "/r" }] });
   });
+
+  it("records reauthenticate and returns the seeded result", async () => {
+    const seeded = { data: { user: { id: "u1" } }, error: null };
+    const fake = createFakeSupabase({ "auth:reauthenticate": seeded });
+
+    expect(await fake.auth.reauthenticate()).toEqual(seeded);
+    expect(fake.calls).toContainEqual({ table: "auth", method: "reauthenticate", args: [] });
+  });
 });
