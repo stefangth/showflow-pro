@@ -1,20 +1,29 @@
-import { describe, it, expect } from 'vitest';
-import { toErrorMessage } from './errors';
+import { describe, it, expect } from "vitest";
+import { toErrorMessage, friendlyError } from "./errors";
 
-describe('toErrorMessage', () => {
-  it("returns an Error's message", () => {
-    expect(toErrorMessage(new Error('boom'), 'fallback')).toBe('boom');
+describe("toErrorMessage", () => {
+  it("reads Error.message", () => {
+    expect(toErrorMessage(new Error("boom"))).toBe("boom");
   });
-
-  it('returns a duck-typed .message string (e.g. a supabase-js plain-object error)', () => {
-    expect(toErrorMessage({ message: 'duplicate key value', code: '23505' }, 'fallback')).toBe('duplicate key value');
+  it("reads .message off a plain PostgREST-shaped object (the supabase-js error shape)", () => {
+    expect(toErrorMessage({ code: "P0001", message: "org must keep at least one admin" }))
+      .toBe("org must keep at least one admin");
   });
+  it("falls back for a value with no usable message", () => {
+    expect(toErrorMessage(null)).toBe("Something went wrong");
+    expect(toErrorMessage({})).toBe("Something went wrong");
+    expect(toErrorMessage({ message: "" }, "Nope")).toBe("Nope");
+  });
+});
 
-  it('returns the fallback for a value without a string message', () => {
-    expect(toErrorMessage('a bare string', 'fallback')).toBe('fallback');
-    expect(toErrorMessage({ code: 'no-message' }, 'fallback')).toBe('fallback');
-    expect(toErrorMessage(null, 'fallback')).toBe('fallback');
-    expect(toErrorMessage(undefined, 'fallback')).toBe('fallback');
-    expect(toErrorMessage({ message: 42 }, 'fallback')).toBe('fallback');
+describe("friendlyError", () => {
+  it("maps the last-admin guards to guidance", () => {
+    expect(friendlyError({ message: "org must keep at least one admin" }))
+      .toMatch(/at least one admin/i);
+    expect(friendlyError({ message: "Cannot remove the last admin of the organization" }))
+      .toMatch(/admin first/i);
+  });
+  it("passes other messages through unchanged", () => {
+    expect(friendlyError({ message: "Forbidden" })).toBe("Forbidden");
   });
 });

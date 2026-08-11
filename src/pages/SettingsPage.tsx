@@ -17,19 +17,32 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
-import { Settings as SettingsIcon, Database, Bell, Wand2, Save, SlidersHorizontal, MapPin, Clock, BookOpen, UserCog, Building2, FileSignature, ShieldCheck } from 'lucide-react';
+import { Settings as SettingsIcon, Database, Bell, Wand2, Save, SlidersHorizontal, MapPin, Clock, BookOpen, UserCog, Building2, FileSignature, ShieldCheck, Lock } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { upsertOrgSetting, mergeOrgRows } from '@/data/settings';
 import { computeSettingsDirtyKeys } from '@/lib/settings';
 import { AirtableSyncTab } from '@/components/settings/AirtableSyncTab';
 import { OrganizationTab } from '@/components/settings/OrganizationTab';
 import { CastsCitiesTab } from '@/components/settings/CastsCitiesTab';
 import { ProductionOwnershipTab } from '@/components/settings/ProductionOwnershipTab';
+import { TrustDataTab } from '@/components/settings/trust/TrustDataTab';
 import { DocumentationTab } from '@/components/settings/DocumentationTab';
 import { BookingFlowTab } from '@/components/settings/bookingFlow/BookingFlowTab';
 import { BOOKING_AUDIT_KEYS } from '@/components/settings/bookingFlow/auditKeys';
 import { HireOrdersTab } from '@/components/settings/hireOrders/HireOrdersTab';
 import { PermissionsTab } from '@/components/settings/permissions/PermissionsTab';
 import { EmailTemplatesTab } from '@/components/settings/emailTemplates/EmailTemplatesTab';
+
+// Tabs whose content is a wide reference surface rather than a form: they drop
+// the page's reading measure and run to `main`'s own 24px padding at every
+// display width. Everything else keeps `max-w-5xl`, which is what a column of
+// labelled inputs and toggle rows wants — Filters, measured uncapped at 1920,
+// separates each row's four toggles from the label they belong to by 1400px.
+// Trust & data is the opposite case: two tables and a claim matrix that wrapped
+// five of eight row labels inside the capped 772px column. The measure that
+// tabs in this set still need is applied to their own prose (see
+// `src/components/settings/trust/*`), not to the page.
+const WIDE_TABS = new Set(['trust']);
 
 type FilterKey = 'program' | 'timeframe' | 'sort' | 'status';
 const FILTER_KEYS: FilterKey[] = ['program', 'timeframe', 'sort', 'status'];
@@ -271,6 +284,7 @@ export default function SettingsPage() {
     { heading: "Organization", items: [
       { value: "organization", label: "Organization", icon: Building2, show: isAdmin || isProducer },
       { value: "permissions", label: "Roles & permissions", icon: ShieldCheck, show: isAdmin },
+      { value: "trust", label: "Trust & data", icon: Lock, show: isAdmin || isProducer },
       { value: "production-ownership", label: "Production Ownership", icon: UserCog, show: isAdmin || isProducer },
       { value: "casts-cities", label: "Casts & Cities", icon: MapPin, show: true },
     ] },
@@ -291,7 +305,21 @@ export default function SettingsPage() {
   ];
 
   return (
-    <div className="space-y-6 max-w-5xl">
+    // `max-w-5xl` is the right measure for twelve tabs of forms and lists and
+    // the wrong one for the thirteenth: it left the page 172px short of the
+    // viewport at 1440, 460px at 1728 and 652px at 1920 (`main` pads to 24px,
+    // and every other page in the app sits there), and since the 220px nav
+    // rail and the 32px gap come out of the same width it held every tab's
+    // content column to 772px however wide the display was — while Trust &
+    // data's matrix wrapped inside it. So the cap is now per tab. Raising it
+    // to a wider fixed value was tried first and rejected: a fixed cap only
+    // moves the void to a wider display (`xl:max-w-7xl` measured 204px at
+    // 1728, worse than the 172px this started from).
+    //
+    // The whole page, not just the panel, takes the active tab's measure:
+    // capping the header while the panel ran wide left the page-level Save and
+    // the tab's own top-right action on right edges 628px apart at 1920.
+    <div className={cn('space-y-6', !WIDE_TABS.has(activeTab) && 'max-w-5xl')}>
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="font-display text-[32px] font-semibold tracking-tight flex items-center gap-3">
@@ -389,6 +417,12 @@ export default function SettingsPage() {
         {isAdmin && (
           <TabsContent value="permissions" className="mt-4">
             <PermissionsTab />
+          </TabsContent>
+        )}
+
+        {(isAdmin || isProducer) && (
+          <TabsContent value="trust" className="mt-4">
+            <TrustDataTab />
           </TabsContent>
         )}
 

@@ -1,5 +1,4 @@
 // src/lib/dashboard/types.ts
-import type { ReactNode } from "react";
 import type { FeatureKey } from "@/lib/entitlements";
 
 /** The capability actions this feature's step CTAs gate on. Kept as a local union
@@ -95,33 +94,7 @@ export interface ComposeResult {
   offFooters: string[];
 }
 
-export interface DashboardFirstRunState {
-  show: boolean;
-  complete: boolean;
-  dismissed: boolean;
-  steps: ComposedStep[];
-  rules: InheritedRule[];
-  offFooters: string[];
-  welcome: WelcomeCopy;
-  // Admin/producer only (the empty-org sample preview). Absent for the artist role,
-  // whose dashboard body always renders live.
-  sample?: SamplePreviewData;
-  sectionTitle?: string;
-  sectionHint?: string;
-  railEyebrow: string;
-  railTitle: string;
-  railBody: string;
-  collapsedLabel: string;
-  collapsedHint: string;
-  collapsedCta: string;
-  railOpen: boolean;
-  openRail: () => void;
-  closeRail: () => void;
-  dismiss: () => void;
-}
-
 // Component prop contracts (Wave A components bind to these).
-export interface DashboardWelcomeProps { welcome: WelcomeCopy; onPrimary: () => void; onSecondary: () => void; }
 export interface DashboardWelcomeCollapsedProps { label: string; hint: string; ctaLabel: string; onOpen: () => void; }
 export interface DashboardSetupRailProps {
   eyebrow: string; title: string; body: string; complete: boolean;
@@ -136,10 +109,4 @@ export interface DashboardSetupRailProps {
   progressFilled?: number;
   progressTotal?: number;
   progressHint?: string;
-}
-export interface SamplePreviewProps {
-  // `sample` (with its section copy) is optional: when absent the component renders
-  // its live children, so an artist surface can mount it without a sample fixture.
-  complete: boolean; sample?: SamplePreviewData;
-  sectionTitle?: string; sectionHint?: string; children: ReactNode;
 }

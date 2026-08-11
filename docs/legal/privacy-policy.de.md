@@ -1,6 +1,6 @@
 # Datenschutzerklärung
 
-_Stand: 28. Mai 2026_
+_Stand: 11. August 2026_
 
 Diese Datenschutzerklärung erläutert, wie ShowFlow Pro ("**wir**", "**uns**", "**ShowFlow Pro**") personenbezogene Daten verarbeitet, wenn Sie die Web-Anwendung von ShowFlow Pro und die zugehörigen transaktionalen E-Mails (zusammen der "**Dienst**") nutzen. Sie ist nach den Anforderungen der Artikel 12–14 der Datenschutz-Grundverordnung (DSGVO) und § 25 des Telekommunikation-Telemedien-Datenschutz-Gesetzes (TTDSG) verfasst.
 
@@ -28,6 +28,7 @@ Wir haben keinen Datenschutzbeauftragten benannt, da wir hierzu nach Art. 37 DSG
 Diese Erklärung gilt für:
 
 - die ShowFlow-Pro-Web-Anwendung unter unseren Domains,
+- unsere öffentliche Website showflow.pro einschließlich der dortigen Trust-Center-Seite,
 - die transaktionalen E-Mails, die wir Ihnen senden (Angebote, Bestätigungen, Zusammenfassungen, Kontomeldungen), sowie
 - die In-App-Nachrichten- und Benachrichtigungsfunktionen des Dienstes.
 
@@ -55,7 +56,7 @@ Aus den Tabellen `chats`, `chat_messages` und `notifications`: Inhalt und Metada
 Aus den Tabellen `email_send_log`, `suppressed_emails` und `email_unsubscribe_tokens`: ein Protokoll der an Sie gesendeten transaktionalen E-Mails (Template, Status, Message-ID), von unserem E-Mail-Provider zurückgemeldete Bounce- und Beschwerdesignale sowie von Ihnen verwendete Abmelde-Token.
 
 ### 3.6 Technische Daten und Logs
-Server-Zugriffs-Logs unserer Hosting- und Datenbank-Provider (Vercel, Supabase), typischerweise IP-Adresse, User-Agent, aufgerufene URL, Antwortstatus und Zeitstempel. Mit Ihrer Einwilligung erhalten wir zusätzlich clientseitige Fehlerberichte über Sentry (Stack-Traces, Browser, Betriebssystem, Nutzer-ID) sowie Produktanalyse-Events über PostHog (Seitenaufrufe, Klicks, Funktionsnutzung). Bei Einwilligung in Session-Replay zeichnet PostHog zusätzlich eine anonymisierte Aufzeichnung Ihrer Interaktionen mit dem Dienst auf.
+Server-Zugriffs-Logs unserer Hosting- und Datenbank-Provider (Vercel, Supabase), typischerweise IP-Adresse, User-Agent, aufgerufene URL, Antwortstatus und Zeitstempel. Mit Ihrer Einwilligung erhalten wir zusätzlich über PostHog clientseitige Fehlerberichte (Stack-Traces, Browser, Betriebssystem, Nutzer-ID) sowie Produktanalyse-Events (Seitenaufrufe, Klicks, Funktionsnutzung). Bei Einwilligung in Session-Replay zeichnet PostHog zusätzlich eine anonymisierte Aufzeichnung Ihrer Interaktionen mit dem Dienst auf.
 
 ### 3.7 Besondere Kategorien (Art. 9 DSGVO)
 Wir erheben **keine** besonderen Kategorien personenbezogener Daten (z. B. Gesundheit, rassische oder ethnische Herkunft, religiöse Überzeugungen, sexuelle Orientierung, biometrische Daten). Bitte geben Sie solche Informationen nicht in Freitextfelder wie Artist-Biografie, Buchungsnotizen oder Chatnachrichten ein.
@@ -66,16 +67,16 @@ Wir erheben **keine** besonderen Kategorien personenbezogener Daten (z. B. Gesun
 
 | Nr. | Zweck | Kategorien | Rechtsgrundlage |
 |---|---|---|---|
-| a | Bereitstellung des Dienstes: Konto, Authentifizierung, rollenbasierter Zugriff, Anzeige von Shows/Terminen/Verfügbarkeit, Buchungsabwicklung, Versand transaktionaler E-Mails. | 3.1–3.5 | Art. 6 Abs. 1 lit. b DSGVO — Vertragserfüllung. |
+| a | Bereitstellung des Dienstes: Konto, Authentifizierung, rollenbasierter Zugriff, Anzeige von Shows/Terminen/Verfügbarkeit, Buchungsabwicklung, Versand transaktionaler E-Mails sowie Synchronisation der Showtermine aus einer von der Organisation verbundenen Airtable-Base. | 3.1–3.5 | Art. 6 Abs. 1 lit. b DSGVO — Vertragserfüllung. |
 | b | Admin-Freigabe und Rollenvergabe für neue Konten. | 3.1 | Art. 6 Abs. 1 lit. b DSGVO und Art. 6 Abs. 1 lit. f DSGVO — berechtigtes Interesse an der Verhinderung unbefugter Zugriffe auf Producer-/Admin-Funktionen. |
 | c | Betrieb des In-App-Chats je Showtermin. | 3.4 | Art. 6 Abs. 1 lit. b DSGVO. |
 | d | Führung des Buchungs-Audit-Logs und Missbrauchsprävention. | 3.3 | Art. 6 Abs. 1 lit. c DSGVO (Aufbewahrungspflichten) und Art. 6 Abs. 1 lit. f DSGVO — berechtigtes Interesse an der Aufklärung von Streitfällen und Sicherheitsvorfällen. |
 | e | E-Mail-Zustellbarkeit (Bounce-/Beschwerdebearbeitung, Abmeldungen). | 3.5 | Art. 6 Abs. 1 lit. c DSGVO (Art. 21 DSGVO) und Art. 6 Abs. 1 lit. f DSGVO — berechtigtes Interesse an der Reputation als Absender. |
 | f | Hosting- und Infrastruktur-Logs. | 3.6 | Art. 6 Abs. 1 lit. f DSGVO — berechtigtes Interesse am Betrieb, der Sicherheit und der Fehleranalyse des Dienstes. |
-| g | Clientseitige Fehlerverfolgung (Sentry). | 3.6 | Art. 6 Abs. 1 lit. a DSGVO — Einwilligung über das Cookie-Banner; jederzeit widerrufbar über „Cookie-Einstellungen verwalten". |
+| g | Clientseitige Fehlerverfolgung (PostHog). | 3.6 | Art. 6 Abs. 1 lit. a DSGVO — Einwilligung über das Cookie-Banner; jederzeit widerrufbar über „Cookie-Einstellungen verwalten". |
 | h | Produktanalyse einschließlich Session-Replay (PostHog). | 3.6 | Art. 6 Abs. 1 lit. a DSGVO — Einwilligung über das Cookie-Banner. |
 | i | Speicherung unbedingt erforderlicher Cookies (Supabase Auth/Session). | 3.6 | § 25 Abs. 2 Nr. 2 TTDSG — unbedingt erforderlich für den von Ihnen ausdrücklich gewünschten Dienst; in Verbindung mit Art. 6 Abs. 1 lit. b DSGVO für die zugrunde liegende Verarbeitung. |
-| j | Speicherung nicht erforderlicher Cookies und ähnlicher Technologien (PostHog, Sentry). | 3.6 | § 25 Abs. 1 TTDSG — Einwilligung über das Cookie-Banner. |
+| j | Speicherung nicht erforderlicher Cookies und ähnlicher Technologien (PostHog). | 3.6 | § 25 Abs. 1 TTDSG — Einwilligung über das Cookie-Banner. |
 
 Eine Interessenabwägung gemäß Art. 6 Abs. 1 lit. f DSGVO stellen wir auf Anfrage unter contact@showflow.pro zur Verfügung.
 
@@ -92,9 +93,16 @@ Darüber hinaus setzen wir folgende Auftragsverarbeiter gemäß Art. 28 DSGVO ei
 | Supabase Inc. | Datenbank, Authentifizierung, Datei-Speicher, Edge Functions | USA und EU-Regionen | Nutzung der EU-Region, soweit verfügbar; Zertifizierung nach dem EU-US Data Privacy Framework (DPF) und EU-Standardvertragsklauseln (SCC) für US-Übermittlungen. |
 | Resend, Inc. | Transaktionaler E-Mail-Versand | USA | DPF und SCC. |
 | Vercel, Inc. | Hosting der Web-Anwendung und Edge-Netzwerk | USA und EU | DPF und SCC. |
-| Airtable, Inc. | Show-Datensynchronisation (derzeit deaktiviert; wird aktiviert, sobald die Airtable-Integration in Betrieb geht) | USA | DPF und SCC. |
-| Functional Software, Inc. dba Sentry | Clientseitige Fehlerverfolgung | EU- und US-Regionen | EU-Region soweit verfügbar; DPF und SCC für US-Übermittlungen. |
-| PostHog, Inc. | Produktanalyse und Session-Replay | EU- und US-Regionen | EU-Region soweit verfügbar; DPF und SCC für US-Übermittlungen. |
+| Vercel, Inc. (Vercel Web Analytics) | Aggregierte Seitenaufruf-Statistik für unsere öffentliche Website showflow.pro einschließlich der dortigen Trust-Center-Seite; wird erst geladen, nachdem Sie im Einwilligungsbanner dieser Website zugestimmt haben, und niemals innerhalb der Web-Anwendung | USA und EU | DPF und SCC. |
+| Google LLC | Auslieferung der Web-Schriften (Geist und Geist Mono, abgerufen von fonts.googleapis.com und fonts.gstatic.com) | USA | DPF und SCC. |
+| Airtable, Inc. | Show-Datensynchronisation für Organisationen, die ihre eigene Airtable-Base verbunden haben | USA | DPF und SCC. |
+| PostHog, Inc. | Produktanalyse, Session-Replay und clientseitige Fehlerverfolgung | EU- und US-Regionen | EU-Region soweit verfügbar; DPF und SCC für US-Übermittlungen. |
+
+Die Web-Schriften werden bereits während des Seitenaufbaus abgerufen, also bevor eine Einwilligungsentscheidung gespeichert ist. Google erhält dadurch bei jedem Seitenaufruf Ihre IP-Adresse und Ihren User-Agent, auch auf den Seiten, die die Einwilligung abfragen. Der Abruf setzt kein Cookie und speichert nichts auf Ihrem Gerät.
+
+Vercel Web Analytics ist getrennt vom Hosting durch Vercel aufgeführt, weil es auf einer anderen Grundlage arbeitet. Es läuft ausschließlich auf unserer öffentlichen Website showflow.pro, einschließlich der dortigen Trust-Center-Seite, und wird von der Web-Anwendung niemals geladen. Auf dieser Website wird es erst geladen, nachdem Sie im Einwilligungsbanner zugestimmt haben: Wenn Sie ablehnen oder keine Entscheidung treffen, wird es überhaupt nicht geladen. Erfasst werden aggregierte Seitenaufruf-Statistiken (aufgerufene Seiten, Referrer, Land), ohne personenbezogene Kennungen und ohne seitenübergreifendes Tracking. Sie können diese Einwilligung jederzeit über den Link „Cookie settings" im Footer von showflow.pro widerrufen; die Datenschutzerklärung dieser Website beschreibt die Verarbeitung vollständig.
+
+Airtable wird ausschließlich von Organisationen genutzt, die ihre eigene Airtable-Base mit dem Dienst verbunden haben. Ist eine Base verbunden, lesen unsere Server sie planmäßig aus und übernehmen die dort geführten Showtermine in den Dienst, damit beide Seiten übereinstimmen. Die Synchronisation liest ausschließlich; nach Airtable wird nichts zurückgeschrieben. Sie läuft vollständig auf unseren Servern: In Ihrem Browser wird kein Airtable-Code ausgeführt, und auf Ihrem Endgerät wird nichts gespeichert. Welche Felder gelesen werden, legt die Administration der jeweiligen Organisation fest; personenbezogene Daten gelangen auf diesem Weg also nur dann zu uns, wenn die Organisation personenbezogene Daten in die von ihr zugeordneten Felder eingetragen hat.
 
 Wir verkaufen keine personenbezogenen Daten und geben sie nicht an Werbenetzwerke weiter.
 
@@ -117,12 +125,12 @@ Wir speichern Ihre personenbezogenen Daten nur so lange, wie es für die in dies
 
 - **Konto- und Profildaten:** für die Dauer Ihres Kontos zuzüglich 30 Tage nach Löschung, um versehentliche Löschungen wiederherstellen zu können.
 - **Buchungen und Audit-Log:** drei (3) Jahre ab dem jeweiligen Showtermin, zur kaufmännischen Beweisführung und Streitbeilegung.
-- **Chatnachrichten:** 30 Tage nach dem Showtermin in der Chat-Liste ausgeblendet (`CHAT_ARCHIVE_DAYS`); endgültige Löschung nach 12 Monaten. Admins behalten innerhalb des Archivzeitraums Lesezugriff.
+- **Chatnachrichten:** 30 Tage nach dem Showtermin in der Chat-Liste ausgeblendet (`CHAT_ARCHIVE_DAYS`); endgültige Löschung nach 12 Monaten. Die Datenbank gewährt Admins und dem Produktionsteam bis zur Löschung Zugriff auf einen Thread. Nach Ablauf des Archivzeitraums entfernt der Dienst den Thread für alle aus der Chat-Liste, zeigt Admins die Nachrichten nur noch lesend an und blendet die Nachrichten für das Produktionsteam aus.
 - **E-Mail-Versandprotokoll und Sperrliste:** 24 Monate, zur Berücksichtigung Ihres Abmeldewunsches und zur Wahrung der Absenderreputation.
-- **Hosting-/Supabase-Logs:** gemäß Standardrichtlinien unserer Anbieter (typischerweise 7–30 Tage).
-- **Sentry-Fehlerberichte:** 90 Tage.
-- **PostHog-Events und Session-Replays:** 12 Monate.
-- **Sicherungen (Backups):** rollierender 30-Tage-Zeitraum; in der Live-Datenbank gelöschte Daten werden innerhalb dieses Zeitraums auch aus Backups entfernt.
+- **Hosting-/Supabase-Logs:** gemäß Standardrichtlinien unserer Anbieter (typischerweise 7-30 Tage).
+- **PostHog-Events, Session-Replays und Fehlerberichte:** 12 Monate.
+- **Vercel Web Analytics (öffentliche Website):** Vercel verwirft die aus der jeweiligen Anfrage abgeleitete Besucherkennung nach 24 Stunden. Die aggregierten Seitenaufruf-Statistiken werden für das von Vercel veröffentlichte Auswertungsfenster („reporting window") vorgehalten, das je nach genutztem Tarif zwischen 1 und 24 Monaten liegt; Vercel gibt an, dass dieses Fenster den Zeitraum bezeichnet, für den die Daten garantiert verfügbar bleiben, und dass die Daten auch länger gespeichert werden können.
+- **Sicherungen (Backups):** Aufbewahrung höchstens 30 Tage; in der Live-Datenbank gelöschte Daten werden innerhalb dieses Zeitraums auch aus Backups entfernt. Dies ist eine Höchstspeicherdauer und keine Zusage, dass 30 Tage wiederherstellbarer Sicherungen vorgehalten werden.
 
 Nach Ablauf dieser Fristen werden die Daten gelöscht oder vollständig anonymisiert.
 
@@ -154,9 +162,8 @@ Der Dienst nutzt folgende Cookies und Local-Storage-Einträge:
 |---|---|---|---|---|
 | `sb-*` | Supabase-Authentifizierungssitzung | Unbedingt erforderlich | localStorage / Cookies | Bis Abmeldung oder Ablauf der Sitzung |
 | `showflow.consent.v1` | Ihre Cookie-Einwilligungsentscheidung | Unbedingt erforderlich | localStorage | 12 Monate |
-| `ph_*` | PostHog-Analyse und Funktionsnutzung | Einwilligung (Analyse) | Cookies / localStorage | Bis 12 Monate |
+| `ph_*` | PostHog-Analyse, Funktionsnutzung und Fehlerberichte | Einwilligung (Analyse oder Fehlerverfolgung) | Cookies / localStorage | Bis 12 Monate |
 | PostHog Session-Replay | Anonymisierte Aufzeichnung Ihrer Interaktionen | Einwilligung (Session-Replay, Unterkategorie Analyse) | Speicherung bei PostHog | 12 Monate |
-| Sentry-SDK-Identifier | Verknüpfung von Fehlerberichten innerhalb einer Sitzung | Einwilligung (Fehlerverfolgung) | localStorage | Sitzung |
 
 Unbedingt erforderliche Cookies bedürfen nach § 25 Abs. 2 Nr. 2 TTDSG keiner Einwilligung. Alle übrigen werden erst gesetzt, nachdem Sie ihnen im Cookie-Banner zugestimmt haben. Ihre Entscheidung können Sie jederzeit über „Cookie-Einstellungen verwalten" ändern.
 

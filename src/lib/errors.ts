@@ -1,12 +1,23 @@
 /**
- * Extracts a human-readable message from an unknown thrown value: an `Error`'s
- * `message`, else a duck-typed `.message` string (e.g. a supabase-js error object,
- * which is a plain object, not an `Error`), else the given fallback.
+ * Normalize an unknown thrown value to a user-facing message. supabase-js returns a
+ * failed .rpc()/query error as a PLAIN object { code, message, details, hint } — NOT an
+ * Error instance — so `e instanceof Error` alone silently swallows every DB error into a
+ * generic fallback. Read `.message` off either shape.
  */
-export function toErrorMessage(e: unknown, fallback: string): string {
-  if (e instanceof Error) return e.message;
-  if (e && typeof e === 'object' && typeof (e as { message?: unknown }).message === 'string') {
-    return (e as { message: string }).message;
+export function toErrorMessage(e: unknown, fallback = "Something went wrong"): string {
+  if (e instanceof Error && e.message) return e.message;
+  if (e && typeof e === "object") {
+    const m = (e as { message?: unknown }).message;
+    if (typeof m === "string" && m) return m;
   }
   return fallback;
+}
+
+/** Map known org-membership guard messages to guidance; otherwise the real message. */
+export function friendlyError(e: unknown): string {
+  const msg = toErrorMessage(e);
+  if (/keep at least one admin|last admin of the organization/i.test(msg)) {
+    return "This organization needs at least one admin. Make someone else an admin first, then remove this one.";
+  }
+  return msg;
 }
