@@ -226,7 +226,14 @@ describe("ArtistAvailabilityCalendar — ineligible-day explanation + empty stat
     };
   }
 
-  it("labels an ineligible day with why it is disabled", async () => {
+  // Both the mouse-hover title and the screen-reader-only text must name skills as
+  // well as casts: useArtistEligibleDates filters by cast membership AND by unmet
+  // hard skill requirements, so "offered dates come from your casts" alone is an
+  // inaccurate (half the story) explanation for why a day is disabled.
+  const INELIGIBLE_REASON =
+    "This date is not offered to you. Offered dates come from your casts and their required skills.";
+
+  it("labels an ineligible day with why it is disabled, for sighted and assistive-tech users alike", async () => {
     vi.setSystemTime(new Date("2026-03-15T12:00:00Z"));
 
     render(
@@ -242,11 +249,11 @@ describe("ArtistAvailabilityCalendar — ineligible-day explanation + empty stat
       expect(screen.getByText("10")).toBeTruthy();
     });
 
-    expect(
-      document.querySelector(
-        '[title="This date is not offered to you. Offered dates come from your casts."]'
-      )
-    ).toBeTruthy();
+    // Mouse hover: a title attribute on the non-interactive wrapper.
+    expect(document.querySelector(`[title="${INELIGIBLE_REASON}"]`)).toBeTruthy();
+    // Assistive tech: a visually-hidden (sr-only) span carrying the same text, not
+    // an aria-label on the div (a plain div's aria-label is not reliably exposed).
+    expect(await screen.findAllByText(INELIGIBLE_REASON)).not.toHaveLength(0);
   });
 
   it("shows an empty state when there are zero eligible dates", async () => {

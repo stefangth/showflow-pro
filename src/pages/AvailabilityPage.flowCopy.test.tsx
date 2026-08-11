@@ -110,6 +110,14 @@ describe("AvailabilityPage flow-aware copy (Task 4)", () => {
  * R2.1 + R4.7: a muted timing line under the blocking help text, sourced from the
  * existing describeTonightStandalone(times, flow) helper — honest per org state, so
  * it renders only when that helper has something true to say (never a fallback string).
+ *
+ * The whole paragraph is asserted via data-testid="availability-timing", never a text
+ * substring: describeTonight also composes a DIFFERENT, confirmation-digest sentence
+ * for a direct-book org (artist_acceptance: false) whenever confirmation_digest is
+ * true — which is both the BOOKING_FLOW_DEFAULTS value and the shipped "direct"
+ * preset's value. A substring match like /hours to answer/ never appears in that
+ * sentence and so cannot catch it leaking onto a direct-book artist's page; only
+ * asserting the testid's absence can.
  */
 describe("AvailabilityPage timing line (R2.1/R4.7)", () => {
   it("shows the response window and digest hour for an offer+digest org", async () => {
@@ -117,16 +125,29 @@ describe("AvailabilityPage timing line (R2.1/R4.7)", () => {
     timesHolder.times = DEFAULT_FLOW_TIMES;
     renderWithProviders(<AvailabilityPage />);
 
-    expect(await screen.findByText(/48 hours to answer/i)).toBeInTheDocument();
-    expect(screen.getByText(/19:00 digest/i)).toBeInTheDocument();
+    const timing = await screen.findByTestId("availability-timing");
+    expect(timing).toHaveTextContent(/48 hours to answer/i);
+    expect(timing).toHaveTextContent(/19:00 digest/i);
   });
 
-  it("shows no timing line for a direct-book org", async () => {
+  it("shows no timing line for a direct-book org (real defaults: confirmation_digest stays true)", async () => {
+    // Deliberately NOT overriding confirmation_digest: BOOKING_FLOW_DEFAULTS and the
+    // shipped "direct" preset both carry confirmation_digest: true, which is exactly
+    // the combination that made describeTonight return a (wrong-audience) sentence.
     flowHolder.flow = { ...BOOKING_FLOW_DEFAULTS, artist_acceptance: false, active: true };
     timesHolder.times = DEFAULT_FLOW_TIMES;
     renderWithProviders(<AvailabilityPage />);
 
     expect(await screen.findByRole("heading", { name: "My Dates" })).toBeInTheDocument();
-    expect(screen.queryByText(/hours to answer/i)).not.toBeInTheDocument();
+    expect(screen.queryByTestId("availability-timing")).not.toBeInTheDocument();
+  });
+
+  it("shows no timing line for a paused org", async () => {
+    flowHolder.flow = { ...BOOKING_FLOW_DEFAULTS, active: false };
+    timesHolder.times = DEFAULT_FLOW_TIMES;
+    renderWithProviders(<AvailabilityPage />);
+
+    expect(await screen.findByRole("heading", { name: "Blocked Dates" })).toBeInTheDocument();
+    expect(screen.queryByTestId("availability-timing")).not.toBeInTheDocument();
   });
 });

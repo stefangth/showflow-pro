@@ -22,6 +22,12 @@ interface Props {
   eligibleDates: EligibleDate[];
 }
 
+// useArtistEligibleDates filters by BOTH cast membership and unmet hard skill
+// requirements, so the explanation has to name both — "offered dates come from
+// your casts" alone is only half the story for an artist missing a required skill.
+const INELIGIBLE_DAY_REASON =
+  'This date is not offered to you. Offered dates come from your casts and their required skills.';
+
 /**
  * Month-grid calendar:
  *  - Bold blue outline → eligible date
@@ -234,12 +240,12 @@ export function ArtistAvailabilityCalendar({ artistId, eligibleDates }: Props) {
 
             if (!isEligible) {
               return (
-                <div
-                  key={dateStr}
-                  title="This date is not offered to you. Offered dates come from your casts."
-                  aria-label="This date is not offered to you. Offered dates come from your casts."
-                >
+                // aria-label on a plain div (implicit role "generic") is not reliably
+                // exposed to screen readers, so the reason is carried by a visually-
+                // hidden sr-only span instead; `title` stays for mouse hover.
+                <div key={dateStr} title={INELIGIBLE_DAY_REASON}>
                   {cell}
+                  <span className="sr-only">{INELIGIBLE_DAY_REASON}</span>
                 </div>
               );
             }

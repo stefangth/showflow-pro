@@ -76,16 +76,19 @@ function ArtistAvailability() {
   const flowQ = useBookingFlow();
   const flow = flowQ.data ?? BOOKING_FLOW_DEFAULTS;
   const orgId = currentOrg?.id ?? null;
-  // Org-scope discipline mirrors FirstOfferCard: with no active org, `flow` above
-  // has already fallen back to BOOKING_FLOW_DEFAULTS, and narrating that here would
-  // describe how offers work somewhere other than this artist's own org. Passing
-  // `flowQ.data` directly (undefined until a real org's row loads, and never read
-  // when orgId is null) keeps the timing line silent until there is an actual org
-  // flow to describe.
+  // Org-scope discipline mirrors FirstOfferCard: `flowQ.data` (passed straight
+  // through, not the page's `flow` fallback below) stays undefined while there is
+  // no active org or the query hasn't settled yet, and describeTonight already
+  // returns null for an unread flow — so an org-less mount narrates nothing, with
+  // no separate `orgId ? … : null` guard needed here.
   const timesQ = useFlowTimes(orgId);
-  const tonight = orgId
-    ? describeTonightStandalone(timesQ.data ?? DEFAULT_FLOW_TIMES, flowQ.data)
-    : null;
+  const tonight = describeTonightStandalone(timesQ.data ?? DEFAULT_FLOW_TIMES, flowQ.data);
+  // Audience gate: describeTonight also composes a confirmation-digest sentence for
+  // a direct-book org (artist_acceptance: false) whenever confirmation_digest is
+  // true — the BOOKING_FLOW_DEFAULTS/"direct"-preset value — but that sentence is
+  // about a DIFFERENT audience (already-confirmed artists), not R2.1/R4.7's response
+  // window. Only artists who actually receive offers see this line.
+  const showTiming = flow.artist_acceptance && !!tonight;
   const pageCopy = availabilityPageCopy(flow);
   const statusLabels = bookingStatusLabels(flow);
   const { orderedColumns, visibleCount } = useColumnTemplate('availability');
@@ -432,8 +435,8 @@ function ArtistAvailability() {
           <p className="text-sm text-muted-foreground">
             Mark dates you cannot play so the system will not send you offers for them. Dates you are already booked for are not affected.
           </p>
-          {tonight && (
-            <p className="text-xs text-muted-foreground mt-1">{tonight}</p>
+          {showTiming && (
+            <p data-testid="availability-timing" className="text-xs text-muted-foreground mt-1">{tonight}</p>
           )}
 
           <form
