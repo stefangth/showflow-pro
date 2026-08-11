@@ -2313,18 +2313,21 @@ export type Database = {
       }
       skills: {
         Row: {
+          archived_at: string | null
           created_at: string
           id: string
           name: string
           org_id: string
         }
         Insert: {
+          archived_at?: string | null
           created_at?: string
           id?: string
           name: string
           org_id: string
         }
         Update: {
+          archived_at?: string | null
           created_at?: string
           id?: string
           name?: string
@@ -2641,6 +2644,17 @@ export type Database = {
       should_notify: {
         Args: { p_category: string; p_channel: string; p_user: string }
         Returns: boolean
+      }
+      skill_catalog: {
+        Args: { p_org: string }
+        Returns: {
+          archived_at: string
+          artist_count: number
+          id: string
+          name: string
+          required_by_count: number
+          required_by_date_count: number
+        }[]
       }
       sole_admin_orgs: {
         Args: { p_user: string }

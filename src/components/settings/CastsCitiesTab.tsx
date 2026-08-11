@@ -14,6 +14,7 @@ import { IconTooltip } from '@/components/common/IconTooltip';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { SkillsCard } from './SkillsCard';
 import { fetchShowPriorityRows, setShowCastPriority, clearShowCastPriority } from '@/data/eligibility';
 import { fetchCasts, fetchCastMemberCounts, fetchCastCityPriority } from '@/data/casts';
 import { fetchShowOptions } from '@/data/shows';
@@ -180,6 +181,7 @@ export function CastsCitiesTab({ currentOrgId, canEnter }: { currentOrgId: strin
 
   return (
     <div className="mt-4 space-y-6">
+      <SkillsCard canEnter={canEnter} />
       <Card>
         <CardHeader>
           <CardTitle className="font-display">Cities</CardTitle>

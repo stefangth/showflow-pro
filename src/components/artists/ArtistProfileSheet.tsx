@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
+import { Check, Plus, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/features/auth/AuthContext';
 import { useEditorConfig } from '@/features/editor/EditorContext';
@@ -11,14 +13,14 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
-import { TagInput, type TagOption } from '@/components/ui/tag-input';
 import { useToast } from '@/hooks/use-toast';
-import { useSkills, useArtistSkills, useCreateSkill, type Skill } from '@/hooks/useSkills';
+import { useSkills, useArtistSkills, useUpcomingDateCountsBySkill, type Skill } from '@/hooks/useSkills';
 import { useOrgMembers } from '@/hooks/useOrgMembers';
 import { usePendingInvitedArtists } from '@/hooks/usePendingInvitedArtists';
 import { artistAccountState } from '@/lib/artistAccount';
 import { inviteArtistToApp, resendInvitation, fetchOrgInvitations } from '@/data/invitations';
 import { LinkedAccountPanel } from './LinkedAccountPanel';
+import { ROUTES } from '@/config/app.config';
 import type { Artist, ArtistStatus } from '@/types';
 
 interface Props {
@@ -59,7 +61,10 @@ export function ArtistProfileSheet({ artistId, open, onOpenChange }: Props) {
 
   const { data: allSkills } = useSkills();
   const { data: artistSkills } = useArtistSkills(artistId);
-  const createSkill = useCreateSkill();
+  // Gated on `open`: this sheet stays mounted at all times on the Artists page
+  // (`open={!!profileArtistId}`), so an unconditional query would fire the count
+  // read on every roster load, not just when the sheet is actually visible.
+  const { data: upcomingDateCounts } = useUpcomingDateCountsBySkill({ enabled: open });
 
   // Resolve the linked login account for the LinkedAccountPanel (admin-only).
   const linkedMember = artist?.user_id && orgMembers
@@ -108,7 +113,7 @@ export function ArtistProfileSheet({ artistId, open, onOpenChange }: Props) {
     bio: '',
     status: 'active' as ArtistStatus,
   });
-  const [selectedSkills, setSelectedSkills] = useState<TagOption[]>([]);
+  const [selectedSkills, setSelectedSkills] = useState<Skill[]>([]);
 
   // Seed the editable form only when the artist IDENTITY changes, not on every
   // refetch. A `['artists']` prefix invalidation (any artists write, incl. bulk
@@ -131,15 +136,19 @@ export function ArtistProfileSheet({ artistId, open, onOpenChange }: Props) {
   // Skills load on a separate query and can resolve after the artist row; seed them
   // once per artist identity so a later ['skills'] invalidation for the same artist
   // doesn't clobber in-progress selections. A different artist (new id) re-seeds.
+  // The baseline used to diff on save is captured at the SAME moment (seed time),
+  // not re-derived from the live `artistSkills` query — otherwise a background
+  // refetch mid-edit (e.g. another admin's change landing via realtime) would
+  // silently move the save diff's goalposts on both the add and remove sides.
   const seededSkillsIdRef = useRef<string | null>(null);
+  const initialSkillIdsRef = useRef<Set<string>>(new Set());
   useEffect(() => {
     if (artist && artistSkills && seededSkillsIdRef.current !== artist.id) {
       seededSkillsIdRef.current = artist.id;
       setSelectedSkills(artistSkills.map((s) => ({ id: s.id, name: s.name })));
+      initialSkillIdsRef.current = new Set(artistSkills.map((s) => s.id));
     }
   }, [artist, artistSkills]);
-
-  const initialSkillIds = useMemo(() => new Set((artistSkills ?? []).map((s) => s.id)), [artistSkills]);
 
   const save = useMutation({
     mutationFn: async () => {
@@ -157,9 +166,10 @@ export function ArtistProfileSheet({ artistId, open, onOpenChange }: Props) {
         .eq('id', artistId!);
       if (updateErr) throw updateErr;
 
+      const initial = initialSkillIdsRef.current;
       const nextIds = new Set(selectedSkills.map((s) => s.id));
-      const toAdd = selectedSkills.filter((s) => !initialSkillIds.has(s.id));
-      const toRemove = (artistSkills ?? []).filter((s) => !nextIds.has(s.id));
+      const toAdd = selectedSkills.filter((s) => !initial.has(s.id));
+      const removeIds = [...initial].filter((id) => !nextIds.has(id));
 
       if (toAdd.length) {
         const { error } = await supabase
@@ -167,28 +177,39 @@ export function ArtistProfileSheet({ artistId, open, onOpenChange }: Props) {
           .insert(toAdd.map((s) => ({ artist_id: artistId!, skill_id: s.id, org_id: currentOrg.id })));
         if (error) throw error;
       }
-      if (toRemove.length) {
+      if (removeIds.length) {
         const { error } = await supabase
           .from('artist_skills')
           .delete()
           .eq('artist_id', artistId!)
-          .in('skill_id', toRemove.map((s) => s.id));
+          .in('skill_id', removeIds);
         if (error) throw error;
       }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['artists'] });
       qc.invalidateQueries({ queryKey: ['skills'] });
+      qc.invalidateQueries({ queryKey: ['artist-skills'] });
       toast({ title: 'Artist updated' });
       onOpenChange(false);
     },
     onError: (e: Error) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
 
-  async function handleCreateSkill(name: string): Promise<TagOption> {
-    const created: Skill = await createSkill.mutateAsync(name);
-    return { id: created.id, name: created.name };
-  }
+  // Design 1i: held skills as catalog-governed rows, remaining catalog skills
+  // as add-chips. Free-text creation is gone: an admin adds new skills from
+  // Settings -> Casts & Cities now (SkillsCard).
+  const skillCatalog = allSkills ?? [];
+  const heldSkillIds = new Set(selectedSkills.map((s) => s.id));
+  const addableSkills = skillCatalog.filter((s) => !heldSkillIds.has(s.id));
+  // useSkills() only returns ACTIVE skills, so a held skill that was later
+  // archived is not in skillCatalog. Union the two id sets for the denominator
+  // so the header can never read e.g. "3 of 2" when a held skill is archived.
+  const catalogDenominator = new Set([...skillCatalog.map((s) => s.id), ...heldSkillIds]).size;
+  // Never surface the per-skill "N upcoming dates" count to an artist role,
+  // this sheet is admin/producer-only today, but gate it defensively anyway.
+  const showSkillCounts = !hasRole('artist');
+  const artistFirstName = artist?.name?.trim().split(/\s+/)[0];
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -277,23 +298,84 @@ export function ArtistProfileSheet({ artistId, open, onOpenChange }: Props) {
               />
             </div>
 
-            <div className="space-y-1">
-              <label className="text-sm font-medium">Skills</label>
-              {canEdit ? (
-                <TagInput
-                  options={(allSkills ?? []).map((s) => ({ id: s.id, name: s.name }))}
-                  value={selectedSkills}
-                  onChange={setSelectedSkills}
-                  onCreate={handleCreateSkill}
-                  placeholder="Add skills…"
-                />
-              ) : (
-                <div className="flex flex-wrap gap-1">
-                  {selectedSkills.length === 0 && <span className="text-sm text-muted-foreground">—</span>}
-                  {selectedSkills.map((s) => (
-                    <Badge key={s.id} variant="secondary">{s.name}</Badge>
-                  ))}
-                </div>
+            <div className="space-y-2">
+              <div className="flex items-baseline justify-between gap-3">
+                <label className="text-sm font-medium">Skills</label>
+                <p className="font-mono text-[11px] tabular-nums text-muted-foreground">
+                  {selectedSkills.length} of {catalogDenominator} in the catalog
+                </p>
+              </div>
+              {canEdit && (
+                <p className="text-xs leading-[17px] text-muted-foreground">
+                  Skills decide which dates {artistFirstName || 'this artist'} can be offered.
+                  Removing one takes them out of any offer that requires it.
+                </p>
+              )}
+
+              <div className="flex flex-col gap-1">
+                {selectedSkills.length === 0 && (
+                  <p className="text-sm text-muted-foreground">No skills yet.</p>
+                )}
+                {selectedSkills.map((skill) => {
+                  const count = upcomingDateCounts?.get(skill.id) ?? 0;
+                  return (
+                    <div
+                      key={skill.id}
+                      data-testid={`skill-row-${skill.id}`}
+                      className="flex h-[34px] items-center gap-2.5 rounded-lg border border-accent-200 bg-accent-50 pl-2.5 pr-2"
+                    >
+                      <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-[4px] bg-primary text-primary-foreground">
+                        <Check className="h-[11px] w-[11px]" strokeWidth={3} />
+                      </span>
+                      <span className="flex-1 truncate text-sm font-medium text-accent-700">{skill.name}</span>
+                      {/* Render only once the counts query has data — while it's still
+                          loading, upcomingDateCounts is undefined and every row would
+                          otherwise flash the false "Not required yet" default. */}
+                      {showSkillCounts && upcomingDateCounts && (
+                        <span className="font-mono text-[11px] tabular-nums text-accent-700">
+                          {count > 0 ? `${count} upcoming date${count === 1 ? '' : 's'}` : 'Not required yet'}
+                        </span>
+                      )}
+                      {canEdit && (
+                        <button
+                          type="button"
+                          aria-label={`Remove ${skill.name}`}
+                          onClick={() => setSelectedSkills((prev) => prev.filter((s) => s.id !== skill.id))}
+                          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-accent-700 hover:bg-destructive/10 hover:text-destructive"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {canEdit && (
+                <>
+                  {addableSkills.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 pt-0.5">
+                      {addableSkills.map((skill) => (
+                        <button
+                          key={skill.id}
+                          type="button"
+                          onClick={() => setSelectedSkills((prev) => [...prev, skill])}
+                          className="inline-flex h-[26px] items-center gap-1.5 rounded-md border border-input bg-background px-2.5 text-xs font-medium text-foreground hover:bg-accent-50"
+                        >
+                          <Plus className="h-3 w-3" />
+                          {skill.name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <p className="text-xs leading-[17px] text-muted-foreground">
+                    Need a skill that does not exist? An admin adds it in{' '}
+                    <Link to={`${ROUTES.SETTINGS}?tab=casts-cities`} className="text-primary underline">
+                      Settings, Casts &amp; Cities
+                    </Link>
+                    , so the catalog stays clean.
+                  </p>
+                </>
               )}
             </div>
 

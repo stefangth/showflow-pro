@@ -423,7 +423,7 @@ export const TRUST_KPIS: Kpi[] = [
   // the per-processor regions.
   { icon: "globe", label: "Database region", value: DATABASE_REGION },
   { icon: "server", label: "Subprocessors", value: SUBPROCESSOR_SUMMARY },
-  { icon: "users", label: "Access control", value: "28 rights, 9 sensitive, 9 off by default" },
+  { icon: "users", label: "Access control", value: "29 rights, 9 sensitive, 9 off by default" },
 ];
 
 /** The backup deletion ceiling, as one number.
@@ -619,7 +619,7 @@ export const RETENTION_BASIS_NOTE =
  *  makes that difference load-bearing. So the split is stated in full here
  *  and the lead-in is gone from both surfaces.
  *
- *  The three-way split — 20 in the database, 6 edge-only, 2 interface-only —
+ *  The three-way split — 20 in the database, 6 edge-only, 3 interface-only —
  *  is recomputed from the registry, the migrations and the edge tree by
  *  capabilityEnforcement.test.ts, which fails if any of the three numbers or
  *  the named interface-only set moves. facts.ts cannot import
@@ -634,7 +634,7 @@ export const RETENTION_BASIS_NOTE =
  *  (20260723191933_rpc_capability_gates.sql). Calling all 20 "a database
  *  policy" would have repeated the finding's mistake one level down. */
 export const CAPABILITY_INTERFACE_ONLY_NOTE =
-  "26 of the 28 rights are checked on the server: 20 inside the database, by the row-level policy that guards the write or by the function that performs it, and 6 more by an edge function that asks the same database check before it acts. The remaining two reorder or archive the production catalog; only the interface enforces those.";
+  "26 of the 29 rights are checked on the server: 20 inside the database, by the row-level policy that guards the write or by the function that performs it, and 6 more by an edge function that asks the same database check before it acts. The remaining three reorder or archive the production catalog, or manage the skills catalog; only the interface enforces those.";
 
 export interface Control {
   icon: string;
@@ -704,11 +704,11 @@ export const CONTROLS: Control[] = [
     // lands on:
     //
     //  - the interface-only carve-out. Without it Summary reads as though all
-    //    28 rights are enforced server-side. The full sentence is
+    //    29 rights are enforced server-side. The full sentence is
     //    CAPABILITY_INTERFACE_ONLY_NOTE, which used to be interpolated here
     //    whole (58 words on its own) and still renders verbatim on the
     //    capabilities card; the claim now carries its load-bearing half, the
-    //    26/2 split, and leaves the 20-in-database / 6-edge breakdown and the
+    //    26/3 split, and leaves the 20-in-database / 6-edge breakdown and the
     //    names of the three to `evidence` and to that card.
     //  - the disambiguation of the two nines. Left in `evidence` it produced
     //    exactly the conflation this build exists to kill: two nines side by
@@ -724,7 +724,7 @@ export const CONTROLS: Control[] = [
     // it has been granted meets nothing extra. capabilityEnforcement.test.ts
     // pins the sentence to that file.
     claim:
-      "Three roles per organisation and 28 rights on top. 26 are checked on the server, two only by the interface. Nine rights are marked sensitive, so changing one asks an administrator to confirm; a different nine ship switched off until an administrator turns them on.",
+      "Three roles per organisation and 29 rights on top. 26 are checked on the server, three only by the interface. Nine rights are marked sensitive, so changing one asks an administrator to confirm; a different nine ship switched off until an administrator turns them on.",
     // "which is why the two nines differ" gave half the reason and a reviewer
     // doing the arithmetic landed on 7: the hire-order pair is sensitive-yet-on,
     // which takes 9 sensitive down to 7 also-off, and the sets only meet at
@@ -732,7 +732,7 @@ export const CONTROLS: Control[] = [
     // ship off. Both directions are named now, and capabilityInventory.test.ts
     // re-derives both counts from the registry.
     evidence:
-      "28 rights across 8 groups, declared in src/lib/capabilities.ts. Of the 26 checked on the server, 20 sit inside the database and 6 in an edge function. Issuing and voiding hire orders are sensitive yet ship on, and two standard rights ship off, so the two nines are different sets.",
+      "29 rights across 8 groups, declared in src/lib/capabilities.ts. Of the 26 checked on the server, 20 sit inside the database and 6 in an edge function. Issuing and voiding hire orders are sensitive yet ship on, and two standard rights ship off, so the two nines are different sets.",
   },
   {
     icon: "key",
@@ -768,7 +768,7 @@ export const CONTROLS: Control[] = [
     title: "Auditability",
     // "No policy permits an update or a delete" was literally true and read as
     // immutability, which is the exact true-but-misleading shape this page
-    // rewrote "checked in the database" into a 20/6/2 split to avoid.
+    // rewrote "checked in the database" into a 20/6/3 split to avoid.
     //
     // The first replacement traded that for "Only account or organisation
     // deletion ever changes a row", which was FALSE, and false in the more

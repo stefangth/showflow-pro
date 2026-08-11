@@ -157,13 +157,14 @@ describe("capability enforcement split", () => {
   });
 
   // The named set, not just its size: the published sentence describes what
-  // these two rights DO ("reorder or archive the production catalog"), so a
-  // different two would make the description false while the count still read
-  // as correct.
-  it("leaves exactly the production-catalog rights to the interface", () => {
+  // these three rights DO ("reorder or archive the production catalog, or
+  // manage the skills catalog"), so a different three would make the
+  // description false while the count still read as correct.
+  it("leaves exactly the production-catalog and skills-catalog rights to the interface", () => {
     expect(interfaceOnly).toEqual([
       "producer_can_archive_productions",
       "producer_can_reorder_productions",
+      "producer_can_manage_skills",
     ]);
   });
 
@@ -210,8 +211,8 @@ describe("capability enforcement split", () => {
     // The derivation above counts both shapes, so the sentence names both.
     expect(CAPABILITY_INTERFACE_ONLY_NOTE).toContain(`${database.length} inside the database`);
     expect(CAPABILITY_INTERFACE_ONLY_NOTE).toContain(`${edgeOnly.length} more by an edge function`);
-    expect(CAPABILITY_INTERFACE_ONLY_NOTE).toContain("The remaining two");
-    expect(interfaceOnly).toHaveLength(2);
+    expect(CAPABILITY_INTERFACE_ONLY_NOTE).toContain("The remaining three");
+    expect(interfaceOnly).toHaveLength(3);
   });
 
   // The Roles-and-rights card used to interpolate the whole sentence above,
@@ -220,7 +221,7 @@ describe("capability enforcement split", () => {
   // split — in its own words, and the full sentence renders on the
   // capabilities card. That restatement is a second hand-typed copy of the
   // same two numbers, so it needs the same gate: without this, closing one of
-  // the two interface-only gaps would leave "26 ... two" published on both
+  // the three interface-only gaps would leave "26 ... three" published on both
   // surfaces with the note beside it corrected and CI green.
   it("keeps the Roles and rights claim's split in step with the same derivation", () => {
     const control = CONTROLS.find((c) => c.title === "Roles and rights");
@@ -228,7 +229,7 @@ describe("capability enforcement split", () => {
 
     const serverSide = database.length + edgeOnly.length;
     expect(control!.claim).toContain(`${serverSide} are checked on the server`);
-    expect(control!.claim).toContain("two only by the interface");
+    expect(control!.claim).toContain("three only by the interface");
     // The evidence line carries the breakdown the claim no longer has room for.
     expect(control!.evidence).toContain(`${database.length} sit inside the database`);
     expect(control!.evidence).toContain(`${edgeOnly.length} in an edge function`);
