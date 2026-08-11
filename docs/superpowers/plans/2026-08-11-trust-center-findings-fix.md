@@ -168,6 +168,10 @@ test fails if the underlying fact changes. Regenerate the contract.
    indexes the matrix. A payload with an unknown role value passes validation and
    renders a broken matrix. Reject unknown role values and require the fields the
    matrix reads. Add the test for a payload that should be rejected.
+3. **`org_coverage.sql` asserts the policy's name but not that it is
+   RESTRICTIVE**, while two shipping citations describe it as "the restrictive
+   policy" (`OrgDataCard.tsx:157` and `CONTROLS[0]`). The fact holds today; add
+   the one predicate so the citations are exact rather than nearly exact.
 
 ## Task 5 — In-app layout defects
 
