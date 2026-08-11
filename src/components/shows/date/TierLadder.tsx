@@ -11,7 +11,10 @@ export interface TierLadderRowStatus {
   sent: number;
   accepted: number;
   pending: number;
-  declined: number;
+  /** Bookings cancelled in the tier — an artist declining, or a producer/system
+   *  withdrawal (promotion, expiry). "cancelled", not "declined", since the row
+   *  status alone can't tell those apart. */
+  cancelled: number;
 }
 
 // Produces (consumed by C3.5): TierLadderProps below. Purely presentational —
@@ -78,7 +81,7 @@ export function TierLadder({ rows, city, openedTiers, statusByTier, nextTier, on
                   {opened && status ? (
                     <p className="text-xs text-muted-foreground">
                       {status.sent} offers sent · {status.accepted} accepted · {status.pending} pending ·{" "}
-                      {status.declined} declined
+                      {status.cancelled} cancelled
                     </p>
                   ) : (
                     <p className="text-xs text-muted-foreground">

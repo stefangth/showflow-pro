@@ -49,7 +49,7 @@ const baseProps = {
   onEditSkills: vi.fn(),
   ladderRows: [NEXT_ROW],
   cityName: "Berlin",
-  statusByTier: [] as { tier: number; sent: number; accepted: number; pending: number; declined: number }[],
+  statusByTier: [] as { tier: number; sent: number; accepted: number; pending: number; cancelled: number }[],
   nextTier: 1 as number | null,
   nextTierTarget: { kind: "tier" as const, tier: 1 },
   nextTierCounts: NEXT_ROW as TierLadderRow | null,
@@ -64,7 +64,7 @@ describe("TierTimeline", () => {
       <TierTimeline
         {...baseProps}
         openedTiers={[{ tier: 1, openedAt: "2026-07-01T00:00:00Z", closedAt: null }]}
-        statusByTier={[{ tier: 1, sent: 2, accepted: 1, pending: 1, declined: 0 }]}
+        statusByTier={[{ tier: 1, sent: 2, accepted: 1, pending: 1, cancelled: 0 }]}
       />,
     );
     expect(screen.getByText("Skills required on this date")).toBeInTheDocument();
@@ -187,7 +187,7 @@ describe("TierTimeline", () => {
         {...baseProps}
         nextTier={null}
         openedTiers={[{ tier: 1, openedAt: "2026-07-01T00:00:00Z", closedAt: null }]}
-        statusByTier={[{ tier: 1, sent: 2, accepted: 1, pending: 1, declined: 0 }]}
+        statusByTier={[{ tier: 1, sent: 2, accepted: 1, pending: 1, cancelled: 0 }]}
         bookings={[{ status: "suggested", offer_tier: 1 }]}
         onCloseTier={onCloseTier}
       />,

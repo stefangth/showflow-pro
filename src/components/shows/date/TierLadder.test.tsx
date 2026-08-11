@@ -41,7 +41,7 @@ function renderLadder(overrides: Partial<TierLadderProps> = {}) {
       rows={ROWS}
       city="Berlin"
       openedTiers={[{ tier: 1, closed: false }]}
-      statusByTier={[{ tier: 1, sent: 9, accepted: 4, pending: 3, declined: 2 }]}
+      statusByTier={[{ tier: 1, sent: 9, accepted: 4, pending: 3, cancelled: 2 }]}
       nextTier={2}
       onCloseTier={onCloseTier}
       {...overrides}
@@ -60,7 +60,7 @@ describe("TierLadder", () => {
   it("shows the opened tier's status line and a Close tier control", () => {
     renderLadder();
     expect(
-      screen.getByText("9 offers sent · 4 accepted · 3 pending · 2 declined"),
+      screen.getByText("9 offers sent · 4 accepted · 3 pending · 2 cancelled"),
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Close tier" })).toBeInTheDocument();
   });
@@ -91,7 +91,7 @@ describe("TierLadder", () => {
     expect(screen.queryByRole("button", { name: "Close tier" })).not.toBeInTheDocument();
     // Still shows the status line for the closed tier.
     expect(
-      screen.getByText("9 offers sent · 4 accepted · 3 pending · 2 declined"),
+      screen.getByText("9 offers sent · 4 accepted · 3 pending · 2 cancelled"),
     ).toBeInTheDocument();
   });
 });

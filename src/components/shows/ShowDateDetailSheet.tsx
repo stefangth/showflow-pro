@@ -741,7 +741,8 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: P
 
   // Per-opened-tier status counts for the tier ladder. One entry per OPENED tier
   // (a missing entry degrades that ladder row), so iterate openedQ, not bookings.
-  // `sent` = every offer ever made in the tier; `declined` = the cancelled ones.
+  // `sent` = every offer ever made in the tier; `cancelled` = the cancelled ones
+  // (a decline OR a producer/system withdrawal — the status alone can't distinguish).
   const statusByTier = (openedQ.data ?? []).map((o) => {
     const counts = tierFillCounts(bookings, o.tier);
     const inTier = bookings.filter((b) => b.offer_tier === o.tier);
@@ -750,7 +751,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: P
       sent: inTier.length,
       accepted: counts.accepted,
       pending: counts.pending,
-      declined: inTier.filter((b) => b.status === 'cancelled').length,
+      cancelled: inTier.filter((b) => b.status === 'cancelled').length,
     };
   });
 
@@ -1062,11 +1063,15 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: P
                               orgName={currentOrg?.name}
                               // 1h requirement-as-fact sentence: skillChips is the same
                               // required-skill NAME list the rail already shows, reused here
-                              // rather than recomputed. totalArtistCount is the org's whole
-                              // active roster (undefined while orgArtists is still loading,
-                              // which keeps the sentence hidden instead of claiming "of 0").
+                              // rather than recomputed. totalArtistCount is the pool the
+                              // qualifying count is measured against: the date's eligible cast
+                              // set when the date is cast/city-restricted, else the org's whole
+                              // active roster. Using the whole roster for a restricted date
+                              // would count never-eligible artists as "not qualifying".
+                              // Undefined while orgArtists is still loading keeps the sentence
+                              // hidden instead of claiming "of 0".
                               requiredSkillNames={skillChips}
-                              totalArtistCount={orgArtists?.length}
+                              totalArtistCount={eligibility?.artistIds ? eligibility.artistIds.size : orgArtists?.length}
                               // 1h: the narrowing chips are EXTRA skills only. Exclude the
                               // date's already-required skills so they don't render as no-op
                               // chips whose count equals the whole qualifying list.
