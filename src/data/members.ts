@@ -95,20 +95,24 @@ async function edgeErrorMessage(error: unknown): Promise<string> {
   return error instanceof Error ? error.message : "Something went wrong";
 }
 
+/** Why a purge kept the account instead of deleting it. */
+export type PurgeRetainedReason = "other_memberships" | "platform_admin";
+
 /** Full account delete for a removed user, only when this was their last org (edge fn).
- *  Returns { retained: true } (no delete) when the user still belongs to another org. */
+ *  Returns { retained: true, reason } (no delete) when the user still belongs to another
+ *  org, or is a platform admin — the caller uses `reason` to explain which. */
 export async function purgeRemovedUser(
   client: SupabaseClient<Database>, orgId: string, userId: string,
-): Promise<{ deleted: boolean; retained: boolean }> {
+): Promise<{ deleted: boolean; retained: boolean; reason?: PurgeRetainedReason }> {
   const { data, error } = await client.functions.invoke("org-purge-removed-user", {
     body: { org_id: orgId, user_id: userId },
   });
   // A non-2xx edge response surfaces as `error`; read the JSON body so the caller sees the
   // real reason (not_removed / anonymize_failed / delete_failed), not "non-2xx status code".
   if (error) throw new Error(await edgeErrorMessage(error));
-  const payload = data as { error?: string; deleted?: boolean; retained?: boolean };
+  const payload = data as { error?: string; deleted?: boolean; retained?: boolean; reason?: PurgeRetainedReason };
   if (payload?.error) throw new Error(payload.error);
-  return { deleted: !!payload?.deleted, retained: !!payload?.retained };
+  return { deleted: !!payload?.deleted, retained: !!payload?.retained, reason: payload?.reason };
 }
 
 /** Add or remove a single role for a member (admin-only RPC; guards the last admin). */

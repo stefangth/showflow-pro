@@ -303,11 +303,15 @@ export function PeopleTab() {
                 purge.mutate(deleteTarget.user_id, {
                   onSuccess: (res) => {
                     // The retained branch does NOT delete the account or the tombstone (the
-                    // user was re-added elsewhere between fetch and click), so don't claim it
-                    // was removed from the list; the row stays as a Clear-from-list entry.
-                    toast.success(res.retained
-                      ? "Account kept. They still belong to another organization."
-                      : "Account deleted");
+                    // target was re-added elsewhere, or is a platform admin, between fetch and
+                    // click), so don't claim it was removed; the row stays as a Clear entry.
+                    if (res.retained) {
+                      toast.success(res.reason === "platform_admin"
+                        ? "Account kept. Platform administrators can't be deleted here."
+                        : "Account kept. They still belong to another organization.");
+                    } else {
+                      toast.success("Account deleted");
+                    }
                     setDeleteTarget(null);
                     setDeleteText("");
                   },

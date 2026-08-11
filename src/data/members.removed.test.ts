@@ -27,8 +27,8 @@ describe("mutations", () => {
     expect(await purgeRemovedUser(fake as never, "org1", "u1")).toEqual({ deleted: true, retained: false });
     expect(fake.calls).toContainEqual({ table: "fn:org-purge-removed-user", method: "invoke", args: [{ org_id: "org1", user_id: "u1" }] });
   });
-  it("purgeRemovedUser reports a retained (kept) account", async () => {
-    const fake = createFakeSupabase({ "fn:org-purge-removed-user": { data: { retained: true, reason: "other_memberships" }, error: null } });
-    expect(await purgeRemovedUser(fake as never, "org1", "u1")).toEqual({ deleted: false, retained: true });
+  it("purgeRemovedUser reports a retained (kept) account and threads the reason", async () => {
+    const fake = createFakeSupabase({ "fn:org-purge-removed-user": { data: { retained: true, reason: "platform_admin" }, error: null } });
+    expect(await purgeRemovedUser(fake as never, "org1", "u1")).toEqual({ deleted: false, retained: true, reason: "platform_admin" });
   });
 });
