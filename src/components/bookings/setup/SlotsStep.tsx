@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchShowsWithSlots } from "@/data/settings";
-import { updateShow } from "@/data/shows";
+import { saveShowSlots, type SlotDraft } from "@/data/slots";
 import { showSlots, activeShows } from "@/lib/settings";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,8 +13,10 @@ import { ROUTES } from "@/config/app.config";
 
 type Draft = Record<string, { main: string; us: string }>;
 
-/** The rail's slots panel: number inputs for each show still missing a slot count.
- *  Saves through `updateShow`, the same path the Productions page uses. */
+/** The rail's slots panel: number inputs for each show still missing a main count.
+ *  Saves through `saveShowSlots`, writing `show_slots` rows (the same authoring model
+ *  ShowFormDialog uses); the recompute trigger derives the show's main/understudy caches.
+ *  Understudy is optional here: a blank or zero u/s creates no understudy slot. */
 export function SlotsStep({ orgId, onDone }: { orgId: string | null; onDone: () => void }) {
   const qc = useQueryClient();
   const shows = useQuery({
@@ -31,18 +33,29 @@ export function SlotsStep({ orgId, onDone }: { orgId: string | null; onDone: () 
 
   const save = useMutation({
     mutationFn: async () => {
+      if (!orgId) throw new Error("No active organization");
       const edits = unset
         .map((s) => ({ id: s.id, main: draft[s.id]?.main, us: draft[s.id]?.us }))
-        .filter((e) => e.main !== undefined && e.main !== "" && e.us !== undefined && e.us !== "");
-      if (edits.length === 0) throw new Error("Enter a main and understudy count");
+        .filter((e) => e.main !== undefined && e.main !== "");
+      if (edits.length === 0) throw new Error("Enter a main cast count");
       await Promise.all(
-        edits.map((e) =>
-          updateShow(supabase, e.id, { main_cast_slots: Number(e.main), understudy_slots: Number(e.us) }),
-        ),
+        edits.map((e) => {
+          // A Main cast slot always; an Understudy slot only when a positive u/s count is
+          // entered. Client-minted ids make a retry idempotent (saveShowSlots resolves an
+          // already-landed row to a no-op update instead of a duplicate insert).
+          const slots: SlotDraft[] = [
+            { id: crypto.randomUUID(), name: "Main cast", count: Number(e.main), kind: "main", skillIds: [] },
+          ];
+          if (e.us !== undefined && e.us !== "" && Number(e.us) > 0) {
+            slots.push({ id: crypto.randomUUID(), name: "Understudy", count: Number(e.us), kind: "understudy", skillIds: [] });
+          }
+          return saveShowSlots(supabase, { showId: e.id, orgId, slots });
+        }),
       );
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["shows"] });
+      qc.invalidateQueries({ queryKey: ["show-dates"] });
       toast.success("Slot counts saved");
       onDone();
     },
