@@ -44,19 +44,30 @@ export interface MatrixRow {
 
 /** The cross-organisation answer, stated once for all three roles.
  *
- *  Written narrowly on purpose. "A restrictive policy on every table" is not
- *  true and the evidence this page cites says so out loud:
- *  supabase/tests/rls/org_coverage.sql:11-19 lists four org_id-carrying
- *  tables it deliberately excludes from the org_isolation assertion. A
- *  reviewer who greps org_isolation finds fewer tables than "every" promises
- *  and stops trusting the rest of the page. The answer itself does not move:
- *  all four still refuse the cross-organisation read, by a different
- *  mechanism, and this says which. */
+ *  One clause, because this is a table cell. Both surfaces lay the matrix out
+ *  `auto`, so the widest Mechanism cell takes the width: carrying the
+ *  exclusion list here as well made this cell 54 words against 3-15 everywhere
+ *  else, which collapsed the Data column to 147px in the app and wrapped five
+ *  of eight row labels. The qualifier is not dropped — it is
+ *  CROSS_ORG_EXCEPTIONS_NOTE below, rendered under the table. */
 const NO_CROSS_ORG_NOTE =
-  "A restrictive policy blocks the read on every table that carries your organisation's records. " +
-  "Four sit outside it by name: membership and invitation rows, which are checked against the same " +
-  "organisation instead because gating them on the membership they define would be circular, and two " +
-  "platform logs no organisation member can read at all.";
+  "A restrictive policy blocks the read on every table that carries your organisation's records.";
+
+/** The exclusions behind NO_CROSS_ORG_NOTE, published as a footnote under the
+ *  matrix rather than inside a cell.
+ *
+ *  It has to be published somewhere. "A restrictive policy on every table" is
+ *  not true and the evidence this page cites says so out loud:
+ *  supabase/tests/rls/org_coverage.sql:11-19 lists four org_id-carrying tables
+ *  it deliberately excludes from the org_isolation assertion. A reviewer who
+ *  greps org_isolation finds fewer tables than "every" promises and stops
+ *  trusting the rest of the page. The answer itself does not move: all four
+ *  still refuse the cross-organisation read, by a different mechanism, and
+ *  this says which. */
+export const CROSS_ORG_EXCEPTIONS_NOTE =
+  "Four tables sit outside that restrictive policy by name: membership and invitation rows, which are " +
+  "checked against the same organisation instead because gating them on the membership they define " +
+  "would be circular, and two platform logs no organisation member can read at all.";
 
 /** Who can read what, and the mechanism that decides it.
  *  Each cell is asserted against the RLS policy that produces it. */
@@ -440,7 +451,9 @@ export const CONTROLS: Control[] = [
     // "One restrictive database policy per table" said more than the cited
     // test does: org_coverage.sql names four org_id-carrying tables it
     // excludes on purpose. Naming them here costs a clause and keeps the
-    // claim checkable against the file it points at. See NO_CROSS_ORG_NOTE.
+    // claim checkable against the file it points at. This card has the room
+    // for the clause; the matrix cell does not, which is why the same fact is
+    // CROSS_ORG_EXCEPTIONS_NOTE there and renders under the table.
     claim:
       "Every table holding your data carries its organisation, down to individual chat messages and audit rows. One restrictive database policy on each of them means a session reads only organisations it belongs to. Four tables sit outside that policy by name, and refuse the cross-organisation read another way: membership and invitation rows are checked against the same organisation, and two platform logs are readable by no organisation member. Restrictive policies filter; they never grant.",
     evidence:

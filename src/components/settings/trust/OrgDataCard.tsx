@@ -44,7 +44,17 @@ function Tile({
   value: string;
 }) {
   return (
-    <div className="flex flex-col gap-1.5 rounded-lg bg-muted/50 p-3.5">
+    // A hairline, not a hint. `bg-muted/50` with no border and no shadow drew
+    // no container at all: sampled from the running app across the tile's top
+    // edge, the step was card rgb(255,255,255) -> tile rgb(252,251,250) in
+    // light and rgb(21,20,25) -> rgb(25,24,29) in dark — 1.03:1 and 1.04:1,
+    // three units of grey and nothing else. The public page draws these same
+    // four facts as real cards (var(--surface) + 0.5px var(--line) +
+    // var(--shadow-1) on the page ground), so the most prominent shared
+    // element on the two surfaces was a tile on one and an invisible one on
+    // the other. `border-border` is the app's equivalent of `--line`; the fill
+    // goes to full `bg-muted` so the edge is not the only thing carrying it.
+    <div className="flex flex-col gap-1.5 rounded-lg border border-border bg-muted p-3.5">
       <div className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
         {label}
       </div>
@@ -100,16 +110,16 @@ export function OrgDataCard() {
         {/* Two-up is the ceiling here, and `lg:grid-cols-4` was the trap
          *  `VisibilityMatrix.tsx` documents one file over: Tailwind's `lg:` is
          *  a VIEWPORT query, but this tab renders inside the app sidebar plus
-         *  the settings nav column, and `SettingsPage`'s `max-w-5xl` caps the
-         *  content column at 772px no matter how wide the display is.
-         *  Measured live in the running app (content column / tile width):
-         *    768 -> 468 / 207   1024 -> 504 / 107   1280 -> 760 / 171
-         *    1440 -> 772 / 174  1920 -> 772 / 174
-         *  So a 4-up row never had more than 174px per tile and had 107px at
-         *  1024, where "OUTSIDE REACH" wrapped its own label and the citation
-         *  was cut at the card edge. Pushing the 4-up to `xl:`/`2xl:` would
-         *  not help: the column is already at its 772px maximum there. Two-up
-         *  gives 366px at the maximum and 226px at 1024. */}
+         *  the settings nav column, and `SettingsPage`'s cap takes its own
+         *  width out of that again, so the tab's content column is far
+         *  narrower than the display. Measured live in the running app
+         *  (content column / two-up tile width):
+         *    768 -> 468 / 207   1024 -> 504 / 225   1280 -> 760 / 353
+         *    1440 -> 920 / 433  1920 -> 1028 / 487
+         *  A 4-up row therefore had ~107px per tile at 1024, where "OUTSIDE
+         *  REACH" wrapped its own label and the citation was cut at the card
+         *  edge, and ~211px at the 1920 ceiling. Two-up clears 200px at every
+         *  width the tab is shown at. */}
         <div className="grid gap-3 sm:grid-cols-2">
           {/* The region is imported, not retyped. It used to be a JSX literal
            *  ("EU · Ireland") saying the same thing as the public page's KPI

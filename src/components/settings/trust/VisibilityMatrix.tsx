@@ -1,5 +1,10 @@
 import { useRef, useState, type KeyboardEvent } from "react";
-import { VISIBILITY_MATRIX, TRUST_ROLES, type TrustRole } from "@/lib/trust/facts";
+import {
+  CROSS_ORG_EXCEPTIONS_NOTE,
+  VISIBILITY_MATRIX,
+  TRUST_ROLES,
+  type TrustRole,
+} from "@/lib/trust/facts";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { AccessTone } from "@/lib/trust/facts";
@@ -233,6 +238,17 @@ export function VisibilityMatrix() {
           );
         })}
       </div>
+
+      {/* The four-table exclusion behind the cross-organisation row, held out
+       *  of the table on purpose. Both surfaces lay the matrix out `auto`, so
+       *  the widest Mechanism cell takes the width: as a 54-word cell against
+       *  3-15 words everywhere else it squeezed the Data column to 147px at a
+       *  1440px viewport and wrapped five of the eight row labels onto two and
+       *  three lines, running the table 108px taller. It is the same sentence
+       *  and it is still published — one row below, where it has the column's
+       *  full width to be read in, and where it serves the restacked card list
+       *  as well as the table. */}
+      <p className="text-xs leading-4 text-muted-foreground">{CROSS_ORG_EXCEPTIONS_NOTE}</p>
     </div>
   );
 }

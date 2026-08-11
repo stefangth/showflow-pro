@@ -259,7 +259,18 @@ export default function SettingsPage() {
   ];
 
   return (
-    <div className="space-y-6 max-w-5xl">
+    // The cap is a reading measure, not a frame: it has to leave the page
+    // flush with `main`'s own padding at the widths people actually use.
+    // `max-w-5xl` alone stopped this page 172px short of the viewport at 1440
+    // (measured: root 1024px ending at x=1268 with `main` padded to 1416)
+    // while every other page in the app, and Settings itself at 1280 and
+    // below, sits 24px from the edge. Since the nav rail and the 32px gap come
+    // out of this width, the tab's content column was held to 772px however
+    // wide the display was. Raising the cap at `xl` gives 1440 the same 24px
+    // margin as every narrower width and hands the tab 920px; the cap still
+    // exists so a 1920px display gets a 1028px column rather than a 1400px
+    // one, which is where paragraph lines stop being readable.
+    <div className="space-y-6 max-w-5xl xl:max-w-7xl">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="font-display text-[32px] font-semibold tracking-tight flex items-center gap-3">

@@ -207,20 +207,21 @@
       "admin": {
         "value": "No access",
         "tone": "none",
-        "note": "A restrictive policy blocks the read on every table that carries your organisation's records. Four sit outside it by name: membership and invitation rows, which are checked against the same organisation instead because gating them on the membership they define would be circular, and two platform logs no organisation member can read at all."
+        "note": "A restrictive policy blocks the read on every table that carries your organisation's records."
       },
       "producer": {
         "value": "No access",
         "tone": "none",
-        "note": "A restrictive policy blocks the read on every table that carries your organisation's records. Four sit outside it by name: membership and invitation rows, which are checked against the same organisation instead because gating them on the membership they define would be circular, and two platform logs no organisation member can read at all."
+        "note": "A restrictive policy blocks the read on every table that carries your organisation's records."
       },
       "artist": {
         "value": "No access",
         "tone": "none",
-        "note": "A restrictive policy blocks the read on every table that carries your organisation's records. Four sit outside it by name: membership and invitation rows, which are checked against the same organisation instead because gating them on the membership they define would be circular, and two platform logs no organisation member can read at all."
+        "note": "A restrictive policy blocks the read on every table that carries your organisation's records."
       }
     }
   ],
+  "crossOrgExceptionsNote": "Four tables sit outside that restrictive policy by name: membership and invitation rows, which are checked against the same organisation instead because gating them on the membership they define would be circular, and two platform logs no organisation member can read at all.",
   "subprocessors": [
     {
       "name": "Supabase",

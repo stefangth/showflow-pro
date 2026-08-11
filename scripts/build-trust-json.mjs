@@ -83,6 +83,12 @@ const payload = {
   kpis: facts.TRUST_KPIS,
   controls: facts.CONTROLS,
   matrix: facts.VISIBILITY_MATRIX,
+  // The exclusions behind the cross-organisation row's mechanism cell. It
+  // travels in the contract as its own field because it is a footnote UNDER
+  // the matrix on both surfaces, not a cell: inside the cell it was 54 words
+  // against 3-15 everywhere else and took the table's width on each page. See
+  // CROSS_ORG_EXCEPTIONS_NOTE in src/lib/trust/facts.ts.
+  crossOrgExceptionsNote: facts.CROSS_ORG_EXCEPTIONS_NOTE,
   subprocessors: facts.SUBPROCESSORS,
   transferBasisNote: facts.TRANSFER_BASIS_NOTE,
   retention: facts.RETENTION,
@@ -117,6 +123,15 @@ if (typeof payload.capabilities.note !== "string" || !payload.capabilities.note)
 
 if (typeof payload.retentionBasisNote !== "string" || !payload.retentionBasisNote) {
   throw new Error("src/lib/trust/facts.ts must export RETENTION_BASIS_NOTE as a non-empty string.");
+}
+
+// Dropping this string would silently narrow a published claim: the matrix
+// cell says "every table that carries your organisation's records", and this
+// is the sentence that names the four which sit outside that policy.
+if (typeof payload.crossOrgExceptionsNote !== "string" || !payload.crossOrgExceptionsNote) {
+  throw new Error(
+    "src/lib/trust/facts.ts must export CROSS_ORG_EXCEPTIONS_NOTE as a non-empty string.",
+  );
 }
 
 // A retention row without a basis publishes a bare period, which reads as a

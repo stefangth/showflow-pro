@@ -106,12 +106,41 @@ describe("OrgDataCard", () => {
     const note = screen.getByText(/supabase\/tests\/rls\/org_isolation\.sql/);
     expect(note.className).toMatch(/\bbreak-words\b/);
     // ...and the tile grid must not go 4-up. `lg:` is a viewport query, but
-    // SettingsPage caps this tab's content column at 772px however wide the
-    // display is, so a 4-up row had 174px per tile at best and 107px at a
-    // 1024px viewport, where "OUTSIDE REACH" wrapped its own label.
+    // the app sidebar, the settings nav column and SettingsPage's own cap all
+    // come out of this tab's content column first: measured, it is 504px at a
+    // 1024px viewport and 1028px at the 1920px ceiling. A 4-up row therefore
+    // had 107px per tile at 1024, where "OUTSIDE REACH" wrapped its own label.
     const grid = container.querySelector('[class*="grid"][class*="grid-cols"]');
     expect(grid).not.toBeNull();
     expect(grid!.className).not.toMatch(/grid-cols-(3|4)\b/);
+  });
+
+  // The four tiles are the first thing anyone sees on either trust surface, and
+  // the public page draws them as real cards (var(--surface) + a 0.5px
+  // var(--line) hairline + var(--shadow-1) on the page ground). The app's tile
+  // was `bg-muted/50` with no border and no shadow: sampled from the running
+  // app, card rgb(255,255,255) -> tile rgb(252,251,250) in light and
+  // rgb(21,20,25) -> rgb(25,24,29) in dark, i.e. 1.03:1 and 1.04:1. Three units
+  // of grey is not a container. jsdom has no layout engine, so the guard is
+  // that the tile still declares an edge of its own.
+  it("draws the tiles as containers, not as a three-unit shift in grey", () => {
+    statsMock.mockReturnValue({ data: undefined, isLoading: true, isError: false });
+    membersMock.mockReturnValue({ data: undefined, isLoading: true, isError: false });
+
+    const { container } = renderWithProviders(<OrgDataCard />);
+
+    const grid = container.querySelector('[class*="grid"][class*="grid-cols"]');
+    expect(grid).not.toBeNull();
+    const tiles = [...grid!.children];
+    expect(tiles).toHaveLength(4);
+    for (const tile of tiles) {
+      expect(tile.className, "every tile needs a hairline or an elevation").toMatch(
+        /\bborder\b|\bshadow-/,
+      );
+      // A half-opacity fill on top of a borderless tile is what measured
+      // 1.03:1. Whatever the fill is, it cannot be the only thing there.
+      expect(tile.className).not.toMatch(/\bbg-muted\/50\b/);
+    }
   });
 
   it("shows the dash on error, and does not blank the rest of the card", () => {

@@ -161,13 +161,13 @@ describe("TrustDataTab", () => {
   });
 
   // Tailwind's `lg:` is a VIEWPORT query, but this tab renders inside the app
-  // sidebar plus the settings nav column and SettingsPage's `max-w-5xl` caps
-  // its content column at 772px. Measured in the running app: `lg:grid-cols-2`
-  // split a 504px column into 246px halves at a 1024px viewport, and the
-  // "Request an organisation export" button overflowed its own Card by 21px —
-  // a control sitting outside the container it belongs to. At `xl` the column
-  // is 760px, so each half is 374px and the widest control fits. jsdom cannot
-  // re-measure that, so this pins the breakpoint the measurement chose.
+  // sidebar plus the settings nav column, and SettingsPage's own cap comes out
+  // of the remainder. Measured in the running app: `lg:grid-cols-2` split a
+  // 504px column into 246px halves at a 1024px viewport, and the "Request an
+  // organisation export" button overflowed its own Card by 21px — a control
+  // sitting outside the container it belongs to. At `xl` the column is 760px,
+  // so each half is 374px and the widest control fits. jsdom cannot re-measure
+  // that, so this pins the breakpoint the measurement chose.
   it("splits into two columns at xl, not lg, because the column is only 504px at lg", () => {
     const { container } = renderTab();
 

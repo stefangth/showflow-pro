@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { screen, within } from "@testing-library/react";
 import { renderWithProviders } from "@/test/renderWithProviders";
-import { VISIBILITY_MATRIX } from "@/lib/trust/facts";
+import { CROSS_ORG_EXCEPTIONS_NOTE, VISIBILITY_MATRIX } from "@/lib/trust/facts";
 import { VisibilityMatrix } from "./VisibilityMatrix";
 
 describe("VisibilityMatrix responsive breakpoint", () => {
@@ -119,5 +119,34 @@ describe("VisibilityMatrix access tones", () => {
     expect(unconditional).not.toContain("ring-ring");
     expect(unconditional).not.toContain("ring-inset");
     expect(selected!.className).toMatch(/\bfocus-visible:ring-ring\b/);
+  });
+});
+
+describe("VisibilityMatrix mechanism column budget", () => {
+  // Both tables lay out `auto`, so the widest Mechanism cell takes the width.
+  // The cross-organisation cell used to carry the four-table exclusion list in
+  // one 54-word run while every other cell is 3-15 words. Measured in the
+  // running app at 1440: the Data column collapsed to 147px and five of eight
+  // row labels wrapped to two and three lines, running the table to 542px tall
+  // where a short note gives 233px and 434px. The qualifier is not dropped —
+  // it renders as a footnote under the table, where it can be read without a
+  // 486px column.
+  it("keeps every mechanism cell to a clause a table column can hold", () => {
+    const words = (s: string) => s.trim().split(/\s+/).length;
+    const cells = VISIBILITY_MATRIX.flatMap((row) => [row.admin, row.producer, row.artist]);
+
+    for (const cell of cells) {
+      expect(words(cell.note), `mechanism note too long for a cell: "${cell.note}"`).toBeLessThanOrEqual(25);
+    }
+  });
+
+  it("renders the cross-organisation exclusions once, outside the table", () => {
+    const { container } = renderWithProviders(<VisibilityMatrix />);
+
+    const footnotes = screen.getAllByText(CROSS_ORG_EXCEPTIONS_NOTE);
+    expect(footnotes, "one footnote, shared by the table and the restacked list").toHaveLength(1);
+    expect(footnotes[0].closest("table"), "the qualifier must not sit in a cell").toBeNull();
+    // It belongs to the matrix, not to whichever card follows it.
+    expect(container.contains(footnotes[0])).toBe(true);
   });
 });

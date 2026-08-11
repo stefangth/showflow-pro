@@ -9,10 +9,14 @@ export function DocumentsCard() {
   return (
     <Card>
       <CardContent className="space-y-3 p-5">
-        <div className="flex items-center justify-between gap-3">
-          <h3 className="text-base font-semibold tracking-tight">Documents</h3>
-          <span className="font-mono text-xs text-muted-foreground">{DOCUMENTS_NOTE}</span>
-        </div>
+        {/* The same header every other card on this tab uses (see
+         *  RetentionCard): an <h3> over a muted <p>. It used to be a
+         *  non-wrapping flex row with the lede on the right, which put a 24px
+         *  heading against a two-line block with neither baseline aligned at
+         *  1440, and squeezed the heading to ~138px beside a three-line note
+         *  at 375. It was also the only running prose in `font-mono` here. */}
+        <h3 className="text-base font-semibold tracking-tight">Documents</h3>
+        <p className="text-sm text-muted-foreground">{DOCUMENTS_NOTE}</p>
         <ul>
           {DOCUMENTS.map((doc) => {
             const isMail = doc.href.startsWith("mailto:");
