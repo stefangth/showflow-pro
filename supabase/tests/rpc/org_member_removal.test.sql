@@ -4,7 +4,7 @@
 -- Source: 20260811103008_org_member_removals.sql.
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT plan(13);
+SELECT plan(15);
 
 CREATE OR REPLACE FUNCTION pg_temp.act_as(_uid text) RETURNS void LANGUAGE plpgsql AS $$
 BEGIN
@@ -120,6 +120,34 @@ RESET ROLE;
 SELECT is(
   has_function_privilege('anon','public.list_removed_members(uuid)','execute'),
   false, 'anon cannot execute list_removed_members');
+
+-- 10. remove_org_member rejects a NON-member (an admin cannot fabricate a tombstone for
+--     an arbitrary user and then Delete-account them globally).
+SET session_replication_role = replica;
+INSERT INTO auth.users (id, aud, role, email, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
+  VALUES ('33333333-3333-3333-3333-333333333333','authenticated','authenticated','outsider@t.test',now(),'{"provider":"email"}','{}',now(),now());
+SET session_replication_role = DEFAULT;
+SELECT pg_temp.act_as('11111111-1111-1111-1111-111111111111');
+SET LOCAL ROLE authenticated;
+SELECT throws_ok(
+  $$ SELECT public.remove_org_member('aaaaaaaa-0000-0000-0000-000000000001','33333333-3333-3333-3333-333333333333') $$,
+  'P0002', 'User is not a member of this organization',
+  'remove_org_member rejects a non-member');
+
+-- 11. Re-adding a membership clears the tombstone (trigger): make them a member, remove
+--     (tombstone written), then insert a fresh membership and assert the tombstone is gone.
+RESET ROLE;
+INSERT INTO public.org_memberships (org_id, user_id, role)
+  VALUES ('aaaaaaaa-0000-0000-0000-000000000001','33333333-3333-3333-3333-333333333333','artist');
+SELECT pg_temp.act_as('11111111-1111-1111-1111-111111111111');
+SET LOCAL ROLE authenticated;
+SELECT public.remove_org_member('aaaaaaaa-0000-0000-0000-000000000001','33333333-3333-3333-3333-333333333333');
+RESET ROLE;
+INSERT INTO public.org_memberships (org_id, user_id, role)
+  VALUES ('aaaaaaaa-0000-0000-0000-000000000001','33333333-3333-3333-3333-333333333333','artist');
+SELECT is_empty(
+  $$ SELECT 1 FROM public.org_member_removals WHERE org_id='aaaaaaaa-0000-0000-0000-000000000001' AND user_id='33333333-3333-3333-3333-333333333333' $$,
+  're-adding a membership clears the tombstone');
 
 SELECT * FROM finish();
 ROLLBACK;

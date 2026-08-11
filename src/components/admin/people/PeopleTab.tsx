@@ -78,6 +78,11 @@ export function PeopleTab() {
     );
   }, [search, removedMembers]);
   const hasSearch = search.trim().length > 0;
+  // Announced count must include removed-member matches, which render alongside people.
+  const searchMatchCount = filteredPeople.length + filteredRemoved.length;
+  // The typed-confirm token falls back to the user id so a tombstone with a null email
+  // snapshot (e.g. a phone-only account) is still confirmable, not permanently disabled.
+  const deleteConfirmToken = deleteTarget?.email ?? deleteTarget?.user_id ?? "";
   // Duplicate detection needs both lists; if either query is still loading or has
   // errored (a state that never self-resolves), hold invites so a real duplicate
   // can't slip through an empty members/invites list. The hint explains the disabled
@@ -148,7 +153,7 @@ export function PeopleTab() {
           {/* Announce filter results to assistive tech without moving focus (WCAG 4.1.3). */}
           <p className="sr-only" role="status" aria-live="polite">
             {hasSearch
-              ? `${filteredPeople.length} ${filteredPeople.length === 1 ? "person matches" : "people match"} your search${filteredHistory.length > 0 ? `, plus ${filteredHistory.length} in invitation history` : ""}.`
+              ? `${searchMatchCount} ${searchMatchCount === 1 ? "person matches" : "people match"} your search${filteredHistory.length > 0 ? `, plus ${filteredHistory.length} in invitation history` : ""}.`
               : ""}
           </p>
           {invitesError && (
@@ -278,12 +283,12 @@ export function PeopleTab() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete this account?</AlertDialogTitle>
             <AlertDialogDescription>
-              {deleteTarget?.email} has no other organization, so this erases their account everywhere: login removed and personal data anonymized. This cannot be undone. Type{" "}
-              <span className="font-medium">{deleteTarget?.email}</span> to confirm.
+              {deleteTarget?.display_name || deleteTarget?.email || "This account"} has no other organization, so this erases their account everywhere: login removed and personal data anonymized. This cannot be undone. Type{" "}
+              <span className="font-medium">{deleteConfirmToken}</span> to confirm.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <Input
-            placeholder={deleteTarget?.email ?? ""}
+            placeholder={deleteConfirmToken}
             value={deleteText}
             onChange={(e) => setDeleteText(e.target.value)}
             aria-label="Type the email to confirm deletion"
@@ -291,13 +296,18 @@ export function PeopleTab() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              disabled={!deleteTarget || deleteText !== deleteTarget.email || purge.isPending}
+              disabled={!deleteTarget || deleteText !== deleteConfirmToken || purge.isPending}
               onClick={(e) => {
                 e.preventDefault();
                 if (!deleteTarget) return;
                 purge.mutate(deleteTarget.user_id, {
                   onSuccess: (res) => {
-                    toast.success(res.retained ? "Removed from list (account kept)" : "Account deleted");
+                    // The retained branch does NOT delete the account or the tombstone (the
+                    // user was re-added elsewhere between fetch and click), so don't claim it
+                    // was removed from the list; the row stays as a Clear-from-list entry.
+                    toast.success(res.retained
+                      ? "Account kept. They still belong to another organization."
+                      : "Account deleted");
                     setDeleteTarget(null);
                     setDeleteText("");
                   },

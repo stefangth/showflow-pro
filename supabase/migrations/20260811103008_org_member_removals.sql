@@ -57,6 +57,12 @@ begin
 
   select array_agg(role order by role) into v_roles
     from public.org_memberships where org_id = p_org and user_id = p_user;
+  -- Only an actual member can be tombstoned. Without this, an admin could fabricate a
+  -- tombstone for any user_id (roles NULL, deleting nothing) and then Delete-account any
+  -- membership-less user globally via admin_anonymize_removed_user.
+  if v_roles is null then
+    raise exception 'User is not a member of this organization' using errcode = 'P0002';
+  end if;
   select u.email::text, p.display_name into v_email, v_name
     from auth.users u left join public.profiles p on p.user_id = u.id
     where u.id = p_user;
@@ -132,8 +138,10 @@ grant execute on function public.restore_org_member(uuid, uuid) to authenticated
 grant execute on function public.clear_removed_member(uuid, uuid) to authenticated;
 
 -- Private: the anonymization statements only (no auth check). Transcribed verbatim from
--- anonymize_user (20260711011420) so the two guarded wrappers below share ONE body and
--- can never drift. Revoked from everyone so it is reachable only via those wrappers.
+-- the CURRENT anonymize_user body in 20260723183038 (which added the hire_order_signatures
+-- and hire_orders null-outs — do not reconcile against the older 20260711011420) so the two
+-- guarded wrappers below share ONE body and can never drift. Revoked from everyone so it is
+-- reachable only via those wrappers.
 create or replace function public._anonymize_user_data(p_user uuid)
 returns void language plpgsql security definer set search_path = public as $$
 declare v_email text;
@@ -201,3 +209,20 @@ $$;
 
 revoke all on function public.admin_anonymize_removed_user(uuid, uuid) from public, anon;
 grant execute on function public.admin_anonymize_removed_user(uuid, uuid) to authenticated;
+
+-- Re-adding a removed member (accept_invitation, set_org_member_role/platform_set_membership
+-- add, or Undo) must clear their tombstone, else list_removed_members keeps showing them and
+-- they render in both Members and Recently removed. A trigger on org_memberships INSERT is the
+-- one place every re-add path funnels through. restore_org_member also deletes the tombstone
+-- explicitly, so its own re-insert just makes this a harmless no-op.
+create or replace function public.clear_removal_tombstone_on_membership()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  delete from public.org_member_removals where org_id = new.org_id and user_id = new.user_id;
+  return new;
+end;
+$$;
+
+create trigger clear_removal_tombstone_after_membership_insert
+  after insert on public.org_memberships
+  for each row execute function public.clear_removal_tombstone_on_membership();

@@ -80,6 +80,21 @@ export async function clearRemovedMember(
   if (error) throw error;
 }
 
+/** supabase-js sets a generic FunctionsHttpError on a non-2xx edge response and leaves
+ *  `data` null, so the real `{ error }` reason is only reachable via error.context (the raw
+ *  Response). Fall back to the generic message when the body can't be read. */
+async function edgeErrorMessage(error: unknown): Promise<string> {
+  const ctx = (error as { context?: unknown }).context;
+  if (ctx instanceof Response) {
+    try {
+      const body = await ctx.clone().json();
+      const reason = (body as { error?: unknown })?.error;
+      if (typeof reason === "string" && reason) return reason;
+    } catch { /* body not JSON / already read — fall through */ }
+  }
+  return error instanceof Error ? error.message : "Something went wrong";
+}
+
 /** Full account delete for a removed user, only when this was their last org (edge fn).
  *  Returns { retained: true } (no delete) when the user still belongs to another org. */
 export async function purgeRemovedUser(
@@ -88,7 +103,9 @@ export async function purgeRemovedUser(
   const { data, error } = await client.functions.invoke("org-purge-removed-user", {
     body: { org_id: orgId, user_id: userId },
   });
-  if (error) throw error;
+  // A non-2xx edge response surfaces as `error`; read the JSON body so the caller sees the
+  // real reason (not_removed / anonymize_failed / delete_failed), not "non-2xx status code".
+  if (error) throw new Error(await edgeErrorMessage(error));
   const payload = data as { error?: string; deleted?: boolean; retained?: boolean };
   if (payload?.error) throw new Error(payload.error);
   return { deleted: !!payload?.deleted, retained: !!payload?.retained };
