@@ -67,17 +67,27 @@ Statuses: `open` · `in progress` · `shipped (branch)` · `merged` · `supersed
 Plan: `docs/superpowers/plans/2026-08-10-admin-journey-gaps.md` (2 waves, implementer+critic
 loops to S-tier, 5-round cap).
 
-## Status — Production team (next up)
+## Status — Production team (16 items, branch: `claude/user-journey-gaps-context-e7f182`)
 
-P0.1 what is ShowFlow (email; A0.1 fix covers the shared template — verify producer wording) ·
-P0.2 role vs admin difference (needs a user-facing capabilities surface) · P2.3 who exactly is
-my admin (product: expose admin names to members; deliberately unshipped, RBAC decision) ·
-P3.1 dates source (sync vs manual) · P3.2 confirm consequences · P3.3 soft-booked on-surface
-explanation · P3.4 tier concept on date sheet · P3.5 outside-cast booking rule · P3.6 when do
-artists hear (partially covered by A4.4's pattern; extend to confirm/cancel actions) ·
-P4.2 tier-at-risk recovery actions + email · P4.3 understudy deep-link (A4.1 covers) ·
-P4.5 void-then-redraft path · P4.6 did the artist see it · P5.1 cancel preview of understudy
-promotion · P5.2 cancel: who gets told. All `open`.
+| ID | Item | Status | Notes |
+|---|---|---|---|
+| P0.1 | Email: what is ShowFlow (producer) | verified covered | admin rewrite already gives producers a real role line ("Your role is Production Team. You plan productions and show dates, and book artists into them."); no change |
+| P0.2 | Role vs admin difference | shipped (branch) | `PRODUCER_ROLE_NOTE` + "See what each role can do" link to Settings `?tab=docs` on the waiting card (real Link) and producer complete-state rules (WP-P2) |
+| P2.3 | Who exactly is my admin | shipped (branch) | new producer-safe `list_org_admin_names(p_org)` RPC (names only, member-guarded); waiting card names admins ("Ask Nadia or Tom…"), falls back to generic when none (WP-P2) |
+| P3.1 | Dates source (sync vs manual) | shipped (branch) | `DATE_SOURCE_NOTE` on ShowDateFormDialog create mode; holds whether or not Airtable is configured (WP-P1) |
+| P3.2 | Confirm consequences | shipped (branch) | `confirmConsequenceNote` under the cast confirm control; flow-aware + entitlement-gated (bare line when booking_flow off); named confirm toast (WP-P1) |
+| P3.3 | Soft-booked on-surface explanation | shipped (branch) | `SOFT_BOOKED_MEANING` tooltip on both the cockpit "Accepted" badge and the module-off "Soft-booked" badge (WP-P1) |
+| P3.4 | Tier concept on date sheet | shipped (branch) | `TIER_CONCEPT_NOTE` + "How casts and tiers work" link (`?tab=docs`) by the tier picker (WP-P1) |
+| P3.5 | Outside-cast booking rule | shipped (branch) | `unrestrictedEligibilityNote` above the book list, shown only when the date has no cast limits (WP-P1) |
+| P3.6 | When do artists hear | shipped (branch) | answered inline by the confirm consequence line + the cancel who-hears line (the two actions that had no narration); open-tier already narrated delivery (WP-P1) |
+| P4.2 | Tier-at-risk recovery + email | shipped (branch) | in-app message softened + recovery guidance ("open the next tier / direct-book"); new `tier-at-risk` email once per newly-at-risk (tier, recipient) pair, failure-swallowed; system-map updated (WP-P4) |
+| P4.3 | Understudy deep-link | already on main | `notificationTarget()` routes `understudy_promoted` + every producer notification to `/bookings`; no work |
+| P4.5 | Void-then-redraft path | shipped (branch) | void dialog reworded to point to issuing a fresh order (WP-P3, hire-orders module dark) |
+| P4.6 | Did the artist see it | shipped (branch) | `viewed_at` + `mark_hire_order_seen` RPC (in-app view stamp, privacy-safe, NOT email opens); "Seen" timeline step reached only when seen (WP-P3) |
+| P5.1 | Cancel preview of understudy promotion | shipped (branch) | per-row Cancel now an AlertDialog previewing understudy auto-promotion (flow-aware); whole-date "Cancel date" untouched (WP-P1) |
+| P5.2 | Cancel: who gets told | shipped (branch) | cancel dialog who-hears line reuses `scheduleChangeNote`; entitlement-honest (WP-P1) |
+
+Plan: `docs/superpowers/plans/2026-08-11-producer-journey-gaps.md` (Phase 0 DB foundation + 4 parallel WPs, subagent-driven implementer+reviewer loops). `verify:fast` + `verify:full` (pgTAP + e2e) green. Not merged (owner packages release).
 
 ## Status — Artist (after that)
 
@@ -138,6 +148,29 @@ email CTA · R5.4 deletion: hire orders/in-flight offers. All `open`.
   test naming nit (`user: null` case), setup-status call-arg assertions pin hook
   identity, sync-held email answers "did it work" but not per-record "why" (report
   carries it), coverage-row trigger text implies every-run sends.
+
+- 2026-08-11 (producer session done): all 16 production-team items closed on branch
+  `claude/user-journey-gaps-context-e7f182` (Phase 0 + 4 WPs, subagent-driven implementer+reviewer
+  loops). P4.3 was already on main; P0.1 verified covered (no change). Two additive migrations,
+  owner-approved via the before/after mockup + option picker: `list_org_admin_names` (P2.3, reverses
+  the earlier "deliberately unshipped RBAC" call, names-only + member-guarded) and `hire_orders.viewed_at`
+  + `mark_hire_order_seen` (P4.6). P4.6 "seen" is defined as the linked artist opening the order IN THE
+  APP (privacy-safe view stamp), explicitly NOT email-open pixel tracking.
+- 2026-08-11: recurring critic lesson (again): a point-of-action line must gate on the org's REAL
+  entitlement, not the flow's `active` flag or `useFeature` (which fails open during load + bypasses for
+  super-admins). Both the cancel who-hears line AND the confirm line were fixed to read `useEntitlements()`
+  gated on `!isLoading` (mirroring ShowDateFormDialog), so a super-admin on an un-entitled org never sees a
+  false "email at 20:00" promise. Two independent review passes (per-WP + whole-branch) each caught one half.
+- 2026-08-11: required-prop blast radius. Adding required props to a shared component (`CockpitCastList`)
+  broke a consumer outside the WP's file list (`DevCockpitHarness`), and a new hook export
+  (`useMarkHireOrderSeen`) broke a sibling test's `vi.mock`. Both were invisible to the WPs' targeted test
+  runs and only surfaced in the whole-tree `verify:fast`. Lesson for parallel disjoint-file WPs: the
+  authoritative full tsc + full vitest must run once after the wave; new required props / new module exports
+  need a sweep of every consumer and every `vi.mock` of that module.
+- 2026-08-11: owner to-do (infra): the local Supabase CLI (2.112.0) drops the unused
+  `__InternalSupabase.PostgrestVersion` marker on `gen types`; harmless (type-only, unused, tsc/mirrors
+  clean) but will flap as diff noise while CI's CLI is unpinned. Pin/upgrade the CI Supabase CLI when
+  convenient. Do NOT hand-restore the block (would violate the no-hand-edit-generated-types rule).
 
 ## End-of-session checklist
 
