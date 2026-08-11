@@ -62,7 +62,7 @@ export function SignHireOrderDialog({ orderId, orgId, open, onOpenChange }: Prop
         </DialogHeader>
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            You are agreeing to the fee, dates, and terms shown on this order. After you sign, your organization countersigns and emails you the final PDF.
+            You are agreeing to the fee, dates, and terms shown on this order. Adding your signature completes it, and we email you the final signed PDF.
           </p>
           <SignaturePad value={sig} onChange={setSig} disabled={sign.isPending} />
           <div className="flex items-start gap-2 rounded-lg border border-border p-3">

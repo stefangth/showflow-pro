@@ -45,6 +45,11 @@ describe("SignHireOrderDialog", () => {
   it("summarizes the terms and what happens after signing (R4.5)", () => {
     render(<SignHireOrderDialog orderId="ho1" orgId="o1" open onOpenChange={() => {}} />);
     expect(screen.getByText(/you are agreeing to the fee, dates, and terms shown on this order/i)).toBeInTheDocument();
-    expect(screen.getByText(/countersigns and emails you the final pdf/i)).toBeInTheDocument();
+    // The artist's in-app signature IS the countersignature (signOrder flips
+    // issued -> countersigned in the same request with signer_user_id = the
+    // artist and emails them the final PDF immediately) -- there is no
+    // subsequent org countersign step, so the copy must not claim one.
+    expect(screen.getByText(/adding your signature completes it, and we email you the final signed pdf/i)).toBeInTheDocument();
+    expect(screen.queryByText(/your organization countersigns/i)).not.toBeInTheDocument();
   });
 });

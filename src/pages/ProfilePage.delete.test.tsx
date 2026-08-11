@@ -72,4 +72,12 @@ describe("ProfilePage delete account", () => {
     expect(screen.getByText(/including any open offers, is kept but de-identified/i)).toBeInTheDocument();
     expect(screen.queryByText(/signed hire orders/i)).not.toBeInTheDocument();
   });
+
+  it("opens with an account/profile-scoped removal claim, not an absolute one (review fix round 2)", () => {
+    // "Your personal details are removed" read as absolute even though hire-order
+    // snapshots (hire_orders.data, signer_name/signer_email) retain PII after
+    // deletion. Tightened to scope the removal claim to the account/profile.
+    renderProfilePage();
+    expect(screen.getByText(/your account and profile details are removed/i)).toBeInTheDocument();
+  });
 });
