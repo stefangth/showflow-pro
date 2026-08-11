@@ -20,10 +20,10 @@ export function FirstRunHeaderCard(props: {
   const { eyebrow, headline, body, ghost, hint, progressLabel, progressHint, hasSteps, ticks, modules, onGhost } = props;
 
   return (
-    <div className="flex shrink-0 items-start gap-8 rounded-[var(--radius-xl)] border border-border bg-card px-6 py-[22px]">
+    <div className="flex shrink-0 flex-col gap-6 rounded-[var(--radius-xl)] border border-border bg-card px-6 py-[22px] lg:flex-row lg:items-start lg:gap-8">
       <div className="min-w-0 flex-1">
         <div className="text-[11px] font-semibold uppercase tracking-wider text-accent-600">{eyebrow}</div>
-        <div className="mt-2 max-w-[600px] text-[32px] font-semibold leading-[38px] tracking-[-0.6px] text-foreground text-pretty">
+        <div className="mt-2 max-w-[600px] text-[26px] font-semibold leading-[32px] tracking-[-0.6px] text-foreground text-pretty sm:text-[32px] sm:leading-[38px]">
           {headline}
         </div>
         <div className="mt-2 max-w-[520px] text-sm leading-[21px] text-muted-foreground text-pretty">{body}</div>
@@ -41,7 +41,7 @@ export function FirstRunHeaderCard(props: {
         </div>
       </div>
 
-      <div className="w-[264px] shrink-0 rounded-[var(--radius-l)] border border-border bg-muted p-3.5">
+      <div className="w-full shrink-0 rounded-[var(--radius-l)] border border-border bg-muted p-3.5 lg:w-[264px]">
         <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-faint)]">{progressLabel}</div>
         {hasSteps && (
           <div className="mt-2.5 flex gap-[3px]">

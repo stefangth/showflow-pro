@@ -16,7 +16,7 @@ export function FirstRunQueue(props: {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="mt-0.5 flex shrink-0 items-center gap-2">
+      <div className="mt-0.5 flex shrink-0 flex-wrap items-center gap-x-2 gap-y-1">
         <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-faint)]">{title}</div>
         {sample && (
           <span className="rounded-xs bg-[var(--surface-3)] px-1.5 py-0.5 text-[11px] font-semibold text-muted-foreground">
