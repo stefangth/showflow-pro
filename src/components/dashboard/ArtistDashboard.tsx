@@ -51,7 +51,7 @@ export function ArtistDashboard() {
 
   const hireOrdersEnabled = useFeature('hire_orders');
   const bookingFlowEnabled = useFeature('booking_flow');
-  const { data: myHireOrders, isLoading: hireOrdersLoading, isError: hireOrdersError } = useMyHireOrders();
+  const { data: myHireOrders, isSuccess: hireOrdersLoaded } = useMyHireOrders();
   const { currentOrg } = useAuth();
   const hireOrderAction = useHireOrderAction();
   const fr = useDashboardFirstRun('artist');
@@ -268,16 +268,18 @@ export function ArtistDashboard() {
                 </CardHeader>
                 <CardContent className="space-y-2">
                   {(myHireOrders?.length ?? 0) === 0 ? (
-                    // Only the genuinely-empty (loaded, no error) case shows the zero-state.
-                    // While loading or on a fetch error `myHireOrders` is undefined too, and
-                    // claiming "no paperwork" there would flash for an artist who has orders
-                    // and would silently mask a failed fetch.
-                    hireOrdersLoading || hireOrdersError ? null : (
+                    // Only the genuinely-empty case (the query actually SUCCEEDED and
+                    // returned no orders) shows the zero-state. Gating on isSuccess rather
+                    // than !isLoading also covers the disabled-query window: TanStack v5
+                    // reports isLoading:false while useMyHireOrders is disabled waiting on
+                    // useMyArtist, so an artist who has orders never flashes "no paperwork"
+                    // and a pending/failed fetch is never mistaken for empty.
+                    hireOrdersLoaded ? (
                       <p className="text-sm text-muted-foreground">
                         Your booking paperwork shows up here. When a producer sends you a hire
                         order, it arrives by email and you can review and sign it here.
                       </p>
-                    )
+                    ) : null
                   ) : (
                     myHireOrders!.map((o) => {
                       const data = (o.data ?? {}) as OrderData;
