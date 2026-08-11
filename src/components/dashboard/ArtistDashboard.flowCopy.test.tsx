@@ -150,7 +150,6 @@ vi.mock("@/components/dashboard/firstRun/useDashboardFirstRun", () => ({
     dismissed: false,
     dismiss: () => {},
     undismiss: () => {},
-    openSetupAt: () => {},
   }),
 }));
 

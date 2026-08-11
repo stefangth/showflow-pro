@@ -121,7 +121,6 @@ function frState(overrides: Record<string, unknown> = {}) {
     dismissed: false,
     dismiss: vi.fn(),
     undismiss: vi.fn(),
-    openSetupAt: vi.fn(),
     ...overrides,
   };
 }
@@ -186,9 +185,9 @@ describe("ArtistDashboard first-run (Task C3)", () => {
     expect(navigate).toHaveBeenCalledWith(ROUTES.AVAILABILITY);
   });
 
-  it("leaves the ghost CTA unwired (Settings is not artist-reachable)", async () => {
+  it("hides the ghost CTA entirely (Settings is not artist-reachable, so there is no handler to wire)", async () => {
     renderWithProviders(<ArtistDashboard />);
-    fireEvent.click(await screen.findByRole("button", { name: "How booking works here" }));
-    expect(navigate).not.toHaveBeenCalled();
+    expect(await screen.findByText(/added you to the roster/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "How booking works here" })).not.toBeInTheDocument();
   });
 });

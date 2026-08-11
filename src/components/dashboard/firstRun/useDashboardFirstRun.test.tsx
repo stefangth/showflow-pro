@@ -205,7 +205,7 @@ describe("useDashboardFirstRun", () => {
     const { result } = renderHook(() => useDashboardFirstRun("artist"));
     const rows = result.current.queueRows;
 
-    expect(rows[0].title).toBe("4 dates booked for you");
+    expect(rows[0].title).toBe("Dates booked for you appear here");
   });
 
   it("assembles the not-imported artist placeholder queueRow, worded for the org's flow", () => {
@@ -292,11 +292,5 @@ describe("useDashboardFirstRun", () => {
     h.metrics.mockImplementation(h.defaultMetrics);
     h.flow.mockReturnValue({ data: { artist_acceptance: true }, isLoading: false });
     expect(hasDash(renderHook(() => useDashboardFirstRun("artist")).result.current.queueRows)).toBe(false);
-  });
-
-  it("exposes openSetupAt as a callable passthrough (the real opener is owned by the page, wired in C3)", () => {
-    const { result } = renderHook(() => useDashboardFirstRun("admin"));
-    expect(typeof result.current.openSetupAt).toBe("function");
-    expect(() => result.current.openSetupAt("booking_flow", "slots")).not.toThrow();
   });
 });

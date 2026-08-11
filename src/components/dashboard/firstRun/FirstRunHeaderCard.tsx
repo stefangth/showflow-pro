@@ -28,13 +28,15 @@ export function FirstRunHeaderCard(props: {
         </div>
         <div className="mt-2 max-w-[520px] text-sm leading-[21px] text-muted-foreground text-pretty">{body}</div>
         <div className="mt-4 flex items-center gap-2.5">
-          <button
-            type="button"
-            onClick={onGhost}
-            className="rounded-m border-[0.5px] border-[var(--line-strong)] bg-transparent px-4 py-[9px] text-[13px] font-medium text-foreground hover:bg-muted"
-          >
-            {ghost}
-          </button>
+          {onGhost && (
+            <button
+              type="button"
+              onClick={onGhost}
+              className="rounded-m border-[0.5px] border-[var(--line-strong)] bg-transparent px-4 py-[9px] text-[13px] font-medium text-foreground hover:bg-muted"
+            >
+              {ghost}
+            </button>
+          )}
           <span className="text-xs text-[var(--text-faint)]">{hint}</span>
         </div>
       </div>

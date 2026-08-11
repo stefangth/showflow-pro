@@ -49,7 +49,7 @@ describe("useFirstRunMetrics", () => {
     vi.mocked(useFeature).mockImplementation(() => true);
 
     // ---- Seed exactly the query keys the ADMIN-role read set fires. ----
-    queryClient.setQueryData(["dashboard-upcoming-dates", today, ORG_ID], [
+    queryClient.setQueryData(["first-run", "upcoming-dates", today, ORG_ID], [
       { id: "d1", date: "2026-09-01", show_id: "show-1", city_id: "city-1", session_1: "19:00", session_2: null, session_3: null, show: { program: "Cabaret", sub_program: null, main_cast_slots: 4 } },
       { id: "d2", date: "2026-09-02", show_id: "show-1", city_id: "city-1", session_1: "19:00", session_2: null, session_3: null, show: { program: "Cabaret", sub_program: null, main_cast_slots: 4 } },
       { id: "d3", date: "2026-09-03", show_id: "show-2", city_id: null, session_1: null, session_2: null, session_3: null, show: { program: "Revue", sub_program: null, main_cast_slots: null } },
@@ -119,7 +119,7 @@ describe("useFirstRunMetrics", () => {
     vi.mocked(useMyArtist).mockReturnValue({ data: undefined } as never);
     vi.mocked(useFeature).mockImplementation(() => true);
 
-    queryClient.setQueryData(["dashboard-upcoming-dates", today, ORG_ID], [
+    queryClient.setQueryData(["first-run", "upcoming-dates", today, ORG_ID], [
       { id: "d1", date: "2026-09-01", show_id: "show-1", city_id: null, session_1: "19:00", session_2: null, session_3: null, show: { program: "Cabaret", sub_program: null, main_cast_slots: 4 } },
     ]);
     queryClient.setQueryData(["bookings", "confirmed-dashboard", ORG_ID], []);

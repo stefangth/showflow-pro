@@ -71,11 +71,15 @@ export function useFirstRunMetrics(role: FirstRunRole): {
 
   const today = toDateKey(new Date());
 
-  // ---- Org-scoped reads (admin/producer only). Reuses the exact query keys
-  // DashboardPage/useBookingSetupStatus already use for the shared reads, so the
-  // cache is shared rather than duplicated when both are mounted. ----
+  // ---- Org-scoped reads (admin/producer only). confirmedQ and coverageQ reuse the
+  // exact query keys DashboardPage/useBookingSetupStatus already use for the same
+  // reads (identical queryFns), so the cache is shared rather than duplicated when
+  // both are mounted. upcomingQ uses its OWN key: it needs a wider column projection
+  // (city_id + session_1/2/3) than DashboardPage's read, and React Query keeps one
+  // query per key, so sharing the key would let whichever observer registers first
+  // decide the cached columns. ----
   const upcomingQ = useQuery({
-    queryKey: ["dashboard-upcoming-dates", today, orgId],
+    queryKey: ["first-run", "upcoming-dates", today, orgId],
     enabled: isOrgRole && !!orgId,
     queryFn: () => fetchUpcomingShowDates<FirstRunDateRow>(supabase, orgId, today, UPCOMING_DATE_COLS),
   });
@@ -200,7 +204,7 @@ export function useFirstRunMetrics(role: FirstRunRole): {
   const isLoading = isOrgRole
     ? upcomingQ.isLoading || confirmedQ.isLoading || openedTier1Q.isLoading || coverageQ.isLoading || draftHireOrders.isLoading
     : isArtist
-      ? eligibleDatesQ.isLoading || blockedDatesQ.isLoading || myHireOrdersQ.isLoading
+      ? eligibleDatesQ.isLoading || blockedDatesQ.isLoading || myHireOrdersQ.isLoading || navCounts.isLoading
       : false;
 
   return { metrics, timing, isLoading };

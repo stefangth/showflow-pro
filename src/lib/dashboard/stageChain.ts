@@ -46,6 +46,9 @@ function fmtHour(hour: number): string {
   return `${String(hour).padStart(2, "0")}:00`;
 }
 
+/** Singular/plural for a raw dates count in copy. */
+const nDates = (n: number) => (n === 1 ? "date" : "dates");
+
 const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 /** "2026-08-04T00:00:00Z" -> "4 Aug". UTC getters so the result is timezone-safe. */
@@ -283,7 +286,7 @@ export function composeStageChain(input: StageChainInput): StageChainResult {
     rawStages = [
       bf
         ? (imported
-            ? rawStage({ key: "dates", n: "01", name: "Dates", card: true, done: true, tag: "Shows and bookings", line: `${m.datesIn} dates are in your catalog.`, metric: String(m.datesIn), metricLabel: "dates in", steps: [showsStep, slotsStep], chip: datesChipIsBlocked ? "Open dates" : "Set slots", action: datesChipIsBlocked ? { kind: "route", to: ROUTES.PRODUCTIONS } : { kind: "openSetup", feature: bookingOnboarding.key, step: "slots" } })
+            ? rawStage({ key: "dates", n: "01", name: "Dates", card: true, done: true, tag: "Shows and bookings", line: `${m.datesIn} ${nDates(m.datesIn)} ${m.datesIn === 1 ? "is" : "are"} in your catalog.`, metric: String(m.datesIn), metricLabel: "dates in", steps: [showsStep, slotsStep], chip: datesChipIsBlocked ? "Open dates" : "Set slots", action: datesChipIsBlocked ? { kind: "route", to: ROUTES.PRODUCTIONS } : { kind: "openSetup", feature: bookingOnboarding.key, step: "slots" } })
             : rawStage({ key: "dates", n: "01", name: "Dates", card: true, act: true, tag: "Shows and bookings", line: "Nothing downstream can mean anything until shows exist.", metric: "0", metricLabel: "dates in", steps: [showsStep, slotsStep], primary: admin ? "Import dates" : "Add a show", action: { kind: "route", to: ROUTES.PRODUCTIONS } }))
         : rawStage({ key: "dates", n: "01", name: "Dates", tag: "Booking flow · off", line: "Dates and bookings do not run in ShowFlow for this org.", ...NOT_ON }),
       bf
@@ -341,7 +344,7 @@ export function composeStageChain(input: StageChainInput): StageChainResult {
     if (imported) {
       headline = offers ? `Your first offer arrives tomorrow at ${hour}` : "Your producer books you directly";
       body = offers
-        ? `You have ${m.blockedDates} dates blocked, so the digest only asks about dates that work.`
+        ? `You have ${m.blockedDates} ${nDates(m.blockedDates)} blocked, so the digest only asks about dates that work.`
         : "Blocked dates come out of the list your producer books from. That is where your say goes.";
       hint = offers ? `You get ${answerWindow} to answer` : "Nothing to accept";
       progressHint = "Also counts as done once you have opened Availability. An empty calendar is a valid answer.";
@@ -376,12 +379,12 @@ export function composeStageChain(input: StageChainInput): StageChainResult {
       progressHint = "You can draft an order now. These are only needed before the first one goes out.";
     } else if (imported) {
       headline = offers
-        ? `${m.datesIn} dates landed. ${m.readyToOffer} of them can be offered tonight.`
-        : `${m.datesIn} dates landed. ${m.bookableDates} are bookable now.`;
+        ? `${m.datesIn} ${nDates(m.datesIn)} landed. ${m.readyToOffer} of them can be offered in the next digest.`
+        : `${m.datesIn} ${nDates(m.datesIn)} landed. ${m.bookableDates} ${m.bookableDates === 1 ? "is" : "are"} bookable now.`;
       body = offers
         ? "Stage 01 is running. The remaining dates have no slot counts, so the digest will skip them."
         : "Stage 01 is running. A producer books straight from the eligibility list. There is no offer step.";
-      ghost = admin || input.canEditBooking ? "Change the flow in Settings" : "What is still outstanding";
+      ghost = admin || input.canEditBooking ? "How this org works" : "What is still outstanding";
       hint = offers ? `Tier 1 goes out at ${hour} Berlin` : "Direct booking · nothing to accept";
       progressHint = !input.canEditBooking ? "The steps marked Admin are not yours. The rest are." : "The steps left sit in the stage they hold up.";
     } else {

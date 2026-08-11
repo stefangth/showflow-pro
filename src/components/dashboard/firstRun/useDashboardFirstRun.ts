@@ -10,7 +10,6 @@ import { useFirstRunMetrics } from "@/hooks/useFirstRunMetrics";
 import { useBookingFlowProvenance } from "@/hooks/useBookingFlowProvenance";
 import { composeStageChain } from "@/lib/dashboard/stageChain";
 import { SAMPLE_PREVIEW, hasProducerTeam } from "@/lib/dashboard/firstRun";
-import type { FeatureKey } from "@/lib/entitlements";
 import type { DashboardRole } from "@/lib/dashboard/types";
 import type { QueueRow, StageChainInput, StageChainResult } from "@/lib/dashboard/stageChain.types";
 import { useArtistOnboardingStatus } from "./useArtistOnboardingStatus";
@@ -25,7 +24,6 @@ export interface DashboardFirstRunState {
   dismissed: boolean;
   dismiss: () => void;
   undismiss: () => void;
-  openSetupAt: (feature: FeatureKey, step: string) => void;
 }
 
 /**
@@ -33,8 +31,8 @@ export interface DashboardFirstRunState {
  * live entitlement/role/setup-status/metrics state and feeds it through the pure
  * `composeStageChain` composer (`@/lib/dashboard/stageChain`), which returns the full
  * `StageChainResult` the `DashboardFirstRun` surface renders. The composer stays pure, so
- * this hook owns the two things it cannot: assembling `queueRows` (the composer emits
- * queue COPY, never live/sample rows) and the dismiss plumbing.
+ * this hook owns what it cannot: assembling `queueRows` (the composer emits queue COPY,
+ * never live/sample rows) and the dismiss plumbing.
  *
  * All status hooks are called unconditionally (hook rules) in the same order every
  * render; only each underlying QUERY's `enabled`/id argument is gated by role and
@@ -42,14 +40,6 @@ export interface DashboardFirstRunState {
  * that has not licensed a module must not pay for its settings reads on every dashboard
  * load, and artists never consume the org-setup reads at all (their slice is the
  * query-free `useArtistOnboardingStatus`).
- *
- * `openSetupAt` here is a same-shaped PASSTHROUGH, not a working implementation: the
- * setup-checklist sheet's open/step state has always lived on the page (`DashboardPage`'s
- * local `setupOpen`/`setupSel`), not in this hook, and this rewire does not move it —
- * only the page can reach that state. `DashboardPage` supplies its own
- * `(feature, step) => void` opener to `<DashboardFirstRun onOpenSetup={...}>` (task C3);
- * this field exists only so the return shape stays complete for a caller that
- * destructures it before that wiring lands.
  */
 export function useDashboardFirstRun(role: DashboardRole): DashboardFirstRunState {
   const { currentOrg } = useAuth();
@@ -144,14 +134,14 @@ export function useDashboardFirstRun(role: DashboardRole): DashboardFirstRunStat
           dot: "accent",
           title: offers
             ? `${metrics.arriving} offer${arrivingPlural} arriving in tomorrow's digest`
-            : `${metrics.confirmed || metrics.arriving} dates booked for you`,
+            : "Dates booked for you appear here",
           hint: "Your producer's schedule",
           when: `${String(timing.digestHourBerlin).padStart(2, "0")}:00`,
           cta: "Open",
         },
         {
           dot: "faint",
-          title: `${metrics.blockedDates} dates blocked`,
+          title: `${metrics.blockedDates} ${metrics.blockedDates === 1 ? "date" : "dates"} blocked`,
           hint: "Kept out of every list before anyone books you",
           when: "",
           cta: "Edit",
@@ -192,12 +182,6 @@ export function useDashboardFirstRun(role: DashboardRole): DashboardFirstRunStat
     : ((bookingEntitled && booking.isLoading) || (hireEntitled && hire.isLoading)));
   const show = !isLoading && !statusLoading && (result.hasChain || result.nothingOn);
 
-  // Passthrough placeholder — see the hook-level doc comment above. DashboardPage owns
-  // the real setup-sheet state and wires its own (feature, step) opener into
-  // `<DashboardFirstRun onOpenSetup={...}>` (task C3); nothing here can reach that state
-  // from inside a hook.
-  const openSetupAt = (_feature: FeatureKey, _step: string) => {};
-
   return {
     show,
     result,
@@ -205,6 +189,5 @@ export function useDashboardFirstRun(role: DashboardRole): DashboardFirstRunStat
     dismissed,
     dismiss,
     undismiss,
-    openSetupAt,
   };
 }

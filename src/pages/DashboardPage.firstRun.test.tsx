@@ -114,7 +114,6 @@ function frState(overrides: Record<string, unknown> = {}) {
     dismissed: false,
     dismiss: vi.fn(),
     undismiss: vi.fn(),
-    openSetupAt: vi.fn(),
     ...overrides,
   };
 }

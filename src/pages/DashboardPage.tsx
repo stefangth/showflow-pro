@@ -245,9 +245,11 @@ function ProducerDashboard() {
   // data, or a dismissed surface, shows the KPI body too (alongside the surface when it is
   // still showing). Not wrapped in any sample/greyed component -- when it renders, it is
   // the real thing.
-  // Safety invariant, no datesSettled guard needed: fr.show shares the exact same
-  // ["dashboard-upcoming-dates", today, orgId] query key as upcomingDates below (via
-  // useFirstRunMetrics), so it cannot flip true before hasData is accurate.
+  // No datesSettled guard needed: useFirstRunMetrics reads upcoming dates under its own
+  // ["first-run", ...] key (it needs a wider column set than this page's upcomingDates
+  // below), so fr.show and hasData are separate reads of the SAME filtered row set. They
+  // can settle a beat apart, but the only visible effect is when the KPI body appears
+  // below the chain; there is no fake-data body to flash, so a brief stagger is harmless.
   const hasData = (upcomingDates?.length ?? 0) > 0;
   const showFirstRun = fr.show && !fr.dismissed;
 
