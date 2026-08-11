@@ -47,8 +47,10 @@ export function EligibilityBookList({
   skills, selectedSkillIds, onSkillFilterChange, unrestricted = false, orgName,
   requiredSkillNames, totalArtistCount,
 }: {
-  /** `skillIds` is optional and only needed to compute each narrowing chip's per-skill
-   *  count; omit it and chips still render, just without live counts. */
+  /** `skillIds` is optional. When at least one listed artist carries it, each narrowing
+   *  chip shows a live per-skill count computed from this list. When no artist carries it
+   *  (the caller has not wired skill data through), the count is hidden rather than shown
+   *  as a false "0". */
   artists: { id: string; name: string; skillIds?: string[] }[];
   bookedArtistIds: Set<string>;
   onBook: (artistId: string, isUnderstudy: boolean) => void;
@@ -98,34 +100,43 @@ export function EligibilityBookList({
           {requirementFactSentence(requiredSkillNames ?? [], artists.length, totalArtistCount)}
         </p>
       )}
-      {skills && skills.length > 0 && onSkillFilterChange && (
-        <div className="space-y-1">
-          <p className="text-xs text-muted-foreground">Narrow the list further</p>
-          <div className="flex flex-wrap gap-1.5">
-            {skills.map((s) => {
-              const on = (selectedSkillIds ?? []).includes(s.id);
-              const count = artists.filter((a) => (a.skillIds ?? []).includes(s.id)).length;
-              return (
-                <button
-                  key={s.id}
-                  type="button"
-                  aria-pressed={on}
-                  onClick={() => onSkillFilterChange(s.id)}
-                  className={cn(
-                    "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs transition-colors",
-                    on
-                      ? "border-primary bg-primary/10 text-primary"
-                      : "border-border bg-background text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  {s.name}
-                  <span className="font-mono text-[11px] opacity-75">{count}</span>
-                </button>
-              );
-            })}
+      {skills && skills.length > 0 && onSkillFilterChange && (() => {
+        // Only claim a count when at least one listed artist actually carries skillIds —
+        // otherwise every chip would read a hard-coded "0", which is a false claim rather
+        // than an honest "we don't know" (a caller that hasn't wired skill data through
+        // still gets working, just uncounted, chips).
+        const hasSkillData = artists.some((a) => a.skillIds !== undefined);
+        return (
+          <div className="space-y-1">
+            <p className="text-xs text-muted-foreground">Narrow the list further</p>
+            <div className="flex flex-wrap gap-1.5">
+              {skills.map((s) => {
+                const on = (selectedSkillIds ?? []).includes(s.id);
+                const count = artists.filter((a) => (a.skillIds ?? []).includes(s.id)).length;
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    aria-pressed={on}
+                    onClick={() => onSkillFilterChange(s.id)}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs transition-colors",
+                      on
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-border bg-background text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    {s.name}
+                    {hasSkillData && (
+                      <span className="font-mono text-[11px] opacity-75">{count}</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
       {unrestricted && orgName && (
         <p className="text-xs text-muted-foreground">{unrestrictedEligibilityNote(orgName)}</p>
       )}

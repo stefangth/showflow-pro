@@ -109,6 +109,25 @@ describe("EligibilityBookList", () => {
     expect(screen.queryByText("Only offer to artists with")).not.toBeInTheDocument();
   });
 
+  // Hiding the count (rather than showing a hard-coded "0") when the caller has not wired
+  // skillIds through at all: a false "0" would read as "nobody qualifies", which this
+  // component cannot actually claim to know when it was never handed the data.
+  it("hides the per-skill count, rather than showing 0, when no listed artist carries skillIds", () => {
+    renderWithProviders(
+      <EligibilityBookList
+        artists={[{ id: "a1", name: "Lena" }, { id: "a2", name: "Marco" }]}
+        bookedArtistIds={new Set()}
+        onBook={vi.fn()}
+        booking={false}
+        skills={[{ id: "s1", name: "Piano" }]}
+        selectedSkillIds={[]}
+        onSkillFilterChange={vi.fn()}
+      />,
+    );
+    const pianoChip = screen.getByRole("button", { name: "Piano" });
+    expect(pianoChip.textContent).toBe("Piano");
+  });
+
   // 1h: direct mode never offers anything, so "Only offer to artists with" was actively
   // wrong here. The narrowing chips carry a per-skill count of the currently-listed
   // (already-qualifying, unblocked) artists who also hold that skill.

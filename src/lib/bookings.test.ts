@@ -295,4 +295,17 @@ describe("deriveDirectBookList", () => {
       { artistIds: null }, new Set(), new Set(["a2"]),
     )).toEqual([{ id: "a2", name: "B" }]);
   });
+
+  // EligibilityBookList's narrowing-chip counts (design 1h) need each listed artist's
+  // skillIds. deriveDirectBookList is generic precisely so it passes extra artist fields
+  // (like skillIds from fetchActiveArtistOptions) straight through, not just {id,name}.
+  it("passes through extra artist fields (e.g. skillIds) unchanged", () => {
+    const withSkills = [
+      { id: "a1", name: "A", skillIds: ["s1"] },
+      { id: "a2", name: "B", skillIds: [] },
+    ];
+    expect(
+      deriveDirectBookList(withSkills, { artistIds: null }, new Set(), null),
+    ).toEqual(withSkills);
+  });
 });

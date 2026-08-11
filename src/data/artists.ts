@@ -99,11 +99,16 @@ export async function fetchInactiveArtistCount(
   return count ?? 0;
 }
 
-/** Minimal active-artist options for the direct-book / eligibility pickers. */
+/** Row shape of the fetchActiveArtistOptions artist_skills join below. */
+interface ArtistSkillLinkRow { artist_id: string; skill_id: string }
+
+/** Minimal active-artist options for the direct-book / eligibility pickers, each carrying
+ *  its skill ids so EligibilityBookList's narrowing chips (design 1h) can count how many
+ *  of the currently-listed artists hold a given skill. */
 export async function fetchActiveArtistOptions(
   client: SupabaseClient<Database>,
   orgId: string | null,
-): Promise<{ id: string; name: string }[]> {
+): Promise<{ id: string; name: string; skillIds: string[] }[]> {
   if (!orgId) return [];
   const { data, error } = await client
     .from("artists")
@@ -112,7 +117,20 @@ export async function fetchActiveArtistOptions(
     .eq("status", "active")
     .order("name");
   if (error) throw error;
-  return (data ?? []) as { id: string; name: string }[];
+  const artists = (data ?? []) as { id: string; name: string }[];
+  if (artists.length === 0) return [];
+  const { data: skillRows, error: skillError } = await client
+    .from("artist_skills")
+    .select("artist_id, skill_id")
+    .eq("org_id", orgId);
+  if (skillError) throw skillError;
+  const skillIdsByArtist = new Map<string, string[]>();
+  for (const row of (skillRows ?? []) as unknown as ArtistSkillLinkRow[]) {
+    const existing = skillIdsByArtist.get(row.artist_id);
+    if (existing) existing.push(row.skill_id);
+    else skillIdsByArtist.set(row.artist_id, [row.skill_id]);
+  }
+  return artists.map((a) => ({ ...a, skillIds: skillIdsByArtist.get(a.id) ?? [] }));
 }
 
 /** A show_date the artist was booked on that was cancelled via a date cancellation. */

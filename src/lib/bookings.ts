@@ -243,12 +243,12 @@ export function closeResultToast(
  * The skill-eligibility set follows the same fail-closed contract: undefined =
  * unresolved = nobody bookable; null = no skill requirements.
  */
-export function deriveDirectBookList(
-  orgArtists: { id: string; name: string }[] | undefined,
+export function deriveDirectBookList<T extends { id: string; name: string }>(
+  orgArtists: T[] | undefined,
   eligibility: { artistIds: Set<string> | null } | undefined,
   blockedIds: Set<string> | undefined,
   skillEligibleIds: Set<string> | null | undefined,
-): { id: string; name: string }[] {
+): T[] {
   if (eligibility === undefined || blockedIds === undefined || skillEligibleIds === undefined) return [];
   const all = orgArtists ?? [];
   const base = eligibility.artistIds == null ? all : all.filter((a) => eligibility.artistIds!.has(a.id));

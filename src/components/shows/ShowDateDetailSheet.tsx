@@ -952,6 +952,13 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: P
                               // reads to tell the producer the picker is wide open on purpose.
                               unrestricted={eligibility?.artistIds == null}
                               orgName={currentOrg?.name}
+                              // 1h requirement-as-fact sentence: skillChips is the same
+                              // required-skill NAME list the rail already shows, reused here
+                              // rather than recomputed. totalArtistCount is the org's whole
+                              // active roster (undefined while orgArtists is still loading,
+                              // which keeps the sentence hidden instead of claiming "of 0").
+                              requiredSkillNames={skillChips}
+                              totalArtistCount={orgArtists?.length}
                             />
                           )}
                         </CardContent>

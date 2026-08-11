@@ -10,6 +10,7 @@ import {
   mergeArtistActiveBookedDates,
   fetchArtistCount,
   fetchInactiveArtistCount,
+  fetchActiveArtistOptions,
 } from "./artists";
 import { partialMock } from "@/test/castHelpers";
 import type { CancelledDateEntry, ActiveBookedDateEntry } from "./artists";
@@ -227,6 +228,54 @@ describe("fetchArtistCount", () => {
   it("throws when the query errors, so the caller can report the step unread", async () => {
     const fake = createFakeSupabase({ artists: { data: null, error: { message: "boom" } } });
     await expect(fetchArtistCount(fake as never, "org-1")).rejects.toBeTruthy();
+  });
+});
+
+describe("fetchActiveArtistOptions", () => {
+  // The direct-book list's narrowing chips (EligibilityBookList, design 1h) need each
+  // artist's skill ids to compute a per-skill count. Widening this fetch (rather than a
+  // second read) keeps the direct-book picker to its existing single query shape.
+  it("attaches each artist's skill ids, joined from artist_skills", async () => {
+    const fake = createFakeSupabase({
+      artists: { data: [{ id: "a1", name: "Ada" }, { id: "a2", name: "Bea" }], error: null },
+      artist_skills: {
+        data: [
+          { artist_id: "a1", skill_id: "s1" },
+          { artist_id: "a1", skill_id: "s2" },
+          { artist_id: "a2", skill_id: "s2" },
+        ],
+        error: null,
+      },
+    });
+    const result = await fetchActiveArtistOptions(fake as never, "org-1");
+    expect(result).toEqual([
+      { id: "a1", name: "Ada", skillIds: ["s1", "s2"] },
+      { id: "a2", name: "Bea", skillIds: ["s2"] },
+    ]);
+  });
+
+  it("gives an artist with no skill rows an empty skillIds array, not undefined", async () => {
+    const fake = createFakeSupabase({
+      artists: { data: [{ id: "a1", name: "Ada" }], error: null },
+      artist_skills: { data: [], error: null },
+    });
+    const result = await fetchActiveArtistOptions(fake as never, "org-1");
+    expect(result).toEqual([{ id: "a1", name: "Ada", skillIds: [] }]);
+  });
+
+  it("skips the artist_skills read entirely when the roster is empty", async () => {
+    const fake = createFakeSupabase({ artists: { data: [], error: null } });
+    const result = await fetchActiveArtistOptions(fake as never, "org-1");
+    expect(result).toEqual([]);
+    expect(fake.calls.some((c) => c.table === "artist_skills")).toBe(false);
+  });
+
+  it("throws when the skill join errors", async () => {
+    const fake = createFakeSupabase({
+      artists: { data: [{ id: "a1", name: "Ada" }], error: null },
+      artist_skills: { data: null, error: { message: "boom" } },
+    });
+    await expect(fetchActiveArtistOptions(fake as never, "org-1")).rejects.toBeTruthy();
   });
 });
 
