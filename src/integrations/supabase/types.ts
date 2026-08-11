@@ -1522,6 +1522,44 @@ export type Database = {
           },
         ]
       }
+      org_member_removals: {
+        Row: {
+          display_name: string | null
+          email: string | null
+          org_id: string
+          removed_at: string
+          removed_by: string | null
+          roles: Database["public"]["Enums"]["app_role"][]
+          user_id: string
+        }
+        Insert: {
+          display_name?: string | null
+          email?: string | null
+          org_id: string
+          removed_at?: string
+          removed_by?: string | null
+          roles: Database["public"]["Enums"]["app_role"][]
+          user_id: string
+        }
+        Update: {
+          display_name?: string | null
+          email?: string | null
+          org_id?: string
+          removed_at?: string
+          removed_by?: string | null
+          roles?: Database["public"]["Enums"]["app_role"][]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_member_removals_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       org_memberships: {
         Row: {
           created_at: string
@@ -2231,9 +2269,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      _anonymize_user_data: { Args: { p_user: string }; Returns: undefined }
       accept_invitation: { Args: { p_token: string }; Returns: Json }
       active_org_id: { Args: never; Returns: string }
       add_platform_admin: { Args: { p_email: string }; Returns: string }
+      admin_anonymize_removed_user: {
+        Args: { p_org: string; p_user: string }
+        Returns: undefined
+      }
       anonymize_user: { Args: { p_user: string }; Returns: undefined }
       app_setting_capability: { Args: { _key: string }; Returns: string }
       assert_hire_order_dates_available: {
@@ -2255,6 +2298,10 @@ export type Database = {
         Returns: boolean
       }
       claim_my_invitations: { Args: never; Returns: number }
+      clear_removed_member: {
+        Args: { p_org: string; p_user: string }
+        Returns: undefined
+      }
       compute_show_date_status: {
         Args: { p_show_date_id: string }
         Returns: undefined
@@ -2388,6 +2435,18 @@ export type Database = {
           user_id: string
         }[]
       }
+      list_removed_members: {
+        Args: { p_org: string }
+        Returns: {
+          deletable: boolean
+          display_name: string
+          email: string
+          removed_at: string
+          removed_by_name: string
+          roles: Database["public"]["Enums"]["app_role"][]
+          user_id: string
+        }[]
+      }
       mark_hire_order_seen: { Args: { p_order: string }; Returns: undefined }
       mark_invitation_resent: { Args: { p_id: string }; Returns: undefined }
       merge_cities: {
@@ -2462,6 +2521,10 @@ export type Database = {
           email: string
           user_id: string
         }[]
+      }
+      restore_org_member: {
+        Args: { p_org: string; p_user: string }
+        Returns: undefined
       }
       revoke_invitation: { Args: { p_id: string }; Returns: undefined }
       seed_org_starter_catalog: { Args: { _org: string }; Returns: undefined }
