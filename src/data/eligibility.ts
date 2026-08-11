@@ -60,6 +60,48 @@ export async function fetchSkillEligibleArtistIds(
   return out;
 }
 
+/** The show eligibility gate: union of show-level (show+city) and date-level cast
+ *  rows, resolved to artist ids. Null = no gate rows at all = unrestricted.
+ *
+ *  ENGINE-PARITY TWIN of `supabase/functions/_shared/eligibility.ts`
+ *  `fetchGateArtistIds` — same tables (`show_cast_eligibility` when a city is
+ *  given, `show_date_cast_eligibility` always, resolved through `cast_members`),
+ *  same null-when-empty rule. NOT mirror-managed, so any change to this logic
+ *  must be made in both by hand. Consumed by `fetchTierLadderCounts` so the
+ *  client-side tier-ladder counts apply the same gate the engine (open-offer-tier)
+ *  applies before offering — see that file's waterfall comment. */
+export async function fetchGateArtistIds(
+  client: SupabaseClient<Database>,
+  args: { showId: string; cityId: string | null; showDateId: string },
+): Promise<Set<string> | null> {
+  const castIds: string[] = [];
+  if (args.cityId) {
+    const { data: showCasts, error: e1 } = await client
+      .from("show_cast_eligibility")
+      .select("cast_id")
+      .eq("show_id", args.showId)
+      .eq("city_id", args.cityId);
+    if (e1) throw e1;
+    for (const r of showCasts ?? []) castIds.push(r.cast_id);
+  }
+  const { data: dateCasts, error: e2 } = await client
+    .from("show_date_cast_eligibility")
+    .select("cast_id")
+    .eq("show_date_id", args.showDateId);
+  if (e2) throw e2;
+  for (const r of dateCasts ?? []) castIds.push(r.cast_id);
+
+  const uniq = [...new Set(castIds)];
+  if (uniq.length === 0) return null;
+
+  const { data: members, error: e3 } = await client
+    .from("cast_members")
+    .select("artist_id")
+    .in("cast_id", uniq);
+  if (e3) throw e3;
+  return new Set((members ?? []).map((m) => m.artist_id));
+}
+
 export interface ShowPriorityRow { id: string; cityId: string; castId: string; priority: number }
 
 /** A show's prioritized ladder rows (priority set), all cities. */

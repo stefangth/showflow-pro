@@ -198,6 +198,76 @@ describe("fetchTierLadderCounts", () => {
     expect(tier3.missingSkillCount).toBe(0);
   });
 
+  describe("show-eligibility gate (mirrors open-offer-tier's candidates -> blocked -> gate -> skills waterfall)", () => {
+    it("show-source ladder: the gate is a superset of each tier's own cast, so matchCount is unchanged (no regression)", async () => {
+      // baseSeed's show_cast_eligibility rows both build the prioritized tier
+      // ladder AND are what fetchGateArtistIds reads for the show-level half of
+      // the gate, so the gate here can only be equal-or-wider than each tier's
+      // own cast — the same figures as the very first test in this file.
+      const fake = createFakeSupabase(baseSeed());
+      const res = await fetchTierLadderCounts(asSupabase(fake), {
+        showId: "show-1", showDateId: "date-1", cityId: "city-1", orgId: "org-1",
+      });
+      expect(res.find((r) => r.tier === 1)!.matchCount).toBe(7);
+      expect(res.find((r) => r.tier === 2)!.matchCount).toBe(2);
+      expect(res.find((r) => r.tier === 3)!.matchCount).toBe(4);
+      // Proves the gate step actually ran (not just trivially skipped).
+      expect(fake.calls.some((c) => c.table === "show_date_cast_eligibility")).toBe(true);
+    });
+
+    it("org-source ladder (city fallback) with an ad-hoc show_date_cast_eligibility gate narrower than the tier cast: matchCount is reduced to the gated intersection", async () => {
+      const fake = createFakeSupabase(baseSeed({
+        show_cast_eligibility: { data: [], error: null }, // no prioritized show rows -> city fallback
+        cast_city_priority: {
+          data: [
+            { cast_id: "cast-a", priority: 1 },
+            { cast_id: "cast-b", priority: 2 },
+            { cast_id: "cast-c", priority: 3 },
+          ],
+          error: null,
+        },
+        // Date-level ad-hoc gate naming a DIFFERENT cast than any city-priority
+        // tier — its members (a1-a3) only partially overlap Cast A's tier-1 pool.
+        show_date_cast_eligibility: { data: [{ cast_id: "cast-d" }], error: null },
+        cast_members: {
+          data: [
+            ...castMembers,
+            ...["a1", "a2", "a3"].map((id) => ({ cast_id: "cast-d", artist_id: id, org_id: "org-1" })),
+          ],
+          error: null,
+        },
+      }));
+      const res = await fetchTierLadderCounts(asSupabase(fake), {
+        showId: "show-1", showDateId: "date-1", cityId: "city-1", orgId: "org-1",
+      });
+      const tier1 = res.find((r) => r.tier === 1)!;
+      // Without the gate this would be 7 (a1-a7 active+skilled+unblocked); the
+      // gate narrows it to the 3 gated ids (a1-a3), all of which are skilled.
+      expect(tier1.matchCount).toBe(3);
+    });
+
+    it("no gate rows anywhere (show or date): gate resolves null (unrestricted), matchCount unchanged from the ungated figures", async () => {
+      const fake = createFakeSupabase(baseSeed({
+        show_cast_eligibility: { data: [], error: null }, // no prioritized show rows -> city fallback
+        cast_city_priority: {
+          data: [
+            { cast_id: "cast-a", priority: 1 },
+            { cast_id: "cast-b", priority: 2 },
+            { cast_id: "cast-c", priority: 3 },
+          ],
+          error: null,
+        },
+        // show_date_cast_eligibility intentionally left unseeded -> defaults to [].
+      }));
+      const res = await fetchTierLadderCounts(asSupabase(fake), {
+        showId: "show-1", showDateId: "date-1", cityId: "city-1", orgId: "org-1",
+      });
+      expect(res.find((r) => r.tier === 1)!.matchCount).toBe(7);
+      expect(res.find((r) => r.tier === 2)!.matchCount).toBe(2);
+      expect(res.find((r) => r.tier === 3)!.matchCount).toBe(4);
+    });
+  });
+
   it("returns [] without extra reads when there is no tier ladder for the (show, city)", async () => {
     const fake = createFakeSupabase({
       show_cast_eligibility: { data: [], error: null },

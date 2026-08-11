@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import { fetchCastMemberCounts } from "@/data/casts";
-import { fetchRequiredSkillIds, fetchSkillEligibleArtistIds } from "@/data/eligibility";
+import { fetchGateArtistIds, fetchRequiredSkillIds, fetchSkillEligibleArtistIds } from "@/data/eligibility";
 import { fetchBlockedArtistIds } from "@/data/blockedDates";
 
 /**
@@ -95,11 +95,19 @@ interface BookingArtistRow { artist_id: string }
 /**
  * Per-tier headcounts for the show-specific ladder, computed in ONE client-side
  * pass over already-readable tables rather than N per-tier dry-run edge calls
- * (open-offer-tier). Mirrors open-offer-tier's elimination waterfall (already
- * booked/offered -> blocked -> missing skills), minus the show-eligibility gate
- * step: a tier's candidate pool is already exactly its cast(s)' members, and
- * those cast ids come from the same show/date eligibility rows the gate itself
- * reads, so the gate can never eliminate anyone here.
+ * (open-offer-tier). Mirrors open-offer-tier's exact elimination waterfall:
+ * active -> not already booked/offered -> not blocked -> passes the show
+ * eligibility gate -> holds every required skill.
+ *
+ * The gate step (`fetchGateArtistIds`) matters even though a tier's candidate
+ * pool is already its cast(s)' members: that's only a superset-safe no-op when
+ * the ladder is sourced from prioritized `show_cast_eligibility` rows (the gate
+ * reads those same rows, unfiltered by priority, so it can only be equal-or-wider).
+ * When the ladder instead falls back to the org-wide `cast_city_priority` list
+ * (no prioritized show rows) while the show/date DOES have gate-relevant cast
+ * rows (an ad-hoc `show_date_cast_eligibility` override, say), the gate is a
+ * DIFFERENT cast set than the city-priority tiers and can eliminate members the
+ * naive waterfall would have counted — so it must be applied unconditionally.
  */
 export async function fetchTierLadderCounts(
   client: SupabaseClient<Database>,
@@ -149,6 +157,10 @@ export async function fetchTierLadderCounts(
     ? await fetchBlockedArtistIds(client, { date, orgId: args.orgId })
     : new Set<string>();
 
+  const gate = await fetchGateArtistIds(client, {
+    showId: args.showId, cityId: args.cityId, showDateId: args.showDateId,
+  });
+
   const required = await fetchRequiredSkillIds(client, { showId: args.showId, showDateId: args.showDateId });
   const skillEligible = await fetchSkillEligibleArtistIds(client, { requiredSkillIds: required.all });
 
@@ -159,16 +171,19 @@ export async function fetchTierLadderCounts(
     )];
     const castTotal = t.casts.reduce((sum, c) => sum + (memberCounts[c.id] ?? 0), 0);
 
-    // Waterfall, mirroring open-offer-tier: active -> not already offered/booked
-    // -> not blocked -> holds every required skill. Each artist lands in exactly
-    // one bucket, so the counts never double-count.
+    // Waterfall, mirroring open-offer-tier exactly: active -> not already
+    // offered/booked -> not blocked -> passes the gate -> holds every required
+    // skill. Each artist lands in exactly one bucket, so the counts never
+    // double-count. There is no notEligible bucket on TierLadderRow: a
+    // gate-eliminated artist simply doesn't appear in matchCount.
     const active = tierArtistIds.filter((id) => activeArtistIds.has(id));
     const alreadyOffered = active.filter((id) => offeredArtistIds.has(id));
     const afterOffered = active.filter((id) => !offeredArtistIds.has(id));
     const blocked = afterOffered.filter((id) => blockedArtistIds.has(id));
     const afterBlocked = afterOffered.filter((id) => !blockedArtistIds.has(id));
-    const missing = skillEligible == null ? [] : afterBlocked.filter((id) => !skillEligible.has(id));
-    const match = skillEligible == null ? afterBlocked : afterBlocked.filter((id) => skillEligible.has(id));
+    const afterGate = gate == null ? afterBlocked : afterBlocked.filter((id) => gate.has(id));
+    const missing = skillEligible == null ? [] : afterGate.filter((id) => !skillEligible.has(id));
+    const match = skillEligible == null ? afterGate : afterGate.filter((id) => skillEligible.has(id));
 
     return {
       tier: t.tier,
