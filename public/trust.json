@@ -41,38 +41,38 @@
     {
       "icon": "lock",
       "title": "Tenant isolation",
-      "claim": "Every table holding your data carries its organisation, down to individual chat messages and audit rows. One restrictive database policy on each of them means a session reads only organisations it belongs to. Four tables sit outside that policy by name, and refuse the cross-organisation read another way: membership and invitation rows are checked against the same organisation, and two platform logs are readable by no organisation member. Restrictive policies filter; they never grant.",
-      "evidence": "supabase/tests/rls/org_isolation.sql asserts org A reads and writes zero rows of org B on shows and show_dates, even holding a global producer role. supabase/tests/rls/org_coverage.sql confirms the same restrictive policy exists on every table in its list, including chat_messages and booking_audit_log, and names the four it excludes with the reason for each. Both run on every pull request."
+      "claim": "Every table holding your data carries its organisation, and a restrictive database policy on each one means a session reads only organisations it belongs to. Four named tables sit outside it, and refuse the cross-organisation read another way.",
+      "evidence": "supabase/tests/rls/org_isolation.sql asserts org A reads and writes zero rows of org B, even holding a global producer role. org_coverage.sql lists every table carrying the policy, including chat_messages and booking_audit_log, and names the four exceptions. Both run on every pull request; a restrictive policy can only filter, never grant."
     },
     {
       "icon": "users",
       "title": "Roles and rights",
-      "claim": "Three roles per organisation. Every read is authorised in the database. 25 of the 28 rights are checked on the server: 19 inside the database, by the row-level policy that guards the write or by the function that performs it, and 6 more by an edge function that asks the same database check before it acts. The remaining three reorder or archive the production catalog and edit its scheduling; only the interface enforces those. Nine rights are marked sensitive and ask for a second confirmation before they take effect. Nine ship switched off until an administrator turns them on. The two nines are different sets: issuing and voiding hire orders are sensitive yet ship on, because a production team that cannot issue an order cannot work.",
-      "evidence": "28 rights across 8 groups, declared in src/lib/capabilities.ts and folded into the inventory this page prints."
+      "claim": "Three roles per organisation and 28 rights on top. 25 are checked on the server, three only by the interface. Nine rights are marked sensitive and ask for a second confirmation; a different nine ship switched off until an administrator turns them on.",
+      "evidence": "28 rights across 8 groups, declared in src/lib/capabilities.ts. Of the 25 checked on the server, 19 sit inside the database and 6 in an edge function. Issuing and voiding hire orders are sensitive yet ship on, which is why the two nines differ."
     },
     {
       "icon": "key",
       "title": "Encryption and secrets",
       "claim": "TLS in transit, encryption at rest in managed Postgres. Integration keys live in a secrets vault and are readable only by server functions, never by members of your organisation.",
-      "evidence": "The Airtable key is written to Supabase Vault through an admin-guarded function and is never read back to a client."
+      "evidence": "The Airtable key is written to Supabase Vault by the admin-guarded set_org_airtable_key and never read back to a client: EXECUTE on the reader, get_org_airtable_key, is revoked from authenticated and granted to the service role only."
     },
     {
       "icon": "file-text",
       "title": "Auditability",
-      "claim": "Every change to a booking's status is appended to a log: the old status, the new status, who acted, and when. Automated transitions, such as an understudy promoted after a cancellation, are appended the same way, with no person to record as the actor. Nothing else about a booking is logged: editing its notes leaves no row. Administrators and the production team can read the log; no policy on the table permits an update or a delete.",
-      "evidence": "Written by the notify_booking_transition trigger, which returns without writing unless the status actually changed, and by promote_understudy_on_cancellation for the automated path. Retained 3 years from show date, per section 7 of the privacy policy."
+      "claim": "Every change to a booking's status is appended to a log: old status, new status, who acted, when. Nothing else about a booking is logged, and automated transitions have no person to record as the actor. No policy permits an update or a delete.",
+      "evidence": "Written by the notify_booking_transition trigger, which returns without writing unless the status actually changed, so editing a booking's notes leaves no row; promote_understudy_on_cancellation writes the automated path. Administrators and the production team can read it. Retained 3 years from show date, per section 7 of the privacy policy."
     },
     {
       "icon": "shield",
       "title": "Application security",
       "claim": "Role checks run as security-definer database functions rather than being scattered through queries. Every pull request is scanned for committed secrets, and dependency updates arrive as grouped weekly pull requests.",
-      "evidence": "Checks concentrated in has_org_role, is_org_member, is_capability_enabled, is_feature_enabled, and capability_default: one place to audit."
+      "evidence": "Checks concentrated in has_org_role, is_org_member, is_capability_enabled, is_feature_enabled, and capability_default: one place to audit. scripts/scan-secrets.mjs runs in the same lint job, and .github/dependabot.yml opens the weekly grouped updates."
     },
     {
       "icon": "database",
       "title": "Backups",
       "claim": "Managed Postgres, hosted by Supabase. Backups are retained no longer than 30 days, so data deleted from the live database leaves them inside that window. That is a deletion ceiling, not a promise that 30 days of restore points are kept.",
-      "evidence": "Stated in section 7 of the privacy policy."
+      "evidence": "Stated in section 7 of the privacy policy. Nothing in this repository writes or expires a backup: the window is set by the managed database provider."
     }
   ],
   "matrix": [
@@ -131,7 +131,7 @@
       }
     },
     {
-      "object": "Booking notes and cancellation reasons",
+      "object": "Notes and cancellation reasons",
       "admin": {
         "value": "Full",
         "tone": "full",
@@ -145,7 +145,7 @@
       "artist": {
         "value": "Own booking",
         "tone": "scoped",
-        "note": "These are fields on your own booking row, so they come back with it. Another artist's never do."
+        "note": "Fields on your own booking row, returned with it. Another artist's never are."
       }
     },
     {
@@ -158,7 +158,7 @@
       "producer": {
         "value": "Full",
         "tone": "full",
-        "note": "Every hire order in this organisation, fee included. Issuing and voiding are separate sensitive rights."
+        "note": "Every order in this organisation, fee included. Issuing and voiding are separate sensitive rights."
       },
       "artist": {
         "value": "Own order",
@@ -171,12 +171,12 @@
       "admin": {
         "value": "Full",
         "tone": "full",
-        "note": "Any thread in this organisation. The database sets no time limit; 30 days after the show date the interface turns the thread read-only."
+        "note": "Every thread, no database time limit. The interface turns it read-only 30 days after the show date."
       },
       "producer": {
         "value": "Full",
         "tone": "full",
-        "note": "Any thread in this organisation. The database sets no time limit; 30 days after the show date the interface stops showing the thread."
+        "note": "Every thread, no database time limit. The interface stops showing it 30 days after the show date."
       },
       "artist": {
         "value": "Own dates",
@@ -305,7 +305,7 @@
     },
     {
       "item": "Backups",
-      "period": "No longer than 30 days",
+      "period": "30 days maximum",
       "basis": "Set by the managed database provider. Nothing in this codebase writes or expires a backup."
     },
     {
@@ -325,12 +325,12 @@
     },
     {
       "item": "Error reports",
-      "period": "90 days, once error tracking is enabled",
+      "period": "90 days",
       "basis": "A policy commitment. No error-tracking package ships in the application, so nothing is collected."
     },
     {
       "item": "Analytics and session replay",
-      "period": "12 months, once PostHog is enabled",
+      "period": "12 months",
       "basis": "A policy commitment. No PostHog package ships in the application, so no product analytics or session replay is collected."
     }
   ],

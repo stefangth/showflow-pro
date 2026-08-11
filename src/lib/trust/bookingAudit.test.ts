@@ -105,7 +105,13 @@ describe("the published Auditability control", () => {
   it("scopes the claim to status changes and names the automated path", () => {
     expect(control, "CONTROLS has no 'Auditability' entry").toBeDefined();
     expect(control!.claim).toContain("Every change to a booking's status is appended to a log");
-    expect(control!.claim).toContain("Automated transitions");
+    // Both limitations stay in `claim` rather than moving to `evidence` when
+    // the claim was shortened, because the public page renders `evidence` only
+    // in Full inventory mode: a Summary reader who meets "who acted" with no
+    // qualifier has been told something that is false for every automated
+    // transition. Case-insensitive because the automated-path clause now sits
+    // mid-sentence rather than opening one.
+    expect(control!.claim).toMatch(/automated transitions/i);
     expect(control!.claim).toContain("no person to record as the actor");
     // The limitation, stated rather than left to be discovered.
     expect(control!.claim).toContain("Nothing else about a booking is logged");
@@ -114,5 +120,9 @@ describe("the published Auditability control", () => {
   it("cites the two functions a reviewer would have to read", () => {
     expect(control!.evidence).toContain("notify_booking_transition");
     expect(control!.evidence).toContain("promote_understudy_on_cancellation");
+    // The worked example of the limitation moved here from the claim. It is
+    // detail rather than a qualifier — the claim still states the limitation —
+    // but it is the sentence that makes it concrete, so it must not evaporate.
+    expect(control!.evidence).toContain("leaves no row");
   });
 });

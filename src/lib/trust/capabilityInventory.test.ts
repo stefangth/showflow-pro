@@ -96,7 +96,13 @@ describe("buildCapabilityInventory", () => {
     expect(control, "CONTROLS has no 'Roles and rights' entry").toBeDefined();
 
     expect(control!.claim).toContain(`${spelledOut(inventory.totalSensitive)} rights are marked sensitive`);
-    expect(control!.claim).toContain(`${spelledOut(inventory.totalDefaultOff)} ship switched off`);
+    // Lower-cased: the off-by-default count now sits mid-sentence ("a different
+    // nine ship switched off"), which is where the disambiguation of the two
+    // nines lives after the claim was shortened.
+    expect(control!.claim.toLowerCase()).toContain(
+      `${spelledOut(inventory.totalDefaultOff).toLowerCase()} ship switched off`,
+    );
+    expect(control!.claim).toContain(`${inventory.totalRights} rights`);
     expect(control!.evidence).toContain(`${inventory.totalRights} rights across ${inventory.totalGroups} groups`);
   });
 

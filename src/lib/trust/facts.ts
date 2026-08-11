@@ -31,7 +31,16 @@ export interface AccessCell {
   /** The short answer, e.g. "Full" or "Own record". */
   value: string;
   tone: AccessTone;
-  /** The mechanism — why the answer is what it is. */
+  /** The mechanism — why the answer is what it is.
+   *
+   *  HELD TO 110 CHARACTERS, and pinned there by factsDensity.test.ts. Both
+   *  surfaces now lay this table out `fixed` with a declared Mechanism width
+   *  and one row height for all eight rows, and 110 characters is what fits
+   *  two lines in the narrowest column either surface gives it. A longer cell
+   *  does not squeeze its neighbours any more — it silently grows one row and
+   *  breaks the rhythm the fixed layout exists to produce. Detail that will
+   *  not fit goes under the table as a footnote, the way
+   *  CROSS_ORG_EXCEPTIONS_NOTE does. */
   note: string;
   /** Set when this cell's mechanism has a qualifier that will not fit in a
    *  table cell, and is published as CROSS_ORG_EXCEPTIONS_NOTE below the
@@ -98,7 +107,13 @@ export const VISIBILITY_MATRIX: MatrixRow[] = [
     artist: { value: "Own offers", tone: "scoped", note: "You see your own tier, never another artist's." },
   },
   {
-    object: "Booking notes and cancellation reasons",
+    // "Booking notes and cancellation reasons" was the widest label in the
+    // table by 66px and the only one that wrapped once the columns were fixed.
+    // "Booking" is carried by the two rows above it ("Booking status and
+    // offers", "Booking audit log") and by every mechanism cell in this row,
+    // so dropping it costs no precision: these are still the `notes` and
+    // `cancellation_reason` columns on `bookings` and nothing else.
+    object: "Notes and cancellation reasons",
     admin: { value: "Full", tone: "full", note: "Free text written by the production team." },
     producer: { value: "Full", tone: "full", note: "Free text written by the production team." },
     // Honest correction to the source design, which claimed "No access". These
@@ -107,7 +122,7 @@ export const VISIBILITY_MATRIX: MatrixRow[] = [
     artist: {
       value: "Own booking",
       tone: "scoped",
-      note: "These are fields on your own booking row, so they come back with it. Another artist's never do.",
+      note: "Fields on your own booking row, returned with it. Another artist's never are.",
     },
   },
   {
@@ -116,7 +131,7 @@ export const VISIBILITY_MATRIX: MatrixRow[] = [
     producer: {
       value: "Full",
       tone: "full",
-      note: "Every hire order in this organisation, fee included. Issuing and voiding are separate sensitive rights.",
+      note: "Every order in this organisation, fee included. Issuing and voiding are separate sensitive rights.",
     },
     artist: { value: "Own order", tone: "scoped", note: "Your own hire order and its PDF only." },
   },
@@ -133,15 +148,23 @@ export const VISIBILITY_MATRIX: MatrixRow[] = [
     // disabled (ChatPanel.tsx:160,187-193). ChatsListPage.tsx:33 drops it from
     // the list for everyone. An earlier draft said the archive "only hides it
     // from the chats list", which was false on both counts.
+    //
+    // Both notes were 135 characters, the two longest cells in the table by
+    // 33, and the pair that decided its row height at every width. They are
+    // now 98 and 96, holding all three facts: the scope ("Every thread"), the
+    // absence of a database time limit, and the asymmetric interface rule.
+    // "in this organisation" is dropped from the scope clause because the
+    // Access value beside it already says "Full" and the whole table is
+    // org-scoped by its own last row.
     admin: {
       value: "Full",
       tone: "full",
-      note: "Any thread in this organisation. The database sets no time limit; 30 days after the show date the interface turns the thread read-only.",
+      note: "Every thread, no database time limit. The interface turns it read-only 30 days after the show date.",
     },
     producer: {
       value: "Full",
       tone: "full",
-      note: "Any thread in this organisation. The database sets no time limit; 30 days after the show date the interface stops showing the thread.",
+      note: "Every thread, no database time limit. The interface stops showing it 30 days after the show date.",
     },
     artist: { value: "Own dates", tone: "scoped", note: "Only threads for dates you are cast on." },
   },
@@ -336,7 +359,7 @@ export const RETENTION: RetentionRow[] = [
   // ceiling: nothing the provider holds outlives 30 days.
   {
     item: "Backups",
-    period: `No longer than ${BACKUP_MAX_DAYS} days`,
+    period: `${BACKUP_MAX_DAYS} days maximum`,
     basis: "Set by the managed database provider. Nothing in this codebase writes or expires a backup.",
   },
   {
@@ -378,14 +401,26 @@ export const RETENTION: RetentionRow[] = [
   // it is page-view data on the marketing site, described in section 5, and
   // inventing a retention figure for it would be a claim with no artefact
   // behind it.
+  //
+  // The condition used to ride in the `period` cell — "90 days, once error
+  // tracking is enabled" and "12 months, once PostHog is enabled". Two
+  // problems with that, and one fix for both. It was a forward-looking string
+  // in a column of present-tense figures, which is the roadmap framing this
+  // page does not do; and it was the longest value in a right-aligned mono
+  // column, so it wrapped to two lines and dragged its key with it at every
+  // width under about 520px, which is every width the in-app card has when it
+  // sits in the two-column band. The condition is not dropped: it is the
+  // second sentence of the basis line directly underneath, where the same
+  // reader meets it in the same glance and every other row's condition also
+  // lives.
   {
     item: "Error reports",
-    period: "90 days, once error tracking is enabled",
+    period: "90 days",
     basis: "A policy commitment. No error-tracking package ships in the application, so nothing is collected.",
   },
   {
     item: "Analytics and session replay",
-    period: "12 months, once PostHog is enabled",
+    period: "12 months",
     // Narrow on purpose, and for the reason the comment block above already
     // documents for the *period*: a bare "so nothing is collected" is
     // falsified by scrolling two sections up on this same page, where the
@@ -445,9 +480,26 @@ export const CAPABILITY_INTERFACE_ONLY_NOTE =
 export interface Control {
   icon: string;
   title: string;
-  /** The control, in plain words. */
+  /** The control, in plain words.
+   *
+   *  HELD TO 45 WORDS, and pinned there by factsDensity.test.ts.
+   *
+   *  This is the field the public page's Summary/Full control does NOT gate,
+   *  so it is what a reviewer reads first and it is the only thing setting the
+   *  height of a card in a three-across grid. Left unpinned it ran 29 to 126
+   *  words across six siblings, which did two measurable kinds of damage:
+   *  "Roles and rights" was fifteen lines of body copy in the view a reviewer
+   *  picked because they wanted less, and the 97-word spread inside a row left
+   *  223px of empty card beside it. A ceiling alone would not fix the second
+   *  problem — the void is set by the SPREAD — so the test pins a floor too.
+   *
+   *  Shortening never means dropping a qualifier. Anything that stops a
+   *  sentence over-claiming stays in `claim`; detail that merely enriches it
+   *  moves to `evidence`. */
   claim: string;
-  /** Where a reviewer can go to check it. */
+  /** Where a reviewer can go to check it. Full-inventory only on the public
+   *  page, so nothing load-bearing may live here alone. Held to 50 words for
+   *  the same rhythm reason `claim` is. */
   evidence: string;
 }
 
@@ -457,35 +509,52 @@ export const CONTROLS: Control[] = [
     title: "Tenant isolation",
     // "One restrictive database policy per table" said more than the cited
     // test does: org_coverage.sql names four org_id-carrying tables it
-    // excludes on purpose. Naming them here costs a clause and keeps the
-    // claim checkable against the file it points at. This card has the room
-    // for the clause; the matrix cell does not, which is why the same fact is
-    // CROSS_ORG_EXCEPTIONS_NOTE there and renders under the table.
+    // excludes on purpose. The claim keeps the concession — a Summary reader
+    // must not meet the unqualified "every table" — but naming the four and
+    // giving each one's reason is detail, and it moves to `evidence`. It is
+    // published in full either way: CROSS_ORG_EXCEPTIONS_NOTE renders under
+    // the access matrix in both modes on both surfaces.
     claim:
-      "Every table holding your data carries its organisation, down to individual chat messages and audit rows. One restrictive database policy on each of them means a session reads only organisations it belongs to. Four tables sit outside that policy by name, and refuse the cross-organisation read another way: membership and invitation rows are checked against the same organisation, and two platform logs are readable by no organisation member. Restrictive policies filter; they never grant.",
+      "Every table holding your data carries its organisation, and a restrictive database policy on each one means a session reads only organisations it belongs to. Four named tables sit outside it, and refuse the cross-organisation read another way.",
     evidence:
-      "supabase/tests/rls/org_isolation.sql asserts org A reads and writes zero rows of org B on shows and show_dates, even holding a global producer role. supabase/tests/rls/org_coverage.sql confirms the same restrictive policy exists on every table in its list, including chat_messages and booking_audit_log, and names the four it excludes with the reason for each. Both run on every pull request.",
+      "supabase/tests/rls/org_isolation.sql asserts org A reads and writes zero rows of org B, even holding a global producer role. org_coverage.sql lists every table carrying the policy, including chat_messages and booking_audit_log, and names the four exceptions. Both run on every pull request; a restrictive policy can only filter, never grant.",
   },
   {
     icon: "users",
     title: "Roles and rights",
-    // The "two nines are different sets" clause lives in `claim`, not
-    // `evidence`, on purpose: the public page renders `evidence` only in Full
-    // inventory mode, and Summary is what a reviewer lands on. Left in
-    // `evidence` it produced exactly the conflation this build exists to kill:
-    // two nines side by side reading as one set.
+    // Two things have to survive in `claim` rather than move to `evidence`,
+    // because `evidence` is Full-inventory only and Summary is what a reviewer
+    // lands on:
+    //
+    //  - the interface-only carve-out. Without it Summary reads as though all
+    //    28 rights are enforced server-side. The full sentence is
+    //    CAPABILITY_INTERFACE_ONLY_NOTE, which used to be interpolated here
+    //    whole (58 words on its own) and still renders verbatim on the
+    //    capabilities card; the claim now carries its load-bearing half, the
+    //    25/3 split, and leaves the 19-in-database / 6-edge breakdown and the
+    //    names of the three to `evidence` and to that card.
+    //  - the disambiguation of the two nines. Left in `evidence` it produced
+    //    exactly the conflation this build exists to kill: two nines side by
+    //    side reading as one set. "a different nine" does that inline in two
+    //    words; `evidence` carries the example that proves it.
     claim:
-      `Three roles per organisation. Every read is authorised in the database. ${CAPABILITY_INTERFACE_ONLY_NOTE} Nine rights are marked sensitive and ask for a second confirmation before they take effect. Nine ship switched off until an administrator turns them on. The two nines are different sets: issuing and voiding hire orders are sensitive yet ship on, because a production team that cannot issue an order cannot work.`,
+      "Three roles per organisation and 28 rights on top. 25 are checked on the server, three only by the interface. Nine rights are marked sensitive and ask for a second confirmation; a different nine ship switched off until an administrator turns them on.",
     evidence:
-      "28 rights across 8 groups, declared in src/lib/capabilities.ts and folded into the inventory this page prints.",
+      "28 rights across 8 groups, declared in src/lib/capabilities.ts. Of the 25 checked on the server, 19 sit inside the database and 6 in an edge function. Issuing and voiding hire orders are sensitive yet ship on, which is why the two nines differ.",
   },
   {
     icon: "key",
     title: "Encryption and secrets",
     claim:
       "TLS in transit, encryption at rest in managed Postgres. Integration keys live in a secrets vault and are readable only by server functions, never by members of your organisation.",
+    // "readable only by server functions, never by members of your
+    // organisation" is a grant, and the grant is what a reviewer should be
+    // pointed at: 20260604131000_org_airtable_vault.sql:35-40 revokes EXECUTE
+    // on the reader from `public` and `authenticated` and grants it to
+    // `service_role` alone, so the claim is not a policy that could be
+    // reasoned around but a permission that is simply absent.
     evidence:
-      "The Airtable key is written to Supabase Vault through an admin-guarded function and is never read back to a client.",
+      "The Airtable key is written to Supabase Vault by the admin-guarded set_org_airtable_key and never read back to a client: EXECUTE on the reader, get_org_airtable_key, is revoked from authenticated and granted to the service role only.",
   },
   {
     icon: "file-text",
@@ -497,12 +566,17 @@ export const CONTROLS: Control[] = [
     // only old_status -> new_status. performed_by is auth.uid(), which is
     // NULL for a server-side write, and the automated understudy promotion
     // (public.promote_understudy_on_cancellation) passes NULL explicitly, so
-    // "who acted" is frequently absent rather than always present. The claim
-    // now says exactly that, including the part that is a limitation.
+    // "who acted" is frequently absent rather than always present. Both of
+    // those are limitations on the claim, so both stay in `claim`.
+    //
+    // What left is the sentence naming who can read the log, because the
+    // access matrix answers that for all three roles two sections down, and
+    // the worked example of the limitation ("editing its notes leaves no
+    // row"), which belongs beside the trigger that causes it.
     title: "Auditability",
     claim:
-      "Every change to a booking's status is appended to a log: the old status, the new status, who acted, and when. Automated transitions, such as an understudy promoted after a cancellation, are appended the same way, with no person to record as the actor. Nothing else about a booking is logged: editing its notes leaves no row. Administrators and the production team can read the log; no policy on the table permits an update or a delete.",
-    evidence: `Written by the notify_booking_transition trigger, which returns without writing unless the status actually changed, and by promote_understudy_on_cancellation for the automated path. Retained ${RETENTION.find((r) => r.item === "Bookings and audit log")!.period}, per section 7 of the privacy policy.`,
+      "Every change to a booking's status is appended to a log: old status, new status, who acted, when. Nothing else about a booking is logged, and automated transitions have no person to record as the actor. No policy permits an update or a delete.",
+    evidence: `Written by the notify_booking_transition trigger, which returns without writing unless the status actually changed, so editing a booking's notes leaves no row; promote_understudy_on_cancellation writes the automated path. Administrators and the production team can read it. Retained ${RETENTION.find((r) => r.item === "Bookings and audit log")!.period}, per section 7 of the privacy policy.`,
   },
   {
     icon: "shield",
@@ -510,13 +584,14 @@ export const CONTROLS: Control[] = [
     claim:
       "Role checks run as security-definer database functions rather than being scattered through queries. Every pull request is scanned for committed secrets, and dependency updates arrive as grouped weekly pull requests.",
     evidence:
-      "Checks concentrated in has_org_role, is_org_member, is_capability_enabled, is_feature_enabled, and capability_default: one place to audit.",
+      "Checks concentrated in has_org_role, is_org_member, is_capability_enabled, is_feature_enabled, and capability_default: one place to audit. scripts/scan-secrets.mjs runs in the same lint job, and .github/dependabot.yml opens the weekly grouped updates.",
   },
   {
     icon: "database",
     title: "Backups",
     claim: `Managed Postgres, hosted by Supabase. ${BACKUP_CEILING_NOTE}`,
-    evidence: "Stated in section 7 of the privacy policy.",
+    evidence:
+      "Stated in section 7 of the privacy policy. Nothing in this repository writes or expires a backup: the window is set by the managed database provider.",
   },
 ];
 

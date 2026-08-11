@@ -35,9 +35,22 @@ export function RetentionCard() {
         <dl className="text-sm">
           {RETENTION.map((row) => (
             <div key={row.item} className="border-t border-border py-2">
-              <div className="flex items-baseline justify-between gap-3">
+              {/* The key/value line wraps as a LINE, not as two shrinking
+               *  columns. A flex row with no `flex-wrap` makes both children
+               *  shrink to min-content before the line ever breaks, so at the
+               *  widths this card actually gets — it sits in the two-column
+               *  band, which leaves it ~350px at 1280 and ~300px at 375 — the
+               *  period broke mid-value into two right-aligned mono lines and
+               *  dragged its key onto two lines with it. Five of eight rows
+               *  did that at 375. `flex-wrap` plus `whitespace-nowrap` on the
+               *  value gives the value an unbreakable min-content, so the
+               *  browser breaks the LINE instead: key on its own line, whole
+               *  period beneath it, still right-aligned by `ml-auto`. */}
+              <div className="flex flex-wrap items-baseline justify-between gap-x-3">
                 <dt className="font-medium">{row.item}</dt>
-                <dd className="text-right font-mono text-xs text-muted-foreground">{row.period}</dd>
+                <dd className="ml-auto whitespace-nowrap text-right font-mono text-xs text-muted-foreground">
+                  {row.period}
+                </dd>
               </div>
               <dd className="mt-1 text-xs leading-4 text-muted-foreground">{row.basis}</dd>
             </div>

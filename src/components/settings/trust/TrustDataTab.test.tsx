@@ -114,7 +114,7 @@ describe("TrustDataTab", () => {
   it("does not claim booking notes are hidden from artists", () => {
     renderTab();
 
-    const row = matrixRow("Booking notes and cancellation reasons");
+    const row = matrixRow("Notes and cancellation reasons");
     expect(within(row).getByText("Own booking")).toBeInTheDocument();
     expect(within(row).queryByText("No access")).toBeNull();
   });

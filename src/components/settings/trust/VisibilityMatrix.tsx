@@ -12,16 +12,22 @@ import type { AccessTone } from "@/lib/trust/facts";
 /** Maps an access tone to the shared Badge component's variant, so the pills
  *  in this table stay on the design system rather than a hand-rolled palette.
  *
- *  Four tones, four treatments. `scoped` and `none` used to share `neutral`,
- *  which flattened the artist column into six identical grey pills ("Own
- *  record", "Own dates", "Own offers", "Own booking", "Own order", "No
- *  access") and left the Access column carrying no signal at all — the reader
- *  had to read every label. It also put the two surfaces into disagreement:
- *  the public page has always drawn `scoped` filled and `none` outlined.
- *  `outline` is transparent with a hairline, so "No access" now recedes
- *  against `scoped`'s filled `neutral` pill, matching that grammar. */
+ *  NO COLOUR IN THIS COLUMN. `full` used to route to `confirmed`, which is the
+ *  green success pill: on the Administrator role that painted six green "Full"
+ *  badges down the Access column, and green in a table of neutral facts reads
+ *  as a verdict — as though "Full" were the good answer and "No access" the
+ *  bad one. It is neither. The column answers "what does this role read", and
+ *  the honest reading of six greens is closer to the opposite of reassuring.
+ *  Colour is spent where it carries a state a reader must act on (the
+ *  subprocessor Core/Consent/Off column on the public page, which is a
+ *  different table with a different job), not here.
+ *
+ *  `full` and `scoped` therefore share one neutral fill — the pill's own text
+ *  already says "Full" against "Own record", so the fill has nothing left to
+ *  distinguish — and the one distinction the column does draw visually is the
+ *  one worth drawing: access against no access. */
 const TONE_BADGE_VARIANT: Record<AccessTone, "confirmed" | "neutral" | "accent" | "outline"> = {
-  full: "confirmed",
+  full: "neutral",
   scoped: "neutral",
   gated: "accent",
   none: "outline",
@@ -35,14 +41,17 @@ const TONE_BADGE_VARIANT: Record<AccessTone, "confirmed" | "neutral" | "accent" 
  *  in light and in dark. Two pills that differ by one hundredth of a contrast
  *  step are still one pill to a reader scanning the Access column.
  *
- *  The public page's TONE_STYLE (landing `Trust.tsx`) puts the difference on
- *  the edge instead: `scoped` is a filled surface with a TRANSPARENT hairline,
- *  `none` is transparent with a `--line-strong` hairline. Mirroring that here
- *  gives "No access" a visible outline against a borderless filled pill,
- *  which is the same grammar on both surfaces and a difference that survives
- *  a glance. `outline` also ships a `text-foreground` label, which would make
- *  "No access" the boldest text in the column, so the label stays muted. */
+ *  The public page's ACCESS_TONE_STYLE (landing `Trust.tsx`) puts the
+ *  difference on the edge instead: a granted answer is a filled surface with a
+ *  TRANSPARENT hairline, `none` is transparent with a `--line-strong` hairline.
+ *  Mirroring that here gives "No access" a visible outline against a
+ *  borderless filled pill, which is the same grammar on both surfaces and a
+ *  difference that survives a glance. `outline` also ships a `text-foreground`
+ *  label, which would make "No access" the boldest text in the column, so the
+ *  label stays muted — the one place this column does mute something, and it
+ *  mutes the answer that means "nothing here". */
 const TONE_BADGE_CLASS: Partial<Record<AccessTone, string>> = {
+  full: "border-transparent",
   scoped: "border-transparent",
   none: "border-muted-foreground/80 text-muted-foreground",
 };
@@ -57,8 +66,12 @@ const EXCEPTIONS_NOTE_ID = "trust-matrix-cross-org-exceptions";
  *  association is already carried by `aria-describedby`: without it a screen
  *  reader reads a bare "1" at the end of the sentence and then the whole note. */
 function ExceptionsMark() {
+  // `leading-[0]` so the raised glyph cannot grow the line box it sits in.
+  // Without it the marker pushed the cross-organisation row off the declared
+  // row height — a fraction of a pixel, but the point of a declared row height
+  // is that there are no steps at all.
   return (
-    <sup aria-hidden="true" className="ml-0.5 font-mono text-[10px]">
+    <sup aria-hidden="true" className="ml-0.5 font-mono text-[10px] leading-[0]">
       1
     </sup>
   );
@@ -187,30 +200,52 @@ export function VisibilityMatrix() {
         Showing what the {roleLabel} role can read
       </p>
 
-      {/* >=1024px (lg): the table, in a scroll region a keyboard-only user can
+      {/* >=1280px (xl): the table, in a scroll region a keyboard-only user can
        *  actually reach (tabIndex + role + aria-label, matching the public
-       *  page's .tc-scroll wrappers). The breakpoint is lg, not sm: this tab
-       *  always renders inside the app sidebar plus the settings nav column,
-       *  so at a 768px viewport the tab itself only has ~460px to work with,
-       *  well under the table's min-w. Restacking at sm (640px) left a dead
-       *  band between 640 and ~1024px where the table rendered clipped with
-       *  no scroll affordance.
+       *  page's .tc-scroll wrappers).
        *
-       *  min-w is 440px, not 560px, for the same reason. Measured live in the
-       *  settings tab: a 1024px viewport leaves the table 470px, so a 560px
-       *  floor clipped the Mechanism column by ~98px from 1024 up to ~1130 —
-       *  the band moved rather than closing. 440px fits the narrowest width
-       *  at which the table renders at all, with room to spare. */}
+       *  THE BREAKPOINT MOVED lg -> xl, and it moved because the layout below
+       *  is now `fixed`. This tab renders inside the app sidebar plus the
+       *  settings nav column, so the table gets 1358px of a 1920 viewport,
+       *  878 of 1440, 718 of 1280 and only 462 of 1024. At 462 a declared Data
+       *  column wide enough for "Availability and blocked dates" leaves the
+       *  Mechanism column 197px, which is three and four lines per cell — the
+       *  ragged rhythm this whole change exists to remove, arriving by a
+       *  different door. So 1024 and 1180 restack instead, which the audit's
+       *  design lane already called the most readable rendering of this table.
+       *
+       *  FIXED, NOT AUTO. Auto layout hands the width to whichever Mechanism
+       *  cell is longest, and that cell changes with the ROLE: measured on the
+       *  public page at 1440, the Data column was 314.5px on Artist and 259.2px
+       *  on Administrator, so the table visibly re-flowed under a control that
+       *  is supposed to change only the answers. Declared widths make the grid
+       *  stand still while the content behind it changes.
+       *
+       *  34% Data: the widest label is "Availability and blocked dates" at
+       *  195px, and 34% of the narrowest table this branch renders (718px at
+       *  1280) is 244px, less the cell's 16px of padding-right. Every label
+       *  clears it at every width with room to spare, so none of the eight
+       *  wraps. 108px Access: the widest pill is "Append-only" at 96px.
+       *
+       *  min-w drops to 400px because a fixed layout no longer needs a floor
+       *  to stop the Mechanism column collapsing — the declared widths are the
+       *  floor. It is kept only so a sub-400px container scrolls rather than
+       *  crushing the columns to nothing. */}
       <div
-        className="-mx-1 hidden overflow-x-auto px-1 lg:block"
+        className="-mx-1 hidden overflow-x-auto px-1 xl:block"
         tabIndex={0}
         role="region"
         aria-label={`What the ${roleLabel} role can read, and the mechanism that decides it, scrollable`}
       >
-        <table className="w-full min-w-[440px] text-left">
+        <table className="w-full min-w-[400px] table-fixed text-left">
           <caption className="sr-only">
             What the {roleLabel} role can read, and the mechanism that decides it
           </caption>
+          <colgroup>
+            <col className="w-[34%]" />
+            <col className="w-[108px]" />
+            <col />
+          </colgroup>
           <thead>
             <tr className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
               <th scope="col" className="pb-2 font-semibold">Data</th>
@@ -222,15 +257,32 @@ export function VisibilityMatrix() {
             {VISIBILITY_MATRIX.map((row) => {
               const cell = row[role];
               return (
-                <tr key={row.object} className="border-t border-border align-middle">
-                  <th scope="row" className="py-3 pr-4 text-sm font-medium">
+                // ONE ROW HEIGHT, all eight rows, every width and every role.
+                // `h-[50px]` on a table row is a floor, not a cap, so a cell
+                // that ever needed a third line would still get it rather than
+                // clipping; nothing does, because AccessCell.note is capped at
+                // 110 characters and 110 characters is two lines of the
+                // narrowest Mechanism column this branch renders. py-2 rather
+                // than py-3 so a two-line cell measures 48px of content and
+                // the floor is what every row lands on — 50px, against an auto
+                // layout that produced 49 / 57 / 65 / 72 / 85 / 89px in one
+                // table. 50 and not 49: the borders collapse, so a row driven
+                // by its own content carries a border pixel that a row driven
+                // by the floor does not, and the floor has to clear both.
+                //
+                // `align-top` rather than `align-middle`: the badge has to
+                // line up with the first line of the mechanism it explains,
+                // and centring a 22px pill against a two-line cell put it half
+                // a line below the sentence it belongs to.
+                <tr key={row.object} className="h-[50px] border-t border-border align-top">
+                  <th scope="row" className="py-2 pr-4 text-sm font-medium">
                     {row.object}
                   </th>
-                  <td className="py-3 pr-3">
+                  <td className="py-2 pr-3">
                     <ToneBadge tone={cell.tone}>{cell.value}</ToneBadge>
                   </td>
                   <td
-                    className="py-3 text-xs leading-4 text-muted-foreground"
+                    className="py-2 text-xs leading-4 text-muted-foreground"
                     aria-describedby={cell.qualifiedByExceptionsNote ? EXCEPTIONS_NOTE_ID : undefined}
                   >
                     {cell.note}
@@ -243,11 +295,11 @@ export function VisibilityMatrix() {
         </table>
       </div>
 
-      {/* <1024px (lg): the table restacks as one card per row instead of
+      {/* <1280px (xl): the table restacks as one card per row instead of
        *  scrolling, the same trade the public page makes. The Mechanism
        *  column is this page's whole point and must not read as clipped
        *  text fragments. */}
-      <div className="flex flex-col divide-y divide-border lg:hidden">
+      <div className="flex flex-col divide-y divide-border xl:hidden">
         {VISIBILITY_MATRIX.map((row) => {
           const cell = row[role];
           return (

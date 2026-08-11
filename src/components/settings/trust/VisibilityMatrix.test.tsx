@@ -6,39 +6,68 @@ import { VisibilityMatrix } from "./VisibilityMatrix";
 
 describe("VisibilityMatrix responsive breakpoint", () => {
   // Settings > Trust & data always renders inside the app sidebar plus the
-  // settings nav column, so at a 768px viewport the tab itself only has
-  // ~460px to work with. Restacking at `sm` (640px) left a dead band between
-  // 640 and ~1024px where the table rendered clipped, with no scroll
-  // affordance, cutting off the Mechanism column this page exists to show.
-  // The restack must happen at `lg`, not `sm`, so the card list owns that
-  // whole band instead.
-  it("restacks the table into cards at lg, not sm", () => {
+  // settings nav column, so the table gets far less than the viewport:
+  // measured live, 1358px of a 1920 viewport, 878 of 1440, 718 of 1280 and
+  // only 462 of 1024. Restacking at `sm` (640px) left a dead band where the
+  // table rendered clipped with no scroll affordance; restacking at `lg`
+  // (1024px) closed that but left the table trying to draw three columns in
+  // 462px, which is where five of eight Data labels wrapped.
+  //
+  // With a declared Data column (see the next test) 462px leaves the Mechanism
+  // column 197px — three and four lines a cell, the ragged rhythm the fixed
+  // layout exists to remove, arriving by a different door. So the restack is
+  // `xl`: 1024 and 1180 get the card list, which the audit's design lane
+  // called the most readable rendering of this table anyway.
+  it("restacks the table into cards at xl, not lg or sm", () => {
     const { container } = renderWithProviders(<VisibilityMatrix />);
 
     const tableRegion = container.querySelector('[role="region"][aria-label$="scrollable"]');
     expect(tableRegion).not.toBeNull();
-    expect(tableRegion!.className).toMatch(/\blg:block\b/);
-    expect(tableRegion!.className).not.toMatch(/\bsm:block\b/);
+    expect(tableRegion!.className).toMatch(/\bxl:block\b/);
+    expect(tableRegion!.className).not.toMatch(/\b(sm|md|lg):block\b/);
 
     const cardList = container.querySelector(".divide-y.divide-border");
     expect(cardList).not.toBeNull();
-    expect(cardList!.className).toMatch(/\blg:hidden\b/);
-    expect(cardList!.className).not.toMatch(/\bsm:hidden\b/);
+    expect(cardList!.className).toMatch(/\bxl:hidden\b/);
+    expect(cardList!.className).not.toMatch(/\b(sm|md|lg):hidden\b/);
   });
 
-  // Moving the restack to `lg` without lowering the table's min-width only
-  // moved the dead band: measured live in the settings tab, a 1024px viewport
-  // leaves the table 470px, so a 560px floor still clipped the Mechanism
-  // column by ~98px from 1024 up to ~1130. The floor has to fit inside the
-  // narrowest width at which the table is shown at all.
-  it("keeps the table's min-width inside the 470px the tab has at lg", () => {
+  // Auto layout hands the width to whichever Mechanism cell happens to be
+  // longest, and that cell changes with the ROLE — measured on the public
+  // page at 1440, the Data column was 314.5px on Artist and 259.2px on
+  // Administrator, so the grid re-flowed under a control that is supposed to
+  // change only the answers. Declared widths make it stand still.
+  it("declares its column widths instead of letting content bid for them", () => {
     const { container } = renderWithProviders(<VisibilityMatrix />);
 
     const table = container.querySelector("table");
     expect(table).not.toBeNull();
-    const minWidth = table!.className.match(/\bmin-w-\[(\d+)px\]/);
-    expect(minWidth, "the table must declare an explicit min-width").not.toBeNull();
-    expect(Number(minWidth![1])).toBeLessThanOrEqual(470);
+    expect(table!.className, "auto layout is what let one cell starve the Data column").toMatch(
+      /\btable-fixed\b/,
+    );
+
+    const cols = [...container.querySelectorAll("colgroup col")];
+    expect(cols, "Data, Access and Mechanism").toHaveLength(3);
+    // 34% of the narrowest table this branch renders (718px at 1280) is 244px,
+    // and the widest label is "Availability and blocked dates" at 195px.
+    expect(cols[0].className.split(/\s+/)).toContain("w-[34%]");
+    // The widest pill is "Append-only" at 96px.
+    expect(cols[1].className.split(/\s+/)).toContain("w-[108px]");
+  });
+
+  // One row height, all eight rows, every width and every role. `h-[50px]` on
+  // a table row is a floor rather than a cap, so a cell that ever needed a
+  // third line would still get it instead of clipping; nothing does, because
+  // factsDensity.test.ts caps a mechanism note at 110 characters and that is
+  // two lines of the narrowest Mechanism column this branch renders.
+  it("gives every row the same height", () => {
+    const { container } = renderWithProviders(<VisibilityMatrix />);
+
+    const rows = [...container.querySelectorAll("tbody tr")];
+    expect(rows).toHaveLength(VISIBILITY_MATRIX.length);
+    for (const row of rows) expect(row.className.split(/\s+/)).toContain("h-[50px]");
+    // The badge lines up with the first line of the mechanism it explains.
+    for (const row of rows) expect(row.className).toMatch(/\balign-top\b/);
   });
 });
 
@@ -56,7 +85,10 @@ describe("VisibilityMatrix enforcement claim", () => {
   // second fails.
   it("does not claim database-only enforcement while the matrix credits the interface", () => {
     const cells = VISIBILITY_MATRIX.flatMap((row) => [row.admin, row.producer, row.artist]);
-    const interfaceEnforced = cells.filter((c) => /\bthe interface\b/.test(c.note));
+    // Case-insensitive: the clause now opens its own sentence in the chat
+    // cells ("The interface turns it read-only...") rather than sitting
+    // mid-sentence, which a case-sensitive match silently stopped seeing.
+    const interfaceEnforced = cells.filter((c) => /\bthe interface\b/i.test(c.note));
     expect(
       interfaceEnforced.length,
       "no cell credits the interface any more — the subhead may drop 'just'",

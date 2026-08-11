@@ -22,7 +22,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { CAPABILITY_DEFS } from "@/lib/capabilities";
-import { CAPABILITY_INTERFACE_ONLY_NOTE } from "./facts";
+import { CAPABILITY_INTERFACE_ONLY_NOTE, CONTROLS } from "./facts";
 
 const ROOT = process.cwd();
 const MIGRATIONS = resolve(ROOT, "supabase/migrations");
@@ -168,5 +168,25 @@ describe("capability enforcement split", () => {
     expect(CAPABILITY_INTERFACE_ONLY_NOTE).toContain(`${edgeOnly.length} more by an edge function`);
     expect(CAPABILITY_INTERFACE_ONLY_NOTE).toContain("The remaining three");
     expect(interfaceOnly).toHaveLength(3);
+  });
+
+  // The Roles-and-rights card used to interpolate the whole sentence above,
+  // all 58 words of it, which made it the longest claim on the page by 34
+  // words. It now restates the load-bearing half — the server / interface
+  // split — in its own words, and the full sentence renders on the
+  // capabilities card. That restatement is a second hand-typed copy of the
+  // same two numbers, so it needs the same gate: without this, closing one of
+  // the three interface-only gaps would leave "25 ... three" published on both
+  // surfaces with the note beside it corrected and CI green.
+  it("keeps the Roles and rights claim's split in step with the same derivation", () => {
+    const control = CONTROLS.find((c) => c.title === "Roles and rights");
+    expect(control, "CONTROLS has no 'Roles and rights' entry").toBeDefined();
+
+    const serverSide = database.length + edgeOnly.length;
+    expect(control!.claim).toContain(`${serverSide} are checked on the server`);
+    expect(control!.claim).toContain("three only by the interface");
+    // The evidence line carries the breakdown the claim no longer has room for.
+    expect(control!.evidence).toContain(`${database.length} sit inside the database`);
+    expect(control!.evidence).toContain(`${edgeOnly.length} in an edge function`);
   });
 });
