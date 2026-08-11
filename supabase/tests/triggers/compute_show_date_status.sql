@@ -12,6 +12,10 @@
 --   - when main_cast_slots is NULL, never reaches 'fully_filled' (unconfigured)
 --   - a main-only show (understudy_slots NULL) counts understudies as 0, so it CAN
 --     reach 'fully_filled' once the main slots are confirmed
+--   - unconfigured is main NULL OR both caps effectively zero (coalesce(main,0)=0 AND
+--     coalesce(us,0)=0), matching auto_cancel_on_slot_fill; so an explicit main=0 with a
+--     positive understudy cap CAN reach 'fully_filled' once its understudies confirm,
+--     while main=0 AND understudy=0 never does
 
 BEGIN;
 
@@ -19,7 +23,7 @@ BEGIN;
 -- auto-load it; doing it here makes the file portable.
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 
-SELECT plan(9);
+SELECT plan(11);
 
 -- ────────────────────────────────────────────────────────────────────────────
 -- Shared fixtures
@@ -36,6 +40,16 @@ VALUES ('11111111-1111-1111-1111-111111111112', 'theatre', 'comedy', '00000000-0
 -- Main-only show: 2 main + NULL understudy → configured (understudy optional)
 INSERT INTO public.shows (id, program, sub_program, main_cast_slots, understudy_slots, org_id)
 VALUES ('11111111-1111-1111-1111-111111111113', 'theatre', 'solo', 2, NULL, '00000000-0000-0000-0000-00000000b007');
+
+-- Understudy-carrying show with an explicit 0 main cap: main=0 + 2 understudies →
+-- configured (a count-0 Main slot beside a positive Understudy slot; slot_count CHECK is >=0),
+-- so it fills once its understudies confirm. Matches auto_cancel_on_slot_fill.
+INSERT INTO public.shows (id, program, sub_program, main_cast_slots, understudy_slots, org_id)
+VALUES ('11111111-1111-1111-1111-111111111114', 'theatre', 'chorus', 0, 2, '00000000-0000-0000-0000-00000000b007');
+
+-- Empty show: main=0 AND understudy=0 → unconfigured (nothing to fill), never fully_filled.
+INSERT INTO public.shows (id, program, sub_program, main_cast_slots, understudy_slots, org_id)
+VALUES ('11111111-1111-1111-1111-111111111115', 'theatre', 'empty', 0, 0, '00000000-0000-0000-0000-00000000b007');
 
 -- Four artists for stacking bookings on the same date
 INSERT INTO public.artists (id, name, org_id) VALUES
@@ -190,6 +204,39 @@ SELECT is(
   (SELECT status::text FROM public.show_dates WHERE id = '22222222-0000-0000-0000-000000000009'),
   'fully_filled',
   'main-only show (understudy_slots NULL) reaches fully_filled when the main slots are confirmed'
+);
+
+-- ────────────────────────────────────────────────────────────────────────────
+-- Test 10: Explicit main=0 with 2 understudies, both confirmed → 'fully_filled'
+-- (main=0/us=N is configured and fills; regression for the count-0-main-slot combo)
+-- ────────────────────────────────────────────────────────────────────────────
+INSERT INTO public.show_dates (id, show_id, date, session_1, org_id)
+VALUES ('22222222-0000-0000-0000-000000000010', '11111111-1111-1111-1111-111111111114', '2026-06-10', '19:00'::time, '00000000-0000-0000-0000-00000000b007');
+
+INSERT INTO public.bookings (show_date_id, artist_id, status, is_understudy, org_id) VALUES
+  ('22222222-0000-0000-0000-000000000010', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa01', 'confirmed', true, '00000000-0000-0000-0000-00000000b007'),
+  ('22222222-0000-0000-0000-000000000010', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa02', 'confirmed', true, '00000000-0000-0000-0000-00000000b007');
+
+SELECT is(
+  (SELECT status::text FROM public.show_dates WHERE id = '22222222-0000-0000-0000-000000000010'),
+  'fully_filled',
+  'main=0 with a positive understudy cap fills once the understudies are confirmed'
+);
+
+-- ────────────────────────────────────────────────────────────────────────────
+-- Test 11: main=0 AND understudy=0 → unconfigured, never 'fully_filled'
+-- (closes the empty-hire-order path even with a confirmed booking present)
+-- ────────────────────────────────────────────────────────────────────────────
+INSERT INTO public.show_dates (id, show_id, date, session_1, org_id)
+VALUES ('22222222-0000-0000-0000-000000000011', '11111111-1111-1111-1111-111111111115', '2026-06-11', '19:00'::time, '00000000-0000-0000-0000-00000000b007');
+
+INSERT INTO public.bookings (show_date_id, artist_id, status, is_understudy, org_id) VALUES
+  ('22222222-0000-0000-0000-000000000011', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa01', 'confirmed', false, '00000000-0000-0000-0000-00000000b007');
+
+SELECT is(
+  (SELECT status::text FROM public.show_dates WHERE id = '22222222-0000-0000-0000-000000000011'),
+  'partially_filled',
+  'main=0 AND understudy=0 is unconfigured (never fully_filled), even with a confirmed booking'
 );
 
 SELECT * FROM finish();
