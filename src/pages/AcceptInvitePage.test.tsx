@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { afterAll, describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -14,16 +14,24 @@ import { ROUTES, roleLabel, roleDescription } from "@/config/app.config";
 import { BOOKING_FLOW_DEFAULTS, applyPreset, type BookingFlow } from "@/lib/bookingFlow";
 import type { Membership, Organization } from "@/data/orgs";
 import { createTestQueryClient } from "@/test/queryClient";
+import { InvitationExchangeError } from "@/data/invitations";
 
 const navigateSpy = vi.fn();
+const locationAssignSpy = vi.fn();
+const originalLocation = window.location;
 vi.mock("react-router-dom", async (orig) => ({
   ...(await orig<typeof import("react-router-dom")>()),
   useNavigate: () => navigateSpy,
 }));
 
 const acceptInvitationMock = vi.fn();
+const exchangeInvitationMock = vi.fn();
 vi.mock("@/data/invitations", () => ({
   acceptInvitation: (...args: unknown[]) => acceptInvitationMock(...args),
+  exchangeInvitation: (...args: unknown[]) => exchangeInvitationMock(...args),
+  InvitationExchangeError: class InvitationExchangeError extends Error {
+    constructor(public kind: "unavailable" | "throttled" | "unknown", public retryAfterSeconds?: number) { super(kind); }
+  },
 }));
 
 const toastSuccess = vi.fn();
@@ -176,8 +184,15 @@ const renderAtWithQueryClient = (url: string) =>
   );
 
 beforeEach(() => {
+  Object.defineProperty(window, "location", {
+    configurable: true,
+    value: { ...originalLocation, assign: locationAssignSpy },
+  });
+  locationAssignSpy.mockClear();
   navigateSpy.mockClear();
   acceptInvitationMock.mockReset();
+  exchangeInvitationMock.mockReset();
+  sessionStorage.clear();
   toastSuccess.mockClear();
   toastWarning.mockClear();
   switchOrgSpy.mockClear();
@@ -205,6 +220,8 @@ beforeEach(() => {
   };
 });
 
+afterAll(() => Object.defineProperty(window, "location", { configurable: true, value: originalLocation }));
+
 describe("AcceptInvitePage error paths (unchanged)", () => {
   it("shows an error when the link is missing its token", async () => {
     renderAt(`${ROUTES.ACCEPT_INVITE}`);
@@ -212,15 +229,55 @@ describe("AcceptInvitePage error paths (unchanged)", () => {
     expect(acceptInvitationMock).not.toHaveBeenCalled();
   });
 
-  it("redirects to login with a return url when not authenticated", async () => {
+  it("shows invitation context without exchanging until Continue is clicked", async () => {
     authState.user = null;
     renderAt(`${ROUTES.ACCEPT_INVITE}?token=abc123`);
-    await waitFor(() =>
-      expect(navigateSpy).toHaveBeenCalledWith(
-        `${ROUTES.LOGIN}?redirect=${encodeURIComponent(`${ROUTES.ACCEPT_INVITE}?token=abc123`)}`,
-        { replace: true },
-      ),
-    );
+    expect(screen.getByRole("heading", { name: /you've been invited/i })).toBeInTheDocument();
+    expect(exchangeInvitationMock).not.toHaveBeenCalled();
+  });
+
+  it("exchanges exactly once on Continue and assigns the returned Auth URL", async () => {
+    authState.user = null;
+    let resolveExchange!: (value: { actionUrl: string }) => void;
+    exchangeInvitationMock.mockReturnValue(new Promise((resolve) => { resolveExchange = resolve; }));
+    renderAt(`${ROUTES.ACCEPT_INVITE}?token=abc123`);
+    const button = screen.getByRole("button", { name: /continue/i });
+    fireEvent.click(button);
+    fireEvent.click(button);
+    expect(button).toBeDisabled();
+    expect(exchangeInvitationMock).toHaveBeenCalledTimes(1);
+    expect(exchangeInvitationMock).toHaveBeenCalledWith(expect.anything(), { token: "abc123", appOrigin: window.location.origin });
+    resolveExchange({ actionUrl: "https://auth.example/verify" });
+    await waitFor(() => expect(locationAssignSpy).toHaveBeenCalledWith("https://auth.example/verify"));
+  });
+
+  it("keeps retry available after throttling", async () => {
+    authState.user = null;
+    exchangeInvitationMock.mockRejectedValueOnce(new InvitationExchangeError("throttled", 30));
+    renderAt(`${ROUTES.ACCEPT_INVITE}?token=abc123`);
+    fireEvent.click(screen.getByRole("button", { name: /continue/i }));
+    expect(await screen.findByText(/wait.*try again/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /try again/i })).toBeEnabled();
+    expect(sessionStorage.getItem("showflow.pendingInvitationToken")).toBe("abc123");
+  });
+
+  it("clears the stored token and shows permanent unavailable state for 410", async () => {
+    authState.user = null;
+    exchangeInvitationMock.mockRejectedValueOnce(new InvitationExchangeError("unavailable"));
+    renderAt(`${ROUTES.ACCEPT_INVITE}?token=abc123`);
+    fireEvent.click(screen.getByRole("button", { name: /continue/i }));
+    expect(await screen.findByText(/no longer available/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /try again/i })).not.toBeInTheDocument();
+    expect(sessionStorage.getItem("showflow.pendingInvitationToken")).toBeNull();
+  });
+
+  it("offers a generic retry for unknown exchange failures", async () => {
+    authState.user = null;
+    exchangeInvitationMock.mockRejectedValueOnce(new Error("network"));
+    renderAt(`${ROUTES.ACCEPT_INVITE}?token=abc123`);
+    fireEvent.click(screen.getByRole("button", { name: /continue/i }));
+    expect(await screen.findByText(/couldn't continue/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /try again/i })).toBeEnabled();
   });
 
   it("shows a friendly message when acceptance fails", async () => {
@@ -267,7 +324,7 @@ describe("AcceptInvitePage error paths (unchanged)", () => {
     // the same construction the unauthenticated-visit path already uses, so signing in
     // with the invited address lands the invitee right back here to finish accepting.
     expect(navigateSpy).toHaveBeenCalledWith(
-      `${ROUTES.LOGIN}?redirect=${encodeURIComponent(`${ROUTES.ACCEPT_INVITE}?token=abc123`)}`,
+      `${ROUTES.LOGIN}?redirect=${encodeURIComponent(ROUTES.ACCEPT_INVITE)}`,
       { replace: true },
     );
   });
@@ -309,6 +366,13 @@ describe("AcceptInvitePage error paths (unchanged)", () => {
 });
 
 describe("AcceptInvitePage success screen", () => {
+  it("clears the pending token after signed-in acceptance succeeds", async () => {
+    acceptInvitationMock.mockResolvedValueOnce({ orgId: org1.id, artistLinked: true });
+    renderAt(`${ROUTES.ACCEPT_INVITE}?token=abc123`);
+    await screen.findByRole("heading", { name: /you've joined/i });
+    expect(sessionStorage.getItem("showflow.pendingInvitationToken")).toBeNull();
+  });
+
   it("renders an informative card instead of auto-navigating", async () => {
     acceptInvitationMock.mockResolvedValueOnce({ orgId: org1.id, artistLinked: true });
     renderAt(`${ROUTES.ACCEPT_INVITE}?token=abc123`);
