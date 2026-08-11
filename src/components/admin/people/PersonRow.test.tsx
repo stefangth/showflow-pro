@@ -1,7 +1,8 @@
-import { screen } from "@testing-library/react";
+import { screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import { renderWithProviders } from "@/test/renderWithProviders";
-import { roleLabel } from "@/config/app.config";
+import { roleLabel, ROLE_DESCRIPTIONS } from "@/config/app.config";
+import { ROLE_OPTIONS } from "./roleOptions";
 import { PersonRow } from "./PersonRow";
 import type { Person } from "./peopleMatch";
 
@@ -50,5 +51,40 @@ describe("PersonRow", () => {
     p.invitation = { ...p.invitation!, last_resent_at: "2026-08-10T14:30:00Z", resent_count: 2 };
     renderWithProviders(<PersonRow person={p} isSelf={false} onCopyLink={noop} onResend={noop} onRevoke={noop} onSetRole={noop} onRequestRemove={noop} />);
     expect(screen.getByText(/Resent 2.*last/i)).toBeInTheDocument();
+  });
+
+  it("the Roles dropdown shows a one-line description under every role option", () => {
+    renderWithProviders(<PersonRow person={base} isSelf={false} onCopyLink={noop} onResend={noop} onRevoke={noop} onSetRole={noop} onRequestRemove={noop} />);
+    // Radix's DropdownMenuTrigger opens on pointerdown or Enter/Space, not a plain
+    // synthetic "click" event; jsdom has no PointerEvent, so use the keyboard path.
+    fireEvent.keyDown(screen.getByRole("button", { name: /edit roles for/i }), { key: "Enter" });
+    for (const r of ROLE_OPTIONS) {
+      expect(screen.getByText(ROLE_DESCRIPTIONS[r])).toBeInTheDocument();
+    }
+  });
+
+  // Regression: DropdownMenuCheckboxItem's check indicator is absolutely positioned
+  // and, by default, vertically centred on the whole (now two-line) item — so the
+  // check mark for the active role sat beside the DESCRIPTION instead of the role
+  // name it marks. Each item must top-align its content instead (see the
+  // `items-start` className on DropdownMenuCheckboxItem in PersonRow.tsx).
+  //
+  // Not asserted here: jsdom does not lay out Radix's absolutely-positioned check
+  // indicator, so there is no layout signal in this environment to assert on, and
+  // matching the `items-start` Tailwind class by name would only pin today's exact
+  // styling mechanism (it would false-fail on an equivalent restyle, e.g. an
+  // inline style or a different alignment utility that fixes the same bug). This
+  // was verified visually in the browser instead; a real regression here needs a
+  // visual/e2e check, not a jsdom class-name match.
+  it("the Roles dropdown renders each option as a checkbox item with its label and description together", () => {
+    renderWithProviders(<PersonRow person={base} isSelf={false} onCopyLink={noop} onResend={noop} onRevoke={noop} onSetRole={noop} onRequestRemove={noop} />);
+    fireEvent.keyDown(screen.getByRole("button", { name: /edit roles for/i }), { key: "Enter" });
+    const items = screen.getAllByRole("menuitemcheckbox");
+    expect(items.length).toBe(ROLE_OPTIONS.length);
+    for (const [i, item] of items.entries()) {
+      const r = ROLE_OPTIONS[i];
+      expect(item).toHaveTextContent(roleLabel(r));
+      expect(item).toHaveTextContent(ROLE_DESCRIPTIONS[r]);
+    }
   });
 });

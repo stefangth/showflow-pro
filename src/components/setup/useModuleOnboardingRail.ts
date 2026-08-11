@@ -1,11 +1,11 @@
 import { useAuth } from "@/features/auth/AuthContext";
 import { useCan } from "@/hooks/useCapabilities";
-import { useBookingSetupStatus } from "@/hooks/useBookingSetup";
+import { useBookingSetupStatus, useProducerCount } from "@/hooks/useBookingSetup";
 import { useHireOrderSetupStatus } from "@/hooks/useHireOrderSetup";
 import { useBookingSetupRailVisible } from "@/components/bookings/setup/useBookingSetupRailVisible";
 import { useSetupRailVisible } from "@/components/hireOrders/setup/useSetupRailVisible";
 import { useRailDismissed } from "@/components/setup/useRailDismissed";
-import { collapsedCopy, composeOnboarding } from "@/lib/dashboard/firstRun";
+import { collapsedCopy, composeOnboarding, injectAdminTeamStep } from "@/lib/dashboard/firstRun";
 import { MODULE_ONBOARDING } from "@/lib/dashboard/moduleOnboarding";
 import type { FeatureKey } from "@/lib/entitlements";
 import type { SetupRailMode } from "@/components/setup/setupRailMode";
@@ -74,6 +74,7 @@ export function useModuleOnboardingRail(feature: FeatureKey, orgId: string | nul
   const hire = useHireOrderSetupStatus(hireOrg);
 
   const [, dismiss, expand] = useRailDismissed(DISMISS_KEY[feature], orgId);
+  const producerCount = useProducerCount(orgId, role === "admin" && feature === "booking_flow");
 
   const ctx: OnboardingCtx = {
     orgName: currentOrg?.name ?? "your workspace",
@@ -98,8 +99,16 @@ export function useModuleOnboardingRail(feature: FeatureKey, orgId: string | nul
     { enabled: new Set<FeatureKey>([feature]), role, moduleStatuses, ctx },
     MODULE_ONBOARDING,
   );
-  const filled = composed.steps.filter((s) => s.done).length;
-  const total = composed.steps.length;
+  // Admin-only, non-gating production-team nudge — same shared helper the dashboard rail uses,
+  // so the banner and the sheet cannot disagree on the step set or the "N of M" count. This
+  // hook forces a single-module `enabled` set, so `composed.complete` here is already the
+  // booking module's own completeness — exactly the booking-scoped flag the gate wants.
+  const { steps, filled, total } = injectAdminTeamStep(composed, {
+    role,
+    bookingEnabled: feature === "booking_flow",
+    producerCount,
+    complete: composed.complete,
+  });
   const remaining = total - filled;
   const railHeader = MODULE_ONBOARDING[feature].railHeader;
   const viz = feature === "hire_orders" ? hireViz : bookingViz;
@@ -109,7 +118,7 @@ export function useModuleOnboardingRail(feature: FeatureKey, orgId: string | nul
 
   return {
     mode: viz.mode,
-    steps: composed.steps,
+    steps,
     rules: composed.rules,
     // Deliberately empty: composeOnboarding derives off-footers from every feature NOT in
     // `enabled`, and this hook forces a single-module set, so composed.offFooters would

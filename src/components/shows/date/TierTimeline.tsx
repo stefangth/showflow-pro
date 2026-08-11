@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -13,6 +14,8 @@ import { tierFillCounts } from "@/lib/bookingCockpit";
 import {
   buildOfferTierOptions, offerConfirmCopy, closeConfirmCopy, pendingOfferCount,
 } from "@/lib/bookings";
+import { TIER_CONCEPT_NOTE } from "@/lib/bookings/actionCopy";
+import { ROUTES } from "@/config/app.config";
 import type { OpenedTier } from "@/data/bookings";
 import type { BookingFlow } from "@/lib/bookingFlow";
 
@@ -148,6 +151,14 @@ export function TierTimeline({
           {ladderSource === "show" && (
             <p className="text-xs text-muted-foreground">Using show-specific priorities</p>
           )}
+          {/* What a tier even is, stated once next to the picker rather than assumed —
+              a producer opening this tab for the first time has no other cue for it. */}
+          <p className="text-xs text-muted-foreground">
+            {TIER_CONCEPT_NOTE}{" "}
+            <Link to={`${ROUTES.SETTINGS}?tab=docs`} className="text-primary underline">
+              How casts and tiers work
+            </Link>
+          </p>
           {isLoadingTiers ? (
             <Skeleton className="h-9 w-64" />
           ) : tierOptions.length === 0 ? (

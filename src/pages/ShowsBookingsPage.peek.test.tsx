@@ -74,20 +74,17 @@ vi.mock("@/components/bookings/setup/BookingSetupRail", () => ({
   BookingSetupRail: () => <div data-testid="booking-setup-rail" />,
 }));
 vi.mock("@/hooks/useBookingSetup", () => ({
-  // Full steps array: useModuleOnboardingRail composes the banner rail off status.steps.
+  // Full status object: useModuleOnboardingRail composes the banner rail off status.steps
+  // and its "N of M" label off the counts. Composed by the real engine rather than listed
+  // by hand so a new step cannot leave this fixture describing a rail that no longer exists.
   useBookingSetupStatus: () => ({
-    status: {
-      steps: [
-        { key: "flow", done: false, block: null },
-        { key: "slots", done: false, block: "filling" },
-        { key: "ladder", done: false, block: "offers" },
-        { key: "eligibility", done: false, block: null },
-        { key: "timing", done: false, block: null },
-      ],
-      doneCount: 0, totalCount: 5, canOffer: false, complete: false,
-    },
+    status: blankOrgStatus(),
     coverage: undefined, isLoading: false, isError: false,
   }),
+  // The banner rail now also reads this for the admin-only team nudge; this page's role is
+  // producer throughout (see the useAuth mock above), so it is always called disabled and
+  // only needs to exist here, not vary.
+  useProducerCount: () => null,
 }));
 vi.mock("@/hooks/useHireOrders", () => ({
   useDatesReadyForHireOrder: () => ({ data: undefined }),
@@ -122,6 +119,16 @@ vi.mock("@/components/hireOrders/NewOrderWizard", () => ({ NewOrderWizard: () =>
 
 import { toast } from "sonner";
 import ShowsBookingsPage from "./ShowsBookingsPage";
+import { computeBookingSetupStatus } from "@/lib/bookings/setupStatus";
+
+/** A never-configured org, straight from the engine: every step outstanding. A hoisted
+ *  function declaration so the vi.mock factory above can call it at render time. */
+function blankOrgStatus() {
+  return computeBookingSetupStatus({
+    flowChosen: false, hasAnyShows: false, shows: [], timingChosen: false,
+    coverage: null, artistCount: 0, artistAcceptance: null,
+  });
+}
 
 beforeEach(() => {
   localStorage.clear();

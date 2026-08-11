@@ -2,14 +2,27 @@ import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useAllCities } from "@/hooks/useAllCities";
 import { useShows } from "@/hooks/useShows";
+import { useBookingFlow } from "@/hooks/useBookingFlow";
+import { eligibilityScopeNote } from "@/lib/bookings/coverageCopy";
 import { resolveCoverage, type LadderCoverageInputs } from "@/lib/bookings/setupStatus";
 import { ROUTES } from "@/config/app.config";
 
 /** Read-only: the (show, city) pairs with a future date but no tier-1 cast, plus a count
- *  of future dates that have no city. Both are why a tier would open to nobody. */
-export function EligibilityStep({ coverage }: { coverage: LadderCoverageInputs | undefined }) {
+ *  of future dates that have no city.
+ *
+ *  What that gap COSTS is opposite under the two flows, so the opening line reads the org's
+ *  own: an offers org opens a tier to nobody, while a direct-book org falls back to its
+ *  whole active roster (useEligibleArtists resolves artistIds to null, and
+ *  deriveDirectBookList treats null as "no restriction"). `orgId` is the rail's org, not
+ *  the shell's, matching LadderStep and TimingStep. */
+export function EligibilityStep({ coverage, orgId }: { coverage: LadderCoverageInputs | undefined; orgId: string | null }) {
   const cities = useAllCities();
   const shows = useShows();
+  // Gated on the org, not just on the query: `useBookingFlow` has no `enabled`, so a null
+  // org still resolves the PLATFORM DEFAULT row into a truthy, offers-shaped flow that would
+  // state the wrong consequence for an org this panel has not identified.
+  const flowQ = useBookingFlow(orgId);
+  const flow = orgId ? flowQ.data : null;
   const cityName = (id: string) => (cities.data ?? []).find((c) => c.id === id)?.name ?? "Unknown city";
   const showName = (id: string) => {
     const s = (shows.data ?? []).find((x) => x.id === id);
@@ -24,9 +37,7 @@ export function EligibilityStep({ coverage }: { coverage: LadderCoverageInputs |
 
   return (
     <div className="space-y-3">
-      <p className="text-xs text-muted-foreground">
-        Which casts can be offered a show in a city. Without a match the tier opens to nobody.
-      </p>
+      <p className="text-xs text-muted-foreground">{eligibilityScopeNote(flow)}</p>
       {result.uncoveredPairs.length === 0 && !result.hasNullCity ? (
         <p className="text-xs text-muted-foreground">Every scheduled show and city has a cast at tier 1.</p>
       ) : (
@@ -42,9 +53,18 @@ export function EligibilityStep({ coverage }: { coverage: LadderCoverageInputs |
           )}
         </div>
       )}
-      <Link to={ROUTES.SETTINGS} className="text-xs text-primary underline">
-        Link casts in Settings, Casts and cities
-      </Link>
+      <div className="flex flex-wrap gap-x-4 gap-y-1">
+        {/* Deep-linked for the same reason as LadderStep's twin: the label names the
+            section, so the href has to land there rather than on the role default. */}
+        <Link to={`${ROUTES.SETTINGS}?tab=casts-cities`} className="text-xs text-primary underline">
+          Link casts in Settings, Casts and cities
+        </Link>
+        {/* Same house vocabulary as LadderStep, same escape hatch into the docs, same
+            destination named in the label. */}
+        <Link to={`${ROUTES.SETTINGS}?tab=docs`} className="text-xs text-primary underline">
+          How casts and tiers work, in the App Logic Guide
+        </Link>
+      </div>
     </div>
   );
 }

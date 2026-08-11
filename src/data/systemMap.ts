@@ -299,7 +299,7 @@ export const SYSTEM_MAP_NODES: SystemMapNode[] = [
       Auth: "requireCronOrRole(admin,producer) · verify_jwt=false",
       Gate: "per org: the booking_flow entitlement (checked before resolveBookingFlow, which fails open to permissive defaults on an entitlement-check error) ∧ active ∧ at_risk_alerts ∧ artist_acceptance; a gated or unentitled tier is never marked still-at-risk, so its stale notification clears on the next run same as a recovered tier",
       Writes: "notifications (tier_at_risk), deduped per (tier,user), self-clearing on recovery",
-      Effects: "none, in-app only by design",
+      Effects: "best-effort tier-at-risk email to the same recipients, sent once per newly at-risk (tier,user) pair, not every run; a failed lookup or send is swallowed, never blocks the notification write",
       Cite: "tier-at-risk-watcher/index.ts:29-177",
     },
   },
@@ -568,6 +568,22 @@ export const SYSTEM_MAP_NODES: SystemMapNode[] = [
       Order: "sole_admin_orgs guard → anonymize_user (9 tables) → auth.admin.deleteUser",
       Risk: "anonymize ok + auth-delete failed = no rollback window",
       Cite: "delete-my-account/index.ts:8-30",
+    },
+  },
+  {
+    id: "f_purge",
+    column: "fn",
+    group: "GDPR & import",
+    kind: "fn",
+    label: "org-purge-removed-user",
+    sub: "org admin",
+    subsystems: ["gdpr", "platform"],
+    detail: {
+      Trigger: "Admin → People → Recently removed → Delete account",
+      Auth: "requireOrgRole(admin) · verify_jwt=true",
+      Guard: "full delete only when this was the user's LAST org AND they are not a platform admin; otherwise a no-op (retained), the tombstone stays",
+      Order: "tombstone exists → not platform_admin → no other membership → admin_anonymize_removed_user (caller JWT, shares _anonymize_user_data) → auth.admin.deleteUser",
+      Cite: "org-purge-removed-user/index.ts",
     },
   },
   {
@@ -959,6 +975,7 @@ export const SYSTEM_MAP_EDGES: SystemMapEdge[] = [
   { from: "c_healthrollup", to: "f_healthrollup" },
   // user → fn
   { from: "u_artist", to: "f_delacct" },
+  { from: "u_prod", to: "f_purge" },
   { from: "u_prod", to: "f_open" },
   { from: "u_prod", to: "f_close" },
   { from: "u_prod", to: "f_create_inv" },
@@ -988,6 +1005,7 @@ export const SYSTEM_MAP_EDGES: SystemMapEdge[] = [
   { from: "f_offerdig", to: "f_send" },
   { from: "f_confdig", to: "f_send" },
   { from: "f_health", to: "f_send" },
+  { from: "f_risk", to: "f_send" },
   // fn → db writes
   { from: "f_poll", to: "d_showdates" },
   { from: "f_poll", to: "d_shows" },

@@ -27,6 +27,7 @@ export interface TemplateEntry {
 }
 
 import { template as castEscalationRequested } from './cast-escalation-requested.tsx'
+import { template as tierAtRisk } from './tier-at-risk.tsx'
 import { template as artistOfferDigest } from './artist-offer-digest.tsx'
 import { template as offerImmediate } from './offer-immediate.tsx'
 import { template as artistConfirmationDigest } from './artist-confirmation-digest.tsx'
@@ -37,11 +38,13 @@ import { template as hireOrderIssued } from './hire-order-issued.tsx'
 import { template as hireOrderCountersigned } from './hire-order-countersigned.tsx'
 import { template as accountEmailChanged } from './account-email-changed.tsx'
 import { template as magicLink } from './magic-link.tsx'
+import { template as airtableSyncHeld } from './airtable-sync-held.tsx'
 
 type RegisteredTemplateEntry = TemplateEntry & { family: EmailFamily }
 
 export const TEMPLATES: Record<string, RegisteredTemplateEntry> = {
   'cast-escalation-requested': { ...castEscalationRequested, family: 'ember' },
+  'tier-at-risk': { ...tierAtRisk, family: 'ember' },
   'artist-offer-digest': { ...artistOfferDigest, family: 'violet' },
   'offer-immediate': { ...offerImmediate, family: 'violet' },
   'artist-confirmation-digest': { ...artistConfirmationDigest, family: 'violet' },
@@ -52,6 +55,7 @@ export const TEMPLATES: Record<string, RegisteredTemplateEntry> = {
   'hire-order-countersigned': { ...hireOrderCountersigned, family: 'steel' },
   'account-email-changed': { ...accountEmailChanged, family: 'steel' },
   'magic-link': { ...magicLink, family: 'violet' },
+  'airtable-sync-held': { ...airtableSyncHeld, family: 'violet' },
 }
 
 export interface TemplatePresentation {
@@ -120,6 +124,10 @@ const SUBJECT_RESOLVERS = {
     program: String(data.program ?? 'show'),
     date: String(data.date ?? '?'),
   }),
+  'tier-at-risk': (data, copy) => applyEmailTokens(copy['tier-at-risk.subject'], {
+    program: String(data.program ?? 'show'),
+    date: String(data.date ?? '?'),
+  }),
   'hire-order-issued': (data, copy) => applyEmailTokens(copy['hire-order-issued.subject'], {
     dateLabel: String(data.date_label || 'your date'),
     venue: String(data.venue || 'the venue'),
@@ -136,6 +144,9 @@ const SUBJECT_RESOLVERS = {
     statusCode: String(data.status_code ?? '?'),
   }),
   'magic-link': (_data, copy) => copy['magic-link.subject'],
+  'airtable-sync-held': (data, copy) => applyEmailTokens(copy['airtable-sync-held.subject'], {
+    orgName: String(data.orgName || copy['airtable-sync-held.orgFallback']),
+  }),
 } satisfies Record<EmailTemplateKey, SubjectResolver>
 
 /** Extract the historical generic subject field without extending its lifetime. */

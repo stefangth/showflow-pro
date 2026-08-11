@@ -12,6 +12,9 @@ export interface EmailPreviewPaneProps {
   copyOverride: EmailCopyOverride;
   themeOverride: EmailThemeOverride;
   highlightRole?: string;
+  /** Sample-data override for variant previews (see EmailPreviewVariant). Pass a
+   *  stable identity — this effect keys on it. */
+  dataOverride?: Record<string, unknown>;
 }
 
 /** Debounced edge-rendered preview with stale-run and unmount protection. */
@@ -20,6 +23,7 @@ export function EmailPreviewPane({
   copyOverride,
   themeOverride,
   highlightRole,
+  dataOverride,
 }: EmailPreviewPaneProps) {
   const [html, setHtml] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -37,6 +41,7 @@ export function EmailPreviewPane({
           copyOverride,
           themeOverride,
           ...(highlightRole ? { highlightRole } : {}),
+          ...(dataOverride ? { dataOverride } : {}),
         });
         if (id !== runId.current) return;
         setHtml(nextHtml);
@@ -49,7 +54,7 @@ export function EmailPreviewPane({
     }, DEBOUNCE_MS);
 
     return () => window.clearTimeout(timer);
-  }, [copyOverride, highlightRole, templateKey, themeOverride]);
+  }, [copyOverride, dataOverride, highlightRole, templateKey, themeOverride]);
 
   useEffect(() => () => {
     runId.current += 1;

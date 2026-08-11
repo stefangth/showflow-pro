@@ -843,7 +843,7 @@ Deno.test("send-transactional-email: applies new copy and theme settings to the 
       app_settings: [
         { when: { key: "email_copy" }, data: [{ org_id: ORG, value: {
           "org-invitation.subject": "Welcome {{orgName}}",
-          "org-invitation.intro": "A custom invitation for {{orgName}}.",
+          "org-invitation.productIntro": "A custom invitation for {{orgName}}.",
         } }], error: null },
         { when: { key: "email_theme" }, data: [{ org_id: ORG, value: { base: { colors: { pageBg: "#010203" } } } }], error: null },
         { when: { key: "email_template_overrides" }, data: [], error: null },

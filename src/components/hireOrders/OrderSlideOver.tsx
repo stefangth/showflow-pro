@@ -251,7 +251,7 @@ export function OrderSlideOver({ order, open, onOpenChange, orgId }: Props) {
                       <AlertDialogHeader>
                         <AlertDialogTitle>Void this hire order?</AlertDialogTitle>
                         <AlertDialogDescription>
-                          This cannot be undone. The order will be marked void and removed from active tracking.
+                          Voiding cancels this order for good. If the artist needs a corrected order, you can generate a fresh hire order for this date afterward.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>

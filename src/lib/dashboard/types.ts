@@ -1,23 +1,29 @@
 // src/lib/dashboard/types.ts
-import type { ReactNode } from "react";
 import type { FeatureKey } from "@/lib/entitlements";
 
-/** The two capability actions this feature's step CTAs gate on. Kept as a local
- *  union (useCan takes a bare string; capabilities.ts exports no action type). */
-export type StepCapability = "edit_booking_settings" | "edit_hire_order_settings";
+/** The capability actions this feature's step CTAs gate on. Kept as a local union
+ *  (useCan takes a bare string; capabilities.ts exports no action type); every member is
+ *  checked against CAPABILITY_DEFS in moduleOnboarding.test.ts, since an action that does
+ *  not exist resolves to `false` for every non-admin and silently hides the CTA. */
+export type StepCapability = "edit_booking_settings" | "edit_hire_order_settings" | "add_artists";
 
 export type DashboardRole = "admin" | "producer" | "artist";
 
-/** Booking BlockKind ("offers"/"filling") plus "issuing" for hire-order steps
- *  (letterhead/terms) that block issuing, so the rail chips them for parity. */
-export type SetupBlock = "offers" | "filling" | "issuing" | null;
+/** Booking BlockKind ("offers"/"booking"/"filling") plus "issuing" for hire-order steps
+ *  (letterhead/terms) that block issuing, so the rail chips them for parity.
+ *  "booking" is the direct-book org's wording of the same hard gate "offers" names for an
+ *  offers org: see `blockFor` in src/lib/bookings/setupStatus.ts. */
+export type SetupBlock = "offers" | "booking" | "filling" | "issuing" | null;
 
 export interface OnboardingStepMeta {
   title: string;
   todoHint: string;
   doneHint: string;
   ctaLabel: string;
-  ctaRoute: string; // a ROUTES.* value
+  /** A `ROUTES.*` value, optionally with a query string (`${ROUTES.SETTINGS}?tab=booking`)
+   *  so a CTA lands on the section its label names. DashboardSetupRail passes it straight
+   *  to `<Link to>`, which takes a path plus search. */
+  ctaRoute: string;
   /** When set and the viewer lacks it, the step renders read-only (no CTA). */
   ctaCapability?: StepCapability;
 }
@@ -88,33 +94,7 @@ export interface ComposeResult {
   offFooters: string[];
 }
 
-export interface DashboardFirstRunState {
-  show: boolean;
-  complete: boolean;
-  dismissed: boolean;
-  steps: ComposedStep[];
-  rules: InheritedRule[];
-  offFooters: string[];
-  welcome: WelcomeCopy;
-  // Admin/producer only (the empty-org sample preview). Absent for the artist role,
-  // whose dashboard body always renders live.
-  sample?: SamplePreviewData;
-  sectionTitle?: string;
-  sectionHint?: string;
-  railEyebrow: string;
-  railTitle: string;
-  railBody: string;
-  collapsedLabel: string;
-  collapsedHint: string;
-  collapsedCta: string;
-  railOpen: boolean;
-  openRail: () => void;
-  closeRail: () => void;
-  dismiss: () => void;
-}
-
 // Component prop contracts (Wave A components bind to these).
-export interface DashboardWelcomeProps { welcome: WelcomeCopy; onPrimary: () => void; onSecondary: () => void; }
 export interface DashboardWelcomeCollapsedProps { label: string; hint: string; ctaLabel: string; onOpen: () => void; }
 export interface DashboardSetupRailProps {
   eyebrow: string; title: string; body: string; complete: boolean;
@@ -129,10 +109,4 @@ export interface DashboardSetupRailProps {
   progressFilled?: number;
   progressTotal?: number;
   progressHint?: string;
-}
-export interface SamplePreviewProps {
-  // `sample` (with its section copy) is optional: when absent the component renders
-  // its live children, so an artist surface can mount it without a sample fixture.
-  complete: boolean; sample?: SamplePreviewData;
-  sectionTitle?: string; sectionHint?: string; children: ReactNode;
 }

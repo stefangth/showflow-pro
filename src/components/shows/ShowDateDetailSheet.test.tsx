@@ -1,7 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { screen, fireEvent, waitFor } from "@testing-library/react";
+import { screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import { createFakeSupabase, type TableSeed } from "@/test/supabaseFake";
+// The per-row confirm success toast is asserted directly (Booked ${name}.), so sonner's
+// toast is a plain spy rather than the real module (which has nothing to observe without a
+// mounted <Toaster/>).
+vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() } }));
 
 // ShowDateDetailSheet reaches the shared client through several raw
 // supabase.from(...) queries plus data-access helpers (fetchOfferTiers,
@@ -68,6 +72,7 @@ function seedClient(seed: Record<string, TableSeed>) {
 import { useAuth } from "@/features/auth/AuthContext";
 import { useCan } from "@/hooks/useCapabilities";
 import { useFeature } from "@/hooks/useEntitlements";
+import { toast } from "sonner";
 import { ShowDateDetailSheet } from "./ShowDateDetailSheet";
 
 const SHOW_DATE = {
@@ -242,6 +247,52 @@ describe("ShowDateDetailSheet capability gates", () => {
     });
     renderSheet();
     expect(await screen.findByRole("button", { name: /^confirm$/i })).toBeInTheDocument();
+  });
+
+  // The per-row Confirm on the cockpit cast list used to report a bare "Booking updated",
+  // so clicking Confirm on a busy date's cast list gave no receipt of WHICH artist just
+  // moved. updateBookingStatus's onSuccess now looks the booking up in bookingsForDate to
+  // name the artist.
+  it("names the artist in the per-row confirm success toast", async () => {
+    seedClient({
+      show_dates: { data: SHOW_DATE, error: null },
+      bookings: { data: [SOFT_BOOKED], error: null },
+      casts: { data: [], error: null },
+      show_date_cast_eligibility: { data: [], error: null },
+    });
+    renderSheet();
+    fireEvent.click(await screen.findByRole("button", { name: /^confirm$/i }));
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Booked Ada Lovelace."));
+  });
+
+  // I1 regression: bookingFlowFeatureEnabled used to come from useFeature('booking_flow'),
+  // which fails OPEN to the feature's registry default (true for booking_flow) while
+  // entitlements are loading, and this file's own useModuleGate mock (line ~38) derives
+  // bookingModuleAllowed from a plain, synchronous vi.fn() -- independent of the REAL,
+  // async useEntitlements() query this suite deliberately leaves unmocked. So
+  // CockpitCastList can (and, per this test's seed, does) mount and let a producer open the
+  // cancel dialog before that real query resolves. The fix reads useEntitlements() directly
+  // and gates on `!isLoading`, so the value is honest once the query resolves to a real
+  // org_entitlements row -- proven here with an explicit `enabled: false` row, which the old
+  // fail-open path would have overridden with the (true) registry default.
+  it("the cancel dialog's who-hears line reflects the org's real booking_flow entitlement, not the registry default", async () => {
+    seedClient({
+      show_dates: { data: SHOW_DATE, error: null },
+      bookings: { data: [SOFT_BOOKED], error: null },
+      casts: { data: [], error: null },
+      show_date_cast_eligibility: { data: [], error: null },
+      // The registry default for booking_flow is true; this row overrides it to false, so any
+      // remaining fail-open path (a stale useFeature read, or no !isLoading gate) would still
+      // show the digest-email sentence here instead of the honest fallback.
+      org_entitlements: { data: [{ feature: "booking_flow", enabled: false }], error: null },
+    });
+    renderSheet();
+    fireEvent.click(await screen.findByRole("button", { name: /^cancel$/i }));
+    const dialog = await screen.findByRole("alertdialog");
+    await waitFor(() => {
+      expect(within(dialog).getByText(/The artist is notified in the app\./)).toBeInTheDocument();
+    });
+    expect(within(dialog).queryByText(/session times/i)).not.toBeInTheDocument();
   });
 
   it("booking_flow on: the header shows 'Confirm N accepted' for a soft_booked booking", async () => {

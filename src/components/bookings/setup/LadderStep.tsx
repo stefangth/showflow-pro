@@ -1,5 +1,7 @@
 import { Link } from "react-router-dom";
 import { useAllCities } from "@/hooks/useAllCities";
+import { useBookingFlow } from "@/hooks/useBookingFlow";
+import { ladderScopeNote } from "@/lib/bookings/coverageCopy";
 import { ROUTES } from "@/config/app.config";
 import type { LadderCoverageInputs } from "@/lib/bookings/setupStatus";
 
@@ -13,18 +15,26 @@ import type { LadderCoverageInputs } from "@/lib/bookings/setupStatus";
  *  looks fine. This city-level summary cannot see that, so whenever a city has any
  *  show-scoped rows it appends a caveat pointing at the per-pair gap list ("Who is
  *  eligible") rather than implying the city summary is the whole story. Deep edits happen
- *  in Settings. */
-export function LadderStep({ coverage }: { coverage: LadderCoverageInputs | undefined }) {
+ *  in Settings.
+ *
+ *  The opening line is flow-aware (`ladderScopeNote`) because this is the one setup step
+ *  whose consequence is not shared between the two flows: nothing a direct-book org runs
+ *  reads a ranking at all. `orgId` is the org the RAIL was handed rather than the shell's
+ *  active org, for the same reason TimingStep takes one. */
+export function LadderStep({ coverage, orgId }: { coverage: LadderCoverageInputs | undefined; orgId: string | null }) {
   const cities = useAllCities();
+  // Gated on the org, not just on the query: `useBookingFlow` has no `enabled`, so a null
+  // org still resolves the PLATFORM DEFAULT row into a truthy, offers-shaped flow. Same
+  // reasoning (and same one-liner) as TimingStep and EligibilityStep.
+  const flowQ = useBookingFlow(orgId);
+  const flow = orgId ? flowQ.data : null;
   const nameOf = (id: string) => (cities.data ?? []).find((c) => c.id === id)?.name ?? "Unknown city";
 
   const cityIds = [...new Set((coverage?.futurePairs ?? []).map((p) => p.cityId).filter((x): x is string => !!x))];
 
   return (
     <div className="space-y-3">
-      <p className="text-xs text-muted-foreground">
-        The order offers go out in. Tier 1 is asked first; unfilled tiers escalate down the ladder.
-      </p>
+      <p className="text-xs text-muted-foreground">{ladderScopeNote(flow)}</p>
       <div className="space-y-2">
         {cityIds.map((cid) => {
           const tiers = (coverage?.cityPriorities ?? [])
@@ -55,9 +65,21 @@ export function LadderStep({ coverage }: { coverage: LadderCoverageInputs | unde
           );
         })}
       </div>
-      <Link to={ROUTES.SETTINGS} className="text-xs text-primary underline">
-        Rank casts in Settings, Casts and cities
-      </Link>
+      <div className="flex flex-wrap gap-x-4 gap-y-1">
+        {/* Deep-linked, because the label names the section: bare /settings opens
+            Organization for an admin and Scheduling for a producer, so the one link here
+            that promised a destination was the one that missed it. */}
+        <Link to={`${ROUTES.SETTINGS}?tab=casts-cities`} className="text-xs text-primary underline">
+          Rank casts in Settings, Casts and cities
+        </Link>
+        {/* The panel talks in casts and tiers before anyone has been told what they are.
+            Deep-links to Settings, Documentation (see src/lib/settingsTabs.ts). The label
+            names the destination on purpose: the tab opens the whole App Logic Guide, so a
+            bare "How casts and tiers work" would promise a section and deliver a manual. */}
+        <Link to={`${ROUTES.SETTINGS}?tab=docs`} className="text-xs text-primary underline">
+          How casts and tiers work, in the App Logic Guide
+        </Link>
+      </div>
     </div>
   );
 }

@@ -137,3 +137,17 @@ describe("AvailabilityPage — blocked-date picker (M3)", () => {
     });
   });
 });
+
+/**
+ * R3.6: blocking a date must not read as touching an existing booking — the
+ * help text under "Blocked Dates" should say so explicitly.
+ */
+describe("AvailabilityPage — blocking help text (R3.6)", () => {
+  it("tells the artist existing bookings are unaffected by blocking", async () => {
+    renderWithProviders(<AvailabilityPage />);
+
+    expect(
+      await screen.findByText(/dates you are already booked for are not affected/i)
+    ).toBeInTheDocument();
+  });
+});

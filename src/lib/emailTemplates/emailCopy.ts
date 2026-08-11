@@ -11,12 +11,14 @@ export const EMAIL_TEMPLATE_KEYS = [
   "offer-expiry-reminder",
   "artist-confirmation-digest",
   "cast-escalation-requested",
+  "tier-at-risk",
   "hire-order-issued",
   "hire-order-countersigned",
   "org-invitation",
   "account-email-changed",
   "magic-link",
   "cron-health-alert",
+  "airtable-sync-held",
 ] as const;
 
 export type EmailTemplateKey = typeof EMAIL_TEMPLATE_KEYS[number];
@@ -72,6 +74,7 @@ export const EMAIL_COPY_DEFAULTS = {
   "artist-confirmation-digest.greetingAnonymous": "Hi,",
   "artist-confirmation-digest.introUpdates": "Here's what changed on your bookings.",
   "artist-confirmation-digest.introConfirmed": "Here's what just got confirmed. We're excited to have you on stage!",
+  "artist-confirmation-digest.ctaLabel": "View your bookings",
   "artist-confirmation-digest.footer": "Questions? Reach out to your point of contact and they'll be glad to help.",
   "artist-confirmation-digest.cancelledHeading": "Cancelled",
   "artist-confirmation-digest.scheduleChangesHeading": "Schedule changes",
@@ -98,6 +101,20 @@ export const EMAIL_COPY_DEFAULTS = {
   "cast-escalation-requested.slotsLabel": "slots",
   "cast-escalation-requested.showFallback": "a show",
   "cast-escalation-requested.dateFallback": "TBD",
+
+  // The early-warning twin of cast-escalation-requested above: tier-at-risk-watcher
+  // fires this while the tier is still open but can no longer mathematically fill
+  // before its deadline, so the recovery guidance points at the SAME two remedies
+  // (open the next tier, or book directly) rather than only "open the next tier" —
+  // a still-open tier can still be filled by a direct booking too.
+  "tier-at-risk.subject": "A tier is running short for {{program}} on {{date}}",
+  "tier-at-risk.heading": "A tier is running short",
+  "tier-at-risk.body": "Tier {{tier}} for {{program}} on {{date}} cannot fill on the current offers. {{pending}} pending, {{accepted}} accepted, and {{required}} needed. Open the next tier, or book directly from the eligibility list.",
+  "tier-at-risk.ctaLabel": "Review this date",
+  "tier-at-risk.footer": "Questions? Reach out to your point of contact and they'll be glad to help.",
+  "tier-at-risk.previewText": "A tier is running short for {{program}} on {{date}}",
+  "tier-at-risk.showFallback": "a show",
+  "tier-at-risk.dateFallback": "TBD",
 
   "hire-order-issued.subject": "Your hire order for {{dateLabel}} at {{venue}}",
   "hire-order-issued.heading": "Hire order issued",
@@ -137,13 +154,111 @@ export const EMAIL_COPY_DEFAULTS = {
   "org-invitation.subject": "You're invited to join {{orgName}} on ShowFlow",
   "org-invitation.heading": "Join {{orgName}}",
   "org-invitation.greeting": "Hi,",
-  "org-invitation.intro": "You've been invited to join {{orgName}} on ShowFlow{{roleSuffix}}. Accept the invitation to set up your account and get started.",
-  "org-invitation.roleSuffix": " as {{role}}",
+  // Names the two things every org does regardless of its module mix (plans shows,
+  // books the artists for them): both are core, always-on concepts, not something an
+  // entitlement can turn off. What stays out is the MECHANISM behind "books": hire_orders
+  // and the offer/digest machinery in booking_flow are independently toggleable per org
+  // (see src/lib/entitlements.ts), and artist_acceptance is a further per-org toggle (an
+  // org can book straight to confirmed with no offer step at all, see
+  // _shared/bookingFlow.ts). "Books the artists" is true either way; "sends offers" or
+  // "confirms casts via hire orders" would not be. The roleIntro action lines below name
+  // the same two facts again in second person, scoped to the invitee's specific role.
+  "org-invitation.productIntro": "ShowFlow is where {{orgName}} plans its shows and books the artists for them.",
+  // roleIntro states the role plainly ("Your role is {{role}}."), not "you are joining
+  // as {{role}}": that phrasing parses as the invitee BEING a team once {{role}} is
+  // "Production Team" rather than joining one, and "on the {{role}} side" reads
+  // awkwardly for that same non-single-noun label. It also drops {{orgName}} on purpose
+  // (see the "org-invitation body does not repeat the org name" test below) since
+  // productIntro right above it already named the org once.
+  "org-invitation.roleIntro": "Your role is {{role}}.",
+  // The three roleIntro* action lines below are the second-person twin of ROLE_DESCRIPTIONS
+  // (src/config/app.config.ts): same facts, different grammatical person, kept as separate
+  // strings because a sentence opening "Your role is..." cannot continue into a
+  // subjectless third-person clause. Review both together when either changes.
+  "org-invitation.roleIntroAdmin": "You get full control of this workspace, including people, casts, settings, and every booking.",
+  "org-invitation.roleIntroProducer": "You plan productions and show dates, and book artists into them.",
+  // No "where that is turned on" hedge: a brand-new invitee has no way to decode who
+  // turns it on or where, so the sentence states what is always true instead. This is
+  // the FLOW-NEUTRAL artist line: org-invitation.tsx renders it by default, and always
+  // for a direct-book org (booking_flow.artist_acceptance: false) or one where the
+  // booking_flow module is unentitled or paused (booking_flow.active: false, the preset
+  // every freshly provisioned org starts in), where there never is an offer step to
+  // mention. See resolveArtistOffersExpected in _shared/invitations.ts for the full
+  // gate. See roleIntroArtistOffers immediately below for the line an artist sees only
+  // once that gate has actually confirmed offers are coming.
+  "org-invitation.roleIntroArtist": "You are on the roster. You get booked for shows and can see every confirmed engagement.",
+  // Rendered instead of roleIntroArtist ONLY when resolveArtistOffersExpected
+  // (_shared/invitations.ts) has confirmed the inviting org's booking_flow is entitled,
+  // active, AND set to accept offers (booking_flow.artist_acceptance: true) for real:
+  // the caller never assumes this from BOOKING_FLOW_DEFAULTS alone, since an unentitled
+  // or still-paused org would otherwise get a promise that never comes true. For the
+  // (majority of) orgs where this all checks out, it names the one thing the artist will
+  // really do, respond to emailed offers, instead of staying silent on it the way the
+  // flow-neutral line above has to.
+  "org-invitation.roleIntroArtistOffers": "You are on the roster. You will get booking offers by email, accept or decline each in one tap, then see every confirmed engagement.",
   "org-invitation.ctaLabel": "Accept invitation",
-  "org-invitation.footer": "This invitation expires in 14 days. If you weren't expecting it, you can safely ignore this email.",
+  // These used to end with "If it ever stops working, ask whoever invited you to send a
+  // fresh one." That recovery clause now lives in linkRecovery (below), rendered beside
+  // the paste-link fallback instead of here, so the sentence right before the button
+  // stays a plain, undiluted reassurance about what clicking it does rather than a hedge
+  // about it failing, planted right where the reader is about to click.
+  "org-invitation.ctaHintNewUser": "The button opens ShowFlow and asks you to choose a password. That is all you need to get in.",
+  "org-invitation.ctaHintExistingUser": "The button signs you in directly. No password needed from this email.",
+  "org-invitation.ctaHintFallback": "The button takes you to a sign in page. Use your existing password, or choose Forgot password there if you do not have one yet.",
+  // "is open", not "is held": "held" reads as "queued for delivery" rather than "the
+  // window this invitation is valid for". Also drops {{orgName}} for the same
+  // repetition reason as roleIntro above.
+  //
+  // Scoped to "This invitation", never to "the link in this email": the button's href
+  // (and the paste-link fallback right below it, see org-invitation.tsx's acceptUrl) is
+  // a short-lived Supabase action link (magiclink for an existing account, invite for a
+  // net-new one, see ensureInvitedUser in _shared/invitations.ts) whose own TTL is
+  // GoTrue's mailer OTP expiry, hours, not days, and is consumed on first use besides.
+  // Saying "the link in this email works until {{expiresOn}}" would be false for most
+  // of that window: the LINK typically stops working long before {{expiresOn}} arrives,
+  // while the INVITATION (org_invitations.expires_at, the value accept_invitation
+  // actually checks) stays valid the whole time regardless of that link's fate.
+  // linkRecovery (below, beside the paste-link fallback) now covers what to do if the
+  // button itself stops working, so this line only needs to state what stays true for
+  // its full stated duration: the invitation itself. Membership is also created at
+  // invite time (ensure_invitation_membership, see
+  // create-invitation/resend-invitation/provision-org), so an invitee who authenticates
+  // through any path is already an org member regardless of this date; what actually
+  // stops working after expiresOn is only the accept_invitation flow this invitation
+  // drives, never the invitee's org access.
+  //
+  // The dated claim is about the INVITATION: {{expiresOn}} is the row's exact expires_at
+  // day (formatExpiresOn, no arithmetic). Everything the date cannot promise is owned by
+  // the second sentence instead: the sign-in button is a single-use action link that dies
+  // within hours, and near the window's end even the dated day is partly over. "Ask for
+  // it to be resent" covers both, and resend-invitation refuses an already-lapsed row
+  // (409 with revoke-and-reinvite guidance), so following the remedy can never produce a
+  // claim falser than this line.
+  "org-invitation.expiryLine": "Your invitation is valid until {{expiresOn}}. If the sign-in button stops working, ask for it to be resent.",
+  // Fires only when expires_at itself could not be resolved (effectively prevented by the
+  // NOT NULL column default): it makes no day-count claim at all, because there is no row
+  // to derive one from. The remedy sentence is the whole message.
+  "org-invitation.expiryFallback": "If the sign-in button stops working, ask for the invitation to be resent.",
+  "org-invitation.footer": "If you weren't expecting this invitation, you can safely ignore this email.",
   "org-invitation.previewText": "You're invited to join {{orgName}} on ShowFlow",
-  "org-invitation.invitedBy": "Invited by {{inviterEmail}}.",
+  "org-invitation.invitedBy": "Invited by {{inviter}}.",
+  // Sent as the template's `inviterName` only by provision-org, for a brand-new org's
+  // first-admin invite: that recipient is a stranger to the platform operator
+  // personally, so forwarding the operator's own display name or personal inbox address
+  // would read as no more trustworthy than a spam sender's (a stranger has no more
+  // context for "Jordan Owner" than for owner@platform.test). A generic, still-truthful
+  // line beats a personalized one nobody can place. create-invitation and
+  // resend-invitation never send this: their inviter is a colleague within the SAME org
+  // the recipient is already joining, where resolveInviterName's own name-or-email
+  // fallback already reads as legitimate.
+  "org-invitation.inviterFallback": "the ShowFlow team",
   "org-invitation.pasteLink": "Or paste this link into your browser:",
+  // Rendered right after the paste-link fallback (EmailShell's postCta slot, below the
+  // button), not beside the button itself: this is what to do when NEITHER the button
+  // NOR the pasted link works, so it reads as the last word on getting in rather than a
+  // hedge planted immediately before the reader's first attempt (see ctaHintNewUser /
+  // ctaHintExistingUser above, which used to carry this same clause).
+  "org-invitation.linkRecovery": "If none of this works, ask whoever invited you to send a fresh invitation.",
   "org-invitation.orgFallback": "an organization",
 
   "account-email-changed.subject": "Your ShowFlow login email was changed",
@@ -178,6 +293,77 @@ export const EMAIL_COPY_DEFAULTS = {
   "cron-health-alert.lastHealthyLabel": "Last healthy",
   "cron-health-alert.jobFallback": "a scheduled job",
   "cron-health-alert.valueFallback": "unknown",
+
+  // Rendered from defaults only, never exposed to the per-org copy editor (see
+  // EMAIL_TEMPLATE_COPY_FIELDS in emailTemplateMeta.ts, which deliberately has no
+  // entry for this template, and coverage.ts's "airtable-sync-held" row, status:
+  // "internal"). Unlike cron-health-alert/magic-link, the row stays visible to its
+  // org-admin recipients in Settings > Email templates (coverage.ts's audience:
+  // "org"), but like cron-health-alert it always sends: an operational status alert
+  // about the org's own data pipeline isn't preference-gated, only the blunt
+  // one-click unsubscribe link opts an address out.
+  "airtable-sync-held.subject": "Airtable sync needs attention in {{orgName}}",
+  "airtable-sync-held.heading": "Airtable sync needs attention",
+  "airtable-sync-held.heldRecordSingular": "record",
+  "airtable-sync-held.heldRecordPlural": "records",
+  // Mutually exclusive with introZeroImport/followupZeroImport: notifyAdminsOnSyncProblem
+  // (airtable-poll) passes heldCount when records were held, else zeroImport, mirroring
+  // the in-app notification message's own branching. "could not be brought into
+  // ShowFlow" reads correctly for a count of 1 or many, so heldCount never needs its
+  // own verb form. Cause-neutral on purpose: held_unresolved has more than one cause
+  // (an unmapped program, but also a blank date cell), and the fix differs per cause
+  // (a mapping edit vs. an Airtable data fix), so the email can't assert either one.
+  // The sync report (linked by the CTA) carries the real per-record reason.
+  "airtable-sync-held.introHeld": "{{heldCount}} Airtable {{heldRecord}} in {{orgName}} could not be brought into ShowFlow.",
+  // Quantified, not a blanket claim: unlike introHeld above, this line only ever states
+  // the count for the ONE category it names ("{{topReasonCount}} of the {{heldCount}}"),
+  // so it stays truthful even when the held set has mixed causes. topReasonMissingDate /
+  // topReasonUnlinkedProgram are the only two categories syncOrg's held_unresolved
+  // branches emit (see topHeldReason in airtable-poll/index.ts); an unrecognized reason
+  // is excluded from the tally there, so this line simply does not render rather than
+  // ever naming a reason it can't back up. Phrased as a clause ("are {{topReasonLabel}}"),
+  // not a report label ("N of M: reason"), so it reads like the rest of the email.
+  "airtable-sync-held.topReasonLine": "{{topReasonCount}} of the {{heldCount}} are {{topReasonLabel}}.",
+  // The partial breakdown's singular form: the smallest mixed-cause held set (two
+  // records, two different reasons) makes the majority category count exactly one, and
+  // "1 of the 2 are" is subject-verb disagreement. Same shape, singular verb.
+  "airtable-sync-held.topReasonLineOne": "{{topReasonCount}} of the {{heldCount}} is {{topReasonLabel}}.",
+  // Two redundant-fraction cases the plain N-of-M line above never should render:
+  // a single held record (its one reason IS the whole story, so "1 of 1" is noise),
+  // and a held set where every record shares the same reason ("N of N" always means
+  // "all of them"). Both state the fact directly instead of a fraction that reduces
+  // to "all".
+  "airtable-sync-held.topReasonLineSingle": "It's {{topReasonLabel}}.",
+  "airtable-sync-held.topReasonLineAll": "All {{heldCount}} are {{topReasonLabel}}.",
+  "airtable-sync-held.topReasonMissingDate": "missing a date",
+  "airtable-sync-held.topReasonUnlinkedProgram": "not linked to one of your shows",
+  // Four variants, chosen in the template by (heldCount === 1) x (does a topReasonLine
+  // above already name the reason for EVERY held record). A single record is "it", never
+  // "which ones" (there is only one), and once the reason line above has already said
+  // why, the followup must not ask "why" again: "1 record... It's missing a date. Open
+  // the sync report to see which ones and why..." was both ungrammatical (plural "ones"
+  // for one record) and self-contradicting (re-promising a "why" the sentence right
+  // before it just gave).
+  "airtable-sync-held.followupHeld": "Open the sync report to see which ones and why, then fix them so they come in on the next sync.",
+  "airtable-sync-held.followupHeldSingle": "Open the sync report to see why, then fix it so it comes in on the next sync.",
+  "airtable-sync-held.followupHeldKnownReason": "Open the sync report to see which ones, then fix them so they come in on the next sync.",
+  "airtable-sync-held.followupHeldSingleKnownReason": "Fix it in the sync report so it comes in on the next sync.",
+  // Scoped to Airtable itself, not to staffing: an admin or producer can still create
+  // and staff a show date manually in-app while a sync is stalled ("no offers can go
+  // out" and "no new dates can be staffed" are both false claims for that reason).
+  // "Nothing from Airtable will reach ShowFlow" stays true in every reachable org state.
+  "airtable-sync-held.introZeroImport": "The Airtable sync in {{orgName}} ran but brought in zero dates this time, even though there is data waiting. Nothing from Airtable will reach ShowFlow until this is fixed.",
+  "airtable-sync-held.followupZeroImport": "Open the sync report to see what happened on this run, then fix it so your dates start coming in again.",
+  "airtable-sync-held.ctaLabel": "Review the sync report",
+  "airtable-sync-held.footer": "The ShowFlow team",
+  "airtable-sync-held.previewTextHeld": "{{heldCount}} Airtable {{heldRecord}} waiting on you in {{orgName}}.",
+  // Two overclaims a previous draft made here, both false in every reachable state:
+  // "Here's why" promised a reason the body deliberately withholds (see introZeroImport's
+  // own comment on why the cause can't be asserted); "Today's" implied a daily cadence,
+  // but airtable-poll runs every airtable_poll_interval_minutes (5-min floor), at any
+  // hour, not once a day. The inbox snippet must not claim more than the body does.
+  "airtable-sync-held.previewTextZeroImport": "The Airtable sync in {{orgName}} brought in nothing this time.",
+  "airtable-sync-held.orgFallback": "your organization",
 } as const;
 
 export type EmailCopyKey = keyof typeof EMAIL_COPY_DEFAULTS;
@@ -203,23 +389,77 @@ function isCopyKey(value: string): value is EmailCopyKey {
   return Object.prototype.hasOwnProperty.call(EMAIL_COPY_DEFAULTS, value);
 }
 
-/** Merge valid, non-blank per-org copy over a fresh complete default record. */
+/**
+ * Retired copy keys carried forward onto their closest surviving replacement, so an org
+ * that customized one before it was retired keeps SOME visible effect of that
+ * customization instead of silently reverting to the stock default. `org-invitation.intro`
+ * (the pre-WP1 combined product+role sentence) is the only one with a clean positional
+ * match: both it and `productIntro` are the email's opening explanatory sentence.
+ * `org-invitation.roleSuffix` (a " as {{role}}" fragment appended to the old intro) has no
+ * equivalent slot in the new three-line role structure (roleIntro / roleIntroAdmin /
+ * roleIntroProducer / roleIntroArtist) and is intentionally NOT carried forward: the
+ * fragment doesn't compose into any of the new strings without reading as a
+ * grammar error, so an org that customized only roleSuffix already lost that
+ * customization's visible effect the moment role became its own dedicated set of strings.
+ */
+const LEGACY_KEY_CARRY_FORWARD: Record<string, EmailCopyKey> = {
+  "org-invitation.intro": "org-invitation.productIntro",
+};
+
+/** Whether a raw override value counts as explicitly set, for override-precedence
+ *  purposes: a non-blank string. A key present but all-whitespace must be treated the
+ *  same as a key that is absent everywhere this matters (an explicit new-key override
+ *  wins over a legacy carry-forward value, but only a MEANINGFUL one). */
+function hasExplicitValue(value: unknown): value is string {
+  return typeof value === "string" && value.trim() !== "";
+}
+
+/** Fold any LEGACY_KEY_CARRY_FORWARD source values onto their current-key equivalent
+ *  in a plain object, when the RAW input has no explicit (non-blank) value of its own
+ *  under the current key. Shared by resolveEmailCopy (folds onto a fresh
+ *  defaults-plus-overrides record, for rendering a send) and compactEmailCopy (folds
+ *  onto the raw draft before filtering, for persisting from the settings editor), so a
+ *  customization saved under a retired key is honored identically by both: a send must
+ *  never silently revert to stock copy, and the editor must never silently drop the
+ *  customization the moment it loads the draft (compactEmailCopy alone used to filter
+ *  out any key not in EMAIL_COPY_DEFAULTS, which includes every retired legacy key). */
+function withLegacyCarryForward<T extends Record<string, unknown>>(raw: Record<string, unknown>, target: T): T {
+  for (const [legacyKey, newKey] of Object.entries(LEGACY_KEY_CARRY_FORWARD)) {
+    const legacyValue = raw[legacyKey];
+    if (hasExplicitValue(legacyValue) && !hasExplicitValue(raw[newKey])) {
+      (target as Record<string, unknown>)[newKey] = legacyValue;
+    }
+  }
+  return target;
+}
+
+/** Merge valid, non-blank per-org copy over a fresh complete default record. An explicit
+ *  (non-blank) override for the CURRENT key always wins over a carried-forward legacy
+ *  one; a present-but-blank current-key value does not count as explicit, so the legacy
+ *  value still carries forward in that case. */
 export function resolveEmailCopy(override?: EmailCopyOverride | string | null): EmailCopy {
   const input = parseOverride(override);
-  const resolved = { ...EMAIL_COPY_DEFAULTS } as EmailCopy;
+  const raw = input as Record<string, unknown>;
+  const resolved = withLegacyCarryForward(raw, { ...EMAIL_COPY_DEFAULTS } as EmailCopy);
   for (const key of Object.keys(EMAIL_COPY_DEFAULTS) as EmailCopyKey[]) {
     const value = input[key];
-    if (typeof value === "string" && value.trim() !== "") resolved[key] = value;
+    if (hasExplicitValue(value)) resolved[key] = value;
   }
   return resolved;
 }
 
-/** Persist only meaningful values that differ from the built-in default. */
+/** Persist only meaningful values that differ from the built-in default. Migrates any
+ *  legacy-key value onto its current-key equivalent first (see withLegacyCarryForward),
+ *  so a draft seeded straight from a stored override (EmailTemplateEditorPage does this
+ *  on load, and again on every save) keeps a customization saved under a retired key
+ *  instead of losing it the instant compaction runs. */
 export function compactEmailCopy(draft?: EmailCopyOverride | null): Partial<Record<EmailCopyKey, string>> {
   if (!draft || !isRecord(draft)) return {};
+  const raw = draft as Record<string, unknown>;
+  const migrated = withLegacyCarryForward(raw, { ...raw });
   const compacted: Partial<Record<EmailCopyKey, string>> = {};
-  for (const [key, value] of Object.entries(draft)) {
-    if (isCopyKey(key) && typeof value === "string" && value.trim() !== "" && value !== EMAIL_COPY_DEFAULTS[key]) {
+  for (const [key, value] of Object.entries(migrated)) {
+    if (isCopyKey(key) && hasExplicitValue(value) && value !== EMAIL_COPY_DEFAULTS[key]) {
       compacted[key] = value;
     }
   }

@@ -125,3 +125,53 @@ Deno.test('registry presentation: derives subject tokens for digest and snake_ca
   assertEquals(countersigned.subject, 'Countersigned 13 August')
   assertEquals(cron.subject, 'Cron nightly-digest returned 503')
 })
+
+Deno.test('registry presentation: airtable-sync-held default subject names the org', () => {
+  const presentation = resolveTemplatePresentation('airtable-sync-held', {
+    orgName: 'Riverdance Co',
+    heldCount: 3,
+    settingsUrl: 'https://app.showflow.pro/settings?tab=airtable',
+  })
+
+  assertExists(presentation)
+  assertEquals(presentation.subject, 'Airtable sync needs attention in Riverdance Co')
+})
+
+Deno.test('registry presentation: airtable-sync-held subject falls back when orgName is missing', () => {
+  const presentation = resolveTemplatePresentation('airtable-sync-held', {
+    heldCount: 1,
+    settingsUrl: 'https://app.showflow.pro/settings?tab=airtable',
+  })
+
+  assertExists(presentation)
+  assertEquals(presentation.subject, 'Airtable sync needs attention in your organization')
+})
+
+Deno.test('registry presentation: tier-at-risk default subject names the program and date', () => {
+  const presentation = resolveTemplatePresentation('tier-at-risk', {
+    program: 'Riverdance',
+    date: '2026-06-15',
+    tier: 1,
+    pending: 1,
+    accepted: 1,
+    required: 4,
+    reviewUrl: 'https://app.showflow.pro/bookings',
+  })
+
+  assertExists(presentation)
+  assertEquals(presentation.subject, 'A tier is running short for Riverdance on 2026-06-15')
+})
+
+Deno.test('registry presentation: tier-at-risk subject resolves an org copy override', () => {
+  const presentation = resolveTemplatePresentation('tier-at-risk', {
+    program: 'Riverdance',
+    date: '2026-06-15',
+  }, {
+    copyOverride: {
+      'tier-at-risk.subject': 'Custom short tier for {{program}} on {{date}}',
+    },
+  })
+
+  assertExists(presentation)
+  assertEquals(presentation.subject, 'Custom short tier for Riverdance on 2026-06-15')
+})

@@ -38,7 +38,7 @@ describe("EmailTemplatesTab", () => {
     });
   });
 
-  it("groups all customer and external rows while keeping internal system delivery private", async () => {
+  it("groups all customer, external and org-audience internal rows while keeping platform-only delivery private", async () => {
     renderTab({ readOnly: false, isSuperAdmin: false });
 
     expect(await screen.findByText("Booking engine")).toBeInTheDocument();
@@ -47,19 +47,47 @@ describe("EmailTemplatesTab", () => {
     expect(screen.getByText("Immediate offer")).toBeInTheDocument();
     expect(screen.getByText("Hire order countersigned")).toBeInTheDocument();
     expect(screen.getByText("Password reset")).toBeInTheDocument();
-    expect(screen.queryByText("System")).not.toBeInTheDocument();
+    // cron-health-alert and magic-link are platform-only internal rows: hidden from non-super-admins.
     expect(screen.queryByText("Cron health alert")).not.toBeInTheDocument();
-    // magic-link is an internal template too, so it is hidden from non-super-admins.
     expect(screen.queryByText("Sign-in link")).not.toBeInTheDocument();
     expect(screen.getByText("External")).toBeInTheDocument();
+    // airtable-sync-held is an org-audience internal row: its own recipients CAN see it
+    // AND preview it (it renders from defaults, same as any other template, so the
+    // preview-transactional-email call works even without a per-org copy override) even
+    // though they can't reword it, so there is no dead end between "we render it, you
+    // can't edit it" and "so what does it actually say".
+    expect(screen.getByText("System")).toBeInTheDocument();
+    expect(screen.getByText("Airtable sync held")).toBeInTheDocument();
+    expect(screen.getByText("Automatic")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /edit airtable sync held/i })).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole("button", { name: /preview airtable sync held/i })).toBeEnabled());
   });
 
-  it("shows the internal system row only to super-admins", async () => {
+  it("previews the org-audience internal airtable-sync-held row even though it is not editable", async () => {
+    renderTab({ readOnly: false, isSuperAdmin: false });
+
+    const previewButton = await screen.findByRole("button", { name: /preview airtable sync held/i });
+    await waitFor(() => expect(previewButton).toBeEnabled());
+    fireEvent.click(previewButton);
+
+    await waitFor(() => expect(invoke).toHaveBeenCalledWith("preview-transactional-email", {
+      body: {
+        templateName: "airtable-sync-held",
+        copyOverride: { "offer-immediate.subject": "A saved subject" },
+        themeOverride: { base: { footerText: "Saved footer" } },
+      },
+    }));
+    expect(await screen.findByTitle("Email preview")).toHaveAttribute("srcdoc", "<h1>Saved preview</h1>");
+  });
+
+  it("shows the platform-only internal rows to super-admins only", async () => {
     renderTab({ readOnly: false, isSuperAdmin: true });
 
     expect(await screen.findByText("System")).toBeInTheDocument();
     expect(screen.getByText("Cron health alert")).toBeInTheDocument();
-    // Two internal rows are now visible to super-admins: the cron health alert and the sign-in link.
+    // Two platform-only internal rows are now visible to super-admins: the cron health
+    // alert and the sign-in link. airtable-sync-held was already visible to everyone
+    // (org audience), so it does not add to this count.
     expect(screen.getByText("Sign-in link")).toBeInTheDocument();
     expect(screen.getAllByText("Internal")).toHaveLength(2);
     expect(screen.queryByRole("button", { name: /edit cron health alert/i })).not.toBeInTheDocument();
@@ -122,6 +150,38 @@ describe("EmailTemplatesTab", () => {
       },
     }));
     expect(await screen.findByTitle("Email preview")).toHaveAttribute("srcdoc", "<h1>Saved preview</h1>");
+  });
+
+  it("surfaces the render failure instead of a blank iframe when preview-transactional-email returns render_failed", async () => {
+    // The real endpoint answers HTTP 200 with an empty html string and a status/
+    // errorMessage pair for an unregistered or broken template (see
+    // preview-transactional-email/index.ts) — it does not throw, so the old code
+    // (reading only `data?.templates?.[0]?.html`) rendered a blank iframe with no
+    // explanation instead of showing the admin why the preview failed.
+    invoke.mockResolvedValue({
+      data: {
+        templates: [{
+          templateName: "airtable-sync-held",
+          displayName: "Airtable sync held",
+          subject: "",
+          html: "",
+          status: "render_failed",
+          errorMessage: "Template 'airtable-sync-held' not found",
+        }],
+      },
+      error: null,
+    });
+    renderTab({ readOnly: false, isSuperAdmin: false });
+
+    const previewButton = await screen.findByRole("button", { name: /preview airtable sync held/i });
+    await waitFor(() => expect(previewButton).toBeEnabled());
+    fireEvent.click(previewButton);
+
+    const preview = await screen.findByTitle("Email preview");
+    await waitFor(() => expect(preview).toHaveAttribute(
+      "srcdoc",
+      expect.stringContaining("Template 'airtable-sync-held' not found"),
+    ));
   });
 
   it("uses semantic surface tokens and removes edit actions on the read-only floor", async () => {

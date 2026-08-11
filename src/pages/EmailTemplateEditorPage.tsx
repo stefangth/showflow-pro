@@ -74,6 +74,12 @@ function EmailTemplateEditorWorkspace({ template, orgId, readOnly }: WorkspacePr
   const [copyDraft, setCopyDraft] = useDerivedDraft<Partial<Record<EmailCopyKey, string>>>(storedCopy, EMPTY_COPY);
   const [themeDraft, setThemeDraft] = useDerivedDraft<EmailThemeOverride>(storedTheme, EMPTY_THEME);
   const [selected, setSelected] = useState<EmailEditorSelection>("document");
+  // Which declared preview variant renders (org-invitation's four role action lines).
+  // Index 0 is the template's own sample data, so templates without variants and the
+  // default state both render exactly what they always did.
+  const [variantIdx, setVariantIdx] = useState(0);
+  const variants = template.previewVariants;
+  const activeVariant = variants?.[variantIdx] ?? variants?.[0];
 
   const save = useMutation({
     mutationFn: async () => {
@@ -93,7 +99,10 @@ function EmailTemplateEditorWorkspace({ template, orgId, readOnly }: WorkspacePr
     copyOverride: copyDraft,
     themeOverride: themeDraft,
     highlightRole: selected === "document" ? undefined : selected,
-  }), [copyDraft, selected, template.templateKey, themeDraft]);
+    // `data` identities are stable (module-level meta), so this only re-renders the
+    // preview when the SELECTION changes, not on every render.
+    dataOverride: activeVariant?.data,
+  }), [activeVariant, copyDraft, selected, template.templateKey, themeDraft]);
 
   if (settingsQuery.isLoading) return <Skeleton className="h-[80vh] w-full" />;
   if (settingsQuery.isError) {
@@ -153,7 +162,32 @@ function EmailTemplateEditorWorkspace({ template, orgId, readOnly }: WorkspacePr
           }}
         />
       }
-      preview={<EmailPreviewPane {...previewInput} />}
+      preview={
+        variants ? (
+          <div className="flex h-full flex-col">
+            <div role="group" aria-label="Preview as" className="flex flex-wrap items-center gap-1 border-b border-border bg-background px-3 py-2">
+              <span className="mr-1 text-xs text-muted-foreground">Preview as</span>
+              {variants.map((variant, index) => (
+                <Button
+                  key={variant.label}
+                  type="button"
+                  size="sm"
+                  variant={index === variantIdx ? "secondary" : "ghost"}
+                  aria-pressed={index === variantIdx}
+                  onClick={() => setVariantIdx(index)}
+                >
+                  {variant.label}
+                </Button>
+              ))}
+            </div>
+            <div className="min-h-0 flex-1">
+              <EmailPreviewPane {...previewInput} />
+            </div>
+          </div>
+        ) : (
+          <EmailPreviewPane {...previewInput} />
+        )
+      }
       inspector={
         <EmailTemplateInspector
           selected={selected}

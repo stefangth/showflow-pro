@@ -1,7 +1,8 @@
 import { preflight, json } from "../_shared/http.ts";
 import { requireSuperAdmin } from "../_shared/auth.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
-import { ensureInvitedUser, sendOrgInvitationEmail } from "../_shared/invitations.ts";
+import { ensureInvitedUser, formatExpiresOn, resolveArtistOffersExpected, sendOrgInvitationEmail, SYSTEM_INVITER_NAME } from "../_shared/invitations.ts";
+import { roleLabel } from "../_shared/roles.ts";
 import { resolveOrgSetting } from "../_shared/settings.ts";
 import { FEATURE_KEYS, FEATURE_REGISTRY, type FeatureKey } from "../_shared/entitlements.ts";
 import { normalizeBookingFlow } from "../_shared/bookingFlow.ts";
@@ -93,9 +94,9 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     // self-heals on the admin's first sign-in, so a link failure must not undo the org.
     try {
       const { data: invRow } = await deps.admin
-        .from("org_invitations").select("id").eq("token", token).maybeSingle();
+        .from("org_invitations").select("id, expires_at").eq("token", token).maybeSingle();
       const invitationId = (invRow as { id?: string } | null)?.id;
-      const { userId, actionLink } = await ensureInvitedUser(deps, { email, appOrigin, token });
+      const { userId, actionLink, isNewUser } = await ensureInvitedUser(deps, { email, appOrigin, token });
       if (invitationId && userId) {
         const { error: memErr } = await deps.admin.rpc("ensure_invitation_membership", {
           p_invitation: invitationId, p_user: userId,
@@ -107,10 +108,32 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       // account-less user is a dead end; skip it (claim_my_invitations self-heals membership
       // on their first sign-in regardless). Mirrors create-invitation's guard.
       if (userId || actionLink) {
-        const inviter = auth.userId ? await deps.admin.auth.admin.getUserById(auth.userId) : null;
+        // The first admin of a brand-new org is a total stranger to the super-admin
+        // provisioning it, so "Invited by" always reads a generic, org-neutral line here:
+        // never the platform operator's own display name or personal inbox address. A
+        // stranger has no more context for "Jordan Owner" than for owner@platform.test,
+        // so forwarding either would read as no more trustworthy than a spam sender's,
+        // not less anonymous. This is DIFFERENT from create-invitation/resend-invitation,
+        // which do resolve and forward a real name (falling back to email): their inviter
+        // is a colleague within the SAME org the recipient is already joining, where an
+        // intra-org name or address reads as legitimate. There is nothing to resolve here
+        // (no profiles read, no Admin API call), so there is also no failure mode to
+        // guard against.
+        // Only relevant when the first invitee is an artist (role defaults to 'admin' and
+        // usually is, but the Body type does allow 'artist'). resolveArtistOffersExpected
+        // reads the org's booking_flow live (including the offFlow seed just written
+        // above, when it landed), so a fresh org still starting in the "off" preset
+        // correctly resolves to false rather than the module's usual defaults; it also
+        // already fails closed to false on any error, so no extra .catch is needed here.
+        const offersExpected = role === "artist"
+          ? await resolveArtistOffersExpected(deps.admin, org_id)
+          : undefined;
         await sendOrgInvitationEmail(deps, {
-          email, orgName: name, role, token,
-          inviterEmail: inviter?.data?.user?.email ?? undefined,
+          email, orgName: name, role: roleLabel(role), roleKey: role, token,
+          inviterName: SYSTEM_INVITER_NAME,
+          expiresOn: formatExpiresOn((invRow as { expires_at?: string } | null)?.expires_at),
+          isNewUser,
+          offersExpected,
           appOrigin, idempotencyKey: `org-invitation-${org_id}`, orgId: org_id, actionLink,
         });
       } else {

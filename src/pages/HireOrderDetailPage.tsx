@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Download, FileText, CheckCircle2 } from "lucide-react";
@@ -14,6 +14,7 @@ import {
   useHireOrderAction,
   useMarkCountersigned,
   useHireOrderCountersignMode,
+  useMarkHireOrderSeen,
 } from "@/hooks/useHireOrders";
 import { useMyArtist } from "@/hooks/useMyArtist";
 import { canArtistSign } from "@/lib/hireOrders/signing";
@@ -61,6 +62,9 @@ export default function HireOrderDetailPage() {
   const countersignMode = useHireOrderCountersignMode(orgId);
   const { data: myArtist } = useMyArtist();
   const canManage = hasRole("admin") || hasRole("producer");
+  // Whether the current viewer is the artist this order is issued to -- shared
+  // by the signing gate below and the seen-stamping effect further down.
+  const isLinkedArtist = !!myArtist && !!order && myArtist.id === order.artist_id;
   // The signing mode follows the mode the order was ISSUED under (frozen in
   // issue_snapshot), not the org's current setting — so an electronic-issued order
   // keeps showing "Review & sign" to the artist and hiding the manual "Mark
@@ -74,7 +78,7 @@ export default function HireOrderDetailPage() {
         canManage,
         status: order.status,
         mode: effectiveMode,
-        isLinkedArtist: !!myArtist && myArtist.id === order.artist_id,
+        isLinkedArtist,
       })
     : false;
 
@@ -96,6 +100,22 @@ export default function HireOrderDetailPage() {
       return (res as { url?: string } | null)?.url ?? null;
     },
   });
+
+  const markSeen = useMarkHireOrderSeen();
+  // Stamp `viewed_at` the first time the linked artist opens an issued or
+  // countersigned order. Guarded on all four conditions inside the body, not
+  // by the dependency array: once the mutation succeeds it busts the
+  // hire-orders domain, `order.viewed_at` comes back non-null on the refetch,
+  // and the `viewed_at == null` check is what stops a second fire -- not the
+  // deps changing. Never runs for a producer/admin viewer (isLinkedArtist is
+  // false for them) or for a draft/ready/void order.
+  useEffect(() => {
+    if (!order || !isLinkedArtist) return;
+    if (order.status !== "issued" && order.status !== "countersigned") return;
+    if (order.viewed_at != null) return;
+    markSeen.mutate(order.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [order?.id, order?.status, order?.viewed_at, isLinkedArtist]);
 
   // The panel must not sit on the Skeleton forever: fold both known failure
   // modes into one flag — a genuine query error (edge 500) AND the permanently
@@ -303,6 +323,7 @@ function HireOrderDetail({
                 status={order.status}
                 createdAt={order.created_at}
                 issuedAt={order.issued_at}
+                seenAt={order.viewed_at}
                 countersignedAt={order.countersigned_at}
               />
             </CardContent>

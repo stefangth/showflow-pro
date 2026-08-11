@@ -4,7 +4,12 @@ import { realDeps, type Deps } from "../_shared/deps.ts";
 import { countAccepted, countPendingNotExpired, isFutureOrToday, requiredPrimarySlots } from "../_shared/tierFill.ts";
 import { checkFeature } from "../_shared/entitlements.ts";
 import { resolveBookingFlow, type BookingFlow } from "../_shared/bookingFlow.ts";
+import { APP_URL } from "../_shared/app-url.ts";
 import type { OrgAdminRow, ProducerAssignmentRow, ResolveShowAssignmentsArgs, ShowJoin } from "../_shared/rows.ts";
+
+/** CTA target for the tier-at-risk email — same "review the date" destination the
+ *  in-app notification's own remedy points at. */
+const REVIEW_URL = `${APP_URL}/bookings`;
 
 /** Mirrors the show_dates select below — unlike expire-offers' ShowDateWithShow,
  *  this select does NOT include show_id (the loop keys on row.show_date_id). */
@@ -27,8 +32,15 @@ interface TierShowDateRow {
  * (`offer_tier IS NULL`) and other tiers — plus this tier's own live pending offers.
  * Past dates are skipped so a closed date never re-alerts.
  *
- * Visual-only (in-app); no email. Idempotent: one notification per (date, tier)
- * — clears when math recovers (by deleting the old row before re-evaluating).
+ * Idempotent: one notification per (date, tier) — clears when math recovers (by
+ * deleting the old row before re-evaluating).
+ *
+ * Also sends a best-effort `tier-at-risk` email to each recipient, but ONLY for
+ * (tier, user) pairs whose in-app notification is NEWLY inserted this run — reusing
+ * the same existingKeySet the idempotent insert below already computes, so a
+ * persistently at-risk tier emails each recipient once, not every 15-minute run.
+ * Mirrors expire-offers' cast-escalation-requested send: email failures are logged
+ * and swallowed, never allowed to abort the scan or block the notification write.
  *
  * Gated per (show_date's) org on `booking_flow.at_risk_alerts` and `.artist_acceptance`
  * (direct-booking orgs have no offer tiers to be "at risk"). A gated tier is skipped
@@ -84,6 +96,11 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   // Entitlement cache mirroring flowByOrg: several open tiers in one scan can
   // belong to the same org, and entitlement does not change mid-scan.
   const entitledByOrg = new Map<string, boolean>()
+  // Recipient email cache: the same producer is a recipient across many at-risk tiers in one
+  // scan, and getUserById is an auth-admin round-trip. Only SUCCESSFUL lookups are cached, so
+  // a transient lookup failure on one tier is retried on the next rather than being poisoned
+  // for the rest of the scan (matching the per-(tier,uid) resilience the DI tests pin).
+  const emailByUid = new Map<string, string>()
 
   for (const row of openTiers as Array<{ id: string; show_date_id: string; tier: number }>) {
     // Resolve show date + show meta (including slot capacity columns)
@@ -189,23 +206,79 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       recipientIds = Array.from(new Set(((admins ?? []) as unknown as OrgAdminRow[]).map((a) => a.user_id)))
     }
 
-    const payloadMessage = `Tier ${row.tier} for ${program ?? 'show'} on ${sdRow.date} is mathematically unfillable (${pending} pending, ${accepted} accepted, need ${requiredSlots}).`
+    // Softened from the old "is mathematically unfillable" phrasing: states the same
+    // math but ends with recovery guidance (open the next tier, or book directly from
+    // the eligibility list) instead of just stopping at the numbers.
+    const payloadMessage = `Tier ${row.tier} for ${program ?? 'show'} on ${sdRow.date} cannot fill on the current offers (${pending} pending, ${accepted} accepted, need ${requiredSlots}). Open the next tier or book directly from the eligibility list to fill it.`
 
-    // Only insert notifications for (tier, user) pairs that don't already have one
-    const newRows = recipientIds
-      .filter(uid => !existingKeySet.has(`${row.id}::${uid}`))
-      .map(uid => ({
-        org_id: sdRow.org_id,
-        user_id: uid,
-        type: 'tier_at_risk',
-        title: 'Tier at risk',
-        message: payloadMessage,
-        related_entity_type: 'show_date_offer_tier',
-        related_entity_id: row.id,
-      }))
+    // Only insert notifications for (tier, user) pairs that don't already have one —
+    // and only EMAIL those same newly-inserted pairs (below), reusing this exact key,
+    // so a persistently at-risk tier emails each recipient once, not every run.
+    const newRecipientIds = recipientIds.filter(uid => !existingKeySet.has(`${row.id}::${uid}`))
+    const newRows = newRecipientIds.map(uid => ({
+      org_id: sdRow.org_id,
+      user_id: uid,
+      type: 'tier_at_risk',
+      title: 'Tier at risk',
+      message: payloadMessage,
+      related_entity_type: 'show_date_offer_tier',
+      related_entity_id: row.id,
+    }))
 
+    // The insert's error was previously unchecked: a silent write failure (e.g. an RLS
+    // or connectivity blip) still fell through to the email loop below, so the producer
+    // got emailed for a notification that was never actually written — and since
+    // existingKeySet only ever reflects rows that DID land, the same pair would be
+    // treated as "new" again next run and re-emailed forever. On error, log it and skip
+    // the email for every pair in this batch (never throw — the scan must still finish
+    // and move on to the next tier, same failure-swallowing posture as the email send
+    // and getUserById lookup below).
+    let notificationInsertFailed = false
     if (newRows.length > 0) {
-      await admin.from('notifications').insert(newRows)
+      const { error: insertErr } = await admin.from('notifications').insert(newRows)
+      if (insertErr) {
+        console.error('tier-at-risk-watcher: notification insert failed', { showDateId: row.show_date_id, tierId: row.id, error: insertErr.message })
+        notificationInsertFailed = true
+      }
+    }
+
+    // Best-effort producer email for each newly at-risk (tier, user) pair, mirroring
+    // expire-offers' cast-escalation-requested send. Email lives on auth.users —
+    // `profiles` has no email column. The WHOLE per-recipient path (the getUserById
+    // lookup AND the send) is inside the try/catch: a lookup failure (auth service
+    // outage) must be swallowed exactly like a send failure, never propagate and
+    // abort the rest of the scan. The notification write above already happened, so
+    // nothing here can undo it either way.
+    for (const uid of newRecipientIds) {
+      if (notificationInsertFailed) continue // no notification was written for this pair — don't email either
+      try {
+        // Resolve the recipient's email at most once per distinct user across the whole scan.
+        // A cache hit skips the getUserById round-trip; a miss looks it up and caches only a
+        // real address, so a failed/absent lookup stays uncached and a later tier can retry.
+        let recipientEmail = emailByUid.get(uid)
+        if (recipientEmail === undefined) {
+          const { data: userResp } = await admin.auth.admin.getUserById(uid)
+          recipientEmail = userResp?.user?.email ?? undefined
+          if (recipientEmail) emailByUid.set(uid, recipientEmail)
+        }
+        if (!recipientEmail) continue
+        await deps.sendEmail({
+          template_name: 'tier-at-risk',
+          recipient_email: recipientEmail,
+          org_id: sdRow.org_id,
+          templateData: {
+            program,
+            date: sdRow.date,
+            tier: row.tier,
+            pending,
+            accepted,
+            required: requiredSlots,
+            reviewUrl: REVIEW_URL,
+          },
+        })
+      } catch (e) {
+        console.error('tier-at-risk-watcher: email send failed', { uid, showDateId: row.show_date_id, error: (e as Error).message })
+      }
     }
   }
 

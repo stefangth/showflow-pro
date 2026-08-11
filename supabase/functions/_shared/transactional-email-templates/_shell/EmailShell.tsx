@@ -29,6 +29,12 @@ export interface EmailShellProps {
   children?: React.ReactNode;
   footer?: string;
   cta?: EmailShellCta;
+  /** Optional content rendered after the CTA button and before the footer divider, for
+   *  material that is secondary to the button but still belongs above the fine print
+   *  (e.g. a paste-this-link fallback for a client that strips the button). Omitted
+   *  entirely (no empty block rendered) when not provided, so every existing caller
+   *  renders exactly as before this prop existed. */
+  postCta?: React.ReactNode;
   /** Preview-only outline used by the template editor. */
   highlightRole?: EmailRoleKey;
 }
@@ -57,6 +63,7 @@ export function EmailShell({
   children,
   footer,
   cta,
+  postCta,
   highlightRole,
 }: EmailShellProps) {
   const colors = theme.base.colors;
@@ -154,6 +161,16 @@ export function EmailShell({
                       {cta.label}
                     </Button>
                   </td>
+                </tr>
+              </tbody>
+            </table>
+          )}
+
+          {postCta && (
+            <table role="presentation" width="100%" cellPadding="0" cellSpacing="0" style={{ borderCollapse: "collapse" }}>
+              <tbody>
+                <tr>
+                  <td style={{ padding: "0 32px 28px" }}>{postCta}</td>
                 </tr>
               </tbody>
             </table>

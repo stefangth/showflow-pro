@@ -192,8 +192,15 @@ describe("booking audit log — what the trigger actually records", () => {
     /** The FKs whose action makes the DATABASE write to the child row. */
     const RI_MUTATING = /^(cascade|set null|set default)$/;
 
-    it("finds exactly the two functions that write an update or a delete", () => {
-      expect(functionMutators()).toEqual(["anonymize_user", "delete_org"]);
+    // Three names, two paths. `_anonymize_user_data` is the shared body added
+    // when org-member removal landed; `anonymize_user` (you, or a platform
+    // admin) and `admin_anonymize_removed_user` (an org admin, for a member
+    // they removed who belongs to no other org) both delegate to it. The second
+    // is a genuinely wider actor set than the page had when this guard was
+    // written, which is what it exists to surface. The published copy says
+    // "account ... deletions", which covers both, so no claim had to change.
+    it("finds exactly the functions that write an update or a delete", () => {
+      expect(functionMutators()).toEqual(["_anonymize_user_data", "anonymize_user", "delete_org"]);
     });
 
     it("finds exactly one foreign key whose parent delete rewrites a row", () => {
@@ -297,9 +304,14 @@ describe("the published Auditability control", () => {
     }
     // The policy fact is not dropped, only relocated to where a reviewer can
     // act on it: beside the three things that get past it.
+    // Named by what they are, not by which function does them. There are now
+    // two ways into account anonymisation — your own, and an org admin erasing
+    // a member they removed — so a function name here would go stale the next
+    // time that path is refactored, which is exactly what happened when
+    // `_anonymize_user_data` was extracted.
     expect(control!.evidence).toMatch(/no policy grants an update or a delete/i);
-    expect(control!.evidence).toContain("anonymize_user");
-    expect(control!.evidence).toContain("delete_org");
+    expect(control!.evidence).toContain("account anonymisation");
+    expect(control!.evidence).toContain("organisation deletion");
   });
 
   // The pill still says "Append-only", and that is correct: the Access column

@@ -178,6 +178,48 @@ export const ROLE_LABELS: Record<AppRole, string> = {
 /** Display label for a role. Tolerant of unknown strings (falls back to the raw value). */
 export const roleLabel = (role: string): string =>
   ROLE_LABELS[role as keyof typeof ROLE_LABELS] ?? role;
+
+/**
+ * One-sentence explanation of what each role can do, shown wherever someone needs to
+ * understand a role before they act on it: the People pane's role dropdown (a caption
+ * under each role option) and the accept-invite success screen are the planned
+ * consumers, not yet built. The org-invitation email states its own second-person
+ * version instead (org-invitation.roleIntroAdmin/Producer/Artist in
+ * src/lib/emailTemplates/emailCopy.ts): "You are joining..." cannot grammatically
+ * continue into a third-person clause, so review both together when either changes, but
+ * they are not required to match word for word. Mirrored to
+ * supabase/functions/_shared/roles.ts (npm run sync:mirrors) so every runtime renders
+ * the same text; the surrounding imports differ per runtime.
+ *
+ * Two constraints keep every sentence true regardless of an org's configuration: stays
+ * silent on offers and digests (artist acceptance is a per-org toggle, and a
+ * direct-book org never opens an offer at all); and states each role's DEFAULT grant,
+ * not one invitee's resolved capabilities (several producer permissions are
+ * individually org-toggleable, so a producer may not actually get everything this
+ * sentence describes).
+ *
+ * The artist line deliberately says nothing about declaring availability: that action
+ * lives behind /availability, itself gated by the booking_flow entitlement (see
+ * ROUTE_FEATURES in src/config/app.config.ts), so an org with that module off has
+ * artists who cannot reach it at all. An earlier draft hedged with "where that is
+ * turned on" to stay true for that case, but a brand-new invitee has no way to decode
+ * who turns it on or where, so the sentence omits the claim entirely instead of
+ * hedging it. This matches org-invitation.roleIntroArtist, which never mentioned it
+ * either.
+ */
+export const ROLE_DESCRIPTIONS: Record<AppRole, string> = {
+  admin: 'Full control of this workspace, including people, casts, settings, and every booking.',
+  producer: 'Plans productions and show dates, and books artists into them.',
+  artist: 'Gets booked for shows and sees every confirmed engagement.',
+};
+
+/** One-sentence description of what a role can do. Tolerant of unknown strings
+ *  (falls back to an empty string), mirroring roleLabel's fallback semantics so a
+ *  future enum value that hasn't been added to the registry yet degrades to "no
+ *  second sentence" rather than an undefined-riddled render. */
+export function roleDescription(role: string): string {
+  return ROLE_DESCRIPTIONS[role as keyof typeof ROLE_DESCRIPTIONS] ?? '';
+}
 // <<< ROLE LABELS MIRROR <<<
 
 /** Route paths */
@@ -222,6 +264,14 @@ export const APP_META = {
    *  from somewhere that is not the app — notably the Trust Center document
    *  list, which renders on both hosts. */
   APP_URL: 'https://app.showflow.pro',
+  /**
+   * Public support contact for surfaces that reach a person entirely outside their
+   * own organization (e.g. SuspendedOrgScreen, where the org's own admins may be
+   * unreachable). No public support address exists yet — setting a real one is an
+   * owner decision, so this ships dark (null) and every consumer must treat null as
+   * "say nothing" rather than render a broken contact line.
+   */
+  SUPPORT_EMAIL: null as string | null,
 } as const;
 
 /**

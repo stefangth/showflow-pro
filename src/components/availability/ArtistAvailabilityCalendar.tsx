@@ -22,6 +22,12 @@ interface Props {
   eligibleDates: EligibleDate[];
 }
 
+// useArtistEligibleDates filters by BOTH cast membership and unmet hard skill
+// requirements, so the explanation has to name both — "offered dates come from
+// your casts" alone is only half the story for an artist missing a required skill.
+const INELIGIBLE_DAY_REASON =
+  'This date is not offered to you. Offered dates come from your casts and their required skills.';
+
 /**
  * Month-grid calendar:
  *  - Bold blue outline → eligible date
@@ -151,6 +157,11 @@ export function ArtistAvailabilityCalendar({ artistId, eligibleDates }: Props) {
             Couldn't load your bookings or blocked dates — statuses may be incomplete. Please refresh.
           </p>
         )}
+        {eligibleDates.length === 0 && (
+          <p className="text-sm text-muted-foreground mb-4">
+            No eligible dates yet. Once you are added to a cast, offered dates appear here.
+          </p>
+        )}
         <div className="grid grid-cols-7 gap-1 mb-2">
           {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((d) => (
             <div key={d} className="text-center text-xs font-medium text-muted-foreground py-1">
@@ -228,7 +239,11 @@ export function ArtistAvailabilityCalendar({ artistId, eligibleDates }: Props) {
             );
 
             if (!isEligible) {
-              return <div key={dateStr}>{cell}</div>;
+              // `title` gives mouse users the reason on hover. The screen-reader
+              // explanation is stated ONCE for the whole grid (the sr-only note after
+              // the legend below), not repeated on every disabled cell, which would
+              // make an assistive-tech user hear the same sentence 25-30 times a month.
+              return <div key={dateStr} title={INELIGIBLE_DAY_REASON}>{cell}</div>;
             }
 
             return (
@@ -260,10 +275,12 @@ export function ArtistAvailabilityCalendar({ artistId, eligibleDates }: Props) {
         {/* Legend */}
         <div className="flex flex-wrap items-center gap-4 mt-4 pt-4 border-t border-border">
           <span className="text-xs text-muted-foreground">Legend:</span>
-          <div className="flex items-center gap-1.5">
-            <div className="h-3 w-3 rounded border-2 border-info" />
-            <span className="text-xs">Eligible</span>
-          </div>
+          {eligibleDates.length > 0 && (
+            <div className="flex items-center gap-1.5">
+              <div className="h-3 w-3 rounded border-2 border-info" />
+              <span className="text-xs">Eligible</span>
+            </div>
+          )}
           <div className="flex items-center gap-1.5">
             <div className="h-3 w-3 rounded bg-success/30" />
             <span className="text-xs">Confirmed</span>
@@ -281,6 +298,11 @@ export function ArtistAvailabilityCalendar({ artistId, eligibleDates }: Props) {
             <span className="text-xs">Blocked</span>
           </div>
         </div>
+        {/* Stated once for assistive tech (each disabled cell carries only a hover
+            `title`, not a repeated sr-only sentence). */}
+        <p className="sr-only">
+          Dimmed dates are not offered to you. Offered dates come from your casts and their required skills.
+        </p>
       </CardContent>
     </Card>
   );

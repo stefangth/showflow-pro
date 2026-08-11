@@ -51,6 +51,74 @@ Deno.test("provision-org: existing admin → branded email with a magic-link act
   assertEquals(params.options.redirectTo.includes("/auth/callback?redirect="), true);
 });
 
+Deno.test("provision-org: sends the role label, roleKey, and expiresOn derived from the invitation row", async () => {
+  const { deps, invokeCalls } = makeFakeDeps({
+    authUser: { id: "u1" },
+    tables: {
+      platform_admins: { data: { user_id: "u1" }, error: null },
+      org_invitations: { data: { id: "inv-9", expires_at: "2026-08-24T00:00:00Z" }, error: null },
+    },
+    rpcs: { provision_org: { data: { org_id: "org-9", token: "tok-9" }, error: null } },
+    usersById: {},
+    generateLinkResult: { data: { properties: { action_link: "https://app.test/reset-password?redirect=x" } }, error: null },
+  });
+  const res = await handle(makeRequest({ headers: { Authorization: "Bearer x" }, body }), deps);
+  assertEquals(res.status, 200);
+  const sent = invokeCalls.filter((c) => c.name === "send-transactional-email");
+  assertEquals(sent.length, 1);
+  const msg = sent[0].body as { templateData: { role: string; roleKey: string; expiresOn: string } };
+  assertEquals(msg.templateData.role, "Admin");
+  assertEquals(msg.templateData.roleKey, "admin");
+  // The exact calendar day of the row's expires_at (formatExpiresOn, no arithmetic);
+  // the expiryLine's remedy sentence owns the edges a date cannot.
+  assertEquals(msg.templateData.expiresOn, "August 24, 2026");
+});
+
+Deno.test("provision-org: always uses the generic ShowFlow team inviter line, even when the operator has a display name on file, and never resolves or forwards their personal name or email", async () => {
+  // The first admin of a brand-new org is a total stranger to the super-admin
+  // provisioning it, so "Invited by" always reads a generic, org-neutral line here,
+  // regardless of whether the operator happens to have a profiles.display_name on file:
+  // a stranger has no more context for "Jordan Owner" than for owner@platform.test (see
+  // the doc comment in provision-org/index.ts for why this is DIFFERENT from
+  // create-invitation/resend-invitation, which do resolve and forward a real name).
+  // Since there is nothing to resolve, there is also no profiles read and no failure
+  // mode to guard against.
+  const { deps, invokeCalls, calls } = makeFakeDeps({
+    authUser: { id: "u1" },
+    usersById: { u1: { email: "owner@platform.test" } },
+    tables: {
+      platform_admins: { data: { user_id: "u1" }, error: null },
+      profiles: { data: { display_name: "Jordan Owner" }, error: null },
+    },
+    rpcs: { provision_org: { data: { org_id: "org-9", token: "tok-9" }, error: null } },
+    generateLinkResult: { data: { properties: { action_link: "https://app.test/reset-password?redirect=x" } }, error: null },
+  });
+  const res = await handle(makeRequest({ headers: { Authorization: "Bearer x" }, body }), deps);
+  assertEquals(res.status, 200);
+  const sent = invokeCalls.filter((c) => c.name === "send-transactional-email");
+  assertEquals(sent.length, 1);
+  const msg = sent[0].body as { templateData: { inviterName?: string; inviterEmail?: string } };
+  assertEquals(msg.templateData.inviterName, "the ShowFlow team");
+  assertEquals(msg.templateData.inviterEmail, undefined);
+  // resolveInviterName's profiles read never happens: there is nothing to resolve, and
+  // the seeded display_name above is never touched.
+  assertEquals(calls.some((c) => c.table === "profiles"), false, "never reads profiles: this line is never personalized for this caller");
+});
+
+Deno.test("provision-org: net-new first admin → templateData.isNewUser is true", async () => {
+  const { deps, invokeCalls } = makeFakeDeps({
+    authUser: { id: "u1" },
+    tables: { platform_admins: { data: { user_id: "u1" }, error: null } },
+    rpcs: { provision_org: { data: { org_id: "org-9", token: "tok-9" }, error: null } },
+    usersById: {}, // net-new
+    generateLinkResult: { data: { properties: { action_link: "https://app.test/reset-password?redirect=x" } }, error: null },
+  });
+  const res = await handle(makeRequest({ headers: { Authorization: "Bearer x" }, body }), deps);
+  assertEquals(res.status, 200);
+  const sent = invokeCalls.filter((c) => c.name === "send-transactional-email");
+  assertEquals((sent[0].body as { templateData: { isNewUser?: boolean } }).templateData.isNewUser, true);
+});
+
 Deno.test("provision-org: creates first-admin membership at invite time via RPC", async () => {
   const { deps, calls } = makeFakeDeps({
     authUser: { id: "u1" },
@@ -203,4 +271,94 @@ Deno.test("provision-org: leaving booking_flow disabled does not seed an off-flo
 
   const upsertCall = calls.find((c) => c.table === "app_settings" && c.method === "upsert");
   assertEquals(upsertCall, undefined);
+});
+
+// ---------------------------------------------------------------------------
+// The New Organization picker can provision a first "admin" account with any
+// role (a producer- or artist-first org is a legitimate, if rare, choice), so
+// offersExpected branching (resolveArtistOffersExpected, _shared/invitations.ts)
+// applies here too whenever role is "artist". Requires entitled + active +
+// artist_acceptance all to check out, not artist_acceptance alone: see the
+// unentitled and paused-preset regressions below for the exact gap this closes.
+// ---------------------------------------------------------------------------
+
+Deno.test("provision-org: role artist resolves offersExpected from the org's own booking_flow setting", async () => {
+  const { deps, invokeCalls } = makeFakeDeps({
+    authUser: { id: "u1" },
+    tables: {
+      platform_admins: { data: { user_id: "u1" }, error: null },
+      app_settings: [
+        { when: { key: "booking_flow" }, data: [{ org_id: "org-9", key: "booking_flow", value: { artist_acceptance: false } }], error: null },
+      ],
+    },
+    rpcs: { provision_org: { data: { org_id: "org-9", token: "tok-9" }, error: null } },
+    usersById: {},
+    generateLinkResult: { data: { properties: { action_link: "https://app.test/reset-password?redirect=x" } }, error: null },
+  });
+  const res = await handle(makeRequest({ headers: { Authorization: "Bearer x" }, body: { ...body, role: "artist" } }), deps);
+  assertEquals(res.status, 200);
+  const sent = invokeCalls.filter((c) => c.name === "send-transactional-email");
+  assertEquals(sent.length, 1);
+  const msg = sent[0].body as { templateData: { offersExpected?: boolean } };
+  assertEquals(msg.templateData.offersExpected, false);
+});
+
+Deno.test("provision-org: role artist in an UNENTITLED org resolves offersExpected to false, never resolveBookingFlow's fail-open defaults", async () => {
+  // Regression: resolveBookingFlow ALONE would return BOOKING_FLOW_DEFAULTS here
+  // (artist_acceptance: true) since it fails open to the defaults on an unentitled org.
+  const { deps, invokeCalls } = makeFakeDeps({
+    authUser: { id: "u1" },
+    tables: { platform_admins: { data: { user_id: "u1" }, error: null } },
+    rpcs: {
+      provision_org: { data: { org_id: "org-9", token: "tok-9" }, error: null },
+      is_feature_enabled: { data: false, error: null },
+    },
+    usersById: {},
+    generateLinkResult: { data: { properties: { action_link: "https://app.test/reset-password?redirect=x" } }, error: null },
+  });
+  const res = await handle(makeRequest({ headers: { Authorization: "Bearer x" }, body: { ...body, role: "artist" } }), deps);
+  assertEquals(res.status, 200);
+  const sent = invokeCalls.filter((c) => c.name === "send-transactional-email");
+  const msg = sent[0].body as { templateData: { offersExpected?: boolean } };
+  assertEquals(msg.templateData.offersExpected, false);
+});
+
+Deno.test("provision-org: role artist in a freshly provisioned org still in the PAUSED preset (booking_flow.active: false) resolves offersExpected to false", async () => {
+  // Regression: this is the exact seed provision-org's own entitlement-seeding step
+  // writes for every freshly provisioned org with booking enabled
+  // (normalizeBookingFlow({active:false})). artist_acceptance is unset in that stored
+  // row (defaults true), so without also checking flow.active this would incorrectly
+  // read as "offers coming" for an org that has not even turned booking on yet.
+  const { deps, invokeCalls } = makeFakeDeps({
+    authUser: { id: "u1" },
+    tables: {
+      platform_admins: { data: { user_id: "u1" }, error: null },
+      app_settings: [
+        { when: { key: "booking_flow" }, data: [{ org_id: "org-9", key: "booking_flow", value: { active: false } }], error: null },
+      ],
+    },
+    rpcs: { provision_org: { data: { org_id: "org-9", token: "tok-9" }, error: null } },
+    usersById: {},
+    generateLinkResult: { data: { properties: { action_link: "https://app.test/reset-password?redirect=x" } }, error: null },
+  });
+  const res = await handle(makeRequest({ headers: { Authorization: "Bearer x" }, body: { ...body, role: "artist" } }), deps);
+  assertEquals(res.status, 200);
+  const sent = invokeCalls.filter((c) => c.name === "send-transactional-email");
+  const msg = sent[0].body as { templateData: { offersExpected?: boolean } };
+  assertEquals(msg.templateData.offersExpected, false);
+});
+
+Deno.test("provision-org: role admin (the common case) never resolves offersExpected", async () => {
+  const { deps, invokeCalls } = makeFakeDeps({
+    authUser: { id: "u1" },
+    tables: { platform_admins: { data: { user_id: "u1" }, error: null } },
+    rpcs: { provision_org: { data: { org_id: "org-9", token: "tok-9" }, error: null } },
+    usersById: {},
+    generateLinkResult: { data: { properties: { action_link: "https://app.test/reset-password?redirect=x" } }, error: null },
+  });
+  const res = await handle(makeRequest({ headers: { Authorization: "Bearer x" }, body }), deps);
+  assertEquals(res.status, 200);
+  const sent = invokeCalls.filter((c) => c.name === "send-transactional-email");
+  const msg = sent[0].body as { templateData: { offersExpected?: boolean } };
+  assertEquals(msg.templateData.offersExpected, undefined);
 });

@@ -9,6 +9,7 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SkillPicker } from "@/components/skills/SkillPicker";
+import { unrestrictedEligibilityNote } from "@/lib/bookings/actionCopy";
 
 /**
  * Direct-mode booking list: shows every eligible artist for a show date with a
@@ -21,7 +22,7 @@ import { SkillPicker } from "@/components/skills/SkillPicker";
  */
 export function EligibilityBookList({
   artists, bookedArtistIds, onBook, booking, loading = false, error = false,
-  skills, selectedSkillIds, onSkillFilterChange,
+  skills, selectedSkillIds, onSkillFilterChange, unrestricted = false, orgName,
 }: {
   artists: { id: string; name: string }[];
   bookedArtistIds: Set<string>;
@@ -32,6 +33,11 @@ export function EligibilityBookList({
   skills?: { id: string; name: string }[];
   selectedSkillIds?: string[];
   onSkillFilterChange?: (skillId: string) => void;
+  /** True when the date's eligibility has no cast/city restriction — deriveDirectBookList
+   *  (src/lib/bookings.ts) then opens `artists` to the whole active roster. */
+  unrestricted?: boolean;
+  /** Needed only to name the org in the unrestricted note; omit and the note stays silent. */
+  orgName?: string | null;
 }) {
   const [understudy, setUnderstudy] = useState(false);
   const [confirmTarget, setConfirmTarget] = useState<{ id: string; name: string } | null>(null);
@@ -65,6 +71,9 @@ export function EligibilityBookList({
             onToggle={onSkillFilterChange}
           />
         </div>
+      )}
+      {unrestricted && orgName && (
+        <p className="text-xs text-muted-foreground">{unrestrictedEligibilityNote(orgName)}</p>
       )}
       {artists.length === 0 && (
         <p className="text-sm text-muted-foreground">No eligible artists for this date. Check casts and city in Settings.</p>

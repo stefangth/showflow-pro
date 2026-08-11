@@ -3,7 +3,7 @@ import { requireOrgRole } from "../_shared/auth.ts";
 import { requireCapability } from "../_shared/capabilities.ts";
 import type { TablesInsert } from "../_shared/database.types.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
-import { ensureInvitedUser, sendOrgInvitationEmail } from "../_shared/invitations.ts";
+import { ensureInvitedUser, formatExpiresOn, resolveArtistOffersExpected, resolveInviterName, sendOrgInvitationEmail } from "../_shared/invitations.ts";
 import { roleLabel } from "../_shared/roles.ts";
 
 type Body = {
@@ -134,6 +134,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     // membership on the invitee's first sign-in.
     let userId: string | null = (existingUserId as string | null) ?? null;
     let actionLink: string | undefined;
+    let isNewUser: boolean | undefined;
     try {
       // Mint the right link for EVERY invitee (net-new → set-password invite link; existing →
       // magic link, incl. passwordless/expired), the same way provision-org/resend-invitation do,
@@ -142,6 +143,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       const ensured = await ensureInvitedUser(deps, { email: invite.email, appOrigin, token: invite.token });
       userId = ensured.userId ?? userId;
       actionLink = ensured.actionLink;
+      isNewUser = ensured.isNewUser;
       if (userId) {
         const { error: memErr } = await admin.rpc("ensure_invitation_membership", {
           p_invitation: invite.id, p_user: userId,
@@ -150,6 +152,13 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       }
     } catch (e) {
       console.error("create-invitation: membership provisioning failed", (e as Error).message);
+      // ensureInvitedUser threw before setting actionLink, which stays undefined on this
+      // path. org-invitation.tsx's ctaHint checks `!actionLink` FIRST, before it ever
+      // looks at isNewUser, so isNewUser has no effect on the rendered email here
+      // regardless of what it is set to; leaving it undefined (the existing local
+      // default) is enough. See "falls back to an honest sign-in hint even when
+      // isNewUser was never resolved and there is no action link" in
+      // org-invitation.test.ts for the render-level proof of that precedence.
     }
 
     // Best-effort delivery — but only if the invitee has a usable path to authenticate:
@@ -161,13 +170,30 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       try {
         const { data: org } = await admin
           .from('organizations').select('name').eq('id', body.org_id).maybeSingle();
-        const inviter = inviterId ? await admin.auth.admin.getUserById(inviterId) : null;
+        // Best-effort: resolveInviterName is an unrelated profiles read plus an Admin API
+        // call. A failure there must not skip the whole email (this caller's outer catch
+        // would otherwise treat it identically to a real send failure, dropping the
+        // invitee's only way in); degrade to omitting the "Invited by" line instead.
+        const inviter = await resolveInviterName(deps, inviterId)
+          .catch((): { name?: string; email?: string } => ({}));
+        // Only relevant to an artist invite (see DeliverInviteArgs.offersExpected).
+        // resolveArtistOffersExpected already fails closed to false on any error, so no
+        // extra .catch is needed here (unlike resolveInviterName above, which needs one
+        // to keep a Promise.all-adjacent partial failure from throwing).
+        const offersExpected = role === "artist"
+          ? await resolveArtistOffersExpected(admin, body.org_id)
+          : undefined;
         await sendOrgInvitationEmail(deps, {
           email: invite.email,
           orgName: (org as { name?: string } | null)?.name ?? undefined,
           role: roleLabel(invite.role),
+          roleKey: invite.role,
           token: invite.token,
-          inviterEmail: inviter?.data?.user?.email ?? undefined,
+          inviterEmail: inviter.email,
+          inviterName: inviter.name,
+          expiresOn: formatExpiresOn(invite.expires_at),
+          isNewUser,
+          offersExpected,
           appOrigin,
           idempotencyKey: `org-invitation-${invite.id}`,
           orgId: body.org_id,

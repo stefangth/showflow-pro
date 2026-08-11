@@ -123,6 +123,72 @@ Deno.test("create-invitation DI: sends the org-invitation email to the invitee w
   assertEquals(msg.templateData.role, "Production Team");
 });
 
+Deno.test("create-invitation DI: sends roleKey, expiresOn (from the invitation row), and inviterName (from profiles.display_name)", async () => {
+  const { deps, invokeCalls } = adminDeps({
+    tables: {
+      org_memberships: { data: { role: "admin" }, error: null },
+      org_invitations: {
+        data: { id: "inv1", org_id: "org-1", email: "invitee@x.com", role: "producer", status: "pending", token: "tok123", expires_at: "2026-08-24T00:00:00Z" },
+        error: null,
+      },
+      organizations: { data: { name: "Acme" }, error: null },
+      profiles: { data: { display_name: "Jane Admin" }, error: null },
+    },
+  });
+  await handle(inviteReq({ org_id: "org-1", email: "invitee@x.com", role: "producer" }), deps);
+  const emails = invokeCalls.filter((c) => c.name === "send-transactional-email");
+  assertEquals(emails.length, 1);
+  const msg = emails[0].body as {
+    templateData: { role: string; roleKey: string; expiresOn: string; inviterName: string };
+  };
+  assertEquals(msg.templateData.role, "Production Team");
+  // The raw enum, not the label: the template uses it to select which second-person
+  // role action line to render (see org-invitation.tsx's roleActionLine).
+  assertEquals(msg.templateData.roleKey, "producer");
+  // The exact calendar day of the row's expires_at (formatExpiresOn, no arithmetic);
+  // the expiryLine's remedy sentence owns the edges a date cannot.
+  assertEquals(msg.templateData.expiresOn, "August 24, 2026");
+  assertEquals(msg.templateData.inviterName, "Jane Admin");
+});
+
+Deno.test("create-invitation DI: no profiles.display_name for the inviter → inviterName is unset, inviterEmail carries it for the template's own fallback", async () => {
+  // resolveInviterName no longer pre-fills name with email (that would make the template's
+  // own `inviterName || inviterEmail` fallback dead code); the edge function must forward
+  // both fields as-is and let the template render the email as the "Invited by" line.
+  const { deps, invokeCalls } = adminDeps({
+    tables: {
+      org_memberships: { data: { role: "admin" }, error: null },
+      org_invitations: {
+        data: { id: "inv1", org_id: "org-1", email: "invitee@x.com", role: "producer", status: "pending", token: "tok123", expires_at: "2026-08-24T00:00:00Z" },
+        error: null,
+      },
+      organizations: { data: { name: "Acme" }, error: null },
+      profiles: { data: null, error: null },
+    },
+  });
+  await handle(inviteReq({ org_id: "org-1", email: "invitee@x.com", role: "producer" }), deps);
+  const emails = invokeCalls.filter((c) => c.name === "send-transactional-email");
+  const msg = emails[0].body as { templateData: { inviterName?: string; inviterEmail?: string } };
+  assertEquals(msg.templateData.inviterName, undefined);
+  assertEquals(msg.templateData.inviterEmail, "admin@acme.test");
+});
+
+Deno.test("create-invitation DI: still sends the invitation email when resolving the inviter's display name fails (best-effort, not the deliverable)", async () => {
+  // resolveInviterName does an unrelated profiles read plus an Admin API getUserById
+  // call. Without a catch, its rejection would hit this caller's outer try/catch (whose
+  // catch clause only logs) and skip sendOrgInvitationEmail entirely — turning an
+  // unrelated lookup failure into a silently un-sent invite for a brand-new invitee with
+  // no other way in. It must degrade to omitting the "Invited by" line instead.
+  const { deps, invokeCalls } = adminDeps();
+  (deps.admin.auth.admin as { getUserById: unknown }).getUserById = () => Promise.reject(new Error("directory down"));
+  await handle(inviteReq({ org_id: "org-1", email: "invitee@x.com", role: "producer" }), deps);
+  const emails = invokeCalls.filter((c) => c.name === "send-transactional-email");
+  assertEquals(emails.length, 1, "the invitation email is still sent despite the inviter-name lookup failing");
+  const msg = emails[0].body as { templateData: { inviterName?: string; inviterEmail?: string } };
+  assertEquals(msg.templateData.inviterName, undefined);
+  assertEquals(msg.templateData.inviterEmail, undefined);
+});
+
 Deno.test("create-invitation DI: admin → creates membership at invite time via RPC (net-new invitee)", async () => {
   const { deps, calls } = adminDeps({
     // Net-new invitee → resolved through generateLink (which returns the new user id).
@@ -150,6 +216,76 @@ Deno.test("create-invitation DI: net-new invitee → branded email WITH actionLi
   const emails = invokeCalls.filter((c) => c.name === "send-transactional-email");
   assertEquals(emails.length, 1);
   assertEquals((emails[0].body as { templateData: { actionLink?: string } }).templateData.actionLink, "https://app.test/reset-password?redirect=x");
+});
+
+Deno.test("create-invitation DI: net-new invitee → templateData.isNewUser is true", async () => {
+  const { deps, invokeCalls } = adminDeps({
+    usersById: {}, // invitee is net-new (no existing auth user)
+    generateLinkResult: { data: { properties: { action_link: "https://app.test/reset-password?redirect=x" } }, error: null },
+  });
+  await handle(inviteReq({ org_id: "org-1", email: "invitee@x.com", role: "producer" }), deps);
+  const emails = invokeCalls.filter((c) => c.name === "send-transactional-email");
+  assertEquals((emails[0].body as { templateData: { isNewUser?: boolean } }).templateData.isNewUser, true);
+});
+
+Deno.test("create-invitation DI: existing invitee (magic link) → templateData.isNewUser is false", async () => {
+  // The invitee already has an auth account but is NOT yet a member of this org (an
+  // array-matched org_memberships seed keeps the admin caller's own membership check
+  // separate from the invitee's, which must resolve to "not a member" so the request
+  // proceeds past the duplicate-member guard).
+  const { deps, invokeCalls } = adminDeps({
+    tables: {
+      org_memberships: [
+        { when: { user_id: "u1" }, data: { role: "admin" } },
+        { when: { user_id: "existing-invitee" }, data: null },
+      ],
+      org_invitations: {
+        data: { id: "inv1", org_id: "org-1", email: "invitee@x.com", role: "producer", status: "pending", token: "tok123", expires_at: "2099-01-01T00:00:00Z" },
+        error: null,
+      },
+      organizations: { data: { name: "Acme" }, error: null },
+    },
+    authUsersByEmail: { "invitee@x.com": { id: "existing-invitee" } },
+    generateLinkResult: { data: { properties: { action_link: "https://app.test/auth/callback?redirect=y" } }, error: null },
+    rpcs: { ensure_invitation_membership: { data: true, error: null } },
+  });
+  const res = await handle(inviteReq({ org_id: "org-1", email: "invitee@x.com", role: "producer" }), deps);
+  assertEquals(res.status, 200);
+  const emails = invokeCalls.filter((c) => c.name === "send-transactional-email");
+  assertEquals(emails.length, 1);
+  assertEquals((emails[0].body as { templateData: { isNewUser?: boolean } }).templateData.isNewUser, false);
+});
+
+Deno.test("create-invitation DI: existing invitee whose magic-link mint fails still gets the honest no-link fallback copy, not a promise the broken link can't keep", async () => {
+  // ensureInvitedUser can throw AFTER existingUserId was already resolved (generateLink
+  // failure), so actionLink stays undefined for this send. org-invitation.tsx's ctaHint
+  // checks `!actionLink` before it ever looks at isNewUser (see the doc comment on the
+  // catch block in index.ts), so what actually matters here is that no actionLink went
+  // out at all, not what isNewUser happens to be. The render-level proof that a missing
+  // actionLink always wins, regardless of isNewUser, lives in org-invitation.test.ts
+  // ("falls back to an honest sign-in hint even when isNewUser was never resolved and
+  // there is no action link").
+  const { deps, invokeCalls } = adminDeps({
+    tables: {
+      org_memberships: [
+        { when: { user_id: "u1" }, data: { role: "admin" } },
+        { when: { user_id: "existing-invitee" }, data: null },
+      ],
+      org_invitations: {
+        data: { id: "inv1", org_id: "org-1", email: "invitee@x.com", role: "producer", status: "pending", token: "tok123", expires_at: "2099-01-01T00:00:00Z" },
+        error: null,
+      },
+      organizations: { data: { name: "Acme" }, error: null },
+    },
+    authUsersByEmail: { "invitee@x.com": { id: "existing-invitee" } },
+    generateLinkResult: { data: null, error: { message: "mail service unavailable" } },
+  });
+  const res = await handle(inviteReq({ org_id: "org-1", email: "invitee@x.com", role: "producer" }), deps);
+  assertEquals(res.status, 200);
+  const emails = invokeCalls.filter((c) => c.name === "send-transactional-email");
+  assertEquals(emails.length, 1, "still delivers via the fallback bare-token link, rather than silently dropping the email");
+  const msg = emails[0].body as { templateData: { actionLink?: string } };
+  assertEquals(msg.templateData.actionLink, undefined);
 });
 
 Deno.test("create-invitation DI: net-new account minting fails → no dead-link email, still 200", async () => {
@@ -331,4 +467,103 @@ Deno.test("create-invitation DI: non-member fresh email still invites → 200 (m
   const { deps } = adminDeps();
   const res = await handle(inviteReq({ org_id: "org-1", email: "fresh@x.com", role: "producer" }), deps);
   assertEquals(res.status, 200);
+});
+
+// offersExpected (see resolveArtistOffersExpected, _shared/invitations.ts) requires
+// entitled + active + artist_acceptance all to check out, not artist_acceptance alone:
+// see the two regression tests below (unentitled, and the paused "off" preset) for the
+// exact gap this closes.
+
+Deno.test("create-invitation DI: an artist invite resolves offersExpected from the org's own booking_flow setting", async () => {
+  const { deps, invokeCalls } = adminDeps({
+    tables: {
+      org_memberships: { data: { role: "admin" }, error: null },
+      org_invitations: {
+        data: { id: "inv1", org_id: "org-1", email: "invitee@x.com", role: "artist", status: "pending", token: "tok123", expires_at: "2099-01-01T00:00:00Z" },
+        error: null,
+      },
+      organizations: { data: { name: "Acme" }, error: null },
+      // resolveOrgSetting reads app_settings via a `key`-matched array seed (mirrors the
+      // pattern used across the other booking-flow DI tests, e.g. provision-org's).
+      app_settings: [
+        { when: { key: "booking_flow" }, data: [{ org_id: "org-1", key: "booking_flow", value: { artist_acceptance: false } }], error: null },
+      ],
+    },
+  });
+  await handle(inviteReq({ org_id: "org-1", email: "invitee@x.com", role: "artist" }), deps);
+  const emails = invokeCalls.filter((c) => c.name === "send-transactional-email");
+  assertEquals(emails.length, 1);
+  const msg = emails[0].body as { templateData: { offersExpected?: boolean } };
+  assertEquals(msg.templateData.offersExpected, false);
+});
+
+Deno.test("create-invitation DI: an artist invite defaults offersExpected to true when the org has no booking_flow override (entitled by default in this fake)", async () => {
+  const { deps, invokeCalls } = adminDeps({
+    tables: {
+      org_memberships: { data: { role: "admin" }, error: null },
+      org_invitations: {
+        data: { id: "inv1", org_id: "org-1", email: "invitee@x.com", role: "artist", status: "pending", token: "tok123", expires_at: "2099-01-01T00:00:00Z" },
+        error: null,
+      },
+      organizations: { data: { name: "Acme" }, error: null },
+    },
+  });
+  await handle(inviteReq({ org_id: "org-1", email: "invitee@x.com", role: "artist" }), deps);
+  const emails = invokeCalls.filter((c) => c.name === "send-transactional-email");
+  const msg = emails[0].body as { templateData: { offersExpected?: boolean } };
+  assertEquals(msg.templateData.offersExpected, true);
+});
+
+Deno.test("create-invitation DI: an artist invite in an UNENTITLED org resolves offersExpected to false, never resolveBookingFlow's fail-open defaults", async () => {
+  // Regression: resolveBookingFlow ALONE would return BOOKING_FLOW_DEFAULTS here
+  // (artist_acceptance: true) since it fails open to the defaults on an unentitled org.
+  // The invitation email must not promise offers this org's module can never send.
+  const { deps, invokeCalls } = adminDeps({
+    tables: {
+      org_memberships: { data: { role: "admin" }, error: null },
+      org_invitations: {
+        data: { id: "inv1", org_id: "org-1", email: "invitee@x.com", role: "artist", status: "pending", token: "tok123", expires_at: "2099-01-01T00:00:00Z" },
+        error: null,
+      },
+      organizations: { data: { name: "Acme" }, error: null },
+    },
+    rpcs: { is_feature_enabled: { data: false, error: null } },
+  });
+  await handle(inviteReq({ org_id: "org-1", email: "invitee@x.com", role: "artist" }), deps);
+  const emails = invokeCalls.filter((c) => c.name === "send-transactional-email");
+  const msg = emails[0].body as { templateData: { offersExpected?: boolean } };
+  assertEquals(msg.templateData.offersExpected, false);
+});
+
+Deno.test("create-invitation DI: an artist invite in a freshly provisioned but still-PAUSED org (booking_flow.active: false) resolves offersExpected to false", async () => {
+  // Regression: this is the exact seed provision-org writes for every freshly
+  // provisioned org with booking enabled (normalizeBookingFlow({active:false})).
+  // artist_acceptance is unset in that stored row, so it defaults true; without also
+  // checking flow.active this would incorrectly read as "offers coming" for an org that
+  // has not even turned booking on yet.
+  const { deps, invokeCalls } = adminDeps({
+    tables: {
+      org_memberships: { data: { role: "admin" }, error: null },
+      org_invitations: {
+        data: { id: "inv1", org_id: "org-1", email: "invitee@x.com", role: "artist", status: "pending", token: "tok123", expires_at: "2099-01-01T00:00:00Z" },
+        error: null,
+      },
+      organizations: { data: { name: "Acme" }, error: null },
+      app_settings: [
+        { when: { key: "booking_flow" }, data: [{ org_id: "org-1", key: "booking_flow", value: { active: false } }], error: null },
+      ],
+    },
+  });
+  await handle(inviteReq({ org_id: "org-1", email: "invitee@x.com", role: "artist" }), deps);
+  const emails = invokeCalls.filter((c) => c.name === "send-transactional-email");
+  const msg = emails[0].body as { templateData: { offersExpected?: boolean } };
+  assertEquals(msg.templateData.offersExpected, false);
+});
+
+Deno.test("create-invitation DI: a non-artist invite never resolves offersExpected (irrelevant to that role)", async () => {
+  const { deps, invokeCalls } = adminDeps();
+  await handle(inviteReq({ org_id: "org-1", email: "invitee@x.com", role: "producer" }), deps);
+  const emails = invokeCalls.filter((c) => c.name === "send-transactional-email");
+  const msg = emails[0].body as { templateData: { offersExpected?: boolean } };
+  assertEquals(msg.templateData.offersExpected, undefined);
 });

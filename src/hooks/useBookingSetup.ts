@@ -2,6 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchShowsWithSlots, fetchOwnedSettingKeys, fetchBookingFlow } from "@/data/settings";
 import { fetchLadderCoverageInputs } from "@/data/eligibility";
+import { fetchArtistCount, fetchInactiveArtistCount } from "@/data/artists";
+import { fetchProducerCount } from "@/data/members";
 import { activeShows } from "@/lib/settings";
 import { toDateKey } from "@/lib/dates";
 import {
@@ -23,6 +25,9 @@ const OWNED_KEYS = ["booking_flow", ...TIMING_KEYS] as const;
 export function useBookingSetupStatus(orgId: string | null): {
   status: BookingSetupStatus;
   coverage: LadderCoverageInputs | undefined;
+  /** ACTIVE roster size for the people panel (fetchArtistCount filters status = 'active',
+   *  matching the offer engine); null while unread (loading or failed). */
+  artistCount: number | null;
   isLoading: boolean;
   isError: boolean;
 } {
@@ -49,9 +54,14 @@ export function useBookingSetupStatus(orgId: string | null): {
     enabled: !!orgId,
     queryFn: () => fetchBookingFlow(supabase, orgId),
   });
-
-  const isLoading = !!orgId && (owned.isLoading || shows.isLoading || coverage.isLoading || flow.isLoading);
-  const isError = owned.isError || shows.isError || coverage.isError || flow.isError;
+  const artists = useQuery({
+    queryKey: ["artists", "count", orgId],
+    enabled: !!orgId,
+    queryFn: () => fetchArtistCount(supabase, orgId!),
+  });
+  const isLoading = !!orgId
+    && (owned.isLoading || shows.isLoading || coverage.isLoading || flow.isLoading || artists.isLoading);
+  const isError = owned.isError || shows.isError || coverage.isError || flow.isError || artists.isError;
   const ownedSet = owned.data;
   const status = computeBookingSetupStatus({
     // The org must own its own booking_flow row AND have that flow currently active
@@ -66,6 +76,63 @@ export function useBookingSetupStatus(orgId: string | null): {
     shows: activeShows(shows.data),
     timingChosen: ownedSet ? TIMING_KEYS.every((k) => ownedSet.has(k)) : false,
     coverage: coverage.data,
+    // `?? null` covers both loading and a failed read, and the engine treats null as an
+    // empty roster, so an unread count reports the step outstanding rather than done.
+    artistCount: artists.data ?? null,
+    // The SAME flow read as `flowChosen` above, used for a different question: not whether
+    // the org chose a flow, but which one it runs. A direct-book org never opens a tier, so
+    // its blockers must not be worded as offers, and the cast ladder is not one of its
+    // blockers at all (nothing it runs reads a ranking). `null` until the read lands
+    // (fetchBookingFlow always resolves to a normalized flow, so undefined means "not read
+    // yet"), and every consumer gates on the `isLoading` returned below before reading
+    // `canOffer`.
+    artistAcceptance: flow.data ? flow.data.artist_acceptance : null,
   });
-  return { status, coverage: coverage.data, isLoading, isError };
+  return {
+    status,
+    coverage: coverage.data,
+    artistCount: artists.data ?? null,
+    isLoading,
+    isError,
+  };
+}
+
+/**
+ * The parked rest of the roster (every status that is not active), so the people panel can
+ * reconcile its active count with the unfiltered list on ArtistsPage.
+ *
+ * Its own hook rather than a sixth read inside `useBookingSetupStatus`, because the two have
+ * different audiences: readiness is asked for on every admin and producer surface that shows
+ * setup state (DashboardPage, ShowsBookingsPage, useModuleOnboardingRail,
+ * useDashboardFirstRun), while this count decorates ONE sentence inside a panel that stays
+ * collapsed until somebody opens it. `enabled` is that panel's own visibility, so the read
+ * happens when the sentence does and not on every page load.
+ *
+ * Its own query key too: it is a different question from the readiness count and the two must
+ * not share a cache entry (React Query keys are per result shape, not per domain).
+ *
+ * Returns null while unread, whether that is loading, disabled, or a failed read. A failure is
+ * deliberately not an error state anywhere: this is a reconciliation, not a blocker, so it
+ * drops the sentence rather than holding the rail in a spinner or flipping a perfectly
+ * readable setup into an error.
+ */
+export function useInactiveArtistCount(orgId: string | null, enabled: boolean): number | null {
+  const q = useQuery({
+    queryKey: ["artists", "inactive-count", orgId],
+    enabled: !!orgId && enabled,
+    queryFn: () => fetchInactiveArtistCount(supabase, orgId!),
+  });
+  return q.data ?? null;
+}
+
+/** Producer-role member count for the admin-only "Add your production team" nudge. Its own
+ *  hook (not folded into useBookingSetupStatus) so only the admin surfaces that render the
+ *  nudge pay for the read; `enabled` is the caller's is-admin gate. Null while unread. */
+export function useProducerCount(orgId: string | null, enabled: boolean): number | null {
+  const q = useQuery({
+    queryKey: ["members", "producer-count", orgId],
+    enabled: !!orgId && enabled,
+    queryFn: () => fetchProducerCount(supabase, orgId!),
+  });
+  return q.data ?? null;
 }

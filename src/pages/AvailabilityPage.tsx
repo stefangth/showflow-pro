@@ -20,6 +20,7 @@ import { useAuth } from '@/features/auth/AuthContext';
 import { useFeature } from '@/hooks/useEntitlements';
 import { useArtistEligibleDates, type EligibleDate } from '@/hooks/useArtistEligibleDates';
 import { useMyArtist } from '@/hooks/useMyArtist';
+import { UnlinkedArtistCard } from '@/components/artists/UnlinkedArtistCard';
 import { ArtistAvailabilityCalendar } from '@/components/availability/ArtistAvailabilityCalendar';
 import { AvailabilityPicker } from '@/components/availability/AvailabilityPicker';
 import { OfferResponseButtons } from '@/components/availability/OfferResponseButtons';
@@ -28,8 +29,10 @@ import { formatDateDMY, parseDateOnly, isPastDate, pastRowClassName } from '@/li
 import { showIdentityLabel } from '@/types';
 import { fetchMyActiveBookedDates, mergeArtistActiveBookedDates, type ActiveBookedDateEntry } from '@/data/artists';
 import { cn } from '@/lib/utils';
-import { useBookingFlow, useReferenceField } from '@/hooks/useBookingFlow';
+import { useBookingFlow, useReferenceField, useFlowTimes } from '@/hooks/useBookingFlow';
 import { BOOKING_FLOW_DEFAULTS, referenceLabel } from '@/lib/bookingFlow';
+import { describeTonightStandalone } from '@/lib/bookings/timingCopy';
+import { DEFAULT_FLOW_TIMES } from '@/data/settings';
 import { availabilityPageCopy, bookingStatusLabels } from '@/lib/flowCopy';
 import { useColumnTemplate, useEditorConfig } from '@/features/editor/EditorContext';
 import { useColumnHeaders } from '@/features/editor/useColumnHeaders';
@@ -73,6 +76,20 @@ function ArtistAvailability() {
   const { reference, customFieldKey } = useReferenceField();
   const flowQ = useBookingFlow();
   const flow = flowQ.data ?? BOOKING_FLOW_DEFAULTS;
+  const orgId = currentOrg?.id ?? null;
+  // Org-scope discipline mirrors FirstOfferCard: `flowQ.data` (passed straight
+  // through, not the page's `flow` fallback below) stays undefined while there is
+  // no active org or the query hasn't settled yet, and describeTonight already
+  // returns null for an unread flow — so an org-less mount narrates nothing, with
+  // no separate `orgId ? … : null` guard needed here.
+  const timesQ = useFlowTimes(orgId);
+  const tonight = describeTonightStandalone(timesQ.data ?? DEFAULT_FLOW_TIMES, flowQ.data);
+  // Audience gate: describeTonight also composes a confirmation-digest sentence for
+  // a direct-book org (artist_acceptance: false) whenever confirmation_digest is
+  // true — the BOOKING_FLOW_DEFAULTS/"direct"-preset value — but that sentence is
+  // about a DIFFERENT audience (already-confirmed artists), not R2.1/R4.7's response
+  // window. Only artists who actually receive offers see this line.
+  const showTiming = flow.artist_acceptance && !!tonight;
   const pageCopy = availabilityPageCopy(flow);
   const statusLabels = bookingStatusLabels(flow);
   const { orderedColumns, visibleCount } = useColumnTemplate('availability');
@@ -240,13 +257,7 @@ function ArtistAvailability() {
     return (
       <div className="space-y-6">
         <h1 className="font-display text-[32px] font-semibold tracking-tight">{pageCopy.title}</h1>
-        <Card>
-          <CardContent className="py-12 text-center">
-            <p className="text-muted-foreground">
-              No artist profile linked to your account. Ask an admin to link your account.
-            </p>
-          </CardContent>
-        </Card>
+        <UnlinkedArtistCard orgName={currentOrg?.name} />
       </div>
     );
   }
@@ -417,8 +428,11 @@ function ArtistAvailability() {
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Mark dates you're unavailable so the system won't send you offers for those days.
+            Mark dates you cannot play so the system will not send you offers for them. Dates you are already booked for are not affected.
           </p>
+          {showTiming && (
+            <p data-testid="availability-timing" className="text-xs text-muted-foreground mt-1">{tonight}</p>
+          )}
 
           <form
             className="flex flex-wrap items-end gap-3"

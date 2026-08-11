@@ -17,6 +17,10 @@ export interface EmailTemplatePreviewRequest {
   copyOverride: EmailCopyOverride;
   themeOverride: EmailThemeOverride;
   highlightRole?: string;
+  /** Merged over the template's registered sample data by the preview edge function.
+   *  Lets the editor preview data-selected variants (org-invitation's per-role action
+   *  lines) that the hardcoded sample could otherwise never reach. */
+  dataOverride?: Record<string, unknown>;
 }
 
 /**

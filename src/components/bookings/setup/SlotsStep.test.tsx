@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { screen, fireEvent, waitFor } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { renderWithProviders } from "@/test/renderWithProviders";
 
 const { showsRef, updateShow } = vi.hoisted(() => ({
@@ -47,5 +48,29 @@ describe("SlotsStep", () => {
       }),
     );
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["shows"] });
+  });
+
+  it("shows an empty state and no save button when there are no shows to set", async () => {
+    showsRef.value = [];
+    renderWithProviders(
+      <MemoryRouter>
+        <SlotsStep orgId="org-1" onDone={() => {}} />
+      </MemoryRouter>,
+    );
+    expect(await screen.findByText(/no shows yet/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /save slot counts/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /add a show/i })).toHaveAttribute(
+      "href",
+      expect.stringContaining("/productions"),
+    );
+  });
+
+  it("says slots are already set when active shows exist but none need a count", async () => {
+    showsRef.value = [
+      { id: "s2", program: "Set", sub_program: "Done", main_cast_slots: 4, understudy_slots: 2, status: "active" },
+    ];
+    renderWithProviders(<MemoryRouter><SlotsStep orgId="org-1" onDone={() => {}} /></MemoryRouter>);
+    expect(await screen.findByText(/already has its slot counts set/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /save slot counts/i })).not.toBeInTheDocument();
   });
 });

@@ -195,3 +195,91 @@ describe("ArtistAvailabilityCalendar — past-date tint (Plan B Task 3)", () => 
     expect(pastCell.className).not.toMatch(/pointer-events-none/);
   });
 });
+
+/**
+ * R3.4 + R3.5: an ineligible day gives no reason it's disabled (no title/aria-label
+ * on its non-interactive wrapper), and an artist with zero eligible dates sees a
+ * bare grid with no explanation that nothing is offered yet.
+ */
+describe("ArtistAvailabilityCalendar — ineligible-day explanation + empty state (R3.4/R3.5)", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+  });
+
+  function eligible(date: string) {
+    return {
+      id: `sd-${date}`,
+      date,
+      session_1: null,
+      session_2: null,
+      session_3: null,
+      status: "open",
+      city_id: null,
+      show_id: "show-1",
+      venue: null,
+      custom: null,
+      show: { id: "show-1", program: "Test Show", sub_program: null, status: "active" },
+    };
+  }
+
+  // Both the mouse-hover title and the screen-reader-only text must name skills as
+  // well as casts: useArtistEligibleDates filters by cast membership AND by unmet
+  // hard skill requirements, so "offered dates come from your casts" alone is an
+  // inaccurate (half the story) explanation for why a day is disabled.
+  const INELIGIBLE_REASON =
+    "This date is not offered to you. Offered dates come from your casts and their required skills.";
+
+  it("labels an ineligible day with why it is disabled, for sighted and assistive-tech users alike", async () => {
+    vi.setSystemTime(new Date("2026-03-15T12:00:00Z"));
+
+    render(
+      React.createElement(ArtistAvailabilityCalendar, {
+        artistId: "artist-1",
+        // Only the 20th is eligible, so every other day in March renders ineligible.
+        eligibleDates: [eligible("2026-03-20")],
+      }),
+      { wrapper }
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("10")).toBeTruthy();
+    });
+
+    // Mouse hover: a title attribute on the non-interactive wrapper (one per ineligible cell).
+    expect(document.querySelector(`[title="${INELIGIBLE_REASON}"]`)).toBeTruthy();
+    // Assistive tech: the reason is stated ONCE for the whole grid (a single sr-only note
+    // after the legend), not repeated as a text node on every disabled cell.
+    expect(
+      screen.getByText(
+        /dimmed dates are not offered to you\. offered dates come from your casts and their required skills\./i,
+      ),
+    ).toBeInTheDocument();
+    // The per-cell full sentence is no longer a repeated text node (only the hover title).
+    expect(screen.queryByText(INELIGIBLE_REASON)).not.toBeInTheDocument();
+    // With at least one eligible date, the "Eligible" legend entry is shown.
+    expect(screen.getByText("Eligible")).toBeInTheDocument();
+  });
+
+  it("shows an empty state when there are zero eligible dates", async () => {
+    vi.setSystemTime(new Date("2026-03-15T12:00:00Z"));
+
+    render(
+      React.createElement(ArtistAvailabilityCalendar, {
+        artistId: "artist-1",
+        eligibleDates: [],
+      }),
+      { wrapper }
+    );
+
+    expect(
+      await screen.findByText(/no eligible dates yet\. once you are added to a cast/i)
+    ).toBeInTheDocument();
+    // With nothing eligible, the "Eligible" legend swatch (which would match no cell)
+    // is hidden so the legend does not advertise a state the grid never shows.
+    expect(screen.queryByText("Eligible")).not.toBeInTheDocument();
+  });
+});

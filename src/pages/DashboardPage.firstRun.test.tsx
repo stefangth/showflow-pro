@@ -1,11 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import type { ReactNode } from "react";
 import { screen, fireEvent } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import { createFakeSupabase, type TableSeed } from "@/test/supabaseFake";
+import type { StageChainResult, QueueRow, Stage } from "@/lib/dashboard/stageChain.types";
 
 // Reuses the auth/data harness from DashboardPage.test.tsx so the ProducerDashboard
-// data reads resolve, then adds the first-run-hook mock and asserts the welcome text.
+// data reads resolve, then adds the first-run-hook mock and asserts the new
+// DashboardFirstRun surface (chain present / floor state) and the KPI-visibility switch.
 const { client } = vi.hoisted(() => ({ client: {} as Record<string, unknown> }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: client }));
 vi.mock("@/features/auth/AuthContext", () => ({ useAuth: vi.fn() }));
@@ -28,9 +30,9 @@ vi.mock("@/components/dashboard/firstRun/useDashboardFirstRun", () => ({
   useDashboardFirstRun: vi.fn(),
 }));
 // The Sheet host is exercised on its own (SetupChecklistSheet.test.tsx); here we only need
-// to prove a rail step opens it in place with the right module + step. Always rendered
-// (mirrors the real component staying mounted through its close animation) and exposes a
-// close button, so a test can assert what content shows WHILE it closes.
+// to prove a stage's openSetup action opens it in place with the right module + step.
+// Always rendered (mirrors the real component staying mounted through its close animation)
+// and exposes a close button, so a test can assert what content shows WHILE it closes.
 vi.mock("@/components/setup/SetupChecklistSheet", () => ({
   SetupChecklistSheet: ({ open, feature, initialStep, onOpenChange }: { open: boolean; feature: string; initialStep?: string; onOpenChange: (o: boolean) => void }) => (
     <div data-testid="setup-sheet" data-open={String(open)} data-feature={feature} data-step={initialStep ?? ""}>
@@ -38,18 +40,80 @@ vi.mock("@/components/setup/SetupChecklistSheet", () => ({
     </div>
   ),
 }));
+// A stable navigate spy so both DashboardPage's own handleGhost and DashboardFirstRun's
+// internal route-action navigate() are observable from one place. `Link` is mocked too
+// (the KPI cards render one) as a plain anchor so no Router context is needed.
+const navigate = vi.fn();
+vi.mock("react-router-dom", () => ({
+  useNavigate: () => navigate,
+  Link: ({ to, className, children }: { to: string; className?: string; children?: ReactNode }) => (
+    <a href={to} className={className}>{children}</a>
+  ),
+}));
 
-// Settable first-run state so the sample-vs-live body switch can be exercised.
+function makeStage(overrides: Partial<Stage> = {}): Stage {
+  return {
+    key: "dates",
+    n: "01",
+    variant: "hot",
+    name: "Dates",
+    tag: "Shows and bookings",
+    line: "Nothing downstream can mean anything until shows exist.",
+    running: false,
+    badge: "",
+    needs: "",
+    metric: "0",
+    metricLabel: "dates in",
+    steps: [],
+    ctaLabel: "Set slots",
+    ctaIsPrimary: true,
+    action: { kind: "openSetup", feature: "booking_flow", step: "slots" },
+    ...overrides,
+  };
+}
+
+function makeResult(overrides: Partial<StageChainResult> = {}): StageChainResult {
+  return {
+    eyebrow: "Halle Kollektiv · first run",
+    headline: "34 dates landed. Four of them can be offered tonight.",
+    body: "Stage 01 is running.",
+    ghost: "Change the flow in Settings",
+    hint: "Tier 1 goes out at 09:00 Berlin",
+    progressLabel: "Set up · 2 of 7",
+    progressHint: "The steps left sit in the stage they hold up.",
+    hasSteps: true,
+    ticks: [true, true, false, false, false, false, false],
+    modules: [{ label: "Booking flow", on: true }],
+    offFooters: [],
+    hasChain: true,
+    chainTitle: "How a date will move",
+    rulesBy: "Rules set by you · Settings · Booking flow",
+    stages: [makeStage()],
+    sideTitle: "Nothing here blocks the rest of the app",
+    sideBody: "Some steps above block the first booking. The app itself is open.",
+    side: [],
+    queueTitle: "What this page becomes",
+    queueHint: "Sample rows, shown once a module is on.",
+    sample: true,
+    queueOpacity: 0.55,
+    nothingOn: false,
+    ...overrides,
+  };
+}
+
+function makeQueueRows(): QueueRow[] {
+  return [{ dot: "accent", title: "6 artists accepted", hint: "hint", when: "now", cta: "Confirm" }];
+}
+
+// Settable first-run state so the surface/KPI-visibility switch can be exercised.
 function frState(overrides: Record<string, unknown> = {}) {
   return {
-    show: true, complete: false, dismissed: false,
-    steps: [], rules: [], offFooters: [],
-    sample: { stats: [{ title: "Live dates", value: "34", label: "upcoming" }], queue: [], week: [] },
-    welcome: { eyebrow: "Welcome", headline: "You are the first admin at Halle Kollektiv", body: "b", primaryLabel: "Start setup", secondaryLabel: "Later", progressLabel: "Set up · 0 of 4", progressFilled: 0, progressTotal: 4, progressHint: "About 15 minutes" },
-    sectionTitle: "What this page becomes", sectionHint: "Sample rows.",
-    railEyebrow: "Set up", railTitle: "Get running", railBody: "b",
-    collapsedLabel: "Set up in progress", collapsedHint: "4 steps left", collapsedCta: "Resume",
-    railOpen: false, openRail: vi.fn(), closeRail: vi.fn(), dismiss: vi.fn(),
+    show: true,
+    result: makeResult(),
+    queueRows: makeQueueRows(),
+    dismissed: false,
+    dismiss: vi.fn(),
+    undismiss: vi.fn(),
     ...overrides,
   };
 }
@@ -80,50 +144,63 @@ beforeEach(() => {
 });
 
 describe("DashboardPage first-run layer", () => {
-  it("renders the welcome panel above the producer dashboard", async () => {
-    renderWithProviders(<MemoryRouter><DashboardPage /></MemoryRouter>);
-    expect(await screen.findByText(/first admin at Halle Kollektiv/)).toBeInTheDocument();
+  it("renders the first-run surface above the producer dashboard", async () => {
+    renderWithProviders(<DashboardPage />);
+    expect(await screen.findByText(/34 dates landed/)).toBeInTheDocument();
   });
 
-  it("shows the greyed Sample (not the live body) when setup is incomplete and the org has no dates", async () => {
-    vi.mocked(useDashboardFirstRun).mockReturnValue(frState({ complete: false }) as never);
-    renderWithProviders(<MemoryRouter><DashboardPage /></MemoryRouter>);
-    // Sample fixture stat is visible; the real body heading is not rendered.
-    expect(await screen.findByText("Live dates")).toBeInTheDocument();
+  it("shows ONLY the first-run surface (no KPI body) when it is showing and the org has no real dates", async () => {
+    renderWithProviders(<DashboardPage />);
+    expect(await screen.findByText(/34 dates landed/)).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Dashboard" })).not.toBeInTheDocument();
   });
 
-  it("renders the live body (not the Sample) when setup is complete", async () => {
-    vi.mocked(useDashboardFirstRun).mockReturnValue(frState({ complete: true }) as never);
-    renderWithProviders(<MemoryRouter><DashboardPage /></MemoryRouter>);
+  it("shows the KPI body alongside the surface once the org has real dates", async () => {
+    seedClient({
+      show_dates: { data: [{ id: "d1", date: "2099-12-31", show_id: "s1", status: "confirmed", show: { program: "Show", sub_program: null, main_cast_slots: 1, understudy_slots: 0 } }], error: null },
+      bookings: [
+        { when: { status: "confirmed" }, data: [], error: null },
+        { when: { status: "soft_booked" }, data: [], error: null },
+      ],
+    });
+    renderWithProviders(<DashboardPage />);
     expect(await screen.findByRole("heading", { name: "Dashboard" })).toBeInTheDocument();
-    expect(screen.queryByText("Live dates")).not.toBeInTheDocument();
+    // The surface still renders above the now-visible KPI body.
+    expect(screen.getByText(/34 dates landed/)).toBeInTheDocument();
   });
 
-  it("opens the module setup Sheet in place when a rail step is clicked (no navigation)", async () => {
+  it("shows the KPI body when the surface is dismissed, even with no real dates", async () => {
+    vi.mocked(useDashboardFirstRun).mockReturnValue(frState({ dismissed: true }) as never);
+    renderWithProviders(<DashboardPage />);
+    expect(await screen.findByRole("heading", { name: "Dashboard" })).toBeInTheDocument();
+    // fr.show is still true, so the collapsed chip (not the full surface) renders too.
+    expect(screen.getByText("Set up · 2 of 7")).toBeInTheDocument();
+    expect(screen.queryByText(/34 dates landed/)).not.toBeInTheDocument();
+  });
+
+  it("opens the module setup Sheet in place when a stage's openSetup action fires (no navigation)", async () => {
     vi.mocked(useDashboardFirstRun).mockReturnValue(frState({
-      railOpen: true,
-      steps: [
-        { key: "flow", moduleKey: "booking_flow", title: "Booking flow", todoHint: "t", doneHint: "d", ctaLabel: "Choose flow", ctaRoute: "/settings", ctaCapability: "edit_booking_settings", done: false, block: null },
-      ],
+      result: makeResult({
+        stages: [makeStage({ ctaLabel: "Choose flow", action: { kind: "openSetup", feature: "booking_flow", step: "flow" } })],
+      }),
     }) as never);
-    renderWithProviders(<MemoryRouter><DashboardPage /></MemoryRouter>);
+    renderWithProviders(<DashboardPage />);
     expect(screen.getByTestId("setup-sheet").getAttribute("data-open")).toBe("false");
     fireEvent.click(await screen.findByRole("button", { name: "Choose flow" }));
     const sheet = screen.getByTestId("setup-sheet");
     expect(sheet.getAttribute("data-open")).toBe("true");
     expect(sheet.getAttribute("data-feature")).toBe("booking_flow");
     expect(sheet.getAttribute("data-step")).toBe("flow");
+    expect(navigate).not.toHaveBeenCalled();
   });
 
   it("keeps the opened module's content while the Sheet closes (no wrong-module flash)", async () => {
     vi.mocked(useDashboardFirstRun).mockReturnValue(frState({
-      railOpen: true,
-      steps: [
-        { key: "letterhead", moduleKey: "hire_orders", title: "Letterhead", todoHint: "t", doneHint: "d", ctaLabel: "Set letterhead", ctaRoute: "/settings", ctaCapability: "edit_hire_order_settings", done: false, block: "issuing" },
-      ],
+      result: makeResult({
+        stages: [makeStage({ ctaLabel: "Set letterhead", action: { kind: "openSetup", feature: "hire_orders", step: "letterhead" } })],
+      }),
     }) as never);
-    renderWithProviders(<MemoryRouter><DashboardPage /></MemoryRouter>);
+    renderWithProviders(<DashboardPage />);
     fireEvent.click(await screen.findByRole("button", { name: "Set letterhead" }));
     expect(screen.getByTestId("setup-sheet").getAttribute("data-feature")).toBe("hire_orders");
     // Closing must keep feature = hire_orders through the exit animation, not flip to the
@@ -134,33 +211,32 @@ describe("DashboardPage first-run layer", () => {
     expect(sheet.getAttribute("data-feature")).toBe("hire_orders");
   });
 
-  it("routes a hire-order rail step to the hire-orders Sheet (by moduleKey)", async () => {
+  it("routes a stage's route action via navigate, not the setup Sheet", async () => {
     vi.mocked(useDashboardFirstRun).mockReturnValue(frState({
-      railOpen: true,
-      steps: [
-        { key: "letterhead", moduleKey: "hire_orders", title: "Letterhead", todoHint: "t", doneHint: "d", ctaLabel: "Set letterhead", ctaRoute: "/settings", ctaCapability: "edit_hire_order_settings", done: false, block: "issuing" },
-      ],
+      result: makeResult({
+        stages: [makeStage({ ctaLabel: "Send tier 1", action: { kind: "route", to: "/bookings" } })],
+      }),
     }) as never);
-    renderWithProviders(<MemoryRouter><DashboardPage /></MemoryRouter>);
-    fireEvent.click(await screen.findByRole("button", { name: "Set letterhead" }));
-    const sheet = screen.getByTestId("setup-sheet");
-    expect(sheet.getAttribute("data-feature")).toBe("hire_orders");
-    expect(sheet.getAttribute("data-step")).toBe("letterhead");
+    renderWithProviders(<DashboardPage />);
+    fireEvent.click(await screen.findByRole("button", { name: "Send tier 1" }));
+    expect(navigate).toHaveBeenCalledWith("/bookings");
+    expect(screen.getByTestId("setup-sheet").getAttribute("data-open")).toBe("false");
   });
 
-  it("renders the live body when the org already has dates, even while setup is incomplete", async () => {
-    // The data-presence override: complete is false, but a real upcoming date exists,
-    // so the body must go live (not the greyed Sample).
-    vi.mocked(useDashboardFirstRun).mockReturnValue(frState({ complete: false }) as never);
-    seedClient({
-      show_dates: { data: [{ id: "d1", date: "2099-12-31", show_id: "s1", status: "confirmed", show: { program: "Show", sub_program: null, main_cast_slots: 1, understudy_slots: 0 } }], error: null },
-      bookings: [
-        { when: { status: "confirmed" }, data: [], error: null },
-        { when: { status: "soft_booked" }, data: [], error: null },
-      ],
-    });
-    renderWithProviders(<MemoryRouter><DashboardPage /></MemoryRouter>);
-    expect(await screen.findByRole("heading", { name: "Dashboard" })).toBeInTheDocument();
-    expect(screen.queryByText("Live dates")).not.toBeInTheDocument();
+  it("fires the ghost CTA to the Settings docs explainer", async () => {
+    vi.mocked(useDashboardFirstRun).mockReturnValue(frState({
+      result: makeResult({ ghost: "How this org will work" }),
+    }) as never);
+    renderWithProviders(<DashboardPage />);
+    fireEvent.click(await screen.findByRole("button", { name: "How this org will work" }));
+    expect(navigate).toHaveBeenCalledWith("/settings?tab=docs");
+  });
+
+  it("renders the no-modules floor state instead of vanishing", async () => {
+    vi.mocked(useDashboardFirstRun).mockReturnValue(frState({
+      result: makeResult({ nothingOn: true, hasChain: false, stages: [], headline: "No modules are switched on for Halle Kollektiv" }),
+    }) as never);
+    renderWithProviders(<DashboardPage />);
+    expect(await screen.findByText("No modules are switched on for Halle Kollektiv")).toBeInTheDocument();
   });
 });

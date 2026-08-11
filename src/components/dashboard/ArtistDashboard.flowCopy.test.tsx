@@ -3,6 +3,7 @@ import { screen } from "@testing-library/react";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import { createFakeSupabase } from "@/test/supabaseFake";
 import { BOOKING_FLOW_DEFAULTS, applyPreset, type BookingFlow } from "@/lib/bookingFlow";
+import type { StageChainResult } from "@/lib/dashboard/stageChain.types";
 
 /**
  * Task 3: ArtistDashboard's response/booked-share meter and header sentence
@@ -90,6 +91,7 @@ Object.assign(
 );
 
 vi.mock("react-router-dom", () => ({
+  useNavigate: () => vi.fn(),
   Link: ({ to, children, ...rest }: { to: string; children?: React.ReactNode }) => (
     <a href={to} {...rest}>
       {children}
@@ -122,43 +124,32 @@ vi.mock("@/hooks/useEntitlements", () => {
   return { useFeature, useModuleGate: (f: string) => ({ allow: useFeature(f), pending: false }) };
 });
 
+// A minimal but fully-typed StageChainResult -- annotated so a future field rename in
+// the real type is a compile error here, even though vi.mock factories themselves are
+// not type-checked against the real hook signature.
+const EMPTY_STAGE_CHAIN_RESULT: StageChainResult = {
+  eyebrow: "", headline: "", body: "", ghost: "", hint: "",
+  progressLabel: "", progressHint: "", hasSteps: false, ticks: [],
+  modules: [], offFooters: [], hasChain: false, chainTitle: "", rulesBy: "",
+  stages: [], sideTitle: "", sideBody: "", side: [],
+  queueTitle: "", queueHint: "", sample: false, queueOpacity: 0, nothingOn: true,
+};
+
 // The first-run layer greets the artist above the dashboard body; with show:false it
-// is a no-op (no welcome/rail) and the real body renders directly, so the meter
+// is a no-op (no surface) and the real body renders directly, so the meter
 // assertions still exercise it. Mocked here so the real useDashboardFirstRun (which
 // reads useEntitlements/useBookingSetup/etc.) does not run against this file's partial
-// hook mocks.
+// hook mocks. Shape matches the current hook contract (result/queueRows/dismiss/
+// undismiss/openSetupAt) even though show:false keeps it inert, so a future show:true
+// flip cannot crash on a stale pre-rewire shape.
 vi.mock("@/components/dashboard/firstRun/useDashboardFirstRun", () => ({
   useDashboardFirstRun: () => ({
     show: false,
-    complete: false,
+    result: EMPTY_STAGE_CHAIN_RESULT,
+    queueRows: [],
     dismissed: false,
-    steps: [],
-    rules: [],
-    offFooters: [],
-    sample: { stats: [], queue: [], week: [] },
-    welcome: {
-      eyebrow: "",
-      headline: "",
-      body: "",
-      primaryLabel: "",
-      secondaryLabel: "",
-      progressLabel: "",
-      progressFilled: 0,
-      progressTotal: 0,
-      progressHint: "",
-    },
-    sectionTitle: "Today",
-    sectionHint: "Live.",
-    railEyebrow: "",
-    railTitle: "",
-    railBody: "",
-    collapsedLabel: "",
-    collapsedHint: "",
-    collapsedCta: "",
-    railOpen: false,
-    openRail: () => {},
-    closeRail: () => {},
     dismiss: () => {},
+    undismiss: () => {},
   }),
 }));
 
@@ -183,6 +174,7 @@ describe("ArtistDashboard flow-aware meter (Task 3)", () => {
       screen.getByText("Your response rate on dates you've been offered."),
     ).toBeInTheDocument();
     expect(await screen.findByText("2 of 4 dates")).toBeInTheDocument();
+    expect(screen.getByText(/no one is scored on it/i)).toBeInTheDocument();
   });
 
   it("direct flow: swaps to Booked dates (confirmed-only count, no unanswered filter)", async () => {
@@ -194,6 +186,9 @@ describe("ArtistDashboard flow-aware meter (Task 3)", () => {
       screen.getByText("Your booked share of the dates you're eligible for."),
     ).toBeInTheDocument();
     expect(await screen.findByText("1 of 4 dates")).toBeInTheDocument();
+    expect(
+      screen.getByText("Dates you are booked for, out of dates you are eligible for."),
+    ).toBeInTheDocument();
 
     const meterLink = screen.getByText("1 of 4 dates").closest("a");
     expect(meterLink?.getAttribute("href")).not.toContain("filter=unanswered");

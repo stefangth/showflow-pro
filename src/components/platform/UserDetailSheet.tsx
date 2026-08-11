@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Copy } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { friendlyError } from "@/lib/errors";
 import {
   usePlatformUsers, useSetMembership, useRemoveMembership, useLinkArtist, useManageUser,
 } from "@/hooks/usePlatformUsers";
@@ -40,10 +41,6 @@ const ROLE_OPTIONS = Object.values(ROLES) as AppRole[];
  *  "primary" role for the swap control. See task-10-report.md for the note. */
 function primaryRole(m: PlatformUserMembership): AppRole {
   return m.roles[0] ?? ROLES.ARTIST;
-}
-
-function errorMessage(e: unknown): string {
-  return e instanceof Error ? e.message : "Something went wrong";
 }
 
 export function UserDetailSheet({ user: propUser, open, onOpenChange }: Props) {
@@ -114,7 +111,7 @@ export function UserDetailSheet({ user: propUser, open, onOpenChange }: Props) {
         { orgId: membership.org_id, userId: user!.id, role: currentRole, action: "remove" },
       );
     } catch (e) {
-      toast.error(errorMessage(e));
+      toast.error(friendlyError(e));
       return;
     }
     try {
@@ -123,7 +120,7 @@ export function UserDetailSheet({ user: propUser, open, onOpenChange }: Props) {
       );
       toast.success("Role updated");
     } catch (e) {
-      toast.error(errorMessage(e));
+      toast.error(friendlyError(e));
     }
   }
 
@@ -133,7 +130,7 @@ export function UserDetailSheet({ user: propUser, open, onOpenChange }: Props) {
       { orgId: addOrgId, userId: user!.id, role: addRole, action: "add" },
       {
         onSuccess: () => { toast.success("Added to organization"); setAddOrgId(""); },
-        onError: (e) => toast.error(errorMessage(e)),
+        onError: (e) => toast.error(friendlyError(e)),
       },
     );
   }
@@ -144,7 +141,7 @@ export function UserDetailSheet({ user: propUser, open, onOpenChange }: Props) {
       { orgId: orgToRemove.org_id, userId: user!.id },
       {
         onSuccess: () => toast.success("Removed from organization"),
-        onError: (e) => toast.error(errorMessage(e)),
+        onError: (e) => toast.error(friendlyError(e)),
       },
     );
     setOrgToRemove(null);
@@ -158,7 +155,7 @@ export function UserDetailSheet({ user: propUser, open, onOpenChange }: Props) {
           toast.success(artistId ? "Artist linked" : "Artist unlinked");
           setArtistPickerOrgId(null);
         },
-        onError: (e) => toast.error(errorMessage(e)),
+        onError: (e) => toast.error(friendlyError(e)),
       },
     );
   }
@@ -173,7 +170,7 @@ export function UserDetailSheet({ user: propUser, open, onOpenChange }: Props) {
           setEmailDialogOpen(false);
           setNewEmail("");
         },
-        onError: (e) => toast.error(errorMessage(e)),
+        onError: (e) => toast.error(friendlyError(e)),
       },
     );
   }
@@ -183,7 +180,7 @@ export function UserDetailSheet({ user: propUser, open, onOpenChange }: Props) {
       { action: "send_password_reset", target_user_id: user!.id },
       {
         onSuccess: () => toast.success("Reset link sent"),
-        onError: (e) => toast.error(errorMessage(e)),
+        onError: (e) => toast.error(friendlyError(e)),
       },
     );
   }
@@ -194,7 +191,7 @@ export function UserDetailSheet({ user: propUser, open, onOpenChange }: Props) {
       { action, target_user_id: user!.id },
       {
         onSuccess: () => toast.success(user!.suspended ? "User reactivated" : "User suspended"),
-        onError: (e) => toast.error(errorMessage(e)),
+        onError: (e) => toast.error(friendlyError(e)),
       },
     );
     setSuspendConfirmOpen(false);
@@ -211,7 +208,7 @@ export function UserDetailSheet({ user: propUser, open, onOpenChange }: Props) {
           setDeleteConfirmText("");
           onOpenChange(false);
         },
-        onError: (e) => toast.error(errorMessage(e)),
+        onError: (e) => toast.error(friendlyError(e)),
       },
     );
   }
@@ -298,15 +295,21 @@ export function UserDetailSheet({ user: propUser, open, onOpenChange }: Props) {
               <Card key={m.org_id}>
                 <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
                   <CardTitle className="text-sm font-medium">{m.org_name}</CardTitle>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    className="text-destructive hover:text-destructive"
-                    onClick={() => setOrgToRemove(m)}
+                  <IconTooltip
+                    label={m.roles.includes("admin")
+                      ? "If this is the org's only admin, make someone else an admin first — removal will be blocked otherwise."
+                      : "Remove from organization"}
                   >
-                    Remove from org
-                  </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => setOrgToRemove(m)}
+                    >
+                      Remove from org
+                    </Button>
+                  </IconTooltip>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div className="space-y-1">

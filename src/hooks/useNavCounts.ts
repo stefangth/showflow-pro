@@ -15,7 +15,7 @@ import { fetchAwaitingCountersignCount } from "@/data/hireOrders";
  * mutations refresh them; the hire-order count lives under ['hire-orders', ...]
  * so hire-order mutations (the whole-prefix invalidation rule) refresh it.
  */
-export function useNavCounts(): { pendingConfirmations: number; openOffers: number; awaitingCountersign: number } {
+export function useNavCounts(): { pendingConfirmations: number; openOffers: number; awaitingCountersign: number; isLoading: boolean } {
   const { currentOrg, hasRole } = useAuth();
   const { data: artist } = useMyArtist();
   const hasHireOrders = useFeature("hire_orders");
@@ -58,5 +58,6 @@ export function useNavCounts(): { pendingConfirmations: number; openOffers: numb
     pendingConfirmations: hasBookingFlow ? (pending.data ?? 0) : 0,
     openOffers: hasBookingFlow ? (offers.data ?? 0) : 0,
     awaitingCountersign: awaitingCountersign.data ?? 0,
+    isLoading: pending.isLoading || offers.isLoading || awaitingCountersign.isLoading,
   };
 }

@@ -15,6 +15,9 @@ vi.mock("@/hooks/useHireOrders", () => ({
   useHireOrder: () => ({ data: order, isLoading: false, isError: false }),
   useHireOrderAction: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
   useMarkCountersigned: () => ({ mutate: vi.fn(), isPending: false }),
+  // Task-P3: HireOrderDetailPage fires this once on mount for the linked artist.
+  // A no-op mutation mock is enough -- the page only calls `.mutate(order.id)`.
+  useMarkHireOrderSeen: () => ({ mutate: vi.fn(), isPending: false }),
   // A vi.fn so each test can pick the org's LIVE countersign mode; the order-mode
   // frozen in issue_snapshot should override it either way.
   useHireOrderCountersignMode: vi.fn(() => ({ data: { mode: "electronic" } })),

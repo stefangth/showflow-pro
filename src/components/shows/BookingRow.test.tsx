@@ -1,7 +1,15 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { screen, fireEvent } from '@testing-library/react';
+import { renderWithProviders as render } from '@/test/renderWithProviders';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { BookingRow } from './BookingRow';
+import { SOFT_BOOKED_MEANING } from '@/lib/bookings/actionCopy';
 import { aBooking, anArtist } from '@/test/fixtures';
+
+// BookingRow's Soft-booked badge now carries a Tooltip (Radix requires a TooltipProvider
+// ancestor to mount at all, not just to open), so every render here goes through
+// renderWithProviders (aliased to `render`, which already every call site below uses)
+// instead of a bare @testing-library/react render.
 
 function makeBooking(overrides: Parameters<typeof aBooking>[0] = {}) {
   const artist = anArtist({ name: 'Jane Doe' });
@@ -51,6 +59,23 @@ describe('BookingRow', () => {
     expect(screen.queryByRole('button', { name: 'Confirm' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(onCancel).toHaveBeenCalledWith(booking.id);
+  });
+
+  // P3.3: the module-off Soft-booked badge means the same thing as the cockpit's Accepted
+  // badge — accepted, held, not booked until confirmed — so it carries the same tooltip.
+  it('carries the soft-booked meaning as a tooltip on the Soft-booked badge', async () => {
+    render(
+      <TooltipProvider delayDuration={0}>
+        <BookingRow booking={makeBooking({ status: 'soft_booked' })} canManage={false} showConfirm onConfirm={vi.fn()} onCancel={vi.fn()} />
+      </TooltipProvider>,
+    );
+    fireEvent.pointerMove(screen.getByText('Soft-booked'), { pointerType: 'mouse' });
+    expect(await screen.findAllByText(SOFT_BOOKED_MEANING)).not.toHaveLength(0);
+  });
+
+  it('does not carry the tooltip on a non-soft_booked badge', () => {
+    render(<BookingRow booking={makeBooking({ status: 'confirmed' })} canManage={false} showConfirm onConfirm={vi.fn()} onCancel={vi.fn()} />);
+    expect(screen.queryByText(SOFT_BOOKED_MEANING)).not.toBeInTheDocument();
   });
 });
 

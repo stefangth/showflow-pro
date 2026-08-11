@@ -793,7 +793,7 @@ export const CONTROLS: Control[] = [
     // things that get past it, which is where a reviewer can act on it.
     claim:
       "Every change to a booking's status is appended to a log: old status, new status, who acted, when. Nothing else about a booking is logged; automated transitions have no person to record as the actor. Account, show-date and organisation deletions clear fields or remove rows.",
-    evidence: `Written by notify_booking_transition, which returns without writing unless the status changed, so editing a booking's notes leaves no row; promote_understudy_on_cancellation writes the automated path. No policy grants an update or a delete; anonymize_user, delete_org and booking_id's ON DELETE SET NULL get past it. Retained ${RETENTION.find((r) => r.item === "Bookings and audit log")!.period}.`,
+    evidence: `Written by notify_booking_transition, which returns without writing unless the status changed, so editing its notes leaves no row; promote_understudy_on_cancellation writes the automated path. No policy grants an update or a delete; account anonymisation, organisation deletion and booking_id's ON DELETE SET NULL get past it. Retained ${RETENTION.find((r) => r.item === "Bookings and audit log")!.period}.`,
   },
   {
     icon: "shield",

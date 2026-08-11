@@ -28,7 +28,19 @@ const CHIP_TONE: Record<LifecycleChip["tone"], string> = {
  *  consequences (the real policy, not static prose), save through the settings path. */
 export function FlowStep({ orgId, onDone }: { orgId: string | null; onDone: () => void }) {
   const qc = useQueryClient();
-  const { data: flow, isError, error } = useBookingFlow();
+  // The org this panel was HANDED, not whichever org the shell happens to be on. The Save
+  // below writes to `orgId`, and the suggested preset is a view of the flow read here: with
+  // `useBookingFlow()` resolving its own org out of AuthContext, a switch in the app shell
+  // (which does not unmount this panel) could open the panel on one org's preset and write
+  // it to another. The "in practice" hours already keyed on the prop.
+  //
+  // `orgId ? ... : null` as defense in depth: `useBookingFlow` now disables its own query
+  // for a null org (nothing is fetched), but the narrowing also documents the intent here:
+  // with no org there is nothing to suggest and nothing to save to (the button below is
+  // disabled for the same reason).
+  const flowQ = useBookingFlow(orgId);
+  const { isError, error } = flowQ;
+  const flow = orgId ? flowQ.data : null;
   const { data: times } = useFlowTimes(orgId);
   const base = flow ?? BOOKING_FLOW_DEFAULTS;
   const t = times ?? DEFAULT_FLOW_TIMES;
@@ -105,7 +117,15 @@ export function FlowStep({ orgId, onDone }: { orgId: string | null; onDone: () =
           </div>
         ))}
       </div>
-      <Button size="sm" disabled={save.isPending || !orgId} onClick={() => save.mutate()}>
+      {/* Enabled only once this panel has READ the flow it is about to overwrite. `preview`
+          layers the preset onto `base`, so the org's non-preset fields (reference_field and
+          friends) survive a save only if `base` is that org's real flow; with the read still
+          in flight `base` is BOOKING_FLOW_DEFAULTS and saving would quietly discard them.
+          The window is reachable because the org switcher lives in the app shell and does
+          not unmount this panel: a switch can leave `selected` on the previous org's pick
+          while the new org's flow is still loading. The view above fixes what is DISPLAYED;
+          this closes the write in the meantime. */}
+      <Button size="sm" disabled={save.isPending || !orgId || !flow} onClick={() => save.mutate()}>
         Use {PRESET_NAMES[active]}
       </Button>
     </div>
