@@ -175,4 +175,38 @@ describe("ArtistBookingsView flow-aware copy (Task 4)", () => {
       screen.queryByText(/need to cancel a date you confirmed/i),
     ).not.toBeInTheDocument();
   });
+
+  // A confirmed booking that already happened is not something to cancel, so the
+  // signpost stays hidden even though activeBookedDates still includes past dates.
+  it("hides the cancel signpost when the only confirmed booking is in the past (R5.1)", async () => {
+    for (const k of Object.keys(client)) delete (client as Record<string, unknown>)[k];
+    Object.assign(
+      client,
+      createFakeSupabase({
+        bookings: [
+          {
+            when: { artist_id: "artist-1" },
+            data: [
+              {
+                id: "bk-past", artist_id: "artist-1", show_date_id: "dp", status: "confirmed", is_understudy: false,
+                show_date: {
+                  id: "dp", date: "2020-01-01", venue: "Stage 1",
+                  session_1: "19:00", session_2: null, session_3: null,
+                  show: { program: "Show A", sub_program: null },
+                },
+              },
+            ],
+            error: null,
+          },
+        ],
+      } as never),
+    );
+    flowHolder.flow = BOOKING_FLOW_DEFAULTS;
+    renderWithProviders(<ArtistBookingsView />);
+
+    expect(await screen.findByRole("heading", { name: "My Bookings" })).toBeInTheDocument();
+    expect(
+      screen.queryByText(/need to cancel a date you confirmed/i),
+    ).not.toBeInTheDocument();
+  });
 });

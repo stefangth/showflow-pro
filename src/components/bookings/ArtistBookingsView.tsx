@@ -27,7 +27,7 @@ import { useBookingFlow, useReferenceField } from '@/hooks/useBookingFlow';
 import { bookingStatusBadgeClass } from '@/lib/bookings';
 import { BOOKING_FLOW_DEFAULTS, referenceLabel } from '@/lib/bookingFlow';
 import { bookingsViewCopy, bookingStatusLabels } from '@/lib/flowCopy';
-import { formatDateDMY, parseDateOnly, pastRowClassName } from '@/lib/dates';
+import { formatDateDMY, parseDateOnly, isPastDate, pastRowClassName } from '@/lib/dates';
 import { showIdentityLabel } from '@/types';
 import { cn } from '@/lib/utils';
 import { ROUTES } from '@/config/app.config';
@@ -169,9 +169,13 @@ export function ArtistBookingsView() {
     [filtered]
   );
 
-  // The confirm-cancel signpost only makes sense once the artist actually has a
-  // confirmed date to back out of.
-  const hasConfirmedBooking = (activeBookedDates ?? []).some((b) => b.status === 'confirmed');
+  // The confirm-cancel signpost only makes sense for an UPCOMING confirmed date the
+  // artist could still back out of. activeBookedDates includes past confirmed bookings
+  // too (it is the source that makes past dates renderable), and there is nothing to
+  // cancel on a date that already happened.
+  const hasUpcomingConfirmedBooking = (activeBookedDates ?? []).some(
+    (b) => b.status === 'confirmed' && !isPastDate(parseDateOnly(b.date)),
+  );
 
   return (
     <div className="space-y-6">
@@ -183,7 +187,7 @@ export function ArtistBookingsView() {
       <ModuleGate feature="booking_flow">
         {/* Inside the gate: these controls filter, sort and lay out the eligible-date
             table below, which does not exist at all without the booking module. */}
-        {hasConfirmedBooking && (
+        {hasUpcomingConfirmedBooking && (
           <p className="text-xs text-muted-foreground">
             Need to cancel a date you confirmed? Message your producer in the date's chat and they will update the booking.
           </p>
