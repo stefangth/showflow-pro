@@ -1,6 +1,6 @@
 -- Per-date skill drops (offers cockpit phase C0): the show_date_skill_drops table,
 -- its org derivation + same-org guard + org-isolation RLS + unique.
--- See migration 20260812141500_show_date_skill_drops.sql.
+-- See migration 20260812190000_show_date_skill_drops.sql.
 --
 -- UUID legend (all test-only, rolled back at the end):
 --   d40b0000-…-000a  org A          d40b0000-…-000b  org B
