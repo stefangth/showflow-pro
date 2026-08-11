@@ -2204,6 +2204,103 @@ export type Database = {
           },
         ]
       }
+      show_slot_required_skills: {
+        Row: {
+          created_at: string
+          id: string
+          org_id: string
+          skill_id: string
+          slot_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          org_id: string
+          skill_id: string
+          slot_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          org_id?: string
+          skill_id?: string
+          slot_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "show_slot_required_skills_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "show_slot_required_skills_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
+            referencedRelation: "skills"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "show_slot_required_skills_slot_id_fkey"
+            columns: ["slot_id"]
+            isOneToOne: false
+            referencedRelation: "show_slots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      show_slots: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string
+          name: string
+          org_id: string
+          show_id: string
+          slot_count: number
+          sort_order: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind: string
+          name: string
+          org_id: string
+          show_id: string
+          slot_count: number
+          sort_order?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+          name?: string
+          org_id?: string
+          show_id?: string
+          slot_count?: number
+          sort_order?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "show_slots_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "show_slots_show_id_fkey"
+            columns: ["show_id"]
+            isOneToOne: false
+            referencedRelation: "shows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       shows: {
         Row: {
           airtable_program_key: string | null

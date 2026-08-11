@@ -14,8 +14,11 @@ describe("showSlots", () => {
     expect(showSlots({ main_cast_slots: null, understudy_slots: 1 })).toBeNull();
   });
 
-  it("returns null when understudy_slots is null", () => {
-    expect(showSlots({ main_cast_slots: 2, understudy_slots: null })).toBeNull();
+  it("treats a main-only show (understudy null) as configured with 0 understudies", () => {
+    expect(showSlots({ main_cast_slots: 2, understudy_slots: null })).toEqual({
+      main_cast: 2,
+      understudies: 0,
+    });
   });
 
   it("returns null when both columns are null", () => {
@@ -59,16 +62,16 @@ describe("computeSchedulingWarnings", () => {
     expect(w.hasAnyWarning).toBe(true);
   });
 
-  it("counts shows where understudy_slots is null", () => {
+  it("does not count a main-only show (understudy null is configured)", () => {
     const w = computeSchedulingWarnings([
       { main_cast_slots: 2, understudy_slots: null },
       { main_cast_slots: 2, understudy_slots: 1 },
     ]);
-    expect(w.schedulingWarnings).toBe(1);
-    expect(w.hasAnyWarning).toBe(true);
+    expect(w.schedulingWarnings).toBe(0);
+    expect(w.hasAnyWarning).toBe(false);
   });
 
-  it("counts each show with any null column once", () => {
+  it("counts each show missing a main count once", () => {
     const w = computeSchedulingWarnings([
       { main_cast_slots: null, understudy_slots: null },
       { main_cast_slots: null, understudy_slots: 1 },

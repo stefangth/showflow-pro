@@ -18,6 +18,7 @@ const SHOWS = [
   { id: "s1", program: "Manual", sub_program: null, category: null, description: null, status: "active", main_cast_slots: 2, understudy_slots: 1, airtable_program_key: null, sort_order: 1, dateCount: 0 },
   { id: "s2", program: "Imported", sub_program: null, category: null, description: null, status: "active", main_cast_slots: null, understudy_slots: null, airtable_program_key: "K", sort_order: 2, dateCount: 3 },
   { id: "s3", program: "TJE", sub_program: "Murder", category: null, description: null, status: "active", main_cast_slots: 2, understudy_slots: 1, airtable_program_key: null, sort_order: 3, dateCount: 0 },
+  { id: "s4", program: "Solo", sub_program: null, category: null, description: null, status: "active", main_cast_slots: 3, understudy_slots: null, airtable_program_key: null, sort_order: 4, dateCount: 0 },
 ];
 vi.mock("@/hooks/useShows", async (orig) => {
   const real = await orig<typeof import("@/hooks/useShows")>();
@@ -57,6 +58,15 @@ describe("ProductionsPage", () => {
     expect(screen.getByText("Manual")).toBeInTheDocument();
     expect(screen.getByText("Imported")).toBeInTheDocument();
     expect(screen.getAllByText(/unconfigured/i).length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("renders the computed slot column as main + understudy, main-only showing + 0", () => {
+    renderWithProviders(<ProductionsPage />);
+    // A main-only show (understudy_slots NULL) is configured, not "Unconfigured": it
+    // renders its computed 3 + 0 rather than the destructive badge.
+    expect(screen.getByText("Solo")).toBeInTheDocument();
+    expect(screen.getByText("3 + 0")).toBeInTheDocument();
+    expect(screen.getAllByText("2 + 1").length).toBeGreaterThanOrEqual(1);
   });
 
   it("delete is enabled only for a manual, zero-date show", () => {

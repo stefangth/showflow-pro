@@ -406,6 +406,24 @@ describe("fetchTierAttention", () => {
     expect(fake.calls).toContainEqual({ table: "show_date_offer_tiers", method: "gte", args: ["show_date.date", "2026-07-15"] });
     expect(fake.calls).toContainEqual({ table: "show_date_offer_tiers", method: "neq", args: ["show_date.status", "cancelled"] });
   });
+  it("maps a main-only show (understudy null) to 0 understudies, not unconfigured", async () => {
+    const fake = createFakeSupabase({
+      show_date_offer_tiers: {
+        data: [{
+          tier: 1,
+          show_date: {
+            id: "d2", date: "2026-07-21", status: "open", custom: null,
+            show: { program: "Solo", sub_program: null, main_cast_slots: 3, understudy_slots: null },
+            bookings: [],
+          },
+        }],
+        error: null,
+      },
+    });
+    const rows = await fetchTierAttention(fake as never, { orgId: "org-1", today: "2026-07-15" });
+    expect(rows[0].slots).toEqual({ main_cast: 3, understudies: 0 });
+  });
+
   it("returns [] for a null org without querying", async () => {
     const fake = createFakeSupabase({});
     expect(await fetchTierAttention(fake as never, { orgId: null, today: "2026-07-15" })).toEqual([]);

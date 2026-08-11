@@ -3,18 +3,18 @@ import { screen, fireEvent, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { renderWithProviders } from "@/test/renderWithProviders";
 
-const { showsRef, updateShow } = vi.hoisted(() => ({
+const { showsRef, saveShowSlots } = vi.hoisted(() => ({
   showsRef: { value: [] as unknown[] },
-  updateShow: vi.fn(() => Promise.resolve()),
+  saveShowSlots: vi.fn(() => Promise.resolve()),
 }));
 vi.mock("@/data/settings", () => ({ fetchShowsWithSlots: () => Promise.resolve(showsRef.value) }));
-vi.mock("@/data/shows", () => ({ updateShow }));
+vi.mock("@/data/slots", () => ({ saveShowSlots }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: {} }));
 
 import { SlotsStep } from "./SlotsStep";
 
 beforeEach(() => {
-  updateShow.mockClear();
+  saveShowSlots.mockClear();
   showsRef.value = [
     { id: "s1", program: "Winterreise", sub_program: "Ensemble", main_cast_slots: null, understudy_slots: null, status: "active" },
     { id: "s2", program: "Set", sub_program: "Done", main_cast_slots: 4, understudy_slots: 2, status: "active" },
@@ -23,14 +23,14 @@ beforeEach(() => {
 });
 
 describe("SlotsStep", () => {
-  it("lists only active shows missing a slot count", async () => {
+  it("lists only active shows missing a main count", async () => {
     renderWithProviders(<SlotsStep orgId="org-1" onDone={() => {}} />);
     expect(await screen.findByText(/Winterreise/)).toBeInTheDocument();
     expect(screen.queryByText(/Set . Done|Set · Done/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Archived/)).not.toBeInTheDocument();
   });
 
-  it("saves the entered counts and invalidates shows", async () => {
+  it("saves the entered counts as show_slots rows and invalidates shows", async () => {
     const { queryClient } = renderWithProviders(<SlotsStep orgId="org-1" onDone={() => {}} />);
     const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
     await screen.findByText(/Winterreise/);
@@ -42,12 +42,35 @@ describe("SlotsStep", () => {
     fireEvent.click(screen.getByRole("button", { name: /save slot counts/i }));
 
     await waitFor(() =>
-      expect(updateShow).toHaveBeenCalledWith(expect.anything(), "s1", {
-        main_cast_slots: 4,
-        understudy_slots: 2,
+      expect(saveShowSlots).toHaveBeenCalledWith(expect.anything(), {
+        showId: "s1",
+        orgId: "org-1",
+        slots: [
+          expect.objectContaining({ name: "Main cast", count: 4, kind: "main", skillIds: [] }),
+          expect.objectContaining({ name: "Understudy", count: 2, kind: "understudy", skillIds: [] }),
+        ],
       }),
     );
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["shows"] });
+  });
+
+  it("omits the understudy slot when the u/s count is left blank (understudy optional)", async () => {
+    renderWithProviders(<SlotsStep orgId="org-1" onDone={() => {}} />);
+    await screen.findByText(/Winterreise/);
+
+    const [mainInput] = screen.getAllByRole("spinbutton");
+    fireEvent.change(mainInput, { target: { value: "3" } });
+    fireEvent.click(screen.getByRole("button", { name: /save slot counts/i }));
+
+    // The single-element slots array asserts no understudy slot was created (an extra
+    // element would fail the array match).
+    await waitFor(() =>
+      expect(saveShowSlots).toHaveBeenCalledWith(expect.anything(), {
+        showId: "s1",
+        orgId: "org-1",
+        slots: [expect.objectContaining({ name: "Main cast", count: 3, kind: "main", skillIds: [] })],
+      }),
+    );
   });
 
   it("shows an empty state and no save button when there are no shows to set", async () => {
@@ -72,5 +95,14 @@ describe("SlotsStep", () => {
     renderWithProviders(<MemoryRouter><SlotsStep orgId="org-1" onDone={() => {}} /></MemoryRouter>);
     expect(await screen.findByText(/already has its slot counts set/i)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /save slot counts/i })).not.toBeInTheDocument();
+  });
+
+  it("treats a main-only show as already set (understudy optional)", async () => {
+    showsRef.value = [
+      { id: "s4", program: "Solo", sub_program: null, main_cast_slots: 2, understudy_slots: null, status: "active" },
+    ];
+    renderWithProviders(<MemoryRouter><SlotsStep orgId="org-1" onDone={() => {}} /></MemoryRouter>);
+    expect(await screen.findByText(/already has its slot counts set/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Solo/)).not.toBeInTheDocument();
   });
 });

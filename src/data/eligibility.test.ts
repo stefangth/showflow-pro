@@ -4,7 +4,6 @@ import { asSupabase } from "@/test/castHelpers";
 import {
   fetchRequiredSkillIds, fetchSkillEligibleArtistIds, fetchShowPriorityRows,
   setShowCastPriority, clearShowCastPriority,
-  addShowRequiredSkill, removeShowRequiredSkill,
   addShowDateRequiredSkill, removeShowDateRequiredSkill,
   fetchShowRequiredSkillIds, fetchLadderCoverageInputs,
   fetchShowDateSkillDrops, addShowDateSkillDrop, removeShowDateSkillDrop,
@@ -140,19 +139,6 @@ describe("show priority mutations", () => {
 });
 
 describe("required-skill mutations", () => {
-  it("addShowRequiredSkill inserts the pair", async () => {
-    const fake = createFakeSupabase({ show_required_skills: { data: null, error: null } });
-    await addShowRequiredSkill(fake as never, { showId: "sh1", skillId: "s1", orgId: "o1" });
-    const ins = fake.calls.find((c) => c.table === "show_required_skills" && c.method === "insert");
-    expect(ins?.args[0]).toEqual({ show_id: "sh1", skill_id: "s1", org_id: "o1" });
-  });
-  it("removeShowRequiredSkill deletes by pair", async () => {
-    const fake = createFakeSupabase({ show_required_skills: { data: null, error: null } });
-    await removeShowRequiredSkill(fake as never, { showId: "sh1", skillId: "s1" });
-    expect(fake.calls.some((c) => c.table === "show_required_skills" && c.method === "delete")).toBe(true);
-    expect(fake.calls).toContainEqual({ table: "show_required_skills", method: "eq", args: ["show_id", "sh1"] });
-    expect(fake.calls).toContainEqual({ table: "show_required_skills", method: "eq", args: ["skill_id", "s1"] });
-  });
   it("addShowDateRequiredSkill inserts the pair", async () => {
     const fake = createFakeSupabase({ show_date_required_skills: { data: null, error: null } });
     await addShowDateRequiredSkill(fake as never, { showDateId: "d1", skillId: "s1", orgId: "o1" });
