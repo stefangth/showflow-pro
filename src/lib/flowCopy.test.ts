@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BOOKING_FLOW_DEFAULTS, applyPreset } from "./bookingFlow";
+import { BOOKING_FLOW_DEFAULTS, applyPreset, type BookingFlow } from "./bookingFlow";
 import {
   artistMeter, availabilityPageCopy, bookingStatusLabels, bookingsViewCopy, deliveryHint,
 } from "./flowCopy";
@@ -63,6 +63,18 @@ describe("artistMeter", () => {
     expect(m.filterUnanswered).toBe(false);
     expect(m.countStatuses).toEqual(["confirmed"]);
   });
+
+  it("offer meter explains what counts and that no one is scored", () => {
+    expect(artistMeter({ artist_acceptance: true } as BookingFlow).explainer).toBe(
+      "Counts dates you accepted or were booked for, out of dates you were offered. It is just for you, no one is scored on it.",
+    );
+  });
+
+  it("direct-book meter explains the booked/eligible ratio", () => {
+    expect(artistMeter({ artist_acceptance: false } as BookingFlow).explainer).toBe(
+      "Dates you are booked for, out of dates you are eligible for.",
+    );
+  });
 });
 
 describe("deliveryHint", () => {
@@ -81,6 +93,7 @@ describe("copy hygiene", () => {
         ...Object.values(bookingsViewCopy(flow)),
         ...Object.values(bookingStatusLabels(flow)),
         artistMeter(flow).title, artistMeter(flow).headerSentence, artistMeter(flow).footer,
+        artistMeter(flow).explainer,
         deliveryHint(flow),
       ];
       for (const s of strings) expect(s).not.toMatch(/[—–]/);

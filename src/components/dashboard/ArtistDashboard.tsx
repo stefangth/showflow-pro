@@ -202,6 +202,7 @@ export function ArtistDashboard() {
                       <p className="text-xs text-muted-foreground mt-3">
                         {meter.footer}
                       </p>
+                      <p className="text-xs text-muted-foreground mt-2">{meter.explainer}</p>
                     </CardContent>
                   </Card>
                 </Link>
