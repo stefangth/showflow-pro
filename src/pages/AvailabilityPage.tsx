@@ -430,7 +430,7 @@ function ArtistAvailability() {
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Mark dates you're unavailable so the system won't send you offers for those days.
+            Mark dates you cannot play so the system will not send you offers for them. Dates you are already booked for are not affected.
           </p>
           {tonight && (
             <p className="text-xs text-muted-foreground mt-1">{tonight}</p>
