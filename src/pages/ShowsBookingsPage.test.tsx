@@ -125,6 +125,10 @@ const { bookingSetupStatus } = vi.hoisted(() => ({
 }));
 vi.mock("@/hooks/useBookingSetup", () => ({
   useBookingSetupStatus: () => ({ status: bookingSetupStatus.value, coverage: undefined, isLoading: false, isError: false }),
+  // The banner rail now also reads this for the admin-only team nudge; this page's role is
+  // producer throughout (see the useAuth mock above), so it is always called disabled and
+  // only needs to exist here, not vary.
+  useProducerCount: () => null,
 }));
 vi.mock("@/hooks/useHireOrders", () => ({
   useDatesReadyForHireOrder: () => ({ data: undefined }),

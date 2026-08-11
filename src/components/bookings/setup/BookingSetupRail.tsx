@@ -153,7 +153,7 @@ export function BookingSetupRail({ orgId, initialStep }: { orgId: string | null;
             </SetupStepRow>
           ))}
         </div>
-        {/* The schedule the sixth row configures, stated where a collapsed row cannot hide
+        {/* The schedule the timing row configures, stated where a collapsed row cannot hide
             it. Suppressed while that row is open: TimingStep prints the same narrative from
             its LIVE inputs, under a scope note that carries the timezone, so leaving this
             one up would put the fact on the card twice and, mid-edit, in two versions. */}

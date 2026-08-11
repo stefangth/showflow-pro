@@ -7,8 +7,11 @@ const { client } = vi.hoisted(() => ({ client: {} as Record<string, unknown> }))
 vi.mock("@/integrations/supabase/client", () => ({ supabase: client }));
 const { canRef } = vi.hoisted(() => ({ canRef: { value: true } }));
 vi.mock("@/hooks/useCapabilities", () => ({ useCan: () => canRef.value }));
+// Overridable so a couple of cases can exercise the producer branch (default "admin"
+// matches every pre-existing test in this file).
+const { roleRef } = vi.hoisted(() => ({ roleRef: { value: "admin" as "admin" | "producer" } }));
 vi.mock("@/features/auth/AuthContext", () => ({
-  useAuth: () => ({ currentOrg: { id: "org-1", name: "Test Org" }, hasRole: (r: string) => r === "admin" }),
+  useAuth: () => ({ currentOrg: { id: "org-1", name: "Test Org" }, hasRole: (r: string) => r === roleRef.value }),
 }));
 import { createFakeSupabase, type TableSeed } from "@/test/supabaseFake";
 function seed(s: Record<string, TableSeed>) {
@@ -48,6 +51,7 @@ const HIRE_ORDER_STEPS = computeHireOrderSetupStatus({
 beforeEach(() => {
   localStorage.clear();
   canRef.value = true;
+  roleRef.value = "admin";
   seed({
     app_settings: { data: [], error: null },
     shows: { data: [], error: null },
@@ -60,12 +64,28 @@ beforeEach(() => {
 });
 
 it("composes the booking module with its header copy and progress totals", async () => {
+  // Admin sees the engine's steps plus the non-gating team nudge (see the "injects the
+  // admin-only team nudge" case below), so the admin default in this file's mocked
+  // AuthContext makes BOOKING_STEPS + 1 the right total here too.
+  const { result } = renderHook(() => useModuleOnboardingRail("booking_flow", "org-1"), { wrapper });
+  await waitFor(() => expect(result.current.progressTotal).toBe(BOOKING_STEPS + 1));
+  expect(result.current.title).toBe("Get bookings running");
+  expect(result.current.steps).toHaveLength(BOOKING_STEPS + 1);
+  expect(result.current.progressFilled).toBe(0);
+  expect(result.current.progressLabel).toContain(`of ${BOOKING_STEPS + 1}`);
+});
+
+it("injects the admin-only team nudge as the banner's first step (parity with the checklist sheet)", async () => {
+  const { result } = renderHook(() => useModuleOnboardingRail("booking_flow", "org-1"), { wrapper });
+  await waitFor(() => expect(result.current.progressTotal).toBe(BOOKING_STEPS + 1));
+  expect(result.current.steps.map((s) => s.key)[0]).toBe("team");
+});
+
+it("does not inject the team nudge for a producer", async () => {
+  roleRef.value = "producer";
   const { result } = renderHook(() => useModuleOnboardingRail("booking_flow", "org-1"), { wrapper });
   await waitFor(() => expect(result.current.progressTotal).toBe(BOOKING_STEPS));
-  expect(result.current.title).toBe("Get bookings running");
-  expect(result.current.steps).toHaveLength(BOOKING_STEPS);
-  expect(result.current.progressFilled).toBe(0);
-  expect(result.current.progressLabel).toContain(`of ${BOOKING_STEPS}`);
+  expect(result.current.steps.map((s) => s.key)).not.toContain("team");
 });
 
 it("composes the hire-orders module with its header copy and its own steps", async () => {
@@ -80,7 +100,7 @@ it("composes the hire-orders module with its header copy and its own steps", asy
 
 it("gives an editor the action-framed module header", async () => {
   const { result } = renderHook(() => useModuleOnboardingRail("booking_flow", "org-1"), { wrapper });
-  await waitFor(() => expect(result.current.progressTotal).toBe(BOOKING_STEPS));
+  await waitFor(() => expect(result.current.progressTotal).toBe(BOOKING_STEPS + 1));
   expect(result.current.eyebrow).toBe("Set up");
   // Flow-neutral by design: this banner has no ctx, so the same sentence reaches a
   // direct-book org that never opens a tier (see bookingOnboarding.railHeader).
@@ -102,7 +122,7 @@ it("never surfaces a sibling module's off-state footer (the scoped module is alw
   // composeOnboarding derives offFooters from every feature NOT in `enabled`; a
   // single-module set would otherwise always report the sibling module "off".
   const booking = renderHook(() => useModuleOnboardingRail("booking_flow", "org-1"), { wrapper });
-  await waitFor(() => expect(booking.result.current.progressTotal).toBe(BOOKING_STEPS));
+  await waitFor(() => expect(booking.result.current.progressTotal).toBe(BOOKING_STEPS + 1));
   expect(booking.result.current.offFooters).toEqual([]);
 
   const hire = renderHook(() => useModuleOnboardingRail("hire_orders", "org-1"), { wrapper });
