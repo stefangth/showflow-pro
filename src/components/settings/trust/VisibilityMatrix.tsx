@@ -226,17 +226,22 @@ export function VisibilityMatrix() {
        *  branch renders (718px at 1280) is 244.1px, less the cell's 16px of
        *  padding-right — 228.1px of content box, so 22.4px of headroom at the
        *  tightest width and more everywhere above it. None of the eight wraps
-       *  at any width or role. 108px Access: the widest pill is "Append-only"
-       *  at 83px against a 96px content box.
+       *  at any width or role. 108px Access: the widest pill is "Own booking"
+       *  at 84.5px against a 96px content box.
        *
-       *  Both figures are the RENAMED label and the MEASURED pill. An earlier
-       *  draft of this comment named "Availability and blocked dates" (194.9px,
-       *  the second widest) and put the pill at 96px, which was the auto
-       *  layout's whole column width rather than the pill inside it. The
-       *  numbers are the justification for the one dimension the fix rests on,
-       *  so they are re-measured rather than remembered: see
+       *  BOTH FIGURES ARE MAXIMA OVER ALL THREE ROLES, which is the only way
+       *  to read them: the pill values change with the role, so "Append-only"
+       *  (83px) is the widest the Administrator column ever shows and "Own
+       *  booking" (84.5px) is the widest the table can show at all. Two
+       *  earlier drafts of this comment got this wrong in the same way — first
+       *  naming "Availability and blocked dates" (194.9px, the second-widest
+       *  label) and a 96px pill that was really the auto layout's whole column,
+       *  then naming the second-widest pill after measuring only one role.
+       *  These numbers are the justification for the one dimension the fix
+       *  rests on, so they are re-measured rather than remembered. Source:
        *  .superpowers/sdd/2026-08-11-trust-center-findings-fix/shots-density/
-       *  app-after-r2/measurements.json, `matrix.labelIntrinsic`/`pillWidths`.
+       *  app-after/measurements.json, `matrix.labelIntrinsic`/`pillWidths`,
+       *  folded to a maximum across every captured width and role.
        *
        *  min-w drops to 400px because a fixed layout no longer needs a floor
        *  to stop the Mechanism column collapsing — the declared widths are the

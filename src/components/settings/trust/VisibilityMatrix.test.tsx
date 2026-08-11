@@ -52,7 +52,11 @@ describe("VisibilityMatrix responsive breakpoint", () => {
     // 244.1px, less 16px of padding-right; the widest label is "Notes and
     // cancellation reasons" at 205.7px intrinsic, so 22.4px of headroom.
     expect(cols[0].className.split(/\s+/)).toContain("w-[34%]");
-    // The widest pill is "Append-only" at 83px against a 96px content box.
+    // The widest pill across all three roles is "Own booking" at 84.5px
+    // against a 96px content box. Across all three roles, not just the
+    // Administrator column: the values change with the role, and measuring one
+    // of them is how an earlier draft of this comment came to name
+    // "Append-only" (83px), which is only the widest that one column shows.
     expect(cols[1].className.split(/\s+/)).toContain("w-[108px]");
   });
 

@@ -20,10 +20,17 @@
 // WHAT THIS FILE IS NOT. It is a rhythm gate, not a licence to trim a claim
 // until it fits. Every qualifier that stops a sentence over-claiming has to
 // survive in `claim`, because the public page renders `evidence` only in Full
-// inventory mode; only detail that enriches a true sentence may move. The last
-// describe block pins the qualifiers that earlier audit rounds proved were
-// needed, so a future shortening pass cannot buy length by dropping one.
+// inventory mode; only detail that enriches a true sentence may move.
+//
+// The last TWO describe blocks are what enforce that, and there are two of them
+// for a reason. The first pins the `claim` qualifiers earlier audit rounds
+// proved were needed. The second pins `evidence`, and it exists because the
+// caps below were once applied to `evidence` WITHOUT that clause-by-clause read
+// and compressed the scope out of a citation. A ceiling can be enforced by
+// counting; whether a sentence still says what it must cannot.
 
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { CONTROLS, RETENTION, VISIBILITY_MATRIX } from "./facts";
 
@@ -45,13 +52,13 @@ const LABEL_MAX_CHARS = 32;
 const PERIOD_MAX_CHARS = 40;
 
 describe("control cards hold a readable length", () => {
-  it.each(CONTROLS)("$title states its claim in $CLAIM_MAX_WORDS words or fewer", (control) => {
+  it.each(CONTROLS)(`$title states its claim in ${CLAIM_MAX_WORDS} words or fewer`, (control) => {
     expect(words(control.claim), `"${control.title}" claim is ${words(control.claim)} words`).toBeLessThanOrEqual(
       CLAIM_MAX_WORDS,
     );
   });
 
-  it.each(CONTROLS)("$title cites its evidence in $EVIDENCE_MAX_WORDS words or fewer", (control) => {
+  it.each(CONTROLS)(`$title cites its evidence in ${EVIDENCE_MAX_WORDS} words or fewer`, (control) => {
     expect(
       words(control.evidence),
       `"${control.title}" evidence is ${words(control.evidence)} words`,
@@ -86,7 +93,7 @@ describe("the access matrix holds a fixed row rhythm", () => {
 });
 
 describe("retention values stay on one line beside their key", () => {
-  it.each(RETENTION)("$item prints a period of $PERIOD_MAX_CHARS characters or fewer", ({ period }) => {
+  it.each(RETENTION)(`$item prints a period of ${PERIOD_MAX_CHARS} characters or fewer`, ({ period }) => {
     expect(period.length, `"${period}" is ${period.length} characters`).toBeLessThanOrEqual(
       PERIOD_MAX_CHARS,
     );
@@ -139,5 +146,63 @@ describe("shortening did not cost a qualifier", () => {
   it("keeps the backup ceiling framed as a ceiling", () => {
     // "Rolling 30 days" read as a durability promise nobody could keep.
     expect(claim("Backups")).toMatch(/deletion ceiling, not a promise/i);
+  });
+});
+
+// The block above covers `claim` only, and that gap has already cost once: the
+// word cap this file introduced was applied to `evidence` without the same
+// clause-by-clause read, and it compressed "on shows and show_dates" out of the
+// tenant-isolation citation — turning a two-table result into a sentence that
+// reads as table-agnostic. A ceiling can be enforced by counting; whether a
+// sentence still says what it must cannot. So the citations that carry a scope
+// or a mechanism get pinned here too.
+describe("evidence citations still say what they cite", () => {
+  const evidence = (title: string) => CONTROLS.find((c) => c.title === title)!.evidence;
+
+  // Derived from the file, not from a remembered pair of names. If a third
+  // table is added to org_isolation.sql the citation is now too narrow and this
+  // fails; if one is removed it is too broad and this fails. Either way the
+  // sentence and the artefact move together.
+  it("names every tenant table org_isolation.sql actually exercises", () => {
+    const sql = readFileSync(resolve(process.cwd(), "supabase/tests/rls/org_isolation.sql"), "utf8");
+    const counts = new Map<string, number>();
+    for (const match of sql.matchAll(/\bpublic\.([a-z_]+)/g)) {
+      counts.set(match[1], (counts.get(match[1]) ?? 0) + 1);
+    }
+    // A table referenced once is fixture setup (platform_admins, organizations,
+    // org_memberships each appear exactly once, to build the two orgs and their
+    // roles). A table the test asserts against appears repeatedly.
+    const exercised = [...counts.entries()]
+      .filter(([, n]) => n >= 2)
+      .map(([table]) => table)
+      .sort();
+    expect(exercised, "org_isolation.sql's assertion surface changed").toEqual([
+      "show_dates",
+      "shows",
+    ]);
+    for (const table of exercised) {
+      expect(
+        evidence("Tenant isolation"),
+        `the citation must name ${table}, or it reads as a table-agnostic result`,
+      ).toContain(table);
+    }
+  });
+
+  it("cites the grant behind the secrets claim, not just 'admin-guarded'", () => {
+    // The claim says integration keys are "readable only by server functions,
+    // never by members of your organisation". That is a GRANT
+    // (20260604131000_org_airtable_vault.sql:38-40 revokes EXECUTE on the
+    // reader from authenticated and grants it to service_role), and a grant is
+    // what a reviewer can check. "Written through an admin-guarded function"
+    // describes the writer and leaves the reader unevidenced.
+    expect(evidence("Encryption and secrets")).toContain("get_org_airtable_key");
+    expect(evidence("Encryption and secrets")).toMatch(/revoked from authenticated/i);
+  });
+
+  it("keeps the auditability citation pointing at both trigger paths", () => {
+    // The claim concedes that automated transitions record no actor; the
+    // citation is what says which function takes that path.
+    expect(evidence("Auditability")).toContain("notify_booking_transition");
+    expect(evidence("Auditability")).toContain("promote_understudy_on_cancellation");
   });
 });
