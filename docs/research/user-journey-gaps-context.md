@@ -89,6 +89,26 @@ loops to S-tier, 5-round cap).
 
 Plan: `docs/superpowers/plans/2026-08-11-producer-journey-gaps.md` (Phase 0 DB foundation + 4 parallel WPs, subagent-driven implementer+reviewer loops). `verify:fast` + `verify:full` (pgTAP + e2e) green. Not merged (owner packages release).
 
+### Session execution trail (producer, 2026-08-11)
+
+Executed via `superpowers:subagent-driven-development`, parallelized: Phase 0 (sequential, gates the wave) then WP-P1..P4 as one wave of disjoint-file implementers, each with a fresh-agent task review + fix loop, then a whole-branch review. Approved scope + copy first via the before/after mockup (owner picked in all three heavier items). Commit chain (`main` = 32416aa):
+
+| Commit | What | Review outcome |
+|---|---|---|
+| `2de672b` | Implementation plan | pre-flight scan clean |
+| `61000f6` | Phase 0: `list_org_admin_names` RPC + `hire_orders.viewed_at`/`mark_hire_order_seen` + pgTAP + regen types | Spec PASS / Quality Approved. Reviewer mutation-tested the pgTAP suites red to prove they are genuine. 1 owner-note (CLI `__InternalSupabase` drift). |
+| `7413917` | WP-P2: producer role explainer + admin names | Spec PASS / Approved. 1 parked (rails-link plain text; requirement met by card link). |
+| `fc789bb` | WP-P3: hire-order void copy + artist-seen timeline | Spec PASS / Approved. 1 deferred minor (void-after-seen cosmetics). |
+| `f8202db` | WP-P4: tier-at-risk recovery message + email | Spec FAIL (system map not updated) -> fix loop. |
+| `4e63856` | WP-P1: cockpit confirm/cancel/soft-booked/tier/eligibility narration | Spec FAIL (1 Critical: required props broke DevCockpitHarness; 1 Important: fail-open entitlement read) -> fix loop. Implementer also survived a mid-task API-error resume. |
+| `0f78a1e` | WP-P4 fix: system map (md + `systemMap.ts`) reflects the email; guard the email path | scoped re-review: both ADDRESSED. |
+| `b3cb3cd` | WP-P1 fix: props optional + guarded; cancel who-hears honest via `useEntitlements()`+`!isLoading` | scoped re-review: both ADDRESSED (reviewer ran full tsc clean). |
+| `227acc7` | WP-P3 fix: complete a sibling test's `vi.mock` (caught only by the full-suite `verify:fast`) | full suite green. |
+| `725d8ee` | Final fix wave: confirm line honest under entitlement (I-1) + guard tier-at-risk insert before email (M-2) | whole-branch review (opus) READY-after-fix; scoped re-review: both ADDRESSED, no new breakage. |
+| `c2e3fa1` | docs: this status update | - |
+
+Whole-branch review (opus) verdict: **READY after 1 Important**, 0 Critical. RPC security passed clean (member-guard, names-only, linked-artist-only idempotent write, no cross-org leak, pgTAP-covered); tier-at-risk email once-per-newly-at-risk-pair gating + failure-swallowing confirmed; both system maps + all exhaustive registries updated; no em/en dashes. The Important (confirm-line entitlement honesty, twin of the cancel fix) was fixed rather than deferred. Deferred/parked (none block merge): Phase-0 CLI marker drift (owner infra note), WP-P2 rails-link plain text + "Production Team" verbatim hardcode, WP-P3 void-after-seen cosmetics, M-1 (confirm line omits unregistered-artist caveat; the confirm target accepted an offer so has contact), M-3 (inert stacked DialogDescription that cannot co-occur). Full artifacts under `.superpowers/sdd/2026-08-11-producer-journey-gaps/` (ledger + per-WP briefs/reports/reviews).
+
 ## Status — Artist (after that)
 
 R0.1-R0.3 invitation stakes/expectations (email) · R2.1 window duration as a number ·
