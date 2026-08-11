@@ -255,3 +255,16 @@ build lost the blind comparison.
 
 Verify the rendered page height at 1440 in both modes and report the before and
 after numbers.
+
+**Three carry-overs from earlier tasks land here:**
+
+- Task 3 gave every retention row a `basis` line, roughly doubling that card's
+  height on both surfaces. That was correct and is not to be undone, but item 5
+  above is what makes it affordable.
+- Task 6 could not close the card-void finding: the void moved outside the card
+  border, unchanged in magnitude. What actually closes it is item 1, because the
+  voids exist only because sibling claims run 29 to 92 words. Nothing pins claim
+  length today; a test that does is part of this task.
+- Task 5's width fix already produced a constant 49px matrix row rhythm at 1728
+  and 1920 with zero wrapping labels. Item 2 is about the widths below that,
+  where Data labels still wrap: 1440, 1280 and 1024.
