@@ -56,7 +56,8 @@ export interface BookingSetupStatusInput {
    *  ACTIVE shows or no UPCOMING dates right now (e.g. between seasons). */
   hasAnyShows: boolean;
   /** active shows-with-slots; undefined while unread. Slots is done only when the org has
-   *  shows (hasAnyShows) and every active show has both slot counts set. */
+   *  shows (hasAnyShows) and every active show has a main slot count set. Understudy is
+   *  optional, so a main-only show (understudy_slots NULL) counts as configured. */
   shows: { main_cast_slots: number | null; understudy_slots: number | null }[] | null | undefined;
   /** The org has its own row for all three timing keys. */
   timingChosen: boolean;
@@ -165,8 +166,10 @@ export function computeBookingSetupStatus(input: BookingSetupStatusInput): Booki
     // whether or not the org has scheduled anything yet. Counted against the ACTIVE roster
     // so this agrees with what a tier would actually resolve to.
     people: (input.artistCount ?? 0) > 0,
+    // Understudy is optional: a main-only show (understudy_slots NULL) is configured, so
+    // the gate is a main slot count on every active show, not both counts.
     slots: input.hasAnyShows && Array.isArray(input.shows)
-      ? input.shows.every((s) => s.main_cast_slots != null && s.understudy_slots != null)
+      ? input.shows.every((s) => s.main_cast_slots != null)
       : false,
     // With no upcoming (show, city) pairs there is nothing to cover, so a configured org is
     // done; with future pairs, every one needs a tier-1 cast (and a city, for eligibility).

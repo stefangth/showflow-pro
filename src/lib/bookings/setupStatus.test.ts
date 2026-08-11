@@ -260,11 +260,17 @@ describe("computeBookingSetupStatus", () => {
     expect(status.complete).toBe(false);
   });
 
-  it("slots outstanding when any show has a null count", () => {
+  it("slots outstanding when any show is missing a main count", () => {
     const s = computeBookingSetupStatus({ ...base, shows: [{ main_cast_slots: null, understudy_slots: 2 }] });
     expect(s.steps.find((x) => x.key === "slots")!.done).toBe(false);
     expect(s.complete).toBe(false);
     expect(s.canOffer).toBe(true); // slots does not block offers
+  });
+
+  it("slots done for a main-only show (understudy optional)", () => {
+    const s = computeBookingSetupStatus({ ...base, shows: [{ main_cast_slots: 4, understudy_slots: null }] });
+    expect(s.steps.find((x) => x.key === "slots")!.done).toBe(true);
+    expect(s.complete).toBe(true);
   });
 
   it("ladder outstanding blocks offers; eligibility also fails on a null city", () => {

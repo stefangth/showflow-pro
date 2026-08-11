@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import type { TierAttentionInput } from "@/lib/bookingCockpit";
+import { showSlots } from "@/lib/settings";
 
 export interface OpenOfferTierResult {
   offersCreated: number;
@@ -369,10 +370,8 @@ export async function fetchTierAttention(
     program: r.show_date.show?.program ?? null,
     subProgram: r.show_date.show?.sub_program ?? null,
     custom: r.show_date.custom ?? null,
-    slots:
-      r.show_date.show?.main_cast_slots != null && r.show_date.show?.understudy_slots != null
-        ? { main_cast: r.show_date.show.main_cast_slots, understudies: r.show_date.show.understudy_slots }
-        : null,
+    // Single home for the "main slot = configured, understudy optional" rule.
+    slots: showSlots(r.show_date.show),
     tier: r.tier,
     bookings: (r.show_date.bookings ?? []).map((b) => ({
       status: b.status, offer_tier: b.offer_tier, offer_expires_at: b.offer_expires_at,
