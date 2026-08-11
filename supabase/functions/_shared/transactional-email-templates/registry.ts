@@ -27,6 +27,7 @@ export interface TemplateEntry {
 }
 
 import { template as castEscalationRequested } from './cast-escalation-requested.tsx'
+import { template as tierAtRisk } from './tier-at-risk.tsx'
 import { template as artistOfferDigest } from './artist-offer-digest.tsx'
 import { template as offerImmediate } from './offer-immediate.tsx'
 import { template as artistConfirmationDigest } from './artist-confirmation-digest.tsx'
@@ -43,6 +44,7 @@ type RegisteredTemplateEntry = TemplateEntry & { family: EmailFamily }
 
 export const TEMPLATES: Record<string, RegisteredTemplateEntry> = {
   'cast-escalation-requested': { ...castEscalationRequested, family: 'ember' },
+  'tier-at-risk': { ...tierAtRisk, family: 'ember' },
   'artist-offer-digest': { ...artistOfferDigest, family: 'violet' },
   'offer-immediate': { ...offerImmediate, family: 'violet' },
   'artist-confirmation-digest': { ...artistConfirmationDigest, family: 'violet' },
@@ -119,6 +121,10 @@ const SUBJECT_RESOLVERS = {
     : copy['artist-confirmation-digest.subjectConfirmed'],
   'cast-escalation-requested': (data, copy) => applyEmailTokens(copy['cast-escalation-requested.subject'], {
     tier: String(data.tier ?? '?'),
+    program: String(data.program ?? 'show'),
+    date: String(data.date ?? '?'),
+  }),
+  'tier-at-risk': (data, copy) => applyEmailTokens(copy['tier-at-risk.subject'], {
     program: String(data.program ?? 'show'),
     date: String(data.date ?? '?'),
   }),

@@ -22,6 +22,7 @@
 
 import { assertEquals, assertExists } from "../_shared/test-asserts.ts";
 import { bindFakeFrom, makeFakeDeps, makeRequest, setFakeFrom } from "../_shared/testing.ts";
+import { resolveTemplatePresentation } from "../_shared/transactional-email-templates/registry.ts";
 import { handle } from "./index.ts";
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
@@ -1374,4 +1375,191 @@ Deno.test("tier-at-risk-watcher DI M2: past date is never flagged at-risk", asyn
   assertEquals(body.at_risk_count, 0, "past dates must never alert");
   const insertCalls = calls.filter((c) => c.table === "notifications" && c.method === "insert");
   assertEquals(insertCalls.length, 0);
+});
+
+// ── WP-P4: softened message + tier-at-risk email ──────────────────────────────
+//
+// The in-app message was softened from "...is mathematically unfillable (P pending,
+// A accepted, need R)." to end with recovery guidance instead of just the numbers.
+// A NEW `tier-at-risk` transactional email is now sent to the SAME recipients, but
+// only for (tier, user) pairs whose in-app notification is newly inserted this run
+// (reusing existingKeySet) — a persistently at-risk tier must email each recipient
+// once, not every 15-minute run. Email failures must be swallowed: the watcher still
+// writes the notification and still returns 200.
+
+Deno.test("tier-at-risk-watcher DI: at-risk notification message is softened with recovery guidance", async () => {
+  // makeShowDate defaults: main_cast_slots=2, understudy_slots=1 → need 3
+  const tierId = "tier-softened";
+  const sdId = "sd-softened";
+
+  const { deps, calls } = makeFakeDeps({
+    tables: {
+      app_settings: makeBaseSettings(),
+      show_date_offer_tiers: { data: [makeTier(tierId, sdId)], error: null },
+      notifications: { data: [], error: null },
+      show_dates: { data: makeShowDate(sdId, "MusicalA", "MainShow"), error: null },
+      bookings: { data: [{ status: "suggested" }], error: null }, // 1 < 3 → at-risk
+    },
+    rpcs: { resolve_show_assignments: { data: [{ producer_user_id: "prod-1" }], error: null } },
+  });
+
+  await handle(makeRequest({ headers: CRON_OK }), deps);
+
+  const insertCalls = calls.filter((c) => c.table === "notifications" && c.method === "insert");
+  assertEquals(insertCalls.length, 1);
+  const row = (insertCalls[0].args[0] as Array<Record<string, unknown>>)[0];
+  const msg = row.message as string;
+  assertEquals(msg.includes("Open the next tier or book directly from the eligibility list to fill it."), true, "message ends with recovery guidance");
+  assertEquals(msg.includes("mathematically unfillable"), false, "old blunt phrasing must be gone");
+  assertEquals(row.title, "Tier at risk", "notification title stays unchanged");
+  assertEquals(row.related_entity_type, "show_date_offer_tier", "related_entity fields stay unchanged");
+  assertEquals(row.related_entity_id, tierId, "related_entity fields stay unchanged");
+});
+
+Deno.test("tier-at-risk-watcher DI: at-risk tier (new pair) → sends tier-at-risk email to the resolved recipient", async () => {
+  const tierId = "tier-email-new";
+  const sdId = "sd-email-new";
+
+  const { deps, invokeCalls } = makeFakeDeps({
+    tables: {
+      app_settings: makeBaseSettings(),
+      show_date_offer_tiers: { data: [makeTier(tierId, sdId)], error: null },
+      notifications: { data: [], error: null }, // no existing notif → NEW pair
+      show_dates: { data: makeShowDate(sdId, "MusicalA", "MainShow"), error: null },
+      bookings: { data: [{ status: "suggested" }], error: null }, // 1 < 3 → at-risk
+    },
+    rpcs: { resolve_show_assignments: { data: [{ producer_user_id: "prod-1" }], error: null } },
+    usersById: { "prod-1": { email: "prod1@example.com" } },
+  });
+
+  await handle(makeRequest({ headers: CRON_OK }), deps);
+
+  const emailCalls = invokeCalls.filter((c) => c.name === "send-transactional-email");
+  assertEquals(emailCalls.length, 1, "exactly one email for the one new recipient");
+  const msg = emailCalls[0].body as { template_name: string; recipient_email: string; templateData?: Record<string, unknown> };
+  assertEquals(msg.template_name, "tier-at-risk");
+  assertEquals(msg.recipient_email, "prod1@example.com");
+  assertExists(msg.templateData);
+  const reviewUrl = msg.templateData!.reviewUrl as string;
+  assertEquals(reviewUrl.endsWith("/bookings"), true, "reviewUrl must be the org's bookings page");
+
+  // The subject the registry actually resolves for this payload must name the program —
+  // this is what "subject containing the program" means end to end (EmailMessage itself
+  // carries no subject field; the subject is derived downstream from templateData).
+  const presentation = resolveTemplatePresentation("tier-at-risk", msg.templateData!);
+  assertExists(presentation);
+  assertEquals(presentation!.subject.includes("MusicalA"), true, "resolved subject names the program");
+});
+
+Deno.test("tier-at-risk-watcher DI: tier already at-risk (existing notification pair) → no new email sent", async () => {
+  // makeShowDate defaults: main_cast_slots=2, understudy_slots=1 → need 3
+  const tierId = "tier-email-existing";
+  const sdId = "sd-email-existing";
+  const existingNotif = { id: "notif-existing", user_id: "prod-1", related_entity_id: tierId };
+
+  const { deps, invokeCalls } = makeFakeDeps({
+    tables: {
+      app_settings: makeBaseSettings(),
+      show_date_offer_tiers: { data: [makeTier(tierId, sdId)], error: null },
+      notifications: { data: [existingNotif], error: null }, // already exists → NOT a new pair
+      show_dates: { data: makeShowDate(sdId, "MusicalA", "MainShow"), error: null },
+      bookings: { data: [{ status: "suggested" }], error: null }, // still at-risk
+    },
+    rpcs: { resolve_show_assignments: { data: [{ producer_user_id: "prod-1" }], error: null } },
+    usersById: { "prod-1": { email: "prod1@example.com" } },
+  });
+
+  const res = await handle(makeRequest({ headers: CRON_OK }), deps);
+  const body = await res.json();
+  assertEquals(body.at_risk_count, 1, "still counted as at-risk");
+
+  const emailCalls = invokeCalls.filter((c) => c.name === "send-transactional-email");
+  assertEquals(emailCalls.length, 0, "no email for a pair that already has a notification — must not re-fire every run");
+});
+
+Deno.test("tier-at-risk-watcher DI: partial idempotency — email sent only for the recipient without an existing notification", async () => {
+  // makeShowDate defaults: main_cast_slots=2, understudy_slots=1 → need 3
+  const tierId = "tier-email-partial";
+  const sdId = "sd-email-partial";
+  const existingNotif = { id: "notif-prod1", user_id: "prod-1", related_entity_id: tierId };
+
+  const { deps, invokeCalls } = makeFakeDeps({
+    tables: {
+      app_settings: makeBaseSettings(),
+      show_date_offer_tiers: { data: [makeTier(tierId, sdId)], error: null },
+      notifications: { data: [existingNotif], error: null },
+      show_dates: { data: makeShowDate(sdId, "MusicalA", "MainShow"), error: null },
+      bookings: { data: [{ status: "suggested" }], error: null },
+    },
+    rpcs: {
+      resolve_show_assignments: {
+        data: [{ producer_user_id: "prod-1" }, { producer_user_id: "prod-2" }],
+        error: null,
+      },
+    },
+    usersById: {
+      "prod-1": { email: "prod1@example.com" },
+      "prod-2": { email: "prod2@example.com" },
+    },
+  });
+
+  await handle(makeRequest({ headers: CRON_OK }), deps);
+
+  const emailCalls = invokeCalls.filter((c) => c.name === "send-transactional-email");
+  assertEquals(emailCalls.length, 1, "only the new recipient (prod-2) is emailed");
+  const msg = emailCalls[0].body as { recipient_email: string };
+  assertEquals(msg.recipient_email, "prod2@example.com");
+});
+
+Deno.test("tier-at-risk-watcher DI: email send failure is swallowed — notification still written, scan still completes", async () => {
+  const tierId = "tier-email-fail";
+  const sdId = "sd-email-fail";
+
+  const { deps, calls } = makeFakeDeps({
+    tables: {
+      app_settings: makeBaseSettings(),
+      show_date_offer_tiers: { data: [makeTier(tierId, sdId)], error: null },
+      notifications: { data: [], error: null },
+      show_dates: { data: makeShowDate(sdId, "MusicalA", "MainShow"), error: null },
+      bookings: { data: [{ status: "suggested" }], error: null },
+    },
+    rpcs: { resolve_show_assignments: { data: [{ producer_user_id: "prod-1" }], error: null } },
+    usersById: { "prod-1": { email: "prod1@example.com" } },
+  });
+
+  // Force sendEmail to throw, as a Resend outage would.
+  (deps as { sendEmail: unknown }).sendEmail = () => { throw new Error("SMTP down"); };
+
+  const res = await handle(makeRequest({ headers: CRON_OK }), deps);
+  assertEquals(res.status, 200, "a thrown sendEmail must not fail the request");
+  const body = await res.json();
+  assertEquals(body.at_risk_count, 1, "tier is still counted at-risk");
+
+  const insertCalls = calls.filter((c) => c.table === "notifications" && c.method === "insert");
+  assertEquals(insertCalls.length, 1, "notification is still written despite the email failure");
+});
+
+Deno.test("tier-at-risk-watcher DI: recipient with no email on file → skipped for email, notification still inserted", async () => {
+  const tierId = "tier-email-noaddr";
+  const sdId = "sd-email-noaddr";
+
+  const { deps, calls, invokeCalls } = makeFakeDeps({
+    tables: {
+      app_settings: makeBaseSettings(),
+      show_date_offer_tiers: { data: [makeTier(tierId, sdId)], error: null },
+      notifications: { data: [], error: null },
+      show_dates: { data: makeShowDate(sdId, "MusicalA", "MainShow"), error: null },
+      bookings: { data: [{ status: "suggested" }], error: null },
+    },
+    rpcs: { resolve_show_assignments: { data: [{ producer_user_id: "prod-1" }], error: null } },
+    usersById: {}, // no email on file for prod-1
+  });
+
+  await handle(makeRequest({ headers: CRON_OK }), deps);
+
+  const insertCalls = calls.filter((c) => c.table === "notifications" && c.method === "insert");
+  assertEquals(insertCalls.length, 1, "notification is inserted regardless of email lookup outcome");
+
+  const emailCalls = invokeCalls.filter((c) => c.name === "send-transactional-email");
+  assertEquals(emailCalls.length, 0, "no email attempted without a resolvable address");
 });

@@ -17,9 +17,10 @@ const LIVE_TEMPLATE_KEYS = [
   "offer-expiry-reminder",
   "offer-immediate",
   "org-invitation",
+  "tier-at-risk",
 ].sort();
 
-Deno.test("the registry contains exactly the twelve live templates with a family", () => {
+Deno.test("the registry contains exactly the thirteen live templates with a family", () => {
   assertEquals(Object.keys(TEMPLATES).sort(), LIVE_TEMPLATE_KEYS);
   for (const key of LIVE_TEMPLATE_KEYS) {
     assertEquals(typeof TEMPLATES[key].family, "string", `${key} has a family`);
@@ -28,6 +29,7 @@ Deno.test("the registry contains exactly the twelve live templates with a family
 
 const SHELL_TEMPLATES = [
   { key: "cast-escalation-requested", family: "ember", fallback: "#5F2A1C", detail: "Riverdance" },
+  { key: "tier-at-risk", family: "ember", fallback: "#5F2A1C", detail: "Phantom" },
   { key: "hire-order-issued", family: "pine", fallback: "#133F31", detail: "HO-2026-0142" },
   { key: "hire-order-countersigned", family: "steel", fallback: "#2A2D48", detail: "HO-2026-0142" },
   { key: "org-invitation", family: "violet", fallback: "#322685", detail: "Cirque Lumière" },

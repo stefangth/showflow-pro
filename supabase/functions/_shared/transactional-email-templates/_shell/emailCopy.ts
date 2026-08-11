@@ -14,6 +14,7 @@ export const EMAIL_TEMPLATE_KEYS = [
   "offer-expiry-reminder",
   "artist-confirmation-digest",
   "cast-escalation-requested",
+  "tier-at-risk",
   "hire-order-issued",
   "hire-order-countersigned",
   "org-invitation",
@@ -102,6 +103,20 @@ export const EMAIL_COPY_DEFAULTS = {
   "cast-escalation-requested.slotsLabel": "slots",
   "cast-escalation-requested.showFallback": "a show",
   "cast-escalation-requested.dateFallback": "TBD",
+
+  // The early-warning twin of cast-escalation-requested above: tier-at-risk-watcher
+  // fires this while the tier is still open but can no longer mathematically fill
+  // before its deadline, so the recovery guidance points at the SAME two remedies
+  // (open the next tier, or book directly) rather than only "open the next tier" —
+  // a still-open tier can still be filled by a direct booking too.
+  "tier-at-risk.subject": "A tier is running short for {{program}} on {{date}}",
+  "tier-at-risk.heading": "A tier is running short",
+  "tier-at-risk.body": "Tier {{tier}} for {{program}} on {{date}} cannot fill on the current offers. {{pending}} pending, {{accepted}} accepted, and {{required}} needed. Open the next tier, or book directly from the eligibility list.",
+  "tier-at-risk.ctaLabel": "Review this date",
+  "tier-at-risk.footer": "Questions? Reach out to your point of contact and they'll be glad to help.",
+  "tier-at-risk.previewText": "A tier is running short for {{program}} on {{date}}",
+  "tier-at-risk.showFallback": "a show",
+  "tier-at-risk.dateFallback": "TBD",
 
   "hire-order-issued.subject": "Your hire order for {{dateLabel}} at {{venue}}",
   "hire-order-issued.heading": "Hire order issued",

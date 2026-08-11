@@ -42,6 +42,7 @@ export const EMAIL_TEMPLATE_CATEGORY: Record<string, NotificationCategory> = {
   "offer-expiry-reminder": "booking_offers",
   "artist-confirmation-digest": "booking_confirmations",
   "cast-escalation-requested": "at_risk",
+  "tier-at-risk": "at_risk",
   "hire-order-issued": "hire_orders",
   "hire-order-countersigned": "hire_orders",
 };

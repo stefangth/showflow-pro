@@ -83,6 +83,16 @@ export const EMAIL_TEMPLATE_COVERAGE: readonly EmailTemplateCoverage[] = [
     category: EMAIL_TEMPLATE_CATEGORY["cast-escalation-requested"],
   },
   {
+    key: "tier-at-risk",
+    displayName: "Tier at risk",
+    group: "Booking engine",
+    family: "ember",
+    trigger: "Tier can't fill on current offers (tier-at-risk-watcher)",
+    recipient: "Producers",
+    status: "editable",
+    category: EMAIL_TEMPLATE_CATEGORY["tier-at-risk"],
+  },
+  {
     key: "hire-order-issued",
     displayName: "Hire order issued",
     group: "Hire orders",
