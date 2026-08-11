@@ -155,12 +155,15 @@ function rawStage(overrides: Partial<RawStage> & { key: string; n: string; name:
   };
 }
 
-/** over10()'s stuck-demotion + hot/plain/dim triage, ported verbatim. */
-function finalizeStage(raw: RawStage): Stage {
+/** over10()'s stuck-demotion + hot/plain/dim triage, ported verbatim except the
+ *  demoted `needs` line, which is now the real provenance actor (Fix 1), not the
+ *  demo's hardcoded admin name. */
+function finalizeStage(raw: RawStage, adminActorName: string | null): Stage {
   const outstanding = raw.steps.filter((s) => !s.done);
   const stuck = !raw.keepAction && !raw.done && outstanding.length > 0 && outstanding.every((s) => s.admin);
+  const waitsOn = adminActorName ? `Waits on ${adminActorName}` : "Waits on your admin";
   const s = stuck && (raw.act || raw.primary)
-    ? { ...raw, card: false, act: false, primary: "", chip: "", badge: "Waits", needs: "Waits on Mara Kessler", action: null }
+    ? { ...raw, card: false, act: false, primary: "", chip: "", badge: "Waits", needs: waitsOn, action: null }
     : raw;
 
   const hot = s.card && (s.act || !!s.primary);
@@ -266,7 +269,7 @@ export function composeStageChain(input: StageChainInput): StageChainResult {
   if (artist) {
     rawStages = [
       bf
-        ? rawStage({ key: "eligibility", n: "01", name: "Eligibility", card: true, done: true, tag: "Ensemble A · your cast", line: "Your casts decide which dates can be offered to you.", metric: imported ? String(m.eligibleDates) : "0", metricLabel: "eligible dates" })
+        ? rawStage({ key: "eligibility", n: "01", name: "Eligibility", card: true, done: true, tag: "Your cast", line: "Your casts decide which dates can be offered to you.", metric: imported ? String(m.eligibleDates) : "0", metricLabel: "eligible dates" })
         : rawStage({ key: "eligibility", n: "01", name: "Eligibility", tag: "Booking flow · off", line: "No booking module, so no dates reach you here.", ...NOT_ON }),
       bf
         ? (input.artistBlockDatesDone
@@ -277,7 +280,7 @@ export function composeStageChain(input: StageChainInput): StageChainResult {
         ? (offers
             ? (imported
                 ? rawStage({ key: "offer", n: "03", name: "Offer", card: true, done: true, tag: "Booking flow", line: `One digest at ${hour} Berlin. ${answerWindow} to answer.`, metric: String(m.arriving), metricLabel: `arriving ${hour}` })
-                : rawStage({ key: "offer", n: "03", name: "Offer", badge: "Waits", tag: "Booking flow", line: `One digest at ${hour} Berlin, never a mail per date.`, needs: "Needs dates for Ensemble A" }))
+                : rawStage({ key: "offer", n: "03", name: "Offer", badge: "Waits", tag: "Booking flow", line: `One digest at ${hour} Berlin, never a mail per date.`, needs: "Needs dates for your cast" }))
             : rawStage({ key: "offer", n: "03", name: "Booked directly", card: true, done: true, tag: "Booking flow · direct", line: "There is no offer step. A booked date appears as confirmed.", metric: imported ? String(m.confirmed) : "0", metricLabel: "confirmed" }))
         : rawStage({ key: "offer", n: "03", name: "Offer", tag: "Booking flow · off", line: "No offers are sent from ShowFlow.", ...NOT_ON }),
       ho
@@ -317,7 +320,7 @@ export function composeStageChain(input: StageChainInput): StageChainResult {
     ];
   }
 
-  const stages = rawStages.map(finalizeStage);
+  const stages = rawStages.map((r) => finalizeStage(r, input.provenance.actorName));
 
   const nothingOn = !bf && !ho;
 

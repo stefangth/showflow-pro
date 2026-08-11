@@ -146,7 +146,7 @@ export function useDashboardFirstRun(role: DashboardRole): DashboardFirstRunStat
             ? `${metrics.arriving} offer${arrivingPlural} arriving in tomorrow's digest`
             : `${metrics.confirmed || metrics.arriving} dates booked for you`,
           hint: "Your producer's schedule",
-          when: "09:00",
+          when: `${String(timing.digestHourBerlin).padStart(2, "0")}:00`,
           cta: "Open",
         },
         {

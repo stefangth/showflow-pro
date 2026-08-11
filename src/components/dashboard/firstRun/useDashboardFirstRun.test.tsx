@@ -158,10 +158,12 @@ describe("useDashboardFirstRun", () => {
     expect(rows.map((r) => r.cta)).toEqual(["Confirm", "Open date", "Sign"]);
   });
 
-  it("assembles live artist queueRows (offers on, imported): digest row + blocked-dates row", () => {
+  it("assembles live artist queueRows (offers on, imported): digest row + blocked-dates row, using the configured digest hour", () => {
+    // Digest hour deliberately not the default (19) and not the old hardcoded "09:00" —
+    // proves the row reads timing.digestHourBerlin instead of a literal.
     h.metrics.mockReturnValue({
       metrics: { ...h.defaultMetrics().metrics, eligibleDates: 4, arriving: 3, blockedDates: 2 },
-      timing: { digestHourBerlin: 19, responseWindowHours: 48 },
+      timing: { digestHourBerlin: 7, responseWindowHours: 24 },
       isLoading: false,
     });
     h.flow.mockReturnValue({ data: { artist_acceptance: true }, isLoading: false });
@@ -170,12 +172,26 @@ describe("useDashboardFirstRun", () => {
     const rows = result.current.queueRows;
 
     expect(rows).toEqual([
-      { dot: "accent", title: "3 offers arriving in tomorrow's digest", hint: "Your producer's schedule", when: "09:00", cta: "Open" },
+      { dot: "accent", title: "3 offers arriving in tomorrow's digest", hint: "Your producer's schedule", when: "07:00", cta: "Open" },
       { dot: "faint", title: "2 dates blocked", hint: "Kept out of every list before anyone books you", when: "", cta: "Edit" },
     ]);
     // No em-dash anywhere in the "when" columns (house rule): a middot or empty string
     // only, never "—".
     expect(rows.every((r) => !r.when.includes("—"))).toBe(true);
+  });
+
+  it("assembles live artist queueRows using the default digest hour (19:00) when the org has not customized it", () => {
+    h.metrics.mockReturnValue({
+      metrics: { ...h.defaultMetrics().metrics, eligibleDates: 4, arriving: 1, blockedDates: 0 },
+      timing: { digestHourBerlin: 19, responseWindowHours: 48 },
+      isLoading: false,
+    });
+    h.flow.mockReturnValue({ data: { artist_acceptance: true }, isLoading: false });
+
+    const { result } = renderHook(() => useDashboardFirstRun("artist"));
+    const rows = result.current.queueRows;
+
+    expect(rows[0].when).toBe("19:00");
   });
 
   it("assembles live artist queueRows (direct booking, imported): confirmed-dates row, singular offer wording never applies", () => {

@@ -39,7 +39,25 @@ it("no em-dashes anywhere in composed copy", () => {
 it("producer without edit caps → offers stage demotes (not hot)", () => {
   const r = composeStageChain({ ...base, role:"producer", canEditBooking:false, canEditHire:false, imported:true,
     metrics:{ ...base.metrics, datesIn:34, readyToOffer:4 } });
-  expect(r.stages.find(s => s.key === "offers")!.variant).not.toBe("hot");
+  const offersStage = r.stages.find(s => s.key === "offers")!;
+  expect(offersStage.variant).not.toBe("hot");
+  // No provenance actor known → falls back to a generic admin, never the demo name.
+  expect(offersStage.needs).toBe("Waits on your admin");
+  expect(JSON.stringify(r)).not.toContain("Mara Kessler");
+});
+
+it("producer without edit caps + known provenance actor → demoted stage names the real actor, never Mara Kessler", () => {
+  const r = composeStageChain({ ...base, role:"producer", canEditBooking:false, canEditHire:false, imported:true,
+    provenance: { byYou:false, actorName:"Jamie Cole", changedAt:null },
+    metrics:{ ...base.metrics, datesIn:34, readyToOffer:4 } });
+  const offersStage = r.stages.find(s => s.key === "offers")!;
+  expect(offersStage.needs).toBe("Waits on Jamie Cole");
+  expect(JSON.stringify(r)).not.toContain("Mara Kessler");
+});
+
+it("artist composition never contains the demo cast name Ensemble A", () => {
+  const r = composeStageChain({ ...base, role:"artist" });
+  expect(JSON.stringify(r)).not.toContain("Ensemble A");
 });
 
 it("direct flow → 'Book directly' + 'Confirmed on the spot' with confirmed metric", () => {
