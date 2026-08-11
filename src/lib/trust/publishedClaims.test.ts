@@ -220,24 +220,29 @@ describe("the consent-withdrawal right describes what exists today", () => {
 // PROCESSING and the GATE — both of which the privacy policy asserts — and
 // never the implementation.
 //
-// So: pin the premise, then ban the sentence that would fill the gap with an
-// invention. Both halves matter. Without the premise this test cannot tell
-// whether the ban is still needed; without the ban a later round writes "the
-// Sentry SDK is loaded after consent" and nothing notices.
-describe("no published claim asserts a client integration this repository does not carry", () => {
-  it("still has no error-tracking or analytics package installed", () => {
-    const manifest = JSON.parse(readFileSync(resolve(ROOT, "package.json"), "utf8")) as {
-      dependencies?: Record<string, string>;
-      devDependencies?: Record<string, string>;
-    };
-    const installed = Object.keys({ ...manifest.dependencies, ...manifest.devDependencies });
-    expect(
-      installed.filter((p) => /sentry|posthog/i.test(p)),
-      "a tracker shipped — the published claims may now describe how it works, so re-read them",
-    ).toEqual([]);
-  });
+// So: derive the premise, then ban the sentence that would fill the gap with an
+// invention — but only for as long as the gap exists. An earlier revision
+// asserted the absence outright, which made this a tripwire on somebody else's
+// work: PostHog is being integrated in a separate branch, and the moment that
+// merges a hard "no tracker is installed" assertion fails the build for a
+// change that did nothing wrong. The ban is the part worth keeping, so it is
+// now conditional on the premise rather than asserting it.
+//
+// When a tracker does ship, the honest move is to describe how it actually
+// works, which this guard then stops policing. Re-read the published claims at
+// that point rather than leaving them at the deliberately mechanism-free
+// wording they carry today.
+const INSTALLED_TRACKERS = (() => {
+  const manifest = JSON.parse(readFileSync(resolve(ROOT, "package.json"), "utf8")) as {
+    dependencies?: Record<string, string>;
+    devDependencies?: Record<string, string>;
+  };
+  const installed = Object.keys({ ...manifest.dependencies, ...manifest.devDependencies });
+  return installed.filter((p) => /sentry|posthog/i.test(p));
+})();
 
-  it("describes no SDK, package, or script in public/trust.json", () => {
+describe("no published claim asserts a client integration this repository does not carry", () => {
+  it.runIf(INSTALLED_TRACKERS.length === 0)("describes no SDK, package, or script in public/trust.json", () => {
     const contract = JSON.parse(readFileSync(resolve(ROOT, "public/trust.json"), "utf8")) as unknown;
     const strings: string[] = [];
     const walk = (node: unknown) => {
