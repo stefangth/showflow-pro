@@ -6,7 +6,7 @@
 // cast_city_priority for the city) and only ever OVER-reports: it drives an
 // affordance, and open-offer-tier remains authoritative.
 
-export type BookingSetupStepKey = "flow" | "people" | "slots" | "ladder" | "eligibility" | "timing";
+export type BookingSetupStepKey = "flow" | "people" | "slots" | "ladder" | "eligibility" | "timing" | "shows";
 /** What an outstanding step costs the org, in that org's own vocabulary. "offers" and
  *  "booking" are the SAME hard gate seen under two flows: an org that runs offers reads the
  *  specific consequence, a direct-book org (which never opens a tier) reads the general one
@@ -85,9 +85,10 @@ export const STEP_TITLES: Record<BookingSetupStepKey, string> = {
   ladder: "Cast priorities per city",
   eligibility: "Who is eligible",
   timing: "Email timing",
+  shows: "Get your shows in",
 };
 
-const STEP_ORDER: BookingSetupStepKey[] = ["flow", "people", "slots", "ladder", "eligibility", "timing"];
+const STEP_ORDER: BookingSetupStepKey[] = ["shows", "slots", "flow", "people", "ladder", "eligibility", "timing"];
 
 /** The two wordings of the same hard gate. Both are counted by `canOffer`, so which one a
  *  step carries changes what the chip says and nothing else. */
@@ -129,6 +130,7 @@ function blockFor(key: BookingSetupStepKey, artistAcceptance: boolean | null): B
     case "slots":
       return "filling";
     default:
+      // shows/flow/eligibility/timing are all non-blocking (they never chip).
       return null;
   }
 }
@@ -157,6 +159,7 @@ export function computeBookingSetupStatus(input: BookingSetupStatusInput): Booki
   // or it has no upcoming dates — those steps fall back to "nothing left to configure", so an
   // established org between seasons is not dragged back to "setup in progress".
   const done: Record<BookingSetupStepKey, boolean> = {
+    shows: input.hasAnyShows,
     flow: input.flowChosen,
     // Unlike the show-driven steps this needs no hasAnyShows guard: a roster is a roster
     // whether or not the org has scheduled anything yet. Counted against the ACTIVE roster

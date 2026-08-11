@@ -17,7 +17,9 @@ export function useRemoveOrgMember(orgId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (userId: string) => removeOrgMember(supabase, orgId, userId),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["members", orgId] }),
+    // Bust the whole `members` domain (per CLAUDE.md) so every derived read — the roster and
+    // the producer-count that backs the team nudge — refreshes, regardless of key shape.
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["members"] }),
   });
 }
 
@@ -27,6 +29,8 @@ export function useSetOrgMemberRole(orgId: string) {
   return useMutation({
     mutationFn: (vars: { userId: string; role: AppRole; action: "add" | "remove" }) =>
       setOrgMemberRole(supabase, orgId, vars.userId, vars.role, vars.action),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["members", orgId] }),
+    // Bust the whole `members` domain (per CLAUDE.md) so every derived read — the roster and
+    // the producer-count that backs the team nudge — refreshes, regardless of key shape.
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["members"] }),
   });
 }

@@ -23,7 +23,7 @@ export function OrgMembersPopover({ orgId }: { orgId: string }) {
   });
   const remove = useMutation({
     mutationFn: (userId: string) => removeOrgMember(supabase, orgId, userId),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["members", orgId] }); qc.invalidateQueries({ queryKey: ["platform"] }); toast.success("Member removed"); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["members"] }); qc.invalidateQueries({ queryKey: ["platform"] }); toast.success("Member removed"); },
     onError: (e: Error) => toast.error(e.message),
   });
 

@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { fetchShowsWithSlots, fetchOwnedSettingKeys, fetchBookingFlow } from "@/data/settings";
 import { fetchLadderCoverageInputs } from "@/data/eligibility";
 import { fetchArtistCount, fetchInactiveArtistCount } from "@/data/artists";
+import { fetchProducerCount } from "@/data/members";
 import { activeShows } from "@/lib/settings";
 import { toDateKey } from "@/lib/dates";
 import {
@@ -120,6 +121,18 @@ export function useInactiveArtistCount(orgId: string | null, enabled: boolean): 
     queryKey: ["artists", "inactive-count", orgId],
     enabled: !!orgId && enabled,
     queryFn: () => fetchInactiveArtistCount(supabase, orgId!),
+  });
+  return q.data ?? null;
+}
+
+/** Producer-role member count for the admin-only "Add your production team" nudge. Its own
+ *  hook (not folded into useBookingSetupStatus) so only the admin surfaces that render the
+ *  nudge pay for the read; `enabled` is the caller's is-admin gate. Null while unread. */
+export function useProducerCount(orgId: string | null, enabled: boolean): number | null {
+  const q = useQuery({
+    queryKey: ["members", "producer-count", orgId],
+    enabled: !!orgId && enabled,
+    queryFn: () => fetchProducerCount(supabase, orgId!),
   });
   return q.data ?? null;
 }

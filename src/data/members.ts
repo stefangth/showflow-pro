@@ -30,6 +30,19 @@ export async function removeOrgMember(
   if (error) throw error;
 }
 
+/** How many producer-role members the org has (org_memberships is readable by any org
+ *  member, so this needs no admin RPC). One row per (user, role), so this counts distinct
+ *  producer memberships. */
+export async function fetchProducerCount(client: SupabaseClient<Database>, orgId: string): Promise<number> {
+  const { count, error } = await client
+    .from("org_memberships")
+    .select("*", { count: "exact", head: true })
+    .eq("org_id", orgId)
+    .eq("role", "producer");
+  if (error) throw error;
+  return count ?? 0;
+}
+
 /** Add or remove a single role for a member (admin-only RPC; guards the last admin). */
 export async function setOrgMemberRole(
   client: SupabaseClient<Database>,

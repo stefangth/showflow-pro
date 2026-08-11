@@ -2,13 +2,14 @@ import { useState } from "react";
 import { useAuth } from "@/features/auth/AuthContext";
 import { useCan } from "@/hooks/useCapabilities";
 import { useEntitlements } from "@/hooks/useEntitlements";
-import { useBookingSetupStatus } from "@/hooks/useBookingSetup";
+import { useBookingSetupStatus, useProducerCount } from "@/hooks/useBookingSetup";
 import { useHireOrderSetupStatus } from "@/hooks/useHireOrderSetup";
 import { useNavCounts } from "@/hooks/useNavCounts";
 import { useBookingFlow } from "@/hooks/useBookingFlow";
 import { BOOKING_FLOW_DEFAULTS } from "@/lib/bookingFlow";
 import { useRailDismissed } from "@/components/setup/useRailDismissed";
 import {
+  injectAdminTeamStep,
   composeArtist,
   composeOnboarding,
   welcomeCopy,
@@ -62,6 +63,10 @@ export function useDashboardFirstRun(role: DashboardRole): DashboardFirstRunStat
   // `flowQ.isLoading` is folded into `statusLoading` below for the same reason.
   const flowQ = useBookingFlow();
   const flow = flowQ.data ?? BOOKING_FLOW_DEFAULTS;
+  // Admin-only nudge (injected below) AND booking-only, so only an admin dashboard at a
+  // booking_flow org pays for this read — otherwise injectAdminTeamStep discards it anyway.
+  // Called unconditionally; the enabled flag is its gate.
+  const producerCount = useProducerCount(orgId, role === "admin" && features.has("booking_flow"));
 
   const [railOpen, setRailOpen] = useState(false);
   const [dismissed, dismiss] = useRailDismissed("dashboardWelcome", orgId);
@@ -95,8 +100,18 @@ export function useDashboardFirstRun(role: DashboardRole): DashboardFirstRunStat
         ? composeArtist(artist.status, ARTIST_ONBOARDING, ctx)
         : { steps: [], complete: true, rules: [], offFooters: [] })
     : composeOnboarding({ enabled: features, role, moduleStatuses, ctx }, MODULE_ONBOARDING);
-  const filled = composed.steps.filter((s) => s.done).length;
-  const total = composed.steps.length;
+  // The admin-only "Add your production team" nudge, injected outside the engine (non-gating).
+  // injectAdminTeamStep is the single home for the gate + count so this surface, the bookings
+  // banner and the checklist sheet cannot drift apart. `complete` is the BOOKING module's own
+  // completeness, not `composed.complete`: this surface composes every entitled module, so
+  // `composed.complete` also waits on hire_orders, and the booking-scoped nudge must retire the
+  // moment booking is done — exactly when the other two surfaces (booking-only) retire it.
+  const { steps, filled, total } = injectAdminTeamStep(composed, {
+    role,
+    bookingEnabled: features.has("booking_flow"),
+    producerCount,
+    complete: booking.status.complete,
+  });
   const remaining = total - filled;
 
   const welcome = welcomeCopy(role, composed.complete, ctx, { filled, total }, canEditSetup);
@@ -137,7 +152,7 @@ export function useDashboardFirstRun(role: DashboardRole): DashboardFirstRunStat
     show,
     complete: composed.complete,
     dismissed,
-    steps: composed.steps,
+    steps,
     rules: composed.rules,
     offFooters: composed.offFooters,
     welcome,

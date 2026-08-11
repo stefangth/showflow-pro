@@ -122,6 +122,7 @@ export function UsersTab() {
             <TableHead>Roles</TableHead>
             <TableHead>Artist</TableHead>
             <TableHead>Last sign-in</TableHead>
+            <TableHead>Invite</TableHead>
             <TableHead>Status</TableHead>
           </TableRow>
         </TableHeader>
@@ -131,6 +132,16 @@ export function UsersTab() {
             const isLinked = u.memberships.some((m) => m.artist !== null);
             const visibleOrgs = u.memberships.slice(0, MAX_ORG_CHIPS);
             const overflowCount = u.memberships.length - visibleOrgs.length;
+            const pendingOrgs = u.memberships.filter((m) => m.invitePending);
+            // Cap the named orgs the same way the Orgs cell caps its chips (MAX_ORG_CHIPS + "+N"),
+            // so a user pending in many orgs cannot render an unbounded string that wraps the row.
+            const pendingNames = pendingOrgs.slice(0, MAX_ORG_CHIPS).map((m) => m.org_name).join(", ");
+            const pendingExtra = pendingOrgs.length - Math.min(pendingOrgs.length, MAX_ORG_CHIPS);
+            const inviteLabel = pendingOrgs.length === 0
+              ? null
+              : pendingOrgs.length < u.memberships.length
+                ? `Pending · ${pendingNames}${pendingExtra > 0 ? ` +${pendingExtra}` : ""}`
+                : "Pending";
             return (
               <TableRow
                 key={u.id}
@@ -149,6 +160,13 @@ export function UsersTab() {
                 <TableCell>{isLinked && <Badge variant="outline">Linked</Badge>}</TableCell>
                 <TableCell className="text-muted-foreground">{formatLastActivity(u.last_sign_in_at)}</TableCell>
                 <TableCell>
+                  {inviteLabel ? (
+                    <Badge variant="accent" dot>{inviteLabel}</Badge>
+                  ) : (
+                    <span className="text-muted-foreground">—</span>
+                  )}
+                </TableCell>
+                <TableCell>
                   <Badge variant={u.suspended ? "destructive" : "secondary"}>
                     {u.suspended ? "Suspended" : "Active"}
                   </Badge>
@@ -157,7 +175,7 @@ export function UsersTab() {
             );
           })}
           {filtered.length === 0 && (
-            <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-6">No users match these filters</TableCell></TableRow>
+            <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-6">No users match these filters</TableCell></TableRow>
           )}
         </TableBody>
       </Table>

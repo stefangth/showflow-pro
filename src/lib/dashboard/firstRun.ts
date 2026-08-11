@@ -1,10 +1,52 @@
 // src/lib/dashboard/firstRun.ts
 import { FEATURE_KEYS, type FeatureKey } from "@/lib/entitlements";
+import { TEAM_STEP_KEY, TEAM_STEP_META } from "./moduleOnboarding";
 import type {
   ComposeInput, ComposeResult, ComposedStep, DashboardRole, InheritedRule,
   ModuleOnboardingDef, ModuleStatusLite, OnboardingCtx, OnboardingStepMeta,
   SamplePreviewData, WelcomeCopy,
 } from "./types";
+
+/** Whether the org has at least one producer-role member — the "Add your production team"
+ *  step's done-state. Single-sourced so `adminTeamStep` and BookingSetupRail's hand-rolled
+ *  count agree on when the nudge is satisfied. */
+export function hasProducerTeam(producerCount: number | null): boolean {
+  return (producerCount ?? 0) > 0;
+}
+
+/** The admin-only production-team nudge as a ComposedStep, so the dashboard rail (which
+ *  renders ComposedStep generically) and any other consumer get title/hints/CTA for free.
+ *  moduleKey is booking_flow (it rides the booking setup surface); block is null (non-gating). */
+export function adminTeamStep(producerCount: number | null): ComposedStep {
+  return { ...TEAM_STEP_META, key: TEAM_STEP_KEY, moduleKey: "booking_flow", done: hasProducerTeam(producerCount), block: null };
+}
+
+/** The single rule for whether the admin-only production-team nudge shows alongside the
+ *  booking steps: admins only, booking module only, and only WHILE INCOMPLETE (so a complete
+ *  org's hero/rules view never over-counts). Shared by injectAdminTeamStep (the dashboard rail
+ *  and Shows & Bookings banner) and BookingSetupRail (the checklist sheet), so the three
+ *  surfaces cannot drift — the whole-branch review found the banner had drifted when the gate
+ *  was inlined per-surface. */
+export function showAdminTeamStep(opts: { role: DashboardRole; bookingEnabled: boolean; complete: boolean }): boolean {
+  return opts.role === "admin" && opts.bookingEnabled && !opts.complete;
+}
+
+/** Prepend the admin-only, non-gating production-team nudge to a composed step list and
+ *  return the augmented list plus its counts. The gate keys on `opts.complete`, which must
+ *  be the BOOKING module's completeness, NOT `composed.complete`: the dashboard composes
+ *  ALL entitled modules, so its `composed.complete` also waits on hire_orders — keying the
+ *  booking-scoped nudge on that made it linger on the dashboard (team already invited, booking
+ *  done) while the Shows & Bookings banner and the checklist sheet, both booking-only, had
+ *  already retired it. The single-module surfaces pass their own `composed.complete`, which
+ *  IS booking-only, so they are unaffected. */
+export function injectAdminTeamStep(
+  composed: ComposeResult,
+  opts: { role: DashboardRole; bookingEnabled: boolean; producerCount: number | null; complete: boolean },
+): { steps: ComposedStep[]; filled: number; total: number } {
+  const show = showAdminTeamStep({ role: opts.role, bookingEnabled: opts.bookingEnabled, complete: opts.complete });
+  const steps = show ? [adminTeamStep(opts.producerCount), ...composed.steps] : composed.steps;
+  return { steps, filled: steps.filter((s) => s.done).length, total: steps.length };
+}
 
 export function composeOnboarding(
   input: ComposeInput,

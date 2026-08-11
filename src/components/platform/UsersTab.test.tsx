@@ -29,12 +29,25 @@ import { UsersTab } from "./UsersTab";
 const ADA: PlatformUser = {
   id: "u1", email: "ada@x.com", display_name: "Ada", created_at: "",
   last_sign_in_at: null, suspended: false,
-  memberships: [{ org_id: "o1", org_name: "Acme", roles: ["admin"], artist: null }],
+  memberships: [{ org_id: "o1", org_name: "Acme", roles: ["admin"], artist: null, invitePending: false }],
 };
 const GRACE: PlatformUser = {
   id: "u2", email: "grace@x.com", display_name: "Grace", created_at: "",
   last_sign_in_at: "2026-07-01T00:00:00.000Z", suspended: true,
-  memberships: [{ org_id: "o2", org_name: "Beta", roles: ["producer"], artist: { id: "a1", name: "Grace Hopper" } }],
+  memberships: [{ org_id: "o2", org_name: "Beta", roles: ["producer"], artist: { id: "a1", name: "Grace Hopper" }, invitePending: false }],
+};
+const PENDING: PlatformUser = {
+  id: "u3", email: "milo@x.com", display_name: "Milo", created_at: "",
+  last_sign_in_at: null, suspended: false,
+  memberships: [{ org_id: "o3", org_name: "Gamma", roles: ["artist"], artist: null, invitePending: true }],
+};
+const MULTI: PlatformUser = {
+  id: "u4", email: "nan@x.com", display_name: "Nan", created_at: "",
+  last_sign_in_at: null, suspended: false,
+  memberships: [
+    { org_id: "o1", org_name: "Acme", roles: ["producer"], artist: null, invitePending: false },
+    { org_id: "o5", org_name: "Delta", roles: ["artist"], artist: null, invitePending: true },
+  ],
 };
 
 describe("UsersTab", () => {
@@ -157,5 +170,23 @@ describe("UsersTab", () => {
     });
     renderWithProviders(<UsersTab />);
     expect(screen.getByRole("alert")).toHaveTextContent("boom");
+  });
+
+  it("shows a Pending badge for a user with an unaccepted invitation, not for members", () => {
+    usePlatformUsersMock.mockReturnValue({
+      data: { users: [ADA, PENDING], truncated: false },
+      isLoading: false, isError: false, error: null,
+    });
+    renderWithProviders(<UsersTab />);
+    expect(screen.getAllByText("Pending")).toHaveLength(1);
+  });
+
+  it("names the org when a multi-org user is pending in only some orgs", () => {
+    usePlatformUsersMock.mockReturnValue({
+      data: { users: [MULTI], truncated: false },
+      isLoading: false, isError: false, error: null,
+    });
+    renderWithProviders(<UsersTab />);
+    expect(screen.getByText(/Pending · Delta/)).toBeInTheDocument();
   });
 });

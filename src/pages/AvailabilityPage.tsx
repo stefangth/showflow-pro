@@ -20,6 +20,7 @@ import { useAuth } from '@/features/auth/AuthContext';
 import { useFeature } from '@/hooks/useEntitlements';
 import { useArtistEligibleDates, type EligibleDate } from '@/hooks/useArtistEligibleDates';
 import { useMyArtist } from '@/hooks/useMyArtist';
+import { UnlinkedArtistCard } from '@/components/artists/UnlinkedArtistCard';
 import { ArtistAvailabilityCalendar } from '@/components/availability/ArtistAvailabilityCalendar';
 import { AvailabilityPicker } from '@/components/availability/AvailabilityPicker';
 import { OfferResponseButtons } from '@/components/availability/OfferResponseButtons';
@@ -256,13 +257,7 @@ function ArtistAvailability() {
     return (
       <div className="space-y-6">
         <h1 className="font-display text-[32px] font-semibold tracking-tight">{pageCopy.title}</h1>
-        <Card>
-          <CardContent className="py-12 text-center">
-            <p className="text-muted-foreground">
-              No artist profile linked to your account. Ask an admin to link your account.
-            </p>
-          </CardContent>
-        </Card>
+        <UnlinkedArtistCard orgName={currentOrg?.name} />
       </div>
     );
   }

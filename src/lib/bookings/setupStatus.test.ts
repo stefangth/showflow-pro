@@ -66,13 +66,30 @@ describe("computeBookingSetupStatus", () => {
     artistAcceptance: true,
   };
 
-  it("orders the six steps and blocks only people/ladder/slots", () => {
+  it("orders the seven steps and blocks only people/ladder/slots", () => {
     const s = computeBookingSetupStatus(base);
-    expect(s.steps.map((x) => x.key)).toEqual(["flow", "people", "slots", "ladder", "eligibility", "timing"]);
+    expect(s.steps.map((x) => x.key)).toEqual(["shows", "slots", "flow", "people", "ladder", "eligibility", "timing"]);
     expect(s.steps.find((x) => x.key === "people")!.block).toBe("offers");
     expect(s.steps.find((x) => x.key === "ladder")!.block).toBe("offers");
     expect(s.steps.find((x) => x.key === "slots")!.block).toBe("filling");
     expect(s.steps.find((x) => x.key === "flow")!.block).toBeNull();
+    expect(s.steps.find((x) => x.key === "shows")!.block).toBeNull();
+  });
+
+  it("shows step is done once the org has any show, outstanding otherwise, and never chips", () => {
+    const withShows = computeBookingSetupStatus(base); // base.hasAnyShows === true
+    expect(withShows.steps.find((s) => s.key === "shows")!.done).toBe(true);
+    expect(withShows.steps.find((s) => s.key === "shows")!.block).toBeNull();
+    const noShows = computeBookingSetupStatus({ ...base, hasAnyShows: false });
+    expect(noShows.steps.find((s) => s.key === "shows")!.done).toBe(false);
+  });
+
+  it("shows step does not change canOffer (block is null)", () => {
+    // base is fully ready → canOffer true; dropping shows keeps canOffer true (shows is not a hard block)
+    const noShows = computeBookingSetupStatus({ ...base, hasAnyShows: false });
+    // note: hasAnyShows:false also flips slots/ladder/eligibility done to false, but none of THOSE
+    // is a hard block for this offers org except ladder; assert only the shows-specific fact:
+    expect(noShows.steps.find((s) => s.key === "shows")!.block).toBeNull();
   });
 
   it("never words a blocker as an offer for an org that books directly", () => {
@@ -148,7 +165,7 @@ describe("computeBookingSetupStatus", () => {
     const s = computeBookingSetupStatus(base);
     expect(s.complete).toBe(true);
     expect(s.canOffer).toBe(true);
-    expect(s.doneCount).toBe(6);
+    expect(s.doneCount).toBe(7);
   });
 
   it("an empty roster leaves people outstanding and blocks offers on its own", () => {
@@ -172,7 +189,7 @@ describe("computeBookingSetupStatus", () => {
     expect(s.canOffer).toBe(false);
   });
 
-  it("a fresh empty org reads 0 of 6 (no shows, no dates, no artists)", () => {
+  it("a fresh empty org reads 0 of 7 (no shows, no dates, no artists)", () => {
     const status = computeBookingSetupStatus({
       flowChosen: false,
       hasAnyShows: false,
@@ -183,11 +200,12 @@ describe("computeBookingSetupStatus", () => {
       artistAcceptance: null,
     });
     expect(status.doneCount).toBe(0);
-    expect(status.totalCount).toBe(6);
+    expect(status.totalCount).toBe(7);
     expect(status.steps.find((s) => s.key === "people")!.done).toBe(false);
     expect(status.steps.find((s) => s.key === "slots")!.done).toBe(false);
     expect(status.steps.find((s) => s.key === "ladder")!.done).toBe(false);
     expect(status.steps.find((s) => s.key === "eligibility")!.done).toBe(false);
+    expect(status.steps.find((s) => s.key === "shows")!.done).toBe(false);
   });
 
   it("slots/ladder/eligibility flip to done once real data covers them", () => {

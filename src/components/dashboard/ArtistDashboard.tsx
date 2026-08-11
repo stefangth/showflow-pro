@@ -25,6 +25,7 @@ import { useDashboardFirstRun } from '@/components/dashboard/firstRun/useDashboa
 import { DashboardWelcome } from '@/components/dashboard/firstRun/DashboardWelcome';
 import { DashboardWelcomeCollapsed } from '@/components/dashboard/firstRun/DashboardWelcomeCollapsed';
 import { DashboardSetupRail } from '@/components/dashboard/firstRun/DashboardSetupRail';
+import { UnlinkedArtistCard } from '@/components/artists/UnlinkedArtistCard';
 
 type BookingLite = { show_date_id: string; status: string };
 type CastMembershipRow = { id: string; cast: { id: string; name: string } | null };
@@ -127,13 +128,7 @@ export function ArtistDashboard() {
     return (
       <div className="space-y-6">
         <h1 className="font-display text-[32px] font-semibold tracking-tight">Dashboard</h1>
-        <Card>
-          <CardContent className="py-12 text-center">
-            <p className="text-muted-foreground">
-              No artist profile linked to your account. Ask an admin to link your account.
-            </p>
-          </CardContent>
-        </Card>
+        <UnlinkedArtistCard orgName={currentOrg?.name} />
       </div>
     );
   }

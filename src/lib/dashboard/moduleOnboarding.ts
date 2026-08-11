@@ -68,6 +68,19 @@ export const ROLE_EXPLAINER_LINK_LABEL = "See what each role can do";
 export const ROLE_EXPLAINER_LINK_ROUTE = `${ROUTES.SETTINGS}?tab=docs`;
 export const PRODUCER_ROLE_RULE_TITLE = "What your role covers";
 
+/** The admin-only "Add your production team" nudge. NOT an engine step (not in
+ *  bookingOnboarding.steps / STEP_ORDER, so the parity test and producer counts stay clean);
+ *  injected at the admin render sites. Producers plan/run/confirm; inviting the team is the
+ *  admin's job, which is why this step is admin-only. */
+export const TEAM_STEP_KEY = "team";
+export const TEAM_STEP_META: OnboardingStepMeta = {
+  title: "Add your production team",
+  todoHint: "Invite the producers who plan dates, run offers and confirm bookings.",
+  doneHint: "Your production team is invited.",
+  ctaLabel: "Invite team",
+  ctaRoute: `${ROUTES.ADMIN}?tab=people`,
+};
+
 export const bookingOnboarding: ModuleOnboardingDef<BookingSetupStepKey> = {
   key: "booking_flow",
   // Flow-neutral, unlike the steps and rules below it. `railHeader` is a flat pair of
@@ -81,6 +94,11 @@ export const bookingOnboarding: ModuleOnboardingDef<BookingSetupStepKey> = {
     body: "Dates keep syncing and you can edit them now. These are what the first booking needs.",
   },
   steps: {
+    // First in the org's actual sequence: slots, cast priorities and eligibility all read
+    // from the shows already in the catalog, so a blank org has to clear this one before any
+    // of them can mean anything. No `ctaCapability`: both admins and producers can add shows
+    // via ProductionsPage, so the CTA should always render.
+    shows: { title: STEP_TITLES.shows, todoHint: "Sync from Airtable, import a sheet, or add a show by hand.", doneHint: "Your shows are in.", ctaLabel: "Add a show", ctaRoute: ROUTES.PRODUCTIONS },
     // Deep-linked, like the coverage links in LadderStep/EligibilityStep: the flow control
     // lives in Settings, Booking flow, and a bare ROUTES.SETTINGS opens Organization for an
     // admin and Scheduling for a producer, so "Choose flow" landed on a pane without it.
