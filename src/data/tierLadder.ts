@@ -118,51 +118,35 @@ export async function fetchTierLadderCounts(
 
   const allCastIds = [...new Set(tierMap.flatMap((t) => t.casts.map((c) => c.id)))];
 
-  const memberCounts = await fetchCastMemberCounts(client, args.orgId);
-
-  const { data: memberRows, error: memberErr } = await client
-    .from("cast_members")
-    .select("cast_id, artist_id")
-    .in("cast_id", allCastIds);
-  if (memberErr) throw memberErr;
-  const members = (memberRows ?? []) as MemberRow[];
-
+  // Batch 1: everything that depends only on the ids we already have. These reads
+  // are mutually independent, so run them together rather than one await at a time.
+  const [memberCounts, memberRes, bookingRes, dateRes, gate, required] = await Promise.all([
+    fetchCastMemberCounts(client, args.orgId),
+    client.from("cast_members").select("cast_id, artist_id").in("cast_id", allCastIds),
+    client.from("bookings").select("artist_id").eq("show_date_id", args.showDateId).neq("status", "cancelled"),
+    client.from("show_dates").select("date").eq("id", args.showDateId).maybeSingle(),
+    fetchGateArtistIds(client, { showId: args.showId, cityId: args.cityId, showDateId: args.showDateId }),
+    fetchRequiredSkillIds(client, { showId: args.showId, showDateId: args.showDateId }),
+  ]);
+  if (memberRes.error) throw memberRes.error;
+  if (bookingRes.error) throw bookingRes.error;
+  if (dateRes.error) throw dateRes.error;
+  const members = (memberRes.data ?? []) as MemberRow[];
+  const offeredArtistIds = new Set(((bookingRes.data ?? []) as BookingArtistRow[]).map((r) => r.artist_id));
+  const date = (dateRes.data as { date: string } | null)?.date ?? null;
   const allArtistIds = [...new Set(members.map((m) => m.artist_id))];
 
-  const { data: artistRows, error: artistErr } = await client
-    .from("artists")
-    .select("id, status")
-    .in("id", allArtistIds);
-  if (artistErr) throw artistErr;
+  // Batch 2: the reads that need a Batch 1 result (artists from cast members,
+  // blocked from the date, skill-eligibility from the required set).
+  const [artistRes, blockedArtistIds, skillEligible] = await Promise.all([
+    client.from("artists").select("id, status").in("id", allArtistIds),
+    date ? fetchBlockedArtistIds(client, { date, orgId: args.orgId }) : Promise.resolve(new Set<string>()),
+    fetchSkillEligibleArtistIds(client, { requiredSkillIds: required.all }),
+  ]);
+  if (artistRes.error) throw artistRes.error;
   const activeArtistIds = new Set(
-    ((artistRows ?? []) as ArtistStatusRow[]).filter((a) => a.status === "active").map((a) => a.id),
+    ((artistRes.data ?? []) as ArtistStatusRow[]).filter((a) => a.status === "active").map((a) => a.id),
   );
-
-  const { data: bookingRows, error: bookingErr } = await client
-    .from("bookings")
-    .select("artist_id")
-    .eq("show_date_id", args.showDateId)
-    .neq("status", "cancelled");
-  if (bookingErr) throw bookingErr;
-  const offeredArtistIds = new Set(((bookingRows ?? []) as BookingArtistRow[]).map((r) => r.artist_id));
-
-  const { data: dateRow, error: dateErr } = await client
-    .from("show_dates")
-    .select("date")
-    .eq("id", args.showDateId)
-    .maybeSingle();
-  if (dateErr) throw dateErr;
-  const date = (dateRow as { date: string } | null)?.date ?? null;
-  const blockedArtistIds = date
-    ? await fetchBlockedArtistIds(client, { date, orgId: args.orgId })
-    : new Set<string>();
-
-  const gate = await fetchGateArtistIds(client, {
-    showId: args.showId, cityId: args.cityId, showDateId: args.showDateId,
-  });
-
-  const required = await fetchRequiredSkillIds(client, { showId: args.showId, showDateId: args.showDateId });
-  const skillEligible = await fetchSkillEligibleArtistIds(client, { requiredSkillIds: required.all });
 
   return tierMap.map((t) => {
     const tierCastIds = new Set(t.casts.map((c) => c.id));
