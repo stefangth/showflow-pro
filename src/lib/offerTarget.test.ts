@@ -19,8 +19,20 @@ describe("resolveNextOfferTarget", () => {
     expect(resolveNextOfferTarget(tierMap, 3)).toEqual({ kind: "tier", tier: 3 });
   });
 
-  it("falls back to the tier label for tier 99 (ad-hoc)", () => {
+  it("falls back to the tier label for tier 99 (ad-hoc) when the map has no tier-99 row", () => {
     expect(resolveNextOfferTarget(tierMap, 99)).toEqual({ kind: "tier", tier: 99 });
+  });
+
+  it("falls back to the tier label for tier 99 even when the map DOES contain a single-cast tier-99 row", () => {
+    // The `priority` column has no upper-bound CHECK, so a stray single-cast row
+    // could exist at priority 99 — but open-offer-tier's tier===99 branch sources
+    // candidates from show_date_cast_eligibility, a different artist set than the
+    // ladder this map is built from, so tier 99 must never be named after a cast.
+    const mapWithStray99: TierCast[] = [
+      ...tierMap,
+      { tier: 99, casts: [{ id: "cast-e", name: "Cast E" }] },
+    ];
+    expect(resolveNextOfferTarget(mapWithStray99, 99)).toEqual({ kind: "tier", tier: 99 });
   });
 
   it("falls back to the tier label when the tier has no ladder row at all", () => {

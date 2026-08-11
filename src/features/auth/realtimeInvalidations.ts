@@ -31,8 +31,12 @@ export const REALTIME_INVALIDATIONS: Array<{ table: string; keys: unknown[][] }>
   { table: 'booking_audit_log',          keys: [['admin-audit']] },
   { table: 'airtable_sync_log',          keys: [['admin-sync']] },
   // blocked_dates and show_date_required_skills both feed fetchTierLadderCounts'
-  // waterfall (blocked exclusion, required-skill match); a change on another
-  // client must refresh both the existing eligibility consumers and the ladder.
+  // waterfall (blocked exclusion, required-skill match), so both entries are
+  // correct as written. blocked_dates is NOT currently in the supabase_realtime
+  // publication (unlike show_date_required_skills, added by
+  // 20260715130000_configurable_eligibility.sql) — its subscription is a
+  // harmless no-op until a follow-up migration adds it, so cross-client refresh
+  // for that row is pending, not live yet. Tracked separately; not a C1 fix.
   { table: 'blocked_dates',              keys: [['blocked-dates'], ['tier-ladder']] },
   { table: 'show_date_required_skills',  keys: [['eligibility'], ['tier-ladder']] },
 ];

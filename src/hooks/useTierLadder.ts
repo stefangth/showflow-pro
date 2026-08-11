@@ -22,7 +22,12 @@ export function useTierLadderCounts(
 ) {
   return useQuery({
     queryKey: ['tier-ladder', 'counts', showDateId, cityId],
-    enabled: !!showId && !!showDateId,
+    // orgId is required, not just threaded through: fetchCastMemberCounts and
+    // fetchBlockedArtistIds both silently return empty ({}/new Set()) for a
+    // falsy orgId, which would zero out castTotal and (worse) stop excluding
+    // genuinely blocked artists from matchCount — a confidently-wrong result
+    // rather than a disabled query. Stay disabled until orgId resolves.
+    enabled: !!showId && !!showDateId && !!orgId,
     queryFn: () => fetchTierLadderCounts(supabase, {
       showId: showId!, showDateId: showDateId!, cityId: cityId ?? null, orgId: orgId ?? null,
     }),

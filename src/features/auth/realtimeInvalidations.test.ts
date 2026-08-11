@@ -74,6 +74,26 @@ describe("REALTIME_INVALIDATIONS — runtime entitlement propagation", () => {
   });
 });
 
+describe("REALTIME_INVALIDATIONS — Offers cockpit tier-ladder headcounts", () => {
+  // useTierLadderCounts (useTierLadder.ts) reads bookings, blocked_dates, and
+  // show_date_required_skills; a change to any of them on another client must
+  // refresh the ['tier-ladder'] domain. (blocked_dates isn't in the
+  // supabase_realtime publication yet, so its subscription is currently a
+  // no-op in practice — see the comment on that entry — but the map entry
+  // itself must still be correct for when that publication gap closes.)
+  it("refreshes ['tier-ladder'] when bookings changes", () => {
+    expect(hasKey("bookings", "tier-ladder")).toBe(true);
+  });
+
+  it("refreshes ['tier-ladder'] when blocked_dates changes", () => {
+    expect(hasKey("blocked_dates", "tier-ladder")).toBe(true);
+  });
+
+  it("refreshes ['tier-ladder'] when show_date_required_skills changes", () => {
+    expect(hasKey("show_date_required_skills", "tier-ladder")).toBe(true);
+  });
+});
+
 describe("REALTIME_INVALIDATIONS — map integrity", () => {
   it("lists no known-dead key prefixes (renamed/typo'd keys that no query uses)", () => {
     // Keys confirmed to have zero `useQuery` consumers in src as of this audit.
