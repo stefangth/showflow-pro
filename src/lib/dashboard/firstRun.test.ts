@@ -1,6 +1,6 @@
 // src/lib/dashboard/firstRun.test.ts
 import { it, expect } from "vitest";
-import { composeArtist, composeOnboarding, welcomeCopy, railHeaderCopy, collapsedCopy, adminTeamStep } from "./firstRun";
+import { composeArtist, composeOnboarding, welcomeCopy, railHeaderCopy, collapsedCopy, adminTeamStep, injectAdminTeamStep } from "./firstRun";
 import { ARTIST_ONBOARDING } from "./moduleOnboarding";
 import type { ComposeInput, DashboardRole, ModuleOnboardingDef, ModuleStatusLite, OnboardingCtx } from "./types";
 
@@ -88,6 +88,40 @@ it("adminTeamStep is a non-gating booking_flow step, done only with a producer",
   // Carries the shared meta (title/CTA) so any generic consumer renders it.
   expect(step.title).toBe("Add your production team");
   expect(step.ctaLabel).toBe("Invite team");
+});
+
+it("injectAdminTeamStep gates on the passed (booking) complete, not composed.complete", () => {
+  // A dashboard-shaped composed: BOTH modules entitled, booking done, hire_orders not — so
+  // the combined composed.complete is false while booking on its own is complete.
+  const composed = composeOnboarding(
+    {
+      enabled: new Set(["booking_flow", "hire_orders"]),
+      role: "admin",
+      moduleStatuses: {
+        booking_flow: { steps: [{ key: "flow", done: true, block: null }], complete: true },
+        hire_orders: { steps: [{ key: "letterhead", done: false, block: null }], complete: false },
+      },
+      ctx,
+    },
+    registry,
+  );
+  expect(composed.complete).toBe(false);
+
+  // Regression: keying on composed.complete (false) would keep the booking-scoped team nudge
+  // on the dashboard after booking is done, while the booking-only banner/sheet already hid it.
+  // Passing booking's own completeness (true) retires it on every surface.
+  const hidden = injectAdminTeamStep(composed, { role: "admin", bookingEnabled: true, producerCount: 0, complete: true });
+  expect(hidden.steps.some((s) => s.key === "team")).toBe(false);
+  expect(hidden.total).toBe(composed.steps.length);
+
+  // Booking still incomplete → the nudge shows first and bumps the count by one.
+  const shown = injectAdminTeamStep(composed, { role: "admin", bookingEnabled: true, producerCount: 0, complete: false });
+  expect(shown.steps[0].key).toBe("team");
+  expect(shown.total).toBe(composed.steps.length + 1);
+
+  // Producers never see it, regardless of completeness.
+  const producer = injectAdminTeamStep(composed, { role: "producer", bookingEnabled: true, producerCount: 0, complete: false });
+  expect(producer.steps.some((s) => s.key === "team")).toBe(false);
 });
 
 it("composeArtist carries ARTIST_ONBOARDING metadata over booking_flow only", () => {

@@ -100,11 +100,14 @@ export function useModuleOnboardingRail(feature: FeatureKey, orgId: string | nul
     MODULE_ONBOARDING,
   );
   // Admin-only, non-gating production-team nudge — same shared helper the dashboard rail uses,
-  // so the banner and the sheet cannot disagree on the step set or the "N of M" count.
+  // so the banner and the sheet cannot disagree on the step set or the "N of M" count. This
+  // hook forces a single-module `enabled` set, so `composed.complete` here is already the
+  // booking module's own completeness — exactly the booking-scoped flag the gate wants.
   const { steps, filled, total } = injectAdminTeamStep(composed, {
     role,
     bookingEnabled: feature === "booking_flow",
     producerCount,
+    complete: composed.complete,
   });
   const remaining = total - filled;
   const railHeader = MODULE_ONBOARDING[feature].railHeader;

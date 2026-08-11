@@ -102,11 +102,15 @@ export function useDashboardFirstRun(role: DashboardRole): DashboardFirstRunStat
     : composeOnboarding({ enabled: features, role, moduleStatuses, ctx }, MODULE_ONBOARDING);
   // The admin-only "Add your production team" nudge, injected outside the engine (non-gating).
   // injectAdminTeamStep is the single home for the gate + count so this surface, the bookings
-  // banner and the checklist sheet cannot drift apart.
+  // banner and the checklist sheet cannot drift apart. `complete` is the BOOKING module's own
+  // completeness, not `composed.complete`: this surface composes every entitled module, so
+  // `composed.complete` also waits on hire_orders, and the booking-scoped nudge must retire the
+  // moment booking is done — exactly when the other two surfaces (booking-only) retire it.
   const { steps, filled, total } = injectAdminTeamStep(composed, {
     role,
     bookingEnabled: features.has("booking_flow"),
     producerCount,
+    complete: booking.status.complete,
   });
   const remaining = total - filled;
 
