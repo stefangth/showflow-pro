@@ -67,9 +67,12 @@ export function BookingSetupRail({ orgId, initialStep }: { orgId: string | null;
   // non-editor arm on `!canEdit` alone billed every producer for a head count their card was
   // never going to print. Declared before the early return so the hook order is fixed.
   const inactiveArtistCount = useInactiveArtistCount(orgId, canEdit ? open === "people" : peopleOutstanding);
-  // Admin-only, so a producer/artist rail never pays for this read. Declared before the early
-  // return so the hook order is fixed regardless of which branch renders below.
-  const producerCount = useProducerCount(orgId, isAdmin);
+  // Admin AND editor only. A producer/artist rail never pays for this read, and the `!canEdit`
+  // early return below renders BookingProducerWaitingCard (which never reads the count), so an
+  // admin whose edit_booking_settings is overridden off must not fire it either — same reasoning
+  // as inactiveArtistCount's non-editor arm above. Declared before the early return so the hook
+  // order is fixed regardless of which branch renders below.
+  const producerCount = useProducerCount(orgId, isAdmin && canEdit);
 
   // The roster step is not gated by `edit_booking_settings`, so the waiting card gets the
   // count and renders it as real work rather than as one more padlock.
