@@ -2178,18 +2178,21 @@ export type Database = {
       }
       skills: {
         Row: {
+          archived_at: string | null
           created_at: string
           id: string
           name: string
           org_id: string
         }
         Insert: {
+          archived_at?: string | null
           created_at?: string
           id?: string
           name: string
           org_id: string
         }
         Update: {
+          archived_at?: string | null
           created_at?: string
           id?: string
           name?: string
