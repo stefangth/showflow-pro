@@ -182,7 +182,7 @@ export const VISIBILITY_MATRIX: MatrixRow[] = [
     },
     // "Your own hire order and its PDF only" was wider than the policy that
     // produces it: "Artists read own issued orders"
-    // (20260717102508_hire_orders.sql:108-113) restricts the SELECT to
+    // (20260717102508_hire_orders_schema.sql:108-113) restricts the SELECT to
     // `status in ('issued','countersigned')`, so a draft of your own order is
     // invisible to you. "once it is issued" is the qualifier that makes the
     // sentence true of the policy.
@@ -241,23 +241,43 @@ export const VISIBILITY_MATRIX: MatrixRow[] = [
     // read; the original is cited only as its input.
     //
     // "No policy allows altering or deleting a row" was true and read as
-    // immutability, which the system does not deliver: `anonymize_user`
-    // UPDATEs performed_by to NULL (20260723183038_hire_order_user_fks_set_
-    // null.sql:32) and `delete_org` DELETEs the rows
-    // (20260622193255_delete_org.sql:13). Both are SECURITY DEFINER, so no
-    // policy is consulted, and the first runs whenever any user deletes their
-    // own account. Those two are the ONLY writers of an update or a delete in
-    // the tree, so the honest sentence is not a weaker hedge — it is a
-    // stronger, exhaustive one. bookingAudit.test.ts re-derives both halves.
+    // immutability, which the system does not deliver. THREE paths change a
+    // row, and an earlier fix for this finding named only two, because it
+    // looked for SQL written by hand and the third is written by referential
+    // integrity:
+    //
+    //  1. `anonymize_user` UPDATEs performed_by to NULL
+    //     (20260723183038_hire_order_user_fks_set_null.sql:32). SECURITY
+    //     DEFINER, reachable by ANY user deleting their own account.
+    //  2. `delete_org` DELETEs the rows (20260622193255_delete_org.sql:13).
+    //  3. Deleting a SHOW DATE. `booking_audit_log.booking_id` is
+    //     `REFERENCES public.bookings(id) ON DELETE SET NULL`
+    //     (20260416115633_…:254) and `bookings.show_date_id` is
+    //     `REFERENCES public.show_dates(id) ON DELETE CASCADE` (:224), so the
+    //     cascade deletes the bookings and RI then performs an UPDATE on every
+    //     audit row they own. No hand-written SQL is involved, no guard
+    //     trigger stands in the way, and the UI opens the door: `bookingCount`
+    //     in ShowDateDetailSheet.tsx:367 excludes cancelled bookings, so a
+    //     manual date whose bookings are all cancelled looks empty and
+    //     `canHardDeleteDate` enables Delete — while the cancellations are
+    //     exactly what notify_booking_transition wrote audit rows for. It is
+    //     user-visible: src/data/admin.ts:26 joins
+    //     `booking:bookings(artist:artists(name))` and that join goes empty.
+    //
+    // This repo has been bitten by "RI's SET NULL is an UPDATE" before —
+    // 20260717110023_hire_order_freeze_allow_null_on_delete.sql exists for
+    // exactly that reason on another table. So the sentence names all three
+    // and bookingAudit.test.ts derives BOTH shapes: function bodies and the
+    // table's own foreign-key actions.
     admin: {
       value: "Append-only",
       tone: "scoped",
-      note: "Reads every row and appends new ones. Only account or organisation deletion ever alters one.",
+      note: "Reads every row and appends. Account, show-date and organisation deletions clear fields or remove rows.",
     },
     producer: {
       value: "Append-only",
       tone: "scoped",
-      note: "Reads every row and appends new ones. Only account or organisation deletion ever alters one.",
+      note: "Reads every row and appends. Account, show-date and organisation deletions clear fields or remove rows.",
     },
     artist: { value: "No access", tone: "none", note: "Not exposed." },
   },
@@ -705,18 +725,24 @@ export const CONTROLS: Control[] = [
     title: "Auditability",
     // "No policy permits an update or a delete" was literally true and read as
     // immutability, which is the exact true-but-misleading shape this page
-    // rewrote "checked in the database" into a 19/6/3 split to avoid. Two
-    // SECURITY DEFINER functions bypass the policy layer entirely:
-    // `anonymize_user` UPDATEs performed_by to NULL, reachable by ANY user
-    // deleting their own account, and `delete_org` DELETEs the rows. They are
-    // also the only two writers of an update or a delete anywhere in the tree,
-    // which is why the replacement is an exhaustive "only" rather than a
-    // hedge — a stronger sentence, not a weaker one. The policy fact is not
-    // dropped; it moves to `evidence` beside the two functions that get past
-    // it, which is where a reviewer can act on it.
+    // rewrote "checked in the database" into a 19/6/3 split to avoid.
+    //
+    // The first replacement traded that for "Only account or organisation
+    // deletion ever changes a row", which was FALSE, and false in the more
+    // dangerous direction: an exhaustive claim rather than a vague one. It
+    // came from an exhaustiveness check that was correct inside its own scope
+    // and wrong about the scope — every function body in the tree was scanned
+    // for an UPDATE or DELETE against the table, and referential integrity
+    // writes neither. Deleting a show date cascades to its bookings and RI
+    // then NULLs `booking_id` on every audit row they own; see the matrix row
+    // above for the full chain and for why the UI enables that delete.
+    //
+    // So: three paths, all three named, no "only" left to be wrong about. The
+    // policy fact is not dropped — it moves to `evidence` beside the three
+    // things that get past it, which is where a reviewer can act on it.
     claim:
-      "Every change to a booking's status is appended to a log: old status, new status, who acted, when. Nothing else about a booking is logged, and automated transitions have no person to record as the actor. Only account or organisation deletion ever changes a row.",
-    evidence: `Written by the notify_booking_transition trigger, which returns without writing unless the status actually changed, so editing a booking's notes leaves no row; promote_understudy_on_cancellation writes the automated path. No policy grants an update or a delete: anonymize_user and delete_org bypass row-level security. Retained ${RETENTION.find((r) => r.item === "Bookings and audit log")!.period}.`,
+      "Every change to a booking's status is appended to a log: old status, new status, who acted, when. Nothing else about a booking is logged; automated transitions have no person to record as the actor. Account, show-date and organisation deletions clear fields or remove rows.",
+    evidence: `Written by notify_booking_transition, which returns without writing unless the status changed, so editing a booking's notes leaves no row; promote_understudy_on_cancellation writes the automated path. No policy grants an update or a delete; anonymize_user, delete_org and booking_id's ON DELETE SET NULL get past it. Retained ${RETENTION.find((r) => r.item === "Bookings and audit log")!.period}.`,
   },
   {
     icon: "shield",

@@ -103,11 +103,12 @@ describe("TrustDataTab", () => {
     expect(within(producerRow).getByText("Append-only")).toBeInTheDocument();
     expect(within(producerRow).queryByText("No access")).toBeNull();
     // Not "no policy allows altering or deleting a row", which was true at the
-    // policy layer and read as immutability at the system layer: anonymize_user
-    // NULLs the actor and delete_org removes the rows, both SECURITY DEFINER.
-    // bookingAudit.test.ts derives that pair from the migrations; here the
-    // point is only that both roles are shown the same rendered sentence.
-    expect(producerRow).toHaveTextContent(/only account or organisation deletion ever alters one/i);
+    // policy layer and read as immutability at the system layer: three paths
+    // change a row, one of them written by referential integrity rather than
+    // by any function. bookingAudit.test.ts derives all three from the schema
+    // and asserts this sentence names them; here the point is only that both
+    // roles are shown the same rendered sentence.
+    expect(producerRow).toHaveTextContent(/show-date and organisation deletions/i);
 
     fireEvent.click(screen.getByRole("radio", { name: "Administrator" }));
     const adminRow = matrixRow("Booking audit log");

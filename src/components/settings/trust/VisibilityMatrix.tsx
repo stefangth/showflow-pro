@@ -12,7 +12,8 @@ import type { AccessTone } from "@/lib/trust/facts";
 /** Maps an access tone to the shared Badge component's variant, so the pills
  *  in this table stay on the design system rather than a hand-rolled palette.
  *
- *  NO COLOUR IN THIS COLUMN. `full` used to route to `confirmed`, which is the
+ *  NO COLOUR FOR AN ANSWER, ONE EXCEPTION (`gated`, at the foot of this note).
+ *  `full` used to route to `confirmed`, which is the
  *  green success pill: on the Administrator role that painted six green "Full"
  *  badges down the Access column, and green in a table of neutral facts reads
  *  as a verdict — as though "Full" were the good answer and "No access" the

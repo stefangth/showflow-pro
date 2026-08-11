@@ -120,23 +120,129 @@ describe("booking audit log — what the trigger actually records", () => {
   });
 
   // The other half of the append-only claim, and the reason it is no longer
-  // phrased as "no policy permits an update or a delete". Two SECURITY DEFINER
-  // functions bypass the policy layer: anonymize_user NULLs the actor (any user
-  // deleting their own account reaches it) and delete_org removes the rows.
-  // They are also the ONLY writers of an update or a delete in the tree, which
-  // is what lets the published sentence be an exhaustive "only" rather than a
-  // hedge — so this asserts both that they exist and that nothing else does.
-  it("names the only two paths that ever change a row after it is written", () => {
-    const mutators = new Set<string>();
-    for (const { sql } of FILES) {
-      for (const match of sql.matchAll(
-        /create or replace function public\.([a-z_]+)\s*\([\s\S]*?\$\$([\s\S]*?)\$\$/gi,
-      )) {
-        const body = match[2];
-        if (/\b(update|delete\s+from)\s+public\.booking_audit_log\b/i.test(body)) mutators.add(match[1]);
+  // phrased as "no policy permits an update or a delete".
+  //
+  // GUARD HOLE, closed — and closed a second time, which is the point. The
+  // first version of this scanned `create or replace function` bodies for an
+  // UPDATE or a DELETE against the table, found exactly anonymize_user and
+  // delete_org, and licensed an exhaustive "Only account or organisation
+  // deletion ever changes a row". That sentence was FALSE. A third path exists
+  // and writes no SQL at all: `booking_audit_log.booking_id` is `REFERENCES
+  // public.bookings(id) ON DELETE SET NULL`, and referential integrity's SET
+  // NULL is an UPDATE. It matched no pattern the scan knew, which is the same
+  // shape as the FOR-clause hole above — a scan that knows one syntactic form
+  // while the exception arrives in another.
+  //
+  // So both shapes are derived: what functions write, and what the table's own
+  // foreign keys make the database write. A new FK with SET NULL, SET DEFAULT
+  // or CASCADE turns this red on its own, without anyone having to remember
+  // that RI mutates.
+  describe("every path that can change a row after it is written", () => {
+    /** Functions whose body issues an UPDATE or DELETE against the log. */
+    function functionMutators(): string[] {
+      const found = new Set<string>();
+      for (const { sql } of FILES) {
+        for (const match of sql.matchAll(
+          /create or replace function public\.([a-z_]+)\s*\([\s\S]*?\$\$([\s\S]*?)\$\$/gi,
+        )) {
+          if (/\b(update|delete\s+from)\s+public\.booking_audit_log\b/i.test(match[2])) {
+            found.add(match[1]);
+          }
+        }
       }
+      return [...found].sort();
     }
-    expect([...mutators].sort()).toEqual(["anonymize_user", "delete_org"]);
+
+    /** The CREATE TABLE body for a table, from the migration that creates it. */
+    function createTableBody(table: string): string {
+      const pattern = new RegExp(`CREATE TABLE (?:IF NOT EXISTS )?public\\.${table}\\s*\\(`, "i");
+      const owner = FILES.find((f) => pattern.test(f.sql));
+      expect(owner, `no migration creates public.${table}`).toBeDefined();
+      const after = owner!.sql.split(pattern)[1];
+      const end = after.indexOf("\n);");
+      return end === -1 ? after : after.slice(0, end);
+    }
+
+    /** Every column-level FK on a table, with the action RI takes on parent
+     *  delete. A column with no ON DELETE clause is NO ACTION: RI refuses the
+     *  parent delete rather than touching the child, so it cannot change a
+     *  row and is reported as such. */
+    function foreignKeys(table: string): { column: string; parent: string; onDelete: string }[] {
+      const body = createTableBody(table);
+      // Later migrations add columns by ALTER; fold those in so an FK added
+      // after the table was created cannot hide from this.
+      const altered = FILES.map((f) => f.sql)
+        .join("\n")
+        .match(new RegExp(`alter table public\\.${table}[^;]*references[^;]*;`, "gi"))
+        ?.join("\n") ?? "";
+      const out: { column: string; parent: string; onDelete: string }[] = [];
+      for (const match of `${body}\n${altered}`.matchAll(
+        /\b([a-z_]+)\s+uuid\b[^,;]*?references\s+(?:public|auth)\.([a-z_]+)\s*\([^)]*\)([^,;]*)/gi,
+      )) {
+        const onDelete = match[3].match(/on\s+delete\s+(cascade|set\s+null|set\s+default|restrict|no\s+action)/i);
+        out.push({
+          column: match[1].toLowerCase(),
+          parent: match[2].toLowerCase(),
+          onDelete: (onDelete?.[1] ?? "no action").toLowerCase().replace(/\s+/g, " "),
+        });
+      }
+      return out.sort((a, b) => a.column.localeCompare(b.column));
+    }
+
+    /** The FKs whose action makes the DATABASE write to the child row. */
+    const RI_MUTATING = /^(cascade|set null|set default)$/;
+
+    it("finds exactly the two functions that write an update or a delete", () => {
+      expect(functionMutators()).toEqual(["anonymize_user", "delete_org"]);
+    });
+
+    it("finds exactly one foreign key whose parent delete rewrites a row", () => {
+      const keys = foreignKeys("booking_audit_log");
+      expect(keys.length, "no FKs parsed — the scan pattern has drifted").toBeGreaterThan(0);
+      // The published sentence names three paths. A fourth FK with a mutating
+      // action would be a fourth path, and this is what refuses to let it ship
+      // unnamed. `performed_by` and `org_id` are NO ACTION and so are not one.
+      expect(keys.filter((k) => RI_MUTATING.test(k.onDelete))).toEqual([
+        { column: "booking_id", parent: "bookings", onDelete: "set null" },
+      ]);
+    });
+
+    // The show date is what makes that FK reachable, and it is reachable by a
+    // user rather than only by a platform administrator: bookings cascade from
+    // show_dates, and show_dates carries a live DELETE policy for org admins.
+    // If either half goes away, the published claim may drop "show-date".
+    it("keeps the show-date deletion that reaches it reachable and named", () => {
+      expect(
+        foreignKeys("bookings").find((k) => k.column === "show_date_id"),
+      ).toEqual({ column: "show_date_id", parent: "show_dates", onDelete: "cascade" });
+
+      const deletePolicy = FILES.some((f) =>
+        /create policy[^;]*on public\.show_dates for delete/i.test(f.sql),
+      );
+      expect(deletePolicy, "no DELETE policy on show_dates — is this path still reachable?").toBe(true);
+    });
+
+    // The three derivations above, joined to the three published strings. The
+    // claim and both matrix cells have to name every path, because the public
+    // page renders `evidence` only in Full inventory mode.
+    it("names all three paths in every string a Summary reader sees", () => {
+      const control = CONTROLS.find((c) => c.title === "Auditability")!;
+      const row = VISIBILITY_MATRIX.find((r) => r.object === "Booking audit log")!;
+      for (const [where, text] of [
+        ["the Auditability claim", control.claim],
+        ["the audit-log cell (admin)", row.admin.note],
+        ["the audit-log cell (production team)", row.producer.note],
+      ] as const) {
+        expect(text, `${where} does not name the account path`).toMatch(/account/i);
+        expect(text, `${where} does not name the show-date path`).toMatch(/show[- ]date/i);
+        expect(text, `${where} does not name the organisation path`).toMatch(/organisation/i);
+        // And no exhaustive quantifier, which is what made the last correction
+        // false rather than merely incomplete.
+        expect(text, `${where} makes an exhaustive claim again`).not.toMatch(/\bonly\b/i);
+      }
+      // The citation stays in evidence, where a reviewer can act on it.
+      expect(control.evidence).toMatch(/ON DELETE SET NULL/i);
+    });
   });
 });
 
@@ -176,21 +282,21 @@ describe("the published Auditability control", () => {
   // (`claim`, and the matrix cell — the public page hides `evidence` behind
   // Full inventory) has to name the exception, and neither may state the
   // policy fact as though it settled the question.
+  // (Which paths those are, and that the published strings name all of them,
+  // is derived from the schema in the block above. This one only holds the
+  // rule about WHERE the policy fact may be stated.)
   it("does not let the append-only claim read as immutability", () => {
     for (const [where, text] of [
       ["the Auditability claim", control!.claim],
       ["the Booking audit log matrix cell", matrixRow!.admin.note],
       ["the Booking audit log matrix cell", matrixRow!.producer.note],
     ] as const) {
-      expect(text, `${where} no longer names the two paths that change a row`).toMatch(
-        /account or organisation deletion/i,
-      );
       expect(text, `${where} states the policy fact as though it settled it`).not.toMatch(
         /no policy (permits|allows) an? (update|edit)/i,
       );
     }
     // The policy fact is not dropped, only relocated to where a reviewer can
-    // act on it: beside the two functions that get past it.
+    // act on it: beside the three things that get past it.
     expect(control!.evidence).toMatch(/no policy grants an update or a delete/i);
     expect(control!.evidence).toContain("anonymize_user");
     expect(control!.evidence).toContain("delete_org");
