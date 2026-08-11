@@ -143,6 +143,8 @@ export function ArtistDashboard() {
   // while the first-run surface is still showing and its own setup step is incomplete.
   // Unlike an admin configuring an empty org, an artist has real per-user content
   // immediately, so hiding it behind the surface would hide genuinely actionable content.
+  // Safety invariant, no settled-guard needed: fr.show shares useArtistEligibleDates'
+  // exact query (via useFirstRunMetrics), so it cannot flip true before hasArtistData is.
   const hasArtistData = total > 0;
   const showFirstRun = fr.show && !fr.dismissed;
 
