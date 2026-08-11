@@ -17,6 +17,39 @@ type ExcludedCounts = {
   not_eligible: number; missing_skills: number;
 };
 
+// The FIRST waterfall step that eliminates an artist wins — reason attribution never
+// overwrites an already-recorded entry. Mirrors the five ExcludedCounts buckets above;
+// the two must always agree on totals (see the per-step marking in `handle` below).
+type ExcludedReason = 'missing_skills' | 'blocked' | 'already_booked' | 'inactive' | 'not_eligible'
+
+type ExcludedDetailEntry = { id: string; name: string; reason: ExcludedReason }
+
+// Cap on the per-artist exclusion detail returned to a dry-run caller. Past this the UI
+// still has the aggregate `excluded` counts (unchanged); further per-artist rows would
+// bloat the response for a large cast. Never truncated silently: `excludedDetailTruncated`
+// tells the caller there was more to see.
+const EXCLUDED_DETAIL_CAP = 50
+
+/** Cap + shape the per-artist exclusion detail. Pure — the caller supplies whatever
+ *  artist names it already has (or looked up), so this never touches the DB itself. */
+function capExcludedDetail(
+  reasonById: Map<string, ExcludedReason>,
+  namesById: Map<string, string>,
+): { excludedDetail: ExcludedDetailEntry[]; excludedDetailTruncated: boolean } {
+  const ids = [...reasonById.keys()]
+  const truncated = ids.length > EXCLUDED_DETAIL_CAP
+  const detailIds = truncated ? ids.slice(0, EXCLUDED_DETAIL_CAP) : ids
+  if (truncated) {
+    console.log('open-offer-tier: excludedDetail truncated', { total: ids.length, cap: EXCLUDED_DETAIL_CAP })
+  }
+  return {
+    excludedDetail: detailIds.map((id) => ({
+      id, name: namesById.get(id) ?? 'Unknown artist', reason: reasonById.get(id) as ExcludedReason,
+    })),
+    excludedDetailTruncated: truncated,
+  }
+}
+
 export async function handle(req: Request, deps: Deps): Promise<Response> {
   if (req.method === "OPTIONS") return preflight();
 
@@ -50,17 +83,37 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   }
 
   // A benign no-op exit. In dry-run mode the preview dialog needs a consistent
-  // shape ({ dry_run, candidates, excluded }) so it can render the reason; the
-  // normal caller (airtable-poll batch) just wants offers_created:0 + message.
-  const benignExit = (message: string, counts?: ExcludedCounts): Response =>
-    dryRun
-      ? json({
-          dry_run: true,
-          candidates: [],
-          excluded: counts ?? { already_booked: 0, blocked: 0, inactive: 0, not_eligible: 0, missing_skills: 0 },
-          message,
-        })
-      : json({ offers_created: 0, message })
+  // shape ({ dry_run, candidates, excluded, excludedDetail, excludedDetailTruncated })
+  // so it can render the reason; the normal caller (airtable-poll batch) just wants
+  // offers_created:0 + message. `reasonById` is only ever populated once the waterfall
+  // has started eliminating artists (see the per-step marking below) — a benign exit
+  // reached before that, or with nothing eliminated yet, simply omits it.
+  const benignExit = async (
+    message: string,
+    counts?: ExcludedCounts,
+    reasonById?: Map<string, ExcludedReason>,
+  ): Promise<Response> => {
+    if (!dryRun) return json({ offers_created: 0, message })
+    let namesById = new Map<string, string>()
+    if (reasonById && reasonById.size > 0) {
+      const { data: names } = await admin
+        .from('artists')
+        .select('id, name')
+        .in('id', [...reasonById.keys()])
+      namesById = new Map(((names ?? []) as Array<{ id: string; name: string }>).map((r) => [r.id, r.name]))
+    }
+    const { excludedDetail, excludedDetailTruncated } = reasonById
+      ? capExcludedDetail(reasonById, namesById)
+      : { excludedDetail: [] as ExcludedDetailEntry[], excludedDetailTruncated: false }
+    return json({
+      dry_run: true,
+      candidates: [],
+      excluded: counts ?? { already_booked: 0, blocked: 0, inactive: 0, not_eligible: 0, missing_skills: 0 },
+      excludedDetail,
+      excludedDetailTruncated,
+      message,
+    })
+  }
 
   // Fetch show date (org_id drives the org-scoped auth check below).
   const { data: showDate, error: sdErr } = await admin
@@ -165,6 +218,12 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     return benignExit('No artists in eligible casts')
   }
 
+  // Per-artist elimination reason for the dry-run response (excludedDetail, C2). Each
+  // step below marks only the ids IT eliminates from the set the previous step already
+  // narrowed, so an id is set at most once — the first step to drop an artist is
+  // therefore always the recorded reason.
+  const reasonById = new Map<string, ExcludedReason>()
+
   // Fetch artist active status
   const { data: artistRows } = await admin
     .from('artists')
@@ -173,12 +232,16 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     .eq('status', 'active')
 
   const activeArtistIds = ((artistRows ?? []) as unknown as { id: string }[]).map((r) => r.id)
+  const activeArtistIdSet = new Set(activeArtistIds)
   // Members that dropped out of the active-status filter (inactive/archived).
   const inactiveCount = artistIds.length - activeArtistIds.length
+  for (const id of artistIds) {
+    if (!activeArtistIdSet.has(id)) reasonById.set(id, 'inactive')
+  }
   if (activeArtistIds.length === 0) {
     return benignExit('No active artists in eligible casts', {
       already_booked: 0, blocked: 0, inactive: inactiveCount, not_eligible: 0, missing_skills: 0,
-    })
+    }, reasonById)
   }
 
   // Skip artists with an existing open offer or non-cancelled booking for this date
@@ -191,6 +254,9 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   const alreadyBookedIds = new Set(((existingBookings ?? []) as unknown as { artist_id: string }[]).map((b) => b.artist_id))
   // Active artists already holding a non-cancelled booking for this date.
   const alreadyBookedCount = activeArtistIds.filter((id: string) => alreadyBookedIds.has(id)).length
+  for (const id of activeArtistIds) {
+    if (alreadyBookedIds.has(id)) reasonById.set(id, 'already_booked')
+  }
 
   // Skip artists with a blocked_dates entry for this date (table added in Task 5)
   let blockedArtistIds = new Set<string>()
@@ -213,6 +279,9 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   const blockedCount = activeArtistIds.filter(
     (id: string) => !alreadyBookedIds.has(id) && blockedArtistIds.has(id)
   ).length
+  for (const id of activeArtistIds) {
+    if (!alreadyBookedIds.has(id) && blockedArtistIds.has(id)) reasonById.set(id, 'blocked')
+  }
 
   // Gate (spec: candidates must pass the show eligibility gate when one exists;
   // union of show-level and date-level rows, none at all = unrestricted).
@@ -222,6 +291,11 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   const afterBlocked = candidateIds
   const afterGate = gate == null ? afterBlocked : afterBlocked.filter((id: string) => gate.has(id))
   const notEligibleCount = afterBlocked.length - afterGate.length
+  if (gate != null) {
+    for (const id of afterBlocked) {
+      if (!gate.has(id)) reasonById.set(id, 'not_eligible')
+    }
+  }
 
   // Skills: stored requirements (show ∪ date) unioned with the per-open filter.
   const storedSkillIds = await fetchRequiredSkillIds(admin, {
@@ -230,6 +304,10 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   const requiredSkillIds = [...new Set([...storedSkillIds, ...skillFilterIds])]
   const afterSkills = await filterArtistIdsBySkills(admin, afterGate, requiredSkillIds)
   const missingSkillsCount = afterGate.length - afterSkills.length
+  const afterSkillsSet = new Set(afterSkills)
+  for (const id of afterGate) {
+    if (!afterSkillsSet.has(id)) reasonById.set(id, 'missing_skills')
+  }
 
   const finalCandidateIds = afterSkills
   const excluded: ExcludedCounts = {
@@ -241,20 +319,27 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   }
 
   if (finalCandidateIds.length === 0) {
-    return benignExit('All eligible artists already have offers, are blocked, or do not qualify', excluded)
+    return benignExit('All eligible artists already have offers, are blocked, or do not qualify', excluded, reasonById)
   }
 
   // Dry-run: report who WOULD be offered (and why others were excluded) without
-  // writing any bookings or tier-tracking rows.
+  // writing any bookings or tier-tracking rows. Candidate + excluded names are
+  // resolved in ONE combined lookup (rather than a second per-purpose query).
   if (dryRun) {
-    let candidates: Array<{ id: string; name: string }> = []
-    const { data: names, error: namesErr } = await admin
-      .from('artists')
-      .select('id, name')
-      .in('id', finalCandidateIds)
-    if (namesErr) return json({ error: namesErr.message }, 500)
-    candidates = (names ?? []) as Array<{ id: string; name: string }>
-    return json({ dry_run: true, candidates, excluded })
+    const eliminatedIds = [...reasonById.keys()]
+    const lookupIds = [...new Set([...finalCandidateIds, ...eliminatedIds])]
+    let namesById = new Map<string, string>()
+    if (lookupIds.length > 0) {
+      const { data: names, error: namesErr } = await admin
+        .from('artists')
+        .select('id, name')
+        .in('id', lookupIds)
+      if (namesErr) return json({ error: namesErr.message }, 500)
+      namesById = new Map(((names ?? []) as Array<{ id: string; name: string }>).map((r) => [r.id, r.name]))
+    }
+    const candidates = finalCandidateIds.map((id) => ({ id, name: namesById.get(id) ?? 'Unknown artist' }))
+    const { excludedDetail, excludedDetailTruncated } = capExcludedDetail(reasonById, namesById)
+    return json({ dry_run: true, candidates, excluded, excludedDetail, excludedDetailTruncated })
   }
 
   const offeredAt = deps.now()
