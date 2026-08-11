@@ -109,15 +109,44 @@ Executed via `superpowers:subagent-driven-development`, parallelized: Phase 0 (s
 
 Whole-branch review (opus) verdict: **READY after 1 Important**, 0 Critical. RPC security passed clean (member-guard, names-only, linked-artist-only idempotent write, no cross-org leak, pgTAP-covered); tier-at-risk email once-per-newly-at-risk-pair gating + failure-swallowing confirmed; both system maps + all exhaustive registries updated; no em/en dashes. The Important (confirm-line entitlement honesty, twin of the cancel fix) was fixed rather than deferred. Deferred/parked (none block merge): Phase-0 CLI marker drift (owner infra note), WP-P2 rails-link plain text + "Production Team" verbatim hardcode, WP-P3 void-after-seen cosmetics, M-1 (confirm line omits unregistered-artist caveat; the confirm target accepted an offer so has contact), M-3 (inert stacked DialogDescription that cannot co-occur). Full artifacts under `.superpowers/sdd/2026-08-11-producer-journey-gaps/` (ledger + per-WP briefs/reports/reviews).
 
-## Status — Artist (after that)
+## Status — Artist (16 items, branch: `claude/artist-items-journey-gaps-f181d5`)
 
-R0.1-R0.3 invitation stakes/expectations (email) · R2.1 window duration as a number ·
-R3.1 accepted-but-not-booked toast (**highest single-copy impact**) · R3.2 decline
-consequences · R3.4 calendar disabled-date explanation · R3.5 zero-eligible empty state ·
-R3.6 blocking vs existing bookings · R4.2 response-rate definition · R4.4 who sees my
-contact info · R4.5 hire-order terms summary · R4.6 hire-orders card zero-state ·
-R4.7 digest hour surfaced · R5.1 how to cancel after confirming · R5.3 confirmation-digest
-email CTA · R5.4 deletion: hire orders/in-flight offers. All `open`.
+| ID | Item | Status | Notes |
+|---|---|---|---|
+| R0.1 | Email: what is ShowFlow (artist) | verified covered | invitation `productIntro` renders for every invitee ("ShowFlow is where {{orgName}} plans its shows and books the artists for them."); same call as producer P0.1, no change |
+| R0.2 · R0.3 | Invite: on the roster + stakes (offers by email, one tap) | shipped (branch) | `roleIntroArtist` (flow-neutral) gains "You are on the roster."; `roleIntroArtistOffers` (offers confirmed) adds "booking offers by email, accept or decline each in one tap". Benefit stays only on the gated line; flow-neutral line makes no offer promise (WP-R4) |
+| R2.1 · R4.7 | Response window + digest hour as numbers | shipped (branch) | availability page renders `describeTonightStandalone(useFlowTimes, flow)` gated on `flow.artist_acceptance` (never leaks the confirmation-digest sentence to direct-book/paused orgs); reuses the producer helper verbatim (WP-R1) |
+| R3.1 | Accepted-but-not-booked toast (**highest single-copy impact**) | shipped (branch) | new `acceptConsequenceNote(flow)` in actionCopy.ts; hold flow toast = "Offer accepted" + "Hold placed. Your producer confirms next."; auto-confirm = "Offer accepted. You're booked." Logic mirrors the mutation's own `autoConfirm` (WP-R2) |
+| R3.2 | Decline consequences | shipped (branch) | decline toast gains "This just cancels this one offer. It will not affect future offers." (verified truthful through the DB triggers) (WP-R2) |
+| R3.4 | Calendar disabled-date explanation | shipped (branch) | ineligible cell gets `title` + sr-only span: "This date is not offered to you. Offered dates come from your casts and their required skills." (widened for skill-gate honesty) (WP-R1) |
+| R3.5 | Zero-eligible empty state (calendar) | shipped (branch) | "No eligible dates yet. Once you are added to a cast, offered dates appear here." matches the list view; also fixes the super-admin module-off preview (WP-R1) |
+| R3.6 | Blocking vs existing bookings | shipped (branch) | "...Dates you are already booked for are not affected." (WP-R1) |
+| R4.2 | Response-rate definition | shipped (branch) | `MeterSpec.explainer`, flow-derived: offer meter "Counts dates you accepted or were booked for, out of dates you were offered. It is just for you, no one is scored on it."; direct-book variant matches its own `countStatuses` (WP-R2) |
+| R4.4 | Who sees my contact info | shipped (branch) | note on ProfilePage (phrased about the artist record, not the account phone) + matching helper on the producer-facing ArtistProfileSheet; true to RLS (admin/producer/self) (WP-R3) |
+| R4.5 | Hire-order terms summary + after-signing | shipped (branch) | SignHireOrderDialog gains "You are agreeing to the fee, dates, and terms shown on this order. Adding your signature completes it, and we email you the final signed PDF." CONSENT_TEXT untouched; ships dark with hire_orders (WP-R3) |
+| R4.6 | Hire-orders card zero-state | shipped (branch) | card renders inside `hireOrdersEnabled` even when empty ("Your booking paperwork shows up here..."); module-off orgs still show nothing (WP-R2) |
+| R5.1 | How to cancel after confirming | shipped (branch) | ArtistBookingsView signpost (booking_flow-gated): "Need to cancel a date you confirmed? Message your producer in the date's chat..." (WP-R3) |
+| R5.3 | Confirmation-digest email CTA | shipped (branch) | EmailShell `cta` → `APP_URL/bookings`, "View your bookings"; moved into the app-link contract test (WP-R4) |
+| R5.4 | Deletion: hire orders / in-flight offers | shipped (branch) | delete copy names open offers ("kept but de-identified") + hire_orders-gated retention clause; corrected away from a false "details removed" claim (anonymize_user keeps PII in the snapshot) (WP-R3) |
+
+Plan: `docs/superpowers/plans/2026-08-11-artist-journey-gaps.md` (13 tasks / 4 disjoint-file WPs, no Phase 0, no migration). Spec: `docs/superpowers/specs/2026-08-11-artist-journey-gaps-design.md`. `verify:fast` green (all 8 layers, twice). `verify:full` skipped (no DB surface; no e2e pins changed copy). Not merged (owner packages release).
+
+### Session execution trail (artist, 2026-08-11)
+
+Executed via `superpowers:subagent-driven-development` on `sonnet` implementers/reviewers with an `opus` whole-branch review. 4 WP-level implementers (sequential — no parallel implementers on a shared worktree), each with a fresh-agent task review + fix loop, then the whole-branch review + one fix wave. Owner approved scope + copy first via the before/after mockup (all recommendations, R3.1/R4.2/R4.4 = Option A). No migration this session (every fix reused existing settings/helpers). Commit chain (`main` = 676ffb6):
+
+| Commit | What | Review outcome |
+|---|---|---|
+| `426c385`,`f26fe96` | Spec + implementation plan | pre-flight scan clean |
+| `9b1a203`,`f9d0ee7`,`5d84779` | WP-R1: availability timing line + ineligible/empty-state + blocking note | Spec ❌ → fix. Critical: timing line leaked the confirmation-digest sentence onto direct-book orgs (describeTonight returns non-null when confirmation_digest true, the default/"direct" preset); the "no line" test passed vacuously. + 2 Important (skill-gate wording, aria-label on role-less div). |
+| `fe7a66d` | WP-R1 fix: gate on `artist_acceptance` + testid; widen ineligible wording; sr-only span | re-review: all addressed. |
+| `ad28425`,`b2bce09`,`3727360`,`0808f1a` | WP-R2: acceptConsequenceNote + accept/decline toasts + meter explainer + hire-orders zero-state | Spec ✅ / Approved, 0 findings (first pass). |
+| `af26944`,`23a6101`,`0e75258`,`feeb490` | WP-R3: contact note + hire-order terms + cancel signpost + deletion copy | Spec ❌ → fix. Critical: R5.4 "with your details removed" false (anonymize_user only nulls FKs; PII persists). + Important: new ProfilePage test hand-rolled `vi.mock`. |
+| `dda8657` | WP-R3 fix: true retention-only deletion copy; migrate identity test to the harness | re-review: all addressed. |
+| `fae3553`,`a7d85be` | WP-R4: artist invite role lines + confirmation-digest CTA (mirror-synced) | Spec ✅ / Approved. app-links `ctaUrl` generalization strengthens the contract; emailTemplateMeta entry required by coverage test. |
+| `5c53fa9` | Final fix wave (from whole-branch opus review): correct R4.5 false countersign claim + tighten R5.4 opening | scoped re-review: both addressed, no new breakage. |
+
+Whole-branch review (opus) verdict: **READY WITH FIXES**, 1 Critical (R4.5 after-signing claimed an org-countersign step that does not exist — in electronic mode the artist's signature IS the countersignature; it also contradicted the dialog's own description), fixed in `5c53fa9`. The WP-R3 task review had wrongly affirmed that sentence as true — the whole-branch pass caught it, validating the two-tier review. `verify:fast` all 8 layers green after the fix.
 
 ## Cross-role enablers (build once, reuse)
 
@@ -191,6 +220,26 @@ email CTA · R5.4 deletion: hire orders/in-flight offers. All `open`.
   `__InternalSupabase.PostgrestVersion` marker on `gen types`; harmless (type-only, unused, tsc/mirrors
   clean) but will flap as diff noise while CI's CLI is unpinned. Pin/upgrade the CI Supabase CLI when
   convenient. Do NOT hand-restore the block (would violate the no-hand-edit-generated-types rule).
+
+- 2026-08-11 (artist session done): all 15 working artist items shipped on branch
+  `claude/artist-items-journey-gaps-f181d5` (R0.1 verified covered, no change). No migration —
+  every fix reused existing settings/helpers (`describeTonightStandalone`, `useFlowTimes`,
+  `SOFT_BOOKED_MEANING`, `MeterSpec`, `useFeature`). Three copy strings were corrected AWAY from the
+  owner-approved before/after artifact, each for factual honesty (the standing owner directive): the
+  ineligible-cell reason widened to name skill requirements (they gate eligibility too, not just casts);
+  the R5.4 deletion clause dropped "with your details removed" (`anonymize_user` only nulls the FK
+  columns — the artist's name/email/phone persist in the frozen `hire_orders.data` snapshot and the
+  denormalized `signer_name`/`signer_email`); and the R4.5 after-signing line dropped "your organization
+  countersigns" (in electronic mode the artist's own signature IS the countersignature: `issued` →
+  `countersigned` on the artist's action, no later org step). Owner may want to review these three.
+- 2026-08-11: recurring critic lesson (artist edition of the producer's "hold in every state" rule): a
+  point-of-action line that DELEGATES to a shared flow helper inherits that helper's FULL behavior, not
+  just the branch you had in mind. `describeTonightStandalone` looks like "the offer-window sentence" but
+  also composes a producer-framed confirmation-digest sentence for direct-book orgs (whenever
+  `confirmation_digest` is on, the default). Gating "render when non-null" leaked that onto direct-book
+  artists; the fix was to gate on `flow.artist_acceptance` — the actual precondition for R2.1/R4.7 (an
+  artist who receives offers). And: a two-tier review earns its keep — the WP task review affirmed the
+  false R4.5 countersign sentence as "verified true"; the opus whole-branch review refuted it.
 
 ## End-of-session checklist
 
