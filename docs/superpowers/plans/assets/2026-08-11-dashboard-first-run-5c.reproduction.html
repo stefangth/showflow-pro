@@ -1,0 +1,682 @@
+<title>ShowFlow · Dashboard First Run 5c</title>
+<style>
+  /* ===================================================================
+     ShowFlow design tokens — copied verbatim from src/index.css so the
+     reproduction resolves against the SAME variables the app ships.
+     Light = :root, Dark = [data-theme="dark"] / prefers-color-scheme.
+     =================================================================== */
+  :root {
+    --background: 36 27% 95%;   --foreground: 256 20% 9%;
+    --card: 0 0% 100%;          --card-foreground: 256 20% 9%;
+    --primary: 249 90% 66%;     --primary-foreground: 0 0% 100%;
+    --primary-hover: 249 67% 56%; --primary-active: 249 53% 45%;
+    --muted: 36 27% 97%;        --muted-foreground: 30 4% 35%;
+    --border: 30 12% 89%;       --input: 30 8% 85%;
+    --surface-3: #EFEDE7;
+    --line: rgba(20, 18, 14, 0.08);
+    --line-strong: rgba(20, 18, 14, 0.14);
+    --shadow-1: 0 1px 2px rgba(20,18,14,.05);
+    --shadow-2: 0 1px 2px rgba(20,18,14,.04), 0 4px 10px rgba(20,18,14,.05);
+    --shadow-3: 0 1px 2px rgba(20,18,14,.04), 0 8px 24px rgba(20,18,14,.08);
+    --bg: hsl(var(--background));
+    --surface: hsl(var(--card));
+    --surface-2: hsl(var(--muted));
+    --text: hsl(var(--foreground));
+    --text-muted: hsl(var(--muted-foreground));
+    --text-faint: #8B8A85;
+    --amber-600: #9A6314; --amber-100: #FCF1DA;
+    --accent-50:#F4F1FF; --accent-100:#E5DEFF; --accent-200:#CABBFF; --accent-300:#A88EFF;
+    --accent-400:#8A6DF6; --accent-500:#6E5CF6; --accent-600:#5848D8; --accent-700:#4738B0;
+    --accent-800:#322685; --accent-900:#1E175A;
+  }
+  :root[data-theme="dark"] {
+    --background: 252 13% 6%;   --foreground: 36 18% 95%;
+    --card: 252 11% 9%;         --card-foreground: 36 18% 95%;
+    --primary: 249 90% 66%;     --primary-foreground: 0 0% 100%;
+    --primary-hover: 249 67% 56%; --primary-active: 249 53% 45%;
+    --muted: 252 11% 12%;       --muted-foreground: 36 3% 64%;
+    --border: 252 11% 17%;      --input: 252 11% 20%;
+    --surface-3: #24232B;
+    --line: rgba(255,255,255,0.08);
+    --line-strong: rgba(255,255,255,0.14);
+    --shadow-1: 0 1px 2px rgba(0,0,0,.40);
+    --shadow-2: 0 1px 2px rgba(0,0,0,.34), 0 4px 10px rgba(0,0,0,.40);
+    --shadow-3: 0 1px 2px rgba(0,0,0,.34), 0 8px 24px rgba(0,0,0,.50);
+    --text-faint: #6F6E6A;
+    --amber-600: #F2B23C; --amber-100: rgba(217,119,6,0.16);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --background: 252 13% 6%;   --foreground: 36 18% 95%;
+      --card: 252 11% 9%;         --card-foreground: 36 18% 95%;
+      --muted: 252 11% 12%;       --muted-foreground: 36 3% 64%;
+      --border: 252 11% 17%;      --input: 252 11% 20%;
+      --surface-3: #24232B;
+      --line: rgba(255,255,255,0.08);  --line-strong: rgba(255,255,255,0.14);
+      --shadow-1: 0 1px 2px rgba(0,0,0,.40);
+      --shadow-2: 0 1px 2px rgba(0,0,0,.34), 0 4px 10px rgba(0,0,0,.40);
+      --shadow-3: 0 1px 2px rgba(0,0,0,.34), 0 8px 24px rgba(0,0,0,.50);
+      --text-faint: #6F6E6A;
+      --amber-600: #F2B23C; --amber-100: rgba(217,119,6,0.16);
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Geist", system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+    padding: 28px 22px 64px;
+  }
+  a { color: var(--accent-500); text-decoration: none; }
+  button { font-family: inherit; cursor: pointer; }
+
+  .wrap { max-width: 1180px; margin: 0 auto; }
+
+  /* Review scaffolding (not part of the shipped design) */
+  .review-head { display:flex; align-items:flex-start; gap:16px; margin-bottom:20px; flex-wrap:wrap; }
+  .review-head .kicker { font-size:11px; font-weight:600; letter-spacing:1.6px; text-transform:uppercase; color:var(--accent-600); }
+  .review-head h1 { font-size:22px; font-weight:600; letter-spacing:-0.3px; margin:6px 0 6px; color:var(--text); }
+  .review-head p { font-size:13px; line-height:19px; color:var(--text-muted); margin:0; max-width:720px; text-wrap:pretty; }
+  .toggle { margin-left:auto; display:flex; gap:8px; align-items:center; }
+  .toggle button { border:0.5px solid var(--line-strong); background:var(--surface); color:var(--text); font-size:12px; font-weight:500; padding:7px 12px; border-radius:8px; }
+  .scaffold-note { font-size:11px; color:var(--text-faint); margin:8px 2px 0; }
+
+  /* The frame */
+  /* The design frame is a fixed 1180px surface; on a narrow viewport it scrolls
+     horizontally inside .frame-scroll rather than compressing (which would squeeze
+     the fixed 214px nav + 264px progress card and collapse the headline column). */
+  #frame { width:1180px; border:0.5px solid var(--line); border-radius:14px; overflow:hidden; background:var(--bg); box-shadow:var(--shadow-3); display:flex; flex-direction:column; }
+  .frame-scroll { overflow-x:auto; padding-bottom:4px; }
+
+  .btn-hover:hover { background: var(--surface-2) !important; }
+  .primary-hover:hover { background: var(--surface-2) !important; }
+</style>
+
+<div class="wrap">
+  <div class="review-head">
+    <div>
+      <div class="kicker">Turn 5c · faithful reproduction</div>
+      <h1>Dashboard first run — configuration-driven, and corrected</h1>
+      <p>This is the 5c frame rebuilt against ShowFlow's own tokens (light + dark). The <strong>Viewing as</strong> switch and <strong>Org config</strong> strip are the design's demonstration harness — flip them to see the composition adapt exactly as the mock does. The app shell (top bar, left nav) and the bottom "sample" queue are existing chrome shown for context; the shipped surface is everything from the header card down to the queue.</p>
+    </div>
+    <div class="toggle">
+      <button id="themeBtn" type="button">◐ Theme</button>
+    </div>
+  </div>
+
+  <div class="frame-scroll">
+    <div id="frame"></div>
+  </div>
+  <div class="scaffold-note" id="cfgNote"></div>
+
+  <!-- Design annotations (from the mock's "For the implementer" panel) -->
+  <div id="notes" style="max-width:1180px; margin-top:26px; background:var(--surface-2); border:0.5px solid var(--line); border-radius:10px; padding:16px 18px; display:flex; flex-direction:column; gap:10px"></div>
+</div>
+
+<script>
+/* =====================================================================
+   over10() — ported verbatim from the 5c design's data-dc-script.
+   The only edits: this.props/this.state → module locals, this.setState →
+   setState(), and nav()/centre()/seg() reconstructed (they are app chrome
+   the design shares across frames; the tail defining them was truncated in
+   import). Everything that composes the onboarding surface is unchanged.
+   ===================================================================== */
+const ORG = 'Halle Kollektiv';
+let state = { role10:'admin', dates10:'none', flow10:'offers', bf10:'on', ho10:'off', canEdit10:'no' };
+function setState(patch){ Object.assign(state, patch); render(); }
+
+const seg = (on) => on
+  ? { bg:'var(--surface)', fg:'var(--text)' }
+  : { bg:'transparent', fg:'var(--text-faint)' };
+
+// Reconstructed app sidebar (chrome; the real app uses AppLayout).
+function nav(role, empty){
+  if (role === 'artist') return [
+    { act:true, label:'Dashboard' }, { norm:true, label:'Availability' },
+    { norm:true, label:'Chats' }, { h:true, label:'You' }, { norm:true, label:'Profile' },
+  ];
+  const base = [
+    { act:true, label:'Dashboard' }, { norm:true, label:'Shows & bookings' },
+    { norm:true, label:'Productions' }, { norm:true, label:'Artists' },
+    { norm:true, label:'Chats' },
+  ];
+  const ho = state.ho10 === 'on';
+  base.push(ho ? { norm:true, label:'Hire orders' } : { lock:true, label:'Hire orders' });
+  base.push({ h:true, label:'Workspace' });
+  if (role === 'admin') base.push({ norm:true, label:'Admin' });
+  base.push({ norm:true, label:'Settings' });
+  return base;
+}
+
+// Reconstructed sample queue ("What this page becomes"). Real app: SamplePreview.
+function centre(role){
+  return { queue: [
+    { dot:'var(--accent-500)', title:'Nachtstück · 14 Aug confirmed', hint:'An accepted tier-1 offer, confirmed by a producer', when:'09:12', cta:'Open' },
+    { dot:'var(--text-faint)', title:'Kammerkonzert · 12 Aug offered', hint:'Tier 1 out to Ensemble A, 48h to answer', when:'09:00', cta:'' },
+    { dot:'var(--text-faint)', title:'30 dates waiting on slots', hint:'Set cast slots and tonight’s digest includes them', when:'—', cta:'Set slots' },
+  ] };
+}
+
+function over10(){
+  const org = ORG;
+  const role = state.role10;
+  const imported = state.dates10 === 'in';
+  const offers = state.flow10 !== 'direct';
+  const bf = state.bf10 !== 'off';
+  const ho = state.ho10 === 'on';
+  const canEdit = state.canEdit10 === 'yes';
+  const artist = role === 'artist';
+  const admin = role === 'admin';
+  const capBlocked = (cap) => role === 'producer' && !canEdit && (cap === 'booking' || cap === 'hire');
+
+  const T = {
+    shows: 'Get your shows in', slots: 'Slots per show', flow: 'Booking flow',
+    people: 'Add your artists', ladder: 'Cast priorities per city',
+    eligibility: 'Who is eligible', timing: 'Email timing',
+    team: 'Add your production team', block: 'Block what you cannot play',
+    letterhead: 'Letterhead', terms: 'Terms', countersign: 'Countersignature',
+  };
+  const H = {
+    shows: 'Sync from Airtable, import a sheet, or add a show by hand.',
+    slots: 'A show with no slot count never reads as full.',
+    flow: 'Offers, or straight to booked. Everything downstream reads this.',
+    people: 'Nobody to book until your roster has active artists.',
+    ladder: 'Your casts ranked per city, tier 1 first.',
+    eligibility: 'Which casts belong to which show, in which city.',
+    timing: 'When booking email goes out, and the answer window.',
+    team: 'Invite the producers who plan dates, run offers and confirm bookings.',
+    block: 'Blocked dates come off the list before anyone books you, so you only hear about dates that work.',
+    letterhead: 'Your name, address and logo on every hire order.',
+    terms: 'The clauses printed on the engagement sheet.',
+    countersign: 'Who signs on behalf of the org.',
+  };
+  const mk = (label, done, opts) => {
+    const o = { label, done, todo: !done, hard:false, hardLabel:'', soft:false, admin:false, hint:'', ...(opts||{}) };
+    if (done) { o.hard=false; o.soft=false; o.hint=''; }
+    return o;
+  };
+  const hardLabel = offers ? 'Blocks offers' : 'Blocks booking';
+
+  let steps = [];
+  if (artist) {
+    if (bf) steps = [mk(T.block, imported, { hint: H.block })];
+  } else if (bf) {
+    const b = [
+      mk(T.shows, imported, { hint: H.shows }),
+      mk(T.slots, false, { soft:true, hint: H.slots, admin: capBlocked('booking') }),
+      mk(T.flow, true),
+      mk(T.people, true),
+      mk(T.ladder, false, { hard: offers, hardLabel, hint: H.ladder, admin: capBlocked('booking') }),
+      mk(T.eligibility, imported, { hint: H.eligibility, admin: capBlocked('booking') }),
+      mk(T.timing, true),
+    ];
+    steps = admin ? [mk(T.team, false, { hint: H.team }), ...b] : b;
+  }
+  if (!artist && ho) {
+    steps = steps.concat([
+      mk(T.letterhead, false, { hard:true, hardLabel:'Blocks issuing', hint: H.letterhead, admin: capBlocked('hire') }),
+      mk(T.terms, false, { hard:true, hardLabel:'Blocks issuing', hint: H.terms, admin: capBlocked('hire') }),
+      mk(T.countersign, false, { hint: H.countersign, admin: capBlocked('hire') }),
+    ]);
+  }
+  const byLabel = (l) => steps.find((s) => s.label === l);
+  const pick = (...labels) => labels.map(byLabel).filter(Boolean);
+  const total = steps.length;
+  const filled = steps.filter((s) => s.done).length;
+  const hasSteps = total > 0;
+
+  const offFooters = [];
+  if (!bf) offFooters.push({ text: 'Booking flow is off for this org. Ask your account manager to switch it on.' });
+  if (!ho) offFooters.push({ text: 'Hire orders is off for this org. Ask your account manager to switch it on.' });
+
+  const notOn = { badge:'Not on', needs:'', steps:[] };
+  let stages = [];
+  if (artist) {
+    stages = [
+      bf
+        ? { card:true, done:true, n:'01', name:'Eligibility', tag:'Ensemble A · your cast', line:'Your casts decide which dates can be offered to you.', metric: imported ? '12' : '0', metricLabel:'eligible dates' }
+        : { dim:true, n:'01', name:'Eligibility', tag:'Booking flow · off', line:'No booking module, so no dates reach you here.', ...notOn },
+      bf
+        ? (imported
+            ? { card:true, done:true, n:'02', name:'Availability', tag:'Booking flow', line:'Blocked dates are never offered.', metric:'3', metricLabel:'blocked dates', steps: pick(T.block), chip:'Open availability' }
+            : { card:true, act:true, n:'02', name:'Availability', tag:'Booking flow', line:'The one step that is yours.', metric:'0', metricLabel:'blocked dates', steps: pick(T.block), primary:'Block dates' })
+        : { dim:true, n:'02', name:'Availability', tag:'Booking flow · off', line:'Nothing to block against.', ...notOn },
+      bf
+        ? (offers
+            ? (imported
+                ? { card:true, done:true, n:'03', name:'Offer', tag:'Booking flow', line:'One digest at 09:00 Berlin. 48 hours to answer.', metric:'2', metricLabel:'arriving 09:00' }
+                : { dim:true, n:'03', name:'Offer', tag:'Booking flow', badge:'Waits', line:'One digest at 09:00 Berlin, never a mail per date.', needs:'Needs dates for Ensemble A', steps:[] })
+            : { card:true, done:true, n:'03', name:'Booked directly', tag:'Booking flow · direct', line:'There is no offer step. A booked date appears as confirmed.', metric: imported ? '2' : '0', metricLabel:'confirmed' })
+        : { dim:true, n:'03', name:'Offer', tag:'Booking flow · off', line:'No offers are sent from ShowFlow.', ...notOn },
+      ho
+        ? { card:true, done:true, n:'04', name:'Hire order', tag:'Hire orders', line:'You sign in the browser. The countersigned PDF lands in your mail.', metric: imported ? '1' : '0', metricLabel:'to sign' }
+        : { dim:true, n:'04', name:'Hire order', tag:'Hire orders · off', line:'The office emails your paperwork after a confirm.', ...notOn, needs:'Nothing for you to do here' },
+    ];
+  } else {
+    const s2 = offers
+      ? { name:'Offers', tag:'Booking flow', line:'Tier 1 goes out at 09:00, tier 2 opens 24h later if unfilled.', steps: pick(T.flow, T.people, T.ladder, T.eligibility, T.timing) }
+      : { name:'Book directly', tag:'Booking flow · direct', line:'A producer books straight from the eligibility list. Nothing to accept.', steps: pick(T.flow, T.people, T.ladder, T.eligibility, T.timing) };
+    stages = [
+      bf
+        ? (imported
+            ? { card:true, done:true, n:'01', name:'Dates', tag:'Shows and bookings', line:'34 dates synced from Airtable overnight.', metric:'34', metricLabel:'dates in', steps: pick(T.shows, T.slots), chip: capBlocked('booking') ? 'Open dates' : 'Set slots' }
+            : { card:true, act:true, n:'01', name:'Dates', tag:'Shows and bookings', line:'Nothing downstream can mean anything until shows exist.', metric:'0', metricLabel:'dates in', steps: pick(T.shows, T.slots), primary: admin ? 'Import dates' : 'Add a show' })
+        : { dim:true, n:'01', name:'Dates', tag:'Booking flow · off', line:'Dates and bookings do not run in ShowFlow for this org.', ...notOn },
+      bf
+        ? (imported
+            ? { card:true, act: offers, done: !offers, n:'02', ...s2, metric: offers ? '4' : '12', metricLabel: offers ? 'ready to offer' : 'bookable dates', primary: offers ? 'Send tier 1' : '', chip: offers ? '' : 'Open the picker' }
+            : { dim:true, n:'02', badge:'Waits', ...s2, needs:'Needs a date with slots set' })
+        : { dim:true, n:'02', name:'Offers', tag:'Booking flow · off', line:'No tiers, no digest, no direct picker.', ...notOn },
+      bf
+        ? (offers
+            ? { dim:true, n:'03', name:'Confirm', tag: role === 'producer' ? 'Booking flow · yours' : 'Booking flow', badge:'Waits', line:'An accepted offer is not a booking until a producer confirms it.', needs:'Needs an acceptance', steps: admin ? pick(T.team) : [], chip: admin ? 'Invite team' : '' }
+            : { card:true, done:true, n:'03', name:'Confirmed on the spot', tag:'Booking flow · direct', line:'A direct booking is confirmed as it is made. No queue.', metric: imported ? '12' : '0', metricLabel:'confirmed', steps: admin ? pick(T.team) : [], chip: admin ? 'Invite team' : '' })
+        : { dim:true, n:'03', name:'Confirm', tag:'Booking flow · off', line:'Nothing to confirm here.', ...notOn },
+      ho
+        ? (bf
+            ? { card:true, n:'04', name:'Hire order', tag:'Hire orders', line:'You can draft orders right now. These are only needed before the first one goes out.', metric: imported ? '1' : '0', metricLabel:'drafts', steps: pick(T.letterhead, T.terms, T.countersign), chip:'Draft an order', keepAction:true }
+            : { card:true, act:true, n:'04', name:'Hire order', tag:'Hire orders · manual', line:'With no booking module, every order is a manual engagement with no linked date.', metric:'0', metricLabel:'orders', steps: pick(T.letterhead, T.terms, T.countersign), primary:'New order', keepAction:true })
+        : { dim:true, n:'04', name:'Hire order', tag:'Hire orders · off', line:'Confirmed dates leave ShowFlow as a CSV.', ...notOn, needs:'Switched on by your account manager' },
+    ];
+  }
+  stages = stages.map((s, i) => ({ arrow: i > 0, card:false, dim:false, act:false, done:false, chip:'', primary:'', tag:'', line:'', badge:'', metric:'', metricLabel:'', needs:'', steps:[], keepAction:false, ...s }))
+    .map((s) => {
+      const outstanding = s.steps.filter((st) => st.todo);
+      const stuck = !s.keepAction && !s.done && outstanding.length > 0 && outstanding.every((st) => st.admin);
+      if (stuck && (s.act || s.primary)) {
+        return { ...s, card:false, dim:true, act:false, primary:'', chip:'', badge:'Waits', needs:'Waits on Mara Kessler' };
+      }
+      return s;
+    })
+    .map((s) => {
+      const hot = !!(s.card && (s.act || s.primary));
+      return { ...s, hotCard: hot, plainCard: !!s.card && !hot };
+    });
+
+  const nothingOn = !bf && !ho;
+
+  let head, side, queue, queueTitle, queueHint, sample, opacity;
+  if (nothingOn) {
+    head = {
+      o10Headline: 'No modules are switched on for ' + org,
+      o10Body: 'There is nothing to set up and nothing to run yet. Your ShowFlow account manager switches modules on; nobody inside the org can.',
+      o10Ghost: 'What the modules do',
+      o10Hint: 'Nothing here is blocked by you',
+      o10ProgressLabel: 'Nothing to set up',
+      o10ProgressHint: 'Steps appear the moment a module is switched on.',
+    };
+    side = [{ title:'Read what each role covers', where:'Settings · Docs' }, { title:'Message your account manager', where:'Chats' }];
+    queueTitle = 'What this page becomes';
+    queueHint = 'Sample rows, shown once a module is on.';
+    sample = true; opacity = '0.4';
+    queue = centre(admin ? 'admin' : 'producer').queue;
+  } else if (artist) {
+    head = imported ? {
+      o10Headline: offers ? 'Your first offer arrives tomorrow at 09:00' : 'Your producer books you directly',
+      o10Body: offers
+        ? 'You have 3 dates blocked, so the digest only asks about dates that work.'
+        : 'Blocked dates come out of the list your producer books from. That is where your say goes.',
+      o10Ghost: 'How booking works here',
+      o10Hint: offers ? 'You get 48 hours to answer' : 'Nothing to accept',
+      o10ProgressLabel: 'Set up · 1 of 1',
+      o10ProgressHint: 'Also counts as done once you have opened Availability — an empty calendar is a valid answer.',
+    } : {
+      o10Headline: org + ' added you to the roster',
+      o10Body: 'One step is yours, and it is two minutes. Everything else on this page is set by the org.',
+      o10Ghost: 'How booking works here',
+      o10Hint: 'About 2 minutes',
+      o10ProgressLabel: 'Set up · 0 of 1',
+      o10ProgressHint: 'None of this blocks anything. It keeps unplayable dates out of the way.',
+    };
+    side = offers
+      ? [{ title:'How booking works here', where:'The rules you inherited' }, { title:'Message the office', where:'Chats' }]
+      : [{ title:'Blocking is how you say no', where:'Availability' }, { title:'Message the office', where:'Chats' }];
+    queueTitle = 'Your dates';
+    queueHint = 'Live. This is your real content, not a preview.';
+    sample = false; opacity = '1';
+    queue = imported
+      ? [
+          { dot:'var(--accent-500)', title: offers ? '2 offers arriving in tomorrow’s 09:00 digest' : '2 dates booked for you', hint:'Kammerkonzert 12 Aug, Nachtstück 14 Aug', when:'09:00', cta:'Open' },
+          { dot:'var(--text-faint)', title:'3 dates blocked', hint:'Kept out of every list before anyone books you', when:'Aug', cta:'Edit' },
+        ]
+      : [{ dot:'var(--text-faint)', title:'Nothing yet', hint: offers ? 'Your first offer lands here once ' + org + ' has dates for Ensemble A.' : 'Your first booking lands here once ' + org + ' has dates.', when:'—', cta:'' }];
+  } else {
+    const label = (admin ? 'Set up · ' : 'Org setup · ') + filled + ' of ' + total;
+    if (!bf && ho) {
+      head = {
+        o10Headline: 'Hire orders is the only module running',
+        o10Body: 'No dates, offers or confirms in ShowFlow. Every order is a manual engagement, so the three steps below are all the setup there is.',
+        o10Ghost: 'How this org works',
+        o10Hint: 'Two of the three block issuing',
+        o10ProgressLabel: label,
+        o10ProgressHint: 'You can draft an order now. These are only needed before the first one goes out.',
+      };
+    } else {
+      head = imported ? {
+        o10Headline: offers ? '34 dates landed. Four of them can be offered tonight.' : '34 dates landed. Twelve are bookable now.',
+        o10Body: offers
+          ? 'Stage 01 is running. The other 30 dates have no slot counts, so the digest will skip them.'
+          : 'Stage 01 is running. A producer books straight from the eligibility list — there is no offer step.',
+        o10Ghost: admin || canEdit ? 'Change the flow in Settings' : 'What is still outstanding',
+        o10Hint: offers ? 'Tier 1 goes out at 09:00 Berlin' : 'Direct booking · nothing to accept',
+        o10ProgressLabel: label,
+        o10ProgressHint: capBlocked('booking') ? 'The steps marked Admin are not yours. The rest are.' : 'The steps left sit in the stage they hold up.',
+      } : {
+        o10Headline: role === 'producer' ? org + ' is still being set up' : 'The chain is not running yet. One thing starts it: dates.',
+        o10Body: role === 'producer'
+          ? 'Booking flow is on, but no dates exist yet. That is why this page is empty, not a bug.'
+          : 'Booking flow is on and chosen. Every step it still needs is docked in the stage it unblocks.',
+        o10Ghost: admin || canEdit ? 'How this org will work' : 'What is still outstanding',
+        o10Hint: admin ? 'About 15 minutes' : (canEdit ? 'You can do these too' : 'Adding shows is yours; the settings are not'),
+        o10ProgressLabel: label,
+        o10ProgressHint: capBlocked('booking') ? 'The steps marked Admin are not yours. The rest are.' : 'Nothing here stops you using the rest of the app.',
+      };
+    }
+    side = admin
+      ? [{ title:'See it as your artists do', where:'The pencil top right opens the editor bar, where you can switch to the artist view.' }, { title:'Read what each role covers', where:'Settings · Docs' }]
+      : [{ title:'See what each role can do', where:'Settings · Docs' }, { title:'Message the admin', where:'Chats' }];
+    queueTitle = 'What this page becomes';
+    queueHint = 'Sample rows. Yours replace them once the org has dates.';
+    sample = true; opacity = '0.55';
+    queue = centre(role).queue;
+  }
+
+  return {
+    nav10: nav(role, !imported),
+    initials10: admin ? 'MK' : role === 'producer' ? 'JT' : 'NL',
+    role, admin, artist,
+    cfg10: buildCfg(bf, ho, offers, imported, canEdit, role),
+    o10Eyebrow: org + ' · first run',
+    ...head,
+    modules10: [{ on: bf, off: !bf, label:'Booking flow' }, { on: ho, off: !ho, label:'Hire orders' }],
+    o10HasSteps: hasSteps,
+    ticks10: Array.from({ length: Math.max(total, 1) }, (_, i) => ({ on: i < filled, off: i >= filled })),
+    o10OffFooters: offFooters.length > 0,
+    offFooters10: offFooters,
+    o10HasChain: !nothingOn,
+    o10ChainTitle: artist ? 'How a date reaches you' : 'How a date will move',
+    o10RulesBy: admin ? 'Rules set by you · Settings · Booking flow' : 'Rules set by Mara Kessler · 04 Aug',
+    stages10: stages,
+    o10SideTitle: nothingOn ? 'The app is open, there is just nothing to run' : 'Nothing here blocks the rest of the app',
+    o10SideBody: role === 'producer' && !nothingOn
+      ? 'You are on the Production Team. You plan dates, run offers and confirm bookings. Inviting people, casts and settings stay with the admin.'
+      : (artist
+          ? 'Blocking is how you say no. Blocked dates come out of the list before anyone books you.'
+          : 'Some steps above block the first booking. The app itself is open, and two things worth doing are not steps at all.'),
+    side10: side,
+    o10QueueTitle: queueTitle,
+    o10QueueHint: queueHint,
+    o10Sample: sample,
+    o10QueueOpacity: opacity,
+    queue10: queue.map((q) => ({ cta:'', hint:'', when:'', dot:'var(--text-faint)', ...q })),
+    notes10: NOTES,
+  };
+}
+
+function buildCfg(bf, ho, offers, imported, canEdit, role){
+  const cfg = [
+    { label:'Booking flow', a:'On', b:'Off', onA:() => setState({ bf10:'on' }), onB:() => setState({ bf10:'off' }), aOn: bf, bOn: !bf },
+    { label:'Hire orders', a:'On', b:'Off', onA:() => setState({ ho10:'on' }), onB:() => setState({ ho10:'off' }), aOn: ho, bOn: !ho },
+    { label:'Flow', a:'Offers', b:'Direct', onA:() => setState({ flow10:'offers' }), onB:() => setState({ flow10:'direct' }), aOn: offers, bOn: !offers },
+    { label:'Dates', a:'None', b:'Imported', onA:() => setState({ dates10:'none' }), onB:() => setState({ dates10:'in' }), aOn: !imported, bOn: imported },
+  ];
+  if (role === 'producer') cfg.push({ label:'Can edit settings', a:'Yes', b:'No', onA:() => setState({ canEdit10:'yes' }), onB:() => setState({ canEdit10:'no' }), aOn: canEdit, bOn: !canEdit });
+  return cfg;
+}
+
+const NOTES = [
+  { n:'01', title:'Booking flow is a step, not a heading', body:'It is one of the seven booking keys and it counts toward the total. Done only when the org has its OWN active booking_flow row — inheriting the default is not a choice.', src:'bookings/setupStatus.ts · STEP_ORDER, flowChosen' },
+  { n:'02', title:'An unlicensed module contributes no steps', body:'composeOnboarding skips it entirely and only its offFooter renders. Never draw its steps as open circles. With hire orders on, letterhead and terms chip Blocks issuing; countersign never blocks.', src:'firstRun.ts · composeOnboarding / hireOrders/setupStatus.ts · blocksIssue' },
+  { n:'03', title:'The artist has exactly one step', body:'blockDates, and it also counts done once the artist has opened Availability. There is no phone or notification step — delivery is email plus in-app, so a number changes nothing.', src:'useArtistOnboardingStatus.ts · ARTIST_STEP_KEYS' },
+  { n:'04', title:'Chip wording follows the flow', body:'Add your artists is a hard gate under either flow but reads Blocks booking at a direct-book org; Cast priorities per city is a gate ONLY when the org opens tiers, and chips nothing otherwise.', src:'bookings/setupStatus.ts · blockFor' },
+  { n:'05', title:'The Admin marker is per step, not per role', body:'Get your shows in carries no ctaCapability — both roles add shows — and Add your artists gates on add_artists, which defaults on. Only flow, slots, cast priorities, eligibility and timing gate on edit_booking_settings, and the hire-order three on edit_hire_order_settings. A stage whose outstanding steps are ALL blocked for the viewer must not render a CTA: it becomes the dashed waiting card.', src:'moduleOnboarding.ts · ctaCapability / useDashboardFirstRun.ts · canEditSetup' },
+  { n:'06', title:'Dismissal persists, and the floor case must not vanish', body:'The shipped panel is dismissible per org and reopens from a collapsed chip. And when no module contributes a step, show is false and the surface disappears — draw the no-modules state instead of nothing.', src:'useRailDismissed · useDashboardFirstRun.ts · show' },
+];
+
+/* ---- rendering (mirrors the 5c template markup + inline styles verbatim) ---- */
+const esc = (s) => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const HOT_MUTE = 'color-mix(in srgb, var(--surface) 74%, var(--accent-700))';
+const HOT_SOFT = 'color-mix(in srgb, var(--surface) 85%, var(--accent-700))';
+const HOT_LINE = 'color-mix(in srgb, var(--surface) 22%, var(--accent-700))';
+const HOT_DOT  = 'color-mix(in srgb, var(--surface) 55%, var(--accent-700))';
+const HOT_CHIPBG = 'color-mix(in srgb, var(--surface) 20%, var(--accent-700))';
+const HOT_CHIPBG2 = 'color-mix(in srgb, var(--surface) 14%, var(--accent-700))';
+
+function stepRow(st, hot){
+  const marker = st.done
+    ? `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="${hot?'var(--surface)':'var(--accent-500)'}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="flex:0 0 11px; margin-top:4px"><polyline points="20 6 9 17 4 12"></polyline></svg>`
+    : `<div style="width:9px; height:9px; flex:0 0 9px; border-radius:50%; border:1.5px solid ${hot?HOT_DOT:'var(--line-strong)'}; margin-top:4px"></div>`;
+  const labelColor = st.done ? (hot?HOT_MUTE:'var(--text-faint)') : (hot?'var(--surface)':'var(--text)');
+  const labelWeight = st.done ? '400' : '500';
+  let badges = '';
+  if (st.hard) badges += hot
+    ? `<span style="font-size:10px; font-weight:600; letter-spacing:0.4px; text-transform:uppercase; color:var(--surface); background:${HOT_CHIPBG}; border-radius:3px; padding:1px 5px">${esc(st.hardLabel)}</span>`
+    : `<span style="font-size:10px; font-weight:600; letter-spacing:0.4px; text-transform:uppercase; color:var(--amber-600); background:var(--amber-100); border-radius:3px; padding:1px 5px">${esc(st.hardLabel)}</span>`;
+  if (st.soft) badges += hot
+    ? `<span style="font-size:10px; font-weight:600; letter-spacing:0.4px; text-transform:uppercase; color:${HOT_SOFT}; background:${HOT_CHIPBG2}; border-radius:3px; padding:1px 5px">Slows filling</span>`
+    : `<span style="font-size:10px; font-weight:600; letter-spacing:0.4px; text-transform:uppercase; color:var(--text-faint); background:var(--surface-3); border-radius:3px; padding:1px 5px">Slows filling</span>`;
+  if (st.admin) badges += hot
+    ? `<span style="font-size:10px; font-weight:600; letter-spacing:0.4px; text-transform:uppercase; color:${HOT_SOFT}; background:${HOT_CHIPBG2}; border-radius:3px; padding:1px 5px">Admin</span>`
+    : `<span style="font-size:10px; font-weight:600; letter-spacing:0.4px; text-transform:uppercase; color:var(--text-faint); background:var(--surface-3); border-radius:3px; padding:1px 5px">Admin</span>`;
+  const hint = st.hint ? `<div style="font-size:11px; line-height:16px; color:${hot?HOT_SOFT:'var(--text-faint)'}; margin-top:1px; text-wrap:pretty">${esc(st.hint)}</div>` : '';
+  return `<div style="display:flex; align-items:flex-start; gap:8px">${marker}
+    <div style="flex:1; min-width:0">
+      <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap">
+        <div style="font-size:12px; font-weight:${labelWeight}; color:${labelColor}">${esc(st.label)}</div>${badges}
+      </div>${hint}
+    </div></div>`;
+}
+
+function stepsBlock(steps, hot, lineColor){
+  if (!steps || !steps.length) return '';
+  return `<div style="border-top:0.5px solid ${lineColor}; margin-top:12px; padding-top:10px; display:flex; flex-direction:column; gap:7px">
+    ${steps.map((st) => stepRow(st, hot)).join('')}
+  </div>`;
+}
+
+function stageCard(s){
+  const arrow = s.arrow
+    ? `<div style="flex:0 0 26px; display:flex; align-items:center; justify-content:center; color:var(--text-faint)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13"></path><path d="M13 6l6 6-6 6"></path></svg></div>`
+    : '';
+  let card = '';
+  if (s.hotCard) {
+    const metric = s.metric ? `<div style="display:flex; align-items:baseline; gap:5px; margin-top:10px"><div style="font-family:'Geist Mono',monospace; font-size:22px; font-weight:600; letter-spacing:-0.4px; color:var(--surface)">${esc(s.metric)}</div><div style="font-size:12px; color:${HOT_MUTE}">${esc(s.metricLabel)}</div></div>` : '';
+    const primary = s.primary ? `<button class="primary-hover" style="margin-top:12px; align-self:flex-start; border:0; background:var(--surface); color:var(--accent-700); font-size:13px; font-weight:600; padding:8px 14px; border-radius:8px">${esc(s.primary)}</button>` : '';
+    card = `<div style="flex:1; min-width:0; background:var(--accent-700); border:0.5px solid var(--accent-700); border-radius:10px; padding:16px; display:flex; flex-direction:column; box-shadow:var(--shadow-2)">
+      <div style="display:flex; align-items:center; gap:6px"><div style="font-family:'Geist Mono',monospace; font-size:11px; color:${HOT_MUTE}">${esc(s.n)}</div><div style="flex:1"></div><span style="font-size:11px; font-weight:600; color:var(--accent-700); background:var(--surface); border-radius:4px; padding:2px 6px">Start here</span></div>
+      <div style="font-size:16px; font-weight:600; letter-spacing:-0.1px; color:var(--surface); margin-top:8px">${esc(s.name)}</div>
+      <div style="font-size:11px; font-weight:500; color:${HOT_MUTE}; margin-top:3px">${esc(s.tag)}</div>
+      <div style="font-size:12px; line-height:18px; color:${HOT_SOFT}; margin-top:8px; text-wrap:pretty">${esc(s.line)}</div>
+      ${metric}${stepsBlock(s.steps, true, HOT_LINE)}
+      <div style="flex:1; min-height:12px"></div>${primary}
+    </div>`;
+  } else if (s.plainCard) {
+    const running = s.done ? `<span style="display:flex; align-items:center; gap:4px; font-size:11px; font-weight:600; color:var(--text-muted)"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>Running</span>` : '';
+    const metric = s.metric ? `<div style="display:flex; align-items:baseline; gap:5px; margin-top:10px"><div style="font-family:'Geist Mono',monospace; font-size:22px; font-weight:600; letter-spacing:-0.4px; color:var(--text)">${esc(s.metric)}</div><div style="font-size:12px; color:var(--text-faint)">${esc(s.metricLabel)}</div></div>` : '';
+    const chip = s.chip ? `<button class="btn-hover" style="margin-top:12px; align-self:flex-start; background:transparent; border:0.5px solid var(--line-strong); color:var(--text); font-size:12px; font-weight:500; padding:6px 12px; border-radius:8px">${esc(s.chip)}</button>` : '';
+    card = `<div style="flex:1; min-width:0; background:var(--surface); border:0.5px solid var(--line); border-radius:10px; padding:16px; display:flex; flex-direction:column">
+      <div style="display:flex; align-items:center; gap:6px"><div style="font-family:'Geist Mono',monospace; font-size:11px; color:var(--text-faint)">${esc(s.n)}</div><div style="flex:1"></div>${running}</div>
+      <div style="font-size:16px; font-weight:600; letter-spacing:-0.1px; color:var(--text); margin-top:8px">${esc(s.name)}</div>
+      <div style="font-size:11px; font-weight:500; color:var(--text-faint); margin-top:3px">${esc(s.tag)}</div>
+      <div style="font-size:12px; line-height:18px; color:var(--text-muted); margin-top:8px; text-wrap:pretty">${esc(s.line)}</div>
+      ${metric}${stepsBlock(s.steps, false, 'var(--line)')}
+      <div style="flex:1; min-height:12px"></div>${chip}
+    </div>`;
+  } else {
+    const badge = s.badge ? `<span style="font-size:11px; font-weight:600; color:var(--text-muted); background:var(--surface-3); border-radius:4px; padding:2px 6px">${esc(s.badge)}</span>` : '';
+    const needs = s.needs ? `<div style="font-family:'Geist Mono',monospace; font-size:12px; line-height:18px; color:var(--text-faint); margin-top:8px; text-wrap:pretty">${esc(s.needs)}</div>` : '';
+    const chip = s.chip ? `<button class="btn-hover" style="margin-top:12px; align-self:flex-start; background:transparent; border:0.5px solid var(--line-strong); color:var(--text); font-size:12px; font-weight:500; padding:6px 12px; border-radius:8px">${esc(s.chip)}</button>` : '';
+    card = `<div style="flex:1; min-width:0; background:transparent; border:0.5px dashed var(--line-strong); border-radius:10px; padding:16px; display:flex; flex-direction:column">
+      <div style="display:flex; align-items:center; gap:6px"><div style="font-family:'Geist Mono',monospace; font-size:11px; color:var(--text-faint)">${esc(s.n)}</div><div style="flex:1"></div>${badge}</div>
+      <div style="font-size:16px; font-weight:600; letter-spacing:-0.1px; color:var(--text-muted); margin-top:8px">${esc(s.name)}</div>
+      <div style="font-size:11px; font-weight:500; color:var(--text-faint); margin-top:3px">${esc(s.tag)}</div>
+      <div style="font-size:12px; line-height:18px; color:var(--text-muted); margin-top:8px; text-wrap:pretty">${esc(s.line)}</div>
+      ${needs}${stepsBlock(s.steps, false, 'var(--line)')}
+      <div style="flex:1; min-height:12px"></div>${chip}
+    </div>`;
+  }
+  return arrow + card;
+}
+
+function render(){
+  const d = over10();
+  const F = document.getElementById('frame');
+
+  const roleBtn = (key, label) => {
+    const on = d.role === key;
+    return `<button data-role="${key}" style="border:0; background:${on?'var(--surface)':'transparent'}; color:${on?'var(--text)':'var(--text-faint)'}; font-size:12px; font-weight:500; padding:5px 12px; border-radius:6px">${label}</button>`;
+  };
+
+  const cfgStrip = d.cfg10.map((c, ci) => `
+    <div style="display:flex; align-items:center; gap:6px">
+      <span style="font-size:11px; color:var(--text-faint)">${esc(c.label)}</span>
+      <div style="display:flex; background:var(--surface-3); border-radius:8px; padding:2px; gap:2px">
+        <button data-cfg="${ci}" data-side="a" style="border:0; background:${c.aOn?'var(--surface)':'transparent'}; color:${c.aOn?'var(--text)':'var(--text-faint)'}; font-size:11px; font-weight:500; padding:4px 9px; border-radius:6px">${esc(c.a)}</button>
+        <button data-cfg="${ci}" data-side="b" style="border:0; background:${c.bOn?'var(--surface)':'transparent'}; color:${c.bOn?'var(--text)':'var(--text-faint)'}; font-size:11px; font-weight:500; padding:4px 9px; border-radius:6px">${esc(c.b)}</button>
+      </div>
+    </div>`).join('');
+
+  const navRows = d.nav10.map((n) => {
+    if (n.h) return `<div style="font-size:11px; font-weight:600; letter-spacing:1.6px; text-transform:uppercase; color:var(--text-faint); padding:12px 10px 6px">${esc(n.label)}</div>`;
+    if (n.act) return `<div style="font-size:13px; font-weight:600; color:var(--accent-700); background:var(--accent-100); padding:8px 10px; border-radius:8px">${esc(n.label)}</div>`;
+    if (n.lock) return `<div style="font-size:13px; font-weight:500; color:var(--text-faint); padding:8px 10px; border-radius:8px; display:flex; align-items:center; gap:6px">${esc(n.label)}<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="4" y="11" width="16" height="9" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg></div>`;
+    return `<div style="font-size:13px; font-weight:500; color:var(--text-muted); padding:8px 10px; border-radius:8px">${esc(n.label)}</div>`;
+  }).join('');
+
+  const ticks = d.o10HasSteps ? `<div style="display:flex; gap:3px; margin-top:10px">${d.ticks10.map((t) => `<div style="flex:1; height:3px; border-radius:999px; background:${t.on?'var(--accent-500)':'var(--surface-3)'}"></div>`).join('')}</div>` : '';
+  const modules = d.modules10.map((m) => `
+    <div style="display:flex; align-items:baseline; gap:7px">
+      <div style="width:6px; height:6px; flex:0 0 6px; border-radius:2px; background:${m.on?'var(--accent-500)':'var(--text-faint)'}"></div>
+      <div style="font-size:12px; font-weight:500; color:var(--text)">${esc(m.label)}</div>
+      <div style="flex:1"></div>
+      <div style="font-size:11px; font-weight:600; color:${m.on?'var(--accent-600)':'var(--text-faint)'}">${m.on?'On':'Off'}</div>
+    </div>`).join('');
+
+  const offFooters = d.o10OffFooters ? `
+    <div style="flex:0 0 auto; display:flex; flex-direction:column; gap:6px; background:var(--surface-2); border:0.5px solid var(--line); border-radius:10px; padding:14px 16px">
+      ${d.offFooters10.map((f) => `<div style="font-size:12px; line-height:18px; color:var(--text-muted)">${esc(f.text)}</div>`).join('')}
+    </div>` : '';
+
+  const chain = d.o10HasChain ? `
+    <div style="flex:0 0 auto; display:flex; align-items:center; gap:8px">
+      <div style="font-size:11px; font-weight:600; letter-spacing:1.6px; text-transform:uppercase; color:var(--text-faint)">${esc(d.o10ChainTitle)}</div>
+      <div style="flex:1"></div>
+      <div style="font-size:12px; color:var(--text-faint)">${esc(d.o10RulesBy)}</div>
+    </div>
+    <div style="flex:0 0 auto; display:flex; align-items:stretch; gap:0">${d.stages10.map(stageCard).join('')}</div>` : '';
+
+  const side = d.side10.map((c) => `
+    <div style="display:flex; gap:8px; align-items:flex-start">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--accent-500)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:0 0 13px; margin-top:3px"><path d="M5 12h13"></path><path d="M13 6l6 6-6 6"></path></svg>
+      <div style="flex:1; min-width:0"><div style="font-size:13px; font-weight:500; color:var(--text)">${esc(c.title)}</div><div style="font-size:12px; line-height:17px; color:var(--text-faint); margin-top:1px; text-wrap:pretty">${esc(c.where)}</div></div>
+    </div>`).join('');
+
+  const sampleBadge = d.o10Sample ? `<span style="font-size:11px; font-weight:600; color:var(--text-muted); background:var(--surface-3); border-radius:4px; padding:2px 6px">Sample</span>` : '';
+  const queue = d.queue10.map((q) => `
+    <div style="display:flex; align-items:center; gap:12px; padding:12px 16px; border-bottom:0.5px solid var(--line)">
+      <div style="width:6px; height:6px; border-radius:2px; background:${q.dot}"></div>
+      <div style="flex:1; min-width:0"><div style="font-size:14px; font-weight:500; color:var(--text)">${esc(q.title)}</div><div style="font-size:12px; color:var(--text-muted); margin-top:1px">${esc(q.hint)}</div></div>
+      <div style="font-family:'Geist Mono',monospace; font-size:12px; color:var(--text-muted)">${esc(q.when)}</div>
+      ${q.cta ? `<button style="background:transparent; border:0.5px solid var(--line-strong); color:var(--text); font-size:12px; font-weight:500; padding:5px 11px; border-radius:8px">${esc(q.cta)}</button>` : ''}
+    </div>`).join('');
+
+  F.innerHTML = `
+    <div style="height:52px; flex:0 0 52px; background:var(--surface); border-bottom:0.5px solid var(--line); display:flex; align-items:center; gap:14px; padding:0 16px">
+      <div style="display:flex; align-items:center; gap:8px">
+        <svg width="19" height="19" viewBox="0 0 64 64" fill="none" style="color:var(--accent-500)"><path d="M10 50 V 32 C 10 18, 22 10, 32 10 C 42 10, 54 18, 54 32 V 50 Z" stroke="currentColor" stroke-width="5" stroke-linejoin="round"></path><path d="M22 50 L 32 24 L 42 50" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" opacity="0.55"></path><circle cx="32" cy="20" r="3.5" fill="currentColor"></circle></svg>
+        <span style="font-size:14px; font-weight:600; letter-spacing:-0.2px; color:var(--text)">ShowFlow</span>
+      </div>
+      <div style="width:0.5px; height:20px; background:var(--line)"></div>
+      <span style="font-size:13px; color:var(--text-muted)">${esc(ORG)}</span>
+      <div style="flex:1"></div>
+      <span style="font-size:11px; font-weight:600; letter-spacing:1.6px; text-transform:uppercase; color:var(--text-faint)">Viewing as</span>
+      <div style="display:flex; background:var(--surface-3); border-radius:8px; padding:2px; gap:2px">${roleBtn('admin','Admin')}${roleBtn('producer','Producer')}${roleBtn('artist','Artist')}</div>
+      <div style="width:26px; height:26px; border-radius:50%; background:var(--accent-100); color:var(--accent-700); font-size:11px; font-weight:600; display:flex; align-items:center; justify-content:center">${esc(d.initials10)}</div>
+    </div>
+
+    <div style="height:44px; flex:0 0 44px; background:var(--surface-2); border-bottom:0.5px solid var(--line); display:flex; align-items:center; gap:10px; padding:0 16px; overflow-x:auto">
+      <span style="font-size:11px; font-weight:600; letter-spacing:1.6px; text-transform:uppercase; color:var(--text-faint); flex:0 0 auto">Org config</span>
+      ${cfgStrip}
+    </div>
+
+    <div style="display:flex; min-height:0">
+      <nav style="width:214px; flex:0 0 214px; background:var(--surface-2); border-right:0.5px solid var(--line); padding:12px 10px; display:flex; flex-direction:column; gap:2px">${navRows}</nav>
+      <main style="flex:1; min-width:0; padding:24px; display:flex; flex-direction:column; gap:16px">
+
+        <div style="flex:0 0 auto; background:var(--surface); border:0.5px solid var(--line); border-radius:14px; padding:22px 24px; display:flex; gap:32px; align-items:flex-start">
+          <div style="flex:1; min-width:0">
+            <div style="font-size:11px; font-weight:600; letter-spacing:1.6px; text-transform:uppercase; color:var(--accent-600)">${esc(d.o10Eyebrow)}</div>
+            <div style="font-size:32px; font-weight:600; letter-spacing:-0.6px; line-height:38px; color:var(--text); margin-top:8px; max-width:600px; text-wrap:pretty">${esc(d.o10Headline)}</div>
+            <div style="font-size:14px; line-height:21px; color:var(--text-muted); margin-top:8px; max-width:520px; text-wrap:pretty">${esc(d.o10Body)}</div>
+            <div style="display:flex; align-items:center; gap:10px; margin-top:16px">
+              <button class="btn-hover" style="background:transparent; border:0.5px solid var(--line-strong); color:var(--text); font-size:13px; font-weight:500; padding:9px 16px; border-radius:8px">${esc(d.o10Ghost)}</button>
+              <span style="font-size:12px; color:var(--text-faint)">${esc(d.o10Hint)}</span>
+            </div>
+          </div>
+          <div style="flex:0 0 264px; background:var(--surface-2); border:0.5px solid var(--line); border-radius:10px; padding:14px">
+            <div style="font-size:11px; font-weight:600; letter-spacing:1.6px; text-transform:uppercase; color:var(--text-faint)">${esc(d.o10ProgressLabel)}</div>
+            ${ticks}
+            <div style="font-size:12px; line-height:18px; color:var(--text-muted); margin-top:10px; text-wrap:pretty">${esc(d.o10ProgressHint)}</div>
+            <div style="border-top:0.5px solid var(--line); margin-top:12px; padding-top:10px; display:flex; flex-direction:column; gap:8px">${modules}</div>
+          </div>
+        </div>
+
+        ${offFooters}
+        ${chain}
+
+        <div style="flex:0 0 auto; background:var(--surface); border:0.5px solid var(--line); border-radius:10px; padding:16px; display:flex; gap:24px; align-items:flex-start">
+          <div style="flex:1; min-width:0">
+            <div style="font-size:11px; font-weight:600; letter-spacing:1.6px; text-transform:uppercase; color:var(--text-faint)">${esc(d.o10SideTitle)}</div>
+            <div style="font-size:12px; line-height:18px; color:var(--text-muted); margin-top:6px; text-wrap:pretty">${esc(d.o10SideBody)}</div>
+          </div>
+          <div style="flex:0 0 300px; display:flex; flex-direction:column; gap:9px">${side}</div>
+        </div>
+
+        <div style="flex:0 0 auto; display:flex; align-items:center; gap:8px; margin-top:2px">
+          <div style="font-size:11px; font-weight:600; letter-spacing:1.6px; text-transform:uppercase; color:var(--text-faint)">${esc(d.o10QueueTitle)}</div>
+          ${sampleBadge}
+          <div style="flex:1"></div>
+          <div style="font-size:12px; color:var(--text-faint)">${esc(d.o10QueueHint)}</div>
+        </div>
+        <div style="flex:0 0 auto; background:var(--surface); border:0.5px solid var(--line); border-radius:10px; overflow:hidden; opacity:${d.o10QueueOpacity}">${queue}</div>
+
+      </main>
+    </div>`;
+
+  // wire config + role controls
+  F.querySelectorAll('[data-role]').forEach((b) => b.addEventListener('click', () => setState({ role10: b.getAttribute('data-role') })));
+  F.querySelectorAll('[data-cfg]').forEach((b) => b.addEventListener('click', () => {
+    const c = d.cfg10[+b.getAttribute('data-cfg')];
+    (b.getAttribute('data-side') === 'a' ? c.onA : c.onB)();
+  }));
+
+  document.getElementById('cfgNote').textContent =
+    'Current config → role: ' + d.role + ' · booking flow: ' + (state.bf10) + ' · hire orders: ' + state.ho10 + ' · flow: ' + state.flow10 + ' · dates: ' + (state.dates10==='in'?'imported':'none') + (d.role==='producer' ? ' · can edit settings: ' + state.canEdit10 : '');
+
+  // annotations
+  document.getElementById('notes').innerHTML =
+    `<div style="font-size:11px; font-weight:600; letter-spacing:1.6px; text-transform:uppercase; color:var(--accent-600)">Design annotations · what must come from config, not from this file</div>` +
+    d.notes10.map((n) => `
+      <div style="display:flex; gap:10px; align-items:flex-start">
+        <div style="font-family:'Geist Mono',monospace; font-size:11px; color:var(--text-faint); flex:0 0 18px; margin-top:2px">${esc(n.n)}</div>
+        <div style="flex:1; min-width:0">
+          <div style="font-size:13px; font-weight:500; color:var(--text)">${esc(n.title)}</div>
+          <div style="font-size:12px; line-height:18px; color:var(--text-muted); margin-top:2px; text-wrap:pretty">${esc(n.body)}</div>
+          <div style="font-family:'Geist Mono',monospace; font-size:11px; color:var(--text-faint); margin-top:3px">${esc(n.src)}</div>
+        </div>
+      </div>`).join('');
+}
+
+// theme toggle
+document.getElementById('themeBtn').addEventListener('click', () => {
+  const r = document.documentElement;
+  const cur = r.getAttribute('data-theme');
+  const isDark = cur ? cur === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+  r.setAttribute('data-theme', isDark ? 'light' : 'dark');
+});
+
+render();
+</script>
