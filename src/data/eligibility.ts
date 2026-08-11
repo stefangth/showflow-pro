@@ -102,24 +102,6 @@ export async function fetchShowRequiredSkillIds(
   return (data ?? []).map((r) => r.skill_id);
 }
 
-export async function addShowRequiredSkill(
-  client: SupabaseClient<Database>,
-  args: { showId: string; skillId: string; orgId: string },
-): Promise<void> {
-  const { error } = await client.from("show_required_skills")
-    .insert({ show_id: args.showId, skill_id: args.skillId, org_id: args.orgId });
-  if (error) throw error;
-}
-
-export async function removeShowRequiredSkill(
-  client: SupabaseClient<Database>,
-  args: { showId: string; skillId: string },
-): Promise<void> {
-  const { error } = await client.from("show_required_skills")
-    .delete().eq("show_id", args.showId).eq("skill_id", args.skillId);
-  if (error) throw error;
-}
-
 export async function addShowDateRequiredSkill(
   client: SupabaseClient<Database>,
   args: { showDateId: string; skillId: string; orgId: string },
