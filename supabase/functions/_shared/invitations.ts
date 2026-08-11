@@ -22,17 +22,6 @@ export interface DeliverInviteArgs {
    *  cannot: the short-lived action link, and the window's partly-elapsed final day. */
   expiresOn?: string;
   /**
-   * Which branch ensureInvitedUser took for this invitee: `true` for a net-new account
-   * (the invite link creates it and lands on set-password before accept), `false` for an
-   * existing account (a magic link signs them straight in, no password prompt). Drives
-   * which of the two ctaHint variants the template renders, so the email never promises
-   * a one-click sign-in to someone who is about to be asked for a password. Omitted only
-   * for a hand-built invite that never called ensureInvitedUser; the template defaults to
-   * the new-user copy in that case (the common case, and the safer of the two to be wrong
-   * about: it undersells the one-click path rather than overselling it).
-   */
-  isNewUser?: boolean;
-  /**
    * Whether this artist invitee can actually expect emailed booking offers, consulted by
    * the template ONLY when roleKey === 'artist' to choose between the offers-aware role
    * line (roleIntroArtistOffers) and the flattened, flow-neutral one (roleIntroArtist).
@@ -83,23 +72,10 @@ export function formatExpiresOn(expiresAt: string | null | undefined): string | 
     .format(date);
 }
 
-/** Matches the org_invitations.expires_at column default (`now() + interval '14 days'`,
- *  see supabase/migrations/20260603120000_add_platform_tables_and_org_helpers.sql) set at
- *  insert time. The invitation row's `expires_at` is the single source of truth for every
- *  email that states an expiry (create, resend, provision-org all read it straight off the
- *  row via `formatExpiresOn` — none of them compute or persist a new value): this
- *  constant has exactly ONE consumer left, org-invitation.tsx's `previewData.expiresOn`
- *  (the Settings > Email templates preview's sample date), which needs SOME plausible
- *  `expires_at` for a row that does not really exist. It is NOT read by
- *  `org-invitation.expiryFallback`: that copy deliberately states no day count at all
- *  (see the doc comment on that key in emailCopy.ts, and the test right below this one
- *  pinning that no stray digit has crept back into it).
- *  invitations.test.ts still pins this constant to the migration SQL, the same guard
- *  pattern src/lib/capabilityDefaultsSql.test.ts uses for capability_default() vs. its TS
- *  twin: a future change to the column default without a matching edit here would
- *  otherwise leave the PREVIEW silently understating the real window, even though no
- *  actual send is affected. */
-export const ORG_INVITATION_EXPIRY_DAYS = 14;
+/** Matches renew_invitation_for_resend's 30-day validity window. Used only to give the
+ * Settings email preview a representative expiry date; live sends always render the
+ * expiry returned by the database row/RPC. */
+export const ORG_INVITATION_EXPIRY_DAYS = 30;
 
 /**
  * Generic "who invited you" fallback for an invitation with no personal inviter to name:
@@ -241,63 +217,47 @@ export function resendIdempotencyKey(inviteId: string, resentCount: number, now:
   return `org-invitation-resend-${inviteId}-${resentCount}-${bucket}`;
 }
 
-/**
- * Resolve the auth user for an invite and mint the right action link, so the invite email
- * always carries a working way in and the caller can create the membership at invite time
- * (with the returned userId; claim_my_invitations then self-heals on first sign-in):
- *  - EXISTING user (re-invite / passwordless / expired): a magic link that logs them in and
- *    lands on accept via /auth/callback — they never hit the reset flow and can set a password
- *    later in-app on ProfilePage. Returns their id + the link.
- *  - NET-NEW user: a Supabase invite link that also creates the account and lands on
- *    /reset-password?redirect=/accept-invite so they set a password, then accept. Returns the
- *    new id + the link.
- *
- * appOrigin is passed through safeAppOrigin so a foreign caller-supplied origin can never be
- * minted into the redirect; we fall back to the canonical app origin rather than reject. A
- * generateLink that resolves without an action_link throws (a bare-token email would dead-end
- * an account-less / session-less user), mirroring the loud failure send-login-link uses.
- */
-export async function ensureInvitedUser(
+function invitationRedirect(deps: Deps, appOrigin: string): string {
+  const origin = safeAppOrigin(appOrigin, deps) ?? appUrl(deps.env).replace(/\/+$/, "");
+  return `${origin}/auth/callback?redirect=%2Faccept-invite`;
+}
+
+/** Ensure an Auth account exists without coupling durable invitation delivery to a
+ * short-lived, single-use Auth action link. Existing users require no Auth mutation;
+ * generating an invite for a missing user creates it and the returned link is discarded. */
+export async function ensureInvitedAccount(
   deps: Deps,
-  args: { email: string; appOrigin: string; token: string },
-): Promise<{ userId: string | null; actionLink?: string; isNewUser: boolean }> {
+  args: { email: string; appOrigin: string },
+): Promise<{ userId: string | null; isNewUser: boolean }> {
   const email = args.email.toLowerCase();
-  const origin = safeAppOrigin(args.appOrigin, deps) ?? appUrl(deps.env).replace(/\/+$/, "");
-  const acceptPath = `/accept-invite?token=${args.token}`;
   const { data: existingId } = await deps.admin.rpc("get_user_id_by_email", { p_email: email });
-
-  if (existingId) {
-    // EXISTING: magic link logs them in and lands on accept via /auth/callback.
-    const redirectTo = `${origin}/auth/callback?redirect=${encodeURIComponent(acceptPath)}`;
-    const { data, error } = await deps.admin.auth.admin.generateLink({
-      type: "magiclink",
-      email: args.email,
-      options: { redirectTo },
-    });
-    if (error) throw error;
-    const actionLink = (data as { properties?: { action_link?: string } } | null)?.properties?.action_link;
-    if (!actionLink) {
-      console.error("ensureInvitedUser: generateLink returned no action_link", { existingUser: true });
-      throw new Error("generateLink returned no action_link");
-    }
-    return { userId: existingId as string, actionLink, isNewUser: false };
-  }
-
-  // NET-NEW: invite link creates the account, lands on set-password, then accept.
-  const redirectTo = `${origin}/reset-password?redirect=${encodeURIComponent(acceptPath)}`;
+  if (existingId) return { userId: existingId as string, isNewUser: false };
   const { data, error } = await deps.admin.auth.admin.generateLink({
     type: "invite",
     email: args.email,
-    options: { redirectTo },
+    options: { redirectTo: invitationRedirect(deps, args.appOrigin) },
   });
   if (error) throw error;
-  const d = data as { properties?: { action_link?: string }; user?: { id?: string } } | null;
-  const actionLink = d?.properties?.action_link;
-  if (!actionLink) {
-    console.error("ensureInvitedUser: generateLink returned no action_link", { existingUser: false });
-    throw new Error("generateLink returned no action_link");
-  }
-  return { userId: d?.user?.id ?? null, actionLink, isNewUser: true };
+  return { userId: (data as { user?: { id?: string } } | null)?.user?.id ?? null, isNewUser: true };
+}
+
+/** Mint a fresh, short-lived Auth action link for an exchange response. Stable invitation
+ * tokens never enter the redirect or the generated URL. */
+export async function mintInvitationActionLink(
+  deps: Deps,
+  args: { email: string; appOrigin: string },
+): Promise<string> {
+  const email = args.email.toLowerCase();
+  const { data: existingId } = await deps.admin.rpc("get_user_id_by_email", { p_email: email });
+  const { data, error } = await deps.admin.auth.admin.generateLink({
+    type: existingId ? "magiclink" : "invite",
+    email: args.email,
+    options: { redirectTo: invitationRedirect(deps, args.appOrigin) },
+  });
+  if (error) throw error;
+  const actionLink = (data as { properties?: { action_link?: string } } | null)?.properties?.action_link;
+  if (!actionLink) throw new Error("generateLink returned no action_link");
+  return actionLink;
 }
 
 /**
@@ -312,7 +272,7 @@ export async function ensureInvitedUser(
  */
 export async function sendOrgInvitationEmail(
   deps: Deps,
-  args: DeliverInviteArgs & { actionLink?: string },
+  args: DeliverInviteArgs,
 ): Promise<InvokeResult> {
   return await deps.sendEmail({
     template_name: "org-invitation",
@@ -326,9 +286,7 @@ export async function sendOrgInvitationEmail(
       inviterEmail: args.inviterEmail,
       inviterName: args.inviterName,
       expiresOn: args.expiresOn,
-      isNewUser: args.isNewUser,
       offersExpected: args.offersExpected,
-      actionLink: args.actionLink,
     },
     idempotency_key: args.idempotencyKey,
   });

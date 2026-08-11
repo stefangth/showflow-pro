@@ -1,7 +1,7 @@
 import { preflight, json } from "../_shared/http.ts";
 import { requireSuperAdmin } from "../_shared/auth.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
-import { ensureInvitedUser, formatExpiresOn, resolveArtistOffersExpected, sendOrgInvitationEmail, SYSTEM_INVITER_NAME } from "../_shared/invitations.ts";
+import { ensureInvitedAccount, formatExpiresOn, resolveArtistOffersExpected, sendOrgInvitationEmail, SYSTEM_INVITER_NAME } from "../_shared/invitations.ts";
 import { roleLabel } from "../_shared/roles.ts";
 import { resolveOrgSetting } from "../_shared/settings.ts";
 import { FEATURE_KEYS, FEATURE_REGISTRY, type FeatureKey } from "../_shared/entitlements.ts";
@@ -96,19 +96,15 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       const { data: invRow } = await deps.admin
         .from("org_invitations").select("id, expires_at").eq("token", token).maybeSingle();
       const invitationId = (invRow as { id?: string } | null)?.id;
-      const { userId, actionLink, isNewUser } = await ensureInvitedUser(deps, { email, appOrigin, token });
+      const { userId } = await ensureInvitedAccount(deps, { email, appOrigin });
       if (invitationId && userId) {
         const { error: memErr } = await deps.admin.rpc("ensure_invitation_membership", {
           p_invitation: invitationId, p_user: userId,
         });
         if (memErr) console.error("provision-org: membership link failed", (memErr as { message?: string }).message);
       }
-      // Only email when the first admin can actually authenticate: an existing account
-      // (userId) or a freshly minted set-password link (actionLink). A link-less email to an
-      // account-less user is a dead end; skip it (claim_my_invitations self-heals membership
-      // on their first sign-in regardless). Mirrors create-invitation's guard.
-      if (userId || actionLink) {
-        // The first admin of a brand-new org is a total stranger to the super-admin
+      // The durable invitation email contains no short-lived Auth action link. The first
+      // admin of a brand-new org is a total stranger to the super-admin
         // provisioning it, so "Invited by" always reads a generic, org-neutral line here:
         // never the platform operator's own display name or personal inbox address. A
         // stranger has no more context for "Jordan Owner" than for owner@platform.test,
@@ -125,20 +121,16 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
         // above, when it landed), so a fresh org still starting in the "off" preset
         // correctly resolves to false rather than the module's usual defaults; it also
         // already fails closed to false on any error, so no extra .catch is needed here.
-        const offersExpected = role === "artist"
-          ? await resolveArtistOffersExpected(deps.admin, org_id)
-          : undefined;
-        await sendOrgInvitationEmail(deps, {
-          email, orgName: name, role: roleLabel(role), roleKey: role, token,
-          inviterName: SYSTEM_INVITER_NAME,
-          expiresOn: formatExpiresOn((invRow as { expires_at?: string } | null)?.expires_at),
-          isNewUser,
-          offersExpected,
-          appOrigin, idempotencyKey: `org-invitation-${org_id}`, orgId: org_id, actionLink,
-        });
-      } else {
-        console.error("provision-org: skipped invite email — first-admin account minting failed");
-      }
+      const offersExpected = role === "artist"
+        ? await resolveArtistOffersExpected(deps.admin, org_id)
+        : undefined;
+      await sendOrgInvitationEmail(deps, {
+        email, orgName: name, role: roleLabel(role), roleKey: role, token,
+        inviterName: SYSTEM_INVITER_NAME,
+        expiresOn: formatExpiresOn((invRow as { expires_at?: string } | null)?.expires_at),
+        offersExpected,
+        appOrigin, idempotencyKey: `org-invitation-${org_id}`, orgId: org_id,
+      });
     } catch (e) {
       console.error("provision-org: invite delivery failed", (e as Error).message);
     }

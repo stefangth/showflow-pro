@@ -20,9 +20,6 @@ interface Props {
   inviterEmail?: string;
   inviterName?: string;
   expiresOn?: string;
-  /** See DeliverInviteArgs.isNewUser in _shared/invitations.ts. Undefined defaults to the
-   *  new-user copy (the common case: most invites are a first invite). */
-  isNewUser?: boolean;
   /** See DeliverInviteArgs.offersExpected in _shared/invitations.ts. Only consulted when
    *  roleKey === 'artist'; must be EXPLICITLY true to render the offers-aware copy.
    *  Undefined (and false) render the flow-neutral line, since that line stays true
@@ -30,7 +27,6 @@ interface Props {
    *  that must be proven, not assumed. */
   offersExpected?: boolean;
   token?: string;
-  actionLink?: string;
   _emailCopy?: EmailCopy;
   _emailTheme?: EmailTheme;
   _emailFamily?: EmailFamily;
@@ -44,10 +40,8 @@ const OrgInvitationEmail = ({
   inviterEmail,
   inviterName,
   expiresOn,
-  isNewUser,
   offersExpected,
   token,
-  actionLink,
   _emailCopy = EMAIL_COPY_DEFAULTS as EmailCopy,
   _emailTheme = EMAIL_THEME_DEFAULTS,
   _emailFamily = "violet",
@@ -56,12 +50,7 @@ const OrgInvitationEmail = ({
   const copy = _emailCopy;
   const theme = _emailTheme;
   const org = orgName || copy["org-invitation.orgFallback"];
-  // Both the CTA and the paste-line fallback use the one-click action link, which is always
-  // minted now (invite link for net-new, magic link for existing) and works in both cases.
-  // A net-new invitee needs this link (not the bare token URL) because the token accept URL
-  // has no session/account for them and would dead-end at /login. It falls back to the token
-  // accept URL only if no action link was produced.
-  const acceptUrl = actionLink || (token ? `${APP_URL}/accept-invite?token=${token}` : APP_URL);
+  const acceptUrl = token ? `${APP_URL}/accept-invite?token=${encodeURIComponent(token)}` : APP_URL;
   // The friendly name wins over the raw email for the "Invited by" line; falls back to the
   // email when no profiles.display_name was resolvable, and renders no line at all when the
   // caller has neither (a hand-created invite with no known inviter).
@@ -100,31 +89,13 @@ const OrgInvitationEmail = ({
   const showRoleIntro = Boolean(role && roleActionLine);
   const roleIntroText = `${applyEmailTokens(copy["org-invitation.roleIntro"], values)} ${roleActionLine}`;
   // Every invite states SOME expiry so it never reads as open-ended: the real date from the
-  // invitation row when known, else the generic fallback statement. The line is about the
-  // invitation itself staying valid, not about the button working: the CTA's own TTL (a
-  // short-lived Supabase action link) is unrelated to and usually shorter than this window,
-  // and linkRecovery (in postCta, below) already tells the reader what to do if the button
-  // itself stops working.
+  // invitation row/RPC when known, else the generic fallback statement.
   const expiryText = expiresOn
     ? applyEmailTokens(copy["org-invitation.expiryLine"], values)
     : copy["org-invitation.expiryFallback"];
-  // A net-new invitee has no password yet (the button walks them through setting one); a
-  // returning invitee signs straight in via a magic link and never sees a password prompt.
-  // Only `isNewUser === false` (explicitly resolved as an existing account) picks the
-  // returning-user copy; undefined defaults to the new-user line, which is the common case.
-  //
-  // Both of those variants promise something specific about what clicking the button does
-  // ("signs you in directly", "asks you to choose a password"), and that promise is only
-  // TRUE when `acceptUrl` is the minted action link. The one caller that can send this
-  // email with no actionLink (create-invitation's catch branch, when ensureInvitedUser
-  // throws AFTER the invitee's existing account was already resolved) falls back to the
-  // bare token URL, and /accept-invite bounces a session-less visitor to /login: neither
-  // promise would be true there, so that case gets its own, honest copy instead.
-  const ctaHint = !actionLink
-    ? copy["org-invitation.ctaHintFallback"]
-    : isNewUser === false
-      ? copy["org-invitation.ctaHintExistingUser"]
-      : copy["org-invitation.ctaHintNewUser"];
+  // The stable URL may lead to sign-in or account creation, so the hint is deliberately
+  // unified and makes no promise about which authentication method the recipient will use.
+  const ctaHint = copy["org-invitation.ctaHintFallback"];
   const pasteLink = (
     <>
       <Text style={{ ...emailRoleStyle(theme, "footer", _highlightRole), margin: "0 0 8px" }}>{copy["org-invitation.pasteLink"]}</Text>
@@ -170,15 +141,10 @@ export const template = {
     inviterEmail: "admin@cirque.example",
     // Computed from the real helper (rather than a hand-typed date string) so the
     // Settings preview can never drift from what a real send actually renders: a
-    // freshly minted 14-day row's exact expiry day.
+    // freshly minted 30-day row's exact expiry day.
     expiresOn: formatExpiresOn(
       new Date(Date.now() + ORG_INVITATION_EXPIRY_DAYS * 24 * 60 * 60 * 1000).toISOString(),
     ),
-    isNewUser: true,
     token: "previewtoken1234567890abcdef",
-    // A real send always carries a minted action link (see ensureInvitedUser); include one
-    // here too so the Settings preview shows the normal reassurance copy, not the no-link
-    // fallback that only a rare error path actually sends.
-    actionLink: "https://app.showflow.pro/reset-password?redirect=%2Faccept-invite%3Ftoken%3Dpreviewtoken1234567890abcdef",
   },
 } satisfies TemplateEntry;

@@ -205,9 +205,9 @@ export const EMAIL_COPY_DEFAULTS = {
   // the paste-link fallback instead of here, so the sentence right before the button
   // stays a plain, undiluted reassurance about what clicking it does rather than a hedge
   // about it failing, planted right where the reader is about to click.
-  "org-invitation.ctaHintNewUser": "The button opens ShowFlow and asks you to choose a password. That is all you need to get in.",
-  "org-invitation.ctaHintExistingUser": "The button signs you in directly. No password needed from this email.",
-  "org-invitation.ctaHintFallback": "The button takes you to a sign in page. Use your existing password, or choose Forgot password there if you do not have one yet.",
+  "org-invitation.ctaHintNewUser": "Continue securely to sign in or create your account.",
+  "org-invitation.ctaHintExistingUser": "Continue securely to sign in or create your account.",
+  "org-invitation.ctaHintFallback": "Continue securely to sign in or create your account.",
   // "is open", not "is held": "held" reads as "queued for delivery" rather than "the
   // window this invitation is valid for". Also drops {{orgName}} for the same
   // repetition reason as roleIntro above.
