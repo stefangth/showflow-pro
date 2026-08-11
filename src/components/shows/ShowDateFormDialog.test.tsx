@@ -270,4 +270,19 @@ describe("ShowDateFormDialog", () => {
     renderWithProviders(<ShowDateFormDialog open onOpenChange={() => {}} mode="create" />);
     expect(screen.queryByText(/session times/i)).not.toBeInTheDocument();
   });
+
+  // P3.1: a producer adding a date by hand has no cue that an Airtable-synced workspace
+  // keeps syncing independently of what they just typed in here.
+  it("states the dates-source note in create mode", () => {
+    renderWithProviders(<ShowDateFormDialog open onOpenChange={() => {}} mode="create" />);
+    expect(
+      screen.getByText(/You can add a show date by hand here\. If your workspace syncs from Airtable/),
+    ).toBeInTheDocument();
+  });
+
+  it("does not state the dates-source note in edit mode", () => {
+    mockFlow = { ...BOOKING_FLOW_DEFAULTS };
+    renderWithProviders(<ShowDateFormDialog open onOpenChange={() => {}} mode="edit" showDate={editShowDate} />);
+    expect(screen.queryByText(/You can add a show date by hand here/)).not.toBeInTheDocument();
+  });
 });

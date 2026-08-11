@@ -2,6 +2,10 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { screen, fireEvent, waitFor } from "@testing-library/react";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import { createFakeSupabase, type TableSeed } from "@/test/supabaseFake";
+// The per-row confirm success toast is asserted directly (Booked ${name}.), so sonner's
+// toast is a plain spy rather than the real module (which has nothing to observe without a
+// mounted <Toaster/>).
+vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() } }));
 
 // ShowDateDetailSheet reaches the shared client through several raw
 // supabase.from(...) queries plus data-access helpers (fetchOfferTiers,
@@ -68,6 +72,7 @@ function seedClient(seed: Record<string, TableSeed>) {
 import { useAuth } from "@/features/auth/AuthContext";
 import { useCan } from "@/hooks/useCapabilities";
 import { useFeature } from "@/hooks/useEntitlements";
+import { toast } from "sonner";
 import { ShowDateDetailSheet } from "./ShowDateDetailSheet";
 
 const SHOW_DATE = {
@@ -242,6 +247,22 @@ describe("ShowDateDetailSheet capability gates", () => {
     });
     renderSheet();
     expect(await screen.findByRole("button", { name: /^confirm$/i })).toBeInTheDocument();
+  });
+
+  // The per-row Confirm on the cockpit cast list used to report a bare "Booking updated",
+  // so clicking Confirm on a busy date's cast list gave no receipt of WHICH artist just
+  // moved. updateBookingStatus's onSuccess now looks the booking up in bookingsForDate to
+  // name the artist.
+  it("names the artist in the per-row confirm success toast", async () => {
+    seedClient({
+      show_dates: { data: SHOW_DATE, error: null },
+      bookings: { data: [SOFT_BOOKED], error: null },
+      casts: { data: [], error: null },
+      show_date_cast_eligibility: { data: [], error: null },
+    });
+    renderSheet();
+    fireEvent.click(await screen.findByRole("button", { name: /^confirm$/i }));
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Booked Ada Lovelace."));
   });
 
   it("booking_flow on: the header shows 'Confirm N accepted' for a soft_booked booking", async () => {

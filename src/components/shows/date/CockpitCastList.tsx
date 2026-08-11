@@ -1,4 +1,12 @@
+import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { IconTooltip } from "@/components/common/IconTooltip";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import type { BookingFlow } from "@/lib/bookingFlow";
+import { confirmConsequenceNote, cancelBookingCopy, SOFT_BOOKED_MEANING } from "@/lib/bookings/actionCopy";
 
 export type CastTone = "green" | "violet" | "amber";
 
@@ -38,6 +46,11 @@ export interface CastGroup {
   rows: CastRow[];
 }
 
+/** The flow fields the list needs for its point-of-action narration: the confirm
+ *  consequence line, and (via cancelBookingCopy) the cancel dialog's understudy
+ *  and who-hears lines. */
+export type CockpitCastListFlow = Pick<BookingFlow, "active" | "confirmation_digest" | "understudy_promotion">;
+
 const initialsOf = (name: string) =>
   name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
 
@@ -57,7 +70,54 @@ function Avatar({ row }: { row: CastRow }) {
   );
 }
 
-function Row({ row, last }: { row: CastRow; last: boolean }) {
+const STATUS_BADGE_BASE = "rounded-[var(--radius-xs)] px-2 py-[3px] text-xs font-medium";
+
+function StatusBadge({ status }: { status: NonNullable<CastRow["status"]> }) {
+  if (status === "accepted") {
+    // "Accepted" is the cockpit's label for a soft_booked row: the artist said yes, but
+    // nothing is booked until a producer confirms it — SOFT_BOOKED_MEANING spells that out
+    // for anyone who reads "Accepted" as already-booked.
+    return (
+      <IconTooltip label={SOFT_BOOKED_MEANING}>
+        <span className={cn(STATUS_BADGE_BASE, "bg-accent-100 text-accent-700")}>Accepted</span>
+      </IconTooltip>
+    );
+  }
+  return (
+    <span
+      className={cn(
+        STATUS_BADGE_BASE,
+        status === "confirmed" ? "bg-[var(--green-100)] text-[var(--green-600)]" : "bg-[var(--amber-100)] text-[var(--amber-600)]",
+      )}
+    >
+      {status === "confirmed" ? "Confirmed" : "Offered"}
+    </span>
+  );
+}
+
+function Row({
+  row, last, flow, bookingFlowEnabled, confirmationDigestHour,
+}: {
+  row: CastRow;
+  last: boolean;
+  flow: CockpitCastListFlow;
+  bookingFlowEnabled: boolean;
+  confirmationDigestHour: number;
+}) {
+  const [cancelOpen, setCancelOpen] = useState(false);
+  // Only an explicit active===false pauses promotion, matching the same convention used
+  // throughout bookingFlow.ts and actionCopy.ts.
+  const understudyPromotionEnabled = flow.active !== false && flow.understudy_promotion;
+  const cancelCopy = row.name
+    ? cancelBookingCopy({
+        artistName: row.name,
+        understudyPromotionEnabled,
+        bookingFlowEnabled,
+        flow,
+        confirmationDigestHour,
+      })
+    : null;
+
   return (
     <div
       className={cn(
@@ -77,20 +137,7 @@ function Row({ row, last }: { row: CastRow; last: boolean }) {
         </div>
       </div>
       <div className="flex shrink-0 items-center gap-2">
-        {row.status && (
-          <span
-            className={cn(
-              "rounded-[var(--radius-xs)] px-2 py-[3px] text-xs font-medium",
-              row.status === "confirmed"
-                ? "bg-[var(--green-100)] text-[var(--green-600)]"
-                : row.status === "accepted"
-                  ? "bg-accent-100 text-accent-700"
-                  : "bg-[var(--amber-100)] text-[var(--amber-600)]",
-            )}
-          >
-            {row.status === "confirmed" ? "Confirmed" : row.status === "accepted" ? "Accepted" : "Offered"}
-          </span>
-        )}
+        {row.status && <StatusBadge status={row.status} />}
         {row.status === "accepted" && row.onConfirm && (
           <button
             type="button"
@@ -109,28 +156,73 @@ function Row({ row, last }: { row: CastRow; last: boolean }) {
             {row.slotActionLabel}
           </button>
         )}
-        {!row.open && row.onCancel && (
-          <button
-            type="button"
-            onClick={row.onCancel}
-            // Hidden until the row is hovered/focused. `pointer-events-none` while
-            // hidden so it is never a tap target on touch (no hover) — otherwise an
-            // invisible control could fire an unconfirmed cancel.
-            className="h-[30px] rounded-[var(--radius-m)] px-2 text-xs font-medium text-[var(--text-muted)] opacity-0 transition pointer-events-none hover:text-[var(--red-600)] focus-visible:pointer-events-auto focus-visible:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100"
-          >
-            Cancel
-          </button>
+        {!row.open && row.onCancel && cancelCopy && (
+          <>
+            <button
+              type="button"
+              onClick={() => setCancelOpen(true)}
+              // Hidden until the row is hovered/focused. `pointer-events-none` while
+              // hidden so it is never a tap target on touch (no hover) — otherwise an
+              // invisible control could fire an unconfirmed cancel.
+              className="h-[30px] rounded-[var(--radius-m)] px-2 text-xs font-medium text-[var(--text-muted)] opacity-0 transition pointer-events-none hover:text-[var(--red-600)] focus-visible:pointer-events-auto focus-visible:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100"
+            >
+              Cancel
+            </button>
+            {/* Cancellation is consequential (understudy promotion, an artist told), so it
+                sits behind a confirmation dialog like the surface's other committing actions
+                (EligibilityBookList's Book confirm, TierTimeline's open/close confirms). */}
+            <AlertDialog open={cancelOpen} onOpenChange={setCancelOpen}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>{cancelCopy.title}</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    {[cancelCopy.understudyLine, cancelCopy.whoHearsLine].filter(Boolean).join(" ")}
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Keep booking</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => {
+                      row.onCancel?.();
+                      setCancelOpen(false);
+                    }}
+                  >
+                    Cancel booking
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </>
         )}
       </div>
     </div>
   );
 }
 
+export interface CockpitCastListProps {
+  groups: CastGroup[];
+  flow: CockpitCastListFlow;
+  /** The org's actual booking_flow entitlement (not the module-gate's super-admin-exempt
+   *  read) — feeds cancelBookingCopy's who-hears line via scheduleChangeNote, which makes a
+   *  factual claim about what will happen, not a permission check. */
+  bookingFlowEnabled: boolean;
+  confirmationDigestHour: number;
+}
+
 /** The cockpit Cast tab: one card per group (main cast, understudies), each with
  *  a count header and artist/open-slot rows. Matches the prototype's Cast panel. */
-export function CockpitCastList({ groups }: { groups: CastGroup[] }) {
+export function CockpitCastList({ groups, flow, bookingFlowEnabled, confirmationDigestHour }: CockpitCastListProps) {
+  // Rendered once for the whole list, not per row: every accepted row's Confirm button does
+  // the same thing, so repeating this line once per row would just be noise.
+  const hasConfirmable = groups.some((g) => g.rows.some((r) => r.status === "accepted" && r.onConfirm));
+
   return (
     <div className="flex flex-col gap-4">
+      {hasConfirmable && (
+        <p className="text-xs text-muted-foreground">
+          {confirmConsequenceNote(flow, confirmationDigestHour)}
+        </p>
+      )}
       {groups.map((g) => (
         <div
           key={g.key}
@@ -140,7 +232,14 @@ export function CockpitCastList({ groups }: { groups: CastGroup[] }) {
             {g.title} · {g.count}
           </p>
           {g.rows.map((r, i) => (
-            <Row key={r.id} row={r} last={i === g.rows.length - 1} />
+            <Row
+              key={r.id}
+              row={r}
+              last={i === g.rows.length - 1}
+              flow={flow}
+              bookingFlowEnabled={bookingFlowEnabled}
+              confirmationDigestHour={confirmationDigestHour}
+            />
           ))}
         </div>
       ))}

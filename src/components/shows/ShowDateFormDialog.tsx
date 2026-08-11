@@ -17,6 +17,7 @@ import { isSyncedDate, findDuplicateDate } from "@/lib/catalog";
 import { shouldAutoOpenTier1 } from "@/lib/bookings";
 import { showSlots } from "@/lib/settings";
 import { scheduleChangeNote } from "@/lib/notifications/scheduleChangeCopy";
+import { DATE_SOURCE_NOTE } from "@/lib/bookings/actionCopy";
 import { showIdentityLabel } from "@/types";
 import { toDateKey, parseDateOnly, formatDateDMY } from "@/lib/dates";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -211,6 +212,7 @@ export function ShowDateFormDialog({
             {synced && <Badge variant="secondary" className="bg-muted text-muted-foreground">Synced from Airtable</Badge>}
           </DialogTitle>
           {changeNote && <DialogDescription className="text-xs">{changeNote}</DialogDescription>}
+          {mode === "create" && <DialogDescription className="text-xs">{DATE_SOURCE_NOTE}</DialogDescription>}
         </DialogHeader>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-1.5">

@@ -1,0 +1,122 @@
+import { describe, it, expect, vi } from "vitest";
+import { screen, fireEvent } from "@testing-library/react";
+import { renderWithProviders } from "@/test/renderWithProviders";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { CockpitCastList, type CastGroup, type CastRow } from "./CockpitCastList";
+import { BOOKING_FLOW_DEFAULTS, applyPreset } from "@/lib/bookingFlow";
+import { SOFT_BOOKED_MEANING } from "@/lib/bookings/actionCopy";
+
+const classic = applyPreset(BOOKING_FLOW_DEFAULTS, "classic");
+
+function acceptedGroups(overrides: Partial<CastRow> = {}): CastGroup[] {
+  return [
+    {
+      key: "main",
+      title: "Main cast",
+      count: "0 of 1",
+      rows: [
+        {
+          id: "b1",
+          name: "Ada Lovelace",
+          meta: "Tier 1 · accepted",
+          tone: "violet",
+          status: "accepted",
+          onConfirm: vi.fn(),
+          onCancel: vi.fn(),
+          ...overrides,
+        },
+      ],
+    },
+  ];
+}
+
+describe("CockpitCastList confirm consequence line", () => {
+  it("renders the resolved-hour consequence line once when a row is awaiting confirm", () => {
+    renderWithProviders(
+      <CockpitCastList groups={acceptedGroups()} flow={classic} bookingFlowEnabled confirmationDigestHour={21} />,
+    );
+    expect(screen.getByText(/goes out in the daily summary at 21:00 Berlin/)).toBeInTheDocument();
+  });
+
+  it("renders nothing about Confirm when no row is awaiting it", () => {
+    const groups: CastGroup[] = [
+      {
+        key: "main",
+        title: "Main cast",
+        count: "1 of 1",
+        rows: [{ id: "b1", name: "Ada Lovelace", meta: "confirmed", tone: "green", status: "confirmed" }],
+      },
+    ];
+    renderWithProviders(
+      <CockpitCastList groups={groups} flow={classic} bookingFlowEnabled confirmationDigestHour={21} />,
+    );
+    expect(screen.queryByText(/Confirm places the booking/)).not.toBeInTheDocument();
+  });
+
+  it("still states the bare consequence when the flow is paused", () => {
+    const off = applyPreset(BOOKING_FLOW_DEFAULTS, "off");
+    renderWithProviders(
+      <CockpitCastList groups={acceptedGroups()} flow={off} bookingFlowEnabled confirmationDigestHour={21} />,
+    );
+    expect(screen.getByText("Confirm places the booking.")).toBeInTheDocument();
+  });
+});
+
+describe("CockpitCastList Accepted badge tooltip", () => {
+  it("carries the soft-booked meaning as a tooltip on the Accepted badge", async () => {
+    // TooltipProvider delayDuration=0 nested inside renderWithProviders' own provider so the
+    // tooltip opens without waiting on Radix's default 700ms hover delay.
+    renderWithProviders(
+      <TooltipProvider delayDuration={0}>
+        <CockpitCastList groups={acceptedGroups()} flow={classic} bookingFlowEnabled confirmationDigestHour={21} />
+      </TooltipProvider>,
+    );
+    // Radix opens a tooltip from pointermove on the trigger, not mouseover/mouseenter, and
+    // renders the visible bubble plus a visually-hidden copy, hence findAllByText.
+    fireEvent.pointerMove(screen.getByText("Accepted"), { pointerType: "mouse" });
+    expect(await screen.findAllByText(SOFT_BOOKED_MEANING)).not.toHaveLength(0);
+  });
+});
+
+describe("CockpitCastList per-row cancel confirmation", () => {
+  it("opens a confirmation dialog naming the artist, the understudy line, and the who-hears line before cancelling", () => {
+    const onCancel = vi.fn();
+    renderWithProviders(
+      <CockpitCastList
+        groups={acceptedGroups({ onCancel })}
+        flow={{ ...classic, understudy_promotion: true }}
+        bookingFlowEnabled
+        confirmationDigestHour={21}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /^cancel$/i }));
+    expect(screen.getByText("Cancel Ada Lovelace's booking?")).toBeInTheDocument();
+    expect(
+      screen.getByText(/If Ada Lovelace is in the main cast, the longest waiting accepted understudy is promoted automatically\./),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/goes out in the daily summary at 21:00 Berlin/)).toBeInTheDocument();
+    expect(onCancel).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Keep booking" }));
+    expect(onCancel).not.toHaveBeenCalled();
+    expect(screen.queryByText("Cancel Ada Lovelace's booking?")).not.toBeInTheDocument();
+  });
+
+  it("omits the understudy line when understudy promotion is off, and fires cancel only on explicit confirm", () => {
+    const onCancel = vi.fn();
+    renderWithProviders(
+      <CockpitCastList
+        groups={acceptedGroups({ onCancel })}
+        flow={{ ...classic, understudy_promotion: false }}
+        bookingFlowEnabled
+        confirmationDigestHour={21}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /^cancel$/i }));
+    expect(screen.queryByText(/longest waiting accepted understudy/)).not.toBeInTheDocument();
+    expect(onCancel).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Cancel booking" }));
+    expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+});
