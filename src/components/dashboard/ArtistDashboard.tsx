@@ -51,7 +51,7 @@ export function ArtistDashboard() {
 
   const hireOrdersEnabled = useFeature('hire_orders');
   const bookingFlowEnabled = useFeature('booking_flow');
-  const { data: myHireOrders } = useMyHireOrders();
+  const { data: myHireOrders, isSuccess: hireOrdersLoaded } = useMyHireOrders();
   const { currentOrg } = useAuth();
   const hireOrderAction = useHireOrderAction();
   const fr = useDashboardFirstRun('artist');
@@ -202,6 +202,7 @@ export function ArtistDashboard() {
                       <p className="text-xs text-muted-foreground mt-3">
                         {meter.footer}
                       </p>
+                      <p className="text-xs text-muted-foreground mt-2">{meter.explainer}</p>
                     </CardContent>
                   </Card>
                 </Link>
@@ -254,53 +255,70 @@ export function ArtistDashboard() {
               </div>
             </ModuleGate>
 
-            {hireOrdersEnabled && (myHireOrders?.length ?? 0) > 0 && (
+            {hireOrdersEnabled && (
               <Card>
                 <CardHeader>
                   <CardTitle className="font-display flex items-center gap-2 text-base">
                     <FileText className="h-4 w-4" />
                     Your hire orders
-                    <Badge variant="secondary">{myHireOrders!.length}</Badge>
+                    {(myHireOrders?.length ?? 0) > 0 && (
+                      <Badge variant="secondary">{myHireOrders!.length}</Badge>
+                    )}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2">
-                  {myHireOrders!.map((o) => {
-                    const data = (o.data ?? {}) as OrderData;
-                    const dateStr = snap(data, 'date');
-                    const venue = snap(data, 'venue');
-                    const subtitle = [dateStr ? formatDateDMY(dateStr) : null, venue || null]
-                      .filter(Boolean)
-                      .join(' · ');
-                    // dateStr is a resolved snapshot field, not always a clean YYYY-MM-DD
-                    // (see snap()) -- guard the shape before treating it as a date.
-                    const parsedDate = /^\d{4}-\d{2}-\d{2}$/.test(dateStr) ? parseDateOnly(dateStr) : null;
-                    return (
-                      <div
-                        key={o.id}
-                        className={cn(
-                          'flex items-center justify-between gap-3 rounded-lg border border-border p-3',
-                          pastRowClassName(parsedDate),
-                        )}
-                      >
-                        <Link to={ROUTES.HIRE_ORDER_DETAIL.replace(':id', o.id)} className="min-w-0 flex-1">
-                          <p className="text-sm font-mono font-medium text-foreground truncate">{o.order_no}</p>
-                          {subtitle && <p className="text-xs text-muted-foreground truncate">{subtitle}</p>}
-                        </Link>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <HireOrderStatusBadge status={o.status} />
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            aria-label="Download"
-                            onClick={() => handleDownloadHireOrder(o.id)}
-                            disabled={hireOrderAction.isPending}
-                          >
-                            <Download className="h-4 w-4" />
-                          </Button>
+                  {(myHireOrders?.length ?? 0) === 0 ? (
+                    // Only the genuinely-empty case (the query actually SUCCEEDED and
+                    // returned no orders) shows the zero-state. Gating on isSuccess rather
+                    // than !isLoading also covers the disabled-query window: TanStack v5
+                    // reports isLoading:false while useMyHireOrders is disabled waiting on
+                    // useMyArtist, so an artist who has orders never flashes "no paperwork"
+                    // and a pending/failed fetch is never mistaken for empty.
+                    hireOrdersLoaded ? (
+                      <p className="text-sm text-muted-foreground">
+                        Your booking paperwork shows up here. When a producer sends you a hire
+                        order, it arrives by email and you can review and sign it here.
+                      </p>
+                    ) : null
+                  ) : (
+                    myHireOrders!.map((o) => {
+                      const data = (o.data ?? {}) as OrderData;
+                      const dateStr = snap(data, 'date');
+                      const venue = snap(data, 'venue');
+                      const subtitle = [dateStr ? formatDateDMY(dateStr) : null, venue || null]
+                        .filter(Boolean)
+                        .join(' · ');
+                      // dateStr is a resolved snapshot field, not always a clean YYYY-MM-DD
+                      // (see snap()) -- guard the shape before treating it as a date.
+                      const parsedDate = /^\d{4}-\d{2}-\d{2}$/.test(dateStr) ? parseDateOnly(dateStr) : null;
+                      return (
+                        <div
+                          key={o.id}
+                          className={cn(
+                            'flex items-center justify-between gap-3 rounded-lg border border-border p-3',
+                            pastRowClassName(parsedDate),
+                          )}
+                        >
+                          <Link to={ROUTES.HIRE_ORDER_DETAIL.replace(':id', o.id)} className="min-w-0 flex-1">
+                            <p className="text-sm font-mono font-medium text-foreground truncate">{o.order_no}</p>
+                            {subtitle && <p className="text-xs text-muted-foreground truncate">{subtitle}</p>}
+                          </Link>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <HireOrderStatusBadge status={o.status} />
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              aria-label="Download"
+                              onClick={() => handleDownloadHireOrder(o.id)}
+                              disabled={hireOrderAction.isPending}
+                            >
+                              <Download className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })
+                  )}
                 </CardContent>
               </Card>
             )}

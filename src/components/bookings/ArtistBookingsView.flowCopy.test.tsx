@@ -147,4 +147,66 @@ describe("ArtistBookingsView flow-aware copy (Task 4)", () => {
     expect(screen.queryByText("Confirmed")).not.toBeInTheDocument();
     expect(screen.queryByText("No offer yet")).not.toBeInTheDocument();
   });
+
+  it("signposts how to cancel a confirmed date (R5.1)", async () => {
+    flowHolder.flow = BOOKING_FLOW_DEFAULTS;
+    renderWithProviders(<ArtistBookingsView />);
+
+    expect(
+      await screen.findByText(/need to cancel a date you confirmed\? message your producer in the date's chat/i),
+    ).toBeInTheDocument();
+  });
+
+  // Runs last: reseeds the shared fake client to an artist with no bookings, so it
+  // must not disturb the confirmed-booking fixture the tests above rely on.
+  it("hides the cancel signpost when the artist has no confirmed booking (R5.1)", async () => {
+    for (const k of Object.keys(client)) delete (client as Record<string, unknown>)[k];
+    Object.assign(
+      client,
+      createFakeSupabase({ bookings: [{ when: { artist_id: "artist-1" }, data: [], error: null }] } as never),
+    );
+    flowHolder.flow = BOOKING_FLOW_DEFAULTS;
+    renderWithProviders(<ArtistBookingsView />);
+
+    // The page (and its eligible-date table) still renders; only the confirm-cancel
+    // signpost is gated away because there is no confirmed booking to cancel.
+    expect(await screen.findByRole("heading", { name: "My Bookings" })).toBeInTheDocument();
+    expect(
+      screen.queryByText(/need to cancel a date you confirmed/i),
+    ).not.toBeInTheDocument();
+  });
+
+  // A confirmed booking that already happened is not something to cancel, so the
+  // signpost stays hidden even though activeBookedDates still includes past dates.
+  it("hides the cancel signpost when the only confirmed booking is in the past (R5.1)", async () => {
+    for (const k of Object.keys(client)) delete (client as Record<string, unknown>)[k];
+    Object.assign(
+      client,
+      createFakeSupabase({
+        bookings: [
+          {
+            when: { artist_id: "artist-1" },
+            data: [
+              {
+                id: "bk-past", artist_id: "artist-1", show_date_id: "dp", status: "confirmed", is_understudy: false,
+                show_date: {
+                  id: "dp", date: "2020-01-01", venue: "Stage 1",
+                  session_1: "19:00", session_2: null, session_3: null,
+                  show: { program: "Show A", sub_program: null },
+                },
+              },
+            ],
+            error: null,
+          },
+        ],
+      } as never),
+    );
+    flowHolder.flow = BOOKING_FLOW_DEFAULTS;
+    renderWithProviders(<ArtistBookingsView />);
+
+    expect(await screen.findByRole("heading", { name: "My Bookings" })).toBeInTheDocument();
+    expect(
+      screen.queryByText(/need to cancel a date you confirmed/i),
+    ).not.toBeInTheDocument();
+  });
 });

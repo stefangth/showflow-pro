@@ -8,7 +8,7 @@ import { resolveEmailTheme } from "./_shell/emailTheme.ts";
 
 // Every template that renders a link/button into the app. Their CTAs must point at
 // the app host (app.showflow.pro), never the marketing site (showflow.pro), which has
-// no application routes. artist-confirmation-digest has no app links, so it's excluded.
+// no application routes.
 const APP_LINK_TEMPLATES = [
   "org-invitation",
   "artist-offer-digest",
@@ -20,6 +20,7 @@ const APP_LINK_TEMPLATES = [
   "hire-order-issued",
   "account-email-changed",
   "airtable-sync-held",
+  "artist-confirmation-digest",
 ];
 
 for (const name of APP_LINK_TEMPLATES) {
@@ -62,6 +63,7 @@ const BOOKING_TEMPLATES = [
     headingKey: "offer-immediate.heading",
     ctaKey: "offer-immediate.ctaLabel",
     hasCta: true,
+    ctaUrl: "https://app.showflow.pro/availability",
   },
   {
     name: "artist-offer-digest",
@@ -69,6 +71,7 @@ const BOOKING_TEMPLATES = [
     headingKey: "artist-offer-digest.heading",
     ctaKey: "artist-offer-digest.ctaLabel",
     hasCta: true,
+    ctaUrl: "https://app.showflow.pro/availability",
   },
   {
     name: "offer-expiry-reminder",
@@ -76,12 +79,15 @@ const BOOKING_TEMPLATES = [
     headingKey: "offer-expiry-reminder.headingSingular",
     ctaKey: "offer-expiry-reminder.ctaLabelSingular",
     hasCta: true,
+    ctaUrl: "https://app.showflow.pro/availability",
   },
   {
     name: "artist-confirmation-digest",
     detail: "Venue flooded",
     headingKey: "artist-confirmation-digest.headingUpdates",
-    hasCta: false,
+    ctaKey: "artist-confirmation-digest.ctaLabel",
+    hasCta: true,
+    ctaUrl: "https://app.showflow.pro/bookings",
   },
 ] as const;
 
@@ -95,7 +101,7 @@ for (const booking of BOOKING_TEMPLATES) {
     assertEquals(html.includes('role="presentation"'), true, `${booking.name} uses presentation tables`);
     assertEquals(html.includes(booking.detail), true, `${booking.name} preserves its preview row data`);
     if (booking.hasCta) {
-      assertEquals(html.includes("https://app.showflow.pro/availability"), true, `${booking.name} CTA points to the app`);
+      assertEquals(html.includes(booking.ctaUrl), true, `${booking.name} CTA points to the app`);
     }
   });
 

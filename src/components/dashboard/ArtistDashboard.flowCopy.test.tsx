@@ -183,6 +183,7 @@ describe("ArtistDashboard flow-aware meter (Task 3)", () => {
       screen.getByText("Your response rate on dates you've been offered."),
     ).toBeInTheDocument();
     expect(await screen.findByText("2 of 4 dates")).toBeInTheDocument();
+    expect(screen.getByText(/no one is scored on it/i)).toBeInTheDocument();
   });
 
   it("direct flow: swaps to Booked dates (confirmed-only count, no unanswered filter)", async () => {
@@ -194,6 +195,9 @@ describe("ArtistDashboard flow-aware meter (Task 3)", () => {
       screen.getByText("Your booked share of the dates you're eligible for."),
     ).toBeInTheDocument();
     expect(await screen.findByText("1 of 4 dates")).toBeInTheDocument();
+    expect(
+      screen.getByText("Dates you are booked for, out of dates you are eligible for."),
+    ).toBeInTheDocument();
 
     const meterLink = screen.getByText("1 of 4 dates").closest("a");
     expect(meterLink?.getAttribute("href")).not.toContain("filter=unanswered");

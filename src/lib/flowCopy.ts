@@ -60,6 +60,7 @@ export interface MeterSpec {
   title: string;
   headerSentence: string;
   footer: string;
+  explainer: string;
   filterUnanswered: boolean;
   countStatuses: string[];
 }
@@ -70,6 +71,7 @@ export function artistMeter(flow: BookingFlow): MeterSpec {
       title: "Booked dates",
       headerSentence: "Your booked share of the dates you're eligible for.",
       footer: "Click to see your dates →",
+      explainer: "Dates you are booked for, out of dates you are eligible for.",
       filterUnanswered: false,
       countStatuses: ["confirmed"],
     };
@@ -78,6 +80,8 @@ export function artistMeter(flow: BookingFlow): MeterSpec {
     title: "Response rate",
     headerSentence: "Your response rate on dates you've been offered.",
     footer: "Click to see pending offers →",
+    explainer:
+      "Counts dates you accepted or were booked for, out of dates you were offered. It is just for you, no one is scored on it.",
     filterUnanswered: true,
     countStatuses: ["confirmed", "soft_booked"],
   };

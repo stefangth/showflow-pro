@@ -6,8 +6,13 @@ import { createFakeSupabase } from "@/test/supabaseFake";
 /**
  * Task 14: ArtistDashboard's "Your hire orders" card lists the artist's own
  * issued/countersigned hire orders (order number, date, venue, status badge,
- * Download), and renders nothing (no empty card) when the hire_orders feature
- * is off, or the list is empty.
+ * Download), and renders nothing when the hire_orders feature is off.
+ *
+ * Task 7 (R4.6): when the module is ON but the artist has no hire orders yet, the card
+ * now renders with a zero-state message introducing the flow (a producer sends a hire
+ * order by email, it can be reviewed/signed here), instead of hiding entirely. The
+ * module-off case must still render nothing at all, even with orders present, so a
+ * module-off org shows no trace of the feature.
  */
 
 const { client } = vi.hoisted(() => ({ client: {} as Record<string, unknown> }));
@@ -116,7 +121,10 @@ describe("ArtistDashboard hire-orders card (Task 14)", () => {
     renderWithProviders(<ArtistDashboard />);
 
     expect(await screen.findByText("Your hire orders")).toBeInTheDocument();
-    expect(screen.getByText("HO-2026-0201-1")).toBeInTheDocument();
+    // The card now renders as soon as the module is on (Task 7's zero-state), independent
+    // of myHireOrders resolving, so the order row itself needs an async query rather than
+    // assuming it is already in the DOM alongside the card header.
+    expect(await screen.findByText("HO-2026-0201-1")).toBeInTheDocument();
     expect(screen.getByText(/01\/02\/2026/)).toBeInTheDocument();
     expect(screen.getByText(/Main Hall/)).toBeInTheDocument();
     expect(screen.getByText(/awaiting countersign/i)).toBeInTheDocument();
@@ -125,7 +133,7 @@ describe("ArtistDashboard hire-orders card (Task 14)", () => {
     expect(document.body.textContent).not.toMatch(/[—–]/);
   });
 
-  it("renders nothing when the list of orders is empty", async () => {
+  it("shows a hire-orders zero-state when the module is on and there are no orders", async () => {
     featureHolder.enabled = true;
     seedClient({
       bookings: [{ when: { artist_id: "artist-1" }, data: [], error: null }],
@@ -134,8 +142,14 @@ describe("ArtistDashboard hire-orders card (Task 14)", () => {
 
     renderWithProviders(<ArtistDashboard />);
 
-    await screen.findByText("Dashboard");
-    expect(screen.queryByText("Your hire orders")).not.toBeInTheDocument();
+    expect(await screen.findByText("Your hire orders")).toBeInTheDocument();
+    // The zero-state now renders only after the query resolves (not while loading /
+    // on error), so wait for it rather than asserting synchronously.
+    expect(
+      await screen.findByText(/your booking paperwork shows up here/i),
+    ).toBeInTheDocument();
+    // No em/en dashes in the zero-state copy.
+    expect(document.body.textContent).not.toMatch(/[—–]/);
   });
 
   it("renders nothing when the hire_orders feature is off, even with orders present", async () => {
@@ -149,6 +163,7 @@ describe("ArtistDashboard hire-orders card (Task 14)", () => {
 
     await screen.findByText("Dashboard");
     expect(screen.queryByText("Your hire orders")).not.toBeInTheDocument();
+    expect(screen.queryByText(/your booking paperwork/i)).not.toBeInTheDocument();
   });
 
   it("tints a hire-order row whose snapshotted date is in the past (Plan B Task 2), leaves a future one untinted", async () => {

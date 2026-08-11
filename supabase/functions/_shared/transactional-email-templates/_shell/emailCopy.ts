@@ -77,6 +77,7 @@ export const EMAIL_COPY_DEFAULTS = {
   "artist-confirmation-digest.greetingAnonymous": "Hi,",
   "artist-confirmation-digest.introUpdates": "Here's what changed on your bookings.",
   "artist-confirmation-digest.introConfirmed": "Here's what just got confirmed. We're excited to have you on stage!",
+  "artist-confirmation-digest.ctaLabel": "View your bookings",
   "artist-confirmation-digest.footer": "Questions? Reach out to your point of contact and they'll be glad to help.",
   "artist-confirmation-digest.cancelledHeading": "Cancelled",
   "artist-confirmation-digest.scheduleChangesHeading": "Schedule changes",
@@ -188,7 +189,7 @@ export const EMAIL_COPY_DEFAULTS = {
   // mention. See resolveArtistOffersExpected in _shared/invitations.ts for the full
   // gate. See roleIntroArtistOffers immediately below for the line an artist sees only
   // once that gate has actually confirmed offers are coming.
-  "org-invitation.roleIntroArtist": "You get booked for shows and see every confirmed engagement.",
+  "org-invitation.roleIntroArtist": "You are on the roster. You get booked for shows and can see every confirmed engagement.",
   // Rendered instead of roleIntroArtist ONLY when resolveArtistOffersExpected
   // (_shared/invitations.ts) has confirmed the inviting org's booking_flow is entitled,
   // active, AND set to accept offers (booking_flow.artist_acceptance: true) for real:
@@ -197,7 +198,7 @@ export const EMAIL_COPY_DEFAULTS = {
   // (majority of) orgs where this all checks out, it names the one thing the artist will
   // really do, respond to emailed offers, instead of staying silent on it the way the
   // flow-neutral line above has to.
-  "org-invitation.roleIntroArtistOffers": "You will get emailed booking offers to accept or decline, and you can see every confirmed engagement.",
+  "org-invitation.roleIntroArtistOffers": "You are on the roster. You will get booking offers by email, accept or decline each in one tap, then see every confirmed engagement.",
   "org-invitation.ctaLabel": "Accept invitation",
   // These used to end with "If it ever stops working, ask whoever invited you to send a
   // fresh one." That recovery clause now lives in linkRecovery (below), rendered beside

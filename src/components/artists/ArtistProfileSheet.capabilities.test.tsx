@@ -93,4 +93,11 @@ describe("ArtistProfileSheet — Phase 4.4 capability gates", () => {
     expect(screen.getByDisplayValue("Ada")).not.toBeDisabled();
     expect(screen.getByText(/account details unavailable/i)).toBeInTheDocument();
   });
+
+  it("shows a contact-visibility note beside the org-browsed email field (R4.4)", async () => {
+    mockUseCan({ edit_artists: false, resend_account_invite: false });
+    renderWithProviders(<ArtistProfileSheet artistId="a1" open onOpenChange={() => {}} />);
+    await waitFor(() => expect(screen.getByDisplayValue("Ada")).toBeInTheDocument());
+    expect(screen.getByText(/visible to admins and producers in this organization/i)).toBeInTheDocument();
+  });
 });
