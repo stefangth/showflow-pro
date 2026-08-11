@@ -13,7 +13,7 @@ Two repos, both already on their branches with a clean tree:
 
 The two are joined by one generated contract: `src/lib/trust/facts.ts` (APP) is the
 only source. `npm run sync:mirrors` regenerates `public/trust.json` from it, and
-LAND's `npm run sync:trust:fallback -- --from <APP>/public/trust.json` regenerates
+LAND's `npm run sync:trust -- --from <APP>/public/trust.json` regenerates
 `src/data/trustFallback.ts`. Never hand-edit either generated file.
 
 ## Global Constraints
@@ -41,7 +41,7 @@ else it achieves.
    `accent-50`..`900` do not support Tailwind opacity modifiers.
 8. **Tests import the real module.** Never re-implement production logic in a test.
 9. After any `facts.ts` change, regenerate both artifacts and leave
-   `npm run sync:mirrors:check` (APP) and `sync:trust:fallback -- --check` (LAND)
+   `npm run sync:mirrors:check` (APP) and `sync:trust -- --check` (LAND)
    passing.
 
 ## Verification
@@ -60,7 +60,7 @@ LAND:
 ```
 npm run build
 npm run lint
-npm run sync:trust:fallback -- --from "<APP>/public/trust.json" --check
+npm run sync:trust -- --from "<APP>/public/trust.json" --check
 ```
 
 ---
@@ -69,9 +69,14 @@ npm run sync:trust:fallback -- --from "<APP>/public/trust.json" --check
 
 `findings-r7-claims.md` § 1.
 
-`@vercel/analytics` is imported and `<Analytics />` mounted in LAND
-`src/App.tsx:3,27`, above `<Routes>`, so it loads on `/trust` itself. That page
-prints three claims it falsifies:
+`@vercel/analytics` is imported in LAND `src/App.tsx:3` and mounted at `:27` as
+`{analyticsOn && <Analytics />}`, where `analyticsOn` tracks
+`readConsent() === 'accept'`. So it is **already consent-gated** — the finding's
+"runs analytics" framing overstates it, and no beacon fires before consent.
+
+The defect that remains is real and narrower: once a visitor accepts cookies, an
+analytics processor runs on the very page that tells them no analytics exists.
+That page prints three claims it then falsifies:
 
 - `facts.ts:369` — "Turns off analytics, session replay, and error tracking if and when any of them is enabled"
 - `facts.ts:261` — "12 months, once analytics is enabled"
@@ -85,23 +90,17 @@ and is mounted.
 This is the same defect the build already fixed once for Google Fonts, and the
 fix must be at least as honest.
 
-**Choose the mechanism, then make every string true of it.** Two acceptable
-outcomes:
+**The route is the owner's ruling, recorded in the ledger before this task is
+dispatched.** Both routes end with every string true:
 
-- **Gate it.** If LAND has a consent mechanism (`src/components/CookieBanner.tsx`
-  and whatever backs it), mount `<Analytics />` only after an analytics consent
-  is recorded. Then disclose it as a consented analytics processor and correct
-  the three strings to describe consent-gated analytics that is real.
-- **Disclose it plainly.** Leave the mount as is, add Vercel Web Analytics to
-  `SUBPROCESSORS` as an analytics purpose distinct from hosting, and rewrite the
-  three strings so none of them claims analytics is absent.
-
-Investigate LAND's consent code before choosing, and say in the report which you
-chose and why.
-
-**This task may edit both privacy policies** (§5 processor table) — the one
-carve-out to Global Constraint 3 — because a processor that is actually running
-must be disclosed. Report the exact wording added.
+- **Disclose.** Add Vercel Web Analytics to `SUBPROCESSORS` as an analytics
+  purpose distinct from hosting, note that it runs only after consent, and
+  rewrite the three strings so none claims analytics is absent. This edits §5 of
+  both privacy policies and is the one carve-out to Global Constraint 3; report
+  the exact wording added.
+- **Remove.** Drop `@vercel/analytics` from LAND's dependencies and its mount.
+  The three strings then become true as written, the subprocessor table is
+  already correct, and no legal document is touched.
 
 Acceptance:
 - No string on either surface claims analytics is unenabled while a beacon loads.
