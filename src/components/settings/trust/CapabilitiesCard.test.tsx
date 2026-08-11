@@ -4,6 +4,17 @@ import { renderWithProviders } from "@/test/renderWithProviders";
 import { buildCapabilityInventory } from "@/lib/trust/capabilityInventory";
 import { CapabilitiesCard } from "./CapabilitiesCard";
 
+/** Escape a string for literal use inside a RegExp.
+ *
+ *  These matchers build a pattern out of copy that comes from the capability
+ *  registry, so every metacharacter in it has to be neutralised, not just the
+ *  full stops the headline happens to contain today. Escaping `.` alone left
+ *  the backslash unescaped, which CodeQL flagged: a right whose label ever
+ *  carried one would compile to a different pattern than the text it came
+ *  from, and the test would fail somewhere far from the cause. The character
+ *  class below includes the backslash itself, so it is escaped first. */
+const literal = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 describe("CapabilitiesCard", () => {
   // Every other card on Settings > Trust & data states a fact about the
   // signed-in organisation, and the tab's own header promises facts "narrowed
@@ -26,7 +37,7 @@ describe("CapabilitiesCard", () => {
 
     renderWithProviders(<CapabilitiesCard />);
 
-    expect(screen.getByText(new RegExp(inventory.headline.replace(/\./g, "\\.")))).toBeInTheDocument();
+    expect(screen.getByText(new RegExp(literal(inventory.headline)))).toBeInTheDocument();
   });
 
   // The lead-in this card used to carry between the headline and the note read
@@ -40,7 +51,7 @@ describe("CapabilitiesCard", () => {
 
     renderWithProviders(<CapabilitiesCard />);
 
-    const summary = screen.getByText(new RegExp(inventory.headline.replace(/\./g, "\\.")));
+    const summary = screen.getByText(new RegExp(literal(inventory.headline)));
     expect(summary.textContent).toBe(`${inventory.headline}. ${inventory.note}`);
   });
 });
