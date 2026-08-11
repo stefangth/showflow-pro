@@ -120,8 +120,8 @@ describe("SkillsCard", () => {
 
     const row = screen.getByTestId("skill-row-skill-4");
     expect(within(row).getByLabelText("Delete Fire spinning")).toBeDisabled();
-    // The "Required by" column display stays show-level copy per the design.
-    expect(within(row).getByText("Not required yet")).toBeInTheDocument();
+    // The "Required by" column now reflects date-level requirements too.
+    expect(within(row).getByText("1 upcoming date")).toBeInTheDocument();
 
     // Both counts zero (Aerial silks) stays enabled.
     const silksRow = screen.getByTestId("skill-row-skill-2");

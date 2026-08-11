@@ -117,6 +117,16 @@ describe("ArtistProfileSheet — skills editor (design 1i)", () => {
     expect(within(combatRow).getByText("2 upcoming dates")).toBeInTheDocument();
   });
 
+  it('shows singular "1 upcoming date" (not "1 upcoming dates") for a held skill with exactly one upcoming date', () => {
+    renderSheet({
+      held: [{ id: "s-piano", name: "Piano" }],
+      counts: new Map([["s-piano", 1]]),
+    });
+    const row = screen.getByTestId("skill-row-s-piano");
+    expect(within(row).getByText("1 upcoming date")).toBeInTheDocument();
+    expect(within(row).queryByText("1 upcoming dates")).not.toBeInTheDocument();
+  });
+
   it('shows "Not required yet" for a held skill with no upcoming dates', () => {
     renderSheet({
       held: [{ id: "s-piano", name: "Piano" }],

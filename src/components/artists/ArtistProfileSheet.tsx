@@ -333,7 +333,7 @@ export function ArtistProfileSheet({ artistId, open, onOpenChange }: Props) {
                           otherwise flash the false "Not required yet" default. */}
                       {showSkillCounts && upcomingDateCounts && (
                         <span className="font-mono text-[11px] tabular-nums text-accent-700">
-                          {count > 0 ? `${count} upcoming dates` : 'Not required yet'}
+                          {count > 0 ? `${count} upcoming date${count === 1 ? '' : 's'}` : 'Not required yet'}
                         </span>
                       )}
                       {canEdit && (

@@ -218,8 +218,10 @@ export function SkillsCard({ canEnter }: { canEnter: boolean }) {
                   {isArchived
                     ? 'Hidden from pickers'
                     : row.requiredByCount > 0
-                      ? `${row.requiredByCount} productions`
-                      : 'Not required yet'}
+                      ? `${row.requiredByCount} production${row.requiredByCount === 1 ? '' : 's'}`
+                      : row.requiredByDateCount > 0
+                        ? `${row.requiredByDateCount} upcoming date${row.requiredByDateCount === 1 ? '' : 's'}`
+                        : 'Not required yet'}
                 </p>
 
                 <div className="flex justify-end gap-1">
