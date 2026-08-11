@@ -506,6 +506,10 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: P
     queryClient.invalidateQueries({ queryKey: ['eligible-artists'] });
     queryClient.invalidateQueries({ queryKey: ['artist-eligible-dates'] });
     queryClient.invalidateQueries({ queryKey: ['offer-tiers'] });
+    // A date-skill add/remove/drop/restore/reset changes fetchRequiredSkillIds'
+    // effective union, which fetchTierLadderCounts reads — bust the Offers-cockpit
+    // hero/ladder counts locally too, not only via realtime (see realtimeInvalidations.ts).
+    queryClient.invalidateQueries({ queryKey: ['tier-ladder'] });
   };
   const addDateSkill = useMutation({
     mutationFn: (skillId: string) =>

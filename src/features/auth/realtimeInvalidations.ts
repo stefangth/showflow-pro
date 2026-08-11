@@ -36,4 +36,7 @@ export const REALTIME_INVALIDATIONS: Array<{ table: string; keys: unknown[][] }>
   // both rows is live.
   { table: 'blocked_dates',              keys: [['blocked-dates'], ['tier-ladder']] },
   { table: 'show_date_required_skills',  keys: [['eligibility'], ['tier-ladder']] },
+  // A drop subtracts from the effective required-skill union (fetchRequiredSkillIds),
+  // which fetchTierLadderCounts reads — same rationale as show_date_required_skills above.
+  { table: 'show_date_skill_drops',      keys: [['eligibility'], ['tier-ladder']] },
 ];

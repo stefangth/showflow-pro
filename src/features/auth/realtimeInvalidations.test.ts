@@ -92,6 +92,17 @@ describe("REALTIME_INVALIDATIONS — Offers cockpit tier-ladder headcounts", () 
   it("refreshes ['tier-ladder'] when show_date_required_skills changes", () => {
     expect(hasKey("show_date_required_skills", "tier-ladder")).toBe(true);
   });
+
+  // fetchTierLadderCounts feeds matchCount through fetchRequiredSkillIds, which
+  // subtracts show_date_skill_drops from the effective required-skill union —
+  // a drop must refresh the hero/ladder counts exactly like a date-skill add does.
+  it("refreshes ['tier-ladder'] when show_date_skill_drops changes", () => {
+    expect(hasKey("show_date_skill_drops", "tier-ladder")).toBe(true);
+  });
+
+  it("refreshes ['eligibility'] when show_date_skill_drops changes", () => {
+    expect(hasKey("show_date_skill_drops", "eligibility")).toBe(true);
+  });
 });
 
 describe("REALTIME_INVALIDATIONS — map integrity", () => {
