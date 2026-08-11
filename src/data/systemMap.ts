@@ -648,11 +648,24 @@ export const SYSTEM_MAP_NODES: SystemMapNode[] = [
     column: "db",
     kind: "db",
     label: "shows",
-    sub: "slot capacity source",
+    sub: "slot caches derived from show_slots",
     subsystems: ["airtable", "booking"],
     detail: {
-      Guards: "sync_show_dates_on_show_update — program/slot edits ripple to every child date",
+      Guards: "sync_show_dates_on_show_update: program/slot edits ripple to every child date. main_cast_slots/understudy_slots are trigger-derived caches (from show_slots), not directly written",
       Cite: "20260616172104_slots_on_shows.sql",
+    },
+  },
+  {
+    id: "d_show_slots",
+    column: "db",
+    kind: "db",
+    label: "show_slots",
+    sub: "named slot rows (authoring model)",
+    subsystems: ["booking"],
+    detail: {
+      Guards: "recompute_show_slot_derivations (AFTER INSERT/UPDATE/DELETE row triggers on show_slots + show_slot_required_skills): derives shows.main_cast_slots/understudy_slots (sum of slot counts per kind, NULL when a kind has no slots) and rebuilds show_required_skills (union of slot skills)",
+      Writers: "ShowFormDialog + SlotsStep, both via saveShowSlots. Understudy is optional, so a main-only show is configured",
+      Cite: "20260812130100_show_slots_derivation.sql",
     },
   },
   {
@@ -994,7 +1007,8 @@ export const SYSTEM_MAP_EDGES: SystemMapEdge[] = [
   { from: "u_artist", to: "d_bookings", label: "accept / decline" },
   { from: "u_artist", to: "d_blocked", label: "block / unblock" },
   { from: "u_prod", to: "d_bookings", label: "confirm / decline" },
-  { from: "u_prod", to: "d_shows", label: "program & slot edits" },
+  { from: "u_prod", to: "d_shows", label: "program edits" },
+  { from: "u_prod", to: "d_show_slots", label: "slot authoring (ShowFormDialog + SlotsStep)" },
   { from: "u_public", to: "d_invites", label: "accept_invitation RPC" },
   // fn → fn
   { from: "f_poll", to: "f_open" },
@@ -1046,6 +1060,7 @@ export const SYSTEM_MAP_EDGES: SystemMapEdge[] = [
   { from: "f_send", to: "d_settings", read: true },
   // db ⇢ db propagation (dashed)
   { from: "d_bookings", to: "d_showdates", read: true, label: "status recompute" },
+  { from: "d_show_slots", to: "d_shows", read: true, label: "slot derivation" },
   { from: "d_shows", to: "d_showdates", read: true, label: "slot ripple" },
   { from: "d_bookings", to: "d_notif", read: true, label: "transition notify" },
   { from: "d_settings", to: "d_auditlog", read: true, label: "log_app_settings_change trigger" },

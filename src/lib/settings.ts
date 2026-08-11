@@ -4,21 +4,27 @@ export interface SlotCounts {
 }
 
 export interface SettingsWarnings {
-  /** Number of shows with NULL slot columns (unconfigured). */
+  /** Number of shows with no main slot configured (unconfigured). */
   schedulingWarnings: number;
   /** True when any warning exists. */
   hasAnyWarning: boolean;
 }
 
 /**
- * Returns slot counts from a show's own columns, or null when either column is
- * NULL (i.e. the show is unconfigured). An explicit 0/0 is a valid configuration.
+ * Returns slot counts from a show's own (trigger-derived) columns, or null when the
+ * show is unconfigured. Understudy is OPTIONAL: a main-only show (`understudy_slots`
+ * NULL) reads as configured with 0 understudies. Matches `compute_show_date_status`'s
+ * "unconfigured" rule exactly: unconfigured is a NULL main cap, OR both caps effectively
+ * zero (`main<=0` and `understudy<=0`) -- nothing to fill, so such a date never reaches
+ * fully_filled. An explicit main=0 alongside a positive understudy cap stays configured.
  */
 export function showSlots(
   show: { main_cast_slots: number | null; understudy_slots: number | null } | null | undefined,
 ): SlotCounts | null {
-  if (!show || show.main_cast_slots == null || show.understudy_slots == null) return null;
-  return { main_cast: show.main_cast_slots, understudies: show.understudy_slots };
+  if (!show || show.main_cast_slots == null) return null;
+  const understudies = show.understudy_slots ?? 0;
+  if (show.main_cast_slots <= 0 && understudies <= 0) return null;
+  return { main_cast: show.main_cast_slots, understudies };
 }
 
 /**
@@ -96,12 +102,12 @@ export function computeSettingsDirtyKeys(
   return dirty;
 }
 
-/** Count shows that have at least one NULL slot column. */
+/** Count unconfigured shows, using the same rule as `showSlots` / `compute_show_date_status`:
+ *  a NULL main cap, or both caps effectively zero. Understudy is optional, so a main-only
+ *  show is NOT a warning; a main=0 with a positive understudy cap is NOT a warning either. */
 export function computeSchedulingWarnings(
   shows: { main_cast_slots: number | null; understudy_slots: number | null }[] | null | undefined,
 ): SettingsWarnings {
-  const schedulingWarnings = (shows ?? []).filter(
-    (s) => s.main_cast_slots == null || s.understudy_slots == null,
-  ).length;
+  const schedulingWarnings = (shows ?? []).filter((s) => showSlots(s) === null).length;
   return { schedulingWarnings, hasAnyWarning: schedulingWarnings > 0 };
 }

@@ -260,11 +260,31 @@ describe("computeBookingSetupStatus", () => {
     expect(status.complete).toBe(false);
   });
 
-  it("slots outstanding when any show has a null count", () => {
+  it("slots outstanding when any show is missing a main count", () => {
     const s = computeBookingSetupStatus({ ...base, shows: [{ main_cast_slots: null, understudy_slots: 2 }] });
     expect(s.steps.find((x) => x.key === "slots")!.done).toBe(false);
     expect(s.complete).toBe(false);
     expect(s.canOffer).toBe(true); // slots does not block offers
+  });
+
+  it("slots done for a main-only show (understudy optional)", () => {
+    const s = computeBookingSetupStatus({ ...base, shows: [{ main_cast_slots: 4, understudy_slots: null }] });
+    expect(s.steps.find((x) => x.key === "slots")!.done).toBe(true);
+    expect(s.complete).toBe(true);
+  });
+
+  it("slots outstanding when a show's only cap is main=0 (matches compute_show_date_status)", () => {
+    // 0/0 is "nothing to fill" -- unconfigured everywhere else in this PR (showSlots,
+    // compute_show_date_status), so the rail must not read it as configured.
+    const s = computeBookingSetupStatus({ ...base, shows: [{ main_cast_slots: 0, understudy_slots: 0 }] });
+    expect(s.steps.find((x) => x.key === "slots")!.done).toBe(false);
+    expect(s.complete).toBe(false);
+  });
+
+  it("slots done when main=0 is paired with a positive understudy cap", () => {
+    const s = computeBookingSetupStatus({ ...base, shows: [{ main_cast_slots: 0, understudy_slots: 2 }] });
+    expect(s.steps.find((x) => x.key === "slots")!.done).toBe(true);
+    expect(s.complete).toBe(true);
   });
 
   it("ladder outstanding blocks offers; eligibility also fails on a null city", () => {

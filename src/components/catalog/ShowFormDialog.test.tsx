@@ -1,14 +1,20 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { screen, fireEvent, waitFor } from "@testing-library/react";
+import { screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import { createFakeSupabase } from "@/test/supabaseFake";
+import type { SlotDraft } from "@/data/slots";
 
 const createShow = vi.fn((..._a: unknown[]) => Promise.resolve({ id: "s-new" }));
 const updateShow = vi.fn((..._a: unknown[]) => Promise.resolve());
 vi.mock("@/data/shows", async (orig) => ({ ...(await orig<typeof import("@/data/shows")>()), createShow: (...a: unknown[]) => createShow(...a), updateShow: (...a: unknown[]) => updateShow(...a) }));
-// Real fake client (not a bare {}): the dialog now reads/writes show_required_skills
-// via the real @/data/eligibility functions and reads skills via useSkills, so both
-// tables need a seed. Individual tests override it with Object.assign for their own seeds.
+
+// The dialog now authors named slots: it reads them via useShowSlots (-> fetchShowSlots)
+// and writes them via saveShowSlots. Mock both so the tests can seed the read and assert
+// the exact slots array the dialog submits (ids for new rows are client-minted UUIDs).
+const saveShowSlots = vi.fn((..._a: unknown[]) => Promise.resolve());
+const fetchShowSlots = vi.fn((..._a: unknown[]) => Promise.resolve([] as SlotDraft[]));
+vi.mock("@/data/slots", async (orig) => ({ ...(await orig<typeof import("@/data/slots")>()), saveShowSlots: (...a: unknown[]) => saveShowSlots(...a), fetchShowSlots: (...a: unknown[]) => fetchShowSlots(...a) }));
+
 const { client } = vi.hoisted(() => ({ client: {} as Record<string, unknown> }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: client }));
 Object.assign(client, createFakeSupabase({ skills: { data: [], error: null } }));
@@ -18,21 +24,21 @@ vi.mock("@/hooks/useCapabilities", async (orig) => ({ ...(await orig<typeof impo
 import { useCan } from "@/hooks/useCapabilities";
 import { ShowFormDialog } from "./ShowFormDialog";
 
-const SHOW_WITH_SKILL = {
+const SHOW = {
   id: "show-1", program: "Hamlet", sub_program: null, category: null, description: null,
   status: "active", main_cast_slots: 2, understudy_slots: 1, airtable_program_key: null,
   sort_order: 1, dateCount: 0,
 };
+const TWO_SKILLS = { skills: { data: [{ id: "sk-1", name: "Singing" }, { id: "sk-2", name: "Juggling" }], error: null } };
 
 describe("ShowFormDialog", () => {
-  beforeEach(() => { vi.clearAllMocks(); vi.mocked(useCan).mockReturnValue(true); });
-
-  it("edit_scheduling off: slot fields are disabled, other fields stay editable", () => {
-    vi.mocked(useCan).mockReturnValue(false);
-    renderWithProviders(<ShowFormDialog open onOpenChange={() => {}} allShows={[]} show={{ id: "s1", program: "P", sub_program: null, category: null, description: null, status: "active", main_cast_slots: 2, understudy_slots: 1, airtable_program_key: null, sort_order: 1, dateCount: 0 }} />);
-    expect(screen.getByLabelText(/main cast/i)).toBeDisabled();
-    expect(screen.getByLabelText(/understudy/i)).toBeDisabled();
-    expect(screen.getByLabelText(/^program/i)).not.toBeDisabled();
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(useCan).mockReturnValue(true);
+    createShow.mockResolvedValue({ id: "s-new" });
+    updateShow.mockResolvedValue(undefined);
+    saveShowSlots.mockResolvedValue(undefined);
+    fetchShowSlots.mockResolvedValue([]);
   });
 
   it("create: requires a program/sub-program label", async () => {
@@ -42,172 +48,120 @@ describe("ShowFormDialog", () => {
     expect(createShow).not.toHaveBeenCalled();
   });
 
-  it("create: submits mapped values with computed sortOrder", async () => {
+  it("create: adds two named slots and saves them (createShow no longer carries slot counts)", async () => {
+    Object.assign(client, createFakeSupabase(TWO_SKILLS));
     renderWithProviders(<ShowFormDialog open onOpenChange={() => {}} allShows={[{ sort_order: 4 } as never]} />);
     fireEvent.change(screen.getByLabelText(/^program/i), { target: { value: "Hamlet" } });
-    fireEvent.change(screen.getByLabelText(/main cast/i), { target: { value: "3" } });
+
+    fireEvent.click(screen.getByRole("button", { name: /add slot/i }));
+    const slot1 = screen.getByRole("group", { name: "Slot 1" });
+    fireEvent.change(within(slot1).getByLabelText(/role name/i), { target: { value: "Ophelia" } });
+    fireEvent.change(within(slot1).getByLabelText(/count/i), { target: { value: "1" } });
+    fireEvent.click(await within(slot1).findByRole("button", { name: "Singing" }));
+
+    fireEvent.click(screen.getByRole("button", { name: /add slot/i }));
+    const slot2 = screen.getByRole("group", { name: "Slot 2" });
+    fireEvent.change(within(slot2).getByLabelText(/role name/i), { target: { value: "Chorus" } });
+    fireEvent.change(within(slot2).getByLabelText(/count/i), { target: { value: "3" } });
+
     fireEvent.click(screen.getByRole("button", { name: /create/i }));
+
     await waitFor(() => expect(createShow).toHaveBeenCalled());
-    const arg = createShow.mock.calls[0][1] as Record<string, unknown>;
-    expect(arg).toMatchObject({ program: "Hamlet", mainCastSlots: 3, sortOrder: 5, orgId: "org-1", createdBy: "u1" });
+    const createArg = createShow.mock.calls[0][1] as Record<string, unknown>;
+    expect(createArg).toMatchObject({ program: "Hamlet", orgId: "org-1", createdBy: "u1", sortOrder: 5 });
+    expect(createArg).not.toHaveProperty("mainCastSlots");
+    expect(createArg).not.toHaveProperty("understudySlots");
+
+    await waitFor(() => expect(saveShowSlots).toHaveBeenCalled());
+    const saveArg = saveShowSlots.mock.calls[0][1] as { showId: string; orgId: string; slots: SlotDraft[] };
+    expect(saveArg.showId).toBe("s-new");
+    expect(saveArg.orgId).toBe("org-1");
+    expect(saveArg.slots).toEqual([
+      expect.objectContaining({ name: "Ophelia", count: 1, kind: "main", skillIds: ["sk-1"] }),
+      expect.objectContaining({ name: "Chorus", count: 3, kind: "main", skillIds: [] }),
+    ]);
+    // Every new row gets a client-minted id so a retry stays idempotent.
+    expect(saveArg.slots[0].id).toEqual(expect.any(String));
+    expect(saveArg.slots[1].id).toEqual(expect.any(String));
   });
 
-  it("synced show: program is read-only, slots editable", () => {
-    renderWithProviders(<ShowFormDialog open onOpenChange={() => {}} allShows={[]} show={{ id: "s1", program: "P", sub_program: null, category: null, description: null, status: "active", main_cast_slots: 2, understudy_slots: 1, airtable_program_key: "K", sort_order: 1, dateCount: 0 }} />);
+  it("edit: seeds the show's slots, adds a skill to one, and saves the union (patch omits slot counts)", async () => {
+    Object.assign(client, createFakeSupabase(TWO_SKILLS));
+    fetchShowSlots.mockResolvedValue([{ id: "slot-1", name: "Leads", count: 2, kind: "main", skillIds: ["sk-1"] }]);
+    renderWithProviders(<ShowFormDialog open onOpenChange={() => {}} allShows={[]} show={SHOW as never} />);
+
+    await screen.findByDisplayValue("Leads");
+    const slot = screen.getByRole("group", { name: "Slot: Leads" });
+    fireEvent.click(within(slot).getByRole("button", { name: "Juggling" }));
+
+    fireEvent.click(screen.getByRole("button", { name: /save/i }));
+    await waitFor(() => expect(updateShow).toHaveBeenCalled());
+    const patch = updateShow.mock.calls[0][2] as Record<string, unknown>;
+    expect(patch).not.toHaveProperty("main_cast_slots");
+    expect(patch).not.toHaveProperty("understudy_slots");
+
+    await waitFor(() => expect(saveShowSlots).toHaveBeenCalled());
+    const saveArg = saveShowSlots.mock.calls[0][1] as { showId: string; slots: SlotDraft[] };
+    expect(saveArg.showId).toBe("show-1");
+    expect(saveArg.slots).toEqual([{ id: "slot-1", name: "Leads", count: 2, kind: "main", skillIds: ["sk-1", "sk-2"] }]);
+  });
+
+  it("edit: removing a slot drops it from the saved array", async () => {
+    Object.assign(client, createFakeSupabase(TWO_SKILLS));
+    fetchShowSlots.mockResolvedValue([
+      { id: "slot-1", name: "Leads", count: 2, kind: "main", skillIds: [] },
+      { id: "slot-2", name: "Chorus", count: 3, kind: "main", skillIds: [] },
+    ]);
+    renderWithProviders(<ShowFormDialog open onOpenChange={() => {}} allShows={[]} show={SHOW as never} />);
+
+    await screen.findByDisplayValue("Chorus");
+    const slot2 = screen.getByRole("group", { name: "Slot: Chorus" });
+    fireEvent.click(within(slot2).getByRole("button", { name: /remove/i }));
+
+    fireEvent.click(screen.getByRole("button", { name: /save/i }));
+    await waitFor(() => expect(saveShowSlots).toHaveBeenCalled());
+    const saveArg = saveShowSlots.mock.calls[0][1] as { slots: SlotDraft[] };
+    expect(saveArg.slots).toEqual([{ id: "slot-1", name: "Leads", count: 2, kind: "main", skillIds: [] }]);
+  });
+
+  it("edit: a slot added but not saved does not survive close/reopen of the same show", async () => {
+    Object.assign(client, createFakeSupabase(TWO_SKILLS));
+    fetchShowSlots.mockResolvedValue([{ id: "slot-1", name: "Leads", count: 2, kind: "main", skillIds: [] }]);
+    const { rerender } = renderWithProviders(
+      <ShowFormDialog open onOpenChange={() => {}} allShows={[]} show={SHOW as never} />,
+    );
+    await screen.findByDisplayValue("Leads");
+    fireEvent.click(screen.getByRole("button", { name: /add slot/i }));
+    expect(screen.getByRole("group", { name: "Slot 2" })).toBeInTheDocument();
+    // Close via the open prop (X/Escape path; the dialog instance stays mounted on ProductionsPage).
+    rerender(<ShowFormDialog open={false} onOpenChange={() => {}} allShows={[]} show={SHOW as never} />);
+    rerender(<ShowFormDialog open onOpenChange={() => {}} allShows={[]} show={SHOW as never} />);
+    await screen.findByDisplayValue("Leads");
+    // The unsaved blank slot must be gone: only the persisted slot remains.
+    expect(screen.queryByRole("group", { name: "Slot 2" })).not.toBeInTheDocument();
+  });
+
+  it("shows a computed callout listing the union of all slot skills", async () => {
+    Object.assign(client, createFakeSupabase(TWO_SKILLS));
+    renderWithProviders(<ShowFormDialog open onOpenChange={() => {}} allShows={[]} />);
+    fireEvent.click(screen.getByRole("button", { name: /add slot/i }));
+    const slot1 = screen.getByRole("group", { name: "Slot 1" });
+    fireEvent.click(await within(slot1).findByRole("button", { name: "Singing" }));
+    expect(screen.getByText(/every date of this production will require Singing\./i)).toBeInTheDocument();
+  });
+
+  it("synced show: program is read-only, slots stay editable", () => {
+    fetchShowSlots.mockResolvedValue([]);
+    renderWithProviders(<ShowFormDialog open onOpenChange={() => {}} allShows={[]} show={{ ...SHOW, id: "s1", program: "P", airtable_program_key: "K" } as never} />);
     expect(screen.getByText(/synced from airtable/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/^program/i)).toBeDisabled();
-    expect(screen.getByLabelText(/main cast/i)).not.toBeDisabled();
+    expect(screen.getByRole("button", { name: /add slot/i })).not.toBeDisabled();
   });
 
-  describe("required skills", () => {
-    it("edit: renders the Required skills section with existing selections pressed", async () => {
-      Object.assign(client, createFakeSupabase({
-        skills: { data: [{ id: "sk-1", name: "Singing" }, { id: "sk-2", name: "Juggling" }], error: null },
-        show_required_skills: { data: [{ skill_id: "sk-1" }], error: null },
-      }));
-      renderWithProviders(<ShowFormDialog open onOpenChange={() => {}} allShows={[]} show={SHOW_WITH_SKILL as never} />);
-      expect(await screen.findByText("Required skills")).toBeInTheDocument();
-      expect(screen.getByText(/artists must have all of these skills/i)).toBeInTheDocument();
-      const singing = await screen.findByRole("button", { name: "Singing" });
-      await waitFor(() => expect(singing).toHaveAttribute("aria-pressed", "true"));
-      expect(screen.getByRole("button", { name: "Juggling" })).toHaveAttribute("aria-pressed", "false");
-    });
-
-    it("edit: toggling a new skill on and saving inserts the pair", async () => {
-      const fake = createFakeSupabase({
-        skills: { data: [{ id: "sk-1", name: "Singing" }, { id: "sk-2", name: "Juggling" }], error: null },
-        show_required_skills: { data: [{ skill_id: "sk-1" }], error: null },
-      });
-      Object.assign(client, fake);
-      renderWithProviders(<ShowFormDialog open onOpenChange={() => {}} allShows={[]} show={SHOW_WITH_SKILL as never} />);
-      const juggling = await screen.findByRole("button", { name: "Juggling" });
-      await waitFor(() => expect(juggling).toHaveAttribute("aria-pressed", "false"));
-      fireEvent.click(juggling);
-      fireEvent.click(screen.getByRole("button", { name: /save/i }));
-      await waitFor(() => expect(updateShow).toHaveBeenCalled());
-      await waitFor(() => {
-        const ins = fake.calls.find((c) => c.table === "show_required_skills" && c.method === "insert");
-        expect(ins?.args[0]).toEqual({ show_id: "show-1", skill_id: "sk-2", org_id: "org-1" });
-      });
-    });
-
-    it("edit: toggling an existing skill off and saving deletes it", async () => {
-      const fake = createFakeSupabase({
-        skills: { data: [{ id: "sk-1", name: "Singing" }, { id: "sk-2", name: "Juggling" }], error: null },
-        show_required_skills: { data: [{ skill_id: "sk-1" }], error: null },
-      });
-      Object.assign(client, fake);
-      renderWithProviders(<ShowFormDialog open onOpenChange={() => {}} allShows={[]} show={SHOW_WITH_SKILL as never} />);
-      const singing = await screen.findByRole("button", { name: "Singing" });
-      await waitFor(() => expect(singing).toHaveAttribute("aria-pressed", "true"));
-      fireEvent.click(singing);
-      fireEvent.click(screen.getByRole("button", { name: /save/i }));
-      await waitFor(() => expect(updateShow).toHaveBeenCalled());
-      await waitFor(() => {
-        expect(fake.calls.some((c) => c.table === "show_required_skills" && c.method === "delete")).toBe(true);
-      });
-      expect(fake.calls).toContainEqual({ table: "show_required_skills", method: "eq", args: ["show_id", "show-1"] });
-      expect(fake.calls).toContainEqual({ table: "show_required_skills", method: "eq", args: ["skill_id", "sk-1"] });
-    });
-
-    it("edit: an unsaved toggle does not survive close/reopen of the same show", async () => {
-      Object.assign(client, createFakeSupabase({
-        skills: { data: [{ id: "sk-1", name: "Singing" }, { id: "sk-2", name: "Juggling" }], error: null },
-        show_required_skills: { data: [{ skill_id: "sk-1" }], error: null },
-      }));
-      const { rerender } = renderWithProviders(
-        <ShowFormDialog open onOpenChange={() => {}} allShows={[]} show={SHOW_WITH_SKILL as never} />,
-      );
-      await waitFor(() =>
-        expect(screen.getByRole("button", { name: "Singing" })).toHaveAttribute("aria-pressed", "true"));
-      // Unsaved toggle: turn Juggling on, then close via the open prop (X/Escape path,
-      // dialog instance stays mounted as on ProductionsPage).
-      fireEvent.click(screen.getByRole("button", { name: "Juggling" }));
-      expect(screen.getByRole("button", { name: "Juggling" })).toHaveAttribute("aria-pressed", "true");
-      rerender(<ShowFormDialog open={false} onOpenChange={() => {}} allShows={[]} show={SHOW_WITH_SKILL as never} />);
-      // Reopen the SAME show: chips must show the true persisted set, not the stale toggle.
-      rerender(<ShowFormDialog open onOpenChange={() => {}} allShows={[]} show={SHOW_WITH_SKILL as never} />);
-      const singing = await screen.findByRole("button", { name: "Singing" });
-      await waitFor(() => expect(singing).toHaveAttribute("aria-pressed", "true"));
-      expect(screen.getByRole("button", { name: "Juggling" })).toHaveAttribute("aria-pressed", "false");
-    });
-
-    it("create mode reopened after an edit session starts with no selected skills", async () => {
-      Object.assign(client, createFakeSupabase({
-        skills: { data: [{ id: "sk-1", name: "Singing" }, { id: "sk-2", name: "Juggling" }], error: null },
-        show_required_skills: { data: [{ skill_id: "sk-1" }], error: null },
-      }));
-      const { rerender } = renderWithProviders(
-        <ShowFormDialog open onOpenChange={() => {}} allShows={[]} show={SHOW_WITH_SKILL as never} />,
-      );
-      await waitFor(() =>
-        expect(screen.getByRole("button", { name: "Singing" })).toHaveAttribute("aria-pressed", "true"));
-      rerender(<ShowFormDialog open={false} onOpenChange={() => {}} allShows={[]} show={SHOW_WITH_SKILL as never} />);
-      // Reopen in CREATE mode: no inherited selections from the edit session.
-      rerender(<ShowFormDialog open onOpenChange={() => {}} allShows={[]} />);
-      const singing = await screen.findByRole("button", { name: "Singing" });
-      expect(singing).toHaveAttribute("aria-pressed", "false");
-      expect(screen.getByRole("button", { name: "Juggling" })).toHaveAttribute("aria-pressed", "false");
-    });
-
-    it("edit: a failed delete keeps the succeeded insert; retry does not duplicate it", async () => {
-      // Array seed: the delete chain records eq("skill_id", "sk-1") so it matches the
-      // error entry; the select and the sk-2 insert fall through to the ok fallback.
-      const fake = createFakeSupabase({
-        skills: { data: [{ id: "sk-1", name: "Singing" }, { id: "sk-2", name: "Juggling" }], error: null },
-        show_required_skills: [
-          { when: { skill_id: "sk-1" }, data: null, error: { message: "delete blocked" } },
-          { data: [{ skill_id: "sk-1" }], error: null },
-        ],
-      });
-      Object.assign(client, fake);
-      const onOpenChange = vi.fn();
-      renderWithProviders(<ShowFormDialog open onOpenChange={onOpenChange} allShows={[]} show={SHOW_WITH_SKILL as never} />);
-      const singing = await screen.findByRole("button", { name: "Singing" });
-      await waitFor(() => expect(singing).toHaveAttribute("aria-pressed", "true"));
-      fireEvent.click(screen.getByRole("button", { name: "Juggling" })); // add sk-2
-      fireEvent.click(singing); // remove sk-1
-      const insertsFor = (skillId: string) =>
-        fake.calls.filter((c) => c.table === "show_required_skills" && c.method === "insert"
-          && (c.args[0] as { skill_id?: string })?.skill_id === skillId);
-      const deletes = () =>
-        fake.calls.filter((c) => c.table === "show_required_skills" && c.method === "delete");
-      fireEvent.click(screen.getByRole("button", { name: /save/i }));
-      await waitFor(() => expect(updateShow).toHaveBeenCalledTimes(1));
-      await waitFor(() => expect(deletes()).toHaveLength(1));
-      expect(insertsFor("sk-2")).toHaveLength(1);
-      // Diff failed -> the dialog stays open.
-      expect(onOpenChange).not.toHaveBeenCalledWith(false);
-      // Retry: only the unfinished delete is re-attempted; the already-applied
-      // insert must NOT repeat (it would hit the UNIQUE (show_id, skill_id) index).
-      fireEvent.click(screen.getByRole("button", { name: /save/i }));
-      await waitFor(() => expect(updateShow).toHaveBeenCalledTimes(2));
-      await waitFor(() => expect(deletes()).toHaveLength(2));
-      expect(insertsFor("sk-2")).toHaveLength(1);
-      expect(onOpenChange).not.toHaveBeenCalledWith(false);
-    });
-
-    it("create: a failed skills insert keeps the created show; retry does not create a duplicate", async () => {
-      const fake = createFakeSupabase({
-        skills: { data: [{ id: "sk-1", name: "Singing" }], error: null },
-        show_required_skills: { data: null, error: { message: "insert blocked" } },
-      });
-      Object.assign(client, fake);
-      const onOpenChange = vi.fn();
-      renderWithProviders(<ShowFormDialog open onOpenChange={onOpenChange} allShows={[]} />);
-      fireEvent.change(screen.getByLabelText(/^program/i), { target: { value: "Hamlet" } });
-      fireEvent.click(await screen.findByRole("button", { name: "Singing" }));
-      const inserts = () =>
-        fake.calls.filter((c) => c.table === "show_required_skills" && c.method === "insert");
-      fireEvent.click(screen.getByRole("button", { name: /create/i }));
-      await waitFor(() => expect(createShow).toHaveBeenCalledTimes(1));
-      await waitFor(() => expect(inserts()).toHaveLength(1));
-      expect(onOpenChange).not.toHaveBeenCalledWith(false);
-      // Retry: the show already exists in this open session; only the skill
-      // insert is re-attempted, no second show is created.
-      fireEvent.click(screen.getByRole("button", { name: /create/i }));
-      await waitFor(() => expect(inserts()).toHaveLength(2));
-      expect(createShow).toHaveBeenCalledTimes(1);
-    });
+  it("edit_scheduling off: the slot repeater is disabled, other fields stay editable", () => {
+    vi.mocked(useCan).mockReturnValue(false);
+    renderWithProviders(<ShowFormDialog open onOpenChange={() => {}} allShows={[]} show={{ ...SHOW, id: "s1", program: "P" } as never} />);
+    expect(screen.getByRole("button", { name: /add slot/i })).toBeDisabled();
+    expect(screen.getByLabelText(/^program/i)).not.toBeDisabled();
   });
 });

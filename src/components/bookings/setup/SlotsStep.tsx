@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchShowsWithSlots } from "@/data/settings";
-import { updateShow } from "@/data/shows";
+import { fetchShowSlots, saveShowSlots, type SlotDraft } from "@/data/slots";
 import { showSlots, activeShows } from "@/lib/settings";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,8 +13,10 @@ import { ROUTES } from "@/config/app.config";
 
 type Draft = Record<string, { main: string; us: string }>;
 
-/** The rail's slots panel: number inputs for each show still missing a slot count.
- *  Saves through `updateShow`, the same path the Productions page uses. */
+/** The rail's slots panel: number inputs for each show still missing a main count.
+ *  Saves through `saveShowSlots`, writing `show_slots` rows (the same authoring model
+ *  ShowFormDialog uses); the recompute trigger derives the show's main/understudy caches.
+ *  Understudy is optional here: a blank or zero u/s creates no understudy slot. */
 export function SlotsStep({ orgId, onDone }: { orgId: string | null; onDone: () => void }) {
   const qc = useQueryClient();
   const shows = useQuery({
@@ -31,18 +33,47 @@ export function SlotsStep({ orgId, onDone }: { orgId: string | null; onDone: () 
 
   const save = useMutation({
     mutationFn: async () => {
+      if (!orgId) throw new Error("No active organization");
       const edits = unset
         .map((s) => ({ id: s.id, main: draft[s.id]?.main, us: draft[s.id]?.us }))
-        .filter((e) => e.main !== undefined && e.main !== "" && e.us !== undefined && e.us !== "");
-      if (edits.length === 0) throw new Error("Enter a main and understudy count");
+        .filter((e) => e.main !== undefined && e.main !== "");
+      if (edits.length === 0) throw new Error("Enter a main cast count");
       await Promise.all(
-        edits.map((e) =>
-          updateShow(supabase, e.id, { main_cast_slots: Number(e.main), understudy_slots: Number(e.us) }),
-        ),
+        edits.map(async (e) => {
+          // Seed from the show's EXISTING slots, never an empty array. saveShowSlots
+          // deletes any current row absent from the submitted list, so building from
+          // scratch would silently wipe a slot the show already has. A show reaches this
+          // rail because it has no Main slot (main_cast_slots is NULL), but it may still
+          // carry an Understudy slot -- added in ShowFormDialog, or left behind when the
+          // last Main slot was removed -- along with that slot's required skills.
+          const slots: SlotDraft[] = (await fetchShowSlots(supabase, e.id)).map((s) => ({ ...s }));
+          // Set the Main count: update an existing main slot in place (keeping its id, so
+          // a re-save is idempotent) or add one under a client-minted id.
+          const mainSlot = slots.find((s) => s.kind === "main");
+          if (mainSlot) {
+            mainSlot.count = Number(e.main);
+          } else {
+            slots.push({ id: crypto.randomUUID(), name: "Main cast", count: Number(e.main), kind: "main", skillIds: [] });
+          }
+          // Understudy stays optional: a positive count updates or creates the Understudy
+          // slot; a blank or zero leaves any pre-existing understudy slot untouched (it is
+          // preserved by the seed above, never dropped).
+          if (e.us !== undefined && e.us !== "" && Number(e.us) > 0) {
+            const usSlot = slots.find((s) => s.kind === "understudy");
+            if (usSlot) {
+              usSlot.count = Number(e.us);
+            } else {
+              slots.push({ id: crypto.randomUUID(), name: "Understudy", count: Number(e.us), kind: "understudy", skillIds: [] });
+            }
+          }
+          return saveShowSlots(supabase, { showId: e.id, orgId, slots });
+        }),
       );
     },
     onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["show-slots"] });
       qc.invalidateQueries({ queryKey: ["shows"] });
+      qc.invalidateQueries({ queryKey: ["show-dates"] });
       toast.success("Slot counts saved");
       onDone();
     },

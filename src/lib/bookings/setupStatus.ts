@@ -6,6 +6,8 @@
 // cast_city_priority for the city) and only ever OVER-reports: it drives an
 // affordance, and open-offer-tier remains authoritative.
 
+import { showSlots } from "@/lib/settings";
+
 export type BookingSetupStepKey = "flow" | "people" | "slots" | "ladder" | "eligibility" | "timing" | "shows";
 /** What an outstanding step costs the org, in that org's own vocabulary. "offers" and
  *  "booking" are the SAME hard gate seen under two flows: an org that runs offers reads the
@@ -56,7 +58,8 @@ export interface BookingSetupStatusInput {
    *  ACTIVE shows or no UPCOMING dates right now (e.g. between seasons). */
   hasAnyShows: boolean;
   /** active shows-with-slots; undefined while unread. Slots is done only when the org has
-   *  shows (hasAnyShows) and every active show has both slot counts set. */
+   *  shows (hasAnyShows) and every active show has a main slot count set. Understudy is
+   *  optional, so a main-only show (understudy_slots NULL) counts as configured. */
   shows: { main_cast_slots: number | null; understudy_slots: number | null }[] | null | undefined;
   /** The org has its own row for all three timing keys. */
   timingChosen: boolean;
@@ -165,8 +168,14 @@ export function computeBookingSetupStatus(input: BookingSetupStatusInput): Booki
     // whether or not the org has scheduled anything yet. Counted against the ACTIVE roster
     // so this agrees with what a tier would actually resolve to.
     people: (input.artistCount ?? 0) > 0,
+    // Understudy is optional: a main-only show (understudy_slots NULL) is configured, so
+    // the gate is a main slot count on every active show, not both counts. showSlots()
+    // is the single "configured?" rule shared with compute_show_date_status: a NULL main
+    // cap OR both caps effectively zero (main<=0 and understudy<=0) is unconfigured, so a
+    // show saved with a single main slot of 0 does not falsely read as done here while its
+    // dates can never reach fully_filled.
     slots: input.hasAnyShows && Array.isArray(input.shows)
-      ? input.shows.every((s) => s.main_cast_slots != null && s.understudy_slots != null)
+      ? input.shows.every((s) => showSlots(s) !== null)
       : false,
     // With no upcoming (show, city) pairs there is nothing to cover, so a configured org is
     // done; with future pairs, every one needs a tier-1 cast (and a city, for eligibility).

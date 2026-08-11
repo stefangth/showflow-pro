@@ -3,14 +3,17 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
+import { Plus, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/features/auth/AuthContext";
 import { useCan } from "@/hooks/useCapabilities";
 import { useCreateShow, useUpdateShow, type ShowWithStats } from "@/hooks/useShows";
 import { useSkills } from "@/hooks/useSkills";
-import { fetchShowRequiredSkillIds, addShowRequiredSkill, removeShowRequiredSkill } from "@/data/eligibility";
+import { useShowSlots } from "@/hooks/useShowSlots";
+import { saveShowSlots, type SlotDraft, type SlotKind } from "@/data/slots";
 import { isSyncedShow, nextSortOrder } from "@/lib/catalog";
+import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,18 +22,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { SkillPicker } from "@/components/skills/SkillPicker";
 
-const slot = z.string().regex(/^\d*$/, "Whole number ≥ 0").optional().or(z.literal(""));
 const schema = z.object({
   program: z.string().trim().optional().or(z.literal("")),
   subProgram: z.string().trim().optional().or(z.literal("")),
   category: z.string().trim().optional().or(z.literal("")),
   description: z.string().trim().optional().or(z.literal("")),
-  mainCastSlots: slot,
-  understudySlots: slot,
 }).refine((v) => !!(v.program || v.subProgram), { message: "Program or sub-program required", path: ["program"] });
 type FormValues = z.infer<typeof schema>;
-
-const toSlot = (s: string | undefined): number | null => (s != null && s.trim() !== "" ? parseInt(s, 10) : null);
 
 export function ShowFormDialog({
   open, onOpenChange, show, allShows, onSaved,
@@ -48,94 +46,99 @@ export function ShowFormDialog({
   const createShow = useCreateShow();
   const updateShow = useUpdateShow();
   const queryClient = useQueryClient();
+  const pending = createShow.isPending || updateShow.isPending;
+  // Slots ARE the production's scheduling configuration (they derive its main/understudy
+  // totals), so the whole repeater is gated by the same capability that gated the old
+  // slot-count fields.
+  const slotsDisabled = !canEditScheduling || pending;
 
   const { data: orgSkills } = useSkills();
-  const [requiredSkillIds, setRequiredSkillIds] = useState<string[]>([]);
-  const initialSkillIdsRef = useRef<string[]>([]);
-  // Which (open session, show identity) the skills editor was last seeded for.
-  // The dialog instance stays mounted across close/reopen (ProductionsPage), so
-  // seeding must be keyed on the open transition, not on query-data identity:
-  // structural sharing keeps a refetch reference-equal, which would otherwise
-  // let an unsaved toggle survive an X/Escape close and leak into the next save.
-  const skillsSeededForRef = useRef<string | null>(null);
-  // Show id created in the current open session; a retry after a failed skills
-  // diff must reuse it instead of creating a duplicate show.
+  // The named slot rows the production authors (role name, count, main/understudy,
+  // per-slot required skills). shows.main_cast_slots/understudy_slots and
+  // show_required_skills are trigger-maintained caches derived from these.
+  const [slots, setSlots] = useState<SlotDraft[]>([]);
+  // Which (open session, show identity) the slot repeater was last seeded for. The
+  // dialog instance stays mounted across close/reopen (ProductionsPage), so seeding is
+  // keyed on the open transition, not query-data identity: a mid-session refetch (or a
+  // structurally-shared reference) must not clobber in-progress edits, and an unsaved
+  // add/remove must never leak into the next session's save.
+  const slotsSeededForRef = useRef<string | null>(null);
+  // Show id created in the current open session; a retry after a failed slot save
+  // reuses it instead of creating a duplicate show.
   const createdShowIdRef = useRef<string | null>(null);
-  // Load the show's current required skills when editing (dialog opens with a show).
-  const showReqQ = useQuery({
-    queryKey: ["eligibility", "show-required-skills", show?.id],
-    enabled: open && !!show?.id,
-    queryFn: () => fetchShowRequiredSkillIds(supabase, show!.id),
-  });
+
+  const slotsQ = useShowSlots(open ? show?.id : undefined);
   useEffect(() => {
     if (!open) {
-      // Closing discards unsaved toggles (they must never survive into the next
-      // session's diff) and ends the create session.
-      skillsSeededForRef.current = null;
+      // Closing discards unsaved slot edits (they must never survive into the next
+      // session's save) and ends the create session.
+      slotsSeededForRef.current = null;
       createdShowIdRef.current = null;
-      setRequiredSkillIds([]);
-      initialSkillIdsRef.current = [];
+      setSlots([]);
       return;
     }
     const identity = show?.id ?? "__create__";
-    // Seed once per open session per show identity; a mid-session refetch must
-    // not clobber in-progress toggles (same pattern as the ArtistProfileSheet
-    // draft reseed).
-    if (skillsSeededForRef.current === identity) return;
-    if (show?.id && showReqQ.data === undefined) return; // edit mode: wait for the fetch
-    skillsSeededForRef.current = identity;
-    const ids = show?.id ? showReqQ.data ?? [] : [];
-    setRequiredSkillIds(ids);
-    initialSkillIdsRef.current = ids;
-  }, [open, show?.id, showReqQ.data]);
+    if (slotsSeededForRef.current === identity) return;
+    if (show?.id && slotsQ.data === undefined) return; // edit mode: wait for the fetch
+    slotsSeededForRef.current = identity;
+    setSlots(show?.id ? (slotsQ.data ?? []) : []);
+  }, [open, show?.id, slotsQ.data]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
-      program: show?.program ?? "", subProgram: show?.sub_program ?? "", category: show?.category ?? "",
-      description: show?.description ?? "",
-      mainCastSlots: show?.main_cast_slots != null ? String(show.main_cast_slots) : "",
-      understudySlots: show?.understudy_slots != null ? String(show.understudy_slots) : "",
+      program: show?.program ?? "", subProgram: show?.sub_program ?? "",
+      category: show?.category ?? "", description: show?.description ?? "",
     },
   });
   useEffect(() => {
     if (open) form.reset({
-      program: show?.program ?? "", subProgram: show?.sub_program ?? "", category: show?.category ?? "",
-      description: show?.description ?? "",
-      mainCastSlots: show?.main_cast_slots != null ? String(show.main_cast_slots) : "",
-      understudySlots: show?.understudy_slots != null ? String(show.understudy_slots) : "",
+      program: show?.program ?? "", subProgram: show?.sub_program ?? "",
+      category: show?.category ?? "", description: show?.description ?? "",
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, show]);
 
-  /** Insert/delete added/removed skill ids against the target show, then bust
-   *  every domain the eligibility engine reads from. The baseline ref advances
-   *  INCREMENTALLY after each successful write, so a retry after a mid-diff
-   *  failure only re-attempts genuinely unfinished operations (a repeated
-   *  insert would hit the UNIQUE (show_id, skill_id) index). Returns whether
-   *  the whole diff applied. */
-  const applyRequiredSkillsDiff = async (targetShowId: string, orgId: string): Promise<boolean> => {
-    const before = new Set(initialSkillIdsRef.current);
-    const after = new Set(requiredSkillIds);
-    const toAdd = requiredSkillIds.filter((id) => !before.has(id));
-    const toRemove = initialSkillIdsRef.current.filter((id) => !after.has(id));
-    if (toAdd.length === 0 && toRemove.length === 0) return true;
+  const updateSlot = (i: number, patch: Partial<SlotDraft>) =>
+    setSlots((prev) => prev.map((s, idx) => (idx === i ? { ...s, ...patch } : s)));
+  const toggleSlotSkill = (i: number, skillId: string) =>
+    setSlots((prev) => prev.map((s, idx) => idx === i
+      ? { ...s, skillIds: s.skillIds.includes(skillId) ? s.skillIds.filter((x) => x !== skillId) : [...s.skillIds, skillId] }
+      : s));
+  // Every new row gets a client-minted id so a retry (dialog stays open on save
+  // failure) re-submits the same array and saveShowSlots resolves already-landed
+  // rows to no-op updates instead of duplicate inserts.
+  const addSlot = () =>
+    setSlots((prev) => [...prev, { id: crypto.randomUUID(), name: "", count: 1, kind: "main", skillIds: [] }]);
+  const removeSlot = (i: number) => setSlots((prev) => prev.filter((_, idx) => idx !== i));
+
+  const skillNameById = new Map((orgSkills ?? []).map((s) => [s.id, s.name] as const));
+  const unionIds = new Set<string>();
+  for (const s of slots) for (const id of s.skillIds) unionIds.add(id);
+  const unionNames = [...unionIds]
+    .map((id) => skillNameById.get(id))
+    .filter((n): n is string => !!n)
+    .sort((a, b) => a.localeCompare(b));
+  const mainTotal = slots.filter((s) => s.kind === "main").reduce((a, s) => a + s.count, 0);
+  const understudyTotal = slots.filter((s) => s.kind === "understudy").reduce((a, s) => a + s.count, 0);
+  const calloutText = unionNames.length > 0
+    ? `Every date of this production will require ${unionNames.join(", ")}. A single date can still add or drop a skill without changing the production.`
+    : "No skills are required yet. Add skills to a slot to require them on every date.";
+
+  /** Reconcile the show's slot rows, then bust every domain the derived caches feed.
+   *  Returns whether the save applied; the caller keeps the dialog open on failure so
+   *  a retry (idempotent thanks to the client-minted ids) can finish. */
+  const saveSlots = async (targetShowId: string, orgId: string): Promise<boolean> => {
     try {
-      for (const id of toAdd) {
-        await addShowRequiredSkill(supabase, { showId: targetShowId, skillId: id, orgId });
-        initialSkillIdsRef.current = [...initialSkillIdsRef.current, id];
-      }
-      for (const id of toRemove) {
-        await removeShowRequiredSkill(supabase, { showId: targetShowId, skillId: id });
-        initialSkillIdsRef.current = initialSkillIdsRef.current.filter((x) => x !== id);
-      }
+      await saveShowSlots(supabase, { showId: targetShowId, orgId, slots });
       return true;
     } catch (e) {
-      // Distinct from the show-upsert failure: the show itself saved fine.
-      toast.error("Failed to update required skills", { description: (e as Error).message });
+      toast.error("Failed to save slots", { description: (e as Error).message });
       return false;
     } finally {
-      // Partial writes may have landed even on failure; refresh consumers either way.
+      queryClient.invalidateQueries({ queryKey: ["show-slots"] });
+      queryClient.invalidateQueries({ queryKey: ["shows"] });
+      queryClient.invalidateQueries({ queryKey: ["show-dates"] });
       queryClient.invalidateQueries({ queryKey: ["eligibility"] });
       queryClient.invalidateQueries({ queryKey: ["eligible-artists"] });
       queryClient.invalidateQueries({ queryKey: ["artist-eligible-dates"] });
@@ -148,25 +151,26 @@ export function ShowFormDialog({
     try {
       let targetShowId: string;
       if (isEdit && show) {
+        // main_cast_slots/understudy_slots are derived from slots now, so the show
+        // patch never writes them.
         await updateShow.mutateAsync({
           id: show.id,
           patch: synced
-            ? { category: v.category || null, description: v.description || null, main_cast_slots: toSlot(v.mainCastSlots), understudy_slots: toSlot(v.understudySlots) }
-            : { program: v.program || null, sub_program: v.subProgram || null, category: v.category || null, description: v.description || null, main_cast_slots: toSlot(v.mainCastSlots), understudy_slots: toSlot(v.understudySlots) },
+            ? { category: v.category || null, description: v.description || null }
+            : { program: v.program || null, sub_program: v.subProgram || null, category: v.category || null, description: v.description || null },
         });
         targetShowId = show.id;
         toast.success("Production updated");
         onSaved?.(show.id);
       } else {
-        // A retry after a failed skills diff reuses the show created earlier in
-        // this open session instead of inserting a duplicate.
+        // A retry after a failed slot save reuses the show created earlier in this
+        // open session instead of inserting a duplicate.
         let id = createdShowIdRef.current;
         if (!id) {
           ({ id } = await createShow.mutateAsync({
             orgId: currentOrg.id, createdBy: user?.id ?? null,
             program: v.program || null, subProgram: v.subProgram || null,
             category: v.category || null, description: v.description || null,
-            mainCastSlots: toSlot(v.mainCastSlots), understudySlots: toSlot(v.understudySlots),
             sortOrder: nextSortOrder(allShows),
           }));
           createdShowIdRef.current = id;
@@ -175,19 +179,18 @@ export function ShowFormDialog({
         }
         targetShowId = id;
       }
-      const skillsApplied = await applyRequiredSkillsDiff(targetShowId, currentOrg.id);
-      if (skillsApplied) onOpenChange(false); // keep the dialog open on diff failure so a retry can finish
+      const slotsSaved = await saveSlots(targetShowId, currentOrg.id);
+      if (slotsSaved) onOpenChange(false); // keep the dialog open on save failure so a retry can finish
     } catch (e) {
       toast.error((e as Error).message);
     }
   };
 
-  const pending = createShow.isPending || updateShow.isPending;
   const err = form.formState.errors;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {isEdit ? "Edit production" : "New production"}
@@ -212,32 +215,96 @@ export function ShowFormDialog({
             <Label htmlFor="description">Description</Label>
             <Textarea id="description" {...form.register("description")} />
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="mainCastSlots">Main cast slots</Label>
-              <Input id="mainCastSlots" inputMode="numeric" disabled={!canEditScheduling} {...form.register("mainCastSlots")} />
-              {err.mainCastSlots && <p className="text-xs text-destructive">{err.mainCastSlots.message}</p>}
+
+          <div className="space-y-2.5">
+            <div className="flex items-baseline justify-between gap-3">
+              <p className="text-sm font-medium">Slots</p>
+              <p className="font-mono text-xs tabular-nums text-muted-foreground">{mainTotal} main · {understudyTotal} understudy</p>
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="understudySlots">Understudy slots</Label>
-              <Input id="understudySlots" inputMode="numeric" disabled={!canEditScheduling} {...form.register("understudySlots")} />
-              {err.understudySlots && <p className="text-xs text-destructive">{err.understudySlots.message}</p>}
-            </div>
-          </div>
-          <div className="space-y-1.5">
-            <p className="text-sm font-medium">Required skills</p>
             <p className="text-xs text-muted-foreground">
-              Artists must have all of these skills to receive offers or be booked.
+              Name each slot and give it the skills it needs. Every date of this production then requires the union of these skills. There is no separate required-skills list to keep in sync.
             </p>
-            <SkillPicker
-              skills={orgSkills ?? []}
-              selectedIds={requiredSkillIds}
-              onToggle={(id) => setRequiredSkillIds((prev) =>
-                prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id])}
-              disabled={pending}
-              emptyHint="No skills yet. Add skills on artist profiles first."
-            />
+
+            <div className="space-y-2">
+              {slots.map((s, i) => (
+                <div
+                  key={s.id}
+                  role="group"
+                  aria-label={s.name ? `Slot: ${s.name}` : `Slot ${i + 1}`}
+                  className="space-y-2 rounded-md border border-border p-2.5"
+                >
+                  <div className="flex items-center gap-2">
+                    <Input
+                      aria-label="Role name"
+                      placeholder="Role name"
+                      className="h-8 flex-1"
+                      value={s.name}
+                      disabled={slotsDisabled}
+                      onChange={(e) => updateSlot(i, { name: e.target.value })}
+                    />
+                    <Input
+                      aria-label="Count"
+                      inputMode="numeric"
+                      className="h-8 w-14 text-center"
+                      value={String(s.count)}
+                      disabled={slotsDisabled}
+                      onChange={(e) => {
+                        const digits = e.target.value.replace(/[^\d]/g, "");
+                        updateSlot(i, { count: digits === "" ? 0 : parseInt(digits, 10) });
+                      }}
+                    />
+                    <div className="inline-flex overflow-hidden rounded-md border border-border">
+                      {(["main", "understudy"] as SlotKind[]).map((k) => (
+                        <button
+                          key={k}
+                          type="button"
+                          aria-pressed={s.kind === k}
+                          disabled={slotsDisabled}
+                          onClick={() => updateSlot(i, { kind: k })}
+                          className={cn(
+                            "px-2 py-1 text-xs transition-colors",
+                            s.kind === k ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground",
+                            slotsDisabled && "pointer-events-none opacity-50",
+                          )}
+                        >
+                          {k === "main" ? "Main" : "Understudy"}
+                        </button>
+                      ))}
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 shrink-0"
+                      aria-label={`Remove ${s.name || "slot"}`}
+                      disabled={slotsDisabled}
+                      onClick={() => removeSlot(i)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <SkillPicker
+                    skills={orgSkills ?? []}
+                    selectedIds={s.skillIds}
+                    onToggle={(id) => toggleSlotSkill(i, id)}
+                    disabled={slotsDisabled}
+                    emptyHint="No skills yet. Add skills on artist profiles first."
+                  />
+                </div>
+              ))}
+
+              <Button type="button" variant="outline" size="sm" disabled={slotsDisabled} onClick={addSlot}>
+                <Plus className="mr-1.5 h-3.5 w-3.5" />Add slot
+              </Button>
+            </div>
+
+            {slots.length > 0 && (
+              <div className="rounded-md border border-primary/20 bg-primary/5 px-3 py-2 text-xs text-primary">
+                {calloutText}
+              </div>
+            )}
           </div>
+
           <DialogFooter>
             <Button type="submit" disabled={pending}>{pending ? "Saving…" : isEdit ? "Save" : "Create"}</Button>
           </DialogFooter>
