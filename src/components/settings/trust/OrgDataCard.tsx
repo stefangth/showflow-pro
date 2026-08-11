@@ -141,10 +141,20 @@ export function OrgDataCard() {
             isLoading={isAdmin && members.isLoading}
             isError={isAdmin && members.isError}
           />
+          {/* Two citations, not one, and for the same reason CONTROLS[0] in
+           *  facts.ts carries two: org_isolation.sql sets up two orgs and
+           *  asserts reads and writes on `shows` and `show_dates` only, so on
+           *  its own it cannot support a claim about every row this
+           *  organisation holds. org_coverage.sql is what covers the rest —
+           *  org_id, RLS and the restrictive org_isolation policy across its
+           *  whole tenant-table list, chat_messages and booking_audit_log
+           *  included. This tile was the last uncorrected copy of a claim the
+           *  Controls card had already been narrowed for, and it is the first
+           *  evidence citation an administrator meets in-app. */}
           <Tile
             label="Outside reach"
             value="None"
-            note="No other organisation can read a row, asserted by supabase/tests/rls/org_isolation.sql on every pull request."
+            note="No other organisation can read a row. supabase/tests/rls/org_isolation.sql proves that for shows and show_dates, and supabase/tests/rls/org_coverage.sql confirms the restrictive policy exists on every tenant table in its list. Both run on every pull request."
             isLoading={false}
             isError={false}
           />

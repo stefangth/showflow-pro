@@ -297,12 +297,31 @@ export const RETENTION: RetentionRow[] = [
  *  green. It now ships in the contract as `capabilities.note`
  *  (scripts/build-trust-json.mjs) so both surfaces render the same string.
  *
- *  The set is exactly `archive_productions`, `reorder_productions` and
- *  `edit_scheduling`: the only entries in src/lib/capabilities.ts with
- *  neither an is_capability_enabled call in SQL nor a requireCapability in an
- *  edge function. */
+ *  Both renderers used to introduce it with "Most are checked in the database
+ *  on write", which turned naming three exceptions into a claim that the
+ *  other 25 carry a database policy. They do not: six are checked only by an
+ *  edge function (invite_artists, run_offer_engine, resend_account_invite,
+ *  generate_hire_orders, issue_hire_orders, trigger_sync), which is
+ *  server-side but not "in the database", and this sentence's own wording
+ *  makes that difference load-bearing. So the split is stated in full here
+ *  and the lead-in is gone from both surfaces.
+ *
+ *  The three-way split — 19 in the database, 6 edge-only, 3 interface-only —
+ *  is recomputed from the registry, the migrations and the edge tree by
+ *  capabilityEnforcement.test.ts, which fails if any of the three numbers or
+ *  the named interface-only set moves. facts.ts cannot import
+ *  capabilities.ts (the trust.json loader rejects any import here), so a test
+ *  is the only place the count can be pinned.
+ *
+ *  "In the database" covers two shapes, and the sentence names both because
+ *  18 of the 19 are the first and one is the second: an is_capability_enabled
+ *  call in the row-level policy that guards the write, or the same call
+ *  inside the SECURITY DEFINER function that performs it — rename_org, which
+ *  bypasses RLS by design, is gated in its own body
+ *  (20260723191933_rpc_capability_gates.sql). Calling all 19 "a database
+ *  policy" would have repeated the finding's mistake one level down. */
 export const CAPABILITY_INTERFACE_ONLY_NOTE =
-  "Three rights that reorder or archive the production catalog and edit its scheduling are enforced by the interface today, not yet by a database policy.";
+  "25 of the 28 rights are checked on the server: 19 inside the database, by the row-level policy that guards the write or by the function that performs it, and 6 more by an edge function that asks the same database check before it acts. The remaining three reorder or archive the production catalog and edit its scheduling; only the interface enforces those.";
 
 export interface Control {
   icon: string;
@@ -335,7 +354,7 @@ export const CONTROLS: Control[] = [
     // `evidence` it produced exactly the conflation this build exists to kill:
     // two nines side by side reading as one set.
     claim:
-      `Three roles per organisation. Every read is authorised in the database. Most writes are too. ${CAPABILITY_INTERFACE_ONLY_NOTE} Nine rights are marked sensitive and ask for a second confirmation before they take effect. Nine ship switched off until an administrator turns them on. The two nines are different sets: issuing and voiding hire orders are sensitive yet ship on, because a production team that cannot issue an order cannot work.`,
+      `Three roles per organisation. Every read is authorised in the database. ${CAPABILITY_INTERFACE_ONLY_NOTE} Nine rights are marked sensitive and ask for a second confirmation before they take effect. Nine ship switched off until an administrator turns them on. The two nines are different sets: issuing and voiding hire orders are sensitive yet ship on, because a production team that cannot issue an order cannot work.`,
     evidence:
       "28 rights across 8 groups, declared in src/lib/capabilities.ts and folded into the inventory this page prints.",
   },
@@ -349,10 +368,20 @@ export const CONTROLS: Control[] = [
   },
   {
     icon: "file-text",
+    // "Booking changes are appended to a log: who acted, what changed" said
+    // more than the trigger does. public.notify_booking_transition returns
+    // without writing unless TG_OP is UPDATE and OLD.status <> NEW.status, so
+    // an INSERT is never logged and an edit to notes, cancellation_reason,
+    // is_understudy or response_deadline leaves no row; "what changed" is
+    // only old_status -> new_status. performed_by is auth.uid(), which is
+    // NULL for a server-side write, and the automated understudy promotion
+    // (public.promote_understudy_on_cancellation) passes NULL explicitly, so
+    // "who acted" is frequently absent rather than always present. The claim
+    // now says exactly that, including the part that is a limitation.
     title: "Auditability",
     claim:
-      "Booking changes are appended to a log: who acted, what changed, the timestamp. Administrators and the production team can read it; no policy on the table permits an update or a delete.",
-    evidence: `Retained ${RETENTION.find((r) => r.item === "Bookings and audit log")!.period}, per section 7 of the privacy policy.`,
+      "Every change to a booking's status is appended to a log: the old status, the new status, who acted, and when. Automated transitions, such as an understudy promoted after a cancellation, are appended the same way, with no person to record as the actor. Nothing else about a booking is logged: editing its notes leaves no row. Administrators and the production team can read the log; no policy on the table permits an update or a delete.",
+    evidence: `Written by the notify_booking_transition trigger, which returns without writing unless the status actually changed, and by promote_understudy_on_cancellation for the automated path. Retained ${RETENTION.find((r) => r.item === "Bookings and audit log")!.period}, per section 7 of the privacy policy.`,
   },
   {
     icon: "shield",

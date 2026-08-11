@@ -141,9 +141,19 @@ export function VisibilityMatrix() {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="max-w-md space-y-1">
           <h3 className="text-base font-semibold tracking-tight">Who can see what</h3>
+          {/* "not the interface" was falsified two rows into the table it
+           *  introduces: the Show-date chat cells say the database sets no
+           *  time limit and the interface turns the thread read-only (admin)
+           *  or stops showing it (production team) 30 days after the show
+           *  date, which ChatPanel.tsx:141 confirms. The public page's
+           *  equivalent line (landing Trust.tsx, Controls section) has always
+           *  read "not just the interface"; the two surfaces were stating
+           *  different things about the same claim and the app had the wrong
+           *  one. VisibilityMatrix.test.tsx pins both halves: this wording,
+           *  and the fact that some cell still credits the interface. */}
           <p className="text-sm text-muted-foreground">
             Answer an artist manager on the call. Roles are per organisation, and what each can
-            read below is enforced in the database, not the interface.
+            read below is enforced in the database, not just the interface.
           </p>
         </div>
         <RolePicker value={role} onChange={setRole} />

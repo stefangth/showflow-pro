@@ -42,6 +42,33 @@ describe("VisibilityMatrix responsive breakpoint", () => {
   });
 });
 
+describe("VisibilityMatrix enforcement claim", () => {
+  // The subhead used to say what each role can read is "enforced in the
+  // database, not the interface", which the table two rows down falsifies:
+  // the Show-date chat cells credit the interface with turning the thread
+  // read-only (admin) and hiding it (production team) 30 days after the show
+  // date, and ChatPanel.tsx:141 does exactly that. The public page's
+  // equivalent line has always read "not just the interface".
+  //
+  // Both halves are pinned. If the interface stops being part of the answer,
+  // the first assertion fails and the sentence can be tightened again; if
+  // someone tightens it while the interface is still part of the answer, the
+  // second fails.
+  it("does not claim database-only enforcement while the matrix credits the interface", () => {
+    const cells = VISIBILITY_MATRIX.flatMap((row) => [row.admin, row.producer, row.artist]);
+    const interfaceEnforced = cells.filter((c) => /\bthe interface\b/.test(c.note));
+    expect(
+      interfaceEnforced.length,
+      "no cell credits the interface any more — the subhead may drop 'just'",
+    ).toBeGreaterThan(0);
+
+    renderWithProviders(<VisibilityMatrix />);
+
+    const subhead = screen.getByText(/enforced in the database/i);
+    expect(subhead).toHaveTextContent(/not just the interface/i);
+  });
+});
+
 describe("VisibilityMatrix access tones", () => {
   /** The pill rendered inside the table row for a given data object. */
   function pill(object: string) {

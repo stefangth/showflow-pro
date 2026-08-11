@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join, resolve } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { screen } from "@testing-library/react";
 import { renderWithProviders } from "@/test/renderWithProviders";
@@ -147,6 +149,40 @@ describe("OrgDataCard", () => {
     renderWithProviders(<OrgDataCard />);
 
     expect(screen.getByText(/supabase\/tests\/rls\/org_isolation\.sql/)).toBeInTheDocument();
+  });
+
+  // org_isolation.sql on its own cannot carry "no other organisation can read a
+  // row": it seeds two orgs and asserts reads and writes on `shows` and
+  // `show_dates`, nothing else. org_coverage.sql is what covers the rest. This
+  // is the same two-citation shape CONTROLS[0] in facts.ts was rewritten to,
+  // and this tile was the last uncorrected copy of the claim.
+  it("cites both RLS suites, and each one exists and asserts what it is cited for", () => {
+    statsMock.mockReturnValue({ data: undefined, isLoading: true, isError: false });
+    membersMock.mockReturnValue({ data: undefined, isLoading: true, isError: false });
+
+    renderWithProviders(<OrgDataCard />);
+
+    const note = screen.getByText(/supabase\/tests\/rls\/org_isolation\.sql/);
+    expect(note).toHaveTextContent("supabase/tests/rls/org_coverage.sql");
+
+    const RLS = resolve(process.cwd(), "supabase/tests/rls");
+    const isolation = readFileSync(join(RLS, "org_isolation.sql"), "utf8");
+    const coverage = readFileSync(join(RLS, "org_coverage.sql"), "utf8");
+
+    // The narrow suite: the only public tables it touches are the two the note
+    // names. Widen it and this fails, so the note can be widened with it.
+    const isolationTables = new Set(
+      [...isolation.matchAll(/public\.([a-z_]+)/g)]
+        .map((m) => m[1])
+        .filter((t) => !["organizations", "org_memberships", "platform_admins"].includes(t)),
+    );
+    expect([...isolationTables].sort()).toEqual(["show_dates", "shows"]);
+
+    // The broad suite: a table list, and the restrictive-policy assertion the
+    // note credits it with.
+    expect(coverage).toContain("policyname='org_isolation'");
+    expect(coverage).toContain("('chat_messages')");
+    expect(coverage).toContain("('booking_audit_log')");
   });
 });
 

@@ -47,7 +47,7 @@
     {
       "icon": "users",
       "title": "Roles and rights",
-      "claim": "Three roles per organisation. Every read is authorised in the database. Most writes are too. Three rights that reorder or archive the production catalog and edit its scheduling are enforced by the interface today, not yet by a database policy. Nine rights are marked sensitive and ask for a second confirmation before they take effect. Nine ship switched off until an administrator turns them on. The two nines are different sets: issuing and voiding hire orders are sensitive yet ship on, because a production team that cannot issue an order cannot work.",
+      "claim": "Three roles per organisation. Every read is authorised in the database. 25 of the 28 rights are checked on the server: 19 inside the database, by the row-level policy that guards the write or by the function that performs it, and 6 more by an edge function that asks the same database check before it acts. The remaining three reorder or archive the production catalog and edit its scheduling; only the interface enforces those. Nine rights are marked sensitive and ask for a second confirmation before they take effect. Nine ship switched off until an administrator turns them on. The two nines are different sets: issuing and voiding hire orders are sensitive yet ship on, because a production team that cannot issue an order cannot work.",
       "evidence": "28 rights across 8 groups, declared in src/lib/capabilities.ts and folded into the inventory this page prints."
     },
     {
@@ -59,8 +59,8 @@
     {
       "icon": "file-text",
       "title": "Auditability",
-      "claim": "Booking changes are appended to a log: who acted, what changed, the timestamp. Administrators and the production team can read it; no policy on the table permits an update or a delete.",
-      "evidence": "Retained 3 years from show date, per section 7 of the privacy policy."
+      "claim": "Every change to a booking's status is appended to a log: the old status, the new status, who acted, and when. Automated transitions, such as an understudy promoted after a cancellation, are appended the same way, with no person to record as the actor. Nothing else about a booking is logged: editing its notes leaves no row. Administrators and the production team can read the log; no policy on the table permits an update or a delete.",
+      "evidence": "Written by the notify_booking_transition trigger, which returns without writing unless the status actually changed, and by promote_understudy_on_cancellation for the automated path. Retained 3 years from show date, per section 7 of the privacy policy."
     },
     {
       "icon": "shield",
@@ -638,6 +638,6 @@
     "totalSensitive": 9,
     "totalDefaultOff": 9,
     "headline": "28 rights · 8 groups · 9 sensitive",
-    "note": "Three rights that reorder or archive the production catalog and edit its scheduling are enforced by the interface today, not yet by a database policy."
+    "note": "25 of the 28 rights are checked on the server: 19 inside the database, by the row-level policy that guards the write or by the function that performs it, and 6 more by an edge function that asks the same database check before it acts. The remaining three reorder or archive the production catalog and edit its scheduling; only the interface enforces those."
   }
 }

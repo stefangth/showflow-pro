@@ -28,4 +28,19 @@ describe("CapabilitiesCard", () => {
 
     expect(screen.getByText(new RegExp(inventory.headline.replace(/\./g, "\\.")))).toBeInTheDocument();
   });
+
+  // The lead-in this card used to carry between the headline and the note read
+  // "Most are checked in the database on write", which turned the note's three
+  // named exceptions into a claim that the other 25 rights hold a database
+  // policy. Six of them do not (capabilityEnforcement.test.ts recomputes the
+  // split). The note states the whole split itself now, so the paragraph must
+  // be the headline and the note and nothing between them.
+  it("introduces the carve-out with nothing that contradicts it", () => {
+    const inventory = buildCapabilityInventory();
+
+    renderWithProviders(<CapabilitiesCard />);
+
+    const summary = screen.getByText(new RegExp(inventory.headline.replace(/\./g, "\\.")));
+    expect(summary.textContent).toBe(`${inventory.headline}. ${inventory.note}`);
+  });
 });

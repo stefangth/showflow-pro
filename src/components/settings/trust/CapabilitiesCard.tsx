@@ -22,9 +22,15 @@ export function CapabilitiesCard() {
           {/* The carve-out sentence is imported, not retyped. It used to exist
            *  in three hand-written copies (here, the Controls claim, and a JSX
            *  literal in the landing repo); the day one of those three rights
-           *  gains a database policy, only one of them can now go stale. */}
+           *  gains a database policy, only one of them can now go stale.
+           *
+           *  "Most are checked in the database on write" used to sit between
+           *  the headline and the note, which made naming three exceptions
+           *  read as a promise that the other 25 carry a database policy. Six
+           *  do not. The note now carries the whole three-way split, so the
+           *  lead-in is gone here and on the public page. */}
           <p className="text-sm text-muted-foreground">
-            {inventory.headline}. Most are checked in the database on write. {inventory.note}
+            {inventory.headline}. {inventory.note}
           </p>
           {/* Every other card on this tab states a fact about the signed-in
            *  organisation. This one cannot: `buildCapabilityInventory()` folds
