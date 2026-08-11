@@ -102,6 +102,44 @@ describe("useFirstRunMetrics", () => {
     expect(result.current.timing).toEqual({ digestHourBerlin: 21, responseWindowHours: 72 });
   });
 
+  it("excludes a null-city date from readyToOffer even with a session and slots set (regression)", () => {
+    // resolveCoverage routes a cityless future pair into `hasNullCity`, never into
+    // `uncoveredPairs` — so "not in uncoveredPairs" alone reads as "covered" for a
+    // null-city date. But open-offer-tier bails on exactly that case ("Show date has
+    // no city, cannot resolve priority casts"): tier 1 can never actually open for it.
+    // The date below is ready in every OTHER respect (session set, slots set, not yet
+    // opened) so this only isolates the city guard, not the whole predicate.
+    const queryClient = makeQueryClient();
+    const today = toDateKey(new Date());
+
+    vi.mocked(useAuth).mockReturnValue({
+      currentOrg: { id: ORG_ID, name: "Test Org" },
+      hasRole: (r: string) => r === "admin",
+    } as never);
+    vi.mocked(useMyArtist).mockReturnValue({ data: undefined } as never);
+    vi.mocked(useFeature).mockImplementation(() => true);
+
+    queryClient.setQueryData(["dashboard-upcoming-dates", today, ORG_ID], [
+      { id: "d1", date: "2026-09-01", show_id: "show-1", city_id: null, session_1: "19:00", session_2: null, session_3: null, show: { program: "Cabaret", sub_program: null, main_cast_slots: 4 } },
+    ]);
+    queryClient.setQueryData(["bookings", "confirmed-dashboard", ORG_ID], []);
+    queryClient.setQueryData(["offer-tiers", "opened-tier1", ORG_ID], []);
+    queryClient.setQueryData(["eligibility", "ladder-coverage", ORG_ID, today], {
+      futurePairs: [{ showId: "show-1", cityId: null }], showPriorities: [], cityPriorities: [],
+    });
+    queryClient.setQueryData(["hire-orders", "list", ORG_ID, { status: ["draft"] }], []);
+    queryClient.setQueryData(["bookings", "nav-pending-confirmations", ORG_ID], 0);
+    queryClient.setQueryData(["hire-orders", "awaiting-count", ORG_ID], 0);
+    queryClient.setQueryData(["app-settings", "flow-times", ORG_ID], {
+      windowHours: 48, offerDigestHour: 19, confirmationDigestHour: 20,
+    });
+
+    const { result } = renderHookWithProviders(() => useFirstRunMetrics("admin"), { queryClient });
+
+    expect(result.current.metrics.datesIn).toBe(1);
+    expect(result.current.metrics.readyToOffer).toBe(0);
+  });
+
   it("artist: assembles personal metrics from seeded reads, zero-fills org metrics", () => {
     const queryClient = makeQueryClient();
 

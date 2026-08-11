@@ -135,9 +135,18 @@ export function useFirstRunMetrics(role: FirstRunRole): {
     // The `resolveCoverage`/`fetchLadderCoverageInputs` pair useBookingSetup.ts already
     // uses for the setup rail's ladder step — same predicate, so an org's "ready to
     // offer" count and its setup-rail coverage gap can never disagree.
+    //
+    // A null city is never "covered": `resolveCoverage` routes cityless future pairs
+    // into `hasNullCity` rather than `uncoveredPairs` (there's no (show, city) pair to
+    // rank a ladder for), so treating "not in uncoveredPairs" as covered would silently
+    // count a cityless date as ready. It can never actually open tier 1 —
+    // open-offer-tier bails on exactly this case ("Show date has no city, cannot
+    // resolve priority casts") — so the metric would overclaim without this guard.
     const coverage = coverageQ.data ? resolveCoverage(coverageQ.data) : null;
-    const coveredShowCity = (showId: string, cityId: string | null): boolean =>
-      !coverage || !coverage.uncoveredPairs.some((p) => p.showId === showId && p.cityId === cityId);
+    const coveredShowCity = (showId: string, cityId: string | null): boolean => {
+      if (cityId === null) return false;
+      return !coverage || !coverage.uncoveredPairs.some((p) => p.showId === showId && p.cityId === cityId);
+    };
 
     const readyInputs: ReadyDateInput[] = dates.map((d) => ({
       id: d.id,
