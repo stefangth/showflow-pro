@@ -5,6 +5,7 @@ import { Eye, EyeOff } from "lucide-react";
 import { useForm } from "react-hook-form";
 import type { z } from "zod";
 import { changeMyPassword, requestPasswordReauthentication, setMyPassword } from "@/data/profiles";
+import { useAuth } from "@/features/auth/AuthContext";
 import { newPasswordSchema } from "@/features/auth/resetPassword";
 import { invalidatePasswordStatus } from "@/hooks/usePasswordStatus";
 import { supabase } from "@/integrations/supabase/client";
@@ -43,6 +44,7 @@ function needsReauthentication(error: unknown): boolean {
 }
 
 export function PasswordSetupForm({ mode, onSuccess, onCancel }: PasswordSetupFormProps) {
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const form = useForm<PasswordValues>({ resolver: zodResolver(newPasswordSchema), defaultValues: { password: "", confirm: "" } });
   const [currentPassword, setCurrentPassword] = useState("");
@@ -62,7 +64,7 @@ export function PasswordSetupForm({ mode, onSuccess, onCancel }: PasswordSetupFo
       } else if (mode === "setup") {
         await setMyPassword(supabase, password);
       } else {
-        await changeMyPassword(supabase, { password, currentPassword });
+        await changeMyPassword(supabase, { password, currentPassword, email: user?.email });
       }
       await invalidatePasswordStatus(queryClient);
       onSuccess();

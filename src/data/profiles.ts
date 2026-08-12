@@ -49,23 +49,19 @@ export async function requestPasswordReauthentication(client: SupabaseClient<Dat
 
 export async function changeMyPassword(
   client: SupabaseClient<Database>,
-  args: { password: string; currentPassword?: string; nonce?: string },
+  args: { password: string; currentPassword?: string; email?: string; nonce?: string },
 ): Promise<void> {
-  const attributes = {
-    password: args.password,
-    ...(args.currentPassword !== undefined ? { currentPassword: args.currentPassword } : {}),
-    ...(args.nonce !== undefined ? { nonce: args.nonce } : {}),
-  };
+  if (args.currentPassword !== undefined) {
+    if (!args.email) throw new Error("Could not verify the current password");
+    const { error: verifyError } = await client.auth.signInWithPassword({
+      email: args.email,
+      password: args.currentPassword,
+    });
+    if (verifyError) throw new Error("Current password is incorrect");
+  }
+  const attributes = { password: args.password, ...(args.nonce !== undefined ? { nonce: args.nonce } : {}) };
   const { error } = await client.auth.updateUser(attributes);
   if (error) throw error;
-}
-
-/** @deprecated Use changeMyPassword; retained until ProfilePage adopts PasswordSetupForm. */
-export async function updateMyPassword(
-  client: SupabaseClient<Database>,
-  args: { email: string; currentPassword: string; newPassword: string },
-): Promise<void> {
-  await changeMyPassword(client, { password: args.newPassword, currentPassword: args.currentPassword });
 }
 
 /** Send a password-recovery email (Supabase built-in), returning the user to `redirectTo`. */

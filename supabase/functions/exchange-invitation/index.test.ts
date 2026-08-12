@@ -95,7 +95,7 @@ Deno.test("exchange-invitation: success mints from the claimed email without exp
   const observable = `${JSON.stringify(responseBody)} ${logs.join(" ")}`;
   assertEquals(observable.includes(TOKEN), false);
   assertEquals(logs.some((line) => line.includes("claimed@example.com")), false);
-  assertEquals(logs.some((line) => line.includes("https://auth.example/action")), false);
+  assertEquals(logs, []);
 });
 
 function request(): Request {

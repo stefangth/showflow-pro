@@ -11,6 +11,7 @@ vi.mock("@/data/profiles", () => ({
 }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: {} }));
 vi.mock("@/hooks/usePasswordStatus", () => ({ invalidatePasswordStatus: (...args: unknown[]) => api.invalidate(...args) }));
+vi.mock("@/features/auth/AuthContext", () => ({ useAuth: () => ({ user: { email: "ada@x.com" } }) }));
 
 function fillNewPasswords(password = "new-secret") {
   fireEvent.change(screen.getByLabelText("New password"), { target: { value: password } });
@@ -59,7 +60,11 @@ describe("PasswordSetupForm", () => {
     fireEvent.change(screen.getByLabelText("Current password"), { target: { value: "old-secret" } });
     fillNewPasswords();
     fireEvent.click(screen.getByRole("button", { name: "Change password" }));
-    await waitFor(() => expect(api.change).toHaveBeenCalledWith({}, { password: "new-secret", currentPassword: "old-secret" }));
+    await waitFor(() => expect(api.change).toHaveBeenCalledWith({}, {
+      password: "new-secret",
+      currentPassword: "old-secret",
+      email: "ada@x.com",
+    }));
     expect(api.invalidate).toHaveBeenCalled();
     expect(onSuccess).toHaveBeenCalled();
   });

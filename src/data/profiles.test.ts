@@ -62,10 +62,26 @@ describe("password methods", () => {
     expect(fake.calls.some((call) => call.method === "signInWithPassword")).toBe(false);
   });
 
-  it("changes a password with the current password", async () => {
-    const fake = createFakeSupabase({ "auth:updateUser": { data: { user: { id: "u1" } }, error: null } });
-    await changeMyPassword(fake as never, { password: "new-secret", currentPassword: "old-secret" });
-    expect(fake.calls).toContainEqual({ table: "auth", method: "updateUser", args: [{ password: "new-secret", currentPassword: "old-secret" }] });
+  it("verifies the current password before changing it", async () => {
+    const fake = createFakeSupabase({
+      "auth:signInWithPassword": { data: { user: { id: "u1" } }, error: null },
+      "auth:updateUser": { data: { user: { id: "u1" } }, error: null },
+    });
+    await changeMyPassword(fake as never, { password: "new-secret", currentPassword: "old-secret", email: "ada@x.com" });
+    expect(fake.calls).toContainEqual({ table: "auth", method: "signInWithPassword", args: [{ email: "ada@x.com", password: "old-secret" }] });
+    expect(fake.calls).toContainEqual({ table: "auth", method: "updateUser", args: [{ password: "new-secret" }] });
+  });
+
+  it("rejects a wrong current password without updating", async () => {
+    const fake = createFakeSupabase({
+      "auth:signInWithPassword": { data: { user: null }, error: { message: "Invalid login credentials" } },
+    });
+    await expect(changeMyPassword(fake as never, {
+      password: "new-secret",
+      currentPassword: "wrong-secret",
+      email: "ada@x.com",
+    })).rejects.toThrow(/current password is incorrect/i);
+    expect(fake.calls.some((call) => call.method === "updateUser")).toBe(false);
   });
 
   it("changes a password with a reauthentication nonce and omits undefined keys", async () => {
@@ -82,7 +98,7 @@ describe("password methods", () => {
 
   it.each([
     ["setup", (fake: ReturnType<typeof createFakeSupabase>) => setMyPassword(fake as never, "new-secret")],
-    ["change", (fake: ReturnType<typeof createFakeSupabase>) => changeMyPassword(fake as never, { password: "new-secret", currentPassword: "old-secret" })],
+    ["change", (fake: ReturnType<typeof createFakeSupabase>) => changeMyPassword(fake as never, { password: "new-secret", currentPassword: "old-secret", email: "ada@x.com" })],
     ["reauthentication", (fake: ReturnType<typeof createFakeSupabase>) => requestPasswordReauthentication(fake as never)],
   ])("propagates %s auth errors", async (_name, invoke) => {
     const error = { message: "auth failed" };

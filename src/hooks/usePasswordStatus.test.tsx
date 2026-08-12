@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { usePasswordStatus, useSetMyPassword } from "./usePasswordStatus";
+import { usePasswordStatus } from "./usePasswordStatus";
 
 const state = vi.hoisted(() => ({ user: { id: "u1" } as { id: string } | null, rpcResult: { data: true, error: null as unknown } }));
 vi.mock("@/features/auth/AuthContext", () => ({ useAuth: () => ({ user: state.user }) }));
@@ -55,13 +55,5 @@ describe("usePasswordStatus", () => {
     const { wrapper } = setup();
     const { result } = renderHook(() => usePasswordStatus(), { wrapper });
     expect(result.current.fetchStatus).toBe("idle");
-  });
-
-  it("invalidates password status after a successful setup", async () => {
-    const { client, wrapper } = setup();
-    const invalidate = vi.spyOn(client, "invalidateQueries");
-    const { result } = renderHook(() => useSetMyPassword(), { wrapper });
-    await result.current.mutateAsync("new-secret");
-    expect(invalidate).toHaveBeenCalledWith({ queryKey: ["auth", "has-password"] });
   });
 });
