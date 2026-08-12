@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import type { AppRole } from "@/config/app.config";
+import { edgeResponseContext } from "@/lib/edgeErrors";
 
 export interface OrgMember {
   user_id: string;
@@ -84,10 +85,10 @@ export async function clearRemovedMember(
  *  `data` null, so the real `{ error }` reason is only reachable via error.context (the raw
  *  Response). Fall back to the generic message when the body can't be read. */
 async function edgeErrorMessage(error: unknown): Promise<string> {
-  const ctx = (error as { context?: unknown }).context;
-  if (ctx instanceof Response) {
+  const context = edgeResponseContext(error);
+  if (context) {
     try {
-      const body = await ctx.clone().json();
+      const body = await context.clone().json();
       const reason = (body as { error?: unknown })?.error;
       if (typeof reason === "string" && reason) return reason;
     } catch { /* body not JSON / already read — fall through */ }

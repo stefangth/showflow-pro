@@ -125,6 +125,13 @@ describe("compactEmailCopy", () => {
 });
 
 describe("email copy registry", () => {
+  it("uses one truthful invitation hint for every account state", () => {
+    const hint = "Continue securely to sign in or create your account.";
+    expect(EMAIL_COPY_DEFAULTS["org-invitation.ctaHintNewUser"]).toBe(hint);
+    expect(EMAIL_COPY_DEFAULTS["org-invitation.ctaHintExistingUser"]).toBe(hint);
+    expect(EMAIL_COPY_DEFAULTS["org-invitation.ctaHintFallback"]).toBe(hint);
+  });
+
   it("has metadata for every editable default and no orphan metadata field", () => {
     const metadataKeys = EMAIL_TEMPLATE_COPY_FIELDS.flatMap(({ fields }) =>
       fields.map(({ key }) => key),

@@ -2,7 +2,7 @@ import { preflight, json } from "../_shared/http.ts";
 import { requireOrgRole } from "../_shared/auth.ts";
 import { requireCapability } from "../_shared/capabilities.ts";
 import { emailWasSent, realDeps, type Deps } from "../_shared/deps.ts";
-import { ensureInvitedUser, formatExpiresOn, resendIdempotencyKey, resolveArtistOffersExpected, resolveInviterName, sendOrgInvitationEmail } from "../_shared/invitations.ts";
+import { ensureInvitedAccount, formatExpiresOn, resendIdempotencyKey, resolveArtistOffersExpected, resolveInviterName, sendOrgInvitationEmail } from "../_shared/invitations.ts";
 import { roleLabel } from "../_shared/roles.ts";
 
 type Body = { invitation_id: string; app_origin: string };
@@ -15,9 +15,8 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     const appOrigin = body?.app_origin?.replace(/\/$/, "");
     if (!body?.invitation_id || !appOrigin) return json({ error: "Invalid payload" }, 400);
 
-    // The invitation row's own expires_at is the single source of truth for the expiry
-    // statement (see the Global Constraints in the admin-journey-gaps plan): a resend
-    // does not push the window out, it just restates whatever the row already says.
+    // Read the current row for authorization and status; renewal below returns the new
+    // expiry that becomes the email's source of truth.
     const { data: invite } = await deps.admin
       .from("org_invitations")
       .select("id, org_id, email, role, token, status, invited_by, expires_at, resent_count")
@@ -38,31 +37,21 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
 
     if (invite.status !== "pending") return json({ error: "Invitation is not pending" }, 409);
 
-    // status stays 'pending' forever (nothing flips it to 'expired'; accept_invitation
-    // checks expires_at > now() at accept time instead), so the check above does not
-    // catch an invitation whose window already passed. A resend never pushes expires_at
-    // out (see the comment on the read below), so left unguarded this would email a
-    // concrete PAST date ("works until 1 January 2026...") attached to a link
-    // accept_invitation will reject regardless. Catch it here, before any email sends,
-    // and point the admin at the one path that actually works: revoke, then re-invite
-    // (create-invitation's pending-invite unique index blocks a second pending row for
-    // the same email while this one still exists).
-    //
-    // The EXACT day (formatExpiresOn): this is a past-tense
-    // fact about when the window closed, so understating it by a day would tell the
-    // admin the invitation lasted less time than it actually did.
-    const expiresOn = formatExpiresOn(invite.expires_at);
-    if (invite.expires_at && new Date(invite.expires_at).getTime() <= deps.now().getTime()) {
-      return json({ error: `This invitation expired on ${expiresOn}. Revoke it, then send a fresh invite.` }, 409);
-    }
+    // Renew before any delivery work. The RPC commits the new 30-day expiry independently,
+    // so even a later email failure leaves the stable invitation usable for another resend.
+    const { data: renewedExpiry, error: renewError } = await deps.admin.rpc(
+      "renew_invitation_for_resend",
+      { p_id: invite.id },
+    );
+    if (renewError || !renewedExpiry) throw renewError ?? new Error("Invitation renewal failed");
 
     const { data: org } = await deps.admin
       .from("organizations").select("name").eq("id", invite.org_id).maybeSingle();
 
-    // Resolve the invitee account, idempotently re-assert their membership (covers the
-    // stranded/hand-created cases from the runbook), then resend a fresh action link.
-    const { userId, actionLink, isNewUser } = await ensureInvitedUser(deps, {
-      email: invite.email, appOrigin, token: invite.token,
+    // Resolve the invitee account and idempotently re-assert their membership. The email
+    // carries only the stable invitation token; no Auth action link is minted here.
+    const { userId } = await ensureInvitedAccount(deps, {
+      email: invite.email, appOrigin,
     });
     if (userId) {
       const { error: memErr } = await deps.admin.rpc("ensure_invitation_membership", {
@@ -116,13 +105,11 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
         token: invite.token,
         inviterEmail: inviter.email,
         inviterName: inviter.name,
-        expiresOn: formatExpiresOn(invite.expires_at),
-        isNewUser,
+        expiresOn: formatExpiresOn(renewedExpiry as string),
         offersExpected,
         appOrigin,
         idempotencyKey: resendIdempotencyKey(invite.id, invite.resent_count ?? 0, deps.now()),
         orgId: invite.org_id,
-        actionLink,
       });
       if (!emailWasSent(result)) {
         console.error("resend-invitation: email did not send", result.error ?? result.data);

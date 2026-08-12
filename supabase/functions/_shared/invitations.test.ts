@@ -1,8 +1,9 @@
 import { assertEquals } from "./test-asserts.ts";
 import {
-  ensureInvitedUser,
+  ensureInvitedAccount,
   formatExpiresOn,
   ORG_INVITATION_EXPIRY_DAYS,
+  mintInvitationActionLink,
   resendIdempotencyKey,
   resolveArtistOffersExpected,
   resolveInviterName,
@@ -14,76 +15,120 @@ import { EMAIL_COPY_DEFAULTS } from "./transactional-email-templates/_shell/emai
 
 const APP_ORIGIN = "http://localhost:8080"; // allowlisted by safeAppOrigin so it flows through unchanged
 
-Deno.test("ensureInvitedUser: existing user → magic link to /auth/callback + id", async () => {
+Deno.test("ensureInvitedAccount: existing user returns its id without generating a link", async () => {
   const { deps, calls } = makeFakeDeps({
     authUsersByEmail: { "known@x.com": { id: "u9" } }, // existing (resolved via get_user_id_by_email)
     generateLinkResult: { data: { properties: { action_link: "https://link.example/magic" } }, error: null },
   });
-  const r = await ensureInvitedUser(deps, { email: "known@x.com", appOrigin: APP_ORIGIN, token: "tok-1" });
-  assertEquals(r.userId, "u9");
-  assertEquals(r.actionLink, "https://link.example/magic");
-  const gen = calls.find((c) => c.table === "auth.admin.generateLink")!;
-  const params = gen.args[0] as { type: string; options: { redirectTo: string } };
-  assertEquals(params.type, "magiclink");
-  assertEquals(params.options.redirectTo.includes("/auth/callback?redirect="), true);
-  assertEquals(params.options.redirectTo.includes("%2Faccept-invite%3Ftoken%3Dtok-1"), true);
+  const r = await ensureInvitedAccount(deps, { email: "known@x.com", appOrigin: APP_ORIGIN });
+  assertEquals(r, { userId: "u9", isNewUser: false });
+  assertEquals(calls.some((c) => c.table === "auth.admin.generateLink"), false);
 });
 
-Deno.test("ensureInvitedUser: net-new user → invite link to /reset-password + id", async () => {
+Deno.test("ensureInvitedAccount: a pre-resolved existing user skips the duplicate lookup", async () => {
+  const { deps, calls } = makeFakeDeps();
+  const r = await ensureInvitedAccount(deps, {
+    email: "known@x.com",
+    appOrigin: APP_ORIGIN,
+    existingUserId: "u9",
+  });
+  assertEquals(r, { userId: "u9", isNewUser: false });
+  assertEquals(calls.some((c) => c.table === "rpc:get_user_id_by_email"), false);
+  assertEquals(calls.some((c) => c.table === "auth.admin.generateLink"), false);
+});
+
+Deno.test("ensureInvitedAccount: a pre-resolved missing user skips lookup and creates the account", async () => {
+  const { deps, calls } = makeFakeDeps({
+    generateLinkResult: { data: { user: { id: "new-1" } }, error: null },
+  });
+  const r = await ensureInvitedAccount(deps, {
+    email: "new@x.com",
+    appOrigin: APP_ORIGIN,
+    existingUserId: null,
+  });
+  assertEquals(r, { userId: "new-1", isNewUser: true });
+  assertEquals(calls.some((c) => c.table === "rpc:get_user_id_by_email"), false);
+});
+
+Deno.test("ensureInvitedAccount: net-new user is created with an invite link that is discarded", async () => {
   const { deps, calls } = makeFakeDeps({
     generateLinkResult: {
       data: { properties: { action_link: "https://link.example/invite" }, user: { id: "new-1" } },
       error: null,
     },
   });
-  const r = await ensureInvitedUser(deps, { email: "new@acme.com", appOrigin: APP_ORIGIN, token: "tok-1" });
-  assertEquals(r.userId, "new-1");
-  assertEquals(r.actionLink, "https://link.example/invite");
+  const r = await ensureInvitedAccount(deps, { email: "new@acme.com", appOrigin: APP_ORIGIN });
+  assertEquals(r, { userId: "new-1", isNewUser: true });
   const gen = calls.find((c) => c.table === "auth.admin.generateLink")!;
   const params = gen.args[0] as { type: string; options: { redirectTo: string } };
   assertEquals(params.type, "invite");
-  assertEquals(params.options.redirectTo.includes("/reset-password?redirect="), true);
-  assertEquals(params.options.redirectTo.includes("%2Faccept-invite%3Ftoken%3Dtok-1"), true);
+  assertEquals(params.options.redirectTo, `${APP_ORIGIN}/auth/callback?redirect=%2Faccept-invite`);
 });
 
-Deno.test("ensureInvitedUser: a foreign appOrigin is never minted into the redirect", async () => {
+Deno.test("mintInvitationActionLink: existing user receives a magic link", async () => {
   const { deps, calls } = makeFakeDeps({
     authUsersByEmail: { "known@x.com": { id: "u9" } },
     generateLinkResult: { data: { properties: { action_link: "https://link.example/magic" } }, error: null },
   });
-  await ensureInvitedUser(deps, { email: "known@x.com", appOrigin: "https://evil.example", token: "tok-1" });
+  const link = await mintInvitationActionLink(deps, { email: "known@x.com", appOrigin: APP_ORIGIN });
+  assertEquals(link, "https://link.example/magic");
   const gen = calls.find((c) => c.table === "auth.admin.generateLink")!;
-  const params = gen.args[0] as { options: { redirectTo: string } };
-  assertEquals(params.options.redirectTo.includes("evil.example"), false); // foreign origin dropped
-  assertEquals(params.options.redirectTo.includes("/auth/callback?redirect="), true);
+  const params = gen.args[0] as { type: string; options: { redirectTo: string } };
+  assertEquals(params.type, "magiclink");
+  assertEquals(params.options.redirectTo, `${APP_ORIGIN}/auth/callback?redirect=%2Faccept-invite`);
+  assertEquals(params.options.redirectTo.includes("token="), false);
 });
 
-Deno.test("ensureInvitedUser: generateLink without action_link throws", async () => {
+Deno.test("mintInvitationActionLink: missing user receives an invite link", async () => {
+  const { deps, calls } = makeFakeDeps({
+    generateLinkResult: { data: { properties: { action_link: "https://link.example/invite" }, user: { id: "new-1" } }, error: null },
+  });
+  assertEquals(await mintInvitationActionLink(deps, { email: "new@x.com", appOrigin: APP_ORIGIN }), "https://link.example/invite");
+  const gen = calls.find((c) => c.table === "auth.admin.generateLink")!;
+  const params = gen.args[0] as { type: string; options: { redirectTo: string } };
+  assertEquals(params.type, "invite");
+  assertEquals(params.options.redirectTo, `${APP_ORIGIN}/auth/callback?redirect=%2Faccept-invite`);
+});
+
+Deno.test("mintInvitationActionLink: a foreign appOrigin falls back to the allowlisted app URL", async () => {
+  const { deps, calls } = makeFakeDeps({
+    authUsersByEmail: { "known@x.com": { id: "u9" } },
+    generateLinkResult: { data: { properties: { action_link: "https://link.example/magic" } }, error: null },
+  });
+  await mintInvitationActionLink(deps, { email: "known@x.com", appOrigin: "https://evil.example" });
+  const params = calls.find((c) => c.table === "auth.admin.generateLink")!.args[0] as { options: { redirectTo: string } };
+  assertEquals(params.options.redirectTo.includes("evil.example"), false);
+  assertEquals(params.options.redirectTo.includes("/auth/callback?redirect=%2Faccept-invite"), true);
+});
+
+Deno.test("mintInvitationActionLink: generateLink without action_link throws", async () => {
   const { deps } = makeFakeDeps({
     authUsersByEmail: { "known@x.com": { id: "u9" } },
     generateLinkResult: { data: { properties: {} }, error: null }, // resolved, but no action_link
   });
   let threw = false;
   try {
-    await ensureInvitedUser(deps, { email: "known@x.com", appOrigin: APP_ORIGIN, token: "tok-1" });
+    await mintInvitationActionLink(deps, { email: "known@x.com", appOrigin: APP_ORIGIN });
   } catch {
     threw = true;
   }
   assertEquals(threw, true);
 });
 
-Deno.test("sendOrgInvitationEmail: sends org-invitation with the action link", async () => {
+Deno.test("sendOrgInvitationEmail: sends the stable token without action-link account metadata", async () => {
   const { deps, invokeCalls } = makeFakeDeps();
   await sendOrgInvitationEmail(deps, {
     email: "new@acme.com", orgName: "Acme", role: "artist", token: "tok-1",
     inviterEmail: "boss@acme.com", appOrigin: APP_ORIGIN, idempotencyKey: "org-invitation-1",
-    orgId: "org-1", actionLink: "https://link.example/invite",
+    orgId: "org-1",
   });
   const sent = invokeCalls.filter((c) => c.name === "send-transactional-email");
   assertEquals(sent.length, 1);
-  const body = sent[0].body as { template_name: string; templateData: { actionLink?: string } };
+  const body = sent[0].body as { template_name: string; templateData: Record<string, unknown> };
   assertEquals(body.template_name, "org-invitation");
-  assertEquals(body.templateData.actionLink, "https://link.example/invite");
+  assertEquals(body.templateData.token, "tok-1");
+  assertEquals("actionLink" in body.templateData, false);
+  assertEquals("isNewUser" in body.templateData, false);
 });
 
 Deno.test("sendOrgInvitationEmail: returns the raw send result so a caller can gate a side effect on emailWasSent", async () => {
@@ -95,7 +140,7 @@ Deno.test("sendOrgInvitationEmail: returns the raw send result so a caller can g
   const result = await sendOrgInvitationEmail(deps, {
     email: "new@acme.com", orgName: "Acme", role: "artist", token: "tok-1",
     inviterEmail: "boss@acme.com", appOrigin: APP_ORIGIN, idempotencyKey: "org-invitation-1",
-    orgId: "org-1", actionLink: "https://link.example/invite",
+    orgId: "org-1",
   });
   assertEquals(result.error, null);
   assertEquals((result.data as { success?: unknown } | null)?.success, false);
@@ -168,7 +213,7 @@ Deno.test("resolveInviterName: no inviterId returns {} (nothing to resolve)", as
   assertEquals(await resolveInviterName(deps, undefined), {});
 });
 
-Deno.test("ORG_INVITATION_EXPIRY_DAYS matches the org_invitations.expires_at column default in the migrations", async () => {
+Deno.test("ORG_INVITATION_EXPIRY_DAYS matches the renewal window used for stable invitations", async () => {
   // Regression: ORG_INVITATION_EXPIRY_DAYS is a hand-kept TS twin of the DB default, with
   // exactly one consumer left: org-invitation.tsx's previewData.expiresOn (the Settings >
   // Email templates preview's sample date; every real send states the row's actual
@@ -190,7 +235,7 @@ Deno.test("ORG_INVITATION_EXPIRY_DAYS matches the org_invitations.expires_at col
   // migrations). Sorted-filename order + "last match wins" mirrors how Postgres itself
   // would apply an ALTER COLUMN ... SET DEFAULT in a later migration, so this guard keeps
   // working if the default is ever changed rather than only defined once.
-  const pattern = /expires_at\s+timestamptz\s+not\s+null\s+default\s+now\(\)\s*\+\s*interval\s+'(\d+)\s+days?'/i;
+  const pattern = /v_expires_at\s+timestamptz\s*:=\s*now\(\)\s*\+\s*interval\s+'(\d+)\s+days?'/i;
   let daysFound: number | undefined;
   let sourceFile: string | undefined;
   for (const filename of filenames) {

@@ -78,11 +78,11 @@ Grouped by actor. Full call-site citations live with each row; role gates from `
 | gesture | calls | kind | effect |
 |---|---|---|---|
 | Email "Unsubscribe" link / page confirm | `handle-email-unsubscribe` — `src/pages/UnsubscribePage.tsx:32,56` | edge fn | Token-credentialed; upserts `suppressed_emails` |
-| `/accept-invite?token=` (after sign-in) | `accept_invitation` RPC — `src/data/invitations.ts:93` | RPC | Membership + artist link + invite consumed |
+| `/accept-invite?token=` | `exchange-invitation`, then `accept_invitation` — `src/data/invitations.ts` | edge fn + RPC | Stable token is exchanged for a fresh Auth action link; after sign-in, membership + artist link are committed and the invite is consumed |
 | Resend deliverability webhook (sent/delivered/delayed/bounce/complaint) | `handle-email-suppression` | webhook | HMAC-verified; updates `email_send_log` lifecycle; bounce/complaint additionally upserts `suppressed_emails` |
 | Dormant (not in use since 2026-07): superseded by in-app electronic signing. Documenso `DOCUMENT_COMPLETED` webhook (countersignature done) | `documenso-webhook` | webhook | Shared-secret verified (`X-Documenso-Secret`); `hire_orders.status` `issued → countersigned` + `countersigned_at`; `hire_order_countersigned` notification to producers |
 
-## 4. The functions — 24 edge functions at a glance
+## 4. The functions — 26 edge functions at a glance
 
 | function | trigger | auth guard | writes | side effects |
 |---|---|---|---|---|
@@ -100,8 +100,9 @@ Grouped by actor. Full call-site citations live with each row; role gates from `
 | `handle-email-suppression` | Resend webhook | HMAC signature (Standard Webhooks) | `email_send_log` (full lifecycle: sent/delivered/delivery_delayed/bounced/complained, matched by `resend_id`), `suppressed_emails` (bounce/complaint only) | none |
 | `handle-email-unsubscribe` | public link | unsubscribe token | `email_unsubscribe_tokens` (atomic use), `suppressed_emails` | none |
 | `airtable-schema` | UI | org admin | none | Airtable Meta/Data API |
-| `create-invitation` | UI | org admin | `org_invitations` | `org-invitation` email |
-| `resend-invitation` | UI | org admin (disclosure-safe 403) | none | `org-invitation` email |
+| `create-invitation` | UI | org admin | `org_invitations` | `org-invitation` email carrying the stable app invitation URL |
+| `exchange-invitation` | public invitation page | stable invitation token; `verify_jwt=false` | `claim_invitation_auth_exchange` stamps the exchange cooldown; a failed Auth mint conditionally clears only that exact stamp | Supabase Admin API mints a fresh one-time Auth action link |
+| `resend-invitation` | UI | org admin (disclosure-safe 403) | `renew_invitation_for_resend` restarts the invitation window and clears exchange cooldown | `org-invitation` email carrying the stable app invitation URL |
 | `admin-list-users` | UI | org admin | none | none |
 | `provision-org` | UI | super-admin | `provision_org` RPC → org + catalog + invite | `org-invitation` email |
 | `export-org-data` | UI | super-admin | none | none |
@@ -126,9 +127,9 @@ Both digests iterate `getActiveOrgs`, then immediately narrow that list with `fi
 
 `airtable-poll` is org-fault-isolated (one org's failure never aborts the others) and idempotent per record via `airtable_record_id`. It resolves linked venue/city records, maps custom fields (`custom_field_definitions`), write-throughs program changes to `shows`, handles cancel/revival status flips, logs every run (`airtable_sync_log`) and every record outcome (`airtable_sync_record_log`), and notifies org admins (`airtable_sync_held`) only on new/worsening held-record problems. New dates, and updated dates that just gained a session but have no tier-1 row yet, go to `open-offer-tier` tier 1, batched 10 at a time, gated on the org's `booking_flow` entitlement `&& auto_open_tier1 && artist_acceptance` (a direct-booking org has no offer step, and `open-offer-tier` now 409s in that mode, so the gate also avoids pointless failing invokes). The cron tick fires every 5 minutes for every active org, but each org is gated by its own `airtable_poll_interval_minutes` (org override → platform default → 5-min floor, with a 60s grace window) — the gate reads the org's most recent `airtable_sync_log.synced_at` and skips the org until the interval has elapsed, so a poll actually only runs on the ticks the org's cadence calls for. A second, scoped entry point on the same function powers an org-admin **"Sync now"** button (Settings → Airtable Sync): `requireOrgRole(admin)` + a single `org_id` in the body syncs that one org immediately, bypassing the interval gate entirely. `airtable-schema` is the read-only mapping helper behind Settings → Airtable Sync; a PAT lacking schema scope degrades to `{schemaAccessible:false}` rather than erroring. Cites: `airtable-poll/index.ts:103-523`, `airtable-schema/index.ts:22-185`.
 
-### Org & platform — `provision-org`, `create-invitation`, `resend-invitation`, `admin-list-users`, `platform-edge-metrics`, `cron-health-watcher`
+### Org & platform — `provision-org`, `create-invitation`, `exchange-invitation`, `resend-invitation`, `admin-list-users`, `platform-edge-metrics`, `cron-health-watcher`
 
-Invitation flow: insert `org_invitations` (token via DB default) → best-effort `org-invitation` email (failure never orphans the invite — admins can copy the link). `provision-org` delegates atomicity to the `provision_org` RPC called through the **caller's JWT** so the RPC's own super-admin check holds. `platform-edge-metrics` talks to the Supabase Management/Analytics API (dedicated `ANALYTICS` PAT — project keys can't reach it); it queries `function_edge_logs` by `function_id` and resolves ids to slugs via the functions-list API. Cites: `create-invitation/index.ts:33-86`, `provision-org/index.ts:18-57`, `platform-edge-metrics/index.ts:76-111`.
+Invitation flow: insert `org_invitations` (30-day database authority; token via DB default) → best-effort `org-invitation` email carrying the stable app URL (failure never orphans the invite — admins can copy the link). On Continue, public `exchange-invitation` atomically claims a 60-second slot via `claim_invitation_auth_exchange`, mints a fresh one-time Supabase Auth action link, and conditionally clears that exact claim if minting fails. Resend calls `renew_invitation_for_resend` before delivery, restarting the full 30-day window and clearing the exchange cooldown. `my_has_password` exposes only the authenticated caller's own password-presence boolean. `provision-org` delegates atomicity to the `provision_org` RPC called through the **caller's JWT** so the RPC's own super-admin check holds. `platform-edge-metrics` talks to the Supabase Management/Analytics API (dedicated `ANALYTICS` PAT — project keys can't reach it); it queries `function_edge_logs` by `function_id` and resolves ids to slugs via the functions-list API. Cites: `create-invitation/index.ts`, `exchange-invitation/index.ts`, `resend-invitation/index.ts`, `20260811232407_stable_invitation_auth.sql`, `20260812200000_release_failed_invitation_exchange.sql`.
 
 ### GDPR & import — `delete-my-account`, `export-org-data`, `fetch-remote-sheet`
 
@@ -200,6 +201,8 @@ stateDiagram-v2
 | rpc | guard | one line | writes |
 |---|---|---|---|
 | `accept_invitation` | invite email must match caller's auth email | membership + artist link (id-stamp first, email fallback) + invite consumed | `org_memberships`, `artists`, `org_invitations` — `20260701185118…` |
+| `renew_invitation_for_resend` / `claim_invitation_auth_exchange` | **service-role only** | restart a pending invitation for 30 days / atomically validate and throttle a stable-token exchange | `org_invitations.expires_at`, `last_auth_exchange_at` — `20260811232407…`, `20260812200000…` |
+| `my_has_password` | authenticated; self-only via `auth.uid()` with no user-id argument | reports whether the caller has an Auth password without exposing hashes or cross-user status | read-only over `auth.users` — `20260811232407…` |
 | `expire_soft_bookings` | **service-role only** (hardened `20260703100321` after the audit found it callable by authenticated AND anon) — clients go through the `expire-offers` edge fn | cancels only `suggested` past `offer_expires_at`, and only in orgs entitled to the `booking_flow` module (`AND is_feature_enabled(org_id, 'booking_flow')`, `20260806151909…`); accepted holds never auto-expire; an unentitled org's lapsed offers are frozen, not cancelled | `bookings` — `20260702120002…`, `20260806151909…` |
 | `set_org_member_role` / `remove_org_member` | org admin; last-admin blocked (table-locked) | role/membership management; `remove_org_member` rejects a non-member and writes an `org_member_removals` tombstone on removal | `org_memberships`, `org_member_removals` — `20260622164142…` / `20260604160000…` / `20260811103008…` |
 | `list_removed_members` / `restore_org_member` / `clear_removed_member` / `admin_anonymize_removed_user` | org admin; `admin_anonymize` additionally requires the user's LAST org and blocks a platform admin | list "Recently removed" tombstones (with a `deletable` flag), undo a removal, dismiss a tombstone, or org-admin GDPR-erase a last-org member (shares the `_anonymize_user_data` body with `anonymize_user`) | `org_member_removals`, `org_memberships`, + anonymize's 10 tables — `20260811103008…` |
@@ -339,8 +342,15 @@ The drill-down layer. Sections 1–8 are the altitude; this is the detail, per f
 - **Auth:** `requireOrgRole(body.org_id, ["admin"])` (`index.ts:33`); `verify_jwt = true`
 - **Inputs:** `org_id`, `email`, `role`, `app_origin`, `artist_id?` (validated same-org + unclaimed, forces role artist)
 - **Writes:** `org_invitations` (`index.ts:59-66`)
-- **Side effects:** `org-invitation` email via `deliverOrgInvitation`, idempotency `org-invitation-{invite.id}`; best-effort
+- **Side effects:** `org-invitation` email via `deliverOrgInvitation`, carrying `/accept-invite?token=…`; idempotency `org-invitation-{invite.id}`; best-effort
 - **Failure:** delivery failure swallowed — invite row survives, link copyable
+
+### exchange-invitation
+- **Trigger:** public invitation page Continue action
+- **Auth:** stable invitation token is the bearer credential; `verify_jwt = false`
+- **Reads/writes:** `claim_invitation_auth_exchange(token, 60)` validates pending + unexpired and atomically stamps `last_auth_exchange_at`; successful claim returns the exact stamp
+- **Side effects:** Supabase Admin API mints a fresh invite or magic-link action URL for the claimed email
+- **Failure:** unavailable → 410; active cooldown → 429 + `Retry-After`; Auth mint failure → compare-and-clear only the exact claim stamp, then 500 so an immediate retry is not self-throttled
 
 ### cron-health-watcher
 - **Trigger:** cron `cron-health-watcher` (15-min)
@@ -451,7 +461,8 @@ The drill-down layer. Sections 1–8 are the altitude; this is the detail, per f
 ### resend-invitation
 - **Trigger:** user action (Invites tab, artist sheet, platform popover)
 - **Auth:** `requireOrgRole(invite.org_id, ["admin"])` after disclosure-safe 403 existence check (`index.ts:22-24`); `verify_jwt = true`
-- **Side effects:** `org-invitation` email, idempotency `org-invitation-resend-{invite.id}`
+- **Writes:** `renew_invitation_for_resend` restarts expiry at now + 30 days and clears `last_auth_exchange_at`
+- **Side effects:** `org-invitation` email with the stable app URL, idempotency `org-invitation-resend-{invite.id}-{resent_count}-{time_bucket}`
 - **Failure:** non-pending invite → 409
 
 ### send-confirmation-digest

@@ -3,7 +3,7 @@ import { requireOrgRole } from "../_shared/auth.ts";
 import { requireCapability } from "../_shared/capabilities.ts";
 import type { TablesInsert } from "../_shared/database.types.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
-import { ensureInvitedUser, formatExpiresOn, resolveArtistOffersExpected, resolveInviterName, sendOrgInvitationEmail } from "../_shared/invitations.ts";
+import { ensureInvitedAccount, formatExpiresOn, resolveArtistOffersExpected, resolveInviterName, sendOrgInvitationEmail } from "../_shared/invitations.ts";
 import { roleLabel } from "../_shared/roles.ts";
 
 type Body = {
@@ -133,17 +133,16 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     // NOT fail the request: the invitation row exists and claim_my_invitations reconciles
     // membership on the invitee's first sign-in.
     let userId: string | null = (existingUserId as string | null) ?? null;
-    let actionLink: string | undefined;
-    let isNewUser: boolean | undefined;
+    let accountReady = Boolean(userId);
     try {
-      // Mint the right link for EVERY invitee (net-new → set-password invite link; existing →
-      // magic link, incl. passwordless/expired), the same way provision-org/resend-invitation do,
-      // so the email always carries a working way in. Reusing existingUserId alone would skip the
-      // mint for an existing non-member and dead-end them on the bare token link.
-      const ensured = await ensureInvitedUser(deps, { email: invite.email, appOrigin, token: invite.token });
+      // Ensure the account exists without putting a short-lived Auth action link in the email.
+      const ensured = await ensureInvitedAccount(deps, {
+        email: invite.email,
+        appOrigin,
+        existingUserId: (existingUserId as string | null) ?? null,
+      });
       userId = ensured.userId ?? userId;
-      actionLink = ensured.actionLink;
-      isNewUser = ensured.isNewUser;
+      accountReady = true;
       if (userId) {
         const { error: memErr } = await admin.rpc("ensure_invitation_membership", {
           p_invitation: invite.id, p_user: userId,
@@ -152,21 +151,11 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       }
     } catch (e) {
       console.error("create-invitation: membership provisioning failed", (e as Error).message);
-      // ensureInvitedUser threw before setting actionLink, which stays undefined on this
-      // path. org-invitation.tsx's ctaHint checks `!actionLink` FIRST, before it ever
-      // looks at isNewUser, so isNewUser has no effect on the rendered email here
-      // regardless of what it is set to; leaving it undefined (the existing local
-      // default) is enough. See "falls back to an honest sign-in hint even when
-      // isNewUser was never resolved and there is no action link" in
-      // org-invitation.test.ts for the render-level proof of that precedence.
     }
 
-    // Best-effort delivery — but only if the invitee has a usable path to authenticate:
-    // an existing account (userId) or a freshly minted set-password link (actionLink). If a
-    // net-new account failed to mint above (neither is set), a plain-link email would be a
-    // dead end for an account-less user, so skip it; the invitation row exists and the admin
-    // can resend/copy-link. A send failure still does not fail the request.
-    if (userId || actionLink) {
+    // Best-effort delivery only after account lookup/provisioning succeeds. The email itself
+    // contains only the durable invitation URL; authentication is minted later on exchange.
+    if (accountReady) {
       try {
         const { data: org } = await admin
           .from('organizations').select('name').eq('id', body.org_id).maybeSingle();
@@ -192,12 +181,10 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
           inviterEmail: inviter.email,
           inviterName: inviter.name,
           expiresOn: formatExpiresOn(invite.expires_at),
-          isNewUser,
           offersExpected,
           appOrigin,
           idempotencyKey: `org-invitation-${invite.id}`,
           orgId: body.org_id,
-          actionLink,
         });
       } catch (e) {
         console.error('create-invitation: delivery failed', (e as Error).message);

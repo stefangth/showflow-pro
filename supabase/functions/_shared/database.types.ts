@@ -1471,6 +1471,7 @@ export type Database = {
           expires_at: string
           id: string
           invited_by: string | null
+          last_auth_exchange_at: string | null
           last_resent_at: string | null
           org_id: string
           resent_count: number
@@ -1486,6 +1487,7 @@ export type Database = {
           expires_at?: string
           id?: string
           invited_by?: string | null
+          last_auth_exchange_at?: string | null
           last_resent_at?: string | null
           org_id: string
           resent_count?: number
@@ -1501,6 +1503,7 @@ export type Database = {
           expires_at?: string
           id?: string
           invited_by?: string | null
+          last_auth_exchange_at?: string | null
           last_resent_at?: string | null
           org_id?: string
           resent_count?: number
@@ -2442,6 +2445,10 @@ export type Database = {
       }
       capability_default: { Args: { _capability: string }; Returns: boolean }
       category_of: { Args: { p_type: string }; Returns: string }
+      claim_invitation_auth_exchange: {
+        Args: { p_cooldown_seconds?: number; p_token: string }
+        Returns: Json
+      }
       claim_login_link_slot: {
         Args: { p_cooldown_seconds: number; p_email: string }
         Returns: boolean
@@ -2602,6 +2609,7 @@ export type Database = {
         Args: { p_losers: string[]; p_survivor: string }
         Returns: undefined
       }
+      my_has_password: { Args: never; Returns: boolean }
       platform_link_artist: {
         Args: { p_artist_id: string; p_org: string; p_user: string }
         Returns: undefined
@@ -2651,6 +2659,7 @@ export type Database = {
         Args: { p_name: string; p_org: string }
         Returns: undefined
       }
+      renew_invitation_for_resend: { Args: { p_id: string }; Returns: string }
       resolve_show_assignments: {
         Args: {
           p_city_id: string
@@ -2871,4 +2880,3 @@ export const Constants = {
     },
   },
 } as const
-

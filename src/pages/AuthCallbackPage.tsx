@@ -6,6 +6,7 @@ import { ROUTES } from "@/config/app.config";
 import { StageMark } from "@/components/brand/StageMark";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { readInvitationToken } from "@/features/auth/invitationToken";
 
 /** How long to wait for a session before treating the link as dead. */
 const WATCHDOG_MS = 8000;
@@ -26,6 +27,7 @@ export default function AuthCallbackPage() {
   const [searchParams] = useSearchParams();
   // Synchronous initializer: captures the GoTrue error hash before the async strip.
   const [failed, setFailed] = useState<boolean>(() => hashHasError());
+  const [hasPendingInvitation] = useState(() => Boolean(readInvitationToken(window.sessionStorage)));
 
   useEffect(() => {
     if (failed) return; // error hash already detected at render; no session wiring needed.
@@ -61,8 +63,8 @@ export default function AuthCallbackPage() {
         </CardHeader>
         <CardContent className="space-y-4 text-center">
           {failed ? (
-            <Button className="w-full" autoFocus onClick={() => navigate(ROUTES.LOGIN)}>
-              Back to sign in
+            <Button className="w-full" autoFocus onClick={() => navigate(hasPendingInvitation ? ROUTES.ACCEPT_INVITE : ROUTES.LOGIN)}>
+              {hasPendingInvitation ? "Return to invitation" : "Back to sign in"}
             </Button>
           ) : (
             <div className="flex justify-center py-2" aria-hidden="true">

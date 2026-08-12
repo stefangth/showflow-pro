@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { afterAll, describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -14,16 +14,24 @@ import { ROUTES, roleLabel, roleDescription } from "@/config/app.config";
 import { BOOKING_FLOW_DEFAULTS, applyPreset, type BookingFlow } from "@/lib/bookingFlow";
 import type { Membership, Organization } from "@/data/orgs";
 import { createTestQueryClient } from "@/test/queryClient";
+import { InvitationExchangeError } from "@/data/invitations";
 
 const navigateSpy = vi.fn();
+const locationAssignSpy = vi.fn();
+const originalLocation = window.location;
 vi.mock("react-router-dom", async (orig) => ({
   ...(await orig<typeof import("react-router-dom")>()),
   useNavigate: () => navigateSpy,
 }));
 
 const acceptInvitationMock = vi.fn();
+const exchangeInvitationMock = vi.fn();
 vi.mock("@/data/invitations", () => ({
   acceptInvitation: (...args: unknown[]) => acceptInvitationMock(...args),
+  exchangeInvitation: (...args: unknown[]) => exchangeInvitationMock(...args),
+  InvitationExchangeError: class InvitationExchangeError extends Error {
+    constructor(public kind: "unavailable" | "throttled" | "unknown", public retryAfterSeconds?: number) { super(kind); }
+  },
 }));
 
 const toastSuccess = vi.fn();
@@ -144,6 +152,27 @@ vi.mock("@/hooks/useBookingSetup", () => ({
   useBookingSetupStatus: (orgId: string | null) => bookingSetupStatusMock(orgId),
 }));
 
+const passwordStatusHolder: { data: boolean | undefined; isLoading: boolean; isError: boolean } = {
+  data: true,
+  isLoading: false,
+  isError: false,
+};
+const passwordStatusMock = vi.fn(() => passwordStatusHolder);
+vi.mock("@/hooks/usePasswordStatus", () => ({
+  usePasswordStatus: () => passwordStatusMock(),
+}));
+
+vi.mock("@/components/auth/PasswordSetupForm", () => ({
+  PasswordSetupForm: ({ onSuccess, onCancel }: { onSuccess: () => void; onCancel?: () => void }) => (
+    <section aria-labelledby="password-setup-heading">
+      <h3 id="password-setup-heading" tabIndex={-1}>Set a password</h3>
+      <p role="alert">Password requirements</p>
+      <button onClick={onSuccess}>Complete password setup</button>
+      <button onClick={onCancel}>Cancel</button>
+    </section>
+  ),
+}));
+
 const org1: Organization = { id: "org-1", name: "Riverside Opera", slug: "riverside", status: "active" };
 const oldOrg: Organization = { id: "org-0", name: "Old Org", slug: "old-org", status: "active" };
 
@@ -176,8 +205,15 @@ const renderAtWithQueryClient = (url: string) =>
   );
 
 beforeEach(() => {
+  Object.defineProperty(window, "location", {
+    configurable: true,
+    value: { ...originalLocation, assign: locationAssignSpy },
+  });
+  locationAssignSpy.mockClear();
   navigateSpy.mockClear();
   acceptInvitationMock.mockReset();
+  exchangeInvitationMock.mockReset();
+  sessionStorage.clear();
   toastSuccess.mockClear();
   toastWarning.mockClear();
   switchOrgSpy.mockClear();
@@ -192,6 +228,10 @@ beforeEach(() => {
   bookingSetupHolder.complete = false;
   bookingSetupLoadingHolder.loading = false;
   bookingSetupStatusMock.mockClear();
+  passwordStatusHolder.data = true;
+  passwordStatusHolder.isLoading = false;
+  passwordStatusHolder.isError = false;
+  passwordStatusMock.mockClear();
   hooksMode.real = false;
   authState = {
     user: { id: "u1", email: "singer@example.com" },
@@ -205,6 +245,8 @@ beforeEach(() => {
   };
 });
 
+afterAll(() => Object.defineProperty(window, "location", { configurable: true, value: originalLocation }));
+
 describe("AcceptInvitePage error paths (unchanged)", () => {
   it("shows an error when the link is missing its token", async () => {
     renderAt(`${ROUTES.ACCEPT_INVITE}`);
@@ -212,15 +254,58 @@ describe("AcceptInvitePage error paths (unchanged)", () => {
     expect(acceptInvitationMock).not.toHaveBeenCalled();
   });
 
-  it("redirects to login with a return url when not authenticated", async () => {
+  it("shows invitation context without exchanging until Continue is clicked", async () => {
     authState.user = null;
     renderAt(`${ROUTES.ACCEPT_INVITE}?token=abc123`);
-    await waitFor(() =>
-      expect(navigateSpy).toHaveBeenCalledWith(
-        `${ROUTES.LOGIN}?redirect=${encodeURIComponent(`${ROUTES.ACCEPT_INVITE}?token=abc123`)}`,
-        { replace: true },
-      ),
-    );
+    expect(screen.getByRole("heading", { name: /you've been invited/i })).toBeInTheDocument();
+    expect(exchangeInvitationMock).not.toHaveBeenCalled();
+  });
+
+  it("exchanges exactly once on Continue and assigns the returned Auth URL", async () => {
+    authState.user = null;
+    let resolveExchange!: (value: { actionUrl: string }) => void;
+    exchangeInvitationMock.mockReturnValue(new Promise((resolve) => { resolveExchange = resolve; }));
+    renderAt(`${ROUTES.ACCEPT_INVITE}?token=abc123`);
+    const button = screen.getByRole("button", { name: /continue/i });
+    fireEvent.click(button);
+    fireEvent.click(button);
+    expect(button).toBeDisabled();
+    expect(exchangeInvitationMock).toHaveBeenCalledTimes(1);
+    expect(exchangeInvitationMock).toHaveBeenCalledWith(expect.anything(), { token: "abc123", appOrigin: window.location.origin });
+    resolveExchange({ actionUrl: "https://auth.example/verify" });
+    await waitFor(() => expect(locationAssignSpy).toHaveBeenCalledWith("https://auth.example/verify"));
+  });
+
+  it("keeps retry available after throttling", async () => {
+    authState.user = null;
+    exchangeInvitationMock.mockRejectedValueOnce(new InvitationExchangeError("throttled", 30));
+    renderAt(`${ROUTES.ACCEPT_INVITE}?token=abc123`);
+    fireEvent.click(screen.getByRole("button", { name: /continue/i }));
+    expect(await screen.findByText(/wait.*try again/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /try again/i })).toBeEnabled();
+    expect(sessionStorage.getItem("showflow.pendingInvitationToken")).toBe("abc123");
+  });
+
+  it("clears the stored token and shows permanent unavailable state for 410", async () => {
+    authState.user = null;
+    exchangeInvitationMock.mockRejectedValueOnce(new InvitationExchangeError("unavailable"));
+    renderAt(`${ROUTES.ACCEPT_INVITE}?token=abc123`);
+    fireEvent.click(screen.getByRole("button", { name: /continue/i }));
+    expect(await screen.findByText(/no longer available/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /try again/i })).not.toBeInTheDocument();
+    const signIn = screen.getByRole("button", { name: /go to sign in/i });
+    fireEvent.click(signIn);
+    expect(navigateSpy).toHaveBeenCalledWith(ROUTES.LOGIN, { replace: true });
+    expect(sessionStorage.getItem("showflow.pendingInvitationToken")).toBeNull();
+  });
+
+  it("offers a generic retry for unknown exchange failures", async () => {
+    authState.user = null;
+    exchangeInvitationMock.mockRejectedValueOnce(new Error("network"));
+    renderAt(`${ROUTES.ACCEPT_INVITE}?token=abc123`);
+    fireEvent.click(screen.getByRole("button", { name: /continue/i }));
+    expect(await screen.findByText(/couldn't continue/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /try again/i })).toBeEnabled();
   });
 
   it("shows a friendly message when acceptance fails", async () => {
@@ -267,7 +352,7 @@ describe("AcceptInvitePage error paths (unchanged)", () => {
     // the same construction the unauthenticated-visit path already uses, so signing in
     // with the invited address lands the invitee right back here to finish accepting.
     expect(navigateSpy).toHaveBeenCalledWith(
-      `${ROUTES.LOGIN}?redirect=${encodeURIComponent(`${ROUTES.ACCEPT_INVITE}?token=abc123`)}`,
+      `${ROUTES.LOGIN}?redirect=${encodeURIComponent(ROUTES.ACCEPT_INVITE)}`,
       { replace: true },
     );
   });
@@ -309,6 +394,121 @@ describe("AcceptInvitePage error paths (unchanged)", () => {
 });
 
 describe("AcceptInvitePage success screen", () => {
+  describe("calm sign-in handoff", () => {
+    it("queries password status only after membership acceptance succeeds", async () => {
+      let resolveAcceptance!: (value: { orgId: string; artistLinked: boolean }) => void;
+      acceptInvitationMock.mockReturnValue(new Promise((resolve) => { resolveAcceptance = resolve; }));
+      renderAt(`${ROUTES.ACCEPT_INVITE}?token=abc123`);
+      expect(passwordStatusMock).not.toHaveBeenCalled();
+      resolveAcceptance({ orgId: org1.id, artistLinked: true });
+      await screen.findByRole("heading", { name: /you've joined/i });
+      expect(passwordStatusMock).toHaveBeenCalled();
+    });
+
+    it("offers passwordless users two equal, unselected sign-in choices", async () => {
+      passwordStatusHolder.data = false;
+      acceptInvitationMock.mockResolvedValueOnce({ orgId: org1.id, artistLinked: true });
+      renderAt(`${ROUTES.ACCEPT_INVITE}?token=abc123`);
+      const create = await screen.findByRole("button", { name: /create a password/i });
+      const magic = screen.getByRole("button", { name: /continue with magic links/i });
+      expect(create.className).toBe(magic.className);
+      expect(create).toHaveAttribute("aria-pressed", "false");
+      expect(magic).toHaveAttribute("aria-pressed", "false");
+      expect(create.className).toContain("min-h-11");
+      expect(create.className).toContain("focus-visible:ring-2");
+      expect(create.className).toContain("motion-reduce:transition-none");
+      expect(screen.queryByRole("button", { name: /go to dashboard/i })).not.toBeInTheDocument();
+    });
+
+    it("opens password setup inline, retains invite context, and moves focus to its heading", async () => {
+      passwordStatusHolder.data = false;
+      acceptInvitationMock.mockResolvedValueOnce({ orgId: org1.id, artistLinked: true });
+      renderAt(`${ROUTES.ACCEPT_INVITE}?token=abc123`);
+      fireEvent.click(await screen.findByRole("button", { name: /create a password/i }));
+      const heading = screen.getByRole("heading", { name: /set a password/i });
+      await waitFor(() => expect(heading).toHaveFocus());
+      expect(screen.getByRole("heading", { name: /you've joined riverside opera/i })).toBeInTheDocument();
+      expect(screen.getByLabelText(/invitation accepted/i)).toBeInTheDocument();
+      expect(screen.getByText(/your role: admin/i)).toBeInTheDocument();
+      expect(screen.getByText(/password requirements/i).closest('[aria-live="polite"]')).toBeInTheDocument();
+    });
+
+    it("keeps the stored token when membership acceptance fails", async () => {
+      acceptInvitationMock.mockRejectedValueOnce(new Error("Invitation expired"));
+      renderAt(`${ROUTES.ACCEPT_INVITE}?token=abc123`);
+      await screen.findByText(/invalid or has expired/i);
+      expect(sessionStorage.getItem("showflow.pendingInvitationToken")).toBe("abc123");
+    });
+
+    it("keeps the current dashboard action for users who already have a password", async () => {
+      acceptInvitationMock.mockResolvedValueOnce({ orgId: org1.id, artistLinked: true });
+      renderAt(`${ROUTES.ACCEPT_INVITE}?token=abc123`);
+      expect(await screen.findByRole("button", { name: /go to dashboard/i })).toBeInTheDocument();
+      expect(screen.queryByText(/sign in next time/i)).not.toBeInTheDocument();
+    });
+
+    it("continues with magic links directly to the dashboard", async () => {
+      passwordStatusHolder.data = false;
+      acceptInvitationMock.mockResolvedValueOnce({ orgId: org1.id, artistLinked: true });
+      renderAt(`${ROUTES.ACCEPT_INVITE}?token=abc123`);
+      fireEvent.click(await screen.findByRole("button", { name: /continue with magic links/i }));
+      expect(navigateSpy).toHaveBeenCalledWith(ROUTES.DASHBOARD, { replace: true });
+    });
+
+    it("confirms successful password setup before offering the dashboard", async () => {
+      passwordStatusHolder.data = false;
+      acceptInvitationMock.mockResolvedValueOnce({ orgId: org1.id, artistLinked: true });
+      renderAt(`${ROUTES.ACCEPT_INVITE}?token=abc123`);
+      fireEvent.click(await screen.findByRole("button", { name: /create a password/i }));
+      fireEvent.click(screen.getByRole("button", { name: /complete password setup/i }));
+      expect(screen.getByRole("status")).toHaveTextContent(/password is ready/i);
+      fireEvent.click(screen.getByRole("button", { name: /go to dashboard/i }));
+      expect(navigateSpy).toHaveBeenCalledWith(ROUTES.DASHBOARD, { replace: true });
+    });
+
+    it("keeps the successful password confirmation when the status refetch fails afterward", async () => {
+      passwordStatusHolder.data = false;
+      acceptInvitationMock.mockResolvedValueOnce({ orgId: org1.id, artistLinked: true });
+      renderAt(`${ROUTES.ACCEPT_INVITE}?token=abc123`);
+      fireEvent.click(await screen.findByRole("button", { name: /create a password/i }));
+
+      passwordStatusHolder.isError = true;
+      fireEvent.click(screen.getByRole("button", { name: /complete password setup/i }));
+
+      expect(screen.getByRole("status")).toHaveTextContent(/password is ready/i);
+      expect(screen.queryByText(/manage sign-in methods from your profile/i)).not.toBeInTheDocument();
+    });
+
+    it("treats password-status failure as non-blocking without guessing", async () => {
+      passwordStatusHolder.data = undefined;
+      passwordStatusHolder.isError = true;
+      acceptInvitationMock.mockResolvedValueOnce({ orgId: org1.id, artistLinked: true });
+      renderAt(`${ROUTES.ACCEPT_INVITE}?token=abc123`);
+      expect(await screen.findByText("Your invitation was accepted. You can manage sign-in methods from your profile.")).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /create a password/i })).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /go to dashboard/i })).toBeInTheDocument();
+    });
+
+    it("keeps mobile DOM order as context then choices and never adds a third bypass action", async () => {
+      passwordStatusHolder.data = false;
+      let resolveAcceptance!: (value: { orgId: string; artistLinked: boolean }) => void;
+      acceptInvitationMock.mockReturnValue(new Promise((resolve) => { resolveAcceptance = resolve; }));
+      renderAt(`${ROUTES.ACCEPT_INVITE}?token=abc123`);
+      expect(screen.queryByText(/sign in next time/i)).not.toBeInTheDocument();
+      resolveAcceptance({ orgId: org1.id, artistLinked: true });
+      const context = await screen.findByText(/your role: admin/i);
+      const choices = screen.getByTestId("sign-in-choices");
+      expect(context.compareDocumentPosition(choices) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(screen.queryByRole("button", { name: /go to dashboard/i })).not.toBeInTheDocument();
+    });
+  });
+  it("clears the pending token after signed-in acceptance succeeds", async () => {
+    acceptInvitationMock.mockResolvedValueOnce({ orgId: org1.id, artistLinked: true });
+    renderAt(`${ROUTES.ACCEPT_INVITE}?token=abc123`);
+    await screen.findByRole("heading", { name: /you've joined/i });
+    expect(sessionStorage.getItem("showflow.pendingInvitationToken")).toBeNull();
+  });
+
   it("renders an informative card instead of auto-navigating", async () => {
     acceptInvitationMock.mockResolvedValueOnce({ orgId: org1.id, artistLinked: true });
     renderAt(`${ROUTES.ACCEPT_INVITE}?token=abc123`);
