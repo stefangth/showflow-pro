@@ -105,22 +105,22 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       }
       // The durable invitation email contains no short-lived Auth action link. The first
       // admin of a brand-new org is a total stranger to the super-admin
-        // provisioning it, so "Invited by" always reads a generic, org-neutral line here:
-        // never the platform operator's own display name or personal inbox address. A
-        // stranger has no more context for "Jordan Owner" than for owner@platform.test,
-        // so forwarding either would read as no more trustworthy than a spam sender's,
-        // not less anonymous. This is DIFFERENT from create-invitation/resend-invitation,
-        // which do resolve and forward a real name (falling back to email): their inviter
-        // is a colleague within the SAME org the recipient is already joining, where an
-        // intra-org name or address reads as legitimate. There is nothing to resolve here
-        // (no profiles read, no Admin API call), so there is also no failure mode to
-        // guard against.
-        // Only relevant when the first invitee is an artist (role defaults to 'admin' and
-        // usually is, but the Body type does allow 'artist'). resolveArtistOffersExpected
-        // reads the org's booking_flow live (including the offFlow seed just written
-        // above, when it landed), so a fresh org still starting in the "off" preset
-        // correctly resolves to false rather than the module's usual defaults; it also
-        // already fails closed to false on any error, so no extra .catch is needed here.
+      // provisioning it, so "Invited by" always reads a generic, org-neutral line here:
+      // never the platform operator's own display name or personal inbox address. A
+      // stranger has no more context for "Jordan Owner" than for owner@platform.test,
+      // so forwarding either would read as no more trustworthy than a spam sender's,
+      // not less anonymous. This is DIFFERENT from create-invitation/resend-invitation,
+      // which do resolve and forward a real name (falling back to email): their inviter
+      // is a colleague within the SAME org the recipient is already joining, where an
+      // intra-org name or address reads as legitimate. There is nothing to resolve here
+      // (no profiles read, no Admin API call), so there is also no failure mode to
+      // guard against.
+      // Only relevant when the first invitee is an artist (role defaults to 'admin' and
+      // usually is, but the Body type does allow 'artist'). resolveArtistOffersExpected
+      // reads the org's booking_flow live (including the offFlow seed just written
+      // above, when it landed), so a fresh org still starting in the "off" preset
+      // correctly resolves to false rather than the module's usual defaults; it also
+      // already fails closed to false on any error, so no extra .catch is needed here.
       const offersExpected = role === "artist"
         ? await resolveArtistOffersExpected(deps.admin, org_id)
         : undefined;

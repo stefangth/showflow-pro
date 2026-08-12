@@ -80,7 +80,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     // explicitly; an existing *pending* invite for the same email is enforced by the
     // partial unique index on (org_id, lower(email)) WHERE status='pending' and mapped
     // from the 23505 below (revoked/accepted invites stay re-invitable).
-    const { data: existingUserId, error: existingUserError } = await admin.rpc("get_user_id_by_email", { p_email: email });
+    const { data: existingUserId } = await admin.rpc("get_user_id_by_email", { p_email: email });
     if (existingUserId) {
       const { data: membership } = await admin
         .from("org_memberships")
@@ -139,7 +139,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       const ensured = await ensureInvitedAccount(deps, {
         email: invite.email,
         appOrigin,
-        ...(!existingUserError ? { existingUserId: (existingUserId as string | null) ?? null } : {}),
+        existingUserId: (existingUserId as string | null) ?? null,
       });
       userId = ensured.userId ?? userId;
       accountReady = true;

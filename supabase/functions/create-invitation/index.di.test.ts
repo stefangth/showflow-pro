@@ -101,6 +101,17 @@ Deno.test("create-invitation DI: admin → 200 with invitation, inserts row + in
   assertEquals(calls.filter((c) => c.table === "rpc:get_user_id_by_email").length, 1);
 });
 
+Deno.test("create-invitation DI: a failed user lookup is not repeated", async () => {
+  const { deps, calls } = adminDeps({
+    rpcs: { get_user_id_by_email: { data: null, error: { message: "lookup unavailable" } } },
+  });
+
+  const res = await handle(inviteReq({ org_id: "org-1", email: "invitee@x.com", role: "producer" }), deps);
+
+  assertEquals(res.status, 200);
+  assertEquals(calls.filter((c) => c.table === "rpc:get_user_id_by_email").length, 1);
+});
+
 Deno.test("create-invitation DI: email is lowercased + trimmed before insert", async () => {
   const { deps, calls } = adminDeps();
   await handle(inviteReq({ org_id: "org-1", email: "  Invitee@X.COM  ", role: "producer" }), deps);
