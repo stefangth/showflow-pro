@@ -21,13 +21,13 @@ export interface PasswordSetupFormProps {
   onCancel?: () => void;
 }
 
-function PasswordInput({ id, label, value, onChange, required = false }: { id: string; label: string; value?: string; onChange?: React.ChangeEventHandler<HTMLInputElement>; required?: boolean }) {
+function PasswordInput({ id, label, value, onChange, required = false, invalid = false, describedBy }: { id: string; label: string; value?: string; onChange?: React.ChangeEventHandler<HTMLInputElement>; required?: boolean; invalid?: boolean; describedBy?: string }) {
   const [visible, setVisible] = useState(false);
   return (
     <div className="space-y-1.5">
       <Label htmlFor={id}>{label}</Label>
       <div className="relative">
-        <Input id={id} type={visible ? "text" : "password"} value={value} onChange={onChange} className="pr-10" required={required} />
+        <Input id={id} type={visible ? "text" : "password"} value={value} onChange={onChange} className="pr-10" required={required} aria-invalid={invalid || undefined} aria-describedby={describedBy} />
         <Button type="button" variant="ghost" size="icon" className="absolute right-0 top-0" aria-label={`${visible ? "Hide" : "Show"} ${label.toLowerCase()}`} onClick={() => setVisible((value) => !value)}>
           {visible ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
         </Button>
@@ -49,19 +49,25 @@ export function PasswordSetupForm({ mode, onSuccess, onCancel }: PasswordSetupFo
   const [nonce, setNonce] = useState("");
   const [awaitingNonce, setAwaitingNonce] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const password = form.watch("password");
+  const passwordError = form.formState.errors.password;
+  const confirmError = form.formState.errors.confirm;
+  const strength = password.length === 0 ? "Not entered" : password.length < 8 ? "Needs 8 characters" : "Meets requirement";
 
   const submit = form.handleSubmit(async ({ password }) => {
     setError(null);
     try {
-      if (mode === "setup") {
+      if (awaitingNonce) {
+        await changeMyPassword(supabase, { password, nonce });
+      } else if (mode === "setup") {
         await setMyPassword(supabase, password);
       } else {
-        await changeMyPassword(supabase, awaitingNonce ? { password, nonce } : { password, currentPassword });
+        await changeMyPassword(supabase, { password, currentPassword });
       }
       await invalidatePasswordStatus(queryClient);
       onSuccess();
     } catch (caught) {
-      if (mode === "change" && !awaitingNonce && needsReauthentication(caught)) {
+      if (!awaitingNonce && needsReauthentication(caught)) {
         try {
           await requestPasswordReauthentication(supabase);
           setAwaitingNonce(true);
@@ -87,6 +93,11 @@ export function PasswordSetupForm({ mode, onSuccess, onCancel }: PasswordSetupFo
       </CardHeader>
       <CardContent>
         <form onSubmit={submit} className="space-y-4">
+          {(passwordError || confirmError) && (
+            <p role="alert" aria-live="assertive" className="text-sm font-medium text-destructive">
+              Please fix the password fields below.
+            </p>
+          )}
           {mode === "change" && !awaitingNonce && <PasswordInput id="current-password" label="Current password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} required />}
           {awaitingNonce && (
             <div className="space-y-1.5">
@@ -95,10 +106,15 @@ export function PasswordSetupForm({ mode, onSuccess, onCancel }: PasswordSetupFo
               <Input id="password-nonce" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} value={nonce} onChange={(event) => setNonce(event.target.value.replace(/\D/g, ""))} required />
             </div>
           )}
-          <PasswordInput id="new-password" label="New password" value={form.watch("password")} onChange={(event) => form.setValue("password", event.target.value, { shouldValidate: form.formState.isSubmitted })} />
-          {form.formState.errors.password && <p className="text-xs text-destructive">{form.formState.errors.password.message}</p>}
-          <PasswordInput id="confirm-password" label="Confirm new password" value={form.watch("confirm")} onChange={(event) => form.setValue("confirm", event.target.value, { shouldValidate: form.formState.isSubmitted })} />
-          {form.formState.errors.confirm && <p className="text-xs text-destructive">{form.formState.errors.confirm.message}</p>}
+          <PasswordInput id="new-password" label="New password" value={password} onChange={(event) => form.setValue("password", event.target.value, { shouldValidate: form.formState.isSubmitted })} invalid={!!passwordError} describedBy={`password-requirements password-strength${passwordError ? " new-password-error" : ""}`} />
+          {passwordError && <p id="new-password-error" className="text-xs text-destructive">{passwordError.message}</p>}
+          <div id="password-requirements" aria-live="polite" className="rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+            <p className="font-medium text-foreground">Password requirements</p>
+            <p>Use at least 8 characters.</p>
+            <p id="password-strength"><span className="font-medium text-foreground">Password strength:</span> <span>{strength}</span></p>
+          </div>
+          <PasswordInput id="confirm-password" label="Confirm new password" value={form.watch("confirm")} onChange={(event) => form.setValue("confirm", event.target.value, { shouldValidate: form.formState.isSubmitted })} invalid={!!confirmError} describedBy={`password-requirements${confirmError ? " confirm-password-error" : ""}`} />
+          {confirmError && <p id="confirm-password-error" className="text-xs text-destructive">{confirmError.message}</p>}
           {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
           <div className="flex gap-2">
             <Button type="submit" disabled={form.formState.isSubmitting || (awaitingNonce && nonce.length !== 6)}>{form.formState.isSubmitting ? pendingLabel : submitLabel}</Button>

@@ -212,32 +212,11 @@ export const EMAIL_COPY_DEFAULTS = {
   // window this invitation is valid for". Also drops {{orgName}} for the same
   // repetition reason as roleIntro above.
   //
-  // Scoped to "This invitation", never to "the link in this email": the button's href
-  // (and the paste-link fallback right below it, see org-invitation.tsx's acceptUrl) is
-  // a short-lived Supabase action link (magiclink for an existing account, invite for a
-  // net-new one, see ensureInvitedUser in _shared/invitations.ts) whose own TTL is
-  // GoTrue's mailer OTP expiry, hours, not days, and is consumed on first use besides.
-  // Saying "the link in this email works until {{expiresOn}}" would be false for most
-  // of that window: the LINK typically stops working long before {{expiresOn}} arrives,
-  // while the INVITATION (org_invitations.expires_at, the value accept_invitation
-  // actually checks) stays valid the whole time regardless of that link's fate.
-  // linkRecovery (below, beside the paste-link fallback) now covers what to do if the
-  // button itself stops working, so this line only needs to state what stays true for
-  // its full stated duration: the invitation itself. Membership is also created at
-  // invite time (ensure_invitation_membership, see
-  // create-invitation/resend-invitation/provision-org), so an invitee who authenticates
-  // through any path is already an org member regardless of this date; what actually
-  // stops working after expiresOn is only the accept_invitation flow this invitation
-  // drives, never the invitee's org access.
-  //
-  // The dated claim is about the INVITATION: {{expiresOn}} is the row's exact expires_at
-  // day (formatExpiresOn, no arithmetic). Everything the date cannot promise is owned by
-  // the second sentence instead: the sign-in button is a single-use action link that dies
-  // within hours, and near the window's end even the dated day is partly over. "Ask for
-  // it to be resent" covers both, and resend-invitation refuses an already-lapsed row
-  // (409 with revoke-and-reinvite guidance), so following the remedy can never produce a
-  // claim falser than this line.
-  "org-invitation.expiryLine": "Your invitation is valid until {{expiresOn}}. If the sign-in button stops working, ask for it to be resent.",
+  // Scoped to the durable database invitation, never an Auth action link. {{expiresOn}}
+  // is the expiry rendered for this send. A later resend renews the row for 30 days, so
+  // an older email can only promise this date as a lower bound and explicitly directs the
+  // reader to the newest invitation email for the current window.
+  "org-invitation.expiryLine": "Your invitation is valid until at least {{expiresOn}}. A newer invitation email may extend this date.",
   // Fires only when expires_at itself could not be resolved (effectively prevented by the
   // NOT NULL column default): it makes no day-count claim at all, because there is no row
   // to derive one from. The remedy sentence is the whole message.

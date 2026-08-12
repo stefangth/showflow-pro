@@ -124,7 +124,7 @@ Deno.test("create-invitation DI: sends the org-invitation email to the invitee w
 });
 
 Deno.test("create-invitation DI: sends roleKey, expiresOn (from the invitation row), and inviterName (from profiles.display_name)", async () => {
-  const { deps, invokeCalls, calls } = adminDeps({
+  const { deps, invokeCalls } = adminDeps({
     tables: {
       org_memberships: { data: { role: "admin" }, error: null },
       org_invitations: {

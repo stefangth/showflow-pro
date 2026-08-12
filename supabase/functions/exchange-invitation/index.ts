@@ -17,6 +17,11 @@ type Claim = { status?: unknown; email?: unknown; retry_after_seconds?: unknown 
 
 export async function handler(req: Request, deps: ExchangeInvitationDeps): Promise<Response> {
   if (req.method === "OPTIONS") return preflight();
+  if (req.method !== "POST") {
+    const response = json({ error: "Method not allowed" }, 405);
+    response.headers.set("Allow", "POST, OPTIONS");
+    return response;
+  }
 
   try {
     const body = await req.json().catch(() => null) as Body | null;

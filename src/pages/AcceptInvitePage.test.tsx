@@ -414,6 +414,7 @@ describe("AcceptInvitePage success screen", () => {
       expect(create.className).toContain("min-h-11");
       expect(create.className).toContain("focus-visible:ring-2");
       expect(create.className).toContain("motion-reduce:transition-none");
+      expect(screen.queryByRole("button", { name: /go to dashboard/i })).not.toBeInTheDocument();
     });
 
     it("opens password setup inline, retains invite context, and moves focus to its heading", async () => {
@@ -472,7 +473,7 @@ describe("AcceptInvitePage success screen", () => {
       expect(screen.getByRole("button", { name: /go to dashboard/i })).toBeInTheDocument();
     });
 
-    it("keeps mobile DOM order as context, choices, then action and never mentions methods before acceptance", async () => {
+    it("keeps mobile DOM order as context then choices and never adds a third bypass action", async () => {
       passwordStatusHolder.data = false;
       let resolveAcceptance!: (value: { orgId: string; artistLinked: boolean }) => void;
       acceptInvitationMock.mockReturnValue(new Promise((resolve) => { resolveAcceptance = resolve; }));
@@ -481,9 +482,8 @@ describe("AcceptInvitePage success screen", () => {
       resolveAcceptance({ orgId: org1.id, artistLinked: true });
       const context = await screen.findByText(/your role: admin/i);
       const choices = screen.getByTestId("sign-in-choices");
-      const action = screen.getByRole("button", { name: /go to dashboard/i });
       expect(context.compareDocumentPosition(choices) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-      expect(choices.compareDocumentPosition(action) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(screen.queryByRole("button", { name: /go to dashboard/i })).not.toBeInTheDocument();
     });
   });
   it("clears the pending token after signed-in acceptance succeeds", async () => {

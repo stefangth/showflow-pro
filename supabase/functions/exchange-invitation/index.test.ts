@@ -35,6 +35,14 @@ Deno.test("exchange-invitation: OPTIONS returns the shared CORS preflight respon
   assertEquals(response.headers.get("Access-Control-Allow-Origin"), "*");
 });
 
+Deno.test("exchange-invitation: methods other than POST and OPTIONS return 405", async () => {
+  const { deps, calls } = depsFor({ data: null, error: null });
+  const response = await handler(new Request("http://local", { method: "GET" }), deps);
+  assertEquals(response.status, 405);
+  assertEquals(response.headers.get("Allow"), "POST, OPTIONS");
+  assertEquals(calls.length, 0);
+});
+
 Deno.test("exchange-invitation: invalid JSON and an empty token are rejected", async () => {
   const { deps, calls } = depsFor({ data: null, error: null });
   for (const raw of ["{", JSON.stringify({ token: "  ", app_origin: APP_ORIGIN })]) {

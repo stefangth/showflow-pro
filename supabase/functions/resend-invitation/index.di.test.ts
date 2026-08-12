@@ -179,9 +179,8 @@ Deno.test("resend-invitation DI: a resend inside the invitation's final 48 hours
     makeRequest({ headers: { Authorization: "Bearer jwt" }, body: { invitation_id: "inv1", app_origin: "https://app.test" } }),
     deps,
   );
-  // Still a genuinely successful resend: this is NOT the already-expired 409 path above.
-  // The email states the row's real, exact expiry day even this close to the wire; the
-  // remedy sentence in the same line is what keeps the claim safe on the final day.
+  // The resend renews before delivery, so even a row close to expiry renders the renewed
+  // date returned by the database RPC.
   assertEquals(res.status, 200);
   const emails = invokeCalls.filter((c) => c.name === "send-transactional-email");
   assertEquals(emails.length, 1);
@@ -190,11 +189,8 @@ Deno.test("resend-invitation DI: a resend inside the invitation's final 48 hours
 });
 
 Deno.test("resend-invitation DI: renews the invitation through the database RPC", async () => {
-  // Regression: a resend must not push the invitation's expiry out. The row's expires_at
-  // is set once at insert time (create-invitation / provision-org) and never touched again
-  // by this endpoint — resending only re-sends the email that states whatever it already is.
-  // (expires_at is deliberately still in the future here: an already-expired invitation
-  // is covered separately below, and that path returns before this one even matters.)
+  // Regression: every deliberate resend restarts the full 30-day authority window through
+  // the service-only RPC before the email is delivered.
   const { deps, calls } = makeFakeDeps({
     authUser: { id: "u1" },
     usersById: { u1: { email: "admin@acme.test" } },
@@ -248,7 +244,7 @@ Deno.test("resend-invitation: renews and sends an expired pending invitation", a
   // checks expires_at > now() at accept time instead), so the status check above does
   // not catch this. Left unguarded, this would email a concrete PAST date ("works until
   // 1 January 2026...") which is worse than the old generic "expires in 14 days" line.
-  const { deps, invokeCalls, calls } = makeFakeDeps({
+  const { deps, invokeCalls } = makeFakeDeps({
     authUser: { id: "u1" },
     tables: {
       platform_admins: { data: { user_id: "u1" }, error: null },

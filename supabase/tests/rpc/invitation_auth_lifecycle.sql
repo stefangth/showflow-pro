@@ -1,7 +1,7 @@
 -- Invitation lifetime, auth-exchange, and authenticated self password-status contracts.
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT plan(24);
+SELECT plan(34);
 
 SET session_replication_role = replica;
 
@@ -27,7 +27,15 @@ INSERT INTO public.org_invitations (
   ('00000000-0000-0000-0000-00000000f104', '00000000-0000-0000-0000-0000000f0101', 'accepted@test.com', 'artist', 'accepted-token', 'accepted', now() + interval '1 day'),
   ('00000000-0000-0000-0000-00000000f105', '00000000-0000-0000-0000-0000000f0101', 'revoked@test.com', 'artist', 'revoked-token', 'revoked', now() + interval '1 day'),
   ('00000000-0000-0000-0000-00000000f106', '00000000-0000-0000-0000-0000000f0101', 'expired@test.com', 'artist', 'expired-token', 'pending', now() - interval '1 second'),
-  ('00000000-0000-0000-0000-00000000f107', '00000000-0000-0000-0000-0000000f0101', 'rounded@test.com', 'artist', 'rounded-token', 'pending', now() + interval '1 day');
+  ('00000000-0000-0000-0000-00000000f107', '00000000-0000-0000-0000-0000000f0101', 'rounded@test.com', 'artist', 'rounded-token', 'pending', now() + interval '1 day'),
+  ('00000000-0000-0000-0000-00000000f108', '00000000-0000-0000-0000-0000000f0101', 'backfill-eligible@test.com', 'artist', 'backfill-eligible-token', 'pending', now() + interval '1 day'),
+  ('00000000-0000-0000-0000-00000000f109', '00000000-0000-0000-0000-0000000f0101', 'backfill-expired@test.com', 'artist', 'backfill-expired-token', 'pending', now() - interval '1 day'),
+  ('00000000-0000-0000-0000-00000000f110', '00000000-0000-0000-0000-0000000f0101', 'backfill-accepted@test.com', 'artist', 'backfill-accepted-token', 'accepted', now() + interval '1 day'),
+  ('00000000-0000-0000-0000-00000000f111', '00000000-0000-0000-0000-0000000f0101', 'backfill-long@test.com', 'artist', 'backfill-long-token', 'pending', now() + interval '45 days');
+
+UPDATE public.org_invitations
+SET created_at = now() - interval '10 days'
+WHERE id BETWEEN '00000000-0000-0000-0000-00000000f108' AND '00000000-0000-0000-0000-00000000f111';
 
 SET session_replication_role = DEFAULT;
 
@@ -43,6 +51,24 @@ SELECT ok(
    WHERE table_schema = 'public' AND table_name = 'org_invitations' AND column_name = 'last_auth_exchange_at'),
   'the auth exchange timestamp exists and is nullable'
 );
+
+-- Re-run the migration's idempotent backfill against controlled historical rows. Only a
+-- still-valid, short-lived pending invitation is eligible; expired/non-pending/long-lived
+-- rows must retain their original authority window.
+UPDATE public.org_invitations
+SET expires_at = created_at + interval '30 days'
+WHERE status = 'pending'
+  AND expires_at > now()
+  AND expires_at < created_at + interval '30 days';
+
+SELECT is((SELECT expires_at FROM public.org_invitations WHERE token = 'backfill-eligible-token'), now() + interval '20 days',
+          'safe backfill extends a still-valid short pending invitation to 30 days from creation');
+SELECT is((SELECT expires_at FROM public.org_invitations WHERE token = 'backfill-expired-token'), now() - interval '1 day',
+          'safe backfill excludes expired pending invitations');
+SELECT is((SELECT expires_at FROM public.org_invitations WHERE token = 'backfill-accepted-token'), now() + interval '1 day',
+          'safe backfill excludes accepted invitations');
+SELECT is((SELECT expires_at FROM public.org_invitations WHERE token = 'backfill-long-token'), now() + interval '45 days',
+          'safe backfill does not shorten an already longer invitation');
 
 SET LOCAL ROLE authenticated;
 SELECT throws_ok(
@@ -74,6 +100,26 @@ SELECT is(
   now() + interval '30 days',
   'resend restarts the full lifetime'
 );
+
+SELECT is(
+  public.renew_invitation_for_resend('00000000-0000-0000-0000-00000000f109'),
+  now() + interval '30 days',
+  'resend renews an expired pending invitation'
+);
+SELECT is((SELECT status FROM public.org_invitations WHERE token = 'backfill-expired-token'), 'pending',
+          'renewing an expired pending invitation preserves pending status');
+SELECT throws_ok(
+  $$ SELECT public.renew_invitation_for_resend('00000000-0000-0000-0000-00000000f104') $$,
+  'P0001', 'Invitation is not pending', 'accepted invitations cannot be renewed'
+);
+SELECT is((SELECT expires_at FROM public.org_invitations WHERE token = 'accepted-token'), now() + interval '1 day',
+          'a failed accepted renewal preserves the invitation row');
+SELECT throws_ok(
+  $$ SELECT public.renew_invitation_for_resend('00000000-0000-0000-0000-00000000f105') $$,
+  'P0001', 'Invitation is not pending', 'revoked invitations cannot be renewed'
+);
+SELECT is((SELECT expires_at FROM public.org_invitations WHERE token = 'revoked-token'), now() + interval '1 day',
+          'a failed revoked renewal preserves the invitation row');
 
 SELECT ok(
   (SELECT last_auth_exchange_at IS NULL FROM public.org_invitations

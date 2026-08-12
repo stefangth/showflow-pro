@@ -304,11 +304,6 @@ function PostAcceptanceHandoff({
           />
         </div>
       )}
-      {!showSetup && (
-        <Button variant={dashboardIsDeadEnd ? 'outline' : 'default'} onClick={onDashboard}>
-          Go to dashboard
-        </Button>
-      )}
     </>
   );
 }

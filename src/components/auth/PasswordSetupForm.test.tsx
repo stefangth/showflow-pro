@@ -88,6 +88,40 @@ describe("PasswordSetupForm", () => {
     await waitFor(() => expect(api.change).toHaveBeenLastCalledWith({}, { password: "new-secret", nonce: "123456" }));
   });
 
+  it("requests reauthentication in setup mode and retries setup with the nonce", async () => {
+    api.setup.mockRejectedValueOnce(Object.assign(new Error("Reauthentication needed"), { code: "reauthentication_needed" }));
+    api.change.mockResolvedValueOnce(undefined);
+    api.reauthenticate.mockResolvedValueOnce(undefined);
+    renderForm({ mode: "setup", onSuccess: vi.fn() });
+    fillNewPasswords();
+    fireEvent.click(screen.getByRole("button", { name: "Set password" }));
+
+    expect(await screen.findByText("Check your email for the 6-digit code")).toBeInTheDocument();
+    expect(screen.getByLabelText("New password")).toHaveValue("new-secret");
+    fireEvent.change(screen.getByLabelText("6-digit code"), { target: { value: "123456" } });
+    fireEvent.click(screen.getByRole("button", { name: "Set password" }));
+
+    await waitFor(() => expect(api.change).toHaveBeenCalledWith({}, { password: "new-secret", nonce: "123456" }));
+  });
+
+  it("provides persistent requirements, strength feedback, and semantic validation associations", async () => {
+    renderForm({ mode: "setup", onSuccess: vi.fn() });
+    const password = screen.getByLabelText("New password");
+    const confirm = screen.getByLabelText("Confirm new password");
+    expect(screen.getByText("Use at least 8 characters.")).toBeInTheDocument();
+    expect(screen.getByText("Not entered")).toBeInTheDocument();
+
+    fillNewPasswords("short");
+    fireEvent.click(screen.getByRole("button", { name: "Set password" }));
+
+    const summary = await screen.findByRole("alert");
+    expect(summary).toHaveTextContent("Please fix the password fields below.");
+    expect(password).toHaveAttribute("aria-invalid", "true");
+    expect(password).toHaveAttribute("aria-describedby", expect.stringContaining("new-password-error"));
+    expect(password).toHaveAttribute("aria-describedby", expect.stringContaining("password-requirements"));
+    expect(confirm).toHaveAttribute("aria-describedby", expect.stringContaining("password-requirements"));
+  });
+
   it("calls cancel and renders auth errors inline", async () => {
     api.setup.mockRejectedValueOnce(new Error("Password update failed"));
     const onCancel = vi.fn();

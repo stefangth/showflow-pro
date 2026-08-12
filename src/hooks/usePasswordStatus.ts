@@ -12,9 +12,9 @@ export function invalidatePasswordStatus(queryClient: QueryClient) {
 export function usePasswordStatus() {
   const { user } = useAuth();
   return useQuery({
-    queryKey: PASSWORD_STATUS_QUERY_KEY,
+    queryKey: [...PASSWORD_STATUS_QUERY_KEY, user?.id],
     queryFn: () => fetchMyHasPassword(supabase),
-    enabled: !!user,
+    enabled: !!user?.id,
   });
 }
 

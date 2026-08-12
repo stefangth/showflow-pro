@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { createClient } from "@supabase/supabase-js";
 import { adminClient, tagEmail } from "./helpers/supabase";
 import { ensureUserWithRole, deleteUserByEmail, findUserByEmail, BOOTSTRAP_ORG_ID } from "./helpers/users";
 import { seedConsent } from "./helpers/consent";
@@ -67,6 +68,13 @@ async function blockLocalAutoLogin(page: Page) {
       await route.continue();
     }
   });
+}
+
+function publicClient() {
+  const url = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL;
+  const anonKey = process.env.SUPABASE_ANON_KEY ?? process.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+  if (!url || !anonKey) throw new Error("E2E: local Supabase URL and anon key are required");
+  return createClient(url, anonKey, { auth: { autoRefreshToken: false, persistSession: false } });
 }
 
 async function openThroughExchange(page: Page, baseURL: string, token: string, email: string) {
@@ -139,7 +147,7 @@ test.describe("Stable invitation onboarding", () => {
     await expect(page.getByRole("heading", { name: /You've joined/ })).toBeVisible();
   });
 
-  test("expired invitation returns exact 410, then explicit resend starts a new 30-day window", async ({ page }) => {
+  test("expired invitation returns exact 410, then the real resend endpoint renews it for exchange and acceptance", async ({ page, baseURL }) => {
     const admin = adminClient();
     const invite = await seedInvite(emails.expired, new Date(Date.now() - 60_000).toISOString());
     let requestBody: unknown;
@@ -154,11 +162,45 @@ test.describe("Stable invitation onboarding", () => {
     expect(requestBody).toEqual({ token: invite.token, app_origin: expect.any(String) });
 
     const beforeResend = Date.now();
-    const { data: renewed, error } = await admin.rpc("renew_invitation_for_resend", { p_id: invite.id });
-    expect(error).toBeNull();
-    const days = (new Date(renewed).getTime() - beforeResend) / 86_400_000;
+    const actor = publicClient();
+    const { error: signInError } = await actor.auth.signInWithPassword({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+    expect(signInError).toBeNull();
+    const { error: resendError } = await actor.functions.invoke("resend-invitation", {
+      body: { invitation_id: invite.id, app_origin: baseURL },
+    });
+    // The local stack has no outbound email provider. A 502 is therefore the expected
+    // post-renewal delivery result; any authorization/validation/internal status is a
+    // real endpoint failure. Hosted environments with delivery configured return 200.
+    if (resendError) {
+      const context = (resendError as { context?: unknown }).context;
+      expect(context).toBeInstanceOf(Response);
+      expect((context as Response).status).toBe(502);
+    }
+
+    const { data: renewedRow, error: renewedError } = await admin
+      .from("org_invitations").select("expires_at").eq("id", invite.id).single();
+    expect(renewedError).toBeNull();
+    const days = (new Date(renewedRow!.expires_at).getTime() - beforeResend) / 86_400_000;
     expect(days).toBeGreaterThan(29.99);
     expect(days).toBeLessThanOrEqual(30.01);
+
+    await page.unroute("**/functions/v1/exchange-invitation");
+    const exchange = publicClient();
+    const { data: exchangeData, error: exchangeError } = await exchange.functions.invoke("exchange-invitation", {
+      body: { token: invite.token, app_origin: baseURL },
+    });
+    expect(exchangeError).toBeNull();
+    const actionUrl = (exchangeData as { action_url?: string } | null)?.action_url;
+    expect(actionUrl).toBeTruthy();
+
+    // Local GoTrue's generated action-link navigation does not establish a browser
+    // session reliably in this harness. Keep the resend and exchange boundaries real,
+    // then use the suite's deterministic OTP session bridge to exercise the app's real
+    // accept_invitation path with the renewed stable token kept out of the URL.
+    const hash = await inviteSessionHash(emails.expired);
+    await page.evaluate((token) => sessionStorage.setItem("showflow.pendingInvitationToken", token), invite.token);
+    await page.goto(`${baseURL}/auth/callback?redirect=%2Faccept-invite#${hash}`);
+    await expect(page.getByRole("heading", { name: /You've joined/ })).toBeVisible({ timeout: 20_000 });
   });
 
   test("a second immediate exchange shows the exact 429 retry contract", async ({ page }) => {

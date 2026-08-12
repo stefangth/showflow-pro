@@ -76,7 +76,7 @@ Deno.test("org-invitation email: the recovery hint (what to do if this doesn't w
 Deno.test("org-invitation email: states the real expiry date from the invitation row", async () => {
   const html = await renderInvite({ orgName: "Cirque Lumière", token: "tok", expiresOn: "August 24, 2026" });
   assert(
-    html.includes("Your invitation is valid until August 24, 2026. If the sign-in button stops working, ask for it to be resent."),
+    html.includes("Your invitation is valid until at least August 24, 2026. A newer invitation email may extend this date."),
     "states the concrete expiry date, scoped to the INVITATION (the emailed action link's own TTL is shorter and unrelated)",
   );
   assert(
@@ -148,7 +148,7 @@ Deno.test("org-invitation email: reads product, then role, then expiry, then who
   const iGreeting = html.indexOf(EMAIL_COPY_DEFAULTS["org-invitation.greeting"]);
   const iProduct = html.indexOf("plans its shows and books the artists for them");
   const iRole = html.indexOf("Your role is Production Team.");
-  const iExpiry = html.indexOf("Your invitation is valid until August 24, 2026. If the sign-in button stops working, ask for it to be resent.");
+  const iExpiry = html.indexOf("Your invitation is valid until at least August 24, 2026. A newer invitation email may extend this date.");
   const iInvitedBy = html.indexOf("Invited by Jane Admin.");
   const iCtaHint = html.indexOf("Continue securely to sign in or create your account.");
   const iCtaLabel = html.indexOf(EMAIL_COPY_DEFAULTS["org-invitation.ctaLabel"]);
@@ -188,7 +188,7 @@ Deno.test("org-invitation email: does not repeat the org name in three consecuti
     token: "tok",
   });
   assert(html.includes("Your role is Production Team."), "roleIntro drops the org name");
-  assert(html.includes("Your invitation is valid until August 24, 2026. If the sign-in button stops working, ask for it to be resent."), "expiryLine drops the org name");
+  assert(html.includes("Your invitation is valid until at least August 24, 2026. A newer invitation email may extend this date."), "expiryLine drops the org name");
 });
 
 Deno.test("org-invitation email: the artist role line does not hedge availability behind an undecodable clause", async () => {

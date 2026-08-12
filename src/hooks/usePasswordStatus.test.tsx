@@ -25,7 +25,22 @@ describe("usePasswordStatus", () => {
     const { client, wrapper } = setup();
     const { result } = renderHook(() => usePasswordStatus(), { wrapper });
     await waitFor(() => expect(result.current.data).toBe(true));
-    expect(client.getQueryData(["auth", "has-password"])).toBe(true);
+    expect(client.getQueryData(["auth", "has-password", "u1"])).toBe(true);
+  });
+
+  it("does not render the previous identity's cached result after an account switch", async () => {
+    const { client, wrapper } = setup();
+    const { result, rerender } = renderHook(() => usePasswordStatus(), { wrapper });
+    await waitFor(() => expect(result.current.data).toBe(true));
+
+    state.rpcResult = { data: false, error: null };
+    state.user = { id: "u2" };
+    rerender();
+
+    expect(result.current.data).toBeUndefined();
+    await waitFor(() => expect(result.current.data).toBe(false));
+    expect(client.getQueryData(["auth", "has-password", "u1"])).toBe(true);
+    expect(client.getQueryData(["auth", "has-password", "u2"])).toBe(false);
   });
 
   it("exposes RPC errors", async () => {
