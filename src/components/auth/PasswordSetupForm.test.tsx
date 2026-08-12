@@ -2,8 +2,11 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PasswordSetupForm } from "./PasswordSetupForm";
+import { MIN_PASSWORD_LENGTH } from "@/features/auth/resetPassword";
 
 const api = vi.hoisted(() => ({ change: vi.fn(), setup: vi.fn(), reauthenticate: vi.fn(), invalidate: vi.fn() }));
+const toastApi = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }));
+vi.mock("sonner", () => ({ toast: toastApi }));
 vi.mock("@/data/profiles", () => ({
   changeMyPassword: (...args: unknown[]) => api.change(...args),
   setMyPassword: (...args: unknown[]) => api.setup(...args),
@@ -32,6 +35,7 @@ describe("PasswordSetupForm", () => {
     fireEvent.click(screen.getByRole("button", { name: "Set password" }));
     expect(await screen.findByText("At least 8 characters")).toBeInTheDocument();
     expect(api.setup).not.toHaveBeenCalled();
+    expect(screen.getByText(`Use at least ${MIN_PASSWORD_LENGTH} characters.`)).toBeInTheDocument();
   });
 
   it("reports confirmation mismatch", async () => {
@@ -65,6 +69,7 @@ describe("PasswordSetupForm", () => {
     }));
     expect(api.invalidate).toHaveBeenCalled();
     expect(onSuccess).toHaveBeenCalled();
+    expect(toastApi.success).toHaveBeenCalledWith("Password changed");
   });
 
   it("disables submit while pending", async () => {
@@ -134,5 +139,6 @@ describe("PasswordSetupForm", () => {
     fillNewPasswords();
     fireEvent.click(screen.getByRole("button", { name: "Set password" }));
     expect(await screen.findByText("Password update failed")).toBeInTheDocument();
+    expect(toastApi.error).toHaveBeenCalledWith("Password update failed");
   });
 });

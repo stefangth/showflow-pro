@@ -54,7 +54,7 @@ export interface DeliverInviteArgs {
  * regardless of the invitee's own location, rather than reading the server's local zone.
  *
  * This is the exact day, not a guaranteed-valid one: `org_invitations.expires_at` is a
- * TIMESTAMP that keeps the row's creation time-of-day (`now() + interval '14 days'`), and
+ * TIMESTAMP that keeps the row's creation time-of-day (`now() + interval '30 days'`), and
  * `accept_invitation` gates on `expires_at > now()` exactly to the second, so the calendar
  * day this function names is only reliable for PART of itself, up to that time-of-day, not
  * the whole day. The expiryLine that renders it therefore pairs the date with a remedy
@@ -227,10 +227,12 @@ function invitationRedirect(deps: Deps, appOrigin: string): string {
  * generating an invite for a missing user creates it and the returned link is discarded. */
 export async function ensureInvitedAccount(
   deps: Deps,
-  args: { email: string; appOrigin: string },
+  args: { email: string; appOrigin: string; existingUserId?: string | null },
 ): Promise<{ userId: string | null; isNewUser: boolean }> {
   const email = args.email.toLowerCase();
-  const { data: existingId } = await deps.admin.rpc("get_user_id_by_email", { p_email: email });
+  const existingId = "existingUserId" in args
+    ? args.existingUserId
+    : (await deps.admin.rpc("get_user_id_by_email", { p_email: email })).data as string | null;
   if (existingId) return { userId: existingId as string, isNewUser: false };
   const { data, error } = await deps.admin.auth.admin.generateLink({
     type: "invite",

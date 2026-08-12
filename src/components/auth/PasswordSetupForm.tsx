@@ -3,9 +3,10 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
 import { Eye, EyeOff } from "lucide-react";
 import { useForm } from "react-hook-form";
+import { toast } from "sonner";
 import type { z } from "zod";
 import { changeMyPassword, requestPasswordReauthentication, setMyPassword } from "@/data/profiles";
-import { newPasswordSchema } from "@/features/auth/resetPassword";
+import { MIN_PASSWORD_LENGTH, newPasswordSchema } from "@/features/auth/resetPassword";
 import { invalidatePasswordStatus } from "@/hooks/usePasswordStatus";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -52,7 +53,11 @@ export function PasswordSetupForm({ mode, onSuccess, onCancel }: PasswordSetupFo
   const password = form.watch("password");
   const passwordError = form.formState.errors.password;
   const confirmError = form.formState.errors.confirm;
-  const strength = password.length === 0 ? "Not entered" : password.length < 8 ? "Needs 8 characters" : "Meets requirement";
+  const strength = password.length === 0
+    ? "Not entered"
+    : password.length < MIN_PASSWORD_LENGTH
+      ? `Needs ${MIN_PASSWORD_LENGTH} characters`
+      : "Meets requirement";
 
   const submit = form.handleSubmit(async ({ password }) => {
     setError(null);
@@ -65,6 +70,7 @@ export function PasswordSetupForm({ mode, onSuccess, onCancel }: PasswordSetupFo
         await changeMyPassword(supabase, { password, currentPassword });
       }
       await invalidatePasswordStatus(queryClient);
+      toast.success(mode === "setup" ? "Password added" : "Password changed");
       onSuccess();
     } catch (caught) {
       if (!awaitingNonce && needsReauthentication(caught)) {
@@ -73,11 +79,15 @@ export function PasswordSetupForm({ mode, onSuccess, onCancel }: PasswordSetupFo
           setAwaitingNonce(true);
           return;
         } catch (reauthError) {
-          setError(reauthError instanceof Error ? reauthError.message : "Could not request a reauthentication code");
+          const message = reauthError instanceof Error ? reauthError.message : "Could not request a reauthentication code";
+          setError(message);
+          toast.error(message);
           return;
         }
       }
-      setError(caught instanceof Error ? caught.message : "Could not update password");
+      const message = caught instanceof Error ? caught.message : "Could not update password";
+      setError(message);
+      toast.error(message);
     }
   });
 
@@ -110,7 +120,7 @@ export function PasswordSetupForm({ mode, onSuccess, onCancel }: PasswordSetupFo
           {passwordError && <p id="new-password-error" className="text-xs text-destructive">{passwordError.message}</p>}
           <div id="password-requirements" aria-live="polite" className="rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
             <p className="font-medium text-foreground">Password requirements</p>
-            <p>Use at least 8 characters.</p>
+            <p>Use at least {MIN_PASSWORD_LENGTH} characters.</p>
             <p id="password-strength"><span className="font-medium text-foreground">Password strength:</span> <span>{strength}</span></p>
           </div>
           <PasswordInput id="confirm-password" label="Confirm new password" value={form.watch("confirm")} onChange={(event) => form.setValue("confirm", event.target.value, { shouldValidate: form.formState.isSubmitted })} invalid={!!confirmError} describedBy={`password-requirements${confirmError ? " confirm-password-error" : ""}`} />

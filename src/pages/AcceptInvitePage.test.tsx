@@ -293,6 +293,9 @@ describe("AcceptInvitePage error paths (unchanged)", () => {
     fireEvent.click(screen.getByRole("button", { name: /continue/i }));
     expect(await screen.findByText(/no longer available/i)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /try again/i })).not.toBeInTheDocument();
+    const signIn = screen.getByRole("button", { name: /go to sign in/i });
+    fireEvent.click(signIn);
+    expect(navigateSpy).toHaveBeenCalledWith(ROUTES.LOGIN, { replace: true });
     expect(sessionStorage.getItem("showflow.pendingInvitationToken")).toBeNull();
   });
 
@@ -461,6 +464,19 @@ describe("AcceptInvitePage success screen", () => {
       expect(screen.getByRole("status")).toHaveTextContent(/password is ready/i);
       fireEvent.click(screen.getByRole("button", { name: /go to dashboard/i }));
       expect(navigateSpy).toHaveBeenCalledWith(ROUTES.DASHBOARD, { replace: true });
+    });
+
+    it("keeps the successful password confirmation when the status refetch fails afterward", async () => {
+      passwordStatusHolder.data = false;
+      acceptInvitationMock.mockResolvedValueOnce({ orgId: org1.id, artistLinked: true });
+      renderAt(`${ROUTES.ACCEPT_INVITE}?token=abc123`);
+      fireEvent.click(await screen.findByRole("button", { name: /create a password/i }));
+
+      passwordStatusHolder.isError = true;
+      fireEvent.click(screen.getByRole("button", { name: /complete password setup/i }));
+
+      expect(screen.getByRole("status")).toHaveTextContent(/password is ready/i);
+      expect(screen.queryByText(/manage sign-in methods from your profile/i)).not.toBeInTheDocument();
     });
 
     it("treats password-status failure as non-blocking without guessing", async () => {

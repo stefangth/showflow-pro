@@ -25,6 +25,31 @@ Deno.test("ensureInvitedAccount: existing user returns its id without generating
   assertEquals(calls.some((c) => c.table === "auth.admin.generateLink"), false);
 });
 
+Deno.test("ensureInvitedAccount: a pre-resolved existing user skips the duplicate lookup", async () => {
+  const { deps, calls } = makeFakeDeps();
+  const r = await ensureInvitedAccount(deps, {
+    email: "known@x.com",
+    appOrigin: APP_ORIGIN,
+    existingUserId: "u9",
+  });
+  assertEquals(r, { userId: "u9", isNewUser: false });
+  assertEquals(calls.some((c) => c.table === "rpc:get_user_id_by_email"), false);
+  assertEquals(calls.some((c) => c.table === "auth.admin.generateLink"), false);
+});
+
+Deno.test("ensureInvitedAccount: a pre-resolved missing user skips lookup and creates the account", async () => {
+  const { deps, calls } = makeFakeDeps({
+    generateLinkResult: { data: { user: { id: "new-1" } }, error: null },
+  });
+  const r = await ensureInvitedAccount(deps, {
+    email: "new@x.com",
+    appOrigin: APP_ORIGIN,
+    existingUserId: null,
+  });
+  assertEquals(r, { userId: "new-1", isNewUser: true });
+  assertEquals(calls.some((c) => c.table === "rpc:get_user_id_by_email"), false);
+});
+
 Deno.test("ensureInvitedAccount: net-new user is created with an invite link that is discarded", async () => {
   const { deps, calls } = makeFakeDeps({
     generateLinkResult: {

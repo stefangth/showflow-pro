@@ -98,6 +98,7 @@ Deno.test("create-invitation DI: admin → 200 with invitation, inserts row + in
   const insert = calls.find((c) => c.table === "org_invitations" && c.method === "insert");
   assertExists(insert);
   assertEquals(insert.args[0], { org_id: "org-1", email: "invitee@x.com", role: "producer", invited_by: "u1" });
+  assertEquals(calls.filter((c) => c.table === "rpc:get_user_id_by_email").length, 1);
 });
 
 Deno.test("create-invitation DI: email is lowercased + trimmed before insert", async () => {

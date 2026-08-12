@@ -83,14 +83,14 @@ describe("ProfilePage sign-in and security", () => {
     await waitFor(() => expect(screen.getByRole("button", { name: action })).toHaveFocus());
   });
 
-  it("collapses after success, refreshes status, and restores focus", async () => {
+  it("collapses after success without a duplicate status refetch and restores focus", async () => {
     renderProfile();
     const trigger = screen.getByRole("button", { name: "Add password" });
     fireEvent.click(trigger);
     fireEvent.click(screen.getByRole("button", { name: "Complete password update" }));
 
     expect(screen.queryByRole("form", { name: "Set a password" })).not.toBeInTheDocument();
-    expect(status.refetch).toHaveBeenCalledOnce();
+    expect(status.refetch).not.toHaveBeenCalled();
     await waitFor(() => expect(screen.getByRole("button", { name: "Add password" })).toHaveFocus());
   });
 

@@ -228,6 +228,19 @@ function PostAcceptanceHandoff({
     heading?.focus();
   }, [showSetup]);
 
+  if (setupComplete) {
+    return (
+      <>
+        <p role="status" className="text-sm font-medium text-foreground">
+          Your password is ready. You can also keep using magic links.
+        </p>
+        <Button variant={dashboardIsDeadEnd ? 'outline' : 'default'} onClick={onDashboard}>
+          Go to dashboard
+        </Button>
+      </>
+    );
+  }
+
   if (passwordStatus.isLoading) {
     return <Skeleton aria-label="Checking sign-in methods" className="mx-auto h-11 w-full" />;
   }
@@ -245,14 +258,9 @@ function PostAcceptanceHandoff({
     );
   }
 
-  if (passwordStatus.data || setupComplete) {
+  if (passwordStatus.data) {
     return (
       <>
-        {setupComplete && (
-          <p role="status" className="text-sm font-medium text-foreground">
-            Your password is ready. You can also keep using magic links.
-          </p>
-        )}
         <Button variant={dashboardIsDeadEnd ? 'outline' : 'default'} onClick={onDashboard}>
           Go to dashboard
         </Button>
@@ -465,6 +473,11 @@ export default function AcceptInvitePage() {
             {exchangeError !== 'unavailable' && (
               <Button className="w-full" disabled={exchangePending} onClick={handleExchange}>
                 {exchangePending ? 'Continuing…' : retryable ? 'Try again' : 'Continue'}
+              </Button>
+            )}
+            {exchangeError === 'unavailable' && (
+              <Button className="w-full" variant="outline" onClick={() => navigate(ROUTES.LOGIN, { replace: true })}>
+                Go to sign in
               </Button>
             )}
           </CardContent>

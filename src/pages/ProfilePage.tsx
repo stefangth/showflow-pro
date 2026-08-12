@@ -53,7 +53,6 @@ export default function ProfilePage() {
     window.setTimeout(() => passwordActionRef.current?.focus(), 0);
   };
   const completePasswordForm = () => {
-    void passwordStatus.refetch();
     closePasswordForm();
   };
 
