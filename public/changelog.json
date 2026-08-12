@@ -1,5 +1,23 @@
 [
   {
+    "version": "1.16.1",
+    "date": "2026-08-12",
+    "dateLabel": "August 12, 2026",
+    "title": "Invitations that stay ready when your team is",
+    "changes": {
+      "improved": [
+        {
+          "title": "30 days to join",
+          "description": "Invitation links now remain usable for their full 30-day window, and resending an invitation starts a fresh 30 days."
+        },
+        {
+          "title": "Choose how you sign in",
+          "description": "After joining, continue with magic links or add a password straight away. You can also add or change your password later from Profile without giving up magic-link access."
+        }
+      ]
+    }
+  },
+  {
     "version": "1.16.0",
     "date": "2026-08-11",
     "dateLabel": "August 11, 2026",

@@ -2,6 +2,14 @@
 
 What's new in ShowFlow, newest first.
 
+## 1.16.1 — August 12, 2026
+
+*Invitations that stay ready when your team is*
+
+### Improved
+- **30 days to join** — Invitation links now remain usable for their full 30-day window, and resending an invitation starts a fresh 30 days.
+- **Choose how you sign in** — After joining, continue with magic links or add a password straight away. You can also add or change your password later from Profile without giving up magic-link access.
+
 ## 1.16.0 — August 11, 2026
 
 *Answering "who can see our data" without leaving the app*
