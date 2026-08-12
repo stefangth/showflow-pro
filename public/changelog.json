@@ -1,36 +1,18 @@
 [
   {
-    "version": "1.16.1",
+    "version": "1.15.1",
     "date": "2026-08-12",
     "dateLabel": "August 12, 2026",
     "title": "Invitations that stay ready when your team is",
     "changes": {
       "improved": [
         {
-          "title": "30 days to join",
-          "description": "Invitation links now remain usable for their full 30-day window, and resending an invitation starts a fresh 30 days."
+          "title": "Invitation links that last longer",
+          "description": "Invitation links remain usable for longer, and resending an invitation gives the recipient more time to join."
         },
         {
           "title": "Choose how you sign in",
-          "description": "After joining, continue with magic links or add a password straight away. You can also add or change your password later from Profile without giving up magic-link access."
-        }
-      ]
-    }
-  },
-  {
-    "version": "1.16.0",
-    "date": "2026-08-11",
-    "dateLabel": "August 11, 2026",
-    "title": "Answering \"who can see our data\" without leaving the app",
-    "changes": {
-      "new": [
-        {
-          "title": "Trust and data",
-          "description": "A new section in Settings shows what your organization holds, who can read each kind of record, and how long every category is kept. Pick a role to see exactly what it reads and the mechanism that decides it, so you can answer an artist manager on the call instead of promising to check."
-        },
-        {
-          "title": "A public trust center",
-          "description": "The same controls are published at showflow.pro/trust for anyone reviewing ShowFlow before they sign. No form, no NDA, no email gate."
+          "description": "After joining, choose between magic links and a password. Passwords can also be added or changed later from Profile."
         }
       ]
     }
@@ -39,7 +21,7 @@
     "version": "1.15.0",
     "date": "2026-08-08",
     "dateLabel": "August 8, 2026",
-    "title": "A guided first run on your dashboard",
+    "title": "A guided first run, with trust built in",
     "changes": {
       "new": [
         {
@@ -49,6 +31,14 @@
         {
           "title": "The rules you inherited",
           "description": "Once setup is complete, the same panel becomes a short, read-only summary of how your organization works, so anyone who joins can see the decisions behind every number on the page."
+        },
+        {
+          "title": "Trust and data",
+          "description": "A new section in Settings shows what your organization holds, who can read each kind of record, and how long every category is kept. Pick a role to see exactly what it reads and the mechanism that decides it, so you can answer an artist manager on the call instead of promising to check."
+        },
+        {
+          "title": "A public trust center",
+          "description": "The same controls are published at showflow.pro/trust for anyone reviewing ShowFlow before they sign. No form, no NDA, no email gate."
         }
       ],
       "improved": [
