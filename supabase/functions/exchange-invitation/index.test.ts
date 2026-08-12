@@ -19,6 +19,9 @@ function depsFor(
       calls.push({ name: "mint", args });
       return actionUrl;
     },
+    releaseClaim: async (token, claimedAt) => {
+      calls.push({ name: "release", args: { token, claimedAt } });
+    },
     logError: (...values) => logs.push(values.map(String).join(" ")),
   };
   return { deps, calls, logs };
@@ -74,15 +77,41 @@ Deno.test("exchange-invitation: claim errors return a generic 500", async () => 
   assertEquals(await body(response), { error: "Internal error" });
 });
 
-Deno.test("exchange-invitation: a missing minted action link returns a generic 500", async () => {
-  const { deps } = depsFor({ data: { status: "ok", email: "invitee@example.com" }, error: null }, "");
+Deno.test("exchange-invitation: a missing minted action link releases its exact claim before returning 500", async () => {
+  const { deps, calls } = depsFor({
+    data: { status: "ok", email: "invitee@example.com", claimed_at: "2026-08-12T09:00:00Z" },
+    error: null,
+  }, "");
   const response = await handler(request(), deps);
   assertEquals(response.status, 500);
   assertEquals(await body(response), { error: "Internal error" });
+  assertEquals(calls.find((call) => call.name === "release")?.args, {
+    token: TOKEN,
+    claimedAt: "2026-08-12T09:00:00Z",
+  });
+});
+
+Deno.test("exchange-invitation: a thrown mint failure releases its exact claim before returning 500", async () => {
+  const { deps, calls } = depsFor({
+    data: { status: "ok", email: "invitee@example.com", claimed_at: "2026-08-12T09:00:00Z" },
+    error: null,
+  });
+  deps.mintActionLink = async () => {
+    throw new Error("transient auth failure");
+  };
+  const response = await handler(request(), deps);
+  assertEquals(response.status, 500);
+  assertEquals(calls.find((call) => call.name === "release")?.args, {
+    token: TOKEN,
+    claimedAt: "2026-08-12T09:00:00Z",
+  });
 });
 
 Deno.test("exchange-invitation: success mints from the claimed email without exposing secrets", async () => {
-  const { deps, calls, logs } = depsFor({ data: { status: "ok", email: "claimed@example.com" }, error: null });
+  const { deps, calls, logs } = depsFor({
+    data: { status: "ok", email: "claimed@example.com", claimed_at: "2026-08-12T09:00:00Z" },
+    error: null,
+  });
   const response = await handler(request(), deps);
   assertEquals(response.status, 200);
   const responseBody = await body(response);
@@ -96,6 +125,7 @@ Deno.test("exchange-invitation: success mints from the claimed email without exp
   assertEquals(observable.includes(TOKEN), false);
   assertEquals(logs.some((line) => line.includes("claimed@example.com")), false);
   assertEquals(logs, []);
+  assertEquals(calls.some((call) => call.name === "release"), false);
 });
 
 function request(): Request {

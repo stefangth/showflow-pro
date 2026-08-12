@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import type { AppRole } from "@/config/app.config";
-import { readEdgeError } from "@/lib/edgeErrors";
+import { edgeResponseContext, readEdgeError } from "@/lib/edgeErrors";
 
 export interface Invitation {
   id: string;
@@ -33,12 +33,6 @@ export class InvitationExchangeError extends Error {
   }
 }
 
-function responseContext(error: unknown): Response | null {
-  if (typeof error !== "object" || error === null || !("context" in error)) return null;
-  const context = (error as { context?: unknown }).context;
-  return context instanceof Response ? context : null;
-}
-
 /** Exchange a durable invitation token for a fresh, short-lived Auth action URL. */
 export async function exchangeInvitation(
   client: SupabaseClient<Database>,
@@ -48,7 +42,7 @@ export async function exchangeInvitation(
     body: { token: args.token, app_origin: args.appOrigin },
   });
   if (error) {
-    const context = responseContext(error);
+    const context = edgeResponseContext(error);
     if (context?.status === 410) throw new InvitationExchangeError("unavailable");
     if (context?.status === 429) {
       let retryAfterSeconds: number | undefined;

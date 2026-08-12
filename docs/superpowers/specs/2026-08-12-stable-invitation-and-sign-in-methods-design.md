@@ -175,12 +175,12 @@ If Supabase requires recent authentication, call `auth.reauthenticate()`, collec
 
 ### Existing password change
 
-For `has_password = true`, require current, new, and confirmation fields. Replace the current manual `signInWithPassword` verification with the supported `currentPassword` attribute (the installed Supabase JS v2 contract):
+For `has_password = true`, require current, new, and confirmation fields. Replace the current manual `signInWithPassword` verification with the supported `current_password` attribute (available in the installed Supabase JS v2 contract since v2.102.0):
 
 ```ts
 supabase.auth.updateUser({
   password: newPassword,
-  currentPassword,
+  current_password: currentPassword,
 });
 ```
 
@@ -378,6 +378,6 @@ A password or reauthentication failure would once again block the organization i
 
 ## Current Supabase references
 
-- [Password-based Auth](https://supabase.com/docs/guides/auth/passwords) — authenticated password updates and the Supabase JS v2 `currentPassword` property.
+- [Password-based Auth](https://supabase.com/docs/guides/auth/passwords) — authenticated password updates and the Supabase JS v2 `current_password` property (v2.102.0+).
 - [Password security](https://supabase.com/docs/guides/auth/password-security) — recent-session and nonce reauthentication behavior.
 - [`updateUser`](https://supabase.com/docs/reference/javascript/auth-updateuser) — authenticated password and nonce update contract.

@@ -9,11 +9,24 @@ type ClaimResult = { data: unknown; error: unknown };
 export interface ExchangeInvitationDeps {
   claimInvitation: (token: string, cooldownSeconds: number) => Promise<ClaimResult>;
   mintActionLink: (args: { email: string; appOrigin: string }) => Promise<string>;
+  releaseClaim: (token: string, claimedAt: string) => Promise<void>;
   logError: (...values: unknown[]) => void;
 }
 
 type Body = { token?: unknown; app_origin?: unknown };
-type Claim = { status?: unknown; email?: unknown; retry_after_seconds?: unknown };
+type Claim = { status?: unknown; email?: unknown; claimed_at?: unknown; retry_after_seconds?: unknown };
+
+async function releaseFailedClaim(
+  deps: ExchangeInvitationDeps,
+  token: string,
+  claimedAt: string,
+): Promise<void> {
+  try {
+    await deps.releaseClaim(token, claimedAt);
+  } catch {
+    deps.logError("exchange-invitation: failed claim could not be released");
+  }
+}
 
 export async function handler(req: Request, deps: ExchangeInvitationDeps): Promise<Response> {
   if (req.method === "OPTIONS") return preflight();
@@ -49,13 +62,24 @@ export async function handler(req: Request, deps: ExchangeInvitationDeps): Promi
       response.headers.set("Retry-After", String(retryAfterSeconds));
       return response;
     }
-    if (claim?.status !== "ok" || typeof claim.email !== "string" || !claim.email.trim()) {
+    if (
+      claim?.status !== "ok" || typeof claim.email !== "string" || !claim.email.trim() ||
+      typeof claim.claimed_at !== "string" || !claim.claimed_at
+    ) {
       deps.logError("exchange-invitation: invalid claim result");
       return json({ error: "Internal error" }, 500);
     }
 
-    const actionUrl = await deps.mintActionLink({ email: claim.email, appOrigin });
+    let actionUrl: string;
+    try {
+      actionUrl = await deps.mintActionLink({ email: claim.email, appOrigin });
+    } catch {
+      await releaseFailedClaim(deps, token, claim.claimed_at);
+      deps.logError("exchange-invitation: action link mint failed");
+      return json({ error: "Internal error" }, 500);
+    }
     if (!actionUrl) {
+      await releaseFailedClaim(deps, token, claim.claimed_at);
       deps.logError("exchange-invitation: action link mint failed");
       return json({ error: "Internal error" }, 500);
     }
@@ -75,6 +99,14 @@ function productionDeps(): ExchangeInvitationDeps {
         p_cooldown_seconds: cooldownSeconds,
       }),
     mintActionLink: (args) => mintInvitationActionLink(deps, args),
+    releaseClaim: async (token, claimedAt) => {
+      const { error } = await deps.admin
+        .from("org_invitations")
+        .update({ last_auth_exchange_at: null })
+        .eq("token", token)
+        .eq("last_auth_exchange_at", claimedAt);
+      if (error) throw error;
+    },
     logError: (...values) => console.error(...values),
   };
 }

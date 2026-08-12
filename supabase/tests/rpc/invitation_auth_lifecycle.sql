@@ -1,7 +1,7 @@
 -- Invitation lifetime, auth-exchange, and authenticated self password-status contracts.
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT plan(34);
+SELECT plan(35);
 
 SET session_replication_role = replica;
 
@@ -149,9 +149,16 @@ UPDATE public.org_invitations
 SET last_auth_exchange_at = NULL
 WHERE token = 'valid-token';
 SELECT is(
-  public.claim_invitation_auth_exchange('valid-token', 60),
+  public.claim_invitation_auth_exchange('valid-token', 60) - 'claimed_at',
   '{"status":"ok","email":"valid@test.com"}'::jsonb,
-  'the successful exchange contract contains only status and email'
+  'the successful exchange contract contains status and email alongside its claim timestamp'
+);
+UPDATE public.org_invitations
+SET last_auth_exchange_at = NULL
+WHERE token = 'valid-token';
+SELECT ok(
+  (public.claim_invitation_auth_exchange('valid-token', 60)->>'claimed_at')::timestamptz IS NOT NULL,
+  'a successful exchange returns the exact timestamp needed for a conditional rollback'
 );
 SELECT is(
   public.claim_invitation_auth_exchange('valid-token', 60)->>'status',

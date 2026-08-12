@@ -19,7 +19,7 @@
 - Passwordless users see two equal, initially unselected choices: `Create a password` and `Continue with magic links`.
 - Profile labels the section `Sign-in & security`, shows magic links as active, and offers `Add password` or `Change password` according to server-authoritative password status.
 - Password status exposes only a boolean for `auth.uid()`; it must not expose `auth.users` rows or password hashes.
-- Use Supabase JS v2 camelCase `currentPassword` and `nonce` properties for password changes; correct the design document's obsolete `current_password` spelling.
+- Use Supabase JS v2's `current_password` (v2.102.0+) and `nonce` properties for password changes.
 - Invitation-exchange cooldown state is separate from login magic-link throttle state.
 - Edge Functions and logs must not print or return stable invitation tokens.
 - Follow `CLAUDE.md`: no `any`, use semantic design tokens, no em/en dashes in user-facing copy, data functions accept a Supabase client, and tests use `supabaseFake` or dependency injection.
@@ -65,7 +65,7 @@
 - Modify: `src/test/supabaseFake.ts` and `src/test/supabaseFake.auth.test.ts` - `reauthenticate()` support.
 - Create: `src/components/auth/PasswordSetupForm.tsx` and `.test.tsx` - reusable inline setup/change form.
 - Modify: `src/pages/ProfilePage.tsx`; create `src/pages/ProfilePage.security.test.tsx` - Sign-in & security method rows.
-- Modify: `docs/superpowers/specs/2026-08-12-stable-invitation-and-sign-in-methods-design.md` - correct `currentPassword` spelling.
+- Modify: `docs/superpowers/specs/2026-08-12-stable-invitation-and-sign-in-methods-design.md` - document the supported `current_password` spelling.
 
 ### Full-story verification and release notes
 
@@ -451,7 +451,7 @@ Run: `git add src/features/auth/invitationToken.ts src/features/auth/invitationT
 - Produces: `fetchMyHasPassword(client): Promise<boolean>`.
 - Produces: `setMyPassword(client, password): Promise<void>` using `auth.updateUser({ password })`.
 - Produces: `requestPasswordReauthentication(client): Promise<void>` using `auth.reauthenticate()`.
-- Produces: `changeMyPassword(client, { password, currentPassword?, nonce? }): Promise<void>` using `auth.updateUser({ password, currentPassword, nonce })` with undefined keys omitted.
+- Produces: `changeMyPassword(client, { password, currentPassword?, nonce? }): Promise<void>` using `auth.updateUser({ password, current_password, nonce })` with undefined keys omitted.
 - Produces: `usePasswordStatus()` with query key `['auth', 'has-password']` and an exported invalidation helper/hook mutation path.
 - Produces: `<PasswordSetupForm mode="setup" | "change" onSuccess onCancel?>`.
 
@@ -461,7 +461,7 @@ Assert `fake.auth.reauthenticate()` records `{ table: "auth", method: "reauthent
 
 - [ ] **Step 2: Rewrite profile data tests**
 
-Test false/true RPC results, RPC errors, setup `updateUser({ password })`, change `updateUser({ password, currentPassword: "old-secret" })`, nonce change `updateUser({ password, nonce: "123456" })`, reauthentication, and propagation of Auth errors. Assert no data helper calls `signInWithPassword`.
+Test false/true RPC results, RPC errors, setup `updateUser({ password })`, change `updateUser({ password, current_password: "old-secret" })`, nonce change `updateUser({ password, nonce: "123456" })`, reauthentication, and propagation of Auth errors. Assert no data helper calls `signInWithPassword`.
 
 - [ ] **Step 3: Write hook and form tests**
 
@@ -475,7 +475,7 @@ Expected: FAIL on absent RPC/auth methods, hook, and form.
 
 - [ ] **Step 5: Implement fake and data primitives**
 
-Add `reauthenticate()` beside existing Auth fake methods. Replace the manual password verification flow in `profiles.ts` with the four interfaces above. For `changeMyPassword`, construct the update payload conditionally and use the installed Supabase JS v2 property names `currentPassword` and `nonce` exactly.
+Add `reauthenticate()` beside existing Auth fake methods. Replace the manual password verification flow in `profiles.ts` with the four interfaces above. For `changeMyPassword`, construct the update payload conditionally and use the installed Supabase JS v2 property names `current_password` and `nonce` exactly.
 
 - [ ] **Step 6: Implement the password-status hook**
 
@@ -487,7 +487,7 @@ Reuse `newPasswordSchema` from `src/features/auth/resetPassword.ts`. Keep local 
 
 - [ ] **Step 8: Correct the approved design document**
 
-Replace the obsolete `current_password` property spelling with `currentPassword` and note that this is the installed Supabase JS v2 contract; do not change the approved behavior.
+Document `current_password` as the supported Supabase JS v2.102.0+ property; do not change the approved behavior.
 
 - [ ] **Step 9: Run focused tests, type-check, and commit**
 

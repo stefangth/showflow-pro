@@ -194,11 +194,11 @@ export const SYSTEM_MAP_NODES: SystemMapNode[] = [
     subsystems: ["email", "platform", "booking"],
     detail: {
       Gestures:
-        "Unsubscribe link (token-credentialed) · Resend bounce/complaint webhook (HMAC) · Documenso DOCUMENT_COMPLETED webhook (shared secret) · /accept-invite?token=",
-      Cite: "src/pages/UnsubscribePage.tsx · handle-email-suppression · documenso-webhook",
+        "Unsubscribe link (token-credentialed) · Resend bounce/complaint webhook (HMAC) · Documenso DOCUMENT_COMPLETED webhook (shared secret) · /accept-invite?token= → exchange-invitation → accept_invitation",
+      Cite: "src/pages/UnsubscribePage.tsx · src/pages/AcceptInvitePage.tsx · handle-email-suppression · documenso-webhook",
     },
   },
-  // ---- edge functions (25)
+  // ---- edge functions (27)
   {
     id: "f_poll",
     column: "fn",
@@ -477,8 +477,24 @@ export const SYSTEM_MAP_NODES: SystemMapNode[] = [
       Trigger: "Admin → Invites; artist-invite surfaces",
       Auth: "requireOrgRole(admin) · verify_jwt=true",
       Writes: "org_invitations (token via DB default; optional artist_id link)",
-      Effects: "org-invitation email (best-effort — invite survives failure)",
-      Cite: "create-invitation/index.ts:33-86",
+      Effects: "org-invitation email carrying the stable /accept-invite?token= URL (best-effort — invite survives failure)",
+      Cite: "create-invitation/index.ts",
+    },
+  },
+  {
+    id: "f_exchange_inv",
+    column: "fn",
+    kind: "fn",
+    label: "exchange-invitation",
+    sub: "stable-token credential",
+    subsystems: ["platform"],
+    detail: {
+      Trigger: "Public invitation page Continue action",
+      Auth: "stable invitation token · verify_jwt=false",
+      Writes: "claim_invitation_auth_exchange atomically stamps a 60s cooldown; a failed Auth mint conditionally clears only that exact stamp",
+      Effects: "Supabase Admin API mints a fresh one-time invite or magic-link action URL",
+      Failure: "unavailable 410 · throttled 429 + Retry-After · mint failure releases the claim and returns 500",
+      Cite: "exchange-invitation/index.ts · 20260812200000_release_failed_invitation_exchange.sql",
     },
   },
   {
@@ -491,7 +507,8 @@ export const SYSTEM_MAP_NODES: SystemMapNode[] = [
     detail: {
       Trigger: "Invites tab / artist sheet / platform popover",
       Auth: "requireOrgRole(admin) after disclosure-safe 403",
-      Effects: "org-invitation email, new idempotency key",
+      Writes: "renew_invitation_for_resend restarts expiry at now + 30 days and clears exchange cooldown",
+      Effects: "org-invitation email carrying the stable app URL, new idempotency key",
       Cite: "resend-invitation/index.ts",
     },
   },
@@ -908,6 +925,7 @@ export const SYSTEM_MAP_NODES: SystemMapNode[] = [
     subsystems: ["platform"],
     detail: {
       Senders: "create-invitation · resend-invitation · provision-org (distinct idempotency keys)",
+      Link: "stable /accept-invite?token= URL; exchange-invitation mints the short-lived Auth action only when Continue is pressed",
       Cite: "registry.ts",
     },
   },
@@ -1003,6 +1021,7 @@ export const SYSTEM_MAP_EDGES: SystemMapEdge[] = [
   { from: "u_public", to: "f_unsub" },
   { from: "u_public", to: "f_suppress" },
   { from: "u_public", to: "f_documenso" },
+  { from: "u_public", to: "f_exchange_inv" },
   // user → db (direct guarded mutations)
   { from: "u_artist", to: "d_bookings", label: "accept / decline" },
   { from: "u_artist", to: "d_blocked", label: "block / unblock" },
@@ -1044,6 +1063,7 @@ export const SYSTEM_MAP_EDGES: SystemMapEdge[] = [
   { from: "f_unsub", to: "d_suppress" },
   { from: "f_unsub", to: "d_emaillog" },
   { from: "f_create_inv", to: "d_invites" },
+  { from: "f_exchange_inv", to: "d_invites", label: "atomic cooldown claim / conditional release" },
   { from: "f_provision", to: "d_invites" },
   { from: "f_health", to: "d_cronhealth" },
   { from: "f_health", to: "d_notif" },
