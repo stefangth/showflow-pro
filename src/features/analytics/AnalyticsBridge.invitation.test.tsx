@@ -7,12 +7,15 @@ import { AnalyticsBridge } from "./AnalyticsBridge";
 const analyticsLocations: string[] = [];
 
 vi.mock("@/features/consent/ConsentContext", () => ({
+  readStoredConsent: () => null,
   useConsent: () => ({ consent: { analytics: true, sessionReplay: false, errorTracking: false } }),
 }));
 
 vi.mock("./posthog", () => ({
   readAnalyticsConfig: () => ({ key: "phc_test", host: "https://analytics.test" }),
   applyConsent: vi.fn(() => analyticsLocations.push(`${window.location.pathname}${window.location.search}`)),
+  bootstrapAnalytics: vi.fn(),
+  capturePageview: vi.fn(),
 }));
 
 function InvitationRoute() {
