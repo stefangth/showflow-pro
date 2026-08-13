@@ -14,7 +14,6 @@ import { AnalyticsBridge } from "@/features/analytics/AnalyticsBridge";
 import { AnalyticsIdentityBridge } from "@/features/analytics/AnalyticsIdentityBridge";
 import { AppErrorBoundary } from "@/features/analytics/AppErrorBoundary";
 import { ProtectedRoute, PlatformRoute } from "@/features/auth/ProtectedRoute";
-import { Analytics } from "@vercel/analytics/react";
 import PlatformPage from "./pages/PlatformPage";
 import AppLayout from "@/components/layout/AppLayout";
 import { ROUTES } from "@/config/app.config";
@@ -123,7 +122,6 @@ const App = () => (
         <CookieConsentBanner />
         </ConsentProvider>
       </BrowserRouter>
-      <Analytics />
     </TooltipProvider>
     </ThemeProvider>
   </QueryClientProvider>
