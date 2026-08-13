@@ -2,7 +2,7 @@
 -- Pure immutable function; no role switch needed.
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT plan(11);
+SELECT plan(12);
 
 -- Representative key per arm resolves to the right capability.
 SELECT is(public.app_setting_capability('offer_response_window_hours'), 'producer_can_edit_booking_settings', 'booking key -> edit_booking_settings');

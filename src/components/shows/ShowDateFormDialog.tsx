@@ -107,9 +107,14 @@ export function ShowDateFormDialog({
   }, [open, showDate, defaultShowId]);
 
   // Creating a date is deliberately opt-in: opening Tier 1 can immediately notify artists.
+  // Initialize only when the dialog opens so a later flow refetch cannot erase the user's choice.
+  useEffect(() => {
+    if (open && mode === "create") setOpenOffers(false);
+  }, [open, mode]);
+
   // Edit mode keeps its existing flow-driven auto-open behavior.
   useEffect(() => {
-    if (open) setOpenOffers(mode === "create" ? false : (flow?.auto_open_tier1 ?? true) && (flow?.artist_acceptance ?? true));
+    if (open && mode === "edit") setOpenOffers((flow?.auto_open_tier1 ?? true) && (flow?.artist_acceptance ?? true));
   }, [open, flow, mode]);
 
   const activeShows = useMemo(() => (shows ?? []).filter((s) => s.status !== "archived"), [shows]);

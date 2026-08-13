@@ -19,6 +19,7 @@ import { BOOKING_ENGINE_DEFAULTS } from "@/config/app.config";
 import { fetchCustomFieldDefs } from "@/data/customFields";
 import { useSettingsAudit } from "@/hooks/useSettingsAudit";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FlowPresets } from "./FlowPresets";
@@ -74,7 +75,12 @@ export function BookingFlowTab({ get, set, dirtyKeys, saving, onSave, onDiscard,
     queryFn: () => fetchCustomFieldDefs(supabase, { orgId, entity: "show_dates" }),
     enabled: Boolean(orgId),
   });
-  const { data: platformTemplatesRaw } = useQuery({
+  const {
+    data: platformTemplatesRaw,
+    isLoading: templatesLoading,
+    isError: templatesError,
+    error: templatesQueryError,
+  } = useQuery({
     queryKey: ["platform", "booking-flow-templates"],
     queryFn: () => fetchPlatformBookingTemplates(supabase),
   });
@@ -163,7 +169,16 @@ export function BookingFlowTab({ get, set, dirtyKeys, saving, onSave, onDiscard,
           </AlertDescription>
         </Alert>
       )}
-      <FlowPresets active={selected} customized={customized} onSelect={onPreset} disabled={stepsDisabled} />
+      {templatesLoading ? (
+        <Skeleton className="h-28 w-full" />
+      ) : templatesError ? (
+        <Alert variant="destructive">
+          <AlertTitle>Booking templates could not be loaded</AlertTitle>
+          <AlertDescription>{(templatesQueryError as Error).message}</AlertDescription>
+        </Alert>
+      ) : (
+        <FlowPresets active={selected} customized={customized} onSelect={onPreset} disabled={stepsDisabled} />
+      )}
       <div className="grid gap-5 lg:grid-cols-[1fr_340px]">
         <FlowTimeline
           flow={flow}
