@@ -1,7 +1,8 @@
 import { useEffect } from 'react';
 import posthog from 'posthog-js';
+import { useLocation } from 'react-router-dom';
 import { useConsent } from '@/features/consent/ConsentContext';
-import { applyConsent, readAnalyticsConfig, type AnalyticsClient } from './posthog';
+import { applyConsent, capturePageview, readAnalyticsConfig, type AnalyticsClient } from './posthog';
 
 /**
  * Bridges the GDPR consent state to PostHog. Renders nothing; it only reconciles
@@ -17,11 +18,16 @@ const client = posthog as unknown as AnalyticsClient;
 
 export function AnalyticsBridge(): null {
   const { consent } = useConsent();
+  const location = useLocation();
 
   useEffect(() => {
     // `consent` is a stable useState value that only changes when a category flips.
+    // Manual pageviews deliberately follow React Router instead of PostHog's
+    // history extension: the extension only attaches at init, while analytics
+    // consent may be granted after error tracking initialized the SDK.
     applyConsent(client, config, consent);
-  }, [consent]);
+    capturePageview(client, consent);
+  }, [consent, location.pathname, location.search, location.hash]);
 
   return null;
 }

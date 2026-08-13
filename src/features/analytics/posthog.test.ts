@@ -3,6 +3,7 @@ import type { ConsentChoices } from '@/features/consent/ConsentContext';
 import {
   applyConsent,
   captureException,
+  capturePageview,
   readAnalyticsConfig,
   resetAnalyticsForTests,
   type AnalyticsClient,
@@ -19,6 +20,7 @@ function makeClient() {
     startSessionRecording: vi.fn(),
     stopSessionRecording: vi.fn(),
     captureException: vi.fn(),
+    capture: vi.fn(),
   };
   return client;
 }
@@ -79,7 +81,7 @@ describe('applyConsent', () => {
     expect(opts).toMatchObject({
       api_host: HOST,
       autocapture: true,
-      capture_pageview: 'history_change',
+      capture_pageview: false,
       capture_exceptions: false,
       disable_session_recording: true,
       opt_out_capturing_by_default: true,
@@ -114,7 +116,7 @@ describe('applyConsent', () => {
     expect(client.init).toHaveBeenCalledTimes(1);
     expect(client.set_config).toHaveBeenLastCalledWith({
       autocapture: true,
-      capture_pageview: 'history_change',
+      capture_pageview: false,
       capture_exceptions: true,
     });
     expect(client.startSessionRecording).toHaveBeenCalled();
@@ -144,5 +146,21 @@ describe('applyConsent', () => {
 
     expect(captureException(client, choices({ errorTracking: true }), error)).toBe(true);
     expect(client.captureException).toHaveBeenCalledWith(error);
+  });
+
+  it('captures manual pageviews only after analytics consent is active', () => {
+    const client = makeClient();
+
+    expect(capturePageview(client, choices({ analytics: true }))).toBe(false);
+
+    applyConsent(client, configured, choices({ errorTracking: true }));
+    expect(capturePageview(client, choices({ errorTracking: true }))).toBe(false);
+
+    applyConsent(client, configured, choices({ analytics: true, errorTracking: true }));
+    expect(capturePageview(client, choices({ analytics: true, errorTracking: true }))).toBe(true);
+    expect(client.capture).toHaveBeenCalledWith('$pageview');
+
+    applyConsent(client, configured, choices({ errorTracking: true }));
+    expect(capturePageview(client, choices({ errorTracking: true }))).toBe(false);
   });
 });

@@ -30,6 +30,7 @@ export interface AnalyticsClient {
   startSessionRecording(): void;
   stopSessionRecording(): void;
   captureException(error: unknown): void;
+  capture(event: string): void;
 }
 
 export interface AnalyticsConfig {
@@ -81,7 +82,10 @@ export function applyConsent(
     client.init(config.key, {
       api_host: config.host,
       autocapture: choices.analytics,
-      capture_pageview: choices.analytics ? 'history_change' : false,
+      // Route changes are captured explicitly by AnalyticsBridge. Keeping the
+      // SDK's history extension off makes errorTracking → analytics consent
+      // transitions reliable because extensions only attach during init.
+      capture_pageview: false,
       capture_exceptions: choices.errorTracking,
       disable_session_recording: true, // toggled below via start/stopSessionRecording
       opt_out_capturing_by_default: true, // capture only after the explicit opt-in below
@@ -90,7 +94,7 @@ export function applyConsent(
   } else {
     client.set_config({
       autocapture: choices.analytics,
-      capture_pageview: choices.analytics ? 'history_change' : false,
+      capture_pageview: false,
       capture_exceptions: choices.errorTracking,
     });
   }
@@ -121,5 +125,12 @@ export function captureException(
 ): boolean {
   if (!initialized || !choices.errorTracking) return false;
   client.captureException(error);
+  return true;
+}
+
+/** Capture a route pageview only after analytics consent and initialization. */
+export function capturePageview(client: AnalyticsClient, choices: ConsentChoices): boolean {
+  if (!initialized || !choices.analytics) return false;
+  client.capture('$pageview');
   return true;
 }
