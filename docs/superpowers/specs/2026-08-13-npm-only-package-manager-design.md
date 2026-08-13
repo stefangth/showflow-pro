@@ -20,8 +20,8 @@ Use npm as the sole supported package manager for root Node dependencies.
 
 - Keep `package-lock.json` as the only root Node dependency lockfile.
 - Delete `bun.lock`; the obsolete `bun.lockb` is already absent.
-- Declare the npm package-manager policy in `package.json` and contributor-facing
-  documentation.
+- Declare the npm package-manager policy in `package.json` and `CLAUDE.md`,
+  replacing its existing `npm install # or bun install` guidance.
 - Add an automated check that rejects root `bun.lock`, `bun.lockb`, `yarn.lock`,
   and `pnpm-lock.yaml` files.
 - Leave all Deno lockfiles unchanged.
