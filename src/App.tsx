@@ -12,6 +12,7 @@ import { ConsentProvider } from "@/features/consent/ConsentContext";
 import { CookieConsentBanner } from "@/components/consent/CookieConsentBanner";
 import { AnalyticsBridge } from "@/features/analytics/AnalyticsBridge";
 import { AnalyticsIdentityBridge } from "@/features/analytics/AnalyticsIdentityBridge";
+import { AppErrorBoundary } from "@/features/analytics/AppErrorBoundary";
 import { ProtectedRoute, PlatformRoute } from "@/features/auth/ProtectedRoute";
 import { Analytics } from "@vercel/analytics/react";
 import PlatformPage from "./pages/PlatformPage";
@@ -60,9 +61,10 @@ const App = () => (
       <BrowserRouter>
         <ConsentProvider>
         <AnalyticsBridge />
-        <AuthProvider>
-          <AnalyticsIdentityBridge />
-          <EditorProvider>
+        <AppErrorBoundary>
+          <AuthProvider>
+            <AnalyticsIdentityBridge />
+            <EditorProvider>
           <Routes>
             <Route path={ROUTES.HOME} element={<Navigate to={ROUTES.LOGIN} replace />} />
             <Route path={ROUTES.LOGIN} element={<LoginPage />} />
@@ -115,8 +117,9 @@ const App = () => (
             <Route path={ROUTES.IMPRESSUM} element={<ImpressumPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
-          </EditorProvider>
-        </AuthProvider>
+            </EditorProvider>
+          </AuthProvider>
+        </AppErrorBoundary>
         <CookieConsentBanner />
         </ConsentProvider>
       </BrowserRouter>
