@@ -2,21 +2,23 @@
 
 What's new in ShowFlow, newest first.
 
-## 1.16.0 — August 11, 2026
+## 1.15.1 — August 12, 2026
 
-*Answering "who can see our data" without leaving the app*
+*Invitations that stay ready when your team is*
 
-### New
-- **Trust and data** — A new section in Settings shows what your organization holds, who can read each kind of record, and how long every category is kept. Pick a role to see exactly what it reads and the mechanism that decides it, so you can answer an artist manager on the call instead of promising to check.
-- **A public trust center** — The same controls are published at showflow.pro/trust for anyone reviewing ShowFlow before they sign. No form, no NDA, no email gate.
+### Improved
+- **Invitation links that last longer** — Invitation links remain usable for longer, and resending an invitation gives the recipient more time to join.
+- **Choose how you sign in** — After joining, choose between magic links and a password. Passwords can also be added or changed later from Profile.
 
 ## 1.15.0 — August 8, 2026
 
-*A guided first run on your dashboard*
+*A guided first run, with trust built in*
 
 ### New
 - **Dashboard first run** — A welcome panel greets you on the dashboard and opens a setup checklist on demand. It shows exactly the steps your workspace needs, adapts to the modules your organization has turned on, and collapses to a single line you can reopen any time.
 - **The rules you inherited** — Once setup is complete, the same panel becomes a short, read-only summary of how your organization works, so anyone who joins can see the decisions behind every number on the page.
+- **Trust and data** — A new section in Settings shows what your organization holds, who can read each kind of record, and how long every category is kept. Pick a role to see exactly what it reads and the mechanism that decides it, so you can answer an artist manager on the call instead of promising to check.
+- **A public trust center** — The same controls are published at showflow.pro/trust for anyone reviewing ShowFlow before they sign. No form, no NDA, no email gate.
 
 ### Improved
 - **A dashboard that fills in as you go** — Until your workspace has real dates, the dashboard shows a clearly marked sample of what it becomes, then switches to your live numbers once setup is done.

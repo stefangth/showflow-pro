@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Loader2, CheckCircle2, XCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { captureUnsubscribeToken } from '@/features/auth/unsubscribeToken';
 
 type State =
   | { kind: 'loading' }
@@ -18,8 +18,9 @@ const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
 
 export default function UnsubscribePage() {
-  const [params] = useSearchParams();
-  const token = params.get('token');
+  // State initialization happens during render, before any analytics effect can
+  // observe the URL. Keep the opaque credential in memory for this page only.
+  const [token] = useState(() => captureUnsubscribeToken(window.location, window.history));
   const [state, setState] = useState<State>({ kind: 'loading' });
 
   useEffect(() => {

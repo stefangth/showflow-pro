@@ -1,15 +1,15 @@
-import { useEffect, useState, Fragment } from "react";
+import { useEffect, useRef, useState, Fragment } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/features/auth/AuthContext";
 import { useMyProfile, useUpdateMyProfile } from "@/hooks/useMyProfile";
 import { useFeature } from "@/hooks/useEntitlements";
-import { updateMyPassword } from "@/data/profiles";
+import { usePasswordStatus } from "@/hooks/usePasswordStatus";
+import { PasswordSetupForm } from "@/components/auth/PasswordSetupForm";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,15 +36,6 @@ const identitySchema = z.object({
 });
 type IdentityValues = z.infer<typeof identitySchema>;
 
-const passwordSchema = z
-  .object({
-    current: z.string().min(1, "Required"),
-    next: z.string().min(8, "At least 8 characters"),
-    confirm: z.string(),
-  })
-  .refine((v) => v.next === v.confirm, { message: "Passwords don't match", path: ["confirm"] });
-type PasswordValues = z.infer<typeof passwordSchema>;
-
 export default function ProfilePage() {
   const { user } = useAuth();
   const { data: profile, isLoading } = useMyProfile();
@@ -54,13 +45,16 @@ export default function ProfilePage() {
 
   const identity = useForm<IdentityValues>({ resolver: zodResolver(identitySchema), values: { display_name: profile?.display_name ?? "", phone: profile?.phone ?? "" } });
 
-  const password = useForm<PasswordValues>({ resolver: zodResolver(passwordSchema), defaultValues: { current: "", next: "", confirm: "" } });
-
-  const changePassword = useMutation({
-    mutationFn: (v: PasswordValues) => updateMyPassword(supabase, { email: user?.email ?? "", currentPassword: v.current, newPassword: v.next }),
-    onSuccess: () => { toast.success("Password changed"); password.reset(); },
-    onError: (e: Error) => toast.error(e.message),
-  });
+  const passwordStatus = usePasswordStatus();
+  const [editingPassword, setEditingPassword] = useState(false);
+  const passwordActionRef = useRef<HTMLButtonElement>(null);
+  const closePasswordForm = () => {
+    setEditingPassword(false);
+    window.setTimeout(() => passwordActionRef.current?.focus(), 0);
+  };
+  const completePasswordForm = () => {
+    closePasswordForm();
+  };
 
   useEffect(() => { document.title = "Profile · ShowFlow"; }, []);
 
@@ -123,7 +117,7 @@ export default function ProfilePage() {
     <div className="space-y-6 max-w-xl">
       <div>
         <h1 className="font-display text-[32px] font-semibold tracking-tight">Profile</h1>
-        <p className="text-muted-foreground mt-1">Your account details and password</p>
+        <p className="text-muted-foreground mt-1">Your account details and sign-in methods</p>
       </div>
 
       <Card>
@@ -165,26 +159,44 @@ export default function ProfilePage() {
       </Card>
 
       <Card>
-        <CardHeader><CardTitle className="font-display">Change password</CardTitle></CardHeader>
-        <CardContent>
-          <form onSubmit={password.handleSubmit((v) => changePassword.mutate(v))} className="space-y-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="current">Current password</Label>
-              <Input id="current" type="password" {...password.register("current")} />
-              {password.formState.errors.current && <p className="text-xs text-destructive">{password.formState.errors.current.message}</p>}
+        <CardHeader><CardTitle className="font-display">Sign-in &amp; security</CardTitle></CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-col gap-3 border-b border-border pb-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center justify-between gap-3 sm:flex-1">
+              <div>
+                <p className="text-sm font-medium">Magic links</p>
+                <p className="text-xs text-muted-foreground">Sign in with a secure link sent to your email.</p>
+              </div>
+              <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-foreground">Active</span>
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="next">New password</Label>
-              <Input id="next" type="password" {...password.register("next")} />
-              {password.formState.errors.next && <p className="text-xs text-destructive">{password.formState.errors.next.message}</p>}
+          </div>
+          <div className="space-y-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center justify-between gap-3 sm:flex-1">
+                <div>
+                  <p className="text-sm font-medium">Password</p>
+                  <p className="text-xs text-muted-foreground">Sign in using your email and password.</p>
+                </div>
+                <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-foreground">
+                  {passwordStatus.isLoading ? "Checking…" : passwordStatus.isError ? "Unavailable" : passwordStatus.data ? "Set" : "Not set"}
+                </span>
+              </div>
+              {!editingPassword && !passwordStatus.isLoading && !passwordStatus.isError && (
+                <Button ref={passwordActionRef} type="button" variant="outline" onClick={() => setEditingPassword(true)}>
+                  {passwordStatus.data ? "Change password" : "Add password"}
+                </Button>
+              )}
+              {passwordStatus.isError && (
+                <div className="flex flex-col items-start gap-2 sm:items-end">
+                  <p className="text-sm text-destructive">Could not load password status</p>
+                  <Button type="button" variant="outline" onClick={() => void passwordStatus.refetch()}>Retry</Button>
+                </div>
+              )}
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="confirm">Confirm new password</Label>
-              <Input id="confirm" type="password" {...password.register("confirm")} />
-              {password.formState.errors.confirm && <p className="text-xs text-destructive">{password.formState.errors.confirm.message}</p>}
-            </div>
-            <Button type="submit" disabled={changePassword.isPending}>{changePassword.isPending ? "Changing…" : "Change password"}</Button>
-          </form>
+            {editingPassword && (
+              <PasswordSetupForm mode={passwordStatus.data ? "change" : "setup"} onSuccess={completePasswordForm} onCancel={closePasswordForm} />
+            )}
+          </div>
         </CardContent>
       </Card>
 

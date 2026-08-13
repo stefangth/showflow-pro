@@ -14,7 +14,7 @@ Deno.test("provision-org: 403 for non-super-admin", async () => {
   assertEquals(res.status, 403);
 });
 
-Deno.test("provision-org: net-new admin → RPC + branded email with actionLink, returns org_id", async () => {
+Deno.test("provision-org: net-new admin → RPC + stable-token email, returns org_id", async () => {
   const { deps, invokeCalls } = makeFakeDeps({
     authUser: { id: "u1" },
     tables: { platform_admins: { data: { user_id: "u1" }, error: null } },
@@ -27,10 +27,13 @@ Deno.test("provision-org: net-new admin → RPC + branded email with actionLink,
   assertEquals((await res.json()).org_id, "org-9");
   const sent = invokeCalls.filter((c) => c.name === "send-transactional-email");
   assertEquals(sent.length, 1);
-  assertEquals((sent[0].body as { templateData: { actionLink?: string } }).templateData.actionLink, "https://app.test/reset-password?redirect=x");
+  const data = (sent[0].body as { templateData: Record<string, unknown> }).templateData;
+  assertEquals(data.token, "tok-9");
+  assertEquals("actionLink" in data, false);
+  assertEquals("isNewUser" in data, false);
 });
 
-Deno.test("provision-org: existing admin → branded email with a magic-link actionLink", async () => {
+Deno.test("provision-org: existing admin → stable-token email without minting a magic link", async () => {
   // Invite hardening: an existing auth user now gets a one-click magic link (type:'magiclink'
   // to /auth/callback) instead of an empty actionLink that forced the unbranded reset flow.
   const { deps, invokeCalls, calls } = makeFakeDeps({
@@ -44,11 +47,10 @@ Deno.test("provision-org: existing admin → branded email with a magic-link act
   assertEquals(res.status, 200);
   const sent = invokeCalls.filter((c) => c.name === "send-transactional-email");
   assertEquals(sent.length, 1);
-  assertEquals((sent[0].body as { templateData: { actionLink?: string } }).templateData.actionLink, "https://app.test/auth/callback?redirect=y");
-  const gen = calls.find((c) => c.table === "auth.admin.generateLink");
-  const params = gen!.args[0] as { type: string; options: { redirectTo: string } };
-  assertEquals(params.type, "magiclink");
-  assertEquals(params.options.redirectTo.includes("/auth/callback?redirect="), true);
+  const data = (sent[0].body as { templateData: Record<string, unknown> }).templateData;
+  assertEquals(data.token, "tok-9");
+  assertEquals("actionLink" in data, false);
+  assertEquals(calls.some((c) => c.table === "auth.admin.generateLink"), false);
 });
 
 Deno.test("provision-org: sends the role label, roleKey, and expiresOn derived from the invitation row", async () => {
@@ -105,7 +107,7 @@ Deno.test("provision-org: always uses the generic ShowFlow team inviter line, ev
   assertEquals(calls.some((c) => c.table === "profiles"), false, "never reads profiles: this line is never personalized for this caller");
 });
 
-Deno.test("provision-org: net-new first admin → templateData.isNewUser is true", async () => {
+Deno.test("provision-org: net-new first admin → template payload omits account-state metadata", async () => {
   const { deps, invokeCalls } = makeFakeDeps({
     authUser: { id: "u1" },
     tables: { platform_admins: { data: { user_id: "u1" }, error: null } },
@@ -116,7 +118,9 @@ Deno.test("provision-org: net-new first admin → templateData.isNewUser is true
   const res = await handle(makeRequest({ headers: { Authorization: "Bearer x" }, body }), deps);
   assertEquals(res.status, 200);
   const sent = invokeCalls.filter((c) => c.name === "send-transactional-email");
-  assertEquals((sent[0].body as { templateData: { isNewUser?: boolean } }).templateData.isNewUser, true);
+  const data = (sent[0].body as { templateData: Record<string, unknown> }).templateData;
+  assertEquals("isNewUser" in data, false);
+  assertEquals("actionLink" in data, false);
 });
 
 Deno.test("provision-org: creates first-admin membership at invite time via RPC", async () => {

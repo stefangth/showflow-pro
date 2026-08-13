@@ -35,6 +35,11 @@ export function safeRelativeRedirect(redirect: string | null, fallback: string):
   return redirect;
 }
 
+export const MIN_PASSWORD_LENGTH = 8;
+
 export const newPasswordSchema = z
-  .object({ password: z.string().min(8, "At least 8 characters"), confirm: z.string() })
+  .object({
+    password: z.string().min(MIN_PASSWORD_LENGTH, `At least ${MIN_PASSWORD_LENGTH} characters`),
+    confirm: z.string(),
+  })
   .refine((v) => v.password === v.confirm, { message: "Passwords don't match", path: ["confirm"] });

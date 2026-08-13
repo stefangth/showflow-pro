@@ -143,3 +143,8 @@ verify_jwt = false
 # (always 200) and self-throttles via the claim_login_link_slot RPC.
 [functions.send-login-link]
 verify_jwt = false
+
+# Public invitation exchange is authorized by its high-entropy stable token and
+# atomically throttled by claim_invitation_auth_exchange before minting a link.
+[functions.exchange-invitation]
+verify_jwt = false

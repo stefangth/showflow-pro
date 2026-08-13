@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import type { AppRole } from "@/config/app.config";
-import { readEdgeError } from "@/lib/edgeErrors";
+import { edgeResponseContext, readEdgeError } from "@/lib/edgeErrors";
 
 export interface Invitation {
   id: string;
@@ -17,6 +17,50 @@ export interface Invitation {
   /** When the invite was last resent + how many times, surfaced so multiple admins can coordinate. */
   last_resent_at?: string | null;
   resent_count?: number;
+}
+
+export type InvitationExchangeErrorKind = "unavailable" | "throttled" | "unknown";
+
+export class InvitationExchangeError extends Error {
+  readonly kind: InvitationExchangeErrorKind;
+  readonly retryAfterSeconds?: number;
+
+  constructor(kind: InvitationExchangeErrorKind, retryAfterSeconds?: number) {
+    super(kind === "unavailable" ? "Invitation unavailable" : kind === "throttled" ? "Please wait before trying again" : "Invitation exchange failed");
+    this.name = "InvitationExchangeError";
+    this.kind = kind;
+    this.retryAfterSeconds = retryAfterSeconds;
+  }
+}
+
+/** Exchange a durable invitation token for a fresh, short-lived Auth action URL. */
+export async function exchangeInvitation(
+  client: SupabaseClient<Database>,
+  args: { token: string; appOrigin: string },
+): Promise<{ actionUrl: string }> {
+  const { data, error } = await client.functions.invoke("exchange-invitation", {
+    body: { token: args.token, app_origin: args.appOrigin },
+  });
+  if (error) {
+    const context = edgeResponseContext(error);
+    if (context?.status === 410) throw new InvitationExchangeError("unavailable");
+    if (context?.status === 429) {
+      let retryAfterSeconds: number | undefined;
+      try {
+        const payload = await context.clone().json() as { retry_after_seconds?: unknown };
+        if (typeof payload.retry_after_seconds === "number") retryAfterSeconds = payload.retry_after_seconds;
+      } catch {
+        // A malformed error body is still a throttle; callers can fall back without a countdown.
+      }
+      throw new InvitationExchangeError("throttled", retryAfterSeconds);
+    }
+    throw new InvitationExchangeError("unknown");
+  }
+  const payload = data as { action_url?: unknown } | null;
+  if (typeof payload?.action_url !== "string" || !payload.action_url.trim()) {
+    throw new InvitationExchangeError("unknown");
+  }
+  return { actionUrl: payload.action_url };
 }
 
 /** Absolute accept-invite link for an invitation token (for copy-to-clipboard). */

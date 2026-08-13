@@ -16,9 +16,13 @@ const CODE_COPY: Record<string, string> = {
   analytics_unavailable: "Metrics are temporarily unavailable.",
 };
 
-function hasResponseContext(e: unknown): e is { context: Response } {
+export function hasResponseContext(e: unknown): e is { context: Response } {
   return typeof e === "object" && e !== null && "context" in e &&
     (e as { context: unknown }).context instanceof Response;
+}
+
+export function edgeResponseContext(error: unknown): Response | null {
+  return hasResponseContext(error) ? error.context : null;
 }
 
 export async function readEdgeError(error: unknown): Promise<string> {

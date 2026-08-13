@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { AlertTriangle } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { AlertTriangle, CheckCircle2, KeyRound, Mail } from 'lucide-react';
 import { useAuth } from '@/features/auth/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { acceptInvitation } from '@/data/invitations';
+import { acceptInvitation, exchangeInvitation, InvitationExchangeError } from '@/data/invitations';
+import { captureInvitationToken, clearInvitationToken } from '@/features/auth/invitationToken';
 import { ROUTES, roleLabel, roleDescription, type AppRole } from '@/config/app.config';
 import { rolesForOrg } from '@/features/auth/orgRoles';
 import type { Membership } from '@/data/orgs';
@@ -17,6 +18,8 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import { StageMark } from '@/components/brand/StageMark';
+import { usePasswordStatus } from '@/hooks/usePasswordStatus';
+import { PasswordSetupForm } from '@/components/auth/PasswordSetupForm';
 
 interface AcceptInviteError {
   message: string;
@@ -206,6 +209,113 @@ interface JoinedState {
   userId: string;
 }
 
+function PostAcceptanceHandoff({
+  dashboardIsDeadEnd,
+  onDashboard,
+}: {
+  dashboardIsDeadEnd: boolean;
+  onDashboard: () => void;
+}) {
+  const passwordStatus = usePasswordStatus();
+  const [showSetup, setShowSetup] = useState(false);
+  const [setupComplete, setSetupComplete] = useState(false);
+  const setupContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!showSetup) return;
+    const heading = setupContainerRef.current?.querySelector<HTMLElement>('h1, h2, h3, h4, h5, h6');
+    heading?.setAttribute('tabindex', '-1');
+    heading?.focus();
+  }, [showSetup]);
+
+  if (setupComplete) {
+    return (
+      <>
+        <p role="status" className="text-sm font-medium text-foreground">
+          Your password is ready. You can also keep using magic links.
+        </p>
+        <Button variant={dashboardIsDeadEnd ? 'outline' : 'default'} onClick={onDashboard}>
+          Go to dashboard
+        </Button>
+      </>
+    );
+  }
+
+  if (passwordStatus.isLoading) {
+    return <Skeleton aria-label="Checking sign-in methods" className="mx-auto h-11 w-full" />;
+  }
+
+  if (passwordStatus.isError) {
+    return (
+      <>
+        <p role="status" className="text-sm text-muted-foreground">
+          Your invitation was accepted. You can manage sign-in methods from your profile.
+        </p>
+        <Button variant={dashboardIsDeadEnd ? 'outline' : 'default'} onClick={onDashboard}>
+          Go to dashboard
+        </Button>
+      </>
+    );
+  }
+
+  if (passwordStatus.data) {
+    return (
+      <>
+        <Button variant={dashboardIsDeadEnd ? 'outline' : 'default'} onClick={onDashboard}>
+          Go to dashboard
+        </Button>
+      </>
+    );
+  }
+
+  return (
+    <>
+      {!showSetup && (
+        <div data-testid="sign-in-choices" className="space-y-3 text-left">
+          <p className="text-center text-sm font-medium text-foreground">
+            How would you like to sign in next time?
+          </p>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <Button
+              type="button"
+              variant="outline"
+              aria-pressed="false"
+              className="min-h-11 h-auto justify-start whitespace-normal px-3 py-3 text-left transition-colors motion-reduce:transition-none focus-visible:ring-2"
+              onClick={() => setShowSetup(true)}
+            >
+              <KeyRound aria-hidden="true" className="shrink-0" />
+              <span><span className="block">Create a password</span><span className="block text-xs font-normal text-muted-foreground">Add it now, without changing your magic links.</span></span>
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              aria-pressed="false"
+              className="min-h-11 h-auto justify-start whitespace-normal px-3 py-3 text-left transition-colors motion-reduce:transition-none focus-visible:ring-2"
+              onClick={onDashboard}
+            >
+              <Mail aria-hidden="true" className="shrink-0" />
+              <span><span className="block">Continue with magic links</span><span className="block text-xs font-normal text-muted-foreground">Use email links now and add a password later.</span></span>
+            </Button>
+          </div>
+        </div>
+      )}
+      {showSetup && (
+        <div
+          ref={setupContainerRef}
+          aria-live="polite"
+          className="animate-in fade-in-0 duration-200 motion-reduce:animate-none text-left"
+        >
+          <PasswordSetupForm
+            mode="setup"
+            onSuccess={() => { setSetupComplete(true); setShowSetup(false); }}
+            onCancel={() => setShowSetup(false)}
+          />
+        </div>
+      )}
+    </>
+  );
+}
+
 /**
  * Public route. Accepts an org invitation by token. If the visitor is not signed
  * in, it bounces to /login and returns here afterward; once authenticated it calls
@@ -222,12 +332,23 @@ interface JoinedState {
  * orgs[0] when the target id is not in the list).
  */
 export default function AcceptInvitePage() {
-  const [params] = useSearchParams();
-  const token = params.get('token');
+  const routeLocation = useLocation();
+  const [token] = useState(() => captureInvitationToken(
+    {
+      href: `${window.location.origin}${routeLocation.pathname}${routeLocation.search}${routeLocation.hash}`,
+      pathname: routeLocation.pathname,
+      search: routeLocation.search,
+      hash: routeLocation.hash,
+    },
+    window.history,
+    window.sessionStorage,
+  ));
   const { user, loading, orgs, memberships, switchOrg, refreshOrgs, signOut } = useAuth();
   const navigate = useNavigate();
   const [error, setError] = useState<AcceptInviteError | null>(null);
   const [joined, setJoined] = useState<JoinedState | null>(null);
+  const [exchangePending, setExchangePending] = useState(false);
+  const [exchangeError, setExchangeError] = useState<'throttled' | 'unavailable' | 'unknown' | null>(null);
   const ran = useRef(false);
 
   // Hooks run unconditionally (before the `if (joined)` return below), keyed on
@@ -293,11 +414,7 @@ export default function AcceptInvitePage() {
       setError({ message: 'This invitation link is missing its token.', action: null });
       return;
     }
-    if (!user) {
-      const back = `${ROUTES.ACCEPT_INVITE}?token=${token}`;
-      navigate(`${ROUTES.LOGIN}?redirect=${encodeURIComponent(back)}`, { replace: true });
-      return;
-    }
+    if (!user) return;
     if (ran.current) return;
     ran.current = true;
     const acceptingUserId = user.id;
@@ -305,6 +422,7 @@ export default function AcceptInvitePage() {
       .then(async ({ orgId, artistLinked }) => {
         await refreshOrgs();
         switchOrg(orgId);
+        clearInvitationToken(window.sessionStorage);
         setJoined({ orgId, artistLinked, userId: acceptingUserId });
       })
       .catch((e: unknown) => {
@@ -318,9 +436,55 @@ export default function AcceptInvitePage() {
   // 'switch-account', which friendlyAcceptError only ever sets alongside a truthy token.
   const handleSwitchAccount = async () => {
     await signOut();
-    const back = `${ROUTES.ACCEPT_INVITE}?token=${token}`;
+    const back = ROUTES.ACCEPT_INVITE;
     navigate(`${ROUTES.LOGIN}?redirect=${encodeURIComponent(back)}`, { replace: true });
   };
+
+  const handleExchange = async () => {
+    if (!token || exchangePending) return;
+    setExchangePending(true);
+    setExchangeError(null);
+    try {
+      const { actionUrl } = await exchangeInvitation(supabase, { token, appOrigin: window.location.origin });
+      window.location.assign(actionUrl);
+    } catch (error) {
+      const kind = error instanceof InvitationExchangeError ? error.kind : 'unknown';
+      if (kind === 'unavailable') clearInvitationToken(window.sessionStorage);
+      setExchangeError(kind);
+    } finally {
+      setExchangePending(false);
+    }
+  };
+
+  if (!loading && !user && token) {
+    const retryable = exchangeError === 'throttled' || exchangeError === 'unknown';
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center space-y-3">
+            <div className="mx-auto"><StageMark variant="tile" size={52} /></div>
+            <CardTitle className="font-display text-2xl font-semibold tracking-tight">You've been invited</CardTitle>
+            <CardDescription>Continue securely to sign in or create your account and join the organization.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4 text-center">
+            {exchangeError === 'unavailable' && <p className="text-sm text-muted-foreground">This invitation is no longer available. Ask your organization admin to send a new one.</p>}
+            {exchangeError === 'throttled' && <p className="text-sm text-muted-foreground">Please wait a moment, then try again.</p>}
+            {exchangeError === 'unknown' && <p className="text-sm text-muted-foreground">We couldn't continue. Please try again.</p>}
+            {exchangeError !== 'unavailable' && (
+              <Button className="w-full" disabled={exchangePending} onClick={handleExchange}>
+                {exchangePending ? 'Continuing…' : retryable ? 'Try again' : 'Continue'}
+              </Button>
+            )}
+            {exchangeError === 'unavailable' && (
+              <Button className="w-full" variant="outline" onClick={() => navigate(ROUTES.LOGIN, { replace: true })}>
+                Go to sign in
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   if (joined) {
     // orgs/memberships/user come live from AuthContext and can change under this mounted
@@ -368,6 +532,9 @@ export default function AcceptInvitePage() {
         <Card className="w-full max-w-md">
           <CardHeader className="text-center space-y-3">
             <div className="mx-auto"><StageMark variant="tile" size={52} /></div>
+            <div aria-label="Invitation accepted" className="mx-auto flex h-8 w-8 items-center justify-center rounded-full bg-success/10 text-success">
+              <CheckCircle2 aria-hidden="true" className="h-5 w-5" />
+            </div>
             <CardTitle className="font-display text-2xl font-semibold tracking-tight">
               You've joined {orgName}
             </CardTitle>
@@ -421,12 +588,10 @@ export default function AcceptInvitePage() {
                 <Skeleton data-testid="next-step-line-loading" className="mx-auto h-4 w-3/4" />
               )
             )}
-            <Button
-              variant={dashboardIsDeadEnd ? 'outline' : 'default'}
-              onClick={() => navigate(ROUTES.DASHBOARD, { replace: true })}
-            >
-              Go to dashboard
-            </Button>
+            <PostAcceptanceHandoff
+              dashboardIsDeadEnd={dashboardIsDeadEnd}
+              onDashboard={() => navigate(ROUTES.DASHBOARD, { replace: true })}
+            />
           </CardContent>
         </Card>
       </div>

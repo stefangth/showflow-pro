@@ -29,11 +29,18 @@ export interface AnalyticsClient {
   set_config(config: Record<string, unknown>): void;
   startSessionRecording(): void;
   stopSessionRecording(): void;
+  captureException(error: unknown, additionalProperties?: Record<string, unknown>): void;
+  capture(event: string): void;
 }
 
 export interface AnalyticsConfig {
   key: string | undefined;
   host: string;
+}
+
+export interface StoredAnalyticsConsent {
+  hasDecided: boolean;
+  choices: ConsentChoices;
 }
 
 /** PostHog EU Cloud — this app is GDPR-scoped, so EU is the default region. */
@@ -80,7 +87,14 @@ export function applyConsent(
     client.init(config.key, {
       api_host: config.host,
       autocapture: choices.analytics,
-      capture_pageview: choices.analytics,
+      // Autocapture records interaction metadata, not customer or financial UI
+      // text/attributes. Explicit events below contain no user-entered values.
+      mask_all_text: true,
+      mask_all_element_attributes: true,
+      // Route changes are captured explicitly by AnalyticsBridge. Keeping the
+      // SDK's history extension off makes errorTracking → analytics consent
+      // transitions reliable because extensions only attach during init.
+      capture_pageview: false,
       capture_exceptions: choices.errorTracking,
       disable_session_recording: true, // toggled below via start/stopSessionRecording
       opt_out_capturing_by_default: true, // capture only after the explicit opt-in below
@@ -89,7 +103,9 @@ export function applyConsent(
   } else {
     client.set_config({
       autocapture: choices.analytics,
-      capture_pageview: choices.analytics,
+      mask_all_text: true,
+      mask_all_element_attributes: true,
+      capture_pageview: false,
       capture_exceptions: choices.errorTracking,
     });
   }
@@ -106,4 +122,39 @@ export function applyConsent(
   } else {
     client.stopSessionRecording();
   }
+}
+
+/**
+ * Initialize before React mounts children that could throw. The value comes
+ * only from a prior explicit consent decision persisted by ConsentProvider.
+ */
+export function bootstrapAnalytics(
+  client: AnalyticsClient,
+  config: AnalyticsConfig,
+  stored: StoredAnalyticsConsent | null,
+): void {
+  if (stored?.hasDecided) applyConsent(client, config, stored.choices);
+}
+
+/**
+ * Capture a React-boundary exception only when error tracking is actively
+ * consented and the PostHog client has already been initialized. Errors before
+ * consent are deliberately discarded rather than queued.
+ */
+export function captureException(
+  client: AnalyticsClient,
+  choices: ConsentChoices,
+  error: unknown,
+  additionalProperties?: Record<string, unknown>,
+): boolean {
+  if (!initialized || !choices.errorTracking) return false;
+  client.captureException(error, additionalProperties);
+  return true;
+}
+
+/** Capture a route pageview only after analytics consent and initialization. */
+export function capturePageview(client: AnalyticsClient, choices: ConsentChoices): boolean {
+  if (!initialized || !choices.analytics) return false;
+  client.capture('$pageview');
+  return true;
 }

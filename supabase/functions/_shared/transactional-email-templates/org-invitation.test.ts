@@ -48,64 +48,26 @@ Deno.test("org-invitation email: omits the role paragraph when roleKey has no ma
   assert(!html.includes("Your role is"), "no dangling role fragment when the action line is missing");
 });
 
-const ACTION_LINK = "https://app.showflow.pro/auth/callback?redirect=%2Faccept-invite";
-
-Deno.test("org-invitation email: reassures a net-new invitee that the button walks them through setting a password", async () => {
-  const html = await renderInvite({ orgName: "Cirque Lumière", token: "tok", isNewUser: true, actionLink: ACTION_LINK });
-  assert(
-    html.includes("The button opens ShowFlow and asks you to choose a password."),
-    "does not claim a one-click sign-in to someone who is about to be asked for a password",
-  );
-  assert(!html.includes("No password needed"), "does not also show the existing-user reassurance");
-});
-
-Deno.test("org-invitation email: defaults to the net-new reassurance when isNewUser was never resolved", async () => {
-  const html = await renderInvite({ orgName: "Cirque Lumière", token: "tok", actionLink: ACTION_LINK });
-  assert(
-    html.includes("The button opens ShowFlow and asks you to choose a password."),
-    "undefined isNewUser defaults to the safer, more common new-account copy",
-  );
-});
-
-Deno.test("org-invitation email: reassures a returning invitee that the button signs them straight in", async () => {
-  const html = await renderInvite({ orgName: "Cirque Lumière", token: "tok", isNewUser: false, actionLink: ACTION_LINK });
-  assert(
-    html.includes("The button signs you in directly. No password needed from this email."),
-    "an existing account gets the one-click reassurance, not the password-setup one",
-  );
-  assert(!html.includes("asks you to choose a password"), "does not also show the new-user reassurance");
-});
-
-Deno.test("org-invitation email: falls back to an honest sign-in hint when no action link was minted", async () => {
-  // The only reachable path that sends this email without an actionLink is
-  // create-invitation's catch branch for an already-resolved existing account
-  // (isNewUser: false, actionLink omitted): ensureInvitedUser threw AFTER existingUserId
-  // resolved, so acceptUrl falls back to the bare token URL, which /accept-invite bounces
-  // a session-less visitor to /login for. Neither the "signs you in directly" nor the
-  // "asks you to choose a password" claim is true for that URL, so this case must render
-  // neither.
-  const html = await renderInvite({ orgName: "Cirque Lumière", token: "tok", isNewUser: false });
-  assert(
-    html.includes("The button takes you to a sign in page."),
-    "states the honest fallback behavior instead of a promise the bare token link cannot keep",
-  );
-  assert(!html.includes("signs you in directly"), "does not claim one-click sign-in without a real action link");
-  assert(!html.includes("asks you to choose a password"), "does not claim the account-creation flow without a real action link");
-});
-
-Deno.test("org-invitation email: falls back to an honest sign-in hint even when isNewUser was never resolved and there is no action link", async () => {
+Deno.test("org-invitation email: gives one unified sign-in or account-creation hint", async () => {
   const html = await renderInvite({ orgName: "Cirque Lumière", token: "tok" });
   assert(
-    html.includes("The button takes you to a sign in page."),
-    "absence of actionLink always wins over the isNewUser default, since the bare token URL cannot keep either promise",
+    html.includes("Continue securely to sign in or create your account."),
+    "does not promise that the emailed link signs in directly or sets a password",
   );
+});
+
+Deno.test("org-invitation email: CTA and paste fallback use only the durable token URL", async () => {
+  const html = await renderInvite({ orgName: "Cirque Lumière", token: "stable token/+" });
+  const stableUrl = "https://app.showflow.pro/accept-invite?token=stable%20token%2F%2B";
+  assert(html.includes(stableUrl), "renders the encoded stable invitation URL");
+  assert(!html.includes("auth/callback"), "does not embed a short-lived Auth action link");
 });
 
 Deno.test("org-invitation email: the recovery hint (what to do if this doesn't work) lives once, beside the paste-link fallback, not duplicated on the button reassurance", async () => {
   // Regression: ctaHintNewUser/ctaHintExistingUser used to end with "If it ever stops
   // working, ask whoever invited you to send a fresh one."; that clause now lives only
   // in linkRecovery, rendered after the paste-link fallback below the button.
-  const html = await renderInvite({ orgName: "Cirque Lumière", token: "tok", isNewUser: true, actionLink: ACTION_LINK });
+  const html = await renderInvite({ orgName: "Cirque Lumière", token: "tok" });
   assert(html.includes(EMAIL_COPY_DEFAULTS["org-invitation.linkRecovery"]), "the recovery hint renders");
   const occurrences = html.split("send a fresh").length - 1;
   assertEquals(occurrences, 1, "the recovery language appears exactly once, not duplicated on the button reassurance");
@@ -114,7 +76,7 @@ Deno.test("org-invitation email: the recovery hint (what to do if this doesn't w
 Deno.test("org-invitation email: states the real expiry date from the invitation row", async () => {
   const html = await renderInvite({ orgName: "Cirque Lumière", token: "tok", expiresOn: "August 24, 2026" });
   assert(
-    html.includes("Your invitation is valid until August 24, 2026. If the sign-in button stops working, ask for it to be resent."),
+    html.includes("Your invitation is valid until at least August 24, 2026. A newer invitation email may extend this date."),
     "states the concrete expiry date, scoped to the INVITATION (the emailed action link's own TTL is shorter and unrelated)",
   );
   assert(
@@ -181,16 +143,14 @@ Deno.test("org-invitation email: reads product, then role, then expiry, then who
     inviterName: "Jane Admin",
     inviterEmail: "jane@acme.test",
     expiresOn: "August 24, 2026",
-    isNewUser: false,
     token: "tok",
-    actionLink: ACTION_LINK,
   });
   const iGreeting = html.indexOf(EMAIL_COPY_DEFAULTS["org-invitation.greeting"]);
   const iProduct = html.indexOf("plans its shows and books the artists for them");
   const iRole = html.indexOf("Your role is Production Team.");
-  const iExpiry = html.indexOf("Your invitation is valid until August 24, 2026. If the sign-in button stops working, ask for it to be resent.");
+  const iExpiry = html.indexOf("Your invitation is valid until at least August 24, 2026. A newer invitation email may extend this date.");
   const iInvitedBy = html.indexOf("Invited by Jane Admin.");
-  const iCtaHint = html.indexOf("The button signs you in directly");
+  const iCtaHint = html.indexOf("Continue securely to sign in or create your account.");
   const iCtaLabel = html.indexOf(EMAIL_COPY_DEFAULTS["org-invitation.ctaLabel"]);
   // The paste-link fallback and the link-recovery hint both live in EmailShell's postCta
   // slot, below the button: they are fallbacks FOR the button, so a reader sees the
@@ -228,7 +188,7 @@ Deno.test("org-invitation email: does not repeat the org name in three consecuti
     token: "tok",
   });
   assert(html.includes("Your role is Production Team."), "roleIntro drops the org name");
-  assert(html.includes("Your invitation is valid until August 24, 2026. If the sign-in button stops working, ask for it to be resent."), "expiryLine drops the org name");
+  assert(html.includes("Your invitation is valid until at least August 24, 2026. A newer invitation email may extend this date."), "expiryLine drops the org name");
 });
 
 Deno.test("org-invitation email: the artist role line does not hedge availability behind an undecodable clause", async () => {
@@ -290,12 +250,12 @@ Deno.test("org-invitation email: the default product intro never claims a specif
   assertEquals(html.toLowerCase().includes("offer"), false, "no offer-specific claim in the default copy");
 });
 
-Deno.test("org-invitation email: the new-account reassurance does not overclaim that setup is finished", async () => {
+Deno.test("org-invitation email: the unified hint does not overclaim that setup is finished", async () => {
   // A net-new admin/artist lands on a dashboard onboarding checklist right after this
   // screen (see src/lib/dashboard/firstRun.ts); "That's the whole setup" contradicts that.
-  const html = await renderInvite({ orgName: "Cirque Lumière", token: "tok", isNewUser: true, actionLink: ACTION_LINK });
+  const html = await renderInvite({ orgName: "Cirque Lumière", token: "tok" });
   assertEquals(html.includes("whole setup"), false, "does not promise setup is complete");
-  assert(html.includes("That is all you need to get in."), "still reassures about signing in, just scoped to that");
+  assert(html.includes("Continue securely to sign in or create your account."), "uses the unified truthful hint");
 });
 
 Deno.test("org-invitation email: a stored org override for a role action line renders that org's own wording", async () => {

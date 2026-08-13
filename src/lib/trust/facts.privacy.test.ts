@@ -113,6 +113,11 @@ describe("subprocessor table matches the privacy policy", () => {
     expect(POLICY).toMatch(/Product analytics including session replay \(PostHog\)[\s\S]*?your consent/);
   });
 
+  it("discloses the user ID and email sent for consented PostHog telemetry", () => {
+    expect(POLICY).toMatch(/via PostHog[\s\S]*?user ID and email address/i);
+    expect(POLICY_DE).toMatch(/über PostHog[\s\S]*?Nutzer-ID und E-Mail-Adresse/i);
+  });
+
   it("marks Airtable optional rather than consent-gated, because it sets nothing on a device", () => {
     // The sync is server side: supabase/functions/airtable-poll/index.ts polls
     // the base an organisation has connected. There is no browser request and

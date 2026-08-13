@@ -1,8 +1,50 @@
 import { describe, it, expect } from "vitest";
 import { createFakeSupabase } from "@/test/supabaseFake";
-import { createInvitation, fetchOrgInvitations, revokeInvitation, claimMyInvitations, acceptInvitation, acceptInviteUrl, resendInvitation, inviteArtistToApp, fetchPendingArtistInvitations } from "./invitations";
+import { createInvitation, fetchOrgInvitations, revokeInvitation, claimMyInvitations, acceptInvitation, acceptInviteUrl, resendInvitation, inviteArtistToApp, fetchPendingArtistInvitations, exchangeInvitation, InvitationExchangeError } from "./invitations";
 
 const INV = { id: "inv1", org_id: "o1", email: "x@y.com", role: "producer", status: "pending", token: "tok123", expires_at: "2099-01-01" };
+
+describe("exchangeInvitation", () => {
+  it("invokes exchange-invitation and returns its action URL", async () => {
+    const fake = createFakeSupabase({ "fn:exchange-invitation": { data: { action_url: "https://auth.example/action" }, error: null } });
+    const result = await exchangeInvitation(fake as never, {
+      token: "stable-token",
+      appOrigin: "https://app.showflow.pro",
+    });
+    expect(result).toEqual({ actionUrl: "https://auth.example/action" });
+    expect(fake.calls).toContainEqual({
+      table: "fn:exchange-invitation",
+      method: "invoke",
+      args: [{ token: "stable-token", app_origin: "https://app.showflow.pro" }],
+    });
+  });
+
+  it.each([
+    [410, { error: "Invitation unavailable" }, "unavailable", undefined],
+    [429, { error: "Please wait before trying again", retry_after_seconds: 17 }, "throttled", 17],
+  ] as const)("maps HTTP %i to a typed error", async (status, payload, kind, retryAfterSeconds) => {
+    const error = Object.assign(new Error("Edge Function returned a non-2xx status code"), {
+      context: new Response(JSON.stringify(payload), { status }),
+    });
+    const fake = createFakeSupabase({ "fn:exchange-invitation": { data: null, error } });
+    const thrown = await exchangeInvitation(fake as never, { token: "stable-token", appOrigin: "https://app.showflow.pro" })
+      .then(() => null, (value: unknown) => value);
+    expect(thrown).toBeInstanceOf(InvitationExchangeError);
+    expect(thrown).toMatchObject({ kind, retryAfterSeconds });
+  });
+
+  it("rejects malformed success payloads as unknown failures", async () => {
+    const fake = createFakeSupabase({ "fn:exchange-invitation": { data: { action_url: "" }, error: null } });
+    await expect(exchangeInvitation(fake as never, { token: "stable-token", appOrigin: "https://app.showflow.pro" }))
+      .rejects.toMatchObject({ kind: "unknown" });
+  });
+
+  it("maps generic invocation failures to unknown", async () => {
+    const fake = createFakeSupabase({ "fn:exchange-invitation": { data: null, error: new Error("network down") } });
+    await expect(exchangeInvitation(fake as never, { token: "stable-token", appOrigin: "https://app.showflow.pro" }))
+      .rejects.toMatchObject({ kind: "unknown" });
+  });
+});
 
 describe("createInvitation", () => {
   it("invokes create-invitation with org/email/role and returns the invitation", async () => {

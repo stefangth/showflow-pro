@@ -9,7 +9,7 @@ describe("systemMap data", () => {
     const by = (k: string) => SYSTEM_MAP_NODES.filter((n) => n.kind === k).length;
     expect(by("cron")).toBe(9);
     expect(by("user")).toBe(4);
-    expect(by("fn")).toBe(26);
+    expect(by("fn")).toBe(27);
     expect(by("db")).toBe(15);
     expect(by("fx")).toBe(13);
   });

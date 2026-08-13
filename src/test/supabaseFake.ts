@@ -193,6 +193,10 @@ export function createFakeSupabase(seed: Record<string, TableSeed> = {}) {
         calls.push({ table: "auth", method: "updateUser", args: [attrs] });
         return Promise.resolve(seed["auth:updateUser"] ?? { data: { user: null }, error: null });
       },
+      reauthenticate() {
+        calls.push({ table: "auth", method: "reauthenticate", args: [] });
+        return Promise.resolve(seed["auth:reauthenticate"] ?? { data: {}, error: null });
+      },
       resetPasswordForEmail(email: unknown, opts?: unknown) {
         calls.push({ table: "auth", method: "resetPasswordForEmail", args: [email, opts] });
         return Promise.resolve(seed["auth:resetPasswordForEmail"] ?? { data: {}, error: null });
