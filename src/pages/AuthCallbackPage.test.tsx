@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
 import AuthCallbackPage from "./AuthCallbackPage";
+import { PENDING_INVITATION_TOKEN_KEY } from "@/features/auth/invitationToken";
 
 const navigateSpy = vi.fn();
 vi.mock("react-router-dom", async (orig) => ({
@@ -31,7 +32,7 @@ const renderAt = (url: string) =>
     </MemoryRouter>,
   );
 
-beforeEach(() => { navigateSpy.mockClear(); authCbs.length = 0; sessionResult = { data: { session: null } }; window.location.hash = ""; });
+beforeEach(() => { navigateSpy.mockClear(); authCbs.length = 0; sessionResult = { data: { session: null } }; window.location.hash = ""; sessionStorage.clear(); });
 
 describe("AuthCallbackPage", () => {
   it("navigates to the validated redirect on SIGNED_IN", async () => {
@@ -59,5 +60,15 @@ describe("AuthCallbackPage", () => {
     act(() => { vi.advanceTimersByTime(8000); });
     expect(screen.getByRole("button", { name: /back to sign in/i })).toBeInTheDocument();
     vi.useRealTimers();
+  });
+
+  it("offers a token-free return to the invitation when callback recovery has a pending token", () => {
+    sessionStorage.setItem(PENDING_INVITATION_TOKEN_KEY, "stable-token");
+    window.location.hash = "#error=access_denied";
+    renderAt("/auth/callback");
+    const button = screen.getByRole("button", { name: /return to invitation/i });
+    fireEvent.click(button);
+    expect(navigateSpy).toHaveBeenCalledWith("/accept-invite");
+    expect(navigateSpy.mock.calls.flat().join(" ")).not.toContain("stable-token");
   });
 });

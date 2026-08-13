@@ -31,21 +31,32 @@ export async function updateMyProfile(
   if (error) throw error;
 }
 
-/**
- * Change the signed-in user's password. Supabase's updateUser does NOT verify the
- * current password, so we re-authenticate with it first (a wrong password fails here,
- * before any change is made).
- */
-export async function updateMyPassword(
+export async function fetchMyHasPassword(client: SupabaseClient<Database>): Promise<boolean> {
+  const { data, error } = await client.rpc("my_has_password");
+  if (error) throw error;
+  return data;
+}
+
+export async function setMyPassword(client: SupabaseClient<Database>, password: string): Promise<void> {
+  const { error } = await client.auth.updateUser({ password });
+  if (error) throw error;
+}
+
+export async function requestPasswordReauthentication(client: SupabaseClient<Database>): Promise<void> {
+  const { error } = await client.auth.reauthenticate();
+  if (error) throw error;
+}
+
+export async function changeMyPassword(
   client: SupabaseClient<Database>,
-  args: { email: string; currentPassword: string; newPassword: string },
+  args: { password: string; currentPassword?: string; nonce?: string },
 ): Promise<void> {
-  const { error: verifyErr } = await client.auth.signInWithPassword({
-    email: args.email,
-    password: args.currentPassword,
-  });
-  if (verifyErr) throw new Error("Current password is incorrect");
-  const { error } = await client.auth.updateUser({ password: args.newPassword });
+  const attributes = {
+    password: args.password,
+    ...(args.currentPassword !== undefined ? { current_password: args.currentPassword } : {}),
+    ...(args.nonce !== undefined ? { nonce: args.nonce } : {}),
+  };
+  const { error } = await client.auth.updateUser(attributes);
   if (error) throw error;
 }
 

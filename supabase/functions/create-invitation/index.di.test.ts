@@ -8,7 +8,7 @@
  *  - caller not an admin of the target org → 403
  *  - admin → 200 { ok, invitation }; inserts org_invitations with the (lowercased)
  *    email + invited_by = caller; delivers the 'org-invitation' email to the invitee
- *    (net-new invitees get an actionLink via ensureInvitedUser + sendOrgInvitationEmail).
+ *    with a durable token URL and no short-lived Auth action link in the payload.
  *
  * requireOrgRole reads org_memberships (eq user_id, eq org_id, in role, maybeSingle);
  * the fake's maybeSingle applies the .in("role",[...]) filter, so a single seed row
@@ -98,6 +98,18 @@ Deno.test("create-invitation DI: admin → 200 with invitation, inserts row + in
   const insert = calls.find((c) => c.table === "org_invitations" && c.method === "insert");
   assertExists(insert);
   assertEquals(insert.args[0], { org_id: "org-1", email: "invitee@x.com", role: "producer", invited_by: "u1" });
+  assertEquals(calls.filter((c) => c.table === "rpc:get_user_id_by_email").length, 1);
+});
+
+Deno.test("create-invitation DI: a failed user lookup is not repeated", async () => {
+  const { deps, calls } = adminDeps({
+    rpcs: { get_user_id_by_email: { data: null, error: { message: "lookup unavailable" } } },
+  });
+
+  const res = await handle(inviteReq({ org_id: "org-1", email: "invitee@x.com", role: "producer" }), deps);
+
+  assertEquals(res.status, 200);
+  assertEquals(calls.filter((c) => c.table === "rpc:get_user_id_by_email").length, 1);
 });
 
 Deno.test("create-invitation DI: email is lowercased + trimmed before insert", async () => {
@@ -206,7 +218,7 @@ Deno.test("create-invitation DI: admin → creates membership at invite time via
   assertEquals(rpcCall!.args, [{ p_invitation: "inv1", p_user: "new-invitee" }]);
 });
 
-Deno.test("create-invitation DI: net-new invitee → branded email WITH actionLink", async () => {
+Deno.test("create-invitation DI: net-new invitee → stable-token email without action-link metadata", async () => {
   const { deps, invokeCalls } = adminDeps({
     usersById: {}, // invitee is net-new (no existing auth user)
     generateLinkResult: { data: { properties: { action_link: "https://app.test/reset-password?redirect=x" } }, error: null },
@@ -215,25 +227,18 @@ Deno.test("create-invitation DI: net-new invitee → branded email WITH actionLi
   assertEquals(res.status, 200);
   const emails = invokeCalls.filter((c) => c.name === "send-transactional-email");
   assertEquals(emails.length, 1);
-  assertEquals((emails[0].body as { templateData: { actionLink?: string } }).templateData.actionLink, "https://app.test/reset-password?redirect=x");
+  const data = (emails[0].body as { templateData: Record<string, unknown> }).templateData;
+  assertEquals(data.token, "tok123");
+  assertEquals("actionLink" in data, false);
+  assertEquals("isNewUser" in data, false);
 });
 
-Deno.test("create-invitation DI: net-new invitee → templateData.isNewUser is true", async () => {
-  const { deps, invokeCalls } = adminDeps({
-    usersById: {}, // invitee is net-new (no existing auth user)
-    generateLinkResult: { data: { properties: { action_link: "https://app.test/reset-password?redirect=x" } }, error: null },
-  });
-  await handle(inviteReq({ org_id: "org-1", email: "invitee@x.com", role: "producer" }), deps);
-  const emails = invokeCalls.filter((c) => c.name === "send-transactional-email");
-  assertEquals((emails[0].body as { templateData: { isNewUser?: boolean } }).templateData.isNewUser, true);
-});
-
-Deno.test("create-invitation DI: existing invitee (magic link) → templateData.isNewUser is false", async () => {
+Deno.test("create-invitation DI: existing invitee does not mint an Auth action link", async () => {
   // The invitee already has an auth account but is NOT yet a member of this org (an
   // array-matched org_memberships seed keeps the admin caller's own membership check
   // separate from the invitee's, which must resolve to "not a member" so the request
   // proceeds past the duplicate-member guard).
-  const { deps, invokeCalls } = adminDeps({
+  const { deps, invokeCalls, calls } = adminDeps({
     tables: {
       org_memberships: [
         { when: { user_id: "u1" }, data: { role: "admin" } },
@@ -253,10 +258,11 @@ Deno.test("create-invitation DI: existing invitee (magic link) → templateData.
   assertEquals(res.status, 200);
   const emails = invokeCalls.filter((c) => c.name === "send-transactional-email");
   assertEquals(emails.length, 1);
-  assertEquals((emails[0].body as { templateData: { isNewUser?: boolean } }).templateData.isNewUser, false);
+  assertEquals("actionLink" in (emails[0].body as { templateData: Record<string, unknown> }).templateData, false);
+  assertEquals(calls.some((c) => c.table === "auth.admin.generateLink"), false);
 });
 
-Deno.test("create-invitation DI: existing invitee whose magic-link mint fails still gets the honest no-link fallback copy, not a promise the broken link can't keep", async () => {
+Deno.test("create-invitation DI: existing invitee still gets the durable email when generateLink would fail", async () => {
   // ensureInvitedUser can throw AFTER existingUserId was already resolved (generateLink
   // failure), so actionLink stays undefined for this send. org-invitation.tsx's ctaHint
   // checks `!actionLink` before it ever looks at isNewUser (see the doc comment on the
@@ -284,8 +290,8 @@ Deno.test("create-invitation DI: existing invitee whose magic-link mint fails st
   assertEquals(res.status, 200);
   const emails = invokeCalls.filter((c) => c.name === "send-transactional-email");
   assertEquals(emails.length, 1, "still delivers via the fallback bare-token link, rather than silently dropping the email");
-  const msg = emails[0].body as { templateData: { actionLink?: string } };
-  assertEquals(msg.templateData.actionLink, undefined);
+  const msg = emails[0].body as { templateData: Record<string, unknown> };
+  assertEquals(msg.templateData.token, "tok123");
 });
 
 Deno.test("create-invitation DI: net-new account minting fails → no dead-link email, still 200", async () => {
