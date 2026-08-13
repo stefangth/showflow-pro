@@ -12,7 +12,7 @@ function makeResult(overrides: Partial<StageChainResult> = {}): StageChainResult
     headline: "34 dates landed. Four of them can be offered tonight.",
     body: "Stage 01 is running.",
     ghost: "Change the flow in Settings",
-    hint: "Tier 1 goes out at 09:00 Berlin",
+    hint: "Tier 1 goes out at 09:00h (Berlin, Germany)",
     progressLabel: "Set up · 2 of 7",
     progressHint: "The steps left sit in the stage they hold up.",
     hasSteps: true,

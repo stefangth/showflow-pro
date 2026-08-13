@@ -46,8 +46,8 @@ import { SETTINGS_TAB_PARAMS } from "@/lib/settingsTabs";
 import SettingsPage from "./SettingsPage";
 
 // Every render wraps in a MemoryRouter: the page reads `?tab=` through useSearchParams and
-// several tabs render react-router <Link>s (ShowSlotsEditor on "scheduling", the Artists
-// link in CastsCitiesTab), neither of which works without Router context. In the app the
+// tabs render react-router <Link>s (for example the Artists link in CastsCitiesTab), which
+// do not work without Router context. In the app the
 // page is always mounted inside a <Route>, so this matches production.
 
 const DEFAULT_AUTH = {
@@ -76,7 +76,7 @@ describe("SettingsPage Booking flow tab Save affordance", () => {
   it("hides the page-level Save while the booking tab holds only booking-key dirt", async () => {
     renderWithProviders(<MemoryRouter><SettingsPage /></MemoryRouter>);
     // Radix TabsTrigger activates on mousedown (not click) — see @radix-ui/react-tabs.
-    fireEvent.mouseDown(await screen.findByRole("tab", { name: /booking flow/i }));
+    fireEvent.mouseDown(await screen.findByRole("tab", { name: /booking engine/i }));
     fireEvent.click(await screen.findByRole("button", { name: /direct book/i }));
 
     // The rail's own Save is the sole Save affordance left on this tab.
@@ -107,7 +107,7 @@ describe("SettingsPage Booking flow tab, locked (booking_flow not entitled)", ()
   // FlowRail hides its own Save/Discard while locked, leaving the edit with no save control.
   it("keeps the page-level Save visible, with no rail dirty banner, when editing the from-address while locked", async () => {
     renderWithProviders(<MemoryRouter><SettingsPage /></MemoryRouter>);
-    fireEvent.mouseDown(await screen.findByRole("tab", { name: /booking flow/i }));
+    fireEvent.mouseDown(await screen.findByRole("tab", { name: /booking engine/i }));
     await waitFor(() => expect(screen.getByText("Booking flow is not enabled")).toBeInTheDocument());
 
     const fromAddress = screen.getByLabelText(/from address/i);
@@ -128,7 +128,7 @@ describe("SettingsPage Booking flow tab, locked (booking_flow not entitled)", ()
   it("still hides the page-level Save for an entitled org editing a flow field", async () => {
     vi.mocked(useAuth).mockReturnValue(DEFAULT_AUTH as never);
     renderWithProviders(<MemoryRouter><SettingsPage /></MemoryRouter>);
-    fireEvent.mouseDown(await screen.findByRole("tab", { name: /booking flow/i }));
+    fireEvent.mouseDown(await screen.findByRole("tab", { name: /booking engine/i }));
     fireEvent.click(await screen.findByRole("button", { name: /direct book/i }));
 
     expect(screen.getAllByRole("button", { name: /^Save/i })).toHaveLength(1);
@@ -149,6 +149,10 @@ describe("SettingsPage grouped vertical nav", () => {
     // trigger AND the OrganizationTab card's own CardTitle (rendered because "organization" is
     // the default active tab for an admin) — scope to the heading <p> to disambiguate.
     expect(screen.getByText("Organization", { selector: "p" })).toBeInTheDocument();
+    expect(screen.getByText("Modules", { selector: "p" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /booking engine on/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /hire orders off/i })).toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: /scheduling/i })).not.toBeInTheDocument();
     // Switching a section swaps the visible content.
     fireEvent.mouseDown(screen.getByRole("tab", { name: /casts & cities/i }));
     expect(await screen.findByRole("tab", { name: /casts & cities/i })).toHaveAttribute("aria-selected", "true");
@@ -163,9 +167,9 @@ describe("SettingsPage grouped vertical nav", () => {
       hasRole: (r: string) => r === "producer",
     } as never);
     renderWithProviders(<MemoryRouter><SettingsPage /></MemoryRouter>);
-    await screen.findByRole("tab", { name: /scheduling/i });
+    await screen.findByText("Modules");
     expect(screen.getByRole("tab", { name: /airtable sync/i })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /booking flow/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /booking engine/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /email templates/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /^filters$/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /^notifications$/i })).toBeInTheDocument();
@@ -178,7 +182,7 @@ describe("SettingsPage grouped vertical nav", () => {
     renderWithProviders(<MemoryRouter><SettingsPage /></MemoryRouter>);
 
     fireEvent.mouseDown(await screen.findByRole("tab", { name: /email templates/i }));
-    expect(await screen.findByText("Booking engine")).toBeInTheDocument();
+    expect((await screen.findAllByText("Booking engine")).length).toBeGreaterThan(0);
     expect(screen.getByText("Password reset")).toBeInTheDocument();
   });
 });
@@ -232,7 +236,7 @@ describe("SettingsPage ?tab= deep link", () => {
     renderWithProviders(
       <MemoryRouter initialEntries={["/settings?tab=permissions"]}><SettingsPage /></MemoryRouter>,
     );
-    expect(await screen.findByRole("tab", { name: /scheduling/i })).toHaveAttribute("aria-selected", "true");
+    expect(await screen.findByRole("tab", { name: /^organization$/i })).toHaveAttribute("aria-selected", "true");
   });
 
   // The registry in settingsTabs.ts is a list of strings; only the page knows whether each

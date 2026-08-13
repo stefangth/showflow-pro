@@ -127,7 +127,7 @@ describe("AvailabilityPage timing line (R2.1/R4.7)", () => {
 
     const timing = await screen.findByTestId("availability-timing");
     expect(timing).toHaveTextContent(/48 hours to answer/i);
-    expect(timing).toHaveTextContent(/19:00 digest/i);
+    expect(timing).toHaveTextContent(/19:00h \(Berlin, Germany\) digest/i);
   });
 
   it("shows no timing line for a direct-book org (real defaults: confirmation_digest stays true)", async () => {

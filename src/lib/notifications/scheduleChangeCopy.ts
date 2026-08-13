@@ -1,4 +1,4 @@
-import { hh, type BookingFlow } from "@/lib/bookingFlow";
+import { berlinTime, type BookingFlow } from "@/lib/bookingFlow";
 
 /** The flow fields that decide what `scheduleChangeNote` can honestly say. */
 export type ScheduleChangeFlow = Pick<BookingFlow, "active" | "confirmation_digest">;
@@ -51,7 +51,7 @@ export function scheduleChangeNote(
   confirmationDigestHour: number,
 ): string | null {
   if (!bookingFlowEnabled || !flow || flow.active === false) return null;
-  const at = `${hh(confirmationDigestHour)} Berlin`;
+  const at = berlinTime(confirmationDigestHour);
   if (flow.confirmation_digest) {
     // "are also notified in the app", not "see the change in the app": the change itself
     // is live in the artist's schedule the moment it is saved; what arrives at the hour is

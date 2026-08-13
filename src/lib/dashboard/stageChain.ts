@@ -20,6 +20,7 @@
 // maps `StageAction` to navigate()/openSetup().
 
 import { ROUTES } from "@/config/app.config";
+import { berlinTime } from "@/lib/bookingFlow";
 import { STEP_TITLES } from "@/lib/bookings/setupStatus";
 import {
   ARTIST_ONBOARDING,
@@ -266,8 +267,8 @@ export function composeStageChain(input: StageChainInput): StageChainResult {
       bf
         ? (offers
             ? (imported
-                ? rawStage({ key: "offer", n: "03", name: "Offer", card: true, done: true, tag: "Booking flow", line: `One digest at ${hour} Berlin. ${answerWindow} to answer.`, metric: String(m.arriving), metricLabel: `arriving ${hour}` })
-                : rawStage({ key: "offer", n: "03", name: "Offer", badge: "Waits", tag: "Booking flow", line: `One digest at ${hour} Berlin, never a mail per date.`, needs: "Needs dates for your cast" }))
+                ? rawStage({ key: "offer", n: "03", name: "Offer", card: true, done: true, tag: "Booking flow", line: `One digest at ${berlinTime(input.timing.digestHourBerlin)}. ${answerWindow} to answer.`, metric: String(m.arriving), metricLabel: `arriving ${hour}` })
+                : rawStage({ key: "offer", n: "03", name: "Offer", badge: "Waits", tag: "Booking flow", line: `One digest at ${berlinTime(input.timing.digestHourBerlin)}, never a mail per date.`, needs: "Needs dates for your cast" }))
             : rawStage({ key: "offer", n: "03", name: "Booked directly", card: true, done: true, tag: "Booking flow · direct", line: "There is no offer step. A booked date appears as confirmed.", metric: imported ? String(m.confirmed) : "0", metricLabel: "confirmed" }))
         : rawStage({ key: "offer", n: "03", name: "Offer", tag: "Booking flow · off", line: "No offers are sent from ShowFlow.", ...NOT_ON }),
       ho
@@ -385,7 +386,7 @@ export function composeStageChain(input: StageChainInput): StageChainResult {
         ? "Stage 01 is running. The remaining dates have no slot counts, so the digest will skip them."
         : "Stage 01 is running. A producer books straight from the eligibility list. There is no offer step.";
       ghost = admin || input.canEditBooking ? "How this org works" : "What is still outstanding";
-      hint = offers ? `Tier 1 goes out at ${hour} Berlin` : "Direct booking · nothing to accept";
+      hint = offers ? `Tier 1 goes out at ${berlinTime(input.timing.digestHourBerlin)}` : "Direct booking · nothing to accept";
       progressHint = !input.canEditBooking ? "The steps marked Admin are not yours. The rest are." : "The steps left sit in the stage they hold up.";
     } else {
       headline = role === "producer" ? `${orgName} is still being set up` : "The chain is not running yet. One thing starts it: dates.";

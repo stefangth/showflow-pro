@@ -30,7 +30,7 @@ describe("scheduleChangeNote", () => {
   it("names the account condition and the residual risk, and never names the off email, when the confirmation digest is off", () => {
     const note = scheduleChangeNote(true, { ...BOOKING_FLOW_DEFAULTS, confirmation_digest: false }, 21);
     expect(note).toBe(
-      "Session times reach booked artists in the app at 21:00 Berlin. " +
+      "Session times reach booked artists in the app at 21:00h (Berlin, Germany). " +
       "That notice only goes to artists with an account. " +
       "Anyone without one is not told.",
     );
@@ -63,7 +63,7 @@ describe("scheduleChangeNote", () => {
   it("splits the email and in-app claims, and names the residual gap, when the confirmation digest email is on", () => {
     const note = scheduleChangeNote(true, { ...BOOKING_FLOW_DEFAULTS, confirmation_digest: true }, 21);
     expect(note).toBe(
-      "Session times go out in the daily summary at 21:00 Berlin. " +
+      "Session times go out in the daily summary at 21:00h (Berlin, Germany). " +
       "Artists with an account are also notified in the app. " +
       "Anyone with no email and no account is not told.",
     );

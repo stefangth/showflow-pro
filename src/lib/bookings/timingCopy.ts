@@ -19,7 +19,7 @@
 // the panel a second time. Both halves of that are pinned in timingCopy.test.ts, and the
 // panel is checked for exactly one mention in TimingStep.test.tsx.
 
-import { hh, type BookingFlow, type FlowTimes } from "@/lib/bookingFlow";
+import { berlinTime, type BookingFlow, type FlowTimes } from "@/lib/bookingFlow";
 
 /** The flow fields that change what is true about the coming night. */
 export type TonightFlow = Pick<
@@ -43,16 +43,11 @@ export const isValidWindowHours = (h: number) => Number.isInteger(h) && h >= 1;
 export const TIMING_BOUNDS_ERROR =
   "Enter a window of at least 1 hour and digest hours between 0 and 23.";
 
-const BERLIN = "Hours are Berlin time.";
+const BERLIN = "Digest times include their timezone.";
 
 /** The same fact for one hour. `BERLIN` is plural because `timingScopeNote` prints it over
  *  the panel's three hour INPUTS, which is right there and wrong on a surface that has no
  *  inputs and has just named a single clock time. See `berlinNoteFor`. */
-const BERLIN_ONE = "That hour is Berlin time.";
-
-/** Every clock time an already-composed sentence states. `hh` renders "HH:00", so this is
- *  what the sentence itself put on screen, not a re-derivation of the flow branches. */
-const CLOCK_TIME = /\b\d{2}:\d{2}\b/g;
 
 /**
  * The timezone line to append to a finished sentence, agreeing in number with the clock
@@ -64,9 +59,8 @@ const CLOCK_TIME = /\b\d{2}:\d{2}\b/g;
  * question the sentence never raised.
  */
 export function berlinNoteFor(line: string): string | null {
-  const count = line.match(CLOCK_TIME)?.length ?? 0;
-  if (count === 0) return null;
-  return count === 1 ? BERLIN_ONE : BERLIN;
+  void line;
+  return null;
 }
 
 /**
@@ -201,7 +195,7 @@ export function describeTonight(times: FlowTimes, flow: TonightFlow | null | und
   if (!flow.artist_acceptance) {
     if (!flow.confirmation_digest) return null;
     if (!isValidDigestHour(times.confirmationDigestHour)) return null;
-    return `Newly confirmed artists get the confirmation digest at ${hh(times.confirmationDigestHour)}.`;
+    return `Newly confirmed artists get the confirmation digest at ${berlinTime(times.confirmationDigestHour)}.`;
   }
   if (!isValidWindowHours(times.windowHours)) return null;
 
@@ -212,11 +206,11 @@ export function describeTonight(times: FlowTimes, flow: TonightFlow | null | und
   if (flow.confirmation_digest && !isValidDigestHour(times.confirmationDigestHour)) return null;
 
   const opening = digest
-    ? `When a tier opens, offers go out in the next ${hh(times.offerDigestHour)} digest.`
+    ? `When a tier opens, offers go out in the next ${berlinTime(times.offerDigestHour)} digest.`
     : "When a tier opens, offers email straight away.";
   const window = `${times.windowHours} hour${times.windowHours === 1 ? "" : "s"}`;
   const tail = flow.confirmation_digest
-    ? `, and confirmations mail at ${hh(times.confirmationDigestHour)}.`
+    ? `, and confirmations mail at ${berlinTime(times.confirmationDigestHour)}.`
     : ".";
   return `${opening} Artists get ${window} to answer${tail}`;
 }

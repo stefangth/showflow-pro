@@ -1,8 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
-import { Link, useLocation, useSearchParams } from 'react-router-dom';
-import { ROUTES, BOOKING_ENGINE_DEFAULTS, roleLabel } from '@/config/app.config';
+import { useLocation, useSearchParams } from 'react-router-dom';
+import { BOOKING_ENGINE_DEFAULTS, roleLabel } from '@/config/app.config';
 import { resolveInitialTab } from '@/lib/settingsTabs';
-import { useSettingsWarnings } from '@/hooks/useSettingsWarnings';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -15,9 +14,8 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
-import { Settings as SettingsIcon, Database, Bell, Wand2, Save, SlidersHorizontal, MapPin, Clock, BookOpen, UserCog, Building2, FileSignature, ShieldCheck, Lock } from 'lucide-react';
+import { Settings as SettingsIcon, Database, Bell, Wand2, Save, SlidersHorizontal, MapPin, BookOpen, UserCog, Building2, FileSignature, ShieldCheck, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { upsertOrgSetting, mergeOrgRows } from '@/data/settings';
 import { computeSettingsDirtyKeys } from '@/lib/settings';
@@ -32,6 +30,7 @@ import { BOOKING_AUDIT_KEYS } from '@/components/settings/bookingFlow/auditKeys'
 import { HireOrdersTab } from '@/components/settings/hireOrders/HireOrdersTab';
 import { PermissionsTab } from '@/components/settings/permissions/PermissionsTab';
 import { EmailTemplatesTab } from '@/components/settings/emailTemplates/EmailTemplatesTab';
+import { Badge } from '@/components/ui/badge';
 
 // Tabs whose content is a wide reference surface rather than a form: they drop
 // the page's reading measure and run to `main`'s own 24px padding at every
@@ -66,25 +65,6 @@ type SettingRow = {
 
 /** Shape of the `filters_visibility` setting: page → role → filter-key → on/off. */
 type FiltersVisibility = Record<string, Record<string, Record<string, boolean>>>;
-
-function ShowSlotsEditor() {
-  const warn = useSettingsWarnings(); // returns { schedulingWarnings, hasAnyWarning } directly
-  return (
-    <div className="space-y-3">
-      {warn.schedulingWarnings > 0 ? (
-        <Alert>
-          <AlertDescription>
-            {warn.schedulingWarnings} production(s) have no slot configuration. Bookings for these can't reach
-            <em> fully filled</em> until slots are set.
-          </AlertDescription>
-        </Alert>
-      ) : null}
-      <p className="text-sm text-muted-foreground">
-        Slot configuration has moved to the <Link to={ROUTES.PRODUCTIONS} className="text-primary underline">Productions</Link> page.
-      </p>
-    </div>
-  );
-}
 
 // ─── SettingsPage ────────────────────────────────────────────────────────────
 
@@ -155,7 +135,6 @@ export default function SettingsPage() {
   const isAdmin = hasRole('admin');
   const isProducer = hasRole('producer');
   const canEnter = isAdmin || isProducer;
-  const { schedulingWarnings } = useSettingsWarnings();
 
   // Broad Settings, read-only floor: these tabs are now visible to producers, but every
   // write control inside them stays gated behind its own capability (admins always pass,
@@ -280,7 +259,7 @@ export default function SettingsPage() {
     });
   };
 
-  const navGroups: { heading: string; items: { value: string; label: string; icon: typeof Building2; show: boolean; dot?: boolean }[] }[] = [
+  const navGroups: { heading: string; items: { value: string; label: string; icon: typeof Building2; show: boolean; moduleState?: boolean }[] }[] = [
     { heading: "Organization", items: [
       { value: "organization", label: "Organization", icon: Building2, show: isAdmin || isProducer },
       { value: "permissions", label: "Roles & permissions", icon: ShieldCheck, show: isAdmin },
@@ -290,10 +269,11 @@ export default function SettingsPage() {
     ] },
     { heading: "Automation", items: [
       { value: "airtable", label: "Airtable Sync", icon: Database, show: isAdmin || isProducer },
-      { value: "booking", label: "Booking flow", icon: Wand2, show: isAdmin || isProducer },
       { value: "email-templates", label: "Email templates", icon: Bell, show: isAdmin || isProducer },
-      { value: "scheduling", label: "Scheduling", icon: Clock, show: true, dot: schedulingWarnings > 0 },
-      { value: "hire-orders", label: "Hire orders", icon: FileSignature, show: (isAdmin || isProducer) && hireOrdersEntitled },
+    ] },
+    { heading: "Modules", items: [
+      { value: "booking", label: "Booking engine", icon: Wand2, show: isAdmin || isProducer, moduleState: bookingFlowEntitled },
+      { value: "hire-orders", label: "Hire orders", icon: FileSignature, show: isAdmin || isProducer, moduleState: hireOrdersEntitled },
     ] },
     { heading: "Preferences", items: [
       { value: "filters", label: "Filters", icon: SlidersHorizontal, show: isAdmin || isProducer },
@@ -377,7 +357,11 @@ export default function SettingsPage() {
                   >
                     <item.icon className="h-4 w-4 shrink-0" />
                     <span>{item.label}</span>
-                    {item.dot && <span className="ml-1 h-2 w-2 shrink-0 rounded-full bg-destructive md:ml-auto" />}
+                    {item.moduleState !== undefined && (
+                      <Badge variant={item.moduleState ? "accent" : "neutral"} className="ml-1 md:ml-auto">
+                        {item.moduleState ? "On" : "Off"}
+                      </Badge>
+                    )}
                   </TabsTrigger>
                 ))}
               </div>
@@ -392,20 +376,6 @@ export default function SettingsPage() {
 
         <TabsContent value="production-ownership">
           <ProductionOwnershipTab currentOrgId={currentOrg?.id} canEnter={canEnter} />
-        </TabsContent>
-
-        <TabsContent value="scheduling" className="mt-4 space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="font-display">Slots per Show</CardTitle>
-              <CardDescription>
-                Set the main cast and understudy slot counts for each show. A date can only reach <em>fully filled</em> once its show has both values set.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ShowSlotsEditor />
-            </CardContent>
-          </Card>
         </TabsContent>
 
         {(isAdmin || isProducer) && (
@@ -505,7 +475,7 @@ export default function SettingsPage() {
           <EmailTemplatesTab readOnly={!canEditEmailTemplates} isSuperAdmin={isSuperAdmin} />
         </TabsContent>
 
-        {(isAdmin || isProducer) && hireOrdersEntitled && (
+        {(isAdmin || isProducer) && (
           <TabsContent value="hire-orders" className="mt-4">
             <HireOrdersTab readOnly={!canEditHireOrderSettings} />
           </TabsContent>

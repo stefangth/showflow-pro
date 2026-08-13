@@ -74,7 +74,7 @@ describe("StageCard", () => {
       variant: "dim",
       name: "Offer",
       tag: "Booking flow",
-      line: "One digest at 09:00 Berlin, never a mail per date.",
+      line: "One digest at 09:00h (Berlin, Germany), never a mail per date.",
       badge: "Waits",
       needs: "Needs dates for Ensemble A",
     });

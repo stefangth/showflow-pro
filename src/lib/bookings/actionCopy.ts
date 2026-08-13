@@ -9,7 +9,7 @@
 // existing consumer, e.g. coverageCopy.ts, TierTimeline.tsx, DryRunDialog.tsx, imports it from
 // "@/lib/bookingFlow").
 
-import { hh, type BookingFlow } from "@/lib/bookingFlow";
+import { berlinTime, type BookingFlow } from "@/lib/bookingFlow";
 import { scheduleChangeNote } from "@/lib/notifications/scheduleChangeCopy";
 
 /** The flow fields that decide what Confirm will actually do. */
@@ -38,7 +38,7 @@ export function confirmConsequenceNote(
 ): string {
   if (!bookingFlowEnabled || !flow || flow.active === false) return "Confirm places the booking.";
   if (flow.confirmation_digest) {
-    return `Confirm places the booking. The artist sees it in the app right away. The confirmation email goes out in the daily summary at ${hh(confirmationDigestHour)} Berlin.`;
+    return `Confirm places the booking. The artist sees it in the app right away. The confirmation email goes out in the daily summary at ${berlinTime(confirmationDigestHour)}.`;
   }
   return "Confirm places the booking and notifies the artist in the app right away.";
 }
