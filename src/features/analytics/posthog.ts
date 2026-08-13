@@ -29,7 +29,7 @@ export interface AnalyticsClient {
   set_config(config: Record<string, unknown>): void;
   startSessionRecording(): void;
   stopSessionRecording(): void;
-  captureException(error: unknown): void;
+  captureException(error: unknown, additionalProperties?: Record<string, unknown>): void;
   capture(event: string): void;
 }
 
@@ -82,6 +82,10 @@ export function applyConsent(
     client.init(config.key, {
       api_host: config.host,
       autocapture: choices.analytics,
+      // Autocapture records interaction metadata, not customer or financial UI
+      // text/attributes. Explicit events below contain no user-entered values.
+      mask_all_text: true,
+      mask_all_element_attributes: true,
       // Route changes are captured explicitly by AnalyticsBridge. Keeping the
       // SDK's history extension off makes errorTracking → analytics consent
       // transitions reliable because extensions only attach during init.
@@ -94,6 +98,8 @@ export function applyConsent(
   } else {
     client.set_config({
       autocapture: choices.analytics,
+      mask_all_text: true,
+      mask_all_element_attributes: true,
       capture_pageview: false,
       capture_exceptions: choices.errorTracking,
     });
@@ -122,9 +128,10 @@ export function captureException(
   client: AnalyticsClient,
   choices: ConsentChoices,
   error: unknown,
+  additionalProperties?: Record<string, unknown>,
 ): boolean {
   if (!initialized || !choices.errorTracking) return false;
-  client.captureException(error);
+  client.captureException(error, additionalProperties);
   return true;
 }
 

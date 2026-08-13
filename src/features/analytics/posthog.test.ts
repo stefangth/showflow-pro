@@ -83,6 +83,8 @@ describe('applyConsent', () => {
       autocapture: true,
       capture_pageview: false,
       capture_exceptions: false,
+      mask_all_text: true,
+      mask_all_element_attributes: true,
       disable_session_recording: true,
       opt_out_capturing_by_default: true,
     });
@@ -118,6 +120,8 @@ describe('applyConsent', () => {
       autocapture: true,
       capture_pageview: false,
       capture_exceptions: true,
+      mask_all_text: true,
+      mask_all_element_attributes: true,
     });
     expect(client.startSessionRecording).toHaveBeenCalled();
   });
@@ -144,8 +148,8 @@ describe('applyConsent', () => {
     applyConsent(client, configured, choices({ errorTracking: true }));
     expect(captureException(client, choices(), error)).toBe(false);
 
-    expect(captureException(client, choices({ errorTracking: true }), error)).toBe(true);
-    expect(client.captureException).toHaveBeenCalledWith(error);
+    expect(captureException(client, choices({ errorTracking: true }), error, { componentStack: 'at Test' })).toBe(true);
+    expect(client.captureException).toHaveBeenCalledWith(error, { componentStack: 'at Test' });
   });
 
   it('captures manual pageviews only after analytics consent is active', () => {

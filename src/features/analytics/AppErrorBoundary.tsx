@@ -19,8 +19,10 @@ class Boundary extends Component<BoundaryProps, BoundaryState> {
     return { hasError: true };
   }
 
-  componentDidCatch(error: Error, _info: ErrorInfo): void {
-    captureException(posthog as unknown as AnalyticsClient, this.props.consent, error);
+  componentDidCatch(error: Error, info: ErrorInfo): void {
+    captureException(posthog as unknown as AnalyticsClient, this.props.consent, error, {
+      componentStack: info.componentStack,
+    });
   }
 
   render() {

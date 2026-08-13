@@ -14,6 +14,10 @@ import { applyConsent, capturePageview, readAnalyticsConfig, type AnalyticsClien
  * Mounted inside `ConsentProvider`. See `./posthog.ts` for the consent mapping.
  */
 const config = readAnalyticsConfig();
+// Keep the client eagerly available to the root error boundary: deferring a
+// dynamic import until consent would create a race that loses the initial
+// consented render error. The SDK remains uninitialized and network-silent
+// until `applyConsent` sees explicit consent.
 const client = posthog as unknown as AnalyticsClient;
 
 export function AnalyticsBridge(): null {

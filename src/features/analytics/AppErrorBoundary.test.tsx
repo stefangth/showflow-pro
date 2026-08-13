@@ -30,14 +30,18 @@ describe('AppErrorBoundary', () => {
     render(<AppErrorBoundary onReload={state.reload}><ThrowOnRender /></AppErrorBoundary>);
 
     expect(screen.getByRole('heading', { name: /something went wrong/i })).toBeInTheDocument();
-    expect(state.captureException).toHaveBeenCalledWith(expect.anything(), state.consent, error);
+    expect(state.captureException).toHaveBeenCalledWith(
+      expect.anything(), state.consent, error, { componentStack: expect.stringContaining('ThrowOnRender') },
+    );
   });
 
   it('shows recovery UI without sending render errors before consent', () => {
     render(<AppErrorBoundary onReload={state.reload}><ThrowOnRender /></AppErrorBoundary>);
 
     expect(screen.getByRole('heading', { name: /something went wrong/i })).toBeInTheDocument();
-    expect(state.captureException).toHaveBeenCalledWith(expect.anything(), state.consent, error);
+    expect(state.captureException).toHaveBeenCalledWith(
+      expect.anything(), state.consent, error, { componentStack: expect.stringContaining('ThrowOnRender') },
+    );
   });
 
   it('reloads the application when requested', () => {
