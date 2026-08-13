@@ -56,6 +56,7 @@ const EDITABLE_SETTING_KEYS: readonly string[] = [
   'filters_visibility',
   'notifications_enabled',
   'booking_flow',
+  'booking_flow_template',
 ];
 
 type SettingRow = {

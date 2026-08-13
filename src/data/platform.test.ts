@@ -5,9 +5,11 @@ import {
   setOrgStatus, updateOrg, fetchPlatformAdmins, addPlatformAdmin,
   removePlatformAdmin, savePlatformSetting,
   fetchPlatformBookingDefaults, savePlatformBookingDefaults,
+  fetchPlatformBookingTemplates, savePlatformBookingTemplates,
   exportOrgData, deleteOrg,
 } from "./platform";
 import { BOOKING_ENGINE_DEFAULTS } from "@/config/app.config";
+import { BOOKING_FLOW_TEMPLATE_DEFAULTS } from "@/lib/bookingFlow";
 
 describe("data/platform", () => {
   it("fetchIsSuperAdmin calls the rpc and returns the boolean", async () => {
@@ -137,6 +139,31 @@ describe("data/platform", () => {
         ]),
         { onConflict: "org_id,key" },
       ],
+    });
+  });
+
+  it("fetchPlatformBookingTemplates reads the platform-only row and normalizes it", async () => {
+    const fake = createFakeSupabase({ app_settings: { data: { value: {
+      off: { flow: { active: true }, times: { windowHours: 24 } },
+    } }, error: null } });
+    const out = await fetchPlatformBookingTemplates(fake as never);
+    expect(out.off.flow.active).toBe(false);
+    expect(out.off.times.windowHours).toBe(24);
+    expect(fake.calls).toContainEqual({ table: "app_settings", method: "is", args: ["org_id", null] });
+  });
+
+  it("fetchPlatformBookingTemplates falls back when no row exists", async () => {
+    const fake = createFakeSupabase({ app_settings: { data: null, error: null } });
+    expect(await fetchPlatformBookingTemplates(fake as never)).toEqual(BOOKING_FLOW_TEMPLATE_DEFAULTS);
+  });
+
+  it("savePlatformBookingTemplates upserts one platform-only template row", async () => {
+    const fake = createFakeSupabase({ app_settings: { data: null, error: null } });
+    await savePlatformBookingTemplates(fake as never, BOOKING_FLOW_TEMPLATE_DEFAULTS);
+    expect(fake.calls).toContainEqual({
+      table: "app_settings",
+      method: "upsert",
+      args: [{ org_id: null, key: "booking_flow_templates", value: BOOKING_FLOW_TEMPLATE_DEFAULTS }, { onConflict: "org_id,key" }],
     });
   });
 });

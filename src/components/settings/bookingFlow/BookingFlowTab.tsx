@@ -5,14 +5,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/features/auth/AuthContext";
 import { useFeature } from "@/hooks/useEntitlements";
 import {
-  applyPreset,
-  matchPreset,
+  bookingTemplateMatches,
+  inferBookingTemplate,
+  normalizeBookingFlowTemplates,
   normalizeBookingFlow,
   referenceLabel,
   type BookingFlow,
   type FlowTimes,
-  type PresetName,
+  type BookingTemplateName,
 } from "@/lib/bookingFlow";
+import { fetchPlatformBookingTemplates } from "@/data/platform";
 import { BOOKING_ENGINE_DEFAULTS } from "@/config/app.config";
 import { fetchCustomFieldDefs } from "@/data/customFields";
 import { useSettingsAudit } from "@/hooks/useSettingsAudit";
@@ -49,11 +51,9 @@ export function BookingFlowTab({ get, set, dirtyKeys, saving, onSave, onDiscard,
   // Either reason disables the flow steps/presets/rail-save; only `locked` swaps in the
   // classic-defaults display and its own alert copy.
   const stepsDisabled = locked || readOnly;
-  const preset = matchPreset(flow);
   // Presets stay clickable in the off state so the admin can turn the flow back on;
   // only the editors below (timeline + rail) disable. Skip when already stepsDisabled
   // so the off banner doesn't compete with the entitlement/capability alert.
-  const isOff = !stepsDisabled && preset === "off";
 
   // SettingsPage's `get` returns '' for keys with no draft/persisted value, so a
   // bare `?? default` would leave `Number('')` === 0. Coerce explicitly instead.
@@ -74,6 +74,16 @@ export function BookingFlowTab({ get, set, dirtyKeys, saving, onSave, onDiscard,
     queryFn: () => fetchCustomFieldDefs(supabase, { orgId, entity: "show_dates" }),
     enabled: Boolean(orgId),
   });
+  const { data: platformTemplatesRaw } = useQuery({
+    queryKey: ["platform", "booking-flow-templates"],
+    queryFn: () => fetchPlatformBookingTemplates(supabase),
+  });
+  const platformTemplates = normalizeBookingFlowTemplates(platformTemplatesRaw);
+  const storedTemplate = get("booking_flow_template");
+  const selected = (["classic", "fasttrack", "direct", "off"].includes(String(storedTemplate))
+    ? storedTemplate
+    : inferBookingTemplate(flow, times, platformTemplates)) as BookingTemplateName;
+  const isOff = !stepsDisabled && selected === "off";
   const audit = useSettingsAudit(BOOKING_AUDIT_KEYS);
 
   const customFields = (customFieldDefs ?? []).map((d) => ({ id: d.id, label: d.label }));
@@ -116,8 +126,9 @@ export function BookingFlowTab({ get, set, dirtyKeys, saving, onSave, onDiscard,
     if (patch.offerDigestHour !== undefined) set("offer_digest_hour_berlin", patch.offerDigestHour);
     if (patch.confirmationDigestHour !== undefined) set("confirmation_digest_hour_berlin", patch.confirmationDigestHour);
   };
-  const onPreset = (p: PresetName) => {
-    const next = normalizeBookingFlow(applyPreset(flow, p));
+  const onPreset = (p: BookingTemplateName) => {
+    const definition = platformTemplates[p];
+    const next = definition.flow;
     // A preset click is an explicit choice too: while it keeps acceptance on, its
     // producer_confirmation becomes the value a later acceptance off/on round trip
     // restores. Skipping this tracking left the ref stale (e.g. Fast-track's
@@ -126,7 +137,10 @@ export function BookingFlowTab({ get, set, dirtyKeys, saving, onSave, onDiscard,
       lastProducerConfirmationRef.current = next.producer_confirmation;
     }
     set("booking_flow", next);
+    set("booking_flow_template", p);
+    onTimesChange(definition.times);
   };
+  const customized = !bookingTemplateMatches(flow, times, platformTemplates[selected]);
 
   return (
     <div className="space-y-4">
@@ -149,7 +163,7 @@ export function BookingFlowTab({ get, set, dirtyKeys, saving, onSave, onDiscard,
           </AlertDescription>
         </Alert>
       )}
-      <FlowPresets active={preset} onSelect={onPreset} disabled={stepsDisabled} />
+      <FlowPresets active={selected} customized={customized} onSelect={onPreset} disabled={stepsDisabled} />
       <div className="grid gap-5 lg:grid-cols-[1fr_340px]">
         <FlowTimeline
           flow={flow}

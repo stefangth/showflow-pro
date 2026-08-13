@@ -1,4 +1,5 @@
 import { BOOKING_FLOW_PRESETS, type PresetName } from "@/lib/bookingFlow";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 const PRESET_META: Record<PresetName, { name: string; desc: string; dotClass: string }> = {
@@ -9,7 +10,8 @@ const PRESET_META: Record<PresetName, { name: string; desc: string; dotClass: st
 };
 
 interface Props {
-  active: PresetName | "custom";
+  active: PresetName;
+  customized?: boolean;
   onSelect: (p: PresetName) => void;
   disabled?: boolean;
   /** Whether to offer the "Off" tile. Settings shows it; the onboarding rail hides it,
@@ -17,17 +19,16 @@ interface Props {
   showOff?: boolean;
 }
 
-export function FlowPresets({ active, onSelect, disabled, showOff = true }: Props) {
+export function FlowPresets({ active, customized = false, onSelect, disabled, showOff = true }: Props) {
   const presets: PresetName[] = [
     ...(Object.keys(BOOKING_FLOW_PRESETS) as Exclude<PresetName, "off">[]),
     ...(showOff ? (["off"] as const) : []),
   ];
-  // Preset buttons + the Custom tile: 5 columns with Off, 4 without, so the row stays full.
   return (
     <div
       className={cn(
         "grid grid-cols-2 gap-2.5",
-        showOff ? "md:grid-cols-5" : "md:grid-cols-4",
+        showOff ? "md:grid-cols-4" : "md:grid-cols-3",
       )}
       role="group"
       aria-label="Flow presets"
@@ -47,23 +48,11 @@ export function FlowPresets({ active, onSelect, disabled, showOff = true }: Prop
           <span className="flex items-center gap-2 text-sm font-semibold">
             <span className={cn("h-2 w-2 rounded-full", PRESET_META[p].dotClass)} />
             {PRESET_META[p].name}
+            {active === p && customized && <Badge variant="secondary">Custom</Badge>}
           </span>
           <span className="mt-0.5 block text-xs text-muted-foreground">{PRESET_META[p].desc}</span>
         </button>
       ))}
-      <div
-        data-state={active === "custom" ? "on" : "off"}
-        className={cn(
-          "rounded-lg border border-border bg-card p-3",
-          active === "custom" && "border-primary ring-1 ring-primary bg-accent",
-        )}
-      >
-        <span className="flex items-center gap-2 text-sm font-semibold">
-          <span className="h-2 w-2 rounded-full bg-muted-foreground" />
-          Custom
-        </span>
-        <span className="mt-0.5 block text-xs text-muted-foreground">Your own combination of the steps below.</span>
-      </div>
     </div>
   );
 }

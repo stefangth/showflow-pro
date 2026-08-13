@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
@@ -656,6 +656,14 @@ export function AirtableSyncTab({ orgId, readOnly = false, canTriggerSync = true
                 Shorter = fresher data but more Airtable API calls (Airtable allows ~5 requests/sec per base)
                 and more writes each cycle. Runs on the shared 5-minute cycle.
               </p>
+              {s.airtable_poll_interval_minutes < 60 && (
+                <Alert className="max-w-xl">
+                  <AlertTitle>Frequent syncs can hit Airtable limits</AlertTitle>
+                  <AlertDescription>
+                    Only select a frequency under one hour if your Airtable workspace is on a paid plan. Airtable may rate-limit frequent requests, which can cause sync runs to fail or updates to arrive late.
+                  </AlertDescription>
+                </Alert>
+              )}
             </div>
             <div className="flex flex-col items-end gap-1.5">
               <Button

@@ -7,6 +7,7 @@ SELECT plan(11);
 -- Representative key per arm resolves to the right capability.
 SELECT is(public.app_setting_capability('offer_response_window_hours'), 'producer_can_edit_booking_settings', 'booking key -> edit_booking_settings');
 SELECT is(public.app_setting_capability('booking_flow'), 'producer_can_edit_booking_settings', 'booking_flow -> edit_booking_settings');
+SELECT is(public.app_setting_capability('booking_flow_template'), 'producer_can_edit_booking_settings', 'booking_flow_template -> edit_booking_settings');
 SELECT is(public.app_setting_capability('hire_order_letterhead'), 'producer_can_edit_hire_order_settings', 'hire-order key -> edit_hire_order_settings');
 SELECT is(public.app_setting_capability('hire_order_countersign'), 'producer_can_edit_hire_order_settings', 'countersign key -> edit_hire_order_settings');
 -- The PDF template editor writes both of these, and derives its read-only state

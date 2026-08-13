@@ -5,6 +5,7 @@
  */
 export const BOOKING_AUDIT_KEYS = [
   "booking_flow",
+  "booking_flow_template",
   "offer_response_window_hours",
   "offer_digest_hour_berlin",
   "confirmation_digest_hour_berlin",

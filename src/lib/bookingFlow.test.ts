@@ -17,6 +17,11 @@ import {
 } from "./bookingFlow";
 
 describe("booking flow templates", () => {
+  it("uses each template's own defaults for a partial definition", () => {
+    const templates = normalizeBookingFlowTemplates({ fasttrack: { flow: {}, times: {} } });
+    expect(templates.fasttrack.flow.offer_delivery).toBe("immediate");
+    expect(templates.fasttrack.flow.producer_confirmation).toBe(false);
+  });
   it("falls back per malformed template without corrupting valid siblings", () => {
     const templates = normalizeBookingFlowTemplates({
       classic: { flow: { offer_delivery: "immediate" }, times: { windowHours: 72, offerDigestHour: 8, confirmationDigestHour: 9 } },

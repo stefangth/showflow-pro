@@ -14,6 +14,7 @@ interface Props {
   customFields: { id: string; label: string }[];
   referencePreview: string;
   disabled?: boolean;
+  allowCustomReference?: boolean;
 }
 
 function TimelineStep({
@@ -68,6 +69,7 @@ export function FlowTimeline({
   customFields,
   referencePreview,
   disabled = false,
+  allowCustomReference = true,
 }: Props) {
   const respOff = !flow.artist_acceptance;
   const skippedChip = <Badge variant="neutral">Skipped</Badge>;
@@ -104,6 +106,7 @@ export function FlowTimeline({
           </>
         }
       >
+        <div className="space-y-1">
         <label className="flex items-center gap-2.5 text-sm">
           <Switch
             checked={flow.auto_open_tier1}
@@ -122,15 +125,19 @@ export function FlowTimeline({
           />
           Escalate to the next tier automatically when a window closes short
         </label>
-        <label className="flex items-center gap-2.5 text-sm">
-          <Switch
-            checked={flow.at_risk_alerts}
-            disabled={disabled || respOff}
-            aria-label="At-risk alerts"
-            onCheckedChange={(v) => onFlowChange({ at_risk_alerts: v })}
-          />
-          Alert producers when a date can no longer fill in time
-        </label>
+          <label className="flex items-center gap-2.5 text-sm">
+            <Switch
+              checked={flow.at_risk_alerts}
+              disabled={disabled || respOff}
+              aria-label="At-risk alerts"
+              onCheckedChange={(v) => onFlowChange({ at_risk_alerts: v })}
+            />
+            Alert the production team when the open tier cannot fill the remaining primary slots
+          </label>
+          <p className="pl-11 text-xs text-muted-foreground">
+            Checked hourly. An alert is sent when accepted bookings plus live pending offers are fewer than the required primary slots.
+          </p>
+        </div>
       </TimelineStep>
 
       <TimelineStep
@@ -211,15 +218,17 @@ export function FlowTimeline({
               })
             }
           >
-            <SelectTrigger className="w-52">
+            <SelectTrigger className="w-52" aria-label="Reference field">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="show">Show label (default)</SelectItem>
               <SelectItem value="program">Program only</SelectItem>
-              <SelectItem value="custom" disabled={customFields.length === 0}>
-                Custom field…
-              </SelectItem>
+              {allowCustomReference && (
+                <SelectItem value="custom" disabled={customFields.length === 0}>
+                  Custom field…
+                </SelectItem>
+              )}
             </SelectContent>
           </Select>
           {flow.reference_field.source === "custom" && (

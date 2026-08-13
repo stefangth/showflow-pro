@@ -23,6 +23,12 @@ Deno.test("booking templates: normalize per template and force identity active s
   assertEquals(templates.off.flow.active, false);
 });
 
+Deno.test("booking templates: partial flow uses that template's defaults", () => {
+  const templates = normalizeBookingFlowTemplates({ fasttrack: { flow: {}, times: {} } });
+  assertEquals(templates.fasttrack.flow.offer_delivery, "immediate");
+  assertEquals(templates.fasttrack.flow.producer_confirmation, false);
+});
+
 Deno.test("booking templates: match all values and infer exact identity", () => {
   const templates = BOOKING_FLOW_TEMPLATE_DEFAULTS;
   assertEquals(bookingTemplateMatches(templates.classic.flow, templates.classic.times, templates.classic), true);

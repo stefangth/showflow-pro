@@ -44,6 +44,12 @@ describe("ShowDateFormDialog", () => {
     mockBookingFlowPending = false;
   });
 
+  it("leaves opening tier-1 offers unchecked for a new date", () => {
+    mockFlow = { ...BOOKING_FLOW_DEFAULTS, auto_open_tier1: true };
+    renderWithProviders(<ShowDateFormDialog open onOpenChange={() => {}} mode="create" />);
+    expect(screen.getByRole("checkbox", { name: /open tier-1 offers now/i })).not.toBeChecked();
+  });
+
   it("create requires a production and a date", async () => {
     renderWithProviders(<ShowDateFormDialog open onOpenChange={() => {}} mode="create" />);
     fireEvent.click(screen.getByRole("button", { name: /create date/i }));

@@ -53,6 +53,16 @@ import { upsertOrgSetting, fetchShowsForLinking, importShowsFromOptions } from "
 import { fetchAirtableSettings } from "@/data/airtableSettings";
 import { toast } from "sonner";
 
+it("warns that sub-hour syncs require a paid Airtable plan and may be rate-limited", async () => {
+  (fetchAirtableSettings as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+    airtable_sync_enabled: false, airtable_base_id: "", airtable_table_name: "",
+    airtable_field_map: {}, airtable_view: "Grid view", airtable_poll_interval_minutes: 30,
+  });
+  renderWithProviders(<AirtableSyncTab orgId="org-1" />);
+  expect(await screen.findByText("Frequent syncs can hit Airtable limits")).toBeInTheDocument();
+  expect(screen.getByText(/only select a frequency under one hour if your airtable workspace is on a paid plan/i)).toBeInTheDocument();
+});
+
 function renderTab(
   initial: Record<string, unknown> = {},
   props: { readOnly?: boolean; canTriggerSync?: boolean } = {},

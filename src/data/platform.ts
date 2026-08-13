@@ -5,6 +5,10 @@ import type { EdgeFnMetric, EmailHealth } from "@/lib/systemHealth";
 import type { HealthDay } from "@/lib/uptime";
 import { BOOKING_ENGINE_DEFAULTS, SYSTEM_HEALTH, type AppRole } from "@/config/app.config";
 import type { EntitlementRow, FeatureKey } from "@/lib/entitlements";
+import {
+  normalizeBookingFlowTemplates,
+  type BookingFlowTemplates,
+} from "@/lib/bookingFlow";
 
 export interface OrgStat {
   org_id: string;
@@ -325,6 +329,31 @@ export async function savePlatformBookingDefaults(
     value: values[key] as Json,
   }));
   const { error } = await client.from("app_settings").upsert(rows, { onConflict: "org_id,key" });
+  if (error) throw error;
+}
+
+export async function fetchPlatformBookingTemplates(
+  client: SupabaseClient<Database>,
+): Promise<BookingFlowTemplates> {
+  const { data, error } = await client
+    .from("app_settings")
+    .select("value")
+    .eq("key", "booking_flow_templates")
+    .is("org_id", null)
+    .maybeSingle();
+  if (error) throw error;
+  return normalizeBookingFlowTemplates((data as { value?: unknown } | null)?.value);
+}
+
+export async function savePlatformBookingTemplates(
+  client: SupabaseClient<Database>,
+  templates: BookingFlowTemplates,
+): Promise<void> {
+  const value = normalizeBookingFlowTemplates(templates) as unknown as Json;
+  const { error } = await client.from("app_settings").upsert(
+    { org_id: null, key: "booking_flow_templates", value },
+    { onConflict: "org_id,key" },
+  );
   if (error) throw error;
 }
 

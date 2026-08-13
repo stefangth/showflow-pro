@@ -5,7 +5,7 @@ import { ensureInvitedAccount, formatExpiresOn, resolveArtistOffersExpected, sen
 import { roleLabel } from "../_shared/roles.ts";
 import { resolveOrgSetting } from "../_shared/settings.ts";
 import { FEATURE_KEYS, FEATURE_REGISTRY, type FeatureKey } from "../_shared/entitlements.ts";
-import { normalizeBookingFlow } from "../_shared/bookingFlow.ts";
+import { BOOKING_FLOW_TEMPLATE_DEFAULTS, normalizeBookingFlowTemplates } from "../_shared/bookingFlow.ts";
 import type { Json } from "../_shared/database.types.ts";
 
 type Body = {
@@ -71,14 +71,22 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
 
       // Land a freshly enabled booking_flow in the "off" state so the org doesn't start
       // dispatching offers before someone configures it. Best-effort, same posture as above.
-      const bookingEnabled = entitlementRows.find((r) => r.feature === "booking_flow")?.enabled ?? false;
       // Only seed the off-flow row if the entitlement insert actually landed — otherwise the
       // two writes could disagree (an off flow row for an org whose entitlements never wrote).
-      if (!entitlementsError && bookingEnabled) {
+      if (!entitlementsError) {
         try {
-          const offFlow = normalizeBookingFlow({ active: false });
+          const templates = normalizeBookingFlowTemplates(await resolveOrgSetting(
+            deps.admin, null, "booking_flow_templates", BOOKING_FLOW_TEMPLATE_DEFAULTS,
+          ));
+          const off = templates.off;
           const { error: flowErr } = await deps.admin.from("app_settings")
-            .upsert({ org_id, key: "booking_flow", value: offFlow as unknown as Json }, { onConflict: "org_id,key" });
+            .upsert([
+              { org_id, key: "booking_flow", value: off.flow as unknown as Json },
+              { org_id, key: "booking_flow_template", value: "off" as unknown as Json },
+              { org_id, key: "offer_response_window_hours", value: off.times.windowHours as unknown as Json },
+              { org_id, key: "offer_digest_hour_berlin", value: off.times.offerDigestHour as unknown as Json },
+              { org_id, key: "confirmation_digest_hour_berlin", value: off.times.confirmationDigestHour as unknown as Json },
+            ], { onConflict: "org_id,key" });
           if (flowErr) console.error("provision-org: off-flow seed failed", flowErr.message);
         } catch (e) {
           console.error("provision-org: off-flow seed failed", (e as Error).message);

@@ -152,7 +152,10 @@ export function normalizeBookingFlowTemplates(value: unknown): BookingFlowTempla
     const rawTimes = record.times && typeof record.times === "object" && !Array.isArray(record.times)
       ? record.times as Record<string, unknown>
       : {};
-    const flow = normalizeBookingFlow(record.flow);
+    const rawFlow = record.flow && typeof record.flow === "object" && !Array.isArray(record.flow)
+      ? record.flow as Record<string, unknown>
+      : {};
+    const flow = normalizeBookingFlow({ ...fallback.flow, ...rawFlow });
     flow.active = name !== "off";
     return [name, {
       flow,

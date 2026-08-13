@@ -8,6 +8,7 @@ const EXPECTED_APP_SETTING_CAPABILITIES = {
   email_template_overrides: "producer_can_edit_booking_settings",
   resend_from_address: "producer_can_edit_booking_settings",
   booking_flow: "producer_can_edit_booking_settings",
+  booking_flow_template: "producer_can_edit_booking_settings",
   hire_order_defaults: "producer_can_edit_hire_order_settings",
   hire_order_letterhead: "producer_can_edit_hire_order_settings",
   hire_order_terms: "producer_can_edit_hire_order_settings",
@@ -30,7 +31,7 @@ const EXPECTED_APP_SETTING_CAPABILITIES = {
 };
 
 describe("effective app_setting_capability SQL twin", () => {
-  it("has exactly the 25 approved setting mappings and leaves unknown keys admin-only", () => {
+  it("has exactly the approved setting mappings and leaves unknown keys admin-only", () => {
     const effective = readEffectiveCaseMap("app_setting_capability");
 
     expect(effective.mapping).toEqual(EXPECTED_APP_SETTING_CAPABILITIES);
