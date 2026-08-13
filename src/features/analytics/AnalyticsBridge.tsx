@@ -1,8 +1,8 @@
 import { useEffect } from 'react';
 import posthog from 'posthog-js';
 import { useLocation } from 'react-router-dom';
-import { useConsent } from '@/features/consent/ConsentContext';
-import { applyConsent, capturePageview, readAnalyticsConfig, type AnalyticsClient } from './posthog';
+import { readStoredConsent, useConsent } from '@/features/consent/ConsentContext';
+import { applyConsent, bootstrapAnalytics, capturePageview, readAnalyticsConfig, type AnalyticsClient } from './posthog';
 
 /**
  * Bridges the GDPR consent state to PostHog. Renders nothing; it only reconciles
@@ -19,6 +19,7 @@ const config = readAnalyticsConfig();
 // consented render error. The SDK remains uninitialized and network-silent
 // until `applyConsent` sees explicit consent.
 const client = posthog as unknown as AnalyticsClient;
+bootstrapAnalytics(client, config, readStoredConsent());
 
 export function AnalyticsBridge(): null {
   const { consent } = useConsent();

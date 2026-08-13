@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ConsentChoices } from '@/features/consent/ConsentContext';
 import {
   applyConsent,
+  bootstrapAnalytics,
   captureException,
   capturePageview,
   readAnalyticsConfig,
@@ -166,5 +167,30 @@ describe('applyConsent', () => {
 
     applyConsent(client, configured, choices({ errorTracking: true }));
     expect(capturePageview(client, choices({ errorTracking: true }))).toBe(false);
+  });
+});
+
+describe('bootstrapAnalytics', () => {
+  beforeEach(() => resetAnalyticsForTests());
+
+  it('initializes synchronously from a previously persisted consent decision', () => {
+    const client = makeClient();
+
+    bootstrapAnalytics(client, configured, {
+      hasDecided: true,
+      choices: choices({ errorTracking: true }),
+    });
+
+    expect(client.init).toHaveBeenCalledTimes(1);
+    expect(client.opt_in_capturing).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not initialize from an undecided or absent stored value', () => {
+    const client = makeClient();
+
+    bootstrapAnalytics(client, configured, { hasDecided: false, choices: choices({ errorTracking: true }) });
+    bootstrapAnalytics(client, configured, null);
+
+    expect(client.init).not.toHaveBeenCalled();
   });
 });

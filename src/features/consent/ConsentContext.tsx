@@ -19,13 +19,13 @@ interface ConsentState {
 
 const STORAGE_KEY = 'showflow.consent.v1';
 
-interface StoredConsent {
+export interface StoredConsent {
   version: 1;
   hasDecided: boolean;
   choices: ConsentChoices;
 }
 
-function loadStored(): StoredConsent | null {
+export function readStoredConsent(): StoredConsent | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
@@ -48,7 +48,7 @@ const ALL_OFF: ConsentChoices = { analytics: false, sessionReplay: false, errorT
 const ConsentContext = createContext<ConsentState | null>(null);
 
 export function ConsentProvider({ children }: { children: React.ReactNode }) {
-  const stored = loadStored();
+  const stored = readStoredConsent();
   const [hasDecided, setHasDecided] = useState(stored?.hasDecided ?? false);
   const [consent, setConsentState] = useState<ConsentChoices>(stored?.choices ?? ALL_OFF);
   const [preferencesOpen, setPreferencesOpen] = useState(false);

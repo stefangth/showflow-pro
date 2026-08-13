@@ -38,6 +38,11 @@ export interface AnalyticsConfig {
   host: string;
 }
 
+export interface StoredAnalyticsConsent {
+  hasDecided: boolean;
+  choices: ConsentChoices;
+}
+
 /** PostHog EU Cloud — this app is GDPR-scoped, so EU is the default region. */
 const DEFAULT_HOST = 'https://eu.i.posthog.com';
 
@@ -117,6 +122,18 @@ export function applyConsent(
   } else {
     client.stopSessionRecording();
   }
+}
+
+/**
+ * Initialize before React mounts children that could throw. The value comes
+ * only from a prior explicit consent decision persisted by ConsentProvider.
+ */
+export function bootstrapAnalytics(
+  client: AnalyticsClient,
+  config: AnalyticsConfig,
+  stored: StoredAnalyticsConsent | null,
+): void {
+  if (stored?.hasDecided) applyConsent(client, config, stored.choices);
 }
 
 /**
