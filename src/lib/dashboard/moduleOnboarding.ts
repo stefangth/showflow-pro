@@ -100,7 +100,7 @@ export const bookingOnboarding: ModuleOnboardingDef<BookingSetupStepKey> = {
     // via ProductionsPage, so the CTA should always render.
     shows: { title: STEP_TITLES.shows, todoHint: "Sync from Airtable, import a sheet, or add a show by hand.", doneHint: "Your shows are in.", ctaLabel: "Add a show", ctaRoute: ROUTES.PRODUCTIONS },
     // Deep-linked, like the coverage links in LadderStep/EligibilityStep: the flow control
-    // lives in Settings, Booking flow, and a bare ROUTES.SETTINGS opens Organization for an
+    // lives in Settings, Booking engine, and a bare ROUTES.SETTINGS opens Organization for an
     // admin and Scheduling for a producer, so "Choose flow" landed on a pane without it.
     // Only latent today, because DashboardSetupRail renders this Link only when its host
     // passes no onStepAction and every current host passes one, but the fallback is what an
@@ -155,7 +155,7 @@ export const bookingOnboarding: ModuleOnboardingDef<BookingSetupStepKey> = {
     // pipeline where artists answer, which a direct-book org does not run. TimingStep's own
     // panel reads the real flow and narrates what THIS org does with these hours.
     // Deep-linked for the same reason as `flow` above: the send hours live in Settings,
-    // Booking flow, and "Set timing" has to land on them.
+    // Booking engine, and "Set timing" has to land on them.
     timing: { title: STEP_TITLES.timing, todoHint: "When booking email goes out, and the answer window.", doneHint: "Hours set. Change them any time in Settings.", ctaLabel: "Set timing", ctaRoute: `${ROUTES.SETTINGS}?tab=booking`, ctaCapability: "edit_booking_settings" },
   },
   // This block is the rail's COMPLETE state: it narrates how this org works, as fact. Rule
@@ -188,7 +188,7 @@ export const bookingOnboarding: ModuleOnboardingDef<BookingSetupStepKey> = {
     // BookingProducerWaitingCard, which renders a real <Link>.
     ...(role === "producer" ? [{ title: PRODUCER_ROLE_RULE_TITLE, hint: PRODUCER_ROLE_NOTE }] : []),
   ]),
-  offFooter: "Booking flow is off for this org. Ask your account manager to switch it on.",
+  offFooter: "Booking engine is not enabled for this org. Ask your account manager to switch it on.",
 };
 
 export const hireOrderOnboarding: ModuleOnboardingDef<SetupStepKey> = {

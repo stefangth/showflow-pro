@@ -133,7 +133,7 @@ export function BookingFlowTab({ get, set, dirtyKeys, saving, onSave, onDiscard,
       {locked && (
         <Alert>
           <Lock className="h-4 w-4" />
-          <AlertTitle>Booking flow is not enabled</AlertTitle>
+          <AlertTitle>Booking engine is not enabled</AlertTitle>
           <AlertDescription>
             Booking is switched off for your organization, so no offers, reminders or
             confirmations are sent. Contact your ShowFlow administrator to enable it.

@@ -1,7 +1,7 @@
 /**
- * Per-org module entitlements: a super-admin turns the Booking flow module off
+ * Per-org module entitlements: a super-admin turns the Booking engine module off
  * for an org from Platform > Organizations > Edit org, and that org's admin
- * immediately sees the Settings > Booking flow tab render locked (a "not
+ * immediately sees the Settings > Booking engine tab render locked (a "not
  * enabled" notice, disabled presets, no rail Save/Discard). Turning the module
  * back on restores the interactive editor.
  *
@@ -13,7 +13,7 @@
  * both sides of a cross-role flow through the real UI in one test.
  *
  * The bootstrap org is shared by nearly every other e2e spec, several of which
- * assume Booking flow is entitled (e.g. booking-flow-presets.spec.ts calls
+ * assume the Booking engine is entitled (e.g. booking-flow-presets.spec.ts calls
  * open-offer-tier against it). beforeAll/afterAll pin the entitlement back to
  * enabled so this spec never leaks a disabled module to the rest of the suite.
  */
@@ -38,7 +38,7 @@ async function setBookingFlowEntitlement(enabled: boolean): Promise<void> {
 
 test.describe.configure({ mode: "serial" });
 
-test.describe("Org entitlements: Booking flow module toggle", () => {
+test.describe("Org entitlements: Booking engine module toggle", () => {
   test.beforeAll(async () => {
     await ensurePlatformAdmin(SUPER_EMAIL, SUPER_PASSWORD);
     await setBookingFlowEntitlement(true);
@@ -56,7 +56,7 @@ test.describe("Org entitlements: Booking flow module toggle", () => {
     await seedConsent(page);
   });
 
-  test("super-admin locks and unlocks the bootstrap org's Booking flow module", async ({ page }) => {
+  test("super-admin locks and unlocks the bootstrap org's Booking engine module", async ({ page }) => {
     const admin = adminClient();
 
     // --- Super-admin turns the module off from Platform > Organizations > Edit org ---
@@ -70,7 +70,7 @@ test.describe("Org entitlements: Booking flow module toggle", () => {
     await orgRow.getByRole("button", { name: /edit org/i }).click();
 
     const dialog = page.getByRole("dialog");
-    const bookingSwitch = dialog.getByRole("switch", { name: "Booking flow" });
+    const bookingSwitch = dialog.getByRole("switch", { name: "Booking engine" });
     await expect(bookingSwitch).toBeVisible({ timeout: 10_000 });
     await expect(bookingSwitch).toHaveAttribute("aria-checked", "true");
 
@@ -90,14 +90,14 @@ test.describe("Org entitlements: Booking flow module toggle", () => {
       expect(data?.enabled).toBe(false);
     }).toPass({ timeout: 15_000 });
 
-    // --- The org's admin sees the Booking flow tab render locked ---
+    // --- The org's admin sees the Booking engine tab render locked ---
     await signOut(page);
     await loginAs(page, TEST_ADMIN_EMAIL, TEST_ADMIN_PASSWORD);
     await expect(page).not.toHaveURL(/\/login/, { timeout: 15_000 });
     await navViaSidebar(page, /^settings$/i);
-    await page.getByRole("tab", { name: /booking flow/i }).click();
+    await page.getByRole("tab", { name: /booking engine off/i }).click();
 
-    await expect(page.getByText(/booking flow is not enabled/i)).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText(/booking engine is not enabled/i)).toBeVisible({ timeout: 15_000 });
     await expect(page.getByRole("button", { name: "Classic" })).toBeDisabled();
     // FlowRail renders no Save/Discard block at all while locked; when unlocked and
     // clean it would read exactly "Saved" (never "Save"), so this is unambiguous
@@ -116,7 +116,7 @@ test.describe("Org entitlements: Booking flow module toggle", () => {
     await orgRow2.getByRole("button", { name: /edit org/i }).click();
 
     const dialog2 = page.getByRole("dialog");
-    const bookingSwitch2 = dialog2.getByRole("switch", { name: "Booking flow" });
+    const bookingSwitch2 = dialog2.getByRole("switch", { name: "Booking engine" });
     await expect(bookingSwitch2).toBeVisible({ timeout: 10_000 });
     await expect(bookingSwitch2).toHaveAttribute("aria-checked", "false");
 
@@ -138,9 +138,9 @@ test.describe("Org entitlements: Booking flow module toggle", () => {
     await loginAs(page, TEST_ADMIN_EMAIL, TEST_ADMIN_PASSWORD);
     await expect(page).not.toHaveURL(/\/login/, { timeout: 15_000 });
     await navViaSidebar(page, /^settings$/i);
-    await page.getByRole("tab", { name: /booking flow/i }).click();
+    await page.getByRole("tab", { name: /booking engine on/i }).click();
 
-    await expect(page.getByText(/booking flow is not enabled/i)).toHaveCount(0);
+    await expect(page.getByText(/booking engine is not enabled/i)).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Classic" })).toBeEnabled();
     await expect(page.getByRole("button", { name: "Saved", exact: true })).toBeVisible({ timeout: 15_000 });
   });

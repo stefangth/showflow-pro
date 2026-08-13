@@ -75,9 +75,9 @@ describe("PlatformDefaultsTab — default modules", () => {
 
   it("loads the platform default entitlements into switches", async () => {
     renderWithProviders(<PlatformDefaultsTab />);
-    const bookingFlowSwitch = await screen.findByRole("switch", { name: /booking flow/i });
+    const bookingEngineSwitch = await screen.findByRole("switch", { name: "Booking engine" });
     const hireOrdersSwitch = screen.getByRole("switch", { name: /hire orders/i });
-    expect(bookingFlowSwitch).toBeChecked();
+    expect(bookingEngineSwitch).toBeChecked();
     expect(hireOrdersSwitch).not.toBeChecked();
   });
 

@@ -20,7 +20,7 @@ export interface FeatureDef {
 export const FEATURE_REGISTRY: Record<FeatureKey, FeatureDef> = {
   booking_flow: {
     key: "booking_flow",
-    label: "Booking flow",
+    label: "Booking engine",
     description: "Configurable offer, escalation and confirmation automation.",
     defaultEnabled: true,
     short: "BF",

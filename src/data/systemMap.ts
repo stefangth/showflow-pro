@@ -820,7 +820,7 @@ export const SYSTEM_MAP_NODES: SystemMapNode[] = [
     subsystems: ["booking", "email", "airtable"],
     detail: {
       Trigger: "log_app_settings_change fires AFTER INSERT OR UPDATE on app_settings, no-ops when an UPDATE didn't actually change the value",
-      Reads: "Settings > Booking flow Change history rail, via fetchSettingsAudit",
+      Reads: "Settings > Booking engine Change history rail, via fetchSettingsAudit",
       Note: "no INSERT policy, the SECURITY DEFINER trigger is the sole writer; org_id NULL rows (platform-default edits) stay invisible to org members by design",
       Cite: "20260714103537_settings_audit_log.sql",
     },

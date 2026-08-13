@@ -18,13 +18,13 @@ function makeResult(overrides: Partial<StageChainResult> = {}): StageChainResult
     hasSteps: true,
     ticks: [true, true, false, false, false, false, false],
     modules: [
-      { label: "Booking flow", on: true },
+      { label: "Booking engine", on: true },
       { label: "Hire orders", on: false },
     ],
     offFooters: ["Hire orders is off for this org. Ask your account manager to switch it on."],
     hasChain: true,
     chainTitle: "How a date will move",
-    rulesBy: "Rules set by you · Settings · Booking flow",
+    rulesBy: "Rules set by you · Settings · Booking engine",
     stages: [
       {
         key: "dates",

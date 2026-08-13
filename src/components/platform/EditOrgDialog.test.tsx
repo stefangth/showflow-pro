@@ -75,11 +75,11 @@ describe("EditOrgDialog modules section", () => {
   it("renders one labeled Switch per FEATURE_KEYS, seeded from fetchEntitlements", async () => {
     render(wrap(<EditOrgDialog org={org} onClose={() => {}} />));
     await waitFor(() => expect(fetchEntitlementsSpy).toHaveBeenCalledWith(expect.anything(), "o1"));
-    const bookingFlow = await screen.findByRole("switch", { name: /booking flow/i });
+    const bookingEngine = await screen.findByRole("switch", { name: "Booking engine" });
     // Exact match: several new capability labels also contain "hire orders" case-insensitively
     // (e.g. "Issue hire orders"), which a loose regex would collide with.
     const hireOrders = screen.getByRole("switch", { name: "Hire orders" });
-    expect(bookingFlow).toBeChecked();
+    expect(bookingEngine).toBeChecked();
     expect(hireOrders).not.toBeChecked();
     expect(screen.getByText(/Configurable offer, escalation and confirmation automation\./i)).toBeInTheDocument();
     expect(screen.getByText(/PDF engagement sheets with delivery and countersignature\./i)).toBeInTheDocument();

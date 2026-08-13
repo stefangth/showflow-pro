@@ -21,7 +21,7 @@ it("FirstRunHeaderCard renders copy, ticks, module states, fires onGhost, and hi
       hasSteps
       ticks={[true, true, false, false, false, false, false]}
       modules={[
-        { label: "Booking flow", on: true },
+        { label: "Booking engine", on: true },
         { label: "Hire orders", on: false },
       ]}
       onGhost={onGhost}
@@ -35,7 +35,7 @@ it("FirstRunHeaderCard renders copy, ticks, module states, fires onGhost, and hi
   expect(ticks).toHaveLength(7);
   expect(ticks.filter((t) => t.getAttribute("data-filled") === "true")).toHaveLength(2);
 
-  expect(within(screen.getByTestId("first-run-module-Booking flow")).getByText("On")).toBeInTheDocument();
+  expect(within(screen.getByTestId("first-run-module-Booking engine")).getByText("On")).toBeInTheDocument();
   expect(within(screen.getByTestId("first-run-module-Hire orders")).getByText("Off")).toBeInTheDocument();
 
   screen.getByRole("button", { name: "Change the flow in Settings" }).click();
@@ -53,7 +53,7 @@ it("FirstRunHeaderCard renders copy, ticks, module states, fires onGhost, and hi
       progressHint="Steps appear the moment a module is switched on."
       hasSteps={false}
       ticks={[]}
-      modules={[{ label: "Booking flow", on: false }]}
+      modules={[{ label: "Booking engine", on: false }]}
     />,
   );
   expect(screen.queryByTestId("first-run-tick")).not.toBeInTheDocument();
@@ -63,13 +63,13 @@ it("OffFooters renders every footer line, and renders nothing for an empty list"
   const { container: withFooters } = render(
     <OffFooters
       footers={[
-        "Booking flow is off for this org. Ask your account manager to switch it on.",
+        "Booking engine is not enabled for this org. Ask your account manager to switch it on.",
         "Hire orders is off for this org. Ask your account manager to switch it on.",
       ]}
     />,
   );
   expect(
-    within(withFooters).getByText("Booking flow is off for this org. Ask your account manager to switch it on."),
+    within(withFooters).getByText("Booking engine is not enabled for this org. Ask your account manager to switch it on."),
   ).toBeInTheDocument();
   expect(
     within(withFooters).getByText("Hire orders is off for this org. Ask your account manager to switch it on."),

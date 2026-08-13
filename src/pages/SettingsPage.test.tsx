@@ -5,7 +5,7 @@ import { renderWithProviders } from "@/test/renderWithProviders";
 import { createFakeSupabase } from "@/test/supabaseFake";
 
 // SettingsPage queries `app_settings` directly (not through a data-access hook), and the
-// Booking flow tab it renders pulls in its own children (useSettingsAudit, fetchCustomFieldDefs,
+// Booking engine tab it renders pulls in its own children (useSettingsAudit, fetchCustomFieldDefs,
 // useFeature/useEntitlements) which query settings_audit_log / custom_field_definitions /
 // org_entitlements. Seed every table this page's tree can reach so each query resolves
 // instead of hanging or throwing.
@@ -64,12 +64,12 @@ beforeEach(() => {
   vi.mocked(useCan).mockReturnValue(true);
 });
 
-describe("SettingsPage Booking flow tab Save affordance", () => {
+describe("SettingsPage Booking engine tab Save affordance", () => {
   beforeEach(() => {
     vi.mocked(useAuth).mockReturnValue(DEFAULT_AUTH as never);
   });
 
-  // Regression: the Booking flow tab renders its own scoped Save/Discard in FlowRail,
+  // Regression: the Booking engine tab renders its own scoped Save/Discard in FlowRail,
   // fed by the page-level dirtyKeys filtered to BOOKING_AUDIT_KEYS. Before this fix, the
   // page-level header Save button (and the "unsaved changes" banner) stayed visible too,
   // so the same draft showed two Save affordances at once while that tab was active.
@@ -94,7 +94,7 @@ describe("SettingsPage Booking flow tab Save affordance", () => {
   });
 });
 
-describe("SettingsPage Booking flow tab, locked (booking_flow not entitled)", () => {
+describe("SettingsPage Booking engine tab, locked (booking_flow not entitled)", () => {
   beforeEach(() => {
     vi.mocked(useAuth).mockReturnValue({
       ...DEFAULT_AUTH,
@@ -108,7 +108,7 @@ describe("SettingsPage Booking flow tab, locked (booking_flow not entitled)", ()
   it("keeps the page-level Save visible, with no rail dirty banner, when editing the from-address while locked", async () => {
     renderWithProviders(<MemoryRouter><SettingsPage /></MemoryRouter>);
     fireEvent.mouseDown(await screen.findByRole("tab", { name: /booking engine/i }));
-    await waitFor(() => expect(screen.getByText("Booking flow is not enabled")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Booking engine is not enabled")).toBeInTheDocument());
 
     const fromAddress = screen.getByLabelText(/from address/i);
     fireEvent.change(fromAddress, { target: { value: "Locked Org <noreply@locked.example>" } });

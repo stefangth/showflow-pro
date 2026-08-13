@@ -75,7 +75,8 @@ it("bf off + ho on → hire stage is the hot manual-order card + booking off-foo
   const r = composeStageChain({ ...base, bookingEntitled:false, hireEntitled:true });
   const hire = r.stages.find(s=>s.key==="hire")!;
   expect(hire.ctaLabel).toBe("New order");
-  expect(r.offFooters).toContain("Booking flow is off for this org. Ask your account manager to switch it on.");
+  expect(r.offFooters).toContain("Booking engine is not enabled for this org. Ask your account manager to switch it on.");
+  expect(r.modules).toContainEqual({ label: "Booking engine", on: false });
 });
 
 it("copy uses configured digest hour, not 09:00", () => {
@@ -113,7 +114,7 @@ it("rulesBy: byYou wins regardless of actor/date", () => {
     ...base,
     provenance: { byYou: true, actorName: "Jamie Cole", changedAt: "2026-07-20T09:00:00Z" },
   });
-  expect(r.rulesBy).toBe("Rules set by you · Settings · Booking flow");
+  expect(r.rulesBy).toBe("Rules set by you · Settings · Booking engine");
 });
 
 it("rulesBy: actorName + changedAt formats the date (exercises fmtDate)", () => {
@@ -137,5 +138,5 @@ it("rulesBy: neither byYou nor a known actor falls back to the generic line", ()
     ...base,
     provenance: { byYou: false, actorName: null, changedAt: null },
   });
-  expect(r.rulesBy).toBe("Rules set in Settings · Booking flow");
+  expect(r.rulesBy).toBe("Rules set in Settings · Booking engine");
 });

@@ -147,7 +147,7 @@ export default function SettingsPage() {
   const canRenameOrg = useCan('rename_org');
   const canEditEmailTemplates = useCan('edit_email_templates');
 
-  // Controlled so we know which tab is active: the Booking flow tab renders its own
+  // Controlled so we know which tab is active: the Booking engine tab renders its own
   // scoped Save/Discard in FlowRail, and the page-level control must defer to it there.
   //
   // `?tab=` seeds the initial value (lazy useState initializer), so a deep link from a
@@ -193,7 +193,7 @@ export default function SettingsPage() {
 
   const isDirty = dirtyKeys.length > 0;
 
-  // Hide the page-level Save/Discard while on the Booking flow tab, but only when every
+  // Hide the page-level Save/Discard while on the Booking engine tab, but only when every
   // dirty key belongs to that tab (BOOKING_AUDIT_KEYS) AND the org is entitled to the
   // booking_flow module. If the draft also holds a dirty key from another tab (e.g. edited
   // on Notifications, then switched here), keep the page-level control visible so that other
