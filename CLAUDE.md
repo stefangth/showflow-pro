@@ -28,8 +28,16 @@ Scale target: 50+ active shows, 200+ artists, multi-venue.
 
 ## Build / test / lint
 
+**npm is the only supported package manager for root Node dependencies.**
+`package-lock.json` is authoritative: use `npm ci` for a reproducible install and
+`npm install` when intentionally adding or updating dependencies, committing the
+resulting `package.json` and `package-lock.json` changes together. Do not create
+`bun.lock`, `bun.lockb`, `yarn.lock`, or `pnpm-lock.yaml`. Deno lockfiles under
+the repository are separate runtime state for Supabase Edge Functions and are
+not covered by this npm-only rule.
+
 ```bash
-npm install          # or bun install
+npm ci               # reproducible install from package-lock.json
 npm run dev          # local dev server (Vite, port 8080)
 npm run build        # production build
 npm run lint         # eslint (zero-warning gate: --max-warnings 0)

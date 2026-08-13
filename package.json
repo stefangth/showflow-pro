@@ -2,6 +2,7 @@
   "name": "vite_react_shadcn_ts",
   "private": true,
   "version": "1.15.1",
+  "packageManager": "npm@11.19.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -23,6 +24,7 @@
     "local:reset": "supabase db reset",
     "verify:fast": "bash scripts/verify.sh --fast",
     "verify:full": "bash scripts/verify.sh --full",
+    "check:package-manager": "node scripts/check-package-manager.mjs",
     "sync:mirrors": "node scripts/sync-mirrors.mjs && node scripts/build-trust-json.mjs",
     "sync:mirrors:check": "node scripts/sync-mirrors.mjs --check && node scripts/build-trust-json.mjs --check",
     "scan:secrets": "node scripts/scan-secrets.mjs"
