@@ -61,6 +61,7 @@ skip() {
 }
 
 # ── Docker-free layers (the --fast inner loop) ───────────────────────────────
+run "package-manager"  npm run --silent check:package-manager
 run "mirrors:check"    npm run --silent sync:mirrors:check
 run "lint"             npm run --silent lint
 run "typecheck:app"    npx tsc -p tsconfig.app.json --noEmit

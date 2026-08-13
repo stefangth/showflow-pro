@@ -53,6 +53,9 @@ jobs:
           node-version: 22
           cache: npm
 
+      - name: Enforce npm-only root lockfile
+        run: node scripts/check-package-manager.mjs
+
       - run: npm ci
 
       # Runs on every PR/push, INCLUDING cloud-session commits and any
