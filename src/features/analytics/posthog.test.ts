@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ConsentChoices } from '@/features/consent/ConsentContext';
 import {
   applyConsent,
+  captureException,
   readAnalyticsConfig,
   resetAnalyticsForTests,
   type AnalyticsClient,
@@ -17,6 +18,7 @@ function makeClient() {
     set_config: vi.fn(),
     startSessionRecording: vi.fn(),
     stopSessionRecording: vi.fn(),
+    captureException: vi.fn(),
   };
   return client;
 }
@@ -77,7 +79,7 @@ describe('applyConsent', () => {
     expect(opts).toMatchObject({
       api_host: HOST,
       autocapture: true,
-      capture_pageview: true,
+      capture_pageview: 'history_change',
       capture_exceptions: false,
       disable_session_recording: true,
       opt_out_capturing_by_default: true,
@@ -112,7 +114,7 @@ describe('applyConsent', () => {
     expect(client.init).toHaveBeenCalledTimes(1);
     expect(client.set_config).toHaveBeenLastCalledWith({
       autocapture: true,
-      capture_pageview: true,
+      capture_pageview: 'history_change',
       capture_exceptions: true,
     });
     expect(client.startSessionRecording).toHaveBeenCalled();
@@ -129,5 +131,18 @@ describe('applyConsent', () => {
     expect(client.reset).toHaveBeenCalledTimes(1);
     expect(client.stopSessionRecording).toHaveBeenCalled();
     expect(client.init).toHaveBeenCalledTimes(1);
+  });
+
+  it('captures explicit exceptions only after error-tracking consent initialized PostHog', () => {
+    const client = makeClient();
+    const error = new Error('boom');
+
+    expect(captureException(client, choices({ errorTracking: true }), error)).toBe(false);
+
+    applyConsent(client, configured, choices({ errorTracking: true }));
+    expect(captureException(client, choices(), error)).toBe(false);
+
+    expect(captureException(client, choices({ errorTracking: true }), error)).toBe(true);
+    expect(client.captureException).toHaveBeenCalledWith(error);
   });
 });

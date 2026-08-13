@@ -29,6 +29,7 @@ export interface AnalyticsClient {
   set_config(config: Record<string, unknown>): void;
   startSessionRecording(): void;
   stopSessionRecording(): void;
+  captureException(error: unknown): void;
 }
 
 export interface AnalyticsConfig {
@@ -80,7 +81,7 @@ export function applyConsent(
     client.init(config.key, {
       api_host: config.host,
       autocapture: choices.analytics,
-      capture_pageview: choices.analytics,
+      capture_pageview: choices.analytics ? 'history_change' : false,
       capture_exceptions: choices.errorTracking,
       disable_session_recording: true, // toggled below via start/stopSessionRecording
       opt_out_capturing_by_default: true, // capture only after the explicit opt-in below
@@ -89,7 +90,7 @@ export function applyConsent(
   } else {
     client.set_config({
       autocapture: choices.analytics,
-      capture_pageview: choices.analytics,
+      capture_pageview: choices.analytics ? 'history_change' : false,
       capture_exceptions: choices.errorTracking,
     });
   }
@@ -106,4 +107,19 @@ export function applyConsent(
   } else {
     client.stopSessionRecording();
   }
+}
+
+/**
+ * Capture a React-boundary exception only when error tracking is actively
+ * consented and the PostHog client has already been initialized. Errors before
+ * consent are deliberately discarded rather than queued.
+ */
+export function captureException(
+  client: AnalyticsClient,
+  choices: ConsentChoices,
+  error: unknown,
+): boolean {
+  if (!initialized || !choices.errorTracking) return false;
+  client.captureException(error);
+  return true;
 }
