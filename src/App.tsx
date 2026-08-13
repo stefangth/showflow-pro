@@ -11,6 +11,7 @@ import { EditorProvider } from "@/features/editor/EditorContext";
 import { ConsentProvider } from "@/features/consent/ConsentContext";
 import { CookieConsentBanner } from "@/components/consent/CookieConsentBanner";
 import { AnalyticsBridge } from "@/features/analytics/AnalyticsBridge";
+import { AnalyticsIdentityBridge } from "@/features/analytics/AnalyticsIdentityBridge";
 import { ProtectedRoute, PlatformRoute } from "@/features/auth/ProtectedRoute";
 import { Analytics } from "@vercel/analytics/react";
 import PlatformPage from "./pages/PlatformPage";
@@ -60,6 +61,7 @@ const App = () => (
         <ConsentProvider>
         <AnalyticsBridge />
         <AuthProvider>
+          <AnalyticsIdentityBridge />
           <EditorProvider>
           <Routes>
             <Route path={ROUTES.HOME} element={<Navigate to={ROUTES.LOGIN} replace />} />
