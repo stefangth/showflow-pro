@@ -21,12 +21,12 @@ describe("NewOrgDialog modules section", () => {
     fireEvent.change(screen.getByLabelText(/^name$/i), { target: { value: "Acme" } });
     fireEvent.change(screen.getByLabelText(/first admin email/i), { target: { value: "a@acme.com" } });
 
-    const bookingFlow = screen.getByLabelText(/booking flow/i);
+    const bookingEngine = screen.getByLabelText("Booking engine");
     const hireOrders = screen.getByLabelText("Hire orders");
-    expect(bookingFlow).not.toBeChecked();
+    expect(bookingEngine).not.toBeChecked();
     expect(hireOrders).not.toBeChecked();
 
-    fireEvent.click(bookingFlow); // turn one module on
+    fireEvent.click(bookingEngine); // turn one module on
 
     fireEvent.click(screen.getByRole("button", { name: /^create$/i }));
 

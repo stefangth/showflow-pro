@@ -1,7 +1,7 @@
 // src/components/dashboard/firstRun/OffFooters.tsx
 
 /** The off-footer strip: one muted line per module that is off for the org
- *  ("Booking flow is off for this org...", "Hire orders is off..."). Renders
+ *  ("Booking engine is not enabled for this org...", "Hire orders is off..."). Renders
  *  nothing when no module is off. Mirrors the offFooters block in
  *  docs/superpowers/plans/assets/2026-08-11-dashboard-first-run-5c.reproduction.html. */
 export function OffFooters({ footers }: { footers: string[] }): JSX.Element | null {

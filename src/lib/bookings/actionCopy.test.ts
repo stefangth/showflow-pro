@@ -16,13 +16,13 @@ const digestOff = { ...classic, confirmation_digest: false };
 describe("confirmConsequenceNote", () => {
   it("states the app-and-digest consequence when the flow is active with the confirmation digest on", () => {
     expect(confirmConsequenceNote(classic, 19, true)).toBe(
-      "Confirm places the booking. The artist sees it in the app right away. The confirmation email goes out in the daily summary at 19:00 Berlin.",
+      "Confirm places the booking. The artist sees it in the app right away. The confirmation email goes out in the daily summary at 19:00h (Berlin, Germany).",
     );
   });
 
   it("zero-pads a single-digit hour the same way scheduleChangeNote does", () => {
     expect(confirmConsequenceNote(classic, 7, true)).toBe(
-      "Confirm places the booking. The artist sees it in the app right away. The confirmation email goes out in the daily summary at 07:00 Berlin.",
+      "Confirm places the booking. The artist sees it in the app right away. The confirmation email goes out in the daily summary at 07:00h (Berlin, Germany).",
     );
   });
 
@@ -94,7 +94,7 @@ describe("cancelBookingCopy", () => {
       flow: classic,
       confirmationDigestHour: 21,
     });
-    expect(copy.whoHearsLine).toMatch(/21:00 Berlin/);
+    expect(copy.whoHearsLine).toContain("21:00h (Berlin, Germany)");
     expect(copy.whoHearsLine).toMatch(/notified in the app/);
   });
 

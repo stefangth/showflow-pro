@@ -152,6 +152,11 @@ export function hh(hour: number): string {
   return `${String(hour).padStart(2, "0")}:00`;
 }
 
+/** User-facing display for the Berlin-anchored booking clock. */
+export function berlinTime(hour: number): string {
+  return `${hh(hour)}h (Berlin, Germany)`;
+}
+
 export function lifecycleChips(flow: BookingFlow): LifecycleChip[] {
   // Only an explicit active===false is "off"; a flow missing the field (a pre-active literal)
   // reads as active, since active defaults true everywhere it is normalized.
@@ -311,7 +316,7 @@ const FLOW_FIELD_LABELS: Record<keyof BookingFlow, string> = {
 };
 
 const SETTING_LABELS: Record<string, string> = {
-  booking_flow: "Booking flow",
+  booking_flow: "Booking engine",
   offer_response_window_hours: "Response window",
   offer_digest_hour_berlin: "Offer digest hour",
   confirmation_digest_hour_berlin: "Confirmation digest hour",

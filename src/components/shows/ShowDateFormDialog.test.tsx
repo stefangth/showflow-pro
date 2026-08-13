@@ -112,7 +112,7 @@ describe("ShowDateFormDialog", () => {
     mockFlow = { ...BOOKING_FLOW_DEFAULTS, confirmation_digest: true };
     mockFlowTimes = { windowHours: 48, offerDigestHour: 19, confirmationDigestHour: 21 };
     renderWithProviders(<ShowDateFormDialog open onOpenChange={() => {}} mode="edit" showDate={editShowDate} />);
-    expect(screen.getByText(/session times go out in the daily summary at 21:00 berlin\./i)).toBeInTheDocument();
+    expect(screen.getByText(/session times go out in the daily summary at 21:00h \(Berlin, Germany\)\./i)).toBeInTheDocument();
     expect(screen.getByText(/artists with an account are also notified in the app/i)).toBeInTheDocument();
     expect(screen.getByText(/anyone with no email and no account is not told/i)).toBeInTheDocument();
   });
@@ -172,7 +172,7 @@ describe("ShowDateFormDialog", () => {
     mockFlow = { ...BOOKING_FLOW_DEFAULTS, confirmation_digest: false };
     mockFlowTimes = { windowHours: 48, offerDigestHour: 19, confirmationDigestHour: 21 };
     renderWithProviders(<ShowDateFormDialog open onOpenChange={() => {}} mode="edit" showDate={editShowDate} />);
-    expect(screen.getByText(/session times reach booked artists in the app at 21:00 berlin\./i)).toBeInTheDocument();
+    expect(screen.getByText(/session times reach booked artists in the app at 21:00h \(Berlin, Germany\)\./i)).toBeInTheDocument();
     expect(screen.getByText(/anyone without one is not told/i)).toBeInTheDocument();
     expect(screen.queryByText(/by email/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/daily summary/i)).not.toBeInTheDocument();

@@ -28,7 +28,7 @@ describe("ModuleGate", () => {
     vi.mocked(useFeature).mockReturnValue(false);
     render(<ModuleGate feature="booking_flow"><span>x</span></ModuleGate>);
     expect(screen.getByTestId("module-gate-booking_flow")).toBeInTheDocument();
-    expect(screen.getByText("Booking flow is not enabled")).toBeInTheDocument();
+    expect(screen.getByText("Booking engine is not enabled")).toBeInTheDocument();
   });
 
   it("renders the preview inert when locked", () => {

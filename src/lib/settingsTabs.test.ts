@@ -14,18 +14,18 @@ describe("resolveInitialTab", () => {
 
   it("falls back to the role default when no tab is asked for", () => {
     expect(resolveInitialTab(null, true)).toBe("organization");
-    expect(resolveInitialTab(null, false)).toBe("scheduling");
+    expect(resolveInitialTab(null, false)).toBe("organization");
   });
 
   it("falls back to the role default on an unknown tab", () => {
     expect(resolveInitialTab("nope", true)).toBe("organization");
-    expect(resolveInitialTab("", false)).toBe("scheduling");
+    expect(resolveInitialTab("", false)).toBe("organization");
   });
 
   it("gives a non-admin the default rather than an admin-only tab they cannot see", () => {
     // "permissions" has no trigger and no content for a producer, so honouring the param
     // would strand them on an empty pane.
-    expect(resolveInitialTab("permissions", false)).toBe("scheduling");
+    expect(resolveInitialTab("permissions", false)).toBe("organization");
     expect(resolveInitialTab("permissions", true)).toBe("permissions");
   });
 

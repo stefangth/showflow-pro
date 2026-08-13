@@ -20,6 +20,7 @@
 // maps `StageAction` to navigate()/openSetup().
 
 import { ROUTES } from "@/config/app.config";
+import { berlinTime } from "@/lib/bookingFlow";
 import { STEP_TITLES } from "@/lib/bookings/setupStatus";
 import {
   ARTIST_ONBOARDING,
@@ -59,10 +60,10 @@ function fmtDate(iso: string): string {
 
 /** Seam: the provenance line, ported from the task brief. */
 function rulesByLine(p: FirstRunProvenance): string {
-  if (p.byYou) return "Rules set by you · Settings · Booking flow";
+  if (p.byYou) return "Rules set by you · Settings · Booking engine";
   if (p.actorName && p.changedAt) return `Rules set by ${p.actorName} · ${fmtDate(p.changedAt)}`;
   if (p.actorName) return `Rules set by ${p.actorName}`;
-  return "Rules set in Settings · Booking flow";
+  return "Rules set in Settings · Booking engine";
 }
 
 // ---------------------------------------------------------------------------
@@ -257,26 +258,26 @@ export function composeStageChain(input: StageChainInput): StageChainResult {
     rawStages = [
       bf
         ? rawStage({ key: "eligibility", n: "01", name: "Eligibility", card: true, done: true, tag: "Your cast", line: "Your casts decide which dates can be offered to you.", metric: imported ? String(m.eligibleDates) : "0", metricLabel: "eligible dates" })
-        : rawStage({ key: "eligibility", n: "01", name: "Eligibility", tag: "Booking flow · off", line: "No booking module, so no dates reach you here.", ...NOT_ON }),
+        : rawStage({ key: "eligibility", n: "01", name: "Eligibility", tag: "Booking engine · off", line: "No booking module, so no dates reach you here.", ...NOT_ON }),
       bf
         ? (input.artistBlockDatesDone
-            ? rawStage({ key: "availability", n: "02", name: "Availability", card: true, done: true, tag: "Booking flow", line: "Blocked dates are never offered.", metric: String(m.blockedDates), metricLabel: "blocked dates", steps: [blockDatesStep], chip: "Open availability", action: { kind: "route", to: ROUTES.AVAILABILITY } })
-            : rawStage({ key: "availability", n: "02", name: "Availability", card: true, act: true, tag: "Booking flow", line: "The one step that is yours.", metric: "0", metricLabel: "blocked dates", steps: [blockDatesStep], primary: "Block dates", action: { kind: "route", to: ROUTES.AVAILABILITY } }))
-        : rawStage({ key: "availability", n: "02", name: "Availability", tag: "Booking flow · off", line: "Nothing to block against.", ...NOT_ON }),
+            ? rawStage({ key: "availability", n: "02", name: "Availability", card: true, done: true, tag: "Booking engine", line: "Blocked dates are never offered.", metric: String(m.blockedDates), metricLabel: "blocked dates", steps: [blockDatesStep], chip: "Open availability", action: { kind: "route", to: ROUTES.AVAILABILITY } })
+            : rawStage({ key: "availability", n: "02", name: "Availability", card: true, act: true, tag: "Booking engine", line: "The one step that is yours.", metric: "0", metricLabel: "blocked dates", steps: [blockDatesStep], primary: "Block dates", action: { kind: "route", to: ROUTES.AVAILABILITY } }))
+        : rawStage({ key: "availability", n: "02", name: "Availability", tag: "Booking engine · off", line: "Nothing to block against.", ...NOT_ON }),
       bf
         ? (offers
             ? (imported
-                ? rawStage({ key: "offer", n: "03", name: "Offer", card: true, done: true, tag: "Booking flow", line: `One digest at ${hour} Berlin. ${answerWindow} to answer.`, metric: String(m.arriving), metricLabel: `arriving ${hour}` })
-                : rawStage({ key: "offer", n: "03", name: "Offer", badge: "Waits", tag: "Booking flow", line: `One digest at ${hour} Berlin, never a mail per date.`, needs: "Needs dates for your cast" }))
-            : rawStage({ key: "offer", n: "03", name: "Booked directly", card: true, done: true, tag: "Booking flow · direct", line: "There is no offer step. A booked date appears as confirmed.", metric: imported ? String(m.confirmed) : "0", metricLabel: "confirmed" }))
-        : rawStage({ key: "offer", n: "03", name: "Offer", tag: "Booking flow · off", line: "No offers are sent from ShowFlow.", ...NOT_ON }),
+                ? rawStage({ key: "offer", n: "03", name: "Offer", card: true, done: true, tag: "Booking engine", line: `One digest at ${berlinTime(input.timing.digestHourBerlin)}. ${answerWindow} to answer.`, metric: String(m.arriving), metricLabel: `arriving ${hour}` })
+                : rawStage({ key: "offer", n: "03", name: "Offer", badge: "Waits", tag: "Booking engine", line: `One digest at ${berlinTime(input.timing.digestHourBerlin)}, never a mail per date.`, needs: "Needs dates for your cast" }))
+            : rawStage({ key: "offer", n: "03", name: "Booked directly", card: true, done: true, tag: "Booking engine · direct", line: "There is no offer step. A booked date appears as confirmed.", metric: imported ? String(m.confirmed) : "0", metricLabel: "confirmed" }))
+        : rawStage({ key: "offer", n: "03", name: "Offer", tag: "Booking engine · off", line: "No offers are sent from ShowFlow.", ...NOT_ON }),
       ho
         ? rawStage({ key: "hire", n: "04", name: "Hire order", card: true, done: true, tag: "Hire orders", line: "You sign in the browser. The countersigned PDF lands in your mail.", metric: imported ? String(m.toSign) : "0", metricLabel: "to sign" })
         : rawStage({ key: "hire", n: "04", name: "Hire order", tag: "Hire orders · off", line: "The office emails your paperwork after a confirm.", ...NOT_ON, needs: "Nothing for you to do here" }),
     ];
   } else {
     const s2Name = offers ? "Offers" : "Book directly";
-    const s2Tag = offers ? "Booking flow" : "Booking flow · direct";
+    const s2Tag = offers ? "Booking engine" : "Booking engine · direct";
     const s2Line = offers
       ? `Tier 1 goes out at ${hour}, tier 2 opens 24h later if unfilled.`
       : "A producer books straight from the eligibility list. Nothing to accept.";
@@ -288,17 +289,17 @@ export function composeStageChain(input: StageChainInput): StageChainResult {
         ? (imported
             ? rawStage({ key: "dates", n: "01", name: "Dates", card: true, done: true, tag: "Shows and bookings", line: `${m.datesIn} ${nDates(m.datesIn)} ${m.datesIn === 1 ? "is" : "are"} in your catalog.`, metric: String(m.datesIn), metricLabel: "dates in", steps: [showsStep, slotsStep], chip: datesChipIsBlocked ? "Open dates" : "Set slots", action: datesChipIsBlocked ? { kind: "route", to: ROUTES.PRODUCTIONS } : { kind: "openSetup", feature: bookingOnboarding.key, step: "slots" } })
             : rawStage({ key: "dates", n: "01", name: "Dates", card: true, act: true, tag: "Shows and bookings", line: "Nothing downstream can mean anything until shows exist.", metric: "0", metricLabel: "dates in", steps: [showsStep, slotsStep], primary: admin ? "Import dates" : "Add a show", action: { kind: "route", to: ROUTES.PRODUCTIONS } }))
-        : rawStage({ key: "dates", n: "01", name: "Dates", tag: "Booking flow · off", line: "Dates and bookings do not run in ShowFlow for this org.", ...NOT_ON }),
+        : rawStage({ key: "dates", n: "01", name: "Dates", tag: "Booking engine · off", line: "Dates and bookings do not run in ShowFlow for this org.", ...NOT_ON }),
       bf
         ? (imported
             ? rawStage({ key: "offers", n: "02", name: s2Name, tag: s2Tag, line: s2Line, steps: s2Steps, card: true, act: offers, done: !offers, metric: offers ? String(m.readyToOffer) : String(m.bookableDates), metricLabel: offers ? "ready to offer" : "bookable dates", primary: offers ? "Send tier 1" : "", chip: offers ? "" : "Open the picker", action: { kind: "route", to: ROUTES.BOOKINGS } })
             : rawStage({ key: "offers", n: "02", name: s2Name, tag: s2Tag, line: s2Line, steps: s2Steps, badge: "Waits", needs: "Needs a date with slots set" }))
-        : rawStage({ key: "offers", n: "02", name: "Offers", tag: "Booking flow · off", line: "No tiers, no digest, no direct picker.", ...NOT_ON }),
+        : rawStage({ key: "offers", n: "02", name: "Offers", tag: "Booking engine · off", line: "No tiers, no digest, no direct picker.", ...NOT_ON }),
       bf
         ? (offers
-            ? rawStage({ key: "confirm", n: "03", name: "Confirm", tag: role === "producer" ? "Booking flow · yours" : "Booking flow", badge: "Waits", line: "An accepted offer is not a booking until a producer confirms it.", needs: "Needs an acceptance", steps: admin ? [teamStep] : [], chip: admin ? TEAM_STEP_META.ctaLabel : "", action: admin ? { kind: "openSetup", feature: bookingOnboarding.key, step: "team" } : null })
-            : rawStage({ key: "confirm", n: "03", name: "Confirmed on the spot", card: true, done: true, tag: "Booking flow · direct", line: "A direct booking is confirmed as it is made. No queue.", metric: imported ? String(m.confirmed) : "0", metricLabel: "confirmed", steps: admin ? [teamStep] : [], chip: admin ? TEAM_STEP_META.ctaLabel : "", action: admin ? { kind: "openSetup", feature: bookingOnboarding.key, step: "team" } : null }))
-        : rawStage({ key: "confirm", n: "03", name: "Confirm", tag: "Booking flow · off", line: "Nothing to confirm here.", ...NOT_ON }),
+            ? rawStage({ key: "confirm", n: "03", name: "Confirm", tag: role === "producer" ? "Booking engine · yours" : "Booking engine", badge: "Waits", line: "An accepted offer is not a booking until a producer confirms it.", needs: "Needs an acceptance", steps: admin ? [teamStep] : [], chip: admin ? TEAM_STEP_META.ctaLabel : "", action: admin ? { kind: "openSetup", feature: bookingOnboarding.key, step: "team" } : null })
+            : rawStage({ key: "confirm", n: "03", name: "Confirmed on the spot", card: true, done: true, tag: "Booking engine · direct", line: "A direct booking is confirmed as it is made. No queue.", metric: imported ? String(m.confirmed) : "0", metricLabel: "confirmed", steps: admin ? [teamStep] : [], chip: admin ? TEAM_STEP_META.ctaLabel : "", action: admin ? { kind: "openSetup", feature: bookingOnboarding.key, step: "team" } : null }))
+        : rawStage({ key: "confirm", n: "03", name: "Confirm", tag: "Booking engine · off", line: "Nothing to confirm here.", ...NOT_ON }),
       ho
         ? (bf
             ? rawStage({ key: "hire", n: "04", name: "Hire order", card: true, tag: "Hire orders", line: "You can draft orders right now. These are only needed before the first one goes out.", metric: imported ? String(m.hireDrafts) : "0", metricLabel: "drafts", steps: hireSteps3, chip: "Draft an order", keepAction: true, action: { kind: "openSetup", feature: hireOrderOnboarding.key, step: firstOutstandingKey(hireSteps3, "letterhead") } })
@@ -385,13 +386,13 @@ export function composeStageChain(input: StageChainInput): StageChainResult {
         ? "Stage 01 is running. The remaining dates have no slot counts, so the digest will skip them."
         : "Stage 01 is running. A producer books straight from the eligibility list. There is no offer step.";
       ghost = admin || input.canEditBooking ? "How this org works" : "What is still outstanding";
-      hint = offers ? `Tier 1 goes out at ${hour} Berlin` : "Direct booking · nothing to accept";
+      hint = offers ? `Tier 1 goes out at ${berlinTime(input.timing.digestHourBerlin)}` : "Direct booking · nothing to accept";
       progressHint = !input.canEditBooking ? "The steps marked Admin are not yours. The rest are." : "The steps left sit in the stage they hold up.";
     } else {
       headline = role === "producer" ? `${orgName} is still being set up` : "The chain is not running yet. One thing starts it: dates.";
       body = role === "producer"
-        ? "Booking flow is on, but no dates exist yet. That is why this page is empty, not a bug."
-        : "Booking flow is on and chosen. Every step it still needs is docked in the stage it unblocks.";
+        ? "Booking engine is on, but no dates exist yet. That is why this page is empty, not a bug."
+        : "Booking engine is on and configured. Every step it still needs is docked in the stage it unblocks.";
       ghost = admin || input.canEditBooking ? "How this org will work" : "What is still outstanding";
       hint = admin ? "About 15 minutes" : (input.canEditBooking ? "You can do these too" : "Adding shows is yours; the settings are not");
       progressHint = !input.canEditBooking ? "The steps marked Admin are not yours. The rest are." : "Nothing here stops you using the rest of the app.";
@@ -418,7 +419,7 @@ export function composeStageChain(input: StageChainInput): StageChainResult {
     hasSteps,
     ticks,
     modules: [
-      { label: "Booking flow", on: bf },
+      { label: "Booking engine", on: bf },
       { label: "Hire orders", on: ho },
     ],
     offFooters,

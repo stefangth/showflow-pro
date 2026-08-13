@@ -87,14 +87,22 @@ interface Props {
 
 /** Settings → Hire orders tab: letterhead, defaults, numbering, terms, countersign
  *  mode. Admin/producer-gated by the caller (SettingsPage); self-gated here on the
- *  hire_orders entitlement so the tab renders nothing at all when the org isn't
- *  entitled, even if reached directly (the module ships default-off). */
+ *  hire_orders entitlement. The off state remains visible so the Modules navigation
+ *  never opens an empty panel. */
 export function HireOrdersTab({ readOnly = false }: Props) {
   const { currentOrg } = useAuth();
   const orgId = currentOrg?.id ?? null;
   const entitled = useFeature("hire_orders");
 
-  if (!entitled) return null;
+  if (!entitled) {
+    return (
+      <Alert>
+        <AlertDescription>
+          Hire orders are not enabled for this organization. Contact your ShowFlow administrator to enable the module.
+        </AlertDescription>
+      </Alert>
+    );
+  }
 
   return (
     <div className="grid gap-5 lg:grid-cols-[1fr_320px]">

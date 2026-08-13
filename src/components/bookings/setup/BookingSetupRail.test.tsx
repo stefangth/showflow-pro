@@ -240,7 +240,7 @@ describe("BookingSetupRail", () => {
       <MemoryRouter><BookingSetupRail orgId="org-1" initialStep="timing" /></MemoryRouter>,
     );
     expect(await screen.findByText(describeTonight(hours, classic)!)).toBeInTheDocument();
-    expect(screen.queryByText(describeTonightStandalone(hours, classic)!)).not.toBeInTheDocument();
+    expect(screen.getAllByText(describeTonight(hours, classic)!)).toHaveLength(1);
   });
 
   it("prints the direct-book org's one live hour, which nothing else on this rail states", async () => {

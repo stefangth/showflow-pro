@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { hh, lifecycleChips, type BookingFlow, type FlowTimes } from "@/lib/bookingFlow";
+import { berlinTime, lifecycleChips, type BookingFlow, type FlowTimes } from "@/lib/bookingFlow";
 
 interface Props {
   flow: BookingFlow;
@@ -154,7 +154,7 @@ export function FlowTimeline({
                   flow.offer_delivery === mode ? "bg-card shadow-sm" : "text-muted-foreground",
                 )}
               >
-                {mode === "digest" ? `Daily digest · ${hh(times.offerDigestHour)}` : "Immediately"}
+                {mode === "digest" ? `Daily digest · ${berlinTime(times.offerDigestHour)}` : "Immediately"}
               </button>
             ))}
           </div>
@@ -164,7 +164,7 @@ export function FlowTimeline({
               flow.offer_delivery !== "digest" && "opacity-40",
             )}
           >
-            Digest hour (Berlin)
+            Digest hour (Berlin, Germany)
             <Input
               type="number"
               min={0}
@@ -307,7 +307,7 @@ export function FlowTimeline({
                 !flow.confirmation_digest && "opacity-40",
               )}
             >
-              Hour (Berlin)
+              Hour (Berlin, Germany)
               <Input
                 type="number"
                 min={0}

@@ -35,7 +35,7 @@ describe("CockpitCastList confirm consequence line", () => {
     renderWithProviders(
       <CockpitCastList groups={acceptedGroups()} flow={classic} bookingFlowEnabled confirmationDigestHour={21} />,
     );
-    expect(screen.getByText(/goes out in the daily summary at 21:00 Berlin/)).toBeInTheDocument();
+    expect(screen.getByText(/goes out in the daily summary at 21:00h \(Berlin, Germany\)/)).toBeInTheDocument();
   });
 
   it("renders nothing about Confirm when no row is awaiting it", () => {
@@ -105,7 +105,7 @@ describe("CockpitCastList per-row cancel confirmation", () => {
     expect(
       screen.getByText(/If Ada Lovelace is in the main cast, the longest waiting accepted understudy is promoted automatically\./),
     ).toBeInTheDocument();
-    expect(screen.getByText(/goes out in the daily summary at 21:00 Berlin/)).toBeInTheDocument();
+    expect(screen.getByText(/goes out in the daily summary at 21:00h \(Berlin, Germany\)/)).toBeInTheDocument();
     expect(onCancel).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole("button", { name: "Keep booking" }));

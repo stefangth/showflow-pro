@@ -20,7 +20,6 @@ export const SETTINGS_TAB_PARAMS = [
   "airtable",
   "booking",
   "email-templates",
-  "scheduling",
   "filters",
   "notifications",
   "docs",
@@ -33,8 +32,8 @@ const ADMIN_ONLY: readonly SettingsTabParam[] = ["permissions"];
 
 /** Where the page lands with no (or an unusable) `?tab=`, matching what it did before
  *  deep-linking existed. */
-export function defaultSettingsTab(isAdmin: boolean): SettingsTabParam {
-  return isAdmin ? "organization" : "scheduling";
+export function defaultSettingsTab(_isAdmin: boolean): SettingsTabParam {
+  return "organization";
 }
 
 /**

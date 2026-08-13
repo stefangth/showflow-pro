@@ -131,7 +131,7 @@ describe("BookingFlowTab", () => {
       // since that override is not the live behavior right now.
       renderWithProviders(<Harness orgFlow={{ ...BOOKING_FLOW_DEFAULTS, artist_acceptance: false }} />);
 
-      await waitFor(() => expect(screen.getByText("Booking flow is not enabled")).toBeInTheDocument());
+      await waitFor(() => expect(screen.getByText("Booking engine is not enabled")).toBeInTheDocument());
       expect(
         screen.getByText(
           "Booking is switched off for your organization, so no offers, reminders or confirmations are sent. Contact your ShowFlow administrator to enable it.",
@@ -162,7 +162,7 @@ describe("BookingFlowTab", () => {
       vi.mocked(useAuth).mockReturnValue({ currentOrg: { id: "org-locked" } } as never);
       renderWithProviders(<Harness dirtyKeys={["resend_from_address"]} />);
 
-      await waitFor(() => expect(screen.getByText("Booking flow is not enabled")).toBeInTheDocument());
+      await waitFor(() => expect(screen.getByText("Booking engine is not enabled")).toBeInTheDocument());
       expect(screen.queryByText(/previewing unsaved draft/i)).not.toBeInTheDocument();
     });
 
@@ -170,7 +170,7 @@ describe("BookingFlowTab", () => {
       vi.mocked(useAuth).mockReturnValue({ currentOrg: { id: "org-locked" } } as never);
       renderWithProviders(<Harness />);
 
-      expect(await screen.findByText("Booking flow is not enabled")).toBeInTheDocument();
+      expect(await screen.findByText("Booking engine is not enabled")).toBeInTheDocument();
       expect(screen.queryByText(/runs the standard flow/i)).not.toBeInTheDocument();
     });
 
@@ -181,7 +181,7 @@ describe("BookingFlowTab", () => {
       // Give the entitlements query a tick to resolve (it defaults to entitled anyway).
       await waitFor(() => expect(screen.queryByText("Change history")).toBeInTheDocument());
 
-      expect(screen.queryByText("Booking flow is not enabled")).not.toBeInTheDocument();
+      expect(screen.queryByText("Booking engine is not enabled")).not.toBeInTheDocument();
       expect(screen.getByRole("button", { name: /^saved$/i })).toBeInTheDocument();
       expect(screen.getByRole("button", { name: /direct book/i })).not.toBeDisabled();
       expect(screen.getByRole("switch", { name: /^artist acceptance$/i })).not.toBeDisabled();
@@ -199,7 +199,7 @@ describe("BookingFlowTab", () => {
       expect(screen.getByRole("switch", { name: /^artist acceptance$/i })).toBeDisabled();
       expect(screen.getByLabelText(/from address/i)).toBeDisabled();
       // No entitlement lock notice — this is a capability gate, not a module gate.
-      expect(screen.queryByText("Booking flow is not enabled")).not.toBeInTheDocument();
+      expect(screen.queryByText("Booking engine is not enabled")).not.toBeInTheDocument();
       // The rail's own Save/Discard is hidden (no write control to grant).
       expect(screen.queryByRole("button", { name: /^save/i })).not.toBeInTheDocument();
       // Read floor: the default flow's real value (artist acceptance on) still renders.

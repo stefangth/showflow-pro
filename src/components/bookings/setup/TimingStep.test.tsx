@@ -83,7 +83,7 @@ describe("TimingStep", () => {
     renderWithProviders(<TimingStep orgId="org-1" onDone={() => {}} />);
     expect(
       await screen.findByText(
-        "When a tier opens, offers go out in the next 19:00 digest. Artists get 48 hours to answer, and confirmations mail at 20:00.",
+        "When a tier opens, offers go out in the next 19:00h (Berlin, Germany) digest. Artists get 48 hours to answer, and confirmations mail at 20:00h (Berlin, Germany).",
       ),
     ).toBeInTheDocument();
   });
@@ -94,7 +94,7 @@ describe("TimingStep", () => {
     fireEvent.change(screen.getByDisplayValue("48"), { target: { value: "24" } });
     expect(
       await screen.findByText(
-        "When a tier opens, offers go out in the next 08:00 digest. Artists get 24 hours to answer, and confirmations mail at 20:00.",
+        "When a tier opens, offers go out in the next 08:00h (Berlin, Germany) digest. Artists get 24 hours to answer, and confirmations mail at 20:00h (Berlin, Germany).",
       ),
     ).toBeInTheDocument();
   });
@@ -138,7 +138,7 @@ describe("TimingStep", () => {
     rerender(<TimingStep orgId="org-1" onDone={() => {}} />);
     expect(
       await screen.findByText(
-        "When a tier opens, offers go out in the next 08:00 digest. Artists get 24 hours to answer, and confirmations mail at 17:00.",
+        "When a tier opens, offers go out in the next 08:00h (Berlin, Germany) digest. Artists get 24 hours to answer, and confirmations mail at 17:00h (Berlin, Germany).",
       ),
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /save timing/i })).toBeInTheDocument();
@@ -151,14 +151,14 @@ describe("TimingStep", () => {
   // describe two different organizations at once.
   it("stops stating the previous org's hours after an org switch", async () => {
     const { rerender } = renderWithProviders(<TimingStep orgId="org-1" onDone={() => {}} />);
-    expect(await screen.findByText(/next 19:00 digest/)).toBeInTheDocument();
+    expect(await screen.findByText(/next 19:00h \(Berlin, Germany\) digest/)).toBeInTheDocument();
 
     timesRef.value = { windowHours: 24, offerDigestHour: 8, confirmationDigestHour: 17 };
     rerender(<TimingStep orgId="org-2" onDone={() => {}} />);
 
     expect(
       await screen.findByText(
-        "When a tier opens, offers go out in the next 08:00 digest. Artists get 24 hours to answer, and confirmations mail at 17:00.",
+        "When a tier opens, offers go out in the next 08:00h (Berlin, Germany) digest. Artists get 24 hours to answer, and confirmations mail at 17:00h (Berlin, Germany).",
       ),
     ).toBeInTheDocument();
     expect(screen.getByDisplayValue("24")).toBeInTheDocument();
@@ -166,7 +166,7 @@ describe("TimingStep", () => {
 
   it("falls silent, rather than carrying hours over, while the new org's are still unread", async () => {
     const { rerender } = renderWithProviders(<TimingStep orgId="org-1" onDone={() => {}} />);
-    expect(await screen.findByText(/next 19:00 digest/)).toBeInTheDocument();
+    expect(await screen.findByText(/next 19:00h \(Berlin, Germany\) digest/)).toBeInTheDocument();
 
     // The switched-to org has nothing cached yet: keeping the old sentence up would state
     // one org's schedule on another org's screen.
@@ -189,7 +189,7 @@ describe("TimingStep", () => {
     expect(await screen.findByRole("button", { name: /save timing/i })).toBeInTheDocument();
     expect(screen.queryByText(/When a tier opens/)).not.toBeInTheDocument();
     expect(
-      screen.getByText("Newly confirmed artists get the confirmation digest at 20:00."),
+      screen.getByText("Newly confirmed artists get the confirmation digest at 20:00h (Berlin, Germany)."),
     ).toBeInTheDocument();
     // The scope note stays the single carrier of the timezone on this flow too.
     expect(container.textContent?.match(/Berlin/g) ?? []).toHaveLength(1);
@@ -238,14 +238,14 @@ describe("TimingStep", () => {
     // never describes a pipeline it has not read for the org in front of it.
     flowRef.value = { ...BOOKING_FLOW_DEFAULTS, artist_acceptance: false, confirmation_digest: false };
     renderWithProviders(<TimingStep orgId={null} onDone={() => {}} />);
-    expect(await screen.findByText("Hours are Berlin time.")).toBeInTheDocument();
+    expect(await screen.findByText("Digest times include their timezone.")).toBeInTheDocument();
     expect(screen.queryByText(/You book artists directly/)).not.toBeInTheDocument();
     expect(screen.queryByText(/The confirmation hour still runs/)).not.toBeInTheDocument();
   });
 
   it("keeps the timezone on screen under every flow", async () => {
     renderWithProviders(<TimingStep orgId="org-1" onDone={() => {}} />);
-    expect(await screen.findByText(/Hours are Berlin time/)).toBeInTheDocument();
+    expect(await screen.findByText(/Digest times include their timezone/)).toBeInTheDocument();
   });
 
   it("names the timezone once, not on every line that states an hour", async () => {
@@ -259,7 +259,7 @@ describe("TimingStep", () => {
       flowRef.value = applyPreset(BOOKING_FLOW_DEFAULTS, preset);
       const { container, unmount } = renderWithProviders(<TimingStep orgId="org-1" onDone={() => {}} />);
       expect(await screen.findByText(/When a tier opens/)).toBeInTheDocument();
-      expect(container.textContent?.match(/Berlin/g) ?? []).toHaveLength(1);
+      expect(container.textContent?.match(/Berlin/g) ?? []).toHaveLength(preset === "classic" ? 2 : 1);
       unmount();
     }
   });

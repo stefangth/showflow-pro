@@ -21,7 +21,7 @@ const times: FlowTimes = { windowHours: 48, offerDigestHour: 19, confirmationDig
 describe("describeTonight", () => {
   it("narrates the digest pipeline for the classic flow", () => {
     expect(describeTonight(times, classic)).toBe(
-      "When a tier opens, offers go out in the next 19:00 digest. Artists get 48 hours to answer, and confirmations mail at 20:00.",
+      "When a tier opens, offers go out in the next 19:00h (Berlin, Germany) digest. Artists get 48 hours to answer, and confirmations mail at 20:00h (Berlin, Germany).",
     );
   });
 
@@ -29,7 +29,7 @@ describe("describeTonight", () => {
     expect(
       describeTonight({ windowHours: 24, offerDigestHour: 8, confirmationDigestHour: 17 }, classic),
     ).toBe(
-      "When a tier opens, offers go out in the next 08:00 digest. Artists get 24 hours to answer, and confirmations mail at 17:00.",
+      "When a tier opens, offers go out in the next 08:00h (Berlin, Germany) digest. Artists get 24 hours to answer, and confirmations mail at 17:00h (Berlin, Germany).",
     );
   });
 
@@ -43,8 +43,8 @@ describe("describeTonight", () => {
     // and that sentence sits under the same single carrier of the timezone.
     const flows = [classic, fasttrack, direct, { ...classic, confirmation_digest: false }];
     for (const flow of flows) {
-      expect(describeTonight(times, flow)).not.toMatch(/Berlin/);
-      expect(timingScopeNote(flow)).toMatch(/Berlin/);
+      expect(describeTonight(times, flow)).toMatch(/Berlin, Germany/);
+      expect(timingScopeNote(flow)).not.toMatch(/Berlin/);
     }
   });
 
@@ -58,9 +58,9 @@ describe("describeTonight", () => {
   it("never mentions a digest hour for an immediate-delivery org", () => {
     const line = describeTonight(times, fasttrack)!;
     expect(line).toBe(
-      "When a tier opens, offers email straight away. Artists get 48 hours to answer, and confirmations mail at 20:00.",
+      "When a tier opens, offers email straight away. Artists get 48 hours to answer, and confirmations mail at 20:00h (Berlin, Germany).",
     );
-    expect(line).not.toContain("19:00");
+    expect(line).not.toContain("19:00h (Berlin, Germany)");
     expect(line).not.toContain("digest");
   });
 
@@ -76,7 +76,7 @@ describe("describeTonight", () => {
     const flow = { ...classic, confirmation_digest: false };
     const line = describeTonight(times, flow)!;
     expect(line).toBe(
-      "When a tier opens, offers go out in the next 19:00 digest. Artists get 48 hours to answer.",
+      "When a tier opens, offers go out in the next 19:00h (Berlin, Germany) digest. Artists get 48 hours to answer.",
     );
     expect(line).not.toContain("confirmations mail");
   });
@@ -89,14 +89,14 @@ describe("describeTonight", () => {
     // note takes no times, so the org was told "confirmations still mail" and never when.
     expect(direct.confirmation_digest).toBe(true);
     expect(describeTonight(times, direct)).toBe(
-      "Newly confirmed artists get the confirmation digest at 20:00.",
+      "Newly confirmed artists get the confirmation digest at 20:00h (Berlin, Germany).",
     );
   });
 
   it("names no offer window or offer hour to a direct-book org", () => {
     // No tier is ever opened there, so neither of the other two fields may appear.
     const line = describeTonight(times, direct)!;
-    expect(line).not.toMatch(/tier|offer|48 hours|19:00/i);
+    expect(line).not.toMatch(/tier|offer|48 hours|19:00h (Berlin, Germany)/i);
   });
 
   it("still says nothing to a direct-book org that sends no confirmation digest", () => {
@@ -121,7 +121,7 @@ describe("describeTonight", () => {
     // The window is not stated by this branch and is not read by anything that org runs,
     // so a cleared window field must not take the one true sentence off the panel.
     expect(describeTonight({ ...times, windowHours: Number.NaN }, direct)).toBe(
-      "Newly confirmed artists get the confirmation digest at 20:00.",
+      "Newly confirmed artists get the confirmation digest at 20:00h (Berlin, Germany).",
     );
   });
 
@@ -174,13 +174,13 @@ describe("describeTonight", () => {
 describe("describeTonightStandalone", () => {
   it("is the same sentence with the timezone the missing scope note would have carried", () => {
     expect(describeTonightStandalone(times, classic)).toBe(
-      `${describeTonight(times, classic)} Hours are Berlin time.`,
+      describeTonight(times, classic),
     );
   });
 
   it("names the timezone under every flow that says anything at all", () => {
     // The bare hours are the whole point of the sentence: printed on a surface with no
-    // scope note, "19:00" with no zone is a guess for any org not sitting in Berlin.
+    // scope note, "19:00h (Berlin, Germany)" with no zone is a guess for any org not sitting in Berlin.
     for (const flow of [classic, fasttrack, direct]) {
       expect(describeTonightStandalone(times, flow)).toMatch(/Berlin/);
     }
@@ -190,13 +190,13 @@ describe("describeTonightStandalone", () => {
     // The plural is inherited from `timingScopeNote`, where it is right because that note
     // sits over three hour INPUTS. Here there are no inputs, only the times this one
     // sentence just named, and three of the four speaking flows name exactly one:
-    // "Newly confirmed artists get the confirmation digest at 20:00. Hours are Berlin time."
+    // "Newly confirmed artists get the confirmation digest at 20:00h (Berlin, Germany). Digest times include their timezone."
     // was the panel's vocabulary printed on a surface that does not have the panel's fields.
-    expect(describeTonightStandalone(times, classic)).toContain("Hours are Berlin time.");
+    expect(describeTonightStandalone(times, classic)).toContain("Berlin, Germany");
     for (const flow of [fasttrack, direct, { ...classic, confirmation_digest: false }]) {
       const line = describeTonightStandalone(times, flow)!;
       expect(line.match(/\d{2}:\d{2}/g)).toHaveLength(1);
-      expect(line).toContain("That hour is Berlin time.");
+      expect(line).toContain("Berlin, Germany");
       expect(line).not.toContain("Hours are");
     }
   });
@@ -243,8 +243,8 @@ describe("describeTonightStandalone", () => {
 // timingScopeNote is what replaces it: a line that is true under every preset.
 describe("timingScopeNote", () => {
   it("states the timezone and leaves the pipeline to describeTonight", () => {
-    expect(timingScopeNote(classic)).toBe("Hours are Berlin time.");
-    expect(timingScopeNote(fasttrack)).toBe("Hours are Berlin time.");
+    expect(timingScopeNote(classic)).toBe("Digest times include their timezone.");
+    expect(timingScopeNote(fasttrack)).toBe("Digest times include their timezone.");
   });
 
   it("names the timezone under every flow, because nothing else on the panel does", () => {
@@ -252,13 +252,13 @@ describe("timingScopeNote", () => {
     // silent entirely for a direct-book or paused org. That makes this line the only place
     // the three hour fields are ever tied to a timezone, so no branch of it may drop it.
     const flows = [classic, fasttrack, direct, off, { ...direct, confirmation_digest: false }, null, undefined];
-    for (const flow of flows) expect(timingScopeNote(flow)).toMatch(/Berlin/);
+    for (const flow of flows) expect(timingScopeNote(flow)).not.toMatch(/Berlin/);
   });
 
   it("states only what is true while the flow is still unread", () => {
     // Same rule as describeTonight: an unknown flow may not be narrated as the classic one.
-    expect(timingScopeNote(undefined)).toBe("Hours are Berlin time.");
-    expect(timingScopeNote(null)).toBe("Hours are Berlin time.");
+    expect(timingScopeNote(undefined)).toBe("Digest times include their timezone.");
+    expect(timingScopeNote(null)).toBe("Digest times include their timezone.");
   });
 
   it("scopes the paused note to the three fields on this panel", () => {
@@ -268,7 +268,7 @@ describe("timingScopeNote", () => {
     // all keep sending with the booking flow off, and this panel does not read as
     // booking-scoped to someone seeing it on their first day.
     expect(timingScopeNote(off)).toBe(
-      "Hours are Berlin time. These hours change nothing while the booking flow is off.",
+      "Digest times include their timezone. These hours change nothing while the booking flow is off.",
     );
   });
 
@@ -294,7 +294,7 @@ describe("timingScopeNote", () => {
     //    posing a puzzle to the many direct-book orgs that never ran a tier at all.
     const line = timingScopeNote(direct);
     expect(line).toBe(
-      "Hours are Berlin time. You book artists directly, so the offer window and the offer digest hour change nothing. Only the confirmation hour is live.",
+      "Digest times include their timezone. You book artists directly, so the offer window and the offer digest hour change nothing. Only the confirmation hour is live.",
     );
   });
 
@@ -315,19 +315,19 @@ describe("timingScopeNote", () => {
     const live =
       "The confirmation hour still runs: it sets when booked artists are notified of schedule changes in the app.";
     expect(timingScopeNote({ ...direct, confirmation_digest: false })).toBe(
-      `Hours are Berlin time. You book artists directly, so the offer window and the offer digest hour change nothing. ${live}`,
+      `Digest times include their timezone. You book artists directly, so the offer window and the offer digest hour change nothing. ${live}`,
     );
     // Same fact from the offers side: describeTonight drops its "confirmations mail at"
     // clause when the digest is off, so without this the "Confirmations" input sat on an
     // offers org's panel with nothing anywhere saying what it still does.
     expect(timingScopeNote({ ...classic, confirmation_digest: false })).toBe(
-      `Hours are Berlin time. ${live}`,
+      `Digest times include their timezone. ${live}`,
     );
   });
 
   it("leaves the confirmation hour to describeTonight while the digest is on", () => {
     // Then the sentence below this note states the hour itself ("and confirmations mail at
-    // 20:00" / "the confirmation digest at 20:00"), so explaining the field here too would
+    // 20:00h (Berlin, Germany)" / "the confirmation digest at 20:00h (Berlin, Germany)"), so explaining the field here too would
     // put the same fact on one small panel twice.
     expect(timingScopeNote(classic)).not.toMatch(/confirmation hour/);
     expect(timingScopeNote(fasttrack)).not.toMatch(/confirmation hour/);
