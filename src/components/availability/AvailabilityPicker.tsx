@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/features/auth/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -18,6 +19,7 @@ interface Props {
 export function AvailabilityPicker({ artistId, date, size = 'default' }: Props) {
   const { currentOrg } = useAuth();
   const qc = useQueryClient();
+  const { t } = useTranslation('availability');
 
   const { data: block, isError } = useQuery({
     queryKey: ['blocked-dates', 'cell', artistId, date],
@@ -52,7 +54,7 @@ export function AvailabilityPicker({ artistId, date, size = 'default' }: Props) 
   if (isError) {
     return (
       <p className="w-full text-xs text-destructive text-center" role="alert">
-        Couldn't load
+        {t('picker.loadError')}
       </p>
     );
   }
@@ -66,7 +68,7 @@ export function AvailabilityPicker({ artistId, date, size = 'default' }: Props) 
       className="w-full text-xs"
     >
       <BanIcon className="h-3 w-3 mr-1" />
-      {block ? 'Blocked' : 'Block date'}
+      {block ? t('picker.blocked') : t('picker.blockDate')}
     </Button>
   );
 }

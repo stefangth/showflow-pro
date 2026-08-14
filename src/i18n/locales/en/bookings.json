@@ -1,0 +1,51 @@
+{
+  "rowPeek": {
+    "eyebrowUnconfigured": "unconfigured",
+    "noConfig": "Set cast slots in Settings to track fill.",
+    "confirming": "Confirming…",
+    "confirm": "Confirm {{count}}",
+    "openDate": "Open date",
+    "keyHint": "Space to peek · Enter to open"
+  },
+  "artist": {
+    "cancelHint": "Need to cancel a date you confirmed? Message your producer in the date's chat and they will update the booking.",
+    "sortChronoLabel": "Date",
+    "loadError": "Failed to load your bookings. Please refresh.",
+    "hireOrderLink": "Hire order",
+    "emptyState": "No eligible dates yet. Once you're added to a cast, offered dates appear here.",
+    "calendarEmpty": "No eligible dates"
+  },
+  "status": {
+    "open": "Open",
+    "partiallyFilled": "Partially Filled",
+    "fullyFilled": "Fully Filled",
+    "cancelled": "Cancelled",
+    "unconfigured": "Unconfigured"
+  },
+  "producer": {
+    "toast": {
+      "confirmed": "Confirmed {{count}}",
+      "nothingToConfirm": "Nothing to confirm, it moved on"
+    },
+    "title": "Shows & Bookings",
+    "subtitle": "All scheduled dates and cast status in one place.",
+    "setupChecklist": "Setup checklist",
+    "newDate": "New date",
+    "hireOrderReady": {
+      "title_one": "{{count}} date is fully filled. Ready for hire order.",
+      "title_other": "{{count}} dates are fully filled. Ready for hire orders.",
+      "description": "Create the orders to confirm the engagements and send them for countersignature.",
+      "cta": "Generate hire orders"
+    },
+    "noHireOrderPermission": "You don't have permission to generate hire orders",
+    "searchPlaceholder": "Search program, venue, city…",
+    "statusPlaceholder": "Status",
+    "allStatuses": "All statuses",
+    "sortChronoLabel": "Date",
+    "sortAsc": "{{label}} ↑",
+    "sortDesc": "{{label}} ↓",
+    "generateHireOrder": "Generate hire order",
+    "emptyState": "No show dates match the current filters.",
+    "calendarEmpty": "No show dates scheduled"
+  }
+}

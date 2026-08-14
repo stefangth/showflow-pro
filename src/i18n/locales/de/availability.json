@@ -1,0 +1,74 @@
+{
+  "offer": {
+    "accept": "Annehmen",
+    "decline": "Ablehnen",
+    "toast": {
+      "unavailableTitle": "Dieses Angebot ist nicht mehr verfügbar",
+      "unavailableDesc": "Es wurde vielleicht zurückgezogen oder ist abgelaufen. Aktualisiere, um den aktuellen Stand zu sehen.",
+      "declinedTitle": "Angebot abgelehnt",
+      "declinedDesc": "Damit sagst du nur dieses eine Angebot ab. Zukünftige Angebote sind nicht betroffen.",
+      "errorTitle": "Fehler"
+    }
+  },
+  "picker": {
+    "loadError": "Konnte nicht geladen werden",
+    "blocked": "Gesperrt",
+    "blockDate": "Termin sperren"
+  },
+  "calendar": {
+    "ineligibleReason": "Dieser Termin wird dir nicht angeboten. Angebotene Termine ergeben sich aus deinen Besetzungen und den dafür nötigen Skills.",
+    "prevMonth": "Voriger Monat",
+    "nextMonth": "Nächster Monat",
+    "loadError": "Deine Buchungen oder gesperrten Termine konnten nicht geladen werden · Status kann unvollständig sein. Bitte aktualisiere.",
+    "empty": "Noch keine passenden Termine. Sobald du einer Besetzung hinzugefügt wirst, erscheinen angebotene Termine hier.",
+    "label": {
+      "booked": "Gebucht",
+      "hold": "Vormerkung",
+      "offer": "Angebot",
+      "blocked": "Gesperrt"
+    },
+    "popover": {
+      "confirmed": "Buchung bestätigt",
+      "hold": "Vormerkung gesetzt · wartet auf Bestätigung durch dein Produktionsteam"
+    },
+    "legend": {
+      "title": "Legende:",
+      "eligible": "Verfügbar",
+      "confirmed": "Bestätigt",
+      "hold": "Vormerkung",
+      "offerPending": "Angebot offen",
+      "blocked": "Gesperrt"
+    },
+    "srIneligible": "Abgeblendete Termine werden dir nicht angeboten. Angebotene Termine ergeben sich aus deinen Besetzungen und den dafür nötigen Skills."
+  },
+  "toast": {
+    "dateBlocked": "Termin gesperrt",
+    "errorTitle": "Fehler",
+    "blockRemoved": "Sperre entfernt"
+  },
+  "filter": {
+    "allOffers": "Alle Angebote",
+    "unanswered": "Unbeantwortet"
+  },
+  "sortChronoLabel": "Datum",
+  "offersLoadError": "Deine Angebote konnten nicht geladen werden. Bitte aktualisiere · sperre keine Termine, bevor das geladen ist, sonst werden offene Angebote möglicherweise nicht angezeigt.",
+  "emptyUnanswered": "Keine unbeantworteten Angebote · gut gemacht!",
+  "emptyAll": "Noch keine passenden Termine.",
+  "blocked": {
+    "title": "Gesperrte Termine",
+    "description": "Markiere Termine, an denen du nicht spielen kannst, damit dir das System keine Angebote dafür schickt. Termine, für die du bereits gebucht bist, sind davon nicht betroffen.",
+    "dateLabel": "Datum",
+    "selectAriaLabel": "Termin sperren",
+    "noEligibleOption": "Keine passenden Termine",
+    "selectPlaceholder": "Termin auswählen…",
+    "reasonLabel": "Grund (optional)",
+    "reasonPlaceholder": "Urlaub, anderer Job…",
+    "blockButton": "Sperren",
+    "loadError": "Deine gesperrten Termine konnten nicht geladen werden.",
+    "removeTooltip": "Sperre entfernen",
+    "empty": "Noch keine gesperrten Termine."
+  },
+  "error": {
+    "noOrg": "Keine aktive Organisation"
+  }
+}

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { FileText } from 'lucide-react';
@@ -71,6 +72,7 @@ function customFor(d: DateRow): Record<string, unknown> | null {
  * Artist-scoped Bookings view: same list/calendar UI, filtered to eligible dates.
  */
 export function ArtistBookingsView() {
+  const { t } = useTranslation('bookings');
   const { data: artist } = useMyArtist();
   const { data: eligibleDates, isLoading } = useArtistEligibleDates();
   const hireOrdersEnabled = useFeature('hire_orders');
@@ -189,12 +191,12 @@ export function ArtistBookingsView() {
             table below, which does not exist at all without the booking module. */}
         {hasUpcomingConfirmedBooking && (
           <p className="text-xs text-muted-foreground">
-            Need to cancel a date you confirmed? Message your producer in the date's chat and they will update the booking.
+            {t('artist.cancelHint')}
           </p>
         )}
         <div className="flex flex-wrap items-center gap-3">
           <TimeframeFilter value={timeframe} onChange={setTimeframe} />
-          <SortControl value={sort} onChange={setSort} chronoLabel="Date" />
+          <SortControl value={sort} onChange={setSort} chronoLabel={t('artist.sortChronoLabel')} />
           <div className="ml-auto">
             <ViewToggle value={view} onChange={setView} />
           </div>
@@ -204,7 +206,7 @@ export function ArtistBookingsView() {
 
         {bookingsError ? (
           <Alert variant="destructive">
-            <AlertDescription>Failed to load your bookings. Please refresh.</AlertDescription>
+            <AlertDescription>{t('artist.loadError')}</AlertDescription>
           </Alert>
         ) : isLoading ? (
           <div className="space-y-2">
@@ -281,7 +283,7 @@ export function ArtistBookingsView() {
                                 className="mt-1 inline-flex items-center gap-1 text-xs text-primary hover:underline"
                               >
                                 <FileText className="h-3 w-3" />
-                                Hire order
+                                {t('artist.hireOrderLink')}
                               </Link>
                             )}
                           </TableCell>
@@ -304,7 +306,7 @@ export function ArtistBookingsView() {
                   {filtered.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={visibleCount || 5} className="text-center text-muted-foreground py-12">
-                        No eligible dates yet. Once you're added to a cast, offered dates appear here.
+                        {t('artist.emptyState')}
                       </TableCell>
                     </TableRow>
                   )}
@@ -316,7 +318,7 @@ export function ArtistBookingsView() {
           <EntityCalendar
             items={calendarItems}
             getDate={(it) => it.date}
-            emptyMessage="No eligible dates"
+            emptyMessage={t('artist.calendarEmpty')}
             renderItem={(it) => {
               const d = it.eligible;
               const status = statusFor(d);

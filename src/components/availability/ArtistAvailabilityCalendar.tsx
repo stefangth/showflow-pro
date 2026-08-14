@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { supabase } from '@/integrations/supabase/client';
 import {
   format, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths, isToday,
@@ -22,12 +23,6 @@ interface Props {
   eligibleDates: EligibleDate[];
 }
 
-// useArtistEligibleDates filters by BOTH cast membership and unmet hard skill
-// requirements, so the explanation has to name both — "offered dates come from
-// your casts" alone is only half the story for an artist missing a required skill.
-const INELIGIBLE_DAY_REASON =
-  'This date is not offered to you. Offered dates come from your casts and their required skills.';
-
 /**
  * Month-grid calendar:
  *  - Bold blue outline → eligible date
@@ -39,7 +34,13 @@ const INELIGIBLE_DAY_REASON =
  * Tapping a cell opens a popover with a blocked-date toggle.
  */
 export function ArtistAvailabilityCalendar({ artistId, eligibleDates }: Props) {
+  const { t } = useTranslation('availability');
   const [currentMonth, setCurrentMonth] = useState<Date>(startOfMonth(new Date()));
+
+  // useArtistEligibleDates filters by BOTH cast membership and unmet hard skill
+  // requirements, so the explanation has to name both, "offered dates come from
+  // your casts" alone is only half the story for an artist missing a required skill.
+  const ineligibleDayReason = t('calendar.ineligibleReason');
 
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
@@ -128,22 +129,22 @@ export function ArtistAvailabilityCalendar({ artistId, eligibleDates }: Props) {
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
-          <IconTooltip label="Previous month">
+          <IconTooltip label={t('calendar.prevMonth')}>
             <Button
               variant="ghost"
               size="icon"
-              aria-label="Previous month"
+              aria-label={t('calendar.prevMonth')}
               onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
           </IconTooltip>
           <CardTitle className="font-display">{format(currentMonth, 'MMMM yyyy')}</CardTitle>
-          <IconTooltip label="Next month">
+          <IconTooltip label={t('calendar.nextMonth')}>
             <Button
               variant="ghost"
               size="icon"
-              aria-label="Next month"
+              aria-label={t('calendar.nextMonth')}
               onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
             >
               <ChevronRight className="h-4 w-4" />
@@ -154,12 +155,12 @@ export function ArtistAvailabilityCalendar({ artistId, eligibleDates }: Props) {
       <CardContent>
         {(bookingsError || blockedError) && (
           <p className="mb-3 text-sm text-destructive">
-            Couldn't load your bookings or blocked dates — statuses may be incomplete. Please refresh.
+            {t('calendar.loadError')}
           </p>
         )}
         {eligibleDates.length === 0 && (
           <p className="text-sm text-muted-foreground mb-4">
-            No eligible dates yet. Once you are added to a cast, offered dates appear here.
+            {t('calendar.empty')}
           </p>
         )}
         <div className="grid grid-cols-7 gap-1 mb-2">
@@ -217,22 +218,22 @@ export function ArtistAvailabilityCalendar({ artistId, eligibleDates }: Props) {
                 <span className="text-sm font-medium">{format(day, 'd')}</span>
                 {isConfirmed && (
                   <span className="block text-[9px] mt-0.5 font-semibold uppercase tracking-wide">
-                    Booked
+                    {t('calendar.label.booked')}
                   </span>
                 )}
                 {isSoftBooked && (
                   <span className="block text-[9px] mt-0.5 font-semibold uppercase tracking-wide">
-                    Hold
+                    {t('calendar.label.hold')}
                   </span>
                 )}
                 {isSuggested && (
                   <span className="block text-[9px] mt-0.5 font-semibold uppercase tracking-wide">
-                    Offer
+                    {t('calendar.label.offer')}
                   </span>
                 )}
                 {isBlocked && !isConfirmed && !isSoftBooked && !isSuggested && (
                   <span className="block text-[9px] mt-0.5 font-semibold uppercase tracking-wide">
-                    Blocked
+                    {t('calendar.label.blocked')}
                   </span>
                 )}
               </button>
@@ -243,7 +244,7 @@ export function ArtistAvailabilityCalendar({ artistId, eligibleDates }: Props) {
               // explanation is stated ONCE for the whole grid (the sr-only note after
               // the legend below), not repeated on every disabled cell, which would
               // make an assistive-tech user hear the same sentence 25-30 times a month.
-              return <div key={dateStr} title={INELIGIBLE_DAY_REASON}>{cell}</div>;
+              return <div key={dateStr} title={ineligibleDayReason}>{cell}</div>;
             }
 
             return (
@@ -255,11 +256,11 @@ export function ArtistAvailabilityCalendar({ artistId, eligibleDates }: Props) {
                   </p>
                   {isConfirmed ? (
                     <p className="text-xs text-center text-success">
-                      Booking confirmed
+                      {t('calendar.popover.confirmed')}
                     </p>
                   ) : isSoftBooked ? (
                     <p className="text-xs text-center text-muted-foreground">
-                      Hold placed — awaiting producer confirmation
+                      {t('calendar.popover.hold')}
                     </p>
                   ) : suggestedIdByDate.has(dateStr) ? (
                     <OfferResponseButtons bookingId={suggestedIdByDate.get(dateStr)!} size="sm" />
@@ -274,34 +275,34 @@ export function ArtistAvailabilityCalendar({ artistId, eligibleDates }: Props) {
 
         {/* Legend */}
         <div className="flex flex-wrap items-center gap-4 mt-4 pt-4 border-t border-border">
-          <span className="text-xs text-muted-foreground">Legend:</span>
+          <span className="text-xs text-muted-foreground">{t('calendar.legend.title')}</span>
           {eligibleDates.length > 0 && (
             <div className="flex items-center gap-1.5">
               <div className="h-3 w-3 rounded border-2 border-info" />
-              <span className="text-xs">Eligible</span>
+              <span className="text-xs">{t('calendar.legend.eligible')}</span>
             </div>
           )}
           <div className="flex items-center gap-1.5">
             <div className="h-3 w-3 rounded bg-success/30" />
-            <span className="text-xs">Confirmed</span>
+            <span className="text-xs">{t('calendar.legend.confirmed')}</span>
           </div>
           <div className="flex items-center gap-1.5">
             <div className="h-3 w-3 rounded bg-primary/20" />
-            <span className="text-xs">Hold</span>
+            <span className="text-xs">{t('calendar.legend.hold')}</span>
           </div>
           <div className="flex items-center gap-1.5">
             <div className="h-3 w-3 rounded bg-warning/20" />
-            <span className="text-xs">Offer pending</span>
+            <span className="text-xs">{t('calendar.legend.offerPending')}</span>
           </div>
           <div className="flex items-center gap-1.5">
             <div className="h-3 w-3 rounded bg-destructive/25" />
-            <span className="text-xs">Blocked</span>
+            <span className="text-xs">{t('calendar.legend.blocked')}</span>
           </div>
         </div>
         {/* Stated once for assistive tech (each disabled cell carries only a hover
             `title`, not a repeated sr-only sentence). */}
         <p className="sr-only">
-          Dimmed dates are not offered to you. Offered dates come from your casts and their required skills.
+          {t('calendar.srIneligible')}
         </p>
       </CardContent>
     </Card>

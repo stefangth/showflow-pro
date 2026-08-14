@@ -1,0 +1,74 @@
+{
+  "offer": {
+    "accept": "Accept",
+    "decline": "Decline",
+    "toast": {
+      "unavailableTitle": "This offer is no longer available",
+      "unavailableDesc": "It may have been withdrawn or expired. Refresh to see the latest.",
+      "declinedTitle": "Offer declined",
+      "declinedDesc": "This just cancels this one offer. It will not affect future offers.",
+      "errorTitle": "Error"
+    }
+  },
+  "picker": {
+    "loadError": "Couldn't load",
+    "blocked": "Blocked",
+    "blockDate": "Block date"
+  },
+  "calendar": {
+    "ineligibleReason": "This date is not offered to you. Offered dates come from your casts and their required skills.",
+    "prevMonth": "Previous month",
+    "nextMonth": "Next month",
+    "loadError": "Couldn't load your bookings or blocked dates · statuses may be incomplete. Please refresh.",
+    "empty": "No eligible dates yet. Once you are added to a cast, offered dates appear here.",
+    "label": {
+      "booked": "Booked",
+      "hold": "Hold",
+      "offer": "Offer",
+      "blocked": "Blocked"
+    },
+    "popover": {
+      "confirmed": "Booking confirmed",
+      "hold": "Hold placed · awaiting producer confirmation"
+    },
+    "legend": {
+      "title": "Legend:",
+      "eligible": "Eligible",
+      "confirmed": "Confirmed",
+      "hold": "Hold",
+      "offerPending": "Offer pending",
+      "blocked": "Blocked"
+    },
+    "srIneligible": "Dimmed dates are not offered to you. Offered dates come from your casts and their required skills."
+  },
+  "toast": {
+    "dateBlocked": "Date blocked",
+    "errorTitle": "Error",
+    "blockRemoved": "Block removed"
+  },
+  "filter": {
+    "allOffers": "All offers",
+    "unanswered": "Unanswered"
+  },
+  "sortChronoLabel": "Date",
+  "offersLoadError": "Failed to load your offers. Please refresh · don't block dates until this loads, as pending offers may not be shown.",
+  "emptyUnanswered": "No unanswered offers · great work!",
+  "emptyAll": "No eligible dates yet.",
+  "blocked": {
+    "title": "Blocked Dates",
+    "description": "Mark dates you cannot play so the system will not send you offers for them. Dates you are already booked for are not affected.",
+    "dateLabel": "Date",
+    "selectAriaLabel": "Block date",
+    "noEligibleOption": "No eligible dates",
+    "selectPlaceholder": "Select a date…",
+    "reasonLabel": "Reason (optional)",
+    "reasonPlaceholder": "Vacation, other work…",
+    "blockButton": "Block",
+    "loadError": "Failed to load your blocked dates.",
+    "removeTooltip": "Remove block",
+    "empty": "No blocked dates yet."
+  },
+  "error": {
+    "noOrg": "No active organization"
+  }
+}

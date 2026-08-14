@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -85,14 +86,6 @@ type ShowDateStatus = 'open' | 'partially_filled' | 'fully_filled' | 'cancelled'
 /** UI-only status: 'unconfigured' is rendered client-side when the show's (program, sub_program) has no slot config. */
 type DisplayStatus = ShowDateStatus | 'unconfigured';
 
-const STATUS_LABEL: Record<DisplayStatus, string> = {
-  open: 'Open',
-  partially_filled: 'Partially Filled',
-  fully_filled: 'Fully Filled',
-  cancelled: 'Cancelled',
-  unconfigured: 'Unconfigured',
-};
-
 const STATUS_STYLE: Record<DisplayStatus, string> = {
   open: 'bg-muted text-muted-foreground',
   partially_filled: 'bg-warning/10 text-warning',
@@ -121,6 +114,14 @@ function ArtistShowsBookings() {
 }
 
 function ProducerShowsBookings() {
+  const { t } = useTranslation('bookings');
+  const STATUS_LABEL: Record<DisplayStatus, string> = useMemo(() => ({
+    open: t('status.open'),
+    partially_filled: t('status.partiallyFilled'),
+    fully_filled: t('status.fullyFilled'),
+    cancelled: t('status.cancelled'),
+    unconfigured: t('status.unconfigured'),
+  }), [t]);
   const { canSee } = useFilterVisibility('bookings');
   const { reference, customFieldKey } = useReferenceField();
   const { orderedColumns, visibleCount } = useColumnTemplate('bookings-producer');
@@ -144,8 +145,8 @@ function ProducerShowsBookings() {
   const [sort, setSort] = useState<ProducerSort>('chrono_asc');
   const isCustomSort = (s: ProducerSort): s is `custom:${string}` => s.startsWith('custom:');
   const sortExtraOptions = sortableDefs.flatMap(d => ([
-    { value: `custom:${d.key}:asc` as ProducerSort, label: `${d.label} ↑` },
-    { value: `custom:${d.key}:desc` as ProducerSort, label: `${d.label} ↓` },
+    { value: `custom:${d.key}:asc` as ProducerSort, label: t('producer.sortAsc', { label: d.label }) },
+    { value: `custom:${d.key}:desc` as ProducerSort, label: t('producer.sortDesc', { label: d.label }) },
   ]));
   const [customFilters, setCustomFilters] = useState<Record<string, CustomFilterState>>({});
   const [view, setView] = useState<ViewMode>('list');
@@ -275,7 +276,7 @@ function ProducerShowsBookings() {
       const { affected } = ids.length
         ? await bulkConfirmSoftBooked(supabase, { ids, now: new Date() })
         : { affected: 0 };
-      toast.success(affected ? `Confirmed ${affected}` : 'Nothing to confirm, it moved on');
+      toast.success(affected ? t('producer.toast.confirmed', { count: affected }) : t('producer.toast.nothingToConfirm'));
       queryClient.invalidateQueries({ queryKey: ['bookings'] });
     } catch (e) {
       toast.error((e as Error).message);
@@ -414,8 +415,8 @@ function ProducerShowsBookings() {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="font-display text-[32px] font-semibold tracking-tight">Shows &amp; Bookings</h1>
-          <p className="text-muted-foreground mt-1">All scheduled dates and cast status in one place.</p>
+          <h1 className="font-display text-[32px] font-semibold tracking-tight">{t('producer.title')}</h1>
+          <p className="text-muted-foreground mt-1">{t('producer.subtitle')}</p>
         </div>
         <div className="flex items-center gap-2">
           {setupMode === "button" && (
@@ -425,21 +426,21 @@ function ProducerShowsBookings() {
               onClick={() => { setSetupStep(undefined); setSetupSheetOpen(true); }}
             >
               <ListChecks className="h-4 w-4" />
-              Setup checklist
+              {t('producer.setupChecklist')}
             </Button>
           )}
-          {canManage && <Button onClick={() => setNewDateOpen(true)}>New date</Button>}
+          {canManage && <Button onClick={() => setNewDateOpen(true)}>{t('producer.newDate')}</Button>}
         </div>
       </div>
 
       {canManage && hireOrdersOn && readyCount > 0 && (
         <HireOrderReadyBanner
-          title={`${readyCount} ${readyCount === 1 ? 'date is' : 'dates are'} fully filled. Ready for hire order${readyCount === 1 ? '' : 's'}.`}
-          description="Create the orders to confirm the engagements and send them for countersignature."
-          ctaLabel="Generate hire orders"
+          title={t('producer.hireOrderReady.title', { count: readyCount })}
+          description={t('producer.hireOrderReady.description')}
+          ctaLabel={t('producer.hireOrderReady.cta')}
           onCta={() => setWizardOpen(true)}
           disabled={!canGenerateHireOrders}
-          ctaTitle={canGenerateHireOrders ? undefined : "You don't have permission to generate hire orders"}
+          ctaTitle={canGenerateHireOrders ? undefined : t('producer.noHireOrderPermission')}
         />
       )}
 
@@ -478,7 +479,7 @@ function ProducerShowsBookings() {
         <div className="relative flex-1 min-w-[200px] max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search program, venue, city…"
+            placeholder={t('producer.searchPlaceholder')}
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="pl-10"
@@ -486,20 +487,20 @@ function ProducerShowsBookings() {
         </div>
         {canSee('status') && (
           <Select value={statusFilter} onValueChange={v => updateStatusFilter(v as 'all' | DisplayStatus)}>
-            <SelectTrigger className="w-[180px]"><SelectValue placeholder="Status" /></SelectTrigger>
+            <SelectTrigger className="w-[180px]"><SelectValue placeholder={t('producer.statusPlaceholder')} /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All statuses</SelectItem>
-              <SelectItem value="open">Open</SelectItem>
-              <SelectItem value="partially_filled">Partially Filled</SelectItem>
-              <SelectItem value="fully_filled">Fully Filled</SelectItem>
-              <SelectItem value="cancelled">Cancelled</SelectItem>
-              <SelectItem value="unconfigured">Unconfigured</SelectItem>
+              <SelectItem value="all">{t('producer.allStatuses')}</SelectItem>
+              <SelectItem value="open">{STATUS_LABEL.open}</SelectItem>
+              <SelectItem value="partially_filled">{STATUS_LABEL.partially_filled}</SelectItem>
+              <SelectItem value="fully_filled">{STATUS_LABEL.fully_filled}</SelectItem>
+              <SelectItem value="cancelled">{STATUS_LABEL.cancelled}</SelectItem>
+              <SelectItem value="unconfigured">{STATUS_LABEL.unconfigured}</SelectItem>
             </SelectContent>
           </Select>
         )}
         {canSee('program') && <ProgramFilter options={programOptions} value={programs} onChange={setPrograms} />}
         {canSee('timeframe') && <TimeframeFilter value={timeframe} onChange={setTimeframe} />}
-        {canSee('sort') && <SortControl value={sort} onChange={setSort} chronoLabel="Date" extraOptions={sortExtraOptions} />}
+        {canSee('sort') && <SortControl value={sort} onChange={setSort} chronoLabel={t('producer.sortChronoLabel')} extraOptions={sortExtraOptions} />}
         {filterableDefs.map(def => (
           <CustomFieldFilter
             key={def.id}
@@ -592,10 +593,10 @@ function ProducerShowsBookings() {
                                   variant="outline"
                                   className="h-7 px-2 text-xs"
                                   disabled={!canGenerateHireOrders || pendingHireOrderDateId === sd.id}
-                                  title={canGenerateHireOrders ? undefined : "You don't have permission to generate hire orders"}
+                                  title={canGenerateHireOrders ? undefined : t('producer.noHireOrderPermission')}
                                   onClick={(e) => { e.stopPropagation(); draftHireOrderForDate(sd.id); }}
                                 >
-                                  <Plus className="mr-1 h-3 w-3" /> Generate hire order
+                                  <Plus className="mr-1 h-3 w-3" /> {t('producer.generateHireOrder')}
                                 </Button>
                               </div>
                             )}
@@ -661,7 +662,7 @@ function ProducerShowsBookings() {
                 {filtered.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={visibleCount || 9} className="text-center text-muted-foreground py-12">
-                      No show dates match the current filters.
+                      {t('producer.emptyState')}
                     </TableCell>
                   </TableRow>
                 )}
@@ -673,7 +674,7 @@ function ProducerShowsBookings() {
         <EntityCalendar
           items={calendarItems}
           getDate={it => it.date}
-          emptyMessage="No show dates scheduled"
+          emptyMessage={t('producer.calendarEmpty')}
           renderItem={it => (
             <Card
               className={cn(

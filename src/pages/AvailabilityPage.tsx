@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -63,6 +64,7 @@ function customFor(d: DateRow): Record<string, unknown> | null {
  * Artist view — eligibility-scoped list + calendar + blocked dates
  * ============================================================ */
 function ArtistAvailability() {
+  const { t } = useTranslation('availability');
   const { currentOrg } = useAuth();
   // Mark that the artist has seen their availability. This completes the dashboard
   // first-run "block dates" step for an open-calendar artist: nothing to block is a
@@ -209,7 +211,7 @@ function ArtistAvailability() {
 
   const addBlock = useMutation({
     mutationFn: async () => {
-      if (!currentOrg) throw new Error('No active organization');
+      if (!currentOrg) throw new Error(t('error.noOrg'));
       const { error } = await supabase.from('blocked_dates').insert({
         artist_id: artist!.id,
         date: newBlockDate,
@@ -222,9 +224,9 @@ function ArtistAvailability() {
       qc.invalidateQueries({ queryKey: ['blocked-dates'] });
       setNewBlockDate('');
       setNewBlockReason('');
-      toast({ title: 'Date blocked' });
+      toast({ title: t('toast.dateBlocked') });
     },
-    onError: (e: Error) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+    onError: (e: Error) => toast({ title: t('toast.errorTitle'), description: e.message, variant: 'destructive' }),
   });
 
   const removeBlock = useMutation({
@@ -234,7 +236,7 @@ function ArtistAvailability() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['blocked-dates'] });
-      toast({ title: 'Block removed' });
+      toast({ title: t('toast.blockRemoved') });
     },
   });
 
@@ -279,12 +281,12 @@ function ArtistAvailability() {
                 filter === f ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
               }`}
             >
-              {f === 'all' ? 'All offers' : 'Unanswered'}
+              {f === 'all' ? t('filter.allOffers') : t('filter.unanswered')}
             </button>
           ))}
         </div>
         <TimeframeFilter value={timeframe} onChange={setTimeframe} />
-        <SortControl value={sort} onChange={setSort} chronoLabel="Date" />
+        <SortControl value={sort} onChange={setSort} chronoLabel={t('sortChronoLabel')} />
         <div className="ml-auto">
           <ViewToggle value={view} onChange={setView} />
         </div>
@@ -295,8 +297,7 @@ function ArtistAvailability() {
       {bookingsError ? (
         <Alert variant="destructive">
           <AlertDescription>
-            Failed to load your offers. Please refresh — don't block dates until this loads,
-            as pending offers may not be shown.
+            {t('offersLoadError')}
           </AlertDescription>
         </Alert>
       ) : isLoading ? (
@@ -405,8 +406,8 @@ function ArtistAvailability() {
                   <TableRow>
                     <TableCell colSpan={visibleCount || 5} className="text-center text-muted-foreground py-12">
                       {filter === 'unanswered'
-                        ? 'No unanswered offers — great work!'
-                        : 'No eligible dates yet.'}
+                        ? t('emptyUnanswered')
+                        : t('emptyAll')}
                     </TableCell>
                   </TableRow>
                 )}
@@ -424,11 +425,11 @@ function ArtistAvailability() {
       {/* Blocked dates — vacation / conflict windows */}
       <Card>
         <CardHeader>
-          <CardTitle className="font-display text-base">Blocked Dates</CardTitle>
+          <CardTitle className="font-display text-base">{t('blocked.title')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Mark dates you cannot play so the system will not send you offers for them. Dates you are already booked for are not affected.
+            {t('blocked.description')}
           </p>
           {showTiming && (
             <p data-testid="availability-timing" className="text-xs text-muted-foreground mt-1">{tonight}</p>
@@ -442,12 +443,12 @@ function ArtistAvailability() {
             }}
           >
             <div className="space-y-1">
-              <Label className="text-xs">Date</Label>
+              <Label className="text-xs">{t('blocked.dateLabel')}</Label>
               {/* Eligible-only picker: mirrors the server-side blocked_dates
                   guard so artists can't submit an ineligible date or one they're
                   already booked on. */}
               <select
-                aria-label="Block date"
+                aria-label={t('blocked.selectAriaLabel')}
                 className="flex h-10 w-44 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 value={newBlockDate}
                 onChange={(e) => setNewBlockDate(e.target.value)}
@@ -455,7 +456,7 @@ function ArtistAvailability() {
                 required
               >
                 <option value="" disabled>
-                  {blockableDates.length === 0 ? 'No eligible dates' : 'Select a date…'}
+                  {blockableDates.length === 0 ? t('blocked.noEligibleOption') : t('blocked.selectPlaceholder')}
                 </option>
                 {blockableDates.map((d) => (
                   <option key={d.id} value={d.date}>
@@ -466,9 +467,9 @@ function ArtistAvailability() {
               </select>
             </div>
             <div className="space-y-1 flex-1 min-w-32">
-              <Label className="text-xs">Reason (optional)</Label>
+              <Label className="text-xs">{t('blocked.reasonLabel')}</Label>
               <Input
-                placeholder="Vacation, other work…"
+                placeholder={t('blocked.reasonPlaceholder')}
                 value={newBlockReason}
                 onChange={(e) => setNewBlockReason(e.target.value)}
               />
@@ -478,13 +479,13 @@ function ArtistAvailability() {
               size="sm"
               disabled={!newBlockDate || addBlock.isPending}
             >
-              <Plus className="h-4 w-4 mr-1" />Block
+              <Plus className="h-4 w-4 mr-1" />{t('blocked.blockButton')}
             </Button>
           </form>
 
           {blockedError && (
             <Alert variant="destructive">
-              <AlertDescription>Failed to load your blocked dates.</AlertDescription>
+              <AlertDescription>{t('blocked.loadError')}</AlertDescription>
             </Alert>
           )}
 
@@ -496,11 +497,11 @@ function ArtistAvailability() {
                     {parseDateOnly(b.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                   </span>
                   <span className="flex-1 text-muted-foreground">{b.reason ?? '—'}</span>
-                  <IconTooltip label="Remove block">
+                  <IconTooltip label={t('blocked.removeTooltip')}>
                     <button
                       onClick={() => removeBlock.mutate(b.id)}
                       className="p-0.5 rounded hover:bg-muted text-muted-foreground hover:text-destructive"
-                      aria-label="Remove block"
+                      aria-label={t('blocked.removeTooltip')}
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
@@ -510,7 +511,7 @@ function ArtistAvailability() {
             </div>
           )}
           {!blockedError && (blockedDates?.length ?? 0) === 0 && (
-            <p className="text-sm text-muted-foreground pt-1">No blocked dates yet.</p>
+            <p className="text-sm text-muted-foreground pt-1">{t('blocked.empty')}</p>
           )}
         </CardContent>
       </Card>
