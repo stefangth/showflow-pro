@@ -4,7 +4,9 @@ import type { AirtableFieldMap } from "@/data/airtableMapping";
 import { nextSyncAt, formatInterval } from "@/lib/airtablePoll";
 
 export type ConsoleMode = "setup" | "healthy" | "live" | "error";
-export type HeldCategory = "missing_date" | "unlinked_program" | "unlinked_city";
+export type HeldCategory = "missing_date" | "unlinked_program" | "unlinked_city" | "unrecognized";
+/** The concrete causes the poll's held reasons encode (excludes the UI-only "unrecognized" bucket). */
+export type KnownHeldCategory = Exclude<HeldCategory, "unrecognized">;
 export type StatusTone = "green" | "amber" | "red";
 
 export interface StatusView {
@@ -146,23 +148,32 @@ interface CauseAccumulator {
   options: Set<string>;
 }
 
-function categorize(reason: string): HeldCategory | null {
-  if (reason === "missing date") return "missing_date";
-  if (reason.startsWith("program '") && reason.endsWith("' not linked")) return "unlinked_program";
-  if (reason.startsWith("city '") && reason.endsWith("' not linked")) return "unlinked_city";
+/** Parse a poll held reason into its category + the option name it names (for program/city).
+ *  Returns null when the reason isn't one of the recognized formats. Single source of truth
+ *  for held-reason parsing on the frontend (used by both groupHeldCauses and the tab's
+ *  per-option hold-count attribution), mirroring categorizeHeldReason in airtable-poll. */
+export function parseHeldReason(
+  reason: string | null,
+): { category: KnownHeldCategory; option: string | null } | null {
+  if (!reason) return null;
+  if (reason === "missing date") return { category: "missing_date", option: null };
+  const prog = /^program '(.*)' not linked$/.exec(reason);
+  if (prog) return { category: "unlinked_program", option: prog[1] };
+  const city = /^city '(.*)' not linked$/.exec(reason);
+  if (city) return { category: "unlinked_city", option: city[1] };
   return null;
 }
 
-/** Group held records into per-cause buckets, ordered program, city, date. */
+/** Group held records into per-cause buckets, ordered program, city, date, then a catch-all
+ *  "unrecognized" bucket so a reason string the poll adds later still surfaces (never silently
+ *  dropped, which would leave a nonzero Held KPI with no visible explanation). */
 export function groupHeldCauses(held: UnresolvedRecord[]): HeldCause[] {
   const buckets = new Map<HeldCategory, CauseAccumulator>();
 
   for (const rec of held) {
     if (rec.action !== "held_unresolved") continue;
-    const reason = rec.reason;
-    if (!reason) continue;
-    const category = categorize(reason);
-    if (!category) continue;
+    const parsed = parseHeldReason(rec.reason);
+    const category: HeldCategory = parsed ? parsed.category : "unrecognized";
 
     let acc = buckets.get(category);
     if (!acc) {
@@ -170,17 +181,17 @@ export function groupHeldCauses(held: UnresolvedRecord[]): HeldCause[] {
       buckets.set(category, acc);
     }
     acc.records.push(rec);
-    if (category !== "missing_date") {
-      const match = /'([^']*)'/.exec(reason);
-      if (match) acc.options.add(match[1]);
+    if (parsed?.option && category !== "missing_date") {
+      acc.options.add(parsed.option);
     }
   }
 
-  const order: HeldCategory[] = ["unlinked_program", "unlinked_city", "missing_date"];
+  const order: HeldCategory[] = ["unlinked_program", "unlinked_city", "missing_date", "unrecognized"];
   const icons: Record<HeldCategory, string> = {
     unlinked_program: "theater",
     unlinked_city: "map-pin",
     missing_date: "calendar",
+    unrecognized: "alert-triangle",
   };
 
   const causes: HeldCause[] = [];
@@ -188,14 +199,16 @@ export function groupHeldCauses(held: UnresolvedRecord[]): HeldCause[] {
     const acc = buckets.get(category);
     if (!acc) continue;
     const recordCount = acc.records.length;
-    const optionCount = category === "missing_date" ? 0 : acc.options.size;
+    const optionCount = category === "unlinked_program" || category === "unlinked_city" ? acc.options.size : 0;
     let title: string;
     if (category === "unlinked_program") {
       title = `${optionCount} program ${optionCount === 1 ? "option has" : "options have"} no catalog show`;
     } else if (category === "unlinked_city") {
       title = `${optionCount} city ${optionCount === 1 ? "option has" : "options have"} no catalog city`;
-    } else {
+    } else if (category === "missing_date") {
       title = `${recordCount} ${recordCount === 1 ? "record has" : "records have"} an empty date cell`;
+    } else {
+      title = `${recordCount} ${recordCount === 1 ? "record is" : "records are"} held for an unrecognized reason`;
     }
     causes.push({
       category,

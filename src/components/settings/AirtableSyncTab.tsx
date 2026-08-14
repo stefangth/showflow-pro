@@ -43,7 +43,7 @@ import { MappingTab } from "./airtable/MappingTab";
 import { CatalogTab, type CatalogRow } from "./airtable/CatalogTab";
 import { ActivityTab } from "./airtable/ActivityTab";
 import {
-  deriveMode, deriveStatus, deriveKpis, groupHeldCauses, requiredMappedCount,
+  deriveMode, deriveStatus, deriveKpis, groupHeldCauses, requiredMappedCount, parseHeldReason,
   type HeldCause,
 } from "./airtable/console";
 
@@ -272,15 +272,19 @@ export function AirtableSyncTab({ orgId, readOnly = false, canTriggerSync = true
   const showByKey = new Map((showsQ.data ?? []).filter((sh) => sh.airtable_program_key).map((sh) => [sh.airtable_program_key!, sh]));
   const cityByKey = new Map((citiesQ.data ?? []).filter((c) => c.airtable_city_key).map((c) => [c.airtable_city_key!, c]));
 
-  // Held counts keyed the way each catalog row is keyed, parsed from held-record reasons
-  // ("program '<sub>' not linked" / "city '<name>' not linked").
+  // Held counts keyed the way each catalog row is keyed, from the shared reason parser.
+  // Program attribution is keyed by sub-program (all the poll's reason carries); this assumes
+  // sub-program is unique across programs, matching planProgramImport's own dedup (ADR-0010).
   const heldBySub = new Map<string, number>();
   const heldByCityKey = new Map<string, number>();
   for (const r of heldRecords) {
-    const m = /^program '(.*)' not linked$/.exec(r.reason ?? "");
-    if (m) { heldBySub.set(m[1], (heldBySub.get(m[1]) ?? 0) + 1); continue; }
-    const c = /^city '(.*)' not linked$/.exec(r.reason ?? "");
-    if (c) { const k = buildCityKey(c[1]) ?? ""; if (k) heldByCityKey.set(k, (heldByCityKey.get(k) ?? 0) + 1); }
+    const parsed = parseHeldReason(r.reason);
+    if (parsed?.category === "unlinked_program" && parsed.option) {
+      heldBySub.set(parsed.option, (heldBySub.get(parsed.option) ?? 0) + 1);
+    } else if (parsed?.category === "unlinked_city" && parsed.option) {
+      const k = buildCityKey(parsed.option) ?? "";
+      if (k) heldByCityKey.set(k, (heldByCityKey.get(k) ?? 0) + 1);
+    }
   }
 
   // ── Import / link / unlink / merge mutations ─────────────────────────────────

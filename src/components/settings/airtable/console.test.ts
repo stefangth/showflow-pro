@@ -7,6 +7,7 @@ import {
   deriveStatus,
   deriveKpis,
   groupHeldCauses,
+  parseHeldReason,
   requiredMappedCount,
   statusBadge,
   runClock,
@@ -194,7 +195,7 @@ describe("groupHeldCauses", () => {
       makeHeld({ id: "d1", reason: "missing date" }),
       // ignored: wrong action
       makeHeld({ id: "e1", reason: "program 'Gamma' not linked", action: "error" }),
-      // ignored: unrecognized reason
+      // surfaced in the catch-all "unrecognized" bucket, never silently dropped
       makeHeld({ id: "x1", reason: "something else" }),
     ];
     const causes = groupHeldCauses(held);
@@ -202,9 +203,10 @@ describe("groupHeldCauses", () => {
       "unlinked_program",
       "unlinked_city",
       "missing_date",
+      "unrecognized",
     ]);
 
-    const [program, city, date] = causes;
+    const [program, city, date, unrecognized] = causes;
 
     expect(program.optionCount).toBe(2);
     expect(program.recordCount).toBe(2);
@@ -222,6 +224,11 @@ describe("groupHeldCauses", () => {
     expect(date.recordCount).toBe(1);
     expect(date.icon).toBe("calendar");
     expect(date.title).toBe("1 record has an empty date cell");
+
+    expect(unrecognized.optionCount).toBe(0);
+    expect(unrecognized.recordCount).toBe(1);
+    expect(unrecognized.icon).toBe("alert-triangle");
+    expect(unrecognized.title).toBe("1 record is held for an unrecognized reason");
   });
 
   it("dedupes distinct option names within a category", () => {
@@ -236,8 +243,23 @@ describe("groupHeldCauses", () => {
     expect(causes[0].title).toBe("1 program option has no catalog show");
   });
 
-  it("returns an empty array when nothing is recognized", () => {
-    expect(groupHeldCauses([makeHeld({ reason: "nope" })])).toEqual([]);
+  it("surfaces unrecognized reasons in a catch-all bucket rather than dropping them", () => {
+    const causes = groupHeldCauses([makeHeld({ reason: "nope" }), makeHeld({ reason: null })]);
+    expect(causes).toHaveLength(1);
+    expect(causes[0].category).toBe("unrecognized");
+    expect(causes[0].recordCount).toBe(2);
+  });
+});
+
+describe("parseHeldReason", () => {
+  it("parses the three known reason formats and extracts the option", () => {
+    expect(parseHeldReason("missing date")).toEqual({ category: "missing_date", option: null });
+    expect(parseHeldReason("program 'Queen Tribute' not linked")).toEqual({ category: "unlinked_program", option: "Queen Tribute" });
+    expect(parseHeldReason("city 'Köln' not linked")).toEqual({ category: "unlinked_city", option: "Köln" });
+  });
+  it("returns null for null or unrecognized reasons", () => {
+    expect(parseHeldReason(null)).toBeNull();
+    expect(parseHeldReason("something else")).toBeNull();
   });
 });
 

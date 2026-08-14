@@ -7,7 +7,7 @@ import { EmailShell, emailRoleStyle } from "./_shell/EmailShell.tsx";
 import { applyEmailTokens, EMAIL_COPY_DEFAULTS, type EmailCopy } from "./_shell/emailCopy.ts";
 import { EMAIL_THEME_DEFAULTS, type EmailFamily, type EmailRoleKey, type EmailTheme } from "./_shell/emailTheme.ts";
 
-/** The two causes syncOrg's held_unresolved branches emit (see topHeldReason in
+/** The three causes syncOrg's held_unresolved branches emit (see topHeldReason in
  *  airtable-poll/index.ts, the single source of truth for this categorization). */
 type HeldReasonCategory = "missing_date" | "unlinked_program" | "unlinked_city";
 
