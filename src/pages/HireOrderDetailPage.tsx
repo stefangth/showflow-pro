@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Download, FileText, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -48,6 +49,7 @@ function snap(data: OrderData, key: keyof OrderData): string {
  * client-side ownership check.
  */
 export default function HireOrderDetailPage() {
+  const { t } = useTranslation("hireOrdersPages");
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { currentOrg, hasRole } = useAuth();
@@ -154,13 +156,13 @@ export default function HireOrderDetailPage() {
     return (
       <div className="mx-auto max-w-6xl p-4 sm:p-6">
         <Button variant="ghost" size="sm" className="mb-4 -ml-2" onClick={() => navigate(-1)}>
-          <ArrowLeft className="mr-1 h-4 w-4" /> Back
+          <ArrowLeft className="mr-1 h-4 w-4" /> {t("common.back")}
         </Button>
         <Alert variant="destructive">
-          <AlertTitle>Could not load this hire order</AlertTitle>
+          <AlertTitle>{t("detailPage.loadErrorTitle")}</AlertTitle>
           <AlertDescription>
             {(error as Error)?.message ??
-              "You may not have access to this order, or it no longer exists."}
+              t("detailPage.loadErrorBody")}
           </AlertDescription>
         </Alert>
       </div>
@@ -214,14 +216,15 @@ function HireOrderDetail({
   order, canManage, canManageCountersign, canSign, orgId, isElectronic, navigateBack, onEdit, onDownload, downloadBusy,
   onCountersign, countersignBusy, pdfUrl, pdfUrlLoading, pdfUrlError, hasPdf,
 }: DetailProps) {
+  const { t } = useTranslation("hireOrdersPages");
   const [signOpen, setSignOpen] = useState(false);
   const data = (order.data ?? {}) as OrderData;
-  const artistName = order.artists?.name || snap(data, "artist_name") || "Unknown artist";
+  const artistName = order.artists?.name || snap(data, "artist_name") || t("common.unknownArtist");
   const email = snap(data, "recipient_email");
   const venue = snap(data, "venue");
   const dateStr = snap(data, "date");
   const durationRaw = snap(data, "duration_min");
-  const duration = durationRaw ? `${durationRaw} min` : null;
+  const duration = durationRaw ? t("common.minutes", { value: durationRaw }) : null;
   const sessions = snap(data, "sessions") || null;
   const fee = order.fee_amount != null ? formatMoney(order.fee_amount, order.fee_currency) : null;
 
@@ -237,14 +240,14 @@ function HireOrderDetail({
       {/* Header strip */}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex items-start gap-2 min-w-0">
-          <IconTooltip label="Go back">
-            <Button variant="ghost" size="icon" className="mt-0.5 shrink-0" onClick={navigateBack} aria-label="Go back">
+          <IconTooltip label={t("common.goBack")}>
+            <Button variant="ghost" size="icon" className="mt-0.5 shrink-0" onClick={navigateBack} aria-label={t("common.goBack")}>
               <ArrowLeft className="h-5 w-5" />
             </Button>
           </IconTooltip>
           <div className="min-w-0">
             <div className="flex items-center gap-3">
-              <h1 className="font-display text-xl text-foreground">Performance hire order</h1>
+              <h1 className="font-display text-xl text-foreground">{t("detailPage.title")}</h1>
               <HireOrderStatusBadge status={order.status} />
             </div>
             <p className="mt-1 flex flex-wrap items-center gap-x-1.5 text-sm text-muted-foreground">
@@ -260,11 +263,11 @@ function HireOrderDetail({
         <div className="flex items-center gap-2 shrink-0">
           {canManage && (order.status === "draft" || order.status === "ready") && (
             <Button variant="outline" size="sm" onClick={onEdit}>
-              Edit
+              {t("detailPage.edit")}
             </Button>
           )}
           <Button variant="outline" size="sm" onClick={onDownload} disabled={!hasPdf || downloadBusy}>
-            <Download className="mr-1 h-4 w-4" /> Download
+            <Download className="mr-1 h-4 w-4" /> {t("common.download")}
           </Button>
         </div>
       </div>
@@ -276,24 +279,24 @@ function HireOrderDetail({
           {!hasPdf ? (
             <div className="flex min-h-[480px] flex-col items-center justify-center gap-2 text-center">
               <FileText className="h-8 w-8 text-muted-foreground" />
-              <p className="text-sm font-medium text-foreground">Not issued yet</p>
+              <p className="text-sm font-medium text-foreground">{t("detailPage.notIssuedTitle")}</p>
               <p className="max-w-xs text-sm text-muted-foreground">
-                This hire order has no document until it is issued to the artist.
+                {t("detailPage.notIssuedBody")}
               </p>
             </div>
           ) : pdfUrlError ? (
             <div className="flex min-h-[480px] flex-col items-center justify-center gap-2 text-center">
               <FileText className="h-8 w-8 text-muted-foreground" />
-              <p className="text-sm font-medium text-foreground">Couldn't load the document</p>
+              <p className="text-sm font-medium text-foreground">{t("detailPage.previewErrorTitle")}</p>
               <p className="max-w-xs text-sm text-muted-foreground">
-                The preview could not be loaded. Use the Download button above instead.
+                {t("detailPage.previewErrorBody")}
               </p>
             </div>
           ) : pdfUrlLoading || !pdfUrl ? (
             <Skeleton className="h-[600px] w-full rounded-lg" />
           ) : (
             <iframe
-              title="Hire order document"
+              title={t("detailPage.iframeTitle")}
               src={pdfUrl}
               className="h-[600px] w-full rounded-lg border border-border bg-background lg:h-[720px]"
             />
@@ -302,13 +305,13 @@ function HireOrderDetail({
             <div className="mt-3 rounded-lg border border-accent-200 bg-accent-50 p-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-accent-700">This order needs your signature</p>
+                  <p className="text-sm font-semibold text-accent-700">{t("detailPage.needsSignatureTitle")}</p>
                   <p className="mt-0.5 text-sm text-muted-foreground">
-                    Read the document above, then sign. You get a countersigned PDF by email straight after.
+                    {t("detailPage.needsSignatureBody")}
                   </p>
                 </div>
                 <Button className="shrink-0" onClick={() => setSignOpen(true)}>
-                  Countersign
+                  {t("detailPage.countersign")}
                 </Button>
               </div>
             </div>
@@ -331,7 +334,7 @@ function HireOrderDetail({
 
           <Card>
             <CardContent className="space-y-1 pt-6">
-              <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Recipient</h3>
+              <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("detailPage.recipient")}</h3>
               <p className="text-sm font-medium text-foreground">{artistName}</p>
               {email && <p className="text-sm text-muted-foreground break-words">{email}</p>}
             </CardContent>
@@ -386,15 +389,16 @@ interface ActionProps {
 function PrimaryAction({
   canManage, canManageCountersign, status, isElectronic, hasPdf, onDownload, downloadBusy, onCountersign, countersignBusy,
 }: ActionProps) {
+  const { t } = useTranslation("hireOrdersPages");
   if (canManage && status === "issued") {
     // Electronic mode: the artist completes the order in-app; no manual flip.
     if (isElectronic) {
-      return <p className="text-sm text-muted-foreground">Awaiting artist signature</p>;
+      return <p className="text-sm text-muted-foreground">{t("detailPage.awaitingArtistSignature")}</p>;
     }
     return (
       <Button className="w-full" onClick={onCountersign} disabled={countersignBusy || !canManageCountersign}
-        title={canManageCountersign ? undefined : "You don't have permission to countersign hire orders"}>
-        Mark countersigned
+        title={canManageCountersign ? undefined : t("detailPage.noPermissionCountersign")}>
+        {t("common.markCountersigned")}
       </Button>
     );
   }
@@ -402,14 +406,14 @@ function PrimaryAction({
     return (
       <div className="flex items-center gap-2 rounded-lg border border-[var(--green-600-a30)] bg-[var(--green-100)] px-3 py-2 text-sm font-medium text-[var(--green-600)]">
         <CheckCircle2 className="h-4 w-4 shrink-0" />
-        Countersigned by artist
+        {t("detailPage.countersignedByArtist")}
       </div>
     );
   }
   if (!canManage) {
     return (
       <Button className="w-full" onClick={onDownload} disabled={!hasPdf || downloadBusy}>
-        <Download className="mr-1 h-4 w-4" /> Download PDF
+        <Download className="mr-1 h-4 w-4" /> {t("detailPage.downloadPdf")}
       </Button>
     );
   }

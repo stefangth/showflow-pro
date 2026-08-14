@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { ORDER_FIELD_KEYS, type EditableOrderFieldKey } from "@/lib/hireOrders/types";
 import type { OrderColumnMapping } from "@/lib/hireOrderImport/guessOrderMapping";
 import { Label } from "@/components/ui/label";
@@ -6,19 +7,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 /** shadcn Select can't use "" as an item value, so "not mapped" needs a sentinel. */
 const IGNORE = "__ignore__";
 
-const FIELD_LABELS: Record<EditableOrderFieldKey, string> = {
-  artist_name: "Artist name",
-  recipient_email: "Recipient email",
-  role: "Role",
-  cast: "Cast",
-  date: "Date",
-  venue: "Venue",
-  city: "City",
-  duration_min: "Duration (min)",
-  sessions: "Sessions",
-  fee: "Fee",
-  currency: "Currency",
-  notes: "Notes",
+const FIELD_LABEL_KEYS: Record<EditableOrderFieldKey, string> = {
+  artist_name: "mapStep.artistName",
+  recipient_email: "mapStep.recipientEmail",
+  role: "mapStep.role",
+  cast: "mapStep.cast",
+  date: "mapStep.date",
+  venue: "mapStep.venue",
+  city: "mapStep.city",
+  duration_min: "mapStep.durationMin",
+  sessions: "mapStep.sessions",
+  fee: "mapStep.fee",
+  currency: "mapStep.currency",
+  notes: "mapStep.notes",
 };
 
 // `sessions` is excluded: neither `guessOrderMapping` nor `buildOrderRows` ever
@@ -38,6 +39,7 @@ interface Props {
  * "Ignore", prefilled by the caller from `guessOrderMapping`.
  */
 export function MapStep({ headers, mapping, onMappingChange }: Props) {
+  const { t } = useTranslation("hireOrdersPages");
   function setField(key: EditableOrderFieldKey, value: string) {
     const next = { ...mapping };
     if (value === IGNORE) delete next[key];
@@ -48,20 +50,21 @@ export function MapStep({ headers, mapping, onMappingChange }: Props) {
   return (
     <div className="space-y-3">
       <p className="text-sm text-muted-foreground">
-        Matched your columns automatically where possible. Adjust any field below.
+        {t("mapStep.intro")}
       </p>
       <div className="space-y-2.5">
         {MAPPABLE_FIELD_KEYS.map((key) => {
           const col = mapping[key];
+          const fieldLabel = t(FIELD_LABEL_KEYS[key]);
           return (
             <div key={key} className="grid grid-cols-[10rem_1fr] items-center gap-3">
-              <Label htmlFor={`import-map-${key}`}>{FIELD_LABELS[key]}</Label>
+              <Label htmlFor={`import-map-${key}`}>{fieldLabel}</Label>
               <Select value={col ?? IGNORE} onValueChange={(v) => setField(key, v)}>
-                <SelectTrigger id={`import-map-${key}`} aria-label={`${FIELD_LABELS[key]} column`}>
+                <SelectTrigger id={`import-map-${key}`} aria-label={t("mapStep.columnAria", { label: fieldLabel })}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={IGNORE}>Ignore</SelectItem>
+                  <SelectItem value={IGNORE}>{t("mapStep.ignore")}</SelectItem>
                   {headers.map((h) => (
                     <SelectItem key={h} value={h}>{h}</SelectItem>
                   ))}

@@ -1,4 +1,5 @@
 import { useCallback, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import SignaturePadLib from "signature_pad";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -20,6 +21,7 @@ interface Props {
  *  signing mark; Draw uses signature_pad (velocity-smoothed ink, retina/touch
  *  handled). Emits null when the active method has no content. */
 export function SignaturePad({ value, onChange, disabled }: Props) {
+  const { t } = useTranslation("hireOrdersPages");
   const typed = value?.method === "typed" ? value.typedName : "";
   const padRef = useRef<SignaturePadLib | null>(null);
   const onChangeRef = useRef(onChange);
@@ -64,14 +66,14 @@ export function SignaturePad({ value, onChange, disabled }: Props) {
   return (
     <Tabs defaultValue="draw" onValueChange={() => onChange(null)}>
       <TabsList className="grid w-full grid-cols-2">
-        <TabsTrigger value="type">Type</TabsTrigger>
-        <TabsTrigger value="draw">Draw</TabsTrigger>
+        <TabsTrigger value="type">{t("signaturePad.type")}</TabsTrigger>
+        <TabsTrigger value="draw">{t("signaturePad.draw")}</TabsTrigger>
       </TabsList>
       <TabsContent value="type" className="space-y-2">
-        <Label htmlFor="sig-typed" className="text-xs text-muted-foreground">Your full legal name</Label>
+        <Label htmlFor="sig-typed" className="text-xs text-muted-foreground">{t("signaturePad.legalName")}</Label>
         <Input
           id="sig-typed"
-          placeholder="Your full legal name"
+          placeholder={t("signaturePad.legalName")}
           value={typed}
           disabled={disabled}
           onChange={(e) => {
@@ -95,7 +97,7 @@ export function SignaturePad({ value, onChange, disabled }: Props) {
         />
         <div className="flex justify-end">
           <Button type="button" variant="ghost" size="sm" onClick={clearDrawn} disabled={disabled}>
-            Clear
+            {t("signaturePad.clear")}
           </Button>
         </div>
       </TabsContent>

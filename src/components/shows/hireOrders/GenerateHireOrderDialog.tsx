@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { Ticket } from "lucide-react";
 import {
@@ -41,10 +42,11 @@ function snapshot(data: OrderData, key: keyof OrderData): string {
 /** Read-only fact cell for the review grid. `mono` renders the value in the
  *  mono face (dates, durations) per the design. */
 function Fact({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+  const { t } = useTranslation("hireOrdersPages");
   return (
     <div className="space-y-0.5">
       <p className="text-xs text-muted-foreground">{label}</p>
-      <p className={cn("text-sm text-foreground", mono && "font-mono")}>{value || "Not set"}</p>
+      <p className={cn("text-sm text-foreground", mono && "font-mono")}>{value || t("common.notSet")}</p>
     </div>
   );
 }
@@ -57,6 +59,7 @@ function Fact({ label, value, mono }: { label: string; value: string; mono?: boo
  * order), then call the preview / issue actions.
  */
 export function GenerateHireOrderDialog({ open, onOpenChange, order, showDate, orgId, producerName }: Props) {
+  const { t } = useTranslation("hireOrdersPages");
   const data = (order.data ?? {}) as OrderData;
   const artistName = order.artists?.name || snapshot(data, "artist_name");
   const dateStr = snapshot(data, "date") || showDate.date;
@@ -216,27 +219,27 @@ export function GenerateHireOrderDialog({ open, onOpenChange, order, showDate, o
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 font-display">
             <Ticket className="h-5 w-5 text-accent-700" />
-            Generate hire order
+            {t("generateDialog.title")}
           </DialogTitle>
           <DialogDescription>
-            Review the terms before issuing to {artistName || "the artist"}.
+            {t("generateDialog.description", { artistName: artistName || t("generateDialog.descriptionFallbackName") })}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-5">
           {/* Read-only facts, sourced from the order snapshot */}
           <div className="grid grid-cols-2 gap-x-4 gap-y-3">
-            <Fact label="Producer" value={producerName} />
-            <Fact label="Artist" value={artistName} />
-            <Fact label="Date" value={dateStr ? formatDateDMY(dateStr) : ""} mono />
-            <Fact label="Venue" value={venue} />
-            <Fact label="Duration" value={duration} mono />
-            <Fact label="Cast reference" value={castRef} />
+            <Fact label={t("generateDialog.producer")} value={producerName} />
+            <Fact label={t("generateDialog.artist")} value={artistName} />
+            <Fact label={t("generateDialog.date")} value={dateStr ? formatDateDMY(dateStr) : ""} mono />
+            <Fact label={t("generateDialog.venue")} value={venue} />
+            <Fact label={t("generateDialog.duration")} value={duration} mono />
+            <Fact label={t("generateDialog.castReference")} value={castRef} />
           </div>
 
           {/* Engagement fee — the only editable monetary field (v1 is fee-only) */}
           <div className="rounded-lg border border-accent-200 bg-accent-50 p-3 space-y-1.5">
-            <Label htmlFor="hire-order-fee" className="text-xs text-accent-700">Engagement fee</Label>
+            <Label htmlFor="hire-order-fee" className="text-xs text-accent-700">{t("generateDialog.engagementFee")}</Label>
             <div className="flex items-center gap-2">
               <Input
                 id="hire-order-fee"
@@ -255,20 +258,20 @@ export function GenerateHireOrderDialog({ open, onOpenChange, order, showDate, o
 
           {/* Terms variant */}
           <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Terms</Label>
+            <Label className="text-xs text-muted-foreground">{t("generateDialog.terms")}</Label>
             {hasTermsTemplates ? (
               <>
-                <div role="radiogroup" aria-label="Terms variant" className="flex flex-wrap gap-2">
+                <div role="radiogroup" aria-label={t("editPage.termsVariant")} className="flex flex-wrap gap-2">
                   {!variantIsLive && variant && (
                     <Button type="button" variant="outline" size="sm" disabled className="flex-1 text-muted-foreground">
-                      Removed (will use default)
+                      {t("common.removedWillUseDefault")}
                     </Button>
                   )}
-                  {terms.templates.map((t) => {
-                    const selected = variant === t.id;
+                  {terms.templates.map((tmpl) => {
+                    const selected = variant === tmpl.id;
                     return (
                       <Button
-                        key={t.id}
+                        key={tmpl.id}
                         type="button"
                         role="radio"
                         aria-checked={selected}
@@ -277,17 +280,17 @@ export function GenerateHireOrderDialog({ open, onOpenChange, order, showDate, o
                         className="flex-1"
                         onClick={() => {
                           variantTouchedRef.current = true;
-                          setVariant(t.id);
+                          setVariant(tmpl.id);
                         }}
                       >
-                        {t.name.trim() || "Untitled template"}
+                        {tmpl.name.trim() || t("common.untitledTemplate")}
                       </Button>
                     );
                   })}
                 </div>
                 {!variantIsLive && variant && (
                   <p className="text-xs text-destructive">
-                    This order's saved terms template was removed. Choose one above before issuing.
+                    {t("common.termsTemplateRemoved")}
                   </p>
                 )}
               </>
@@ -296,18 +299,18 @@ export function GenerateHireOrderDialog({ open, onOpenChange, order, showDate, o
               // "Removed" chip would both leave the producer guessing. Say so
               // plainly: this org has none configured yet.
               <p className="text-xs text-destructive">
-                No terms templates configured. Add one in Settings → Hire orders before issuing.
+                {t("common.noTermsConfigured")}
               </p>
             )}
           </div>
 
           {/* Booking agent — prefilled from the org letterhead, overridable per order */}
           <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Booking agent (optional)</Label>
+            <Label className="text-xs text-muted-foreground">{t("generateDialog.bookingAgent")}</Label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <Input
-                aria-label="Agent name"
-                placeholder="Agent name"
+                aria-label={t("generateDialog.agentNameAria")}
+                placeholder={t("generateDialog.agentNamePlaceholder")}
                 value={agentName}
                 disabled={nameAwaitingDefault}
                 onChange={(e) => {
@@ -316,9 +319,9 @@ export function GenerateHireOrderDialog({ open, onOpenChange, order, showDate, o
                 }}
               />
               <Input
-                aria-label="Agent email"
+                aria-label={t("generateDialog.agentEmailAria")}
                 type="email"
-                placeholder="Agent email"
+                placeholder={t("generateDialog.agentEmailPlaceholder")}
                 value={agentEmail}
                 disabled={emailAwaitingDefault}
                 onChange={(e) => {
@@ -329,33 +332,33 @@ export function GenerateHireOrderDialog({ open, onOpenChange, order, showDate, o
             </div>
             {letterheadError ? (
               <p className="text-xs text-destructive">
-                Couldn't load your organization letterhead. This order will use your saved default.
+                {t("generateDialog.letterheadError")}
               </p>
             ) : (
-              <p className="text-xs text-muted-foreground">Prefilled from your organization letterhead.</p>
+              <p className="text-xs text-muted-foreground">{t("generateDialog.letterheadHint")}</p>
             )}
           </div>
 
           {/* Info note (fee-only copy) */}
           <div className="rounded-lg bg-muted p-3">
             <p className="text-xs text-muted-foreground">
-              The PDF includes the running order and a countersignature block. The artist receives it by email.
+              {t("generateDialog.infoNote")}
             </p>
           </div>
         </div>
 
         <DialogFooter className="gap-2 sm:gap-2">
-          <Button variant="ghost" onClick={handlePreview} disabled={busy}>Preview PDF</Button>
-          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={busy}>Cancel</Button>
+          <Button variant="ghost" onClick={handlePreview} disabled={busy}>{t("generateDialog.previewPdf")}</Button>
+          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={busy}>{t("common.cancel")}</Button>
           <Button onClick={handleIssue} disabled={busy || !canIssue || !variantIsLive}
             title={
               !canIssue
-                ? "You don't have permission to issue hire orders"
+                ? t("common.noPermissionIssue")
                 : !variantIsLive
-                  ? (hasTermsTemplates ? "Choose a terms template before issuing" : "No terms templates configured")
+                  ? (hasTermsTemplates ? t("common.chooseTermsFirst") : t("common.noTermsConfiguredShort"))
                   : undefined
             }>
-            Issue and send
+            {t("common.issueAndSend")}
           </Button>
         </DialogFooter>
       </DialogContent>

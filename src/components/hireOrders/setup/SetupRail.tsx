@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useCan } from "@/hooks/useCapabilities";
 import { useHireOrderSetupStatus } from "@/hooks/useHireOrderSetup";
 import type { SetupStepKey } from "@/lib/hireOrders/setupStatus";
@@ -11,24 +12,24 @@ import { CountersignStep } from "./CountersignStep";
 import { ProducerWaitingCard } from "./ProducerWaitingCard";
 import { useRailDismissed } from "@/components/setup/useRailDismissed";
 
-const TITLES: Record<SetupStepKey, string> = {
-  letterhead: "Letterhead",
-  terms: "Terms template",
-  countersign: "Countersigning",
+const TITLE_KEYS: Record<SetupStepKey, string> = {
+  letterhead: "setupRail.titleLetterhead",
+  terms: "setupRail.titleTerms",
+  countersign: "setupRail.titleCountersign",
 };
 
-const HINTS: Record<SetupStepKey, { todo: string; done: string }> = {
+const HINT_KEYS: Record<SetupStepKey, { todo: string; done: string }> = {
   letterhead: {
-    todo: "Legal name, address, registration line. Prints on every order.",
-    done: "Set. It prints at the top of every order.",
+    todo: "setupRail.letterheadTodo",
+    done: "setupRail.letterheadDone",
   },
   terms: {
-    todo: "The wording on the back page. Start from a template.",
-    done: "Set. Edit the wording any time in Settings.",
+    todo: "setupRail.termsTodo",
+    done: "setupRail.termsDone",
   },
   countersign: {
-    todo: "How artists sign. The default is signing outside ShowFlow.",
-    done: "Chosen. Change it any time in Settings.",
+    todo: "setupRail.countersignTodo",
+    done: "setupRail.countersignDone",
   },
 };
 
@@ -40,6 +41,7 @@ const HINTS: Record<SetupStepKey, { todo: string; done: string }> = {
  * writes through the same data path as the Settings cards.
  */
 export function SetupRail({ orgId, initialStep }: { orgId: string | null; initialStep?: SetupStepKey }) {
+  const { t } = useTranslation("hireOrdersPages");
   const canEditSettings = useCan("edit_hire_order_settings");
   const { status } = useHireOrderSetupStatus(orgId);
   const [, dismiss] = useRailDismissed("hireOrderSetup", orgId);
@@ -63,15 +65,15 @@ export function SetupRail({ orgId, initialStep }: { orgId: string | null; initia
                 violet in both modes (the scale is immutable by design), which is ~2.3:1
                 on the dark card. Every other eyebrow in the app reads muted. */}
             <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Set up · {status.doneCount} of {status.totalCount}
+              {t("setupRail.progress", { done: status.doneCount, total: status.totalCount })}
             </p>
             <Button variant="ghost" size="sm" className="h-auto p-1 text-xs" onClick={dismiss}>
-              Hide
+              {t("setupRail.hide")}
             </Button>
           </div>
-          <p className="mt-1.5 font-display text-base font-semibold">Get hire orders ready</p>
+          <p className="mt-1.5 font-display text-base font-semibold">{t("setupRail.heading")}</p>
           <p className="mt-1 text-xs leading-[19px] text-muted-foreground">
-            You can draft orders right now. These are only needed before the first one goes out.
+            {t("setupRail.body")}
           </p>
           <div className="mt-3 flex gap-1">
             {status.steps.map((s) => (
@@ -87,10 +89,10 @@ export function SetupRail({ orgId, initialStep }: { orgId: string | null; initia
             <SetupStepRow
               key={s.key}
               index={i + 1}
-              title={TITLES[s.key]}
-              hint={s.done ? HINTS[s.key].done : HINTS[s.key].todo}
+              title={t(TITLE_KEYS[s.key])}
+              hint={s.done ? t(HINT_KEYS[s.key].done) : t(HINT_KEYS[s.key].todo)}
               done={s.done}
-              block={s.blocksIssue ? { label: "Blocks issue", tone: "risk" } : null}
+              block={s.blocksIssue ? { label: t("setupRail.blocksIssue"), tone: "risk" } : null}
               expanded={open === s.key}
               onToggle={() => toggle(s.key)}
             >

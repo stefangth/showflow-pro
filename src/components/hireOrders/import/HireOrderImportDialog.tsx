@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Check, CheckCircle2, Loader2, Upload } from "lucide-react";
@@ -42,8 +43,13 @@ type Step = "source" | "range" | "map" | "resolve" | "review" | "done";
 type SourceKind = "xlsx" | "csv" | "gsheet";
 
 const STEP_ORDER: Step[] = ["source", "range", "map", "resolve", "review"];
-const STEP_LABELS: Record<Step, string> = {
-  source: "Source", range: "Range", map: "Map columns", resolve: "Resolve", review: "Review", done: "Done",
+const STEP_LABEL_KEYS: Record<Step, string> = {
+  source: "importDialog.stepSource",
+  range: "importDialog.stepRange",
+  map: "importDialog.stepMap",
+  resolve: "importDialog.stepResolve",
+  review: "importDialog.stepReview",
+  done: "importDialog.stepDone",
 };
 
 interface OrderDefaultsLite { default_fee: number | null; currency: string }
@@ -66,6 +72,7 @@ interface ImportResult { created: number; skippedExisting: number; error: number
  * Creates DRAFT hire orders only, via `bulk_import_hire_orders` — never issues.
  */
 export function HireOrderImportDialog({ open, onOpenChange, orgId }: Props) {
+  const { t } = useTranslation("hireOrdersPages");
   const navigate = useNavigate();
   const { data: artists = [] } = useArtistsLite(orgId);
   const { data: showDates = [] } = useShowDatesLite(orgId);
@@ -115,7 +122,7 @@ export function HireOrderImportDialog({ open, onOpenChange, orgId }: Props) {
   // ── Source ────────────────────────────────────────────────────────────────
   function ingestSheets(sheets: RawSheet[], kind: SourceKind, name: string | null) {
     if (sheets.length === 0 || sheets.every((s) => s.rows.length === 0)) {
-      toast.error("No rows found in that file.");
+      toast.error(t("importDialog.noRows"));
       return;
     }
     setRawSheets(sheets);
@@ -140,7 +147,7 @@ export function HireOrderImportDialog({ open, onOpenChange, orgId }: Props) {
         : await parseSheetRaw(await file.text(), "csv");
       ingestSheets(parsed.sheets, isXlsx ? "xlsx" : "csv", file.name);
     } catch (e) {
-      toast.error((e as Error).message || "Could not read the file");
+      toast.error((e as Error).message || t("importDialog.readError"));
     }
   }
 
@@ -152,7 +159,7 @@ export function HireOrderImportDialog({ open, onOpenChange, orgId }: Props) {
       const parsed = await parseSheetRaw(csv, "csv");
       ingestSheets(parsed.sheets, "gsheet", null);
     } catch (e) {
-      toast.error((e as Error).message || "Could not fetch the sheet");
+      toast.error((e as Error).message || t("importDialog.fetchError"));
     } finally {
       setFetching(false);
     }
@@ -263,7 +270,7 @@ export function HireOrderImportDialog({ open, onOpenChange, orgId }: Props) {
     const row = resolvedRows.find((r) => r.rowIndex === rowIndex);
     const name = (row?.sheet.artist_name as string | undefined)?.trim();
     if (!name) {
-      toast.error("This row has no artist name to create");
+      toast.error(t("importDialog.noArtistName"));
       return;
     }
     const email = (row?.sheet.recipient_email as string | undefined)?.trim() || null;
@@ -375,10 +382,9 @@ export function HireOrderImportDialog({ open, onOpenChange, orgId }: Props) {
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-h-[85vh] max-w-3xl overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="font-display">Import hire orders from a spreadsheet</DialogTitle>
+          <DialogTitle className="font-display">{t("importDialog.title")}</DialogTitle>
           <DialogDescription>
-            Upload a CSV/XLSX or paste a public Google Sheets link, pick the header row, map the columns, then
-            review and create draft hire orders.
+            {t("importDialog.description")}
           </DialogDescription>
         </DialogHeader>
 
@@ -397,7 +403,7 @@ export function HireOrderImportDialog({ open, onOpenChange, orgId }: Props) {
                     {state === "done" ? <Check className="h-3 w-3" /> : i + 1}
                   </span>
                   <span className={state === "current" ? "font-medium text-foreground" : "text-muted-foreground"}>
-                    {STEP_LABELS[s]}
+                    {t(STEP_LABEL_KEYS[s])}
                   </span>
                   {i < STEP_ORDER.length - 1 && <span className="h-px w-6 bg-border" />}
                 </div>
@@ -414,26 +420,26 @@ export function HireOrderImportDialog({ open, onOpenChange, orgId }: Props) {
               onDrop={(e) => { e.preventDefault(); const f = e.dataTransfer.files?.[0]; if (f) onFile(f); }}
             >
               <Upload className="h-6 w-6 text-muted-foreground" />
-              <span className="text-sm">Drop a .csv or .xlsx here, or click to browse</span>
+              <span className="text-sm">{t("importDialog.dropZone")}</span>
               <input
                 type="file"
                 accept=".csv,.xlsx"
                 className="hidden"
-                aria-label="Upload spreadsheet"
+                aria-label={t("importDialog.uploadAria")}
                 onChange={(e) => { const f = e.target.files?.[0]; if (f) onFile(f); }}
               />
             </label>
             <div className="flex items-center gap-2">
               <Input
-                placeholder="…or paste a public Google Sheets link"
+                placeholder={t("importDialog.linkPlaceholder")}
                 value={linkUrl}
                 onChange={(e) => setLinkUrl(e.target.value)}
               />
               <Button type="button" variant="outline" onClick={onFetchLink} disabled={fetching || !linkUrl.trim()}>
-                {fetching ? <Loader2 className="h-4 w-4 animate-spin" /> : "Fetch"}
+                {fetching ? <Loader2 className="h-4 w-4 animate-spin" /> : t("importDialog.fetch")}
               </Button>
             </div>
-            <p className="text-xs text-muted-foreground">Up to {MAX_IMPORT_ROWS.toLocaleString()} rows per sheet.</p>
+            <p className="text-xs text-muted-foreground">{t("importDialog.rowsLimit", { max: MAX_IMPORT_ROWS.toLocaleString() })}</p>
           </div>
         )}
 
@@ -447,8 +453,8 @@ export function HireOrderImportDialog({ open, onOpenChange, orgId }: Props) {
               onRangeChange={setRange}
             />
             <div className="flex justify-between gap-2">
-              <Button type="button" variant="ghost" onClick={goBack}>Back</Button>
-              <Button type="button" onClick={goToMap} disabled={dataRows.length === 0}>Continue</Button>
+              <Button type="button" variant="ghost" onClick={goBack}>{t("common.back")}</Button>
+              <Button type="button" onClick={goToMap} disabled={dataRows.length === 0}>{t("common.continue")}</Button>
             </div>
           </div>
         )}
@@ -457,8 +463,8 @@ export function HireOrderImportDialog({ open, onOpenChange, orgId }: Props) {
           <div className="space-y-4">
             <MapStep headers={headers} mapping={mapping} onMappingChange={setMapping} />
             <div className="flex justify-between gap-2">
-              <Button type="button" variant="ghost" onClick={goBack}>Back</Button>
-              <Button type="button" onClick={() => setStep("resolve")}>Continue</Button>
+              <Button type="button" variant="ghost" onClick={goBack}>{t("common.back")}</Button>
+              <Button type="button" onClick={() => setStep("resolve")}>{t("common.continue")}</Button>
             </div>
           </div>
         )}
@@ -474,8 +480,8 @@ export function HireOrderImportDialog({ open, onOpenChange, orgId }: Props) {
               creatingRowIndex={creatingRowIndex}
             />
             <div className="flex justify-between gap-2">
-              <Button type="button" variant="ghost" onClick={goBack}>Back</Button>
-              <Button type="button" onClick={goToReview}>Continue</Button>
+              <Button type="button" variant="ghost" onClick={goBack}>{t("common.back")}</Button>
+              <Button type="button" onClick={goToReview}>{t("common.continue")}</Button>
             </div>
           </div>
         )}
@@ -492,10 +498,10 @@ export function HireOrderImportDialog({ open, onOpenChange, orgId }: Props) {
               onEditDate={editDate}
             />
             <div className="flex justify-between gap-2">
-              <Button type="button" variant="ghost" onClick={goBack} disabled={submitting}>Back</Button>
+              <Button type="button" variant="ghost" onClick={goBack} disabled={submitting}>{t("common.back")}</Button>
               <Button type="button" onClick={handleSubmit} disabled={selection.size === 0 || submitting}>
                 {submitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                Import {selection.size} order{selection.size === 1 ? "" : "s"}
+                {t("importDialog.importCount", { count: selection.size })}
               </Button>
             </div>
           </div>
@@ -508,19 +514,19 @@ export function HireOrderImportDialog({ open, onOpenChange, orgId }: Props) {
             </div>
             <div>
               <p className="text-lg font-medium">
-                Created {result.created} draft hire order{result.created === 1 ? "" : "s"}
+                {t("importDialog.createdCount", { count: result.created })}
               </p>
               <p className="text-sm text-muted-foreground">
-                {result.skippedExisting} already existed{result.error > 0 ? `, ${result.error} failed` : ""}
+                {t("importDialog.alreadyExisted", { count: result.skippedExisting })}{result.error > 0 ? t("importDialog.someFailed", { count: result.error }) : ""}
               </p>
             </div>
             <div className="flex justify-center gap-2">
-              <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>Close</Button>
+              <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>{t("importDialog.close")}</Button>
               <Button
                 type="button"
                 onClick={() => { handleOpenChange(false); navigate(ROUTES.HIRE_ORDERS); }}
               >
-                Open hire orders
+                {t("importDialog.openHireOrders")}
               </Button>
             </div>
           </div>

@@ -1,0 +1,23 @@
+{
+  "list": {
+    "title": "Chats",
+    "subtitle": "Ein Chat pro Showtermin. {{days}} Tage nach der Show ausgeblendet.",
+    "empty": "Keine aktiven Chats.",
+    "open": "Offen"
+  },
+  "panel": {
+    "loading": "Chat wird geladen…",
+    "notParticipant": "Der Chat steht nur dem Production Team, Admins und Artists offen, die für diesen Termin gebucht oder vorläufig gebucht sind.",
+    "archivedNotice": "Dieser Chat wurde {{days}} Tage nach dem Showtermin archiviert.",
+    "title": "Chat",
+    "archivedBadge": "Archiviert (schreibgeschützt)",
+    "emptyMessages": "Noch keine Nachrichten. Sag Hallo.",
+    "composerPlaceholder": "Schreib eine Nachricht…",
+    "archivedPlaceholder": "Archiviert, nur Lesezugriff",
+    "send": "Nachricht senden",
+    "errorTitle": "Fehler"
+  },
+  "bubble": {
+    "you": "Du"
+  }
+}

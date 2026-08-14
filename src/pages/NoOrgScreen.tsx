@@ -1,4 +1,5 @@
 import { useAuth } from '@/features/auth/AuthContext';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { StageMark } from '@/components/brand/StageMark';
 
@@ -9,15 +10,22 @@ import { StageMark } from '@/components/brand/StageMark';
  */
 export default function NoOrgScreen() {
   const { user, signOut } = useAuth();
+  const { t } = useTranslation('auth');
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4 text-center">
       <StageMark variant="tile" size={56} className="mb-6" />
-      <h1 className="font-display text-2xl font-semibold tracking-tight">No organization yet</h1>
+      <h1 className="font-display text-2xl font-semibold tracking-tight">{t('noOrg.title')}</h1>
       <p className="mt-2 max-w-md text-muted-foreground">
-        {user?.email ? <>You're signed in as <span className="text-foreground">{user.email}</span>, but you're </> : <>You're </>}
-        not a member of any organization. Ask an organization admin to invite you by email — once you accept the invitation, you'll land here.
+        {user?.email ? (
+          <>
+            {t('noOrg.signedInAsPrefix')} <span className="text-foreground">{user.email}</span>
+            {t('noOrg.bodyWithEmail')}
+          </>
+        ) : (
+          <>{t('noOrg.bodyNoEmail')}</>
+        )}
       </p>
-      <Button variant="outline" className="mt-6" onClick={signOut}>Sign out</Button>
+      <Button variant="outline" className="mt-6" onClick={signOut}>{t('noOrg.signOut')}</Button>
     </div>
   );
 }

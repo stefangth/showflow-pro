@@ -1,0 +1,23 @@
+{
+  "list": {
+    "title": "Chats",
+    "subtitle": "One chat per show date. Hidden {{days}} days after the show.",
+    "empty": "No active chats.",
+    "open": "Open"
+  },
+  "panel": {
+    "loading": "Loading chat…",
+    "notParticipant": "Chat is only available to producers, admins, and artists booked or soft-booked for this date.",
+    "archivedNotice": "This chat was archived {{days}} days after the show date.",
+    "title": "Chat",
+    "archivedBadge": "Archived (read-only)",
+    "emptyMessages": "No messages yet. Say hello.",
+    "composerPlaceholder": "Write a message…",
+    "archivedPlaceholder": "Archived, read only",
+    "send": "Send message",
+    "errorTitle": "Error"
+  },
+  "bubble": {
+    "you": "You"
+  }
+}

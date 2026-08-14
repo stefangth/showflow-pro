@@ -1,4 +1,5 @@
 import { AlertTriangle } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useCan } from "@/hooks/useCapabilities";
 import { useOrgLetterhead, useOrgTerms } from "@/hooks/useHireOrderSetup";
 import { BLOCKER_COPY, computeBlockers } from "@/lib/hireOrders/preflight";
@@ -43,6 +44,7 @@ export interface BatchIssuePreflightDialogProps {
 export function BatchIssuePreflightDialog({
   open, onOpenChange, orgId, orders, onConfirm, isIssuing = false,
 }: BatchIssuePreflightDialogProps) {
+  const { t } = useTranslation("hireOrdersPages");
   const canEditSettings = useCan("edit_hire_order_settings");
   // Both halves of one check gated on `open` the same way: this dialog is mounted on
   // every /hire-orders render, so an ungated read costs a round trip per page load.
@@ -78,13 +80,13 @@ export function BatchIssuePreflightDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle className="font-display">Issue selected orders</DialogTitle>
+          <DialogTitle className="font-display">{t("batchPreflight.title")}</DialogTitle>
           <DialogDescription>
             {isLoading
-              ? "Checking the selection."
+              ? t("batchPreflight.checking")
               : isError
-                ? "Could not check the selection. Reload and try again before issuing."
-                : `${clean.length} of ${orders.length} can be issued now. The rest stay as drafts.`}
+                ? t("batchPreflight.checkError")
+                : t("batchPreflight.summary", { clean: clean.length, total: orders.length })}
           </DialogDescription>
         </DialogHeader>
 
@@ -93,7 +95,7 @@ export function BatchIssuePreflightDialog({
         ) : isError ? (
           <div className="flex items-center gap-2.5 rounded-lg border border-border p-3">
             <AlertTriangle className="h-4 w-4 shrink-0 text-[var(--amber-600)]" />
-            <p className="text-sm text-muted-foreground">Could not check this selection's readiness. Reload the page and try again.</p>
+            <p className="text-sm text-muted-foreground">{t("batchPreflight.checkErrorDetail")}</p>
           </div>
         ) : (
           blocked.length > 0 && (
@@ -101,7 +103,7 @@ export function BatchIssuePreflightDialog({
               {blocked.map(({ order, blockers }) => (
                 <div key={order.id} className="rounded-lg border border-border p-3">
                   <p className="text-sm font-medium">{order.artistName}</p>
-                  <p className="font-mono text-xs text-muted-foreground">{order.order_no ?? "Draft"}</p>
+                  <p className="font-mono text-xs text-muted-foreground">{order.order_no ?? t("batchPreflight.draftFallback")}</p>
                   <p className="mt-1 text-xs text-[var(--amber-600)]">
                     {blockers.map((b) => BLOCKER_COPY[b.key].label).join(", ")}
                   </p>
@@ -112,12 +114,12 @@ export function BatchIssuePreflightDialog({
         )}
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>{t("common.cancel")}</Button>
           <Button
             disabled={clean.length === 0 || isIssuing || isLoading}
             onClick={() => onConfirm(clean.map((c) => c.order.id))}
           >
-            Issue {clean.length} {clean.length === 1 ? "order" : "orders"}
+            {t("batchPreflight.issueCount", { count: clean.length })}
           </Button>
         </DialogFooter>
       </DialogContent>

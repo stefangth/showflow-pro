@@ -33,6 +33,22 @@ import enSettingsRolesRights from './locales/en/settingsRolesRights.json';
 import deSettingsRolesRights from './locales/de/settingsRolesRights.json';
 import enSettingsEditor from './locales/en/settingsEditor.json';
 import deSettingsEditor from './locales/de/settingsEditor.json';
+import enAuth from './locales/en/auth.json';
+import deAuth from './locales/de/auth.json';
+import enAdmin from './locales/en/admin.json';
+import deAdmin from './locales/de/admin.json';
+import enArtists from './locales/en/artists.json';
+import deArtists from './locales/de/artists.json';
+import enProductions from './locales/en/productions.json';
+import deProductions from './locales/de/productions.json';
+import enHireOrdersPages from './locales/en/hireOrdersPages.json';
+import deHireOrdersPages from './locales/de/hireOrdersPages.json';
+import enShowsDetail from './locales/en/showsDetail.json';
+import deShowsDetail from './locales/de/showsDetail.json';
+import enChats from './locales/en/chats.json';
+import deChats from './locales/de/chats.json';
+import enProfile from './locales/en/profile.json';
+import deProfile from './locales/de/profile.json';
 
 export const resources = {
   en: {
@@ -42,6 +58,8 @@ export const resources = {
     settingsBookingFlow: enSettingsBookingFlow, settingsHireOrders: enSettingsHireOrders,
     settingsEmailTemplates: enSettingsEmailTemplates, settingsRolesRights: enSettingsRolesRights,
     settingsEditor: enSettingsEditor,
+    auth: enAuth, admin: enAdmin, artists: enArtists, productions: enProductions,
+    hireOrdersPages: enHireOrdersPages, showsDetail: enShowsDetail, chats: enChats, profile: enProfile,
   },
   de: {
     common: deCommon, help: deHelp, dashboard: deDashboard, bookings: deBookings, availability: deAvailability,
@@ -50,6 +68,8 @@ export const resources = {
     settingsBookingFlow: deSettingsBookingFlow, settingsHireOrders: deSettingsHireOrders,
     settingsEmailTemplates: deSettingsEmailTemplates, settingsRolesRights: deSettingsRolesRights,
     settingsEditor: deSettingsEditor,
+    auth: deAuth, admin: deAdmin, artists: deArtists, productions: deProductions,
+    hireOrdersPages: deHireOrdersPages, showsDetail: deShowsDetail, chats: deChats, profile: deProfile,
   },
 } as const;
 
@@ -63,6 +83,7 @@ i18n.use(initReactI18next).init({
     'settings', 'settingsDocs', 'settingsCastsCoverage', 'settingsSkills', 'settingsTrust',
     'settingsAirtable', 'settingsBookingFlow', 'settingsHireOrders', 'settingsEmailTemplates',
     'settingsRolesRights', 'settingsEditor',
+    'auth', 'admin', 'artists', 'productions', 'hireOrdersPages', 'showsDetail', 'chats', 'profile',
   ],
   defaultNS: 'common',
   returnEmptyString: false,

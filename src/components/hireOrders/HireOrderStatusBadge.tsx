@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
 
 /**
@@ -8,17 +9,18 @@ import { Badge } from "@/components/ui/badge";
  * design, not the raw enum label.
  */
 export function HireOrderStatusBadge({ status }: { status: string }) {
+  const { t } = useTranslation("hireOrdersPages");
   switch (status) {
     case "draft":
-      return <Badge variant="secondary">Draft</Badge>;
+      return <Badge variant="secondary">{t("statusBadge.draft")}</Badge>;
     case "ready":
-      return <Badge variant="accent">Ready</Badge>;
+      return <Badge variant="accent">{t("statusBadge.ready")}</Badge>;
     case "issued":
-      return <Badge variant="hold">Awaiting countersign</Badge>;
+      return <Badge variant="hold">{t("statusBadge.issued")}</Badge>;
     case "countersigned":
-      return <Badge variant="confirmed">Countersigned</Badge>;
+      return <Badge variant="confirmed">{t("statusBadge.countersigned")}</Badge>;
     case "void":
-      return <Badge variant="neutral">Void</Badge>;
+      return <Badge variant="neutral">{t("statusBadge.void")}</Badge>;
     default:
       return <Badge variant="neutral">{status}</Badge>;
   }

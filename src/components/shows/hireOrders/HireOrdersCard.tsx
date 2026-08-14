@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { FileText } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -40,6 +41,7 @@ export function HireOrdersCard(props: Props) {
  * download is the only action. Renders nothing without a matching order.
  */
 function ArtistHireOrders({ showDateId }: Props) {
+  const { t } = useTranslation("hireOrdersPages");
   const { currentOrg } = useAuth();
   const orgId = currentOrg?.id ?? "";
   const { data: myOrders } = useMyHireOrders();
@@ -65,7 +67,7 @@ function ArtistHireOrders({ showDateId }: Props) {
     <Card>
       <CardHeader>
         <CardTitle className="font-display text-lg flex items-center gap-2">
-          <FileText className="h-5 w-5" />Hire order
+          <FileText className="h-5 w-5" />{t("ordersCard.hireOrder")}
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -74,7 +76,7 @@ function ArtistHireOrders({ showDateId }: Props) {
           <div className="flex items-center gap-2 shrink-0">
             <HireOrderStatusBadge status={order.status} />
             <Button size="sm" variant="outline" onClick={handleDownload} disabled={action.isPending}>
-              Download
+              {t("common.download")}
             </Button>
           </div>
         </div>
@@ -84,6 +86,7 @@ function ArtistHireOrders({ showDateId }: Props) {
 }
 
 function ProducerHireOrders({ showDateId, showDate, bookings, canManage }: Props) {
+  const { t } = useTranslation("hireOrdersPages");
   const { currentOrg } = useAuth();
   const orgId = currentOrg?.id ?? "";
   const producerName = currentOrg?.name ?? "";
@@ -104,7 +107,7 @@ function ProducerHireOrders({ showDateId, showDate, bookings, canManage }: Props
   // Name the single confirmed artist in the banner copy; fall back to a generic
   // phrase when several artists are confirmed on the date.
   const confirmedNames = confirmed.map((b) => b.artist?.name).filter((n): n is string => !!n);
-  const recipientPhrase = confirmedNames.length === 1 ? confirmedNames[0] : "the confirmed cast";
+  const recipientPhrase = confirmedNames.length === 1 ? confirmedNames[0] : t("ordersCard.recipientPhrase");
 
   function handleGenerate() {
     action.mutate({ action: "draft", org_id: orgId, show_date_id: showDateId });
@@ -124,14 +127,14 @@ function ProducerHireOrders({ showDateId, showDate, bookings, canManage }: Props
     <Card>
       <CardHeader>
         <CardTitle className="font-display text-lg flex items-center gap-2">
-          <FileText className="h-5 w-5" />Hire orders
+          <FileText className="h-5 w-5" />{t("ordersCard.hireOrders")}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         {isError ? (
           <Alert variant="destructive">
-            <AlertTitle>Could not load hire orders</AlertTitle>
-            <AlertDescription>{(error as Error)?.message ?? "Please try again."}</AlertDescription>
+            <AlertTitle>{t("ordersCard.loadError")}</AlertTitle>
+            <AlertDescription>{(error as Error)?.message ?? t("ordersCard.tryAgain")}</AlertDescription>
           </Alert>
         ) : isLoading ? (
           <div className="space-y-2">
@@ -143,13 +146,13 @@ function ProducerHireOrders({ showDateId, showDate, bookings, canManage }: Props
             {showBanner && (
               <HireOrderReadyBanner
                 title={fullyFilled
-                  ? "This date is fully filled. Ready for a hire order."
-                  : "Generate for confirmed artists"}
-                description={`Generate the order to confirm the engagement and send it to ${recipientPhrase} for countersignature.`}
-                ctaLabel="Generate hire order"
+                  ? t("ordersCard.bannerFullyFilled")
+                  : t("ordersCard.bannerGenerate")}
+                description={t("ordersCard.bannerDescription", { recipient: recipientPhrase })}
+                ctaLabel={t("ordersCard.generateCta")}
                 onCta={handleGenerate}
                 disabled={action.isPending || !canGenerate}
-                ctaTitle={canGenerate ? undefined : "You don't have permission to generate hire orders"}
+                ctaTitle={canGenerate ? undefined : t("ordersCard.noPermissionGenerate")}
               />
             )}
 
@@ -162,7 +165,7 @@ function ProducerHireOrders({ showDateId, showDate, bookings, canManage }: Props
                   >
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-foreground truncate">
-                        {o.artists?.name ?? "Unknown artist"}
+                        {o.artists?.name ?? t("common.unknownArtist")}
                       </p>
                       <p className="text-xs font-mono text-muted-foreground">{o.order_no}</p>
                     </div>
@@ -170,7 +173,7 @@ function ProducerHireOrders({ showDateId, showDate, bookings, canManage }: Props
                       <HireOrderStatusBadge status={o.status} />
                       {(o.status === "draft" || o.status === "ready") && (
                         <Button size="sm" variant="outline" onClick={() => setDialogOrder(o)}>
-                          Review and issue
+                          {t("common.reviewAndIssue")}
                         </Button>
                       )}
                       {(o.status === "issued" || o.status === "countersigned") && (
@@ -180,7 +183,7 @@ function ProducerHireOrders({ showDateId, showDate, bookings, canManage }: Props
                           onClick={() => handleDownload(o.id)}
                           disabled={action.isPending}
                         >
-                          Download
+                          {t("common.download")}
                         </Button>
                       )}
                     </div>
@@ -189,7 +192,7 @@ function ProducerHireOrders({ showDateId, showDate, bookings, canManage }: Props
               </div>
             ) : (
               !showBanner && (
-                <p className="text-sm text-muted-foreground">No hire orders yet.</p>
+                <p className="text-sm text-muted-foreground">{t("ordersCard.noOrdersYet")}</p>
               )
             )}
           </>

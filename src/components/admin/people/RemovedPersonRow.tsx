@@ -1,4 +1,5 @@
 import { format } from "date-fns";
+import { useTranslation } from "react-i18next";
 import { Undo2, UserMinus } from "lucide-react";
 import { roleLabel } from "@/config/app.config";
 import { Button } from "@/components/ui/button";
@@ -21,9 +22,10 @@ export interface RemovedPersonRowProps {
  * Delete account (a full, safe-scoped erase). Undo restores the membership + roles.
  */
 export function RemovedPersonRow({ member, onUndo, onClear, onDelete, undoPending = false }: RemovedPersonRowProps) {
+  const { t } = useTranslation("admin");
   const who = member.display_name || member.email || member.user_id;
   const removed = format(new Date(member.removed_at), "dd/MM/yyyy");
-  const by = member.removed_by_name ? ` by ${member.removed_by_name}` : "";
+  const by = member.removed_by_name ? t("removedRow.by", { name: member.removed_by_name }) : "";
   return (
     <div role="listitem" className="flex flex-col gap-3 py-3 opacity-90 sm:flex-row sm:items-center sm:gap-4">
       <div className="flex min-w-0 flex-1 items-center gap-3">
@@ -35,7 +37,7 @@ export function RemovedPersonRow({ member, onUndo, onClear, onDelete, undoPendin
         <div className="flex min-w-0 flex-col gap-0.5">
           <p className="truncate text-sm font-medium text-muted-foreground" title={who}>{who}</p>
           <p className="truncate text-xs text-muted-foreground">
-            {member.email ? `${member.email} · ` : ""}Removed {removed}{by}
+            {member.email ? `${member.email} · ` : ""}{t("removedRow.removed", { date: removed })}{by}
           </p>
         </div>
       </div>
@@ -43,34 +45,34 @@ export function RemovedPersonRow({ member, onUndo, onClear, onDelete, undoPendin
         <div className="hidden sm:flex sm:w-44 sm:justify-end">
           {member.roles.map((r) => (
             <Badge key={r} variant="outline" className="border-border/60 font-normal text-muted-foreground">
-              was {roleLabel(r)}
+              {t("removedRow.was", { role: roleLabel(r) })}
             </Badge>
           ))}
         </div>
         <div className="flex items-center justify-end gap-1 sm:w-40">
-          <IconTooltip label="Undo removal">
+          <IconTooltip label={t("removedRow.undoRemoval")}>
             <Button
               size="sm" variant="ghost" className="h-8 gap-1.5 px-2.5 text-xs"
               disabled={undoPending} onClick={() => onUndo(member.user_id)}
-              aria-label={`Undo removal of ${who}`}
+              aria-label={t("removedRow.undoRemovalOf", { who })}
             >
-              <Undo2 className={`h-4 w-4 ${undoPending ? "animate-pulse" : ""}`} />Undo
+              <Undo2 className={`h-4 w-4 ${undoPending ? "animate-pulse" : ""}`} />{t("removedRow.undo")}
             </Button>
           </IconTooltip>
           {member.deletable ? (
             <Button
               size="sm" variant="ghost"
               className="h-8 px-2.5 text-xs text-[var(--red-600)] hover:bg-[var(--red-100)]"
-              onClick={() => onDelete(member)} aria-label={`Delete account of ${who}`}
+              onClick={() => onDelete(member)} aria-label={t("removedRow.deleteAccountOf", { who })}
             >
-              Delete account
+              {t("removedRow.deleteAccount")}
             </Button>
           ) : (
             <Button
               size="sm" variant="ghost" className="h-8 px-2.5 text-xs text-muted-foreground"
-              onClick={() => onClear(member)} aria-label={`Clear ${who} from list`}
+              onClick={() => onClear(member)} aria-label={t("removedRow.clearAria", { who })}
             >
-              Clear from list
+              {t("removedRow.clearFromList")}
             </Button>
           )}
         </div>

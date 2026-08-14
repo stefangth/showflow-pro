@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { Theater } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 
@@ -11,6 +12,7 @@ import { Card, CardContent } from '@/components/ui/card';
  * this is only the reassuring body card.
  */
 export function UnlinkedArtistCard({ orgName }: { orgName?: string | null }) {
+  const { t } = useTranslation('artists');
   return (
     <Card>
       <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
@@ -19,12 +21,10 @@ export function UnlinkedArtistCard({ orgName }: { orgName?: string | null }) {
         </div>
         <div className="space-y-1">
           <p className="font-display text-lg font-semibold">
-            {orgName ? `You're on the ${orgName} roster` : "You're on the roster"}
+            {orgName ? t('unlinked.headingOrg', { orgName }) : t('unlinked.heading')}
           </p>
           <p className="mx-auto max-w-md text-sm text-muted-foreground">
-            Your account is set up. An admin still needs to link it to your artist profile before
-            your dates, casts and offers show up here. You'll get an email as soon as you're booked,
-            so there's nothing you need to do right now.
+            {t('unlinked.body')}
           </p>
         </div>
       </CardContent>

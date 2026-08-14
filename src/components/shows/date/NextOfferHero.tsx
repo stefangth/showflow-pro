@@ -1,3 +1,5 @@
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -45,35 +47,43 @@ function initials(name: string): string {
 
 /** The cast name for a cast target, else the tier label (design 1e's "name it only
  *  when unambiguous" rule) — shared by the title and the body sentence's `{cast}`. */
-function targetLabel(target: OfferTarget): string {
+function targetLabel(t: TFunction<"showsDetail">, target: OfferTarget): string {
   if (target.kind === "cast") return target.cast.name;
-  return target.tier === 99 ? "Ad-hoc casts" : `Tier ${target.tier}`;
+  return target.tier === 99 ? t("nextOfferHero.adHocCasts") : t("nextOfferHero.tierN", { tier: target.tier });
 }
 
 function buildBodySentence(
+  t: TFunction<"showsDetail">,
   target: OfferTarget,
   counts: TierLadderRow,
   requiredSkillNames: string[],
 ): string {
-  const label = targetLabel(target);
-  const artistWord = counts.castTotal === 1 ? "artist" : "artists";
+  const label = targetLabel(t, target);
+  const artistWord = t("nextOfferHero.artistWord", { count: counts.castTotal });
   // With no required skills, "have {skillList}" would read "have no required skills"
   // (as if the artists lacked skills); state availability instead.
   const first = requiredSkillNames.length > 0
-    ? `${counts.matchCount} of ${counts.castTotal} ${artistWord} in ${label} ${counts.matchCount === 1 ? "has" : "have"} ${requiredSkillNames.join(", ")}.`
-    : `${counts.matchCount} of ${counts.castTotal} ${artistWord} in ${label} ${counts.matchCount === 1 ? "is" : "are"} available.`;
+    ? t("nextOfferHero.bodyWithSkills", {
+        count: counts.matchCount, matchCount: counts.matchCount, castTotal: counts.castTotal,
+        artistWord, label, skills: requiredSkillNames.join(", "),
+      })
+    : t("nextOfferHero.bodyAvailable", {
+        count: counts.matchCount, matchCount: counts.matchCount, castTotal: counts.castTotal,
+        artistWord, label,
+      });
 
   const priorTier = target.tier - 1;
   if (priorTier <= 0) {
     // Tier 1 has no earlier tier — drop the already-booked-or-offered clause
     // entirely rather than imply this count is specific to a prior tier.
-    return `${first} ${counts.blockedCount} blocked.`;
+    return t("nextOfferHero.tier1Suffix", { first, blocked: counts.blockedCount });
   }
   // alreadyOfferedCount counts ANY non-cancelled booking for the date among the
   // tier's members (confirmed/soft_booked/suggested), not specifically a
   // prior-tier offer — keep the copy honest to what the data actually says.
-  const second = `${counts.blockedCount} blocked, ${counts.alreadyOfferedCount} already booked or offered.`;
-  return `${first} ${second}`;
+  return t("nextOfferHero.priorSuffix", {
+    first, blocked: counts.blockedCount, alreadyOffered: counts.alreadyOfferedCount,
+  });
 }
 
 /**
@@ -94,19 +104,20 @@ export function NextOfferHero({
   narrowSkillIds = [],
   onToggleNarrowSkill,
 }: NextOfferHeroProps) {
-  const title = targetLabel(target);
-  const bodySentence = buildBodySentence(target, counts, requiredSkillNames);
+  const { t } = useTranslation("showsDetail");
+  const title = targetLabel(t, target);
+  const bodySentence = buildBodySentence(t, target, counts, requiredSkillNames);
   const primaryLabel = nextOfferButtonLabel(target, counts.matchCount);
 
   const exclusionParts: string[] = [];
-  if (counts.missingSkillCount > 0) exclusionParts.push(`${counts.missingSkillCount} miss a required skill`);
-  if (counts.blockedCount > 0) exclusionParts.push(`${counts.blockedCount} blocked on this date`);
+  if (counts.missingSkillCount > 0) exclusionParts.push(t("nextOfferHero.missReqSkill", { count: counts.missingSkillCount }));
+  if (counts.blockedCount > 0) exclusionParts.push(t("nextOfferHero.blockedOnDate", { count: counts.blockedCount }));
   const exclusionLine = exclusionParts.length > 0 ? exclusionParts.join(" · ") : null;
 
   const shown = candidates.slice(0, 4);
   const extra = Math.max(0, candidates.length - 4);
   const namesLine = shown.length > 0
-    ? `${shown.map((c) => c.name).join(", ")}${extra > 0 ? ` and ${extra} more` : ""}`
+    ? `${shown.map((c) => c.name).join(", ")}${extra > 0 ? t("nextOfferHero.andMore", { count: extra }) : ""}`
     : null;
 
   return (
@@ -115,12 +126,12 @@ export function NextOfferHero({
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1">
             <p className="text-xs font-semibold uppercase tracking-wide text-accent-700">
-              NEXT OFFER · {target.tier === 99 ? "AD-HOC CASTS" : `TIER ${target.tier}`}
+              {target.tier === 99 ? t("nextOfferHero.nextOfferAdHoc") : t("nextOfferHero.nextOfferTier", { tier: target.tier })}
             </p>
             <p className="font-display text-xl font-semibold tracking-tight text-foreground">{title}</p>
           </div>
           <div className="shrink-0 text-right">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">GET OFFERS</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{t("nextOfferHero.getOffers")}</p>
             <p className="font-display text-3xl font-semibold leading-none text-foreground">{counts.matchCount}</p>
           </div>
         </div>
@@ -148,21 +159,21 @@ export function NextOfferHero({
         <div className="flex flex-wrap items-center gap-2 pt-1">
           <Button type="button" onClick={onOpen} disabled={counts.matchCount === 0}>{primaryLabel}</Button>
           <Button type="button" variant="ghost" size="sm" onClick={onSeeArtists}>
-            See the {counts.matchCount} artists
+            {t("nextOfferHero.seeArtists", { count: counts.matchCount })}
           </Button>
           <Button type="button" variant="outline" size="sm" aria-pressed={narrowActive} onClick={onNarrow}>
-            Narrow this offer
+            {t("nextOfferHero.narrowOffer")}
           </Button>
         </div>
 
         {narrowActive && (
           <div className="space-y-1.5 pt-1">
-            <p className="text-xs text-muted-foreground">Only offer to artists with</p>
+            <p className="text-xs text-muted-foreground">{t("nextOfferHero.onlyOfferWith")}</p>
             <SkillPicker
               skills={narrowSkills}
               selectedIds={narrowSkillIds}
               onToggle={(id) => onToggleNarrowSkill?.(id)}
-              emptyHint="No extra skills to narrow by."
+              emptyHint={t("nextOfferHero.noExtraSkills")}
             />
           </div>
         )}

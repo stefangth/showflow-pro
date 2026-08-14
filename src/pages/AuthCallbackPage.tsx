@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { safeRelativeRedirect } from "@/features/auth/resetPassword";
 import { ROUTES } from "@/config/app.config";
@@ -24,6 +25,7 @@ function hashHasError(): boolean {
  */
 export default function AuthCallbackPage() {
   const navigate = useNavigate();
+  const { t } = useTranslation("auth");
   const [searchParams] = useSearchParams();
   // Synchronous initializer: captures the GoTrue error hash before the async strip.
   const [failed, setFailed] = useState<boolean>(() => hashHasError());
@@ -53,18 +55,18 @@ export default function AuthCallbackPage() {
         <CardHeader className="text-center space-y-3">
           <div className="mx-auto"><StageMark variant="tile" size={52} /></div>
           <CardTitle className="font-display text-2xl font-semibold tracking-tight">
-            {failed ? "This link didn't work" : "Signing you in"}
+            {failed ? t("authCallback.failedTitle") : t("authCallback.signingInTitle")}
           </CardTitle>
           <CardDescription>
             {failed
-              ? "It expired or was already used. Sign in to request a fresh link, or ask your admin to resend your invitation."
-              : "Hold on while we finish signing you in."}
+              ? t("authCallback.failedDescription")
+              : t("authCallback.signingInDescription")}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 text-center">
           {failed ? (
             <Button className="w-full" autoFocus onClick={() => navigate(hasPendingInvitation ? ROUTES.ACCEPT_INVITE : ROUTES.LOGIN)}>
-              {hasPendingInvitation ? "Return to invitation" : "Back to sign in"}
+              {hasPendingInvitation ? t("authCallback.returnToInvitation") : t("authCallback.backToSignIn")}
             </Button>
           ) : (
             <div className="flex justify-center py-2" aria-hidden="true">

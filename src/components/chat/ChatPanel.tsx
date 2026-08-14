@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/features/auth/AuthContext';
@@ -23,6 +24,7 @@ interface Props {
 type MessageRow = { id: string; chat_id: string; user_id: string; body: string; created_at: string };
 
 export function ChatPanel({ showDateId, showDate }: Props) {
+  const { t } = useTranslation('chats');
   const { user, hasRole, currentOrg } = useAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
@@ -121,18 +123,18 @@ export function ChatPanel({ showDateId, showDate }: Props) {
       setDraft('');
       qc.invalidateQueries({ queryKey: ['chat-messages', chat?.id] });
     },
-    onError: (e: Error) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+    onError: (e: Error) => toast({ title: t('panel.errorTitle'), description: e.message, variant: 'destructive' }),
   });
 
   if (participantLoading) {
-    return <Card><CardContent className="py-6 text-sm text-muted-foreground">Loading chat…</CardContent></Card>;
+    return <Card><CardContent className="py-6 text-sm text-muted-foreground">{t('panel.loading')}</CardContent></Card>;
   }
 
   if (!isParticipant) {
     return (
       <Card>
         <CardContent className="py-6 text-sm text-muted-foreground">
-          Chat is only available to producers, admins, and artists booked or soft-booked for this date.
+          {t('panel.notParticipant')}
         </CardContent>
       </Card>
     );
@@ -143,7 +145,7 @@ export function ChatPanel({ showDateId, showDate }: Props) {
       <Card>
         <CardContent className="py-6 flex items-center gap-3 text-sm text-muted-foreground">
           <Archive className="h-4 w-4" />
-          This chat was archived {CHAT_ARCHIVE_DAYS} days after the show date.
+          {t('panel.archivedNotice', { days: CHAT_ARCHIVE_DAYS })}
         </CardContent>
       </Card>
     );
@@ -154,17 +156,17 @@ export function ChatPanel({ showDateId, showDate }: Props) {
       <CardHeader className="border-b border-border py-3 space-y-0">
         <div className="flex items-center justify-between">
           <CardTitle className="font-display text-base flex items-center gap-2">
-            <MessageSquare className="h-4 w-4" /> Chat
+            <MessageSquare className="h-4 w-4" /> {t('panel.title')}
           </CardTitle>
           {archived && isAdmin && (
-            <Badge variant="secondary" className="text-xs"><Archive className="h-3 w-3 mr-1" />Archived (read-only)</Badge>
+            <Badge variant="secondary" className="text-xs"><Archive className="h-3 w-3 mr-1" />{t('panel.archivedBadge')}</Badge>
           )}
         </div>
       </CardHeader>
 
       <CardContent ref={scrollRef} className="flex-1 overflow-y-auto py-4 space-y-3">
         {(messages?.length ?? 0) === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-8">No messages yet. Say hello.</p>
+          <p className="text-sm text-muted-foreground text-center py-8">{t('panel.emptyMessages')}</p>
         ) : (
           messages!.map(m => (
             <MessageBubble
@@ -184,13 +186,13 @@ export function ChatPanel({ showDateId, showDate }: Props) {
           className="flex gap-2"
         >
           <Input
-            placeholder={archived ? 'Archived — read only' : 'Write a message…'}
+            placeholder={archived ? t('panel.archivedPlaceholder') : t('panel.composerPlaceholder')}
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             disabled={archived || send.isPending}
           />
-          <IconTooltip label="Send message">
-            <Button type="submit" size="icon" aria-label="Send message" disabled={archived || !draft.trim() || send.isPending}>
+          <IconTooltip label={t('panel.send')}>
+            <Button type="submit" size="icon" aria-label={t('panel.send')} disabled={archived || !draft.trim() || send.isPending}>
               <Send className="h-4 w-4" />
             </Button>
           </IconTooltip>

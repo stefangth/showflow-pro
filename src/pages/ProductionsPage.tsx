@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Reorder } from "framer-motion";
 import { useCan } from "@/hooks/useCapabilities";
 import { useShows, useArchiveShow, useDeleteShow, useReorderShows, type ShowWithStats } from "@/hooks/useShows";
@@ -27,8 +28,6 @@ import { PageMini } from "@/components/minis/PageMini";
 
 type StatusFilter = "active" | "archived" | "all";
 
-const STATUS_LABEL: Record<string, string> = { active: "Active", archived: "Archived", draft: "Draft" };
-
 /** Tailwind width for a productions column. The first visible column flexes (identity);
  *  all others get a fixed width. */
 function colWidth(colId: string, isFirst: boolean): string {
@@ -47,6 +46,10 @@ function colWidth(colId: string, isFirst: boolean): string {
 }
 
 export default function ProductionsPage() {
+  const { t } = useTranslation("productions");
+  const STATUS_LABEL: Record<string, string> = {
+    active: t("status.active"), archived: t("status.archived"), draft: t("status.draft"),
+  };
   const canManageProductions = useCan("manage_productions");
   const canArchiveProductions = useCan("archive_productions");
   const canReorderProductions = useCan("reorder_productions");
@@ -90,17 +93,17 @@ export default function ProductionsPage() {
   };
 
   const onDelete = (s: ShowWithStats) =>
-    del.mutate(s.id, { onSuccess: () => toast.success("Production deleted"), onError: (e) => toast.error((e as Error).message) });
+    del.mutate(s.id, { onSuccess: () => toast.success(t("listToasts.deleted")), onError: (e) => toast.error((e as Error).message) });
   const onArchive = (s: ShowWithStats, archived: boolean) =>
     archive.mutate({ id: s.id, archived }, {
-      onSuccess: () => toast.success(archived ? "Production archived" : "Production restored"),
+      onSuccess: () => toast.success(archived ? t("listToasts.archived") : t("listToasts.restored")),
       onError: (e) => toast.error((e as Error).message),
     });
 
   const reorderable = statusFilter === "active" && canReorderProductions;
 
   if (isError) {
-    return <Alert variant="destructive"><AlertDescription>Failed to load productions.</AlertDescription></Alert>;
+    return <Alert variant="destructive"><AlertDescription>{t("errors.loadFailed")}</AlertDescription></Alert>;
   }
 
   const cellContent = (s: ShowWithStats, colId: string) => {
@@ -117,12 +120,12 @@ export default function ProductionsPage() {
       case "_computed.slots":
         return slots
           ? <span className="tabular-nums">{slots.main_cast} + {slots.understudies}</span>
-          : <Badge variant="secondary" className="bg-destructive/10 text-destructive text-xs">Unconfigured</Badge>;
-      case "_computed.date_count": return `${s.dateCount} date${s.dateCount === 1 ? "" : "s"}`;
+          : <Badge variant="secondary" className="bg-destructive/10 text-destructive text-xs">{t("row.unconfigured")}</Badge>;
+      case "_computed.date_count": return t("row.dateCount", { count: s.dateCount });
       case "shows.status":
         return (
           <div className="flex items-center gap-1">
-            {isSyncedShow(s) && <Badge variant="secondary" className="bg-muted text-muted-foreground text-xs">Synced</Badge>}
+            {isSyncedShow(s) && <Badge variant="secondary" className="bg-muted text-muted-foreground text-xs">{t("row.synced")}</Badge>}
             <Badge variant="secondary" className="text-xs">{STATUS_LABEL[s.status] ?? s.status}</Badge>
           </div>
         );
@@ -146,33 +149,33 @@ export default function ProductionsPage() {
           </div>
         ))}
         <div className="ml-auto flex items-center gap-1 shrink-0">
-          <IconTooltip label={canManageProductions ? `Edit ${label}` : "You don't have permission to edit productions"}>
-            <Button variant="ghost" size="icon" onClick={() => openEdit(s)} aria-label={`Edit ${label}`} disabled={!canManageProductions}>
+          <IconTooltip label={canManageProductions ? t("tooltips.edit", { name: label }) : t("tooltips.noPermissionEdit")}>
+            <Button variant="ghost" size="icon" onClick={() => openEdit(s)} aria-label={t("tooltips.edit", { name: label })} disabled={!canManageProductions}>
               <Pencil className="h-4 w-4" />
             </Button>
           </IconTooltip>
-          <IconTooltip label={!canArchiveProductions ? "You don't have permission to archive productions" : s.status === "archived" ? "Restore production" : "Archive production"}>
-            <Button variant="ghost" size="icon" onClick={() => onArchive(s, s.status !== "archived")} aria-label="Toggle archive" disabled={!canArchiveProductions}>
+          <IconTooltip label={!canArchiveProductions ? t("tooltips.noPermissionArchive") : s.status === "archived" ? t("tooltips.restore") : t("tooltips.archive")}>
+            <Button variant="ghost" size="icon" onClick={() => onArchive(s, s.status !== "archived")} aria-label={t("tooltips.toggleArchive")} disabled={!canArchiveProductions}>
               {s.status === "archived" ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
             </Button>
           </IconTooltip>
           {canHardDelete && (
             <AlertDialog>
-              <IconTooltip label={deletable ? "Delete production" : synced ? "Synced productions can't be deleted — archive instead" : "Has dates — archive instead"}>
+              <IconTooltip label={deletable ? t("tooltips.delete") : synced ? t("tooltips.deleteSyncedBlocked") : t("tooltips.deleteHasDates")}>
                 <AlertDialogTrigger asChild>
-                  <Button variant="ghost" size="icon" data-testid={`delete-${s.id}`} disabled={!deletable} aria-label="Delete production">
+                  <Button variant="ghost" size="icon" data-testid={`delete-${s.id}`} disabled={!deletable} aria-label={t("tooltips.delete")}>
                     <Trash2 className="h-4 w-4 text-destructive" />
                   </Button>
                 </AlertDialogTrigger>
               </IconTooltip>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Delete this production?</AlertDialogTitle>
-                  <AlertDialogDescription>This permanently removes "{label}". This cannot be undone.</AlertDialogDescription>
+                  <AlertDialogTitle>{t("deleteDialog.title")}</AlertDialogTitle>
+                  <AlertDialogDescription>{t("deleteDialog.description", { name: label })}</AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={() => onDelete(s)}>Delete</AlertDialogAction>
+                  <AlertDialogCancel>{t("deleteDialog.cancel")}</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => onDelete(s)}>{t("deleteDialog.confirm")}</AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
@@ -186,12 +189,12 @@ export default function ProductionsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="font-display text-[32px] font-semibold tracking-tight">Productions</h1>
-          <p className="text-muted-foreground mt-1">Your show catalog — slots, status, and order.</p>
+          <h1 className="font-display text-[32px] font-semibold tracking-tight">{t("page.title")}</h1>
+          <p className="text-muted-foreground mt-1">{t("page.description")}</p>
         </div>
         <Button onClick={openCreate} disabled={!canManageProductions}
-          title={canManageProductions ? undefined : "You don't have permission to create productions"}>
-          New production
+          title={canManageProductions ? undefined : t("tooltips.noPermissionCreate")}>
+          {t("page.newProduction")}
         </Button>
       </div>
 
@@ -201,9 +204,9 @@ export default function ProductionsPage() {
         <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)}>
           <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="active">Active</SelectItem>
-            <SelectItem value="archived">Archived</SelectItem>
-            <SelectItem value="all">All</SelectItem>
+            <SelectItem value="active">{t("filter.active")}</SelectItem>
+            <SelectItem value="archived">{t("filter.archived")}</SelectItem>
+            <SelectItem value="all">{t("filter.all")}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -213,7 +216,7 @@ export default function ProductionsPage() {
       {isLoading ? (
         <div className="space-y-2">{[1, 2, 3].map((i) => <Skeleton key={i} className="h-14 w-full" />)}</div>
       ) : (order.length === 0 ? (
-        <Card><CardContent className="py-12 text-center text-muted-foreground">No productions yet. Create your first one.</CardContent></Card>
+        <Card><CardContent className="py-12 text-center text-muted-foreground">{t("empty")}</CardContent></Card>
       ) : (
         <Card><CardContent className="p-0">
           <div className="flex items-center gap-3 px-4 py-2 border-b bg-muted/30 text-xs font-medium text-muted-foreground">

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useImportTermsTemplates, useOrgTerms, useTermsLibrary } from "@/hooks/useHireOrderSetup";
 import { TermsLibraryPicker } from "@/components/settings/hireOrders/fields/TermsLibraryPicker";
 import { Button } from "@/components/ui/button";
@@ -9,6 +10,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
  *  org. An org owns its copy, so a later platform edit never changes terms it is
  *  already issuing. Editing the wording stays in Settings. */
 export function TermsStep({ orgId, onDone }: { orgId: string | null; onDone: () => void }) {
+  const { t } = useTranslation("hireOrdersPages");
   const library = useTermsLibrary();
   const terms = useOrgTerms(orgId);
   const importTerms = useImportTermsTemplates(orgId);
@@ -22,7 +24,7 @@ export function TermsStep({ orgId, onDone }: { orgId: string | null; onDone: () 
     const err = (terms.error ?? library.error) as Error;
     return (
       <Alert variant="destructive">
-        <AlertDescription>Could not load the terms library. {err.message}</AlertDescription>
+        <AlertDescription>{t("termsStep.loadError", { message: err.message })}</AlertDescription>
       </Alert>
     );
   }
@@ -30,7 +32,7 @@ export function TermsStep({ orgId, onDone }: { orgId: string | null; onDone: () 
   return (
     <div className="space-y-3">
       <p className="text-xs text-muted-foreground">
-        Start from a template. You get your own copy, and you can edit the wording or add more variants later in Settings.
+        {t("termsStep.intro")}
       </p>
       <TermsLibraryPicker
         idPrefix="rail-terms"
@@ -44,7 +46,7 @@ export function TermsStep({ orgId, onDone }: { orgId: string | null; onDone: () 
         disabled={picked.length === 0 || importTerms.isPending || !orgId}
         onClick={() => importTerms.mutate({ templateIds: picked }, { onSuccess: () => { setPicked([]); onDone(); } })}
       >
-        Add to this organization
+        {t("termsStep.addToOrg")}
       </Button>
     </div>
   );

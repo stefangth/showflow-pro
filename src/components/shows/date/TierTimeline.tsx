@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -90,6 +91,7 @@ export function TierTimeline({
   ladderRows, cityName, statusByTier, nextTier, nextTierTarget, nextTierCounts,
   requiredSkillNames, requiredSkillIds, candidates, excludedDetail,
 }: TierTimelineProps) {
+  const { t } = useTranslation("showsDetail");
   // The open-offer confirm dialog is controlled (like the close dialog) so the
   // hero can open it programmatically for the resolved next tier. `skillFilterIds`
   // is the "Narrow this offer" state, shared by the confirm and the preview.
@@ -100,8 +102,8 @@ export function TierTimeline({
 
   if (!flow.artist_acceptance) {
     return (
-      <p className="text-sm text-muted-foreground" aria-label="Offer tiers">
-        Direct booking: producers book from the eligibility list
+      <p className="text-sm text-muted-foreground" aria-label={t("tierTimeline.offerTiers")}>
+        {t("tierTimeline.directBooking")}
       </p>
     );
   }
@@ -150,9 +152,9 @@ export function TierTimeline({
   }));
 
   return (
-    <div className="space-y-4" data-show-date-id={showDateId} aria-label="Offer tier timeline">
+    <div className="space-y-4" data-show-date-id={showDateId} aria-label={t("tierTimeline.offerTierTimeline")}>
       {ladderSource === "show" && (
-        <p className="text-xs text-muted-foreground">Using show-specific priorities</p>
+        <p className="text-xs text-muted-foreground">{t("tierTimeline.usingShowPriorities")}</p>
       )}
 
       {canManage && nextTier != null && nextTierTarget && nextTierCounts && (
@@ -198,12 +200,12 @@ export function TierTimeline({
       <p className="text-xs text-muted-foreground">
         {TIER_CONCEPT_NOTE}{" "}
         <Link to={ROUTES.HELP} className="text-primary underline">
-          How casts and tiers work
+          {t("tierTimeline.howCastsTiersWork")}
         </Link>
       </p>
 
       {canManage && !hasSession && (
-        <p className="text-xs text-muted-foreground">Add a session time before opening offers.</p>
+        <p className="text-xs text-muted-foreground">{t("tierTimeline.addSessionTime")}</p>
       )}
 
       {/* Open-offer confirmation (controlled; opened by the hero for the next tier) */}
@@ -219,16 +221,16 @@ export function TierTimeline({
                 // The action below is disabled without a session time; state the reason
                 // inside the dialog so it is visible next to the greyed-out button.
                 <p className="text-sm text-muted-foreground">
-                  Add a session time to this date before opening offers.
+                  {t("tierTimeline.addSessionTimeDialog")}
                 </p>
               )}
               <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogCancel>{t("tierTimeline.cancel")}</AlertDialogCancel>
                 <AlertDialogAction
                   disabled={openPending || !hasSession}
                   onClick={() => onOpenTier(openTarget, skillFilterIds)}
                 >
-                  Open offers
+                  {t("tierTimeline.openOffers")}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </>
@@ -270,7 +272,7 @@ export function TierTimeline({
                 </AlertDialogAction>
               </div>
               <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogCancel>{t("tierTimeline.cancel")}</AlertDialogCancel>
               </AlertDialogFooter>
             </>
           )}

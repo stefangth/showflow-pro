@@ -1,4 +1,5 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 export interface CockpitPagerProps {
   /** Mono label, e.g. "Date 3 of 11". */
@@ -19,12 +20,13 @@ const arrowCls =
  * own close button (top-right) serves as the ✕. Purely presentational.
  */
 export function CockpitPager({ label, onPrev, onNext, prevDisabled, nextDisabled }: CockpitPagerProps) {
+  const { t } = useTranslation("showsDetail");
   return (
     <div className="flex items-center gap-2 border-b border-[var(--line)] bg-[var(--surface)] px-5 py-2.5">
-      <button type="button" aria-label="Previous date" className={arrowCls} onClick={onPrev} disabled={prevDisabled}>
+      <button type="button" aria-label={t("cockpitPager.previousDate")} className={arrowCls} onClick={onPrev} disabled={prevDisabled}>
         <ChevronLeft className="h-4 w-4" />
       </button>
-      <button type="button" aria-label="Next date" className={arrowCls} onClick={onNext} disabled={nextDisabled}>
+      <button type="button" aria-label={t("cockpitPager.nextDate")} className={arrowCls} onClick={onNext} disabled={nextDisabled}>
         <ChevronRight className="h-4 w-4" />
       </button>
       <span className="font-mono text-xs text-muted-foreground">{label}</span>

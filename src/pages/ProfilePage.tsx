@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, Fragment } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -37,6 +38,7 @@ const identitySchema = z.object({
 type IdentityValues = z.infer<typeof identitySchema>;
 
 export default function ProfilePage() {
+  const { t } = useTranslation("profile");
   const { user } = useAuth();
   const { data: profile, isLoading } = useMyProfile();
   const updateProfile = useUpdateMyProfile();
@@ -56,7 +58,7 @@ export default function ProfilePage() {
     closePasswordForm();
   };
 
-  useEffect(() => { document.title = "Profile · ShowFlow"; }, []);
+  useEffect(() => { document.title = t("page.documentTitle"); }, [t]);
 
   // Notification preferences
   const { data: notifPrefs } = useNotificationPreferences();
@@ -87,7 +89,7 @@ export default function ProfilePage() {
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
-      toast.success("Your data has been downloaded");
+      toast.success(t("data.downloaded"));
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
@@ -104,7 +106,7 @@ export default function ProfilePage() {
     try {
       await deleteMyAccount(supabase);
       await supabase.auth.signOut();
-      toast.success("Your account has been deleted");
+      toast.success(t("delete.deleted"));
       navigate(ROUTES.LOGIN);
     } catch (e) {
       toast.error((e as Error).message);
@@ -116,12 +118,12 @@ export default function ProfilePage() {
   return (
     <div className="space-y-6 max-w-xl">
       <div>
-        <h1 className="font-display text-[32px] font-semibold tracking-tight">Profile</h1>
-        <p className="text-muted-foreground mt-1">Your account details and sign-in methods</p>
+        <h1 className="font-display text-[32px] font-semibold tracking-tight">{t("page.title")}</h1>
+        <p className="text-muted-foreground mt-1">{t("page.subtitle")}</p>
       </div>
 
       <Card>
-        <CardHeader><CardTitle className="font-display">Details</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="font-display">{t("details.title")}</CardTitle></CardHeader>
         <CardContent>
           {isLoading ? (
             <Skeleton className="h-24 w-full" />
@@ -130,66 +132,66 @@ export default function ProfilePage() {
               onSubmit={identity.handleSubmit((v) =>
                 updateProfile.mutate(
                   { display_name: v.display_name || null, phone: v.phone || null },
-                  { onSuccess: () => toast.success("Profile saved"), onError: (e) => toast.error((e as Error).message) },
+                  { onSuccess: () => toast.success(t("details.saved")), onError: (e) => toast.error((e as Error).message) },
                 ),
               )}
               className="space-y-4"
             >
               <div className="space-y-1.5">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email">{t("details.email")}</Label>
                 <Input id="email" value={user?.email ?? ""} disabled />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="display_name">Display name</Label>
+                <Label htmlFor="display_name">{t("details.displayName")}</Label>
                 <Input id="display_name" {...identity.register("display_name")} />
                 {identity.formState.errors.display_name && <p className="text-xs text-destructive">{identity.formState.errors.display_name.message}</p>}
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="phone">Phone</Label>
+                <Label htmlFor="phone">{t("details.phone")}</Label>
                 <Input id="phone" {...identity.register("phone")} />
                 {identity.formState.errors.phone && <p className="text-xs text-destructive">{identity.formState.errors.phone.message}</p>}
               </div>
               <p className="text-xs text-muted-foreground">
-                Separate from the account details above: admins and producers in your organization can see the contact details on your artist record so they can reach you about bookings.
+                {t("details.contactNote")}
               </p>
-              <Button type="submit" disabled={updateProfile.isPending}>{updateProfile.isPending ? "Saving…" : "Save"}</Button>
+              <Button type="submit" disabled={updateProfile.isPending}>{updateProfile.isPending ? t("details.saving") : t("details.save")}</Button>
             </form>
           )}
         </CardContent>
       </Card>
 
       <Card>
-        <CardHeader><CardTitle className="font-display">Sign-in &amp; security</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="font-display">{t("security.title")}</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-col gap-3 border-b border-border pb-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center justify-between gap-3 sm:flex-1">
               <div>
-                <p className="text-sm font-medium">Magic links</p>
-                <p className="text-xs text-muted-foreground">Sign in with a secure link sent to your email.</p>
+                <p className="text-sm font-medium">{t("security.magicLinks")}</p>
+                <p className="text-xs text-muted-foreground">{t("security.magicLinksHint")}</p>
               </div>
-              <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-foreground">Active</span>
+              <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-foreground">{t("security.active")}</span>
             </div>
           </div>
           <div className="space-y-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center justify-between gap-3 sm:flex-1">
                 <div>
-                  <p className="text-sm font-medium">Password</p>
-                  <p className="text-xs text-muted-foreground">Sign in using your email and password.</p>
+                  <p className="text-sm font-medium">{t("security.password")}</p>
+                  <p className="text-xs text-muted-foreground">{t("security.passwordHint")}</p>
                 </div>
                 <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-foreground">
-                  {passwordStatus.isLoading ? "Checking…" : passwordStatus.isError ? "Unavailable" : passwordStatus.data ? "Set" : "Not set"}
+                  {passwordStatus.isLoading ? t("security.statusChecking") : passwordStatus.isError ? t("security.statusUnavailable") : passwordStatus.data ? t("security.statusSet") : t("security.statusNotSet")}
                 </span>
               </div>
               {!editingPassword && !passwordStatus.isLoading && !passwordStatus.isError && (
                 <Button ref={passwordActionRef} type="button" variant="outline" onClick={() => setEditingPassword(true)}>
-                  {passwordStatus.data ? "Change password" : "Add password"}
+                  {passwordStatus.data ? t("security.changePassword") : t("security.addPassword")}
                 </Button>
               )}
               {passwordStatus.isError && (
                 <div className="flex flex-col items-start gap-2 sm:items-end">
-                  <p className="text-sm text-destructive">Could not load password status</p>
-                  <Button type="button" variant="outline" onClick={() => void passwordStatus.refetch()}>Retry</Button>
+                  <p className="text-sm text-destructive">{t("security.statusError")}</p>
+                  <Button type="button" variant="outline" onClick={() => void passwordStatus.refetch()}>{t("security.retry")}</Button>
                 </div>
               )}
             </div>
@@ -201,15 +203,15 @@ export default function ProfilePage() {
       </Card>
 
       <Card>
-        <CardHeader><CardTitle className="font-display">Notifications</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="font-display">{t("notifications.title")}</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Choose how you hear about each kind of update. Critical account emails are always sent.
+            {t("notifications.description")}
           </p>
           <div className="grid grid-cols-[1fr_auto_auto] gap-x-6 gap-y-3 items-center">
             <div />
-            <span className="text-xs uppercase text-muted-foreground text-center">Email</span>
-            <span className="text-xs uppercase text-muted-foreground text-center">In-app</span>
+            <span className="text-xs uppercase text-muted-foreground text-center">{t("notifications.columnEmail")}</span>
+            <span className="text-xs uppercase text-muted-foreground text-center">{t("notifications.columnInApp")}</span>
             {NOTIFICATION_CATEGORIES.map((c) => (
               <Fragment key={c.key}>
                 <div>
@@ -219,7 +221,7 @@ export default function ProfilePage() {
                 {NOTIFICATION_CHANNELS.map((chan) => (
                   <div key={chan} className="flex justify-center">
                     <Switch
-                      aria-label={`${c.label} ${chan === "in_app" ? "in-app" : "email"}`}
+                      aria-label={t("notifications.channelAria", { category: c.label, channel: chan === "in_app" ? t("notifications.channelInApp") : t("notifications.channelEmail") })}
                       checked={isOn(c.key, chan)}
                       onCheckedChange={(v) => toggle(c.key, chan, v)}
                     />
@@ -232,44 +234,43 @@ export default function ProfilePage() {
       </Card>
 
       <Card>
-        <CardHeader><CardTitle className="font-display">Your data</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="font-display">{t("data.title")}</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Download a copy of your personal data (profile, talent records, bookings, availability,
-            messages, and notifications) as a JSON file.
+            {t("data.description")}
           </p>
           <Button variant="outline" onClick={downloadMyData} disabled={exporting}>
-            {exporting ? "Preparing…" : "Download my data"}
+            {exporting ? t("data.preparing") : t("data.download")}
           </Button>
         </CardContent>
       </Card>
 
       <Card className="border-destructive/40">
-        <CardHeader><CardTitle className="font-display text-destructive">Delete account</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="font-display text-destructive">{t("delete.title")}</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Permanently delete your account. Your account and profile details are removed. Your shared booking history, including any open offers, is kept but de-identified. This cannot be undone.
-            {hireOrdersEnabled ? " Signed hire orders you already agreed to are kept for the organization's records." : ""}
+            {t("delete.description")}
+            {hireOrdersEnabled ? ` ${t("delete.hireOrdersNote")}` : ""}
           </p>
           <AlertDialog onOpenChange={(o) => { if (!o) { setConfirmText(""); setDeleting(false); } }}>
             <AlertDialogTrigger asChild>
-              <Button variant="destructive">Delete account</Button>
+              <Button variant="destructive">{t("delete.trigger")}</Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Delete your account?</AlertDialogTitle>
+                <AlertDialogTitle>{t("delete.dialogTitle")}</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This permanently removes your account and personal data. Type <strong>DELETE</strong> to confirm.
+                  {t("delete.confirmBefore")} <strong>DELETE</strong> {t("delete.confirmAfter")}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <Input placeholder="DELETE" value={confirmText} onChange={(e) => setConfirmText(e.target.value)} />
               <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogCancel>{t("delete.cancel")}</AlertDialogCancel>
                 <AlertDialogAction
                   disabled={confirmText !== "DELETE" || deleting}
                   onClick={(e) => { e.preventDefault(); confirmDelete(); }}
                 >
-                  {deleting ? "Deleting…" : "Permanently delete"}
+                  {deleting ? t("delete.deleting") : t("delete.confirmAction")}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>

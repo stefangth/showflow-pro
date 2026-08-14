@@ -1,5 +1,6 @@
 // src/components/admin/people/PeopleTab.tsx
 import { useMemo, useState, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Search } from "lucide-react";
@@ -30,6 +31,7 @@ import { RemovedPersonRow } from "./RemovedPersonRow";
 
 /** One searchable people directory: invite bar on top, pending + members below. */
 export function PeopleTab() {
+  const { t } = useTranslation("admin");
   const { currentOrg, user } = useAuth();
   const [search, setSearch] = useState("");
   const [bulkOpen, setBulkOpen] = useState(false);
@@ -88,14 +90,14 @@ export function PeopleTab() {
   // can't slip through an empty members/invites list. The hint explains the disabled
   // Invite button; an error state persists, so say so rather than "still checking".
   const dedupeHint = (isLoading || invitesLoading)
-    ? "Checking existing people…"
+    ? t("people.checkingDuplicates")
     : (isError || invitesError)
-    ? "Can't verify duplicates right now, so new invites are paused."
+    ? t("people.duplicatesPaused")
     : null;
 
   const copyLink = async (token: string) => {
-    try { await navigator.clipboard?.writeText(acceptInviteUrl(token)); toast.success("Invite link copied"); }
-    catch { toast.error("Could not copy link"); }
+    try { await navigator.clipboard?.writeText(acceptInviteUrl(token)); toast.success(t("people.linkCopied")); }
+    catch { toast.error(t("people.linkCopyError")); }
   };
 
   const showHistory = filteredHistory.length > 0;
@@ -109,7 +111,7 @@ export function PeopleTab() {
       onResend={(id) => resend.mutate(id)}
       onRevoke={(id) => setRevokeTarget({ id, email: p.email })}
       onSetRole={(vars) => setRole.mutate(vars, {
-        onSuccess: () => toast.success("Role updated"),
+        onSuccess: () => toast.success(t("people.roleUpdated")),
         onError: (e) => toast.error(toErrorMessage(e)),
       })}
       onRequestRemove={setTarget}
@@ -122,7 +124,7 @@ export function PeopleTab() {
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader><CardTitle className="font-display text-base">Invite people</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="font-display text-base">{t("people.inviteCardTitle")}</CardTitle></CardHeader>
         <CardContent>
           <InviteBar
             members={allMembers}
@@ -137,13 +139,13 @@ export function PeopleTab() {
 
       <Card>
         <CardHeader className="flex flex-col gap-3 space-y-0 sm:flex-row sm:items-center sm:justify-between">
-          <CardTitle className="font-display text-base">People</CardTitle>
+          <CardTitle className="font-display text-base">{t("people.title")}</CardTitle>
           <div className="relative w-full sm:w-64">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               className="pl-9"
-              placeholder="Search people"
-              aria-label="Search people"
+              placeholder={t("people.searchPlaceholder")}
+              aria-label={t("people.searchAriaLabel")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -153,11 +155,16 @@ export function PeopleTab() {
           {/* Announce filter results to assistive tech without moving focus (WCAG 4.1.3). */}
           <p className="sr-only" role="status" aria-live="polite">
             {hasSearch
-              ? `${searchMatchCount} ${searchMatchCount === 1 ? "person matches" : "people match"} your search${filteredHistory.length > 0 ? `, plus ${filteredHistory.length} in invitation history` : ""}.`
+              ? t("people.searchStatus", {
+                  count: searchMatchCount,
+                  suffix: filteredHistory.length > 0
+                    ? t("people.searchHistorySuffix", { n: filteredHistory.length })
+                    : "",
+                })
               : ""}
           </p>
           {invitesError && (
-            <Alert variant="destructive"><AlertDescription>Failed to load pending invitations.</AlertDescription></Alert>
+            <Alert variant="destructive"><AlertDescription>{t("people.invitesLoadError")}</AlertDescription></Alert>
           )}
           {isLoading ? (
             <div className="space-y-2"><Skeleton className="h-14 w-full" /><Skeleton className="h-14 w-full" /></div>
@@ -167,35 +174,35 @@ export function PeopleTab() {
             <p className="py-6 text-center text-sm text-muted-foreground">
               {hasSearch
                 ? (filteredHistory.length > 0
-                    ? `No members or pending invites match "${search.trim()}". See invitation history below.`
-                    : `No members or pending invites match "${search.trim()}".`)
-                : "No people yet."}
+                    ? t("people.emptySearchWithHistory", { query: search.trim() })
+                    : t("people.emptySearch", { query: search.trim() }))
+                : t("people.emptyNoPeople")}
             </p>
           ) : (
             <>
               {invitedPeople.length > 0 && (
-                <PeopleGroup label="Pending invites" count={invitedPeople.length}>
+                <PeopleGroup label={t("people.groupPendingInvites")} count={invitedPeople.length}>
                   {invitedPeople.map(renderPerson)}
                 </PeopleGroup>
               )}
               {activePeople.length > 0 && (
-                <PeopleGroup label="Members" count={activePeople.length}>
+                <PeopleGroup label={t("people.groupMembers")} count={activePeople.length}>
                   {activePeople.map(renderPerson)}
                 </PeopleGroup>
               )}
               {filteredRemoved.length > 0 && (
-                <PeopleGroup label="Recently removed" count={filteredRemoved.length}>
+                <PeopleGroup label={t("people.groupRecentlyRemoved")} count={filteredRemoved.length}>
                   {filteredRemoved.map((m) => (
                     <RemovedPersonRow
                       key={m.user_id}
                       member={m}
                       undoPending={restore.isPending && restore.variables === m.user_id}
                       onUndo={(uid) => restore.mutate(uid, {
-                        onSuccess: () => toast.success("Member restored"),
+                        onSuccess: () => toast.success(t("people.memberRestored")),
                         onError: (e) => toast.error(toErrorMessage(e)),
                       })}
                       onClear={(rm) => clearRemoved.mutate(rm.user_id, {
-                        onSuccess: () => toast.success("Removed from list"),
+                        onSuccess: () => toast.success(t("people.removedFromList")),
                         onError: (e) => toast.error(toErrorMessage(e)),
                       })}
                       onDelete={(rm) => { setDeleteTarget(rm); setDeleteText(""); }}
@@ -210,9 +217,9 @@ export function PeopleTab() {
 
       {showHistory && (
         <Card>
-          <CardHeader><CardTitle className="font-display text-base">Invitation history</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="font-display text-base">{t("people.historyTitle")}</CardTitle></CardHeader>
           <CardContent>
-            <div role="list" aria-label="Invitation history" className="divide-y divide-border">
+            <div role="list" aria-label={t("people.historyAriaLabel")} className="divide-y divide-border">
               {filteredHistory.map((inv) => (
                 <InviteRow key={inv.id} invite={inv} />
               ))}
@@ -226,22 +233,22 @@ export function PeopleTab() {
       <AlertDialog open={target !== null} onOpenChange={(o) => !o && setTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Remove member?</AlertDialogTitle>
+            <AlertDialogTitle>{t("removeDialog.title")}</AlertDialogTitle>
             <AlertDialogDescription>
-              {target?.email} loses access to this organization now. Their account, artist profile, and bookings are kept, and you can undo this from the list.
+              {t("removeDialog.description", { email: target?.email ?? "" })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("actions.cancel")}</AlertDialogCancel>
             <AlertDialogAction onClick={() => {
               if (!target) return;
               const uid = target.user_id;
               remove.mutate(uid, {
-                onSuccess: () => toast.success("Member removed", {
+                onSuccess: () => toast.success(t("removeDialog.toastRemoved"), {
                   action: {
-                    label: "Undo",
+                    label: t("removeDialog.undo"),
                     onClick: () => restore.mutate(uid, {
-                      onSuccess: () => toast.success("Member restored"),
+                      onSuccess: () => toast.success(t("people.memberRestored")),
                       onError: (e) => toast.error(toErrorMessage(e)),
                     }),
                   },
@@ -249,7 +256,7 @@ export function PeopleTab() {
                 onError: (e) => toast.error(toErrorMessage(e)),
               });
               setTarget(null);
-            }}>Remove</AlertDialogAction>
+            }}>{t("removeDialog.action")}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -257,20 +264,20 @@ export function PeopleTab() {
       <AlertDialog open={revokeTarget !== null} onOpenChange={(o) => !o && setRevokeTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Revoke invitation?</AlertDialogTitle>
+            <AlertDialogTitle>{t("revokeDialog.title")}</AlertDialogTitle>
             <AlertDialogDescription>
-              {revokeTarget?.email} will no longer be able to accept this invitation. You can invite them again later.
+              {t("revokeDialog.description", { email: revokeTarget?.email ?? "" })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("actions.cancel")}</AlertDialogCancel>
             <AlertDialogAction onClick={() => {
               if (!revokeTarget) return;
               // useInvitationMutations.revoke already toasts + invalidates on success/error;
               // don't pass call-site callbacks or the toast fires twice.
               revoke.mutate(revokeTarget.id);
               setRevokeTarget(null);
-            }}>Revoke</AlertDialogAction>
+            }}>{t("revokeDialog.action")}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -281,20 +288,20 @@ export function PeopleTab() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete this account?</AlertDialogTitle>
+            <AlertDialogTitle>{t("deleteDialog.title")}</AlertDialogTitle>
             <AlertDialogDescription>
-              {deleteTarget?.display_name || deleteTarget?.email || "This account"} has no other organization, so this erases their account everywhere: login removed and personal data anonymized. This cannot be undone. Type{" "}
-              <span className="font-medium">{deleteConfirmToken}</span> to confirm.
+              {t("deleteDialog.description", { who: deleteTarget?.display_name || deleteTarget?.email || t("deleteDialog.fallbackWho") })}{" "}
+              <span className="font-medium">{deleteConfirmToken}</span>{t("deleteDialog.toConfirm")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <Input
             placeholder={deleteConfirmToken}
             value={deleteText}
             onChange={(e) => setDeleteText(e.target.value)}
-            aria-label="Type the email to confirm deletion"
+            aria-label={t("deleteDialog.inputAriaLabel")}
           />
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("actions.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               disabled={!deleteTarget || deleteText !== deleteConfirmToken || purge.isPending}
               onClick={(e) => {
@@ -307,10 +314,10 @@ export function PeopleTab() {
                     // click), so don't claim it was removed; the row stays as a Clear entry.
                     if (res.retained) {
                       toast.success(res.reason === "platform_admin"
-                        ? "Account kept. Platform administrators can't be deleted here."
-                        : "Account kept. They still belong to another organization.");
+                        ? t("deleteDialog.keptPlatformAdmin")
+                        : t("deleteDialog.keptOtherOrg"));
                     } else {
-                      toast.success("Account deleted");
+                      toast.success(t("deleteDialog.deleted"));
                     }
                     setDeleteTarget(null);
                     setDeleteText("");
@@ -319,7 +326,7 @@ export function PeopleTab() {
                 });
               }}
             >
-              Delete account
+              {t("deleteDialog.action")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

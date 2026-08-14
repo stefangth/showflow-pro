@@ -1,3 +1,5 @@
+import { useTranslation } from "react-i18next";
+
 interface Fact {
   label: string;
   value: string;
@@ -20,15 +22,16 @@ interface Props {
  * that is deliberately out of scope for v1.
  */
 export function OrderFactsRail({ fee, duration, sessions }: Props) {
+  const { t } = useTranslation("hireOrdersPages");
   const facts: Fact[] = [
-    { label: "Fee", value: fee ?? "Not set" },
-    { label: "Duration", value: duration ?? "Not set", mono: true },
+    { label: t("factsRail.fee"), value: fee ?? t("common.notSet") },
+    { label: t("factsRail.duration"), value: duration ?? t("common.notSet"), mono: true },
   ];
-  if (sessions) facts.push({ label: "Sessions", value: sessions, mono: true });
+  if (sessions) facts.push({ label: t("factsRail.sessions"), value: sessions, mono: true });
 
   return (
     <div>
-      <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">At a glance</h3>
+      <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("factsRail.atAGlance")}</h3>
       <dl className="mt-3 space-y-3">
         {facts.map((f) => (
           <div key={f.label} className="flex items-baseline justify-between gap-3">

@@ -1,5 +1,6 @@
 // src/components/admin/people/BulkInviteDialog.tsx
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { useAuth } from "@/features/auth/AuthContext";
 import { type Invitation } from "@/data/invitations";
@@ -36,6 +37,7 @@ const SEND_CONCURRENCY = 5;
 
 /** Paste multiple emails, pick one role, invite the clean ones; skips are reported. */
 export function BulkInviteDialog({ open, onOpenChange, members, invites, dedupeHint = null }: BulkInviteDialogProps) {
+  const { t } = useTranslation("admin");
   const dedupeUnready = !!dedupeHint;
   const { currentOrg } = useAuth();
   const { createOne, invalidateInvitations } = useInvitationMutations(currentOrg?.id);
@@ -84,9 +86,9 @@ export function BulkInviteDialog({ open, onOpenChange, members, invites, dedupeH
     const skipped = rows.length - okCount;
     setSending(false);
     invalidateInvitations();
-    const parts = [`${sent} invited`];
-    if (skipped > 0) parts.push(`${skipped} skipped`);
-    if (failed > 0) parts.push(`${failed} failed`);
+    const parts = [t("bulk.invited", { n: sent })];
+    if (skipped > 0) parts.push(t("bulk.skipped", { n: skipped }));
+    if (failed > 0) parts.push(t("bulk.failed", { n: failed }));
     if (failed > 0) {
       // Keep the dialog open and repopulate it with only the failed addresses so a
       // partial failure is retryable without re-pasting (and re-classifying) the rest.
@@ -102,7 +104,7 @@ export function BulkInviteDialog({ open, onOpenChange, members, invites, dedupeH
   const badgeFor = (kind: Kind) =>
     kind === "ok" ? null : (
       <Badge variant="outline" className="text-xs">
-        {kind === "member" ? "Already a member" : kind === "pending" ? "Already invited" : "Invalid"}
+        {kind === "member" ? t("bulk.badgeMember") : kind === "pending" ? t("bulk.badgeInvited") : t("bulk.badgeInvalid")}
       </Badge>
     );
 
@@ -110,13 +112,13 @@ export function BulkInviteDialog({ open, onOpenChange, members, invites, dedupeH
     <Dialog open={open} onOpenChange={(o) => { if (sending) return; onOpenChange(o); }}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle className="font-display">Bulk invite</DialogTitle>
-          <DialogDescription>Paste emails separated by commas, spaces, or new lines.</DialogDescription>
+          <DialogTitle className="font-display">{t("bulk.title")}</DialogTitle>
+          <DialogDescription>{t("bulk.description")}</DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
           <Textarea
             rows={5}
-            placeholder={"alex@email.com\nsam@email.com"}
+            placeholder={t("bulk.placeholder")}
             value={text}
             onChange={(e) => setText(e.target.value)}
           />
@@ -141,9 +143,9 @@ export function BulkInviteDialog({ open, onOpenChange, members, invites, dedupeH
         </div>
         <DialogFooter className="sm:items-center">
           {dedupeHint && <p className="text-xs text-muted-foreground sm:mr-auto">{dedupeHint}</p>}
-          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={sending}>Cancel</Button>
+          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={sending}>{t("actions.cancel")}</Button>
           <Button onClick={submit} disabled={sending || okCount === 0 || dedupeUnready}>
-            {sending ? "Inviting…" : `Invite ${okCount || ""}`.trim()}
+            {sending ? t("bulk.inviting") : `${t("bulk.invite")} ${okCount || ""}`.trim()}
           </Button>
         </DialogFooter>
       </DialogContent>

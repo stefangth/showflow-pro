@@ -1,0 +1,160 @@
+{
+  "common": {
+    "error": "Error",
+    "noOrg": "No active organization",
+    "noEmail": "This artist has no email. Add one before inviting.",
+    "inviteSent": "Invite sent",
+    "inviteResent": "Invite re-sent"
+  },
+  "page": {
+    "title": "Artists",
+    "subtitle": "Manage your artist roster",
+    "importFromSheet": "Import from sheet",
+    "addArtist": "Add Artist",
+    "searchPlaceholder": "Search artists or skills...",
+    "nextBooking": "Next booking",
+    "skillsLabel": "SKILLS",
+    "castsLabel": "CASTS",
+    "invite": "Invite",
+    "resendInvite": "Resend invite",
+    "revokeInvite": "Revoke invite",
+    "empty": "No artists found",
+    "skillsHint": "Skills can be added after creation via the artist's profile.",
+    "dialog": {
+      "title": "Add New Artist",
+      "namePlaceholder": "Full name",
+      "emailPlaceholder": "Email",
+      "phonePlaceholder": "Phone",
+      "bioPlaceholder": "Bio",
+      "alsoInvite": "Also send an app-login invite",
+      "alsoInviteHint": "They'll get an email to set a password and join as an artist. Email is required.",
+      "adding": "Adding..."
+    },
+    "toast": {
+      "created": "Artist created",
+      "createdInviteFailed": "The invite couldn't be sent. Retry from the artist.",
+      "addedAndInvited": "Artist added and invited",
+      "added": "Artist added",
+      "inviteRevoked": "Invite revoked"
+    },
+    "errors": {
+      "emailRequiredInvite": "Email is required to send an invite"
+    }
+  },
+  "sheet": {
+    "title": "Artist profile",
+    "descEdit": "Edit artist details and skills.",
+    "descView": "View artist details.",
+    "name": "Name",
+    "emailLabel": "Booking / contact email",
+    "emailHint1": "Separate from the login account.",
+    "emailHint2": "Visible to admins and producers in this organization.",
+    "statusLabel": "Status",
+    "bioLabel": "Bio",
+    "skillsLabel": "Skills",
+    "catalogCount": "{{held}} of {{total}} in the catalog",
+    "skillsHint": "Skills decide which dates {{name}} can be offered. Removing one takes them out of any offer that requires it.",
+    "thisArtist": "this artist",
+    "noSkills": "No skills yet.",
+    "upcomingDates_one": "{{count}} upcoming date",
+    "upcomingDates_other": "{{count}} upcoming dates",
+    "notRequiredYet": "Not required yet",
+    "removeSkill": "Remove {{name}}",
+    "catalogHintPrefix": "Need a skill that does not exist? An admin adds it in",
+    "catalogHintLink": "Settings, Casts & coverage",
+    "catalogHintSuffix": ", so the catalog stays clean.",
+    "cancel": "Cancel",
+    "saving": "Saving…",
+    "save": "Save",
+    "toastUpdated": "Artist updated",
+    "noPendingInvite": "No pending invite to resend."
+  },
+  "linked": {
+    "title": "Linked account",
+    "noLoginWithEmail": "No login account. Digests use the booking email ({{email}}).",
+    "noLoginNoEmail": "No login account. Digests use the booking email.",
+    "inviteToApp": "Invite to app",
+    "invitePending": "Invite pending. Awaiting acceptance.",
+    "resend": "Resend",
+    "loadingAccount": "Loading account…",
+    "accountName": "Account name",
+    "loginEmail": "Login email",
+    "digestGoesTo": "Digest goes to",
+    "detailsUnavailable": "Account details unavailable. Digests go to {{email}}.",
+    "theBookingEmail": "the booking email"
+  },
+  "unlinked": {
+    "headingOrg": "You're on the {{orgName}} roster",
+    "heading": "You're on the roster",
+    "body": "Your account is set up. An admin still needs to link it to your artist profile before your dates, casts and offers show up here. You'll get an email as soon as you're booked, so there's nothing you need to do right now."
+  },
+  "import": {
+    "title": "Import artists from a sheet",
+    "description": "Upload a CSV/XLSX or paste a public Google Sheets link, map the columns, then review and import.",
+    "steps": {
+      "source": "Source",
+      "map": "Map columns",
+      "review": "Review",
+      "done": "Done"
+    },
+    "fields": {
+      "name": "Name",
+      "email": "Email",
+      "phone": "Phone",
+      "bio": "Bio"
+    },
+    "source": {
+      "dropzone": "Drop a .csv or .xlsx here, or click to browse",
+      "uploadAria": "Upload spreadsheet",
+      "linkPlaceholder": "…or paste a public Google Sheets link",
+      "fetch": "Fetch",
+      "downloadTemplate": "Download a template CSV",
+      "rowLimit": "Up to {{max}} rows. In Google Sheets: File → Download → CSV."
+    },
+    "map": {
+      "intro": "Matched your columns automatically. Adjust any below.",
+      "columnAria": "{{field}} column",
+      "ignore": "Ignore this column"
+    },
+    "back": "Back",
+    "continue": "Continue",
+    "review": {
+      "toImport": "To import",
+      "duplicate": "Duplicate",
+      "needAttention": "Need attention",
+      "searchPlaceholder": "Search rows",
+      "colName": "Name",
+      "colEmail": "Email",
+      "colStatus": "Status",
+      "selectAria": "Select {{label}}",
+      "rowLabel": "row {{index}}",
+      "statusNew": "New",
+      "noRows": "No rows",
+      "alsoInvite": "Also send login invites to imported artists (only rows with an email)",
+      "importBtn_one": "Import {{count}} artist",
+      "importBtn_other": "Import {{count}} artists"
+    },
+    "filter": {
+      "all": "All",
+      "new": "New",
+      "skipped": "Skipped",
+      "errors": "Errors"
+    },
+    "done": {
+      "imported_one": "Imported {{count}} artist",
+      "imported_other": "Imported {{count}} artists",
+      "skipped": "{{count}} skipped",
+      "errorsSuffix": ", {{count}} need attention",
+      "invitedSuffix": " · {{count}} invited",
+      "inviteFailed": "{{count}} couldn't be invited. Retry from each artist.",
+      "done": "Done"
+    },
+    "toast": {
+      "noColumns": "No columns found",
+      "noColumnsDesc": "The sheet has no header row.",
+      "readError": "Could not read the file",
+      "fetchError": "Could not fetch the sheet",
+      "importFailed": "Import failed"
+    }
+  }
+}

@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { Download, Eye, Pencil, Send } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import {
@@ -51,6 +52,7 @@ interface Props {
  * of the content going blank one tick before the panel itself disappears.
  */
 export function OrderSlideOver({ order, open, onOpenChange, orgId }: Props) {
+  const { t } = useTranslation("hireOrdersPages");
   const navigate = useNavigate();
   const action = useHireOrderAction();
   const countersign = useMarkCountersigned();
@@ -76,7 +78,7 @@ export function OrderSlideOver({ order, open, onOpenChange, orgId }: Props) {
   const isElectronic = (orderMode ?? countersignMode.data?.mode) === "electronic";
 
   const data = (displayOrder?.data ?? {}) as OrderData;
-  const artistName = displayOrder?.artists?.name || snap(data, "artist_name") || "Unknown artist";
+  const artistName = displayOrder?.artists?.name || snap(data, "artist_name") || t("common.unknownArtist");
   const email = snap(data, "recipient_email");
   const venue = displayOrder?.show_dates?.venue || snap(data, "venue");
   const dateStr = displayOrder?.show_dates?.date || snap(data, "date");
@@ -157,40 +159,40 @@ export function OrderSlideOver({ order, open, onOpenChange, orgId }: Props) {
             <div className="mt-6 space-y-6">
               <dl className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <dt className="text-xs uppercase tracking-wide text-muted-foreground">Artist</dt>
+                  <dt className="text-xs uppercase tracking-wide text-muted-foreground">{t("slideOver.artist")}</dt>
                   <dd className="mt-0.5 text-foreground">{artistName}</dd>
                 </div>
                 {email && (
                   <div>
-                    <dt className="text-xs uppercase tracking-wide text-muted-foreground">Email</dt>
+                    <dt className="text-xs uppercase tracking-wide text-muted-foreground">{t("slideOver.email")}</dt>
                     <dd className="mt-0.5 break-words text-foreground">{email}</dd>
                   </div>
                 )}
                 <div>
-                  <dt className="text-xs uppercase tracking-wide text-muted-foreground">Venue</dt>
-                  <dd className="mt-0.5 text-foreground">{venue || "Not set"}</dd>
+                  <dt className="text-xs uppercase tracking-wide text-muted-foreground">{t("slideOver.venue")}</dt>
+                  <dd className="mt-0.5 text-foreground">{venue || t("common.notSet")}</dd>
                 </div>
                 <div>
-                  <dt className="text-xs uppercase tracking-wide text-muted-foreground">Date</dt>
-                  <dd className="mt-0.5 font-mono text-foreground">{dateStr ? formatDateDMY(dateStr) : "Not set"}</dd>
+                  <dt className="text-xs uppercase tracking-wide text-muted-foreground">{t("slideOver.date")}</dt>
+                  <dd className="mt-0.5 font-mono text-foreground">{dateStr ? formatDateDMY(dateStr) : t("common.notSet")}</dd>
                 </div>
               </dl>
 
               <OrderFactsRail fee={fee} duration={duration} sessions={sessions} />
 
               <div>
-                <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Delivery</h3>
+                <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("slideOver.delivery")}</h3>
                 <dl className="mt-3 space-y-3 text-sm">
                   <div className="flex items-baseline justify-between gap-3">
-                    <dt className="text-muted-foreground">Created</dt>
+                    <dt className="text-muted-foreground">{t("slideOver.created")}</dt>
                     <dd className="text-right text-foreground">
-                      {displayOrder.created_at ? formatTimestampLocal(displayOrder.created_at) : "Not available"}
+                      {displayOrder.created_at ? formatTimestampLocal(displayOrder.created_at) : t("slideOver.notAvailable")}
                     </dd>
                   </div>
                   <div className="flex items-baseline justify-between gap-3">
-                    <dt className="text-muted-foreground">Last sent</dt>
+                    <dt className="text-muted-foreground">{t("slideOver.lastSent")}</dt>
                     <dd className="text-right text-foreground">
-                      {displayOrder.last_sent_at ? formatTimestampLocal(displayOrder.last_sent_at) : "Not sent yet"}
+                      {displayOrder.last_sent_at ? formatTimestampLocal(displayOrder.last_sent_at) : t("slideOver.notSentYet")}
                     </dd>
                   </div>
                 </dl>
@@ -200,28 +202,28 @@ export function OrderSlideOver({ order, open, onOpenChange, orgId }: Props) {
                 {(displayOrder.status === "draft" || displayOrder.status === "ready") && (
                   <>
                     <Button variant="outline" className="w-full" onClick={handleEdit}>
-                      <Pencil className="mr-1 h-4 w-4" /> Edit
+                      <Pencil className="mr-1 h-4 w-4" /> {t("slideOver.edit")}
                     </Button>
                     <Button className="w-full" onClick={handleIssue} disabled={action.isPending || !canIssue}
-                      title={canIssue ? undefined : "You don't have permission to issue hire orders"}>
-                      Issue and send
+                      title={canIssue ? undefined : t("common.noPermissionIssue")}>
+                      {t("common.issueAndSend")}
                     </Button>
                   </>
                 )}
                 {displayOrder.status === "issued" && (
                   <>
                     <Button variant="outline" className="w-full" onClick={handleView}>
-                      <Eye className="mr-1 h-4 w-4" /> View
+                      <Eye className="mr-1 h-4 w-4" /> {t("slideOver.view")}
                     </Button>
                     <Button variant="outline" className="w-full" onClick={handleDownload} disabled={action.isPending}>
-                      <Download className="mr-1 h-4 w-4" /> Download
+                      <Download className="mr-1 h-4 w-4" /> {t("common.download")}
                     </Button>
                     <Button variant="outline" className="w-full" onClick={handleResend} disabled={action.isPending}>
-                      <Send className="mr-1 h-4 w-4" /> Resend
+                      <Send className="mr-1 h-4 w-4" /> {t("slideOver.resend")}
                     </Button>
                     {!isElectronic && (
                       <Button className="w-full" onClick={handleCountersign} disabled={countersign.isPending}>
-                        Mark countersigned
+                        {t("common.markCountersigned")}
                       </Button>
                     )}
                   </>
@@ -229,13 +231,13 @@ export function OrderSlideOver({ order, open, onOpenChange, orgId }: Props) {
                 {displayOrder.status === "countersigned" && (
                   <>
                     <Button variant="outline" className="w-full" onClick={handleView}>
-                      <Eye className="mr-1 h-4 w-4" /> View
+                      <Eye className="mr-1 h-4 w-4" /> {t("slideOver.view")}
                     </Button>
                     <Button variant="outline" className="w-full" onClick={handleDownload} disabled={action.isPending}>
-                      <Download className="mr-1 h-4 w-4" /> Download
+                      <Download className="mr-1 h-4 w-4" /> {t("common.download")}
                     </Button>
                     <Button variant="outline" className="w-full" onClick={handleResend} disabled={action.isPending}>
-                      <Send className="mr-1 h-4 w-4" /> Resend
+                      <Send className="mr-1 h-4 w-4" /> {t("slideOver.resend")}
                     </Button>
                   </>
                 )}
@@ -243,20 +245,20 @@ export function OrderSlideOver({ order, open, onOpenChange, orgId }: Props) {
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button variant="outline" className="w-full text-destructive hover:text-destructive" disabled={!canVoid}
-                        title={canVoid ? undefined : "You don't have permission to void hire orders"}>
-                        Void
+                        title={canVoid ? undefined : t("slideOver.noPermissionVoid")}>
+                        {t("slideOver.void")}
                       </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                       <AlertDialogHeader>
-                        <AlertDialogTitle>Void this hire order?</AlertDialogTitle>
+                        <AlertDialogTitle>{t("slideOver.voidTitle")}</AlertDialogTitle>
                         <AlertDialogDescription>
-                          Voiding cancels this order for good. If the artist needs a corrected order, you can generate a fresh hire order for this date afterward.
+                          {t("slideOver.voidDescription")}
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleVoid}>Void order</AlertDialogAction>
+                        <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleVoid}>{t("slideOver.voidOrder")}</AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>
                   </AlertDialog>

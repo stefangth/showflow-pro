@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { AlertTriangle, CheckCircle2, KeyRound, Mail } from 'lucide-react';
 import { useAuth } from '@/features/auth/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -22,7 +23,11 @@ import { usePasswordStatus } from '@/hooks/usePasswordStatus';
 import { PasswordSetupForm } from '@/components/auth/PasswordSetupForm';
 
 interface AcceptInviteError {
-  message: string;
+  /** Translation key (in the `auth` namespace) for the error copy, resolved with `t` at
+   *  render. Kept as a key rather than resolved copy so this helper can stay module-level. */
+  key: string;
+  /** Interpolation values for `key` (e.g. the signed-in email). */
+  values?: Record<string, string>;
   /** The wrong-email mismatch is the only error with a real in-page remedy: sign out and
    *  land back on this same accept-invite URL, ready to sign in with the invited address.
    *  Every other error (expired, invalid, unauthenticated, unknown) has no such remedy, so
@@ -41,24 +46,25 @@ function friendlyAcceptError(message: string, signedInEmail?: string | null): Ac
   if (m.includes('different email')) {
     return signedInEmail
       ? {
-          message: `You are signed in as ${signedInEmail}. This invitation was sent to a different address, so sign in with that one to accept it.`,
+          key: 'acceptInvite.errors.differentEmailSignedIn',
+          values: { email: signedInEmail },
           action: 'switch-account',
         }
       : {
-          message: 'This invitation was sent to a different email address. Sign in with that address to accept it.',
+          key: 'acceptInvite.errors.differentEmail',
           action: null,
         };
   }
   if (m.includes('expired') || m.includes('invalid')) {
     return {
-      message: 'This invitation is invalid or has expired. Ask your organization admin to send a new one.',
+      key: 'acceptInvite.errors.expired',
       action: null,
     };
   }
   if (m.includes('not authenticated')) {
-    return { message: 'Please sign in to accept this invitation.', action: null };
+    return { key: 'acceptInvite.errors.notAuthenticated', action: null };
   }
-  return { message: 'Could not accept the invitation. Please try again, or ask for a new invite.', action: null };
+  return { key: 'acceptInvite.errors.generic', action: null };
 }
 
 // A member can hold more than one role in the same org (Admin > People "Roles" editor),
@@ -216,6 +222,7 @@ function PostAcceptanceHandoff({
   dashboardIsDeadEnd: boolean;
   onDashboard: () => void;
 }) {
+  const { t } = useTranslation('auth');
   const passwordStatus = usePasswordStatus();
   const [showSetup, setShowSetup] = useState(false);
   const [setupComplete, setSetupComplete] = useState(false);
@@ -232,27 +239,27 @@ function PostAcceptanceHandoff({
     return (
       <>
         <p role="status" className="text-sm font-medium text-foreground">
-          Your password is ready. You can also keep using magic links.
+          {t('acceptInvite.handoff.passwordReady')}
         </p>
         <Button variant={dashboardIsDeadEnd ? 'outline' : 'default'} onClick={onDashboard}>
-          Go to dashboard
+          {t('acceptInvite.goToDashboard')}
         </Button>
       </>
     );
   }
 
   if (passwordStatus.isLoading) {
-    return <Skeleton aria-label="Checking sign-in methods" className="mx-auto h-11 w-full" />;
+    return <Skeleton aria-label={t('acceptInvite.handoff.checkingMethods')} className="mx-auto h-11 w-full" />;
   }
 
   if (passwordStatus.isError) {
     return (
       <>
         <p role="status" className="text-sm text-muted-foreground">
-          Your invitation was accepted. You can manage sign-in methods from your profile.
+          {t('acceptInvite.handoff.manageFromProfile')}
         </p>
         <Button variant={dashboardIsDeadEnd ? 'outline' : 'default'} onClick={onDashboard}>
-          Go to dashboard
+          {t('acceptInvite.goToDashboard')}
         </Button>
       </>
     );
@@ -262,7 +269,7 @@ function PostAcceptanceHandoff({
     return (
       <>
         <Button variant={dashboardIsDeadEnd ? 'outline' : 'default'} onClick={onDashboard}>
-          Go to dashboard
+          {t('acceptInvite.goToDashboard')}
         </Button>
       </>
     );
@@ -273,7 +280,7 @@ function PostAcceptanceHandoff({
       {!showSetup && (
         <div data-testid="sign-in-choices" className="space-y-3 text-left">
           <p className="text-center text-sm font-medium text-foreground">
-            How would you like to sign in next time?
+            {t('acceptInvite.handoff.howSignIn')}
           </p>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             <Button
@@ -284,7 +291,7 @@ function PostAcceptanceHandoff({
               onClick={() => setShowSetup(true)}
             >
               <KeyRound aria-hidden="true" className="shrink-0" />
-              <span><span className="block">Create a password</span><span className="block text-xs font-normal text-muted-foreground">Add it now, without changing your magic links.</span></span>
+              <span><span className="block">{t('acceptInvite.handoff.createPassword')}</span><span className="block text-xs font-normal text-muted-foreground">{t('acceptInvite.handoff.createPasswordCaption')}</span></span>
             </Button>
             <Button
               type="button"
@@ -294,7 +301,7 @@ function PostAcceptanceHandoff({
               onClick={onDashboard}
             >
               <Mail aria-hidden="true" className="shrink-0" />
-              <span><span className="block">Continue with magic links</span><span className="block text-xs font-normal text-muted-foreground">Use email links now and add a password later.</span></span>
+              <span><span className="block">{t('acceptInvite.handoff.continueMagic')}</span><span className="block text-xs font-normal text-muted-foreground">{t('acceptInvite.handoff.continueMagicCaption')}</span></span>
             </Button>
           </div>
         </div>
@@ -344,6 +351,7 @@ export default function AcceptInvitePage() {
     window.sessionStorage,
   ));
   const { user, loading, orgs, memberships, switchOrg, refreshOrgs, signOut } = useAuth();
+  const { t } = useTranslation('auth');
   const navigate = useNavigate();
   const [error, setError] = useState<AcceptInviteError | null>(null);
   const [joined, setJoined] = useState<JoinedState | null>(null);
@@ -411,7 +419,7 @@ export default function AcceptInvitePage() {
   useEffect(() => {
     if (loading) return;
     if (!token) {
-      setError({ message: 'This invitation link is missing its token.', action: null });
+      setError({ key: 'acceptInvite.errors.missingToken', action: null });
       return;
     }
     if (!user) return;
@@ -463,21 +471,21 @@ export default function AcceptInvitePage() {
         <Card className="w-full max-w-md">
           <CardHeader className="text-center space-y-3">
             <div className="mx-auto"><StageMark variant="tile" size={52} /></div>
-            <CardTitle className="font-display text-2xl font-semibold tracking-tight">You've been invited</CardTitle>
-            <CardDescription>Continue securely to sign in or create your account and join the organization.</CardDescription>
+            <CardTitle className="font-display text-2xl font-semibold tracking-tight">{t('acceptInvite.unauth.title')}</CardTitle>
+            <CardDescription>{t('acceptInvite.unauth.description')}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4 text-center">
-            {exchangeError === 'unavailable' && <p className="text-sm text-muted-foreground">This invitation is no longer available. Ask your organization admin to send a new one.</p>}
-            {exchangeError === 'throttled' && <p className="text-sm text-muted-foreground">Please wait a moment, then try again.</p>}
-            {exchangeError === 'unknown' && <p className="text-sm text-muted-foreground">We couldn't continue. Please try again.</p>}
+            {exchangeError === 'unavailable' && <p className="text-sm text-muted-foreground">{t('acceptInvite.unauth.unavailable')}</p>}
+            {exchangeError === 'throttled' && <p className="text-sm text-muted-foreground">{t('acceptInvite.unauth.throttled')}</p>}
+            {exchangeError === 'unknown' && <p className="text-sm text-muted-foreground">{t('acceptInvite.unauth.unknown')}</p>}
             {exchangeError !== 'unavailable' && (
               <Button className="w-full" disabled={exchangePending} onClick={handleExchange}>
-                {exchangePending ? 'Continuing…' : retryable ? 'Try again' : 'Continue'}
+                {exchangePending ? t('acceptInvite.unauth.continuing') : retryable ? t('acceptInvite.unauth.tryAgain') : t('acceptInvite.unauth.continue')}
               </Button>
             )}
             {exchangeError === 'unavailable' && (
               <Button className="w-full" variant="outline" onClick={() => navigate(ROUTES.LOGIN, { replace: true })}>
-                Go to sign in
+                {t('acceptInvite.unauth.goToSignIn')}
               </Button>
             )}
           </CardContent>
@@ -500,16 +508,16 @@ export default function AcceptInvitePage() {
             <CardHeader className="text-center space-y-3">
               <div className="mx-auto"><StageMark variant="tile" size={52} /></div>
               <CardTitle className="font-display text-2xl font-semibold tracking-tight">
-                Signed in as a different account
+                {t('acceptInvite.differentAccount.title')}
               </CardTitle>
               <CardDescription>
                 {user?.email
-                  ? `The invitation was accepted, but this browser is now signed in as ${user.email}.`
-                  : 'The invitation was accepted, but this browser is now signed in as a different account.'}
+                  ? t('acceptInvite.differentAccount.descriptionEmail', { email: user.email })
+                  : t('acceptInvite.differentAccount.description')}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 text-center">
-              <Button onClick={() => navigate(ROUTES.DASHBOARD, { replace: true })}>Go to dashboard</Button>
+              <Button onClick={() => navigate(ROUTES.DASHBOARD, { replace: true })}>{t('acceptInvite.goToDashboard')}</Button>
             </CardContent>
           </Card>
         </div>
@@ -519,7 +527,7 @@ export default function AcceptInvitePage() {
     // orgs/memberships resolutions degrade gracefully (org name falls back to a generic
     // phrase, role block is omitted) in case refreshOrgs came back short. `role` itself is
     // resolved above, before this component's hooks, so it can gate them.
-    const orgName = orgs.find((o) => o.id === joined.orgId)?.name ?? 'your organization';
+    const orgName = orgs.find((o) => o.id === joined.orgId)?.name ?? t('acceptInvite.success.orgFallback');
     const bookingState = resolveBookingRunState(bookingModuleOn, bookingFlow);
     // The dashboard is a dead end for an artist whose profile did not link (it can only
     // say no artist profile is linked yet), so it is demoted to a secondary action here,
@@ -532,16 +540,16 @@ export default function AcceptInvitePage() {
         <Card className="w-full max-w-md">
           <CardHeader className="text-center space-y-3">
             <div className="mx-auto"><StageMark variant="tile" size={52} /></div>
-            <div aria-label="Invitation accepted" className="mx-auto flex h-8 w-8 items-center justify-center rounded-full bg-success/10 text-success">
+            <div aria-label={t('acceptInvite.success.invitationAccepted')} className="mx-auto flex h-8 w-8 items-center justify-center rounded-full bg-success/10 text-success">
               <CheckCircle2 aria-hidden="true" className="h-5 w-5" />
             </div>
             <CardTitle className="font-display text-2xl font-semibold tracking-tight">
-              You've joined {orgName}
+              {t('acceptInvite.success.joined', { orgName })}
             </CardTitle>
             {user?.email && (
               // Names the account this happened to, so the reader can confirm they are
               // looking at the join they expect (and, on a shared device, which one).
-              <CardDescription>Signed in as {user.email}.</CardDescription>
+              <CardDescription>{t('acceptInvite.success.signedInAs', { email: user.email })}</CardDescription>
             )}
           </CardHeader>
           <CardContent className="space-y-4 text-center" data-testid="accept-invite-success">
@@ -554,7 +562,7 @@ export default function AcceptInvitePage() {
               // a fragment missing its subject. A label-plus-caption pairing (the same
               // shape PersonRow uses for the same registry) needs no shared subject.
               <div className="rounded-md border border-border bg-muted/40 p-3 text-left space-y-1">
-                <p className="text-sm font-medium text-foreground">Your role: {roleLabel(role)}</p>
+                <p className="text-sm font-medium text-foreground">{t('acceptInvite.success.yourRole', { role: roleLabel(role) })}</p>
                 <p className="text-sm text-muted-foreground">{roleDescription(role)}</p>
               </div>
             )}
@@ -565,7 +573,7 @@ export default function AcceptInvitePage() {
               <Alert className="text-left">
                 <AlertTriangle className="h-4 w-4 shrink-0 text-[var(--amber-600)]" />
                 <AlertDescription>
-                  We could not automatically link your artist profile. An admin can link it for you.
+                  {t('acceptInvite.success.artistLinkFailed')}
                 </AlertDescription>
               </Alert>
             )}
@@ -603,15 +611,15 @@ export default function AcceptInvitePage() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center space-y-3">
           <div className="mx-auto"><StageMark variant="tile" size={52} /></div>
-          <CardTitle className="font-display text-2xl font-semibold tracking-tight">Accept invitation</CardTitle>
+          <CardTitle className="font-display text-2xl font-semibold tracking-tight">{t('acceptInvite.pending.title')}</CardTitle>
           <CardDescription>
-            {error ? "We couldn't accept this invitation" : 'Joining your organization…'}
+            {error ? t('acceptInvite.pending.errorDescription') : t('acceptInvite.pending.joiningDescription')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 text-center">
           {error ? (
             <>
-              <p className="text-sm text-muted-foreground">{error.message}</p>
+              <p className="text-sm text-muted-foreground">{t(error.key, error.values)}</p>
               <div className="flex flex-col gap-2">
                 {error.action === 'switch-account' && (
                   // The one actionable remedy this card can offer: the message above names
@@ -620,11 +628,11 @@ export default function AcceptInvitePage() {
                   // carry the same visual weight as the passive "Go to dashboard" escape
                   // below, matching the success card's single primary action.
                   <Button onClick={handleSwitchAccount}>
-                    Sign out and use another address
+                    {t('acceptInvite.pending.signOutUseAnother')}
                   </Button>
                 )}
                 <Button variant="outline" onClick={() => navigate(ROUTES.DASHBOARD, { replace: true })}>
-                  Go to dashboard
+                  {t('acceptInvite.goToDashboard')}
                 </Button>
               </div>
             </>

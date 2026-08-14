@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ListChecks, Search } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/features/auth/AuthContext";
 import { useEntitlements, useModuleGate } from "@/hooks/useEntitlements";
 import { useHireOrders, useDatesReadyForHireOrder } from "@/hooks/useHireOrders";
@@ -33,12 +34,12 @@ type StatusChip = "all" | "draft" | "ready" | "issued" | "countersigned";
 
 /** "Awaiting" reads as the issued status per the V4 design (matches
  *  HireOrderStatusBadge's "Awaiting countersign" label for status "issued"). */
-const STATUS_CHIPS: { value: StatusChip; label: string }[] = [
-  { value: "all", label: "All" },
-  { value: "draft", label: "Draft" },
-  { value: "ready", label: "Ready" },
-  { value: "issued", label: "Awaiting" },
-  { value: "countersigned", label: "Countersigned" },
+const STATUS_CHIPS: { value: StatusChip; labelKey: string }[] = [
+  { value: "all", labelKey: "hireOrdersPage.chipAll" },
+  { value: "draft", labelKey: "hireOrdersPage.chipDraft" },
+  { value: "ready", labelKey: "hireOrdersPage.chipReady" },
+  { value: "issued", labelKey: "hireOrdersPage.chipIssued" },
+  { value: "countersigned", labelKey: "hireOrdersPage.chipCountersigned" },
 ];
 
 function chipToStatusFilter(chip: StatusChip): HireOrderStatus[] | undefined {
@@ -57,6 +58,7 @@ function chipToStatusFilter(chip: StatusChip): HireOrderStatus[] | undefined {
  * status chip narrows the table, which defeats their purpose.
  */
 export default function HireOrdersPage() {
+  const { t } = useTranslation("hireOrdersPages");
   const { currentOrg } = useAuth();
   const orgId = currentOrg?.id ?? null;
   // TWO gates, deliberately, because they answer different questions.
@@ -164,10 +166,10 @@ export default function HireOrdersPage() {
 
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Workspace</p>
-          <h1 className="font-display text-[32px] font-semibold tracking-tight">Hire orders</h1>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("hireOrdersPage.workspace")}</p>
+          <h1 className="font-display text-[32px] font-semibold tracking-tight">{t("hireOrdersPage.title")}</h1>
           <p className="mt-1 text-muted-foreground">
-            {stats.totalCount} order{stats.totalCount === 1 ? "" : "s"} · {stats.valueCommitted} committed
+            {t("hireOrdersPage.meta", { count: stats.totalCount, value: stats.valueCommitted })}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -178,16 +180,16 @@ export default function HireOrdersPage() {
               onClick={() => { setSetupStep(undefined); setSetupSheetOpen(true); }}
             >
               <ListChecks className="h-4 w-4" />
-              Setup checklist
+              {t("hireOrdersPage.setupChecklist")}
             </Button>
           )}
           {IMPORT_READY && (
             <Button variant="outline" disabled={!featureOn} onClick={() => setImportOpen(true)}>
-              Import from spreadsheet
+              {t("hireOrdersPage.importFromSpreadsheet")}
             </Button>
           )}
           <Button disabled={!featureOn} onClick={() => setWizardOpen(true)}>
-            New order
+            {t("hireOrdersPage.newOrder")}
           </Button>
         </div>
       </div>
@@ -236,14 +238,14 @@ export default function HireOrdersPage() {
                 variant={statusChip === chip.value ? "default" : "outline"}
                 onClick={() => setStatusChip(chip.value)}
               >
-                {chip.label}
+                {t(chip.labelKey)}
               </Button>
             ))}
           </div>
           <div className="relative min-w-[200px] max-w-md flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Search order number or artist"
+              placeholder={t("hireOrdersPage.searchPlaceholder")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-10"
@@ -253,7 +255,7 @@ export default function HireOrdersPage() {
         </div>
 
         {!orgId ? (
-          <p className="py-12 text-center text-muted-foreground">Select an organization to view hire orders.</p>
+          <p className="py-12 text-center text-muted-foreground">{t("hireOrdersPage.selectOrg")}</p>
         ) : isLoading ? (
           <div className="space-y-2">
             {[1, 2, 3].map((i) => <Skeleton key={i} className="h-12" />)}
@@ -264,14 +266,14 @@ export default function HireOrdersPage() {
 
         {noOrdersYet && readyCount > 0 && (
           <p className="text-xs text-muted-foreground">
-            {readyCount} {readyCount === 1 ? "date is" : "dates are"} fully cast and ready for an order.{" "}
+            {t("hireOrdersPage.readyLead", { count: readyCount })}{" "}
             {/* text-primary, not the accent-600 stop: the numbered accent stops are
                 immutable across modes and pair with an accent background, so bare on
                 a card this link sat near 2.3:1 in dark. */}
             <Link to={ROUTES.BOOKINGS} className="text-primary underline-offset-2 hover:underline">
-              Generate from Shows and bookings
+              {t("hireOrdersPage.readyLink")}
             </Link>
-            , or use New order above.
+            {t("hireOrdersPage.readyTail")}
           </p>
         )}
       </div>

@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { StageMark } from '@/components/brand/StageMark';
 import { cn } from '@/lib/utils';
@@ -17,6 +18,7 @@ import { FEATURE_REGISTRY, type FeatureKey } from '@/lib/entitlements';
  * super-admin; the standalone default is unchanged.
  */
 export default function FeatureDisabledScreen({ feature, embedded = false }: { feature: FeatureKey; embedded?: boolean }) {
+  const { t } = useTranslation('auth');
   const def = FEATURE_REGISTRY[feature];
   return (
     <div className={cn(
@@ -24,13 +26,13 @@ export default function FeatureDisabledScreen({ feature, embedded = false }: { f
       embedded ? 'min-h-full' : 'min-h-screen',
     )}>
       <StageMark variant="tile" size={56} className="mb-6" />
-      <h1 className="font-display text-2xl font-semibold tracking-tight">{def.label} is not enabled</h1>
+      <h1 className="font-display text-2xl font-semibold tracking-tight">{t('featureDisabled.notEnabled', { label: def.label })}</h1>
       <p className="mt-2 max-w-md text-muted-foreground">
-        This module is not part of your organization's plan. Contact your ShowFlow administrator to enable it.
+        {t('featureDisabled.body')}
       </p>
       <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
         <Button asChild variant="secondary">
-          <Link to={ROUTES.DASHBOARD}>Back to dashboard</Link>
+          <Link to={ROUTES.DASHBOARD}>{t('featureDisabled.backToDashboard')}</Link>
         </Button>
       </div>
     </div>

@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 
 export interface CockpitFooterProps {
@@ -20,10 +21,11 @@ export interface CockpitFooterProps {
  * module + role gates).
  */
 export function CockpitFooter({ badgeLabel, ready, detail, ctaLabel, ctaDisabled, onCta }: CockpitFooterProps) {
+  const { t } = useTranslation("showsDetail");
   return (
     <div className="sticky bottom-0 z-10 flex items-center justify-between gap-4 border-t-[0.5px] border-[var(--line)] bg-[var(--surface)] px-5 py-3">
       <div className="flex min-w-0 items-center gap-2.5">
-        <p className="text-sm font-medium leading-[18px] text-foreground">Hire order</p>
+        <p className="text-sm font-medium leading-[18px] text-foreground">{t("cockpitFooter.hireOrder")}</p>
         <span
           className={cn(
             "ml-1.5 rounded-[var(--radius-xs)] px-[5px] py-px font-mono text-[10px] font-semibold leading-[14px]",

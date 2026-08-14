@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { fetchCasts, fetchCastMemberCounts } from '@/data/casts';
@@ -15,6 +16,7 @@ interface CastsSectionProps {
 }
 
 export function CastsSection({ onArtistClick }: CastsSectionProps = {}) {
+  const { t } = useTranslation('showsDetail');
   const { hasRole, currentOrg } = useAuth();
   // Page-level visibility: this section only renders on ArtistsPage, which is already
   // admin/producer-gated at the route level. canManageCasts (below) separately governs
@@ -42,13 +44,13 @@ export function CastsSection({ onArtistClick }: CastsSectionProps = {}) {
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0">
         <CardTitle className="font-display text-lg flex items-center gap-2">
-          <Users className="h-5 w-5" /> Casts
+          <Users className="h-5 w-5" /> {t('castsSection.casts')}
         </CardTitle>
         {canManageCasts && <CastDialog />}
       </CardHeader>
       <CardContent>
         {(casts?.length ?? 0) === 0 ? (
-          <p className="text-sm text-muted-foreground">No casts yet. Create one to group artists for show eligibility.</p>
+          <p className="text-sm text-muted-foreground">{t('castsSection.noCasts')}</p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {casts!.map(c => (
@@ -59,7 +61,7 @@ export function CastsSection({ onArtistClick }: CastsSectionProps = {}) {
               >
                 <p className="font-medium text-sm">{c.name}</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {counts?.[c.id] ?? 0} member{(counts?.[c.id] ?? 0) === 1 ? '' : 's'}
+                  {t('castsSection.memberCount', { count: counts?.[c.id] ?? 0 })}
                 </p>
                 {c.description && <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{c.description}</p>}
               </button>

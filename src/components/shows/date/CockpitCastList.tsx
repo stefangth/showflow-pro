@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { IconTooltip } from "@/components/common/IconTooltip";
 import {
@@ -74,13 +75,14 @@ function Avatar({ row }: { row: CastRow }) {
 const STATUS_BADGE_BASE = "rounded-[var(--radius-xs)] px-2 py-[3px] text-xs font-medium";
 
 function StatusBadge({ status }: { status: NonNullable<CastRow["status"]> }) {
+  const { t } = useTranslation("showsDetail");
   if (status === "accepted") {
     // "Accepted" is the cockpit's label for a soft_booked row: the artist said yes, but
     // nothing is booked until a producer confirms it — SOFT_BOOKED_MEANING spells that out
     // for anyone who reads "Accepted" as already-booked.
     return (
       <IconTooltip label={SOFT_BOOKED_MEANING}>
-        <span className={cn(STATUS_BADGE_BASE, "bg-accent-100 text-accent-700")}>Accepted</span>
+        <span className={cn(STATUS_BADGE_BASE, "bg-accent-100 text-accent-700")}>{t("cockpitCastList.accepted")}</span>
       </IconTooltip>
     );
   }
@@ -91,7 +93,7 @@ function StatusBadge({ status }: { status: NonNullable<CastRow["status"]> }) {
         status === "confirmed" ? "bg-[var(--green-100)] text-[var(--green-600)]" : "bg-[var(--amber-100)] text-[var(--amber-600)]",
       )}
     >
-      {status === "confirmed" ? "Confirmed" : "Offered"}
+      {status === "confirmed" ? t("cockpitCastList.confirmed") : t("cockpitCastList.offered")}
     </span>
   );
 }
@@ -105,6 +107,7 @@ function Row({
   bookingFlowEnabled: boolean;
   confirmationDigestHour: number;
 }) {
+  const { t } = useTranslation("showsDetail");
   const [cancelOpen, setCancelOpen] = useState(false);
   // Only an explicit active===false pauses promotion, matching the same convention used
   // throughout bookingFlow.ts and actionCopy.ts.
@@ -118,13 +121,13 @@ function Row({
   const cancelCopy = useMemo(
     () =>
       cancelBookingCopy({
-        artistName: row.name ?? "this artist",
+        artistName: row.name ?? t("cockpitCastList.thisArtist"),
         understudyPromotionEnabled,
         bookingFlowEnabled,
         flow,
         confirmationDigestHour,
       }),
-    [row.name, understudyPromotionEnabled, bookingFlowEnabled, flow, confirmationDigestHour],
+    [row.name, understudyPromotionEnabled, bookingFlowEnabled, flow, confirmationDigestHour, t],
   );
 
   return (
@@ -138,7 +141,7 @@ function Row({
         <Avatar row={row} />
         <div className="min-w-0">
           <p className={cn("text-sm leading-[18px]", row.open ? "font-normal text-[var(--text-faint)]" : "font-medium text-foreground")}>
-            {row.name ?? "Open slot"}
+            {row.name ?? t("cockpitCastList.openSlot")}
           </p>
           <p className={cn("mt-px font-mono text-[11px] leading-[14px]", row.open ? "text-[var(--amber-600)]" : "text-[var(--text-faint)]")}>
             {row.meta}
@@ -153,7 +156,7 @@ function Row({
             onClick={row.onConfirm}
             className="h-[30px] rounded-[var(--radius-m)] border-[0.5px] border-[var(--line-strong)] bg-[var(--surface)] px-2.5 text-xs font-medium text-foreground transition-colors hover:bg-[var(--surface-2)]"
           >
-            Confirm
+            {t("cockpitCastList.confirm")}
           </button>
         )}
         {row.open && row.slotActionLabel && (
@@ -175,7 +178,7 @@ function Row({
               // invisible control could fire an unconfirmed cancel.
               className="h-[30px] rounded-[var(--radius-m)] px-2 text-xs font-medium text-[var(--text-muted)] opacity-0 transition pointer-events-none hover:text-[var(--red-600)] focus-visible:pointer-events-auto focus-visible:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100"
             >
-              Cancel
+              {t("cockpitCastList.cancel")}
             </button>
             {/* Cancellation is consequential (understudy promotion, an artist told), so it
                 sits behind a confirmation dialog like the surface's other committing actions
@@ -189,14 +192,14 @@ function Row({
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel>Keep booking</AlertDialogCancel>
+                  <AlertDialogCancel>{t("cockpitCastList.keepBooking")}</AlertDialogCancel>
                   <AlertDialogAction
                     onClick={() => {
                       row.onCancel?.();
                       setCancelOpen(false);
                     }}
                   >
-                    Cancel booking
+                    {t("cockpitCastList.cancelBooking")}
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>

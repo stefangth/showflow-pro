@@ -1,4 +1,5 @@
 import { Check } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { formatTimestampDMY } from "@/lib/dates";
 
@@ -12,8 +13,14 @@ interface Props {
   countersignedAt?: string | null;
 }
 
-/** The five lifecycle milestones, in order. */
-const STEPS = ["Created", "Issued to artist", "Seen", "Awaiting countersign", "Countersigned"] as const;
+/** The five lifecycle milestones, in order (i18n keys). */
+const STEPS = [
+  "timeline.created",
+  "timeline.issued",
+  "timeline.seen",
+  "timeline.awaiting",
+  "timeline.countersigned",
+] as const;
 
 /**
  * Index of the currently-active (amber) step for a given status. Steps before
@@ -63,10 +70,11 @@ function stepTimestamp(
  * still carry a `seenAt` from before it was voided.
  */
 export function OrderTimeline({ status, createdAt, issuedAt, seenAt, countersignedAt }: Props) {
+  const { t } = useTranslation("hireOrdersPages");
   const active = activeStepIndex(status);
   return (
-    <ol className="space-y-0" aria-label="Order status timeline">
-      {STEPS.map((label, i) => {
+    <ol className="space-y-0" aria-label={t("timeline.ariaLabel")}>
+      {STEPS.map((labelKey, i) => {
         // active is only ever 0, 3 or 4 (see activeStepIndex): `active > 2` means the order
         // was issued, `active > 3` means it was countersigned (past Seen).
         const done = i === 2 ? active > 2 && (active > 3 || seenAt != null) : i < active;
@@ -74,7 +82,7 @@ export function OrderTimeline({ status, createdAt, issuedAt, seenAt, countersign
         const last = i === STEPS.length - 1;
         const ts = stepTimestamp(i, { createdAt, issuedAt, seenAt, countersignedAt });
         return (
-          <li key={label} className="flex gap-3">
+          <li key={labelKey} className="flex gap-3">
             {/* Dot + connector rail */}
             <div className="flex flex-col items-center">
               <span
@@ -103,7 +111,7 @@ export function OrderTimeline({ status, createdAt, issuedAt, seenAt, countersign
                   isActive ? "font-medium text-foreground" : done ? "text-foreground" : "text-muted-foreground",
                 )}
               >
-                {label}
+                {t(labelKey)}
               </p>
               {ts && <p className="text-xs font-mono text-muted-foreground">{ts}</p>}
             </div>

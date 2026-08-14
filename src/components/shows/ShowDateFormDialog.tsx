@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -59,6 +60,7 @@ export function ShowDateFormDialog({
   showDate?: EditDate | null;
   defaultShowId?: string | null;
 }) {
+  const { t } = useTranslation("showsDetail");
   const { currentOrg } = useAuth();
   const queryClient = useQueryClient();
   const { data: shows } = useShows();
@@ -146,7 +148,7 @@ export function ShowDateFormDialog({
                 venue: orNull(v.venue), city_id: orNull(v.cityId), notes: orNull(v.notes),
               },
         });
-        toast.success("Date updated");
+        toast.success(t("showDateForm.toast.dateUpdated"));
         // A saved edit can newly satisfy the auto-open conditions (e.g. sessions just
         // filled in). Wrapped in its own try/catch so a failed auto-open never breaks
         // the save the user already succeeded at.
@@ -160,14 +162,14 @@ export function ShowDateFormDialog({
               // suggested bookings) and this date's opened-tiers cache.
               queryClient.invalidateQueries({ queryKey: ["bookings"] });
               queryClient.invalidateQueries({ queryKey: ["offer-tiers", "opened", showDate.id] });
-              if (res.offersCreated > 0) toast.success(`Tier 1 opened automatically · ${res.offersCreated} offers sent`);
+              if (res.offersCreated > 0) toast.success(t("showDateForm.toast.tier1AutoOpened", { count: res.offersCreated }));
             }
           } catch (e) {
             toast.error((e as Error).message);
           }
         }
       } else {
-        if (!currentOrg) { toast.error("No active organization"); return; }
+        if (!currentOrg) { toast.error(t("showDateForm.toast.noActiveOrg")); return; }
         const { id } = await create.mutateAsync({
           orgId: currentOrg.id, showId: v.showId, date: v.date,
           session1: orNull(v.session1), session2: orNull(v.session2), session3: orNull(v.session3),
@@ -180,10 +182,10 @@ export function ShowDateFormDialog({
             // and this date's opened-tiers cache so open sheets do not go stale.
             queryClient.invalidateQueries({ queryKey: ["bookings"] });
             queryClient.invalidateQueries({ queryKey: ["offer-tiers", "opened", id] });
-            toast.success(res.offersCreated > 0 ? `Date created · ${res.offersCreated} offer(s) opened` : "Date created");
-          } catch { toast.success("Date created (offers could not be opened)"); }
+            toast.success(res.offersCreated > 0 ? t("showDateForm.toast.dateCreatedWithOffers", { count: res.offersCreated }) : t("showDateForm.toast.dateCreated"));
+          } catch { toast.success(t("showDateForm.toast.dateCreatedOffersFailed")); }
         } else {
-          toast.success("Date created");
+          toast.success(t("showDateForm.toast.dateCreated"));
         }
       }
       onOpenChange(false);
@@ -218,16 +220,16 @@ export function ShowDateFormDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            {mode === "edit" ? "Edit date" : "New date"}
-            {synced && <Badge variant="secondary" className="bg-muted text-muted-foreground">Synced from Airtable</Badge>}
+            {mode === "edit" ? t("showDateForm.editDate") : t("showDateForm.newDate")}
+            {synced && <Badge variant="secondary" className="bg-muted text-muted-foreground">{t("showDateForm.syncedFromAirtable")}</Badge>}
           </DialogTitle>
           {dialogDescription && <DialogDescription className="text-xs">{dialogDescription}</DialogDescription>}
         </DialogHeader>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-1.5">
-            <Label>Production</Label>
+            <Label>{t("showDateForm.production")}</Label>
             <Select value={showId} onValueChange={(v) => form.setValue("showId", v, { shouldValidate: true })} disabled={mode === "edit"}>
-              <SelectTrigger><SelectValue placeholder="Choose a production" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder={t("showDateForm.chooseProduction")} /></SelectTrigger>
               <SelectContent>
                 {activeShows.map((s) => <SelectItem key={s.id} value={s.id}>{showIdentityLabel(s)}</SelectItem>)}
               </SelectContent>
@@ -236,11 +238,11 @@ export function ShowDateFormDialog({
           </div>
 
           <div className="space-y-1.5">
-            <Label>Date</Label>
+            <Label>{t("showDateForm.date")}</Label>
             <Popover>
               <PopoverTrigger asChild>
                 <Button type="button" variant="outline" data-testid="date-trigger" disabled={synced} className="w-full justify-start font-normal">
-                  {selectedDate ? formatDateDMY(selectedDate) : "Pick a date"}
+                  {selectedDate ? formatDateDMY(selectedDate) : t("showDateForm.pickDate")}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0">
@@ -253,7 +255,7 @@ export function ShowDateFormDialog({
                 Tied to changeNote's own visibility so it only appears when the schedule note
                 above it does (edit mode, not synced, notifications actually a live concept). */}
             {changeNote && (
-              <p className="text-xs text-muted-foreground">Moving the date itself does not notify booked artists.</p>
+              <p className="text-xs text-muted-foreground">{t("showDateForm.movingDateNote")}</p>
             )}
             {err.date && <p className="text-xs text-destructive">{err.date.message}</p>}
             {dupWarning && <p className="text-xs text-warning">{dupWarning}</p>}
@@ -262,8 +264,8 @@ export function ShowDateFormDialog({
           <div className="grid grid-cols-3 gap-3">
             {(["session1", "session2", "session3"] as const).map((name, i) => (
               <div key={name} className="space-y-1.5">
-                <Label htmlFor={name}>Session {i + 1}</Label>
-                <Input id={name} placeholder="HH:MM" disabled={synced} {...form.register(name)} />
+                <Label htmlFor={name}>{t("showDateForm.session", { n: i + 1 })}</Label>
+                <Input id={name} placeholder={t("showDateForm.sessionPlaceholder")} disabled={synced} {...form.register(name)} />
                 {err[name] && <p className="text-xs text-destructive">{err[name]?.message}</p>}
               </div>
             ))}
@@ -271,11 +273,11 @@ export function ShowDateFormDialog({
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label htmlFor="venue">Venue</Label>
+              <Label htmlFor="venue">{t("showDateForm.venue")}</Label>
               <Input id="venue" disabled={synced} {...form.register("venue")} />
             </div>
             <div className="space-y-1.5">
-              <Label>City</Label>
+              <Label>{t("showDateForm.city")}</Label>
               <Select value={form.watch("cityId")} onValueChange={(v) => form.setValue("cityId", v)} disabled={synced}>
                 <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
                 <SelectContent>
@@ -286,7 +288,7 @@ export function ShowDateFormDialog({
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="notes">Notes</Label>
+            <Label htmlFor="notes">{t("showDateForm.notes")}</Label>
             <Textarea id="notes" {...form.register("notes")} />
           </div>
 
@@ -294,13 +296,13 @@ export function ShowDateFormDialog({
             <div className="flex items-center gap-2 text-sm">
               <Checkbox id="open-offers" checked={openOffers} disabled={!slotsConfigured} onCheckedChange={(c) => setOpenOffers(!!c)} />
               <Label htmlFor="open-offers" className={`font-normal ${slotsConfigured ? "" : "text-muted-foreground"}`}>
-                Open tier-1 offers now{!slotsConfigured && " (configure slots first)"}
+                {slotsConfigured ? t("showDateForm.openTier1Now") : t("showDateForm.openTier1NowConfigure")}
               </Label>
             </div>
           )}
 
           <DialogFooter>
-            <Button type="submit" disabled={pending}>{pending ? "Saving…" : mode === "edit" ? "Save date" : "Create date"}</Button>
+            <Button type="submit" disabled={pending}>{pending ? t("showDateForm.saving") : mode === "edit" ? t("showDateForm.saveDate") : t("showDateForm.createDate")}</Button>
           </DialogFooter>
         </form>
       </DialogContent>

@@ -82,6 +82,48 @@ const IDENTICAL_OK: Record<string, string> = {
   'settingsRolesRights.tab.presets.standard': '"Standard" is identical in German',
   'settingsRolesRights.editingPicker.productionTeam': 'role label "Production Team" kept untranslated',
   'settingsRolesRights.changeLog.transition': 'interpolation + arrow only ("{{from}} -> {{to}}")',
+
+  // admin
+  'admin.bulk.placeholder': 'example email addresses only (alex@email.com / sam@email.com)',
+
+  // artists
+  'artists.page.title': 'role noun "Artists" kept untranslated (TERMS)',
+  'artists.sheet.name': '"Name" is identical in German',
+  'artists.sheet.statusLabel': '"Status" is identical in German',
+  'artists.import.fields.name': '"Name" is identical in German',
+  'artists.import.review.colName': '"Name" is identical in German',
+  'artists.import.review.colStatus': '"Status" is identical in German',
+
+  // hireOrdersPages
+  'hireOrdersPages.ordersTable.colArtist': 'role noun "Artist" kept untranslated (TERMS)',
+  'hireOrdersPages.ordersTable.colStatus': '"Status" is identical in German',
+  'hireOrdersPages.blockerList.legalNamePlaceholder': 'example company name (proper noun)',
+  'hireOrdersPages.wizard.reviewArtist': 'role noun "Artist" kept untranslated (TERMS)',
+  'hireOrdersPages.wizard.artists': 'role noun "Artists" kept untranslated (TERMS)',
+  'hireOrdersPages.wizard.colArtist': 'role noun "Artist" kept untranslated (TERMS)',
+  'hireOrdersPages.wizard.emailPlaceholder': 'example email address',
+  'hireOrdersPages.wizard.feePlaceholder': 'numeric placeholder "0.00"',
+  'hireOrdersPages.slideOver.artist': 'role noun "Artist" kept untranslated (TERMS)',
+  'hireOrdersPages.provenanceChip.showflow': 'abbreviation "SF" of the ShowFlow proper noun',
+  'hireOrdersPages.reviewStep.colArtist': 'role noun "Artist" kept untranslated (TERMS)',
+  'hireOrdersPages.reviewStep.colStatus': '"Status" is identical in German',
+  'hireOrdersPages.generateDialog.artist': 'role noun "Artist" kept untranslated (TERMS)',
+  'hireOrdersPages.editPage.sectionEngagement': '"Engagement" is identical in German',
+  'hireOrdersPages.editPage.sessionsPlaceholder': 'time example "19:00 · 21:00"',
+
+  // showsDetail
+  'showsDetail.showDateSheet.tabs.chat': 'loanword "Chat", identical in German',
+  'showsDetail.cockpitRail.chat': 'loanword "Chat", identical in German',
+  'showsDetail.showDateForm.session': 'domain loanword "Session"',
+  'showsDetail.showDateForm.sessionPlaceholder': 'time-format symbol "HH:MM"',
+
+  // chats
+  'chats.list.title': 'loanword "Chats", identical in German',
+  'chats.panel.title': 'loanword "Chat", identical in German',
+
+  // profile
+  'profile.details.title': 'common word "Details", identical in German',
+  'profile.notifications.channelAria': 'pure interpolation template ("{{category}} {{channel}}"), no prose',
 };
 
 describe('German catalog is translated (not English left in place)', () => {
@@ -90,6 +132,7 @@ describe('German catalog is translated (not English left in place)', () => {
     'settings', 'settingsDocs', 'settingsCastsCoverage', 'settingsSkills', 'settingsTrust',
     'settingsAirtable', 'settingsBookingFlow', 'settingsHireOrders', 'settingsEmailTemplates',
     'settingsRolesRights', 'settingsEditor',
+    'auth', 'admin', 'artists', 'productions', 'hireOrdersPages', 'showsDetail', 'chats', 'profile',
   ] as const) {
     it(`de differs from en for translatable keys in "${ns}"`, () => {
       const en = leaves(resources.en[ns]);
