@@ -55,9 +55,10 @@ Object.assign(
 import { useAuth } from "@/features/auth/AuthContext";
 import { BookingFlowTab } from "./BookingFlowTab";
 
-function Harness({ orgFlow, dirtyKeys = [], readOnly }: { orgFlow?: BookingFlow; dirtyKeys?: string[]; readOnly?: boolean } = {}) {
+function Harness({ orgFlow, storedTemplate, dirtyKeys = [], readOnly }: { orgFlow?: BookingFlow; storedTemplate?: string; dirtyKeys?: string[]; readOnly?: boolean } = {}) {
   const [draft, setDraft] = useState<Record<string, unknown>>({
     booking_flow: orgFlow ?? BOOKING_FLOW_DEFAULTS,
+    booking_flow_template: storedTemplate,
     offer_response_window_hours: 48,
     offer_digest_hour_berlin: 19,
     confirmation_digest_hour_berlin: 20,
@@ -94,6 +95,14 @@ describe("BookingFlowTab", () => {
     fireEvent.click(await screen.findByRole("button", { name: /direct book/i }));
     expect(screen.getAllByText("Skipped").length).toBeGreaterThanOrEqual(2);
     expect(screen.getByText("Locked on")).toBeInTheDocument();
+  });
+
+  it("preserves the org reference field when switching templates", async () => {
+    renderWithProviders(<Harness orgFlow={{ ...BOOKING_FLOW_DEFAULTS, reference_field: { source: "program" } }} />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /fast-track/i }));
+
+    expect(screen.getByRole("combobox", { name: /reference field/i })).toHaveTextContent("Program only");
   });
 
   it("shows the resulting lifecycle chips in the rail", () => {
@@ -240,6 +249,13 @@ describe("BookingFlowTab", () => {
   });
 
   describe("off state", () => {
+    it("does not disable an active flow when a stale stored identity still says Off", async () => {
+      renderWithProviders(<Harness storedTemplate="off" />);
+
+      expect(screen.queryByText(/booking flow is off/i)).not.toBeInTheDocument();
+      expect(await screen.findByRole("switch", { name: /^artist acceptance$/i })).not.toBeDisabled();
+    });
+
     it("shows the Off state: banner + Off tile pressed when the flow is inactive", async () => {
       renderWithProviders(<Harness orgFlow={{ ...BOOKING_FLOW_DEFAULTS, active: false }} />);
 

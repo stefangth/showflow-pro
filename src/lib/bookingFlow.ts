@@ -398,6 +398,7 @@ const FLOW_FIELD_LABELS: Record<keyof BookingFlow, string> = {
 
 const SETTING_LABELS: Record<string, string> = {
   booking_flow: "Booking engine",
+  booking_flow_template: "Booking engine template",
   offer_response_window_hours: "Response window",
   offer_digest_hour_berlin: "Offer digest hour",
   confirmation_digest_hour_berlin: "Confirmation digest hour",

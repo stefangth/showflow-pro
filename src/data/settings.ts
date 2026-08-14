@@ -102,6 +102,21 @@ export async function upsertOrgSetting(
   if (error) throw error;
 }
 
+/** Upsert a related group of per-org settings in one request. This keeps values that
+ * must describe the same choice (for example a flow snapshot and its template identity)
+ * from being split across separate client writes. */
+export async function upsertOrgSettings(
+  client: SupabaseClient<Database>,
+  orgId: string,
+  settings: readonly { key: string; value: Json }[],
+): Promise<void> {
+  const { error } = await client.from("app_settings").upsert(
+    settings.map(({ key, value }) => ({ org_id: orgId, key, value })),
+    { onConflict: "org_id,key" },
+  );
+  if (error) throw error;
+}
+
 /**
  * Whether the org has ITS OWN row for `key`, as opposed to inheriting the platform
  * default or a code fallback. `resolveOrgSetting` deliberately cannot answer this: it

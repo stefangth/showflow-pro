@@ -14,22 +14,13 @@ vi.mock("@/data/settings", () => ({
 vi.mock("@/data/platform", () => ({
   EMPTY_STARTER_TEMPLATE: { skills: [], cities: [], casts: [] },
   savePlatformSetting: vi.fn(() => Promise.resolve()),
-  fetchPlatformBookingDefaults: vi.fn(),
-  savePlatformBookingDefaults: vi.fn(() => Promise.resolve()),
   fetchPlatformBookingTemplates: vi.fn(async () => (await import("@/lib/bookingFlow")).BOOKING_FLOW_TEMPLATE_DEFAULTS),
   savePlatformBookingTemplates: vi.fn(() => Promise.resolve()),
 }));
 
 import { PlatformDefaultsTab } from "./PlatformDefaultsTab";
-import { fetchPlatformBookingDefaults, savePlatformSetting } from "@/data/platform";
+import { savePlatformSetting } from "@/data/platform";
 import { resolveOrgSetting } from "@/data/settings";
-
-const DEFAULTS = {
-  offer_response_window_hours: 36,
-  offer_digest_hour_berlin: 18,
-  confirmation_digest_hour_berlin: 21,
-  resend_from_address: "Platform <p@x.com>",
-};
 
 describe("PlatformDefaultsTab — email sender default", () => {
   beforeEach(() => vi.clearAllMocks());
@@ -65,7 +56,6 @@ describe("PlatformDefaultsTab — email sender default", () => {
 describe("PlatformDefaultsTab — default modules", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    (fetchPlatformBookingDefaults as ReturnType<typeof vi.fn>).mockResolvedValue(DEFAULTS);
   });
 
   it("loads the platform default entitlements into switches", async () => {
@@ -106,7 +96,6 @@ describe("PlatformDefaultsTab — settings-read failure guards", () => {
       if (key === "default_entitlements") return Promise.resolve({ booking_flow: true, hire_orders: false });
       return Promise.resolve({ skills: [], cities: [], casts: [] });
     });
-    (fetchPlatformBookingDefaults as ReturnType<typeof vi.fn>).mockResolvedValue(DEFAULTS);
     renderWithProviders(<PlatformDefaultsTab />);
 
     expect(await screen.findByText(/permission denied for table app_settings/i)).toBeInTheDocument();
@@ -120,7 +109,6 @@ describe("PlatformDefaultsTab — settings-read failure guards", () => {
       if (key === "default_entitlements") return Promise.resolve({ booking_flow: true, hire_orders: false });
       return Promise.resolve({ skills: [], cities: [], casts: [] });
     });
-    (fetchPlatformBookingDefaults as ReturnType<typeof vi.fn>).mockResolvedValue(DEFAULTS);
     renderWithProviders(<PlatformDefaultsTab />);
 
     expect(await screen.findByText(/network error/i)).toBeInTheDocument();
@@ -132,7 +120,6 @@ describe("PlatformDefaultsTab — settings-read failure guards", () => {
       if (key === "default_entitlements") return Promise.reject(new Error("permission denied for table app_settings"));
       return Promise.resolve({ skills: [], cities: [], casts: [] });
     });
-    (fetchPlatformBookingDefaults as ReturnType<typeof vi.fn>).mockResolvedValue(DEFAULTS);
     renderWithProviders(<PlatformDefaultsTab />);
 
     expect(await screen.findAllByText(/permission denied for table app_settings/i)).not.toHaveLength(0);

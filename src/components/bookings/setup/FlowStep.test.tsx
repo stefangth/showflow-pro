@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { screen } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { renderWithProviders } from "@/test/renderWithProviders";
 
-const { flowRef, flowErrorRef, timesRef, flowOrgSpy, timesOrgSpy } = vi.hoisted(() => ({
+const { flowRef, flowErrorRef, timesRef, flowOrgSpy, timesOrgSpy, upsertOrgSettings } = vi.hoisted(() => ({
   flowRef: { value: undefined as unknown },
   // Ref-held so a test can put the query into its error state, where `data` is
   // undefined FOREVER rather than just not yet.
@@ -10,6 +10,11 @@ const { flowRef, flowErrorRef, timesRef, flowOrgSpy, timesOrgSpy } = vi.hoisted(
   timesRef: { value: { windowHours: 48, offerDigestHour: 19, confirmationDigestHour: 20 } },
   flowOrgSpy: vi.fn(),
   timesOrgSpy: vi.fn(),
+  upsertOrgSettings: vi.fn(() => Promise.resolve()),
+}));
+vi.mock("@/data/settings", async (original) => ({
+  ...(await original<typeof import("@/data/settings")>()),
+  upsertOrgSettings,
 }));
 vi.mock("@/hooks/useBookingFlow", () => ({
   useBookingFlow: (orgId?: string | null) => {
@@ -28,6 +33,7 @@ beforeEach(() => {
   flowErrorRef.value = null;
   flowOrgSpy.mockClear();
   timesOrgSpy.mockClear();
+  upsertOrgSettings.mockClear();
 });
 
 describe("FlowStep", () => {
@@ -85,6 +91,22 @@ describe("FlowStep", () => {
   it("enables saving once the org's own flow is in hand", async () => {
     renderWithProviders(<FlowStep orgId="org-1" onDone={() => {}} />);
     expect(await screen.findByRole("button", { name: /use classic/i })).toBeEnabled();
+  });
+
+  it("persists the selected template identity with the onboarding flow", async () => {
+    renderWithProviders(<FlowStep orgId="org-1" onDone={() => {}} />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /fast-track/i }));
+    fireEvent.click(screen.getByRole("button", { name: /use fast-track/i }));
+
+    await waitFor(() => expect(upsertOrgSettings).toHaveBeenCalledWith(
+      expect.anything(),
+      "org-1",
+      expect.arrayContaining([
+        expect.objectContaining({ key: "booking_flow" }),
+        { key: "booking_flow_template", value: "fasttrack" },
+      ]),
+    ));
   });
 
   it("re-suggests the preset when the org changes under it", async () => {

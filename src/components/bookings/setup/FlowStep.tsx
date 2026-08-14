@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { upsertOrgSetting, DEFAULT_FLOW_TIMES } from "@/data/settings";
+import { upsertOrgSettings, DEFAULT_FLOW_TIMES } from "@/data/settings";
 import { useBookingFlow, useFlowTimes } from "@/hooks/useBookingFlow";
 import {
   applyPreset, matchPreset, normalizeBookingFlow, lifecycleChips, inPracticeRows,
@@ -63,7 +63,10 @@ export function FlowStep({ orgId, onDone }: { orgId: string | null; onDone: () =
   const save = useMutation({
     mutationFn: () => {
       if (!orgId) throw new Error("No active organization");
-      return upsertOrgSetting(supabase, orgId, "booking_flow", preview as unknown as Json);
+      return upsertOrgSettings(supabase, orgId, [
+        { key: "booking_flow", value: preview as unknown as Json },
+        { key: "booking_flow_template", value: active as unknown as Json },
+      ]);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["app-settings"] });

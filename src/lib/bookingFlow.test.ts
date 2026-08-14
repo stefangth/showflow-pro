@@ -313,6 +313,11 @@ describe("describeAuditEntry", () => {
       describeAuditEntry({ key: "offer_response_window_hours", old_value: 72, new_value: 48 }),
     ).toBe("Response window: 72 → 48");
   });
+  it("uses a friendly label for template identity changes", () => {
+    expect(
+      describeAuditEntry({ key: "booking_flow_template", old_value: "classic", new_value: "fasttrack" }),
+    ).toBe("Booking engine template: classic → fasttrack");
+  });
   it("shows a diff when only the custom reference field id changes", () => {
     // Switching from one custom field to another is a real, user-visible change;
     // rendering both sides as a bare "custom field" hid it as "No effective change".

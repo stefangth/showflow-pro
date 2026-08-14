@@ -89,7 +89,10 @@ export function BookingFlowTab({ get, set, dirtyKeys, saving, onSave, onDiscard,
   const selected = (["classic", "fasttrack", "direct", "off"].includes(String(storedTemplate))
     ? storedTemplate
     : inferBookingTemplate(flow, times, platformTemplates)) as BookingTemplateName;
-  const isOff = !stepsDisabled && selected === "off";
+  // Runtime state comes from the flow itself. Template identity only tells us which
+  // platform definition this org started from and may legitimately lag after another
+  // write path changes the flow (for example the onboarding rail).
+  const isOff = !stepsDisabled && !flow.active;
   const audit = useSettingsAudit(BOOKING_AUDIT_KEYS);
 
   const customFields = (customFieldDefs ?? []).map((d) => ({ id: d.id, label: d.label }));
@@ -134,7 +137,9 @@ export function BookingFlowTab({ get, set, dirtyKeys, saving, onSave, onDiscard,
   };
   const onPreset = (p: BookingTemplateName) => {
     const definition = platformTemplates[p];
-    const next = definition.flow;
+    // Template selection changes automation policy and timing. The org's reference
+    // field is independent content configuration and must survive the switch.
+    const next = { ...definition.flow, reference_field: flow.reference_field };
     // A preset click is an explicit choice too: while it keeps acceptance on, its
     // producer_confirmation becomes the value a later acceptance off/on round trip
     // restores. Skipping this tracking left the ref stale (e.g. Fast-track's

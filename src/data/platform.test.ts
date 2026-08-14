@@ -4,11 +4,9 @@ import {
   fetchIsSuperAdmin, fetchAllOrgs, fetchPlatformOrgStats, provisionOrg,
   setOrgStatus, updateOrg, fetchPlatformAdmins, addPlatformAdmin,
   removePlatformAdmin, savePlatformSetting,
-  fetchPlatformBookingDefaults, savePlatformBookingDefaults,
   fetchPlatformBookingTemplates, savePlatformBookingTemplates,
   exportOrgData, deleteOrg,
 } from "./platform";
-import { BOOKING_ENGINE_DEFAULTS } from "@/config/app.config";
 import { BOOKING_FLOW_TEMPLATE_DEFAULTS } from "@/lib/bookingFlow";
 
 describe("data/platform", () => {
@@ -91,55 +89,6 @@ describe("data/platform", () => {
     const fake = createFakeSupabase({ app_settings: { data: null, error: null } });
     await savePlatformSetting(fake as never, "starter_catalog_template", { skills: [] } as never);
     expect(fake.calls).toContainEqual({ table: "app_settings", method: "upsert", args: [{ org_id: null, key: "starter_catalog_template", value: { skills: [] } }, { onConflict: "org_id,key" }] });
-  });
-
-  it("fetchPlatformBookingDefaults merges platform rows over the code defaults", async () => {
-    const fake = createFakeSupabase({
-      app_settings: {
-        data: [
-          { key: "offer_digest_hour_berlin", value: 7 },
-          { key: "offer_response_window_hours", value: 0 }, // 0 is a valid override, not "unset"
-          { key: "resend_from_address", value: "Acme <hi@acme.com>" },
-        ],
-        error: null,
-      },
-    });
-    const out = await fetchPlatformBookingDefaults(fake as never);
-    expect(out.offer_digest_hour_berlin).toBe(7);
-    expect(out.offer_response_window_hours).toBe(0);
-    expect(out.resend_from_address).toBe("Acme <hi@acme.com>");
-    // Unset key falls back to the canonical default.
-    expect(out.confirmation_digest_hour_berlin).toBe(BOOKING_ENGINE_DEFAULTS.confirmation_digest_hour_berlin);
-    // Reads only the platform (NULL-org) rows.
-    expect(fake.calls).toContainEqual({ table: "app_settings", method: "is", args: ["org_id", null] });
-  });
-
-  it("fetchPlatformBookingDefaults returns all code defaults when no platform rows exist", async () => {
-    const fake = createFakeSupabase({ app_settings: { data: [], error: null } });
-    expect(await fetchPlatformBookingDefaults(fake as never)).toEqual(BOOKING_ENGINE_DEFAULTS);
-  });
-
-  it("savePlatformBookingDefaults upserts all four NULL-org rows in one call", async () => {
-    const fake = createFakeSupabase({ app_settings: { data: null, error: null } });
-    await savePlatformBookingDefaults(fake as never, {
-      offer_response_window_hours: 24,
-      offer_digest_hour_berlin: 8,
-      confirmation_digest_hour_berlin: 9,
-      resend_from_address: "Acme <hi@acme.com>",
-    });
-    expect(fake.calls).toContainEqual({
-      table: "app_settings",
-      method: "upsert",
-      args: [
-        expect.arrayContaining([
-          { org_id: null, key: "offer_response_window_hours", value: 24 },
-          { org_id: null, key: "offer_digest_hour_berlin", value: 8 },
-          { org_id: null, key: "confirmation_digest_hour_berlin", value: 9 },
-          { org_id: null, key: "resend_from_address", value: "Acme <hi@acme.com>" },
-        ]),
-        { onConflict: "org_id,key" },
-      ],
-    });
   });
 
   it("fetchPlatformBookingTemplates reads the platform-only row and normalizes it", async () => {

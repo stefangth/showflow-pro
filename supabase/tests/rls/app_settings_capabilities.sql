@@ -4,7 +4,7 @@
 -- SELECT always (read-only floor). edit_booking_settings defaults OFF.
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT plan(7);
+SELECT plan(9);
 
 SET session_replication_role = replica;
 INSERT INTO auth.users (id, aud, role, email, created_at, updated_at) VALUES
@@ -36,6 +36,8 @@ SET LOCAL ROLE authenticated;
 UPDATE public.app_settings SET value='99'::jsonb WHERE key='offer_response_window_hours' AND org_id='22222222-0008-4001-8001-000000000001';
 SELECT is((SELECT value::text FROM public.app_settings WHERE key='offer_response_window_hours' AND org_id='22222222-0008-4001-8001-000000000001'), '99', 'producer UPDATE booking setting applied when edit on');
 SELECT lives_ok($$ insert into public.app_settings (key, value, org_id) values ('offer_digest_hour_berlin','19'::jsonb,'22222222-0008-4001-8001-000000000001') $$, 'producer INSERT booking setting allowed when edit on');
+SELECT lives_ok($$ insert into public.app_settings (key, value, org_id) values ('booking_flow_template','"classic"'::jsonb,'22222222-0008-4001-8001-000000000001') $$, 'producer INSERT booking template identity allowed when edit on');
+SELECT throws_ok($$ insert into public.app_settings (key, value, org_id) values ('booking_flow_templates','{}'::jsonb,null) $$, '42501', NULL, 'producer cannot create the platform booking templates row');
 SELECT throws_ok($$ insert into public.app_settings (key, value, org_id) values ('starter_catalog_template','{}'::jsonb,'22222222-0008-4001-8001-000000000001') $$, '42501', NULL, 'producer INSERT admin-only key still denied when a cap is on');
 RESET ROLE;
 
