@@ -19,6 +19,7 @@ describe('catalog key parity', () => {
     'settings', 'settingsDocs', 'settingsCastsCoverage', 'settingsSkills', 'settingsTrust',
     'settingsAirtable', 'settingsBookingFlow', 'settingsHireOrders', 'settingsEmailTemplates',
     'settingsRolesRights', 'settingsEditor',
+    'auth', 'admin', 'artists', 'productions', 'hireOrdersPages', 'showsDetail', 'chats', 'profile',
   ] as const) {
     it(`de matches en for namespace "${ns}"`, () => {
       const en = keyset(resources.en[ns]).sort();

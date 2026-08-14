@@ -15,6 +15,14 @@ import type enSettingsHireOrders from './locales/en/settingsHireOrders.json';
 import type enSettingsEmailTemplates from './locales/en/settingsEmailTemplates.json';
 import type enSettingsRolesRights from './locales/en/settingsRolesRights.json';
 import type enSettingsEditor from './locales/en/settingsEditor.json';
+import type enAuth from './locales/en/auth.json';
+import type enAdmin from './locales/en/admin.json';
+import type enArtists from './locales/en/artists.json';
+import type enProductions from './locales/en/productions.json';
+import type enHireOrdersPages from './locales/en/hireOrdersPages.json';
+import type enShowsDetail from './locales/en/showsDetail.json';
+import type enChats from './locales/en/chats.json';
+import type enProfile from './locales/en/profile.json';
 
 // Typed resources: `t('nav.help')` autocompletes and an unknown key is a compile error.
 // English is the canonical shape; the key-parity test enforces German matches it.
