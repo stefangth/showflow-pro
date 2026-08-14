@@ -27,7 +27,12 @@ const IDENTICAL_OK: Record<string, string> = {
 };
 
 describe('German catalog is translated (not English left in place)', () => {
-  for (const ns of ['bookings', 'availability'] as const) {
+  for (const ns of [
+    'bookings', 'availability',
+    'settings', 'settingsDocs', 'settingsCastsCoverage', 'settingsSkills', 'settingsTrust',
+    'settingsAirtable', 'settingsBookingFlow', 'settingsHireOrders', 'settingsEmailTemplates',
+    'settingsRolesRights', 'settingsEditor',
+  ] as const) {
     it(`de differs from en for translatable keys in "${ns}"`, () => {
       const en = leaves(resources.en[ns]);
       const de = leaves(resources.de[ns]);
