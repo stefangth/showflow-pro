@@ -56,8 +56,8 @@ export function EligibilityStep({ coverage, orgId }: { coverage: LadderCoverageI
       <div className="flex flex-wrap gap-x-4 gap-y-1">
         {/* Deep-linked for the same reason as LadderStep's twin: the label names the
             section, so the href has to land there rather than on the role default. */}
-        <Link to={`${ROUTES.SETTINGS}?tab=casts-cities`} className="text-xs text-primary underline">
-          Link casts in Settings, Casts and cities
+        <Link to={`${ROUTES.SETTINGS}?tab=casts-coverage`} className="text-xs text-primary underline">
+          Link casts in Settings, Casts & coverage
         </Link>
         {/* Same house vocabulary as LadderStep, same escape hatch: the Help center. */}
         <Link to={ROUTES.HELP} className="text-xs text-primary underline">

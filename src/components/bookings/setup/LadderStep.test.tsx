@@ -74,7 +74,7 @@ describe("LadderStep", () => {
   });
 
   it("lands the edit link on the section its own label names", () => {
-    // The label says "Settings, Casts and cities" and used to point at bare /settings,
+    // The label says "Settings, Casts & coverage" and used to point at bare /settings,
     // which opens Organization for an admin and Scheduling for a producer: the one link on
     // this panel that names its destination was the one that did not go there. Its sibling
     // (the docs link below) has been honouring `?tab=` since deep-linking landed.
@@ -82,9 +82,9 @@ describe("LadderStep", () => {
     renderWithProviders(
       <MemoryRouter><LadderStep coverage={coverage} orgId="org-1" /></MemoryRouter>,
     );
-    expect(screen.getByRole("link", { name: /rank casts in settings, casts and cities/i })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /rank casts in settings, casts & coverage/i })).toHaveAttribute(
       "href",
-      `${ROUTES.SETTINGS}?tab=casts-cities`,
+      `${ROUTES.SETTINGS}?tab=casts-coverage`,
     );
   });
 

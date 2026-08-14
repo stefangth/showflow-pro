@@ -293,7 +293,7 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
               Tick the cells where this cast is eligible. New show dates synced from Airtable will inherit these settings; per-date overrides are configured on each show date.
             </p>
             {(cities ?? []).length === 0 && (
-              <p className="text-sm text-muted-foreground">Add cities first in Settings → Casts & Cities.</p>
+              <p className="text-sm text-muted-foreground">Add cities first in Settings → Casts & coverage.</p>
             )}
             {(shows ?? []).length === 0 && (
               <p className="text-sm text-muted-foreground">No shows available.</p>
@@ -334,10 +334,10 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
 
           <TabsContent value="offer-order" className="mt-4 space-y-3">
             <p className="text-xs text-muted-foreground">
-              Where this cast sits in the offer order. Manage it in Settings, Casts and cities, same setting.
+              Where this cast sits in the offer order. Manage it in Settings, Casts & coverage, same setting.
             </p>
             {(cities ?? []).length === 0 ? (
-              <p className="text-sm text-muted-foreground">Add cities first in Settings → Casts & Cities.</p>
+              <p className="text-sm text-muted-foreground">Add cities first in Settings → Casts & coverage.</p>
             ) : (
               <div className="space-y-2">
                 {(cities ?? []).map((city) => {

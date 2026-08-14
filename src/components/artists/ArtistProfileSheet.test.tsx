@@ -178,9 +178,9 @@ describe("ArtistProfileSheet — skills editor (design 1i)", () => {
     expect(screen.queryByPlaceholderText(/search or type to create/i)).not.toBeInTheDocument();
   });
 
-  it('renders the "Settings, Casts & Cities" helper link to the catalog', () => {
+  it('renders the "Settings, Casts & coverage" helper link to the catalog', () => {
     renderSheet();
-    const link = screen.getByRole("link", { name: "Settings, Casts & Cities" });
+    const link = screen.getByRole("link", { name: "Settings, Casts & coverage" });
     expect(link).toHaveAttribute("href", expect.stringContaining("/settings"));
   });
 
@@ -234,6 +234,6 @@ describe("ArtistProfileSheet — skills editor (design 1i)", () => {
     expect(within(vocalsRow).getByText("Vocals")).toBeInTheDocument();
     expect(within(vocalsRow).queryByLabelText("Remove Vocals")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Piano/ })).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Settings, Casts & Cities" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Settings, Casts & coverage" })).not.toBeInTheDocument();
   });
 });
