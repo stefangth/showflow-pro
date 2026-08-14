@@ -1,0 +1,81 @@
+# i18n Initiative — Remaining Work Handoff
+
+**Purpose:** track what is left to make ShowFlow a fully bilingual (EN/DE) app, after the Phase-1 foundation and the Phase-2 domain migrations. Living checklist; update as PRs land.
+
+**Spec:** `docs/superpowers/specs/2026-08-14-i18n-and-help-page-design.md` ("Whole-app rollout strategy", §181-203).
+**Pattern to follow for every domain PR:** the settings plan `docs/superpowers/plans/2026-08-14-i18n-phase2-settings.md` (byte-identical EN, `Du`/no-dash/TERMS DE, keyParity + copyLint + translationCompleteness gates, dark behind `language_packages`).
+
+> **Explicitly OUT OF SCOPE — will NOT be done:** the **`platform` / super-admin console** (`PlatformPage` + `src/components/platform/*`). Decision (2026-08-14): we are not localizing the super-admin surface. Do not add a `platform` namespace.
+
+---
+
+## Done
+
+- **Foundation:** `src/i18n/` (config, typed resources, `TERMS`), keyParity + copyLint + translationCompleteness CI gates, `LanguageContext`, account-menu language switcher, `language_packages` entitlement (dark). *(PR #280, awaiting merge.)*
+- **`common` + `help`** shell chrome + Help center. *(PR #280.)*
+- **`dashboard`** namespace + language gating. *(#281, merged.)*
+- **`bookings` + `availability`** namespaces. *(PR #282, awaiting merge.)*
+- **`settings` surface** — 11 namespaces, whole surface, deferrals folded in. *(PR #287, awaiting merge.)*
+
+---
+
+## Remaining work
+
+### A. UI domain namespaces (each ≈ one PR, settings pattern)
+- [ ] **auth** — LoginPage, AcceptInvitePage, AuthCallbackPage, ResetPasswordPage, NoOrgScreen, SuspendedOrgScreen, FeatureDisabledScreen, NotFound. *(Small, high-visibility, unblocked.)*
+- [ ] **admin** — AdminPage + `src/components/admin/people/*` (People pane, invites, bulk).
+- [ ] **artists** — ArtistsPage + `src/components/artists/*` + the artist import wizard (`src/lib/artistImport/*` display strings).
+- [ ] **productions** — ProductionsPage + `src/components/catalog/*` (ShowFormDialog).
+- [ ] **hireOrdersPages** — HireOrdersPage, HireOrderDetailPage, HireOrderEditPage + `src/components/hireOrders/*` (viewer/import/setup) + `src/components/shows/hireOrders/*`. *(Distinct from the already-done settings hire-orders TAB.)*
+- [ ] **showsDetail** — ShowDateDetailSheet + `src/components/shows/date/*` cockpit, `src/components/casts/*`, ShowDateFormDialog. *(Largest single sheet.)*
+- [ ] **chats** — ChatsListPage + `src/components/chat/*`.
+- [ ] **profile** — ProfilePage.
+- [ ] ~~platform~~ — **OUT OF SCOPE (see banner above).**
+
+### B. Cross-cutting client infra
+- [ ] **`onboarding` namespace (shared)** — `src/lib/dashboard/stageChain.ts`, `moduleOnboarding.ts`, and the setup rails (`bookings/setup/*`, `hireOrders/setup/*`, dashboard `firstRun` copy). Deferred three times; spans domains, so its own PR.
+- [ ] **`flowCopy` family** — `@/lib/flowCopy`, `bookingFlow.referenceLabel`, `bookings/timingCopy`, `bookings/actionCopy`, `bookingCockpit` DatePeek. **These still render English on the already-migrated dashboard/bookings/availability pages** — those domains aren't truly complete until this lands.
+- [ ] **Locale-aware `src/lib/dates.ts`** — weekday-header arrays, `date-fns format(...)`, `toLocaleDateString('en-GB')`, fee/number formatting via `Intl`. Touches call sites app-wide.
+- [ ] **`i18next-parser` in CI** — currently local-only (`i18n:extract`/`i18n:check`); resolve the `--fail-on-update` byte-identical-write quirk, then gate.
+
+### C. Server-side / Phase 3 (not client `t()`)
+- [ ] **Persist `preferred_language` on the user** (DB + auth/profile). **Prerequisite** for per-recipient localization below.
+- [ ] **Transactional emails** — `supabase/functions/_shared/transactional-email-templates/*` need an **edge-runtime bilingual mirror** to render per recipient language. Depends on `preferred_language`.
+- [ ] **Hire-order PDFs** — `src/lib/hireOrders/pdf/pdfTheme.ts` + generation; same edge-runtime localization problem.
+- [ ] **`capabilities.ts` `CAPABILITY_DEFS` labels** — registry mirrored to the edge runtime; needs a bilingual approach valid in both runtimes (feeds the already-migrated rolesRights UI).
+- [ ] **`trust/facts.ts` → `trust.json`** — cross-repo build consumed by the landing page; add a DE column / bilingual build.
+- [ ] **`systemMap.ts` + `docs/*.md` bodies** — canvas data + markdown document content.
+
+### D. Ship gates (not code)
+- [ ] Merge queued PRs (#280, #282, #287).
+- [ ] **Native-speaker QA of the German.** `translationCompleteness` only catches paste-throughs (DE == EN), **not mistranslations**; ~1,000+ DE strings so far are unproofed.
+- [ ] Enable `language_packages` per org (super-admin) once a workspace's German is signed off.
+
+---
+
+## Parallelization
+
+The migration is embarrassingly parallel at the **file** level: each domain owns disjoint components + its own catalog pair. The only true coupling is the **4 shared i18n registration files** (`index.ts`, `react-i18next.d.ts`, `keyParity.test.ts`, `translationCompleteness.test.ts`). Two ways to exploit it:
+
+- **Within one PR/session:** register all target namespaces up front (one serial infra commit), then fan out one subagent per domain — exactly how the settings PR ran 13 subagents.
+- **Across separate branches/PRs:** components merge cleanly, but the 4 registration files conflict. Either (a) land a single "register namespaces N…M" infra PR first and branch each domain off it, or (b) accept trivial re-registration conflicts and resolve on merge.
+
+### Can run fully in parallel (disjoint files, no ordering dependency)
+- **All of A** (auth, admin, artists, productions, hireOrdersPages, showsDetail, chats, profile) — mutually independent.
+- **B → `i18next-parser` CI** — isolated (package.json/CI/scripts), independent of everything.
+- **B → `flowCopy`** — independent of A (its consumers are the *already-migrated* dashboard/bookings/availability pages, not the un-migrated A domains).
+- **B → `onboarding`** — independent of A (setup-rail files are disjoint from the A domain components).
+- **C → transactional emails, hire-order PDFs, `trust.json`, `systemMap`** — separate runtime/build/files; independent of all client work. (Emails + PDFs are *feature*-blocked by `preferred_language` for real per-user targeting, but the template localization itself can be built in parallel.)
+
+### Must be coordinated / effectively serial
+- **B → `dates.ts`** — changes date/number call sites **app-wide**, so it collides with essentially every other in-flight domain PR. Do it **alone**, ideally after the domain PRs settle (or first, then rebase domains onto it).
+- **The 4 shared registration files** — one writer at a time (see above).
+- **C → `preferred_language`** — do **before** wiring emails/PDFs to a user's language (it's their targeting key). The email/PDF *template* work can proceed in parallel; only the "pick the recipient's language" wiring waits on it.
+- **C → `capabilities` bilingual** — coordinate with any rolesRights follow-up (shared registry, edge mirror).
+
+### Suggested waves
+1. **Wave 1 (max fan-out):** all A domains + `flowCopy` + `onboarding` + `i18next-parser` CI + (server) email/PDF/`trust.json`/`systemMap` templates + `preferred_language` DB.
+2. **Wave 2 (after Wave 1 settles):** `dates.ts` (alone), then wire emails/PDFs to `preferred_language`, `capabilities` bilingual.
+3. **Wave 3 (ship):** native-speaker QA, merge, enable entitlement per org.
+
+**Recommended first up:** `auth` (small, high-visibility) + `flowCopy` (finishes the pages already touched).
