@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { X } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import {
   SYSTEM_MAP_NODES,
@@ -11,12 +12,6 @@ import {
 } from "@/data/systemMap";
 
 const COLUMN_ORDER: Column[] = ["trigger", "fn", "db", "fx"];
-const COLUMN_LABELS: Record<Column, string> = {
-  trigger: "Triggers",
-  fn: "Edge functions",
-  db: "Database",
-  fx: "Effects",
-};
 
 const KIND_BORDER_CLASS: Record<NodeKind, string> = {
   cron: "border-l-warning",
@@ -35,14 +30,6 @@ const KIND_STROKE_TOKEN: Record<NodeKind, string> = {
 };
 
 const SUBSYSTEMS: Subsystem[] = ["booking", "email", "airtable", "platform", "gdpr"];
-
-const SUBSYSTEM_LABELS: Record<Subsystem, string> = {
-  booking: "Booking",
-  email: "Email",
-  airtable: "Airtable sync",
-  platform: "Platform",
-  gdpr: "GDPR",
-};
 
 interface EdgeLine {
   key: string;
@@ -77,6 +64,20 @@ function groupBySubHeader(nodes: SystemMapNode[]) {
 }
 
 export function SystemMapCanvas() {
+  const { t } = useTranslation('settingsDocs');
+  const COLUMN_LABELS: Record<Column, string> = {
+    trigger: t('systemMapCanvas.columns.trigger'),
+    fn: t('systemMapCanvas.columns.fn'),
+    db: t('systemMapCanvas.columns.db'),
+    fx: t('systemMapCanvas.columns.fx'),
+  };
+  const SUBSYSTEM_LABELS: Record<Subsystem, string> = {
+    booking: t('systemMapCanvas.subsystems.booking'),
+    email: t('systemMapCanvas.subsystems.email'),
+    airtable: t('systemMapCanvas.subsystems.airtable'),
+    platform: t('systemMapCanvas.subsystems.platform'),
+    gdpr: t('systemMapCanvas.subsystems.gdpr'),
+  };
   const [filter, setFilter] = useState<Subsystem | "all">("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [edgeLines, setEdgeLines] = useState<EdgeLine[]>([]);
@@ -187,7 +188,7 @@ export function SystemMapCanvas() {
               : "bg-background text-foreground hover:bg-muted",
           )}
         >
-          All
+          {t('systemMapCanvas.subsystems.all')}
         </button>
         {SUBSYSTEMS.map((sub) => (
           <button
@@ -283,7 +284,7 @@ export function SystemMapCanvas() {
 
         {selectedNode ? (
           <aside
-            aria-label="Node details"
+            aria-label={t('systemMapCanvas.nodeDetails')}
             className="w-72 shrink-0 rounded-md border border-border bg-card p-4"
           >
             <div className="mb-3 flex items-start justify-between gap-2">
@@ -296,7 +297,7 @@ export function SystemMapCanvas() {
               <button
                 type="button"
                 onClick={() => setSelectedId(null)}
-                aria-label="Close details"
+                aria-label={t('systemMapCanvas.closeDetails')}
                 className={cn(
                   "rounded-sm p-1 text-muted-foreground hover:text-foreground",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",

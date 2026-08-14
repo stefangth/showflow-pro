@@ -1,0 +1,63 @@
+{
+  "trustDataTab": {
+    "title": "Vertrauen & Daten",
+    "subtitle": "Was wir speichern, wer es lesen kann und wie lange wir es aufbewahren.",
+    "openPublicTrustCenter": "Öffentliches Trust Center öffnen"
+  },
+  "capabilitiesCard": {
+    "title": "Rechte",
+    "sensitive": "Sensibel",
+    "settingLocationNote": "Das ist die Position, in der jedes Recht ausgeliefert wird, nicht die aktuelle Einstellung dieser Organisation. Was hier eingeschaltet ist, findest Du unter Einstellungen, Rollen und Rechte."
+  },
+  "documentsCard": {
+    "title": "Dokumente"
+  },
+  "orgDataCard": {
+    "title": "Die Daten dieser Organisation",
+    "description": "Was {{orgName}} heute speichert, wo es liegt und welche anderen Organisationen auf ShowFlow Pro darauf zugreifen können. Keine.",
+    "defaultOrgName": "diesen Arbeitsbereich",
+    "unavailable": "Nicht verfügbar",
+    "unavailableTooltip": "Konnte gerade nicht gelesen werden",
+    "regionLabel": "Region",
+    "regionNote": "Verwaltetes Postgres, verschlüsselt gespeichert.",
+    "recordsLabel": "Datensätze",
+    "recordsValue": "{{value}} Engagements",
+    "recordsNote": "{{artists}} Artists · {{productions}} Produktionen.",
+    "recordsNoteFallback": "Engagements, Artists und Produktionen.",
+    "membersLabel": "Mitglieder",
+    "membersAdminOnly": "Nur für Admins",
+    "membersValue": "{{count}} Personen",
+    "membersNoteAdminOnly": "Sichtbar für Organisationsadmins.",
+    "membersNoteFallback": "Personen mit einem Zugang zu dieser Organisation.",
+    "rolesHeld": "Innehabende Rollen: {{admins}} {{adminWord}} · {{producers}} {{producerLabel}} · {{artists}} {{artistWord}}.",
+    "adminWord_one": "Admin",
+    "adminWord_other": "Admins",
+    "artistWord_one": "Artist",
+    "artistWord_other": "Artists",
+    "outsideReachLabel": "Zugriff von außen",
+    "outsideReachValue": "Keiner",
+    "outsideReachNote": "Keine andere Organisation kann eine Zeile lesen. supabase/tests/rls/org_isolation.sql belegt das für shows und show_dates, und supabase/tests/rls/org_coverage.sql bestätigt, dass die restriktive Richtlinie auf jeder Mandantentabelle in ihrer Liste existiert. Beide laufen bei jedem Pull Request."
+  },
+  "retentionCard": {
+    "title": "Aufbewahrung",
+    "intro": "Jede Kategorie unten hat eine festgelegte Frist, entnommen aus Abschnitt 7 der Datenschutzerklärung."
+  },
+  "visibilityMatrix": {
+    "title": "Wer kann was sehen",
+    "description": "Beantworte einen Artist Manager am Telefon. Rollen gelten pro Organisation, und was jede Rolle unten lesen kann, wird in der Datenbank durchgesetzt, nicht nur in der Oberfläche.",
+    "roleToInspect": "Zu prüfende Rolle",
+    "showingRole": "Zeigt, was die Rolle {{role}} lesen kann",
+    "regionScrollableLabel": "Was die Rolle {{role}} lesen kann und der Mechanismus, der das entscheidet, scrollbar",
+    "caption": "Was die Rolle {{role}} lesen kann und der Mechanismus, der das entscheidet",
+    "columnData": "Daten",
+    "columnAccess": "Zugriff",
+    "columnMechanism": "Mechanismus"
+  },
+  "yourDataCard": {
+    "title": "Export und Löschung",
+    "description": "Deine eigenen Daten sind ein Klick entfernt. Ein organisationsweiter Export oder eine Löschung ist eine Anfrage, die wir innerhalb eines Monats beantworten, weil sie einen Plattform-Admin braucht.",
+    "exportYourData": "Deine Daten exportieren",
+    "requestOrgExport": "Organisationsexport anfragen",
+    "deletionNote": "Das Löschen Deines Kontos anonymisiert, was Engagement-Datensätze aufbewahren müssen, und entfernt dann das Konto."
+  }
+}

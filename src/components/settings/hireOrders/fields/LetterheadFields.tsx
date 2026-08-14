@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -31,36 +32,37 @@ export function LetterheadFields({
   children,
   idPrefix = "ho",
 }: LetterheadFieldsProps) {
+  const { t } = useTranslation("settingsHireOrders");
   return (
     <div className="space-y-4">
       <div className="space-y-1.5">
-        <Label htmlFor={`${idPrefix}-legal-name`}>Legal name</Label>
+        <Label htmlFor={`${idPrefix}-legal-name`}>{t("letterheadFields.legalName")}</Label>
         <Input
           id={`${idPrefix}-legal-name`}
           value={value.legal_name}
-          placeholder="Aurora Productions GmbH"
+          placeholder={t("letterheadFields.legalNamePlaceholder")}
           disabled={readOnly}
           onChange={(e) => onChange({ ...value, legal_name: e.target.value })}
         />
       </div>
       <div className="space-y-1.5">
-        <Label htmlFor={`${idPrefix}-address`}>Address</Label>
+        <Label htmlFor={`${idPrefix}-address`}>{t("letterheadFields.address")}</Label>
         <Textarea
           id={`${idPrefix}-address`}
           rows={3}
           value={addressText}
-          placeholder={"Street and number\nPostal code and city\nCountry"}
+          placeholder={t("letterheadFields.addressPlaceholder")}
           disabled={readOnly}
           onChange={(e) => onAddressTextChange(e.target.value)}
         />
-        <p className="text-xs text-muted-foreground">One line per row.</p>
+        <p className="text-xs text-muted-foreground">{t("letterheadFields.addressHelp")}</p>
       </div>
       <div className="space-y-1.5">
-        <Label htmlFor={`${idPrefix}-registration`}>Registration line</Label>
+        <Label htmlFor={`${idPrefix}-registration`}>{t("letterheadFields.registrationLine")}</Label>
         <Input
           id={`${idPrefix}-registration`}
           value={value.registration_line}
-          placeholder="Registered at Amtsgericht Berlin, HRB 123456"
+          placeholder={t("letterheadFields.registrationLinePlaceholder")}
           disabled={readOnly}
           onChange={(e) => onChange({ ...value, registration_line: e.target.value })}
         />

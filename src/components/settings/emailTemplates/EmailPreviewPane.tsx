@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { previewEmailTemplate } from "@/data/emailTemplates";
 import { supabase } from "@/integrations/supabase/client";
@@ -25,6 +26,7 @@ export function EmailPreviewPane({
   highlightRole,
   dataOverride,
 }: EmailPreviewPaneProps) {
+  const { t } = useTranslation("settingsEmailTemplates");
   const [html, setHtml] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -61,20 +63,20 @@ export function EmailPreviewPane({
   }, []);
 
   return (
-    <section aria-label="Email preview" className="relative h-full overflow-y-auto bg-muted/30">
+    <section aria-label={t("emailPreviewPane.ariaLabel")} className="relative h-full overflow-y-auto bg-muted/30">
       {error ? (
         <Alert variant="destructive" className="m-3">
-          <AlertDescription>Could not render the preview. {error}</AlertDescription>
+          <AlertDescription>{t("emailPreviewPane.loadError", { message: error })}</AlertDescription>
         </Alert>
       ) : null}
       {pending ? (
         <p role="status" className="absolute right-3 top-3 z-10 rounded-md bg-background/90 px-2 py-1 text-xs text-muted-foreground shadow">
-          Updating
+          {t("emailPreviewPane.updating")}
         </p>
       ) : null}
       {html ? (
         <iframe
-          title="Email template preview"
+          title={t("emailPreviewPane.iframeTitle")}
           srcDoc={html}
           sandbox=""
           className="h-full w-full border-0 bg-background"

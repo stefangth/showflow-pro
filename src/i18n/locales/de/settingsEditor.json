@@ -1,0 +1,35 @@
+{
+  "copyField": {
+    "reset": "Zurücksetzen",
+    "resetAria": "{{label}} auf Standard zurücksetzen",
+    "tokens": "Platzhalter: {{tokens}}",
+    "dashWarning": "Verwende einen Punkt, ein Komma oder einen Mittelpunkt statt eines Gedankenstrichs."
+  },
+  "documentBase": {
+    "elementSettingsAria": "Elementeinstellungen",
+    "resetAria": "Dokumentstil auf Standard zurücksetzen",
+    "reset": "Zurücksetzen",
+    "colours": "Farben"
+  },
+  "roleStyle": {
+    "style": "Stil",
+    "resetAria": "{{label}}-Stil auf Standard zurücksetzen",
+    "reset": "Zurücksetzen",
+    "font": "Schrift",
+    "documentFont": "Dokumentschrift",
+    "size": "Größe",
+    "weight": "Schriftstärke",
+    "colour": "Farbe",
+    "letterSpacing": "Laufweite",
+    "case": "Groß und klein",
+    "asTyped": "Wie eingegeben",
+    "uppercase": "Großbuchstaben",
+    "weightRegular": "Normal",
+    "weightMedium": "Mittel",
+    "weightSemibold": "Halbfett"
+  },
+  "outline": {
+    "documentOutlineAria": "Dokumentgliederung",
+    "modifiedSuffix": ", geändert"
+  }
+}

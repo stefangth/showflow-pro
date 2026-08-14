@@ -1,0 +1,40 @@
+{
+  "documentationTab": {
+    "loading": "Loading…",
+    "guide": {
+      "title": "App Logic Guide",
+      "description": "How ShowFlow works: roles, data model, eligibility, and the full availability → booking flow."
+    },
+    "tabs": {
+      "guide": "App Logic",
+      "map": "System Map",
+      "reference": "Reference"
+    },
+    "map": {
+      "title": "Automation Engine Map",
+      "description": "Every trigger, edge function, database guard, and side effect. Click a node for its dossier."
+    },
+    "reference": {
+      "title": "System Map Reference",
+      "description": "The full written map (docs/system-map.md)."
+    }
+  },
+  "systemMapCanvas": {
+    "columns": {
+      "trigger": "Triggers",
+      "fn": "Edge functions",
+      "db": "Database",
+      "fx": "Effects"
+    },
+    "subsystems": {
+      "all": "All",
+      "booking": "Booking",
+      "email": "Email",
+      "airtable": "Airtable sync",
+      "platform": "Platform",
+      "gdpr": "GDPR"
+    },
+    "nodeDetails": "Node details",
+    "closeDetails": "Close details"
+  }
+}

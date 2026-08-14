@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { resolveOrgSetting, upsertOrgSetting } from "@/data/settings";
@@ -21,6 +22,7 @@ export interface HireOrderCountersign {
 }
 
 export function CountersignCard({ orgId, readOnly = false }: { orgId: string | null; readOnly?: boolean }) {
+  const { t } = useTranslation("settingsHireOrders");
   const qc = useQueryClient();
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["app-settings", "hire_order_countersign", orgId],
@@ -43,7 +45,7 @@ export function CountersignCard({ orgId, readOnly = false }: { orgId: string | n
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["app-settings"] });
       qc.invalidateQueries({ queryKey: ["hire-orders"] });
-      toast.success("Countersign mode saved");
+      toast.success(t("countersignCard.saved"));
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -55,7 +57,7 @@ export function CountersignCard({ orgId, readOnly = false }: { orgId: string | n
   if (isError) {
     return (
       <Alert variant="destructive">
-        <AlertDescription>Could not load the countersign settings. {(error as Error).message}</AlertDescription>
+        <AlertDescription>{t("countersignCard.loadError")} {(error as Error).message}</AlertDescription>
       </Alert>
     );
   }
@@ -63,13 +65,13 @@ export function CountersignCard({ orgId, readOnly = false }: { orgId: string | n
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="font-display">Countersign mode</CardTitle>
-        <CardDescription>How the artist's signature is captured once a hire order is issued.</CardDescription>
+        <CardTitle className="font-display">{t("countersignCard.title")}</CardTitle>
+        <CardDescription>{t("countersignCard.description")}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <CountersignFields value={form} onChange={setForm} readOnly={readOnly} />
         <Button onClick={() => save.mutate()} disabled={save.isPending || !orgId || readOnly}>
-          Save countersign mode
+          {t("countersignCard.save")}
         </Button>
       </CardContent>
     </Card>

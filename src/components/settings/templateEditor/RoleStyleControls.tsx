@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,12 +24,6 @@ export interface RoleStyleControlsProps<RoleKey extends string> {
   weightOptions?: readonly RoleWeightOption[];
 }
 
-const PDF_WEIGHT_OPTIONS: readonly RoleWeightOption[] = [
-  { value: 400, label: "Regular" },
-  { value: 500, label: "Medium" },
-  { value: 600, label: "Semibold" },
-];
-
 function asRecord(value: unknown): Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
     ? value as Record<string, unknown>
@@ -49,13 +44,20 @@ export function RoleStyleControls<RoleKey extends string>({
   onRoleChange,
   onResetRole,
   readOnly,
-  fontResetLabel = "Document font",
-  weightOptions = PDF_WEIGHT_OPTIONS,
+  fontResetLabel,
+  weightOptions,
 }: RoleStyleControlsProps<RoleKey>) {
+  const { t } = useTranslation("settingsEditor");
+  const resolvedFontResetLabel = fontResetLabel ?? t("roleStyle.documentFont");
+  const resolvedWeightOptions: readonly RoleWeightOption[] = weightOptions ?? [
+    { value: 400, label: t("roleStyle.weightRegular") },
+    { value: 500, label: t("roleStyle.weightMedium") },
+    { value: 600, label: t("roleStyle.weightSemibold") },
+  ];
   const override = asRecord(roleOverride);
   const family = typeof override.family === "string" ? override.family : roleDefaults.family;
   const size = finiteOr(override.size, roleDefaults.size);
-  const weight = finiteOr(override.weight, roleDefaults.weight) ?? weightOptions[0]?.value ?? 400;
+  const weight = finiteOr(override.weight, roleDefaults.weight) ?? resolvedWeightOptions[0]?.value ?? 400;
   const color = typeof override.color === "string" ? override.color : roleDefaults.color;
   const letterSpacing = finiteOr(override.letterSpacing, roleDefaults.letterSpacing) ?? 0;
   const transform = typeof override.transform === "string" ? override.transform : roleDefaults.transform ?? "none";
@@ -69,26 +71,26 @@ export function RoleStyleControls<RoleKey extends string>({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Style</p>
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("roleStyle.style")}</p>
         {hasOwnKeys(override) && !readOnly && (
-          <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-xs" aria-label={`Reset ${role.label} style to default`} onClick={onResetRole}>
-            Reset
+          <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-xs" aria-label={t("roleStyle.resetAria", { label: role.label })} onClick={onResetRole}>
+            {t("roleStyle.reset")}
           </Button>
         )}
       </div>
       <div className="space-y-1.5">
-        <Label htmlFor="tpl-role-family">Font</Label>
+        <Label htmlFor="tpl-role-family">{t("roleStyle.font")}</Label>
         <Select value={family ?? "inherit"} onValueChange={(value) => value === "inherit" ? clearRoleField("family") : setRole({ family: value })} disabled={readOnly}>
-          <SelectTrigger id="tpl-role-family" aria-label="Font"><SelectValue /></SelectTrigger>
+          <SelectTrigger id="tpl-role-family" aria-label={t("roleStyle.font")}><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="inherit">{fontResetLabel}</SelectItem>
+            <SelectItem value="inherit">{resolvedFontResetLabel}</SelectItem>
             {fonts.map((font) => <SelectItem key={font.key} value={font.key}>{font.label}</SelectItem>)}
           </SelectContent>
         </Select>
       </div>
       {size !== undefined && (
         <div className="space-y-1.5">
-          <Label htmlFor="tpl-role-size">Size</Label>
+          <Label htmlFor="tpl-role-size">{t("roleStyle.size")}</Label>
           <Input id="tpl-role-size" type="number" min={5} max={60} step={0.5} value={size} disabled={readOnly} onChange={(event) => {
             const nextSize = numericInputValue(event.target.value);
             if (nextSize !== null) setRole({ size: nextSize });
@@ -96,31 +98,31 @@ export function RoleStyleControls<RoleKey extends string>({
         </div>
       )}
       <div className="space-y-1.5">
-        <Label htmlFor="tpl-role-weight">Weight</Label>
+        <Label htmlFor="tpl-role-weight">{t("roleStyle.weight")}</Label>
         <Select value={String(weight)} onValueChange={(value) => setRole({ weight: Number(value) })} disabled={readOnly}>
-          <SelectTrigger id="tpl-role-weight" aria-label="Weight"><SelectValue /></SelectTrigger>
-          <SelectContent>{weightOptions.map((option) => <SelectItem key={option.value} value={String(option.value)}>{option.label}</SelectItem>)}</SelectContent>
+          <SelectTrigger id="tpl-role-weight" aria-label={t("roleStyle.weight")}><SelectValue /></SelectTrigger>
+          <SelectContent>{resolvedWeightOptions.map((option) => <SelectItem key={option.value} value={String(option.value)}>{option.label}</SelectItem>)}</SelectContent>
         </Select>
       </div>
       <div className="space-y-1.5">
-        <Label htmlFor="tpl-role-color">Colour</Label>
+        <Label htmlFor="tpl-role-color">{t("roleStyle.colour")}</Label>
         <Select value={color ?? colorFields[0]?.key ?? ""} onValueChange={(value) => setRole({ color: value })} disabled={readOnly}>
-          <SelectTrigger id="tpl-role-color" aria-label="Colour"><SelectValue /></SelectTrigger>
+          <SelectTrigger id="tpl-role-color" aria-label={t("roleStyle.colour")}><SelectValue /></SelectTrigger>
           <SelectContent>{colorFields.map((field) => <SelectItem key={field.key} value={field.key}>{field.label}</SelectItem>)}</SelectContent>
         </Select>
       </div>
       <div className="space-y-1.5">
-        <Label htmlFor="tpl-role-tracking">Letter spacing</Label>
+        <Label htmlFor="tpl-role-tracking">{t("roleStyle.letterSpacing")}</Label>
         <Input id="tpl-role-tracking" type="number" min={-1} max={8} step={0.1} value={letterSpacing} disabled={readOnly} onChange={(event) => {
           const nextLetterSpacing = numericInputValue(event.target.value);
           if (nextLetterSpacing !== null) setRole({ letterSpacing: nextLetterSpacing });
         }} />
       </div>
       <div className="space-y-1.5">
-        <Label htmlFor="tpl-role-case">Case</Label>
+        <Label htmlFor="tpl-role-case">{t("roleStyle.case")}</Label>
         <Select value={transform} onValueChange={(value) => setRole({ transform: value })} disabled={readOnly}>
-          <SelectTrigger id="tpl-role-case" aria-label="Case"><SelectValue /></SelectTrigger>
-          <SelectContent><SelectItem value="none">As typed</SelectItem><SelectItem value="uppercase">Uppercase</SelectItem></SelectContent>
+          <SelectTrigger id="tpl-role-case" aria-label={t("roleStyle.case")}><SelectValue /></SelectTrigger>
+          <SelectContent><SelectItem value="none">{t("roleStyle.asTyped")}</SelectItem><SelectItem value="uppercase">{t("roleStyle.uppercase")}</SelectItem></SelectContent>
         </Select>
       </div>
     </div>

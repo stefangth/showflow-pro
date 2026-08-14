@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import type { HireOrderCopy } from "@/lib/hireOrders/pdf/pdfCopy";
 import type { HireOrderThemeOverride, RoleKey } from "@/lib/hireOrders/pdf/pdfTheme";
 import { hasOwnKeys } from "../../templateEditor/overrideMap";
@@ -17,9 +18,10 @@ function isRoleModified(role: TemplateRole, copyDraft: Partial<HireOrderCopy>, t
 
 /** PDF-domain adapter over the domain-neutral callback-driven outline. */
 export function TemplateOutline({ selected, onSelect, copyDraft, themeDraft }: TemplateOutlineProps) {
+  const { t } = useTranslation("settingsHireOrders");
   return (
     <GenericTemplateOutline
-      document={{ key: "document", label: "Document" }}
+      document={{ key: "document", label: t("templateOutline.documentLabel") }}
       sections={TEMPLATE_SECTIONS}
       selected={selected}
       onSelect={onSelect}

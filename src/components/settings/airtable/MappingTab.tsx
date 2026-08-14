@@ -1,4 +1,5 @@
 import { ArrowLeft } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -31,12 +32,13 @@ export interface MappingTabProps {
  *  highlight for unmapped required rows, the cancellation mapping, and an
  *  "unread columns" footer. All data + callbacks arrive via props. */
 export function MappingTab(props: MappingTabProps) {
+  const { t } = useTranslation('settingsAirtable');
   const { tableName, fields, fieldMap, onSetField, mapped, total, optionNames, unboundFields, onAddAllCustom, canWrite } = props;
   const readOnly = !canWrite;
 
   const columnOptions = (
     <>
-      <SelectItem value={NONE}>Not mapped</SelectItem>
+      <SelectItem value={NONE}>{t('mappingTab2.notMapped')}</SelectItem>
       {fields.map((af) => <SelectItem key={af.id} value={af.name}>{af.name}</SelectItem>)}
     </>
   );
@@ -46,24 +48,24 @@ export function MappingTab(props: MappingTabProps) {
       {/* Header: title + required-mapped counter */}
       <div className="flex items-start justify-between gap-4 px-4 py-3.5 border-b border-border">
         <div>
-          <h3 className="text-[17px] font-semibold tracking-tight">Field mapping</h3>
+          <h3 className="text-[17px] font-semibold tracking-tight">{t('mappingTab2.title')}</h3>
           <p className="mt-1 text-[13px] text-muted-foreground">
-            Every ShowFlow field reads from one column in <strong className="font-medium text-foreground">{tableName}</strong>. Catalog links are keyed on Program &middot; Sub-program.
+            {t('mappingTab2.headerPrefix')} <strong className="font-medium text-foreground">{tableName}</strong>{t('mappingTab2.headerSuffix')}
           </p>
         </div>
         <div className="shrink-0 text-right">
           <p className="font-mono tabular-nums text-[17px] font-medium">{mapped} / {total}</p>
-          <p className="mt-0.5 text-xs text-muted-foreground">required mapped</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">{t('mappingTab2.requiredMapped')}</p>
         </div>
       </div>
 
       {/* Two-column mapping table */}
       <div className="grid grid-cols-2">
         <p className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground border-b border-r border-border">
-          ShowFlow field
+          {t('mappingTab2.colShowflowField')}
         </p>
         <p className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground border-b border-border">
-          Airtable column
+          {t('mappingTab2.colAirtableColumn')}
         </p>
 
         {SHOWFLOW_FIELDS.map((f) => {
@@ -75,7 +77,7 @@ export function MappingTab(props: MappingTabProps) {
                 <Label className={cn("text-sm font-medium", unmappedRequired && "text-[color:var(--amber-600)]")}>
                   {f.label}
                 </Label>
-                {f.optional && <span className="text-[11px] text-muted-foreground/70">optional</span>}
+                {f.optional && <span className="text-[11px] text-muted-foreground/70">{t('mappingTab2.optional')}</span>}
               </div>
               <div className="flex items-center gap-2.5 min-h-[44px] px-4 border-b border-border">
                 <ArrowLeft className="h-3.5 w-3.5 shrink-0 text-accent-300" aria-hidden />
@@ -88,7 +90,7 @@ export function MappingTab(props: MappingTabProps) {
                     aria-label={f.label}
                     className={cn("flex-1 h-[30px]", unmappedRequired && "border-[color:var(--amber-500)] ring-1 ring-[color:var(--amber-500)] text-[color:var(--amber-600)]")}
                   >
-                    <SelectValue placeholder="Not mapped" />
+                    <SelectValue placeholder={t('mappingTab2.notMapped')} />
                   </SelectTrigger>
                   <SelectContent>{columnOptions}</SelectContent>
                 </Select>
@@ -99,7 +101,7 @@ export function MappingTab(props: MappingTabProps) {
 
         {/* Cancellation mapping (status to cancelled + reason) */}
         <div className="flex items-center min-h-[44px] px-4 border-b border-r border-border">
-          <Label className="text-sm font-medium">Status field (optional)</Label>
+          <Label className="text-sm font-medium">{t('mappingTab2.statusFieldLabel')}</Label>
         </div>
         <div className="flex items-center gap-2.5 min-h-[44px] px-4 border-b border-border">
           <ArrowLeft className="h-3.5 w-3.5 shrink-0 text-accent-300" aria-hidden />
@@ -108,7 +110,7 @@ export function MappingTab(props: MappingTabProps) {
             onValueChange={(v) => onSetField("status_field", v === NONE ? null : v)}
             disabled={readOnly}
           >
-            <SelectTrigger aria-label="Status field" className="flex-1 h-[30px]"><SelectValue placeholder="Not mapped" /></SelectTrigger>
+            <SelectTrigger aria-label={t('mappingTab2.statusFieldLabel')} className="flex-1 h-[30px]"><SelectValue placeholder={t('mappingTab2.notMapped')} /></SelectTrigger>
             <SelectContent>{columnOptions}</SelectContent>
           </Select>
         </div>
@@ -116,7 +118,7 @@ export function MappingTab(props: MappingTabProps) {
         {fieldMap.status_field && (
           <>
             <div className="flex items-center min-h-[44px] px-4 border-b border-r border-border">
-              <Label className="text-sm font-medium">"Cancelled" value</Label>
+              <Label className="text-sm font-medium">{t('mappingTab2.cancelledValueLabel')}</Label>
             </div>
             <div className="flex items-center gap-2.5 min-h-[44px] px-4 border-b border-border">
               <ArrowLeft className="h-3.5 w-3.5 shrink-0 text-accent-300" aria-hidden />
@@ -125,9 +127,9 @@ export function MappingTab(props: MappingTabProps) {
                 onValueChange={(v) => onSetField("cancelled_value", v === NONE ? null : v)}
                 disabled={readOnly}
               >
-                <SelectTrigger aria-label={'"Cancelled" value'} className="flex-1 h-[30px]"><SelectValue placeholder="Pick the cancelled option" /></SelectTrigger>
+                <SelectTrigger aria-label={t('mappingTab2.cancelledValueLabel')} className="flex-1 h-[30px]"><SelectValue placeholder={t('mappingTab2.pickCancelledOption')} /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={NONE}>None</SelectItem>
+                  <SelectItem value={NONE}>{t('mappingTab2.none')}</SelectItem>
                   {optionNames(fieldMap.status_field).map((name) => <SelectItem key={name} value={name}>{name}</SelectItem>)}
                 </SelectContent>
               </Select>
@@ -136,7 +138,7 @@ export function MappingTab(props: MappingTabProps) {
         )}
 
         <div className="flex items-center min-h-[44px] px-4 border-b border-r border-border">
-          <Label className="text-sm font-medium">Cancellation reason (optional)</Label>
+          <Label className="text-sm font-medium">{t('mappingTab2.cancellationReasonLabel')}</Label>
         </div>
         <div className="flex items-center gap-2.5 min-h-[44px] px-4 border-b border-border">
           <ArrowLeft className="h-3.5 w-3.5 shrink-0 text-accent-300" aria-hidden />
@@ -145,7 +147,7 @@ export function MappingTab(props: MappingTabProps) {
             onValueChange={(v) => onSetField("cancellation_reason_field", v === NONE ? null : v)}
             disabled={readOnly}
           >
-            <SelectTrigger aria-label="Cancellation reason" className="flex-1 h-[30px]"><SelectValue placeholder="Not mapped" /></SelectTrigger>
+            <SelectTrigger aria-label={t('mappingTab2.cancellationReasonAria')} className="flex-1 h-[30px]"><SelectValue placeholder={t('mappingTab2.notMapped')} /></SelectTrigger>
             <SelectContent>{columnOptions}</SelectContent>
           </Select>
         </div>
@@ -155,7 +157,11 @@ export function MappingTab(props: MappingTabProps) {
       {unboundFields.length > 0 && (
         <div className="flex items-center justify-between gap-3 px-4 py-3.5 border-t border-border">
           <p className="text-xs text-muted-foreground">
-            {unboundFields.length} {unboundFields.length === 1 ? "column" : "columns"} in {tableName} {unboundFields.length === 1 ? "isn't" : "aren't"} read by ShowFlow: {unboundFields.slice(0, 4).map((f) => f.name).join(", ")}.
+            {t('mappingTab2.footerUnbound', {
+              count: unboundFields.length,
+              tableName,
+              names: unboundFields.slice(0, 4).map((f) => f.name).join(", "),
+            })}
           </p>
           <Button
             variant="outline"
@@ -164,7 +170,7 @@ export function MappingTab(props: MappingTabProps) {
             disabled={readOnly || unboundFields.length === 0}
             onClick={onAddAllCustom}
           >
-            Add as custom fields
+            {t('mappingTab2.addAsCustomFields')}
           </Button>
         </div>
       )}

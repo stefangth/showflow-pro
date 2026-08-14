@@ -7,6 +7,8 @@ import {
   AlertTriangle,
   type LucideIcon,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { Button } from "@/components/ui/button";
 import type { HeldCause } from "./console";
 
@@ -18,9 +20,9 @@ const CAUSE_ICONS: Record<string, LucideIcon> = {
 };
 
 /** The primary bulk-fix button label per cause. `missing_date` has no bulk fix. */
-function fixLabel(category: HeldCause["category"]): string | null {
-  if (category === "unlinked_program") return "Create shows";
-  if (category === "unlinked_city") return "Create cities";
+function fixLabel(category: HeldCause["category"], t: TFunction): string | null {
+  if (category === "unlinked_program") return t('attentionPanel.fixLabelPrograms');
+  if (category === "unlinked_city") return t('attentionPanel.fixLabelCities');
   return null;
 }
 
@@ -57,30 +59,30 @@ export function AttentionPanel({
   onOpenActivity,
   nextRunLabel,
 }: AttentionPanelProps) {
+  const { t } = useTranslation('settingsAirtable');
   return (
     <div className="rounded-lg border border-border bg-card shadow-sm">
       <div className="flex items-center justify-between gap-3 border-b border-border p-4">
         <div>
           <h3 className="text-[17px] font-semibold tracking-[-0.1px] text-foreground">
-            Needs your attention
+            {t('attentionPanel.title')}
           </h3>
           <p className="mt-1 text-[13px] text-muted-foreground">
-            {heldCount} {heldCount === 1 ? "record was" : "records were"} held on the last run.
-            Held records are never dropped, fix the cause and they import on the next run.
+            {t('attentionPanel.description', { count: heldCount })}
           </p>
         </div>
         <span
           className="inline-flex h-5 shrink-0 items-center rounded px-1.5 text-[11px] font-medium"
           style={{ background: "var(--amber-100)", color: "var(--amber-600)" }}
         >
-          {heldCount} held
+          {t('attentionPanel.heldBadge', { count: heldCount })}
         </span>
       </div>
 
       {causes.map((cause) => {
         const Icon = CAUSE_ICONS[cause.icon] ?? AlertTriangle;
         const isOpen = openCategory === cause.category;
-        const label = fixLabel(cause.category);
+        const label = fixLabel(cause.category, t);
         return (
           <div key={cause.category} className="border-b border-border">
             <div className="flex items-center gap-3 p-4 py-3">
@@ -106,7 +108,7 @@ export function AttentionPanel({
                 onClick={() => onToggle(cause.category)}
                 aria-expanded={isOpen}
               >
-                {isOpen ? "Hide" : "Review"}
+                {isOpen ? t('attentionPanel.hide') : t('attentionPanel.review')}
                 {isOpen ? (
                   <ChevronUp className="h-3.5 w-3.5" />
                 ) : (
@@ -136,7 +138,7 @@ export function AttentionPanel({
                     onClick={onOpenCatalog}
                     className="text-xs font-medium text-muted-foreground hover:text-foreground"
                   >
-                    Link individually in Catalog links
+                    {t('attentionPanel.linkIndividually')}
                   </button>
                 </div>
               </div>
@@ -147,14 +149,14 @@ export function AttentionPanel({
 
       <div className="flex items-center justify-between gap-3 px-4 py-2.5">
         <p className="text-xs text-muted-foreground">
-          Resolving these releases the held records on the next run at {nextRunLabel}.
+          {t('attentionPanel.footerNote', { nextRunLabel })}
         </p>
         <button
           type="button"
           onClick={onOpenActivity}
           className="text-xs font-medium text-primary hover:underline"
         >
-          Open the full run log
+          {t('attentionPanel.openRunLog')}
         </button>
       </div>
     </div>

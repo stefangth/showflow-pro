@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useLocation, useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { BOOKING_ENGINE_DEFAULTS, roleLabel } from '@/config/app.config';
 import { resolveInitialTab } from '@/lib/settingsTabs';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -71,6 +72,7 @@ type FiltersVisibility = Record<string, Record<string, Record<string, boolean>>>
 // ─── SettingsPage ────────────────────────────────────────────────────────────
 
 export default function SettingsPage() {
+  const { t } = useTranslation('settings');
   const { hasRole, currentOrg, isSuperAdmin } = useAuth();
   const orgId = currentOrg?.id ?? null;
   const qc = useQueryClient();
@@ -129,9 +131,9 @@ export default function SettingsPage() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['app-settings'] });
-      toast.success('Settings saved');
+      toast.success(t('page.saveSuccess'));
     },
-    onError: (e: Error) => toast.error(e.message ?? 'Failed to save'),
+    onError: (e: Error) => toast.error(e.message ?? t('page.saveError')),
   });
 
   const isAdmin = hasRole('admin');
@@ -218,13 +220,13 @@ export default function SettingsPage() {
   if (!canEnter) {
     return (
       <div className="flex items-center justify-center h-64">
-        <p className="text-muted-foreground">Admin or producer access required</p>
+        <p className="text-muted-foreground">{t('page.accessRequired')}</p>
       </div>
     );
   }
 
   if (isLoading || !settings) {
-    return <div className="flex items-center justify-center h-64 text-muted-foreground">Loading settings…</div>;
+    return <div className="flex items-center justify-center h-64 text-muted-foreground">{t('page.loading')}</div>;
   }
 
   const get = (key: string, fallback: unknown = '') => draft[key] ?? fallback;
@@ -233,7 +235,7 @@ export default function SettingsPage() {
   const handleSave = () => {
     const updates = dirtyKeys.map(k => ({ key: k, value: draft[k] }));
     if (updates.length === 0) {
-      toast.info('No changes to save');
+      toast.info(t('page.noChanges'));
       return;
     }
     saveMutation.mutate(updates);
@@ -262,27 +264,27 @@ export default function SettingsPage() {
   };
 
   const navGroups: { heading: string; items: { value: string; label: string; icon: typeof Building2; show: boolean; moduleState?: boolean }[] }[] = [
-    { heading: "Organization", items: [
-      { value: "organization", label: "Organization", icon: Building2, show: isAdmin || isProducer },
-      { value: "permissions", label: "Roles & rights", icon: ShieldCheck, show: isAdmin },
-      { value: "trust", label: "Trust & data", icon: Lock, show: isAdmin || isProducer },
-      { value: "casts-coverage", label: "Casts & coverage", icon: MapPin, show: isAdmin || isProducer },
-      { value: "skills", label: "Skills", icon: Sparkles, show: isAdmin || isProducer },
+    { heading: t('nav.groups.organization'), items: [
+      { value: "organization", label: t('nav.items.organization'), icon: Building2, show: isAdmin || isProducer },
+      { value: "permissions", label: t('nav.items.permissions'), icon: ShieldCheck, show: isAdmin },
+      { value: "trust", label: t('nav.items.trust'), icon: Lock, show: isAdmin || isProducer },
+      { value: "casts-coverage", label: t('nav.items.castsCoverage'), icon: MapPin, show: isAdmin || isProducer },
+      { value: "skills", label: t('nav.items.skills'), icon: Sparkles, show: isAdmin || isProducer },
     ] },
-    { heading: "Automation", items: [
-      { value: "airtable", label: "Airtable Sync", icon: Database, show: isAdmin || isProducer },
-      { value: "email-templates", label: "Email templates", icon: Bell, show: isAdmin || isProducer },
+    { heading: t('nav.groups.automation'), items: [
+      { value: "airtable", label: t('nav.items.airtable'), icon: Database, show: isAdmin || isProducer },
+      { value: "email-templates", label: t('nav.items.emailTemplates'), icon: Bell, show: isAdmin || isProducer },
     ] },
-    { heading: "Modules", items: [
-      { value: "booking", label: "Booking engine", icon: Wand2, show: isAdmin || isProducer, moduleState: bookingFlowEntitled },
-      { value: "hire-orders", label: "Hire orders", icon: FileSignature, show: isAdmin || isProducer, moduleState: hireOrdersEntitled },
+    { heading: t('nav.groups.modules'), items: [
+      { value: "booking", label: t('nav.items.booking'), icon: Wand2, show: isAdmin || isProducer, moduleState: bookingFlowEntitled },
+      { value: "hire-orders", label: t('nav.items.hireOrders'), icon: FileSignature, show: isAdmin || isProducer, moduleState: hireOrdersEntitled },
     ] },
-    { heading: "Preferences", items: [
-      { value: "filters", label: "Filters", icon: SlidersHorizontal, show: isAdmin || isProducer },
-      { value: "notifications", label: "Notifications", icon: Bell, show: isAdmin || isProducer },
+    { heading: t('nav.groups.preferences'), items: [
+      { value: "filters", label: t('nav.items.filters'), icon: SlidersHorizontal, show: isAdmin || isProducer },
+      { value: "notifications", label: t('nav.items.notifications'), icon: Bell, show: isAdmin || isProducer },
     ] },
-    { heading: "Help", items: [
-      { value: "docs", label: "Documentation", icon: BookOpen, show: isSuperAdmin },
+    { heading: t('nav.groups.help'), items: [
+      { value: "docs", label: t('nav.items.docs'), icon: BookOpen, show: isSuperAdmin },
     ] },
   ];
 
@@ -306,26 +308,26 @@ export default function SettingsPage() {
         <div>
           <h1 className="font-display text-[32px] font-semibold tracking-tight flex items-center gap-3">
             <SettingsIcon className="h-7 w-7 text-primary" />
-            Settings
+            {t('page.title')}
           </h1>
           <p className="text-muted-foreground mt-1">
-            Configure integrations, booking behaviour, and notifications. Changes apply immediately.
+            {t('page.description')}
           </p>
         </div>
         {canEnter && !hidePageLevelSave && (
           <Button onClick={handleSave} disabled={saveMutation.isPending || !isDirty}>
             <Save className="h-4 w-4 mr-2" />
-            {saveMutation.isPending ? 'Saving…' : `Save${isDirty ? ` (${dirtyKeys.length})` : ''}`}
+            {saveMutation.isPending ? t('page.saving') : (isDirty ? t('page.saveCount', { count: dirtyKeys.length }) : t('page.save'))}
           </Button>
         )}
       </div>
 
       {isDirty && !hidePageLevelSave && (
         <div className="flex items-center justify-between gap-4 rounded-lg border border-warning bg-warning/10 px-4 py-2.5 text-sm text-warning">
-          <span>You have unsaved changes. They will be lost if you navigate away.</span>
+          <span>{t('page.unsavedChanges')}</span>
           <Button size="sm" onClick={handleSave} disabled={saveMutation.isPending}>
             <Save className="h-3.5 w-3.5 mr-1.5" />
-            {saveMutation.isPending ? 'Saving…' : 'Save now'}
+            {saveMutation.isPending ? t('page.saving') : t('page.saveNow')}
           </Button>
         </div>
       )}
@@ -363,7 +365,7 @@ export default function SettingsPage() {
                     <span>{item.label}</span>
                     {item.moduleState !== undefined && (
                       <Badge variant={item.moduleState ? "accent" : "neutral"} className="ml-1 md:ml-auto">
-                        {item.moduleState ? "On" : "Off"}
+                        {item.moduleState ? t('nav.moduleOn') : t('nav.moduleOff')}
                       </Badge>
                     )}
                   </TabsTrigger>
@@ -411,9 +413,9 @@ export default function SettingsPage() {
         <TabsContent value="filters" className="mt-4 space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="font-display">Filter Visibility per Role</CardTitle>
+              <CardTitle className="font-display">{t('filters.title')}</CardTitle>
               <CardDescription>
-                Toggle which filters producers and artists see on each page. Admins always see everything.
+                {t('filters.description')}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-8">
@@ -421,13 +423,13 @@ export default function SettingsPage() {
                 const pageVis = (get('filters_visibility', {}) as FiltersVisibility)?.[page] ?? {};
                 return (
                   <div key={page} className="space-y-3">
-                    <h4 className="font-display font-semibold capitalize">{page}</h4>
+                    <h4 className="font-display font-semibold capitalize">{t(`filters.pages.${page}`)}</h4>
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm">
                         <thead>
                           <tr className="text-muted-foreground text-xs">
-                            <th className="text-left py-2 pr-4 font-medium">Role</th>
-                            {FILTER_KEYS.map(k => <th key={k} className="text-center py-2 px-2 font-medium capitalize">{k}</th>)}
+                            <th className="text-left py-2 pr-4 font-medium">{t('filters.role')}</th>
+                            {FILTER_KEYS.map(k => <th key={k} className="text-center py-2 px-2 font-medium capitalize">{t(`filters.keys.${k}`)}</th>)}
                           </tr>
                         </thead>
                         <tbody>
@@ -492,14 +494,14 @@ export default function SettingsPage() {
         <TabsContent value="notifications" className="mt-4">
           <Card>
             <CardHeader>
-              <CardTitle className="font-display">Notifications</CardTitle>
-              <CardDescription>Control in-app alerts for bookings and schedule changes.</CardDescription>
+              <CardTitle className="font-display">{t('notifications.title')}</CardTitle>
+              <CardDescription>{t('notifications.description')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <Label className="font-medium">Enable in-app notifications</Label>
-                  <p className="text-xs text-muted-foreground mt-0.5">Producers and artists receive real-time alerts.</p>
+                  <Label className="font-medium">{t('notifications.enable')}</Label>
+                  <p className="text-xs text-muted-foreground mt-0.5">{t('notifications.hint')}</p>
                 </div>
                 <Switch
                   checked={!!get('notifications_enabled', true)}

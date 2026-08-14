@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { resolveOrgSetting, upsertOrgSetting } from "@/data/settings";
@@ -28,6 +29,7 @@ export interface HireOrderDefaults {
 const CURRENCIES = ["EUR", "USD", "CHF"];
 
 export function OrderDefaultsCard({ orgId, readOnly = false }: { orgId: string | null; readOnly?: boolean }) {
+  const { t } = useTranslation("settingsHireOrders");
   const qc = useQueryClient();
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["app-settings", "hire_order_defaults", orgId],
@@ -60,7 +62,7 @@ export function OrderDefaultsCard({ orgId, readOnly = false }: { orgId: string |
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["app-settings"] });
-      toast.success("Order defaults saved");
+      toast.success(t("orderDefaultsCard.saved"));
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -72,7 +74,7 @@ export function OrderDefaultsCard({ orgId, readOnly = false }: { orgId: string |
   if (isError) {
     return (
       <Alert variant="destructive">
-        <AlertDescription>Could not load the order defaults. {(error as Error).message}</AlertDescription>
+        <AlertDescription>{t("orderDefaultsCard.loadError")} {(error as Error).message}</AlertDescription>
       </Alert>
     );
   }
@@ -80,23 +82,22 @@ export function OrderDefaultsCard({ orgId, readOnly = false }: { orgId: string |
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="font-display">Order defaults</CardTitle>
+        <CardTitle className="font-display">{t("orderDefaultsCard.title")}</CardTitle>
         <CardDescription>
-          Prefills a new hire order's fee, basis, and currency. A per-date fee is multiplied by the
-          number of engagement dates on the order. A producer can always adjust it per order.
+          {t("orderDefaultsCard.description")}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <div className="space-y-1.5">
-            <Label htmlFor="ho-default-fee">Default fee</Label>
+            <Label htmlFor="ho-default-fee">{t("orderDefaultsCard.defaultFee")}</Label>
             <Input
               id="ho-default-fee"
               type="number"
               min={0}
               step="0.01"
               value={form.default_fee ?? ""}
-              placeholder="No default"
+              placeholder={t("orderDefaultsCard.noDefault")}
               disabled={readOnly}
               onChange={(e) =>
                 setForm((f) => ({ ...f, default_fee: e.target.value === "" ? null : Number(e.target.value) }))
@@ -104,7 +105,7 @@ export function OrderDefaultsCard({ orgId, readOnly = false }: { orgId: string |
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="ho-currency">Currency</Label>
+            <Label htmlFor="ho-currency">{t("orderDefaultsCard.currency")}</Label>
             <Select value={form.currency} onValueChange={(v) => setForm((f) => ({ ...f, currency: v }))} disabled={readOnly}>
               <SelectTrigger id="ho-currency"><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -115,22 +116,22 @@ export function OrderDefaultsCard({ orgId, readOnly = false }: { orgId: string |
             </Select>
           </div>
           <div className="space-y-1.5 sm:col-span-2 lg:col-span-1">
-            <Label htmlFor="ho-fee-basis">Fee basis</Label>
+            <Label htmlFor="ho-fee-basis">{t("orderDefaultsCard.feeBasis")}</Label>
             <Select
               value={form.default_fee_basis}
               onValueChange={(v) => setForm((f) => ({ ...f, default_fee_basis: v as FeeBasis }))}
               disabled={readOnly}
             >
-              <SelectTrigger id="ho-fee-basis" aria-label="Fee basis"><SelectValue /></SelectTrigger>
+              <SelectTrigger id="ho-fee-basis" aria-label={t("orderDefaultsCard.feeBasis")}><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="per_date">Per date</SelectItem>
-                <SelectItem value="total">Total for all dates</SelectItem>
+                <SelectItem value="per_date">{t("orderDefaultsCard.perDate")}</SelectItem>
+                <SelectItem value="total">{t("orderDefaultsCard.totalAllDates")}</SelectItem>
               </SelectContent>
             </Select>
           </div>
         </div>
         <Button onClick={() => save.mutate()} disabled={readOnly || save.isPending || !orgId}>
-          Save defaults
+          {t("orderDefaultsCard.save")}
         </Button>
       </CardContent>
     </Card>

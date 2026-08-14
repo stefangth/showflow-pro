@@ -1,0 +1,69 @@
+{
+  "tab": {
+    "eyebrow": "ORGANIZATION · ACCESS",
+    "title": "Roles & rights",
+    "description": "Set rights for the whole Production Team. Admins always have every right.",
+    "changeLogButton": "Change log",
+    "resetToBaseline": "Reset to baseline",
+    "searchPlaceholder": "Search rights...",
+    "searchAriaLabel": "Search rights",
+    "presets": {
+      "restricted": "Restricted",
+      "standard": "Standard",
+      "full": "Full",
+      "custom": "Custom"
+    },
+    "filters": {
+      "all": "All",
+      "sensitive": "Sensitive",
+      "changed": "Changed",
+      "off": "Off"
+    },
+    "groupSummary": "{{on}} of {{total}} on",
+    "stagedScopeLine": "Applies to the Production Team default.",
+    "productionTeamRoleName": "the Production Team",
+    "transition": {
+      "on": "Off -> On",
+      "off": "On -> Off",
+      "sensitiveSuffix": " · sensitive"
+    },
+    "confirmDialog": {
+      "title": "Confirm sensitive changes",
+      "description_one": "This applies {{count}} change, including sensitive rights: {{rights}}.",
+      "description_other": "This applies {{count}} changes, including sensitive rights: {{rights}}.",
+      "cancel": "Cancel",
+      "confirm": "Confirm"
+    },
+    "toastSuccess": "Rights updated."
+  },
+  "editingPicker": {
+    "eyebrow": "Editing",
+    "description": "Rights apply to the whole Production Team.",
+    "productionTeam": "Production Team",
+    "teamDefault": "Team default"
+  },
+  "groupCard": {
+    "turnAllOff": "Turn all off",
+    "turnAllOn": "Turn all on"
+  },
+  "rightRow": {
+    "sensitiveBadge": "Sensitive",
+    "managedBadge": "Managed by ShowFlow",
+    "granting": "Granting",
+    "removing": "Removing"
+  },
+  "stagedChangesCard": {
+    "heading": "STAGED CHANGES",
+    "emptyState": "Nothing staged. Toggle a right and it lands here before anyone's access changes.",
+    "discard": "Discard",
+    "apply": "Apply"
+  },
+  "changeLog": {
+    "title": "Change log",
+    "empty": "No changes yet.",
+    "unknownActor": "Unknown",
+    "valueOn": "on",
+    "valueOff": "off",
+    "transition": "{{from}} -> {{to}}"
+  }
+}

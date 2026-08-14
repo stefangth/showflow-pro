@@ -1,0 +1,63 @@
+{
+  "trustDataTab": {
+    "title": "Trust & data",
+    "subtitle": "What we hold, who can read it, and how long we keep it.",
+    "openPublicTrustCenter": "Open the public trust center"
+  },
+  "capabilitiesCard": {
+    "title": "Capabilities",
+    "sensitive": "Sensitive",
+    "settingLocationNote": "This is the position each right ships in, not this organisation's current setting. What is switched on here is in Settings, under Roles and rights."
+  },
+  "documentsCard": {
+    "title": "Documents"
+  },
+  "orgDataCard": {
+    "title": "This organisation's data",
+    "description": "What {{orgName}} holds today, where it sits, and which other organisations on ShowFlow Pro can reach it. None.",
+    "defaultOrgName": "this workspace",
+    "unavailable": "Unavailable",
+    "unavailableTooltip": "Could not be read just now",
+    "regionLabel": "Region",
+    "regionNote": "Managed Postgres, encrypted at rest.",
+    "recordsLabel": "Records",
+    "recordsValue": "{{value}} bookings",
+    "recordsNote": "{{artists}} artists · {{productions}} productions.",
+    "recordsNoteFallback": "Bookings, artists, and productions.",
+    "membersLabel": "Members",
+    "membersAdminOnly": "Admin only",
+    "membersValue": "{{count}} people",
+    "membersNoteAdminOnly": "Visible to organisation administrators.",
+    "membersNoteFallback": "People with a login to this organisation.",
+    "rolesHeld": "Roles held: {{admins}} {{adminWord}} · {{producers}} {{producerLabel}} · {{artists}} {{artistWord}}.",
+    "adminWord_one": "administrator",
+    "adminWord_other": "administrators",
+    "artistWord_one": "artist",
+    "artistWord_other": "artists",
+    "outsideReachLabel": "Outside reach",
+    "outsideReachValue": "None",
+    "outsideReachNote": "No other organisation can read a row. supabase/tests/rls/org_isolation.sql proves that for shows and show_dates, and supabase/tests/rls/org_coverage.sql confirms the restrictive policy exists on every tenant table in its list. Both run on every pull request."
+  },
+  "retentionCard": {
+    "title": "Retention",
+    "intro": "Each category below has a stated period, taken from section 7 of the privacy policy."
+  },
+  "visibilityMatrix": {
+    "title": "Who can see what",
+    "description": "Answer an artist manager on the call. Roles are per organisation, and what each can read below is enforced in the database, not just the interface.",
+    "roleToInspect": "Role to inspect",
+    "showingRole": "Showing what the {{role}} role can read",
+    "regionScrollableLabel": "What the {{role}} role can read, and the mechanism that decides it, scrollable",
+    "caption": "What the {{role}} role can read, and the mechanism that decides it",
+    "columnData": "Data",
+    "columnAccess": "Access",
+    "columnMechanism": "Mechanism"
+  },
+  "yourDataCard": {
+    "title": "Export and deletion",
+    "description": "Your own data is a button. An organisation-wide export or deletion is a request we answer within one month, because it needs a platform administrator to run.",
+    "exportYourData": "Export your data",
+    "requestOrgExport": "Request an organisation export",
+    "deletionNote": "Deleting your account anonymises what booking records must retain, then removes the account."
+  }
+}

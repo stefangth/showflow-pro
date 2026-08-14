@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -70,6 +71,7 @@ function dedupeRowsByKey<T extends { key: string }>(rows: T[]): T[] {
 }
 
 export function AirtableSyncTab({ orgId, readOnly = false, canTriggerSync = true }: Props) {
+  const { t } = useTranslation('settingsAirtable');
   const qc = useQueryClient();
   const canWrite = !readOnly;
   const [airtableKey, setAirtableKey] = useState("");
@@ -104,7 +106,7 @@ export function AirtableSyncTab({ orgId, readOnly = false, canTriggerSync = true
 
   const saveSettings = useMutation({
     mutationFn: async (patch: Partial<AirtableSettings>) => {
-      if (!orgId) throw new Error("No active organization");
+      if (!orgId) throw new Error(t('toasts.noActiveOrg'));
       await Promise.all(
         Object.entries(patch).map(([key, value]) => upsertOrgSetting(supabase, orgId, key, value as Json)),
       );
@@ -117,7 +119,7 @@ export function AirtableSyncTab({ orgId, readOnly = false, canTriggerSync = true
     },
     onError: (_e, _patch, ctx) => {
       if (ctx?.prev) qc.setQueryData(SETTINGS_KEY, ctx.prev);
-      toast.error("Couldn't save Airtable settings. Your last change wasn't stored.");
+      toast.error(t('toasts.settingsSaveError'));
       void qc.invalidateQueries({ queryKey: SETTINGS_KEY });
     },
   });
@@ -126,16 +128,16 @@ export function AirtableSyncTab({ orgId, readOnly = false, canTriggerSync = true
     mutationFn: () => triggerAirtableSyncNow(supabase, orgId!),
     onSuccess: (res: SyncNowResult) => {
       if (res.orgs_synced > 0 && res.result) {
-        toast.success(`Synced: ${res.result.new_dates} new, ${res.result.updated} updated`);
+        toast.success(t('toasts.syncSuccess', { newDates: res.result.new_dates, updated: res.result.updated }));
       } else {
-        toast.warning("Sync didn't run. Check your Airtable configuration");
+        toast.warning(t('toasts.syncNoRun'));
       }
       qc.invalidateQueries({ queryKey: ["airtable", "sync-log", orgId] });
       qc.invalidateQueries({ queryKey: ["airtable", "recent-logs", orgId] });
       qc.invalidateQueries({ queryKey: ["airtable", "unresolved"] });
       qc.invalidateQueries({ queryKey: ["bookings"] });
     },
-    onError: (e: Error) => toast.error(e.message ?? "Sync failed"),
+    onError: (e: Error) => toast.error(e.message ?? t('toasts.syncFailed')),
   });
 
   const saveState: "idle" | "saving" | "saved" | "error" =
@@ -187,7 +189,7 @@ export function AirtableSyncTab({ orgId, readOnly = false, canTriggerSync = true
   }
   const isSchemaPending = basesQ.isFetching || tablesQ.isFetching;
   const refreshSchema = () => { void basesQ.refetch(); if (baseId) void tablesQ.refetch(); };
-  const selectedTable = tables.find((t) => t.name === s.airtable_table_name);
+  const selectedTable = tables.find((tbl) => tbl.name === s.airtable_table_name);
 
   // City may be a multipleRecordLinks field; enumerate the linked table's records as options.
   const cityField = selectedTable?.fields.find((f) => f.name === fieldMap.city);
@@ -211,20 +213,20 @@ export function AirtableSyncTab({ orgId, readOnly = false, canTriggerSync = true
   // ── API key (Vault) ──────────────────────────────────────────────────────────
   const saveKey = useMutation({
     mutationFn: async (value: string) => {
-      if (!orgId) throw new Error("No active organization");
-      if (!value.trim()) throw new Error("Enter an API key");
+      if (!orgId) throw new Error(t('toasts.noActiveOrg'));
+      if (!value.trim()) throw new Error(t('toasts.enterApiKey'));
       await saveAirtableKey(supabase, orgId, value.trim());
     },
     onSuccess: () => {
       setAirtableKey(""); setSetupKey(""); setReplacing(false);
       qc.invalidateQueries({ queryKey: ["airtable", "key-status", orgId] });
-      toast.success("Airtable API key saved");
+      toast.success(t('toasts.keySaved'));
     },
-    onError: (e: unknown) => toast.error((e as Error).message ?? "Failed to save Airtable key"),
+    onError: (e: unknown) => toast.error((e as Error).message ?? t('toasts.keySaveFailed')),
   });
   const deleteKey = useMutation({
     mutationFn: async () => {
-      if (!orgId) throw new Error("No active organization");
+      if (!orgId) throw new Error(t('toasts.noActiveOrg'));
       await deleteAirtableKey(supabase, orgId);
     },
     onSuccess: () => {
@@ -233,9 +235,9 @@ export function AirtableSyncTab({ orgId, readOnly = false, canTriggerSync = true
       qc.removeQueries({ queryKey: ["airtable", "tables", orgId] });
       qc.removeQueries({ queryKey: ["airtable", "linked-records", orgId] });
       qc.invalidateQueries({ queryKey: ["airtable", "key-status", orgId] });
-      toast.success("Airtable API key deleted");
+      toast.success(t('toasts.keyDeleted'));
     },
-    onError: (e: unknown) => toast.error((e as Error).message ?? "Failed to delete Airtable key"),
+    onError: (e: unknown) => toast.error((e as Error).message ?? t('toasts.keyDeleteFailed')),
   });
 
   // ── Catalog data + option resolution ────────────────────────────────────────
@@ -299,31 +301,31 @@ export function AirtableSyncTab({ orgId, readOnly = false, canTriggerSync = true
   const createOneProgram = useMutation({
     mutationFn: async (pair: ProgramPair) => {
       const rows = planProgramImport([pair], showsQ.data ?? []);
-      if (rows.length === 0) throw new Error("Already matches a catalog show. It will link on the next sync.");
+      if (rows.length === 0) throw new Error(t('toasts.alreadyMatchesShow'));
       await importShowsFromOptions(supabase, orgId!, rows);
     },
-    onSuccess: () => { invalidateShows(); toast.success("Show created and linked"); },
-    onError: (e: unknown) => toast.error((e as Error).message ?? "Create failed"),
+    onSuccess: () => { invalidateShows(); toast.success(t('toasts.showCreatedAndLinked')); },
+    onError: (e: unknown) => toast.error((e as Error).message ?? t('toasts.createFailed')),
   });
   const createOneCity = useMutation({
     mutationFn: async (name: string) => {
       const plan = planCityReconciliation([name], citiesQ.data ?? []);
-      if (plan.toLink.length === 0 && plan.toCreate.length === 0) throw new Error("Already matches a catalog city.");
+      if (plan.toLink.length === 0 && plan.toCreate.length === 0) throw new Error(t('toasts.alreadyMatchesCity'));
       for (const l of plan.toLink) await linkCityAirtableKey(supabase, l.cityId, l.key);
       await importCitiesFromOptions(supabase, orgId!, plan.toCreate);
       return plan;
     },
-    onSuccess: (plan) => { invalidateCities(); toast.success(plan.toCreate.length > 0 ? "City created and linked" : "City linked"); },
-    onError: (e: unknown) => toast.error((e as Error).message ?? "Create failed"),
+    onSuccess: (plan) => { invalidateCities(); toast.success(plan.toCreate.length > 0 ? t('toasts.cityCreatedAndLinked') : t('toasts.cityLinked')); },
+    onError: (e: unknown) => toast.error((e as Error).message ?? t('toasts.createFailed')),
   });
   const importPrograms = useMutation({
     mutationFn: async (pairs: ProgramPair[]) => {
       const rows = planProgramImport(pairs, showsQ.data ?? []);
-      if (rows.length === 0) throw new Error("Nothing to create. Those options already match catalog shows.");
+      if (rows.length === 0) throw new Error(t('toasts.nothingToCreateShows'));
       await importShowsFromOptions(supabase, orgId!, rows);
     },
-    onSuccess: () => { invalidateShows(); toast.success("Created the selected shows"); },
-    onError: (e: unknown) => toast.error((e as Error).message ?? "Create failed"),
+    onSuccess: () => { invalidateShows(); toast.success(t('toasts.createdSelectedShows')); },
+    onError: (e: unknown) => toast.error((e as Error).message ?? t('toasts.createFailed')),
   });
   const importCities = useMutation({
     mutationFn: async (names: string[]) => {
@@ -331,28 +333,28 @@ export function AirtableSyncTab({ orgId, readOnly = false, canTriggerSync = true
       for (const l of plan.toLink) await linkCityAirtableKey(supabase, l.cityId, l.key);
       await importCitiesFromOptions(supabase, orgId!, plan.toCreate);
     },
-    onSuccess: () => { invalidateCities(); toast.success("Created the selected cities"); },
-    onError: (e: unknown) => toast.error((e as Error).message ?? "Create failed"),
+    onSuccess: () => { invalidateCities(); toast.success(t('toasts.createdSelectedCities')); },
+    onError: (e: unknown) => toast.error((e as Error).message ?? t('toasts.createFailed')),
   });
   const linkShow = useMutation({
     mutationFn: ({ showId, key }: { showId: string; key: string }) => linkShowAirtableKey(supabase, showId, key),
-    onSuccess: () => { invalidateShows(); toast.success("Linked"); },
-    onError: (e: unknown) => toast.error((e as Error).message ?? "Link failed"),
+    onSuccess: () => { invalidateShows(); toast.success(t('toasts.linked')); },
+    onError: (e: unknown) => toast.error((e as Error).message ?? t('toasts.linkFailed')),
   });
   const linkCity = useMutation({
     mutationFn: ({ cityId, key }: { cityId: string; key: string }) => linkCityAirtableKey(supabase, cityId, key),
-    onSuccess: () => { invalidateCities(); toast.success("Linked"); },
-    onError: (e: unknown) => toast.error((e as Error).message ?? "Link failed"),
+    onSuccess: () => { invalidateCities(); toast.success(t('toasts.linked')); },
+    onError: (e: unknown) => toast.error((e as Error).message ?? t('toasts.linkFailed')),
   });
   const unlinkShow = useMutation({
     mutationFn: (showId: string) => linkShowAirtableKey(supabase, showId, null),
-    onSuccess: () => { invalidateShows(); toast.success("Unlinked"); },
-    onError: (e: unknown) => toast.error((e as Error).message ?? "Unlink failed"),
+    onSuccess: () => { invalidateShows(); toast.success(t('toasts.unlinked')); },
+    onError: (e: unknown) => toast.error((e as Error).message ?? t('toasts.unlinkFailed')),
   });
   const unlinkCity = useMutation({
     mutationFn: (cityId: string) => linkCityAirtableKey(supabase, cityId, null),
-    onSuccess: () => { invalidateCities(); toast.success("Unlinked"); },
-    onError: (e: unknown) => toast.error((e as Error).message ?? "Unlink failed"),
+    onSuccess: () => { invalidateCities(); toast.success(t('toasts.unlinked')); },
+    onError: (e: unknown) => toast.error((e as Error).message ?? t('toasts.unlinkFailed')),
   });
 
   const unlinkedShows = (showsQ.data ?? []).filter((sh) => !sh.airtable_program_key);
@@ -415,9 +417,9 @@ export function AirtableSyncTab({ orgId, readOnly = false, canTriggerSync = true
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["custom-field-definitions", orgId, "show_dates"] });
       qc.invalidateQueries({ queryKey: ["custom-field-definitions", orgId] });
-      toast.success("Added as custom fields");
+      toast.success(t('toasts.addedAsCustomFields'));
     },
-    onError: (e: unknown) => toast.error((e as Error).message ?? "Could not add custom fields"),
+    onError: (e: unknown) => toast.error((e as Error).message ?? t('toasts.addCustomFieldsFailed')),
   });
 
   // ── Duplicate cities → merge suggestion ──────────────────────────────────────
@@ -432,9 +434,9 @@ export function AirtableSyncTab({ orgId, readOnly = false, canTriggerSync = true
       qc.invalidateQueries({ queryKey: ["bookings"] });
       qc.invalidateQueries({ queryKey: ["eligible-artists"] });
       qc.invalidateQueries({ queryKey: ["artist-eligible-dates"] });
-      toast.success("Merged duplicate cities");
+      toast.success(t('toasts.mergedDuplicateCities'));
     },
-    onError: (e: unknown) => toast.error((e as Error).message ?? "Merge failed"),
+    onError: (e: unknown) => toast.error((e as Error).message ?? t('toasts.mergeFailed')),
   });
   const firstDupe = dupeGroups[0];
   const mergeSuggestion = firstDupe
@@ -444,9 +446,9 @@ export function AirtableSyncTab({ orgId, readOnly = false, canTriggerSync = true
       const names = firstDupe.cities.map((c) => c.name);
       const losers = firstDupe.cities.filter((c) => c.id !== survivor).map((c) => c.id);
       return {
-        title: `${names.join(" and ")} are the same city`,
-        description: `Merging keeps ${survivorName}'s bookings, eligibility and producer routing, and removes the other row.`,
-        actionLabel: `Merge into ${survivorName}`,
+        title: t('mergeSuggestion.title', { names: names.join(t('mergeSuggestion.joiner')) }),
+        description: t('mergeSuggestion.description', { survivorName }),
+        actionLabel: t('mergeSuggestion.actionLabel', { survivorName }),
         onMerge: () => mergeMut.mutate({ survivor, losers }),
       };
     })()
@@ -455,14 +457,18 @@ export function AirtableSyncTab({ orgId, readOnly = false, canTriggerSync = true
   // ── Console view-model ───────────────────────────────────────────────────────
   const hasBaseTable = !!s.airtable_base_id && !!s.airtable_table_name;
   const mode = deriveMode({ keyPresent, hasBaseTable, latest });
-  const status = deriveStatus(latest, mode);
-  const kpis = deriveKpis(latest, s, recent);
-  const causes: HeldCause[] = groupHeldCauses(heldRecords);
+  const status = deriveStatus(latest, mode, t);
+  const kpis = deriveKpis(latest, s, recent, t);
+  const causes: HeldCause[] = groupHeldCauses(heldRecords, t);
   const heldCount = latest?.held_count ?? 0;
   const mapped = requiredMappedCount(fieldMap);
-  const baseName = bases.find((b) => b.id === baseId)?.name ?? (baseId || "not set");
-  const eyebrow = hasBaseTable ? `Airtable · ${baseName} › ${s.airtable_table_name}` : "Airtable";
-  const nextRunLabel = kpis.find((k) => k.label === "Next run")?.value ?? "the next run";
+  const baseName = bases.find((b) => b.id === baseId)?.name ?? (baseId || t('overview.connection.tableViewFallbackTable'));
+  const eyebrow = hasBaseTable
+    ? t('eyebrow.connected', { baseName, tableName: s.airtable_table_name })
+    : t('eyebrow.default');
+  // "Next run" is always the second tile (index 1) outside the error mode, per deriveKpis'
+  // fixed layout — matching by index (not the now-translated label) keeps this correct in German.
+  const nextRunLabel = (mode !== "error" ? kpis[1]?.value : undefined) ?? t('nextRunFallback');
 
   // A cause's bulk fix creates only the options that are actually holding records (holdCount > 0),
   // matching the count the cause title shows, not every unlinked option in the catalog.
@@ -489,7 +495,7 @@ export function AirtableSyncTab({ orgId, readOnly = false, canTriggerSync = true
 
   // ── Render ───────────────────────────────────────────────────────────────────
   if (!orgId) {
-    return <p className="text-sm text-muted-foreground">Select an organization to configure Airtable sync.</p>;
+    return <p className="text-sm text-muted-foreground">{t('root.selectOrg')}</p>;
   }
 
   return (
@@ -530,7 +536,7 @@ export function AirtableSyncTab({ orgId, readOnly = false, canTriggerSync = true
           {tab === "overview" && (
             <OverviewTab
               showError={mode === "error"}
-              errorTitle="The last runs failed"
+              errorTitle={t('overview.errorTitle')}
               errorDetail={status.line}
               onReplaceToken={() => openManage(true)}
               allClear={mode === "healthy" && heldCount === 0}
@@ -546,10 +552,12 @@ export function AirtableSyncTab({ orgId, readOnly = false, canTriggerSync = true
                 nextRunLabel,
               } : null}
               connection={{
-                token: keyStatusQ.data?.updatedAt ? `Saved ${formatDateDMY(new Date(keyStatusQ.data.updatedAt))}` : "Not set",
+                token: keyStatusQ.data?.updatedAt
+                  ? t('overview.connection.tokenSaved', { date: formatDateDMY(new Date(keyStatusQ.data.updatedAt)) })
+                  : t('overview.connection.tokenNotSet'),
                 base: baseName,
-                tableView: `${s.airtable_table_name || "not set"} · ${s.airtable_view || "Grid view"}`,
-                frequency: `Every ${formatInterval(s.airtable_poll_interval_minutes)}`,
+                tableView: `${s.airtable_table_name || t('overview.connection.tableViewFallbackTable')} · ${s.airtable_view || t('overview.connection.tableViewFallbackView')}`,
+                frequency: t('overview.connection.frequency', { interval: formatInterval(s.airtable_poll_interval_minutes) }),
               }}
               onManageConnection={() => openManage(false)}
               recentRuns={recent.slice(0, 5)}
@@ -574,7 +582,7 @@ export function AirtableSyncTab({ orgId, readOnly = false, canTriggerSync = true
             ) : (
               <Alert>
                 <AlertDescription>
-                  Pick a base and table first. Open <button className="underline" onClick={() => openManage(false)}>Manage connection</button> to choose where your shows live.
+                  {t('mappingTab.pickBaseAndTable')} <button className="underline" onClick={() => openManage(false)}>{t('mappingTab.manageConnectionLink')}</button> {t('mappingTab.pickBaseAndTableSuffix')}
                 </AlertDescription>
               </Alert>
             )
@@ -633,10 +641,11 @@ export function AirtableSyncTab({ orgId, readOnly = false, canTriggerSync = true
 // ── Manage-connection dialog (base/table/view/frequency + the Vault key) ────────
 
 function AutosaveStatus({ state }: { state: "idle" | "saving" | "saved" | "error" }) {
+  const { t } = useTranslation('settingsAirtable');
   if (state === "idle") return null;
-  if (state === "saving") return <span className="flex items-center gap-1 text-xs text-muted-foreground"><Loader2 className="h-3 w-3 animate-spin" /> Saving…</span>;
-  if (state === "saved") return <span className="flex items-center gap-1 text-xs text-muted-foreground"><CheckCircle2 className="h-3 w-3 text-primary" /> All changes saved</span>;
-  return <span className="flex items-center gap-1 text-xs text-destructive"><AlertCircle className="h-3 w-3" /> Couldn't save</span>;
+  if (state === "saving") return <span className="flex items-center gap-1 text-xs text-muted-foreground"><Loader2 className="h-3 w-3 animate-spin" /> {t('autosaveStatus.saving')}</span>;
+  if (state === "saved") return <span className="flex items-center gap-1 text-xs text-muted-foreground"><CheckCircle2 className="h-3 w-3 text-primary" /> {t('autosaveStatus.saved')}</span>;
+  return <span className="flex items-center gap-1 text-xs text-destructive"><AlertCircle className="h-3 w-3" /> {t('autosaveStatus.error')}</span>;
 }
 
 interface ManageConnectionProps {
@@ -665,16 +674,17 @@ interface ManageConnectionProps {
 }
 
 function ManageConnectionDialog(p: ManageConnectionProps) {
+  const { t } = useTranslation('settingsAirtable');
   const s = p.settings;
   return (
     <Dialog open={p.open} onOpenChange={p.onOpenChange}>
       <DialogContent className="max-w-xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <div className="flex items-center justify-between gap-3">
-            <DialogTitle className="font-display">Manage connection</DialogTitle>
+            <DialogTitle className="font-display">{t('manageDialog.title')}</DialogTitle>
             <AutosaveStatus state={p.saveState} />
           </div>
-          <DialogDescription>Your Airtable key, the base and table to read, the view, and how often to sync.</DialogDescription>
+          <DialogDescription>{t('manageDialog.description')}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">
@@ -682,35 +692,35 @@ function ManageConnectionDialog(p: ManageConnectionProps) {
           <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-2">
               <KeyRound className="h-4 w-4 text-muted-foreground" />
-              <Label className="font-medium">Personal access token</Label>
+              <Label className="font-medium">{t('manageDialog.token.label')}</Label>
               {p.keyPresent ? (
-                <Badge variant="secondary" className="gap-1"><CheckCircle2 className="h-3 w-3" /> Key saved</Badge>
+                <Badge variant="secondary" className="gap-1"><CheckCircle2 className="h-3 w-3" /> {t('manageDialog.token.keySaved')}</Badge>
               ) : (
-                <Badge variant="outline" className="gap-1 text-muted-foreground"><KeyRound className="h-3 w-3" /> Not set</Badge>
+                <Badge variant="outline" className="gap-1 text-muted-foreground"><KeyRound className="h-3 w-3" /> {t('manageDialog.token.notSet')}</Badge>
               )}
               {p.keyPresent && p.keyUpdatedAt && (
-                <span className="text-xs text-muted-foreground">updated {formatDateDMY(new Date(p.keyUpdatedAt))}</span>
+                <span className="text-xs text-muted-foreground">{t('manageDialog.token.updated', { date: formatDateDMY(new Date(p.keyUpdatedAt)) })}</span>
               )}
             </div>
             {p.keyPresent && !p.replacing ? (
               <div className="flex items-center justify-between gap-2 rounded-md border border-border px-3 py-2">
-                <span className="flex items-center gap-2 text-sm text-muted-foreground"><Lock className="h-4 w-4" /> ••••••••••</span>
+                <span className="flex items-center gap-2 text-sm text-muted-foreground"><Lock className="h-4 w-4" /> {t('manageDialog.token.maskedValue')}</span>
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm" disabled={!p.canWrite} onClick={() => p.setReplacing(true)}>Replace</Button>
+                  <Button variant="outline" size="sm" disabled={!p.canWrite} onClick={() => p.setReplacing(true)}>{t('manageDialog.token.replace')}</Button>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" disabled={!p.canWrite || p.deletingKey}>
-                        <Trash2 className="mr-1 h-4 w-4" /> Delete
+                        <Trash2 className="mr-1 h-4 w-4" /> {t('manageDialog.token.delete')}
                       </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                       <AlertDialogHeader>
-                        <AlertDialogTitle>Delete the Airtable API key?</AlertDialogTitle>
-                        <AlertDialogDescription>Sync stops working until a new key is saved. The key is removed from the encrypted vault. This cannot be undone.</AlertDialogDescription>
+                        <AlertDialogTitle>{t('manageDialog.token.deleteDialogTitle')}</AlertDialogTitle>
+                        <AlertDialogDescription>{t('manageDialog.token.deleteDialogDescription')}</AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={p.onDeleteKey}>Delete key</AlertDialogAction>
+                        <AlertDialogCancel>{t('manageDialog.token.cancel')}</AlertDialogCancel>
+                        <AlertDialogAction onClick={p.onDeleteKey}>{t('manageDialog.token.deleteKeyConfirm')}</AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>
                   </AlertDialog>
@@ -719,13 +729,18 @@ function ManageConnectionDialog(p: ManageConnectionProps) {
             ) : (
               <>
                 <div className="flex gap-2">
-                  <Input type="password" autoComplete="off" placeholder={p.keyPresent ? "Enter a new key…" : "pat… (write-only)"} value={p.airtableKey} disabled={!p.canWrite} onChange={(e) => p.setAirtableKey(e.target.value)} />
-                  <Button onClick={p.onSaveKey} disabled={!p.canWrite || p.savingKey}>{p.keyPresent ? "Update" : "Save key"}</Button>
+                  <Input type="password" autoComplete="off" placeholder={p.keyPresent ? t('manageDialog.token.placeholderReplace') : t('manageDialog.token.placeholderNew')} value={p.airtableKey} disabled={!p.canWrite} onChange={(e) => p.setAirtableKey(e.target.value)} />
+                  <Button onClick={p.onSaveKey} disabled={!p.canWrite || p.savingKey}>{p.keyPresent ? t('manageDialog.token.update') : t('manageDialog.token.saveKey')}</Button>
                   {p.keyPresent && p.replacing && (
-                    <Button variant="ghost" onClick={() => { p.setReplacing(false); p.setAirtableKey(""); }}>Cancel</Button>
+                    <Button variant="ghost" onClick={() => { p.setReplacing(false); p.setAirtableKey(""); }}>{t('manageDialog.token.cancel')}</Button>
                   )}
                 </div>
-                <p className="text-sm text-muted-foreground">Stored encrypted in Vault, never displayed. Needs <span className="font-mono text-xs">data.records:read</span> and <span className="font-mono text-xs">schema.bases:read</span>.</p>
+                <p className="text-sm text-muted-foreground">
+                  {t('manageDialog.token.helpPrefix')}{' '}
+                  <span className="font-mono text-xs">data.records:read</span>{' '}
+                  {t('manageDialog.token.helpAnd')}{' '}
+                  <span className="font-mono text-xs">schema.bases:read</span>.
+                </p>
               </>
             )}
           </div>
@@ -733,28 +748,28 @@ function ManageConnectionDialog(p: ManageConnectionProps) {
           {/* Base & table */}
           <div className="space-y-3 border-t border-border pt-4">
             <div className="flex flex-wrap items-center gap-2">
-              <Label className="font-medium">Base and table</Label>
-              {p.schemaState === "accessible" && <Badge variant="secondary" className="gap-1"><CheckCircle2 className="h-3 w-3" /> Schema connected</Badge>}
-              {p.schemaState === "fallback" && <Badge variant="outline">Manual mode</Badge>}
+              <Label className="font-medium">{t('manageDialog.baseTable.label')}</Label>
+              {p.schemaState === "accessible" && <Badge variant="secondary" className="gap-1"><CheckCircle2 className="h-3 w-3" /> {t('manageDialog.baseTable.schemaConnected')}</Badge>}
+              {p.schemaState === "fallback" && <Badge variant="outline">{t('manageDialog.baseTable.manualMode')}</Badge>}
               <Button variant="outline" size="sm" className="ml-auto" onClick={p.refreshSchema} disabled={p.isSchemaPending || !p.keyPresent}>
-                {p.isSchemaPending ? "Loading…" : "Refresh from Airtable"}
+                {p.isSchemaPending ? t('manageDialog.baseTable.refreshLoading') : t('manageDialog.baseTable.refresh')}
               </Button>
             </div>
-            {!p.keyPresent && <p className="text-xs text-muted-foreground">Save a key first to load bases and tables.</p>}
+            {!p.keyPresent && <p className="text-xs text-muted-foreground">{t('manageDialog.baseTable.saveKeyFirst')}</p>}
             {p.schemaState === "accessible" ? (
               <div className="grid grid-cols-1 gap-3">
                 <div className="space-y-2">
-                  <Label>Base</Label>
+                  <Label>{t('manageDialog.baseTable.baseLabel')}</Label>
                   <Select value={s.airtable_base_id} onValueChange={(v) => p.onSaveSettings({ airtable_base_id: v, airtable_table_name: "" })} disabled={!p.canWrite}>
-                    <SelectTrigger><SelectValue placeholder="Select a base" /></SelectTrigger>
+                    <SelectTrigger><SelectValue placeholder={t('manageDialog.baseTable.selectBasePlaceholder')} /></SelectTrigger>
                     <SelectContent>{p.bases.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Table</Label>
+                  <Label>{t('manageDialog.baseTable.tableLabel')}</Label>
                   <Select value={s.airtable_table_name} onValueChange={(v) => p.onSaveSettings({ airtable_table_name: v })} disabled={!p.tables.length || !p.canWrite}>
-                    <SelectTrigger><SelectValue placeholder="Select a table" /></SelectTrigger>
-                    <SelectContent>{p.tables.map((t) => <SelectItem key={t.id} value={t.name}>{t.name}</SelectItem>)}</SelectContent>
+                    <SelectTrigger><SelectValue placeholder={t('manageDialog.baseTable.selectTablePlaceholder')} /></SelectTrigger>
+                    <SelectContent>{p.tables.map((tb) => <SelectItem key={tb.id} value={tb.name}>{tb.name}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
               </div>
@@ -763,12 +778,12 @@ function ManageConnectionDialog(p: ManageConnectionProps) {
                 <Alert><AlertDescription>{airtableFallbackMessage(p.fallbackCause)}</AlertDescription></Alert>
                 <div className="grid grid-cols-1 gap-3">
                   <div className="space-y-2">
-                    <Label>Airtable base ID</Label>
-                    <Input placeholder="app1234567890" defaultValue={s.airtable_base_id} key={`base-${s.airtable_base_id}`} disabled={!p.canWrite} onBlur={(e) => { if (e.target.value !== s.airtable_base_id) p.onSaveSettings({ airtable_base_id: e.target.value, airtable_table_name: "" }); }} />
+                    <Label>{t('manageDialog.baseTable.baseIdLabel')}</Label>
+                    <Input placeholder={t('manageDialog.baseTable.baseIdPlaceholder')} defaultValue={s.airtable_base_id} key={`base-${s.airtable_base_id}`} disabled={!p.canWrite} onBlur={(e) => { if (e.target.value !== s.airtable_base_id) p.onSaveSettings({ airtable_base_id: e.target.value, airtable_table_name: "" }); }} />
                   </div>
                   <div className="space-y-2">
-                    <Label>Airtable table name</Label>
-                    <Input placeholder="Shows" defaultValue={s.airtable_table_name} key={`table-${s.airtable_table_name}`} disabled={!p.canWrite} onBlur={(e) => { if (e.target.value !== s.airtable_table_name) p.onSaveSettings({ airtable_table_name: e.target.value }); }} />
+                    <Label>{t('manageDialog.baseTable.tableNameLabel')}</Label>
+                    <Input placeholder={t('manageDialog.baseTable.tableNamePlaceholder')} defaultValue={s.airtable_table_name} key={`table-${s.airtable_table_name}`} disabled={!p.canWrite} onBlur={(e) => { if (e.target.value !== s.airtable_table_name) p.onSaveSettings({ airtable_table_name: e.target.value }); }} />
                   </div>
                 </div>
               </>
@@ -777,24 +792,24 @@ function ManageConnectionDialog(p: ManageConnectionProps) {
             ) : null}
             {p.keyPresent && s.airtable_table_name && (
               <div className="space-y-2">
-                <Label>Airtable view (optional)</Label>
-                <Input placeholder="Grid view" defaultValue={s.airtable_view} key={`view-${s.airtable_view}`} disabled={!p.canWrite} onBlur={(e) => { const v = e.target.value.trim(); if (v !== s.airtable_view) p.onSaveSettings({ airtable_view: v }); }} />
-                <p className="text-xs text-muted-foreground">The sync reads records from this view. Leave blank to read the entire table.</p>
+                <Label>{t('manageDialog.baseTable.viewLabel')}</Label>
+                <Input placeholder={t('manageDialog.baseTable.viewPlaceholder')} defaultValue={s.airtable_view} key={`view-${s.airtable_view}`} disabled={!p.canWrite} onBlur={(e) => { const v = e.target.value.trim(); if (v !== s.airtable_view) p.onSaveSettings({ airtable_view: v }); }} />
+                <p className="text-xs text-muted-foreground">{t('manageDialog.baseTable.viewHelp')}</p>
               </div>
             )}
           </div>
 
           {/* Frequency */}
           <div className="space-y-2 border-t border-border pt-4">
-            <Label className="font-medium">Sync frequency</Label>
+            <Label className="font-medium">{t('manageDialog.frequency.label')}</Label>
             <Select value={String(s.airtable_poll_interval_minutes)} onValueChange={(v) => p.onSaveSettings({ airtable_poll_interval_minutes: Number(v) })} disabled={!p.canWrite}>
               <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
               <SelectContent>{POLL_INTERVAL_PRESETS.map((preset) => <SelectItem key={preset.value} value={String(preset.value)}>{preset.label}</SelectItem>)}</SelectContent>
             </Select>
             {s.airtable_poll_interval_minutes < 60 && (
               <Alert className="max-w-xl">
-                <AlertTitle>Frequent syncs can hit Airtable limits</AlertTitle>
-                <AlertDescription>Only pick a frequency under one hour if your Airtable workspace is on a paid plan. Airtable may rate-limit frequent requests, which can cause runs to fail or updates to arrive late.</AlertDescription>
+                <AlertTitle>{t('manageDialog.frequency.warningTitle')}</AlertTitle>
+                <AlertDescription>{t('manageDialog.frequency.warningDescription')}</AlertDescription>
               </Alert>
             )}
           </div>

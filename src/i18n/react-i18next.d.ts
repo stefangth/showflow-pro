@@ -4,6 +4,17 @@ import type enHelp from './locales/en/help.json';
 import type enDashboard from './locales/en/dashboard.json';
 import type enBookings from './locales/en/bookings.json';
 import type enAvailability from './locales/en/availability.json';
+import type enSettings from './locales/en/settings.json';
+import type enSettingsDocs from './locales/en/settingsDocs.json';
+import type enSettingsCastsCoverage from './locales/en/settingsCastsCoverage.json';
+import type enSettingsSkills from './locales/en/settingsSkills.json';
+import type enSettingsTrust from './locales/en/settingsTrust.json';
+import type enSettingsAirtable from './locales/en/settingsAirtable.json';
+import type enSettingsBookingFlow from './locales/en/settingsBookingFlow.json';
+import type enSettingsHireOrders from './locales/en/settingsHireOrders.json';
+import type enSettingsEmailTemplates from './locales/en/settingsEmailTemplates.json';
+import type enSettingsRolesRights from './locales/en/settingsRolesRights.json';
+import type enSettingsEditor from './locales/en/settingsEditor.json';
 
 // Typed resources: `t('nav.help')` autocompletes and an unknown key is a compile error.
 // English is the canonical shape; the key-parity test enforces German matches it.
@@ -16,6 +27,17 @@ declare module 'react-i18next' {
       dashboard: typeof enDashboard;
       bookings: typeof enBookings;
       availability: typeof enAvailability;
+      settings: typeof enSettings;
+      settingsDocs: typeof enSettingsDocs;
+      settingsCastsCoverage: typeof enSettingsCastsCoverage;
+      settingsSkills: typeof enSettingsSkills;
+      settingsTrust: typeof enSettingsTrust;
+      settingsAirtable: typeof enSettingsAirtable;
+      settingsBookingFlow: typeof enSettingsBookingFlow;
+      settingsHireOrders: typeof enSettingsHireOrders;
+      settingsEmailTemplates: typeof enSettingsEmailTemplates;
+      settingsRolesRights: typeof enSettingsRolesRights;
+      settingsEditor: typeof enSettingsEditor;
     };
   }
 }

@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 import { CheckCircle2, RefreshCw } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -56,6 +57,7 @@ export function StatusHeader({
   syncing,
   onSyncNow,
 }: StatusHeaderProps) {
+  const { t } = useTranslation('settingsAirtable');
   return (
     <div className="rounded-lg border border-border bg-card shadow-sm">
       <div className="flex items-start justify-between gap-4 p-4">
@@ -76,12 +78,12 @@ export function StatusHeader({
           {saved && (
             <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <CheckCircle2 className="h-3 w-3 text-primary" />
-              Saved
+              {t('statusHeader.saved')}
             </span>
           )}
           <Button onClick={onSyncNow} disabled={!canSyncNow || syncing}>
             <RefreshCw className="h-3.5 w-3.5" />
-            {syncing ? "Syncing…" : "Sync now"}
+            {syncing ? t('statusHeader.syncing') : t('statusHeader.syncNow')}
           </Button>
         </div>
       </div>

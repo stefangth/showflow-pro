@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import type { TemplateRole, TemplateSection } from "./types";
@@ -10,6 +11,7 @@ interface OutlineButtonProps {
 }
 
 function OutlineButton({ label, modified, active, onClick }: OutlineButtonProps) {
+  const { t } = useTranslation("settingsEditor");
   return (
     <button
       type="button"
@@ -22,7 +24,7 @@ function OutlineButton({ label, modified, active, onClick }: OutlineButtonProps)
     >
       <span className="truncate">
         {label}
-        {modified ? ", modified" : ""}
+        {modified ? t("outline.modifiedSuffix") : ""}
       </span>
       {modified && <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent-600" />}
     </button>
@@ -45,8 +47,9 @@ export function TemplateOutline<RoleKey extends string, CopyKey extends string =
   onSelect,
   isModified,
 }: TemplateOutlineProps<RoleKey, CopyKey>) {
+  const { t } = useTranslation("settingsEditor");
   return (
-    <nav aria-label="Document outline" className="h-full">
+    <nav aria-label={t("outline.documentOutlineAria")} className="h-full">
       <ScrollArea className="h-full">
         <div className="space-y-3 p-2">
           <OutlineButton

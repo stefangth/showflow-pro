@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -23,6 +24,7 @@ interface Props {
  *  org-mode writes an override (with a confirm step for sensitive rights), platform-mode
  *  writes the default/lock policy. */
 export function PermissionsMatrix({ orgId, mode, moduleEnabled }: Props) {
+  const { t } = useTranslation("settings");
   const qc = useQueryClient();
   const { cells, isLoading } = useCapabilityMatrix(orgId);
   const [pending, setPending] = useState<{ cell: CapabilityMatrixCell; enabled: boolean } | null>(null);
@@ -32,13 +34,13 @@ export function PermissionsMatrix({ orgId, mode, moduleEnabled }: Props) {
   const writeOverride = useMutation({
     mutationFn: ({ key, enabled }: { key: string; enabled: boolean }) =>
       setOrgCapability(supabase, orgId, key, enabled),
-    onSuccess: () => { invalidate(); toast.success("Rights updated."); },
+    onSuccess: () => { invalidate(); toast.success(t("permissions.rightsUpdated")); },
     onError: (e: Error) => toast.error(e.message),
   });
   const writePolicy = useMutation({
     mutationFn: ({ key, patch }: { key: string; patch: { enabled?: boolean | null; locked?: boolean } }) =>
       setOrgCapabilityPolicy(supabase, orgId, key, patch),
-    onSuccess: () => { invalidate(); toast.success("Policy updated."); },
+    onSuccess: () => { invalidate(); toast.success(t("permissions.policyUpdated")); },
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -48,7 +50,7 @@ export function PermissionsMatrix({ orgId, mode, moduleEnabled }: Props) {
     writeOverride.mutate({ key: cell.def.key, enabled });
   };
 
-  if (isLoading) return <p className="text-sm text-muted-foreground">Loading rights...</p>;
+  if (isLoading) return <p className="text-sm text-muted-foreground">{t("permissions.loading")}</p>;
 
   return (
     <div className="space-y-6">
@@ -81,20 +83,23 @@ export function PermissionsMatrix({ orgId, mode, moduleEnabled }: Props) {
       <AlertDialog open={!!pending} onOpenChange={(o) => { if (!o) setPending(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Change a sensitive right?</AlertDialogTitle>
+            <AlertDialogTitle>{t("permissions.confirmTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              {pending && `${pending.enabled ? "Grant" : "Remove"} "${pending.cell.def.label}" for producers. This is a sensitive right.`}
+              {pending && t(
+                pending.enabled ? "permissions.confirmDescriptionGrant" : "permissions.confirmDescriptionRemove",
+                { label: pending.cell.def.label },
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("permissions.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
                 if (pending) writeOverride.mutate({ key: pending.cell.def.key, enabled: pending.enabled });
                 setPending(null);
               }}
             >
-              Confirm
+              {t("permissions.confirm")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

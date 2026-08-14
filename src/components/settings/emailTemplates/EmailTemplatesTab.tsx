@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { generatePath, Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/features/auth/AuthContext";
 import { fetchEmailTemplateSettings } from "@/data/emailTemplates";
 import { supabase } from "@/integrations/supabase/client";
@@ -52,15 +53,16 @@ function canPreview(template: EmailTemplateCoverage): boolean {
   return template.status === "internal" && template.audience === "org";
 }
 
-function statusLabel(template: EmailTemplateCoverage): string {
-  if (template.status === "editable") return "Editable";
-  if (template.status === "external") return "External";
+function statusKey(template: EmailTemplateCoverage): "editable" | "external" | "automatic" | "internal" {
+  if (template.status === "editable") return "editable";
+  if (template.status === "external") return "external";
   // "internal" + org audience means "we render it, you can't reword it" rather than
   // "this is platform plumbing you shouldn't be able to see at all" — say so plainly.
-  return template.audience === "org" ? "Automatic" : "Internal";
+  return template.audience === "org" ? "automatic" : "internal";
 }
 
 export function EmailTemplatesTab({ readOnly, isSuperAdmin }: EmailTemplatesTabProps) {
+  const { t } = useTranslation("settingsEmailTemplates");
   const { currentOrg } = useAuth();
   const orgId = currentOrg?.id ?? null;
   const { data: settings, error, isError, isFetching, isLoading, isSuccess, refetch } = useQuery({
@@ -74,10 +76,10 @@ export function EmailTemplatesTab({ readOnly, isSuperAdmin }: EmailTemplatesTabP
 
   const visibleTemplates = EMAIL_TEMPLATE_COVERAGE.filter((template) => isVisibleTemplate(template, isSuperAdmin));
   const helperText = readOnly
-    ? "Preview every transactional email. Your role cannot change email copy or branding."
-    : "Preview every transactional email and see the delivery details behind it.";
+    ? t("emailTemplatesTab.helperReadOnly")
+    : t("emailTemplatesTab.helperEditable");
   const previewDisabled = !isSuccess || !settings;
-  const settingsError = error instanceof Error ? error.message : "Please try again.";
+  const settingsError = error instanceof Error ? error.message : t("emailTemplatesTab.loadErrorFallback");
 
   const handlePreview = async (template: EmailTemplateCoverage) => {
     if (!settings) return;
@@ -105,16 +107,16 @@ export function EmailTemplatesTab({ readOnly, isSuperAdmin }: EmailTemplatesTabP
       // compatible with any caller that hands back a bare { html } shape.
       const result = data?.templates?.[0] as { html?: string; status?: string; errorMessage?: string } | undefined;
       if (result?.status === "render_failed") {
-        const message = result.errorMessage || "Unknown error";
-        setPreview({ title: template.displayName, html: `<p>Preview failed: ${message}</p>`, loading: false });
+        const message = result.errorMessage || t("emailTemplatesTab.unknownError");
+        setPreview({ title: template.displayName, html: `<p>${t("emailTemplatesTab.previewFailed", { message })}</p>`, loading: false });
         return;
       }
       const html = result?.html;
-      setPreview({ title: template.displayName, html: typeof html === "string" && html.length > 0 ? html : "<p>No preview available.</p>", loading: false });
+      setPreview({ title: template.displayName, html: typeof html === "string" && html.length > 0 ? html : `<p>${t("emailTemplatesTab.noPreviewAvailable")}</p>`, loading: false });
     } catch (error) {
       if (runId !== previewRun.current) return;
-      const message = error instanceof Error ? error.message : "Unknown error";
-      setPreview({ title: template.displayName, html: `<p>Preview failed: ${message}</p>`, loading: false });
+      const message = error instanceof Error ? error.message : t("emailTemplatesTab.unknownError");
+      setPreview({ title: template.displayName, html: `<p>${t("emailTemplatesTab.previewFailed", { message })}</p>`, loading: false });
     }
   };
 
@@ -122,19 +124,19 @@ export function EmailTemplatesTab({ readOnly, isSuperAdmin }: EmailTemplatesTabP
     <>
       <Card>
         <CardHeader>
-          <CardTitle className="font-display">Email templates</CardTitle>
+          <CardTitle className="font-display">{t("emailTemplatesTab.title")}</CardTitle>
           <CardDescription>{helperText}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6" aria-busy={isFetching}>
           {isLoading ? (
-            <p role="status" className="text-sm text-muted-foreground">Loading saved email presentation…</p>
+            <p role="status" className="text-sm text-muted-foreground">{t("emailTemplatesTab.loading")}</p>
           ) : null}
           {isError ? (
             <Alert variant="destructive">
               <AlertDescription className="flex flex-wrap items-center justify-between gap-3">
-                <span>Could not load the saved email presentation. {settingsError}</span>
+                <span>{t("emailTemplatesTab.loadError", { message: settingsError })}</span>
                 <Button type="button" variant="outline" size="sm" disabled={isFetching} onClick={() => void refetch()}>
-                  Retry
+                  {t("emailTemplatesTab.retry")}
                 </Button>
               </AlertDescription>
             </Alert>
@@ -148,7 +150,7 @@ export function EmailTemplatesTab({ readOnly, isSuperAdmin }: EmailTemplatesTabP
                 className="overflow-hidden rounded-lg border border-border bg-card text-foreground"
               >
                 <div className="border-b border-border bg-muted px-4 py-3">
-                  <h3 className="font-display text-sm font-semibold">{group}</h3>
+                  <h3 className="font-display text-sm font-semibold">{t(`emailTemplatesTab.groups.${group}`)}</h3>
                 </div>
                 <div className="divide-y divide-border">
                   {templates.map((template) => (
@@ -158,23 +160,23 @@ export function EmailTemplatesTab({ readOnly, isSuperAdmin }: EmailTemplatesTabP
                           {template.family ? <span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full bg-primary" /> : null}
                           <p className="font-medium">{template.displayName}</p>
                         </div>
-                        <p className="mt-1 text-xs text-muted-foreground">To: {template.recipient}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">{t("emailTemplatesTab.recipientPrefix", { recipient: template.recipient })}</p>
                       </div>
                       <p className="text-sm text-muted-foreground">{template.trigger}</p>
                       <div className="flex items-center gap-2 sm:justify-self-end">
-                        <Badge variant={statusVariant(template.status)}>{statusLabel(template)}</Badge>
+                        <Badge variant={statusVariant(template.status)}>{t(`emailTemplatesTab.status.${statusKey(template)}`)}</Badge>
                         {canPreview(template) ? (
-                          <Button variant="outline" size="sm" aria-label={`Preview ${template.displayName}`} disabled={previewDisabled} onClick={() => void handlePreview(template)}>
-                            Preview
+                          <Button variant="outline" size="sm" aria-label={t("emailTemplatesTab.previewAriaLabel", { name: template.displayName })} disabled={previewDisabled} onClick={() => void handlePreview(template)}>
+                            {t("emailTemplatesTab.previewAction")}
                           </Button>
                         ) : null}
                         {template.status === "editable" && !readOnly ? (
                           <Button asChild size="sm">
                             <Link
-                              aria-label={`Edit ${template.displayName}`}
+                              aria-label={t("emailTemplatesTab.editAriaLabel", { name: template.displayName })}
                               to={generatePath(ROUTES.EMAIL_TEMPLATE, { templateKey: template.key })}
                             >
-                              Edit
+                              {t("emailTemplatesTab.editAction")}
                             </Link>
                           </Button>
                         ) : null}
@@ -191,14 +193,14 @@ export function EmailTemplatesTab({ readOnly, isSuperAdmin }: EmailTemplatesTabP
       <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
         <DialogContent className="max-w-3xl">
           <DialogHeader>
-            <DialogTitle>Preview: {preview.title}</DialogTitle>
-            <DialogDescription>Rendered with this organization&apos;s saved email copy and theme.</DialogDescription>
+            <DialogTitle>{t("emailTemplatesTab.previewDialog.title", { title: preview.title })}</DialogTitle>
+            <DialogDescription>{t("emailTemplatesTab.previewDialog.description")}</DialogDescription>
           </DialogHeader>
           {preview.loading ? (
-            <div className="flex h-64 items-center justify-center text-muted-foreground">Rendering preview…</div>
+            <div className="flex h-64 items-center justify-center text-muted-foreground">{t("emailTemplatesTab.previewDialog.rendering")}</div>
           ) : (
             <iframe
-              title="Email preview"
+              title={t("emailTemplatesTab.previewDialog.iframeTitle")}
               srcDoc={preview.html}
               sandbox="allow-same-origin"
               className="h-[520px] w-full rounded-lg border border-border bg-background"

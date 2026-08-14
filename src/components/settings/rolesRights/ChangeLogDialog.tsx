@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Dialog,
   DialogContent,
@@ -18,9 +19,9 @@ interface ChangeLogDialogProps {
 /** Render a raw audit old/new value as a short human word, defaulting the
  *  capability on/off shape (booleans) to "on"/"off" and falling back to a
  *  plain string for anything else (e.g. a policy object). */
-function humanizeValue(value: unknown): string {
-  if (typeof value === "boolean") return value ? "on" : "off";
-  if (value === null || value === undefined) return "off";
+function humanizeValue(value: unknown, t: (key: string) => string): string {
+  if (typeof value === "boolean") return value ? t("changeLog.valueOn") : t("changeLog.valueOff");
+  if (value === null || value === undefined) return t("changeLog.valueOff");
   if (typeof value === "string") return value;
   return JSON.stringify(value);
 }
@@ -30,6 +31,7 @@ function humanizeValue(value: unknown): string {
  *  policy-level overrides, `capability_policy:<key>`), newest first. Purely
  *  a viewer over the existing settings-audit infrastructure. */
 export function ChangeLogDialog({ open, onOpenChange }: ChangeLogDialogProps) {
+  const { t } = useTranslation("settingsRolesRights");
   const keys = useMemo(
     () => CAPABILITY_KEYS.flatMap((key) => [`capability:${key}`, `capability_policy:${key}`]),
     [],
@@ -40,7 +42,7 @@ export function ChangeLogDialog({ open, onOpenChange }: ChangeLogDialogProps) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Change log</DialogTitle>
+          <DialogTitle>{t("changeLog.title")}</DialogTitle>
         </DialogHeader>
         <div className="max-h-[60vh] space-y-2 overflow-y-auto">
           {isLoading ? (
@@ -50,7 +52,7 @@ export function ChangeLogDialog({ open, onOpenChange }: ChangeLogDialogProps) {
               <Skeleton className="h-12 w-full" />
             </div>
           ) : !entries || entries.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No changes yet.</p>
+            <p className="text-sm text-muted-foreground">{t("changeLog.empty")}</p>
           ) : (
             entries.map((entry) => (
               <div
@@ -59,14 +61,17 @@ export function ChangeLogDialog({ open, onOpenChange }: ChangeLogDialogProps) {
               >
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-sm font-medium text-foreground">
-                    {entry.actorName ?? "Unknown"}
+                    {entry.actorName ?? t("changeLog.unknownActor")}
                   </span>
                   <span className="text-xs text-muted-foreground">
                     {formatDateWithWeekday(new Date(entry.created_at))}
                   </span>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {`${humanizeValue(entry.old_value)} -> ${humanizeValue(entry.new_value)}`}
+                  {t("changeLog.transition", {
+                    from: humanizeValue(entry.old_value, t),
+                    to: humanizeValue(entry.new_value, t),
+                  })}
                 </p>
               </div>
             ))

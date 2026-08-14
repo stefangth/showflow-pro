@@ -24,10 +24,73 @@ const IDENTICAL_OK: Record<string, string> = {
   'bookings.producer.statusPlaceholder': 'proper noun "Status" is identical in German',
   'bookings.producer.sortAsc': 'interpolation + arrow only, no translatable words',
   'bookings.producer.sortDesc': 'interpolation + arrow only, no translatable words',
+
+  // settings namespace (core shell)
+  'settings.nav.items.skills': 'loanword "Skills", kept untranslated across the app',
+  'settings.organization.slugLabel': 'technical term "Slug", never translated',
+  'settings.permissions.row.admin': 'role name "Admin" is not translated (ROLE_LABELS)',
+  'settings.permissions.row.roleRight': 'interpolation only ("{{role}}: {{label}}"), no words',
+
+  // settingsCastsCoverage
+  'settingsCastsCoverage.coverage.showsTitle': '"Shows" is a loanword used untranslated in the German UI (dashboard/bookings)',
+
+  // settingsSkills
+  'settingsSkills.header.title': 'loanword "Skills"',
+  'settingsSkills.table.headSkill': 'loanword "Skill"',
+  'settingsSkills.table.headArtists': 'role noun "Artists" deliberately untranslated (TERMS convention)',
+
+  // settingsTrust
+  'settingsTrust.orgDataCard.regionLabel': '"Region" is identical in German',
+
+  // settingsAirtable
+  'settingsAirtable.eyebrow.connected': 'proper noun + interpolation only ("Airtable · {{baseName}} › {{tableName}}")',
+  'settingsAirtable.eyebrow.default': 'proper noun "Airtable"',
+  'settingsAirtable.overview.connection.tableViewFallbackView': 'Airtable UI name "Grid view"',
+  'settingsAirtable.manageDialog.token.maskedValue': 'masked dots, not language-dependent',
+  'settingsAirtable.manageDialog.baseTable.baseIdPlaceholder': "Airtable base-id format example",
+  'settingsAirtable.manageDialog.baseTable.tableNamePlaceholder': 'example Airtable table name ("Shows")',
+  'settingsAirtable.manageDialog.baseTable.viewPlaceholder': 'Airtable UI name "Grid view"',
+  'settingsAirtable.activityTab.colStatus': '"Status" is identical in German',
+  'settingsAirtable.catalogTab.blankKeyPlaceholder': 'punctuation glyph "·"',
+  'settingsAirtable.consoleTabs.sync': 'loanword "Sync"',
+  'settingsAirtable.mappingTab2.optional': '"optional" is identical in German',
+  'settingsAirtable.overviewTab.rowToken': '"Token" is identical in German',
+  'settingsAirtable.setupWizard.keyPlaceholder': 'Airtable token-prefix convention "pat…"',
+  'settingsAirtable.console.badge.ok': 'short status abbreviation "ok", kept unlocalized',
+
+  // settingsBookingFlow
+  'settingsBookingFlow.flowRail.actorSystem': '"System" is identical in German',
+
+  // settingsHireOrders
+  'settingsHireOrders.hireOrdersTab.rail.systemActor': '"System" is identical in German',
+  'settingsHireOrders.letterheadFields.legalNamePlaceholder': 'example company name (proper noun)',
+  'settingsHireOrders.templateInspector.colors.text': '"Text" is identical in German',
+  'settingsHireOrders.templateInspector.textSectionHeading': '"Text" is identical in German',
+
+  // settingsEmailTemplates
+  'settingsEmailTemplates.emailTemplatesTab.groups.System': '"System" is identical in German',
+  'settingsEmailTemplates.emailTemplateInspector.text': '"Text" is identical in German',
+  'settingsEmailTemplates.emailTemplateInspector.weightOptions.medium': 'typographic loanword "Medium"',
+  'settingsEmailTemplates.emailTemplateInspector.weightOptions.semibold': 'typographic loanword "Semibold"',
+  'settingsEmailTemplates.emailTemplateInspector.roleLabels.header': 'loanword "Header"',
+  'settingsEmailTemplates.emailTemplateInspector.roleLabels.button': 'loanword "Button"',
+  'settingsEmailTemplates.emailTemplateInspector.roleLabels.footer': 'loanword "Footer"',
+  'settingsEmailTemplates.emailEditorMeta.sections.header': 'loanword "Header"',
+  'settingsEmailTemplates.emailEditorMeta.sections.footer': 'loanword "Footer"',
+
+  // settingsRolesRights
+  'settingsRolesRights.tab.presets.standard': '"Standard" is identical in German',
+  'settingsRolesRights.editingPicker.productionTeam': 'role label "Production Team" kept untranslated',
+  'settingsRolesRights.changeLog.transition': 'interpolation + arrow only ("{{from}} -> {{to}}")',
 };
 
 describe('German catalog is translated (not English left in place)', () => {
-  for (const ns of ['bookings', 'availability'] as const) {
+  for (const ns of [
+    'bookings', 'availability',
+    'settings', 'settingsDocs', 'settingsCastsCoverage', 'settingsSkills', 'settingsTrust',
+    'settingsAirtable', 'settingsBookingFlow', 'settingsHireOrders', 'settingsEmailTemplates',
+    'settingsRolesRights', 'settingsEditor',
+  ] as const) {
     it(`de differs from en for translatable keys in "${ns}"`, () => {
       const en = leaves(resources.en[ns]);
       const de = leaves(resources.de[ns]);

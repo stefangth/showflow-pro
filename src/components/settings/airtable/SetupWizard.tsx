@@ -1,4 +1,5 @@
 import { CircleHelp } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,15 +19,15 @@ interface SetupWizardProps {
 
 interface WizardStep {
   n: number;
-  title: string;
-  hint: string;
+  titleKey: string;
+  hintKey: string;
 }
 
 const STEPS: WizardStep[] = [
-  { n: 1, title: "Connect", hint: "Personal access token" },
-  { n: 2, title: "Base and table", hint: "Pick where shows live" },
-  { n: 3, title: "Map fields", hint: "Date, program, city, sessions" },
-  { n: 4, title: "Link catalog", hint: "Match options to your shows" },
+  { n: 1, titleKey: "setupWizard.steps.connectTitle", hintKey: "setupWizard.steps.connectHint" },
+  { n: 2, titleKey: "setupWizard.steps.baseTableTitle", hintKey: "setupWizard.steps.baseTableHint" },
+  { n: 3, titleKey: "setupWizard.steps.mapFieldsTitle", hintKey: "setupWizard.steps.mapFieldsHint" },
+  { n: 4, titleKey: "setupWizard.steps.linkCatalogTitle", hintKey: "setupWizard.steps.linkCatalogHint" },
 ];
 
 const EYEBROW = "text-[11px] font-semibold uppercase tracking-[0.1em] text-accent-600";
@@ -43,16 +44,17 @@ export function SetupWizard({
   keyPresent,
   onManageConnection,
 }: SetupWizardProps) {
+  const { t } = useTranslation('settingsAirtable');
   const currentStep = keyPresent ? 2 : 1;
   return (
     <div className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
       <div className="border-b border-border p-5">
-        <p className={EYEBROW}>Airtable · setup</p>
+        <p className={EYEBROW}>{t('setupWizard.eyebrow')}</p>
         <h2 className="mt-1.5 font-display text-[22px] font-semibold tracking-tight">
-          Connect a base in four steps
+          {t('setupWizard.heading')}
         </h2>
         <p className="mt-1.5 text-sm text-muted-foreground">
-          Nothing syncs until the last step. You can leave and come back, each step saves as you go.
+          {t('setupWizard.subheading')}
         </p>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-[236px_1fr]">
@@ -85,9 +87,9 @@ export function SetupWizard({
                       step.n <= currentStep ? "text-foreground" : "text-muted-foreground",
                     )}
                   >
-                    {step.title}
+                    {t(step.titleKey)}
                   </p>
-                  <p className="mt-0.5 text-xs leading-4 text-muted-foreground">{step.hint}</p>
+                  <p className="mt-0.5 text-xs leading-4 text-muted-foreground">{t(step.hintKey)}</p>
                 </div>
               </li>
             );
@@ -95,27 +97,26 @@ export function SetupWizard({
         </ol>
         {keyPresent ? (
           <div className="p-5">
-            <h3 className="text-[17px] font-semibold tracking-tight">Base and table</h3>
+            <h3 className="text-[17px] font-semibold tracking-tight">{t('setupWizard.baseTableStepTitle')}</h3>
             <p className="mt-1.5 text-sm text-muted-foreground">
-              Your token is saved. Pick the Airtable base and table your shows live in to finish
-              connecting. Nothing syncs until you do.
+              {t('setupWizard.baseTableStepDescription')}
             </p>
             <Button onClick={onManageConnection} disabled={!canWrite} className="mt-4">
-              Choose base and table
+              {t('setupWizard.chooseBaseAndTable')}
             </Button>
           </div>
         ) : (
           <div className="p-5">
-            <h3 className="text-[17px] font-semibold tracking-tight">Personal access token</h3>
+            <h3 className="text-[17px] font-semibold tracking-tight">{t('setupWizard.tokenStepTitle')}</h3>
             <p className="mt-1.5 text-sm text-muted-foreground">
-              Stored encrypted in Vault and never displayed again. Needs{" "}
-              <span className="font-mono text-xs">data.records:read</span> and{" "}
+              {t('setupWizard.tokenHelpPrefix')}{" "}
+              <span className="font-mono text-xs">data.records:read</span> {t('setupWizard.tokenHelpAnd')}{" "}
               <span className="font-mono text-xs">schema.bases:read</span>.
             </p>
             <div className="mt-4 flex max-w-[520px] gap-2">
               <Input
                 type="password"
-                placeholder="pat…"
+                placeholder={t('setupWizard.keyPlaceholder')}
                 value={keyValue}
                 onChange={(e) => onKeyChange(e.target.value)}
                 disabled={!canWrite}
@@ -126,14 +127,13 @@ export function SetupWizard({
                 disabled={!canWrite || saving || !keyValue.trim()}
                 className="shrink-0"
               >
-                {saving ? "Saving…" : "Save and continue"}
+                {saving ? t('setupWizard.saving') : t('setupWizard.saveAndContinue')}
               </Button>
             </div>
             <div className="mt-5 flex items-center gap-2 border-t border-border pt-3.5">
               <CircleHelp className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
               <p className="text-xs text-muted-foreground">
-                No token yet? Create one at airtable.com/create/tokens, scoped to the base you sync
-                from.
+                {t('setupWizard.noTokenHint')}
               </p>
             </div>
           </div>

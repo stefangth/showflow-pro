@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { resolveOrgSetting, upsertOrgSetting } from "@/data/settings";
@@ -20,6 +21,7 @@ export interface HireOrderNumbering {
 }
 
 export function NumberingCard({ orgId, readOnly = false }: { orgId: string | null; readOnly?: boolean }) {
+  const { t } = useTranslation("settingsHireOrders");
   const qc = useQueryClient();
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["app-settings", "hire_order_numbering", orgId],
@@ -41,7 +43,7 @@ export function NumberingCard({ orgId, readOnly = false }: { orgId: string | nul
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["app-settings"] });
-      toast.success("Numbering saved");
+      toast.success(t("numberingCard.saved"));
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -53,7 +55,7 @@ export function NumberingCard({ orgId, readOnly = false }: { orgId: string | nul
   if (isError) {
     return (
       <Alert variant="destructive">
-        <AlertDescription>Could not load the numbering settings. {(error as Error).message}</AlertDescription>
+        <AlertDescription>{t("numberingCard.loadError")} {(error as Error).message}</AlertDescription>
       </Alert>
     );
   }
@@ -65,15 +67,15 @@ export function NumberingCard({ orgId, readOnly = false }: { orgId: string | nul
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="font-display">Numbering</CardTitle>
+        <CardTitle className="font-display">{t("numberingCard.title")}</CardTitle>
         <CardDescription>
-          Controls the order number stamped on every hire order. Supported tokens: {"{prefix}"}, {"{yyyy}"}, {"{mm}"}, {"{dd}"}, {"{mmdd}"}, {"{seq}"}, {"{cast}"}, {"{cast|seq}"}.
+          {t("numberingCard.description")}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-1.5">
-            <Label htmlFor="ho-prefix">Prefix</Label>
+            <Label htmlFor="ho-prefix">{t("numberingCard.prefix")}</Label>
             <Input
               id="ho-prefix"
               value={form.prefix}
@@ -82,7 +84,7 @@ export function NumberingCard({ orgId, readOnly = false }: { orgId: string | nul
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="ho-pattern">Pattern</Label>
+            <Label htmlFor="ho-pattern">{t("numberingCard.pattern")}</Label>
             <Input
               id="ho-pattern"
               value={form.pattern}
@@ -91,9 +93,9 @@ export function NumberingCard({ orgId, readOnly = false }: { orgId: string | nul
             />
           </div>
         </div>
-        {preview && <p className="text-xs text-muted-foreground">Preview: {preview}</p>}
+        {preview && <p className="text-xs text-muted-foreground">{t("numberingCard.preview", { preview })}</p>}
         <Button onClick={() => save.mutate()} disabled={readOnly || save.isPending || !orgId}>
-          Save numbering
+          {t("numberingCard.save")}
         </Button>
       </CardContent>
     </Card>

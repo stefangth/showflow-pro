@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import { useTranslation } from "react-i18next";
 
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
@@ -28,23 +29,24 @@ function badgeStyle(tone: StatusTone): CSSProperties | undefined {
 
 /** The Activity tab: the full run-history table, newest first. */
 export function ActivityTab({ runs, loading }: ActivityTabProps) {
+  const { t } = useTranslation('settingsAirtable');
   return (
     <div className="rounded-lg border border-border bg-card shadow-sm">
       <div className="border-b border-border p-4">
-        <h3 className="text-[17px] font-semibold tracking-tight">Run history</h3>
+        <h3 className="text-[17px] font-semibold tracking-tight">{t('activityTab.title')}</h3>
         <p className="mt-1 text-sm text-muted-foreground">
-          Every poll for this org, newest first.
+          {t('activityTab.subtitle')}
         </p>
       </div>
       <div className="overflow-x-auto">
         <div className="min-w-[560px]">
           <div className={cn(GRID, "border-b border-border bg-muted px-4 py-2.5", EYEBROW)}>
-            <span>Started</span>
-            <span>Status</span>
-            <span>Read</span>
-            <span>New</span>
-            <span>Updated</span>
-            <span>Held</span>
+            <span>{t('activityTab.colStarted')}</span>
+            <span>{t('activityTab.colStatus')}</span>
+            <span>{t('activityTab.colRead')}</span>
+            <span>{t('activityTab.colNew')}</span>
+            <span>{t('activityTab.colUpdated')}</span>
+            <span>{t('activityTab.colHeld')}</span>
           </div>
 
           {loading ? (
@@ -61,10 +63,10 @@ export function ActivityTab({ runs, loading }: ActivityTabProps) {
               ))}
             </>
           ) : runs.length === 0 ? (
-            <p className="px-4 py-6 text-sm text-muted-foreground">No runs yet.</p>
+            <p className="px-4 py-6 text-sm text-muted-foreground">{t('activityTab.noRuns')}</p>
           ) : (
             runs.map((run) => {
-              const badge = statusBadge(run.status);
+              const badge = statusBadge(run.status, t);
               const held = run.held_count ?? 0;
               return (
                 <div

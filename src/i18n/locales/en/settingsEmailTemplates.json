@@ -1,0 +1,112 @@
+{
+  "emailTemplatesTab": {
+    "title": "Email templates",
+    "helperReadOnly": "Preview every transactional email. Your role cannot change email copy or branding.",
+    "helperEditable": "Preview every transactional email and see the delivery details behind it.",
+    "loading": "Loading saved email presentation…",
+    "loadError": "Could not load the saved email presentation. {{message}}",
+    "loadErrorFallback": "Please try again.",
+    "retry": "Retry",
+    "groups": {
+      "Booking engine": "Booking engine",
+      "Hire orders": "Hire orders",
+      "Accounts & access": "Accounts & access",
+      "System": "System"
+    },
+    "status": {
+      "editable": "Editable",
+      "external": "External",
+      "automatic": "Automatic",
+      "internal": "Internal"
+    },
+    "recipientPrefix": "To: {{recipient}}",
+    "previewAction": "Preview",
+    "previewAriaLabel": "Preview {{name}}",
+    "editAction": "Edit",
+    "editAriaLabel": "Edit {{name}}",
+    "previewDialog": {
+      "title": "Preview: {{title}}",
+      "description": "Rendered with this organization's saved email copy and theme.",
+      "rendering": "Rendering preview…",
+      "iframeTitle": "Email preview"
+    },
+    "previewFailed": "Preview failed: {{message}}",
+    "unknownError": "Unknown error",
+    "noPreviewAvailable": "No preview available."
+  },
+  "emailPreviewPane": {
+    "ariaLabel": "Email preview",
+    "loadError": "Could not render the preview. {{message}}",
+    "updating": "Updating",
+    "iframeTitle": "Email template preview"
+  },
+  "emailTemplateInspector": {
+    "elementSettings": "Element settings",
+    "documentTitle": "Document",
+    "text": "Text",
+    "appliesToAllEmails": "Applies to all emails.",
+    "emailDefaults": "Email defaults",
+    "buttonRadius": "Button radius",
+    "footerText": "Footer text",
+    "emailBaseFont": "Email base font",
+    "roleFonts": {
+      "body": "Body font",
+      "heading": "Heading font"
+    },
+    "baseFonts": {
+      "geist": "Geist with system fallback",
+      "system": "System sans serif"
+    },
+    "colorLabels": {
+      "heroText": "Hero text",
+      "heroSub": "Hero supporting text",
+      "bodyText": "Body text",
+      "muted": "Muted text",
+      "faint": "Faint text",
+      "accent": "Accent",
+      "line": "Rules and borders",
+      "tileBg": "Data tile background",
+      "buttonBg": "Button background",
+      "buttonText": "Button text",
+      "cardBg": "Card background",
+      "pageBg": "Page background"
+    },
+    "weightOptions": {
+      "regular": "Regular",
+      "medium": "Medium",
+      "semibold": "Semibold",
+      "bold": "Bold"
+    },
+    "roleLabels": {
+      "header": "Header",
+      "heading": "Heading",
+      "subheading": "Subheading",
+      "body": "Body",
+      "dataLabel": "Data label",
+      "dataValue": "Data value",
+      "button": "Button",
+      "footer": "Footer"
+    }
+  },
+  "emailEditorMeta": {
+    "sections": {
+      "header": "Header",
+      "content": "Content",
+      "action": "Action",
+      "footer": "Footer"
+    }
+  },
+  "emailTemplateEditorPage": {
+    "cannotEdit": "This email template cannot be edited.",
+    "loadError": "Could not load the email template settings. {{message}}",
+    "loadErrorFallback": "Please try again.",
+    "breadcrumb": "Email templates",
+    "documentLabel": "Document",
+    "resetAll": "Reset all",
+    "saveTemplate": "Save template",
+    "saveSuccess": "Email template saved",
+    "noActiveOrg": "No active organization",
+    "previewAsGroup": "Preview as",
+    "previewAsLabel": "Preview as"
+  }
+}

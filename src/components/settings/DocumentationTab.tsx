@@ -1,4 +1,5 @@
 import { lazy, Suspense } from "react";
+import { useTranslation } from "react-i18next";
 import appLogicMd from "../../../docs/app-logic.md?raw";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -15,18 +16,19 @@ const SystemMapReference = lazy(() =>
 );
 
 function DocLoading() {
-  return <p className="text-sm text-muted-foreground">Loading…</p>;
+  const { t } = useTranslation('settingsDocs');
+  return <p className="text-sm text-muted-foreground">{t('documentationTab.loading')}</p>;
 }
 
 /** Documentation surface. App Logic is public; the System Map is super-admin only. */
 export function DocumentationTab({ isSuperAdmin }: { isSuperAdmin: boolean }) {
+  const { t } = useTranslation('settingsDocs');
+
   const guide = (
     <Card>
       <CardHeader>
-        <CardTitle className="font-display">App Logic Guide</CardTitle>
-        <CardDescription>
-          How ShowFlow works: roles, data model, eligibility, and the full availability → booking flow.
-        </CardDescription>
+        <CardTitle className="font-display">{t('documentationTab.guide.title')}</CardTitle>
+        <CardDescription>{t('documentationTab.guide.description')}</CardDescription>
       </CardHeader>
       <CardContent>
         <MarkdownDoc source={appLogicMd} />
@@ -39,18 +41,16 @@ export function DocumentationTab({ isSuperAdmin }: { isSuperAdmin: boolean }) {
   return (
     <Tabs defaultValue="guide" className="space-y-4">
       <TabsList>
-        <TabsTrigger value="guide">App Logic</TabsTrigger>
-        <TabsTrigger value="map">System Map</TabsTrigger>
-        <TabsTrigger value="reference">Reference</TabsTrigger>
+        <TabsTrigger value="guide">{t('documentationTab.tabs.guide')}</TabsTrigger>
+        <TabsTrigger value="map">{t('documentationTab.tabs.map')}</TabsTrigger>
+        <TabsTrigger value="reference">{t('documentationTab.tabs.reference')}</TabsTrigger>
       </TabsList>
       <TabsContent value="guide">{guide}</TabsContent>
       <TabsContent value="map">
         <Card>
           <CardHeader>
-            <CardTitle className="font-display">Automation Engine Map</CardTitle>
-            <CardDescription>
-              Every trigger, edge function, database guard, and side effect — click a node for its dossier.
-            </CardDescription>
+            <CardTitle className="font-display">{t('documentationTab.map.title')}</CardTitle>
+            <CardDescription>{t('documentationTab.map.description')}</CardDescription>
           </CardHeader>
           <CardContent>
             <Suspense fallback={<DocLoading />}>
@@ -62,8 +62,8 @@ export function DocumentationTab({ isSuperAdmin }: { isSuperAdmin: boolean }) {
       <TabsContent value="reference">
         <Card>
           <CardHeader>
-            <CardTitle className="font-display">System Map Reference</CardTitle>
-            <CardDescription>The full written map (docs/system-map.md).</CardDescription>
+            <CardTitle className="font-display">{t('documentationTab.reference.title')}</CardTitle>
+            <CardDescription>{t('documentationTab.reference.description')}</CardDescription>
           </CardHeader>
           <CardContent>
             <Suspense fallback={<DocLoading />}>

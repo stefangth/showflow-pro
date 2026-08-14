@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { TriangleAlert, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -43,6 +44,7 @@ interface Props {
  * `manage_ownership` capability gate) is reused verbatim from ProductionOwnershipTab.tsx.
  */
 export function OwnershipPanel({ orgId }: Props) {
+  const { t } = useTranslation('settingsCastsCoverage');
   const qc = useQueryClient();
   const canManage = useCan("manage_ownership");
 
@@ -181,7 +183,7 @@ export function OwnershipPanel({ orgId }: Props) {
           a.sub_program === subProgram &&
           a.city_id === cityId,
       );
-      if (duplicate) throw new Error("That owner already covers this scope.");
+      if (duplicate) throw new Error(t('ownership.duplicateAssignment'));
       const { error } = await supabase.from("show_assignments").insert({
         producer_user_id: newUserId,
         program: newProgram,
@@ -198,9 +200,9 @@ export function OwnershipPanel({ orgId }: Props) {
       setNewCityId("");
       setNewUserId("");
       setComposerOpen(false);
-      toast.success("Owner assigned");
+      toast.success(t('ownership.ownerAssigned'));
     },
-    onError: (e: Error) => toast.error(e.message ?? "Failed to assign owner"),
+    onError: (e: Error) => toast.error(e.message ?? t('ownership.assignFailed')),
   });
 
   const deleteAssignment = useMutation({
@@ -210,9 +212,9 @@ export function OwnershipPanel({ orgId }: Props) {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["show-assignments"] });
-      toast.success("Owner removed");
+      toast.success(t('ownership.ownerRemoved'));
     },
-    onError: (e: Error) => toast.error(e.message ?? "Failed to remove owner"),
+    onError: (e: Error) => toast.error(e.message ?? t('ownership.removeFailed')),
   });
 
   // ---- Routing check ----
@@ -233,8 +235,8 @@ export function OwnershipPanel({ orgId }: Props) {
 
   const reasonFor = (notified: RoutingAssignment[]): string =>
     notified.length === 0
-      ? "No owner covers this show. Notifications fall back to the admins."
-      : "Every owner whose scope covers this show is notified.";
+      ? t('ownership.reasonNoOwner')
+      : t('ownership.reasonEveryOwner');
 
   const rcSubProgramOptions = useMemo(
     () => Array.from(new Set((pairsQ.data ?? []).filter((p) => p.program === effectiveRcProgram).map((p) => p.sub_program))).sort(),
@@ -260,8 +262,7 @@ export function OwnershipPanel({ orgId }: Props) {
                 <p className="flex items-center gap-2 text-sm text-[var(--amber-600)]">
                   <TriangleAlert className="h-4 w-4 shrink-0" />
                   <span>
-                    <strong className="font-semibold">{program}</strong> has no owner. Every notification for its{" "}
-                    {count} date{count === 1 ? "" : "s"} routes to admins only.
+                    <strong className="font-semibold">{program}</strong> {t('ownership.unownedBanner', { count })}
                   </span>
                 </p>
                 <Button
@@ -271,7 +272,7 @@ export function OwnershipPanel({ orgId }: Props) {
                   disabled={!canManage}
                   onClick={() => openComposerFor(program)}
                 >
-                  Assign owner
+                  {t('ownership.assignOwner')}
                 </Button>
               </div>
             );
@@ -283,8 +284,8 @@ export function OwnershipPanel({ orgId }: Props) {
         <Card>
           <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
             <div>
-              <CardTitle className="font-display">Owners by program</CardTitle>
-              <CardDescription>Every owner whose scope matches is notified. Scope is shown per row.</CardDescription>
+              <CardTitle className="font-display">{t('ownership.ownersByProgramTitle')}</CardTitle>
+              <CardDescription>{t('ownership.ownersByProgramDescription')}</CardDescription>
             </div>
             <Button
               type="button"
@@ -292,7 +293,7 @@ export function OwnershipPanel({ orgId }: Props) {
               disabled={!canManage}
               onClick={() => (composerOpen ? setComposerOpen(false) : openComposerFor(programs[0] ?? ""))}
             >
-              Assign owner
+              {t('ownership.assignOwner')}
             </Button>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -300,9 +301,9 @@ export function OwnershipPanel({ orgId }: Props) {
               <div className="space-y-2 rounded-[var(--radius-m)] border border-border bg-[var(--surface-2)] p-3">
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5 items-end">
                   <div className="space-y-1">
-                    <Label className="text-xs">Member</Label>
+                    <Label className="text-xs">{t('ownership.memberLabel')}</Label>
                     <Select value={newUserId} onValueChange={setNewUserId}>
-                      <SelectTrigger><SelectValue placeholder="Select a team member…" /></SelectTrigger>
+                      <SelectTrigger><SelectValue placeholder={t('ownership.memberPlaceholder')} /></SelectTrigger>
                       <SelectContent>
                         {(producersQ.data ?? []).map((u) => (
                           <SelectItem key={u.user_id} value={u.user_id}>{u.display_name ?? u.user_id.slice(0, 8)}</SelectItem>
@@ -311,30 +312,30 @@ export function OwnershipPanel({ orgId }: Props) {
                     </Select>
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs">Program</Label>
+                    <Label className="text-xs">{t('ownership.programLabel')}</Label>
                     <Select value={newProgram} onValueChange={(v) => { setNewProgram(v); setNewSubProgram(""); }}>
-                      <SelectTrigger><SelectValue placeholder="Select program…" /></SelectTrigger>
+                      <SelectTrigger><SelectValue placeholder={t('ownership.programPlaceholder')} /></SelectTrigger>
                       <SelectContent>
                         {programs.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs">Sub-program (optional)</Label>
+                    <Label className="text-xs">{t('ownership.subProgramLabel')}</Label>
                     <Select value={newSubProgram || ANY_SCOPE} onValueChange={(v) => setNewSubProgram(v === ANY_SCOPE ? "" : v)}>
-                      <SelectTrigger><SelectValue placeholder="Any sub-program" /></SelectTrigger>
+                      <SelectTrigger><SelectValue placeholder={t('ownership.subProgramPlaceholder')} /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value={ANY_SCOPE}>Any</SelectItem>
+                        <SelectItem value={ANY_SCOPE}>{t('ownership.any')}</SelectItem>
                         {newSubProgramOptions.map((sp) => <SelectItem key={sp} value={sp}>{sp}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs">City (optional)</Label>
+                    <Label className="text-xs">{t('ownership.cityLabel')}</Label>
                     <Select value={newCityId || ANY_SCOPE} onValueChange={(v) => setNewCityId(v === ANY_SCOPE ? "" : v)}>
-                      <SelectTrigger><SelectValue placeholder="Any city" /></SelectTrigger>
+                      <SelectTrigger><SelectValue placeholder={t('ownership.cityPlaceholder')} /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value={ANY_SCOPE}>Any</SelectItem>
+                        <SelectItem value={ANY_SCOPE}>{t('ownership.any')}</SelectItem>
                         {(cities ?? []).map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                       </SelectContent>
                     </Select>
@@ -345,17 +346,17 @@ export function OwnershipPanel({ orgId }: Props) {
                     disabled={!canManage || !newUserId || !newProgram || addAssignment.isPending}
                     onClick={() => addAssignment.mutate()}
                   >
-                    Assign
+                    {t('ownership.assign')}
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Ranks as Program, the broadest scope. Narrow it with a sub-program or city to add a more specific owner alongside this one.
+                  {t('ownership.composerHint')}
                 </p>
               </div>
             )}
 
             {displayPrograms.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No programs in the catalog yet.</p>
+              <p className="text-sm text-muted-foreground">{t('ownership.noProgramsYet')}</p>
             ) : (
               <div className="space-y-5">
                 {displayPrograms.map((program) => {
@@ -367,12 +368,12 @@ export function OwnershipPanel({ orgId }: Props) {
                         {program}
                         {isOrphan && (
                           <span className="ml-1.5 font-normal normal-case text-muted-foreground/80">
-                            (not in the current catalog, still effective for routing)
+                            {t('ownership.orphanProgramNote')}
                           </span>
                         )}
                       </p>
                       {rows.length === 0 ? (
-                        <p className="text-sm text-muted-foreground">No owner assigned.</p>
+                        <p className="text-sm text-muted-foreground">{t('ownership.noOwnerAssigned')}</p>
                       ) : (
                         rows.map((a) => {
                           const rank = specificityOf(a);
@@ -389,21 +390,21 @@ export function OwnershipPanel({ orgId }: Props) {
                                 {a.sub_program ? (
                                   <Badge variant="accent">{a.sub_program}</Badge>
                                 ) : (
-                                  <Badge variant="neutral">any sub-program</Badge>
+                                  <Badge variant="neutral">{t('ownership.anySubProgram')}</Badge>
                                 )}
                                 {cityName ? (
                                   <Badge variant="accent">{cityName}</Badge>
                                 ) : (
-                                  <Badge variant="neutral">any city</Badge>
+                                  <Badge variant="neutral">{t('ownership.anyCity')}</Badge>
                                 )}
                               </div>
                               <Badge variant="neutral">{RANK_LABEL[rank]}</Badge>
-                              <IconTooltip label="Remove owner">
+                              <IconTooltip label={t('ownership.removeOwner')}>
                                 <button
                                   type="button"
                                   onClick={() => deleteAssignment.mutate(a.id)}
                                   disabled={!canManage}
-                                  aria-label="Remove owner"
+                                  aria-label={t('ownership.removeOwner')}
                                   className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-destructive disabled:opacity-50 disabled:pointer-events-none"
                                 >
                                   <Trash2 className="h-3.5 w-3.5" />
@@ -424,37 +425,37 @@ export function OwnershipPanel({ orgId }: Props) {
         <Card>
           <CardHeader>
             <CardTitle className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Routing check
+              {t('ownership.routingCheckTitle')}
             </CardTitle>
-            <CardDescription>See who gets notified for a given scope.</CardDescription>
+            <CardDescription>{t('ownership.routingCheckDescription')}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <div className="space-y-1">
-                <Label className="text-xs">Program</Label>
+                <Label className="text-xs">{t('ownership.rcProgramLabel')}</Label>
                 <Select value={effectiveRcProgram} onValueChange={(v) => { setRcProgram(v); setRcSubProgram(""); setRcCityId(""); }}>
-                  <SelectTrigger><SelectValue placeholder="Select program…" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={t('ownership.programPlaceholder')} /></SelectTrigger>
                   <SelectContent>
                     {programs.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-1">
-                <Label className="text-xs">Sub-program</Label>
+                <Label className="text-xs">{t('ownership.rcSubProgramLabel')}</Label>
                 <Select value={rcSubProgram || ANY_SCOPE} onValueChange={(v) => setRcSubProgram(v === ANY_SCOPE ? "" : v)}>
-                  <SelectTrigger><SelectValue placeholder="Any sub-program" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={t('ownership.subProgramPlaceholder')} /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={ANY_SCOPE}>Any</SelectItem>
+                    <SelectItem value={ANY_SCOPE}>{t('ownership.any')}</SelectItem>
                     {rcSubProgramOptions.map((sp) => <SelectItem key={sp} value={sp}>{sp}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-1">
-                <Label className="text-xs">City</Label>
+                <Label className="text-xs">{t('ownership.rcCityLabel')}</Label>
                 <Select value={rcCityId || ANY_SCOPE} onValueChange={(v) => setRcCityId(v === ANY_SCOPE ? "" : v)}>
-                  <SelectTrigger><SelectValue placeholder="Any city" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={t('ownership.cityPlaceholder')} /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={ANY_SCOPE}>Any</SelectItem>
+                    <SelectItem value={ANY_SCOPE}>{t('ownership.any')}</SelectItem>
                     {(cities ?? []).map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
@@ -462,18 +463,18 @@ export function OwnershipPanel({ orgId }: Props) {
             </div>
 
             <div className="space-y-1.5 rounded-[var(--radius-m)] border border-accent-200 bg-accent-50 p-3">
-              <p className="text-[11px] font-semibold uppercase tracking-[1.2px] text-accent-700">Notified</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[1.2px] text-accent-700">{t('ownership.notified')}</p>
               <p className="text-sm font-semibold text-foreground">
                 {routingResult.notified.length > 0
                   ? routingResult.notified.map((a) => a.owner).join(", ")
-                  : "Admins only"}
+                  : t('ownership.adminsOnly')}
               </p>
               <p className="text-xs text-muted-foreground">{reasonFor(routingResult.notified)}</p>
             </div>
 
             <div className="space-y-1">
               <p className="text-[11px] font-semibold uppercase tracking-[1.2px] text-muted-foreground">
-                Precedence (informational)
+                {t('ownership.precedenceTitle')}
               </p>
               {[...routingResult.ladder].reverse().map((entry) => (
                 <div key={entry.rank} className="flex items-center justify-between gap-2 text-sm">
@@ -481,14 +482,14 @@ export function OwnershipPanel({ orgId }: Props) {
                     {entry.rank}. {entry.label}
                   </span>
                   <span className={cn("truncate text-right", entry.owners.length > 0 ? "text-foreground" : "text-muted-foreground")}>
-                    {entry.owners.length > 0 ? entry.owners.map((o) => o.owner).join(", ") : "no rule"}
+                    {entry.owners.length > 0 ? entry.owners.map((o) => o.owner).join(", ") : t('ownership.noRule')}
                   </span>
                 </div>
               ))}
             </div>
 
             {routingResult.notified.length === 0 && (
-              <p className="text-xs text-muted-foreground">Admins are the fallback recipients when no owner matches.</p>
+              <p className="text-xs text-muted-foreground">{t('ownership.fallbackHint')}</p>
             )}
           </CardContent>
         </Card>

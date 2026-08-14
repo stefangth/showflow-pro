@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,6 +21,7 @@ export function CopyFieldControl<CopyKey extends string, FieldKey extends CopyKe
   onCopyChange,
   readOnly,
 }: CopyFieldControlProps<CopyKey, FieldKey>) {
+  const { t } = useTranslation("settingsEditor");
   const value = copyDraft[field.key] ?? defaultValue;
   const modified = value !== defaultValue;
   const id = `tpl-copy-${field.key}`;
@@ -35,8 +37,8 @@ export function CopyFieldControl<CopyKey extends string, FieldKey extends CopyKe
       <div className="flex items-center justify-between gap-2">
         <Label htmlFor={id}>{field.label}</Label>
         {modified && !readOnly && (
-          <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-xs" aria-label={`Reset ${field.label} to default`} onClick={reset}>
-            Reset
+          <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-xs" aria-label={t("copyField.resetAria", { label: field.label })} onClick={reset}>
+            {t("copyField.reset")}
           </Button>
         )}
       </div>
@@ -45,8 +47,8 @@ export function CopyFieldControl<CopyKey extends string, FieldKey extends CopyKe
       ) : (
         <Input id={id} value={value} disabled={readOnly} onChange={(event) => setValue(event.target.value)} />
       )}
-      {field.tokens.length > 0 && <p className="text-xs text-muted-foreground">Tokens: {field.tokens.map((token) => `{{${token}}}`).join(" ")}</p>}
-      {/[–—]/.test(value) && <p className="text-xs text-destructive">Use a period, comma, or middot instead of a dash.</p>}
+      {field.tokens.length > 0 && <p className="text-xs text-muted-foreground">{t("copyField.tokens", { tokens: field.tokens.map((token) => `{{${token}}}`).join(" ") })}</p>}
+      {/[–—]/.test(value) && <p className="text-xs text-destructive">{t("copyField.dashWarning")}</p>}
     </div>
   );
 }

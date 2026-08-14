@@ -1,0 +1,69 @@
+{
+  "tab": {
+    "eyebrow": "ORGANISATION · ZUGRIFF",
+    "title": "Rollen & Rechte",
+    "description": "Lege Rechte für das gesamte Production Team fest. Admins haben immer alle Rechte.",
+    "changeLogButton": "Änderungsprotokoll",
+    "resetToBaseline": "Auf Ausgangswert zurücksetzen",
+    "searchPlaceholder": "Rechte durchsuchen...",
+    "searchAriaLabel": "Rechte durchsuchen",
+    "presets": {
+      "restricted": "Eingeschränkt",
+      "standard": "Standard",
+      "full": "Voll",
+      "custom": "Benutzerdefiniert"
+    },
+    "filters": {
+      "all": "Alle",
+      "sensitive": "Sensibel",
+      "changed": "Geändert",
+      "off": "Aus"
+    },
+    "groupSummary": "{{on}} von {{total}} an",
+    "stagedScopeLine": "Gilt für den Production Team Standard.",
+    "productionTeamRoleName": "das Production Team",
+    "transition": {
+      "on": "Aus -> An",
+      "off": "An -> Aus",
+      "sensitiveSuffix": " · sensibel"
+    },
+    "confirmDialog": {
+      "title": "Sensible Änderungen bestätigen",
+      "description_one": "Das wendet {{count}} Änderung an, einschließlich sensibler Rechte: {{rights}}.",
+      "description_other": "Das wendet {{count}} Änderungen an, einschließlich sensibler Rechte: {{rights}}.",
+      "cancel": "Abbrechen",
+      "confirm": "Bestätigen"
+    },
+    "toastSuccess": "Rechte aktualisiert."
+  },
+  "editingPicker": {
+    "eyebrow": "Bearbeiten",
+    "description": "Rechte gelten für das gesamte Production Team.",
+    "productionTeam": "Production Team",
+    "teamDefault": "Team-Standard"
+  },
+  "groupCard": {
+    "turnAllOff": "Alle ausschalten",
+    "turnAllOn": "Alle einschalten"
+  },
+  "rightRow": {
+    "sensitiveBadge": "Sensibel",
+    "managedBadge": "Verwaltet von ShowFlow",
+    "granting": "Gewähren",
+    "removing": "Entfernen"
+  },
+  "stagedChangesCard": {
+    "heading": "GEPLANTE ÄNDERUNGEN",
+    "emptyState": "Nichts geplant. Schalte ein Recht um, dann landet es hier, bevor sich der Zugriff ändert.",
+    "discard": "Verwerfen",
+    "apply": "Anwenden"
+  },
+  "changeLog": {
+    "title": "Änderungsprotokoll",
+    "empty": "Noch keine Änderungen.",
+    "unknownActor": "Unbekannt",
+    "valueOn": "an",
+    "valueOff": "aus",
+    "transition": "{{from}} -> {{to}}"
+  }
+}
