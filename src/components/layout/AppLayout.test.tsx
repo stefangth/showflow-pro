@@ -1,10 +1,11 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { screen, fireEvent } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import { partialMock } from "@/test/castHelpers";
 import type { User } from "@supabase/supabase-js";
 import i18n from "@/i18n";
+import type { FeatureKey } from "@/lib/entitlements";
 
 // AppLayout composes a large shell (nav, org switcher, editor toolbar, theme toggle,
 // profile menu) around the one behavior this test exists to pin: the notifications
@@ -35,8 +36,17 @@ vi.mock("@/hooks/useMyProfile", () => ({
   useMyProfile: () => ({ data: undefined }),
 }));
 vi.mock("@/hooks/useEntitlements", () => ({
-  useEntitlements: () => ({ features: new Set<string>(), isLoading: false }),
+  useEntitlements: vi.fn(() => ({ features: new Set<FeatureKey>(), isLoading: false })),
+  useFeature: vi.fn(() => false),
 }));
+import { useEntitlements, useFeature } from "@/hooks/useEntitlements";
+
+/** Seed the language_packages gate (and keep the base useEntitlements() shape stable
+ *  for the rest of the shell, e.g. nav-item gating) for a single test. */
+function mockEntitlements(languagePacksEnabled: boolean) {
+  vi.mocked(useEntitlements).mockReturnValue({ features: new Set<FeatureKey>(), isLoading: false });
+  vi.mocked(useFeature).mockReturnValue(languagePacksEnabled);
+}
 
 // Heavy sibling subtrees this behavior doesn't touch, each already covered by its own
 // test suite (OrgSwitcher.test.tsx, EditorToolbar.test.tsx): stubbed to no-ops so this
@@ -117,6 +127,8 @@ describe("AppLayout notification bell", () => {
 });
 
 describe("AppLayout account menu language", () => {
+  beforeEach(() => mockEntitlements(true));
+
   it("switches the app language when Deutsch is picked", async () => {
     mockAuth();
     await i18n.changeLanguage("en");
@@ -127,5 +139,27 @@ describe("AppLayout account menu language", () => {
 
     expect(i18n.language).toBe("de");
     await i18n.changeLanguage("en");
+  });
+});
+
+describe("AppLayout language picker gating (language_packages entitlement)", () => {
+  it("hides the language picker when language_packages is off", () => {
+    mockAuth();
+    mockEntitlements(false);
+    renderWithProviders(<AppLayout>page content</AppLayout>);
+
+    fireEvent.click(screen.getByRole("button", { name: "Account menu" }));
+
+    expect(screen.queryByText("Deutsch")).not.toBeInTheDocument();
+  });
+
+  it("shows the language picker when language_packages is on", async () => {
+    mockAuth();
+    mockEntitlements(true);
+    renderWithProviders(<AppLayout>page content</AppLayout>);
+
+    fireEvent.click(screen.getByRole("button", { name: "Account menu" }));
+
+    expect(await screen.findByText("Deutsch")).toBeInTheDocument();
   });
 });
