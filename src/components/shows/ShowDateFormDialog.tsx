@@ -106,12 +106,16 @@ export function ShowDateFormDialog({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, showDate, defaultShowId]);
 
-  // Default the "open offers" checkbox from the org's booking flow. Kept in its own effect
-  // (deps: open, flow) so it stays reactive when the flow query resolves after the dialog
-  // opens, without a flow refetch resetting the user's typed form fields above.
+  // Creating a date is deliberately opt-in: opening Tier 1 can immediately notify artists.
+  // Initialize only when the dialog opens so a later flow refetch cannot erase the user's choice.
   useEffect(() => {
-    if (open) setOpenOffers((flow?.auto_open_tier1 ?? true) && (flow?.artist_acceptance ?? true));
-  }, [open, flow]);
+    if (open && mode === "create") setOpenOffers(false);
+  }, [open, mode]);
+
+  // Edit mode keeps its existing flow-driven auto-open behavior.
+  useEffect(() => {
+    if (open && mode === "edit") setOpenOffers((flow?.auto_open_tier1 ?? true) && (flow?.artist_acceptance ?? true));
+  }, [open, flow, mode]);
 
   const activeShows = useMemo(() => (shows ?? []).filter((s) => s.status !== "archived"), [shows]);
   const showId = form.watch("showId");

@@ -1,11 +1,49 @@
 import { assertEquals } from "./test-asserts.ts";
 import { makeFakeDeps } from "./testing.ts";
 import {
+  bookingTemplateMatches,
+  BOOKING_FLOW_TEMPLATE_DEFAULTS,
   BOOKING_FLOW_DEFAULTS,
+  inferBookingTemplate,
   normalizeBookingFlow,
+  normalizeBookingFlowTemplates,
   referenceLabel,
   resolveBookingFlow,
 } from "./bookingFlow.ts";
+
+Deno.test("booking templates: normalize per template and force identity active state", () => {
+  const templates = normalizeBookingFlowTemplates({
+    classic: { flow: { offer_delivery: "immediate" }, times: { windowHours: 72, offerDigestHour: 8, confirmationDigestHour: 9 } },
+    fasttrack: "broken",
+    off: { flow: { active: true }, times: { windowHours: 24, offerDigestHour: 10, confirmationDigestHour: 11 } },
+  });
+  assertEquals(templates.classic.flow.offer_delivery, "immediate");
+  assertEquals(templates.classic.times, { windowHours: 72, offerDigestHour: 8, confirmationDigestHour: 9 });
+  assertEquals(templates.fasttrack, BOOKING_FLOW_TEMPLATE_DEFAULTS.fasttrack);
+  assertEquals(templates.off.flow.active, false);
+});
+
+Deno.test("booking templates: partial flow uses that template's defaults", () => {
+  const templates = normalizeBookingFlowTemplates({ fasttrack: { flow: {}, times: {} } });
+  assertEquals(templates.fasttrack.flow.offer_delivery, "immediate");
+  assertEquals(templates.fasttrack.flow.producer_confirmation, false);
+});
+
+Deno.test("booking templates: match all values and infer exact identity", () => {
+  const templates = BOOKING_FLOW_TEMPLATE_DEFAULTS;
+  assertEquals(bookingTemplateMatches(templates.classic.flow, templates.classic.times, templates.classic), true);
+  assertEquals(bookingTemplateMatches(
+    templates.classic.flow,
+    { ...templates.classic.times, windowHours: 49 },
+    templates.classic,
+  ), false);
+  assertEquals(inferBookingTemplate(templates.direct.flow, templates.direct.times, templates), "direct");
+  assertEquals(inferBookingTemplate(
+    { ...templates.fasttrack.flow, reference_field: { source: "program" } },
+    templates.fasttrack.times,
+    templates,
+  ), "classic");
+});
 
 Deno.test("normalizeBookingFlow: null and garbage return defaults", () => {
   assertEquals(normalizeBookingFlow(null), BOOKING_FLOW_DEFAULTS);

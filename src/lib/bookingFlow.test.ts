@@ -1,16 +1,78 @@
 import { describe, expect, it } from "vitest";
 import {
   applyPreset,
+  bookingTemplateMatches,
+  BOOKING_FLOW_TEMPLATE_DEFAULTS,
   BOOKING_FLOW_DEFAULTS,
   BOOKING_FLOW_PRESETS,
   describeAuditEntry,
   flowPreviewRows,
   inPracticeRows,
+  inferBookingTemplate,
   lifecycleChips,
   matchPreset,
   normalizeBookingFlow,
+  normalizeBookingFlowTemplates,
   referenceLabel,
 } from "./bookingFlow";
+
+describe("booking flow templates", () => {
+  it("uses each template's own defaults for a partial definition", () => {
+    const templates = normalizeBookingFlowTemplates({ fasttrack: { flow: {}, times: {} } });
+    expect(templates.fasttrack.flow.offer_delivery).toBe("immediate");
+    expect(templates.fasttrack.flow.producer_confirmation).toBe(false);
+  });
+  it("falls back per malformed template without corrupting valid siblings", () => {
+    const templates = normalizeBookingFlowTemplates({
+      classic: { flow: { offer_delivery: "immediate" }, times: { windowHours: 72, offerDigestHour: 8, confirmationDigestHour: 9 } },
+      fasttrack: "broken",
+      off: { flow: { active: true }, times: { windowHours: 24, offerDigestHour: 10, confirmationDigestHour: 11 } },
+    });
+
+    expect(templates.classic.flow.offer_delivery).toBe("immediate");
+    expect(templates.classic.times).toEqual({ windowHours: 72, offerDigestHour: 8, confirmationDigestHour: 9 });
+    expect(templates.fasttrack).toEqual(BOOKING_FLOW_TEMPLATE_DEFAULTS.fasttrack);
+    expect(templates.off.flow.active).toBe(false);
+    expect(templates.off.times.windowHours).toBe(24);
+  });
+
+  it("forces active state from the template identity", () => {
+    const templates = normalizeBookingFlowTemplates({
+      fasttrack: { flow: { active: false }, times: {} },
+      off: { flow: { active: true }, times: {} },
+    });
+
+    expect(templates.fasttrack.flow.active).toBe(true);
+    expect(templates.off.flow.active).toBe(false);
+  });
+
+  it("matches every flow and timing value and rejects either kind of divergence", () => {
+    const classic = BOOKING_FLOW_TEMPLATE_DEFAULTS.classic;
+
+    expect(bookingTemplateMatches(classic.flow, classic.times, classic)).toBe(true);
+    expect(bookingTemplateMatches(
+      { ...classic.flow, expiry_reminder: !classic.flow.expiry_reminder },
+      classic.times,
+      classic,
+    )).toBe(false);
+    expect(bookingTemplateMatches(
+      classic.flow,
+      { ...classic.times, windowHours: classic.times.windowHours + 1 },
+      classic,
+    )).toBe(false);
+  });
+
+  it("infers an exact template and falls back to classic for legacy customization", () => {
+    const templates = BOOKING_FLOW_TEMPLATE_DEFAULTS;
+
+    expect(inferBookingTemplate(templates.direct.flow, templates.direct.times, templates)).toBe("direct");
+    expect(inferBookingTemplate(
+      { ...templates.fasttrack.flow, reference_field: { source: "program" } },
+      templates.fasttrack.times,
+      templates,
+    )).toBe("classic");
+  });
+});
 
 describe("normalizeBookingFlow", () => {
   it("returns defaults for null, undefined, and garbage", () => {
@@ -250,6 +312,11 @@ describe("describeAuditEntry", () => {
     expect(
       describeAuditEntry({ key: "offer_response_window_hours", old_value: 72, new_value: 48 }),
     ).toBe("Response window: 72 → 48");
+  });
+  it("uses a friendly label for template identity changes", () => {
+    expect(
+      describeAuditEntry({ key: "booking_flow_template", old_value: "classic", new_value: "fasttrack" }),
+    ).toBe("Booking engine template: classic → fasttrack");
   });
   it("shows a diff when only the custom reference field id changes", () => {
     // Switching from one custom field to another is a real, user-visible change;

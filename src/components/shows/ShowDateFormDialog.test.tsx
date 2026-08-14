@@ -44,6 +44,25 @@ describe("ShowDateFormDialog", () => {
     mockBookingFlowPending = false;
   });
 
+  it("leaves opening tier-1 offers unchecked for a new date", () => {
+    mockFlow = { ...BOOKING_FLOW_DEFAULTS, auto_open_tier1: true };
+    renderWithProviders(<ShowDateFormDialog open onOpenChange={() => {}} mode="create" />);
+    expect(screen.getByRole("checkbox", { name: /open tier-1 offers now/i })).not.toBeChecked();
+  });
+
+  it("does not reset a user's create-mode offer choice when the flow query resolves", () => {
+    const props = { open: true, onOpenChange: () => {}, mode: "create" as const, defaultShowId: "s1" };
+    const { rerender } = renderWithProviders(<ShowDateFormDialog {...props} />);
+    const checkbox = screen.getByRole("checkbox", { name: /open tier-1 offers now/i });
+    fireEvent.click(checkbox);
+    expect(checkbox).toBeChecked();
+
+    mockFlow = { ...BOOKING_FLOW_DEFAULTS, auto_open_tier1: true };
+    rerender(<ShowDateFormDialog {...props} />);
+
+    expect(screen.getByRole("checkbox", { name: /open tier-1 offers now/i })).toBeChecked();
+  });
+
   it("create requires a production and a date", async () => {
     renderWithProviders(<ShowDateFormDialog open onOpenChange={() => {}} mode="create" />);
     fireEvent.click(screen.getByRole("button", { name: /create date/i }));

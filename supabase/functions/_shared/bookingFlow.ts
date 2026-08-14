@@ -1,7 +1,7 @@
 // MIRROR of src/lib/bookingFlow.ts (types, defaults, normalize, referenceLabel).
 // The two runtimes cannot share an import; change both files in the same PR.
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
-import { resolveOrgSetting } from "./settings.ts";
+import { BOOKING_ENGINE_DEFAULTS, resolveOrgSetting } from "./settings.ts";
 import { checkFeature } from "./entitlements.ts";
 
 export type OfferDelivery = "digest" | "immediate";
@@ -83,6 +83,100 @@ export function normalizeBookingFlow(value: unknown): BookingFlow {
   };
   if (!flow.artist_acceptance) flow.producer_confirmation = true;
   return flow;
+}
+
+export interface FlowTimes {
+  windowHours: number;
+  offerDigestHour: number;
+  confirmationDigestHour: number;
+}
+
+export type BookingTemplateName = "classic" | "fasttrack" | "direct" | "off";
+export interface BookingTemplateDefinition { flow: BookingFlow; times: FlowTimes }
+export type BookingFlowTemplates = Record<BookingTemplateName, BookingTemplateDefinition>;
+
+const TEMPLATE_FLOW_FIELDS: Record<Exclude<BookingTemplateName, "off">, Partial<BookingFlow>> = {
+  classic: {},
+  fasttrack: {
+    auto_open_tier1: true,
+    auto_escalate: true,
+    at_risk_alerts: true,
+    offer_delivery: "immediate",
+    expiry_reminder: true,
+    artist_acceptance: true,
+    producer_confirmation: false,
+    confirmation_digest: true,
+    understudy_promotion: true,
+  },
+  direct: {
+    auto_open_tier1: false,
+    auto_escalate: false,
+    at_risk_alerts: false,
+    offer_delivery: "digest",
+    expiry_reminder: false,
+    artist_acceptance: false,
+    producer_confirmation: true,
+    confirmation_digest: true,
+    understudy_promotion: true,
+  },
+};
+
+const defaultTimes = (): FlowTimes => ({
+  windowHours: BOOKING_ENGINE_DEFAULTS.offer_response_window_hours,
+  offerDigestHour: BOOKING_ENGINE_DEFAULTS.offer_digest_hour_berlin,
+  confirmationDigestHour: BOOKING_ENGINE_DEFAULTS.confirmation_digest_hour_berlin,
+});
+
+export const BOOKING_FLOW_TEMPLATE_DEFAULTS: BookingFlowTemplates = {
+  classic: { flow: normalizeBookingFlow({ ...TEMPLATE_FLOW_FIELDS.classic, active: true }), times: defaultTimes() },
+  fasttrack: { flow: normalizeBookingFlow({ ...TEMPLATE_FLOW_FIELDS.fasttrack, active: true }), times: defaultTimes() },
+  direct: { flow: normalizeBookingFlow({ ...TEMPLATE_FLOW_FIELDS.direct, active: true }), times: defaultTimes() },
+  off: { flow: normalizeBookingFlow({ active: false }), times: defaultTimes() },
+};
+
+const BOOKING_TEMPLATE_NAMES: BookingTemplateName[] = ["classic", "fasttrack", "direct", "off"];
+const finiteNumber = (value: unknown, fallback: number): number =>
+  typeof value === "number" && Number.isFinite(value) ? value : fallback;
+
+export function normalizeBookingFlowTemplates(value: unknown): BookingFlowTemplates {
+  const raw = value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {};
+  return Object.fromEntries(BOOKING_TEMPLATE_NAMES.map((name) => {
+    const fallback = BOOKING_FLOW_TEMPLATE_DEFAULTS[name];
+    const candidate = raw[name];
+    if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) {
+      return [name, { flow: { ...fallback.flow, reference_field: { ...fallback.flow.reference_field } }, times: { ...fallback.times } }];
+    }
+    const record = candidate as Record<string, unknown>;
+    const rawTimes = record.times && typeof record.times === "object" && !Array.isArray(record.times)
+      ? record.times as Record<string, unknown>
+      : {};
+    const rawFlow = record.flow && typeof record.flow === "object" && !Array.isArray(record.flow)
+      ? record.flow as Record<string, unknown>
+      : {};
+    const flow = normalizeBookingFlow({ ...fallback.flow, ...rawFlow });
+    flow.active = name !== "off";
+    return [name, {
+      flow,
+      times: {
+        windowHours: finiteNumber(rawTimes.windowHours, fallback.times.windowHours),
+        offerDigestHour: finiteNumber(rawTimes.offerDigestHour, fallback.times.offerDigestHour),
+        confirmationDigestHour: finiteNumber(rawTimes.confirmationDigestHour, fallback.times.confirmationDigestHour),
+      },
+    }];
+  })) as BookingFlowTemplates;
+}
+
+export function bookingTemplateMatches(flow: BookingFlow, times: FlowTimes, template: BookingTemplateDefinition): boolean {
+  return JSON.stringify(normalizeBookingFlow(flow)) === JSON.stringify(normalizeBookingFlow(template.flow))
+    && times.windowHours === template.times.windowHours
+    && times.offerDigestHour === template.times.offerDigestHour
+    && times.confirmationDigestHour === template.times.confirmationDigestHour;
+}
+
+export function inferBookingTemplate(flow: BookingFlow, times: FlowTimes, templates: BookingFlowTemplates): BookingTemplateName {
+  return BOOKING_TEMPLATE_NAMES.find((name) => bookingTemplateMatches(flow, times, templates[name])) ?? "classic";
 }
 
 export function referenceLabel(args: {

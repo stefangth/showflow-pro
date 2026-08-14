@@ -5,7 +5,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { resolveOrgSetting } from "@/data/settings";
 import {
   savePlatformSetting, EMPTY_STARTER_TEMPLATE, type StarterCatalogTemplate,
-  fetchPlatformBookingDefaults, savePlatformBookingDefaults, type BookingEngineDefaults,
 } from "@/data/platform";
 import { BOOKING_ENGINE_DEFAULTS } from "@/config/app.config";
 import type { Json } from "@/integrations/supabase/types";
@@ -25,11 +24,13 @@ import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { BookingTemplatesDefaultsCard } from "./BookingTemplatesDefaultsCard";
 
 export function PlatformDefaultsTab() {
   return (
     <div className="space-y-6">
       <StarterCatalogCard />
+      <BookingTemplatesDefaultsCard />
       <BookingEngineDefaultsCard />
       <AirtableDefaultsCard />
       <DefaultModulesCard />
@@ -83,36 +84,26 @@ function StarterCatalogCard() {
 }
 
 /**
- * Platform-wide booking-engine defaults (org_id IS NULL). Every org that hasn't
- * set its own override in Settings → Booking Engine inherits these; the inputs'
- * placeholders show the code fallback (BOOKING_ENGINE_DEFAULTS) used if a field
- * is left unset.
+ * Sender remains a platform fallback; flow and timing defaults live in the
+ * snapshot-based template editor above.
  */
 function BookingEngineDefaultsCard() {
   const qc = useQueryClient();
   const { data, isLoading, isError, error } = useQuery({
-    queryKey: ["platform", "booking-defaults"],
-    queryFn: () => fetchPlatformBookingDefaults(supabase),
+    queryKey: ["platform", "booking-sender-default"],
+    queryFn: () => resolveOrgSetting<string>(supabase, null, "resend_from_address", BOOKING_ENGINE_DEFAULTS.resend_from_address),
   });
 
-  // A view of the stored defaults, not a copy seeded into state by an effect. These
-  // cascade to every org that has not overridden them, and a seeded copy is still
-  // BOOKING_ENGINE_DEFAULTS in the commit that opens the isLoading gate below, so a
-  // Save there replaced the platform's real values with the code fallbacks. Edits in
-  // progress are still pinned against an unrelated refetch.
-  const [form, setForm] = useDerivedDraft<BookingEngineDefaults>(data, BOOKING_ENGINE_DEFAULTS);
+  // Keep an edited sender pinned against unrelated refetches while untouched drafts
+  // continue to follow changes made by another super-admin.
+  const [fromAddress, setFromAddress] = useDerivedDraft(data, BOOKING_ENGINE_DEFAULTS.resend_from_address);
 
   const save = useMutation({
-    mutationFn: () => {
-      if (form.offer_response_window_hours < 1) {
-        throw new Error("Offer response window must be at least 1 hour");
-      }
-      return savePlatformBookingDefaults(supabase, form);
-    },
+    mutationFn: () => savePlatformSetting(supabase, "resend_from_address", fromAddress as unknown as Json),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["platform", "booking-defaults"] });
+      qc.invalidateQueries({ queryKey: ["platform", "booking-sender-default"] });
       qc.invalidateQueries({ queryKey: ["app-settings"] }); // org Settings forms inherit these defaults
-      toast.success("Booking engine defaults saved");
+      toast.success("Email sender default saved");
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -122,52 +113,19 @@ function BookingEngineDefaultsCard() {
 
   return (
     <Card>
-      <CardHeader><CardTitle className="font-display">Booking engine defaults</CardTitle></CardHeader>
+      <CardHeader><CardTitle className="font-display">Email sender default</CardTitle></CardHeader>
       <CardContent className="space-y-4">
-        <p className="text-sm text-muted-foreground">
-          Platform-wide fallbacks for the booking engine. An organization that sets its own value in
-          Settings → Booking Engine overrides these.
-        </p>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="bd-window">Offer response window (hours)</Label>
-            <Input
-              id="bd-window" type="number" min={1}
-              value={form.offer_response_window_hours}
-              placeholder={String(BOOKING_ENGINE_DEFAULTS.offer_response_window_hours)}
-              onChange={(e) => setForm((f) => ({ ...f, offer_response_window_hours: Number(e.target.value) }))}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="bd-offer-hour">Offer digest hour (Berlin)</Label>
-            <Input
-              id="bd-offer-hour" type="number" min={0} max={23}
-              value={form.offer_digest_hour_berlin}
-              placeholder={String(BOOKING_ENGINE_DEFAULTS.offer_digest_hour_berlin)}
-              onChange={(e) => setForm((f) => ({ ...f, offer_digest_hour_berlin: Number(e.target.value) }))}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="bd-conf-hour">Confirmation digest hour (Berlin)</Label>
-            <Input
-              id="bd-conf-hour" type="number" min={0} max={23}
-              value={form.confirmation_digest_hour_berlin}
-              placeholder={String(BOOKING_ENGINE_DEFAULTS.confirmation_digest_hour_berlin)}
-              onChange={(e) => setForm((f) => ({ ...f, confirmation_digest_hour_berlin: Number(e.target.value) }))}
-            />
-          </div>
-        </div>
         <div className="space-y-1.5 max-w-sm">
           <Label htmlFor="bd-from">Default sender address (Resend)</Label>
           <Input
             id="bd-from" type="text"
-            value={form.resend_from_address}
+            value={fromAddress}
             placeholder={BOOKING_ENGINE_DEFAULTS.resend_from_address}
-            onChange={(e) => setForm((f) => ({ ...f, resend_from_address: e.target.value }))}
+            onChange={(e) => setFromAddress(e.target.value)}
           />
           <p className="text-xs text-muted-foreground">Sender for all transactional email unless an org overrides it.</p>
         </div>
-        <Button onClick={() => save.mutate()} disabled={save.isPending}>Save booking defaults</Button>
+        <Button onClick={() => save.mutate()} disabled={save.isPending}>Save sender default</Button>
       </CardContent>
     </Card>
   );

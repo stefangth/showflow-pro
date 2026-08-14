@@ -3,8 +3,12 @@ import type { Database, Json } from "@/integrations/supabase/types";
 import type { Organization } from "@/data/orgs";
 import type { EdgeFnMetric, EmailHealth } from "@/lib/systemHealth";
 import type { HealthDay } from "@/lib/uptime";
-import { BOOKING_ENGINE_DEFAULTS, SYSTEM_HEALTH, type AppRole } from "@/config/app.config";
+import { SYSTEM_HEALTH, type AppRole } from "@/config/app.config";
 import type { EntitlementRow, FeatureKey } from "@/lib/entitlements";
+import {
+  normalizeBookingFlowTemplates,
+  type BookingFlowTemplates,
+} from "@/lib/bookingFlow";
 
 export interface OrgStat {
   org_id: string;
@@ -267,64 +271,28 @@ export async function savePlatformSetting(client: SupabaseClient<Database>, key:
   if (error) throw error;
 }
 
-/**
- * Shape of the platform/org booking-engine settings, derived from
- * BOOKING_ENGINE_DEFAULTS so the type can't drift from the constant:
- * numeric keys -> number, string keys -> string.
- */
-export type BookingEngineDefaults = {
-  -readonly [K in keyof typeof BOOKING_ENGINE_DEFAULTS]:
-    (typeof BOOKING_ENGINE_DEFAULTS)[K] extends number ? number : string;
-};
-
-const BOOKING_DEFAULT_KEYS = Object.keys(BOOKING_ENGINE_DEFAULTS) as (keyof BookingEngineDefaults)[];
-
-/**
- * Read the platform-default (org_id IS NULL) booking-engine settings in one
- * query, falling back to the canonical code defaults for any key without a row.
- * Powers the super-admin Platform → Defaults form.
- */
-export async function fetchPlatformBookingDefaults(
+export async function fetchPlatformBookingTemplates(
   client: SupabaseClient<Database>,
-): Promise<BookingEngineDefaults> {
+): Promise<BookingFlowTemplates> {
   const { data, error } = await client
     .from("app_settings")
-    .select("key, value")
+    .select("value")
+    .eq("key", "booking_flow_templates")
     .is("org_id", null)
-    .in("key", BOOKING_DEFAULT_KEYS as string[]);
+    .maybeSingle();
   if (error) throw error;
-  const byKey = new Map(
-    ((data ?? []) as { key: string; value: unknown }[]).map((r) => [r.key, r.value]),
-  );
-  const out: BookingEngineDefaults = { ...BOOKING_ENGINE_DEFAULTS };
-  for (const key of BOOKING_DEFAULT_KEYS) {
-    const v = byKey.get(key);
-    // app_settings.value is JSONB (unknown at the type level); coerce to the declared
-    // kind so a value stored as e.g. "48" doesn't land mistyped as a string.
-    if (v !== undefined && v !== null) {
-      (out as unknown as Record<string, unknown>)[key] =
-        key === "resend_from_address" ? String(v) : Number(v);
-    }
-  }
-  return out;
+  return normalizeBookingFlowTemplates((data as { value?: unknown } | null)?.value);
 }
 
-/**
- * Upsert ALL four platform-default booking-engine settings in one call (super-admin only).
- * Writes every key (even unchanged ones), so saving materializes platform rows for keys
- * that previously fell through to the code defaults — i.e. "Save" freezes the current
- * values as explicit platform defaults. Intended: this is the form for setting them.
- */
-export async function savePlatformBookingDefaults(
+export async function savePlatformBookingTemplates(
   client: SupabaseClient<Database>,
-  values: BookingEngineDefaults,
+  templates: BookingFlowTemplates,
 ): Promise<void> {
-  const rows = BOOKING_DEFAULT_KEYS.map((key) => ({
-    org_id: null as string | null,
-    key: key as string,
-    value: values[key] as Json,
-  }));
-  const { error } = await client.from("app_settings").upsert(rows, { onConflict: "org_id,key" });
+  const value = normalizeBookingFlowTemplates(templates) as unknown as Json;
+  const { error } = await client.from("app_settings").upsert(
+    { org_id: null, key: "booking_flow_templates", value },
+    { onConflict: "org_id,key" },
+  );
   if (error) throw error;
 }
 

@@ -251,13 +251,15 @@ Deno.test("provision-org: enabling booking_flow seeds an inactive (off) flow pol
 
   const upsertCall = calls.find((c) => c.table === "app_settings" && c.method === "upsert");
   assertEquals(upsertCall !== undefined, true);
-  const row = upsertCall!.args[0] as { org_id: string; key: string; value: { active: boolean } };
+  const rows = upsertCall!.args[0] as { org_id: string; key: string; value: unknown }[];
+  const row = rows.find((candidate) => candidate.key === "booking_flow")! as { org_id: string; key: string; value: { active: boolean } };
   assertEquals(row.org_id, "org-9");
   assertEquals(row.key, "booking_flow");
   assertEquals(row.value.active, false);
+  assertEquals(rows.find((candidate) => candidate.key === "booking_flow_template")?.value, "off");
 });
 
-Deno.test("provision-org: leaving booking_flow disabled does not seed an off-flow policy", async () => {
+Deno.test("provision-org: leaving booking_flow disabled still seeds the off template snapshot", async () => {
   const { deps, calls } = makeFakeDeps({
     authUser: { id: "u1" },
     tables: { platform_admins: { data: { user_id: "u1" }, error: null } },
@@ -274,7 +276,8 @@ Deno.test("provision-org: leaving booking_flow disabled does not seed an off-flo
   assertEquals(res.status, 200);
 
   const upsertCall = calls.find((c) => c.table === "app_settings" && c.method === "upsert");
-  assertEquals(upsertCall, undefined);
+  const rows = upsertCall!.args[0] as { key: string; value: unknown }[];
+  assertEquals(rows.find((candidate) => candidate.key === "booking_flow_template")?.value, "off");
 });
 
 // ---------------------------------------------------------------------------

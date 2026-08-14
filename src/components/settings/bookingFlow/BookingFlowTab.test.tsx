@@ -3,7 +3,7 @@ import { useState } from "react";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import { createFakeSupabase } from "@/test/supabaseFake";
-import { BOOKING_FLOW_DEFAULTS, type BookingFlow } from "@/lib/bookingFlow";
+import { BOOKING_FLOW_DEFAULTS, BOOKING_FLOW_TEMPLATE_DEFAULTS, type BookingFlow } from "@/lib/bookingFlow";
 
 // The tab and its child hooks (useSettingsAudit, useEntitlements, custom fields) all
 // read `currentOrg` from useAuth and hit the shared supabase client. A null org keeps
@@ -13,9 +13,16 @@ import { BOOKING_FLOW_DEFAULTS, type BookingFlow } from "@/lib/bookingFlow";
 // (vi.hoisted holder pattern — see src/hooks/useCities.test.tsx) rather than a fixed
 // factory, and the supabase client is a shared mutable object seeded with
 // createFakeSupabase (never a hand-rolled vi.mock chain).
-const { client } = vi.hoisted(() => ({ client: {} as Record<string, unknown> }));
+const { client, fetchTemplates } = vi.hoisted(() => ({
+  client: {} as Record<string, unknown>,
+  fetchTemplates: vi.fn(),
+}));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: client }));
 vi.mock("@/features/auth/AuthContext", () => ({ useAuth: vi.fn() }));
+vi.mock("@/data/platform", async (original) => ({
+  ...(await original<typeof import("@/data/platform")>()),
+  fetchPlatformBookingTemplates: () => fetchTemplates(),
+}));
 
 Object.assign(
   client,
@@ -48,9 +55,10 @@ Object.assign(
 import { useAuth } from "@/features/auth/AuthContext";
 import { BookingFlowTab } from "./BookingFlowTab";
 
-function Harness({ orgFlow, dirtyKeys = [], readOnly }: { orgFlow?: BookingFlow; dirtyKeys?: string[]; readOnly?: boolean } = {}) {
+function Harness({ orgFlow, storedTemplate, dirtyKeys = [], readOnly }: { orgFlow?: BookingFlow; storedTemplate?: string; dirtyKeys?: string[]; readOnly?: boolean } = {}) {
   const [draft, setDraft] = useState<Record<string, unknown>>({
     booking_flow: orgFlow ?? BOOKING_FLOW_DEFAULTS,
+    booking_flow_template: storedTemplate,
     offer_response_window_hours: 48,
     offer_digest_hour_berlin: 19,
     confirmation_digest_hour_berlin: 20,
@@ -71,13 +79,30 @@ function Harness({ orgFlow, dirtyKeys = [], readOnly }: { orgFlow?: BookingFlow;
 describe("BookingFlowTab", () => {
   beforeEach(() => {
     vi.mocked(useAuth).mockReturnValue({ currentOrg: null } as never);
+    fetchTemplates.mockResolvedValue(BOOKING_FLOW_TEMPLATE_DEFAULTS);
   });
 
-  it("selecting the Direct book preset flips the timeline into direct mode", () => {
+  it("blocks template selection when platform templates fail to load", async () => {
+    fetchTemplates.mockRejectedValueOnce(new Error("template read failed"));
     renderWithProviders(<Harness />);
-    fireEvent.click(screen.getByRole("button", { name: /direct book/i }));
+
+    expect(await screen.findByText("template read failed")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /direct book/i })).not.toBeInTheDocument();
+  });
+
+  it("selecting the Direct book preset flips the timeline into direct mode", async () => {
+    renderWithProviders(<Harness />);
+    fireEvent.click(await screen.findByRole("button", { name: /direct book/i }));
     expect(screen.getAllByText("Skipped").length).toBeGreaterThanOrEqual(2);
     expect(screen.getByText("Locked on")).toBeInTheDocument();
+  });
+
+  it("preserves the org reference field when switching templates", async () => {
+    renderWithProviders(<Harness orgFlow={{ ...BOOKING_FLOW_DEFAULTS, reference_field: { source: "program" } }} />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /fast-track/i }));
+
+    expect(screen.getByRole("combobox", { name: /reference field/i })).toHaveTextContent("Program only");
   });
 
   it("shows the resulting lifecycle chips in the rail", () => {
@@ -98,19 +123,19 @@ describe("BookingFlowTab", () => {
   // switch: Fast-track (confirmation off) then Direct book (acceptance off) then acceptance
   // back on must restore the fast-track choice, not the pre-fast-track default. Presets
   // bypassed the ref tracking in onFlowChange, so the restore used a stale value.
-  it("a preset's producer_confirmation choice survives an acceptance off/on round trip", () => {
+  it("a preset's producer_confirmation choice survives an acceptance off/on round trip", async () => {
     renderWithProviders(<Harness />);
-    fireEvent.click(screen.getByRole("button", { name: /fast-track/i }));
+    fireEvent.click(await screen.findByRole("button", { name: /fast-track/i }));
     expect(screen.getByRole("switch", { name: /^producer confirmation$/i })).toHaveAttribute("aria-checked", "false");
     fireEvent.click(screen.getByRole("button", { name: /direct book/i }));
     fireEvent.click(screen.getByRole("switch", { name: /^artist acceptance$/i }));
     expect(screen.getByRole("switch", { name: /^producer confirmation$/i })).toHaveAttribute("aria-checked", "false");
   });
 
-  it("restores the user's producer_confirmation choice after an acceptance off/on round trip", () => {
+  it("restores the user's producer_confirmation choice after an acceptance off/on round trip", async () => {
     renderWithProviders(<Harness />);
     // Fast-track: artist_acceptance stays on, producer_confirmation goes off.
-    fireEvent.click(screen.getByRole("button", { name: /fast-track/i }));
+    fireEvent.click(await screen.findByRole("button", { name: /fast-track/i }));
     const acceptance = screen.getByRole("switch", { name: /^artist acceptance$/i });
     const confirmation = screen.getByRole("switch", { name: /^producer confirmation$/i });
     expect(confirmation).toHaveAttribute("aria-checked", "false");
@@ -139,7 +164,7 @@ describe("BookingFlowTab", () => {
       ).toBeInTheDocument();
 
       // Preset chips disabled.
-      expect(screen.getByRole("button", { name: /direct book/i })).toBeDisabled();
+      expect(await screen.findByRole("button", { name: /direct book/i })).toBeDisabled();
       expect(screen.getByRole("button", { name: /fast-track/i })).toBeDisabled();
 
       // A representative FlowTimeline input is disabled.
@@ -183,7 +208,7 @@ describe("BookingFlowTab", () => {
 
       expect(screen.queryByText("Booking engine is not enabled")).not.toBeInTheDocument();
       expect(screen.getByRole("button", { name: /^saved$/i })).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: /direct book/i })).not.toBeDisabled();
+      expect(await screen.findByRole("button", { name: /direct book/i })).not.toBeDisabled();
       expect(screen.getByRole("switch", { name: /^artist acceptance$/i })).not.toBeDisabled();
     });
   });
@@ -192,10 +217,10 @@ describe("BookingFlowTab", () => {
   // entitled and the flow renders normally, but a producer without `edit_booking_settings`
   // can't change it.
   describe("readOnly (capability floor, org entitled)", () => {
-    it("disables presets, timeline switches, the from-address input, and hides rail Save, while showing real values", () => {
+    it("disables presets, timeline switches, the from-address input, and hides rail Save, while showing real values", async () => {
       renderWithProviders(<Harness readOnly dirtyKeys={[]} />);
 
-      expect(screen.getByRole("button", { name: /direct book/i })).toBeDisabled();
+      expect(await screen.findByRole("button", { name: /direct book/i })).toBeDisabled();
       expect(screen.getByRole("switch", { name: /^artist acceptance$/i })).toBeDisabled();
       expect(screen.getByLabelText(/from address/i)).toBeDisabled();
       // No entitlement lock notice — this is a capability gate, not a module gate.
@@ -206,10 +231,10 @@ describe("BookingFlowTab", () => {
       expect(screen.getByRole("switch", { name: /^artist acceptance$/i })).toHaveAttribute("aria-checked", "true");
     });
 
-    it("leaves every control enabled when readOnly is false", () => {
+    it("leaves every control enabled when readOnly is false", async () => {
       renderWithProviders(<Harness readOnly={false} />);
 
-      expect(screen.getByRole("button", { name: /direct book/i })).not.toBeDisabled();
+      expect(await screen.findByRole("button", { name: /direct book/i })).not.toBeDisabled();
       expect(screen.getByRole("switch", { name: /^artist acceptance$/i })).not.toBeDisabled();
       expect(screen.getByLabelText(/from address/i)).not.toBeDisabled();
     });
@@ -224,17 +249,24 @@ describe("BookingFlowTab", () => {
   });
 
   describe("off state", () => {
-    it("shows the Off state: banner + Off tile pressed when the flow is inactive", () => {
+    it("does not disable an active flow when a stale stored identity still says Off", async () => {
+      renderWithProviders(<Harness storedTemplate="off" />);
+
+      expect(screen.queryByText(/booking flow is off/i)).not.toBeInTheDocument();
+      expect(await screen.findByRole("switch", { name: /^artist acceptance$/i })).not.toBeDisabled();
+    });
+
+    it("shows the Off state: banner + Off tile pressed when the flow is inactive", async () => {
       renderWithProviders(<Harness orgFlow={{ ...BOOKING_FLOW_DEFAULTS, active: false }} />);
 
       expect(screen.getByText(/booking flow is off/i)).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: /^Off\b/i })).toHaveAttribute("aria-pressed", "true");
+      expect(await screen.findByRole("button", { name: /^Off\b/i })).toHaveAttribute("aria-pressed", "true");
     });
 
-    it("selecting a real preset from Off turns the flow active", () => {
+    it("selecting a real preset from Off turns the flow active", async () => {
       renderWithProviders(<Harness orgFlow={{ ...BOOKING_FLOW_DEFAULTS, active: false }} />);
 
-      fireEvent.click(screen.getByRole("button", { name: /^Classic\b/i }));
+      fireEvent.click(await screen.findByRole("button", { name: /^Classic\b/i }));
 
       expect(screen.queryByText(/booking flow is off/i)).not.toBeInTheDocument();
       expect(screen.getByRole("button", { name: /^Classic\b/i })).toHaveAttribute("aria-pressed", "true");

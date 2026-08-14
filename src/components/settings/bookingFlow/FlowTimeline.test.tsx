@@ -8,6 +8,13 @@ const TIMES = { windowHours: 48, offerDigestHour: 19, confirmationDigestHour: 20
 const noop = () => {};
 
 describe("FlowTimeline", () => {
+  it("can hide org-specific custom reference fields at platform scope", () => {
+    renderWithProviders(
+      <FlowTimeline flow={BOOKING_FLOW_DEFAULTS} times={TIMES} onFlowChange={noop} onTimesChange={noop} customFields={[]} referencePreview="x" allowCustomReference={false} />,
+    );
+    fireEvent.click(screen.getByRole("combobox", { name: "Reference field" }));
+    expect(screen.queryByRole("option", { name: /custom field/i })).not.toBeInTheDocument();
+  });
   it("renders all seven steps in classic mode with no skipped chips", () => {
     renderWithProviders(
       <FlowTimeline flow={BOOKING_FLOW_DEFAULTS} times={TIMES} onFlowChange={noop} onTimesChange={noop} customFields={[]} referencePreview="Offer: X · Apr 30" />,

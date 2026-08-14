@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { createFakeSupabase } from "@/test/supabaseFake";
-import { fetchShowsWithSlots, resolveOrgSetting, upsertOrgSetting, fetchShowsForLinking, linkShowAirtableKey, importShowsFromOptions, mergeOrgRows, fetchBookingFlow, hasOrgSettingRow, fetchOwnedSettingKeys, fetchFlowTimes } from "./settings";
+import { fetchShowsWithSlots, resolveOrgSetting, upsertOrgSetting, upsertOrgSettings, fetchShowsForLinking, linkShowAirtableKey, importShowsFromOptions, mergeOrgRows, fetchBookingFlow, hasOrgSettingRow, fetchOwnedSettingKeys, fetchFlowTimes } from "./settings";
 import { BOOKING_FLOW_DEFAULTS, normalizeBookingFlow } from "@/lib/bookingFlow";
 
 describe("fetchShowsWithSlots", () => {
@@ -113,6 +113,23 @@ describe("upsertOrgSetting", () => {
   it("throws on upsert error", async () => {
     const fake = createFakeSupabase({ app_settings: { data: null, error: { message: "no" } } });
     await expect(upsertOrgSetting(fake as never, "o1", "k", {} as never)).rejects.toBeTruthy();
+  });
+});
+
+describe("upsertOrgSettings", () => {
+  it("upserts related org settings in one request", async () => {
+    const fake = createFakeSupabase({ app_settings: { data: null, error: null } });
+    await upsertOrgSettings(fake as never, "o1", [
+      { key: "booking_flow", value: { active: true } as never },
+      { key: "booking_flow_template", value: "classic" as never },
+    ]);
+    expect(fake.calls).toContainEqual({
+      table: "app_settings", method: "upsert",
+      args: [[
+        { org_id: "o1", key: "booking_flow", value: { active: true } },
+        { org_id: "o1", key: "booking_flow_template", value: "classic" },
+      ], { onConflict: "org_id,key" }],
+    });
   });
 });
 

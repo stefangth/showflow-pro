@@ -7,61 +7,47 @@ import { renderWithProviders } from "@/test/renderWithProviders";
 vi.mock("@/data/settings", () => ({
   resolveOrgSetting: vi.fn((_client: unknown, _orgId: unknown, key: string) => {
     if (key === "default_entitlements") return Promise.resolve({ booking_flow: true, hire_orders: false });
+    if (key === "resend_from_address") return Promise.resolve("Platform <p@x.com>");
     return Promise.resolve({ skills: [], cities: [], casts: [] });
   }),
 }));
 vi.mock("@/data/platform", () => ({
   EMPTY_STARTER_TEMPLATE: { skills: [], cities: [], casts: [] },
   savePlatformSetting: vi.fn(() => Promise.resolve()),
-  fetchPlatformBookingDefaults: vi.fn(),
-  savePlatformBookingDefaults: vi.fn(() => Promise.resolve()),
+  fetchPlatformBookingTemplates: vi.fn(async () => (await import("@/lib/bookingFlow")).BOOKING_FLOW_TEMPLATE_DEFAULTS),
+  savePlatformBookingTemplates: vi.fn(() => Promise.resolve()),
 }));
 
 import { PlatformDefaultsTab } from "./PlatformDefaultsTab";
-import { fetchPlatformBookingDefaults, savePlatformBookingDefaults, savePlatformSetting } from "@/data/platform";
+import { savePlatformSetting } from "@/data/platform";
 import { resolveOrgSetting } from "@/data/settings";
 
-const DEFAULTS = {
-  offer_response_window_hours: 36,
-  offer_digest_hour_berlin: 18,
-  confirmation_digest_hour_berlin: 21,
-  resend_from_address: "Platform <p@x.com>",
-};
-
-describe("PlatformDefaultsTab — booking engine defaults", () => {
+describe("PlatformDefaultsTab — email sender default", () => {
   beforeEach(() => vi.clearAllMocks());
 
   it("loads the platform booking defaults into the form", async () => {
-    (fetchPlatformBookingDefaults as ReturnType<typeof vi.fn>).mockResolvedValue(DEFAULTS);
     renderWithProviders(<PlatformDefaultsTab />);
     const fromInput = await screen.findByLabelText("Default sender address (Resend)");
     // findByLabelText resolves the moment the input exists — during the loading
     // render, when it still holds the fallback value. Wait for the async-loaded
     // value before asserting, or this races the query resolution under load.
     await waitFor(() => expect((fromInput as HTMLInputElement).value).toBe("Platform <p@x.com>"));
-    expect((screen.getByLabelText("Offer response window (hours)") as HTMLInputElement).value).toBe("36");
-    expect((screen.getByLabelText("Offer digest hour (Berlin)") as HTMLInputElement).value).toBe("18");
-    expect((screen.getByLabelText("Confirmation digest hour (Berlin)") as HTMLInputElement).value).toBe("21");
+    expect(screen.queryByLabelText("Offer response window (hours)")).not.toBeInTheDocument();
   });
 
-  it("saves edited values via savePlatformBookingDefaults", async () => {
-    (fetchPlatformBookingDefaults as ReturnType<typeof vi.fn>).mockResolvedValue(DEFAULTS);
+  it("saves the sender without rewriting template timing", async () => {
     renderWithProviders(<PlatformDefaultsTab />);
     const fromInput = await screen.findByLabelText("Default sender address (Resend)");
     // Wait for the defaults to load before editing, so the untouched fields carry
     // the loaded values (not the loading fallback) into the save payload.
     await waitFor(() => expect((fromInput as HTMLInputElement).value).toBe("Platform <p@x.com>"));
     fireEvent.change(fromInput, { target: { value: "New <n@ew.com>" } });
-    fireEvent.click(screen.getByRole("button", { name: "Save booking defaults" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save sender default" }));
     await waitFor(() =>
-      expect(savePlatformBookingDefaults).toHaveBeenCalledWith(
+      expect(savePlatformSetting).toHaveBeenCalledWith(
         expect.anything(),
-        expect.objectContaining({
-          offer_response_window_hours: 36,
-          offer_digest_hour_berlin: 18,
-          confirmation_digest_hour_berlin: 21,
-          resend_from_address: "New <n@ew.com>",
-        }),
+        "resend_from_address",
+        "New <n@ew.com>",
       ),
     );
   });
@@ -70,7 +56,6 @@ describe("PlatformDefaultsTab — booking engine defaults", () => {
 describe("PlatformDefaultsTab — default modules", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    (fetchPlatformBookingDefaults as ReturnType<typeof vi.fn>).mockResolvedValue(DEFAULTS);
   });
 
   it("loads the platform default entitlements into switches", async () => {
@@ -111,7 +96,6 @@ describe("PlatformDefaultsTab — settings-read failure guards", () => {
       if (key === "default_entitlements") return Promise.resolve({ booking_flow: true, hire_orders: false });
       return Promise.resolve({ skills: [], cities: [], casts: [] });
     });
-    (fetchPlatformBookingDefaults as ReturnType<typeof vi.fn>).mockResolvedValue(DEFAULTS);
     renderWithProviders(<PlatformDefaultsTab />);
 
     expect(await screen.findByText(/permission denied for table app_settings/i)).toBeInTheDocument();
@@ -125,7 +109,6 @@ describe("PlatformDefaultsTab — settings-read failure guards", () => {
       if (key === "default_entitlements") return Promise.resolve({ booking_flow: true, hire_orders: false });
       return Promise.resolve({ skills: [], cities: [], casts: [] });
     });
-    (fetchPlatformBookingDefaults as ReturnType<typeof vi.fn>).mockResolvedValue(DEFAULTS);
     renderWithProviders(<PlatformDefaultsTab />);
 
     expect(await screen.findByText(/network error/i)).toBeInTheDocument();
@@ -137,11 +120,11 @@ describe("PlatformDefaultsTab — settings-read failure guards", () => {
       if (key === "default_entitlements") return Promise.reject(new Error("permission denied for table app_settings"));
       return Promise.resolve({ skills: [], cities: [], casts: [] });
     });
-    (fetchPlatformBookingDefaults as ReturnType<typeof vi.fn>).mockResolvedValue(DEFAULTS);
     renderWithProviders(<PlatformDefaultsTab />);
 
     expect(await screen.findAllByText(/permission denied for table app_settings/i)).not.toHaveLength(0);
-    expect(screen.queryAllByRole("switch")).toHaveLength(0);
+    expect(screen.queryByRole("switch", { name: "Booking engine" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("switch", { name: /hire orders/i })).not.toBeInTheDocument();
   });
 });
 
@@ -160,22 +143,6 @@ describe("PlatformDefaultsTab — settings-read failure guards", () => {
 // form is pinned and no refetch may wipe work in progress.
 describe("PlatformDefaultsTab — drafts track the stored settings", () => {
   beforeEach(() => vi.clearAllMocks());
-
-  it("booking defaults follow a refetch while untouched, and pin once edited", async () => {
-    (fetchPlatformBookingDefaults as ReturnType<typeof vi.fn>).mockResolvedValue(DEFAULTS);
-    const { queryClient } = renderWithProviders(<PlatformDefaultsTab />);
-    const windowInput = await screen.findByLabelText("Offer response window (hours)");
-    await waitFor(() => expect((windowInput as HTMLInputElement).value).toBe("36"));
-
-    (fetchPlatformBookingDefaults as ReturnType<typeof vi.fn>).mockResolvedValue({ ...DEFAULTS, offer_response_window_hours: 72 });
-    await queryClient.invalidateQueries({ queryKey: ["platform", "booking-defaults"] });
-    await waitFor(() => expect((windowInput as HTMLInputElement).value).toBe("72"));
-
-    fireEvent.change(windowInput, { target: { value: "12" } });
-    (fetchPlatformBookingDefaults as ReturnType<typeof vi.fn>).mockResolvedValue({ ...DEFAULTS, offer_response_window_hours: 99 });
-    await queryClient.invalidateQueries({ queryKey: ["platform", "booking-defaults"] });
-    expect((windowInput as HTMLInputElement).value).toBe("12");
-  });
 
   it("the starter catalog follows a refetch while untouched", async () => {
     const { queryClient } = renderWithProviders(<PlatformDefaultsTab />);
