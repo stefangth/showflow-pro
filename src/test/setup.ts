@@ -2,6 +2,9 @@
 // etc.) augment vitest's `expect` for the typechecker, not just at runtime.
 import "@testing-library/jest-dom/vitest";
 import { afterEach } from "vitest";
+// Initialize the i18next singleton for every test file so components using
+// `useTranslation` render without each test mounting its own instance.
+import "@/i18n";
 
 if (typeof window !== 'undefined') Object.defineProperty(window, "matchMedia", {
   writable: true,

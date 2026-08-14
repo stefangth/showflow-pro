@@ -9,6 +9,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { AuthProvider } from "@/features/auth/AuthContext";
 import { EditorProvider } from "@/features/editor/EditorContext";
 import { ConsentProvider } from "@/features/consent/ConsentContext";
+import { LanguageProvider } from "@/features/i18n/LanguageContext";
+import "@/i18n";
 import { CookieConsentBanner } from "@/components/consent/CookieConsentBanner";
 import { AnalyticsBridge } from "@/features/analytics/AnalyticsBridge";
 import { AnalyticsIdentityBridge } from "@/features/analytics/AnalyticsIdentityBridge";
@@ -58,6 +60,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
+        <LanguageProvider>
         <ConsentProvider>
         <AnalyticsBridge />
         <AppErrorBoundary>
@@ -121,6 +124,7 @@ const App = () => (
         </AppErrorBoundary>
         <CookieConsentBanner />
         </ConsentProvider>
+        </LanguageProvider>
       </BrowserRouter>
     </TooltipProvider>
     </ThemeProvider>
