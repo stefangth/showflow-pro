@@ -1,0 +1,43 @@
+{
+  "eyebrow": "HILFE",
+  "hero": "Was Leute fragen, und wo die App es beantwortet",
+  "lede": "Jede Frage hier unten stellt sich ein echter Admin, jemand aus dem Produktionsteam oder ein Artist beim Arbeiten mit ShowFlow. Wähl deine Rolle, dann öffne eine Frage, um die Antwort zu sehen und den Screen, der sie beantwortet.",
+  "tabs": {
+    "admin": "Admin",
+    "producer": "Produktionsteam",
+    "artist": "Artist"
+  },
+  "search": "Alles durchsuchen",
+  "filter": {
+    "all": "Alle",
+    "new": "Neue Antworten"
+  },
+  "badge": {
+    "new": "Neue Antwort",
+    "ok": "Beantwortet"
+  },
+  "count_unfiltered_one": "{{count}} Frage · {{newCount}} neu beantwortet",
+  "count_unfiltered_other": "{{count}} Fragen · {{newCount}} neu beantwortet",
+  "count_filtered": "{{matched}} von {{total}} Fragen",
+  "empty": {
+    "title": "Keine Frage passt dazu.",
+    "body": "Versuch eine kürzere Suche, oder setz die Filter zurück und stöber nach Phase.",
+    "clear": "Filter zurücksetzen"
+  },
+  "glossaryHeading": "Die Begriffe, die wir nutzen",
+  "stuck": {
+    "eyebrow": "KOMMST DU NICHT WEITER",
+    "body": "Frag die Person, die der Entscheidung einen Schritt näher ist. Artists erreichen ihr Produktionsteam im Chat zum Termin. Das Produktionsteam fragt einen Admin. Admins wenden sich an ihren Plattform-Administrator.",
+    "roles": "Sieh, was jede Rolle darf"
+  },
+  "escalate": {
+    "admin": "Plattform-Admin kontaktieren",
+    "producer": "Einen Admin fragen",
+    "artist": "Chat zum Termin öffnen"
+  },
+  "support": {
+    "eyebrow": "SUPPORT-ADRESSE",
+    "body": "Für {{org}} ist noch keine Support-Adresse hinterlegt, daher kann der Screen für gesperrte Workspaces keine anzeigen. Ein Admin kann sie in den Einstellungen setzen, dann erscheint sie überall dort, wo die App dir sagt, du sollst dich melden."
+  },
+  "footnote": "Die Antworten spiegeln die Journey-Arbeit für Admin, Produktionsteam und Artist wider, die im August 2026 ausgeliefert wurde. Fragen-Inventar: 2026-08-09, Journey-Fragen nach Nutzertyp."
+}

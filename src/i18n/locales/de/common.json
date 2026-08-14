@@ -1,0 +1,28 @@
+{
+  "nav": {
+    "workspace": "Arbeitsbereich",
+    "catalog": "Katalog",
+    "system": "System",
+    "dashboard": "Dashboard",
+    "bookings": "Shows & Buchungen",
+    "hireOrders": "Engagementverträge",
+    "availability": "Verfügbarkeit",
+    "chats": "Chats",
+    "help": "Hilfe",
+    "productions": "Produktionen",
+    "artists": "Artists",
+    "admin": "Admin",
+    "settings": "Einstellungen",
+    "platform": "Plattform"
+  },
+  "breadcrumb": {
+    "home": "Start"
+  },
+  "account": {
+    "language": "Sprache",
+    "profile": "Profil",
+    "signOut": "Abmelden",
+    "english": "Englisch",
+    "german": "Deutsch"
+  }
+}

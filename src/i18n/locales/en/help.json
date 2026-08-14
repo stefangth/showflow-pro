@@ -1,0 +1,43 @@
+{
+  "eyebrow": "HELP",
+  "hero": "What people ask, and where the app answers it",
+  "lede": "Every question below is one a real admin, producer, or artist asks themselves while using ShowFlow. Pick your role, then open a question to see the answer and the screen that carries it.",
+  "tabs": {
+    "admin": "Admin",
+    "producer": "Production team",
+    "artist": "Artist"
+  },
+  "search": "Find anything",
+  "filter": {
+    "all": "All",
+    "new": "New answers"
+  },
+  "badge": {
+    "new": "New answer",
+    "ok": "Answered"
+  },
+  "count_unfiltered_one": "{{count}} question · {{newCount}} newly answered",
+  "count_unfiltered_other": "{{count}} questions · {{newCount}} newly answered",
+  "count_filtered": "{{matched}} of {{total}} questions",
+  "empty": {
+    "title": "No question matches that.",
+    "body": "Try a shorter search, or clear the filters and browse by stage.",
+    "clear": "Clear filters"
+  },
+  "glossaryHeading": "The words we use",
+  "stuck": {
+    "eyebrow": "STILL STUCK",
+    "body": "Ask the person one step closer to the decision. Artists reach their producer in the date's chat. Production team asks an admin. Admins reach their platform administrator.",
+    "roles": "See what each role can do"
+  },
+  "escalate": {
+    "admin": "Contact platform admin",
+    "producer": "Ask an admin",
+    "artist": "Open the date chat"
+  },
+  "support": {
+    "eyebrow": "SUPPORT ADDRESS",
+    "body": "No support address is set for {{org}} yet, so the suspended-workspace screen cannot show one. An admin can set it in Settings, and it then appears everywhere the app tells you to get in touch."
+  },
+  "footnote": "Answers reflect the admin, production team and artist journey work shipped in August 2026. Question inventory: 2026-08-09 user-type journey questions."
+}
