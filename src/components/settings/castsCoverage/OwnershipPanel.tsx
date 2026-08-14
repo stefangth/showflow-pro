@@ -144,6 +144,7 @@ export function OwnershipPanel({ orgId }: Props) {
         .filter((a): a is ShowAssignmentRow & { program: string } => !!a.program)
         .map((a) => ({
           id: a.id,
+          ownerId: a.producer_user_id,
           owner: producersById.get(a.producer_user_id) ?? a.producer_user_id.slice(0, 8),
           program: a.program,
           subProgram: a.sub_program,
@@ -168,11 +169,24 @@ export function OwnershipPanel({ orgId }: Props) {
 
   const addAssignment = useMutation({
     mutationFn: async () => {
+      const subProgram = newSubProgram || null;
+      const cityId = newCityId || null;
+      // Pre-check against the already-fetched rows so a repeat assignment gives a friendly
+      // message instead of the raw Postgres unique-violation from the
+      // (producer_user_id, program, sub_program, city_id) NULLS NOT DISTINCT index.
+      const duplicate = assignments.some(
+        (a) =>
+          a.producer_user_id === newUserId &&
+          a.program === newProgram &&
+          a.sub_program === subProgram &&
+          a.city_id === cityId,
+      );
+      if (duplicate) throw new Error("That owner already covers this scope.");
       const { error } = await supabase.from("show_assignments").insert({
         producer_user_id: newUserId,
         program: newProgram,
-        sub_program: newSubProgram || null,
-        city_id: newCityId || null,
+        sub_program: subProgram,
+        city_id: cityId,
         org_id: orgId,
       });
       if (error) throw error;

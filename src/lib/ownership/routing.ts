@@ -25,6 +25,9 @@ export type RoutingRank = 1 | 2 | 3 | 4;
  *  assignments and query agree on consistently). */
 export interface RoutingAssignment {
   id: string;
+  /** Stable per-producer identity used to dedup the notified set (mirrors the RPC's
+   *  producer_user_id dedup). Falls back to `owner` when omitted (e.g. in tests). */
+  ownerId?: string;
   /** Display name of the assigned owner. */
   owner: string;
   program: string;
@@ -79,13 +82,16 @@ function matchesQuery(a: RoutingAssignment, query: RoutingQuery): boolean {
   return true;
 }
 
-/** Dedup by owner, keeping the first occurrence (stable, input order preserved). */
+/** Dedup by producer identity (ownerId, falling back to owner name), keeping the first
+ *  occurrence (stable, input order preserved). Two distinct producers who happen to share
+ *  a display name stay distinct, matching the RPC's producer_user_id dedup. */
 function dedupeByOwner(assignments: RoutingAssignment[]): RoutingAssignment[] {
   const seen = new Set<string>();
   const result: RoutingAssignment[] = [];
   for (const a of assignments) {
-    if (seen.has(a.owner)) continue;
-    seen.add(a.owner);
+    const key = a.ownerId ?? a.owner;
+    if (seen.has(key)) continue;
+    seen.add(key);
     result.push(a);
   }
   return result;

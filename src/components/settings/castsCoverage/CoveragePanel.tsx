@@ -227,7 +227,9 @@ export function CoveragePanel({ orgId, onOpenCast }: CoveragePanelProps) {
   });
   const clearAllOverrides = useMutation({
     mutationFn: async () => {
-      for (const row of showPriorityRows) await clearShowCastPriority(supabase, row.id);
+      // Independent deletes: run them concurrently and settle as a unit (Promise.all
+      // rejects on the first failure) rather than one dependent round-trip at a time.
+      await Promise.all(showPriorityRows.map((row) => clearShowCastPriority(supabase, row.id)));
     },
     onSuccess: () => { invalidateShowConsumers(); toast.success("Overrides cleared"); },
     onError: (e: Error) => toast.error("Failed to clear overrides", { description: e.message }),

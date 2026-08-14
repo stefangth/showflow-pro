@@ -109,26 +109,39 @@ export async function setCastCityPriority(
 
   const { data: tierRows, error: e2 } = await client
     .from("cast_city_priority")
-    .select("id")
+    .select("id, cast_id")
     .eq("city_id", args.cityId)
     .eq("priority", args.priority);
   if (e2) throw e2;
-  const tierRow = (tierRows ?? [])[0] as { id: string } | undefined;
+  const tierRow = (tierRows ?? [])[0] as { id: string; cast_id: string } | undefined;
 
-  if (tierRow && tierRow.id !== castRow?.id) {
-    const { error } = await client.from("cast_city_priority").delete().eq("id", tierRow.id);
+  const bumped = tierRow && tierRow.id !== castRow?.id ? tierRow : undefined;
+  if (bumped) {
+    const { error } = await client.from("cast_city_priority").delete().eq("id", bumped.id);
     if (error) throw error;
   }
 
-  if (castRow) {
-    const { error } = await client
-      .from("cast_city_priority").update({ priority: args.priority }).eq("id", castRow.id);
-    if (error) throw error;
-  } else {
-    const { error } = await client.from("cast_city_priority").insert({
-      org_id: args.orgId, city_id: args.cityId, cast_id: args.castId, priority: args.priority,
-    });
-    if (error) throw error;
+  try {
+    if (castRow) {
+      const { error } = await client
+        .from("cast_city_priority").update({ priority: args.priority }).eq("id", castRow.id);
+      if (error) throw error;
+    } else {
+      const { error } = await client.from("cast_city_priority").insert({
+        org_id: args.orgId, city_id: args.cityId, cast_id: args.castId, priority: args.priority,
+      });
+      if (error) throw error;
+    }
+  } catch (err) {
+    // The bump-out delete has already committed but placing the requested cast failed
+    // (no client-side transaction). Restore the bumped cast to the tier it held so it is
+    // not silently dropped from the ladder, then surface the original error.
+    if (bumped) {
+      await client.from("cast_city_priority").insert({
+        org_id: args.orgId, city_id: args.cityId, cast_id: bumped.cast_id, priority: args.priority,
+      });
+    }
+    throw err;
   }
 }
 
