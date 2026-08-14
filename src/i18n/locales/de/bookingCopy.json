@@ -1,0 +1,23 @@
+{
+  "actionCopy": {
+    "confirm": {
+      "bareConsequence": "Bestätigen setzt die Buchung.",
+      "withDigest": "Bestätigen setzt die Buchung. Der Artist sieht es sofort in der App. Die Bestätigungs-E-Mail geht mit der Tagesübersicht um {{time}} raus.",
+      "appOnly": "Bestätigen setzt die Buchung und benachrichtigt den Artist sofort in der App."
+    },
+    "accept": {
+      "holdTitle": "Angebot angenommen",
+      "holdDescription": "Vormerkung gesetzt. Dein Production Team bestätigt als Nächstes.",
+      "bookedTitle": "Angebot angenommen. Du bist gebucht."
+    },
+    "softBookedMeaning": "Angebot angenommen. Für dich vorgemerkt, nicht gebucht, bis du bestätigst.",
+    "tierConceptNote": "Stufen sind deine Besetzungen in Prioritätsreihenfolge. Angebote starten mit Stufe 1. Wenn sie sich nicht füllt, öffnest du die nächste Stufe.",
+    "dateSourceNote": "Du kannst hier einen Vorstellungstermin von Hand hinzufügen. Wenn dein Workspace mit Airtable synchronisiert, aktualisieren sich diese Termine von selbst, und ein Termin, den du hier hinzufügst, wird von einer Synchronisierung nicht verändert.",
+    "unrestrictedEligibility": "Dieser Termin hat keine Besetzungsgrenzen, also kann jede Person in {{org}} hier gebucht werden.",
+    "cancel": {
+      "title": "Buchung von {{artist}} stornieren?",
+      "understudyLine": "Wenn {{artist}} in der Hauptbesetzung ist, wird die am längsten wartende angenommene Zweitbesetzung automatisch nachgerückt.",
+      "whoHearsFallback": "Der Artist wird in der App benachrichtigt."
+    }
+  }
+}

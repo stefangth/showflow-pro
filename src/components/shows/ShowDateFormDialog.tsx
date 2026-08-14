@@ -18,7 +18,7 @@ import { isSyncedDate, findDuplicateDate } from "@/lib/catalog";
 import { shouldAutoOpenTier1 } from "@/lib/bookings";
 import { showSlots } from "@/lib/settings";
 import { scheduleChangeNote } from "@/lib/notifications/scheduleChangeCopy";
-import { DATE_SOURCE_NOTE } from "@/lib/bookings/actionCopy";
+import { dateSourceNote } from "@/lib/bookings/actionCopy";
 import { showIdentityLabel } from "@/types";
 import { toDateKey, parseDateOnly, formatDateDMY } from "@/lib/dates";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -61,6 +61,7 @@ export function ShowDateFormDialog({
   defaultShowId?: string | null;
 }) {
   const { t } = useTranslation("showsDetail");
+  const { t: tAction } = useTranslation("bookingCopy");
   const { currentOrg } = useAuth();
   const queryClient = useQueryClient();
   const { data: shows } = useShows();
@@ -213,7 +214,7 @@ export function ShowDateFormDialog({
   // most one is ever non-null today, but selecting the single description here makes that a
   // structural guarantee rather than a coincidence a later edit to changeNote's mode gate
   // could quietly break.
-  const dialogDescription = mode === "create" ? DATE_SOURCE_NOTE : changeNote;
+  const dialogDescription = mode === "create" ? dateSourceNote(tAction) : changeNote;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

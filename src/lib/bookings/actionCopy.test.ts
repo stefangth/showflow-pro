@@ -1,10 +1,18 @@
 import { describe, it, expect } from "vitest";
+import i18n from "@/i18n";
 import {
   confirmConsequenceNote, cancelBookingCopy, unrestrictedEligibilityNote,
   acceptConsequenceNote,
-  SOFT_BOOKED_MEANING, TIER_CONCEPT_NOTE, DATE_SOURCE_NOTE,
+  softBookedMeaning, tierConceptNote, dateSourceNote,
 } from "./actionCopy";
 import { BOOKING_FLOW_DEFAULTS, applyPreset } from "@/lib/bookingFlow";
+
+// Copy is now sourced from the `bookingCopy` i18n namespace; bind an English `t`
+// so these assertions pin the canonical (byte-identical) English output.
+const t = i18n.getFixedT("en", "bookingCopy");
+const SOFT_BOOKED_MEANING = softBookedMeaning(t);
+const TIER_CONCEPT_NOTE = tierConceptNote(t);
+const DATE_SOURCE_NOTE = dateSourceNote(t);
 
 // Built from the shipped presets, the way coverageCopy/timingCopy's tests are, so the flow
 // these functions read is a real one rather than a hand-written partial that could drift
@@ -15,38 +23,38 @@ const digestOff = { ...classic, confirmation_digest: false };
 
 describe("confirmConsequenceNote", () => {
   it("states the app-and-digest consequence when the flow is active with the confirmation digest on", () => {
-    expect(confirmConsequenceNote(classic, 19, true)).toBe(
+    expect(confirmConsequenceNote(classic, 19, true, t)).toBe(
       "Confirm places the booking. The artist sees it in the app right away. The confirmation email goes out in the daily summary at 19:00h (Berlin, Germany).",
     );
   });
 
   it("zero-pads a single-digit hour the same way scheduleChangeNote does", () => {
-    expect(confirmConsequenceNote(classic, 7, true)).toBe(
+    expect(confirmConsequenceNote(classic, 7, true, t)).toBe(
       "Confirm places the booking. The artist sees it in the app right away. The confirmation email goes out in the daily summary at 07:00h (Berlin, Germany).",
     );
   });
 
   it("drops the email clause when the confirmation digest is off", () => {
-    expect(confirmConsequenceNote(digestOff, 19, true)).toBe(
+    expect(confirmConsequenceNote(digestOff, 19, true, t)).toBe(
       "Confirm places the booking and notifies the artist in the app right away.",
     );
   });
 
   it("states only the bare consequence when the flow is paused", () => {
-    expect(confirmConsequenceNote(off, 19, true)).toBe("Confirm places the booking.");
+    expect(confirmConsequenceNote(off, 19, true, t)).toBe("Confirm places the booking.");
     expect(off.active).toBe(false);
   });
 
   it("states only the bare consequence when the flow is unread", () => {
-    expect(confirmConsequenceNote(null, 19, true)).toBe("Confirm places the booking.");
-    expect(confirmConsequenceNote(undefined, 19, true)).toBe("Confirm places the booking.");
+    expect(confirmConsequenceNote(null, 19, true, t)).toBe("Confirm places the booking.");
+    expect(confirmConsequenceNote(undefined, 19, true, t)).toBe("Confirm places the booking.");
   });
 
   it("states only the bare consequence when the org has no booking_flow entitlement, even with the flow active and the confirmation digest on", () => {
     // Same bug class as cancelBookingCopy's who-hears line: a super-admin viewing an org
     // without the booking_flow entitlement must not see a promise about an email that
     // send-confirmation-digest (entitlement-gated) will never send.
-    expect(confirmConsequenceNote(classic, 19, false)).toBe("Confirm places the booking.");
+    expect(confirmConsequenceNote(classic, 19, false, t)).toBe("Confirm places the booking.");
   });
 });
 
@@ -58,6 +66,7 @@ describe("cancelBookingCopy", () => {
       bookingFlowEnabled: true,
       flow: classic,
       confirmationDigestHour: 19,
+      t,
     });
     expect(copy.title).toBe("Cancel Ada Lovelace's booking?");
   });
@@ -69,6 +78,7 @@ describe("cancelBookingCopy", () => {
       bookingFlowEnabled: true,
       flow: classic,
       confirmationDigestHour: 19,
+      t,
     });
     expect(copy.understudyLine).toBe(
       "If Ada Lovelace is in the main cast, the longest waiting accepted understudy is promoted automatically.",
@@ -82,6 +92,7 @@ describe("cancelBookingCopy", () => {
       bookingFlowEnabled: true,
       flow: classic,
       confirmationDigestHour: 19,
+      t,
     });
     expect(copy.understudyLine).toBeNull();
   });
@@ -93,6 +104,7 @@ describe("cancelBookingCopy", () => {
       bookingFlowEnabled: true,
       flow: classic,
       confirmationDigestHour: 21,
+      t,
     });
     expect(copy.whoHearsLine).toContain("21:00h (Berlin, Germany)");
     expect(copy.whoHearsLine).toMatch(/notified in the app/);
@@ -105,6 +117,7 @@ describe("cancelBookingCopy", () => {
       bookingFlowEnabled: true,
       flow: off,
       confirmationDigestHour: 19,
+      t,
     });
     expect(copy.whoHearsLine).toBe("The artist is notified in the app.");
   });
@@ -116,6 +129,7 @@ describe("cancelBookingCopy", () => {
       bookingFlowEnabled: true,
       flow: null,
       confirmationDigestHour: 19,
+      t,
     });
     expect(copy.whoHearsLine).toBe("The artist is notified in the app.");
   });
@@ -127,6 +141,7 @@ describe("cancelBookingCopy", () => {
       bookingFlowEnabled: false,
       flow: classic,
       confirmationDigestHour: 19,
+      t,
     });
     expect(copy.whoHearsLine).toBe("The artist is notified in the app.");
   });
@@ -134,27 +149,27 @@ describe("cancelBookingCopy", () => {
 
 describe("acceptConsequenceNote", () => {
   it("hold-then-confirm flow tells the artist a hold is placed", () => {
-    expect(acceptConsequenceNote({ producer_confirmation: true })).toEqual({
+    expect(acceptConsequenceNote({ producer_confirmation: true }, t)).toEqual({
       title: "Offer accepted",
       description: "Hold placed. Your producer confirms next.",
     });
   });
 
   it("auto-confirm flow tells the artist they are booked", () => {
-    expect(acceptConsequenceNote({ producer_confirmation: false })).toEqual({
+    expect(acceptConsequenceNote({ producer_confirmation: false }, t)).toEqual({
       title: "Offer accepted. You're booked.",
     });
   });
 
   it("defaults to hold-then-confirm when the flow is unknown", () => {
-    expect(acceptConsequenceNote(null).description).toBe("Hold placed. Your producer confirms next.");
-    expect(acceptConsequenceNote(undefined).description).toBe("Hold placed. Your producer confirms next.");
+    expect(acceptConsequenceNote(null, t).description).toBe("Hold placed. Your producer confirms next.");
+    expect(acceptConsequenceNote(undefined, t).description).toBe("Hold placed. Your producer confirms next.");
   });
 });
 
 describe("unrestrictedEligibilityNote", () => {
   it("names the org in the unrestricted-eligibility note", () => {
-    expect(unrestrictedEligibilityNote("Cirque Lumiere")).toBe(
+    expect(unrestrictedEligibilityNote("Cirque Lumiere", t)).toBe(
       "This date has no cast limits, so anyone in Cirque Lumiere can be booked here.",
     );
   });
@@ -177,7 +192,7 @@ it("uses no em or en dashes in any branch or constant", () => {
   for (const flow of flows) {
     for (const hour of [7, 19, 21]) {
       for (const bookingFlowEnabled of [true, false]) {
-        expect(confirmConsequenceNote(flow, hour, bookingFlowEnabled)).not.toMatch(/[—–]/);
+        expect(confirmConsequenceNote(flow, hour, bookingFlowEnabled, t)).not.toMatch(/[—–]/);
       }
     }
   }
@@ -190,6 +205,7 @@ it("uses no em or en dashes in any branch or constant", () => {
           bookingFlowEnabled,
           flow,
           confirmationDigestHour: 19,
+      t,
         });
         expect(copy.title).not.toMatch(/[—–]/);
         if (copy.understudyLine) expect(copy.understudyLine).not.toMatch(/[—–]/);
@@ -197,12 +213,12 @@ it("uses no em or en dashes in any branch or constant", () => {
       }
     }
   }
-  expect(unrestrictedEligibilityNote("Cirque Lumiere")).not.toMatch(/[—–]/);
+  expect(unrestrictedEligibilityNote("Cirque Lumiere", t)).not.toMatch(/[—–]/);
   expect(SOFT_BOOKED_MEANING).not.toMatch(/[—–]/);
   expect(TIER_CONCEPT_NOTE).not.toMatch(/[—–]/);
   expect(DATE_SOURCE_NOTE).not.toMatch(/[—–]/);
   for (const flow of [{ producer_confirmation: true }, { producer_confirmation: false }, null, undefined]) {
-    const note = acceptConsequenceNote(flow);
+    const note = acceptConsequenceNote(flow, t);
     expect(note.title).not.toMatch(/[—–]/);
     if (note.description) expect(note.description).not.toMatch(/[—–]/);
   }

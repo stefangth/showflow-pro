@@ -4,7 +4,8 @@ import { renderWithProviders } from "@/test/renderWithProviders";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { CockpitCastList, type CastGroup, type CastRow } from "./CockpitCastList";
 import { BOOKING_FLOW_DEFAULTS, applyPreset } from "@/lib/bookingFlow";
-import { SOFT_BOOKED_MEANING } from "@/lib/bookings/actionCopy";
+import i18n from "@/i18n";
+import { softBookedMeaning } from "@/lib/bookings/actionCopy";
 
 const classic = applyPreset(BOOKING_FLOW_DEFAULTS, "classic");
 
@@ -85,7 +86,7 @@ describe("CockpitCastList Accepted badge tooltip", () => {
     // Radix opens a tooltip from pointermove on the trigger, not mouseover/mouseenter, and
     // renders the visible bubble plus a visually-hidden copy, hence findAllByText.
     fireEvent.pointerMove(screen.getByText("Accepted"), { pointerType: "mouse" });
-    expect(await screen.findAllByText(SOFT_BOOKED_MEANING)).not.toHaveLength(0);
+    expect(await screen.findAllByText(softBookedMeaning(i18n.getFixedT("en", "bookingCopy")))).not.toHaveLength(0);
   });
 });
 

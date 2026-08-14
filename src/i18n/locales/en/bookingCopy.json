@@ -1,0 +1,23 @@
+{
+  "actionCopy": {
+    "confirm": {
+      "bareConsequence": "Confirm places the booking.",
+      "withDigest": "Confirm places the booking. The artist sees it in the app right away. The confirmation email goes out in the daily summary at {{time}}.",
+      "appOnly": "Confirm places the booking and notifies the artist in the app right away."
+    },
+    "accept": {
+      "holdTitle": "Offer accepted",
+      "holdDescription": "Hold placed. Your producer confirms next.",
+      "bookedTitle": "Offer accepted. You're booked."
+    },
+    "softBookedMeaning": "Accepted the offer. Held for you, not booked, until you confirm.",
+    "tierConceptNote": "Tiers are your casts in priority order. Offers open with tier 1. If it cannot fill, you open the next tier.",
+    "dateSourceNote": "You can add a show date by hand here. If your workspace syncs from Airtable, those dates keep updating on their own, and a date you add here is not changed by a sync.",
+    "unrestrictedEligibility": "This date has no cast limits, so anyone in {{org}} can be booked here.",
+    "cancel": {
+      "title": "Cancel {{artist}}'s booking?",
+      "understudyLine": "If {{artist}} is in the main cast, the longest waiting accepted understudy is promoted automatically.",
+      "whoHearsFallback": "The artist is notified in the app."
+    }
+  }
+}

@@ -3,7 +3,8 @@ import { screen, fireEvent } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import { TierTimeline } from "./TierTimeline";
-import { TIER_CONCEPT_NOTE } from "@/lib/bookings/actionCopy";
+import i18n from "@/i18n";
+import { tierConceptNote } from "@/lib/bookings/actionCopy";
 import { ROUTES } from "@/config/app.config";
 import type { TierLadderRow } from "@/data/tierLadder";
 
@@ -220,7 +221,7 @@ describe("TierTimeline", () => {
   // into the full explanation.
   it("states the tier concept and links to the docs", () => {
     renderTimeline(<TierTimeline {...baseProps} />);
-    expect(screen.getByText(TIER_CONCEPT_NOTE)).toBeInTheDocument();
+    expect(screen.getByText(tierConceptNote(i18n.getFixedT("en", "bookingCopy")))).toBeInTheDocument();
     const link = screen.getByRole("link", { name: "How casts and tiers work" });
     expect(link).toHaveAttribute("href", ROUTES.HELP);
   });
