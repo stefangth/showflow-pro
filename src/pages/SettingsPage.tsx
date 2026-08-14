@@ -176,14 +176,14 @@ export default function SettingsPage() {
   const [searchParams] = useSearchParams();
   const tabParam = searchParams.get('tab');
   const navKey = useLocation().key;
-  const [activeTab, setActiveTab] = useState<string>(() => resolveInitialTab(tabParam, isAdmin));
+  const [activeTab, setActiveTab] = useState<string>(() => resolveInitialTab(tabParam, isAdmin, isSuperAdmin));
   useEffect(() => {
     // No param means "wherever you were": a link into plain /settings must not drag someone
     // off the tab they are working on back to the role default.
-    if (tabParam) setActiveTab(resolveInitialTab(tabParam, isAdmin));
+    if (tabParam) setActiveTab(resolveInitialTab(tabParam, isAdmin, isSuperAdmin));
     // `navKey` is a trigger, not an input: nothing in the callback reads it, which is
     // exactly the point, since a repeat navigation changes nothing else the callback sees.
-  }, [tabParam, isAdmin, navKey]);
+  }, [tabParam, isAdmin, isSuperAdmin, navKey]);
   // Keep the Tabs ARIA orientation matched to the actual layout axis: the nav rail is
   // vertical on md+ but a horizontal scroll row below md, so arrow-key roving (Up/Down
   // vs Left/Right) follows the visual direction at each breakpoint. Breakpoint (768px)
@@ -281,7 +281,7 @@ export default function SettingsPage() {
       { value: "notifications", label: "Notifications", icon: Bell, show: isAdmin || isProducer },
     ] },
     { heading: "Help", items: [
-      { value: "docs", label: "Documentation", icon: BookOpen, show: true },
+      { value: "docs", label: "Documentation", icon: BookOpen, show: isSuperAdmin },
     ] },
   ];
 
@@ -504,9 +504,11 @@ export default function SettingsPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="docs" className="mt-4">
-          <DocumentationTab isSuperAdmin={isSuperAdmin} />
-        </TabsContent>
+        {isSuperAdmin && (
+          <TabsContent value="docs" className="mt-4">
+            <DocumentationTab isSuperAdmin={isSuperAdmin} />
+          </TabsContent>
+        )}
         </div>
       </Tabs>
 

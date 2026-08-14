@@ -177,6 +177,22 @@ describe("SettingsPage grouped vertical nav", () => {
     expect(screen.queryByRole("tab", { name: /roles & permissions/i })).not.toBeInTheDocument();
   });
 
+  // Settings > Documentation is a super-admin console surface, not a producer or admin
+  // destination: DEFAULT_AUTH's isSuperAdmin: false covers both roles here since neither
+  // grants it.
+  it("hides the Documentation trigger for a non-super-admin", async () => {
+    vi.mocked(useAuth).mockReturnValue(DEFAULT_AUTH as never);
+    renderWithProviders(<MemoryRouter><SettingsPage /></MemoryRouter>);
+    await screen.findByText("Modules", { selector: "p" });
+    expect(screen.queryByRole("tab", { name: /documentation/i })).not.toBeInTheDocument();
+  });
+
+  it("shows the Documentation trigger for a super-admin", async () => {
+    vi.mocked(useAuth).mockReturnValue({ ...DEFAULT_AUTH, isSuperAdmin: true } as never);
+    renderWithProviders(<MemoryRouter><SettingsPage /></MemoryRouter>);
+    expect(await screen.findByRole("tab", { name: /documentation/i })).toBeInTheDocument();
+  });
+
   it("places Email templates in Settings and renders its grouped coverage surface", async () => {
     vi.mocked(useAuth).mockReturnValue(DEFAULT_AUTH as never);
     renderWithProviders(<MemoryRouter><SettingsPage /></MemoryRouter>);
@@ -239,6 +255,24 @@ describe("SettingsPage ?tab= deep link", () => {
     expect(await screen.findByRole("tab", { name: /^organization$/i })).toHaveAttribute("aria-selected", "true");
   });
 
+  it("ignores the docs tab asked for by a non-super-admin, from the page's side too", async () => {
+    // settingsTabs.test.ts pins the pure resolver; this pins the page actually wires
+    // isSuperAdmin through to it rather than only isAdmin.
+    vi.mocked(useAuth).mockReturnValue(DEFAULT_AUTH as never);
+    renderWithProviders(
+      <MemoryRouter initialEntries={["/settings?tab=docs"]}><SettingsPage /></MemoryRouter>,
+    );
+    expect(await screen.findByRole("tab", { name: /^organization$/i })).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("opens the docs tab for a super-admin", async () => {
+    vi.mocked(useAuth).mockReturnValue({ ...DEFAULT_AUTH, isSuperAdmin: true } as never);
+    renderWithProviders(
+      <MemoryRouter initialEntries={["/settings?tab=docs"]}><SettingsPage /></MemoryRouter>,
+    );
+    expect(await screen.findByRole("tab", { name: /documentation/i })).toHaveAttribute("aria-selected", "true");
+  });
+
   // The registry in settingsTabs.ts is a list of strings; only the page knows whether each
   // one still names a section it renders. Renaming a TabsTrigger value (or dropping a
   // section) would leave Tabs holding a value with no trigger and no content: the deep link
@@ -294,7 +328,10 @@ describe("SettingsPage ?tab= deep link", () => {
     // remounts the page and the gap was invisible. A notification deep-link clicked while
     // the user is already sitting on Settings changes the URL and nothing else: the page
     // has to follow the param, not just the mount.
-    vi.mocked(useAuth).mockReturnValue(DEFAULT_AUTH as never);
+    //
+    // Uses a super-admin so the docs deep-link stays reachable: this test is about the
+    // re-seed effect following a same-page navigation, not about the super-admin gate.
+    vi.mocked(useAuth).mockReturnValue({ ...DEFAULT_AUTH, isSuperAdmin: true } as never);
     renderWithProviders(
       <MemoryRouter initialEntries={["/settings?tab=airtable"]}>
         <Link to="/settings?tab=docs">deep link</Link>
