@@ -56,8 +56,9 @@ export const PRODUCER_ROLE_NOTE =
   "You are on the Production Team. You plan dates, run offers and confirm bookings. Inviting people, casts and settings stay with the admin.";
 
 /** Where the note points a producer who wants the full picture: every role's scope, side
- *  by side. "docs" is a real destination for a producer, not an admin-gated dead end: it
- *  has no entry in settingsTabs.ts's ADMIN_ONLY list.
+ *  by side. Points at the Help center rather than Settings, Documentation: that tab is
+ *  super-admin-only (see settingsTabs.ts's SUPER_ADMIN_ONLY list), so it is no longer a
+ *  destination a producer can land on.
  *
  *  LINK_LABEL is the text of an actual `<Link>` — only BookingProducerWaitingCard, which
  *  renders one, may use it as clickable text. The rail's complete-state rules render title +
@@ -65,7 +66,7 @@ export const PRODUCER_ROLE_NOTE =
  *  (RULE_TITLE) instead: a CTA-phrased "See what each role can do" with nothing to click
  *  reads as a broken affordance there. */
 export const ROLE_EXPLAINER_LINK_LABEL = "See what each role can do";
-export const ROLE_EXPLAINER_LINK_ROUTE = `${ROUTES.SETTINGS}?tab=docs`;
+export const ROLE_EXPLAINER_LINK_ROUTE = ROUTES.HELP;
 export const PRODUCER_ROLE_RULE_TITLE = "What your role covers";
 
 /** The admin-only "Add your production team" nudge. NOT an engine step (not in

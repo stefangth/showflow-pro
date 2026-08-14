@@ -7,9 +7,13 @@ describe("resolveInitialTab", () => {
     expect(resolveInitialTab("airtable", false)).toBe("airtable");
   });
 
-  it("opens Documentation from the concept links the setup steps render", () => {
-    expect(resolveInitialTab("docs", true)).toBe("docs");
-    expect(resolveInitialTab("docs", false)).toBe("docs");
+  it("docs deep-link falls back for a non-super-admin", () => {
+    expect(resolveInitialTab("docs", true, false)).toBe("organization");
+    expect(resolveInitialTab("docs", false, false)).toBe("organization");
+  });
+
+  it("docs deep-link opens for a super-admin", () => {
+    expect(resolveInitialTab("docs", true, true)).toBe("docs");
   });
 
   it("falls back to the role default when no tab is asked for", () => {

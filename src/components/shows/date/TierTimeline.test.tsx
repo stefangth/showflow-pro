@@ -222,6 +222,6 @@ describe("TierTimeline", () => {
     renderTimeline(<TierTimeline {...baseProps} />);
     expect(screen.getByText(TIER_CONCEPT_NOTE)).toBeInTheDocument();
     const link = screen.getByRole("link", { name: "How casts and tiers work" });
-    expect(link).toHaveAttribute("href", `${ROUTES.SETTINGS}?tab=docs`);
+    expect(link).toHaveAttribute("href", ROUTES.HELP);
   });
 });

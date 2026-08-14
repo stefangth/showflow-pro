@@ -197,7 +197,7 @@ export function TierTimeline({
           first time has no other cue for it. */}
       <p className="text-xs text-muted-foreground">
         {TIER_CONCEPT_NOTE}{" "}
-        <Link to={`${ROUTES.SETTINGS}?tab=docs`} className="text-primary underline">
+        <Link to={ROUTES.HELP} className="text-primary underline">
           How casts and tiers work
         </Link>
       </p>
