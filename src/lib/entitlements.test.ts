@@ -5,7 +5,12 @@ describe("entitlements registry", () => {
   it("registers booking_flow default-on and hire_orders default-off", () => {
     expect(FEATURE_REGISTRY.booking_flow.defaultEnabled).toBe(true);
     expect(FEATURE_REGISTRY.hire_orders.defaultEnabled).toBe(false);
-    expect(FEATURE_KEYS).toEqual(["booking_flow", "hire_orders"]);
+    expect(FEATURE_KEYS).toEqual(["booking_flow", "hire_orders", "language_packages"]);
+  });
+  it("language_packages ships dark (defaults off when no row exists)", () => {
+    expect(isFeatureEnabled([], "language_packages")).toBe(false);
+    expect(enabledFeatures([{ feature: "language_packages", enabled: true }]))
+      .toContain("language_packages");
   });
   it("falls back to registry defaults when no row exists", () => {
     expect(enabledFeatures([])).toEqual(new Set(["booking_flow"]));

@@ -6,7 +6,7 @@
 // block in the target directly. SQL twin: public.is_feature_enabled().
 
 // >>> ENTITLEMENTS REGISTRY MIRROR (keep byte-identical with the twin file) >>>
-export type FeatureKey = "booking_flow" | "hire_orders";
+export type FeatureKey = "booking_flow" | "hire_orders" | "language_packages";
 
 export interface FeatureDef {
   key: FeatureKey;
@@ -14,7 +14,7 @@ export interface FeatureDef {
   description: string;
   defaultEnabled: boolean;
   /** Compact chip label for dense fleet views (e.g. the platform Organizations table). */
-  short: "BF" | "HO";
+  short: "BF" | "HO" | "LP";
 }
 
 export const FEATURE_REGISTRY: Record<FeatureKey, FeatureDef> = {
@@ -31,6 +31,13 @@ export const FEATURE_REGISTRY: Record<FeatureKey, FeatureDef> = {
     description: "PDF engagement sheets with delivery and countersignature.",
     defaultEnabled: false,
     short: "HO",
+  },
+  language_packages: {
+    key: "language_packages",
+    label: "Language packages",
+    description: "Non-English UI languages and the in-app language switcher.",
+    defaultEnabled: false,
+    short: "LP",
   },
 };
 
