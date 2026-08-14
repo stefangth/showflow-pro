@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/features/auth/AuthContext";
 import { useCan } from "@/hooks/useCapabilities";
-import { fetchCities } from "@/data/cities";
+import { useAllCities } from "@/hooks/useAllCities";
 import {
   fetchCasts,
   fetchCastMemberCounts,
@@ -39,6 +39,8 @@ import {
   castCityUsage,
   distinctShowOverrideCount,
   overriddenCityCountForShow,
+  buildCityReferences,
+  isCityReferenced,
   type CoverageCityRow,
   type CoverageCityRowWithSource,
 } from "./coverageMatrix";
@@ -59,9 +61,13 @@ const SCOPE_OPTIONS: SegmentedControlOption<CoverageScope>[] = [
 ];
 
 /** Settings → Casts & coverage → Coverage. Org-default offer order by city, with a
- *  per-show override view. Reuses the same cast_city_priority / show_cast_eligibility
- *  write paths as the legacy CastsCitiesTab (`setCastCityPriority` mirrors its inline
- *  write; `setShowCastPriority` / `clearShowCastPriority` are unchanged). */
+ *  per-show override view. Writes through `setCastCityPriority` / `clearCastCityPriority`
+ *  (src/data/casts.ts) for the org default and the pre-existing `setShowCastPriority` /
+ *  `clearShowCastPriority` (src/data/eligibility.ts) for per-show overrides. Unlike the
+ *  legacy CastsCitiesTab's bare `.insert()` (which only ever adds a brand-new assignment),
+ *  `setCastCityPriority` also resolves cast_city_priority's two UNIQUE constraints when a
+ *  cell already has an occupant — moving/bumping rows as needed — so the two write paths
+ *  are not interchangeable. */
 export function CoveragePanel({ orgId, onOpenCast }: CoveragePanelProps) {
   const qc = useQueryClient();
   const { hasRole } = useAuth();
@@ -71,10 +77,10 @@ export function CoveragePanel({ orgId, onOpenCast }: CoveragePanelProps) {
   const [scope, setScope] = useState<CoverageScope>("org");
   const [selectedShowId, setSelectedShowId] = useState<string | null>(null);
 
-  const citiesQ = useQuery({
-    queryKey: ["cities", "all", orgId],
-    queryFn: () => fetchCities(supabase, orgId),
-  });
+  // Same query key/behavior as CastsCitiesTab's own city read (["cities","all",orgId] via
+  // fetchCities) — useAllCities resolves orgId from useAuth's currentOrg, so caching and
+  // invalidation are unchanged from a direct fetchCities(supabase, orgId) query here.
+  const citiesQ = useAllCities(true);
   const castsQ = useQuery({
     queryKey: ["casts", orgId],
     queryFn: () => fetchCasts(supabase, orgId),
@@ -131,6 +137,24 @@ export function CoveragePanel({ orgId, onOpenCast }: CoveragePanelProps) {
     [coverageInputsQ.data],
   );
   const castUsage = useMemo(() => castCityUsage(orgPriorities), [orgPriorities]);
+
+  // Every show's override rows (not just the currently-selected one) — needed so a city's
+  // delete guard also blocks on a per-show override that lives on a DIFFERENT show than
+  // whichever is selected in the Per-show scope right now.
+  const allShowPriorityRows = useMemo(
+    () => coverageInputsQ.data?.showPriorities ?? [],
+    [coverageInputsQ.data],
+  );
+  const cityReferences = useMemo(
+    () =>
+      buildCityReferences({
+        cities,
+        showsCountByCity: showsCountMap,
+        orgPriorities,
+        showPriorities: allShowPriorityRows,
+      }),
+    [cities, showsCountMap, orgPriorities, allShowPriorityRows],
+  );
 
   const orgRows: CoverageCityRow[] = useMemo(
     () => buildCoverageRows({ cities, castsById, castCounts, priorities: orgPriorities, showsCountByCity: showsCountMap }),
@@ -368,7 +392,16 @@ export function CoveragePanel({ orgId, onOpenCast }: CoveragePanelProps) {
                   <p className="text-sm text-muted-foreground">No cities yet.</p>
                 ) : (
                   cities.map((c) => {
-                    const usage = showsCountMap.get(c.id) ?? 0;
+                    const ref = cityReferences.get(c.id) ?? { showsCount: 0, orgTierCount: 0, overrideCount: 0 };
+                    const referenced = isCityReferenced(ref);
+                    const usageText =
+                      ref.showsCount > 0
+                        ? `${ref.showsCount} show${ref.showsCount === 1 ? "" : "s"}`
+                        : ref.orgTierCount > 0
+                          ? "used in the offer order"
+                          : ref.overrideCount > 0
+                            ? "used in a show override"
+                            : "not used yet";
                     return (
                       <div
                         key={c.id}
@@ -376,15 +409,13 @@ export function CoveragePanel({ orgId, onOpenCast }: CoveragePanelProps) {
                       >
                         <span className="min-w-0 flex-1">
                           <span className="block truncate font-medium text-foreground">{c.name}</span>
-                          <span className="block text-xs text-muted-foreground">
-                            {usage === 0 ? "not used yet" : `${usage} show${usage === 1 ? "" : "s"}`}
-                          </span>
+                          <span className="block text-xs text-muted-foreground">{usageText}</span>
                         </span>
-                        <IconTooltip label={usage > 0 ? "Still used by a show" : `Remove ${c.name}`}>
+                        <IconTooltip label={referenced ? "Still referenced — remove its tiers first" : `Remove ${c.name}`}>
                           <button
                             type="button"
                             onClick={() => deleteCity.mutate(c.id)}
-                            disabled={!canDeleteCity || usage > 0}
+                            disabled={!canDeleteCity || referenced}
                             aria-label={`Remove ${c.name}`}
                             className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-destructive disabled:opacity-50 disabled:pointer-events-none"
                           >

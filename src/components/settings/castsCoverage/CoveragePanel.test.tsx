@@ -69,6 +69,21 @@ describe("CoveragePanel", () => {
       expect(within(overridesKpi).getByText("0")).toBeInTheDocument();
     });
 
+    // Regression: cast_city_priority.city_id and show_cast_eligibility.city_id are both
+    // ON DELETE CASCADE, so a city with a configured tier ladder (Berlin: cast-1 @ Tier 1)
+    // but zero upcoming shows must still block delete — usage/showsCount alone is not
+    // "referenced."
+    it("disables deleting a city that only has an org-default tier assigned (no upcoming shows)", async () => {
+      renderWithProviders(<CoveragePanel orgId="org-1" />);
+
+      expect(await screen.findByRole("button", { name: "Remove Berlin" })).toBeDisabled();
+      expect(screen.getByText("used in the offer order")).toBeInTheDocument();
+
+      // Hamburg has no tiers, no overrides, and no shows -> genuinely unreferenced.
+      expect(screen.getByRole("button", { name: "Remove Hamburg" })).not.toBeDisabled();
+      expect(screen.getByText("not used yet")).toBeInTheDocument();
+    });
+
     it("opens a tier cell's popover and assigning a cast writes the org-default priority", async () => {
       renderWithProviders(<CoveragePanel orgId="org-1" />);
 

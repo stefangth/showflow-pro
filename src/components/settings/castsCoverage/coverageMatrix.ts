@@ -172,3 +172,39 @@ export function distinctShowOverrideCount(showPriorities: { showId: string }[]):
 export function overriddenCityCountForShow(showId: string, showPriorities: { showId: string; cityId: string }[]): number {
   return new Set(showPriorities.filter((r) => r.showId === showId).map((r) => r.cityId)).size;
 }
+
+export interface CityReference {
+  /** Future, non-cancelled show_dates in this city. */
+  showsCount: number;
+  /** cast_city_priority rows (the org-default tier ladder) for this city. */
+  orgTierCount: number;
+  /** show_cast_eligibility priority rows (per-show overrides, any show) for this city. */
+  overrideCount: number;
+}
+
+/** Whether ANYTHING points at this city. `cast_city_priority.city_id` and
+ *  `show_cast_eligibility.city_id` are both ON DELETE CASCADE, so a city with a
+ *  configured tier ladder or a per-show override — even with zero upcoming shows —
+ *  still silently loses that data if deleted. A city may only be removed once nothing
+ *  references it: no upcoming show, no org-default tier, and no per-show override. */
+export function isCityReferenced(ref: CityReference): boolean {
+  return ref.showsCount > 0 || ref.orgTierCount > 0 || ref.overrideCount > 0;
+}
+
+/** Per-city reference counts, for the Cities card's usage text and the delete guard. */
+export function buildCityReferences(args: {
+  cities: { id: string }[];
+  showsCountByCity: Map<string, number>;
+  orgPriorities: { cityId: string }[];
+  showPriorities: { cityId: string }[];
+}): Map<string, CityReference> {
+  const out = new Map<string, CityReference>();
+  for (const city of args.cities) {
+    out.set(city.id, {
+      showsCount: args.showsCountByCity.get(city.id) ?? 0,
+      orgTierCount: args.orgPriorities.filter((p) => p.cityId === city.id).length,
+      overrideCount: args.showPriorities.filter((p) => p.cityId === city.id).length,
+    });
+  }
+  return out;
+}

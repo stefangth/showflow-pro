@@ -8,6 +8,8 @@ import {
   castCityUsage,
   distinctShowOverrideCount,
   overriddenCityCountForShow,
+  isCityReferenced,
+  buildCityReferences,
   type CoverageCastRef,
 } from "./coverageMatrix";
 
@@ -181,5 +183,49 @@ describe("overriddenCityCountForShow", () => {
     expect(overriddenCityCountForShow("s1", rows)).toBe(2);
     expect(overriddenCityCountForShow("s2", rows)).toBe(1);
     expect(overriddenCityCountForShow("s3", rows)).toBe(0);
+  });
+});
+
+describe("isCityReferenced", () => {
+  it("is false only when shows, org tiers, and overrides are all zero", () => {
+    expect(isCityReferenced({ showsCount: 0, orgTierCount: 0, overrideCount: 0 })).toBe(false);
+  });
+
+  it("is true when only a future show references the city", () => {
+    expect(isCityReferenced({ showsCount: 1, orgTierCount: 0, overrideCount: 0 })).toBe(true);
+  });
+
+  // Regression: a city with zero upcoming shows but a configured org-default tier
+  // ladder must still block delete — cast_city_priority.city_id cascades on delete.
+  it("is true when only an org-default tier ladder references the city (no upcoming shows)", () => {
+    expect(isCityReferenced({ showsCount: 0, orgTierCount: 1, overrideCount: 0 })).toBe(true);
+  });
+
+  it("is true when only a per-show override references the city", () => {
+    expect(isCityReferenced({ showsCount: 0, orgTierCount: 0, overrideCount: 1 })).toBe(true);
+  });
+});
+
+describe("buildCityReferences", () => {
+  it("tallies shows, org tiers, and overrides per city independently", () => {
+    const refs = buildCityReferences({
+      cities: [{ id: "c1" }, { id: "c2" }],
+      showsCountByCity: new Map([["c1", 2]]),
+      orgPriorities: [{ cityId: "c1" }, { cityId: "c2" }],
+      showPriorities: [{ cityId: "c2" }],
+    });
+    expect(refs.get("c1")).toEqual({ showsCount: 2, orgTierCount: 1, overrideCount: 0 });
+    expect(refs.get("c2")).toEqual({ showsCount: 0, orgTierCount: 1, overrideCount: 1 });
+  });
+
+  it("reports all-zero for a city nothing points at", () => {
+    const refs = buildCityReferences({
+      cities: [{ id: "c1" }],
+      showsCountByCity: new Map(),
+      orgPriorities: [],
+      showPriorities: [],
+    });
+    expect(refs.get("c1")).toEqual({ showsCount: 0, orgTierCount: 0, overrideCount: 0 });
+    expect(isCityReferenced(refs.get("c1")!)).toBe(false);
   });
 });
