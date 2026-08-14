@@ -35,7 +35,15 @@
 
 ### B. Cross-cutting client infra
 - [ ] **`onboarding` namespace (shared)** — `src/lib/dashboard/stageChain.ts`, `moduleOnboarding.ts`, and the setup rails (`bookings/setup/*`, `hireOrders/setup/*`, dashboard `firstRun` copy). Deferred three times; spans domains, so its own PR.
-- [~] **`flowCopy` family** — `@/lib/flowCopy` **DONE** (commit `ff2faf9a`: pure functions now take a `TFunction<'flowCopy'>`; the 4 callers pass a `useTranslation('flowCopy')` binding; `flowCopy` namespace added). **Still open in the family:** `bookingFlow.referenceLabel`, `bookings/timingCopy`, `bookings/actionCopy`, `bookingCockpit` DatePeek — these still render English on the already-migrated dashboard/bookings/availability/showsDetail pages. Pattern to reuse: thread a namespace-bound `t` (literal keys for type-safety), keep the branching logic, byte-identical EN + `t`-passing tests.
+- [x] **`flowCopy` family (client)** — DONE across four commits:
+  - `@/lib/flowCopy` (`ff2faf9a`, `flowCopy` namespace)
+  - `@/lib/bookings/actionCopy` (`9a1218a6`, shared `bookingCopy` namespace)
+  - `@/lib/bookings/timingCopy` (`b55a78a9`, `bookingCopy`)
+  - `@/lib/bookingCockpit` (`f250e47a`, `bookingCopy`)
+
+  Pattern used: thread a namespace-bound `TFunction` through each pure function (literal keys for type-safety), keep the branching logic, exported string constants become `t`-taking functions, composed sentences become keyed `{{interpolation}}` + `_one`/`_other` plurals (never concatenation). EN byte-identical (a handful of source em dashes normalised to commas for copyLint); DE authored dark. Callers pass a `useTranslation('flowCopy'|'bookingCopy')` binding; direct-call tests rebind via `i18n.getFixedT('en', ...)`.
+
+  **Still open (moved to Section C, not client `t()`):** `bookingFlow.referenceLabel` is an interpolation *variable* baked into the transactional **email** copy (`emailCopy.ts` / `emailTemplateMeta.ts`), so it belongs with the edge-runtime email localization, not this pass.
 - [ ] **Locale-aware `src/lib/dates.ts`** — weekday-header arrays, `date-fns format(...)`, `toLocaleDateString('en-GB')`, fee/number formatting via `Intl`. Touches call sites app-wide.
 - [ ] **`i18next-parser` in CI** — currently local-only (`i18n:extract`/`i18n:check`); resolve the `--fail-on-update` byte-identical-write quirk, then gate.
 
