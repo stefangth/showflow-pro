@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/features/auth/AuthContext';
 import { useCan } from '@/hooks/useCapabilities';
@@ -58,6 +59,7 @@ export function ProducerBookingSection({ children }: { children: React.ReactNode
 }
 
 function ProducerDashboard() {
+  const { t } = useTranslation('dashboard');
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const todayStr = format(today, 'yyyy-MM-dd');
@@ -85,9 +87,9 @@ function ProducerDashboard() {
   const [setupOpen, setSetupOpen] = useState(false);
   const [setupSel, setSetupSel] = useState<{ feature: FeatureKey; step: string } | null>(null);
   const handleOpenSetup = (feature: FeatureKey, step: string) => { setSetupSel({ feature, step }); setSetupOpen(true); };
-  // The header card's ghost CTA: a v1 "how this org works" explainer target, same
-  // destination the rest of the app already points role explainers at (Settings > Docs).
-  const handleGhost = () => navigate(`${ROUTES.SETTINGS}?tab=docs`);
+  // The header card's ghost CTA: a "how this org works" explainer target, pointing at
+  // the Help center (same destination the rest of the app's role explainers use).
+  const handleGhost = () => navigate(ROUTES.HELP);
 
   const { data: upcomingDates } = useQuery({
     queryKey: ['dashboard-upcoming-dates', todayStr, orgId],
@@ -153,9 +155,9 @@ function ProducerDashboard() {
       qc.invalidateQueries({ queryKey: ['bookings'] });
       setSelected(new Set());
       if (affected < ids.length) {
-        toast.error('Some bookings changed — refresh and retry');
+        toast.error(t('producer.toastBookingsChanged'));
       } else {
-        toast.success('Bookings confirmed');
+        toast.success(t('producer.toastBookingsConfirmed'));
       }
     },
     onError: (e: Error) => toast.error(e.message),
@@ -167,9 +169,9 @@ function ProducerDashboard() {
       qc.invalidateQueries({ queryKey: ['bookings'] });
       setSelected(new Set());
       if (affected < ids.length) {
-        toast.error('Some bookings changed — refresh and retry');
+        toast.error(t('producer.toastBookingsChanged'));
       } else {
-        toast.success('Bookings declined');
+        toast.success(t('producer.toastBookingsDeclined'));
       }
     },
     onError: (e: Error) => toast.error(e.message),
@@ -210,30 +212,30 @@ function ProducerDashboard() {
 
   const cards = [
     {
-      title: 'Live & upcoming',
+      title: t('cards.liveUpcoming'),
       icon: CalendarDays,
       primary: `${all.total}`,
-      primaryLabel: all.total === 1 ? 'live date' : 'live dates',
+      primaryLabel: t('cards.liveDate', { count: all.total }),
       pct: all.pct,
       to: `/bookings?status=partially_filled&from=${todayStr}`,
       accent: 'text-primary',
     },
     {
-      title: 'Next 14 days',
+      title: t('cards.next14Days'),
       icon: Clock,
       primary: `${next14.pct}%`,
-      primaryLabel: 'cast confirmed',
-      sub: `${next14.showCount} show${next14.showCount === 1 ? '' : 's'}`,
+      primaryLabel: t('cards.castConfirmed'),
+      sub: t('cards.showCount', { count: next14.showCount }),
       to: `/bookings?status=partially_filled&from=${todayStr}&to=${in14}`,
       accent: 'text-info',
       pctMode: true,
     },
     {
-      title: 'Next 30 days',
+      title: t('cards.next30Days'),
       icon: TrendingUp,
       primary: `${next30.pct}%`,
-      primaryLabel: 'cast confirmed',
-      sub: `${next30.showCount} show${next30.showCount === 1 ? '' : 's'}`,
+      primaryLabel: t('cards.castConfirmed'),
+      sub: t('cards.showCount', { count: next30.showCount }),
       to: `/bookings?status=partially_filled&from=${todayStr}&to=${in30}`,
       accent: 'text-success',
       pctMode: true,
@@ -270,8 +272,8 @@ function ProducerDashboard() {
       {(!showFirstRun || hasData) && (
         <div className="space-y-6">
           <div>
-            <h1 className="font-display text-[32px] font-semibold tracking-tight">Dashboard</h1>
-            <p className="text-muted-foreground mt-1">Cast confirmation status across upcoming dates.</p>
+            <h1 className="font-display text-[32px] font-semibold tracking-tight">{t('producer.heading')}</h1>
+            <p className="text-muted-foreground mt-1">{t('producer.subheading')}</p>
           </div>
 
           <ProducerBookingSection>
@@ -287,7 +289,7 @@ function ProducerDashboard() {
                   <div className="flex items-center justify-between flex-wrap gap-3">
                     <CardTitle className="font-display flex items-center gap-2 text-base">
                       <CheckCircle2 className="h-4 w-4 text-warning" />
-                      Ready to Confirm
+                      {t('producer.readyToConfirm')}
                       <Badge variant="secondary">{softBookedRows!.length}</Badge>
                     </CardTitle>
                     {selected.size > 0 && (
@@ -301,7 +303,7 @@ function ProducerDashboard() {
                           onClick={() => bulkConfirm.mutate([...selected])}
                         >
                           <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
-                          Confirm {selected.size}
+                          {t('producer.confirmN', { count: selected.size })}
                         </Button>
                         <Button
                           size="sm"
@@ -311,7 +313,7 @@ function ProducerDashboard() {
                           onClick={() => bulkDecline.mutate([...selected])}
                         >
                           <XCircle className="h-3.5 w-3.5 mr-1" />
-                          Decline {selected.size}
+                          {t('producer.declineN', { count: selected.size })}
                         </Button>
                       </div>
                     )}
@@ -322,9 +324,9 @@ function ProducerDashboard() {
                     {/* Select-all header */}
                     <div className="flex items-center gap-3 px-4 py-2 bg-muted/30 text-xs text-muted-foreground">
                       <Checkbox checked={allSelected} onCheckedChange={toggleAll} />
-                      <span className="flex-1">Artist</span>
-                      <span className="w-40">Date / Show</span>
-                      <span className="w-20 text-right">Type</span>
+                      <span className="flex-1">{t('producer.colArtist')}</span>
+                      <span className="w-40">{t('producer.colDateShow')}</span>
+                      <span className="w-20 text-right">{t('producer.colType')}</span>
                     </div>
                     {softBookedRows!.map((row) => (
                       <div key={row.id} className="flex items-center gap-3 px-4 py-3 hover:bg-muted/20">
@@ -343,7 +345,7 @@ function ProducerDashboard() {
                         </div>
                         <div className="w-20 text-right">
                           <Badge variant="outline" className="text-xs">
-                            {row.is_understudy ? 'Understudy' : 'Main'}
+                            {row.is_understudy ? t('producer.understudy') : t('producer.main')}
                           </Badge>
                         </div>
                       </div>
@@ -386,7 +388,7 @@ function ProducerDashboard() {
                       ) : (
                         <div className="space-y-1">
                           <div className="flex items-center justify-between text-xs">
-                            <span className="text-muted-foreground">Cast confirmed</span>
+                            <span className="text-muted-foreground">{t('cards.castConfirmed')}</span>
                             <span className="font-medium">{c.pct}%</span>
                           </div>
                           <div className="h-1.5 rounded-full bg-muted overflow-hidden">
@@ -394,7 +396,7 @@ function ProducerDashboard() {
                           </div>
                         </div>
                       )}
-                      <p className="text-xs text-muted-foreground mt-3">Click to see pending shows →</p>
+                      <p className="text-xs text-muted-foreground mt-3">{t('cards.clickToSee')}</p>
                     </CardContent>
                   </Card>
                 </Link>

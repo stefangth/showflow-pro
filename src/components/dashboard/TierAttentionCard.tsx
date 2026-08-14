@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ROUTES } from "@/config/app.config";
@@ -19,11 +20,12 @@ export function TierAttentionCard({ items, hint, reference, customFieldKey }: {
   reference: BookingFlow["reference_field"];
   customFieldKey: string | null;
 }) {
+  const { t } = useTranslation("dashboard");
   if (items.length === 0) return null;
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="font-display text-base">Needs attention</CardTitle>
+        <CardTitle className="font-display text-base">{t("tierAttention.title")}</CardTitle>
         {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
       </CardHeader>
       <CardContent className="space-y-2">
@@ -43,17 +45,23 @@ export function TierAttentionCard({ items, hint, reference, customFieldKey }: {
                 })}
               </p>
               <p className="text-xs text-muted-foreground">
-                {formatDateDMY(it.date)} · Tier {it.tier} · {it.filled} of {it.required}
+                {t("tierAttention.row", { date: formatDateDMY(it.date), tier: it.tier, filled: it.filled, required: it.required })}
               </p>
             </div>
             <div className="flex gap-1.5">
-              {it.atRisk && <Badge variant="secondary" className="bg-warning/10 text-warning">At risk</Badge>}
-              {it.expiresSoon && <Badge variant="secondary" className="bg-info/10 text-info">Expires soon</Badge>}
+              {it.atRisk && (
+                <Badge variant="secondary" className="bg-warning/10 text-warning">{t("tierAttention.atRisk")}</Badge>
+              )}
+              {it.expiresSoon && (
+                <Badge variant="secondary" className="bg-info/10 text-info">{t("tierAttention.expiresSoon")}</Badge>
+              )}
             </div>
           </Link>
         ))}
         {items.length > MAX_ROWS && (
-          <p className="text-xs text-muted-foreground">And {items.length - MAX_ROWS} more. See Bookings.</p>
+          <p className="text-xs text-muted-foreground">
+            {t("tierAttention.more", { count: items.length - MAX_ROWS })}
+          </p>
         )}
       </CardContent>
     </Card>

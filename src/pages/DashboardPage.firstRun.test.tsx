@@ -4,6 +4,7 @@ import { screen, fireEvent } from "@testing-library/react";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import { createFakeSupabase, type TableSeed } from "@/test/supabaseFake";
 import type { StageChainResult, QueueRow, Stage } from "@/lib/dashboard/stageChain.types";
+import { ROUTES } from "@/config/app.config";
 
 // Reuses the auth/data harness from DashboardPage.test.tsx so the ProducerDashboard
 // data reads resolve, then adds the first-run-hook mock and asserts the new
@@ -223,13 +224,13 @@ describe("DashboardPage first-run layer", () => {
     expect(screen.getByTestId("setup-sheet").getAttribute("data-open")).toBe("false");
   });
 
-  it("fires the ghost CTA to the Settings docs explainer", async () => {
+  it("fires the ghost CTA to the Help center", async () => {
     vi.mocked(useDashboardFirstRun).mockReturnValue(frState({
       result: makeResult({ ghost: "How this org will work" }),
     }) as never);
     renderWithProviders(<DashboardPage />);
     fireEvent.click(await screen.findByRole("button", { name: "How this org will work" }));
-    expect(navigate).toHaveBeenCalledWith("/settings?tab=docs");
+    expect(navigate).toHaveBeenCalledWith(ROUTES.HELP);
   });
 
   it("renders the no-modules floor state instead of vanishing", async () => {
