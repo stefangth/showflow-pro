@@ -60,6 +60,7 @@ export default tseslint.config(
       "src/features/auth/AuthContext.tsx",
       "src/features/editor/EditorContext.tsx",
       "src/features/consent/ConsentContext.tsx",
+      "src/features/i18n/LanguageContext.tsx",
       "src/lib/hireOrders/pdf/render.tsx",
     ],
     rules: { "react-refresh/only-export-components": "off" },

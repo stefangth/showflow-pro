@@ -213,7 +213,7 @@ describe("sections", () => {
   it("an artist sees only the Workspace section", () => {
     const groups = groupNavBySections(visibleNavItems(NAV_ITEMS, ctx({ roles: ["artist"] })));
     expect(groups.map((g) => g.section)).toEqual(["workspace"]);
-    expect(groups[0].items.map((i) => i.label)).toEqual(["Dashboard", "Availability", "Chats"]);
+    expect(groups[0].items.map((i) => i.label)).toEqual(["Dashboard", "Availability", "Chats", "Help"]);
   });
 
   it("an admin sees workspace, catalog and system", () => {

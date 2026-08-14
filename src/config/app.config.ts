@@ -238,6 +238,7 @@ export const ROUTES = {
   RESET_PASSWORD: '/reset-password',
   AUTH_CALLBACK: '/auth/callback',
   CHATS: '/chats',
+  HELP: '/help',
   PRIVACY: '/privacy',
   IMPRESSUM: '/impressum',
   UNSUBSCRIBE: '/unsubscribe',

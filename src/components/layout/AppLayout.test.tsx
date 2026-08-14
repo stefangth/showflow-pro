@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import { partialMock } from "@/test/castHelpers";
 import type { User } from "@supabase/supabase-js";
+import i18n from "@/i18n";
 
 // AppLayout composes a large shell (nav, org switcher, editor toolbar, theme toggle,
 // profile menu) around the one behavior this test exists to pin: the notifications
@@ -112,5 +113,19 @@ describe("AppLayout notification bell", () => {
     fireEvent.click(screen.getByText("notification stub"));
 
     expect(screen.queryByText("notification stub")).not.toBeInTheDocument();
+  });
+});
+
+describe("AppLayout account menu language", () => {
+  it("switches the app language when Deutsch is picked", async () => {
+    mockAuth();
+    await i18n.changeLanguage("en");
+    renderWithProviders(<AppLayout>page content</AppLayout>);
+
+    fireEvent.click(screen.getByRole("button", { name: "Account menu" }));
+    fireEvent.click(screen.getByText("German"));
+
+    expect(i18n.language).toBe("de");
+    await i18n.changeLanguage("en");
   });
 });

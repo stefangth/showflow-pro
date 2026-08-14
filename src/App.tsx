@@ -26,6 +26,7 @@ import AvailabilityPage from "./pages/AvailabilityPage";
 import AdminPage from "./pages/AdminPage";
 import SettingsPage from "./pages/SettingsPage";
 import ChatsListPage from "./pages/ChatsListPage";
+import HelpPage from "./pages/HelpPage";
 import ProfilePage from "./pages/ProfilePage";
 import ArtistsPage from "./pages/ArtistsPage";
 import UnsubscribePage from "./pages/UnsubscribePage";
@@ -109,6 +110,7 @@ const App = () => (
               }
             />
             <Route path={ROUTES.CHATS} element={<ProtectedRoute><AppLayout><ChatsListPage /></AppLayout></ProtectedRoute>} />
+            <Route path={ROUTES.HELP} element={<ProtectedRoute><AppLayout><HelpPage /></AppLayout></ProtectedRoute>} />
             <Route path={ROUTES.PROFILE} element={<ProtectedRoute><AppLayout><ProfilePage /></AppLayout></ProtectedRoute>} />
             <Route path={ROUTES.PLATFORM} element={<PlatformRoute><AppLayout><PlatformPage /></AppLayout></PlatformRoute>} />
             <Route path={ROUTES.ACCEPT_INVITE} element={<AcceptInvitePage />} />
