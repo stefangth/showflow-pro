@@ -1,11 +1,13 @@
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { upsertOrgSettings, DEFAULT_FLOW_TIMES } from "@/data/settings";
+import { fetchPlatformBookingTemplates } from "@/data/platform";
 import { useBookingFlow, useFlowTimes } from "@/hooks/useBookingFlow";
 import {
-  applyPreset, matchPreset, normalizeBookingFlow, lifecycleChips, inPracticeRows,
+  inferBookingTemplate, normalizeBookingFlow, normalizeBookingFlowTemplates,
+  lifecycleChips, inPracticeRows,
   BOOKING_FLOW_DEFAULTS, type PresetName, type LifecycleChip,
 } from "@/lib/bookingFlow";
 import { FlowPresets } from "@/components/settings/bookingFlow/FlowPresets";
@@ -44,6 +46,16 @@ export function FlowStep({ orgId, onDone }: { orgId: string | null; onDone: () =
   const { data: times } = useFlowTimes(orgId);
   const base = flow ?? BOOKING_FLOW_DEFAULTS;
   const t = times ?? DEFAULT_FLOW_TIMES;
+  const {
+    data: platformTemplatesRaw,
+    isLoading: templatesLoading,
+    isError: templatesError,
+    error: templatesQueryError,
+  } = useQuery({
+    queryKey: ["platform", "booking-flow-templates"],
+    queryFn: () => fetchPlatformBookingTemplates(supabase),
+  });
+  const platformTemplates = normalizeBookingFlowTemplates(platformTemplatesRaw);
 
   // The suggestion is a VIEW of the org's current flow until the producer picks
   // something else. Seeding it into state through an effect meant `selected` was
@@ -52,13 +64,17 @@ export function FlowStep({ orgId, onDone }: { orgId: string | null; onDone: () =
   // non-preset customization with it (applyPreset layered onto the defaults rather
   // than onto the org's own flow). "off" is not offered in onboarding, so an org
   // sitting in that state gets a real preset suggested rather than an unselectable Off.
-  const suggested = flow ? matchPreset(flow) : undefined;
+  const suggested = flow ? inferBookingTemplate(flow, t, platformTemplates) : undefined;
   const [selected, setSelected] = useState<PresetName | null>(null);
-  const active: PresetName = selected ?? (suggested && suggested !== "custom" && suggested !== "off" ? suggested : "classic");
+  const active: PresetName = selected ?? (suggested && suggested !== "off" ? suggested : "classic");
 
-  const preview = normalizeBookingFlow(applyPreset(base, active));
+  const definition = platformTemplates[active];
+  // Template-owned policy comes from the current platform definition. The reference
+  // field belongs to the organization, so changing templates must not reset it.
+  const preview = normalizeBookingFlow({ ...definition.flow, reference_field: base.reference_field });
+  const previewTimes = definition.times;
   const chips = lifecycleChips(preview);
-  const rows = inPracticeRows(preview, t);
+  const rows = inPracticeRows(preview, previewTimes);
 
   const save = useMutation({
     mutationFn: () => {
@@ -66,6 +82,9 @@ export function FlowStep({ orgId, onDone }: { orgId: string | null; onDone: () =
       return upsertOrgSettings(supabase, orgId, [
         { key: "booking_flow", value: preview as unknown as Json },
         { key: "booking_flow_template", value: active as unknown as Json },
+        { key: "offer_response_window_hours", value: previewTimes.windowHours as unknown as Json },
+        { key: "offer_digest_hour_berlin", value: previewTimes.offerDigestHour as unknown as Json },
+        { key: "confirmation_digest_hour_berlin", value: previewTimes.confirmationDigestHour as unknown as Json },
       ]);
     },
     onSuccess: () => {
@@ -89,18 +108,27 @@ export function FlowStep({ orgId, onDone }: { orgId: string | null; onDone: () =
       </Alert>
     );
   }
+  if (templatesError) {
+    return (
+      <Alert variant="destructive">
+        <AlertDescription>
+          Could not load the booking templates. {(templatesQueryError as Error)?.message}
+        </AlertDescription>
+      </Alert>
+    );
+  }
   // Nothing to derive from while the read is in flight: the presets would be scored
   // against BOOKING_FLOW_DEFAULTS rather than the org's own flow, and Save would
   // persist that. Withhold until the flow exists. Skipped without an active org (a
   // super-admin bypasses the org gate), where Save is already disabled.
-  if (orgId && !flow) return <Skeleton className="h-40 w-full" />;
+  if (templatesLoading || (orgId && !flow)) return <Skeleton className="h-40 w-full" />;
 
   return (
     <div className="space-y-3">
       <p className="text-xs text-muted-foreground">
         This decides what artists see and what the app calls things. Pick one, read what it does, change it any time in Settings.
       </p>
-      <FlowPresets active={active} onSelect={(p) => setSelected(p)} showOff={false} />
+      <FlowPresets active={active} onSelect={(p) => setSelected(p)} templates={platformTemplates} showOff={false} />
       <div>
         <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">A booking then goes</p>
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
@@ -121,9 +149,9 @@ export function FlowStep({ orgId, onDone }: { orgId: string | null; onDone: () =
         ))}
       </div>
       {/* Enabled only once this panel has READ the flow it is about to overwrite. `preview`
-          layers the preset onto `base`, so the org's non-preset fields (reference_field and
-          friends) survive a save only if `base` is that org's real flow; with the read still
-          in flight `base` is BOOKING_FLOW_DEFAULTS and saving would quietly discard them.
+          preserves the org-owned reference_field when applying the platform template; with
+          the read still in flight `base` is BOOKING_FLOW_DEFAULTS and saving would quietly
+          discard that organization-specific choice.
           The window is reachable because the org switcher lives in the app shell and does
           not unmount this panel: a switch can leave `selected` on the previous org's pick
           while the new org's flow is still loading. The view above fixes what is DISPLAYED;

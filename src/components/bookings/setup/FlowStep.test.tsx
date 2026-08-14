@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { renderWithProviders } from "@/test/renderWithProviders";
 
-const { flowRef, flowErrorRef, timesRef, flowOrgSpy, timesOrgSpy, upsertOrgSettings } = vi.hoisted(() => ({
+const { flowRef, flowErrorRef, timesRef, flowOrgSpy, timesOrgSpy, upsertOrgSettings, fetchTemplates } = vi.hoisted(() => ({
   flowRef: { value: undefined as unknown },
   // Ref-held so a test can put the query into its error state, where `data` is
   // undefined FOREVER rather than just not yet.
@@ -11,10 +11,14 @@ const { flowRef, flowErrorRef, timesRef, flowOrgSpy, timesOrgSpy, upsertOrgSetti
   flowOrgSpy: vi.fn(),
   timesOrgSpy: vi.fn(),
   upsertOrgSettings: vi.fn(() => Promise.resolve()),
+  fetchTemplates: vi.fn(),
 }));
 vi.mock("@/data/settings", async (original) => ({
   ...(await original<typeof import("@/data/settings")>()),
   upsertOrgSettings,
+}));
+vi.mock("@/data/platform", () => ({
+  fetchPlatformBookingTemplates: fetchTemplates,
 }));
 vi.mock("@/hooks/useBookingFlow", () => ({
   useBookingFlow: (orgId?: string | null) => {
@@ -26,7 +30,7 @@ vi.mock("@/hooks/useBookingFlow", () => ({
 vi.mock("@/integrations/supabase/client", () => ({ supabase: {} }));
 
 import { FlowStep } from "./FlowStep";
-import { BOOKING_FLOW_DEFAULTS, applyPreset } from "@/lib/bookingFlow";
+import { BOOKING_FLOW_DEFAULTS, BOOKING_FLOW_TEMPLATE_DEFAULTS, applyPreset } from "@/lib/bookingFlow";
 
 beforeEach(() => {
   flowRef.value = { ...BOOKING_FLOW_DEFAULTS };
@@ -34,6 +38,7 @@ beforeEach(() => {
   flowOrgSpy.mockClear();
   timesOrgSpy.mockClear();
   upsertOrgSettings.mockClear();
+  fetchTemplates.mockResolvedValue(BOOKING_FLOW_TEMPLATE_DEFAULTS);
 });
 
 describe("FlowStep", () => {
@@ -58,11 +63,11 @@ describe("FlowStep", () => {
     expect(screen.queryByRole("button", { name: /^use /i })).not.toBeInTheDocument();
   });
 
-  it("still renders without an active org, where the query never runs", () => {
+  it("still renders without an active org, where the query never runs", async () => {
     flowRef.value = undefined;
     renderWithProviders(<FlowStep orgId={null} onDone={() => {}} />);
 
-    expect(screen.getByRole("button", { name: /^use /i })).toBeDisabled();
+    expect(await screen.findByRole("button", { name: /^use /i })).toBeDisabled();
   });
 
   // See the matching TimingStep test: gating on "does the value exist" turns a failed
@@ -105,6 +110,33 @@ describe("FlowStep", () => {
       expect.arrayContaining([
         expect.objectContaining({ key: "booking_flow" }),
         { key: "booking_flow_template", value: "fasttrack" },
+        { key: "offer_response_window_hours", value: 48 },
+        { key: "offer_digest_hour_berlin", value: 19 },
+        { key: "confirmation_digest_hour_berlin", value: 20 },
+      ]),
+    ));
+  });
+
+  it("uses the current platform template flow, timing, and description", async () => {
+    const templates = structuredClone(BOOKING_FLOW_TEMPLATE_DEFAULTS);
+    templates.fasttrack.flow.auto_open_tier1 = false;
+    templates.fasttrack.times = { windowHours: 72, offerDigestHour: 7, confirmationDigestHour: 8 };
+    fetchTemplates.mockResolvedValue(templates);
+    renderWithProviders(<FlowStep orgId="org-1" onDone={() => {}} />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /fast-track/i }));
+    expect(screen.getByText(/tiers open manually/i)).toBeInTheDocument();
+    expect(screen.getByText(/72 h response window/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /use fast-track/i }));
+
+    await waitFor(() => expect(upsertOrgSettings).toHaveBeenCalledWith(
+      expect.anything(),
+      "org-1",
+      expect.arrayContaining([
+        expect.objectContaining({ key: "booking_flow", value: expect.objectContaining({ auto_open_tier1: false }) }),
+        { key: "offer_response_window_hours", value: 72 },
+        { key: "offer_digest_hour_berlin", value: 7 },
+        { key: "confirmation_digest_hour_berlin", value: 8 },
       ]),
     ));
   });
