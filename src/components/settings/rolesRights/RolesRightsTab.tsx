@@ -28,7 +28,6 @@ import {
 import { matchesFilter, filterCounts, type RightsFilter } from "@/lib/capabilities/rightsFilter";
 import { useCapabilityMatrix } from "@/hooks/useCapabilities";
 import { useFeature } from "@/hooks/useEntitlements";
-import { useOrgMembers } from "@/hooks/useOrgMembers";
 import { setOrgCapability } from "@/data/platform";
 import { clearOrgCapability } from "@/data/capabilities";
 import { RightRow, type RightRowData } from "./RightRow";
@@ -58,8 +57,6 @@ export function RolesRightsTab({ orgId }: RolesRightsTabProps) {
   const qc = useQueryClient();
   const { cells, isLoading } = useCapabilityMatrix(orgId);
   const hireOrdersEnabled = useFeature("hire_orders");
-  const { data: members } = useOrgMembers(orgId);
-  const memberCount = members?.length ?? 0;
 
   const [staged, setStaged] = useState<StagedMap>({});
   const [preset, setPreset] = useState<Preset>("Standard");
@@ -104,14 +101,37 @@ export function RolesRightsTab({ orgId }: RolesRightsTabProps) {
     () => REAL_PRESETS.find((p) => matchesPreset(desiredMap, p)) ?? "Custom",
     [desiredMap],
   );
-  const presetLabel = activePreset !== "Custom" ? activePreset : preset;
+
+  // The preset-diff line describes DESIRED vs the last-clicked preset (`preset`,
+  // never "Custom" -- applyPreset only ever assigns a real preset), not vs the
+  // stored org state. Build synthetic rows/staged so `diffSentence`'s "changed"
+  // set is actually "desired differs from this preset's on-keys", and label the
+  // sentence with that same preset -- so right after clicking Full it reads
+  // "Matches the Full baseline exactly.", and after toggling one right away it
+  // reads "1 right differs from Full." even though the segmented control's
+  // active tab has since flipped to Custom.
+  const selectedPreset = preset;
+  const presetDiffRows = useMemo(() => {
+    const onKeys = presetOnKeys(selectedPreset);
+    return visibleRows.map((row) => ({
+      key: row.key,
+      label: row.label,
+      effective: onKeys.has(row.key),
+      risk: row.risk,
+    }));
+  }, [visibleRows, selectedPreset]);
+  const presetDiffStaged = useMemo(() => {
+    const m: StagedMap = {};
+    for (const row of visibleRows) m[row.key] = desiredMap[row.key];
+    return m;
+  }, [visibleRows, desiredMap]);
 
   const changed = useMemo(() => changedKeys(allRows, staged), [allRows, staged]);
   const changedSet = useMemo(() => new Set(changed), [changed]);
   const sensitiveChanged = changed.filter((k) => rowByKey.get(k)?.risk === "sensitive");
   const sensitiveLabels = sensitiveChanged.map((k) => rowByKey.get(k)?.label ?? k);
 
-  const diffText = diffSentence(allRows, staged, presetLabel);
+  const diffText = diffSentence(presetDiffRows, presetDiffStaged, selectedPreset);
   const delta = deltaSentence(allRows, staged, "the Production Team");
   const onCount = allRows.filter((r) => desiredMap[r.key]).length;
 
@@ -219,8 +239,7 @@ export function RolesRightsTab({ orgId }: RolesRightsTabProps) {
           </p>
           <h1 className="mt-1 font-display text-xl font-semibold text-foreground">Roles &amp; rights</h1>
           <p className="mt-1 max-w-xl text-sm text-muted-foreground">
-            Set rights for the whole Production Team, then grant exceptions to one person. Admins always have every
-            right.
+            Set rights for the whole Production Team. Admins always have every right.
           </p>
         </div>
         <Button type="button" variant="outline" onClick={() => setChangeLogOpen(true)}>
@@ -289,7 +308,7 @@ export function RolesRightsTab({ orgId }: RolesRightsTabProps) {
         </div>
 
         <div className="space-y-4">
-          <EditingPickerCard roleOnCount={`${onCount}/${CAPABILITY_DEFS.length}`} memberCount={memberCount} />
+          <EditingPickerCard roleOnCount={`${onCount}/${CAPABILITY_DEFS.length}`} />
           <StagedChangesCard
             count={changed.length}
             scopeLine="Applies to the Production Team default."

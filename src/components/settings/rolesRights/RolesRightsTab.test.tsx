@@ -78,6 +78,34 @@ describe("RolesRightsTab", () => {
     await waitFor(() => expect(screen.getByRole("button", { name: "Apply" })).toBeDisabled());
   });
 
+  it("labels the preset-diff line against the selected preset, not the stored baseline", async () => {
+    renderWithProviders(<RolesRightsTab orgId="org1" />);
+
+    await screen.findByRole("switch", { name: "Manage casts" });
+
+    // Selecting Full stages every off-by-default right on -- desired now
+    // matches Full exactly, so the diff line (which describes desired vs the
+    // clicked preset) must say so, even though the STAGED CHANGES panel still
+    // shows a real count of changes to apply against the stored org state.
+    fireEvent.click(screen.getByRole("tab", { name: "Full" }));
+
+    expect(screen.getByRole("tab", { name: "Full" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByText("Matches the Full baseline exactly.")).toBeInTheDocument();
+
+    const stagedPanel = screen.getByText("STAGED CHANGES").parentElement;
+    expect(stagedPanel).not.toBeNull();
+    expect(stagedPanel?.textContent).toContain("9");
+    expect(screen.getByRole("button", { name: "Apply" })).not.toBeDisabled();
+
+    // Toggling one right back off makes desired diverge from Full by one, and
+    // the active preset tab flips to Custom -- but the diff line keeps
+    // labeling the divergence against Full, the preset the user last clicked.
+    fireEvent.click(screen.getByRole("switch", { name: "Delete productions" }));
+
+    expect(screen.getByRole("tab", { name: "Custom" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByText(/1 right differs from Full\./)).toBeInTheDocument();
+  });
+
   it("routes a sensitive toggle through the confirm dialog before writing", async () => {
     renderWithProviders(<RolesRightsTab orgId="org1" />);
 
