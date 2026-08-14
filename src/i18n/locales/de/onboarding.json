@@ -1,440 +1,445 @@
 {
   "steps": {
     "shows": {
-      "title": "Get your shows in",
-      "todoHint": "Sync from Airtable, import a sheet, or add a show by hand.",
-      "doneHint": "Your shows are in.",
-      "ctaLabel": "Add a show"
+      "title": "Deine Shows eintragen",
+      "todoHint": "Synchronisiere von Airtable, importiere eine Tabelle oder füge eine Show manuell hinzu.",
+      "doneHint": "Deine Shows sind eingetragen.",
+      "ctaLabel": "Show hinzufügen"
     },
     "flow": {
-      "title": "Booking flow",
-      "todoHint": "Offers, or straight to booked. Everything downstream reads this.",
-      "doneHint": "Chosen. Change it any time in Settings.",
-      "ctaLabel": "Choose flow"
+      "title": "Booking Flow",
+      "todoHint": "Angebote oder direkt gebucht. Alles Nachgelagerte richtet sich danach.",
+      "doneHint": "Ausgewählt. Du kannst das jederzeit in den Einstellungen ändern.",
+      "ctaLabel": "Flow wählen"
     },
     "people": {
-      "title": "Add your artists",
-      "todoHint": "Nobody to book until your roster has active artists.",
-      "doneHint": "Your roster has active artists on it.",
-      "ctaLabel": "Add artists"
+      "title": "Deine Artists hinzufügen",
+      "todoHint": "Niemand kann gebucht werden, solange deine Besetzungsliste keine aktiven Artists hat.",
+      "doneHint": "Deine Besetzungsliste enthält aktive Artists.",
+      "ctaLabel": "Artists hinzufügen"
     },
     "slots": {
-      "title": "Slots per show",
-      "todoHint": "A show with no slot count never reads as full.",
-      "doneHint": "Set on every show.",
-      "ctaLabel": "Set slots"
+      "title": "Plätze pro Show",
+      "todoHint": "Eine Show ohne Platzanzahl gilt nie als voll.",
+      "doneHint": "Bei jeder Show festgelegt.",
+      "ctaLabel": "Plätze festlegen"
     },
     "ladder": {
-      "title": "Cast priorities per city",
-      "todoHint": "Your casts ranked per city, tier 1 first.",
-      "doneHint": "Every scheduled city has a tier-1 cast.",
-      "ctaLabel": "Review coverage"
+      "title": "Besetzungsreihenfolge pro Stadt",
+      "todoHint": "Deine Besetzungen pro Stadt gereiht, Stufe 1 zuerst.",
+      "doneHint": "Jede geplante Stadt hat eine Stufe-1-Besetzung.",
+      "ctaLabel": "Abdeckung prüfen"
     },
     "eligibility": {
-      "title": "Who is eligible",
-      "todoHint": "Which casts belong to which show, in which city.",
-      "doneHint": "Every scheduled show and city has a cast.",
-      "ctaLabel": "Review coverage"
+      "title": "Wer ist berechtigt",
+      "todoHint": "Welche Besetzungen zu welcher Show in welcher Stadt gehören.",
+      "doneHint": "Jede geplante Show und Stadt hat eine Besetzung.",
+      "ctaLabel": "Abdeckung prüfen"
     },
     "timing": {
-      "title": "Email timing",
-      "todoHint": "When booking email goes out, and the answer window.",
-      "doneHint": "Hours set. Change them any time in Settings.",
-      "ctaLabel": "Set timing"
+      "title": "E-Mail-Zeitpunkt",
+      "todoHint": "Wann die Buchungs-E-Mail rausgeht, und die Antwortfrist.",
+      "doneHint": "Uhrzeiten festgelegt. Du kannst sie jederzeit in den Einstellungen ändern.",
+      "ctaLabel": "Zeitpunkt festlegen"
     },
     "team": {
-      "title": "Add your production team",
-      "todoHint": "Invite the producers who plan dates, run offers and confirm bookings.",
-      "doneHint": "Your production team is invited.",
-      "ctaLabel": "Invite team"
+      "title": "Dein Production Team hinzufügen",
+      "todoHint": "Lade die Producer ein, die Termine planen, Angebote versenden und Buchungen bestätigen.",
+      "doneHint": "Dein Production Team ist eingeladen.",
+      "ctaLabel": "Team einladen"
     },
     "blockDates": {
-      "title": "Block what you cannot play",
-      "todoHint": "Blocked dates come off the list before anyone books you, so you only hear about dates that work.",
-      "doneHint": "Your calendar is up to date.",
-      "ctaLabel": "Open availability"
+      "title": "Sperre, was du nicht spielen kannst",
+      "todoHint": "Gesperrte Termine fallen aus der Liste, bevor dich jemand bucht, sodass du nur von Terminen hörst, die passen.",
+      "doneHint": "Dein Kalender ist aktuell.",
+      "ctaLabel": "Verfügbarkeit öffnen"
     },
     "letterhead": {
-      "title": "Letterhead",
-      "todoHint": "Your name, address and logo on every hire order.",
-      "doneHint": "Set. Every order uses it.",
-      "ctaLabel": "Set letterhead"
+      "title": "Briefkopf",
+      "todoHint": "Dein Name, deine Adresse und dein Logo auf jedem Engagementvertrag.",
+      "doneHint": "Festgelegt. Jeder Vertrag verwendet ihn.",
+      "ctaLabel": "Briefkopf festlegen"
     },
     "terms": {
-      "title": "Terms",
-      "todoHint": "The clauses printed on the engagement sheet.",
-      "doneHint": "A terms variant is chosen.",
-      "ctaLabel": "Choose terms"
+      "title": "Bedingungen",
+      "todoHint": "Die Klauseln, die auf dem Engagementblatt stehen.",
+      "doneHint": "Eine Bedingungsvariante ist ausgewählt.",
+      "ctaLabel": "Bedingungen wählen"
     },
     "countersign": {
-      "title": "Countersignature",
-      "todoHint": "Who signs on behalf of the org.",
-      "doneHint": "Countersign policy set.",
-      "ctaLabel": "Set countersign"
+      "title": "Gegenzeichnung",
+      "todoHint": "Wer im Namen der Organisation unterschreibt.",
+      "doneHint": "Gegenzeichnungsregel festgelegt.",
+      "ctaLabel": "Gegenzeichnung festlegen"
     }
   },
   "railHeader": {
     "booking": {
-      "title": "Get bookings running",
-      "body": "Dates keep syncing and you can edit them now. These are what the first booking needs."
+      "title": "Buchungen zum Laufen bringen",
+      "body": "Termine synchronisieren weiter und du kannst sie jetzt bearbeiten. Das hier braucht die erste Buchung."
     },
     "hire": {
-      "title": "Get hire orders ready",
-      "body": "You can draft orders right now. These are only needed before the first one goes out."
+      "title": "Engagementverträge startklar machen",
+      "body": "Du kannst jetzt Entwürfe erstellen. Das hier wird erst gebraucht, bevor der erste Vertrag rausgeht."
     }
   },
   "offFooter": {
-    "booking": "Booking engine is not enabled for this org. Ask your account manager to switch it on.",
-    "hire": "Hire orders is off for this org. Ask your account manager to switch it on."
+    "booking": "Die Booking Engine ist für diese Organisation nicht aktiviert. Bitte deinen Account Manager, sie einzuschalten.",
+    "hire": "Engagementverträge sind für diese Organisation ausgeschaltet. Bitte deinen Account Manager, sie einzuschalten."
   },
   "bookingRules": {
     "offersWithTiers": {
-      "title": "Offers with tiers",
-      "hint": "Tier 1 goes out first. Tier 2 opens later if unfilled."
+      "title": "Angebote mit Stufen",
+      "hint": "Stufe 1 geht zuerst raus. Stufe 2 öffnet später, wenn nicht voll besetzt."
     },
     "directBooking": {
-      "title": "Direct booking",
-      "hint": "Producers book straight from the eligibility list."
+      "title": "Direktbuchung",
+      "hint": "Producer buchen direkt aus der Berechtigungsliste."
     },
     "offersByEmail": {
-      "title": "Offers go out by email",
-      "hint": "Artists answer from the email. Your timing settings decide whether it leaves at once or waits for the next digest."
+      "title": "Angebote gehen per E-Mail raus",
+      "hint": "Artists antworten direkt aus der E-Mail. Deine Zeiteinstellungen entscheiden, ob sie sofort rausgeht oder auf die nächste Tagesübersicht wartet."
     },
     "responseWindow": {
-      "title": "Response window",
-      "hint": "After it passes the offer expires and the tier reopens."
+      "title": "Antwortfrist",
+      "hint": "Läuft sie ab, verfällt das Angebot und die Stufe öffnet erneut."
     },
     "confirmProducer": {
-      "title": "Confirm is on you"
+      "title": "Bestätigen liegt bei dir"
     },
     "confirmManual": {
-      "title": "Confirm is manual"
+      "title": "Bestätigen erfolgt manuell"
     },
-    "confirmHint": "An accepted offer waits for a producer. That is the queue on this page.",
+    "confirmHint": "Ein angenommenes Angebot wartet auf einen Producer. Das ist die Warteschlange auf dieser Seite.",
     "nothingToAccept": {
-      "title": "Nothing to accept",
-      "hint": "An artist you add to a date is booked. It shows in their calendar as confirmed."
+      "title": "Nichts anzunehmen",
+      "hint": "Ein Artist, den du einem Termin hinzufügst, ist gebucht. Er erscheint in dessen Kalender als bestätigt."
     }
   },
   "viewAsArtist": {
-    "title": "See it as your artists do",
-    "hint": "The pencil icon top right opens the editor bar, where you can switch to the artist view. Once an artist has an account, you can preview the app as that exact person."
+    "title": "Sieh es wie deine Artists",
+    "hint": "Das Stiftsymbol oben rechts öffnet die Editor-Leiste, in der du zur Artist-Ansicht wechseln kannst. Sobald ein Artist ein Konto hat, kannst du die App als genau diese Person ansehen."
   },
   "producerRole": {
-    "note": "You are on the Production Team. You plan dates, run offers and confirm bookings. Inviting people, casts and settings stay with the admin.",
-    "ruleTitle": "What your role covers"
+    "note": "Du bist im Production Team. Du planst Termine, versendest Angebote und bestätigst Buchungen. Personen einladen, Besetzungen und Einstellungen bleiben beim Admin.",
+    "ruleTitle": "Was deine Rolle abdeckt"
   },
   "roleExplainer": {
-    "linkLabel": "See what each role can do"
+    "linkLabel": "Sieh, was jede Rolle kann"
   },
   "hireRules": {
     "autoDrafted": {
-      "title": "Auto-drafted on fill",
-      "hint": "When a date fills, a draft hire order is created from its confirmed bookings."
+      "title": "Automatisch erstellt bei Vollbesetzung",
+      "hint": "Wenn ein Termin voll besetzt ist, wird aus seinen bestätigten Buchungen ein Entwurf für einen Engagementvertrag erstellt."
     },
     "issuingManual": {
-      "title": "Issuing is manual",
-      "hint": "A producer reviews the draft and issues the PDF to the artist."
+      "title": "Ausstellen erfolgt manuell",
+      "hint": "Ein Producer prüft den Entwurf und stellt dem Artist das PDF aus."
     }
   },
   "artistRules": {
     "eligibilityFromCast": {
-      "title": "Eligibility comes from your cast",
-      "hint": "Your casts decide which dates can be offered to you."
+      "title": "Berechtigung ergibt sich aus deiner Besetzung",
+      "hint": "Deine Besetzungen entscheiden, welche Termine dir angeboten werden können."
     },
     "offersArriveByEmail": {
-      "title": "Offers arrive by email",
-      "hint": "Your producer's timing decides whether that is the daily digest or the moment a tier opens."
+      "title": "Angebote kommen per E-Mail",
+      "hint": "Die Zeiteinstellung deines Producers entscheidet, ob das die Tagesübersicht ist oder der Moment, in dem eine Stufe öffnet."
     },
     "responseWindow": {
-      "title": "You have a response window",
-      "hint": "After it passes the offer expires and goes to the next tier."
+      "title": "Du hast eine Antwortfrist",
+      "hint": "Läuft sie ab, verfällt das Angebot und geht an die nächste Stufe."
     },
     "bookedDirectly": {
-      "title": "You are booked directly",
-      "hint": "There is no offer step. A date booked for you appears in your calendar as confirmed."
+      "title": "Du wirst direkt gebucht",
+      "hint": "Es gibt keinen Angebotsschritt. Ein für dich gebuchter Termin erscheint in deinem Kalender als bestätigt."
     },
     "blockingIsNo": {
-      "title": "Blocking is how you say no",
-      "hint": "Blocked dates come out of the list your producer books from, and that is where your say goes."
+      "title": "Sperren ist deine Art, Nein zu sagen",
+      "hint": "Gesperrte Termine fallen aus der Liste, aus der dein Producer bucht, und genau da hast du ein Wort mitzureden."
     }
   },
   "welcome": {
     "base": {
-      "eyebrow": "Welcome"
+      "eyebrow": "Willkommen"
     },
     "admin": {
-      "completeHeadline": "This workspace is already set up",
-      "completeBody": "Nothing to configure. Walk the decisions behind it, because every number on this page follows them.",
-      "completePrimary": "How this org works",
-      "completeSecondary": "Dismiss",
-      "completeProgressLabel": "Set up · {{total}} of {{total}}",
-      "completeProgressHint": "The rules you inherited",
-      "incompleteHeadline": "Finish setting up {{org}}",
-      "incompleteBody": "A few decisions still shape how this workspace runs. Walk the remaining steps, because every number on this page follows them.",
-      "incompletePrimary": "Start setup",
-      "incompleteSecondary": "Later",
-      "incompleteProgressLabel": "Set up · {{filled}} of {{total}}",
-      "incompleteProgressHint": "About 15 minutes"
+      "completeHeadline": "Dieser Arbeitsbereich ist bereits eingerichtet",
+      "completeBody": "Nichts zu konfigurieren. Geh die Entscheidungen dahinter durch, denn jede Zahl auf dieser Seite folgt ihnen.",
+      "completePrimary": "Wie diese Organisation funktioniert",
+      "completeSecondary": "Ausblenden",
+      "completeProgressLabel": "Eingerichtet · {{total}} von {{total}}",
+      "completeProgressHint": "Die Regeln, die du übernommen hast",
+      "incompleteHeadline": "Richte {{org}} fertig ein",
+      "incompleteBody": "Ein paar Entscheidungen bestimmen noch, wie dieser Arbeitsbereich läuft. Geh die verbleibenden Schritte durch, denn jede Zahl auf dieser Seite folgt ihnen.",
+      "incompletePrimary": "Einrichtung starten",
+      "incompleteSecondary": "Später",
+      "incompleteProgressLabel": "Eingerichtet · {{filled}} von {{total}}",
+      "incompleteProgressHint": "Etwa 15 Minuten"
     },
     "producer": {
-      "pendingNone": "No confirmations are waiting on you right now.",
-      "pendingBody_one": "{{count}} artist is waiting on a confirm from you.",
-      "pendingBody_other": "{{count}} artists are waiting on a confirm from you.",
-      "emptyOffers": "Dates, offers and confirmations appear here the moment the first import lands.",
-      "emptyDirect": "Dates and bookings appear here the moment the first import lands.",
-      "completeHeadline": "You have joined {{org}}",
-      "completePrimary": "How this org works",
-      "completeSecondary": "Dismiss",
-      "completeProgressLabel": "Set up · {{total}} of {{total}}",
-      "completeProgressHint": "The rules you inherited",
-      "incompleteHeadline": "{{org}} is still being set up",
-      "incompletePrimaryCanEdit": "Start setup",
-      "incompletePrimaryReadOnly": "See what is outstanding",
-      "incompleteSecondary": "Later",
-      "incompleteProgressLabel": "Org setup · {{filled}} of {{total}}",
-      "incompleteProgressHintCanEdit": "About 15 minutes",
-      "incompleteProgressHintReadOnly": "Only an admin can do these"
+      "pendingNone": "Gerade wartet keine Bestätigung auf dich.",
+      "pendingBody_one": "{{count}} Artist wartet auf deine Bestätigung.",
+      "pendingBody_other": "{{count}} Artists warten auf deine Bestätigung.",
+      "emptyOffers": "Termine, Angebote und Bestätigungen erscheinen hier, sobald der erste Import da ist.",
+      "emptyDirect": "Termine und Buchungen erscheinen hier, sobald der erste Import da ist.",
+      "completeHeadline": "Du bist {{org}} beigetreten",
+      "completePrimary": "Wie diese Organisation funktioniert",
+      "completeSecondary": "Ausblenden",
+      "completeProgressLabel": "Eingerichtet · {{total}} von {{total}}",
+      "completeProgressHint": "Die Regeln, die du übernommen hast",
+      "incompleteHeadline": "{{org}} wird noch eingerichtet",
+      "incompletePrimaryCanEdit": "Einrichtung starten",
+      "incompletePrimaryReadOnly": "Sieh, was noch offen ist",
+      "incompleteSecondary": "Später",
+      "incompleteProgressLabel": "Organisationseinrichtung · {{filled}} von {{total}}",
+      "incompleteProgressHintCanEdit": "Etwa 15 Minuten",
+      "incompleteProgressHintReadOnly": "Das kann nur ein Admin erledigen"
     },
     "artist": {
-      "completeHeadlineOffers": "Your first offers are on their way",
-      "completeHeadlineDirect": "Your first dates are on their way",
-      "completeBodyOffers": "Your account is set up. A few rules decide when an offer reaches you and how long you have to answer.",
-      "completeBodyDirect": "Your account is set up. A few rules decide how this org books you, and blocking dates is your part of it.",
-      "completePrimary": "How booking works here",
-      "completeSecondary": "Dismiss",
-      "completeProgressLabel": "Set up · {{total}} of {{total}}",
-      "completeProgressHint": "The rules you inherited",
-      "incompleteHeadline": "{{org}} added you to the roster",
-      "incompleteBodyOffers": "Offers arrive by email and land on this page. Block the dates you cannot play first, so you only get asked about dates that work.",
-      "incompleteBodyDirect": "Your producer books you directly, and confirmed dates land on this page. Block the dates you cannot play first, so they come off the list before anyone books you.",
-      "incompletePrimary": "Start setup",
-      "incompleteSecondary": "Later",
-      "incompleteProgressLabel": "Set up · {{filled}} of {{total}}",
-      "incompleteProgressHint": "About 2 minutes"
+      "completeHeadlineOffers": "Deine ersten Angebote sind unterwegs",
+      "completeHeadlineDirect": "Deine ersten Termine sind unterwegs",
+      "completeBodyOffers": "Dein Konto ist eingerichtet. Ein paar Regeln entscheiden, wann dich ein Angebot erreicht und wie lange du Zeit zum Antworten hast.",
+      "completeBodyDirect": "Dein Konto ist eingerichtet. Ein paar Regeln entscheiden, wie diese Organisation dich bucht, und Termine zu sperren ist dein Teil davon.",
+      "completePrimary": "Wie das Buchen hier funktioniert",
+      "completeSecondary": "Ausblenden",
+      "completeProgressLabel": "Eingerichtet · {{total}} von {{total}}",
+      "completeProgressHint": "Die Regeln, die du übernommen hast",
+      "incompleteHeadline": "{{org}} hat dich zur Besetzungsliste hinzugefügt",
+      "incompleteBodyOffers": "Angebote kommen per E-Mail und landen auf dieser Seite. Sperre zuerst die Termine, die du nicht spielen kannst, damit du nur nach Terminen gefragt wirst, die passen.",
+      "incompleteBodyDirect": "Dein Producer bucht dich direkt, und bestätigte Termine landen auf dieser Seite. Sperre zuerst die Termine, die du nicht spielen kannst, damit sie aus der Liste fallen, bevor dich jemand bucht.",
+      "incompletePrimary": "Einrichtung starten",
+      "incompleteSecondary": "Später",
+      "incompleteProgressLabel": "Eingerichtet · {{filled}} von {{total}}",
+      "incompleteProgressHint": "Etwa 2 Minuten"
     }
   },
   "railHeaderCopy": {
-    "completeArtistEyebrow": "How booking works here",
-    "completeOrgEyebrow": "How this org works",
-    "completeTitle": "The rules you inherited",
-    "completeBodyCanEdit": "You can change them in Settings, but every number on this page follows them today.",
-    "completeBodyProducer": "You cannot change these, but every number on this page follows them.",
-    "completeBodyArtist": "You cannot change these. Every date you are booked on follows them.",
-    "adminEyebrow": "Set up",
-    "adminTitle": "Get the workspace running",
-    "adminBody": "Some of these block the first booking. Nothing here stops you using the rest of the app.",
-    "producerEyebrow": "Org setup",
-    "producerTitle": "What is still outstanding",
-    "producerBodyCanEdit": "Some of these block the first booking. Nothing here stops you using the rest of the app.",
-    "producerBodyReadOnly": "Only an admin can do these. This is here so you know why the page is empty, not so you can fix it.",
-    "artistEyebrow": "Set up",
-    "artistTitle": "Before your first booking",
-    "artistBody": "None of this blocks anything. It just keeps the dates you cannot play out of the way."
+    "completeArtistEyebrow": "Wie das Buchen hier funktioniert",
+    "completeOrgEyebrow": "Wie diese Organisation funktioniert",
+    "completeTitle": "Die Regeln, die du übernommen hast",
+    "completeBodyCanEdit": "Du kannst sie in den Einstellungen ändern, aber jede Zahl auf dieser Seite folgt ihnen heute.",
+    "completeBodyProducer": "Du kannst diese nicht ändern, aber jede Zahl auf dieser Seite folgt ihnen.",
+    "completeBodyArtist": "Du kannst diese nicht ändern. Jeder Termin, für den du gebucht bist, folgt ihnen.",
+    "adminEyebrow": "Einrichtung",
+    "adminTitle": "Bring den Arbeitsbereich zum Laufen",
+    "adminBody": "Manche davon blockieren die erste Buchung. Nichts hier hindert dich, den Rest der App zu nutzen.",
+    "producerEyebrow": "Organisationseinrichtung",
+    "producerTitle": "Was noch offen ist",
+    "producerBodyCanEdit": "Manche davon blockieren die erste Buchung. Nichts hier hindert dich, den Rest der App zu nutzen.",
+    "producerBodyReadOnly": "Das kann nur ein Admin erledigen. Das steht hier, damit du weißt, warum die Seite leer ist, nicht damit du es behebst.",
+    "artistEyebrow": "Einrichtung",
+    "artistTitle": "Vor deiner ersten Buchung",
+    "artistBody": "Nichts davon blockiert irgendetwas. Es hält nur die Termine aus dem Weg, die du nicht spielen kannst."
   },
   "collapsed": {
-    "completeLabel": "Set up · done",
-    "completeHintArtist": "How this org books you",
-    "completeHintOrg": "Booking engine, dates, cast slots, your team",
-    "completeCtaArtist": "How booking works here",
-    "completeCtaOrg": "How this org works",
-    "incompleteLabelProducer": "Org setup in progress",
-    "incompleteLabelOther": "Set up in progress",
-    "incompleteHint_one": "{{count}} step left",
-    "incompleteHint_other": "{{count}} steps left",
-    "incompleteCtaProducer": "See what is outstanding",
-    "incompleteCtaOther": "Resume"
+    "completeLabel": "Eingerichtet · fertig",
+    "completeHintArtist": "Wie diese Organisation dich bucht",
+    "completeHintOrg": "Booking Engine, Termine, Besetzungsplätze, dein Team",
+    "completeCtaArtist": "Wie das Buchen hier funktioniert",
+    "completeCtaOrg": "Wie diese Organisation funktioniert",
+    "incompleteLabelProducer": "Organisationseinrichtung läuft",
+    "incompleteLabelOther": "Einrichtung läuft",
+    "incompleteHint_one": "Noch {{count}} Schritt",
+    "incompleteHint_other": "Noch {{count}} Schritte",
+    "incompleteCtaProducer": "Sieh, was noch offen ist",
+    "incompleteCtaOther": "Fortsetzen"
   },
   "coverage": {
     "ladder": {
-      "noFlow": "Your casts ranked per city, tier 1 first.",
-      "direct": "Your casts ranked per city. You book artists directly, so nothing reads this ranking today. It starts to matter if you switch to offers.",
-      "offers": "Your casts ranked per city. Tier 1 is asked first, then the tiers below it."
+      "noFlow": "Deine Besetzungen pro Stadt gereiht, Stufe 1 zuerst.",
+      "direct": "Deine Besetzungen pro Stadt gereiht. Du buchst Artists direkt, daher liest heute niemand diese Reihenfolge. Sie wird relevant, wenn du auf Angebote umstellst.",
+      "offers": "Deine Besetzungen pro Stadt gereiht. Stufe 1 wird zuerst angefragt, dann die Stufen darunter."
     },
     "eligibility": {
-      "what": "Which casts belong to a show in a city.",
-      "direct": "Which casts belong to a show in a city. A show and city with no match can be booked from your whole active roster, minus anyone blocked on that date or missing a required skill.",
-      "offers": "Which casts belong to a show in a city. Without a match, a tier opens to nobody."
+      "what": "Welche Besetzungen zu einer Show in einer Stadt gehören.",
+      "direct": "Welche Besetzungen zu einer Show in einer Stadt gehören. Eine Show und Stadt ohne Treffer kann aus deiner gesamten aktiven Besetzungsliste gebucht werden, abzüglich aller, die an diesem Termin gesperrt sind oder eine erforderliche Fähigkeit nicht haben.",
+      "offers": "Welche Besetzungen zu einer Show in einer Stadt gehören. Ohne Treffer öffnet eine Stufe für niemanden."
     }
   },
   "stageChain": {
     "provenance": {
-      "byYou": "Rules set by you · Settings · Booking engine",
-      "byActorWithDate": "Rules set by {{actor}} · {{date}}",
-      "byActor": "Rules set by {{actor}}",
-      "inSettings": "Rules set in Settings · Booking engine"
+      "byYou": "Regeln von dir festgelegt · Einstellungen · Booking Engine",
+      "byActorWithDate": "Regeln von {{actor}} festgelegt · {{date}}",
+      "byActor": "Regeln von {{actor}} festgelegt",
+      "inSettings": "Regeln in den Einstellungen festgelegt · Booking Engine"
     },
-    "waitsOnActor": "Waits on {{name}}",
-    "waitsOnAdmin": "Waits on your admin",
+    "waitsOnActor": "Wartet auf {{name}}",
+    "waitsOnAdmin": "Wartet auf deinen Admin",
     "badge": {
-      "waits": "Waits",
-      "notOn": "Not on"
+      "waits": "Wartet",
+      "notOn": "Nicht an"
+    },
+    "docked": {
+      "blocksOffers": "Blockiert Angebote",
+      "blocksBooking": "Blockiert Buchung",
+      "blocksIssuing": "Blockiert Ausstellung"
     },
     "modules": {
-      "booking": "Booking engine",
-      "hire": "Hire orders"
+      "booking": "Booking Engine",
+      "hire": "Engagementverträge"
     },
     "tag": {
-      "yourCast": "Your cast",
-      "bookingEngine": "Booking engine",
-      "bookingEngineOff": "Booking engine · off",
-      "bookingEngineDirect": "Booking engine · direct",
-      "bookingEngineYours": "Booking engine · yours",
-      "showsAndBookings": "Shows and bookings",
-      "hireOrders": "Hire orders",
-      "hireOrdersOff": "Hire orders · off",
-      "hireOrdersManual": "Hire orders · manual"
+      "yourCast": "Deine Besetzung",
+      "bookingEngine": "Booking Engine",
+      "bookingEngineOff": "Booking Engine · aus",
+      "bookingEngineDirect": "Booking Engine · direkt",
+      "bookingEngineYours": "Booking Engine · deine",
+      "showsAndBookings": "Shows und Buchungen",
+      "hireOrders": "Engagementverträge",
+      "hireOrdersOff": "Engagementverträge · aus",
+      "hireOrdersManual": "Engagementverträge · manuell"
     },
     "artist": {
-      "eligibilityName": "Eligibility",
-      "eligibilityOnLine": "Your casts decide which dates can be offered to you.",
-      "eligibilityOnMetricLabel": "eligible dates",
-      "eligibilityOffLine": "No booking module, so no dates reach you here.",
-      "availabilityName": "Availability",
-      "availabilityDoneLine": "Blocked dates are never offered.",
-      "availabilityMetricLabel": "blocked dates",
-      "availabilityDoneChip": "Open availability",
-      "availabilityActLine": "The one step that is yours.",
-      "availabilityActPrimary": "Block dates",
-      "availabilityOffLine": "Nothing to block against.",
-      "offerName": "Offer",
-      "offerImportedLine": "One digest at {{time}}. {{hours}} hours to answer.",
-      "offerMetricLabel": "arriving {{hour}}",
-      "offerWaitsLine": "One digest at {{time}}, never a mail per date.",
-      "offerWaitsNeeds": "Needs dates for your cast",
-      "bookedDirectlyName": "Booked directly",
-      "bookedDirectlyLine": "There is no offer step. A booked date appears as confirmed.",
-      "bookedDirectlyMetricLabel": "confirmed",
-      "offerOffLine": "No offers are sent from ShowFlow.",
-      "hireName": "Hire order",
-      "hireOnLine": "You sign in the browser. The countersigned PDF lands in your mail.",
-      "hireOnMetricLabel": "to sign",
-      "hireOffLine": "The office emails your paperwork after a confirm.",
-      "hireOffNeeds": "Nothing for you to do here"
+      "eligibilityName": "Berechtigung",
+      "eligibilityOnLine": "Deine Besetzungen entscheiden, welche Termine dir angeboten werden können.",
+      "eligibilityOnMetricLabel": "berechtigte Termine",
+      "eligibilityOffLine": "Kein Booking-Modul, daher erreichen dich hier keine Termine.",
+      "availabilityName": "Verfügbarkeit",
+      "availabilityDoneLine": "Gesperrte Termine werden nie angeboten.",
+      "availabilityMetricLabel": "gesperrte Termine",
+      "availabilityDoneChip": "Verfügbarkeit öffnen",
+      "availabilityActLine": "Der einzige Schritt, der deiner ist.",
+      "availabilityActPrimary": "Termine sperren",
+      "availabilityOffLine": "Nichts, wogegen du sperren könntest.",
+      "offerName": "Angebot",
+      "offerImportedLine": "Eine Tagesübersicht um {{time}}. {{hours}} Stunden Zeit zum Antworten.",
+      "offerMetricLabel": "kommt um {{hour}}",
+      "offerWaitsLine": "Eine Tagesübersicht um {{time}}, nie eine E-Mail pro Termin.",
+      "offerWaitsNeeds": "Braucht Termine für deine Besetzung",
+      "bookedDirectlyName": "Direkt gebucht",
+      "bookedDirectlyLine": "Es gibt keinen Angebotsschritt. Ein gebuchter Termin erscheint als bestätigt.",
+      "bookedDirectlyMetricLabel": "bestätigt",
+      "offerOffLine": "Es werden keine Angebote von ShowFlow verschickt.",
+      "hireName": "Engagementvertrag",
+      "hireOnLine": "Du unterschreibst im Browser. Das gegengezeichnete PDF landet in deiner Mail.",
+      "hireOnMetricLabel": "zu unterschreiben",
+      "hireOffLine": "Das Büro schickt dir die Unterlagen nach einer Bestätigung per E-Mail.",
+      "hireOffNeeds": "Hier gibt es nichts für dich zu tun"
     },
     "org": {
-      "offersName": "Offers",
-      "bookDirectlyName": "Book directly",
-      "offersLine": "Tier 1 goes out at {{hour}}, tier 2 opens 24h later if unfilled.",
-      "directLine": "A producer books straight from the eligibility list. Nothing to accept.",
-      "datesName": "Dates",
-      "datesImportedLine_one": "{{count}} date is in your catalog.",
-      "datesImportedLine_other": "{{count}} dates are in your catalog.",
-      "datesMetricLabel": "dates in",
-      "datesChipOpen": "Open dates",
-      "datesChipSlots": "Set slots",
-      "datesActLine": "Nothing downstream can mean anything until shows exist.",
-      "datesActPrimaryImport": "Import dates",
-      "datesActPrimaryAdd": "Add a show",
-      "datesOffLine": "Dates and bookings do not run in ShowFlow for this org.",
-      "offersReadyMetricLabel": "ready to offer",
-      "bookableMetricLabel": "bookable dates",
-      "offersPrimary": "Send tier 1",
-      "offersChip": "Open the picker",
-      "offersWaitsNeeds": "Needs a date with slots set",
-      "offersOffName": "Offers",
-      "offersOffLine": "No tiers, no digest, no direct picker.",
-      "confirmName": "Confirm",
-      "confirmLine": "An accepted offer is not a booking until a producer confirms it.",
-      "confirmNeeds": "Needs an acceptance",
-      "confirmedName": "Confirmed on the spot",
-      "confirmedLine": "A direct booking is confirmed as it is made. No queue.",
-      "confirmedMetricLabel": "confirmed",
-      "confirmOffLine": "Nothing to confirm here.",
-      "hireName": "Hire order",
-      "hireOnLine": "You can draft orders right now. These are only needed before the first one goes out.",
-      "hireMetricLabel": "drafts",
-      "hireChip": "Draft an order",
-      "hireManualLine": "With no booking module, every order is a manual engagement with no linked date.",
-      "hireManualMetricLabel": "orders",
-      "hireManualPrimary": "New order",
-      "hireOffLine": "Confirmed dates leave ShowFlow as a CSV.",
-      "hireOffNeeds": "Switched on by your account manager"
+      "offersName": "Angebote",
+      "bookDirectlyName": "Direkt buchen",
+      "offersLine": "Stufe 1 geht um {{hour}} raus, Stufe 2 öffnet 24 Stunden später, wenn nicht voll besetzt.",
+      "directLine": "Ein Producer bucht direkt aus der Berechtigungsliste. Nichts anzunehmen.",
+      "datesName": "Termine",
+      "datesImportedLine_one": "{{count}} Termin ist in deinem Katalog.",
+      "datesImportedLine_other": "{{count}} Termine sind in deinem Katalog.",
+      "datesMetricLabel": "Termine drin",
+      "datesChipOpen": "Termine öffnen",
+      "datesChipSlots": "Plätze festlegen",
+      "datesActLine": "Nichts Nachgelagertes bedeutet etwas, solange keine Shows existieren.",
+      "datesActPrimaryImport": "Termine importieren",
+      "datesActPrimaryAdd": "Show hinzufügen",
+      "datesOffLine": "Termine und Buchungen laufen für diese Organisation nicht in ShowFlow.",
+      "offersReadyMetricLabel": "angebotsbereit",
+      "bookableMetricLabel": "buchbare Termine",
+      "offersPrimary": "Stufe 1 senden",
+      "offersChip": "Auswahl öffnen",
+      "offersWaitsNeeds": "Braucht einen Termin mit festgelegten Plätzen",
+      "offersOffName": "Angebote",
+      "offersOffLine": "Keine Stufen, keine Tagesübersicht, keine Direktauswahl.",
+      "confirmName": "Bestätigen",
+      "confirmLine": "Ein angenommenes Angebot ist erst eine Buchung, wenn ein Producer es bestätigt.",
+      "confirmNeeds": "Braucht eine Annahme",
+      "confirmedName": "Sofort bestätigt",
+      "confirmedLine": "Eine Direktbuchung ist bestätigt, sobald sie erstellt wird. Keine Warteschlange.",
+      "confirmedMetricLabel": "bestätigt",
+      "confirmOffLine": "Hier gibt es nichts zu bestätigen.",
+      "hireName": "Engagementvertrag",
+      "hireOnLine": "Du kannst jetzt Entwürfe erstellen. Das hier wird erst gebraucht, bevor der erste Vertrag rausgeht.",
+      "hireMetricLabel": "Entwürfe",
+      "hireChip": "Vertrag entwerfen",
+      "hireManualLine": "Ohne Booking-Modul ist jeder Vertrag ein manuelles Engagement ohne verknüpften Termin.",
+      "hireManualMetricLabel": "Verträge",
+      "hireManualPrimary": "Neuer Vertrag",
+      "hireOffLine": "Bestätigte Termine verlassen ShowFlow als CSV.",
+      "hireOffNeeds": "Wird von deinem Account Manager eingeschaltet"
     },
     "headline": {
-      "nothingOnHeadline": "No modules are switched on for {{org}}",
-      "nothingOnBody": "There is nothing to set up and nothing to run yet. Your ShowFlow account manager switches modules on; nobody inside the org can.",
-      "nothingOnGhost": "What the modules do",
-      "nothingOnHint": "Nothing here is blocked by you",
-      "nothingOnProgressLabel": "Nothing to set up",
-      "nothingOnProgressHint": "Steps appear the moment a module is switched on.",
-      "nothingOnQueueTitle": "What this page becomes",
-      "nothingOnQueueHint": "Sample rows, shown once a module is on.",
-      "artistProgressLabel": "Set up · {{filled}} of {{total}}",
-      "artistImportedHeadlineOffers": "Your first offer arrives tomorrow at {{hour}}",
-      "artistImportedHeadlineDirect": "Your producer books you directly",
-      "artistImportedBodyOffers_one": "You have {{count}} date blocked, so the digest only asks about dates that work.",
-      "artistImportedBodyOffers_other": "You have {{count}} dates blocked, so the digest only asks about dates that work.",
-      "artistImportedBodyDirect": "Blocked dates come out of the list your producer books from. That is where your say goes.",
-      "artistImportedHintOffers": "You get {{hours}} hours to answer",
-      "artistImportedHintDirect": "Nothing to accept",
-      "artistImportedProgressHint": "Also counts as done once you have opened Availability. An empty calendar is a valid answer.",
-      "artistRosterHeadline": "{{org}} added you to the roster",
-      "artistRosterBodyHasSteps": "One step is yours, and it is two minutes. Everything else on this page is set by the org.",
-      "artistRosterBodyNoSteps": "Everything on this page is set by the org. There is nothing here for you to do.",
-      "artistRosterHintHasSteps": "About 2 minutes",
-      "artistRosterHintNoSteps": "Nothing to do here",
-      "artistRosterProgressHintHasSteps": "None of this blocks anything. It keeps unplayable dates out of the way.",
-      "artistRosterProgressHintNoSteps": "There is nothing to set up on your side.",
-      "artistGhost": "How booking works here",
-      "artistQueueTitle": "Your dates",
-      "artistQueueHint": "Live. This is your real content, not a preview.",
-      "orgProgressLabelAdmin": "Set up · {{filled}} of {{total}}",
-      "orgProgressLabelOther": "Org setup · {{filled}} of {{total}}",
-      "hireOnlyHeadline": "Hire orders is the only module running",
-      "hireOnlyBody": "No dates, offers or confirms in ShowFlow. Every order is a manual engagement, so the three steps below are all the setup there is.",
-      "hireOnlyGhost": "How this org works",
-      "hireOnlyHint": "Two of the three block issuing",
-      "hireOnlyProgressHint": "You can draft an order now. These are only needed before the first one goes out.",
-      "orgImportedLanded_one": "{{count}} date landed.",
-      "orgImportedLanded_other": "{{count}} dates landed.",
-      "orgImportedLandedOffersClause": "{{readyToOffer}} of them can be offered in the next digest.",
-      "orgImportedLandedBookableClause_one": "{{count}} is bookable now.",
-      "orgImportedLandedBookableClause_other": "{{count}} are bookable now.",
-      "orgImportedBodyOffers": "Stage 01 is running. The remaining dates have no slot counts, so the digest will skip them.",
-      "orgImportedBodyDirect": "Stage 01 is running. A producer books straight from the eligibility list. There is no offer step.",
-      "orgGhostHowItWorks": "How this org works",
-      "orgGhostOutstanding": "What is still outstanding",
-      "orgImportedHintOffers": "Tier 1 goes out at {{time}}",
-      "orgImportedHintDirect": "Direct booking · nothing to accept",
-      "orgProgressHintReadOnly": "The steps marked Admin are not yours. The rest are.",
-      "orgImportedProgressHint": "The steps left sit in the stage they hold up.",
-      "orgEmptyHeadlineProducer": "{{org}} is still being set up",
-      "orgEmptyHeadlineAdmin": "The chain is not running yet. One thing starts it: dates.",
-      "orgEmptyBodyProducer": "Booking engine is on, but no dates exist yet. That is why this page is empty, not a bug.",
-      "orgEmptyBodyAdmin": "Booking engine is on and configured. Every step it still needs is docked in the stage it unblocks.",
-      "orgEmptyGhostHowItWillWork": "How this org will work",
-      "orgEmptyHintAdmin": "About 15 minutes",
-      "orgEmptyHintCanEdit": "You can do these too",
-      "orgEmptyHintReadOnly": "Adding shows is yours; the settings are not",
-      "orgEmptyProgressHint": "Nothing here stops you using the rest of the app.",
-      "orgQueueTitle": "What this page becomes",
-      "orgQueueHint": "Sample rows. Yours replace them once the org has dates."
+      "nothingOnHeadline": "Für {{org}} sind keine Module eingeschaltet",
+      "nothingOnBody": "Es gibt noch nichts einzurichten und nichts, was läuft. Dein ShowFlow-Account-Manager schaltet Module ein, niemand innerhalb der Organisation kann das.",
+      "nothingOnGhost": "Was die Module tun",
+      "nothingOnHint": "Nichts hier ist durch dich blockiert",
+      "nothingOnProgressLabel": "Nichts einzurichten",
+      "nothingOnProgressHint": "Schritte erscheinen, sobald ein Modul eingeschaltet wird.",
+      "nothingOnQueueTitle": "Was aus dieser Seite wird",
+      "nothingOnQueueHint": "Beispielzeilen, sichtbar sobald ein Modul an ist.",
+      "artistProgressLabel": "Eingerichtet · {{filled}} von {{total}}",
+      "artistImportedHeadlineOffers": "Dein erstes Angebot kommt morgen um {{hour}}",
+      "artistImportedHeadlineDirect": "Dein Producer bucht dich direkt",
+      "artistImportedBodyOffers_one": "Du hast {{count}} Termin gesperrt, daher fragt die Tagesübersicht nur nach Terminen, die passen.",
+      "artistImportedBodyOffers_other": "Du hast {{count}} Termine gesperrt, daher fragt die Tagesübersicht nur nach Terminen, die passen.",
+      "artistImportedBodyDirect": "Gesperrte Termine fallen aus der Liste, aus der dein Producer bucht. Genau da hast du ein Wort mitzureden.",
+      "artistImportedHintOffers": "Du hast {{hours}} Stunden Zeit zum Antworten",
+      "artistImportedHintDirect": "Nichts anzunehmen",
+      "artistImportedProgressHint": "Zählt auch als erledigt, sobald du Verfügbarkeit geöffnet hast. Ein leerer Kalender ist eine gültige Antwort.",
+      "artistRosterHeadline": "{{org}} hat dich zur Besetzungsliste hinzugefügt",
+      "artistRosterBodyHasSteps": "Ein Schritt ist deiner, und der dauert zwei Minuten. Alles andere auf dieser Seite legt die Organisation fest.",
+      "artistRosterBodyNoSteps": "Alles auf dieser Seite legt die Organisation fest. Hier gibt es nichts für dich zu tun.",
+      "artistRosterHintHasSteps": "Etwa 2 Minuten",
+      "artistRosterHintNoSteps": "Hier nichts zu tun",
+      "artistRosterProgressHintHasSteps": "Nichts davon blockiert irgendetwas. Es hält nicht spielbare Termine aus dem Weg.",
+      "artistRosterProgressHintNoSteps": "Auf deiner Seite gibt es nichts einzurichten.",
+      "artistGhost": "Wie das Buchen hier funktioniert",
+      "artistQueueTitle": "Deine Termine",
+      "artistQueueHint": "Live. Das sind deine echten Inhalte, keine Vorschau.",
+      "orgProgressLabelAdmin": "Eingerichtet · {{filled}} von {{total}}",
+      "orgProgressLabelOther": "Organisationseinrichtung · {{filled}} von {{total}}",
+      "hireOnlyHeadline": "Engagementverträge ist das einzige laufende Modul",
+      "hireOnlyBody": "Keine Termine, Angebote oder Bestätigungen in ShowFlow. Jeder Vertrag ist ein manuelles Engagement, daher sind die drei Schritte unten die gesamte Einrichtung.",
+      "hireOnlyGhost": "Wie diese Organisation funktioniert",
+      "hireOnlyHint": "Zwei der drei blockieren das Ausstellen",
+      "hireOnlyProgressHint": "Du kannst jetzt einen Vertrag entwerfen. Das hier wird erst gebraucht, bevor der erste rausgeht.",
+      "orgImportedLanded_one": "{{count}} Termin ist eingegangen.",
+      "orgImportedLanded_other": "{{count}} Termine sind eingegangen.",
+      "orgImportedLandedOffersClause": "{{readyToOffer}} davon können in der nächsten Tagesübersicht angeboten werden.",
+      "orgImportedLandedBookableClause_one": "{{count}} ist jetzt buchbar.",
+      "orgImportedLandedBookableClause_other": "{{count}} sind jetzt buchbar.",
+      "orgImportedBodyOffers": "Stufe 01 läuft. Die restlichen Termine haben keine Platzanzahl, daher überspringt die Tagesübersicht sie.",
+      "orgImportedBodyDirect": "Stufe 01 läuft. Ein Producer bucht direkt aus der Berechtigungsliste. Es gibt keinen Angebotsschritt.",
+      "orgGhostHowItWorks": "Wie diese Organisation funktioniert",
+      "orgGhostOutstanding": "Was noch offen ist",
+      "orgImportedHintOffers": "Stufe 1 geht um {{time}} raus",
+      "orgImportedHintDirect": "Direktbuchung · nichts anzunehmen",
+      "orgProgressHintReadOnly": "Die mit Admin markierten Schritte sind nicht deine. Der Rest schon.",
+      "orgImportedProgressHint": "Die verbliebenen Schritte stehen in der Stufe, die sie aufhalten.",
+      "orgEmptyHeadlineProducer": "{{org}} wird noch eingerichtet",
+      "orgEmptyHeadlineAdmin": "Die Kette läuft noch nicht. Eine Sache startet sie: Termine.",
+      "orgEmptyBodyProducer": "Die Booking Engine ist an, aber es gibt noch keine Termine. Deshalb ist diese Seite leer, kein Fehler.",
+      "orgEmptyBodyAdmin": "Die Booking Engine ist an und konfiguriert. Jeder noch nötige Schritt steht in der Stufe, die er freischaltet.",
+      "orgEmptyGhostHowItWillWork": "Wie diese Organisation funktionieren wird",
+      "orgEmptyHintAdmin": "Etwa 15 Minuten",
+      "orgEmptyHintCanEdit": "Die kannst du auch erledigen",
+      "orgEmptyHintReadOnly": "Shows hinzufügen ist deins, die Einstellungen nicht",
+      "orgEmptyProgressHint": "Nichts hier hindert dich, den Rest der App zu nutzen.",
+      "orgQueueTitle": "Was aus dieser Seite wird",
+      "orgQueueHint": "Beispielzeilen. Deine ersetzen sie, sobald die Organisation Termine hat."
     },
     "result": {
-      "eyebrow": "{{org}} · first run",
-      "chainTitleArtist": "How a date reaches you",
-      "chainTitleOrg": "How a date will move",
-      "sideTitleNothingOn": "The app is open, there is just nothing to run",
-      "sideTitleDefault": "Nothing here blocks the rest of the app",
-      "sideBodyProducer": "You are on the Production Team. You plan dates, run offers and confirm bookings. Inviting people, casts and settings stay with the admin.",
-      "sideBodyArtist": "Blocking is how you say no. Blocked dates come out of the list before anyone books you.",
-      "sideBodyDefault": "Some steps above block the first booking. The app itself is open, and two things worth doing are not steps at all."
+      "eyebrow": "{{org}} · erster Start",
+      "chainTitleArtist": "Wie ein Termin dich erreicht",
+      "chainTitleOrg": "Wie sich ein Termin bewegt",
+      "sideTitleNothingOn": "Die App ist offen, es läuft nur nichts",
+      "sideTitleDefault": "Nichts hier blockiert den Rest der App",
+      "sideBodyProducer": "Du bist im Production Team. Du planst Termine, versendest Angebote und bestätigst Buchungen. Personen einladen, Besetzungen und Einstellungen bleiben beim Admin.",
+      "sideBodyArtist": "Sperren ist deine Art, Nein zu sagen. Gesperrte Termine fallen aus der Liste, bevor dich jemand bucht.",
+      "sideBodyDefault": "Manche Schritte oben blockieren die erste Buchung. Die App selbst ist offen, und zwei lohnenswerte Dinge sind gar keine Schritte."
     },
     "side": {
-      "readRoleCovers": "Read what each role covers",
-      "helpCenter": "Help center",
-      "messageAccountManager": "Message your account manager",
+      "readRoleCovers": "Lies, was jede Rolle abdeckt",
+      "helpCenter": "Hilfebereich",
+      "messageAccountManager": "Schreib deinem Account Manager",
       "chats": "Chats",
-      "howBookingWorksHere": "How booking works here",
-      "rulesYouInherited": "The rules you inherited",
-      "messageOffice": "Message the office",
-      "blockingIsHowYouSayNo": "Blocking is how you say no",
-      "availability": "Availability",
-      "seeItAsArtists": "See it as your artists do",
-      "editorBarHint": "The pencil top right opens the editor bar, where you can switch to the artist view.",
-      "seeWhatEachRoleCanDo": "See what each role can do",
-      "messageAdmin": "Message the admin"
+      "howBookingWorksHere": "Wie das Buchen hier funktioniert",
+      "rulesYouInherited": "Die Regeln, die du übernommen hast",
+      "messageOffice": "Schreib dem Büro",
+      "blockingIsHowYouSayNo": "Sperren ist deine Art, Nein zu sagen",
+      "availability": "Verfügbarkeit",
+      "seeItAsArtists": "Sieh es wie deine Artists",
+      "editorBarHint": "Der Stift oben rechts öffnet die Editor-Leiste, in der du zur Artist-Ansicht wechseln kannst.",
+      "seeWhatEachRoleCanDo": "Sieh, was jede Rolle kann",
+      "messageAdmin": "Schreib dem Admin"
     }
   }
 }

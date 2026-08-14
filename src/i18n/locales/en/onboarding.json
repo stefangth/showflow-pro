@@ -270,6 +270,11 @@
       "waits": "Waits",
       "notOn": "Not on"
     },
+    "docked": {
+      "blocksOffers": "Blocks offers",
+      "blocksBooking": "Blocks booking",
+      "blocksIssuing": "Blocks issuing"
+    },
     "modules": {
       "booking": "Booking engine",
       "hire": "Hire orders"

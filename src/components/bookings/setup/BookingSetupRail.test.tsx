@@ -63,8 +63,14 @@ const parkedRoster: Record<string, TableSeed> = {
 };
 
 import { BookingSetupRail } from "./BookingSetupRail";
-import { bookingOnboarding, VIEW_AS_ARTIST_TIP, TEAM_STEP_META } from "@/lib/dashboard/moduleOnboarding";
+import i18n from "@/i18n";
+import { buildBookingOnboarding, viewAsArtistTip, teamStepMeta } from "@/lib/dashboard/moduleOnboarding";
 import { describeTonight, describeTonightStandalone } from "@/lib/bookings/timingCopy";
+
+const onbT = i18n.getFixedT("en", "onboarding");
+const bookingOnboarding = buildBookingOnboarding(onbT);
+const VIEW_AS_ARTIST_TIP = viewAsArtistTip(onbT);
+const TEAM_STEP_META = teamStepMeta(onbT);
 import { BOOKING_FLOW_DEFAULTS, applyPreset, type FlowTimes } from "@/lib/bookingFlow";
 
 /** A real normalized flow and a real set of hours, so the footer sentence is the engine's

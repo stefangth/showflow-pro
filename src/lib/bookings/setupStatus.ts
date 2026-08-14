@@ -6,6 +6,7 @@
 // cast_city_priority for the city) and only ever OVER-reports: it drives an
 // affordance, and open-offer-tier remains authoritative.
 
+import type { TFunction } from "i18next";
 import { showSlots } from "@/lib/settings";
 
 export type BookingSetupStepKey = "flow" | "people" | "slots" | "ladder" | "eligibility" | "timing" | "shows";
@@ -80,16 +81,19 @@ export interface BookingSetupStatusInput {
 }
 
 /** Display title per step, shared by the rail and the producer waiting card so a rename
- *  lands in exactly one place. */
-export const STEP_TITLES: Record<BookingSetupStepKey, string> = {
-  flow: "Booking flow",
-  people: "Add your artists",
-  slots: "Slots per show",
-  ladder: "Cast priorities per city",
-  eligibility: "Who is eligible",
-  timing: "Email timing",
-  shows: "Get your shows in",
-};
+ *  lands in exactly one place. Reads the `onboarding` catalog (`steps.<key>.title`) via the
+ *  passed translator, the same keys `buildBookingOnboarding` uses, so a title is worded once. */
+export function stepTitles(t: TFunction<"onboarding">): Record<BookingSetupStepKey, string> {
+  return {
+    flow: t("steps.flow.title"),
+    people: t("steps.people.title"),
+    slots: t("steps.slots.title"),
+    ladder: t("steps.ladder.title"),
+    eligibility: t("steps.eligibility.title"),
+    timing: t("steps.timing.title"),
+    shows: t("steps.shows.title"),
+  };
+}
 
 const STEP_ORDER: BookingSetupStepKey[] = ["shows", "slots", "flow", "people", "ladder", "eligibility", "timing"];
 

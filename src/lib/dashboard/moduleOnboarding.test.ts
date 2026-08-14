@@ -1,15 +1,16 @@
 import { it, expect } from "vitest";
+import i18n from "@/i18n";
 import {
-  ARTIST_ONBOARDING,
   ARTIST_STEP_KEYS,
-  MODULE_ONBOARDING,
-  VIEW_AS_ARTIST_TIP,
-  PRODUCER_ROLE_NOTE,
-  PRODUCER_ROLE_RULE_TITLE,
-  ROLE_EXPLAINER_LINK_LABEL,
   ROLE_EXPLAINER_LINK_ROUTE,
-  bookingOnboarding,
-  hireOrderOnboarding,
+  buildArtistOnboarding,
+  buildBookingOnboarding,
+  buildHireOrderOnboarding,
+  buildModuleOnboarding,
+  producerRoleNote,
+  producerRoleRuleTitle,
+  roleExplainerLinkLabel,
+  viewAsArtistTip,
 } from "./moduleOnboarding";
 import { FEATURE_KEYS, type FeatureKey } from "@/lib/entitlements";
 import { computeBookingSetupStatus } from "@/lib/bookings/setupStatus";
@@ -17,6 +18,18 @@ import { computeSetupStatus } from "@/lib/hireOrders/setupStatus";
 import { ROLE_DESCRIPTIONS, ROUTES } from "@/config/app.config";
 import { SETTINGS_TAB_PARAMS } from "@/lib/settingsTabs";
 import { CAPABILITY_DEFS } from "@/lib/capabilities";
+
+// The registries are now t-driven builders; rebind the English catalog so these assertions
+// keep pinning the exact shipped English copy (German is covered by the i18n gates).
+const t = i18n.getFixedT("en", "onboarding");
+const bookingOnboarding = buildBookingOnboarding(t);
+const hireOrderOnboarding = buildHireOrderOnboarding(t);
+const MODULE_ONBOARDING = buildModuleOnboarding(t);
+const ARTIST_ONBOARDING = buildArtistOnboarding(t);
+const PRODUCER_ROLE_NOTE = producerRoleNote(t);
+const PRODUCER_ROLE_RULE_TITLE = producerRoleRuleTitle(t);
+const ROLE_EXPLAINER_LINK_LABEL = roleExplainerLinkLabel(t);
+const VIEW_AS_ARTIST_TIP = viewAsArtistTip(t);
 
 it("every MODULE_ONBOARDING key is a real, still-registered FeatureKey", () => {
   // Not every FeatureKey has an onboarding module (language_packages is a settings-page
@@ -320,11 +333,13 @@ it("keeps the view-as tip as one shared object, since two surfaces render it", (
   // admin who had already finished setup. The gap it answers is the opposite one: nothing
   // suggests viewing the app as an artist WHILE you are still setting it up. So
   // BookingSetupRail renders it in its own footer too, and that surface is on screen only
-  // while setup is unfinished. One exported object rather than two literals: a reworded tip
-  // that lands on one of the two surfaces is exactly the drift this registry exists to stop.
+  // while setup is unfinished. One shared builder (viewAsArtistTip) rather than two literals:
+  // a reworded tip that lands on one of the two surfaces is exactly the drift this registry
+  // exists to stop. Both surfaces call the same builder off the same catalog keys, so the
+  // rendered value matches (value equality; the builder returns a fresh object each call).
   const ctx = ctxFor(true);
   const fromRules = bookingOnboarding.rules("admin", ctx).find((r) => r.title === VIEW_AS_ARTIST_TIP.title);
-  expect(fromRules).toBe(VIEW_AS_ARTIST_TIP);
+  expect(fromRules).toEqual(VIEW_AS_ARTIST_TIP);
 });
 
 it("no inherited rule copy uses em/en dashes", () => {

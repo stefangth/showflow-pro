@@ -124,6 +124,9 @@ const IDENTICAL_OK: Record<string, string> = {
   // profile
   'profile.details.title': 'common word "Details", identical in German',
   'profile.notifications.channelAria': 'pure interpolation template ("{{category}} {{channel}}"), no prose',
+
+  // onboarding
+  'onboarding.stageChain.side.chats': 'loanword "Chats", kept untranslated across the app (matches chats.list.title)',
 };
 
 describe('German catalog is translated (not English left in place)', () => {
