@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { screen, fireEvent, waitFor } from "@testing-library/react";
+import { screen, fireEvent, waitFor, act } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import { partialMock } from "@/test/castHelpers";
@@ -204,11 +204,11 @@ describe("AppLayout force-English gate (language_packages entitlement)", () => {
     // Simulate an already-active German session (as if the user picked it earlier,
     // while the module was still entitled).
     localStorage.setItem(STORAGE_KEY, "de");
-    await i18n.changeLanguage("de");
+    await act(async () => { await i18n.changeLanguage("de"); });
 
     // The org's language_packages entitlement is revoked mid-session.
     mockEntitlements(false);
-    rerender(<AppLayout>page content</AppLayout>);
+    await act(async () => { rerender(<AppLayout>page content</AppLayout>); });
 
     // Display-only: the runtime language flips back to English...
     await waitFor(() => expect(i18n.language).toBe("en"));
@@ -227,7 +227,7 @@ describe("AppLayout force-English gate (language_packages entitlement)", () => {
     // and the org's language_packages entitlement is granted mid-session.
     localStorage.setItem(STORAGE_KEY, "de");
     mockEntitlements(true);
-    rerender(<AppLayout>page content</AppLayout>);
+    await act(async () => { rerender(<AppLayout>page content</AppLayout>); });
 
     await waitFor(() => expect(i18n.language).toBe("de"));
   });
