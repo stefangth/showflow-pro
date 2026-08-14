@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { CopyFieldControl } from "@/components/settings/templateEditor/CopyFieldControl";
 import { DocumentBaseControls } from "@/components/settings/templateEditor/DocumentBaseControls";
@@ -16,38 +17,13 @@ import {
   resolveEmailTheme,
   type EmailThemeOverride,
 } from "@/lib/emailTemplates/emailTheme";
-import { emailCopyFieldsForRole, type EmailEditorSelection } from "./emailEditorMeta";
+import {
+  EMAIL_EDITOR_ROLE_LABEL_KEYS,
+  emailCopyFieldsForRole,
+  type EmailEditorSelection,
+} from "./emailEditorMeta";
 
-const ROLE_FONTS = [
-  { key: "body", label: "Body font", kind: "body" },
-  { key: "heading", label: "Heading font", kind: "heading" },
-] as const;
 const SYSTEM_SANS = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
-const BASE_FONTS = [
-  { key: EMAIL_THEME_DEFAULTS.base.bodyFamily, label: "Geist with system fallback", kind: "sans" },
-  { key: SYSTEM_SANS, label: "System sans serif", kind: "sans" },
-] as const;
-const COLOR_LABELS: Record<(typeof EMAIL_THEME_COLOR_KEYS)[number], string> = {
-  heroText: "Hero text",
-  heroSub: "Hero supporting text",
-  bodyText: "Body text",
-  muted: "Muted text",
-  faint: "Faint text",
-  accent: "Accent",
-  line: "Rules and borders",
-  tileBg: "Data tile background",
-  buttonBg: "Button background",
-  buttonText: "Button text",
-  cardBg: "Card background",
-  pageBg: "Page background",
-};
-const COLOR_FIELDS = EMAIL_THEME_COLOR_KEYS.map((key) => ({ key, label: COLOR_LABELS[key] }));
-const WEIGHT_OPTIONS = [
-  { value: 400, label: "Regular" },
-  { value: 500, label: "Medium" },
-  { value: 600, label: "Semibold" },
-  { value: 700, label: "Bold" },
-] as const;
 
 export interface EmailTemplateInspectorProps {
   selected: EmailEditorSelection;
@@ -68,32 +44,63 @@ export function EmailTemplateInspector({
   onCopyChange,
   onThemeChange,
 }: EmailTemplateInspectorProps) {
+  const { t } = useTranslation("settingsEmailTemplates");
   const resolvedTheme = resolveEmailTheme(themeDraft);
   const setBase = (patch: Record<string, unknown>) => onThemeChange({
     ...themeDraft,
     base: { ...themeDraft.base, ...patch } as EmailThemeOverride["base"],
   });
 
+  const roleFonts = [
+    { key: "body", label: t("emailTemplateInspector.roleFonts.body"), kind: "body" },
+    { key: "heading", label: t("emailTemplateInspector.roleFonts.heading"), kind: "heading" },
+  ] as const;
+  const baseFonts = [
+    { key: EMAIL_THEME_DEFAULTS.base.bodyFamily, label: t("emailTemplateInspector.baseFonts.geist"), kind: "sans" },
+    { key: SYSTEM_SANS, label: t("emailTemplateInspector.baseFonts.system"), kind: "sans" },
+  ] as const;
+  const colorLabels: Record<(typeof EMAIL_THEME_COLOR_KEYS)[number], string> = {
+    heroText: t("emailTemplateInspector.colorLabels.heroText"),
+    heroSub: t("emailTemplateInspector.colorLabels.heroSub"),
+    bodyText: t("emailTemplateInspector.colorLabels.bodyText"),
+    muted: t("emailTemplateInspector.colorLabels.muted"),
+    faint: t("emailTemplateInspector.colorLabels.faint"),
+    accent: t("emailTemplateInspector.colorLabels.accent"),
+    line: t("emailTemplateInspector.colorLabels.line"),
+    tileBg: t("emailTemplateInspector.colorLabels.tileBg"),
+    buttonBg: t("emailTemplateInspector.colorLabels.buttonBg"),
+    buttonText: t("emailTemplateInspector.colorLabels.buttonText"),
+    cardBg: t("emailTemplateInspector.colorLabels.cardBg"),
+    pageBg: t("emailTemplateInspector.colorLabels.pageBg"),
+  };
+  const colorFields = EMAIL_THEME_COLOR_KEYS.map((key) => ({ key, label: colorLabels[key] }));
+  const weightOptions = [
+    { value: 400, label: t("emailTemplateInspector.weightOptions.regular") },
+    { value: 500, label: t("emailTemplateInspector.weightOptions.medium") },
+    { value: 600, label: t("emailTemplateInspector.weightOptions.semibold") },
+    { value: 700, label: t("emailTemplateInspector.weightOptions.bold") },
+  ] as const;
+
   if (selected === "document") {
     return (
       <DocumentBaseControls
-        title="Document"
+        title={t("emailTemplateInspector.documentTitle")}
         base={resolvedTheme.base}
         baseModified={hasOwnKeys(themeDraft.base)}
-        fonts={BASE_FONTS}
+        fonts={baseFonts}
         fontFields={[
-          { key: "bodyFamily", label: "Body font", allowedKinds: ["sans"] },
-          { key: "headingFamily", label: "Heading font", allowedKinds: ["sans"] },
+          { key: "bodyFamily", label: t("emailTemplateInspector.roleFonts.body"), allowedKinds: ["sans"] },
+          { key: "headingFamily", label: t("emailTemplateInspector.roleFonts.heading"), allowedKinds: ["sans"] },
         ]}
-        colors={COLOR_FIELDS}
+        colors={colorFields}
         colorValues={resolvedTheme.base.colors}
         fieldGroups={[{
-          label: "Email defaults",
+          label: t("emailTemplateInspector.emailDefaults"),
           fields: [
             {
               kind: "number",
               key: "buttonRadius",
-              label: "Button radius",
+              label: t("emailTemplateInspector.buttonRadius"),
               value: resolvedTheme.base.buttonRadius,
               min: 0,
               max: 24,
@@ -102,7 +109,7 @@ export function EmailTemplateInspector({
             {
               kind: "text",
               key: "footerText",
-              label: "Footer text",
+              label: t("emailTemplateInspector.footerText"),
               value: resolvedTheme.base.footerText,
               multiline: true,
               onChange: (footerText) => setBase({ footerText }),
@@ -120,17 +127,20 @@ export function EmailTemplateInspector({
     );
   }
 
-  const role = { key: selected, label: selected === "dataLabel" ? "Data label" : selected === "dataValue" ? "Data value" : `${selected[0].toUpperCase()}${selected.slice(1)}` };
+  const role = {
+    key: selected,
+    label: t(EMAIL_EDITOR_ROLE_LABEL_KEYS[selected]),
+  };
   const copyFields = emailCopyFieldsForRole(template, selected);
 
   return (
-    <aside aria-label="Element settings" className="h-full">
+    <aside aria-label={t("emailTemplateInspector.elementSettings")} className="h-full">
       <ScrollArea className="h-full">
         <div className="space-y-5 p-4">
           <h3 className="font-display text-sm">{role.label}</h3>
           {copyFields.length > 0 ? (
             <div className="space-y-3">
-              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Text</p>
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("emailTemplateInspector.text")}</p>
               {copyFields.map((field) => (
                 <CopyFieldControl
                   key={field.key}
@@ -144,13 +154,13 @@ export function EmailTemplateInspector({
             </div>
           ) : null}
           <div className="space-y-2">
-            <p className="text-xs text-muted-foreground">Applies to all emails.</p>
+            <p className="text-xs text-muted-foreground">{t("emailTemplateInspector.appliesToAllEmails")}</p>
             <RoleStyleControls
               role={role}
               roleDefaults={EMAIL_THEME_DEFAULTS.roles[selected]}
               roleOverride={themeDraft.roles?.[selected]}
-              fonts={ROLE_FONTS}
-              colorFields={COLOR_FIELDS}
+              fonts={roleFonts}
+              colorFields={colorFields}
               onRoleChange={(nextRole) => onThemeChange({
                 ...themeDraft,
                 roles: { ...themeDraft.roles, [selected]: nextRole },
@@ -164,8 +174,8 @@ export function EmailTemplateInspector({
                 onThemeChange(next);
               }}
               readOnly={readOnly}
-              fontResetLabel="Email base font"
-              weightOptions={WEIGHT_OPTIONS}
+              fontResetLabel={t("emailTemplateInspector.emailBaseFont")}
+              weightOptions={weightOptions}
             />
           </div>
         </div>

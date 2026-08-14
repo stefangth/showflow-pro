@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 
 interface RightGroupCardProps {
@@ -18,6 +19,7 @@ export function RightGroupCard({
   onToggleAll,
   children,
 }: RightGroupCardProps) {
+  const { t } = useTranslation("settingsRolesRights");
   return (
     <div className="rounded-[var(--radius-l)] border border-border shadow-elev2 bg-card overflow-hidden">
       <div className="flex items-center justify-between gap-4 px-4 py-3 border-b border-[var(--line)]">
@@ -33,7 +35,7 @@ export function RightGroupCard({
               "text-[12px] font-medium text-accent-700 hover:underline",
             )}
           >
-            {allOn ? "Turn all off" : "Turn all on"}
+            {allOn ? t("groupCard.turnAllOff") : t("groupCard.turnAllOn")}
           </button>
         </div>
       </div>

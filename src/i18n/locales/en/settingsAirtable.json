@@ -1,1 +1,286 @@
-{}
+{
+  "root": {
+    "selectOrg": "Select an organization to configure Airtable sync."
+  },
+  "toasts": {
+    "settingsSaveError": "Couldn't save Airtable settings. Your last change wasn't stored.",
+    "syncSuccess": "Synced: {{newDates}} new, {{updated}} updated",
+    "syncNoRun": "Sync didn't run. Check your Airtable configuration",
+    "syncFailed": "Sync failed",
+    "noActiveOrg": "No active organization",
+    "enterApiKey": "Enter an API key",
+    "keySaved": "Airtable API key saved",
+    "keySaveFailed": "Failed to save Airtable key",
+    "keyDeleted": "Airtable API key deleted",
+    "keyDeleteFailed": "Failed to delete Airtable key",
+    "alreadyMatchesShow": "Already matches a catalog show. It will link on the next sync.",
+    "nothingToCreateShows": "Nothing to create. Those options already match catalog shows.",
+    "showCreatedAndLinked": "Show created and linked",
+    "createFailed": "Create failed",
+    "alreadyMatchesCity": "Already matches a catalog city.",
+    "cityCreatedAndLinked": "City created and linked",
+    "cityLinked": "City linked",
+    "createdSelectedShows": "Created the selected shows",
+    "createdSelectedCities": "Created the selected cities",
+    "linked": "Linked",
+    "linkFailed": "Link failed",
+    "unlinked": "Unlinked",
+    "unlinkFailed": "Unlink failed",
+    "addedAsCustomFields": "Added as custom fields",
+    "addCustomFieldsFailed": "Could not add custom fields",
+    "mergedDuplicateCities": "Merged duplicate cities",
+    "mergeFailed": "Merge failed"
+  },
+  "mergeSuggestion": {
+    "joiner": " and ",
+    "title": "{{names}} are the same city",
+    "description": "Merging keeps {{survivorName}}'s bookings, eligibility and producer routing, and removes the other row.",
+    "actionLabel": "Merge into {{survivorName}}"
+  },
+  "eyebrow": {
+    "connected": "Airtable · {{baseName}} › {{tableName}}",
+    "default": "Airtable"
+  },
+  "nextRunFallback": "the next run",
+  "overview": {
+    "errorTitle": "The last runs failed",
+    "connection": {
+      "tokenSaved": "Saved {{date}}",
+      "tokenNotSet": "Not set",
+      "tableViewFallbackTable": "not set",
+      "tableViewFallbackView": "Grid view",
+      "frequency": "Every {{interval}}"
+    }
+  },
+  "mappingTab": {
+    "pickBaseAndTable": "Pick a base and table first. Open",
+    "manageConnectionLink": "Manage connection",
+    "pickBaseAndTableSuffix": "to choose where your shows live."
+  },
+  "autosaveStatus": {
+    "saving": "Saving…",
+    "saved": "All changes saved",
+    "error": "Couldn't save"
+  },
+  "manageDialog": {
+    "title": "Manage connection",
+    "description": "Your Airtable key, the base and table to read, the view, and how often to sync.",
+    "token": {
+      "label": "Personal access token",
+      "keySaved": "Key saved",
+      "notSet": "Not set",
+      "updated": "updated {{date}}",
+      "maskedValue": "••••••••••",
+      "replace": "Replace",
+      "delete": "Delete",
+      "deleteDialogTitle": "Delete the Airtable API key?",
+      "deleteDialogDescription": "Sync stops working until a new key is saved. The key is removed from the encrypted vault. This cannot be undone.",
+      "cancel": "Cancel",
+      "deleteKeyConfirm": "Delete key",
+      "placeholderReplace": "Enter a new key…",
+      "placeholderNew": "pat… (write-only)",
+      "update": "Update",
+      "saveKey": "Save key",
+      "helpPrefix": "Stored encrypted in Vault, never displayed. Needs",
+      "helpAnd": "and"
+    },
+    "baseTable": {
+      "label": "Base and table",
+      "schemaConnected": "Schema connected",
+      "manualMode": "Manual mode",
+      "refresh": "Refresh from Airtable",
+      "refreshLoading": "Loading…",
+      "saveKeyFirst": "Save a key first to load bases and tables.",
+      "baseLabel": "Base",
+      "selectBasePlaceholder": "Select a base",
+      "tableLabel": "Table",
+      "selectTablePlaceholder": "Select a table",
+      "baseIdLabel": "Airtable base ID",
+      "baseIdPlaceholder": "app1234567890",
+      "tableNameLabel": "Airtable table name",
+      "tableNamePlaceholder": "Shows",
+      "viewLabel": "Airtable view (optional)",
+      "viewPlaceholder": "Grid view",
+      "viewHelp": "The sync reads records from this view. Leave blank to read the entire table."
+    },
+    "frequency": {
+      "label": "Sync frequency",
+      "warningTitle": "Frequent syncs can hit Airtable limits",
+      "warningDescription": "Only pick a frequency under one hour if your Airtable workspace is on a paid plan. Airtable may rate-limit frequent requests, which can cause runs to fail or updates to arrive late."
+    }
+  },
+  "activityTab": {
+    "title": "Run history",
+    "subtitle": "Every poll for this org, newest first.",
+    "colStarted": "Started",
+    "colStatus": "Status",
+    "colRead": "Read",
+    "colNew": "New",
+    "colUpdated": "Updated",
+    "colHeld": "Held",
+    "noRuns": "No runs yet."
+  },
+  "attentionPanel": {
+    "fixLabelPrograms": "Create shows",
+    "fixLabelCities": "Create cities",
+    "title": "Needs your attention",
+    "description_one": "{{count}} record was held on the last run. Held records are never dropped, fix the cause and they import on the next run.",
+    "description_other": "{{count}} records were held on the last run. Held records are never dropped, fix the cause and they import on the next run.",
+    "heldBadge": "{{count}} held",
+    "hide": "Hide",
+    "review": "Review",
+    "linkIndividually": "Link individually in Catalog links",
+    "footerNote": "Resolving these releases the held records on the next run at {{nextRunLabel}}.",
+    "openRunLog": "Open the full run log"
+  },
+  "catalogTab": {
+    "linkToExisting": "Link to existing…",
+    "linkToExistingHeading": "Link to existing",
+    "createOption": "Create “{{optionLabel}}”",
+    "noMatches": "No existing matches.",
+    "unlink": "Unlink",
+    "blankKeyPlaceholder": "·",
+    "create": "Create",
+    "title": "Catalog links",
+    "description": "Each Airtable option resolves to one ShowFlow show or city. Unlinked options hold their records.",
+    "searchPlaceholder": "Search options and targets…",
+    "searchAriaLabel": "Search options and targets",
+    "filters": {
+      "All": "All",
+      "Blocking": "Blocking",
+      "Linked": "Linked"
+    },
+    "selectedCount": "{{count}} selected",
+    "createCount": "Create {{count}}",
+    "programsSection": "Programs · from {{source}}",
+    "citiesSection": "Cities · from {{source}}",
+    "holding": "holding {{count}}",
+    "selectRowAria": "select {{display}}",
+    "linkAriaLabel": "link or create {{noun}} for {{display}}",
+    "linkSearchPlaceholder": "Search {{noun}}s…",
+    "entityNoun": {
+      "show": "show",
+      "city": "city"
+    }
+  },
+  "consoleTabs": {
+    "overview": "Overview",
+    "mapping": "Field mapping",
+    "catalog": "Catalog links",
+    "activity": "Activity",
+    "sync": "Sync",
+    "syncEnabledAria": "Sync enabled"
+  },
+  "mappingTab2": {
+    "title": "Field mapping",
+    "headerPrefix": "Every ShowFlow field reads from one column in",
+    "headerSuffix": ". Catalog links are keyed on Program · Sub-program.",
+    "requiredMapped": "required mapped",
+    "colShowflowField": "ShowFlow field",
+    "colAirtableColumn": "Airtable column",
+    "notMapped": "Not mapped",
+    "optional": "optional",
+    "statusFieldLabel": "Status field (optional)",
+    "cancelledValueLabel": "\"Cancelled\" value",
+    "none": "None",
+    "pickCancelledOption": "Pick the cancelled option",
+    "cancellationReasonLabel": "Cancellation reason (optional)",
+    "cancellationReasonAria": "Cancellation reason",
+    "footerUnbound_one": "{{count}} column in {{tableName}} isn't read by ShowFlow: {{names}}.",
+    "footerUnbound_other": "{{count}} columns in {{tableName}} aren't read by ShowFlow: {{names}}.",
+    "addAsCustomFields": "Add as custom fields"
+  },
+  "overviewTab": {
+    "replaceToken": "Replace token",
+    "allClearTitle": "Nothing held. Every record resolved on the last runs.",
+    "allClearDescription": "New program or city options in Airtable will show up here when they arrive.",
+    "connectionLabel": "Connection",
+    "rowToken": "Token",
+    "rowBase": "Base",
+    "rowTableView": "Table · view",
+    "rowFrequency": "Frequency",
+    "manageConnection": "Manage connection",
+    "last5Runs": "Last 5 runs",
+    "noRuns": "No runs yet.",
+    "runSummary": "{{importedCount}} in · {{heldCount}} held"
+  },
+  "readOnlyBanner": {
+    "prefix": "View only. You can read the configuration and the run history. An admin with",
+    "suffix": "can change it."
+  },
+  "setupWizard": {
+    "steps": {
+      "connectTitle": "Connect",
+      "connectHint": "Personal access token",
+      "baseTableTitle": "Base and table",
+      "baseTableHint": "Pick where shows live",
+      "mapFieldsTitle": "Map fields",
+      "mapFieldsHint": "Date, program, city, sessions",
+      "linkCatalogTitle": "Link catalog",
+      "linkCatalogHint": "Match options to your shows"
+    },
+    "eyebrow": "Airtable · setup",
+    "heading": "Connect a base in four steps",
+    "subheading": "Nothing syncs until the last step. You can leave and come back, each step saves as you go.",
+    "baseTableStepTitle": "Base and table",
+    "baseTableStepDescription": "Your token is saved. Pick the Airtable base and table your shows live in to finish connecting. Nothing syncs until you do.",
+    "chooseBaseAndTable": "Choose base and table",
+    "tokenStepTitle": "Personal access token",
+    "tokenHelpPrefix": "Stored encrypted in Vault and never displayed again. Needs",
+    "tokenHelpAnd": "and",
+    "keyPlaceholder": "pat…",
+    "saving": "Saving…",
+    "saveAndContinue": "Save and continue",
+    "noTokenHint": "No token yet? Create one at airtable.com/create/tokens, scoped to the base you sync from."
+  },
+  "statusHeader": {
+    "saved": "Saved",
+    "syncing": "Syncing…",
+    "syncNow": "Sync now"
+  },
+  "console": {
+    "badge": {
+      "ok": "ok",
+      "partial": "partial",
+      "failed": "failed"
+    },
+    "status": {
+      "errorHeadline": "Sync is failing",
+      "errorLineWithDetails": "The last run failed. {{details}}",
+      "errorLineGeneric": "The last run failed. Airtable rejected the request.",
+      "healthyHeadline": "Syncing normally",
+      "healthyLineWithRun": "Last run {{clock}} brought in {{imported}} dates: {{newCount}} new, {{updated}} updated. Every record resolved.",
+      "healthyLineNoRun": "Not synced yet. The next run will bring in dates.",
+      "liveHeadline_one": "Syncing, {{count}} record held",
+      "liveHeadline_other": "Syncing, {{count}} records held",
+      "liveLine_one": "Last run {{clock}} brought in {{imported}} dates: {{newCount}} new, {{updated}} updated. {{count}} record could not resolve and are waiting on a catalog link.",
+      "liveLine_other": "Last run {{clock}} brought in {{imported}} dates: {{newCount}} new, {{updated}} updated. {{count}} records could not resolve and are waiting on a catalog link."
+    },
+    "kpis": {
+      "lastRun": "Last run",
+      "lastCleanRun": "Last clean run",
+      "datesIn": "Dates in",
+      "held": "Held",
+      "failed": "failed",
+      "sinceLastRun": "since last run",
+      "today": "today",
+      "nextRun": "Next run",
+      "everyInterval": "every {{interval}}",
+      "newUpdated": "{{newCount}} new · {{updated}} updated",
+      "waitingOnLink": "waiting on a link",
+      "allResolved": "all resolved"
+    },
+    "causes": {
+      "programTitle_one": "{{count}} program option has no catalog show",
+      "programTitle_other": "{{count}} program options have no catalog show",
+      "cityTitle_one": "{{count}} city option has no catalog city",
+      "cityTitle_other": "{{count}} city options have no catalog city",
+      "missingDateTitle_one": "{{count}} record has an empty date cell",
+      "missingDateTitle_other": "{{count}} records have an empty date cell",
+      "unrecognizedTitle_one": "{{count}} record is held for an unrecognized reason",
+      "unrecognizedTitle_other": "{{count}} records are held for an unrecognized reason",
+      "detail_one": "holding {{count}} record",
+      "detail_other": "holding {{count}} records"
+    }
+  }
+}

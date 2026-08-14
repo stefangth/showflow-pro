@@ -1,1 +1,93 @@
-{}
+{
+  "page": {
+    "title": "Einstellungen",
+    "description": "Konfiguriere Integrationen, Buchungsverhalten und Benachrichtigungen. Änderungen wirken sich sofort aus.",
+    "accessRequired": "Zugriff für Admin oder Production Team erforderlich",
+    "loading": "Einstellungen werden geladen…",
+    "saveSuccess": "Einstellungen gespeichert",
+    "saveError": "Speichern fehlgeschlagen",
+    "noChanges": "Keine Änderungen zum Speichern",
+    "save": "Speichern",
+    "saveCount": "Speichern ({{count}})",
+    "saving": "Speichert…",
+    "saveNow": "Jetzt speichern",
+    "unsavedChanges": "Du hast ungespeicherte Änderungen. Sie gehen verloren, wenn du die Seite verlässt."
+  },
+  "nav": {
+    "groups": {
+      "organization": "Organisation",
+      "automation": "Automatisierung",
+      "modules": "Module",
+      "preferences": "Präferenzen",
+      "help": "Hilfe"
+    },
+    "items": {
+      "organization": "Organisation",
+      "permissions": "Rollen und Rechte",
+      "trust": "Vertrauen und Daten",
+      "castsCoverage": "Besetzung und Abdeckung",
+      "skills": "Skills",
+      "airtable": "Airtable-Synchronisierung",
+      "emailTemplates": "E-Mail-Vorlagen",
+      "booking": "Booking Engine",
+      "hireOrders": "Engagementverträge",
+      "filters": "Filter",
+      "notifications": "Benachrichtigungen",
+      "docs": "Dokumentation"
+    },
+    "moduleOn": "An",
+    "moduleOff": "Aus"
+  },
+  "filters": {
+    "title": "Sichtbarkeit der Filter pro Rolle",
+    "description": "Lege fest, welche Filter Production Team und Artists auf jeder Seite sehen. Admins sehen immer alles.",
+    "role": "Rolle",
+    "pages": {
+      "shows": "Shows",
+      "artists": "Artists",
+      "bookings": "Buchungen"
+    },
+    "keys": {
+      "program": "Programm",
+      "timeframe": "Zeitraum",
+      "sort": "Sortierung",
+      "status": "Status"
+    }
+  },
+  "notifications": {
+    "title": "Benachrichtigungen",
+    "description": "Steuere In-App-Benachrichtigungen für Buchungen und Terminänderungen.",
+    "enable": "In-App-Benachrichtigungen aktivieren",
+    "hint": "Production Team und Artists erhalten Benachrichtigungen in Echtzeit."
+  },
+  "organization": {
+    "title": "Organisation",
+    "description": "Der Name deines Arbeitsbereichs. Der Slug ist fest, wende dich für Änderungen an den Support.",
+    "nameLabel": "Name der Organisation",
+    "slugLabel": "Slug",
+    "required": "Erforderlich",
+    "save": "Speichern",
+    "saving": "Speichert…",
+    "renamed": "Organisation umbenannt"
+  },
+  "permissions": {
+    "loading": "Rechte werden geladen...",
+    "rightsUpdated": "Rechte aktualisiert.",
+    "policyUpdated": "Richtlinie aktualisiert.",
+    "confirmTitle": "Sensibles Recht ändern?",
+    "confirmDescriptionGrant": "Gewähre Production Team das Recht \"{{label}}\". Das ist ein sensibles Recht.",
+    "confirmDescriptionRemove": "Entziehe Production Team das Recht \"{{label}}\". Das ist ein sensibles Recht.",
+    "cancel": "Abbrechen",
+    "confirm": "Bestätigen",
+    "row": {
+      "sensitive": "Sensibel",
+      "managedByShowflow": "Verwaltet von ShowFlow.",
+      "admin": "Admin",
+      "adminAlwaysHasRight": "Admins haben dieses Recht immer",
+      "unlock": "Entsperren",
+      "lock": "Sperren",
+      "platformDefault": "Plattform-Standard: {{label}}",
+      "roleRight": "{{role}}: {{label}}"
+    }
+  }
+}

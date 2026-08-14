@@ -1,4 +1,5 @@
 import { useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { Lock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -40,6 +41,7 @@ interface Props {
 }
 
 export function BookingFlowTab({ get, set, dirtyKeys, saving, onSave, onDiscard, readOnly = false }: Props) {
+  const { t } = useTranslation("settingsBookingFlow");
   const { currentOrg } = useAuth();
   const orgId = currentOrg?.id ?? null;
 
@@ -100,12 +102,14 @@ export function BookingFlowTab({ get, set, dirtyKeys, saving, onSave, onDiscard,
     flow.reference_field.source === "custom"
       ? (customFieldDefs ?? []).find((d) => d.id === flow.reference_field.custom_field_id)?.key ?? null
       : null;
-  const referencePreview = `Offer: ${referenceLabel({
-    reference: flow.reference_field,
-    show: { program: "Candlelight", sub_program: "Strings" },
-    custom: { [customFieldKey ?? ""]: "FV-2033" },
-    customFieldKey,
-  })} · Apr 30, Berlin`;
+  const referencePreview = t("bookingFlowTab.referencePreview", {
+    label: referenceLabel({
+      reference: flow.reference_field,
+      show: { program: "Candlelight", sub_program: "Strings" },
+      custom: { [customFieldKey ?? ""]: "FV-2033" },
+      customFieldKey,
+    }),
+  });
 
   // Remembers the last user-chosen producer_confirmation while artist_acceptance is on.
   // normalizeBookingFlow forces producer_confirmation on whenever artist_acceptance is off
@@ -158,19 +162,17 @@ export function BookingFlowTab({ get, set, dirtyKeys, saving, onSave, onDiscard,
       {locked && (
         <Alert>
           <Lock className="h-4 w-4" />
-          <AlertTitle>Booking engine is not enabled</AlertTitle>
+          <AlertTitle>{t("bookingFlowTab.lockedAlert.title")}</AlertTitle>
           <AlertDescription>
-            Booking is switched off for your organization, so no offers, reminders or
-            confirmations are sent. Contact your ShowFlow administrator to enable it.
+            {t("bookingFlowTab.lockedAlert.description")}
           </AlertDescription>
         </Alert>
       )}
       {isOff && (
         <Alert>
-          <AlertTitle>Booking flow is off</AlertTitle>
+          <AlertTitle>{t("bookingFlowTab.offAlert.title")}</AlertTitle>
           <AlertDescription>
-            No new offers open, and no reminders, digests or confirmations are sent. Offers already
-            sent still run out their response window. Pick a flow above to turn it on.
+            {t("bookingFlowTab.offAlert.description")}
           </AlertDescription>
         </Alert>
       )}
@@ -178,7 +180,7 @@ export function BookingFlowTab({ get, set, dirtyKeys, saving, onSave, onDiscard,
         <Skeleton className="h-28 w-full" />
       ) : templatesError ? (
         <Alert variant="destructive">
-          <AlertTitle>Booking templates could not be loaded</AlertTitle>
+          <AlertTitle>{t("bookingFlowTab.templatesError.title")}</AlertTitle>
           <AlertDescription>{(templatesQueryError as Error).message}</AlertDescription>
         </Alert>
       ) : (
@@ -218,7 +220,7 @@ export function BookingFlowTab({ get, set, dirtyKeys, saving, onSave, onDiscard,
         />
       </div>
       <div className="max-w-sm space-y-2">
-        <Label htmlFor="resend-from-address">From address (Resend)</Label>
+        <Label htmlFor="resend-from-address">{t("bookingFlowTab.fromAddress.label")}</Label>
         <Input
           id="resend-from-address"
           placeholder={BOOKING_ENGINE_DEFAULTS.resend_from_address}
@@ -226,7 +228,7 @@ export function BookingFlowTab({ get, set, dirtyKeys, saving, onSave, onDiscard,
           disabled={readOnly}
           onChange={(e) => set("resend_from_address", e.target.value)}
         />
-        <p className="text-xs text-muted-foreground">Overrides the default sender address for all outgoing emails.</p>
+        <p className="text-xs text-muted-foreground">{t("bookingFlowTab.fromAddress.helper")}</p>
       </div>
     </div>
   );

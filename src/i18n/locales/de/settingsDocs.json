@@ -1,1 +1,40 @@
-{}
+{
+  "documentationTab": {
+    "loading": "Lädt…",
+    "guide": {
+      "title": "App-Logic-Leitfaden",
+      "description": "So funktioniert ShowFlow: Rollen, Datenmodell, Berechtigung und der gesamte Ablauf von Verfügbarkeit → Buchung."
+    },
+    "tabs": {
+      "guide": "App-Logik",
+      "map": "Systemkarte",
+      "reference": "Referenz"
+    },
+    "map": {
+      "title": "Automatisierungs-Engine-Karte",
+      "description": "Jeder Trigger, jede Edge-Function, jede Datenbank-Schutzmaßnahme und jeder Seiteneffekt. Klicke auf einen Knoten für sein Dossier."
+    },
+    "reference": {
+      "title": "Referenz der Systemkarte",
+      "description": "Die vollständige schriftliche Karte (docs/system-map.md)."
+    }
+  },
+  "systemMapCanvas": {
+    "columns": {
+      "trigger": "Trigger",
+      "fn": "Edge-Functions",
+      "db": "Datenbank",
+      "fx": "Effekte"
+    },
+    "subsystems": {
+      "all": "Alle",
+      "booking": "Buchung",
+      "email": "E-Mail",
+      "airtable": "Airtable-Synchronisierung",
+      "platform": "Plattform",
+      "gdpr": "DSGVO"
+    },
+    "nodeDetails": "Knotendetails",
+    "closeDetails": "Details schließen"
+  }
+}

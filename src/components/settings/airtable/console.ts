@@ -1,3 +1,4 @@
+import type { TFunction } from "i18next";
 import type { SyncLogSummary, UnresolvedRecord } from "@/data/airtableSync";
 import type { AirtableSettings } from "@/data/airtableSettings";
 import type { AirtableFieldMap } from "@/data/airtableMapping";
@@ -40,14 +41,14 @@ export function runClock(iso: string | null): string {
 }
 
 /** Map a raw sync-log status to a display badge. */
-export function statusBadge(status: string): { label: string; tone: StatusTone } {
+export function statusBadge(status: string, t: TFunction): { label: string; tone: StatusTone } {
   switch (status) {
     case "success":
-      return { label: "ok", tone: "green" };
+      return { label: t("console.badge.ok"), tone: "green" };
     case "partial":
-      return { label: "partial", tone: "amber" };
+      return { label: t("console.badge.partial"), tone: "amber" };
     case "error":
-      return { label: "failed", tone: "red" };
+      return { label: t("console.badge.failed"), tone: "red" };
     default:
       return { label: status, tone: "amber" };
   }
@@ -67,30 +68,45 @@ export function deriveMode(a: {
 }
 
 /** The headline status card copy for a given mode. */
-export function deriveStatus(latest: SyncLogSummary | null, mode: ConsoleMode): StatusView {
+export function deriveStatus(
+  latest: SyncLogSummary | null,
+  mode: ConsoleMode,
+  t: TFunction,
+): StatusView {
   if (mode === "error") {
     return {
       tone: "red",
-      headline: "Sync is failing",
+      headline: t("console.status.errorHeadline"),
       line: latest?.error_details
-        ? `The last run failed. ${latest.error_details}`
-        : "The last run failed. Airtable rejected the request.",
+        ? t("console.status.errorLineWithDetails", { details: latest.error_details })
+        : t("console.status.errorLineGeneric"),
     };
   }
   if (mode === "healthy") {
     return {
       tone: "green",
-      headline: "Syncing normally",
+      headline: t("console.status.healthyHeadline"),
       line: latest
-        ? `Last run ${runClock(latest.synced_at)} brought in ${latest.imported_count ?? 0} dates: ${latest.new_count ?? 0} new, ${latest.updated_count ?? 0} updated. Every record resolved.`
-        : "Not synced yet. The next run will bring in dates.",
+        ? t("console.status.healthyLineWithRun", {
+            clock: runClock(latest.synced_at),
+            imported: latest.imported_count ?? 0,
+            newCount: latest.new_count ?? 0,
+            updated: latest.updated_count ?? 0,
+          })
+        : t("console.status.healthyLineNoRun"),
     };
   }
   const held = latest?.held_count ?? 0;
   return {
     tone: "amber",
-    headline: `Syncing, ${held} ${held === 1 ? "record" : "records"} held`,
-    line: `Last run ${runClock(latest?.synced_at ?? null)} brought in ${latest?.imported_count ?? 0} dates: ${latest?.new_count ?? 0} new, ${latest?.updated_count ?? 0} updated. ${held} ${held === 1 ? "record" : "records"} could not resolve and are waiting on a catalog link.`,
+    headline: t("console.status.liveHeadline", { count: held }),
+    line: t("console.status.liveLine", {
+      count: held,
+      clock: runClock(latest?.synced_at ?? null),
+      imported: latest?.imported_count ?? 0,
+      newCount: latest?.new_count ?? 0,
+      updated: latest?.updated_count ?? 0,
+    }),
   };
 }
 
@@ -99,44 +115,63 @@ export function deriveKpis(
   latest: SyncLogSummary | null,
   settings: AirtableSettings,
   recent: SyncLogSummary[] = [],
+  t: TFunction,
 ): Kpi[] {
   if (latest?.status === "error") {
     return [
-      { label: "Last run", value: runClock(latest.synced_at), sub: "failed", tone: "red" },
       {
-        label: "Last clean run",
+        label: t("console.kpis.lastRun"),
+        value: runClock(latest.synced_at),
+        sub: t("console.kpis.failed"),
+        tone: "red",
+      },
+      {
+        label: t("console.kpis.lastCleanRun"),
         value: runClock(recent.find((r) => r.status === "success")?.synced_at ?? null),
         sub: "",
         tone: "default",
       },
-      { label: "Dates in", value: "0", sub: "since last run", tone: "default" },
-      { label: "Held", value: String(latest.held_count ?? 0), sub: "", tone: "default" },
+      {
+        label: t("console.kpis.datesIn"),
+        value: "0",
+        sub: t("console.kpis.sinceLastRun"),
+        tone: "default",
+      },
+      { label: t("console.kpis.held"), value: String(latest.held_count ?? 0), sub: "", tone: "default" },
     ];
   }
 
   const held = latest?.held_count ?? 0;
   return [
-    { label: "Last run", value: runClock(latest?.synced_at ?? null), sub: "today", tone: "default" },
     {
-      label: "Next run",
+      label: t("console.kpis.lastRun"),
+      value: runClock(latest?.synced_at ?? null),
+      sub: t("console.kpis.today"),
+      tone: "default",
+    },
+    {
+      label: t("console.kpis.nextRun"),
       value: runClock(
         latest?.synced_at
           ? (nextSyncAt(latest.synced_at, settings.airtable_poll_interval_minutes)?.toISOString() ?? null)
           : null,
       ),
-      sub: `every ${formatInterval(settings.airtable_poll_interval_minutes)}`,
+      sub: t("console.kpis.everyInterval", { interval: formatInterval(settings.airtable_poll_interval_minutes) }),
       tone: "default",
     },
     {
-      label: "Dates in",
+      label: t("console.kpis.datesIn"),
       value: String(latest?.imported_count ?? 0),
-      sub: `${latest?.new_count ?? 0} new · ${latest?.updated_count ?? 0} updated`,
+      sub: t("console.kpis.newUpdated", {
+        newCount: latest?.new_count ?? 0,
+        updated: latest?.updated_count ?? 0,
+      }),
       tone: "default",
     },
     {
-      label: "Held",
+      label: t("console.kpis.held"),
       value: String(held),
-      sub: held > 0 ? "waiting on a link" : "all resolved",
+      sub: held > 0 ? t("console.kpis.waitingOnLink") : t("console.kpis.allResolved"),
       tone: held > 0 ? "amber" : "green",
     },
   ];
@@ -167,7 +202,7 @@ export function parseHeldReason(
 /** Group held records into per-cause buckets, ordered program, city, date, then a catch-all
  *  "unrecognized" bucket so a reason string the poll adds later still surfaces (never silently
  *  dropped, which would leave a nonzero Held KPI with no visible explanation). */
-export function groupHeldCauses(held: UnresolvedRecord[]): HeldCause[] {
+export function groupHeldCauses(held: UnresolvedRecord[], t: TFunction): HeldCause[] {
   const buckets = new Map<HeldCategory, CauseAccumulator>();
 
   for (const rec of held) {
@@ -202,19 +237,19 @@ export function groupHeldCauses(held: UnresolvedRecord[]): HeldCause[] {
     const optionCount = category === "unlinked_program" || category === "unlinked_city" ? acc.options.size : 0;
     let title: string;
     if (category === "unlinked_program") {
-      title = `${optionCount} program ${optionCount === 1 ? "option has" : "options have"} no catalog show`;
+      title = t("console.causes.programTitle", { count: optionCount });
     } else if (category === "unlinked_city") {
-      title = `${optionCount} city ${optionCount === 1 ? "option has" : "options have"} no catalog city`;
+      title = t("console.causes.cityTitle", { count: optionCount });
     } else if (category === "missing_date") {
-      title = `${recordCount} ${recordCount === 1 ? "record has" : "records have"} an empty date cell`;
+      title = t("console.causes.missingDateTitle", { count: recordCount });
     } else {
-      title = `${recordCount} ${recordCount === 1 ? "record is" : "records are"} held for an unrecognized reason`;
+      title = t("console.causes.unrecognizedTitle", { count: recordCount });
     }
     causes.push({
       category,
       icon: icons[category],
       title,
-      detail: `holding ${recordCount} ${recordCount === 1 ? "record" : "records"}`,
+      detail: t("console.causes.detail", { count: recordCount }),
       optionCount,
       recordCount,
       records: acc.records,

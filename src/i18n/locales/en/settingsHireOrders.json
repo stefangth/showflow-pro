@@ -1,1 +1,173 @@
-{}
+{
+  "hireOrdersTab": {
+    "keyLabels": {
+      "letterhead": "Letterhead",
+      "terms": "Terms",
+      "numbering": "Numbering",
+      "orderDefaults": "Order defaults",
+      "countersign": "Countersign mode",
+      "copy": "PDF copy",
+      "theme": "PDF template"
+    },
+    "entryUpdated": "{{label}} updated",
+    "rail": {
+      "aboutTitle": "About this tab",
+      "aboutBody": "Each card saves independently. Changes apply to the next hire order generated for this organization, not to documents already issued.",
+      "historyTitle": "Change history",
+      "historyError": "Could not load change history.",
+      "historyEmpty": "No changes recorded yet.",
+      "systemActor": "System"
+    },
+    "disabled": "Hire orders are not enabled for this organization. Contact your ShowFlow administrator to enable the module."
+  },
+  "countersignCard": {
+    "title": "Countersign mode",
+    "description": "How the artist's signature is captured once a hire order is issued.",
+    "save": "Save countersign mode",
+    "saved": "Countersign mode saved",
+    "loadError": "Could not load the countersign settings."
+  },
+  "letterheadCard": {
+    "title": "Letterhead",
+    "description": "Appears at the top of every hire order PDF alongside the Hiring party block.",
+    "saved": "Letterhead saved",
+    "loadError": "Could not load the letterhead settings.",
+    "pngOnly": "Please choose a PNG image",
+    "signatureUploaded": "Signature uploaded. Save the letterhead to apply.",
+    "agentName": "Agent name (optional)",
+    "agentEmail": "Agent email (optional)",
+    "agentSignature": "Agent signature (optional)",
+    "agentSignatureHelp": "A PNG of the booking agent's signature, drawn on the producer line of issued hire orders. Save the letterhead to apply.",
+    "signaturePreviewAlt": "Agent signature preview",
+    "signatureOnFile": "Signature on file",
+    "remove": "Remove",
+    "uploadAria": "Upload agent signature PNG",
+    "replaceSignature": "Replace signature",
+    "uploadPng": "Upload PNG",
+    "save": "Save letterhead"
+  },
+  "numberingCard": {
+    "title": "Numbering",
+    "description": "Controls the order number stamped on every hire order. Supported tokens: {prefix}, {yyyy}, {mm}, {dd}, {mmdd}, {seq}, {cast}, {cast|seq}.",
+    "saved": "Numbering saved",
+    "loadError": "Could not load the numbering settings.",
+    "prefix": "Prefix",
+    "pattern": "Pattern",
+    "preview": "Preview: {{preview}}",
+    "save": "Save numbering"
+  },
+  "orderDefaultsCard": {
+    "title": "Order defaults",
+    "description": "Prefills a new hire order's fee, basis, and currency. A per-date fee is multiplied by the number of engagement dates on the order. A producer can always adjust it per order.",
+    "saved": "Order defaults saved",
+    "loadError": "Could not load the order defaults.",
+    "defaultFee": "Default fee",
+    "noDefault": "No default",
+    "currency": "Currency",
+    "feeBasis": "Fee basis",
+    "perDate": "Per date",
+    "totalAllDates": "Total for all dates",
+    "save": "Save defaults"
+  },
+  "pdfTemplateCard": {
+    "title": "PDF template",
+    "description": "Wording, fonts, sizes, and colours for the hire order PDF. Edit any element and see the document update as you type. Changes apply to the next order issued, not to documents already issued.",
+    "loadError": "Could not load the PDF template settings.",
+    "summary": "{{family}} at {{percent}}%, {{customised}}",
+    "customisedNone": "no customised elements",
+    "customisedCount_one": "{{count}} customised element",
+    "customisedCount_other": "{{count}} customised elements",
+    "openEditor": "Open template editor"
+  },
+  "termsVariantsCard": {
+    "title": "Terms",
+    "description": "Templates of clauses printed on the hire order PDF. A hire order picks one template when it is issued, and one template is marked as the default. ShowFlow ships no default clauses, so your organization authors its own.",
+    "saved": "Terms saved",
+    "loadError": "Could not load the terms settings.",
+    "clausesHeading": "Clauses",
+    "addClause": "Add clause",
+    "noClauses": "No clauses yet. Add the clauses your organization wants printed on a \"{{label}}\" hire order before issuing one.",
+    "clauseTitlePlaceholder": "Clause title",
+    "clauseTitleAria": "{{label}} clause {{index}} title",
+    "removeClause": "Remove clause",
+    "removeClauseAria": "Remove {{label}} clause {{index}}",
+    "clauseBodyPlaceholder": "Clause text",
+    "clauseBodyAria": "{{label}} clause {{index}} body",
+    "startFromTemplate": "Start from a template",
+    "startFromTemplateHelp": "Add a ready-made template to this organization. You own the copy, so editing it here changes nothing for anyone else.",
+    "addToOrg": "Add to this organization",
+    "noTemplates": "No templates yet. Add one to start authoring terms.",
+    "templateFallbackName": "Template {{index}}",
+    "templateNameAria": "Template {{index}} name",
+    "templateNamePlaceholder": "Template name",
+    "default": "Default",
+    "deleteTemplate": "Delete {{label}}",
+    "addTemplate": "Add template",
+    "save": "Save terms"
+  },
+  "countersignFields": {
+    "electronicTitle": "Artist signs in ShowFlow",
+    "electronicBody": "The artist reviews and signs the issued order in the app. Signature, timestamp and IP are stored with it.",
+    "manualTitle": "Signatures handled outside ShowFlow",
+    "manualBody": "A producer marks the order countersigned once the artist has signed elsewhere.",
+    "emailProducersTitle": "Also email producers the signed copy",
+    "emailProducersBody": "When the artist signs, email the assigned producers a copy. Producers are notified in-app either way."
+  },
+  "letterheadFields": {
+    "legalName": "Legal name",
+    "legalNamePlaceholder": "Aurora Productions GmbH",
+    "address": "Address",
+    "addressPlaceholder": "Street and number\nPostal code and city\nCountry",
+    "addressHelp": "One line per row.",
+    "registrationLine": "Registration line",
+    "registrationLinePlaceholder": "Registered at Amtsgericht Berlin, HRB 123456"
+  },
+  "termsLibraryPicker": {
+    "empty": "No templates in the library yet. You can author your own clauses instead.",
+    "alreadyAdded": "Already added",
+    "clauseCount_one": "{{count}} clause",
+    "clauseCount_other": "{{count}} clauses"
+  },
+  "templateDocumentPane": {
+    "renderError": "Could not render the preview.",
+    "updating": "Updating",
+    "ariaLabel": "Document preview",
+    "iframeTitle": "Hire order preview"
+  },
+  "templateEditorPage": {
+    "saved": "PDF template saved",
+    "loadError": "Could not load the PDF template settings.",
+    "title": "PDF template",
+    "settings": "Settings",
+    "openExactPdf": "Open exact PDF",
+    "resetAll": "Reset all",
+    "save": "Save template"
+  },
+  "templateInspector": {
+    "colors": {
+      "text": "Text",
+      "muted": "Muted text",
+      "faint": "Faint text",
+      "accent": "Accent",
+      "line": "Rules and borders",
+      "feeCell": "Fee cell background",
+      "surface2": "Total row background"
+    },
+    "margins": {
+      "marginX": "Left and right",
+      "marginTop": "Top",
+      "marginBottom": "Bottom"
+    },
+    "documentTitle": "Document",
+    "bodyFont": "Body font",
+    "numericFont": "Numeric font",
+    "textSize": "Text size",
+    "textSizeDescription": "Scales every element together, so the type hierarchy is preserved. {{percent}}%",
+    "pageMargins": "Page margins",
+    "elementSettingsAria": "Element settings",
+    "textSectionHeading": "Text"
+  },
+  "templateOutline": {
+    "documentLabel": "Document"
+  }
+}

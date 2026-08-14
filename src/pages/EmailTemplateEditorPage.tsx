@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -10,7 +11,7 @@ import {
   EmailTemplateInspector,
 } from "@/components/settings/emailTemplates/EmailTemplateInspector";
 import {
-  EMAIL_EDITOR_SECTIONS,
+  buildEmailEditorSections,
   emailCopyFieldsForRole,
   type EmailEditorSelection,
 } from "@/components/settings/emailTemplates/emailEditorMeta";
@@ -49,6 +50,7 @@ const EMPTY_COPY: Partial<Record<EmailCopyKey, string>> = {};
 const EMPTY_THEME: EmailThemeOverride = {};
 
 function EmailTemplateEditorWorkspace({ template, orgId, readOnly }: WorkspaceProps) {
+  const { t } = useTranslation("settingsEmailTemplates");
   const queryClient = useQueryClient();
   const settingsQuery = useQuery({
     queryKey: ["app-settings", "email-templates", orgId],
@@ -83,16 +85,20 @@ function EmailTemplateEditorWorkspace({ template, orgId, readOnly }: WorkspacePr
 
   const save = useMutation({
     mutationFn: async () => {
-      if (!orgId) throw new Error("No active organization");
+      if (!orgId) throw new Error(t("emailTemplateEditorPage.noActiveOrg"));
       await upsertOrgSetting(supabase, orgId, "email_copy", compactEmailCopy(copyDraft) as unknown as Json);
       await upsertOrgSetting(supabase, orgId, "email_theme", compactEmailTheme(themeDraft) as unknown as Json);
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["app-settings"] });
-      toast.success("Email template saved");
+      toast.success(t("emailTemplateEditorPage.saveSuccess"));
     },
     onError: (error: Error) => toast.error(error.message),
   });
+
+  // Translated once per language change, not per render (EMAIL_EDITOR_SECTIONS used to be
+  // a static English constant; now it must be rebuilt whenever `t` resolves a new language).
+  const editorSections = useMemo(() => buildEmailEditorSections(t), [t]);
 
   const previewInput = useMemo(() => ({
     templateKey: template.templateKey,
@@ -109,7 +115,9 @@ function EmailTemplateEditorWorkspace({ template, orgId, readOnly }: WorkspacePr
     return (
       <Alert variant="destructive">
         <AlertDescription>
-          Could not load the email template settings. {settingsQuery.error instanceof Error ? settingsQuery.error.message : "Please try again."}
+          {t("emailTemplateEditorPage.loadError", {
+            message: settingsQuery.error instanceof Error ? settingsQuery.error.message : t("emailTemplateEditorPage.loadErrorFallback"),
+          })}
         </AlertDescription>
       </Alert>
     );
@@ -120,7 +128,7 @@ function EmailTemplateEditorWorkspace({ template, orgId, readOnly }: WorkspacePr
       title={template.label}
       breadcrumb={
         <Button asChild variant="ghost" size="sm">
-          <Link to={ROUTES.SETTINGS}>Email templates</Link>
+          <Link to={ROUTES.SETTINGS}>{t("emailTemplateEditorPage.breadcrumb")}</Link>
         </Button>
       }
       actions={
@@ -142,17 +150,17 @@ function EmailTemplateEditorWorkspace({ template, orgId, readOnly }: WorkspacePr
               setThemeDraft({});
             }}
           >
-            Reset all
+            {t("emailTemplateEditorPage.resetAll")}
           </Button>
           <Button type="button" size="sm" disabled={readOnly || save.isPending || !orgId} onClick={() => save.mutate()}>
-            Save template
+            {t("emailTemplateEditorPage.saveTemplate")}
           </Button>
         </>
       }
       outline={
         <TemplateOutline<EmailEditorSelection, EmailCopyKey>
-          document={{ key: "document", label: "Document" }}
-          sections={EMAIL_EDITOR_SECTIONS}
+          document={{ key: "document", label: t("emailTemplateEditorPage.documentLabel") }}
+          sections={editorSections}
           selected={selected}
           onSelect={setSelected}
           isModified={(key) => {
@@ -165,8 +173,8 @@ function EmailTemplateEditorWorkspace({ template, orgId, readOnly }: WorkspacePr
       preview={
         variants ? (
           <div className="flex h-full flex-col">
-            <div role="group" aria-label="Preview as" className="flex flex-wrap items-center gap-1 border-b border-border bg-background px-3 py-2">
-              <span className="mr-1 text-xs text-muted-foreground">Preview as</span>
+            <div role="group" aria-label={t("emailTemplateEditorPage.previewAsGroup")} className="flex flex-wrap items-center gap-1 border-b border-border bg-background px-3 py-2">
+              <span className="mr-1 text-xs text-muted-foreground">{t("emailTemplateEditorPage.previewAsLabel")}</span>
               {variants.map((variant, index) => (
                 <Button
                   key={variant.label}
@@ -204,6 +212,7 @@ function EmailTemplateEditorWorkspace({ template, orgId, readOnly }: WorkspacePr
 }
 
 export default function EmailTemplateEditorPage({ readOnly: readOnlyProp }: { readOnly?: boolean } = {}) {
+  const { t } = useTranslation("settingsEmailTemplates");
   const { templateKey } = useParams<{ templateKey: string }>();
   const { currentOrg } = useAuth();
   const canEdit = useCan("edit_email_templates");
@@ -212,7 +221,7 @@ export default function EmailTemplateEditorPage({ readOnly: readOnlyProp }: { re
   if (!template) {
     return (
       <Alert variant="destructive">
-        <AlertDescription>This email template cannot be edited.</AlertDescription>
+        <AlertDescription>{t("emailTemplateEditorPage.cannotEdit")}</AlertDescription>
       </Alert>
     );
   }

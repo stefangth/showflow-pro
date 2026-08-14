@@ -1,5 +1,6 @@
 import { useRef, useState, type ChangeEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { resolveOrgSetting, upsertOrgSetting } from "@/data/settings";
@@ -31,6 +32,7 @@ export interface Letterhead {
 }
 
 export function LetterheadCard({ orgId, readOnly = false }: { orgId: string | null; readOnly?: boolean }) {
+  const { t } = useTranslation("settingsHireOrders");
   const qc = useQueryClient();
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["app-settings", "hire_order_letterhead", orgId],
@@ -56,7 +58,7 @@ export function LetterheadCard({ orgId, readOnly = false }: { orgId: string | nu
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["app-settings"] });
-      toast.success("Letterhead saved");
+      toast.success(t("letterheadCard.saved"));
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -70,7 +72,7 @@ export function LetterheadCard({ orgId, readOnly = false }: { orgId: string | nu
     onSuccess: ({ path, url }) => {
       setForm((f) => ({ ...f, agent_signature_path: path }));
       setSignaturePreviewUrl(url);
-      toast.success("Signature uploaded. Save the letterhead to apply.");
+      toast.success(t("letterheadCard.signatureUploaded"));
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -79,14 +81,14 @@ export function LetterheadCard({ orgId, readOnly = false }: { orgId: string | nu
     e.target.value = ""; // allow re-picking the same file
     if (!file) return;
     if (file.type !== "image/png") {
-      toast.error("Please choose a PNG image");
+      toast.error(t("letterheadCard.pngOnly"));
       return;
     }
     const reader = new FileReader();
     reader.onload = () => {
       const dataUrl = typeof reader.result === "string" ? reader.result : "";
       if (dataUrl.startsWith("data:image/png;base64,")) uploadSig.mutate(dataUrl);
-      else toast.error("Please choose a PNG image");
+      else toast.error(t("letterheadCard.pngOnly"));
     };
     reader.readAsDataURL(file);
   }
@@ -119,7 +121,7 @@ export function LetterheadCard({ orgId, readOnly = false }: { orgId: string | nu
   if (isError) {
     return (
       <Alert variant="destructive">
-        <AlertDescription>Could not load the letterhead settings. {(error as Error).message}</AlertDescription>
+        <AlertDescription>{t("letterheadCard.loadError")} {(error as Error).message}</AlertDescription>
       </Alert>
     );
   }
@@ -127,9 +129,9 @@ export function LetterheadCard({ orgId, readOnly = false }: { orgId: string | nu
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="font-display">Letterhead</CardTitle>
+        <CardTitle className="font-display">{t("letterheadCard.title")}</CardTitle>
         <CardDescription>
-          Appears at the top of every hire order PDF alongside the Hiring party block.
+          {t("letterheadCard.description")}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -142,7 +144,7 @@ export function LetterheadCard({ orgId, readOnly = false }: { orgId: string | nu
         >
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <Label htmlFor="ho-agent-name">Agent name (optional)</Label>
+              <Label htmlFor="ho-agent-name">{t("letterheadCard.agentName")}</Label>
               <Input
                 id="ho-agent-name"
                 value={form.agent_name ?? ""}
@@ -151,7 +153,7 @@ export function LetterheadCard({ orgId, readOnly = false }: { orgId: string | nu
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="ho-agent-email">Agent email (optional)</Label>
+              <Label htmlFor="ho-agent-email">{t("letterheadCard.agentEmail")}</Label>
               <Input
                 id="ho-agent-email"
                 type="email"
@@ -162,24 +164,24 @@ export function LetterheadCard({ orgId, readOnly = false }: { orgId: string | nu
             </div>
           </div>
           <div className="space-y-2">
-            <Label>Agent signature (optional)</Label>
+            <Label>{t("letterheadCard.agentSignature")}</Label>
             <p className="text-xs text-muted-foreground">
-              A PNG of the booking agent's signature, drawn on the producer line of issued hire orders. Save the letterhead to apply.
+              {t("letterheadCard.agentSignatureHelp")}
             </p>
             {hasSignature && (
               <div className="flex items-center gap-3 rounded-md border border-border p-2 w-fit">
                 {previewUrl ? (
                   <img
                     src={previewUrl}
-                    alt="Agent signature preview"
+                    alt={t("letterheadCard.signaturePreviewAlt")}
                     className="h-12 w-auto max-w-[200px] object-contain"
                   />
                 ) : (
-                  <span className="text-sm text-muted-foreground">Signature on file</span>
+                  <span className="text-sm text-muted-foreground">{t("letterheadCard.signatureOnFile")}</span>
                 )}
                 {!readOnly && (
                   <Button type="button" variant="ghost" size="sm" onClick={removeSignature}>
-                    Remove
+                    {t("letterheadCard.remove")}
                   </Button>
                 )}
               </div>
@@ -192,7 +194,7 @@ export function LetterheadCard({ orgId, readOnly = false }: { orgId: string | nu
                   accept="image/png"
                   className="hidden"
                   onChange={onPickSignatureFile}
-                  aria-label="Upload agent signature PNG"
+                  aria-label={t("letterheadCard.uploadAria")}
                 />
                 <Button
                   type="button"
@@ -201,14 +203,14 @@ export function LetterheadCard({ orgId, readOnly = false }: { orgId: string | nu
                   disabled={uploadSig.isPending || !orgId}
                   onClick={() => fileRef.current?.click()}
                 >
-                  {hasSignature ? "Replace signature" : "Upload PNG"}
+                  {hasSignature ? t("letterheadCard.replaceSignature") : t("letterheadCard.uploadPng")}
                 </Button>
               </>
             )}
           </div>
         </LetterheadFields>
         <Button onClick={() => save.mutate()} disabled={readOnly || save.isPending || !orgId}>
-          Save letterhead
+          {t("letterheadCard.save")}
         </Button>
       </CardContent>
     </Card>

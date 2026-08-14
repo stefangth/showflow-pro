@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { HIRE_ORDER_COPY_DEFAULTS, type CopyKey, type HireOrderCopy } from "@/lib/hireOrders/pdf/pdfCopy";
 import {
@@ -28,27 +29,28 @@ const COPY_FIELDS: Record<CopyKey, CopyField> = Object.fromEntries(
   COPY_SECTIONS.flatMap((section) => section.fields.map((field) => [field.key, field] as const)),
 ) as Record<CopyKey, CopyField>;
 const COLOR_KEYS: ThemeColorKey[] = ["text", "muted", "faint", "accent", "line", "feeCell", "surface2"];
-const COLOR_LABELS: Record<ThemeColorKey, string> = {
-  text: "Text",
-  muted: "Muted text",
-  faint: "Faint text",
-  accent: "Accent",
-  line: "Rules and borders",
-  feeCell: "Fee cell background",
-  surface2: "Total row background",
-};
-const COLOR_FIELDS = COLOR_KEYS.map((key) => ({ key, label: COLOR_LABELS[key] }));
 const MARGIN_KEYS = ["marginX", "marginTop", "marginBottom"] as const;
-const MARGIN_LABELS: Record<(typeof MARGIN_KEYS)[number], string> = {
-  marginX: "Left and right",
-  marginTop: "Top",
-  marginBottom: "Bottom",
-};
 
 /** PDF-only wiring for the shared copy, role, and document-base controls. */
 export function TemplateInspector({ selected, readOnly, copyDraft, themeDraft, onCopyChange, onThemeChange }: TemplateInspectorProps) {
+  const { t } = useTranslation("settingsHireOrders");
   const fonts = selectableFontFamilies();
   const setBase = (patch: Partial<NonNullable<HireOrderThemeOverride["base"]>>) => onThemeChange({ ...themeDraft, base: { ...themeDraft.base, ...patch } });
+  const COLOR_LABELS: Record<ThemeColorKey, string> = {
+    text: t("templateInspector.colors.text"),
+    muted: t("templateInspector.colors.muted"),
+    faint: t("templateInspector.colors.faint"),
+    accent: t("templateInspector.colors.accent"),
+    line: t("templateInspector.colors.line"),
+    feeCell: t("templateInspector.colors.feeCell"),
+    surface2: t("templateInspector.colors.surface2"),
+  };
+  const COLOR_FIELDS = COLOR_KEYS.map((key) => ({ key, label: COLOR_LABELS[key] }));
+  const MARGIN_LABELS: Record<(typeof MARGIN_KEYS)[number], string> = {
+    marginX: t("templateInspector.margins.marginX"),
+    marginTop: t("templateInspector.margins.marginTop"),
+    marginBottom: t("templateInspector.margins.marginBottom"),
+  };
 
   if (selected === "document") {
     const base = { ...HIRE_ORDER_THEME_DEFAULTS.base, ...themeDraft.base };
@@ -56,13 +58,13 @@ export function TemplateInspector({ selected, readOnly, copyDraft, themeDraft, o
     const page = { ...HIRE_ORDER_THEME_DEFAULTS.base.page, ...themeDraft.base?.page };
     return (
       <DocumentBaseControls
-        title="Document"
+        title={t("templateInspector.documentTitle")}
         base={base}
         baseModified={hasOwnKeys(themeDraft.base)}
         fonts={fonts}
         fontFields={[
-          { key: "fontFamily", label: "Body font", allowedKinds: ["sans", "serif"] },
-          { key: "monoFamily", label: "Numeric font", allowedKinds: ["mono"] },
+          { key: "fontFamily", label: t("templateInspector.bodyFont"), allowedKinds: ["sans", "serif"] },
+          { key: "monoFamily", label: t("templateInspector.numericFont"), allowedKinds: ["mono"] },
         ]}
         colors={COLOR_FIELDS}
         colorValues={colors}
@@ -71,17 +73,17 @@ export function TemplateInspector({ selected, readOnly, copyDraft, themeDraft, o
         themeDraft={themeDraft}
         readOnly={readOnly}
         scaleField={{
-          label: "Text size",
+          label: t("templateInspector.textSize"),
           value: base.scale,
           min: 0.75,
           max: 1.5,
           step: 0.05,
-          description: `Scales every element together, so the type hierarchy is preserved. ${Math.round(base.scale * 100)}%`,
+          description: t("templateInspector.textSizeDescription", { percent: Math.round(base.scale * 100) }),
           onChange: (scale) => setBase({ scale }),
         }}
         onColorChange={(key, value) => setBase({ colors: { ...themeDraft.base?.colors, [key]: value } })}
         fieldGroups={[{
-          label: "Page margins",
+          label: t("templateInspector.pageMargins"),
           fields: MARGIN_KEYS.map((key) => ({
             kind: "number" as const,
             key,
@@ -97,16 +99,16 @@ export function TemplateInspector({ selected, readOnly, copyDraft, themeDraft, o
   }
 
   const role = ALL_ROLES.find((candidate) => candidate.key === selected);
-  if (!role) return <aside aria-label="Element settings" className="h-full" />;
+  if (!role) return <aside aria-label={t("templateInspector.elementSettingsAria")} className="h-full" />;
 
   return (
-    <aside aria-label="Element settings" className="h-full">
+    <aside aria-label={t("templateInspector.elementSettingsAria")} className="h-full">
       <ScrollArea className="h-full">
         <div className="space-y-5 p-4">
           <h3 className="font-display text-sm">{role.label}</h3>
           {role.copyKeys.length > 0 && (
             <div className="space-y-3">
-              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Text</p>
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("templateInspector.textSectionHeading")}</p>
               {role.copyKeys.map((key) => {
                 const field = COPY_FIELDS[key];
                 return (

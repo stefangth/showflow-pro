@@ -5,6 +5,7 @@
 // links across.
 
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { resolveOrgSetting } from "@/data/settings";
@@ -33,10 +34,9 @@ function hasOwnKeys(value: unknown): boolean {
 }
 
 /** "no customised elements" / "1 customised element" / "N customised elements". */
-function describeCustomisation(count: number): string {
-  if (count === 0) return "no customised elements";
-  if (count === 1) return "1 customised element";
-  return `${count} customised elements`;
+function describeCustomisation(count: number, t: (key: string, opts?: Record<string, unknown>) => string): string {
+  if (count === 0) return t("pdfTemplateCard.customisedNone");
+  return t("pdfTemplateCard.customisedCount", { count });
 }
 
 /** `readOnly` is accepted (not used here — this card's only affordance is a
@@ -44,6 +44,7 @@ function describeCustomisation(count: number): string {
  *  from the `edit_hire_order_settings` capability) purely so the call site
  *  in HireOrdersTab can pass it uniformly across every card in the list. */
 export function PdfTemplateCard({ orgId }: { orgId: string | null; readOnly?: boolean }) {
+  const { t } = useTranslation("settingsHireOrders");
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["app-settings", "hire_order_theme", orgId],
     queryFn: () => resolveOrgSetting<HireOrderThemeOverride>(supabase, orgId, "hire_order_theme", THEME_DEFAULT),
@@ -58,7 +59,7 @@ export function PdfTemplateCard({ orgId }: { orgId: string | null; readOnly?: bo
   if (isError) {
     return (
       <Alert variant="destructive">
-        <AlertDescription>Could not load the PDF template settings. {(error as Error).message}</AlertDescription>
+        <AlertDescription>{t("pdfTemplateCard.loadError")} {(error as Error).message}</AlertDescription>
       </Alert>
     );
   }
@@ -69,19 +70,21 @@ export function PdfTemplateCard({ orgId }: { orgId: string | null; readOnly?: bo
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="font-display">PDF template</CardTitle>
+        <CardTitle className="font-display">{t("pdfTemplateCard.title")}</CardTitle>
         <CardDescription>
-          Wording, fonts, sizes, and colours for the hire order PDF. Edit any element and see the
-          document update as you type. Changes apply to the next order issued, not to documents
-          already issued.
+          {t("pdfTemplateCard.description")}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         <p className="text-sm text-muted-foreground" data-testid="tpl-summary">
-          {family} at {Math.round(theme.base.scale * 100)}%, {describeCustomisation(customised)}
+          {t("pdfTemplateCard.summary", {
+            family,
+            percent: Math.round(theme.base.scale * 100),
+            customised: describeCustomisation(customised, t),
+          })}
         </p>
         <Button asChild>
-          <Link to={ROUTES.HIRE_ORDER_TEMPLATE}>Open template editor</Link>
+          <Link to={ROUTES.HIRE_ORDER_TEMPLATE}>{t("pdfTemplateCard.openEditor")}</Link>
         </Button>
       </CardContent>
     </Card>

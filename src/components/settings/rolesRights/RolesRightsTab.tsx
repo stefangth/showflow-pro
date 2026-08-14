@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -36,13 +37,6 @@ import { EditingPickerCard } from "./EditingPickerCard";
 import { StagedChangesCard, type StagedChange } from "./StagedChangesCard";
 import { ChangeLogDialog } from "./ChangeLogDialog";
 
-const PRESET_OPTIONS: SegmentedControlOption<Preset>[] = [
-  { value: "Restricted", label: "Restricted" },
-  { value: "Standard", label: "Standard" },
-  { value: "Full", label: "Full" },
-  { value: "Custom", label: "Custom" },
-];
-
 const REAL_PRESETS: Preset[] = ["Restricted", "Standard", "Full"];
 
 interface RolesRightsTabProps {
@@ -54,9 +48,17 @@ interface RolesRightsTabProps {
  *  desired state; nothing writes until Apply, which batches every changed key and asks
  *  for one confirmation up front when any changed key is sensitive. */
 export function RolesRightsTab({ orgId }: RolesRightsTabProps) {
+  const { t } = useTranslation("settingsRolesRights");
   const qc = useQueryClient();
   const { cells, isLoading } = useCapabilityMatrix(orgId);
   const hireOrdersEnabled = useFeature("hire_orders");
+
+  const PRESET_OPTIONS: SegmentedControlOption<Preset>[] = [
+    { value: "Restricted", label: t("tab.presets.restricted") },
+    { value: "Standard", label: t("tab.presets.standard") },
+    { value: "Full", label: t("tab.presets.full") },
+    { value: "Custom", label: t("tab.presets.custom") },
+  ];
 
   const [staged, setStaged] = useState<StagedMap>({});
   const [preset, setPreset] = useState<Preset>("Standard");
@@ -134,7 +136,7 @@ export function RolesRightsTab({ orgId }: RolesRightsTabProps) {
   const sensitiveLabels = sensitiveChanged.map((k) => rowByKey.get(k)?.label ?? k);
 
   const diffText = diffSentence(presetDiffRows, presetDiffStaged, selectedPreset);
-  const delta = deltaSentence(visibleRows, staged, "the Production Team");
+  const delta = deltaSentence(visibleRows, staged, t("tab.productionTeamRoleName"));
   const onCount = visibleRows.filter((r) => desiredMap[r.key]).length;
 
   function applyPreset(p: Preset) {
@@ -185,7 +187,7 @@ export function RolesRightsTab({ orgId }: RolesRightsTabProps) {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["capabilities"] });
-      toast.success("Rights updated.");
+      toast.success(t("tab.toastSuccess"));
       setStaged({});
     },
     onError: (e: Error) => toast.error(e.message),
@@ -208,10 +210,10 @@ export function RolesRightsTab({ orgId }: RolesRightsTabProps) {
     visibleRows.map((r) => ({ ...r, changed: changedSet.has(r.key), desired: desiredMap[r.key] })),
   );
   const filterOptions: SegmentedControlOption<RightsFilter>[] = [
-    { value: "All", label: "All", count: filterCountsResult.All },
-    { value: "Sensitive", label: "Sensitive", count: filterCountsResult.Sensitive },
-    { value: "Changed", label: "Changed", count: filterCountsResult.Changed },
-    { value: "Off", label: "Off", count: filterCountsResult.Off },
+    { value: "All", label: t("tab.filters.all"), count: filterCountsResult.All },
+    { value: "Sensitive", label: t("tab.filters.sensitive"), count: filterCountsResult.Sensitive },
+    { value: "Changed", label: t("tab.filters.changed"), count: filterCountsResult.Changed },
+    { value: "Off", label: t("tab.filters.off"), count: filterCountsResult.Off },
   ];
 
   const filteredRows = visibleRows.filter((row) =>
@@ -227,7 +229,7 @@ export function RolesRightsTab({ orgId }: RolesRightsTabProps) {
     const on = desiredMap[key];
     return {
       label: row?.label ?? key,
-      transition: `${on ? "Off -> On" : "On -> Off"}${row?.risk === "sensitive" ? " · sensitive" : ""}`,
+      transition: `${on ? t("tab.transition.on") : t("tab.transition.off")}${row?.risk === "sensitive" ? t("tab.transition.sensitiveSuffix") : ""}`,
       on,
     };
   });
@@ -237,15 +239,15 @@ export function RolesRightsTab({ orgId }: RolesRightsTabProps) {
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[1.6px] text-muted-foreground">
-            ORGANIZATION · ACCESS
+            {t("tab.eyebrow")}
           </p>
-          <h1 className="mt-1 font-display text-xl font-semibold text-foreground">Roles &amp; rights</h1>
+          <h1 className="mt-1 font-display text-xl font-semibold text-foreground">{t("tab.title")}</h1>
           <p className="mt-1 max-w-xl text-sm text-muted-foreground">
-            Set rights for the whole Production Team. Admins always have every right.
+            {t("tab.description")}
           </p>
         </div>
         <Button type="button" variant="outline" onClick={() => setChangeLogOpen(true)}>
-          Change log
+          {t("tab.changeLogButton")}
         </Button>
       </div>
 
@@ -261,7 +263,7 @@ export function RolesRightsTab({ orgId }: RolesRightsTabProps) {
                 disabled={changed.length === 0}
                 onClick={() => setStaged({})}
               >
-                Reset to baseline
+                {t("tab.resetToBaseline")}
               </Button>
             </div>
             <p className="text-[12.5px] text-muted-foreground">{diffText}</p>
@@ -271,8 +273,8 @@ export function RolesRightsTab({ orgId }: RolesRightsTabProps) {
             <Input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search rights..."
-              aria-label="Search rights"
+              placeholder={t("tab.searchPlaceholder")}
+              aria-label={t("tab.searchAriaLabel")}
               className="max-w-xs"
             />
             <SegmentedControl value={filter} onChange={(v) => setFilter(v)} options={filterOptions} />
@@ -289,7 +291,7 @@ export function RolesRightsTab({ orgId }: RolesRightsTabProps) {
                   <RightGroupCard
                     key={group}
                     group={group}
-                    summary={`${onInGroup} of ${rows.length} on`}
+                    summary={t("tab.groupSummary", { on: onInGroup, total: rows.length })}
                     allOn={allOn}
                     onToggleAll={() => toggleGroup(rows, allOn)}
                   >
@@ -313,7 +315,7 @@ export function RolesRightsTab({ orgId }: RolesRightsTabProps) {
           <EditingPickerCard roleOnCount={`${onCount}/${visibleRows.length}`} />
           <StagedChangesCard
             count={changed.length}
-            scopeLine="Applies to the Production Team default."
+            scopeLine={t("tab.stagedScopeLine")}
             changes={stagedChanges}
             deltaSentence={delta}
             canApply={changed.length > 0}
@@ -328,14 +330,17 @@ export function RolesRightsTab({ orgId }: RolesRightsTabProps) {
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirm sensitive changes</AlertDialogTitle>
+            <AlertDialogTitle>{t("tab.confirmDialog.title")}</AlertDialogTitle>
             <AlertDialogDescription>
-              {`This applies ${changed.length} change${changed.length === 1 ? "" : "s"}, including sensitive rights: ${sensitiveLabels.join(", ")}.`}
+              {t("tab.confirmDialog.description", {
+                count: changed.length,
+                rights: sensitiveLabels.join(", "),
+              })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmApply}>Confirm</AlertDialogAction>
+            <AlertDialogCancel>{t("tab.confirmDialog.cancel")}</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmApply}>{t("tab.confirmDialog.confirm")}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

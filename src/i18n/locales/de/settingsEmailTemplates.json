@@ -1,1 +1,112 @@
-{}
+{
+  "emailTemplatesTab": {
+    "title": "E-Mail-Vorlagen",
+    "helperReadOnly": "Sieh dir jede transaktionale E-Mail als Vorschau an. Deine Rolle kann E-Mail-Texte oder das Branding nicht ändern.",
+    "helperEditable": "Sieh dir jede transaktionale E-Mail als Vorschau an und die Zustelldetails dahinter.",
+    "loading": "Gespeicherte E-Mail-Darstellung wird geladen…",
+    "loadError": "Die gespeicherte E-Mail-Darstellung konnte nicht geladen werden. {{message}}",
+    "loadErrorFallback": "Bitte versuch es erneut.",
+    "retry": "Erneut versuchen",
+    "groups": {
+      "Booking engine": "Buchungs-Engine",
+      "Hire orders": "Engagementverträge",
+      "Accounts & access": "Konten & Zugriff",
+      "System": "System"
+    },
+    "status": {
+      "editable": "Bearbeitbar",
+      "external": "Extern",
+      "automatic": "Automatisch",
+      "internal": "Intern"
+    },
+    "recipientPrefix": "An: {{recipient}}",
+    "previewAction": "Vorschau",
+    "previewAriaLabel": "Vorschau {{name}}",
+    "editAction": "Bearbeiten",
+    "editAriaLabel": "{{name}} bearbeiten",
+    "previewDialog": {
+      "title": "Vorschau: {{title}}",
+      "description": "Gerendert mit dem gespeicherten E-Mail-Text und Theme dieser Organisation.",
+      "rendering": "Vorschau wird gerendert…",
+      "iframeTitle": "E-Mail-Vorschau"
+    },
+    "previewFailed": "Vorschau fehlgeschlagen: {{message}}",
+    "unknownError": "Unbekannter Fehler",
+    "noPreviewAvailable": "Keine Vorschau verfügbar."
+  },
+  "emailPreviewPane": {
+    "ariaLabel": "E-Mail-Vorschau",
+    "loadError": "Die Vorschau konnte nicht gerendert werden. {{message}}",
+    "updating": "Wird aktualisiert",
+    "iframeTitle": "Vorschau der E-Mail-Vorlage"
+  },
+  "emailTemplateInspector": {
+    "elementSettings": "Elementeinstellungen",
+    "documentTitle": "Dokument",
+    "text": "Text",
+    "appliesToAllEmails": "Gilt für alle E-Mails.",
+    "emailDefaults": "E-Mail-Standardwerte",
+    "buttonRadius": "Button-Radius",
+    "footerText": "Fußzeilentext",
+    "emailBaseFont": "E-Mail-Basisschrift",
+    "roleFonts": {
+      "body": "Fließtext-Schrift",
+      "heading": "Überschriften-Schrift"
+    },
+    "baseFonts": {
+      "geist": "Geist mit System-Fallback",
+      "system": "System-Sans-Serif"
+    },
+    "colorLabels": {
+      "heroText": "Hero-Text",
+      "heroSub": "Hero-Untertext",
+      "bodyText": "Fließtext",
+      "muted": "Gedämpfter Text",
+      "faint": "Blasser Text",
+      "accent": "Akzent",
+      "line": "Linien und Rahmen",
+      "tileBg": "Hintergrund der Datenkachel",
+      "buttonBg": "Button-Hintergrund",
+      "buttonText": "Button-Text",
+      "cardBg": "Karten-Hintergrund",
+      "pageBg": "Seiten-Hintergrund"
+    },
+    "weightOptions": {
+      "regular": "Regulär",
+      "medium": "Medium",
+      "semibold": "Semibold",
+      "bold": "Fett"
+    },
+    "roleLabels": {
+      "header": "Header",
+      "heading": "Überschrift",
+      "subheading": "Unterüberschrift",
+      "body": "Text",
+      "dataLabel": "Datenbeschriftung",
+      "dataValue": "Datenwert",
+      "button": "Button",
+      "footer": "Footer"
+    }
+  },
+  "emailEditorMeta": {
+    "sections": {
+      "header": "Header",
+      "content": "Inhalt",
+      "action": "Aktion",
+      "footer": "Footer"
+    }
+  },
+  "emailTemplateEditorPage": {
+    "cannotEdit": "Diese E-Mail-Vorlage kann nicht bearbeitet werden.",
+    "loadError": "Die Einstellungen der E-Mail-Vorlage konnten nicht geladen werden. {{message}}",
+    "loadErrorFallback": "Bitte versuch es erneut.",
+    "breadcrumb": "E-Mail-Vorlagen",
+    "documentLabel": "Dokument",
+    "resetAll": "Alles zurücksetzen",
+    "saveTemplate": "Vorlage speichern",
+    "saveSuccess": "E-Mail-Vorlage gespeichert",
+    "noActiveOrg": "Keine aktive Organisation",
+    "previewAsGroup": "Vorschau als",
+    "previewAsLabel": "Vorschau als"
+  }
+}

@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -49,6 +50,7 @@ export function FlowRail(props: {
   locked?: boolean;
 }) {
   const { flow, times, dirtyCount, saving, onSave, onDiscard, audit, isLoading, isError, locked = false } = props;
+  const { t } = useTranslation("settingsBookingFlow");
   return (
     <div className="flex flex-col gap-3 lg:sticky lg:top-4">
       {/* When locked, the rail offers no Save/Discard (see below), so a dirty count here
@@ -57,10 +59,10 @@ export function FlowRail(props: {
           instead. The page-level banner carries that messaging. */}
       {!locked && dirtyCount > 0 && (
         <div className="rounded-lg bg-[var(--amber-100)] px-3 py-2 text-xs font-medium text-[var(--amber-600)]">
-          Previewing unsaved draft · {dirtyCount} {dirtyCount === 1 ? "change" : "changes"}
+          {t("flowRail.unsavedDraft", { count: dirtyCount })}
         </div>
       )}
-      <RailCard label="Resulting lifecycle">
+      <RailCard label={t("flowRail.resultingLifecycle")}>
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
           {lifecycleChips(flow).map((c, i) => (
             <span key={c.label} className="inline-flex items-center gap-1.5">
@@ -72,7 +74,7 @@ export function FlowRail(props: {
           ))}
         </div>
       </RailCard>
-      <RailCard label="In practice">
+      <RailCard label={t("flowRail.inPractice")}>
         <div className="mt-2.5 space-y-2">
           {inPracticeRows(flow, times).map((r) => (
             <div key={r.who} className="flex gap-2.5 text-xs">
@@ -84,7 +86,7 @@ export function FlowRail(props: {
           ))}
         </div>
       </RailCard>
-      <RailCard label="Flow preview">
+      <RailCard label={t("flowRail.flowPreview")}>
         <div className="mt-2.5 space-y-1.5">
           {flowPreviewRows(flow, times).map((r, i) => (
             <div key={i} className="flex gap-2.5 text-xs">
@@ -97,16 +99,16 @@ export function FlowRail(props: {
       {!locked && (
         <div className="flex gap-2">
           <Button className="flex-1" disabled={dirtyCount === 0 || saving} onClick={onSave}>
-            {dirtyCount > 0 ? `Save (${dirtyCount})` : "Saved"}
+            {dirtyCount > 0 ? t("flowRail.save", { count: dirtyCount }) : t("flowRail.saved")}
           </Button>
           {dirtyCount > 0 && (
             <Button variant="ghost" onClick={onDiscard}>
-              Discard
+              {t("flowRail.discard")}
             </Button>
           )}
         </div>
       )}
-      <RailCard label="Change history">
+      <RailCard label={t("flowRail.changeHistory")}>
         <div className="mt-1">
           {isLoading ? (
             <div className="mt-1.5 space-y-1.5">
@@ -115,15 +117,15 @@ export function FlowRail(props: {
             </div>
           ) : isError ? (
             <Alert variant="destructive" className="mt-1.5 p-2.5">
-              <AlertDescription className="text-xs">Could not load change history.</AlertDescription>
+              <AlertDescription className="text-xs">{t("flowRail.historyError")}</AlertDescription>
             </Alert>
           ) : (
             <>
-              {audit.length === 0 && <p className="mt-1.5 text-xs text-muted-foreground">No changes recorded yet.</p>}
+              {audit.length === 0 && <p className="mt-1.5 text-xs text-muted-foreground">{t("flowRail.historyEmpty")}</p>}
               {audit.map((e) => (
                 <div key={e.id} className="border-t border-border pt-2 mt-2 first:border-t-0 first:mt-1.5">
                   <p className="font-mono text-[10px] text-muted-foreground">
-                    {formatDateDMY(e.created_at.slice(0, 10))} · {e.actorName ?? "System"}
+                    {formatDateDMY(e.created_at.slice(0, 10))} · {e.actorName ?? t("flowRail.actorSystem")}
                   </p>
                   <p className="mt-0.5 text-xs">{describeAuditEntry(e)}</p>
                 </div>

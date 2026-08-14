@@ -7,6 +7,7 @@
 // slow render started earlier resolving after (and clobbering) a newer one.
 
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Loader2 } from "lucide-react";
 import type { RenderInput } from "@/lib/hireOrders/pdf/docTypes";
 import { renderHireOrderPdf } from "@/lib/hireOrders/pdf/render";
@@ -19,6 +20,7 @@ export interface TemplateDocumentPaneProps {
 }
 
 export function TemplateDocumentPane({ input }: TemplateDocumentPaneProps) {
+  const { t } = useTranslation("settingsHireOrders");
   const [url, setUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -82,19 +84,19 @@ export function TemplateDocumentPane({ input }: TemplateDocumentPaneProps) {
   }, []);
 
   return (
-    <section aria-label="Document preview" className="relative h-full overflow-y-auto bg-muted/30">
+    <section aria-label={t("templateDocumentPane.ariaLabel")} className="relative h-full overflow-y-auto bg-muted/30">
       {error && (
         <Alert variant="destructive" className="m-3">
-          <AlertDescription>Could not render the preview. {error}</AlertDescription>
+          <AlertDescription>{t("templateDocumentPane.renderError")} {error}</AlertDescription>
         </Alert>
       )}
       {pending && (
         <div className="absolute right-3 top-3 z-10 flex items-center gap-1.5 rounded-md bg-background/90 px-2 py-1 text-xs text-muted-foreground shadow">
           <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
-          Updating
+          {t("templateDocumentPane.updating")}
         </div>
       )}
-      {url && <iframe title="Hire order preview" src={url} className="h-full w-full border-0" />}
+      {url && <iframe title={t("templateDocumentPane.iframeTitle")} src={url} className="h-full w-full border-0" />}
     </section>
   );
 }

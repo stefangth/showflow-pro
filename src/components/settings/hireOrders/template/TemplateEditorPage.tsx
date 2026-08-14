@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { ArrowLeft } from "lucide-react";
@@ -81,6 +82,7 @@ export default function TemplateEditorPage({ readOnly: readOnlyProp }: { readOnl
 }
 
 function TemplateEditorWorkspace({ orgId, readOnly }: { orgId: string | null; readOnly: boolean }) {
+  const { t } = useTranslation("settingsHireOrders");
   const qc = useQueryClient();
 
   const copyQuery = useQuery({
@@ -153,7 +155,7 @@ function TemplateEditorWorkspace({ orgId, readOnly }: { orgId: string | null; re
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["app-settings"] });
-      toast.success("PDF template saved");
+      toast.success(t("templateEditorPage.saved"));
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -191,7 +193,7 @@ function TemplateEditorWorkspace({ orgId, readOnly }: { orgId: string | null; re
     return (
       <Alert variant="destructive">
         <AlertDescription>
-          Could not load the PDF template settings.{" "}
+          {t("templateEditorPage.loadError")}{" "}
           {((copyQuery.error ?? themeQuery.error) as Error)?.message}
         </AlertDescription>
       </Alert>
@@ -200,22 +202,22 @@ function TemplateEditorWorkspace({ orgId, readOnly }: { orgId: string | null; re
 
   return (
     <TemplateEditorShell
-      title="PDF template"
+      title={t("templateEditorPage.title")}
       breadcrumb={
         <Button asChild variant="ghost" size="sm">
-          <Link to={ROUTES.SETTINGS}><ArrowLeft className="mr-1 h-4 w-4" />Settings</Link>
+          <Link to={ROUTES.SETTINGS}><ArrowLeft className="mr-1 h-4 w-4" />{t("templateEditorPage.settings")}</Link>
         </Button>
       }
       actions={
         <>
           <Button variant="outline" size="sm" onClick={() => exact.mutate()} disabled={exact.isPending || !orgId}>
-            Open exact PDF
+            {t("templateEditorPage.openExactPdf")}
           </Button>
           <Button variant="outline" size="sm" disabled={readOnly} onClick={() => { setCopyDraft({}); setThemeDraft({}); }}>
-            Reset all
+            {t("templateEditorPage.resetAll")}
           </Button>
           <Button size="sm" onClick={() => save.mutate()} disabled={readOnly || save.isPending || !orgId}>
-            Save template
+            {t("templateEditorPage.save")}
           </Button>
         </>
       }

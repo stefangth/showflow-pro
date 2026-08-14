@@ -1,1 +1,173 @@
-{}
+{
+  "hireOrdersTab": {
+    "keyLabels": {
+      "letterhead": "Briefkopf",
+      "terms": "Bedingungen",
+      "numbering": "Nummerierung",
+      "orderDefaults": "Auftragsvorgaben",
+      "countersign": "Gegenzeichnungsmodus",
+      "copy": "PDF-Texte",
+      "theme": "PDF-Vorlage"
+    },
+    "entryUpdated": "{{label}} aktualisiert",
+    "rail": {
+      "aboutTitle": "Über diesen Tab",
+      "aboutBody": "Jede Karte speichert unabhängig. Änderungen gelten für den nächsten Engagementvertrag, der für diese Organisation erstellt wird, nicht für bereits ausgestellte Dokumente.",
+      "historyTitle": "Änderungsverlauf",
+      "historyError": "Der Änderungsverlauf konnte nicht geladen werden.",
+      "historyEmpty": "Noch keine Änderungen erfasst.",
+      "systemActor": "System"
+    },
+    "disabled": "Engagementverträge sind für diese Organisation nicht aktiviert. Wende dich an deine ShowFlow-Administration, um das Modul zu aktivieren."
+  },
+  "countersignCard": {
+    "title": "Gegenzeichnungsmodus",
+    "description": "Wie die Unterschrift des Artists erfasst wird, sobald ein Engagementvertrag ausgestellt wurde.",
+    "save": "Gegenzeichnungsmodus speichern",
+    "saved": "Gegenzeichnungsmodus gespeichert",
+    "loadError": "Die Einstellungen zur Gegenzeichnung konnten nicht geladen werden."
+  },
+  "letterheadCard": {
+    "title": "Briefkopf",
+    "description": "Erscheint oben auf jedem Engagementvertrag-PDF neben dem Block für die auftraggebende Partei.",
+    "saved": "Briefkopf gespeichert",
+    "loadError": "Die Briefkopf-Einstellungen konnten nicht geladen werden.",
+    "pngOnly": "Bitte wähle ein PNG-Bild aus",
+    "signatureUploaded": "Unterschrift hochgeladen. Speichere den Briefkopf, um sie zu übernehmen.",
+    "agentName": "Name der Agentur (optional)",
+    "agentEmail": "E-Mail der Agentur (optional)",
+    "agentSignature": "Unterschrift der Agentur (optional)",
+    "agentSignatureHelp": "Ein PNG der Unterschrift der Booking-Agentur, das auf der Produzentenzeile ausgestellter Engagementverträge erscheint. Speichere den Briefkopf, um es zu übernehmen.",
+    "signaturePreviewAlt": "Vorschau der Agentur-Unterschrift",
+    "signatureOnFile": "Unterschrift hinterlegt",
+    "remove": "Entfernen",
+    "uploadAria": "Unterschrift der Agentur als PNG hochladen",
+    "replaceSignature": "Unterschrift ersetzen",
+    "uploadPng": "PNG hochladen",
+    "save": "Briefkopf speichern"
+  },
+  "numberingCard": {
+    "title": "Nummerierung",
+    "description": "Steuert die Auftragsnummer, die auf jedem Engagementvertrag steht. Unterstützte Platzhalter: {prefix}, {yyyy}, {mm}, {dd}, {mmdd}, {seq}, {cast}, {cast|seq}.",
+    "saved": "Nummerierung gespeichert",
+    "loadError": "Die Nummerierungseinstellungen konnten nicht geladen werden.",
+    "prefix": "Präfix",
+    "pattern": "Muster",
+    "preview": "Vorschau: {{preview}}",
+    "save": "Nummerierung speichern"
+  },
+  "orderDefaultsCard": {
+    "title": "Auftragsvorgaben",
+    "description": "Füllt Honorar, Berechnungsart und Währung eines neuen Engagementvertrags vor. Ein Honorar pro Termin wird mit der Anzahl der Engagement-Termine im Auftrag multipliziert. Das Produktionsteam kann es jederzeit pro Auftrag anpassen.",
+    "saved": "Auftragsvorgaben gespeichert",
+    "loadError": "Die Auftragsvorgaben konnten nicht geladen werden.",
+    "defaultFee": "Standardhonorar",
+    "noDefault": "Kein Standardwert",
+    "currency": "Währung",
+    "feeBasis": "Berechnungsart",
+    "perDate": "Pro Termin",
+    "totalAllDates": "Gesamt für alle Termine",
+    "save": "Vorgaben speichern"
+  },
+  "pdfTemplateCard": {
+    "title": "PDF-Vorlage",
+    "description": "Texte, Schriften, Größen und Farben für das Engagementvertrag-PDF. Bearbeite ein Element und sieh die Änderung sofort im Dokument. Änderungen gelten für den nächsten ausgestellten Auftrag, nicht für bereits ausgestellte Dokumente.",
+    "loadError": "Die Einstellungen der PDF-Vorlage konnten nicht geladen werden.",
+    "summary": "{{family}} bei {{percent}}%, {{customised}}",
+    "customisedNone": "keine angepassten Elemente",
+    "customisedCount_one": "{{count}} angepasstes Element",
+    "customisedCount_other": "{{count}} angepasste Elemente",
+    "openEditor": "Vorlagen-Editor öffnen"
+  },
+  "termsVariantsCard": {
+    "title": "Bedingungen",
+    "description": "Vorlagen mit Klauseln, die auf dem Engagementvertrag-PDF stehen. Ein Engagementvertrag wählt beim Ausstellen eine Vorlage, und eine Vorlage ist als Standard markiert. ShowFlow liefert keine Standardklauseln, deine Organisation erstellt ihre eigenen.",
+    "saved": "Bedingungen gespeichert",
+    "loadError": "Die Bedingungen konnten nicht geladen werden.",
+    "clausesHeading": "Klauseln",
+    "addClause": "Klausel hinzufügen",
+    "noClauses": "Noch keine Klauseln. Füge die Klauseln hinzu, die deine Organisation auf einem Engagementvertrag mit \"{{label}}\" sehen möchte, bevor du einen ausstellst.",
+    "clauseTitlePlaceholder": "Klauseltitel",
+    "clauseTitleAria": "{{label}} Klausel {{index}} Titel",
+    "removeClause": "Klausel entfernen",
+    "removeClauseAria": "{{label}} Klausel {{index}} entfernen",
+    "clauseBodyPlaceholder": "Klauseltext",
+    "clauseBodyAria": "{{label}} Klausel {{index}} Text",
+    "startFromTemplate": "Mit einer Vorlage starten",
+    "startFromTemplateHelp": "Füge dieser Organisation eine fertige Vorlage hinzu. Die Kopie gehört dir, Änderungen hier wirken sich auf niemand anderen aus.",
+    "addToOrg": "Zu dieser Organisation hinzufügen",
+    "noTemplates": "Noch keine Vorlagen. Füge eine hinzu, um Bedingungen zu erstellen.",
+    "templateFallbackName": "Vorlage {{index}}",
+    "templateNameAria": "Name der Vorlage {{index}}",
+    "templateNamePlaceholder": "Vorlagenname",
+    "default": "Standard",
+    "deleteTemplate": "{{label}} löschen",
+    "addTemplate": "Vorlage hinzufügen",
+    "save": "Bedingungen speichern"
+  },
+  "countersignFields": {
+    "electronicTitle": "Artist unterschreibt in ShowFlow",
+    "electronicBody": "Der Artist prüft und unterschreibt den ausgestellten Auftrag in der App. Unterschrift, Zeitstempel und IP-Adresse werden dazu gespeichert.",
+    "manualTitle": "Unterschriften außerhalb von ShowFlow",
+    "manualBody": "Das Produktionsteam markiert den Auftrag als gegengezeichnet, sobald der Artist anderswo unterschrieben hat.",
+    "emailProducersTitle": "Auch dem Produktionsteam die unterschriebene Kopie mailen",
+    "emailProducersBody": "Wenn der Artist unterschreibt, erhält das zugewiesene Produktionsteam eine Kopie per E-Mail. Das Produktionsteam wird in der App in jedem Fall benachrichtigt."
+  },
+  "letterheadFields": {
+    "legalName": "Rechtlicher Name",
+    "legalNamePlaceholder": "Aurora Productions GmbH",
+    "address": "Adresse",
+    "addressPlaceholder": "Straße und Hausnummer\nPostleitzahl und Ort\nLand",
+    "addressHelp": "Eine Zeile pro Adresszeile.",
+    "registrationLine": "Registrierungszeile",
+    "registrationLinePlaceholder": "Eingetragen beim Amtsgericht Berlin, HRB 123456"
+  },
+  "termsLibraryPicker": {
+    "empty": "Noch keine Vorlagen in der Bibliothek. Du kannst auch eigene Klauseln erstellen.",
+    "alreadyAdded": "Bereits hinzugefügt",
+    "clauseCount_one": "{{count}} Klausel",
+    "clauseCount_other": "{{count}} Klauseln"
+  },
+  "templateDocumentPane": {
+    "renderError": "Die Vorschau konnte nicht gerendert werden.",
+    "updating": "Wird aktualisiert",
+    "ariaLabel": "Dokumentvorschau",
+    "iframeTitle": "Vorschau des Engagementvertrags"
+  },
+  "templateEditorPage": {
+    "saved": "PDF-Vorlage gespeichert",
+    "loadError": "Die Einstellungen der PDF-Vorlage konnten nicht geladen werden.",
+    "title": "PDF-Vorlage",
+    "settings": "Einstellungen",
+    "openExactPdf": "Exaktes PDF öffnen",
+    "resetAll": "Alles zurücksetzen",
+    "save": "Vorlage speichern"
+  },
+  "templateInspector": {
+    "colors": {
+      "text": "Text",
+      "muted": "Gedämpfter Text",
+      "faint": "Blasser Text",
+      "accent": "Akzent",
+      "line": "Linien und Rahmen",
+      "feeCell": "Hintergrund der Honorarzelle",
+      "surface2": "Hintergrund der Summenzeile"
+    },
+    "margins": {
+      "marginX": "Links und rechts",
+      "marginTop": "Oben",
+      "marginBottom": "Unten"
+    },
+    "documentTitle": "Dokument",
+    "bodyFont": "Textschrift",
+    "numericFont": "Zahlenschrift",
+    "textSize": "Textgröße",
+    "textSizeDescription": "Skaliert jedes Element gemeinsam, sodass die Typografie-Hierarchie erhalten bleibt. {{percent}}%",
+    "pageMargins": "Seitenränder",
+    "elementSettingsAria": "Elementeinstellungen",
+    "textSectionHeading": "Text"
+  },
+  "templateOutline": {
+    "documentLabel": "Dokument"
+  }
+}

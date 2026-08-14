@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/features/auth/AuthContext";
@@ -53,13 +54,6 @@ interface CoveragePanelProps {
   onOpenCast?: (castId: string) => void;
 }
 
-const TIER_LABELS = Array.from({ length: COVERAGE_TIER_COUNT }, (_, i) => `Tier ${i + 1}`);
-
-const SCOPE_OPTIONS: SegmentedControlOption<CoverageScope>[] = [
-  { value: "org", label: "Organization default" },
-  { value: "show", label: "Per show" },
-];
-
 /** Settings → Casts & coverage → Coverage. Org-default offer order by city, with a
  *  per-show override view. Writes through `setCastCityPriority` / `clearCastCityPriority`
  *  (src/data/casts.ts) for the org default and the pre-existing `setShowCastPriority` /
@@ -69,10 +63,18 @@ const SCOPE_OPTIONS: SegmentedControlOption<CoverageScope>[] = [
  *  cell already has an occupant — moving/bumping rows as needed — so the two write paths
  *  are not interchangeable. */
 export function CoveragePanel({ orgId, onOpenCast }: CoveragePanelProps) {
+  const { t } = useTranslation('settingsCastsCoverage');
   const qc = useQueryClient();
   const { hasRole } = useAuth();
   const canManage = useCan("manage_cities");
   const canDeleteCity = hasRole("admin");
+
+  const TIER_LABELS = Array.from({ length: COVERAGE_TIER_COUNT }, (_, i) => t('coverage.tierLabel', { n: i + 1 }));
+
+  const SCOPE_OPTIONS: SegmentedControlOption<CoverageScope>[] = [
+    { value: "org", label: t('coverage.scopeOrg') },
+    { value: "show", label: t('coverage.scopeShow') },
+  ];
 
   const [scope, setScope] = useState<CoverageScope>("org");
   const [selectedShowId, setSelectedShowId] = useState<string | null>(null);
@@ -198,32 +200,32 @@ export function CoveragePanel({ orgId, onOpenCast }: CoveragePanelProps) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["cast-city-priority"] });
       qc.invalidateQueries({ queryKey: ["eligibility"] });
-      toast.success("Tier updated");
+      toast.success(t('coverage.tierUpdated'));
     },
-    onError: (e: Error) => toast.error(e.message ?? "Failed to update tier"),
+    onError: (e: Error) => toast.error(e.message ?? t('coverage.tierUpdateFailed')),
   });
   const clearOrgPriority = useMutation({
     mutationFn: (rowId: string) => clearCastCityPriority(supabase, rowId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["cast-city-priority"] });
       qc.invalidateQueries({ queryKey: ["eligibility"] });
-      toast.success("Tier cleared");
+      toast.success(t('coverage.tierCleared'));
     },
-    onError: (e: Error) => toast.error(e.message ?? "Failed to clear tier"),
+    onError: (e: Error) => toast.error(e.message ?? t('coverage.tierClearFailed')),
   });
 
   const setShowPriority = useMutation({
     mutationFn: (args: { cityId: string; castId: string; priority: number }) => {
-      if (!effectiveShowId) throw new Error("No show selected");
+      if (!effectiveShowId) throw new Error(t('coverage.noShowSelected'));
       return setShowCastPriority(supabase, { showId: effectiveShowId, orgId, ...args });
     },
-    onSuccess: () => { invalidateShowConsumers(); toast.success("Tier updated"); },
-    onError: (e: Error) => toast.error("Failed to update tier", { description: e.message }),
+    onSuccess: () => { invalidateShowConsumers(); toast.success(t('coverage.tierUpdated')); },
+    onError: (e: Error) => toast.error(t('coverage.tierUpdateFailed'), { description: e.message }),
   });
   const clearShowPriority = useMutation({
     mutationFn: (rowId: string) => clearShowCastPriority(supabase, rowId),
-    onSuccess: () => { invalidateShowConsumers(); toast.success("Tier cleared"); },
-    onError: (e: Error) => toast.error("Failed to clear tier", { description: e.message }),
+    onSuccess: () => { invalidateShowConsumers(); toast.success(t('coverage.tierCleared')); },
+    onError: (e: Error) => toast.error(t('coverage.tierClearFailed'), { description: e.message }),
   });
   const clearAllOverrides = useMutation({
     mutationFn: async () => {
@@ -231,8 +233,8 @@ export function CoveragePanel({ orgId, onOpenCast }: CoveragePanelProps) {
       // rejects on the first failure) rather than one dependent round-trip at a time.
       await Promise.all(showPriorityRows.map((row) => clearShowCastPriority(supabase, row.id)));
     },
-    onSuccess: () => { invalidateShowConsumers(); toast.success("Overrides cleared"); },
-    onError: (e: Error) => toast.error("Failed to clear overrides", { description: e.message }),
+    onSuccess: () => { invalidateShowConsumers(); toast.success(t('coverage.overridesCleared')); },
+    onError: (e: Error) => toast.error(t('coverage.overridesClearFailed'), { description: e.message }),
   });
 
   const deleteCity = useMutation({
@@ -240,8 +242,8 @@ export function CoveragePanel({ orgId, onOpenCast }: CoveragePanelProps) {
       const { error } = await supabase.from("cities").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["cities"] }); toast.success("City removed"); },
-    onError: (e: Error) => toast.error(e.message ?? "Failed to remove city"),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["cities"] }); toast.success(t('coverage.cityRemoved')); },
+    onError: (e: Error) => toast.error(e.message ?? t('coverage.cityRemoveFailed')),
   });
 
   const castOptions = useMemo(
@@ -254,7 +256,7 @@ export function CoveragePanel({ orgId, onOpenCast }: CoveragePanelProps) {
     : 0;
   const showName = selectedShow
     ? [selectedShow.program, selectedShow.sub_program].filter(Boolean).join(" / ")
-    : "This show";
+    : t('coverage.thisShow');
 
   const isLoading =
     citiesQ.isLoading || castsQ.isLoading || castCountsQ.isLoading || orgPriorityQ.isLoading || coverageInputsQ.isLoading;
@@ -265,8 +267,8 @@ export function CoveragePanel({ orgId, onOpenCast }: CoveragePanelProps) {
         <SegmentedControl value={scope} onChange={(v) => setScope(v)} options={SCOPE_OPTIONS} />
         <p className="text-xs text-muted-foreground">
           {scope === "org"
-            ? "Every show follows this order unless it has an override."
-            : "Overrides replace the org order for one show only."}
+            ? t('coverage.scopeHintOrg')
+            : t('coverage.scopeHintShow')}
         </p>
       </div>
 
@@ -275,40 +277,40 @@ export function CoveragePanel({ orgId, onOpenCast }: CoveragePanelProps) {
       ) : scope === "org" ? (
         <>
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <KpiCard label="CITIES" value={kpis.cities} note="in this organization" />
+            <KpiCard label={t('coverage.kpiCities')} value={kpis.cities} note={t('coverage.kpiCitiesNote')} />
             <KpiCard
-              label="OFFERS BLOCKED"
+              label={t('coverage.kpiOffersBlocked')}
               value={kpis.offersBlocked}
-              note="no Tier 1 assigned"
+              note={t('coverage.kpiOffersBlockedNote')}
               tone={kpis.offersBlocked > 0 ? "red" : undefined}
             />
             <KpiCard
-              label="SINGLE TIER"
+              label={t('coverage.kpiSingleTier')}
               value={kpis.singleTier}
-              note="no fallback cast"
+              note={t('coverage.kpiSingleTierNote')}
               tone={kpis.singleTier > 0 ? "amber" : undefined}
             />
-            <KpiCard label="SHOW OVERRIDES" value={kpis.showOverrides} note="shows with an override" />
+            <KpiCard label={t('coverage.kpiShowOverrides')} value={kpis.showOverrides} note={t('coverage.kpiShowOverridesNote')} />
           </div>
 
           <Card>
             <CardHeader>
-              <CardTitle className="font-display">Offer order by city</CardTitle>
-              <CardDescription>Pick a cast per slot. An empty slot stops the walk.</CardDescription>
+              <CardTitle className="font-display">{t('coverage.offerOrderTitle')}</CardTitle>
+              <CardDescription>{t('coverage.offerOrderDescription')}</CardDescription>
             </CardHeader>
             <CardContent>
               {cities.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Add a city below to configure coverage.</p>
+                <p className="text-sm text-muted-foreground">{t('coverage.addCityHint')}</p>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[640px] border-separate border-spacing-y-1.5">
                     <thead>
                       <tr className="text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                        <th className="w-40 px-2 py-1">City</th>
+                        <th className="w-40 px-2 py-1">{t('coverage.cityHeader')}</th>
                         {TIER_LABELS.map((label) => (
                           <th key={label} className="px-2 py-1">{label}</th>
                         ))}
-                        <th className="w-32 px-2 py-1">Coverage</th>
+                        <th className="w-32 px-2 py-1">{t('coverage.coverageHeader')}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -319,7 +321,7 @@ export function CoveragePanel({ orgId, onOpenCast }: CoveragePanelProps) {
                             <td className="px-2 py-1 align-top">
                               <p className="text-sm font-medium text-foreground">{row.cityName}</p>
                               <p className="text-xs text-muted-foreground">
-                                {row.showsCount} show{row.showsCount === 1 ? "" : "s"}
+                                {t('coverage.showsCount', { count: row.showsCount })}
                               </p>
                             </td>
                             {row.tiers.map((slot, idx) => (
@@ -355,11 +357,11 @@ export function CoveragePanel({ orgId, onOpenCast }: CoveragePanelProps) {
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <Card>
               <CardHeader>
-                <CardTitle className="font-display">Casts</CardTitle>
+                <CardTitle className="font-display">{t('coverage.castsTitle')}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-1">
                 {casts.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No casts yet.</p>
+                  <p className="text-sm text-muted-foreground">{t('coverage.noCastsYet')}</p>
                 ) : (
                   casts.map((c) => {
                     const usage = castUsage.get(c.id) ?? 0;
@@ -373,8 +375,8 @@ export function CoveragePanel({ orgId, onOpenCast }: CoveragePanelProps) {
                         <span className="min-w-0 flex-1">
                           <span className="block truncate font-medium text-foreground">{c.name}</span>
                           <span className="block text-xs text-muted-foreground">
-                            {castCounts[c.id] ?? 0} member{(castCounts[c.id] ?? 0) === 1 ? "" : "s"} ·{" "}
-                            {usage === 0 ? "not in any city" : `${usage} cit${usage === 1 ? "y" : "ies"}`}
+                            {t('coverage.castMemberSummary', { count: castCounts[c.id] ?? 0 })} ·{" "}
+                            {usage === 0 ? t('coverage.castUsageNone') : t('coverage.castUsage', { count: usage })}
                           </span>
                         </span>
                         <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
@@ -387,23 +389,23 @@ export function CoveragePanel({ orgId, onOpenCast }: CoveragePanelProps) {
 
             <Card>
               <CardHeader>
-                <CardTitle className="font-display">Cities</CardTitle>
+                <CardTitle className="font-display">{t('coverage.citiesTitle')}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-1">
                 {cities.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No cities yet.</p>
+                  <p className="text-sm text-muted-foreground">{t('coverage.noCitiesYet')}</p>
                 ) : (
                   cities.map((c) => {
                     const ref = cityReferences.get(c.id) ?? { showsCount: 0, orgTierCount: 0, overrideCount: 0 };
                     const referenced = isCityReferenced(ref);
                     const usageText =
                       ref.showsCount > 0
-                        ? `${ref.showsCount} show${ref.showsCount === 1 ? "" : "s"}`
+                        ? t('coverage.cityUsageShows', { count: ref.showsCount })
                         : ref.orgTierCount > 0
-                          ? "used in the offer order"
+                          ? t('coverage.cityUsageOrder')
                           : ref.overrideCount > 0
-                            ? "used in a show override"
-                            : "not used yet";
+                            ? t('coverage.cityUsageOverride')
+                            : t('coverage.cityUsageNone');
                     return (
                       <div
                         key={c.id}
@@ -413,12 +415,12 @@ export function CoveragePanel({ orgId, onOpenCast }: CoveragePanelProps) {
                           <span className="block truncate font-medium text-foreground">{c.name}</span>
                           <span className="block text-xs text-muted-foreground">{usageText}</span>
                         </span>
-                        <IconTooltip label={referenced ? "Still referenced. Remove its tiers first." : `Remove ${c.name}`}>
+                        <IconTooltip label={referenced ? t('coverage.removeCityReferenced') : t('coverage.removeCity', { name: c.name })}>
                           <button
                             type="button"
                             onClick={() => deleteCity.mutate(c.id)}
                             disabled={!canDeleteCity || referenced}
-                            aria-label={`Remove ${c.name}`}
+                            aria-label={t('coverage.removeCity', { name: c.name })}
                             className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-destructive disabled:opacity-50 disabled:pointer-events-none"
                           >
                             <Trash2 className="h-3.5 w-3.5" />
@@ -437,12 +439,12 @@ export function CoveragePanel({ orgId, onOpenCast }: CoveragePanelProps) {
           <Card>
             <CardHeader>
               <CardTitle className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Shows
+                {t('coverage.showsTitle')}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-1">
               {shows.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No shows yet.</p>
+                <p className="text-sm text-muted-foreground">{t('coverage.noShowsYet')}</p>
               ) : (
                 shows.map((s) => {
                   const name = [s.program, s.sub_program].filter(Boolean).join(" / ");
@@ -474,8 +476,8 @@ export function CoveragePanel({ orgId, onOpenCast }: CoveragePanelProps) {
               <div className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-l)] border border-border bg-card p-3">
                 <p className="text-sm text-muted-foreground">
                   {overriddenCount === 0
-                    ? `${showName} follows the organization default in all ${cities.length} cities.`
-                    : `${showName} overrides ${overriddenCount} of ${cities.length} cities. The rest follow the organization default.`}
+                    ? t('coverage.followsDefault', { show: showName, count: cities.length })
+                    : t('coverage.overridesSummary', { show: showName, overrides: overriddenCount, total: cities.length })}
                 </p>
                 <Button
                   type="button"
@@ -484,7 +486,7 @@ export function CoveragePanel({ orgId, onOpenCast }: CoveragePanelProps) {
                   disabled={!canManage || overriddenCount === 0 || clearAllOverrides.isPending}
                   onClick={() => clearAllOverrides.mutate()}
                 >
-                  Clear all overrides
+                  {t('coverage.clearAllOverrides')}
                 </Button>
               </div>
             )}
@@ -492,19 +494,19 @@ export function CoveragePanel({ orgId, onOpenCast }: CoveragePanelProps) {
             <Card>
               <CardContent className="pt-4">
                 {!effectiveShowId ? (
-                  <p className="text-sm text-muted-foreground">Select a show to view its coverage.</p>
+                  <p className="text-sm text-muted-foreground">{t('coverage.selectShowHint')}</p>
                 ) : cities.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">Add cities in the organization-default view first.</p>
+                  <p className="text-sm text-muted-foreground">{t('coverage.addCitiesFirstHint')}</p>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full min-w-[720px] border-separate border-spacing-y-1.5">
                       <thead>
                         <tr className="text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                          <th className="w-40 px-2 py-1">City</th>
+                          <th className="w-40 px-2 py-1">{t('coverage.cityHeader')}</th>
                           {TIER_LABELS.map((label) => (
                             <th key={label} className="px-2 py-1">{label}</th>
                           ))}
-                          <th className="w-28 px-2 py-1">Source</th>
+                          <th className="w-28 px-2 py-1">{t('coverage.sourceHeader')}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -532,7 +534,7 @@ export function CoveragePanel({ orgId, onOpenCast }: CoveragePanelProps) {
                             })}
                             <td className="px-2 py-1 align-top">
                               <Badge variant={row.source === "override" ? "accent" : "neutral"}>
-                                {row.source === "override" ? "Override" : "Org default"}
+                                {row.source === "override" ? t('coverage.sourceOverride') : t('coverage.sourceOrgDefault')}
                               </Badge>
                             </td>
                           </tr>
@@ -570,7 +572,8 @@ function KpiCard({ label, value, note, tone }: { label: string; value: number; n
 }
 
 function CoverageStatusBadge({ status, filledCount }: { status: "blocked" | "single" | "ready"; filledCount: number }) {
-  if (status === "blocked") return <Badge variant="destructive">Offers blocked</Badge>;
-  if (status === "single") return <Badge variant="risk">Single tier</Badge>;
-  return <Badge variant="confirmed">{filledCount} tiers ready</Badge>;
+  const { t } = useTranslation('settingsCastsCoverage');
+  if (status === "blocked") return <Badge variant="destructive">{t('coverage.statusBlocked')}</Badge>;
+  if (status === "single") return <Badge variant="risk">{t('coverage.statusSingle')}</Badge>;
+  return <Badge variant="confirmed">{t('coverage.statusReady', { count: filledCount })}</Badge>;
 }

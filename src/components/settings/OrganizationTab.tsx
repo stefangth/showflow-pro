@@ -3,6 +3,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/features/auth/AuthContext";
 import { renameOrg } from "@/data/orgs";
@@ -23,6 +24,7 @@ interface Props {
 /** Rename the current org (name only; slug is shown read-only). Producers see this tab
  *  read-only unless granted the `rename_org` capability; admins always may edit. */
 export function OrganizationTab({ readOnly = false }: Props) {
+  const { t } = useTranslation("settings");
   const { currentOrg, refreshOrgs } = useAuth();
   const form = useForm<Values>({ resolver: zodResolver(schema), values: { name: currentOrg?.name ?? "" } });
 
@@ -31,7 +33,7 @@ export function OrganizationTab({ readOnly = false }: Props) {
       if (!currentOrg) return Promise.resolve();
       return renameOrg(supabase, currentOrg.id, v.name);
     },
-    onSuccess: async () => { await refreshOrgs(); toast.success("Organization renamed"); },
+    onSuccess: async () => { await refreshOrgs(); toast.success(t("organization.renamed")); },
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -40,21 +42,21 @@ export function OrganizationTab({ readOnly = false }: Props) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="font-display">Organization</CardTitle>
-        <CardDescription>Your workspace name. The slug is fixed — contact support to change it.</CardDescription>
+        <CardTitle className="font-display">{t("organization.title")}</CardTitle>
+        <CardDescription>{t("organization.description")}</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={form.handleSubmit((v) => mutation.mutate(v))} className="space-y-4 max-w-md">
           <div className="space-y-1.5">
-            <Label htmlFor="org-name">Organization name</Label>
+            <Label htmlFor="org-name">{t("organization.nameLabel")}</Label>
             <Input id="org-name" disabled={readOnly} {...form.register("name")} />
-            {form.formState.errors.name && <p className="text-xs text-destructive">{form.formState.errors.name.message}</p>}
+            {form.formState.errors.name && <p className="text-xs text-destructive">{t("organization.required")}</p>}
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="org-slug">Slug</Label>
+            <Label htmlFor="org-slug">{t("organization.slugLabel")}</Label>
             <Input id="org-slug" value={currentOrg.slug} disabled readOnly />
           </div>
-          <Button type="submit" disabled={readOnly || mutation.isPending}>{mutation.isPending ? "Saving…" : "Save"}</Button>
+          <Button type="submit" disabled={readOnly || mutation.isPending}>{mutation.isPending ? t("organization.saving") : t("organization.save")}</Button>
         </form>
       </CardContent>
     </Card>

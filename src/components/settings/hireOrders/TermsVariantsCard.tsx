@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Plus, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -37,10 +38,11 @@ function ClauseListEditor({
   onChange: (next: HireOrderClause[]) => void;
   readOnly?: boolean;
 }) {
+  const { t } = useTranslation("settingsHireOrders");
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h5 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Clauses</h5>
+        <h5 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("termsVariantsCard.clausesHeading")}</h5>
         <Button
           type="button"
           variant="outline"
@@ -49,34 +51,33 @@ function ClauseListEditor({
           onClick={() => onChange([...clauses, { title: "", body: "" }])}
         >
           <Plus className="h-3.5 w-3.5 mr-1.5" />
-          Add clause
+          {t("termsVariantsCard.addClause")}
         </Button>
       </div>
       {clauses.length === 0 && (
         <p className="rounded-lg border border-dashed border-border p-3 text-xs text-muted-foreground">
-          No clauses yet. Add the clauses your organization wants printed on a "{label}" hire order before
-          issuing one.
+          {t("termsVariantsCard.noClauses", { label })}
         </p>
       )}
       {clauses.map((clause, i) => (
         <div key={i} className="space-y-2 rounded-lg border border-border p-3">
           <div className="flex items-center gap-2">
             <Input
-              aria-label={`${label} clause ${i + 1} title`}
+              aria-label={t("termsVariantsCard.clauseTitleAria", { label, index: i + 1 })}
               value={clause.title}
-              placeholder="Clause title"
+              placeholder={t("termsVariantsCard.clauseTitlePlaceholder")}
               className="flex-1"
               disabled={readOnly}
               onChange={(e) =>
                 onChange(clauses.map((c, j) => (j === i ? { ...c, title: e.target.value } : c)))
               }
             />
-            <IconTooltip label="Remove clause">
+            <IconTooltip label={t("termsVariantsCard.removeClause")}>
               <Button
                 type="button"
                 variant="ghost"
                 size="icon"
-                aria-label={`Remove ${label} clause ${i + 1}`}
+                aria-label={t("termsVariantsCard.removeClauseAria", { label, index: i + 1 })}
                 disabled={readOnly}
                 onClick={() => onChange(clauses.filter((_, j) => j !== i))}
               >
@@ -85,10 +86,10 @@ function ClauseListEditor({
             </IconTooltip>
           </div>
           <Textarea
-            aria-label={`${label} clause ${i + 1} body`}
+            aria-label={t("termsVariantsCard.clauseBodyAria", { label, index: i + 1 })}
             rows={2}
             value={clause.body}
-            placeholder="Clause text"
+            placeholder={t("termsVariantsCard.clauseBodyPlaceholder")}
             disabled={readOnly}
             onChange={(e) =>
               onChange(clauses.map((c, j) => (j === i ? { ...c, body: e.target.value } : c)))
@@ -101,6 +102,7 @@ function ClauseListEditor({
 }
 
 export function TermsVariantsCard({ orgId, readOnly = false }: { orgId: string | null; readOnly?: boolean }) {
+  const { t } = useTranslation("settingsHireOrders");
   const qc = useQueryClient();
   // Shares the ["app-settings","hire_order_terms",orgId] key with useHireOrderTerms
   // (the three order pickers), so a save here busts every picker's cache. Both
@@ -139,7 +141,7 @@ export function TermsVariantsCard({ orgId, readOnly = false }: { orgId: string |
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["app-settings"] });
-      toast.success("Terms saved");
+      toast.success(t("termsVariantsCard.saved"));
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -152,7 +154,7 @@ export function TermsVariantsCard({ orgId, readOnly = false }: { orgId: string |
   if (isError) {
     return (
       <Alert variant="destructive">
-        <AlertDescription>Could not load the terms settings. {(error as Error).message}</AlertDescription>
+        <AlertDescription>{t("termsVariantsCard.loadError")} {(error as Error).message}</AlertDescription>
       </Alert>
     );
   }
@@ -189,20 +191,18 @@ export function TermsVariantsCard({ orgId, readOnly = false }: { orgId: string |
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="font-display">Terms</CardTitle>
+        <CardTitle className="font-display">{t("termsVariantsCard.title")}</CardTitle>
         <CardDescription>
-          Templates of clauses printed on the hire order PDF. A hire order picks one template when it is
-          issued, and one template is marked as the default. ShowFlow ships no default clauses, so your
-          organization authors its own.
+          {t("termsVariantsCard.description")}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         {library.data && library.data.length > 0 && (
           <div className="space-y-3 rounded-lg border border-border p-3">
             <div>
-              <h5 className="text-sm font-medium">Start from a template</h5>
+              <h5 className="text-sm font-medium">{t("termsVariantsCard.startFromTemplate")}</h5>
               <p className="text-xs text-muted-foreground">
-                Add a ready-made template to this organization. You own the copy, so editing it here changes nothing for anyone else.
+                {t("termsVariantsCard.startFromTemplateHelp")}
               </p>
             </div>
             <TermsLibraryPicker
@@ -227,13 +227,13 @@ export function TermsVariantsCard({ orgId, readOnly = false }: { orgId: string |
                 )
               }
             >
-              Add to this organization
+              {t("termsVariantsCard.addToOrg")}
             </Button>
           </div>
         )}
         {form.templates.length === 0 ? (
           <p className="rounded-lg border border-dashed border-border p-3 text-xs text-muted-foreground">
-            No templates yet. Add one to start authoring terms.
+            {t("termsVariantsCard.noTemplates")}
           </p>
         ) : (
           <RadioGroup
@@ -243,7 +243,7 @@ export function TermsVariantsCard({ orgId, readOnly = false }: { orgId: string |
             className="space-y-4"
           >
             {form.templates.map((tpl, i) => {
-              const label = tpl.name.trim() || `Template ${i + 1}`;
+              const label = tpl.name.trim() || t("termsVariantsCard.templateFallbackName", { index: i + 1 });
               const radioId = `ho-term-default-${tpl.id}`;
               return (
                 <div
@@ -253,9 +253,9 @@ export function TermsVariantsCard({ orgId, readOnly = false }: { orgId: string |
                 >
                   <div className="flex items-center gap-3">
                     <Input
-                      aria-label={`Template ${i + 1} name`}
+                      aria-label={t("termsVariantsCard.templateNameAria", { index: i + 1 })}
                       value={tpl.name}
-                      placeholder="Template name"
+                      placeholder={t("termsVariantsCard.templateNamePlaceholder")}
                       className="flex-1"
                       disabled={readOnly}
                       onChange={(e) => renameTemplate(tpl.id, e.target.value)}
@@ -263,15 +263,15 @@ export function TermsVariantsCard({ orgId, readOnly = false }: { orgId: string |
                     <div className="flex items-center gap-1.5">
                       <RadioGroupItem value={tpl.id} id={radioId} disabled={readOnly} />
                       <Label htmlFor={radioId} className="cursor-pointer text-xs font-normal text-muted-foreground">
-                        Default
+                        {t("termsVariantsCard.default")}
                       </Label>
                     </div>
-                    <IconTooltip label={`Delete ${label}`}>
+                    <IconTooltip label={t("termsVariantsCard.deleteTemplate", { label })}>
                       <Button
                         type="button"
                         variant="ghost"
                         size="icon"
-                        aria-label={`Delete ${label}`}
+                        aria-label={t("termsVariantsCard.deleteTemplate", { label })}
                         disabled={readOnly}
                         onClick={() => deleteTemplate(tpl.id)}
                       >
@@ -294,10 +294,10 @@ export function TermsVariantsCard({ orgId, readOnly = false }: { orgId: string |
         <div className="flex items-center gap-2">
           <Button type="button" variant="outline" size="sm" disabled={readOnly} onClick={addTemplate}>
             <Plus className="h-3.5 w-3.5 mr-1.5" />
-            Add template
+            {t("termsVariantsCard.addTemplate")}
           </Button>
           <Button onClick={() => save.mutate()} disabled={readOnly || save.isPending || !orgId}>
-            Save terms
+            {t("termsVariantsCard.save")}
           </Button>
         </div>
       </CardContent>

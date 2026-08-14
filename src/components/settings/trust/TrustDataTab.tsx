@@ -1,4 +1,5 @@
 import { ArrowRight } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { TRUST_CENTER_URL } from "@/config/app.config";
@@ -17,18 +18,19 @@ import { CapabilitiesCard } from "./CapabilitiesCard";
  *  Every claim here is asserted against the code or the privacy policy — see
  *  src/lib/trust/facts.ts for the rule and the tests that hold it. */
 export function TrustDataTab() {
+  const { t } = useTranslation('settingsTrust');
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="space-y-1">
-          <h2 className="font-display text-lg font-semibold">Trust &amp; data</h2>
+          <h2 className="font-display text-lg font-semibold">{t('trustDataTab.title')}</h2>
           <p className="text-sm text-muted-foreground">
-            What we hold, who can read it, and how long we keep it.
+            {t('trustDataTab.subtitle')}
           </p>
         </div>
         <Button asChild variant="outline" size="sm">
           <a href={TRUST_CENTER_URL} target="_blank" rel="noreferrer">
-            Open the public trust center
+            {t('trustDataTab.openPublicTrustCenter')}
             <ArrowRight className="ml-2 h-3.5 w-3.5" />
           </a>
         </Button>

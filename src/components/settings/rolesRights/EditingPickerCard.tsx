@@ -1,4 +1,5 @@
 import { Users } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface EditingPickerCardProps {
   roleOnCount: string;
@@ -8,14 +9,15 @@ interface EditingPickerCardProps {
  *  target, the Production Team default. Per-person exceptions are not part of
  *  this surface, so there is nothing else to pick here. */
 export function EditingPickerCard({ roleOnCount }: EditingPickerCardProps) {
+  const { t } = useTranslation("settingsRolesRights");
   return (
     <div className="rounded-[var(--radius-l)] border border-border shadow-elev2 bg-card">
       <div className="px-4 pt-4">
         <p className="text-[11px] font-semibold uppercase tracking-[1.6px] text-muted-foreground">
-          Editing
+          {t("editingPicker.eyebrow")}
         </p>
         <p className="mt-1 text-[12px] text-muted-foreground">
-          Rights apply to the whole Production Team.
+          {t("editingPicker.description")}
         </p>
       </div>
 
@@ -26,9 +28,9 @@ export function EditingPickerCard({ roleOnCount }: EditingPickerCardProps) {
           </span>
           <div className="min-w-0 flex-1">
             <p className="text-[13.5px] font-medium text-foreground">
-              Production Team
+              {t("editingPicker.productionTeam")}
             </p>
-            <p className="text-[12px] text-muted-foreground">Team default</p>
+            <p className="text-[12px] text-muted-foreground">{t("editingPicker.teamDefault")}</p>
           </div>
           <span className="shrink-0 font-mono tabular-nums text-[12px] text-muted-foreground">
             {roleOnCount}

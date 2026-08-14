@@ -1,1 +1,93 @@
-{}
+{
+  "page": {
+    "title": "Settings",
+    "description": "Configure integrations, booking behaviour, and notifications. Changes apply immediately.",
+    "accessRequired": "Admin or producer access required",
+    "loading": "Loading settings…",
+    "saveSuccess": "Settings saved",
+    "saveError": "Failed to save",
+    "noChanges": "No changes to save",
+    "save": "Save",
+    "saveCount": "Save ({{count}})",
+    "saving": "Saving…",
+    "saveNow": "Save now",
+    "unsavedChanges": "You have unsaved changes. They will be lost if you navigate away."
+  },
+  "nav": {
+    "groups": {
+      "organization": "Organization",
+      "automation": "Automation",
+      "modules": "Modules",
+      "preferences": "Preferences",
+      "help": "Help"
+    },
+    "items": {
+      "organization": "Organization",
+      "permissions": "Roles & rights",
+      "trust": "Trust & data",
+      "castsCoverage": "Casts & coverage",
+      "skills": "Skills",
+      "airtable": "Airtable Sync",
+      "emailTemplates": "Email templates",
+      "booking": "Booking engine",
+      "hireOrders": "Hire orders",
+      "filters": "Filters",
+      "notifications": "Notifications",
+      "docs": "Documentation"
+    },
+    "moduleOn": "On",
+    "moduleOff": "Off"
+  },
+  "filters": {
+    "title": "Filter Visibility per Role",
+    "description": "Toggle which filters producers and artists see on each page. Admins always see everything.",
+    "role": "Role",
+    "pages": {
+      "shows": "shows",
+      "artists": "artists",
+      "bookings": "bookings"
+    },
+    "keys": {
+      "program": "program",
+      "timeframe": "timeframe",
+      "sort": "sort",
+      "status": "status"
+    }
+  },
+  "notifications": {
+    "title": "Notifications",
+    "description": "Control in-app alerts for bookings and schedule changes.",
+    "enable": "Enable in-app notifications",
+    "hint": "Producers and artists receive real-time alerts."
+  },
+  "organization": {
+    "title": "Organization",
+    "description": "Your workspace name. The slug is fixed, contact support to change it.",
+    "nameLabel": "Organization name",
+    "slugLabel": "Slug",
+    "required": "Required",
+    "save": "Save",
+    "saving": "Saving…",
+    "renamed": "Organization renamed"
+  },
+  "permissions": {
+    "loading": "Loading rights...",
+    "rightsUpdated": "Rights updated.",
+    "policyUpdated": "Policy updated.",
+    "confirmTitle": "Change a sensitive right?",
+    "confirmDescriptionGrant": "Grant \"{{label}}\" for producers. This is a sensitive right.",
+    "confirmDescriptionRemove": "Remove \"{{label}}\" for producers. This is a sensitive right.",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "row": {
+      "sensitive": "Sensitive",
+      "managedByShowflow": "Managed by ShowFlow.",
+      "admin": "Admin",
+      "adminAlwaysHasRight": "Admins always have this right",
+      "unlock": "Unlock",
+      "lock": "Lock",
+      "platformDefault": "Platform default: {{label}}",
+      "roleRight": "{{role}}: {{label}}"
+    }
+  }
+}

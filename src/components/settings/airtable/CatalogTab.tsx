@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ArrowRight, Check, ChevronsUpDown, Copy, Plus, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,6 +49,7 @@ function CatalogLinkCombobox({
   ariaLabel: string;
   searchPlaceholder: string;
 }) {
+  const { t } = useTranslation('settingsAirtable');
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const matches = existing.filter((e) => e.label.toLowerCase().includes(search.trim().toLowerCase()));
@@ -55,7 +57,7 @@ function CatalogLinkCombobox({
     <Popover open={open} onOpenChange={(o) => { setOpen(o); if (!o) setSearch(""); }}>
       <PopoverTrigger asChild>
         <Button variant="outline" size="sm" className="h-[30px] flex-1 justify-between bg-muted font-normal" aria-label={ariaLabel} disabled={disabled}>
-          <span className="truncate text-muted-foreground">Link to existing…</span>
+          <span className="truncate text-muted-foreground">{t('catalogTab.linkToExisting')}</span>
           <ChevronsUpDown className="h-3.5 w-3.5 ml-2 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
@@ -67,13 +69,13 @@ function CatalogLinkCombobox({
             <CommandGroup>
               {/* Radix doesn't fire onOpenChange for a programmatic close, so clear search here too. */}
               <CommandItem value="__create__" onSelect={() => { onCreate(); setOpen(false); setSearch(""); }}>
-                <Plus className="h-4 w-4 mr-2" /> Create &ldquo;{optionLabel}&rdquo;
+                <Plus className="h-4 w-4 mr-2" /> {t('catalogTab.createOption', { optionLabel })}
               </CommandItem>
             </CommandGroup>
             {matches.length > 0 && (
               <>
                 <CommandSeparator />
-                <CommandGroup heading="Link to existing">
+                <CommandGroup heading={t('catalogTab.linkToExistingHeading')}>
                   {matches.map((e) => (
                     <CommandItem key={e.id} value={e.id} onSelect={() => { onLink(e.id); setOpen(false); setSearch(""); }}>
                       {e.label}
@@ -83,7 +85,7 @@ function CatalogLinkCombobox({
               </>
             )}
             {matches.length === 0 && search.trim() !== "" && (
-              <p className="px-3 py-2 text-xs text-muted-foreground">No existing matches.</p>
+              <p className="px-3 py-2 text-xs text-muted-foreground">{t('catalogTab.noMatches')}</p>
             )}
           </CommandList>
         </Command>
@@ -97,6 +99,7 @@ function CatalogLinkCombobox({
  *  selectable rows (each linked to a target with Unlink, or unlinked with a link/create combobox),
  *  and an optional merge-suggestion footer. All data + callbacks arrive via props. */
 export function CatalogTab(props: CatalogTabProps) {
+  const { t } = useTranslation('settingsAirtable');
   const {
     programSource, citySource, programRows, cityRows, programExisting, cityExisting,
     onLink, onCreate, onUnlink, onBulkCreate, merge, canWrite, busy,
@@ -144,6 +147,7 @@ export function CatalogTab(props: CatalogTabProps) {
   const renderRow = (kind: Kind, row: CatalogRow, existing: { id: string; label: string }[], entityNoun: "show" | "city") => {
     const sel = isSelected(kind, row.key);
     const holding = row.holdCount ?? 0;
+    const translatedNoun = t(`catalogTab.entityNoun.${entityNoun}`);
     return (
       <div
         key={row.key}
@@ -155,7 +159,7 @@ export function CatalogTab(props: CatalogTabProps) {
         <button
           type="button"
           onClick={() => toggle(kind, row.key)}
-          aria-label={`select ${row.display}`}
+          aria-label={t('catalogTab.selectRowAria', { display: row.display })}
           aria-pressed={sel}
           className={cn(
             "h-4 w-4 rounded-[4px] border flex items-center justify-center",
@@ -169,7 +173,7 @@ export function CatalogTab(props: CatalogTabProps) {
           <span className="text-sm font-medium truncate">{row.display}</span>
           {holding > 0 && (
             <span className="h-[18px] shrink-0 inline-flex items-center rounded-[4px] bg-[var(--amber-100)] px-1.5 text-[11px] font-medium text-[color:var(--amber-600)]">
-              holding {holding}
+              {t('catalogTab.holding', { count: holding })}
             </span>
           )}
         </div>
@@ -185,13 +189,13 @@ export function CatalogTab(props: CatalogTabProps) {
               disabled={disabled}
               onClick={() => onUnlink(kind, row.linkedId!)}
             >
-              Unlink
+              {t('catalogTab.unlink')}
             </Button>
           </div>
         ) : !row.key ? (
           // A blank source value has no usable link key: offer no link/create, since an empty
           // key would match every unresolved record on the next poll.
-          <span className="justify-self-end text-[13px] text-muted-foreground">&middot;</span>
+          <span className="justify-self-end text-[13px] text-muted-foreground">{t('catalogTab.blankKeyPlaceholder')}</span>
         ) : (
           <div className="flex items-center gap-2 justify-end min-w-0">
             <CatalogLinkCombobox
@@ -200,8 +204,8 @@ export function CatalogTab(props: CatalogTabProps) {
               onCreate={() => onCreate(kind, row)}
               onLink={(id) => onLink(kind, row, id)}
               disabled={disabled}
-              ariaLabel={`link or create ${entityNoun} for ${row.display}`}
-              searchPlaceholder={`Search ${entityNoun}s…`}
+              ariaLabel={t('catalogTab.linkAriaLabel', { noun: translatedNoun, display: row.display })}
+              searchPlaceholder={t('catalogTab.linkSearchPlaceholder', { noun: translatedNoun })}
             />
             <Button
               variant="outline"
@@ -210,7 +214,7 @@ export function CatalogTab(props: CatalogTabProps) {
               disabled={disabled}
               onClick={() => onCreate(kind, row)}
             >
-              <Plus className="h-3.5 w-3.5" aria-hidden /> Create
+              <Plus className="h-3.5 w-3.5" aria-hidden /> {t('catalogTab.create')}
             </Button>
           </div>
         )}
@@ -222,9 +226,9 @@ export function CatalogTab(props: CatalogTabProps) {
     <div className="bg-card border border-border rounded-lg shadow-sm">
       {/* Header */}
       <div className="px-4 py-3.5 border-b border-border">
-        <h3 className="text-[17px] font-semibold tracking-tight">Catalog links</h3>
+        <h3 className="text-[17px] font-semibold tracking-tight">{t('catalogTab.title')}</h3>
         <p className="mt-1 text-[13px] text-muted-foreground">
-          Each Airtable option resolves to one ShowFlow show or city. Unlinked options hold their records.
+          {t('catalogTab.description')}
         </p>
       </div>
 
@@ -235,8 +239,8 @@ export function CatalogTab(props: CatalogTabProps) {
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search options and targets…"
-            aria-label="Search options and targets"
+            placeholder={t('catalogTab.searchPlaceholder')}
+            aria-label={t('catalogTab.searchAriaLabel')}
             className="h-8 pl-8 bg-muted text-sm"
           />
         </div>
@@ -254,7 +258,7 @@ export function CatalogTab(props: CatalogTabProps) {
                   active ? "bg-card text-foreground shadow-sm" : "text-muted-foreground",
                 )}
               >
-                {f}
+                {t(`catalogTab.filters.${f}`)}
               </button>
             );
           })}
@@ -262,9 +266,9 @@ export function CatalogTab(props: CatalogTabProps) {
         <div className="flex-1" />
         {creatableCount > 0 && (
           <>
-            <span className="text-xs text-muted-foreground">{creatableCount} selected</span>
+            <span className="text-xs text-muted-foreground">{t('catalogTab.selectedCount', { count: creatableCount })}</span>
             <Button size="sm" className="h-[26px]" disabled={disabled} onClick={handleBulkCreate}>
-              Create {creatableCount}
+              {t('catalogTab.createCount', { count: creatableCount })}
             </Button>
           </>
         )}
@@ -272,13 +276,13 @@ export function CatalogTab(props: CatalogTabProps) {
 
       {/* Programs section */}
       <p className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground bg-muted border-b border-border">
-        Programs · from {programSource}
+        {t('catalogTab.programsSection', { source: programSource })}
       </p>
       {filteredPrograms.map((row) => renderRow("program", row, programExisting, "show"))}
 
       {/* Cities section */}
       <p className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground bg-muted border-b border-border">
-        Cities · from {citySource}
+        {t('catalogTab.citiesSection', { source: citySource })}
       </p>
       {filteredCities.map((row) => renderRow("city", row, cityExisting, "city"))}
 

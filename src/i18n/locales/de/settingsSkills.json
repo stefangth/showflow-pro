@@ -1,1 +1,64 @@
-{}
+{
+  "header": {
+    "eyebrow": "ORGANISATION · KATALOG",
+    "title": "Skills",
+    "description": "Skills bestimmen, wer angeboten oder gebucht werden kann. Produktionen verlangen sie pro Slot, Artists tragen sie in ihrem Profil."
+  },
+  "toolbar": {
+    "searchPlaceholder": "Skill suchen",
+    "newSkill": "Neuer Skill"
+  },
+  "table": {
+    "headSkill": "Skill",
+    "headArtists": "Artists",
+    "headRequiredBy": "Benötigt von",
+    "emptyNoSkills": "Noch keine Skills.",
+    "emptyNoMatch": "Keine Skills entsprechen deiner Suche."
+  },
+  "requiredBy": {
+    "hidden": "In Auswahllisten ausgeblendet",
+    "notRequired": "Noch nicht benötigt",
+    "productions_one": "{{count}} Produktion",
+    "productions_other": "{{count}} Produktionen",
+    "upcomingDates_one": "{{count}} anstehender Termin",
+    "upcomingDates_other": "{{count}} anstehende Termine"
+  },
+  "row": {
+    "archivedBadge": "Archiviert",
+    "blockedTooltipProductions": "In Verwendung bei {{count}} Produktionen, stattdessen archivieren",
+    "blockedTooltipDates": "Wird von anstehenden Terminen benötigt, stattdessen archivieren",
+    "safeToDeleteTooltip": "Von keiner Produktion benötigt, kann gelöscht werden",
+    "restore": "Wiederherstellen",
+    "rename": "Umbenennen",
+    "archive": "Archivieren",
+    "deleteLabel": "{{name}} löschen"
+  },
+  "footerNote": "Archivieren blendet einen Skill in allen Auswahllisten aus und behält ihn bei den Artists, die ihn besitzen. Löschen wird nur angeboten, solange keine Produktion ihn benötigt. Neue Workspaces starten mit der Skill Liste der Plattform.",
+  "newDialog": {
+    "title": "Neuer Skill",
+    "description": "Skills werden von allen Produktionen und Artist Profilen der Organisation gemeinsam genutzt.",
+    "nameLabel": "Skill Name",
+    "cancel": "Abbrechen",
+    "submit": "Skill anlegen"
+  },
+  "renameDialog": {
+    "title": "{{name}} umbenennen",
+    "description": "Dieser Name wird überall angezeigt, wo der Skill erscheint.",
+    "cancel": "Abbrechen",
+    "submit": "Namen speichern"
+  },
+  "toast": {
+    "added": "Skill hinzugefügt",
+    "addFailed": "Skill konnte nicht hinzugefügt werden",
+    "renamed": "Skill umbenannt",
+    "renameFailed": "Skill konnte nicht umbenannt werden",
+    "archived": "Skill archiviert",
+    "archiveFailed": "Skill konnte nicht archiviert werden",
+    "restored": "Skill wiederhergestellt",
+    "restoreFailed": "Skill konnte nicht wiederhergestellt werden",
+    "deleted": "Skill gelöscht",
+    "deleteFailed": "Skill konnte nicht gelöscht werden",
+    "collisionArchived": "Ein Skill namens \"{{name}}\" ist archiviert. Nutze Wiederherstellen, um ihn zurückzuholen.",
+    "collisionExists": "Ein Skill namens \"{{name}}\" existiert bereits."
+  }
+}

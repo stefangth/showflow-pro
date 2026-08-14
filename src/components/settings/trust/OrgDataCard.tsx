@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useOrgDataStats } from "@/hooks/useTrustStats";
@@ -25,14 +26,15 @@ function TileValue({
   isError: boolean;
   value: string;
 }) {
+  const { t } = useTranslation('settingsTrust');
   if (isLoading) return <Skeleton className="h-5 w-24" />;
   // Any state that is not a loaded value degrades to the same honest answer:
   // an explicit error, or a query that never resolved (offline, disabled,
   // paused) and left `value` empty. Neither is a "0", which would be false.
   if (isError || !value) {
     return (
-      <span className="font-mono text-sm text-muted-foreground" title="Could not be read just now">
-        Unavailable
+      <span className="font-mono text-sm text-muted-foreground" title={t('orgDataCard.unavailableTooltip')}>
+        {t('orgDataCard.unavailable')}
       </span>
     );
   }
@@ -82,6 +84,7 @@ function Tile({
 /** "This organisation's data" — what the active org holds, where it sits, and
  *  who outside it can reach the rows. */
 export function OrgDataCard() {
+  const { t } = useTranslation('settingsTrust');
   const { currentOrg, hasRole } = useAuth();
   const isAdmin = hasRole("admin");
   const stats = useOrgDataStats();
@@ -108,7 +111,7 @@ export function OrgDataCard() {
     <Card>
       <CardContent className="space-y-4 p-5">
         <div className="space-y-1">
-          <h3 className="text-base font-semibold tracking-tight">This organisation's data</h3>
+          <h3 className="text-base font-semibold tracking-tight">{t('orgDataCard.title')}</h3>
           {/* The card runs the width of the tab; the sentence inside it does
            *  not. This tab is the one settings surface that drops the page's
            *  reading measure so its tables can use the display, which leaves
@@ -116,8 +119,7 @@ export function OrgDataCard() {
            *  characters at this size, against 1360px and roughly 190 at a
            *  1920px display. Same reason `VisibilityMatrix` caps its lede. */}
           <p className="max-w-2xl text-sm text-muted-foreground">
-            What {currentOrg?.name ?? "this workspace"} holds today, where it sits, and which other
-            organisations on ShowFlow Pro can reach it. None.
+            {t('orgDataCard.description', { orgName: currentOrg?.name ?? t('orgDataCard.defaultOrgName') })}
           </p>
         </div>
         {/* Two-up is the ceiling here, and `lg:grid-cols-4` was the trap
@@ -140,32 +142,39 @@ export function OrgDataCard() {
            *  left this tab publishing the old region with every check green.
            *  factsSingleSource.test.ts fails if it comes back as a literal. */}
           <Tile
-            label="Region"
+            label={t('orgDataCard.regionLabel')}
             value={DATABASE_REGION}
-            note="Managed Postgres, encrypted at rest."
+            note={t('orgDataCard.regionNote')}
             isLoading={false}
             isError={false}
           />
           <Tile
-            label="Records"
-            value={stats.data ? `${stats.data.bookings.toLocaleString()} bookings` : ""}
+            label={t('orgDataCard.recordsLabel')}
+            value={stats.data ? t('orgDataCard.recordsValue', { value: stats.data.bookings.toLocaleString() }) : ""}
             note={
               stats.data
-                ? `${stats.data.artists} artists · ${stats.data.productions} productions.`
-                : "Bookings, artists, and productions."
+                ? t('orgDataCard.recordsNote', { artists: stats.data.artists, productions: stats.data.productions })
+                : t('orgDataCard.recordsNoteFallback')
             }
             isLoading={stats.isLoading}
             isError={stats.isError}
           />
           <Tile
-            label="Members"
-            value={!isAdmin ? "Admin only" : members.data ? `${members.data.length} people` : ""}
+            label={t('orgDataCard.membersLabel')}
+            value={!isAdmin ? t('orgDataCard.membersAdminOnly') : members.data ? t('orgDataCard.membersValue', { count: members.data.length }) : ""}
             note={
               !isAdmin
-                ? "Visible to organisation administrators."
+                ? t('orgDataCard.membersNoteAdminOnly')
                 : members.data
-                  ? `Roles held: ${admins} ${admins === 1 ? "administrator" : "administrators"} · ${producers} ${roleLabel("producer").toLowerCase()} · ${artists} ${artists === 1 ? "artist" : "artists"}.`
-                  : "People with a login to this organisation."
+                  ? t('orgDataCard.rolesHeld', {
+                      admins,
+                      adminWord: t('orgDataCard.adminWord', { count: admins }),
+                      producers,
+                      producerLabel: roleLabel("producer").toLowerCase(),
+                      artists,
+                      artistWord: t('orgDataCard.artistWord', { count: artists }),
+                    })
+                  : t('orgDataCard.membersNoteFallback')
             }
             isLoading={isAdmin && members.isLoading}
             isError={isAdmin && members.isError}
@@ -181,9 +190,9 @@ export function OrgDataCard() {
            *  Controls card had already been narrowed for, and it is the first
            *  evidence citation an administrator meets in-app. */}
           <Tile
-            label="Outside reach"
-            value="None"
-            note="No other organisation can read a row. supabase/tests/rls/org_isolation.sql proves that for shows and show_dates, and supabase/tests/rls/org_coverage.sql confirms the restrictive policy exists on every tenant table in its list. Both run on every pull request."
+            label={t('orgDataCard.outsideReachLabel')}
+            value={t('orgDataCard.outsideReachValue')}
+            note={t('orgDataCard.outsideReachNote')}
             isLoading={false}
             isError={false}
           />

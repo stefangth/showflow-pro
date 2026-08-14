@@ -1,1 +1,35 @@
-{}
+{
+  "copyField": {
+    "reset": "Reset",
+    "resetAria": "Reset {{label}} to default",
+    "tokens": "Tokens: {{tokens}}",
+    "dashWarning": "Use a period, comma, or middot instead of a dash."
+  },
+  "documentBase": {
+    "elementSettingsAria": "Element settings",
+    "resetAria": "Reset document style to default",
+    "reset": "Reset",
+    "colours": "Colours"
+  },
+  "roleStyle": {
+    "style": "Style",
+    "resetAria": "Reset {{label}} style to default",
+    "reset": "Reset",
+    "font": "Font",
+    "documentFont": "Document font",
+    "size": "Size",
+    "weight": "Weight",
+    "colour": "Colour",
+    "letterSpacing": "Letter spacing",
+    "case": "Case",
+    "asTyped": "As typed",
+    "uppercase": "Uppercase",
+    "weightRegular": "Regular",
+    "weightMedium": "Medium",
+    "weightSemibold": "Semibold"
+  },
+  "outline": {
+    "documentOutlineAria": "Document outline",
+    "modifiedSuffix": ", modified"
+  }
+}

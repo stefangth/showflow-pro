@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -71,8 +72,9 @@ export function FlowTimeline({
   disabled = false,
   allowCustomReference = true,
 }: Props) {
+  const { t } = useTranslation("settingsBookingFlow");
   const respOff = !flow.artist_acceptance;
-  const skippedChip = <Badge variant="neutral">Skipped</Badge>;
+  const skippedChip = <Badge variant="neutral">{t("flowTimeline.badges.skipped")}</Badge>;
 
   // The stage that acceptance (or a direct booking) lands on next is always the
   // second entry of the central lifecycleChips() sequence: "Direct booking" (index
@@ -89,19 +91,19 @@ export function FlowTimeline({
     <div>
       <TimelineStep
         n={0}
-        title="Date created"
-        desc="Via Airtable sync or in-app; either way the date enters the flow here."
-        chips={<Badge variant="neutral">Always on</Badge>}
+        title={t("flowTimeline.steps.dateCreated.title")}
+        desc={t("flowTimeline.steps.dateCreated.desc")}
+        chips={<Badge variant="neutral">{t("flowTimeline.badges.alwaysOn")}</Badge>}
       />
 
       <TimelineStep
         n={1}
-        title="Open offer tier"
-        desc="Creates suggested bookings for every eligible artist in the tier."
+        title={t("flowTimeline.steps.openOfferTier.title")}
+        desc={t("flowTimeline.steps.openOfferTier.desc")}
         dim={respOff}
         chips={
           <>
-            <Badge variant="accent">Offered</Badge>
+            <Badge variant="accent">{t("flowTimeline.badges.offered")}</Badge>
             {respOff && skippedChip}
           </>
         }
@@ -111,44 +113,44 @@ export function FlowTimeline({
           <Switch
             checked={flow.auto_open_tier1}
             disabled={disabled || respOff}
-            aria-label="Auto-open tier 1"
+            aria-label={t("flowTimeline.steps.openOfferTier.autoOpenAria")}
             onCheckedChange={(v) => onFlowChange({ auto_open_tier1: v })}
           />
-          Open tier 1 automatically when a new date is ready
+          {t("flowTimeline.steps.openOfferTier.autoOpenLabel")}
         </label>
         <label className="flex items-center gap-2.5 text-sm">
           <Switch
             checked={flow.auto_escalate}
             disabled={disabled || respOff}
-            aria-label="Auto-escalate tiers"
+            aria-label={t("flowTimeline.steps.openOfferTier.autoEscalateAria")}
             onCheckedChange={(v) => onFlowChange({ auto_escalate: v })}
           />
-          Escalate to the next tier automatically when a window closes short
+          {t("flowTimeline.steps.openOfferTier.autoEscalateLabel")}
         </label>
           <label className="flex items-center gap-2.5 text-sm">
             <Switch
               checked={flow.at_risk_alerts}
               disabled={disabled || respOff}
-              aria-label="At-risk alerts"
+              aria-label={t("flowTimeline.steps.openOfferTier.atRiskAria")}
               onCheckedChange={(v) => onFlowChange({ at_risk_alerts: v })}
             />
-            Alert the production team when the open tier cannot fill the remaining primary slots
+            {t("flowTimeline.steps.openOfferTier.atRiskLabel")}
           </label>
           <p className="pl-11 text-xs text-muted-foreground">
-            Checked hourly. An alert is sent when accepted bookings plus live pending offers are fewer than the required primary slots.
+            {t("flowTimeline.steps.openOfferTier.atRiskHelper")}
           </p>
         </div>
       </TimelineStep>
 
       <TimelineStep
         n={2}
-        title="Notify artists"
-        desc="How and when offers reach artists. The response window starts at delivery."
+        title={t("flowTimeline.steps.notifyArtists.title")}
+        desc={t("flowTimeline.steps.notifyArtists.desc")}
         dim={respOff}
         chips={respOff ? skippedChip : undefined}
       >
         <div className="flex flex-wrap items-center gap-4">
-          <div className="inline-flex rounded-md bg-muted p-0.5" role="group" aria-label="Offer delivery">
+          <div className="inline-flex rounded-md bg-muted p-0.5" role="group" aria-label={t("flowTimeline.steps.notifyArtists.deliveryGroupAria")}>
             {(["digest", "immediate"] as const).map((mode) => (
               <button
                 key={mode}
@@ -161,7 +163,9 @@ export function FlowTimeline({
                   flow.offer_delivery === mode ? "bg-card shadow-sm" : "text-muted-foreground",
                 )}
               >
-                {mode === "digest" ? `Daily digest · ${berlinTime(times.offerDigestHour)}` : "Immediately"}
+                {mode === "digest"
+                  ? t("flowTimeline.steps.notifyArtists.dailyDigest", { hour: berlinTime(times.offerDigestHour) })
+                  : t("flowTimeline.steps.notifyArtists.immediate")}
               </button>
             ))}
           </div>
@@ -171,7 +175,7 @@ export function FlowTimeline({
               flow.offer_delivery !== "digest" && "opacity-40",
             )}
           >
-            Digest hour (Berlin, Germany)
+            {t("flowTimeline.steps.notifyArtists.digestHourLabel")}
             <Input
               type="number"
               min={0}
@@ -183,7 +187,7 @@ export function FlowTimeline({
             />
           </label>
           <label className="flex items-center gap-2 text-xs text-muted-foreground">
-            Response window (h)
+            {t("flowTimeline.steps.notifyArtists.responseWindowLabel")}
             <Input
               type="number"
               min={1}
@@ -199,13 +203,13 @@ export function FlowTimeline({
           <Switch
             checked={flow.expiry_reminder}
             disabled={disabled || respOff}
-            aria-label="Expiry reminder"
+            aria-label={t("flowTimeline.steps.notifyArtists.expiryReminderAria")}
             onCheckedChange={(v) => onFlowChange({ expiry_reminder: v })}
           />
-          Remind artists 24 h before their window closes
+          {t("flowTimeline.steps.notifyArtists.expiryReminderLabel")}
         </label>
         <div className="flex flex-wrap items-center gap-2.5">
-          <span className="text-xs text-muted-foreground">Reference field</span>
+          <span className="text-xs text-muted-foreground">{t("flowTimeline.steps.notifyArtists.referenceFieldLabel")}</span>
           <Select
             value={flow.reference_field.source}
             disabled={disabled || respOff}
@@ -218,15 +222,15 @@ export function FlowTimeline({
               })
             }
           >
-            <SelectTrigger className="w-52" aria-label="Reference field">
+            <SelectTrigger className="w-52" aria-label={t("flowTimeline.steps.notifyArtists.referenceFieldAria")}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="show">Show label (default)</SelectItem>
-              <SelectItem value="program">Program only</SelectItem>
+              <SelectItem value="show">{t("flowTimeline.steps.notifyArtists.referenceFieldOptions.show")}</SelectItem>
+              <SelectItem value="program">{t("flowTimeline.steps.notifyArtists.referenceFieldOptions.program")}</SelectItem>
               {allowCustomReference && (
                 <SelectItem value="custom" disabled={customFields.length === 0}>
-                  Custom field…
+                  {t("flowTimeline.steps.notifyArtists.referenceFieldOptions.custom")}
                 </SelectItem>
               )}
             </SelectContent>
@@ -257,15 +261,15 @@ export function FlowTimeline({
 
       <TimelineStep
         n={3}
-        title="Artist acceptance"
-        desc="Artists accept or decline from their calendar. Off means producers book directly, with no offers at all."
+        title={t("flowTimeline.steps.artistAcceptance.title")}
+        desc={t("flowTimeline.steps.artistAcceptance.desc")}
         chips={
           <>
             <Badge variant={nextStageBadgeVariant}>{nextStageChip.label}</Badge>
             <Switch
               checked={flow.artist_acceptance}
               disabled={disabled}
-              aria-label="Artist acceptance"
+              aria-label={t("flowTimeline.steps.artistAcceptance.aria")}
               onCheckedChange={(v) => onFlowChange({ artist_acceptance: v })}
             />
           </>
@@ -273,24 +277,23 @@ export function FlowTimeline({
       >
         {respOff && (
           <p className="rounded-md bg-[var(--amber-100)] px-2.5 py-1.5 text-xs text-[var(--amber-600)]">
-            Offers, digests, and response windows are skipped. Producers book from eligibility lists; the artist's
-            first touchpoint is the confirmation.
+            {t("flowTimeline.steps.artistAcceptance.offNotice")}
           </p>
         )}
       </TimelineStep>
 
       <TimelineStep
         n={4}
-        title="Producer confirmation"
-        desc="Producer reviews soft-booked artists and confirms the cast. Off means an acceptance confirms immediately."
+        title={t("flowTimeline.steps.producerConfirmation.title")}
+        desc={t("flowTimeline.steps.producerConfirmation.desc")}
         chips={
           <>
-            <Badge variant="confirmed">Confirmed</Badge>
-            {respOff && <Badge variant="neutral">Locked on</Badge>}
+            <Badge variant="confirmed">{t("flowTimeline.badges.confirmed")}</Badge>
+            {respOff && <Badge variant="neutral">{t("flowTimeline.badges.lockedOn")}</Badge>}
             <Switch
               checked={respOff || flow.producer_confirmation}
               disabled={disabled || respOff}
-              aria-label="Producer confirmation"
+              aria-label={t("flowTimeline.steps.producerConfirmation.aria")}
               onCheckedChange={(v) => onFlowChange({ producer_confirmation: v })}
             />
           </>
@@ -298,16 +301,15 @@ export function FlowTimeline({
       >
         {respOff && (
           <p className="rounded-md bg-muted px-2.5 py-1.5 text-xs text-muted-foreground">
-            With artist acceptance off, the producer's booking is itself the confirmation, so this step can't be
-            skipped.
+            {t("flowTimeline.steps.producerConfirmation.offNotice")}
           </p>
         )}
       </TimelineStep>
 
       <TimelineStep
         n={5}
-        title="Confirmation digest"
-        desc="Daily summary email to newly confirmed artists."
+        title={t("flowTimeline.steps.confirmationDigest.title")}
+        desc={t("flowTimeline.steps.confirmationDigest.desc")}
         chips={
           <>
             <label
@@ -316,7 +318,7 @@ export function FlowTimeline({
                 !flow.confirmation_digest && "opacity-40",
               )}
             >
-              Hour (Berlin, Germany)
+              {t("flowTimeline.steps.confirmationDigest.hourLabel")}
               <Input
                 type="number"
                 min={0}
@@ -330,7 +332,7 @@ export function FlowTimeline({
             <Switch
               checked={flow.confirmation_digest}
               disabled={disabled}
-              aria-label="Confirmation digest"
+              aria-label={t("flowTimeline.steps.confirmationDigest.aria")}
               onCheckedChange={(v) => onFlowChange({ confirmation_digest: v })}
             />
           </>
@@ -340,13 +342,13 @@ export function FlowTimeline({
       <TimelineStep
         n={6}
         last
-        title="Understudy promotion"
-        desc="When a main-cast booking cancels, the longest-waiting accepted understudy is promoted automatically."
+        title={t("flowTimeline.steps.understudyPromotion.title")}
+        desc={t("flowTimeline.steps.understudyPromotion.desc")}
         chips={
           <Switch
             checked={flow.understudy_promotion}
             disabled={disabled}
-            aria-label="Understudy promotion"
+            aria-label={t("flowTimeline.steps.understudyPromotion.aria")}
             onCheckedChange={(v) => onFlowChange({ understudy_promotion: v })}
           />
         }

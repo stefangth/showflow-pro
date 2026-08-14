@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { Download, Mail } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ROUTES } from "@/config/app.config";
@@ -14,19 +15,19 @@ import { BACKUP_CEILING_NOTE, TRUST_CONTACT } from "@/lib/trust/facts";
  *  own, on the profile page) and states plainly that the organisation-wide one
  *  is a request. */
 export function YourDataCard() {
+  const { t } = useTranslation('settingsTrust');
   return (
     <Card>
       <CardContent className="space-y-3 p-5">
-        <h3 className="text-base font-semibold tracking-tight">Export and deletion</h3>
+        <h3 className="text-base font-semibold tracking-tight">{t('yourDataCard.title')}</h3>
         <p className="text-sm text-muted-foreground">
-          Your own data is a button. An organisation-wide export or deletion is a request we answer
-          within one month, because it needs a platform administrator to run.
+          {t('yourDataCard.description')}
         </p>
         <div className="flex flex-wrap gap-2 pt-1">
           <Button asChild size="sm">
             <Link to={ROUTES.PROFILE}>
               <Download className="mr-2 h-3.5 w-3.5" />
-              Export your data
+              {t('yourDataCard.exportYourData')}
             </Link>
           </Button>
           <Button asChild size="sm" variant="outline">
@@ -35,7 +36,7 @@ export function YourDataCard() {
               rel="noreferrer"
             >
               <Mail className="mr-2 h-3.5 w-3.5" />
-              Request an organisation export
+              {t('yourDataCard.requestOrgExport')}
             </a>
           </Button>
         </div>
@@ -43,8 +44,7 @@ export function YourDataCard() {
          *  in the Backups control, the Retention card and the public page, so
          *  lowering the ceiling moves all four at once. */}
         <p className="text-xs leading-4 text-muted-foreground">
-          Deleting your account anonymises what booking records must retain, then removes the
-          account. {BACKUP_CEILING_NOTE}
+          {t('yourDataCard.deletionNote')} {BACKUP_CEILING_NOTE}
         </p>
       </CardContent>
     </Card>

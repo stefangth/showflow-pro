@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 
@@ -12,11 +13,11 @@ interface ConsoleTabsProps {
   canWrite: boolean;
 }
 
-const TABS: { key: ConsoleTab; label: string }[] = [
-  { key: "overview", label: "Overview" },
-  { key: "mapping", label: "Field mapping" },
-  { key: "catalog", label: "Catalog links" },
-  { key: "activity", label: "Activity" },
+const TAB_KEYS: { key: ConsoleTab; labelKey: string }[] = [
+  { key: "overview", labelKey: "consoleTabs.overview" },
+  { key: "mapping", labelKey: "consoleTabs.mapping" },
+  { key: "catalog", labelKey: "consoleTabs.catalog" },
+  { key: "activity", labelKey: "consoleTabs.activity" },
 ];
 
 /** The segmented tab bar plus the "Sync" master switch that sits above the
@@ -29,10 +30,11 @@ export function ConsoleTabs({
   onToggleSync,
   canWrite,
 }: ConsoleTabsProps) {
+  const { t } = useTranslation('settingsAirtable');
   return (
     <div className="flex items-center justify-between gap-3">
       <div className="inline-flex gap-0.5 rounded-md bg-muted p-0.5">
-        {TABS.map((tab) => {
+        {TAB_KEYS.map((tab) => {
           const active = tab.key === value;
           return (
             <button
@@ -46,7 +48,7 @@ export function ConsoleTabs({
                   : "text-muted-foreground hover:text-foreground",
               )}
             >
-              {tab.label}
+              {t(tab.labelKey)}
               {tab.key === "catalog" && heldCount > 0 && (
                 <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-[4px] bg-accent-100 px-1 text-[10px] font-semibold tabular-nums text-accent-700">
                   {heldCount}
@@ -57,12 +59,12 @@ export function ConsoleTabs({
         })}
       </div>
       <div className="flex items-center gap-2.5">
-        <span className="text-xs text-muted-foreground">Sync</span>
+        <span className="text-xs text-muted-foreground">{t('consoleTabs.sync')}</span>
         <Switch
           checked={syncEnabled}
           onCheckedChange={onToggleSync}
           disabled={!canWrite}
-          aria-label="Sync enabled"
+          aria-label={t('consoleTabs.syncEnabledAria')}
         />
       </div>
     </div>

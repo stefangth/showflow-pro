@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -72,6 +73,7 @@ export function DocumentBaseControls<Theme extends ThemeDraft>({
   title, base, baseModified, fonts, fontFields, colors, colorValues, fieldGroups = [], onBaseChange,
   onThemeChange, themeDraft, readOnly, scaleField, onColorChange,
 }: DocumentBaseControlsProps<Theme>) {
+  const { t } = useTranslation("settingsEditor");
   const baseValues = base as Record<string, unknown>;
   const resetBase = () => {
     const next = { ...themeDraft } as Theme & { base?: unknown };
@@ -80,12 +82,12 @@ export function DocumentBaseControls<Theme extends ThemeDraft>({
   };
 
   return (
-    <aside aria-label="Element settings" className="h-full">
+    <aside aria-label={t("documentBase.elementSettingsAria")} className="h-full">
       <ScrollArea className="h-full">
         <div className="space-y-4 p-4">
           <div className="flex items-center justify-between gap-2">
             <h3 className="font-display text-sm">{title}</h3>
-            {baseModified && !readOnly && <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-xs" aria-label="Reset document style to default" onClick={resetBase}>Reset</Button>}
+            {baseModified && !readOnly && <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-xs" aria-label={t("documentBase.resetAria")} onClick={resetBase}>{t("documentBase.reset")}</Button>}
           </div>
           {fontFields.map((field) => (
             <div key={field.key} className="space-y-1.5">
@@ -104,7 +106,7 @@ export function DocumentBaseControls<Theme extends ThemeDraft>({
             </div>
           )}
           {colors.length > 0 && <div className="space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Colours</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("documentBase.colours")}</p>
             {colors.map((field) => (
               <div key={field.key} className="flex items-center justify-between gap-2">
                 <Label htmlFor={`tpl-color-${field.key}`} className="text-sm font-normal">{field.label}</Label>

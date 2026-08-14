@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import type { CoverageCastRef } from "./coverageMatrix";
@@ -22,13 +23,14 @@ interface TierCellProps {
 /** One (city, tier) cell of the coverage matrix. A button showing the assigned cast
  *  (or a dashed empty-state) opens a popover to pick a cast for this slot, or clear it. */
 export function TierCell({ tier, slot, options, disabled, onSelect, onClear }: TierCellProps) {
+  const { t } = useTranslation('settingsCastsCoverage');
   return (
     <Popover>
       <PopoverTrigger asChild>
         <button
           type="button"
           disabled={disabled}
-          aria-label={slot ? `Tier ${tier}: ${slot.name}` : `Set tier ${tier}`}
+          aria-label={slot ? t('tierCell.tierWithName', { tier, name: slot.name }) : t('tierCell.setTier', { tier })}
           className={cn(
             "flex w-full flex-col items-start gap-0.5 rounded-[var(--radius-s)] border px-2.5 py-1.5 text-left text-sm transition-colors",
             slot
@@ -41,30 +43,30 @@ export function TierCell({ tier, slot, options, disabled, onSelect, onClear }: T
             <>
               <span className="font-medium text-foreground">{slot.name}</span>
               <span className="text-xs text-muted-foreground">
-                {slot.memberCount} member{slot.memberCount === 1 ? "" : "s"}
+                {t('tierCell.memberCount', { count: slot.memberCount })}
               </span>
             </>
           ) : (
-            <span>Set tier {tier}</span>
+            <span>{t('tierCell.setTier', { tier })}</span>
           )}
         </button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-64 p-1">
         <div className="max-h-64 space-y-0.5 overflow-y-auto">
           {options.length === 0 ? (
-            <p className="px-2 py-1.5 text-xs text-muted-foreground">No casts available.</p>
+            <p className="px-2 py-1.5 text-xs text-muted-foreground">{t('tierCell.noCastsAvailable')}</p>
           ) : (
             options.map((opt) => (
               <button
                 key={opt.id}
                 type="button"
-                aria-label={`Assign ${opt.name}`}
+                aria-label={t('tierCell.assign', { name: opt.name })}
                 onClick={() => onSelect(opt.id)}
                 className="flex w-full items-center justify-between rounded-[var(--radius-s)] px-2 py-1.5 text-left text-sm hover:bg-[var(--surface-3)]"
               >
                 <span>{opt.name}</span>
                 <span className="font-mono text-xs text-muted-foreground">
-                  {opt.memberCount} member{opt.memberCount === 1 ? "" : "s"}
+                  {t('tierCell.memberCount', { count: opt.memberCount })}
                 </span>
               </button>
             ))
@@ -77,7 +79,7 @@ export function TierCell({ tier, slot, options, disabled, onSelect, onClear }: T
                 onClick={onClear}
                 className="flex w-full items-center rounded-[var(--radius-s)] px-2 py-1.5 text-left text-sm text-destructive hover:bg-[var(--surface-3)]"
               >
-                Clear slot
+                {t('tierCell.clearSlot')}
               </button>
             </>
           )}

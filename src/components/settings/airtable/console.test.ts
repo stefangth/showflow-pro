@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import i18n from "@/i18n";
 import type { SyncLogSummary, UnresolvedRecord } from "@/data/airtableSync";
 import type { AirtableSettings } from "@/data/airtableSettings";
 import type { AirtableFieldMap } from "@/data/airtableMapping";
@@ -12,6 +13,8 @@ import {
   statusBadge,
   runClock,
 } from "./console";
+
+const t = i18n.getFixedT("en", "settingsAirtable");
 
 function makeLog(over: Partial<SyncLogSummary> = {}): SyncLogSummary {
   return {
@@ -63,12 +66,12 @@ describe("runClock", () => {
 
 describe("statusBadge", () => {
   it("maps known statuses", () => {
-    expect(statusBadge("success")).toEqual({ label: "ok", tone: "green" });
-    expect(statusBadge("partial")).toEqual({ label: "partial", tone: "amber" });
-    expect(statusBadge("error")).toEqual({ label: "failed", tone: "red" });
+    expect(statusBadge("success", t)).toEqual({ label: "ok", tone: "green" });
+    expect(statusBadge("partial", t)).toEqual({ label: "partial", tone: "amber" });
+    expect(statusBadge("error", t)).toEqual({ label: "failed", tone: "red" });
   });
   it("falls back to the raw status with amber tone", () => {
-    expect(statusBadge("weird")).toEqual({ label: "weird", tone: "amber" });
+    expect(statusBadge("weird", t)).toEqual({ label: "weird", tone: "amber" });
   });
 });
 
@@ -109,19 +112,20 @@ describe("deriveMode", () => {
 
 describe("deriveStatus", () => {
   it("error mode uses the error_details when present", () => {
-    const s = deriveStatus(makeLog({ status: "error", error_details: "boom" }), "error");
+    const s = deriveStatus(makeLog({ status: "error", error_details: "boom" }), "error", t);
     expect(s.tone).toBe("red");
     expect(s.headline).toBe("Sync is failing");
     expect(s.line).toBe("The last run failed. boom");
   });
   it("error mode falls back to a generic line", () => {
-    const s = deriveStatus(makeLog({ status: "error", error_details: null }), "error");
+    const s = deriveStatus(makeLog({ status: "error", error_details: null }), "error", t);
     expect(s.line).toBe("The last run failed. Airtable rejected the request.");
   });
   it("healthy mode with a run contains the counts (not the clock)", () => {
     const s = deriveStatus(
       makeLog({ imported_count: 8, new_count: 3, updated_count: 5 }),
       "healthy",
+      t,
     );
     expect(s.tone).toBe("green");
     expect(s.headline).toBe("Syncing normally");
@@ -129,13 +133,14 @@ describe("deriveStatus", () => {
     expect(s.line).toContain("Every record resolved.");
   });
   it("healthy mode with no run uses the not-synced-yet copy", () => {
-    const s = deriveStatus(null, "healthy");
+    const s = deriveStatus(null, "healthy", t);
     expect(s.line).toBe("Not synced yet. The next run will bring in dates.");
   });
   it("live mode headline and line reflect held count (plural)", () => {
     const s = deriveStatus(
       makeLog({ held_count: 3, imported_count: 8, new_count: 3, updated_count: 5 }),
       "live",
+      t,
     );
     expect(s.tone).toBe("amber");
     expect(s.headline).toBe("Syncing, 3 records held");
@@ -143,7 +148,7 @@ describe("deriveStatus", () => {
     expect(s.line).toContain("3 records could not resolve");
   });
   it("live mode singularizes a single held record", () => {
-    const s = deriveStatus(makeLog({ held_count: 1 }), "live");
+    const s = deriveStatus(makeLog({ held_count: 1 }), "live", t);
     expect(s.headline).toBe("Syncing, 1 record held");
     expect(s.line).toContain("1 record could not resolve");
   });
@@ -151,7 +156,7 @@ describe("deriveStatus", () => {
 
 describe("deriveKpis", () => {
   it("returns length 4 with Held amber + value when held > 0", () => {
-    const kpis = deriveKpis(makeLog({ held_count: 4 }), makeSettings());
+    const kpis = deriveKpis(makeLog({ held_count: 4 }), makeSettings(), [], t);
     expect(kpis).toHaveLength(4);
     const held = kpis[3];
     expect(held.label).toBe("Held");
@@ -160,7 +165,7 @@ describe("deriveKpis", () => {
     expect(held.sub).toBe("waiting on a link");
   });
   it("returns Held green + 'all resolved' when held is 0", () => {
-    const kpis = deriveKpis(makeLog({ held_count: 0 }), makeSettings());
+    const kpis = deriveKpis(makeLog({ held_count: 0 }), makeSettings(), [], t);
     expect(kpis).toHaveLength(4);
     const held = kpis[3];
     expect(held.value).toBe("0");
@@ -168,14 +173,17 @@ describe("deriveKpis", () => {
     expect(held.sub).toBe("all resolved");
   });
   it("returns length 4 for a null latest", () => {
-    const kpis = deriveKpis(null, makeSettings());
+    const kpis = deriveKpis(null, makeSettings(), [], t);
     expect(kpis).toHaveLength(4);
     expect(kpis[3].tone).toBe("green");
   });
   it("error mode: first cell tone red and label 'failed'", () => {
-    const kpis = deriveKpis(makeLog({ status: "error", held_count: 2 }), makeSettings(), [
-      makeLog({ status: "success" }),
-    ]);
+    const kpis = deriveKpis(
+      makeLog({ status: "error", held_count: 2 }),
+      makeSettings(),
+      [makeLog({ status: "success" })],
+      t,
+    );
     expect(kpis).toHaveLength(4);
     expect(kpis[0].label).toBe("Last run");
     expect(kpis[0].tone).toBe("red");
@@ -198,7 +206,7 @@ describe("groupHeldCauses", () => {
       // surfaced in the catch-all "unrecognized" bucket, never silently dropped
       makeHeld({ id: "x1", reason: "something else" }),
     ];
-    const causes = groupHeldCauses(held);
+    const causes = groupHeldCauses(held, t);
     expect(causes.map((c) => c.category)).toEqual([
       "unlinked_program",
       "unlinked_city",
@@ -236,7 +244,7 @@ describe("groupHeldCauses", () => {
       makeHeld({ id: "p1", reason: "program 'Alpha' not linked" }),
       makeHeld({ id: "p2", reason: "program 'Alpha' not linked" }),
     ];
-    const causes = groupHeldCauses(held);
+    const causes = groupHeldCauses(held, t);
     expect(causes).toHaveLength(1);
     expect(causes[0].optionCount).toBe(1);
     expect(causes[0].recordCount).toBe(2);
@@ -244,7 +252,7 @@ describe("groupHeldCauses", () => {
   });
 
   it("surfaces unrecognized reasons in a catch-all bucket rather than dropping them", () => {
-    const causes = groupHeldCauses([makeHeld({ reason: "nope" }), makeHeld({ reason: null })]);
+    const causes = groupHeldCauses([makeHeld({ reason: "nope" }), makeHeld({ reason: null })], t);
     expect(causes).toHaveLength(1);
     expect(causes[0].category).toBe("unrecognized");
     expect(causes[0].recordCount).toBe(2);

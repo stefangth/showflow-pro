@@ -1,5 +1,6 @@
 import type React from "react";
 import { AlertCircle, Check } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import type { SyncLogSummary } from "@/data/airtableSync";
 import { statusBadge, runClock, type StatusTone } from "./console";
@@ -49,11 +50,12 @@ export function OverviewTab({
   recentRuns,
   canWrite,
 }: OverviewTabProps) {
+  const { t } = useTranslation('settingsAirtable');
   const connectionRows: Array<{ label: string; value: string }> = [
-    { label: "Token", value: connection.token },
-    { label: "Base", value: connection.base },
-    { label: "Table · view", value: connection.tableView },
-    { label: "Frequency", value: connection.frequency },
+    { label: t('overviewTab.rowToken'), value: connection.token },
+    { label: t('overviewTab.rowBase'), value: connection.base },
+    { label: t('overviewTab.rowTableView'), value: connection.tableView },
+    { label: t('overviewTab.rowFrequency'), value: connection.frequency },
   ];
 
   return (
@@ -72,7 +74,7 @@ export function OverviewTab({
               className="shrink-0 border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive"
               onClick={onReplaceToken}
             >
-              Replace token
+              {t('overviewTab.replaceToken')}
             </Button>
           )}
         </div>
@@ -90,10 +92,10 @@ export function OverviewTab({
           </span>
           <div className="min-w-0 flex-1">
             <p className="text-sm font-medium text-foreground">
-              Nothing held. Every record resolved on the last runs.
+              {t('overviewTab.allClearTitle')}
             </p>
             <p className="mt-0.5 text-[13px] text-muted-foreground">
-              New program or city options in Airtable will show up here when they arrive.
+              {t('overviewTab.allClearDescription')}
             </p>
           </div>
         </div>
@@ -101,7 +103,7 @@ export function OverviewTab({
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
-          <p className={`mb-3 ${EYEBROW}`}>Connection</p>
+          <p className={`mb-3 ${EYEBROW}`}>{t('overviewTab.connectionLabel')}</p>
           {connectionRows.map((row) => (
             <div
               key={row.label}
@@ -118,18 +120,18 @@ export function OverviewTab({
               className="mt-3"
               onClick={onManageConnection}
             >
-              Manage connection
+              {t('overviewTab.manageConnection')}
             </Button>
           )}
         </div>
 
         <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
-          <p className={`mb-3 ${EYEBROW}`}>Last 5 runs</p>
+          <p className={`mb-3 ${EYEBROW}`}>{t('overviewTab.last5Runs')}</p>
           {recentRuns.length === 0 ? (
-            <p className="text-[13px] text-muted-foreground">No runs yet.</p>
+            <p className="text-[13px] text-muted-foreground">{t('overviewTab.noRuns')}</p>
           ) : (
             recentRuns.slice(0, 5).map((run) => {
-              const badge = statusBadge(run.status);
+              const badge = statusBadge(run.status, t);
               return (
                 <div
                   key={run.id}
@@ -143,7 +145,7 @@ export function OverviewTab({
                     {runClock(run.synced_at)}
                   </span>
                   <span className="text-[13px] text-foreground">
-                    {run.imported_count ?? 0} in · {run.held_count ?? 0} held
+                    {t('overviewTab.runSummary', { importedCount: run.imported_count ?? 0, heldCount: run.held_count ?? 0 })}
                   </span>
                 </div>
               );

@@ -1,1 +1,122 @@
-{}
+{
+  "bookingFlowTab": {
+    "lockedAlert": {
+      "title": "Booking-Engine ist nicht aktiviert",
+      "description": "Buchungen sind für deine Organisation ausgeschaltet, daher werden keine Angebote, Erinnerungen oder Bestätigungen versendet. Wende dich an deinen ShowFlow Administrator, um es zu aktivieren."
+    },
+    "offAlert": {
+      "title": "Buchungsablauf ist ausgeschaltet",
+      "description": "Es werden keine neuen Angebote geöffnet, und es werden keine Erinnerungen, Tagesübersichten oder Bestätigungen versendet. Bereits versendete Angebote laufen weiterhin innerhalb ihrer Antwortfrist aus. Wähle oben einen Ablauf, um ihn einzuschalten."
+    },
+    "templatesError": {
+      "title": "Buchungsvorlagen konnten nicht geladen werden"
+    },
+    "referencePreview": "Angebot: {{label}} · 30. Apr, Berlin",
+    "fromAddress": {
+      "label": "Absenderadresse (Resend)",
+      "helper": "Überschreibt die Standard-Absenderadresse für alle ausgehenden E-Mails."
+    }
+  },
+  "flowPresets": {
+    "groupLabel": "Ablaufvorlagen",
+    "names": {
+      "classic": "Klassisch",
+      "fasttrack": "Fast-Track",
+      "direct": "Direkt buchen",
+      "off": "Aus"
+    },
+    "custom": "Eigene",
+    "describe": {
+      "paused": "Buchungsablauf pausiert. Es werden keine neuen Angebote, Erinnerungen, Tagesübersichten oder Bestätigungen versendet.",
+      "directBooking": "Künstler werden direkt gebucht, keine Angebotsantwort erforderlich.",
+      "tierAuto": "Stufe 1 öffnet automatisch",
+      "tierManual": "Stufen öffnen manuell",
+      "deliveryImmediate": "Angebote werden sofort versendet",
+      "deliveryDigest": "Angebote werden in der {{hour}} Tagesübersicht versendet",
+      "confirmProducer": "Produktionsteam bestätigt angenommene Angebote",
+      "confirmInstant": "Künstlerannahme bestätigt sofort",
+      "summary": "{{opening}}; {{delivery}}; {{hours}} Std Antwortfrist; {{confirmation}}."
+    }
+  },
+  "flowRail": {
+    "unsavedDraft_one": "Nicht gespeicherter Entwurf in Vorschau · {{count}} Änderung",
+    "unsavedDraft_other": "Nicht gespeicherter Entwurf in Vorschau · {{count}} Änderungen",
+    "resultingLifecycle": "Resultierender Lebenszyklus",
+    "inPractice": "In der Praxis",
+    "flowPreview": "Ablaufvorschau",
+    "save": "Speichern ({{count}})",
+    "saved": "Gespeichert",
+    "discard": "Verwerfen",
+    "changeHistory": "Änderungsverlauf",
+    "historyError": "Änderungsverlauf konnte nicht geladen werden.",
+    "historyEmpty": "Noch keine Änderungen erfasst.",
+    "actorSystem": "System"
+  },
+  "flowTimeline": {
+    "badges": {
+      "alwaysOn": "Immer an",
+      "offered": "Angeboten",
+      "skipped": "Übersprungen",
+      "confirmed": "Bestätigt",
+      "lockedOn": "Fest aktiviert"
+    },
+    "steps": {
+      "dateCreated": {
+        "title": "Termin erstellt",
+        "desc": "Über Airtable-Sync oder in der App, so oder so tritt der Termin hier in den Ablauf ein."
+      },
+      "openOfferTier": {
+        "title": "Angebotsstufe öffnen",
+        "desc": "Erstellt vorgeschlagene Buchungen für jeden berechtigten Künstler in der Stufe.",
+        "autoOpenLabel": "Stufe 1 automatisch öffnen, wenn ein neuer Termin bereit ist",
+        "autoOpenAria": "Stufe 1 automatisch öffnen",
+        "autoEscalateLabel": "Automatisch zur nächsten Stufe eskalieren, wenn ein Zeitfenster zu früh schließt",
+        "autoEscalateAria": "Stufen automatisch eskalieren",
+        "atRiskLabel": "Das Produktionsteam benachrichtigen, wenn die offene Stufe die verbleibenden Hauptplätze nicht füllen kann",
+        "atRiskAria": "Risiko-Warnungen",
+        "atRiskHelper": "Wird stündlich geprüft. Eine Warnung wird versendet, wenn bestätigte Buchungen plus laufende offene Angebote weniger sind als die erforderlichen Hauptplätze."
+      },
+      "notifyArtists": {
+        "title": "Künstler benachrichtigen",
+        "desc": "Wie und wann Angebote die Künstler erreichen. Die Antwortfrist beginnt mit der Zustellung.",
+        "deliveryGroupAria": "Angebotszustellung",
+        "dailyDigest": "Tägliche Übersicht · {{hour}}",
+        "immediate": "Sofort",
+        "digestHourLabel": "Übersichtsstunde (Berlin, Deutschland)",
+        "responseWindowLabel": "Antwortfrist (Std)",
+        "expiryReminderLabel": "Künstler 24 Std vor Ablauf ihres Zeitfensters erinnern",
+        "expiryReminderAria": "Ablauf-Erinnerung",
+        "referenceFieldLabel": "Referenzfeld",
+        "referenceFieldAria": "Referenzfeld",
+        "referenceFieldOptions": {
+          "show": "Show-Bezeichnung (Standard)",
+          "program": "Nur Programm",
+          "custom": "Benutzerdefiniertes Feld…"
+        }
+      },
+      "artistAcceptance": {
+        "title": "Künstlerannahme",
+        "desc": "Künstler nehmen an oder lehnen ab, direkt aus ihrem Kalender. Aus bedeutet, das Produktionsteam bucht direkt, ganz ohne Angebote.",
+        "aria": "Künstlerannahme",
+        "offNotice": "Angebote, Übersichten und Antwortfristen werden übersprungen. Das Produktionsteam bucht aus Berechtigungslisten, der erste Kontaktpunkt für den Künstler ist die Bestätigung."
+      },
+      "producerConfirmation": {
+        "title": "Bestätigung durch das Produktionsteam",
+        "desc": "Das Produktionsteam prüft vorläufig gebuchte Künstler und bestätigt die Besetzung. Aus bedeutet, eine Annahme bestätigt sofort.",
+        "aria": "Bestätigung durch das Produktionsteam",
+        "offNotice": "Wenn die Künstlerannahme aus ist, ist die Buchung durch das Produktionsteam selbst die Bestätigung, dieser Schritt kann daher nicht übersprungen werden."
+      },
+      "confirmationDigest": {
+        "title": "Bestätigungsübersicht",
+        "desc": "Tägliche Zusammenfassungs-E-Mail an neu bestätigte Künstler.",
+        "hourLabel": "Stunde (Berlin, Deutschland)",
+        "aria": "Bestätigungsübersicht"
+      },
+      "understudyPromotion": {
+        "title": "Zweitbesetzung-Beförderung",
+        "desc": "Wenn eine Hauptbesetzungs-Buchung storniert wird, wird automatisch die am längsten wartende, angenommene Zweitbesetzung befördert.",
+        "aria": "Zweitbesetzung-Beförderung"
+      }
+    }
+  }
+}

@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Card, CardContent } from "@/components/ui/card";
 import { BACKUP_CEILING_NOTE, RETENTION, RETENTION_BASIS_NOTE } from "@/lib/trust/facts";
 
@@ -7,10 +8,11 @@ import { BACKUP_CEILING_NOTE, RETENTION, RETENTION_BASIS_NOTE } from "@/lib/trus
  *  edge tree and the dependency manifest by
  *  src/lib/trust/retentionBasis.test.ts. Nothing on this card is typed here. */
 export function RetentionCard() {
+  const { t } = useTranslation('settingsTrust');
   return (
     <Card>
       <CardContent className="space-y-3 p-5">
-        <h3 className="text-base font-semibold tracking-tight">Retention</h3>
+        <h3 className="text-base font-semibold tracking-tight">{t('retentionCard.title')}</h3>
         {/* This used to read: Nothing is kept "just in case". That is a claim
          *  about behaviour, and it does not hold for the two categories the
          *  table leads with. Nothing in the repo deletes bookings, the audit
@@ -24,7 +26,7 @@ export function RetentionCard() {
          *  ceiling. facts.privacy.test.ts parses section 7 and fails if the
          *  rows below stop matching it. */}
         <p className="text-sm text-muted-foreground">
-          Each category below has a stated period, taken from section 7 of the privacy policy.{" "}
+          {t('retentionCard.intro')}{" "}
           {RETENTION_BASIS_NOTE}
         </p>
         {/* A bare period reads as "a timer deletes this on that schedule", and

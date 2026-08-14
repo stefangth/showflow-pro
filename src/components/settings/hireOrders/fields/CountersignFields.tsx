@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -22,6 +23,7 @@ export function CountersignFields({
   readOnly = false,
   idPrefix = "ho-countersign",
 }: CountersignFieldsProps) {
+  const { t } = useTranslation("settingsHireOrders");
   return (
     <div className="space-y-4">
       <RadioGroup
@@ -33,18 +35,18 @@ export function CountersignFields({
         <div className="flex items-start gap-3 rounded-lg border border-border p-3">
           <RadioGroupItem value="electronic" id={`${idPrefix}-electronic`} className="mt-0.5" />
           <Label htmlFor={`${idPrefix}-electronic`} className="cursor-pointer font-normal">
-            <span className="block text-sm font-medium">Artist signs in ShowFlow</span>
+            <span className="block text-sm font-medium">{t("countersignFields.electronicTitle")}</span>
             <span className="block text-xs text-muted-foreground">
-              The artist reviews and signs the issued order in the app. Signature, timestamp and IP are stored with it.
+              {t("countersignFields.electronicBody")}
             </span>
           </Label>
         </div>
         <div className="flex items-start gap-3 rounded-lg border border-border p-3">
           <RadioGroupItem value="manual" id={`${idPrefix}-manual`} className="mt-0.5" />
           <Label htmlFor={`${idPrefix}-manual`} className="cursor-pointer font-normal">
-            <span className="block text-sm font-medium">Signatures handled outside ShowFlow</span>
+            <span className="block text-sm font-medium">{t("countersignFields.manualTitle")}</span>
             <span className="block text-xs text-muted-foreground">
-              A producer marks the order countersigned once the artist has signed elsewhere.
+              {t("countersignFields.manualBody")}
             </span>
           </Label>
         </div>
@@ -59,9 +61,9 @@ export function CountersignFields({
             onCheckedChange={(c) => onChange({ ...value, email_producers_on_countersign: c === true })}
           />
           <Label htmlFor={`${idPrefix}-email-producers`} className="cursor-pointer font-normal">
-            <span className="block text-sm font-medium">Also email producers the signed copy</span>
+            <span className="block text-sm font-medium">{t("countersignFields.emailProducersTitle")}</span>
             <span className="block text-xs text-muted-foreground">
-              When the artist signs, email the assigned producers a copy. Producers are notified in-app either way.
+              {t("countersignFields.emailProducersBody")}
             </span>
           </Label>
         </div>

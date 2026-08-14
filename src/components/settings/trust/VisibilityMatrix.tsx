@@ -1,4 +1,5 @@
 import { useRef, useState, type KeyboardEvent } from "react";
+import { useTranslation } from "react-i18next";
 import {
   CROSS_ORG_EXCEPTIONS_NOTE,
   VISIBILITY_MATRIX,
@@ -104,6 +105,7 @@ function ToneBadge({ tone, children }: { tone: AccessTone; children: string }) {
  *  selection per the WAI-ARIA radiogroup pattern, so the control is both
  *  correctly labelled and actually operable from the keyboard. */
 function RolePicker({ value, onChange }: { value: TrustRole; onChange: (r: TrustRole) => void }) {
+  const { t } = useTranslation('settingsTrust');
   const refs = useRef<Array<HTMLButtonElement | null>>([]);
 
   const handleKeyDown = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
@@ -122,7 +124,7 @@ function RolePicker({ value, onChange }: { value: TrustRole; onChange: (r: Trust
   return (
     <div
       role="radiogroup"
-      aria-label="Role to inspect"
+      aria-label={t('visibilityMatrix.roleToInspect')}
       className="inline-flex gap-0.5 rounded-lg bg-muted p-0.5"
     >
       {TRUST_ROLES.map((role, index) => {
@@ -179,6 +181,7 @@ function RolePicker({ value, onChange }: { value: TrustRole; onChange: (r: Trust
  *  behaviour we cannot yet evidence, and a trust page is the wrong place to
  *  approximate. */
 export function VisibilityMatrix() {
+  const { t } = useTranslation('settingsTrust');
   const [role, setRole] = useState<TrustRole>("artist");
   const roleLabel = TRUST_ROLES.find((r) => r.value === role)?.label ?? role;
 
@@ -186,7 +189,7 @@ export function VisibilityMatrix() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="max-w-md space-y-1">
-          <h3 className="text-base font-semibold tracking-tight">Who can see what</h3>
+          <h3 className="text-base font-semibold tracking-tight">{t('visibilityMatrix.title')}</h3>
           {/* "not the interface" was falsified two rows into the table it
            *  introduces: the Show-date chat cells say the database sets no
            *  time limit and the interface turns the thread read-only (admin)
@@ -198,8 +201,7 @@ export function VisibilityMatrix() {
            *  one. VisibilityMatrix.test.tsx pins both halves: this wording,
            *  and the fact that some cell still credits the interface. */}
           <p className="text-sm text-muted-foreground">
-            Answer an artist manager on the call. Roles are per organisation, and what each can
-            read below is enforced in the database, not just the interface.
+            {t('visibilityMatrix.description')}
           </p>
         </div>
         <RolePicker value={role} onChange={setRole} />
@@ -208,7 +210,7 @@ export function VisibilityMatrix() {
       {/* Re-announces the table's subject on every role change — the static
        *  caption below is not re-read by a screen reader on its own. */}
       <p aria-live="polite" className="sr-only">
-        Showing what the {roleLabel} role can read
+        {t('visibilityMatrix.showingRole', { role: roleLabel })}
       </p>
 
       {/* >=1280px (xl): the table, in a scroll region a keyboard-only user can
@@ -262,11 +264,11 @@ export function VisibilityMatrix() {
         className="-mx-1 hidden overflow-x-auto px-1 xl:block"
         tabIndex={0}
         role="region"
-        aria-label={`What the ${roleLabel} role can read, and the mechanism that decides it, scrollable`}
+        aria-label={t('visibilityMatrix.regionScrollableLabel', { role: roleLabel })}
       >
         <table className="w-full min-w-[400px] table-fixed text-left">
           <caption className="sr-only">
-            What the {roleLabel} role can read, and the mechanism that decides it
+            {t('visibilityMatrix.caption', { role: roleLabel })}
           </caption>
           <colgroup>
             <col className="w-[34%]" />
@@ -275,9 +277,9 @@ export function VisibilityMatrix() {
           </colgroup>
           <thead>
             <tr className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
-              <th scope="col" className="pb-2 font-semibold">Data</th>
-              <th scope="col" className="pb-2 font-semibold">Access</th>
-              <th scope="col" className="pb-2 font-semibold">Mechanism</th>
+              <th scope="col" className="pb-2 font-semibold">{t('visibilityMatrix.columnData')}</th>
+              <th scope="col" className="pb-2 font-semibold">{t('visibilityMatrix.columnAccess')}</th>
+              <th scope="col" className="pb-2 font-semibold">{t('visibilityMatrix.columnMechanism')}</th>
             </tr>
           </thead>
           <tbody>

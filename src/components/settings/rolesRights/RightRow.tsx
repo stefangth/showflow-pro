@@ -1,4 +1,5 @@
 import { Lock } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -22,6 +23,7 @@ interface RightRowProps {
 /** One capability toggle row inside a `RightGroupCard`: label, description,
  *  risk/lock badges, and a switch reflecting the pending `desired` value. */
 export function RightRow({ row, changed, desired, onToggle }: RightRowProps) {
+  const { t } = useTranslation("settingsRolesRights");
   const { label, description, risk, locked } = row;
   return (
     <div
@@ -36,12 +38,12 @@ export function RightRow({ row, changed, desired, onToggle }: RightRowProps) {
         <div className="flex items-center gap-2">
           <p className="text-[13.5px] font-medium text-foreground">{label}</p>
           {risk === "sensitive" && (
-            <Badge variant="hold">Sensitive</Badge>
+            <Badge variant="hold">{t("rightRow.sensitiveBadge")}</Badge>
           )}
           {locked && (
             <Badge variant="neutral">
               <Lock className="h-3 w-3" aria-hidden="true" />
-              Managed by ShowFlow
+              {t("rightRow.managedBadge")}
             </Badge>
           )}
         </div>
@@ -49,7 +51,7 @@ export function RightRow({ row, changed, desired, onToggle }: RightRowProps) {
       </div>
       <div className="flex items-center gap-2 shrink-0">
         {changed && (
-          <Badge variant="accent">{desired ? "Granting" : "Removing"}</Badge>
+          <Badge variant="accent">{desired ? t("rightRow.granting") : t("rightRow.removing")}</Badge>
         )}
         <Switch
           checked={desired}

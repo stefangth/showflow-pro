@@ -1,1 +1,286 @@
-{}
+{
+  "root": {
+    "selectOrg": "Wähle eine Organisation, um den Airtable-Sync einzurichten."
+  },
+  "toasts": {
+    "settingsSaveError": "Die Airtable-Einstellungen konnten nicht gespeichert werden. Deine letzte Änderung wurde nicht übernommen.",
+    "syncSuccess": "Synchronisiert: {{newDates}} neu, {{updated}} aktualisiert",
+    "syncNoRun": "Der Sync ist nicht gelaufen. Prüfe deine Airtable-Konfiguration",
+    "syncFailed": "Sync fehlgeschlagen",
+    "noActiveOrg": "Keine aktive Organisation",
+    "enterApiKey": "Gib einen API-Schlüssel ein",
+    "keySaved": "Airtable-API-Schlüssel gespeichert",
+    "keySaveFailed": "Airtable-Schlüssel konnte nicht gespeichert werden",
+    "keyDeleted": "Airtable-API-Schlüssel gelöscht",
+    "keyDeleteFailed": "Airtable-Schlüssel konnte nicht gelöscht werden",
+    "alreadyMatchesShow": "Entspricht bereits einem Show im Katalog. Es verknüpft sich beim nächsten Sync.",
+    "nothingToCreateShows": "Nichts zu erstellen. Diese Optionen entsprechen bereits Shows im Katalog.",
+    "showCreatedAndLinked": "Show erstellt und verknüpft",
+    "createFailed": "Erstellen fehlgeschlagen",
+    "alreadyMatchesCity": "Entspricht bereits einer Stadt im Katalog.",
+    "cityCreatedAndLinked": "Stadt erstellt und verknüpft",
+    "cityLinked": "Stadt verknüpft",
+    "createdSelectedShows": "Die ausgewählten Shows wurden erstellt",
+    "createdSelectedCities": "Die ausgewählten Städte wurden erstellt",
+    "linked": "Verknüpft",
+    "linkFailed": "Verknüpfen fehlgeschlagen",
+    "unlinked": "Verknüpfung aufgehoben",
+    "unlinkFailed": "Verknüpfung konnte nicht aufgehoben werden",
+    "addedAsCustomFields": "Als benutzerdefinierte Felder hinzugefügt",
+    "addCustomFieldsFailed": "Benutzerdefinierte Felder konnten nicht hinzugefügt werden",
+    "mergedDuplicateCities": "Doppelte Städte zusammengeführt",
+    "mergeFailed": "Zusammenführen fehlgeschlagen"
+  },
+  "mergeSuggestion": {
+    "joiner": " und ",
+    "title": "{{names}} sind dieselbe Stadt",
+    "description": "Beim Zusammenführen bleiben Buchungen, Verfügbarkeit und Produzenten-Routing von {{survivorName}} erhalten, die andere Zeile wird entfernt.",
+    "actionLabel": "In {{survivorName}} zusammenführen"
+  },
+  "eyebrow": {
+    "connected": "Airtable · {{baseName}} › {{tableName}}",
+    "default": "Airtable"
+  },
+  "nextRunFallback": "den nächsten Lauf",
+  "overview": {
+    "errorTitle": "Die letzten Läufe sind fehlgeschlagen",
+    "connection": {
+      "tokenSaved": "Gespeichert {{date}}",
+      "tokenNotSet": "Nicht gesetzt",
+      "tableViewFallbackTable": "nicht gesetzt",
+      "tableViewFallbackView": "Grid view",
+      "frequency": "Alle {{interval}}"
+    }
+  },
+  "mappingTab": {
+    "pickBaseAndTable": "Wähle zuerst eine Basis und eine Tabelle. Öffne",
+    "manageConnectionLink": "Verbindung verwalten",
+    "pickBaseAndTableSuffix": "um festzulegen, wo deine Shows liegen."
+  },
+  "autosaveStatus": {
+    "saving": "Speichert…",
+    "saved": "Alle Änderungen gespeichert",
+    "error": "Konnte nicht gespeichert werden"
+  },
+  "manageDialog": {
+    "title": "Verbindung verwalten",
+    "description": "Dein Airtable-Schlüssel, die zu lesende Basis und Tabelle, die Ansicht und wie oft synchronisiert wird.",
+    "token": {
+      "label": "Persönliches Zugriffstoken",
+      "keySaved": "Schlüssel gespeichert",
+      "notSet": "Nicht gesetzt",
+      "updated": "aktualisiert {{date}}",
+      "maskedValue": "••••••••••",
+      "replace": "Ersetzen",
+      "delete": "Löschen",
+      "deleteDialogTitle": "Den Airtable-API-Schlüssel löschen?",
+      "deleteDialogDescription": "Der Sync funktioniert nicht mehr, bis ein neuer Schlüssel gespeichert wird. Der Schlüssel wird aus dem verschlüsselten Vault entfernt. Das kann nicht rückgängig gemacht werden.",
+      "cancel": "Abbrechen",
+      "deleteKeyConfirm": "Schlüssel löschen",
+      "placeholderReplace": "Neuen Schlüssel eingeben…",
+      "placeholderNew": "pat… (nur schreibend)",
+      "update": "Aktualisieren",
+      "saveKey": "Schlüssel speichern",
+      "helpPrefix": "Verschlüsselt im Vault gespeichert, nie angezeigt. Benötigt",
+      "helpAnd": "und"
+    },
+    "baseTable": {
+      "label": "Basis und Tabelle",
+      "schemaConnected": "Schema verbunden",
+      "manualMode": "Manueller Modus",
+      "refresh": "Von Airtable aktualisieren",
+      "refreshLoading": "Lädt…",
+      "saveKeyFirst": "Speichere zuerst einen Schlüssel, um Basen und Tabellen zu laden.",
+      "baseLabel": "Basis",
+      "selectBasePlaceholder": "Basis auswählen",
+      "tableLabel": "Tabelle",
+      "selectTablePlaceholder": "Tabelle auswählen",
+      "baseIdLabel": "Airtable-Basis-ID",
+      "baseIdPlaceholder": "app1234567890",
+      "tableNameLabel": "Airtable-Tabellenname",
+      "tableNamePlaceholder": "Shows",
+      "viewLabel": "Airtable-Ansicht (optional)",
+      "viewPlaceholder": "Grid view",
+      "viewHelp": "Der Sync liest Datensätze aus dieser Ansicht. Leer lassen, um die gesamte Tabelle zu lesen."
+    },
+    "frequency": {
+      "label": "Sync-Häufigkeit",
+      "warningTitle": "Häufige Syncs können Airtable-Limits erreichen",
+      "warningDescription": "Wähle nur dann eine Häufigkeit unter einer Stunde, wenn dein Airtable-Workspace auf einem kostenpflichtigen Plan läuft. Airtable kann häufige Anfragen drosseln, wodurch Läufe fehlschlagen oder Updates verspätet ankommen können."
+    }
+  },
+  "activityTab": {
+    "title": "Lauf-Historie",
+    "subtitle": "Jeder Abruf für diese Organisation, neueste zuerst.",
+    "colStarted": "Gestartet",
+    "colStatus": "Status",
+    "colRead": "Gelesen",
+    "colNew": "Neu",
+    "colUpdated": "Aktualisiert",
+    "colHeld": "Gehalten",
+    "noRuns": "Noch keine Läufe."
+  },
+  "attentionPanel": {
+    "fixLabelPrograms": "Shows erstellen",
+    "fixLabelCities": "Städte erstellen",
+    "title": "Braucht deine Aufmerksamkeit",
+    "description_one": "{{count}} Datensatz wurde beim letzten Lauf zurückgehalten. Zurückgehaltene Datensätze gehen nie verloren, behebe die Ursache und sie werden beim nächsten Lauf importiert.",
+    "description_other": "{{count}} Datensätze wurden beim letzten Lauf zurückgehalten. Zurückgehaltene Datensätze gehen nie verloren, behebe die Ursache und sie werden beim nächsten Lauf importiert.",
+    "heldBadge": "{{count}} gehalten",
+    "hide": "Ausblenden",
+    "review": "Prüfen",
+    "linkIndividually": "Einzeln in Katalogverknüpfungen verlinken",
+    "footerNote": "Das Beheben gibt die zurückgehaltenen Datensätze beim nächsten Lauf um {{nextRunLabel}} frei.",
+    "openRunLog": "Das vollständige Lauf-Protokoll öffnen"
+  },
+  "catalogTab": {
+    "linkToExisting": "Mit vorhandenem verknüpfen…",
+    "linkToExistingHeading": "Mit vorhandenem verknüpfen",
+    "createOption": "„{{optionLabel}}“ erstellen",
+    "noMatches": "Keine vorhandenen Treffer.",
+    "unlink": "Verknüpfung aufheben",
+    "blankKeyPlaceholder": "·",
+    "create": "Erstellen",
+    "title": "Katalogverknüpfungen",
+    "description": "Jede Airtable-Option entspricht genau einer ShowFlow-Show oder -Stadt. Nicht verknüpfte Optionen halten ihre Datensätze zurück.",
+    "searchPlaceholder": "Optionen und Ziele durchsuchen…",
+    "searchAriaLabel": "Optionen und Ziele durchsuchen",
+    "filters": {
+      "All": "Alle",
+      "Blocking": "Blockierend",
+      "Linked": "Verknüpft"
+    },
+    "selectedCount": "{{count}} ausgewählt",
+    "createCount": "{{count}} erstellen",
+    "programsSection": "Programme · von {{source}}",
+    "citiesSection": "Städte · von {{source}}",
+    "holding": "hält {{count}} zurück",
+    "selectRowAria": "{{display}} auswählen",
+    "linkAriaLabel": "{{noun}} für {{display}} verknüpfen oder anlegen",
+    "linkSearchPlaceholder": "{{noun}} durchsuchen…",
+    "entityNoun": {
+      "show": "Show",
+      "city": "Stadt"
+    }
+  },
+  "consoleTabs": {
+    "overview": "Übersicht",
+    "mapping": "Feldzuordnung",
+    "catalog": "Katalogverknüpfungen",
+    "activity": "Aktivität",
+    "sync": "Sync",
+    "syncEnabledAria": "Sync aktiviert"
+  },
+  "mappingTab2": {
+    "title": "Feldzuordnung",
+    "headerPrefix": "Jedes ShowFlow-Feld liest aus einer Spalte in",
+    "headerSuffix": ". Katalogverknüpfungen basieren auf Programm · Unterprogramm.",
+    "requiredMapped": "erforderlich zugeordnet",
+    "colShowflowField": "ShowFlow-Feld",
+    "colAirtableColumn": "Airtable-Spalte",
+    "notMapped": "Nicht zugeordnet",
+    "optional": "optional",
+    "statusFieldLabel": "Statusfeld (optional)",
+    "cancelledValueLabel": "Wert für „Storniert“",
+    "none": "Keiner",
+    "pickCancelledOption": "Wähle die Storniert-Option",
+    "cancellationReasonLabel": "Stornierungsgrund (optional)",
+    "cancellationReasonAria": "Stornierungsgrund",
+    "footerUnbound_one": "{{count}} Spalte in {{tableName}} wird nicht von ShowFlow gelesen: {{names}}.",
+    "footerUnbound_other": "{{count}} Spalten in {{tableName}} werden nicht von ShowFlow gelesen: {{names}}.",
+    "addAsCustomFields": "Als benutzerdefinierte Felder hinzufügen"
+  },
+  "overviewTab": {
+    "replaceToken": "Token ersetzen",
+    "allClearTitle": "Nichts zurückgehalten. Alle Datensätze wurden bei den letzten Läufen aufgelöst.",
+    "allClearDescription": "Neue Programm- oder Stadt-Optionen in Airtable erscheinen hier, sobald sie eintreffen.",
+    "connectionLabel": "Verbindung",
+    "rowToken": "Token",
+    "rowBase": "Basis",
+    "rowTableView": "Tabelle · Ansicht",
+    "rowFrequency": "Häufigkeit",
+    "manageConnection": "Verbindung verwalten",
+    "last5Runs": "Letzte 5 Läufe",
+    "noRuns": "Noch keine Läufe.",
+    "runSummary": "{{importedCount}} rein · {{heldCount}} gehalten"
+  },
+  "readOnlyBanner": {
+    "prefix": "Nur ansehen. Du kannst die Konfiguration und die Lauf-Historie lesen. Ein Admin mit",
+    "suffix": "kann sie ändern."
+  },
+  "setupWizard": {
+    "steps": {
+      "connectTitle": "Verbinden",
+      "connectHint": "Persönliches Zugriffstoken",
+      "baseTableTitle": "Basis und Tabelle",
+      "baseTableHint": "Wähle, wo deine Shows liegen",
+      "mapFieldsTitle": "Felder zuordnen",
+      "mapFieldsHint": "Datum, Programm, Stadt, Sessions",
+      "linkCatalogTitle": "Katalog verknüpfen",
+      "linkCatalogHint": "Optionen deinen Shows zuordnen"
+    },
+    "eyebrow": "Airtable · Einrichtung",
+    "heading": "Verbinde eine Basis in vier Schritten",
+    "subheading": "Bis zum letzten Schritt wird nichts synchronisiert. Du kannst jederzeit pausieren und zurückkommen, jeder Schritt speichert sofort.",
+    "baseTableStepTitle": "Basis und Tabelle",
+    "baseTableStepDescription": "Dein Token ist gespeichert. Wähle die Airtable-Basis und -Tabelle, in der deine Shows liegen, um die Verbindung abzuschließen. Bis dahin wird nichts synchronisiert.",
+    "chooseBaseAndTable": "Basis und Tabelle wählen",
+    "tokenStepTitle": "Persönliches Zugriffstoken",
+    "tokenHelpPrefix": "Verschlüsselt im Vault gespeichert und nie wieder angezeigt. Benötigt",
+    "tokenHelpAnd": "und",
+    "keyPlaceholder": "pat…",
+    "saving": "Speichert…",
+    "saveAndContinue": "Speichern und weiter",
+    "noTokenHint": "Noch kein Token? Erstelle eines auf airtable.com/create/tokens, begrenzt auf die Basis, die du synchronisierst."
+  },
+  "statusHeader": {
+    "saved": "Gespeichert",
+    "syncing": "Synchronisiert…",
+    "syncNow": "Jetzt synchronisieren"
+  },
+  "console": {
+    "badge": {
+      "ok": "ok",
+      "partial": "teilweise",
+      "failed": "fehlgeschlagen"
+    },
+    "status": {
+      "errorHeadline": "Der Sync schlägt fehl",
+      "errorLineWithDetails": "Der letzte Lauf ist fehlgeschlagen. {{details}}",
+      "errorLineGeneric": "Der letzte Lauf ist fehlgeschlagen. Airtable hat die Anfrage abgelehnt.",
+      "healthyHeadline": "Synchronisiert normal",
+      "healthyLineWithRun": "Der letzte Lauf um {{clock}} hat {{imported}} Termine importiert: {{newCount}} neu, {{updated}} aktualisiert. Alle Datensätze wurden aufgelöst.",
+      "healthyLineNoRun": "Noch nicht synchronisiert. Der nächste Lauf bringt Termine mit.",
+      "liveHeadline_one": "Synchronisiert, {{count}} Datensatz zurückgehalten",
+      "liveHeadline_other": "Synchronisiert, {{count}} Datensätze zurückgehalten",
+      "liveLine_one": "Der letzte Lauf um {{clock}} hat {{imported}} Termine importiert: {{newCount}} neu, {{updated}} aktualisiert. {{count}} Datensatz konnte nicht aufgelöst werden und wartet auf eine Katalogverknüpfung.",
+      "liveLine_other": "Der letzte Lauf um {{clock}} hat {{imported}} Termine importiert: {{newCount}} neu, {{updated}} aktualisiert. {{count}} Datensätze konnten nicht aufgelöst werden und warten auf eine Katalogverknüpfung."
+    },
+    "kpis": {
+      "lastRun": "Letzter Lauf",
+      "lastCleanRun": "Letzter sauberer Lauf",
+      "datesIn": "Termine rein",
+      "held": "Gehalten",
+      "failed": "fehlgeschlagen",
+      "sinceLastRun": "seit letztem Lauf",
+      "today": "heute",
+      "nextRun": "Nächster Lauf",
+      "everyInterval": "alle {{interval}}",
+      "newUpdated": "{{newCount}} neu · {{updated}} aktualisiert",
+      "waitingOnLink": "wartet auf Verknüpfung",
+      "allResolved": "alle aufgelöst"
+    },
+    "causes": {
+      "programTitle_one": "{{count}} Programmoption hat keine Show im Katalog",
+      "programTitle_other": "{{count}} Programmoptionen haben keine Show im Katalog",
+      "cityTitle_one": "{{count}} Stadtoption hat keine Stadt im Katalog",
+      "cityTitle_other": "{{count}} Stadtoptionen haben keine Stadt im Katalog",
+      "missingDateTitle_one": "{{count}} Datensatz hat eine leere Datumszelle",
+      "missingDateTitle_other": "{{count}} Datensätze haben eine leere Datumszelle",
+      "unrecognizedTitle_one": "{{count}} Datensatz wird aus einem unbekannten Grund zurückgehalten",
+      "unrecognizedTitle_other": "{{count}} Datensätze werden aus einem unbekannten Grund zurückgehalten",
+      "detail_one": "hält {{count}} Datensatz zurück",
+      "detail_other": "hält {{count}} Datensätze zurück"
+    }
+  }
+}

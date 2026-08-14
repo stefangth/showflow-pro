@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -29,11 +30,12 @@ export function StagedChangesCard({
   onDiscard,
   onApply,
 }: StagedChangesCardProps) {
+  const { t } = useTranslation("settingsRolesRights");
   return (
     <div className="rounded-[var(--radius-l)] border border-border shadow-elev2 bg-card">
       <div className="px-4 pt-4">
         <p className="text-[11px] font-semibold uppercase tracking-[1.6px] text-muted-foreground">
-          STAGED CHANGES
+          {t("stagedChangesCard.heading")}
         </p>
         <p className="mt-1 font-mono tabular-nums text-[22px] font-medium text-foreground">
           {count}
@@ -44,8 +46,7 @@ export function StagedChangesCard({
       <div className="px-4 pt-3 pb-4">
         {count === 0 ? (
           <p className="text-[12.5px] text-muted-foreground">
-            Nothing staged. Toggle a right and it lands here before anyone's
-            access changes.
+            {t("stagedChangesCard.emptyState")}
           </p>
         ) : (
           <>
@@ -90,7 +91,7 @@ export function StagedChangesCard({
           onClick={onDiscard}
           className={cn(!canApply && "opacity-50")}
         >
-          Discard
+          {t("stagedChangesCard.discard")}
         </Button>
         <Button
           type="button"
@@ -99,7 +100,7 @@ export function StagedChangesCard({
           onClick={onApply}
           className={cn("flex-1", !canApply && "opacity-50")}
         >
-          Apply
+          {t("stagedChangesCard.apply")}
         </Button>
       </div>
     </div>

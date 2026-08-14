@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -12,6 +13,7 @@ import { buildCapabilityInventory } from "@/lib/trust/capabilityInventory";
  *  same fold for the public page, and `capabilityInventory.test.ts` asserts
  *  the two stay identical. */
 export function CapabilitiesCard() {
+  const { t } = useTranslation('settingsTrust');
   const inventory = buildCapabilityInventory();
 
   return (
@@ -22,7 +24,7 @@ export function CapabilitiesCard() {
          *  display, so running copy carries its own. 672px is about 96
          *  characters here; uncapped it reached 1360px at a 1920px display. */}
         <div className="max-w-2xl space-y-1">
-          <h3 className="text-base font-semibold tracking-tight">Capabilities</h3>
+          <h3 className="text-base font-semibold tracking-tight">{t('capabilitiesCard.title')}</h3>
           {/* The carve-out sentence is imported, not retyped. It used to exist
            *  in three hand-written copies (here, the Controls claim, and a JSX
            *  literal in the landing repo); the day one of those three rights
@@ -45,8 +47,7 @@ export function CapabilitiesCard() {
            *  default" as "off here". Naming where the live setting lives is the
            *  honest fix; the row labels keep saying "by default" too. */}
           <p className="text-sm text-muted-foreground">
-            This is the position each right ships in, not this organisation's current setting.
-            What is switched on here is in Settings, under Roles and rights.
+            {t('capabilitiesCard.settingLocationNote')}
           </p>
         </div>
         <Accordion type="multiple" className="w-full">
@@ -65,7 +66,7 @@ export function CapabilitiesCard() {
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="text-sm font-medium">{entry.label}</span>
-                          {entry.sensitive && <Badge variant="hold">Sensitive</Badge>}
+                          {entry.sensitive && <Badge variant="hold">{t('capabilitiesCard.sensitive')}</Badge>}
                         </div>
                         <p className="mt-0.5 text-xs leading-4 text-muted-foreground">{entry.description}</p>
                       </div>

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { Plus, Trash2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -35,15 +36,15 @@ import { toErrorMessage } from '@/lib/errors';
  *  over the date-level one, since a production requirement is the more durable
  *  fact. Mirrors the retiring SkillsCard's copy exactly, so this is a re-skin,
  *  not a behavior change. */
-function requiredByLabel(row: SkillCatalogRow): string {
-  if (row.archivedAt !== null) return 'Hidden from pickers';
+function requiredByLabel(row: SkillCatalogRow, t: (key: string, opts?: Record<string, unknown>) => string): string {
+  if (row.archivedAt !== null) return t('requiredBy.hidden');
   if (row.requiredByCount > 0) {
-    return `${row.requiredByCount} production${row.requiredByCount === 1 ? '' : 's'}`;
+    return t('requiredBy.productions', { count: row.requiredByCount });
   }
   if (row.requiredByDateCount > 0) {
-    return `${row.requiredByDateCount} upcoming date${row.requiredByDateCount === 1 ? '' : 's'}`;
+    return t('requiredBy.upcomingDates', { count: row.requiredByDateCount });
   }
-  return 'Not required yet';
+  return t('requiredBy.notRequired');
 }
 
 /**
@@ -60,6 +61,7 @@ function requiredByLabel(row: SkillCatalogRow): string {
  * is resolved, matching every other org-scoped Settings tab.
  */
 export function SkillsTab({ orgId }: { orgId: string }) {
+  const { t } = useTranslation('settingsSkills');
   const { hasRole } = useAuth();
   // manage_skills gates every write control (read-only floor: the catalog still
   // renders when it's off). Deleting stays admin-only regardless of the
@@ -104,8 +106,8 @@ export function SkillsTab({ orgId }: { orgId: string }) {
     if (!existing) return false;
     toast.error(
       existing.archivedAt !== null
-        ? `A skill named "${name}" is archived. Use Restore to bring it back.`
-        : `A skill named "${name}" already exists.`,
+        ? t('toast.collisionArchived', { name })
+        : t('toast.collisionExists', { name }),
     );
     return true;
   };
@@ -120,10 +122,10 @@ export function SkillsTab({ orgId }: { orgId: string }) {
     if (blockOnNameCollision(trimmed)) return;
     try {
       await createSkill.mutateAsync(trimmed);
-      toast.success('Skill added');
+      toast.success(t('toast.added'));
       closeNewDialog();
     } catch (e) {
-      toast.error(toErrorMessage(e, 'Failed to add skill'));
+      toast.error(toErrorMessage(e, t('toast.addFailed')));
     }
   };
 
@@ -142,28 +144,28 @@ export function SkillsTab({ orgId }: { orgId: string }) {
     renameSkill.mutate(
       { id: renameRow.id, name: trimmed },
       {
-        onSuccess: () => { toast.success('Skill renamed'); closeRename(); },
-        onError: (e) => toast.error(toErrorMessage(e, 'Failed to rename skill')),
+        onSuccess: () => { toast.success(t('toast.renamed')); closeRename(); },
+        onError: (e) => toast.error(toErrorMessage(e, t('toast.renameFailed'))),
       },
     );
   };
 
   const handleArchive = (id: string) => {
     archiveSkill.mutate(id, {
-      onSuccess: () => toast.success('Skill archived'),
-      onError: (e) => toast.error(toErrorMessage(e, 'Failed to archive skill')),
+      onSuccess: () => toast.success(t('toast.archived')),
+      onError: (e) => toast.error(toErrorMessage(e, t('toast.archiveFailed'))),
     });
   };
   const handleRestore = (id: string) => {
     restoreSkill.mutate(id, {
-      onSuccess: () => toast.success('Skill restored'),
-      onError: (e) => toast.error(toErrorMessage(e, 'Failed to restore skill')),
+      onSuccess: () => toast.success(t('toast.restored')),
+      onError: (e) => toast.error(toErrorMessage(e, t('toast.restoreFailed'))),
     });
   };
   const handleDelete = (id: string) => {
     deleteSkill.mutate(id, {
-      onSuccess: () => toast.success('Skill deleted'),
-      onError: (e) => toast.error(toErrorMessage(e, 'Failed to delete skill')),
+      onSuccess: () => toast.success(t('toast.deleted')),
+      onError: (e) => toast.error(toErrorMessage(e, t('toast.deleteFailed'))),
     });
   };
 
@@ -171,11 +173,11 @@ export function SkillsTab({ orgId }: { orgId: string }) {
     <div className="space-y-5">
       <div className="space-y-1">
         <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
-          ORGANIZATION · CATALOG
+          {t('header.eyebrow')}
         </p>
-        <h1 className="font-display text-2xl font-semibold tracking-tight">Skills</h1>
+        <h1 className="font-display text-2xl font-semibold tracking-tight">{t('header.title')}</h1>
         <p className="text-sm text-muted-foreground">
-          Skills gate who can be offered or booked. Productions require them per slot; artists hold them on their profile.
+          {t('header.description')}
         </p>
       </div>
 
@@ -183,15 +185,15 @@ export function SkillsTab({ orgId }: { orgId: string }) {
         <CardContent className="space-y-4 p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <Input
-              placeholder="Find a skill"
-              aria-label="Find a skill"
+              placeholder={t('toolbar.searchPlaceholder')}
+              aria-label={t('toolbar.searchPlaceholder')}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="max-w-xs"
             />
             <Button type="button" disabled={!canManage} onClick={() => setNewOpen(true)}>
               <Plus className="h-3.5 w-3.5" />
-              New skill
+              {t('toolbar.newSkill')}
             </Button>
           </div>
 
@@ -199,9 +201,9 @@ export function SkillsTab({ orgId }: { orgId: string }) {
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
-                  <TableHead className="h-9 text-[11px] font-semibold uppercase tracking-wider">Skill</TableHead>
-                  <TableHead className="h-9 text-[11px] font-semibold uppercase tracking-wider">Artists</TableHead>
-                  <TableHead className="h-9 text-[11px] font-semibold uppercase tracking-wider">Required by</TableHead>
+                  <TableHead className="h-9 text-[11px] font-semibold uppercase tracking-wider">{t('table.headSkill')}</TableHead>
+                  <TableHead className="h-9 text-[11px] font-semibold uppercase tracking-wider">{t('table.headArtists')}</TableHead>
+                  <TableHead className="h-9 text-[11px] font-semibold uppercase tracking-wider">{t('table.headRequiredBy')}</TableHead>
                   <TableHead className="h-9 text-right text-[11px] font-semibold uppercase tracking-wider"> </TableHead>
                 </TableRow>
               </TableHeader>
@@ -213,8 +215,8 @@ export function SkillsTab({ orgId }: { orgId: string }) {
                   // are zero.
                   const isUnused = row.requiredByCount === 0 && row.requiredByDateCount === 0;
                   const blockedTooltip = row.requiredByCount > 0
-                    ? `In use by ${row.requiredByCount} productions, archive it instead`
-                    : 'Required by upcoming dates, archive it instead';
+                    ? t('row.blockedTooltipProductions', { count: row.requiredByCount })
+                    : t('row.blockedTooltipDates');
 
                   return (
                     <TableRow key={row.id} data-testid={`skill-row-${row.id}`}>
@@ -222,13 +224,13 @@ export function SkillsTab({ orgId }: { orgId: string }) {
                         <span className={cn('font-medium', isArchived && 'text-muted-foreground')}>
                           {row.name}
                         </span>
-                        {isArchived && <Badge variant="neutral" className="ml-2">Archived</Badge>}
+                        {isArchived && <Badge variant="neutral" className="ml-2">{t('row.archivedBadge')}</Badge>}
                       </TableCell>
                       <TableCell className="py-2.5 font-mono text-xs tabular-nums text-muted-foreground">
                         {row.artistCount}
                       </TableCell>
                       <TableCell className="py-2.5 text-xs text-muted-foreground">
-                        {requiredByLabel(row)}
+                        {requiredByLabel(row, t)}
                       </TableCell>
                       <TableCell className="py-2.5 text-right">
                         {isArchived ? (
@@ -240,7 +242,7 @@ export function SkillsTab({ orgId }: { orgId: string }) {
                             onClick={() => handleRestore(row.id)}
                             className="text-xs font-semibold text-accent-700 hover:underline disabled:cursor-not-allowed disabled:opacity-50 disabled:no-underline"
                           >
-                            Restore
+                            {t('row.restore')}
                           </button>
                         ) : (
                           <div className="flex items-center justify-end gap-3">
@@ -250,7 +252,7 @@ export function SkillsTab({ orgId }: { orgId: string }) {
                               onClick={() => openRename(row)}
                               className="text-xs font-semibold text-accent-700 hover:underline disabled:cursor-not-allowed disabled:opacity-50 disabled:no-underline"
                             >
-                              Rename
+                              {t('row.rename')}
                             </button>
                             <button
                               type="button"
@@ -258,15 +260,15 @@ export function SkillsTab({ orgId }: { orgId: string }) {
                               onClick={() => handleArchive(row.id)}
                               className="text-xs font-medium text-muted-foreground hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
                             >
-                              Archive
+                              {t('row.archive')}
                             </button>
                             {canDelete && (
                               isUnused ? (
-                                <IconTooltip label="Not required by any production, safe to delete">
+                                <IconTooltip label={t('row.safeToDeleteTooltip')}>
                                   <Button
                                     variant="ghost"
                                     size="icon"
-                                    aria-label={`Delete ${row.name}`}
+                                    aria-label={t('row.deleteLabel', { name: row.name })}
                                     disabled={!canManage || deleteSkill.isPending}
                                     className="h-7 w-7 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                                     onClick={() => handleDelete(row.id)}
@@ -279,7 +281,7 @@ export function SkillsTab({ orgId }: { orgId: string }) {
                                   <Button
                                     variant="ghost"
                                     size="icon"
-                                    aria-label={`Delete ${row.name}`}
+                                    aria-label={t('row.deleteLabel', { name: row.name })}
                                     disabled
                                     className="h-7 w-7 text-muted-foreground/50"
                                   >
@@ -297,7 +299,7 @@ export function SkillsTab({ orgId }: { orgId: string }) {
                 {filtered.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={4} className="py-8 text-center text-sm text-muted-foreground">
-                      {rows.length === 0 ? 'No skills yet.' : 'No skills match your search.'}
+                      {rows.length === 0 ? t('table.emptyNoSkills') : t('table.emptyNoMatch')}
                     </TableCell>
                   </TableRow>
                 )}
@@ -306,7 +308,7 @@ export function SkillsTab({ orgId }: { orgId: string }) {
           </div>
 
           <p className="text-xs leading-[18px] text-muted-foreground">
-            Archiving hides a skill from every picker and keeps it on the artists who hold it. Deleting is only offered while no production requires it. New workspaces are seeded from the platform starter list.
+            {t('footerNote')}
           </p>
         </CardContent>
       </Card>
@@ -314,27 +316,27 @@ export function SkillsTab({ orgId }: { orgId: string }) {
       <Dialog open={newOpen} onOpenChange={(open) => (open ? setNewOpen(true) : closeNewDialog())}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>New skill</DialogTitle>
+            <DialogTitle>{t('newDialog.title')}</DialogTitle>
             <DialogDescription>
-              Skills are shared across the organization&apos;s productions and artist profiles.
+              {t('newDialog.description')}
             </DialogDescription>
           </DialogHeader>
           <Input
             autoFocus
-            placeholder="Skill name"
-            aria-label="Skill name"
+            placeholder={t('newDialog.nameLabel')}
+            aria-label={t('newDialog.nameLabel')}
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') void handleCreate(); }}
           />
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={closeNewDialog}>Cancel</Button>
+            <Button type="button" variant="outline" onClick={closeNewDialog}>{t('newDialog.cancel')}</Button>
             <Button
               type="button"
               disabled={!newName.trim() || createSkill.isPending}
               onClick={() => void handleCreate()}
             >
-              Create skill
+              {t('newDialog.submit')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -343,24 +345,24 @@ export function SkillsTab({ orgId }: { orgId: string }) {
       <Dialog open={renameRow !== null} onOpenChange={(open) => { if (!open) closeRename(); }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Rename {renameRow?.name}</DialogTitle>
-            <DialogDescription>This name is shown everywhere the skill appears.</DialogDescription>
+            <DialogTitle>{t('renameDialog.title', { name: renameRow?.name })}</DialogTitle>
+            <DialogDescription>{t('renameDialog.description')}</DialogDescription>
           </DialogHeader>
           <Input
             autoFocus
-            aria-label="Skill name"
+            aria-label={t('newDialog.nameLabel')}
             value={renameName}
             onChange={(e) => setRenameName(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') handleSaveRename(); }}
           />
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={closeRename}>Cancel</Button>
+            <Button type="button" variant="outline" onClick={closeRename}>{t('renameDialog.cancel')}</Button>
             <Button
               type="button"
               disabled={!renameName.trim() || renameSkill.isPending}
               onClick={handleSaveRename}
             >
-              Save name
+              {t('renameDialog.submit')}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -1,4 +1,5 @@
 import { FileText } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent } from "@/components/ui/card";
 import { DOCUMENTS, DOCUMENTS_NOTE } from "@/lib/trust/facts";
 
@@ -6,6 +7,7 @@ import { DOCUMENTS, DOCUMENTS_NOTE } from "@/lib/trust/facts";
  *  not written: the DPA is a mailto, and it says "Request" rather than
  *  "Download" so the label matches what happens. */
 export function DocumentsCard() {
+  const { t } = useTranslation('settingsTrust');
   return (
     <Card>
       <CardContent className="space-y-3 p-5">
@@ -15,7 +17,7 @@ export function DocumentsCard() {
          *  heading against a two-line block with neither baseline aligned at
          *  1440, and squeezed the heading to ~138px beside a three-line note
          *  at 375. It was also the only running prose in `font-mono` here. */}
-        <h3 className="text-base font-semibold tracking-tight">Documents</h3>
+        <h3 className="text-base font-semibold tracking-tight">{t('documentsCard.title')}</h3>
         <p className="text-sm text-muted-foreground">{DOCUMENTS_NOTE}</p>
         <ul>
           {DOCUMENTS.map((doc) => {
