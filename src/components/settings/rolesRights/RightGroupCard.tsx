@@ -19,7 +19,7 @@ export function RightGroupCard({
   children,
 }: RightGroupCardProps) {
   return (
-    <div className="rounded-l border border-border shadow-[var(--shadow-2)] bg-card overflow-hidden">
+    <div className="rounded-[var(--radius-l)] border border-border shadow-elev2 bg-card overflow-hidden">
       <div className="flex items-center justify-between gap-4 px-4 py-3 border-b border-[var(--line)]">
         <p className="text-sm font-medium text-foreground">{group}</p>
         <div className="flex items-center gap-3 shrink-0">

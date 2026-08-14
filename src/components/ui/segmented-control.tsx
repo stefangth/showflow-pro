@@ -40,9 +40,9 @@ export function SegmentedControl<T extends string>({
             aria-selected={active}
             onClick={() => onChange(option.value)}
             className={cn(
-              "inline-flex h-[29px] cursor-pointer items-center gap-1.5 rounded-s px-3 text-[13px] font-medium transition-colors",
+              "inline-flex h-[29px] cursor-pointer items-center gap-1.5 rounded-[var(--radius-s)] px-3 text-[13px] font-medium transition-colors",
               active
-                ? "bg-card text-foreground shadow-[var(--shadow-1)]"
+                ? "bg-card text-foreground shadow-elev1"
                 : "bg-transparent text-muted-foreground shadow-none",
             )}
           >
