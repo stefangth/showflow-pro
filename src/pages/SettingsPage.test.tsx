@@ -34,7 +34,7 @@ vi.mock("@/features/auth/AuthContext", () => ({ useAuth: vi.fn() }));
 // useCan is mocked directly (rather than seeding org_capabilities/org_capability_policies)
 // so ON/OFF states are one-line, synchronous, and don't depend on the real resolver's
 // async settle. Every other export of the module (useCapabilityMatrix, etc., used by the
-// admin-only PermissionsTab, which these tests never mount) keeps its real implementation.
+// admin-only RolesRightsTab, which these tests never mount) keeps its real implementation.
 vi.mock("@/hooks/useCapabilities", async (orig) => ({
   ...(await orig<typeof import("@/hooks/useCapabilities")>()),
   useCan: vi.fn(),

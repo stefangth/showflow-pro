@@ -74,8 +74,12 @@ describe("RolesRightsTab", () => {
       ).toBe(true),
     );
 
-    // Staged cleared after a successful apply.
-    await waitFor(() => expect(screen.getByRole("button", { name: "Apply" })).toBeDisabled());
+    // Staged cleared after a successful apply -- wait on the cheap "nothing
+    // staged" copy (a plain text query) instead of polling a role+name query
+    // inside the retry loop, then assert the button state synchronously once
+    // settled.
+    await screen.findByText(/Nothing staged/);
+    expect(screen.getByRole("button", { name: "Apply" })).toBeDisabled();
   });
 
   it("labels the preset-diff line against the selected preset, not the stored baseline", async () => {

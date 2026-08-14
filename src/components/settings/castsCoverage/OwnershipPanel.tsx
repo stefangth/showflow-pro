@@ -241,7 +241,7 @@ export function OwnershipPanel({ orgId }: Props) {
             return (
               <div
                 key={program}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-l)] border border-[var(--amber-200)] bg-[var(--amber-100)] p-3"
+                className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-l)] border border-border bg-[var(--amber-100)] p-3"
               >
                 <p className="flex items-center gap-2 text-sm text-[var(--amber-600)]">
                   <TriangleAlert className="h-4 w-4 shrink-0" />

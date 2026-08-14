@@ -374,7 +374,7 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
               </div>
             )}
             <Link to={`${ROUTES.SETTINGS}?tab=casts-coverage`} className="text-xs text-primary underline">
-              Manage offer order in Settings, Casts and coverage
+              Manage offer order in Settings, Casts & coverage
             </Link>
           </TabsContent>
         </Tabs>
