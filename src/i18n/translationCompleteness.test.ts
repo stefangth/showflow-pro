@@ -151,3 +151,29 @@ describe('German catalog is translated (not English left in place)', () => {
     });
   }
 });
+
+/** The `{{name}}` interpolation tokens in a value, sorted for order-independent comparison. */
+function placeholders(value: string): string[] {
+  return [...value.matchAll(/\{\{\s*(\w+)[^}]*\}\}/g)].map((m) => m[1]).sort();
+}
+
+// keyParity guards key shape, copyLint guards dashes/formal address, and the block above
+// guards paste-throughs, but nothing checks that a German value keeps the SAME interpolation
+// placeholders as its English counterpart. A translation that drops a {{count}} or {{org}}
+// renders a numberless/nameless sentence in production while every other i18n gate stays
+// green. This pins placeholder parity leaf-by-leaf across every namespace.
+describe('German values preserve English interpolation placeholders', () => {
+  for (const ns of Object.keys(resources.en) as (keyof typeof resources.en)[]) {
+    it(`de keeps every {{placeholder}} from en in namespace "${ns}"`, () => {
+      const en = leaves(resources.en[ns]);
+      const de = leaves(resources.de[ns]);
+      const mismatched = Object.keys(en).filter(
+        (k) => de[k] !== undefined && placeholders(en[k]).join(',') !== placeholders(de[k]).join(','),
+      );
+      expect(
+        mismatched,
+        `de placeholders differ from en: ${mismatched.join(', ')}`,
+      ).toEqual([]);
+    });
+  }
+});

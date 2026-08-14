@@ -146,3 +146,26 @@ it("rulesBy: neither byYou nor a known actor falls back to the generic line", ()
   });
   expect(r.rulesBy).toBe("Rules set in Settings · Booking engine");
 });
+
+// The non-artist imported headline is recomposed from two catalog keys joined with a space
+// (orgImportedLanded + the offers/bookable clause), the one place this refactor changed a
+// single interpolated template into a concatenation. Pin both branches byte-for-byte so a
+// stray/lost separator or a mis-wired clause key cannot ship silently.
+it("pins the org imported headline (offers): landed clause + digest clause", () => {
+  const r = compose({ ...base, imported: true, metrics: { ...base.metrics, datesIn: 34, readyToOffer: 4 } });
+  expect(r.headline).toBe("34 dates landed. 4 of them can be offered in the next digest.");
+});
+
+it("pins the org imported headline (direct): landed clause + bookable clause", () => {
+  const r = compose({ ...base, offers: false, imported: true, metrics: { ...base.metrics, datesIn: 34, bookableDates: 12 } });
+  expect(r.headline).toBe("34 dates landed. 12 are bookable now.");
+});
+
+// Exercise the `_one` singular branches of the pluralized keys (every other assertion uses a
+// plural count), so a mis-authored singular ("1 dates landed", a wrong is/are) is caught.
+it("uses singular forms at count 1 (landed, bookable clause, dates-in-catalog line)", () => {
+  const r = compose({ ...base, offers: false, imported: true, metrics: { ...base.metrics, datesIn: 1, bookableDates: 1 } });
+  expect(r.headline).toBe("1 date landed. 1 is bookable now.");
+  const dates = r.stages.find((s) => s.key === "dates")!;
+  expect(dates.line).toBe("1 date is in your catalog.");
+});
