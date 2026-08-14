@@ -4,6 +4,14 @@ export const SUPPORTED_LANGUAGES = ['en', 'de'] as const satisfies readonly Lang
 export const DEFAULT_LANGUAGE: Lang = 'en';
 export const STORAGE_KEY = 'showflow.lang.v1';
 
+/** Native endonym for each language, shown in the language picker. Deliberately NOT
+ *  translated: a language is always labelled in its own language, so a speaker who
+ *  lands in a mis-detected UI can still recognize their language. */
+export const LANGUAGE_LABELS: Record<Lang, string> = {
+  en: 'English',
+  de: 'Deutsch',
+};
+
 export function isLang(v: unknown): v is Lang {
   return typeof v === 'string' && (SUPPORTED_LANGUAGES as readonly string[]).includes(v);
 }

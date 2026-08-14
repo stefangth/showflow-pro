@@ -21,8 +21,6 @@
   "account": {
     "language": "Sprache",
     "profile": "Profil",
-    "signOut": "Abmelden",
-    "english": "Englisch",
-    "german": "Deutsch"
+    "signOut": "Abmelden"
   }
 }

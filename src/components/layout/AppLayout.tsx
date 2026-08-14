@@ -14,6 +14,7 @@ import { Settings, LogOut, Bell, ChevronLeft, ChevronRight, Menu, EyeOff, User, 
 import { NAV_ITEMS, visibleNavItems, groupNavBySections, isHiddenForViewAs, type NavLabelKey } from '@/components/layout/navItems';
 import { useTranslation } from 'react-i18next';
 import { useLanguage } from '@/features/i18n/LanguageContext';
+import { LANGUAGE_LABELS } from '@/i18n/config';
 import { cn } from '@/lib/utils';
 import { useSettingsWarnings } from '@/hooks/useSettingsWarnings';
 import { useEditorConfig } from '@/features/editor/EditorContext';
@@ -237,7 +238,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                     aria-pressed={lang === 'en'}
                   >
                     <Languages className="h-[14px] w-[14px]" />
-                    <span className="flex-1 text-left">{t('account.english')}</span>
+                    <span className="flex-1 text-left">{LANGUAGE_LABELS.en}</span>
                     {lang === 'en' && <Check className="h-[14px] w-[14px] text-accent-600" />}
                   </button>
                   <button
@@ -246,7 +247,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                     aria-pressed={lang === 'de'}
                   >
                     <Languages className="h-[14px] w-[14px]" />
-                    <span className="flex-1 text-left">{t('account.german')}</span>
+                    <span className="flex-1 text-left">{LANGUAGE_LABELS.de}</span>
                     {lang === 'de' && <Check className="h-[14px] w-[14px] text-accent-600" />}
                   </button>
                   <div className="my-1 h-px bg-border" />

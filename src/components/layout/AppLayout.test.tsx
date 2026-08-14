@@ -123,7 +123,7 @@ describe("AppLayout account menu language", () => {
     renderWithProviders(<AppLayout>page content</AppLayout>);
 
     fireEvent.click(screen.getByRole("button", { name: "Account menu" }));
-    fireEvent.click(screen.getByText("German"));
+    fireEvent.click(screen.getByText("Deutsch"));
 
     expect(i18n.language).toBe("de");
     await i18n.changeLanguage("en");
