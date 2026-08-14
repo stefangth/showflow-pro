@@ -25,6 +25,7 @@ function seedClient(seed: Record<string, unknown>) {
 vi.mock("react-router-dom", () => ({
   useSearchParams: () => [new URLSearchParams(), vi.fn()],
 }));
+vi.mock("@/components/minis/PageMini", () => ({ PageMini: () => null }));
 vi.mock("@/features/auth/AuthContext", () => ({
   useAuth: () => ({ currentOrg: { id: "org-1" } }),
 }));

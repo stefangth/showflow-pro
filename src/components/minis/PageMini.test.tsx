@@ -4,6 +4,8 @@ import { renderWithProviders } from '@/test/renderWithProviders';
 import { PageMiniView } from './PageMini';
 import { settingsMini } from '@/lib/minis/pages/settings';
 import { settingsArt } from './illustrations/SettingsMini';
+import { MINIS, PAGE_KEYS, type MiniRole } from '@/lib/minis';
+import { ART } from './illustrations';
 
 const base = {
   def: settingsMini,
@@ -50,5 +52,20 @@ describe('PageMiniView', () => {
       <PageMiniView {...base} role="artist" lang="en" dismissed={false} />,
     );
     expect(container).toBeEmptyDOMElement();
+  });
+
+  // Smoke: every registered page mini renders (each variant, both languages) without
+  // throwing, exercising every illustration and atom.
+  it.each(PAGE_KEYS)('renders the %s mini for every variant in both languages', (page) => {
+    const def = MINIS[page];
+    for (const role of Object.keys(def.variants) as MiniRole[]) {
+      for (const lang of ['en', 'de'] as const) {
+        const { unmount } = renderWithProviders(
+          <PageMiniView def={def} role={role} lang={lang} art={ART[page]} dismissed={false} onHide={() => {}} onResume={() => {}} />,
+        );
+        expect(screen.getByText(def.eyebrow[lang])).toBeInTheDocument();
+        unmount();
+      }
+    }
   });
 });
