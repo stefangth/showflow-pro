@@ -13,5 +13,21 @@
     "atRisk": "At risk",
     "expiresSoon": "Expires soon",
     "more": "And {{count}} more. See Bookings."
+  },
+  "artist": {
+    "heading": "Dashboard",
+    "offersLoadError": "Failed to load your offers. Please refresh.",
+    "awaitingResponse": "Awaiting your response",
+    "allCaughtUp": "You're all caught up. No pending offers.",
+    "respond": "Respond",
+    "hireOrdersTitle": "Your hire orders",
+    "hireOrdersEmpty": "Your booking paperwork shows up here. When a producer sends you a hire order, it arrives by email and you can review and sign it here.",
+    "download": "Download",
+    "myCasts": "My Casts",
+    "castsLoadError": "Failed to load your casts.",
+    "noCastsYet": "You haven't been added to any casts yet.",
+    "member": "Member",
+    "respondedOfTotal": "{{responded}} of {{total}} dates",
+    "unansweredMore": "+{{count}} more"
   }
 }

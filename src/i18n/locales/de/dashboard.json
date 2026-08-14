@@ -13,5 +13,21 @@
     "atRisk": "Gefährdet",
     "expiresSoon": "Läuft bald ab",
     "more": "Und {{count}} weitere. Siehe Buchungen."
+  },
+  "artist": {
+    "heading": "Dashboard",
+    "offersLoadError": "Deine Angebote konnten nicht geladen werden. Bitte aktualisiere die Seite.",
+    "awaitingResponse": "Wartet auf deine Antwort",
+    "allCaughtUp": "Du bist auf dem neuesten Stand. Keine offenen Angebote.",
+    "respond": "Antworten",
+    "hireOrdersTitle": "Deine Engagementverträge",
+    "hireOrdersEmpty": "Deine Buchungsunterlagen erscheinen hier. Wenn dir dein Produktionsteam einen Engagementvertrag schickt, kommt er per E-Mail an, und du kannst ihn hier prüfen und unterschreiben.",
+    "download": "Herunterladen",
+    "myCasts": "Meine Besetzungen",
+    "castsLoadError": "Deine Besetzungen konnten nicht geladen werden.",
+    "noCastsYet": "Du wurdest noch keiner Besetzung hinzugefügt.",
+    "member": "Mitglied",
+    "respondedOfTotal": "{{responded}} von {{total}} Terminen",
+    "unansweredMore": "+{{count}} weitere"
   }
 }
