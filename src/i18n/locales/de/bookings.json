@@ -1,5 +1,4 @@
 {
-  "_ns": "bookings",
   "rowPeek": {
     "eyebrowUnconfigured": "nicht konfiguriert",
     "noConfig": "Lege in den Einstellungen Besetzungsplätze fest, um den Füllstand zu verfolgen.",
