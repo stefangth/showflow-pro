@@ -6,7 +6,7 @@ import { useBookingSetupRailVisible } from "@/components/bookings/setup/useBooki
 import { useSetupRailVisible } from "@/components/hireOrders/setup/useSetupRailVisible";
 import { useRailDismissed } from "@/components/setup/useRailDismissed";
 import { collapsedCopy, composeOnboarding, injectAdminTeamStep } from "@/lib/dashboard/firstRun";
-import { MODULE_ONBOARDING } from "@/lib/dashboard/moduleOnboarding";
+import { MODULE_ONBOARDING, type OnboardingModuleKey } from "@/lib/dashboard/moduleOnboarding";
 import type { FeatureKey } from "@/lib/entitlements";
 import type { SetupRailMode } from "@/components/setup/setupRailMode";
 import type {
@@ -35,7 +35,7 @@ export interface ModuleOnboardingRail {
   expand: () => void;
 }
 
-const DISMISS_KEY: Record<FeatureKey, string> = {
+const DISMISS_KEY: Record<OnboardingModuleKey, string> = {
   booking_flow: "bookingSetup",
   hire_orders: "hireOrderSetup",
 };
@@ -57,7 +57,7 @@ const DISMISS_KEY: Record<FeatureKey, string> = {
  * which the module rail never shows (it retires when complete), so `artistAcceptance` and
  * `counts` here are inert placeholders rather than live reads.
  */
-export function useModuleOnboardingRail(feature: FeatureKey, orgId: string | null): ModuleOnboardingRail {
+export function useModuleOnboardingRail(feature: OnboardingModuleKey, orgId: string | null): ModuleOnboardingRail {
   const { currentOrg, hasRole } = useAuth();
   const role: DashboardRole = hasRole("admin") ? "admin" : "producer";
   // Whether the viewer can actually do this module's setup. Producers default to false

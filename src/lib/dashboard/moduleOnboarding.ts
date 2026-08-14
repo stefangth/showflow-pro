@@ -1,6 +1,5 @@
 // src/lib/dashboard/moduleOnboarding.ts
 import { ROUTES } from "@/config/app.config";
-import type { FeatureKey } from "@/lib/entitlements";
 import { STEP_TITLES, type BookingSetupStepKey } from "@/lib/bookings/setupStatus";
 import type { SetupStepKey } from "@/lib/hireOrders/setupStatus";
 import type {
@@ -210,7 +209,12 @@ export const hireOrderOnboarding: ModuleOnboardingDef<SetupStepKey> = {
   offFooter: "Hire orders is off for this org. Ask your account manager to switch it on.",
 };
 
-export const MODULE_ONBOARDING: Record<FeatureKey, ModuleOnboardingDef<string>> = {
+// `language_packages` has no onboarding module (no steps, no rail): it is a settings-page
+// toggle, not a setup checklist, so it deliberately has no entry here. `FeatureKey` is the
+// full entitlement registry; this narrower union is the subset that actually onboards.
+export type OnboardingModuleKey = "booking_flow" | "hire_orders";
+
+export const MODULE_ONBOARDING: Record<OnboardingModuleKey, ModuleOnboardingDef<string>> = {
   booking_flow: bookingOnboarding,
   hire_orders: hireOrderOnboarding,
 };

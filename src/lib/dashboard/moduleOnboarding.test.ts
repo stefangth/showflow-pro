@@ -11,15 +11,26 @@ import {
   bookingOnboarding,
   hireOrderOnboarding,
 } from "./moduleOnboarding";
-import { FEATURE_KEYS } from "@/lib/entitlements";
+import { FEATURE_KEYS, type FeatureKey } from "@/lib/entitlements";
 import { computeBookingSetupStatus } from "@/lib/bookings/setupStatus";
 import { computeSetupStatus } from "@/lib/hireOrders/setupStatus";
 import { ROLE_DESCRIPTIONS, ROUTES } from "@/config/app.config";
 import { SETTINGS_TAB_PARAMS } from "@/lib/settingsTabs";
 import { CAPABILITY_DEFS } from "@/lib/capabilities";
 
-it("has one contribution per FeatureKey (no orphans, no gaps)", () => {
-  expect(Object.keys(MODULE_ONBOARDING).sort()).toEqual([...FEATURE_KEYS].sort());
+it("every MODULE_ONBOARDING key is a real, still-registered FeatureKey", () => {
+  // Not every FeatureKey has an onboarding module (language_packages is a settings-page
+  // toggle, not a setup checklist), so this is a SUBSET check, not the equality it used to
+  // be. A key here that fell out of FEATURE_KEYS (a removed/renamed entitlement) would still
+  // be a real bug: it would silently stop composing for every consumer.
+  for (const key of Object.keys(MODULE_ONBOARDING)) {
+    expect(FEATURE_KEYS as string[]).toContain(key);
+  }
+});
+
+it("has an onboarding module for both booking_flow and hire_orders", () => {
+  const expectedKeys: FeatureKey[] = ["booking_flow", "hire_orders"];
+  expect(Object.keys(MODULE_ONBOARDING).sort()).toEqual(expectedKeys.sort());
 });
 
 it("booking step keys cover exactly the engine's step keys", () => {

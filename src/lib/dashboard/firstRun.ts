@@ -1,6 +1,5 @@
 // src/lib/dashboard/firstRun.ts
-import { FEATURE_KEYS, type FeatureKey } from "@/lib/entitlements";
-import { TEAM_STEP_KEY, TEAM_STEP_META } from "./moduleOnboarding";
+import { TEAM_STEP_KEY, TEAM_STEP_META, type OnboardingModuleKey } from "./moduleOnboarding";
 import type {
   ComposeInput, ComposeResult, ComposedStep, DashboardRole, InheritedRule,
   ModuleOnboardingDef, ModuleStatusLite, OnboardingCtx, OnboardingStepMeta,
@@ -50,14 +49,19 @@ export function injectAdminTeamStep(
 
 export function composeOnboarding(
   input: ComposeInput,
-  registry: Record<FeatureKey, ModuleOnboardingDef<string>>,
+  // Keyed by OnboardingModuleKey, not the full FeatureKey: not every entitlement has an
+  // onboarding module (language_packages is a settings toggle, not a setup checklist — see
+  // moduleOnboarding.ts). Iterating the registry's own keys, rather than every FeatureKey,
+  // keeps this in sync with the registry without depending on it covering every entitlement.
+  registry: Record<OnboardingModuleKey, ModuleOnboardingDef<string>>,
 ): ComposeResult {
   const { enabled, role, moduleStatuses, ctx } = input;
   const steps: ComposedStep[] = [];
   const rules: ComposeResult["rules"] = [];
   let complete = true;
 
-  for (const key of FEATURE_KEYS) {
+  const moduleKeys = Object.keys(registry) as OnboardingModuleKey[];
+  for (const key of moduleKeys) {
     const def = registry[key];
     if (!enabled.has(key)) continue;
     const status = moduleStatuses[key];
@@ -71,7 +75,7 @@ export function composeOnboarding(
     rules.push(...def.rules(role, ctx));
   }
 
-  const offFooters = FEATURE_KEYS.filter((k) => !enabled.has(k)).map((k) => registry[k].offFooter);
+  const offFooters = moduleKeys.filter((k) => !enabled.has(k)).map((k) => registry[k].offFooter);
   return { steps, complete, rules, offFooters };
 }
 

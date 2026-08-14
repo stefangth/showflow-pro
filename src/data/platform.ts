@@ -218,7 +218,7 @@ export async function fetchPlatformOrgStats(client: SupabaseClient<Database>): P
  *  forwarded as `entitlements` in the request body for the edge function to seed. */
 export async function provisionOrg(
   client: SupabaseClient<Database>,
-  args: { name: string; slug: string; adminEmail: string; role?: AppRole; appOrigin: string; features?: Record<FeatureKey, boolean> },
+  args: { name: string; slug: string; adminEmail: string; role?: AppRole; appOrigin: string; features?: Partial<Record<FeatureKey, boolean>> },
 ): Promise<string> {
   const { data, error } = await client.functions.invoke("provision-org", {
     body: {
