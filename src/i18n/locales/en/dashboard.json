@@ -1,5 +1,17 @@
 {
   "cards": {
     "liveUpcoming": "Live & upcoming"
+  },
+  "directBooking": {
+    "title": "Dates needing artists",
+    "row": "{{date}} · {{booked}} of {{slots}} booked",
+    "more": "And {{count}} more. See Bookings."
+  },
+  "tierAttention": {
+    "title": "Needs attention",
+    "row": "{{date}} · Tier {{tier}} · {{filled}} of {{required}}",
+    "atRisk": "At risk",
+    "expiresSoon": "Expires soon",
+    "more": "And {{count}} more. See Bookings."
   }
 }

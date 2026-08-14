@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ROUTES } from "@/config/app.config";
 import { formatDateDMY } from "@/lib/dates";
@@ -25,11 +26,12 @@ export function DirectBookingCard({ items, reference, customFieldKey }: {
   reference: BookingFlow["reference_field"];
   customFieldKey: string | null;
 }) {
+  const { t } = useTranslation("dashboard");
   if (items.length === 0) return null;
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="font-display text-base">Dates needing artists</CardTitle>
+        <CardTitle className="font-display text-base">{t("directBooking.title")}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-2">
         {items.slice(0, MAX_ROWS).map((it) => (
@@ -48,13 +50,15 @@ export function DirectBookingCard({ items, reference, customFieldKey }: {
                 })}
               </p>
               <p className="text-xs text-muted-foreground">
-                {formatDateDMY(it.date)} · {it.mainBooked} of {it.mainSlots} booked
+                {t("directBooking.row", { date: formatDateDMY(it.date), booked: it.mainBooked, slots: it.mainSlots })}
               </p>
             </div>
           </Link>
         ))}
         {items.length > MAX_ROWS && (
-          <p className="text-xs text-muted-foreground">And {items.length - MAX_ROWS} more. See Bookings.</p>
+          <p className="text-xs text-muted-foreground">
+            {t("directBooking.more", { count: items.length - MAX_ROWS })}
+          </p>
         )}
       </CardContent>
     </Card>

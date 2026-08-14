@@ -1,5 +1,17 @@
 {
   "cards": {
     "liveUpcoming": "Live und bevorstehend"
+  },
+  "directBooking": {
+    "title": "Termine, die Besetzung brauchen",
+    "row": "{{date}} · {{booked}} von {{slots}} gebucht",
+    "more": "Und {{count}} weitere. Siehe Buchungen."
+  },
+  "tierAttention": {
+    "title": "Braucht Aufmerksamkeit",
+    "row": "{{date}} · Stufe {{tier}} · {{filled}} von {{required}}",
+    "atRisk": "Gefährdet",
+    "expiresSoon": "Läuft bald ab",
+    "more": "Und {{count}} weitere. Siehe Buchungen."
   }
 }
