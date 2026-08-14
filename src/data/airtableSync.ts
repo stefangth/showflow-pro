@@ -4,6 +4,7 @@ import type { Database } from "@/integrations/supabase/types";
 export interface SyncLogSummary {
   id: string;
   status: string;
+  records_processed: number | null;
   imported_count: number | null;
   new_count: number | null;
   updated_count: number | null;
@@ -11,6 +12,8 @@ export interface SyncLogSummary {
   error_details: string | null;
   synced_at: string;
 }
+
+const SYNC_LOG_COLS = "id, status, records_processed, imported_count, new_count, updated_count, held_count, error_details, synced_at";
 
 export interface UnresolvedRecord {
   id: string;
@@ -30,7 +33,7 @@ export async function fetchLatestSyncLog(
   if (!orgId) return null;
   const { data, error } = await client
     .from("airtable_sync_log")
-    .select("id, status, imported_count, new_count, updated_count, held_count, error_details, synced_at")
+    .select(SYNC_LOG_COLS)
     .eq("org_id", orgId).eq("sync_type", "airtable_poll")
     .order("synced_at", { ascending: false }).limit(1).maybeSingle();
   if (error) throw error;
@@ -47,7 +50,7 @@ export async function fetchRecentSyncLogs(
   if (!orgId) return [];
   const { data, error } = await client
     .from("airtable_sync_log")
-    .select("id, status, imported_count, new_count, updated_count, held_count, error_details, synced_at")
+    .select(SYNC_LOG_COLS)
     .eq("org_id", orgId).eq("sync_type", "airtable_poll")
     .order("synced_at", { ascending: false }).limit(limit);
   if (error) throw error;
