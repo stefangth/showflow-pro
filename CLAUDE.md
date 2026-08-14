@@ -191,6 +191,10 @@ src/
                    #   checklists: SetupChecklistSheet, SetupStepRow, setupRailMode.ts (banner →
                    #   collapsed bar → button → hidden), useModuleOnboardingRail, useRailDismissed
     layout/        # AppLayout (sidebar + topbar shell), NotificationsList (notification bell popover)
+    minis/         # Page minis: PageMini (frame: pure PageMiniView + thin container),
+                   #   atoms.tsx (token-only miniature atoms) and illustrations/<Page>Mini.tsx
+                   #   (four illustration nodes per route, barreled by illustrations/index.ts ART).
+                   #   Copy lives in src/lib/minis. See the New page checklist.
     ui/            # shadcn primitives — DO NOT edit by hand, regenerate via shadcn
   config/
     app.config.ts  # ROUTE_FEATURES (entitlement-gated routes), route constants (ROUTES), BOOKING_ENGINE_DEFAULTS, CHAT_ARCHIVE_DAYS
@@ -257,7 +261,10 @@ src/
                    #   hireOrders/kpis.ts (computeOrderKpis), entitlements.ts + capabilities.ts
                    #   (the two per-org gating registries, see Key files table), identity.ts
                    #   (re-exports the login-email-first contact resolution from
-                   #   _shared/identity.ts — see ADR-0011), notificationCategories.ts
+                   #   _shared/identity.ts — see ADR-0011), notificationCategories.ts,
+                   #   minis/ (page-mini content: types.ts, pages/<page>.ts bilingual MiniDefs,
+                   #   index.ts MINIS registry, resolveMiniRole; illustrations live in
+                   #   src/components/minis. See the New page checklist)
   pages/           # One file per route, default-exported
                    #   Key pages: DashboardPage, ShowsBookingsPage (ROUTES.BOOKINGS),
                    #   ProductionsPage (ROUTES.PRODUCTIONS) — admin+producer catalog CRUD + drag-reorder,
@@ -347,7 +354,8 @@ When adding a new page:
 2. Create `src/pages/YourPage.tsx` with a default export.
 3. Register in `src/App.tsx` with `<ProtectedRoute requiredRoles={[...]}>`.
 4. Add a nav item in `src/components/layout/` with matching role gating (give it a `labelKey` so the label is translatable).
-5. **Help center impact.** If the change alters what an admin, producer, or artist would ask, or how the app answers it, update the Help content (`src/lib/help/items.ts`, EN + DE, "Du") in the SAME PR, or state "No help center impact." in the PR description. The help center is authored at spec time, not retrofitted later.
+5. **Page mini (convention).** Every route explains its own module in a four-step, role-aware mini pinned below the setup rail. Add a `PageKey` + a `MiniDef` at `src/lib/minis/pages/<page>.ts` (bilingual EN + DE, informal "Du", reuse `src/i18n/terms.ts` `TERMS`), register it in `src/lib/minis/index.ts`, build its token-only illustration at `src/components/minis/illustrations/<Page>Mini.tsx` (add it to the `ART` barrel), and drop `<PageMini page="<page>" />` into the page at the header→body seam. Copy is guarded by `minis.test.ts` (structure + en≠de) and `copyLint.test.ts` (no dashes, Du). If a page has no mini, state "No mini." with a reason in the PR. See `docs/superpowers/specs/2026-08-14-page-minis-design.md`.
+6. **Help center impact.** If the change alters what an admin, producer, or artist would ask, or how the app answers it, update the Help content (`src/lib/help/items.ts`, EN + DE, "Du") in the SAME PR, or state "No help center impact." in the PR description. The help center is authored at spec time, not retrofitted later.
 
 ### Internationalization (i18n)
 
