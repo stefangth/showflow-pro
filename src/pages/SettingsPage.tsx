@@ -31,6 +31,7 @@ import { HireOrdersTab } from '@/components/settings/hireOrders/HireOrdersTab';
 import { PermissionsTab } from '@/components/settings/permissions/PermissionsTab';
 import { EmailTemplatesTab } from '@/components/settings/emailTemplates/EmailTemplatesTab';
 import { Badge } from '@/components/ui/badge';
+import { PageMini } from '@/components/minis/PageMini';
 
 // Tabs whose content is a wide reference surface rather than a form: they drop
 // the page's reading measure and run to `main`'s own 24px padding at every
@@ -328,6 +329,8 @@ export default function SettingsPage() {
           </Button>
         </div>
       )}
+
+      <PageMini page="settings" />
 
       <Tabs
         value={activeTab}

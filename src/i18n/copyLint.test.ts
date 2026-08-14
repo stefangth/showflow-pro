@@ -4,6 +4,8 @@ import { TERMS } from './terms';
 import { HELP_ITEMS } from '@/lib/help/items';
 import { STAGES } from '@/lib/help/stages';
 import { GLOSSARY } from '@/lib/help/glossary';
+import { MINIS, PAGE_KEYS } from '@/lib/minis';
+import type { Lang } from './config';
 
 const DASH = /[—–]/; // em dash, en dash
 
@@ -18,12 +20,25 @@ function strings(obj: unknown): string[] {
   return [];
 }
 
+// Every string in the page-minis data module for one language.
+function miniStrings(lang: Lang): string[] {
+  return PAGE_KEYS.flatMap((key) => {
+    const def = MINIS[key];
+    const out = [def.eyebrow[lang]];
+    if (def.subnote) out.push(def.subnote[lang]);
+    for (const steps of Object.values(def.variants))
+      for (const step of steps!) out.push(step.label[lang], step.text[lang]);
+    return out;
+  });
+}
+
 const enContent = [
   ...strings(resources.en),
   ...HELP_ITEMS.flatMap((i) => [i.q.en, i.a.en]),
   ...STAGES.flatMap((s) => [s.title.en, s.moment.en]),
   ...GLOSSARY.map((g) => g.def.en),
   ...Object.values(TERMS).map((t) => t.en),
+  ...miniStrings('en'),
 ];
 const deContent = [
   ...strings(resources.de),
@@ -31,6 +46,7 @@ const deContent = [
   ...STAGES.flatMap((s) => [s.title.de, s.moment.de]),
   ...GLOSSARY.map((g) => g.def.de),
   ...Object.values(TERMS).map((t) => t.de),
+  ...miniStrings('de'),
 ];
 
 describe('copy lint', () => {
