@@ -40,7 +40,7 @@ export function ArtistAvailabilityCalendar({ artistId, eligibleDates }: Props) {
   // useArtistEligibleDates filters by BOTH cast membership and unmet hard skill
   // requirements, so the explanation has to name both, "offered dates come from
   // your casts" alone is only half the story for an artist missing a required skill.
-  const INELIGIBLE_DAY_REASON = t('calendar.ineligibleReason');
+  const ineligibleDayReason = t('calendar.ineligibleReason');
 
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
@@ -244,7 +244,7 @@ export function ArtistAvailabilityCalendar({ artistId, eligibleDates }: Props) {
               // explanation is stated ONCE for the whole grid (the sr-only note after
               // the legend below), not repeated on every disabled cell, which would
               // make an assistive-tech user hear the same sentence 25-30 times a month.
-              return <div key={dateStr} title={INELIGIBLE_DAY_REASON}>{cell}</div>;
+              return <div key={dateStr} title={ineligibleDayReason}>{cell}</div>;
             }
 
             return (
