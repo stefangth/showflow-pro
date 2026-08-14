@@ -34,7 +34,7 @@ describe("NewOrgDialog modules section", () => {
       expect(provision).toHaveBeenCalledWith(
         expect.anything(),
         expect.objectContaining({
-          features: { booking_flow: true, hire_orders: false },
+          features: { booking_flow: true, hire_orders: false, language_packages: false },
         }),
       ),
     );

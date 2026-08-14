@@ -1,4 +1,5 @@
 // src/components/dashboard/firstRun/FirstRunHeaderCard.tsx
+import { useTranslation } from "react-i18next";
 
 /** The dashboard first-run header card: a headline + ghost CTA on the left,
  *  a 264px progress card (ticks + module on/off list) on the right. Pure
@@ -18,6 +19,7 @@ export function FirstRunHeaderCard(props: {
   onGhost?: () => void;
 }): JSX.Element {
   const { eyebrow, headline, body, ghost, hint, progressLabel, progressHint, hasSteps, ticks, modules, onGhost } = props;
+  const { t } = useTranslation("dashboard");
 
   return (
     <div className="flex shrink-0 flex-col gap-6 rounded-[var(--radius-xl)] border border-border bg-card px-6 py-[22px] lg:flex-row lg:items-start lg:gap-8">
@@ -63,7 +65,7 @@ export function FirstRunHeaderCard(props: {
               <div className="text-xs font-medium text-foreground">{m.label}</div>
               <div className="flex-1" />
               <div className={`text-[11px] font-semibold ${m.on ? "text-accent-600" : "text-[var(--text-faint)]"}`}>
-                {m.on ? "On" : "Off"}
+                {m.on ? t("firstRun.on") : t("firstRun.off")}
               </div>
             </div>
           ))}

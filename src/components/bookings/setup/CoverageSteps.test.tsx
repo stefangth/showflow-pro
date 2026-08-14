@@ -53,14 +53,14 @@ describe("EligibilityStep", () => {
     );
   });
 
-  it("offers the concept explanation next to the edit link, deep-linked to Documentation", () => {
+  it("offers the concept explanation next to the edit link, deep-linked to the Help center", () => {
     // Same house vocabulary as LadderStep, same escape hatch.
     renderWithProviders(
       <MemoryRouter><EligibilityStep coverage={uncovered} orgId="org-1" /></MemoryRouter>,
     );
-    expect(screen.getByRole("link", { name: /how casts and tiers work, in the app logic guide/i })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /how casts and tiers work, in the help center/i })).toHaveAttribute(
       "href",
-      `${ROUTES.SETTINGS}?tab=docs`,
+      ROUTES.HELP,
     );
   });
 

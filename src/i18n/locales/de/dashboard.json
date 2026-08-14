@@ -1,0 +1,82 @@
+{
+  "cards": {
+    "liveUpcoming": "Live und bevorstehend",
+    "next14Days": "Nächste 14 Tage",
+    "next30Days": "Nächste 30 Tage",
+    "liveDate_one": "laufender Termin",
+    "liveDate_other": "laufende Termine",
+    "castConfirmed": "Besetzung bestätigt",
+    "showCount_one": "{{count}} Show",
+    "showCount_other": "{{count}} Shows",
+    "clickToSee": "Klicken, um ausstehende Shows zu sehen →"
+  },
+  "directBooking": {
+    "title": "Termine, die Besetzung brauchen",
+    "row": "{{date}} · {{booked}} von {{slots}} gebucht",
+    "more": "Und {{count}} weitere. Siehe Buchungen."
+  },
+  "tierAttention": {
+    "title": "Braucht Aufmerksamkeit",
+    "row": "{{date}} · Stufe {{tier}} · {{filled}} von {{required}}",
+    "atRisk": "Gefährdet",
+    "expiresSoon": "Läuft bald ab",
+    "more": "Und {{count}} weitere. Siehe Buchungen."
+  },
+  "artist": {
+    "heading": "Dashboard",
+    "offersLoadError": "Deine Angebote konnten nicht geladen werden. Bitte aktualisiere die Seite.",
+    "awaitingResponse": "Wartet auf deine Antwort",
+    "allCaughtUp": "Du bist auf dem neuesten Stand. Keine offenen Angebote.",
+    "respond": "Antworten",
+    "hireOrdersTitle": "Deine Engagementverträge",
+    "hireOrdersEmpty": "Deine Buchungsunterlagen erscheinen hier. Wenn dir dein Produktionsteam einen Engagementvertrag schickt, kommt er per E-Mail an, und du kannst ihn hier prüfen und unterschreiben.",
+    "download": "Herunterladen",
+    "myCasts": "Meine Besetzungen",
+    "castsLoadError": "Deine Besetzungen konnten nicht geladen werden.",
+    "noCastsYet": "Du wurdest noch keiner Besetzung hinzugefügt.",
+    "member": "Mitglied",
+    "respondedOfTotal": "{{responded}} von {{total}} Terminen",
+    "unansweredMore": "+{{count}} weitere"
+  },
+  "producer": {
+    "heading": "Dashboard",
+    "subheading": "Bestätigungsstatus der Besetzung für bevorstehende Termine.",
+    "toastBookingsConfirmed": "Buchungen bestätigt",
+    "toastBookingsDeclined": "Buchungen abgelehnt",
+    "toastBookingsChanged": "Einige Buchungen haben sich geändert. Aktualisiere die Seite und versuch es erneut.",
+    "readyToConfirm": "Bereit zur Bestätigung",
+    "confirmN": "{{count}} bestätigen",
+    "declineN": "{{count}} ablehnen",
+    "colArtist": "Artist",
+    "colDateShow": "Termin / Show",
+    "colType": "Typ",
+    "understudy": "Zweitbesetzung",
+    "main": "Hauptbesetzung"
+  },
+  "firstRun": {
+    "pickUpWhereLeftOff": "Mach weiter, wo du aufgehört hast",
+    "resume": "Weiter",
+    "hide": "Ausblenden",
+    "slowsFilling": "Verzögert die Füllung",
+    "admin": "Admin",
+    "running": "Läuft",
+    "startHere": "Hier starten",
+    "on": "An",
+    "off": "Aus",
+    "sample": "Beispiel"
+  },
+  "artistQueue": {
+    "open": "Öffnen",
+    "edit": "Bearbeiten",
+    "nothingYet": "Noch nichts",
+    "offersArriving_one": "{{count}} Angebot in der morgigen Tagesübersicht",
+    "offersArriving_other": "{{count}} Angebote in der morgigen Tagesübersicht",
+    "datesBookedAppearHere": "Für dich gebuchte Termine erscheinen hier",
+    "producerSchedule": "Der Zeitplan deines Produktionsteams",
+    "keptOutOfList": "Aus jeder Liste herausgehalten, bevor dich jemand bucht",
+    "firstOfferHint": "Dein erstes Angebot landet hier, sobald {{orgName}} Termine für deine Besetzung hat.",
+    "firstBookingHint": "Deine erste Buchung landet hier, sobald {{orgName}} Termine hat.",
+    "blockedTitle_one": "{{count}} Termin gesperrt",
+    "blockedTitle_other": "{{count}} Termine gesperrt"
+  }
+}

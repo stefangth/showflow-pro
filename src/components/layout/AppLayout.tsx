@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { NavLink, Link } from 'react-router-dom';
 import { useAuth } from '@/features/auth/AuthContext';
@@ -14,7 +14,8 @@ import { Settings, LogOut, Bell, ChevronLeft, ChevronRight, Menu, EyeOff, User, 
 import { NAV_ITEMS, visibleNavItems, groupNavBySections, isHiddenForViewAs, type NavLabelKey } from '@/components/layout/navItems';
 import { useTranslation } from 'react-i18next';
 import { useLanguage } from '@/features/i18n/LanguageContext';
-import { LANGUAGE_LABELS, SUPPORTED_LANGUAGES } from '@/i18n/config';
+import { LANGUAGE_LABELS, SUPPORTED_LANGUAGES, loadStoredLang } from '@/i18n/config';
+import i18n from '@/i18n';
 import { cn } from '@/lib/utils';
 import { useSettingsWarnings } from '@/hooks/useSettingsWarnings';
 import { useEditorConfig } from '@/features/editor/EditorContext';
@@ -27,7 +28,7 @@ import { ThemeToggle } from '@/components/layout/ThemeToggle';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useNavCounts } from '@/hooks/useNavCounts';
 import { useMyProfile } from '@/hooks/useMyProfile';
-import { useEntitlements } from '@/hooks/useEntitlements';
+import { useEntitlements, useFeature } from '@/hooks/useEntitlements';
 import { toast } from 'sonner';
 import type { AppRole } from '@/types';
 
@@ -38,6 +39,21 @@ interface AppLayoutProps {
 const ROUTE_TO_LABEL: Record<string, string> = Object.fromEntries(NAV_ITEMS.map((i) => [i.to, i.label]));
 const ROUTE_TO_LABELKEY: Record<string, NavLabelKey | undefined> = Object.fromEntries(NAV_ITEMS.map((i) => [i.to, i.labelKey]));
 const SECTION_KEY = { workspace: 'nav.workspace', catalog: 'nav.catalog', system: 'nav.system' } as const;
+
+// Last-known `language_packages` entitlement, cached so the force-English guard below has an
+// answer during the entitlements-loading window. `useFeature` reports the registry default
+// (false) while the query is loading, which without this cache would force English on first
+// paint and then flip an *entitled* org back to its stored language once the query settles,
+// a visible flash on every load. The cache defaults to "not entitled" (absent), so a dark or
+// never-seen org still gets the ship-dark English default during load; only an org confirmed
+// entitled on a prior load skips the force and shows its stored language immediately.
+export const LANG_PACK_CACHE_KEY = 'showflow.langpack.v1';
+function readLangPackCache(): boolean {
+  try { return localStorage.getItem(LANG_PACK_CACHE_KEY) === '1'; } catch { return false; }
+}
+function writeLangPackCache(enabled: boolean): void {
+  try { localStorage.setItem(LANG_PACK_CACHE_KEY, enabled ? '1' : '0'); } catch { /* private mode / disabled */ }
+}
 
 export default function AppLayout({ children }: AppLayoutProps) {
   const { user, signOut, roles, hasRole, viewAsRole, viewAsUser, isSuperAdmin, currentOrg } = useAuth();
@@ -55,10 +71,27 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const { data: myProfile } = useMyProfile();
   const navCounts = useNavCounts();
   const { features, isLoading: entitlementsLoading } = useEntitlements();
+  const languagePacksEnabled = useFeature('language_packages');
 
   // The account-menu Popover lives only in the expanded sidebar. Reset its open
   // state when collapsing so it doesn't auto-pop on the next expand.
   useEffect(() => { if (collapsed) setProfileMenuOpen(false); }, [collapsed]);
+
+  // language_packages ships dark: force the runtime to English unless the org is entitled,
+  // WITHOUT touching the user's stored language (so a later entitlement flip restores it).
+  // During the entitlements-loading window `useFeature` reports the registry default (false),
+  // so we consult the cached last-known decision instead of forcing English on an entitled
+  // org every load. Absent cache = not entitled = the ship-dark English default. Display-only.
+  useLayoutEffect(() => {
+    const entitled = entitlementsLoading ? readLangPackCache() : languagePacksEnabled;
+    if (!entitlementsLoading) writeLangPackCache(languagePacksEnabled);
+    if (!entitled) {
+      if (i18n.language !== 'en') void i18n.changeLanguage('en');
+      return;
+    }
+    const stored = loadStoredLang();
+    if (stored && i18n.language !== stored) void i18n.changeLanguage(stored);
+  }, [languagePacksEnabled, entitlementsLoading]);
 
   const isRealAdmin = roles.includes('admin');
   const unreadCount = notifications.filter(n => !n.read).length;
@@ -229,22 +262,26 @@ export default function AppLayout({ children }: AppLayoutProps) {
                   </PopoverTrigger>
                 </IconTooltip>
                 <PopoverContent align="end" side="top" sideOffset={8} className="w-52 p-1">
-                  <p className="px-2.5 pb-1 pt-1.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-muted-foreground/70">
-                    {t('account.language')}
-                  </p>
-                  {SUPPORTED_LANGUAGES.map((code) => (
-                    <button
-                      key={code}
-                      className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] text-foreground hover:bg-muted transition-colors"
-                      onClick={() => { setLang(code); setProfileMenuOpen(false); }}
-                      aria-pressed={lang === code}
-                    >
-                      <Languages className="h-[14px] w-[14px]" />
-                      <span className="flex-1 text-left">{LANGUAGE_LABELS[code]}</span>
-                      {lang === code && <Check className="h-[14px] w-[14px] text-accent-600" />}
-                    </button>
-                  ))}
-                  <div className="my-1 h-px bg-border" />
+                  {languagePacksEnabled && (
+                    <>
+                      <p className="px-2.5 pb-1 pt-1.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-muted-foreground/70">
+                        {t('account.language')}
+                      </p>
+                      {SUPPORTED_LANGUAGES.map((code) => (
+                        <button
+                          key={code}
+                          className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] text-foreground hover:bg-muted transition-colors"
+                          onClick={() => { setLang(code); setProfileMenuOpen(false); }}
+                          aria-pressed={lang === code}
+                        >
+                          <Languages className="h-[14px] w-[14px]" />
+                          <span className="flex-1 text-left">{LANGUAGE_LABELS[code]}</span>
+                          {lang === code && <Check className="h-[14px] w-[14px] text-accent-600" />}
+                        </button>
+                      ))}
+                      <div className="my-1 h-px bg-border" />
+                    </>
+                  )}
                   <button
                     className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] text-foreground hover:bg-muted transition-colors"
                     onClick={() => { setProfileMenuOpen(false); navigate(ROUTES.PROFILE); }}

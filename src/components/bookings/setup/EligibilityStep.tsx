@@ -59,10 +59,9 @@ export function EligibilityStep({ coverage, orgId }: { coverage: LadderCoverageI
         <Link to={`${ROUTES.SETTINGS}?tab=casts-cities`} className="text-xs text-primary underline">
           Link casts in Settings, Casts and cities
         </Link>
-        {/* Same house vocabulary as LadderStep, same escape hatch into the docs, same
-            destination named in the label. */}
-        <Link to={`${ROUTES.SETTINGS}?tab=docs`} className="text-xs text-primary underline">
-          How casts and tiers work, in the App Logic Guide
+        {/* Same house vocabulary as LadderStep, same escape hatch: the Help center. */}
+        <Link to={ROUTES.HELP} className="text-xs text-primary underline">
+          How casts and tiers work, in the Help center
         </Link>
       </div>
     </div>

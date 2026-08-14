@@ -5,6 +5,7 @@
 // translated to the project's Tailwind house idiom. The color-mix(...) values used for
 // muted-on-violet text/borders on the hot card have no Tailwind utility equivalent and
 // stay inline styles, exactly as the reproduction keeps them inline.
+import { useTranslation } from "react-i18next";
 import type { DockedStep, Stage, StageAction } from "@/lib/dashboard/stageChain.types";
 
 // HOT_* — foreground tints for the hot card. The card background is the IMMUTABLE
@@ -22,6 +23,7 @@ const HOT_CHIPBG2 = `color-mix(in srgb, ${HOT_BASE} 14%, var(--accent-700))`;
 
 /** stepRow(st, hot) */
 function StepRow({ step, hot }: { step: DockedStep; hot: boolean }) {
+  const { t } = useTranslation("dashboard");
   return (
     <div className="flex items-start gap-2">
       {step.done ? (
@@ -75,7 +77,7 @@ function StepRow({ step, hot }: { step: DockedStep; hot: boolean }) {
               ].join(" ")}
               style={hot ? { background: HOT_CHIPBG2, color: HOT_SOFT } : undefined}
             >
-              Slows filling
+              {t("firstRun.slowsFilling")}
             </span>
           )}
           {step.admin && (
@@ -86,7 +88,7 @@ function StepRow({ step, hot }: { step: DockedStep; hot: boolean }) {
               ].join(" ")}
               style={hot ? { background: HOT_CHIPBG2, color: HOT_SOFT } : undefined}
             >
-              Admin
+              {t("firstRun.admin")}
             </span>
           )}
         </div>
@@ -122,6 +124,7 @@ function StepsBlock({ steps, hot }: { steps: DockedStep[]; hot: boolean }) {
  *  rule) is drawn by the same component so the arrow and card stay one flex-row unit,
  *  matching the reproduction's `return arrow + card`. */
 export function StageCard({ stage, onAction }: { stage: Stage; onAction: (action: StageAction) => void }) {
+  const { t } = useTranslation("dashboard");
   const hot = stage.variant === "hot";
   const plain = stage.variant === "plain";
   const dim = stage.variant === "dim";
@@ -156,14 +159,14 @@ export function StageCard({ stage, onAction }: { stage: Stage; onAction: (action
           </div>
           <div className="flex-1" />
           {hot && (
-            <span className="rounded-xs bg-accent-50 px-1.5 py-0.5 text-[11px] font-semibold text-accent-700">Start here</span>
+            <span className="rounded-xs bg-accent-50 px-1.5 py-0.5 text-[11px] font-semibold text-accent-700">{t("firstRun.startHere")}</span>
           )}
           {plain && stage.running && (
             <span className="flex items-center gap-1 text-[11px] font-semibold text-muted-foreground">
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="20 6 9 17 4 12" />
               </svg>
-              Running
+              {t("firstRun.running")}
             </span>
           )}
           {dim && stage.badge && (

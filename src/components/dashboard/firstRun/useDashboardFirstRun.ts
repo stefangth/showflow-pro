@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/features/auth/AuthContext";
 import { useCan } from "@/hooks/useCapabilities";
 import { useEntitlements } from "@/hooks/useEntitlements";
@@ -42,6 +43,7 @@ export interface DashboardFirstRunState {
  * query-free `useArtistOnboardingStatus`).
  */
 export function useDashboardFirstRun(role: DashboardRole): DashboardFirstRunState {
+  const { t } = useTranslation("dashboard");
   const { currentOrg } = useAuth();
   const orgId = currentOrg?.id ?? null;
   const orgName = currentOrg?.name ?? "your workspace";
@@ -127,33 +129,32 @@ export function useDashboardFirstRun(role: DashboardRole): DashboardFirstRunStat
   // real content lives in the KPI cards below the chain, not this queue); an artist
   // sees a live two-line summary built straight from their own metrics — no per-offer
   // fetch needed.
-  const arrivingPlural = metrics.arriving === 1 ? "" : "s";
   const artistQueueRows: QueueRow[] = imported
     ? [
         {
           dot: "accent",
           title: offers
-            ? `${metrics.arriving} offer${arrivingPlural} arriving in tomorrow's digest`
-            : "Dates booked for you appear here",
-          hint: "Your producer's schedule",
+            ? t("artistQueue.offersArriving", { count: metrics.arriving })
+            : t("artistQueue.datesBookedAppearHere"),
+          hint: t("artistQueue.producerSchedule"),
           when: `${String(timing.digestHourBerlin).padStart(2, "0")}:00`,
-          cta: "Open",
+          cta: t("artistQueue.open"),
         },
         {
           dot: "faint",
-          title: `${metrics.blockedDates} ${metrics.blockedDates === 1 ? "date" : "dates"} blocked`,
-          hint: "Kept out of every list before anyone books you",
+          title: t("artistQueue.blockedTitle", { count: metrics.blockedDates }),
+          hint: t("artistQueue.keptOutOfList"),
           when: "",
-          cta: "Edit",
+          cta: t("artistQueue.edit"),
         },
       ]
     : [
         {
           dot: "faint",
-          title: "Nothing yet",
+          title: t("artistQueue.nothingYet"),
           hint: offers
-            ? `Your first offer lands here once ${orgName} has dates for your cast.`
-            : `Your first booking lands here once ${orgName} has dates.`,
+            ? t("artistQueue.firstOfferHint", { orgName })
+            : t("artistQueue.firstBookingHint", { orgName }),
           when: "",
           cta: "",
         },

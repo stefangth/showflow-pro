@@ -357,6 +357,7 @@ When adding a new page:
 - Domain terms live once in the canonical `src/i18n/terms.ts` `TERMS` glossary; reuse it, never re-translate a term inline. This is the single source the whole app UI draws from as it is localized.
 - No em/en dashes in copy; German uses the informal "Du". `src/i18n/copyLint.test.ts` enforces both.
 - The language setting is global (account menu → `src/features/i18n/LanguageContext.tsx`), defaults to the browser language, and persists to localStorage. Rolling i18n across the rest of the app UI is incremental, one namespace per domain behind `fallbackLng` — see `docs/superpowers/specs/2026-08-14-i18n-and-help-page-design.md`.
+- **Phase 2 (in progress): per-domain namespaces beyond shell chrome.** The `dashboard` namespace is the first domain migrated. `src/lib/dashboard/stageChain.ts` and `moduleOnboarding.ts` still return hardcoded English copy on purpose — that content is deferred to a future `onboarding` namespace shared with the bookings and hire-orders setup rails, rather than migrated piecemeal per module. The whole language switcher, including German, is gated behind the `language_packages` entitlement (`src/lib/entitlements.ts`), which ships DARK: `defaultEnabled: false`, so a fresh org runs English-only until a super-admin turns it on for that org (Platform → Organizations). `AppLayout` force-resets the runtime to English whenever the entitlement is off, so translated strings never leak to an org that hasn't been granted the module.
 
 ### Edge functions
 

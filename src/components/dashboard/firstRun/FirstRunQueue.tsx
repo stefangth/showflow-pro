@@ -1,4 +1,5 @@
 // src/components/dashboard/firstRun/FirstRunQueue.tsx
+import { useTranslation } from "react-i18next";
 import type { QueueRow } from "@/lib/dashboard/stageChain.types";
 
 /** The dashboard first-run queue: a header row (title, an optional "Sample"
@@ -13,6 +14,7 @@ export function FirstRunQueue(props: {
   rows: QueueRow[];
 }): JSX.Element {
   const { title, hint, sample, opacity, rows } = props;
+  const { t } = useTranslation("dashboard");
 
   return (
     <div className="flex flex-col gap-4">
@@ -20,7 +22,7 @@ export function FirstRunQueue(props: {
         <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-faint)]">{title}</div>
         {sample && (
           <span className="rounded-xs bg-[var(--surface-3)] px-1.5 py-0.5 text-[11px] font-semibold text-muted-foreground">
-            Sample
+            {t("firstRun.sample")}
           </span>
         )}
         <div className="flex-1" />

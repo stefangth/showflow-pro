@@ -1,6 +1,11 @@
 // src/components/dashboard/firstRun/StageCard.test.tsx
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
+// Side-effect import: StageCard now calls useTranslation('dashboard'), which needs the
+// real i18next instance initialized (via initReactI18next) before render. This file uses
+// plain testing-library `render`, not the shared renderWithProviders wrapper that pulls
+// LanguageProvider (and with it @/i18n) in automatically, so it is imported explicitly here.
+import "@/i18n";
 import { StageCard } from "./StageCard";
 import type { Stage, StageAction } from "@/lib/dashboard/stageChain.types";
 

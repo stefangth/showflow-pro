@@ -1,6 +1,12 @@
 // src/components/dashboard/firstRun/firstRunLeaves.test.tsx
 import { it, expect, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
+// Side-effect import: FirstRunHeaderCard and FirstRunQueue now call
+// useTranslation('dashboard'), which needs the real i18next instance initialized (via
+// initReactI18next) before render. This file uses plain testing-library `render`, not the
+// shared renderWithProviders wrapper that pulls LanguageProvider (and with it @/i18n) in
+// automatically, so it is imported explicitly here.
+import "@/i18n";
 import { FirstRunHeaderCard } from "./FirstRunHeaderCard";
 import { OffFooters } from "./OffFooters";
 import { FirstRunSideCard } from "./FirstRunSideCard";

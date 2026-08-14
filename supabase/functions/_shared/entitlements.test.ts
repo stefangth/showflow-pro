@@ -21,7 +21,7 @@ function sorted(set: Set<string>): string[] {
 Deno.test("entitlements registry: registers booking_flow default-on and hire_orders default-off", () => {
   assertEquals(FEATURE_REGISTRY.booking_flow.defaultEnabled, true);
   assertEquals(FEATURE_REGISTRY.hire_orders.defaultEnabled, false);
-  assertEquals(FEATURE_KEYS, ["booking_flow", "hire_orders"]);
+  assertEquals(FEATURE_KEYS, ["booking_flow", "hire_orders", "language_packages"]);
 });
 
 Deno.test("entitlements registry: falls back to registry defaults when no row exists", () => {

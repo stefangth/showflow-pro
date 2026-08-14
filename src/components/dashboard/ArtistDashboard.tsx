@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -42,6 +43,7 @@ function snap(data: OrderData, key: keyof OrderData): string {
  * Artist dashboard: offer response rate + list of pending offers.
  */
 export function ArtistDashboard() {
+  const { t } = useTranslation('dashboard');
   const navigate = useNavigate();
   const { data: artist } = useMyArtist();
   const { data: eligibleDates } = useArtistEligibleDates();
@@ -132,7 +134,7 @@ export function ArtistDashboard() {
   if (!artist) {
     return (
       <div className="space-y-6">
-        <h1 className="font-display text-[32px] font-semibold tracking-tight">Dashboard</h1>
+        <h1 className="font-display text-[32px] font-semibold tracking-tight">{t('artist.heading')}</h1>
         <UnlinkedArtistCard orgName={currentOrg?.name} />
       </div>
     );
@@ -164,7 +166,7 @@ export function ArtistDashboard() {
       {(!showFirstRun || hasArtistData) && (
         <div className="space-y-6">
           <div>
-            <h1 className="font-display text-[32px] font-semibold tracking-tight">Dashboard</h1>
+            <h1 className="font-display text-[32px] font-semibold tracking-tight">{t('artist.heading')}</h1>
             {/* Stays in the heading block so it reads as a subtitle (mt-1, not the
                 parent's space-y-6), but still module-gated: the sentence describes the
                 offer pipeline ("your response rate on dates you've been offered"),
@@ -178,7 +180,7 @@ export function ArtistDashboard() {
           <ModuleGate feature="booking_flow">
             {bookingsError && (
               <Alert variant="destructive">
-                <AlertDescription>Failed to load your offers. Please refresh.</AlertDescription>
+                <AlertDescription>{t('artist.offersLoadError')}</AlertDescription>
               </Alert>
             )}
 
@@ -196,7 +198,7 @@ export function ArtistDashboard() {
                     <div className="flex items-baseline gap-2 mb-3">
                       <p className="text-[36px] font-display font-semibold tracking-tight">{pct}%</p>
                       <p className="text-sm text-muted-foreground">
-                        {responded} of {total} dates
+                        {t('artist.respondedOfTotal', { responded, total })}
                       </p>
                     </div>
                     <div className="space-y-1">
@@ -222,14 +224,14 @@ export function ArtistDashboard() {
                 <CardHeader>
                   <CardTitle className="font-display flex items-center gap-2 text-base">
                     <MessageCircleQuestion className="h-4 w-4" />
-                    Awaiting your response
+                    {t('artist.awaitingResponse')}
                     <Badge variant="secondary">{unanswered.length}</Badge>
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   {unanswered.length === 0 ? (
                     <p className="text-sm text-muted-foreground">
-                      You're all caught up. No pending offers.
+                      {t('artist.allCaughtUp')}
                     </p>
                   ) : (
                     <div className="space-y-2 max-h-72 overflow-y-auto">
@@ -246,13 +248,13 @@ export function ArtistDashboard() {
                             <p className="text-xs text-muted-foreground">{formatDateDMY(d.date)}</p>
                           </div>
                           <Badge variant="outline" className="text-xs">
-                            Respond
+                            {t('artist.respond')}
                           </Badge>
                         </Link>
                       ))}
                       {unanswered.length > 8 && (
                         <p className="text-xs text-muted-foreground text-center pt-1">
-                          +{unanswered.length - 8} more
+                          {t('artist.unansweredMore', { count: unanswered.length - 8 })}
                         </p>
                       )}
                     </div>
@@ -268,7 +270,7 @@ export function ArtistDashboard() {
               <CardHeader>
                 <CardTitle className="font-display flex items-center gap-2 text-base">
                   <FileText className="h-4 w-4" />
-                  Your hire orders
+                  {t('artist.hireOrdersTitle')}
                   {(myHireOrders?.length ?? 0) > 0 && (
                     <Badge variant="secondary">{myHireOrders!.length}</Badge>
                   )}
@@ -284,8 +286,7 @@ export function ArtistDashboard() {
                   // and a pending/failed fetch is never mistaken for empty.
                   hireOrdersLoaded ? (
                     <p className="text-sm text-muted-foreground">
-                      Your booking paperwork shows up here. When a producer sends you a hire
-                      order, it arrives by email and you can review and sign it here.
+                      {t('artist.hireOrdersEmpty')}
                     </p>
                   ) : null
                 ) : (
@@ -316,7 +317,7 @@ export function ArtistDashboard() {
                           <Button
                             size="sm"
                             variant="outline"
-                            aria-label="Download"
+                            aria-label={t('artist.download')}
                             onClick={() => handleDownloadHireOrder(o.id)}
                             disabled={hireOrderAction.isPending}
                           >
@@ -335,7 +336,7 @@ export function ArtistDashboard() {
             <CardHeader>
               <CardTitle className="font-display flex items-center gap-2 text-base">
                 <Theater className="h-4 w-4" />
-                My Casts
+                {t('artist.myCasts')}
                 {(myMemberships?.length ?? 0) > 0 && (
                   <Badge variant="secondary">{myMemberships!.length}</Badge>
                 )}
@@ -343,15 +344,15 @@ export function ArtistDashboard() {
             </CardHeader>
             <CardContent>
               {membershipsError ? (
-                <p className="text-sm text-destructive">Failed to load your casts.</p>
+                <p className="text-sm text-destructive">{t('artist.castsLoadError')}</p>
               ) : (myMemberships?.length ?? 0) === 0 ? (
-                <p className="text-sm text-muted-foreground">You haven't been added to any casts yet.</p>
+                <p className="text-sm text-muted-foreground">{t('artist.noCastsYet')}</p>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {myMemberships!.map(m => (
                     <div key={m.id} className="flex items-center justify-between p-2 rounded-md border border-border">
                       <p className="text-sm font-medium">{m.cast?.name ?? '—'}</p>
-                      <Badge variant="outline" className="text-xs">Member</Badge>
+                      <Badge variant="outline" className="text-xs">{t('artist.member')}</Badge>
                     </div>
                   ))}
                 </div>

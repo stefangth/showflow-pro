@@ -14,7 +14,7 @@ function keyset(obj: unknown, prefix = ''): string[] {
 // English is the canonical shape; German must match it key-for-key. `fallbackLng: 'en'`
 // would otherwise let a missing German key silently render English in production.
 describe('catalog key parity', () => {
-  for (const ns of ['common', 'help'] as const) {
+  for (const ns of ['common', 'help', 'dashboard'] as const) {
     it(`de matches en for namespace "${ns}"`, () => {
       const en = keyset(resources.en[ns]).sort();
       const de = keyset(resources.de[ns]).sort();
