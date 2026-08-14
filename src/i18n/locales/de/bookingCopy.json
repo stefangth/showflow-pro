@@ -19,5 +19,26 @@
       "understudyLine": "Wenn {{artist}} in der Hauptbesetzung ist, wird die am längsten wartende angenommene Zweitbesetzung automatisch nachgerückt.",
       "whoHearsFallback": "Der Artist wird in der App benachrichtigt."
     }
+  },
+  "timingCopy": {
+    "boundsError": "Gib eine Antwortfrist von mindestens 1 Stunde und Tagesübersicht-Stunden zwischen 0 und 23 an.",
+    "scope": {
+      "berlin": "Die Zeiten der Tagesübersicht enthalten ihre Zeitzone.",
+      "offNote": "Diese Zeiten ändern nichts, solange der Buchungsablauf aus ist.",
+      "directBookDeadFields": "Du buchst Artists direkt, also ändern die Angebotsfrist und die Uhrzeit der Angebots-Tagesübersicht nichts.",
+      "onlyConfirmationLive": "Nur die Bestätigungszeit ist aktiv.",
+      "confirmationHourStillLive": "Die Bestätigungszeit läuft trotzdem und legt fest, wann gebuchte Artists in der App über Terminänderungen benachrichtigt werden."
+    },
+    "tonight": {
+      "directConfirm": "Neu bestätigte Artists bekommen die Bestätigungs-Tagesübersicht um {{time}}.",
+      "digestConfirm_one": "Wenn eine Stufe öffnet, gehen Angebote mit der nächsten Tagesübersicht um {{offerTime}} raus. Artists haben {{count}} Stunde Zeit zu antworten, und Bestätigungen gehen um {{time}} raus.",
+      "digestConfirm_other": "Wenn eine Stufe öffnet, gehen Angebote mit der nächsten Tagesübersicht um {{offerTime}} raus. Artists haben {{count}} Stunden Zeit zu antworten, und Bestätigungen gehen um {{time}} raus.",
+      "digestNoConfirm_one": "Wenn eine Stufe öffnet, gehen Angebote mit der nächsten Tagesübersicht um {{offerTime}} raus. Artists haben {{count}} Stunde Zeit zu antworten.",
+      "digestNoConfirm_other": "Wenn eine Stufe öffnet, gehen Angebote mit der nächsten Tagesübersicht um {{offerTime}} raus. Artists haben {{count}} Stunden Zeit zu antworten.",
+      "immediateConfirm_one": "Wenn eine Stufe öffnet, gehen Angebote sofort per E-Mail raus. Artists haben {{count}} Stunde Zeit zu antworten, und Bestätigungen gehen um {{time}} raus.",
+      "immediateConfirm_other": "Wenn eine Stufe öffnet, gehen Angebote sofort per E-Mail raus. Artists haben {{count}} Stunden Zeit zu antworten, und Bestätigungen gehen um {{time}} raus.",
+      "immediateNoConfirm_one": "Wenn eine Stufe öffnet, gehen Angebote sofort per E-Mail raus. Artists haben {{count}} Stunde Zeit zu antworten.",
+      "immediateNoConfirm_other": "Wenn eine Stufe öffnet, gehen Angebote sofort per E-Mail raus. Artists haben {{count}} Stunden Zeit zu antworten."
+    }
   }
 }

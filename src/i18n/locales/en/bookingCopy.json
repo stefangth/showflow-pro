@@ -19,5 +19,26 @@
       "understudyLine": "If {{artist}} is in the main cast, the longest waiting accepted understudy is promoted automatically.",
       "whoHearsFallback": "The artist is notified in the app."
     }
+  },
+  "timingCopy": {
+    "boundsError": "Enter a window of at least 1 hour and digest hours between 0 and 23.",
+    "scope": {
+      "berlin": "Digest times include their timezone.",
+      "offNote": "These hours change nothing while the booking flow is off.",
+      "directBookDeadFields": "You book artists directly, so the offer window and the offer digest hour change nothing.",
+      "onlyConfirmationLive": "Only the confirmation hour is live.",
+      "confirmationHourStillLive": "The confirmation hour still runs: it sets when booked artists are notified of schedule changes in the app."
+    },
+    "tonight": {
+      "directConfirm": "Newly confirmed artists get the confirmation digest at {{time}}.",
+      "digestConfirm_one": "When a tier opens, offers go out in the next {{offerTime}} digest. Artists get {{count}} hour to answer, and confirmations mail at {{time}}.",
+      "digestConfirm_other": "When a tier opens, offers go out in the next {{offerTime}} digest. Artists get {{count}} hours to answer, and confirmations mail at {{time}}.",
+      "digestNoConfirm_one": "When a tier opens, offers go out in the next {{offerTime}} digest. Artists get {{count}} hour to answer.",
+      "digestNoConfirm_other": "When a tier opens, offers go out in the next {{offerTime}} digest. Artists get {{count}} hours to answer.",
+      "immediateConfirm_one": "When a tier opens, offers email straight away. Artists get {{count}} hour to answer, and confirmations mail at {{time}}.",
+      "immediateConfirm_other": "When a tier opens, offers email straight away. Artists get {{count}} hours to answer, and confirmations mail at {{time}}.",
+      "immediateNoConfirm_one": "When a tier opens, offers email straight away. Artists get {{count}} hour to answer.",
+      "immediateNoConfirm_other": "When a tier opens, offers email straight away. Artists get {{count}} hours to answer."
+    }
   }
 }

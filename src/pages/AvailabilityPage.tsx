@@ -67,6 +67,7 @@ function customFor(d: DateRow): Record<string, unknown> | null {
 function ArtistAvailability() {
   const { t } = useTranslation('availability');
   const { t: tFlow } = useTranslation('flowCopy');
+  const { t: tBooking } = useTranslation('bookingCopy');
   const { currentOrg } = useAuth();
   // Mark that the artist has seen their availability. This completes the dashboard
   // first-run "block dates" step for an open-calendar artist: nothing to block is a
@@ -87,7 +88,7 @@ function ArtistAvailability() {
   // returns null for an unread flow — so an org-less mount narrates nothing, with
   // no separate `orgId ? … : null` guard needed here.
   const timesQ = useFlowTimes(orgId);
-  const tonight = describeTonightStandalone(timesQ.data ?? DEFAULT_FLOW_TIMES, flowQ.data);
+  const tonight = describeTonightStandalone(timesQ.data ?? DEFAULT_FLOW_TIMES, flowQ.data, tBooking);
   // Audience gate: describeTonight also composes a confirmation-digest sentence for
   // a direct-book org (artist_acceptance: false) whenever confirmation_digest is
   // true — the BOOKING_FLOW_DEFAULTS/"direct"-preset value — but that sentence is
