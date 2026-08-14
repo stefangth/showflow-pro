@@ -13,6 +13,7 @@ import { parseDateOnly } from '@/lib/dates';
 import { useReferenceField } from '@/hooks/useBookingFlow';
 import { referenceLabel } from '@/lib/bookingFlow';
 import { ShowDateDetailSheet } from '@/components/shows/ShowDateDetailSheet';
+import { PageMini } from '@/components/minis/PageMini';
 
 export default function ChatsListPage() {
   const [activeShowDateId, setActiveShowDateId] = useState<string | null>(null);
@@ -44,6 +45,8 @@ export default function ChatsListPage() {
           One chat per show date. Hidden {CHAT_ARCHIVE_DAYS} days after the show.
         </p>
       </div>
+
+      <PageMini page="chats" />
 
       {isLoading ? (
         <div className="grid gap-3">

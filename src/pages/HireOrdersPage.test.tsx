@@ -14,6 +14,7 @@ import type { SetupRailMode } from "@/components/setup/setupRailMode";
 const { client } = vi.hoisted(() => ({ client: {} as Record<string, unknown> }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: client }));
 vi.mock("@/features/auth/AuthContext", () => ({ useAuth: vi.fn() }));
+vi.mock("@/components/minis/PageMini", () => ({ PageMini: () => null }));
 // The banner setup rail (DashboardSetupRail) and the module-scoped hook both read useCan
 // for step CTAs. Real useCan already resolves true in this harness (the slide-over's
 // Issue/Void buttons rely on it), so a flat true mock is behavior-preserving and keeps the

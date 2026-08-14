@@ -23,6 +23,7 @@ import { GripVertical, Pencil, Archive, ArchiveRestore, Trash2 } from "lucide-re
 import { useColumnTemplate } from "@/features/editor/EditorContext";
 import { useColumnHeaders } from "@/features/editor/useColumnHeaders";
 import { ColumnLayoutEditor } from "@/features/editor/ColumnLayoutEditor";
+import { PageMini } from "@/components/minis/PageMini";
 
 type StatusFilter = "active" | "archived" | "all";
 
@@ -193,6 +194,8 @@ export default function ProductionsPage() {
           New production
         </Button>
       </div>
+
+      <PageMini page="productions" />
 
       <div className="flex items-center gap-3">
         <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)}>

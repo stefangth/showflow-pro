@@ -209,6 +209,14 @@ export const HELP_ITEMS: readonly HelpItem[] = [
       de: 'Du kannst deine eigenen Daten jederzeit aus deinem Profil exportieren. Eine ganze Organisation zu löschen oder komplett zu exportieren sind bewusst Plattform-Aktionen, keine Self-Service-Buttons.',
     },
   },
+  {
+    id: 'A5.3', role: 'admin', stage: 5, status: 'new', surface: 'Page guide', updated: '2026-08-14',
+    q: { en: 'What is the four-step panel at the top of a page, and can I hide it?', de: 'Was ist das Panel mit vier Schritten oben auf einer Seite, und kann ich es ausblenden?' },
+    a: {
+      en: 'It is the page guide: a short, role-aware explainer of what that page\'s module does and which step is yours. Hide dismisses it for that page in this browser and leaves a slim bar you can Resume from.',
+      de: 'Das ist der Seitenüberblick: ein kurzer, rollenbezogener Erklärer, was das Modul dieser Seite macht und welcher Schritt deiner ist. Mit Ausblenden verschwindet er für diese Seite in diesem Browser, und es bleibt eine schmale Leiste, über die du ihn wieder einblenden kannst.',
+    },
+  },
 
   // ---------- PRODUCTION TEAM ----------
   {
@@ -361,6 +369,14 @@ export const HELP_ITEMS: readonly HelpItem[] = [
     a: {
       en: 'The cancel dialog uses the same who-hears line as schedule edits, and stays honest about what your organization has actually switched on.',
       de: 'Der Absage-Dialog nutzt dieselbe Wer-erfährt-es-Zeile wie Zeitplan-Änderungen und bleibt ehrlich dabei, was deine Organisation tatsächlich aktiviert hat.',
+    },
+  },
+  {
+    id: 'P5.3', role: 'producer', stage: 5, status: 'new', surface: 'Page guide', updated: '2026-08-14',
+    q: { en: 'What is the four-step panel at the top of a page, and can I hide it?', de: 'Was ist das Panel mit vier Schritten oben auf einer Seite, und kann ich es ausblenden?' },
+    a: {
+      en: 'It is the page guide: a short, role-aware explainer of what that page\'s module does and which step is yours. Hide dismisses it for that page in this browser and leaves a slim bar you can Resume from.',
+      de: 'Das ist der Seitenüberblick: ein kurzer, rollenbezogener Erklärer, was das Modul dieser Seite macht und welcher Schritt deiner ist. Mit Ausblenden verschwindet er für diese Seite in diesem Browser, und es bleibt eine schmale Leiste, über die du ihn wieder einblenden kannst.',
     },
   },
 
@@ -531,6 +547,14 @@ export const HELP_ITEMS: readonly HelpItem[] = [
     a: {
       en: 'The switcher at the top of the sidebar names it, and switching keeps you on the same kind of page.',
       de: 'Der Umschalter oben in der Sidebar nennt sie, und beim Wechseln bleibst du auf der gleichen Art von Seite.',
+    },
+  },
+  {
+    id: 'R5.6', role: 'artist', stage: 5, status: 'new', surface: 'Page guide', updated: '2026-08-14',
+    q: { en: 'What is the panel at the top of Availability, and can I hide it?', de: 'Was ist das Panel oben in der Verfügbarkeit, und kann ich es ausblenden?' },
+    a: {
+      en: 'It is the page guide: a short, four-step explainer of how that page works and which step is yours. Hide dismisses it for that page in this browser and leaves a slim bar you can Resume from.',
+      de: 'Das ist der Seitenüberblick: ein kurzer Vierschritt-Erklärer, wie die Seite funktioniert und welcher Schritt deiner ist. Mit Ausblenden verschwindet er für diese Seite in diesem Browser, und es bleibt eine schmale Leiste, über die du ihn wieder einblenden kannst.',
     },
   },
 ] as const;

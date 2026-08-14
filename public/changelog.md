@@ -9,6 +9,7 @@ What's new in ShowFlow, newest first.
 ### New
 - **Choose your language** — Set ShowFlow to English or German from the account menu in the bottom left. The app remembers your choice and starts in your browser's language by default.
 - **A Help center built around your role** — A new Help page answers the real questions an admin, producer, or artist has at each step, with a search, a role filter, and a glossary of the words ShowFlow uses. Available in English and German.
+- **Page guides** — Every page now opens with a short guide: four steps showing what that page's module does and which step is yours, with a small preview of the real screen in each. It follows your role, and you can hide it per page (a slim bar brings it back). Available in English and German.
 
 ## 1.15.1 — August 12, 2026
 

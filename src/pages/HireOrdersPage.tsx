@@ -24,6 +24,7 @@ import { inTimeframe } from "@/components/filters/filterUtils";
 import { orderDate } from "@/lib/hireOrders/orderDate";
 import type { HireOrderStatus } from "@/data/hireOrders";
 import { ROUTES } from "@/config/app.config";
+import { PageMini } from "@/components/minis/PageMini";
 
 /** The spreadsheet-import wizard shipped in Task 5. */
 const IMPORT_READY = true;
@@ -220,6 +221,8 @@ export default function HireOrdersPage() {
           onOpen={rail.expand}
         />
       )}
+
+      <PageMini page="hireOrders" />
 
       <OrdersKpis orders={allOrders} />
 
