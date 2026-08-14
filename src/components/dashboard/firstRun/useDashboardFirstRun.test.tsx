@@ -177,7 +177,7 @@ describe("useDashboardFirstRun", () => {
     const rows = result.current.queueRows;
 
     expect(rows).toEqual([
-      { dot: "accent", title: "3 offers arriving in tomorrow's digest", hint: "Your producer's schedule", when: "07:00", cta: "Open" },
+      { dot: "accent", title: "3 offers arriving in tomorrow's digest", hint: "Your production team's schedule", when: "07:00", cta: "Open" },
       { dot: "faint", title: "2 dates blocked", hint: "Kept out of every list before anyone books you", when: "", cta: "Edit" },
     ]);
     // No em-dash anywhere in the "when" columns (house rule): a middot or empty string
