@@ -40,5 +40,35 @@
       "blocked": "Gesperrt"
     },
     "srIneligible": "Abgeblendete Termine werden dir nicht angeboten. Angebotene Termine ergeben sich aus deinen Besetzungen und den dafür nötigen Skills."
+  },
+  "toast": {
+    "dateBlocked": "Termin gesperrt",
+    "errorTitle": "Fehler",
+    "blockRemoved": "Sperre entfernt"
+  },
+  "filter": {
+    "allOffers": "Alle Angebote",
+    "unanswered": "Unbeantwortet"
+  },
+  "sortChronoLabel": "Datum",
+  "offersLoadError": "Deine Angebote konnten nicht geladen werden. Bitte aktualisieren · sperre keine Termine, bevor das geladen ist, sonst werden offene Angebote möglicherweise nicht angezeigt.",
+  "emptyUnanswered": "Keine unbeantworteten Angebote · gut gemacht!",
+  "emptyAll": "Noch keine passenden Termine.",
+  "blocked": {
+    "title": "Gesperrte Termine",
+    "description": "Markiere Termine, an denen du nicht spielen kannst, damit dir das System keine Angebote dafür schickt. Termine, für die du bereits gebucht bist, sind davon nicht betroffen.",
+    "dateLabel": "Datum",
+    "selectAriaLabel": "Termin sperren",
+    "noEligibleOption": "Keine passenden Termine",
+    "selectPlaceholder": "Termin auswählen…",
+    "reasonLabel": "Grund (optional)",
+    "reasonPlaceholder": "Urlaub, anderer Job…",
+    "blockButton": "Sperren",
+    "loadError": "Deine gesperrten Termine konnten nicht geladen werden.",
+    "removeTooltip": "Sperre entfernen",
+    "empty": "Noch keine gesperrten Termine."
+  },
+  "error": {
+    "noOrg": "Keine aktive Organisation"
   }
 }

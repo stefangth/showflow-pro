@@ -40,5 +40,35 @@
       "blocked": "Blocked"
     },
     "srIneligible": "Dimmed dates are not offered to you. Offered dates come from your casts and their required skills."
+  },
+  "toast": {
+    "dateBlocked": "Date blocked",
+    "errorTitle": "Error",
+    "blockRemoved": "Block removed"
+  },
+  "filter": {
+    "allOffers": "All offers",
+    "unanswered": "Unanswered"
+  },
+  "sortChronoLabel": "Date",
+  "offersLoadError": "Failed to load your offers. Please refresh · don't block dates until this loads, as pending offers may not be shown.",
+  "emptyUnanswered": "No unanswered offers · great work!",
+  "emptyAll": "No eligible dates yet.",
+  "blocked": {
+    "title": "Blocked Dates",
+    "description": "Mark dates you cannot play so the system will not send you offers for them. Dates you are already booked for are not affected.",
+    "dateLabel": "Date",
+    "selectAriaLabel": "Block date",
+    "noEligibleOption": "No eligible dates",
+    "selectPlaceholder": "Select a date…",
+    "reasonLabel": "Reason (optional)",
+    "reasonPlaceholder": "Vacation, other work…",
+    "blockButton": "Block",
+    "loadError": "Failed to load your blocked dates.",
+    "removeTooltip": "Remove block",
+    "empty": "No blocked dates yet."
+  },
+  "error": {
+    "noOrg": "No active organization"
   }
 }
