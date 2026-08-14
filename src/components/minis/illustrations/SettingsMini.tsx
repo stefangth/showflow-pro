@@ -32,7 +32,7 @@ export const settingsArt: readonly [ReactNode, ReactNode, ReactNode, ReactNode] 
       <MiniCheck /> Set
     </MiniField>
     <MiniField label="Terms">
-      <Badge variant="risk" dot>Empty · blocks issue</Badge>
+      <Badge variant="risk" dot>Empty</Badge>
     </MiniField>
     <MiniField label="Countersign">Manual</MiniField>
   </MiniCard>,
