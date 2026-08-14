@@ -14,7 +14,7 @@ import { Settings, LogOut, Bell, ChevronLeft, ChevronRight, Menu, EyeOff, User, 
 import { NAV_ITEMS, visibleNavItems, groupNavBySections, isHiddenForViewAs, type NavLabelKey } from '@/components/layout/navItems';
 import { useTranslation } from 'react-i18next';
 import { useLanguage } from '@/features/i18n/LanguageContext';
-import { LANGUAGE_LABELS } from '@/i18n/config';
+import { LANGUAGE_LABELS, SUPPORTED_LANGUAGES } from '@/i18n/config';
 import { cn } from '@/lib/utils';
 import { useSettingsWarnings } from '@/hooks/useSettingsWarnings';
 import { useEditorConfig } from '@/features/editor/EditorContext';
@@ -232,24 +232,18 @@ export default function AppLayout({ children }: AppLayoutProps) {
                   <p className="px-2.5 pb-1 pt-1.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-muted-foreground/70">
                     {t('account.language')}
                   </p>
-                  <button
-                    className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] text-foreground hover:bg-muted transition-colors"
-                    onClick={() => { setLang('en'); setProfileMenuOpen(false); }}
-                    aria-pressed={lang === 'en'}
-                  >
-                    <Languages className="h-[14px] w-[14px]" />
-                    <span className="flex-1 text-left">{LANGUAGE_LABELS.en}</span>
-                    {lang === 'en' && <Check className="h-[14px] w-[14px] text-accent-600" />}
-                  </button>
-                  <button
-                    className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] text-foreground hover:bg-muted transition-colors"
-                    onClick={() => { setLang('de'); setProfileMenuOpen(false); }}
-                    aria-pressed={lang === 'de'}
-                  >
-                    <Languages className="h-[14px] w-[14px]" />
-                    <span className="flex-1 text-left">{LANGUAGE_LABELS.de}</span>
-                    {lang === 'de' && <Check className="h-[14px] w-[14px] text-accent-600" />}
-                  </button>
+                  {SUPPORTED_LANGUAGES.map((code) => (
+                    <button
+                      key={code}
+                      className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] text-foreground hover:bg-muted transition-colors"
+                      onClick={() => { setLang(code); setProfileMenuOpen(false); }}
+                      aria-pressed={lang === code}
+                    >
+                      <Languages className="h-[14px] w-[14px]" />
+                      <span className="flex-1 text-left">{LANGUAGE_LABELS[code]}</span>
+                      {lang === code && <Check className="h-[14px] w-[14px] text-accent-600" />}
+                    </button>
+                  ))}
                   <div className="my-1 h-px bg-border" />
                   <button
                     className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] text-foreground hover:bg-muted transition-colors"

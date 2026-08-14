@@ -36,9 +36,9 @@ export default function HelpPage() {
     setOpenMap({});
   }
 
-  const matched = selectItems(role, filter, query, lang);
+  const matched = selectItems(role, filter, query);
   const groups = groupByStage(matched);
-  const c = countParams(role, filter, query, lang, matched);
+  const c = countParams(role, filter, query, matched);
   const countLabel = c.filtered
     ? t('count_filtered', { matched: c.matched, total: c.total })
     : t('count_unfiltered', { count: c.total, newCount: c.newCount });

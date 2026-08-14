@@ -1,4 +1,3 @@
-import type { Lang } from '@/i18n/config';
 import { HELP_ITEMS, type HelpItem } from './items';
 import type { HelpRole } from './types';
 import { STAGES } from './stages';
@@ -7,8 +6,8 @@ export type HelpFilter = 'all' | 'new';
 
 /** Items for one role, narrowed by the active filter + free-text search.
  *  Search matches across BOTH languages and the surface label, so an English
- *  product term still matches for a reader browsing in German. */
-export function selectItems(role: HelpRole, filter: HelpFilter, query: string, _lang: Lang): HelpItem[] {
+ *  product term still matches for a reader browsing in German (and vice versa). */
+export function selectItems(role: HelpRole, filter: HelpFilter, query: string): HelpItem[] {
   const q = query.trim().toLowerCase();
   return HELP_ITEMS.filter((i) => {
     if (i.role !== role) return false;
@@ -31,8 +30,7 @@ export function countParams(
   role: HelpRole,
   filter: HelpFilter,
   query: string,
-  lang: Lang,
-  matched: HelpItem[] = selectItems(role, filter, query, lang),
+  matched: HelpItem[] = selectItems(role, filter, query),
 ) {
   const mine = HELP_ITEMS.filter((i) => i.role === role);
   return {
