@@ -22,14 +22,15 @@
 ## Remaining work
 
 ### A. UI domain namespaces (each ≈ one PR, settings pattern)
-- [ ] **auth** — LoginPage, AcceptInvitePage, AuthCallbackPage, ResetPasswordPage, NoOrgScreen, SuspendedOrgScreen, FeatureDisabledScreen, NotFound. *(Small, high-visibility, unblocked.)*
-- [ ] **admin** — AdminPage + `src/components/admin/people/*` (People pane, invites, bulk).
-- [ ] **artists** — ArtistsPage + `src/components/artists/*` + the artist import wizard (`src/lib/artistImport/*` display strings).
-- [ ] **productions** — ProductionsPage + `src/components/catalog/*` (ShowFormDialog).
-- [ ] **hireOrdersPages** — HireOrdersPage, HireOrderDetailPage, HireOrderEditPage + `src/components/hireOrders/*` (viewer/import/setup) + `src/components/shows/hireOrders/*`. *(Distinct from the already-done settings hire-orders TAB.)*
-- [ ] **showsDetail** — ShowDateDetailSheet + `src/components/shows/date/*` cockpit, `src/components/casts/*`, ShowDateFormDialog. *(Largest single sheet.)*
-- [ ] **chats** — ChatsListPage + `src/components/chat/*`.
-- [ ] **profile** — ProfilePage.
+> **All of A landed together** in one parallel wave (8 namespaces, one subagent per domain) on branch `claude/i18n-handoff-parallelize-ff2c07`, commits `2ea61aae` (register empty catalogs) + `f262b99c` (localize). ~1,238 keys/language; `verify:fast` all-green. **Deferred within these domains** (tracked in B): `flowCopy`-family call sites (showsDetail), module-scope zod validation messages (ShowFormDialog / ShowDateFormDialog / ProfilePage / ProductionsPage), `AcceptInvitePage` exported copy constants, and all date/currency formatting.
+- [x] **auth** — LoginPage, AcceptInvitePage, AuthCallbackPage, ResetPasswordPage, NoOrgScreen, SuspendedOrgScreen, FeatureDisabledScreen, NotFound. *(95 keys.)*
+- [x] **admin** — AdminPage + `src/components/admin/people/*` (People pane, invites, bulk). *(105 keys.)*
+- [x] **artists** — ArtistsPage + `src/components/artists/*`. Import-wizard PURE modules (`src/lib/artistImport/*`, `buildImportRows`/`guessMapping`/`parseSheet`) left as-is (logic, not display copy). *(124 keys.)*
+- [x] **productions** — ProductionsPage + `src/components/catalog/*` (ShowFormDialog). *(62 keys.)*
+- [x] **hireOrdersPages** — HireOrdersPage, HireOrderDetailPage, HireOrderEditPage + `src/components/hireOrders/*` (viewer/import/setup) + `src/components/shows/hireOrders/*`. SignHireOrderDialog `CONSENT_TEXT` left untouched (dual-homed mirror w/ generate-hire-orders). *(419 keys.)*
+- [x] **showsDetail** — ShowDateDetailSheet + `src/components/shows/date/*` cockpit, `src/components/casts/*`, ShowDateFormDialog. *(270 keys.)*
+- [x] **chats** — ChatsListPage + `src/components/chat/*`. *(15 keys.)*
+- [x] **profile** — ProfilePage. *(48 keys.)*
 - [ ] ~~platform~~ — **OUT OF SCOPE (see banner above).**
 
 ### B. Cross-cutting client infra
