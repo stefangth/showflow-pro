@@ -1,6 +1,14 @@
 {
   "cards": {
-    "liveUpcoming": "Live und bevorstehend"
+    "liveUpcoming": "Live und bevorstehend",
+    "next14Days": "Nächste 14 Tage",
+    "next30Days": "Nächste 30 Tage",
+    "liveDate_one": "laufender Termin",
+    "liveDate_other": "laufende Termine",
+    "castConfirmed": "Besetzung bestätigt",
+    "showCount_one": "{{count}} Show",
+    "showCount_other": "{{count}} Shows",
+    "clickToSee": "Klicken, um ausstehende Shows zu sehen →"
   },
   "directBooking": {
     "title": "Termine, die Besetzung brauchen",
@@ -29,5 +37,20 @@
     "member": "Mitglied",
     "respondedOfTotal": "{{responded}} von {{total}} Terminen",
     "unansweredMore": "+{{count}} weitere"
+  },
+  "producer": {
+    "heading": "Dashboard",
+    "subheading": "Bestätigungsstatus der Besetzung für bevorstehende Termine.",
+    "toastBookingsConfirmed": "Buchungen bestätigt",
+    "toastBookingsDeclined": "Buchungen abgelehnt",
+    "toastBookingsChanged": "Einige Buchungen haben sich geändert. Aktualisiere die Seite und versuch es erneut.",
+    "readyToConfirm": "Bereit zur Bestätigung",
+    "confirmN": "{{count}} bestätigen",
+    "declineN": "{{count}} ablehnen",
+    "colArtist": "Artist",
+    "colDateShow": "Termin / Show",
+    "colType": "Typ",
+    "understudy": "Zweitbesetzung",
+    "main": "Hauptbesetzung"
   }
 }

@@ -1,6 +1,14 @@
 {
   "cards": {
-    "liveUpcoming": "Live & upcoming"
+    "liveUpcoming": "Live & upcoming",
+    "next14Days": "Next 14 days",
+    "next30Days": "Next 30 days",
+    "liveDate_one": "live date",
+    "liveDate_other": "live dates",
+    "castConfirmed": "Cast confirmed",
+    "showCount_one": "{{count}} show",
+    "showCount_other": "{{count}} shows",
+    "clickToSee": "Click to see pending shows →"
   },
   "directBooking": {
     "title": "Dates needing artists",
@@ -29,5 +37,20 @@
     "member": "Member",
     "respondedOfTotal": "{{responded}} of {{total}} dates",
     "unansweredMore": "+{{count}} more"
+  },
+  "producer": {
+    "heading": "Dashboard",
+    "subheading": "Cast confirmation status across upcoming dates.",
+    "toastBookingsConfirmed": "Bookings confirmed",
+    "toastBookingsDeclined": "Bookings declined",
+    "toastBookingsChanged": "Some bookings changed. Refresh and retry.",
+    "readyToConfirm": "Ready to Confirm",
+    "confirmN": "Confirm {{count}}",
+    "declineN": "Decline {{count}}",
+    "colArtist": "Artist",
+    "colDateShow": "Date / Show",
+    "colType": "Type",
+    "understudy": "Understudy",
+    "main": "Main"
   }
 }
