@@ -37,6 +37,23 @@ export async function fetchLatestSyncLog(
   return (data ?? null) as SyncLogSummary | null;
 }
 
+/** The org's recent airtable_sync_log rows, newest first — backs the console's
+ *  Last-N-runs card and the Activity run-history table. Defaults to 10. */
+export async function fetchRecentSyncLogs(
+  client: SupabaseClient<Database>,
+  orgId: string | null,
+  limit = 10,
+): Promise<SyncLogSummary[]> {
+  if (!orgId) return [];
+  const { data, error } = await client
+    .from("airtable_sync_log")
+    .select("id, status, imported_count, new_count, updated_count, held_count, error_details, synced_at")
+    .eq("org_id", orgId).eq("sync_type", "airtable_poll")
+    .order("synced_at", { ascending: false }).limit(limit);
+  if (error) throw error;
+  return (data ?? []) as SyncLogSummary[];
+}
+
 /** Unresolved records for a given sync-log run, newest first: both `held_unresolved`
  *  (option not linked) and `error` (DB write failed). The `action` field lets the UI
  *  split them — imported/updated rows are excluded. */

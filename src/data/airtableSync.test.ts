@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { createFakeSupabase } from "@/test/supabaseFake";
-import { fetchLatestSyncLog, fetchUnresolvedRecords } from "./airtableSync";
+import { fetchLatestSyncLog, fetchRecentSyncLogs, fetchUnresolvedRecords } from "./airtableSync";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -36,5 +36,23 @@ describe("airtableSync data fns", () => {
   it("fetchUnresolvedRecords returns [] when syncLogId is null", async () => {
     const fake = createFakeSupabase({});
     expect(await fetchUnresolvedRecords(asClient(fake), null)).toEqual([]);
+  });
+
+  it("fetchRecentSyncLogs returns [] when there is no org", async () => {
+    const fake = createFakeSupabase({});
+    expect(await fetchRecentSyncLogs(asClient(fake), null)).toEqual([]);
+  });
+
+  it("fetchRecentSyncLogs returns the rows, newest first, limited", async () => {
+    const rows = [
+      { id: "a", status: "success", imported_count: 1, new_count: 1, updated_count: 0, held_count: 0, error_details: null, synced_at: "2026-08-14T09:12:00Z" },
+      { id: "b", status: "partial", imported_count: 2, new_count: 1, updated_count: 1, held_count: 3, error_details: null, synced_at: "2026-08-14T08:42:00Z" },
+    ];
+    const fake = createFakeSupabase({ airtable_sync_log: { data: rows, error: null } });
+    const out = await fetchRecentSyncLogs(asClient(fake), "org-1", 5);
+    expect(out).toHaveLength(2);
+    expect(out[0].id).toBe("a");
+    expect(fake.calls).toContainEqual({ table: "airtable_sync_log", method: "order", args: ["synced_at", { ascending: false }] });
+    expect(fake.calls).toContainEqual({ table: "airtable_sync_log", method: "limit", args: [5] });
   });
 });
