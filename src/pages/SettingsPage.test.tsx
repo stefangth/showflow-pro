@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { screen, fireEvent, waitFor } from "@testing-library/react";
+import { screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { Link, MemoryRouter } from "react-router-dom";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import { createFakeSupabase } from "@/test/supabaseFake";
@@ -160,8 +160,8 @@ describe("SettingsPage grouped vertical nav", () => {
 
   // Broad Settings, read-only floor: these tabs used to be admin-only. A producer now
   // sees them too (read-only unless granted the matching capability) — only the rights
-  // matrix itself ("Roles & permissions") stays admin-only.
-  it("shows a producer the previously admin-only nav items, but not Roles & permissions", async () => {
+  // matrix itself ("Roles & rights") stays admin-only.
+  it("shows a producer the previously admin-only nav items, but not Roles & rights", async () => {
     vi.mocked(useAuth).mockReturnValue({
       ...DEFAULT_AUTH,
       hasRole: (r: string) => r === "producer",
@@ -174,7 +174,7 @@ describe("SettingsPage grouped vertical nav", () => {
     expect(screen.getByRole("tab", { name: /^filters$/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /^notifications$/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /^organization$/i })).toBeInTheDocument();
-    expect(screen.queryByRole("tab", { name: /roles & permissions/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: /roles & rights/i })).not.toBeInTheDocument();
   });
 
   // Settings > Documentation is a super-admin console surface, not a producer or admin
@@ -277,12 +277,18 @@ describe("SettingsPage ?tab= deep link", () => {
   // one still names a section it renders. Renaming a TabsTrigger value (or dropping a
   // section) would leave Tabs holding a value with no trigger and no content: the deep link
   // would open a blank page and no pure test could see it.
+  //
+  // Scoped to the page's own nav tablist (the first "tablist" in the tree, rendered ahead of
+  // any tab content): Roles & rights renders its own nested SegmentedControl "tablist"s
+  // (preset picker, rights filter) for the ?tab=permissions case, each with its own
+  // aria-selected option, which would otherwise inflate the count this assertion checks.
   it.each([...SETTINGS_TAB_PARAMS])("selects a real section for ?tab=%s", async (tab) => {
     vi.mocked(useAuth).mockReturnValue(DEFAULT_AUTH as never);
     renderWithProviders(
       <MemoryRouter initialEntries={[`/settings?tab=${tab}`]}><SettingsPage /></MemoryRouter>,
     );
-    const triggers = await screen.findAllByRole("tab");
+    const [navTablist] = await screen.findAllByRole("tablist");
+    const triggers = within(navTablist).getAllByRole("tab");
     expect(triggers.filter((t) => t.getAttribute("aria-selected") === "true")).toHaveLength(1);
   });
 

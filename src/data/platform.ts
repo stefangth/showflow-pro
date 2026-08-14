@@ -333,7 +333,9 @@ export async function fetchAllOrgEntitlements(
   return (data ?? []) as Array<{ org_id: string } & EntitlementRow>;
 }
 
-/** Toggle a single capability for an org (upsert on org_id+capability). Super-admin only via org_capabilities RLS. */
+/** Toggle a single capability for an org (upsert on org_id+capability). Org admins may write any
+ *  unlocked capability for their own org; a locked capability or another org's row still 403s via
+ *  org_capabilities RLS (super-admins bypass both restrictions). */
 export async function setOrgCapability(
   client: SupabaseClient<Database>,
   orgId: string,

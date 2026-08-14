@@ -29,7 +29,7 @@ describe("CapabilitiesCard", () => {
     const qualifier = screen.getByText(/position each right ships in/i);
     expect(qualifier).toHaveTextContent(/not this organisation's current setting/i);
     // ...and points at where the live setting actually lives.
-    expect(qualifier).toHaveTextContent(/Roles and permissions/i);
+    expect(qualifier).toHaveTextContent(/Roles and rights/i);
   });
 
   it("prints the registry's own counts, not a hand-typed headline", () => {

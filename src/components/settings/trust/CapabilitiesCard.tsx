@@ -46,7 +46,7 @@ export function CapabilitiesCard() {
            *  honest fix; the row labels keep saying "by default" too. */}
           <p className="text-sm text-muted-foreground">
             This is the position each right ships in, not this organisation's current setting.
-            What is switched on here is in Settings, under Roles and permissions.
+            What is switched on here is in Settings, under Roles and rights.
           </p>
         </div>
         <Accordion type="multiple" className="w-full">

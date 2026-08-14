@@ -28,7 +28,7 @@ import { DocumentationTab } from '@/components/settings/DocumentationTab';
 import { BookingFlowTab } from '@/components/settings/bookingFlow/BookingFlowTab';
 import { BOOKING_AUDIT_KEYS } from '@/components/settings/bookingFlow/auditKeys';
 import { HireOrdersTab } from '@/components/settings/hireOrders/HireOrdersTab';
-import { PermissionsTab } from '@/components/settings/permissions/PermissionsTab';
+import { RolesRightsTab } from '@/components/settings/rolesRights/RolesRightsTab';
 import { EmailTemplatesTab } from '@/components/settings/emailTemplates/EmailTemplatesTab';
 import { Badge } from '@/components/ui/badge';
 
@@ -263,7 +263,7 @@ export default function SettingsPage() {
   const navGroups: { heading: string; items: { value: string; label: string; icon: typeof Building2; show: boolean; moduleState?: boolean }[] }[] = [
     { heading: "Organization", items: [
       { value: "organization", label: "Organization", icon: Building2, show: isAdmin || isProducer },
-      { value: "permissions", label: "Roles & permissions", icon: ShieldCheck, show: isAdmin },
+      { value: "permissions", label: "Roles & rights", icon: ShieldCheck, show: isAdmin },
       { value: "trust", label: "Trust & data", icon: Lock, show: isAdmin || isProducer },
       { value: "production-ownership", label: "Production Ownership", icon: UserCog, show: isAdmin || isProducer },
       { value: "casts-cities", label: "Casts & Cities", icon: MapPin, show: true },
@@ -385,9 +385,9 @@ export default function SettingsPage() {
           </TabsContent>
         )}
 
-        {isAdmin && (
+        {isAdmin && currentOrg && (
           <TabsContent value="permissions" className="mt-4">
-            <PermissionsTab />
+            <RolesRightsTab orgId={currentOrg.id} />
           </TabsContent>
         )}
 
