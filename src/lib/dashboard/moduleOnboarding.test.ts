@@ -441,8 +441,8 @@ it("carries the producer role explainer under a direct-book org too", () => {
   expect(producerRules.some((r) => r.hint === PRODUCER_ROLE_NOTE)).toBe(true);
 });
 
-it("points the role explainer link at Settings, Documentation", () => {
-  expect(ROLE_EXPLAINER_LINK_ROUTE).toBe(`${ROUTES.SETTINGS}?tab=docs`);
+it("points the role explainer link at the Help center", () => {
+  expect(ROLE_EXPLAINER_LINK_ROUTE).toBe(ROUTES.HELP);
   expect(SETTINGS_TAB_PARAMS as readonly string[]).toContain("docs");
 });
 

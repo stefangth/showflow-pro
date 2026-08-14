@@ -3,7 +3,10 @@
 // The values are the SettingsPage <TabsTrigger value> strings. Every one of them is a
 // deep-link target except "hire-orders", which is entitlement-gated: this pure helper
 // cannot see the org's entitlement, so honouring it would strand an unentitled org on an
-// empty pane. Admin-only "permissions" IS listed, but gated below on the caller's role.
+// empty pane. Admin-only "permissions" IS listed, but gated below on the caller's role, and
+// "docs" (Documentation) is likewise listed but gated below to super-admins only — it is no
+// longer a reachable deep-link target for an admin or producer. The concept explainers that
+// used to deep-link here now point at the Help center instead (see ROUTES.HELP).
 //
 // For callers building a link: SettingsPage follows the param whether or not it is already
 // mounted (it seeds from this helper and re-runs on a change of `?tab=`), so an in-app
