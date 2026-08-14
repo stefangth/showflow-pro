@@ -33,6 +33,9 @@ export type SettingsTabParam = typeof SETTINGS_TAB_PARAMS[number];
 /** Tabs whose trigger and content only render for an admin. */
 const ADMIN_ONLY: readonly SettingsTabParam[] = ["permissions"];
 
+/** Tabs whose trigger and content only render for a super-admin. */
+const SUPER_ADMIN_ONLY: readonly SettingsTabParam[] = ["docs"];
+
 /** Where the page lands with no (or an unusable) `?tab=`, matching what it did before
  *  deep-linking existed. */
 export function defaultSettingsTab(_isAdmin: boolean): SettingsTabParam {
@@ -42,14 +45,20 @@ export function defaultSettingsTab(_isAdmin: boolean): SettingsTabParam {
 /**
  * The tab SettingsPage should open on, from the raw `?tab=` search param.
  *
- * Anything unrecognised, and any admin-only tab asked for by a non-admin, falls back to
- * the role default rather than selecting a tab with no trigger and no content.
+ * Anything unrecognised, any admin-only tab asked for by a non-admin, and any super-admin-only
+ * tab asked for by a non-super-admin, falls back to the role default rather than selecting a
+ * tab with no trigger and no content.
  */
-export function resolveInitialTab(param: string | null, isAdmin: boolean): SettingsTabParam {
+export function resolveInitialTab(
+  param: string | null,
+  isAdmin: boolean,
+  isSuperAdmin: boolean = false,
+): SettingsTabParam {
   const fallback = defaultSettingsTab(isAdmin);
   if (!param) return fallback;
   const match = SETTINGS_TAB_PARAMS.find((t) => t === param);
   if (!match) return fallback;
   if (!isAdmin && ADMIN_ONLY.includes(match)) return fallback;
+  if (!isSuperAdmin && SUPER_ADMIN_ONLY.includes(match)) return fallback;
   return match;
 }
