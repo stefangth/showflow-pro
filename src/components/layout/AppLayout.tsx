@@ -233,7 +233,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                   </p>
                   <button
                     className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] text-foreground hover:bg-muted transition-colors"
-                    onClick={() => setLang('en')}
+                    onClick={() => { setLang('en'); setProfileMenuOpen(false); }}
                     aria-pressed={lang === 'en'}
                   >
                     <Languages className="h-[14px] w-[14px]" />
@@ -242,7 +242,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                   </button>
                   <button
                     className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] text-foreground hover:bg-muted transition-colors"
-                    onClick={() => setLang('de')}
+                    onClick={() => { setLang('de'); setProfileMenuOpen(false); }}
                     aria-pressed={lang === 'de'}
                   >
                     <Languages className="h-[14px] w-[14px]" />

@@ -27,17 +27,11 @@
   "glossaryHeading": "The words we use",
   "stuck": {
     "eyebrow": "STILL STUCK",
-    "body": "Ask the person one step closer to the decision. Artists reach their producer in the date's chat. Production team asks an admin. Admins reach their platform administrator.",
-    "roles": "See what each role can do"
-  },
-  "escalate": {
-    "admin": "Contact platform admin",
-    "producer": "Ask an admin",
-    "artist": "Open the date chat"
+    "body": "Ask the person one step closer to the decision. Artists reach their producer in the date's chat. Production team asks an admin. Admins reach their platform administrator."
   },
   "support": {
     "eyebrow": "SUPPORT ADDRESS",
-    "body": "No support address is set for {{org}} yet, so the suspended-workspace screen cannot show one. An admin can set it in Settings, and it then appears everywhere the app tells you to get in touch."
+    "body": "No support address is configured yet, so the suspended-workspace screen cannot show one. It is a platform-level value, not a per-workspace setting, and once it is set it appears everywhere the app tells you to get in touch."
   },
   "footnote": "Answers reflect the admin, production team and artist journey work shipped in August 2026. Question inventory: 2026-08-09 user-type journey questions."
 }

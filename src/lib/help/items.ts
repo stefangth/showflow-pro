@@ -197,8 +197,8 @@ export const HELP_ITEMS: readonly HelpItem[] = [
     id: 'A5.1', role: 'admin', stage: 5, status: 'ok', surface: 'Suspended workspace screen', updated: '2026-08-14',
     q: { en: 'Why is my organization suspended, and who do I contact?', de: 'Warum ist meine Organisation gesperrt, und an wen wende ich mich?' },
     a: {
-      en: 'The screen confirms your data is safe and tells you to contact your platform administrator. The contact line is built and ready, but no support address is configured yet, so the live screen still shows no address. An admin setting that value switches it on everywhere.',
-      de: 'Der Screen bestätigt, dass deine Daten sicher sind, und sagt dir, du sollst deinen Plattform-Administrator kontaktieren. Die Kontaktzeile ist gebaut und bereit, aber es ist noch keine Support-Adresse hinterlegt, daher zeigt der Live-Screen weiter keine Adresse. Setzt ein Admin diesen Wert, schaltet er sie überall frei.',
+      en: 'The screen confirms your data is safe and tells you to contact your platform administrator. The contact line is built and ready, but no support address is configured yet, so the live screen still shows no address. It is a platform-level value, so once it is set it switches on everywhere.',
+      de: 'Der Screen bestätigt, dass deine Daten sicher sind, und sagt dir, du sollst deinen Plattform-Administrator kontaktieren. Die Kontaktzeile ist gebaut und bereit, aber es ist noch keine Support-Adresse hinterlegt, daher zeigt der Live-Screen weiter keine Adresse. Es ist ein Wert auf Plattform-Ebene, sobald er gesetzt ist, schaltet er sich überall frei.',
     },
   },
   {

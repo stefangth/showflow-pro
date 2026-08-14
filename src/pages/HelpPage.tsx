@@ -72,7 +72,7 @@ export default function HelpPage() {
       )}
 
       <HelpGlossary lang={lang} />
-      <HelpFooterCards role={role} orgName={orgName} />
+      <HelpFooterCards />
     </div>
   );
 }

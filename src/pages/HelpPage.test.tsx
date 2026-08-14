@@ -41,11 +41,11 @@ describe('HelpPage', () => {
     expect(screen.getByText(/ShowFlow is where your organization plans its shows/i)).toBeInTheDocument();
   });
 
-  it('renders the role-specific escalate action and a glossary term', async () => {
+  it('renders the "still stuck" guidance and a glossary term', async () => {
     await i18n.changeLanguage('en');
     renderWithProviders(<HelpPage />);
-    // Default role is admin (mocked roles) -> its escalate label, via ESCALATE_KEY[role].
-    expect(screen.getByRole('button', { name: 'Contact platform admin' })).toBeInTheDocument();
+    // The "still stuck" card is informational (no action buttons).
+    expect(screen.getByText('STILL STUCK')).toBeInTheDocument();
     // A glossary card title comes from termLabel(term, lang).
     expect(screen.getByText('Understudy')).toBeInTheDocument();
   });
