@@ -19,8 +19,11 @@ export function presetOnKeys(preset: Preset): Set<string> {
   return new Set(CAPABILITY_DEFS.filter(d => d.defaultEnabled).map(d => d.key));
 }
 
+// Checks only the keys present in `effective` -- callers scope this to whichever
+// rows are actually visible/editable, so a key the caller omits (e.g. a row hidden
+// because its module is off) never blocks a preset from reading as active.
 export function matchesPreset(effective: Record<string, boolean>, preset: Preset): boolean {
   if (preset === "Custom") return false;
   const on = presetOnKeys(preset);
-  return CAPABILITY_DEFS.every(d => (effective[d.key] ?? false) === on.has(d.key));
+  return Object.keys(effective).every(key => (effective[key] ?? false) === on.has(key));
 }

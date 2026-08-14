@@ -16,7 +16,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { SegmentedControl, type SegmentedControlOption } from "@/components/ui/segmented-control";
-import { CAPABILITY_DEFS, CAPABILITY_GROUPS } from "@/lib/capabilities";
+import { CAPABILITY_GROUPS } from "@/lib/capabilities";
 import { presetOnKeys, matchesPreset, type Preset } from "@/lib/capabilities/presets";
 import {
   desiredFor,
@@ -91,11 +91,13 @@ export function RolesRightsTab({ orgId }: RolesRightsTabProps) {
     [allRows, cellByKey, hireOrdersEnabled],
   );
 
+  // Scoped to visibleRows (not allRows): a module-off row must never be staged,
+  // counted, or factor into preset matching -- see applyPreset/activePreset/changed below.
   const desiredMap = useMemo(() => {
     const m: Record<string, boolean> = {};
-    for (const row of allRows) m[row.key] = desiredFor(row, staged);
+    for (const row of visibleRows) m[row.key] = desiredFor(row, staged);
     return m;
-  }, [allRows, staged]);
+  }, [visibleRows, staged]);
 
   const activePreset: Preset = useMemo(
     () => REAL_PRESETS.find((p) => matchesPreset(desiredMap, p)) ?? "Custom",
@@ -126,20 +128,20 @@ export function RolesRightsTab({ orgId }: RolesRightsTabProps) {
     return m;
   }, [visibleRows, desiredMap]);
 
-  const changed = useMemo(() => changedKeys(allRows, staged), [allRows, staged]);
+  const changed = useMemo(() => changedKeys(visibleRows, staged), [visibleRows, staged]);
   const changedSet = useMemo(() => new Set(changed), [changed]);
   const sensitiveChanged = changed.filter((k) => rowByKey.get(k)?.risk === "sensitive");
   const sensitiveLabels = sensitiveChanged.map((k) => rowByKey.get(k)?.label ?? k);
 
   const diffText = diffSentence(presetDiffRows, presetDiffStaged, selectedPreset);
-  const delta = deltaSentence(allRows, staged, "the Production Team");
-  const onCount = allRows.filter((r) => desiredMap[r.key]).length;
+  const delta = deltaSentence(visibleRows, staged, "the Production Team");
+  const onCount = visibleRows.filter((r) => desiredMap[r.key]).length;
 
   function applyPreset(p: Preset) {
     if (p === "Custom") return;
     const onKeys = presetOnKeys(p);
     const next: StagedMap = {};
-    for (const row of allRows) {
+    for (const row of visibleRows) {
       if (row.locked) continue;
       const want = onKeys.has(row.key);
       if (want !== row.effective) next[row.key] = want;
@@ -308,7 +310,7 @@ export function RolesRightsTab({ orgId }: RolesRightsTabProps) {
         </div>
 
         <div className="space-y-4">
-          <EditingPickerCard roleOnCount={`${onCount}/${CAPABILITY_DEFS.length}`} />
+          <EditingPickerCard roleOnCount={`${onCount}/${visibleRows.length}`} />
           <StagedChangesCard
             count={changed.length}
             scopeLine="Applies to the Production Team default."

@@ -131,4 +131,71 @@ describe("RolesRightsTab", () => {
       ).toBe(true),
     );
   });
+
+  it("with hire_orders off, never stages a hire-order right and scopes roleOnCount to visible rows", async () => {
+    // hire_orders disabled for this org -- the 5 hire-order rights are hidden from
+    // the grid entirely, so selecting "Full" must only stage the 24 visible rights:
+    // no hidden key should appear in staged/changed, and the EditingPickerCard
+    // denominator must read the visible count (24), not the full registry (29).
+    vi.mocked(useAuth).mockReturnValue({ currentOrg: { id: "org-no-hire-orders" } } as never);
+    Object.assign(
+      client,
+      createFakeSupabase({
+        org_capabilities: [{ when: { org_id: "org-no-hire-orders" }, data: [], error: null }],
+        org_capability_policies: [{ when: { org_id: "org-no-hire-orders" }, data: [], error: null }],
+        org_entitlements: [
+          { when: { org_id: "org-no-hire-orders" }, data: [{ feature: "hire_orders", enabled: false }], error: null },
+        ],
+      }),
+    );
+
+    renderWithProviders(<RolesRightsTab orgId="org-no-hire-orders" />);
+
+    await screen.findByRole("switch", { name: "Manage casts" });
+
+    // No hire-order row is rendered.
+    expect(screen.queryByText("Edit hire-order settings")).not.toBeInTheDocument();
+    expect(screen.queryByText("Issue hire orders")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("tab", { name: "Full" }));
+
+    // Full is reachable/active even though the hidden hire-order rights (some
+    // off by default) can never be staged to match it.
+    expect(screen.getByRole("tab", { name: "Full" })).toHaveAttribute("aria-selected", "true");
+
+    // roleOnCount denominator is the visible count (29 total - 5 hire-order rights).
+    expect(screen.getByText("24/24")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Apply" }));
+
+    // Full stages several sensitive visible rights (e.g. delete productions,
+    // rename org), so Apply routes through the confirm dialog first.
+    fireEvent.click(await screen.findByRole("button", { name: "Confirm" }));
+
+    await waitFor(() =>
+      expect(calls().some((c) => c.table === "org_capabilities" && c.method === "upsert")).toBe(true),
+    );
+
+    // No write (upsert via setOrgCapability, or delete via clearOrgCapability)
+    // ever targets one of the five hire-order capabilities (see the
+    // `module: "hire_orders"` rows in src/lib/capabilities.ts).
+    const hireOrderKeys = [
+      "producer_can_generate_hire_orders",
+      "producer_can_issue_hire_orders",
+      "producer_can_void_hire_orders",
+      "producer_can_manage_countersign",
+      "producer_can_edit_hire_order_settings",
+    ];
+    const touchedHireOrderKey = calls().some((c) => {
+      if (c.table !== "org_capabilities") return false;
+      if (c.method === "upsert") {
+        return hireOrderKeys.includes((c.args[0] as Record<string, unknown>).capability as string);
+      }
+      if (c.method === "eq" && c.args[0] === "capability") {
+        return hireOrderKeys.includes(c.args[1] as string);
+      }
+      return false;
+    });
+    expect(touchedHireOrderKey).toBe(false);
+  });
 });
