@@ -1,10 +1,11 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { screen, fireEvent } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { screen, fireEvent, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import { partialMock } from "@/test/castHelpers";
 import type { User } from "@supabase/supabase-js";
 import i18n from "@/i18n";
+import { STORAGE_KEY } from "@/i18n/config";
 import type { FeatureKey } from "@/lib/entitlements";
 
 // AppLayout composes a large shell (nav, org switcher, editor toolbar, theme toggle,
@@ -47,6 +48,15 @@ function mockEntitlements(languagePacksEnabled: boolean) {
   vi.mocked(useEntitlements).mockReturnValue({ features: new Set<FeatureKey>(), isLoading: false });
   vi.mocked(useFeature).mockReturnValue(languagePacksEnabled);
 }
+
+// File-scope default so a test inserted between/after the describe blocks below can't
+// silently inherit whatever mockReturnValue the previous describe block's beforeEach (or
+// a stray test) last set on these shared vi.fn() mocks — every test starts from the same
+// "gate off" baseline unless it opts in via mockEntitlements(true).
+beforeEach(() => {
+  vi.mocked(useFeature).mockReturnValue(false);
+  vi.mocked(useEntitlements).mockReturnValue({ features: new Set<FeatureKey>(), isLoading: false });
+});
 
 // Heavy sibling subtrees this behavior doesn't touch, each already covered by its own
 // test suite (OrgSwitcher.test.tsx, EditorToolbar.test.tsx): stubbed to no-ops so this
@@ -161,5 +171,64 @@ describe("AppLayout language picker gating (language_packages entitlement)", () 
     fireEvent.click(screen.getByRole("button", { name: "Account menu" }));
 
     expect(await screen.findByText("Deutsch")).toBeInTheDocument();
+  });
+});
+
+describe("AppLayout force-English gate (language_packages entitlement)", () => {
+  // These tests drive the gate via a RErender (flipping the mocked useFeature() return
+  // value and calling `rerender`) rather than mounting fresh with the target state already
+  // in place. That's deliberate, not incidental: renderWithProviders also mounts a real
+  // LanguageProvider, which runs its OWN mount effect syncing i18n to whatever language is
+  // already in localStorage. In production that provider mounts (and settles) long before
+  // ProtectedRoute ever reaches AppLayout, so there's no contest by the time this effect's
+  // guard matters. But mounting both fresh in the same test commit races the two effects
+  // against each other (their order is a React implementation detail, not a contract this
+  // test should pin), which isn't the behavior under test here — the behavior under test
+  // is "when languagePacksEnabled changes, this effect does X", independent of whichever
+  // provider mounted first. A rerender only re-fires effects whose dependencies changed, so
+  // toggling languagePacksEnabled exercises exactly this effect without also retriggering
+  // LanguageProvider's mount-only effect.
+  afterEach(async () => {
+    // Don't leak the language state this describe block deliberately mutates into
+    // sibling tests in this file (or other files sharing the singleton i18n instance).
+    localStorage.removeItem(STORAGE_KEY);
+    await i18n.changeLanguage("en");
+  });
+
+  it("forces the runtime to English when language_packages flips OFF, without clearing the stored preference", async () => {
+    mockAuth();
+    mockEntitlements(true);
+    const { rerender } = renderWithProviders(<AppLayout>page content</AppLayout>);
+    await waitFor(() => expect(i18n.language).toBe("en"));
+
+    // Simulate an already-active German session (as if the user picked it earlier,
+    // while the module was still entitled).
+    localStorage.setItem(STORAGE_KEY, "de");
+    await i18n.changeLanguage("de");
+
+    // The org's language_packages entitlement is revoked mid-session.
+    mockEntitlements(false);
+    rerender(<AppLayout>page content</AppLayout>);
+
+    // Display-only: the runtime language flips back to English...
+    await waitFor(() => expect(i18n.language).toBe("en"));
+    // ...but the user's stored preference is untouched, so a later re-enable restores
+    // it rather than defaulting back to English.
+    expect(localStorage.getItem(STORAGE_KEY)).toBe("de");
+  });
+
+  it("restores the stored language when language_packages flips back ON", async () => {
+    mockAuth();
+    mockEntitlements(false);
+    const { rerender } = renderWithProviders(<AppLayout>page content</AppLayout>);
+    await waitFor(() => expect(i18n.language).toBe("en"));
+
+    // A German preference is already stored (e.g. from a previous entitled session),
+    // and the org's language_packages entitlement is granted mid-session.
+    localStorage.setItem(STORAGE_KEY, "de");
+    mockEntitlements(true);
+    rerender(<AppLayout>page content</AppLayout>);
+
+    await waitFor(() => expect(i18n.language).toBe("de"));
   });
 });
