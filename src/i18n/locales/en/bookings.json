@@ -1,3 +1,11 @@
 {
-  "_ns": "bookings"
+  "_ns": "bookings",
+  "rowPeek": {
+    "eyebrowUnconfigured": "unconfigured",
+    "noConfig": "Set cast slots in Settings to track fill.",
+    "confirming": "Confirming…",
+    "confirm": "Confirm {{count}}",
+    "openDate": "Open date",
+    "keyHint": "Space to peek · Enter to open"
+  }
 }
