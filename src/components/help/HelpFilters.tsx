@@ -3,6 +3,11 @@ import { useTranslation } from 'react-i18next';
 import type { HelpFilter } from '@/lib/help/filter';
 import { cn } from '@/lib/utils';
 
+const FILTERS: { key: HelpFilter; labelKey: 'filter.all' | 'filter.new' }[] = [
+  { key: 'all', labelKey: 'filter.all' },
+  { key: 'new', labelKey: 'filter.new' },
+];
+
 export function HelpFilters({
   filter,
   onFilter,
@@ -31,28 +36,21 @@ export function HelpFilters({
         />
       </div>
       <div className="flex gap-1.5">
-        <button
-          onClick={() => onFilter('all')}
-          className={cn(
-            'rounded px-2.5 py-1.5 text-xs transition-colors',
-            filter === 'all'
-              ? 'bg-accent-100 font-semibold text-accent-700'
-              : 'border-[0.5px] border-border font-medium text-muted-foreground hover:bg-muted/50',
-          )}
-        >
-          {t('filter.all')}
-        </button>
-        <button
-          onClick={() => onFilter('new')}
-          className={cn(
-            'rounded px-2.5 py-1.5 text-xs transition-colors',
-            filter === 'new'
-              ? 'bg-accent-100 font-semibold text-accent-700'
-              : 'border-[0.5px] border-border font-medium text-muted-foreground hover:bg-muted/50',
-          )}
-        >
-          {t('filter.new')}
-        </button>
+        {FILTERS.map(({ key, labelKey }) => (
+          <button
+            key={key}
+            onClick={() => onFilter(key)}
+            aria-pressed={filter === key}
+            className={cn(
+              'rounded px-2.5 py-1.5 text-xs transition-colors',
+              filter === key
+                ? 'bg-accent-100 font-semibold text-accent-700'
+                : 'border-[0.5px] border-border font-medium text-muted-foreground hover:bg-muted/50',
+            )}
+          >
+            {t(labelKey)}
+          </button>
+        ))}
       </div>
       <span className="font-mono text-xs text-muted-foreground">{countLabel}</span>
     </div>

@@ -25,10 +25,16 @@ export function groupByStage(items: HelpItem[]): { stage: number; items: HelpIte
     .filter((g) => g.items.length > 0);
 }
 
-/** Parameters for the count line. `filtered` decides which i18n string to render. */
-export function countParams(role: HelpRole, filter: HelpFilter, query: string, lang: Lang) {
+/** Parameters for the count line. `filtered` decides which i18n string to render.
+ *  Pass an already-computed `matched` list to avoid filtering twice per render. */
+export function countParams(
+  role: HelpRole,
+  filter: HelpFilter,
+  query: string,
+  lang: Lang,
+  matched: HelpItem[] = selectItems(role, filter, query, lang),
+) {
   const mine = HELP_ITEMS.filter((i) => i.role === role);
-  const matched = selectItems(role, filter, query, lang);
   return {
     filtered: filter !== 'all' || query.trim() !== '',
     matched: matched.length,

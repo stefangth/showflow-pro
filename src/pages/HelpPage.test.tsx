@@ -41,6 +41,15 @@ describe('HelpPage', () => {
     expect(screen.getByText(/ShowFlow is where your organization plans its shows/i)).toBeInTheDocument();
   });
 
+  it('renders the role-specific escalate action and a glossary term', async () => {
+    await i18n.changeLanguage('en');
+    renderWithProviders(<HelpPage />);
+    // Default role is admin (mocked roles) -> its escalate label, via ESCALATE_KEY[role].
+    expect(screen.getByRole('button', { name: 'Contact platform admin' })).toBeInTheDocument();
+    // A glossary card title comes from termLabel(term, lang).
+    expect(screen.getByText('Understudy')).toBeInTheDocument();
+  });
+
   it('the New filter keeps only new-answer items', async () => {
     await i18n.changeLanguage('en');
     renderWithProviders(<HelpPage />);

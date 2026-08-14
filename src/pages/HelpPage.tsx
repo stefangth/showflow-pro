@@ -24,8 +24,9 @@ export default function HelpPage() {
   const [query, setQuery] = useState('');
   const [openMap, setOpenMap] = useState<Record<string, boolean>>({});
 
-  const groups = groupByStage(selectItems(role, filter, query, lang));
-  const c = countParams(role, filter, query, lang);
+  const matched = selectItems(role, filter, query, lang);
+  const groups = groupByStage(matched);
+  const c = countParams(role, filter, query, lang, matched);
   const countLabel = c.filtered
     ? t('count_filtered', { matched: c.matched, total: c.total })
     : t('count_unfiltered', { count: c.total, newCount: c.newCount });
