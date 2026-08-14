@@ -1,4 +1,4 @@
-import { LayoutDashboard, BookOpen, Clock, Settings, Shield, MessageSquare, Users, Building2, Theater, FileSignature } from 'lucide-react';
+import { LayoutDashboard, BookOpen, Clock, Settings, Shield, MessageSquare, Users, Building2, Theater, FileSignature, HelpCircle } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { ROUTES, type AppRole } from '@/config/app.config';
 import type { FeatureKey } from '@/lib/entitlements';
@@ -6,10 +6,19 @@ import type { FeatureKey } from '@/lib/entitlements';
 export type NavSection = 'workspace' | 'catalog' | 'system';
 export type NavBadge = 'pendingConfirmations' | 'openOffers' | 'awaitingCountersign';
 
+/** i18n keys (common namespace) for nav labels. AppLayout resolves them via t(),
+ *  falling back to the English `label`. */
+export type NavLabelKey =
+  | 'nav.dashboard' | 'nav.bookings' | 'nav.hireOrders' | 'nav.availability'
+  | 'nav.chats' | 'nav.help' | 'nav.productions' | 'nav.artists'
+  | 'nav.admin' | 'nav.settings' | 'nav.platform';
+
 export interface NavItem {
   to: string;
   icon: LucideIcon;
   label: string;
+  /** i18n key for the label; resolved at render via t(item.labelKey) ?? label. */
+  labelKey?: NavLabelKey;
   section: NavSection;
   badge?: NavBadge;
   roles?: string[];
@@ -18,25 +27,22 @@ export interface NavItem {
   feature?: FeatureKey;
 }
 
-export const SECTION_LABELS: Record<NavSection, string> = {
-  workspace: 'Workspace',
-  catalog: 'Catalog',
-  system: 'System',
-};
-
+// Section header labels are resolved from the i18n `common.nav.*` catalog in
+// AppLayout (t(SECTION_KEY[section])); there is no separate English map here.
 const SECTION_ORDER: NavSection[] = ['workspace', 'catalog', 'system'];
 
 export const NAV_ITEMS: NavItem[] = [
-  { to: ROUTES.DASHBOARD, icon: LayoutDashboard, label: 'Dashboard', section: 'workspace' },
-  { to: ROUTES.BOOKINGS, icon: BookOpen, label: 'Shows & Bookings', section: 'workspace', roles: ['admin', 'producer'], badge: 'pendingConfirmations' },
-  { to: ROUTES.HIRE_ORDERS, icon: FileSignature, label: 'Hire orders', section: 'workspace', roles: ['admin', 'producer'], feature: 'hire_orders', badge: 'awaitingCountersign' },
-  { to: ROUTES.AVAILABILITY, icon: Clock, label: 'Availability', section: 'workspace', roles: ['artist'], feature: 'booking_flow', badge: 'openOffers' },
-  { to: ROUTES.CHATS, icon: MessageSquare, label: 'Chats', section: 'workspace' },
-  { to: ROUTES.PRODUCTIONS, icon: Theater, label: 'Productions', section: 'catalog', roles: ['admin', 'producer'] },
-  { to: ROUTES.ARTISTS, icon: Users, label: 'Artists', section: 'catalog', roles: ['admin', 'producer'] },
-  { to: ROUTES.ADMIN, icon: Shield, label: 'Admin', section: 'system', roles: ['admin'] },
-  { to: ROUTES.SETTINGS, icon: Settings, label: 'Settings', section: 'system', roles: ['admin', 'producer'] },
-  { to: ROUTES.PLATFORM, icon: Building2, label: 'Platform', section: 'system', superAdmin: true },
+  { to: ROUTES.DASHBOARD, icon: LayoutDashboard, label: 'Dashboard', labelKey: 'nav.dashboard', section: 'workspace' },
+  { to: ROUTES.BOOKINGS, icon: BookOpen, label: 'Shows & Bookings', labelKey: 'nav.bookings', section: 'workspace', roles: ['admin', 'producer'], badge: 'pendingConfirmations' },
+  { to: ROUTES.HIRE_ORDERS, icon: FileSignature, label: 'Hire orders', labelKey: 'nav.hireOrders', section: 'workspace', roles: ['admin', 'producer'], feature: 'hire_orders', badge: 'awaitingCountersign' },
+  { to: ROUTES.AVAILABILITY, icon: Clock, label: 'Availability', labelKey: 'nav.availability', section: 'workspace', roles: ['artist'], feature: 'booking_flow', badge: 'openOffers' },
+  { to: ROUTES.CHATS, icon: MessageSquare, label: 'Chats', labelKey: 'nav.chats', section: 'workspace' },
+  { to: ROUTES.HELP, icon: HelpCircle, label: 'Help', labelKey: 'nav.help', section: 'workspace' },
+  { to: ROUTES.PRODUCTIONS, icon: Theater, label: 'Productions', labelKey: 'nav.productions', section: 'catalog', roles: ['admin', 'producer'] },
+  { to: ROUTES.ARTISTS, icon: Users, label: 'Artists', labelKey: 'nav.artists', section: 'catalog', roles: ['admin', 'producer'] },
+  { to: ROUTES.ADMIN, icon: Shield, label: 'Admin', labelKey: 'nav.admin', section: 'system', roles: ['admin'] },
+  { to: ROUTES.SETTINGS, icon: Settings, label: 'Settings', labelKey: 'nav.settings', section: 'system', roles: ['admin', 'producer'] },
+  { to: ROUTES.PLATFORM, icon: Building2, label: 'Platform', labelKey: 'nav.platform', section: 'system', superAdmin: true },
 ];
 
 /** A nav item resolved for one viewer. `locked` means "show it, grayed and inert":
@@ -47,12 +53,12 @@ export const NAV_ITEMS: NavItem[] = [
  *  "view as" toolbar, when they see that perspective's locks. See isImpersonating. */
 export type VisibleNavItem = NavItem & { locked: boolean };
 
-export interface NavSectionGroup<T extends NavItem = NavItem> { section: NavSection; label: string; items: T[]; }
+export interface NavSectionGroup<T extends NavItem = NavItem> { section: NavSection; items: T[]; }
 
 /** Group already role-filtered items by section, in fixed order, dropping empty sections. */
 export function groupNavBySections<T extends NavItem>(items: T[]): NavSectionGroup<T>[] {
   return SECTION_ORDER
-    .map((section) => ({ section, label: SECTION_LABELS[section], items: items.filter((i) => i.section === section) }))
+    .map((section) => ({ section, items: items.filter((i) => i.section === section) }))
     .filter((g) => g.items.length > 0);
 }
 

@@ -2,6 +2,14 @@
 
 What's new in ShowFlow, newest first.
 
+## 1.16.0 — August 14, 2026
+
+*Your language, and a Help center that speaks it*
+
+### New
+- **Choose your language** — Set ShowFlow to English or German from the account menu in the bottom left. The app remembers your choice and starts in your browser's language by default.
+- **A Help center built around your role** — A new Help page answers the real questions an admin, producer, or artist has at each step, with a search, a role filter, and a glossary of the words ShowFlow uses. Available in English and German.
+
 ## 1.15.1 — August 12, 2026
 
 *Invitations that stay ready when your team is*

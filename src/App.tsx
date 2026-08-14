@@ -9,6 +9,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { AuthProvider } from "@/features/auth/AuthContext";
 import { EditorProvider } from "@/features/editor/EditorContext";
 import { ConsentProvider } from "@/features/consent/ConsentContext";
+import { LanguageProvider } from "@/features/i18n/LanguageContext";
+import "@/i18n";
 import { CookieConsentBanner } from "@/components/consent/CookieConsentBanner";
 import { AnalyticsBridge } from "@/features/analytics/AnalyticsBridge";
 import { AnalyticsIdentityBridge } from "@/features/analytics/AnalyticsIdentityBridge";
@@ -24,6 +26,7 @@ import AvailabilityPage from "./pages/AvailabilityPage";
 import AdminPage from "./pages/AdminPage";
 import SettingsPage from "./pages/SettingsPage";
 import ChatsListPage from "./pages/ChatsListPage";
+import HelpPage from "./pages/HelpPage";
 import ProfilePage from "./pages/ProfilePage";
 import ArtistsPage from "./pages/ArtistsPage";
 import UnsubscribePage from "./pages/UnsubscribePage";
@@ -58,6 +61,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
+        <LanguageProvider>
         <ConsentProvider>
         <AnalyticsBridge />
         <AppErrorBoundary>
@@ -106,6 +110,7 @@ const App = () => (
               }
             />
             <Route path={ROUTES.CHATS} element={<ProtectedRoute><AppLayout><ChatsListPage /></AppLayout></ProtectedRoute>} />
+            <Route path={ROUTES.HELP} element={<ProtectedRoute><AppLayout><HelpPage /></AppLayout></ProtectedRoute>} />
             <Route path={ROUTES.PROFILE} element={<ProtectedRoute><AppLayout><ProfilePage /></AppLayout></ProtectedRoute>} />
             <Route path={ROUTES.PLATFORM} element={<PlatformRoute><AppLayout><PlatformPage /></AppLayout></PlatformRoute>} />
             <Route path={ROUTES.ACCEPT_INVITE} element={<AcceptInvitePage />} />
@@ -121,6 +126,7 @@ const App = () => (
         </AppErrorBoundary>
         <CookieConsentBanner />
         </ConsentProvider>
+        </LanguageProvider>
       </BrowserRouter>
     </TooltipProvider>
     </ThemeProvider>

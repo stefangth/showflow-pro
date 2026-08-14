@@ -346,7 +346,17 @@ When adding a new page:
 1. Add a route constant to `ROUTES` in `src/config/app.config.ts`.
 2. Create `src/pages/YourPage.tsx` with a default export.
 3. Register in `src/App.tsx` with `<ProtectedRoute requiredRoles={[...]}>`.
-4. Add a nav item in `src/components/layout/` with matching role gating.
+4. Add a nav item in `src/components/layout/` with matching role gating (give it a `labelKey` so the label is translatable).
+5. **Help center impact.** If the change alters what an admin, producer, or artist would ask, or how the app answers it, update the Help content (`src/lib/help/items.ts`, EN + DE, "Du") in the SAME PR, or state "No help center impact." in the PR description. The help center is authored at spec time, not retrofitted later.
+
+### Internationalization (i18n)
+
+- react-i18next drives shell chrome via typed JSON namespaces in `src/i18n/locales/` (`common`, `help`). **English is the canonical shape; German must match it key-for-key** — `src/i18n/keyParity.test.ts` fails CI on any gap (a missing key would otherwise silently render English via `fallbackLng`).
+- User-facing strings go through `t('...')`, never hardcoded. Keys are typed (`react-i18next.d.ts`), so an unknown key is a compile error.
+- Structured content (the Help FAQ) is a typed bilingual data module in `src/lib/help/` (en + de co-located per record), not flat strings.
+- Domain terms live once in the canonical `src/i18n/terms.ts` `TERMS` glossary; reuse it, never re-translate a term inline. This is the single source the whole app UI draws from as it is localized.
+- No em/en dashes in copy; German uses the informal "Du". `src/i18n/copyLint.test.ts` enforces both.
+- The language setting is global (account menu → `src/features/i18n/LanguageContext.tsx`), defaults to the browser language, and persists to localStorage. Rolling i18n across the rest of the app UI is incremental, one namespace per domain behind `fallbackLng` — see `docs/superpowers/specs/2026-08-14-i18n-and-help-page-design.md`.
 
 ### Edge functions
 

@@ -10,8 +10,11 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { IconTooltip } from '@/components/common/IconTooltip';
-import { Settings, LogOut, Bell, ChevronLeft, ChevronRight, Menu, EyeOff, User, Lock } from 'lucide-react';
-import { NAV_ITEMS, visibleNavItems, groupNavBySections, isHiddenForViewAs } from '@/components/layout/navItems';
+import { Settings, LogOut, Bell, ChevronLeft, ChevronRight, Menu, EyeOff, User, Lock, Check, Languages } from 'lucide-react';
+import { NAV_ITEMS, visibleNavItems, groupNavBySections, isHiddenForViewAs, type NavLabelKey } from '@/components/layout/navItems';
+import { useTranslation } from 'react-i18next';
+import { useLanguage } from '@/features/i18n/LanguageContext';
+import { LANGUAGE_LABELS, SUPPORTED_LANGUAGES } from '@/i18n/config';
 import { cn } from '@/lib/utils';
 import { useSettingsWarnings } from '@/hooks/useSettingsWarnings';
 import { useEditorConfig } from '@/features/editor/EditorContext';
@@ -33,10 +36,14 @@ interface AppLayoutProps {
 }
 
 const ROUTE_TO_LABEL: Record<string, string> = Object.fromEntries(NAV_ITEMS.map((i) => [i.to, i.label]));
+const ROUTE_TO_LABELKEY: Record<string, NavLabelKey | undefined> = Object.fromEntries(NAV_ITEMS.map((i) => [i.to, i.labelKey]));
+const SECTION_KEY = { workspace: 'nav.workspace', catalog: 'nav.catalog', system: 'nav.system' } as const;
 
 export default function AppLayout({ children }: AppLayoutProps) {
   const { user, signOut, roles, hasRole, viewAsRole, viewAsUser, isSuperAdmin, currentOrg } = useAuth();
   const { isEditorMode } = useEditorConfig();
+  const { t } = useTranslation('common');
+  const { lang, setLang } = useLanguage();
   const navigate = useNavigate();
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
@@ -95,7 +102,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
           <div key={group.section} className="space-y-0.5">
             {!collapsed && (
               <p className="px-2.5 pb-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground/70">
-                {group.label}
+                {t(SECTION_KEY[group.section])}
               </p>
             )}
             {group.items.map(item => {
@@ -115,7 +122,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                     </span>
                     {!collapsed && (
                       <span className="flex flex-1 items-center gap-2 min-w-0">
-                        <span className="truncate">{item.label}</span>
+                        <span className="truncate">{item.labelKey ? t(item.labelKey) : item.label}</span>
                         <Lock className="ml-auto h-3 w-3 shrink-0" />
                       </span>
                     )}
@@ -155,7 +162,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                   </span>
                   {!collapsed && (
                     <span className="flex items-center gap-2 flex-1 min-w-0">
-                      <span className="truncate">{item.label}</span>
+                      <span className="truncate">{item.labelKey ? t(item.labelKey) : item.label}</span>
                       {badgeCount > 0 && (
                         <span className="ml-auto shrink-0 rounded-full bg-sidebar-accent px-1.5 py-px text-[10px] font-semibold tabular-nums text-sidebar-accent-foreground">
                           {badgeCount}
@@ -221,18 +228,34 @@ export default function AppLayout({ children }: AppLayoutProps) {
                     </Button>
                   </PopoverTrigger>
                 </IconTooltip>
-                <PopoverContent align="end" side="top" sideOffset={8} className="w-44 p-1">
+                <PopoverContent align="end" side="top" sideOffset={8} className="w-52 p-1">
+                  <p className="px-2.5 pb-1 pt-1.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-muted-foreground/70">
+                    {t('account.language')}
+                  </p>
+                  {SUPPORTED_LANGUAGES.map((code) => (
+                    <button
+                      key={code}
+                      className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] text-foreground hover:bg-muted transition-colors"
+                      onClick={() => { setLang(code); setProfileMenuOpen(false); }}
+                      aria-pressed={lang === code}
+                    >
+                      <Languages className="h-[14px] w-[14px]" />
+                      <span className="flex-1 text-left">{LANGUAGE_LABELS[code]}</span>
+                      {lang === code && <Check className="h-[14px] w-[14px] text-accent-600" />}
+                    </button>
+                  ))}
+                  <div className="my-1 h-px bg-border" />
                   <button
                     className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] text-foreground hover:bg-muted transition-colors"
                     onClick={() => { setProfileMenuOpen(false); navigate(ROUTES.PROFILE); }}
                   >
-                    <User className="h-[14px] w-[14px]" /> Profile
+                    <User className="h-[14px] w-[14px]" /> {t('account.profile')}
                   </button>
                   <button
                     className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] text-foreground hover:bg-muted transition-colors"
                     onClick={() => { setProfileMenuOpen(false); handleSignOut(); }}
                   >
-                    <LogOut className="h-[14px] w-[14px]" /> Sign out
+                    <LogOut className="h-[14px] w-[14px]" /> {t('account.signOut')}
                   </button>
                 </PopoverContent>
               </Popover>
@@ -310,20 +333,20 @@ export default function AppLayout({ children }: AppLayoutProps) {
           {/* Breadcrumb — current page path (desktop) */}
           <nav aria-label="Breadcrumb" className="hidden lg:flex items-center gap-1.5 text-[13px] min-w-0">
             {location.pathname === ROUTES.DASHBOARD ? (
-              <span aria-current="page" className="font-medium text-foreground">Dashboard</span>
+              <span aria-current="page" className="font-medium text-foreground">{t('nav.dashboard')}</span>
             ) : (
               <>
                 <Link
                   to={ROUTES.DASHBOARD}
                   className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  Home
+                  {t('breadcrumb.home')}
                 </Link>
                 {ROUTE_TO_LABEL[location.pathname] && (
                   <>
                     <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50" aria-hidden="true" />
                     <span aria-current="page" className="truncate font-medium text-foreground">
-                      {ROUTE_TO_LABEL[location.pathname]}
+                      {ROUTE_TO_LABELKEY[location.pathname] ? t(ROUTE_TO_LABELKEY[location.pathname]!) : ROUTE_TO_LABEL[location.pathname]}
                     </span>
                   </>
                 )}

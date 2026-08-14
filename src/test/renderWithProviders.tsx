@@ -2,6 +2,7 @@ import React from "react";
 import { render, renderHook, type RenderOptions } from "@testing-library/react";
 import { QueryClientProvider, type QueryClient } from "@tanstack/react-query";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { LanguageProvider } from "@/features/i18n/LanguageContext";
 import { createTestQueryClient } from "./queryClient";
 
 interface Options {
@@ -14,7 +15,9 @@ interface Options {
 function Wrapper({ queryClient, children }: { queryClient: QueryClient; children: React.ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>{children}</TooltipProvider>
+      <LanguageProvider>
+        <TooltipProvider>{children}</TooltipProvider>
+      </LanguageProvider>
     </QueryClientProvider>
   );
 }

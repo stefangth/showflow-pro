@@ -1,0 +1,26 @@
+{
+  "nav": {
+    "workspace": "Workspace",
+    "catalog": "Catalog",
+    "system": "System",
+    "dashboard": "Dashboard",
+    "bookings": "Shows & Bookings",
+    "hireOrders": "Hire orders",
+    "availability": "Availability",
+    "chats": "Chats",
+    "help": "Help",
+    "productions": "Productions",
+    "artists": "Artists",
+    "admin": "Admin",
+    "settings": "Settings",
+    "platform": "Platform"
+  },
+  "breadcrumb": {
+    "home": "Home"
+  },
+  "account": {
+    "language": "Language",
+    "profile": "Profile",
+    "signOut": "Sign out"
+  }
+}
