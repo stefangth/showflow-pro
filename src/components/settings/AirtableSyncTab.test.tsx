@@ -3,8 +3,10 @@ import { screen, fireEvent, waitFor } from "@testing-library/react";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import { AirtableSyncTab } from "./AirtableSyncTab";
 
-// Mock the data-access layer (tested separately) so the component's schema-load
-// branch is controllable without touching the supabase singleton.
+// Mock the data-access layer (tested separately) so the component's schema-load,
+// sync-log and key-status branches are controllable without touching the supabase
+// singleton. This suite targets the REBUILT status-first console (StatusHeader +
+// ConsoleTabs + sub-tabs + a Manage-connection dialog), not the old stacked form.
 vi.mock("@/data/airtableSchema", () => ({
   fetchAirtableBases: vi.fn(),
   fetchAirtableTables: vi.fn(),
@@ -19,9 +21,12 @@ vi.mock("@/data/settings", () => ({
 }));
 vi.mock("@/data/airtableSettings", () => ({
   fetchAirtableSettings: vi.fn(() =>
-    Promise.resolve({ airtable_sync_enabled: false, airtable_base_id: "", airtable_table_name: "", airtable_field_map: {}, airtable_view: "Grid view" }),
+    Promise.resolve({
+      airtable_sync_enabled: false, airtable_base_id: "", airtable_table_name: "",
+      airtable_field_map: {}, airtable_view: "Grid view", airtable_poll_interval_minutes: 60,
+    }),
   ),
-  AIRTABLE_SETTING_KEYS: ["airtable_sync_enabled", "airtable_base_id", "airtable_table_name", "airtable_field_map", "airtable_view"],
+  AIRTABLE_SETTING_KEYS: ["airtable_sync_enabled", "airtable_base_id", "airtable_table_name", "airtable_field_map", "airtable_view", "airtable_poll_interval_minutes"],
 }));
 vi.mock("@/data/cities", () => ({
   fetchCitiesForLinking: vi.fn(() => Promise.resolve([])),
@@ -31,12 +36,16 @@ vi.mock("@/data/cities", () => ({
 }));
 vi.mock("@/data/airtableSync", () => ({
   fetchLatestSyncLog: vi.fn(() => Promise.resolve(null)),
+  fetchRecentSyncLogs: vi.fn(() => Promise.resolve([])),
   fetchUnresolvedRecords: vi.fn(() => Promise.resolve([])),
+  triggerAirtableSyncNow: vi.fn(() =>
+    Promise.resolve({ ok: true, orgs_synced: 1, result: { processed: 0, new_dates: 0, updated: 0, held: 0, tiers_opened: 0 } }),
+  ),
 }));
 vi.mock("@/data/airtableKey", () => ({
   fetchAirtableKeyStatus: vi.fn(() => Promise.resolve({ present: false, updatedAt: null })),
-  saveAirtableKey: vi.fn(),
-  deleteAirtableKey: vi.fn(),
+  saveAirtableKey: vi.fn(() => Promise.resolve()),
+  deleteAirtableKey: vi.fn(() => Promise.resolve()),
 }));
 vi.mock("@/data/customFields", () => ({
   fetchCustomFieldDefs: vi.fn(() => Promise.resolve([])),
@@ -45,519 +54,254 @@ vi.mock("@/data/customFields", () => ({
 }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.fn(), warning: vi.fn() } }));
 
-import { fetchAirtableBases, fetchAirtableTables, fetchAirtableLinkedRecords, fetchAirtableProgramPairs } from "@/data/airtableSchema";
-import { fetchAirtableKeyStatus } from "@/data/airtableKey";
-import { fetchLatestSyncLog, fetchUnresolvedRecords } from "@/data/airtableSync";
-import { fetchCitiesForLinking, mergeCities } from "@/data/cities";
-import { upsertOrgSetting, fetchShowsForLinking, importShowsFromOptions } from "@/data/settings";
+import { fetchAirtableBases, fetchAirtableTables, fetchAirtableProgramPairs, fetchAirtableLinkedRecords } from "@/data/airtableSchema";
+import { fetchAirtableKeyStatus, saveAirtableKey } from "@/data/airtableKey";
+import { fetchLatestSyncLog, fetchRecentSyncLogs, fetchUnresolvedRecords, triggerAirtableSyncNow } from "@/data/airtableSync";
+import { fetchCitiesForLinking } from "@/data/cities";
+import { upsertOrgSetting, fetchShowsForLinking } from "@/data/settings";
 import { fetchAirtableSettings } from "@/data/airtableSettings";
-import { toast } from "sonner";
+import { fetchCustomFieldDefs } from "@/data/customFields";
 
-it("warns that sub-hour syncs require a paid Airtable plan and may be rate-limited", async () => {
-  (fetchAirtableSettings as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-    airtable_sync_enabled: false, airtable_base_id: "", airtable_table_name: "",
-    airtable_field_map: {}, airtable_view: "Grid view", airtable_poll_interval_minutes: 30,
-  });
-  renderWithProviders(<AirtableSyncTab orgId="org-1" />);
-  expect(await screen.findByText("Frequent syncs can hit Airtable limits")).toBeInTheDocument();
-  expect(screen.getByText(/only select a frequency under one hour if your airtable workspace is on a paid plan/i)).toBeInTheDocument();
-});
+type Fn = ReturnType<typeof vi.fn>;
+const mock = (f: unknown) => f as Fn;
+
+const SETUP_DEFAULTS = {
+  airtable_sync_enabled: false,
+  airtable_base_id: "",
+  airtable_table_name: "",
+  airtable_field_map: {},
+  airtable_view: "Grid view",
+  airtable_poll_interval_minutes: 60,
+};
+
+/** A fully-connected settings object (key present + base + table set). */
+function connectedSettings(over: Record<string, unknown> = {}) {
+  return { ...SETUP_DEFAULTS, airtable_base_id: "appA", airtable_table_name: "Events", ...over };
+}
 
 function renderTab(
-  initial: Record<string, unknown> = {},
+  settings: Record<string, unknown> = {},
   props: { readOnly?: boolean; canTriggerSync?: boolean } = {},
 ) {
-  (fetchAirtableSettings as ReturnType<typeof vi.fn>).mockResolvedValue({
-    airtable_sync_enabled: false,
-    airtable_base_id: "",
-    airtable_table_name: "",
-    airtable_field_map: {},
-    airtable_view: "Grid view",
-    ...initial,
-  });
+  mock(fetchAirtableSettings).mockResolvedValue({ ...SETUP_DEFAULTS, ...settings });
   return renderWithProviders(
     <AirtableSyncTab orgId="org-1" readOnly={props.readOnly} canTriggerSync={props.canTriggerSync} />,
   );
 }
 
-describe("AirtableSyncTab", () => {
-  beforeEach(() => vi.clearAllMocks());
+/** Mark the API key present and load a base + a single "Events" table with the given fields. */
+function connect(fields: Array<{ id: string; name: string; type: string; options?: unknown }> = []) {
+  mock(fetchAirtableKeyStatus).mockResolvedValue({ present: true, updatedAt: "2026-06-22T17:44:00Z" });
+  mock(fetchAirtableBases).mockResolvedValue({ schemaAccessible: true, bases: [{ id: "appA", name: "Base A" }] });
+  mock(fetchAirtableTables).mockResolvedValue({ schemaAccessible: true, tables: [{ id: "tbl", name: "Events", fields }] });
+}
 
-  it("gates the schema refresh behind a saved key, with a hint", async () => {
-    (fetchAirtableKeyStatus as ReturnType<typeof vi.fn>).mockResolvedValue({ present: false, updatedAt: null });
-    renderTab();
-    expect(screen.getByText("Airtable Sync")).toBeInTheDocument();
-    await waitFor(() => expect(screen.getByRole("button", { name: "Refresh from Airtable" })).toBeDisabled());
-    expect(screen.getByText(/Save an API key first/i)).toBeInTheDocument();
-    expect(fetchAirtableBases).not.toHaveBeenCalled();
-  });
+const syncLog = (over: Record<string, unknown> = {}) => ({
+  id: "log-1", status: "success", records_processed: 5, imported_count: 3,
+  new_count: 2, updated_count: 1, held_count: 0, error_details: null,
+  synced_at: "2026-06-17T10:00:00Z", ...over,
+});
 
-  it("shows a saved-key status with Replace and Delete when a key exists", async () => {
-    (fetchAirtableKeyStatus as ReturnType<typeof vi.fn>).mockResolvedValue({ present: true, updatedAt: "2026-06-22T17:44:00Z" });
-    (fetchAirtableBases as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: true, bases: [] });
-    renderTab();
-    expect(await screen.findByText("Key saved")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Replace" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Delete/ })).toBeInTheDocument();
-  });
-
-  it("auto-loads bases on mount when a key is present (no click)", async () => {
-    (fetchAirtableKeyStatus as ReturnType<typeof vi.fn>).mockResolvedValue({ present: true, updatedAt: null });
-    (fetchAirtableBases as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: true, bases: [{ id: "appA", name: "Fever Berlin" }] });
-    renderTab();
-    await waitFor(() => expect(fetchAirtableBases).toHaveBeenCalledWith(expect.anything(), "org-1"));
-    expect(await screen.findByText("Base")).toBeInTheDocument();
-  });
-
-  it("shows the scope banner + typed fallback when the key can't read schema", async () => {
-    (fetchAirtableKeyStatus as ReturnType<typeof vi.fn>).mockResolvedValue({ present: true, updatedAt: null });
-    (fetchAirtableBases as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: false });
-    renderTab();
-    await waitFor(() => expect(screen.getByText(/schema\.bases:read/)).toBeInTheDocument());
-    expect(screen.getByPlaceholderText("app1234567890")).toBeInTheDocument();
-  });
-
-  it("auto-loads tables for a base already saved in settings", async () => {
-    (fetchAirtableKeyStatus as ReturnType<typeof vi.fn>).mockResolvedValue({ present: true, updatedAt: null });
-    (fetchAirtableBases as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: true, bases: [{ id: "appA", name: "Fever Berlin" }] });
-    (fetchAirtableTables as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: true, tables: [{ id: "tbl1", name: "Events", fields: [] }] });
-    renderTab({ airtable_base_id: "appA" });
-    await waitFor(() => expect(fetchAirtableTables).toHaveBeenCalledWith(expect.anything(), "org-1", "appA"));
-  });
-
-  it("drops to manual entry when a base's tables can't be read (per-base 403)", async () => {
-    (fetchAirtableKeyStatus as ReturnType<typeof vi.fn>).mockResolvedValue({ present: true, updatedAt: null });
-    (fetchAirtableBases as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: true, bases: [{ id: "appA", name: "Fever Berlin" }] });
-    (fetchAirtableTables as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: false });
-    renderTab({ airtable_base_id: "appA" });
-    await waitFor(() => expect(screen.getByPlaceholderText("app1234567890")).toBeInTheDocument());
-    expect(screen.getByText(/this specific base/i)).toBeInTheDocument();
-    expect(screen.queryByText(/schema\.bases:read/)).not.toBeInTheDocument();
-  });
-
-  it("drops to manual entry when the tables fetch throws (network/edge error)", async () => {
-    (fetchAirtableKeyStatus as ReturnType<typeof vi.fn>).mockResolvedValue({ present: true, updatedAt: null });
-    (fetchAirtableBases as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: true, bases: [{ id: "appA", name: "Fever Berlin" }] });
-    (fetchAirtableTables as ReturnType<typeof vi.fn>).mockRejectedValue(new Error("Network error"));
-    renderTab({ airtable_base_id: "appA" });
-    await waitFor(() => expect(screen.getByPlaceholderText("app1234567890")).toBeInTheDocument());
-    expect(screen.getByText(/Couldn't reach Airtable/i)).toBeInTheDocument();
-    expect(screen.queryByText(/schema\.bases:read/)).not.toBeInTheDocument();
-  });
-
-  it("hides field-mapping and catalog-links until a table is selected", async () => {
-    (fetchAirtableKeyStatus as ReturnType<typeof vi.fn>).mockResolvedValue({ present: false, updatedAt: null });
-    renderTab();
-    expect(screen.queryByText(/Field mapping/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/Catalog links/)).not.toBeInTheDocument();
-  });
-
-  it("field-mapping card shows Showflow-field vs Airtable-column headers", async () => {
-    (fetchAirtableKeyStatus as ReturnType<typeof vi.fn>).mockResolvedValue({ present: true, updatedAt: null });
-    (fetchAirtableBases as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: true, bases: [{ id: "appX", name: "Base" }] });
-    (fetchAirtableTables as ReturnType<typeof vi.fn>).mockResolvedValue({
-      schemaAccessible: true,
-      tables: [{ id: "tbl", name: "Events", fields: [{ id: "f1", name: "Datum", type: "date" }] }],
-    });
-    renderTab({ airtable_base_id: "appX", airtable_table_name: "Events" });
-    expect(await screen.findByText("Showflow field")).toBeInTheDocument();
-    expect(screen.getByText("Airtable column")).toBeInTheDocument();
+// Clean defaults every test: vi.clearAllMocks() resets call history but NOT
+// implementations, so re-seed each mock's resolved value so a value set in one
+// test can't leak into the next.
+beforeEach(() => {
+  vi.clearAllMocks();
+  mock(fetchAirtableKeyStatus).mockResolvedValue({ present: false, updatedAt: null });
+  mock(fetchAirtableBases).mockResolvedValue({ schemaAccessible: true, bases: [] });
+  mock(fetchAirtableTables).mockResolvedValue({ schemaAccessible: true, tables: [] });
+  mock(fetchAirtableProgramPairs).mockResolvedValue({ schemaAccessible: true, pairs: [] });
+  mock(fetchAirtableLinkedRecords).mockResolvedValue({ schemaAccessible: true, records: [] });
+  mock(fetchLatestSyncLog).mockResolvedValue(null);
+  mock(fetchRecentSyncLogs).mockResolvedValue([]);
+  mock(fetchUnresolvedRecords).mockResolvedValue([]);
+  mock(fetchShowsForLinking).mockResolvedValue([]);
+  mock(fetchCitiesForLinking).mockResolvedValue([]);
+  mock(fetchCustomFieldDefs).mockResolvedValue([]);
+  mock(upsertOrgSetting).mockResolvedValue(undefined);
+  mock(saveAirtableKey).mockResolvedValue(undefined);
+  mock(triggerAirtableSyncNow).mockResolvedValue({
+    ok: true, orgs_synced: 1, result: { processed: 0, new_dates: 0, updated: 0, held: 0, tiers_opened: 0 },
   });
 });
 
-describe("AirtableSyncTab — last sync report", () => {
-  beforeEach(() => vi.clearAllMocks());
-
-  it("renders summary counts and held records from the latest log", async () => {
-    (fetchLatestSyncLog as ReturnType<typeof vi.fn>).mockResolvedValue({
-      id: "log-1", status: "partial", imported_count: 3, new_count: 2, updated_count: 1, held_count: 1, error_details: null, synced_at: "2026-06-17T10:00:00Z",
-    });
-    (fetchUnresolvedRecords as ReturnType<typeof vi.fn>).mockResolvedValue([
-      { id: "r1", airtable_record_id: "recHELD", reason: "program 'X' not linked", created_at: "2026-06-17T10:00:00Z", action: "held_unresolved" },
-    ]);
+describe("AirtableSyncTab — setup wizard", () => {
+  it("renders the four-step setup wizard when no key is saved", async () => {
     renderTab();
-    expect(await screen.findByText("Last sync report")).toBeInTheDocument();
-    expect(await screen.findByText("Held records")).toBeInTheDocument();
-    expect(await screen.findByText("program 'X' not linked")).toBeInTheDocument();
-    expect(screen.getByText("recHELD")).toBeInTheDocument();
+    expect(await screen.findByText("Connect a base in four steps")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/^pat/)).toBeInTheDocument();
+    // No console shell (StatusHeader / tabs) in setup mode.
+    expect(screen.queryByRole("switch")).not.toBeInTheDocument();
   });
 
-  it("renders errored records in their own subsection", async () => {
-    (fetchLatestSyncLog as ReturnType<typeof vi.fn>).mockResolvedValue({
-      id: "log-3", status: "partial", imported_count: 0, new_count: 0, updated_count: 0, held_count: 0, error_details: "1 record(s) errored", synced_at: "2026-06-17T10:00:00Z",
-    });
-    (fetchUnresolvedRecords as ReturnType<typeof vi.fn>).mockResolvedValue([
-      { id: "e1", airtable_record_id: "recERR", reason: "insert failed: duplicate key", created_at: "2026-06-17T10:00:00Z", action: "error" },
-    ]);
+  it("enables and fires Save-and-continue only once a token is typed", async () => {
     renderTab();
-    expect(await screen.findByText("Errored records")).toBeInTheDocument();
-    expect(await screen.findByText("insert failed: duplicate key")).toBeInTheDocument();
-    expect(screen.getByText("recERR")).toBeInTheDocument();
-  });
+    const input = await screen.findByPlaceholderText(/^pat/);
+    // Empty token → the button is inert.
+    expect(screen.getByRole("button", { name: "Save and continue" })).toBeDisabled();
 
-  it("renders error_details when present", async () => {
-    (fetchLatestSyncLog as ReturnType<typeof vi.fn>).mockResolvedValue({
-      id: "log-2", status: "partial", imported_count: 0, new_count: 0, updated_count: 0, held_count: 0,
-      error_details: "2 record(s) errored", synced_at: "2026-06-17T10:00:00Z",
-    });
-    (fetchUnresolvedRecords as ReturnType<typeof vi.fn>).mockResolvedValue([]);
-    renderTab();
-    expect(await screen.findByText("2 record(s) errored")).toBeInTheDocument();
-  });
-
-  it("shows an empty state when the org has never synced", async () => {
-    (fetchLatestSyncLog as ReturnType<typeof vi.fn>).mockResolvedValue(null);
-    (fetchUnresolvedRecords as ReturnType<typeof vi.fn>).mockResolvedValue([]);
-    renderTab();
-    expect(await screen.findByText(/No sync has run yet/i)).toBeInTheDocument();
-  });
-
-  // The airtable-sync-held email is deliberately cause-neutral (held_unresolved has more
-  // than one cause: a blank date cell as well as an unlinked program), and its CTA lands
-  // HERE. This card must not re-assert the mapping-only cause the email avoids, and must
-  // promise exactly what the record rows below actually deliver (the email's own words:
-  // "which ones and why"). Copy rule: no em/en dashes in user-facing prose.
-  it("sync-report description stays cause-neutral and points at the per-record reasons", async () => {
-    (fetchLatestSyncLog as ReturnType<typeof vi.fn>).mockResolvedValue({
-      id: "log-1", status: "partial", imported_count: 3, new_count: 2, updated_count: 1, held_count: 1, error_details: null, synced_at: "2026-06-17T10:00:00Z",
-    });
-    (fetchUnresolvedRecords as ReturnType<typeof vi.fn>).mockResolvedValue([]);
-    renderTab();
-    const description = await screen.findByText(/The most recent Airtable poll/i);
-    expect(description.textContent).not.toMatch(/not matched to a linked program/i);
-    expect(description.textContent).toMatch(/which ones and why/i);
-    expect(description.textContent).not.toMatch(/[—–]/);
-  });
-
-  it("the not-synced-yet hint uses no em dash", async () => {
-    (fetchLatestSyncLog as ReturnType<typeof vi.fn>).mockResolvedValue(null);
-    (fetchUnresolvedRecords as ReturnType<typeof vi.fn>).mockResolvedValue([]);
-    renderTab({ airtable_sync_enabled: true });
-    expect(await screen.findByText("Not synced yet. Runs on the next cycle.")).toBeInTheDocument();
-  });
-});
-
-describe("AirtableSyncTab — duplicate cities", () => {
-  beforeEach(() => vi.clearAllMocks());
-
-  it("surfaces a duplicate group and merges on confirm", async () => {
-    (fetchCitiesForLinking as ReturnType<typeof vi.fn>).mockResolvedValue([
-      { id: "c-a", name: "Berlin", airtable_city_key: "berlin" },
-      { id: "c-b", name: "berlin", airtable_city_key: null },
-    ]);
-    renderTab({ airtable_table_name: "Events", airtable_field_map: { city: "City" } });
-    expect(await screen.findByText(/Duplicate cities/i)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Merge" }));          // dialog trigger
-    fireEvent.click(await screen.findByRole("button", { name: "Merge cities" })); // confirm action
-    await waitFor(() => expect(mergeCities).toHaveBeenCalledWith(expect.anything(), "c-a", ["c-b"]));
-  });
-
-  it("shows nothing when there are no duplicates", async () => {
-    (fetchCitiesForLinking as ReturnType<typeof vi.fn>).mockResolvedValue([
-      { id: "c-a", name: "Berlin", airtable_city_key: "berlin" },
-    ]);
-    renderTab({ airtable_table_name: "Events", airtable_field_map: { city: "City" } });
-    await waitFor(() => expect(screen.queryByText(/Duplicate cities/i)).not.toBeInTheDocument());
-  });
-});
-
-describe("AirtableSyncTab — autosave", () => {
-  beforeEach(() => vi.clearAllMocks());
-
-  it("persists a field-mapping change immediately and shows saved status", async () => {
-    (fetchAirtableKeyStatus as ReturnType<typeof vi.fn>).mockResolvedValue({ present: true, updatedAt: null });
-    (fetchAirtableBases as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: true, bases: [{ id: "appA", name: "Base A" }] });
-    (fetchAirtableTables as ReturnType<typeof vi.fn>).mockResolvedValue({
-      schemaAccessible: true,
-      tables: [{ id: "tbl1", name: "Events", fields: [{ id: "fld1", name: "Show Date", type: "date" }] }],
-    });
-    renderTab({ airtable_base_id: "appA", airtable_table_name: "Events" });
-
-    const dateSelect = await screen.findByRole("combobox", { name: /^Date$/i });
-    fireEvent.click(dateSelect);
-    fireEvent.click(await screen.findByRole("option", { name: "Show Date" }));
+    fireEvent.change(input, { target: { value: "patTOKEN123" } });
+    const save = screen.getByRole("button", { name: "Save and continue" });
+    expect(save).toBeEnabled();
+    fireEvent.click(save);
 
     await waitFor(() =>
-      expect(upsertOrgSetting).toHaveBeenCalledWith(
-        expect.anything(),
-        "org-1",
-        "airtable_field_map",
-        expect.objectContaining({ date: "Show Date" }),
-      ),
+      expect(saveAirtableKey).toHaveBeenCalledWith(expect.anything(), "org-1", "patTOKEN123"),
     );
-    // The save-status pill renders in both the connection and field-mapping card
-    // headers, so when the mapping card is visible there are two — assert ≥1.
-    expect((await screen.findAllByText(/All changes saved/i)).length).toBeGreaterThan(0);
   });
 
-  it("autosaves the enable toggle without a global Save click", async () => {
-    (fetchAirtableKeyStatus as ReturnType<typeof vi.fn>).mockResolvedValue({ present: true, updatedAt: null });
-    (fetchAirtableBases as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: true, bases: [] });
-    renderTab();
-    fireEvent.click(await screen.findByRole("switch"));
+  it("disables Save-and-continue when readOnly in setup mode", async () => {
+    renderTab({}, { readOnly: true });
+    await screen.findByText("Connect a base in four steps");
+    expect(screen.getByRole("button", { name: "Save and continue" })).toBeDisabled();
+    expect(screen.getByPlaceholderText(/^pat/)).toBeDisabled();
+  });
+});
+
+describe("AirtableSyncTab — console shell", () => {
+  it("renders the status headline and the four console tabs when connected", async () => {
+    connect();
+    renderTab(connectedSettings());
+    // latest === null → healthy mode.
+    expect(await screen.findByText("Syncing normally")).toBeInTheDocument();
+    for (const name of ["Overview", "Field mapping", "Catalog links", "Activity"]) {
+      expect(screen.getByRole("button", { name })).toBeInTheDocument();
+    }
+  });
+
+  it("switches to the Field-mapping tab (mapping headers) and the Activity tab (run history)", async () => {
+    connect([{ id: "f1", name: "Datum", type: "date" }]);
+    renderTab(connectedSettings());
+
+    fireEvent.click(await screen.findByText("Field mapping"));
+    expect(await screen.findByText("ShowFlow field")).toBeInTheDocument();
+    expect(screen.getByText("Airtable column")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("Activity"));
+    expect(await screen.findByText("Run history")).toBeInTheDocument();
+  });
+
+  it("autosaves the Sync master switch without a global Save click", async () => {
+    connect();
+    renderTab(connectedSettings());
+    const toggle = await screen.findByRole("switch");
+    fireEvent.click(toggle);
     await waitFor(() =>
       expect(upsertOrgSetting).toHaveBeenCalledWith(expect.anything(), "org-1", "airtable_sync_enabled", true),
     );
   });
-
-  it("surfaces an error and rolls back when a save fails", async () => {
-    (fetchAirtableKeyStatus as ReturnType<typeof vi.fn>).mockResolvedValue({ present: true, updatedAt: null });
-    (fetchAirtableBases as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: true, bases: [] });
-    (upsertOrgSetting as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error("network"));
-    renderTab();
-    const toggle = await screen.findByRole("switch");
-    expect(toggle).not.toBeChecked();
-    fireEvent.click(toggle);
-    expect(await screen.findByText(/Couldn't save/i)).toBeInTheDocument();
-    // Rollback: the optimistically-flipped toggle returns to off after the failed save.
-    await waitFor(() => expect(screen.getByRole("switch")).not.toBeChecked());
-  });
-
-  it("offers 'Link to existing' for an unlinked program option", async () => {
-    (fetchAirtableKeyStatus as ReturnType<typeof vi.fn>).mockResolvedValue({ present: true, updatedAt: null });
-    (fetchAirtableBases as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: true, bases: [{ id: "appX", name: "Base" }] });
-    (fetchAirtableTables as ReturnType<typeof vi.fn>).mockResolvedValue({
-      schemaAccessible: true,
-      tables: [{
-        id: "tbl", name: "Events",
-        fields: [
-          { id: "fS", name: "Sub", type: "singleSelect", options: { choices: [{ id: "c1", name: "TJE: Murder" }] } },
-        ],
-      }],
-    });
-    (fetchShowsForLinking as ReturnType<typeof vi.fn>).mockResolvedValue([
-      { id: "show-1", program: "Existing", sub_program: null, main_cast_slots: 2, understudy_slots: 1, airtable_program_key: null },
-    ]);
-    renderTab({ airtable_base_id: "appX", airtable_table_name: "Events", airtable_field_map: { sub_program: "Sub" } });
-
-    expect(await screen.findByText("TJE: Murder")).toBeInTheDocument();
-    const trigger = screen.getByLabelText("link or create show for TJE: Murder");
-    fireEvent.click(trigger);
-    // The combobox offers both "Create" and the existing unlinked show to link to.
-    expect(await screen.findByText(/Create/)).toBeInTheDocument();
-    expect(screen.getByText("Existing")).toBeInTheDocument();
-  });
-
-  it("creates a show inline from an unlinked program option", async () => {
-    (fetchAirtableKeyStatus as ReturnType<typeof vi.fn>).mockResolvedValue({ present: true, updatedAt: null });
-    (fetchAirtableBases as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: true, bases: [{ id: "appX", name: "Base" }] });
-    (fetchAirtableTables as ReturnType<typeof vi.fn>).mockResolvedValue({
-      schemaAccessible: true,
-      tables: [{ id: "tbl", name: "Events", fields: [{ id: "fS", name: "Sub", type: "singleSelect", options: { choices: [{ id: "c1", name: "TJE: Murder" }] } }] }],
-    });
-    (fetchShowsForLinking as ReturnType<typeof vi.fn>).mockResolvedValue([]);
-    renderTab({ airtable_base_id: "appX", airtable_table_name: "Events", airtable_field_map: { sub_program: "Sub" } });
-
-    const trigger = await screen.findByLabelText("link or create show for TJE: Murder");
-    await waitFor(() => expect(trigger).not.toBeDisabled()); // wait for showsQ to resolve
-    fireEvent.click(trigger);
-    fireEvent.click(await screen.findByText(/Create/));
-    await waitFor(() =>
-      expect(importShowsFromOptions).toHaveBeenCalledWith(
-        expect.anything(), "org-1",
-        [expect.objectContaining({ sub_program: "TJE: Murder", key: "TJE: Murder" })],
-      ),
-    );
-  });
-
-  it("reports a clear error instead of false success when the program is already covered", async () => {
-    (fetchAirtableKeyStatus as ReturnType<typeof vi.fn>).mockResolvedValue({ present: true, updatedAt: null });
-    (fetchAirtableBases as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: true, bases: [{ id: "appX", name: "Base" }] });
-    (fetchAirtableTables as ReturnType<typeof vi.fn>).mockResolvedValue({
-      schemaAccessible: true,
-      tables: [{ id: "tbl", name: "Events", fields: [
-        { id: "fP", name: "Program", type: "singleSelect", options: { choices: [{ id: "p1", name: "TJE" }] } },
-        { id: "fS", name: "Sub", type: "singleSelect", options: { choices: [{ id: "c1", name: "TJE: Murder" }] } },
-      ] }],
-    });
-    (fetchAirtableProgramPairs as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: true, pairs: [{ program: "TJE", sub_program: "TJE: Murder" }] });
-    // A legacy sub-only-keyed show already covers this sub → planProgramImport returns [].
-    (fetchShowsForLinking as ReturnType<typeof vi.fn>).mockResolvedValue([
-      { id: "legacy-1", program: null, sub_program: "TJE: Murder", main_cast_slots: 2, understudy_slots: 0, airtable_program_key: "TJE: Murder" },
-    ]);
-    renderTab({ airtable_base_id: "appX", airtable_table_name: "Events", airtable_field_map: { program: "Program", sub_program: "Sub" } });
-
-    const trigger = await screen.findByLabelText(/link or create show for TJE/);
-    await waitFor(() => expect(trigger).not.toBeDisabled());
-    fireEvent.click(trigger);
-    fireEvent.click(await screen.findByText(/Create/));
-    await waitFor(() => expect(toast.error).toHaveBeenCalled());
-    expect(importShowsFromOptions).not.toHaveBeenCalled();
-    expect(toast.success).not.toHaveBeenCalled();
-  });
-
-  it("links Programs at the composite grain when Program is mapped", async () => {
-    (fetchAirtableKeyStatus as ReturnType<typeof vi.fn>).mockResolvedValue({ present: true, updatedAt: null });
-    (fetchAirtableBases as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: true, bases: [{ id: "appX", name: "Base" }] });
-    (fetchAirtableTables as ReturnType<typeof vi.fn>).mockResolvedValue({
-      schemaAccessible: true,
-      tables: [{
-        id: "tbl", name: "Events",
-        fields: [
-          { id: "fP", name: "Program", type: "singleSelect", options: { choices: [{ id: "p1", name: "TJE" }] } },
-          { id: "fS", name: "Sub", type: "singleSelect", options: { choices: [{ id: "c1", name: "TJE: Murder" }] } },
-        ],
-      }],
-    });
-    (fetchAirtableProgramPairs as ReturnType<typeof vi.fn>).mockResolvedValue({
-      schemaAccessible: true, pairs: [{ program: "TJE", sub_program: "TJE: Murder" }],
-    });
-    (fetchShowsForLinking as ReturnType<typeof vi.fn>).mockResolvedValue([]);
-    renderTab({ airtable_base_id: "appX", airtable_table_name: "Events", airtable_field_map: { program: "Program", sub_program: "Sub" } });
-
-    // Composite identity label "TJE · TJE: Murder" renders for the pair.
-    expect(await screen.findByText("TJE · TJE: Murder")).toBeInTheDocument();
-    await waitFor(() =>
-      expect(fetchAirtableProgramPairs).toHaveBeenCalledWith(expect.anything(), "org-1", "appX", "Events", "Sub", "Program"),
-    );
-  });
-
-  it("warns (not 'no options') when the key can't read records for program pairs", async () => {
-    (fetchAirtableKeyStatus as ReturnType<typeof vi.fn>).mockResolvedValue({ present: true, updatedAt: null });
-    (fetchAirtableBases as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: true, bases: [{ id: "appX", name: "Base" }] });
-    (fetchAirtableTables as ReturnType<typeof vi.fn>).mockResolvedValue({
-      schemaAccessible: true,
-      tables: [{
-        id: "tbl", name: "Events",
-        fields: [
-          { id: "fP", name: "Program", type: "singleSelect", options: { choices: [{ id: "p1", name: "TJE" }] } },
-          { id: "fS", name: "Sub", type: "singleSelect", options: { choices: [{ id: "c1", name: "TJE: Murder" }] } },
-        ],
-      }],
-    });
-    // Airtable 403 on the records endpoint → edge fn returns { schemaAccessible: false } (HTTP 200).
-    (fetchAirtableProgramPairs as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: false });
-    (fetchShowsForLinking as ReturnType<typeof vi.fn>).mockResolvedValue([]);
-    renderTab({ airtable_base_id: "appX", airtable_table_name: "Events", airtable_field_map: { program: "Program", sub_program: "Sub" } });
-
-    expect(await screen.findByText(/can't read records/i)).toBeInTheDocument();
-  });
-
-  it("lists city options from a linked-record City field", async () => {
-    (fetchAirtableKeyStatus as ReturnType<typeof vi.fn>).mockResolvedValue({ present: true, updatedAt: null });
-    (fetchAirtableBases as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: true, bases: [{ id: "appX", name: "Base" }] });
-    (fetchAirtableTables as ReturnType<typeof vi.fn>).mockResolvedValue({
-      schemaAccessible: true,
-      tables: [{
-        id: "tbl", name: "Events",
-        fields: [{ id: "fCity", name: "City", type: "multipleRecordLinks", options: { linkedTableId: "tblCities" } }],
-      }],
-    });
-    (fetchAirtableLinkedRecords as ReturnType<typeof vi.fn>).mockResolvedValue({
-      schemaAccessible: true, records: [{ id: "recCity1", name: "Berlin" }],
-    });
-    renderTab({ airtable_base_id: "appX", airtable_table_name: "Events", airtable_field_map: { city: "City" } });
-
-    expect(await screen.findByText("Berlin")).toBeInTheDocument();
-  });
 });
 
-describe("AirtableSyncTab — Airtable view", () => {
-  beforeEach(() => vi.clearAllMocks());
+describe("AirtableSyncTab — sync-now gating", () => {
+  it("disables Sync now when canTriggerSync is false (live mode, sync enabled)", async () => {
+    connect();
+    mock(fetchLatestSyncLog).mockResolvedValue(syncLog({ held_count: 1, status: "partial" }));
+    renderTab(connectedSettings({ airtable_sync_enabled: true }), { canTriggerSync: false });
 
-  it("shows the optional view input once a key and table are set", async () => {
-    (fetchAirtableKeyStatus as ReturnType<typeof vi.fn>).mockResolvedValue({ present: true, updatedAt: null });
-    (fetchAirtableBases as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: true, bases: [{ id: "appA", name: "Base" }] });
-    (fetchAirtableTables as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: true, tables: [{ id: "t", name: "Events", fields: [] }] });
-    renderTab({ airtable_base_id: "appA", airtable_table_name: "Events" });
-    expect(await screen.findByPlaceholderText("Grid view")).toBeInTheDocument();
-  });
-
-  it("hides the view input until a table is selected", async () => {
-    (fetchAirtableKeyStatus as ReturnType<typeof vi.fn>).mockResolvedValue({ present: true, updatedAt: null });
-    (fetchAirtableBases as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: true, bases: [] });
-    renderTab(); // no table_name
-    await screen.findByRole("button", { name: "Refresh from Airtable" });
-    expect(screen.queryByPlaceholderText("Grid view")).not.toBeInTheDocument();
-  });
-
-  it("saves the view on blur only when it changed, incl. clearing to whole-table mode", async () => {
-    (fetchAirtableKeyStatus as ReturnType<typeof vi.fn>).mockResolvedValue({ present: true, updatedAt: null });
-    (fetchAirtableBases as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: true, bases: [{ id: "appA", name: "Base" }] });
-    (fetchAirtableTables as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: true, tables: [{ id: "t", name: "Events", fields: [] }] });
-    renderTab({ airtable_base_id: "appA", airtable_table_name: "Events" }); // airtable_view defaults to "Grid view"
-
-    const input = await screen.findByPlaceholderText("Grid view");
-    // Unchanged blur → no airtable_view save.
-    fireEvent.blur(input);
-    expect(upsertOrgSetting).not.toHaveBeenCalledWith(expect.anything(), "org-1", "airtable_view", expect.anything());
-    // Clearing the field saves "" (whole-table mode).
-    fireEvent.change(input, { target: { value: "" } });
-    fireEvent.blur(input);
-    await waitFor(() => expect(upsertOrgSetting).toHaveBeenCalledWith(expect.anything(), "org-1", "airtable_view", ""));
-  });
-
-  it("trims whitespace from the view before saving", async () => {
-    (fetchAirtableKeyStatus as ReturnType<typeof vi.fn>).mockResolvedValue({ present: true, updatedAt: null });
-    (fetchAirtableBases as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: true, bases: [{ id: "appA", name: "Base" }] });
-    (fetchAirtableTables as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: true, tables: [{ id: "t", name: "Events", fields: [] }] });
-    renderTab({ airtable_base_id: "appA", airtable_table_name: "Events" }); // airtable_view defaults to "Grid view"
-
-    const input = await screen.findByPlaceholderText("Grid view");
-    // Padding-only edit normalizes to the current value → no save.
-    fireEvent.change(input, { target: { value: "  Grid view  " } });
-    fireEvent.blur(input);
-    expect(upsertOrgSetting).not.toHaveBeenCalledWith(expect.anything(), "org-1", "airtable_view", expect.anything());
-    // A real (padded) change persists the trimmed value.
-    fireEvent.change(input, { target: { value: "  Published  " } });
-    fireEvent.blur(input);
-    await waitFor(() => expect(upsertOrgSetting).toHaveBeenCalledWith(expect.anything(), "org-1", "airtable_view", "Published"));
-  });
-});
-
-describe("AirtableSyncTab — capability read-only floor", () => {
-  beforeEach(() => vi.clearAllMocks());
-
-  it("disables the enable-sync switch and the API key Save button, but still shows the real (on) value", async () => {
-    (fetchAirtableKeyStatus as ReturnType<typeof vi.fn>).mockResolvedValue({ present: false, updatedAt: null });
-    renderTab({ airtable_sync_enabled: true }, { readOnly: true });
-
-    const toggle = await screen.findByRole("switch");
-    expect(toggle).toBeDisabled();
-    // The switch mounts before fetchAirtableSettings resolves, so wait for the real
-    // (on) value to land instead of asserting against the initial default.
-    await waitFor(() => expect(toggle).toBeChecked()); // read floor: the real value still renders
-
-    expect(screen.getByRole("button", { name: "Save key" })).toBeDisabled();
-    expect(screen.getByPlaceholderText(/write-only/i)).toBeDisabled();
-  });
-
-  it("disables Replace and Delete for a saved key when readOnly", async () => {
-    (fetchAirtableKeyStatus as ReturnType<typeof vi.fn>).mockResolvedValue({ present: true, updatedAt: "2026-06-22T17:44:00Z" });
-    (fetchAirtableBases as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: true, bases: [] });
-    renderTab({}, { readOnly: true });
-
-    expect(await screen.findByText("Key saved")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Replace" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: /Delete/ })).toBeDisabled();
-  });
-
-  it("leaves the enable-sync switch enabled when readOnly is false", async () => {
-    (fetchAirtableKeyStatus as ReturnType<typeof vi.fn>).mockResolvedValue({ present: false, updatedAt: null });
-    renderTab({}, { readOnly: false });
-    expect(await screen.findByRole("switch")).toBeEnabled();
-  });
-
-  // trigger_sync is a separate capability from configure_airtable: a producer can be
-  // read-only on the mapping/keys yet still (or instead) be allowed to fire a sync, or
-  // vice versa — so canTriggerSync must gate "Sync now" independently of readOnly.
-  it("disables Sync now when canTriggerSync is false, independent of readOnly", async () => {
-    (fetchAirtableKeyStatus as ReturnType<typeof vi.fn>).mockResolvedValue({ present: true, updatedAt: null });
-    (fetchAirtableBases as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: true, bases: [] });
-    renderTab({ airtable_sync_enabled: true }, { readOnly: false, canTriggerSync: false });
-
-    expect(await screen.findByRole("button", { name: "Sync now" })).toBeDisabled();
-    // Everything else stays editable in this readOnly=false render.
+    const syncNow = await screen.findByRole("button", { name: "Sync now" });
+    expect(syncNow).toBeDisabled();
+    // trigger_sync is independent of configure_airtable: the switch stays editable.
     expect(screen.getByRole("switch")).toBeEnabled();
   });
 
-  it("enables Sync now once canTriggerSync is true (sync on, key saved)", async () => {
-    (fetchAirtableKeyStatus as ReturnType<typeof vi.fn>).mockResolvedValue({ present: true, updatedAt: null });
-    (fetchAirtableBases as ReturnType<typeof vi.fn>).mockResolvedValue({ schemaAccessible: true, bases: [] });
-    renderTab({ airtable_sync_enabled: true }, { canTriggerSync: true });
+  it("enables Sync now when canTriggerSync is true and sync is on with a key saved", async () => {
+    connect();
+    mock(fetchLatestSyncLog).mockResolvedValue(syncLog({ held_count: 1, status: "partial" }));
+    renderTab(connectedSettings({ airtable_sync_enabled: true }), { canTriggerSync: true });
 
     const syncNow = await screen.findByRole("button", { name: "Sync now" });
-    // Also gated on fetchAirtableSettings resolving airtable_sync_enabled: true.
     await waitFor(() => expect(syncNow).toBeEnabled());
+  });
+});
+
+describe("AirtableSyncTab — read-only floor", () => {
+  it("shows the read-only banner and disables the Sync switch when readOnly", async () => {
+    connect();
+    renderTab(connectedSettings({ airtable_sync_enabled: true }), { readOnly: true });
+    expect(await screen.findByText(/View only/i)).toBeInTheDocument();
+    const toggle = await screen.findByRole("switch");
+    expect(toggle).toBeDisabled();
+    // The read floor still surfaces the real (on) value.
+    await waitFor(() => expect(toggle).toBeChecked());
+  });
+
+  it("hides the Manage-connection control on the Overview tab when readOnly", async () => {
+    connect();
+    renderTab(connectedSettings(), { readOnly: true });
+    await screen.findByText(/View only/i);
+    expect(screen.queryByRole("button", { name: "Manage connection" })).not.toBeInTheDocument();
+  });
+
+  it("leaves the Sync switch enabled when readOnly is false", async () => {
+    connect();
+    renderTab(connectedSettings());
+    expect(await screen.findByRole("switch")).toBeEnabled();
+  });
+});
+
+describe("AirtableSyncTab — manage connection dialog", () => {
+  it("reveals base/table controls, the schema refresh, and the sub-hour warning", async () => {
+    connect();
+    renderTab(connectedSettings({ airtable_poll_interval_minutes: 30 }));
+
+    fireEvent.click(await screen.findByText("Manage connection"));
+    expect(await screen.findByRole("button", { name: "Refresh from Airtable" })).toBeInTheDocument();
+    expect(screen.getByText("Frequent syncs can hit Airtable limits")).toBeInTheDocument();
+    expect(
+      screen.getByText(/only pick a frequency under one hour if your airtable workspace is on a paid plan/i),
+    ).toBeInTheDocument();
+  });
+
+  it("does not show the sub-hour warning at an hourly interval", async () => {
+    connect();
+    renderTab(connectedSettings({ airtable_poll_interval_minutes: 60 }));
+    fireEvent.click(await screen.findByText("Manage connection"));
+    await screen.findByRole("button", { name: "Refresh from Airtable" });
+    expect(screen.queryByText("Frequent syncs can hit Airtable limits")).not.toBeInTheDocument();
+  });
+});
+
+describe("AirtableSyncTab — attention panel", () => {
+  it("surfaces 'Needs your attention' when the latest run held an unlinked program", async () => {
+    connect();
+    mock(fetchLatestSyncLog).mockResolvedValue(syncLog({ status: "partial", held_count: 1 }));
+    mock(fetchUnresolvedRecords).mockResolvedValue([
+      { id: "r1", airtable_record_id: "recHELD", reason: "program 'Murder' not linked", created_at: "2026-06-17T10:00:00Z", action: "held_unresolved" },
+    ]);
+    renderTab(connectedSettings());
+
+    expect(await screen.findByText("Needs your attention")).toBeInTheDocument();
+    expect(screen.getByText("1 program option has no catalog show")).toBeInTheDocument();
+  });
+});
+
+describe("AirtableSyncTab — activity tab", () => {
+  it("lists a run row from the recent-logs feed", async () => {
+    connect();
+    mock(fetchRecentSyncLogs).mockResolvedValue([
+      syncLog({ id: "run-a", status: "partial", records_processed: 7, held_count: 2 }),
+    ]);
+    renderTab(connectedSettings());
+
+    fireEvent.click(await screen.findByText("Activity"));
+    expect(await screen.findByText("Run history")).toBeInTheDocument();
+    // The run's status badge renders in the history table.
+    expect(screen.getByText("partial")).toBeInTheDocument();
+  });
+});
+
+describe("AirtableSyncTab — catalog links", () => {
+  it("offers a Create / link affordance for an unlinked program option", async () => {
+    connect([
+      { id: "fS", name: "Sub", type: "singleSelect", options: { choices: [{ id: "c1", name: "TJE: Murder" }] } },
+    ]);
+    mock(fetchShowsForLinking).mockResolvedValue([]);
+    renderTab(connectedSettings({ airtable_field_map: { sub_program: "Sub" } }));
+
+    fireEvent.click(await screen.findByText("Catalog links"));
+    expect(await screen.findByText("TJE: Murder")).toBeInTheDocument();
+    // The per-row combobox to link to an existing show, plus an explicit Create button.
+    expect(screen.getByLabelText("link or create show for TJE: Murder")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Create/ })).toBeInTheDocument();
   });
 });
