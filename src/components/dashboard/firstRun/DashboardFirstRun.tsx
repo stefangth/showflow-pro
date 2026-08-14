@@ -1,5 +1,6 @@
 // src/components/dashboard/firstRun/DashboardFirstRun.tsx
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import type { QueueRow, StageAction, StageChainResult } from "@/lib/dashboard/stageChain.types";
 import type { FeatureKey } from "@/lib/entitlements";
 import { DashboardChain } from "./DashboardChain";
@@ -27,6 +28,7 @@ export function DashboardFirstRun(props: {
 }): JSX.Element {
   const { result, queueRows, onOpenSetup, dismissed, onDismiss, onUndismiss, onGhost } = props;
   const navigate = useNavigate();
+  const { t } = useTranslation("dashboard");
 
   const handleAction = (action: StageAction) => {
     if (action.kind === "route") navigate(action.to);
@@ -37,8 +39,8 @@ export function DashboardFirstRun(props: {
     return (
       <DashboardWelcomeCollapsed
         label={result.progressLabel}
-        hint="Pick up where you left off"
-        ctaLabel="Resume"
+        hint={t("firstRun.pickUpWhereLeftOff")}
+        ctaLabel={t("firstRun.resume")}
         onOpen={onUndismiss}
       />
     );
@@ -52,7 +54,7 @@ export function DashboardFirstRun(props: {
           onClick={onDismiss}
           className="text-xs text-muted-foreground hover:text-foreground"
         >
-          Hide
+          {t("firstRun.hide")}
         </button>
       </div>
 

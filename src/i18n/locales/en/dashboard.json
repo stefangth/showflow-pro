@@ -52,5 +52,17 @@
     "colType": "Type",
     "understudy": "Understudy",
     "main": "Main"
+  },
+  "firstRun": {
+    "pickUpWhereLeftOff": "Pick up where you left off",
+    "resume": "Resume",
+    "hide": "Hide",
+    "slowsFilling": "Slows filling",
+    "admin": "Admin",
+    "running": "Running",
+    "startHere": "Start here",
+    "on": "On",
+    "off": "Off",
+    "sample": "Sample"
   }
 }

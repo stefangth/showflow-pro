@@ -52,5 +52,17 @@
     "colType": "Typ",
     "understudy": "Zweitbesetzung",
     "main": "Hauptbesetzung"
+  },
+  "firstRun": {
+    "pickUpWhereLeftOff": "Mach weiter, wo du aufgehört hast",
+    "resume": "Weiter",
+    "hide": "Ausblenden",
+    "slowsFilling": "Verzögert die Füllung",
+    "admin": "Admin",
+    "running": "Läuft",
+    "startHere": "Hier starten",
+    "on": "An",
+    "off": "Aus",
+    "sample": "Beispiel"
   }
 }
