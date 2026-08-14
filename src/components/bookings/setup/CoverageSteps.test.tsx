@@ -60,7 +60,7 @@ describe("EligibilityStep", () => {
     );
     expect(screen.getByRole("link", { name: /how casts and tiers work, in the app logic guide/i })).toHaveAttribute(
       "href",
-      `${ROUTES.SETTINGS}?tab=docs`,
+      ROUTES.HELP,
     );
   });
 

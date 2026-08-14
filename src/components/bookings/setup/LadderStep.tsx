@@ -73,10 +73,10 @@ export function LadderStep({ coverage, orgId }: { coverage: LadderCoverageInputs
           Rank casts in Settings, Casts and cities
         </Link>
         {/* The panel talks in casts and tiers before anyone has been told what they are.
-            Deep-links to Settings, Documentation (see src/lib/settingsTabs.ts). The label
-            names the destination on purpose: the tab opens the whole App Logic Guide, so a
-            bare "How casts and tiers work" would promise a section and deliver a manual. */}
-        <Link to={`${ROUTES.SETTINGS}?tab=docs`} className="text-xs text-primary underline">
+            Deep-links to the Help center. The label names the destination on purpose: the
+            link lands on the whole App Logic Guide, so a bare "How casts and tiers work"
+            would promise a section and deliver a manual. */}
+        <Link to={ROUTES.HELP} className="text-xs text-primary underline">
           How casts and tiers work, in the App Logic Guide
         </Link>
       </div>
