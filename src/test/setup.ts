@@ -2,6 +2,12 @@
 // etc.) augment vitest's `expect` for the typechecker, not just at runtime.
 import "@testing-library/jest-dom/vitest";
 import { afterEach } from "vitest";
+// Initialize the i18next singleton once for every test file. Components migrated to
+// react-i18next render via `useTranslation()`, which returns raw dotted keys unless the
+// instance is initialized. Tests that use renderWithProviders get it through
+// LanguageProvider, but many component tests call bare `render()`; bootstrapping it here
+// keeps `t()` resolving to English everywhere without per-file side-effect imports.
+import "@/i18n";
 
 if (typeof window !== 'undefined') Object.defineProperty(window, "matchMedia", {
   writable: true,
