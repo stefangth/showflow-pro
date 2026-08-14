@@ -35,7 +35,7 @@
 
 ### B. Cross-cutting client infra
 - [ ] **`onboarding` namespace (shared)** — `src/lib/dashboard/stageChain.ts`, `moduleOnboarding.ts`, and the setup rails (`bookings/setup/*`, `hireOrders/setup/*`, dashboard `firstRun` copy). Deferred three times; spans domains, so its own PR.
-- [ ] **`flowCopy` family** — `@/lib/flowCopy`, `bookingFlow.referenceLabel`, `bookings/timingCopy`, `bookings/actionCopy`, `bookingCockpit` DatePeek. **These still render English on the already-migrated dashboard/bookings/availability pages** — those domains aren't truly complete until this lands.
+- [~] **`flowCopy` family** — `@/lib/flowCopy` **DONE** (commit `ff2faf9a`: pure functions now take a `TFunction<'flowCopy'>`; the 4 callers pass a `useTranslation('flowCopy')` binding; `flowCopy` namespace added). **Still open in the family:** `bookingFlow.referenceLabel`, `bookings/timingCopy`, `bookings/actionCopy`, `bookingCockpit` DatePeek — these still render English on the already-migrated dashboard/bookings/availability/showsDetail pages. Pattern to reuse: thread a namespace-bound `t` (literal keys for type-safety), keep the branching logic, byte-identical EN + `t`-passing tests.
 - [ ] **Locale-aware `src/lib/dates.ts`** — weekday-header arrays, `date-fns format(...)`, `toLocaleDateString('en-GB')`, fee/number formatting via `Intl`. Touches call sites app-wide.
 - [ ] **`i18next-parser` in CI** — currently local-only (`i18n:extract`/`i18n:check`); resolve the `--fail-on-update` byte-identical-write quirk, then gate.
 
