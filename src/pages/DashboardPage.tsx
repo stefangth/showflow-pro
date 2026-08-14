@@ -60,6 +60,7 @@ export function ProducerBookingSection({ children }: { children: React.ReactNode
 
 function ProducerDashboard() {
   const { t } = useTranslation('dashboard');
+  const { t: tFlow } = useTranslation('flowCopy');
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const todayStr = format(today, 'yyyy-MM-dd');
@@ -358,7 +359,7 @@ function ProducerDashboard() {
             {flow.artist_acceptance && (
               <TierAttentionCard
                 items={attentionItems}
-                hint={deliveryHint(flow)}
+                hint={deliveryHint(flow, tFlow)}
                 reference={reference}
                 customFieldKey={customFieldKey}
               />

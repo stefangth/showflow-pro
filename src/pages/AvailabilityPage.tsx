@@ -66,6 +66,7 @@ function customFor(d: DateRow): Record<string, unknown> | null {
  * ============================================================ */
 function ArtistAvailability() {
   const { t } = useTranslation('availability');
+  const { t: tFlow } = useTranslation('flowCopy');
   const { currentOrg } = useAuth();
   // Mark that the artist has seen their availability. This completes the dashboard
   // first-run "block dates" step for an open-calendar artist: nothing to block is a
@@ -93,8 +94,8 @@ function ArtistAvailability() {
   // about a DIFFERENT audience (already-confirmed artists), not R2.1/R4.7's response
   // window. Only artists who actually receive offers see this line.
   const showTiming = flow.artist_acceptance && !!tonight;
-  const pageCopy = availabilityPageCopy(flow);
-  const statusLabels = bookingStatusLabels(flow);
+  const pageCopy = availabilityPageCopy(flow, tFlow);
+  const statusLabels = bookingStatusLabels(flow, tFlow);
   const { orderedColumns, visibleCount } = useColumnTemplate('availability');
   const { isEditorMode } = useEditorConfig();
   const columnHeaders = useColumnHeaders(orderedColumns);
