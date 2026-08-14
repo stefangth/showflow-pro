@@ -46,9 +46,9 @@ function StepRow({ step, index, onAction }: { step: ComposedStep; index: number;
 function ProgressCluster({ label, filled, total, hint }: { label?: string; filled?: number; total?: number; hint?: string }) {
   if (!total) return null;
   return (
-    <div className="shrink-0 text-right">
+    <div className="shrink-0 text-left sm:text-right">
       {label && <div className="text-[11px] font-semibold uppercase tracking-wider text-primary-foreground/60">{label}</div>}
-      <div className="mt-2 flex justify-end gap-1">
+      <div className="mt-2 flex justify-start gap-1 sm:justify-end">
         {Array.from({ length: total }).map((_, i) => (
           <div key={i} className={`h-[3px] w-[34px] rounded-full ${i < (filled ?? 0) ? "bg-primary-foreground/90" : "bg-primary-foreground/25"}`} />
         ))}
