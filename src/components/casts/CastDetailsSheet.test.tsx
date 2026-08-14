@@ -118,9 +118,9 @@ describe("CastDetailsSheet", () => {
     expect(within(hamburgRow).getByText("Tier 2")).toBeInTheDocument();
     expect(within(hamburgRow).getByText("Offered after Cast B.")).toBeInTheDocument();
 
-    expect(screen.getByRole("link", { name: /Manage offer order in Settings, Casts and cities/i })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /Manage offer order in Settings, Casts and coverage/i })).toHaveAttribute(
       "href",
-      "/settings?tab=casts-cities",
+      "/settings?tab=casts-coverage",
     );
   });
 });

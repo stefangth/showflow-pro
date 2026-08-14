@@ -411,7 +411,7 @@ export function CoveragePanel({ orgId, onOpenCast }: CoveragePanelProps) {
                           <span className="block truncate font-medium text-foreground">{c.name}</span>
                           <span className="block text-xs text-muted-foreground">{usageText}</span>
                         </span>
-                        <IconTooltip label={referenced ? "Still referenced — remove its tiers first" : `Remove ${c.name}`}>
+                        <IconTooltip label={referenced ? "Still referenced. Remove its tiers first." : `Remove ${c.name}`}>
                           <button
                             type="button"
                             onClick={() => deleteCity.mutate(c.id)}

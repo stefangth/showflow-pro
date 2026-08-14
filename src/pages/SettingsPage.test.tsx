@@ -46,7 +46,7 @@ import { SETTINGS_TAB_PARAMS } from "@/lib/settingsTabs";
 import SettingsPage from "./SettingsPage";
 
 // Every render wraps in a MemoryRouter: the page reads `?tab=` through useSearchParams and
-// tabs render react-router <Link>s (for example the Artists link in CastsCitiesTab), which
+// tabs render react-router <Link>s (for example EmailTemplatesTab's per-template links), which
 // do not work without Router context. In the app the
 // page is always mounted inside a <Route>, so this matches production.
 
@@ -154,8 +154,8 @@ describe("SettingsPage grouped vertical nav", () => {
     expect(screen.getByRole("tab", { name: /hire orders off/i })).toBeInTheDocument();
     expect(screen.queryByRole("tab", { name: /scheduling/i })).not.toBeInTheDocument();
     // Switching a section swaps the visible content.
-    fireEvent.mouseDown(screen.getByRole("tab", { name: /casts & cities/i }));
-    expect(await screen.findByRole("tab", { name: /casts & cities/i })).toHaveAttribute("aria-selected", "true");
+    fireEvent.mouseDown(screen.getByRole("tab", { name: /casts & coverage/i }));
+    expect(await screen.findByRole("tab", { name: /casts & coverage/i })).toHaveAttribute("aria-selected", "true");
   });
 
   // Broad Settings, read-only floor: these tabs used to be admin-only. A producer now
@@ -247,6 +247,23 @@ describe("SettingsPage ?tab= deep link", () => {
     expect(await screen.findByRole("tab", { name: /^organization$/i })).toHaveAttribute("aria-selected", "true");
   });
 
+  it("redirects a retired casts-cities or production-ownership deep link to Casts & coverage", async () => {
+    // Both sections folded into one tab; old bookmarks/notifications must still resolve
+    // rather than stranding the user on the role default (settingsTabs.test.ts pins the
+    // pure resolver, this pins the page actually wires it through).
+    vi.mocked(useAuth).mockReturnValue(DEFAULT_AUTH as never);
+    const { unmount } = renderWithProviders(
+      <MemoryRouter initialEntries={["/settings?tab=casts-cities"]}><SettingsPage /></MemoryRouter>,
+    );
+    expect(await screen.findByRole("tab", { name: /casts & coverage/i })).toHaveAttribute("aria-selected", "true");
+    unmount();
+
+    renderWithProviders(
+      <MemoryRouter initialEntries={["/settings?tab=production-ownership"]}><SettingsPage /></MemoryRouter>,
+    );
+    expect(await screen.findByRole("tab", { name: /casts & coverage/i })).toHaveAttribute("aria-selected", "true");
+  });
+
   it("ignores an admin-only tab asked for by a producer", async () => {
     vi.mocked(useAuth).mockReturnValue({ ...DEFAULT_AUTH, hasRole: (r: string) => r === "producer" } as never);
     renderWithProviders(
@@ -297,12 +314,18 @@ describe("SettingsPage ?tab= deep link", () => {
   // tab behind `isAdmin` (as "permissions" already is) without adding it to ADMIN_ONLY and
   // resolveInitialTab would hand a producer a value with no trigger and no content, leaving
   // the deep link on a blank page. Running the same sweep as a producer is what pins them.
+  //
+  // Scoped to the page's own nav tablist for the same reason as the admin sweep above:
+  // Casts & coverage renders its own nested SegmentedControl "tablist"s (Coverage/Ownership
+  // segment, and CoveragePanel's own org/per-show scope), each with its own aria-selected
+  // option, which would otherwise inflate the count this assertion checks.
   it.each([...SETTINGS_TAB_PARAMS])("selects a real section for a producer at ?tab=%s", async (tab) => {
     vi.mocked(useAuth).mockReturnValue({ ...DEFAULT_AUTH, hasRole: (r: string) => r === "producer" } as never);
     renderWithProviders(
       <MemoryRouter initialEntries={[`/settings?tab=${tab}`]}><SettingsPage /></MemoryRouter>,
     );
-    const triggers = await screen.findAllByRole("tab");
+    const [navTablist] = await screen.findAllByRole("tablist");
+    const triggers = within(navTablist).getAllByRole("tab");
     expect(triggers.filter((t) => t.getAttribute("aria-selected") === "true")).toHaveLength(1);
   });
 
@@ -324,8 +347,8 @@ describe("SettingsPage ?tab= deep link", () => {
     renderWithProviders(
       <MemoryRouter initialEntries={["/settings?tab=airtable"]}><SettingsPage /></MemoryRouter>,
     );
-    fireEvent.mouseDown(await screen.findByRole("tab", { name: /casts & cities/i }));
-    expect(await screen.findByRole("tab", { name: /casts & cities/i })).toHaveAttribute("aria-selected", "true");
+    fireEvent.mouseDown(await screen.findByRole("tab", { name: /casts & coverage/i }));
+    expect(await screen.findByRole("tab", { name: /casts & coverage/i })).toHaveAttribute("aria-selected", "true");
   });
 
   it("opens the named tab when a deep link arrives while the page is already open", async () => {
@@ -347,8 +370,8 @@ describe("SettingsPage ?tab= deep link", () => {
     expect(await screen.findByRole("tab", { name: /airtable sync/i })).toHaveAttribute("aria-selected", "true");
     // Switch by hand in between, so this proves the effect follows the param rather than
     // simply re-running on any state change.
-    fireEvent.mouseDown(screen.getByRole("tab", { name: /casts & cities/i }));
-    expect(await screen.findByRole("tab", { name: /casts & cities/i })).toHaveAttribute("aria-selected", "true");
+    fireEvent.mouseDown(screen.getByRole("tab", { name: /casts & coverage/i }));
+    expect(await screen.findByRole("tab", { name: /casts & coverage/i })).toHaveAttribute("aria-selected", "true");
 
     fireEvent.click(screen.getByRole("link", { name: /deep link/i }));
     expect(await screen.findByRole("tab", { name: /documentation/i })).toHaveAttribute("aria-selected", "true");
@@ -370,8 +393,8 @@ describe("SettingsPage ?tab= deep link", () => {
     );
     expect(await screen.findByRole("tab", { name: /airtable sync/i })).toHaveAttribute("aria-selected", "true");
 
-    fireEvent.mouseDown(screen.getByRole("tab", { name: /casts & cities/i }));
-    expect(await screen.findByRole("tab", { name: /casts & cities/i })).toHaveAttribute("aria-selected", "true");
+    fireEvent.mouseDown(screen.getByRole("tab", { name: /casts & coverage/i }));
+    expect(await screen.findByRole("tab", { name: /casts & coverage/i })).toHaveAttribute("aria-selected", "true");
 
     fireEvent.click(screen.getByRole("link", { name: /sync report/i }));
     expect(await screen.findByRole("tab", { name: /airtable sync/i })).toHaveAttribute("aria-selected", "true");
