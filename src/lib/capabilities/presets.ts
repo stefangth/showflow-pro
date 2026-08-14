@@ -24,6 +24,7 @@ export function presetOnKeys(preset: Preset): Set<string> {
 // because its module is off) never blocks a preset from reading as active.
 export function matchesPreset(effective: Record<string, boolean>, preset: Preset): boolean {
   if (preset === "Custom") return false;
+  if (Object.keys(effective).length === 0) return false;
   const on = presetOnKeys(preset);
   return Object.keys(effective).every(key => (effective[key] ?? false) === on.has(key));
 }

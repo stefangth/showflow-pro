@@ -24,4 +24,9 @@ describe("presets", () => {
     expect(matchesPreset(eff, "Standard")).toBe(true);
     expect(matchesPreset({ ...eff, producer_can_rename_org: true }, "Standard")).toBe(false);
   });
+  it("matchesPreset is false when effective map is empty", () => {
+    expect(matchesPreset({}, "Standard")).toBe(false);
+    expect(matchesPreset({}, "Full")).toBe(false);
+    expect(matchesPreset({}, "Restricted")).toBe(false);
+  });
 });
