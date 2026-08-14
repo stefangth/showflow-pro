@@ -1,5 +1,6 @@
-import { describe, it, expect } from "vitest";
-import { parseDateOnly, formatDateDMY, formatTimestampDMY, formatDateWithWeekday, toDateKey, isPastDate, PAST_DATE_TINT, pastRowClassName } from "./dates";
+import { describe, it, expect, afterEach } from "vitest";
+import i18n from "@/i18n";
+import { parseDateOnly, formatDateDMY, formatTimestampDMY, formatDateWithWeekday, toDateKey, isPastDate, PAST_DATE_TINT, pastRowClassName, weekdayShort, weekdayShortLabels, formatDayMonthShortYear } from "./dates";
 
 describe("parseDateOnly", () => {
   it("parses a YYYY-MM-DD string at local midnight (no UTC drift)", () => {
@@ -50,6 +51,28 @@ describe("formatDateWithWeekday", () => {
   it("prefixes the abbreviated weekday", () => {
     // 2026-04-23 is a Thursday
     expect(formatDateWithWeekday("2026-04-23")).toBe("Thu, 23/04/2026");
+  });
+});
+
+// The dd/MM/yyyy shape is numeric and locale-invariant; only the weekday name and the
+// short-month form follow the active language. These lock the German path so a language
+// switch actually reformats. i18n defaults to English, restored after each case.
+describe("locale-aware formatting", () => {
+  afterEach(async () => { await i18n.changeLanguage("en"); });
+
+  it("keeps English numeric shapes and English weekday by default", () => {
+    expect(weekdayShort("2026-04-23")).toBe("Thu");
+    expect(weekdayShortLabels()).toEqual(["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]);
+    expect(formatDayMonthShortYear("2026-04-23")).toBe("23 Apr 2026");
+  });
+
+  it("uses German weekday names and Monday-first labels under de", async () => {
+    await i18n.changeLanguage("de");
+    expect(formatDateWithWeekday("2026-04-23")).toBe("Do., 23/04/2026");
+    expect(weekdayShort("2026-04-23")).toBe("Do.");
+    expect(weekdayShortLabels()).toEqual(["Mo.", "Di.", "Mi.", "Do.", "Fr.", "Sa.", "So."]);
+    // dd/MM/yyyy stays numeric regardless of language.
+    expect(formatDateDMY("2026-04-23")).toBe("23/04/2026");
   });
 });
 

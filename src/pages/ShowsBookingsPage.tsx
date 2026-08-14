@@ -43,7 +43,7 @@ import { useCan } from '@/hooks/useCapabilities';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { showSlots } from '@/lib/settings';
-import { formatDateWithWeekday, parseDateOnly, pastRowClassName } from '@/lib/dates';
+import { formatDateWithWeekday, parseDateOnly, pastRowClassName, weekdayShort } from '@/lib/dates';
 import { cn } from '@/lib/utils';
 import { useReferenceField } from '@/hooks/useBookingFlow';
 import { referenceLabel } from '@/lib/bookingFlow';
@@ -408,10 +408,7 @@ function ProducerShowsBookings() {
     setSearchParams(next, { replace: true });
   };
 
-  const dayAbbr = (dateStr: string) => {
-    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    return days[parseDateOnly(dateStr).getDay()];
-  };
+  const dayAbbr = (dateStr: string) => weekdayShort(dateStr);
 
   return (
     <div className="space-y-6">

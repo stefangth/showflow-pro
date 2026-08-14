@@ -26,7 +26,7 @@ import { ArtistAvailabilityCalendar } from '@/components/availability/ArtistAvai
 import { AvailabilityPicker } from '@/components/availability/AvailabilityPicker';
 import { OfferResponseButtons } from '@/components/availability/OfferResponseButtons';
 import { bookingStatusBadgeClass } from '@/lib/bookings';
-import { formatDateDMY, parseDateOnly, isPastDate, pastRowClassName } from '@/lib/dates';
+import { formatDateDMY, parseDateOnly, isPastDate, pastRowClassName, formatDayMonthShortYear } from '@/lib/dates';
 import { showIdentityLabel } from '@/types';
 import { fetchMyActiveBookedDates, mergeArtistActiveBookedDates, type ActiveBookedDateEntry } from '@/data/artists';
 import { cn } from '@/lib/utils';
@@ -499,7 +499,7 @@ function ArtistAvailability() {
               {blockedDates!.map((b) => (
                 <div key={b.id} className="flex items-center gap-3 text-sm p-2 rounded-md border border-border">
                   <span className="font-medium w-28 shrink-0">
-                    {parseDateOnly(b.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    {formatDayMonthShortYear(b.date)}
                   </span>
                   <span className="flex-1 text-muted-foreground">{b.reason ?? '—'}</span>
                   <IconTooltip label={t('blocked.removeTooltip')}>

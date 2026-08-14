@@ -11,7 +11,7 @@ import { IconTooltip } from '@/components/common/IconTooltip';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { toDateKey, pastRowClassName } from '@/lib/dates';
+import { toDateKey, pastRowClassName, weekdayShortLabels } from '@/lib/dates';
 import { AvailabilityPicker } from './AvailabilityPicker';
 import { OfferResponseButtons } from './OfferResponseButtons';
 import type { EligibleDate } from '@/hooks/useArtistEligibleDates';
@@ -164,7 +164,7 @@ export function ArtistAvailabilityCalendar({ artistId, eligibleDates }: Props) {
           </p>
         )}
         <div className="grid grid-cols-7 gap-1 mb-2">
-          {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((d) => (
+          {weekdayShortLabels().map((d) => (
             <div key={d} className="text-center text-xs font-medium text-muted-foreground py-1">
               {d}
             </div>
