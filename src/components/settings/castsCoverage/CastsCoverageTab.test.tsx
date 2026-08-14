@@ -18,6 +18,9 @@ Object.assign(
     shows: { data: [], error: null },
     show_dates: { data: [], error: null },
     show_cast_eligibility: { data: [], error: null },
+    show_assignments: { data: [], error: null },
+    org_memberships: { data: [], error: null },
+    profiles: { data: [], error: null },
   }),
 );
 
@@ -31,10 +34,10 @@ describe("CastsCoverageTab", () => {
     expect(screen.getByRole("tab", { name: "Coverage" })).toHaveAttribute("aria-selected", "true");
   });
 
-  it("switches to the Production Ownership placeholder", () => {
+  it("switches to the Production Ownership panel", async () => {
     renderWithProviders(<CastsCoverageTab orgId="org-1" />);
     fireEvent.click(screen.getByRole("tab", { name: "Production Ownership" }));
-    expect(screen.getByText("Production Ownership (coming in next task)")).toBeInTheDocument();
+    expect(await screen.findByText("Owners by program")).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Production Ownership" })).toHaveAttribute("aria-selected", "true");
   });
 });

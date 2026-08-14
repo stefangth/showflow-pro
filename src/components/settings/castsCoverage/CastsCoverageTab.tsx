@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { SegmentedControl, type SegmentedControlOption } from "@/components/ui/segmented-control";
 import { CoveragePanel } from "./CoveragePanel";
+import { OwnershipPanel } from "./OwnershipPanel";
 
 type CastsCoverageSegment = "coverage" | "ownership";
 
@@ -32,7 +33,7 @@ export function CastsCoverageTab({ orgId }: { orgId: string }) {
       {segment === "coverage" ? (
         <CoveragePanel orgId={orgId} />
       ) : (
-        <div className="text-sm text-muted-foreground">Production Ownership (coming in next task)</div>
+        <OwnershipPanel orgId={orgId} />
       )}
     </div>
   );
