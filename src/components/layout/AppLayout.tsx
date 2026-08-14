@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { NavLink, Link } from 'react-router-dom';
 import { useAuth } from '@/features/auth/AuthContext';
@@ -65,7 +65,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
   // language_packages ships dark: while the org isn't entitled, force the runtime
   // to English regardless of what's stored, WITHOUT touching localStorage — so a
   // later entitlement flip instantly restores the user's own choice. Display-only.
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!languagePacksEnabled) {
       if (i18n.language !== 'en') void i18n.changeLanguage('en');
       return;

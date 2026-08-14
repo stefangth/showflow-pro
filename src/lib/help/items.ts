@@ -106,11 +106,11 @@ export const HELP_ITEMS: readonly HelpItem[] = [
     },
   },
   {
-    id: 'A3.1', role: 'admin', stage: 3, status: 'new', surface: 'Setup checklist · Settings, documentation', updated: '2026-08-14',
+    id: 'A3.1', role: 'admin', stage: 3, status: 'new', surface: 'Setup checklist · Help center', updated: '2026-08-14',
     q: { en: 'What are casts, ladders and tiers? What is the mental model?', de: 'Was sind Besetzungen, Rangfolgen und Stufen? Was ist das Denkmodell dahinter?' },
     a: {
-      en: 'The steps that assume those concepts now link straight to the documentation tab in Settings, which carries the model end to end.',
-      de: 'Die Schritte, die diese Konzepte voraussetzen, verlinken jetzt direkt auf den Dokumentations-Tab in den Einstellungen, der das Modell von Anfang bis Ende erklärt.',
+      en: 'The steps that assume those concepts now link straight to the Help center, which carries the model end to end.',
+      de: 'Die Schritte, die diese Konzepte voraussetzen, verlinken jetzt direkt auf das Hilfe-Center, das das Modell von Anfang bis Ende erklärt.',
     },
   },
   {
@@ -178,11 +178,11 @@ export const HELP_ITEMS: readonly HelpItem[] = [
     },
   },
   {
-    id: 'A4.5', role: 'admin', stage: 4, status: 'ok', surface: 'Dashboard, rules list · Settings, documentation', updated: '2026-08-14',
+    id: 'A4.5', role: 'admin', stage: 4, status: 'ok', surface: 'Dashboard, rules list · Help center', updated: '2026-08-14',
     q: { en: 'What runs automatically, and what still needs a person?', de: 'Was läuft automatisch, und was braucht noch einen Menschen?' },
     a: {
-      en: 'Once setup is complete the same panel becomes a read-only list of the rules your organization inherited. Settings, documentation carries the full system map.',
-      de: 'Sobald das Setup fertig ist, wird dasselbe Panel zu einer schreibgeschützten Liste der Regeln, die deine Organisation geerbt hat. Einstellungen, Dokumentation trägt die vollständige System-Map.',
+      en: 'Once setup is complete the same panel becomes a read-only list of the rules your organization inherited. The Help center explains how those rules play out.',
+      de: 'Sobald das Setup fertig ist, wird dasselbe Panel zu einer schreibgeschützten Liste der Regeln, die deine Organisation geerbt hat. Das Hilfe-Center erklärt, wie sich diese Regeln auswirken.',
     },
   },
   {
@@ -220,11 +220,11 @@ export const HELP_ITEMS: readonly HelpItem[] = [
     },
   },
   {
-    id: 'P0.2', role: 'producer', stage: 0, status: 'new', surface: 'Dashboard · Settings, documentation', updated: '2026-08-14',
+    id: 'P0.2', role: 'producer', stage: 0, status: 'new', surface: 'Dashboard · Help center', updated: '2026-08-14',
     q: { en: 'What is the difference between me and an admin?', de: 'Was ist der Unterschied zwischen mir und einem Admin?' },
     a: {
-      en: 'Broadly: you run the work, an admin sets the rules. Your waiting card and the rules list now carry a short note on what Production Team covers, with a link to what each role can do in Settings, documentation.',
-      de: 'Grob gesagt: du machst die Arbeit, ein Admin setzt die Regeln. Deine Warte-Karte und die Regel-Liste tragen jetzt eine kurze Notiz dazu, was das Produktionsteam abdeckt, mit einem Link darauf, was jede Rolle darf, unter Einstellungen, Dokumentation.',
+      en: 'Broadly: you run the work, an admin sets the rules. Your waiting card and the rules list now carry a short note on what Production Team covers, with a link to what each role can do in the Help center.',
+      de: 'Grob gesagt: du machst die Arbeit, ein Admin setzt die Regeln. Deine Warte-Karte und die Regel-Liste tragen jetzt eine kurze Notiz dazu, was das Produktionsteam abdeckt, mit einem Link darauf, was jede Rolle darf, im Hilfe-Center.',
     },
   },
   {

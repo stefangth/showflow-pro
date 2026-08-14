@@ -333,7 +333,7 @@ export function composeStageChain(input: StageChainInput): StageChainResult {
     progressLabel = "Nothing to set up";
     progressHint = "Steps appear the moment a module is switched on.";
     side = [
-      { title: "Read what each role covers", where: "Settings · Docs" },
+      { title: "Read what each role covers", where: "Help center" },
       { title: "Message your account manager", where: "Chats" },
     ];
     queueTitle = "What this page becomes";
@@ -398,8 +398,8 @@ export function composeStageChain(input: StageChainInput): StageChainResult {
       progressHint = !input.canEditBooking ? "The steps marked Admin are not yours. The rest are." : "Nothing here stops you using the rest of the app.";
     }
     side = admin
-      ? [{ title: "See it as your artists do", where: "The pencil top right opens the editor bar, where you can switch to the artist view." }, { title: "Read what each role covers", where: "Settings · Docs" }]
-      : [{ title: "See what each role can do", where: "Settings · Docs" }, { title: "Message the admin", where: "Chats" }];
+      ? [{ title: "See it as your artists do", where: "The pencil top right opens the editor bar, where you can switch to the artist view." }, { title: "Read what each role covers", where: "Help center" }]
+      : [{ title: "See what each role can do", where: "Help center" }, { title: "Message the admin", where: "Chats" }];
     queueTitle = "What this page becomes";
     queueHint = "Sample rows. Yours replace them once the org has dates.";
     sample = true;
