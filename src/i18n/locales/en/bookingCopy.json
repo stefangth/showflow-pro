@@ -40,5 +40,42 @@
       "immediateNoConfirm_one": "When a tier opens, offers email straight away. Artists get {{count}} hour to answer.",
       "immediateNoConfirm_other": "When a tier opens, offers email straight away. Artists get {{count}} hours to answer."
     }
+  },
+  "cockpit": {
+    "upNext": {
+      "direct": "Direct booking: producers book from the eligibility list",
+      "digest": "Digest sends daily · {{time}}",
+      "expiry_one": "{{count}} offer expires {{date}}",
+      "expiry_other": "{{count}} offers expire {{date}}",
+      "escalateOn": "Auto-escalate: on",
+      "escalateOff": "Auto-escalate: off"
+    },
+    "peek": {
+      "allConfirmed": "All {{total}} slots confirmed",
+      "acceptedWaiting": "{{count}} accepted waiting on you",
+      "mainSlotOpen_one": "{{count}} main slot open",
+      "mainSlotOpen_other": "{{count}} main slots open",
+      "understudySlotOpen_one": "{{count}} understudy slot open",
+      "understudySlotOpen_other": "{{count}} understudy slots open",
+      "readyToConfirm": "Ready to confirm"
+    },
+    "headerCta": {
+      "confirm": "Confirm {{count}} accepted",
+      "book": "Book from eligibility",
+      "reviewOffers": "Review open offers",
+      "openOffersTo": "Open offers to {{name}}",
+      "openTier": "Open tier {{tier}}"
+    },
+    "activity": {
+      "confirmed": "{{name}} confirmed",
+      "tierOpened": "Tier {{tier}} opened",
+      "tierClosed": "Tier {{tier}} closed"
+    },
+    "hireFooter": {
+      "ready": "READY",
+      "left": "{{count}} LEFT",
+      "detailReady": "All slots confirmed, drafts one order per artist",
+      "detailWaiting": "Waiting on {{remaining}} of {{total}} slots"
+    }
   }
 }

@@ -40,5 +40,42 @@
       "immediateNoConfirm_one": "Wenn eine Stufe öffnet, gehen Angebote sofort per E-Mail raus. Artists haben {{count}} Stunde Zeit zu antworten.",
       "immediateNoConfirm_other": "Wenn eine Stufe öffnet, gehen Angebote sofort per E-Mail raus. Artists haben {{count}} Stunden Zeit zu antworten."
     }
+  },
+  "cockpit": {
+    "upNext": {
+      "direct": "Direktbuchung: Das Production Team bucht aus der Eignungsliste",
+      "digest": "Tagesübersicht geht täglich raus · {{time}}",
+      "expiry_one": "{{count}} Angebot läuft {{date}} ab",
+      "expiry_other": "{{count}} Angebote laufen {{date}} ab",
+      "escalateOn": "Automatisch eskalieren: an",
+      "escalateOff": "Automatisch eskalieren: aus"
+    },
+    "peek": {
+      "allConfirmed": "Alle {{total}} Plätze bestätigt",
+      "acceptedWaiting": "{{count}} angenommen, warten auf dich",
+      "mainSlotOpen_one": "{{count}} Hauptplatz frei",
+      "mainSlotOpen_other": "{{count}} Hauptplätze frei",
+      "understudySlotOpen_one": "{{count}} Zweitbesetzungsplatz frei",
+      "understudySlotOpen_other": "{{count}} Zweitbesetzungsplätze frei",
+      "readyToConfirm": "Bereit zum Bestätigen"
+    },
+    "headerCta": {
+      "confirm": "{{count}} angenommene bestätigen",
+      "book": "Aus Eignungsliste buchen",
+      "reviewOffers": "Offene Angebote prüfen",
+      "openOffersTo": "Angebote an {{name}} öffnen",
+      "openTier": "Stufe {{tier}} öffnen"
+    },
+    "activity": {
+      "confirmed": "{{name}} bestätigt",
+      "tierOpened": "Stufe {{tier}} geöffnet",
+      "tierClosed": "Stufe {{tier}} geschlossen"
+    },
+    "hireFooter": {
+      "ready": "BEREIT",
+      "left": "{{count}} OFFEN",
+      "detailReady": "Alle Plätze bestätigt, erstellt einen Engagementvertrag pro Artist",
+      "detailWaiting": "Warten auf {{remaining}} von {{total}} Plätzen"
+    }
   }
 }

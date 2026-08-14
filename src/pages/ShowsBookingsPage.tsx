@@ -116,6 +116,7 @@ function ArtistShowsBookings() {
 
 function ProducerShowsBookings() {
   const { t } = useTranslation('bookings');
+  const { t: tBooking } = useTranslation('bookingCopy');
   const STATUS_LABEL: Record<DisplayStatus, string> = useMemo(() => ({
     open: t('status.open'),
     partially_filled: t('status.partiallyFilled'),
@@ -741,6 +742,7 @@ function ProducerShowsBookings() {
               peek={computeDatePeek({
                 counts: bookingCounts?.get(peekedShowDate.id) ?? null,
                 slots: showSlots(peekedShowDate.show),
+                t: tBooking,
               })}
               canConfirm={canConfirmBookings && bookingOn}
               confirming={confirmingPeek}

@@ -183,6 +183,7 @@ interface ShowDateDetailRow {
 
 export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: Props) {
   const { t } = useTranslation('showsDetail');
+  const { t: tBooking } = useTranslation('bookingCopy');
   const { hasRole, user, roles, currentOrg } = useAuth();
   const { isEditorMode } = useEditorConfig();
   const isRealAdmin = roles.includes('admin');
@@ -673,6 +674,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: P
     nextTier,
     // RELABEL the CTA to the cast when the next tier resolves to a single one.
     nextTierCastName: nextTierTarget?.kind === 'cast' ? nextTierTarget.cast.name : null,
+    t: tBooking,
   });
   const ctaAllowed =
     workflowCta.kind === 'confirm' ? canConfirmBookings :
@@ -715,6 +717,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: P
     pendingCount,
     nextExpiry,
     hasOpenTier: (openedQ.data ?? []).some((t) => !t.closedAt),
+    t: tBooking,
   });
   let statusText = '';
   let statusTone: 'green' | 'amber' | 'accent' | 'muted' = 'muted';
@@ -742,7 +745,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: P
     statusTone = 'amber';
   }
 
-  const activity = buildActivity({ bookings, openedTiers: openedQ.data ?? [] });
+  const activity = buildActivity({ bookings, openedTiers: openedQ.data ?? [], t: tBooking });
 
   // Per-opened-tier status counts for the tier ladder. One entry per OPENED tier
   // (a missing entry degrades that ladder row), so iterate openedQ, not bookings.
@@ -837,6 +840,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: P
     slots: slotConfig,
     confirmedMain: funnel.confirmedMain,
     confirmedUnderstudy: funnel.confirmedUnderstudy,
+    t: tBooking,
   });
   const showFooter = open && hireOrdersOn && canManage && !!slotConfig && showDate?.status !== 'cancelled';
   const footer = showFooter

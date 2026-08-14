@@ -8,6 +8,7 @@
  * URL params: ?tab=cast|offers|order|chat|setup  ?flow=classic|direct  ?peek=1
  */
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { CockpitShell } from "@/components/shows/date/CockpitShell";
 import { CockpitPager } from "@/components/shows/date/CockpitPager";
 import { CockpitHeader, type CockpitTab } from "@/components/shows/date/CockpitHeader";
@@ -58,10 +59,11 @@ export default function DevCockpitHarness() {
   const flow = useParam("flow", "classic");
   const showPeek = useParam("peek", "0") === "1";
   const classic = flow !== "direct";
+  const { t: tBooking } = useTranslation("bookingCopy");
 
   const peek = useMemo(
-    () => computeDatePeek({ counts: { confirmedMain: 2, confirmedUs: 1, acceptedMain: 1, acceptedUs: 1 }, slots: { main_cast: 4, understudies: 2 } }),
-    [],
+    () => computeDatePeek({ counts: { confirmedMain: 2, confirmedUs: 1, acceptedMain: 1, acceptedUs: 1 }, slots: { main_cast: 4, understudies: 2 }, t: tBooking }),
+    [tBooking],
   );
 
   if (showPeek) {

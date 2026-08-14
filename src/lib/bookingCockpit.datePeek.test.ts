@@ -1,17 +1,20 @@
 import { describe, it, expect } from "vitest";
+import i18n from "@/i18n";
 import { computeDatePeek } from "./bookingCockpit";
+
+const t = i18n.getFixedT("en", "bookingCopy");
 
 const C = (o: Partial<Record<"confirmedMain" | "confirmedUs" | "acceptedMain" | "acceptedUs", number>>) =>
   ({ confirmedMain: 0, confirmedUs: 0, acceptedMain: 0, acceptedUs: 0, ...o });
 
 describe("computeDatePeek", () => {
   it("returns null when slots are unconfigured", () => {
-    expect(computeDatePeek({ counts: C({}), slots: null })).toBeNull();
+    expect(computeDatePeek({ t, counts: C({}), slots: null })).toBeNull();
   });
 
   it("2 confirmed main + 2 accepted understudies -> at-risk, meter tones, main-open headline", () => {
     // confirmedMain 2 of 4 leaves 2 main slots open; the 2 accepted are understudies.
-    const p = computeDatePeek({
+    const p = computeDatePeek({ t,
       counts: C({ confirmedMain: 2, acceptedUs: 2 }),
       slots: { main_cast: 4, understudies: 2 },
     })!;
@@ -27,7 +30,7 @@ describe("computeDatePeek", () => {
   });
 
   it("all confirmed -> filled tone and headline, not confirmable", () => {
-    const p = computeDatePeek({
+    const p = computeDatePeek({ t,
       counts: C({ confirmedMain: 4, confirmedUs: 2 }),
       slots: { main_cast: 4, understudies: 2 },
     })!;
@@ -39,7 +42,7 @@ describe("computeDatePeek", () => {
   });
 
   it("only understudy open -> reports understudy slots open", () => {
-    const p = computeDatePeek({
+    const p = computeDatePeek({ t,
       counts: C({ confirmedMain: 4 }),
       slots: { main_cast: 4, understudies: 2 },
     })!;
