@@ -192,6 +192,8 @@ export default function HireOrdersPage() {
         </div>
       </div>
 
+      <PageMini page="hireOrders" />
+
       {/* The dashboard-style setup rail, module-scoped, above the KPIs. Its step
           buttons open the inline checklist Sheet at that step (the "do it here"
           surface); Hide dismisses it on this surface only. */}
@@ -221,8 +223,6 @@ export default function HireOrdersPage() {
           onOpen={rail.expand}
         />
       )}
-
-      <PageMini page="hireOrders" />
 
       <OrdersKpis orders={allOrders} />
 

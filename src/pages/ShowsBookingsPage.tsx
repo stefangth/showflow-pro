@@ -445,6 +445,8 @@ function ProducerShowsBookings() {
         />
       )}
 
+      <PageMini page="bookings" />
+
       {/* The dashboard-style setup rail, module-scoped, near the top of the page. Its step
           buttons open the inline checklist Sheet at that step (the "do it here" surface);
           Hide dismisses it on this surface only. */}
@@ -474,8 +476,6 @@ function ProducerShowsBookings() {
           onOpen={rail.expand}
         />
       )}
-
-      <PageMini page="bookings" />
 
       <div className="min-w-0 space-y-6">
       <div className="flex flex-wrap items-center gap-3">

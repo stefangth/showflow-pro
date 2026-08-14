@@ -71,13 +71,13 @@ export function DashboardSetupRail({
       {banner ? (
         // Violet hero, mirroring DashboardWelcome (bg-accent-500 + primary-foreground),
         // so the module rail's top reads as the same hero as the dashboard welcome card.
-        <div className="flex items-start justify-between gap-8 bg-accent-500 p-5 text-primary-foreground">
-          <div className="min-w-0">
+        <div className="flex flex-col gap-4 bg-accent-500 p-5 text-primary-foreground sm:flex-row sm:items-start sm:justify-between sm:gap-8">
+          <div className="min-w-0 order-2 sm:order-none">
             <div className="text-[11px] font-semibold uppercase tracking-wider text-primary-foreground/60">{eyebrow}</div>
             <div className="mt-2 font-display text-xl font-semibold leading-tight tracking-tight text-primary-foreground text-pretty">{title}</div>
             <p className="mt-1.5 text-sm leading-[21px] text-primary-foreground/80 text-pretty">{body}</p>
           </div>
-          <div className="flex flex-col items-end gap-3">
+          <div className="order-1 flex flex-row-reverse items-center justify-between gap-3 sm:order-none sm:flex-col sm:items-end">
             <button onClick={onClose} className="rounded-md px-1.5 py-0.5 text-xs text-primary-foreground/80 hover:bg-primary-foreground/10">Hide</button>
             <ProgressCluster label={progressLabel} filled={progressFilled} total={progressTotal} hint={progressHint} />
           </div>

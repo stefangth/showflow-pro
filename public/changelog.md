@@ -11,6 +11,10 @@ What's new in ShowFlow, newest first.
 - **A Help center built around your role** — A new Help page answers the real questions an admin, producer, or artist has at each step, with a search, a role filter, and a glossary of the words ShowFlow uses. Available in English and German.
 - **Page guides** — Every page now opens with a short guide: four steps showing what that page's module does and which step is yours, with a small preview of the real screen in each. It follows your role, and you can hide it per page (a slim bar brings it back). Available in English and German.
 
+### Improved
+- **Guides come first** — The page guide now sits above the setup checklist, so you see what a page is for before the steps to set it up.
+- **A cleaner setup checklist on phones** — The setup checklist header now stacks on small screens instead of crowding, so the title and progress stay readable on a phone.
+
 ## 1.15.1 — August 12, 2026
 
 *Invitations that stay ready when your team is*
