@@ -115,13 +115,13 @@ function ArtistShowsBookings() {
 
 function ProducerShowsBookings() {
   const { t } = useTranslation('bookings');
-  const STATUS_LABEL: Record<DisplayStatus, string> = {
+  const STATUS_LABEL: Record<DisplayStatus, string> = useMemo(() => ({
     open: t('status.open'),
     partially_filled: t('status.partiallyFilled'),
     fully_filled: t('status.fullyFilled'),
     cancelled: t('status.cancelled'),
     unconfigured: t('status.unconfigured'),
-  };
+  }), [t]);
   const { canSee } = useFilterVisibility('bookings');
   const { reference, customFieldKey } = useReferenceField();
   const { orderedColumns, visibleCount } = useColumnTemplate('bookings-producer');
