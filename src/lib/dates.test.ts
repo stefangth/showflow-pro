@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach } from "vitest";
 import i18n from "@/i18n";
-import { parseDateOnly, formatDateDMY, formatTimestampDMY, formatDateWithWeekday, toDateKey, isPastDate, PAST_DATE_TINT, pastRowClassName, weekdayShort, weekdayShortLabels, formatDayMonthShortYear } from "./dates";
+import { parseDateOnly, formatDateDMY, formatTimestampDMY, formatDateWithWeekday, toDateKey, isPastDate, PAST_DATE_TINT, pastRowClassName, weekdayShort, weekdayShortLabels, formatDayMonthShortYear, formatMonthYear, formatDayMonthYear, formatFullWeekdayDate } from "./dates";
 
 describe("parseDateOnly", () => {
   it("parses a YYYY-MM-DD string at local midnight (no UTC drift)", () => {
@@ -73,6 +73,29 @@ describe("locale-aware formatting", () => {
     expect(weekdayShortLabels()).toEqual(["Mo.", "Di.", "Mi.", "Do.", "Fr.", "Sa.", "So."]);
     // dd/MM/yyyy stays numeric regardless of language.
     expect(formatDateDMY("2026-04-23")).toBe("23/04/2026");
+  });
+
+  // formatMonthYear (calendar header): full month + year, weekday-free.
+  it("formatMonthYear renders the full month name in the active language", async () => {
+    expect(formatMonthYear(new Date(2026, 2, 1))).toBe("March 2026");
+    await i18n.changeLanguage("de");
+    expect(formatMonthYear(new Date(2026, 2, 1))).toBe("März 2026");
+  });
+
+  // formatDayMonthYear (bookings date column): zero-padded day + short month + year.
+  it("formatDayMonthYear zero-pads the day and localizes the short month", async () => {
+    expect(formatDayMonthYear("2026-10-23")).toBe("23 Oct 2026");
+    expect(formatDayMonthYear("2026-01-05")).toBe("05 Jan 2026");
+    await i18n.changeLanguage("de");
+    expect(formatDayMonthYear("2026-10-23")).toBe("23 Okt. 2026");
+  });
+
+  // formatFullWeekdayDate (cockpit sheet header): full weekday + day + full month + year.
+  it("formatFullWeekdayDate localizes the weekday and full month name", async () => {
+    // 2026-04-23 is a Thursday.
+    expect(formatFullWeekdayDate("2026-04-23")).toBe("Thursday, 23 April 2026");
+    await i18n.changeLanguage("de");
+    expect(formatFullWeekdayDate("2026-04-23")).toBe("Donnerstag, 23 April 2026");
   });
 });
 

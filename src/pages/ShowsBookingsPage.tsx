@@ -17,7 +17,7 @@ import { PopoverAnchor } from '@radix-ui/react-popover';
 import { RowPeek } from '@/components/bookings/RowPeek';
 import { computeDatePeek, pagerPosition } from '@/lib/bookingCockpit';
 import { Search, Plus, ListChecks } from 'lucide-react';
-import { format, parseISO } from 'date-fns';
+import { parseISO } from 'date-fns';
 import { ProgramFilter } from '@/components/filters/ProgramFilter';
 import { TimeframeFilter, upcomingTimeframe, type TimeframeValue } from '@/components/filters/TimeframeFilter';
 import { SortControl, type SortValue } from '@/components/filters/SortControl';
@@ -43,7 +43,7 @@ import { useCan } from '@/hooks/useCapabilities';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { showSlots } from '@/lib/settings';
-import { formatDateWithWeekday, parseDateOnly, pastRowClassName, weekdayShort } from '@/lib/dates';
+import { formatDateWithWeekday, formatDayMonthYear, parseDateOnly, pastRowClassName, weekdayShort } from '@/lib/dates';
 import { cn } from '@/lib/utils';
 import { useReferenceField } from '@/hooks/useBookingFlow';
 import { referenceLabel } from '@/lib/bookingFlow';
@@ -539,7 +539,7 @@ function ProducerShowsBookings() {
                     switch (colId) {
                       case 'show_dates.date': return (
                         <TableCell key={colId} className="font-medium whitespace-nowrap">
-                          {format(parseDateOnly(sd.date), 'dd MMM yyyy')}
+                          {formatDayMonthYear(sd.date)}
                         </TableCell>
                       );
                       case '_computed.day': return (

@@ -11,7 +11,7 @@ import { IconTooltip } from '@/components/common/IconTooltip';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { toDateKey, pastRowClassName, weekdayShortLabels } from '@/lib/dates';
+import { toDateKey, pastRowClassName, weekdayShortLabels, formatMonthYear, formatDateWithWeekday } from '@/lib/dates';
 import { AvailabilityPicker } from './AvailabilityPicker';
 import { OfferResponseButtons } from './OfferResponseButtons';
 import type { EligibleDate } from '@/hooks/useArtistEligibleDates';
@@ -139,7 +139,7 @@ export function ArtistAvailabilityCalendar({ artistId, eligibleDates }: Props) {
               <ChevronLeft className="h-4 w-4" />
             </Button>
           </IconTooltip>
-          <CardTitle className="font-display">{format(currentMonth, 'MMMM yyyy')}</CardTitle>
+          <CardTitle className="font-display">{formatMonthYear(currentMonth)}</CardTitle>
           <IconTooltip label={t('calendar.nextMonth')}>
             <Button
               variant="ghost"
@@ -252,7 +252,7 @@ export function ArtistAvailabilityCalendar({ artistId, eligibleDates }: Props) {
                 <PopoverTrigger asChild>{cell}</PopoverTrigger>
                 <PopoverContent className="w-56 p-3" align="center">
                   <p className="text-xs text-muted-foreground mb-2">
-                    {format(day, 'EEE, dd/MM/yyyy')}
+                    {formatDateWithWeekday(day)}
                   </p>
                   {isConfirmed ? (
                     <p className="text-xs text-center text-success">

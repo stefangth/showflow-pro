@@ -58,6 +58,29 @@ export function formatDateWithWeekday(input: string | Date): string {
   return format(d, 'EEE, dd/MM/yyyy', { locale: dfLocale() });
 }
 
+/** Format a date-only string/Date as the full month name + year, e.g. `April 2026`
+ *  (`April 2026` / `März 2026` in German). Weekday-free calendar header. */
+export function formatMonthYear(input: string | Date): string {
+  const d = typeof input === 'string' ? parseDateOnly(input) : input;
+  return format(d, 'MMMM yyyy', { locale: dfLocale() });
+}
+
+/** Format a date-only string/Date as a zero-padded day + short month + year, e.g.
+ *  `23 Apr 2026` (`23 Apr. 2026` in German). Unlike `formatDayMonthShortYear`
+ *  (Intl, no zero-pad, `de` day-period) this keeps the date-fns `dd MMM yyyy`
+ *  shape, so English output is byte-identical to the previous inline `format`. */
+export function formatDayMonthYear(input: string | Date): string {
+  const d = typeof input === 'string' ? parseDateOnly(input) : input;
+  return format(d, 'dd MMM yyyy', { locale: dfLocale() });
+}
+
+/** Format a date-only string/Date as full weekday + day + full month + year, e.g.
+ *  `Thursday, 23 April 2026` (`Donnerstag, 23 April 2026` in German). */
+export function formatFullWeekdayDate(input: string | Date): string {
+  const d = typeof input === 'string' ? parseDateOnly(input) : input;
+  return format(d, 'EEEE, d MMMM yyyy', { locale: dfLocale() });
+}
+
 /** Convert a Date back to `YYYY-MM-DD` (used as DB key). */
 export function toDateKey(d: Date): string {
   return format(d, 'yyyy-MM-dd');
