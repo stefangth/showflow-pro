@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { createCast } from '@/data/casts';
@@ -13,6 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Plus } from 'lucide-react';
 
 export function CastDialog() {
+  const { t } = useTranslation('showsDetail');
   const { user, roles, currentOrg } = useAuth();
   const { isEditorMode } = useEditorConfig();
   const isRealAdmin = roles.includes('admin');
@@ -34,19 +36,19 @@ export function CastDialog() {
       setOpen(false);
       setName('');
       setDescription('');
-      toast({ title: 'Cast created' });
+      toast({ title: t('castDialog.toast.castCreated') });
     },
-    onError: (err: Error) => toast({ title: 'Error', description: err.message, variant: 'destructive' }),
+    onError: (err: Error) => toast({ title: t('castDialog.toast.error'), description: err.message, variant: 'destructive' }),
   });
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" variant="outline"><Plus className="h-4 w-4 mr-1" />New Cast</Button>
+        <Button size="sm" variant="outline"><Plus className="h-4 w-4 mr-1" />{t('castDialog.newCast')}</Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle className="font-display">New Cast</DialogTitle>
+          <DialogTitle className="font-display">{t('castDialog.newCast')}</DialogTitle>
           {isEditorMode && isRealAdmin && (
             <Badge variant="outline" className="text-xs font-mono text-muted-foreground w-fit">
               CastDialog.tsx
@@ -57,10 +59,10 @@ export function CastDialog() {
           onSubmit={(e) => { e.preventDefault(); if (name.trim()) create.mutate(); }}
           className="space-y-4"
         >
-          <Input placeholder="Cast name (e.g. Berlin A-Team)" value={name} onChange={e => setName(e.target.value)} required />
-          <Textarea placeholder="Description (optional)" value={description} onChange={e => setDescription(e.target.value)} />
+          <Input placeholder={t('castDialog.castNameExample')} value={name} onChange={e => setName(e.target.value)} required />
+          <Textarea placeholder={t('castDialog.descriptionOptional')} value={description} onChange={e => setDescription(e.target.value)} />
           <Button type="submit" className="w-full" disabled={create.isPending || !name.trim() || !currentOrg}>
-            {create.isPending ? 'Creating…' : 'Create'}
+            {create.isPending ? t('castDialog.creating') : t('castDialog.create')}
           </Button>
         </form>
       </DialogContent>

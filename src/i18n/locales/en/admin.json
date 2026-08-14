@@ -1,1 +1,137 @@
-{}
+{
+  "page": {
+    "accessRequired": "Admin access required",
+    "title": "Admin Panel",
+    "subtitle": "Identity & access management, audit trail, sync status"
+  },
+  "stats": {
+    "shows": "Total Shows",
+    "artists": "Total Artists",
+    "bookings": "Total Bookings"
+  },
+  "tabs": {
+    "people": "People",
+    "audit": "Audit Log",
+    "sync": "Sync Status"
+  },
+  "audit": {
+    "title": "Booking Audit Trail",
+    "loadError": "Failed to load the audit trail.",
+    "empty": "No audit logs yet"
+  },
+  "sync": {
+    "title": "Airtable Sync Status",
+    "loadError": "Failed to load the sync status.",
+    "records": "{{n}} records",
+    "empty": "No sync events yet. Enable Airtable sync in Settings to start syncing."
+  },
+  "people": {
+    "inviteCardTitle": "Invite people",
+    "title": "People",
+    "searchPlaceholder": "Search people",
+    "searchAriaLabel": "Search people",
+    "searchStatus_one": "{{count}} person matches your search{{suffix}}.",
+    "searchStatus_other": "{{count}} people match your search{{suffix}}.",
+    "searchHistorySuffix": ", plus {{n}} in invitation history",
+    "invitesLoadError": "Failed to load pending invitations.",
+    "emptySearchWithHistory": "No members or pending invites match \"{{query}}\". See invitation history below.",
+    "emptySearch": "No members or pending invites match \"{{query}}\".",
+    "emptyNoPeople": "No people yet.",
+    "groupPendingInvites": "Pending invites",
+    "groupMembers": "Members",
+    "groupRecentlyRemoved": "Recently removed",
+    "historyTitle": "Invitation history",
+    "historyAriaLabel": "Invitation history",
+    "checkingDuplicates": "Checking existing people…",
+    "duplicatesPaused": "Can't verify duplicates right now, so new invites are paused.",
+    "linkCopied": "Invite link copied",
+    "linkCopyError": "Could not copy link",
+    "roleUpdated": "Role updated",
+    "memberRestored": "Member restored",
+    "removedFromList": "Removed from list"
+  },
+  "removeDialog": {
+    "title": "Remove member?",
+    "description": "{{email}} loses access to this organization now. Their account, artist profile, and bookings are kept, and you can undo this from the list.",
+    "action": "Remove",
+    "toastRemoved": "Member removed",
+    "undo": "Undo"
+  },
+  "revokeDialog": {
+    "title": "Revoke invitation?",
+    "description": "{{email}} will no longer be able to accept this invitation. You can invite them again later.",
+    "action": "Revoke"
+  },
+  "deleteDialog": {
+    "title": "Delete this account?",
+    "fallbackWho": "This account",
+    "description": "{{who}} has no other organization, so this erases their account everywhere: login removed and personal data anonymized. This cannot be undone. Type",
+    "toConfirm": " to confirm.",
+    "inputAriaLabel": "Type the email to confirm deletion",
+    "action": "Delete account",
+    "keptPlatformAdmin": "Account kept. Platform administrators can't be deleted here.",
+    "keptOtherOrg": "Account kept. They still belong to another organization.",
+    "deleted": "Account deleted"
+  },
+  "actions": {
+    "cancel": "Cancel"
+  },
+  "inviteBar": {
+    "invalidEmail": "Enter a valid email address",
+    "emailPlaceholder": "invitee@email.com",
+    "invite": "Invite",
+    "bulkInvite": "Bulk invite",
+    "alreadyMember": "Already a member of this organization.",
+    "alreadyInvited": "Already invited (pending).",
+    "resend": "Resend"
+  },
+  "bulk": {
+    "badgeMember": "Already a member",
+    "badgeInvited": "Already invited",
+    "badgeInvalid": "Invalid",
+    "title": "Bulk invite",
+    "description": "Paste emails separated by commas, spaces, or new lines.",
+    "placeholder": "alex@email.com\nsam@email.com",
+    "invited": "{{n}} invited",
+    "skipped": "{{n}} skipped",
+    "failed": "{{n}} failed",
+    "inviting": "Inviting…",
+    "invite": "Invite"
+  },
+  "inviteRow": {
+    "statusAccepted": "Accepted",
+    "statusRevoked": "Revoked",
+    "invited": "Invited {{date}}"
+  },
+  "personRow": {
+    "you": "You",
+    "invited": "Invited {{date}}",
+    "awaitingAcceptance": "Awaiting acceptance",
+    "lastSeen": "Last seen {{date}}",
+    "neverSignedIn": "Never signed in",
+    "resentMultiple": "Resent {{num}}× · last {{date}}",
+    "resentOnce": "Resent {{date}}",
+    "copyInviteLink": "Copy invite link",
+    "copyInviteLinkFor": "Copy invite link for {{email}}",
+    "resendInvitation": "Resend invitation",
+    "resendInvitationTo": "Resend invitation to {{email}}",
+    "revokeInvitation": "Revoke invitation",
+    "revokeInvitationFor": "Revoke invitation for {{email}}",
+    "roles": "Roles",
+    "editRolesFor": "Edit roles for {{email}}",
+    "remove": "Remove",
+    "removeAria": "Remove {{who}}"
+  },
+  "removedRow": {
+    "by": " by {{name}}",
+    "removed": "Removed {{date}}",
+    "was": "was {{role}}",
+    "undoRemoval": "Undo removal",
+    "undoRemovalOf": "Undo removal of {{who}}",
+    "undo": "Undo",
+    "deleteAccount": "Delete account",
+    "deleteAccountOf": "Delete account of {{who}}",
+    "clearFromList": "Clear from list",
+    "clearAria": "Clear {{who}} from list"
+  }
+}

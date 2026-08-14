@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
@@ -25,6 +26,7 @@ export interface DryRunDialogProps {
 export function DryRunDialog({
   open, onOpenChange, tier, result, loading, flow, confirmPending = false, onConfirm,
 }: DryRunDialogProps) {
+  const { t } = useTranslation("showsDetail");
   const candidates = result?.candidates ?? [];
   const n = candidates.length;
   const hasMessage = !!result?.message;
@@ -35,29 +37,29 @@ export function DryRunDialog({
   const confirmDisabled = notReady || hasMessage || n === 0 || confirmPending;
 
   const deliverySentence = flow.offer_delivery === "digest"
-    ? "Offers go out with the next daily digest."
-    : "Offer emails send immediately.";
+    ? t("dryRunDialog.deliveryDigest")
+    : t("dryRunDialog.deliveryImmediate");
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent aria-label="Preview offer tier">
+      <DialogContent aria-label={t("dryRunDialog.previewOfferTier")}>
         <DialogHeader>
           <DialogTitle>
             {loading || tier == null
-              ? "Checking who gets offers…"
-              : `Opening tier ${tier} would send ${n} offers`}
+              ? t("dryRunDialog.checkingTitle")
+              : t("dryRunDialog.openingTitle", { tier, count: n })}
           </DialogTitle>
           <DialogDescription>
             {loading
-              ? "Checking who is eligible for this tier…"
+              ? t("dryRunDialog.checkingDesc")
               : hasMessage
-                ? "This tier isn't ready to open yet."
+                ? t("dryRunDialog.notReadyDesc")
                 : deliverySentence}
           </DialogDescription>
         </DialogHeader>
 
         {loading ? (
-          <div className="space-y-2" role="status" aria-label="Loading preview">
+          <div className="space-y-2" role="status" aria-label={t("dryRunDialog.loadingPreview")}>
             <Skeleton className="h-4 w-3/4" />
             <Skeleton className="h-4 w-1/2" />
           </div>
@@ -66,14 +68,17 @@ export function DryRunDialog({
         ) : (
           <div className="space-y-3">
             <p className="text-xs text-muted-foreground">
-              Excluded: {result?.excluded.alreadyBooked ?? 0} already booked ·{" "}
-              {result?.excluded.blocked ?? 0} blocked · {result?.excluded.inactive ?? 0} inactive
+              {t("dryRunDialog.excludedLine", {
+                alreadyBooked: result?.excluded.alreadyBooked ?? 0,
+                blocked: result?.excluded.blocked ?? 0,
+                inactive: result?.excluded.inactive ?? 0,
+              })}
             </p>
             <p className="text-xs text-muted-foreground">
-              Not eligible for this show: {result?.excluded.notEligible ?? 0}
+              {t("dryRunDialog.notEligible", { count: result?.excluded.notEligible ?? 0 })}
             </p>
             <p className="text-xs text-muted-foreground">
-              Missing required skills: {result?.excluded.missingSkills ?? 0}
+              {t("dryRunDialog.missingSkills", { count: result?.excluded.missingSkills ?? 0 })}
             </p>
             <div className="flex flex-wrap gap-1.5">
               {candidates.map((c) => (
@@ -89,9 +94,9 @@ export function DryRunDialog({
         )}
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>{t("dryRunDialog.cancel")}</Button>
           <Button onClick={onConfirm} disabled={confirmDisabled}>
-            {tier != null ? `Open tier ${tier} · send ${n} offers` : "Open tier"}
+            {tier != null ? t("dryRunDialog.openTierConfirm", { tier, count: n }) : t("dryRunDialog.openTier")}
           </Button>
         </DialogFooter>
       </DialogContent>

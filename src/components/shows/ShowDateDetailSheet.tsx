@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
@@ -100,6 +101,7 @@ function AssignedArtistsCard({ bookings, canManage, showConfirm, onConfirm, onCa
   onConfirm: (bookingId: string) => void;
   onCancel: (bookingId: string) => void;
 }) {
+  const { t } = useTranslation('showsDetail');
   // Memoized: this card re-renders with the whole sheet, and the grouping is the
   // same sort/filter work the sheet already memoizes for bookedArtistIds.
   const { active, main, understudy } = useMemo(() => deriveBookingGroups(bookings), [bookings]);
@@ -107,7 +109,7 @@ function AssignedArtistsCard({ bookings, canManage, showConfirm, onConfirm, onCa
     <Card>
       <CardHeader>
         <CardTitle className="font-display text-lg flex items-center gap-2">
-          <Users className="h-5 w-5" />Assigned Artists
+          <Users className="h-5 w-5" />{t('showDateSheet.assignedArtists.title')}
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -115,7 +117,7 @@ function AssignedArtistsCard({ bookings, canManage, showConfirm, onConfirm, onCa
           <div className="space-y-4">
             {main.length > 0 && (
               <div className="space-y-2">
-                <p className="text-xs text-muted-foreground uppercase tracking-wide">Main cast</p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide">{t('showDateSheet.assignedArtists.mainCast')}</p>
                 {main.map(b => (
                   <BookingRow
                     key={b.id}
@@ -132,7 +134,7 @@ function AssignedArtistsCard({ bookings, canManage, showConfirm, onConfirm, onCa
             )}
             {understudy.length > 0 && (
               <div className="space-y-2">
-                <p className="text-xs text-muted-foreground uppercase tracking-wide">Understudies</p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide">{t('showDateSheet.assignedArtists.understudies')}</p>
                 {understudy.map(b => (
                   <BookingRow
                     key={b.id}
@@ -147,7 +149,7 @@ function AssignedArtistsCard({ bookings, canManage, showConfirm, onConfirm, onCa
             )}
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground">No artists assigned yet</p>
+          <p className="text-sm text-muted-foreground">{t('showDateSheet.assignedArtists.empty')}</p>
         )}
       </CardContent>
     </Card>
@@ -180,6 +182,7 @@ interface ShowDateDetailRow {
 }
 
 export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: Props) {
+  const { t } = useTranslation('showsDetail');
   const { hasRole, user, roles, currentOrg } = useAuth();
   const { isEditorMode } = useEditorConfig();
   const isRealAdmin = roles.includes('admin');
@@ -469,14 +472,14 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: P
       queryClient.invalidateQueries({ queryKey: ['show-dates'] });
       queryClient.invalidateQueries({ queryKey: ['eligible-artists'] });
       queryClient.invalidateQueries({ queryKey: ['artist-eligible-dates'] });
-      toast.success('City updated');
+      toast.success(t('showDateSheet.toast.cityUpdated'));
     },
     onError: (err: Error) => toast.error(err.message),
   });
 
   const toggleDateCast = useMutation({
     mutationFn: async ({ castId, on }: { castId: string; on: boolean }) => {
-      if (!currentOrg) throw new Error('No active organization');
+      if (!currentOrg) throw new Error(t('showDateSheet.toast.noActiveOrg'));
       if (on) {
         const { error } = await supabase
           .from('show_date_cast_eligibility')
@@ -484,7 +487,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: P
         if (error) throw error;
       } else {
         const row = dateCastOverrides?.find(r => r.cast_id === castId);
-        if (!row) throw new Error('Cast override not found — try refreshing');
+        if (!row) throw new Error(t('showDateSheet.toast.castOverrideNotFound'));
         const { error } = await supabase
           .from('show_date_cast_eligibility')
           .delete()
@@ -496,7 +499,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: P
       queryClient.invalidateQueries({ queryKey: ['show-date-cast-eligibility', showDateId] });
       queryClient.invalidateQueries({ queryKey: ['eligible-artists'] });
       queryClient.invalidateQueries({ queryKey: ['artist-eligible-dates'] });
-      toast.success('Cast eligibility updated');
+      toast.success(t('showDateSheet.toast.castEligibilityUpdated'));
     },
     onError: (err: Error) => toast.error(err.message),
   });
@@ -514,26 +517,26 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: P
   const addDateSkill = useMutation({
     mutationFn: (skillId: string) =>
       addShowDateRequiredSkill(supabase, { showDateId: showDateId!, skillId, orgId: currentOrg!.id }),
-    onSuccess: () => { invalidateEligibility(); toast.success('Required skill added'); },
-    onError: (e: Error) => toast.error('Failed to add required skill', { description: e.message }),
+    onSuccess: () => { invalidateEligibility(); toast.success(t('showDateSheet.toast.requiredSkillAdded')); },
+    onError: (e: Error) => toast.error(t('showDateSheet.toast.requiredSkillAddFailed'), { description: e.message }),
   });
   const removeDateSkill = useMutation({
     mutationFn: (skillId: string) =>
       removeShowDateRequiredSkill(supabase, { showDateId: showDateId!, skillId }),
-    onSuccess: () => { invalidateEligibility(); toast.success('Required skill removed'); },
-    onError: (e: Error) => toast.error('Failed to remove required skill', { description: e.message }),
+    onSuccess: () => { invalidateEligibility(); toast.success(t('showDateSheet.toast.requiredSkillRemoved')); },
+    onError: (e: Error) => toast.error(t('showDateSheet.toast.requiredSkillRemoveFailed'), { description: e.message }),
   });
   const dropDateSkill = useMutation({
     mutationFn: (skillId: string) =>
       addShowDateSkillDrop(supabase, { showDateId: showDateId!, skillId, orgId: currentOrg!.id }),
-    onSuccess: () => { invalidateEligibility(); toast.success('Skill dropped on this date'); },
-    onError: (e: Error) => toast.error('Failed to drop skill', { description: e.message }),
+    onSuccess: () => { invalidateEligibility(); toast.success(t('showDateSheet.toast.skillDropped')); },
+    onError: (e: Error) => toast.error(t('showDateSheet.toast.skillDropFailed'), { description: e.message }),
   });
   const restoreDateSkill = useMutation({
     mutationFn: (skillId: string) =>
       removeShowDateSkillDrop(supabase, { showDateId: showDateId!, skillId }),
-    onSuccess: () => { invalidateEligibility(); toast.success('Skill restored on this date'); },
-    onError: (e: Error) => toast.error('Failed to restore skill', { description: e.message }),
+    onSuccess: () => { invalidateEligibility(); toast.success(t('showDateSheet.toast.skillRestored')); },
+    onError: (e: Error) => toast.error(t('showDateSheet.toast.skillRestoreFailed'), { description: e.message }),
   });
   // RequiredSkillsCard "Reset to computed": drop every date-add and restore every
   // drop in one pass, then invalidate once (rather than one toast per skill).
@@ -546,13 +549,13 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: P
         ...drops.map((id) => removeShowDateSkillDrop(supabase, { showDateId: showDateId!, skillId: id })),
       ]);
     },
-    onSuccess: () => { invalidateEligibility(); toast.success('Reset to computed skills'); },
-    onError: (e: Error) => toast.error('Failed to reset skills', { description: e.message }),
+    onSuccess: () => { invalidateEligibility(); toast.success(t('showDateSheet.toast.skillsReset')); },
+    onError: (e: Error) => toast.error(t('showDateSheet.toast.skillsResetFailed'), { description: e.message }),
   });
 
   const createBookingMutation = useMutation({
     mutationFn: ({ artistId, isUnderstudy }: { artistId: string; isUnderstudy: boolean }) => {
-      if (!currentOrg) throw new Error('No active organization');
+      if (!currentOrg) throw new Error(t('showDateSheet.toast.noActiveOrg'));
       return createBooking(supabase, {
         showDateId: showDateId!,
         artistId,
@@ -565,7 +568,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: P
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bookings'] });
-      toast.success('Artist booked');
+      toast.success(t('showDateSheet.toast.artistBooked'));
     },
     onError: (err: Error) => {
       // A booking attempt can fail after the row already changed underneath it (e.g. a lost
@@ -581,15 +584,15 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: P
     onSuccess: ({ affected }, variables) => {
       queryClient.invalidateQueries({ queryKey: ['bookings'] });
       if (affected === 0) {
-        toast.error('This booking could not be updated. Refresh and retry.');
+        toast.error(t('showDateSheet.toast.bookingUpdateFailed'));
       } else if (variables.status === 'confirmed') {
         // Names the artist so the toast reads as a receipt ("Booked Ada Lovelace.") rather
         // than a generic status ack — bookingsForDate (not the memoized `bookings`, which is
         // declared further down) already carries the artist join this lookup needs.
         const name = (bookingsForDate ?? []).find((b) => b.id === variables.bookingId)?.artist?.name;
-        toast.success(name ? `Booked ${name}.` : 'Booking updated');
+        toast.success(name ? t('showDateSheet.toast.bookedNamed', { name }) : t('showDateSheet.toast.bookingUpdated'));
       } else {
-        toast.success('Booking updated');
+        toast.success(t('showDateSheet.toast.bookingUpdated'));
       }
     },
     onError: (err: Error) => toast.error(err.message),
@@ -600,7 +603,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: P
     mutationFn: (ids: string[]) => bulkConfirmSoftBooked(supabase, { ids, now: new Date() }),
     onSuccess: ({ affected }) => {
       queryClient.invalidateQueries({ queryKey: ['bookings'] });
-      toast.success(affected ? `Confirmed ${affected}` : 'Nothing to confirm, it moved on');
+      toast.success(affected ? t('showDateSheet.toast.confirmed', { count: affected }) : t('showDateSheet.toast.nothingToConfirm'));
     },
     onError: (err: Error) => toast.error(err.message),
   });
@@ -612,7 +615,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: P
       const { kind, text } = offerResultToast(res, tier);
       if (kind === 'success') toast.success(text); else toast.info(text);
       if (res.trackingWarning) {
-        toast.error('Tier tracking failed to record — re-open the tier to restore escalation and at-risk alerts.');
+        toast.error(t('showDateSheet.toast.tierTrackingFailed'));
       }
       queryClient.invalidateQueries({ queryKey: ['bookings'] });
       queryClient.invalidateQueries({ queryKey: ['offer-tiers', 'opened', showDateId] });
@@ -716,24 +719,26 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: P
   let statusText = '';
   let statusTone: 'green' | 'amber' | 'accent' | 'muted' = 'muted';
   if (showDate?.status === 'cancelled') {
-    statusText = 'Cancelled';
+    statusText = t('showDateSheet.status.cancelled');
     statusTone = 'muted';
   } else if (totalSlots != null && confirmedCount >= totalSlots) {
-    statusText = 'All slots confirmed';
+    statusText = t('showDateSheet.status.allConfirmed');
     statusTone = 'green';
   } else if (highestOpenTier != null) {
     // Fold the offers-expiry signal into the open-tier status (matches the
     // reference "Tier N open · N offers expire …"); the lower-priority digest /
     // auto-escalate pills go to the rail's Up next block below.
     const expiryItem = upNextItems.find((i) => i.kind === 'expiry');
-    statusText = expiryItem ? `Tier ${highestOpenTier} open · ${expiryItem.text}` : `Tier ${highestOpenTier} open`;
+    statusText = expiryItem
+      ? t('showDateSheet.status.tierOpenExpiry', { tier: highestOpenTier, detail: expiryItem.text })
+      : t('showDateSheet.status.tierOpen', { tier: highestOpenTier });
     statusTone = 'amber';
   } else if (upNextItems.length > 0) {
     statusText = upNextItems[0].text;
     statusTone = upNextItems[0].tone === 'amber' ? 'amber'
       : upNextItems[0].tone === 'violet' ? 'accent' : 'muted';
   } else if (acceptedCount > 0) {
-    statusText = `${acceptedCount} accepted, waiting on confirm`;
+    statusText = t('showDateSheet.status.acceptedWaiting', { count: acceptedCount });
     statusTone = 'amber';
   }
 
@@ -769,7 +774,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: P
         custom: (showDate.custom as Record<string, unknown> | null) ?? null,
         customFieldKey,
       })
-    : 'Show Date';
+    : t('showDateSheet.titleFallback');
   const dateLine = showDate ? format(parseDateOnly(showDate.date), 'EEEE, d MMMM yyyy') : '';
   const sessionTimes = showDate
     ? [showDate.session_1, showDate.session_2, showDate.session_3]
@@ -783,11 +788,11 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: P
   const railSource: 'airtable' | 'manual' = showDate?.airtable_record_id ? 'airtable' : 'manual';
   const castChips = [
     ...Array.from(inheritedCastIds).map((cid) => ({
-      label: casts?.find((c) => c.id === cid)?.name ?? 'Cast',
+      label: casts?.find((c) => c.id === cid)?.name ?? t('showDateSheet.castFallback'),
       kind: 'inherited' as const,
     })),
     ...Array.from(overrideCastIds).map((cid) => ({
-      label: casts?.find((c) => c.id === cid)?.name ?? 'Cast',
+      label: casts?.find((c) => c.id === cid)?.name ?? t('showDateSheet.castFallback'),
       kind: 'override' as const,
     })),
   ];
@@ -812,14 +817,14 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: P
             // actually drives it (run_offer_engine for classic offers, canManage for
             // direct booking) — not confirm_bookings — and label it per flow.
             canOpenSlot: flow.artist_acceptance ? canRunOfferEngine : canManage,
-            slotActionLabel: flow.artist_acceptance ? 'Open next tier' : 'Book artist',
+            slotActionLabel: flow.artist_acceptance ? t('showDateSheet.slotActionOpenTier') : t('showDateSheet.slotActionBook'),
             onOpenSlot: () => setActiveTab('offers'),
           })
         : [],
     [
       open, showDate, bookingModuleAllowed, bookings, slotConfig, canManage,
       canConfirmBookings, canRunOfferEngine, flow.artist_acceptance,
-      mutateBookingStatus, setActiveTab,
+      mutateBookingStatus, setActiveTab, t,
     ],
   );
 
@@ -837,14 +842,14 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: P
   const footer = showFooter
     ? dateHasActiveOrder
       ? {
-          badgeLabel: 'DRAFTED', ready: true, detail: 'A hire order already covers this date',
-          ctaLabel: 'Open hire order', ctaDisabled: false, onCta: () => setActiveTab('order'),
+          badgeLabel: t('showDateSheet.footer.drafted'), ready: true, detail: t('showDateSheet.footer.alreadyCovers'),
+          ctaLabel: t('showDateSheet.footer.openHireOrder'), ctaDisabled: false, onCta: () => setActiveTab('order'),
         }
       : {
           badgeLabel: hireFooter.badgeLabel,
           ready: hireFooter.ready,
           detail: hireFooter.detail,
-          ctaLabel: hireFooter.ready ? 'Generate hire order' : 'Generate',
+          ctaLabel: hireFooter.ready ? t('showDateSheet.footer.generateHireOrder') : t('showDateSheet.footer.generate'),
           ctaDisabled: !hireFooter.ready || hireOrderAction.isPending || !canGenerateHireOrders,
           onCta: generateHireOrder,
         }
@@ -872,7 +877,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: P
                 <>
                 {pager && (
                   <CockpitPager
-                    label={`Date ${pager.index} of ${pager.total}`}
+                    label={t('showDateSheet.pagerLabel', { index: pager.index, total: pager.total })}
                     onPrev={pager.onPrev}
                     onNext={pager.onNext}
                     prevDisabled={pager.index <= 1}
@@ -884,7 +889,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: P
                   dateLine={dateLine}
                   metaLine={metaLine}
                   slots={slotConfig}
-                  slotWarning={!slotConfig ? `Slot config missing for ${showDate.show?.program ?? 'this show'}. Set cast slots in Settings.` : undefined}
+                  slotWarning={!slotConfig ? t('showDateSheet.slotWarning', { program: showDate.show?.program ?? t('showDateSheet.thisShow') }) : undefined}
                   confirmedCount={confirmedCount}
                   acceptedCount={acceptedCount}
                   statusText={statusText}
@@ -899,27 +904,27 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: P
                   onWorkflowCta={onWorkflowCta}
                   showGenerateHireOrder={!!showGenerateHireOrderCta}
                   generateDisabled={hireOrderAction.isPending || !canGenerateHireOrders}
-                  generateTitle={canGenerateHireOrders ? undefined : "You don't have permission to generate hire orders"}
+                  generateTitle={canGenerateHireOrders ? undefined : t('showDateSheet.generateHireOrderNoPermission')}
                   onGenerate={generateHireOrder}
-                  flowLabel={flow.artist_acceptance ? 'Classic offers' : 'Direct booking'}
+                  flowLabel={flow.artist_acceptance ? t('showDateSheet.flowClassic') : t('showDateSheet.flowDirect')}
                   onEditFlow={canEditBookingSettings ? () => navigate(ROUTES.SETTINGS) : undefined}
                   tabs={[
-                    { id: 'cast', label: 'Cast' },
-                    { id: 'offers', label: flow.artist_acceptance ? 'Offers' : 'Book artists', hidden: !canManage },
-                    { id: 'order', label: 'Hire order', hidden: !hireOrdersOn },
-                    { id: 'chat', label: 'Chat' },
-                    { id: 'setup', label: 'Setup', hidden: !canManage },
+                    { id: 'cast', label: t('showDateSheet.tabs.cast') },
+                    { id: 'offers', label: flow.artist_acceptance ? t('showDateSheet.tabs.offers') : t('showDateSheet.tabs.book'), hidden: !canManage },
+                    { id: 'order', label: t('showDateSheet.tabs.order'), hidden: !hireOrdersOn },
+                    { id: 'chat', label: t('showDateSheet.tabs.chat') },
+                    { id: 'setup', label: t('showDateSheet.tabs.setup'), hidden: !canManage },
                   ]}
                   activeTab={activeTab}
                   onTab={setActiveTab}
                   devBadge={isEditorMode && isRealAdmin}
                   overflowActions={canManage ? [
-                    { label: 'Edit date setup', onSelect: () => setActiveTab('setup') },
+                    { label: t('showDateSheet.overflow.editDateSetup'), onSelect: () => setActiveTab('setup') },
                     // Same capability gate as the Setup-tab Edit control: opening the
                     // schedule/notes dialog requires manage_show_dates, not just the
                     // broad admin|producer read gate.
                     ...(canManageShowDates
-                      ? [{ label: synced ? 'Edit notes' : 'Edit schedule', onSelect: () => setEditOpen(true) }]
+                      ? [{ label: synced ? t('showDateSheet.editNotes') : t('showDateSheet.editSchedule'), onSelect: () => setEditOpen(true) }]
                       : []),
                   ] : []}
                 />
@@ -932,7 +937,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: P
                   {showDate.status === 'cancelled' && (
                     <div className="px-6 pt-4">
                       <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3">
-                        <p className="text-sm font-medium text-destructive">Cancelled</p>
+                        <p className="text-sm font-medium text-destructive">{t('showDateSheet.banner.cancelled')}</p>
                         {showDate.cancellation_reason && (
                           <p className="text-sm text-destructive/90 mt-0.5">{showDate.cancellation_reason}</p>
                         )}
@@ -988,7 +993,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: P
                       <Card>
                         <CardHeader>
                           <CardTitle className="font-display text-base">
-                            {flow.artist_acceptance ? 'Offers' : 'Book artists'}
+                            {flow.artist_acceptance ? t('showDateSheet.tabs.offers') : t('showDateSheet.tabs.book')}
                           </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
@@ -1101,21 +1106,21 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: P
                   <div className="space-y-6">
                     <Card>
                       <CardHeader>
-                        <CardTitle className="font-display text-base">Date configuration</CardTitle>
+                        <CardTitle className="font-display text-base">{t('showDateSheet.setup.dateConfiguration')}</CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-4">
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           <div>
-                            <label className="text-xs text-muted-foreground mb-1 block">City</label>
+                            <label className="text-xs text-muted-foreground mb-1 block">{t('showDateSheet.setup.city')}</label>
                             <Select
                               value={showDate.city_id ?? 'none'}
                               onValueChange={v => updateDateCity.mutate(v === 'none' ? null : v)}
                             >
                               <SelectTrigger>
-                                <SelectValue placeholder="Select city" />
+                                <SelectValue placeholder={t('showDateSheet.setup.selectCity')} />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="none">— None —</SelectItem>
+                                <SelectItem value="none">{t('showDateSheet.setup.none')}</SelectItem>
                                 {(cities ?? []).map(c => (
                                   <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                                 ))}
@@ -1124,15 +1129,15 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: P
                           </div>
                           <div>
                             <label className="text-xs text-muted-foreground mb-1 block">
-                              Extra eligible casts (this date)
+                              {t('showDateSheet.setup.extraEligibleCasts')}
                             </label>
                             <Popover>
                               <PopoverTrigger asChild>
                                 <Button variant="outline" className="w-full justify-between">
                                   <span className="truncate">
                                     {overrideCastIds.size === 0
-                                      ? 'Add cast for this date…'
-                                      : `${overrideCastIds.size} added`}
+                                      ? t('showDateSheet.setup.addCastForDate')
+                                      : t('showDateSheet.setup.addedCount', { count: overrideCastIds.size })}
                                   </span>
                                   <ChevronsUpDown className="h-4 w-4 ml-2 opacity-50" />
                                 </Button>
@@ -1140,7 +1145,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: P
                               <PopoverContent className="w-64 p-1" align="end">
                                 <div className="max-h-64 overflow-y-auto">
                                   {(casts ?? []).length === 0 && (
-                                    <p className="text-xs text-muted-foreground p-2">No casts yet.</p>
+                                    <p className="text-xs text-muted-foreground p-2">{t('showDateSheet.setup.noCastsYet')}</p>
                                   )}
                                   {(casts ?? []).map(c => {
                                     const on = overrideCastIds.has(c.id);
@@ -1168,7 +1173,9 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: P
                                 <Badge key={cid} variant="outline" className="text-xs">
                                   {casts?.find(c => c.id === cid)?.name}
                                   <span className="ml-1 opacity-60">
-                                    inherited{showDate.city?.name ? ` via ${showDate.city.name}` : ''}
+                                    {showDate.city?.name
+                                      ? t('showDateSheet.setup.inheritedVia', { city: showDate.city.name })
+                                      : t('showDateSheet.setup.inherited')}
                                   </span>
                                 </Badge>
                               ))}
@@ -1180,7 +1187,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: P
                             </div>
                             {inheritedCastIds.size > 0 && (
                               <p className="text-xs text-muted-foreground">
-                                Inherited casts come from the city eligibility matrix in Settings → Cities &amp; Casts. Update the city above or adjust cast eligibility there.
+                                {t('showDateSheet.setup.inheritedNote')}
                               </p>
                             )}
                           </div>
@@ -1203,31 +1210,31 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: P
 
                     {showDate.status !== 'cancelled' && (
                       <div className="flex flex-wrap items-center gap-2">
-                        <IconTooltip label={canManageShowDates ? '' : "You don't have permission to edit show dates"}>
+                        <IconTooltip label={canManageShowDates ? '' : t('showDateSheet.setup.editNotesPermission')}>
                           <Button variant="outline" size="sm" onClick={() => setEditOpen(true)} disabled={!canManageShowDates}>
-                            {synced ? 'Edit notes' : 'Edit schedule'}
+                            {synced ? t('showDateSheet.editNotes') : t('showDateSheet.editSchedule')}
                           </Button>
                         </IconTooltip>
 
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
-                            <Button variant="outline" size="sm">Cancel date</Button>
+                            <Button variant="outline" size="sm">{t('showDateSheet.setup.cancelDate')}</Button>
                           </AlertDialogTrigger>
                           <AlertDialogContent>
                             <AlertDialogHeader>
-                              <AlertDialogTitle>Cancel this date?</AlertDialogTitle>
+                              <AlertDialogTitle>{t('showDateSheet.setup.cancelDateTitle')}</AlertDialogTitle>
                               <AlertDialogDescription>
-                                This releases all bookings for this date and notifies booked artists. Add a reason:
+                                {t('showDateSheet.setup.cancelDateDescription')}
                               </AlertDialogDescription>
                             </AlertDialogHeader>
-                            <Input value={cancelReason} onChange={(e) => setCancelReason(e.target.value)} placeholder="Reason (e.g. venue lost)" />
+                            <Input value={cancelReason} onChange={(e) => setCancelReason(e.target.value)} placeholder={t('showDateSheet.setup.cancelReasonPlaceholder')} />
                             <AlertDialogFooter>
-                              <AlertDialogCancel>Keep date</AlertDialogCancel>
+                              <AlertDialogCancel>{t('showDateSheet.setup.keepDate')}</AlertDialogCancel>
                               <AlertDialogAction
                                 onClick={() => cancelDate.mutate({ id: showDate.id, reason: cancelReason },
-                                  { onSuccess: () => { toast.success('Date cancelled'); onOpenChange(false); },
+                                  { onSuccess: () => { toast.success(t('showDateSheet.toast.dateCancelled')); onOpenChange(false); },
                                     onError: (e) => toast.error((e as Error).message) })}>
-                                Cancel date
+                                {t('showDateSheet.setup.cancelDate')}
                               </AlertDialogAction>
                             </AlertDialogFooter>
                           </AlertDialogContent>
@@ -1235,24 +1242,24 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: P
 
                         {canHardDelete && (
                           <AlertDialog>
-                            <IconTooltip label={deletable ? '' : synced ? "Synced dates can't be deleted — cancel instead" : 'Has bookings — cancel instead'}>
+                            <IconTooltip label={deletable ? '' : synced ? t('showDateSheet.setup.deleteSyncedTooltip') : t('showDateSheet.setup.deleteHasBookingsTooltip')}>
                               <AlertDialogTrigger asChild>
                                 <Button variant="ghost" size="sm" className="text-destructive" disabled={!deletable}>
-                                  Delete
+                                  {t('showDateSheet.setup.delete')}
                                 </Button>
                               </AlertDialogTrigger>
                             </IconTooltip>
                             <AlertDialogContent>
                               <AlertDialogHeader>
-                                <AlertDialogTitle>Delete this date?</AlertDialogTitle>
-                                <AlertDialogDescription>This permanently removes the date. This cannot be undone.</AlertDialogDescription>
+                                <AlertDialogTitle>{t('showDateSheet.setup.deleteTitle')}</AlertDialogTitle>
+                                <AlertDialogDescription>{t('showDateSheet.setup.deleteDescription')}</AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogCancel>{t('showDateSheet.setup.cancel')}</AlertDialogCancel>
                                 <AlertDialogAction onClick={() => deleteDate.mutate(showDate.id,
-                                  { onSuccess: () => { toast.success('Date deleted'); onOpenChange(false); },
+                                  { onSuccess: () => { toast.success(t('showDateSheet.toast.dateDeleted')); onOpenChange(false); },
                                     onError: (e) => toast.error((e as Error).message) })}>
-                                  Delete
+                                  {t('showDateSheet.setup.delete')}
                                 </AlertDialogAction>
                               </AlertDialogFooter>
                             </AlertDialogContent>

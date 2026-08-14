@@ -1,1 +1,62 @@
-{}
+{
+  "page": {
+    "documentTitle": "Profile · ShowFlow",
+    "title": "Profile",
+    "subtitle": "Your account details and sign-in methods"
+  },
+  "details": {
+    "title": "Details",
+    "email": "Email",
+    "displayName": "Display name",
+    "phone": "Phone",
+    "contactNote": "Separate from the account details above: admins and producers in your organization can see the contact details on your artist record so they can reach you about bookings.",
+    "save": "Save",
+    "saving": "Saving…",
+    "saved": "Profile saved"
+  },
+  "security": {
+    "title": "Sign-in & security",
+    "magicLinks": "Magic links",
+    "magicLinksHint": "Sign in with a secure link sent to your email.",
+    "active": "Active",
+    "password": "Password",
+    "passwordHint": "Sign in using your email and password.",
+    "statusChecking": "Checking…",
+    "statusUnavailable": "Unavailable",
+    "statusSet": "Set",
+    "statusNotSet": "Not set",
+    "changePassword": "Change password",
+    "addPassword": "Add password",
+    "statusError": "Could not load password status",
+    "retry": "Retry"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "description": "Choose how you hear about each kind of update. Critical account emails are always sent.",
+    "columnEmail": "Email",
+    "columnInApp": "In-app",
+    "channelEmail": "email",
+    "channelInApp": "in-app",
+    "channelAria": "{{category}} {{channel}}"
+  },
+  "data": {
+    "title": "Your data",
+    "description": "Download a copy of your personal data (profile, talent records, bookings, availability, messages, and notifications) as a JSON file.",
+    "preparing": "Preparing…",
+    "download": "Download my data",
+    "downloaded": "Your data has been downloaded"
+  },
+  "delete": {
+    "title": "Delete account",
+    "description": "Permanently delete your account. Your account and profile details are removed. Your shared booking history, including any open offers, is kept but de-identified. This cannot be undone.",
+    "hireOrdersNote": "Signed hire orders you already agreed to are kept for the organization's records.",
+    "trigger": "Delete account",
+    "dialogTitle": "Delete your account?",
+    "confirmBefore": "This permanently removes your account and personal data. Type",
+    "confirmAfter": "to confirm.",
+    "cancel": "Cancel",
+    "deleting": "Deleting…",
+    "confirmAction": "Permanently delete",
+    "deleted": "Your account has been deleted"
+  }
+}

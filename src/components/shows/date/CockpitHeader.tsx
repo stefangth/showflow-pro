@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MoreHorizontal, Settings2, TriangleAlert } from "lucide-react";
@@ -83,6 +84,7 @@ export function CockpitHeader({
   showGenerateHireOrder, generateDisabled, generateTitle, onGenerate,
   flowLabel, onEditFlow, tabs, activeTab, onTab, devBadge, overflowActions = [],
 }: CockpitHeaderProps) {
+  const { t } = useTranslation("showsDetail");
   const total = slots ? slots.main_cast + slots.understudies : 0;
 
   return (
@@ -112,7 +114,7 @@ export function CockpitHeader({
               disabled={generateDisabled}
               title={generateTitle}
             >
-              Generate hire order
+              {t("cockpitHeader.generateHireOrder")}
             </Button>
           )}
           {overflowActions.length > 0 && (
@@ -120,7 +122,7 @@ export function CockpitHeader({
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
-                  aria-label="More actions"
+                  aria-label={t("cockpitHeader.moreActions")}
                   className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--radius-m)] border border-[var(--line-strong)] bg-[var(--surface)] text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-2)]"
                 >
                   <MoreHorizontal className="h-[18px] w-[18px]" />
@@ -150,12 +152,12 @@ export function CockpitHeader({
           {showEngineStatus && slots && (
             <>
               <div className="flex items-center gap-2">
-                <span className="font-mono text-xs font-medium text-foreground">{confirmedCount} of {total} slots</span>
+                <span className="font-mono text-xs font-medium text-foreground">{t("cockpitHeader.slotsCount", { confirmed: confirmedCount, total })}</span>
                 <SlotMeter
                   fixed
                   tones={slotMeterTones(confirmedCount, acceptedCount, total)}
                   testId="cockpit-slot-meter"
-                  ariaLabel="Slot fill"
+                  ariaLabel={t("cockpitHeader.slotFill")}
                 />
               </div>
               {statusText && (
@@ -181,7 +183,7 @@ export function CockpitHeader({
 
         {/* Read-only flow indicator; a subtle Settings affordance only for those who may edit it. */}
         <div className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-          <span>Flow:</span>
+          <span>{t("cockpitHeader.flow")}</span>
           {onEditFlow ? (
             <button
               type="button"

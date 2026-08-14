@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { AlertTriangle, CheckCircle2 } from "lucide-react";
 import { ROUTES } from "@/config/app.config";
 import { useOrderBlockers } from "@/hooks/useOrderBlockers";
@@ -37,6 +38,7 @@ export interface IssuePreflightSheetProps {
 export function IssuePreflightSheet({
   open, onOpenChange, orgId, order, onConfirm, isIssuing = false,
 }: IssuePreflightSheetProps) {
+  const { t } = useTranslation("hireOrdersPages");
   const navigate = useNavigate();
   const { blockers, isLoading, isError } = useOrderBlockers(orgId, order);
   // `!!order` is part of the claim, not a caller's job: with no order there is nothing
@@ -49,25 +51,25 @@ export function IssuePreflightSheet({
       <SheetContent className="flex w-full flex-col gap-0 sm:max-w-lg">
         <SheetHeader className="text-left">
           <p className="font-mono text-xs text-muted-foreground">
-            {order?.order_no ?? "Draft"} · {order?.artistName ?? ""}
+            {order?.order_no ?? t("preflightSheet.draftFallback")} · {order?.artistName ?? ""}
           </p>
           <SheetTitle className="font-display">
             {isLoading
-              ? "Checking"
+              ? t("preflightSheet.checking")
               : isError
-                ? "Could not check this order"
+                ? t("preflightSheet.checkError")
                 : clean
-                  ? "Ready to issue"
+                  ? t("preflightSheet.readyToIssue")
                   : blockers.length === 1
-                    ? "One thing to settle first"
-                    : `${blockers.length} things to settle first`}
+                    ? t("preflightSheet.settleOne")
+                    : t("preflightSheet.settleMany", { count: blockers.length })}
           </SheetTitle>
           <SheetDescription>
             {isError
-              ? "The organization's settings could not be read. Reload and try again before issuing."
+              ? t("preflightSheet.descError")
               : clean
-                ? "The PDF is generated, numbered and emailed. The artist gets a link to countersign."
-                : "Nothing is sent until these are cleared. The draft is saved either way."}
+                ? t("preflightSheet.descClean")
+                : t("preflightSheet.descBlocked")}
           </SheetDescription>
         </SheetHeader>
 
@@ -77,12 +79,12 @@ export function IssuePreflightSheet({
           ) : isError ? (
             <div className="flex items-center gap-2.5 rounded-lg border border-border p-3">
               <AlertTriangle className="h-4 w-4 shrink-0 text-[var(--amber-600)]" />
-              <p className="text-sm text-muted-foreground">Could not check this order's readiness. Reload the page and try again.</p>
+              <p className="text-sm text-muted-foreground">{t("preflightSheet.checkErrorDetail")}</p>
             </div>
           ) : clean ? (
             <div className="flex items-center gap-2.5 rounded-lg border border-border p-3">
               <CheckCircle2 className="h-4 w-4 shrink-0 text-[var(--green-500)]" />
-              <p className="text-sm text-muted-foreground">Everything this order needs is in place.</p>
+              <p className="text-sm text-muted-foreground">{t("preflightSheet.allInPlace")}</p>
             </div>
           ) : (
             <BlockerList
@@ -98,10 +100,10 @@ export function IssuePreflightSheet({
 
         <div className="flex items-center gap-2 border-t border-border pt-4">
           <Button disabled={!clean || isIssuing || isLoading} onClick={onConfirm}>
-            Issue and send
+            {t("preflightSheet.issueAndSend")}
           </Button>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Keep as draft
+            {t("preflightSheet.keepAsDraft")}
           </Button>
         </div>
       </SheetContent>

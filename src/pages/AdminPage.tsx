@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/features/auth/AuthContext';
@@ -18,6 +19,7 @@ const AUDIT_LOG_LIMIT = 50;
 const SYNC_LOG_LIMIT = 20;
 
 export default function AdminPage() {
+  const { t } = useTranslation('admin');
   const { hasRole, currentOrg } = useAuth();
   const [params, setParams] = useSearchParams();
   const rawTab = params.get('tab') || 'people';
@@ -57,7 +59,7 @@ export default function AdminPage() {
   if (!hasRole('admin')) {
     return (
       <div className="flex items-center justify-center h-64">
-        <p className="text-muted-foreground">Admin access required</p>
+        <p className="text-muted-foreground">{t('page.accessRequired')}</p>
       </div>
     );
   }
@@ -65,17 +67,17 @@ export default function AdminPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-display text-[32px] font-semibold tracking-tight">Admin Panel</h1>
-        <p className="text-muted-foreground mt-1">Identity & access management, audit trail, sync status</p>
+        <h1 className="font-display text-[32px] font-semibold tracking-tight">{t('page.title')}</h1>
+        <p className="text-muted-foreground mt-1">{t('page.subtitle')}</p>
       </div>
 
       <PageMini page="admin" />
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {[
-          { label: 'Total Shows', value: stats?.shows ?? 0, icon: Activity },
-          { label: 'Total Artists', value: stats?.artists ?? 0, icon: Users },
-          { label: 'Total Bookings', value: stats?.bookings ?? 0, icon: Database },
+          { label: t('stats.shows'), value: stats?.shows ?? 0, icon: Activity },
+          { label: t('stats.artists'), value: stats?.artists ?? 0, icon: Users },
+          { label: t('stats.bookings'), value: stats?.bookings ?? 0, icon: Database },
         ].map(s => (
           <Card key={s.label}>
             <CardContent className="pt-6 flex items-center justify-between">
@@ -91,9 +93,9 @@ export default function AdminPage() {
 
       <Tabs value={tab} onValueChange={handleTabChange}>
         <TabsList>
-          <TabsTrigger value="people">People</TabsTrigger>
-          <TabsTrigger value="audit">Audit Log</TabsTrigger>
-          <TabsTrigger value="sync">Sync Status</TabsTrigger>
+          <TabsTrigger value="people">{t('tabs.people')}</TabsTrigger>
+          <TabsTrigger value="audit">{t('tabs.audit')}</TabsTrigger>
+          <TabsTrigger value="sync">{t('tabs.sync')}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="people" className="mt-4">
@@ -102,11 +104,11 @@ export default function AdminPage() {
 
         <TabsContent value="audit" className="mt-4">
           <Card>
-            <CardHeader><CardTitle className="font-display">Booking Audit Trail</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="font-display">{t('audit.title')}</CardTitle></CardHeader>
             <CardContent>
               {auditError && (
                 <Alert variant="destructive" className="mb-3">
-                  <AlertDescription>Failed to load the audit trail.</AlertDescription>
+                  <AlertDescription>{t('audit.loadError')}</AlertDescription>
                 </Alert>
               )}
               <div className="space-y-2">
@@ -124,7 +126,7 @@ export default function AdminPage() {
                     </div>
                   </div>
                 ))}
-                {!auditError && auditLogs?.length === 0 && <p className="text-sm text-muted-foreground text-center py-6">No audit logs yet</p>}
+                {!auditError && auditLogs?.length === 0 && <p className="text-sm text-muted-foreground text-center py-6">{t('audit.empty')}</p>}
               </div>
             </CardContent>
           </Card>
@@ -132,11 +134,11 @@ export default function AdminPage() {
 
         <TabsContent value="sync" className="mt-4">
           <Card>
-            <CardHeader><CardTitle className="font-display">Airtable Sync Status</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="font-display">{t('sync.title')}</CardTitle></CardHeader>
             <CardContent>
               {syncError && (
                 <Alert variant="destructive" className="mb-3">
-                  <AlertDescription>Failed to load the sync status.</AlertDescription>
+                  <AlertDescription>{t('sync.loadError')}</AlertDescription>
                 </Alert>
               )}
               <div className="space-y-2">
@@ -147,14 +149,14 @@ export default function AdminPage() {
                         {log.status}
                       </Badge>
                       <span>{log.sync_type}</span>
-                      <span className="text-muted-foreground">{log.records_processed} records</span>
+                      <span className="text-muted-foreground">{t('sync.records', { n: log.records_processed })}</span>
                     </div>
                     <span className="text-xs text-muted-foreground">{format(new Date(log.synced_at), 'dd/MM/yyyy HH:mm')}</span>
                   </div>
                 )) : (
                   <div className="text-center py-8">
                     <Database className="h-10 w-10 mx-auto text-muted-foreground opacity-30 mb-3" />
-                    <p className="text-sm text-muted-foreground">No sync events yet. Enable Airtable sync in Settings to start syncing.</p>
+                    <p className="text-sm text-muted-foreground">{t('sync.empty')}</p>
                   </div>
                 )}
               </div>

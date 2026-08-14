@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ChevronRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -48,6 +49,7 @@ interface Props {
  * so toggling selection (mouse or keyboard) never also opens the row.
  */
 export function OrdersTable({ orders, orgId, onRowClick }: Props) {
+  const { t } = useTranslation("hireOrdersPages");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [batchOpen, setBatchOpen] = useState(false);
   const action = useHireOrderAction();
@@ -125,9 +127,9 @@ export function OrdersTable({ orders, orgId, onRowClick }: Props) {
     <div className="space-y-3">
       {someSelected && (
         <div className="flex items-center justify-between rounded-lg border border-border bg-muted/40 px-4 py-2">
-          <p className="text-sm text-muted-foreground">{selected.size} selected</p>
+          <p className="text-sm text-muted-foreground">{t("ordersTable.selected", { count: selected.size })}</p>
           <Button size="sm" onClick={handleIssueSelected} disabled={!canIssueSelected || action.isPending}>
-            Issue selected
+            {t("ordersTable.issueSelected")}
           </Button>
         </div>
       )}
@@ -140,7 +142,7 @@ export function OrdersTable({ orders, orgId, onRowClick }: Props) {
           .map((o) => ({
             id: o.id,
             order_no: o.order_no,
-            artistName: o.artists?.name ?? "Unknown artist",
+            artistName: o.artists?.name ?? t("common.unknownArtist"),
             data: (o.data ?? {}) as OrderData,
             terms_variant: o.terms_variant,
           } satisfies BatchPreflightOrder))}
@@ -153,13 +155,13 @@ export function OrdersTable({ orders, orgId, onRowClick }: Props) {
             <TableHeader>
               <TableRow>
                 <TableHead className="w-10">
-                  <Checkbox checked={allSelected} onCheckedChange={toggleAll} aria-label="Select all orders" />
+                  <Checkbox checked={allSelected} onCheckedChange={toggleAll} aria-label={t("ordersTable.selectAllAria")} />
                 </TableHead>
-                <TableHead>Order</TableHead>
-                <TableHead>Artist</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead className="text-right">Fee</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>{t("ordersTable.colOrder")}</TableHead>
+                <TableHead>{t("ordersTable.colArtist")}</TableHead>
+                <TableHead>{t("ordersTable.colDate")}</TableHead>
+                <TableHead className="text-right">{t("ordersTable.colFee")}</TableHead>
+                <TableHead>{t("ordersTable.colStatus")}</TableHead>
                 <TableHead className="w-8" />
               </TableRow>
             </TableHeader>
@@ -184,24 +186,24 @@ export function OrdersTable({ orders, orgId, onRowClick }: Props) {
                     <Checkbox
                       checked={selected.has(o.id)}
                       onCheckedChange={() => toggleRow(o.id)}
-                      aria-label={`Select order ${o.order_no}`}
+                      aria-label={t("ordersTable.selectRowAria", { orderNo: o.order_no })}
                     />
                   </TableCell>
                   <TableCell className="font-mono text-sm">{o.order_no}</TableCell>
                   <TableCell>
-                    <div className="text-sm font-medium text-foreground">{o.artists?.name ?? "Unknown artist"}</div>
-                    <div className="text-xs text-muted-foreground">{o.show_dates?.venue || "Not set"}</div>
+                    <div className="text-sm font-medium text-foreground">{o.artists?.name ?? t("common.unknownArtist")}</div>
+                    <div className="text-xs text-muted-foreground">{o.show_dates?.venue || t("common.notSet")}</div>
                   </TableCell>
                   <TableCell className="font-mono text-sm whitespace-nowrap">
-                    {o.show_dates?.date ? formatDateDMY(o.show_dates.date) : "Not set"}
+                    {o.show_dates?.date ? formatDateDMY(o.show_dates.date) : t("common.notSet")}
                   </TableCell>
                   <TableCell className="text-right font-mono tabular-nums text-sm">
-                    {o.fee_amount != null ? formatMoney(o.fee_amount, o.fee_currency) : "Not set"}
+                    {o.fee_amount != null ? formatMoney(o.fee_amount, o.fee_currency) : t("common.notSet")}
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1.5">
                       <HireOrderStatusBadge status={o.status} />
-                      {isOverdue(o, rowDate) && <Badge variant="risk">Overdue</Badge>}
+                      {isOverdue(o, rowDate) && <Badge variant="risk">{t("ordersTable.overdue")}</Badge>}
                     </div>
                   </TableCell>
                   <TableCell>
@@ -213,7 +215,7 @@ export function OrdersTable({ orders, orgId, onRowClick }: Props) {
               {orders.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={7} className="py-12 text-center text-muted-foreground">
-                    No hire orders match the current filters.
+                    {t("ordersTable.empty")}
                   </TableCell>
                 </TableRow>
               )}

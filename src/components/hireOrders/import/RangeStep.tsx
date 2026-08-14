@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { RawSheet } from "@/lib/artistImport/parseSheet";
 import { applyRange, parsePickedRows, type SheetRange } from "@/lib/hireOrderImport/rangeSelection";
 import { Label } from "@/components/ui/label";
@@ -29,6 +30,7 @@ interface Props {
  * `applyRange` — this component only renders the result and edits `range`.
  */
 export function RangeStep({ sheets, sheetIndex, onSheetIndexChange, range, onRangeChange }: Props) {
+  const { t } = useTranslation("hireOrdersPages");
   const rows = useMemo(() => sheets[sheetIndex]?.rows ?? [], [sheets, sheetIndex]);
   const { headers, dataRows } = useMemo(() => applyRange(rows, range), [rows, range]);
   const includedRowNumbers = useMemo(() => new Set(dataRows.map((d) => d.rowIndex)), [dataRows]);
@@ -58,7 +60,7 @@ export function RangeStep({ sheets, sheetIndex, onSheetIndexChange, range, onRan
     <div className="space-y-4">
       {sheets.length > 1 && (
         <div className="space-y-1.5">
-          <Label htmlFor="import-sheet">Worksheet</Label>
+          <Label htmlFor="import-sheet">{t("rangeStep.worksheet")}</Label>
           <Select value={String(sheetIndex)} onValueChange={(v) => onSheetIndexChange(Number(v))}>
             <SelectTrigger id="import-sheet"><SelectValue /></SelectTrigger>
             <SelectContent>
@@ -72,7 +74,7 @@ export function RangeStep({ sheets, sheetIndex, onSheetIndexChange, range, onRan
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div className="space-y-1.5">
-          <Label htmlFor="import-header-row">Header row</Label>
+          <Label htmlFor="import-header-row">{t("rangeStep.headerRow")}</Label>
           <Input
             id="import-header-row"
             type="number"
@@ -83,20 +85,20 @@ export function RangeStep({ sheets, sheetIndex, onSheetIndexChange, range, onRan
           />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="import-mode">Rows to import</Label>
+          <Label htmlFor="import-mode">{t("rangeStep.rowsToImport")}</Label>
           <Select value={range.mode} onValueChange={(v) => onRangeChange({ ...range, mode: v as SheetRange["mode"] })}>
             <SelectTrigger id="import-mode"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All rows</SelectItem>
-              <SelectItem value="range">Row range</SelectItem>
-              <SelectItem value="picked">Pick rows</SelectItem>
+              <SelectItem value="all">{t("rangeStep.allRows")}</SelectItem>
+              <SelectItem value="range">{t("rangeStep.rowRange")}</SelectItem>
+              <SelectItem value="picked">{t("rangeStep.pickRows")}</SelectItem>
             </SelectContent>
           </Select>
         </div>
         {range.mode === "range" && (
           <div className="flex items-end gap-2">
             <div className="space-y-1.5">
-              <Label htmlFor="import-range-from">From</Label>
+              <Label htmlFor="import-range-from">{t("rangeStep.from")}</Label>
               <Input
                 id="import-range-from"
                 type="number"
@@ -106,7 +108,7 @@ export function RangeStep({ sheets, sheetIndex, onSheetIndexChange, range, onRan
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="import-range-to">To</Label>
+              <Label htmlFor="import-range-to">{t("rangeStep.to")}</Label>
               <Input
                 id="import-range-to"
                 type="number"
@@ -121,11 +123,11 @@ export function RangeStep({ sheets, sheetIndex, onSheetIndexChange, range, onRan
 
       {range.mode === "picked" && (
         <div className="space-y-1.5">
-          <Label htmlFor="import-picked-rows">Add rows by number</Label>
+          <Label htmlFor="import-picked-rows">{t("rangeStep.addRowsByNumber")}</Label>
           <div className="flex items-center gap-2">
             <Input
               id="import-picked-rows"
-              placeholder="e.g. 3, 5, 12-18"
+              placeholder={t("rangeStep.pickedPlaceholder")}
               value={pickedInput}
               onChange={(e) => setPickedInput(e.target.value)}
               onKeyDown={(e) => {
@@ -136,18 +138,17 @@ export function RangeStep({ sheets, sheetIndex, onSheetIndexChange, range, onRan
               }}
             />
             <Button type="button" variant="outline" size="sm" onClick={applyPickedInput}>
-              Add
+              {t("rangeStep.add")}
             </Button>
           </div>
           <p className="text-xs text-muted-foreground">
-            Row numbers match the spreadsheet, so this also reaches rows past the {MAX_PREVIEW_ROWS}-row preview
-            below (the checkboxes there only cover the first {MAX_PREVIEW_ROWS} rows).
+            {t("rangeStep.pickedHint", { count: MAX_PREVIEW_ROWS })}
           </p>
         </div>
       )}
 
       <p className="text-xs text-muted-foreground">
-        {headers.length} column{headers.length === 1 ? "" : "s"} · {dataRows.length} row{dataRows.length === 1 ? "" : "s"} selected
+        {t("rangeStep.columns", { count: headers.length })} · {t("rangeStep.rowsSelected", { count: dataRows.length })}
       </p>
 
       <div className="max-h-64 overflow-auto rounded-md border border-border">
@@ -167,7 +168,7 @@ export function RangeStep({ sheets, sheetIndex, onSheetIndexChange, range, onRan
                       <Checkbox
                         checked={(range.picked ?? []).includes(rowNumber)}
                         onCheckedChange={(v) => togglePicked(rowNumber, !!v)}
-                        aria-label={`Include row ${rowNumber}`}
+                        aria-label={t("rangeStep.includeRowAria", { row: rowNumber })}
                       />
                     ) : (
                       rowNumber

@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -22,13 +23,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { SkillPicker } from "@/components/skills/SkillPicker";
 
-const schema = z.object({
+const baseSchema = z.object({
   program: z.string().trim().optional().or(z.literal("")),
   subProgram: z.string().trim().optional().or(z.literal("")),
   category: z.string().trim().optional().or(z.literal("")),
   description: z.string().trim().optional().or(z.literal("")),
-}).refine((v) => !!(v.program || v.subProgram), { message: "Program or sub-program required", path: ["program"] });
-type FormValues = z.infer<typeof schema>;
+});
+type FormValues = z.infer<typeof baseSchema>;
 
 export function ShowFormDialog({
   open, onOpenChange, show, allShows, onSaved,
@@ -39,8 +40,15 @@ export function ShowFormDialog({
   allShows: ShowWithStats[];
   onSaved?: (id: string) => void;
 }) {
+  const { t } = useTranslation("productions");
   const { user, currentOrg } = useAuth();
   const canEditScheduling = useCan("edit_scheduling");
+  const schema = useMemo(
+    () => baseSchema.refine((v) => !!(v.program || v.subProgram), {
+      message: t("form.validation.programOrSubRequired"), path: ["program"],
+    }),
+    [t],
+  );
   const isEdit = !!show;
   const synced = !!show && isSyncedShow(show);
   const createShow = useCreateShow();
@@ -122,8 +130,8 @@ export function ShowFormDialog({
   const mainTotal = slots.filter((s) => s.kind === "main").reduce((a, s) => a + s.count, 0);
   const understudyTotal = slots.filter((s) => s.kind === "understudy").reduce((a, s) => a + s.count, 0);
   const calloutText = unionNames.length > 0
-    ? `Every date of this production will require ${unionNames.join(", ")}. A single date can still add or drop a skill without changing the production.`
-    : "No skills are required yet. Add skills to a slot to require them on every date.";
+    ? t("form.callout.withSkills", { skills: unionNames.join(", ") })
+    : t("form.callout.none");
 
   /** Reconcile the show's slot rows, then bust every domain the derived caches feed.
    *  Returns whether the save applied; the caller keeps the dialog open on failure so
@@ -133,7 +141,7 @@ export function ShowFormDialog({
       await saveShowSlots(supabase, { showId: targetShowId, orgId, slots });
       return true;
     } catch (e) {
-      toast.error("Failed to save slots", { description: (e as Error).message });
+      toast.error(t("form.toasts.saveSlotsFailed"), { description: (e as Error).message });
       return false;
     } finally {
       queryClient.invalidateQueries({ queryKey: ["show-slots"] });
@@ -147,7 +155,7 @@ export function ShowFormDialog({
   };
 
   const onSubmit = async (v: FormValues) => {
-    if (!currentOrg) { toast.error("No active organization"); return; }
+    if (!currentOrg) { toast.error(t("form.toasts.noActiveOrg")); return; }
     try {
       let targetShowId: string;
       if (isEdit && show) {
@@ -160,7 +168,7 @@ export function ShowFormDialog({
             : { program: v.program || null, sub_program: v.subProgram || null, category: v.category || null, description: v.description || null },
         });
         targetShowId = show.id;
-        toast.success("Production updated");
+        toast.success(t("form.toasts.updated"));
         onSaved?.(show.id);
       } else {
         // A retry after a failed slot save reuses the show created earlier in this
@@ -174,7 +182,7 @@ export function ShowFormDialog({
             sortOrder: nextSortOrder(allShows),
           }));
           createdShowIdRef.current = id;
-          toast.success("Production created");
+          toast.success(t("form.toasts.created"));
           onSaved?.(id);
         }
         targetShowId = id;
@@ -193,36 +201,36 @@ export function ShowFormDialog({
       <DialogContent className="max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            {isEdit ? "Edit production" : "New production"}
-            {synced && <Badge variant="secondary" className="bg-muted text-muted-foreground">Synced from Airtable</Badge>}
+            {isEdit ? t("form.editTitle") : t("form.newTitle")}
+            {synced && <Badge variant="secondary" className="bg-muted text-muted-foreground">{t("form.syncedBadge")}</Badge>}
           </DialogTitle>
         </DialogHeader>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-1.5">
-            <Label htmlFor="program">Program</Label>
+            <Label htmlFor="program">{t("form.programLabel")}</Label>
             <Input id="program" disabled={synced} {...form.register("program")} />
             {err.program && <p className="text-xs text-destructive">{err.program.message}</p>}
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="subProgram">Sub-program</Label>
+            <Label htmlFor="subProgram">{t("form.subProgramLabel")}</Label>
             <Input id="subProgram" disabled={synced} {...form.register("subProgram")} />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="category">Category</Label>
+            <Label htmlFor="category">{t("form.categoryLabel")}</Label>
             <Input id="category" {...form.register("category")} />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="description">Description</Label>
+            <Label htmlFor="description">{t("form.descriptionLabel")}</Label>
             <Textarea id="description" {...form.register("description")} />
           </div>
 
           <div className="space-y-2.5">
             <div className="flex items-baseline justify-between gap-3">
-              <p className="text-sm font-medium">Slots</p>
-              <p className="font-mono text-xs tabular-nums text-muted-foreground">{mainTotal} main · {understudyTotal} understudy</p>
+              <p className="text-sm font-medium">{t("form.slotsHeading")}</p>
+              <p className="font-mono text-xs tabular-nums text-muted-foreground">{t("form.slotTotals", { main: mainTotal, understudy: understudyTotal })}</p>
             </div>
             <p className="text-xs text-muted-foreground">
-              Name each slot and give it the skills it needs. Every date of this production then requires the union of these skills. There is no separate required-skills list to keep in sync.
+              {t("form.slotsHelp")}
             </p>
 
             <div className="space-y-2">
@@ -230,20 +238,20 @@ export function ShowFormDialog({
                 <div
                   key={s.id}
                   role="group"
-                  aria-label={s.name ? `Slot: ${s.name}` : `Slot ${i + 1}`}
+                  aria-label={s.name ? t("form.slotGroupNamed", { name: s.name }) : t("form.slotGroupIndex", { index: i + 1 })}
                   className="space-y-2 rounded-md border border-border p-2.5"
                 >
                   <div className="flex items-center gap-2">
                     <Input
-                      aria-label="Role name"
-                      placeholder="Role name"
+                      aria-label={t("form.roleNameLabel")}
+                      placeholder={t("form.roleNameLabel")}
                       className="h-8 flex-1"
                       value={s.name}
                       disabled={slotsDisabled}
                       onChange={(e) => updateSlot(i, { name: e.target.value })}
                     />
                     <Input
-                      aria-label="Count"
+                      aria-label={t("form.countLabel")}
                       inputMode="numeric"
                       className="h-8 w-14 text-center"
                       value={String(s.count)}
@@ -267,7 +275,7 @@ export function ShowFormDialog({
                             slotsDisabled && "pointer-events-none opacity-50",
                           )}
                         >
-                          {k === "main" ? "Main" : "Understudy"}
+                          {k === "main" ? t("form.kindMain") : t("form.kindUnderstudy")}
                         </button>
                       ))}
                     </div>
@@ -276,7 +284,7 @@ export function ShowFormDialog({
                       variant="ghost"
                       size="icon"
                       className="h-8 w-8 shrink-0"
-                      aria-label={`Remove ${s.name || "slot"}`}
+                      aria-label={t("form.removeSlot", { name: s.name || t("form.slotFallback") })}
                       disabled={slotsDisabled}
                       onClick={() => removeSlot(i)}
                     >
@@ -288,13 +296,13 @@ export function ShowFormDialog({
                     selectedIds={s.skillIds}
                     onToggle={(id) => toggleSlotSkill(i, id)}
                     disabled={slotsDisabled}
-                    emptyHint="No skills yet. Add skills on artist profiles first."
+                    emptyHint={t("form.skillsEmptyHint")}
                   />
                 </div>
               ))}
 
               <Button type="button" variant="outline" size="sm" disabled={slotsDisabled} onClick={addSlot}>
-                <Plus className="mr-1.5 h-3.5 w-3.5" />Add slot
+                <Plus className="mr-1.5 h-3.5 w-3.5" />{t("form.addSlot")}
               </Button>
             </div>
 
@@ -306,7 +314,7 @@ export function ShowFormDialog({
           </div>
 
           <DialogFooter>
-            <Button type="submit" disabled={pending}>{pending ? "Saving…" : isEdit ? "Save" : "Create"}</Button>
+            <Button type="submit" disabled={pending}>{pending ? t("form.saving") : isEdit ? t("form.save") : t("form.create")}</Button>
           </DialogFooter>
         </form>
       </DialogContent>

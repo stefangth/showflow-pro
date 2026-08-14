@@ -1,1 +1,160 @@
-{}
+{
+  "common": {
+    "error": "Fehler",
+    "noOrg": "Keine aktive Organisation",
+    "noEmail": "Dieser Artist hat keine E-Mail. Füge eine hinzu, bevor du einlädst.",
+    "inviteSent": "Einladung gesendet",
+    "inviteResent": "Einladung erneut gesendet"
+  },
+  "page": {
+    "title": "Artists",
+    "subtitle": "Verwalte deine Artist-Liste",
+    "importFromSheet": "Aus Tabelle importieren",
+    "addArtist": "Artist hinzufügen",
+    "searchPlaceholder": "Artists oder Fähigkeiten suchen...",
+    "nextBooking": "Nächste Buchung",
+    "skillsLabel": "FÄHIGKEITEN",
+    "castsLabel": "BESETZUNGEN",
+    "invite": "Einladen",
+    "resendInvite": "Einladung erneut senden",
+    "revokeInvite": "Einladung zurückziehen",
+    "empty": "Keine Artists gefunden",
+    "skillsHint": "Fähigkeiten kannst du nach dem Anlegen im Artist-Profil ergänzen.",
+    "dialog": {
+      "title": "Neuen Artist hinzufügen",
+      "namePlaceholder": "Vollständiger Name",
+      "emailPlaceholder": "E-Mail",
+      "phonePlaceholder": "Telefon",
+      "bioPlaceholder": "Biografie",
+      "alsoInvite": "Auch eine App-Login-Einladung senden",
+      "alsoInviteHint": "Sie bekommen eine E-Mail, um ein Passwort zu setzen und als Artist beizutreten. E-Mail ist erforderlich.",
+      "adding": "Wird hinzugefügt..."
+    },
+    "toast": {
+      "created": "Artist angelegt",
+      "createdInviteFailed": "Die Einladung konnte nicht gesendet werden. Versuche es erneut beim Artist.",
+      "addedAndInvited": "Artist hinzugefügt und eingeladen",
+      "added": "Artist hinzugefügt",
+      "inviteRevoked": "Einladung zurückgezogen"
+    },
+    "errors": {
+      "emailRequiredInvite": "E-Mail ist erforderlich, um eine Einladung zu senden"
+    }
+  },
+  "sheet": {
+    "title": "Artist-Profil",
+    "descEdit": "Artist-Details und Fähigkeiten bearbeiten.",
+    "descView": "Artist-Details ansehen.",
+    "name": "Name",
+    "emailLabel": "Buchungs- / Kontakt-E-Mail",
+    "emailHint1": "Getrennt vom Login-Konto.",
+    "emailHint2": "Sichtbar für Admins und das Production Team in dieser Organisation.",
+    "statusLabel": "Status",
+    "bioLabel": "Biografie",
+    "skillsLabel": "Fähigkeiten",
+    "catalogCount": "{{held}} von {{total}} im Katalog",
+    "skillsHint": "Fähigkeiten entscheiden, für welche Termine {{name}} angeboten werden kann. Wenn du eine entfernst, fällt der Artist aus jedem Angebot, das sie erfordert.",
+    "thisArtist": "dieser Artist",
+    "noSkills": "Noch keine Fähigkeiten.",
+    "upcomingDates_one": "{{count}} anstehender Termin",
+    "upcomingDates_other": "{{count}} anstehende Termine",
+    "notRequiredYet": "Noch nicht erforderlich",
+    "removeSkill": "{{name}} entfernen",
+    "catalogHintPrefix": "Fehlt eine Fähigkeit? Ein Admin fügt sie hinzu unter",
+    "catalogHintLink": "Einstellungen, Besetzungen & Abdeckung",
+    "catalogHintSuffix": ", damit der Katalog sauber bleibt.",
+    "cancel": "Abbrechen",
+    "saving": "Wird gespeichert…",
+    "save": "Speichern",
+    "toastUpdated": "Artist aktualisiert",
+    "noPendingInvite": "Keine offene Einladung zum erneuten Senden."
+  },
+  "linked": {
+    "title": "Verknüpftes Konto",
+    "noLoginWithEmail": "Kein Login-Konto. Tagesübersichten nutzen die Buchungs-E-Mail ({{email}}).",
+    "noLoginNoEmail": "Kein Login-Konto. Tagesübersichten nutzen die Buchungs-E-Mail.",
+    "inviteToApp": "In die App einladen",
+    "invitePending": "Einladung offen. Warte auf Annahme.",
+    "resend": "Erneut senden",
+    "loadingAccount": "Konto wird geladen…",
+    "accountName": "Kontoname",
+    "loginEmail": "Login-E-Mail",
+    "digestGoesTo": "Tagesübersicht geht an",
+    "detailsUnavailable": "Kontodetails nicht verfügbar. Tagesübersichten gehen an {{email}}.",
+    "theBookingEmail": "die Buchungs-E-Mail"
+  },
+  "unlinked": {
+    "headingOrg": "Du stehst auf der Liste von {{orgName}}",
+    "heading": "Du stehst auf der Liste",
+    "body": "Dein Konto ist eingerichtet. Ein Admin muss es noch mit deinem Artist-Profil verknüpfen, bevor deine Termine, Besetzungen und Angebote hier erscheinen. Du bekommst eine E-Mail, sobald du gebucht bist, du musst also gerade nichts tun."
+  },
+  "import": {
+    "title": "Artists aus einer Tabelle importieren",
+    "description": "Lade eine CSV/XLSX hoch oder füge einen öffentlichen Google-Sheets-Link ein, ordne die Spalten zu, prüfe dann und importiere.",
+    "steps": {
+      "source": "Quelle",
+      "map": "Spalten zuordnen",
+      "review": "Prüfen",
+      "done": "Fertig"
+    },
+    "fields": {
+      "name": "Name",
+      "email": "E-Mail",
+      "phone": "Telefon",
+      "bio": "Biografie"
+    },
+    "source": {
+      "dropzone": "Ziehe eine .csv oder .xlsx hierher oder klicke zum Auswählen",
+      "uploadAria": "Tabelle hochladen",
+      "linkPlaceholder": "…oder füge einen öffentlichen Google-Sheets-Link ein",
+      "fetch": "Abrufen",
+      "downloadTemplate": "Vorlage als CSV herunterladen",
+      "rowLimit": "Bis zu {{max}} Zeilen. In Google Sheets: Datei → Herunterladen → CSV."
+    },
+    "map": {
+      "intro": "Deine Spalten wurden automatisch zugeordnet. Passe unten bei Bedarf an.",
+      "columnAria": "Spalte {{field}}",
+      "ignore": "Diese Spalte ignorieren"
+    },
+    "back": "Zurück",
+    "continue": "Weiter",
+    "review": {
+      "toImport": "Zu importieren",
+      "duplicate": "Duplikat",
+      "needAttention": "Benötigt Aufmerksamkeit",
+      "searchPlaceholder": "Zeilen suchen",
+      "colName": "Name",
+      "colEmail": "E-Mail",
+      "colStatus": "Status",
+      "selectAria": "{{label}} auswählen",
+      "rowLabel": "Zeile {{index}}",
+      "statusNew": "Neu",
+      "noRows": "Keine Zeilen",
+      "alsoInvite": "Auch Login-Einladungen an importierte Artists senden (nur Zeilen mit E-Mail)",
+      "importBtn_one": "{{count}} Artist importieren",
+      "importBtn_other": "{{count}} Artists importieren"
+    },
+    "filter": {
+      "all": "Alle",
+      "new": "Neu",
+      "skipped": "Übersprungen",
+      "errors": "Fehler"
+    },
+    "done": {
+      "imported_one": "{{count}} Artist importiert",
+      "imported_other": "{{count}} Artists importiert",
+      "skipped": "{{count}} übersprungen",
+      "errorsSuffix": ", {{count}} benötigen Aufmerksamkeit",
+      "invitedSuffix": " · {{count}} eingeladen",
+      "inviteFailed": "{{count}} konnten nicht eingeladen werden. Versuche es bei jedem Artist erneut.",
+      "done": "Fertig"
+    },
+    "toast": {
+      "noColumns": "Keine Spalten gefunden",
+      "noColumnsDesc": "Die Tabelle hat keine Kopfzeile.",
+      "readError": "Datei konnte nicht gelesen werden",
+      "fetchError": "Tabelle konnte nicht abgerufen werden",
+      "importFailed": "Import fehlgeschlagen"
+    }
+  }
+}

@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -12,11 +14,11 @@ import { cn } from "@/lib/utils";
 import { unrestrictedEligibilityNote } from "@/lib/bookings/actionCopy";
 
 /** Joins strings for prose: "A", "A and B", "A, B, and C". No em dashes (house style). */
-function joinNames(names: string[]): string {
+function joinNames(t: TFunction<"showsDetail">, names: string[]): string {
   if (names.length === 0) return "";
   if (names.length === 1) return names[0];
-  if (names.length === 2) return `${names[0]} and ${names[1]}`;
-  return `${names.slice(0, -1).join(", ")}, and ${names[names.length - 1]}`;
+  if (names.length === 2) return t("eligibilityBookList.joinTwo", { a: names[0], b: names[1] });
+  return t("eligibilityBookList.joinMany", { list: names.slice(0, -1).join(", "), last: names[names.length - 1] });
 }
 
 /**
@@ -26,11 +28,11 @@ function joinNames(names: string[]): string {
  * an instruction. `qualifying` is the caller's already-filtered `artists` count (this list
  * IS the qualifying, unblocked set) against `total`, the full artist pool.
  */
-function requirementFactSentence(requiredSkillNames: string[], qualifying: number, total: number): string {
+function requirementFactSentence(t: TFunction<"showsDetail">, requiredSkillNames: string[], qualifying: number, total: number): string {
   const requirement = requiredSkillNames.length > 0
-    ? `This date requires ${joinNames(requiredSkillNames)}`
-    : "This date has no skill requirements";
-  return `${requirement} · ${qualifying} of ${total} artists qualify and are not blocked.`;
+    ? t("eligibilityBookList.reqHasSkills", { skills: joinNames(t, requiredSkillNames) })
+    : t("eligibilityBookList.reqNoSkills");
+  return t("eligibilityBookList.factSentence", { requirement, qualifying, total });
 }
 
 /**
@@ -77,12 +79,13 @@ export function EligibilityBookList({
    *  every listed skill as a chip. */
   requiredSkillIds?: string[];
 }) {
+  const { t } = useTranslation("showsDetail");
   const [understudy, setUnderstudy] = useState(false);
   const [confirmTarget, setConfirmTarget] = useState<{ id: string; name: string } | null>(null);
   if (error) {
     return (
       <Alert variant="destructive">
-        <AlertDescription>Could not load the eligible artists. Reload the page to try again.</AlertDescription>
+        <AlertDescription>{t("eligibilityBookList.error")}</AlertDescription>
       </Alert>
     );
   }
@@ -98,11 +101,11 @@ export function EligibilityBookList({
     <div className="space-y-2">
       <label className="flex items-center gap-2 text-xs text-muted-foreground">
         <Checkbox checked={understudy} onCheckedChange={(v) => setUnderstudy(v === true)} />
-        Book as understudy
+        {t("eligibilityBookList.bookAsUnderstudy")}
       </label>
       {typeof totalArtistCount === "number" && (
         <p className="text-xs text-muted-foreground">
-          {requirementFactSentence(requiredSkillNames ?? [], artists.length, totalArtistCount)}
+          {requirementFactSentence(t, requiredSkillNames ?? [], artists.length, totalArtistCount)}
         </p>
       )}
       {skills && onSkillFilterChange && (() => {
@@ -120,7 +123,7 @@ export function EligibilityBookList({
         const hasSkillData = artists.some((a) => a.skillIds !== undefined);
         return (
           <div className="space-y-1">
-            <p className="text-xs text-muted-foreground">Narrow the list further</p>
+            <p className="text-xs text-muted-foreground">{t("eligibilityBookList.narrowList")}</p>
             <div className="flex flex-wrap gap-1.5">
               {narrowSkills.map((s) => {
                 const on = (selectedSkillIds ?? []).includes(s.id);
@@ -153,16 +156,16 @@ export function EligibilityBookList({
         <p className="text-xs text-muted-foreground">{unrestrictedEligibilityNote(orgName)}</p>
       )}
       {artists.length === 0 && (
-        <p className="text-sm text-muted-foreground">No eligible artists for this date. Check casts and city in Settings.</p>
+        <p className="text-sm text-muted-foreground">{t("eligibilityBookList.noEligible")}</p>
       )}
       {artists.map((a) => (
         <div key={a.id} className="flex items-center justify-between rounded-lg border border-border p-3">
           <p className="text-sm font-medium">{a.name}</p>
           {bookedArtistIds.has(a.id) ? (
-            <Badge variant="secondary" className="bg-muted text-muted-foreground">Booked</Badge>
+            <Badge variant="secondary" className="bg-muted text-muted-foreground">{t("eligibilityBookList.booked")}</Badge>
           ) : (
             <Button size="sm" variant="outline" disabled={booking} onClick={() => setConfirmTarget(a)}>
-              Book
+              {t("eligibilityBookList.book")}
             </Button>
           )}
         </div>
@@ -176,17 +179,17 @@ export function EligibilityBookList({
               <AlertDialogHeader>
                 <AlertDialogTitle>
                   {understudy
-                    ? `Book ${confirmTarget.name} as understudy for this date?`
-                    : `Book ${confirmTarget.name} for this date?`}
+                    ? t("eligibilityBookList.bookUnderstudyTitle", { name: confirmTarget.name })
+                    : t("eligibilityBookList.bookTitle", { name: confirmTarget.name })}
                 </AlertDialogTitle>
                 <AlertDialogDescription>
                   {understudy
-                    ? `This books and confirms ${confirmTarget.name} as understudy immediately. There is no offer step in direct booking mode.`
-                    : `This books and confirms ${confirmTarget.name} immediately. There is no offer step in direct booking mode.`}
+                    ? t("eligibilityBookList.bookUnderstudyDesc", { name: confirmTarget.name })
+                    : t("eligibilityBookList.bookDesc", { name: confirmTarget.name })}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogCancel>{t("eligibilityBookList.cancel")}</AlertDialogCancel>
                 <AlertDialogAction
                   disabled={booking}
                   onClick={() => {
@@ -194,7 +197,7 @@ export function EligibilityBookList({
                     setConfirmTarget(null);
                   }}
                 >
-                  Book and confirm
+                  {t("eligibilityBookList.bookAndConfirm")}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </>

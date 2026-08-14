@@ -1,4 +1,5 @@
 import { X, Minus, Undo2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
 import { IconTooltip } from "@/components/common/IconTooltip";
 import { SkillPicker } from "@/components/skills/SkillPicker";
@@ -24,15 +25,16 @@ export function RequiredSkillsSection({
   onRestore: (skillId: string) => void;
   pending: boolean;
 }) {
+  const { t } = useTranslation("showsDetail");
   const byId = new Map(skills.map((s) => [s.id, s.name]));
   const dropped = new Set(droppedSkillIds);
   const required = new Set([...showSkillIds, ...dateSkillIds]);
   const addable = skills.filter((s) => !required.has(s.id));
   return (
     <div className="space-y-2">
-      <p className="text-sm font-medium">Required skills</p>
+      <p className="text-sm font-medium">{t("requiredSkillsSection.requiredSkills")}</p>
       <p className="text-xs text-muted-foreground">
-        Artists must have all of these skills to receive offers or be booked.
+        {t("requiredSkillsSection.mustHaveAll")}
       </p>
       <div className="flex flex-wrap items-center gap-1.5">
         {showSkillIds.map((id) => {
@@ -41,11 +43,11 @@ export function RequiredSkillsSection({
             return (
               <Badge key={id} variant="outline" className="gap-1 border-dashed border-[var(--line-strong)]">
                 <span className="line-through text-[var(--text-faint)]">{name}</span>
-                <span className="text-[10px] uppercase text-[var(--text-faint)]">dropped on this date</span>
-                <IconTooltip label={`Restore ${name}`}>
+                <span className="text-[10px] uppercase text-[var(--text-faint)]">{t("requiredSkillsSection.droppedOnDate")}</span>
+                <IconTooltip label={t("requiredSkillsSection.restore", { name })}>
                   <button
                     type="button"
-                    aria-label={`Restore ${name}`}
+                    aria-label={t("requiredSkillsSection.restore", { name })}
                     disabled={pending}
                     onClick={() => onRestore(id)}
                     className="ml-0.5 text-[var(--text-faint)] hover:text-foreground"
@@ -59,11 +61,11 @@ export function RequiredSkillsSection({
           return (
             <Badge key={id} variant="secondary" className="gap-1">
               {name}
-              <span className="text-[10px] uppercase text-muted-foreground">From show</span>
-              <IconTooltip label={`Drop ${name} on this date`}>
+              <span className="text-[10px] uppercase text-muted-foreground">{t("requiredSkillsSection.fromShow")}</span>
+              <IconTooltip label={t("requiredSkillsSection.dropOnDate", { name })}>
                 <button
                   type="button"
-                  aria-label={`Drop ${name} on this date`}
+                  aria-label={t("requiredSkillsSection.dropOnDate", { name })}
                   disabled={pending}
                   onClick={() => onDrop(id)}
                   className="ml-0.5 hover:text-destructive"
@@ -77,10 +79,10 @@ export function RequiredSkillsSection({
         {dateSkillIds.filter((id) => !showSkillIds.includes(id)).map((id) => (
           <Badge key={id} variant="outline" className="gap-1">
             {byId.get(id) ?? id}
-            <IconTooltip label={`Remove ${byId.get(id) ?? id}`}>
+            <IconTooltip label={t("requiredSkillsSection.remove", { name: byId.get(id) ?? id })}>
               <button
                 type="button"
-                aria-label={`Remove ${byId.get(id) ?? id}`}
+                aria-label={t("requiredSkillsSection.remove", { name: byId.get(id) ?? id })}
                 disabled={pending}
                 onClick={() => onRemove(id)}
                 className="ml-0.5 hover:text-destructive"
@@ -91,7 +93,7 @@ export function RequiredSkillsSection({
           </Badge>
         ))}
         {showSkillIds.length === 0 && dateSkillIds.length === 0 && (
-          <p className="text-xs text-muted-foreground">No skills required.</p>
+          <p className="text-xs text-muted-foreground">{t("requiredSkillsSection.noSkillsRequired")}</p>
         )}
       </div>
       <SkillPicker
@@ -99,7 +101,7 @@ export function RequiredSkillsSection({
         selectedIds={[]}
         onToggle={onAdd}
         disabled={pending}
-        emptyHint={skills.length === 0 ? "No skills yet. Add skills on artist profiles first." : undefined}
+        emptyHint={skills.length === 0 ? t("requiredSkillsSection.emptyHint") : undefined}
       />
     </div>
   );

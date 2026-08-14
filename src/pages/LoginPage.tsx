@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/features/auth/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,21 +18,24 @@ import { safeRelativeRedirect } from '@/features/auth/resetPassword';
 import { supabase } from '@/integrations/supabase/client';
 import heroShow from '@/assets/auth/hero-show.jpg';
 
-function friendlyAuthError(message: string): string {
+// Maps a raw auth error to a translation key in the `auth` namespace. Kept as a pure
+// key-resolver (rather than returning copy) so it can stay module-level while the copy
+// itself is looked up with `t` inside the component.
+function friendlyAuthErrorKey(message: string): string {
   const m = message.toLowerCase();
   if (m.includes('invalid login credentials')) {
-    return 'The email or password is incorrect. Please try again.';
+    return 'login.errors.invalidCredentials';
   }
   if (m.includes('email not confirmed')) {
-    return 'Please confirm your email address before signing in. Check your inbox for the confirmation link.';
+    return 'login.errors.emailNotConfirmed';
   }
   if (m.includes('rate') || m.includes('too many')) {
-    return 'Too many attempts. Please wait a moment and try again.';
+    return 'login.errors.rateLimited';
   }
   if (m.includes('network') || m.includes('failed to fetch')) {
-    return 'Network error. Check your connection and try again.';
+    return 'login.errors.network';
   }
-  return 'Something went wrong. Please try again.';
+  return 'login.errors.generic';
 }
 
 export default function LoginPage() {
@@ -44,6 +48,7 @@ export default function LoginPage() {
   const loadingRef = useRef(false);
   const { signIn } = useAuth();
   const { openPreferences } = useConsent();
+  const { t } = useTranslation('auth');
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const reduce = useReducedMotion();
@@ -59,7 +64,7 @@ export default function LoginPage() {
       // Honor a relative ?redirect= (e.g. the accept-invite flow); never an absolute/external URL.
       navigate(safeRelativeRedirect(searchParams.get('redirect'), ROUTES.DASHBOARD));
     } catch (err) {
-      setError(friendlyAuthError((err as Error).message ?? 'Something went wrong. Please try again.'));
+      setError(t(friendlyAuthErrorKey((err as Error).message ?? '')));
       setPassword('');
       requestAnimationFrame(() => emailRef.current?.focus());
     } finally {
@@ -71,12 +76,12 @@ export default function LoginPage() {
   const onEmailLink = async () => {
     const trimmed = email.trim();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
-      setError('Enter a valid email address first.');
+      setError(t('login.errors.invalidEmail'));
       emailRef.current?.focus();
       return;
     }
     setLinkSending(true);
-    const sent = 'If that email exists, a sign-in link is on its way.';
+    const sent = t('login.magicLinkSent');
     // Thread the same validated ?redirect= the password path honors, so an accept-invite
     // bounce completes the invitation. safeRelativeRedirect falls back to /dashboard, which
     // the edge function also clamps to, so passing it explicitly is harmless.
@@ -144,14 +149,14 @@ export default function LoginPage() {
 
             {/* Headline over the photo */}
             <h1 className="mb-7 max-w-sm text-balance font-display text-3xl font-semibold leading-[1.15] tracking-tight text-[var(--auth-fg)] sm:text-[34px]">
-              Casting, scheduling and confirmations, all in one place.
+              {t('login.headline')}
             </h1>
 
             {/* Frosted glass sign-in card */}
             <div className="rounded-2xl border border-[var(--auth-hairline)] bg-[var(--auth-card)] p-6 text-foreground shadow-2xl backdrop-blur-xl sm:p-7">
               <div className="mb-5">
-                <h2 className="text-lg font-semibold">Sign in</h2>
-                <p className="mt-1 text-sm text-muted-foreground">Manage your bookings</p>
+                <h2 className="text-lg font-semibold">{t('login.signIn')}</h2>
+                <p className="mt-1 text-sm text-muted-foreground">{t('login.manageBookings')}</p>
               </div>
 
               <Alert
@@ -166,19 +171,19 @@ export default function LoginPage() {
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
-                  <label htmlFor="email" className="text-sm font-medium">Email</label>
+                  <label htmlFor="email" className="text-sm font-medium">{t('login.emailLabel')}</label>
                   <Input
                     id="email"
                     ref={emailRef}
                     type="email"
                     value={email}
                     onChange={e => { setEmail(e.target.value); if (error) setError(null); }}
-                    placeholder="you@example.com"
+                    placeholder={t('login.emailPlaceholder')}
                     required
                   />
                 </div>
                 <div className="space-y-2">
-                  <label htmlFor="password" className="text-sm font-medium">Password</label>
+                  <label htmlFor="password" className="text-sm font-medium">{t('login.passwordLabel')}</label>
                   <Input
                     id="password"
                     type="password"
@@ -189,43 +194,43 @@ export default function LoginPage() {
                   />
                 </div>
                 <Button type="submit" className="w-full" disabled={loading || linkSending}>
-                  {loading ? 'Signing in...' : 'Sign in'}
+                  {loading ? t('login.signingIn') : t('login.signIn')}
                 </Button>
                 {/* Gap the hairline around the label instead of knocking out a filled chip:
                     over the translucent card a card-colored fill would compound and darken. */}
                 <div className="my-1 flex items-center gap-3" aria-hidden="true">
                   <span className="h-px flex-1 bg-[var(--auth-hairline)]" />
-                  <span className="text-xs text-muted-foreground">or</span>
+                  <span className="text-xs text-muted-foreground">{t('login.or')}</span>
                   <span className="h-px flex-1 bg-[var(--auth-hairline)]" />
                 </div>
                 <Button type="button" variant="default" className="w-full" disabled={loading || linkSending} onClick={onEmailLink}>
-                  {linkSending ? 'Sending...' : 'Email me a sign-in link'}
+                  {linkSending ? t('login.sending') : t('login.emailLink')}
                 </Button>
                 <div className="mt-3 text-center">
                   <Link
                     to={ROUTES.RESET_PASSWORD}
                     className="inline-block py-2.5 text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
                   >
-                    Forgot password?
+                    {t('login.forgotPassword')}
                   </Link>
                 </div>
               </form>
 
               <div className="mt-5 space-y-2 border-t border-[var(--auth-hairline)] pt-4">
                 <p className="text-center text-xs text-muted-foreground">
-                  New here?{' '}
+                  {t('login.newHere')}{' '}
                   <a
                     href={`${APP_META.MARKETING_URL}/signup`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="font-medium text-foreground underline-offset-2 hover:underline"
                   >
-                    Book a demo
+                    {t('login.bookDemo')}
                   </a>
                 </p>
                 <p className="text-center text-xs text-muted-foreground">
                   <Link to={ROUTES.PRIVACY} className="underline-offset-2 hover:text-foreground hover:underline">
-                    Privacy
+                    {t('login.privacy')}
                   </Link>
                   {' · '}
                   <Link to={ROUTES.IMPRESSUM} className="underline-offset-2 hover:text-foreground hover:underline">
@@ -236,7 +241,7 @@ export default function LoginPage() {
                     onClick={openPreferences}
                     className="underline-offset-2 hover:text-foreground hover:underline"
                   >
-                    Cookie settings
+                    {t('login.cookieSettings')}
                   </button>
                 </p>
               </div>

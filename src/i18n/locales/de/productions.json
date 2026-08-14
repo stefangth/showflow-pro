@@ -1,1 +1,88 @@
-{}
+{
+  "page": {
+    "title": "Produktionen",
+    "description": "Dein Showkatalog: Plätze, Status und Reihenfolge.",
+    "newProduction": "Neue Produktion"
+  },
+  "filter": {
+    "active": "Aktiv",
+    "archived": "Archiviert",
+    "all": "Alle"
+  },
+  "status": {
+    "active": "Aktiv",
+    "archived": "Archiviert",
+    "draft": "Entwurf"
+  },
+  "empty": "Noch keine Produktionen. Lege deine erste an.",
+  "errors": {
+    "loadFailed": "Produktionen konnten nicht geladen werden."
+  },
+  "row": {
+    "unconfigured": "Nicht konfiguriert",
+    "synced": "Synchronisiert",
+    "dateCount_one": "{{count}} Termin",
+    "dateCount_other": "{{count}} Termine"
+  },
+  "tooltips": {
+    "edit": "{{name}} bearbeiten",
+    "noPermissionEdit": "Du hast keine Berechtigung, Produktionen zu bearbeiten",
+    "noPermissionArchive": "Du hast keine Berechtigung, Produktionen zu archivieren",
+    "restore": "Produktion wiederherstellen",
+    "archive": "Produktion archivieren",
+    "toggleArchive": "Archivierung umschalten",
+    "delete": "Produktion löschen",
+    "deleteSyncedBlocked": "Synchronisierte Produktionen können nicht gelöscht werden, archiviere sie stattdessen",
+    "deleteHasDates": "Hat Termine, archiviere sie stattdessen",
+    "noPermissionCreate": "Du hast keine Berechtigung, Produktionen zu erstellen"
+  },
+  "deleteDialog": {
+    "title": "Diese Produktion löschen?",
+    "description": "Dadurch wird \"{{name}}\" dauerhaft entfernt. Das kann nicht rückgängig gemacht werden.",
+    "cancel": "Abbrechen",
+    "confirm": "Löschen"
+  },
+  "listToasts": {
+    "deleted": "Produktion gelöscht",
+    "archived": "Produktion archiviert",
+    "restored": "Produktion wiederhergestellt"
+  },
+  "form": {
+    "editTitle": "Produktion bearbeiten",
+    "newTitle": "Neue Produktion",
+    "syncedBadge": "Aus Airtable synchronisiert",
+    "programLabel": "Programm",
+    "subProgramLabel": "Unterprogramm",
+    "categoryLabel": "Kategorie",
+    "descriptionLabel": "Beschreibung",
+    "slotsHeading": "Plätze",
+    "slotTotals": "{{main}} Hauptbesetzung · {{understudy}} Zweitbesetzung",
+    "slotsHelp": "Benenne jeden Platz und gib ihm die nötigen Skills. Jeder Termin dieser Produktion braucht dann die Summe dieser Skills. Es gibt keine separate Liste erforderlicher Skills, die du pflegen musst.",
+    "slotGroupNamed": "Platz: {{name}}",
+    "slotGroupIndex": "Platz {{index}}",
+    "roleNameLabel": "Rollenname",
+    "countLabel": "Anzahl",
+    "kindMain": "Hauptbesetzung",
+    "kindUnderstudy": "Zweitbesetzung",
+    "removeSlot": "{{name}} entfernen",
+    "slotFallback": "Platz",
+    "skillsEmptyHint": "Noch keine Skills. Füge zuerst Skills in den Artist-Profilen hinzu.",
+    "addSlot": "Platz hinzufügen",
+    "saving": "Speichert…",
+    "save": "Speichern",
+    "create": "Erstellen",
+    "callout": {
+      "withSkills": "Jeder Termin dieser Produktion wird {{skills}} erfordern. Ein einzelner Termin kann trotzdem einen Skill ergänzen oder weglassen, ohne die Produktion zu ändern.",
+      "none": "Es sind noch keine Skills erforderlich. Füge einem Platz Skills hinzu, um sie für jeden Termin zu verlangen."
+    },
+    "validation": {
+      "programOrSubRequired": "Programm oder Unterprogramm erforderlich"
+    },
+    "toasts": {
+      "saveSlotsFailed": "Plätze konnten nicht gespeichert werden",
+      "noActiveOrg": "Keine aktive Organisation",
+      "updated": "Produktion aktualisiert",
+      "created": "Produktion erstellt"
+    }
+  }
+}

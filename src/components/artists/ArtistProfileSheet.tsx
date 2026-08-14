@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { Check, Plus, X } from 'lucide-react';
@@ -32,6 +33,7 @@ interface Props {
 const STATUS_OPTIONS: ArtistStatus[] = ['active', 'inactive', 'on_leave'];
 
 export function ArtistProfileSheet({ artistId, open, onOpenChange }: Props) {
+  const { t } = useTranslation('artists');
   const { hasRole, roles, currentOrg } = useAuth();
   const { isEditorMode } = useEditorConfig();
   const isRealAdmin = roles.includes('admin');
@@ -78,32 +80,32 @@ export function ArtistProfileSheet({ artistId, open, onOpenChange }: Props) {
 
   const invite = useMutation({
     mutationFn: async () => {
-      if (!currentOrg || !artist) throw new Error('No active organization');
-      if (!artist.email) throw new Error('This artist has no email — add one before inviting.');
+      if (!currentOrg || !artist) throw new Error(t('common.noOrg'));
+      if (!artist.email) throw new Error(t('common.noEmail'));
       await inviteArtistToApp(supabase, { orgId: currentOrg.id, artistId: artist.id, email: artist.email });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['artists', 'pending-invites'] });
       qc.invalidateQueries({ queryKey: ['org-invitations'] });
-      toast({ title: 'Invite sent' });
+      toast({ title: t('common.inviteSent') });
     },
-    onError: (e: Error) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+    onError: (e: Error) => toast({ title: t('common.error'), description: e.message, variant: 'destructive' }),
   });
 
   const resend = useMutation({
     mutationFn: async () => {
-      if (!currentOrg || !artist) throw new Error('No active organization');
+      if (!currentOrg || !artist) throw new Error(t('common.noOrg'));
       const invitations = await fetchOrgInvitations(supabase, currentOrg.id);
       const live = invitations.find(
         (i) => i.status === 'pending' && i.artist_id === artist.id,
       ) ?? invitations.find(
         (i) => i.status === 'pending' && !!artist.email && i.email.toLowerCase() === artist.email!.toLowerCase(),
       );
-      if (!live) throw new Error('No pending invite to resend.');
+      if (!live) throw new Error(t('sheet.noPendingInvite'));
       await resendInvitation(supabase, live.id);
     },
-    onSuccess: () => toast({ title: 'Invite re-sent' }),
-    onError: (e: Error) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+    onSuccess: () => toast({ title: t('common.inviteResent') }),
+    onError: (e: Error) => toast({ title: t('common.error'), description: e.message, variant: 'destructive' }),
   });
 
   const [form, setForm] = useState({
@@ -190,7 +192,7 @@ export function ArtistProfileSheet({ artistId, open, onOpenChange }: Props) {
       qc.invalidateQueries({ queryKey: ['artists'] });
       qc.invalidateQueries({ queryKey: ['skills'] });
       qc.invalidateQueries({ queryKey: ['artist-skills'] });
-      toast({ title: 'Artist updated' });
+      toast({ title: t('sheet.toastUpdated') });
       onOpenChange(false);
     },
     onError: (e: Error) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
@@ -215,9 +217,9 @@ export function ArtistProfileSheet({ artistId, open, onOpenChange }: Props) {
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-full sm:max-w-xl overflow-y-auto">
         <SheetHeader>
-          <SheetTitle className="font-display">Artist profile</SheetTitle>
+          <SheetTitle className="font-display">{t('sheet.title')}</SheetTitle>
           <SheetDescription>
-            {canEdit ? 'Edit artist details and skills.' : 'View artist details.'}
+            {canEdit ? t('sheet.descEdit') : t('sheet.descView')}
           </SheetDescription>
           {isEditorMode && isRealAdmin && (
             <Badge variant="outline" className="text-xs font-mono text-muted-foreground w-fit">
@@ -241,7 +243,7 @@ export function ArtistProfileSheet({ artistId, open, onOpenChange }: Props) {
             }}
           >
             <div className="space-y-1">
-              <label className="text-sm font-medium">Name</label>
+              <label className="text-sm font-medium">{t('sheet.name')}</label>
               <Input
                 value={form.name}
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
@@ -252,18 +254,18 @@ export function ArtistProfileSheet({ artistId, open, onOpenChange }: Props) {
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <label className="text-sm font-medium">Booking / contact email</label>
+                <label className="text-sm font-medium">{t('sheet.emailLabel')}</label>
                 <Input
                   type="email"
                   value={form.email}
                   onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
                   disabled={!canEdit}
                 />
-                <p className="text-xs text-muted-foreground">Separate from the login account.</p>
-                <p className="text-xs text-muted-foreground">Visible to admins and producers in this organization.</p>
+                <p className="text-xs text-muted-foreground">{t('sheet.emailHint1')}</p>
+                <p className="text-xs text-muted-foreground">{t('sheet.emailHint2')}</p>
               </div>
               <div className="space-y-1">
-                <label className="text-sm font-medium">Phone</label>
+                <label className="text-sm font-medium">{t('page.dialog.phonePlaceholder')}</label>
                 <Input
                   value={form.phone}
                   onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
@@ -273,7 +275,7 @@ export function ArtistProfileSheet({ artistId, open, onOpenChange }: Props) {
             </div>
 
             <div className="space-y-1">
-              <label className="text-sm font-medium">Status</label>
+              <label className="text-sm font-medium">{t('sheet.statusLabel')}</label>
               <Select
                 value={form.status}
                 onValueChange={(v) => setForm((f) => ({ ...f, status: v as ArtistStatus }))}
@@ -289,7 +291,7 @@ export function ArtistProfileSheet({ artistId, open, onOpenChange }: Props) {
             </div>
 
             <div className="space-y-1">
-              <label className="text-sm font-medium">Bio</label>
+              <label className="text-sm font-medium">{t('sheet.bioLabel')}</label>
               <Textarea
                 value={form.bio}
                 onChange={(e) => setForm((f) => ({ ...f, bio: e.target.value }))}
@@ -300,21 +302,20 @@ export function ArtistProfileSheet({ artistId, open, onOpenChange }: Props) {
 
             <div className="space-y-2">
               <div className="flex items-baseline justify-between gap-3">
-                <label className="text-sm font-medium">Skills</label>
+                <label className="text-sm font-medium">{t('sheet.skillsLabel')}</label>
                 <p className="font-mono text-[11px] tabular-nums text-muted-foreground">
-                  {selectedSkills.length} of {catalogDenominator} in the catalog
+                  {t('sheet.catalogCount', { held: selectedSkills.length, total: catalogDenominator })}
                 </p>
               </div>
               {canEdit && (
                 <p className="text-xs leading-[17px] text-muted-foreground">
-                  Skills decide which dates {artistFirstName || 'this artist'} can be offered.
-                  Removing one takes them out of any offer that requires it.
+                  {t('sheet.skillsHint', { name: artistFirstName || t('sheet.thisArtist') })}
                 </p>
               )}
 
               <div className="flex flex-col gap-1">
                 {selectedSkills.length === 0 && (
-                  <p className="text-sm text-muted-foreground">No skills yet.</p>
+                  <p className="text-sm text-muted-foreground">{t('sheet.noSkills')}</p>
                 )}
                 {selectedSkills.map((skill) => {
                   const count = upcomingDateCounts?.get(skill.id) ?? 0;
@@ -333,13 +334,13 @@ export function ArtistProfileSheet({ artistId, open, onOpenChange }: Props) {
                           otherwise flash the false "Not required yet" default. */}
                       {showSkillCounts && upcomingDateCounts && (
                         <span className="font-mono text-[11px] tabular-nums text-accent-700">
-                          {count > 0 ? `${count} upcoming date${count === 1 ? '' : 's'}` : 'Not required yet'}
+                          {count > 0 ? t('sheet.upcomingDates', { count }) : t('sheet.notRequiredYet')}
                         </span>
                       )}
                       {canEdit && (
                         <button
                           type="button"
-                          aria-label={`Remove ${skill.name}`}
+                          aria-label={t('sheet.removeSkill', { name: skill.name })}
                           onClick={() => setSelectedSkills((prev) => prev.filter((s) => s.id !== skill.id))}
                           className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-accent-700 hover:bg-destructive/10 hover:text-destructive"
                         >
@@ -369,11 +370,11 @@ export function ArtistProfileSheet({ artistId, open, onOpenChange }: Props) {
                     </div>
                   )}
                   <p className="text-xs leading-[17px] text-muted-foreground">
-                    Need a skill that does not exist? An admin adds it in{' '}
+                    {t('sheet.catalogHintPrefix')}{' '}
                     <Link to={`${ROUTES.SETTINGS}?tab=casts-coverage`} className="text-primary underline">
-                      Settings, Casts &amp; coverage
+                      {t('sheet.catalogHintLink')}
                     </Link>
-                    , so the catalog stays clean.
+                    {t('sheet.catalogHintSuffix')}
                   </p>
                 </>
               )}
@@ -396,10 +397,10 @@ export function ArtistProfileSheet({ artistId, open, onOpenChange }: Props) {
             {canEdit && (
               <div className="flex justify-end gap-2 pt-2">
                 <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
-                  Cancel
+                  {t('sheet.cancel')}
                 </Button>
                 <Button type="submit" disabled={save.isPending}>
-                  {save.isPending ? 'Saving…' : 'Save'}
+                  {save.isPending ? t('sheet.saving') : t('sheet.save')}
                 </Button>
               </div>
             )}

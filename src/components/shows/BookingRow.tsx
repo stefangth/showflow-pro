@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { IconTooltip } from '@/components/common/IconTooltip';
@@ -24,6 +25,7 @@ interface BookingRowProps {
  * an auto-confirm booking flow (no manual confirm step) can hide it entirely.
  */
 export function BookingRow({ booking: b, canManage, showConfirm, onConfirm, onCancel }: BookingRowProps) {
+  const { t } = useTranslation('showsDetail');
   return (
     <div className="flex items-center justify-between p-3 rounded-lg border border-border">
       <div>
@@ -46,7 +48,7 @@ export function BookingRow({ booking: b, canManage, showConfirm, onConfirm, onCa
               variant="outline"
               onClick={() => onConfirm(b.id)}
             >
-              Confirm
+              {t('bookingRow.confirm')}
             </Button>
           )}
           <Button
@@ -55,7 +57,7 @@ export function BookingRow({ booking: b, canManage, showConfirm, onConfirm, onCa
             className="text-destructive"
             onClick={() => onCancel(b.id)}
           >
-            Cancel
+            {t('bookingRow.cancel')}
           </Button>
         </div>
       )}

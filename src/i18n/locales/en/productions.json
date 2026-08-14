@@ -1,1 +1,88 @@
-{}
+{
+  "page": {
+    "title": "Productions",
+    "description": "Your show catalog: slots, status, and order.",
+    "newProduction": "New production"
+  },
+  "filter": {
+    "active": "Active",
+    "archived": "Archived",
+    "all": "All"
+  },
+  "status": {
+    "active": "Active",
+    "archived": "Archived",
+    "draft": "Draft"
+  },
+  "empty": "No productions yet. Create your first one.",
+  "errors": {
+    "loadFailed": "Failed to load productions."
+  },
+  "row": {
+    "unconfigured": "Unconfigured",
+    "synced": "Synced",
+    "dateCount_one": "{{count}} date",
+    "dateCount_other": "{{count}} dates"
+  },
+  "tooltips": {
+    "edit": "Edit {{name}}",
+    "noPermissionEdit": "You don't have permission to edit productions",
+    "noPermissionArchive": "You don't have permission to archive productions",
+    "restore": "Restore production",
+    "archive": "Archive production",
+    "toggleArchive": "Toggle archive",
+    "delete": "Delete production",
+    "deleteSyncedBlocked": "Synced productions can't be deleted, archive instead",
+    "deleteHasDates": "Has dates, archive instead",
+    "noPermissionCreate": "You don't have permission to create productions"
+  },
+  "deleteDialog": {
+    "title": "Delete this production?",
+    "description": "This permanently removes \"{{name}}\". This cannot be undone.",
+    "cancel": "Cancel",
+    "confirm": "Delete"
+  },
+  "listToasts": {
+    "deleted": "Production deleted",
+    "archived": "Production archived",
+    "restored": "Production restored"
+  },
+  "form": {
+    "editTitle": "Edit production",
+    "newTitle": "New production",
+    "syncedBadge": "Synced from Airtable",
+    "programLabel": "Program",
+    "subProgramLabel": "Sub-program",
+    "categoryLabel": "Category",
+    "descriptionLabel": "Description",
+    "slotsHeading": "Slots",
+    "slotTotals": "{{main}} main · {{understudy}} understudy",
+    "slotsHelp": "Name each slot and give it the skills it needs. Every date of this production then requires the union of these skills. There is no separate required-skills list to keep in sync.",
+    "slotGroupNamed": "Slot: {{name}}",
+    "slotGroupIndex": "Slot {{index}}",
+    "roleNameLabel": "Role name",
+    "countLabel": "Count",
+    "kindMain": "Main",
+    "kindUnderstudy": "Understudy",
+    "removeSlot": "Remove {{name}}",
+    "slotFallback": "slot",
+    "skillsEmptyHint": "No skills yet. Add skills on artist profiles first.",
+    "addSlot": "Add slot",
+    "saving": "Saving…",
+    "save": "Save",
+    "create": "Create",
+    "callout": {
+      "withSkills": "Every date of this production will require {{skills}}. A single date can still add or drop a skill without changing the production.",
+      "none": "No skills are required yet. Add skills to a slot to require them on every date."
+    },
+    "validation": {
+      "programOrSubRequired": "Program or sub-program required"
+    },
+    "toasts": {
+      "saveSlotsFailed": "Failed to save slots",
+      "noActiveOrg": "No active organization",
+      "updated": "Production updated",
+      "created": "Production created"
+    }
+  }
+}

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -19,6 +20,7 @@ interface Props {
 /** The artist's in-app signing modal. The order PDF stays visible on the page
  *  behind it, so the dialog references "the document shown on this page". */
 export function SignHireOrderDialog({ orderId, orgId, open, onOpenChange }: Props) {
+  const { t } = useTranslation("hireOrdersPages");
   const [sig, setSig] = useState<SignatureValue | null>(null);
   const [consent, setConsent] = useState(false);
   const sign = useSignHireOrder();
@@ -55,14 +57,14 @@ export function SignHireOrderDialog({ orderId, orgId, open, onOpenChange }: Prop
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle className="font-display">Sign your hire order</DialogTitle>
+          <DialogTitle className="font-display">{t("signDialog.title")}</DialogTitle>
           <DialogDescription>
-            Review the document shown on this page, then add your signature to countersign it.
+            {t("signDialog.description")}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            You are agreeing to the fee, dates, and terms shown on this order. Adding your signature completes it, and we email you the final signed PDF.
+            {t("signDialog.body")}
           </p>
           <SignaturePad value={sig} onChange={setSig} disabled={sign.isPending} />
           <div className="flex items-start gap-2 rounded-lg border border-border p-3">
@@ -73,9 +75,9 @@ export function SignHireOrderDialog({ orderId, orgId, open, onOpenChange }: Prop
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => handleOpenChange(false)} disabled={sign.isPending}>Cancel</Button>
+          <Button variant="outline" onClick={() => handleOpenChange(false)} disabled={sign.isPending}>{t("common.cancel")}</Button>
           <Button onClick={submit} disabled={!sig || !consent || sign.isPending}>
-            {sign.isPending ? "Signing..." : "Sign hire order"}
+            {sign.isPending ? t("signDialog.signing") : t("signDialog.sign")}
           </Button>
         </DialogFooter>
       </DialogContent>

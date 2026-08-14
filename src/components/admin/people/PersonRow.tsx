@@ -1,4 +1,5 @@
 import { format } from "date-fns";
+import { useTranslation } from "react-i18next";
 import { Copy, X, RefreshCw, Mail, Settings as SettingsIcon } from "lucide-react";
 import { type AppRole, roleLabel, ROLE_DESCRIPTIONS } from "@/config/app.config";
 import { Button } from "@/components/ui/button";
@@ -63,6 +64,7 @@ export function PersonRow({
   person, isSelf, onCopyLink, onResend, onRevoke, onSetRole, onRequestRemove,
   resendPending = false, revokePending = false, setRolePending = false,
 }: PersonRowProps) {
+  const { t } = useTranslation("admin");
   const invited = person.status === "invited";
   const inv = person.invitation;
   const hasName = Boolean(person.displayName);
@@ -72,11 +74,11 @@ export function PersonRow({
   // sit pending across a year boundary before it's resent, so the year isn't redundant).
   const resentAt = inv?.last_resent_at ? format(new Date(inv.last_resent_at), "dd/MM/yyyy HH:mm") : "";
   const resentMeta = inv?.last_resent_at
-    ? ` · ${(inv.resent_count ?? 1) > 1 ? `Resent ${inv.resent_count}× · last ${resentAt}` : `Resent ${resentAt}`}`
+    ? ` · ${(inv.resent_count ?? 1) > 1 ? t("personRow.resentMultiple", { num: inv.resent_count, date: resentAt }) : t("personRow.resentOnce", { date: resentAt })}`
     : "";
   const meta = invited
-    ? (inv?.created_at ? `Invited ${format(new Date(inv.created_at), "dd/MM/yyyy")}` : "Awaiting acceptance") + resentMeta
-    : (person.lastSignInAt ? `Last seen ${format(new Date(person.lastSignInAt), "dd/MM/yyyy HH:mm")}` : "Never signed in");
+    ? (inv?.created_at ? t("personRow.invited", { date: format(new Date(inv.created_at), "dd/MM/yyyy") }) : t("personRow.awaitingAcceptance")) + resentMeta
+    : (person.lastSignInAt ? t("personRow.lastSeen", { date: format(new Date(person.lastSignInAt), "dd/MM/yyyy HH:mm") }) : t("personRow.neverSignedIn"));
 
   return (
     <div role="listitem" className="flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:gap-4">
@@ -94,7 +96,7 @@ export function PersonRow({
             </p>
             {isSelf && (
               <Badge variant="secondary" className="shrink-0 border-border/60 px-1.5 text-[10px] font-medium uppercase tracking-wide">
-                You
+                {t("personRow.you")}
               </Badge>
             )}
           </div>
@@ -113,21 +115,21 @@ export function PersonRow({
 
         {invited && inv ? (
           <div className="flex items-center justify-end gap-1 sm:w-40">
-            <IconTooltip label="Copy invite link">
-              <Button size="sm" variant="ghost" className="h-9 w-9 p-0 sm:h-8 sm:w-8" onClick={() => onCopyLink(inv.token)} aria-label={`Copy invite link for ${inv.email}`}>
+            <IconTooltip label={t("personRow.copyInviteLink")}>
+              <Button size="sm" variant="ghost" className="h-9 w-9 p-0 sm:h-8 sm:w-8" onClick={() => onCopyLink(inv.token)} aria-label={t("personRow.copyInviteLinkFor", { email: inv.email })}>
                 <Copy className="h-4 w-4" />
               </Button>
             </IconTooltip>
-            <IconTooltip label="Resend invitation">
-              <Button size="sm" variant="ghost" className="h-9 w-9 p-0 sm:h-8 sm:w-8" disabled={resendPending} onClick={() => onResend(inv.id)} aria-label={`Resend invitation to ${inv.email}`}>
+            <IconTooltip label={t("personRow.resendInvitation")}>
+              <Button size="sm" variant="ghost" className="h-9 w-9 p-0 sm:h-8 sm:w-8" disabled={resendPending} onClick={() => onResend(inv.id)} aria-label={t("personRow.resendInvitationTo", { email: inv.email })}>
                 <RefreshCw className={`h-4 w-4 ${resendPending ? "animate-spin" : ""}`} />
               </Button>
             </IconTooltip>
-            <IconTooltip label="Revoke invitation">
+            <IconTooltip label={t("personRow.revokeInvitation")}>
               <Button
                 size="sm" variant="ghost"
                 className="ml-0.5 h-9 w-9 p-0 text-[var(--red-600)] hover:bg-[var(--red-100)] sm:h-8 sm:w-8"
-                disabled={revokePending} onClick={() => onRevoke(inv.id)} aria-label={`Revoke invitation for ${inv.email}`}
+                disabled={revokePending} onClick={() => onRevoke(inv.id)} aria-label={t("personRow.revokeInvitationFor", { email: inv.email })}
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -138,12 +140,12 @@ export function PersonRow({
             {person.userId && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button size="sm" variant="outline" className="h-9 gap-1.5 px-2.5 text-xs sm:h-8" aria-label={`Edit roles for ${person.email}`}>
-                    <SettingsIcon className="h-4 w-4" />Roles
+                  <Button size="sm" variant="outline" className="h-9 gap-1.5 px-2.5 text-xs sm:h-8" aria-label={t("personRow.editRolesFor", { email: person.email })}>
+                    <SettingsIcon className="h-4 w-4" />{t("personRow.roles")}
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-72">
-                  <DropdownMenuLabel>Roles</DropdownMenuLabel>
+                  <DropdownMenuLabel>{t("personRow.roles")}</DropdownMenuLabel>
                   {ROLE_OPTIONS.map((r) => {
                     const has = person.roles.includes(r);
                     return (
@@ -176,9 +178,9 @@ export function PersonRow({
                   size="sm" variant="ghost"
                   className="h-9 px-2.5 text-xs text-[var(--red-600)] hover:bg-[var(--red-100)] sm:h-8"
                   onClick={() => onRequestRemove({ user_id: person.userId!, email: person.email })}
-                  aria-label={`Remove ${person.displayName || person.email}`}
+                  aria-label={t("personRow.removeAria", { who: person.displayName || person.email })}
                 >
-                  Remove
+                  {t("personRow.remove")}
                 </Button>
               )}
             </div>

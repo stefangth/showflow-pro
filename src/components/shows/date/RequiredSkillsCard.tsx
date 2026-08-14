@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -31,16 +32,17 @@ export interface RequiredSkillsCardProps {
 export function RequiredSkillsCard({
   show, slots, showSkillIds, dateSkillIds, droppedSkillIds, skills, onReset, onEdit,
 }: RequiredSkillsCardProps) {
+  const { t } = useTranslation("showsDetail");
   const card = computeRequiredSkillCard({ slots, showSkillIds, dateSkillIds, droppedSkillIds, skills });
 
   return (
     <Card>
       <CardHeader className="space-y-1.5">
         <CardTitle className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Skills required on this date
+          {t("requiredSkillsCard.title")}
         </CardTitle>
         <p className="text-sm text-muted-foreground">
-          Computed from the {card.slotCount} slots on {show}. Only artists holding all of them can be offered or booked.
+          {t("requiredSkillsCard.computedFrom", { count: card.slotCount, show })}
         </p>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -50,7 +52,7 @@ export function RequiredSkillsCard({
               return (
                 <Badge key={row.skillId} variant="outline" className="gap-1 border-dashed border-[var(--line-strong)]">
                   <span className="line-through text-[var(--text-faint)]">{row.name}</span>
-                  <span className="text-[10px] uppercase text-[var(--text-faint)]">dropped on this date</span>
+                  <span className="text-[10px] uppercase text-[var(--text-faint)]">{t("requiredSkillsCard.droppedOnDate")}</span>
                 </Badge>
               );
             }
@@ -58,7 +60,7 @@ export function RequiredSkillsCard({
               return (
                 <Badge key={row.skillId} variant="hold" className="gap-1">
                   {row.name}
-                  <span className="text-[10px] uppercase opacity-80">added on this date</span>
+                  <span className="text-[10px] uppercase opacity-80">{t("requiredSkillsCard.addedOnDate")}</span>
                 </Badge>
               );
             }
@@ -72,7 +74,7 @@ export function RequiredSkillsCard({
             );
           })}
           {card.rows.length === 0 && (
-            <p className="text-xs text-muted-foreground">No skills required.</p>
+            <p className="text-xs text-muted-foreground">{t("requiredSkillsCard.noSkillsRequired")}</p>
           )}
         </div>
 
@@ -80,18 +82,18 @@ export function RequiredSkillsCard({
           <div>
             {card.changeCount > 0 && (
               <p className="text-xs text-muted-foreground">
-                {card.changeCount} {card.changeCount === 1 ? "change" : "changes"} from the production default
+                {t("requiredSkillsCard.changeCount", { count: card.changeCount })}
               </p>
             )}
           </div>
           <div className="flex items-center gap-2 shrink-0">
             {card.changeCount > 0 && (
               <Button type="button" variant="ghost" size="sm" onClick={onReset}>
-                Reset to computed
+                {t("requiredSkillsCard.resetToComputed")}
               </Button>
             )}
             <Button type="button" variant="outline" size="sm" onClick={onEdit}>
-              Edit
+              {t("requiredSkillsCard.edit")}
             </Button>
           </div>
         </div>

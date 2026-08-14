@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Check, CheckCircle2, ChevronsUpDown, FileText, Plus, Trash2 } from "lucide-react";
@@ -96,21 +97,21 @@ interface WizardResult {
   errors: BatchOutcomeRow[];
 }
 
-const STEPS: { step: WizardStep; label: string }[] = [
-  { step: 1, label: "Confirm engagement" },
-  { step: 2, label: "Fees and deposit" },
-  { step: 3, label: "Running order" },
-  { step: 4, label: "Review and issue" },
+const STEPS: { step: WizardStep; labelKey: string }[] = [
+  { step: 1, labelKey: "wizard.step1" },
+  { step: 2, labelKey: "wizard.step2" },
+  { step: 3, labelKey: "wizard.step3" },
+  { step: 4, labelKey: "wizard.step4" },
 ];
 
-const REVIEW_ROWS: { key: EditableOrderFieldKey; label: string }[] = [
-  { key: "artist_name", label: "Artist" },
-  { key: "recipient_email", label: "Recipient email" },
-  { key: "date", label: "Date" },
-  { key: "venue", label: "Venue" },
-  { key: "city", label: "City" },
-  { key: "duration_min", label: "Duration" },
-  { key: "sessions", label: "Sessions" },
+const REVIEW_ROWS: { key: EditableOrderFieldKey; labelKey: string }[] = [
+  { key: "artist_name", labelKey: "wizard.reviewArtist" },
+  { key: "recipient_email", labelKey: "wizard.reviewRecipientEmail" },
+  { key: "date", labelKey: "wizard.reviewDate" },
+  { key: "venue", labelKey: "wizard.reviewVenue" },
+  { key: "city", labelKey: "wizard.reviewCity" },
+  { key: "duration_min", labelKey: "wizard.reviewDuration" },
+  { key: "sessions", labelKey: "wizard.reviewSessions" },
 ];
 
 function dateOptionLabel(d: ShowDateLite): string {
@@ -120,11 +121,15 @@ function dateOptionLabel(d: ShowDateLite): string {
   return parts.join(" · ");
 }
 
-function reviewValue(key: EditableOrderFieldKey, data: OrderData): string {
+function reviewValue(
+  key: EditableOrderFieldKey,
+  data: OrderData,
+  t: (k: string, opts?: Record<string, unknown>) => string,
+): string {
   const v = data[key]?.value;
-  if (v === undefined || v === null || v === "") return "Not set";
+  if (v === undefined || v === null || v === "") return t("common.notSet");
   if (key === "date" && typeof v === "string") return formatDateDMY(v);
-  if (key === "duration_min") return `${v} min`;
+  if (key === "duration_min") return t("common.minutes", { value: v });
   if (key === "sessions" && Array.isArray(v)) return (v as string[]).join(" · ");
   return String(v);
 }
@@ -143,6 +148,7 @@ function MultiPickerCombobox<T extends { id: string }>({
   emptyText: string;
   selectionNoun: string;
 }) {
+  const { t } = useTranslation("hireOrdersPages");
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const needle = search.trim().toLowerCase();
@@ -153,7 +159,7 @@ function MultiPickerCombobox<T extends { id: string }>({
       ? placeholder
       : singleSelection
         ? getLabel(singleSelection)
-        : `${values.length} ${selectionNoun} selected`;
+        : t("wizard.multiSelected", { count: values.length, noun: selectionNoun });
 
   return (
     <Popover open={open} onOpenChange={(o) => { setOpen(o); if (!o) setSearch(""); }}>
@@ -172,7 +178,7 @@ function MultiPickerCombobox<T extends { id: string }>({
       </PopoverTrigger>
       <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
         <Command shouldFilter={false}>
-          <CommandInput placeholder="Search…" value={search} onValueChange={setSearch} />
+          <CommandInput placeholder={t("wizard.searchPlaceholder")} value={search} onValueChange={setSearch} />
           <CommandList>
             {matches.length === 0 ? (
               <CommandEmpty>{emptyText}</CommandEmpty>
@@ -191,7 +197,7 @@ function MultiPickerCombobox<T extends { id: string }>({
                       checked={values.includes(item.id)}
                       onCheckedChange={() => onToggle(item.id)}
                       onClick={(event) => event.stopPropagation()}
-                      aria-label={`Select ${getLabel(item)}`}
+                      aria-label={t("wizard.selectItemAria", { label: getLabel(item) })}
                       tabIndex={-1}
                       className="mr-2"
                     />
@@ -217,6 +223,7 @@ function MultiPickerCombobox<T extends { id: string }>({
  * that was created successfully.
  */
 export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
+  const { t } = useTranslation("hireOrdersPages");
   const navigate = useNavigate();
   const { data: artists = [] } = useArtistsLite(orgId);
   const { data: showDates = [] } = useShowDatesLite(orgId);
@@ -514,17 +521,17 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
   const maxDateCount = artistDateCounts.length > 0 ? Math.max(...artistDateCounts) : 1;
 
   function feeSummaryText(): string {
-    if (feeAmountNum === null) return "Not set";
+    if (feeAmountNum === null) return t("wizard.fee.notSet");
     const unit = formatMoney(feeAmountNum, currency);
-    if (feeBasis === "total") return `${unit} total for all dates`;
-    if (maxDateCount === 1 && minDateCount === 1) return `${unit} per date`;
+    if (feeBasis === "total") return t("wizard.fee.total", { unit });
+    if (maxDateCount === 1 && minDateCount === 1) return t("wizard.fee.perDate", { unit });
     if (minDateCount === maxDateCount) {
       const total = formatMoney(computeFeeTotal(feeAmountNum, maxDateCount, "per_date"), currency);
-      return `${unit} per date x ${maxDateCount} dates = ${total}`;
+      return t("wizard.fee.perDateTotal", { unit, count: maxDateCount, total });
     }
     const low = formatMoney(computeFeeTotal(feeAmountNum, minDateCount, "per_date"), currency);
     const high = formatMoney(computeFeeTotal(feeAmountNum, maxDateCount, "per_date"), currency);
-    return `${unit} per date. Totals range from ${low} to ${high} by artist.`;
+    return t("wizard.fee.perDateRange", { unit, low, high });
   }
 
   // Step 4's per-artist equivalent of feeSummaryText(): when artists have
@@ -534,12 +541,12 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
   // the range. Same wording as feeSummaryText's equal-count branch, computed
   // via computeFeeTotal (never inline multiplication).
   function artistFeeLine(dateCount: number): string {
-    if (feeAmountNum === null) return "Not set";
+    if (feeAmountNum === null) return t("wizard.fee.notSet");
     const unit = formatMoney(feeAmountNum, currency);
-    if (feeBasis === "total") return `${unit} total for all dates`;
-    if (dateCount <= 1) return `${unit} per date`;
+    if (feeBasis === "total") return t("wizard.fee.total", { unit });
+    if (dateCount <= 1) return t("wizard.fee.perDate", { unit });
     const total = formatMoney(computeFeeTotal(feeAmountNum, dateCount, "per_date"), currency);
-    return `${unit} per date x ${dateCount} dates = ${total}`;
+    return t("wizard.fee.perDateTotal", { unit, count: dateCount, total });
   }
 
   function draftBody() {
@@ -569,7 +576,7 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
   function resultFromDraft(response: BatchDraftResult): WizardResult | null {
     const created = response.created ?? [];
     if (created.length === 0) {
-      toast.error("Could not create any hire orders");
+      toast.error(t("wizard.createError"));
       return null;
     }
     return {
@@ -668,8 +675,8 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-5xl">
         <DialogHeader>
-          <DialogTitle className="font-display">New hire order</DialogTitle>
-          <DialogDescription>Confirm the engagement, set the fee, and issue a hire order.</DialogDescription>
+          <DialogTitle className="font-display">{t("wizard.title")}</DialogTitle>
+          <DialogDescription>{t("wizard.description")}</DialogDescription>
         </DialogHeader>
 
         {result ? (
@@ -678,33 +685,33 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
               <CheckCircle2 className="h-6 w-6 text-accent-700" />
             </div>
             <p className="text-lg font-medium">
-              {result.created.length} hire order{result.created.length === 1 ? "" : "s"} created
+              {t("wizard.created", { count: result.created.length })}
             </p>
             {(result.skipped.length > 0 || result.errors.length > 0) && (
               <div className="space-y-1 text-sm text-muted-foreground">
                 {result.skipped.length > 0 && (
-                  <p>{result.skipped.length} artist{result.skipped.length === 1 ? "" : "s"} skipped</p>
+                  <p>{t("wizard.skipped", { count: result.skipped.length })}</p>
                 )}
                 {result.errors.length > 0 && (
-                  <p>{result.errors.length} artist{result.errors.length === 1 ? "" : "s"} failed</p>
+                  <p>{t("wizard.failed", { count: result.errors.length })}</p>
                 )}
               </div>
             )}
             <div className="flex justify-center gap-2">
               {result.created.length === 1 ? (
-                <Button type="button" variant="outline" onClick={handleOpenOrder}>Open order</Button>
+                <Button type="button" variant="outline" onClick={handleOpenOrder}>{t("wizard.openOrder")}</Button>
               ) : (
                 <Button
                   type="button"
                   variant="outline"
-                  aria-label="Close and return to hire orders"
+                  aria-label={t("wizard.closeReturnAria")}
                   onClick={handleCloseResult}
                 >
-                  Close
+                  {t("wizard.close")}
                 </Button>
               )}
               {!allCreatedOrdersIssued && (
-                <Button type="button" onClick={handleIssueNow} disabled={submitting !== null}>Issue now</Button>
+                <Button type="button" onClick={handleIssueNow} disabled={submitting !== null}>{t("wizard.issueNow")}</Button>
               )}
             </div>
           </div>
@@ -729,7 +736,7 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
                       {state === "done" ? <Check className="h-3 w-3" /> : s.step}
                     </span>
                     <span className={state === "current" ? "font-medium text-foreground" : "text-muted-foreground"}>
-                      {s.label}
+                      {t(s.labelKey)}
                     </span>
                     {i < STEPS.length - 1 && (
                       <span className={cn("h-px w-6", s.step < step ? "bg-accent-500" : "bg-border")} />
@@ -741,43 +748,43 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
 
             {step === 1 && (
               <div className="space-y-4">
-                <div className="flex items-center gap-2" role="group" aria-label="Engagement source">
+                <div className="flex items-center gap-2" role="group" aria-label={t("wizard.engagementSource")}>
                   <Button type="button" size="sm" variant={!manualMode ? "default" : "outline"} onClick={() => switchMode(false)}>
-                    Link a show date
+                    {t("wizard.linkShowDate")}
                   </Button>
                   <Button type="button" size="sm" variant={manualMode ? "default" : "outline"} onClick={() => switchMode(true)}>
-                    No linked date
+                    {t("wizard.noLinkedDate")}
                   </Button>
                 </div>
 
                 {!manualMode ? (
                   <div className="space-y-3">
                     <div className="space-y-1.5">
-                      <Label>Artists</Label>
+                      <Label>{t("wizard.artists")}</Label>
                       <MultiPickerCombobox
                         items={artists}
                         values={selectedArtistIds}
                         onToggle={toggleArtist}
                         getLabel={(a: ArtistLite) => a.name}
                         getSearchText={(a: ArtistLite) => a.name}
-                        placeholder="Choose artists"
-                        ariaLabel="Select artist"
-                        emptyText="No artists found."
-                        selectionNoun="artists"
+                        placeholder={t("wizard.chooseArtists")}
+                        ariaLabel={t("wizard.selectArtistAria")}
+                        emptyText={t("wizard.noArtistsFound")}
+                        selectionNoun={t("wizard.nounArtists")}
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label>Common show dates</Label>
+                      <Label>{t("wizard.commonShowDates")}</Label>
                       <MultiPickerCombobox
                         items={showDates}
                         values={selectedShowDateIds}
                         onToggle={toggleShowDate}
                         getLabel={dateOptionLabel}
                         getSearchText={dateOptionLabel}
-                        placeholder="Choose dates"
-                        ariaLabel="Select show date"
-                        emptyText="No show dates found."
-                        selectionNoun="dates"
+                        placeholder={t("wizard.chooseDates")}
+                        ariaLabel={t("wizard.selectShowDateAria")}
+                        emptyText={t("wizard.noShowDatesFound")}
+                        selectionNoun={t("wizard.nounDates")}
                       />
                     </div>
                     <Button
@@ -787,14 +794,14 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
                       onClick={applySelectedDatesToAll}
                       disabled={selectedArtistIds.length === 0 || selectedShowDateIds.length === 0}
                     >
-                      Reset all to selected dates
+                      {t("wizard.resetAllToSelected")}
                     </Button>
                     {selectedArtistIds.length > 0 && selectedShowDateIds.length > 0 && (
                       <div className="overflow-x-auto rounded-lg border">
                         <table className="w-full text-left text-sm">
                           <thead className="bg-muted/50 text-xs text-muted-foreground">
                             <tr>
-                              <th className="px-3 py-2 font-medium">Artist</th>
+                              <th className="px-3 py-2 font-medium">{t("wizard.colArtist")}</th>
                               {selectedShowDateIds.map((showDateId) => {
                                 const date = showDates.find((item) => item.id === showDateId);
                                 return (
@@ -835,23 +842,23 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
                 ) : (
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div className="space-y-1.5 sm:col-span-2">
-                      <Label htmlFor="wiz-artist-name">Artist name</Label>
-                      <Input id="wiz-artist-name" value={manualArtistName} onChange={(e) => setManualArtistName(e.target.value)} placeholder="Full name" />
+                      <Label htmlFor="wiz-artist-name">{t("wizard.artistName")}</Label>
+                      <Input id="wiz-artist-name" value={manualArtistName} onChange={(e) => setManualArtistName(e.target.value)} placeholder={t("wizard.fullName")} />
                     </div>
                     <div className="space-y-1.5 sm:col-span-2">
-                      <Label htmlFor="wiz-recipient-email">Recipient email</Label>
-                      <Input id="wiz-recipient-email" type="email" value={manualEmail} onChange={(e) => setManualEmail(e.target.value)} placeholder="artist@example.com" />
+                      <Label htmlFor="wiz-recipient-email">{t("wizard.recipientEmail")}</Label>
+                      <Input id="wiz-recipient-email" type="email" value={manualEmail} onChange={(e) => setManualEmail(e.target.value)} placeholder={t("wizard.emailPlaceholder")} />
                     </div>
                     <div className="space-y-1.5">
-                      <Label htmlFor="wiz-date">Date</Label>
+                      <Label htmlFor="wiz-date">{t("wizard.date")}</Label>
                       <Input id="wiz-date" type="date" value={manualDate} onChange={(e) => setManualDate(e.target.value)} />
                     </div>
                     <div className="space-y-1.5">
-                      <Label htmlFor="wiz-venue">Venue</Label>
+                      <Label htmlFor="wiz-venue">{t("wizard.venue")}</Label>
                       <Input id="wiz-venue" value={manualVenue} onChange={(e) => setManualVenue(e.target.value)} />
                     </div>
                     <div className="space-y-1.5 sm:col-span-2">
-                      <Label htmlFor="wiz-city">City</Label>
+                      <Label htmlFor="wiz-city">{t("wizard.city")}</Label>
                       <Input id="wiz-city" value={manualCity} onChange={(e) => setManualCity(e.target.value)} />
                     </div>
                   </div>
@@ -863,24 +870,24 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
               <div className="space-y-4">
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                   <div className="space-y-1.5">
-                    <Label htmlFor="wiz-fee">Engagement fee</Label>
+                    <Label htmlFor="wiz-fee">{t("wizard.engagementFee")}</Label>
                     <Input
                       id="wiz-fee" type="number" inputMode="decimal" min="0" step="0.01"
-                      value={fee} onChange={(e) => setFee(e.target.value)} placeholder="0.00"
+                      value={fee} onChange={(e) => setFee(e.target.value)} placeholder={t("wizard.feePlaceholder")}
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="wiz-fee-basis">Fee basis</Label>
+                    <Label htmlFor="wiz-fee-basis">{t("wizard.feeBasis")}</Label>
                     <Select value={feeBasis} onValueChange={(v) => setFeeBasis(v as FeeBasis)}>
-                      <SelectTrigger id="wiz-fee-basis" aria-label="Fee basis"><SelectValue /></SelectTrigger>
+                      <SelectTrigger id="wiz-fee-basis" aria-label={t("wizard.feeBasisAria")}><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="per_date">Per date</SelectItem>
-                        <SelectItem value="total">Total for all dates</SelectItem>
+                        <SelectItem value="per_date">{t("wizard.perDate")}</SelectItem>
+                        <SelectItem value="total">{t("wizard.totalForAllDates")}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="wiz-currency">Currency</Label>
+                    <Label htmlFor="wiz-currency">{t("wizard.currency")}</Label>
                     <Select value={currency} onValueChange={setCurrency}>
                       <SelectTrigger id="wiz-currency"><SelectValue /></SelectTrigger>
                       <SelectContent>
@@ -901,27 +908,27 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
               manualMode ? (
                 <div className="space-y-4">
                   <div className="space-y-1.5">
-                    <Label htmlFor="wiz-duration">Duration (minutes)</Label>
+                    <Label htmlFor="wiz-duration">{t("wizard.durationMinutes")}</Label>
                     <Input id="wiz-duration" type="number" min="0" value={durationMin} onChange={(e) => setDurationMin(e.target.value)} />
                   </div>
                   <div className="space-y-2">
-                    <Label>Sessions</Label>
+                    <Label>{t("wizard.sessions")}</Label>
                     <div className="space-y-2">
                       {manualSessions.map((row, i) => (
                         <div key={i} className="flex items-center gap-2">
                           <Input
-                            placeholder="Label (optional)" value={row.label}
+                            placeholder={t("wizard.labelOptional")} value={row.label}
                             onChange={(e) => updateSessionRow(i, { label: e.target.value })}
-                            aria-label={`Session ${i + 1} label`}
+                            aria-label={t("wizard.sessionLabelAria", { index: i + 1 })}
                           />
                           <Input
                             type="time" value={row.time}
                             onChange={(e) => updateSessionRow(i, { time: e.target.value })}
-                            aria-label={`Session ${i + 1} time`}
+                            aria-label={t("wizard.sessionTimeAria", { index: i + 1 })}
                           />
                           {manualSessions.length > 1 && (
-                            <IconTooltip label="Remove session">
-                              <Button type="button" variant="ghost" size="icon" onClick={() => removeSessionRow(i)} aria-label={`Remove session ${i + 1}`}>
+                            <IconTooltip label={t("wizard.removeSession")}>
+                              <Button type="button" variant="ghost" size="icon" onClick={() => removeSessionRow(i)} aria-label={t("wizard.removeSessionAria", { index: i + 1 })}>
                                 <Trash2 className="h-4 w-4" />
                               </Button>
                             </IconTooltip>
@@ -930,7 +937,7 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
                       ))}
                       {manualSessions.length < 3 && (
                         <Button type="button" variant="outline" size="sm" onClick={addSessionRow}>
-                          <Plus className="mr-1 h-4 w-4" /> Add session
+                          <Plus className="mr-1 h-4 w-4" /> {t("wizard.addSession")}
                         </Button>
                       )}
                     </div>
@@ -939,7 +946,7 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
               ) : (
                 <div className="space-y-6">
                   <p className="text-sm text-muted-foreground">
-                    Each date starts from its synced running order. Edit a date to override just that date.
+                    {t("wizard.eachDateSynced")}
                   </p>
                   {assignedDateIds.map((dateId) => {
                     const date = showDates.find((d) => d.id === dateId);
@@ -947,10 +954,10 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
                     if (!schedule) return null;
                     const label = date ? dateOptionLabel(date) : dateId;
                     return (
-                      <div key={dateId} role="group" aria-label={`${label} running order`} className="space-y-4 rounded-lg border p-3">
+                      <div key={dateId} role="group" aria-label={t("wizard.runningOrderAria", { label })} className="space-y-4 rounded-lg border p-3">
                         <p className="font-medium text-foreground">{label}</p>
                         <div className="space-y-1.5">
-                          <Label htmlFor={`wiz-duration-${dateId}`}>Duration (minutes)</Label>
+                          <Label htmlFor={`wiz-duration-${dateId}`}>{t("wizard.durationMinutes")}</Label>
                           <Input
                             id={`wiz-duration-${dateId}`} type="number" min="0"
                             value={schedule.durationMin}
@@ -962,34 +969,34 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
                             <Button
                               type="button" variant="link" size="sm"
                               className="h-auto p-0 text-xs"
-                              aria-label={`Copy to all dates (${label})`}
+                              aria-label={t("wizard.copyToAllAria", { label })}
                               onClick={() => {
                                 setDateSchedules((current) => copyDurationToAll(current, dateId));
-                                toast.success("Applied this duration to all dates");
+                                toast.success(t("wizard.copiedDuration"));
                               }}
                             >
-                              Copy to all dates
+                              {t("wizard.copyToAll")}
                             </Button>
                           )}
                         </div>
                         <div className="space-y-2">
-                          <Label>Sessions</Label>
+                          <Label>{t("wizard.sessions")}</Label>
                           <div className="space-y-2">
                             {schedule.sessions.map((row, i) => (
                               <div key={i} className="flex items-center gap-2">
                                 <Input
-                                  placeholder="Label (optional)" value={row.label}
+                                  placeholder={t("wizard.labelOptional")} value={row.label}
                                   onChange={(e) => updateDateSessionRow(dateId, i, { label: e.target.value })}
-                                  aria-label={`${label} session ${i + 1} label`}
+                                  aria-label={t("wizard.dateSessionLabelAria", { label, index: i + 1 })}
                                 />
                                 <Input
                                   type="time" value={row.time}
                                   onChange={(e) => updateDateSessionRow(dateId, i, { time: e.target.value })}
-                                  aria-label={`${label} session ${i + 1} time`}
+                                  aria-label={t("wizard.dateSessionTimeAria", { label, index: i + 1 })}
                                 />
                                 {schedule.sessions.length > 1 && (
-                                  <IconTooltip label="Remove session">
-                                    <Button type="button" variant="ghost" size="icon" onClick={() => removeDateSessionRow(dateId, i)} aria-label={`${label} remove session ${i + 1}`}>
+                                  <IconTooltip label={t("wizard.removeSession")}>
+                                    <Button type="button" variant="ghost" size="icon" onClick={() => removeDateSessionRow(dateId, i)} aria-label={t("wizard.dateRemoveSessionAria", { label, index: i + 1 })}>
                                       <Trash2 className="h-4 w-4" />
                                     </Button>
                                   </IconTooltip>
@@ -998,7 +1005,7 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
                             ))}
                             {schedule.sessions.length < 3 && (
                               <Button type="button" variant="outline" size="sm" onClick={() => addDateSessionRow(dateId)}>
-                                <Plus className="mr-1 h-4 w-4" /> Add session
+                                <Plus className="mr-1 h-4 w-4" /> {t("wizard.addSession")}
                               </Button>
                             )}
                           </div>
@@ -1016,12 +1023,12 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
                   <div className="grid grid-cols-2 gap-x-4 gap-y-3">
                     {REVIEW_ROWS.map((r) => (
                       <div key={r.key} className="space-y-0.5">
-                        <p className="text-xs text-muted-foreground">{r.label}</p>
-                        <p className="text-sm text-foreground">{reviewValue(r.key, reviewData)}</p>
+                        <p className="text-xs text-muted-foreground">{t(r.labelKey)}</p>
+                        <p className="text-sm text-foreground">{reviewValue(r.key, reviewData, t)}</p>
                       </div>
                     ))}
                     <div className="space-y-0.5">
-                      <p className="text-xs text-muted-foreground">Fee</p>
+                      <p className="text-xs text-muted-foreground">{t("wizard.reviewFee")}</p>
                       <p className="text-sm text-foreground" data-testid="wiz-fee-summary">{feeSummaryText()}</p>
                     </div>
                   </div>
@@ -1038,7 +1045,7 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
                           <div
                             key={artistId}
                             role="group"
-                            aria-label={`${artistName} dates`}
+                            aria-label={t("wizard.artistDatesAria", { name: artistName })}
                             className="rounded-lg border p-3"
                           >
                             <p className="font-medium text-foreground">{artistName}</p>
@@ -1063,18 +1070,18 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
                         const schedule = dateSchedules[dateId];
                         if (!schedule) return null;
                         const label = date ? dateOptionLabel(date) : dateId;
-                        const durationText = schedule.durationMin.trim() !== "" ? `${schedule.durationMin} min` : "Not set";
-                        const sessionsText = sessionRowsToStrings(schedule.sessions).join(" · ") || "Not set";
+                        const durationText = schedule.durationMin.trim() !== "" ? t("common.minutes", { value: schedule.durationMin }) : t("common.notSet");
+                        const sessionsText = sessionRowsToStrings(schedule.sessions).join(" · ") || t("common.notSet");
                         return (
-                          <div key={dateId} role="group" aria-label={`${label} running order`} className="rounded-lg border p-3">
+                          <div key={dateId} role="group" aria-label={t("wizard.runningOrderAria", { label })} className="rounded-lg border p-3">
                             <p className="font-medium text-foreground">{label}</p>
                             <div className="mt-1 grid grid-cols-2 gap-x-4 gap-y-1">
                               <div className="space-y-0.5">
-                                <p className="text-xs text-muted-foreground">Duration</p>
+                                <p className="text-xs text-muted-foreground">{t("wizard.reviewDurationLabel")}</p>
                                 <p className="text-sm text-foreground">{durationText}</p>
                               </div>
                               <div className="space-y-0.5">
-                                <p className="text-xs text-muted-foreground">Sessions</p>
+                                <p className="text-xs text-muted-foreground">{t("wizard.reviewSessionsLabel")}</p>
                                 <p className="text-sm text-foreground">{sessionsText}</p>
                               </div>
                             </div>
@@ -1084,7 +1091,7 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
                     </div>
                     <div className="grid grid-cols-2 gap-x-4 gap-y-3">
                       <div className="space-y-0.5">
-                        <p className="text-xs text-muted-foreground">Fee</p>
+                        <p className="text-xs text-muted-foreground">{t("wizard.reviewFee")}</p>
                         <p className="text-sm text-foreground" data-testid="wiz-fee-summary">{feeSummaryText()}</p>
                       </div>
                     </div>
@@ -1092,7 +1099,7 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
                 )}
                 <div className="flex items-center gap-3 rounded-lg border border-dashed border-border p-4 text-muted-foreground">
                   <FileText className="h-8 w-8 shrink-0" />
-                  <p className="text-xs">Document preview available once the order is created.</p>
+                  <p className="text-xs">{t("wizard.previewAvailable")}</p>
                 </div>
               </div>
             )}
@@ -1100,23 +1107,23 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
             {step < 4 ? (
               <div className="flex justify-between pt-2">
                 <Button type="button" variant="ghost" onClick={() => setStep((s) => (s - 1) as WizardStep)} disabled={step === 1}>
-                  Back
+                  {t("common.back")}
                 </Button>
                 <Button type="button" onClick={() => setStep((s) => (s + 1) as WizardStep)} disabled={!canContinue}>
-                  Continue
+                  {t("common.continue")}
                 </Button>
               </div>
             ) : (
               <div className="flex flex-col gap-2 pt-2 sm:flex-row sm:justify-between">
                 <Button type="button" variant="ghost" onClick={() => setStep(3)} disabled={submitting !== null}>
-                  Back
+                  {t("common.back")}
                 </Button>
                 <div className="flex gap-2">
                   <Button type="button" variant="outline" onClick={handleSaveDraft} disabled={submitting !== null}>
-                    Save as draft
+                    {t("wizard.saveAsDraft")}
                   </Button>
                   <Button type="button" onClick={handleIssueAndSend} disabled={submitting !== null}>
-                    Issue and send to artist
+                    {t("wizard.issueAndSendToArtist")}
                   </Button>
                 </div>
               </div>

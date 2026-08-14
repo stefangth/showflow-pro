@@ -1,3 +1,5 @@
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -38,8 +40,8 @@ export interface TierLadderProps {
   onCloseTier: (tier: number) => void;
 }
 
-function tierLabel(tier: number): string {
-  return tier === 99 ? "Ad-hoc casts" : `Tier ${tier}`;
+function tierLabel(t: TFunction<"showsDetail">, tier: number): string {
+  return tier === 99 ? t("tierLadder.adHocCasts") : t("tierLadder.tierN", { tier });
 }
 
 /**
@@ -50,16 +52,17 @@ function tierLabel(tier: number): string {
  * the `onCloseTier` callback. Wired into ShowDateDetailSheet in Task C3.5.
  */
 export function TierLadder({ rows, city, openedTiers, statusByTier, nextTier, onCloseTier }: TierLadderProps) {
+  const { t } = useTranslation("showsDetail");
   return (
     <Card>
       <CardHeader className="space-y-1.5">
         <CardTitle className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          TIER LADDER · SHOW-SPECIFIC
+          {t("tierLadder.title")}
         </CardTitle>
-        <p className="text-sm text-muted-foreground">Casts in priority order for {city}</p>
+        <p className="text-sm text-muted-foreground">{t("tierLadder.priorityOrder", { city })}</p>
       </CardHeader>
       <CardContent>
-        <ul aria-label="Tier ladder" className="space-y-0">
+        <ul aria-label={t("tierLadder.ariaLabel")} className="space-y-0">
           {rows.map((row) => {
             const opened = openedTiers.find((o) => o.tier === row.tier);
             const status = opened ? statusByTier.find((s) => s.tier === row.tier) : undefined;
@@ -71,21 +74,25 @@ export function TierLadder({ rows, city, openedTiers, statusByTier, nextTier, on
                 ? "border-2 border-accent-500 bg-background"
                 : "border border-border bg-muted";
 
-            const missDetail = row.missingSkillCount > 0 ? ` · ${row.missingSkillCount} miss a required skill` : "";
+            const missDetail = row.missingSkillCount > 0 ? t("tierLadder.missDetail", { count: row.missingSkillCount }) : "";
 
             return (
               <li key={row.tier} className="flex items-start gap-3 border-b border-border py-3 last:border-b-0">
                 <span className={cn("mt-1 h-2.5 w-2.5 shrink-0 rounded-full", dotClass)} aria-hidden />
                 <div className="min-w-0 flex-1 space-y-0.5">
-                  <p className="text-sm font-medium text-foreground">{tierLabel(row.tier)}</p>
+                  <p className="text-sm font-medium text-foreground">{tierLabel(t, row.tier)}</p>
                   {opened && status ? (
                     <p className="text-xs text-muted-foreground">
-                      {status.sent} offers sent · {status.accepted} accepted · {status.pending} pending ·{" "}
-                      {status.cancelled} cancelled
+                      {t("tierLadder.statusCounts", {
+                        sent: status.sent,
+                        accepted: status.accepted,
+                        pending: status.pending,
+                        cancelled: status.cancelled,
+                      })}
                     </p>
                   ) : (
                     <p className="text-xs text-muted-foreground">
-                      {row.matchCount} of {row.castTotal} artists match{missDetail}
+                      {t("tierLadder.matchCounts", { matchCount: row.matchCount, castTotal: row.castTotal, missDetail })}
                     </p>
                   )}
                 </div>
@@ -95,7 +102,7 @@ export function TierLadder({ rows, city, openedTiers, statusByTier, nextTier, on
                   )}
                   {opened && !opened.closed && (
                     <Button type="button" variant="ghost" size="sm" onClick={() => onCloseTier(row.tier)}>
-                      Close tier
+                      {t("tierLadder.closeTier")}
                     </Button>
                   )}
                 </div>

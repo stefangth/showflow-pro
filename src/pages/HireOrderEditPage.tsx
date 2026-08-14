@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { ArrowLeft, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -30,19 +31,19 @@ import { SetupCallout } from "@/components/hireOrders/edit/SetupCallout";
 /** Kept in sync with CURRENCY_SYMBOLS in money.ts / CURRENCIES in NewOrderWizard.tsx. */
 const CURRENCIES = ["EUR", "USD", "CHF"];
 
-const FIELD_LABELS: Record<EditableOrderFieldKey, string> = {
-  artist_name: "Artist name",
-  recipient_email: "Recipient email",
-  role: "Role",
-  cast: "Cast",
-  date: "Date",
-  venue: "Venue",
-  city: "City",
-  duration_min: "Duration (minutes)",
-  sessions: "Sessions",
-  fee: "Engagement fee",
-  currency: "Currency",
-  notes: "Notes",
+const FIELD_LABEL_KEYS: Record<EditableOrderFieldKey, string> = {
+  artist_name: "editPage.artistName",
+  recipient_email: "editPage.recipientEmail",
+  role: "editPage.role",
+  cast: "editPage.cast",
+  date: "editPage.date",
+  venue: "editPage.venue",
+  city: "editPage.city",
+  duration_min: "editPage.durationMinutes",
+  sessions: "editPage.sessions",
+  fee: "editPage.engagementFee",
+  currency: "editPage.currency",
+  notes: "editPage.notes",
 };
 
 /** Read a resolved field as an editable string. Arrays (e.g. showflow-sourced
@@ -155,10 +156,26 @@ function applyClearedOverrides(data: OrderData, cleared: Set<EditableOrderFieldK
  * backstop; this is only the UX guard).
  */
 export default function HireOrderEditPage() {
+  const { t } = useTranslation("hireOrdersPages");
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { currentOrg } = useAuth();
   const orgId = currentOrg?.id ?? "";
+
+  const FIELD_LABELS: Record<EditableOrderFieldKey, string> = {
+    artist_name: t(FIELD_LABEL_KEYS.artist_name),
+    recipient_email: t(FIELD_LABEL_KEYS.recipient_email),
+    role: t(FIELD_LABEL_KEYS.role),
+    cast: t(FIELD_LABEL_KEYS.cast),
+    date: t(FIELD_LABEL_KEYS.date),
+    venue: t(FIELD_LABEL_KEYS.venue),
+    city: t(FIELD_LABEL_KEYS.city),
+    duration_min: t(FIELD_LABEL_KEYS.duration_min),
+    sessions: t(FIELD_LABEL_KEYS.sessions),
+    fee: t(FIELD_LABEL_KEYS.fee),
+    currency: t(FIELD_LABEL_KEYS.currency),
+    notes: t(FIELD_LABEL_KEYS.notes),
+  };
 
   const { data: order, isLoading, isError, error } = useHireOrder(id);
   const action = useHireOrderAction();
@@ -366,7 +383,7 @@ export default function HireOrderEditPage() {
       const patch = buildPatch();
       await updateDraft.mutateAsync({ id: order.id, patch });
       commit(displayData);
-      toast.success("Draft saved");
+      toast.success(t("editPage.draftSaved"));
     } catch {
       /* useUpdateHireOrderDraft already toasts the error */
     }
@@ -413,9 +430,9 @@ export default function HireOrderEditPage() {
       const refreshed: OrderData = { ...editable };
       if (baseLayers.engagement_dates) refreshed.engagement_dates = baseLayers.engagement_dates;
       commit(carryDerivedFeeFields(refreshed, baseLayers), true);
-      toast.success("Refreshed from ShowFlow");
+      toast.success(t("editPage.refreshed"));
     } catch (e) {
-      toast.error((e as Error).message || "Could not refresh from ShowFlow");
+      toast.error((e as Error).message || t("editPage.refreshError"));
     }
   }
 
@@ -438,12 +455,12 @@ export default function HireOrderEditPage() {
     return (
       <div className="mx-auto max-w-6xl p-4 sm:p-6">
         <Button variant="ghost" size="sm" className="mb-4 -ml-2" onClick={() => navigate(-1)}>
-          <ArrowLeft className="mr-1 h-4 w-4" /> Back
+          <ArrowLeft className="mr-1 h-4 w-4" /> {t("common.back")}
         </Button>
         <Alert variant="destructive">
-          <AlertTitle>Could not load this hire order</AlertTitle>
+          <AlertTitle>{t("editPage.loadErrorTitle")}</AlertTitle>
           <AlertDescription>
-            {(error as Error)?.message ?? "You may not have access to this order, or it no longer exists."}
+            {(error as Error)?.message ?? t("editPage.loadErrorBody")}
           </AlertDescription>
         </Alert>
       </div>
@@ -454,16 +471,15 @@ export default function HireOrderEditPage() {
     return (
       <div className="mx-auto max-w-2xl space-y-4 p-4 sm:p-6">
         <Button variant="ghost" size="sm" className="-ml-2" onClick={() => navigate(-1)}>
-          <ArrowLeft className="mr-1 h-4 w-4" /> Back
+          <ArrowLeft className="mr-1 h-4 w-4" /> {t("common.back")}
         </Button>
         <Alert>
-          <AlertTitle>This hire order can no longer be edited</AlertTitle>
+          <AlertTitle>{t("editPage.readOnlyTitle")}</AlertTitle>
           <AlertDescription>
-            <span className="font-mono">{order.order_no}</span> is {order.status} and is read-only. View it on the
-            hire order page instead.
+            <span className="font-mono">{order.order_no}</span> {t("editPage.readOnlyBody", { status: order.status })}
           </AlertDescription>
         </Alert>
-        <Button onClick={() => navigate(ROUTES.HIRE_ORDER_DETAIL.replace(":id", order.id))}>View order</Button>
+        <Button onClick={() => navigate(ROUTES.HIRE_ORDER_DETAIL.replace(":id", order.id))}>{t("editPage.viewOrder")}</Button>
       </div>
     );
   }
@@ -485,7 +501,7 @@ export default function HireOrderEditPage() {
   // page's own, and neither is expressible as a blocker.
   const issueTitleParts = blockers.map((b) => ISSUE_FAILURE_COPY[b.key] ?? b.key);
   if (!variantIsLive) {
-    issueTitleParts.push(hasTermsTemplates ? "Choose a terms template before issuing" : "No terms templates configured");
+    issueTitleParts.push(hasTermsTemplates ? t("common.chooseTermsFirst") : t("common.noTermsConfiguredShort"));
   }
   const issueDisabled =
     blockersLoading || blockersError || blockers.length > 0 || action.isPending || !variantIsLive;
@@ -493,28 +509,28 @@ export default function HireOrderEditPage() {
   // hold the deleted-terms-template reason, which is derived from `terms` (not from the
   // blockers read) and is the one thing the producer can act on. Dropping it while the
   // settings read is in flight hides it exactly when they hover to find out why.
-  if (blockersLoading) issueTitleParts.unshift("Checking this order");
-  else if (blockersError) issueTitleParts.unshift("Could not check this order. Reload the page and try again.");
+  if (blockersLoading) issueTitleParts.unshift(t("editPage.checking"));
+  else if (blockersError) issueTitleParts.unshift(t("editPage.checkError"));
   const issueTitle = issueTitleParts.length > 0 ? issueTitleParts.join(", ") : undefined;
 
   const currency = fieldString(displayData, "currency") || order.fee_currency || "EUR";
   const feeDisplay =
     displayData.fee?.value != null && displayData.fee.value !== ""
       ? formatMoney(displayData.fee.value as string | number, currency)
-      : "Not set";
+      : t("common.notSet");
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border pb-4">
         <div className="flex items-center gap-2 min-w-0">
-          <IconTooltip label="Go back">
-            <Button variant="ghost" size="icon" onClick={() => navigate(-1)} aria-label="Go back">
+          <IconTooltip label={t("common.goBack")}>
+            <Button variant="ghost" size="icon" onClick={() => navigate(-1)} aria-label={t("common.goBack")}>
               <ArrowLeft className="h-5 w-5" />
             </Button>
           </IconTooltip>
           <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Edit hire order</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("editPage.editHireOrder")}</p>
             <div className="flex items-center gap-2">
               <h1 className="font-mono text-lg text-foreground">{order.order_no}</h1>
               <HireOrderStatusBadge status={order.status} />
@@ -523,10 +539,10 @@ export default function HireOrderEditPage() {
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <Button variant="outline" onClick={handleSaveDraft} disabled={updateDraft.isPending}>
-            Save draft
+            {t("editPage.saveDraft")}
           </Button>
           <Button onClick={handleIssue} disabled={issueDisabled} title={issueTitle}>
-            Issue and send
+            {t("common.issueAndSend")}
           </Button>
         </div>
       </div>
@@ -535,7 +551,7 @@ export default function HireOrderEditPage() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[428px_1fr]">
         {/* LEFT: numbered field sections */}
         <div className="space-y-4">
-          <Section index={1} title="Parties">
+          <Section index={1} title={t("editPage.sectionParties")}>
             <FieldSection fieldKey="artist_name" label={FIELD_LABELS.artist_name} source={displayData.artist_name?.source}>
               <Input
                 id="ho-edit-artist_name"
@@ -567,7 +583,7 @@ export default function HireOrderEditPage() {
             </FieldSection>
           </Section>
 
-          <Section index={2} title="Engagement">
+          <Section index={2} title={t("editPage.sectionEngagement")}>
             <FieldSection fieldKey="date" label={FIELD_LABELS.date} source={displayData.date?.source}>
               <Input
                 id="ho-edit-date"
@@ -603,14 +619,14 @@ export default function HireOrderEditPage() {
               <Input
                 id="ho-edit-sessions"
                 className="font-mono"
-                placeholder="19:00 · 21:00"
+                placeholder={t("editPage.sessionsPlaceholder")}
                 value={fieldString(displayData, "sessions")}
                 onChange={(e) => handleFieldChange("sessions", e.target.value)}
               />
             </FieldSection>
           </Section>
 
-          <Section index={3} title="Fees and payment">
+          <Section index={3} title={t("editPage.sectionFees")}>
             <FieldSection fieldKey="fee" label={FIELD_LABELS.fee} source={displayData.fee?.source}>
               <div className="flex items-center gap-2">
                 <span className="text-sm font-medium text-muted-foreground">{currency}</span>
@@ -625,7 +641,7 @@ export default function HireOrderEditPage() {
                   onChange={(e) => handleFieldChange("fee", e.target.value)}
                 />
               </div>
-              <p className="text-xs text-muted-foreground">Total payable: {feeDisplay}</p>
+              <p className="text-xs text-muted-foreground">{t("editPage.totalPayable", { fee: feeDisplay })}</p>
             </FieldSection>
             <FieldSection fieldKey="currency" label={FIELD_LABELS.currency} source={displayData.currency?.source}>
               <Select value={currency} onValueChange={(v) => handleFieldChange("currency", v)}>
@@ -637,7 +653,7 @@ export default function HireOrderEditPage() {
             </FieldSection>
           </Section>
 
-          <Section index={4} title="Terms detail">
+          <Section index={4} title={t("editPage.sectionTerms")}>
             <FieldSection fieldKey="notes" label={FIELD_LABELS.notes} source={displayData.notes?.source}>
               <Textarea
                 id="ho-edit-notes"
@@ -647,36 +663,36 @@ export default function HireOrderEditPage() {
               />
             </FieldSection>
             <div className="space-y-1.5">
-              <p className="text-xs text-muted-foreground">Terms variant</p>
+              <p className="text-xs text-muted-foreground">{t("editPage.termsVariant")}</p>
               {hasTermsTemplates ? (
                 <>
-                  <div role="radiogroup" aria-label="Terms variant" className="flex flex-wrap gap-2">
+                  <div role="radiogroup" aria-label={t("editPage.termsVariant")} className="flex flex-wrap gap-2">
                     {!variantIsLive && termsVariant && (
                       <Button type="button" variant="outline" size="sm" disabled className="flex-1 text-muted-foreground">
-                        Removed (will use default)
+                        {t("common.removedWillUseDefault")}
                       </Button>
                     )}
-                    {terms.templates.map((t) => {
-                      const selected = termsVariant === t.id;
+                    {terms.templates.map((tmpl) => {
+                      const selected = termsVariant === tmpl.id;
                       return (
                         <Button
-                          key={t.id}
+                          key={tmpl.id}
                           type="button"
                           role="radio"
                           aria-checked={selected}
                           variant={selected ? "default" : "outline"}
                           size="sm"
                           className="flex-1"
-                          onClick={() => handleTermsVariant(t.id)}
+                          onClick={() => handleTermsVariant(tmpl.id)}
                         >
-                          {t.name.trim() || "Untitled template"}
+                          {tmpl.name.trim() || t("common.untitledTemplate")}
                         </Button>
                       );
                     })}
                   </div>
                   {!variantIsLive && termsVariant && (
                     <p className="text-xs text-destructive">
-                      This order's saved terms template was removed. Choose one above before issuing.
+                      {t("common.termsTemplateRemoved")}
                     </p>
                   )}
                 </>
@@ -685,7 +701,7 @@ export default function HireOrderEditPage() {
                 // "Removed" chip would both leave the producer guessing. Say so
                 // plainly: this org has none configured yet.
                 <p className="text-xs text-destructive">
-                  No terms templates configured. Add one in Settings → Hire orders before issuing.
+                  {t("common.noTermsConfigured")}
                 </p>
               )}
             </div>
@@ -697,9 +713,9 @@ export default function HireOrderEditPage() {
             className="w-full"
             onClick={handleRefresh}
             disabled={!canRefresh}
-            title={canRefresh ? undefined : "No linked artist or show date to refresh from"}
+            title={canRefresh ? undefined : t("editPage.refreshDisabled")}
           >
-            <RefreshCw className="mr-1 h-4 w-4" /> Refresh from ShowFlow
+            <RefreshCw className="mr-1 h-4 w-4" /> {t("editPage.refresh")}
           </Button>
         </div>
 
@@ -709,12 +725,12 @@ export default function HireOrderEditPage() {
           <div className="rounded-xl border border-border bg-muted p-3 sm:p-4">
             <div className="sticky top-4 z-10 mb-3 flex justify-center">
               <span className="rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-muted-foreground shadow-elev1">
-                Live preview, updates as you edit
+                {t("editPage.livePreview")}
               </span>
             </div>
             {previewSrc ? (
               <iframe
-                title="Hire order live preview"
+                title={t("editPage.iframeTitle")}
                 src={previewSrc}
                 className="h-[600px] w-full rounded-lg border border-border bg-background lg:h-[720px]"
               />

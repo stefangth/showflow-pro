@@ -1,4 +1,5 @@
 import { AlertTriangle } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import type { Blocker } from "@/lib/hireOrders/preflight";
 import { BlockerList } from "@/components/hireOrders/BlockerList";
 
@@ -28,6 +29,7 @@ export interface SetupCalloutProps {
  * says nothing until the read has landed and says the check failed when it did.
  */
 export function SetupCallout({ orgId, blockers, isLoading, isError }: SetupCalloutProps) {
+  const { t } = useTranslation("hireOrdersPages");
   if (isLoading) return null;
 
   if (isError) {
@@ -35,7 +37,7 @@ export function SetupCallout({ orgId, blockers, isLoading, isError }: SetupCallo
       <div className="mb-3 flex items-center gap-2.5 rounded-lg border border-border p-3">
         <AlertTriangle className="h-4 w-4 shrink-0 text-[var(--amber-600)]" />
         <p className="text-sm text-muted-foreground">
-          Could not check this organization's hire order setup. Reload the page before issuing.
+          {t("setupCallout.checkError")}
         </p>
       </div>
     );
@@ -48,16 +50,16 @@ export function SetupCallout({ orgId, blockers, isLoading, isError }: SetupCallo
   const missingTerms = orgBlockers.some((b) => b.key === "missing_terms");
   const headline =
     missingLetterhead && missingTerms
-      ? "The header and the back page of this document are empty"
+      ? t("setupCallout.headlineBoth")
       : missingLetterhead
-        ? "The header on this document is empty"
-        : "The back page of this document is empty";
+        ? t("setupCallout.headlineHeader")
+        : t("setupCallout.headlineBack");
 
   return (
     <div className="mb-3 rounded-lg border border-accent-200 bg-accent-50 p-3">
       <p className="text-sm font-semibold text-accent-700">{headline}</p>
       <p className="mt-0.5 text-xs text-muted-foreground">
-        Set it once here and every future order carries it. This is not specific to this order.
+        {t("setupCallout.body")}
       </p>
       <div className="mt-3">
         <BlockerList orgId={orgId} blockers={orgBlockers} idPrefix="callout" onFixOrderField={() => {}} />

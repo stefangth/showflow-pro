@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import type { EditableOrderFieldKey } from "@/lib/hireOrders/types";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -23,19 +24,15 @@ export interface ReviewRow {
   issues: string[];
 }
 
-const ISSUE_LABELS: Record<string, string> = {
-  unknown_artist: "Unknown artist",
-  unparseable_date: "Unreadable date",
-  missing_date: "Missing date",
-  ambiguous_date: "Ambiguous date",
-  venue_city_mismatch: "Venue/city mismatch",
-  missing_fee: "Missing fee",
-  ambiguous_fee: "Ambiguous fee",
+const ISSUE_LABEL_KEYS: Record<string, string> = {
+  unknown_artist: "reviewStep.issueUnknownArtist",
+  unparseable_date: "reviewStep.issueUnparseableDate",
+  missing_date: "reviewStep.issueMissingDate",
+  ambiguous_date: "reviewStep.issueAmbiguousDate",
+  venue_city_mismatch: "reviewStep.issueVenueCityMismatch",
+  missing_fee: "reviewStep.issueMissingFee",
+  ambiguous_fee: "reviewStep.issueAmbiguousFee",
 };
-
-function describeIssues(issues: string[]): string {
-  return issues.map((i) => ISSUE_LABELS[i] ?? i).join(", ");
-}
 
 interface Props {
   rows: ReviewRow[];
@@ -57,6 +54,9 @@ interface Props {
  * onToggleAll to select/clear them all at once.
  */
 export function ReviewStep({ rows, selection, onToggleRow, onToggleAll, manualEdits, onEditFee, onEditDate }: Props) {
+  const { t } = useTranslation("hireOrdersPages");
+  const describeIssues = (issues: string[]): string =>
+    issues.map((i) => (ISSUE_LABEL_KEYS[i] ? t(ISSUE_LABEL_KEYS[i]) : i)).join(", ");
   const readyCount = rows.filter((r) => r.status === "ready").length;
   const attentionCount = rows.filter((r) => r.status === "attention").length;
   const skippedCount = rows.filter((r) => r.status === "skipped").length;
@@ -70,15 +70,15 @@ export function ReviewStep({ rows, selection, onToggleRow, onToggleAll, manualEd
     <div className="space-y-4">
       <div className="grid grid-cols-3 gap-3">
         <div className="rounded-md bg-muted/50 p-3">
-          <p className="text-xs text-muted-foreground">Ready</p>
+          <p className="text-xs text-muted-foreground">{t("reviewStep.ready")}</p>
           <p className="text-2xl font-semibold text-foreground">{readyCount}</p>
         </div>
         <div className="rounded-md bg-muted/50 p-3">
-          <p className="text-xs text-muted-foreground">Needs attention</p>
+          <p className="text-xs text-muted-foreground">{t("reviewStep.needsAttention")}</p>
           <p className="text-2xl font-semibold text-foreground">{attentionCount}</p>
         </div>
         <div className="rounded-md bg-muted/50 p-3">
-          <p className="text-xs text-muted-foreground">Skipped</p>
+          <p className="text-xs text-muted-foreground">{t("reviewStep.skipped")}</p>
           <p className="text-2xl font-semibold text-muted-foreground">{skippedCount}</p>
         </div>
       </div>
@@ -92,19 +92,19 @@ export function ReviewStep({ rows, selection, onToggleRow, onToggleAll, manualEd
                   checked={someSelected ? "indeterminate" : allSelected}
                   disabled={selectableRows.length === 0}
                   onCheckedChange={(v) => onToggleAll(!!v)}
-                  aria-label="Select all"
+                  aria-label={t("reviewStep.selectAllAria")}
                 />
               </TableHead>
-              <TableHead>Artist</TableHead>
-              <TableHead>Date</TableHead>
-              <TableHead>Fee</TableHead>
-              <TableHead>Status</TableHead>
+              <TableHead>{t("reviewStep.colArtist")}</TableHead>
+              <TableHead>{t("reviewStep.colDate")}</TableHead>
+              <TableHead>{t("reviewStep.colFee")}</TableHead>
+              <TableHead>{t("reviewStep.colStatus")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {rows.map((row) => {
               const isSkipped = row.status === "skipped";
-              const artistName = (row.sheet.artist_name as string | undefined) || `Row ${row.rowIndex}`;
+              const artistName = (row.sheet.artist_name as string | undefined) || t("reviewStep.rowFallback", { index: row.rowIndex });
               const dateValue = manualEdits[row.rowIndex]?.date ?? (row.sheet.date as string | undefined) ?? "";
               const feeValue = manualEdits[row.rowIndex]?.fee ?? (row.sheet.fee as string | undefined) ?? "";
               return (
@@ -114,11 +114,11 @@ export function ReviewStep({ rows, selection, onToggleRow, onToggleAll, manualEd
                       checked={!isSkipped && selection.has(row.rowIndex)}
                       disabled={isSkipped}
                       onCheckedChange={(v) => onToggleRow(row.rowIndex, !!v)}
-                      aria-label={`Select ${artistName}`}
+                      aria-label={t("reviewStep.selectAria", { name: artistName })}
                     />
                   </TableCell>
                   <TableCell className="max-w-[160px] truncate">
-                    {isSkipped ? `Row ${row.rowIndex} (blank)` : artistName}
+                    {isSkipped ? t("reviewStep.rowBlank", { index: row.rowIndex }) : artistName}
                   </TableCell>
                   <TableCell>
                     <Input
@@ -126,7 +126,7 @@ export function ReviewStep({ rows, selection, onToggleRow, onToggleAll, manualEd
                       value={dateValue}
                       disabled={isSkipped}
                       className="h-8 w-36"
-                      aria-label={`Date for ${artistName}`}
+                      aria-label={t("reviewStep.dateForAria", { name: artistName })}
                       onChange={(e) => onEditDate(row.rowIndex, e.target.value)}
                     />
                   </TableCell>
@@ -138,15 +138,15 @@ export function ReviewStep({ rows, selection, onToggleRow, onToggleAll, manualEd
                       value={feeValue}
                       disabled={isSkipped}
                       className="h-8 w-28"
-                      aria-label={`Fee for ${artistName}`}
+                      aria-label={t("reviewStep.feeForAria", { name: artistName })}
                       onChange={(e) => onEditFee(row.rowIndex, e.target.value)}
                     />
                   </TableCell>
                   <TableCell>
                     {isSkipped ? (
-                      <Badge variant="neutral">Skipped</Badge>
+                      <Badge variant="neutral">{t("reviewStep.skipped")}</Badge>
                     ) : row.status === "ready" ? (
-                      <Badge variant="accent">Ready</Badge>
+                      <Badge variant="accent">{t("reviewStep.ready")}</Badge>
                     ) : (
                       <Badge variant="hold">{describeIssues(row.issues)}</Badge>
                     )}

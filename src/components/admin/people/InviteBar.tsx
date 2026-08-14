@@ -1,5 +1,6 @@
 // src/components/admin/people/InviteBar.tsx
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { UserPlus } from "lucide-react";
 import { useAuth } from "@/features/auth/AuthContext";
@@ -32,6 +33,7 @@ export interface InviteBarProps {
 
 /** Inline single invite with live duplicate detection + a bulk-invite entry point. */
 export function InviteBar({ members, invites, onOpenBulk, onResend, resendPendingId = null, dedupeHint = null }: InviteBarProps) {
+  const { t } = useTranslation("admin");
   const { currentOrg } = useAuth();
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<AppRole>("artist");
@@ -55,13 +57,13 @@ export function InviteBar({ members, invites, onOpenBulk, onResend, resendPendin
         onSubmit={(e) => {
           e.preventDefault();
           if (!currentOrg) return;
-          if (!isValidEmail(trimmed)) { toast.error("Enter a valid email address"); return; }
+          if (!isValidEmail(trimmed)) { toast.error(t("inviteBar.invalidEmail")); return; }
           if (dedupeUnready || match !== "none") return;
           create.mutate({ email: trimmed, role }, { onSuccess: () => setEmail("") });
         }}
         className="flex flex-col sm:flex-row gap-2"
       >
-        <Input type="email" placeholder="invitee@email.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
+        <Input type="email" placeholder={t("inviteBar.emailPlaceholder")} value={email} onChange={(e) => setEmail(e.target.value)} required />
         <Select value={role} onValueChange={(v) => setRole(v as AppRole)}>
           <SelectTrigger className="w-full sm:w-40"><SelectValue /></SelectTrigger>
           <SelectContent>
@@ -70,20 +72,20 @@ export function InviteBar({ members, invites, onOpenBulk, onResend, resendPendin
             ))}
           </SelectContent>
         </Select>
-        <Button type="submit" disabled={!canInvite}>Invite</Button>
+        <Button type="submit" disabled={!canInvite}>{t("inviteBar.invite")}</Button>
         <Button type="button" variant="ghost" onClick={onOpenBulk}>
-          <UserPlus className="h-4 w-4 mr-1" />Bulk invite
+          <UserPlus className="h-4 w-4 mr-1" />{t("inviteBar.bulkInvite")}
         </Button>
       </form>
       {dedupeUnready ? (
         <p className="text-xs text-muted-foreground">{dedupeHint}</p>
       ) : match === "member" ? (
-        <p className="text-xs text-muted-foreground">Already a member of this organization.</p>
+        <p className="text-xs text-muted-foreground">{t("inviteBar.alreadyMember")}</p>
       ) : match === "pending" && pendingInvite ? (
         <p className="text-xs text-muted-foreground flex items-center gap-2">
-          Already invited (pending).
+          {t("inviteBar.alreadyInvited")}
           <Button size="sm" variant="link" className="h-auto p-0 text-xs" disabled={resendPendingId === pendingInvite.id} onClick={() => onResend(pendingInvite.id)}>
-            Resend
+            {t("inviteBar.resend")}
           </Button>
         </p>
       ) : null}

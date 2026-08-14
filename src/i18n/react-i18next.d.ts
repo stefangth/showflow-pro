@@ -46,6 +46,14 @@ declare module 'react-i18next' {
       settingsEmailTemplates: typeof enSettingsEmailTemplates;
       settingsRolesRights: typeof enSettingsRolesRights;
       settingsEditor: typeof enSettingsEditor;
+      auth: typeof enAuth;
+      admin: typeof enAdmin;
+      artists: typeof enArtists;
+      productions: typeof enProductions;
+      hireOrdersPages: typeof enHireOrdersPages;
+      showsDetail: typeof enShowsDetail;
+      chats: typeof enChats;
+      profile: typeof enProfile;
     };
   }
 }

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ChevronsUpDown, Plus } from "lucide-react";
 import type { ResolvedImportRow, ImportCatalogArtist } from "@/lib/hireOrderImport/buildOrderRows";
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +21,7 @@ function RowLinkCombobox({
   disabled?: boolean;
   ariaLabel: string;
 }) {
+  const { t } = useTranslation("hireOrdersPages");
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const needle = search.trim().toLowerCase();
@@ -38,24 +40,24 @@ function RowLinkCombobox({
           className="w-full justify-between sm:w-[240px]"
           disabled={disabled}
         >
-          <span className="truncate text-muted-foreground">Link or create…</span>
+          <span className="truncate text-muted-foreground">{t("resolveStep.linkOrCreate")}</span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[260px] p-0" align="start">
         {/* Manual filtering (shouldFilter=false) so the Create row is always offered. */}
         <Command shouldFilter={false}>
-          <CommandInput placeholder="Search artists…" value={search} onValueChange={setSearch} />
+          <CommandInput placeholder={t("resolveStep.searchArtists")} value={search} onValueChange={setSearch} />
           <CommandList>
             <CommandGroup>
               <CommandItem value="__create__" onSelect={() => { onCreate(); setOpen(false); setSearch(""); }}>
-                <Plus className="mr-2 h-4 w-4" /> Create new artist
+                <Plus className="mr-2 h-4 w-4" /> {t("resolveStep.createNewArtist")}
               </CommandItem>
             </CommandGroup>
             {matches.length > 0 && (
               <>
                 <CommandSeparator />
-                <CommandGroup heading="Link to existing">
+                <CommandGroup heading={t("resolveStep.linkToExisting")}>
                   {matches.map((a) => (
                     <CommandItem
                       key={a.id}
@@ -68,7 +70,7 @@ function RowLinkCombobox({
                 </CommandGroup>
               </>
             )}
-            {matches.length === 0 && needle !== "" && <CommandEmpty>No matches.</CommandEmpty>}
+            {matches.length === 0 && needle !== "" && <CommandEmpty>{t("resolveStep.noMatches")}</CommandEmpty>}
           </CommandList>
         </Command>
       </PopoverContent>
@@ -104,10 +106,11 @@ interface Props {
  * that's folded in downstream when the final import rows are built).
  */
 export function ResolveStep({ rows, artists, links, onLink, onCreate, creatingRowIndex }: Props) {
+  const { t } = useTranslation("hireOrdersPages");
   if (rows.length === 0) {
     return (
       <p className="py-8 text-center text-sm text-muted-foreground">
-        Every row matched an existing artist. Nothing to resolve.
+        {t("resolveStep.allMatched")}
       </p>
     );
   }
@@ -115,12 +118,11 @@ export function ResolveStep({ rows, artists, links, onLink, onCreate, creatingRo
   return (
     <div className="space-y-3">
       <p className="text-sm text-muted-foreground">
-        {rows.length} row{rows.length === 1 ? "" : "s"} did not match an existing artist by email or name. Link to
-        an existing artist or create a new one.
+        {t("resolveStep.intro", { count: rows.length })}
       </p>
       <div className="rounded-md border border-border">
         {rows.map((row) => {
-          const artistName = (row.sheet.artist_name as string | undefined) || `Row ${row.rowIndex}`;
+          const artistName = (row.sheet.artist_name as string | undefined) || t("resolveStep.rowFallback", { index: row.rowIndex });
           const email = row.sheet.recipient_email as string | undefined;
           const link = links[row.rowIndex];
           return (
@@ -134,7 +136,7 @@ export function ResolveStep({ rows, artists, links, onLink, onCreate, creatingRo
               </div>
               {link ? (
                 <div className="flex items-center gap-2">
-                  <Badge variant="secondary">Linked</Badge>
+                  <Badge variant="secondary">{t("resolveStep.linked")}</Badge>
                   <span className="truncate text-sm text-muted-foreground">→ {link.name}</span>
                 </div>
               ) : (
@@ -143,7 +145,7 @@ export function ResolveStep({ rows, artists, links, onLink, onCreate, creatingRo
                   onLink={(id, name) => onLink(row.rowIndex, id, name)}
                   onCreate={() => onCreate(row.rowIndex)}
                   disabled={creatingRowIndex === row.rowIndex}
-                  ariaLabel={`Link or create artist for ${artistName}`}
+                  ariaLabel={t("resolveStep.linkOrCreateAria", { name: artistName })}
                 />
               )}
             </div>

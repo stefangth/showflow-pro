@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { fetchMyChats } from '@/data/chats';
@@ -16,6 +17,7 @@ import { ShowDateDetailSheet } from '@/components/shows/ShowDateDetailSheet';
 import { PageMini } from '@/components/minis/PageMini';
 
 export default function ChatsListPage() {
+  const { t } = useTranslation('chats');
   const [activeShowDateId, setActiveShowDateId] = useState<string | null>(null);
   const { reference, customFieldKey } = useReferenceField();
   const { currentOrg } = useAuth();
@@ -39,10 +41,10 @@ export default function ChatsListPage() {
     <div className="space-y-6">
       <div>
         <h1 className="font-display text-[32px] font-semibold tracking-tight flex items-center gap-3">
-          <MessageSquare className="h-7 w-7 text-primary" /> Chats
+          <MessageSquare className="h-7 w-7 text-primary" /> {t('list.title')}
         </h1>
         <p className="text-muted-foreground mt-1">
-          One chat per show date. Hidden {CHAT_ARCHIVE_DAYS} days after the show.
+          {t('list.subtitle', { days: CHAT_ARCHIVE_DAYS })}
         </p>
       </div>
 
@@ -53,7 +55,7 @@ export default function ChatsListPage() {
           {[1, 2, 3].map(i => <Skeleton key={i} className="h-20 rounded-lg" />)}
         </div>
       ) : visible.length === 0 ? (
-        <Card><CardContent className="py-10 text-center text-muted-foreground">No active chats.</CardContent></Card>
+        <Card><CardContent className="py-10 text-center text-muted-foreground">{t('list.empty')}</CardContent></Card>
       ) : (
         <div className="grid gap-3">
           {visible.map(c => (
@@ -70,7 +72,7 @@ export default function ChatsListPage() {
                       {c.show_date?.date && format(parseDateOnly(c.show_date.date), 'EEEE, MMM d, yyyy')}
                     </p>
                   </div>
-                  <Badge variant="secondary">Open</Badge>
+                  <Badge variant="secondary">{t('list.open')}</Badge>
                 </CardContent>
               </Card>
             </button>

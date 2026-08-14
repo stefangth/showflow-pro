@@ -1,4 +1,5 @@
 import { Clock, MapPin, Ticket } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { ActivityItem, UpNextItem } from "@/lib/bookingCockpit";
@@ -81,11 +82,12 @@ export function CockpitRail({
   times, venue, city, source, notes, castChips, skillChips, upNext = [], activity,
   chatUnread, chatPreview, onOpenChat, onEditSetup, showEditSetup = true,
 }: CockpitRailProps) {
+  const { t } = useTranslation("showsDetail");
   return (
     <aside className="w-full shrink-0 space-y-4 border-b border-[var(--line)] bg-[var(--surface-2)] p-[18px] lg:w-72 lg:border-b-0 lg:border-r">
       {/* Date facts */}
       <div className="space-y-2">
-        <SectionLabel>Date</SectionLabel>
+        <SectionLabel>{t("cockpitRail.date")}</SectionLabel>
         <div className="space-y-[7px] text-[13px] text-muted-foreground">
           {times && (
             <p className="flex items-center gap-2">
@@ -101,7 +103,7 @@ export function CockpitRail({
           )}
           <p className="flex items-center gap-2">
             <Ticket className="h-3.5 w-3.5 shrink-0" />
-            {source === "airtable" ? "Airtable · locked" : "Manual entry"}
+            {source === "airtable" ? t("cockpitRail.airtableLocked") : t("cockpitRail.manualEntry")}
           </p>
           {notes && <p className="pt-0.5 text-xs italic text-muted-foreground">{notes}</p>}
         </div>
@@ -111,9 +113,9 @@ export function CockpitRail({
 
       {/* Eligibility */}
       <div className="space-y-2">
-        <SectionLabel>Eligibility</SectionLabel>
+        <SectionLabel>{t("cockpitRail.eligibility")}</SectionLabel>
         {castChips.length === 0 && skillChips.length === 0 ? (
-          <p className="text-xs text-muted-foreground">No eligibility restrictions.</p>
+          <p className="text-xs text-muted-foreground">{t("cockpitRail.noRestrictions")}</p>
         ) : (
           <div className="flex flex-wrap gap-[5px]">
             {castChips.map((c) =>
@@ -122,7 +124,7 @@ export function CockpitRail({
                   key={`inherited-${c.label}`}
                   className="rounded-[var(--radius-xs)] border-[0.5px] border-[var(--line-strong)] px-[7px] py-[3px] text-xs text-muted-foreground"
                 >
-                  {c.label} <span className="opacity-60">inherited</span>
+                  {c.label} <span className="opacity-60">{t("cockpitRail.inherited")}</span>
                 </span>
               ) : (
                 <span
@@ -150,7 +152,7 @@ export function CockpitRail({
             className="mt-1 h-[30px] w-full rounded-[var(--radius-m)] border-[0.5px] border-[var(--line-strong)] bg-[var(--surface)] text-xs font-medium text-[var(--text)] hover:bg-[var(--surface-3)] hover:text-[var(--text)]"
             onClick={onEditSetup}
           >
-            Edit date setup
+            {t("cockpitRail.editDateSetup")}
           </Button>
         )}
       </div>
@@ -159,7 +161,7 @@ export function CockpitRail({
         <>
           <Divider />
           <div className="space-y-2">
-            <SectionLabel>Up next</SectionLabel>
+            <SectionLabel>{t("cockpitRail.upNext")}</SectionLabel>
             <div className="flex flex-col items-start gap-1.5">
               {upNext.map((it, i) => (
                 <span
@@ -179,7 +181,7 @@ export function CockpitRail({
         <>
           <Divider />
           <div className="space-y-2.5">
-            <SectionLabel>Activity</SectionLabel>
+            <SectionLabel>{t("cockpitRail.activity")}</SectionLabel>
             <ul data-testid="cockpit-activity" className="space-y-[11px]">
               {activity.map((a, i) => (
                 <li key={`${a.iso}-${i}`} className="grid grid-cols-[46px_1fr] gap-2">
@@ -197,7 +199,7 @@ export function CockpitRail({
       {/* Chat teaser */}
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <SectionLabel>Chat</SectionLabel>
+          <SectionLabel>{t("cockpitRail.chat")}</SectionLabel>
           {chatUnread > 0 && (
             <span
               data-testid="chat-unread"
@@ -215,10 +217,10 @@ export function CockpitRail({
             onClick={onOpenChat}
             className="text-left text-xs leading-[17px] text-muted-foreground hover:text-foreground"
           >
-            Open the Chat tab to message the cast
+            {t("cockpitRail.openChat")}
           </button>
         ) : (
-          <p className="text-xs leading-[17px] text-muted-foreground">Message the cast in the Chat tab</p>
+          <p className="text-xs leading-[17px] text-muted-foreground">{t("cockpitRail.messageCast")}</p>
         )}
       </div>
     </aside>

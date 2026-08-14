@@ -1,1 +1,62 @@
-{}
+{
+  "page": {
+    "documentTitle": "Profil · ShowFlow",
+    "title": "Profil",
+    "subtitle": "Deine Kontodaten und Anmeldemethoden"
+  },
+  "details": {
+    "title": "Details",
+    "email": "E-Mail",
+    "displayName": "Anzeigename",
+    "phone": "Telefon",
+    "contactNote": "Getrennt von den Kontodaten oben: Admins und das Production Team in deiner Organisation sehen die Kontaktdaten auf deinem Artist-Datensatz, damit sie dich zu Buchungen erreichen können.",
+    "save": "Speichern",
+    "saving": "Speichert…",
+    "saved": "Profil gespeichert"
+  },
+  "security": {
+    "title": "Anmeldung & Sicherheit",
+    "magicLinks": "Magic Links",
+    "magicLinksHint": "Melde dich mit einem sicheren Link an, der an deine E-Mail gesendet wird.",
+    "active": "Aktiv",
+    "password": "Passwort",
+    "passwordHint": "Melde dich mit deiner E-Mail und deinem Passwort an.",
+    "statusChecking": "Wird geprüft…",
+    "statusUnavailable": "Nicht verfügbar",
+    "statusSet": "Festgelegt",
+    "statusNotSet": "Nicht festgelegt",
+    "changePassword": "Passwort ändern",
+    "addPassword": "Passwort hinzufügen",
+    "statusError": "Passwortstatus konnte nicht geladen werden",
+    "retry": "Erneut versuchen"
+  },
+  "notifications": {
+    "title": "Benachrichtigungen",
+    "description": "Wähle, wie du über jede Art von Update informiert wirst. Kritische Konto-E-Mails werden immer gesendet.",
+    "columnEmail": "E-Mail",
+    "columnInApp": "In-App",
+    "channelEmail": "E-Mail",
+    "channelInApp": "In-App",
+    "channelAria": "{{category}} {{channel}}"
+  },
+  "data": {
+    "title": "Deine Daten",
+    "description": "Lade eine Kopie deiner persönlichen Daten (Profil, Talentdatensätze, Buchungen, Verfügbarkeit, Nachrichten und Benachrichtigungen) als JSON-Datei herunter.",
+    "preparing": "Wird vorbereitet…",
+    "download": "Meine Daten herunterladen",
+    "downloaded": "Deine Daten wurden heruntergeladen"
+  },
+  "delete": {
+    "title": "Konto löschen",
+    "description": "Lösche dein Konto dauerhaft. Dein Konto und deine Profildaten werden entfernt. Deine geteilte Buchungshistorie, einschließlich offener Angebote, bleibt erhalten, wird aber anonymisiert. Dies kann nicht rückgängig gemacht werden.",
+    "hireOrdersNote": "Bereits von dir zugestimmte, unterzeichnete Engagementverträge werden für die Unterlagen der Organisation aufbewahrt.",
+    "trigger": "Konto löschen",
+    "dialogTitle": "Dein Konto löschen?",
+    "confirmBefore": "Dies entfernt dein Konto und deine persönlichen Daten dauerhaft. Tippe",
+    "confirmAfter": "zum Bestätigen.",
+    "cancel": "Abbrechen",
+    "deleting": "Wird gelöscht…",
+    "confirmAction": "Dauerhaft löschen",
+    "deleted": "Dein Konto wurde gelöscht"
+  }
+}

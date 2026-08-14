@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { AlertCircle, Lock } from "lucide-react";
@@ -27,19 +28,20 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
  *  erase agent_name / agent_email / agent_signature_path, which this compact control
  *  never renders and so can never carry forward on its own. */
 function LetterheadFix({ orgId, idPrefix }: { orgId: string | null; idPrefix: string }) {
+  const { t } = useTranslation("hireOrdersPages");
   const qc = useQueryClient();
   const stored = useOrgLetterhead(orgId);
   const [legalName, setLegalName] = useState("");
   const save = useMutation({
     mutationFn: () => {
-      if (!orgId) throw new Error("No active organization");
-      if (!legalName.trim()) throw new Error("Enter the legal name");
+      if (!orgId) throw new Error(t("common.noActiveOrg"));
+      if (!legalName.trim()) throw new Error(t("blockerList.enterLegalName"));
       const payload = mergeLetterhead(stored.data, { legal_name: legalName.trim() });
       return upsertOrgSetting(supabase, orgId, "hire_order_letterhead", payload as unknown as Json);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["app-settings"] });
-      toast.success("Letterhead saved");
+      toast.success(t("blockerList.letterheadSaved"));
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -49,7 +51,7 @@ function LetterheadFix({ orgId, idPrefix }: { orgId: string | null; idPrefix: st
     return (
       <Alert variant="destructive" className="mt-2">
         <AlertDescription>
-          Could not load the letterhead. {(stored.error as Error).message}
+          {t("blockerList.letterheadLoadError", { message: (stored.error as Error).message })}
         </AlertDescription>
       </Alert>
     );
@@ -57,20 +59,20 @@ function LetterheadFix({ orgId, idPrefix }: { orgId: string | null; idPrefix: st
 
   return (
     <div className="mt-2 space-y-1.5">
-      <Label htmlFor={`${idPrefix}-legal-name`} className="text-xs">Legal name</Label>
+      <Label htmlFor={`${idPrefix}-legal-name`} className="text-xs">{t("blockerList.legalName")}</Label>
       <div className="flex gap-2">
         <Input
           id={`${idPrefix}-legal-name`}
           className="h-8"
           value={legalName}
-          placeholder="Aurora Productions GmbH"
+          placeholder={t("blockerList.legalNamePlaceholder")}
           onChange={(e) => setLegalName(e.target.value)}
         />
         <Button size="sm" disabled={save.isPending || !orgId} onClick={() => save.mutate()}>
-          Save
+          {t("common.save")}
         </Button>
       </div>
-      <p className="text-xs text-muted-foreground">Saved for the whole organization, once.</p>
+      <p className="text-xs text-muted-foreground">{t("blockerList.savedForOrgOnce")}</p>
     </div>
   );
 }
@@ -82,6 +84,7 @@ function LetterheadFix({ orgId, idPrefix }: { orgId: string | null; idPrefix: st
  *  see. Rather than let a click surface that as a toast, the control itself does not
  *  render until the read is known good. */
 function TermsFix({ orgId, idPrefix }: { orgId: string | null; idPrefix: string }) {
+  const { t } = useTranslation("hireOrdersPages");
   const library = useTermsLibrary();
   const terms = useOrgTerms(orgId);
   const importTerms = useImportTermsTemplates(orgId);
@@ -92,7 +95,7 @@ function TermsFix({ orgId, idPrefix }: { orgId: string | null; idPrefix: string 
     return (
       <Alert variant="destructive" className="mt-2">
         <AlertDescription>
-          Could not load the organization's terms. {(terms.error as Error).message}
+          {t("blockerList.termsLoadError", { message: (terms.error as Error).message })}
         </AlertDescription>
       </Alert>
     );
@@ -112,7 +115,7 @@ function TermsFix({ orgId, idPrefix }: { orgId: string | null; idPrefix: string 
         disabled={picked.length === 0 || importTerms.isPending || !orgId}
         onClick={() => importTerms.mutate({ templateIds: picked }, { onSuccess: () => setPicked([]) })}
       >
-        Create from this template
+        {t("blockerList.createFromTemplate")}
       </Button>
     </div>
   );
@@ -132,6 +135,7 @@ export interface BlockerListProps {
  *  Shared by the single-order sheet and the edit-page callout so the wording and the
  *  affordances are identical wherever a producer meets the same gap. */
 export function BlockerList({ orgId, blockers, onFixOrderField, idPrefix = "blocker" }: BlockerListProps) {
+  const { t } = useTranslation("hireOrdersPages");
   return (
     <div className="space-y-2.5">
       {blockers.map((b) => (
@@ -143,7 +147,7 @@ export function BlockerList({ orgId, blockers, onFixOrderField, idPrefix = "bloc
 
             {b.scope === "order" && (
               <Button variant="outline" size="sm" className="mt-2" onClick={() => onFixOrderField(b.key)}>
-                Open the order
+                {t("blockerList.openTheOrder")}
               </Button>
             )}
             {b.scope === "org" && b.fixable && b.key === "missing_letterhead" && (
@@ -155,7 +159,7 @@ export function BlockerList({ orgId, blockers, onFixOrderField, idPrefix = "bloc
             {b.scope === "org" && !b.fixable && (
               <span className="mt-2 inline-flex items-center gap-1.5 rounded bg-muted px-2 py-1 text-xs font-medium text-muted-foreground">
                 <Lock className="h-3 w-3" />
-                Admin only
+                {t("blockerList.adminOnly")}
               </span>
             )}
           </div>

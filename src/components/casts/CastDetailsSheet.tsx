@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -35,6 +36,7 @@ interface Props {
 }
 
 export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Props) {
+  const { t } = useTranslation('showsDetail');
   const { roles, currentOrg } = useAuth();
   const { isEditorMode } = useEditorConfig();
   const isRealAdmin = roles.includes('admin');
@@ -51,7 +53,7 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['casts'] });
       setEditMode(false);
-      toast.success('Cast updated');
+      toast.success(t('castDetails.toast.castUpdated'));
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -122,7 +124,7 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
 
   const addMember = useMutation({
     mutationFn: (artistId: string) => {
-      if (!currentOrg) throw new Error('No active organization');
+      if (!currentOrg) throw new Error(t('castDetails.toast.noActiveOrg'));
       return addCastMember(supabase, currentOrg.id, { castId: cast!.id, artistId });
     },
     onSuccess: () => {
@@ -131,9 +133,9 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
       qc.invalidateQueries({ queryKey: ['artist-casts'] });
       qc.invalidateQueries({ queryKey: ['eligible-artists'] });
       qc.invalidateQueries({ queryKey: ['artist-eligible-dates'] });
-      toast.success('Artist added to cast');
+      toast.success(t('castDetails.toast.artistAddedToCast'));
     },
-    onError: (e: Error) => toast.error('Failed to add artist', { description: e.message }),
+    onError: (e: Error) => toast.error(t('castDetails.toast.failedAddArtist'), { description: e.message }),
   });
 
   const removeMember = useMutation({
@@ -144,14 +146,14 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
       qc.invalidateQueries({ queryKey: ['artist-casts'] });
       qc.invalidateQueries({ queryKey: ['eligible-artists'] });
       qc.invalidateQueries({ queryKey: ['artist-eligible-dates'] });
-      toast.success('Artist removed from cast');
+      toast.success(t('castDetails.toast.artistRemovedFromCast'));
     },
-    onError: (e: Error) => toast.error('Failed to remove artist', { description: e.message }),
+    onError: (e: Error) => toast.error(t('castDetails.toast.failedRemoveArtist'), { description: e.message }),
   });
 
   const toggleEligibility = useMutation({
     mutationFn: async ({ cityId, showId, on }: { cityId: string; showId: string; on: boolean }) => {
-      if (!currentOrg) throw new Error('No active organization');
+      if (!currentOrg) throw new Error(t('castDetails.toast.noActiveOrg'));
       if (on) {
         await setCastEligibility(supabase, currentOrg.id, { castId: cast!.id, showId, cityId });
         return;
@@ -164,9 +166,9 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
       qc.invalidateQueries({ queryKey: ['cast-eligibility', cast?.id] });
       qc.invalidateQueries({ queryKey: ['eligible-artists'] });
       qc.invalidateQueries({ queryKey: ['artist-eligible-dates'] });
-      toast.success('Eligibility updated');
+      toast.success(t('castDetails.toast.eligibilityUpdated'));
     },
-    onError: (e: Error) => toast.error('Failed to update eligibility', { description: e.message }),
+    onError: (e: Error) => toast.error(t('castDetails.toast.failedUpdateEligibility'), { description: e.message }),
   });
 
   const candidates = (artists ?? []).filter(a =>
@@ -189,7 +191,7 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
               <Input
                 value={editName}
                 onChange={e => setEditName(e.target.value)}
-                placeholder="Cast name"
+                placeholder={t('castDetails.castNamePlaceholder')}
                 required
                 autoFocus
                 className="text-lg font-display font-semibold"
@@ -197,15 +199,15 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
               <Textarea
                 value={editDescription}
                 onChange={e => setEditDescription(e.target.value)}
-                placeholder="Description (optional)"
+                placeholder={t('castDetails.descriptionOptional')}
                 rows={2}
               />
               <div className="flex gap-2">
                 <Button type="submit" size="sm" disabled={updateCast.isPending || !editName.trim()}>
-                  <Check className="h-4 w-4 mr-1" />{updateCast.isPending ? 'Saving…' : 'Save'}
+                  <Check className="h-4 w-4 mr-1" />{updateCast.isPending ? t('castDetails.saving') : t('castDetails.save')}
                 </Button>
                 <Button type="button" size="sm" variant="ghost" onClick={cancelEdit} disabled={updateCast.isPending}>
-                  Cancel
+                  {t('castDetails.cancel')}
                 </Button>
               </div>
             </form>
@@ -213,11 +215,11 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
             <div className="flex items-start justify-between gap-2">
               <div>
                 <SheetTitle className="font-display">{cast?.name}</SheetTitle>
-                <SheetDescription>{cast?.description || 'Manage cast members and city eligibility'}</SheetDescription>
+                <SheetDescription>{cast?.description || t('castDetails.manageDefault')}</SheetDescription>
               </div>
               {canManage && (
-                <IconTooltip label="Edit cast">
-                  <Button size="icon" variant="ghost" className="shrink-0 mt-0.5" onClick={startEdit} aria-label="Edit cast">
+                <IconTooltip label={t('castDetails.editCast')}>
+                  <Button size="icon" variant="ghost" className="shrink-0 mt-0.5" onClick={startEdit} aria-label={t('castDetails.editCast')}>
                     <Pencil className="h-4 w-4" />
                   </Button>
                 </IconTooltip>
@@ -233,14 +235,14 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
 
         <Tabs defaultValue="members" className="mt-6">
           <TabsList>
-            <TabsTrigger value="members"><Users className="h-4 w-4 mr-2" />Members</TabsTrigger>
-            <TabsTrigger value="eligibility"><Layers className="h-4 w-4 mr-2" />City eligibility</TabsTrigger>
-            <TabsTrigger value="offer-order"><ListOrdered className="h-4 w-4 mr-2" />Offer order</TabsTrigger>
+            <TabsTrigger value="members"><Users className="h-4 w-4 mr-2" />{t('castDetails.tabs.members')}</TabsTrigger>
+            <TabsTrigger value="eligibility"><Layers className="h-4 w-4 mr-2" />{t('castDetails.tabs.cityEligibility')}</TabsTrigger>
+            <TabsTrigger value="offer-order"><ListOrdered className="h-4 w-4 mr-2" />{t('castDetails.tabs.offerOrder')}</TabsTrigger>
           </TabsList>
 
           <TabsContent value="members" className="space-y-6 mt-4">
             <div>
-              <h4 className="text-sm font-medium mb-2">Members ({members?.length ?? 0})</h4>
+              <h4 className="text-sm font-medium mb-2">{t('castDetails.membersCount', { count: members?.length ?? 0 })}</h4>
               <div className="space-y-2">
                 {(members ?? []).map(m => (
                   <div key={m.id} className="flex items-center justify-between p-2 rounded-md border border-border">
@@ -252,24 +254,24 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
                     >
                       <p className="text-sm font-medium">{m.artist.name}</p>
                     </button>
-                    <IconTooltip label={`Remove ${m.artist.name}`}>
-                      <Button size="icon" variant="ghost" aria-label={`Remove ${m.artist.name}`} onClick={() => removeMember.mutate(m.id)} disabled={!canManage}>
+                    <IconTooltip label={t('castDetails.removeMember', { name: m.artist.name })}>
+                      <Button size="icon" variant="ghost" aria-label={t('castDetails.removeMember', { name: m.artist.name })} onClick={() => removeMember.mutate(m.id)} disabled={!canManage}>
                         <X className="h-4 w-4" />
                       </Button>
                     </IconTooltip>
                   </div>
                 ))}
                 {(members?.length ?? 0) === 0 && (
-                  <p className="text-xs text-muted-foreground">No members yet.</p>
+                  <p className="text-xs text-muted-foreground">{t('castDetails.noMembers')}</p>
                 )}
               </div>
             </div>
 
             <div>
-              <h4 className="text-sm font-medium mb-2">Add artists</h4>
+              <h4 className="text-sm font-medium mb-2">{t('castDetails.addArtists')}</h4>
               <div className="relative mb-2">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input className="pl-10" placeholder="Search artists…" value={search} onChange={e => setSearch(e.target.value)} />
+                <Input className="pl-10" placeholder={t('castDetails.searchArtists')} value={search} onChange={e => setSearch(e.target.value)} />
               </div>
               <div className="space-y-1 max-h-[40vh] overflow-y-auto">
                 {candidates.map(a => (
@@ -283,27 +285,27 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
                     </Button>
                   </div>
                 ))}
-                {candidates.length === 0 && <p className="text-xs text-muted-foreground">No matches.</p>}
+                {candidates.length === 0 && <p className="text-xs text-muted-foreground">{t('castDetails.noMatches')}</p>}
               </div>
             </div>
           </TabsContent>
 
           <TabsContent value="eligibility" className="mt-4 space-y-3">
             <p className="text-xs text-muted-foreground">
-              Tick the cells where this cast is eligible. New show dates synced from Airtable will inherit these settings; per-date overrides are configured on each show date.
+              {t('castDetails.eligibilityNote')}
             </p>
             {(cities ?? []).length === 0 && (
-              <p className="text-sm text-muted-foreground">Add cities first in Settings → Casts & coverage.</p>
+              <p className="text-sm text-muted-foreground">{t('castDetails.addCitiesFirst')}</p>
             )}
             {(shows ?? []).length === 0 && (
-              <p className="text-sm text-muted-foreground">No shows available.</p>
+              <p className="text-sm text-muted-foreground">{t('castDetails.noShows')}</p>
             )}
             {(cities ?? []).length > 0 && (shows ?? []).length > 0 && (
               <div className="border border-border rounded-lg overflow-auto max-h-[55vh]">
                 <table className="w-full text-sm">
                   <thead className="bg-muted/50 sticky top-0">
                     <tr>
-                      <th className="text-left p-2 font-medium sticky left-0 bg-muted/50">City \ Show</th>
+                      <th className="text-left p-2 font-medium sticky left-0 bg-muted/50">{t('castDetails.cityShowHeader')}</th>
                       {(shows ?? []).map(s => (
                         <th key={s.id} className="text-left p-2 font-medium whitespace-nowrap">{showIdentityLabel(s)}</th>
                       ))}
@@ -334,10 +336,10 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
 
           <TabsContent value="offer-order" className="mt-4 space-y-3">
             <p className="text-xs text-muted-foreground">
-              Where this cast sits in the offer order. Manage it in Settings, Casts & coverage, same setting.
+              {t('castDetails.offerOrderNote')}
             </p>
             {(cities ?? []).length === 0 ? (
-              <p className="text-sm text-muted-foreground">Add cities first in Settings → Casts & coverage.</p>
+              <p className="text-sm text-muted-foreground">{t('castDetails.addCitiesFirst')}</p>
             ) : (
               <div className="space-y-2">
                 {(cities ?? []).map((city) => {
@@ -349,13 +351,13 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
                     ? (castCityPriorities ?? []).find((r) => r.city_id === city.id && r.priority === tier - 1)
                     : undefined;
                   const previousCastName = previousRow
-                    ? (allCasts ?? []).find((c) => c.id === previousRow.cast_id)?.name ?? 'the previous tier'
+                    ? (allCasts ?? []).find((c) => c.id === previousRow.cast_id)?.name ?? t('castDetails.previousTier')
                     : null;
                   const note = tier == null
-                    ? 'Never offered here.'
+                    ? t('castDetails.neverOffered')
                     : tier === 1
-                      ? 'Offered first here.'
-                      : `Offered after ${previousCastName}.`;
+                      ? t('castDetails.offeredFirst')
+                      : t('castDetails.offeredAfter', { cast: previousCastName });
                   return (
                     <div
                       key={city.id}
@@ -366,7 +368,7 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
                         <p className="text-xs text-muted-foreground mt-0.5">{note}</p>
                       </div>
                       <Badge variant={tier === 1 ? 'accent' : 'neutral'} className="shrink-0">
-                        {tier != null ? `Tier ${tier}` : 'Not in order'}
+                        {tier != null ? t('castDetails.tierN', { tier }) : t('castDetails.notInOrder')}
                       </Badge>
                     </div>
                   );
@@ -374,7 +376,7 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
               </div>
             )}
             <Link to={`${ROUTES.SETTINGS}?tab=casts-coverage`} className="text-xs text-primary underline">
-              Manage offer order in Settings, Casts & coverage
+              {t('castDetails.manageOfferOrderLink')}
             </Link>
           </TabsContent>
         </Tabs>

@@ -1,1 +1,137 @@
-{}
+{
+  "page": {
+    "accessRequired": "Adminzugriff erforderlich",
+    "title": "Adminbereich",
+    "subtitle": "Identitäts- und Zugriffsverwaltung, Prüfprotokoll, Sync-Status"
+  },
+  "stats": {
+    "shows": "Shows gesamt",
+    "artists": "Artists gesamt",
+    "bookings": "Buchungen gesamt"
+  },
+  "tabs": {
+    "people": "Personen",
+    "audit": "Prüfprotokoll",
+    "sync": "Sync-Status"
+  },
+  "audit": {
+    "title": "Buchungs-Prüfprotokoll",
+    "loadError": "Prüfprotokoll konnte nicht geladen werden.",
+    "empty": "Noch keine Protokolleinträge"
+  },
+  "sync": {
+    "title": "Airtable-Sync-Status",
+    "loadError": "Sync-Status konnte nicht geladen werden.",
+    "records": "{{n}} Datensätze",
+    "empty": "Noch keine Sync-Ereignisse. Aktiviere Airtable-Sync in den Einstellungen, um mit der Synchronisierung zu beginnen."
+  },
+  "people": {
+    "inviteCardTitle": "Personen einladen",
+    "title": "Personen",
+    "searchPlaceholder": "Personen suchen",
+    "searchAriaLabel": "Personen suchen",
+    "searchStatus_one": "{{count}} Person entspricht deiner Suche{{suffix}}.",
+    "searchStatus_other": "{{count}} Personen entsprechen deiner Suche{{suffix}}.",
+    "searchHistorySuffix": ", plus {{n}} in der Einladungshistorie",
+    "invitesLoadError": "Ausstehende Einladungen konnten nicht geladen werden.",
+    "emptySearchWithHistory": "Keine Mitglieder oder ausstehenden Einladungen entsprechen \"{{query}}\". Siehe Einladungshistorie unten.",
+    "emptySearch": "Keine Mitglieder oder ausstehenden Einladungen entsprechen \"{{query}}\".",
+    "emptyNoPeople": "Noch keine Personen.",
+    "groupPendingInvites": "Ausstehende Einladungen",
+    "groupMembers": "Mitglieder",
+    "groupRecentlyRemoved": "Kürzlich entfernt",
+    "historyTitle": "Einladungshistorie",
+    "historyAriaLabel": "Einladungshistorie",
+    "checkingDuplicates": "Bestehende Personen werden geprüft…",
+    "duplicatesPaused": "Duplikate können gerade nicht geprüft werden, daher sind neue Einladungen pausiert.",
+    "linkCopied": "Einladungslink kopiert",
+    "linkCopyError": "Link konnte nicht kopiert werden",
+    "roleUpdated": "Rolle aktualisiert",
+    "memberRestored": "Mitglied wiederhergestellt",
+    "removedFromList": "Aus Liste entfernt"
+  },
+  "removeDialog": {
+    "title": "Mitglied entfernen?",
+    "description": "{{email}} verliert jetzt den Zugriff auf diese Organisation. Konto, Artist-Profil und Buchungen bleiben erhalten, und du kannst dies über die Liste rückgängig machen.",
+    "action": "Entfernen",
+    "toastRemoved": "Mitglied entfernt",
+    "undo": "Rückgängig"
+  },
+  "revokeDialog": {
+    "title": "Einladung widerrufen?",
+    "description": "{{email}} kann diese Einladung nicht mehr annehmen. Du kannst die Person später erneut einladen.",
+    "action": "Widerrufen"
+  },
+  "deleteDialog": {
+    "title": "Dieses Konto löschen?",
+    "fallbackWho": "Dieses Konto",
+    "description": "{{who}} gehört zu keiner anderen Organisation, daher wird das Konto überall gelöscht: Login entfernt und persönliche Daten anonymisiert. Dies kann nicht rückgängig gemacht werden. Tippe",
+    "toConfirm": " zum Bestätigen.",
+    "inputAriaLabel": "Zum Bestätigen der Löschung die E-Mail eingeben",
+    "action": "Konto löschen",
+    "keptPlatformAdmin": "Konto behalten. Plattformadministratoren können hier nicht gelöscht werden.",
+    "keptOtherOrg": "Konto behalten. Die Person gehört noch zu einer anderen Organisation.",
+    "deleted": "Konto gelöscht"
+  },
+  "actions": {
+    "cancel": "Abbrechen"
+  },
+  "inviteBar": {
+    "invalidEmail": "Gib eine gültige E-Mail-Adresse ein",
+    "emailPlaceholder": "eingeladene@email.com",
+    "invite": "Einladen",
+    "bulkInvite": "Sammeleinladung",
+    "alreadyMember": "Bereits Mitglied dieser Organisation.",
+    "alreadyInvited": "Bereits eingeladen (ausstehend).",
+    "resend": "Erneut senden"
+  },
+  "bulk": {
+    "badgeMember": "Bereits Mitglied",
+    "badgeInvited": "Bereits eingeladen",
+    "badgeInvalid": "Ungültig",
+    "title": "Sammeleinladung",
+    "description": "Füge E-Mail-Adressen getrennt durch Kommas, Leerzeichen oder Zeilenumbrüche ein.",
+    "placeholder": "alex@email.com\nsam@email.com",
+    "invited": "{{n}} eingeladen",
+    "skipped": "{{n}} übersprungen",
+    "failed": "{{n}} fehlgeschlagen",
+    "inviting": "Wird eingeladen…",
+    "invite": "Einladen"
+  },
+  "inviteRow": {
+    "statusAccepted": "Angenommen",
+    "statusRevoked": "Widerrufen",
+    "invited": "Eingeladen {{date}}"
+  },
+  "personRow": {
+    "you": "Du",
+    "invited": "Eingeladen {{date}}",
+    "awaitingAcceptance": "Warten auf Annahme",
+    "lastSeen": "Zuletzt gesehen {{date}}",
+    "neverSignedIn": "Nie angemeldet",
+    "resentMultiple": "Erneut gesendet {{num}}× · zuletzt {{date}}",
+    "resentOnce": "Erneut gesendet {{date}}",
+    "copyInviteLink": "Einladungslink kopieren",
+    "copyInviteLinkFor": "Einladungslink kopieren für {{email}}",
+    "resendInvitation": "Einladung erneut senden",
+    "resendInvitationTo": "Einladung erneut senden an {{email}}",
+    "revokeInvitation": "Einladung widerrufen",
+    "revokeInvitationFor": "Einladung widerrufen für {{email}}",
+    "roles": "Rollen",
+    "editRolesFor": "Rollen bearbeiten für {{email}}",
+    "remove": "Entfernen",
+    "removeAria": "{{who}} entfernen"
+  },
+  "removedRow": {
+    "by": " von {{name}}",
+    "removed": "Entfernt {{date}}",
+    "was": "war {{role}}",
+    "undoRemoval": "Entfernen rückgängig machen",
+    "undoRemovalOf": "Entfernen von {{who}} rückgängig machen",
+    "undo": "Rückgängig",
+    "deleteAccount": "Konto löschen",
+    "deleteAccountOf": "Konto von {{who}} löschen",
+    "clearFromList": "Aus Liste entfernen",
+    "clearAria": "{{who}} aus Liste entfernen"
+  }
+}

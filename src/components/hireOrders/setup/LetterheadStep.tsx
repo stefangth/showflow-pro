@@ -1,5 +1,6 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { upsertOrgSetting } from "@/data/settings";
@@ -22,6 +23,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
  *  value. Saving the compact object directly would erase the agent name, agent email
  *  and agent signature that only Settings renders. */
 export function LetterheadStep({ orgId, onDone }: { orgId: string | null; onDone: () => void }) {
+  const { t } = useTranslation("hireOrdersPages");
   const qc = useQueryClient();
   const stored = useOrgLetterhead(orgId);
 
@@ -36,7 +38,7 @@ export function LetterheadStep({ orgId, onDone }: { orgId: string | null; onDone
 
   const save = useMutation({
     mutationFn: () => {
-      if (!orgId) throw new Error("No active organization");
+      if (!orgId) throw new Error(t("common.noActiveOrg"));
       const payload = mergeLetterhead(stored.data, {
         legal_name: form.legal_name,
         registration_line: form.registration_line,
@@ -46,7 +48,7 @@ export function LetterheadStep({ orgId, onDone }: { orgId: string | null; onDone
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["app-settings"] });
-      toast.success("Letterhead saved");
+      toast.success(t("letterheadStep.saved"));
       onDone();
     },
     onError: (e: Error) => toast.error(e.message),
@@ -61,7 +63,7 @@ export function LetterheadStep({ orgId, onDone }: { orgId: string | null; onDone
     return (
       <Alert variant="destructive">
         <AlertDescription>
-          Could not load the letterhead. {(stored.error as Error).message}
+          {t("letterheadStep.loadError", { message: (stored.error as Error).message })}
         </AlertDescription>
       </Alert>
     );
@@ -70,7 +72,7 @@ export function LetterheadStep({ orgId, onDone }: { orgId: string | null; onDone
   return (
     <div className="space-y-3">
       <p className="text-xs text-muted-foreground">
-        Pulled from your organization profile. Check it, then confirm. It prints at the top of every order.
+        {t("letterheadStep.intro")}
       </p>
       <LetterheadFields
         idPrefix="rail-letterhead"
@@ -80,7 +82,7 @@ export function LetterheadStep({ orgId, onDone }: { orgId: string | null; onDone
         onAddressTextChange={setAddressText}
       />
       <Button size="sm" disabled={save.isPending || !orgId} onClick={() => save.mutate()}>
-        Confirm letterhead
+        {t("letterheadStep.confirm")}
       </Button>
     </div>
   );
