@@ -177,7 +177,13 @@ export function BookingFlowTab({ get, set, dirtyKeys, saving, onSave, onDiscard,
           <AlertDescription>{(templatesQueryError as Error).message}</AlertDescription>
         </Alert>
       ) : (
-        <FlowPresets active={selected} customized={customized} onSelect={onPreset} disabled={stepsDisabled} />
+        <FlowPresets
+          active={selected}
+          customized={customized}
+          onSelect={onPreset}
+          disabled={stepsDisabled}
+          templates={platformTemplates}
+        />
       )}
       <div className="grid gap-5 lg:grid-cols-[1fr_340px]">
         <FlowTimeline

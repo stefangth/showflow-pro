@@ -69,7 +69,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       const { error: entitlementsError } = await deps.admin.from("org_entitlements").insert(entitlementRows);
       if (entitlementsError) console.error("provision-org: entitlement seeding failed", entitlementsError.message);
 
-      // Land a freshly enabled booking_flow in the "off" state so the org doesn't start
+      // Land every new organization's booking_flow in the "off" state so it doesn't start
       // dispatching offers before someone configures it. Best-effort, same posture as above.
       // Only seed the off-flow row if the entitlement insert actually landed — otherwise the
       // two writes could disagree (an off flow row for an org whose entitlements never wrote).

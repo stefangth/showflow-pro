@@ -27,6 +27,26 @@ const TEMPLATE_LABELS: Record<BookingTemplateName, string> = {
   off: "Off",
 };
 
+function timingValidationError(templates: BookingFlowTemplates): string | null {
+  const definitions = Object.values(templates);
+  if (definitions.some(({ times }) =>
+    !Number.isInteger(times.windowHours) || times.windowHours < 1 || times.windowHours > 336
+  )) {
+    return "Response window must be between 1 and 336 hours.";
+  }
+  if (definitions.some(({ times }) =>
+    !Number.isInteger(times.offerDigestHour)
+    || times.offerDigestHour < 0
+    || times.offerDigestHour > 23
+    || !Number.isInteger(times.confirmationDigestHour)
+    || times.confirmationDigestHour < 0
+    || times.confirmationDigestHour > 23
+  )) {
+    return "Digest hours must be between 0 and 23.";
+  }
+  return null;
+}
+
 export function BookingTemplatesDefaultsCard() {
   const qc = useQueryClient();
   const [active, setActive] = useState<BookingTemplateName>("classic");
@@ -36,7 +56,11 @@ export function BookingTemplatesDefaultsCard() {
   });
   const [templates, setTemplates] = useDerivedDraft<BookingFlowTemplates>(query.data, BOOKING_FLOW_TEMPLATE_DEFAULTS);
   const save = useMutation({
-    mutationFn: () => savePlatformBookingTemplates(supabase, templates),
+    mutationFn: () => {
+      const validationError = timingValidationError(templates);
+      if (validationError) throw new Error(validationError);
+      return savePlatformBookingTemplates(supabase, templates);
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["platform", "booking-flow-templates"] });
       qc.invalidateQueries({ queryKey: ["app-settings"] });
@@ -49,6 +73,7 @@ export function BookingTemplatesDefaultsCard() {
   if (query.isError) return <Alert variant="destructive"><AlertDescription>{(query.error as Error).message}</AlertDescription></Alert>;
 
   const definition = templates[active];
+  const validationError = timingValidationError(templates);
   const update = (next: Partial<typeof definition>) => setTemplates((current) => ({
     ...current,
     [active]: { ...current[active], ...next },
@@ -81,7 +106,12 @@ export function BookingTemplatesDefaultsCard() {
           referencePreview="Offer: Candlelight · Apr 30, Berlin"
           allowCustomReference={false}
         />
-        <Button onClick={() => save.mutate()} disabled={save.isPending}>Save booking templates</Button>
+        {validationError && (
+          <Alert variant="destructive"><AlertDescription>{validationError}</AlertDescription></Alert>
+        )}
+        <Button onClick={() => save.mutate()} disabled={save.isPending || Boolean(validationError)}>
+          Save booking templates
+        </Button>
       </CardContent>
     </Card>
   );
