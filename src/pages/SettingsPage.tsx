@@ -15,20 +15,20 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { Settings as SettingsIcon, Database, Bell, Wand2, Save, SlidersHorizontal, MapPin, BookOpen, UserCog, Building2, FileSignature, ShieldCheck, Lock } from 'lucide-react';
+import { Settings as SettingsIcon, Database, Bell, Wand2, Save, SlidersHorizontal, MapPin, BookOpen, Building2, FileSignature, ShieldCheck, Lock, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { upsertOrgSetting, mergeOrgRows } from '@/data/settings';
 import { computeSettingsDirtyKeys } from '@/lib/settings';
 import { AirtableSyncTab } from '@/components/settings/AirtableSyncTab';
 import { OrganizationTab } from '@/components/settings/OrganizationTab';
-import { CastsCitiesTab } from '@/components/settings/CastsCitiesTab';
-import { ProductionOwnershipTab } from '@/components/settings/ProductionOwnershipTab';
+import { CastsCoverageTab } from '@/components/settings/castsCoverage/CastsCoverageTab';
+import { SkillsTab } from '@/components/settings/skills/SkillsTab';
 import { TrustDataTab } from '@/components/settings/trust/TrustDataTab';
 import { DocumentationTab } from '@/components/settings/DocumentationTab';
 import { BookingFlowTab } from '@/components/settings/bookingFlow/BookingFlowTab';
 import { BOOKING_AUDIT_KEYS } from '@/components/settings/bookingFlow/auditKeys';
 import { HireOrdersTab } from '@/components/settings/hireOrders/HireOrdersTab';
-import { PermissionsTab } from '@/components/settings/permissions/PermissionsTab';
+import { RolesRightsTab } from '@/components/settings/rolesRights/RolesRightsTab';
 import { EmailTemplatesTab } from '@/components/settings/emailTemplates/EmailTemplatesTab';
 import { Badge } from '@/components/ui/badge';
 import { PageMini } from '@/components/minis/PageMini';
@@ -264,10 +264,10 @@ export default function SettingsPage() {
   const navGroups: { heading: string; items: { value: string; label: string; icon: typeof Building2; show: boolean; moduleState?: boolean }[] }[] = [
     { heading: "Organization", items: [
       { value: "organization", label: "Organization", icon: Building2, show: isAdmin || isProducer },
-      { value: "permissions", label: "Roles & permissions", icon: ShieldCheck, show: isAdmin },
+      { value: "permissions", label: "Roles & rights", icon: ShieldCheck, show: isAdmin },
       { value: "trust", label: "Trust & data", icon: Lock, show: isAdmin || isProducer },
-      { value: "production-ownership", label: "Production Ownership", icon: UserCog, show: isAdmin || isProducer },
-      { value: "casts-cities", label: "Casts & Cities", icon: MapPin, show: true },
+      { value: "casts-coverage", label: "Casts & coverage", icon: MapPin, show: isAdmin || isProducer },
+      { value: "skills", label: "Skills", icon: Sparkles, show: isAdmin || isProducer },
     ] },
     { heading: "Automation", items: [
       { value: "airtable", label: "Airtable Sync", icon: Database, show: isAdmin || isProducer },
@@ -374,13 +374,17 @@ export default function SettingsPage() {
         </TabsList>
 
         <div className="min-w-0">
-        <TabsContent value="casts-cities">
-          <CastsCitiesTab currentOrgId={currentOrg?.id} canEnter={canEnter} />
-        </TabsContent>
+        {(isAdmin || isProducer) && currentOrg && (
+          <TabsContent value="casts-coverage" className="mt-4">
+            <CastsCoverageTab orgId={currentOrg.id} />
+          </TabsContent>
+        )}
 
-        <TabsContent value="production-ownership">
-          <ProductionOwnershipTab currentOrgId={currentOrg?.id} canEnter={canEnter} />
-        </TabsContent>
+        {(isAdmin || isProducer) && currentOrg && (
+          <TabsContent value="skills" className="mt-4">
+            <SkillsTab orgId={currentOrg.id} />
+          </TabsContent>
+        )}
 
         {(isAdmin || isProducer) && (
           <TabsContent value="organization" className="mt-4">
@@ -388,9 +392,9 @@ export default function SettingsPage() {
           </TabsContent>
         )}
 
-        {isAdmin && (
+        {isAdmin && currentOrg && (
           <TabsContent value="permissions" className="mt-4">
-            <PermissionsTab />
+            <RolesRightsTab orgId={currentOrg.id} />
           </TabsContent>
         )}
 

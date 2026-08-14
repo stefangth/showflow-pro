@@ -18,8 +18,8 @@
 export const SETTINGS_TAB_PARAMS = [
   "organization",
   "permissions",
-  "production-ownership",
-  "casts-cities",
+  "casts-coverage",
+  "skills",
   "airtable",
   "booking",
   "email-templates",
@@ -35,6 +35,16 @@ const ADMIN_ONLY: readonly SettingsTabParam[] = ["permissions"];
 
 /** Tabs whose trigger and content only render for a super-admin. */
 const SUPER_ADMIN_ONLY: readonly SettingsTabParam[] = ["docs"];
+
+/**
+ * Retired `?tab=` values mapped to their replacement, so a link or bookmark from before
+ * the Casts & coverage / Skills redesign still lands somewhere valid instead of falling
+ * back to the role default. Both legacy sections folded into "casts-coverage".
+ */
+const LEGACY_TAB_REDIRECTS: Readonly<Record<string, SettingsTabParam>> = {
+  "casts-cities": "casts-coverage",
+  "production-ownership": "casts-coverage",
+};
 
 /** Where the page lands with no (or an unusable) `?tab=`, matching what it did before
  *  deep-linking existed. */
@@ -56,7 +66,8 @@ export function resolveInitialTab(
 ): SettingsTabParam {
   const fallback = defaultSettingsTab(isAdmin);
   if (!param) return fallback;
-  const match = SETTINGS_TAB_PARAMS.find((t) => t === param);
+  const redirected = LEGACY_TAB_REDIRECTS[param];
+  const match = redirected ?? SETTINGS_TAB_PARAMS.find((t) => t === param);
   if (!match) return fallback;
   if (!isAdmin && ADMIN_ONLY.includes(match)) return fallback;
   if (!isSuperAdmin && SUPER_ADMIN_ONLY.includes(match)) return fallback;

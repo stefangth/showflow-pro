@@ -13,6 +13,8 @@ import {
   removeCastMember,
   setCastEligibility,
   clearCastEligibility,
+  setCastCityPriority,
+  clearCastCityPriority,
 } from "./casts";
 
 /** Two orgs' rows seeded together: god-mode RLS returns both, so every assertion
@@ -209,6 +211,90 @@ describe("casts data-access", () => {
       const fake = createFakeSupabase({ casts: { data: null, error: { message: "denied" } } });
       await expect(createCast(fake as never, "org-1", { name: "X", description: null }))
         .rejects.toMatchObject({ message: "denied" });
+    });
+  });
+
+  describe("setCastCityPriority", () => {
+    it("inserts a new row when the cast has no row in this city and the tier is empty", async () => {
+      const fake = createFakeSupabase({ cast_city_priority: { data: [], error: null } });
+      await setCastCityPriority(fake as never, { orgId: "org-1", cityId: "c1", castId: "cast-a", priority: 1 });
+      expect(fake.calls).toContainEqual({
+        table: "cast_city_priority",
+        method: "insert",
+        args: [{ org_id: "org-1", city_id: "c1", cast_id: "cast-a", priority: 1 }],
+      });
+      expect(fake.calls.some((c) => c.method === "delete")).toBe(false);
+    });
+
+    it("moves the cast's own row to the new tier without touching any other row", async () => {
+      const fake = createFakeSupabase({
+        cast_city_priority: [
+          { when: { city_id: "c1", cast_id: "cast-a" }, data: [{ id: "row-a" }], error: null },
+          { when: { city_id: "c1", priority: 2 }, data: [{ id: "row-a" }], error: null },
+        ],
+      });
+      await setCastCityPriority(fake as never, { orgId: "org-1", cityId: "c1", castId: "cast-a", priority: 2 });
+      expect(fake.calls).toContainEqual({ table: "cast_city_priority", method: "update", args: [{ priority: 2 }] });
+      expect(fake.calls).toContainEqual({ table: "cast_city_priority", method: "eq", args: ["id", "row-a"] });
+      expect(fake.calls.some((c) => c.method === "delete")).toBe(false);
+      expect(fake.calls.some((c) => c.method === "insert")).toBe(false);
+    });
+
+    it("bumps out the cast currently holding the tier, then inserts the new assignment", async () => {
+      const fake = createFakeSupabase({
+        cast_city_priority: [
+          { when: { city_id: "c1", cast_id: "cast-b" }, data: [], error: null },
+          { when: { city_id: "c1", priority: 1 }, data: [{ id: "row-a" }], error: null },
+        ],
+      });
+      await setCastCityPriority(fake as never, { orgId: "org-1", cityId: "c1", castId: "cast-b", priority: 1 });
+      expect(fake.calls).toContainEqual({ table: "cast_city_priority", method: "delete", args: [] });
+      expect(fake.calls).toContainEqual({ table: "cast_city_priority", method: "eq", args: ["id", "row-a"] });
+      expect(fake.calls).toContainEqual({
+        table: "cast_city_priority",
+        method: "insert",
+        args: [{ org_id: "org-1", city_id: "c1", cast_id: "cast-b", priority: 1 }],
+      });
+    });
+
+    it("bumps out the other occupant AND moves the requesting cast's own row when both exist", async () => {
+      const fake = createFakeSupabase({
+        cast_city_priority: [
+          { when: { city_id: "c1", cast_id: "cast-a" }, data: [{ id: "row-a" }], error: null },
+          { when: { city_id: "c1", priority: 1 }, data: [{ id: "row-b" }], error: null },
+        ],
+      });
+      await setCastCityPriority(fake as never, { orgId: "org-1", cityId: "c1", castId: "cast-a", priority: 1 });
+      expect(fake.calls).toContainEqual({ table: "cast_city_priority", method: "delete", args: [] });
+      expect(fake.calls).toContainEqual({ table: "cast_city_priority", method: "eq", args: ["id", "row-b"] });
+      expect(fake.calls).toContainEqual({ table: "cast_city_priority", method: "update", args: [{ priority: 1 }] });
+      expect(fake.calls).toContainEqual({ table: "cast_city_priority", method: "eq", args: ["id", "row-a"] });
+      expect(fake.calls.some((c) => c.method === "insert")).toBe(false);
+    });
+
+    it("propagates a read error from the first lookup", async () => {
+      const fake = createFakeSupabase({
+        cast_city_priority: { data: null, error: { message: "read failed" } },
+      });
+      await expect(
+        setCastCityPriority(fake as never, { orgId: "org-1", cityId: "c1", castId: "cast-a", priority: 1 }),
+      ).rejects.toMatchObject({ message: "read failed" });
+    });
+  });
+
+  describe("clearCastCityPriority", () => {
+    it("deletes by row id", async () => {
+      const fake = createFakeSupabase({});
+      await clearCastCityPriority(fake as never, "row-a");
+      expect(fake.calls).toContainEqual({ table: "cast_city_priority", method: "eq", args: ["id", "row-a"] });
+      expect(fake.calls).toContainEqual({ table: "cast_city_priority", method: "delete", args: [] });
+    });
+
+    it("propagates delete errors", async () => {
+      const fake = createFakeSupabase({
+        cast_city_priority: { data: null, error: { message: "denied" } },
+      });
+      await expect(clearCastCityPriority(fake as never, "row-a")).rejects.toMatchObject({ message: "denied" });
     });
   });
 });

@@ -69,8 +69,8 @@ export function LadderStep({ coverage, orgId }: { coverage: LadderCoverageInputs
         {/* Deep-linked, because the label names the section: bare /settings opens
             Organization for an admin and Scheduling for a producer, so the one link here
             that promised a destination was the one that missed it. */}
-        <Link to={`${ROUTES.SETTINGS}?tab=casts-cities`} className="text-xs text-primary underline">
-          Rank casts in Settings, Casts and cities
+        <Link to={`${ROUTES.SETTINGS}?tab=casts-coverage`} className="text-xs text-primary underline">
+          Rank casts in Settings, Casts & coverage
         </Link>
         {/* The panel talks in casts and tiers before anyone has been told what they are.
             Deep-links to the Help center (Settings, Documentation is super-admin-only now).

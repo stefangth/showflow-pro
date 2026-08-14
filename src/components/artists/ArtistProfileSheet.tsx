@@ -370,8 +370,8 @@ export function ArtistProfileSheet({ artistId, open, onOpenChange }: Props) {
                   )}
                   <p className="text-xs leading-[17px] text-muted-foreground">
                     Need a skill that does not exist? An admin adds it in{' '}
-                    <Link to={`${ROUTES.SETTINGS}?tab=casts-cities`} className="text-primary underline">
-                      Settings, Casts &amp; Cities
+                    <Link to={`${ROUTES.SETTINGS}?tab=casts-coverage`} className="text-primary underline">
+                      Settings, Casts &amp; coverage
                     </Link>
                     , so the catalog stays clean.
                   </p>

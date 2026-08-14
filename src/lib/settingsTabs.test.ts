@@ -33,6 +33,15 @@ describe("resolveInitialTab", () => {
     expect(resolveInitialTab("permissions", true)).toBe("permissions");
   });
 
+  it("redirects the retired casts-cities and production-ownership params to casts-coverage", () => {
+    // Both sections folded into Casts & coverage; an old bookmark or notification link
+    // must still land somewhere valid rather than falling back to the role default.
+    expect(resolveInitialTab("casts-cities", true)).toBe("casts-coverage");
+    expect(resolveInitialTab("casts-cities", false)).toBe("casts-coverage");
+    expect(resolveInitialTab("production-ownership", true)).toBe("casts-coverage");
+    expect(resolveInitialTab("production-ownership", false)).toBe("casts-coverage");
+  });
+
   it("does not deep-link the entitlement-gated hire-orders tab", () => {
     // Whether that tab exists depends on the org's entitlement, which this pure helper
     // cannot see, so it is deliberately not a deep-link target for anyone.

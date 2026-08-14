@@ -90,6 +90,67 @@ export async function fetchCastCityPriority(
   return (data ?? []) as CastCityPriorityRow[];
 }
 
+/** Assign a cast to a tier for a city, respecting cast_city_priority's two UNIQUE
+ *  constraints: (cast_id, city_id) — a cast holds at most one tier per city — and
+ *  (city_id, priority) — a tier holds at most one cast per city. Reassigning a cast
+ *  already in this city moves its row; taking a tier already held by another cast
+ *  bumps that cast out of the ladder entirely (the caller's job to warn, if desired). */
+export async function setCastCityPriority(
+  client: SupabaseClient<Database>,
+  args: { orgId: string; cityId: string; castId: string; priority: number },
+): Promise<void> {
+  const { data: castRows, error: e1 } = await client
+    .from("cast_city_priority")
+    .select("id")
+    .eq("city_id", args.cityId)
+    .eq("cast_id", args.castId);
+  if (e1) throw e1;
+  const castRow = (castRows ?? [])[0] as { id: string } | undefined;
+
+  const { data: tierRows, error: e2 } = await client
+    .from("cast_city_priority")
+    .select("id, cast_id")
+    .eq("city_id", args.cityId)
+    .eq("priority", args.priority);
+  if (e2) throw e2;
+  const tierRow = (tierRows ?? [])[0] as { id: string; cast_id: string } | undefined;
+
+  const bumped = tierRow && tierRow.id !== castRow?.id ? tierRow : undefined;
+  if (bumped) {
+    const { error } = await client.from("cast_city_priority").delete().eq("id", bumped.id);
+    if (error) throw error;
+  }
+
+  try {
+    if (castRow) {
+      const { error } = await client
+        .from("cast_city_priority").update({ priority: args.priority }).eq("id", castRow.id);
+      if (error) throw error;
+    } else {
+      const { error } = await client.from("cast_city_priority").insert({
+        org_id: args.orgId, city_id: args.cityId, cast_id: args.castId, priority: args.priority,
+      });
+      if (error) throw error;
+    }
+  } catch (err) {
+    // The bump-out delete has already committed but placing the requested cast failed
+    // (no client-side transaction). Restore the bumped cast to the tier it held so it is
+    // not silently dropped from the ladder, then surface the original error.
+    if (bumped) {
+      await client.from("cast_city_priority").insert({
+        org_id: args.orgId, city_id: args.cityId, cast_id: bumped.cast_id, priority: args.priority,
+      });
+    }
+    throw err;
+  }
+}
+
+/** Empty a tier slot for a city (org default). */
+export async function clearCastCityPriority(client: SupabaseClient<Database>, rowId: string): Promise<void> {
+  const { error } = await client.from("cast_city_priority").delete().eq("id", rowId);
+  if (error) throw error;
+}
+
 export interface CastRef { id: string; name: string }
 
 /** Casts per artist id, for the org — powers the cast column on the artists list. */

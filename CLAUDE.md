@@ -182,8 +182,13 @@ src/
                    #   + bookingFlow/ (BookingFlowTab, FlowPresets, FlowRail, FlowTimeline, auditKeys.ts
                    #   — Settings → Booking Engine / Booking Flow: response window, digest hours,
                    #   flow presets, and the settings-change audit trail from src/data/settingsAudit.ts)
-                   #   + permissions/ (PermissionsTab, PermissionsMatrix, PermissionRow — Settings →
-                   #   Roles and permissions, the UI over the src/lib/capabilities.ts registry)
+                   #   + rolesRights/ (RolesRightsTab, RightGroupCard, RightRow, EditingPickerCard,
+                   #   StagedChangesCard, ChangeLogDialog — Settings → Roles and rights, the
+                   #   org-admin UI over the src/lib/capabilities.ts registry)
+                   #   + permissions/ (PermissionsMatrix, PermissionRow — the super-admin
+                   #   platform-mode capability editor embedded in
+                   #   src/components/platform/EditOrgDialog.tsx; the org-admin surface moved to
+                   #   rolesRights/ above)
                    #   + trust/ (TrustDataTab, OrgDataCard, VisibilityMatrix, RetentionCard,
                    #   YourDataCard, DocumentsCard — Settings → Trust & data, the in-app half of
                    #   the Trust Center; renders src/lib/trust/facts.ts scoped to the active org)

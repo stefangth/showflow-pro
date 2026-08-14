@@ -1,0 +1,88 @@
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
+import type { CoverageCastRef } from "./coverageMatrix";
+
+export interface TierCellOption {
+  id: string;
+  name: string;
+  memberCount: number;
+}
+
+interface TierCellProps {
+  tier: number;
+  slot: CoverageCastRef | null;
+  options: TierCellOption[];
+  disabled: boolean;
+  onSelect: (castId: string) => void;
+  /** Omit when this exact slot has nothing to clear (e.g. a per-show cell showing an
+   *  inherited org-default cast, where no override row exists yet). */
+  onClear?: () => void;
+}
+
+/** One (city, tier) cell of the coverage matrix. A button showing the assigned cast
+ *  (or a dashed empty-state) opens a popover to pick a cast for this slot, or clear it. */
+export function TierCell({ tier, slot, options, disabled, onSelect, onClear }: TierCellProps) {
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          disabled={disabled}
+          aria-label={slot ? `Tier ${tier}: ${slot.name}` : `Set tier ${tier}`}
+          className={cn(
+            "flex w-full flex-col items-start gap-0.5 rounded-[var(--radius-s)] border px-2.5 py-1.5 text-left text-sm transition-colors",
+            slot
+              ? "border-border bg-card hover:bg-[var(--surface-3)]"
+              : "border-dashed border-border text-muted-foreground hover:bg-[var(--surface-3)]",
+            disabled && "cursor-not-allowed opacity-60 hover:bg-transparent",
+          )}
+        >
+          {slot ? (
+            <>
+              <span className="font-medium text-foreground">{slot.name}</span>
+              <span className="text-xs text-muted-foreground">
+                {slot.memberCount} member{slot.memberCount === 1 ? "" : "s"}
+              </span>
+            </>
+          ) : (
+            <span>Set tier {tier}</span>
+          )}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-64 p-1">
+        <div className="max-h-64 space-y-0.5 overflow-y-auto">
+          {options.length === 0 ? (
+            <p className="px-2 py-1.5 text-xs text-muted-foreground">No casts available.</p>
+          ) : (
+            options.map((opt) => (
+              <button
+                key={opt.id}
+                type="button"
+                aria-label={`Assign ${opt.name}`}
+                onClick={() => onSelect(opt.id)}
+                className="flex w-full items-center justify-between rounded-[var(--radius-s)] px-2 py-1.5 text-left text-sm hover:bg-[var(--surface-3)]"
+              >
+                <span>{opt.name}</span>
+                <span className="font-mono text-xs text-muted-foreground">
+                  {opt.memberCount} member{opt.memberCount === 1 ? "" : "s"}
+                </span>
+              </button>
+            ))
+          )}
+          {slot && onClear && (
+            <>
+              <div className="my-1 h-px bg-border" />
+              <button
+                type="button"
+                onClick={onClear}
+                className="flex w-full items-center rounded-[var(--radius-s)] px-2 py-1.5 text-left text-sm text-destructive hover:bg-[var(--surface-3)]"
+              >
+                Clear slot
+              </button>
+            </>
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}

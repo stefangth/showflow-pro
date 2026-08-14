@@ -41,15 +41,15 @@ describe("EligibilityStep", () => {
   });
 
   it("lands the edit link on the section its own label names", () => {
-    // Same defect as LadderStep's twin link: the label reads "Settings, Casts and cities"
+    // Same defect as LadderStep's twin link: the label reads "Settings, Casts & coverage"
     // while the href was bare /settings, which opens Organization for an admin and
     // Scheduling for a producer.
     renderWithProviders(
       <MemoryRouter><EligibilityStep coverage={uncovered} orgId="org-1" /></MemoryRouter>,
     );
-    expect(screen.getByRole("link", { name: /link casts in settings, casts and cities/i })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /link casts in settings, casts & coverage/i })).toHaveAttribute(
       "href",
-      `${ROUTES.SETTINGS}?tab=casts-cities`,
+      `${ROUTES.SETTINGS}?tab=casts-coverage`,
     );
   });
 
