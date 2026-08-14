@@ -27,12 +27,8 @@ export interface NavItem {
   feature?: FeatureKey;
 }
 
-export const SECTION_LABELS: Record<NavSection, string> = {
-  workspace: 'Workspace',
-  catalog: 'Catalog',
-  system: 'System',
-};
-
+// Section header labels are resolved from the i18n `common.nav.*` catalog in
+// AppLayout (t(SECTION_KEY[section])); there is no separate English map here.
 const SECTION_ORDER: NavSection[] = ['workspace', 'catalog', 'system'];
 
 export const NAV_ITEMS: NavItem[] = [
@@ -57,12 +53,12 @@ export const NAV_ITEMS: NavItem[] = [
  *  "view as" toolbar, when they see that perspective's locks. See isImpersonating. */
 export type VisibleNavItem = NavItem & { locked: boolean };
 
-export interface NavSectionGroup<T extends NavItem = NavItem> { section: NavSection; label: string; items: T[]; }
+export interface NavSectionGroup<T extends NavItem = NavItem> { section: NavSection; items: T[]; }
 
 /** Group already role-filtered items by section, in fixed order, dropping empty sections. */
 export function groupNavBySections<T extends NavItem>(items: T[]): NavSectionGroup<T>[] {
   return SECTION_ORDER
-    .map((section) => ({ section, label: SECTION_LABELS[section], items: items.filter((i) => i.section === section) }))
+    .map((section) => ({ section, items: items.filter((i) => i.section === section) }))
     .filter((g) => g.items.length > 0);
 }
 
