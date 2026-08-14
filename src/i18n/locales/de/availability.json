@@ -14,5 +14,31 @@
     "loadError": "Konnte nicht geladen werden",
     "blocked": "Gesperrt",
     "blockDate": "Termin sperren"
+  },
+  "calendar": {
+    "ineligibleReason": "Dieser Termin wird dir nicht angeboten. Angebotene Termine ergeben sich aus deinen Besetzungen und den dafür nötigen Skills.",
+    "prevMonth": "Voriger Monat",
+    "nextMonth": "Nächster Monat",
+    "loadError": "Deine Buchungen oder gesperrten Termine konnten nicht geladen werden · Status kann unvollständig sein. Bitte aktualisieren.",
+    "empty": "Noch keine passenden Termine. Sobald du einer Besetzung hinzugefügt wirst, erscheinen angebotene Termine hier.",
+    "label": {
+      "booked": "Gebucht",
+      "hold": "Vormerkung",
+      "offer": "Angebot",
+      "blocked": "Gesperrt"
+    },
+    "popover": {
+      "confirmed": "Buchung bestätigt",
+      "hold": "Vormerkung gesetzt · wartet auf Bestätigung durch dein Produktionsteam"
+    },
+    "legend": {
+      "title": "Legende:",
+      "eligible": "Verfügbar",
+      "confirmed": "Bestätigt",
+      "hold": "Vormerkung",
+      "offerPending": "Angebot offen",
+      "blocked": "Gesperrt"
+    },
+    "srIneligible": "Abgeblendete Termine werden dir nicht angeboten. Angebotene Termine ergeben sich aus deinen Besetzungen und den dafür nötigen Skills."
   }
 }

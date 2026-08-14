@@ -14,5 +14,31 @@
     "loadError": "Couldn't load",
     "blocked": "Blocked",
     "blockDate": "Block date"
+  },
+  "calendar": {
+    "ineligibleReason": "This date is not offered to you. Offered dates come from your casts and their required skills.",
+    "prevMonth": "Previous month",
+    "nextMonth": "Next month",
+    "loadError": "Couldn't load your bookings or blocked dates · statuses may be incomplete. Please refresh.",
+    "empty": "No eligible dates yet. Once you are added to a cast, offered dates appear here.",
+    "label": {
+      "booked": "Booked",
+      "hold": "Hold",
+      "offer": "Offer",
+      "blocked": "Blocked"
+    },
+    "popover": {
+      "confirmed": "Booking confirmed",
+      "hold": "Hold placed · awaiting producer confirmation"
+    },
+    "legend": {
+      "title": "Legend:",
+      "eligible": "Eligible",
+      "confirmed": "Confirmed",
+      "hold": "Hold",
+      "offerPending": "Offer pending",
+      "blocked": "Blocked"
+    },
+    "srIneligible": "Dimmed dates are not offered to you. Offered dates come from your casts and their required skills."
   }
 }
