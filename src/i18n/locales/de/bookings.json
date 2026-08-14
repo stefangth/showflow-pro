@@ -15,5 +15,38 @@
     "hireOrderLink": "Engagementvertrag",
     "emptyState": "Noch keine passenden Termine. Sobald du einer Besetzung hinzugefügt wirst, erscheinen angebotene Termine hier.",
     "calendarEmpty": "Keine passenden Termine"
+  },
+  "status": {
+    "open": "Offen",
+    "partiallyFilled": "Teilweise besetzt",
+    "fullyFilled": "Voll besetzt",
+    "cancelled": "Storniert",
+    "unconfigured": "Nicht konfiguriert"
+  },
+  "producer": {
+    "toast": {
+      "confirmed": "{{count}} bestätigt",
+      "nothingToConfirm": "Nichts zu bestätigen, es hat sich schon erledigt"
+    },
+    "title": "Shows & Buchungen",
+    "subtitle": "Alle geplanten Termine und der Besetzungsstatus an einem Ort.",
+    "setupChecklist": "Einrichtungscheckliste",
+    "newDate": "Neuer Termin",
+    "hireOrderReady": {
+      "title_one": "{{count}} Termin ist voll besetzt. Bereit für den Engagementvertrag.",
+      "title_other": "{{count}} Termine sind voll besetzt. Bereit für Engagementverträge.",
+      "description": "Erstelle die Verträge, um die Engagements zu bestätigen und sie zur Gegenzeichnung zu versenden.",
+      "cta": "Engagementverträge erstellen"
+    },
+    "noHireOrderPermission": "Du hast keine Berechtigung, Engagementverträge zu erstellen",
+    "searchPlaceholder": "Programm, Spielstätte, Stadt suchen…",
+    "statusPlaceholder": "Status",
+    "allStatuses": "Alle Status",
+    "sortChronoLabel": "Datum",
+    "sortAsc": "{{label}} ↑",
+    "sortDesc": "{{label}} ↓",
+    "generateHireOrder": "Engagementvertrag erstellen",
+    "emptyState": "Keine Termine entsprechen den aktuellen Filtern.",
+    "calendarEmpty": "Keine Termine geplant"
   }
 }
