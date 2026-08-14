@@ -19,10 +19,22 @@ export default function HelpPage() {
   const { roles, currentOrg } = useAuth();
   const orgName = currentOrg?.name ?? '';
 
-  const [role, setRole] = useState<HelpRole>(() => ROLE_ORDER.find((r) => roles.includes(r)) ?? 'admin');
+  const defaultRole: HelpRole = ROLE_ORDER.find((r) => roles.includes(r)) ?? 'admin';
+  const [role, setRole] = useState<HelpRole>(defaultRole);
   const [filter, setFilter] = useState<HelpFilter>('all');
   const [query, setQuery] = useState('');
   const [openMap, setOpenMap] = useState<Record<string, boolean>>({});
+
+  // If the active org changes via the org switcher while this page is mounted, the
+  // viewer's roles can change too. Reset the default role tab and collapse open
+  // answers for the new org. (Adjusting state during render is React's recommended
+  // alternative to a useEffect for "reset state when a value changes".)
+  const [seenOrgId, setSeenOrgId] = useState(currentOrg?.id);
+  if (seenOrgId !== currentOrg?.id) {
+    setSeenOrgId(currentOrg?.id);
+    setRole(defaultRole);
+    setOpenMap({});
+  }
 
   const matched = selectItems(role, filter, query, lang);
   const groups = groupByStage(matched);

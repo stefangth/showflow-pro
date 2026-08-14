@@ -6,14 +6,14 @@ export const GLOSSARY: readonly GlossaryEntry[] = [
   {
     term: 'hold',
     def: {
-      en: 'An artist accepted an offer, but a producer has not confirmed it yet. The date is reserved, not booked.',
+      en: 'An artist accepted an offer, but the production team has not confirmed it yet. The date is reserved, not booked.',
       de: 'Ein Artist hat ein Angebot angenommen, aber das Produktionsteam hat es noch nicht bestätigt. Der Termin ist reserviert, nicht gebucht.',
     },
   },
   {
     term: 'softBooked',
     def: {
-      en: 'The producer side of the same state. The slot is claimed and waiting on a confirm.',
+      en: 'The production-team side of the same state. The slot is claimed and waiting on a confirm.',
       de: 'Die Seite des Produktionsteams für denselben Zustand. Der Slot ist belegt und wartet auf eine Bestätigung.',
     },
   },

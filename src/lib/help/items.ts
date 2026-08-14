@@ -61,7 +61,7 @@ export const HELP_ITEMS: readonly HelpItem[] = [
     id: 'A1.3', role: 'admin', stage: 1, status: 'new', surface: 'Accept invite, success card', updated: '2026-08-14',
     q: { en: 'What did accepting just commit me to?', de: 'Wozu habe ich mich mit dem Annehmen gerade verpflichtet?' },
     a: {
-      en: 'The success card answers it in one line, checked against what you can actually do. A producer whose organization has not granted confirm rights does not get told to go and confirm bookings.',
+      en: 'The success card answers it in one line, checked against what you can actually do. Someone on the production team whose organization has not granted confirm rights does not get told to go and confirm bookings.',
       de: 'Die Erfolgs-Karte beantwortet das in einer Zeile, abgeglichen mit dem, was du wirklich darfst. Einem Produktionsteam, dessen Organisation keine Bestätigungsrechte vergeben hat, wird nicht gesagt, es solle Buchungen bestätigen.',
     },
   },
@@ -409,7 +409,7 @@ export const HELP_ITEMS: readonly HelpItem[] = [
     id: 'R3.1', role: 'artist', stage: 3, status: 'new', surface: 'Accept offer', updated: '2026-08-14',
     q: { en: 'I accepted. Am I booked now?', de: 'Ich habe angenommen. Bin ich jetzt gebucht?' },
     a: {
-      en: 'Usually not yet. Accepting now says: hold placed, your producer confirms next. Where your organization confirms automatically it says the other true thing instead, that you are booked.',
+      en: 'Usually not yet. Accepting now says: hold placed, your production team confirms next. Where your organization confirms automatically it says the other true thing instead, that you are booked.',
       de: 'Meist noch nicht. Das Annehmen sagt jetzt: Vormerkung gesetzt, dein Produktionsteam bestätigt als Nächstes. Wo deine Organisation automatisch bestätigt, sagt es stattdessen die andere wahre Sache, nämlich dass du gebucht bist.',
     },
   },
@@ -465,7 +465,7 @@ export const HELP_ITEMS: readonly HelpItem[] = [
     id: 'R4.3', role: 'artist', stage: 4, status: 'ok', surface: 'Chat panel', updated: '2026-08-14',
     q: { en: 'Who can see this chat? Why is there no chat for a date I was offered?', de: 'Wer kann diesen Chat sehen? Warum gibt es keinen Chat für einen Termin, der mir angeboten wurde?' },
     a: {
-      en: 'Chat is only available to producers, admins, and artists booked or soft-booked for that date. An open offer is not enough.',
+      en: 'Chat is only available to the production team, admins, and artists booked or soft-booked for that date. An open offer is not enough.',
       de: 'Chat gibt es nur für das Produktionsteam, Admins und Artists, die für diesen Termin gebucht oder vorläufig gebucht sind. Ein offenes Angebot reicht nicht.',
     },
   },
@@ -473,7 +473,7 @@ export const HELP_ITEMS: readonly HelpItem[] = [
     id: 'R4.4', role: 'artist', stage: 4, status: 'new', surface: 'Profile · artist record', updated: '2026-08-14',
     q: { en: 'Who in the organization can see my phone number and email?', de: 'Wer in der Organisation kann meine Telefonnummer und E-Mail sehen?' },
     a: {
-      en: 'Admins and the production team see the contact details on your artist record, which is what they book you from. Your profile now says so, and the producer-facing view carries the matching note.',
+      en: 'Admins and the production team see the contact details on your artist record, which is what they book you from. Your profile now says so, and the production-team view carries the matching note.',
       de: 'Admins und das Produktionsteam sehen die Kontaktdaten auf deinem Artist-Datensatz, denn darüber buchen sie dich. Dein Profil sagt das jetzt, und die Ansicht für das Produktionsteam trägt die passende Notiz.',
     },
   },
@@ -497,7 +497,7 @@ export const HELP_ITEMS: readonly HelpItem[] = [
     id: 'R5.1', role: 'artist', stage: 5, status: 'new', surface: 'My bookings', updated: '2026-08-14',
     q: { en: 'I am confirmed but cannot make it. How do I cancel?', de: 'Ich bin bestätigt, kann aber nicht. Wie sage ich ab?' },
     a: {
-      en: 'Not from here. There is no artist-side cancel for a confirmed booking, and your bookings now say what to do instead: message your producer in the date’s chat.',
+      en: 'Not from here. There is no artist-side cancel for a confirmed booking, and your bookings now say what to do instead: message your production team in the date’s chat.',
       de: 'Nicht von hier aus. Es gibt keine Absage von Artist-Seite für eine bestätigte Buchung, und deine Buchungen sagen jetzt, was du stattdessen tust: schreib deinem Produktionsteam im Chat zum Termin.',
     },
   },

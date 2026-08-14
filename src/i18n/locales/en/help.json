@@ -1,7 +1,7 @@
 {
   "eyebrow": "HELP",
   "hero": "What people ask, and where the app answers it",
-  "lede": "Every question below is one a real admin, producer, or artist asks themselves while using ShowFlow. Pick your role, then open a question to see the answer and the screen that carries it.",
+  "lede": "Every question below is one a real admin, someone on the production team, or an artist asks themselves while using ShowFlow. Pick your role, then open a question to see the answer and the screen that carries it.",
   "tabs": {
     "admin": "Admin",
     "producer": "Production team",
@@ -27,7 +27,7 @@
   "glossaryHeading": "The words we use",
   "stuck": {
     "eyebrow": "STILL STUCK",
-    "body": "Ask the person one step closer to the decision. Artists reach their producer in the date's chat. Production team asks an admin. Admins reach their platform administrator."
+    "body": "Ask the person one step closer to the decision. Artists reach their production team in the date's chat. Production team asks an admin. Admins reach their platform administrator."
   },
   "support": {
     "eyebrow": "SUPPORT ADDRESS",
