@@ -1,15 +1,19 @@
 import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import {
   fetchCastMembers, fetchCastEligibility, updateCast as updateCastRow,
   addCastMember, removeCastMember, setCastEligibility, clearCastEligibility,
+  fetchCasts, fetchCastCityPriority,
 } from '@/data/casts';
 import { fetchArtists } from '@/data/artists';
 import { fetchShowsForEligibility } from '@/data/shows';
 import { useAuth } from '@/features/auth/AuthContext';
 import { useCan } from '@/hooks/useCapabilities';
 import { useEditorConfig } from '@/features/editor/EditorContext';
+import { ROUTES } from '@/config/app.config';
+import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
@@ -19,7 +23,7 @@ import { IconTooltip } from '@/components/common/IconTooltip';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
-import { Search, X, Plus, Users, Layers, Pencil, Check } from 'lucide-react';
+import { Search, X, Plus, Users, Layers, Pencil, Check, ListOrdered } from 'lucide-react';
 import type { Cast } from '@/types';
 import { showIdentityLabel } from '@/types';
 import { useAllCities } from '@/hooks/useAllCities';
@@ -89,6 +93,23 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
     queryKey: ['cast-eligibility', cast?.id],
     enabled: !!cast,
     queryFn: () => fetchCastEligibility(supabase, cast?.id ?? null),
+  });
+
+  // Offer order (org-default cast_city_priority). Read-only here: the same rows are
+  // edited on Settings → Casts & Cities ("Cast Priority by City"), which also owns the
+  // UNIQUE(cast,city)/UNIQUE(city,priority) swap semantics — this tab just shows where
+  // THIS cast lands per city, with a link out to make a change. Reuses that tab's query
+  // keys (['casts', orgId], ['cast-city-priority', orgId]) so the cache is shared.
+  const { data: allCasts } = useQuery({
+    queryKey: ['casts', currentOrg?.id],
+    enabled: !!currentOrg,
+    queryFn: () => fetchCasts(supabase, currentOrg?.id ?? null),
+  });
+
+  const { data: castCityPriorities } = useQuery({
+    queryKey: ['cast-city-priority', currentOrg?.id],
+    enabled: !!currentOrg,
+    queryFn: () => fetchCastCityPriority(supabase, currentOrg?.id ?? null),
   });
 
   const eligibilityMap = useMemo(() => {
@@ -215,6 +236,7 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
           <TabsList>
             <TabsTrigger value="members"><Users className="h-4 w-4 mr-2" />Members</TabsTrigger>
             <TabsTrigger value="eligibility"><Layers className="h-4 w-4 mr-2" />City eligibility</TabsTrigger>
+            <TabsTrigger value="offer-order"><ListOrdered className="h-4 w-4 mr-2" />Offer order</TabsTrigger>
           </TabsList>
 
           <TabsContent value="members" className="space-y-6 mt-4">
@@ -309,6 +331,55 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
                 </table>
               </div>
             )}
+          </TabsContent>
+
+          <TabsContent value="offer-order" className="mt-4 space-y-3">
+            <p className="text-xs text-muted-foreground">
+              Where this cast sits in the offer order. Manage it in Settings, Casts and cities, same setting.
+            </p>
+            {(cities ?? []).length === 0 ? (
+              <p className="text-sm text-muted-foreground">Add cities first in Settings → Casts & Cities.</p>
+            ) : (
+              <div className="space-y-2">
+                {(cities ?? []).map((city) => {
+                  const row = (castCityPriorities ?? []).find(
+                    (r) => r.city_id === city.id && r.cast_id === cast?.id
+                  );
+                  const tier = row?.priority ?? null;
+                  const previousRow = tier != null && tier > 1
+                    ? (castCityPriorities ?? []).find((r) => r.city_id === city.id && r.priority === tier - 1)
+                    : undefined;
+                  const previousCastName = previousRow
+                    ? (allCasts ?? []).find((c) => c.id === previousRow.cast_id)?.name ?? 'the previous tier'
+                    : null;
+                  const note = tier == null
+                    ? 'Never offered here.'
+                    : tier === 1
+                      ? 'Offered first here.'
+                      : `Offered after ${previousCastName}.`;
+                  return (
+                    <div
+                      key={city.id}
+                      className="flex items-center justify-between gap-3 p-2.5 rounded-md border border-border"
+                    >
+                      <div>
+                        <p className="text-sm font-medium">{city.name}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{note}</p>
+                      </div>
+                      <Badge
+                        variant={tier === 1 ? 'outline' : 'neutral'}
+                        className={cn('shrink-0', tier === 1 && 'bg-accent-100 text-accent-700 border-transparent')}
+                      >
+                        {tier != null ? `Tier ${tier}` : 'Not in order'}
+                      </Badge>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            <Link to={`${ROUTES.SETTINGS}?tab=casts-cities`} className="text-xs text-primary underline">
+              Manage offer order in Settings, Casts and cities
+            </Link>
           </TabsContent>
         </Tabs>
       </SheetContent>
