@@ -61,7 +61,7 @@ export function EligibilityStep({ coverage, orgId }: { coverage: LadderCoverageI
         </Link>
         {/* Same house vocabulary as LadderStep, same escape hatch: the Help center. */}
         <Link to={ROUTES.HELP} className="text-xs text-primary underline">
-          How casts and tiers work, in the App Logic Guide
+          How casts and tiers work, in the Help center
         </Link>
       </div>
     </div>

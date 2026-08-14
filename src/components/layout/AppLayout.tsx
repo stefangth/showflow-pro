@@ -40,6 +40,21 @@ const ROUTE_TO_LABEL: Record<string, string> = Object.fromEntries(NAV_ITEMS.map(
 const ROUTE_TO_LABELKEY: Record<string, NavLabelKey | undefined> = Object.fromEntries(NAV_ITEMS.map((i) => [i.to, i.labelKey]));
 const SECTION_KEY = { workspace: 'nav.workspace', catalog: 'nav.catalog', system: 'nav.system' } as const;
 
+// Last-known `language_packages` entitlement, cached so the force-English guard below has an
+// answer during the entitlements-loading window. `useFeature` reports the registry default
+// (false) while the query is loading, which without this cache would force English on first
+// paint and then flip an *entitled* org back to its stored language once the query settles,
+// a visible flash on every load. The cache defaults to "not entitled" (absent), so a dark or
+// never-seen org still gets the ship-dark English default during load; only an org confirmed
+// entitled on a prior load skips the force and shows its stored language immediately.
+export const LANG_PACK_CACHE_KEY = 'showflow.langpack.v1';
+function readLangPackCache(): boolean {
+  try { return localStorage.getItem(LANG_PACK_CACHE_KEY) === '1'; } catch { return false; }
+}
+function writeLangPackCache(enabled: boolean): void {
+  try { localStorage.setItem(LANG_PACK_CACHE_KEY, enabled ? '1' : '0'); } catch { /* private mode / disabled */ }
+}
+
 export default function AppLayout({ children }: AppLayoutProps) {
   const { user, signOut, roles, hasRole, viewAsRole, viewAsUser, isSuperAdmin, currentOrg } = useAuth();
   const { isEditorMode } = useEditorConfig();
@@ -62,17 +77,21 @@ export default function AppLayout({ children }: AppLayoutProps) {
   // state when collapsing so it doesn't auto-pop on the next expand.
   useEffect(() => { if (collapsed) setProfileMenuOpen(false); }, [collapsed]);
 
-  // language_packages ships dark: while the org isn't entitled, force the runtime
-  // to English regardless of what's stored, WITHOUT touching localStorage — so a
-  // later entitlement flip instantly restores the user's own choice. Display-only.
+  // language_packages ships dark: force the runtime to English unless the org is entitled,
+  // WITHOUT touching the user's stored language (so a later entitlement flip restores it).
+  // During the entitlements-loading window `useFeature` reports the registry default (false),
+  // so we consult the cached last-known decision instead of forcing English on an entitled
+  // org every load. Absent cache = not entitled = the ship-dark English default. Display-only.
   useLayoutEffect(() => {
-    if (!languagePacksEnabled) {
+    const entitled = entitlementsLoading ? readLangPackCache() : languagePacksEnabled;
+    if (!entitlementsLoading) writeLangPackCache(languagePacksEnabled);
+    if (!entitled) {
       if (i18n.language !== 'en') void i18n.changeLanguage('en');
       return;
     }
     const stored = loadStoredLang();
     if (stored && i18n.language !== stored) void i18n.changeLanguage(stored);
-  }, [languagePacksEnabled]);
+  }, [languagePacksEnabled, entitlementsLoading]);
 
   const isRealAdmin = roles.includes('admin');
   const unreadCount = notifications.filter(n => !n.read).length;

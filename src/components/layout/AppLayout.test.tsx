@@ -103,7 +103,7 @@ vi.mock("react-router-dom", async (orig) => ({
   ),
 }));
 
-import AppLayout from "./AppLayout";
+import AppLayout, { LANG_PACK_CACHE_KEY } from "./AppLayout";
 
 function mockAuth() {
   vi.mocked(useAuth).mockReturnValue(
@@ -192,6 +192,7 @@ describe("AppLayout force-English gate (language_packages entitlement)", () => {
     // Don't leak the language state this describe block deliberately mutates into
     // sibling tests in this file (or other files sharing the singleton i18n instance).
     localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(LANG_PACK_CACHE_KEY);
     await i18n.changeLanguage("en");
   });
 
@@ -230,5 +231,24 @@ describe("AppLayout force-English gate (language_packages entitlement)", () => {
     await act(async () => { rerender(<AppLayout>page content</AppLayout>); });
 
     await waitFor(() => expect(i18n.language).toBe("de"));
+  });
+
+  it("during the entitlements-loading window, trusts a cached entitlement instead of flashing English", async () => {
+    mockAuth();
+    // A returning entitled German user: stored 'de', last-known decision cached as entitled.
+    localStorage.setItem(STORAGE_KEY, "de");
+    localStorage.setItem(LANG_PACK_CACHE_KEY, "1");
+    await act(async () => { await i18n.changeLanguage("de"); });
+
+    // Entitlements still loading, so useFeature reports the registry default (false).
+    vi.mocked(useEntitlements).mockReturnValue({ features: new Set<FeatureKey>(), isLoading: true });
+    vi.mocked(useFeature).mockReturnValue(false);
+    renderWithProviders(<AppLayout>page content</AppLayout>);
+
+    // Cache says entitled, so the guard does NOT force English during load: no flash.
+    // (The absent-cache path forces English, but on a fresh mount it races LanguageProvider's
+    // own effect — see this block's header comment — so it is covered via rerender above,
+    // not a fresh mount here.)
+    expect(i18n.language).toBe("de");
   });
 });

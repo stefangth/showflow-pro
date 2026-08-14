@@ -88,16 +88,15 @@ describe("LadderStep", () => {
     );
   });
 
-  it("offers the concept explanation next to the edit link, deep-linked to Documentation", () => {
+  it("offers the concept explanation next to the edit link, deep-linked to the Help center", () => {
     // "Tier", "cast" and "ladder" are all house vocabulary. The panel names them, so it
-    // also has to say where they are explained. The label names the destination because
-    // the link lands on the whole guide, not on a section: promising a specific answer and
-    // delivering a manual is the thing to avoid.
+    // also has to say where they are explained. The label names the destination (the Help
+    // center) so it doesn't promise a specific section and land the reader on a broader page.
     const coverage: LadderCoverageInputs = { futurePairs: [], showPriorities: [], cityPriorities: [] };
     renderWithProviders(
       <MemoryRouter><LadderStep coverage={coverage} orgId="org-1" /></MemoryRouter>,
     );
-    expect(screen.getByRole("link", { name: /how casts and tiers work, in the app logic guide/i })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /how casts and tiers work, in the help center/i })).toHaveAttribute(
       "href",
       ROUTES.HELP,
     );
