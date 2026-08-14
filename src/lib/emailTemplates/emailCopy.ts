@@ -297,8 +297,8 @@ export const EMAIL_COPY_DEFAULTS = {
   // Quantified, not a blanket claim: unlike introHeld above, this line only ever states
   // the count for the ONE category it names ("{{topReasonCount}} of the {{heldCount}}"),
   // so it stays truthful even when the held set has mixed causes. topReasonMissingDate /
-  // topReasonUnlinkedProgram are the only two categories syncOrg's held_unresolved
-  // branches emit (see topHeldReason in airtable-poll/index.ts); an unrecognized reason
+  // topReasonUnlinkedProgram / topReasonUnlinkedCity are the three categories syncOrg's
+  // held_unresolved branches emit (see topHeldReason in airtable-poll/index.ts); an unrecognized reason
   // is excluded from the tally there, so this line simply does not render rather than
   // ever naming a reason it can't back up. Phrased as a clause ("are {{topReasonLabel}}"),
   // not a report label ("N of M: reason"), so it reads like the rest of the email.
@@ -316,6 +316,7 @@ export const EMAIL_COPY_DEFAULTS = {
   "airtable-sync-held.topReasonLineAll": "All {{heldCount}} are {{topReasonLabel}}.",
   "airtable-sync-held.topReasonMissingDate": "missing a date",
   "airtable-sync-held.topReasonUnlinkedProgram": "not linked to one of your shows",
+  "airtable-sync-held.topReasonUnlinkedCity": "using a city that isn't linked to one of yours",
   // Four variants, chosen in the template by (heldCount === 1) x (does a topReasonLine
   // above already name the reason for EVERY held record). A single record is "it", never
   // "which ones" (there is only one), and once the reason line above has already said

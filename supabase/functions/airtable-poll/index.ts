@@ -144,14 +144,16 @@ async function openOfferTierBatch(deps: Deps, ids: string[]): Promise<number> {
   return opened;
 }
 
-/** The two causes syncOrg's held_unresolved branches actually emit (grep "held += 1" in
- *  this file: a blank date cell, or a sub_program that isn't linked to a show). An
- *  unrecognized reason string (a future third cause) maps to null and is excluded from
- *  the tally in topHeldReason rather than mislabeled. */
-type HeldReasonCategory = "missing_date" | "unlinked_program";
+/** The three causes syncOrg's held_unresolved branches actually emit (grep "held += 1" in
+ *  this file: a blank date cell, a sub_program that isn't linked to a show, or a non-empty
+ *  city that isn't linked to a catalog city). An unrecognized reason string (a future
+ *  fourth cause) maps to null and is excluded from the tally in topHeldReason rather than
+ *  mislabeled. */
+type HeldReasonCategory = "missing_date" | "unlinked_program" | "unlinked_city";
 function categorizeHeldReason(reason: string | null): HeldReasonCategory | null {
   if (reason === "missing date") return "missing_date";
   if (reason && reason.startsWith("program '") && reason.endsWith("' not linked")) return "unlinked_program";
+  if (reason && reason.startsWith("city '") && reason.endsWith("' not linked")) return "unlinked_city";
   return null;
 }
 
@@ -161,15 +163,19 @@ function categorizeHeldReason(reason: string | null): HeldReasonCategory | null 
  *  avoids asserting one cause for the whole held set). Ties break missing_date-first
  *  (arbitrary but deterministic). Returns null when nothing is recognized (nothing to report). */
 function topHeldReason(reasons: Array<string | null>): { category: HeldReasonCategory; count: number } | null {
-  const counts: Record<HeldReasonCategory, number> = { missing_date: 0, unlinked_program: 0 };
+  const counts: Record<HeldReasonCategory, number> = { missing_date: 0, unlinked_program: 0, unlinked_city: 0 };
   for (const r of reasons) {
     const cat = categorizeHeldReason(r);
     if (cat) counts[cat] += 1;
   }
-  if (counts.missing_date === 0 && counts.unlinked_program === 0) return null;
-  return counts.missing_date >= counts.unlinked_program
-    ? { category: "missing_date", count: counts.missing_date }
-    : { category: "unlinked_program", count: counts.unlinked_program };
+  // Deterministic winner: highest count, ties broken in declared order
+  // (missing_date, then unlinked_program, then unlinked_city).
+  const order: HeldReasonCategory[] = ["missing_date", "unlinked_program", "unlinked_city"];
+  let best: HeldReasonCategory | null = null;
+  for (const cat of order) {
+    if (counts[cat] > 0 && (best === null || counts[cat] > counts[best])) best = cat;
+  }
+  return best ? { category: best, count: counts[best] } : null;
 }
 
 /** Short, deterministic digest of a held-record-id SET, for the sync-held email's
@@ -480,7 +486,6 @@ async function syncOrg(deps: Deps, orgId: string, baseId: string, tableName: str
       const cityRawName = cityNames[0] ?? null;
       const cityKey = buildCityKey(cityRawName);
       const cityId = cityKey ? cityByKey.get(cityKey) ?? null : null;
-      const cityNote = cityRawName && !cityId ? `city '${cityRawName}' not linked` : null;
 
       const session1 = fieldMap.session_1 ? parseTime(fields[fieldMap.session_1]) : null;
       const session2 = fieldMap.session_2 ? parseTime(fields[fieldMap.session_2]) : null;
@@ -493,6 +498,17 @@ async function syncOrg(deps: Deps, orgId: string, baseId: string, tableName: str
 
       const existing = existingByAirtableId.get(id);
       const existingId = existing?.id;
+
+      // A NEW record whose mapped, non-empty city doesn't resolve to a linked catalog city is
+      // held (waiting on a catalog link), instead of importing it city-less. An already-imported
+      // record still updates (so Airtable cancellations/revivals keep propagating) and keeps its
+      // prior city_id, since the update below only writes city_id when the city resolves. A
+      // blank/absent city value, or an unmapped city field, still imports with city_id null.
+      if (!existingId && fieldMap.city && cityRawName && !cityId) {
+        held += 1;
+        outcomes.push({ airtable_record_id: id, action: "held_unresolved", show_date_id: null, reason: `city '${cityRawName}' not linked`, raw_fields: fields });
+        continue;
+      }
       if (existingId) {
         const payload: TablesUpdate<"show_dates"> = { date: dateValue };
         if (fieldMap.session_1) payload.session_1 = session1;
@@ -513,7 +529,7 @@ async function syncOrg(deps: Deps, orgId: string, baseId: string, tableName: str
         if (error) { outcomes.push({ airtable_record_id: id, action: "error", show_date_id: existingId, reason: error.message, raw_fields: fields }); continue; }
         processed += 1; updated += 1;
         if (payload.session_1 || payload.session_2 || payload.session_3) updatedWithSession.push(existingId);
-        outcomes.push({ airtable_record_id: id, action: "updated", show_date_id: existingId, reason: cityNote, raw_fields: fields });
+        outcomes.push({ airtable_record_id: id, action: "updated", show_date_id: existingId, reason: null, raw_fields: fields });
         continue;
       }
 
@@ -535,7 +551,7 @@ async function syncOrg(deps: Deps, orgId: string, baseId: string, tableName: str
       processed += 1; newDates += 1;
       newDateIds.push(inserted.id);
       existingByAirtableId.set(id, { id: inserted.id, status: isCancelled ? "cancelled" : "open" });
-      outcomes.push({ airtable_record_id: id, action: "imported_new", show_date_id: inserted.id, reason: cityNote, raw_fields: fields });
+      outcomes.push({ airtable_record_id: id, action: "imported_new", show_date_id: inserted.id, reason: null, raw_fields: fields });
     }
   } while (!apiError && offset && pageCount < MAX_PAGES);
 

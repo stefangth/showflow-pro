@@ -1,79 +1,66 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { IconTooltip } from "@/components/common/IconTooltip";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Trash2, CheckCircle2, KeyRound, Lock, Loader2, AlertCircle, Plus, ChevronsUpDown } from "lucide-react";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Command, CommandInput, CommandList, CommandGroup, CommandItem, CommandSeparator } from "@/components/ui/command";
-import { fetchCustomFieldDefs, upsertCustomFieldDef, deleteCustomFieldDef } from "@/data/customFields";
-import { airtableTypeToCustomType, slugifyKey, type CustomFieldType } from "@/lib/customFields";
+import { Trash2, CheckCircle2, KeyRound, Lock, Loader2, AlertCircle } from "lucide-react";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import type { Json } from "@/integrations/supabase/types";
+
+import { fetchCustomFieldDefs, upsertCustomFieldDef } from "@/data/customFields";
+import { airtableTypeToCustomType, slugifyKey } from "@/lib/customFields";
 import { fetchAirtableBases, fetchAirtableTables, fetchAirtableLinkedRecords, fetchAirtableProgramPairs } from "@/data/airtableSchema";
-import { SHOWFLOW_FIELDS, buildProgramKey, buildCityKey, planCityReconciliation, groupDuplicateCities, planProgramImport, type AirtableFieldMap, type ProgramPair } from "@/data/airtableMapping";
+import { buildProgramKey, buildCityKey, type AirtableFieldMap, type ProgramPair, planCityReconciliation, groupDuplicateCities, planProgramImport } from "@/data/airtableMapping";
 import { showIdentityLabel } from "@/types";
 import { fetchShowsForLinking, linkShowAirtableKey, importShowsFromOptions, upsertOrgSetting } from "@/data/settings";
 import { fetchAirtableSettings, type AirtableSettings } from "@/data/airtableSettings";
-import type { Json } from "@/integrations/supabase/types";
 import { fetchCitiesForLinking, linkCityAirtableKey, importCitiesFromOptions, mergeCities } from "@/data/cities";
-import { fetchLatestSyncLog, fetchUnresolvedRecords, triggerAirtableSyncNow, type UnresolvedRecord, type SyncNowResult } from "@/data/airtableSync";
+import {
+  fetchLatestSyncLog, fetchRecentSyncLogs, fetchUnresolvedRecords, triggerAirtableSyncNow,
+  type SyncNowResult,
+} from "@/data/airtableSync";
 import { saveAirtableKey, fetchAirtableKeyStatus, deleteAirtableKey } from "@/data/airtableKey";
 import { formatDateDMY } from "@/lib/dates";
-import { POLL_INTERVAL_PRESETS, formatInterval, nextSyncAt, MIN_POLL_INTERVAL_MINUTES } from "@/lib/airtablePoll";
+import { POLL_INTERVAL_PRESETS, formatInterval, MIN_POLL_INTERVAL_MINUTES } from "@/lib/airtablePoll";
 import { airtableFallbackMessage, type FallbackCause } from "@/lib/airtableFallback";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+
+import { StatusHeader } from "./airtable/StatusHeader";
+import { ConsoleTabs, type ConsoleTab } from "./airtable/ConsoleTabs";
+import { ReadOnlyBanner } from "./airtable/ReadOnlyBanner";
+import { SetupWizard } from "./airtable/SetupWizard";
+import { OverviewTab } from "./airtable/OverviewTab";
+import { MappingTab } from "./airtable/MappingTab";
+import { CatalogTab, type CatalogRow } from "./airtable/CatalogTab";
+import { ActivityTab } from "./airtable/ActivityTab";
+import {
+  deriveMode, deriveStatus, deriveKpis, groupHeldCauses, requiredMappedCount, parseHeldReason,
+  type HeldCause,
+} from "./airtable/console";
 
 interface Props {
   orgId: string | null;
-  /** Capability floor (`configure_airtable`): the org's mapping/keys/catalog links still
-   *  render, but a producer without the capability can't change them. Admins always
-   *  pass `false` here. */
+  /** Capability floor (`configure_airtable`): the console still renders read-only for a
+   *  producer without the capability. Admins always pass `false`. */
   readOnly?: boolean;
   /** Capability floor (`trigger_sync`), independent of `readOnly`: whether this user may
    *  fire an on-demand "Sync now". Admins always pass `true`. */
   canTriggerSync?: boolean;
 }
 
-/** shadcn Select cannot use "" as an item value, so "not mapped" needs a sentinel. */
-const NONE = "__none__";
-
-function AutosaveStatus({ state }: { state: "idle" | "saving" | "saved" | "error" }) {
-  if (state === "idle") return null;
-  if (state === "saving")
-    return <span className="flex items-center gap-1 text-xs text-muted-foreground"><Loader2 className="h-3 w-3 animate-spin" /> Saving…</span>;
-  if (state === "saved")
-    return <span className="flex items-center gap-1 text-xs text-muted-foreground"><CheckCircle2 className="h-3 w-3 text-primary" /> All changes saved</span>;
-  return <span className="flex items-center gap-1 text-xs text-destructive"><AlertCircle className="h-3 w-3" /> Couldn't save</span>;
-}
-
-/** One catalog row: the Airtable option, its link status, and the action control. */
-interface CatalogRow {
-  /** Stable key + the value the link key is built from. */
-  key: string;
-  /** What the user sees for this Airtable option. */
-  display: string;
-  /** The linked catalog entity, or null when unlinked. */
-  linkedId: string | null;
-  linkedLabel: string | null;
-  /** Program rows only: the source pair, so onCreate imports it without a key→pair lookup. */
-  createPair?: ProgramPair;
-}
-
-/** Collapse rows that resolve to the same catalog key — e.g. two linked-table records both named
- *  "Berlin", or "Berlin"/"berlin" — so each catalog target shows once and row.key is a unique
- *  React list key. Keeps the first occurrence's display. */
-function dedupeRowsByKey(rows: CatalogRow[]): CatalogRow[] {
+/** Collapse rows that resolve to the same catalog key so each target shows once. */
+function dedupeRowsByKey<T extends { key: string }>(rows: T[]): T[] {
   const seen = new Set<string>();
-  const out: CatalogRow[] = [];
+  const out: T[] = [];
   for (const r of rows) {
     if (seen.has(r.key)) continue;
     seen.add(r.key);
@@ -82,142 +69,18 @@ function dedupeRowsByKey(rows: CatalogRow[]): CatalogRow[] {
   return out;
 }
 
-/** Per-row "smart" combobox: search existing catalog rows to link, or create a new catalog
- *  entry for this Airtable option. Shared by the Programs and Cities tables. */
-function CatalogLinkCombobox({
-  optionLabel, existing, onCreate, onLink, disabled, ariaLabel, searchPlaceholder,
-}: {
-  optionLabel: string;
-  existing: { id: string; label: string }[];
-  onCreate: () => void;
-  onLink: (id: string) => void;
-  disabled?: boolean;
-  ariaLabel: string;
-  searchPlaceholder: string;
-}) {
-  const [open, setOpen] = useState(false);
-  const [search, setSearch] = useState("");
-  const matches = existing.filter((e) => e.label.toLowerCase().includes(search.trim().toLowerCase()));
-  return (
-    <Popover open={open} onOpenChange={(o) => { setOpen(o); if (!o) setSearch(""); }}>
-      <PopoverTrigger asChild>
-        <Button variant="outline" size="sm" className="h-8 w-full sm:w-[240px] justify-between" aria-label={ariaLabel} disabled={disabled}>
-          <span className="truncate text-muted-foreground">Link or create…</span>
-          <ChevronsUpDown className="h-4 w-4 ml-2 shrink-0 opacity-50" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-[260px] p-0" align="end">
-        {/* Manual filtering (shouldFilter=false) so the Create row is always offered. */}
-        <Command shouldFilter={false}>
-          <CommandInput placeholder={searchPlaceholder} value={search} onValueChange={setSearch} />
-          <CommandList>
-            <CommandGroup>
-              {/* Radix doesn't fire onOpenChange for a programmatic close, so clear search here too. */}
-              <CommandItem value="__create__" onSelect={() => { onCreate(); setOpen(false); setSearch(""); }}>
-                <Plus className="h-4 w-4 mr-2" /> Create &ldquo;{optionLabel}&rdquo;
-              </CommandItem>
-            </CommandGroup>
-            {matches.length > 0 && (
-              <>
-                <CommandSeparator />
-                <CommandGroup heading="Link to existing">
-                  {matches.map((e) => (
-                    <CommandItem key={e.id} value={e.id} onSelect={() => { onLink(e.id); setOpen(false); setSearch(""); }}>
-                      {e.label}
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
-              </>
-            )}
-            {matches.length === 0 && search.trim() !== "" && (
-              <p className="px-3 py-2 text-xs text-muted-foreground">No existing matches.</p>
-            )}
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
-  );
-}
-
-/** One catalog section (Programs or Cities): header with a dynamic source-field subtitle +
- *  bulk import, then a tabular list with a status pill and per-row link/create combobox. */
-function CatalogSection({
-  title, sourceLabel, rows, unlinkedCount, importAll, importDisabled,
-  existing, onCreate, onLink, onUnlink, entityNoun, emptyHint, busy, readOnly,
-}: {
-  title: string;
-  sourceLabel: string;
-  rows: CatalogRow[];
-  unlinkedCount: number;
-  importAll: () => void;
-  importDisabled: boolean;
-  existing: { id: string; label: string }[];
-  onCreate: (row: CatalogRow) => void;
-  onLink: (row: CatalogRow, id: string) => void;
-  onUnlink: (id: string) => void;
-  entityNoun: "show" | "city"; // used in aria-labels + search placeholders
-  emptyHint: string;
-  busy?: boolean; // a link/create/unlink mutation (or the backing catalog query) is in flight
-  readOnly?: boolean; // capability floor: link/create/unlink/import controls disabled
-}) {
-  return (
-    <div className="space-y-3">
-      <div className="flex items-end justify-between gap-3">
-        <div className="min-w-0">
-          <h4 className="font-display font-semibold">{title}</h4>
-          <p className="text-xs text-muted-foreground truncate">from {sourceLabel}</p>
-        </div>
-        <Button variant="outline" size="sm" onClick={importAll} disabled={importDisabled || readOnly}>
-          Import all unlinked{unlinkedCount ? ` (${unlinkedCount})` : ""}
-        </Button>
-      </div>
-      {rows.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{emptyHint}</p>
-      ) : (
-        <div className="rounded-md border border-border">
-          <div className="hidden sm:grid grid-cols-[1fr_110px_240px] gap-3 px-3 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground border-b border-border">
-            <span>Airtable option</span><span>Status</span><span>Catalog link</span>
-          </div>
-          {rows.map((row) => (
-            // row.key is unique per row (rows are deduped by key upstream), so it's a safe list key.
-            <div key={row.key} className="grid grid-cols-1 sm:grid-cols-[1fr_110px_240px] gap-2 sm:gap-3 items-center px-3 py-2.5 border-b border-border last:border-b-0">
-              <span className="text-sm font-medium truncate">{row.display}</span>
-              <div><Badge variant={row.linkedId ? "secondary" : "outline"}>{row.linkedId ? "Linked" : "Unlinked"}</Badge></div>
-              <div className="flex items-center justify-between sm:justify-start gap-2 min-w-0">
-                {row.linkedId ? (
-                  <>
-                    <span className="text-sm text-muted-foreground truncate">→ {row.linkedLabel}</span>
-                    <Button size="sm" variant="ghost" className="shrink-0" disabled={busy || readOnly} onClick={() => onUnlink(row.linkedId!)}>Unlink</Button>
-                  </>
-                ) : row.key ? (
-                  <CatalogLinkCombobox
-                    optionLabel={row.display}
-                    existing={existing}
-                    onCreate={() => onCreate(row)}
-                    onLink={(id) => onLink(row, id)}
-                    disabled={busy || readOnly}
-                    ariaLabel={`link or create ${entityNoun} for ${row.display}`}
-                    searchPlaceholder={`Search ${entityNoun}s…`}
-                  />
-                ) : (
-                  // No usable link key (blank source value) — never offer linking; a blank key
-                  // would otherwise match every unresolved record in the poll.
-                  <span className="text-sm text-muted-foreground">—</span>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
 export function AirtableSyncTab({ orgId, readOnly = false, canTriggerSync = true }: Props) {
   const qc = useQueryClient();
+  const canWrite = !readOnly;
   const [airtableKey, setAirtableKey] = useState("");
   const [replacing, setReplacing] = useState(false);
-  const [survivorByNorm, setSurvivorByNorm] = useState<Record<string, string>>({});
+
+  // Console UI state
+  const [tab, setTab] = useState<ConsoleTab>("overview");
+  const [openCause, setOpenCause] = useState<string | null>("unlinked_program");
+  const [manageOpen, setManageOpen] = useState(false);
+  // Setup-wizard local token (distinct from the manage-connection replace field).
+  const [setupKey, setSetupKey] = useState("");
 
   // ── API-key presence (status only; the key value is never read back) ─────────
   const keyStatusQ = useQuery({
@@ -227,7 +90,7 @@ export function AirtableSyncTab({ orgId, readOnly = false, canTriggerSync = true
   });
   const keyPresent = !!keyStatusQ.data?.present;
 
-  // ── Tab-owned settings + optimistic autosave (decoupled from the page draft) ──
+  // ── Tab-owned settings + optimistic autosave ─────────────────────────────────
   const SETTINGS_KEY = ["airtable", "settings", orgId] as const;
   const settingsQ = useQuery({
     queryKey: SETTINGS_KEY,
@@ -242,7 +105,6 @@ export function AirtableSyncTab({ orgId, readOnly = false, canTriggerSync = true
   const saveSettings = useMutation({
     mutationFn: async (patch: Partial<AirtableSettings>) => {
       if (!orgId) throw new Error("No active organization");
-      // Each key is an independent (org_id,key) upsert — write them in parallel.
       await Promise.all(
         Object.entries(patch).map(([key, value]) => upsertOrgSetting(supabase, orgId, key, value as Json)),
       );
@@ -256,35 +118,26 @@ export function AirtableSyncTab({ orgId, readOnly = false, canTriggerSync = true
     onError: (_e, _patch, ctx) => {
       if (ctx?.prev) qc.setQueryData(SETTINGS_KEY, ctx.prev);
       toast.error("Couldn't save Airtable settings. Your last change wasn't stored.");
-      // Reconcile against the DB only when we rolled back: an overlapping save may have
-      // snapshotted (then reverted) a different key's successful write. A clean success
-      // needs no refetch — its optimistic cache already matches the DB.
       void qc.invalidateQueries({ queryKey: SETTINGS_KEY });
     },
   });
 
-  // "Sync now" — an immediate, single-org poll bypassing the interval gate. The edge fn
-  // returns HTTP 200 with `orgs_synced: 0, result: null` when the org is disabled/misconfigured
-  // (it did NOT sync) — that must not read as success, so branch on `result` being present.
   const syncNow = useMutation({
     mutationFn: () => triggerAirtableSyncNow(supabase, orgId!),
     onSuccess: (res: SyncNowResult) => {
       if (res.orgs_synced > 0 && res.result) {
         toast.success(`Synced: ${res.result.new_dates} new, ${res.result.updated} updated`);
       } else {
-        toast.warning("Sync didn't run. Check your Airtable configuration below");
+        toast.warning("Sync didn't run. Check your Airtable configuration");
       }
       qc.invalidateQueries({ queryKey: ["airtable", "sync-log", orgId] });
-      // Prefix match: the unresolved query is keyed by the sync-log id, not orgId.
+      qc.invalidateQueries({ queryKey: ["airtable", "recent-logs", orgId] });
       qc.invalidateQueries({ queryKey: ["airtable", "unresolved"] });
       qc.invalidateQueries({ queryKey: ["bookings"] });
     },
     onError: (e: Error) => toast.error(e.message ?? "Sync failed"),
   });
 
-  // Derive the status pill from the mutation itself. A single shared useState would let a
-  // late onSuccess from one in-flight save overwrite a newer save's error (and vice versa);
-  // React Query tracks the latest mutation's lifecycle correctly.
   const saveState: "idle" | "saving" | "saved" | "error" =
     saveSettings.isPending ? "saving"
       : saveSettings.isError ? "error"
@@ -292,38 +145,29 @@ export function AirtableSyncTab({ orgId, readOnly = false, canTriggerSync = true
           : "idle";
 
   const fieldMap = (s.airtable_field_map ?? {}) as AirtableFieldMap;
-  // Spread the live (optimistically-updated) cache, not the render-time `fieldMap`, so two
-  // rapid field changes before a re-render flush don't drop the first one's value.
   const setField = (key: keyof AirtableFieldMap, value: string | null) => {
     const current = (qc.getQueryData<AirtableSettings>(SETTINGS_KEY)?.airtable_field_map ?? {}) as AirtableFieldMap;
     saveSettings.mutate({ airtable_field_map: { ...current, [key]: value } });
   };
 
-  // ── Schema (bases + tables): cached React Query so it survives tab unmount/remount.
-  //    Auto-loads when a key is present — no manual "Load" click needed to see mappings.
+  // ── Schema (bases + tables) ──────────────────────────────────────────────────
   const baseId = s.airtable_base_id;
-
   const basesQ = useQuery({
     queryKey: ["airtable", "bases", orgId],
     enabled: !!orgId && keyPresent,
     queryFn: () => fetchAirtableBases(supabase, orgId!),
-    staleTime: 5 * 60 * 1000,
-    retry: false,
+    staleTime: 5 * 60 * 1000, retry: false,
   });
   const basesAccessible = basesQ.data?.schemaAccessible === true;
-
   const tablesQ = useQuery({
     queryKey: ["airtable", "tables", orgId, baseId],
     enabled: !!orgId && keyPresent && basesAccessible && !!baseId,
     queryFn: () => fetchAirtableTables(supabase, orgId!, baseId),
-    staleTime: 5 * 60 * 1000,
-    retry: false,
+    staleTime: 5 * 60 * 1000, retry: false,
   });
-
   const bases = basesQ.data?.bases ?? [];
   const tables = tablesQ.data?.tables ?? [];
 
-  // Derive the UI mode from the query states (was imperative setState before).
   let schemaState: "idle" | "loading" | "accessible" | "fallback" = "idle";
   let fallbackCause: FallbackCause = "no-scope";
   if (!keyPresent) {
@@ -341,13 +185,11 @@ export function AirtableSyncTab({ orgId, readOnly = false, canTriggerSync = true
   } else {
     schemaState = "accessible";
   }
-
   const isSchemaPending = basesQ.isFetching || tablesQ.isFetching;
   const refreshSchema = () => { void basesQ.refetch(); if (baseId) void tablesQ.refetch(); };
-
   const selectedTable = tables.find((t) => t.name === s.airtable_table_name);
 
-  // City may be a multipleRecordLinks field; if so, enumerate the linked table's records as options.
+  // City may be a multipleRecordLinks field; enumerate the linked table's records as options.
   const cityField = selectedTable?.fields.find((f) => f.name === fieldMap.city);
   const cityLinkedTableId = cityField?.type === "multipleRecordLinks"
     ? ((cityField.options as { linkedTableId?: string } | undefined)?.linkedTableId ?? null)
@@ -356,35 +198,30 @@ export function AirtableSyncTab({ orgId, readOnly = false, canTriggerSync = true
     queryKey: ["airtable", "linked-records", orgId, baseId, cityLinkedTableId],
     enabled: !!orgId && keyPresent && !!baseId && !!cityLinkedTableId,
     queryFn: () => fetchAirtableLinkedRecords(supabase, orgId!, baseId, cityLinkedTableId!),
-    staleTime: 5 * 60 * 1000,
-    retry: false,
+    staleTime: 5 * 60 * 1000, retry: false,
   });
 
-  // When Program is mapped, link at the composite grain: read distinct (program, sub_program)
-  // pairs from records so the UI builds the SAME key the poll does (ADR-0010).
   const programPairsQ = useQuery({
     queryKey: ["airtable", "program-pairs", orgId, baseId, s.airtable_table_name, fieldMap.program, fieldMap.sub_program],
     enabled: !!orgId && keyPresent && basesAccessible && !!baseId && !!selectedTable && !!fieldMap.program && !!fieldMap.sub_program,
     queryFn: () => fetchAirtableProgramPairs(supabase, orgId!, baseId, s.airtable_table_name!, fieldMap.sub_program!, fieldMap.program!),
-    staleTime: 5 * 60 * 1000,
-    retry: false,
+    staleTime: 5 * 60 * 1000, retry: false,
   });
 
-  // ── API key (Vault) + schema loading ────────────────────────────────────────
+  // ── API key (Vault) ──────────────────────────────────────────────────────────
   const saveKey = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (value: string) => {
       if (!orgId) throw new Error("No active organization");
-      if (!airtableKey.trim()) throw new Error("Enter an API key");
-      await saveAirtableKey(supabase, orgId, airtableKey.trim());
+      if (!value.trim()) throw new Error("Enter an API key");
+      await saveAirtableKey(supabase, orgId, value.trim());
     },
     onSuccess: () => {
-      setAirtableKey(""); setReplacing(false);
+      setAirtableKey(""); setSetupKey(""); setReplacing(false);
       qc.invalidateQueries({ queryKey: ["airtable", "key-status", orgId] });
       toast.success("Airtable API key saved");
     },
     onError: (e: unknown) => toast.error((e as Error).message ?? "Failed to save Airtable key"),
   });
-
   const deleteKey = useMutation({
     mutationFn: async () => {
       if (!orgId) throw new Error("No active organization");
@@ -405,32 +242,19 @@ export function AirtableSyncTab({ orgId, readOnly = false, canTriggerSync = true
   const showsQ = useQuery({ queryKey: ["shows", "linking", orgId], enabled: !!orgId, queryFn: () => fetchShowsForLinking(supabase, orgId) });
   const citiesQ = useQuery({ queryKey: ["cities", "linking", orgId], enabled: !!orgId, queryFn: () => fetchCitiesForLinking(supabase, orgId) });
 
-  // ── Last sync report ────────────────────────────────────────────────────────
+  // ── Sync history (latest + recent) + held/unresolved ─────────────────────────
   const syncLogQ = useQuery({ queryKey: ["airtable", "sync-log", orgId], enabled: !!orgId, queryFn: () => fetchLatestSyncLog(supabase, orgId) });
+  const recentQ = useQuery({ queryKey: ["airtable", "recent-logs", orgId], enabled: !!orgId, queryFn: () => fetchRecentSyncLogs(supabase, orgId, 30) });
   const unresolvedQ = useQuery({
     queryKey: ["airtable", "unresolved", syncLogQ.data?.id ?? null],
     enabled: !!syncLogQ.data?.id,
     queryFn: () => fetchUnresolvedRecords(supabase, syncLogQ.data?.id ?? null),
   });
-  const recordUrl = (recId: string) => (baseId ? `https://airtable.com/${baseId}/${recId}` : undefined);
+  const latest = syncLogQ.data ?? null;
+  const recent = recentQ.data ?? [];
   const unresolved = unresolvedQ.data ?? [];
   const heldRecords = unresolved.filter((r) => r.action === "held_unresolved");
-  const erroredRecords = unresolved.filter((r) => r.action === "error");
-  const renderRecordRow = (r: UnresolvedRecord) => (
-    <div key={r.id} className="flex items-center justify-between gap-2 border-t border-border pt-2 text-sm">
-      <div className="min-w-0">
-        <div className="font-medium truncate">{r.reason ?? "Unresolved"}</div>
-        <div className="text-xs text-muted-foreground">{new Date(r.created_at).toLocaleString()}</div>
-      </div>
-      {r.airtable_record_id && (
-        recordUrl(r.airtable_record_id)
-          ? <a className="text-xs underline shrink-0" href={recordUrl(r.airtable_record_id)} target="_blank" rel="noreferrer">{r.airtable_record_id}</a>
-          : <span className="text-xs text-muted-foreground shrink-0">{r.airtable_record_id}</span>
-      )}
-    </div>
-  );
 
-  /** Distinct option names from a mapped singleSelect field. */
   const optionNames = (fieldName: string | null | undefined): string[] => {
     if (!fieldName || !selectedTable) return [];
     const f = selectedTable.fields.find((x) => x.name === fieldName);
@@ -438,7 +262,6 @@ export function AirtableSyncTab({ orgId, readOnly = false, canTriggerSync = true
     return choices.map((c) => c.name);
   };
 
-  // Composite grain when Program is mapped (pairs from records); else sub-program-only options.
   const programGrainPairs: ProgramPair[] = fieldMap.program
     ? (programPairsQ.data?.pairs ?? [])
     : optionNames(fieldMap.sub_program).map((name) => ({ program: null, sub_program: name }));
@@ -446,84 +269,101 @@ export function AirtableSyncTab({ orgId, readOnly = false, canTriggerSync = true
     ? (cityLinkedRecordsQ.data?.records ?? []).map((r) => r.name)
     : optionNames(fieldMap.city);
 
-  const showByKey = new Map((showsQ.data ?? []).filter((s) => s.airtable_program_key).map((s) => [s.airtable_program_key!, s]));
+  const showByKey = new Map((showsQ.data ?? []).filter((sh) => sh.airtable_program_key).map((sh) => [sh.airtable_program_key!, sh]));
   const cityByKey = new Map((citiesQ.data ?? []).filter((c) => c.airtable_city_key).map((c) => [c.airtable_city_key!, c]));
 
-  // ── Import / unlink mutations ───────────────────────────────────────────────
-  const importPrograms = useMutation({
-    mutationFn: async () => {
-      const rows = planProgramImport(programGrainPairs, showsQ.data ?? []);
-      await importShowsFromOptions(supabase, orgId!, rows);
-    },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["shows"] }); toast.success("Imported program options"); },
-    onError: (e: unknown) => toast.error((e as Error).message ?? "Import failed"),
-  });
-  const importCities = useMutation({
-    mutationFn: async () => {
-      const plan = planCityReconciliation(cityOptions, citiesQ.data ?? []);
-      for (const l of plan.toLink) await linkCityAirtableKey(supabase, l.cityId, l.key);
-      await importCitiesFromOptions(supabase, orgId!, plan.toCreate);
-    },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["cities"] }); toast.success("Imported city options"); },
-    onError: (e: unknown) => toast.error((e as Error).message ?? "Import failed"),
-  });
-  // Per-element import: create a single catalog show/city for one Airtable option (reuses the
-  // same pure planners as "Import all", just over a one-element list).
+  // Held counts keyed the way each catalog row is keyed, from the shared reason parser.
+  // Program attribution is keyed by sub-program (all the poll's reason carries); this assumes
+  // sub-program is unique across programs, matching planProgramImport's own dedup (ADR-0010).
+  const heldBySub = new Map<string, number>();
+  const heldByCityKey = new Map<string, number>();
+  for (const r of heldRecords) {
+    const parsed = parseHeldReason(r.reason);
+    if (parsed?.category === "unlinked_program" && parsed.option) {
+      heldBySub.set(parsed.option, (heldBySub.get(parsed.option) ?? 0) + 1);
+    } else if (parsed?.category === "unlinked_city" && parsed.option) {
+      const k = buildCityKey(parsed.option) ?? "";
+      if (k) heldByCityKey.set(k, (heldByCityKey.get(k) ?? 0) + 1);
+    }
+  }
+
+  // ── Import / link / unlink / merge mutations ─────────────────────────────────
+  const pairByKey = new Map<string, ProgramPair>();
+  for (const pair of programGrainPairs) {
+    const key = buildProgramKey(pair.program, pair.sub_program) ?? "";
+    if (key) pairByKey.set(key, pair);
+  }
+  const invalidateShows = () => qc.invalidateQueries({ queryKey: ["shows"] });
+  const invalidateCities = () => qc.invalidateQueries({ queryKey: ["cities"] });
+
   const createOneProgram = useMutation({
     mutationFn: async (pair: ProgramPair) => {
       const rows = planProgramImport([pair], showsQ.data ?? []);
-      // Empty plan = the option is already covered by an existing/legacy catalog show; creating
-      // nothing must not report success. (A legacy sub-only-keyed show auto-links on the next sync.)
       if (rows.length === 0) throw new Error("Already matches a catalog show. It will link on the next sync.");
       await importShowsFromOptions(supabase, orgId!, rows);
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["shows"] }); toast.success("Show created and linked"); },
+    onSuccess: () => { invalidateShows(); toast.success("Show created and linked"); },
     onError: (e: unknown) => toast.error((e as Error).message ?? "Create failed"),
   });
   const createOneCity = useMutation({
     mutationFn: async (name: string) => {
       const plan = planCityReconciliation([name], citiesQ.data ?? []);
-      // Empty plan = already reconciled to a catalog city; don't report a false "created".
       if (plan.toLink.length === 0 && plan.toCreate.length === 0) throw new Error("Already matches a catalog city.");
       for (const l of plan.toLink) await linkCityAirtableKey(supabase, l.cityId, l.key);
       await importCitiesFromOptions(supabase, orgId!, plan.toCreate);
       return plan;
     },
-    onSuccess: (plan) => { qc.invalidateQueries({ queryKey: ["cities"] }); toast.success(plan.toCreate.length > 0 ? "City created and linked" : "City linked"); },
+    onSuccess: (plan) => { invalidateCities(); toast.success(plan.toCreate.length > 0 ? "City created and linked" : "City linked"); },
     onError: (e: unknown) => toast.error((e as Error).message ?? "Create failed"),
+  });
+  const importPrograms = useMutation({
+    mutationFn: async (pairs: ProgramPair[]) => {
+      const rows = planProgramImport(pairs, showsQ.data ?? []);
+      if (rows.length === 0) throw new Error("Nothing to create. Those options already match catalog shows.");
+      await importShowsFromOptions(supabase, orgId!, rows);
+    },
+    onSuccess: () => { invalidateShows(); toast.success("Created the selected shows"); },
+    onError: (e: unknown) => toast.error((e as Error).message ?? "Create failed"),
+  });
+  const importCities = useMutation({
+    mutationFn: async (names: string[]) => {
+      const plan = planCityReconciliation(names, citiesQ.data ?? []);
+      for (const l of plan.toLink) await linkCityAirtableKey(supabase, l.cityId, l.key);
+      await importCitiesFromOptions(supabase, orgId!, plan.toCreate);
+    },
+    onSuccess: () => { invalidateCities(); toast.success("Created the selected cities"); },
+    onError: (e: unknown) => toast.error((e as Error).message ?? "Create failed"),
+  });
+  const linkShow = useMutation({
+    mutationFn: ({ showId, key }: { showId: string; key: string }) => linkShowAirtableKey(supabase, showId, key),
+    onSuccess: () => { invalidateShows(); toast.success("Linked"); },
+    onError: (e: unknown) => toast.error((e as Error).message ?? "Link failed"),
+  });
+  const linkCity = useMutation({
+    mutationFn: ({ cityId, key }: { cityId: string; key: string }) => linkCityAirtableKey(supabase, cityId, key),
+    onSuccess: () => { invalidateCities(); toast.success("Linked"); },
+    onError: (e: unknown) => toast.error((e as Error).message ?? "Link failed"),
   });
   const unlinkShow = useMutation({
     mutationFn: (showId: string) => linkShowAirtableKey(supabase, showId, null),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["shows"] }); toast.success("Unlinked"); },
+    onSuccess: () => { invalidateShows(); toast.success("Unlinked"); },
     onError: (e: unknown) => toast.error((e as Error).message ?? "Unlink failed"),
   });
   const unlinkCity = useMutation({
     mutationFn: (cityId: string) => linkCityAirtableKey(supabase, cityId, null),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["cities"] }); toast.success("Unlinked"); },
+    onSuccess: () => { invalidateCities(); toast.success("Unlinked"); },
     onError: (e: unknown) => toast.error((e as Error).message ?? "Unlink failed"),
   });
-  const linkCity = useMutation({
-    mutationFn: ({ cityId, key }: { cityId: string; key: string }) => linkCityAirtableKey(supabase, cityId, key),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["cities"] }); toast.success("Linked"); },
-    onError: (e: unknown) => toast.error((e as Error).message ?? "Link failed"),
-  });
-  const linkShow = useMutation({
-    mutationFn: ({ showId, key }: { showId: string; key: string }) => linkShowAirtableKey(supabase, showId, key),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["shows"] }); toast.success("Linked"); },
-    onError: (e: unknown) => toast.error((e as Error).message ?? "Link failed"),
-  });
+
   const unlinkedShows = (showsQ.data ?? []).filter((sh) => !sh.airtable_program_key);
   const unlinkedCities = (citiesQ.data ?? []).filter((c) => !c.airtable_city_key);
+  const programExisting = unlinkedShows.map((sh) => ({ id: sh.id, label: showIdentityLabel(sh) }));
+  const cityExisting = unlinkedCities.map((c) => ({ id: c.id, label: c.name }));
 
-  // ── Catalog-link table rows (status + the key the link is built on) ──────────
-  // Source-field subtitles name the actual mapped Airtable field(s), not a hardcoded label.
   const programSource = fieldMap.program ? `${fieldMap.program} · ${fieldMap.sub_program}` : (fieldMap.sub_program ?? "");
   const citySource = fieldMap.city ?? "";
-  // Each program row carries its source pair (onCreate needs no key→pair map). Rows are deduped by
-  // catalog key so each target shows once and row.key is a unique, collision-free React list key.
+
   const programRows: CatalogRow[] = dedupeRowsByKey(programGrainPairs.map((pair) => {
-    // Fall back to "" (not the raw value) so a whitespace-only option yields a falsy key — the
-    // poll's buildProgramKey would resolve such a record to null, so linking a " " key never matches.
     const key = buildProgramKey(pair.program, pair.sub_program) ?? "";
     const show = key ? showByKey.get(key) : undefined;
     return {
@@ -531,22 +371,22 @@ export function AirtableSyncTab({ orgId, readOnly = false, canTriggerSync = true
       display: showIdentityLabel(pair),
       linkedId: show?.id ?? null,
       linkedLabel: show ? showIdentityLabel(show) : null,
-      createPair: pair,
+      holdCount: heldBySub.get(pair.sub_program) ?? 0,
     };
   }));
   const cityRows: CatalogRow[] = dedupeRowsByKey(cityOptions.map((name) => {
-    // "" fallback (not the raw name) so a whitespace-only option is falsy and offers no link —
-    // consistent with the program rows and with the poll's clean()-based key derivation.
     const key = buildCityKey(name) ?? "";
     const city = key ? cityByKey.get(key) : undefined;
-    return { key, display: name, linkedId: city?.id ?? null, linkedLabel: city?.name ?? null };
+    return {
+      key,
+      display: name,
+      linkedId: city?.id ?? null,
+      linkedLabel: city?.name ?? null,
+      holdCount: key ? (heldByCityKey.get(key) ?? 0) : 0,
+    };
   }));
-  const programExisting = unlinkedShows.map((sh) => ({ id: sh.id, label: showIdentityLabel(sh) }));
-  const cityExisting = unlinkedCities.map((c) => ({ id: c.id, label: c.name }));
-  const programUnlinked = programRows.filter((r) => !r.linkedId).length;
-  const cityUnlinked = cityRows.filter((r) => !r.linkedId).length;
 
-  // ── Custom fields (definitions table; immediate mutations, not the settings draft) ──
+  // ── Custom fields (add-only, matching the design) ────────────────────────────
   const customFieldsQ = useQuery({
     queryKey: ["custom-field-definitions", orgId, "show_dates"],
     enabled: !!orgId,
@@ -558,50 +398,36 @@ export function AirtableSyncTab({ orgId, readOnly = false, canTriggerSync = true
   const unboundFields = (selectedTable?.fields ?? []).filter(
     (f) => !mappedFieldNames.has(f.name) && !customBySourceField.has(f.name),
   );
-
-  const invalidateCustom = () => {
-    qc.invalidateQueries({ queryKey: ["custom-field-definitions", orgId, "show_dates"] });
-    qc.invalidateQueries({ queryKey: ["custom-field-definitions", orgId] }); // editor's query
-  };
   const addCustom = useMutation({
-    mutationFn: (af: { name: string; type: string; options?: Record<string, unknown> }) => {
-      const type = airtableTypeToCustomType(af.type);
-      const options = type === "select"
-        ? ((af.options as { choices?: Array<{ name: string }> } | undefined)?.choices ?? []).map((c) => c.name)
-        : null;
-      return upsertCustomFieldDef(supabase, {
-        org_id: orgId!, entity: "show_dates", key: slugifyKey(af.name), label: af.name,
-        type, source_field: af.name, options,
-      });
+    mutationFn: async (afs: Array<{ name: string; type: string; options?: Record<string, unknown> }>) => {
+      for (const af of afs) {
+        const key = slugifyKey(af.name);
+        if (customDefs.some((d) => d.key === key)) continue; // skip existing keys
+        const type = airtableTypeToCustomType(af.type);
+        const options = type === "select"
+          ? ((af.options as { choices?: Array<{ name: string }> } | undefined)?.choices ?? []).map((c) => c.name)
+          : null;
+        await upsertCustomFieldDef(supabase, {
+          org_id: orgId!, entity: "show_dates", key, label: af.name, type, source_field: af.name, options,
+        });
+      }
     },
-    onSuccess: () => { invalidateCustom(); toast.success("Custom field added"); },
-    onError: (e: unknown) => toast.error((e as Error).message ?? "Could not add custom field"),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["custom-field-definitions", orgId, "show_dates"] });
+      qc.invalidateQueries({ queryKey: ["custom-field-definitions", orgId] });
+      toast.success("Added as custom fields");
+    },
+    onError: (e: unknown) => toast.error((e as Error).message ?? "Could not add custom fields"),
   });
-  const setCustomType = useMutation({
-    mutationFn: (args: { def: (typeof customDefs)[number]; type: CustomFieldType }) =>
-      upsertCustomFieldDef(supabase, {
-        org_id: orgId!, entity: "show_dates", key: args.def.key, label: args.def.label,
-        type: args.type, source_field: args.def.source_field,
-        options: args.def.options, filterable: args.def.filterable, sortable: args.def.sortable,
-      }),
-    onSuccess: () => { invalidateCustom(); toast.success("Updated"); },
-    onError: (e: unknown) => toast.error((e as Error).message ?? "Update failed"),
-  });
-  const removeCustom = useMutation({
-    mutationFn: (id: string) => deleteCustomFieldDef(supabase, id),
-    onSuccess: () => { invalidateCustom(); toast.success("Removed"); },
-    onError: (e: unknown) => toast.error((e as Error).message ?? "Remove failed"),
-  });
-  const CUSTOM_TYPES: CustomFieldType[] = ["text", "number", "date", "boolean", "select"];
 
+  // ── Duplicate cities → merge suggestion ──────────────────────────────────────
   const dupeGroups = groupDuplicateCities(citiesQ.data ?? []);
+  // Auto-pick the survivor: a linked city wins (keeps its Airtable key), else the first row.
   const survivorFor = (g: { norm: string; cities: { id: string; airtable_city_key: string | null }[] }) =>
-    survivorByNorm[g.norm] ?? (g.cities.find((c) => c.airtable_city_key)?.id ?? g.cities[0].id);
+    g.cities.find((c) => c.airtable_city_key)?.id ?? g.cities[0].id;
   const mergeMut = useMutation({
     mutationFn: ({ survivor, losers }: { survivor: string; losers: string[] }) => mergeCities(supabase, survivor, losers),
     onSuccess: () => {
-      // merge_cities repoints city_id on show_dates + show_cast_eligibility, so bust every
-      // cache that reads those: cities, bookings, and the eligibility-derived queries.
       qc.invalidateQueries({ queryKey: ["cities"] });
       qc.invalidateQueries({ queryKey: ["bookings"] });
       qc.invalidateQueries({ queryKey: ["eligible-artists"] });
@@ -610,113 +436,270 @@ export function AirtableSyncTab({ orgId, readOnly = false, canTriggerSync = true
     },
     onError: (e: unknown) => toast.error((e as Error).message ?? "Merge failed"),
   });
+  const firstDupe = dupeGroups[0];
+  const mergeSuggestion = firstDupe
+    ? (() => {
+      const survivor = survivorFor(firstDupe);
+      const survivorName = firstDupe.cities.find((c) => c.id === survivor)?.name ?? firstDupe.cities[0].name;
+      const names = firstDupe.cities.map((c) => c.name);
+      const losers = firstDupe.cities.filter((c) => c.id !== survivor).map((c) => c.id);
+      return {
+        title: `${names.join(" and ")} are the same city`,
+        description: `Merging keeps ${survivorName}'s bookings, eligibility and producer routing, and removes the other row.`,
+        actionLabel: `Merge into ${survivorName}`,
+        onMerge: () => mergeMut.mutate({ survivor, losers }),
+      };
+    })()
+    : null;
+
+  // ── Console view-model ───────────────────────────────────────────────────────
+  const hasBaseTable = !!s.airtable_base_id && !!s.airtable_table_name;
+  const mode = deriveMode({ keyPresent, hasBaseTable, latest });
+  const status = deriveStatus(latest, mode);
+  const kpis = deriveKpis(latest, s, recent);
+  const causes: HeldCause[] = groupHeldCauses(heldRecords);
+  const heldCount = latest?.held_count ?? 0;
+  const mapped = requiredMappedCount(fieldMap);
+  const baseName = bases.find((b) => b.id === baseId)?.name ?? (baseId || "not set");
+  const eyebrow = hasBaseTable ? `Airtable · ${baseName} › ${s.airtable_table_name}` : "Airtable";
+  const nextRunLabel = kpis.find((k) => k.label === "Next run")?.value ?? "the next run";
+
+  // A cause's bulk fix creates only the options that are actually holding records (holdCount > 0),
+  // matching the count the cause title shows, not every unlinked option in the catalog.
+  const onFixCause = (cause: HeldCause) => {
+    if (cause.category === "unlinked_program") importPrograms.mutate(programRows.filter((r) => !r.linkedId && r.key && (r.holdCount ?? 0) > 0).map((r) => pairByKey.get(r.key)).filter((p): p is ProgramPair => !!p));
+    else if (cause.category === "unlinked_city") importCities.mutate(cityRows.filter((r) => !r.linkedId && (r.holdCount ?? 0) > 0).map((r) => r.display));
+  };
+  const onBulkCreate = (kind: "program" | "city", rows: CatalogRow[]) => {
+    if (kind === "program") importPrograms.mutate(rows.map((r) => pairByKey.get(r.key)).filter((p): p is ProgramPair => !!p));
+    else importCities.mutate(rows.map((r) => r.display));
+  };
+  const onCreate = (kind: "program" | "city", row: CatalogRow) => {
+    if (kind === "program") { const pair = pairByKey.get(row.key); if (pair) createOneProgram.mutate(pair); }
+    else createOneCity.mutate(row.display);
+  };
+  const onLink = (kind: "program" | "city", row: CatalogRow, id: string) => {
+    if (kind === "program") linkShow.mutate({ showId: id, key: row.key });
+    else linkCity.mutate({ cityId: id, key: row.key });
+  };
+  const onUnlink = (kind: "program" | "city", id: string) => {
+    if (kind === "program") unlinkShow.mutate(id); else unlinkCity.mutate(id);
+  };
+  const openManage = (replace = false) => { setReplacing(replace); setManageOpen(true); };
+
+  // ── Render ───────────────────────────────────────────────────────────────────
+  if (!orgId) {
+    return <p className="text-sm text-muted-foreground">Select an organization to configure Airtable sync.</p>;
+  }
 
   return (
-    <div className="space-y-6">
-      {/* ── Connection ─────────────────────────────────────────────────────── */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-start justify-between gap-3">
-            <div className="space-y-1.5">
-              <CardTitle className="font-display">Airtable Sync</CardTitle>
-              <CardDescription>
-                Pull show schedules from Airtable on a schedule. Follow the steps below: save your API key, load the base &amp; table, then map fields and link your catalog. Changes save automatically. Sync runs every few minutes once enabled.
-              </CardDescription>
-            </div>
-            <AutosaveStatus state={saveState} />
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Enable toggle */}
-          <div className="flex items-center justify-between">
-            <div>
-              <Label className="font-medium">Enable Airtable sync</Label>
-              <p className="text-xs text-muted-foreground mt-0.5">Turn polling on or off globally.</p>
-            </div>
-            <Switch checked={!!s.airtable_sync_enabled} disabled={readOnly} onCheckedChange={(v) => saveSettings.mutate({ airtable_sync_enabled: v })} />
-          </div>
+    <div className="flex flex-col gap-4">
+      {readOnly && <ReadOnlyBanner />}
 
-          {/* Poll interval + cadence transparency */}
-          <div className="flex flex-wrap items-end justify-between gap-3">
-            <div className="space-y-1.5">
-              <Label className="font-medium">Sync frequency</Label>
-              <Select
-                value={String(s.airtable_poll_interval_minutes)}
-                onValueChange={(v) => saveSettings.mutate({ airtable_poll_interval_minutes: Number(v) })}
-                disabled={readOnly}
-              >
-                <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {POLL_INTERVAL_PRESETS.map((p) => (
-                    <SelectItem key={p.value} value={String(p.value)}>{p.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">
-                Shorter = fresher data but more Airtable API calls (Airtable allows ~5 requests/sec per base)
-                and more writes each cycle. Runs on the shared 5-minute cycle.
-              </p>
-              {s.airtable_poll_interval_minutes < 60 && (
-                <Alert className="max-w-xl">
-                  <AlertTitle>Frequent syncs can hit Airtable limits</AlertTitle>
-                  <AlertDescription>
-                    Only select a frequency under one hour if your Airtable workspace is on a paid plan. Airtable may rate-limit frequent requests, which can cause sync runs to fail or updates to arrive late.
-                  </AlertDescription>
-                </Alert>
-              )}
-            </div>
-            <div className="flex flex-col items-end gap-1.5">
-              <Button
-                variant="outline" size="sm"
-                disabled={!s.airtable_sync_enabled || !keyPresent || syncNow.isPending || !canTriggerSync}
-                onClick={() => syncNow.mutate()}
-              >
-                {syncNow.isPending ? "Syncing…" : "Sync now"}
-              </Button>
-              <p className="text-xs text-muted-foreground text-right">
-                {(() => {
-                  const last = syncLogQ.data?.synced_at ?? null;
-                  if (!last) return "Not synced yet. Runs on the next cycle.";
-                  const next = nextSyncAt(last, s.airtable_poll_interval_minutes);
-                  const lastStr = new Date(last).toLocaleString();
-                  const nextStr = next ? next.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "—";
-                  return `Last synced ${lastStr} · next ~${nextStr} (every ${formatInterval(s.airtable_poll_interval_minutes)})`;
-                })()}
-              </p>
-            </div>
-          </div>
+      {mode === "setup" ? (
+        <SetupWizard
+          keyValue={setupKey}
+          onKeyChange={setSetupKey}
+          onSaveKey={() => saveKey.mutate(setupKey)}
+          saving={saveKey.isPending}
+          canWrite={canWrite}
+          keyPresent={keyPresent}
+          onManageConnection={() => openManage(false)}
+        />
+      ) : (
+        <>
+          <StatusHeader
+            eyebrow={eyebrow}
+            status={status}
+            kpis={kpis}
+            saved={saveState !== "saving" && saveState !== "error"}
+            canSyncNow={canTriggerSync && keyPresent && !!s.airtable_sync_enabled}
+            syncing={syncNow.isPending}
+            onSyncNow={() => syncNow.mutate()}
+          />
 
-          {!!s.airtable_sync_enabled && !keyStatusQ.isLoading && !keyPresent && (
-            <Alert variant="destructive">
-              <AlertDescription>Sync is on but no API key is saved. The poll can't run until you add a key below.</AlertDescription>
-            </Alert>
+          <ConsoleTabs
+            value={tab}
+            onChange={setTab}
+            heldCount={heldCount}
+            syncEnabled={!!s.airtable_sync_enabled}
+            onToggleSync={(v) => saveSettings.mutate({ airtable_sync_enabled: v })}
+            canWrite={canWrite}
+          />
+
+          {tab === "overview" && (
+            <OverviewTab
+              showError={mode === "error"}
+              errorTitle="The last runs failed"
+              errorDetail={status.line}
+              onReplaceToken={() => openManage(true)}
+              allClear={mode === "healthy" && heldCount === 0}
+              attention={causes.length > 0 ? {
+                causes,
+                heldCount,
+                canWrite,
+                openCategory: openCause,
+                onToggle: (c) => setOpenCause((prev) => (prev === c ? null : c)),
+                onFix: onFixCause,
+                onOpenCatalog: () => setTab("catalog"),
+                onOpenActivity: () => setTab("activity"),
+                nextRunLabel,
+              } : null}
+              connection={{
+                token: keyStatusQ.data?.updatedAt ? `Saved ${formatDateDMY(new Date(keyStatusQ.data.updatedAt))}` : "Not set",
+                base: baseName,
+                tableView: `${s.airtable_table_name || "not set"} · ${s.airtable_view || "Grid view"}`,
+                frequency: `Every ${formatInterval(s.airtable_poll_interval_minutes)}`,
+              }}
+              onManageConnection={() => openManage(false)}
+              recentRuns={recent.slice(0, 5)}
+              canWrite={canWrite}
+            />
           )}
 
-          <Separator />
+          {tab === "mapping" && (
+            selectedTable ? (
+              <MappingTab
+                tableName={selectedTable.name}
+                fields={selectedTable.fields.map((f) => ({ id: f.id, name: f.name }))}
+                fieldMap={fieldMap}
+                onSetField={setField}
+                mapped={mapped.mapped}
+                total={mapped.total}
+                optionNames={optionNames}
+                unboundFields={unboundFields.map((f) => ({ id: f.id, name: f.name, type: f.type }))}
+                onAddAllCustom={() => addCustom.mutate(unboundFields.map((f) => ({ name: f.name, type: f.type, options: f.options as Record<string, unknown> | undefined })))}
+                canWrite={canWrite}
+              />
+            ) : (
+              <Alert>
+                <AlertDescription>
+                  Pick a base and table first. Open <button className="underline" onClick={() => openManage(false)}>Manage connection</button> to choose where your shows live.
+                </AlertDescription>
+              </Alert>
+            )
+          )}
 
-          {/* Step 1 — API key (write-only: stored in Vault, never read back into the UI) */}
+          {tab === "catalog" && (
+            <CatalogTab
+              programSource={programSource}
+              citySource={citySource}
+              programRows={programRows}
+              cityRows={cityRows}
+              programExisting={programExisting}
+              cityExisting={cityExisting}
+              onLink={onLink}
+              onCreate={onCreate}
+              onUnlink={onUnlink}
+              onBulkCreate={onBulkCreate}
+              merge={mergeSuggestion}
+              canWrite={canWrite}
+              busy={createOneProgram.isPending || createOneCity.isPending || importPrograms.isPending || importCities.isPending || linkShow.isPending || linkCity.isPending || unlinkShow.isPending || unlinkCity.isPending}
+            />
+          )}
+
+          {tab === "activity" && <ActivityTab runs={recent} loading={recentQ.isLoading} />}
+        </>
+      )}
+
+      <ManageConnectionDialog
+        open={manageOpen}
+        onOpenChange={setManageOpen}
+        canWrite={canWrite}
+        keyPresent={keyPresent}
+        keyUpdatedAt={keyStatusQ.data?.updatedAt ?? null}
+        replacing={replacing}
+        setReplacing={setReplacing}
+        airtableKey={airtableKey}
+        setAirtableKey={setAirtableKey}
+        onSaveKey={() => saveKey.mutate(airtableKey)}
+        savingKey={saveKey.isPending}
+        onDeleteKey={() => deleteKey.mutate()}
+        deletingKey={deleteKey.isPending}
+        settings={s}
+        onSaveSettings={(patch) => saveSettings.mutate(patch)}
+        saveState={saveState}
+        schemaState={schemaState}
+        fallbackCause={fallbackCause}
+        isSchemaPending={isSchemaPending}
+        refreshSchema={refreshSchema}
+        bases={bases}
+        tables={tables}
+      />
+    </div>
+  );
+}
+
+// ── Manage-connection dialog (base/table/view/frequency + the Vault key) ────────
+
+function AutosaveStatus({ state }: { state: "idle" | "saving" | "saved" | "error" }) {
+  if (state === "idle") return null;
+  if (state === "saving") return <span className="flex items-center gap-1 text-xs text-muted-foreground"><Loader2 className="h-3 w-3 animate-spin" /> Saving…</span>;
+  if (state === "saved") return <span className="flex items-center gap-1 text-xs text-muted-foreground"><CheckCircle2 className="h-3 w-3 text-primary" /> All changes saved</span>;
+  return <span className="flex items-center gap-1 text-xs text-destructive"><AlertCircle className="h-3 w-3" /> Couldn't save</span>;
+}
+
+interface ManageConnectionProps {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  canWrite: boolean;
+  keyPresent: boolean;
+  keyUpdatedAt: string | null;
+  replacing: boolean;
+  setReplacing: (v: boolean) => void;
+  airtableKey: string;
+  setAirtableKey: (v: string) => void;
+  onSaveKey: () => void;
+  savingKey: boolean;
+  onDeleteKey: () => void;
+  deletingKey: boolean;
+  settings: AirtableSettings;
+  onSaveSettings: (patch: Partial<AirtableSettings>) => void;
+  saveState: "idle" | "saving" | "saved" | "error";
+  schemaState: "idle" | "loading" | "accessible" | "fallback";
+  fallbackCause: FallbackCause;
+  isSchemaPending: boolean;
+  refreshSchema: () => void;
+  bases: { id: string; name: string }[];
+  tables: { id: string; name: string }[];
+}
+
+function ManageConnectionDialog(p: ManageConnectionProps) {
+  const s = p.settings;
+  return (
+    <Dialog open={p.open} onOpenChange={p.onOpenChange}>
+      <DialogContent className="max-w-xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <div className="flex items-center justify-between gap-3">
+            <DialogTitle className="font-display">Manage connection</DialogTitle>
+            <AutosaveStatus state={p.saveState} />
+          </div>
+          <DialogDescription>Your Airtable key, the base and table to read, the view, and how often to sync.</DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-6">
+          {/* API key */}
           <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-xs font-medium text-muted-foreground">1</span>
-              <Label className="font-medium">API key</Label>
-              {keyStatusQ.isLoading ? null : keyPresent ? (
+              <KeyRound className="h-4 w-4 text-muted-foreground" />
+              <Label className="font-medium">Personal access token</Label>
+              {p.keyPresent ? (
                 <Badge variant="secondary" className="gap-1"><CheckCircle2 className="h-3 w-3" /> Key saved</Badge>
               ) : (
                 <Badge variant="outline" className="gap-1 text-muted-foreground"><KeyRound className="h-3 w-3" /> Not set</Badge>
               )}
-              {keyPresent && keyStatusQ.data?.updatedAt && (
-                <span className="text-xs text-muted-foreground">updated {formatDateDMY(new Date(keyStatusQ.data.updatedAt))}</span>
+              {p.keyPresent && p.keyUpdatedAt && (
+                <span className="text-xs text-muted-foreground">updated {formatDateDMY(new Date(p.keyUpdatedAt))}</span>
               )}
             </div>
-
-            {keyPresent && !replacing ? (
+            {p.keyPresent && !p.replacing ? (
               <div className="flex items-center justify-between gap-2 rounded-md border border-border px-3 py-2">
                 <span className="flex items-center gap-2 text-sm text-muted-foreground"><Lock className="h-4 w-4" /> ••••••••••</span>
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm" disabled={readOnly} onClick={() => setReplacing(true)}>Replace</Button>
+                  <Button variant="outline" size="sm" disabled={!p.canWrite} onClick={() => p.setReplacing(true)}>Replace</Button>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
-                      <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" disabled={readOnly || deleteKey.isPending}>
+                      <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" disabled={!p.canWrite || p.deletingKey}>
                         <Trash2 className="mr-1 h-4 w-4" /> Delete
                       </Button>
                     </AlertDialogTrigger>
@@ -727,7 +710,7 @@ export function AirtableSyncTab({ orgId, readOnly = false, canTriggerSync = true
                       </AlertDialogHeader>
                       <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => deleteKey.mutate()}>Delete key</AlertDialogAction>
+                        <AlertDialogAction onClick={p.onDeleteKey}>Delete key</AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>
                   </AlertDialog>
@@ -736,363 +719,87 @@ export function AirtableSyncTab({ orgId, readOnly = false, canTriggerSync = true
             ) : (
               <>
                 <div className="flex gap-2">
-                  <Input id="airtable-key" type="password" autoComplete="off" placeholder={keyPresent ? "Enter a new key…" : "key… (write-only)"} value={airtableKey} disabled={readOnly} onChange={(e) => setAirtableKey(e.target.value)} />
-                  <Button onClick={() => saveKey.mutate()} disabled={readOnly || saveKey.isPending}>{keyPresent ? "Update" : "Save key"}</Button>
-                  {keyPresent && replacing && (
-                    <Button variant="ghost" onClick={() => { setReplacing(false); setAirtableKey(""); }}>Cancel</Button>
+                  <Input type="password" autoComplete="off" placeholder={p.keyPresent ? "Enter a new key…" : "pat… (write-only)"} value={p.airtableKey} disabled={!p.canWrite} onChange={(e) => p.setAirtableKey(e.target.value)} />
+                  <Button onClick={p.onSaveKey} disabled={!p.canWrite || p.savingKey}>{p.keyPresent ? "Update" : "Save key"}</Button>
+                  {p.keyPresent && p.replacing && (
+                    <Button variant="ghost" onClick={() => { p.setReplacing(false); p.setAirtableKey(""); }}>Cancel</Button>
                   )}
                 </div>
-                <p className="text-sm text-muted-foreground">Stored encrypted in Vault; never displayed. Required for Airtable sync.</p>
+                <p className="text-sm text-muted-foreground">Stored encrypted in Vault, never displayed. Needs <span className="font-mono text-xs">data.records:read</span> and <span className="font-mono text-xs">schema.bases:read</span>.</p>
               </>
             )}
           </div>
 
-          <Separator />
-
-          {/* Step 2 — base & table */}
-          <div className="space-y-4">
+          {/* Base & table */}
+          <div className="space-y-3 border-t border-border pt-4">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-xs font-medium text-muted-foreground">2</span>
-              <Label className="font-medium">Base &amp; table</Label>
-              {schemaState === "accessible" && <Badge variant="secondary" className="gap-1"><CheckCircle2 className="h-3 w-3" /> Schema connected</Badge>}
-              {schemaState === "fallback" && <Badge variant="outline">Manual mode</Badge>}
+              <Label className="font-medium">Base and table</Label>
+              {p.schemaState === "accessible" && <Badge variant="secondary" className="gap-1"><CheckCircle2 className="h-3 w-3" /> Schema connected</Badge>}
+              {p.schemaState === "fallback" && <Badge variant="outline">Manual mode</Badge>}
+              <Button variant="outline" size="sm" className="ml-auto" onClick={p.refreshSchema} disabled={p.isSchemaPending || !p.keyPresent}>
+                {p.isSchemaPending ? "Loading…" : "Refresh from Airtable"}
+              </Button>
             </div>
-            <Button variant="outline" onClick={refreshSchema} disabled={isSchemaPending || !orgId || !keyPresent}>
-              {isSchemaPending ? "Loading…" : "Refresh from Airtable"}
-            </Button>
-            {!keyPresent && <p className="text-xs text-muted-foreground">Save an API key first to load bases &amp; tables.</p>}
-            {schemaState === "accessible" ? (
-              <div className="grid grid-cols-1 gap-4">
+            {!p.keyPresent && <p className="text-xs text-muted-foreground">Save a key first to load bases and tables.</p>}
+            {p.schemaState === "accessible" ? (
+              <div className="grid grid-cols-1 gap-3">
                 <div className="space-y-2">
                   <Label>Base</Label>
-                  <Select value={s.airtable_base_id} onValueChange={(v) => saveSettings.mutate({ airtable_base_id: v, airtable_table_name: "" })} disabled={readOnly}>
+                  <Select value={s.airtable_base_id} onValueChange={(v) => p.onSaveSettings({ airtable_base_id: v, airtable_table_name: "" })} disabled={!p.canWrite}>
                     <SelectTrigger><SelectValue placeholder="Select a base" /></SelectTrigger>
-                    <SelectContent>{bases.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}</SelectContent>
+                    <SelectContent>{p.bases.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
                   <Label>Table</Label>
-                  <Select value={s.airtable_table_name} onValueChange={(v) => saveSettings.mutate({ airtable_table_name: v })} disabled={!tables.length || readOnly}>
+                  <Select value={s.airtable_table_name} onValueChange={(v) => p.onSaveSettings({ airtable_table_name: v })} disabled={!p.tables.length || !p.canWrite}>
                     <SelectTrigger><SelectValue placeholder="Select a table" /></SelectTrigger>
-                    <SelectContent>{tables.map((t) => <SelectItem key={t.id} value={t.name}>{t.name}</SelectItem>)}</SelectContent>
+                    <SelectContent>{p.tables.map((t) => <SelectItem key={t.id} value={t.name}>{t.name}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
               </div>
-            ) : schemaState === "fallback" ? (
+            ) : p.schemaState === "fallback" ? (
               <>
-                <Alert>
-                  <AlertDescription>{airtableFallbackMessage(fallbackCause)}</AlertDescription>
-                </Alert>
-                <div className="grid grid-cols-1 gap-4">
+                <Alert><AlertDescription>{airtableFallbackMessage(p.fallbackCause)}</AlertDescription></Alert>
+                <div className="grid grid-cols-1 gap-3">
                   <div className="space-y-2">
                     <Label>Airtable base ID</Label>
-                    <Input placeholder="app1234567890" defaultValue={s.airtable_base_id} key={`base-${s.airtable_base_id}`} disabled={readOnly} onBlur={(e) => { if (e.target.value !== s.airtable_base_id) saveSettings.mutate({ airtable_base_id: e.target.value, airtable_table_name: "" }); }} />
+                    <Input placeholder="app1234567890" defaultValue={s.airtable_base_id} key={`base-${s.airtable_base_id}`} disabled={!p.canWrite} onBlur={(e) => { if (e.target.value !== s.airtable_base_id) p.onSaveSettings({ airtable_base_id: e.target.value, airtable_table_name: "" }); }} />
                   </div>
                   <div className="space-y-2">
                     <Label>Airtable table name</Label>
-                    <Input placeholder="Shows" defaultValue={s.airtable_table_name} key={`table-${s.airtable_table_name}`} disabled={readOnly} onBlur={(e) => { if (e.target.value !== s.airtable_table_name) saveSettings.mutate({ airtable_table_name: e.target.value }); }} />
+                    <Input placeholder="Shows" defaultValue={s.airtable_table_name} key={`table-${s.airtable_table_name}`} disabled={!p.canWrite} onBlur={(e) => { if (e.target.value !== s.airtable_table_name) p.onSaveSettings({ airtable_table_name: e.target.value }); }} />
                   </div>
                 </div>
               </>
-            ) : schemaState === "loading" ? (
-              <div className="grid grid-cols-1 gap-4">
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-full" />
-              </div>
+            ) : p.schemaState === "loading" ? (
+              <div className="grid grid-cols-1 gap-3"><Skeleton className="h-10 w-full" /><Skeleton className="h-10 w-full" /></div>
             ) : null}
-            {keyPresent && s.airtable_table_name && (
+            {p.keyPresent && s.airtable_table_name && (
               <div className="space-y-2">
                 <Label>Airtable view (optional)</Label>
-                <Input
-                  placeholder="Grid view"
-                  defaultValue={s.airtable_view}
-                  key={`view-${s.airtable_view}`}
-                  disabled={readOnly}
-                  onBlur={(e) => { const v = e.target.value.trim(); if (v !== s.airtable_view) saveSettings.mutate({ airtable_view: v }); }}
-                />
-                <p className="text-xs text-muted-foreground">
-                  The sync reads records from this Airtable view. Leave blank to read the entire table. Defaults to &ldquo;Grid view&rdquo;.
-                </p>
+                <Input placeholder="Grid view" defaultValue={s.airtable_view} key={`view-${s.airtable_view}`} disabled={!p.canWrite} onBlur={(e) => { const v = e.target.value.trim(); if (v !== s.airtable_view) p.onSaveSettings({ airtable_view: v }); }} />
+                <p className="text-xs text-muted-foreground">The sync reads records from this view. Leave blank to read the entire table.</p>
               </div>
             )}
           </div>
-        </CardContent>
-      </Card>
 
-      {/* ── Field mapping ──────────────────────────────────────────────────── */}
-      {selectedTable && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between gap-3">
-              <CardTitle className="font-display">3 · Field mapping</CardTitle>
-              <AutosaveStatus state={saveState} />
-            </div>
-            <CardDescription>
-              Map each ShowFlow field to a column in <strong>{selectedTable.name}</strong>. Catalog links are keyed on the <strong>Sub-program</strong> option: map the Sub-program field to enable linking below.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="hidden sm:grid grid-cols-[160px_1fr] gap-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              <span>Showflow field</span>
-              <span>Airtable column</span>
-            </div>
-            {SHOWFLOW_FIELDS.map((f) => (
-              <div key={f.key} className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-3 items-center">
-                <Label>{f.label}{f.optional ? " (optional)" : ""}</Label>
-                <Select value={(fieldMap[f.key] as string | null) ?? NONE} onValueChange={(v) => setField(f.key, v === NONE ? null : v)} disabled={readOnly}>
-                  <SelectTrigger aria-label={f.label}><SelectValue placeholder="Not mapped" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={NONE}>Not mapped</SelectItem>
-                    {selectedTable.fields.map((af) => <SelectItem key={af.id} value={af.name}>{af.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-            ))}
-            {/* Cancellation mapping (status → cancelled + reason) */}
-            <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-3 items-center">
-              <Label>Status field (optional)</Label>
-              <Select value={fieldMap.status_field ?? NONE} onValueChange={(v) => setField('status_field', v === NONE ? null : v)} disabled={readOnly}>
-                <SelectTrigger><SelectValue placeholder="Not mapped" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={NONE}>Not mapped</SelectItem>
-                  {selectedTable.fields.map((af) => <SelectItem key={af.id} value={af.name}>{af.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            {fieldMap.status_field && (
-              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-3 items-center">
-                <Label>"Cancelled" value</Label>
-                <Select value={fieldMap.cancelled_value ?? NONE} onValueChange={(v) => setField('cancelled_value', v === NONE ? null : v)} disabled={readOnly}>
-                  <SelectTrigger><SelectValue placeholder="Pick the cancelled option" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={NONE}>None</SelectItem>
-                    {optionNames(fieldMap.status_field).map((name) => <SelectItem key={name} value={name}>{name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
+          {/* Frequency */}
+          <div className="space-y-2 border-t border-border pt-4">
+            <Label className="font-medium">Sync frequency</Label>
+            <Select value={String(s.airtable_poll_interval_minutes)} onValueChange={(v) => p.onSaveSettings({ airtable_poll_interval_minutes: Number(v) })} disabled={!p.canWrite}>
+              <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
+              <SelectContent>{POLL_INTERVAL_PRESETS.map((preset) => <SelectItem key={preset.value} value={String(preset.value)}>{preset.label}</SelectItem>)}</SelectContent>
+            </Select>
+            {s.airtable_poll_interval_minutes < 60 && (
+              <Alert className="max-w-xl">
+                <AlertTitle>Frequent syncs can hit Airtable limits</AlertTitle>
+                <AlertDescription>Only pick a frequency under one hour if your Airtable workspace is on a paid plan. Airtable may rate-limit frequent requests, which can cause runs to fail or updates to arrive late.</AlertDescription>
+              </Alert>
             )}
-            <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-3 items-center">
-              <Label>Cancellation reason (optional)</Label>
-              <Select value={fieldMap.cancellation_reason_field ?? NONE} onValueChange={(v) => setField('cancellation_reason_field', v === NONE ? null : v)} disabled={readOnly}>
-                <SelectTrigger><SelectValue placeholder="Not mapped" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={NONE}>Not mapped</SelectItem>
-                  {selectedTable.fields.map((af) => <SelectItem key={af.id} value={af.name}>{af.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* ── Custom fields ──────────────────────────────────────────────────── */}
-      {selectedTable && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="font-display">Custom fields</CardTitle>
-            <CardDescription>
-              Capture extra Airtable fields as typed columns on show dates: shown, filtered, and sorted in the producer Shows &amp; Bookings table (toggle them on via the column editor). These are display metadata only; they never affect bookings, slots, or offers.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {customDefs.length === 0 && (
-              <p className="text-sm text-muted-foreground">No custom fields yet.</p>
-            )}
-            {customDefs.map((d) => (
-              <div key={d.id} className="grid grid-cols-1 sm:grid-cols-[1fr_160px_auto] gap-3 items-center border-t border-border pt-3">
-                <div className="min-w-0">
-                  <div className="text-sm font-medium truncate">{d.label}</div>
-                  <div className="text-xs text-muted-foreground truncate">from “{d.source_field}”</div>
-                </div>
-                <Select value={d.type} onValueChange={(v) => setCustomType.mutate({ def: d, type: v as CustomFieldType })} disabled={readOnly}>
-                  <SelectTrigger className="h-8" aria-label={`type for ${d.label}`}><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {CUSTOM_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                <IconTooltip label={`Remove ${d.label}`}>
-                  <Button size="sm" variant="ghost" onClick={() => removeCustom.mutate(d.id)} disabled={readOnly || removeCustom.isPending} aria-label={`Remove ${d.label}`}>
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </IconTooltip>
-              </div>
-            ))}
-            <Separator />
-            <div className="space-y-2">
-              <Label>Add a custom field from an unmapped Airtable field</Label>
-              <Select
-                value=""
-                onValueChange={(name) => {
-                  const af = selectedTable.fields.find((f) => f.name === name);
-                  if (!af) return;
-                  const key = slugifyKey(af.name);
-                  if (customDefs.some((d) => d.key === key)) {
-                    toast.error(`A custom field with key "${key}" already exists. Rename or remove it first.`);
-                    return;
-                  }
-                  addCustom.mutate({ name: af.name, type: af.type, options: af.options });
-                }}
-                disabled={readOnly || addCustom.isPending || unboundFields.length === 0}
-              >
-                <SelectTrigger><SelectValue placeholder={unboundFields.length ? "Pick an Airtable field…" : "No unmapped fields left"} /></SelectTrigger>
-                <SelectContent>
-                  {unboundFields.map((f) => <SelectItem key={f.id} value={f.name}>{f.name} <span className="text-muted-foreground">({f.type})</span></SelectItem>)}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">Type is auto-detected from Airtable; adjust above if needed.</p>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* ── Catalog links ──────────────────────────────────────────────────── */}
-      {selectedTable && (fieldMap.sub_program || fieldMap.city) && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="font-display">4 · Catalog links</CardTitle>
-            <CardDescription>
-              Link each Airtable option to a ShowFlow show/city, or create one inline. The sync resolves records against these links; anything unlinked is held, never dropped. New shows start with no slot config. Set counts in the Shows tab.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-8">
-            {fieldMap.sub_program && (
-              fieldMap.program && programPairsQ.isLoading ? (
-                <Skeleton className="h-24 w-full" />
-              ) : fieldMap.program && programPairsQ.isError ? (
-                <Alert variant="destructive"><AlertDescription>Couldn't load program options from Airtable. Try refreshing the schema.</AlertDescription></Alert>
-              ) : fieldMap.program && programPairsQ.data?.schemaAccessible === false ? (
-                <Alert variant="destructive"><AlertDescription>Your Airtable key can't read records (it needs the data.records:read scope), so program options can't be listed.</AlertDescription></Alert>
-              ) : (
-                <CatalogSection
-                  title="Programs"
-                  sourceLabel={programSource}
-                  rows={programRows}
-                  unlinkedCount={programUnlinked}
-                  importAll={() => importPrograms.mutate()}
-                  importDisabled={importPrograms.isPending || showsQ.isLoading || programUnlinked === 0}
-                  existing={programExisting}
-                  onCreate={(row) => { if (row.createPair) createOneProgram.mutate(row.createPair); }}
-                  onLink={(row, id) => linkShow.mutate({ showId: id, key: row.key })}
-                  onUnlink={(id) => unlinkShow.mutate(id)}
-                  busy={createOneProgram.isPending || showsQ.isLoading || linkShow.isPending || unlinkShow.isPending}
-                  entityNoun="show"
-                  emptyHint="No program options found in the mapped table."
-                  readOnly={readOnly}
-                />
-              )
-            )}
-            {fieldMap.city && (
-              <CatalogSection
-                title="Cities"
-                sourceLabel={citySource}
-                rows={cityRows}
-                unlinkedCount={cityUnlinked}
-                importAll={() => importCities.mutate()}
-                importDisabled={importCities.isPending || citiesQ.isLoading || cityUnlinked === 0}
-                existing={cityExisting}
-                onCreate={(row) => createOneCity.mutate(row.display)}
-                onLink={(row, id) => linkCity.mutate({ cityId: id, key: row.key })}
-                onUnlink={(id) => unlinkCity.mutate(id)}
-                busy={createOneCity.isPending || citiesQ.isLoading || linkCity.isPending || unlinkCity.isPending}
-                entityNoun="city"
-                emptyHint="No options on the mapped City field."
-                readOnly={readOnly}
-              />
-            )}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* ── Duplicate cities ───────────────────────────────────────────────── */}
-      {dupeGroups.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="font-display">Duplicate cities</CardTitle>
-            <CardDescription>Cities whose names match (ignoring case/spacing). Pick the one to keep and merge: its bookings, eligibility, and producer routing are preserved; the others are removed.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {dupeGroups.map((g) => {
-              const survivor = survivorFor(g);
-              const losers = g.cities.filter((c) => c.id !== survivor).map((c) => c.id);
-              return (
-                <div key={g.norm} className="space-y-2 border-t border-border pt-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="text-sm">
-                      <span className="text-muted-foreground">Keep </span>
-                      <Select value={survivor} onValueChange={(v) => setSurvivorByNorm((m) => ({ ...m, [g.norm]: v }))} disabled={readOnly}>
-                        <SelectTrigger className="inline-flex h-8 w-[220px]" aria-label={`survivor for ${g.norm}`}><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          {g.cities.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}{c.airtable_city_key ? " (linked)" : ""}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button size="sm" variant="destructive" disabled={readOnly || mergeMut.isPending}>Merge</Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Merge {g.cities.length} cities into one?</AlertDialogTitle>
-                          <AlertDialogDescription>{losers.length} duplicate row(s) will be removed and their references repointed to the kept city. This cannot be undone.</AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => mergeMut.mutate({ survivor, losers })}>Merge cities</AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
-                  <ul className="text-xs text-muted-foreground">
-                    {g.cities.map((c) => <li key={c.id}>{c.name}{c.id === survivor ? " · kept" : " · removed"}</li>)}
-                  </ul>
-                </div>
-              );
-            })}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* ── Last sync report ───────────────────────────────────────────────── */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="font-display">Last sync report</CardTitle>
-          {/* Cause-neutral, mirroring the airtable-sync-held email whose CTA lands here:
-              held has more than one cause (a blank date cell as well as an unlinked
-              program), so this must not assert the mapping-only one. The record rows
-              below carry each held record's actual reason. */}
-          <CardDescription>The most recent Airtable poll. Held records could not be brought into ShowFlow: the rows below say which ones and why. Fix the cause and they import on the next run. Errored records hit a write error and are worth investigating.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {!syncLogQ.data ? (
-            <p className="text-sm text-muted-foreground">No sync has run yet for this organization.</p>
-          ) : (
-            <>
-              <div className="flex flex-wrap gap-4 text-sm">
-                <div><span className="text-muted-foreground">Status </span><Badge variant={syncLogQ.data.status === "success" ? "secondary" : "outline"}>{syncLogQ.data.status}</Badge></div>
-                <div><span className="text-muted-foreground">Imported </span><strong>{syncLogQ.data.imported_count ?? 0}</strong></div>
-                <div><span className="text-muted-foreground">New </span><strong>{syncLogQ.data.new_count ?? 0}</strong></div>
-                <div><span className="text-muted-foreground">Updated </span><strong>{syncLogQ.data.updated_count ?? 0}</strong></div>
-                <div><span className="text-muted-foreground">Held </span><strong>{syncLogQ.data.held_count ?? 0}</strong></div>
-              </div>
-              {syncLogQ.data.error_details && (
-                <p className="text-sm text-muted-foreground">{syncLogQ.data.error_details}</p>
-              )}
-              {heldRecords.length > 0 && (
-                <div className="space-y-2">
-                  <h4 className="font-display font-semibold text-sm">Held records</h4>
-                  {heldRecords.map(renderRecordRow)}
-                </div>
-              )}
-              {erroredRecords.length > 0 && (
-                <div className="space-y-2">
-                  <h4 className="font-display font-semibold text-sm">Errored records</h4>
-                  {erroredRecords.map(renderRecordRow)}
-                </div>
-              )}
-            </>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

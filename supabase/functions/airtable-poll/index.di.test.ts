@@ -663,14 +663,16 @@ Deno.test("airtable-poll: session_1 is null when field missing (no 00:00 fabrica
   assertEquals(payload.session_1, null);
 });
 
-Deno.test("airtable-poll: city_id is null when city not in DB", async () => {
+Deno.test("airtable-poll: city_id is null when the city cell is blank/absent", async () => {
   const insertedPayloads: unknown[] = [];
 
   const records = [
     makeRecord("recNOCITY001", {
       Date: "2026-11-01",
       SubProgram: "TestShow",
-      City: "Atlantis", // not in cities table
+      // No City value → optional city, imports with city_id null.
+      // (A mapped, NON-empty city that doesn't resolve now HOLDS the record — see the
+      // dedicated unlinked-city test below.)
     }),
   ];
 
@@ -1166,9 +1168,9 @@ Deno.test("airtable-poll: synced_at uses deps.now() (fixed to 2026-06-01T12:00:0
   assertEquals(logRow.synced_at, fixedNow.toISOString());
 });
 
-// ─── Unlinked city is non-fatal + noted ───────────────────────────────────────
+// ─── Unlinked city holds the record ───────────────────────────────────────────
 
-Deno.test("airtable-poll: unlinked city is non-fatal — record still imports with city_id null + a note", async () => {
+Deno.test("airtable-poll: a mapped non-empty unlinked city holds the record (not imported)", async () => {
   const insertedPayloads: unknown[] = [];
   const recordLogInserts: unknown[] = [];
 
@@ -1207,22 +1209,19 @@ Deno.test("airtable-poll: unlinked city is non-fatal — record still imports wi
   assertEquals(res.status, 200);
   const body = await res.json();
 
-  // The record STILL imports (unlinked city is non-fatal), with city_id null.
-  assertEquals(insertedPayloads.length, 1);
-  const payload = insertedPayloads[0] as Record<string, unknown>;
-  assertEquals(payload.show_id, "show-uuid-1");
-  assertEquals(payload.city_id, null);
-  assertEquals(body.held, 0);
-  assertEquals(body.new_dates, 1);
+  // The record is HELD (never dropped, never imported city-less): the program linked but
+  // the mapped, non-empty city ("Atlantis") does not resolve to a catalog city.
+  assertEquals(insertedPayloads.length, 0);
+  assertEquals(body.held, 1);
+  assertEquals(body.new_dates, 0);
 
-  // The per-record log row notes the city wasn't linked, with action imported_new.
+  // The per-record log row is held_unresolved and names the unlinked city.
   assertEquals(recordLogInserts.length, 1);
   const rows = recordLogInserts[0] as Array<Record<string, unknown>>;
   const row = rows.find((r) => r.airtable_record_id === "recCITYUNLINKED");
   assertExists(row);
-  assertEquals(row!.action, "imported_new");
-  assertEquals(String(row!.reason).includes("Atlantis"), true, `reason should mention the unlinked city: ${row!.reason}`);
-  assertEquals(String(row!.reason).includes("not linked"), true, `reason should note the city is not linked: ${row!.reason}`);
+  assertEquals(row!.action, "held_unresolved");
+  assertEquals(row!.reason, "city 'Atlantis' not linked");
 });
 
 // ─── Held-set change → admin notification ──────────────────────────────────────

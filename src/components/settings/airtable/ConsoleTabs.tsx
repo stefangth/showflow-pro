@@ -1,0 +1,70 @@
+import { Switch } from "@/components/ui/switch";
+import { cn } from "@/lib/utils";
+
+export type ConsoleTab = "overview" | "mapping" | "catalog" | "activity";
+
+interface ConsoleTabsProps {
+  value: ConsoleTab;
+  onChange: (t: ConsoleTab) => void;
+  heldCount: number;
+  syncEnabled: boolean;
+  onToggleSync: (v: boolean) => void;
+  canWrite: boolean;
+}
+
+const TABS: { key: ConsoleTab; label: string }[] = [
+  { key: "overview", label: "Overview" },
+  { key: "mapping", label: "Field mapping" },
+  { key: "catalog", label: "Catalog links" },
+  { key: "activity", label: "Activity" },
+];
+
+/** The segmented tab bar plus the "Sync" master switch that sits above the
+ *  active tab panel. Presentational: the orchestrator owns tab + switch state. */
+export function ConsoleTabs({
+  value,
+  onChange,
+  heldCount,
+  syncEnabled,
+  onToggleSync,
+  canWrite,
+}: ConsoleTabsProps) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <div className="inline-flex gap-0.5 rounded-md bg-muted p-0.5">
+        {TABS.map((tab) => {
+          const active = tab.key === value;
+          return (
+            <button
+              key={tab.key}
+              type="button"
+              onClick={() => onChange(tab.key)}
+              className={cn(
+                "inline-flex h-[30px] items-center gap-1.5 rounded-[6px] px-3 text-xs font-medium transition-colors",
+                active
+                  ? "bg-card text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {tab.label}
+              {tab.key === "catalog" && heldCount > 0 && (
+                <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-[4px] bg-accent-100 px-1 text-[10px] font-semibold tabular-nums text-accent-700">
+                  {heldCount}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+      <div className="flex items-center gap-2.5">
+        <span className="text-xs text-muted-foreground">Sync</span>
+        <Switch
+          checked={syncEnabled}
+          onCheckedChange={onToggleSync}
+          disabled={!canWrite}
+          aria-label="Sync enabled"
+        />
+      </div>
+    </div>
+  );
+}

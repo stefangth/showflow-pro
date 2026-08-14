@@ -139,6 +139,19 @@ Deno.test("airtable-sync-held email: names the most common held reason as a quan
   assert(html.includes("2 of the 3 are not linked to one of your shows"), "states the count and reason for the majority category as a sentence, not a report label");
 });
 
+// unlinked_city is the third held cause (a mapped, non-empty city with no linked catalog
+// city): the email must name it too, not fall through to no breakdown line.
+Deno.test("airtable-sync-held email: names an unlinked-city top reason", async () => {
+  const html = await renderAlert({
+    orgName: "Riverdance Co",
+    heldCount: 3,
+    topReasonCategory: "unlinked_city",
+    topReasonCount: 2,
+    settingsUrl: "https://app.showflow.pro/settings?tab=airtable",
+  });
+  assert(html.includes("2 of the 3 are using a city that isn't linked to one of yours") || html.includes("2 of the 3 are using a city that isn&#x27;t linked to one of yours"), "states the count and the unlinked-city reason");
+});
+
 // The minimal mixed-cause case is completely ordinary (two held records, one blank
 // date cell, one unlinked program): the majority category then counts exactly one
 // record, and "1 of the 2 are" is subject-verb disagreement. The partial-breakdown

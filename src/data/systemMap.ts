@@ -211,6 +211,7 @@ export const SYSTEM_MAP_NODES: SystemMapNode[] = [
       Trigger: "cron every 5 min (per-org interval gate) + Settings → Airtable 'Sync now' (single org)",
       Auth: "requireCronSecret (fan-out) OR requireOrgRole(admin)+org_id (one org) · verify_jwt=false",
       Writes: "shows, show_dates, airtable_sync_log(+record), notifications (airtable_sync_held)",
+      Holds: "a record is held (never dropped) on any of three causes: a blank date cell, a sub_program not linked to a show, or a mapped non-empty city not linked to a catalog city",
       Effects: "invokes open-offer-tier (tier 1, batches of 10) for new dates and updated dates that just gained a session but have no tier-1 row yet, gated on the booking_flow entitlement ∧ booking flow active (not switched off) ∧ auto_open_tier1 ∧ artist_acceptance · Airtable Data+Meta API",
       Failure: "per-org isolation; idempotent by airtable_record_id",
       Cite: "airtable-poll/index.ts",
