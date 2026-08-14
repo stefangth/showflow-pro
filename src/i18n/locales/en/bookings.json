@@ -7,5 +7,13 @@
     "confirm": "Confirm {{count}}",
     "openDate": "Open date",
     "keyHint": "Space to peek · Enter to open"
+  },
+  "artist": {
+    "cancelHint": "Need to cancel a date you confirmed? Message your producer in the date's chat and they will update the booking.",
+    "sortChronoLabel": "Date",
+    "loadError": "Failed to load your bookings. Please refresh.",
+    "hireOrderLink": "Hire order",
+    "emptyState": "No eligible dates yet. Once you're added to a cast, offered dates appear here.",
+    "calendarEmpty": "No eligible dates"
   }
 }
