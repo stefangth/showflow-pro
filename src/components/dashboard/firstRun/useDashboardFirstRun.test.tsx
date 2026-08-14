@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
+// Side-effect import: the hook now calls useTranslation('dashboard'), which needs the real
+// i18next instance initialized (via initReactI18next) before it runs. This file uses plain
+// testing-library `renderHook`, not the shared renderHookWithProviders wrapper that pulls
+// LanguageProvider (and with it @/i18n) in automatically, so it is imported explicitly here.
+import "@/i18n";
 
 // Hoisted, overridable mock fns for every slice this hook reads. Their default returns
 // keep the "normal admin org" cases passing without per-test setup; individual tests

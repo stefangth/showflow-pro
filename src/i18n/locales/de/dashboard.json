@@ -64,5 +64,19 @@
     "on": "An",
     "off": "Aus",
     "sample": "Beispiel"
+  },
+  "artistQueue": {
+    "open": "Öffnen",
+    "edit": "Bearbeiten",
+    "nothingYet": "Noch nichts",
+    "offersArriving_one": "{{count}} Angebot in der morgigen Tagesübersicht",
+    "offersArriving_other": "{{count}} Angebote in der morgigen Tagesübersicht",
+    "datesBookedAppearHere": "Für dich gebuchte Termine erscheinen hier",
+    "producerSchedule": "Der Zeitplan deines Produktionsteams",
+    "keptOutOfList": "Aus jeder Liste herausgehalten, bevor dich jemand bucht",
+    "firstOfferHint": "Dein erstes Angebot landet hier, sobald {{orgName}} Termine für deine Besetzung hat.",
+    "firstBookingHint": "Deine erste Buchung landet hier, sobald {{orgName}} Termine hat.",
+    "blockedTitle_one": "{{count}} Termin gesperrt",
+    "blockedTitle_other": "{{count}} Termine gesperrt"
   }
 }
