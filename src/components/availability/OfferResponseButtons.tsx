@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Check, X } from 'lucide-react';
@@ -19,6 +20,7 @@ interface Props {
 export function OfferResponseButtons({ bookingId, size = 'default' }: Props) {
   const qc = useQueryClient();
   const { toast } = useToast();
+  const { t } = useTranslation('availability');
   const { data: flow, isLoading: isFlowLoading } = useBookingFlow();
   // Auto-confirm on accept when the org's flow skips producer confirmation.
   const autoConfirm = !(flow?.producer_confirmation ?? true);
@@ -29,8 +31,8 @@ export function OfferResponseButtons({ bookingId, size = 'default' }: Props) {
       qc.invalidateQueries({ queryKey: ['bookings'] });
       if (affected === 0) {
         toast({
-          title: 'This offer is no longer available',
-          description: 'It may have been withdrawn or expired. Refresh to see the latest.',
+          title: t('offer.toast.unavailableTitle'),
+          description: t('offer.toast.unavailableDesc'),
           variant: 'destructive',
         });
         return;
@@ -40,12 +42,12 @@ export function OfferResponseButtons({ bookingId, size = 'default' }: Props) {
         toast({ title: note.title, description: note.description });
       } else {
         toast({
-          title: 'Offer declined',
-          description: 'This just cancels this one offer. It will not affect future offers.',
+          title: t('offer.toast.declinedTitle'),
+          description: t('offer.toast.declinedDesc'),
         });
       }
     },
-    onError: (e: Error) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+    onError: (e: Error) => toast({ title: t('offer.toast.errorTitle'), description: e.message, variant: 'destructive' }),
   });
 
   const btnSize = size === 'sm' ? 'sm' : 'default';
@@ -60,7 +62,7 @@ export function OfferResponseButtons({ bookingId, size = 'default' }: Props) {
         disabled={respond.isPending || isFlowLoading}
       >
         <Check className="h-3 w-3 mr-1" />
-        Accept
+        {t('offer.accept')}
       </Button>
       <Button
         size={btnSize}
@@ -70,7 +72,7 @@ export function OfferResponseButtons({ bookingId, size = 'default' }: Props) {
         disabled={respond.isPending}
       >
         <X className="h-3 w-3 mr-1" />
-        Decline
+        {t('offer.decline')}
       </Button>
     </div>
   );

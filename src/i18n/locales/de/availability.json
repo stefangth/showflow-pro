@@ -1,3 +1,13 @@
 {
-  "_ns": "availability"
+  "offer": {
+    "accept": "Annehmen",
+    "decline": "Ablehnen",
+    "toast": {
+      "unavailableTitle": "Dieses Angebot ist nicht mehr verfügbar",
+      "unavailableDesc": "Es wurde vielleicht zurückgezogen oder ist abgelaufen. Aktualisiere, um den aktuellen Stand zu sehen.",
+      "declinedTitle": "Angebot abgelehnt",
+      "declinedDesc": "Damit sagst du nur dieses eine Angebot ab. Zukünftige Angebote sind nicht betroffen.",
+      "errorTitle": "Fehler"
+    }
+  }
 }

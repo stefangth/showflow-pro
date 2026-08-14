@@ -1,3 +1,13 @@
 {
-  "_ns": "availability"
+  "offer": {
+    "accept": "Accept",
+    "decline": "Decline",
+    "toast": {
+      "unavailableTitle": "This offer is no longer available",
+      "unavailableDesc": "It may have been withdrawn or expired. Refresh to see the latest.",
+      "declinedTitle": "Offer declined",
+      "declinedDesc": "This just cancels this one offer. It will not affect future offers.",
+      "errorTitle": "Error"
+    }
+  }
 }
