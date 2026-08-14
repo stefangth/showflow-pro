@@ -9,5 +9,10 @@
       "declinedDesc": "Damit sagst du nur dieses eine Angebot ab. Zukünftige Angebote sind nicht betroffen.",
       "errorTitle": "Fehler"
     }
+  },
+  "picker": {
+    "loadError": "Konnte nicht geladen werden",
+    "blocked": "Gesperrt",
+    "blockDate": "Termin sperren"
   }
 }

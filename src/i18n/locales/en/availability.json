@@ -9,5 +9,10 @@
       "declinedDesc": "This just cancels this one offer. It will not affect future offers.",
       "errorTitle": "Error"
     }
+  },
+  "picker": {
+    "loadError": "Couldn't load",
+    "blocked": "Blocked",
+    "blockDate": "Block date"
   }
 }
