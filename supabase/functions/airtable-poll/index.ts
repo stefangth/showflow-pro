@@ -486,14 +486,6 @@ async function syncOrg(deps: Deps, orgId: string, baseId: string, tableName: str
       const cityRawName = cityNames[0] ?? null;
       const cityKey = buildCityKey(cityRawName);
       const cityId = cityKey ? cityByKey.get(cityKey) ?? null : null;
-      // A mapped, non-empty city that doesn't resolve to a linked catalog city holds the
-      // record (like an unlinked program) instead of importing it city-less. A blank/absent
-      // city value, or an unmapped city field, still imports with city_id null.
-      if (fieldMap.city && cityRawName && !cityId) {
-        held += 1;
-        outcomes.push({ airtable_record_id: id, action: "held_unresolved", show_date_id: null, reason: `city '${cityRawName}' not linked`, raw_fields: fields });
-        continue;
-      }
 
       const session1 = fieldMap.session_1 ? parseTime(fields[fieldMap.session_1]) : null;
       const session2 = fieldMap.session_2 ? parseTime(fields[fieldMap.session_2]) : null;
@@ -506,6 +498,17 @@ async function syncOrg(deps: Deps, orgId: string, baseId: string, tableName: str
 
       const existing = existingByAirtableId.get(id);
       const existingId = existing?.id;
+
+      // A NEW record whose mapped, non-empty city doesn't resolve to a linked catalog city is
+      // held (waiting on a catalog link), instead of importing it city-less. An already-imported
+      // record still updates (so Airtable cancellations/revivals keep propagating) and keeps its
+      // prior city_id, since the update below only writes city_id when the city resolves. A
+      // blank/absent city value, or an unmapped city field, still imports with city_id null.
+      if (!existingId && fieldMap.city && cityRawName && !cityId) {
+        held += 1;
+        outcomes.push({ airtable_record_id: id, action: "held_unresolved", show_date_id: null, reason: `city '${cityRawName}' not linked`, raw_fields: fields });
+        continue;
+      }
       if (existingId) {
         const payload: TablesUpdate<"show_dates"> = { date: dateValue };
         if (fieldMap.session_1) payload.session_1 = session1;

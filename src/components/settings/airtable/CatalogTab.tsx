@@ -130,13 +130,15 @@ export function CatalogTab(props: CatalogTabProps) {
   const filteredPrograms = programRows.filter(matchesFilters);
   const filteredCities = cityRows.filter(matchesFilters);
 
-  const selectedCount = selected.size;
+  // Only selected UNLINKED rows can be created; the button count and gate track those, not the
+  // raw selection (which may include linked rows that Create would skip).
+  const progCreatable = programRows.filter((r) => isSelected("program", r.key) && r.linkedId === null);
+  const cityCreatable = cityRows.filter((r) => isSelected("city", r.key) && r.linkedId === null);
+  const creatableCount = progCreatable.length + cityCreatable.length;
 
   const handleBulkCreate = () => {
-    const progSel = programRows.filter((r) => isSelected("program", r.key) && r.linkedId === null);
-    const citySel = cityRows.filter((r) => isSelected("city", r.key) && r.linkedId === null);
-    if (progSel.length) onBulkCreate("program", progSel);
-    if (citySel.length) onBulkCreate("city", citySel);
+    if (progCreatable.length) onBulkCreate("program", progCreatable);
+    if (cityCreatable.length) onBulkCreate("city", cityCreatable);
   };
 
   const renderRow = (kind: Kind, row: CatalogRow, existing: { id: string; label: string }[], entityNoun: "show" | "city") => {
@@ -186,6 +188,10 @@ export function CatalogTab(props: CatalogTabProps) {
               Unlink
             </Button>
           </div>
+        ) : !row.key ? (
+          // A blank source value has no usable link key: offer no link/create, since an empty
+          // key would match every unresolved record on the next poll.
+          <span className="justify-self-end text-[13px] text-muted-foreground">&middot;</span>
         ) : (
           <div className="flex items-center gap-2 justify-end min-w-0">
             <CatalogLinkCombobox
@@ -254,11 +260,11 @@ export function CatalogTab(props: CatalogTabProps) {
           })}
         </div>
         <div className="flex-1" />
-        {selectedCount > 0 && (
+        {creatableCount > 0 && (
           <>
-            <span className="text-xs text-muted-foreground">{selectedCount} selected</span>
+            <span className="text-xs text-muted-foreground">{creatableCount} selected</span>
             <Button size="sm" className="h-[26px]" disabled={disabled} onClick={handleBulkCreate}>
-              Create {selectedCount}
+              Create {creatableCount}
             </Button>
           </>
         )}

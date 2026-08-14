@@ -14,8 +14,9 @@ function airtableResponse(records: unknown[]) {
   return new Response(JSON.stringify({ records }), { status: 200, headers: { "Content-Type": "application/json" } });
 }
 
-function seededDeps(records: unknown[]) {
+function seededDeps(records: unknown[], existingShowDates: Record<string, unknown>[] = []) {
   const showDateInserts: Record<string, unknown>[] = [];
+  const showDateUpdates: Record<string, unknown>[] = [];
   const recordLogInserts: unknown[] = [];
 
   const { deps } = makeFakeDeps({
@@ -30,7 +31,7 @@ function seededDeps(records: unknown[]) {
       organizations: { data: [{ id: ORG }], error: null },
       shows: { data: [{ id: "show-magic", airtable_program_key: "Magic" }], error: null },
       cities: { data: [{ id: "city-berlin", airtable_city_key: "berlin" }], error: null },
-      show_dates: { data: [], error: null },
+      show_dates: { data: existingShowDates, error: null },
       airtable_sync_log: { data: { id: "log-1" }, error: null },
       airtable_sync_record_log: { data: [], error: null },
       org_memberships: { data: [], error: null },
@@ -53,6 +54,10 @@ function seededDeps(records: unknown[]) {
         return c;
       };
     }
+    if (table === "show_dates") {
+      const origUpdate = chain.update.bind(chain);
+      chain.update = (payload: unknown) => { showDateUpdates.push(payload as Record<string, unknown>); return origUpdate(payload); };
+    }
     if (table === "airtable_sync_record_log") {
       const orig = chain.insert.bind(chain);
       chain.insert = (p: unknown) => { recordLogInserts.push(p); return orig(p); };
@@ -60,7 +65,7 @@ function seededDeps(records: unknown[]) {
     return chain;
   });
 
-  return { deps, showDateInserts, recordLogInserts };
+  return { deps, showDateInserts, showDateUpdates, recordLogInserts };
 }
 
 const authReq = () => makeRequest({ method: "POST", headers: { "X-Cron-Secret": "secret123" } });
@@ -90,4 +95,30 @@ Deno.test("airtable-poll: a mapped non-empty unlinked city holds the record; bla
   const byId = Object.fromEntries(rows.map((r) => [r.airtable_record_id, r]));
   assertEquals(byId["rec-city"].action, "held_unresolved");
   assertEquals(byId["rec-city"].reason, "city 'Paris' not linked");
+});
+
+// The city hold is for NEW records only: an already-imported date whose city becomes unlinked
+// must still UPDATE (so Airtable cancellations/revivals keep propagating), keeping its prior
+// city_id. It must not be held, which would freeze it (a cancelled show could stay bookable).
+Deno.test("airtable-poll: an existing record with a now-unlinked city still updates (not held)", async () => {
+  const records = [
+    // program linked, city "Paris" unlinked, but this record already exists -> UPDATE, not held
+    { id: "rec-exist", fields: { Date: "2026-06-09", SubProgram: "Magic", City: "Paris" } },
+  ];
+  const existing = [{ id: "sd-existing", airtable_record_id: "rec-exist", status: "open" }];
+
+  const { deps, showDateInserts, showDateUpdates, recordLogInserts } = seededDeps(records, existing);
+  const res = await handle(authReq(), deps);
+  assertEquals(res.status, 200);
+  const body = await res.json();
+
+  assertEquals(showDateInserts.length, 0);
+  assertEquals(showDateUpdates.length, 1);
+  // The update does NOT overwrite city_id when the city is unlinked (keeps the prior value).
+  assertEquals(Object.prototype.hasOwnProperty.call(showDateUpdates[0], "city_id"), false);
+  assertEquals(body.held, 0);
+
+  const rows = (recordLogInserts[0] ?? []) as Array<Record<string, unknown>>;
+  const row = rows.find((r) => r.airtable_record_id === "rec-exist");
+  assertEquals(row?.action, "updated");
 });

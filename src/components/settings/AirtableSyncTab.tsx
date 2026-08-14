@@ -77,7 +77,7 @@ export function AirtableSyncTab({ orgId, readOnly = false, canTriggerSync = true
 
   // Console UI state
   const [tab, setTab] = useState<ConsoleTab>("overview");
-  const [openCause, setOpenCause] = useState<string | null>("programs");
+  const [openCause, setOpenCause] = useState<string | null>("unlinked_program");
   const [manageOpen, setManageOpen] = useState(false);
   // Setup-wizard local token (distinct from the manage-connection replace field).
   const [setupKey, setSetupKey] = useState("");
@@ -460,9 +460,11 @@ export function AirtableSyncTab({ orgId, readOnly = false, canTriggerSync = true
   const eyebrow = hasBaseTable ? `Airtable · ${baseName} › ${s.airtable_table_name}` : "Airtable";
   const nextRunLabel = kpis.find((k) => k.label === "Next run")?.value ?? "the next run";
 
+  // A cause's bulk fix creates only the options that are actually holding records (holdCount > 0),
+  // matching the count the cause title shows, not every unlinked option in the catalog.
   const onFixCause = (cause: HeldCause) => {
-    if (cause.category === "unlinked_program") importPrograms.mutate(programRows.filter((r) => !r.linkedId && r.key).map((r) => pairByKey.get(r.key)).filter((p): p is ProgramPair => !!p));
-    else if (cause.category === "unlinked_city") importCities.mutate(cityRows.filter((r) => !r.linkedId).map((r) => r.display));
+    if (cause.category === "unlinked_program") importPrograms.mutate(programRows.filter((r) => !r.linkedId && r.key && (r.holdCount ?? 0) > 0).map((r) => pairByKey.get(r.key)).filter((p): p is ProgramPair => !!p));
+    else if (cause.category === "unlinked_city") importCities.mutate(cityRows.filter((r) => !r.linkedId && (r.holdCount ?? 0) > 0).map((r) => r.display));
   };
   const onBulkCreate = (kind: "program" | "city", rows: CatalogRow[]) => {
     if (kind === "program") importPrograms.mutate(rows.map((r) => pairByKey.get(r.key)).filter((p): p is ProgramPair => !!p));
@@ -497,6 +499,8 @@ export function AirtableSyncTab({ orgId, readOnly = false, canTriggerSync = true
           onSaveKey={() => saveKey.mutate(setupKey)}
           saving={saveKey.isPending}
           canWrite={canWrite}
+          keyPresent={keyPresent}
+          onManageConnection={() => openManage(false)}
         />
       ) : (
         <>

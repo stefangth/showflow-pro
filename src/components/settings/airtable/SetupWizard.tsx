@@ -10,6 +10,10 @@ interface SetupWizardProps {
   onSaveKey: () => void;
   saving: boolean;
   canWrite: boolean;
+  /** True once the PAT is saved: advances the wizard to the base/table step. */
+  keyPresent: boolean;
+  /** Opens the connection editor to pick the base and table. */
+  onManageConnection: () => void;
 }
 
 interface WizardStep {
@@ -36,7 +40,10 @@ export function SetupWizard({
   onSaveKey,
   saving,
   canWrite,
+  keyPresent,
+  onManageConnection,
 }: SetupWizardProps) {
+  const currentStep = keyPresent ? 2 : 1;
   return (
     <div className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
       <div className="border-b border-border p-5">
@@ -51,7 +58,8 @@ export function SetupWizard({
       <div className="grid grid-cols-1 sm:grid-cols-[236px_1fr]">
         <ol className="border-b border-border bg-muted py-4 sm:border-b-0 sm:border-r">
           {STEPS.map((step, i) => {
-            const current = step.n === 1;
+            const current = step.n === currentStep;
+            const done = step.n < currentStep;
             const last = i === STEPS.length - 1;
             return (
               <li key={step.n} className="flex gap-3 px-4 py-2.5">
@@ -61,7 +69,9 @@ export function SetupWizard({
                       "flex h-[22px] w-[22px] items-center justify-center rounded-full text-[11px] font-semibold",
                       current
                         ? "bg-primary text-primary-foreground"
-                        : "border border-border bg-card text-muted-foreground",
+                        : done
+                          ? "border border-accent-200 bg-accent-100 text-accent-700"
+                          : "border border-border bg-card text-muted-foreground",
                     )}
                   >
                     {step.n}
@@ -72,7 +82,7 @@ export function SetupWizard({
                   <p
                     className={cn(
                       "text-[13px] font-semibold",
-                      current ? "text-foreground" : "text-muted-foreground",
+                      step.n <= currentStep ? "text-foreground" : "text-muted-foreground",
                     )}
                   >
                     {step.title}
@@ -83,38 +93,51 @@ export function SetupWizard({
             );
           })}
         </ol>
-        <div className="p-5">
-          <h3 className="text-[17px] font-semibold tracking-tight">Personal access token</h3>
-          <p className="mt-1.5 text-sm text-muted-foreground">
-            Stored encrypted in Vault and never displayed again. Needs{" "}
-            <span className="font-mono text-xs">data.records:read</span> and{" "}
-            <span className="font-mono text-xs">schema.bases:read</span>.
-          </p>
-          <div className="mt-4 flex max-w-[520px] gap-2">
-            <Input
-              type="password"
-              placeholder="pat…"
-              value={keyValue}
-              onChange={(e) => onKeyChange(e.target.value)}
-              disabled={!canWrite}
-              className="bg-muted"
-            />
-            <Button
-              onClick={onSaveKey}
-              disabled={!canWrite || saving || !keyValue.trim()}
-              className="shrink-0"
-            >
-              {saving ? "Saving…" : "Save and continue"}
+        {keyPresent ? (
+          <div className="p-5">
+            <h3 className="text-[17px] font-semibold tracking-tight">Base and table</h3>
+            <p className="mt-1.5 text-sm text-muted-foreground">
+              Your token is saved. Pick the Airtable base and table your shows live in to finish
+              connecting. Nothing syncs until you do.
+            </p>
+            <Button onClick={onManageConnection} disabled={!canWrite} className="mt-4">
+              Choose base and table
             </Button>
           </div>
-          <div className="mt-5 flex items-center gap-2 border-t border-border pt-3.5">
-            <CircleHelp className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-            <p className="text-xs text-muted-foreground">
-              No token yet? Create one at airtable.com/create/tokens, scoped to the base you sync
-              from.
+        ) : (
+          <div className="p-5">
+            <h3 className="text-[17px] font-semibold tracking-tight">Personal access token</h3>
+            <p className="mt-1.5 text-sm text-muted-foreground">
+              Stored encrypted in Vault and never displayed again. Needs{" "}
+              <span className="font-mono text-xs">data.records:read</span> and{" "}
+              <span className="font-mono text-xs">schema.bases:read</span>.
             </p>
+            <div className="mt-4 flex max-w-[520px] gap-2">
+              <Input
+                type="password"
+                placeholder="pat…"
+                value={keyValue}
+                onChange={(e) => onKeyChange(e.target.value)}
+                disabled={!canWrite}
+                className="bg-muted"
+              />
+              <Button
+                onClick={onSaveKey}
+                disabled={!canWrite || saving || !keyValue.trim()}
+                className="shrink-0"
+              >
+                {saving ? "Saving…" : "Save and continue"}
+              </Button>
+            </div>
+            <div className="mt-5 flex items-center gap-2 border-t border-border pt-3.5">
+              <CircleHelp className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+              <p className="text-xs text-muted-foreground">
+                No token yet? Create one at airtable.com/create/tokens, scoped to the base you sync
+                from.
+              </p>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

@@ -155,7 +155,7 @@ export function MappingTab(props: MappingTabProps) {
       {unboundFields.length > 0 && (
         <div className="flex items-center justify-between gap-3 px-4 py-3.5 border-t border-border">
           <p className="text-xs text-muted-foreground">
-            {unboundFields.length} columns in {tableName} aren't read by ShowFlow: {unboundFields.slice(0, 4).map((f) => f.name).join(", ")}.
+            {unboundFields.length} {unboundFields.length === 1 ? "column" : "columns"} in {tableName} {unboundFields.length === 1 ? "isn't" : "aren't"} read by ShowFlow: {unboundFields.slice(0, 4).map((f) => f.name).join(", ")}.
           </p>
           <Button
             variant="outline"
