@@ -35,6 +35,7 @@ import { AccountStatusChip } from '@/components/artists/AccountStatusChip';
 import { ArtistImportDialog } from '@/components/artists/ArtistImportDialog';
 import { inviteArtistToApp, revokeInvitation, resendInvitation } from '@/data/invitations';
 import { useCan } from '@/hooks/useCapabilities';
+import { PageMini } from '@/components/minis/PageMini';
 
 type BookingJoin = {
   id: string; artist_id: string; status: string;
@@ -268,6 +269,8 @@ export default function ArtistsPage() {
         )}
         </div>
       </div>
+
+      <PageMini page="artists" />
 
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[200px] max-w-md">

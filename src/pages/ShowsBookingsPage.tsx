@@ -53,6 +53,7 @@ import { ColumnLayoutEditor } from '@/features/editor/ColumnLayoutEditor';
 import { formatCustomValue, compareCustomValues, customFilterMatches, type CustomFilterState } from '@/lib/customFields';
 import { CustomFieldFilter } from '@/components/filters/CustomFieldFilter';
 import { emptyCustomFilter } from '@/components/filters/customFilterState';
+import { PageMini } from '@/components/minis/PageMini';
 
 type ShowRef = {
   id: string;
@@ -473,6 +474,8 @@ function ProducerShowsBookings() {
           onOpen={rail.expand}
         />
       )}
+
+      <PageMini page="bookings" />
 
       <div className="min-w-0 space-y-6">
       <div className="flex flex-wrap items-center gap-3">

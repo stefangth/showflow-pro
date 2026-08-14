@@ -5,6 +5,7 @@ import { UsersTab } from "@/components/platform/UsersTab";
 import { PlatformAdminsTab } from "@/components/platform/PlatformAdminsTab";
 import { PlatformDefaultsTab } from "@/components/platform/PlatformDefaultsTab";
 import { SystemHealthTab } from "@/components/platform/SystemHealthTab";
+import { PageMini } from "@/components/minis/PageMini";
 
 export default function PlatformPage() {
   const [tab, setTab] = useState("orgs");
@@ -14,6 +15,7 @@ export default function PlatformPage() {
         <h1 className="font-display text-[32px] font-semibold tracking-tight">Platform Console</h1>
         <p className="text-muted-foreground mt-1">Organizations, users, platform admins and defaults</p>
       </div>
+      <PageMini page="platform" />
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
           <TabsTrigger value="orgs">Organizations</TabsTrigger>

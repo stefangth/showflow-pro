@@ -11,6 +11,7 @@ import { Users, Activity, Database } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { PeopleTab } from '@/components/admin/people/PeopleTab';
 import { fetchAdminAuditLogs, fetchAdminSyncLogs, fetchAdminStats } from '@/data/admin';
+import { PageMini } from '@/components/minis/PageMini';
 
 /** Row caps for the admin activity panels. */
 const AUDIT_LOG_LIMIT = 50;
@@ -67,6 +68,8 @@ export default function AdminPage() {
         <h1 className="font-display text-[32px] font-semibold tracking-tight">Admin Panel</h1>
         <p className="text-muted-foreground mt-1">Identity & access management, audit trail, sync status</p>
       </div>
+
+      <PageMini page="admin" />
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {[

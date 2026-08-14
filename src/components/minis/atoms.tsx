@@ -106,6 +106,22 @@ export function MiniTimelineRow({ initials, name, detail, time, tone = 'bg-accen
   );
 }
 
+/** A non-interactive pseudo-button for illustrations (primary = accent fill). */
+export function MiniButton({ children, primary }: { children: ReactNode; primary?: boolean }) {
+  return (
+    <span
+      className={cn(
+        'inline-flex h-7 flex-1 items-center justify-center rounded-s border-[0.5px] text-[12px] font-medium',
+        primary
+          ? 'border-accent-600 bg-accent-500 text-white'
+          : 'border-border bg-card text-foreground',
+      )}
+    >
+      {children}
+    </span>
+  );
+}
+
 /** One week strip of seven day cells. `days` is [{ n, tone }] where tone selects the fill. */
 export type DayTone = 'idle' | 'muted' | 'blocked' | 'offer';
 export function MiniWeek({ days }: { days: readonly { n: number; tone: DayTone }[] }) {

@@ -40,6 +40,7 @@ import { useColumnHeaders } from '@/features/editor/useColumnHeaders';
 import { ColumnLayoutEditor } from '@/features/editor/ColumnLayoutEditor';
 import { useToast } from '@/hooks/use-toast';
 import { useRailDismissed } from '@/components/setup/useRailDismissed';
+import { PageMini } from '@/components/minis/PageMini';
 
 export default function AvailabilityPage() {
   return <ArtistAvailability />;
@@ -270,6 +271,8 @@ function ArtistAvailability() {
         <h1 className="font-display text-[32px] font-semibold tracking-tight">{pageCopy.title}</h1>
         <p className="text-muted-foreground mt-1">{pageCopy.subtitle}</p>
       </div>
+
+      <PageMini page="availability" />
 
       <div className="flex flex-wrap items-center gap-3">
         <div className="inline-flex rounded-md border border-input p-0.5">
