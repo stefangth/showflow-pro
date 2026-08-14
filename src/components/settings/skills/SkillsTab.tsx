@@ -54,8 +54,8 @@ function requiredByLabel(row: SkillCatalogRow): string {
  * (same hooks, same gating, same delete-when-unused rule) — only the shell and
  * the create/rename interactions (now dialogs instead of an inline row) differ.
  *
- * `orgId` is accepted for the standalone-tab contract (mirrors PermissionsTab /
- * TrustDataTab) even though the underlying useSkills hooks read `currentOrg`
+ * `orgId` is accepted for the standalone-tab contract (mirrors CastsCoverageTab /
+ * RolesRightsTab) even though the underlying useSkills hooks read `currentOrg`
  * from AuthContext directly; it also lets the tab render nothing before an org
  * is resolved, matching every other org-scoped Settings tab.
  */
@@ -171,7 +171,7 @@ export function SkillsTab({ orgId }: { orgId: string }) {
     <div className="space-y-5">
       <div className="space-y-1">
         <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
-          Organization · Catalog
+          ORGANIZATION · CATALOG
         </p>
         <h1 className="font-display text-2xl font-semibold tracking-tight">Skills</h1>
         <p className="text-sm text-muted-foreground">

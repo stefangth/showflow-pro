@@ -125,6 +125,17 @@ export function OwnershipPanel({ orgId }: Props) {
     return map;
   }, [assignments]);
 
+  // `program` on show_assignments is free text with no FK to the catalog, so a rename or
+  // deletion of a show can leave an assignment's program with no matching current show -
+  // it is still effective for routing, so it must still render. displayPrograms is the
+  // full union: every catalog program (even ownerless ones, for the "Owners by program"
+  // empty state) plus every orphan program that only exists via an assignment.
+  const orphanPrograms = useMemo(
+    () => Array.from(assignmentsByProgram.keys()).filter((p) => !programDateCounts.has(p)).sort(),
+    [assignmentsByProgram, programDateCounts],
+  );
+  const displayPrograms = useMemo(() => [...programs, ...orphanPrograms], [programs, orphanPrograms]);
+
   // Routing resolver input: the raw assignment rows reshaped into RoutingAssignment,
   // scoped by city_id (matches the routing-check select's value domain below).
   const routingAssignments: RoutingAssignment[] = useMemo(
@@ -206,13 +217,10 @@ export function OwnershipPanel({ orgId }: Props) {
     [routingAssignments, effectiveRcProgram, rcSubProgram, rcCityId],
   );
 
-  const reasonFor = (rank: RoutingRank | null): string => {
-    if (rank === null) return "No owner covers this show. Notifications fall back to the admins.";
-    if (rank === 4) return "Exact match. This owner is assigned to this exact sub-program and city.";
-    if (rank === 3) return "City match. This owner covers this city across every sub-program.";
-    if (rank === 2) return "Sub match. This owner covers this sub-program across every city.";
-    return "Program match. This owner covers the whole program with no city or sub-program restriction.";
-  };
+  const reasonFor = (notified: RoutingAssignment[]): string =>
+    notified.length === 0
+      ? "No owner covers this show. Notifications fall back to the admins."
+      : "Every owner whose scope covers this show is notified.";
 
   const rcSubProgramOptions = useMemo(
     () => Array.from(new Set((pairsQ.data ?? []).filter((p) => p.program === effectiveRcProgram).map((p) => p.sub_program))).sort(),
@@ -262,7 +270,7 @@ export function OwnershipPanel({ orgId }: Props) {
           <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
             <div>
               <CardTitle className="font-display">Owners by program</CardTitle>
-              <CardDescription>Most specific scope wins. Rank is shown per row.</CardDescription>
+              <CardDescription>Every owner whose scope matches is notified. Scope is shown per row.</CardDescription>
             </div>
             <Button
               type="button"
@@ -327,27 +335,33 @@ export function OwnershipPanel({ orgId }: Props) {
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Ranks as Program, the broadest scope. Narrow it with a sub-program or city to outrank an existing owner.
+                  Ranks as Program, the broadest scope. Narrow it with a sub-program or city to add a more specific owner alongside this one.
                 </p>
               </div>
             )}
 
-            {programs.length === 0 ? (
+            {displayPrograms.length === 0 ? (
               <p className="text-sm text-muted-foreground">No programs in the catalog yet.</p>
             ) : (
               <div className="space-y-5">
-                {programs.map((program) => {
+                {displayPrograms.map((program) => {
                   const rows = assignmentsByProgram.get(program) ?? [];
-                  const maxSpecificity = rows.reduce((max, a) => Math.max(max, specificityOf(a)), 0);
+                  const isOrphan = !programDateCounts.has(program);
                   return (
                     <div key={program} className="space-y-1.5">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{program}</p>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        {program}
+                        {isOrphan && (
+                          <span className="ml-1.5 font-normal normal-case text-muted-foreground/80">
+                            (not in the current catalog, still effective for routing)
+                          </span>
+                        )}
+                      </p>
                       {rows.length === 0 ? (
                         <p className="text-sm text-muted-foreground">No owner assigned.</p>
                       ) : (
                         rows.map((a) => {
                           const rank = specificityOf(a);
-                          const wins = rank === maxSpecificity;
                           const name = ownerName(a);
                           const cityName = a.city_id ? citiesById.get(a.city_id) ?? a.city_id : null;
                           return (
@@ -369,11 +383,7 @@ export function OwnershipPanel({ orgId }: Props) {
                                   <Badge variant="neutral">any city</Badge>
                                 )}
                               </div>
-                              {wins ? (
-                                <Badge variant="accent">Wins first</Badge>
-                              ) : (
-                                <Badge variant="neutral">{RANK_LABEL[rank]}</Badge>
-                              )}
+                              <Badge variant="neutral">{RANK_LABEL[rank]}</Badge>
                               <IconTooltip label="Remove owner">
                                 <button
                                   type="button"
@@ -440,26 +450,32 @@ export function OwnershipPanel({ orgId }: Props) {
             <div className="space-y-1.5 rounded-[var(--radius-m)] border border-accent-200 bg-accent-50 p-3">
               <p className="text-[11px] font-semibold uppercase tracking-[1.2px] text-accent-700">Notified</p>
               <p className="text-sm font-semibold text-foreground">
-                {routingResult.winner ? routingResult.winner.owner : "Admins only"}
+                {routingResult.notified.length > 0
+                  ? routingResult.notified.map((a) => a.owner).join(", ")
+                  : "Admins only"}
               </p>
-              <p className="text-xs text-muted-foreground">{reasonFor(routingResult.rankMatched)}</p>
+              <p className="text-xs text-muted-foreground">{reasonFor(routingResult.notified)}</p>
             </div>
 
             <div className="space-y-1">
-              <p className="text-[11px] font-semibold uppercase tracking-[1.2px] text-muted-foreground">Precedence</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[1.2px] text-muted-foreground">
+                Precedence (informational)
+              </p>
               {[...routingResult.ladder].reverse().map((entry) => (
                 <div key={entry.rank} className="flex items-center justify-between gap-2 text-sm">
-                  <span className={cn("text-muted-foreground", entry.rank === routingResult.rankMatched && "font-medium text-foreground")}>
+                  <span className={cn("text-muted-foreground", entry.owners.length > 0 && "font-medium text-foreground")}>
                     {entry.rank}. {entry.label}
                   </span>
-                  <span className={cn("truncate text-right", entry.owner ? "text-foreground" : "text-muted-foreground")}>
-                    {entry.owner ?? "no rule"}
+                  <span className={cn("truncate text-right", entry.owners.length > 0 ? "text-foreground" : "text-muted-foreground")}>
+                    {entry.owners.length > 0 ? entry.owners.map((o) => o.owner).join(", ") : "no rule"}
                   </span>
                 </div>
               ))}
             </div>
 
-            <p className="text-xs text-muted-foreground">Admins are always fallback recipients.</p>
+            {routingResult.notified.length === 0 && (
+              <p className="text-xs text-muted-foreground">Admins are the fallback recipients when no owner matches.</p>
+            )}
           </CardContent>
         </Card>
       </div>

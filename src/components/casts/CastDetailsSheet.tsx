@@ -13,7 +13,6 @@ import { useAuth } from '@/features/auth/AuthContext';
 import { useCan } from '@/hooks/useCapabilities';
 import { useEditorConfig } from '@/features/editor/EditorContext';
 import { ROUTES } from '@/config/app.config';
-import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
@@ -366,10 +365,7 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
                         <p className="text-sm font-medium">{city.name}</p>
                         <p className="text-xs text-muted-foreground mt-0.5">{note}</p>
                       </div>
-                      <Badge
-                        variant={tier === 1 ? 'outline' : 'neutral'}
-                        className={cn('shrink-0', tier === 1 && 'bg-accent-100 text-accent-700 border-transparent')}
-                      >
+                      <Badge variant={tier === 1 ? 'accent' : 'neutral'} className="shrink-0">
                         {tier != null ? `Tier ${tier}` : 'Not in order'}
                       </Badge>
                     </div>

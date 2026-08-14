@@ -1,16 +1,21 @@
 /**
  * Pure client-side mirror of the `resolve_show_assignments(p_program, p_sub_program,
- * p_city_id, p_org)` RPC's precedence rule, for the Settings -> Casts & coverage ->
+ * p_city_id, p_org)` RPC's matching rule, for the Settings -> Casts & coverage ->
  * Production Ownership "routing check" tester. No Supabase call: it resolves entirely
  * from the assignments already fetched for the page via `fetchShowAssignments`.
  *
- * Specificity (mirrors the RPC's CASE, ORDER BY specificity DESC):
+ * The RPC returns EVERY assignment row whose scope matches (specificity > 0), not a
+ * single most-specific "winner" - the real callers (expire-offers, tier-at-risk-watcher,
+ * the booking-transition triggers) notify the full deduped set of producer_user_ids it
+ * returns. This resolver mirrors that: `notified` is the full matching set.
+ *
+ * Specificity (mirrors the RPC's CASE, used only to group the ladder for display):
  *   4 = sub_program + city both match  ("Exact")
  *   3 = city matches, sub_program is unset on the rule ("City")
  *   2 = sub_program matches, city is unset on the rule ("Sub")
  *   1 = program only, both unset on the rule ("Program")
  * The admin fallback (no matching rule at all) is APPLICATION-level, not part of this
- * resolver — callers render their own "falls back to admins" copy when `winner` is null.
+ * resolver - callers render their own "falls back to admins" copy when `notified` is empty.
  */
 
 export type RoutingRank = 1 | 2 | 3 | 4;
@@ -36,19 +41,21 @@ export interface RoutingQuery {
 export interface RoutingLadderEntry {
   rank: RoutingRank;
   label: string;
-  owner: string | null;
+  /** Every matching owner at this specificity level, deduped by producer. */
+  owners: RoutingAssignment[];
 }
 
 export interface RoutingResult {
-  winner: RoutingAssignment | null;
-  rankMatched: RoutingRank | null;
+  /** Every assignment whose scope matches the query, deduped by producer - the full set
+   *  that would actually be notified (the RPC's real behavior: additive, not "winner takes all"). */
+  notified: RoutingAssignment[];
   /** Precedence levels 4 (most specific) down to 1 (least specific), each with the
-   *  owner that would apply at that level for this query, or null if no rule occupies it. */
+   *  matching owners at that level, informational only (no single level "wins"). */
   ladder: RoutingLadderEntry[];
 }
 
 /** Rank -> the same short specificity term used by the assignment-row badges
- *  (see ProductionOwnershipTab's inline Exact/City/Sub/Program badge). */
+ *  (see OwnershipPanel's inline Exact/City/Sub/Program scope badge). */
 export const RANK_LABEL: Record<RoutingRank, string> = {
   4: "Exact",
   3: "City",
@@ -72,29 +79,34 @@ function matchesQuery(a: RoutingAssignment, query: RoutingQuery): boolean {
   return true;
 }
 
+/** Dedup by owner, keeping the first occurrence (stable, input order preserved). */
+function dedupeByOwner(assignments: RoutingAssignment[]): RoutingAssignment[] {
+  const seen = new Set<string>();
+  const result: RoutingAssignment[] = [];
+  for (const a of assignments) {
+    if (seen.has(a.owner)) continue;
+    seen.add(a.owner);
+    result.push(a);
+  }
+  return result;
+}
+
 /**
- * Resolve which assignment would receive notifications for `query`, plus the full
- * precedence ladder for that query. Deterministic: on a specificity tie, the first
- * matching assignment in input order wins (mirrors a stable SQL ORDER BY with no
- * further tiebreaker column) and is never mutated.
+ * Resolve every assignment that would receive notifications for `query` (the union of
+ * all matching scopes, deduped by owner - mirrors the RPC's real all-matching-rows
+ * behavior), plus the full precedence ladder grouping those matches by specificity for
+ * informational display. Pure and deterministic: never mutates its inputs, and ties are
+ * broken by stable input order.
  */
 export function resolveRouting(assignments: RoutingAssignment[], query: RoutingQuery): RoutingResult {
   const candidates = assignments.filter((a) => matchesQuery(a, query));
+  const notified = dedupeByOwner(candidates);
 
-  let winner: RoutingAssignment | null = null;
-  let rankMatched: RoutingRank | null = null;
-  for (const candidate of candidates) {
-    const rank = specificity(candidate);
-    if (rankMatched === null || rank > rankMatched) {
-      winner = candidate;
-      rankMatched = rank;
-    }
-  }
+  const ladder: RoutingLadderEntry[] = RANKS_MOST_SPECIFIC_FIRST.map((rank) => ({
+    rank,
+    label: RANK_LABEL[rank],
+    owners: dedupeByOwner(candidates.filter((c) => specificity(c) === rank)),
+  }));
 
-  const ladder: RoutingLadderEntry[] = RANKS_MOST_SPECIFIC_FIRST.map((rank) => {
-    const occupant = candidates.find((c) => specificity(c) === rank) ?? null;
-    return { rank, label: RANK_LABEL[rank], owner: occupant?.owner ?? null };
-  });
-
-  return { winner, rankMatched, ladder };
+  return { notified, ladder };
 }

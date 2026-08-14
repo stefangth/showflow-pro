@@ -64,7 +64,7 @@ describe("SkillsTab", () => {
   it("renders the header and catalog rows with usage counts on the first render", () => {
     renderTab();
 
-    expect(screen.getByText("Organization · Catalog")).toBeInTheDocument();
+    expect(screen.getByText("ORGANIZATION · CATALOG")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Skills" })).toBeInTheDocument();
 
     const vocalsRow = screen.getByTestId("skill-row-skill-1");

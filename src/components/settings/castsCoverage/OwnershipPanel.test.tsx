@@ -24,12 +24,15 @@ Object.assign(
     },
     show_dates: { data: [{ show_id: "show-1" }, { show_id: "show-1" }, { show_id: "show-2" }], error: null },
     // Hamlet has two owners: a program-only fallback (Producer One) and a Berlin-scoped
-    // override (Berlin Producer) that should only win when the routing check targets Berlin.
-    // Macbeth has no assignment at all -> the no-owner banner.
+    // override (Berlin Producer) - both are notified for a Berlin-scoped query since every
+    // matching owner is notified, not just the most specific. Macbeth has no assignment at
+    // all -> the no-owner banner. Orphan Play has an assignment but no matching show at all
+    // (renamed/deleted program, free-text with no FK) - it must still render as a group.
     show_assignments: {
       data: [
         { id: "sa-1", producer_user_id: "u1", program: "Hamlet", sub_program: null, city_id: null },
         { id: "sa-2", producer_user_id: "u2", program: "Hamlet", sub_program: null, city_id: "city-1" },
+        { id: "sa-3", producer_user_id: "u1", program: "Orphan Play", sub_program: null, city_id: null },
       ],
       error: null,
     },
@@ -56,14 +59,16 @@ import { OwnershipPanel } from "./OwnershipPanel";
 describe("OwnershipPanel", () => {
   beforeEach(() => { vi.clearAllMocks(); vi.mocked(useCan).mockReturnValue(true); });
 
-  it("groups owners by program with rank badges, most-specific row winning first", async () => {
+  it("groups owners by program with scope badges per row", async () => {
     renderWithProviders(<OwnershipPanel orgId="org-1" />);
 
     expect((await screen.findAllByText("Producer One")).length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Berlin Producer").length).toBeGreaterThanOrEqual(1);
-    // Berlin Producer's row is the most specific for Hamlet (city-scoped beats program-only).
-    expect(screen.getByText("Wins first")).toBeInTheDocument();
-    // "Program" also labels the routing-check Program select, so scope to the rank badge.
+    // Every row gets a neutral scope label reflecting its own specificity - no row is
+    // singled out as a "winner". "City" and "Program" also label the routing-check
+    // selects, so scope to "at least one" rather than a single exact match.
+    expect(screen.queryByText("Wins first")).not.toBeInTheDocument();
+    expect(screen.getAllByText("City").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Program").length).toBeGreaterThanOrEqual(1);
   });
 
@@ -75,19 +80,47 @@ describe("OwnershipPanel", () => {
     expect(screen.getByText(/routes to admins only/)).toBeInTheDocument();
   });
 
-  it("updates the routing check result when the scope selects change", async () => {
+  it("renders an orphan-program group for an assignment whose program has no matching show", async () => {
     renderWithProviders(<OwnershipPanel orgId="org-1" />);
 
-    // Default scope (Hamlet / Any sub-program / Any city) resolves to the program-only owner.
+    expect((await screen.findAllByText("Orphan Play")).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText(/not in the current catalog/)).toBeInTheDocument();
+    // The orphan program's owner still renders like any other row.
     expect((await screen.findAllByText("Producer One")).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText(/Program match/)).toBeInTheDocument();
+  });
+
+  it("notifies every owner whose scope matches, not a single winner", async () => {
+    renderWithProviders(<OwnershipPanel orgId="org-1" />);
+
+    // Default scope (Hamlet / Any sub-program / Any city) only matches the program-only owner.
+    expect(await screen.findByText(/Every owner whose scope covers this show is notified\./)).toBeInTheDocument();
+    const notifiedHeading = screen.getByText("Notified");
+    expect(notifiedHeading.parentElement).toHaveTextContent("Producer One");
 
     // Selects render without an accessible name; routing-check order is Program, Sub-program, City.
     fireEvent.click(screen.getAllByRole("combobox")[2]);
     fireEvent.click(await screen.findByRole("option", { name: "Berlin" }));
 
-    expect(await screen.findByText(/City match/)).toBeInTheDocument();
-    expect(screen.getAllByText("Berlin Producer").length).toBeGreaterThanOrEqual(1);
+    // Scoping to Berlin now matches BOTH the program-only owner and the Berlin-scoped
+    // owner - both must appear in the notified set, since the routing engine notifies the
+    // full union of matching scopes.
+    await screen.findAllByText("Berlin Producer");
+    expect(notifiedHeading.parentElement).toHaveTextContent("Producer One");
+    expect(notifiedHeading.parentElement).toHaveTextContent("Berlin Producer");
+    // The admins-fallback line only appears when nothing matches.
+    expect(screen.queryByText(/fallback recipients when no owner matches/)).not.toBeInTheDocument();
+  });
+
+  it("falls back to admins-only when no assignment matches the routing-check scope", async () => {
+    renderWithProviders(<OwnershipPanel orgId="org-1" />);
+
+    // Macbeth has no owner at all.
+    fireEvent.click(screen.getAllByRole("combobox")[0]);
+    fireEvent.click(await screen.findByRole("option", { name: "Macbeth" }));
+
+    expect(await screen.findByText("Admins only")).toBeInTheDocument();
+    expect(screen.getByText(/No owner covers this show\. Notifications fall back to the admins\./)).toBeInTheDocument();
+    expect(screen.getByText(/Admins are the fallback recipients when no owner matches\./)).toBeInTheDocument();
   });
 
   it("gates the assign-owner and remove controls on manage_ownership", async () => {

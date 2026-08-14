@@ -4,10 +4,12 @@ import { resolveRouting, type RoutingAssignment } from "./routing";
 /**
  * Mirrors the resolve_show_assignments RPC's specificity CASE (see docs/adr and the RPC
  * itself): 4 = sub_program+city match, 3 = city match & sub null, 2 = sub match & city
- * null, 1 = program-only. ORDER BY specificity DESC -> most specific wins.
+ * null, 1 = program-only. The RPC returns EVERY row with specificity > 0 (no ORDER BY
+ * LIMIT, no max filter) and real callers notify the full deduped set - there is no
+ * single "winner", everyone whose scope matches is notified.
  */
 describe("resolveRouting", () => {
-  it("exact (sub+city) beats city beats sub beats program-only", () => {
+  it("notifies every matching owner across all specificity levels, not just the most specific", () => {
     const assignments: RoutingAssignment[] = [
       { id: "a-program", owner: "Program Owner", program: "Hamlet", subProgram: null, city: null },
       { id: "a-sub", owner: "Sub Owner", program: "Hamlet", subProgram: "Elsinore", city: null },
@@ -18,18 +20,48 @@ describe("resolveRouting", () => {
 
     const result = resolveRouting(assignments, query);
 
-    expect(result.winner?.id).toBe("a-exact");
-    expect(result.rankMatched).toBe(4);
-    // Every precedence level is occupied for this query.
+    expect(result.notified.map((a) => a.id).sort()).toEqual(
+      ["a-city", "a-exact", "a-program", "a-sub"].sort(),
+    );
     expect(result.ladder).toEqual([
-      { rank: 4, label: "Exact", owner: "Exact Owner" },
-      { rank: 3, label: "City", owner: "City Owner" },
-      { rank: 2, label: "Sub", owner: "Sub Owner" },
-      { rank: 1, label: "Program", owner: "Program Owner" },
+      { rank: 4, label: "Exact", owners: [assignments[3]] },
+      { rank: 3, label: "City", owners: [assignments[2]] },
+      { rank: 2, label: "Sub", owners: [assignments[1]] },
+      { rank: 1, label: "Program", owners: [assignments[0]] },
     ]);
   });
 
-  it("returns a null winner when no assignment matches the queried program", () => {
+  it("notifies two owners tied at the same specificity, plus a broader program-only owner and a narrower city owner", () => {
+    const assignments: RoutingAssignment[] = [
+      { id: "a-program", owner: "Program Owner", program: "Hamlet", subProgram: null, city: null },
+      { id: "a-city-1", owner: "City Owner One", program: "Hamlet", subProgram: null, city: "berlin" },
+      { id: "a-city-2", owner: "City Owner Two", program: "Hamlet", subProgram: null, city: "berlin" },
+    ];
+    const query = { program: "Hamlet", subProgram: null, city: "berlin" };
+
+    const result = resolveRouting(assignments, query);
+
+    expect(result.notified.map((a) => a.id).sort()).toEqual(
+      ["a-city-1", "a-city-2", "a-program"].sort(),
+    );
+    const rank3 = result.ladder.find((entry) => entry.rank === 3);
+    expect(rank3?.owners.map((a) => a.id).sort()).toEqual(["a-city-1", "a-city-2"]);
+  });
+
+  it("dedupes notified owners by producer when the same owner matches at multiple levels", () => {
+    const assignments: RoutingAssignment[] = [
+      { id: "a-program", owner: "Same Owner", program: "Hamlet", subProgram: null, city: null },
+      { id: "a-city", owner: "Same Owner", program: "Hamlet", subProgram: null, city: "berlin" },
+    ];
+    const query = { program: "Hamlet", subProgram: null, city: "berlin" };
+
+    const result = resolveRouting(assignments, query);
+
+    expect(result.notified).toHaveLength(1);
+    expect(result.notified[0].owner).toBe("Same Owner");
+  });
+
+  it("returns an empty notified set when no assignment matches the queried program", () => {
     const assignments: RoutingAssignment[] = [
       { id: "a-1", owner: "Owner One", program: "Hamlet", subProgram: null, city: null },
     ];
@@ -37,9 +69,8 @@ describe("resolveRouting", () => {
 
     const result = resolveRouting(assignments, query);
 
-    expect(result.winner).toBeNull();
-    expect(result.rankMatched).toBeNull();
-    expect(result.ladder.every((entry) => entry.owner === null)).toBe(true);
+    expect(result.notified).toEqual([]);
+    expect(result.ladder.every((entry) => entry.owners.length === 0)).toBe(true);
   });
 
   it("a program-only rule matches any sub-program and city", () => {
@@ -48,16 +79,13 @@ describe("resolveRouting", () => {
     ];
 
     const r1 = resolveRouting(assignments, { program: "Hamlet", subProgram: "Elsinore", city: "berlin" });
-    expect(r1.winner?.id).toBe("a-1");
-    expect(r1.rankMatched).toBe(1);
+    expect(r1.notified.map((a) => a.id)).toEqual(["a-1"]);
 
     const r2 = resolveRouting(assignments, { program: "Hamlet", subProgram: null, city: null });
-    expect(r2.winner?.id).toBe("a-1");
-    expect(r2.rankMatched).toBe(1);
+    expect(r2.notified.map((a) => a.id)).toEqual(["a-1"]);
 
     const r3 = resolveRouting(assignments, { program: "Hamlet", subProgram: "AnythingElse", city: "hamburg" });
-    expect(r3.winner?.id).toBe("a-1");
-    expect(r3.rankMatched).toBe(1);
+    expect(r3.notified.map((a) => a.id)).toEqual(["a-1"]);
   });
 
   it("a city-scoped rule does not match a different city", () => {
@@ -68,10 +96,9 @@ describe("resolveRouting", () => {
 
     const result = resolveRouting(assignments, query);
 
-    expect(result.winner).toBeNull();
-    expect(result.rankMatched).toBeNull();
+    expect(result.notified).toEqual([]);
     const rank3 = result.ladder.find((entry) => entry.rank === 3);
-    expect(rank3?.owner).toBeNull();
+    expect(rank3?.owners).toEqual([]);
   });
 
   it("a sub-program-scoped rule does not match a different sub-program", () => {
@@ -82,11 +109,10 @@ describe("resolveRouting", () => {
 
     const result = resolveRouting(assignments, query);
 
-    expect(result.winner).toBeNull();
-    expect(result.rankMatched).toBeNull();
+    expect(result.notified).toEqual([]);
   });
 
-  it("falls back to a program-only rule when a more specific rule exists for a different scope", () => {
+  it("excludes a more specific rule scoped to a different city from the notified set", () => {
     const assignments: RoutingAssignment[] = [
       { id: "a-program", owner: "Program Owner", program: "Hamlet", subProgram: null, city: null },
       { id: "a-city-berlin", owner: "Berlin Owner", program: "Hamlet", subProgram: null, city: "berlin" },
@@ -97,10 +123,9 @@ describe("resolveRouting", () => {
 
     const result = resolveRouting(assignments, query);
 
-    expect(result.winner?.id).toBe("a-program");
-    expect(result.rankMatched).toBe(1);
+    expect(result.notified.map((a) => a.id)).toEqual(["a-program"]);
     const rank3 = result.ladder.find((entry) => entry.rank === 3);
-    expect(rank3?.owner).toBeNull();
+    expect(rank3?.owners).toEqual([]);
   });
 
   it("is a pure function: does not mutate its inputs and is deterministic across calls", () => {
