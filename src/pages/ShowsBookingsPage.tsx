@@ -12,7 +12,6 @@ import {
   fetchBookingCountsByDate,
   fetchSoftBookedIdsForDate,
   notifyCast as notifyCastRequest,
-  openOfferTier,
 } from '@/data/bookings';
 import { fetchShowDatesList } from '@/data/showDates';
 import { useAuth } from '@/features/auth/AuthContext';
@@ -365,8 +364,6 @@ function ProducerShowsBookings() {
   };
   const onUndoLastReceipt = () => setClearedToday((prev) => prev.slice(0, -1));
 
-  const canRunOfferEngine = useCan('run_offer_engine');
-
   // "Extend 24h" (expires-today secondary) — no gate key on the button itself
   // (NeedsYouLens renders it unconditionally enabled), so the gate lives here.
   const extendHold = (dateId: string) => {
@@ -434,21 +431,13 @@ function ProducerShowsBookings() {
   // render the org's generic sample document under a date-specific label.
   const previewHireOrder = (dateId: string) => openShowDate(dateId);
 
-  /** Offer the queue's shortlisted artist for the top at-risk date. Note:
-   *  `openOfferTier` offers the WHOLE eligible set for the tier — there is no
-   *  single-artist offer endpoint, so `artistId` can't target just the clicked
-   *  row (see the task-8 report's "Open risk"). */
-  const offerArtist = (dateId: string, _artistId: string) => {
-    if (!canRunOfferEngine) return;
-    void openOfferTier(supabase, { showDateId: dateId, tier: 1 })
-      .then(({ offersCreated }) => {
-        const label = t('needsYou.toast.offered', { count: offersCreated });
-        toast.success(label);
-        queryClient.invalidateQueries({ queryKey: ['bookings'] });
-        if (offersCreated) addReceipt(dateId, label);
-      })
-      .catch((e) => toast.error((e as Error).message));
-  };
+  /** Offer the queue's shortlisted artist for the top at-risk date. There is no
+   *  single-artist offer endpoint — `openOfferTier` offers the WHOLE eligible
+   *  tier, so a per-artist "Offer" click must never call it directly (that
+   *  would silently offer everyone shortlisted, not just the clicked row).
+   *  Routes to the casting UI instead, same as `openCasting`, so the producer
+   *  picks who to offer explicitly on the Offers tab. */
+  const offerArtist = (dateId: string, _artistId: string) => openCastingDate(dateId);
 
   // Both bulk wrappers push a receipt per date once dispatched — `confirmAll`
   // after the shared `confirmHoldsForDate` calls settle (it swallows its own

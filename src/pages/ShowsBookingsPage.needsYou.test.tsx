@@ -125,8 +125,15 @@ vi.mock("@/features/editor/EditorContext", () => ({
   useEditorConfig: () => ({ isEditorMode: false, getColumnLabel: (id: string) => id, getCustomFieldDefs: () => [] }),
 }));
 vi.mock("@/components/shows/ShowDateDetailSheet", () => ({
-  ShowDateDetailSheet: ({ showDateId, open }: { showDateId: string | null; open: boolean }) => (
-    <div data-testid="detail-sheet" data-show-date-id={showDateId ?? ""} data-open={String(open)} />
+  ShowDateDetailSheet: ({
+    showDateId, open, initialTab,
+  }: { showDateId: string | null; open: boolean; initialTab?: string }) => (
+    <div
+      data-testid="detail-sheet"
+      data-show-date-id={showDateId ?? ""}
+      data-open={String(open)}
+      data-initial-tab={initialTab ?? ""}
+    />
   ),
 }));
 vi.mock("@/components/shows/ShowDateFormDialog", () => ({ ShowDateFormDialog: () => null }));
@@ -237,5 +244,36 @@ describe("ShowsBookingsPage — needs-you queue wiring (Task 8)", () => {
     fireEvent.click(bulkBtn);
 
     expect(await screen.findByTestId("needs-you-receipt-0")).toBeInTheDocument();
+  });
+
+  // Finding 2 (whole-branch review): the shortlist's per-artist "Offer" button
+  // used to call openOfferTier, which offers the WHOLE eligible tier for the
+  // date — clicking Offer next to one name silently offered everyone. It must
+  // instead route to the casting UI (open the date on the Offers tab) so the
+  // producer picks who to offer explicitly, and must NOT invoke the
+  // open-offer-tier mutation at all.
+  it("shortlist 'Offer' opens the date on the Offers tab instead of offering the whole tier", async () => {
+    seedClient({
+      "fn:open-offer-tier": { data: { candidates: [{ id: "art-1", name: "Casey Candidate" }] }, error: null },
+    });
+    renderWithProviders(<ShowsBookingsPage />);
+
+    const offerBtn = await screen.findByTestId("queue-offer-art-1");
+    // Only the (possibly-refetched) dry-run shortlist query should have hit
+    // open-offer-tier so far — capture that baseline before clicking.
+    const callsBeforeClick = (client.calls as RecordedCall[]).filter((c) => c.table === "fn:open-offer-tier").length;
+    fireEvent.click(offerBtn);
+
+    const sheet = await screen.findByTestId("detail-sheet");
+    await waitFor(() => {
+      expect(sheet.getAttribute("data-show-date-id")).toBe("sd-at-risk");
+      expect(sheet.getAttribute("data-open")).toBe("true");
+      expect(sheet.getAttribute("data-initial-tab")).toBe("offers");
+    });
+
+    // The Offer click must not have fired a NEW, mutating open-offer-tier call
+    // (the whole-tier offer) — only opening the sheet.
+    const callsAfterClick = (client.calls as RecordedCall[]).filter((c) => c.table === "fn:open-offer-tier").length;
+    expect(callsAfterClick).toBe(callsBeforeClick);
   });
 });
