@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { PRODUCER_TONES, ARTIST_TONES } from './tone';
+import { PRODUCER_TONES, ARTIST_TONES, TONE_FILL, TONE_TEXT } from './tone';
 
 describe('calendar tones', () => {
   it('maps producer statuses to labels + semantic token classes', () => {
@@ -23,5 +23,17 @@ describe('calendar tones', () => {
     expect(ARTIST_TONES.suggested.tone).toBe('accent');
     expect(ARTIST_TONES.blocked.tone).toBe('destructive');
     expect(ARTIST_TONES.unanswered.tone).toBe('muted');
+  });
+  it('maps every Tone to a filled-segment class and a text class, all semantic tokens', () => {
+    const tones = ['success', 'warning', 'muted', 'destructive', 'accent'] as const;
+    tones.forEach(tone => {
+      expect(TONE_FILL[tone]).toMatch(/^bg-/);
+      expect(TONE_TEXT[tone]).toMatch(/^text-/);
+      expect(TONE_FILL[tone]).not.toMatch(/#|rgb/);
+      expect(TONE_TEXT[tone]).not.toMatch(/#|rgb/);
+    });
+    expect(TONE_FILL.success).toBe('bg-success');
+    expect(TONE_FILL.accent).toBe('bg-primary');
+    expect(TONE_TEXT.destructive).toBe('text-destructive');
   });
 });

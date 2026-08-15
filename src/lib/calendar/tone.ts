@@ -1,4 +1,22 @@
-import type { ToneSpec, ProducerStatus, ArtistStatus } from './types';
+import type { ToneSpec, ProducerStatus, ArtistStatus, Tone } from './types';
+
+/** Filled-segment class for a `FillMeter` bar of the given tone. */
+export const TONE_FILL: Record<Tone, string> = {
+  success: 'bg-success',
+  warning: 'bg-warning',
+  muted: 'bg-muted-foreground',
+  destructive: 'bg-destructive',
+  accent: 'bg-primary',
+};
+
+/** Text-color class for chip titles / flags of the given tone. */
+export const TONE_TEXT: Record<Tone, string> = {
+  success: 'text-success',
+  warning: 'text-warning',
+  muted: 'text-muted-foreground',
+  destructive: 'text-destructive',
+  accent: 'text-primary',
+};
 
 export const PRODUCER_TONES: Record<ProducerStatus, ToneSpec> = {
   fully_filled:     { label: 'Fully filled', badgeClass: 'bg-success/10 text-success',           railClass: 'bg-success',           tone: 'success' },
