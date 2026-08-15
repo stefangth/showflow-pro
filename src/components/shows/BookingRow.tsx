@@ -3,7 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { IconTooltip } from '@/components/common/IconTooltip';
 import { bookingStatusBadgeClass, bookingStatusDisplayLabel } from '@/lib/bookings';
-import { SOFT_BOOKED_MEANING } from '@/lib/bookings/actionCopy';
+import { softBookedMeaning } from '@/lib/bookings/actionCopy';
 import type { Booking, Artist } from '@/types';
 
 type BookingWithArtist = Booking & { artist: Pick<Artist, 'id' | 'name'> };
@@ -26,6 +26,7 @@ interface BookingRowProps {
  */
 export function BookingRow({ booking: b, canManage, showConfirm, onConfirm, onCancel }: BookingRowProps) {
   const { t } = useTranslation('showsDetail');
+  const { t: tAction } = useTranslation('bookingCopy');
   return (
     <div className="flex items-center justify-between p-3 rounded-lg border border-border">
       <div>
@@ -34,7 +35,7 @@ export function BookingRow({ booking: b, canManage, showConfirm, onConfirm, onCa
             badges "Accepted": the artist said yes, but nothing is booked until a producer
             confirms it. IconTooltip renders the badge unwrapped for any other status
             (empty label = its own documented escape hatch). */}
-        <IconTooltip label={b.status === 'soft_booked' ? SOFT_BOOKED_MEANING : ''}>
+        <IconTooltip label={b.status === 'soft_booked' ? softBookedMeaning(tAction) : ''}>
           <Badge variant="secondary" className={`text-xs mt-1 ${bookingStatusBadgeClass(b.status)}`}>
             {bookingStatusDisplayLabel(b.status)}
           </Badge>

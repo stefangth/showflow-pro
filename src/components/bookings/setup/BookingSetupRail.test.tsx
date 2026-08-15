@@ -66,6 +66,11 @@ import { BookingSetupRail } from "./BookingSetupRail";
 import { bookingOnboarding, VIEW_AS_ARTIST_TIP, TEAM_STEP_META } from "@/lib/dashboard/moduleOnboarding";
 import { describeTonight, describeTonightStandalone } from "@/lib/bookings/timingCopy";
 import { BOOKING_FLOW_DEFAULTS, applyPreset, type FlowTimes } from "@/lib/bookingFlow";
+import i18n from "@/i18n";
+
+// timingCopy now sources its strings from the `bookingCopy` namespace; bind an English `t`
+// so these assertions match the component's rendered (byte-identical) English output.
+const tBooking = i18n.getFixedT("en", "bookingCopy");
 
 /** A real normalized flow and a real set of hours, so the footer sentence is the engine's
  *  own rather than a literal this test agrees with itself about. */
@@ -227,7 +232,7 @@ describe("BookingSetupRail", () => {
     flowRef.value = classic;
     timesRef.value = hours;
     renderWithProviders(<MemoryRouter><BookingSetupRail orgId="org-1" /></MemoryRouter>);
-    expect(await screen.findByText(describeTonightStandalone(hours, classic)!)).toBeInTheDocument();
+    expect(await screen.findByText(describeTonightStandalone(hours, classic, tBooking)!)).toBeInTheDocument();
   });
 
   it("hands the sentence back to the panel that owns it once that panel is open", async () => {
@@ -239,8 +244,8 @@ describe("BookingSetupRail", () => {
     renderWithProviders(
       <MemoryRouter><BookingSetupRail orgId="org-1" initialStep="timing" /></MemoryRouter>,
     );
-    expect(await screen.findByText(describeTonight(hours, classic)!)).toBeInTheDocument();
-    expect(screen.getAllByText(describeTonight(hours, classic)!)).toHaveLength(1);
+    expect(await screen.findByText(describeTonight(hours, classic, tBooking)!)).toBeInTheDocument();
+    expect(screen.getAllByText(describeTonight(hours, classic, tBooking)!)).toHaveLength(1);
   });
 
   it("prints the direct-book org's one live hour, which nothing else on this rail states", async () => {
@@ -251,7 +256,7 @@ describe("BookingSetupRail", () => {
     flowRef.value = direct;
     timesRef.value = hours;
     renderWithProviders(<MemoryRouter><BookingSetupRail orgId="org-1" /></MemoryRouter>);
-    expect(await screen.findByText(describeTonightStandalone(hours, direct)!)).toBeInTheDocument();
+    expect(await screen.findByText(describeTonightStandalone(hours, direct, tBooking)!)).toBeInTheDocument();
     expect(screen.queryByText(/When a tier opens/)).not.toBeInTheDocument();
   });
 

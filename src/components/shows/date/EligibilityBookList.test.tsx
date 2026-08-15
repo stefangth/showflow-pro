@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { fireEvent, screen } from "@testing-library/react";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import { EligibilityBookList } from "./EligibilityBookList";
+import i18n from "@/i18n";
 import { unrestrictedEligibilityNote } from "@/lib/bookings/actionCopy";
 
 describe("EligibilityBookList", () => {
@@ -266,7 +267,7 @@ describe("EligibilityBookList", () => {
         orgName="Cirque Lumiere"
       />,
     );
-    expect(screen.getByText(unrestrictedEligibilityNote("Cirque Lumiere"))).toBeInTheDocument();
+    expect(screen.getByText(unrestrictedEligibilityNote("Cirque Lumiere", i18n.getFixedT("en", "bookingCopy")))).toBeInTheDocument();
   });
 
   it("omits the unrestricted-eligibility note when the date has a cast/city restriction", () => {
@@ -280,7 +281,7 @@ describe("EligibilityBookList", () => {
         orgName="Cirque Lumiere"
       />,
     );
-    expect(screen.queryByText(unrestrictedEligibilityNote("Cirque Lumiere"))).not.toBeInTheDocument();
+    expect(screen.queryByText(unrestrictedEligibilityNote("Cirque Lumiere", i18n.getFixedT("en", "bookingCopy")))).not.toBeInTheDocument();
   });
 
   it("renders no skill chips when skills are omitted or empty", () => {

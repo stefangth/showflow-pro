@@ -21,6 +21,7 @@ export function OfferResponseButtons({ bookingId, size = 'default' }: Props) {
   const qc = useQueryClient();
   const { toast } = useToast();
   const { t } = useTranslation('availability');
+  const { t: tAction } = useTranslation('bookingCopy');
   const { data: flow, isLoading: isFlowLoading } = useBookingFlow();
   // Auto-confirm on accept when the org's flow skips producer confirmation.
   const autoConfirm = !(flow?.producer_confirmation ?? true);
@@ -38,7 +39,7 @@ export function OfferResponseButtons({ bookingId, size = 'default' }: Props) {
         return;
       }
       if (accept) {
-        const note = acceptConsequenceNote(flow);
+        const note = acceptConsequenceNote(flow, tAction);
         toast({ title: note.title, description: note.description });
       } else {
         toast({

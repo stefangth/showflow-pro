@@ -1,5 +1,6 @@
-import { describe, it, expect } from "vitest";
-import { parseDateOnly, formatDateDMY, formatTimestampDMY, formatDateWithWeekday, toDateKey, isPastDate, PAST_DATE_TINT, pastRowClassName } from "./dates";
+import { describe, it, expect, afterEach } from "vitest";
+import i18n from "@/i18n";
+import { parseDateOnly, formatDateDMY, formatTimestampDMY, formatTimestampLocal, formatDateWithWeekday, toDateKey, isPastDate, PAST_DATE_TINT, pastRowClassName, weekdayShort, weekdayShortLabels, formatDayMonthShortYear, formatMonthYear, formatDayMonthYear, formatFullWeekdayDate } from "./dates";
 
 describe("parseDateOnly", () => {
   it("parses a YYYY-MM-DD string at local midnight (no UTC drift)", () => {
@@ -50,6 +51,69 @@ describe("formatDateWithWeekday", () => {
   it("prefixes the abbreviated weekday", () => {
     // 2026-04-23 is a Thursday
     expect(formatDateWithWeekday("2026-04-23")).toBe("Thu, 23/04/2026");
+  });
+});
+
+// The dd/MM/yyyy shape is numeric and locale-invariant; only the weekday name and the
+// short-month form follow the active language. These lock the German path so a language
+// switch actually reformats. i18n defaults to English, restored after each case.
+describe("locale-aware formatting", () => {
+  afterEach(async () => { await i18n.changeLanguage("en"); });
+
+  it("keeps English numeric shapes and English weekday by default", () => {
+    expect(weekdayShort("2026-04-23")).toBe("Thu");
+    expect(weekdayShortLabels()).toEqual(["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]);
+    expect(formatDayMonthShortYear("2026-04-23")).toBe("23 Apr 2026");
+  });
+
+  it("uses German weekday names and Monday-first labels under de", async () => {
+    await i18n.changeLanguage("de");
+    expect(formatDateWithWeekday("2026-04-23")).toBe("Do., 23/04/2026");
+    expect(weekdayShort("2026-04-23")).toBe("Do.");
+    expect(weekdayShortLabels()).toEqual(["Mo.", "Di.", "Mi.", "Do.", "Fr.", "Sa.", "So."]);
+    // dd/MM/yyyy stays numeric regardless of language.
+    expect(formatDateDMY("2026-04-23")).toBe("23/04/2026");
+  });
+
+  // formatMonthYear (calendar header): full month + year, weekday-free.
+  it("formatMonthYear renders the full month name in the active language", async () => {
+    expect(formatMonthYear(new Date(2026, 2, 1))).toBe("March 2026");
+    await i18n.changeLanguage("de");
+    expect(formatMonthYear(new Date(2026, 2, 1))).toBe("März 2026");
+  });
+
+  // formatDayMonthYear (bookings date column): zero-padded day + short month + year.
+  it("formatDayMonthYear zero-pads the day and localizes the short month", async () => {
+    expect(formatDayMonthYear("2026-10-23")).toBe("23 Oct 2026");
+    expect(formatDayMonthYear("2026-01-05")).toBe("05 Jan 2026");
+    await i18n.changeLanguage("de");
+    expect(formatDayMonthYear("2026-10-23")).toBe("23 Okt. 2026");
+  });
+
+  // formatFullWeekdayDate (cockpit sheet header): full weekday + day + full month + year.
+  it("formatFullWeekdayDate localizes the weekday and full month name", async () => {
+    // 2026-04-23 is a Thursday.
+    expect(formatFullWeekdayDate("2026-04-23")).toBe("Thursday, 23 April 2026");
+    await i18n.changeLanguage("de");
+    expect(formatFullWeekdayDate("2026-04-23")).toBe("Donnerstag, 23 April 2026");
+  });
+
+  // formatTimestampLocal (hire-order created_at/last_sent_at): pins English to en-GB
+  // day-first, not the bare 'en' code (which resolves to US month-first M/D/YYYY and
+  // would flip a hire-order date from DD/MM to MM/DD). Time-of-day is left to the
+  // runner's timezone, so assert only the day-first date ordering, not the exact string.
+  it("formatTimestampLocal renders a day-first medium date in the active language", async () => {
+    // UTC noon so the calendar day is stable across the CI timezone.
+    const iso = "2026-04-05T12:00:00Z";
+    const en = formatTimestampLocal(iso);
+    // en-GB medium is day-first ("5 Apr 2026, ..."), never US month-first ("Apr 5").
+    expect(en).toMatch(/^\d{1,2} \w/);
+    expect(en).not.toMatch(/^[A-Za-z]/);
+    expect(en).toContain("Apr");
+    await i18n.changeLanguage("de");
+    const de = formatTimestampLocal(iso);
+    // de-DE medium is numeric day-first ("05.04.2026, ..."), day before month.
+    expect(de).toMatch(/^\d{2}\.\d{2}\.\d{4}/);
   });
 });
 

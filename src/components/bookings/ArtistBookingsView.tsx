@@ -73,6 +73,7 @@ function customFor(d: DateRow): Record<string, unknown> | null {
  */
 export function ArtistBookingsView() {
   const { t } = useTranslation('bookings');
+  const { t: tFlow } = useTranslation('flowCopy');
   const { data: artist } = useMyArtist();
   const { data: eligibleDates, isLoading } = useArtistEligibleDates();
   const hireOrdersEnabled = useFeature('hire_orders');
@@ -81,8 +82,8 @@ export function ArtistBookingsView() {
   const { reference, customFieldKey } = useReferenceField();
   const flowQ = useBookingFlow();
   const flow = flowQ.data ?? BOOKING_FLOW_DEFAULTS;
-  const pageCopy = bookingsViewCopy(flow);
-  const statusLabels = bookingStatusLabels(flow);
+  const pageCopy = bookingsViewCopy(flow, tFlow);
+  const statusLabels = bookingStatusLabels(flow, tFlow);
   const { orderedColumns, visibleCount } = useColumnTemplate('bookings-artist');
   const { isEditorMode } = useEditorConfig();
   const columnHeaders = useColumnHeaders(orderedColumns);

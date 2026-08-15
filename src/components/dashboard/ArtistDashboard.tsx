@@ -44,13 +44,14 @@ function snap(data: OrderData, key: keyof OrderData): string {
  */
 export function ArtistDashboard() {
   const { t } = useTranslation('dashboard');
+  const { t: tFlow } = useTranslation('flowCopy');
   const navigate = useNavigate();
   const { data: artist } = useMyArtist();
   const { data: eligibleDates } = useArtistEligibleDates();
   const { reference, customFieldKey } = useReferenceField();
   const flowQ = useBookingFlow();
   const flow = flowQ.data ?? BOOKING_FLOW_DEFAULTS;
-  const meter = artistMeter(flow);
+  const meter = artistMeter(flow, tFlow);
 
   const hireOrdersEnabled = useFeature('hire_orders');
   const bookingFlowEnabled = useFeature('booking_flow');
