@@ -287,8 +287,11 @@ function ProducerShowsBookings() {
   }, [showDates, search, programs, timeframe, statusFilter, sort, customFilters, filterableDefs, customDefs]);
 
   const producerEntries = useMemo(
-    () => toProducerEntries(filtered, bookingCounts),
-    [filtered, bookingCounts]
+    // hireOrderReady is only fetched when hireOrdersOn (query disabled otherwise, see
+    // useDatesReadyForHireOrder above), so orderByDate is naturally undefined when the
+    // module is off — nothing changes for orgs without hire_orders.
+    () => toProducerEntries(filtered, bookingCounts, hireOrderReady?.orderByDate),
+    [filtered, bookingCounts, hireOrderReady]
   );
 
   // Cockpit pager: walk the current filtered/sorted list from the open sheet.

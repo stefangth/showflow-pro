@@ -5,17 +5,26 @@ import { PRODUCER_TONES, TONE_TEXT } from '@/lib/calendar/tone';
 import { toDateKey } from '@/lib/dates';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { HireOrderStatusBadge } from '@/components/hireOrders/HireOrderStatusBadge';
 import { FillMeter } from './FillMeter';
 
 export type AgendaAction = 'generate' | 'confirm' | 'open';
 
 /** Contextual action per date status (task 12 brief): only these three
- *  statuses carry a row action — cancelled/unconfigured dates get none. */
+ *  statuses carry a row action — cancelled/unconfigured dates get none. A
+ *  `fully_filled` date only offers Generate when it has no active order yet
+ *  (`hireOrderId == null`); an already-ordered date gets no action here — the
+ *  row instead renders its order status badge in the action column. */
 const ACTION_BY_STATUS: Partial<Record<ProducerStatus, { label: string; action: AgendaAction }>> = {
   fully_filled: { label: 'Generate hire order', action: 'generate' },
   partially_filled: { label: 'Confirm holds', action: 'confirm' },
   open: { label: 'Open casting', action: 'open' },
 };
+
+function actionForEntry(entry: ProducerDateEntry): { label: string; action: AgendaAction } | undefined {
+  if (entry.status === 'fully_filled' && entry.hireOrderId != null) return undefined;
+  return ACTION_BY_STATUS[entry.status];
+}
 
 const WEEK_OPTS = { weekStartsOn: 1 as const };
 
@@ -81,7 +90,7 @@ export function AgendaLens({ entries, onOpenDay, onAction, className }: AgendaLe
                 entry.mainSlots > 0
                   ? Array.from({ length: entry.mainSlots }, (_, i) => ({ filled: i < entry.confirmedMain }))
                   : [];
-              const actionDef = ACTION_BY_STATUS[entry.status];
+              const actionDef = actionForEntry(entry);
 
               return (
                 <div
@@ -124,7 +133,7 @@ export function AgendaLens({ entries, onOpenDay, onAction, className }: AgendaLe
                     {toneSpec.label}
                   </span>
                   <div className="flex w-[132px] shrink-0 justify-end">
-                    {actionDef && (
+                    {actionDef ? (
                       <Button
                         type="button"
                         variant="outline"
@@ -137,6 +146,14 @@ export function AgendaLens({ entries, onOpenDay, onAction, className }: AgendaLe
                       >
                         {actionDef.label}
                       </Button>
+                    ) : (
+                      entry.status === 'fully_filled' &&
+                      entry.hireOrderId &&
+                      entry.hireOrderStatus && (
+                        <span data-testid={`agenda-order-status-${entry.id}`}>
+                          <HireOrderStatusBadge status={entry.hireOrderStatus} />
+                        </span>
+                      )
                     )}
                   </div>
                 </div>

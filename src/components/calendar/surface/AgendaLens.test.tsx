@@ -22,6 +22,8 @@ function entry(overrides: Partial<ProducerDateEntry> = {}): ProducerDateEntry {
     understudySlots: 0,
     confirmedUs: 0,
     custom: null,
+    hireOrderId: null,
+    hireOrderStatus: null,
     ...overrides,
   };
 }
@@ -52,6 +54,21 @@ describe('AgendaLens', () => {
     fireEvent.click(actionBtn);
     expect(onAction).toHaveBeenCalledTimes(1);
     expect(onAction).toHaveBeenCalledWith(e, 'generate');
+  });
+
+  it('a fully-filled row with an active order shows the order status instead of "Generate hire order"', () => {
+    const e = entry({
+      id: 'pd-4',
+      status: 'fully_filled',
+      confirmedMain: 6,
+      hireOrderId: 'ho-1',
+      hireOrderStatus: 'issued',
+    });
+    const onAction = vi.fn();
+    render(<AgendaLens entries={[e]} onOpenDay={vi.fn()} onAction={onAction} />);
+
+    expect(screen.queryByTestId('agenda-action-pd-4')).not.toBeInTheDocument();
+    expect(screen.getByTestId('agenda-order-status-pd-4')).toHaveTextContent('Awaiting countersign');
   });
 
   it('shows "Confirm holds" for partially_filled and "Open casting" for open, and no action for cancelled', () => {

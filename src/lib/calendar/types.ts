@@ -11,6 +11,12 @@ export interface ProducerDateEntry {
   mainSlots: number; confirmedMain: number; acceptedMain: number; pendingMain: number;
   understudySlots: number; confirmedUs: number;
   custom: Record<string, unknown> | null;
+  /** The active (non-void) hire order covering this date, if any — mirrors
+   *  `hireOrderReady.orderByDate[dateId]` (see `useDatesReadyForHireOrder`).
+   *  `null` when no order exists yet, which is what makes a `fully_filled`
+   *  date eligible for "Generate hire order". */
+  hireOrderId: string | null;
+  hireOrderStatus: string | null;
 }
 
 export type ArtistStatus = 'confirmed' | 'soft_booked' | 'suggested' | 'blocked' | 'unanswered';

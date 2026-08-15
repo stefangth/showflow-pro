@@ -24,6 +24,8 @@ describe('MonthLens', () => {
         understudySlots: 0,
         confirmedUs: 0,
         custom: null,
+        hireOrderId: null,
+        hireOrderStatus: null,
       },
     ];
     const onSelectDay = vi.fn();

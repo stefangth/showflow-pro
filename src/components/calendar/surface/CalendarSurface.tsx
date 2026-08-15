@@ -182,7 +182,7 @@ export function CalendarSurface({
         actions.confirmHolds?.(withAccepted.id);
         return;
       }
-      const filled = dayProducerEntries.find((e) => e.status === 'fully_filled');
+      const filled = dayProducerEntries.find((e) => e.status === 'fully_filled' && e.hireOrderId == null);
       if (filled) actions.generateHireOrder?.(filled.id);
       return;
     }

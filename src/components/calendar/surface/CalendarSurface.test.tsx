@@ -24,6 +24,8 @@ function producerEntry(overrides: Partial<ProducerDateEntry> = {}): ProducerDate
     understudySlots: 0,
     confirmedUs: 0,
     custom: null,
+    hireOrderId: null,
+    hireOrderStatus: null,
     ...overrides,
   };
 }

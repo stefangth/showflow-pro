@@ -4,6 +4,7 @@ import { ARTIST_TONES, PRODUCER_TONES, TONE_TEXT, artistStatusLabel } from '@/li
 import { toDateKey } from '@/lib/dates';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { HireOrderStatusBadge } from '@/components/hireOrders/HireOrderStatusBadge';
 import { FillMeter } from './FillMeter';
 
 export interface DayRailStat {
@@ -37,11 +38,14 @@ interface DayRailProps {
 
 /** Producer primary-action default (spec §3.4): "Confirm holds" beats
  *  "Generate hire order" when a day has both — accepted-but-unconfirmed
- *  slots are the more urgent, blocking action. `undefined` = no primary
- *  action, so the caller may still force one via `primaryLabel`. */
+ *  slots are the more urgent, blocking action. A `fully_filled` entry only
+ *  offers Generate when it has no active order yet (`hireOrderId == null`);
+ *  an already-ordered date falls through to `undefined` so the rail's
+ *  secondary "Open date" action is the only one offered. `undefined` = no
+ *  primary action, so the caller may still force one via `primaryLabel`. */
 function producerPrimaryLabel(entries: ProducerDateEntry[]): string | undefined {
   if (entries.some(e => e.acceptedMain > 0)) return 'Confirm holds';
-  if (entries.some(e => e.status === 'fully_filled')) return 'Generate hire order';
+  if (entries.some(e => e.status === 'fully_filled' && e.hireOrderId == null)) return 'Generate hire order';
   return undefined;
 }
 
@@ -160,6 +164,11 @@ function ProducerDayCard({ entry }: { entry: ProducerDateEntry }) {
         </div>
       ) : (
         <p className={cn('mt-1.5 text-xs', TONE_TEXT[toneSpec.tone])}>{toneSpec.label}</p>
+      )}
+      {entry.hireOrderId && entry.hireOrderStatus && (
+        <div className="mt-1.5" data-testid={`day-rail-order-status-${entry.id}`}>
+          <HireOrderStatusBadge status={entry.hireOrderStatus} />
+        </div>
       )}
     </div>
   );

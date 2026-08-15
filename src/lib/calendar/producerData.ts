@@ -43,13 +43,23 @@ function displayStatus(row: ProducerShowDateRow): ProducerStatus {
   return row.status;
 }
 
+/** Minimal shape this module needs from `hireOrderReady.orderByDate`
+ *  (`HireOrderDateCoverage` in `src/data/hireOrders.ts`) — declared locally
+ *  per the same pure-lib-module rule as `ProducerShowDateRow` above. */
+export interface ProducerHireOrderCoverage {
+  id: string;
+  status: string;
+}
+
 export function toProducerEntries(
   showDates: ProducerShowDateRow[],
   counts: Map<string, DateBookingCounts> | undefined,
+  orderByDate?: Record<string, ProducerHireOrderCoverage>,
 ): ProducerDateEntry[] {
   return showDates.map((sd) => {
     const slots = showSlots(sd.show);
     const c = counts?.get(sd.id);
+    const order = orderByDate?.[sd.id];
     return {
       id: sd.id,
       date: parseDateOnly(sd.date),
@@ -68,6 +78,8 @@ export function toProducerEntries(
       understudySlots: slots?.understudies ?? 0,
       confirmedUs: c?.confirmedUs ?? 0,
       custom: sd.custom,
+      hireOrderId: order?.id ?? null,
+      hireOrderStatus: order?.status ?? null,
     };
   });
 }

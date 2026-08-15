@@ -90,6 +90,26 @@ describe('producerData', () => {
       const sd1 = entries.find((e) => e.id === 'sd1')!;
       expect(sd1.confirmedMain).toBe(0);
     });
+
+    it('defaults hireOrderId/hireOrderStatus to null when no order map is passed', () => {
+      const entries = toProducerEntries(rows, counts);
+      const sd1 = entries.find((e) => e.id === 'sd1')!;
+      expect(sd1.hireOrderId).toBeNull();
+      expect(sd1.hireOrderStatus).toBeNull();
+    });
+
+    it('populates hireOrderId/hireOrderStatus from the order map when a date is covered', () => {
+      const entries = toProducerEntries(rows, counts, {
+        sd1: { id: 'ho-1', status: 'issued' },
+      });
+      const sd1 = entries.find((e) => e.id === 'sd1')!;
+      const sd2 = entries.find((e) => e.id === 'sd2')!;
+      expect(sd1.hireOrderId).toBe('ho-1');
+      expect(sd1.hireOrderStatus).toBe('issued');
+      // sd2 has no entry in the order map -> stays null.
+      expect(sd2.hireOrderId).toBeNull();
+      expect(sd2.hireOrderStatus).toBeNull();
+    });
   });
 
   describe('monthCellsProducer', () => {

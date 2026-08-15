@@ -23,6 +23,8 @@ function producerEntry(overrides: Partial<ProducerDateEntry> = {}): ProducerDate
     understudySlots: 0,
     confirmedUs: 0,
     custom: null,
+    hireOrderId: null,
+    hireOrderStatus: null,
     ...overrides,
   };
 }
@@ -73,6 +75,30 @@ describe('DayRail', () => {
       />
     );
     expect(screen.getByTestId('day-rail-primary')).toHaveTextContent('Generate hire order');
+  });
+
+  it('producer: does not offer "Generate hire order" when the fully-filled date already has an active order', () => {
+    render(
+      <DayRail
+        role="producer"
+        day={new Date(2026, 7, 20)}
+        producerEntries={[
+          producerEntry({
+            status: 'fully_filled',
+            acceptedMain: 0,
+            confirmedMain: 6,
+            hireOrderId: 'ho-1',
+            hireOrderStatus: 'issued',
+          }),
+        ]}
+        stats={[]}
+        legend={[]}
+      />
+    );
+    expect(screen.queryByTestId('day-rail-primary')).not.toBeInTheDocument();
+    // Falls through to the rail's default secondary "Open date" action.
+    expect(screen.getByTestId('day-rail-secondary')).toHaveTextContent('Open date');
+    expect(screen.getByText('Awaiting countersign')).toBeInTheDocument();
   });
 
   it('producer: no primary button when neither condition applies', () => {
