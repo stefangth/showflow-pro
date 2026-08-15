@@ -165,6 +165,33 @@ describe('artistData', () => {
       expect(cells[0].chips).toEqual([]);
     });
 
+    it('reports overflow count when a day has more than 2 entries, without dropping any chips', () => {
+      const sameDayEligible: EligibleDate[] = [
+        {
+          id: 'sd-x', date: '2026-08-23', session_1: null, session_2: null, session_3: null,
+          status: 'open', city_id: null, show_id: 'show-x', venue: null, custom: null,
+          show: { id: 'show-x', program: 'Show X', sub_program: null, status: 'active' },
+        },
+        {
+          id: 'sd-y', date: '2026-08-23', session_1: null, session_2: null, session_3: null,
+          status: 'open', city_id: null, show_id: 'show-y', venue: null, custom: null,
+          show: { id: 'show-y', program: 'Show Y', sub_program: null, status: 'active' },
+        },
+        {
+          id: 'sd-z', date: '2026-08-23', session_1: null, session_2: null, session_3: null,
+          status: 'open', city_id: null, show_id: 'show-z', venue: null, custom: null,
+          show: { id: 'show-z', program: 'Show Z', sub_program: null, status: 'active' },
+        },
+      ];
+      const entries = toArtistEntries(sameDayEligible, new Map(), new Set(), new Map());
+      const anchor = new Date(2026, 7, 1);
+      const today = new Date(2026, 7, 15);
+      const cells = monthCellsArtist(entries, anchor, '', today);
+      const cell = cells.find((c) => c.day && toDateKey(c.day) === '2026-08-23');
+      expect(cell!.chips).toHaveLength(3);
+      expect(cell!.moreCount).toBe(1);
+    });
+
     it('marks isSelected/isToday from the given keys, and always leaves inRange false', () => {
       const entries = toArtistEntries(eligible, new Map(), new Set(), new Map());
       const anchor = new Date(2026, 7, 1);

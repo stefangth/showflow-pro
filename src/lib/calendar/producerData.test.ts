@@ -194,6 +194,34 @@ describe('producerData', () => {
       expect(cells[0].chips).toEqual([]);
     });
 
+    it('reports overflow count when a day has more than 2 entries, without dropping any chips', () => {
+      const rowA: ProducerShowDateRow = {
+        ...rows[0],
+        id: 'sd-x',
+        date: '2026-08-22',
+        show: { ...rows[0].show, program: 'Show X' },
+      };
+      const rowB: ProducerShowDateRow = {
+        ...rows[0],
+        id: 'sd-y',
+        date: '2026-08-22',
+        show: { ...rows[0].show, program: 'Show Y' },
+      };
+      const rowC: ProducerShowDateRow = {
+        ...rows[0],
+        id: 'sd-z',
+        date: '2026-08-22',
+        show: { ...rows[0].show, program: 'Show Z' },
+      };
+      const entries = toProducerEntries([rowA, rowB, rowC], counts);
+      const anchor = new Date(2026, 7, 1);
+      const today = new Date(2026, 7, 15);
+      const cells = monthCellsProducer(entries, anchor, '', [], today);
+      const cell = cells.find((c) => c.day && toDateKey(c.day) === '2026-08-22');
+      expect(cell!.chips).toHaveLength(3);
+      expect(cell!.moreCount).toBe(1);
+    });
+
     it('marks isSelected/isToday/inRange from the given keys', () => {
       const entries = toProducerEntries(rows, counts);
       const anchor = new Date(2026, 7, 1);

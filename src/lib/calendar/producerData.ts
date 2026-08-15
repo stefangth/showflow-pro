@@ -139,7 +139,7 @@ export function monthCellsProducer(
       inRange: rangeSet.has(key),
       flag: producerFlag(dayEntries),
       chips: dayEntries.map(chipFor),
-      moreCount: 0,
+      moreCount: Math.max(0, dayEntries.length - 2),
     };
   });
 }

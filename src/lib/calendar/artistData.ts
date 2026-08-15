@@ -101,7 +101,7 @@ export function monthCellsArtist(
       inRange: false,
       flag: artistFlag(dayEntries),
       chips: dayEntries.map(chipFor),
-      moreCount: 0,
+      moreCount: Math.max(0, dayEntries.length - 2),
     };
   });
 }
