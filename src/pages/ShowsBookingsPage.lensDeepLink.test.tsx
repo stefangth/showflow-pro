@@ -123,10 +123,13 @@ describe("ShowsBookingsPage — ?lens= deep link (Task 18)", () => {
     expect(screen.getByRole("tab", { name: "Month" })).toHaveAttribute("aria-selected", "false");
   });
 
-  it("an unrecognised ?lens= value is ignored, keeping the Month default", async () => {
+  it("an unrecognised ?lens= value is ignored, keeping the Needs-you default", async () => {
     renderAt("/bookings?lens=bogus");
     expect(await screen.findByTestId("calendar-surface")).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Month" })).toHaveAttribute("aria-selected", "true");
+    // The "Needs you" tab carries a count badge, which folds into its accessible
+    // name (e.g. "0 Needs you") — assert via the stable testid instead.
+    expect(screen.getByTestId("lens-tab-needs-you")).toHaveAttribute("data-active", "true");
+    expect(screen.getByRole("tab", { name: "Month" })).toHaveAttribute("aria-selected", "false");
   });
 
   it("changing the lens writes ?lens= to the URL, preserving the existing ?status=", async () => {

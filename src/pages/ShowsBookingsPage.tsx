@@ -4,7 +4,16 @@ import { useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import { bulkConfirmSoftBooked, fetchBookingCountsByDate, fetchSoftBookedIdsForDate } from '@/data/bookings';
+import {
+  bulkConfirmSoftBooked,
+  bulkDeclineSoftBooked,
+  dryRunOfferTier,
+  extendOfferExpiry,
+  fetchBookingCountsByDate,
+  fetchSoftBookedIdsForDate,
+  notifyCast as notifyCastRequest,
+  openOfferTier,
+} from '@/data/bookings';
 import { fetchShowDatesList } from '@/data/showDates';
 import { useAuth } from '@/features/auth/AuthContext';
 import { Input } from '@/components/ui/input';
@@ -35,7 +44,8 @@ import { useCan } from '@/hooks/useCapabilities';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { showSlots } from '@/lib/settings';
-import { parseDateOnly } from '@/lib/dates';
+import { formatDateWithWeekday, parseDateOnly } from '@/lib/dates';
+import { openPdfBase64 } from '@/lib/hireOrders/openPdf';
 import { useEditorConfig } from '@/features/editor/EditorContext';
 import { compareCustomValues, customFilterMatches, type CustomFilterState } from '@/lib/customFields';
 import { CustomFieldFilter } from '@/components/filters/CustomFieldFilter';
@@ -43,6 +53,8 @@ import { emptyCustomFilter } from '@/components/filters/customFilterState';
 import { PageMini } from '@/components/minis/PageMini';
 import { CalendarSurface } from '@/components/calendar/surface/CalendarSurface';
 import { toProducerEntries } from '@/lib/calendar/producerData';
+import { buildNeedsYouQueue } from '@/lib/calendar/needsYou';
+import { useBookingsWithArtist } from '@/hooks/useBookingsWithArtist';
 
 type ShowRef = {
   id: string;
@@ -129,7 +141,7 @@ function ProducerShowsBookings() {
     { value: `custom:${d.key}:desc` as ProducerSort, label: t('producer.sortDesc', { label: d.label }) },
   ]));
   const [customFilters, setCustomFilters] = useState<Record<string, CustomFilterState>>({});
-  const [lens, setLens] = useState<'month' | 'agenda'>('month');
+  const [lens, setLens] = useState<'needs-you' | 'month' | 'agenda'>('needs-you');
   const [activeShowDateId, setActiveShowDateId] = useState<string | null>(null);
   // Which tab the sheet should land on for the date about to open — reset on
   // every open so a stale "Open casting" request can't leak into a later
@@ -215,7 +227,7 @@ function ProducerShowsBookings() {
     if (from || to) {
       setTimeframe({ from: from ? parseISO(from) : null, to: to ? parseISO(to) : null });
     }
-    if (lensParam === 'month' || lensParam === 'agenda') {
+    if (lensParam === 'needs-you' || lensParam === 'month' || lensParam === 'agenda') {
       setLens(lensParam);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -307,6 +319,158 @@ function ProducerShowsBookings() {
     [filtered, bookingCounts, hireOrderReady]
   );
 
+  // ── "Needs you" queue (calendar surface default lens) ─────────────────────
+  // Queue-relevant date ids: every non-cancelled date, plus a cancelled date
+  // whose cast hasn't been notified yet — the union `buildNeedsYouQueue` can
+  // actually surface. Bounded by the page's own search/status/program filters,
+  // same as `producerEntries` itself.
+  const needsYouDateIds = useMemo(
+    () => producerEntries.filter((e) => e.status !== 'cancelled' || !e.castNotifiedAt).map((e) => e.id),
+    [producerEntries]
+  );
+  const { data: needsYouPeople } = useBookingsWithArtist(orgId, needsYouDateIds);
+  const needsYouQueue = useMemo(
+    () => buildNeedsYouQueue({
+      entries: producerEntries,
+      people: needsYouPeople ?? [],
+      readyIds: new Set(hireOrderReady?.readyIds ?? []),
+      now: new Date(),
+    }),
+    [producerEntries, needsYouPeople, hireOrderReady]
+  );
+
+  // Eligible-artist shortlist for the queue's top at-risk date — threaded to QueueRail.
+  const topAtRisk = needsYouQueue.groups.find((g) => g.key === 'at-risk')?.items[0];
+  const { data: shortlistResult } = useQuery({
+    queryKey: ['bookings', 'shortlist', topAtRisk?.dateId],
+    enabled: !!topAtRisk,
+    queryFn: () => dryRunOfferTier(supabase, { showDateId: topAtRisk!.dateId, tier: 1 }),
+  });
+  const queueShortlist = useMemo(() => {
+    if (!topAtRisk) return null;
+    return {
+      dateId: topAtRisk.dateId,
+      dateLabel: formatDateWithWeekday(topAtRisk.entry.date),
+      artists: (shortlistResult?.candidates ?? []).map((c) => ({ artistId: c.id, name: c.name })),
+    };
+  }, [topAtRisk, shortlistResult]);
+
+  // "Cleared today" receipts (Needs-you lens footer) — session-local, visual only;
+  // "Undo last" pops the most recent entry but does NOT revert the underlying
+  // mutation (best-effort visual, per the queue's own design).
+  const [clearedToday, setClearedToday] = useState<{ dateId: string; title: string; label: string }[]>([]);
+  const addReceipt = (dateId: string, label: string) => {
+    const entry = producerEntries.find((e) => e.id === dateId);
+    const title = entry ? entry.program + (entry.subProgram ? ` · ${entry.subProgram}` : '') : dateId;
+    setClearedToday((prev) => [...prev, { dateId, title, label }]);
+  };
+  const onUndoLastReceipt = () => setClearedToday((prev) => prev.slice(0, -1));
+
+  const canRunOfferEngine = useCan('run_offer_engine');
+
+  // "Extend 24h" (expires-today secondary) — no gate key on the button itself
+  // (NeedsYouLens renders it unconditionally enabled), so the gate lives here.
+  const extendHold = (dateId: string) => {
+    if (!(canConfirmBookings && bookingOn)) return;
+    void extendOfferExpiry(supabase, { showDateId: dateId, hours: 24 })
+      .then(({ affected }) => {
+        const label = t('needsYou.toast.extended', { count: affected });
+        toast.success(label);
+        queryClient.invalidateQueries({ queryKey: ['bookings'] });
+        if (affected) addReceipt(dateId, label);
+      })
+      .catch((e) => toast.error((e as Error).message));
+  };
+
+  /** "Release" (expires-today secondary): decline the date's still-soft_booked
+   *  holds — mirrors confirmHoldsForDate's fetch-then-bulk-write shape. */
+  async function releaseHoldForDate(showDateId: string) {
+    try {
+      const ids = await fetchSoftBookedIdsForDate(supabase, showDateId);
+      const { affected } = ids.length
+        ? await bulkDeclineSoftBooked(supabase, { ids, now: new Date() })
+        : { affected: 0 };
+      const label = affected
+        ? t('needsYou.toast.released', { count: affected })
+        : t('producer.toast.nothingToConfirm');
+      toast.success(label);
+      queryClient.invalidateQueries({ queryKey: ['bookings'] });
+      if (affected) addReceipt(showDateId, label);
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  }
+  const releaseHold = (dateId: string) => {
+    if (!(canConfirmBookings && bookingOn)) return;
+    void releaseHoldForDate(dateId);
+  };
+
+  /** "Notify cast" (cancelled group primary): immediate notify-cast invocation,
+   *  distinct from the delayed 20:00 confirmation digest. */
+  async function notifyCastForDate(showDateId: string) {
+    try {
+      const { notified } = await notifyCastRequest(supabase, { showDateId });
+      const label = t('needsYou.toast.notified', { count: notified });
+      toast.success(label);
+      queryClient.invalidateQueries({ queryKey: ['show-dates'] });
+      addReceipt(showDateId, label);
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  }
+  const notifyCastAction = (dateId: string) => { void notifyCastForDate(dateId); };
+
+  // Cancelling requires a typed reason (captured by the sheet's own Cancel
+  // control — see ShowDateDetailSheet); there's no reason-less cancel mutation,
+  // and no un-cancel mutation exists at all. Both queue actions route to
+  // opening the sheet rather than inventing backend behavior that doesn't
+  // exist — see the task-8 report for the full reasoning.
+  const cancelDate = (dateId: string) => openShowDate(dateId);
+  const undoCancel = (dateId: string) => openShowDate(dateId);
+
+  /** "Preview" (ready-to-issue secondary). Note: the `generate-hire-orders`
+   *  `preview` action only supports `order_id` (or none, for a generic sample) —
+   *  a ready-to-issue date has no order yet, so `show_date_id` rides along for
+   *  forward-compatibility but is currently ignored server-side, meaning this
+   *  renders the org's generic sample document rather than a date-specific one. */
+  const previewHireOrder = (dateId: string) => {
+    if (!orgId) return;
+    hireOrderAction.mutate(
+      { action: 'preview', org_id: orgId, show_date_id: dateId },
+      {
+        onSuccess: (res) => {
+          const b64 = (res as { pdf_base64?: string } | null)?.pdf_base64;
+          if (b64) openPdfBase64(b64);
+        },
+      },
+    );
+  };
+
+  /** Offer the queue's shortlisted artist for the top at-risk date. Note:
+   *  `openOfferTier` offers the WHOLE eligible set for the tier — there is no
+   *  single-artist offer endpoint, so `artistId` can't target just the clicked
+   *  row (see the task-8 report's "Open risk"). */
+  const offerArtist = (dateId: string, _artistId: string) => {
+    if (!canRunOfferEngine) return;
+    void openOfferTier(supabase, { showDateId: dateId, tier: 1 })
+      .then(({ offersCreated }) => {
+        const label = t('needsYou.toast.offered', { count: offersCreated });
+        toast.success(label);
+        queryClient.invalidateQueries({ queryKey: ['bookings'] });
+        if (offersCreated) addReceipt(dateId, label);
+      })
+      .catch((e) => toast.error((e as Error).message));
+  };
+
+  const confirmAll = (ids: string[]) => {
+    if (!(canConfirmBookings && bookingOn)) return;
+    void Promise.all(ids.map((id) => confirmHoldsForDate(id)));
+  };
+  const generateAll = (ids: string[]) => {
+    if (!canGenerateHireOrders) return;
+    ids.forEach((id) => draftHireOrderForDate(id));
+  };
+
   // Cockpit pager: walk the current filtered/sorted list from the open sheet.
   const sheetPager = useMemo(() => {
     const pos = pagerPosition(filtered.map(sd => sd.id), activeShowDateId);
@@ -327,7 +491,7 @@ function ProducerShowsBookings() {
   };
 
   const updateLens = (key: string) => {
-    setLens(key as 'month' | 'agenda');
+    setLens(key as 'needs-you' | 'month' | 'agenda');
     const next = new URLSearchParams(searchParams);
     next.set('lens', key);
     setSearchParams(next, { replace: true });
@@ -444,11 +608,24 @@ function ProducerShowsBookings() {
           producerEntries={producerEntries}
           lens={lens}
           onLensChange={updateLens}
+          needsYouQueue={needsYouQueue}
+          queueShortlist={queueShortlist}
+          clearedToday={clearedToday}
+          onUndoLastReceipt={onUndoLastReceipt}
           actions={{
             confirmHolds,
             generateHireOrder,
             openDate: openShowDate,
             openCasting: openCastingDate,
+            extendHold,
+            releaseHold,
+            notifyCast: notifyCastAction,
+            cancelDate,
+            undoCancel,
+            previewHireOrder,
+            offerArtist,
+            confirmAll,
+            generateAll,
           }}
           actionGates={{
             confirmHolds: {

@@ -22,6 +22,14 @@
     "cancelled": "Cancelled",
     "unconfigured": "Unconfigured"
   },
+  "needsYou": {
+    "toast": {
+      "extended": "Extended {{count}}",
+      "released": "Released {{count}}",
+      "notified": "Notified {{count}}",
+      "offered": "Offered {{count}}"
+    }
+  },
   "producer": {
     "toast": {
       "confirmed": "Confirmed {{count}}",

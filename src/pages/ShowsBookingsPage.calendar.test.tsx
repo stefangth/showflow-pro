@@ -123,9 +123,12 @@ describe("ShowsBookingsPage — producer calendar surface (Task 16)", () => {
   it("renders the CalendarSurface's Month lens and drops the old list/calendar ViewToggle", async () => {
     renderWithProviders(<ShowsBookingsPage />);
     expect(await screen.findByTestId("calendar-surface")).toBeInTheDocument();
+    // "Needs you" is the producer default lens (Task 8); switch to Month to
+    // exercise the grid itself.
+    fireEvent.click(screen.getByRole("tab", { name: "Month" }));
     expect(screen.getByTestId("month-grid")).toBeInTheDocument();
     // The old view toggle offered "List"/"Calendar" buttons; the surface offers
-    // lens tabs ("Month"/"Agenda") instead.
+    // lens tabs ("Needs you"/"Month"/"Agenda") instead.
     expect(screen.queryByRole("button", { name: /^list$/i })).not.toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Month" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Agenda" })).toBeInTheDocument();
@@ -134,6 +137,7 @@ describe("ShowsBookingsPage — producer calendar surface (Task 16)", () => {
   it("selecting the date's day and clicking the rail's Confirm holds bulk-confirms via the real data layer", async () => {
     seedClient({ bookings: { data: [{ id: "b1" }, { id: "b2" }], error: null } });
     renderWithProviders(<ShowsBookingsPage />);
+    fireEvent.click(await screen.findByRole("tab", { name: "Month" }));
     const chip = await screen.findByText("Nutcracker");
 
     const cell = chip.closest('[data-testid^="month-grid-cell-"]')!;
@@ -155,12 +159,15 @@ describe("ShowsBookingsPage — producer calendar surface (Task 16)", () => {
     expect(patch.status).toBe("confirmed");
     expect(typeof patch.confirmed_at).toBe("string");
 
-    const inCall = calls.find((c) => c.table === "bookings" && c.method === "in");
+    // `.in()` on "bookings" is also hit by the needs-you queue's people read
+    // (`.in("show_date_id", …)`), so disambiguate by the filtered column.
+    const inCall = calls.find((c) => c.table === "bookings" && c.method === "in" && c.args[0] === "id");
     expect(inCall?.args).toEqual(["id", ["b1", "b2"]]);
   });
 
   it("double-clicking the date's day opens the full ShowDateDetailSheet", async () => {
     renderWithProviders(<ShowsBookingsPage />);
+    fireEvent.click(await screen.findByRole("tab", { name: "Month" }));
     const chip = await screen.findByText("Nutcracker");
     const cell = chip.closest('[data-testid^="month-grid-cell-"]')!;
 
