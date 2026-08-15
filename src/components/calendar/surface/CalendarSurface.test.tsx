@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import { CalendarSurface, type CalendarSurfaceActions } from './CalendarSurface';
 import type { ArtistDateEntry, ProducerDateEntry } from '@/lib/calendar/types';
 import type { NeedsYouItem, NeedsYouQueue } from '@/lib/calendar/needsYou';
@@ -1021,5 +1021,95 @@ describe('CalendarSurface — agenda is period-windowed', () => {
 
     expect(screen.getByTestId('agenda-row-pd-jul')).toBeInTheDocument();
     expect(screen.queryByTestId('agenda-row-pd-aug')).not.toBeInTheDocument();
+  });
+});
+
+describe('CalendarSurface — Space-peek popover (producer, month lens)', () => {
+  it('Space on a producer date cell opens a RowPeek showing the headline/meter; Confirm and Open date dispatch with the entry id', () => {
+    const actions = noopActions();
+    const entry = producerEntry({
+      id: 'pd-peek',
+      date: new Date(2026, 7, 10),
+      mainSlots: 4,
+      confirmedMain: 2,
+      acceptedMain: 1,
+      understudySlots: 0,
+      confirmedUs: 0,
+    });
+    render(
+      <CalendarSurface
+        role="producer"
+        producerEntries={[entry]}
+        actions={actions}
+        lens="month"
+        onLensChange={vi.fn()}
+        today={TODAY}
+      />
+    );
+
+    const cell = screen.getByTestId('month-grid-cell-2026-08-10');
+    cell.focus();
+    fireEvent.keyDown(cell, { key: ' ' });
+
+    const popover = screen.getByTestId('date-peek-popover');
+    // Headline reflects computeDatePeek's math: 1 accepted waiting, 1 main slot open.
+    expect(within(popover).getByText('1 accepted waiting on you · 1 main slot open')).toBeInTheDocument();
+
+    fireEvent.click(within(popover).getByRole('button', { name: 'Confirm 1' }));
+    expect(actions.confirmHolds).toHaveBeenCalledWith('pd-peek');
+
+    fireEvent.click(within(popover).getByRole('button', { name: 'Open date' }));
+    expect(actions.openDate).toHaveBeenCalledWith('pd-peek');
+  });
+
+  it('actionGates.confirmHolds disabled hides the peek Confirm button', () => {
+    const actions = noopActions();
+    const entry = producerEntry({
+      id: 'pd-peek-2',
+      date: new Date(2026, 7, 11),
+      mainSlots: 4,
+      confirmedMain: 2,
+      acceptedMain: 1,
+    });
+    render(
+      <CalendarSurface
+        role="producer"
+        producerEntries={[entry]}
+        actions={actions}
+        lens="month"
+        onLensChange={vi.fn()}
+        today={TODAY}
+        actionGates={{ confirmHolds: { disabled: true, title: 'Gated' } }}
+      />
+    );
+
+    const cell = screen.getByTestId('month-grid-cell-2026-08-11');
+    cell.focus();
+    fireEvent.keyDown(cell, { key: ' ' });
+
+    const popover = screen.getByTestId('date-peek-popover');
+    expect(within(popover).getByRole('button', { name: 'Open date' })).toBeInTheDocument();
+    expect(within(popover).queryByRole('button', { name: /Confirm/ })).not.toBeInTheDocument();
+  });
+
+  it('does not open a peek for the artist role (Space falls through to plain selection)', () => {
+    const actions = noopActions();
+    const entry = artistEntry({ id: 'ad-peek', date: new Date(2026, 7, 10) });
+    render(
+      <CalendarSurface
+        role="artist"
+        artistEntries={[entry]}
+        actions={actions}
+        lens="month"
+        onLensChange={vi.fn()}
+        today={TODAY}
+      />
+    );
+
+    const cell = screen.getByTestId('month-grid-cell-2026-08-10');
+    cell.focus();
+    fireEvent.keyDown(cell, { key: ' ' });
+
+    expect(screen.queryByRole('button', { name: 'Open date' })).not.toBeInTheDocument();
   });
 });

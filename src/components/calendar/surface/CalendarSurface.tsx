@@ -1,4 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
+import { format } from 'date-fns';
+import * as PopoverPrimitive from '@radix-ui/react-popover';
 import type {
   ActionGate,
   ActionGates,
@@ -13,8 +16,11 @@ import { periodLabel, periodWindow, shiftPeriod, type LensPeriod } from '@/lib/c
 import { resolveProducerPrimary } from '@/lib/calendar/producerPrimary';
 import { clearSelection, extendTo, selectedKeys, type RangeSelection } from '@/lib/calendar/selection';
 import { isPastDate, toDateKey } from '@/lib/dates';
+import { computeDatePeek } from '@/lib/bookingCockpit';
 import { ROUTES } from '@/config/app.config';
 import { cn } from '@/lib/utils';
+import { Popover, PopoverContent } from '@/components/ui/popover';
+import { RowPeek } from '@/components/bookings/RowPeek';
 import { CalendarSurfaceHeader } from './CalendarSurfaceHeader';
 import { LensTabs, type LensTabDef } from './LensTabs';
 import { CalendarToolbar } from './CalendarToolbar';
@@ -229,6 +235,11 @@ export function CalendarSurface({
   const [anchor, setAnchor] = useState<Date>(now);
   const [selectedDay, setSelectedDay] = useState<Date>(now);
   const [range, setRange] = useState<RangeSelection | null>(null);
+  // Space-peek popover (producer-only, Month lens) — `MonthGrid`'s Space key
+  // forwards here via `MonthLens.onPeekDay`, wired only for `role==="producer"`
+  // below so an artist Space press is never routed into this state at all.
+  const [peekDay, setPeekDay] = useState<Date | null>(null);
+  const { t: tBooking } = useTranslation('bookingCopy');
 
   const resolvedNeedsYouQueue = needsYouQueue ?? EMPTY_NEEDS_YOU_QUEUE;
   const lenses = role === 'producer' ? producerLenses(needsYouQueue) : ARTIST_LENSES;
@@ -267,6 +278,29 @@ export function CalendarSurface({
 
   const dayProducerEntries = entriesForDay(producerEntries, selectedDay);
   const dayArtistEntries = entriesForDay(artistEntries, selectedDay);
+
+  // Adapts a `ProducerDateEntry`'s counts to `computeDatePeek`'s `counts`/`slots`
+  // shape — there's no `acceptedUs` on the entry (understudy acceptance isn't
+  // tracked at the calendar-entry level), so it's passed as 0.
+  const peekEntry = role === 'producer' && peekDay ? entriesForDay(producerEntries, peekDay)[0] : undefined;
+  const peek = useMemo(
+    () =>
+      peekEntry
+        ? computeDatePeek({
+            counts: {
+              confirmedMain: peekEntry.confirmedMain,
+              confirmedUs: peekEntry.confirmedUs,
+              acceptedMain: peekEntry.acceptedMain,
+              acceptedUs: 0,
+            },
+            slots: { main_cast: peekEntry.mainSlots, understudies: peekEntry.understudySlots },
+            t: tBooking,
+          })
+        : null,
+    [peekEntry, tBooking]
+  );
+  const peekOpen = role === 'producer' && peekDay !== null;
+  const canConfirmPeek = !actionGates?.confirmHolds?.disabled;
 
   const handleOpenDay = (day: Date) => {
     if (role === 'producer') {
@@ -441,22 +475,45 @@ export function CalendarSurface({
         </div>
       ) : activeLens === 'month' ? (
         <div className="flex items-start gap-4">
-          <div className="min-w-0 flex-1">
-            <MonthLens
-              role={role}
-              anchor={anchor}
-              selectedDay={selectedDay}
-              onSelectDay={setSelectedDay}
-              onOpenDay={handleOpenDay}
-              producerEntries={producerEntries}
-              artistEntries={artistEntries}
-              today={now}
-              rangeKeys={role === 'producer' ? selectedKeys(range) : undefined}
-              onRangeStart={role === 'producer' ? (key) => setRange({ anchor: key, focus: key }) : undefined}
-              onRangeExtend={role === 'producer' ? (key) => setRange((r) => extendTo(r, key)) : undefined}
-              onRangeCommit={role === 'producer' ? () => {} : undefined}
-            />
-          </div>
+          <Popover open={peekOpen} onOpenChange={(open) => { if (!open) setPeekDay(null); }}>
+            <PopoverPrimitive.Anchor asChild>
+              <div className="min-w-0 flex-1">
+                <MonthLens
+                  role={role}
+                  anchor={anchor}
+                  selectedDay={selectedDay}
+                  onSelectDay={setSelectedDay}
+                  onOpenDay={handleOpenDay}
+                  onPeekDay={role === 'producer' ? setPeekDay : undefined}
+                  producerEntries={producerEntries}
+                  artistEntries={artistEntries}
+                  today={now}
+                  rangeKeys={role === 'producer' ? selectedKeys(range) : undefined}
+                  onRangeStart={role === 'producer' ? (key) => setRange({ anchor: key, focus: key }) : undefined}
+                  onRangeExtend={role === 'producer' ? (key) => setRange((r) => extendTo(r, key)) : undefined}
+                  onRangeCommit={role === 'producer' ? () => {} : undefined}
+                />
+              </div>
+            </PopoverPrimitive.Anchor>
+            <PopoverContent
+              align="start"
+              className="w-auto border-none bg-transparent p-0 shadow-none"
+              data-testid="date-peek-popover"
+            >
+              {peekEntry && (
+                <div className="rounded-[var(--radius-l)] border border-border bg-[var(--surface)] shadow-elev3">
+                  <RowPeek
+                    dateLabel={format(peekEntry.date, 'EEE d MMM')}
+                    peek={peek}
+                    canConfirm={canConfirmPeek}
+                    confirming={false}
+                    onConfirm={() => actions.confirmHolds?.(peekEntry.id)}
+                    onOpen={() => actions.openDate?.(peekEntry.id)}
+                  />
+                </div>
+              )}
+            </PopoverContent>
+          </Popover>
           <DayRail
             role={role}
             day={selectedDay}
