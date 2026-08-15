@@ -45,6 +45,51 @@ function artistEntry(overrides: Partial<ArtistDateEntry> = {}): ArtistDateEntry 
   };
 }
 
+describe('DayRail characterization (pre-DayDetail-extraction baseline)', () => {
+  // Full-fidelity snapshots of DayRail's rendered DOM, taken BEFORE the
+  // DayDetail extraction. These must keep passing UNCHANGED after DayRail is
+  // rewritten to delegate to DayDetail — that's the proof the desktop output
+  // stayed byte-identical across the refactor.
+  it('producer: full rail markup (header, entry card w/ fill meter + order badge, primary/secondary, stats, legend)', () => {
+    const { container } = render(
+      <DayRail
+        role="producer"
+        day={new Date(2026, 7, 20)}
+        producerEntries={[
+          producerEntry({ acceptedMain: 2, hireOrderId: 'ho-1', hireOrderStatus: 'issued' }),
+        ]}
+        stats={[{ label: 'Confirmed this week', value: '12', dotClass: 'bg-success' }]}
+        legend={[{ label: 'Fully filled', badgeClass: 'bg-success/10 text-success', railClass: 'bg-success' }]}
+        onPrimary={vi.fn()}
+        onSecondary={vi.fn()}
+      />
+    );
+    expect(container.innerHTML).toMatchSnapshot();
+  });
+
+  it('producer: empty-day rail markup', () => {
+    const { container } = render(
+      <DayRail role="producer" day={new Date(2026, 7, 20)} producerEntries={[]} stats={[]} legend={[]} />
+    );
+    expect(container.innerHTML).toMatchSnapshot();
+  });
+
+  it('artist: full rail markup (header, status-note entry card, primary/secondary, stats, legend)', () => {
+    const { container } = render(
+      <DayRail
+        role="artist"
+        day={new Date(2026, 7, 20)}
+        artistEntries={[artistEntry({ myStatus: 'suggested' })]}
+        stats={[{ label: 'Offers open', value: '2', dotClass: 'bg-warning' }]}
+        legend={[{ label: 'Offer', badgeClass: 'bg-warning/10 text-warning', railClass: 'bg-warning' }]}
+        onPrimary={vi.fn()}
+        onSecondary={vi.fn()}
+      />
+    );
+    expect(container.innerHTML).toMatchSnapshot();
+  });
+});
+
 describe('DayRail', () => {
   it('producer: shows "Confirm holds" as primary when acceptedMain>0 and fires onPrimary', () => {
     const onPrimary = vi.fn();
