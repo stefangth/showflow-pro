@@ -603,6 +603,7 @@ function ProducerShowsBookings() {
           clearedToday={clearedToday}
           seasonReadyIds={new Set(hireOrderReady?.readyIds ?? [])}
           onUndoLastReceipt={onUndoLastReceipt}
+          onNewDate={() => setNewDateOpen(true)}
           actions={{
             confirmHolds,
             generateHireOrder,
