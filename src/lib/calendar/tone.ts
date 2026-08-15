@@ -33,3 +33,18 @@ export const ARTIST_TONES: Record<ArtistStatus, ToneSpec> = {
   blocked:     { label: 'Blocked',     badgeClass: 'bg-destructive/10 text-destructive', railClass: 'bg-destructive',      tone: 'destructive' },
   unanswered:  { label: 'Not offered', badgeClass: 'bg-muted text-muted-foreground',     railClass: 'bg-muted-foreground', tone: 'muted' },
 };
+
+/**
+ * The artist status label to display, honoring an optional flow-aware override
+ * (e.g. a direct-booking org's `bookingStatusLabels(flow)` wording — "Not
+ * booked" instead of the fixed "Not offered") before falling back to
+ * `ARTIST_TONES`' default. A missing/undefined override key falls back the
+ * same way, so callers may pass a partial map without special-casing gaps
+ * (e.g. `blocked`, which has no flow-aware equivalent).
+ */
+export function artistStatusLabel(
+  status: ArtistStatus,
+  overrides?: Partial<Record<ArtistStatus, string>>,
+): string {
+  return overrides?.[status] ?? ARTIST_TONES[status].label;
+}

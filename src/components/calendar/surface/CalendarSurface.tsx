@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import type {
   ArtistDateEntry,
   ArtistStatus,
@@ -6,7 +6,7 @@ import type {
   ProducerStatus,
   Tone,
 } from '@/lib/calendar/types';
-import { PRODUCER_TONES, ARTIST_TONES } from '@/lib/calendar/tone';
+import { PRODUCER_TONES, ARTIST_TONES, artistStatusLabel } from '@/lib/calendar/tone';
 import { periodLabel, periodWindow, shiftPeriod } from '@/lib/calendar/period';
 import { isPastDate, toDateKey } from '@/lib/dates';
 import { ROUTES } from '@/config/app.config';
@@ -52,11 +52,6 @@ const PRODUCER_LEGEND: DayRailLegendItem[] = PRODUCER_STATUS_ORDER.map((status) 
 }));
 
 const ARTIST_STATUS_ORDER: ArtistStatus[] = ['confirmed', 'soft_booked', 'suggested', 'blocked', 'unanswered'];
-const ARTIST_LEGEND: DayRailLegendItem[] = ARTIST_STATUS_ORDER.map((status) => ({
-  label: ARTIST_TONES[status].label,
-  badgeClass: ARTIST_TONES[status].badgeClass,
-  railClass: ARTIST_TONES[status].railClass,
-}));
 
 export interface CalendarSurfaceActions {
   // Producer actions — all keyed by the show_date id (`ProducerDateEntry.id`),
@@ -82,6 +77,12 @@ interface CalendarSurfaceProps {
    *  the role's Phase-1 default rather than rendering nothing. */
   lens: string;
   onLensChange: (key: string) => void;
+  /** Flow-aware artist status label override (e.g. a direct-booking org's
+   *  wording from `bookingStatusLabels(flow)`), threaded to the Offers/All
+   *  dates lenses and the artist DayRail. Ignored for `role="producer"`; a
+   *  missing key falls back to `ARTIST_TONES`' fixed label (see
+   *  `artistStatusLabel`). */
+  statusLabels?: Partial<Record<ArtistStatus, string>>;
   /** Header copy — the caller (page) owns these; minimal role-based
    *  defaults are used when omitted so the surface still renders standalone
    *  (e.g. in isolation tests). */
@@ -136,6 +137,7 @@ export function CalendarSurface({
   actions,
   lens,
   onLensChange,
+  statusLabels,
   eyebrow,
   eyebrowTone = 'accent',
   title,
@@ -223,6 +225,18 @@ export function CalendarSurface({
     return producerEntries.filter((e) => e.date >= start && e.date <= end);
   })();
 
+  // Legend labels honor the same flow-aware override as the lenses/rail so the
+  // color key never disagrees with the labels it explains.
+  const artistLegend: DayRailLegendItem[] = useMemo(
+    () =>
+      ARTIST_STATUS_ORDER.map((status) => ({
+        label: artistStatusLabel(status, statusLabels),
+        badgeClass: ARTIST_TONES[status].badgeClass,
+        railClass: ARTIST_TONES[status].railClass,
+      })),
+    [statusLabels],
+  );
+
   return (
     <div data-testid="calendar-surface" className={cn('flex flex-col gap-4', className)}>
       <CalendarSurfaceHeader eyebrow={resolvedEyebrow} eyebrowTone={eyebrowTone} title={resolvedTitle} cta={cta}>
@@ -263,9 +277,10 @@ export function CalendarSurface({
             producerEntries={dayProducerEntries}
             artistEntries={dayArtistEntries}
             stats={role === 'producer' ? producerStats(producerEntries, anchor) : artistStats(artistEntries, anchor)}
-            legend={role === 'producer' ? PRODUCER_LEGEND : ARTIST_LEGEND}
+            legend={role === 'producer' ? PRODUCER_LEGEND : artistLegend}
             onPrimary={handleRailPrimary}
             onSecondary={handleRailSecondary}
+            statusLabels={statusLabels}
             className="w-[280px] shrink-0"
           />
         </div>
@@ -282,6 +297,7 @@ export function CalendarSurface({
               onBlock={(dateId, date) => actions.block?.(dateId, date)}
               answeredToday={[]}
               notOfferedYet={notOfferedYet}
+              statusLabels={statusLabels}
               today={now}
             />
           )}
@@ -290,6 +306,7 @@ export function CalendarSurface({
               entries={artistEntries}
               onBlock={(dateId, date) => actions.block?.(dateId, date)}
               hireOrderHref={hireOrderHref}
+              statusLabels={statusLabels}
               today={now}
             />
           )}

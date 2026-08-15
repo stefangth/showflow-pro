@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -18,6 +19,7 @@ import { useMyHireOrders } from '@/hooks/useHireOrders';
 import { UnlinkedArtistCard } from '@/components/artists/UnlinkedArtistCard';
 import { CalendarSurface } from '@/components/calendar/surface/CalendarSurface';
 import { toArtistEntries } from '@/lib/calendar/artistData';
+import type { ArtistStatus } from '@/lib/calendar/types';
 import { respondToOffer } from '@/data/bookings';
 import { acceptConsequenceNote } from '@/lib/bookings/actionCopy';
 import { formatDateDMY, formatDayMonthShortYear, toDateKey } from '@/lib/dates';
@@ -25,7 +27,7 @@ import { useBookingFlow, useFlowTimes } from '@/hooks/useBookingFlow';
 import { BOOKING_FLOW_DEFAULTS } from '@/lib/bookingFlow';
 import { describeTonightStandalone } from '@/lib/bookings/timingCopy';
 import { DEFAULT_FLOW_TIMES } from '@/data/settings';
-import { availabilityPageCopy } from '@/lib/flowCopy';
+import { availabilityPageCopy, bookingStatusLabels } from '@/lib/flowCopy';
 import { useToast } from '@/hooks/use-toast';
 import { useRailDismissed } from '@/components/setup/useRailDismissed';
 import { PageMini } from '@/components/minis/PageMini';
@@ -72,12 +74,43 @@ function ArtistAvailability() {
   const pageCopy = availabilityPageCopy(flow, tFlow);
   const { toast } = useToast();
   const qc = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   // The Offers lens is the artist role's Phase-1 default in CalendarSurface, so
   // the dashboard's `?filter=unanswered` deep link (ArtistDashboard's stage-chain
   // CTAs, see ROUTES.AVAILABILITY?filter=unanswered) already lands there — both a
-  // bare visit and the filtered deep link open on the same actionable queue.
+  // bare visit and the filtered deep link open on the same actionable queue. An
+  // explicit `?lens=` still takes priority when present (deep-linking straight to
+  // Month/All dates), matching ShowsBookingsPage's `?status=`/`?lens=` handling.
   const [lens, setLens] = useState<ArtistLens>('offers');
+  useEffect(() => {
+    const lensParam = searchParams.get('lens');
+    if (lensParam === 'offers' || lensParam === 'month' || lensParam === 'all-dates') {
+      setLens(lensParam);
+    } else if (searchParams.get('filter') === 'unanswered') {
+      setLens('offers');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const updateLens = (key: string) => {
+    setLens(key as ArtistLens);
+    const next = new URLSearchParams(searchParams);
+    next.set('lens', key);
+    setSearchParams(next, { replace: true });
+  };
+
+  // Flow-aware artist status wording (e.g. a direct-booking org's "Not booked"
+  // instead of the fixed ARTIST_TONES "Not offered"). `blocked` has no
+  // flow-aware equivalent, so it's left out and falls back to the tone default.
+  const statusLabels: Partial<Record<ArtistStatus, string>> = useMemo(() => {
+    const labels = bookingStatusLabels(flow, tFlow);
+    return {
+      confirmed: labels.confirmed,
+      soft_booked: labels.soft_booked,
+      suggested: labels.suggested,
+      unanswered: labels.unanswered,
+    };
+  }, [flow, tFlow]);
 
   // NOTE: distinct cache key from the other artist-bookings queries. This one
   // selects `id` (required to accept/decline an offer); ArtistDashboard and
@@ -264,7 +297,8 @@ function ArtistAvailability() {
           role="artist"
           artistEntries={artistEntries}
           lens={lens}
-          onLensChange={(k) => setLens(k as ArtistLens)}
+          onLensChange={updateLens}
+          statusLabels={statusLabels}
           actions={{
             accept: (bookingId) => respond.mutate({ bookingId, accept: true }),
             decline: (bookingId) => respond.mutate({ bookingId, accept: false }),

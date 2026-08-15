@@ -1,7 +1,7 @@
 import { format } from 'date-fns';
 import { Ticket } from 'lucide-react';
-import type { ArtistDateEntry } from '@/lib/calendar/types';
-import { ARTIST_TONES } from '@/lib/calendar/tone';
+import type { ArtistDateEntry, ArtistStatus } from '@/lib/calendar/types';
+import { ARTIST_TONES, artistStatusLabel } from '@/lib/calendar/tone';
 import { isPastDate } from '@/lib/dates';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -26,6 +26,8 @@ interface AllDatesLensProps {
   entries: ArtistDateEntry[];
   onBlock: (dateId: string, date: Date) => void;
   hireOrderHref: (id: string) => string;
+  /** Flow-aware artist status label override (see `artistStatusLabel`). */
+  statusLabels?: Partial<Record<ArtistStatus, string>>;
   /** Override for "today", so tests get a deterministic future/past split. */
   today?: Date;
   className?: string;
@@ -40,7 +42,7 @@ interface AllDatesLensProps {
  * hire order links to it (`hireOrderHref`); an unanswered future date gets
  * a Block-date button (`onBlock`); every other row has no action.
  */
-export function AllDatesLens({ entries, onBlock, hireOrderHref, today = new Date(), className }: AllDatesLensProps) {
+export function AllDatesLens({ entries, onBlock, hireOrderHref, statusLabels, today = new Date(), className }: AllDatesLensProps) {
   return (
     <div
       data-testid="all-dates-lens"
@@ -94,7 +96,7 @@ export function AllDatesLens({ entries, onBlock, hireOrderHref, today = new Date
                 toneSpec.badgeClass
               )}
             >
-              {toneSpec.label}
+              {artistStatusLabel(entry.myStatus, statusLabels)}
             </span>
             <div className="flex w-[150px] shrink-0 justify-end">
               {showLink && (

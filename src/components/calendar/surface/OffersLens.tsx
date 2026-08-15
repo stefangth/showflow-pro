@@ -1,6 +1,6 @@
 import { format } from 'date-fns';
-import type { ArtistDateEntry } from '@/lib/calendar/types';
-import { ARTIST_TONES } from '@/lib/calendar/tone';
+import type { ArtistDateEntry, ArtistStatus } from '@/lib/calendar/types';
+import { ARTIST_TONES, artistStatusLabel } from '@/lib/calendar/tone';
 import { isPastDate } from '@/lib/dates';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -20,6 +20,8 @@ interface OffersLensProps {
   onBlock: (dateId: string, date: Date) => void;
   answeredToday: AnsweredTodayRow[];
   notOfferedYet: ArtistDateEntry[];
+  /** Flow-aware artist status label override (see `artistStatusLabel`). */
+  statusLabels?: Partial<Record<ArtistStatus, string>>;
   /** Override for "today", so tests get a deterministic upcoming filter. */
   today?: Date;
   className?: string;
@@ -53,6 +55,7 @@ export function OffersLens({
   onBlock,
   answeredToday,
   notOfferedYet,
+  statusLabels,
   today = new Date(),
   className,
 }: OffersLensProps) {
@@ -147,7 +150,7 @@ export function OffersLens({
                         toneSpec.badgeClass
                       )}
                     >
-                      {toneSpec.label}
+                      {artistStatusLabel(entry.myStatus, statusLabels)}
                     </span>
                     <span className="text-xs text-muted-foreground">Awaiting producer confirmation</span>
                   </div>

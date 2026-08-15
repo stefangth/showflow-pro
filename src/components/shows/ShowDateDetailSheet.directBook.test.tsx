@@ -34,7 +34,7 @@ vi.mock("@/hooks/useEntitlements", async (orig) => {
     useModuleGate: (f: string) => ({ allow: useFeature(f), pending: false }),
   };
 });
-vi.mock("@/features/editor/EditorContext", () => ({ useEditorConfig: () => ({ isEditorMode: false }) }));
+vi.mock("@/features/editor/EditorContext", () => ({ useEditorConfig: () => ({ isEditorMode: false, getCustomFieldDefs: () => [] }) }));
 // No cast/city restriction: deriveDirectBookList then opens the picker to the whole roster,
 // so this test's qualifying/total numbers come entirely from the skill-eligibility filter.
 vi.mock("@/hooks/useEligibleArtists", () => ({

@@ -115,6 +115,7 @@ const IDENTICAL_OK: Record<string, string> = {
   // showsDetail
   'showsDetail.showDateSheet.tabs.chat': 'loanword "Chat", identical in German',
   'showsDetail.cockpitRail.chat': 'loanword "Chat", identical in German',
+  'showsDetail.cockpitRail.details': 'common word "Details", identical in German (matches profile.details.title)',
   'showsDetail.showDateForm.session': 'domain loanword "Session"',
   'showsDetail.showDateForm.sessionPlaceholder': 'time-format symbol "HH:MM"',
 

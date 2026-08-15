@@ -1,6 +1,6 @@
 import { format } from 'date-fns';
-import type { ArtistDateEntry, ProducerDateEntry, Tone } from '@/lib/calendar/types';
-import { ARTIST_TONES, PRODUCER_TONES, TONE_TEXT } from '@/lib/calendar/tone';
+import type { ArtistDateEntry, ArtistStatus, ProducerDateEntry, Tone } from '@/lib/calendar/types';
+import { ARTIST_TONES, PRODUCER_TONES, TONE_TEXT, artistStatusLabel } from '@/lib/calendar/tone';
 import { toDateKey } from '@/lib/dates';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -29,6 +29,9 @@ interface DayRailProps {
   primaryLabel?: string;
   onSecondary?: () => void;
   secondaryLabel?: string;
+  /** Flow-aware artist status label override (see `artistStatusLabel`).
+   *  Ignored for `role="producer"`. */
+  statusLabels?: Partial<Record<ArtistStatus, string>>;
   className?: string;
 }
 
@@ -85,6 +88,7 @@ function buildRailHeader(
   day: Date,
   producerEntries: ProducerDateEntry[],
   artistEntries: ArtistDateEntry[],
+  statusLabels?: Partial<Record<ArtistStatus, string>>,
 ): RailHeader {
   const dateLabel = format(day, 'EEE d MMM');
   const entries = role === 'producer' ? producerEntries : artistEntries;
@@ -112,8 +116,9 @@ function buildRailHeader(
   }
 
   const toneSpec = ARTIST_TONES[artistEntries[0].myStatus];
+  const label = artistStatusLabel(artistEntries[0].myStatus, statusLabels);
   return {
-    eyebrow: `${dateLabel} · ${toneSpec.label.toLowerCase()}`,
+    eyebrow: `${dateLabel} · ${label.toLowerCase()}`,
     eyebrowTone: toneSpec.tone,
     title: entryTitle(artistEntries[0]),
     sub: 'Your commitment on this date',
@@ -160,7 +165,7 @@ function ProducerDayCard({ entry }: { entry: ProducerDateEntry }) {
   );
 }
 
-function ArtistDayCard({ entry }: { entry: ArtistDateEntry }) {
+function ArtistDayCard({ entry, statusLabels }: { entry: ArtistDateEntry; statusLabels?: Partial<Record<ArtistStatus, string>> }) {
   const toneSpec = ARTIST_TONES[entry.myStatus];
 
   return (
@@ -177,7 +182,7 @@ function ArtistDayCard({ entry }: { entry: ArtistDateEntry }) {
         )}
       </div>
       {entry.venue && <p className="mt-0.5 text-xs text-muted-foreground">{entry.venue}</p>}
-      <p className={cn('mt-1.5 text-xs', TONE_TEXT[toneSpec.tone])}>{toneSpec.label}</p>
+      <p className={cn('mt-1.5 text-xs', TONE_TEXT[toneSpec.tone])}>{artistStatusLabel(entry.myStatus, statusLabels)}</p>
     </div>
   );
 }
@@ -202,13 +207,14 @@ export function DayRail({
   primaryLabel,
   onSecondary,
   secondaryLabel,
+  statusLabels,
   className,
 }: DayRailProps) {
   const resolvedProducerEntries = producerEntries ?? [];
   const resolvedArtistEntries = artistEntries ?? [];
   const entries = role === 'producer' ? resolvedProducerEntries : resolvedArtistEntries;
 
-  const header = buildRailHeader(role, day, resolvedProducerEntries, resolvedArtistEntries);
+  const header = buildRailHeader(role, day, resolvedProducerEntries, resolvedArtistEntries, statusLabels);
   const statsTitle = role === 'producer' ? 'This month' : `Your ${format(day, 'MMMM')}`;
   const emptyText = role === 'producer' ? 'No dates scheduled on this day.' : 'No date offered to you on this day.';
 
@@ -235,7 +241,7 @@ export function DayRail({
             role === 'producer' ? (
               resolvedProducerEntries.map(entry => <ProducerDayCard key={entry.id} entry={entry} />)
             ) : (
-              resolvedArtistEntries.map(entry => <ArtistDayCard key={entry.id} entry={entry} />)
+              resolvedArtistEntries.map(entry => <ArtistDayCard key={entry.id} entry={entry} statusLabels={statusLabels} />)
             )
           ) : (
             <p data-testid="day-rail-empty" className="text-[13px] text-muted-foreground">

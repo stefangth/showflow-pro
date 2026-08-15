@@ -195,11 +195,15 @@ function ProducerShowsBookings() {
     const status = searchParams.get('status');
     const from = searchParams.get('from');
     const to = searchParams.get('to');
+    const lensParam = searchParams.get('lens');
     if (status && ['open', 'partially_filled', 'fully_filled', 'cancelled', 'unconfigured'].includes(status)) {
       setStatusFilter(status as DisplayStatus);
     }
     if (from || to) {
       setTimeframe({ from: from ? parseISO(from) : null, to: to ? parseISO(to) : null });
+    }
+    if (lensParam === 'month' || lensParam === 'agenda') {
+      setLens(lensParam);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -303,6 +307,13 @@ function ProducerShowsBookings() {
     setStatusFilter(v);
     const next = new URLSearchParams(searchParams);
     if (v === 'all') next.delete('status'); else next.set('status', v);
+    setSearchParams(next, { replace: true });
+  };
+
+  const updateLens = (key: string) => {
+    setLens(key as 'month' | 'agenda');
+    const next = new URLSearchParams(searchParams);
+    next.set('lens', key);
     setSearchParams(next, { replace: true });
   };
 
@@ -417,7 +428,7 @@ function ProducerShowsBookings() {
           role="producer"
           producerEntries={producerEntries}
           lens={lens}
-          onLensChange={(k) => setLens(k as 'month' | 'agenda')}
+          onLensChange={updateLens}
           actions={{
             confirmHolds,
             generateHireOrder,

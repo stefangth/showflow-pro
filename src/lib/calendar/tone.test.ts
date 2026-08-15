@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { PRODUCER_TONES, ARTIST_TONES, TONE_FILL, TONE_TEXT } from './tone';
+import { PRODUCER_TONES, ARTIST_TONES, TONE_FILL, TONE_TEXT, artistStatusLabel } from './tone';
 
 describe('calendar tones', () => {
   it('maps producer statuses to labels + semantic token classes', () => {
@@ -35,5 +35,21 @@ describe('calendar tones', () => {
     expect(TONE_FILL.success).toBe('bg-success');
     expect(TONE_FILL.accent).toBe('bg-primary');
     expect(TONE_TEXT.destructive).toBe('text-destructive');
+  });
+});
+
+describe('artistStatusLabel', () => {
+  it('falls back to the fixed ARTIST_TONES label when no override is given', () => {
+    expect(artistStatusLabel('unanswered')).toBe('Not offered');
+    expect(artistStatusLabel('unanswered', undefined)).toBe('Not offered');
+    expect(artistStatusLabel('unanswered', {})).toBe('Not offered');
+  });
+  it('prefers a matching override key', () => {
+    expect(artistStatusLabel('unanswered', { unanswered: 'Not booked' })).toBe('Not booked');
+  });
+  it('falls back per-key for statuses missing from a partial override map', () => {
+    // 'blocked' has no flow-aware equivalent in bookingStatusLabels; a caller
+    // passing only the flow-derived keys must not lose the Blocked label.
+    expect(artistStatusLabel('blocked', { unanswered: 'Not booked', confirmed: 'Booked' })).toBe('Blocked');
   });
 });

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { screen } from "@testing-library/react";
+import { screen, fireEvent } from "@testing-library/react";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import { createFakeSupabase } from "@/test/supabaseFake";
 import { BOOKING_FLOW_DEFAULTS, applyPreset, type BookingFlow, type FlowTimes } from "@/lib/bookingFlow";
@@ -13,11 +13,12 @@ import { DEFAULT_FLOW_TIMES } from "@/data/settings";
  *
  * The former per-row status badge assertions ("Not booked" / "No offer yet",
  * sourced from bookingStatusLabels(flow)) were dropped in the calendar-surface
- * refactor (task 17): CalendarSurface's artist lenses render a fixed,
+ * refactor (task 17): CalendarSurface's artist lenses rendered a fixed,
  * non-flow-aware status label (ARTIST_TONES in src/lib/calendar/tone.ts,
- * e.g. "Not offered") rather than the page's flow-aware wording. That's a
- * capability gap in the shared calendar-surface lib, out of this page's
- * scope to fix — see task-17-report.md.
+ * e.g. "Not offered") rather than the page's flow-aware wording — a flagged
+ * capability gap, see task-17-report.md. Task 18 closed that gap (an optional
+ * `statusLabels` override threaded through CalendarSurface into the artist
+ * lenses/rail); the reinstated coverage lives in the describe block below.
  */
 
 // One eligible date with no booking row seeded, so its status resolves to
@@ -146,5 +147,28 @@ describe("AvailabilityPage timing line (R2.1/R4.7)", () => {
     expect(timing).toHaveTextContent(/offers email straight away/i);
     expect(timing).toHaveTextContent(/48 hours to answer/i);
     expect(timing).not.toHaveTextContent(/digest/i);
+  });
+});
+
+/**
+ * Task 18: closes the flow-aware-wording gap flagged in task-17-report.md.
+ * ELIGIBLE's one date has no booking row, so its artist status resolves to
+ * 'unanswered'. The Offers lens (the default landing lens) never renders an
+ * 'unanswered' status badge at all — those dates sit in its unlabeled
+ * "not offered yet" list — so this asserts against the All dates lens, which
+ * shows every eligible date's status pill regardless of state.
+ */
+describe("AvailabilityPage calendar-surface flow-aware status wording (Task 18)", () => {
+  it("direct flow: the All dates lens shows the flow-aware wording, not the fixed ARTIST_TONES default", async () => {
+    flowHolder.flow = applyPreset(BOOKING_FLOW_DEFAULTS, "direct");
+    renderWithProviders(<AvailabilityPage />);
+
+    fireEvent.click(await screen.findByRole("tab", { name: "All dates" }));
+
+    const row = await screen.findByTestId("all-dates-row-sd-1");
+    // "Not booked" is statusLabels.direct.unanswered (src/lib/flowCopy.ts); the
+    // fixed ARTIST_TONES.unanswered.label this replaces is "Not offered".
+    expect(row).toHaveTextContent("Not booked");
+    expect(row).not.toHaveTextContent("Not offered");
   });
 });
