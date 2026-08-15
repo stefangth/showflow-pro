@@ -438,6 +438,16 @@ function ProducerShowsBookings() {
             openDate: openShowDate,
             openCasting: openShowDate,
           }}
+          actionGates={{
+            confirmHolds: {
+              disabled: !(canConfirmBookings && bookingOn),
+              title: t('producer.noConfirmPermission'),
+            },
+            generateHireOrder: {
+              disabled: !canGenerateHireOrders,
+              title: t('producer.noHireOrderPermission'),
+            },
+          }}
         />
       )}
       </div>

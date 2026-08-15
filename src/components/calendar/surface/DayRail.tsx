@@ -1,5 +1,5 @@
 import { format } from 'date-fns';
-import type { ArtistDateEntry, ArtistStatus, ProducerDateEntry, Tone } from '@/lib/calendar/types';
+import type { ActionGates, ArtistDateEntry, ArtistStatus, ProducerActionKey, ProducerDateEntry, Tone } from '@/lib/calendar/types';
 import { ARTIST_TONES, PRODUCER_TONES, TONE_TEXT, artistStatusLabel } from '@/lib/calendar/tone';
 import { toDateKey } from '@/lib/dates';
 import { cn } from '@/lib/utils';
@@ -33,6 +33,12 @@ interface DayRailProps {
   /** Flow-aware artist status label override (see `artistStatusLabel`).
    *  Ignored for `role="producer"`. */
   statusLabels?: Partial<Record<ArtistStatus, string>>;
+  /** Capability gates for the producer primary action (Confirm holds /
+   *  Generate hire order). Ignored for `role="artist"` — artist actions
+   *  (accept/decline/block) are not capability-gated. When the resolved
+   *  primary action's kind is gated `disabled`, the primary button renders
+   *  `disabled` with `title` as its tooltip instead of firing `onPrimary`. */
+  actionGates?: ActionGates;
   className?: string;
 }
 
@@ -46,6 +52,16 @@ interface DayRailProps {
 function producerPrimaryLabel(entries: ProducerDateEntry[]): string | undefined {
   if (entries.some(e => e.acceptedMain > 0)) return 'Confirm holds';
   if (entries.some(e => e.status === 'fully_filled' && e.hireOrderId == null)) return 'Generate hire order';
+  return undefined;
+}
+
+/** Same priority as `producerPrimaryLabel`, but returns the `ActionGates` key
+ *  the resolved primary button maps to (or `undefined` when there is no
+ *  primary action to gate) — lets the rail look up the caller's capability
+ *  gate for whichever action it ends up rendering. */
+function producerPrimaryKind(entries: ProducerDateEntry[]): ProducerActionKey | undefined {
+  if (entries.some(e => e.acceptedMain > 0)) return 'confirmHolds';
+  if (entries.some(e => e.status === 'fully_filled' && e.hireOrderId == null)) return 'generateHireOrder';
   return undefined;
 }
 
@@ -217,6 +233,7 @@ export function DayRail({
   onSecondary,
   secondaryLabel,
   statusLabels,
+  actionGates,
   className,
 }: DayRailProps) {
   const resolvedProducerEntries = producerEntries ?? [];
@@ -233,6 +250,13 @@ export function DayRail({
       ? producerPrimaryLabel(resolvedProducerEntries)
       : artistPrimaryLabel(resolvedArtistEntries));
   const resolvedSecondaryLabel = secondaryLabel ?? (role === 'producer' ? 'Open date' : 'Message producer');
+
+  // Only the producer primary maps to a capability-gated action (Confirm
+  // holds / Generate hire order); "Open date" and every artist action are
+  // never gated (see `ActionGates`'s doc comment).
+  const primaryKind = role === 'producer' ? producerPrimaryKind(resolvedProducerEntries) : undefined;
+  const primaryGate = primaryKind ? actionGates?.[primaryKind] : undefined;
+  const primaryDisabled = primaryGate?.disabled ?? false;
 
   return (
     <div data-testid="day-rail" data-day={toDateKey(day)} className={cn('flex flex-col gap-3', className)}>
@@ -265,6 +289,8 @@ export function DayRail({
                   type="button"
                   className="flex-1"
                   data-testid="day-rail-primary"
+                  disabled={primaryDisabled}
+                  title={primaryDisabled ? primaryGate?.title : undefined}
                   onClick={() => onPrimary?.()}
                 >
                   {resolvedPrimaryLabel}

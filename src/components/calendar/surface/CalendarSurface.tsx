@@ -1,5 +1,6 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import type {
+  ActionGates,
   ArtistDateEntry,
   ArtistStatus,
   ProducerDateEntry,
@@ -72,6 +73,14 @@ interface CalendarSurfaceProps {
   producerEntries?: ProducerDateEntry[];
   artistEntries?: ArtistDateEntry[];
   actions: CalendarSurfaceActions;
+  /** Capability gates for the producer action buttons (Confirm holds /
+   *  Generate hire order / Open casting) rendered by the DayRail and Agenda
+   *  lens. When a button's resolved action is gated `disabled`, it renders
+   *  `disabled` with `title` as its tooltip instead of silently no-opping —
+   *  the caller (page) still owns whether the underlying `actions` callback
+   *  is itself gated; this only controls the button's own affordance.
+   *  Ignored for `role="artist"`. Default: no gates, everything enabled. */
+  actionGates?: ActionGates;
   /** Controlled active lens key — the caller maps this to `?lens=`. An
    *  unrecognised value (wrong role's key, stale deep link) falls back to
    *  the role's Phase-1 default rather than rendering nothing. */
@@ -135,6 +144,7 @@ export function CalendarSurface({
   producerEntries = [],
   artistEntries = [],
   actions,
+  actionGates,
   lens,
   onLensChange,
   statusLabels,
@@ -281,13 +291,19 @@ export function CalendarSurface({
             onPrimary={handleRailPrimary}
             onSecondary={handleRailSecondary}
             statusLabels={statusLabels}
+            actionGates={actionGates}
             className="w-[280px] shrink-0"
           />
         </div>
       ) : (
         <div className="w-full">
           {activeLens === 'agenda' && (
-            <AgendaLens entries={agendaEntries} onOpenDay={handleOpenDay} onAction={handleAgendaAction} />
+            <AgendaLens
+              entries={agendaEntries}
+              onOpenDay={handleOpenDay}
+              onAction={handleAgendaAction}
+              actionGates={actionGates}
+            />
           )}
           {activeLens === 'offers' && (
             <OffersLens

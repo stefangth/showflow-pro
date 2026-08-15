@@ -123,4 +123,67 @@ describe('AgendaLens', () => {
     render(<AgendaLens entries={[e]} onOpenDay={vi.fn()} onAction={vi.fn()} />);
     expect(screen.getByText('Casting')).toBeInTheDocument();
   });
+
+  it('disables the "Confirm holds" action button and exposes its title when actionGates.confirmHolds is gated', () => {
+    const e = entry({ id: 'pd-1', status: 'partially_filled' });
+    const onAction = vi.fn();
+    render(
+      <AgendaLens
+        entries={[e]}
+        onOpenDay={vi.fn()}
+        onAction={onAction}
+        actionGates={{ confirmHolds: { disabled: true, title: "You don't have permission to confirm bookings" } }}
+      />
+    );
+    const btn = screen.getByTestId('agenda-action-pd-1');
+    expect(btn).toBeDisabled();
+    expect(btn).toHaveAttribute('title', "You don't have permission to confirm bookings");
+    fireEvent.click(btn);
+    expect(onAction).not.toHaveBeenCalled();
+  });
+
+  it('disables the "Generate hire order" action button when actionGates.generateHireOrder is gated', () => {
+    const e = entry({ id: 'pd-3', status: 'fully_filled', confirmedMain: 6 });
+    render(
+      <AgendaLens
+        entries={[e]}
+        onOpenDay={vi.fn()}
+        onAction={vi.fn()}
+        actionGates={{ generateHireOrder: { disabled: true, title: 'Nope' } }}
+      />
+    );
+    const btn = screen.getByTestId('agenda-action-pd-3');
+    expect(btn).toBeDisabled();
+    expect(btn).toHaveAttribute('title', 'Nope');
+  });
+
+  it('disables the "Open casting" action button when actionGates.openCasting is gated', () => {
+    const e = entry({ id: 'pd-b', status: 'open' });
+    render(
+      <AgendaLens
+        entries={[e]}
+        onOpenDay={vi.fn()}
+        onAction={vi.fn()}
+        actionGates={{ openCasting: { disabled: true, title: 'Nope' } }}
+      />
+    );
+    const btn = screen.getByTestId('agenda-action-pd-b');
+    expect(btn).toBeDisabled();
+    expect(btn).toHaveAttribute('title', 'Nope');
+  });
+
+  it('leaves the action button enabled when its gate is absent or not disabled', () => {
+    const e = entry({ id: 'pd-1', status: 'partially_filled' });
+    render(
+      <AgendaLens
+        entries={[e]}
+        onOpenDay={vi.fn()}
+        onAction={vi.fn()}
+        actionGates={{ generateHireOrder: { disabled: true, title: 'Nope' } }}
+      />
+    );
+    const btn = screen.getByTestId('agenda-action-pd-1');
+    expect(btn).not.toBeDisabled();
+    expect(btn).not.toHaveAttribute('title');
+  });
 });

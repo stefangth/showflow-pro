@@ -38,6 +38,7 @@
       "cta": "Generate hire orders"
     },
     "noHireOrderPermission": "You don't have permission to generate hire orders",
+    "noConfirmPermission": "You don't have permission to confirm bookings",
     "searchPlaceholder": "Search program, venue, city…",
     "statusPlaceholder": "Status",
     "allStatuses": "All statuses",

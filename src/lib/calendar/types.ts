@@ -29,6 +29,16 @@ export interface ArtistDateEntry {
   hireOrderId: string | null;
 }
 
+/** Capability-gating for the producer action buttons (Confirm holds /
+ *  Generate hire order / Open casting) surfaced by `DayRail` and
+ *  `AgendaLens`. When an entry maps to a gated key that is `disabled`, the
+ *  button renders `disabled` and exposes `title` as its tooltip instead of
+ *  silently no-opping on click — the app's established
+ *  disabled-button-with-tooltip pattern for capability gaps. */
+export type ProducerActionKey = 'confirmHolds' | 'generateHireOrder' | 'openCasting';
+export interface ActionGate { disabled: boolean; title?: string }
+export type ActionGates = Partial<Record<ProducerActionKey, ActionGate>>;
+
 export interface MeterSegment { filled: boolean }
 export interface MonthGridChip { title: string; time?: string; tone: Tone; meter?: MeterSegment[] }
 export interface MonthGridCell {

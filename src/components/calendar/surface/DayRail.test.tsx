@@ -288,6 +288,76 @@ describe('DayRail', () => {
     expect(header).toHaveTextContent('Select a day to see its dates and act on them.');
   });
 
+  it('producer: disables the primary button and exposes the title when actionGates gates the resolved "confirmHolds" kind', () => {
+    const onPrimary = vi.fn();
+    render(
+      <DayRail
+        role="producer"
+        day={new Date(2026, 7, 20)}
+        producerEntries={[producerEntry({ acceptedMain: 2 })]}
+        stats={[]}
+        legend={[]}
+        onPrimary={onPrimary}
+        actionGates={{ confirmHolds: { disabled: true, title: "You don't have permission to confirm bookings" } }}
+      />
+    );
+    const btn = screen.getByTestId('day-rail-primary');
+    expect(btn).toHaveTextContent('Confirm holds');
+    expect(btn).toBeDisabled();
+    expect(btn).toHaveAttribute('title', "You don't have permission to confirm bookings");
+    fireEvent.click(btn);
+    expect(onPrimary).not.toHaveBeenCalled();
+  });
+
+  it('producer: disables the primary button when actionGates gates the resolved "generateHireOrder" kind', () => {
+    render(
+      <DayRail
+        role="producer"
+        day={new Date(2026, 7, 20)}
+        producerEntries={[producerEntry({ status: 'fully_filled', acceptedMain: 0, confirmedMain: 6 })]}
+        stats={[]}
+        legend={[]}
+        actionGates={{ generateHireOrder: { disabled: true, title: "No permission" } }}
+      />
+    );
+    const btn = screen.getByTestId('day-rail-primary');
+    expect(btn).toHaveTextContent('Generate hire order');
+    expect(btn).toBeDisabled();
+    expect(btn).toHaveAttribute('title', 'No permission');
+  });
+
+  it('producer: primary stays enabled when its gate has disabled: false', () => {
+    render(
+      <DayRail
+        role="producer"
+        day={new Date(2026, 7, 20)}
+        producerEntries={[producerEntry({ acceptedMain: 2 })]}
+        stats={[]}
+        legend={[]}
+        actionGates={{ confirmHolds: { disabled: false } }}
+      />
+    );
+    const btn = screen.getByTestId('day-rail-primary');
+    expect(btn).not.toBeDisabled();
+    expect(btn).not.toHaveAttribute('title');
+  });
+
+  it('producer: a gate on a different kind does not affect the resolved primary button', () => {
+    render(
+      <DayRail
+        role="producer"
+        day={new Date(2026, 7, 20)}
+        producerEntries={[producerEntry({ acceptedMain: 2 })]}
+        stats={[]}
+        legend={[]}
+        actionGates={{ generateHireOrder: { disabled: true, title: 'Nope' } }}
+      />
+    );
+    const btn = screen.getByTestId('day-rail-primary');
+    expect(btn).toHaveTextContent('Confirm holds');
+    expect(btn).not.toBeDisabled();
+  });
+
   it('artist: header eyebrow shows the lowercased status label', () => {
     render(
       <DayRail

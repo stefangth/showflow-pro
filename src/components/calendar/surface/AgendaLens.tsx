@@ -1,6 +1,6 @@
 import type { MouseEvent } from 'react';
 import { format, startOfWeek } from 'date-fns';
-import type { ProducerDateEntry, ProducerStatus } from '@/lib/calendar/types';
+import type { ActionGates, ProducerActionKey, ProducerDateEntry, ProducerStatus } from '@/lib/calendar/types';
 import { PRODUCER_TONES, TONE_TEXT } from '@/lib/calendar/tone';
 import { toDateKey } from '@/lib/dates';
 import { cn } from '@/lib/utils';
@@ -25,6 +25,14 @@ function actionForEntry(entry: ProducerDateEntry): { label: string; action: Agen
   if (entry.status === 'fully_filled' && entry.hireOrderId != null) return undefined;
   return ACTION_BY_STATUS[entry.status];
 }
+
+/** Maps a row's resolved `AgendaAction` to the `ActionGates` key that gates
+ *  it, so the row's action button can look up the caller's capability gate. */
+const GATE_KEY_BY_ACTION: Record<AgendaAction, ProducerActionKey> = {
+  confirm: 'confirmHolds',
+  generate: 'generateHireOrder',
+  open: 'openCasting',
+};
 
 const WEEK_OPTS = { weekStartsOn: 1 as const };
 
@@ -55,6 +63,11 @@ interface AgendaLensProps {
   entries: ProducerDateEntry[];
   onOpenDay: (day: Date) => void;
   onAction: (entry: ProducerDateEntry, action: AgendaAction) => void;
+  /** Capability gates for the row action buttons (Confirm holds / Generate
+   *  hire order / Open casting). When a row's resolved action is gated
+   *  `disabled`, its button renders `disabled` with `title` as its tooltip
+   *  instead of firing `onAction`. */
+  actionGates?: ActionGates;
   className?: string;
 }
 
@@ -68,7 +81,7 @@ interface AgendaLensProps {
  * clicking the action button fires `onAction` instead (its click does not
  * bubble into the row's `onOpenDay`).
  */
-export function AgendaLens({ entries, onOpenDay, onAction, className }: AgendaLensProps) {
+export function AgendaLens({ entries, onOpenDay, onAction, actionGates, className }: AgendaLensProps) {
   const weeks = groupByWeek(entries);
 
   return (
@@ -91,6 +104,8 @@ export function AgendaLens({ entries, onOpenDay, onAction, className }: AgendaLe
                   ? Array.from({ length: entry.mainSlots }, (_, i) => ({ filled: i < entry.confirmedMain }))
                   : [];
               const actionDef = actionForEntry(entry);
+              const actionGate = actionDef ? actionGates?.[GATE_KEY_BY_ACTION[actionDef.action]] : undefined;
+              const actionDisabled = actionGate?.disabled ?? false;
 
               return (
                 <div
@@ -139,6 +154,8 @@ export function AgendaLens({ entries, onOpenDay, onAction, className }: AgendaLe
                         variant="outline"
                         size="sm"
                         data-testid={`agenda-action-${entry.id}`}
+                        disabled={actionDisabled}
+                        title={actionDisabled ? actionGate?.title : undefined}
                         onClick={(event: MouseEvent) => {
                           event.stopPropagation();
                           onAction(entry, actionDef.action);

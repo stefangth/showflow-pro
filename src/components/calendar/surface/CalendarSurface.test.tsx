@@ -197,6 +197,48 @@ describe('CalendarSurface — producer', () => {
     fireEvent.click(screen.getByTestId('day-rail-secondary'));
     expect(actions.openDate).toHaveBeenCalledWith('pd-2');
   });
+
+  it('actionGates.confirmHolds reaches the DayRail primary button as disabled+titled, and its click no-ops', () => {
+    const actions = noopActions();
+    const entry = producerEntry({ id: 'pd-1', date: TODAY, acceptedMain: 2 });
+    render(
+      <CalendarSurface
+        role="producer"
+        producerEntries={[entry]}
+        actions={actions}
+        lens="month"
+        onLensChange={vi.fn()}
+        today={TODAY}
+        actionGates={{ confirmHolds: { disabled: true, title: "You don't have permission to confirm bookings" } }}
+      />
+    );
+    const btn = screen.getByTestId('day-rail-primary');
+    expect(btn).toBeDisabled();
+    expect(btn).toHaveAttribute('title', "You don't have permission to confirm bookings");
+    fireEvent.click(btn);
+    expect(actions.confirmHolds).not.toHaveBeenCalled();
+  });
+
+  it('actionGates.generateHireOrder reaches the AgendaLens action button as disabled+titled, and its click no-ops', () => {
+    const actions = noopActions();
+    const entry = producerEntry({ id: 'pd-9', status: 'fully_filled', confirmedMain: 6, acceptedMain: 0 });
+    render(
+      <CalendarSurface
+        role="producer"
+        producerEntries={[entry]}
+        actions={actions}
+        lens="agenda"
+        onLensChange={vi.fn()}
+        today={TODAY}
+        actionGates={{ generateHireOrder: { disabled: true, title: "You don't have permission to generate hire orders" } }}
+      />
+    );
+    const btn = screen.getByTestId('agenda-action-pd-9');
+    expect(btn).toBeDisabled();
+    expect(btn).toHaveAttribute('title', "You don't have permission to generate hire orders");
+    fireEvent.click(btn);
+    expect(actions.generateHireOrder).not.toHaveBeenCalled();
+  });
 });
 
 describe('CalendarSurface — artist', () => {
