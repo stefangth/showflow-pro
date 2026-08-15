@@ -50,9 +50,11 @@
 - [ ] **`systemMap.ts` + `docs/*.md` bodies** — canvas data + markdown document content.
 
 ### D. Ship gates (not code)
-- [ ] Merge queued PRs (#280, #282, #287).
-- [ ] **Native-speaker QA of the German.** `translationCompleteness` only catches paste-throughs (DE == EN), **not mistranslations**; ~1,000+ DE strings so far are unproofed.
-- [ ] Enable `language_packages` per org (super-admin) once a workspace's German is signed off.
+- [ ] **Merge the open i18n PRs (owner review required):** #280 (foundation + common/help), #282 (bookings + availability), #287 (settings surface), #289 (flowCopy + locale-aware dates.ts), #290 (onboarding namespace), #291 (Section C safe copy: money + capability labels), #292 (Section C server-side: per-org emails + PDFs). All four newest (#289-#292) passed a CI/auto-review sweep on 2026-08-15 (see below); each is green.
+  - **Merge-order note:** #291 and #292 both carry the same byte-identical `money.ts` locale param, and #289/#290/#291/#292 each touch the 4 shared i18n registration files (`index.ts`, `react-i18next.d.ts`, `keyParity.test.ts`, `translationCompleteness.test.ts`) plus this handoff doc + changelog/version — expect trivial additive conflicts; resolve by keeping both sides. Only #291 and #292 bump the app version (both to 1.17.0); pick one at merge.
+  - **CI/auto-review sweep (2026-08-15, one subagent per PR):** #291 no-op (all green; the dynamic-`t()`-key review comment was a confirmed false positive, tsc passes). #290 restored design-rationale doc comments dropped when copy moved into JSON (`moduleOnboarding.ts`). #289 fixed a REAL bug: `formatTimestampLocal` used `i18n.language || undefined` which collapses to bare `'en'` -> `Intl` US month-first, flipping hire-order timestamps DD/MM -> MM/DD for English users; pinned to `en-GB`/`de-DE` + added tests. #292 fixed a REAL bug: resending a German-issued hire order rendered German fee digits inside an English wrapper because `send-transactional-email` re-resolved the live org locale; now threads an explicit `locale` through `EmailMessage` -> a gated `override` param on `resolveOrgLocale`, so wrapper + fee agree (still entitlement-gated); also cleared 2 CodeQL URL-substring alerts + a redundant cast.
+- [ ] **Native-speaker QA of the German.** `translationCompleteness` only catches paste-throughs (DE == EN), **not mistranslations**; ~1,000+ client DE strings plus the ~255 server DE strings (email + PDF copy maps, #292) are unproofed.
+- [ ] Enable `language_packages` per org (super-admin) once a workspace's German is signed off. This one entitlement now gates BOTH the in-app language switcher AND all server-generated German (emails + PDFs, via `resolveOrgLocale`).
 
 ---
 
