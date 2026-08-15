@@ -1989,8 +1989,8 @@ async function sendIssuedEmail(
     templateData: {
       artist_name: strField(data, "artist_name"),
       order_no: order.order_no,
-      date_label: dateLabel(strField(data, "date")),
-      engagement_dates_label: engagementDatesLabel(data),
+      date_label: dateLabel(strField(data, "date"), locale),
+      engagement_dates_label: engagementDatesLabel(data, locale),
       venue: strField(data, "venue"),
       city: strField(data, "city"),
       fee_label: feeLabel,
@@ -2793,7 +2793,7 @@ async function sendCountersignedEmails(
   const templateData = {
     artist_name: strField(data, "artist_name"),
     order_no: order.order_no,
-    date_label: dateLabel(strField(data, "date")),
+    date_label: dateLabel(strField(data, "date"), locale),
     venue: strField(data, "venue"),
     download_url: `${APP_URL}/hire-orders/${order.id}`,
   };
@@ -2929,11 +2929,11 @@ function castCodeFromLabel(label: string | null): string | undefined {
  * calendar rule), so a viewer/server timezone can never shift the day. Non-date input is
  * returned unchanged.
  */
-function dateLabel(dateOnly: string): string {
+function dateLabel(dateOnly: string, locale: ServerLocale = "en"): string {
   if (!/^\d{4}-\d{2}-\d{2}/.test(dateOnly)) return dateOnly;
   const d = new Date(`${dateOnly.slice(0, 10)}T00:00:00Z`);
   if (Number.isNaN(d.getTime())) return dateOnly;
-  return d.toLocaleDateString("en-US", {
+  return d.toLocaleDateString(locale === "de" ? "de-DE" : "en-US", {
     weekday: "short",
     month: "short",
     day: "numeric",
@@ -2943,16 +2943,16 @@ function dateLabel(dateOnly: string): string {
 }
 
 /** Human-readable complete schedule for aggregate hire-order delivery emails. */
-function engagementDatesLabel(data: OrderData): string {
+function engagementDatesLabel(data: OrderData, locale: ServerLocale = "en"): string {
   const dates = data.engagement_dates?.value;
   if (!Array.isArray(dates) || dates.length === 0) {
-    return dateLabel(strField(data, "date"));
+    return dateLabel(strField(data, "date"), locale);
   }
   return dates.map((engagement) => {
     const location = [engagement.venue, engagement.city]
       .filter((part): part is string => typeof part === "string" && part.trim() !== "")
       .join(", ");
-    return [dateLabel(engagement.date), location].filter(Boolean).join(" · ");
+    return [dateLabel(engagement.date, locale), location].filter(Boolean).join(" · ");
   }).join("; ");
 }
 

@@ -5591,4 +5591,12 @@ Deno.test("sign: a de, entitled order countersigns in German (PDF + artist email
   );
   assertExists(email);
   assertEquals((email!.body as { locale?: string }).locale, "de");
+  // The date_label TOKEN is formatted in German too (not just the wrapper).
+  const expectedDe = new Date("2026-06-15T00:00:00Z").toLocaleDateString("de-DE", {
+    weekday: "short", month: "short", day: "numeric", year: "numeric", timeZone: "UTC",
+  });
+  assertEquals(
+    (email!.body as { templateData: { date_label: string } }).templateData.date_label,
+    expectedDe,
+  );
 });

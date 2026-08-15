@@ -1071,3 +1071,34 @@ Deno.test("send-offer-digest: keeps every org when the org_entitlements read err
   assertEquals(body.digests_sent, 1, "booking_flow fails OPEN on an org_entitlements read error");
   assertEquals(invokeCalls.filter((c) => c.name === "send-transactional-email").length, 1);
 });
+
+// Regression (Section C): a de-entitled org's offer digest ships in German AND its
+// embedded expiry timestamp uses de-DE formatting (dots), not en-GB (slashes).
+Deno.test("send-offer-digest: de-entitled org sends a German digest with a de-DE expiry timestamp", async () => {
+  const pending = [{
+    id: "b1", artist_id: "a1",
+    artists: { id: "a1", name: "Jo", email: "jo@x.com" },
+    show_dates: { date: "2026-06-10", shows: { program: "P", sub_program: "S" }, cities: { name: "Berlin" } },
+  }];
+  const { deps, invokeCalls } = makeFakeDeps({
+    now: BERLIN_19_CEST,
+    tables: {
+      app_settings: [
+        ...APP_SETTINGS_SEED,
+        { when: { key: "org_language" }, data: [{ org_id: ORG_1, value: "de" }] },
+      ],
+      organizations: { data: [{ id: ORG_1 }], error: null },
+      bookings: { data: pending, error: null },
+    },
+    rpcs: { is_feature_enabled: { data: true, error: null } },
+  });
+  const res = await handle(makeRequest({ headers: cronOK }), deps);
+  assertEquals((await res.json()).digests_sent, 1);
+  const email = invokeCalls.find((c) => c.name === "send-transactional-email");
+  assertExists(email);
+  const body = email!.body as { locale?: string; templateData: { offers: Array<{ expires: string }> } };
+  assertEquals(body.locale, "de");
+  const expires = body.templateData.offers[0].expires;
+  assertEquals(expires.includes("."), true, `expected de-DE dots in "${expires}"`);
+  assertEquals(expires.includes("/"), false, `expected no en-GB slashes in "${expires}"`);
+});

@@ -3,6 +3,7 @@ import { requireCronOrRole } from "../_shared/auth.ts";
 import { realDeps, emailWasSent, type Deps } from "../_shared/deps.ts";
 import { countAccepted, countPendingNotExpired, isFutureOrToday, requiredPrimarySlots } from "../_shared/tierFill.ts";
 import { getActiveOrgs } from "../_shared/settings.ts";
+import { resolveOrgLocale } from "../_shared/orgLocale.ts";
 import { filterEntitledOrgs } from "../_shared/entitlements.ts";
 import { resolveBookingFlow, referenceLabel, type BookingFlow } from "../_shared/bookingFlow.ts";
 import { resolveContactEmail, resolveAccountDisplayName } from "../_shared/identity.ts";
@@ -140,6 +141,9 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       offers: Array<{ referenceLabel: string; date: string; expiresAt: string }>
     }
     const grouped = new Map<string, ReminderGroup>()
+    // Per-org locale (entitlement-gated) for the expiry timestamp embedded in the
+    // now-German-capable offer-expiry-reminder, so it matches the email language.
+    const locale = await resolveOrgLocale(admin, org.id)
     for (const b of dueRows) {
       const artist = b.artists
       const acct = artist?.user_id ? byUser.get(artist.user_id) : undefined
@@ -152,7 +156,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
         custom: sd?.custom ?? null,
         customFieldKey,
       })
-      const expiresAt = new Intl.DateTimeFormat('en-GB', {
+      const expiresAt = new Intl.DateTimeFormat(locale === 'de' ? 'de-DE' : 'en-GB', {
         timeZone: 'Europe/Berlin', day: '2-digit', month: '2-digit', year: 'numeric',
         hour: '2-digit', minute: '2-digit', hour12: false,
       }).format(new Date(b.offer_expires_at!)) // non-null: the query filters offer_expires_at IS NOT NULL
@@ -176,6 +180,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
           template_name: 'offer-expiry-reminder',
           recipient_email: entry.recipientEmail,
           org_id: org.id,
+          locale,
           templateData: { displayName: entry.displayName, offers: entry.offers },
           idempotency_key: `offer-reminder-${org.id}-${artistId}-${now.toISOString().slice(0, 10)}`,
         })

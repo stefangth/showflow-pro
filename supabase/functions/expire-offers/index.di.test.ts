@@ -1756,3 +1756,49 @@ Deno.test("expire-offers: cast-escalation email carries org_id (locale can resol
   assertExists(email);
   assertEquals((email!.body as { org_id?: string }).org_id, "00000000-0000-0000-0000-000000000001");
 });
+
+// Regression (Section C): a de-entitled org's expiry reminder ships in German AND
+// its embedded expiry timestamp uses de-DE formatting (dots), not en-GB (slashes).
+Deno.test("expire-offers: de-entitled org sends a German reminder with a de-DE expiry timestamp", async () => {
+  const ORG_ID = "org-1";
+  const dueBooking = {
+    id: "booking-1",
+    artist_id: "artist-1",
+    offer_expires_at: new Date(FIXED_NOW.getTime() + 12 * 3600 * 1000).toISOString(),
+    artists: { id: "artist-1", name: "Jo Performer", email: "jo@example.com", user_id: null },
+    show_dates: {
+      date: "2026-07-01", custom: null, show_id: "show-1", city_id: "city-1",
+      shows: { program: "Ballet", sub_program: "Matinée" },
+    },
+  };
+  const { deps, invokeCalls } = makeFakeDeps({
+    now: FIXED_NOW,
+    tables: {
+      app_settings: [
+        { when: { key: "cron_secret" }, data: { value: CRON_SECRET } },
+        { when: { key: "booking_flow" }, data: [{ org_id: ORG_ID, value: { expiry_reminder: true } }] },
+        { when: { key: "org_language" }, data: [{ org_id: ORG_ID, value: "de" }] },
+      ],
+      organizations: { data: [{ id: ORG_ID }], error: null },
+      show_date_offer_tiers: { data: [], error: null },
+      bookings: { data: [dueBooking], error: null },
+    },
+    rpcs: {
+      expire_soft_bookings: { data: null, error: null },
+      resolve_user_contacts: { data: [], error: null },
+    },
+  });
+  const res = await handle(cronReq(), deps);
+  assertEquals(res.status, 200);
+  assertEquals((await res.json()).reminders_sent, 1);
+  const email = invokeCalls.find(
+    (c) => c.name === "send-transactional-email" &&
+      (c.body as { template_name?: string }).template_name === "offer-expiry-reminder",
+  );
+  assertExists(email);
+  const body = email!.body as { locale?: string; templateData: { offers: Array<{ expiresAt: string }> } };
+  assertEquals(body.locale, "de");
+  const exp = body.templateData.offers[0].expiresAt;
+  assertEquals(exp.includes("."), true, `expected de-DE dots in "${exp}"`);
+  assertEquals(exp.includes("/"), false, `expected no en-GB slashes in "${exp}"`);
+});
