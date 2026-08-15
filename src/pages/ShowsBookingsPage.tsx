@@ -628,6 +628,24 @@ function ProducerShowsBookings() {
               title: t('producer.noHireOrderPermission'),
             },
           }}
+          // The range-select SelectionBar's bulk buttons (Phase 4, Task 7) reuse the
+          // same gate-checked per-date callbacks as the rest of the page — the loop
+          // is the only new behavior, the mutations themselves (and their
+          // toast+invalidate side effects) are unchanged. bulkGates mirrors
+          // actionGates so the bar is disabled/titled identically to the per-date
+          // controls it stands in for.
+          onBulkConfirm={(ids) => ids.forEach((id) => confirmHolds(id))}
+          onBulkGenerate={(ids) => ids.forEach((id) => generateHireOrder(id))}
+          bulkGates={{
+            confirm: {
+              disabled: !(canConfirmBookings && bookingOn),
+              title: t('producer.noConfirmPermission'),
+            },
+            generate: {
+              disabled: !canGenerateHireOrders,
+              title: t('producer.noHireOrderPermission'),
+            },
+          }}
         />
       )}
       </div>

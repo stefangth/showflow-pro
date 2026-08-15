@@ -9,8 +9,8 @@ const DASH = /[—–]/; // em dash, en dash
 
 describe('help content', () => {
   it('has the expected item count and unique ids', () => {
-    expect(HELP_ITEMS.length).toBe(71);
-    expect(new Set(HELP_ITEMS.map((i) => i.id)).size).toBe(71);
+    expect(HELP_ITEMS.length).toBe(72);
+    expect(new Set(HELP_ITEMS.map((i) => i.id)).size).toBe(72);
   });
 
   it('never uses the removed "open" status', () => {

@@ -380,6 +380,14 @@ export const HELP_ITEMS: readonly HelpItem[] = [
     },
   },
   {
+    id: 'P4.8', role: 'producer', stage: 4, status: 'new', surface: 'Bookings, Month and Season lens, selection bar', updated: '2026-08-15',
+    q: { en: 'Can I confirm holds or generate hire orders for several dates at once?', de: 'Kann ich Vormerkungen für mehrere Termine gleichzeitig bestätigen oder Engagementverträge erstellen?' },
+    a: {
+      en: 'Yes, in Month or Season: drag across a span of dates, or click one date and shift-click another, to select a range. A bar appears at the bottom with Confirm holds and Generate hire orders, each applied to every selected date, and Clear to drop the selection. Both still respect your permissions and only act on dates where the action makes sense.',
+      de: 'Ja, in Month oder Season: Ziehe über mehrere Termine, oder klicke einen Termin an und dann mit Shift auf einen weiteren, um einen Zeitraum auszuwählen. Unten erscheint eine Leiste mit Confirm holds und Generate hire orders, beide werden auf jeden ausgewählten Termin angewendet, und Clear hebt die Auswahl auf. Beide respektieren weiterhin deine Berechtigungen und wirken nur auf Termine, wo die Aktion sinnvoll ist.',
+    },
+  },
+  {
     id: 'P5.1', role: 'producer', stage: 5, status: 'new', surface: 'Show date cockpit, cancel dialog', updated: '2026-08-14',
     q: { en: 'A confirmed artist pulled out. What happens if I cancel them?', de: 'Ein bestätigter Artist ist abgesprungen. Was passiert, wenn ich ihn absage?' },
     a: {

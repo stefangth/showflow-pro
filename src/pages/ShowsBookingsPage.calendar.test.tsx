@@ -20,13 +20,30 @@ const SHOW_DATE = {
   city: null,
 };
 
+// A second, adjacent date with a different program (so `findByText("Nutcracker")`
+// in the pre-existing single-date tests above stays unambiguous). Used by the
+// Task-7 bulk-selection tests below to select a two-day range.
+const SHOW_DATE_2 = {
+  id: "sd-2", date: "2030-03-15", session_1: "19:00", session_2: null, session_3: null,
+  venue: "Opera House", status: "partially_filled" as const, notes: null, cancellation_reason: null,
+  city_id: null, show_id: "s2", custom: null,
+  show: { id: "s2", program: "Coppelia", sub_program: null, status: "active" as const, main_cast_slots: 4, understudy_slots: 2 },
+  city: null,
+};
+
 // acceptedMain: 2 -> ProducerDateEntry.acceptedMain > 0, so the Month lens's
 // DayRail defaults its primary action to "Confirm holds" for this date.
 const COUNTS = new Map([
   ["sd-1", { confirmedMain: 1, confirmedUs: 0, acceptedMain: 2, acceptedUs: 0, pendingMain: 0, pendingUs: 0, total: 4 }],
+  ["sd-2", { confirmedMain: 1, confirmedUs: 0, acceptedMain: 2, acceptedUs: 0, pendingMain: 0, pendingUs: 0, total: 4 }],
 ]);
 
-const { client } = vi.hoisted(() => ({ client: {} as Record<string, unknown> }));
+const { client, hireOrderMutate } = vi.hoisted(() => ({
+  client: {} as Record<string, unknown>,
+  // Stable across renders (unlike a fresh `vi.fn()` returned from the mocked
+  // hook on every call) so the bulk-generate test can assert on it.
+  hireOrderMutate: vi.fn(),
+}));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: client }));
 
 function seedClient(seed: Record<string, unknown>) {
@@ -44,7 +61,7 @@ vi.mock("react-router-dom", () => ({
 }));
 vi.mock("@/data/showDates", async (orig) => ({
   ...(await orig<typeof import("@/data/showDates")>()),
-  fetchShowDatesList: () => Promise.resolve([SHOW_DATE]),
+  fetchShowDatesList: () => Promise.resolve([SHOW_DATE, SHOW_DATE_2]),
 }));
 vi.mock("@/data/bookings", async (orig) => ({
   ...(await orig<typeof import("@/data/bookings")>()),
@@ -79,7 +96,7 @@ vi.mock("@/hooks/useBookingSetup", () => ({
 }));
 vi.mock("@/hooks/useHireOrders", () => ({
   useDatesReadyForHireOrder: () => ({ data: undefined }),
-  useHireOrderAction: () => ({ mutate: vi.fn(), isPending: false, variables: undefined }),
+  useHireOrderAction: () => ({ mutate: hireOrderMutate, isPending: false, variables: undefined }),
 }));
 vi.mock("@/features/editor/EditorContext", () => ({
   useEditorConfig: () => ({ isEditorMode: false, getColumnLabel: (id: string) => id, getCustomFieldDefs: () => [] }),
@@ -175,5 +192,67 @@ describe("ShowsBookingsPage — producer calendar surface (Task 16)", () => {
     const sheet = screen.getByTestId("detail-sheet");
     expect(sheet.getAttribute("data-show-date-id")).toBe("sd-1");
     expect(sheet.getAttribute("data-open")).toBe("true");
+  });
+
+  /**
+   * Task 7 (Phase 4): the page wires `CalendarSurface`'s `onBulkConfirm`/
+   * `onBulkGenerate` to the SAME gate-checked per-date `confirmHolds`/
+   * `generateHireOrder` callbacks the single-date controls already use — a
+   * bare `.forEach` loop, no separate bulk mutation. These tests drag-select
+   * both fixture dates (sd-1, sd-2) in the Month lens and assert the real
+   * data-access calls fire once per selected date.
+   */
+  it("bulk Confirm holds over a 2-date range confirms holds for each selected date", async () => {
+    seedClient({ bookings: { data: [{ id: "b1" }, { id: "b2" }], error: null } });
+    renderWithProviders(<ShowsBookingsPage />);
+    fireEvent.click(await screen.findByRole("tab", { name: "Month" }));
+    await screen.findByText("Nutcracker");
+    await screen.findByText("Coppelia");
+
+    const cellStart = screen.getByTestId("month-grid-cell-2030-03-14");
+    const cellEnd = screen.getByTestId("month-grid-cell-2030-03-15");
+    fireEvent.mouseDown(cellStart);
+    fireEvent.mouseEnter(cellEnd);
+    fireEvent.mouseUp(cellEnd);
+
+    const bar = await screen.findByTestId("selection-bar");
+    expect(bar).toHaveTextContent("2 selected");
+
+    fireEvent.click(screen.getByTestId("selection-bar-action-confirm"));
+
+    await waitFor(() => expect(toast.success).toHaveBeenCalledTimes(2));
+
+    const calls = client.calls as RecordedCall[];
+    const selectCalls = calls.filter(
+      (c) => c.table === "bookings" && c.method === "eq" && c.args[0] === "show_date_id"
+    );
+    expect(selectCalls.map((c) => c.args[1])).toEqual(expect.arrayContaining(["sd-1", "sd-2"]));
+
+    const updateCalls = calls.filter((c) => c.table === "bookings" && c.method === "update");
+    expect(updateCalls).toHaveLength(2);
+  });
+
+  it("bulk Generate hire orders over a 2-date range drafts an order for each selected date", async () => {
+    renderWithProviders(<ShowsBookingsPage />);
+    fireEvent.click(await screen.findByRole("tab", { name: "Month" }));
+    await screen.findByText("Nutcracker");
+    await screen.findByText("Coppelia");
+
+    const cellStart = screen.getByTestId("month-grid-cell-2030-03-14");
+    const cellEnd = screen.getByTestId("month-grid-cell-2030-03-15");
+    fireEvent.mouseDown(cellStart);
+    fireEvent.mouseEnter(cellEnd);
+    fireEvent.mouseUp(cellEnd);
+
+    fireEvent.click(await screen.findByTestId("selection-bar-action-generate"));
+
+    await waitFor(() => expect(hireOrderMutate).toHaveBeenCalledTimes(2));
+    const draftedDateIds = hireOrderMutate.mock.calls.map(
+      (args) => (args[0] as { show_date_id: string }).show_date_id
+    );
+    expect(draftedDateIds).toEqual(expect.arrayContaining(["sd-1", "sd-2"]));
+    expect(hireOrderMutate).toHaveBeenCalledWith(
+      expect.objectContaining({ action: "draft", org_id: "org-1", notify: false })
+    );
   });
 });
