@@ -241,6 +241,24 @@ describe('MonthGrid', () => {
       expect(onSelectDay).not.toHaveBeenCalled();
     });
 
+    it('shift-click does not also fire onSelectDay (the click handler is suppressed for a shift-modified click)', () => {
+      const { onSelectDay, onRangeStart, onRangeExtend, onRangeCommit } = renderRangeGrid();
+      const cellE = screen.getByTestId('month-grid-cell-2026-08-09');
+
+      // A real browser shift-click dispatches mousedown, mouseup, and click,
+      // all carrying shiftKey: true — mousedown already extends the range;
+      // the click must not also relocate selectedDay via onSelectDay.
+      fireEvent.mouseDown(cellE, { shiftKey: true });
+      fireEvent.mouseUp(cellE, { shiftKey: true });
+      fireEvent.click(cellE, { shiftKey: true });
+
+      expect(onRangeExtend).toHaveBeenCalledTimes(1);
+      expect(onRangeExtend).toHaveBeenCalledWith('2026-08-09');
+      expect(onRangeStart).not.toHaveBeenCalled();
+      expect(onRangeCommit).not.toHaveBeenCalled();
+      expect(onSelectDay).not.toHaveBeenCalled();
+    });
+
     it('a plain click with no movement fires only onSelectDay, no range callbacks', () => {
       const { onSelectDay, onRangeStart, onRangeExtend, onRangeCommit } = renderRangeGrid();
       const cellA = screen.getByTestId('month-grid-cell-2026-08-05');

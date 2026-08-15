@@ -14,9 +14,12 @@ interface MonthLensProps {
   onPeekDay?: (day: Date) => void;
   producerEntries?: ProducerDateEntry[];
   artistEntries?: ArtistDateEntry[];
-  /** Highlighted range for the drag-select flow — inert until Phase 4. */
+  /** Highlighted range for the drag-select flow (Phase 4, producer-only —
+   *  see `CalendarSurface`, which never feeds these to the artist lens). */
   rangeKeys?: string[];
+  onRangeStart?: (key: string) => void;
   onRangeExtend?: (key: string) => void;
+  onRangeCommit?: () => void;
   /** Override for "today", so tests get a deterministic today-marker. */
   today?: Date;
   className?: string;
@@ -28,8 +31,10 @@ interface MonthLensProps {
  * (`src/lib/calendar/{producer,artist}Data.ts`), then renders the shared
  * `<MonthGrid>`. The design's month block (lines 267-307) is already the kit's
  * `MonthGrid` — this lens only owns the role-specific cell derivation.
- * `rangeKeys`/`onRangeExtend` are forwarded but range selection stays inert
- * until Phase 4 (default: no range).
+ * `rangeKeys`/`onRangeStart`/`onRangeExtend`/`onRangeCommit` are forwarded
+ * straight through to `MonthGrid`; `CalendarSurface` owns the actual
+ * `RangeSelection` state and only wires these for the producer role
+ * (default: no range, so the artist lens is unaffected).
  */
 export function MonthLens({
   role,
@@ -41,7 +46,9 @@ export function MonthLens({
   producerEntries,
   artistEntries,
   rangeKeys = [],
+  onRangeStart,
   onRangeExtend,
+  onRangeCommit,
   today = new Date(),
   className,
 }: MonthLensProps) {
@@ -58,7 +65,9 @@ export function MonthLens({
       onSelectDay={onSelectDay}
       onOpenDay={onOpenDay}
       onPeekDay={onPeekDay}
+      onRangeStart={onRangeStart}
       onRangeExtend={onRangeExtend}
+      onRangeCommit={onRangeCommit}
       className={className}
     />
   );

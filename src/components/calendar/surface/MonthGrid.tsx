@@ -70,8 +70,13 @@ export function MonthGrid({
     return () => window.removeEventListener('mouseup', handleWindowMouseUp);
   }, [onRangeCommit]);
 
-  const handleSelect = (cell: MonthGridCell) => {
+  const handleSelect = (cell: MonthGridCell, event: ReactMouseEvent<HTMLDivElement>) => {
     if (!cell.day) return;
+    // A shift-click's mousedown already extended the range (see
+    // `handleMouseDown`) — its accompanying click must not also relocate
+    // `selectedDay`, or a shift-click would both extend the range AND move
+    // the single-day selection.
+    if (event.shiftKey) return;
     onSelectDay(cell.day);
   };
 
@@ -146,7 +151,7 @@ export function MonthGrid({
               data-in-range={cell.inRange}
               role="button"
               tabIndex={0}
-              onClick={() => handleSelect(cell)}
+              onClick={e => handleSelect(cell, e)}
               onDoubleClick={() => handleOpen(cell)}
               onMouseDown={e => handleMouseDown(cell, e)}
               onMouseEnter={() => handleMouseEnter(cell)}

@@ -1,5 +1,6 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import type {
+  ActionGate,
   ActionGates,
   ArtistDateEntry,
   ArtistStatus,
@@ -10,6 +11,7 @@ import type {
 import { PRODUCER_TONES, ARTIST_TONES, artistStatusLabel } from '@/lib/calendar/tone';
 import { periodLabel, periodWindow, shiftPeriod, type LensPeriod } from '@/lib/calendar/period';
 import { resolveProducerPrimary } from '@/lib/calendar/producerPrimary';
+import { clearSelection, extendTo, selectedKeys, type RangeSelection } from '@/lib/calendar/selection';
 import { isPastDate, toDateKey } from '@/lib/dates';
 import { ROUTES } from '@/config/app.config';
 import { cn } from '@/lib/utils';
@@ -26,6 +28,7 @@ import { AllDatesLens } from './AllDatesLens';
 import { DayRail, type DayRailLegendItem, type DayRailStat } from './DayRail';
 import { NeedsYouLens, type NeedsYouAction } from './NeedsYouLens';
 import { QueueRail, type QueueShortlistArtist } from './QueueRail';
+import { SelectionBar, type SelectionBarAction } from './SelectionBar';
 import type { NeedsYouGroupKey, NeedsYouItem, NeedsYouQueue } from '@/lib/calendar/needsYou';
 
 /**
@@ -147,6 +150,19 @@ interface CalendarSurfaceProps {
    *  KPI computation. Ignored for `role="artist"` and outside the Season
    *  lens. Default: empty (no dates flagged ready). */
   seasonReadyIds?: Set<string>;
+  /** Bulk actions for the range-selection `SelectionBar` (spec §6, Phase 4).
+   *  Ignored for `role="artist"`; the bar itself only renders for the
+   *  producer Month lens (and Season, once Task 6 wires it in). Receives
+   *  the show_date ids for every selected date that maps to a real
+   *  `ProducerDateEntry` — a selected key with no entry is silently
+   *  dropped, never passed through as `undefined`/`null`. */
+  onBulkConfirm?: (dateIds: string[]) => void;
+  onBulkGenerate?: (dateIds: string[]) => void;
+  /** Capability gates for the SelectionBar's Confirm/Generate buttons —
+   *  same disabled+title contract as `actionGates`, but keyed by the bulk
+   *  action instead of the per-date `ProducerActionKey`. Default: no gates,
+   *  both buttons enabled. */
+  bulkGates?: { confirm?: ActionGate; generate?: ActionGate };
   className?: string;
 }
 
@@ -204,11 +220,15 @@ export function CalendarSurface({
   clearedToday = [],
   onUndoLastReceipt,
   seasonReadyIds = new Set(),
+  onBulkConfirm,
+  onBulkGenerate,
+  bulkGates,
   className,
 }: CalendarSurfaceProps) {
   const now = useMemo(() => today ?? new Date(), [today]);
   const [anchor, setAnchor] = useState<Date>(now);
   const [selectedDay, setSelectedDay] = useState<Date>(now);
+  const [range, setRange] = useState<RangeSelection | null>(null);
 
   const resolvedNeedsYouQueue = needsYouQueue ?? EMPTY_NEEDS_YOU_QUEUE;
   const lenses = role === 'producer' ? producerLenses(needsYouQueue) : ARTIST_LENSES;
@@ -219,6 +239,31 @@ export function CalendarSurface({
 
   const resolvedEyebrow = eyebrow ?? (role === 'producer' ? 'BOOKINGS' : 'AVAILABILITY');
   const resolvedTitle = title ?? (role === 'producer' ? 'Shows & bookings' : 'Your calendar');
+
+  // Range selection is producer-only (spec §6) and scoped to one lens view —
+  // stale highlighted cells/bar surviving a lens switch would be confusing,
+  // so drop the selection whenever the caller navigates to a different lens.
+  useEffect(() => {
+    setRange(null);
+  }, [lens]);
+
+  // Every selected date key that maps to a real producer entry, in range
+  // order — a key with no entry (an empty day inside the drag span) is
+  // silently excluded rather than passed through as a missing id.
+  const producerEntryIdByKey = useMemo(() => {
+    const map = new Map<string, string>();
+    producerEntries.forEach((entry) => map.set(toDateKey(entry.date), entry.id));
+    return map;
+  }, [producerEntries]);
+  const selectedDateIds = useMemo(
+    () =>
+      selectedKeys(range).reduce<string[]>((ids, key) => {
+        const entryId = producerEntryIdByKey.get(key);
+        if (entryId) ids.push(entryId);
+        return ids;
+      }, []),
+    [range, producerEntryIdByKey]
+  );
 
   const dayProducerEntries = entriesForDay(producerEntries, selectedDay);
   const dayArtistEntries = entriesForDay(artistEntries, selectedDay);
@@ -343,6 +388,16 @@ export function CalendarSurface({
     [statusLabels],
   );
 
+  const bulkActions: SelectionBarAction[] = [
+    { key: 'confirm', label: 'Confirm holds', disabled: bulkGates?.confirm?.disabled, title: bulkGates?.confirm?.title },
+    {
+      key: 'generate',
+      label: 'Generate hire orders',
+      disabled: bulkGates?.generate?.disabled,
+      title: bulkGates?.generate?.title,
+    },
+  ];
+
   return (
     <div data-testid="calendar-surface" className={cn('flex flex-col gap-4', className)}>
       <CalendarSurfaceHeader eyebrow={resolvedEyebrow} eyebrowTone={eyebrowTone} title={resolvedTitle} cta={cta}>
@@ -396,6 +451,10 @@ export function CalendarSurface({
               producerEntries={producerEntries}
               artistEntries={artistEntries}
               today={now}
+              rangeKeys={role === 'producer' ? selectedKeys(range) : undefined}
+              onRangeStart={role === 'producer' ? (key) => setRange({ anchor: key, focus: key }) : undefined}
+              onRangeExtend={role === 'producer' ? (key) => setRange((r) => extendTo(r, key)) : undefined}
+              onRangeCommit={role === 'producer' ? () => {} : undefined}
             />
           </div>
           <DayRail
@@ -460,6 +519,15 @@ export function CalendarSurface({
             />
           )}
         </div>
+      )}
+
+      {role === 'producer' && activeLens === 'month' && (
+        <SelectionBar
+          count={selectedDateIds.length}
+          actions={bulkActions}
+          onAction={(key) => (key === 'confirm' ? onBulkConfirm?.(selectedDateIds) : onBulkGenerate?.(selectedDateIds))}
+          onClear={() => setRange(clearSelection())}
+        />
       )}
     </div>
   );

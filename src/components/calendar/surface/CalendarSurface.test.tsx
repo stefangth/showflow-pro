@@ -846,6 +846,159 @@ describe('CalendarSurface — Week + Season lenses', () => {
   });
 });
 
+describe('CalendarSurface — range selection + SelectionBar (producer, month lens)', () => {
+  it('a drag across the month grid selects the range, the bar counts only keys that map to real entries, Confirm dispatches onBulkConfirm with those ids, and Clear hides the bar', () => {
+    const onBulkConfirm = vi.fn();
+    const onBulkGenerate = vi.fn();
+    // Range Aug 10-13 (4 days): entries at 10, 11, 13 — 12 has no entry and
+    // must be excluded from the count and from the dispatched ids.
+    const entries = [
+      producerEntry({ id: 'pd-10', date: new Date(2026, 7, 10) }),
+      producerEntry({ id: 'pd-11', date: new Date(2026, 7, 11) }),
+      producerEntry({ id: 'pd-13', date: new Date(2026, 7, 13) }),
+    ];
+    render(
+      <CalendarSurface
+        role="producer"
+        producerEntries={entries}
+        actions={noopActions()}
+        lens="month"
+        onLensChange={vi.fn()}
+        today={TODAY}
+        onBulkConfirm={onBulkConfirm}
+        onBulkGenerate={onBulkGenerate}
+      />
+    );
+
+    expect(screen.queryByTestId('selection-bar')).not.toBeInTheDocument();
+
+    const cellStart = screen.getByTestId('month-grid-cell-2026-08-10');
+    const cellEnd = screen.getByTestId('month-grid-cell-2026-08-13');
+
+    fireEvent.mouseDown(cellStart);
+    fireEvent.mouseEnter(cellEnd);
+    fireEvent.mouseUp(cellEnd);
+
+    // The whole 4-day span is highlighted in-range, including the entryless day.
+    expect(screen.getByTestId('month-grid-cell-2026-08-10')).toHaveAttribute('data-in-range', 'true');
+    expect(screen.getByTestId('month-grid-cell-2026-08-11')).toHaveAttribute('data-in-range', 'true');
+    expect(screen.getByTestId('month-grid-cell-2026-08-12')).toHaveAttribute('data-in-range', 'true');
+    expect(screen.getByTestId('month-grid-cell-2026-08-13')).toHaveAttribute('data-in-range', 'true');
+
+    const bar = screen.getByTestId('selection-bar');
+    expect(bar).toHaveTextContent('3 selected');
+
+    fireEvent.click(screen.getByTestId('selection-bar-action-confirm'));
+    expect(onBulkConfirm).toHaveBeenCalledWith(['pd-10', 'pd-11', 'pd-13']);
+    expect(onBulkGenerate).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByTestId('selection-bar-clear'));
+    expect(screen.queryByTestId('selection-bar')).not.toBeInTheDocument();
+  });
+
+  it("Generate fires onBulkGenerate with the selected date ids", () => {
+    const onBulkGenerate = vi.fn();
+    const entries = [
+      producerEntry({ id: 'pd-10', date: new Date(2026, 7, 10) }),
+      producerEntry({ id: 'pd-11', date: new Date(2026, 7, 11) }),
+    ];
+    render(
+      <CalendarSurface
+        role="producer"
+        producerEntries={entries}
+        actions={noopActions()}
+        lens="month"
+        onLensChange={vi.fn()}
+        today={TODAY}
+        onBulkGenerate={onBulkGenerate}
+      />
+    );
+
+    fireEvent.mouseDown(screen.getByTestId('month-grid-cell-2026-08-10'));
+    fireEvent.mouseEnter(screen.getByTestId('month-grid-cell-2026-08-11'));
+    fireEvent.mouseUp(screen.getByTestId('month-grid-cell-2026-08-11'));
+
+    fireEvent.click(screen.getByTestId('selection-bar-action-generate'));
+    expect(onBulkGenerate).toHaveBeenCalledWith(['pd-10', 'pd-11']);
+  });
+
+  it('bulkGates disable the Confirm/Generate buttons with a title, and the range clears when the lens changes', () => {
+    const onLensChange = vi.fn();
+    const entries = [producerEntry({ id: 'pd-10', date: new Date(2026, 7, 10) })];
+    const { rerender } = render(
+      <CalendarSurface
+        role="producer"
+        producerEntries={entries}
+        actions={noopActions()}
+        lens="month"
+        onLensChange={onLensChange}
+        today={TODAY}
+        bulkGates={{
+          confirm: { disabled: true, title: 'No permission to confirm' },
+          generate: { disabled: true, title: 'No permission to generate' },
+        }}
+      />
+    );
+
+    fireEvent.mouseDown(screen.getByTestId('month-grid-cell-2026-08-10'));
+    fireEvent.mouseEnter(screen.getByTestId('month-grid-cell-2026-08-10'));
+    // A single-cell "drag" needs a genuine move to arm — extend onto the
+    // same cell via shift-click instead, which unconditionally extends.
+    fireEvent.mouseDown(screen.getByTestId('month-grid-cell-2026-08-10'), { shiftKey: true });
+
+    const bar = screen.getByTestId('selection-bar');
+    expect(bar).toHaveTextContent('1 selected');
+    const confirmBtn = screen.getByTestId('selection-bar-action-confirm');
+    const generateBtn = screen.getByTestId('selection-bar-action-generate');
+    expect(confirmBtn).toBeDisabled();
+    expect(confirmBtn).toHaveAttribute('title', 'No permission to confirm');
+    expect(generateBtn).toBeDisabled();
+    expect(generateBtn).toHaveAttribute('title', 'No permission to generate');
+
+    // Switching lens away and back must drop the prior range selection.
+    rerender(
+      <CalendarSurface
+        role="producer"
+        producerEntries={entries}
+        actions={noopActions()}
+        lens="agenda"
+        onLensChange={onLensChange}
+        today={TODAY}
+      />
+    );
+    rerender(
+      <CalendarSurface
+        role="producer"
+        producerEntries={entries}
+        actions={noopActions()}
+        lens="month"
+        onLensChange={onLensChange}
+        today={TODAY}
+      />
+    );
+    expect(screen.queryByTestId('selection-bar')).not.toBeInTheDocument();
+  });
+
+  it('does not render the SelectionBar for the artist role', () => {
+    render(
+      <CalendarSurface
+        role="artist"
+        artistEntries={[artistEntry({ date: new Date(2026, 7, 10) })]}
+        actions={noopActions()}
+        lens="month"
+        onLensChange={vi.fn()}
+        today={TODAY}
+      />
+    );
+
+    fireEvent.mouseDown(screen.getByTestId('month-grid-cell-2026-08-10'));
+    fireEvent.mouseEnter(screen.getByTestId('month-grid-cell-2026-08-11'));
+    fireEvent.mouseUp(screen.getByTestId('month-grid-cell-2026-08-11'));
+
+    expect(screen.queryByTestId('selection-bar')).not.toBeInTheDocument();
+  });
+});
+
 describe('CalendarSurface — agenda is period-windowed', () => {
   it('clicking Prev swaps the agenda body to the previous month', () => {
     const augEntry = producerEntry({ id: 'pd-aug', date: new Date(2026, 7, 10) });
