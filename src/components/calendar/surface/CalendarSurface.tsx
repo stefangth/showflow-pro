@@ -156,7 +156,7 @@ export function CalendarSurface({
   today,
   className,
 }: CalendarSurfaceProps) {
-  const now = today ?? new Date();
+  const now = useMemo(() => today ?? new Date(), [today]);
   const [anchor, setAnchor] = useState<Date>(now);
   const [selectedDay, setSelectedDay] = useState<Date>(now);
 
