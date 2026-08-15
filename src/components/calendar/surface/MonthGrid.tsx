@@ -30,6 +30,11 @@ interface MonthGridProps {
   /** True while a selection exists (enables drag visuals, e.g. suppressing
    *  text selection while the pointer is dragging across cells). */
   rangeActive?: boolean;
+  /** Mobile "status-bar per day" variant: compact cell min-height, tighter
+   *  padding, and a single visible chip per cell (any second chip is folded
+   *  into the `moreCount` overflow badge instead of being dropped). Desktop
+   *  behavior (the default) is unchanged when this is false/absent. */
+  dense?: boolean;
   className?: string;
 }
 
@@ -47,6 +52,7 @@ export function MonthGrid({
   onRangeExtend,
   onRangeCommit,
   rangeActive,
+  dense,
   className,
 }: MonthGridProps) {
   // Anchor cell captured on mousedown, held provisionally until movement
@@ -136,11 +142,20 @@ export function MonthGrid({
       <div className="grid grid-cols-7 gap-px bg-border">
         {cells.map((cell, i) => {
           if (!cell.day) {
-            return <div key={i} className="min-h-[104px] bg-muted/30" data-testid="month-grid-cell-empty" />;
+            return (
+              <div
+                key={i}
+                className={cn('bg-muted/30', dense ? 'min-h-[62px]' : 'min-h-[104px]')}
+                data-testid="month-grid-cell-empty"
+              />
+            );
           }
 
           const key = toDateKey(cell.day);
-          const visibleChips = cell.chips.slice(0, 2);
+          const chipCap = dense ? 1 : 2;
+          const visibleChips = cell.chips.slice(0, chipCap);
+          const hiddenChipCount = cell.chips.length - visibleChips.length;
+          const moreCount = cell.moreCount + hiddenChipCount;
 
           return (
             <div
@@ -157,7 +172,8 @@ export function MonthGrid({
               onMouseEnter={() => handleMouseEnter(cell)}
               onKeyDown={e => handleKeyDown(e, cell)}
               className={cn(
-                'relative flex min-h-[104px] flex-col gap-1 bg-background p-1.5 text-left outline-none transition-colors',
+                'relative flex flex-col gap-1 bg-background text-left outline-none transition-colors',
+                dense ? 'min-h-[62px] p-1' : 'min-h-[104px] p-1.5',
                 'hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset',
                 cell.isPast && 'opacity-60',
                 cell.inRange && 'bg-accent-50',
@@ -208,8 +224,8 @@ export function MonthGrid({
                     )}
                   </div>
                 ))}
-                {cell.moreCount > 0 && (
-                  <span className="text-[11px] text-muted-foreground">+{cell.moreCount} more</span>
+                {moreCount > 0 && (
+                  <span className="text-[11px] text-muted-foreground">+{moreCount} more</span>
                 )}
               </div>
             </div>

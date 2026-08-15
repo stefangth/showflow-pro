@@ -282,4 +282,47 @@ describe('MonthGrid', () => {
       expect(rangedCell.className).toContain('bg-accent-50');
     });
   });
+
+  describe('dense (mobile) variant', () => {
+    it('without dense: cell uses the desktop min-height and still shows up to 2 chips', () => {
+      render(<MonthGrid cells={buildCells()} onSelectDay={vi.fn()} onOpenDay={vi.fn()} />);
+      const cell = screen.getByTestId('month-grid-cell-2026-08-10');
+      expect(cell.className).toContain('min-h-[104px]');
+      expect(cell.className).not.toContain('min-h-[62px]');
+      expect(screen.getByTestId('month-grid-chip-2026-08-10-0')).toBeInTheDocument();
+      expect(screen.getByTestId('month-grid-chip-2026-08-10-1')).toBeInTheDocument();
+      expect(screen.getByText('+1 more')).toBeInTheDocument();
+    });
+
+    it('with dense: cell uses the compact min-height', () => {
+      render(<MonthGrid dense cells={buildCells()} onSelectDay={vi.fn()} onOpenDay={vi.fn()} />);
+      const cell = screen.getByTestId('month-grid-cell-2026-08-10');
+      expect(cell.className).toContain('min-h-[62px]');
+      expect(cell.className).not.toContain('min-h-[104px]');
+    });
+
+    it('with dense: a cell with 2 chips renders only 1, and the overflow count absorbs the hidden one', () => {
+      render(<MonthGrid dense cells={buildCells()} onSelectDay={vi.fn()} onOpenDay={vi.fn()} />);
+      // Only the first chip renders...
+      expect(screen.getByTestId('month-grid-chip-2026-08-10-0')).toBeInTheDocument();
+      // ...the second chip is capped, not rendered...
+      expect(screen.queryByTestId('month-grid-chip-2026-08-10-1')).not.toBeInTheDocument();
+      // ...and the existing moreCount (1) is bumped by the 1 hidden chip, so no data is lost.
+      expect(screen.getByText('+2 more')).toBeInTheDocument();
+    });
+
+    it('with dense: today ring and onSelectDay tap still work', () => {
+      const onSelectDay = vi.fn();
+      render(<MonthGrid dense cells={buildCells()} onSelectDay={onSelectDay} onOpenDay={vi.fn()} />);
+      const todayCell = screen.getByTestId('month-grid-cell-2026-08-15');
+      expect(todayCell).toHaveAttribute('data-today', 'true');
+      expect(screen.getByTestId('month-grid-today-marker')).toBeInTheDocument();
+
+      const cell = screen.getByTestId('month-grid-cell-2026-08-12');
+      fireEvent.click(cell);
+      expect(onSelectDay).toHaveBeenCalledTimes(1);
+      const selectedWith = onSelectDay.mock.calls[0][0] as Date;
+      expect(selectedWith.getDate()).toBe(12);
+    });
+  });
 });
