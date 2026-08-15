@@ -239,6 +239,94 @@ describe('CalendarSurface — producer', () => {
     fireEvent.click(btn);
     expect(actions.generateHireOrder).not.toHaveBeenCalled();
   });
+
+  // Regression coverage for the single-resolver consolidation
+  // (`resolveProducerPrimary` in DayRail.tsx): the label DayRail renders, the
+  // action `handleRailPrimary` dispatches, and the gate key the button is
+  // disabled under must all agree on the same kind for the same entry — they
+  // can no longer silently desync since all three now read one resolution.
+  it('DayRail primary label, dispatch, and gate all resolve to "confirmHolds" for the same accepted-holds entry', () => {
+    const actions = noopActions();
+    const entry = producerEntry({ id: 'pd-1', date: TODAY, acceptedMain: 2 });
+
+    const { rerender } = render(
+      <CalendarSurface
+        role="producer"
+        producerEntries={[entry]}
+        actions={actions}
+        lens="month"
+        onLensChange={vi.fn()}
+        today={TODAY}
+      />
+    );
+    const enabledBtn = screen.getByTestId('day-rail-primary');
+    expect(enabledBtn).toHaveTextContent('Confirm holds');
+    expect(enabledBtn).not.toBeDisabled();
+    fireEvent.click(enabledBtn);
+    expect(actions.confirmHolds).toHaveBeenCalledWith('pd-1');
+    expect(actions.generateHireOrder).not.toHaveBeenCalled();
+
+    rerender(
+      <CalendarSurface
+        role="producer"
+        producerEntries={[entry]}
+        actions={actions}
+        lens="month"
+        onLensChange={vi.fn()}
+        today={TODAY}
+        actionGates={{ confirmHolds: { disabled: true, title: 'Gated' } }}
+      />
+    );
+    const gatedBtn = screen.getByTestId('day-rail-primary');
+    expect(gatedBtn).toHaveTextContent('Confirm holds');
+    expect(gatedBtn).toBeDisabled();
+    expect(gatedBtn).toHaveAttribute('title', 'Gated');
+  });
+
+  it('DayRail primary label, dispatch, and gate all resolve to "generateHireOrder" for the same fully-filled entry', () => {
+    const actions = noopActions();
+    const entry = producerEntry({
+      id: 'pd-2',
+      date: TODAY,
+      status: 'fully_filled',
+      acceptedMain: 0,
+      confirmedMain: 6,
+      hireOrderId: null,
+    });
+
+    const { rerender } = render(
+      <CalendarSurface
+        role="producer"
+        producerEntries={[entry]}
+        actions={actions}
+        lens="month"
+        onLensChange={vi.fn()}
+        today={TODAY}
+      />
+    );
+    const enabledBtn = screen.getByTestId('day-rail-primary');
+    expect(enabledBtn).toHaveTextContent('Generate hire order');
+    expect(enabledBtn).not.toBeDisabled();
+    fireEvent.click(enabledBtn);
+    expect(actions.generateHireOrder).toHaveBeenCalledWith('pd-2');
+    expect(actions.confirmHolds).not.toHaveBeenCalled();
+
+    rerender(
+      <CalendarSurface
+        role="producer"
+        producerEntries={[entry]}
+        actions={actions}
+        lens="month"
+        onLensChange={vi.fn()}
+        today={TODAY}
+        actionGates={{ generateHireOrder: { disabled: true, title: 'Gated' } }}
+      />
+    );
+    const gatedBtn = screen.getByTestId('day-rail-primary');
+    expect(gatedBtn).toHaveTextContent('Generate hire order');
+    expect(gatedBtn).toBeDisabled();
+    expect(gatedBtn).toHaveAttribute('title', 'Gated');
+  });
 });
 
 describe('CalendarSurface — artist', () => {

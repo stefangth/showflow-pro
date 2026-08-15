@@ -9,6 +9,7 @@ import type {
 } from '@/lib/calendar/types';
 import { PRODUCER_TONES, ARTIST_TONES, artistStatusLabel } from '@/lib/calendar/tone';
 import { periodLabel, periodWindow, shiftPeriod } from '@/lib/calendar/period';
+import { resolveProducerPrimary } from '@/lib/calendar/producerPrimary';
 import { isPastDate, toDateKey } from '@/lib/dates';
 import { ROUTES } from '@/config/app.config';
 import { cn } from '@/lib/utils';
@@ -187,13 +188,15 @@ export function CalendarSurface({
 
   const handleRailPrimary = () => {
     if (role === 'producer') {
-      const withAccepted = dayProducerEntries.find((e) => e.acceptedMain > 0);
-      if (withAccepted) {
-        actions.confirmHolds?.(withAccepted.id);
-        return;
+      // Same resolution DayRail uses to pick its label/gate — see
+      // `resolveProducerPrimary`'s doc comment — so dispatch can never
+      // disagree with what the button displayed.
+      const resolved = resolveProducerPrimary(dayProducerEntries);
+      if (resolved?.kind === 'confirmHolds') {
+        actions.confirmHolds?.(resolved.entry.id);
+      } else if (resolved?.kind === 'generateHireOrder') {
+        actions.generateHireOrder?.(resolved.entry.id);
       }
-      const filled = dayProducerEntries.find((e) => e.status === 'fully_filled' && e.hireOrderId == null);
-      if (filled) actions.generateHireOrder?.(filled.id);
       return;
     }
     const suggested = dayArtistEntries.find((e) => e.myStatus === 'suggested');

@@ -1,6 +1,7 @@
 import { format } from 'date-fns';
-import type { ActionGates, ArtistDateEntry, ArtistStatus, ProducerActionKey, ProducerDateEntry, Tone } from '@/lib/calendar/types';
+import type { ActionGates, ArtistDateEntry, ArtistStatus, ProducerDateEntry, Tone } from '@/lib/calendar/types';
 import { ARTIST_TONES, PRODUCER_TONES, TONE_TEXT, artistStatusLabel } from '@/lib/calendar/tone';
+import { resolveProducerPrimary } from '@/lib/calendar/producerPrimary';
 import { toDateKey } from '@/lib/dates';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -40,29 +41,6 @@ interface DayRailProps {
    *  `disabled` with `title` as its tooltip instead of firing `onPrimary`. */
   actionGates?: ActionGates;
   className?: string;
-}
-
-/** Producer primary-action default (spec §3.4): "Confirm holds" beats
- *  "Generate hire order" when a day has both — accepted-but-unconfirmed
- *  slots are the more urgent, blocking action. A `fully_filled` entry only
- *  offers Generate when it has no active order yet (`hireOrderId == null`);
- *  an already-ordered date falls through to `undefined` so the rail's
- *  secondary "Open date" action is the only one offered. `undefined` = no
- *  primary action, so the caller may still force one via `primaryLabel`. */
-function producerPrimaryLabel(entries: ProducerDateEntry[]): string | undefined {
-  if (entries.some(e => e.acceptedMain > 0)) return 'Confirm holds';
-  if (entries.some(e => e.status === 'fully_filled' && e.hireOrderId == null)) return 'Generate hire order';
-  return undefined;
-}
-
-/** Same priority as `producerPrimaryLabel`, but returns the `ActionGates` key
- *  the resolved primary button maps to (or `undefined` when there is no
- *  primary action to gate) — lets the rail look up the caller's capability
- *  gate for whichever action it ends up rendering. */
-function producerPrimaryKind(entries: ProducerDateEntry[]): ProducerActionKey | undefined {
-  if (entries.some(e => e.acceptedMain > 0)) return 'confirmHolds';
-  if (entries.some(e => e.status === 'fully_filled' && e.hireOrderId == null)) return 'generateHireOrder';
-  return undefined;
 }
 
 /** Artist primary-action default (spec §4): a pending offer to answer beats
@@ -218,7 +196,7 @@ function ArtistDayCard({ entry, statusLabels }: { entry: ArtistDateEntry; status
  * cards show a fill meter + `confirmedMain/mainSlots main`; artist cards
  * (no slot counts on `ArtistDateEntry`) show a status note instead. The
  * primary/secondary action labels default per role from the day's entries
- * (see `producerPrimaryLabel`/`artistPrimaryLabel`) unless the caller
+ * (see `resolveProducerPrimary`/`artistPrimaryLabel`) unless the caller
  * overrides them via `primaryLabel`/`secondaryLabel`.
  */
 export function DayRail({
@@ -244,18 +222,19 @@ export function DayRail({
   const statsTitle = role === 'producer' ? 'This month' : `Your ${format(day, 'MMMM')}`;
   const emptyText = role === 'producer' ? 'No dates scheduled on this day.' : 'No date offered to you on this day.';
 
+  // Single resolution — feeds both the label below and the gate lookup, so
+  // they can never point at different actions (see `resolveProducerPrimary`).
+  const producerPrimary = role === 'producer' ? resolveProducerPrimary(resolvedProducerEntries) : null;
+
   const resolvedPrimaryLabel =
     primaryLabel ??
-    (role === 'producer'
-      ? producerPrimaryLabel(resolvedProducerEntries)
-      : artistPrimaryLabel(resolvedArtistEntries));
+    (role === 'producer' ? producerPrimary?.label : artistPrimaryLabel(resolvedArtistEntries));
   const resolvedSecondaryLabel = secondaryLabel ?? (role === 'producer' ? 'Open date' : 'Message producer');
 
   // Only the producer primary maps to a capability-gated action (Confirm
   // holds / Generate hire order); "Open date" and every artist action are
   // never gated (see `ActionGates`'s doc comment).
-  const primaryKind = role === 'producer' ? producerPrimaryKind(resolvedProducerEntries) : undefined;
-  const primaryGate = primaryKind ? actionGates?.[primaryKind] : undefined;
+  const primaryGate = producerPrimary ? actionGates?.[producerPrimary.kind] : undefined;
   const primaryDisabled = primaryGate?.disabled ?? false;
 
   return (
