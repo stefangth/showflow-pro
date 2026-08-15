@@ -22,23 +22,40 @@ import { AgendaLens, type AgendaAction } from './AgendaLens';
 import { OffersLens } from './OffersLens';
 import { AllDatesLens } from './AllDatesLens';
 import { DayRail, type DayRailLegendItem, type DayRailStat } from './DayRail';
+import { NeedsYouLens, type NeedsYouAction } from './NeedsYouLens';
+import { QueueRail, type QueueShortlistArtist } from './QueueRail';
+import type { NeedsYouGroupKey, NeedsYouItem, NeedsYouQueue } from '@/lib/calendar/needsYou';
 
 /**
- * Phase-1 lens sets (spec §2): producer gets Month + Agenda, artist gets
- * Offers + Month + All dates. The later-phase producer lenses (Needs you /
- * Week / Season) are intentionally not wired here — `LensTabs` renders
- * whatever list it's given, so a later wave only needs to extend these
- * arrays and this component's per-lens `activeLens === '<key>'` branches.
+ * Phase-1/2 lens sets (spec §2): producer gets Needs you + Month + Agenda
+ * (Needs you first and default — spec §3), artist gets Offers + Month + All
+ * dates. The later-phase producer lenses (Week / Season) are intentionally
+ * not wired here — `LensTabs` renders whatever list it's given, so a later
+ * wave only needs to extend these arrays and this component's per-lens
+ * `activeLens === '<key>'` branches.
  */
-const PRODUCER_LENSES: LensTabDef[] = [
-  { key: 'month', label: 'Month' },
-  { key: 'agenda', label: 'Agenda' },
-];
+function producerLenses(needsYouQueue: NeedsYouQueue | undefined): LensTabDef[] {
+  return [
+    { key: 'needs-you', label: 'Needs you', count: needsYouQueue?.totalItems },
+    { key: 'month', label: 'Month' },
+    { key: 'agenda', label: 'Agenda' },
+  ];
+}
 const ARTIST_LENSES: LensTabDef[] = [
   { key: 'offers', label: 'Offers' },
   { key: 'month', label: 'Month' },
   { key: 'all-dates', label: 'All dates' },
 ];
+
+/** Empty queue shape passed to `NeedsYouLens`/`QueueRail` when the caller
+ *  hasn't wired `needsYouQueue` yet (or it's genuinely empty) — the lens
+ *  must render gracefully (no groups, zero counts) rather than crash or be
+ *  skipped, since it's now the producer default. */
+const EMPTY_NEEDS_YOU_QUEUE: NeedsYouQueue = {
+  groups: [],
+  totalItems: 0,
+  countByGroup: { 'expires-today': 0, 'at-risk': 0, 'ready-to-issue': 0, cancelled: 0 },
+};
 
 const PRODUCER_STATUS_ORDER: ProducerStatus[] = [
   'fully_filled',
@@ -63,6 +80,16 @@ export interface CalendarSurfaceActions {
   generateHireOrder?: (dateId: string) => void;
   openDate?: (dateId: string) => void;
   openCasting?: (dateId: string) => void;
+  // "Needs you" lens actions (spec §4.1) — all also keyed by the show_date id.
+  extendHold?: (dateId: string) => void;
+  releaseHold?: (dateId: string) => void;
+  notifyCast?: (dateId: string) => void;
+  cancelDate?: (dateId: string) => void;
+  undoCancel?: (dateId: string) => void;
+  previewHireOrder?: (dateId: string) => void;
+  offerArtist?: (dateId: string, artistId: string) => void;
+  confirmAll?: (dateIds: string[]) => void;
+  generateAll?: (dateIds: string[]) => void;
   // Artist actions.
   accept?: (bookingId: string) => void;
   decline?: (bookingId: string) => void;
@@ -102,6 +129,18 @@ interface CalendarSurfaceProps {
   cta?: ReactNode;
   /** Override for "today", so tests get deterministic anchor/selection. */
   today?: Date;
+  /** The producer "Needs you" worklist (spec §4.1). Ignored for
+   *  `role="artist"`. Absent/empty renders the lens with no groups rather
+   *  than skipping it — it's the producer default so it must never crash on
+   *  a caller that hasn't wired it up yet. */
+  needsYouQueue?: NeedsYouQueue;
+  /** Eligible-artist shortlist for the queue's top at-risk date, threaded
+   *  straight to `QueueRail`. `null`/omitted hides the shortlist card. */
+  queueShortlist?: { dateId: string; dateLabel: string; artists: QueueShortlistArtist[] } | null;
+  /** Today's cleared-queue receipts, threaded straight to `NeedsYouLens`'s
+   *  footer. Omitted renders an empty receipts list. */
+  clearedToday?: { dateId: string; title: string; label: string }[];
+  onUndoLastReceipt?: () => void;
   className?: string;
 }
 
@@ -154,14 +193,19 @@ export function CalendarSurface({
   title,
   cta,
   today,
+  needsYouQueue,
+  queueShortlist = null,
+  clearedToday = [],
+  onUndoLastReceipt,
   className,
 }: CalendarSurfaceProps) {
   const now = useMemo(() => today ?? new Date(), [today]);
   const [anchor, setAnchor] = useState<Date>(now);
   const [selectedDay, setSelectedDay] = useState<Date>(now);
 
-  const lenses = role === 'producer' ? PRODUCER_LENSES : ARTIST_LENSES;
-  const defaultLensKey = role === 'producer' ? 'month' : 'offers';
+  const resolvedNeedsYouQueue = needsYouQueue ?? EMPTY_NEEDS_YOU_QUEUE;
+  const lenses = role === 'producer' ? producerLenses(needsYouQueue) : ARTIST_LENSES;
+  const defaultLensKey = role === 'producer' ? 'needs-you' : 'offers';
   const activeLens = lenses.some((l) => l.key === lens) ? lens : defaultLensKey;
 
   const resolvedEyebrow = eyebrow ?? (role === 'producer' ? 'BOOKINGS' : 'AVAILABILITY');
@@ -184,6 +228,46 @@ export function CalendarSurface({
     if (kind === 'confirm') actions.confirmHolds?.(entry.id);
     else if (kind === 'generate') actions.generateHireOrder?.(entry.id);
     else actions.openCasting?.(entry.id);
+  };
+
+  const handleNeedsYouAction = (item: NeedsYouItem, action: NeedsYouAction) => {
+    const dateId = item.dateId;
+    switch (action) {
+      case 'confirm':
+        actions.confirmHolds?.(dateId);
+        break;
+      case 'extend':
+        actions.extendHold?.(dateId);
+        break;
+      case 'release':
+        actions.releaseHold?.(dateId);
+        break;
+      case 'open-casting':
+        actions.openCasting?.(dateId);
+        break;
+      case 'cancel-date':
+        actions.cancelDate?.(dateId);
+        break;
+      case 'generate':
+        actions.generateHireOrder?.(dateId);
+        break;
+      case 'preview':
+        actions.previewHireOrder?.(dateId);
+        break;
+      case 'notify':
+        actions.notifyCast?.(dateId);
+        break;
+      case 'undo-cancel':
+        actions.undoCancel?.(dateId);
+        break;
+    }
+  };
+
+  const handleNeedsYouBulk = (group: NeedsYouGroupKey, action: 'confirm' | 'generate') => {
+    const groupEntry = resolvedNeedsYouQueue.groups.find((g) => g.key === group);
+    const dateIds = groupEntry?.items.map((item) => item.dateId) ?? [];
+    if (action === 'confirm') actions.confirmAll?.(dateIds);
+    else actions.generateAll?.(dateIds);
   };
 
   const handleRailPrimary = () => {
@@ -270,7 +354,28 @@ export function CalendarSurface({
         </CalendarToolbar>
       )}
 
-      {activeLens === 'month' ? (
+      {activeLens === 'needs-you' ? (
+        <div className="flex items-start gap-4">
+          <div className="min-w-0 flex-1">
+            <NeedsYouLens
+              queue={resolvedNeedsYouQueue}
+              onItemAction={handleNeedsYouAction}
+              onOpenDate={(dateId) => actions.openDate?.(dateId)}
+              onBulk={handleNeedsYouBulk}
+              receipts={clearedToday}
+              onUndoLast={onUndoLastReceipt}
+              actionGates={actionGates}
+            />
+          </div>
+          <QueueRail
+            queue={resolvedNeedsYouQueue}
+            clearedToday={clearedToday.length}
+            shortlist={queueShortlist}
+            onOffer={(dateId, artistId) => actions.offerArtist?.(dateId, artistId)}
+            className="w-[280px] shrink-0"
+          />
+        </div>
+      ) : activeLens === 'month' ? (
         <div className="flex items-start gap-4">
           <div className="min-w-0 flex-1">
             <MonthLens

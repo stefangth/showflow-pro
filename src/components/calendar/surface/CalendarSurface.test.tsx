@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { CalendarSurface, type CalendarSurfaceActions } from './CalendarSurface';
 import type { ArtistDateEntry, ProducerDateEntry } from '@/lib/calendar/types';
+import type { NeedsYouItem, NeedsYouQueue } from '@/lib/calendar/needsYou';
 
 const TODAY = new Date(2026, 7, 15); // 15 Aug 2026 (Sat)
 
@@ -52,9 +53,35 @@ function noopActions(): CalendarSurfaceActions {
     generateHireOrder: vi.fn(),
     openDate: vi.fn(),
     openCasting: vi.fn(),
+    extendHold: vi.fn(),
+    releaseHold: vi.fn(),
+    notifyCast: vi.fn(),
+    cancelDate: vi.fn(),
+    undoCancel: vi.fn(),
+    previewHireOrder: vi.fn(),
+    offerArtist: vi.fn(),
+    confirmAll: vi.fn(),
+    generateAll: vi.fn(),
     accept: vi.fn(),
     decline: vi.fn(),
     block: vi.fn(),
+  };
+}
+
+function needsYouQueueWithAtRisk(entry: ProducerDateEntry): NeedsYouQueue {
+  const item: NeedsYouItem = {
+    dateId: entry.id,
+    entry,
+    group: 'at-risk',
+    people: [],
+    earliestExpiry: null,
+    openMainSlots: Math.max(0, entry.mainSlots - entry.confirmedMain),
+    leadDays: 3,
+  };
+  return {
+    groups: [{ key: 'at-risk', items: [item] }],
+    totalItems: 1,
+    countByGroup: { 'expires-today': 0, 'at-risk': 1, 'ready-to-issue': 0, cancelled: 0 },
   };
 }
 
@@ -114,7 +141,7 @@ describe('CalendarSurface — producer', () => {
     expect(screen.queryByTestId('day-rail')).not.toBeInTheDocument();
   });
 
-  it('an unrecognised lens key falls back to the Month default', () => {
+  it('an unrecognised lens key falls back to the producer default (Needs you)', () => {
     render(
       <CalendarSurface
         role="producer"
@@ -125,8 +152,8 @@ describe('CalendarSurface — producer', () => {
         today={TODAY}
       />
     );
-    expect(screen.getByTestId('lens-tab-month')).toHaveAttribute('data-active', 'true');
-    expect(screen.getByTestId('day-rail')).toBeInTheDocument();
+    expect(screen.getByTestId('lens-tab-needs-you')).toHaveAttribute('data-active', 'true');
+    expect(screen.getByTestId('needs-you-lens')).toBeInTheDocument();
   });
 
   it('agenda "Generate hire order" fires actions.generateHireOrder with the entry id', () => {
@@ -326,6 +353,237 @@ describe('CalendarSurface — producer', () => {
     expect(gatedBtn).toHaveTextContent('Generate hire order');
     expect(gatedBtn).toBeDisabled();
     expect(gatedBtn).toHaveAttribute('title', 'Gated');
+  });
+});
+
+describe('CalendarSurface — needs-you (producer default)', () => {
+  it('mounts with lens="needs-you": Needs you is the first/active tab, NeedsYouLens renders the item, QueueRail renders alongside, and there is no PeriodNavigator', () => {
+    const entry = producerEntry({ id: 'pd-risk', mainSlots: 6, confirmedMain: 2 });
+    const queue = needsYouQueueWithAtRisk(entry);
+    render(
+      <CalendarSurface
+        role="producer"
+        producerEntries={[entry]}
+        actions={noopActions()}
+        lens="needs-you"
+        onLensChange={vi.fn()}
+        today={TODAY}
+        needsYouQueue={queue}
+      />
+    );
+
+    const tabs = screen.getAllByRole('tab');
+    expect(tabs[0]).toHaveAttribute('data-testid', 'lens-tab-needs-you');
+    expect(screen.getByTestId('lens-tab-needs-you')).toHaveAttribute('data-active', 'true');
+
+    expect(screen.getByTestId('needs-you-lens')).toBeInTheDocument();
+    expect(screen.getByTestId('needs-you-item-pd-risk')).toBeInTheDocument();
+    expect(screen.getByTestId('queue-rail')).toBeInTheDocument();
+
+    expect(screen.queryByTestId('period-navigator-pill')).not.toBeInTheDocument();
+  });
+
+  it('renders gracefully with no needsYouQueue prop (empty groups, no crash)', () => {
+    render(
+      <CalendarSurface
+        role="producer"
+        producerEntries={[producerEntry()]}
+        actions={noopActions()}
+        lens="needs-you"
+        onLensChange={vi.fn()}
+        today={TODAY}
+      />
+    );
+    expect(screen.getByTestId('needs-you-lens')).toBeInTheDocument();
+    expect(screen.getByTestId('queue-rail')).toBeInTheDocument();
+  });
+
+  it('switching to Month from needs-you still works', () => {
+    const onLensChange = vi.fn();
+    const entry = producerEntry({ id: 'pd-risk', mainSlots: 6, confirmedMain: 2 });
+    const queue = needsYouQueueWithAtRisk(entry);
+    const { rerender } = render(
+      <CalendarSurface
+        role="producer"
+        producerEntries={[entry]}
+        actions={noopActions()}
+        lens="needs-you"
+        onLensChange={onLensChange}
+        today={TODAY}
+        needsYouQueue={queue}
+      />
+    );
+    fireEvent.click(screen.getByTestId('lens-tab-month'));
+    expect(onLensChange).toHaveBeenCalledWith('month');
+
+    // Simulate the caller applying the lens change.
+    rerender(
+      <CalendarSurface
+        role="producer"
+        producerEntries={[entry]}
+        actions={noopActions()}
+        lens="month"
+        onLensChange={onLensChange}
+        today={TODAY}
+        needsYouQueue={queue}
+      />
+    );
+    expect(screen.getByTestId('month-grid-cell-2026-08-10')).toBeInTheDocument();
+    expect(screen.getByTestId('day-rail')).toBeInTheDocument();
+  });
+
+  it('the "Needs you" tab count reflects needsYouQueue.totalItems', () => {
+    const entry = producerEntry({ id: 'pd-risk', mainSlots: 6, confirmedMain: 2 });
+    const queue = needsYouQueueWithAtRisk(entry);
+    render(
+      <CalendarSurface
+        role="producer"
+        producerEntries={[entry]}
+        actions={noopActions()}
+        lens="needs-you"
+        onLensChange={vi.fn()}
+        today={TODAY}
+        needsYouQueue={queue}
+      />
+    );
+    expect(screen.getByTestId('lens-tab-needs-you')).toHaveTextContent('1');
+  });
+
+  it('maps NeedsYouAction "open-casting" (at-risk primary) to actions.openCasting with the date id', () => {
+    const actions = noopActions();
+    const entry = producerEntry({ id: 'pd-risk', mainSlots: 6, confirmedMain: 2 });
+    const queue = needsYouQueueWithAtRisk(entry);
+    render(
+      <CalendarSurface
+        role="producer"
+        producerEntries={[entry]}
+        actions={actions}
+        lens="needs-you"
+        onLensChange={vi.fn()}
+        today={TODAY}
+        needsYouQueue={queue}
+      />
+    );
+    fireEvent.click(screen.getByTestId('needs-you-primary-pd-risk'));
+    expect(actions.openCasting).toHaveBeenCalledWith('pd-risk');
+  });
+
+  it('maps NeedsYouAction "cancel-date" (at-risk secondary) to actions.cancelDate with the date id', () => {
+    const actions = noopActions();
+    const entry = producerEntry({ id: 'pd-risk', mainSlots: 6, confirmedMain: 2 });
+    const queue = needsYouQueueWithAtRisk(entry);
+    render(
+      <CalendarSurface
+        role="producer"
+        producerEntries={[entry]}
+        actions={actions}
+        lens="needs-you"
+        onLensChange={vi.fn()}
+        today={TODAY}
+        needsYouQueue={queue}
+      />
+    );
+    fireEvent.click(screen.getByTestId('needs-you-secondary-pd-risk-cancel-date'));
+    expect(actions.cancelDate).toHaveBeenCalledWith('pd-risk');
+  });
+
+  it('clicking a needs-you card fires actions.openDate with the date id', () => {
+    const actions = noopActions();
+    const entry = producerEntry({ id: 'pd-risk', mainSlots: 6, confirmedMain: 2 });
+    const queue = needsYouQueueWithAtRisk(entry);
+    render(
+      <CalendarSurface
+        role="producer"
+        producerEntries={[entry]}
+        actions={actions}
+        lens="needs-you"
+        onLensChange={vi.fn()}
+        today={TODAY}
+        needsYouQueue={queue}
+      />
+    );
+    fireEvent.click(screen.getByTestId('needs-you-item-pd-risk'));
+    expect(actions.openDate).toHaveBeenCalledWith('pd-risk');
+  });
+
+  it('onBulk("expires-today", "confirm") fires actions.confirmAll with that group\'s date ids', () => {
+    const actions = noopActions();
+    const entry = producerEntry({
+      id: 'pd-expiring',
+      mainSlots: 6,
+      confirmedMain: 2,
+      acceptedMain: 0,
+      pendingMain: 1,
+    });
+    const item: NeedsYouItem = {
+      dateId: entry.id,
+      entry,
+      group: 'expires-today',
+      people: [],
+      earliestExpiry: new Date(2026, 7, 15, 18, 0),
+      openMainSlots: 4,
+      leadDays: 0,
+    };
+    const queue: NeedsYouQueue = {
+      groups: [{ key: 'expires-today', items: [item] }],
+      totalItems: 1,
+      countByGroup: { 'expires-today': 1, 'at-risk': 0, 'ready-to-issue': 0, cancelled: 0 },
+    };
+    render(
+      <CalendarSurface
+        role="producer"
+        producerEntries={[entry]}
+        actions={actions}
+        lens="needs-you"
+        onLensChange={vi.fn()}
+        today={TODAY}
+        needsYouQueue={queue}
+      />
+    );
+    fireEvent.click(screen.getByTestId('needs-you-bulk-expires-today'));
+    expect(actions.confirmAll).toHaveBeenCalledWith(['pd-expiring']);
+  });
+
+  it('QueueRail "Offer" fires actions.offerArtist with the shortlist date and artist ids', () => {
+    const actions = noopActions();
+    const entry = producerEntry({ id: 'pd-risk', mainSlots: 6, confirmedMain: 2 });
+    const queue = needsYouQueueWithAtRisk(entry);
+    render(
+      <CalendarSurface
+        role="producer"
+        producerEntries={[entry]}
+        actions={actions}
+        lens="needs-you"
+        onLensChange={vi.fn()}
+        today={TODAY}
+        needsYouQueue={queue}
+        queueShortlist={{ dateId: 'pd-risk', dateLabel: 'Sat 15 Aug', artists: [{ artistId: 'art-1', name: 'Jo Doe' }] }}
+      />
+    );
+    fireEvent.click(screen.getByTestId('queue-offer-art-1'));
+    expect(actions.offerArtist).toHaveBeenCalledWith('pd-risk', 'art-1');
+  });
+
+  it('onUndoLastReceipt fires when "Undo last" is clicked with a non-empty clearedToday', () => {
+    const onUndoLastReceipt = vi.fn();
+    const entry = producerEntry({ id: 'pd-risk', mainSlots: 6, confirmedMain: 2 });
+    const queue = needsYouQueueWithAtRisk(entry);
+    render(
+      <CalendarSurface
+        role="producer"
+        producerEntries={[entry]}
+        actions={noopActions()}
+        lens="needs-you"
+        onLensChange={vi.fn()}
+        today={TODAY}
+        needsYouQueue={queue}
+        clearedToday={[{ dateId: 'pd-cleared', title: 'Cirque Noir', label: 'Confirmed' }]}
+        onUndoLastReceipt={onUndoLastReceipt}
+      />
+    );
+    expect(screen.getByTestId('needs-you-receipt-0')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('needs-you-undo-last'));
+    expect(onUndoLastReceipt).toHaveBeenCalled();
   });
 });
 
