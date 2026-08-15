@@ -23,6 +23,12 @@ export interface ProducerDateEntry {
    *  missing field the same as `null` (not yet notified). Drives the "Needs
    *  you" queue's `cancelled` group — see `src/lib/calendar/needsYou.ts`. */
   castNotifiedAt?: string | null;
+  /** `show_dates.show_id` — the production this date belongs to. Optional so
+   *  the many inline `ProducerDateEntry` fixtures elsewhere keep compiling
+   *  unchanged, same rationale as `castNotifiedAt` above. Consumers that need
+   *  a stable per-production grouping key should fall back to `id` (the date
+   *  id, which never collides) when this is absent — e.g. the Season lens. */
+  showId?: string;
 }
 
 export type ArtistStatus = 'confirmed' | 'soft_booked' | 'suggested' | 'blocked' | 'unanswered';

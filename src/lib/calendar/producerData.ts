@@ -85,6 +85,7 @@ export function toProducerEntries(
       hireOrderId: order?.id ?? null,
       hireOrderStatus: order?.status ?? null,
       castNotifiedAt: sd.cast_notified_at ?? null,
+      showId: sd.show_id,
     };
   });
 }
