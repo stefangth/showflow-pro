@@ -9,6 +9,14 @@ describe('period', () => {
     expect(cells[5]).toEqual(new Date(2026, 7, 1));
     expect(cells.length % 7).toBe(0);
   });
+  it('monthMatrix always returns a fixed 42-cell (6-week) grid', () => {
+    // Feb 2026 (non-leap): 1st is a Sunday → leading pad 6, 28 days → old
+    // trailing-pad-to-multiple-of-7 code returned 35 here, not 42.
+    expect(monthMatrix(new Date(2026, 1, 1)).length).toBe(42);
+    // Mar 2026: 1st is a Sunday → leading pad 6, 31 days — a differently
+    // shaped month, still must land on the fixed 42-cell grid.
+    expect(monthMatrix(new Date(2026, 2, 1)).length).toBe(42);
+  });
   it('week window is Monday..Sunday containing the anchor', () => {
     const { start, end } = periodWindow(new Date(2026, 7, 14), 'week'); // Fri 14 Aug
     expect(start.getDay()).toBe(1); // Monday

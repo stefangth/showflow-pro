@@ -31,9 +31,10 @@ export function periodWindow(anchor: Date, period: LensPeriod): { start: Date; e
 }
 
 /**
- * A 42-cell (6-week) Monday-first month grid for the month containing
- * `anchor`. Leading pad is `(getDay(monthStart)+6)%7` nulls; the grid is
- * then padded at the end to a multiple of 7.
+ * Always 42 cells (6 weeks) — a fixed-height Monday-first month grid for the
+ * month containing `anchor`, so navigating between months never shifts the
+ * surrounding layout. Leading pad is `(getDay(monthStart)+6)%7` nulls; the
+ * grid is then padded at the end with nulls up to 42 cells.
  */
 export function monthMatrix(anchor: Date): (Date | null)[] {
   const monthStart = startOfMonth(anchor);
@@ -44,7 +45,7 @@ export function monthMatrix(anchor: Date): (Date | null)[] {
   for (let day = 1; day <= monthEnd.getDate(); day++) {
     cells.push(new Date(monthStart.getFullYear(), monthStart.getMonth(), day));
   }
-  while (cells.length % 7 !== 0) {
+  while (cells.length < 42) {
     cells.push(null);
   }
   return cells;
