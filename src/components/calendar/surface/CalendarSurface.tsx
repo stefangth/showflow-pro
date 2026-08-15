@@ -19,6 +19,7 @@ import { isPastDate, toDateKey } from '@/lib/dates';
 import { computeDatePeek } from '@/lib/bookingCockpit';
 import { ROUTES } from '@/config/app.config';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { Popover, PopoverContent } from '@/components/ui/popover';
 import { RowPeek } from '@/components/bookings/RowPeek';
 import { CalendarSurfaceHeader } from './CalendarSurfaceHeader';
@@ -35,6 +36,8 @@ import { DayRail, type DayRailLegendItem, type DayRailStat } from './DayRail';
 import { NeedsYouLens, type NeedsYouAction } from './NeedsYouLens';
 import { QueueRail, type QueueShortlistArtist } from './QueueRail';
 import { SelectionBar, type SelectionBarAction } from './SelectionBar';
+import { CalendarDaySheet } from './CalendarDaySheet';
+import { SurfaceFab } from './SurfaceFab';
 import type { NeedsYouGroupKey, NeedsYouItem, NeedsYouQueue } from '@/lib/calendar/needsYou';
 
 /**
@@ -170,6 +173,11 @@ interface CalendarSurfaceProps {
    *  action instead of the per-date `ProducerActionKey`. Default: no gates,
    *  both buttons enabled. */
   bulkGates?: { confirm?: ActionGate; generate?: ActionGate };
+  /** Fired by the mobile `SurfaceFab` ("New date"), shown only for
+   *  `role="producer"` on the producer landing lens (Needs you). Optional —
+   *  the FAB still renders without it (its click becomes a no-op) so callers
+   *  can wire it up in a later task. Ignored entirely on desktop. */
+  onNewDate?: () => void;
   className?: string;
 }
 
@@ -230,12 +238,20 @@ export function CalendarSurface({
   onBulkConfirm,
   onBulkGenerate,
   bulkGates,
+  onNewDate,
   className,
 }: CalendarSurfaceProps) {
+  const isMobile = useIsMobile();
   const now = useMemo(() => today ?? new Date(), [today]);
   const [anchor, setAnchor] = useState<Date>(now);
   const [selectedDay, setSelectedDay] = useState<Date>(now);
   const [range, setRange] = useState<RangeSelection | null>(null);
+  // Mobile-only: whether the `CalendarDaySheet` bottom sheet is open. Kept
+  // separate from `selectedDay` (which desktop's DayRail always needs as a
+  // non-null `Date`) so the desktop return below stays byte-identical — a
+  // day/row/cell tap on mobile relocates `selectedDay` (same as desktop) AND
+  // opens this sheet, instead of updating a side rail.
+  const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
   // Space-peek popover (producer-only, Month lens) — `MonthGrid`'s Space key
   // forwards here via `MonthLens.onPeekDay`, wired only for `role==="producer"`
   // below so an artist Space press is never routed into this state at all.
@@ -309,6 +325,16 @@ export function CalendarSurface({
   const handleSelectDay = (day: Date) => {
     setSelectedDay(day);
     setRange(null);
+  };
+
+  // Mobile equivalent of `handleSelectDay`/`handleOpenDay`: a day/row/cell
+  // tap relocates `selectedDay` (so the sheet shows the tapped day's
+  // entries, same derivation the desktop rail uses) and opens the sheet —
+  // there is no side rail to update on mobile.
+  const handleMobileDayTap = (day: Date) => {
+    setSelectedDay(day);
+    setRange(null);
+    setMobileSheetOpen(true);
   };
 
   const dayProducerEntries = entriesForDay(producerEntries, selectedDay);
@@ -424,6 +450,18 @@ export function CalendarSurface({
     // there is no wired action for it yet.
   };
 
+  // Mobile `CalendarDaySheet`'s dedicated "Open date" text button — shown
+  // for both roles (unlike the desktop rail's secondary, which only wires
+  // "Open date" for the producer; the artist has no open-date surface in
+  // Phase 1). `actions.openDate` is keyed by show_date id, and both
+  // `ProducerDateEntry.id`/`ArtistDateEntry.id` are that same id (see
+  // `handleRailPrimary`'s `unanswered.id` usage above), so this resolves
+  // identically for either role.
+  const handleSheetOpenDate = () => {
+    const entry = role === 'producer' ? dayProducerEntries[0] : dayArtistEntries[0];
+    if (entry) actions.openDate?.(entry.id);
+  };
+
   const hireOrderHref = (id: string) => ROUTES.HIRE_ORDER_DETAIL.replace(':id', id);
 
   // No timestamp exists on ArtistDateEntry to reconstruct "answered today"
@@ -467,6 +505,7 @@ export function CalendarSurface({
     },
   ];
 
+  if (!isMobile) {
   return (
     <div data-testid="calendar-surface" className={cn('flex flex-col gap-4', className)}>
       <CalendarSurfaceHeader eyebrow={resolvedEyebrow} eyebrowTone={eyebrowTone} title={resolvedTitle} cta={cta}>
@@ -625,6 +664,129 @@ export function CalendarSurface({
           onAction={(key) => (key === 'confirm' ? onBulkConfirm?.(selectedDateIds) : onBulkGenerate?.(selectedDateIds))}
           onClear={() => setRange(clearSelection())}
         />
+      )}
+    </div>
+  );
+  }
+
+  // --- Mobile shell (spec §5, Phase 5) ---------------------------------
+  // Single-column layout: compact header with a scrollable `LensTabs`, a
+  // full-width period bar for the lenses that have one (month/week/season —
+  // NOT needs-you/agenda/offers/all-dates, unlike desktop which also shows
+  // it for agenda), the active lens body with no side rail, the
+  // `CalendarDaySheet` bottom sheet (replacing the desktop `DayRail`), and a
+  // `SurfaceFab` for the producer landing lens only. The per-lens mobile
+  // REFLOW (single-column stacking within Month/Week/Season, dense grid,
+  // etc.) is Tasks 8-9 — this renders the same lens components desktop uses.
+  return (
+    <div data-testid="calendar-surface" className={cn('flex flex-col gap-4', className)}>
+      <CalendarSurfaceHeader eyebrow={resolvedEyebrow} eyebrowTone={eyebrowTone} title={resolvedTitle} cta={cta}>
+        <LensTabs lenses={lenses} active={activeLens} onChange={onLensChange} scrollable />
+      </CalendarSurfaceHeader>
+
+      {(activeLens === 'month' || activeLens === 'week' || activeLens === 'season') && (
+        <CalendarToolbar>
+          <PeriodNavigator
+            label={periodLabel(anchor, activePeriod)}
+            onPrev={() => setAnchor((a) => shiftPeriod(a, activePeriod, -1))}
+            onNext={() => setAnchor((a) => shiftPeriod(a, activePeriod, 1))}
+            onToday={() => {
+              setAnchor(now);
+              setSelectedDay(now);
+            }}
+          />
+        </CalendarToolbar>
+      )}
+
+      {activeLens === 'needs-you' ? (
+        <NeedsYouLens
+          queue={resolvedNeedsYouQueue}
+          onItemAction={handleNeedsYouAction}
+          onOpenDate={(dateId) => actions.openDate?.(dateId)}
+          onBulk={handleNeedsYouBulk}
+          receipts={clearedToday}
+          onUndoLast={onUndoLastReceipt}
+          actionGates={actionGates}
+        />
+      ) : activeLens === 'month' ? (
+        <MonthLens
+          role={role}
+          anchor={anchor}
+          selectedDay={selectedDay}
+          onSelectDay={handleMobileDayTap}
+          onOpenDay={handleMobileDayTap}
+          producerEntries={producerEntries}
+          artistEntries={artistEntries}
+          today={now}
+        />
+      ) : (
+        <div className="w-full">
+          {activeLens === 'week' && (
+            <WeekLens
+              entries={producerEntries}
+              anchor={anchor}
+              onOpenEntry={(entryId) => actions.openDate?.(entryId)}
+              today={now}
+            />
+          )}
+          {activeLens === 'season' && (
+            <SeasonLens
+              entries={producerEntries}
+              anchor={anchor}
+              readyIds={seasonReadyIds}
+              onOpenDate={(dateId) => actions.openDate?.(dateId)}
+            />
+          )}
+          {activeLens === 'agenda' && (
+            <AgendaLens
+              entries={agendaEntries}
+              onOpenEntry={(entry) => actions.openDate?.(entry.id)}
+              onAction={handleAgendaAction}
+              actionGates={actionGates}
+            />
+          )}
+          {activeLens === 'offers' && (
+            <OffersLens
+              entries={artistEntries}
+              onAccept={(bookingId) => actions.accept?.(bookingId)}
+              onDecline={(bookingId) => actions.decline?.(bookingId)}
+              onBlock={(dateId, date) => actions.block?.(dateId, date)}
+              answeredToday={[]}
+              notOfferedYet={notOfferedYet}
+              statusLabels={statusLabels}
+              today={now}
+            />
+          )}
+          {activeLens === 'all-dates' && (
+            <AllDatesLens
+              entries={artistEntries}
+              onBlock={(dateId, date) => actions.block?.(dateId, date)}
+              hireOrderHref={hireOrderHref}
+              statusLabels={statusLabels}
+              today={now}
+            />
+          )}
+        </div>
+      )}
+
+      <CalendarDaySheet
+        open={mobileSheetOpen}
+        onOpenChange={(open) => setMobileSheetOpen(open)}
+        role={role}
+        day={selectedDay}
+        producerEntries={dayProducerEntries}
+        artistEntries={dayArtistEntries}
+        onPrimary={handleRailPrimary}
+        onOpenDate={handleSheetOpenDate}
+        // "Message producer" has no wired action yet — same inert stub as
+        // the desktop rail's artist secondary (`handleRailSecondary`); the
+        // sheet's button simply no-ops on click until one exists.
+        statusLabels={statusLabels}
+        actionGates={actionGates}
+      />
+
+      {role === 'producer' && activeLens === 'needs-you' && (
+        <SurfaceFab label="New date" onClick={() => onNewDate?.()} />
       )}
     </div>
   );
