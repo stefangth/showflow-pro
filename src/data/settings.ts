@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Json } from "@/integrations/supabase/types";
 import { type BookingFlow, type FlowTimes, normalizeBookingFlow } from "@/lib/bookingFlow";
 import { BOOKING_ENGINE_DEFAULTS } from "@/config/app.config";
+import { ORG_LANGUAGE_SETTING_KEY, coerceLocale, type ServerLocale } from "@/lib/i18n/orgLanguage";
 
 /** Code-level fallback for the offer window and digest hours, mirroring
  *  BOOKING_ENGINE_DEFAULTS. Shared by every surface that reads `useFlowTimes` and needs a
@@ -100,6 +101,26 @@ export async function upsertOrgSetting(
     .from("app_settings")
     .upsert({ org_id: orgId, key, value }, { onConflict: "org_id,key" });
   if (error) throw error;
+}
+
+/** The org's chosen language for server-generated content (emails, hire-order
+ *  PDFs). Thin wrappers over the generic setting resolver so the Organization tab
+ *  reads/writes the `org_language` key without re-deriving the coercion rules.
+ *  Note: whether German actually renders is ALSO gated by the language_packages
+ *  entitlement server-side (resolveOrgLocale) — this only stores the preference. */
+export async function fetchOrgLanguage(
+  client: SupabaseClient<Database>,
+  orgId: string,
+): Promise<ServerLocale> {
+  return coerceLocale(await resolveOrgSetting<unknown>(client, orgId, ORG_LANGUAGE_SETTING_KEY, "en"));
+}
+
+export async function setOrgLanguage(
+  client: SupabaseClient<Database>,
+  orgId: string,
+  locale: ServerLocale,
+): Promise<void> {
+  await upsertOrgSetting(client, orgId, ORG_LANGUAGE_SETTING_KEY, locale);
 }
 
 /** Upsert a related group of per-org settings in one request. This keeps values that

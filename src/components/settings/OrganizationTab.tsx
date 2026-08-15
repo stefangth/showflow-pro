@@ -1,16 +1,21 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/features/auth/AuthContext";
+import { useFeature } from "@/hooks/useEntitlements";
 import { renameOrg } from "@/data/orgs";
+import { fetchOrgLanguage, setOrgLanguage } from "@/data/settings";
+import { coerceLocale, type ServerLocale } from "@/lib/i18n/orgLanguage";
+import { SUPPORTED_LANGUAGES, LANGUAGE_LABELS } from "@/i18n/config";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const schema = z.object({ name: z.string().min(1, "Required") });
 type Values = z.infer<typeof schema>;
@@ -26,6 +31,8 @@ interface Props {
 export function OrganizationTab({ readOnly = false }: Props) {
   const { t } = useTranslation("settings");
   const { currentOrg, refreshOrgs } = useAuth();
+  const languagePacksEnabled = useFeature("language_packages");
+  const qc = useQueryClient();
   const form = useForm<Values>({ resolver: zodResolver(schema), values: { name: currentOrg?.name ?? "" } });
 
   const mutation = useMutation({
@@ -34,6 +41,22 @@ export function OrganizationTab({ readOnly = false }: Props) {
       return renameOrg(supabase, currentOrg.id, v.name);
     },
     onSuccess: async () => { await refreshOrgs(); toast.success(t("organization.renamed")); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  // Workspace language for server-generated content (emails, hire-order PDFs).
+  // Gated by the language_packages entitlement; the server double-gates on it too.
+  const langQuery = useQuery({
+    queryKey: ["org-language", currentOrg?.id],
+    queryFn: () => fetchOrgLanguage(supabase, currentOrg!.id),
+    enabled: !!currentOrg && languagePacksEnabled,
+  });
+  const langMutation = useMutation({
+    mutationFn: (loc: ServerLocale) => setOrgLanguage(supabase, currentOrg!.id, loc),
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: ["org-language", currentOrg?.id] });
+      toast.success(t("organization.language.saved"));
+    },
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -58,6 +81,25 @@ export function OrganizationTab({ readOnly = false }: Props) {
           </div>
           <Button type="submit" disabled={readOnly || mutation.isPending}>{mutation.isPending ? t("organization.saving") : t("organization.save")}</Button>
         </form>
+
+        {languagePacksEnabled && (
+          <div className="space-y-1.5 max-w-md mt-8">
+            <Label htmlFor="org-language">{t("organization.language.label")}</Label>
+            <Select
+              value={langQuery.data ?? "en"}
+              onValueChange={(v) => langMutation.mutate(coerceLocale(v))}
+              disabled={readOnly || langMutation.isPending}
+            >
+              <SelectTrigger id="org-language"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {SUPPORTED_LANGUAGES.map((code) => (
+                  <SelectItem key={code} value={code}>{LANGUAGE_LABELS[code]}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">{t("organization.language.help")}</p>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
