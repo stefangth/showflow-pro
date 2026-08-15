@@ -351,8 +351,8 @@ export const HELP_ITEMS: readonly HelpItem[] = [
     id: 'P4.4', role: 'producer', stage: 4, status: 'new', surface: 'Bookings, Needs you lens', updated: '2026-08-15',
     q: { en: 'What is Needs you, and why do I land there first now?', de: 'Was ist Needs you, und warum lande ich jetzt zuerst dort?' },
     a: {
-      en: 'Shows and bookings now opens on Needs you: everything that actually needs you today, grouped into holds expiring today, dates at risk of running short, orders ready to issue, and cancellations the cast has not heard about yet. Switch to Month or Agenda for the full calendar.',
-      de: 'Shows und Buchungen öffnet jetzt auf Needs you: alles, was heute wirklich von dir gebraucht wird, gruppiert in heute ablaufende Vormerkungen, Termine mit Besetzungsrisiko, ausstellbereite Engagementverträge, und Absagen, über die die Besetzung noch nicht informiert wurde. Wechsle zu Month oder Agenda für den vollständigen Kalender.',
+      en: 'Shows and bookings now opens on Needs you: everything that actually needs you today, grouped into holds expiring today, dates at risk of running short, orders ready to issue, and cancellations the cast has not heard about yet. Switch to Month, Week, Season, or Agenda for the full calendar.',
+      de: 'Shows und Buchungen öffnet jetzt auf Needs you: alles, was heute wirklich von dir gebraucht wird, gruppiert in heute ablaufende Vormerkungen, Termine mit Besetzungsrisiko, ausstellbereite Engagementverträge, und Absagen, über die die Besetzung noch nicht informiert wurde. Wechsle zu Month, Week, Season oder Agenda für den vollständigen Kalender.',
     },
   },
   {

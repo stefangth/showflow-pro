@@ -139,7 +139,7 @@ function ProducerShowsBookings() {
     { value: `custom:${d.key}:desc` as ProducerSort, label: t('producer.sortDesc', { label: d.label }) },
   ]));
   const [customFilters, setCustomFilters] = useState<Record<string, CustomFilterState>>({});
-  const [lens, setLens] = useState<'needs-you' | 'month' | 'agenda'>('needs-you');
+  const [lens, setLens] = useState<'needs-you' | 'month' | 'week' | 'season' | 'agenda'>('needs-you');
   const [activeShowDateId, setActiveShowDateId] = useState<string | null>(null);
   // Which tab the sheet should land on for the date about to open — reset on
   // every open so a stale "Open casting" request can't leak into a later
@@ -225,7 +225,7 @@ function ProducerShowsBookings() {
     if (from || to) {
       setTimeframe({ from: from ? parseISO(from) : null, to: to ? parseISO(to) : null });
     }
-    if (lensParam === 'needs-you' || lensParam === 'month' || lensParam === 'agenda') {
+    if (lensParam === 'needs-you' || lensParam === 'month' || lensParam === 'week' || lensParam === 'season' || lensParam === 'agenda') {
       setLens(lensParam);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -481,7 +481,7 @@ function ProducerShowsBookings() {
   };
 
   const updateLens = (key: string) => {
-    setLens(key as 'needs-you' | 'month' | 'agenda');
+    setLens(key as 'needs-you' | 'month' | 'week' | 'season' | 'agenda');
     const next = new URLSearchParams(searchParams);
     next.set('lens', key);
     setSearchParams(next, { replace: true });
@@ -601,6 +601,7 @@ function ProducerShowsBookings() {
           needsYouQueue={needsYouQueue}
           queueShortlist={queueShortlist}
           clearedToday={clearedToday}
+          seasonReadyIds={new Set(hireOrderReady?.readyIds ?? [])}
           onUndoLastReceipt={onUndoLastReceipt}
           actions={{
             confirmHolds,

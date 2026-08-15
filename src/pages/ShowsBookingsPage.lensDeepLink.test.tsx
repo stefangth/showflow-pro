@@ -65,7 +65,9 @@ vi.mock("@/hooks/useBookingSetup", () => ({
   useProducerCount: () => null,
 }));
 vi.mock("@/hooks/useHireOrders", () => ({
-  useDatesReadyForHireOrder: () => ({ data: undefined }),
+  // sd-1 (the sole fixture date) is ready for a hire order — feeds the
+  // Season lens's "Ready for hire order" KPI (Task 7).
+  useDatesReadyForHireOrder: () => ({ data: { readyIds: ["sd-1"], orderByDate: {} } }),
   useHireOrderAction: () => ({ mutate: vi.fn(), isPending: false, variables: undefined }),
 }));
 vi.mock("@/features/editor/EditorContext", () => ({
@@ -109,7 +111,10 @@ beforeEach(() => {
   vi.clearAllMocks();
   seedClient({});
   vi.useFakeTimers({ toFake: ["Date"] });
-  vi.setSystemTime(new Date("2030-03-10T12:00:00"));
+  // Tue 12 Mar 2030 — inside the same Mon-Sun week as SHOW_DATE (Thu 14 Mar),
+  // so the Week lens (Task 7) actually renders the fixture date's block, not
+  // just Month/Agenda/Season's wider windows.
+  vi.setSystemTime(new Date("2030-03-12T12:00:00"));
 });
 afterEach(() => {
   vi.useRealTimers();
@@ -130,6 +135,28 @@ describe("ShowsBookingsPage — ?lens= deep link (Task 18)", () => {
     // name (e.g. "0 Needs you") — assert via the stable testid instead.
     expect(screen.getByTestId("lens-tab-needs-you")).toHaveAttribute("data-active", "true");
     expect(screen.getByRole("tab", { name: "Month" })).toHaveAttribute("aria-selected", "false");
+  });
+
+  it("?lens=week selects the Week lens on load", async () => {
+    renderAt("/bookings?lens=week");
+    expect(await screen.findByTestId("calendar-surface")).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Week" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tab", { name: "Month" })).toHaveAttribute("aria-selected", "false");
+    expect(screen.getByTestId("week-lens")).toBeInTheDocument();
+    // The fixture date's 19:00 session block actually renders in the grid,
+    // not just an empty lens shell.
+    expect(screen.getByTestId("week-block-sd-1-1")).toBeInTheDocument();
+  });
+
+  it("?lens=season selects the Season lens and renders KPI cards from the page's readyIds", async () => {
+    renderAt("/bookings?lens=season");
+    expect(await screen.findByTestId("calendar-surface")).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Season" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByTestId("season-kpis")).toBeInTheDocument();
+    // useDatesReadyForHireOrder is mocked to flag sd-1 (the sole fixture
+    // date) ready, so the KPI reflects the page's own `hireOrderReady` data,
+    // proving `seasonReadyIds` is actually threaded through from the page.
+    expect(screen.getByTestId("season-kpi-readyForHireOrder")).toHaveTextContent("1");
   });
 
   it("changing the lens writes ?lens= to the URL, preserving the existing ?status=", async () => {
