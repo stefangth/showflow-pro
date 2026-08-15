@@ -176,4 +176,78 @@ describe('NeedsYouLens', () => {
     fireEvent.click(button);
     expect(onItemAction).not.toHaveBeenCalled();
   });
+
+  it('default layout ("rail") renders no QueueRail content — the caller composes it as a side rail', () => {
+    const entry = makeEntry({ id: 'd-atrisk', date: new Date(2026, 7, 20), status: 'partially_filled' });
+    const item = makeItem({ dateId: 'd-atrisk', entry, group: 'at-risk' });
+    const queue: NeedsYouQueue = {
+      groups: [{ key: 'at-risk', items: [item] }],
+      totalItems: 1,
+      countByGroup: { 'expires-today': 0, 'at-risk': 1, 'ready-to-issue': 0, cancelled: 0 },
+    };
+
+    render(<NeedsYouLens queue={queue} onItemAction={vi.fn()} onOpenDate={vi.fn()} onBulk={vi.fn()} receipts={[]} />);
+
+    expect(screen.queryByTestId('queue-rail')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('needs-you-queue-fold')).not.toBeInTheDocument();
+  });
+
+  it('layout="stacked" folds the QueueRail content below the groups (not aside), reusing queue + receipts', () => {
+    const entry = makeEntry({ id: 'd-atrisk', date: new Date(2026, 7, 20), status: 'partially_filled' });
+    const item = makeItem({ dateId: 'd-atrisk', entry, group: 'at-risk', openMainSlots: 2, leadDays: 1 });
+    const queue: NeedsYouQueue = {
+      groups: [{ key: 'at-risk', items: [item] }],
+      totalItems: 1,
+      countByGroup: { 'expires-today': 0, 'at-risk': 1, 'ready-to-issue': 0, cancelled: 0 },
+    };
+
+    render(
+      <NeedsYouLens
+        queue={queue}
+        onItemAction={vi.fn()}
+        onOpenDate={vi.fn()}
+        onBulk={vi.fn()}
+        receipts={[{ dateId: 'd-cleared', title: 'Cirque Noir', label: 'Confirmed' }]}
+        layout="stacked"
+        queueShortlist={{ dateId: 'd-atrisk', dateLabel: 'Thu 20 Aug', artists: [{ artistId: 'a-1', name: 'Jo Reyes' }] }}
+      />
+    );
+
+    const group = screen.getByTestId('needs-you-group-at-risk');
+    const rail = screen.getByTestId('queue-rail');
+    expect(rail).toBeInTheDocument();
+    // "below the groups, not aside": the rail follows the group in DOM order.
+    expect(group.compareDocumentPosition(rail) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+    // QueueRail content is real, not a stub — reuses queue + receipts.length.
+    expect(screen.getByTestId('queue-rail-progress')).toHaveTextContent('1 cleared today');
+    expect(screen.getByText('Jo Reyes')).toBeInTheDocument();
+  });
+
+  it('layout="stacked" fires onOfferArtist from the folded shortlist', () => {
+    const entry = makeEntry({ id: 'd-atrisk', date: new Date(2026, 7, 20), status: 'partially_filled' });
+    const item = makeItem({ dateId: 'd-atrisk', entry, group: 'at-risk' });
+    const queue: NeedsYouQueue = {
+      groups: [{ key: 'at-risk', items: [item] }],
+      totalItems: 1,
+      countByGroup: { 'expires-today': 0, 'at-risk': 1, 'ready-to-issue': 0, cancelled: 0 },
+    };
+    const onOfferArtist = vi.fn();
+
+    render(
+      <NeedsYouLens
+        queue={queue}
+        onItemAction={vi.fn()}
+        onOpenDate={vi.fn()}
+        onBulk={vi.fn()}
+        receipts={[]}
+        layout="stacked"
+        queueShortlist={{ dateId: 'd-atrisk', dateLabel: 'Thu 20 Aug', artists: [{ artistId: 'a-1', name: 'Jo Reyes' }] }}
+        onOfferArtist={onOfferArtist}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('queue-offer-a-1'));
+    expect(onOfferArtist).toHaveBeenCalledWith('d-atrisk', 'a-1');
+  });
 });

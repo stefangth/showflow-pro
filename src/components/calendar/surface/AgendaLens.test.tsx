@@ -172,6 +172,22 @@ describe('AgendaLens', () => {
     expect(btn).toHaveAttribute('title', 'Nope');
   });
 
+  it('a row stacks single-column by default (mobile) with md: classes restoring the desktop single-line row', () => {
+    const e = entry({ id: 'pd-1' });
+    render(<AgendaLens entries={[e]} onOpenEntry={vi.fn()} onAction={vi.fn()} />);
+
+    const row = screen.getByTestId('agenda-row-pd-1');
+    // Mobile-first: the row is a vertical stack (no side-by-side columns);
+    // `md:` restores the desktop single-line row exactly at >=768px.
+    expect(row.className).toMatch(/\bflex-col\b/);
+    expect(row.className).toMatch(/\bmd:flex-row\b/);
+    // The content block (title/venue) is full width on mobile, restoring
+    // its flexible desktop sizing only at md:.
+    const title = screen.getByText('Cirque Noir');
+    expect(title.parentElement?.className).toMatch(/\bw-full\b/);
+    expect(title.parentElement?.className).toMatch(/\bmd:flex-1\b/);
+  });
+
   it('leaves the action button enabled when its gate is absent or not disabled', () => {
     const e = entry({ id: 'pd-1', status: 'partially_filled' });
     render(

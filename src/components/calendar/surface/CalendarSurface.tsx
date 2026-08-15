@@ -675,9 +675,13 @@ export function CalendarSurface({
   // NOT needs-you/agenda/offers/all-dates, unlike desktop which also shows
   // it for agenda), the active lens body with no side rail, the
   // `CalendarDaySheet` bottom sheet (replacing the desktop `DayRail`), and a
-  // `SurfaceFab` for the producer landing lens only. The per-lens mobile
-  // REFLOW (single-column stacking within Month/Week/Season, dense grid,
-  // etc.) is Tasks 8-9 — this renders the same lens components desktop uses.
+  // `SurfaceFab` for the producer landing lens only. Offers/Agenda/Needs-you
+  // reflow to single column via responsive classes on those components
+  // (Task 8; Needs-you also gets `layout="stacked"` to fold `QueueRail`
+  // below the groups instead of composing it as a side rail here). The
+  // remaining per-lens mobile REFLOW (Month/Week/Season dense grid, etc.) is
+  // Task 9 — this still renders the same underlying lens components desktop
+  // uses for those.
   return (
     <div data-testid="calendar-surface" className={cn('flex flex-col gap-4', className)}>
       <CalendarSurfaceHeader eyebrow={resolvedEyebrow} eyebrowTone={eyebrowTone} title={resolvedTitle} cta={cta}>
@@ -707,6 +711,9 @@ export function CalendarSurface({
           receipts={clearedToday}
           onUndoLast={onUndoLastReceipt}
           actionGates={actionGates}
+          layout="stacked"
+          queueShortlist={queueShortlist}
+          onOfferArtist={(dateId, artistId) => actions.offerArtist?.(dateId, artistId)}
         />
       ) : activeLens === 'month' ? (
         <MonthLens
@@ -740,7 +747,11 @@ export function CalendarSurface({
           {activeLens === 'agenda' && (
             <AgendaLens
               entries={agendaEntries}
-              onOpenEntry={(entry) => actions.openDate?.(entry.id)}
+              // Mobile has no side rail: a row tap opens the day sheet for
+              // that row's date (spec §4.5/§4.7), same as a Month cell tap —
+              // NOT the desktop behavior of navigating straight to the date
+              // (see the desktop branch above, unchanged).
+              onOpenEntry={(entry) => handleMobileDayTap(entry.date)}
               onAction={handleAgendaAction}
               actionGates={actionGates}
             />

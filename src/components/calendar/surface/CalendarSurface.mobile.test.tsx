@@ -198,4 +198,76 @@ describe('CalendarSurface — mobile shell (useIsMobile true)', () => {
 
     expect(screen.queryByTestId('surface-fab')).not.toBeInTheDocument();
   });
+
+  it('tapping an Agenda row opens the CalendarDaySheet for that row\'s date, instead of navigating via actions.openDate', () => {
+    const actions = noopActions();
+    const entry = producerEntry({ id: 'pd-agenda', date: new Date(2026, 7, 12) });
+    render(
+      <CalendarSurface
+        role="producer"
+        producerEntries={[entry]}
+        actions={actions}
+        lens="agenda"
+        onLensChange={vi.fn()}
+        today={TODAY}
+      />
+    );
+
+    expect(screen.queryByTestId('calendar-day-sheet')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('agenda-row-pd-agenda'));
+
+    const sheet = screen.getByTestId('calendar-day-sheet');
+    expect(sheet).toBeInTheDocument();
+    expect(sheet).toHaveTextContent('Cirque Noir');
+    // The row tap opens the sheet — it must NOT also fire the desktop
+    // "navigate straight to the date" action.
+    expect(actions.openDate).not.toHaveBeenCalled();
+
+    // The sheet's own "Open date" button still routes through actions.openDate.
+    fireEvent.click(screen.getByTestId('day-sheet-open-date'));
+    expect(actions.openDate).toHaveBeenCalledWith('pd-agenda');
+  });
+
+  it('the producer Needs-you lens folds QueueRail content below the groups instead of a side rail', () => {
+    const queue = {
+      groups: [
+        {
+          key: 'at-risk' as const,
+          items: [
+            {
+              dateId: 'pd-1',
+              entry: producerEntry({ id: 'pd-1', status: 'partially_filled' }),
+              group: 'at-risk' as const,
+              people: [],
+              earliestExpiry: null,
+              openMainSlots: 3,
+              leadDays: 2,
+            },
+          ],
+        },
+      ],
+      totalItems: 1,
+      countByGroup: { 'expires-today': 0, 'at-risk': 1, 'ready-to-issue': 0, cancelled: 0 },
+    };
+
+    render(
+      <CalendarSurface
+        role="producer"
+        producerEntries={[producerEntry({ id: 'pd-1', status: 'partially_filled' })]}
+        actions={noopActions()}
+        lens="needs-you"
+        onLensChange={vi.fn()}
+        today={TODAY}
+        needsYouQueue={queue}
+      />
+    );
+
+    // No desktop-style side-by-side wrapper: the rail content is the last
+    // thing in the lens body, after the group, not laid out beside it.
+    const group = screen.getByTestId('needs-you-group-at-risk');
+    const rail = screen.getByTestId('queue-rail');
+    expect(rail).toBeInTheDocument();
+    expect(group.compareDocumentPosition(rail) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
 });

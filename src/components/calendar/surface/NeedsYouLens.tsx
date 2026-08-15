@@ -1,12 +1,15 @@
 import type { MouseEvent } from 'react';
 import { format } from 'date-fns';
+import { ChevronDown } from 'lucide-react';
 import { NEEDS_YOU_GROUP_LABELS } from '@/lib/calendar/needsYou';
 import type { NeedsYouGroupKey, NeedsYouItem, NeedsYouQueue } from '@/lib/calendar/needsYou';
 import type { ActionGates, ProducerActionKey } from '@/lib/calendar/types';
 import { PRODUCER_TONES } from '@/lib/calendar/tone';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { FillMeter } from './FillMeter';
+import { QueueRail, type QueueShortlistArtist } from './QueueRail';
 
 /** Every action a "Needs you" card (or its group's bulk button) can fire.
  *  `confirm` covers both the per-item "Confirm N holds" primary and the
@@ -38,6 +41,18 @@ interface NeedsYouLensProps {
   receipts: NeedsYouReceipt[];
   onUndoLast?: () => void;
   actionGates?: ActionGates;
+  /** Where the `QueueRail` content (progress + shortlist + rules) renders
+   *  relative to the groups. `'rail'` (default) renders nothing here — the
+   *  caller composes `QueueRail` itself as a side rail (desktop, spec §3.4).
+   *  `'stacked'` folds the same content below the groups as a collapsible
+   *  section (mobile, spec §4.4), reusing `queue`/`receipts` and the two
+   *  props below that only this layout consumes. */
+  layout?: 'rail' | 'stacked';
+  /** Eligible-artist shortlist for the queue's top at-risk date — mirrors
+   *  `QueueRail`'s own `shortlist` prop. Only read when `layout==='stacked'`. */
+  queueShortlist?: { dateId: string; dateLabel: string; artists: QueueShortlistArtist[] } | null;
+  /** Mirrors `QueueRail`'s `onOffer`. Only read when `layout==='stacked'`. */
+  onOfferArtist?: (dateId: string, artistId: string) => void;
   className?: string;
 }
 
@@ -149,7 +164,12 @@ function entryDetail(item: NeedsYouItem): string {
  * `buildNeedsYouQueue` computes `earliestExpiry` unconditionally and it can
  * be non-null on a non-`expires-today` item in an edge case. Clicking a card
  * (outside its buttons) opens that date; the footer lists today's cleared
- * receipts with an "Undo last" control. Purely presentational.
+ * receipts with an "Undo last" control. When `layout==='stacked'` (mobile,
+ * spec §4.4), the `QueueRail` content folds below the groups as a
+ * collapsible "Queue overview" section instead of the caller composing it as
+ * a side rail — `layout==='rail'` (default, desktop) renders nothing extra
+ * here and leaves that composition to the caller, unchanged. Purely
+ * presentational.
  */
 export function NeedsYouLens({
   queue,
@@ -159,6 +179,9 @@ export function NeedsYouLens({
   receipts,
   onUndoLast,
   actionGates,
+  layout = 'rail',
+  queueShortlist = null,
+  onOfferArtist,
   className,
 }: NeedsYouLensProps) {
   return (
@@ -300,6 +323,31 @@ export function NeedsYouLens({
           </div>
         );
       })}
+
+      {layout === 'stacked' && (
+        <Collapsible defaultOpen data-testid="needs-you-queue-fold">
+          <CollapsibleTrigger asChild>
+            <button
+              type="button"
+              data-testid="needs-you-queue-fold-trigger"
+              className="group flex w-full items-center justify-between gap-2 rounded-m border border-border bg-card px-3.5 py-2.5 text-left"
+            >
+              <span className="text-[11px] font-semibold uppercase tracking-[1.6px] text-muted-foreground">
+                Queue overview
+              </span>
+              <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+            </button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="pt-3">
+            <QueueRail
+              queue={queue}
+              clearedToday={receipts.length}
+              shortlist={queueShortlist}
+              onOffer={onOfferArtist}
+            />
+          </CollapsibleContent>
+        </Collapsible>
+      )}
 
       <div data-testid="needs-you-receipts" className="overflow-hidden rounded-m border border-border bg-muted">
         <div className="flex items-center gap-2 border-b border-border px-3.5 py-2.5">

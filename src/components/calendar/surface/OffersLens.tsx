@@ -46,7 +46,9 @@ function entryDetail(entry: ArtistDateEntry): string {
  * resolved via `answeredToday`; "Undo last" is an inert stub per the brief)
  * and "Later this month · not offered yet" (`notOfferedYet`, each row with
  * its own Block-date button). Purely presentational: mutations are wired by
- * the caller via `onAccept`/`onDecline`/`onBlock`.
+ * the caller via `onAccept`/`onDecline`/`onBlock`. Each queue card's 3-column
+ * row (date · content · actions) reflows to a single-column stack below the
+ * `md:` breakpoint (768px, matching `useIsMobile`) via responsive classes.
  */
 export function OffersLens({
   entries,
@@ -80,9 +82,13 @@ export function OffersLens({
             <div
               key={entry.id}
               data-testid={`offer-card-${entry.id}`}
-              className="flex items-stretch overflow-hidden rounded-l border border-border bg-card shadow-elev1"
+              // Mobile-first: the card stacks single-column (spec §4.1);
+              // `md:` restores the desktop 3-column row exactly at >=768px
+              // (matching `useIsMobile`'s breakpoint) — every `md:`-only
+              // utility below reproduces a value this card already had.
+              className="flex flex-col overflow-hidden rounded-l border border-border bg-card shadow-elev1 md:flex-row md:items-stretch"
             >
-              <div className="flex w-[92px] shrink-0 flex-col items-center justify-center border-r border-border bg-muted py-4 text-center">
+              <div className="flex w-full shrink-0 flex-row items-center justify-start gap-2 border-b border-border bg-muted px-4 py-2.5 text-left md:w-[92px] md:flex-col md:items-center md:justify-center md:gap-0 md:border-b-0 md:border-r md:px-0 md:py-4 md:text-center">
                 <p className="text-[11px] font-semibold uppercase tracking-[1.6px] text-muted-foreground">
                   {format(entry.date, 'EEE')}
                 </p>
@@ -92,7 +98,7 @@ export function OffersLens({
                 <p className="text-[11px] text-muted-foreground">{format(entry.date, 'MMM')}</p>
               </div>
 
-              <div className="min-w-0 flex-1 px-4 py-3.5">
+              <div className="w-full min-w-0 px-4 py-3.5 md:flex-1">
                 <p
                   className={cn(
                     'text-[11px] font-semibold uppercase tracking-[1.6px]',
@@ -107,7 +113,7 @@ export function OffersLens({
                 {detail && <p className="mt-0.5 text-[13px] text-muted-foreground">{detail}</p>}
               </div>
 
-              <div className="flex w-[232px] shrink-0 flex-col justify-center gap-2 px-4 py-3.5">
+              <div className="flex w-full shrink-0 flex-col justify-center gap-2 px-4 py-3.5 md:w-[232px]">
                 {isLive ? (
                   <div className="flex flex-col gap-2">
                     <Button
