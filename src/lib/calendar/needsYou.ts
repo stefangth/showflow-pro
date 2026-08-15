@@ -59,8 +59,9 @@ export const DISPLAY_ORDER: NeedsYouGroupKey[] = ['expires-today', 'at-risk', 'r
 
 /** Shared human-readable label per group — the single source for `QueueRail`'s
  *  breakdown rows and `NeedsYouLens`'s section headers, so the two surfaces
- *  never drift apart on wording. Plain English for now; Task 9 routes these
- *  through `t('bookings:needsYou.group.*')`. */
+ *  never drift apart on wording. Plain English, matching every other literal
+ *  label on the calendar surface kit (Month/Agenda/Offers tabs, etc.) — the
+ *  whole surface's i18n is a tracked follow-up, not scoped to this group. */
 export const NEEDS_YOU_GROUP_LABELS: Record<NeedsYouGroupKey, string> = {
   'expires-today': 'Expiring today',
   'at-risk': 'At risk of running short',
