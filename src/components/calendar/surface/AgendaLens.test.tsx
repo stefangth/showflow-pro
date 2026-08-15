@@ -36,7 +36,7 @@ describe('AgendaLens', () => {
     const e2 = entry({ id: 'pd-2', date: new Date(2026, 7, 12) });
     const e3 = entry({ id: 'pd-3', date: new Date(2026, 7, 20), status: 'fully_filled', confirmedMain: 6 });
 
-    render(<AgendaLens entries={[e1, e2, e3]} onOpenDay={vi.fn()} onAction={vi.fn()} />);
+    render(<AgendaLens entries={[e1, e2, e3]} onOpenEntry={vi.fn()} onAction={vi.fn()} />);
 
     expect(screen.getAllByText(/^Week of/)).toHaveLength(2);
     expect(screen.getByTestId('agenda-row-pd-1')).toBeInTheDocument();
@@ -47,7 +47,7 @@ describe('AgendaLens', () => {
   it('a fully-filled row shows "Generate hire order" and fires onAction(entry, "generate")', () => {
     const e = entry({ id: 'pd-3', status: 'fully_filled', confirmedMain: 6 });
     const onAction = vi.fn();
-    render(<AgendaLens entries={[e]} onOpenDay={vi.fn()} onAction={onAction} />);
+    render(<AgendaLens entries={[e]} onOpenEntry={vi.fn()} onAction={onAction} />);
 
     const actionBtn = screen.getByTestId('agenda-action-pd-3');
     expect(actionBtn).toHaveTextContent('Generate hire order');
@@ -65,7 +65,7 @@ describe('AgendaLens', () => {
       hireOrderStatus: 'issued',
     });
     const onAction = vi.fn();
-    render(<AgendaLens entries={[e]} onOpenDay={vi.fn()} onAction={onAction} />);
+    render(<AgendaLens entries={[e]} onOpenEntry={vi.fn()} onAction={onAction} />);
 
     expect(screen.queryByTestId('agenda-action-pd-4')).not.toBeInTheDocument();
     expect(screen.getByTestId('agenda-order-status-pd-4')).toHaveTextContent('Awaiting countersign');
@@ -79,7 +79,7 @@ describe('AgendaLens', () => {
           entry({ id: 'b', status: 'open' }),
           entry({ id: 'c', status: 'cancelled' }),
         ]}
-        onOpenDay={vi.fn()}
+        onOpenEntry={vi.fn()}
         onAction={vi.fn()}
       />
     );
@@ -88,39 +88,39 @@ describe('AgendaLens', () => {
     expect(screen.queryByTestId('agenda-action-c')).not.toBeInTheDocument();
   });
 
-  it('clicking a row fires onOpenDay with the entry date, without also firing onAction', () => {
+  it('clicking a row fires onOpenEntry with THIS row entry, without also firing onAction', () => {
     const e = entry({ id: 'pd-1', status: 'partially_filled' });
-    const onOpenDay = vi.fn();
+    const onOpenEntry = vi.fn();
     const onAction = vi.fn();
-    render(<AgendaLens entries={[e]} onOpenDay={onOpenDay} onAction={onAction} />);
+    render(<AgendaLens entries={[e]} onOpenEntry={onOpenEntry} onAction={onAction} />);
 
     fireEvent.click(screen.getByTestId('agenda-row-pd-1'));
-    expect(onOpenDay).toHaveBeenCalledTimes(1);
-    expect(onOpenDay).toHaveBeenCalledWith(e.date);
+    expect(onOpenEntry).toHaveBeenCalledTimes(1);
+    expect(onOpenEntry).toHaveBeenCalledWith(e);
     expect(onAction).not.toHaveBeenCalled();
   });
 
-  it('clicking the row action button fires onAction but not onOpenDay (no bubbling)', () => {
+  it('clicking the row action button fires onAction but not onOpenEntry (no bubbling)', () => {
     const e = entry({ id: 'pd-3', status: 'fully_filled', confirmedMain: 6 });
-    const onOpenDay = vi.fn();
+    const onOpenEntry = vi.fn();
     const onAction = vi.fn();
-    render(<AgendaLens entries={[e]} onOpenDay={onOpenDay} onAction={onAction} />);
+    render(<AgendaLens entries={[e]} onOpenEntry={onOpenEntry} onAction={onAction} />);
 
     fireEvent.click(screen.getByTestId('agenda-action-pd-3'));
     expect(onAction).toHaveBeenCalledTimes(1);
-    expect(onOpenDay).not.toHaveBeenCalled();
+    expect(onOpenEntry).not.toHaveBeenCalled();
   });
 
   it('renders the fill meter + "confirmedMain/mainSlots main" label for a row', () => {
     const e = entry({ id: 'pd-1', mainSlots: 6, confirmedMain: 3 });
-    render(<AgendaLens entries={[e]} onOpenDay={vi.fn()} onAction={vi.fn()} />);
+    render(<AgendaLens entries={[e]} onOpenEntry={vi.fn()} onAction={vi.fn()} />);
     expect(screen.getByTestId('fill-meter')).toBeInTheDocument();
     expect(screen.getByText('3/6 main')).toBeInTheDocument();
   });
 
   it('renders the status badge for a row', () => {
     const e = entry({ id: 'pd-1', status: 'partially_filled' });
-    render(<AgendaLens entries={[e]} onOpenDay={vi.fn()} onAction={vi.fn()} />);
+    render(<AgendaLens entries={[e]} onOpenEntry={vi.fn()} onAction={vi.fn()} />);
     expect(screen.getByText('Casting')).toBeInTheDocument();
   });
 
@@ -130,7 +130,7 @@ describe('AgendaLens', () => {
     render(
       <AgendaLens
         entries={[e]}
-        onOpenDay={vi.fn()}
+        onOpenEntry={vi.fn()}
         onAction={onAction}
         actionGates={{ confirmHolds: { disabled: true, title: "You don't have permission to confirm bookings" } }}
       />
@@ -147,7 +147,7 @@ describe('AgendaLens', () => {
     render(
       <AgendaLens
         entries={[e]}
-        onOpenDay={vi.fn()}
+        onOpenEntry={vi.fn()}
         onAction={vi.fn()}
         actionGates={{ generateHireOrder: { disabled: true, title: 'Nope' } }}
       />
@@ -162,7 +162,7 @@ describe('AgendaLens', () => {
     render(
       <AgendaLens
         entries={[e]}
-        onOpenDay={vi.fn()}
+        onOpenEntry={vi.fn()}
         onAction={vi.fn()}
         actionGates={{ openCasting: { disabled: true, title: 'Nope' } }}
       />
@@ -177,7 +177,7 @@ describe('AgendaLens', () => {
     render(
       <AgendaLens
         entries={[e]}
-        onOpenDay={vi.fn()}
+        onOpenEntry={vi.fn()}
         onAction={vi.fn()}
         actionGates={{ generateHireOrder: { disabled: true, title: 'Nope' } }}
       />

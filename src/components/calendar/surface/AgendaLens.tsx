@@ -61,7 +61,10 @@ function groupByWeek(entries: ProducerDateEntry[]): WeekGroup[] {
 
 interface AgendaLensProps {
   entries: ProducerDateEntry[];
-  onOpenDay: (day: Date) => void;
+  /** Open THIS row's date. Each row is one entry, so we pass the entry (not
+   *  just its calendar day) — a day can carry several dates, and opening "the
+   *  first entry on that day" would open the wrong one. */
+  onOpenEntry: (entry: ProducerDateEntry) => void;
   onAction: (entry: ProducerDateEntry, action: AgendaAction) => void;
   /** Capability gates for the row action buttons (Confirm holds / Generate
    *  hire order / Open casting). When a row's resolved action is gated
@@ -77,11 +80,11 @@ interface AgendaLensProps {
  * shows the dow/date, session time, program/venue, a fill meter +
  * `confirmedMain/mainSlots main`, a status badge, and — for
  * fully_filled/partially_filled/open dates only — a single contextual
- * action button (`ACTION_BY_STATUS`). Clicking the row opens the date;
+ * action button (`ACTION_BY_STATUS`). Clicking the row opens that row's date;
  * clicking the action button fires `onAction` instead (its click does not
- * bubble into the row's `onOpenDay`).
+ * bubble into the row's `onOpenEntry`).
  */
-export function AgendaLens({ entries, onOpenDay, onAction, actionGates, className }: AgendaLensProps) {
+export function AgendaLens({ entries, onOpenEntry, onAction, actionGates, className }: AgendaLensProps) {
   const weeks = groupByWeek(entries);
 
   return (
@@ -113,7 +116,7 @@ export function AgendaLens({ entries, onOpenDay, onAction, actionGates, classNam
                   data-testid={`agenda-row-${entry.id}`}
                   role="button"
                   tabIndex={0}
-                  onClick={() => onOpenDay(entry.date)}
+                  onClick={() => onOpenEntry(entry)}
                   className="flex cursor-pointer items-center gap-3.5 border-b border-border px-3.5 py-2.5 last:border-b-0 hover:bg-muted/50"
                 >
                   <div className="w-[62px] shrink-0">

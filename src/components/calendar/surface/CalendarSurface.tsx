@@ -303,7 +303,7 @@ export function CalendarSurface({
           {activeLens === 'agenda' && (
             <AgendaLens
               entries={agendaEntries}
-              onOpenDay={handleOpenDay}
+              onOpenEntry={(entry) => actions.openDate?.(entry.id)}
               onAction={handleAgendaAction}
               actionGates={actionGates}
             />
