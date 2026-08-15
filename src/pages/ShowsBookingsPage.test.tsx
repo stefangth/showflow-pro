@@ -249,6 +249,22 @@ describe("ShowsBookingsPage — producer Upcoming default + past-day dimming (ca
 });
 
 /**
+ * Fix round 1: the old table/EntityCalendar showed `t('producer.emptyState')`
+ * when `filtered.length === 0`; the calendar surface must too (a blank
+ * month/agenda grid gives no explanation for a filter combo that matches
+ * nothing, or a brand-new org with zero show dates).
+ */
+describe("ShowsBookingsPage — empty state on the calendar surface", () => {
+  it("shows the empty-state message and no month grid when there are no show dates", async () => {
+    showDatesRef.value = [];
+    renderWithProviders(<ShowsBookingsPage />);
+    expect(await screen.findByText("No show dates match the current filters.")).toBeInTheDocument();
+    expect(screen.queryByTestId("month-grid")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("calendar-surface")).not.toBeInTheDocument();
+  });
+});
+
+/**
  * Plan B Task 3: the setup rail moved out of the cramped 340px grid column into
  * a right-side Sheet, and a dismissed-but-incomplete rail is now re-invokable
  * from a persistent header button (previously there was no way back once

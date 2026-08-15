@@ -410,6 +410,8 @@ function ProducerShowsBookings() {
 
       {isLoading ? (
         <div className="space-y-2">{[1,2,3,4,5].map(i => <Skeleton key={i} className="h-12" />)}</div>
+      ) : filtered.length === 0 ? (
+        <div className="text-center text-muted-foreground py-12">{t('producer.emptyState')}</div>
       ) : (
         <CalendarSurface
           role="producer"
