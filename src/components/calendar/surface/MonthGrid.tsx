@@ -22,6 +22,8 @@ interface MonthGridProps {
   cells: MonthGridCell[];
   onSelectDay: (day: Date) => void;
   onOpenDay: (day: Date) => void;
+  /** Fired on Space when provided; falls back to `onSelectDay` otherwise. */
+  onPeekDay?: (day: Date) => void;
   onRangeStart?: (key: string) => void;
   onRangeExtend?: (key: string) => void;
   onRangeCommit?: () => void;
@@ -40,6 +42,7 @@ export function MonthGrid({
   cells,
   onSelectDay,
   onOpenDay,
+  onPeekDay,
   onRangeStart,
   onRangeExtend,
   onRangeCommit,
@@ -105,10 +108,9 @@ export function MonthGrid({
     if (event.key === 'Enter') {
       event.preventDefault();
       handleOpen(cell);
-    } else if (event.key === ' ') {
-      // Space = select for now; peek is deferred to Phase 4.
+    } else if (event.key === ' ' || event.key === 'Spacebar') {
       event.preventDefault();
-      handleSelect(cell);
+      (onPeekDay ?? onSelectDay)(cell.day);
     }
   };
 

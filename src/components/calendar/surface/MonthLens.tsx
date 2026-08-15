@@ -10,6 +10,8 @@ interface MonthLensProps {
   selectedDay: Date | null;
   onSelectDay: (day: Date) => void;
   onOpenDay: (day: Date) => void;
+  /** Fired on Space when provided; forwarded straight through to `MonthGrid`. */
+  onPeekDay?: (day: Date) => void;
   producerEntries?: ProducerDateEntry[];
   artistEntries?: ArtistDateEntry[];
   /** Highlighted range for the drag-select flow — inert until Phase 4. */
@@ -35,6 +37,7 @@ export function MonthLens({
   selectedDay,
   onSelectDay,
   onOpenDay,
+  onPeekDay,
   producerEntries,
   artistEntries,
   rangeKeys = [],
@@ -54,6 +57,7 @@ export function MonthLens({
       cells={cells}
       onSelectDay={onSelectDay}
       onOpenDay={onOpenDay}
+      onPeekDay={onPeekDay}
       onRangeExtend={onRangeExtend}
       className={className}
     />

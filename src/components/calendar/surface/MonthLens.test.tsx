@@ -97,6 +97,30 @@ describe('MonthLens', () => {
     expect(screen.getByText('answer')).toBeInTheDocument();
   });
 
+  it('forwards onPeekDay to MonthGrid: Space on a focused cell fires onPeekDay, not onSelectDay', () => {
+    const onSelectDay = vi.fn();
+    const onPeekDay = vi.fn();
+    render(
+      <MonthLens
+        role="producer"
+        anchor={new Date(2026, 7, 1)}
+        selectedDay={null}
+        onSelectDay={onSelectDay}
+        onOpenDay={vi.fn()}
+        onPeekDay={onPeekDay}
+        producerEntries={[]}
+        today={new Date(2026, 7, 15)}
+      />
+    );
+    const cell = screen.getByTestId('month-grid-cell-2026-08-12');
+    cell.focus();
+    fireEvent.keyDown(cell, { key: ' ' });
+    expect(onPeekDay).toHaveBeenCalledTimes(1);
+    expect(onSelectDay).not.toHaveBeenCalled();
+    const peekedWith = onPeekDay.mock.calls[0][0] as Date;
+    expect(peekedWith.getDate()).toBe(12);
+  });
+
   it('marks the selected day cell via the selectedDay prop', () => {
     render(
       <MonthLens

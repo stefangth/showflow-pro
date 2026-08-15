@@ -129,6 +129,39 @@ describe('MonthGrid', () => {
     expect(selectedWith.getDate()).toBe(12);
   });
 
+  it('keyboard: Space fires onPeekDay (not onSelectDay) when onPeekDay is provided', () => {
+    const onSelectDay = vi.fn();
+    const onPeekDay = vi.fn();
+    render(
+      <MonthGrid
+        cells={buildCells()}
+        onSelectDay={onSelectDay}
+        onOpenDay={vi.fn()}
+        onPeekDay={onPeekDay}
+      />
+    );
+    const cell = screen.getByTestId('month-grid-cell-2026-08-12');
+    cell.focus();
+
+    fireEvent.keyDown(cell, { key: ' ' });
+    expect(onPeekDay).toHaveBeenCalledTimes(1);
+    expect(onSelectDay).not.toHaveBeenCalled();
+    const peekedWith = onPeekDay.mock.calls[0][0] as Date;
+    expect(peekedWith.getDate()).toBe(12);
+  });
+
+  it('keyboard: Space still fires onSelectDay when no onPeekDay is provided', () => {
+    const onSelectDay = vi.fn();
+    render(<MonthGrid cells={buildCells()} onSelectDay={onSelectDay} onOpenDay={vi.fn()} />);
+    const cell = screen.getByTestId('month-grid-cell-2026-08-12');
+    cell.focus();
+
+    fireEvent.keyDown(cell, { key: ' ' });
+    expect(onSelectDay).toHaveBeenCalledTimes(1);
+    const selectedWith = onSelectDay.mock.calls[0][0] as Date;
+    expect(selectedWith.getDate()).toBe(12);
+  });
+
   describe('range selection (drag + shift-click)', () => {
     function renderRangeGrid() {
       const onSelectDay = vi.fn();
