@@ -38,6 +38,7 @@ import { QueueRail, type QueueShortlistArtist } from './QueueRail';
 import { SelectionBar, type SelectionBarAction } from './SelectionBar';
 import { CalendarDaySheet } from './CalendarDaySheet';
 import { SurfaceFab } from './SurfaceFab';
+import { SeasonStripMobile } from './SeasonStripMobile';
 import type { NeedsYouGroupKey, NeedsYouItem, NeedsYouQueue } from '@/lib/calendar/needsYou';
 
 /**
@@ -483,6 +484,13 @@ export function CalendarSurface({
     return producerEntries.filter((e) => e.date >= start && e.date <= end);
   })();
 
+  // Mobile-only: the Week lens collapses to the Agenda day-list (spec §5)
+  // filtered to just this week's window, rather than the desktop time grid.
+  const weekEntries = (() => {
+    const { start, end } = periodWindow(anchor, 'week');
+    return producerEntries.filter((e) => e.date >= start && e.date <= end);
+  })();
+
   // Legend labels honor the same flow-aware override as the lenses/rail so the
   // color key never disagrees with the labels it explains.
   const artistLegend: DayRailLegendItem[] = useMemo(
@@ -678,10 +686,12 @@ export function CalendarSurface({
   // `SurfaceFab` for the producer landing lens only. Offers/Agenda/Needs-you
   // reflow to single column via responsive classes on those components
   // (Task 8; Needs-you also gets `layout="stacked"` to fold `QueueRail`
-  // below the groups instead of composing it as a side rail here). The
-  // remaining per-lens mobile REFLOW (Month/Week/Season dense grid, etc.) is
-  // Task 9 — this still renders the same underlying lens components desktop
-  // uses for those.
+  // below the groups instead of composing it as a side rail here). Month
+  // renders the dense `MonthGrid` variant; Week collapses to the Agenda
+  // day-list filtered to the week window instead of the desktop time grid;
+  // Season swaps the desktop heatmap for `SeasonStripMobile`; All dates
+  // reflows to stacked rows via responsive classes on `AllDatesLens` itself
+  // (Task 9).
   return (
     <div data-testid="calendar-surface" className={cn('flex flex-col gap-4', className)}>
       <CalendarSurfaceHeader eyebrow={resolvedEyebrow} eyebrowTone={eyebrowTone} title={resolvedTitle} cta={cta}>
@@ -725,23 +735,32 @@ export function CalendarSurface({
           producerEntries={producerEntries}
           artistEntries={artistEntries}
           today={now}
+          dense
         />
       ) : (
         <div className="w-full">
           {activeLens === 'week' && (
-            <WeekLens
-              entries={producerEntries}
-              anchor={anchor}
-              onOpenEntry={(entryId) => actions.openDate?.(entryId)}
-              today={now}
+            // Mobile "Week" collapses to the Agenda day-list (spec §5),
+            // filtered down to just this week's window — NOT the desktop
+            // time-grid `WeekLens` above. A row tap opens the day sheet, same
+            // pattern as the mobile Agenda lens below (not the desktop
+            // "navigate straight to the date" behavior).
+            <AgendaLens
+              entries={weekEntries}
+              onOpenEntry={(entry) => handleMobileDayTap(entry.date)}
+              onAction={handleAgendaAction}
+              actionGates={actionGates}
             />
           )}
           {activeLens === 'season' && (
-            <SeasonLens
+            <SeasonStripMobile
               entries={producerEntries}
               anchor={anchor}
               readyIds={seasonReadyIds}
-              onOpenDate={(dateId) => actions.openDate?.(dateId)}
+              onOpenDate={(dateId) => {
+                const entry = producerEntries.find((e) => e.id === dateId);
+                if (entry) handleMobileDayTap(entry.date);
+              }}
             />
           )}
           {activeLens === 'agenda' && (

@@ -229,6 +229,110 @@ describe('CalendarSurface — mobile shell (useIsMobile true)', () => {
     expect(actions.openDate).toHaveBeenCalledWith('pd-agenda');
   });
 
+  it('producer Month renders the dense MonthGrid variant (compact cell min-height)', () => {
+    const entry = producerEntry({ id: 'pd-dense', date: new Date(2026, 7, 12) });
+    render(
+      <CalendarSurface
+        role="producer"
+        producerEntries={[entry]}
+        actions={noopActions()}
+        lens="month"
+        onLensChange={vi.fn()}
+        today={TODAY}
+      />
+    );
+
+    expect(screen.getByTestId('month-grid-cell-2026-08-12')).toHaveClass('min-h-[62px]');
+  });
+
+  it('artist Month renders the dense MonthGrid variant (compact cell min-height)', () => {
+    const entry = artistEntry({ id: 'ad-dense', date: new Date(2026, 7, 12) });
+    render(
+      <CalendarSurface
+        role="artist"
+        artistEntries={[entry]}
+        actions={noopActions()}
+        lens="month"
+        onLensChange={vi.fn()}
+        today={TODAY}
+      />
+    );
+
+    expect(screen.getByTestId('month-grid-cell-2026-08-12')).toHaveClass('min-h-[62px]');
+  });
+
+  it('producer Week collapses to the Agenda day-list filtered to the week window, and a row tap opens the day sheet', () => {
+    // TODAY = 15 Aug 2026 (Sat) -> its week is Mon 10 Aug .. Sun 16 Aug.
+    const inWeek = producerEntry({ id: 'pd-in-week', date: new Date(2026, 7, 12) });
+    const outOfWeek = producerEntry({ id: 'pd-out-of-week', date: new Date(2026, 7, 24) });
+    const actions = noopActions();
+    render(
+      <CalendarSurface
+        role="producer"
+        producerEntries={[inWeek, outOfWeek]}
+        actions={actions}
+        lens="week"
+        onLensChange={vi.fn()}
+        today={TODAY}
+      />
+    );
+
+    // AgendaLens day-list renders, not the desktop WeekLens time grid.
+    expect(screen.getByTestId('agenda-row-pd-in-week')).toBeInTheDocument();
+    expect(screen.queryByTestId('agenda-row-pd-out-of-week')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('week-lens')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('agenda-row-pd-in-week'));
+    const sheet = screen.getByTestId('calendar-day-sheet');
+    expect(sheet).toBeInTheDocument();
+    expect(sheet).toHaveTextContent('Cirque Noir');
+    // Row tap opens the sheet, not the desktop "navigate straight to the date".
+    expect(actions.openDate).not.toHaveBeenCalled();
+  });
+
+  it('producer Season renders SeasonStripMobile, and a cell tap opens the day sheet for that date', () => {
+    const entry = producerEntry({ id: 'pd-season', showId: 'show-season', date: new Date(2026, 7, 12) });
+    const actions = noopActions();
+    render(
+      <CalendarSurface
+        role="producer"
+        producerEntries={[entry]}
+        actions={actions}
+        lens="season"
+        onLensChange={vi.fn()}
+        today={TODAY}
+      />
+    );
+
+    expect(screen.getByTestId('season-strip-mobile')).toBeInTheDocument();
+    expect(screen.queryByTestId('season-lens')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('season-strip-cell-show-season-2026-08-12'));
+
+    const sheet = screen.getByTestId('calendar-day-sheet');
+    expect(sheet).toBeInTheDocument();
+    expect(sheet).toHaveTextContent('Cirque Noir');
+    expect(actions.openDate).not.toHaveBeenCalled();
+  });
+
+  it('artist All dates renders stacked rows: the fixed table header hides at mobile', () => {
+    const entry = artistEntry({ id: 'ad-all', date: new Date(2026, 7, 12) });
+    render(
+      <CalendarSurface
+        role="artist"
+        artistEntries={[entry]}
+        actions={noopActions()}
+        lens="all-dates"
+        onLensChange={vi.fn()}
+        today={TODAY}
+      />
+    );
+
+    expect(screen.getByTestId('all-dates-row-ad-all')).toBeInTheDocument();
+    const header = screen.getByText('Date').parentElement;
+    expect(header?.className).toMatch(/\bhidden\b/);
+  });
+
   it('the producer Needs-you lens folds QueueRail content below the groups instead of a side rail', () => {
     const queue = {
       groups: [

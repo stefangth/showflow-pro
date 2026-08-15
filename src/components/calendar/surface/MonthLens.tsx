@@ -24,6 +24,9 @@ interface MonthLensProps {
    *  `MonthGrid`, which applies `select-none` to suppress text selection
    *  during a drag. Producer-only, same as the other range props. */
   rangeActive?: boolean;
+  /** Mobile "status-bar per day" variant — forwarded straight through to
+   *  `MonthGrid`. Default/absent (false) is the unchanged desktop grid. */
+  dense?: boolean;
   /** Override for "today", so tests get a deterministic today-marker. */
   today?: Date;
   className?: string;
@@ -54,6 +57,7 @@ export function MonthLens({
   onRangeExtend,
   onRangeCommit,
   rangeActive,
+  dense,
   today = new Date(),
   className,
 }: MonthLensProps) {
@@ -74,6 +78,7 @@ export function MonthLens({
       onRangeExtend={onRangeExtend}
       onRangeCommit={onRangeCommit}
       rangeActive={rangeActive}
+      dense={dense}
       className={className}
     />
   );

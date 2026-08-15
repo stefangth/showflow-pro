@@ -95,4 +95,29 @@ describe('AllDatesLens', () => {
     expect(row).toHaveTextContent('19:00');
     expect(row).toHaveTextContent('Hold');
   });
+
+  it('a row stacks single-column by default (mobile) with md: classes restoring the desktop table row, and the header hides until md:', () => {
+    const e = entry({ id: 'ad-1' });
+    render(
+      <AllDatesLens entries={[e]} onBlock={vi.fn()} hireOrderHref={(id) => `/hire-orders/${id}`} today={TODAY} />
+    );
+
+    const row = screen.getByTestId('all-dates-row-ad-1');
+    // Mobile-first: the row is a vertical stack (no fixed table columns);
+    // `md:` restores the desktop single-line row exactly at >=768px.
+    expect(row.className).toMatch(/\bflex-col\b/);
+    expect(row.className).toMatch(/\bmd:flex-row\b/);
+
+    // The header row (Date/Day/Show/Session/My status column labels) only
+    // reads sensibly once the row is a table again — hidden until md:.
+    const header = screen.getByText('Date').parentElement;
+    expect(header?.className).toMatch(/\bhidden\b/);
+    expect(header?.className).toMatch(/\bmd:flex\b/);
+
+    // The show block is full width on mobile, restoring its flexible
+    // desktop sizing only at md:.
+    const title = screen.getByText('Cirque Noir');
+    expect(title.parentElement?.className).toMatch(/\bw-full\b/);
+    expect(title.parentElement?.className).toMatch(/\bmd:flex-1\b/);
+  });
 });
