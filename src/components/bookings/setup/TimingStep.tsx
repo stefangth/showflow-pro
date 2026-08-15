@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { upsertOrgSetting } from "@/data/settings";
@@ -8,7 +9,7 @@ import {
   timingScopeNote,
   isValidDigestHour,
   isValidWindowHours,
-  TIMING_BOUNDS_ERROR,
+  timingBoundsError,
 } from "@/lib/bookings/timingCopy";
 import { BOOKING_ENGINE_DEFAULTS } from "@/config/app.config";
 import { Button } from "@/components/ui/button";
@@ -23,6 +24,7 @@ import { useDerivedDraft } from "@/hooks/useDerivedDraft";
  *  (48h / 19:00 / 20:00) are never displayed as if they were the org's own -- the
  *  panel waits for the read, see the gate below. */
 export function TimingStep({ orgId, onDone }: { orgId: string | null; onDone: () => void }) {
+  const { t: tBooking } = useTranslation("bookingCopy");
   const qc = useQueryClient();
   const { data: times, isError, error } = useFlowTimes(orgId);
   // The org this panel was HANDED, not whichever org the shell happens to be on.
@@ -69,7 +71,7 @@ export function TimingStep({ orgId, onDone }: { orgId: string | null; onDone: ()
         !isValidDigestHour(offerHour) ||
         !isValidDigestHour(confirmationHour)
       ) {
-        throw new Error(TIMING_BOUNDS_ERROR);
+        throw new Error(timingBoundsError(tBooking));
       }
       await Promise.all([
         upsertOrgSetting(supabase, orgId, "offer_response_window_hours", windowHours),
@@ -117,6 +119,7 @@ export function TimingStep({ orgId, onDone }: { orgId: string | null; onDone: ()
   const tonight = describeTonight(
     { windowHours: num(win), offerDigestHour: num(offer), confirmationDigestHour: num(conf) },
     flow,
+    tBooking,
   );
 
   return (
@@ -141,7 +144,7 @@ export function TimingStep({ orgId, onDone }: { orgId: string | null; onDone: ()
           later") described the classic pipeline as universal: it contradicted the
           narrative under it at a fast-track org, and at a direct-book org it was the only
           sentence on the panel and it was wrong. */}
-      <p className="text-xs text-muted-foreground">{timingScopeNote(flow)}</p>
+      <p className="text-xs text-muted-foreground">{timingScopeNote(flow, tBooking)}</p>
       {tonight && <p className="text-xs text-muted-foreground">{tonight}</p>}
       <Button size="sm" disabled={save.isPending || !orgId} onClick={() => save.mutate()}>Save timing</Button>
     </div>

@@ -2,57 +2,62 @@
 // Copy derives from the normalized flow's switches (artist_acceptance,
 // offer_delivery), never from preset names, so custom configs work. Callers
 // pass useBookingFlow() data (already normalized; fall back to
-// BOOKING_FLOW_DEFAULTS while loading). Frontend-only: no _shared mirror.
-// No em- or en-dashes in any string (middot and arrows are fine).
+// BOOKING_FLOW_DEFAULTS while loading) plus a `t` bound to the `flowCopy`
+// namespace (useTranslation('flowCopy')). Frontend-only: no _shared mirror.
+// Strings live in src/i18n/locales/{en,de}/flowCopy.json; German ships dark
+// behind the language_packages entitlement.
 
+import type { TFunction } from "i18next";
 import type { BookingFlow } from "./bookingFlow";
+
+type FlowT = TFunction<"flowCopy">;
 
 export interface PageCopy {
   title: string;
   subtitle: string;
 }
 
-export function availabilityPageCopy(flow: BookingFlow): PageCopy {
+export function availabilityPageCopy(flow: BookingFlow, t: FlowT): PageCopy {
   if (!flow.artist_acceptance) {
     return {
-      title: "My Dates",
-      subtitle: "Your bookings and availability. Block dates you can't perform.",
+      title: t("availabilityPage.direct.title"),
+      subtitle: t("availabilityPage.direct.subtitle"),
     };
   }
   return {
-    title: "My Offers",
-    subtitle: "View your offers and block dates you're unavailable for.",
+    title: t("availabilityPage.offer.title"),
+    subtitle: t("availabilityPage.offer.subtitle"),
   };
 }
 
-export function bookingsViewCopy(flow: BookingFlow): PageCopy {
+export function bookingsViewCopy(flow: BookingFlow, t: FlowT): PageCopy {
   return {
-    title: "My Bookings",
+    title: t("bookingsView.title"),
     subtitle: flow.artist_acceptance
-      ? "Dates you've been offered for, based on your cast eligibility."
-      : "Dates you're booked for, based on your cast eligibility.",
+      ? t("bookingsView.offerSubtitle")
+      : t("bookingsView.directSubtitle"),
   };
 }
 
 // Shared by AvailabilityPage and ArtistBookingsView (both kept private copies
 // before). suggested/soft_booked are unreachable in direct mode but keep sane
 // fallbacks; cancelled only renders in the bookings view.
-export function bookingStatusLabels(flow: BookingFlow): Record<string, string> {
+export function bookingStatusLabels(flow: BookingFlow, t: FlowT): Record<string, string> {
   if (!flow.artist_acceptance) {
     return {
-      suggested: "Offer pending",
-      soft_booked: "Hold placed",
-      confirmed: "Booked",
-      unanswered: "Not booked",
-      cancelled: "Cancelled",
+      suggested: t("statusLabels.direct.suggested"),
+      soft_booked: t("statusLabels.direct.soft_booked"),
+      confirmed: t("statusLabels.direct.confirmed"),
+      unanswered: t("statusLabels.direct.unanswered"),
+      cancelled: t("statusLabels.direct.cancelled"),
     };
   }
   return {
-    suggested: "Offer pending",
-    soft_booked: "Hold placed",
-    confirmed: "Confirmed",
-    unanswered: "No offer yet",
-    cancelled: "Cancelled",
+    suggested: t("statusLabels.offer.suggested"),
+    soft_booked: t("statusLabels.offer.soft_booked"),
+    confirmed: t("statusLabels.offer.confirmed"),
+    unanswered: t("statusLabels.offer.unanswered"),
+    cancelled: t("statusLabels.offer.cancelled"),
   };
 }
 
@@ -65,30 +70,29 @@ export interface MeterSpec {
   countStatuses: string[];
 }
 
-export function artistMeter(flow: BookingFlow): MeterSpec {
+export function artistMeter(flow: BookingFlow, t: FlowT): MeterSpec {
   if (!flow.artist_acceptance) {
     return {
-      title: "Booked dates",
-      headerSentence: "Your booked share of the dates you're eligible for.",
-      footer: "Click to see your dates →",
-      explainer: "Dates you are booked for, out of dates you are eligible for.",
+      title: t("meter.direct.title"),
+      headerSentence: t("meter.direct.headerSentence"),
+      footer: t("meter.direct.footer"),
+      explainer: t("meter.direct.explainer"),
       filterUnanswered: false,
       countStatuses: ["confirmed"],
     };
   }
   return {
-    title: "Response rate",
-    headerSentence: "Your response rate on dates you've been offered.",
-    footer: "Click to see pending offers →",
-    explainer:
-      "Counts dates you accepted or were booked for, out of dates you were offered. It is just for you, no one is scored on it.",
+    title: t("meter.offer.title"),
+    headerSentence: t("meter.offer.headerSentence"),
+    footer: t("meter.offer.footer"),
+    explainer: t("meter.offer.explainer"),
     filterUnanswered: true,
     countStatuses: ["confirmed", "soft_booked"],
   };
 }
 
-export function deliveryHint(flow: BookingFlow): string {
+export function deliveryHint(flow: BookingFlow, t: FlowT): string {
   return flow.artist_acceptance && flow.offer_delivery === "immediate"
-    ? "Offers email artists immediately when a tier opens."
+    ? t("deliveryHint")
     : "";
 }

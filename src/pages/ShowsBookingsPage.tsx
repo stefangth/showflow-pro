@@ -17,7 +17,7 @@ import { PopoverAnchor } from '@radix-ui/react-popover';
 import { RowPeek } from '@/components/bookings/RowPeek';
 import { computeDatePeek, pagerPosition } from '@/lib/bookingCockpit';
 import { Search, Plus, ListChecks } from 'lucide-react';
-import { format, parseISO } from 'date-fns';
+import { parseISO } from 'date-fns';
 import { ProgramFilter } from '@/components/filters/ProgramFilter';
 import { TimeframeFilter, upcomingTimeframe, type TimeframeValue } from '@/components/filters/TimeframeFilter';
 import { SortControl, type SortValue } from '@/components/filters/SortControl';
@@ -43,7 +43,7 @@ import { useCan } from '@/hooks/useCapabilities';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { showSlots } from '@/lib/settings';
-import { formatDateWithWeekday, parseDateOnly, pastRowClassName } from '@/lib/dates';
+import { formatDateWithWeekday, formatDayMonthYear, parseDateOnly, pastRowClassName, weekdayShort } from '@/lib/dates';
 import { cn } from '@/lib/utils';
 import { useReferenceField } from '@/hooks/useBookingFlow';
 import { referenceLabel } from '@/lib/bookingFlow';
@@ -116,6 +116,7 @@ function ArtistShowsBookings() {
 
 function ProducerShowsBookings() {
   const { t } = useTranslation('bookings');
+  const { t: tBooking } = useTranslation('bookingCopy');
   const STATUS_LABEL: Record<DisplayStatus, string> = useMemo(() => ({
     open: t('status.open'),
     partially_filled: t('status.partiallyFilled'),
@@ -407,10 +408,7 @@ function ProducerShowsBookings() {
     setSearchParams(next, { replace: true });
   };
 
-  const dayAbbr = (dateStr: string) => {
-    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    return days[parseDateOnly(dateStr).getDay()];
-  };
+  const dayAbbr = (dateStr: string) => weekdayShort(dateStr);
 
   return (
     <div className="space-y-6">
@@ -541,7 +539,7 @@ function ProducerShowsBookings() {
                     switch (colId) {
                       case 'show_dates.date': return (
                         <TableCell key={colId} className="font-medium whitespace-nowrap">
-                          {format(parseDateOnly(sd.date), 'dd MMM yyyy')}
+                          {formatDayMonthYear(sd.date)}
                         </TableCell>
                       );
                       case '_computed.day': return (
@@ -741,6 +739,7 @@ function ProducerShowsBookings() {
               peek={computeDatePeek({
                 counts: bookingCounts?.get(peekedShowDate.id) ?? null,
                 slots: showSlots(peekedShowDate.show),
+                t: tBooking,
               })}
               canConfirm={canConfirmBookings && bookingOn}
               confirming={confirmingPeek}

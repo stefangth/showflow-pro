@@ -80,6 +80,7 @@ export function EligibilityBookList({
   requiredSkillIds?: string[];
 }) {
   const { t } = useTranslation("showsDetail");
+  const { t: tAction } = useTranslation("bookingCopy");
   const [understudy, setUnderstudy] = useState(false);
   const [confirmTarget, setConfirmTarget] = useState<{ id: string; name: string } | null>(null);
   if (error) {
@@ -153,7 +154,7 @@ export function EligibilityBookList({
         );
       })()}
       {unrestricted && orgName && (
-        <p className="text-xs text-muted-foreground">{unrestrictedEligibilityNote(orgName)}</p>
+        <p className="text-xs text-muted-foreground">{unrestrictedEligibilityNote(orgName, tAction)}</p>
       )}
       {artists.length === 0 && (
         <p className="text-sm text-muted-foreground">{t("eligibilityBookList.noEligible")}</p>

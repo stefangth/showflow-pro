@@ -9,8 +9,11 @@
 // existing consumer, e.g. coverageCopy.ts, TierTimeline.tsx, DryRunDialog.tsx, imports it from
 // "@/lib/bookingFlow").
 
+import type { TFunction } from "i18next";
 import { berlinTime, type BookingFlow } from "@/lib/bookingFlow";
 import { scheduleChangeNote } from "@/lib/notifications/scheduleChangeCopy";
+
+type ActionT = TFunction<"bookingCopy">;
 
 /** The flow fields that decide what Confirm will actually do. */
 type ConfirmFlow = Pick<BookingFlow, "active" | "confirmation_digest">;
@@ -35,12 +38,13 @@ export function confirmConsequenceNote(
   flow: ConfirmFlow | null | undefined,
   confirmationDigestHour: number,
   bookingFlowEnabled: boolean,
+  t: ActionT,
 ): string {
-  if (!bookingFlowEnabled || !flow || flow.active === false) return "Confirm places the booking.";
+  if (!bookingFlowEnabled || !flow || flow.active === false) return t("actionCopy.confirm.bareConsequence");
   if (flow.confirmation_digest) {
-    return `Confirm places the booking. The artist sees it in the app right away. The confirmation email goes out in the daily summary at ${berlinTime(confirmationDigestHour)}.`;
+    return t("actionCopy.confirm.withDigest", { time: berlinTime(confirmationDigestHour) });
   }
-  return "Confirm places the booking and notifies the artist in the app right away.";
+  return t("actionCopy.confirm.appOnly");
 }
 
 /** The flow field that decides what accepting an offer does. */
@@ -52,32 +56,36 @@ type AcceptFlow = Pick<BookingFlow, "producer_confirmation">;
  * false confirms instantly. Undefined reads as the classic hold flow (respondToOffer's own
  * `?? true` default), so an unknown flow never over-promises "you're booked".
  */
-export function acceptConsequenceNote(flow: AcceptFlow | null | undefined): {
+export function acceptConsequenceNote(flow: AcceptFlow | null | undefined, t: ActionT): {
   title: string;
   description?: string;
 } {
   const holds = flow?.producer_confirmation ?? true;
   return holds
-    ? { title: "Offer accepted", description: "Hold placed. Your producer confirms next." }
-    : { title: "Offer accepted. You're booked." };
+    ? { title: t("actionCopy.accept.holdTitle"), description: t("actionCopy.accept.holdDescription") }
+    : { title: t("actionCopy.accept.bookedTitle") };
 }
 
 /** What the cockpit's "Accepted" badge means, and the module-off "Soft-booked" badge means
  *  the same thing: the artist said yes, the slot is held, and nothing is booked until a
  *  producer confirms it. */
-export const SOFT_BOOKED_MEANING = "Accepted the offer. Held for you, not booked, until you confirm.";
+export function softBookedMeaning(t: ActionT): string {
+  return t("actionCopy.softBookedMeaning");
+}
 
 /** What a tier is, read next to the tier picker before a producer has opened one yet. */
-export const TIER_CONCEPT_NOTE =
-  "Tiers are your casts in priority order. Offers open with tier 1. If it cannot fill, you open the next tier.";
+export function tierConceptNote(t: ActionT): string {
+  return t("actionCopy.tierConceptNote");
+}
 
 /** What happens to a hand-added show date next to an Airtable-synced one. */
-export const DATE_SOURCE_NOTE =
-  "You can add a show date by hand here. If your workspace syncs from Airtable, those dates keep updating on their own, and a date you add here is not changed by a sync.";
+export function dateSourceNote(t: ActionT): string {
+  return t("actionCopy.dateSourceNote");
+}
 
 /** The direct-book eligibility list's "nothing is restricting who shows up here" note. */
-export function unrestrictedEligibilityNote(orgName: string): string {
-  return `This date has no cast limits, so anyone in ${orgName} can be booked here.`;
+export function unrestrictedEligibilityNote(orgName: string, t: ActionT): string {
+  return t("actionCopy.unrestrictedEligibility", { org: orgName });
 }
 
 /**
@@ -103,14 +111,15 @@ export function cancelBookingCopy(args: {
   bookingFlowEnabled: boolean;
   flow: Pick<BookingFlow, "active" | "confirmation_digest"> | null | undefined;
   confirmationDigestHour: number;
+  t: ActionT;
 }): { title: string; understudyLine: string | null; whoHearsLine: string } {
-  const { artistName, understudyPromotionEnabled, bookingFlowEnabled, flow, confirmationDigestHour } = args;
+  const { artistName, understudyPromotionEnabled, bookingFlowEnabled, flow, confirmationDigestHour, t } = args;
   return {
-    title: `Cancel ${artistName}'s booking?`,
+    title: t("actionCopy.cancel.title", { artist: artistName }),
     understudyLine: understudyPromotionEnabled
-      ? `If ${artistName} is in the main cast, the longest waiting accepted understudy is promoted automatically.`
+      ? t("actionCopy.cancel.understudyLine", { artist: artistName })
       : null,
     whoHearsLine:
-      scheduleChangeNote(bookingFlowEnabled, flow, confirmationDigestHour) ?? "The artist is notified in the app.",
+      scheduleChangeNote(bookingFlowEnabled, flow, confirmationDigestHour) ?? t("actionCopy.cancel.whoHearsFallback"),
   };
 }
