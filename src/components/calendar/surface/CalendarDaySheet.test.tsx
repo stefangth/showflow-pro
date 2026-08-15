@@ -62,6 +62,17 @@ describe('CalendarDaySheet', () => {
     expect(sheet).toBeInTheDocument();
     expect(screen.getByTestId('day-rail-primary')).toHaveTextContent('Confirm holds');
 
+    // Exactly one grab handle (vaul's own — DrawerContent renders it via a
+    // hardcoded `rounded-full bg-muted` div; CalendarDaySheet must not add
+    // a second one of its own).
+    expect(sheet.querySelectorAll('.rounded-full.bg-muted')).toHaveLength(1);
+
+    // Exactly one "Open date" control — DayDetail's own secondary button
+    // (which defaults to the same label) must be suppressed, not stacked
+    // alongside the sheet's dedicated button.
+    expect(screen.getAllByText('Open date')).toHaveLength(1);
+    expect(screen.queryByTestId('day-rail-secondary')).not.toBeInTheDocument();
+
     const openDateBtn = screen.getByTestId('day-sheet-open-date');
     expect(openDateBtn).toHaveTextContent('Open date');
     fireEvent.click(openDateBtn);
@@ -69,6 +80,7 @@ describe('CalendarDaySheet', () => {
 
     // Producer variant never shows the artist-only "Message producer" button.
     expect(screen.queryByTestId('day-sheet-message-producer')).not.toBeInTheDocument();
+    expect(screen.queryByText('Message producer')).not.toBeInTheDocument();
   });
 
   it('artist: shows "Message producer" button firing onMessageProducer', () => {
@@ -86,13 +98,19 @@ describe('CalendarDaySheet', () => {
 
     expect(screen.getByTestId('day-rail-primary')).toHaveTextContent('Accept offer');
 
+    // DayDetail's own secondary button (default label "Message producer")
+    // must be suppressed — only the sheet's own button renders.
+    expect(screen.queryByTestId('day-rail-secondary')).not.toBeInTheDocument();
+    expect(screen.getAllByText('Message producer')).toHaveLength(1);
+
     const messageBtn = screen.getByTestId('day-sheet-message-producer');
     expect(messageBtn).toHaveTextContent('Message producer');
     fireEvent.click(messageBtn);
     expect(onMessageProducer).toHaveBeenCalledTimes(1);
 
-    // "Open date" is present for both roles.
+    // "Open date" is present for both roles, exactly once.
     expect(screen.getByTestId('day-sheet-open-date')).toBeInTheDocument();
+    expect(screen.getAllByText('Open date')).toHaveLength(1);
   });
 
   it('dismisses via the native vaul escape path, firing onOpenChange(false)', () => {

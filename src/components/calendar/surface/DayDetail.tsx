@@ -25,6 +25,13 @@ export interface DayDetailProps {
    *  primary action's kind is gated `disabled`, the primary button renders
    *  `disabled` with `title` as its tooltip instead of firing `onPrimary`. */
   actionGates?: ActionGates;
+  /** Suppresses the secondary button entirely (default label and all).
+   *  Set only by `CalendarDaySheet`, which renders its own dedicated
+   *  "Open date" / "Message producer" text buttons below this card instead
+   *  — without this escape hatch those would duplicate DayDetail's default
+   *  secondary label. `DayRail` never sets it, so its desktop output is
+   *  unaffected. */
+  hideSecondary?: boolean;
   className?: string;
 }
 
@@ -196,6 +203,7 @@ export function DayDetail({
   secondaryLabel,
   statusLabels,
   actionGates,
+  hideSecondary,
   className,
 }: DayDetailProps) {
   const resolvedProducerEntries = producerEntries ?? [];
@@ -212,7 +220,9 @@ export function DayDetail({
   const resolvedPrimaryLabel =
     primaryLabel ??
     (role === 'producer' ? producerPrimary?.label : artistPrimaryLabel(resolvedArtistEntries));
-  const resolvedSecondaryLabel = secondaryLabel ?? (role === 'producer' ? 'Open date' : 'Message producer');
+  const resolvedSecondaryLabel = hideSecondary
+    ? undefined
+    : secondaryLabel ?? (role === 'producer' ? 'Open date' : 'Message producer');
 
   // Only the producer primary maps to a capability-gated action (Confirm
   // holds / Generate hire order); "Open date" and every artist action are

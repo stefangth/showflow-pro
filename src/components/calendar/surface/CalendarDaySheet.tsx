@@ -12,12 +12,20 @@ export interface CalendarDaySheetProps {
   artistEntries?: ArtistDateEntry[];
   onPrimary?: () => void;
   primaryLabel?: string;
+  /** Passed through to `DayDetail`, but `DayDetail`'s own secondary button
+   *  is always suppressed in this sheet (see `hideSecondary` below) — kept
+   *  on the props shape for interface parity with `DayDetail`/`DayRail`,
+   *  not currently exercised. The sheet's own "Open date" / "Message
+   *  producer" text buttons below are the mobile secondary actions. */
   onSecondary?: () => void;
   secondaryLabel?: string;
   /** Text button under the date card, shown for both roles — the mobile
-   *  equivalent of drilling into the full show-date detail. */
+   *  equivalent of drilling into the full show-date detail. This is the
+   *  sheet's sole "Open date" control; `DayDetail`'s own secondary button
+   *  (which defaults to the same label) is suppressed inside the sheet. */
   onOpenDate?: () => void;
-  /** Text button under the date card, artist only. */
+  /** Text button under the date card, artist only. This is the sheet's
+   *  sole "Message producer" control, for the same reason as `onOpenDate`. */
   onMessageProducer?: () => void;
   /** Flow-aware artist status label override, passed straight through to
    *  `DayDetail` — see its doc comment. */
@@ -29,12 +37,19 @@ export interface CalendarDaySheetProps {
 
 /**
  * Bottom sheet that replaces the desktop `DayRail` on mobile: a vaul
- * `Drawer` wrapping the same `DayDetail` date card + primary/secondary
- * actions used on desktop, plus two mobile-only text buttons ("Open date"
- * for both roles, "Message producer" for artists) below it. Dismiss via the
- * grab handle, scrim, or Escape is vaul's (Radix Dialog-backed) native
- * behavior and calls `onOpenChange(false)` on its own — nothing extra to
- * wire here.
+ * `Drawer` wrapping the same `DayDetail` date card + primary action used on
+ * desktop, plus two mobile-only text buttons ("Open date" for both roles,
+ * "Message producer" for artists) below it. `DrawerContent` already renders
+ * its own grab handle (`src/components/ui/drawer.tsx`, not edited here), so
+ * this component adds no handle of its own — there is exactly one. Dismiss
+ * via that handle, the scrim, or Escape is vaul's (Radix Dialog-backed)
+ * native behavior and calls `onOpenChange(false)` on its own — nothing
+ * extra to wire here.
+ *
+ * `DayDetail`'s own secondary button is suppressed here (`hideSecondary`)
+ * so its default "Open date" / "Message producer" label never duplicates
+ * this sheet's own dedicated buttons for the same actions — see
+ * `CalendarDaySheetProps.onOpenDate`/`onMessageProducer`.
  *
  * First production consumer of `src/components/ui/drawer.tsx`: it is
  * controlled entirely by `open`/`onOpenChange`, no `DrawerTrigger`. When
@@ -62,7 +77,6 @@ export function CalendarDaySheet({
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
       <DrawerContent data-testid="calendar-day-sheet">
-        <div className="mx-auto h-1 w-10 shrink-0 rounded-pill bg-muted-foreground/40" />
         <div className="flex flex-col gap-3 px-4 pb-6 pt-3">
           <DayDetail
             role={role}
@@ -75,6 +89,7 @@ export function CalendarDaySheet({
             secondaryLabel={secondaryLabel}
             statusLabels={statusLabels}
             actionGates={actionGates}
+            hideSecondary
           />
 
           <div className="flex flex-col items-center gap-1">
