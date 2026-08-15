@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach } from "vitest";
 import i18n from "@/i18n";
-import { parseDateOnly, formatDateDMY, formatTimestampDMY, formatDateWithWeekday, toDateKey, isPastDate, PAST_DATE_TINT, pastRowClassName, weekdayShort, weekdayShortLabels, formatDayMonthShortYear, formatMonthYear, formatDayMonthYear, formatFullWeekdayDate } from "./dates";
+import { parseDateOnly, formatDateDMY, formatTimestampDMY, formatTimestampLocal, formatDateWithWeekday, toDateKey, isPastDate, PAST_DATE_TINT, pastRowClassName, weekdayShort, weekdayShortLabels, formatDayMonthShortYear, formatMonthYear, formatDayMonthYear, formatFullWeekdayDate } from "./dates";
 
 describe("parseDateOnly", () => {
   it("parses a YYYY-MM-DD string at local midnight (no UTC drift)", () => {
@@ -96,6 +96,24 @@ describe("locale-aware formatting", () => {
     expect(formatFullWeekdayDate("2026-04-23")).toBe("Thursday, 23 April 2026");
     await i18n.changeLanguage("de");
     expect(formatFullWeekdayDate("2026-04-23")).toBe("Donnerstag, 23 April 2026");
+  });
+
+  // formatTimestampLocal (hire-order created_at/last_sent_at): pins English to en-GB
+  // day-first, not the bare 'en' code (which resolves to US month-first M/D/YYYY and
+  // would flip a hire-order date from DD/MM to MM/DD). Time-of-day is left to the
+  // runner's timezone, so assert only the day-first date ordering, not the exact string.
+  it("formatTimestampLocal renders a day-first medium date in the active language", async () => {
+    // UTC noon so the calendar day is stable across the CI timezone.
+    const iso = "2026-04-05T12:00:00Z";
+    const en = formatTimestampLocal(iso);
+    // en-GB medium is day-first ("5 Apr 2026, ..."), never US month-first ("Apr 5").
+    expect(en).toMatch(/^\d{1,2} \w/);
+    expect(en).not.toMatch(/^[A-Za-z]/);
+    expect(en).toContain("Apr");
+    await i18n.changeLanguage("de");
+    const de = formatTimestampLocal(iso);
+    // de-DE medium is numeric day-first ("05.04.2026, ..."), day before month.
+    expect(de).toMatch(/^\d{2}\.\d{2}\.\d{4}/);
   });
 });
 

@@ -47,9 +47,16 @@ export function formatTimestampDMY(input: string): string {
   return format(new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()), 'dd/MM/yyyy');
 }
 
-/** Format an ISO timestamp in the app language's date and time. */
+/** Format an ISO timestamp in the app language's date and time, e.g.
+ *  `23 Apr 2026, 14:30` (`23. Apr. 2026, 14:30` in German). English pins to
+ *  `en-GB` (day-first) rather than the bare `'en'` code, which resolves to
+ *  US-style month-first `M/D/YYYY` — a real ambiguity on hire-order documents
+ *  ("03/04" = 3 Apr vs 4 Mar). Matches `formatDayMonthShortYear`'s explicit
+ *  regional locale so date order stays day-first regardless of the visitor's
+ *  browser region. */
 export function formatTimestampLocal(input: string): string {
-  return new Intl.DateTimeFormat(i18n.language || undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(input));
+  const locale = i18n.language?.startsWith('de') ? 'de-DE' : 'en-GB';
+  return new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(input));
 }
 
 /** Format with weekday + dd/MM/yyyy, e.g. `Mon, 23/04/2026` (`Mo, 23/04/2026` in German). */
