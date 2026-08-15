@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/features/auth/AuthContext";
 import { useCan } from "@/hooks/useCapabilities";
 import { useBookingSetupStatus, useProducerCount } from "@/hooks/useBookingSetup";
@@ -6,7 +7,7 @@ import { useBookingSetupRailVisible } from "@/components/bookings/setup/useBooki
 import { useSetupRailVisible } from "@/components/hireOrders/setup/useSetupRailVisible";
 import { useRailDismissed } from "@/components/setup/useRailDismissed";
 import { collapsedCopy, composeOnboarding, injectAdminTeamStep } from "@/lib/dashboard/firstRun";
-import { MODULE_ONBOARDING, type OnboardingModuleKey } from "@/lib/dashboard/moduleOnboarding";
+import { buildModuleOnboarding, type OnboardingModuleKey } from "@/lib/dashboard/moduleOnboarding";
 import type { FeatureKey } from "@/lib/entitlements";
 import type { SetupRailMode } from "@/components/setup/setupRailMode";
 import type {
@@ -58,6 +59,8 @@ const DISMISS_KEY: Record<OnboardingModuleKey, string> = {
  * `counts` here are inert placeholders rather than live reads.
  */
 export function useModuleOnboardingRail(feature: OnboardingModuleKey, orgId: string | null): ModuleOnboardingRail {
+  const { t } = useTranslation("onboarding");
+  const MODULE_ONBOARDING = buildModuleOnboarding(t);
   const { currentOrg, hasRole } = useAuth();
   const role: DashboardRole = hasRole("admin") ? "admin" : "producer";
   // Whether the viewer can actually do this module's setup. Producers default to false
@@ -108,7 +111,7 @@ export function useModuleOnboardingRail(feature: OnboardingModuleKey, orgId: str
     bookingEnabled: feature === "booking_flow",
     producerCount,
     complete: composed.complete,
-  });
+  }, t);
   const remaining = total - filled;
   const railHeader = MODULE_ONBOARDING[feature].railHeader;
   const viz = feature === "hire_orders" ? hireViz : bookingViz;
@@ -140,7 +143,7 @@ export function useModuleOnboardingRail(feature: OnboardingModuleKey, orgId: str
     // Reuse the dashboard collapsed-bar's own "N steps left" pluralization so the two
     // bars can't drift; the label stays canEdit-based (matches eyebrow/progressLabel)
     // and the CTA is a deliberate "Resume" override (the bar re-expands, not open-steps).
-    collapsedHint: collapsedCopy(role, false, remaining).hint,
+    collapsedHint: collapsedCopy(role, false, remaining, t).hint,
     collapsedCta: "Resume",
     dismiss,
     expand,

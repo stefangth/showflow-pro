@@ -1,12 +1,13 @@
 import { Lock } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent } from "@/components/ui/card";
 import { useAuth } from "@/features/auth/AuthContext";
 import { useCan } from "@/hooks/useCapabilities";
 import { useOrgAdminNames } from "@/hooks/useOrgAdminNames";
 import { adminAskLine } from "@/data/orgAdmins";
-import { STEP_TITLES, type BookingSetupStep } from "@/lib/bookings/setupStatus";
-import { PRODUCER_ROLE_NOTE, ROLE_EXPLAINER_LINK_LABEL, ROLE_EXPLAINER_LINK_ROUTE } from "@/lib/dashboard/moduleOnboarding";
+import { stepTitles, type BookingSetupStep } from "@/lib/bookings/setupStatus";
+import { producerRoleNote, roleExplainerLinkLabel, ROLE_EXPLAINER_LINK_ROUTE } from "@/lib/dashboard/moduleOnboarding";
 import { PeopleStep } from "./PeopleStep";
 
 /** Shown instead of the rail when the viewer lacks `edit_booking_settings`. Lists only
@@ -39,6 +40,8 @@ export function BookingProducerWaitingCard({
   // Same capability PeopleStep asks for, and for the same reason: with
   // producer_can_add_artists off this viewer has no add control anywhere, so the roster is
   // an admin's job too and the card must not claim otherwise.
+  const { t } = useTranslation("onboarding");
+  const STEP_TITLES = stepTitles(t);
   const canAdd = useCan("add_artists");
   const { currentOrg, hasRole } = useAuth();
   const peopleOutstanding = steps.some((s) => s.key === "people" && !s.done);
@@ -85,7 +88,7 @@ export function BookingProducerWaitingCard({
           </p>
         </div>
         {/* A producer's reachable explanation of what "Production Team" covers versus the
-            admin (see PRODUCER_ROLE_NOTE). Gated on role rather than assumed: nothing in
+            admin (see producerRoleNote). Gated on role rather than assumed: nothing in
             CAPABILITY_DEFS lets an org revoke edit_booking_settings from an admin
             (useCan short-circuits true for hasRole("admin")), so in practice only a
             producer ever reaches this card, but the note stays keyed to the role it is
@@ -93,9 +96,9 @@ export function BookingProducerWaitingCard({
         {!hasRole("admin") && (
           <div className="rounded-md border border-border p-2.5">
             <p className="text-xs text-muted-foreground">
-              {PRODUCER_ROLE_NOTE}{" "}
+              {producerRoleNote(t)}{" "}
               <Link to={ROLE_EXPLAINER_LINK_ROUTE} className="text-primary underline">
-                {ROLE_EXPLAINER_LINK_LABEL}
+                {roleExplainerLinkLabel(t)}
               </Link>
             </p>
           </div>

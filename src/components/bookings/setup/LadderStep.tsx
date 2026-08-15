@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useAllCities } from "@/hooks/useAllCities";
 import { useBookingFlow } from "@/hooks/useBookingFlow";
 import { ladderScopeNote } from "@/lib/bookings/coverageCopy";
@@ -22,6 +23,7 @@ import type { LadderCoverageInputs } from "@/lib/bookings/setupStatus";
  *  reads a ranking at all. `orgId` is the org the RAIL was handed rather than the shell's
  *  active org, for the same reason TimingStep takes one. */
 export function LadderStep({ coverage, orgId }: { coverage: LadderCoverageInputs | undefined; orgId: string | null }) {
+  const { t } = useTranslation("onboarding");
   const cities = useAllCities();
   // Gated on the org, not just on the query: `useBookingFlow` has no `enabled`, so a null
   // org still resolves the PLATFORM DEFAULT row into a truthy, offers-shaped flow. Same
@@ -34,7 +36,7 @@ export function LadderStep({ coverage, orgId }: { coverage: LadderCoverageInputs
 
   return (
     <div className="space-y-3">
-      <p className="text-xs text-muted-foreground">{ladderScopeNote(flow)}</p>
+      <p className="text-xs text-muted-foreground">{ladderScopeNote(flow, t)}</p>
       <div className="space-y-2">
         {cityIds.map((cid) => {
           const tiers = (coverage?.cityPriorities ?? [])

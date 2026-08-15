@@ -26,10 +26,14 @@
 // themselves rather than defaulting to the classic pipeline, because the panel's flow query
 // resolves after first paint.
 
+import type { TFunction } from "i18next";
 import type { BookingFlow } from "@/lib/bookingFlow";
 
 /** The one flow field that changes what these two panels are for. */
 export type CoverageFlow = Pick<BookingFlow, "artist_acceptance">;
+
+/** Namespace-bound translator these copy helpers read from (see the `onboarding` catalog). */
+type CoverageT = TFunction<"onboarding">;
 
 /**
  * The opening line of LadderStep.
@@ -38,20 +42,19 @@ export type CoverageFlow = Pick<BookingFlow, "artist_acceptance">;
  * reads a ranking, and the paused org's own scope note (TimingStep) already says nothing
  * goes out. What matters here is only whether tiers are ever opened at all.
  */
-export function ladderScopeNote(flow: CoverageFlow | null | undefined): string {
-  if (!flow) return "Your casts ranked per city, tier 1 first.";
+export function ladderScopeNote(flow: CoverageFlow | null | undefined, t: CoverageT): string {
+  if (!flow) return t("coverage.ladder.noFlow");
   if (!flow.artist_acceptance) {
-    return "Your casts ranked per city. You book artists directly, so nothing reads this ranking today. It starts to matter if you switch to offers.";
+    return t("coverage.ladder.direct");
   }
   // No escalation promise: `auto_escalate` is per org and can be off, in which case the
   // next tier waits for a producer. "Then the tiers below it" is true either way.
-  return "Your casts ranked per city. Tier 1 is asked first, then the tiers below it.";
+  return t("coverage.ladder.offers");
 }
 
 /** The opening line of EligibilityStep. */
-export function eligibilityScopeNote(flow: CoverageFlow | null | undefined): string {
-  const what = "Which casts belong to a show in a city.";
-  if (!flow) return what;
+export function eligibilityScopeNote(flow: CoverageFlow | null | undefined, t: CoverageT): string {
+  if (!flow) return t("coverage.eligibility.what");
   if (!flow.artist_acceptance) {
     // "Active" is load-bearing: the direct-book picker is built from
     // fetchActiveArtistOptions, so a parked artist is not in it either way.
@@ -62,7 +65,7 @@ export function eligibilityScopeNote(flow: CoverageFlow | null | undefined): str
     // `fetchBlockedArtistIds`, both wired at ShowDateDetailSheet.tsx. Naming them keeps the
     // sentence from promising a roster the Book dialog will not show, while the contrast
     // this line exists for (wide open, not "nobody") is untouched.
-    return `${what} A show and city with no match can be booked from your whole active roster, minus anyone blocked on that date or missing a required skill.`;
+    return t("coverage.eligibility.direct");
   }
-  return `${what} Without a match, a tier opens to nobody.`;
+  return t("coverage.eligibility.offers");
 }

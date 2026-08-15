@@ -1,13 +1,15 @@
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { ROUTES } from "@/config/app.config";
-import { bookingOnboarding } from "@/lib/dashboard/moduleOnboarding";
+import { buildBookingOnboarding } from "@/lib/dashboard/moduleOnboarding";
 
 /** The rail's "shows" panel: get shows into the catalog, which every downstream step reads.
  *  The primary CTA reads from the shared step registry so it cannot drift from the label/route
  *  the dashboard rail renders for the same step. */
 export function ShowsStep() {
-  const shows = bookingOnboarding.steps.shows;
+  const { t } = useTranslation("onboarding");
+  const shows = buildBookingOnboarding(t).steps.shows;
   return (
     <div className="space-y-3">
       <p className="text-xs text-muted-foreground">

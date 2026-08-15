@@ -37,7 +37,11 @@ vi.mock("@/hooks/useOrgAdminNames", () => ({
 }));
 
 import { useCan } from "@/hooks/useCapabilities";
-import { PRODUCER_ROLE_NOTE, ROLE_EXPLAINER_LINK_LABEL, ROLE_EXPLAINER_LINK_ROUTE } from "@/lib/dashboard/moduleOnboarding";
+import i18n from "@/i18n";
+import { producerRoleNote, roleExplainerLinkLabel, ROLE_EXPLAINER_LINK_ROUTE } from "@/lib/dashboard/moduleOnboarding";
+
+const PRODUCER_ROLE_NOTE = producerRoleNote(i18n.getFixedT("en", "onboarding"));
+const ROLE_EXPLAINER_LINK_LABEL = roleExplainerLinkLabel(i18n.getFixedT("en", "onboarding"));
 import { BookingProducerWaitingCard } from "./BookingProducerWaitingCard";
 
 // `hard` is the wording computeBookingSetupStatus gives the two hard blockers, and it

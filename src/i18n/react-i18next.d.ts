@@ -23,6 +23,7 @@ import type enHireOrdersPages from './locales/en/hireOrdersPages.json';
 import type enShowsDetail from './locales/en/showsDetail.json';
 import type enChats from './locales/en/chats.json';
 import type enProfile from './locales/en/profile.json';
+import type enOnboarding from './locales/en/onboarding.json';
 import type enFlowCopy from './locales/en/flowCopy.json';
 import type enBookingCopy from './locales/en/bookingCopy.json';
 
@@ -56,6 +57,7 @@ declare module 'react-i18next' {
       showsDetail: typeof enShowsDetail;
       chats: typeof enChats;
       profile: typeof enProfile;
+      onboarding: typeof enOnboarding;
       flowCopy: typeof enFlowCopy;
       bookingCopy: typeof enBookingCopy;
     };

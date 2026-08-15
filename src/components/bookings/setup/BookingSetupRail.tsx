@@ -1,10 +1,11 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/features/auth/AuthContext";
 import { canUseEditor } from "@/features/editor/editorAccess";
 import { useCan } from "@/hooks/useCapabilities";
 import { useBookingSetupStatus, useInactiveArtistCount, useProducerCount } from "@/hooks/useBookingSetup";
 import { type BookingSetupStepKey } from "@/lib/bookings/setupStatus";
-import { bookingOnboarding, VIEW_AS_ARTIST_TIP, TEAM_STEP_META } from "@/lib/dashboard/moduleOnboarding";
+import { buildBookingOnboarding, viewAsArtistTip, teamStepMeta } from "@/lib/dashboard/moduleOnboarding";
 import { hasProducerTeam, showAdminTeamStep } from "@/lib/dashboard/firstRun";
 import { SETUP_BLOCK_CHIPS } from "@/lib/dashboard/setupBlocks";
 import { Card, CardContent } from "@/components/ui/card";
@@ -23,16 +24,6 @@ import { TonightNote } from "./TonightNote";
 import { RehearsalBlock } from "./RehearsalBlock";
 import { BookingProducerWaitingCard } from "./BookingProducerWaitingCard";
 
-// Titles and hints come from `bookingOnboarding.steps`, the same registry the dashboard
-// rail renders, so the two surfaces cannot word the same step differently. This file used
-// to hold a second copy of every string.
-const META = bookingOnboarding.steps;
-// The header is read the same way, for the same reason. It was a verbatim duplicate of the
-// registry's, which the ShowsBookingsPage banner renders through useModuleOnboardingRail:
-// two copies of one sentence on two surfaces of the same module, so a fix to either could
-// land on one and not the other.
-const HEADER = bookingOnboarding.railHeader;
-
 /**
  * The bookings setup rail beside the Shows and bookings table. Renders nothing once setup
  * is complete or the viewer hid it (that decision lives in `useBookingSetupRailVisible`,
@@ -40,13 +31,22 @@ const HEADER = bookingOnboarding.railHeader;
  * panel writes through the same path as its Settings card.
  */
 export function BookingSetupRail({ orgId, initialStep }: { orgId: string | null; initialStep?: BookingSetupStepKey }) {
+  const { t } = useTranslation("onboarding");
+  // Titles and hints come from the shared onboarding registry, the same one the dashboard
+  // rail and the Shows & Bookings banner render, so the surfaces cannot word a step
+  // differently. Built once per render off the active-language translator.
+  const booking = buildBookingOnboarding(t);
+  const META = booking.steps;
+  const HEADER = booking.railHeader;
+  const teamMeta = teamStepMeta(t);
+  const viewTip = viewAsArtistTip(t);
   const canEdit = useCan("edit_booking_settings");
   // Editor Mode is admin-or-super-admin, never a capability (see editorAccess.canUseEditor),
   // and `roles` is scoped to the active org, so the super-admin arm is what keeps the tip in
   // step with the toolbar for someone visiting an org they never joined.
   const { roles, isSuperAdmin, hasRole } = useAuth();
   // The "Add your production team" nudge is admin-only: producers do the planning/offers/
-  // confirming this rail is about, but inviting the team is the admin's job (see TEAM_STEP_META).
+  // confirming this rail is about, but inviting the team is the admin's job (see teamStepMeta).
   const isAdmin = hasRole("admin");
   const { status, coverage, artistCount, isLoading } = useBookingSetupStatus(orgId);
   const [, dismiss] = useRailDismissed("bookingSetup", orgId);
@@ -131,8 +131,8 @@ export function BookingSetupRail({ orgId, initialStep }: { orgId: string | null;
           {showTeamRow && (
             <SetupStepRow
               index={1}
-              title={TEAM_STEP_META.title}
-              hint={teamDone ? TEAM_STEP_META.doneHint : TEAM_STEP_META.todoHint}
+              title={teamMeta.title}
+              hint={teamDone ? teamMeta.doneHint : teamMeta.todoHint}
               done={teamDone}
               block={null}
               expanded={open === "team"}
@@ -183,8 +183,8 @@ export function BookingSetupRail({ orgId, initialStep }: { orgId: string | null;
             the rail into a "button" and SetupChecklistSheet renders this same component.) */}
         {canUseEditor(roles, isSuperAdmin) && (
           <div className="border-t border-border px-4 py-3">
-            <p className="text-xs font-medium text-foreground">{VIEW_AS_ARTIST_TIP.title}</p>
-            <p className="mt-0.5 text-xs leading-[17px] text-muted-foreground">{VIEW_AS_ARTIST_TIP.hint}</p>
+            <p className="text-xs font-medium text-foreground">{viewTip.title}</p>
+            <p className="mt-0.5 text-xs leading-[17px] text-muted-foreground">{viewTip.hint}</p>
           </div>
         )}
         <RehearsalBlock orgId={orgId} />

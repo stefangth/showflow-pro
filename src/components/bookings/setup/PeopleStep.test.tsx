@@ -3,7 +3,10 @@ import { screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import { ROUTES } from "@/config/app.config";
-import { bookingOnboarding } from "@/lib/dashboard/moduleOnboarding";
+import i18n from "@/i18n";
+import { buildBookingOnboarding } from "@/lib/dashboard/moduleOnboarding";
+
+const bookingOnboarding = buildBookingOnboarding(i18n.getFixedT("en", "onboarding"));
 
 // The "Add or import artists" affordance is the `add_artists` capability, not a booking
 // setting, so the panel has to ask for that one specifically. Mocked rather than seeded so

@@ -1,10 +1,14 @@
 // src/lib/dashboard/firstRun.ts
-import { TEAM_STEP_KEY, TEAM_STEP_META, type OnboardingModuleKey } from "./moduleOnboarding";
+import type { TFunction } from "i18next";
+import { TEAM_STEP_KEY, teamStepMeta, type OnboardingModuleKey } from "./moduleOnboarding";
 import type {
   ComposeInput, ComposeResult, ComposedStep, DashboardRole, InheritedRule,
   ModuleOnboardingDef, ModuleStatusLite, OnboardingCtx, OnboardingStepMeta,
   SamplePreviewData, WelcomeCopy,
 } from "./types";
+
+/** Namespace-bound translator the copy builders below read from (the `onboarding` catalog). */
+type OnbT = TFunction<"onboarding">;
 
 /** Whether the org has at least one producer-role member — the "Add your production team"
  *  step's done-state. Single-sourced so `adminTeamStep` and BookingSetupRail's hand-rolled
@@ -16,8 +20,8 @@ export function hasProducerTeam(producerCount: number | null): boolean {
 /** The admin-only production-team nudge as a ComposedStep, so the dashboard rail (which
  *  renders ComposedStep generically) and any other consumer get title/hints/CTA for free.
  *  moduleKey is booking_flow (it rides the booking setup surface); block is null (non-gating). */
-export function adminTeamStep(producerCount: number | null): ComposedStep {
-  return { ...TEAM_STEP_META, key: TEAM_STEP_KEY, moduleKey: "booking_flow", done: hasProducerTeam(producerCount), block: null };
+export function adminTeamStep(producerCount: number | null, t: OnbT): ComposedStep {
+  return { ...teamStepMeta(t), key: TEAM_STEP_KEY, moduleKey: "booking_flow", done: hasProducerTeam(producerCount), block: null };
 }
 
 /** The single rule for whether the admin-only production-team nudge shows alongside the
@@ -41,9 +45,10 @@ export function showAdminTeamStep(opts: { role: DashboardRole; bookingEnabled: b
 export function injectAdminTeamStep(
   composed: ComposeResult,
   opts: { role: DashboardRole; bookingEnabled: boolean; producerCount: number | null; complete: boolean },
+  t: OnbT,
 ): { steps: ComposedStep[]; filled: number; total: number } {
   const show = showAdminTeamStep({ role: opts.role, bookingEnabled: opts.bookingEnabled, complete: opts.complete });
-  const steps = show ? [adminTeamStep(opts.producerCount), ...composed.steps] : composed.steps;
+  const steps = show ? [adminTeamStep(opts.producerCount, t), ...composed.steps] : composed.steps;
   return { steps, filled: steps.filter((s) => s.done).length, total: steps.length };
 }
 
@@ -106,40 +111,40 @@ export function welcomeCopy(
   progress: { filled: number; total: number },
   // A producer granted edit_booking_settings / edit_hire_order_settings can actually
   // do the org setup, so the "only an admin" framing must not apply to them.
-  canEditSetup = false,
+  canEditSetup: boolean,
+  t: OnbT,
 ): WelcomeCopy {
   const org = ctx.orgName;
-  const base = { eyebrow: "Welcome", progressFilled: progress.filled, progressTotal: progress.total };
+  const base = { eyebrow: t("welcome.base.eyebrow"), progressFilled: progress.filled, progressTotal: progress.total };
   if (role === "admin") {
     return complete
-      ? { ...base, headline: "This workspace is already set up", body: "Nothing to configure. Walk the decisions behind it, because every number on this page follows them.", primaryLabel: "How this org works", secondaryLabel: "Dismiss", progressLabel: `Set up · ${progress.total} of ${progress.total}`, progressHint: "The rules you inherited" }
+      ? { ...base, headline: t("welcome.admin.completeHeadline"), body: t("welcome.admin.completeBody"), primaryLabel: t("welcome.admin.completePrimary"), secondaryLabel: t("welcome.admin.completeSecondary"), progressLabel: t("welcome.admin.completeProgressLabel", { total: progress.total }), progressHint: t("welcome.admin.completeProgressHint") }
       // No firstness or emptiness claims: `complete` only says setup steps are
       // outstanding, which is equally true for the second admin joining an org that
-      // already holds shows, dates, and artists. The old copy ("You are the first
-      // admin" / "The database is empty.") was false in exactly that state.
-      : { ...base, headline: `Finish setting up ${org}`, body: "A few decisions still shape how this workspace runs. Walk the remaining steps, because every number on this page follows them.", primaryLabel: "Start setup", secondaryLabel: "Later", progressLabel: `Set up · ${progress.filled} of ${progress.total}`, progressHint: "About 15 minutes" };
+      // already holds shows, dates, and artists.
+      : { ...base, headline: t("welcome.admin.incompleteHeadline", { org }), body: t("welcome.admin.incompleteBody"), primaryLabel: t("welcome.admin.incompletePrimary"), secondaryLabel: t("welcome.admin.incompleteSecondary"), progressLabel: t("welcome.admin.incompleteProgressLabel", { filled: progress.filled, total: progress.total }), progressHint: t("welcome.admin.incompleteProgressHint") };
   }
   if (role === "producer") {
     const pending = ctx.counts.pendingConfirmations;
     const pendingBody = pending === 0
-      ? "No confirmations are waiting on you right now."
-      : `${pending} artist${pending === 1 ? "" : "s"} ${pending === 1 ? "is" : "are"} waiting on a confirm from you.`;
+      ? t("welcome.producer.pendingNone")
+      : t("welcome.producer.pendingBody", { count: pending });
     // Branched, not flattened: this function DOES take ctx (the artist branch below already
     // reads it), so an org that runs offers keeps the fuller list. A direct-book org never
     // opens a tier, so listing offers among what "appears here" named a stage of a pipeline
     // it does not run, on the card sitting on top of a rail whose chips say "Blocks booking".
     const emptyBody = ctx.artistAcceptance
-      ? "Dates, offers and confirmations appear here the moment the first import lands."
-      : "Dates and bookings appear here the moment the first import lands.";
+      ? t("welcome.producer.emptyOffers")
+      : t("welcome.producer.emptyDirect");
     return complete
-      ? { ...base, headline: `You have joined ${org}`, body: pendingBody, primaryLabel: "How this org works", secondaryLabel: "Dismiss", progressLabel: `Set up · ${progress.total} of ${progress.total}`, progressHint: "The rules you inherited" }
-      : { ...base, headline: `${org} is still being set up`, body: emptyBody, primaryLabel: canEditSetup ? "Start setup" : "See what is outstanding", secondaryLabel: "Later", progressLabel: `Org setup · ${progress.filled} of ${progress.total}`, progressHint: canEditSetup ? "About 15 minutes" : "Only an admin can do these" };
+      ? { ...base, headline: t("welcome.producer.completeHeadline", { org }), body: pendingBody, primaryLabel: t("welcome.producer.completePrimary"), secondaryLabel: t("welcome.producer.completeSecondary"), progressLabel: t("welcome.producer.completeProgressLabel", { total: progress.total }), progressHint: t("welcome.producer.completeProgressHint") }
+      : { ...base, headline: t("welcome.producer.incompleteHeadline", { org }), body: emptyBody, primaryLabel: canEditSetup ? t("welcome.producer.incompletePrimaryCanEdit") : t("welcome.producer.incompletePrimaryReadOnly"), secondaryLabel: t("welcome.producer.incompleteSecondary"), progressLabel: t("welcome.producer.incompleteProgressLabel", { filled: progress.filled, total: progress.total }), progressHint: canEditSetup ? t("welcome.producer.incompleteProgressHintCanEdit") : t("welcome.producer.incompleteProgressHintReadOnly") };
   }
   // artist
   //
   // Branched on the flow, because this card sits directly on top of the rules block and
   // that block already branches: at a direct-book org (artist_acceptance false) no tier is
-  // ever opened, so ARTIST_ONBOARDING tells this artist "You are booked directly" while the
+  // ever opened, so the artist rules tell this artist "You are booked directly" while the
   // headline above it announced offers on their way. One surface, two products.
   //
   // The primary label carries no flow at all. It opens the rules block, and it renders in
@@ -148,21 +153,17 @@ export function welcomeCopy(
   return complete
     ? {
         ...base,
-        headline: offers ? "Your first offers are on their way" : "Your first dates are on their way",
-        body: offers
-          ? "Your account is set up. A few rules decide when an offer reaches you and how long you have to answer."
-          : "Your account is set up. A few rules decide how this org books you, and blocking dates is your part of it.",
-        primaryLabel: "How booking works here", secondaryLabel: "Dismiss",
-        progressLabel: `Set up · ${progress.total} of ${progress.total}`, progressHint: "The rules you inherited",
+        headline: offers ? t("welcome.artist.completeHeadlineOffers") : t("welcome.artist.completeHeadlineDirect"),
+        body: offers ? t("welcome.artist.completeBodyOffers") : t("welcome.artist.completeBodyDirect"),
+        primaryLabel: t("welcome.artist.completePrimary"), secondaryLabel: t("welcome.artist.completeSecondary"),
+        progressLabel: t("welcome.artist.completeProgressLabel", { total: progress.total }), progressHint: t("welcome.artist.completeProgressHint"),
       }
     : {
         ...base,
-        headline: `${org} added you to the roster`,
-        body: offers
-          ? "Offers arrive by email and land on this page. Block the dates you cannot play first, so you only get asked about dates that work."
-          : "Your producer books you directly, and confirmed dates land on this page. Block the dates you cannot play first, so they come off the list before anyone books you.",
-        primaryLabel: "Start setup", secondaryLabel: "Later",
-        progressLabel: `Set up · ${progress.filled} of ${progress.total}`, progressHint: "About 2 minutes",
+        headline: t("welcome.artist.incompleteHeadline", { org }),
+        body: offers ? t("welcome.artist.incompleteBodyOffers") : t("welcome.artist.incompleteBodyDirect"),
+        primaryLabel: t("welcome.artist.incompletePrimary"), secondaryLabel: t("welcome.artist.incompleteSecondary"),
+        progressLabel: t("welcome.artist.incompleteProgressLabel", { filled: progress.filled, total: progress.total }), progressHint: t("welcome.artist.incompleteProgressHint"),
       };
 }
 
@@ -172,18 +173,18 @@ export function welcomeCopy(
 // whose first line said they do not. "Booking" is true under every preset.
 // (The admin/producer strings are untouched: their rails cover the whole org, and both
 // roles can see a direct-book org's offer settings are simply unused.)
-export function railHeaderCopy(role: DashboardRole, complete: boolean, canEditSetup = false) {
+export function railHeaderCopy(role: DashboardRole, complete: boolean, canEditSetup: boolean, t: OnbT) {
   if (complete) {
     return {
-      eyebrow: role === "artist" ? "How booking works here" : "How this org works",
-      title: "The rules you inherited",
+      eyebrow: role === "artist" ? t("railHeaderCopy.completeArtistEyebrow") : t("railHeaderCopy.completeOrgEyebrow"),
+      title: t("railHeaderCopy.completeTitle"),
       // Admins can always reach Settings; a producer can too when granted the edit_*
       // capabilities. Everyone else (producer without the grant, artist) cannot.
       body: role === "admin" || (role === "producer" && canEditSetup)
-        ? "You can change them in Settings, but every number on this page follows them today."
+        ? t("railHeaderCopy.completeBodyCanEdit")
         : role === "producer"
-          ? "You cannot change these, but every number on this page follows them."
-          : "You cannot change these. Every date you are booked on follows them.",
+          ? t("railHeaderCopy.completeBodyProducer")
+          : t("railHeaderCopy.completeBodyArtist"),
     };
   }
   // Flow-neutral for the same reason the artist labels above are: this function takes no
@@ -191,19 +192,19 @@ export function railHeaderCopy(role: DashboardRole, complete: boolean, canEditSe
   // They sit directly on top of step rows the engine chips "Blocks booking" for that org
   // (blockFor, src/lib/bookings/setupStatus.ts), so naming an offer here contradicted the
   // rows underneath. "The first booking" is the same gate under every preset.
-  if (role === "admin") return { eyebrow: "Set up", title: "Get the workspace running", body: "Some of these block the first booking. Nothing here stops you using the rest of the app." };
+  if (role === "admin") return { eyebrow: t("railHeaderCopy.adminEyebrow"), title: t("railHeaderCopy.adminTitle"), body: t("railHeaderCopy.adminBody") };
   if (role === "producer") return canEditSetup
-    ? { eyebrow: "Org setup", title: "What is still outstanding", body: "Some of these block the first booking. Nothing here stops you using the rest of the app." }
-    : { eyebrow: "Org setup", title: "What is still outstanding", body: "Only an admin can do these. This is here so you know why the page is empty, not so you can fix it." };
-  return { eyebrow: "Set up", title: "Before your first booking", body: "None of this blocks anything. It just keeps the dates you cannot play out of the way." };
+    ? { eyebrow: t("railHeaderCopy.producerEyebrow"), title: t("railHeaderCopy.producerTitle"), body: t("railHeaderCopy.producerBodyCanEdit") }
+    : { eyebrow: t("railHeaderCopy.producerEyebrow"), title: t("railHeaderCopy.producerTitle"), body: t("railHeaderCopy.producerBodyReadOnly") };
+  return { eyebrow: t("railHeaderCopy.artistEyebrow"), title: t("railHeaderCopy.artistTitle"), body: t("railHeaderCopy.artistBody") };
 }
 
-export function collapsedCopy(role: DashboardRole, complete: boolean, remaining: number) {
-  if (complete) return { label: "Set up · done", hint: role === "artist" ? "How this org books you" : "Booking engine, dates, cast slots, your team", cta: role === "artist" ? "How booking works here" : "How this org works" };
+export function collapsedCopy(role: DashboardRole, complete: boolean, remaining: number, t: OnbT) {
+  if (complete) return { label: t("collapsed.completeLabel"), hint: role === "artist" ? t("collapsed.completeHintArtist") : t("collapsed.completeHintOrg"), cta: role === "artist" ? t("collapsed.completeCtaArtist") : t("collapsed.completeCtaOrg") };
   return {
-    label: role === "producer" ? "Org setup in progress" : "Set up in progress",
-    hint: `${remaining} step${remaining === 1 ? "" : "s"} left`,
-    cta: role === "producer" ? "See what is outstanding" : "Resume",
+    label: role === "producer" ? t("collapsed.incompleteLabelProducer") : t("collapsed.incompleteLabelOther"),
+    hint: t("collapsed.incompleteHint", { count: remaining }),
+    cta: role === "producer" ? t("collapsed.incompleteCtaProducer") : t("collapsed.incompleteCtaOther"),
   };
 }
 
