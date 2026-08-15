@@ -207,7 +207,21 @@ export function CalendarSurface({
   // No timestamp exists on ArtistDateEntry to reconstruct "answered today"
   // from data alone — Phase-1 default is empty until a page wires real
   // same-session response history through (task 17).
-  const notOfferedYet = artistEntries.filter((e) => e.myStatus === 'unanswered' && !isPastDate(e.date, now));
+  // "Later this month" (design copy) is bound to `now`'s month, not the
+  // navigable `anchor` — it's a fixed near-term nudge, not a browsable list.
+  const notOfferedWindow = periodWindow(now, 'month');
+  const notOfferedYet = artistEntries.filter(
+    (e) =>
+      e.myStatus === 'unanswered' &&
+      !isPastDate(e.date, now) &&
+      e.date >= notOfferedWindow.start &&
+      e.date <= notOfferedWindow.end
+  );
+
+  const agendaEntries = (() => {
+    const { start, end } = periodWindow(anchor, 'month');
+    return producerEntries.filter((e) => e.date >= start && e.date <= end);
+  })();
 
   return (
     <div data-testid="calendar-surface" className={cn('flex flex-col gap-4', className)}>
@@ -215,17 +229,19 @@ export function CalendarSurface({
         <LensTabs lenses={lenses} active={activeLens} onChange={onLensChange} />
       </CalendarSurfaceHeader>
 
-      <CalendarToolbar>
-        <PeriodNavigator
-          label={periodLabel(anchor, 'month')}
-          onPrev={() => setAnchor((a) => shiftPeriod(a, 'month', -1))}
-          onNext={() => setAnchor((a) => shiftPeriod(a, 'month', 1))}
-          onToday={() => {
-            setAnchor(now);
-            setSelectedDay(now);
-          }}
-        />
-      </CalendarToolbar>
+      {(activeLens === 'month' || activeLens === 'agenda') && (
+        <CalendarToolbar>
+          <PeriodNavigator
+            label={periodLabel(anchor, 'month')}
+            onPrev={() => setAnchor((a) => shiftPeriod(a, 'month', -1))}
+            onNext={() => setAnchor((a) => shiftPeriod(a, 'month', 1))}
+            onToday={() => {
+              setAnchor(now);
+              setSelectedDay(now);
+            }}
+          />
+        </CalendarToolbar>
+      )}
 
       {activeLens === 'month' ? (
         <div className="flex items-start gap-4">
@@ -256,7 +272,7 @@ export function CalendarSurface({
       ) : (
         <div className="w-full">
           {activeLens === 'agenda' && (
-            <AgendaLens entries={producerEntries} onOpenDay={handleOpenDay} onAction={handleAgendaAction} />
+            <AgendaLens entries={agendaEntries} onOpenDay={handleOpenDay} onAction={handleAgendaAction} />
           )}
           {activeLens === 'offers' && (
             <OffersLens

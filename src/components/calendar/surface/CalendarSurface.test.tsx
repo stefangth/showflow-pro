@@ -299,4 +299,100 @@ describe('CalendarSurface — artist', () => {
     fireEvent.click(screen.getByTestId('all-dates-block-ad-5'));
     expect(actions.block).toHaveBeenCalledWith('ad-5', entry.date);
   });
+
+  it('"Later this month · not offered yet" excludes an unanswered date in the next month', () => {
+    const inMonth = artistEntry({ id: 'ad-in-month', date: new Date(2026, 7, 25), myStatus: 'unanswered' });
+    const nextMonth = artistEntry({ id: 'ad-next-month', date: new Date(2026, 8, 5), myStatus: 'unanswered' });
+    render(
+      <CalendarSurface
+        role="artist"
+        artistEntries={[inMonth, nextMonth]}
+        actions={noopActions()}
+        lens="offers"
+        onLensChange={vi.fn()}
+        today={TODAY}
+      />
+    );
+    expect(screen.getByTestId('not-offered-row-ad-in-month')).toBeInTheDocument();
+    expect(screen.queryByTestId('not-offered-row-ad-next-month')).not.toBeInTheDocument();
+  });
+});
+
+describe('CalendarSurface — period navigator visibility', () => {
+  it('shows the PeriodNavigator for the Month and Agenda lenses', () => {
+    const { rerender } = render(
+      <CalendarSurface
+        role="producer"
+        producerEntries={[producerEntry()]}
+        actions={noopActions()}
+        lens="month"
+        onLensChange={vi.fn()}
+        today={TODAY}
+      />
+    );
+    expect(screen.getByTestId('period-navigator-pill')).toBeInTheDocument();
+
+    rerender(
+      <CalendarSurface
+        role="producer"
+        producerEntries={[producerEntry()]}
+        actions={noopActions()}
+        lens="agenda"
+        onLensChange={vi.fn()}
+        today={TODAY}
+      />
+    );
+    expect(screen.getByTestId('period-navigator-pill')).toBeInTheDocument();
+  });
+
+  it('hides the PeriodNavigator for the Offers and All-dates lenses', () => {
+    const { rerender } = render(
+      <CalendarSurface
+        role="artist"
+        artistEntries={[artistEntry()]}
+        actions={noopActions()}
+        lens="offers"
+        onLensChange={vi.fn()}
+        today={TODAY}
+      />
+    );
+    expect(screen.queryByTestId('period-navigator-pill')).not.toBeInTheDocument();
+
+    rerender(
+      <CalendarSurface
+        role="artist"
+        artistEntries={[artistEntry()]}
+        actions={noopActions()}
+        lens="all-dates"
+        onLensChange={vi.fn()}
+        today={TODAY}
+      />
+    );
+    expect(screen.queryByTestId('period-navigator-pill')).not.toBeInTheDocument();
+  });
+});
+
+describe('CalendarSurface — agenda is period-windowed', () => {
+  it('clicking Prev swaps the agenda body to the previous month', () => {
+    const augEntry = producerEntry({ id: 'pd-aug', date: new Date(2026, 7, 10) });
+    const julEntry = producerEntry({ id: 'pd-jul', date: new Date(2026, 6, 10) });
+    render(
+      <CalendarSurface
+        role="producer"
+        producerEntries={[augEntry, julEntry]}
+        actions={noopActions()}
+        lens="agenda"
+        onLensChange={vi.fn()}
+        today={TODAY}
+      />
+    );
+    // Anchor starts at `today` (Aug 2026): only the August entry is shown.
+    expect(screen.getByTestId('agenda-row-pd-aug')).toBeInTheDocument();
+    expect(screen.queryByTestId('agenda-row-pd-jul')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('period-navigator-prev'));
+
+    expect(screen.getByTestId('agenda-row-pd-jul')).toBeInTheDocument();
+    expect(screen.queryByTestId('agenda-row-pd-aug')).not.toBeInTheDocument();
+  });
 });
