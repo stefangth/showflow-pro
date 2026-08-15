@@ -13,7 +13,7 @@ import { pagerPosition } from '@/lib/bookingCockpit';
 import { Search, ListChecks } from 'lucide-react';
 import { parseISO } from 'date-fns';
 import { ProgramFilter } from '@/components/filters/ProgramFilter';
-import { TimeframeFilter, upcomingTimeframe, type TimeframeValue } from '@/components/filters/TimeframeFilter';
+import type { TimeframeValue } from '@/components/filters/TimeframeFilter';
 import { SortControl, type SortValue } from '@/components/filters/SortControl';
 import { useFilterVisibility } from '@/components/filters/useFilterVisibility';
 import { applySort, inTimeframe } from '@/components/filters/filterUtils';
@@ -113,7 +113,12 @@ function ProducerShowsBookings() {
 
   const [search, setSearch] = useState('');
   const [programs, setPrograms] = useState<string[]>([]);
-  const [timeframe, setTimeframe] = useState<TimeframeValue>(() => upcomingTimeframe());
+  // No default bound: the calendar surface's own PeriodNavigator already owns
+  // the visible window (Month/Agenda lens), so pre-filtering to "Upcoming"
+  // here double-windowed the calendar — navigating to a past/future month
+  // showed nothing because this filter had already dropped those dates.
+  // `timeframe` still exists for the `?from=/?to=` deep-link effect below.
+  const [timeframe, setTimeframe] = useState<TimeframeValue>({ from: null, to: null });
   const [statusFilter, setStatusFilter] = useState<'all' | DisplayStatus>('all');
   type ProducerSort = SortValue | `custom:${string}`;
   const [sort, setSort] = useState<ProducerSort>('chrono_asc');
@@ -410,7 +415,6 @@ function ProducerShowsBookings() {
           </Select>
         )}
         {canSee('program') && <ProgramFilter options={programOptions} value={programs} onChange={setPrograms} />}
-        {canSee('timeframe') && <TimeframeFilter value={timeframe} onChange={setTimeframe} />}
         {canSee('sort') && <SortControl value={sort} onChange={setSort} chronoLabel={t('producer.sortChronoLabel')} extraOptions={sortExtraOptions} />}
         {filterableDefs.map(def => (
           <CustomFieldFilter

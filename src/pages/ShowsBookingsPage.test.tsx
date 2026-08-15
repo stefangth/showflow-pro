@@ -7,11 +7,14 @@ import type { SetupRailMode } from "@/components/setup/setupRailMode";
  * Task 16: ProducerShowsBookings now renders `<CalendarSurface>` instead of
  * the table/EntityCalendar + `ViewToggle`. This file covers two things:
  *
- *  - The producer "Upcoming" default-timeframe filtering still narrows what
- *    reaches the calendar surface (ported from the old table-row test,
- *    re-expressed against the Month lens's grid cells/chips since the table
- *    is gone). The old per-row past-date tint is now the Month grid cell's
- *    own `isPast` dimming (`opacity-60`), which is the direct analog.
+ *  - The producer filter bar no longer pre-windows the calendar surface by
+ *    timeframe (the `TimeframeFilter` control was removed — the surface's
+ *    own PeriodNavigator already owns the visible Month/Agenda window, and
+ *    the two conflicted: navigating to a past/future month showed nothing
+ *    because the Upcoming-only pre-filter had already dropped those dates).
+ *    Both a past and a future date in the same calendar month now render
+ *    together by default, with the past one dimmed via the Month grid
+ *    cell's own `isPast` styling (`opacity-60`) rather than being hidden.
  *  - The setup-rail/checklist behavior (module onboarding), which is
  *    orthogonal to the table-vs-calendar surface and untouched by task 16.
  *
@@ -187,7 +190,7 @@ beforeEach(() => {
   bookingSetupStatus.value = makeBookingStatus(0, false);
 });
 
-describe("ShowsBookingsPage — producer Upcoming default + past-day dimming (calendar surface)", () => {
+describe("ShowsBookingsPage — producer no default timeframe bound + past-day dimming (calendar surface)", () => {
   // Pin "today" mid-month so both fixture dates land in the same Month-lens
   // grid (the surface defaults to the current real month, and neither the
   // page nor the surface is given a `today` override in production).
@@ -207,27 +210,16 @@ describe("ShowsBookingsPage — producer Upcoming default + past-day dimming (ca
     vi.useRealTimers();
   });
 
-  it("defaults to Upcoming: shows the future date's chip, hides the past one", async () => {
+  it("shows both the past and future date's chips in the same month by default, past one dimmed — and it stays clickable", async () => {
     renderWithProviders(<ShowsBookingsPage />);
-    expect(await screen.findByText("Future Show")).toBeInTheDocument();
-    expect(screen.queryByText("Past Show")).not.toBeInTheDocument();
-  });
 
-  it("reveals the past date, dimmed, when Any time is selected — and it stays clickable", async () => {
-    renderWithProviders(<ShowsBookingsPage />);
-    await screen.findByText("Future Show");
-
-    fireEvent.click(screen.getByRole("button", { name: /^Upcoming$/ }));
-    fireEvent.click(screen.getByRole("button", { name: "Any time" }));
-
-    const pastChip = await screen.findByText("Past Show");
-    const pastCell = pastChip.closest('[data-testid^="month-grid-cell-"]')!;
-    expect(pastCell.className).toMatch(/opacity-60/);
-
-    // Future cell stays undimmed.
-    const futureChip = screen.getByText("Future Show");
+    const futureChip = await screen.findByText("Future Show");
     const futureCell = futureChip.closest('[data-testid^="month-grid-cell-"]')!;
     expect(futureCell.className).not.toMatch(/opacity-60/);
+
+    const pastChip = screen.getByText("Past Show");
+    const pastCell = pastChip.closest('[data-testid^="month-grid-cell-"]')!;
+    expect(pastCell.className).toMatch(/opacity-60/);
 
     // Still clickable: double-clicking the day opens the detail sheet for this show_date.
     fireEvent.doubleClick(pastCell);
@@ -236,15 +228,15 @@ describe("ShowsBookingsPage — producer Upcoming default + past-day dimming (ca
     expect(sheet.getAttribute("data-open")).toBe("true");
   });
 
-  it("also reveals the past date under the Past preset specifically", async () => {
+  it("has no TimeframeFilter control in the filter bar", async () => {
     renderWithProviders(<ShowsBookingsPage />);
     await screen.findByText("Future Show");
 
-    fireEvent.click(screen.getByRole("button", { name: /^Upcoming$/ }));
-    fireEvent.click(screen.getByRole("button", { name: "Past" }));
-
-    expect(await screen.findByText("Past Show")).toBeInTheDocument();
-    expect(screen.queryByText("Future Show")).not.toBeInTheDocument();
+    // The period navigator (Month lens) owns the calendar window now; the
+    // separate timeframe popover (its trigger read "Any time"/a preset name)
+    // is gone from the filter bar.
+    expect(screen.queryByRole("button", { name: /^Any time$/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Upcoming$/ })).not.toBeInTheDocument();
   });
 });
 
