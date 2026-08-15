@@ -32,4 +32,36 @@ describe('LensTabs', () => {
     fireEvent.click(screen.getByTestId('lens-tab-week'));
     expect(onChange).toHaveBeenCalledWith('week');
   });
+
+  it('is a neutral recessed track — active tab uses bg-card, not a brand fill', () => {
+    render(<LensTabs lenses={lenses} active="month" onChange={vi.fn()} />);
+    const track = screen.getByRole('tablist');
+    expect(track.className).toMatch(/surface-3/);
+    const activeTab = screen.getByTestId('lens-tab-month');
+    const inactiveTab = screen.getByTestId('lens-tab-week');
+    expect(activeTab.className).toContain('bg-card');
+    expect(activeTab.className).not.toMatch(/bg-primary\b/);
+    expect(inactiveTab.className).toContain('text-muted-foreground');
+  });
+
+  it('renders the count badge before the label, tinted by active state', () => {
+    render(<LensTabs lenses={lenses} active="needs-you" onChange={vi.fn()} />);
+    const activeTab = screen.getByTestId('lens-tab-needs-you');
+    const badge = screen.getByText('3');
+    const label = screen.getByText('Needs you');
+    // badge precedes label in DOM order
+    expect(
+      badge.compareDocumentPosition(label) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+    expect(activeTab.contains(badge)).toBe(true);
+    expect(badge.className).toContain('bg-accent-50');
+    expect(badge.className).toContain('text-accent-700');
+  });
+
+  it('tints an inactive tab count badge neutrally', () => {
+    render(<LensTabs lenses={lenses} active="month" onChange={vi.fn()} />);
+    const badge = screen.getByText('3');
+    expect(badge.className).toContain('bg-foreground/[.06]');
+    expect(badge.className).toContain('text-muted-foreground');
+  });
 });

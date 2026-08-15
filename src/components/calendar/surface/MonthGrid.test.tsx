@@ -24,7 +24,12 @@ function buildCells(): MonthGridCell[] {
       inRange: day === 20,
       chips: day === 10
         ? [
-            { title: 'Show A', time: '19:00', tone: 'success' },
+            {
+              title: 'Show A',
+              time: '19:00',
+              tone: 'success',
+              meter: [{ filled: true }, { filled: true }, { filled: false }],
+            },
             { title: 'Show B', time: '20:30', tone: 'warning' },
           ]
         : [],
@@ -53,10 +58,19 @@ describe('MonthGrid', () => {
     expect(screen.getByText('+1 more')).toBeInTheDocument();
   });
 
-  it('marks the today cell', () => {
+  it('marks the today cell with a top-edge accent bar, not a filled circle', () => {
     render(<MonthGrid cells={buildCells()} onSelectDay={vi.fn()} onOpenDay={vi.fn()} />);
     const todayCell = screen.getByTestId('month-grid-cell-2026-08-15');
     expect(todayCell).toHaveAttribute('data-today', 'true');
+    expect(todayCell.className).toContain('relative');
+
+    const marker = screen.getByTestId('month-grid-today-marker');
+    expect(todayCell.contains(marker)).toBe(true);
+    expect(marker.className).toContain('absolute');
+    expect(marker.className).toContain('top-0');
+    expect(marker.className).toContain('bg-primary');
+    // no other cell renders a marker
+    expect(screen.queryAllByTestId('month-grid-today-marker')).toHaveLength(1);
   });
 
   it('marks the selected + in-range cell', () => {
@@ -76,5 +90,42 @@ describe('MonthGrid', () => {
     expect(calledWith.getFullYear()).toBe(2026);
     expect(calledWith.getMonth()).toBe(7);
     expect(calledWith.getDate()).toBe(10);
+  });
+
+  it('renders a chip with a flush tone-colored left rail and time+meter on one row', () => {
+    render(<MonthGrid cells={buildCells()} onSelectDay={vi.fn()} onOpenDay={vi.fn()} />);
+    const chip = screen.getByTestId('month-grid-chip-2026-08-10-0');
+    expect(chip.className).toContain('border-l-2');
+    expect(chip.className).toMatch(/border-success/);
+
+    const meterRow = screen.getByTestId('month-grid-chip-meter-row-2026-08-10-0');
+    expect(meterRow.className).toContain('flex');
+    expect(meterRow.className).toContain('items-center');
+    const time = screen.getByText('19:00');
+    const meter = screen.getByTestId('fill-meter');
+    expect(meterRow.contains(time)).toBe(true);
+    expect(meterRow.contains(meter)).toBe(true);
+    expect(meter).toHaveAttribute('data-size', 'chip');
+  });
+
+  it('keyboard: Enter fires onOpenDay, Space fires onSelectDay, on a focused day cell', () => {
+    const onSelectDay = vi.fn();
+    const onOpenDay = vi.fn();
+    render(<MonthGrid cells={buildCells()} onSelectDay={onSelectDay} onOpenDay={onOpenDay} />);
+    const cell = screen.getByTestId('month-grid-cell-2026-08-12');
+    cell.focus();
+    expect(cell).toHaveFocus();
+
+    fireEvent.keyDown(cell, { key: 'Enter' });
+    expect(onOpenDay).toHaveBeenCalledTimes(1);
+    expect(onSelectDay).not.toHaveBeenCalled();
+    const openedWith = onOpenDay.mock.calls[0][0] as Date;
+    expect(openedWith.getDate()).toBe(12);
+
+    fireEvent.keyDown(cell, { key: ' ' });
+    expect(onSelectDay).toHaveBeenCalledTimes(1);
+    expect(onOpenDay).toHaveBeenCalledTimes(1);
+    const selectedWith = onSelectDay.mock.calls[0][0] as Date;
+    expect(selectedWith.getDate()).toBe(12);
   });
 });

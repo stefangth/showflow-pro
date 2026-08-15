@@ -12,8 +12,13 @@ interface CalendarSurfaceHeaderProps {
   className?: string;
 }
 
-/** Calendar surface page header: eyebrow, title, primary CTA, and the
- *  `LensTabs` row passed in as `children`. */
+/**
+ * Calendar surface page header — a single `justify-between` row: eyebrow +
+ * title on the left, the `LensTabs` (`children`) then the primary `cta` on
+ * the right (design lines 115-135). Title matches this repo's other page
+ * titles (`font-display text-[32px] font-semibold tracking-tight`, e.g.
+ * `AvailabilityPage`).
+ */
 export function CalendarSurfaceHeader({
   eyebrow,
   eyebrowTone,
@@ -23,15 +28,22 @@ export function CalendarSurfaceHeader({
   className,
 }: CalendarSurfaceHeaderProps) {
   return (
-    <div className={cn('flex flex-col gap-3', className)}>
-      <div className="flex items-start justify-between gap-4">
-        <div className="space-y-1">
-          <p className={cn('text-xs font-semibold uppercase tracking-wide', TONE_TEXT[eyebrowTone])}>{eyebrow}</p>
-          <h1 className="font-display text-2xl font-semibold text-foreground">{title}</h1>
-        </div>
-        {cta && <div className="shrink-0">{cta}</div>}
+    <div
+      data-testid="calendar-surface-header-row"
+      className={cn('flex items-start justify-between gap-4', className)}
+    >
+      <div data-testid="calendar-surface-header-left">
+        <p className={cn('text-[11px] font-semibold uppercase tracking-[1.6px]', TONE_TEXT[eyebrowTone])}>
+          {eyebrow}
+        </p>
+        <h1 className="font-display text-[32px] font-semibold tracking-tight text-foreground">{title}</h1>
       </div>
-      {children && <div>{children}</div>}
+      {(children || cta) && (
+        <div data-testid="calendar-surface-header-right" className="flex items-center gap-2">
+          {children}
+          {cta}
+        </div>
+      )}
     </div>
   );
 }

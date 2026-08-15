@@ -1,11 +1,21 @@
 import type { KeyboardEvent } from 'react';
-import type { MonthGridCell } from '@/lib/calendar/types';
-import { TONE_FILL, TONE_TEXT } from '@/lib/calendar/tone';
+import type { MonthGridCell, Tone } from '@/lib/calendar/types';
+import { TONE_TEXT } from '@/lib/calendar/tone';
 import { toDateKey } from '@/lib/dates';
 import { cn } from '@/lib/utils';
 import { FillMeter } from './FillMeter';
 
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+/** Chip left-rail border color per tone — the flush `border-l-2` on the chip
+ *  box (design lines 286-296), mirroring `TONE_FILL`'s bg tint. */
+const TONE_RAIL: Record<Tone, string> = {
+  success: 'border-success',
+  warning: 'border-warning',
+  muted: 'border-muted-foreground',
+  destructive: 'border-destructive',
+  accent: 'border-primary',
+};
 
 interface MonthGridProps {
   cells: MonthGridCell[];
@@ -80,25 +90,23 @@ export function MonthGrid({ cells, onSelectDay, onOpenDay, onRangeExtend, classN
               onDoubleClick={() => handleOpen(cell)}
               onKeyDown={e => handleKeyDown(e, cell)}
               className={cn(
-                'flex min-h-[104px] flex-col gap-1 bg-background p-1.5 text-left outline-none transition-colors',
+                'relative flex min-h-[104px] flex-col gap-1 bg-background p-1.5 text-left outline-none transition-colors',
                 'hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset',
                 cell.isPast && 'opacity-60',
                 cell.inRange && 'bg-accent-50',
                 cell.isSelected && 'ring-2 ring-inset ring-primary'
               )}
             >
-              <div className="flex items-center justify-between">
+              {cell.isToday && (
                 <span
-                  className={cn(
-                    'font-mono text-xs tabular-nums',
-                    cell.isToday
-                      ? 'flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground'
-                      : 'text-foreground'
-                  )}
-                  data-testid={cell.isToday ? 'month-grid-today-marker' : undefined}
-                >
-                  {cell.dayNum}
-                </span>
+                  data-testid="month-grid-today-marker"
+                  aria-hidden="true"
+                  className="absolute inset-x-0 top-0 h-0.5 bg-primary"
+                />
+              )}
+
+              <div className="flex items-center justify-between">
+                <span className="font-mono text-xs tabular-nums text-foreground">{cell.dayNum}</span>
                 {cell.flag && (
                   <span className={cn('text-[11px] font-medium', TONE_TEXT[cell.flag.tone])}>
                     {cell.flag.text}
@@ -110,14 +118,26 @@ export function MonthGrid({ cells, onSelectDay, onOpenDay, onRangeExtend, classN
                 {visibleChips.map((chip, chipIndex) => (
                   <div
                     key={chipIndex}
-                    className="flex items-stretch gap-1 rounded-[4px] bg-muted/40 py-0.5 pr-1 text-[11px]"
+                    data-testid={`month-grid-chip-${key}-${chipIndex}`}
+                    className={cn(
+                      'rounded-[4px] border-l-2 bg-muted/40 py-0.5 pl-1.5 pr-1 text-[11px]',
+                      TONE_RAIL[chip.tone]
+                    )}
                   >
-                    <span className={cn('w-0.5 shrink-0 rounded-full', TONE_FILL[chip.tone])} aria-hidden="true" />
-                    <div className="min-w-0 flex-1">
-                      <div className={cn('truncate font-medium', TONE_TEXT[chip.tone])}>{chip.title}</div>
-                      {chip.time && <div className="text-muted-foreground">{chip.time}</div>}
-                      {chip.meter && <FillMeter segments={chip.meter} tone={chip.tone} className="mt-0.5" />}
-                    </div>
+                    <div className={cn('truncate font-medium', TONE_TEXT[chip.tone])}>{chip.title}</div>
+                    {(chip.time || chip.meter) && (
+                      <div
+                        data-testid={`month-grid-chip-meter-row-${key}-${chipIndex}`}
+                        className="mt-0.5 flex items-center gap-1"
+                      >
+                        {chip.time && (
+                          <span className="font-mono text-[9.5px] text-muted-foreground">{chip.time}</span>
+                        )}
+                        {chip.meter && (
+                          <FillMeter segments={chip.meter} tone={chip.tone} size="chip" className="ml-auto" />
+                        )}
+                      </div>
+                    )}
                   </div>
                 ))}
                 {cell.moreCount > 0 && (

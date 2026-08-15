@@ -39,4 +39,21 @@ describe('FillMeter', () => {
     const bars = screen.getAllByTestId('fill-meter-segment');
     bars.forEach(b => expect(b.className).not.toMatch(/#|rgb/));
   });
+
+  it('defaults to the wider "row" bar size', () => {
+    render(<FillMeter segments={segments} tone="success" />);
+    const meter = screen.getByTestId('fill-meter');
+    expect(meter).toHaveAttribute('data-size', 'row');
+    const bars = screen.getAllByTestId('fill-meter-segment');
+    expect(bars[0].className).toContain('w-3.5');
+  });
+
+  it('renders narrower "chip" ticks when size="chip" (for month-grid chips)', () => {
+    render(<FillMeter segments={segments} tone="success" size="chip" />);
+    const meter = screen.getByTestId('fill-meter');
+    expect(meter).toHaveAttribute('data-size', 'chip');
+    const bars = screen.getAllByTestId('fill-meter-segment');
+    expect(bars[0].className).toContain('w-1');
+    expect(bars[0].className).not.toContain('w-1.5'); // guard against substring false-positive
+  });
 });
