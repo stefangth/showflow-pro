@@ -44,6 +44,7 @@ export function aShowDate(overrides: Partial<ShowDateRow> = {}): ShowDateRow {
     venue: null,
     notes: null,
     cancellation_reason: null,
+    cast_notified_at: null,
     airtable_record_id: null,
     custom: {},
     org_id: id("org"),

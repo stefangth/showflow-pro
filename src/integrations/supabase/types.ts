@@ -2080,6 +2080,7 @@ export type Database = {
         Row: {
           airtable_record_id: string | null
           cancellation_reason: string | null
+          cast_notified_at: string | null
           city_id: string | null
           created_at: string
           custom: Json
@@ -2099,6 +2100,7 @@ export type Database = {
         Insert: {
           airtable_record_id?: string | null
           cancellation_reason?: string | null
+          cast_notified_at?: string | null
           city_id?: string | null
           created_at?: string
           custom?: Json
@@ -2118,6 +2120,7 @@ export type Database = {
         Update: {
           airtable_record_id?: string | null
           cancellation_reason?: string | null
+          cast_notified_at?: string | null
           city_id?: string | null
           created_at?: string
           custom?: Json

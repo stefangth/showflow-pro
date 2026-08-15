@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { createFakeSupabase } from "@/test/supabaseFake";
-import { openOfferTier, fetchOfferTiers, fetchOpenedTiers, closeOfferTier, dryRunOfferTier, fetchPendingConfirmationsCount, fetchMyOpenOffersCount, bulkConfirmSoftBooked, bulkDeclineSoftBooked, updateBookingStatusGuarded, respondToOffer, createBooking, fetchTierAttention, extendOfferExpiry } from "./bookings";
+import { openOfferTier, fetchOfferTiers, fetchOpenedTiers, closeOfferTier, dryRunOfferTier, fetchPendingConfirmationsCount, fetchMyOpenOffersCount, bulkConfirmSoftBooked, bulkDeclineSoftBooked, updateBookingStatusGuarded, respondToOffer, createBooking, fetchTierAttention, extendOfferExpiry, notifyCast } from "./bookings";
 
 describe("openOfferTier", () => {
   it("sends snake_case body and returns offersCreated", async () => {
@@ -219,6 +219,30 @@ describe("extendOfferExpiry", () => {
   it("throws on a supabase error", async () => {
     const fake = createFakeSupabase({ "rpc:extend_offer_expiry": { data: null, error: { message: "boom" } } });
     await expect(extendOfferExpiry(fake as never, { showDateId: "sd-1", hours: 24 })).rejects.toBeTruthy();
+  });
+});
+
+describe("notifyCast", () => {
+  it("invokes the notify-cast edge function and returns the notified count", async () => {
+    const fake = createFakeSupabase({ "fn:notify-cast": { data: { notified: 2 }, error: null } });
+    const res = await notifyCast(fake as never, { showDateId: "sd-1" });
+    expect(res).toEqual({ notified: 2 });
+    expect(fake.calls).toContainEqual({
+      table: "fn:notify-cast",
+      method: "invoke",
+      args: [{ show_date_id: "sd-1" }],
+    });
+  });
+
+  it("returns 0 when data is null", async () => {
+    const fake = createFakeSupabase({ "fn:notify-cast": { data: null, error: null } });
+    const res = await notifyCast(fake as never, { showDateId: "sd-1" });
+    expect(res).toEqual({ notified: 0 });
+  });
+
+  it("throws on an edge function error", async () => {
+    const fake = createFakeSupabase({ "fn:notify-cast": { data: null, error: { message: "boom" } } });
+    await expect(notifyCast(fake as never, { showDateId: "sd-1" })).rejects.toBeTruthy();
   });
 });
 

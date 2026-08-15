@@ -248,6 +248,24 @@ export async function extendOfferExpiry(
   return { affected: (data as number | null) ?? 0 };
 }
 
+/**
+ * Immediately notify a cancelled date's held/confirmed cast — the producer
+ * "Needs you" queue's "Notify cast" action (invokes the `notify-cast` edge
+ * function). The only other cancellation notice is the delayed 20:00 Berlin
+ * confirmation digest, which never covers a producer-cancelled individual hold
+ * outside that window. Returns the number of artists notified.
+ */
+export async function notifyCast(
+  client: SupabaseClient<Database>,
+  args: { showDateId: string },
+): Promise<{ notified: number }> {
+  const { data, error } = await client.functions.invoke("notify-cast", {
+    body: { show_date_id: args.showDateId },
+  });
+  if (error) throw error;
+  return { notified: (data as { notified?: number } | null)?.notified ?? 0 };
+}
+
 /** The ids of a date's still-soft_booked bookings — the row-peek confirm target. */
 export async function fetchSoftBookedIdsForDate(
   client: SupabaseClient<Database>,
