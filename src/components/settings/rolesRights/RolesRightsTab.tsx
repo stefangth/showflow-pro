@@ -39,6 +39,20 @@ import { ChangeLogDialog } from "./ChangeLogDialog";
 
 const REAL_PRESETS: Preset[] = ["Restricted", "Standard", "Full"];
 
+/** Maps each `CAPABILITY_GROUPS` display string to its `capabilityGroups.<slug>` catalog key.
+ *  Kept beside the group list rather than derived, so a renamed group is a visible edit here
+ *  (and the fallback to the raw string keeps an unmapped group rendering rather than blank). */
+const GROUP_LABEL_SLUG: Record<string, string> = {
+  "Members & access": "membersAndAccess",
+  "Productions & show dates": "productionsAndShowDates",
+  "Bookings & engine": "bookingsAndEngine",
+  "Artists": "artists",
+  "Hire orders": "hireOrders",
+  "Settings & organization": "settingsAndOrganization",
+  "Integrations": "integrations",
+  "Email": "email",
+};
+
 interface RolesRightsTabProps {
   orgId: string;
 }
@@ -73,13 +87,16 @@ export function RolesRightsTab({ orgId }: RolesRightsTabProps) {
     () =>
       cells.map((c) => ({
         key: c.def.key,
-        label: c.def.label,
-        description: c.def.description,
+        // Localized from the settingsRolesRights catalog, falling back to the registry's
+        // English label/description (the registry stays the single source of the capability
+        // set + its default copy; the catalog only overlays translations).
+        label: t(`capabilities.${c.def.key}.label`, { defaultValue: c.def.label }),
+        description: t(`capabilities.${c.def.key}.description`, { defaultValue: c.def.description }),
         risk: c.def.risk,
         effective: c.effective,
         locked: c.locked,
       })),
-    [cells],
+    [cells, t],
   );
   const rowByKey = useMemo(() => new Map(allRows.map((r) => [r.key, r])), [allRows]);
 
@@ -221,6 +238,8 @@ export function RolesRightsTab({ orgId }: RolesRightsTabProps) {
   );
   const groups = CAPABILITY_GROUPS.map((group) => ({
     group,
+    // Raw `group` stays the row-filter key + React key; the localized label is display-only.
+    groupLabel: t(`capabilityGroups.${GROUP_LABEL_SLUG[group] ?? group}`, { defaultValue: group }),
     rows: filteredRows.filter((r) => cellByKey.get(r.key)?.def.group === group),
   })).filter((g) => g.rows.length > 0);
 
@@ -284,13 +303,13 @@ export function RolesRightsTab({ orgId }: RolesRightsTabProps) {
             <Skeleton className="h-40 w-full" />
           ) : (
             <div className="space-y-4">
-              {groups.map(({ group, rows }) => {
+              {groups.map(({ group, groupLabel, rows }) => {
                 const onInGroup = rows.filter((r) => desiredMap[r.key]).length;
                 const allOn = rows.filter((r) => !r.locked).every((r) => desiredMap[r.key]);
                 return (
                   <RightGroupCard
                     key={group}
-                    group={group}
+                    group={groupLabel}
                     summary={t("tab.groupSummary", { on: onInGroup, total: rows.length })}
                     allOn={allOn}
                     onToggleAll={() => toggleGroup(rows, allOn)}
