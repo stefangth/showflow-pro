@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { createFakeSupabase } from "@/test/supabaseFake";
-import { openOfferTier, fetchOfferTiers, fetchOpenedTiers, closeOfferTier, dryRunOfferTier, fetchPendingConfirmationsCount, fetchMyOpenOffersCount, bulkConfirmSoftBooked, bulkDeclineSoftBooked, updateBookingStatusGuarded, respondToOffer, createBooking, fetchTierAttention } from "./bookings";
+import { openOfferTier, fetchOfferTiers, fetchOpenedTiers, closeOfferTier, dryRunOfferTier, fetchPendingConfirmationsCount, fetchMyOpenOffersCount, bulkConfirmSoftBooked, bulkDeclineSoftBooked, updateBookingStatusGuarded, respondToOffer, createBooking, fetchTierAttention, extendOfferExpiry } from "./bookings";
 
 describe("openOfferTier", () => {
   it("sends snake_case body and returns offersCreated", async () => {
@@ -189,6 +189,36 @@ describe("bulkConfirmSoftBooked", () => {
   it("throws on a supabase error", async () => {
     const fake = createFakeSupabase({ bookings: { data: null, error: { message: "boom" } } });
     await expect(bulkConfirmSoftBooked(fake as never, { ids: ["b1"], now: NOW })).rejects.toBeTruthy();
+  });
+});
+
+describe("extendOfferExpiry", () => {
+  it("calls extend_offer_expiry RPC and returns affected count", async () => {
+    const fake = createFakeSupabase({ "rpc:extend_offer_expiry": { data: 2, error: null } });
+    const res = await extendOfferExpiry(fake as never, { showDateId: "sd-1", hours: 24 });
+    expect(res).toEqual({ affected: 2 });
+    expect(fake.calls).toContainEqual({
+      table: "rpc:extend_offer_expiry",
+      method: "rpc",
+      args: [{ p_show_date_id: "sd-1", p_hours: 24 }],
+    });
+  });
+
+  it("returns 0 when the RPC reports no affected rows", async () => {
+    const fake = createFakeSupabase({ "rpc:extend_offer_expiry": { data: 0, error: null } });
+    const res = await extendOfferExpiry(fake as never, { showDateId: "sd-1", hours: 24 });
+    expect(res).toEqual({ affected: 0 });
+  });
+
+  it("returns 0 when data is null", async () => {
+    const fake = createFakeSupabase({ "rpc:extend_offer_expiry": { data: null, error: null } });
+    const res = await extendOfferExpiry(fake as never, { showDateId: "sd-1", hours: 24 });
+    expect(res).toEqual({ affected: 0 });
+  });
+
+  it("throws on a supabase error", async () => {
+    const fake = createFakeSupabase({ "rpc:extend_offer_expiry": { data: null, error: { message: "boom" } } });
+    await expect(extendOfferExpiry(fake as never, { showDateId: "sd-1", hours: 24 })).rejects.toBeTruthy();
   });
 });
 

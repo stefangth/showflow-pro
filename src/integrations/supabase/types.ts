@@ -2432,6 +2432,7 @@ export type Database = {
         Args: { p_artist: string; p_dates: string[]; p_org: string }
         Returns: undefined
       }
+      backfill_show_slots_from_legacy: { Args: never; Returns: undefined }
       bulk_import_artists: {
         Args: { p_org: string; p_rows: Json }
         Returns: Json
@@ -2498,6 +2499,10 @@ export type Database = {
       }
       expire_soft_bookings: { Args: never; Returns: undefined }
       export_my_data: { Args: never; Returns: Json }
+      extend_offer_expiry: {
+        Args: { p_hours: number; p_show_date_id: string }
+        Returns: number
+      }
       get_column_descriptions: { Args: never; Returns: Json }
       get_cron_health: {
         Args: never
@@ -2647,6 +2652,10 @@ export type Database = {
         Returns: Json
       }
       prune_email_log: { Args: never; Returns: number }
+      recompute_show_slot_derivations: {
+        Args: { p_show_id: string }
+        Returns: undefined
+      }
       remove_org_member: {
         Args: { p_org: string; p_user: string }
         Returns: undefined
@@ -2877,3 +2886,4 @@ export const Constants = {
     },
   },
 } as const
+

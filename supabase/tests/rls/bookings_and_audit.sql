@@ -27,12 +27,14 @@
 --   eeeeeeee-eeee-0009-…  booking: artist A, suggested   (artist retarget throws; immutable refs)
 --   eeeeeeee-eeee-000a-…  booking: artist A, suggested   (superuser retarget throws; role-independent)
 --   ffffffff-ffff-0001-…  booking_audit_log entry
+--   aaaaaaaa-aaaa-0005-…  producer user, DIFFERENT org (extend_offer_expiry cross-org test)
+--   00000000-…-0000c007   second org (extend_offer_expiry cross-org test)
 
 BEGIN;
 
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 
-SELECT plan(19);
+SELECT plan(22);
 
 -- ────────────────────────────────────────────────────────────────────────────
 -- Fixture setup (as postgres superuser)
@@ -50,7 +52,13 @@ VALUES
   ('aaaaaaaa-aaaa-0001-0000-000000000000', 'authenticated', 'authenticated', 'rls-bk-admin@test.com',    now(), '{"provider":"email"}'::jsonb, '{}'::jsonb, now(), now()),
   ('aaaaaaaa-aaaa-0002-0000-000000000000', 'authenticated', 'authenticated', 'rls-bk-producer@test.com', now(), '{"provider":"email"}'::jsonb, '{}'::jsonb, now(), now()),
   ('aaaaaaaa-aaaa-0003-0000-000000000000', 'authenticated', 'authenticated', 'rls-bk-artista@test.com',  now(), '{"provider":"email"}'::jsonb, '{}'::jsonb, now(), now()),
-  ('aaaaaaaa-aaaa-0004-0000-000000000000', 'authenticated', 'authenticated', 'rls-bk-artistb@test.com',  now(), '{"provider":"email"}'::jsonb, '{}'::jsonb, now(), now());
+  ('aaaaaaaa-aaaa-0004-0000-000000000000', 'authenticated', 'authenticated', 'rls-bk-artistb@test.com',  now(), '{"provider":"email"}'::jsonb, '{}'::jsonb, now(), now()),
+  ('aaaaaaaa-aaaa-0005-0000-000000000000', 'authenticated', 'authenticated', 'rls-bk-otherorgprod@test.com', now(), '{"provider":"email"}'::jsonb, '{}'::jsonb, now(), now());
+
+-- Second org, used only by the extend_offer_expiry cross-org test (org_isolation
+-- must block a member of a DIFFERENT org from affecting bootstrap-org b007 rows).
+INSERT INTO public.organizations (id, name, slug)
+VALUES ('00000000-0000-0000-0000-00000000c007', 'RLS BK Other Org', 'rls-bk-other-org');
 
 
 -- Phase 1B: role-gating is now org-scoped (has_org_role). Domain rows below default
@@ -59,7 +67,8 @@ INSERT INTO public.org_memberships (org_id, user_id, role) VALUES
   ('00000000-0000-0000-0000-00000000b007','aaaaaaaa-aaaa-0001-0000-000000000000','admin'),
   ('00000000-0000-0000-0000-00000000b007','aaaaaaaa-aaaa-0002-0000-000000000000','producer'),
   ('00000000-0000-0000-0000-00000000b007','aaaaaaaa-aaaa-0003-0000-000000000000','artist'),
-  ('00000000-0000-0000-0000-00000000b007','aaaaaaaa-aaaa-0004-0000-000000000000','artist');
+  ('00000000-0000-0000-0000-00000000b007','aaaaaaaa-aaaa-0004-0000-000000000000','artist'),
+  ('00000000-0000-0000-0000-00000000c007','aaaaaaaa-aaaa-0005-0000-000000000000','producer');
 
 INSERT INTO public.artists (id, name, user_id, org_id) VALUES
   ('bbbbbbbb-bbbb-0001-0000-000000000000', 'RLS Artist A', 'aaaaaaaa-aaaa-0003-0000-000000000000', '00000000-0000-0000-0000-00000000b007'),
@@ -406,6 +415,45 @@ SELECT throws_ok(
   null,
   'superuser retarget of show_date_id also throws 23514 (guard is role-independent)'
 );
+
+-- ────────────────────────────────────────────────────────────────────────────
+-- extend_offer_expiry RPC (SECURITY INVOKER — RLS gates which rows are affected)
+-- dddddddd-dddd-0001 carries eeeeeeee-0001 and eeeeeeee-0002, both still
+-- 'suggested' and untouched by any test above.
+-- ────────────────────────────────────────────────────────────────────────────
+
+-- 18. Producer of the booking's org extends expiry on both pending offers for the date.
+SELECT set_config('request.jwt.claims', '{"sub":"aaaaaaaa-aaaa-0002-0000-000000000000","role":"authenticated"}', true);
+SET LOCAL ROLE authenticated;
+
+SELECT is(
+  (SELECT public.extend_offer_expiry('dddddddd-dddd-0001-0000-000000000000', 24)),
+  2,
+  'producer extends expiry on both suggested offers for the date'
+);
+
+RESET ROLE;
+
+-- 19. offer_expires_at advanced by ~24h (within a 10-minute tolerance for test runtime).
+SELECT ok(
+  (SELECT offer_expires_at FROM public.bookings WHERE id = 'eeeeeeee-eeee-0001-0000-000000000000')
+    BETWEEN now() + interval '23 hours 55 minutes' AND now() + interval '24 hours 5 minutes',
+  'offer_expires_at advanced by ~24h'
+);
+
+-- 20. A producer of a DIFFERENT org affects 0 rows — org_isolation hides
+--     org b007's bookings from a non-member entirely, so the UPDATE inside the
+--     RPC matches nothing (no error, just 0 rows returned).
+SELECT set_config('request.jwt.claims', '{"sub":"aaaaaaaa-aaaa-0005-0000-000000000000","role":"authenticated"}', true);
+SET LOCAL ROLE authenticated;
+
+SELECT is(
+  (SELECT public.extend_offer_expiry('dddddddd-dddd-0001-0000-000000000000', 24)),
+  0,
+  'producer of a different org affects 0 rows (org_isolation blocks visibility)'
+);
+
+RESET ROLE;
 
 SELECT * FROM finish();
 ROLLBACK;

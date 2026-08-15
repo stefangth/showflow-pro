@@ -229,6 +229,25 @@ export async function bulkConfirmSoftBooked(
   return { affected: (data ?? []).length };
 }
 
+/**
+ * Bump `offer_expires_at` on a date's pending offers (suggested/soft_booked) by
+ * `hours` — the producer "Needs you" queue's "Extend 24h" action. PostgREST can't
+ * express a column-relative `+ interval` update, so this calls the
+ * `extend_offer_expiry` SQL RPC (SECURITY INVOKER — RLS still gates which rows,
+ * if any, are affected). Returns the number of bookings whose expiry advanced.
+ */
+export async function extendOfferExpiry(
+  client: SupabaseClient<Database>,
+  args: { showDateId: string; hours: number },
+): Promise<{ affected: number }> {
+  const { data, error } = await client.rpc("extend_offer_expiry", {
+    p_show_date_id: args.showDateId,
+    p_hours: args.hours,
+  });
+  if (error) throw error;
+  return { affected: (data as number | null) ?? 0 };
+}
+
 /** The ids of a date's still-soft_booked bookings — the row-peek confirm target. */
 export async function fetchSoftBookedIdsForDate(
   client: SupabaseClient<Database>,
