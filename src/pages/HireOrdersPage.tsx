@@ -58,7 +58,7 @@ function chipToStatusFilter(chip: StatusChip): HireOrderStatus[] | undefined {
  * status chip narrows the table, which defeats their purpose.
  */
 export default function HireOrdersPage() {
-  const { t } = useTranslation("hireOrdersPages");
+  const { t, i18n } = useTranslation("hireOrdersPages");
   const { currentOrg } = useAuth();
   const orgId = currentOrg?.id ?? null;
   // TWO gates, deliberately, because they answer different questions.
@@ -153,7 +153,7 @@ export default function HireOrdersPage() {
   const [setupStep, setSetupStep] = useState<string | undefined>(undefined);
   const openSetupAt = (step: ComposedStep) => { setSetupStep(step.key); setSetupSheetOpen(true); };
 
-  const stats = computeOrderKpis(allOrders);
+  const stats = computeOrderKpis(allOrders, i18n.language);
   const selectedOrder =
     filteredOrders.find((o) => o.id === slideOverId) ?? allOrders.find((o) => o.id === slideOverId) ?? null;
 

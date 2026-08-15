@@ -40,11 +40,14 @@
 - [ ] **`i18next-parser` in CI** — currently local-only (`i18n:extract`/`i18n:check`); resolve the `--fail-on-update` byte-identical-write quirk, then gate.
 
 ### C. Server-side / Phase 3 (not client `t()`)
-- [ ] **Persist `preferred_language` on the user** (DB + auth/profile). **Prerequisite** for per-recipient localization below.
+> **Safe client-adjacent copy items landed as one PR (2026-08-15).** On investigation, only two of the originally-listed "safe" items were truly client-side and ready; the rest are edge-coupled or cross-repo and were reclassified (see below).
+- [x] **`capabilities.ts` `CAPABILITY_DEFS` labels + descriptions + group headers** — DONE. Localized CLIENT-side via the `settingsRolesRights` catalog (new `capabilities` (29) + `capabilityGroups` (8) sections, EN generated from the registry, DE authored). `RolesRightsTab` resolves them at the single `allRows`/`groups` build points, falling back to the registry English; the registry stays the source of the capability set + its English wording (untouched, so the edge/SQL auth mirror is unaffected). A parity test pins EN catalog == registry (no drift) + `GROUP_LABEL_SLUG` coverage.
+- [x] **`money.ts` locale-aware `Intl`** — DONE. Added an optional BCP-47 `locale` param (default `en-US`, empty-guarded), so the dual-homed body stays runtime-neutral and the edge PDF renderer is byte-identical. All CLIENT fee displays (NewOrderWizard, OrderSlideOver, OrdersTable, HireOrdersPage KPIs via `computeOrderKpis(orders, locale)`, HireOrderDetailPage, HireOrderEditPage) pass the active language.
+- [ ] **`bookingFlow.referenceLabel`** — RECLASSIFIED: dual-homed and the **edge** copy feeds the `referenceLabel` interpolation var into artist emails (open-offer-tier / expire-offers / send-confirmation-digest). Belongs with the email chain below, NOT a client item. Localize when `preferred_language` lands.
+- [ ] **`trust/facts.ts` → `trust.json`** — cross-repo build consumed by the landing page + legal-traceability tests (`facts.privacy.test.ts`); add a DE column / bilingual build. Its own careful pass.
+- [ ] **Persist `preferred_language` on the user** (DB + auth/profile). **Prerequisite** for per-recipient localization below. New DB migration (auto-applies to prod on merge) + net-new edge-runtime i18n infra; needs a design pass.
 - [ ] **Transactional emails** — `supabase/functions/_shared/transactional-email-templates/*` need an **edge-runtime bilingual mirror** to render per recipient language. Depends on `preferred_language`.
-- [ ] **Hire-order PDFs** — `src/lib/hireOrders/pdf/pdfTheme.ts` + generation; same edge-runtime localization problem.
-- [ ] **`capabilities.ts` `CAPABILITY_DEFS` labels** — registry mirrored to the edge runtime; needs a bilingual approach valid in both runtimes (feeds the already-migrated rolesRights UI).
-- [ ] **`trust/facts.ts` → `trust.json`** — cross-repo build consumed by the landing page; add a DE column / bilingual build.
+- [ ] **Hire-order PDFs** — `src/lib/hireOrders/pdf/pdfTheme.ts` + generation; same edge-runtime localization problem (and where `money.ts`'s edge `en-US` default gets a real locale to pass).
 - [ ] **`systemMap.ts` + `docs/*.md` bodies** — canvas data + markdown document content.
 
 ### D. Ship gates (not code)

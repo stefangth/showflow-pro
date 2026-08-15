@@ -29,7 +29,9 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
  */
 export function formatMoney(amount: string | number, currency: string, locale = "en-US"): string {
   const numeric = typeof amount === "string" ? Number(amount) : amount;
-  const formatted = new Intl.NumberFormat(locale, {
+  // Guard an empty language tag (can occur before i18n settles): "" makes
+  // Intl.NumberFormat throw, so fall back to the default rather than crash the fee display.
+  const formatted = new Intl.NumberFormat(locale || "en-US", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(numeric);

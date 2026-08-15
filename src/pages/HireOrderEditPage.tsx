@@ -156,7 +156,7 @@ function applyClearedOverrides(data: OrderData, cleared: Set<EditableOrderFieldK
  * backstop; this is only the UX guard).
  */
 export default function HireOrderEditPage() {
-  const { t } = useTranslation("hireOrdersPages");
+  const { t, i18n } = useTranslation("hireOrdersPages");
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { currentOrg } = useAuth();
@@ -516,7 +516,7 @@ export default function HireOrderEditPage() {
   const currency = fieldString(displayData, "currency") || order.fee_currency || "EUR";
   const feeDisplay =
     displayData.fee?.value != null && displayData.fee.value !== ""
-      ? formatMoney(displayData.fee.value as string | number, currency)
+      ? formatMoney(displayData.fee.value as string | number, currency, i18n.language)
       : t("common.notSet");
 
   return (

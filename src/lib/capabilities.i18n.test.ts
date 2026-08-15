@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { CAPABILITY_DEFS } from "./capabilities";
+import { GROUP_LABEL_SLUG } from "@/components/settings/rolesRights/capabilityGroups";
 import enRolesRights from "@/i18n/locales/en/settingsRolesRights.json";
 
 // The RolesRights UI renders each capability's label/description from the
@@ -35,5 +36,21 @@ describe("capability catalog parity with the registry", () => {
     }
     // No stale group labels either.
     expect(Object.values(enGroups).filter((v) => !groups.includes(v))).toEqual([]);
+  });
+
+  it("GROUP_LABEL_SLUG maps every registry group to a real catalog slug", () => {
+    // The RolesRights UI resolves group headers via GROUP_LABEL_SLUG[group] -> the
+    // capabilityGroups.<slug> catalog key. This is the third artifact that must agree with the
+    // registry and the catalog; pin it so a new/renamed group cannot silently fall back to the
+    // raw English header for German viewers.
+    const groups = [...new Set(CAPABILITY_DEFS.map((d) => d.group))];
+    const slugKeys = new Set(Object.keys(enGroups));
+    for (const g of groups) {
+      const slug = GROUP_LABEL_SLUG[g];
+      expect(slug, `GROUP_LABEL_SLUG missing "${g}"`).toBeDefined();
+      expect(slugKeys.has(slug), `capabilityGroups.${slug} missing for "${g}"`).toBe(true);
+    }
+    // No stale slug map entries pointing at groups the registry no longer has.
+    expect(Object.keys(GROUP_LABEL_SLUG).filter((g) => !groups.includes(g))).toEqual([]);
   });
 });

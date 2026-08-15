@@ -36,22 +36,9 @@ import { RightGroupCard } from "./RightGroupCard";
 import { EditingPickerCard } from "./EditingPickerCard";
 import { StagedChangesCard, type StagedChange } from "./StagedChangesCard";
 import { ChangeLogDialog } from "./ChangeLogDialog";
+import { GROUP_LABEL_SLUG } from "./capabilityGroups";
 
 const REAL_PRESETS: Preset[] = ["Restricted", "Standard", "Full"];
-
-/** Maps each `CAPABILITY_GROUPS` display string to its `capabilityGroups.<slug>` catalog key.
- *  Kept beside the group list rather than derived, so a renamed group is a visible edit here
- *  (and the fallback to the raw string keeps an unmapped group rendering rather than blank). */
-const GROUP_LABEL_SLUG: Record<string, string> = {
-  "Members & access": "membersAndAccess",
-  "Productions & show dates": "productionsAndShowDates",
-  "Bookings & engine": "bookingsAndEngine",
-  "Artists": "artists",
-  "Hire orders": "hireOrders",
-  "Settings & organization": "settingsAndOrganization",
-  "Integrations": "integrations",
-  "Email": "email",
-};
 
 interface RolesRightsTabProps {
   orgId: string;
