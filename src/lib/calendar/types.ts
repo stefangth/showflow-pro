@@ -17,6 +17,12 @@ export interface ProducerDateEntry {
    *  date eligible for "Generate hire order". */
   hireOrderId: string | null;
   hireOrderStatus: string | null;
+  /** `show_dates.cast_notified_at` — non-null once a producer has notified the
+   *  cast that this date is cancelled. Optional so the many inline
+   *  `ProducerDateEntry` fixtures elsewhere keep compiling unchanged; treat a
+   *  missing field the same as `null` (not yet notified). Drives the "Needs
+   *  you" queue's `cancelled` group — see `src/lib/calendar/needsYou.ts`. */
+  castNotifiedAt?: string | null;
 }
 
 export type ArtistStatus = 'confirmed' | 'soft_booked' | 'suggested' | 'blocked' | 'unanswered';

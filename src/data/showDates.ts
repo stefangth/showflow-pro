@@ -64,7 +64,7 @@ export async function fetchShowDatesForShow(client: SupabaseClient<Database>, sh
  * ------------------------------------------------------------------------- */
 
 const SHOW_DATE_LIST_COLS =
-  "id, date, session_1, session_2, session_3, venue, status, notes, city_id, show_id, custom, cancellation_reason, " +
+  "id, date, session_1, session_2, session_3, venue, status, notes, city_id, show_id, custom, cancellation_reason, cast_notified_at, " +
   "show:shows(id, program, sub_program, status, main_cast_slots, understudy_slots), " +
   "city:cities(id, name)";
 

@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach } from "vitest";
 import i18n from "@/i18n";
-import { parseDateOnly, formatDateDMY, formatTimestampDMY, formatTimestampLocal, formatDateWithWeekday, toDateKey, isPastDate, PAST_DATE_TINT, pastRowClassName, weekdayShort, weekdayShortLabels, formatDayMonthShortYear, formatMonthYear, formatDayMonthYear, formatFullWeekdayDate } from "./dates";
+import { parseDateOnly, formatDateDMY, formatTimestampDMY, formatTimestampLocal, formatDateWithWeekday, toDateKey, isPastDate, PAST_DATE_TINT, pastRowClassName, weekdayShort, weekdayShortLabels, formatDayMonthShortYear, formatMonthYear, formatDayMonthYear, formatFullWeekdayDate, berlinDateKey } from "./dates";
 
 describe("parseDateOnly", () => {
   it("parses a YYYY-MM-DD string at local midnight (no UTC drift)", () => {
@@ -168,5 +168,21 @@ describe("pastRowClassName", () => {
   it("defaults `today` to now when omitted", () => {
     const twoDaysAgo = new Date(Date.now() - 1000 * 60 * 60 * 24 * 2);
     expect(pastRowClassName(twoDaysAgo)).toBe(PAST_DATE_TINT);
+  });
+});
+
+describe("berlinDateKey", () => {
+  it("returns the Berlin calendar date for a UTC instant", () => {
+    // 2026-06-01T23:30:00Z is 2026-06-02 01:30 CEST (Berlin) — already the next day.
+    expect(berlinDateKey(new Date("2026-06-01T23:30:00.000Z"))).toBe("2026-06-02");
+    // 2026-06-01T12:00:00Z is still 2026-06-01 in Berlin.
+    expect(berlinDateKey(new Date("2026-06-01T12:00:00.000Z"))).toBe("2026-06-01");
+  });
+
+  it("matches the Deno twin's behavior (supabase/functions/_shared/tierFill.ts)", () => {
+    // Same fixtures as tierFill.test.ts's berlinDateKey coverage, so the two
+    // runtimes agree on "today" for the booking engine's Berlin-anchored reads.
+    expect(berlinDateKey(new Date("2026-01-15T05:00:00.000Z"))).toBe("2026-01-15");
+    expect(berlinDateKey(new Date("2026-01-14T22:30:00.000Z"))).toBe("2026-01-14");
   });
 });
