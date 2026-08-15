@@ -8,16 +8,31 @@
 // byte-identical. New keys (not yet in this list) sort alphabetically after
 // all known keys, so future extraction still works normally.
 //
-// KNOWN LIMITATION (multi-namespace): this single flat rank table cannot
-// preserve on-disk order across namespaces whose sibling groups disagree on a
-// shared key's relative order. The `dashboard` namespace orders `artist` before
-// `producer` while `help.json` orders `producer` before `artist`, so no global
-// rank reproduces both. Consequently `npm run i18n:check` exits non-zero on the
-// multi-namespace tree even though the catalogs are correct. This is why the
-// parser is LOCAL-ONLY and its CI gate is deferred; catalog correctness is
-// enforced by src/i18n/keyParity.test.ts (en/de parity, incl. `dashboard`) and
-// copyLint.test.ts. Making `i18n:check` green is part of the deferred follow-up
-// (likely a move to i18next-cli with real per-namespace extraction).
+// LOCAL-ONLY BY DECISION (2026-08-15): the parser stays an authoring aid and is
+// deliberately NOT gated in CI. Two independent noise sources make a byte- or
+// key-identical `--fail-on-update` gate impossible to keep green without also
+// suppressing genuine signal:
+//
+//   1. Cross-namespace ordering. This single flat rank table cannot preserve
+//      on-disk order across namespaces whose sibling groups disagree on a shared
+//      key's relative order (e.g. `dashboard` orders `artist` before `producer`
+//      while `help.json` orders `producer` before `artist`) — no global rank
+//      reproduces both.
+//   2. Plural over-generation. For any `t(key, {count})` call the parser emits
+//      speculative `key_one`/`key_other` variants (empty-valued), even where the
+//      copy is intentionally a SINGLE form that does not vary with count
+//      (e.g. artists `import.done.errorsSuffix` = ", {{count}} need attention").
+//      There is no per-key opt-out, and a genuinely-missing key is ALSO emitted
+//      empty-valued — indistinguishable from the speculative plurals — so any
+//      heuristic that filters the noise also hides the real drift.
+//
+// The gate would be redundant regardless: genuine drift is already caught by the
+// existing CI gates — a key referenced in code but absent from a catalog is a
+// `tsc` compile error (resources are typed via `typeof en<Namespace>` in
+// src/i18n/react-i18next.d.ts), en/de parity is `src/i18n/keyParity.test.ts`,
+// and paste-throughs/style are `translationCompleteness.test.ts` + `copyLint.test.ts`.
+// So `npm run i18n:check` remains a LOCAL convenience only (it will report the
+// ordering/plural rewrites above; that is expected, not a failure to fix).
 const EXISTING_KEY_ORDER = [
   // src/i18n/locales/{en,de}/common.json (en/de share the same key order)
   'nav',
