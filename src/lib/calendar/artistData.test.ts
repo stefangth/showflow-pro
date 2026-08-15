@@ -117,6 +117,47 @@ describe('artistData', () => {
       expect(cell!.chips[0].tone).toBe('muted');
     });
 
+    it('prefers the "answer" flag over "blocked" when a day has both a suggested and a blocked entry', () => {
+        const sameDayEligible: EligibleDate[] = [
+        {
+          id: 'sd-suggested',
+          date: '2026-08-22',
+          session_1: '19:00',
+          session_2: null,
+          session_3: null,
+          status: 'open',
+          city_id: null,
+          show_id: 'show-a',
+          venue: null,
+          custom: null,
+          show: { id: 'show-a', program: 'Aida', sub_program: null, status: 'active' },
+        },
+        {
+          id: 'sd-blocked',
+          date: '2026-08-22',
+          session_1: null,
+          session_2: null,
+          session_3: null,
+          status: 'open',
+          city_id: null,
+          show_id: 'show-b',
+          venue: null,
+          custom: null,
+          show: { id: 'show-b', program: 'Rigoletto', sub_program: null, status: 'active' },
+        },
+      ];
+      const statusByDateId = new Map([['sd-suggested', { bookingId: 'b1', status: 'suggested' }]]);
+      const blockedKeys = new Set(['2026-08-22']);
+      const entries = toArtistEntries(sameDayEligible, statusByDateId, blockedKeys, new Map());
+      const anchor = new Date(2026, 7, 1);
+      const today = new Date(2026, 7, 15);
+      const cells = monthCellsArtist(entries, anchor, '', today);
+      const cell = cells.find((c) => c.day && toDateKey(c.day) === '2026-08-22');
+      expect(cell!.flag?.text).toBe('answer');
+      expect(cell!.flag?.tone).toBe('accent');
+      expect(cell!.chips).toHaveLength(2);
+    });
+
     it('always returns a fixed 42-cell grid with null padding cells', () => {
       const cells = monthCellsArtist([], new Date(2026, 7, 1), '', new Date(2026, 7, 15));
       expect(cells).toHaveLength(42);

@@ -1,5 +1,5 @@
 export type Tone = 'success' | 'warning' | 'muted' | 'destructive' | 'accent';
-export interface ToneSpec { label: string; badgeClass: string; railClass: string; }
+export interface ToneSpec { label: string; badgeClass: string; railClass: string; tone: Tone; }
 
 export type ProducerStatus = 'open' | 'partially_filled' | 'fully_filled' | 'cancelled' | 'unconfigured';
 export interface ProducerDateEntry {

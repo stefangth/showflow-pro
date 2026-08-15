@@ -16,4 +16,12 @@ describe('calendar tones', () => {
     expect(ARTIST_TONES.suggested.railClass).toContain('primary'); // accent/violet == primary token
     expect(ARTIST_TONES.confirmed.badgeClass).toContain('success');
   });
+  it('exposes an abstract Tone value alongside the CSS classes, for consumers that need the raw tone', () => {
+    expect(PRODUCER_TONES.partially_filled.tone).toBe('warning');
+    expect(PRODUCER_TONES.fully_filled.tone).toBe('success');
+    expect(PRODUCER_TONES.cancelled.tone).toBe('destructive');
+    expect(ARTIST_TONES.suggested.tone).toBe('accent');
+    expect(ARTIST_TONES.blocked.tone).toBe('destructive');
+    expect(ARTIST_TONES.unanswered.tone).toBe('muted');
+  });
 });

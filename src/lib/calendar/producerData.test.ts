@@ -139,6 +139,34 @@ describe('producerData', () => {
       expect(cell!.flag).toBeUndefined();
     });
 
+    it('sums deficits across multiple entries on the same day', () => {
+      const rowA: ProducerShowDateRow = {
+        ...rows[0],
+        id: 'sd-a',
+        date: '2026-08-21',
+        status: 'partially_filled',
+        show: { ...rows[0].show, main_cast_slots: 6, understudy_slots: 2 },
+      };
+      const rowB: ProducerShowDateRow = {
+        ...rows[0],
+        id: 'sd-b',
+        date: '2026-08-21',
+        status: 'partially_filled',
+        show: { ...rows[0].show, main_cast_slots: 4, understudy_slots: 0 },
+      };
+      const sameDayCounts = new Map<string, DateBookingCounts>([
+        ['sd-a', { confirmedMain: 4, confirmedUs: 0, acceptedMain: 0, acceptedUs: 0, pendingMain: 0, pendingUs: 0, total: 4 }], // deficit 2
+        ['sd-b', { confirmedMain: 3, confirmedUs: 0, acceptedMain: 0, acceptedUs: 0, pendingMain: 0, pendingUs: 0, total: 3 }], // deficit 1
+      ]);
+      const entries = toProducerEntries([rowA, rowB], sameDayCounts);
+      const anchor = new Date(2026, 7, 1);
+      const today = new Date(2026, 7, 15);
+      const cells = monthCellsProducer(entries, anchor, '', [], today);
+      const cell = cells.find((c) => c.day && toDateKey(c.day) === '2026-08-21');
+      expect(cell!.flag?.text).toBe('−3');
+      expect(cell!.chips).toHaveLength(2);
+    });
+
     it('always returns a fixed 42-cell grid with null padding cells', () => {
       const cells = monthCellsProducer([], new Date(2026, 7, 1), '', [], new Date(2026, 7, 15));
       expect(cells).toHaveLength(42);

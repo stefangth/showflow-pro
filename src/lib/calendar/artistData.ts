@@ -1,23 +1,13 @@
-import type { ArtistDateEntry, ArtistStatus, MonthGridCell, MonthGridChip, Tone } from './types';
+import type { ArtistDateEntry, ArtistStatus, MonthGridCell, MonthGridChip } from './types';
 import type { EligibleDate } from '@/hooks/useArtistEligibleDates';
 import { isPastDate, parseDateOnly, toDateKey } from '@/lib/dates';
 import { monthMatrix } from './period';
+import { ARTIST_TONES } from './tone';
 
 /** The booking-status values that flow straight through to `ArtistStatus` —
  *  the DB `booking_status` enum's non-cancelled states (see the booking
  *  workflow rules: suggested → soft_booked → confirmed). */
 const BOOKING_STATUSES: ReadonlySet<string> = new Set(['confirmed', 'soft_booked', 'suggested']);
-
-/** Semantic tone per artist status — mirrors the color intent already encoded
- *  in `ARTIST_TONES`' badge/rail classes (success/warning/primary/destructive/
- *  muted), expressed as the abstract `Tone` a chip carries. */
-const ARTIST_STATUS_TONE: Record<ArtistStatus, Tone> = {
-  confirmed: 'success',
-  soft_booked: 'warning',
-  suggested: 'accent',
-  blocked: 'destructive',
-  unanswered: 'muted',
-};
 
 function resolveMyStatus(
   dateId: string,
@@ -77,7 +67,7 @@ function chipFor(entry: ArtistDateEntry): MonthGridChip {
   return {
     title: entry.program,
     time: entry.session1 ?? undefined,
-    tone: ARTIST_STATUS_TONE[entry.myStatus],
+    tone: ARTIST_TONES[entry.myStatus].tone,
     // Artist cells are status-only — no fill meter.
   };
 }

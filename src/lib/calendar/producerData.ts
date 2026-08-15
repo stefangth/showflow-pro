@@ -1,8 +1,9 @@
-import type { MeterSegment, MonthGridCell, MonthGridChip, ProducerDateEntry, ProducerStatus, Tone } from './types';
+import type { MeterSegment, MonthGridCell, MonthGridChip, ProducerDateEntry, ProducerStatus } from './types';
 import type { DateBookingCounts } from '@/data/bookings';
 import { showSlots } from '@/lib/settings';
 import { isPastDate, parseDateOnly, toDateKey } from '@/lib/dates';
 import { monthMatrix } from './period';
+import { PRODUCER_TONES } from './tone';
 
 /**
  * The structural row shape this module consumes — matches `SHOW_DATE_LIST_COLS`
@@ -41,17 +42,6 @@ function displayStatus(row: ProducerShowDateRow): ProducerStatus {
   }
   return row.status;
 }
-
-/** Semantic tone per producer status — mirrors the color intent already
- *  encoded in `PRODUCER_TONES`' badge/rail classes (success/warning/muted/
- *  destructive), expressed as the abstract `Tone` a chip carries. */
-const PRODUCER_STATUS_TONE: Record<ProducerStatus, Tone> = {
-  fully_filled: 'success',
-  partially_filled: 'warning',
-  open: 'muted',
-  cancelled: 'destructive',
-  unconfigured: 'destructive',
-};
 
 export function toProducerEntries(
   showDates: ProducerShowDateRow[],
@@ -101,7 +91,7 @@ function chipFor(entry: ProducerDateEntry): MonthGridChip {
   return {
     title: entry.program,
     time: entry.session1 ?? undefined,
-    tone: PRODUCER_STATUS_TONE[entry.status],
+    tone: PRODUCER_TONES[entry.status].tone,
     meter,
   };
 }
