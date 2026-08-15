@@ -47,8 +47,8 @@ export function LensTabs({ lenses, active, onChange, className, scrollable = fal
             data-active={isActive}
             onClick={() => onChange(lens.key)}
             className={cn(
-              'inline-flex shrink-0 items-center gap-1.5 rounded-s px-3 py-1.5 text-[13px] font-medium transition-colors',
-              scrollable && 'snap-start',
+              'inline-flex items-center gap-1.5 rounded-s px-3 py-1.5 text-[13px] font-medium transition-colors',
+              scrollable && 'shrink-0 snap-start',
               isActive ? 'bg-card text-foreground shadow-elev1' : 'text-muted-foreground hover:text-foreground'
             )}
           >

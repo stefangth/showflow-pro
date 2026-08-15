@@ -70,6 +70,9 @@ describe('LensTabs', () => {
     const track = screen.getByRole('tablist');
     expect(track.className).toContain('inline-flex');
     expect(track.className).not.toContain('overflow-x-auto');
+    const tab = screen.getByTestId('lens-tab-month');
+    expect(tab.className).not.toContain('shrink-0');
+    expect(tab.className).not.toContain('snap-start');
   });
 
   it('with scrollable, renders a single non-wrapping horizontally-scrolling row', () => {
@@ -92,5 +95,7 @@ describe('LensTabs', () => {
     });
     const activeTab = screen.getByTestId('lens-tab-month');
     expect(activeTab).toHaveAttribute('data-active', 'true');
+    expect(activeTab.className).toContain('shrink-0');
+    expect(activeTab.className).toContain('snap-start');
   });
 });
