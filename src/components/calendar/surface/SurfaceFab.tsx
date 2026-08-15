@@ -1,0 +1,33 @@
+import type { ReactNode } from 'react';
+import { Plus } from 'lucide-react';
+import { cn } from '@/lib/utils';
+
+interface SurfaceFabProps {
+  label: string;
+  onClick: () => void;
+  icon?: ReactNode;
+  className?: string;
+}
+
+/**
+ * Fixed bottom-right extended FAB for mobile calendar surfaces (spec §5,
+ * Phase 5 mobile). Presentational only — mounting it per role/breakpoint is
+ * a caller concern (see Task 7).
+ */
+export function SurfaceFab({ label, onClick, icon, className }: SurfaceFabProps) {
+  return (
+    <button
+      type="button"
+      data-testid="surface-fab"
+      onClick={onClick}
+      className={cn(
+        'fixed right-4 bottom-12 z-40 inline-flex items-center gap-2 rounded-pill',
+        'bg-primary px-4 py-3 text-sm font-medium text-primary-foreground shadow-elev3',
+        className,
+      )}
+    >
+      {icon ?? <Plus className="h-4 w-4" aria-hidden="true" />}
+      {label}
+    </button>
+  );
+}
