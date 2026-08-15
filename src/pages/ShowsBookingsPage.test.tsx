@@ -1,40 +1,51 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { screen, fireEvent } from "@testing-library/react";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import type { SetupRailMode } from "@/components/setup/setupRailMode";
 
 /**
- * Plan B Task 2: the producer Shows & Bookings list must default to the
- * "Upcoming" timeframe (past hidden, one click away) and tint past-dated rows
- * with PAST_DATE_TINT while keeping them clickable.
+ * Task 16: ProducerShowsBookings now renders `<CalendarSurface>` instead of
+ * the table/EntityCalendar + `ViewToggle`. This file covers two things:
  *
- * ShowsBookingsPage has no prior test file. The producer branch pulls in a
- * large hook surface (editor config, capability gates, hire-order readiness,
- * the setup rail); everything unrelated to the timeframe/tint behavior under
- * test is stubbed to its simplest inert shape, mirroring the pattern in
- * ProductionsPage.test.tsx (mock the data-layer fetch, not the supabase
- * client, and stub EditorContext/ColumnLayoutEditor).
+ *  - The producer "Upcoming" default-timeframe filtering still narrows what
+ *    reaches the calendar surface (ported from the old table-row test,
+ *    re-expressed against the Month lens's grid cells/chips since the table
+ *    is gone). The old per-row past-date tint is now the Month grid cell's
+ *    own `isPast` dimming (`opacity-60`), which is the direct analog.
+ *  - The setup-rail/checklist behavior (module onboarding), which is
+ *    orthogonal to the table-vs-calendar surface and untouched by task 16.
+ *
+ * `SHOW_DATES` here is a mutable ref (`showDatesRef`) so different describe
+ * blocks can seed different fixtures without re-mocking the module.
  */
 
-const PAST_DATE = "2020-01-01";
-const FUTURE_DATE = "2030-01-01";
+type ShowDateFixture = {
+  id: string;
+  date: string;
+  session_1: string | null;
+  session_2: string | null;
+  session_3: string | null;
+  venue: string | null;
+  status: "open" | "partially_filled" | "fully_filled" | "cancelled";
+  notes: string | null;
+  cancellation_reason: string | null;
+  city_id: string | null;
+  show_id: string;
+  custom: null;
+  show: {
+    id: string;
+    program: string;
+    sub_program: string | null;
+    status: "active";
+    main_cast_slots: number;
+    understudy_slots: number;
+  };
+  city: null;
+};
 
-const SHOW_DATES = [
-  {
-    id: "sd-past", date: PAST_DATE, session_1: "19:00", session_2: null, session_3: null,
-    venue: "Old Hall", status: "open" as const, notes: null, cancellation_reason: null,
-    city_id: null, show_id: "s1", custom: null,
-    show: { id: "s1", program: "Past Show", sub_program: null, status: "active" as const, main_cast_slots: 2, understudy_slots: 1 },
-    city: null,
-  },
-  {
-    id: "sd-future", date: FUTURE_DATE, session_1: "19:00", session_2: null, session_3: null,
-    venue: "New Hall", status: "open" as const, notes: null, cancellation_reason: null,
-    city_id: null, show_id: "s2", custom: null,
-    show: { id: "s2", program: "Future Show", sub_program: null, status: "active" as const, main_cast_slots: 2, understudy_slots: 1 },
-    city: null,
-  },
-];
+const { showDatesRef } = vi.hoisted(() => ({
+  showDatesRef: { value: [] as ShowDateFixture[] },
+}));
 
 // A no-op realtime channel stand-in: ShowsBookingsPage subscribes to
 // bookings/show_dates changes on mount, which needs `.channel().on().subscribe()`
@@ -59,7 +70,7 @@ vi.mock("react-router-dom", () => ({
 }));
 vi.mock("@/data/showDates", async (orig) => ({
   ...(await orig<typeof import("@/data/showDates")>()),
-  fetchShowDatesList: () => Promise.resolve(SHOW_DATES),
+  fetchShowDatesList: () => Promise.resolve(showDatesRef.value),
 }));
 vi.mock("@/data/bookings", async (orig) => ({
   ...(await orig<typeof import("@/data/bookings")>()),
@@ -67,9 +78,6 @@ vi.mock("@/data/bookings", async (orig) => ({
 }));
 vi.mock("@/components/filters/useFilterVisibility", () => ({
   useFilterVisibility: () => ({ canSee: () => true, isAdmin: true }),
-}));
-vi.mock("@/hooks/useBookingFlow", () => ({
-  useReferenceField: () => ({ reference: { source: "show" }, customFieldKey: null }),
 }));
 const { featureFlags } = vi.hoisted(() => ({ featureFlags: { value: {} as Record<string, boolean> } }));
 // Settable entitlements-loading flag so a test can exercise the "loading window must not
@@ -135,24 +143,8 @@ vi.mock("@/hooks/useHireOrders", () => ({
   useHireOrderAction: () => ({ mutate: vi.fn(), isPending: false, variables: undefined }),
 }));
 vi.mock("@/features/editor/EditorContext", () => ({
-  useColumnTemplate: () => ({
-    orderedColumns: [
-      { columnId: "show_dates.date", visible: true, order: 0 },
-      { columnId: "shows.program", visible: true, order: 1 },
-      { columnId: "show_dates.venue", visible: true, order: 2 },
-    ],
-    visibleCount: 3,
-  }),
   useEditorConfig: () => ({ isEditorMode: false, getColumnLabel: (id: string) => id, getCustomFieldDefs: () => [] }),
 }));
-vi.mock("@/features/editor/useColumnHeaders", () => ({
-  useColumnHeaders: () => [
-    { columnId: "show_dates.date", headerLabel: "Date" },
-    { columnId: "shows.program", headerLabel: "Program" },
-    { columnId: "show_dates.venue", headerLabel: "Venue" },
-  ],
-}));
-vi.mock("@/features/editor/ColumnLayoutEditor", () => ({ ColumnLayoutEditor: () => null }));
 vi.mock("@/components/shows/ShowDateDetailSheet", () => ({
   ShowDateDetailSheet: ({ showDateId, open }: { showDateId: string | null; open: boolean }) => (
     <div data-testid="detail-sheet" data-show-date-id={showDateId ?? ""} data-open={String(open)} />
@@ -175,6 +167,17 @@ function makeBookingStatus(done: number, complete: boolean): BookingStatus {
   };
 }
 
+function showDate(overrides: Partial<ShowDateFixture> & Pick<ShowDateFixture, "id" | "date" | "show_id">): ShowDateFixture {
+  return {
+    session_1: "19:00", session_2: null, session_3: null,
+    venue: "Opera House", status: "open", notes: null, cancellation_reason: null,
+    city_id: null, custom: null,
+    show: { id: overrides.show_id, program: "A Show", sub_program: null, status: "active", main_cast_slots: 2, understudy_slots: 1 },
+    city: null,
+    ...overrides,
+  };
+}
+
 beforeEach(() => {
   localStorage.clear();
   featureFlags.value = {};
@@ -184,30 +187,50 @@ beforeEach(() => {
   bookingSetupStatus.value = makeBookingStatus(0, false);
 });
 
-describe("ShowsBookingsPage — producer timeframe default + past tint (Plan B Task 2)", () => {
-  it("defaults to Upcoming: shows the future date, hides the past one", async () => {
+describe("ShowsBookingsPage — producer Upcoming default + past-day dimming (calendar surface)", () => {
+  // Pin "today" mid-month so both fixture dates land in the same Month-lens
+  // grid (the surface defaults to the current real month, and neither the
+  // page nor the surface is given a `today` override in production).
+  const TODAY = new Date("2030-06-15T12:00:00");
+  const FUTURE_DATE = "2030-06-20";
+  const PAST_DATE = "2030-06-05";
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(TODAY);
+    showDatesRef.value = [
+      showDate({ id: "sd-past", date: PAST_DATE, show_id: "s1", show: { id: "s1", program: "Past Show", sub_program: null, status: "active", main_cast_slots: 2, understudy_slots: 1 } }),
+      showDate({ id: "sd-future", date: FUTURE_DATE, show_id: "s2", show: { id: "s2", program: "Future Show", sub_program: null, status: "active", main_cast_slots: 2, understudy_slots: 1 } }),
+    ];
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("defaults to Upcoming: shows the future date's chip, hides the past one", async () => {
     renderWithProviders(<ShowsBookingsPage />);
     expect(await screen.findByText("Future Show")).toBeInTheDocument();
     expect(screen.queryByText("Past Show")).not.toBeInTheDocument();
   });
 
-  it("reveals the past date, tinted, when Any time is selected — and it stays clickable", async () => {
+  it("reveals the past date, dimmed, when Any time is selected — and it stays clickable", async () => {
     renderWithProviders(<ShowsBookingsPage />);
     await screen.findByText("Future Show");
 
     fireEvent.click(screen.getByRole("button", { name: /^Upcoming$/ }));
     fireEvent.click(screen.getByRole("button", { name: "Any time" }));
 
-    const pastCell = await screen.findByText("Past Show");
-    const row = pastCell.closest("tr")!;
-    expect(row.className).toMatch(/opacity-60/);
-    expect(row.className).not.toMatch(/pointer-events-none/);
+    const pastChip = await screen.findByText("Past Show");
+    const pastCell = pastChip.closest('[data-testid^="month-grid-cell-"]')!;
+    expect(pastCell.className).toMatch(/opacity-60/);
 
-    // Future row stays untinted.
-    expect(screen.getByText("Future Show").closest("tr")!.className).not.toMatch(/opacity-60/);
+    // Future cell stays undimmed.
+    const futureChip = screen.getByText("Future Show");
+    const futureCell = futureChip.closest('[data-testid^="month-grid-cell-"]')!;
+    expect(futureCell.className).not.toMatch(/opacity-60/);
 
-    // Still clickable: opens the detail sheet for this show_date.
-    fireEvent.click(row);
+    // Still clickable: double-clicking the day opens the detail sheet for this show_date.
+    fireEvent.doubleClick(pastCell);
     const sheet = screen.getByTestId("detail-sheet");
     expect(sheet.getAttribute("data-show-date-id")).toBe("sd-past");
     expect(sheet.getAttribute("data-open")).toBe("true");
@@ -231,12 +254,24 @@ describe("ShowsBookingsPage — producer timeframe default + past tint (Plan B T
  * from a persistent header button (previously there was no way back once
  * "Hide" was clicked). booking_flow must be on for any of this to matter --
  * the page's own gate nulls out the org id (and therefore the rail) otherwise.
+ *
+ * These tests don't care what the calendar surface renders (its fixture dates
+ * are arbitrary and won't fall in the real current month), only that the page
+ * has finished loading and mounted the surface — so they wait on the
+ * `calendar-surface` testid rather than on any particular chip text.
  */
 describe("ShowsBookingsPage — setup checklist uncramp + re-invoke (Plan B Task 3)", () => {
+  beforeEach(() => {
+    showDatesRef.value = [
+      showDate({ id: "sd-1", date: "2020-01-01", show_id: "s1", show: { id: "s1", program: "Past Show", sub_program: null, status: "active", main_cast_slots: 2, understudy_slots: 1 } }),
+      showDate({ id: "sd-2", date: "2030-01-01", show_id: "s2", show: { id: "s2", program: "Future Show", sub_program: null, status: "active", main_cast_slots: 2, understudy_slots: 1 } }),
+    ];
+  });
+
   it("shows no re-invoke button and no inline callout by default (not dismissed, rail not visible)", async () => {
     featureFlags.value = { booking_flow: true };
     renderWithProviders(<ShowsBookingsPage />);
-    await screen.findByText("Future Show");
+    await screen.findByTestId("calendar-surface");
     expect(screen.queryByRole("button", { name: /setup checklist/i })).not.toBeInTheDocument();
     expect(screen.queryByTestId("booking-setup-rail")).not.toBeInTheDocument();
     // The hidden mode must not render the collapsed bar either (symmetric with
@@ -252,7 +287,7 @@ describe("ShowsBookingsPage — setup checklist uncramp + re-invoke (Plan B Task
     railState.value = { mode: "collapsed" };
     localStorage.setItem("showflow.bookingSetup.hidden.org-1", "true");
     renderWithProviders(<ShowsBookingsPage />);
-    await screen.findByText("Future Show");
+    await screen.findByTestId("calendar-surface");
     expect(await screen.findByText(/org setup in progress/i)).toBeInTheDocument();
   });
 
@@ -272,7 +307,7 @@ describe("ShowsBookingsPage — setup checklist uncramp + re-invoke (Plan B Task
     railState.value = { mode: "banner" };
     entLoading.value = true;
     renderWithProviders(<ShowsBookingsPage />);
-    await screen.findByText("Future Show");
+    await screen.findByTestId("calendar-surface");
     expect(screen.queryByText(/get bookings running/i)).not.toBeInTheDocument();
   });
 
@@ -292,7 +327,7 @@ describe("ShowsBookingsPage — setup checklist uncramp + re-invoke (Plan B Task
     railState.value = { mode: "collapsed" };
     localStorage.setItem("showflow.bookingSetup.hidden.org-1", "true");
     renderWithProviders(<ShowsBookingsPage />);
-    await screen.findByText("Future Show");
+    await screen.findByTestId("calendar-surface");
     expect(screen.queryByRole("button", { name: /setup checklist/i })).not.toBeInTheDocument();
     expect(screen.queryByText(/get bookings running/i)).not.toBeInTheDocument();
     expect(await screen.findByText(/set up in progress/i)).toBeInTheDocument();

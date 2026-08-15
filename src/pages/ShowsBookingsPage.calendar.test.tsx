@@ -1,18 +1,15 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { screen, fireEvent, waitFor } from "@testing-library/react";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import { createFakeSupabase, type RecordedCall } from "@/test/supabaseFake";
 
 /**
- * Milestone 1 Task 4: the bookings-list row peek. Space opens a popover
- * summarizing the date's fill (reusing the real per-status counts + the real
- * computeDatePeek + RowPeek), Enter still opens the full ShowDateDetailSheet,
- * and the peek's Confirm action bulk-confirms the date's soft_booked bookings
- * via the real bulkConfirmSoftBooked data-access function.
- *
- * Mirrors the mocking scaffold in ShowsBookingsPage.test.tsx, with one
- * addition: the supabase client is a real call-recording fake (not a no-op
- * stand-in), because Confirm exercises real reads/writes on `bookings`.
+ * Task 16: ProducerShowsBookings renders `<CalendarSurface role="producer">`
+ * in place of the old table/EntityCalendar + `ViewToggle`, wired to the real
+ * data-access functions (not re-implemented in the test — the confirm-holds
+ * flow below exercises the actual `fetchSoftBookedIdsForDate`/
+ * `bulkConfirmSoftBooked` calls against a call-recording fake Supabase
+ * client, mirroring what the old row-peek test covered for the table).
  */
 
 const SHOW_DATE = {
@@ -23,10 +20,10 @@ const SHOW_DATE = {
   city: null,
 };
 
-// counts -> computeDatePeek({confirmedMain:2, acceptedUs:2}, {main_cast:4, understudies:2})
-// = "2 accepted waiting on you · 2 main slots open", at-risk, confirmable, acceptedWaiting 2.
+// acceptedMain: 2 -> ProducerDateEntry.acceptedMain > 0, so the Month lens's
+// DayRail defaults its primary action to "Confirm holds" for this date.
 const COUNTS = new Map([
-  ["sd-1", { confirmedMain: 2, confirmedUs: 0, acceptedMain: 0, acceptedUs: 2, pendingMain: 0, pendingUs: 0, total: 4 }],
+  ["sd-1", { confirmedMain: 1, confirmedUs: 0, acceptedMain: 2, acceptedUs: 0, pendingMain: 0, pendingUs: 0, total: 4 }],
 ]);
 
 const { client } = vi.hoisted(() => ({ client: {} as Record<string, unknown> }));
@@ -56,11 +53,8 @@ vi.mock("@/data/bookings", async (orig) => ({
 vi.mock("@/components/filters/useFilterVisibility", () => ({
   useFilterVisibility: () => ({ canSee: () => true, isAdmin: true }),
 }));
-vi.mock("@/hooks/useBookingFlow", () => ({
-  useReferenceField: () => ({ reference: { source: "show" }, customFieldKey: null }),
-}));
 vi.mock("@/hooks/useEntitlements", () => ({
-  // booking_flow on so the peek's Confirm is offered; hire_orders off.
+  // booking_flow on so Confirm holds is offered; hire_orders off.
   useFeature: (f: string) => f === "booking_flow",
   useEntitlements: () => ({ features: new Set(["booking_flow"]), isLoading: false }),
 }));
@@ -81,9 +75,6 @@ vi.mock("@/hooks/useBookingSetup", () => ({
     status: blankOrgStatus(),
     coverage: undefined, isLoading: false, isError: false,
   }),
-  // The banner rail now also reads this for the admin-only team nudge; this page's role is
-  // producer throughout (see the useAuth mock above), so it is always called disabled and
-  // only needs to exist here, not vary.
   useProducerCount: () => null,
 }));
 vi.mock("@/hooks/useHireOrders", () => ({
@@ -91,24 +82,8 @@ vi.mock("@/hooks/useHireOrders", () => ({
   useHireOrderAction: () => ({ mutate: vi.fn(), isPending: false, variables: undefined }),
 }));
 vi.mock("@/features/editor/EditorContext", () => ({
-  useColumnTemplate: () => ({
-    orderedColumns: [
-      { columnId: "show_dates.date", visible: true, order: 0 },
-      { columnId: "shows.program", visible: true, order: 1 },
-      { columnId: "show_dates.venue", visible: true, order: 2 },
-    ],
-    visibleCount: 3,
-  }),
   useEditorConfig: () => ({ isEditorMode: false, getColumnLabel: (id: string) => id, getCustomFieldDefs: () => [] }),
 }));
-vi.mock("@/features/editor/useColumnHeaders", () => ({
-  useColumnHeaders: () => [
-    { columnId: "show_dates.date", headerLabel: "Date" },
-    { columnId: "shows.program", headerLabel: "Program" },
-    { columnId: "show_dates.venue", headerLabel: "Venue" },
-  ],
-}));
-vi.mock("@/features/editor/ColumnLayoutEditor", () => ({ ColumnLayoutEditor: () => null }));
 vi.mock("@/components/shows/ShowDateDetailSheet", () => ({
   ShowDateDetailSheet: ({ showDateId, open }: { showDateId: string | null; open: boolean }) => (
     <div data-testid="detail-sheet" data-show-date-id={showDateId ?? ""} data-open={String(open)} />
@@ -134,67 +109,38 @@ beforeEach(() => {
   localStorage.clear();
   vi.clearAllMocks();
   seedClient({});
+  // Pin "today" inside SHOW_DATE's month — the surface defaults to the current
+  // real month (no `today` override is threaded from the page), so the fixture
+  // date must fall within it to render as a chip.
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2030-03-10T12:00:00"));
+});
+afterEach(() => {
+  vi.useRealTimers();
 });
 
-describe("ShowsBookingsPage row peek (Milestone 1 Task 4)", () => {
-  it("Space opens the peek with the real per-date summary; Enter opens the full sheet", async () => {
+describe("ShowsBookingsPage — producer calendar surface (Task 16)", () => {
+  it("renders the CalendarSurface's Month lens and drops the old list/calendar ViewToggle", async () => {
     renderWithProviders(<ShowsBookingsPage />);
-    const cell = await screen.findByText("Nutcracker");
-    const row = cell.closest("tr")!;
-
-    fireEvent.keyDown(row, { key: " " });
-    expect(await screen.findByText("2 accepted waiting on you · 2 main slots open")).toBeInTheDocument();
-
-    fireEvent.keyDown(row, { key: "Enter" });
-    const sheet = screen.getByTestId("detail-sheet");
-    expect(sheet.getAttribute("data-show-date-id")).toBe("sd-1");
-    expect(sheet.getAttribute("data-open")).toBe("true");
-    // Enter closes the peek on its way to the full sheet.
-    expect(screen.queryByText("2 accepted waiting on you · 2 main slots open")).not.toBeInTheDocument();
+    expect(await screen.findByTestId("calendar-surface")).toBeInTheDocument();
+    expect(screen.getByTestId("month-grid")).toBeInTheDocument();
+    // The old view toggle offered "List"/"Calendar" buttons; the surface offers
+    // lens tabs ("Month"/"Agenda") instead.
+    expect(screen.queryByRole("button", { name: /^list$/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Month" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Agenda" })).toBeInTheDocument();
   });
 
-  it("Escape closes an open peek without opening the full sheet", async () => {
-    renderWithProviders(<ShowsBookingsPage />);
-    const cell = await screen.findByText("Nutcracker");
-    const row = cell.closest("tr")!;
-
-    fireEvent.keyDown(row, { key: " " });
-    expect(await screen.findByText("2 accepted waiting on you · 2 main slots open")).toBeInTheDocument();
-
-    fireEvent.keyDown(row, { key: "Escape" });
-    await waitFor(() =>
-      expect(screen.queryByText("2 accepted waiting on you · 2 main slots open")).not.toBeInTheDocument(),
-    );
-    expect(screen.getByTestId("detail-sheet").getAttribute("data-open")).toBe("false");
-  });
-
-  it("hover intent opens the peek after the delay and never steals focus onto the Confirm button", async () => {
-    // Guards the focus-steal fix: Radix would otherwise auto-focus the first
-    // tabbable element (Confirm) on open, so the hint's own 'Enter to open'
-    // would land on Confirm and bulk-confirm. onOpenAutoFocus preventDefault
-    // keeps focus off the destructive action.
-    renderWithProviders(<ShowsBookingsPage />);
-    const cell = await screen.findByText("Nutcracker");
-    const row = cell.closest("tr")!;
-
-    fireEvent.mouseEnter(row);
-    // Not immediate — the 250ms hover intent must elapse first.
-    expect(screen.queryByText("2 accepted waiting on you · 2 main slots open")).not.toBeInTheDocument();
-
-    // findBy polls (default 1s) until the hover-intent timer opens the peek.
-    const confirmBtn = await screen.findByRole("button", { name: /confirm 2/i });
-    expect(confirmBtn).toBeInTheDocument();
-    expect(document.activeElement).not.toBe(confirmBtn);
-  });
-
-  it("Confirm N bulk-confirms the date's soft_booked bookings and invalidates the bookings domain", async () => {
+  it("selecting the date's day and clicking the rail's Confirm holds bulk-confirms via the real data layer", async () => {
     seedClient({ bookings: { data: [{ id: "b1" }, { id: "b2" }], error: null } });
     renderWithProviders(<ShowsBookingsPage />);
-    const cell = await screen.findByText("Nutcracker");
-    const row = cell.closest("tr")!;
+    const chip = await screen.findByText("Nutcracker");
 
-    fireEvent.keyDown(row, { key: " " });
-    const confirmBtn = await screen.findByRole("button", { name: /confirm 2/i });
+    const cell = chip.closest('[data-testid^="month-grid-cell-"]')!;
+    fireEvent.click(cell);
+
+    const confirmBtn = await screen.findByTestId("day-rail-primary");
+    expect(confirmBtn).toHaveTextContent("Confirm holds");
     fireEvent.click(confirmBtn);
 
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Confirmed 2"));
@@ -211,5 +157,16 @@ describe("ShowsBookingsPage row peek (Milestone 1 Task 4)", () => {
 
     const inCall = calls.find((c) => c.table === "bookings" && c.method === "in");
     expect(inCall?.args).toEqual(["id", ["b1", "b2"]]);
+  });
+
+  it("double-clicking the date's day opens the full ShowDateDetailSheet", async () => {
+    renderWithProviders(<ShowsBookingsPage />);
+    const chip = await screen.findByText("Nutcracker");
+    const cell = chip.closest('[data-testid^="month-grid-cell-"]')!;
+
+    fireEvent.doubleClick(cell);
+    const sheet = screen.getByTestId("detail-sheet");
+    expect(sheet.getAttribute("data-show-date-id")).toBe("sd-1");
+    expect(sheet.getAttribute("data-open")).toBe("true");
   });
 });
