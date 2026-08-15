@@ -8,7 +8,7 @@ import type {
   Tone,
 } from '@/lib/calendar/types';
 import { PRODUCER_TONES, ARTIST_TONES, artistStatusLabel } from '@/lib/calendar/tone';
-import { periodLabel, periodWindow, shiftPeriod } from '@/lib/calendar/period';
+import { periodLabel, periodWindow, shiftPeriod, type LensPeriod } from '@/lib/calendar/period';
 import { resolveProducerPrimary } from '@/lib/calendar/producerPrimary';
 import { isPastDate, toDateKey } from '@/lib/dates';
 import { ROUTES } from '@/config/app.config';
@@ -18,6 +18,8 @@ import { LensTabs, type LensTabDef } from './LensTabs';
 import { CalendarToolbar } from './CalendarToolbar';
 import { PeriodNavigator } from './PeriodNavigator';
 import { MonthLens } from './MonthLens';
+import { WeekLens } from './WeekLens';
+import { SeasonLens } from './SeasonLens';
 import { AgendaLens, type AgendaAction } from './AgendaLens';
 import { OffersLens } from './OffersLens';
 import { AllDatesLens } from './AllDatesLens';
@@ -27,17 +29,17 @@ import { QueueRail, type QueueShortlistArtist } from './QueueRail';
 import type { NeedsYouGroupKey, NeedsYouItem, NeedsYouQueue } from '@/lib/calendar/needsYou';
 
 /**
- * Phase-1/2 lens sets (spec §2): producer gets Needs you + Month + Agenda
- * (Needs you first and default — spec §3), artist gets Offers + Month + All
- * dates. The later-phase producer lenses (Week / Season) are intentionally
- * not wired here — `LensTabs` renders whatever list it's given, so a later
- * wave only needs to extend these arrays and this component's per-lens
- * `activeLens === '<key>'` branches.
+ * Producer lens set (spec §2/§4): Needs you (first and default — spec §3),
+ * Month, Week, Season, Agenda. Artist gets Offers + Month + All dates.
+ * `LensTabs` renders whatever list it's given, so this function is the only
+ * place the producer tab order/membership is defined.
  */
 function producerLenses(needsYouQueue: NeedsYouQueue | undefined): LensTabDef[] {
   return [
     { key: 'needs-you', label: 'Needs you', count: needsYouQueue?.totalItems },
     { key: 'month', label: 'Month' },
+    { key: 'week', label: 'Week' },
+    { key: 'season', label: 'Season' },
     { key: 'agenda', label: 'Agenda' },
   ];
 }
@@ -141,6 +143,10 @@ interface CalendarSurfaceProps {
    *  footer. Omitted renders an empty receipts list. */
   clearedToday?: { dateId: string; title: string; label: string }[];
   onUndoLastReceipt?: () => void;
+  /** Date ids ready to issue a hire order, threaded straight to `SeasonLens`'s
+   *  KPI computation. Ignored for `role="artist"` and outside the Season
+   *  lens. Default: empty (no dates flagged ready). */
+  seasonReadyIds?: Set<string>;
   className?: string;
 }
 
@@ -197,6 +203,7 @@ export function CalendarSurface({
   queueShortlist = null,
   clearedToday = [],
   onUndoLastReceipt,
+  seasonReadyIds = new Set(),
   className,
 }: CalendarSurfaceProps) {
   const now = useMemo(() => today ?? new Date(), [today]);
@@ -207,6 +214,8 @@ export function CalendarSurface({
   const lenses = role === 'producer' ? producerLenses(needsYouQueue) : ARTIST_LENSES;
   const defaultLensKey = role === 'producer' ? 'needs-you' : 'offers';
   const activeLens = lenses.some((l) => l.key === lens) ? lens : defaultLensKey;
+  const activePeriod: LensPeriod =
+    activeLens === 'week' ? 'week' : activeLens === 'season' ? 'season' : 'month';
 
   const resolvedEyebrow = eyebrow ?? (role === 'producer' ? 'BOOKINGS' : 'AVAILABILITY');
   const resolvedTitle = title ?? (role === 'producer' ? 'Shows & bookings' : 'Your calendar');
@@ -340,12 +349,12 @@ export function CalendarSurface({
         <LensTabs lenses={lenses} active={activeLens} onChange={onLensChange} />
       </CalendarSurfaceHeader>
 
-      {(activeLens === 'month' || activeLens === 'agenda') && (
+      {(activeLens === 'month' || activeLens === 'week' || activeLens === 'season' || activeLens === 'agenda') && (
         <CalendarToolbar>
           <PeriodNavigator
-            label={periodLabel(anchor, 'month')}
-            onPrev={() => setAnchor((a) => shiftPeriod(a, 'month', -1))}
-            onNext={() => setAnchor((a) => shiftPeriod(a, 'month', 1))}
+            label={periodLabel(anchor, activePeriod)}
+            onPrev={() => setAnchor((a) => shiftPeriod(a, activePeriod, -1))}
+            onNext={() => setAnchor((a) => shiftPeriod(a, activePeriod, 1))}
             onToday={() => {
               setAnchor(now);
               setSelectedDay(now);
@@ -405,6 +414,22 @@ export function CalendarSurface({
         </div>
       ) : (
         <div className="w-full">
+          {activeLens === 'week' && (
+            <WeekLens
+              entries={producerEntries}
+              anchor={anchor}
+              onOpenEntry={(entryId) => actions.openDate?.(entryId)}
+              today={now}
+            />
+          )}
+          {activeLens === 'season' && (
+            <SeasonLens
+              entries={producerEntries}
+              anchor={anchor}
+              readyIds={seasonReadyIds}
+              onOpenDate={(dateId) => actions.openDate?.(dateId)}
+            />
+          )}
           {activeLens === 'agenda' && (
             <AgendaLens
               entries={agendaEntries}

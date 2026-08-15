@@ -762,6 +762,90 @@ describe('CalendarSurface — period navigator visibility', () => {
   });
 });
 
+describe('CalendarSurface — Week + Season lenses', () => {
+  it('producer lens order is Needs you, Month, Week, Season, Agenda', () => {
+    render(
+      <CalendarSurface
+        role="producer"
+        producerEntries={[producerEntry()]}
+        actions={noopActions()}
+        lens="month"
+        onLensChange={vi.fn()}
+        today={TODAY}
+      />
+    );
+    const tabs = screen.getAllByRole('tab');
+    const keys = tabs.map((t) => t.getAttribute('data-testid'));
+    expect(keys).toEqual([
+      'lens-tab-needs-you',
+      'lens-tab-month',
+      'lens-tab-week',
+      'lens-tab-season',
+      'lens-tab-agenda',
+    ]);
+  });
+
+  it('lens="week": WeekLens time grid renders, and the PeriodNavigator shows the week label and advances by a week on Next', () => {
+    const entry = producerEntry({ date: TODAY, session1: '19:00' });
+    render(
+      <CalendarSurface
+        role="producer"
+        producerEntries={[entry]}
+        actions={noopActions()}
+        lens="week"
+        onLensChange={vi.fn()}
+        today={TODAY}
+      />
+    );
+
+    expect(screen.getByTestId('lens-tab-week')).toHaveAttribute('data-active', 'true');
+    expect(screen.getByTestId('week-lens')).toBeInTheDocument();
+    expect(screen.getByTestId('week-column-2026-08-15')).toBeInTheDocument();
+    expect(screen.queryByTestId('day-rail')).not.toBeInTheDocument();
+
+    expect(screen.getByTestId('period-navigator-pill')).toHaveTextContent('10 Aug - 16 Aug 2026');
+
+    fireEvent.click(screen.getByTestId('period-navigator-next'));
+    expect(screen.getByTestId('period-navigator-pill')).toHaveTextContent('17 Aug - 23 Aug 2026');
+  });
+
+  it('lens="season": SeasonLens renders and the PeriodNavigator shows the season label', () => {
+    const entry = producerEntry({ date: TODAY });
+    render(
+      <CalendarSurface
+        role="producer"
+        producerEntries={[entry]}
+        actions={noopActions()}
+        lens="season"
+        onLensChange={vi.fn()}
+        today={TODAY}
+      />
+    );
+
+    expect(screen.getByTestId('lens-tab-season')).toHaveAttribute('data-active', 'true');
+    expect(screen.getByTestId('season-lens')).toBeInTheDocument();
+    expect(screen.queryByTestId('day-rail')).not.toBeInTheDocument();
+    expect(screen.getByTestId('period-navigator-pill')).toHaveTextContent('Aug - Oct 2026');
+  });
+
+  it('week/season lens clicks fire actions.openDate with the entry id', () => {
+    const actions = noopActions();
+    const entry = producerEntry({ id: 'pd-week', date: TODAY, session1: '19:00' });
+    render(
+      <CalendarSurface
+        role="producer"
+        producerEntries={[entry]}
+        actions={actions}
+        lens="week"
+        onLensChange={vi.fn()}
+        today={TODAY}
+      />
+    );
+    fireEvent.click(screen.getByTestId('week-block-pd-week-1'));
+    expect(actions.openDate).toHaveBeenCalledWith('pd-week');
+  });
+});
+
 describe('CalendarSurface — agenda is period-windowed', () => {
   it('clicking Prev swaps the agenda body to the previous month', () => {
     const augEntry = producerEntry({ id: 'pd-aug', date: new Date(2026, 7, 10) });
