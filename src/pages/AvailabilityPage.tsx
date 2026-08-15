@@ -19,10 +19,11 @@ import { useMyHireOrders } from '@/hooks/useHireOrders';
 import { UnlinkedArtistCard } from '@/components/artists/UnlinkedArtistCard';
 import { CalendarSurface } from '@/components/calendar/surface/CalendarSurface';
 import { toArtistEntries } from '@/lib/calendar/artistData';
-import type { ArtistStatus } from '@/lib/calendar/types';
+import type { ArtistDateEntry, ArtistStatus } from '@/lib/calendar/types';
 import { respondToOffer } from '@/data/bookings';
+import { fetchMyActiveBookedDates } from '@/data/artists';
 import { acceptConsequenceNote } from '@/lib/bookings/actionCopy';
-import { formatDateDMY, formatDayMonthShortYear, toDateKey } from '@/lib/dates';
+import { formatDateDMY, formatDayMonthShortYear, parseDateOnly, toDateKey } from '@/lib/dates';
 import { useBookingFlow, useFlowTimes } from '@/hooks/useBookingFlow';
 import { BOOKING_FLOW_DEFAULTS } from '@/lib/bookingFlow';
 import { describeTonightStandalone } from '@/lib/bookings/timingCopy';
@@ -55,6 +56,7 @@ function ArtistAvailability() {
   const { data: artist } = useMyArtist();
   const { data: eligibleDates, isLoading } = useArtistEligibleDates();
   const hireOrdersEnabled = useFeature('hire_orders');
+  const bookingFlowEnabled = useFeature('booking_flow');
   const flowQ = useBookingFlow();
   const flow = flowQ.data ?? BOOKING_FLOW_DEFAULTS;
   const orgId = currentOrg?.id ?? null;
@@ -194,10 +196,38 @@ function ArtistAvailability() {
     return m;
   }, [myHireOrders, hireOrdersEnabled]);
 
-  const artistEntries = useMemo(
-    () => toArtistEntries(eligibleDates ?? [], statusByDateId, blockedSet, hireOrderByDateId),
-    [eligibleDates, statusByDateId, blockedSet, hireOrderByDateId]
+  // Past (and any other out-of-eligible-window) active bookings — merged into
+  // `artistEntries` below so a booking whose show_date `useArtistEligibleDates`
+  // silently drops (it's upcoming-only) still renders, with its hire-order
+  // link intact. Mirrors ArtistBookingsView's identical query + gate.
+  const { data: activeBookedDates } = useQuery({
+    queryKey: ['bookings', 'artist-active-booked', artist?.id],
+    enabled: !!artist?.id && bookingFlowEnabled,
+    queryFn: () => fetchMyActiveBookedDates(supabase, artist!.id),
+  });
+
+  const pastBookedEntries = useMemo<ArtistDateEntry[]>(
+    () =>
+      (activeBookedDates ?? []).map((b) => ({
+        id: b.id,
+        date: parseDateOnly(b.date),
+        bookingId: null,
+        program: b.show?.program ?? '',
+        subProgram: b.show?.sub_program ?? null,
+        venue: b.venue,
+        city: null,
+        session1: b.session_1,
+        myStatus: b.status as ArtistStatus,
+        hireOrderId: hireOrderByDateId.get(b.id) ?? null,
+      })),
+    [activeBookedDates, hireOrderByDateId]
   );
+
+  const artistEntries = useMemo(() => {
+    const eligibleEntries = toArtistEntries(eligibleDates ?? [], statusByDateId, blockedSet, hireOrderByDateId);
+    const seen = new Set(eligibleEntries.map((e) => e.id));
+    return [...eligibleEntries, ...pastBookedEntries.filter((e) => !seen.has(e.id))];
+  }, [eligibleDates, statusByDateId, blockedSet, hireOrderByDateId, pastBookedEntries]);
 
   // Auto-confirm on accept when the org's flow skips producer confirmation —
   // mirrors OfferResponseButtons' derivation (same default-true fallback).
