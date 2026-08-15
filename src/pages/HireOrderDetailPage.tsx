@@ -216,7 +216,7 @@ function HireOrderDetail({
   order, canManage, canManageCountersign, canSign, orgId, isElectronic, navigateBack, onEdit, onDownload, downloadBusy,
   onCountersign, countersignBusy, pdfUrl, pdfUrlLoading, pdfUrlError, hasPdf,
 }: DetailProps) {
-  const { t } = useTranslation("hireOrdersPages");
+  const { t, i18n } = useTranslation("hireOrdersPages");
   const [signOpen, setSignOpen] = useState(false);
   const data = (order.data ?? {}) as OrderData;
   const artistName = order.artists?.name || snap(data, "artist_name") || t("common.unknownArtist");
@@ -226,7 +226,7 @@ function HireOrderDetail({
   const durationRaw = snap(data, "duration_min");
   const duration = durationRaw ? t("common.minutes", { value: durationRaw }) : null;
   const sessions = snap(data, "sessions") || null;
-  const fee = order.fee_amount != null ? formatMoney(order.fee_amount, order.fee_currency) : null;
+  const fee = order.fee_amount != null ? formatMoney(order.fee_amount, order.fee_currency, i18n.language) : null;
 
   const subtitleParts = [
     <span key="no" className="font-mono">{order.order_no}</span>,

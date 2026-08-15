@@ -25,7 +25,7 @@ export interface OrderKpiStats {
  * rendering a single-currency sum would be silently wrong, so each currency's
  * subtotal is shown instead, joined with " + " (e.g. "€3,000.00 + $1,200.00").
  */
-export function computeOrderKpis(orders: HireOrderListRow[]): OrderKpiStats {
+export function computeOrderKpis(orders: HireOrderListRow[], locale?: string): OrderKpiStats {
   const issuedCount = orders.filter((o) => o.status === "issued" || o.status === "countersigned").length;
   const awaitingCount = orders.filter((o) => o.status === "issued").length;
   const countersignedCount = orders.filter((o) => o.status === "countersigned").length;
@@ -38,8 +38,8 @@ export function computeOrderKpis(orders: HireOrderListRow[]): OrderKpiStats {
   const currencyTotals = Array.from(totalsByCurrency.entries());
   const valueCommitted =
     currencyTotals.length > 1
-      ? currencyTotals.map(([currency, amount]) => formatMoney(amount, currency)).join(" + ")
-      : formatMoney(currencyTotals[0]?.[1] ?? 0, currencyTotals[0]?.[0] ?? orders[0]?.fee_currency ?? "EUR");
+      ? currencyTotals.map(([currency, amount]) => formatMoney(amount, currency, locale)).join(" + ")
+      : formatMoney(currencyTotals[0]?.[1] ?? 0, currencyTotals[0]?.[0] ?? orders[0]?.fee_currency ?? "EUR", locale);
   return {
     totalCount: orders.length,
     issuedCount,

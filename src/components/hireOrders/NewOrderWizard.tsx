@@ -223,7 +223,10 @@ function MultiPickerCombobox<T extends { id: string }>({
  * that was created successfully.
  */
 export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
-  const { t } = useTranslation("hireOrdersPages");
+  const { t, i18n } = useTranslation("hireOrdersPages");
+  // Fee previews format in the viewer's language (separators only; the currency symbol is
+  // fixed). The edge PDF renderer keeps formatMoney's en-US default.
+  const money = (amount: string | number, currency: string) => formatMoney(amount, currency, i18n.language);
   const navigate = useNavigate();
   const { data: artists = [] } = useArtistsLite(orgId);
   const { data: showDates = [] } = useShowDatesLite(orgId);
@@ -522,15 +525,15 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
 
   function feeSummaryText(): string {
     if (feeAmountNum === null) return t("wizard.fee.notSet");
-    const unit = formatMoney(feeAmountNum, currency);
+    const unit = money(feeAmountNum, currency);
     if (feeBasis === "total") return t("wizard.fee.total", { unit });
     if (maxDateCount === 1 && minDateCount === 1) return t("wizard.fee.perDate", { unit });
     if (minDateCount === maxDateCount) {
-      const total = formatMoney(computeFeeTotal(feeAmountNum, maxDateCount, "per_date"), currency);
+      const total = money(computeFeeTotal(feeAmountNum, maxDateCount, "per_date"), currency);
       return t("wizard.fee.perDateTotal", { unit, count: maxDateCount, total });
     }
-    const low = formatMoney(computeFeeTotal(feeAmountNum, minDateCount, "per_date"), currency);
-    const high = formatMoney(computeFeeTotal(feeAmountNum, maxDateCount, "per_date"), currency);
+    const low = money(computeFeeTotal(feeAmountNum, minDateCount, "per_date"), currency);
+    const high = money(computeFeeTotal(feeAmountNum, maxDateCount, "per_date"), currency);
     return t("wizard.fee.perDateRange", { unit, low, high });
   }
 
@@ -542,10 +545,10 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
   // via computeFeeTotal (never inline multiplication).
   function artistFeeLine(dateCount: number): string {
     if (feeAmountNum === null) return t("wizard.fee.notSet");
-    const unit = formatMoney(feeAmountNum, currency);
+    const unit = money(feeAmountNum, currency);
     if (feeBasis === "total") return t("wizard.fee.total", { unit });
     if (dateCount <= 1) return t("wizard.fee.perDate", { unit });
-    const total = formatMoney(computeFeeTotal(feeAmountNum, dateCount, "per_date"), currency);
+    const total = money(computeFeeTotal(feeAmountNum, dateCount, "per_date"), currency);
     return t("wizard.fee.perDateTotal", { unit, count: dateCount, total });
   }
 

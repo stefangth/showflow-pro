@@ -82,6 +82,7 @@ const IDENTICAL_OK: Record<string, string> = {
   'settingsRolesRights.tab.presets.standard': '"Standard" is identical in German',
   'settingsRolesRights.editingPicker.productionTeam': 'role label "Production Team" kept untranslated',
   'settingsRolesRights.changeLog.transition': 'interpolation + arrow only ("{{from}} -> {{to}}")',
+  'settingsRolesRights.capabilityGroups.artists': 'role noun "Artists" kept untranslated (TERMS convention)',
 
   // admin
   'admin.bulk.placeholder': 'example email addresses only (alex@email.com / sam@email.com)',

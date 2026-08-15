@@ -49,7 +49,7 @@ interface Props {
  * so toggling selection (mouse or keyboard) never also opens the row.
  */
 export function OrdersTable({ orders, orgId, onRowClick }: Props) {
-  const { t } = useTranslation("hireOrdersPages");
+  const { t, i18n } = useTranslation("hireOrdersPages");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [batchOpen, setBatchOpen] = useState(false);
   const action = useHireOrderAction();
@@ -198,7 +198,7 @@ export function OrdersTable({ orders, orgId, onRowClick }: Props) {
                     {o.show_dates?.date ? formatDateDMY(o.show_dates.date) : t("common.notSet")}
                   </TableCell>
                   <TableCell className="text-right font-mono tabular-nums text-sm">
-                    {o.fee_amount != null ? formatMoney(o.fee_amount, o.fee_currency) : t("common.notSet")}
+                    {o.fee_amount != null ? formatMoney(o.fee_amount, o.fee_currency, i18n.language) : t("common.notSet")}
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1.5">
