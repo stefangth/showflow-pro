@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { useBookingFlow, useFlowTimes } from "@/hooks/useBookingFlow";
 import { describeTonightStandalone } from "@/lib/bookings/timingCopy";
 
@@ -29,6 +30,7 @@ import { describeTonightStandalone } from "@/lib/bookings/timingCopy";
  * has not identified.
  */
 export function TonightNote({ orgId }: { orgId: string | null }) {
+  const { t: tBooking } = useTranslation("bookingCopy");
   const flowQ = useBookingFlow(orgId);
   const flow = orgId ? flowQ.data : null;
   const { data: times } = useFlowTimes(orgId);
@@ -37,7 +39,7 @@ export function TonightNote({ orgId }: { orgId: string | null }) {
   // substituted here, for the same reason TimingStep withholds its inputs until the read
   // lands: 19:00 and 20:00 are not this org's hours until the org says so.
   if (!times) return null;
-  const line = describeTonightStandalone(times, flow);
+  const line = describeTonightStandalone(times, flow, tBooking);
   if (!line) return null;
   return (
     <div className="border-t border-border px-4 py-3">

@@ -19,7 +19,10 @@
 // the panel a second time. Both halves of that are pinned in timingCopy.test.ts, and the
 // panel is checked for exactly one mention in TimingStep.test.tsx.
 
+import type { TFunction } from "i18next";
 import { berlinTime, type BookingFlow, type FlowTimes } from "@/lib/bookingFlow";
+
+type BookingT = TFunction<"bookingCopy">;
 
 /** The flow fields that change what is true about the coming night. */
 export type TonightFlow = Pick<
@@ -40,10 +43,9 @@ export const isValidDigestHour = (h: number) => Number.isInteger(h) && h >= 0 &&
 export const isValidWindowHours = (h: number) => Number.isInteger(h) && h >= 1;
 
 /** The one message stating those bounds, kept next to the bounds themselves. */
-export const TIMING_BOUNDS_ERROR =
-  "Enter a window of at least 1 hour and digest hours between 0 and 23.";
-
-const BERLIN = "Digest times include their timezone.";
+export function timingBoundsError(t: BookingT): string {
+  return t("timingCopy.boundsError");
+}
 
 /** The same fact for one hour. `BERLIN` is plural because `timingScopeNote` prints it over
  *  the panel's three hour INPUTS, which is right there and wrong on a surface that has no
@@ -82,13 +84,12 @@ export function berlinNoteFor(line: string): string | null {
  * `b.artists?.user_id`. And what arrives at this hour is the NOTIFICATION: the change itself
  * is live in their schedule the moment it is saved, so "sees the change" would be wrong
  * where "is notified" is right.
+ *
+ * The string lives at `timingCopy.scope.confirmationHourStillLive`.
  */
-const CONFIRMATION_HOUR_STILL_LIVE =
-  "The confirmation hour still runs: it sets when booked artists are notified of schedule changes in the app.";
 
-/** The two fields a direct-book org can edit all day without changing anything. */
-const DIRECT_BOOK_DEAD_FIELDS =
-  "You book artists directly, so the offer window and the offer digest hour change nothing.";
+/** The two fields a direct-book org can edit all day without changing anything.
+ *  The string lives at `timingCopy.scope.directBookDeadFields`. */
 
 /**
  * The one line this panel can always print, whatever the flow.
@@ -106,7 +107,8 @@ const DIRECT_BOOK_DEAD_FIELDS =
  * only line the panel always prints, so it is where the timezone for the three hour inputs
  * (and for `describeTonight`, which no longer repeats it) is established.
  */
-export function timingScopeNote(flow: TonightFlow | null | undefined): string {
+export function timingScopeNote(flow: TonightFlow | null | undefined, t: BookingT): string {
+  const BERLIN = t("timingCopy.scope.berlin");
   // Unknown flow: state only the timezone. Same rule as describeTonight, which refuses to
   // narrate a flow it has not read rather than assume the classic one.
   if (!flow) return BERLIN;
@@ -118,7 +120,7 @@ export function timingScopeNote(flow: TonightFlow | null | undefined): string {
   // false and reads as the whole app to a first-run admin: hire-order issue mail, org
   // invitations and chat notifications all keep going out while the booking flow is off.
   if (flow.active === false) {
-    return `${BERLIN} These hours change nothing while the booking flow is off.`;
+    return `${BERLIN} ${t("timingCopy.scope.offNote")}`;
   }
   const parts = [BERLIN];
   if (!flow.artist_acceptance) {
@@ -143,17 +145,17 @@ export function timingScopeNote(flow: TonightFlow | null | undefined): string {
     // them is also not this function's job: it takes no times and no tier data on purpose,
     // and a sentence about leftover offers would be a puzzle for the many direct-book orgs
     // that never ran a tier at all.
-    parts.push(DIRECT_BOOK_DEAD_FIELDS);
+    parts.push(t("timingCopy.scope.directBookDeadFields"));
     // The contrast, but only where it is the whole truth. With the digest ON the third
     // field's job is stated by `describeTonight` right underneath ("the confirmation digest
     // at 20:00"), so this names it live and stops.
-    if (flow.confirmation_digest) parts.push("Only the confirmation hour is live.");
+    if (flow.confirmation_digest) parts.push(t("timingCopy.scope.onlyConfirmationLive"));
   }
   // Digest off, under EITHER flow: the panel would otherwise leave the "Confirmations"
   // input unexplained (describeTonight drops its confirmation clause with the digest off,
   // and for a direct-book org falls silent entirely) while that hour still times the in-app
   // schedule-change notifications. See CONFIRMATION_HOUR_STILL_LIVE for the code path.
-  if (!flow.confirmation_digest) parts.push(CONFIRMATION_HOUR_STILL_LIVE);
+  if (!flow.confirmation_digest) parts.push(t("timingCopy.scope.confirmationHourStillLive"));
   return parts.join(" ");
 }
 
@@ -189,13 +191,17 @@ export function timingScopeNote(flow: TonightFlow | null | undefined): string {
  * an org still in setup has no open tier, so nothing is queued for tonight regardless of
  * the hours, and after the digest hour "tonight" is already past.
  */
-export function describeTonight(times: FlowTimes, flow: TonightFlow | null | undefined): string | null {
+export function describeTonight(
+  times: FlowTimes,
+  flow: TonightFlow | null | undefined,
+  t: BookingT,
+): string | null {
   if (!flow) return null;
   if (flow.active === false) return null;
   if (!flow.artist_acceptance) {
     if (!flow.confirmation_digest) return null;
     if (!isValidDigestHour(times.confirmationDigestHour)) return null;
-    return `Newly confirmed artists get the confirmation digest at ${berlinTime(times.confirmationDigestHour)}.`;
+    return t("timingCopy.tonight.directConfirm", { time: berlinTime(times.confirmationDigestHour) });
   }
   if (!isValidWindowHours(times.windowHours)) return null;
 
@@ -205,14 +211,19 @@ export function describeTonight(times: FlowTimes, flow: TonightFlow | null | und
   if (digest && !isValidDigestHour(times.offerDigestHour)) return null;
   if (flow.confirmation_digest && !isValidDigestHour(times.confirmationDigestHour)) return null;
 
-  const opening = digest
-    ? `When a tier opens, offers go out in the next ${berlinTime(times.offerDigestHour)} digest.`
-    : "When a tier opens, offers email straight away.";
-  const window = `${times.windowHours} hour${times.windowHours === 1 ? "" : "s"}`;
-  const tail = flow.confirmation_digest
-    ? `, and confirmations mail at ${berlinTime(times.confirmationDigestHour)}.`
-    : ".";
-  return `${opening} Artists get ${window} to answer${tail}`;
+  // Four full sentences (delivery digest|immediate x confirmation on|off), each pluralised on
+  // the window count. Whole sentences, not concatenated fragments, so i18n renders them
+  // correctly in either language.
+  const count = times.windowHours;
+  if (digest) {
+    const offerTime = berlinTime(times.offerDigestHour);
+    return flow.confirmation_digest
+      ? t("timingCopy.tonight.digestConfirm", { count, offerTime, time: berlinTime(times.confirmationDigestHour) })
+      : t("timingCopy.tonight.digestNoConfirm", { count, offerTime });
+  }
+  return flow.confirmation_digest
+    ? t("timingCopy.tonight.immediateConfirm", { count, time: berlinTime(times.confirmationDigestHour) })
+    : t("timingCopy.tonight.immediateNoConfirm", { count });
 }
 
 /**
@@ -234,8 +245,9 @@ export function describeTonight(times: FlowTimes, flow: TonightFlow | null | und
 export function describeTonightStandalone(
   times: FlowTimes,
   flow: TonightFlow | null | undefined,
+  t: BookingT,
 ): string | null {
-  const line = describeTonight(times, flow);
+  const line = describeTonight(times, flow, t);
   if (!line) return null;
   const note = berlinNoteFor(line);
   return note ? `${line} ${note}` : line;

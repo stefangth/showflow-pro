@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { BOOKING_FLOW_DEFAULTS, type BookingFlow } from "@/lib/bookingFlow";
 import { BOOKING_ENGINE_DEFAULTS } from "@/config/app.config";
-import { confirmConsequenceNote, cancelBookingCopy, SOFT_BOOKED_MEANING } from "@/lib/bookings/actionCopy";
+import { confirmConsequenceNote, cancelBookingCopy, softBookedMeaning } from "@/lib/bookings/actionCopy";
 
 export type CastTone = "green" | "violet" | "amber";
 
@@ -76,12 +76,13 @@ const STATUS_BADGE_BASE = "rounded-[var(--radius-xs)] px-2 py-[3px] text-xs font
 
 function StatusBadge({ status }: { status: NonNullable<CastRow["status"]> }) {
   const { t } = useTranslation("showsDetail");
+  const { t: tAction } = useTranslation("bookingCopy");
   if (status === "accepted") {
     // "Accepted" is the cockpit's label for a soft_booked row: the artist said yes, but
     // nothing is booked until a producer confirms it — SOFT_BOOKED_MEANING spells that out
     // for anyone who reads "Accepted" as already-booked.
     return (
-      <IconTooltip label={SOFT_BOOKED_MEANING}>
+      <IconTooltip label={softBookedMeaning(tAction)}>
         <span className={cn(STATUS_BADGE_BASE, "bg-accent-100 text-accent-700")}>{t("cockpitCastList.accepted")}</span>
       </IconTooltip>
     );
@@ -108,6 +109,7 @@ function Row({
   confirmationDigestHour: number;
 }) {
   const { t } = useTranslation("showsDetail");
+  const { t: tAction } = useTranslation("bookingCopy");
   const [cancelOpen, setCancelOpen] = useState(false);
   // Only an explicit active===false pauses promotion, matching the same convention used
   // throughout bookingFlow.ts and actionCopy.ts.
@@ -126,8 +128,9 @@ function Row({
         bookingFlowEnabled,
         flow,
         confirmationDigestHour,
+        t: tAction,
       }),
-    [row.name, understudyPromotionEnabled, bookingFlowEnabled, flow, confirmationDigestHour, t],
+    [row.name, understudyPromotionEnabled, bookingFlowEnabled, flow, confirmationDigestHour, t, tAction],
   );
 
   return (
@@ -236,6 +239,7 @@ export function CockpitCastList({
   bookingFlowEnabled = false,
   confirmationDigestHour = BOOKING_ENGINE_DEFAULTS.confirmation_digest_hour_berlin,
 }: CockpitCastListProps) {
+  const { t: tAction } = useTranslation("bookingCopy");
   // Rendered once for the whole list, not per row: every accepted row's Confirm button does
   // the same thing, so repeating this line once per row would just be noise.
   const hasConfirmable = groups.some((g) => g.rows.some((r) => r.status === "accepted" && r.onConfirm));
@@ -244,7 +248,7 @@ export function CockpitCastList({
     <div className="flex flex-col gap-4">
       {hasConfirmable && (
         <p className="text-xs text-muted-foreground">
-          {confirmConsequenceNote(flow, confirmationDigestHour, bookingFlowEnabled)}
+          {confirmConsequenceNote(flow, confirmationDigestHour, bookingFlowEnabled, tAction)}
         </p>
       )}
       {groups.map((g) => (

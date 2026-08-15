@@ -1,0 +1,48 @@
+{
+  "availabilityPage": {
+    "direct": {
+      "title": "Meine Termine",
+      "subtitle": "Deine Buchungen und Verfügbarkeit. Sperre Termine, an denen du nicht auftreten kannst."
+    },
+    "offer": {
+      "title": "Meine Angebote",
+      "subtitle": "Sieh dir deine Angebote an und sperre Termine, an denen du nicht verfügbar bist."
+    }
+  },
+  "bookingsView": {
+    "title": "Meine Buchungen",
+    "offerSubtitle": "Termine, für die du ein Angebot bekommen hast, basierend auf deiner Besetzungs-Eignung.",
+    "directSubtitle": "Termine, für die du gebucht bist, basierend auf deiner Besetzungs-Eignung."
+  },
+  "statusLabels": {
+    "offer": {
+      "suggested": "Angebot offen",
+      "soft_booked": "Vormerkung gesetzt",
+      "confirmed": "Bestätigt",
+      "unanswered": "Noch kein Angebot",
+      "cancelled": "Storniert"
+    },
+    "direct": {
+      "suggested": "Angebot offen",
+      "soft_booked": "Vormerkung gesetzt",
+      "confirmed": "Gebucht",
+      "unanswered": "Nicht gebucht",
+      "cancelled": "Storniert"
+    }
+  },
+  "meter": {
+    "offer": {
+      "title": "Antwortquote",
+      "headerSentence": "Deine Antwortquote bei Terminen, für die du ein Angebot bekommen hast.",
+      "footer": "Klicke, um offene Angebote zu sehen →",
+      "explainer": "Zählt Termine, die du angenommen hast oder für die du gebucht wurdest, von allen Terminen, für die du ein Angebot bekommen hast. Nur für dich, niemand wird damit bewertet."
+    },
+    "direct": {
+      "title": "Gebuchte Termine",
+      "headerSentence": "Dein gebuchter Anteil an den Terminen, für die du geeignet bist.",
+      "footer": "Klicke, um deine Termine zu sehen →",
+      "explainer": "Termine, für die du gebucht bist, von allen Terminen, für die du geeignet bist."
+    }
+  },
+  "deliveryHint": "Angebote werden den Artists sofort per E-Mail geschickt, wenn eine Stufe geöffnet wird."
+}

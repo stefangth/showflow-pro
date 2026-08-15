@@ -51,6 +51,10 @@ import enProfile from './locales/en/profile.json';
 import deProfile from './locales/de/profile.json';
 import enOnboarding from './locales/en/onboarding.json';
 import deOnboarding from './locales/de/onboarding.json';
+import enFlowCopy from './locales/en/flowCopy.json';
+import deFlowCopy from './locales/de/flowCopy.json';
+import enBookingCopy from './locales/en/bookingCopy.json';
+import deBookingCopy from './locales/de/bookingCopy.json';
 
 export const resources = {
   en: {
@@ -62,7 +66,7 @@ export const resources = {
     settingsEditor: enSettingsEditor,
     auth: enAuth, admin: enAdmin, artists: enArtists, productions: enProductions,
     hireOrdersPages: enHireOrdersPages, showsDetail: enShowsDetail, chats: enChats, profile: enProfile,
-    onboarding: enOnboarding,
+    onboarding: enOnboarding, flowCopy: enFlowCopy, bookingCopy: enBookingCopy,
   },
   de: {
     common: deCommon, help: deHelp, dashboard: deDashboard, bookings: deBookings, availability: deAvailability,
@@ -73,7 +77,7 @@ export const resources = {
     settingsEditor: deSettingsEditor,
     auth: deAuth, admin: deAdmin, artists: deArtists, productions: deProductions,
     hireOrdersPages: deHireOrdersPages, showsDetail: deShowsDetail, chats: deChats, profile: deProfile,
-    onboarding: deOnboarding,
+    onboarding: deOnboarding, flowCopy: deFlowCopy, bookingCopy: deBookingCopy,
   },
 } as const;
 
@@ -88,7 +92,7 @@ i18n.use(initReactI18next).init({
     'settingsAirtable', 'settingsBookingFlow', 'settingsHireOrders', 'settingsEmailTemplates',
     'settingsRolesRights', 'settingsEditor',
     'auth', 'admin', 'artists', 'productions', 'hireOrdersPages', 'showsDetail', 'chats', 'profile',
-    'onboarding',
+    'onboarding', 'flowCopy', 'bookingCopy',
   ],
   defaultNS: 'common',
   returnEmptyString: false,

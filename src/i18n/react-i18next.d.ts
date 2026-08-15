@@ -24,6 +24,8 @@ import type enShowsDetail from './locales/en/showsDetail.json';
 import type enChats from './locales/en/chats.json';
 import type enProfile from './locales/en/profile.json';
 import type enOnboarding from './locales/en/onboarding.json';
+import type enFlowCopy from './locales/en/flowCopy.json';
+import type enBookingCopy from './locales/en/bookingCopy.json';
 
 // Typed resources: `t('nav.help')` autocompletes and an unknown key is a compile error.
 // English is the canonical shape; the key-parity test enforces German matches it.
@@ -56,6 +58,8 @@ declare module 'react-i18next' {
       chats: typeof enChats;
       profile: typeof enProfile;
       onboarding: typeof enOnboarding;
+      flowCopy: typeof enFlowCopy;
+      bookingCopy: typeof enBookingCopy;
     };
   }
 }

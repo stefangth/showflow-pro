@@ -1,9 +1,12 @@
 import { describe, it, expect } from "vitest";
+import i18n from "@/i18n";
 import { buildActivity } from "./bookingCockpit";
+
+const t = i18n.getFixedT("en", "bookingCopy");
 
 describe("buildActivity", () => {
   it("derives confirmed-booking and tier open/close events, newest first, capped", () => {
-    const items = buildActivity({
+    const items = buildActivity({ t,
       bookings: [
         { status: "confirmed", confirmed_at: "2026-03-09T09:00:00Z", artist: { name: "Marek Kowalczyk" } },
         { status: "soft_booked", confirmed_at: null, artist: { name: "Lena Vogt" } }, // no event

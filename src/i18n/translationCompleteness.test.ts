@@ -136,7 +136,7 @@ describe('German catalog is translated (not English left in place)', () => {
     'settingsAirtable', 'settingsBookingFlow', 'settingsHireOrders', 'settingsEmailTemplates',
     'settingsRolesRights', 'settingsEditor',
     'auth', 'admin', 'artists', 'productions', 'hireOrdersPages', 'showsDetail', 'chats', 'profile',
-    'onboarding',
+    'onboarding', 'flowCopy', 'bookingCopy',
   ] as const) {
     it(`de differs from en for translatable keys in "${ns}"`, () => {
       const en = leaves(resources.en[ns]);

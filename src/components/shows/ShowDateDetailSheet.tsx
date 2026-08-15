@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { fetchCasts } from '@/data/casts';
@@ -39,7 +38,7 @@ import { useShowSlots } from '@/hooks/useShowSlots';
 import { useTierCastMap, useTierLadderCounts } from '@/hooks/useTierLadder';
 import { BOOKING_FLOW_DEFAULTS, referenceLabel, type FlowTimes } from '@/lib/bookingFlow';
 import { ROUTES, BOOKING_ENGINE_DEFAULTS } from '@/config/app.config';
-import { formatDateDMY, parseDateOnly } from '@/lib/dates';
+import { formatDateDMY, formatFullWeekdayDate } from '@/lib/dates';
 import {
   openOfferTier, fetchOfferTiers, fetchOpenedTiers, closeOfferTier,
   dryRunOfferTier, createBooking, updateBookingStatusGuarded, bulkConfirmSoftBooked,
@@ -183,6 +182,7 @@ interface ShowDateDetailRow {
 
 export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: Props) {
   const { t } = useTranslation('showsDetail');
+  const { t: tBooking } = useTranslation('bookingCopy');
   const { hasRole, user, roles, currentOrg } = useAuth();
   const { isEditorMode } = useEditorConfig();
   const isRealAdmin = roles.includes('admin');
@@ -673,6 +673,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: P
     nextTier,
     // RELABEL the CTA to the cast when the next tier resolves to a single one.
     nextTierCastName: nextTierTarget?.kind === 'cast' ? nextTierTarget.cast.name : null,
+    t: tBooking,
   });
   const ctaAllowed =
     workflowCta.kind === 'confirm' ? canConfirmBookings :
@@ -715,6 +716,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: P
     pendingCount,
     nextExpiry,
     hasOpenTier: (openedQ.data ?? []).some((t) => !t.closedAt),
+    t: tBooking,
   });
   let statusText = '';
   let statusTone: 'green' | 'amber' | 'accent' | 'muted' = 'muted';
@@ -742,7 +744,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: P
     statusTone = 'amber';
   }
 
-  const activity = buildActivity({ bookings, openedTiers: openedQ.data ?? [] });
+  const activity = buildActivity({ bookings, openedTiers: openedQ.data ?? [], t: tBooking });
 
   // Per-opened-tier status counts for the tier ladder. One entry per OPENED tier
   // (a missing entry degrades that ladder row), so iterate openedQ, not bookings.
@@ -775,7 +777,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: P
         customFieldKey,
       })
     : t('showDateSheet.titleFallback');
-  const dateLine = showDate ? format(parseDateOnly(showDate.date), 'EEEE, d MMMM yyyy') : '';
+  const dateLine = showDate ? formatFullWeekdayDate(showDate.date) : '';
   const sessionTimes = showDate
     ? [showDate.session_1, showDate.session_2, showDate.session_3]
         .filter(Boolean)
@@ -837,6 +839,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: P
     slots: slotConfig,
     confirmedMain: funnel.confirmedMain,
     confirmedUnderstudy: funnel.confirmedUnderstudy,
+    t: tBooking,
   });
   const showFooter = open && hireOrdersOn && canManage && !!slotConfig && showDate?.status !== 'cancelled';
   const footer = showFooter

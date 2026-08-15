@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
+import i18n from "@/i18n";
 import { computeHeaderCta } from "./bookingCockpit";
+
+// Copy comes from the `bookingCopy` namespace; an English `t` in the shared `base` pins
+// the byte-identical English output (every spread inherits it).
+const t = i18n.getFixedT("en", "bookingCopy");
 
 describe("computeHeaderCta", () => {
   // currentTierOpen:false = the highest opened tier has closed short, so escalation
@@ -10,7 +15,7 @@ describe("computeHeaderCta", () => {
   // resolves to the right next tier upstream, before this function ever sees it.
   const base = {
     artistAcceptance: true, acceptedCount: 0, confirmedCount: 0,
-    totalSlots: 6, currentTierOpen: false, nextTier: 2 as number | null,
+    totalSlots: 6, currentTierOpen: false, nextTier: 2 as number | null, t,
   };
 
   it("accepted waiting -> Confirm N", () =>

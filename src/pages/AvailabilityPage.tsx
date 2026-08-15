@@ -26,7 +26,7 @@ import { ArtistAvailabilityCalendar } from '@/components/availability/ArtistAvai
 import { AvailabilityPicker } from '@/components/availability/AvailabilityPicker';
 import { OfferResponseButtons } from '@/components/availability/OfferResponseButtons';
 import { bookingStatusBadgeClass } from '@/lib/bookings';
-import { formatDateDMY, parseDateOnly, isPastDate, pastRowClassName } from '@/lib/dates';
+import { formatDateDMY, parseDateOnly, isPastDate, pastRowClassName, formatDayMonthShortYear } from '@/lib/dates';
 import { showIdentityLabel } from '@/types';
 import { fetchMyActiveBookedDates, mergeArtistActiveBookedDates, type ActiveBookedDateEntry } from '@/data/artists';
 import { cn } from '@/lib/utils';
@@ -66,6 +66,8 @@ function customFor(d: DateRow): Record<string, unknown> | null {
  * ============================================================ */
 function ArtistAvailability() {
   const { t } = useTranslation('availability');
+  const { t: tFlow } = useTranslation('flowCopy');
+  const { t: tBooking } = useTranslation('bookingCopy');
   const { currentOrg } = useAuth();
   // Mark that the artist has seen their availability. This completes the dashboard
   // first-run "block dates" step for an open-calendar artist: nothing to block is a
@@ -86,15 +88,15 @@ function ArtistAvailability() {
   // returns null for an unread flow — so an org-less mount narrates nothing, with
   // no separate `orgId ? … : null` guard needed here.
   const timesQ = useFlowTimes(orgId);
-  const tonight = describeTonightStandalone(timesQ.data ?? DEFAULT_FLOW_TIMES, flowQ.data);
+  const tonight = describeTonightStandalone(timesQ.data ?? DEFAULT_FLOW_TIMES, flowQ.data, tBooking);
   // Audience gate: describeTonight also composes a confirmation-digest sentence for
   // a direct-book org (artist_acceptance: false) whenever confirmation_digest is
   // true — the BOOKING_FLOW_DEFAULTS/"direct"-preset value — but that sentence is
   // about a DIFFERENT audience (already-confirmed artists), not R2.1/R4.7's response
   // window. Only artists who actually receive offers see this line.
   const showTiming = flow.artist_acceptance && !!tonight;
-  const pageCopy = availabilityPageCopy(flow);
-  const statusLabels = bookingStatusLabels(flow);
+  const pageCopy = availabilityPageCopy(flow, tFlow);
+  const statusLabels = bookingStatusLabels(flow, tFlow);
   const { orderedColumns, visibleCount } = useColumnTemplate('availability');
   const { isEditorMode } = useEditorConfig();
   const columnHeaders = useColumnHeaders(orderedColumns);
@@ -497,7 +499,7 @@ function ArtistAvailability() {
               {blockedDates!.map((b) => (
                 <div key={b.id} className="flex items-center gap-3 text-sm p-2 rounded-md border border-border">
                   <span className="font-medium w-28 shrink-0">
-                    {parseDateOnly(b.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    {formatDayMonthShortYear(b.date)}
                   </span>
                   <span className="flex-1 text-muted-foreground">{b.reason ?? '—'}</span>
                   <IconTooltip label={t('blocked.removeTooltip')}>

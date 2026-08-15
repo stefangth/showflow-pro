@@ -2,8 +2,11 @@
 // Consumed by the cockpit components in Task 19: funnel counts, the "up next"
 // action pills, and per-tier fill counts. No Supabase or React imports here.
 
+import type { TFunction } from "i18next";
 import { hh, type BookingFlow, type FlowTimes } from "./bookingFlow";
 import { formatDateWithWeekday } from "./dates";
+
+type BookingT = TFunction<"bookingCopy">;
 
 export interface FunnelCounts {
   offered: number;
@@ -50,24 +53,25 @@ export function computeUpNext(args: {
   pendingCount: number;
   nextExpiry: string | null;
   hasOpenTier: boolean;
+  t: BookingT;
 }): UpNextItem[] {
-  const { flow, times, pendingCount, nextExpiry, hasOpenTier } = args;
+  const { flow, times, pendingCount, nextExpiry, hasOpenTier, t } = args;
   if (!flow.artist_acceptance) {
-    return [{ kind: "direct", tone: "neutral", text: "Direct booking: producers book from the eligibility list" }];
+    return [{ kind: "direct", tone: "neutral", text: t("cockpit.upNext.direct") }];
   }
   const items: UpNextItem[] = [];
   if (pendingCount > 0 && flow.offer_delivery === "digest") {
-    items.push({ kind: "digest", tone: "violet", text: `Digest sends daily · ${hh(times.offerDigestHour)}` });
+    items.push({ kind: "digest", tone: "violet", text: t("cockpit.upNext.digest", { time: hh(times.offerDigestHour) }) });
   }
   if (pendingCount > 0 && nextExpiry) {
     items.push({
       kind: "expiry",
       tone: "amber",
-      text: `${pendingCount} ${pendingCount === 1 ? "offer expires" : "offers expire"} ${formatDateWithWeekday(berlinDayKey(nextExpiry))}`,
+      text: t("cockpit.upNext.expiry", { count: pendingCount, date: formatDateWithWeekday(berlinDayKey(nextExpiry)) }),
     });
   }
   if (hasOpenTier) {
-    items.push({ kind: "escalate", tone: "neutral", text: `Auto-escalate: ${flow.auto_escalate ? "on" : "off"}` });
+    items.push({ kind: "escalate", tone: "neutral", text: flow.auto_escalate ? t("cockpit.upNext.escalateOn") : t("cockpit.upNext.escalateOff") });
   }
   return items;
 }
@@ -177,14 +181,13 @@ export function slotMeterTones(confirmed: number, accepted: number, total: numbe
   return Array.from({ length: total }, (_, i) => (i < c ? "confirmed" : i < c + a ? "accepted" : "open"));
 }
 
-const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
-
 /** Compact summary for the bookings-row peek. Null when the date has no slot config. */
 export function computeDatePeek(args: {
   counts: { confirmedMain: number; confirmedUs: number; acceptedMain: number; acceptedUs: number } | null;
   slots: { main_cast: number; understudies: number } | null;
+  t: BookingT;
 }): DatePeek | null {
-  const { slots } = args;
+  const { slots, t } = args;
   if (!slots) return null;
   const c = args.counts ?? { confirmedMain: 0, confirmedUs: 0, acceptedMain: 0, acceptedUs: 0 };
   const total = slots.main_cast + slots.understudies;
@@ -203,13 +206,13 @@ export function computeDatePeek(args: {
 
   let headline: string;
   if (confirmed >= total) {
-    headline = `All ${total} slots confirmed`;
+    headline = t("cockpit.peek.allConfirmed", { total });
   } else {
     const parts: string[] = [];
-    if (accepted > 0) parts.push(plural(accepted, "accepted waiting on you", "accepted waiting on you"));
-    if (openMain > 0) parts.push(plural(openMain, "main slot open", "main slots open"));
-    else if (openUs > 0) parts.push(plural(openUs, "understudy slot open", "understudy slots open"));
-    headline = parts.length ? parts.join(" · ") : "Ready to confirm";
+    if (accepted > 0) parts.push(t("cockpit.peek.acceptedWaiting", { count: accepted }));
+    if (openMain > 0) parts.push(t("cockpit.peek.mainSlotOpen", { count: openMain }));
+    else if (openUs > 0) parts.push(t("cockpit.peek.understudySlotOpen", { count: openUs }));
+    headline = parts.length ? parts.join(" · ") : t("cockpit.peek.readyToConfirm");
   }
 
   return { tone, eyebrowSuffix, headline, meter, acceptedWaiting: accepted, openSlots, confirmable: accepted > 0 };
@@ -232,20 +235,22 @@ export function computeHeaderCta(args: {
   /** Name of the single cast the next tier maps to (owner's RELABEL rule).
    *  Only the `openTier` branch reads this; every other branch is unaffected. */
   nextTierCastName?: string | null;
+  t: BookingT;
 }): HeaderCta {
+  const t = args.t;
   const none: HeaderCta = { kind: "none", label: "" };
-  if (args.acceptedCount > 0) return { kind: "confirm", label: `Confirm ${args.acceptedCount} accepted` };
+  if (args.acceptedCount > 0) return { kind: "confirm", label: t("cockpit.headerCta.confirm", { count: args.acceptedCount }) };
   if (args.totalSlots == null || args.confirmedCount >= args.totalSlots) return none;
-  if (!args.artistAcceptance) return { kind: "book", label: "Book from eligibility" };
+  if (!args.artistAcceptance) return { kind: "book", label: t("cockpit.headerCta.book") };
   // A tier is still open awaiting responses — review, don't escalate. Escalation
   // is offered only once the current tier has closed short (matches the offer
   // engine's "escalate when a tier's window closes short" model), so the header
   // can never live-offer a second tier concurrently from one click.
-  if (args.currentTierOpen) return { kind: "reviewOffers", label: "Review open offers" };
+  if (args.currentTierOpen) return { kind: "reviewOffers", label: t("cockpit.headerCta.reviewOffers") };
   if (args.nextTier != null) {
-    return { kind: "openTier", label: args.nextTierCastName ? `Open offers to ${args.nextTierCastName}` : `Open tier ${args.nextTier}` };
+    return { kind: "openTier", label: args.nextTierCastName ? t("cockpit.headerCta.openOffersTo", { name: args.nextTierCastName }) : t("cockpit.headerCta.openTier", { tier: args.nextTier }) };
   }
-  return { kind: "reviewOffers", label: "Review open offers" };
+  return { kind: "reviewOffers", label: t("cockpit.headerCta.reviewOffers") };
 }
 
 export interface ActivityItem { iso: string; text: string }
@@ -257,16 +262,18 @@ export function buildActivity(args: {
   bookings: Array<{ status: string; confirmed_at: string | null; artist: { name: string } | null }>;
   openedTiers: Array<{ tier: number; openedAt: string | null; closedAt: string | null }>;
   limit?: number;
+  t: BookingT;
 }): ActivityItem[] {
+  const { t } = args;
   const out: ActivityItem[] = [];
   for (const b of args.bookings) {
     if (b.status === "confirmed" && b.confirmed_at) {
-      out.push({ iso: b.confirmed_at, text: `${b.artist?.name ?? "Artist"} confirmed` });
+      out.push({ iso: b.confirmed_at, text: t("cockpit.activity.confirmed", { name: b.artist?.name ?? "Artist" }) });
     }
   }
-  for (const t of args.openedTiers) {
-    if (t.openedAt) out.push({ iso: t.openedAt, text: `Tier ${t.tier} opened` });
-    if (t.closedAt) out.push({ iso: t.closedAt, text: `Tier ${t.tier} closed` });
+  for (const tier of args.openedTiers) {
+    if (tier.openedAt) out.push({ iso: tier.openedAt, text: t("cockpit.activity.tierOpened", { tier: tier.tier }) });
+    if (tier.closedAt) out.push({ iso: tier.closedAt, text: t("cockpit.activity.tierClosed", { tier: tier.tier }) });
   }
   out.sort((a, b) => b.iso.localeCompare(a.iso));
   return out.slice(0, args.limit ?? 6);
@@ -292,8 +299,9 @@ export function computeHireFooter(args: {
   slots: { main_cast: number; understudies: number } | null;
   confirmedMain: number;
   confirmedUnderstudy: number;
+  t: BookingT;
 }): HireFooterState {
-  const { slots } = args;
+  const { slots, t } = args;
   const ready = args.status === "fully_filled";
   const total = slots ? slots.main_cast + slots.understudies : 0;
   const remaining = slots
@@ -303,10 +311,10 @@ export function computeHireFooter(args: {
   return {
     ready,
     remaining,
-    badgeLabel: ready ? "READY" : `${remaining} LEFT`,
+    badgeLabel: ready ? t("cockpit.hireFooter.ready") : t("cockpit.hireFooter.left", { count: remaining }),
     detail: ready
-      ? "All slots confirmed — drafts one order per artist"
-      : `Waiting on ${remaining} of ${total} slots`,
+      ? t("cockpit.hireFooter.detailReady")
+      : t("cockpit.hireFooter.detailWaiting", { remaining, total }),
   };
 }
 

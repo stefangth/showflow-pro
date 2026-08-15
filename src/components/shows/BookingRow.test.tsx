@@ -3,7 +3,8 @@ import { screen, fireEvent } from '@testing-library/react';
 import { renderWithProviders as render } from '@/test/renderWithProviders';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { BookingRow } from './BookingRow';
-import { SOFT_BOOKED_MEANING } from '@/lib/bookings/actionCopy';
+import i18n from '@/i18n';
+import { softBookedMeaning } from '@/lib/bookings/actionCopy';
 import { aBooking, anArtist } from '@/test/fixtures';
 
 // BookingRow's Soft-booked badge now carries a Tooltip (Radix requires a TooltipProvider
@@ -70,12 +71,12 @@ describe('BookingRow', () => {
       </TooltipProvider>,
     );
     fireEvent.pointerMove(screen.getByText('Soft-booked'), { pointerType: 'mouse' });
-    expect(await screen.findAllByText(SOFT_BOOKED_MEANING)).not.toHaveLength(0);
+    expect(await screen.findAllByText(softBookedMeaning(i18n.getFixedT('en', 'bookingCopy')))).not.toHaveLength(0);
   });
 
   it('does not carry the tooltip on a non-soft_booked badge', () => {
     render(<BookingRow booking={makeBooking({ status: 'confirmed' })} canManage={false} showConfirm onConfirm={vi.fn()} onCancel={vi.fn()} />);
-    expect(screen.queryByText(SOFT_BOOKED_MEANING)).not.toBeInTheDocument();
+    expect(screen.queryByText(softBookedMeaning(i18n.getFixedT('en', 'bookingCopy')))).not.toBeInTheDocument();
   });
 });
 

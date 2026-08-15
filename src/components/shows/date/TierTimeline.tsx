@@ -6,7 +6,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { offerConfirmCopy, closeConfirmCopy, pendingOfferCount } from "@/lib/bookings";
-import { TIER_CONCEPT_NOTE } from "@/lib/bookings/actionCopy";
+import { tierConceptNote } from "@/lib/bookings/actionCopy";
 import { ROUTES } from "@/config/app.config";
 import type { OpenedTier, ExcludedDetailEntry } from "@/data/bookings";
 import type { BookingFlow } from "@/lib/bookingFlow";
@@ -92,6 +92,7 @@ export function TierTimeline({
   requiredSkillNames, requiredSkillIds, candidates, excludedDetail,
 }: TierTimelineProps) {
   const { t } = useTranslation("showsDetail");
+  const { t: tAction } = useTranslation("bookingCopy");
   // The open-offer confirm dialog is controlled (like the close dialog) so the
   // hero can open it programmatically for the resolved next tier. `skillFilterIds`
   // is the "Narrow this offer" state, shared by the confirm and the preview.
@@ -198,7 +199,7 @@ export function TierTimeline({
       {/* What a tier even is, stated once — a producer opening this tab for the
           first time has no other cue for it. */}
       <p className="text-xs text-muted-foreground">
-        {TIER_CONCEPT_NOTE}{" "}
+        {tierConceptNote(tAction)}{" "}
         <Link to={ROUTES.HELP} className="text-primary underline">
           {t("tierTimeline.howCastsTiersWork")}
         </Link>

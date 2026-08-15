@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import i18n from "@/i18n";
 import { BOOKING_FLOW_DEFAULTS, applyPreset } from "./bookingFlow";
 import {
   computeFunnel,
@@ -9,6 +10,7 @@ import {
 } from "./bookingCockpit";
 
 const TIMES = { windowHours: 48, offerDigestHour: 19, confirmationDigestHour: 20 };
+const t = i18n.getFixedT("en", "bookingCopy");
 
 describe("computeFunnel", () => {
   it("counts offered, accepted, and confirmed by group", () => {
@@ -25,7 +27,7 @@ describe("computeFunnel", () => {
 
 describe("computeUpNext", () => {
   it("classic with pending offers shows digest and expiry pills", () => {
-    const items = computeUpNext({
+    const items = computeUpNext({ t,
       flow: BOOKING_FLOW_DEFAULTS, times: TIMES, pendingCount: 3,
       nextExpiry: "2026-07-15T19:00:00Z", hasOpenTier: true,
     });
@@ -37,7 +39,7 @@ describe("computeUpNext", () => {
   it("shows the Berlin-local day when an expiry crosses midnight in UTC", () => {
     // 23:30 UTC on Jul 15 is already 01:30 on Jul 16 in Berlin (CEST, UTC+2),
     // and the booking engine is Berlin-anchored: the pill must say Jul 16.
-    const items = computeUpNext({
+    const items = computeUpNext({ t,
       flow: BOOKING_FLOW_DEFAULTS, times: TIMES, pendingCount: 1,
       nextExpiry: "2026-07-15T23:30:00Z", hasOpenTier: false,
     });
@@ -45,7 +47,7 @@ describe("computeUpNext", () => {
     expect(expiry?.text).toContain("16/07/2026");
   });
   it("direct mode shows the single direct-booking pill", () => {
-    const items = computeUpNext({
+    const items = computeUpNext({ t,
       flow: applyPreset(BOOKING_FLOW_DEFAULTS, "direct"), times: TIMES,
       pendingCount: 0, nextExpiry: null, hasOpenTier: false,
     });
@@ -53,7 +55,7 @@ describe("computeUpNext", () => {
     expect(items[0].text).toContain("eligibility list");
   });
   it("emits no em- or en-dashes", () => {
-    for (const i of computeUpNext({ flow: BOOKING_FLOW_DEFAULTS, times: TIMES, pendingCount: 1, nextExpiry: null, hasOpenTier: true })) {
+    for (const i of computeUpNext({ t, flow: BOOKING_FLOW_DEFAULTS, times: TIMES, pendingCount: 1, nextExpiry: null, hasOpenTier: true })) {
       expect(i.text).not.toMatch(/[—–]/);
     }
   });
