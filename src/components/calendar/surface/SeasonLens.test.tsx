@@ -104,4 +104,114 @@ describe('SeasonLens', () => {
     expect(screen.getByTestId('season-kpi-unfilledMainSlots')).toHaveTextContent('3');
     expect(screen.getByTestId('season-kpi-readyForHireOrder')).toHaveTextContent('1');
   });
+
+  describe('range selection across day columns', () => {
+    it('dragging across 3 day columns fires onRangeStart/onRangeExtend/onRangeCommit in order and does not fire onOpenDate', () => {
+      const onOpenDate = vi.fn();
+      const onRangeStart = vi.fn();
+      const onRangeExtend = vi.fn();
+      const onRangeCommit = vi.fn();
+      render(
+        <SeasonLens
+          entries={[entryA, entryB]}
+          anchor={ANCHOR}
+          readyIds={new Set()}
+          onOpenDate={onOpenDate}
+          onRangeStart={onRangeStart}
+          onRangeExtend={onRangeExtend}
+          onRangeCommit={onRangeCommit}
+        />
+      );
+
+      // Drag from 5 Aug (entryA's cell, show-a) through 6 Aug (entryB's
+      // cell, show-b) to the 7 Aug header — 3 distinct day columns, mixing
+      // header + cell mousedown/mouseenter surfaces.
+      const startCell = screen.getByTestId(`season-cell-show-a-${toDateKey(new Date(2026, 7, 5))}`);
+      const midCell = screen.getByTestId(`season-cell-show-b-${toDateKey(new Date(2026, 7, 6))}`);
+      const endHeader = screen.getByTestId(`season-day-${toDateKey(new Date(2026, 7, 7))}`);
+
+      fireEvent.mouseDown(startCell);
+      expect(onRangeStart).not.toHaveBeenCalled();
+
+      fireEvent.mouseEnter(midCell);
+      expect(onRangeStart).toHaveBeenCalledTimes(1);
+      expect(onRangeStart).toHaveBeenCalledWith(toDateKey(new Date(2026, 7, 5)));
+      expect(onRangeExtend).toHaveBeenCalledTimes(1);
+      expect(onRangeExtend).toHaveBeenCalledWith(toDateKey(new Date(2026, 7, 6)));
+
+      fireEvent.mouseEnter(endHeader);
+      expect(onRangeExtend).toHaveBeenCalledTimes(2);
+      expect(onRangeExtend).toHaveBeenLastCalledWith(toDateKey(new Date(2026, 7, 7)));
+
+      expect(onRangeCommit).not.toHaveBeenCalled();
+      fireEvent.mouseUp(endHeader);
+      expect(onRangeCommit).toHaveBeenCalledTimes(1);
+
+      expect(onOpenDate).not.toHaveBeenCalled();
+    });
+
+    it('tints inRange day columns on the header and every program-row cell', () => {
+      const rangeKeys = [
+        toDateKey(new Date(2026, 7, 5)),
+        toDateKey(new Date(2026, 7, 6)),
+        toDateKey(new Date(2026, 7, 7)),
+      ];
+      render(
+        <SeasonLens entries={[entryA, entryB]} anchor={ANCHOR} readyIds={new Set()} onOpenDate={vi.fn()} rangeKeys={rangeKeys} />
+      );
+
+      for (const key of rangeKeys) {
+        expect(screen.getByTestId(`season-day-${key}`)).toHaveAttribute('data-in-range', 'true');
+      }
+      expect(screen.getByTestId(`season-cell-show-a-${toDateKey(new Date(2026, 7, 5))}`)).toHaveAttribute(
+        'data-in-range',
+        'true'
+      );
+      expect(screen.getByTestId(`season-cell-show-b-${toDateKey(new Date(2026, 7, 6))}`)).toHaveAttribute(
+        'data-in-range',
+        'true'
+      );
+      // show-a has no date on 6 Aug -> renders the empty-cell div, which must
+      // still tint since the whole column is in range.
+      expect(screen.getByTestId(`season-cell-show-a-${toDateKey(new Date(2026, 7, 6))}`)).toHaveAttribute(
+        'data-in-range',
+        'true'
+      );
+
+      // A day outside the range stays untinted.
+      expect(screen.getByTestId(`season-day-${toDateKey(new Date(2026, 7, 8))}`)).toHaveAttribute(
+        'data-in-range',
+        'false'
+      );
+    });
+
+    it('a plain click on a populated cell still fires onOpenDate, not a 1-column range', () => {
+      const onOpenDate = vi.fn();
+      const onRangeStart = vi.fn();
+      const onRangeExtend = vi.fn();
+      const onRangeCommit = vi.fn();
+      render(
+        <SeasonLens
+          entries={[entryA, entryB]}
+          anchor={ANCHOR}
+          readyIds={new Set()}
+          onOpenDate={onOpenDate}
+          onRangeStart={onRangeStart}
+          onRangeExtend={onRangeExtend}
+          onRangeCommit={onRangeCommit}
+        />
+      );
+
+      const cell = screen.getByTestId(`season-cell-show-a-${toDateKey(entryA.date)}`);
+      fireEvent.mouseDown(cell);
+      fireEvent.click(cell);
+      fireEvent.mouseUp(cell);
+
+      expect(onOpenDate).toHaveBeenCalledTimes(1);
+      expect(onOpenDate).toHaveBeenCalledWith('sd-a');
+      expect(onRangeStart).not.toHaveBeenCalled();
+      expect(onRangeExtend).not.toHaveBeenCalled();
+      expect(onRangeCommit).not.toHaveBeenCalled();
+    });
+  });
 });

@@ -999,6 +999,96 @@ describe('CalendarSurface — range selection + SelectionBar (producer, month le
   });
 });
 
+describe('CalendarSurface — range selection + SelectionBar (producer, season lens)', () => {
+  it('a day-column drag on the Season lens selects the range, shows the SelectionBar with the count of dates in the span, and Confirm dispatches those ids', () => {
+    const onBulkConfirm = vi.fn();
+    // Span Aug 10-13 (4 days): entries at 10, 11, 13 — 12 has no entry and
+    // must be excluded from the count and from the dispatched ids, same as
+    // the Month-lens contract (selection is by shared day-key).
+    const entries = [
+      producerEntry({ id: 'pd-10', date: new Date(2026, 7, 10) }),
+      producerEntry({ id: 'pd-11', date: new Date(2026, 7, 11) }),
+      producerEntry({ id: 'pd-13', date: new Date(2026, 7, 13) }),
+    ];
+    render(
+      <CalendarSurface
+        role="producer"
+        producerEntries={entries}
+        actions={noopActions()}
+        lens="season"
+        onLensChange={vi.fn()}
+        today={TODAY}
+        onBulkConfirm={onBulkConfirm}
+      />
+    );
+
+    expect(screen.queryByTestId('selection-bar')).not.toBeInTheDocument();
+
+    const cellStart = screen.getByTestId('season-cell-pd-10-2026-08-10');
+    const cellEnd = screen.getByTestId('season-cell-pd-13-2026-08-13');
+
+    fireEvent.mouseDown(cellStart);
+    fireEvent.mouseEnter(cellEnd);
+    fireEvent.mouseUp(cellEnd);
+
+    // The whole 4-day span is highlighted in-range, including the entryless day.
+    expect(screen.getByTestId('season-day-2026-08-10')).toHaveAttribute('data-in-range', 'true');
+    expect(screen.getByTestId('season-day-2026-08-11')).toHaveAttribute('data-in-range', 'true');
+    expect(screen.getByTestId('season-day-2026-08-12')).toHaveAttribute('data-in-range', 'true');
+    expect(screen.getByTestId('season-day-2026-08-13')).toHaveAttribute('data-in-range', 'true');
+
+    const bar = screen.getByTestId('selection-bar');
+    expect(bar).toHaveTextContent('3 selected');
+
+    fireEvent.click(screen.getByTestId('selection-bar-action-confirm'));
+    expect(onBulkConfirm).toHaveBeenCalledWith(['pd-10', 'pd-11', 'pd-13']);
+
+    fireEvent.click(screen.getByTestId('selection-bar-clear'));
+    expect(screen.queryByTestId('selection-bar')).not.toBeInTheDocument();
+  });
+
+  it('the range clears when switching from Season to another lens', () => {
+    const entries = [producerEntry({ id: 'pd-10', date: new Date(2026, 7, 10) })];
+    const { rerender } = render(
+      <CalendarSurface
+        role="producer"
+        producerEntries={entries}
+        actions={noopActions()}
+        lens="season"
+        onLensChange={vi.fn()}
+        today={TODAY}
+      />
+    );
+
+    fireEvent.mouseDown(screen.getByTestId('season-cell-pd-10-2026-08-10'));
+    fireEvent.mouseEnter(screen.getByTestId('season-day-2026-08-11'));
+    fireEvent.mouseUp(screen.getByTestId('season-day-2026-08-11'));
+    expect(screen.getByTestId('selection-bar')).toBeInTheDocument();
+
+    rerender(
+      <CalendarSurface
+        role="producer"
+        producerEntries={entries}
+        actions={noopActions()}
+        lens="agenda"
+        onLensChange={vi.fn()}
+        today={TODAY}
+      />
+    );
+    rerender(
+      <CalendarSurface
+        role="producer"
+        producerEntries={entries}
+        actions={noopActions()}
+        lens="season"
+        onLensChange={vi.fn()}
+        today={TODAY}
+      />
+    );
+    expect(screen.queryByTestId('selection-bar')).not.toBeInTheDocument();
+  });
+});
+
 describe('CalendarSurface — agenda is period-windowed', () => {
   it('clicking Prev swaps the agenda body to the previous month', () => {
     const augEntry = producerEntry({ id: 'pd-aug', date: new Date(2026, 7, 10) });

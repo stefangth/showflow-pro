@@ -158,10 +158,11 @@ interface CalendarSurfaceProps {
   seasonReadyIds?: Set<string>;
   /** Bulk actions for the range-selection `SelectionBar` (spec §6, Phase 4).
    *  Ignored for `role="artist"`; the bar itself only renders for the
-   *  producer Month lens (and Season, once Task 6 wires it in). Receives
-   *  the show_date ids for every selected date that maps to a real
-   *  `ProducerDateEntry` — a selected key with no entry is silently
-   *  dropped, never passed through as `undefined`/`null`. */
+   *  producer Month and Season lenses, which share the same `range` state
+   *  (selection is by day-key, not by lens). Receives the show_date ids for
+   *  every selected date that maps to a real `ProducerDateEntry` — a
+   *  selected key with no entry is silently dropped, never passed through
+   *  as `undefined`/`null`. */
   onBulkConfirm?: (dateIds: string[]) => void;
   onBulkGenerate?: (dateIds: string[]) => void;
   /** Capability gates for the SelectionBar's Confirm/Generate buttons —
@@ -544,6 +545,10 @@ export function CalendarSurface({
               anchor={anchor}
               readyIds={seasonReadyIds}
               onOpenDate={(dateId) => actions.openDate?.(dateId)}
+              rangeKeys={role === 'producer' ? selectedKeys(range) : undefined}
+              onRangeStart={role === 'producer' ? (key) => setRange({ anchor: key, focus: key }) : undefined}
+              onRangeExtend={role === 'producer' ? (key) => setRange((r) => extendTo(r, key)) : undefined}
+              onRangeCommit={role === 'producer' ? () => {} : undefined}
             />
           )}
           {activeLens === 'agenda' && (
@@ -578,7 +583,7 @@ export function CalendarSurface({
         </div>
       )}
 
-      {role === 'producer' && activeLens === 'month' && (
+      {role === 'producer' && (activeLens === 'month' || activeLens === 'season') && (
         <SelectionBar
           count={selectedDateIds.length}
           actions={bulkActions}
