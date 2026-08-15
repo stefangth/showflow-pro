@@ -1,4 +1,5 @@
-import type { ArtistDateEntry, ProducerDateEntry } from '@/lib/calendar/types';
+import { format } from 'date-fns';
+import type { ArtistDateEntry, ProducerDateEntry, Tone } from '@/lib/calendar/types';
 import { ARTIST_TONES, PRODUCER_TONES, TONE_TEXT } from '@/lib/calendar/tone';
 import { toDateKey } from '@/lib/dates';
 import { cn } from '@/lib/utils';
@@ -47,6 +48,76 @@ function artistPrimaryLabel(entries: ArtistDateEntry[]): string | undefined {
   if (entries.some(e => e.myStatus === 'suggested')) return 'Accept offer';
   if (entries.some(e => e.myStatus === 'unanswered')) return 'Block date';
   return undefined;
+}
+
+/** Summed main-cast deficit (`mainSlots - confirmedMain`, floored at 0)
+ *  across non-cancelled entries — mirrors `producerData.ts`'s month-cell
+ *  flag derivation, reused here for the rail header's casting/filled state
+ *  and the "N slots still open" sub-line. */
+function producerOpenSlots(entries: ProducerDateEntry[]): number {
+  return entries
+    .filter(e => e.status !== 'cancelled')
+    .reduce((sum, e) => sum + Math.max(0, e.mainSlots - e.confirmedMain), 0);
+}
+
+interface RailHeader {
+  eyebrow: string;
+  eyebrowTone: Tone;
+  title: string;
+  sub: string;
+}
+
+function entryTitle(entry: ProducerDateEntry | ArtistDateEntry): string {
+  return entry.program + (entry.subProgram ? ` · ${entry.subProgram}` : '');
+}
+
+/**
+ * Derives the rail card's header (eyebrow + title + sub, design lines
+ * 658-661) purely from `day`/entries/`role` — no extra props needed. The
+ * eyebrow is `"{EEE d MMM}"` plus a status suffix: "nothing scheduled" (no
+ * entries), producer "casting"/"fully filled" (any open main slots across
+ * non-cancelled entries, or not), or the artist's own status label
+ * lowercased. The title is the first entry's `program · subProgram`, or
+ * "Pick a day" when the day is empty.
+ */
+function buildRailHeader(
+  role: 'producer' | 'artist',
+  day: Date,
+  producerEntries: ProducerDateEntry[],
+  artistEntries: ArtistDateEntry[],
+): RailHeader {
+  const dateLabel = format(day, 'EEE d MMM');
+  const entries = role === 'producer' ? producerEntries : artistEntries;
+
+  if (entries.length === 0) {
+    return {
+      eyebrow: `${dateLabel} · nothing scheduled`,
+      eyebrowTone: 'muted',
+      title: 'Pick a day',
+      sub: 'Select a day to see its dates and act on them.',
+    };
+  }
+
+  if (role === 'producer') {
+    const openSlots = producerOpenSlots(producerEntries);
+    const casting = openSlots > 0;
+    return {
+      eyebrow: `${dateLabel} · ${casting ? 'casting' : 'fully filled'}`,
+      eyebrowTone: casting ? 'warning' : 'success',
+      title: entryTitle(producerEntries[0]),
+      sub: `${producerEntries.length} date${producerEntries.length === 1 ? '' : 's'} · ${
+        casting ? `${openSlots} slots still open` : 'cast complete'
+      }`,
+    };
+  }
+
+  const toneSpec = ARTIST_TONES[artistEntries[0].myStatus];
+  return {
+    eyebrow: `${dateLabel} · ${toneSpec.label.toLowerCase()}`,
+    eyebrowTone: toneSpec.tone,
+    title: entryTitle(artistEntries[0]),
+    sub: 'Your commitment on this date',
+  };
 }
 
 function ProducerDayCard({ entry }: { entry: ProducerDateEntry }) {
@@ -133,28 +204,42 @@ export function DayRail({
   secondaryLabel,
   className,
 }: DayRailProps) {
-  const entries = role === 'producer' ? producerEntries ?? [] : artistEntries ?? [];
+  const resolvedProducerEntries = producerEntries ?? [];
+  const resolvedArtistEntries = artistEntries ?? [];
+  const entries = role === 'producer' ? resolvedProducerEntries : resolvedArtistEntries;
+
+  const header = buildRailHeader(role, day, resolvedProducerEntries, resolvedArtistEntries);
+  const statsTitle = role === 'producer' ? 'This month' : `Your ${format(day, 'MMMM')}`;
+  const emptyText = role === 'producer' ? 'No dates scheduled on this day.' : 'No date offered to you on this day.';
 
   const resolvedPrimaryLabel =
     primaryLabel ??
     (role === 'producer'
-      ? producerPrimaryLabel(producerEntries ?? [])
-      : artistPrimaryLabel(artistEntries ?? []));
+      ? producerPrimaryLabel(resolvedProducerEntries)
+      : artistPrimaryLabel(resolvedArtistEntries));
   const resolvedSecondaryLabel = secondaryLabel ?? (role === 'producer' ? 'Open date' : 'Message producer');
 
   return (
     <div data-testid="day-rail" data-day={toDateKey(day)} className={cn('flex flex-col gap-3', className)}>
       <div className="overflow-hidden rounded-m border border-border bg-card shadow-elev1">
+        <div data-testid="day-rail-header" className="border-b border-border px-4 pb-3 pt-3.5">
+          <p className={cn('mb-1 text-[11px] font-semibold uppercase tracking-[1.6px]', TONE_TEXT[header.eyebrowTone])}>
+            {header.eyebrow}
+          </p>
+          <h3 className="text-[17px] font-semibold tracking-tight text-foreground">{header.title}</h3>
+          <p className="mt-1 text-xs text-muted-foreground">{header.sub}</p>
+        </div>
+
         <div className="flex flex-col gap-3.5 p-4">
           {entries.length > 0 ? (
             role === 'producer' ? (
-              (producerEntries ?? []).map(entry => <ProducerDayCard key={entry.id} entry={entry} />)
+              resolvedProducerEntries.map(entry => <ProducerDayCard key={entry.id} entry={entry} />)
             ) : (
-              (artistEntries ?? []).map(entry => <ArtistDayCard key={entry.id} entry={entry} />)
+              resolvedArtistEntries.map(entry => <ArtistDayCard key={entry.id} entry={entry} />)
             )
           ) : (
             <p data-testid="day-rail-empty" className="text-[13px] text-muted-foreground">
-              Nothing scheduled this day.
+              {emptyText}
             </p>
           )}
 
@@ -190,7 +275,7 @@ export function DayRail({
 
       <div className="rounded-m border border-border bg-muted p-3.5">
         <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-[1.6px] text-muted-foreground">
-          Overview
+          {statsTitle}
         </p>
         <div className="flex flex-col gap-2">
           {stats.map((stat, i) => (

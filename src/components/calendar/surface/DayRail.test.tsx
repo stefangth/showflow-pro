@@ -223,4 +223,57 @@ describe('DayRail', () => {
     );
     expect(screen.getByTestId('day-rail-empty')).toBeInTheDocument();
   });
+
+  it('producer: header derives casting/fully-filled eyebrow, title, and "This month" stats title', () => {
+    const { rerender } = render(
+      <DayRail
+        role="producer"
+        day={new Date(2026, 7, 20)}
+        producerEntries={[producerEntry({ mainSlots: 6, confirmedMain: 3 })]}
+        stats={[]}
+        legend={[]}
+      />
+    );
+    const header = screen.getByTestId('day-rail-header');
+    expect(header).toHaveTextContent('Thu 20 Aug');
+    expect(header).toHaveTextContent('casting');
+    expect(header).toHaveTextContent('Cirque Noir');
+    expect(screen.getByText('This month')).toBeInTheDocument();
+
+    rerender(
+      <DayRail
+        role="producer"
+        day={new Date(2026, 7, 20)}
+        producerEntries={[producerEntry({ status: 'fully_filled', mainSlots: 6, confirmedMain: 6 })]}
+        stats={[]}
+        legend={[]}
+      />
+    );
+    expect(screen.getByTestId('day-rail-header')).toHaveTextContent('fully filled');
+  });
+
+  it('renders the "nothing scheduled" eyebrow and select-a-day sub when the day is empty', () => {
+    render(
+      <DayRail role="producer" day={new Date(2026, 7, 20)} producerEntries={[]} stats={[]} legend={[]} />
+    );
+    const header = screen.getByTestId('day-rail-header');
+    expect(header).toHaveTextContent('nothing scheduled');
+    expect(header).toHaveTextContent('Pick a day');
+    expect(header).toHaveTextContent('Select a day to see its dates and act on them.');
+  });
+
+  it('artist: header eyebrow shows the lowercased status label', () => {
+    render(
+      <DayRail
+        role="artist"
+        day={new Date(2026, 7, 20)}
+        artistEntries={[artistEntry({ myStatus: 'suggested' })]}
+        stats={[]}
+        legend={[]}
+      />
+    );
+    const header = screen.getByTestId('day-rail-header');
+    expect(header).toHaveTextContent('offer');
+    expect(screen.getByText('Your August')).toBeInTheDocument();
+  });
 });
