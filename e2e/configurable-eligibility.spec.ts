@@ -31,6 +31,7 @@
  */
 import { expect, test } from "@playwright/test";
 import { loginAsAndAwaitDashboard, navViaSidebar } from "./helpers/auth";
+import { openBookingsDate } from "./helpers/bookingsUi";
 import { deleteUserByEmail, BOOTSTRAP_ORG_ID } from "./helpers/users";
 import { adminClient, E2E_TAG, tagEmail } from "./helpers/supabase";
 import { seedConsent } from "./helpers/consent";
@@ -58,22 +59,6 @@ function isoDays(offset: number): string {
   const d = new Date();
   d.setUTCDate(d.getUTCDate() + offset);
   return d.toISOString().slice(0, 10);
-}
-
-const MONTH_ABBR = [
-  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-];
-
-/**
- * `YYYY-MM-DD` to `dd MMM yyyy` (e.g. `26 Aug 2026`), matching the producer
- * bookings table's date cell. Mirrors booking-flow-presets.spec.ts's own
- * local copy (used to target THIS date's row when all e2e dates share the
- * same seeded show).
- */
-function formatBookingsDate(dateISO: string): string {
-  const [y, m, d] = dateISO.split("-");
-  return `${d} ${MONTH_ABBR[Number(m) - 1]} ${y}`;
 }
 
 test.describe.configure({ mode: "serial" });
@@ -183,12 +168,7 @@ test.describe("Configurable eligibility: show ladders and required skills", () =
     await loginAsAndAwaitDashboard(page, TEST_PRODUCER_EMAIL, TEST_PRODUCER_PASSWORD);
     await navViaSidebar(page, /^shows & bookings$/i);
 
-    const dateRow = page
-      .getByRole("row")
-      .filter({ hasText: formatBookingsDate(dateISO) })
-      .filter({ hasText: /e2e-program/i });
-    await expect(dateRow).toBeVisible({ timeout: 15_000 });
-    await dateRow.click();
+    await openBookingsDate(page, { showDateId: dateId, dateISO });
 
     // Cockpit: the direct-book list (and its empty state) is under the "Book artists" tab.
     await page.getByRole("dialog").getByRole("button", { name: /^book artists$/i }).click();

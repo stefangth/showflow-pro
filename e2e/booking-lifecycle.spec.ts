@@ -10,6 +10,7 @@
  */
 import { expect, test } from "@playwright/test";
 import { loginAsAndAwaitDashboard, navViaSidebar } from "./helpers/auth";
+import { openBookingsDate } from "./helpers/bookingsUi";
 import { deleteUserByEmail } from "./helpers/users";
 import { tagEmail } from "./helpers/supabase";
 import { seedConsent } from "./helpers/consent";
@@ -106,11 +107,8 @@ test.describe("Flow B — booking lifecycle", () => {
     await loginAsAndAwaitDashboard(page, TEST_PRODUCER_EMAIL, TEST_PRODUCER_PASSWORD);
     await navViaSidebar(page, /^shows & bookings$/i);
 
-    // The seeded show's program ("e2e-program") is shown in a TableCell. Click
-    // the row that contains it to open ShowDateDetailSheet.
-    const dateRow = page.getByRole("row", { name: /e2e-program/i }).first();
-    await expect(dateRow).toBeVisible({ timeout: 15_000 });
-    await dateRow.click();
+    // Open the seeded date's ShowDateDetailSheet via the calendar surface.
+    await openBookingsDate(page, { showDateId: fixture.showDateId, dateISO: fixture.dateISO });
 
     // ShowDateDetailSheet renders a Confirm button only on a soft_booked row
     // (`b.status === 'soft_booked' && …`), so it unmounts once the booking flips

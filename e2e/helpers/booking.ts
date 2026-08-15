@@ -18,6 +18,9 @@ export interface BookingFixture {
   cityId: string;
   showId: string;
   showDateId: string;
+  /** The resolved ISO date (YYYY-MM-DD) the show_date was seeded on — used by
+   *  `openBookingsDate` to navigate the calendar surface to the right month. */
+  dateISO: string;
   castId: string;
   artistId: string;
   artistUser: SeededUser;
@@ -113,6 +116,7 @@ export async function seedBookingFixture(opts: SeedOptions): Promise<BookingFixt
     cityId: city.id,
     showId: show.id,
     showDateId: showDate.id,
+    dateISO,
     castId: cast.id,
     artistId: artist.id,
     artistUser,
