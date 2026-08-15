@@ -589,3 +589,31 @@ Deno.test("preview-transactional-email DI: GET method with auth → 200 (renders
   const { templates } = await res.json() as { templates: unknown[] };
   assertEquals(templates.length, EXPECTED_TEMPLATE_COUNT);
 });
+
+// ── Per-org language (Section C): explicit, non-entitlement-gated preview locale ──
+Deno.test("preview: body.locale 'de' renders German copy + <html lang=de> (admin QA, no entitlement gate)", async () => {
+  const res = await handle(
+    authedPostRequest({ templateName: "offer-immediate", locale: "de" }),
+    adminDeps(),
+  );
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  const entry = body.templates.find((t: { templateName: string }) => t.templateName === "offer-immediate");
+  assertExists(entry);
+  assertEquals(entry.status, "ready");
+  assertEquals(entry.html.includes('lang="de"'), true);
+  assertEquals(entry.html.includes("Du hast ein neues Angebot"), true);
+});
+
+Deno.test("preview: default locale renders English + <html lang=en>", async () => {
+  const res = await handle(
+    authedPostRequest({ templateName: "offer-immediate" }),
+    adminDeps(),
+  );
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  const entry = body.templates.find((t: { templateName: string }) => t.templateName === "offer-immediate");
+  assertExists(entry);
+  assertEquals(entry.html.includes('lang="en"'), true);
+  assertEquals(entry.html.includes("You have a new offer"), true);
+});
