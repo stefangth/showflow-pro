@@ -4,7 +4,7 @@ import { Text } from "npm:@react-email/components@0.0.22";
 import type { TemplateData, TemplateEntry } from "./registry.ts";
 import { APP_URL } from "../app-url.ts";
 import { EmailShell, emailRoleStyle } from "./_shell/EmailShell.tsx";
-import { applyEmailTokens, EMAIL_COPY_DEFAULTS, type EmailCopy } from "./_shell/emailCopy.ts";
+import { applyEmailTokens, EMAIL_COPY_DEFAULTS, type EmailCopy, type EmailLocale } from "./_shell/emailCopy.ts";
 import { EMAIL_THEME_DEFAULTS, type EmailFamily, type EmailRoleKey, type EmailTheme } from "./_shell/emailTheme.ts";
 
 /** The three causes syncOrg's held_unresolved branches emit (see topHeldReason in
@@ -28,6 +28,7 @@ interface Props {
   _emailTheme?: EmailTheme;
   _emailFamily?: EmailFamily;
   _highlightRole?: EmailRoleKey;
+  _emailLocale?: EmailLocale;
 }
 
 const AirtableSyncHeld = ({
@@ -41,6 +42,7 @@ const AirtableSyncHeld = ({
   _emailTheme = EMAIL_THEME_DEFAULTS,
   _emailFamily = "violet",
   _highlightRole,
+  _emailLocale = "en",
 }: Props) => {
   const copy = _emailCopy;
   const theme = _emailTheme;
@@ -114,6 +116,7 @@ const AirtableSyncHeld = ({
       footer={copy["airtable-sync-held.footer"]}
       cta={{ href: ctaHref, label: copy["airtable-sync-held.ctaLabel"] }}
       highlightRole={_highlightRole}
+      lang={_emailLocale}
     >
       <Text style={{ ...emailRoleStyle(theme, "body", _highlightRole), lineHeight: "1.6", margin: "0 0 16px" }}>
         {intro}

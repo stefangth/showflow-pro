@@ -4,7 +4,7 @@ import { Section, Text } from "npm:@react-email/components@0.0.22";
 import type { TemplateData, TemplateEntry } from "./registry.ts";
 import { APP_URL } from "../app-url.ts";
 import { EmailShell, emailRoleStyle } from "./_shell/EmailShell.tsx";
-import { applyEmailTokens, EMAIL_COPY_DEFAULTS, type EmailCopy } from "./_shell/emailCopy.ts";
+import { applyEmailTokens, EMAIL_COPY_DEFAULTS, type EmailCopy, type EmailLocale } from "./_shell/emailCopy.ts";
 import { EMAIL_THEME_DEFAULTS, type EmailFamily, type EmailRoleKey, type EmailTheme } from "./_shell/emailTheme.ts";
 
 interface Props {
@@ -17,6 +17,7 @@ interface Props {
   _emailTheme?: EmailTheme;
   _emailFamily?: EmailFamily;
   _highlightRole?: EmailRoleKey;
+  _emailLocale?: EmailLocale;
 }
 
 const CronHealthAlert = ({
@@ -29,6 +30,7 @@ const CronHealthAlert = ({
   _emailTheme = EMAIL_THEME_DEFAULTS,
   _emailFamily = "steel",
   _highlightRole,
+  _emailLocale = "en",
 }: Props) => {
   const copy = _emailCopy;
   const theme = _emailTheme;
@@ -40,7 +42,7 @@ const CronHealthAlert = ({
   };
 
   return (
-    <EmailShell family={_emailFamily} theme={theme} previewText={applyEmailTokens(copy["cron-health-alert.previewText"], values)} heading={copy["cron-health-alert.heading"]} footer={copy["cron-health-alert.footer"]} cta={{ href: dashboard_url || `${APP_URL}/platform`, label: copy["cron-health-alert.ctaLabel"] }} highlightRole={_highlightRole}>
+    <EmailShell family={_emailFamily} theme={theme} previewText={applyEmailTokens(copy["cron-health-alert.previewText"], values)} heading={copy["cron-health-alert.heading"]} footer={copy["cron-health-alert.footer"]} cta={{ href: dashboard_url || `${APP_URL}/platform`, label: copy["cron-health-alert.ctaLabel"] }} highlightRole={_highlightRole} lang={_emailLocale}>
       <Text style={{ ...emailRoleStyle(theme, "body", _highlightRole), lineHeight: "1.6", margin: "0 0 16px" }}>{applyEmailTokens(copy["cron-health-alert.intro"], values)}</Text>
       <Section style={{ margin: "24px 0", padding: "16px 20px", backgroundColor: theme.base.colors.tileBg, borderRadius: `${theme.base.buttonRadius}px` }}>
         <Text style={{ ...emailRoleStyle(theme, "dataLabel", _highlightRole), margin: "0 0 2px" }}>{copy["cron-health-alert.jobLabel"]}</Text>

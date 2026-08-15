@@ -4,7 +4,7 @@ import { Text } from "npm:@react-email/components@0.0.22";
 import type { TemplateData, TemplateEntry } from "./registry.ts";
 import { APP_URL } from "../app-url.ts";
 import { EmailShell, emailRoleStyle } from "./_shell/EmailShell.tsx";
-import { applyEmailTokens, EMAIL_COPY_DEFAULTS, type EmailCopy } from "./_shell/emailCopy.ts";
+import { applyEmailTokens, EMAIL_COPY_DEFAULTS, type EmailCopy, type EmailLocale } from "./_shell/emailCopy.ts";
 import { EMAIL_THEME_DEFAULTS, type EmailFamily, type EmailRoleKey, type EmailTheme } from "./_shell/emailTheme.ts";
 
 /** The early-warning twin of cast-escalation-requested: tier-at-risk-watcher sends
@@ -27,6 +27,7 @@ interface Props {
   _emailTheme?: EmailTheme;
   _emailFamily?: EmailFamily;
   _highlightRole?: EmailRoleKey;
+  _emailLocale?: EmailLocale;
 }
 
 const TierAtRisk = ({
@@ -41,6 +42,7 @@ const TierAtRisk = ({
   _emailTheme = EMAIL_THEME_DEFAULTS,
   _emailFamily = "ember",
   _highlightRole,
+  _emailLocale = "en",
 }: Props) => {
   const copy = _emailCopy;
   const theme = _emailTheme;
@@ -63,6 +65,7 @@ const TierAtRisk = ({
       footer={copy["tier-at-risk.footer"]}
       cta={{ href: ctaHref, label: copy["tier-at-risk.ctaLabel"] }}
       highlightRole={_highlightRole}
+      lang={_emailLocale}
     >
       <Text style={{ ...emailRoleStyle(theme, "body", _highlightRole), lineHeight: "1.6", margin: "0" }}>
         {applyEmailTokens(copy["tier-at-risk.body"], values)}

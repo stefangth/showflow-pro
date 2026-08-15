@@ -4,7 +4,7 @@ import { Section, Text } from "npm:@react-email/components@0.0.22";
 import type { TemplateData, TemplateEntry } from "./registry.ts";
 import { APP_URL } from "../app-url.ts";
 import { EmailShell, emailRoleStyle } from "./_shell/EmailShell.tsx";
-import { applyEmailTokens, EMAIL_COPY_DEFAULTS, type EmailCopy } from "./_shell/emailCopy.ts";
+import { applyEmailTokens, EMAIL_COPY_DEFAULTS, type EmailCopy, type EmailLocale } from "./_shell/emailCopy.ts";
 import { EMAIL_THEME_DEFAULTS, type EmailFamily, type EmailRoleKey, type EmailTheme } from "./_shell/emailTheme.ts";
 
 interface Props {
@@ -15,6 +15,7 @@ interface Props {
   _emailTheme?: EmailTheme;
   _emailFamily?: EmailFamily;
   _highlightRole?: EmailRoleKey;
+  _emailLocale?: EmailLocale;
 }
 
 const AccountEmailChanged = ({
@@ -25,6 +26,7 @@ const AccountEmailChanged = ({
   _emailTheme = EMAIL_THEME_DEFAULTS,
   _emailFamily = "steel",
   _highlightRole,
+  _emailLocale = "en",
 }: Props) => {
   const copy = _emailCopy;
   const theme = _emailTheme;
@@ -33,7 +35,7 @@ const AccountEmailChanged = ({
   const signInUrl = (appOrigin || APP_URL).replace(/\/+$/, "");
 
   return (
-    <EmailShell family={_emailFamily} theme={theme} previewText={copy["account-email-changed.previewText"]} heading={copy["account-email-changed.heading"]} footer={copy["account-email-changed.footer"]} highlightRole={_highlightRole}>
+    <EmailShell family={_emailFamily} theme={theme} previewText={copy["account-email-changed.previewText"]} heading={copy["account-email-changed.heading"]} footer={copy["account-email-changed.footer"]} highlightRole={_highlightRole} lang={_emailLocale}>
       <Text style={{ ...emailRoleStyle(theme, "body", _highlightRole), lineHeight: "1.6", margin: "0 0 16px" }}>{copy["account-email-changed.greeting"]}</Text>
       <Text style={{ ...emailRoleStyle(theme, "body", _highlightRole), lineHeight: "1.6", margin: "0 0 16px" }}>{copy["account-email-changed.intro"]}</Text>
       <Section style={{ margin: "24px 0", padding: "16px 20px", backgroundColor: theme.base.colors.tileBg, borderRadius: `${theme.base.buttonRadius}px` }}>

@@ -5,7 +5,7 @@ import type { TemplateEntry, TemplateData } from "./registry.ts";
 import { digestEmailSubject } from "../scheduleChanges.ts";
 import { APP_URL } from "../app-url.ts";
 import { EmailShell, emailRoleStyle } from "./_shell/EmailShell.tsx";
-import { applyEmailTokens, EMAIL_COPY_DEFAULTS, type EmailCopy } from "./_shell/emailCopy.ts";
+import { applyEmailTokens, EMAIL_COPY_DEFAULTS, type EmailCopy, type EmailLocale } from "./_shell/emailCopy.ts";
 import { EMAIL_THEME_DEFAULTS, type EmailFamily, type EmailRoleKey, type EmailTheme } from "./_shell/emailTheme.ts";
 
 const BOOKINGS_URL = `${APP_URL}/bookings`;
@@ -22,6 +22,7 @@ interface Props {
   _emailTheme?: EmailTheme;
   _emailFamily?: EmailFamily;
   _highlightRole?: EmailRoleKey;
+  _emailLocale?: EmailLocale;
 }
 
 function BookingTable({
@@ -56,6 +57,7 @@ const ArtistConfirmationDigest = ({
   _emailTheme = EMAIL_THEME_DEFAULTS,
   _emailFamily = "violet",
   _highlightRole,
+  _emailLocale = "en",
 }: Props) => {
   const copy = _emailCopy;
   const theme = _emailTheme;
@@ -67,7 +69,7 @@ const ArtistConfirmationDigest = ({
   const previewText = hasUpdates ? copy["artist-confirmation-digest.subjectUpdates"] : copy["artist-confirmation-digest.subjectConfirmed"];
 
   return (
-    <EmailShell family={_emailFamily} theme={theme} previewText={previewText} heading={heading} footer={copy["artist-confirmation-digest.footer"]} cta={{ href: BOOKINGS_URL, label: copy["artist-confirmation-digest.ctaLabel"] }} highlightRole={_highlightRole}>
+    <EmailShell family={_emailFamily} theme={theme} previewText={previewText} heading={heading} footer={copy["artist-confirmation-digest.footer"]} cta={{ href: BOOKINGS_URL, label: copy["artist-confirmation-digest.ctaLabel"] }} highlightRole={_highlightRole} lang={_emailLocale}>
       <Text style={{ ...emailRoleStyle(theme, "body", _highlightRole), lineHeight: "1.6", margin: "0 0 16px" }}>
         {displayName ? applyEmailTokens(copy["artist-confirmation-digest.greeting"], tokens) : copy["artist-confirmation-digest.greetingAnonymous"]}
       </Text>

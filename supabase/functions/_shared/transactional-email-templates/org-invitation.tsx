@@ -5,7 +5,7 @@ import type { TemplateData, TemplateEntry } from "./registry.ts";
 import { APP_URL } from "../app-url.ts";
 import { formatExpiresOn, ORG_INVITATION_EXPIRY_DAYS } from "../invitations.ts";
 import { EmailShell, emailRoleStyle } from "./_shell/EmailShell.tsx";
-import { applyEmailTokens, EMAIL_COPY_DEFAULTS, type EmailCopy } from "./_shell/emailCopy.ts";
+import { applyEmailTokens, EMAIL_COPY_DEFAULTS, type EmailCopy, type EmailLocale } from "./_shell/emailCopy.ts";
 import { EMAIL_THEME_DEFAULTS, type EmailFamily, type EmailRoleKey, type EmailTheme } from "./_shell/emailTheme.ts";
 
 interface Props {
@@ -31,6 +31,7 @@ interface Props {
   _emailTheme?: EmailTheme;
   _emailFamily?: EmailFamily;
   _highlightRole?: EmailRoleKey;
+  _emailLocale?: EmailLocale;
 }
 
 const OrgInvitationEmail = ({
@@ -46,6 +47,7 @@ const OrgInvitationEmail = ({
   _emailTheme = EMAIL_THEME_DEFAULTS,
   _emailFamily = "violet",
   _highlightRole,
+  _emailLocale = "en",
 }: Props) => {
   const copy = _emailCopy;
   const theme = _emailTheme;
@@ -110,7 +112,7 @@ const OrgInvitationEmail = ({
   );
 
   return (
-    <EmailShell family={_emailFamily} theme={theme} previewText={applyEmailTokens(copy["org-invitation.previewText"], values)} heading={applyEmailTokens(copy["org-invitation.heading"], values)} footer={copy["org-invitation.footer"]} cta={{ href: acceptUrl, label: copy["org-invitation.ctaLabel"] }} postCta={pasteLink} highlightRole={_highlightRole}>
+    <EmailShell family={_emailFamily} theme={theme} previewText={applyEmailTokens(copy["org-invitation.previewText"], values)} heading={applyEmailTokens(copy["org-invitation.heading"], values)} footer={copy["org-invitation.footer"]} cta={{ href: acceptUrl, label: copy["org-invitation.ctaLabel"] }} postCta={pasteLink} highlightRole={_highlightRole} lang={_emailLocale}>
       <Text style={{ ...emailRoleStyle(theme, "body", _highlightRole), lineHeight: "1.6", margin: "0 0 16px" }}>{copy["org-invitation.greeting"]}</Text>
       <Text style={{ ...emailRoleStyle(theme, "body", _highlightRole), lineHeight: "1.6", margin: "0 0 16px" }}>{applyEmailTokens(copy["org-invitation.productIntro"], values)}</Text>
       {showRoleIntro && <Text style={{ ...emailRoleStyle(theme, "body", _highlightRole), lineHeight: "1.6", margin: "0 0 16px" }}>{roleIntroText}</Text>}

@@ -13,6 +13,7 @@ import {
 } from "npm:@react-email/components@0.0.22";
 import type { EmailFamily, EmailRoleKey, EmailTheme } from "./emailTheme.ts";
 import { EMAIL_FAMILY_ACCENTS } from "./emailTheme.ts";
+import type { EmailLocale } from "./emailCopy.ts";
 import { APP_URL } from "../../app-url.ts";
 
 export interface EmailShellCta {
@@ -37,6 +38,9 @@ export interface EmailShellProps {
   postCta?: React.ReactNode;
   /** Preview-only outline used by the template editor. */
   highlightRole?: EmailRoleKey;
+  /** Document language for the <html lang> attribute. Defaults to English so every
+   *  existing caller renders unchanged; German sends pass "de". */
+  lang?: EmailLocale;
 }
 
 function roleStyle(theme: EmailTheme, role: EmailRoleKey, highlightRole?: EmailRoleKey): React.CSSProperties {
@@ -65,13 +69,14 @@ export function EmailShell({
   cta,
   postCta,
   highlightRole,
+  lang = "en",
 }: EmailShellProps) {
   const colors = theme.base.colors;
   const accent = EMAIL_FAMILY_ACCENTS[family];
   const heroFallbackAttributes = { bgcolor: accent.solid } as React.TdHTMLAttributes<HTMLTableDataCellElement> & { bgcolor: string };
 
   return (
-    <Html lang="en" dir="ltr">
+    <Html lang={lang} dir="ltr">
       <Head>
         <meta name="color-scheme" content="light" />
         <meta name="supported-color-schemes" content="light" />
