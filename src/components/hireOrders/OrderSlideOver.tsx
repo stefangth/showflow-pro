@@ -52,7 +52,7 @@ interface Props {
  * of the content going blank one tick before the panel itself disappears.
  */
 export function OrderSlideOver({ order, open, onOpenChange, orgId }: Props) {
-  const { t } = useTranslation("hireOrdersPages");
+  const { t, i18n } = useTranslation("hireOrdersPages");
   const navigate = useNavigate();
   const action = useHireOrderAction();
   const countersign = useMarkCountersigned();
@@ -85,7 +85,7 @@ export function OrderSlideOver({ order, open, onOpenChange, orgId }: Props) {
   const durationRaw = snap(data, "duration_min");
   const duration = durationRaw ? `${durationRaw} min` : null;
   const sessions = snap(data, "sessions") || null;
-  const fee = displayOrder?.fee_amount != null ? formatMoney(displayOrder.fee_amount, displayOrder.fee_currency) : null;
+  const fee = displayOrder?.fee_amount != null ? formatMoney(displayOrder.fee_amount, displayOrder.fee_currency, i18n.language) : null;
 
   function handleIssue() {
     if (!displayOrder) return;

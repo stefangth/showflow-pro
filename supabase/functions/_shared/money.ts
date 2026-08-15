@@ -23,10 +23,16 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
  * thousands separators (e.g. "€4,500.00"). Formats only — the amount is
  * parsed for display purposes, never used in arithmetic; storage stays
  * `numeric(10,2)` in SQL.
+ *
+ * `locale` picks the digit-grouping/decimal separators only (en-US "4,500.50"
+ * vs de "4.500,50"); the currency symbol prefix is fixed by `currency`. It is a
+ * plain BCP-47 string, not the i18n singleton, so the body stays runtime-neutral
+ * for the edge mirror: browser callers pass the active app language, and the edge
+ * PDF renderer passes nothing, keeping its output byte-identical to before.
  */
-export function formatMoney(amount: string | number, currency: string): string {
+export function formatMoney(amount: string | number, currency: string, locale = "en-US"): string {
   const numeric = typeof amount === "string" ? Number(amount) : amount;
-  const formatted = new Intl.NumberFormat("en-US", {
+  const formatted = new Intl.NumberFormat(locale, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(numeric);
