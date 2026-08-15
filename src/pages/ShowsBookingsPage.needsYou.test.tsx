@@ -35,18 +35,35 @@ const SHOW_DATE_READY = {
   show: { id: "s3", program: "Giselle", sub_program: null, status: "active" as const, main_cast_slots: 4, understudy_slots: 2 },
   city: null,
 };
-const SHOW_DATES = [SHOW_DATE_CANCELLED, SHOW_DATE_AT_RISK, SHOW_DATE_READY];
+// A fourth date with a soft_booked offer expiring today (Berlin) — the only
+// group with a "Confirm all" bulk button, needed to cover the confirmAll
+// receipt fix (Finding 2).
+const SHOW_DATE_EXPIRES = {
+  id: "sd-expires", date: "2030-03-12", session_1: "19:00", session_2: null, session_3: null,
+  venue: "Opera House", status: "partially_filled" as const, notes: null, cancellation_reason: null,
+  city_id: null, show_id: "s4", custom: null, cast_notified_at: null,
+  show: { id: "s4", program: "Coppelia", sub_program: null, status: "active" as const, main_cast_slots: 4, understudy_slots: 2 },
+  city: null,
+};
+const SHOW_DATES = [SHOW_DATE_CANCELLED, SHOW_DATE_AT_RISK, SHOW_DATE_READY, SHOW_DATE_EXPIRES];
 
 const COUNTS = new Map([
   ["sd-cancelled", { confirmedMain: 0, confirmedUs: 0, acceptedMain: 0, acceptedUs: 0, pendingMain: 0, pendingUs: 0, total: 0 }],
   ["sd-at-risk", { confirmedMain: 1, confirmedUs: 0, acceptedMain: 0, acceptedUs: 0, pendingMain: 0, pendingUs: 0, total: 1 }],
   ["sd-ready", { confirmedMain: 4, confirmedUs: 0, acceptedMain: 0, acceptedUs: 0, pendingMain: 0, pendingUs: 0, total: 4 }],
+  ["sd-expires", { confirmedMain: 1, confirmedUs: 0, acceptedMain: 0, acceptedUs: 0, pendingMain: 1, pendingUs: 0, total: 2 }],
 ]);
 
 const PEOPLE = [
   {
     id: "b-cancelled-1", showDateId: "sd-cancelled", status: "confirmed" as const,
     isUnderstudy: false, offerExpiresAt: null, artist: { id: "a1", name: "Alex Artist" },
+  },
+  // 18:00 UTC on "today" (2030-03-10) is 19:00 Berlin (pre-DST) — safely the
+  // same Berlin calendar day regardless of the test runner's own timezone.
+  {
+    id: "b-expires-1", showDateId: "sd-expires", status: "soft_booked" as const,
+    isUnderstudy: false, offerExpiresAt: "2030-03-10T18:00:00.000Z", artist: { id: "a2", name: "Sam Soft" },
   },
 ];
 
@@ -138,11 +155,12 @@ afterEach(() => {
 });
 
 describe("ShowsBookingsPage — needs-you queue wiring (Task 8)", () => {
-  it("defaults to the Needs-you lens and renders its three groups", async () => {
+  it("defaults to the Needs-you lens and renders its four groups", async () => {
     renderWithProviders(<ShowsBookingsPage />);
 
     expect(await screen.findByTestId("needs-you-lens")).toBeInTheDocument();
     expect(screen.getByTestId("lens-tab-needs-you")).toHaveAttribute("data-active", "true");
+    expect(screen.getByTestId("needs-you-group-expires-today")).toBeInTheDocument();
     expect(screen.getByTestId("needs-you-group-cancelled")).toBeInTheDocument();
     expect(screen.getByTestId("needs-you-group-at-risk")).toBeInTheDocument();
     expect(screen.getByTestId("needs-you-group-ready-to-issue")).toBeInTheDocument();
@@ -175,5 +193,49 @@ describe("ShowsBookingsPage — needs-you queue wiring (Task 8)", () => {
         expect.objectContaining({ action: "draft", org_id: "org-1", show_date_id: "sd-ready" }),
       );
     });
+  });
+
+  // Finding 1 (Task 8 review): the ready-to-issue "Preview" secondary has no
+  // real per-date document to render (the edge `preview` action only supports
+  // `order_id`/a generic sample) — it must open the sheet, never fire a
+  // misleading `preview` mutation.
+  it("clicking the ready item's Preview opens the sheet instead of firing a preview mutation", async () => {
+    renderWithProviders(<ShowsBookingsPage />);
+
+    const btn = await screen.findByTestId("needs-you-secondary-sd-ready-preview");
+    expect(btn).toHaveTextContent("Preview");
+    fireEvent.click(btn);
+
+    const sheet = await screen.findByTestId("detail-sheet");
+    expect(sheet.getAttribute("data-show-date-id")).toBe("sd-ready");
+    expect(sheet.getAttribute("data-open")).toBe("true");
+    expect(hireOrderMutate).not.toHaveBeenCalledWith(
+      expect.objectContaining({ action: "preview" }),
+    );
+  });
+
+  // Finding 2 (Task 8 review): confirmAll/generateAll must push a "Cleared
+  // today" receipt too, not just extend/release/notify/offer.
+  it("the ready-to-issue bulk 'Generate' button pushes a Cleared today receipt", async () => {
+    renderWithProviders(<ShowsBookingsPage />);
+
+    const bulkBtn = await screen.findByTestId("needs-you-bulk-ready-to-issue");
+    fireEvent.click(bulkBtn);
+
+    await waitFor(() => {
+      expect(hireOrderMutate).toHaveBeenCalledWith(
+        expect.objectContaining({ action: "draft", show_date_id: "sd-ready" }),
+      );
+    });
+    expect(await screen.findByTestId("needs-you-receipt-0")).toBeInTheDocument();
+  });
+
+  it("the expires-today bulk 'Confirm all' button pushes a Cleared today receipt", async () => {
+    renderWithProviders(<ShowsBookingsPage />);
+
+    const bulkBtn = await screen.findByTestId("needs-you-bulk-expires-today");
+    fireEvent.click(bulkBtn);
+
+    expect(await screen.findByTestId("needs-you-receipt-0")).toBeInTheDocument();
   });
 });

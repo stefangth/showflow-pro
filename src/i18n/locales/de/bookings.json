@@ -27,7 +27,9 @@
       "extended": "{{count}} verlängert",
       "released": "{{count}} freigegeben",
       "notified": "{{count}} benachrichtigt",
-      "offered": "{{count}} angeboten"
+      "offered": "{{count}} angeboten",
+      "confirmedAll": "Bestätigt",
+      "generatedAll": "Engagementvertrag erstellt"
     }
   },
   "producer": {

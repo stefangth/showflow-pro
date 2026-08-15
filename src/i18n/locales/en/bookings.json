@@ -27,7 +27,9 @@
       "extended": "Extended {{count}}",
       "released": "Released {{count}}",
       "notified": "Notified {{count}}",
-      "offered": "Offered {{count}}"
+      "offered": "Offered {{count}}",
+      "confirmedAll": "Confirmed holds",
+      "generatedAll": "Generated hire order"
     }
   },
   "producer": {

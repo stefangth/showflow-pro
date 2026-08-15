@@ -45,7 +45,6 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { showSlots } from '@/lib/settings';
 import { formatDateWithWeekday, parseDateOnly } from '@/lib/dates';
-import { openPdfBase64 } from '@/lib/hireOrders/openPdf';
 import { useEditorConfig } from '@/features/editor/EditorContext';
 import { compareCustomValues, customFilterMatches, type CustomFilterState } from '@/lib/customFields';
 import { CustomFieldFilter } from '@/components/filters/CustomFieldFilter';
@@ -428,23 +427,12 @@ function ProducerShowsBookings() {
   const cancelDate = (dateId: string) => openShowDate(dateId);
   const undoCancel = (dateId: string) => openShowDate(dateId);
 
-  /** "Preview" (ready-to-issue secondary). Note: the `generate-hire-orders`
-   *  `preview` action only supports `order_id` (or none, for a generic sample) —
-   *  a ready-to-issue date has no order yet, so `show_date_id` rides along for
-   *  forward-compatibility but is currently ignored server-side, meaning this
-   *  renders the org's generic sample document rather than a date-specific one. */
-  const previewHireOrder = (dateId: string) => {
-    if (!orgId) return;
-    hireOrderAction.mutate(
-      { action: 'preview', org_id: orgId, show_date_id: dateId },
-      {
-        onSuccess: (res) => {
-          const b64 = (res as { pdf_base64?: string } | null)?.pdf_base64;
-          if (b64) openPdfBase64(b64);
-        },
-      },
-    );
-  };
+  // "Preview" (ready-to-issue secondary). The `generate-hire-orders` `preview`
+  // action only supports `order_id` (or none, for a generic sample) — a
+  // ready-to-issue date has no order yet, so there is no per-date preview to
+  // call. Routes to the sheet instead of firing a mutation that would silently
+  // render the org's generic sample document under a date-specific label.
+  const previewHireOrder = (dateId: string) => openShowDate(dateId);
 
   /** Offer the queue's shortlisted artist for the top at-risk date. Note:
    *  `openOfferTier` offers the WHOLE eligible set for the tier — there is no
@@ -462,13 +450,26 @@ function ProducerShowsBookings() {
       .catch((e) => toast.error((e as Error).message));
   };
 
+  // Both bulk wrappers push a receipt per date once dispatched — `confirmAll`
+  // after the shared `confirmHoldsForDate` calls settle (it swallows its own
+  // errors internally rather than rejecting, so `.then()` always fires once
+  // every date has been attempted); `generateAll` right after firing, since
+  // `draftHireOrderForDate` is a fire-and-forget `.mutate()` with no promise
+  // to await. Deliberately NOT added inside `confirmHoldsForDate`/
+  // `draftHireOrderForDate` themselves — those are shared with Month/Agenda/
+  // DayRail, which have no "Cleared today" concept.
   const confirmAll = (ids: string[]) => {
     if (!(canConfirmBookings && bookingOn)) return;
-    void Promise.all(ids.map((id) => confirmHoldsForDate(id)));
+    void Promise.all(ids.map((id) => confirmHoldsForDate(id))).then(() => {
+      ids.forEach((id) => addReceipt(id, t('needsYou.toast.confirmedAll')));
+    });
   };
   const generateAll = (ids: string[]) => {
     if (!canGenerateHireOrders) return;
-    ids.forEach((id) => draftHireOrderForDate(id));
+    ids.forEach((id) => {
+      draftHireOrderForDate(id);
+      addReceipt(id, t('needsYou.toast.generatedAll'));
+    });
   };
 
   // Cockpit pager: walk the current filtered/sorted list from the open sheet.
