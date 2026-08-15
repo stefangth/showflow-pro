@@ -14,6 +14,7 @@ const eligible: EligibleDate[] = [
     city_id: null,
     show_id: 'show1',
     venue: 'Opera House',
+    city: 'Berlin',
     custom: null,
     show: { id: 'show1', program: 'Aida', sub_program: null, status: 'active' },
   },
@@ -27,6 +28,7 @@ const eligible: EligibleDate[] = [
     city_id: null,
     show_id: 'show2',
     venue: null,
+    city: null,
     custom: null,
     show: { id: 'show2', program: 'Rigoletto', sub_program: null, status: 'active' },
   },
@@ -40,6 +42,7 @@ const eligible: EligibleDate[] = [
     city_id: null,
     show_id: 'show3',
     venue: null,
+    city: null,
     custom: null,
     show: { id: 'show3', program: 'Nabucco', sub_program: null, status: 'active' },
   },
@@ -74,6 +77,14 @@ describe('artistData', () => {
       expect(sd1.hireOrderId).toBe('ho1');
       const sd2 = entries.find((e) => e.id === 'sd2')!;
       expect(sd2.hireOrderId).toBeNull();
+    });
+
+    it('populates city from the eligible date\'s joined city name', () => {
+      const entries = toArtistEntries(eligible, new Map(), new Set(), new Map());
+      const sd1 = entries.find((e) => e.id === 'sd1')!;
+      expect(sd1.city).toBe('Berlin');
+      const sd2 = entries.find((e) => e.id === 'sd2')!;
+      expect(sd2.city).toBeNull();
     });
   });
 
@@ -129,6 +140,7 @@ describe('artistData', () => {
           city_id: null,
           show_id: 'show-a',
           venue: null,
+          city: null,
           custom: null,
           show: { id: 'show-a', program: 'Aida', sub_program: null, status: 'active' },
         },
@@ -142,6 +154,7 @@ describe('artistData', () => {
           city_id: null,
           show_id: 'show-b',
           venue: null,
+          city: null,
           custom: null,
           show: { id: 'show-b', program: 'Rigoletto', sub_program: null, status: 'active' },
         },
@@ -169,17 +182,17 @@ describe('artistData', () => {
       const sameDayEligible: EligibleDate[] = [
         {
           id: 'sd-x', date: '2026-08-23', session_1: null, session_2: null, session_3: null,
-          status: 'open', city_id: null, show_id: 'show-x', venue: null, custom: null,
+          status: 'open', city_id: null, show_id: 'show-x', venue: null, city: null, custom: null,
           show: { id: 'show-x', program: 'Show X', sub_program: null, status: 'active' },
         },
         {
           id: 'sd-y', date: '2026-08-23', session_1: null, session_2: null, session_3: null,
-          status: 'open', city_id: null, show_id: 'show-y', venue: null, custom: null,
+          status: 'open', city_id: null, show_id: 'show-y', venue: null, city: null, custom: null,
           show: { id: 'show-y', program: 'Show Y', sub_program: null, status: 'active' },
         },
         {
           id: 'sd-z', date: '2026-08-23', session_1: null, session_2: null, session_3: null,
-          status: 'open', city_id: null, show_id: 'show-z', venue: null, custom: null,
+          status: 'open', city_id: null, show_id: 'show-z', venue: null, city: null, custom: null,
           show: { id: 'show-z', program: 'Show Z', sub_program: null, status: 'active' },
         },
       ];

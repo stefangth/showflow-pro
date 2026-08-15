@@ -306,6 +306,69 @@ describe("useArtistEligibleDates", () => {
     expect(result.current.data?.[0].custom).toEqual({ booking_ref: "FV-2033" });
   });
 
+  // Regression: EligibleDate carried only city_id, never a joined city name, so
+  // artist-facing calendar surfaces (Offers/All-dates/DayRail) always showed the
+  // venue with no city. The show_dates select must join cities(name) and pass
+  // it through as `city` on the mapped row.
+  it("includes the joined city name in the show_dates select and passes it through", async () => {
+    vi.mocked(useMyArtist).mockReturnValue(partialMock<ReturnType<typeof useMyArtist>>({ data: partialMock<Artist>({ id: ARTIST_ID }) }));
+
+    let selectArg = "";
+    mockFrom((table) => {
+      if (table === "cast_members") {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({ data: [{ cast_id: CAST_ID }], error: null }),
+          }),
+        };
+      }
+      if (table === "show_cast_eligibility") {
+        return {
+          select: vi.fn().mockReturnValue({
+            in: vi.fn().mockResolvedValue({ data: [{ show_id: SHOW_ID, city_id: CITY_ID }], error: null }),
+          }),
+        };
+      }
+      if (table === "show_date_cast_eligibility") {
+        return {
+          select: vi.fn().mockReturnValue({
+            in: vi.fn().mockResolvedValue({ data: [], error: null }),
+          }),
+        };
+      }
+      if (table === "show_dates") {
+        return {
+          select: vi.fn((arg: string) => {
+            selectArg = arg;
+            return {
+              eq: vi.fn().mockReturnValue({
+                gte: vi.fn().mockReturnValue({
+                  neq: vi.fn().mockReturnValue({
+                    order: vi.fn().mockResolvedValue({
+                      data: [{ ...sampleDate, city: { name: "Berlin" } }],
+                      error: null,
+                    }),
+                  }),
+                }),
+              }),
+            };
+          }),
+        };
+      }
+      return emptySkillRequirementTables(table) ?? ({});
+    });
+
+    const { result } = renderHook(() => useArtistEligibleDates(), {
+      wrapper: makeWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.data?.length).toBe(1);
+    });
+    expect(selectArg).toContain("city");
+    expect(result.current.data?.[0].city).toBe("Berlin");
+  });
+
   it("hides a date whose show-level required skill the artist lacks", async () => {
     vi.mocked(useMyArtist).mockReturnValue(partialMock<ReturnType<typeof useMyArtist>>({ data: partialMock<Artist>({ id: ARTIST_ID }) }));
 

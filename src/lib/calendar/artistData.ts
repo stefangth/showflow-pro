@@ -40,8 +40,7 @@ export function toArtistEntries(
       program: ed.show.program ?? '',
       subProgram: ed.show.sub_program,
       venue: ed.venue,
-      // EligibleDate carries only city_id, not a joined city name.
-      city: null,
+      city: ed.city ?? null,
       session1: ed.session_1,
       myStatus: status,
       hireOrderId: hireOrderByDateId.get(ed.id) ?? null,
