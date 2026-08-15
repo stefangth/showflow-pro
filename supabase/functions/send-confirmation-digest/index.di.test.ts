@@ -944,6 +944,90 @@ Deno.test("send-confirmation-digest: confirmation_digest:false still delivers in
   const stamp = calls.find((c) => c.table === "show_date_change_log" && c.method === "update");
   assertExists(stamp);
   assertEquals((stamp!.args[0] as { digested_at?: string }).digested_at, BERLIN_20_CEST.toISOString());
+  // Finding 1 fix: the delivered cancellation notice must also stamp
+  // show_dates.cast_notified_at, mirroring notify-cast's manual stamp — this is
+  // what lets the "Needs you" cancelled queue auto-clear, and what stops a
+  // producer's later manual "Notify cast" click from double-notifying artists
+  // who already got this digest's cancellation notice.
+  const castNotifiedStamp = calls.find((c) => c.table === "show_dates" && c.method === "update");
+  assertExists(castNotifiedStamp);
+  assertEquals((castNotifiedStamp!.args[0] as { cast_notified_at?: string }).cast_notified_at, BERLIN_20_CEST.toISOString());
+});
+
+// ── Finding 1 (whole-branch review): cancelled-date queue must auto-clear ─────
+
+Deno.test("send-confirmation-digest: delivered cancellation notice stamps show_dates.cast_notified_at", async () => {
+  const B_USER = "cccc3333-0000-0000-0000-000000000000";
+  const { deps, calls } = makeFakeDeps({
+    now: BERLIN_20_CEST,
+    tables: {
+      app_settings: APP_SETTINGS_SEED,
+      organizations: { data: [{ id: ORG_1 }], error: null },
+      bookings: [
+        { when: { status: "confirmed" }, data: [] },
+        { data: [
+          { id: "bk-C", artist_id: "art-C", show_date_id: "sd-cancel-2", status: "cancelled", cancellation_reason: "date_cancelled",
+            artists: { id: "art-C", name: "Cara", email: "cara@ex.com", user_id: B_USER } },
+        ] },
+      ],
+      show_date_change_log: { data: [
+        { id: "cl-3", show_date_id: "sd-cancel-2", change_type: "cancelled", session_slot: null, old_value: null, new_value: null, created_at: "2026-06-01T11:00:00Z",
+          show_dates: { date: "2026-06-15", status: "cancelled", cancellation_reason: "Venue flooded", shows: { program: "Magic", sub_program: null }, cities: { name: "Hamburg" } } },
+      ], error: null },
+      notifications: { data: null, error: null },
+    },
+    rpcs: { resolve_user_contacts: { data: [{ user_id: B_USER, email: "cara@login.com", display_name: "Cara L" }], error: null } },
+  });
+  const res = await handle(makeRequest({ headers: cronOK }), deps);
+  assertEquals(res.status, 200);
+
+  const showDatesUpdate = calls.find((c) => c.table === "show_dates" && c.method === "update");
+  assertExists(showDatesUpdate, "show_dates.cast_notified_at must be stamped for a delivered cancellation notice");
+  assertEquals((showDatesUpdate!.args[0] as { cast_notified_at?: string }).cast_notified_at, BERLIN_20_CEST.toISOString());
+
+  const inCall = calls.find((c) => c.table === "show_dates" && c.method === "in");
+  assertExists(inCall);
+  const ids = (inCall!.args as [string, string[]])[1];
+  assertEquals(ids.includes("sd-cancel-2"), true);
+});
+
+Deno.test("send-confirmation-digest: normal confirmation digest (no cancellation) does NOT stamp show_dates.cast_notified_at", async () => {
+  const { deps, calls } = baseDeps({ bookings: { data: ONE_CONFIRMED, error: null } });
+  const res = await handle(makeRequest({ headers: cronOK }), deps);
+  assertEquals(res.status, 200);
+  const showDatesUpdate = calls.find((c) => c.table === "show_dates" && c.method === "update");
+  assertEquals(showDatesUpdate, undefined, "a plain confirmation digest must not touch show_dates.cast_notified_at");
+});
+
+Deno.test("send-confirmation-digest: in-app delivery failure → does NOT stamp show_dates.cast_notified_at (retries next run)", async () => {
+  const B_USER = "dddd4444-0000-0000-0000-000000000000";
+  const { deps, calls } = makeFakeDeps({
+    now: BERLIN_20_CEST,
+    tables: {
+      app_settings: APP_SETTINGS_SEED,
+      organizations: { data: [{ id: ORG_1 }], error: null },
+      bookings: [
+        { when: { status: "confirmed" }, data: [] },
+        { data: [
+          { id: "bk-D", artist_id: "art-D", show_date_id: "sd-cancel-3", status: "cancelled", cancellation_reason: "date_cancelled",
+            artists: { id: "art-D", name: "Dana", email: "dana@ex.com", user_id: B_USER } },
+        ] },
+      ],
+      show_date_change_log: { data: [
+        { id: "cl-4", show_date_id: "sd-cancel-3", change_type: "cancelled", session_slot: null, old_value: null, new_value: null, created_at: "2026-06-01T11:00:00Z",
+          show_dates: { date: "2026-06-15", status: "cancelled", cancellation_reason: "Venue flooded", shows: { program: "Magic", sub_program: null }, cities: { name: "Hamburg" } } },
+      ], error: null },
+      // Force the in-app notification insert to fail (C4-style gate).
+      notifications: { data: null, error: { message: "insert failed" } },
+    },
+    rpcs: { resolve_user_contacts: { data: [{ user_id: B_USER, email: "dana@login.com", display_name: "Dana L" }], error: null } },
+  });
+  const res = await handle(makeRequest({ headers: cronOK }), deps);
+  assertEquals(res.status, 200);
+  const showDatesUpdate = calls.find((c) => c.table === "show_dates" && c.method === "update");
+  assertEquals(showDatesUpdate, undefined, "must not stamp cast_notified_at when the in-app notification failed to deliver");
+  const changeLogUpdate = calls.find((c) => c.table === "show_date_change_log" && c.method === "update");
+  assertEquals(changeLogUpdate, undefined, "must not consume the change log either (mirrors existing digested_at gate)");
 });
 
 Deno.test("send-confirmation-digest: booking_flow.active:false → NO confirmation digest, even at the configured hour with a fresh confirmation", async () => {
