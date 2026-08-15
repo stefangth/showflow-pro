@@ -2,6 +2,17 @@
 
 What's new in ShowFlow, newest first.
 
+## 1.17.0 — August 15, 2026
+
+*Emails and contracts in your workspace's language*
+
+### New
+- **German emails and hire order PDFs** — When your workspace runs in German, the offer, confirmation, and hire order emails ShowFlow sends, and the hire order PDF documents it generates, now go out in German, with German dates and money formatting.
+- **Set your workspace language** — Admins choose the language for everything the workspace sends, from Settings then Organization. Each person still picks their own in-app language separately in the account menu.
+
+### Improved
+- **Preview an email in either language** — The email template editor can now show each transactional email in English or German before you send it.
+
 ## 1.16.0 — August 14, 2026
 
 *Your language, and a Help center that speaks it*

@@ -146,6 +146,14 @@ export const HELP_ITEMS: readonly HelpItem[] = [
     },
   },
   {
+    id: 'A3.7', role: 'admin', stage: 3, status: 'new', surface: 'Settings, Organization', updated: '2026-08-15',
+    q: { en: 'What language do the emails and hire order PDFs go out in?', de: 'In welcher Sprache gehen die E-Mails und Engagementvertrag-PDFs raus?' },
+    a: {
+      en: 'In your workspace language, set once under Settings then Organization. When it is German, offer, confirmation, and hire order emails, and the hire order PDFs, are sent in German with German dates and money formatting. This is separate from the app language each person picks for themselves in the account menu, which only changes what that one person sees on screen.',
+      de: 'In der Sprache deines Arbeitsbereichs, die du einmal unter Einstellungen dann Organisation festlegst. Steht sie auf Deutsch, gehen Angebots-, Bestätigungs- und Engagementvertrag-E-Mails sowie die Engagementvertrag-PDFs auf Deutsch raus, mit deutschem Datums- und Geldformat. Das ist getrennt von der App-Sprache, die jede Person im Kontomenü für sich wählt und die nur ändert, was diese eine Person auf dem Bildschirm sieht.',
+    },
+  },
+  {
     id: 'A4.1', role: 'admin', stage: 4, status: 'new', surface: 'Notifications', updated: '2026-08-14',
     q: { en: 'Why does clicking a notification do nothing?', de: 'Warum passiert nichts, wenn ich auf eine Benachrichtigung klicke?' },
     a: {

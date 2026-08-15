@@ -107,6 +107,8 @@
     "saveSuccess": "Email template saved",
     "noActiveOrg": "No active organization",
     "previewAsGroup": "Preview as",
-    "previewAsLabel": "Preview as"
+    "previewAsLabel": "Preview as",
+    "previewLanguageGroup": "Preview language",
+    "previewLanguageLabel": "Language"
   }
 }

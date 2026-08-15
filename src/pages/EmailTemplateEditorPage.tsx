@@ -7,6 +7,9 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmailPreviewPane } from "@/components/settings/emailTemplates/EmailPreviewPane";
+import { useFeature } from "@/hooks/useEntitlements";
+import { SUPPORTED_LANGUAGES, LANGUAGE_LABELS } from "@/i18n/config";
+import type { ServerLocale } from "@/lib/i18n/orgLanguage";
 import {
   EmailTemplateInspector,
 } from "@/components/settings/emailTemplates/EmailTemplateInspector";
@@ -82,6 +85,11 @@ function EmailTemplateEditorWorkspace({ template, orgId, readOnly }: WorkspacePr
   const [variantIdx, setVariantIdx] = useState(0);
   const variants = template.previewVariants;
   const activeVariant = variants?.[variantIdx] ?? variants?.[0];
+  // Preview language toggle (admin QA), gated by the language_packages entitlement.
+  // The preview endpoint itself is not gated, so an admin can preview German before
+  // turning the workspace language on.
+  const languagePacksEnabled = useFeature("language_packages");
+  const [previewLocale, setPreviewLocale] = useState<ServerLocale>("en");
 
   const save = useMutation({
     mutationFn: async () => {
@@ -108,7 +116,8 @@ function EmailTemplateEditorWorkspace({ template, orgId, readOnly }: WorkspacePr
     // `data` identities are stable (module-level meta), so this only re-renders the
     // preview when the SELECTION changes, not on every render.
     dataOverride: activeVariant?.data,
-  }), [activeVariant, copyDraft, selected, template.templateKey, themeDraft]);
+    locale: previewLocale,
+  }), [activeVariant, copyDraft, previewLocale, selected, template.templateKey, themeDraft]);
 
   if (settingsQuery.isLoading) return <Skeleton className="h-[80vh] w-full" />;
   if (settingsQuery.isError) {
@@ -171,22 +180,43 @@ function EmailTemplateEditorWorkspace({ template, orgId, readOnly }: WorkspacePr
         />
       }
       preview={
-        variants ? (
+        variants || languagePacksEnabled ? (
           <div className="flex h-full flex-col">
-            <div role="group" aria-label={t("emailTemplateEditorPage.previewAsGroup")} className="flex flex-wrap items-center gap-1 border-b border-border bg-background px-3 py-2">
-              <span className="mr-1 text-xs text-muted-foreground">{t("emailTemplateEditorPage.previewAsLabel")}</span>
-              {variants.map((variant, index) => (
-                <Button
-                  key={variant.label}
-                  type="button"
-                  size="sm"
-                  variant={index === variantIdx ? "secondary" : "ghost"}
-                  aria-pressed={index === variantIdx}
-                  onClick={() => setVariantIdx(index)}
-                >
-                  {variant.label}
-                </Button>
-              ))}
+            <div className="flex flex-wrap items-center gap-1 border-b border-border bg-background px-3 py-2">
+              {variants && (
+                <div role="group" aria-label={t("emailTemplateEditorPage.previewAsGroup")} className="flex flex-wrap items-center gap-1">
+                  <span className="mr-1 text-xs text-muted-foreground">{t("emailTemplateEditorPage.previewAsLabel")}</span>
+                  {variants.map((variant, index) => (
+                    <Button
+                      key={variant.label}
+                      type="button"
+                      size="sm"
+                      variant={index === variantIdx ? "secondary" : "ghost"}
+                      aria-pressed={index === variantIdx}
+                      onClick={() => setVariantIdx(index)}
+                    >
+                      {variant.label}
+                    </Button>
+                  ))}
+                </div>
+              )}
+              {languagePacksEnabled && (
+                <div role="group" aria-label={t("emailTemplateEditorPage.previewLanguageGroup")} className="ml-auto flex items-center gap-1">
+                  <span className="mr-1 text-xs text-muted-foreground">{t("emailTemplateEditorPage.previewLanguageLabel")}</span>
+                  {SUPPORTED_LANGUAGES.map((code) => (
+                    <Button
+                      key={code}
+                      type="button"
+                      size="sm"
+                      variant={code === previewLocale ? "secondary" : "ghost"}
+                      aria-pressed={code === previewLocale}
+                      onClick={() => setPreviewLocale(code)}
+                    >
+                      {LANGUAGE_LABELS[code]}
+                    </Button>
+                  ))}
+                </div>
+              )}
             </div>
             <div className="min-h-0 flex-1">
               <EmailPreviewPane {...previewInput} />

@@ -107,6 +107,8 @@
     "saveSuccess": "E-Mail-Vorlage gespeichert",
     "noActiveOrg": "Keine aktive Organisation",
     "previewAsGroup": "Vorschau als",
-    "previewAsLabel": "Vorschau als"
+    "previewAsLabel": "Vorschau als",
+    "previewLanguageGroup": "Vorschausprache",
+    "previewLanguageLabel": "Sprache"
   }
 }
