@@ -148,6 +148,8 @@ export interface SampleRenderOptions {
   terms?: HireOrderTerm[] | null;
   currency?: string;
   generatedAtIso?: string;
+  /** Weekday + money locale (see RenderInput.locale). Omitted -> English. */
+  locale?: "en" | "de";
 }
 
 /** Compose the whole sample document. Both preview surfaces go through this,
@@ -160,6 +162,7 @@ export function sampleRenderInput(options: SampleRenderOptions = {}): RenderInpu
     generatedAtIso: options.generatedAtIso ?? SAMPLE_GENERATED_AT_ISO,
     copy: options.copy,
     theme: options.theme,
+    locale: options.locale,
     highlightRole: options.highlightRole,
     letterhead: sampleLetterhead(options.letterhead),
     terms: sampleTerms(options.terms),

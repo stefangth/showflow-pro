@@ -1,6 +1,7 @@
 import {
   assert,
   assertEquals,
+  assertExists,
 } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import { handle, resolveOrderDefaults } from "./index.ts";
 import { makeFakeDeps, makeRequest } from "../_shared/testing.ts";
@@ -5415,4 +5416,90 @@ Deno.test("sign re-resolves the live theme setting for a legacy order with a nul
   );
   assertEquals(res.status, 200);
   assertEquals(captured!.theme?.base.scale, 1.45, "no issue_snapshot at all -> re-resolve the live theme setting");
+});
+
+// ===========================================================================
+// Per-org language (Section C): issue renders German copy + locale for a de,
+// entitled org, and freezes the locale into issue_snapshot. English default is
+// covered implicitly by every other issue test (org_language unset => "en").
+// The gate (de setting but language_packages off => English) is covered by
+// orgLocale.test.ts and the send-transactional-email di tests; the fake's
+// is_feature_enabled returns one value for all features, so it cannot represent
+// hire_orders-on + language_packages-off here.
+// ===========================================================================
+Deno.test("issue: a de, entitled org renders the German copy base and freezes locale='de'", async () => {
+  const { deps, calls } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      hire_orders: [
+        { when: { __write: false }, data: issuableOrder({}) },
+        { when: { __write: true }, data: null },
+      ],
+      artists: { data: { user_id: "u-artist" } },
+      app_settings: [
+        { when: { key: "hire_order_letterhead" }, data: [LETTERHEAD] },
+        { when: { key: "hire_order_terms" }, data: [TERMS_TEMPLATES_DEFAULT_FILLED] },
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+        { when: { key: "org_language" }, data: [{ org_id: ORG, value: "de" }] },
+      ],
+    },
+  });
+  let captured: { locale?: string; copy?: { header_eyebrow?: string } } | null = null;
+  deps.renderHireOrderPdf = (a) => {
+    captured = a as unknown as typeof captured;
+    return Promise.resolve(new Uint8Array([0x25, 0x50, 0x44, 0x46]));
+  };
+
+  const res = await handle(
+    makeRequest({ headers: JWT, body: { action: "issue", org_id: ORG, order_ids: ["o-1"] } }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.issued, ["o-1"]);
+  assertEquals(captured!.locale, "de");
+  assertEquals(captured!.copy?.header_eyebrow, "Engagementvertrag");
+
+  // Locale is frozen into issue_snapshot alongside the copy.
+  const issueWrite = calls.find(
+    (c) => c.table === "hire_orders" && c.method === "update" &&
+      typeof c.args?.[0] === "object" && c.args[0] !== null &&
+      (c.args[0] as { status?: string }).status === "issued",
+  );
+  assertExists(issueWrite);
+  const snapshot = (issueWrite!.args[0] as { issue_snapshot?: { locale?: string } }).issue_snapshot;
+  assertEquals(snapshot?.locale, "de");
+});
+
+Deno.test("issue: an org with no org_language renders the English copy base and locale='en'", async () => {
+  const { deps } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      hire_orders: [
+        { when: { __write: false }, data: issuableOrder({}) },
+        { when: { __write: true }, data: null },
+      ],
+      artists: { data: { user_id: "u-artist" } },
+      app_settings: [
+        { when: { key: "hire_order_letterhead" }, data: [LETTERHEAD] },
+        { when: { key: "hire_order_terms" }, data: [TERMS_TEMPLATES_DEFAULT_FILLED] },
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+      ],
+    },
+  });
+  let captured: { locale?: string; copy?: { header_eyebrow?: string } } | null = null;
+  deps.renderHireOrderPdf = (a) => {
+    captured = a as unknown as typeof captured;
+    return Promise.resolve(new Uint8Array([0x25, 0x50, 0x44, 0x46]));
+  };
+
+  const res = await handle(
+    makeRequest({ headers: JWT, body: { action: "issue", org_id: ORG, order_ids: ["o-1"] } }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  assertEquals(captured!.locale, "en");
+  assertEquals(captured!.copy?.header_eyebrow, "Performance hire order");
 });

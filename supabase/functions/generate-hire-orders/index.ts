@@ -66,6 +66,7 @@ import {
   withCollisionSuffix,
 } from "../_shared/hireOrders.ts";
 import { type HireOrderCopy, resolveHireOrderCopy } from "../_shared/hire-order-pdf/pdfCopy.ts";
+import { resolveOrgLocale, type ServerLocale } from "../_shared/orgLocale.ts";
 import {
   SAMPLE_ORDER_NO,
   sampleOrderData,
@@ -126,6 +127,11 @@ interface IssueSnapshot {
    *  the snapshot (see FONT_FAMILIES in pdfTheme.ts). Legacy snapshots (issued
    *  before this) lack it -> signOrder falls back to the live setting / defaults. */
   theme?: HireOrderTheme;
+  /** Language frozen at issue (weekday name + money grouping) so a countersigned
+   *  re-render reproduces the exact issued formatting even if the org later
+   *  switches language or loses the language_packages entitlement. Legacy
+   *  snapshots lack it -> the re-render falls back to English. */
+  locale?: ServerLocale;
 }
 
 const NUMBERING_DEFAULT: Numbering = {
@@ -1647,7 +1653,11 @@ async function issueOrders(
     "hire_order_copy",
     COPY_DEFAULT,
   );
-  const copy = resolveHireOrderCopy(copyOverride);
+  // Per-org language (entitlement-gated), resolved ONCE for the batch and frozen
+  // per order into issue_snapshot.locale so a later language/entitlement change
+  // never alters an already-issued document's re-render.
+  const locale = await resolveOrgLocale(admin, org);
+  const copy = resolveHireOrderCopy(copyOverride, locale);
   // Resolve the org's editable PDF theme ONCE for the whole batch (frozen per order
   // into issue_snapshot.theme below), same shape as copy above.
   const themeOverride = await resolveOrgSetting<HireOrderThemeOverride>(
@@ -1680,6 +1690,7 @@ async function issueOrders(
         agentSignatureDataUrl,
         copy,
         theme,
+        locale,
       );
       if (outcome.ok) {
         issued.push(orderId);
@@ -1718,6 +1729,7 @@ async function issueOne(
   agentSignatureDataUrl: string | null,
   copy: HireOrderCopy,
   theme: HireOrderTheme,
+  locale: ServerLocale,
 ): Promise<{ ok: true; warning?: string } | { ok: false; issues: string[] }> {
   const admin = deps.admin;
 
@@ -1781,6 +1793,7 @@ async function issueOne(
     generatedAtIso: deps.now().toISOString(),
     copy,
     theme,
+    locale,
   });
 
   const path = `${org}/${o.order_no}.pdf`;
@@ -1800,6 +1813,7 @@ async function issueOne(
     countersign_mode: countersign.mode,
     copy,
     theme,
+    locale,
   };
   const { error: issueErr } = await admin
     .from("hire_orders")
@@ -1894,6 +1908,7 @@ async function issueOne(
     data,
     bytes,
     currency,
+    locale,
     countersignModeUsed,
     signingUrl,
     "issued",
@@ -1936,6 +1951,7 @@ async function sendIssuedEmail(
   data: OrderData,
   bytes: Uint8Array,
   currency: string,
+  locale: ServerLocale,
   countersignMode: string,
   signingUrl: string | null,
   deliveryKind: "issued" | "resend",
@@ -1954,7 +1970,7 @@ async function sendIssuedEmail(
   const feeLabel =
     feeValue === undefined || feeValue === null || feeValue === ""
       ? ""
-      : formatMoney(feeValue as string | number, currency); // same fee/currency the PDF shows
+      : formatMoney(feeValue as string | number, currency, locale === "de" ? "de-DE" : "en-US"); // same fee/currency/locale the PDF shows
 
   const result = await deps.sendEmail({
     template_name: "hire-order-issued",
@@ -2080,6 +2096,10 @@ async function resendOrder(deps: Deps, body: ResendBody): Promise<Response> {
   }
   const bytes = new Uint8Array(await storedPdf.arrayBuffer());
   const currency = order.fee_currency || strField(data, "currency") || "EUR";
+  // Reproduce the fee formatting frozen at issue; a resent email must match the
+  // stored PDF even if the org later changed language.
+  const resendLocale: ServerLocale =
+    (order as unknown as { issue_snapshot?: IssueSnapshot | null }).issue_snapshot?.locale ?? "en";
   const signingDelivery = resendSigningDelivery(order);
   const delivered = await sendIssuedEmail(
     deps,
@@ -2088,6 +2108,7 @@ async function resendOrder(deps: Deps, body: ResendBody): Promise<Response> {
     data,
     bytes,
     currency,
+    resendLocale,
     signingDelivery.countersignMode,
     signingDelivery.signingUrl,
     "resend",
@@ -2187,7 +2208,10 @@ async function previewOrder(deps: Deps, body: PreviewBody): Promise<Response> {
       THEME_DEFAULT,
     ),
   ]);
-  const copy = resolveHireOrderCopy({ ...storedCopy, ...(body.copy_override ?? {}) });
+  // Preview reflects the org's CURRENT language (live, entitlement-gated), unlike
+  // issue/countersign which use the frozen snapshot locale.
+  const locale = await resolveOrgLocale(admin, org);
+  const copy = resolveHireOrderCopy({ ...storedCopy, ...(body.copy_override ?? {}) }, locale);
   const theme = resolveHireOrderTheme(layerThemeOverride(storedTheme, body.theme_override));
   const termsSetting = normalizeTermsSetting(rawTerms);
 
@@ -2240,6 +2264,7 @@ async function previewOrder(deps: Deps, body: PreviewBody): Promise<Response> {
       ? sampleRenderInput({
         copy,
         theme,
+        locale,
         letterhead: effectiveLetterhead,
         terms: clauses,
         currency: o.fee_currency ?? defaults.currency ?? "EUR",
@@ -2255,6 +2280,7 @@ async function previewOrder(deps: Deps, body: PreviewBody): Promise<Response> {
         generatedAtIso: deps.now().toISOString(),
         copy,
         theme,
+        locale,
       },
   );
 
@@ -2503,6 +2529,10 @@ async function signOrder(
   let currency: string;
   let renderCopy: HireOrderCopy;
   let renderTheme: HireOrderTheme;
+  // Language frozen at issue (weekday + money), so a countersigned re-render matches
+  // the issued PDF even if the org later switched language. Legacy/no-snapshot
+  // orders predate German and reproduce as English.
+  let renderLocale: ServerLocale;
   if (snapshot && snapshot.letterhead && Array.isArray(snapshot.terms)) {
     // The snapshot letterhead already includes the per-order agent override baked in
     // at issue time, so do NOT re-merge o.agent_name/agent_email here.
@@ -2518,6 +2548,7 @@ async function signOrder(
     // theme for orders issued after this change and undefined for older ones;
     // resolveHireOrderTheme fills any gaps from the built-in defaults either way.
     renderTheme = resolveHireOrderTheme(snapshot.theme);
+    renderLocale = snapshot.locale ?? "en";
   } else {
     const termsSetting = normalizeTermsSetting(rawTerms);
     renderLetterhead = {
@@ -2535,6 +2566,7 @@ async function signOrder(
       COPY_DEFAULT,
     );
     renderCopy = resolveHireOrderCopy(storedCopy);
+    renderLocale = "en";
     const storedTheme = await resolveOrgSetting<HireOrderThemeOverride>(
       admin,
       org,
@@ -2576,6 +2608,7 @@ async function signOrder(
     signature,
     copy: renderCopy,
     theme: renderTheme,
+    locale: renderLocale,
   });
 
   // Upload the signed copy (keeps the original issued pdf_path intact).
