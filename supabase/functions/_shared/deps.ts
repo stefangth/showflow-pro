@@ -1,6 +1,7 @@
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 import type { Database } from "./database.types.ts";
 import type { RenderHireOrderPdf } from "./hireOrders.ts";
+import type { ServerLocale } from "./orgLocale.ts";
 
 /** The Supabase client typed against the mirrored generated Database schema. */
 export type TypedClient = SupabaseClient<Database>;
@@ -19,6 +20,14 @@ export interface EmailMessage {
   idempotency_key?: string;
   /** Binary attachments (e.g. the issued hire-order PDF). Task 10 implements delivery. */
   attachments?: EmailAttachment[];
+  /**
+   * Force the language of the whole email (subject/copy/`<html lang>`) instead of
+   * letting `send-transactional-email` resolve the org's live `org_language`. Used
+   * to replay a frozen locale (e.g. resending a hire order at its issue-snapshot
+   * locale). The entitlement gate still applies, so this can never leak German to
+   * an org lacking `language_packages`.
+   */
+  locale?: ServerLocale;
 }
 
 export interface InvokeResult {

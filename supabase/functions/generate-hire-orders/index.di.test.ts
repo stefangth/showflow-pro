@@ -2508,6 +2508,57 @@ Deno.test("resend rejects null and empty provider data without stamping last_sen
   }
 });
 
+Deno.test("resend threads the frozen issue-snapshot locale to the wrapper email (de, entitled)", async () => {
+  const { deps, invokeCalls } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    now: new Date("2026-06-01T12:00:00.000Z"),
+    emailResult: { data: { success: true }, error: null },
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      hire_orders: [
+        {
+          when: { __write: false },
+          data: issuableOrder({
+            status: "issued",
+            pdf_path: `${ORG}/HO-1.pdf`,
+            countersign_mode: "manual",
+            issue_snapshot: { countersign_mode: "manual", locale: "de" },
+          }),
+        },
+        { when: { __write: true }, data: null },
+      ],
+    },
+  });
+  installStorageDownload(deps, {
+    data: new Blob([new Uint8Array([0x25, 0x50, 0x44, 0x46])], {
+      type: "application/pdf",
+    }),
+    error: null,
+  });
+
+  const response = await handle(
+    makeRequest({
+      headers: JWT,
+      body: { action: "resend", org_id: ORG, order_id: "o-1" },
+    }),
+    deps,
+  );
+
+  assertEquals(response.status, 200);
+  const email = invokeCalls.find((c) => c.name === "send-transactional-email");
+  assert(email, "resend delivers through send-transactional-email");
+  assertEquals(
+    (email!.body as { locale?: string }).locale,
+    "de",
+    "the frozen snapshot locale is forced on the whole email",
+  );
+});
+
+// The entitlement re-gate on the replayed locale (a frozen "de" falling back to
+// "en" when the org later loses language_packages) lives in resolveOrgLocale and
+// is covered at the send-transactional-email layer; it can't be exercised here
+// because a false is_feature_enabled fake would also trip the hire_orders gate.
+
 Deno.test("issue refuses orders failing the ready gate and reports issue codes", async () => {
   const { deps, calls } = makeFakeDeps({
     authUser: { id: "u-admin" },

@@ -372,7 +372,7 @@ interface ResendOrderRow extends EmailOrderRow {
   signed_pdf_path: string | null;
   fee_currency: string | null;
   countersign_mode: string | null;
-  issue_snapshot: Pick<IssueSnapshot, "countersign_mode"> | null;
+  issue_snapshot: Pick<IssueSnapshot, "countersign_mode" | "locale"> | null;
 }
 
 // ── entry ──────────────────────────────────────────────────────────────────
@@ -1976,6 +1976,9 @@ async function sendIssuedEmail(
     template_name: "hire-order-issued",
     recipient_email: recipient,
     org_id: org,
+    // Force the wrapper copy/subject/<html lang> to the same locale that formats
+    // the fee (frozen at issue for resend), so the whole email is one language.
+    locale,
     // Contract of _shared/transactional-email-templates/hire-order-issued.tsx (snake_case).
     // download_url points at the auth-gated V3 detail page (re-signs the PDF on demand),
     // NOT a raw signed storage URL — a signed URL expires in 3600s and would be dead in the
@@ -2096,10 +2099,16 @@ async function resendOrder(deps: Deps, body: ResendBody): Promise<Response> {
   }
   const bytes = new Uint8Array(await storedPdf.arrayBuffer());
   const currency = order.fee_currency || strField(data, "currency") || "EUR";
-  // Reproduce the fee formatting frozen at issue; a resent email must match the
-  // stored PDF even if the org later changed language.
-  const resendLocale: ServerLocale =
-    (order as unknown as { issue_snapshot?: IssueSnapshot | null }).issue_snapshot?.locale ?? "en";
+  // Replay the locale frozen at issue so the whole resent email (fee text AND the
+  // wrapper copy/subject/<html lang> resolved downstream in send-transactional-email)
+  // matches the stored PDF even if the org later changed language. Re-gate through
+  // resolveOrgLocale so an org that has since lost language_packages falls back to
+  // English consistently rather than emitting German fee digits under English copy.
+  const resendLocale: ServerLocale = await resolveOrgLocale(
+    deps.admin,
+    org,
+    order.issue_snapshot?.locale ?? "en",
+  );
   const signingDelivery = resendSigningDelivery(order);
   const delivered = await sendIssuedEmail(
     deps,

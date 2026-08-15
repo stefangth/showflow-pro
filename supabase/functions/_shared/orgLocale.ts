@@ -19,21 +19,30 @@ export function coerceLocale(value: unknown): ServerLocale {
 
 /**
  * The language server-generated content should render in for an org. Returns
- * "de" ONLY when the org's `org_language` setting is "de" AND the org is entitled
- * to `language_packages` — the same double gate `AppLayout` enforces on the
+ * "de" ONLY when the desired language is "de" AND the org is entitled to
+ * `language_packages` — the same double gate `AppLayout` enforces on the
  * client, so translated content can never leak to an org that has not been
  * granted the module. A null orgId (org-less auth or platform-scoped email) is
  * always "en". Short-circuits before any DB call when orgId is null, and skips
- * the entitlement RPC whenever the setting is not "de".
+ * the entitlement RPC whenever the desired language is not "de".
+ *
+ * `override` forces the desired language instead of reading the live
+ * `org_language` setting — used when replaying a frozen locale (e.g. resending a
+ * hire order at the locale captured in its issue snapshot) so the whole email
+ * matches the stored document. The entitlement gate still applies, so an
+ * override can never leak German to an org that has lost the module.
  */
 export async function resolveOrgLocale(
   admin: SupabaseClient,
   orgId: string | null,
+  override?: ServerLocale | null,
 ): Promise<ServerLocale> {
   if (!orgId) return "en";
-  const lang = coerceLocale(
-    await resolveOrgSetting(admin, orgId, ORG_LANGUAGE_SETTING_KEY, "en"),
-  );
+  const lang = override != null
+    ? override
+    : coerceLocale(
+      await resolveOrgSetting(admin, orgId, ORG_LANGUAGE_SETTING_KEY, "en"),
+    );
   if (lang !== "de") return "en";
   return (await checkFeature(admin, orgId, "language_packages")) ? "de" : "en";
 }
