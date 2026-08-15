@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   applyEmailTokens,
   compactEmailCopy,
+  EMAIL_COPY_DE,
   EMAIL_COPY_DEFAULTS,
   legacyEmailOverridesToCopy,
   resolveEmailCopy,
@@ -198,5 +199,56 @@ describe("email copy registry", () => {
     for (const value of Object.values(EMAIL_COPY_DEFAULTS)) {
       expect(value).not.toMatch(/[–—]/);
     }
+  });
+});
+
+const emailTokensOf = (s: string): string[] =>
+  (s.match(/\{\{(\w+)\}\}/g) ?? []).slice().sort();
+
+describe("EMAIL_COPY_DE (German base)", () => {
+  it("has exactly the same keys as EMAIL_COPY_DEFAULTS", () => {
+    expect(Object.keys(EMAIL_COPY_DE).slice().sort()).toEqual(
+      Object.keys(EMAIL_COPY_DEFAULTS).slice().sort(),
+    );
+  });
+
+  it("preserves every {{token}} placeholder from the English twin", () => {
+    for (const key of Object.keys(EMAIL_COPY_DEFAULTS) as (keyof typeof EMAIL_COPY_DEFAULTS)[]) {
+      expect(emailTokensOf(EMAIL_COPY_DE[key]), `tokens for ${key}`).toEqual(
+        emailTokensOf(EMAIL_COPY_DEFAULTS[key]),
+      );
+    }
+  });
+
+  it("uses no em or en dashes", () => {
+    for (const [key, value] of Object.entries(EMAIL_COPY_DE)) {
+      expect(value, `dash in ${key}`).not.toMatch(/[–—]/);
+    }
+  });
+
+  it("uses the informal Du, never the formal Sie/Ihr", () => {
+    for (const [key, value] of Object.entries(EMAIL_COPY_DE)) {
+      expect(value, `formal address in ${key}`).not.toMatch(
+        /\b(Sie|Ihre?|Ihnen|Ihrem|Ihren|Ihres)\b/,
+      );
+    }
+  });
+});
+
+describe("resolveEmailCopy locale selection", () => {
+  it("defaults to English and stays byte-identical to the defaults", () => {
+    expect(resolveEmailCopy()).toEqual({ ...EMAIL_COPY_DEFAULTS });
+    expect(resolveEmailCopy(undefined, "en")).toEqual({ ...EMAIL_COPY_DEFAULTS });
+  });
+
+  it("returns the German base when locale is 'de'", () => {
+    expect(resolveEmailCopy(undefined, "de")).toEqual({ ...EMAIL_COPY_DE });
+  });
+
+  it("layers a sparse per-org override over the German base", () => {
+    const out = resolveEmailCopy({ "offer-immediate.heading": "X" }, "de");
+    expect(out["offer-immediate.heading"]).toBe("X");
+    // an uncustomized key still resolves to the German base, not English
+    expect(out["offer-immediate.ctaLabel"]).toBe(EMAIL_COPY_DE["offer-immediate.ctaLabel"]);
   });
 });
