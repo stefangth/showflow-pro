@@ -87,6 +87,10 @@ interface Props {
     onPrev: () => void;
     onNext: () => void;
   };
+  /** Tab to land on when the sheet opens for a (new) date — e.g. the Agenda
+   *  lens's "Open casting" action opening straight to `offers` instead of the
+   *  default `cast` tab. Defaults to `cast` when omitted. */
+  initialTab?: CockpitTab;
 }
 
 type BookingWithArtist = Booking & { artist: Pick<Artist, 'id' | 'name'> };
@@ -181,7 +185,7 @@ interface ShowDateDetailRow {
   city: { id: string; name: string } | null;
 }
 
-export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: Props) {
+export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager, initialTab }: Props) {
   const { t } = useTranslation('showsDetail');
   const { t: tBooking } = useTranslation('bookingCopy');
   const { hasRole, user, roles, currentOrg } = useAuth();
@@ -217,14 +221,15 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: P
   const { features: bookingEntitledFeatures, isLoading: bookingEntitlementsLoading } = useEntitlements();
   const bookingFlowFeatureEnabled = !bookingEntitlementsLoading && bookingEntitledFeatures.has('booking_flow');
 
-  const [activeTab, setActiveTab] = useState<CockpitTab>('cast');
+  const [activeTab, setActiveTab] = useState<CockpitTab>(initialTab ?? 'cast');
   // The sheet instance is reused across dates (no key at the mount sites), so reset
-  // to the default tab whenever it opens for a different date — otherwise a stale
-  // tab (e.g. Setup) carries over. Render-time reset avoids an effect-driven flash.
+  // to the default (or caller-requested) tab whenever it opens for a different date
+  // — otherwise a stale tab (e.g. Setup) carries over. Render-time reset avoids an
+  // effect-driven flash.
   const [tabResetFor, setTabResetFor] = useState(showDateId);
   if (showDateId !== tabResetFor) {
     setTabResetFor(showDateId);
-    setActiveTab('cast');
+    setActiveTab(initialTab ?? 'cast');
   }
 
   const { data: showDate, isLoading } = useQuery({

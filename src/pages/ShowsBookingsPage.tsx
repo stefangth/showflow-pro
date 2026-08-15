@@ -25,6 +25,7 @@ import { useModuleOnboardingRail } from '@/components/setup/useModuleOnboardingR
 import { SetupChecklistSheet } from '@/components/setup/SetupChecklistSheet';
 import type { ComposedStep } from '@/lib/dashboard/types';
 import { ShowDateDetailSheet } from '@/components/shows/ShowDateDetailSheet';
+import type { CockpitTab } from '@/components/shows/date/CockpitHeader';
 import { ShowDateFormDialog } from '@/components/shows/ShowDateFormDialog';
 import { NewOrderWizard } from '@/components/hireOrders/NewOrderWizard';
 import { HireOrderReadyBanner } from '@/components/hireOrders/HireOrderReadyBanner';
@@ -130,7 +131,14 @@ function ProducerShowsBookings() {
   const [customFilters, setCustomFilters] = useState<Record<string, CustomFilterState>>({});
   const [lens, setLens] = useState<'month' | 'agenda'>('month');
   const [activeShowDateId, setActiveShowDateId] = useState<string | null>(null);
-  const openShowDate = (id: string) => setActiveShowDateId(id);
+  // Which tab the sheet should land on for the date about to open — reset on
+  // every open so a stale "Open casting" request can't leak into a later
+  // plain "Open date" for a different date.
+  const [sheetInitialTab, setSheetInitialTab] = useState<CockpitTab | undefined>(undefined);
+  const openShowDate = (id: string) => { setSheetInitialTab(undefined); setActiveShowDateId(id); };
+  // Agenda lens's "Open casting" action (open-status dates): the label promises
+  // casting/offers, so land the sheet on the Offers tab instead of the default Cast tab.
+  const openCastingDate = (id: string) => { setSheetInitialTab('offers'); setActiveShowDateId(id); };
 
   const [newDateOpen, setNewDateOpen] = useState(false);
   const [wizardOpen, setWizardOpen] = useState(false);
@@ -440,7 +448,7 @@ function ProducerShowsBookings() {
             confirmHolds,
             generateHireOrder,
             openDate: openShowDate,
-            openCasting: openShowDate,
+            openCasting: openCastingDate,
           }}
           actionGates={{
             confirmHolds: {
@@ -469,6 +477,7 @@ function ProducerShowsBookings() {
         open={!!activeShowDateId}
         onOpenChange={o => { if (!o) setActiveShowDateId(null); }}
         pager={sheetPager}
+        initialTab={sheetInitialTab}
       />
       <ShowDateFormDialog open={newDateOpen} onOpenChange={setNewDateOpen} mode="create" />
       <NewOrderWizard open={wizardOpen} onOpenChange={setWizardOpen} orgId={orgId} />
