@@ -15,6 +15,28 @@ function buildCells(): MonthGridCell[] {
     });
   }
   for (let day = 1; day <= 31; day++) {
+    // Mirror the real producers (src/lib/calendar/producerData.ts /
+    // artistData.ts): `chips` is UNCAPPED (one entry per day entry) and
+    // `moreCount` is derived from that same uncapped length via
+    // `Math.max(0, dayEntries.length - 2)` — never an independent count.
+    const dayChips =
+      day === 10
+        ? [
+            {
+              title: 'Show A',
+              time: '19:00',
+              tone: 'success' as const,
+              meter: [{ filled: true }, { filled: true }, { filled: false }],
+            },
+            { title: 'Show B', time: '20:30', tone: 'warning' as const },
+            { title: 'Show C', time: '21:00', tone: 'muted' as const },
+          ]
+        : day === 22
+          ? [
+              { title: 'Show D', tone: 'success' as const },
+              { title: 'Show E', tone: 'warning' as const },
+            ]
+          : [];
     out.push({
       day: new Date(2026, 7, day),
       dayNum: day,
@@ -22,18 +44,8 @@ function buildCells(): MonthGridCell[] {
       isPast: false,
       isSelected: day === 20,
       inRange: day === 20,
-      chips: day === 10
-        ? [
-            {
-              title: 'Show A',
-              time: '19:00',
-              tone: 'success',
-              meter: [{ filled: true }, { filled: true }, { filled: false }],
-            },
-            { title: 'Show B', time: '20:30', tone: 'warning' },
-          ]
-        : [],
-      moreCount: day === 10 ? 1 : 0,
+      chips: dayChips,
+      moreCount: Math.max(0, dayChips.length - 2),
       flag: day === 10 ? { text: '-2', tone: 'warning' } : undefined,
     });
   }
@@ -284,14 +296,23 @@ describe('MonthGrid', () => {
   });
 
   describe('dense (mobile) variant', () => {
-    it('without dense: cell uses the desktop min-height and still shows up to 2 chips', () => {
+    it('without dense: cell uses the desktop min-height, shows 2 of 3 chips, and "+1 more" (byte-identical to the pre-dense desktop path)', () => {
       render(<MonthGrid cells={buildCells()} onSelectDay={vi.fn()} onOpenDay={vi.fn()} />);
       const cell = screen.getByTestId('month-grid-cell-2026-08-10');
       expect(cell.className).toContain('min-h-[104px]');
       expect(cell.className).not.toContain('min-h-[62px]');
       expect(screen.getByTestId('month-grid-chip-2026-08-10-0')).toBeInTheDocument();
       expect(screen.getByTestId('month-grid-chip-2026-08-10-1')).toBeInTheDocument();
+      expect(screen.queryByTestId('month-grid-chip-2026-08-10-2')).not.toBeInTheDocument();
       expect(screen.getByText('+1 more')).toBeInTheDocument();
+    });
+
+    it('without dense: a cell with exactly 2 entries shows both chips and no overflow badge', () => {
+      render(<MonthGrid cells={buildCells()} onSelectDay={vi.fn()} onOpenDay={vi.fn()} />);
+      expect(screen.getByTestId('month-grid-chip-2026-08-22-0')).toBeInTheDocument();
+      expect(screen.getByTestId('month-grid-chip-2026-08-22-1')).toBeInTheDocument();
+      const cell = screen.getByTestId('month-grid-cell-2026-08-22');
+      expect(cell.textContent).not.toContain('more');
     });
 
     it('with dense: cell uses the compact min-height', () => {
@@ -301,14 +322,23 @@ describe('MonthGrid', () => {
       expect(cell.className).not.toContain('min-h-[104px]');
     });
 
-    it('with dense: a cell with 2 chips renders only 1, and the overflow count absorbs the hidden one', () => {
+    it('with dense: a cell with 3 entries renders only 1 chip, and "+2 more" reflects all hidden entries (no double-count against cell.moreCount)', () => {
       render(<MonthGrid dense cells={buildCells()} onSelectDay={vi.fn()} onOpenDay={vi.fn()} />);
       // Only the first chip renders...
       expect(screen.getByTestId('month-grid-chip-2026-08-10-0')).toBeInTheDocument();
-      // ...the second chip is capped, not rendered...
+      // ...the second and third chips are capped, not rendered...
       expect(screen.queryByTestId('month-grid-chip-2026-08-10-1')).not.toBeInTheDocument();
-      // ...and the existing moreCount (1) is bumped by the 1 hidden chip, so no data is lost.
+      expect(screen.queryByTestId('month-grid-chip-2026-08-10-2')).not.toBeInTheDocument();
+      // ...and the overflow badge reflects both hidden entries (3 total - 1 visible = 2).
       expect(screen.getByText('+2 more')).toBeInTheDocument();
+    });
+
+    it('with dense: a cell with exactly 2 entries renders 1 chip and "+1 more" (no double-count with the desktop-derived cell.moreCount of 0)', () => {
+      render(<MonthGrid dense cells={buildCells()} onSelectDay={vi.fn()} onOpenDay={vi.fn()} />);
+      expect(screen.getByTestId('month-grid-chip-2026-08-22-0')).toBeInTheDocument();
+      expect(screen.queryByTestId('month-grid-chip-2026-08-22-1')).not.toBeInTheDocument();
+      const cell = screen.getByTestId('month-grid-cell-2026-08-22');
+      expect(cell.textContent).toContain('+1 more');
     });
 
     it('with dense: today ring and onSelectDay tap still work', () => {

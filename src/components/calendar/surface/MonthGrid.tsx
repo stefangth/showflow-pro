@@ -152,10 +152,14 @@ export function MonthGrid({
           }
 
           const key = toDateKey(cell.day);
+          // `cell.chips` arrives UNCAPPED from the producers (producerData.ts /
+          // artistData.ts map every day entry to a chip); the overflow badge is
+          // derived here from the visible cap, not added to `cell.moreCount` —
+          // that field is itself `Math.max(0, dayEntries.length - 2)` off the
+          // same uncapped array, so summing the two would double-count.
           const chipCap = dense ? 1 : 2;
           const visibleChips = cell.chips.slice(0, chipCap);
-          const hiddenChipCount = cell.chips.length - visibleChips.length;
-          const moreCount = cell.moreCount + hiddenChipCount;
+          const moreCount = Math.max(0, cell.chips.length - chipCap);
 
           return (
             <div
