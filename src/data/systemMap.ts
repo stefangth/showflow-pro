@@ -156,7 +156,7 @@ export const SYSTEM_MAP_NODES: SystemMapNode[] = [
     subsystems: ["booking", "gdpr"],
     detail: {
       Gestures:
-        "Offer accept/decline (OfferResponseButtons) · blocked-date toggle (AvailabilityPicker) · export my data · delete account",
+        "Offer accept/decline · blocked-date toggle (calendar surface, AvailabilityPage) · export my data · delete account",
       Cite: "src/data/bookings.ts:204-220 · src/data/account.ts",
     },
   },
