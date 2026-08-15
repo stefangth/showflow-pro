@@ -44,6 +44,9 @@ export interface DashboardFirstRunState {
  */
 export function useDashboardFirstRun(role: DashboardRole): DashboardFirstRunState {
   const { t } = useTranslation("dashboard");
+  // The stage-chain composer reads its copy from the shared `onboarding` catalog; the
+  // `dashboard` binding above still serves this hook's own queue-row copy.
+  const { t: tOnboarding } = useTranslation("onboarding");
   const { currentOrg } = useAuth();
   const orgId = currentOrg?.id ?? null;
   const orgName = currentOrg?.name ?? "your workspace";
@@ -122,7 +125,7 @@ export function useDashboardFirstRun(role: DashboardRole): DashboardFirstRunStat
     provenance,
     timing,
   };
-  const result: StageChainResult = composeStageChain(input);
+  const result: StageChainResult = composeStageChain(input, tOnboarding);
 
   // The composer stays pure and emits queue COPY (queueTitle/queueHint/sample/
   // queueOpacity) but never rows. Admin/producer always see the sample fixture (their

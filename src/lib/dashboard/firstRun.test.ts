@@ -1,8 +1,14 @@
 // src/lib/dashboard/firstRun.test.ts
 import { it, expect } from "vitest";
+import i18n from "@/i18n";
 import { composeArtist, composeOnboarding, welcomeCopy, railHeaderCopy, collapsedCopy, adminTeamStep, injectAdminTeamStep } from "./firstRun";
-import { ARTIST_ONBOARDING } from "./moduleOnboarding";
+import { buildArtistOnboarding } from "./moduleOnboarding";
 import type { ComposeInput, DashboardRole, ModuleOnboardingDef, ModuleStatusLite, OnboardingCtx } from "./types";
+
+// The copy builders are now t-driven; rebind the English catalog so these assertions keep
+// pinning the exact shipped English copy (German is covered by the i18n gates).
+const t = i18n.getFixedT("en", "onboarding");
+const ARTIST_ONBOARDING = buildArtistOnboarding(t);
 
 const bookingDef: ModuleOnboardingDef<"flow" | "slots"> = {
   key: "booking_flow",
@@ -77,10 +83,10 @@ const artistStatus: ModuleStatusLite = {
 
 it("adminTeamStep is a non-gating booking_flow step, done only with a producer", () => {
   // done follows the producer count; null (unread) and 0 both read as not done.
-  expect(adminTeamStep(0).done).toBe(false);
-  expect(adminTeamStep(null).done).toBe(false);
-  expect(adminTeamStep(2).done).toBe(true);
-  const step = adminTeamStep(0);
+  expect(adminTeamStep(0, t).done).toBe(false);
+  expect(adminTeamStep(null, t).done).toBe(false);
+  expect(adminTeamStep(2, t).done).toBe(true);
+  const step = adminTeamStep(0, t);
   expect(step.key).toBe("team");
   expect(step.moduleKey).toBe("booking_flow");
   // Non-gating: never chips, never counts against canOffer/complete.
@@ -110,17 +116,17 @@ it("injectAdminTeamStep gates on the passed (booking) complete, not composed.com
   // Regression: keying on composed.complete (false) would keep the booking-scoped team nudge
   // on the dashboard after booking is done, while the booking-only banner/sheet already hid it.
   // Passing booking's own completeness (true) retires it on every surface.
-  const hidden = injectAdminTeamStep(composed, { role: "admin", bookingEnabled: true, producerCount: 0, complete: true });
+  const hidden = injectAdminTeamStep(composed, { role: "admin", bookingEnabled: true, producerCount: 0, complete: true }, t);
   expect(hidden.steps.some((s) => s.key === "team")).toBe(false);
   expect(hidden.total).toBe(composed.steps.length);
 
   // Booking still incomplete → the nudge shows first and bumps the count by one.
-  const shown = injectAdminTeamStep(composed, { role: "admin", bookingEnabled: true, producerCount: 0, complete: false });
+  const shown = injectAdminTeamStep(composed, { role: "admin", bookingEnabled: true, producerCount: 0, complete: false }, t);
   expect(shown.steps[0].key).toBe("team");
   expect(shown.total).toBe(composed.steps.length + 1);
 
   // Producers never see it, regardless of completeness.
-  const producer = injectAdminTeamStep(composed, { role: "producer", bookingEnabled: true, producerCount: 0, complete: false });
+  const producer = injectAdminTeamStep(composed, { role: "producer", bookingEnabled: true, producerCount: 0, complete: false }, t);
   expect(producer.steps.some((s) => s.key === "team")).toBe(false);
 });
 
@@ -154,28 +160,28 @@ it("never tells a direct-book artist that offers are on the way", () => {
   // the one surface contradict itself.
   const direct = { ...ctx, artistAcceptance: false } as OnboardingCtx;
   for (const complete of [true, false]) {
-    const w = welcomeCopy("artist", complete, direct, { filled: 1, total: 2 });
+    const w = welcomeCopy("artist", complete, direct, { filled: 1, total: 2 }, false, t);
     expect(`${w.headline} ${w.body}`).not.toMatch(/\boffers?\b/i);
     expect(w.body.length).toBeGreaterThan(0);
     expect(`${w.headline}${w.body}`).not.toMatch(/[—–]/);
   }
   // An org that does run offers keeps the offer narrative.
-  expect(welcomeCopy("artist", false, ctx, { filled: 1, total: 2 }).body).toMatch(/^Offers arrive by email/);
-  expect(welcomeCopy("artist", true, ctx, { filled: 2, total: 2 }).headline).toMatch(/offers/i);
+  expect(welcomeCopy("artist", false, ctx, { filled: 1, total: 2 }, false, t).body).toMatch(/^Offers arrive by email/);
+  expect(welcomeCopy("artist", true, ctx, { filled: 2, total: 2 }, false, t).headline).toMatch(/offers/i);
 });
 
 it("labels the artist's rules block without naming a pipeline the org may not run", () => {
   // railHeaderCopy and collapsedCopy take no ctx, so their artist labels render unchanged at
   // a direct-book org. "How offers work here" is itself a claim that offers exist, and it
   // sat directly on top of a rules list saying they do not. These labels carry no flow.
-  expect(railHeaderCopy("artist", true).eyebrow).toBe("How booking works here");
-  expect(railHeaderCopy("artist", true).body).not.toMatch(/\boffers?\b/i);
-  expect(railHeaderCopy("artist", false).title).not.toMatch(/\boffers?\b/i);
-  expect(railHeaderCopy("artist", false).body).not.toMatch(/\boffers?\b/i);
-  expect(collapsedCopy("artist", true, 0).cta).toBe("How booking works here");
-  expect(collapsedCopy("artist", true, 0).hint).not.toMatch(/\boffers?\b/i);
+  expect(railHeaderCopy("artist", true, false, t).eyebrow).toBe("How booking works here");
+  expect(railHeaderCopy("artist", true, false, t).body).not.toMatch(/\boffers?\b/i);
+  expect(railHeaderCopy("artist", false, false, t).title).not.toMatch(/\boffers?\b/i);
+  expect(railHeaderCopy("artist", false, false, t).body).not.toMatch(/\boffers?\b/i);
+  expect(collapsedCopy("artist", true, 0, t).cta).toBe("How booking works here");
+  expect(collapsedCopy("artist", true, 0, t).hint).not.toMatch(/\boffers?\b/i);
   // The producer/admin labels are untouched: their rails cover the whole org, not a pipeline.
-  expect(railHeaderCopy("admin", true).eyebrow).toBe("How this org works");
+  expect(railHeaderCopy("admin", true, false, t).eyebrow).toBe("How this org works");
 });
 
 it("never names an offer in a rail header, at any role or grant", () => {
@@ -187,7 +193,7 @@ it("never names an offer in a rail header, at any role or grant", () => {
   for (const role of ["admin", "producer", "artist"] as const) {
     for (const complete of [true, false]) {
       for (const canEditSetup of [true, false]) {
-        const r = railHeaderCopy(role, complete, canEditSetup);
+        const r = railHeaderCopy(role, complete, canEditSetup, t);
         expect(`${r.eyebrow} ${r.title} ${r.body}`).not.toMatch(/\boffers?\b/i);
       }
     }
@@ -200,17 +206,17 @@ it("never tells a direct-book producer that offers will appear here", () => {
   // org that runs offers keeps the fuller narrative.
   const direct = { ...ctx, artistAcceptance: false } as OnboardingCtx;
   for (const complete of [true, false]) {
-    const w = welcomeCopy("producer", complete, direct, { filled: 1, total: 4 });
+    const w = welcomeCopy("producer", complete, direct, { filled: 1, total: 4 }, false, t);
     expect(`${w.headline} ${w.body}`).not.toMatch(/\boffers?\b/i);
     expect(w.body.length).toBeGreaterThan(0);
     expect(`${w.headline}${w.body}`).not.toMatch(/[—–]/);
   }
   // An org that does run offers still gets told about them.
-  expect(welcomeCopy("producer", false, ctx, { filled: 1, total: 4 }).body).toMatch(/offers/i);
+  expect(welcomeCopy("producer", false, ctx, { filled: 1, total: 4 }, false, t).body).toMatch(/offers/i);
 });
 
 it("welcomeCopy interpolates org name and progress", () => {
-  const w = welcomeCopy("admin", false, ctx, { filled: 1, total: 4 });
+  const w = welcomeCopy("admin", false, ctx, { filled: 1, total: 4 }, false, t);
   expect(w.headline).toContain("Halle Kollektiv");
   expect(w.progressTotal).toBe(4);
   expect(w.progressFilled).toBe(1);
@@ -223,7 +229,7 @@ it("welcomeCopy interpolates org name and progress", () => {
 // rendered under this very card). Copy on this branch must therefore claim nothing
 // about being first and nothing about the database being empty.
 it("incomplete-admin welcome claims neither firstness nor an empty database", () => {
-  const w = welcomeCopy("admin", false, ctx, { filled: 1, total: 4 });
+  const w = welcomeCopy("admin", false, ctx, { filled: 1, total: 4 }, false, t);
   expect(`${w.headline} ${w.body}`).not.toMatch(/first admin/i);
   expect(`${w.headline} ${w.body}`).not.toMatch(/database is empty|empty/i);
   expect(w.headline).toBe("Finish setting up Halle Kollektiv");
@@ -248,7 +254,7 @@ const WELCOME_ROWS: { role: DashboardRole; complete: boolean; primaryLabel: stri
 
 it("welcomeCopy covers every role x complete branch", () => {
   for (const row of WELCOME_ROWS) {
-    const w = welcomeCopy(row.role, row.complete, ctx, { filled: 2, total: 4 });
+    const w = welcomeCopy(row.role, row.complete, ctx, { filled: 2, total: 4 }, false, t);
     expect(w.primaryLabel).toBe(row.primaryLabel);
     expect(w.headline.includes(ctx.orgName)).toBe(row.orgInHeadline);
     const all = `${w.eyebrow}${w.headline}${w.body}${w.primaryLabel}${w.secondaryLabel}${w.progressLabel}${w.progressHint}`;
@@ -267,7 +273,7 @@ const RAIL_ROWS: { role: DashboardRole; complete: boolean; eyebrow: string; titl
 
 it("railHeaderCopy covers every role x complete branch", () => {
   for (const row of RAIL_ROWS) {
-    const r = railHeaderCopy(row.role, row.complete);
+    const r = railHeaderCopy(row.role, row.complete, false, t);
     expect(r.eyebrow).toBe(row.eyebrow);
     expect(r.title).toBe(row.title);
     expect(`${r.eyebrow}${r.title}${r.body}`).not.toMatch(/[—–]/);
@@ -275,23 +281,23 @@ it("railHeaderCopy covers every role x complete branch", () => {
 });
 
 it("railHeaderCopy never points the artist at Settings (they have no access)", () => {
-  expect(railHeaderCopy("artist", true).body).not.toMatch(/Settings/);
+  expect(railHeaderCopy("artist", true, false, t).body).not.toMatch(/Settings/);
   // Admins keep the Settings pointer; a producer without the grant does not.
-  expect(railHeaderCopy("admin", true).body).toMatch(/Settings/);
-  expect(railHeaderCopy("producer", true).body).not.toMatch(/Settings/);
+  expect(railHeaderCopy("admin", true, false, t).body).toMatch(/Settings/);
+  expect(railHeaderCopy("producer", true, false, t).body).not.toMatch(/Settings/);
 });
 
 it("treats a capability-granted producer as set-up-capable (no 'only an admin' framing)", () => {
   // A producer granted edit_* capabilities can reach Settings, so the "only an admin" /
   // "you cannot change these" copy must not apply to them.
-  expect(railHeaderCopy("producer", true, true).body).toMatch(/Settings/);
-  expect(railHeaderCopy("producer", false, true).body).not.toMatch(/Only an admin/);
-  const capable = welcomeCopy("producer", false, ctx, { filled: 0, total: 3 }, true);
+  expect(railHeaderCopy("producer", true, true, t).body).toMatch(/Settings/);
+  expect(railHeaderCopy("producer", false, true, t).body).not.toMatch(/Only an admin/);
+  const capable = welcomeCopy("producer", false, ctx, { filled: 0, total: 3 }, true, t);
   expect(capable.progressHint).not.toBe("Only an admin can do these");
   expect(capable.primaryLabel).toBe("Start setup");
   // Default (no capability) keeps the admin-gated framing.
-  expect(railHeaderCopy("producer", false).body).toMatch(/Only an admin/);
-  expect(welcomeCopy("producer", false, ctx, { filled: 0, total: 3 }).progressHint).toBe("Only an admin can do these");
+  expect(railHeaderCopy("producer", false, false, t).body).toMatch(/Only an admin/);
+  expect(welcomeCopy("producer", false, ctx, { filled: 0, total: 3 }, false, t).progressHint).toBe("Only an admin can do these");
 });
 
 const COLLAPSED_ROWS: { role: DashboardRole; complete: boolean; remaining: number; label: string; cta: string; hint?: string }[] = [
@@ -308,7 +314,7 @@ const COLLAPSED_ROWS: { role: DashboardRole; complete: boolean; remaining: numbe
 
 it("collapsedCopy covers every role x complete branch, with pluralization", () => {
   for (const row of COLLAPSED_ROWS) {
-    const c = collapsedCopy(row.role, row.complete, row.remaining);
+    const c = collapsedCopy(row.role, row.complete, row.remaining, t);
     expect(c.label).toBe(row.label);
     expect(c.cta).toBe(row.cta);
     if (row.hint) expect(c.hint).toBe(row.hint);

@@ -19,14 +19,15 @@
 // Stays pure: no react/hooks/supabase imports. The caller (DashboardFirstRun)
 // maps `StageAction` to navigate()/openSetup().
 
+import type { TFunction } from "i18next";
 import { ROUTES } from "@/config/app.config";
 import { berlinTime } from "@/lib/bookingFlow";
-import { STEP_TITLES } from "@/lib/bookings/setupStatus";
+import { stepTitles } from "@/lib/bookings/setupStatus";
 import {
-  ARTIST_ONBOARDING,
-  TEAM_STEP_META,
-  bookingOnboarding,
-  hireOrderOnboarding,
+  buildArtistOnboarding,
+  buildBookingOnboarding,
+  buildHireOrderOnboarding,
+  teamStepMeta,
 } from "@/lib/dashboard/moduleOnboarding";
 import type {
   DockedStep,
@@ -38,6 +39,9 @@ import type {
   StageVariant,
 } from "./stageChain.types";
 
+/** Namespace-bound translator the composer reads all copy from (the `onboarding` catalog). */
+type OnbT = TFunction<"onboarding">;
+
 // ---------------------------------------------------------------------------
 // Small copy helpers
 // ---------------------------------------------------------------------------
@@ -46,9 +50,6 @@ import type {
 function fmtHour(hour: number): string {
   return `${String(hour).padStart(2, "0")}:00`;
 }
-
-/** Singular/plural for a raw dates count in copy. */
-const nDates = (n: number) => (n === 1 ? "date" : "dates");
 
 const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -59,11 +60,11 @@ function fmtDate(iso: string): string {
 }
 
 /** Seam: the provenance line, ported from the task brief. */
-function rulesByLine(p: FirstRunProvenance): string {
-  if (p.byYou) return "Rules set by you · Settings · Booking engine";
-  if (p.actorName && p.changedAt) return `Rules set by ${p.actorName} · ${fmtDate(p.changedAt)}`;
-  if (p.actorName) return `Rules set by ${p.actorName}`;
-  return "Rules set in Settings · Booking engine";
+function rulesByLine(p: FirstRunProvenance, t: OnbT): string {
+  if (p.byYou) return t("stageChain.provenance.byYou");
+  if (p.actorName && p.changedAt) return t("stageChain.provenance.byActorWithDate", { actor: p.actorName, date: fmtDate(p.changedAt) });
+  if (p.actorName) return t("stageChain.provenance.byActor", { actor: p.actorName });
+  return t("stageChain.provenance.inSettings");
 }
 
 // ---------------------------------------------------------------------------
@@ -146,12 +147,12 @@ function rawStage(overrides: Partial<RawStage> & { key: string; n: string; name:
 /** over10()'s stuck-demotion + hot/plain/dim triage, ported verbatim except the
  *  demoted `needs` line, which is now the real provenance actor (Fix 1), not the
  *  demo's hardcoded admin name. */
-function finalizeStage(raw: RawStage, adminActorName: string | null): Stage {
+function finalizeStage(raw: RawStage, adminActorName: string | null, t: OnbT): Stage {
   const outstanding = raw.steps.filter((s) => !s.done);
   const stuck = !raw.keepAction && !raw.done && outstanding.length > 0 && outstanding.every((s) => s.admin);
-  const waitsOn = adminActorName ? `Waits on ${adminActorName}` : "Waits on your admin";
+  const waitsOn = adminActorName ? t("stageChain.waitsOnActor", { name: adminActorName }) : t("stageChain.waitsOnAdmin");
   const s = stuck && (raw.act || raw.primary)
-    ? { ...raw, card: false, act: false, primary: "", chip: "", badge: "Waits", needs: waitsOn, action: null }
+    ? { ...raw, card: false, act: false, primary: "", chip: "", badge: t("stageChain.badge.waits"), needs: waitsOn, action: null }
     : raw;
 
   const hot = s.card && (s.act || !!s.primary);
@@ -178,13 +179,11 @@ function finalizeStage(raw: RawStage, adminActorName: string | null): Stage {
   };
 }
 
-const NOT_ON = { badge: "Not on", needs: "" };
-
 // ---------------------------------------------------------------------------
 // composeStageChain
 // ---------------------------------------------------------------------------
 
-export function composeStageChain(input: StageChainInput): StageChainResult {
+export function composeStageChain(input: StageChainInput, t: OnbT): StageChainResult {
   const { role, orgName } = input;
   const artist = role === "artist";
   const admin = role === "admin";
@@ -194,7 +193,16 @@ export function composeStageChain(input: StageChainInput): StageChainResult {
   const imported = input.imported;
   const m = input.metrics;
   const hour = fmtHour(input.timing.digestHourBerlin);
-  const answerWindow = `${input.timing.responseWindowHours} hours`;
+  const responseWindowHours = input.timing.responseWindowHours;
+
+  // Registries + shared metadata, resolved once through the passed translator.
+  const bookingOnboarding = buildBookingOnboarding(t);
+  const hireOrderOnboarding = buildHireOrderOnboarding(t);
+  const ARTIST_ONBOARDING = buildArtistOnboarding(t);
+  const TEAM_STEP_META = teamStepMeta(t);
+  const STEP_TITLES = stepTitles(t);
+
+  const NOT_ON = { badge: t("stageChain.badge.notOn"), needs: "" };
 
   // Seam: the real per-step admin marker, replacing the demo's coarse capBlocked().
   const stepCap: Record<string, "booking" | "hire" | null> = {
@@ -221,14 +229,14 @@ export function composeStageChain(input: StageChainInput): StageChainResult {
   const slotsStep = mkStep("slots", STEP_TITLES.slots, bDone("slots"), bookingOnboarding.steps.slots.todoHint, { soft: true, admin: isAdminBlocked("slots") });
   const flowStep = mkStep("flow", STEP_TITLES.flow, bDone("flow"), bookingOnboarding.steps.flow.todoHint, { admin: isAdminBlocked("flow") });
   const peopleStep = mkStep("people", STEP_TITLES.people, bDone("people"), bookingOnboarding.steps.people.todoHint);
-  const hardLabel = offers ? "Blocks offers" : "Blocks booking";
+  const hardLabel = offers ? t("stageChain.docked.blocksOffers") : t("stageChain.docked.blocksBooking");
   const ladderStep = mkStep("ladder", STEP_TITLES.ladder, bDone("ladder"), bookingOnboarding.steps.ladder.todoHint, { hard: offers, hardLabel, admin: isAdminBlocked("ladder") });
   const eligibilityStep = mkStep("eligibility", STEP_TITLES.eligibility, bDone("eligibility"), bookingOnboarding.steps.eligibility.todoHint, { admin: isAdminBlocked("eligibility") });
   const timingStep = mkStep("timing", STEP_TITLES.timing, bDone("timing"), bookingOnboarding.steps.timing.todoHint, { admin: isAdminBlocked("timing") });
   const teamStep = mkStep("team", TEAM_STEP_META.title, bDone("team"), TEAM_STEP_META.todoHint);
 
-  const letterheadStep = mkStep("letterhead", hireOrderOnboarding.steps.letterhead.title, hDone("letterhead"), hireOrderOnboarding.steps.letterhead.todoHint, { hard: true, hardLabel: "Blocks issuing", admin: isAdminBlocked("letterhead") });
-  const termsStep = mkStep("terms", hireOrderOnboarding.steps.terms.title, hDone("terms"), hireOrderOnboarding.steps.terms.todoHint, { hard: true, hardLabel: "Blocks issuing", admin: isAdminBlocked("terms") });
+  const letterheadStep = mkStep("letterhead", hireOrderOnboarding.steps.letterhead.title, hDone("letterhead"), hireOrderOnboarding.steps.letterhead.todoHint, { hard: true, hardLabel: t("stageChain.docked.blocksIssuing"), admin: isAdminBlocked("letterhead") });
+  const termsStep = mkStep("terms", hireOrderOnboarding.steps.terms.title, hDone("terms"), hireOrderOnboarding.steps.terms.todoHint, { hard: true, hardLabel: t("stageChain.docked.blocksIssuing"), admin: isAdminBlocked("terms") });
   const countersignStep = mkStep("countersign", hireOrderOnboarding.steps.countersign.title, hDone("countersign"), hireOrderOnboarding.steps.countersign.todoHint, { admin: isAdminBlocked("countersign") });
   const hireSteps3 = [letterheadStep, termsStep, countersignStep];
 
@@ -257,58 +265,58 @@ export function composeStageChain(input: StageChainInput): StageChainResult {
   if (artist) {
     rawStages = [
       bf
-        ? rawStage({ key: "eligibility", n: "01", name: "Eligibility", card: true, done: true, tag: "Your cast", line: "Your casts decide which dates can be offered to you.", metric: imported ? String(m.eligibleDates) : "0", metricLabel: "eligible dates" })
-        : rawStage({ key: "eligibility", n: "01", name: "Eligibility", tag: "Booking engine · off", line: "No booking module, so no dates reach you here.", ...NOT_ON }),
+        ? rawStage({ key: "eligibility", n: "01", name: t("stageChain.artist.eligibilityName"), card: true, done: true, tag: t("stageChain.tag.yourCast"), line: t("stageChain.artist.eligibilityOnLine"), metric: imported ? String(m.eligibleDates) : "0", metricLabel: t("stageChain.artist.eligibilityOnMetricLabel") })
+        : rawStage({ key: "eligibility", n: "01", name: t("stageChain.artist.eligibilityName"), tag: t("stageChain.tag.bookingEngineOff"), line: t("stageChain.artist.eligibilityOffLine"), ...NOT_ON }),
       bf
         ? (input.artistBlockDatesDone
-            ? rawStage({ key: "availability", n: "02", name: "Availability", card: true, done: true, tag: "Booking engine", line: "Blocked dates are never offered.", metric: String(m.blockedDates), metricLabel: "blocked dates", steps: [blockDatesStep], chip: "Open availability", action: { kind: "route", to: ROUTES.AVAILABILITY } })
-            : rawStage({ key: "availability", n: "02", name: "Availability", card: true, act: true, tag: "Booking engine", line: "The one step that is yours.", metric: "0", metricLabel: "blocked dates", steps: [blockDatesStep], primary: "Block dates", action: { kind: "route", to: ROUTES.AVAILABILITY } }))
-        : rawStage({ key: "availability", n: "02", name: "Availability", tag: "Booking engine · off", line: "Nothing to block against.", ...NOT_ON }),
+            ? rawStage({ key: "availability", n: "02", name: t("stageChain.artist.availabilityName"), card: true, done: true, tag: t("stageChain.tag.bookingEngine"), line: t("stageChain.artist.availabilityDoneLine"), metric: String(m.blockedDates), metricLabel: t("stageChain.artist.availabilityMetricLabel"), steps: [blockDatesStep], chip: t("stageChain.artist.availabilityDoneChip"), action: { kind: "route", to: ROUTES.AVAILABILITY } })
+            : rawStage({ key: "availability", n: "02", name: t("stageChain.artist.availabilityName"), card: true, act: true, tag: t("stageChain.tag.bookingEngine"), line: t("stageChain.artist.availabilityActLine"), metric: "0", metricLabel: t("stageChain.artist.availabilityMetricLabel"), steps: [blockDatesStep], primary: t("stageChain.artist.availabilityActPrimary"), action: { kind: "route", to: ROUTES.AVAILABILITY } }))
+        : rawStage({ key: "availability", n: "02", name: t("stageChain.artist.availabilityName"), tag: t("stageChain.tag.bookingEngineOff"), line: t("stageChain.artist.availabilityOffLine"), ...NOT_ON }),
       bf
         ? (offers
             ? (imported
-                ? rawStage({ key: "offer", n: "03", name: "Offer", card: true, done: true, tag: "Booking engine", line: `One digest at ${berlinTime(input.timing.digestHourBerlin)}. ${answerWindow} to answer.`, metric: String(m.arriving), metricLabel: `arriving ${hour}` })
-                : rawStage({ key: "offer", n: "03", name: "Offer", badge: "Waits", tag: "Booking engine", line: `One digest at ${berlinTime(input.timing.digestHourBerlin)}, never a mail per date.`, needs: "Needs dates for your cast" }))
-            : rawStage({ key: "offer", n: "03", name: "Booked directly", card: true, done: true, tag: "Booking engine · direct", line: "There is no offer step. A booked date appears as confirmed.", metric: imported ? String(m.confirmed) : "0", metricLabel: "confirmed" }))
-        : rawStage({ key: "offer", n: "03", name: "Offer", tag: "Booking engine · off", line: "No offers are sent from ShowFlow.", ...NOT_ON }),
+                ? rawStage({ key: "offer", n: "03", name: t("stageChain.artist.offerName"), card: true, done: true, tag: t("stageChain.tag.bookingEngine"), line: t("stageChain.artist.offerImportedLine", { time: berlinTime(input.timing.digestHourBerlin), hours: responseWindowHours }), metric: String(m.arriving), metricLabel: t("stageChain.artist.offerMetricLabel", { hour }) })
+                : rawStage({ key: "offer", n: "03", name: t("stageChain.artist.offerName"), badge: t("stageChain.badge.waits"), tag: t("stageChain.tag.bookingEngine"), line: t("stageChain.artist.offerWaitsLine", { time: berlinTime(input.timing.digestHourBerlin) }), needs: t("stageChain.artist.offerWaitsNeeds") }))
+            : rawStage({ key: "offer", n: "03", name: t("stageChain.artist.bookedDirectlyName"), card: true, done: true, tag: t("stageChain.tag.bookingEngineDirect"), line: t("stageChain.artist.bookedDirectlyLine"), metric: imported ? String(m.confirmed) : "0", metricLabel: t("stageChain.artist.bookedDirectlyMetricLabel") }))
+        : rawStage({ key: "offer", n: "03", name: t("stageChain.artist.offerName"), tag: t("stageChain.tag.bookingEngineOff"), line: t("stageChain.artist.offerOffLine"), ...NOT_ON }),
       ho
-        ? rawStage({ key: "hire", n: "04", name: "Hire order", card: true, done: true, tag: "Hire orders", line: "You sign in the browser. The countersigned PDF lands in your mail.", metric: imported ? String(m.toSign) : "0", metricLabel: "to sign" })
-        : rawStage({ key: "hire", n: "04", name: "Hire order", tag: "Hire orders · off", line: "The office emails your paperwork after a confirm.", ...NOT_ON, needs: "Nothing for you to do here" }),
+        ? rawStage({ key: "hire", n: "04", name: t("stageChain.artist.hireName"), card: true, done: true, tag: t("stageChain.tag.hireOrders"), line: t("stageChain.artist.hireOnLine"), metric: imported ? String(m.toSign) : "0", metricLabel: t("stageChain.artist.hireOnMetricLabel") })
+        : rawStage({ key: "hire", n: "04", name: t("stageChain.artist.hireName"), tag: t("stageChain.tag.hireOrdersOff"), line: t("stageChain.artist.hireOffLine"), ...NOT_ON, needs: t("stageChain.artist.hireOffNeeds") }),
     ];
   } else {
-    const s2Name = offers ? "Offers" : "Book directly";
-    const s2Tag = offers ? "Booking engine" : "Booking engine · direct";
+    const s2Name = offers ? t("stageChain.org.offersName") : t("stageChain.org.bookDirectlyName");
+    const s2Tag = offers ? t("stageChain.tag.bookingEngine") : t("stageChain.tag.bookingEngineDirect");
     const s2Line = offers
-      ? `Tier 1 goes out at ${hour}, tier 2 opens 24h later if unfilled.`
-      : "A producer books straight from the eligibility list. Nothing to accept.";
+      ? t("stageChain.org.offersLine", { hour })
+      : t("stageChain.org.directLine");
     const s2Steps = [flowStep, peopleStep, ladderStep, eligibilityStep, timingStep];
     const datesChipIsBlocked = !input.canEditBooking;
 
     rawStages = [
       bf
         ? (imported
-            ? rawStage({ key: "dates", n: "01", name: "Dates", card: true, done: true, tag: "Shows and bookings", line: `${m.datesIn} ${nDates(m.datesIn)} ${m.datesIn === 1 ? "is" : "are"} in your catalog.`, metric: String(m.datesIn), metricLabel: "dates in", steps: [showsStep, slotsStep], chip: datesChipIsBlocked ? "Open dates" : "Set slots", action: datesChipIsBlocked ? { kind: "route", to: ROUTES.PRODUCTIONS } : { kind: "openSetup", feature: bookingOnboarding.key, step: "slots" } })
-            : rawStage({ key: "dates", n: "01", name: "Dates", card: true, act: true, tag: "Shows and bookings", line: "Nothing downstream can mean anything until shows exist.", metric: "0", metricLabel: "dates in", steps: [showsStep, slotsStep], primary: admin ? "Import dates" : "Add a show", action: { kind: "route", to: ROUTES.PRODUCTIONS } }))
-        : rawStage({ key: "dates", n: "01", name: "Dates", tag: "Booking engine · off", line: "Dates and bookings do not run in ShowFlow for this org.", ...NOT_ON }),
+            ? rawStage({ key: "dates", n: "01", name: t("stageChain.org.datesName"), card: true, done: true, tag: t("stageChain.tag.showsAndBookings"), line: t("stageChain.org.datesImportedLine", { count: m.datesIn }), metric: String(m.datesIn), metricLabel: t("stageChain.org.datesMetricLabel"), steps: [showsStep, slotsStep], chip: datesChipIsBlocked ? t("stageChain.org.datesChipOpen") : t("stageChain.org.datesChipSlots"), action: datesChipIsBlocked ? { kind: "route", to: ROUTES.PRODUCTIONS } : { kind: "openSetup", feature: bookingOnboarding.key, step: "slots" } })
+            : rawStage({ key: "dates", n: "01", name: t("stageChain.org.datesName"), card: true, act: true, tag: t("stageChain.tag.showsAndBookings"), line: t("stageChain.org.datesActLine"), metric: "0", metricLabel: t("stageChain.org.datesMetricLabel"), steps: [showsStep, slotsStep], primary: admin ? t("stageChain.org.datesActPrimaryImport") : t("stageChain.org.datesActPrimaryAdd"), action: { kind: "route", to: ROUTES.PRODUCTIONS } }))
+        : rawStage({ key: "dates", n: "01", name: t("stageChain.org.datesName"), tag: t("stageChain.tag.bookingEngineOff"), line: t("stageChain.org.datesOffLine"), ...NOT_ON }),
       bf
         ? (imported
-            ? rawStage({ key: "offers", n: "02", name: s2Name, tag: s2Tag, line: s2Line, steps: s2Steps, card: true, act: offers, done: !offers, metric: offers ? String(m.readyToOffer) : String(m.bookableDates), metricLabel: offers ? "ready to offer" : "bookable dates", primary: offers ? "Send tier 1" : "", chip: offers ? "" : "Open the picker", action: { kind: "route", to: ROUTES.BOOKINGS } })
-            : rawStage({ key: "offers", n: "02", name: s2Name, tag: s2Tag, line: s2Line, steps: s2Steps, badge: "Waits", needs: "Needs a date with slots set" }))
-        : rawStage({ key: "offers", n: "02", name: "Offers", tag: "Booking engine · off", line: "No tiers, no digest, no direct picker.", ...NOT_ON }),
+            ? rawStage({ key: "offers", n: "02", name: s2Name, tag: s2Tag, line: s2Line, steps: s2Steps, card: true, act: offers, done: !offers, metric: offers ? String(m.readyToOffer) : String(m.bookableDates), metricLabel: offers ? t("stageChain.org.offersReadyMetricLabel") : t("stageChain.org.bookableMetricLabel"), primary: offers ? t("stageChain.org.offersPrimary") : "", chip: offers ? "" : t("stageChain.org.offersChip"), action: { kind: "route", to: ROUTES.BOOKINGS } })
+            : rawStage({ key: "offers", n: "02", name: s2Name, tag: s2Tag, line: s2Line, steps: s2Steps, badge: t("stageChain.badge.waits"), needs: t("stageChain.org.offersWaitsNeeds") }))
+        : rawStage({ key: "offers", n: "02", name: t("stageChain.org.offersOffName"), tag: t("stageChain.tag.bookingEngineOff"), line: t("stageChain.org.offersOffLine"), ...NOT_ON }),
       bf
         ? (offers
-            ? rawStage({ key: "confirm", n: "03", name: "Confirm", tag: role === "producer" ? "Booking engine · yours" : "Booking engine", badge: "Waits", line: "An accepted offer is not a booking until a producer confirms it.", needs: "Needs an acceptance", steps: admin ? [teamStep] : [], chip: admin ? TEAM_STEP_META.ctaLabel : "", action: admin ? { kind: "openSetup", feature: bookingOnboarding.key, step: "team" } : null })
-            : rawStage({ key: "confirm", n: "03", name: "Confirmed on the spot", card: true, done: true, tag: "Booking engine · direct", line: "A direct booking is confirmed as it is made. No queue.", metric: imported ? String(m.confirmed) : "0", metricLabel: "confirmed", steps: admin ? [teamStep] : [], chip: admin ? TEAM_STEP_META.ctaLabel : "", action: admin ? { kind: "openSetup", feature: bookingOnboarding.key, step: "team" } : null }))
-        : rawStage({ key: "confirm", n: "03", name: "Confirm", tag: "Booking engine · off", line: "Nothing to confirm here.", ...NOT_ON }),
+            ? rawStage({ key: "confirm", n: "03", name: t("stageChain.org.confirmName"), tag: role === "producer" ? t("stageChain.tag.bookingEngineYours") : t("stageChain.tag.bookingEngine"), badge: t("stageChain.badge.waits"), line: t("stageChain.org.confirmLine"), needs: t("stageChain.org.confirmNeeds"), steps: admin ? [teamStep] : [], chip: admin ? TEAM_STEP_META.ctaLabel : "", action: admin ? { kind: "openSetup", feature: bookingOnboarding.key, step: "team" } : null })
+            : rawStage({ key: "confirm", n: "03", name: t("stageChain.org.confirmedName"), card: true, done: true, tag: t("stageChain.tag.bookingEngineDirect"), line: t("stageChain.org.confirmedLine"), metric: imported ? String(m.confirmed) : "0", metricLabel: t("stageChain.org.confirmedMetricLabel"), steps: admin ? [teamStep] : [], chip: admin ? TEAM_STEP_META.ctaLabel : "", action: admin ? { kind: "openSetup", feature: bookingOnboarding.key, step: "team" } : null }))
+        : rawStage({ key: "confirm", n: "03", name: t("stageChain.org.confirmName"), tag: t("stageChain.tag.bookingEngineOff"), line: t("stageChain.org.confirmOffLine"), ...NOT_ON }),
       ho
         ? (bf
-            ? rawStage({ key: "hire", n: "04", name: "Hire order", card: true, tag: "Hire orders", line: "You can draft orders right now. These are only needed before the first one goes out.", metric: imported ? String(m.hireDrafts) : "0", metricLabel: "drafts", steps: hireSteps3, chip: "Draft an order", keepAction: true, action: { kind: "openSetup", feature: hireOrderOnboarding.key, step: firstOutstandingKey(hireSteps3, "letterhead") } })
-            : rawStage({ key: "hire", n: "04", name: "Hire order", card: true, act: true, tag: "Hire orders · manual", line: "With no booking module, every order is a manual engagement with no linked date.", metric: "0", metricLabel: "orders", steps: hireSteps3, primary: "New order", keepAction: true, action: { kind: "route", to: ROUTES.HIRE_ORDERS } }))
-        : rawStage({ key: "hire", n: "04", name: "Hire order", tag: "Hire orders · off", line: "Confirmed dates leave ShowFlow as a CSV.", ...NOT_ON, needs: "Switched on by your account manager" }),
+            ? rawStage({ key: "hire", n: "04", name: t("stageChain.org.hireName"), card: true, tag: t("stageChain.tag.hireOrders"), line: t("stageChain.org.hireOnLine"), metric: imported ? String(m.hireDrafts) : "0", metricLabel: t("stageChain.org.hireMetricLabel"), steps: hireSteps3, chip: t("stageChain.org.hireChip"), keepAction: true, action: { kind: "openSetup", feature: hireOrderOnboarding.key, step: firstOutstandingKey(hireSteps3, "letterhead") } })
+            : rawStage({ key: "hire", n: "04", name: t("stageChain.org.hireName"), card: true, act: true, tag: t("stageChain.tag.hireOrdersManual"), line: t("stageChain.org.hireManualLine"), metric: "0", metricLabel: t("stageChain.org.hireManualMetricLabel"), steps: hireSteps3, primary: t("stageChain.org.hireManualPrimary"), keepAction: true, action: { kind: "route", to: ROUTES.HIRE_ORDERS } }))
+        : rawStage({ key: "hire", n: "04", name: t("stageChain.org.hireName"), tag: t("stageChain.tag.hireOrdersOff"), line: t("stageChain.org.hireOffLine"), ...NOT_ON, needs: t("stageChain.org.hireOffNeeds") }),
     ];
   }
 
-  const stages = rawStages.map((r) => finalizeStage(r, input.provenance.actorName));
+  const stages = rawStages.map((r) => finalizeStage(r, input.provenance.actorName, t));
 
   const nothingOn = !bf && !ho;
 
@@ -326,82 +334,82 @@ export function composeStageChain(input: StageChainInput): StageChainResult {
   let queueOpacity: number;
 
   if (nothingOn) {
-    headline = `No modules are switched on for ${orgName}`;
-    body = "There is nothing to set up and nothing to run yet. Your ShowFlow account manager switches modules on; nobody inside the org can.";
-    ghost = "What the modules do";
-    hint = "Nothing here is blocked by you";
-    progressLabel = "Nothing to set up";
-    progressHint = "Steps appear the moment a module is switched on.";
+    headline = t("stageChain.headline.nothingOnHeadline", { org: orgName });
+    body = t("stageChain.headline.nothingOnBody");
+    ghost = t("stageChain.headline.nothingOnGhost");
+    hint = t("stageChain.headline.nothingOnHint");
+    progressLabel = t("stageChain.headline.nothingOnProgressLabel");
+    progressHint = t("stageChain.headline.nothingOnProgressHint");
     side = [
-      { title: "Read what each role covers", where: "Help center" },
-      { title: "Message your account manager", where: "Chats" },
+      { title: t("stageChain.side.readRoleCovers"), where: t("stageChain.side.helpCenter") },
+      { title: t("stageChain.side.messageAccountManager"), where: t("stageChain.side.chats") },
     ];
-    queueTitle = "What this page becomes";
-    queueHint = "Sample rows, shown once a module is on.";
+    queueTitle = t("stageChain.headline.nothingOnQueueTitle");
+    queueHint = t("stageChain.headline.nothingOnQueueHint");
     sample = true;
     queueOpacity = 0.4;
   } else if (artist) {
-    progressLabel = `Set up · ${filled} of ${total}`;
+    progressLabel = t("stageChain.headline.artistProgressLabel", { filled, total });
     if (imported) {
-      headline = offers ? `Your first offer arrives tomorrow at ${hour}` : "Your producer books you directly";
+      headline = offers ? t("stageChain.headline.artistImportedHeadlineOffers", { hour }) : t("stageChain.headline.artistImportedHeadlineDirect");
       body = offers
-        ? `You have ${m.blockedDates} ${nDates(m.blockedDates)} blocked, so the digest only asks about dates that work.`
-        : "Blocked dates come out of the list your producer books from. That is where your say goes.";
-      hint = offers ? `You get ${answerWindow} to answer` : "Nothing to accept";
-      progressHint = "Also counts as done once you have opened Availability. An empty calendar is a valid answer.";
+        ? t("stageChain.headline.artistImportedBodyOffers", { count: m.blockedDates })
+        : t("stageChain.headline.artistImportedBodyDirect");
+      hint = offers ? t("stageChain.headline.artistImportedHintOffers", { hours: responseWindowHours }) : t("stageChain.headline.artistImportedHintDirect");
+      progressHint = t("stageChain.headline.artistImportedProgressHint");
     } else {
-      headline = `${orgName} added you to the roster`;
+      headline = t("stageChain.headline.artistRosterHeadline", { org: orgName });
       // Guard: "one step is yours" is only true when a step actually exists (bf on).
       // An artist at a booking-off org (e.g. hire-orders-only) has zero docked steps,
       // so the claim would be false.
       body = hasSteps
-        ? "One step is yours, and it is two minutes. Everything else on this page is set by the org."
-        : "Everything on this page is set by the org. There is nothing here for you to do.";
-      hint = hasSteps ? "About 2 minutes" : "Nothing to do here";
+        ? t("stageChain.headline.artistRosterBodyHasSteps")
+        : t("stageChain.headline.artistRosterBodyNoSteps");
+      hint = hasSteps ? t("stageChain.headline.artistRosterHintHasSteps") : t("stageChain.headline.artistRosterHintNoSteps");
       progressHint = hasSteps
-        ? "None of this blocks anything. It keeps unplayable dates out of the way."
-        : "There is nothing to set up on your side.";
+        ? t("stageChain.headline.artistRosterProgressHintHasSteps")
+        : t("stageChain.headline.artistRosterProgressHintNoSteps");
     }
-    ghost = "How booking works here";
+    ghost = t("stageChain.headline.artistGhost");
     side = offers
-      ? [{ title: "How booking works here", where: "The rules you inherited" }, { title: "Message the office", where: "Chats" }]
-      : [{ title: "Blocking is how you say no", where: "Availability" }, { title: "Message the office", where: "Chats" }];
-    queueTitle = "Your dates";
-    queueHint = "Live. This is your real content, not a preview.";
+      ? [{ title: t("stageChain.side.howBookingWorksHere"), where: t("stageChain.side.rulesYouInherited") }, { title: t("stageChain.side.messageOffice"), where: t("stageChain.side.chats") }]
+      : [{ title: t("stageChain.side.blockingIsHowYouSayNo"), where: t("stageChain.side.availability") }, { title: t("stageChain.side.messageOffice"), where: t("stageChain.side.chats") }];
+    queueTitle = t("stageChain.headline.artistQueueTitle");
+    queueHint = t("stageChain.headline.artistQueueHint");
     sample = false;
     queueOpacity = 1;
   } else {
-    progressLabel = `${admin ? "Set up · " : "Org setup · "}${filled} of ${total}`;
+    progressLabel = admin ? t("stageChain.headline.orgProgressLabelAdmin", { filled, total }) : t("stageChain.headline.orgProgressLabelOther", { filled, total });
     if (!bf && ho) {
-      headline = "Hire orders is the only module running";
-      body = "No dates, offers or confirms in ShowFlow. Every order is a manual engagement, so the three steps below are all the setup there is.";
-      ghost = "How this org works";
-      hint = "Two of the three block issuing";
-      progressHint = "You can draft an order now. These are only needed before the first one goes out.";
+      headline = t("stageChain.headline.hireOnlyHeadline");
+      body = t("stageChain.headline.hireOnlyBody");
+      ghost = t("stageChain.headline.hireOnlyGhost");
+      hint = t("stageChain.headline.hireOnlyHint");
+      progressHint = t("stageChain.headline.hireOnlyProgressHint");
     } else if (imported) {
       headline = offers
-        ? `${m.datesIn} ${nDates(m.datesIn)} landed. ${m.readyToOffer} of them can be offered in the next digest.`
-        : `${m.datesIn} ${nDates(m.datesIn)} landed. ${m.bookableDates} ${m.bookableDates === 1 ? "is" : "are"} bookable now.`;
+        ? `${t("stageChain.headline.orgImportedLanded", { count: m.datesIn })} ${t("stageChain.headline.orgImportedLandedOffersClause", { readyToOffer: m.readyToOffer })}`
+        : `${t("stageChain.headline.orgImportedLanded", { count: m.datesIn })} ${t("stageChain.headline.orgImportedLandedBookableClause", { count: m.bookableDates })}`;
       body = offers
-        ? "Stage 01 is running. The remaining dates have no slot counts, so the digest will skip them."
-        : "Stage 01 is running. A producer books straight from the eligibility list. There is no offer step.";
-      ghost = admin || input.canEditBooking ? "How this org works" : "What is still outstanding";
-      hint = offers ? `Tier 1 goes out at ${berlinTime(input.timing.digestHourBerlin)}` : "Direct booking · nothing to accept";
-      progressHint = !input.canEditBooking ? "The steps marked Admin are not yours. The rest are." : "The steps left sit in the stage they hold up.";
+        ? t("stageChain.headline.orgImportedBodyOffers")
+        : t("stageChain.headline.orgImportedBodyDirect");
+      ghost = admin || input.canEditBooking ? t("stageChain.headline.orgGhostHowItWorks") : t("stageChain.headline.orgGhostOutstanding");
+      hint = offers ? t("stageChain.headline.orgImportedHintOffers", { time: berlinTime(input.timing.digestHourBerlin) }) : t("stageChain.headline.orgImportedHintDirect");
+      progressHint = !input.canEditBooking ? t("stageChain.headline.orgProgressHintReadOnly") : t("stageChain.headline.orgImportedProgressHint");
     } else {
-      headline = role === "producer" ? `${orgName} is still being set up` : "The chain is not running yet. One thing starts it: dates.";
+      headline = role === "producer" ? t("stageChain.headline.orgEmptyHeadlineProducer", { org: orgName }) : t("stageChain.headline.orgEmptyHeadlineAdmin");
       body = role === "producer"
-        ? "Booking engine is on, but no dates exist yet. That is why this page is empty, not a bug."
-        : "Booking engine is on and configured. Every step it still needs is docked in the stage it unblocks.";
-      ghost = admin || input.canEditBooking ? "How this org will work" : "What is still outstanding";
-      hint = admin ? "About 15 minutes" : (input.canEditBooking ? "You can do these too" : "Adding shows is yours; the settings are not");
-      progressHint = !input.canEditBooking ? "The steps marked Admin are not yours. The rest are." : "Nothing here stops you using the rest of the app.";
+        ? t("stageChain.headline.orgEmptyBodyProducer")
+        : t("stageChain.headline.orgEmptyBodyAdmin");
+      ghost = admin || input.canEditBooking ? t("stageChain.headline.orgEmptyGhostHowItWillWork") : t("stageChain.headline.orgGhostOutstanding");
+      hint = admin ? t("stageChain.headline.orgEmptyHintAdmin") : (input.canEditBooking ? t("stageChain.headline.orgEmptyHintCanEdit") : t("stageChain.headline.orgEmptyHintReadOnly"));
+      progressHint = !input.canEditBooking ? t("stageChain.headline.orgProgressHintReadOnly") : t("stageChain.headline.orgEmptyProgressHint");
     }
     side = admin
-      ? [{ title: "See it as your artists do", where: "The pencil top right opens the editor bar, where you can switch to the artist view." }, { title: "Read what each role covers", where: "Help center" }]
-      : [{ title: "See what each role can do", where: "Help center" }, { title: "Message the admin", where: "Chats" }];
-    queueTitle = "What this page becomes";
-    queueHint = "Sample rows. Yours replace them once the org has dates.";
+      ? [{ title: t("stageChain.side.seeItAsArtists"), where: t("stageChain.side.editorBarHint") }, { title: t("stageChain.side.readRoleCovers"), where: t("stageChain.side.helpCenter") }]
+      : [{ title: t("stageChain.side.seeWhatEachRoleCanDo"), where: t("stageChain.side.helpCenter") }, { title: t("stageChain.side.messageAdmin"), where: t("stageChain.side.chats") }];
+    queueTitle = t("stageChain.headline.orgQueueTitle");
+    queueHint = t("stageChain.headline.orgQueueHint");
     sample = true;
     queueOpacity = 0.55;
   }
@@ -409,7 +417,7 @@ export function composeStageChain(input: StageChainInput): StageChainResult {
   const ticks = Array.from({ length: Math.max(total, 1) }, (_, i) => i < filled);
 
   const result: StageChainResult = {
-    eyebrow: `${orgName} · first run`,
+    eyebrow: t("stageChain.result.eyebrow", { org: orgName }),
     headline,
     body,
     ghost,
@@ -419,20 +427,20 @@ export function composeStageChain(input: StageChainInput): StageChainResult {
     hasSteps,
     ticks,
     modules: [
-      { label: "Booking engine", on: bf },
-      { label: "Hire orders", on: ho },
+      { label: t("stageChain.modules.booking"), on: bf },
+      { label: t("stageChain.modules.hire"), on: ho },
     ],
     offFooters,
     hasChain: !nothingOn,
-    chainTitle: artist ? "How a date reaches you" : "How a date will move",
-    rulesBy: rulesByLine(input.provenance),
+    chainTitle: artist ? t("stageChain.result.chainTitleArtist") : t("stageChain.result.chainTitleOrg"),
+    rulesBy: rulesByLine(input.provenance, t),
     stages,
-    sideTitle: nothingOn ? "The app is open, there is just nothing to run" : "Nothing here blocks the rest of the app",
+    sideTitle: nothingOn ? t("stageChain.result.sideTitleNothingOn") : t("stageChain.result.sideTitleDefault"),
     sideBody: role === "producer" && !nothingOn
-      ? "You are on the Production Team. You plan dates, run offers and confirm bookings. Inviting people, casts and settings stay with the admin."
+      ? t("stageChain.result.sideBodyProducer")
       : (artist
-          ? "Blocking is how you say no. Blocked dates come out of the list before anyone books you."
-          : "Some steps above block the first booking. The app itself is open, and two things worth doing are not steps at all."),
+          ? t("stageChain.result.sideBodyArtist")
+          : t("stageChain.result.sideBodyDefault")),
     side,
     queueTitle,
     queueHint,

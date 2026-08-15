@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useAllCities } from "@/hooks/useAllCities";
 import { useShows } from "@/hooks/useShows";
 import { useBookingFlow } from "@/hooks/useBookingFlow";
@@ -16,6 +17,7 @@ import { ROUTES } from "@/config/app.config";
  *  deriveDirectBookList treats null as "no restriction"). `orgId` is the rail's org, not
  *  the shell's, matching LadderStep and TimingStep. */
 export function EligibilityStep({ coverage, orgId }: { coverage: LadderCoverageInputs | undefined; orgId: string | null }) {
+  const { t } = useTranslation("onboarding");
   const cities = useAllCities();
   const shows = useShows();
   // Gated on the org, not just on the query: `useBookingFlow` has no `enabled`, so a null
@@ -37,7 +39,7 @@ export function EligibilityStep({ coverage, orgId }: { coverage: LadderCoverageI
 
   return (
     <div className="space-y-3">
-      <p className="text-xs text-muted-foreground">{eligibilityScopeNote(flow)}</p>
+      <p className="text-xs text-muted-foreground">{eligibilityScopeNote(flow, t)}</p>
       {result.uncoveredPairs.length === 0 && !result.hasNullCity ? (
         <p className="text-xs text-muted-foreground">Every scheduled show and city has a cast at tier 1.</p>
       ) : (

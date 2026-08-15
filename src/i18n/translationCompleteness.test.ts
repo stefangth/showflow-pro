@@ -82,6 +82,7 @@ const IDENTICAL_OK: Record<string, string> = {
   'settingsRolesRights.tab.presets.standard': '"Standard" is identical in German',
   'settingsRolesRights.editingPicker.productionTeam': 'role label "Production Team" kept untranslated',
   'settingsRolesRights.changeLog.transition': 'interpolation + arrow only ("{{from}} -> {{to}}")',
+  'settingsRolesRights.capabilityGroups.artists': 'role noun "Artists" kept untranslated (TERMS convention)',
 
   // admin
   'admin.bulk.placeholder': 'example email addresses only (alex@email.com / sam@email.com)',
@@ -124,6 +125,9 @@ const IDENTICAL_OK: Record<string, string> = {
   // profile
   'profile.details.title': 'common word "Details", identical in German',
   'profile.notifications.channelAria': 'pure interpolation template ("{{category}} {{channel}}"), no prose',
+
+  // onboarding
+  'onboarding.stageChain.side.chats': 'loanword "Chats", kept untranslated across the app (matches chats.list.title)',
 };
 
 describe('German catalog is translated (not English left in place)', () => {
@@ -133,7 +137,7 @@ describe('German catalog is translated (not English left in place)', () => {
     'settingsAirtable', 'settingsBookingFlow', 'settingsHireOrders', 'settingsEmailTemplates',
     'settingsRolesRights', 'settingsEditor',
     'auth', 'admin', 'artists', 'productions', 'hireOrdersPages', 'showsDetail', 'chats', 'profile',
-    'flowCopy', 'bookingCopy',
+    'onboarding', 'flowCopy', 'bookingCopy',
   ] as const) {
     it(`de differs from en for translatable keys in "${ns}"`, () => {
       const en = leaves(resources.en[ns]);
@@ -144,6 +148,32 @@ describe('German catalog is translated (not English left in place)', () => {
       expect(
         suspicious,
         `de value identical to en (untranslated?): ${suspicious.join(', ')}`,
+      ).toEqual([]);
+    });
+  }
+});
+
+/** The `{{name}}` interpolation tokens in a value, sorted for order-independent comparison. */
+function placeholders(value: string): string[] {
+  return [...value.matchAll(/\{\{\s*(\w+)[^}]*\}\}/g)].map((m) => m[1]).sort();
+}
+
+// keyParity guards key shape, copyLint guards dashes/formal address, and the block above
+// guards paste-throughs, but nothing checks that a German value keeps the SAME interpolation
+// placeholders as its English counterpart. A translation that drops a {{count}} or {{org}}
+// renders a numberless/nameless sentence in production while every other i18n gate stays
+// green. This pins placeholder parity leaf-by-leaf across every namespace.
+describe('German values preserve English interpolation placeholders', () => {
+  for (const ns of Object.keys(resources.en) as (keyof typeof resources.en)[]) {
+    it(`de keeps every {{placeholder}} from en in namespace "${ns}"`, () => {
+      const en = leaves(resources.en[ns]);
+      const de = leaves(resources.de[ns]);
+      const mismatched = Object.keys(en).filter(
+        (k) => de[k] !== undefined && placeholders(en[k]).join(',') !== placeholders(de[k]).join(','),
+      );
+      expect(
+        mismatched,
+        `de placeholders differ from en: ${mismatched.join(', ')}`,
       ).toEqual([]);
     });
   }

@@ -18,13 +18,15 @@ describe("formatMoney", () => {
   });
 
   it("defaults to en-US grouping and stays byte-identical when no locale is passed", () => {
+    // The default keeps the edge PDF renderer (which passes no locale) byte-identical.
     expect(formatMoney(4500.5, "EUR")).toBe("€4,500.50");
     expect(formatMoney(4500.5, "EUR", "en-US")).toBe("€4,500.50");
   });
 
-  it("uses the given BCP-47 locale for digit grouping only, symbol fixed by currency", () => {
-    // German grouping: dot thousands, comma decimals; symbol still the EUR glyph.
+  it("uses the given locale's separators without touching the currency symbol", () => {
+    // German groups with '.' and decimals with ','; the symbol prefix is unchanged.
     expect(formatMoney(4500.5, "EUR", "de-DE")).toBe("€4.500,50");
+    expect(formatMoney("4500", "CHF", "de")).toBe("CHF 4.500,00");
   });
 
   it("guards an empty locale tag by falling back to en-US instead of throwing", () => {

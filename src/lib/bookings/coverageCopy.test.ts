@@ -1,6 +1,11 @@
 import { describe, it, expect } from "vitest";
+import i18n from "@/i18n";
 import { ladderScopeNote, eligibilityScopeNote } from "./coverageCopy";
 import { BOOKING_FLOW_DEFAULTS, applyPreset } from "@/lib/bookingFlow";
+
+// The functions now take a namespace-bound translator; rebind the English catalog so these
+// assertions keep pinning the exact shipped English copy (German is covered by the i18n gates).
+const t = i18n.getFixedT("en", "onboarding");
 
 // Built from the shipped presets rather than hand-written partials, the way timingCopy's
 // tests are: these two sentences exist to state what the engine will actually do with the
@@ -15,7 +20,7 @@ const pausedDirect = { ...direct, active: false };
 
 describe("ladderScopeNote", () => {
   it("tells an offers org what the ranking decides", () => {
-    const line = ladderScopeNote(classic);
+    const line = ladderScopeNote(classic, t);
     expect(line).toBe("Your casts ranked per city. Tier 1 is asked first, then the tiers below it.");
   });
 
@@ -27,7 +32,7 @@ describe("ladderScopeNote", () => {
     // builds the direct-book picker from useEligibleArtists, which reads the cast ROWS and
     // ignores their priority entirely. So this org books every date with nothing ranked,
     // and an afternoon spent ranking casts changes nothing it can see.
-    const line = ladderScopeNote(direct);
+    const line = ladderScopeNote(direct, t);
     expect(line).toMatch(/You book artists directly/);
     expect(line).toMatch(/nothing reads this ranking/);
     // And it may not describe the pipeline that org does not run.
@@ -38,7 +43,7 @@ describe("ladderScopeNote", () => {
     // The "off" preset keeps artist_acceptance from the flow it was switched off from, and
     // `active` changes nothing about who reads a ranking. The direct-book statement is the
     // one that stays true.
-    expect(ladderScopeNote(pausedDirect)).toBe(ladderScopeNote(direct));
+    expect(ladderScopeNote(pausedDirect, t)).toBe(ladderScopeNote(direct, t));
     expect(off.active).toBe(false);
   });
 
@@ -47,7 +52,7 @@ describe("ladderScopeNote", () => {
     // defaulting to the classic pipeline would narrate offers at a direct-book org for as
     // long as that read takes.
     for (const flow of [null, undefined]) {
-      const line = ladderScopeNote(flow);
+      const line = ladderScopeNote(flow, t);
       expect(line).toBe("Your casts ranked per city, tier 1 first.");
       expect(line).not.toMatch(/asked first|directly/);
     }
@@ -56,7 +61,7 @@ describe("ladderScopeNote", () => {
 
 describe("eligibilityScopeNote", () => {
   it("tells an offers org that an unmatched pair opens to nobody", () => {
-    expect(eligibilityScopeNote(classic)).toBe(
+    expect(eligibilityScopeNote(classic, t)).toBe(
       "Which casts belong to a show in a city. Without a match, a tier opens to nobody.",
     );
   });
@@ -66,7 +71,7 @@ describe("eligibilityScopeNote", () => {
     // has no show_cast_eligibility rows and the date has no per-date rows, and
     // deriveDirectBookList then returns every ACTIVE org artist (fetchActiveArtistOptions).
     // Telling this org that a gap opens to nobody would be exactly backwards.
-    const line = eligibilityScopeNote(direct);
+    const line = eligibilityScopeNote(direct, t);
     expect(line).toMatch(/whole active roster/);
     expect(line).not.toMatch(/nobody/);
   });
@@ -78,21 +83,21 @@ describe("eligibilityScopeNote", () => {
     // ShowDateDetailSheet.tsx. So "your whole active roster" full stop is an overstatement
     // of what the Book picker will actually list. The contrast that carries the sentence
     // (a wide-open list, not "nobody") survives naming them.
-    const line = eligibilityScopeNote(direct);
+    const line = eligibilityScopeNote(direct, t);
     expect(line).toMatch(/blocked/);
     expect(line).toMatch(/skill/);
   });
 
   it("states only what the rows hold while the flow is unread", () => {
     for (const flow of [null, undefined]) {
-      expect(eligibilityScopeNote(flow)).toBe("Which casts belong to a show in a city.");
+      expect(eligibilityScopeNote(flow, t)).toBe("Which casts belong to a show in a city.");
     }
   });
 });
 
 it("uses no em or en dashes in any branch", () => {
   for (const flow of [classic, direct, off, pausedDirect, null, undefined]) {
-    expect(ladderScopeNote(flow)).not.toMatch(/[—–]/);
-    expect(eligibilityScopeNote(flow)).not.toMatch(/[—–]/);
+    expect(ladderScopeNote(flow, t)).not.toMatch(/[—–]/);
+    expect(eligibilityScopeNote(flow, t)).not.toMatch(/[—–]/);
   }
 });
