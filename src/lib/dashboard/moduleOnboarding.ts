@@ -26,6 +26,20 @@ type OnbT = TFunction<"onboarding">;
  * Admin (or super-admin) only, wherever it renders: Editor Mode is gated by
  * editorAccess.canUseEditor, so a producer told to use it would be sent to a control that is
  * not in their toolbar.
+ *
+ * Why the copy (now in the `onboarding` catalog under `viewAsArtist`) is worded the way it
+ * is: the hint stops at what the toolbar can deliver. Its "as user" picker is filled from
+ * admin-list-users, an auth.users enumeration, so an artist who is on the roster but holds no
+ * account is not selectable at all; the always-available fallback is the "Viewing as: Artist"
+ * role option, which switches the shell but leaves the admin as themselves, so useMyArtist
+ * finds no artist row. Both surfaces sit next to a roster panel that has just said an artist
+ * needs no account, which is precisely when the picker is empty, so the precondition is
+ * stated rather than assumed.
+ *
+ * That precondition is the ACCOUNT, not a recent sign-in: the picker enumerates auth.users,
+ * so an artist who accepted their invitation and never came back is still in it. "Account" is
+ * also the word the product already uses at the one place an admin can check, the artist
+ * card's account-status chip (AccountStatusChip: "Active account" / "No account").
  */
 export function viewAsArtistTip(t: OnbT): InheritedRule {
   return { title: t("viewAsArtist.title"), hint: t("viewAsArtist.hint") };
