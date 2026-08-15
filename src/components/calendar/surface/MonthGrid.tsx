@@ -1,4 +1,5 @@
-import type { KeyboardEvent } from 'react';
+import { useEffect, useRef } from 'react';
+import type { KeyboardEvent, MouseEvent as ReactMouseEvent } from 'react';
 import type { MonthGridCell, Tone } from '@/lib/calendar/types';
 import { TONE_TEXT } from '@/lib/calendar/tone';
 import { toDateKey } from '@/lib/dates';
@@ -21,7 +22,12 @@ interface MonthGridProps {
   cells: MonthGridCell[];
   onSelectDay: (day: Date) => void;
   onOpenDay: (day: Date) => void;
+  onRangeStart?: (key: string) => void;
   onRangeExtend?: (key: string) => void;
+  onRangeCommit?: () => void;
+  /** True while a selection exists (enables drag visuals, e.g. suppressing
+   *  text selection while the pointer is dragging across cells). */
+  rangeActive?: boolean;
   className?: string;
 }
 
@@ -30,16 +36,68 @@ interface MonthGridProps {
  * (Monday-first, always 42) from `monthMatrix`/the caller's cell builder —
  * this component only renders them and reports interaction back up.
  */
-export function MonthGrid({ cells, onSelectDay, onOpenDay, onRangeExtend, className }: MonthGridProps) {
+export function MonthGrid({
+  cells,
+  onSelectDay,
+  onOpenDay,
+  onRangeStart,
+  onRangeExtend,
+  onRangeCommit,
+  rangeActive,
+  className,
+}: MonthGridProps) {
+  // Anchor cell captured on mousedown, held provisionally until movement
+  // confirms this is a real drag (not a plain click). `dragging` only
+  // flips true once a *different* cell reports mouseenter — that is what
+  // lets a mousedown+mouseup on the same cell with no mouseenter elsewhere
+  // fall through to a plain click (onSelectDay) instead of firing a
+  // 1-cell range (onRangeStart + onRangeCommit with no onRangeExtend).
+  const pendingAnchorRef = useRef<string | null>(null);
+  const draggingRef = useRef(false);
+
+  useEffect(() => {
+    const handleWindowMouseUp = () => {
+      if (draggingRef.current) {
+        onRangeCommit?.();
+      }
+      pendingAnchorRef.current = null;
+      draggingRef.current = false;
+    };
+    window.addEventListener('mouseup', handleWindowMouseUp);
+    return () => window.removeEventListener('mouseup', handleWindowMouseUp);
+  }, [onRangeCommit]);
+
   const handleSelect = (cell: MonthGridCell) => {
     if (!cell.day) return;
     onSelectDay(cell.day);
-    onRangeExtend?.(toDateKey(cell.day));
   };
 
   const handleOpen = (cell: MonthGridCell) => {
     if (!cell.day) return;
     onOpenDay(cell.day);
+  };
+
+  const handleMouseDown = (cell: MonthGridCell, event: ReactMouseEvent<HTMLDivElement>) => {
+    if (!cell.day) return;
+    const key = toDateKey(cell.day);
+    if (event.shiftKey) {
+      // Extend the caller's existing anchor to this cell — no new drag.
+      onRangeExtend?.(key);
+      return;
+    }
+    pendingAnchorRef.current = key;
+    draggingRef.current = false;
+  };
+
+  const handleMouseEnter = (cell: MonthGridCell) => {
+    if (!cell.day || pendingAnchorRef.current === null) return;
+    const key = toDateKey(cell.day);
+    if (!draggingRef.current) {
+      // First movement since mousedown — this is now a genuine drag.
+      onRangeStart?.(pendingAnchorRef.current);
+      draggingRef.current = true;
+    }
+    onRangeExtend?.(key);
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>, cell: MonthGridCell) => {
@@ -88,13 +146,16 @@ export function MonthGrid({ cells, onSelectDay, onOpenDay, onRangeExtend, classN
               tabIndex={0}
               onClick={() => handleSelect(cell)}
               onDoubleClick={() => handleOpen(cell)}
+              onMouseDown={e => handleMouseDown(cell, e)}
+              onMouseEnter={() => handleMouseEnter(cell)}
               onKeyDown={e => handleKeyDown(e, cell)}
               className={cn(
                 'relative flex min-h-[104px] flex-col gap-1 bg-background p-1.5 text-left outline-none transition-colors',
                 'hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset',
                 cell.isPast && 'opacity-60',
                 cell.inRange && 'bg-accent-50',
-                cell.isSelected && 'ring-2 ring-inset ring-primary'
+                cell.isSelected && 'ring-2 ring-inset ring-primary',
+                rangeActive && 'select-none'
               )}
             >
               {cell.isToday && (

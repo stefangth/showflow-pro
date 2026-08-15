@@ -128,4 +128,107 @@ describe('MonthGrid', () => {
     const selectedWith = onSelectDay.mock.calls[0][0] as Date;
     expect(selectedWith.getDate()).toBe(12);
   });
+
+  describe('range selection (drag + shift-click)', () => {
+    function renderRangeGrid() {
+      const onSelectDay = vi.fn();
+      const onRangeStart = vi.fn();
+      const onRangeExtend = vi.fn();
+      const onRangeCommit = vi.fn();
+      render(
+        <MonthGrid
+          cells={buildCells()}
+          onSelectDay={onSelectDay}
+          onOpenDay={vi.fn()}
+          onRangeStart={onRangeStart}
+          onRangeExtend={onRangeExtend}
+          onRangeCommit={onRangeCommit}
+        />
+      );
+      return { onSelectDay, onRangeStart, onRangeExtend, onRangeCommit };
+    }
+
+    it('a drag across cells (mousedown A, mouseenter C, mouseup) fires start/extend/commit in order, not onSelectDay', () => {
+      const { onSelectDay, onRangeStart, onRangeExtend, onRangeCommit } = renderRangeGrid();
+      const cellA = screen.getByTestId('month-grid-cell-2026-08-05');
+      const cellC = screen.getByTestId('month-grid-cell-2026-08-07');
+
+      fireEvent.mouseDown(cellA);
+      // No movement yet — starting a drag must stay silent until the pointer
+      // actually leaves the anchor cell (see the "plain click" test below).
+      expect(onRangeStart).not.toHaveBeenCalled();
+
+      fireEvent.mouseEnter(cellC);
+      expect(onRangeStart).toHaveBeenCalledTimes(1);
+      expect(onRangeStart).toHaveBeenCalledWith('2026-08-05');
+      expect(onRangeExtend).toHaveBeenCalledTimes(1);
+      expect(onRangeExtend).toHaveBeenCalledWith('2026-08-07');
+
+      // onRangeStart must fire before onRangeExtend.
+      const startOrder = onRangeStart.mock.invocationCallOrder[0];
+      const extendOrder = onRangeExtend.mock.invocationCallOrder[0];
+      expect(startOrder).toBeLessThan(extendOrder);
+
+      fireEvent.mouseUp(cellC);
+      expect(onRangeCommit).toHaveBeenCalledTimes(1);
+      expect(onSelectDay).not.toHaveBeenCalled();
+    });
+
+    it('mouseup outside the grid (window) still commits an in-progress drag', () => {
+      const { onRangeStart, onRangeExtend, onRangeCommit } = renderRangeGrid();
+      const cellA = screen.getByTestId('month-grid-cell-2026-08-05');
+      const cellC = screen.getByTestId('month-grid-cell-2026-08-07');
+
+      fireEvent.mouseDown(cellA);
+      fireEvent.mouseEnter(cellC);
+      expect(onRangeStart).toHaveBeenCalledTimes(1);
+      expect(onRangeExtend).toHaveBeenCalledTimes(1);
+
+      fireEvent.mouseUp(window);
+      expect(onRangeCommit).toHaveBeenCalledTimes(1);
+    });
+
+    it('shift+click on a cell fires onRangeExtend without starting a new drag', () => {
+      const { onSelectDay, onRangeStart, onRangeExtend, onRangeCommit } = renderRangeGrid();
+      const cellE = screen.getByTestId('month-grid-cell-2026-08-09');
+      const cellF = screen.getByTestId('month-grid-cell-2026-08-11');
+
+      fireEvent.mouseDown(cellE, { shiftKey: true });
+      expect(onRangeExtend).toHaveBeenCalledTimes(1);
+      expect(onRangeExtend).toHaveBeenCalledWith('2026-08-09');
+      expect(onRangeStart).not.toHaveBeenCalled();
+
+      // No drag was armed by the shift-click, so a later mouseenter/mouseup
+      // must not fire any further range callbacks.
+      fireEvent.mouseEnter(cellF);
+      expect(onRangeExtend).toHaveBeenCalledTimes(1);
+
+      fireEvent.mouseUp(cellF);
+      expect(onRangeCommit).not.toHaveBeenCalled();
+      expect(onSelectDay).not.toHaveBeenCalled();
+    });
+
+    it('a plain click with no movement fires only onSelectDay, no range callbacks', () => {
+      const { onSelectDay, onRangeStart, onRangeExtend, onRangeCommit } = renderRangeGrid();
+      const cellA = screen.getByTestId('month-grid-cell-2026-08-05');
+
+      fireEvent.mouseDown(cellA);
+      fireEvent.mouseUp(cellA);
+      fireEvent.click(cellA);
+
+      expect(onSelectDay).toHaveBeenCalledTimes(1);
+      const selectedWith = onSelectDay.mock.calls[0][0] as Date;
+      expect(selectedWith.getDate()).toBe(5);
+      expect(onRangeStart).not.toHaveBeenCalled();
+      expect(onRangeExtend).not.toHaveBeenCalled();
+      expect(onRangeCommit).not.toHaveBeenCalled();
+    });
+
+    it('renders inRange styling unaffected by the new handlers', () => {
+      renderRangeGrid();
+      const rangedCell = screen.getByTestId('month-grid-cell-2026-08-20');
+      expect(rangedCell).toHaveAttribute('data-in-range', 'true');
+      expect(rangedCell.className).toContain('bg-accent-50');
+    });
+  });
 });
