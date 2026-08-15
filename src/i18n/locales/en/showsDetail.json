@@ -157,6 +157,7 @@
   },
   "cockpitRail": {
     "date": "Date",
+    "details": "Details",
     "eligibility": "Eligibility",
     "upNext": "Up next",
     "activity": "Activity",

@@ -49,6 +49,7 @@ import {
 } from '@/data/eligibility';
 import { unionSkillIds } from '@/lib/eligibility';
 import { resolveOrgSetting } from '@/data/settings';
+import { formatCustomValue } from '@/lib/customFields';
 import { TierTimeline } from '@/components/shows/date/TierTimeline';
 import { DryRunDialog } from '@/components/shows/date/DryRunDialog';
 import { EligibilityBookList } from '@/components/shows/date/EligibilityBookList';
@@ -86,6 +87,10 @@ interface Props {
     onPrev: () => void;
     onNext: () => void;
   };
+  /** Tab to land on when the sheet opens for a (new) date — e.g. the Agenda
+   *  lens's "Open casting" action opening straight to `offers` instead of the
+   *  default `cast` tab. Defaults to `cast` when omitted. */
+  initialTab?: CockpitTab;
 }
 
 type BookingWithArtist = Booking & { artist: Pick<Artist, 'id' | 'name'> };
@@ -180,11 +185,11 @@ interface ShowDateDetailRow {
   city: { id: string; name: string } | null;
 }
 
-export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: Props) {
+export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager, initialTab }: Props) {
   const { t } = useTranslation('showsDetail');
   const { t: tBooking } = useTranslation('bookingCopy');
   const { hasRole, user, roles, currentOrg } = useAuth();
-  const { isEditorMode } = useEditorConfig();
+  const { isEditorMode, getCustomFieldDefs } = useEditorConfig();
   const isRealAdmin = roles.includes('admin');
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -216,14 +221,15 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: P
   const { features: bookingEntitledFeatures, isLoading: bookingEntitlementsLoading } = useEntitlements();
   const bookingFlowFeatureEnabled = !bookingEntitlementsLoading && bookingEntitledFeatures.has('booking_flow');
 
-  const [activeTab, setActiveTab] = useState<CockpitTab>('cast');
+  const [activeTab, setActiveTab] = useState<CockpitTab>(initialTab ?? 'cast');
   // The sheet instance is reused across dates (no key at the mount sites), so reset
-  // to the default tab whenever it opens for a different date — otherwise a stale
-  // tab (e.g. Setup) carries over. Render-time reset avoids an effect-driven flash.
+  // to the default (or caller-requested) tab whenever it opens for a different date
+  // — otherwise a stale tab (e.g. Setup) carries over. Render-time reset avoids an
+  // effect-driven flash.
   const [tabResetFor, setTabResetFor] = useState(showDateId);
   if (showDateId !== tabResetFor) {
     setTabResetFor(showDateId);
-    setActiveTab('cast');
+    setActiveTab(initialTab ?? 'cast');
   }
 
   const { data: showDate, isLoading } = useQuery({
@@ -802,6 +808,23 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: P
     .map((id) => orgSkills?.find((s) => s.id === id)?.name)
     .filter((n): n is string => Boolean(n));
 
+  // Read-only org custom fields (Airtable-synced or manually configured), the
+  // same defs the producer bookings page uses for its filter chips — display
+  // only, producer/admin-facing (canManage), so an artist viewing the sheet
+  // doesn't see internal ops metadata.
+  const customFieldDefs = useMemo(() => getCustomFieldDefs('show_dates'), [getCustomFieldDefs]);
+  const customFieldRows = useMemo(
+    () =>
+      canManage
+        ? customFieldDefs.map((def) => ({
+            key: def.key,
+            label: def.label,
+            value: formatCustomValue(showDate?.custom?.[def.key] ?? null, def.type),
+          }))
+        : [],
+    [customFieldDefs, canManage, showDate?.custom],
+  );
+
   // Only the Cast tab (module-on path) consumes these groups; skip the remap when
   // the sheet is closed, still loading, or degrading to AssignedArtistsCard, and
   // memoize the mapping like the sibling deriveBookingGroups call. `mutate` is
@@ -958,6 +981,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager }: P
                   notes={showDate.notes}
                   castChips={castChips}
                   skillChips={skillChips}
+                  customFields={customFieldRows}
                   // Expiry is folded into the header status line; the rail keeps
                   // the lower-priority digest-send / auto-escalate signals.
                   upNext={bookingModuleAllowed ? upNextItems.filter((i) => i.kind !== 'expiry') : []}

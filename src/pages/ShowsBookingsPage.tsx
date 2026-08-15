@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -7,23 +7,15 @@ import { supabase } from '@/integrations/supabase/client';
 import { bulkConfirmSoftBooked, fetchBookingCountsByDate, fetchSoftBookedIdsForDate } from '@/data/bookings';
 import { fetchShowDatesList } from '@/data/showDates';
 import { useAuth } from '@/features/auth/AuthContext';
-import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Popover, PopoverContent } from '@/components/ui/popover';
-import { PopoverAnchor } from '@radix-ui/react-popover';
-import { RowPeek } from '@/components/bookings/RowPeek';
-import { computeDatePeek, pagerPosition } from '@/lib/bookingCockpit';
-import { Search, Plus, ListChecks } from 'lucide-react';
+import { pagerPosition } from '@/lib/bookingCockpit';
+import { Search, ListChecks } from 'lucide-react';
 import { parseISO } from 'date-fns';
 import { ProgramFilter } from '@/components/filters/ProgramFilter';
-import { TimeframeFilter, upcomingTimeframe, type TimeframeValue } from '@/components/filters/TimeframeFilter';
+import type { TimeframeValue } from '@/components/filters/TimeframeFilter';
 import { SortControl, type SortValue } from '@/components/filters/SortControl';
-import { ViewToggle, type ViewMode } from '@/components/filters/ViewToggle';
 import { useFilterVisibility } from '@/components/filters/useFilterVisibility';
-import { EntityCalendar } from '@/components/calendar/EntityCalendar';
 import { applySort, inTimeframe } from '@/components/filters/filterUtils';
 import { ArtistBookingsView } from '@/components/bookings/ArtistBookingsView';
 import { FirstOfferCard } from '@/components/bookings/setup/FirstOfferCard';
@@ -33,27 +25,24 @@ import { useModuleOnboardingRail } from '@/components/setup/useModuleOnboardingR
 import { SetupChecklistSheet } from '@/components/setup/SetupChecklistSheet';
 import type { ComposedStep } from '@/lib/dashboard/types';
 import { ShowDateDetailSheet } from '@/components/shows/ShowDateDetailSheet';
+import type { CockpitTab } from '@/components/shows/date/CockpitHeader';
 import { ShowDateFormDialog } from '@/components/shows/ShowDateFormDialog';
 import { NewOrderWizard } from '@/components/hireOrders/NewOrderWizard';
 import { HireOrderReadyBanner } from '@/components/hireOrders/HireOrderReadyBanner';
 import { useDatesReadyForHireOrder, useHireOrderAction } from '@/hooks/useHireOrders';
-import { HireOrderStatusBadge } from '@/components/hireOrders/HireOrderStatusBadge';
 import { useFeature, useEntitlements } from '@/hooks/useEntitlements';
 import { useCan } from '@/hooks/useCapabilities';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { showSlots } from '@/lib/settings';
-import { formatDateWithWeekday, formatDayMonthYear, parseDateOnly, pastRowClassName, weekdayShort } from '@/lib/dates';
-import { cn } from '@/lib/utils';
-import { useReferenceField } from '@/hooks/useBookingFlow';
-import { referenceLabel } from '@/lib/bookingFlow';
-import { useColumnTemplate, useEditorConfig } from '@/features/editor/EditorContext';
-import { useColumnHeaders } from '@/features/editor/useColumnHeaders';
-import { ColumnLayoutEditor } from '@/features/editor/ColumnLayoutEditor';
-import { formatCustomValue, compareCustomValues, customFilterMatches, type CustomFilterState } from '@/lib/customFields';
+import { parseDateOnly } from '@/lib/dates';
+import { useEditorConfig } from '@/features/editor/EditorContext';
+import { compareCustomValues, customFilterMatches, type CustomFilterState } from '@/lib/customFields';
 import { CustomFieldFilter } from '@/components/filters/CustomFieldFilter';
 import { emptyCustomFilter } from '@/components/filters/customFilterState';
 import { PageMini } from '@/components/minis/PageMini';
+import { CalendarSurface } from '@/components/calendar/surface/CalendarSurface';
+import { toProducerEntries } from '@/lib/calendar/producerData';
 
 type ShowRef = {
   id: string;
@@ -87,14 +76,6 @@ type ShowDateStatus = 'open' | 'partially_filled' | 'fully_filled' | 'cancelled'
 /** UI-only status: 'unconfigured' is rendered client-side when the show's (program, sub_program) has no slot config. */
 type DisplayStatus = ShowDateStatus | 'unconfigured';
 
-const STATUS_STYLE: Record<DisplayStatus, string> = {
-  open: 'bg-muted text-muted-foreground',
-  partially_filled: 'bg-warning/10 text-warning',
-  fully_filled: 'bg-success/10 text-success',
-  cancelled: 'bg-destructive/10 text-destructive',
-  unconfigured: 'bg-destructive/10 text-destructive',
-};
-
 export default function ShowsBookingsPage() {
   const { hasRole } = useAuth();
   // hasRole respects viewAsRole simulation, so an admin viewing-as-artist gets ArtistShowsBookings
@@ -116,7 +97,6 @@ function ArtistShowsBookings() {
 
 function ProducerShowsBookings() {
   const { t } = useTranslation('bookings');
-  const { t: tBooking } = useTranslation('bookingCopy');
   const STATUS_LABEL: Record<DisplayStatus, string> = useMemo(() => ({
     open: t('status.open'),
     partially_filled: t('status.partiallyFilled'),
@@ -125,15 +105,8 @@ function ProducerShowsBookings() {
     unconfigured: t('status.unconfigured'),
   }), [t]);
   const { canSee } = useFilterVisibility('bookings');
-  const { reference, customFieldKey } = useReferenceField();
-  const { orderedColumns, visibleCount } = useColumnTemplate('bookings-producer');
-  const { isEditorMode, getCustomFieldDefs } = useEditorConfig();
-  const columnHeaders = useColumnHeaders(orderedColumns);
+  const { getCustomFieldDefs } = useEditorConfig();
   const customDefs = useMemo(() => getCustomFieldDefs('show_dates'), [getCustomFieldDefs]);
-  const customByColId = useMemo(
-    () => new Map(customDefs.map(d => [`custom.${d.key}`, d])),
-    [customDefs]
-  );
   const filterableDefs = useMemo(() => customDefs.filter(d => d.filterable), [customDefs]);
   const sortableDefs = useMemo(() => customDefs.filter(d => d.sortable), [customDefs]);
   const queryClient = useQueryClient();
@@ -141,7 +114,12 @@ function ProducerShowsBookings() {
 
   const [search, setSearch] = useState('');
   const [programs, setPrograms] = useState<string[]>([]);
-  const [timeframe, setTimeframe] = useState<TimeframeValue>(() => upcomingTimeframe());
+  // No default bound: the calendar surface's own PeriodNavigator already owns
+  // the visible window (Month/Agenda lens), so pre-filtering to "Upcoming"
+  // here double-windowed the calendar — navigating to a past/future month
+  // showed nothing because this filter had already dropped those dates.
+  // `timeframe` still exists for the `?from=/?to=` deep-link effect below.
+  const [timeframe, setTimeframe] = useState<TimeframeValue>({ from: null, to: null });
   const [statusFilter, setStatusFilter] = useState<'all' | DisplayStatus>('all');
   type ProducerSort = SortValue | `custom:${string}`;
   const [sort, setSort] = useState<ProducerSort>('chrono_asc');
@@ -151,79 +129,17 @@ function ProducerShowsBookings() {
     { value: `custom:${d.key}:desc` as ProducerSort, label: t('producer.sortDesc', { label: d.label }) },
   ]));
   const [customFilters, setCustomFilters] = useState<Record<string, CustomFilterState>>({});
-  const [view, setView] = useState<ViewMode>('list');
+  const [lens, setLens] = useState<'month' | 'agenda'>('month');
   const [activeShowDateId, setActiveShowDateId] = useState<string | null>(null);
-  const openShowDate = (id: string) => setActiveShowDateId(id);
+  // Which tab the sheet should land on for the date about to open — reset on
+  // every open so a stale "Open casting" request can't leak into a later
+  // plain "Open date" for a different date.
+  const [sheetInitialTab, setSheetInitialTab] = useState<CockpitTab | undefined>(undefined);
+  const openShowDate = (id: string) => { setSheetInitialTab(undefined); setActiveShowDateId(id); };
+  // Agenda lens's "Open casting" action (open-status dates): the label promises
+  // casting/offers, so land the sheet on the Offers tab instead of the default Cast tab.
+  const openCastingDate = (id: string) => { setSheetInitialTab('offers'); setActiveShowDateId(id); };
 
-  // Row peek: Space opens a compact popover summarizing the date's fill (via
-  // computeDatePeek), Enter still opens the full ShowDateDetailSheet (unchanged
-  // click behavior), Escape closes an open peek. Anchored to whichever row/card
-  // is active via a ref rather than one Popover per row, since columns are
-  // admin-configurable (no fixed cell to anchor to).
-  const [peekId, setPeekId] = useState<string | null>(null);
-  const peekAnchorRef = useRef<HTMLElement | null>(null);
-  const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [confirmingPeek, setConfirmingPeek] = useState(false);
-
-  const clearHoverTimer = () => {
-    if (hoverTimerRef.current) { clearTimeout(hoverTimerRef.current); hoverTimerRef.current = null; }
-  };
-  const clearCloseTimer = () => {
-    if (closeTimerRef.current) { clearTimeout(closeTimerRef.current); closeTimerRef.current = null; }
-  };
-  useEffect(() => () => { clearHoverTimer(); clearCloseTimer(); }, []);
-
-  const openShowDateOnKey = (id: string) => (e: React.KeyboardEvent<HTMLElement>) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      clearHoverTimer();
-      clearCloseTimer();
-      setPeekId(null);
-      openShowDate(id);
-    } else if (e.key === ' ') {
-      e.preventDefault();
-      clearHoverTimer();
-      clearCloseTimer();
-      peekAnchorRef.current = e.currentTarget;
-      setPeekId(id);
-    } else if (e.key === 'Escape') {
-      clearHoverTimer();
-      clearCloseTimer();
-      setPeekId(null);
-    }
-  };
-  // Calendar-view cards are role="button"; the ARIA button pattern requires
-  // Space and Enter to both activate. They carry no peek affordance, so keep
-  // the original open-on-either behaviour rather than the list row's Space=peek.
-  const openShowDateOnCardKey = (id: string) => (e: React.KeyboardEvent<HTMLElement>) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      openShowDate(id);
-    }
-  };
-  // Hover intent: a short delay before opening (avoids flashing the peek on a
-  // pointer just passing through) and a short delay before closing (gives the
-  // pointer time to travel from the row onto the popover itself).
-  const handleRowMouseEnter = (id: string) => (e: React.MouseEvent<HTMLTableRowElement>) => {
-    clearCloseTimer();
-    const row = e.currentTarget;
-    clearHoverTimer();
-    hoverTimerRef.current = setTimeout(() => {
-      peekAnchorRef.current = row;
-      setPeekId(id);
-    }, 250);
-  };
-  const handleRowMouseLeave = () => {
-    clearHoverTimer();
-    clearCloseTimer();
-    closeTimerRef.current = setTimeout(() => setPeekId(null), 150);
-  };
-  const handlePopoverMouseEnter = () => clearCloseTimer();
-  const handlePopoverMouseLeave = () => {
-    clearCloseTimer();
-    closeTimerRef.current = setTimeout(() => setPeekId(null), 150);
-  };
   const [newDateOpen, setNewDateOpen] = useState(false);
   const [wizardOpen, setWizardOpen] = useState(false);
   const { hasRole, currentOrg } = useAuth();
@@ -250,29 +166,27 @@ function ProducerShowsBookings() {
   // Hire-order CTA: module gate + generate capability + which dates are ready.
   const hireOrdersOn = useFeature('hire_orders');
   const canGenerateHireOrders = useCan('generate_hire_orders');
-  // Row peek's Confirm action, gated the same as the sheet's own confirm control.
+  // Calendar surface's Confirm-holds action, gated the same as the sheet's own confirm control.
   const canConfirmBookings = useCan('confirm_bookings');
   const { data: hireOrderReady } = useDatesReadyForHireOrder(hireOrdersOn ? orgId : null);
   const readyCount = hireOrderReady?.readyIds.length ?? 0;
-  const readySet = useMemo(() => new Set(hireOrderReady?.readyIds ?? []), [hireOrderReady]);
   const hireOrderAction = useHireOrderAction();
   const draftHireOrderForDate = (dateId: string) => {
     if (!orgId) return;
     hireOrderAction.mutate({ action: 'draft', org_id: orgId, show_date_id: dateId, notify: false });
   };
-  // Only the row whose draft is in flight shows pending. The mutation instance is
-  // shared across every row's button, so gating on `isPending` alone would disable
-  // all ready rows on any single click.
-  const pendingHireOrderDateId = hireOrderAction.isPending
-    ? (hireOrderAction.variables as { show_date_id?: string } | undefined)?.show_date_id
-    : undefined;
+  // Calendar surface action: gated by the same generate-hire-orders capability as the
+  // per-date inline CTA used to be. A no-op when the viewer can't generate orders.
+  const generateHireOrder = (dateId: string) => {
+    if (!canGenerateHireOrders) return;
+    draftHireOrderForDate(dateId);
+  };
 
-  /** The peek's Confirm action: lazily fetch the date's soft_booked ids, bulk-confirm
-   *  them, then invalidate the whole bookings domain (never just the counts sub-key).
-   *  Always gives feedback and refreshes, even when the cached count was stale and no
-   *  rows remain to confirm. */
-  async function confirmPeek(showDateId: string) {
-    setConfirmingPeek(true);
+  /** The calendar surface's Confirm-holds action: lazily fetch the date's soft_booked ids,
+   *  bulk-confirm them, then invalidate the whole bookings domain (never just the counts
+   *  sub-key). Always gives feedback and refreshes, even when the cached count was stale
+   *  and no rows remain to confirm. */
+  async function confirmHoldsForDate(showDateId: string) {
     try {
       const ids = await fetchSoftBookedIdsForDate(supabase, showDateId);
       const { affected } = ids.length
@@ -282,21 +196,27 @@ function ProducerShowsBookings() {
       queryClient.invalidateQueries({ queryKey: ['bookings'] });
     } catch (e) {
       toast.error((e as Error).message);
-    } finally {
-      setConfirmingPeek(false);
-      setPeekId(null);
     }
   }
+  // Gated the same as the sheet's own confirm control; a no-op otherwise.
+  const confirmHolds = (dateId: string) => {
+    if (!(canConfirmBookings && bookingOn)) return;
+    void confirmHoldsForDate(dateId);
+  };
 
   useEffect(() => {
     const status = searchParams.get('status');
     const from = searchParams.get('from');
     const to = searchParams.get('to');
+    const lensParam = searchParams.get('lens');
     if (status && ['open', 'partially_filled', 'fully_filled', 'cancelled', 'unconfigured'].includes(status)) {
       setStatusFilter(status as DisplayStatus);
     }
     if (from || to) {
       setTimeframe({ from: from ? parseISO(from) : null, to: to ? parseISO(to) : null });
+    }
+    if (lensParam === 'month' || lensParam === 'agenda') {
+      setLens(lensParam);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -379,14 +299,12 @@ function ProducerShowsBookings() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showDates, search, programs, timeframe, statusFilter, sort, customFilters, filterableDefs, customDefs]);
 
-  const calendarItems = useMemo(() =>
-    filtered.map(sd => ({ showDate: sd, date: parseDateOnly(sd.date) })),
-    [filtered]
-  );
-
-  const peekedShowDate = useMemo(
-    () => (peekId ? filtered.find(sd => sd.id === peekId) ?? null : null),
-    [filtered, peekId]
+  const producerEntries = useMemo(
+    // hireOrderReady is only fetched when hireOrdersOn (query disabled otherwise, see
+    // useDatesReadyForHireOrder above), so orderByDate is naturally undefined when the
+    // module is off — nothing changes for orgs without hire_orders.
+    () => toProducerEntries(filtered, bookingCounts, hireOrderReady?.orderByDate),
+    [filtered, bookingCounts, hireOrderReady]
   );
 
   // Cockpit pager: walk the current filtered/sorted list from the open sheet.
@@ -408,7 +326,12 @@ function ProducerShowsBookings() {
     setSearchParams(next, { replace: true });
   };
 
-  const dayAbbr = (dateStr: string) => weekdayShort(dateStr);
+  const updateLens = (key: string) => {
+    setLens(key as 'month' | 'agenda');
+    const next = new URLSearchParams(searchParams);
+    next.set('lens', key);
+    setSearchParams(next, { replace: true });
+  };
 
   return (
     <div className="space-y-6">
@@ -500,7 +423,6 @@ function ProducerShowsBookings() {
           </Select>
         )}
         {canSee('program') && <ProgramFilter options={programOptions} value={programs} onChange={setPrograms} />}
-        {canSee('timeframe') && <TimeframeFilter value={timeframe} onChange={setTimeframe} />}
         {canSee('sort') && <SortControl value={sort} onChange={setSort} chronoLabel={t('producer.sortChronoLabel')} extraOptions={sortExtraOptions} />}
         {filterableDefs.map(def => (
           <CustomFieldFilter
@@ -510,245 +432,37 @@ function ProducerShowsBookings() {
             onChange={(v) => setCustomFilters(prev => ({ ...prev, [`custom.${def.key}`]: v }))}
           />
         ))}
-        <div className="ml-auto"><ViewToggle value={view} onChange={setView} /></div>
       </div>
-
-      <ColumnLayoutEditor pageKey="bookings-producer" />
 
       {isLoading ? (
         <div className="space-y-2">{[1,2,3,4,5].map(i => <Skeleton key={i} className="h-12" />)}</div>
-      ) : view === 'list' ? (
-        <Card>
-          <CardContent className="p-0 overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  {columnHeaders.map(({ columnId, headerLabel }) => (
-                    <TableHead key={columnId} className={isEditorMode ? 'font-mono text-xs' : 'text-xs'}>
-                      {headerLabel}
-                    </TableHead>
-                  ))}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filtered.map(sd => {
-                  const slotConfig = showSlots(sd.show);
-                  const status = displayStatus(sd);
-                  const counts = bookingCounts?.get(sd.id);
-                  const cellFor = (colId: string) => {
-                    switch (colId) {
-                      case 'show_dates.date': return (
-                        <TableCell key={colId} className="font-medium whitespace-nowrap">
-                          {formatDayMonthYear(sd.date)}
-                        </TableCell>
-                      );
-                      case '_computed.day': return (
-                        <TableCell key={colId} className="text-muted-foreground">{dayAbbr(sd.date)}</TableCell>
-                      );
-                      case 'show_dates.session_1': return (
-                        <TableCell key={colId} className="whitespace-nowrap">{sd.session_1 ? sd.session_1.slice(0, 5) : '—'}</TableCell>
-                      );
-                      case 'show_dates.session_2': return (
-                        <TableCell key={colId} className="whitespace-nowrap">
-                          {sd.session_2 ? sd.session_2.slice(0, 5) : <span className="text-muted-foreground">—</span>}
-                        </TableCell>
-                      );
-                      case 'show_dates.session_3': return (
-                        <TableCell key={colId} className="whitespace-nowrap">
-                          {sd.session_3 ? sd.session_3.slice(0, 5) : <span className="text-muted-foreground">—</span>}
-                        </TableCell>
-                      );
-                      case 'shows.program': return (
-                        <TableCell key={colId}>{sd.show?.program || <span className="text-muted-foreground">—</span>}</TableCell>
-                      );
-                      case 'shows.sub_program': return (
-                        <TableCell key={colId}>{sd.show?.sub_program || <span className="text-muted-foreground">—</span>}</TableCell>
-                      );
-                      case 'show_dates.venue': return (
-                        <TableCell key={colId}>{sd.venue || <span className="text-muted-foreground">—</span>}</TableCell>
-                      );
-                      case 'cities.name': return (
-                        <TableCell key={colId}>{sd.city?.name || <span className="text-muted-foreground">—</span>}</TableCell>
-                      );
-                      case 'show_dates.status': {
-                        // Inline hire-order affordance: a fully-filled, unordered date
-                        // flips to a per-row Generate CTA; once ordered it shows the
-                        // order's status chip. Gated by the module + generate capability.
-                        const activeOrder = hireOrderReady?.orderByDate[sd.id];
-                        const readyForOrder = readySet.has(sd.id);
-                        return (
-                          <TableCell key={colId}>
-                            <Badge variant="secondary" className={STATUS_STYLE[status] ?? STATUS_STYLE.open}>
-                              {STATUS_LABEL[status] ?? status}
-                            </Badge>
-                            {sd.status === 'cancelled' && sd.cancellation_reason && (
-                              <div className="mt-1 text-xs text-destructive">{sd.cancellation_reason}</div>
-                            )}
-                            {hireOrdersOn && canManage && activeOrder && (
-                              <div className="mt-1.5"><HireOrderStatusBadge status={activeOrder.status} /></div>
-                            )}
-                            {hireOrdersOn && canManage && !activeOrder && readyForOrder && (
-                              <div className="mt-1.5">
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="h-7 px-2 text-xs"
-                                  disabled={!canGenerateHireOrders || pendingHireOrderDateId === sd.id}
-                                  title={canGenerateHireOrders ? undefined : t('producer.noHireOrderPermission')}
-                                  onClick={(e) => { e.stopPropagation(); draftHireOrderForDate(sd.id); }}
-                                >
-                                  <Plus className="mr-1 h-3 w-3" /> {t('producer.generateHireOrder')}
-                                </Button>
-                              </div>
-                            )}
-                          </TableCell>
-                        );
-                      }
-                      case 'show_dates.notes': return (
-                        <TableCell key={colId} className="text-xs text-muted-foreground max-w-[200px] truncate">
-                          {sd.notes || '—'}
-                        </TableCell>
-                      );
-                      case 'shows.id':
-                      case 'show_dates.id':
-                      case 'show_dates.show_id': return (
-                        <TableCell key={colId} className="font-mono text-xs text-muted-foreground">
-                          {colId === 'shows.id' ? sd.show?.id : colId === 'show_dates.id' ? sd.id : sd.show_id}
-                        </TableCell>
-                      );
-                      case '_computed.slots': return (
-                        <TableCell key={colId} className="whitespace-nowrap text-sm">
-                          {slotConfig !== null ? (
-                            <span className="text-muted-foreground tabular-nums">
-                              {counts?.confirmedMain ?? 0}/{slotConfig.main_cast}
-                              {' + '}
-                              {counts?.confirmedUs ?? 0}/{slotConfig.understudies}
-                            </span>
-                          ) : (
-                            <Badge variant="secondary" className="bg-destructive/10 text-destructive text-xs">Unconfigured</Badge>
-                          )}
-                        </TableCell>
-                      );
-                      default: {
-                        // Custom (Airtable-synced) columns — display/filter/sort ONLY, never booking logic.
-                        if (colId.startsWith('custom.')) {
-                          const def = customByColId.get(colId);
-                          const val = sd.custom?.[colId.slice('custom.'.length)];
-                          return (
-                            <TableCell key={colId} className="text-sm whitespace-nowrap">
-                              {def ? formatCustomValue(val, def.type) : <span className="text-muted-foreground">—</span>}
-                            </TableCell>
-                          );
-                        }
-                        return (
-                          <TableCell key={colId} className="text-xs text-muted-foreground">—</TableCell>
-                        );
-                      }
-                    }
-                  };
-                  return (
-                    <TableRow
-                      key={sd.id}
-                      className={cn('cursor-pointer', pastRowClassName(parseDateOnly(sd.date)))}
-                      tabIndex={0}
-                      onClick={() => openShowDate(sd.id)}
-                      onKeyDown={openShowDateOnKey(sd.id)}
-                      onMouseEnter={handleRowMouseEnter(sd.id)}
-                      onMouseLeave={handleRowMouseLeave}
-                    >
-                      {orderedColumns.filter(c => c.visible).map(c => cellFor(c.columnId))}
-                    </TableRow>
-                  );
-                })}
-                {filtered.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={visibleCount || 9} className="text-center text-muted-foreground py-12">
-                      {t('producer.emptyState')}
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+      ) : filtered.length === 0 ? (
+        <div className="text-center text-muted-foreground py-12">{t('producer.emptyState')}</div>
       ) : (
-        <EntityCalendar
-          items={calendarItems}
-          getDate={it => it.date}
-          emptyMessage={t('producer.calendarEmpty')}
-          renderItem={it => (
-            <Card
-              className={cn(
-                'hover:shadow-elev2 transition-shadow cursor-pointer',
-                pastRowClassName(it.date),
-              )}
-              role="button"
-              tabIndex={0}
-              onClick={() => openShowDate(it.showDate.id)}
-              onKeyDown={openShowDateOnCardKey(it.showDate.id)}
-            >
-              <CardContent className="py-3 flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="font-medium truncate">
-                    {referenceLabel({ reference, show: it.showDate.show, custom: it.showDate.custom, customFieldKey })}
-                  </p>
-                  <p className="text-xs text-muted-foreground truncate">
-                    {[it.showDate.venue, it.showDate.city?.name]
-                      .filter(Boolean).join(' · ')}
-                  </p>
-                </div>
-                <Badge
-                  variant="secondary"
-                  className={STATUS_STYLE[displayStatus(it.showDate)] ?? STATUS_STYLE.open}
-                >
-                  {STATUS_LABEL[displayStatus(it.showDate)] ?? it.showDate.status}
-                </Badge>
-              </CardContent>
-            </Card>
-          )}
+        <CalendarSurface
+          role="producer"
+          producerEntries={producerEntries}
+          lens={lens}
+          onLensChange={updateLens}
+          actions={{
+            confirmHolds,
+            generateHireOrder,
+            openDate: openShowDate,
+            openCasting: openCastingDate,
+          }}
+          actionGates={{
+            confirmHolds: {
+              disabled: !(canConfirmBookings && bookingOn),
+              title: t('producer.noConfirmPermission'),
+            },
+            generateHireOrder: {
+              disabled: !canGenerateHireOrders,
+              title: t('producer.noHireOrderPermission'),
+            },
+          }}
         />
       )}
       </div>
-
-      {peekedShowDate && (
-        // key=peekId remounts the popover when the active row changes, forcing
-        // Radix to re-measure against the new anchor instead of keeping the prior
-        // row's position when the pointer moves between rows without closing.
-        <Popover key={peekId} open onOpenChange={o => { if (!o) setPeekId(null); }}>
-          <PopoverAnchor virtualRef={peekAnchorRef} />
-          <PopoverContent
-            // Anchor is the full-width row, so `side="right"` shoved the 320px
-            // peek off the right edge of the viewport. Drop it below the row,
-            // left-aligned, and let Radix flip/shift to stay fully on-screen.
-            side="bottom"
-            align="start"
-            sideOffset={6}
-            collisionPadding={12}
-            className="w-auto p-0"
-            // The peek is a passive hover/Space affordance. Prevent Radix's
-            // default mount auto-focus so opening the peek never steals focus
-            // onto the (destructive) Confirm button — otherwise the hint's own
-            // "Enter to open" keystroke would land on Confirm and bulk-confirm.
-            onOpenAutoFocus={e => e.preventDefault()}
-            onMouseEnter={handlePopoverMouseEnter}
-            onMouseLeave={handlePopoverMouseLeave}
-            onClick={e => e.stopPropagation()}
-          >
-            <RowPeek
-              dateLabel={formatDateWithWeekday(peekedShowDate.date)}
-              peek={computeDatePeek({
-                counts: bookingCounts?.get(peekedShowDate.id) ?? null,
-                slots: showSlots(peekedShowDate.show),
-                t: tBooking,
-              })}
-              canConfirm={canConfirmBookings && bookingOn}
-              confirming={confirmingPeek}
-              onConfirm={() => confirmPeek(peekedShowDate.id)}
-              onOpen={() => { setPeekId(null); openShowDate(peekedShowDate.id); }}
-            />
-          </PopoverContent>
-        </Popover>
-      )}
 
       <SetupChecklistSheet
         feature="booking_flow"
@@ -763,6 +477,7 @@ function ProducerShowsBookings() {
         open={!!activeShowDateId}
         onOpenChange={o => { if (!o) setActiveShowDateId(null); }}
         pager={sheetPager}
+        initialTab={sheetInitialTab}
       />
       <ShowDateFormDialog open={newDateOpen} onOpenChange={setNewDateOpen} mode="create" />
       <NewOrderWizard open={wizardOpen} onOpenChange={setWizardOpen} orgId={orgId} />

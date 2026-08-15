@@ -45,6 +45,7 @@ import { expect, test } from "@playwright/test";
 import { adminClient, tagEmail } from "./helpers/supabase";
 import { BOOTSTRAP_ORG_ID, deleteUserByEmail } from "./helpers/users";
 import { loginAsAndAwaitDashboard, navViaSidebar } from "./helpers/auth";
+import { openBookingsDate } from "./helpers/bookingsUi";
 import { seedConsent } from "./helpers/consent";
 import {
   TEST_ADMIN_EMAIL,
@@ -68,22 +69,6 @@ function isoDays(offset: number): string {
   return d.toISOString().slice(0, 10);
 }
 const DATE_ISO = isoDays(37);
-
-const MONTH_ABBR = [
-  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-];
-
-/**
- * `YYYY-MM-DD` to `dd MMM yyyy` (e.g. `26 Aug 2026`), matching the producer
- * bookings table's date cell (`format(parseDateOnly(sd.date), 'dd MMM yyyy')`).
- * Mirrors booking-flow-presets.spec.ts: targets THIS date's row when every e2e
- * date shares the same seeded show.
- */
-function formatBookingsDate(dateISO: string): string {
-  const [y, m, d] = dateISO.split("-");
-  return `${d} ${MONTH_ABBR[Number(m) - 1]} ${y}`;
-}
 
 let fixture: BookingFixture;
 
@@ -236,14 +221,9 @@ test.describe("Hire orders: producer issues, artist downloads", () => {
     await loginAsAndAwaitDashboard(page, TEST_PRODUCER_EMAIL, TEST_PRODUCER_PASSWORD);
     await navViaSidebar(page, /^shows & bookings$/i);
 
-    // Open THIS date's sheet by its formatted date cell + program (every e2e date
-    // hangs off the same seeded show, so program alone is not unique).
-    const dateRow = page
-      .getByRole("row")
-      .filter({ hasText: formatBookingsDate(DATE_ISO) })
-      .filter({ hasText: /e2e-program/i });
-    await expect(dateRow).toBeVisible({ timeout: 15_000 });
-    await dateRow.click();
+    // Open THIS date's sheet via the calendar surface (every e2e date hangs off
+    // the same seeded show, so target by show_date id).
+    await openBookingsDate(page, { showDateId: fixture.showDateId, dateISO: DATE_ISO });
 
     // Cockpit: the hire-orders card (with its Generate banner) is under the "Hire order" tab.
     await page.getByRole("dialog").getByRole("button", { name: /^hire order$/i }).click();

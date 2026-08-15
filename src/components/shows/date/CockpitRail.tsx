@@ -14,6 +14,10 @@ export interface CockpitRailProps {
   notes?: string | null;
   castChips: Array<{ label: string; kind: "inherited" | "override" }>;
   skillChips: string[];
+  /** Read-only org custom fields (Airtable-synced or manually configured)
+   *  for this show_date, already formatted for display. Omitted/empty hides
+   *  the section entirely. */
+  customFields?: Array<{ key: string; label: string; value: string }>;
   /** Lower-priority engine signals (digest-send, auto-escalate). The time-
    *  critical offers-expiry lives in the header status line, not here. */
   upNext?: UpNextItem[];
@@ -79,7 +83,7 @@ const UP_NEXT_DOT: Record<UpNextItem["tone"], string> = {
 };
 
 export function CockpitRail({
-  times, venue, city, source, notes, castChips, skillChips, upNext = [], activity,
+  times, venue, city, source, notes, castChips, skillChips, customFields = [], upNext = [], activity,
   chatUnread, chatPreview, onOpenChat, onEditSetup, showEditSetup = true,
 }: CockpitRailProps) {
   const { t } = useTranslation("showsDetail");
@@ -110,6 +114,23 @@ export function CockpitRail({
       </div>
 
       <Divider />
+
+      {customFields.length > 0 && (
+        <>
+          <div className="space-y-2">
+            <SectionLabel>{t("cockpitRail.details")}</SectionLabel>
+            <dl className="space-y-1.5 text-xs">
+              {customFields.map((f) => (
+                <div key={f.key} className="flex items-baseline justify-between gap-2">
+                  <dt className="text-muted-foreground">{f.label}</dt>
+                  <dd className="text-right font-medium text-foreground">{f.value}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+          <Divider />
+        </>
+      )}
 
       {/* Eligibility */}
       <div className="space-y-2">

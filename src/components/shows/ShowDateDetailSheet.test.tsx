@@ -38,7 +38,7 @@ vi.mock("@/hooks/useEntitlements", async (orig) => {
     useModuleGate: (f: string) => ({ allow: useFeature(f), pending: false }),
   };
 });
-vi.mock("@/features/editor/EditorContext", () => ({ useEditorConfig: () => ({ isEditorMode: false }) }));
+vi.mock("@/features/editor/EditorContext", () => ({ useEditorConfig: () => ({ isEditorMode: false, getCustomFieldDefs: () => [] }) }));
 vi.mock("@/hooks/useEligibleArtists", () => ({
   useEligibleArtists: () => ({ data: { artistIds: null, castIds: [] }, isError: false }),
 }));

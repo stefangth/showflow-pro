@@ -35,8 +35,8 @@ Grouped by actor. Full call-site citations live with each row; role gates from `
 
 | gesture | calls | kind | effect |
 |---|---|---|---|
-| Availability → toggle a blocked date | inline `blocked_dates` insert/delete — `src/components/availability/AvailabilityPicker.tsx:26,40,43` | mutation | DB guard `trg_enforce_blocked_date_no_active_booking` rejects blocking a date with an active booking |
-| Offer accept / decline (`OfferResponseButtons`) | `respondToOffer` — `src/data/bookings.ts:204-220` | mutation | `suggested → soft_booked` or `→ cancelled` (reason `artist_declined`); transition-guarded, notifies producers |
+| Availability → toggle a blocked date | inline `blocked_dates` insert/delete — `src/pages/AvailabilityPage.tsx:265,284` | mutation | DB guard `trg_enforce_blocked_date_no_active_booking` rejects blocking a date with an active booking |
+| Offer accept / decline (calendar surface Offers lens) | `respondToOffer` — `src/data/bookings.ts:204-220` | mutation | `suggested → soft_booked` or `→ cancelled` (reason `artist_declined`); transition-guarded, notifies producers |
 | Profile → Export my data | `export_my_data` RPC — `src/data/account.ts:6` | RPC | Self-scoped GDPR JSON bundle |
 | Profile → Delete account | `delete-my-account` — `src/data/account.ts:13` | edge fn | Last-admin guard → `anonymize_user` → auth delete |
 

@@ -1,21 +1,28 @@
 import { describe, it, expect, vi } from "vitest";
-import { screen } from "@testing-library/react";
+import { screen, fireEvent } from "@testing-library/react";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import { createFakeSupabase } from "@/test/supabaseFake";
 import { BOOKING_FLOW_DEFAULTS, applyPreset, type BookingFlow, type FlowTimes } from "@/lib/bookingFlow";
 import { DEFAULT_FLOW_TIMES } from "@/data/settings";
 
 /**
- * Task 4: AvailabilityPage's H1/subtitle and per-row status badge must derive
- * from availabilityPageCopy(flow) / bookingStatusLabels(flow) (src/lib/flowCopy.ts)
- * instead of the hardcoded "My Offers" title and the local BOOKING_STATUS_LABEL
- * map, so a direct-booking org (artist_acceptance = false) sees "My Dates" /
- * a block-dates subtitle and "Not booked" instead of "No offer yet" for an
- * unbooked eligible date.
+ * Task 4: AvailabilityPage's H1/subtitle must derive from
+ * availabilityPageCopy(flow) (src/lib/flowCopy.ts) instead of a hardcoded
+ * "My Offers" title, so a direct-booking org (artist_acceptance = false)
+ * sees "My Dates" / a block-dates subtitle instead.
+ *
+ * The former per-row status badge assertions ("Not booked" / "No offer yet",
+ * sourced from bookingStatusLabels(flow)) were dropped in the calendar-surface
+ * refactor (task 17): CalendarSurface's artist lenses rendered a fixed,
+ * non-flow-aware status label (ARTIST_TONES in src/lib/calendar/tone.ts,
+ * e.g. "Not offered") rather than the page's flow-aware wording — a flagged
+ * capability gap, see task-17-report.md. Task 18 closed that gap (an optional
+ * `statusLabels` override threaded through CalendarSurface into the artist
+ * lenses/rail); the reinstated coverage lives in the describe block below.
  */
 
 // One eligible date with no booking row seeded, so its status resolves to
-// "unanswered" and exercises the unbooked-status label.
+// "unanswered".
 const ELIGIBLE = [
   {
     id: "sd-1",
@@ -56,31 +63,10 @@ vi.mock("@/hooks/useArtistEligibleDates", () => ({
   useArtistEligibleDates: () => ({ data: ELIGIBLE, isLoading: false }),
 }));
 
-// Keep the list column machinery minimal but include the status column so the
-// per-row status badge (bookingStatusLabels) actually renders.
-vi.mock("@/features/editor/EditorContext", () => ({
-  useColumnTemplate: () => ({
-    orderedColumns: [
-      { columnId: "show_dates.date", visible: true, order: 0 },
-      { columnId: "_computed.my_status", visible: true, order: 1 },
-    ],
-    visibleCount: 2,
-  }),
-  useEditorConfig: () => ({ isEditorMode: false, getColumnLabel: (id: string) => id }),
-}));
-vi.mock("@/features/editor/useColumnHeaders", () => ({
-  useColumnHeaders: () => [
-    { columnId: "show_dates.date", headerLabel: "Date" },
-    { columnId: "_computed.my_status", headerLabel: "Status" },
-  ],
-}));
-vi.mock("@/features/editor/ColumnLayoutEditor", () => ({ ColumnLayoutEditor: () => null }));
-
 const flowHolder = { flow: BOOKING_FLOW_DEFAULTS as BookingFlow };
 const timesHolder = { times: DEFAULT_FLOW_TIMES as FlowTimes };
 vi.mock("@/hooks/useBookingFlow", () => ({
   useBookingFlow: () => ({ data: flowHolder.flow }),
-  useReferenceField: () => ({ reference: { source: "show" }, customFieldKey: null }),
   useFlowTimes: () => ({ data: timesHolder.times }),
 }));
 
@@ -101,9 +87,6 @@ describe("AvailabilityPage flow-aware copy (Task 4)", () => {
 
     expect(await screen.findByRole("heading", { name: "My Dates" })).toBeInTheDocument();
     expect(screen.getByText(/Block dates you can't perform/)).toBeInTheDocument();
-
-    expect(await screen.findByText("Not booked")).toBeInTheDocument();
-    expect(screen.queryByText("No offer yet")).not.toBeInTheDocument();
   });
 });
 
@@ -164,5 +147,28 @@ describe("AvailabilityPage timing line (R2.1/R4.7)", () => {
     expect(timing).toHaveTextContent(/offers email straight away/i);
     expect(timing).toHaveTextContent(/48 hours to answer/i);
     expect(timing).not.toHaveTextContent(/digest/i);
+  });
+});
+
+/**
+ * Task 18: closes the flow-aware-wording gap flagged in task-17-report.md.
+ * ELIGIBLE's one date has no booking row, so its artist status resolves to
+ * 'unanswered'. The Offers lens (the default landing lens) never renders an
+ * 'unanswered' status badge at all — those dates sit in its unlabeled
+ * "not offered yet" list — so this asserts against the All dates lens, which
+ * shows every eligible date's status pill regardless of state.
+ */
+describe("AvailabilityPage calendar-surface flow-aware status wording (Task 18)", () => {
+  it("direct flow: the All dates lens shows the flow-aware wording, not the fixed ARTIST_TONES default", async () => {
+    flowHolder.flow = applyPreset(BOOKING_FLOW_DEFAULTS, "direct");
+    renderWithProviders(<AvailabilityPage />);
+
+    fireEvent.click(await screen.findByRole("tab", { name: "All dates" }));
+
+    const row = await screen.findByTestId("all-dates-row-sd-1");
+    // "Not booked" is statusLabels.direct.unanswered (src/lib/flowCopy.ts); the
+    // fixed ARTIST_TONES.unanswered.label this replaces is "Not offered".
+    expect(row).toHaveTextContent("Not booked");
+    expect(row).not.toHaveTextContent("Not offered");
   });
 });

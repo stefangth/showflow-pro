@@ -97,4 +97,31 @@ describe("CockpitRail", () => {
     fireEvent.click(screen.getByRole("button", { name: /open the chat tab/i }));
     expect(onOpenChat).toHaveBeenCalledOnce();
   });
+
+  it("renders a Details section with every custom field's label + formatted value", () => {
+    render(
+      <CockpitRail
+        {...base}
+        customFields={[
+          { key: "budget_code", label: "Budget code", value: "OP-4471" },
+          { key: "press_night", label: "Press night", value: "Yes" },
+        ]}
+      />,
+    );
+    expect(screen.getByText(/^details$/i)).toBeInTheDocument();
+    expect(screen.getByText("Budget code")).toBeInTheDocument();
+    expect(screen.getByText("OP-4471")).toBeInTheDocument();
+    expect(screen.getByText("Press night")).toBeInTheDocument();
+    expect(screen.getByText("Yes")).toBeInTheDocument();
+  });
+
+  it("omits the Details section when there are no custom fields", () => {
+    render(<CockpitRail {...base} customFields={[]} />);
+    expect(screen.queryByText(/^details$/i)).not.toBeInTheDocument();
+  });
+
+  it("omits the Details section when customFields is not provided", () => {
+    render(<CockpitRail {...base} />);
+    expect(screen.queryByText(/^details$/i)).not.toBeInTheDocument();
+  });
 });

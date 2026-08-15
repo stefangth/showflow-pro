@@ -43,6 +43,7 @@ describe("isActiveBookedEntry", () => {
       city_id: null,
       show_id: "s1",
       venue: null,
+      city: null,
       custom: null,
       show: { id: "s1", program: null, sub_program: null, status: "active" },
       is_understudy: false,
@@ -61,6 +62,7 @@ describe("isActiveBookedEntry", () => {
       city_id: null,
       show_id: "s1",
       venue: null,
+      city: null,
       custom: null,
       show: { id: "s1", program: null, sub_program: null, status: "active" },
     };

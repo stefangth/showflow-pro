@@ -24,6 +24,8 @@ export type EligibleDate = {
     sub_program: string | null;
     status: string;
   };
+  /** Joined city name (via `city:cities(name)`), or null when the date has no city. */
+  city: string | null;
 };
 
 /**
@@ -79,13 +81,14 @@ export function useArtistEligibleDates() {
         status: string; city_id: string | null; show_id: string;
         venue: string | null; custom: Record<string, unknown> | null;
         show: { id: string; program: string | null; sub_program: string | null; status: string } | null;
+        city: { name: string } | null;
       }
       const allDates = await fetchUpcomingShowDates<EligibleDateRow>(
         supabase,
         orgId,
         today,
         'id, date, session_1, session_2, session_3, status, city_id, show_id, venue, custom, ' +
-          'show:shows(id, program, sub_program, status)',
+          'show:shows(id, program, sub_program, status), city:cities(name)',
       );
 
       const showCityKey = new Set((showCity ?? []).map((r) => `${r.show_id}:${r.city_id}`));
@@ -135,7 +138,7 @@ export function useArtistEligibleDates() {
         return artistHasAllSkills(mySkillIds, required);
       });
 
-      return qualified as unknown as EligibleDate[];
+      return qualified.map((d) => ({ ...d, city: d.city?.name ?? null })) as unknown as EligibleDate[];
     },
   });
 }
