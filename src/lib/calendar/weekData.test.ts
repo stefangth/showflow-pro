@@ -49,7 +49,9 @@ describe('toWeekModel', () => {
     const outsideEntry = makeEntry({
       id: 'sd-outside',
       date: new Date(2026, 7, 20), // Thu 20 Aug — outside the week
-      session1: '18:00:00',
+      // 22:00 would widen the band past 20:00 if wrongly included — asserts
+      // the band is computed only from entries inside the week window.
+      session1: '22:00:00',
     });
 
     const model = toWeekModel([timedEntry, untimedEntry, outsideEntry], ANCHOR);
@@ -101,7 +103,8 @@ describe('toWeekModel', () => {
     });
 
     // band covers 14:00 (840) .. 20:00 (1200), padded to whole hours, computed
-    // only from sessions within the week (excludes sd-outside's 18:00).
+    // only from sessions within the week (excludes sd-outside's 22:00, which
+    // would otherwise have widened endMinutes to 1320).
     expect(model.band).toEqual({ startMinutes: 14 * 60, endMinutes: 20 * 60 });
   });
 
