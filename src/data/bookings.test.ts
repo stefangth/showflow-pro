@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { createFakeSupabase } from "@/test/supabaseFake";
-import { openOfferTier, fetchOfferTiers, fetchOpenedTiers, closeOfferTier, dryRunOfferTier, fetchPendingConfirmationsCount, fetchMyOpenOffersCount, bulkConfirmSoftBooked, bulkDeclineSoftBooked, updateBookingStatusGuarded, respondToOffer, createBooking, fetchTierAttention, extendOfferExpiry, notifyCast } from "./bookings";
+import { openOfferTier, fetchOfferTiers, fetchOpenedTiers, closeOfferTier, dryRunOfferTier, fetchPendingConfirmationsCount, fetchMyOpenOffersCount, bulkConfirmSoftBooked, bulkDeclineSoftBooked, updateBookingStatusGuarded, respondToOffer, createBooking, fetchTierAttention, extendOfferExpiry, notifyCast, fetchBookingsWithArtistForDates } from "./bookings";
 
 describe("openOfferTier", () => {
   it("sends snake_case body and returns offersCreated", async () => {
@@ -482,5 +482,43 @@ describe("fetchTierAttention", () => {
     const fake = createFakeSupabase({});
     expect(await fetchTierAttention(fake as never, { orgId: null, today: "2026-07-15" })).toEqual([]);
     expect(fake.calls).toEqual([]);
+  });
+});
+
+describe("fetchBookingsWithArtistForDates", () => {
+  it("maps rows to camelCase with flattened artist and offerExpiresAt", async () => {
+    const fake = createFakeSupabase({
+      bookings: {
+        data: [
+          {
+            id: "b1", show_date_id: "d1", status: "soft_booked", is_understudy: false,
+            offer_expires_at: null, artist: { id: "a1", name: "Lena" },
+          },
+          {
+            id: "b2", show_date_id: "d1", status: "cancelled", is_understudy: true,
+            offer_expires_at: "2026-07-20T18:00:00Z", artist: null,
+          },
+        ],
+        error: null,
+      },
+    });
+    const res = await fetchBookingsWithArtistForDates(fake as never, { orgId: "org-1", showDateIds: ["d1"] });
+    expect(res).toEqual([
+      { id: "b1", showDateId: "d1", status: "soft_booked", isUnderstudy: false, offerExpiresAt: null, artist: { id: "a1", name: "Lena" } },
+      { id: "b2", showDateId: "d1", status: "cancelled", isUnderstudy: true, offerExpiresAt: "2026-07-20T18:00:00Z", artist: null },
+    ]);
+    expect(fake.calls).toContainEqual({ table: "bookings", method: "eq", args: ["org_id", "org-1"] });
+    expect(fake.calls).toContainEqual({ table: "bookings", method: "in", args: ["show_date_id", ["d1"]] });
+  });
+
+  it("returns [] for an empty showDateIds array without querying", async () => {
+    const fake = createFakeSupabase({});
+    expect(await fetchBookingsWithArtistForDates(fake as never, { orgId: "org-1", showDateIds: [] })).toEqual([]);
+    expect(fake.calls).toEqual([]);
+  });
+
+  it("throws on a supabase error", async () => {
+    const fake = createFakeSupabase({ bookings: { data: null, error: { message: "boom" } } });
+    await expect(fetchBookingsWithArtistForDates(fake as never, { orgId: "org-1", showDateIds: ["d1"] })).rejects.toBeTruthy();
   });
 });
