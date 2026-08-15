@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { createFakeSupabase } from "@/test/supabaseFake";
-import { fetchShowsWithSlots, resolveOrgSetting, upsertOrgSetting, upsertOrgSettings, fetchShowsForLinking, linkShowAirtableKey, importShowsFromOptions, mergeOrgRows, fetchBookingFlow, hasOrgSettingRow, fetchOwnedSettingKeys, fetchFlowTimes } from "./settings";
+import { fetchShowsWithSlots, resolveOrgSetting, upsertOrgSetting, upsertOrgSettings, fetchShowsForLinking, linkShowAirtableKey, importShowsFromOptions, mergeOrgRows, fetchBookingFlow, hasOrgSettingRow, fetchOwnedSettingKeys, fetchFlowTimes, fetchOrgLanguage, setOrgLanguage } from "./settings";
 import { BOOKING_FLOW_DEFAULTS, normalizeBookingFlow } from "@/lib/bookingFlow";
 
 describe("fetchShowsWithSlots", () => {
@@ -113,6 +113,29 @@ describe("upsertOrgSetting", () => {
   it("throws on upsert error", async () => {
     const fake = createFakeSupabase({ app_settings: { data: null, error: { message: "no" } } });
     await expect(upsertOrgSetting(fake as never, "o1", "k", {} as never)).rejects.toBeTruthy();
+  });
+});
+
+describe("fetchOrgLanguage / setOrgLanguage", () => {
+  it("coerces the stored org_language value to a ServerLocale", async () => {
+    const fake = createFakeSupabase({ app_settings: { data: [{ org_id: "o1", value: "de" }], error: null } });
+    expect(await fetchOrgLanguage(fake as never, "o1")).toBe("de");
+  });
+
+  it("defaults to en when the setting is unset or not a supported language", async () => {
+    const unset = createFakeSupabase({ app_settings: { data: [], error: null } });
+    expect(await fetchOrgLanguage(unset as never, "o1")).toBe("en");
+    const bad = createFakeSupabase({ app_settings: { data: [{ org_id: "o1", value: "fr" }], error: null } });
+    expect(await fetchOrgLanguage(bad as never, "o1")).toBe("en");
+  });
+
+  it("writes the org_language key via upsert with the conflict target", async () => {
+    const fake = createFakeSupabase({ app_settings: { data: null, error: null } });
+    await setOrgLanguage(fake as never, "o1", "de");
+    expect(fake.calls).toContainEqual({
+      table: "app_settings", method: "upsert",
+      args: [{ org_id: "o1", key: "org_language", value: "de" }, { onConflict: "org_id,key" }],
+    });
   });
 });
 

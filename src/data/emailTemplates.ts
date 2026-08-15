@@ -21,6 +21,9 @@ export interface EmailTemplatePreviewRequest {
    *  Lets the editor preview data-selected variants (org-invitation's per-role action
    *  lines) that the hardcoded sample could otherwise never reach. */
   dataOverride?: Record<string, unknown>;
+  /** Preview language. The preview endpoint is NOT entitlement-gated (admin QA), so
+   *  this lets an admin preview German before enabling it for the org. */
+  locale?: "en" | "de";
 }
 
 /**

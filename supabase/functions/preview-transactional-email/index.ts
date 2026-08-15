@@ -6,6 +6,7 @@ import type { EmailThemeOverride } from '../_shared/transactional-email-template
 import { preflight, json } from "../_shared/http.ts";
 import { requireRole } from "../_shared/auth.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
+import { coerceLocale, type ServerLocale } from "../_shared/orgLocale.ts";
 
 // Renders registered templates with optional per-template overrides.
 // Auth: Supabase JWT — admin or producer role required.
@@ -23,6 +24,9 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   let hasCopyOverride = false
   let themeOverride: EmailThemeOverride = {}
   let highlightRole: unknown
+  // Preview language. Explicit and NOT entitlement-gated: this is admin QA, so an
+  // admin can preview either language regardless of the org's own setting.
+  let locale: ServerLocale = "en"
   // Sample-data override for the requested template. A template that renders one of
   // several variants off its data (org-invitation's four role action lines) is
   // otherwise only previewable in whichever variant its previewData hardcodes.
@@ -42,6 +46,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
         themeOverride = body.themeOverride as EmailThemeOverride
       }
       highlightRole = body.highlightRole
+      locale = coerceLocale(body.locale)
       if (body.dataOverride && typeof body.dataOverride === 'object' && !Array.isArray(body.dataOverride)) {
         dataOverride = body.dataOverride as TemplateData
       }
@@ -104,6 +109,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
           : legacyTemplateSubjectOverride({ [name]: overrides }, name),
         themeOverride,
         highlightRole,
+        locale,
       })
       if (!presentation) throw new Error(`Template '${name}' not found during presentation resolution`)
 

@@ -820,7 +820,7 @@ Deno.test("send-transactional-email: uses the org's resend_from_address override
   let sentFrom = "";
   const baseFetch = deps.fetch;
   deps.fetch = (url, init) => {
-    if (String(url).includes("api.resend.com")) {
+    if (new URL(String(url)).hostname === "api.resend.com") {
       sentFrom = JSON.parse(String((init as RequestInit).body)).from;
     }
     return baseFetch(url, init);
@@ -861,7 +861,7 @@ Deno.test("send-transactional-email: applies new copy and theme settings to the 
     },
   }), deps);
   assertEquals(res.status, 200);
-  const resend = fetchCalls.find((call) => call.url.includes("api.resend.com"));
+  const resend = fetchCalls.find((call) => new URL(call.url).hostname === "api.resend.com");
   assertExists(resend);
   const sent = JSON.parse(String((resend!.init as RequestInit).body)) as { subject: string; html: string };
   assertEquals(sent.subject, "Welcome Studio");
@@ -890,7 +890,7 @@ Deno.test("send-transactional-email: maps legacy copy only while new copy is abs
       body: { templateName: "org-invitation", recipientEmail: "invitee@example.com", org_id: ORG, templateData: { orgName: "Studio" } },
     }), deps);
     assertEquals(res.status, 200);
-    const resend = fetchCalls.find((call) => call.url.includes("api.resend.com"));
+    const resend = fetchCalls.find((call) => new URL(call.url).hostname === "api.resend.com");
     assertExists(resend);
     return JSON.parse(String((resend!.init as RequestInit).body)) as { subject: string };
   };
@@ -919,7 +919,7 @@ Deno.test("send-transactional-email: retains legacy generic subjects for conditi
       body: { templateName, recipientEmail: "artist@example.com", org_id: ORG, templateData },
     }), deps);
     assertEquals(response.status, 200);
-    const resend = fetchCalls.find((call) => call.url.includes("api.resend.com"));
+    const resend = fetchCalls.find((call) => new URL(call.url).hostname === "api.resend.com");
     assertExists(resend);
     return JSON.parse(String((resend!.init as RequestInit).body)) as { subject: string };
   };
@@ -1040,4 +1040,108 @@ Deno.test("thrown resolveOrgSetting error (app_settings read fails): 500 returne
     failedUpdate,
     "Expected email_send_log to be updated to status 'failed' after resolveOrgSetting throws (not left at 'pending')",
   );
+});
+
+// ===========================================================================
+// Per-org language (Section C): resolveOrgLocale double-gate on delivery.
+// ===========================================================================
+Deno.test("send-transactional-email: entitled org set to German renders German subject + <html lang=de>", async () => {
+  const ORG = "00000000-0000-0000-0000-0000000000d1";
+  const { fetchImpl, fetchCalls } = recordingFetch();
+  const { deps } = makeFakeDeps({
+    envVars: ENV,
+    tables: {
+      ...happyPathTables(),
+      app_settings: [
+        { when: { key: "org_language" }, data: [{ org_id: ORG, value: "de" }], error: null },
+      ],
+    },
+    rpcs: { is_feature_enabled: { data: true, error: null } },
+    fetchImpl,
+  });
+  const res = await handle(authedReq({
+    body: { template_name: "artist-offer-digest", recipient_email: "jo@x.com", org_id: ORG, templateData: { displayName: "Jo", offers: [] } },
+  }), deps);
+  assertEquals(res.status, 200);
+  const resend = fetchCalls.find((c) => new URL(c.url).hostname === "api.resend.com");
+  assertExists(resend);
+  const sent = JSON.parse(String((resend!.init as RequestInit).body)) as { subject: string; html: string };
+  assertEquals(sent.subject.includes("offene Angebote"), true, sent.subject);
+  assertEquals(sent.html.includes('lang="de"'), true);
+});
+
+Deno.test("send-transactional-email: German setting but NOT entitled stays English (gate holds)", async () => {
+  const ORG = "00000000-0000-0000-0000-0000000000d2";
+  const { fetchImpl, fetchCalls } = recordingFetch();
+  const { deps } = makeFakeDeps({
+    envVars: ENV,
+    tables: {
+      ...happyPathTables(),
+      app_settings: [
+        { when: { key: "org_language" }, data: [{ org_id: ORG, value: "de" }], error: null },
+      ],
+    },
+    rpcs: { is_feature_enabled: { data: false, error: null } },
+    fetchImpl,
+  });
+  const res = await handle(authedReq({
+    body: { template_name: "artist-offer-digest", recipient_email: "jo@x.com", org_id: ORG, templateData: { displayName: "Jo", offers: [] } },
+  }), deps);
+  assertEquals(res.status, 200);
+  const resend = fetchCalls.find((c) => new URL(c.url).hostname === "api.resend.com");
+  assertExists(resend);
+  const sent = JSON.parse(String((resend!.init as RequestInit).body)) as { subject: string; html: string };
+  assertEquals(sent.subject.includes("pending offers"), true, sent.subject);
+  assertEquals(sent.html.includes('lang="en"'), true);
+});
+
+Deno.test("send-transactional-email: explicit body.locale forces German even when org_language is English (entitled)", async () => {
+  const ORG = "00000000-0000-0000-0000-0000000000d3";
+  const { fetchImpl, fetchCalls } = recordingFetch();
+  const { deps } = makeFakeDeps({
+    envVars: ENV,
+    tables: {
+      ...happyPathTables(),
+      // Org's live language is English; the caller replays a frozen German locale.
+      app_settings: [
+        { when: { key: "org_language" }, data: [{ org_id: ORG, value: "en" }], error: null },
+      ],
+    },
+    rpcs: { is_feature_enabled: { data: true, error: null } },
+    fetchImpl,
+  });
+  const res = await handle(authedReq({
+    body: { template_name: "artist-offer-digest", recipient_email: "jo@x.com", org_id: ORG, locale: "de", templateData: { displayName: "Jo", offers: [] } },
+  }), deps);
+  assertEquals(res.status, 200);
+  const resend = fetchCalls.find((c) => new URL(c.url).hostname === "api.resend.com");
+  assertExists(resend);
+  const sent = JSON.parse(String((resend!.init as RequestInit).body)) as { subject: string; html: string };
+  assertEquals(sent.subject.includes("offene Angebote"), true, sent.subject);
+  assertEquals(sent.html.includes('lang="de"'), true);
+});
+
+Deno.test("send-transactional-email: explicit body.locale stays gated, German is denied when not entitled", async () => {
+  const ORG = "00000000-0000-0000-0000-0000000000d4";
+  const { fetchImpl, fetchCalls } = recordingFetch();
+  const { deps } = makeFakeDeps({
+    envVars: ENV,
+    tables: {
+      ...happyPathTables(),
+      app_settings: [
+        { when: { key: "org_language" }, data: [{ org_id: ORG, value: "en" }], error: null },
+      ],
+    },
+    rpcs: { is_feature_enabled: { data: false, error: null } },
+    fetchImpl,
+  });
+  const res = await handle(authedReq({
+    body: { template_name: "artist-offer-digest", recipient_email: "jo@x.com", org_id: ORG, locale: "de", templateData: { displayName: "Jo", offers: [] } },
+  }), deps);
+  assertEquals(res.status, 200);
+  const resend = fetchCalls.find((c) => new URL(c.url).hostname === "api.resend.com");
+  assertExists(resend);
+  const sent = JSON.parse(String((resend!.init as RequestInit).body)) as { subject: string; html: string };
+  assertEquals(sent.subject.includes("pending offers"), true, sent.subject);
+  assertEquals(sent.html.includes('lang="en"'), true);
 });

@@ -16,6 +16,8 @@ export interface EmailPreviewPaneProps {
   /** Sample-data override for variant previews (see EmailPreviewVariant). Pass a
    *  stable identity — this effect keys on it. */
   dataOverride?: Record<string, unknown>;
+  /** Preview language (default English). */
+  locale?: "en" | "de";
 }
 
 /** Debounced edge-rendered preview with stale-run and unmount protection. */
@@ -25,6 +27,7 @@ export function EmailPreviewPane({
   themeOverride,
   highlightRole,
   dataOverride,
+  locale,
 }: EmailPreviewPaneProps) {
   const { t } = useTranslation("settingsEmailTemplates");
   const [html, setHtml] = useState<string | null>(null);
@@ -44,6 +47,7 @@ export function EmailPreviewPane({
           themeOverride,
           ...(highlightRole ? { highlightRole } : {}),
           ...(dataOverride ? { dataOverride } : {}),
+          ...(locale ? { locale } : {}),
         });
         if (id !== runId.current) return;
         setHtml(nextHtml);
@@ -56,7 +60,7 @@ export function EmailPreviewPane({
     }, DEBOUNCE_MS);
 
     return () => window.clearTimeout(timer);
-  }, [copyOverride, dataOverride, highlightRole, templateKey, themeOverride]);
+  }, [copyOverride, dataOverride, highlightRole, locale, templateKey, themeOverride]);
 
   useEffect(() => () => {
     runId.current += 1;

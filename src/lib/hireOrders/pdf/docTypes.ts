@@ -172,4 +172,9 @@ export interface RenderInput {
    *  so the settings editor can show which element the outline row selects.
    *  Never set on the issue path. */
   highlightRole?: RoleKey;
+  /** Language for the weekday name and money digit-grouping only (all other copy
+   *  arrives fully resolved in `copy`). Defaults to English; the edge sets it from
+   *  the order's frozen locale (issue/countersign) or the org's live locale
+   *  (preview). Absent => English, so legacy callers render exactly as before. */
+  locale?: "en" | "de";
 }

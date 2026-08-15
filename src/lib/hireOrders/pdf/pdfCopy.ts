@@ -149,6 +149,78 @@ export const HIRE_ORDER_COPY_DEFAULTS: HireOrderCopy = {
   cert_sha: "Document SHA-256",
 };
 
+/** Complete German base map for the hire-order PDF. Same keys as
+ *  HIRE_ORDER_COPY_DEFAULTS (enforced by pdfCopy.test.ts key/placeholder/Du/dash
+ *  gates); selected by resolveHireOrderCopy(overrides, "de"). Contract register
+ *  with informal Du address, no dashes, Engagementvertrag glossary. Mirrored to
+ *  the edge with this file. */
+export const HIRE_ORDER_COPY_DE: HireOrderCopy = {
+  header_eyebrow: "Engagementvertrag",
+  badge_preview: "Vorschau",
+  badge_countersigned: "Gegengezeichnet",
+  badge_issued: "Ausgestellt",
+
+  title_lead: "Dieser Vertrag bestätigt das Engagement von",
+  billing_role_and_cast: "{{role}} · gebucht als {{cast}}",
+  billing_cast_only: "Gebucht als {{cast}}",
+
+  party_producer_label: "Auftraggeber, der Produzent",
+  party_agent: "Buchungsagentur: {{agent_name}}",
+  party_artist_label: "Engagierter Artist, der Artist",
+  party_cast_reference: "Besetzung: {{cast}}",
+  party_engagement: "Engagement: {{role}}",
+
+  facts_date_label: "Datum",
+  facts_dates_count: "{{count}} Termine",
+  facts_venue_label: "Location",
+  facts_performance_label: "Auftritt",
+  facts_duration: "{{duration}} Min.",
+  facts_sessions_count: "{{count}} Einheiten",
+  facts_single_set: "Einzelset",
+  facts_fee_label: "Engagementhonorar",
+  facts_fee_sub: "netto zzgl. MwSt.",
+
+  engagement_dates_heading: "Engagementtermine",
+  session_label: "Einheit {{n}}",
+  running_order_heading_venue: "Ablaufplan, {{venue}}",
+  running_order_heading: "Ablaufplan",
+  table_call: "Einsatz",
+  table_time: "Uhrzeit",
+
+  notes_prefix: "Hinweise: {{notes}}",
+
+  fees_heading: "Honorar & Zahlungsplan",
+  fees_engagement_fee: "Engagementhonorar",
+  fees_per_date: "{{amount}} pro Termin x {{count}} Termine",
+  fees_per_date_single: "{{amount}} pro Termin",
+  fees_total: "Gesamtbetrag fällig",
+
+  terms_heading: "Allgemeine Geschäftsbedingungen",
+
+  signature_for_producer: "Für den Produzenten · {{legal_name}}",
+  signature_producer_hint: "Name · Datum {{date}}",
+  signature_for_artist: "Der Artist · {{artist}}",
+  signature_signed_electronically: "Elektronisch unterschrieben · {{date}}",
+  signature_artist_hint: "Unterschrift · Datum",
+
+  watermark: "VORSCHAU",
+
+  footer_generated: "Erstellt von ShowFlow Pro · {{date}}",
+
+  cert_heading: "Signaturzertifikat",
+  cert_lead: "Datensatz zur elektronischen Signatur für Engagementvertrag {{orderNo}}.",
+  cert_signer: "Unterzeichner",
+  cert_email: "E-Mail",
+  cert_method: "Methode",
+  cert_method_drawn: "Handgezeichnete Signatur",
+  cert_method_typed: "Getippte Signatur",
+  cert_signed_at: "Unterschrieben am",
+  cert_signed_at_value: "{{datetime}} (UTC)",
+  cert_ip: "IP-Adresse",
+  cert_device: "Gerät",
+  cert_sha: "Dokument SHA-256",
+};
+
 /** Replace each {{token}} whose name is a key of `values`. Unknown {{...}} are
  *  left verbatim (a typo stays visible instead of blanking or injecting). */
 export function applyTokens(
@@ -164,9 +236,14 @@ export function applyTokens(
  *  back to the default; the result is always a complete record. */
 export function resolveHireOrderCopy(
   overrides?: Partial<HireOrderCopy> | null,
+  locale: "en" | "de" = "en",
 ): HireOrderCopy {
-  if (!overrides) return { ...HIRE_ORDER_COPY_DEFAULTS };
-  const out = { ...HIRE_ORDER_COPY_DEFAULTS };
+  // Select the language base; a sparse per-org override still layers on top.
+  // English (default) stays byte-identical, so the edge renderer is unchanged
+  // for every org that has not opted into German.
+  const base = locale === "de" ? HIRE_ORDER_COPY_DE : HIRE_ORDER_COPY_DEFAULTS;
+  if (!overrides) return { ...base };
+  const out = { ...base };
   for (const key of Object.keys(HIRE_ORDER_COPY_DEFAULTS) as CopyKey[]) {
     const v = overrides[key];
     if (typeof v === "string" && v.trim() !== "") out[key] = v;

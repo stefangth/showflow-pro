@@ -66,6 +66,7 @@ import {
   withCollisionSuffix,
 } from "../_shared/hireOrders.ts";
 import { type HireOrderCopy, resolveHireOrderCopy } from "../_shared/hire-order-pdf/pdfCopy.ts";
+import { resolveOrgLocale, type ServerLocale } from "../_shared/orgLocale.ts";
 import {
   SAMPLE_ORDER_NO,
   sampleOrderData,
@@ -126,6 +127,11 @@ interface IssueSnapshot {
    *  the snapshot (see FONT_FAMILIES in pdfTheme.ts). Legacy snapshots (issued
    *  before this) lack it -> signOrder falls back to the live setting / defaults. */
   theme?: HireOrderTheme;
+  /** Language frozen at issue (weekday name + money grouping) so a countersigned
+   *  re-render reproduces the exact issued formatting even if the org later
+   *  switches language or loses the language_packages entitlement. Legacy
+   *  snapshots lack it -> the re-render falls back to English. */
+  locale?: ServerLocale;
 }
 
 const NUMBERING_DEFAULT: Numbering = {
@@ -366,7 +372,7 @@ interface ResendOrderRow extends EmailOrderRow {
   signed_pdf_path: string | null;
   fee_currency: string | null;
   countersign_mode: string | null;
-  issue_snapshot: Pick<IssueSnapshot, "countersign_mode"> | null;
+  issue_snapshot: Pick<IssueSnapshot, "countersign_mode" | "locale"> | null;
 }
 
 // ── entry ──────────────────────────────────────────────────────────────────
@@ -1647,7 +1653,11 @@ async function issueOrders(
     "hire_order_copy",
     COPY_DEFAULT,
   );
-  const copy = resolveHireOrderCopy(copyOverride);
+  // Per-org language (entitlement-gated), resolved ONCE for the batch and frozen
+  // per order into issue_snapshot.locale so a later language/entitlement change
+  // never alters an already-issued document's re-render.
+  const locale = await resolveOrgLocale(admin, org);
+  const copy = resolveHireOrderCopy(copyOverride, locale);
   // Resolve the org's editable PDF theme ONCE for the whole batch (frozen per order
   // into issue_snapshot.theme below), same shape as copy above.
   const themeOverride = await resolveOrgSetting<HireOrderThemeOverride>(
@@ -1680,6 +1690,7 @@ async function issueOrders(
         agentSignatureDataUrl,
         copy,
         theme,
+        locale,
       );
       if (outcome.ok) {
         issued.push(orderId);
@@ -1718,6 +1729,7 @@ async function issueOne(
   agentSignatureDataUrl: string | null,
   copy: HireOrderCopy,
   theme: HireOrderTheme,
+  locale: ServerLocale,
 ): Promise<{ ok: true; warning?: string } | { ok: false; issues: string[] }> {
   const admin = deps.admin;
 
@@ -1781,6 +1793,7 @@ async function issueOne(
     generatedAtIso: deps.now().toISOString(),
     copy,
     theme,
+    locale,
   });
 
   const path = `${org}/${o.order_no}.pdf`;
@@ -1800,6 +1813,7 @@ async function issueOne(
     countersign_mode: countersign.mode,
     copy,
     theme,
+    locale,
   };
   const { error: issueErr } = await admin
     .from("hire_orders")
@@ -1894,6 +1908,7 @@ async function issueOne(
     data,
     bytes,
     currency,
+    locale,
     countersignModeUsed,
     signingUrl,
     "issued",
@@ -1936,6 +1951,7 @@ async function sendIssuedEmail(
   data: OrderData,
   bytes: Uint8Array,
   currency: string,
+  locale: ServerLocale,
   countersignMode: string,
   signingUrl: string | null,
   deliveryKind: "issued" | "resend",
@@ -1954,12 +1970,15 @@ async function sendIssuedEmail(
   const feeLabel =
     feeValue === undefined || feeValue === null || feeValue === ""
       ? ""
-      : formatMoney(feeValue as string | number, currency); // same fee/currency the PDF shows
+      : formatMoney(feeValue as string | number, currency, locale === "de" ? "de-DE" : "en-US"); // same fee/currency/locale the PDF shows
 
   const result = await deps.sendEmail({
     template_name: "hire-order-issued",
     recipient_email: recipient,
     org_id: org,
+    // Force the wrapper copy/subject/<html lang> to the same locale that formats
+    // the fee (frozen at issue for resend), so the whole email is one language.
+    locale,
     // Contract of _shared/transactional-email-templates/hire-order-issued.tsx (snake_case).
     // download_url points at the auth-gated V3 detail page (re-signs the PDF on demand),
     // NOT a raw signed storage URL — a signed URL expires in 3600s and would be dead in the
@@ -1970,8 +1989,8 @@ async function sendIssuedEmail(
     templateData: {
       artist_name: strField(data, "artist_name"),
       order_no: order.order_no,
-      date_label: dateLabel(strField(data, "date")),
-      engagement_dates_label: engagementDatesLabel(data),
+      date_label: dateLabel(strField(data, "date"), locale),
+      engagement_dates_label: engagementDatesLabel(data, locale),
       venue: strField(data, "venue"),
       city: strField(data, "city"),
       fee_label: feeLabel,
@@ -2080,6 +2099,16 @@ async function resendOrder(deps: Deps, body: ResendBody): Promise<Response> {
   }
   const bytes = new Uint8Array(await storedPdf.arrayBuffer());
   const currency = order.fee_currency || strField(data, "currency") || "EUR";
+  // Replay the locale frozen at issue so the whole resent email (fee text AND the
+  // wrapper copy/subject/<html lang> resolved downstream in send-transactional-email)
+  // matches the stored PDF even if the org later changed language. Re-gate through
+  // resolveOrgLocale so an org that has since lost language_packages falls back to
+  // English consistently rather than emitting German fee digits under English copy.
+  const resendLocale: ServerLocale = await resolveOrgLocale(
+    deps.admin,
+    org,
+    order.issue_snapshot?.locale ?? "en",
+  );
   const signingDelivery = resendSigningDelivery(order);
   const delivered = await sendIssuedEmail(
     deps,
@@ -2088,6 +2117,7 @@ async function resendOrder(deps: Deps, body: ResendBody): Promise<Response> {
     data,
     bytes,
     currency,
+    resendLocale,
     signingDelivery.countersignMode,
     signingDelivery.signingUrl,
     "resend",
@@ -2187,7 +2217,10 @@ async function previewOrder(deps: Deps, body: PreviewBody): Promise<Response> {
       THEME_DEFAULT,
     ),
   ]);
-  const copy = resolveHireOrderCopy({ ...storedCopy, ...(body.copy_override ?? {}) });
+  // Preview reflects the org's CURRENT language (live, entitlement-gated), unlike
+  // issue/countersign which use the frozen snapshot locale.
+  const locale = await resolveOrgLocale(admin, org);
+  const copy = resolveHireOrderCopy({ ...storedCopy, ...(body.copy_override ?? {}) }, locale);
   const theme = resolveHireOrderTheme(layerThemeOverride(storedTheme, body.theme_override));
   const termsSetting = normalizeTermsSetting(rawTerms);
 
@@ -2240,6 +2273,7 @@ async function previewOrder(deps: Deps, body: PreviewBody): Promise<Response> {
       ? sampleRenderInput({
         copy,
         theme,
+        locale,
         letterhead: effectiveLetterhead,
         terms: clauses,
         currency: o.fee_currency ?? defaults.currency ?? "EUR",
@@ -2255,6 +2289,7 @@ async function previewOrder(deps: Deps, body: PreviewBody): Promise<Response> {
         generatedAtIso: deps.now().toISOString(),
         copy,
         theme,
+        locale,
       },
   );
 
@@ -2503,6 +2538,10 @@ async function signOrder(
   let currency: string;
   let renderCopy: HireOrderCopy;
   let renderTheme: HireOrderTheme;
+  // Language frozen at issue (weekday + money), so a countersigned re-render matches
+  // the issued PDF even if the org later switched language. Legacy/no-snapshot
+  // orders predate German and reproduce as English.
+  let renderLocale: ServerLocale;
   if (snapshot && snapshot.letterhead && Array.isArray(snapshot.terms)) {
     // The snapshot letterhead already includes the per-order agent override baked in
     // at issue time, so do NOT re-merge o.agent_name/agent_email here.
@@ -2518,6 +2557,10 @@ async function signOrder(
     // theme for orders issued after this change and undefined for older ones;
     // resolveHireOrderTheme fills any gaps from the built-in defaults either way.
     renderTheme = resolveHireOrderTheme(snapshot.theme);
+    // Replay the frozen locale, but STILL through the entitlement gate: an org that
+    // has since lost language_packages re-renders the signed doc in English rather
+    // than bypassing the gate off the raw snapshot value.
+    renderLocale = await resolveOrgLocale(admin, org, snapshot.locale ?? "en");
   } else {
     const termsSetting = normalizeTermsSetting(rawTerms);
     renderLetterhead = {
@@ -2535,6 +2578,7 @@ async function signOrder(
       COPY_DEFAULT,
     );
     renderCopy = resolveHireOrderCopy(storedCopy);
+    renderLocale = "en";
     const storedTheme = await resolveOrgSetting<HireOrderThemeOverride>(
       admin,
       org,
@@ -2576,6 +2620,7 @@ async function signOrder(
     signature,
     copy: renderCopy,
     theme: renderTheme,
+    locale: renderLocale,
   });
 
   // Upload the signed copy (keeps the original issued pdf_path intact).
@@ -2658,6 +2703,7 @@ async function signOrder(
     signedBytes,
     currency,
     !!countersign.email_producers_on_countersign,
+    renderLocale,
   ).catch((e) =>
     console.error("generate-hire-orders: countersigned email failed", {
       org,
@@ -2738,6 +2784,7 @@ async function sendCountersignedEmails(
   signedBytes: Uint8Array,
   _currency: string,
   emailProducers: boolean,
+  locale: ServerLocale,
 ): Promise<void> {
   const attachment = {
     filename: `${order.order_no}-signed.pdf`,
@@ -2746,7 +2793,7 @@ async function sendCountersignedEmails(
   const templateData = {
     artist_name: strField(data, "artist_name"),
     order_no: order.order_no,
-    date_label: dateLabel(strField(data, "date")),
+    date_label: dateLabel(strField(data, "date"), locale),
     venue: strField(data, "venue"),
     download_url: `${APP_URL}/hire-orders/${order.id}`,
   };
@@ -2756,6 +2803,9 @@ async function sendCountersignedEmails(
       template_name: "hire-order-countersigned",
       recipient_email: artistEmail,
       org_id: org,
+      // Match the frozen, entitlement-gated locale the signed PDF was rendered in,
+      // instead of re-resolving the org's live language at send time.
+      locale,
       templateData,
       attachments: [attachment],
       idempotency_key: `hire-order-countersigned-${order.id}`,
@@ -2879,11 +2929,11 @@ function castCodeFromLabel(label: string | null): string | undefined {
  * calendar rule), so a viewer/server timezone can never shift the day. Non-date input is
  * returned unchanged.
  */
-function dateLabel(dateOnly: string): string {
+function dateLabel(dateOnly: string, locale: ServerLocale = "en"): string {
   if (!/^\d{4}-\d{2}-\d{2}/.test(dateOnly)) return dateOnly;
   const d = new Date(`${dateOnly.slice(0, 10)}T00:00:00Z`);
   if (Number.isNaN(d.getTime())) return dateOnly;
-  return d.toLocaleDateString("en-US", {
+  return d.toLocaleDateString(locale === "de" ? "de-DE" : "en-US", {
     weekday: "short",
     month: "short",
     day: "numeric",
@@ -2893,16 +2943,16 @@ function dateLabel(dateOnly: string): string {
 }
 
 /** Human-readable complete schedule for aggregate hire-order delivery emails. */
-function engagementDatesLabel(data: OrderData): string {
+function engagementDatesLabel(data: OrderData, locale: ServerLocale = "en"): string {
   const dates = data.engagement_dates?.value;
   if (!Array.isArray(dates) || dates.length === 0) {
-    return dateLabel(strField(data, "date"));
+    return dateLabel(strField(data, "date"), locale);
   }
   return dates.map((engagement) => {
     const location = [engagement.venue, engagement.city]
       .filter((part): part is string => typeof part === "string" && part.trim() !== "")
       .join(", ");
-    return [dateLabel(engagement.date), location].filter(Boolean).join(" · ");
+    return [dateLabel(engagement.date, locale), location].filter(Boolean).join(" · ");
   }).join("; ");
 }
 

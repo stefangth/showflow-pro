@@ -353,6 +353,219 @@ export type EmailCopyKey = keyof typeof EMAIL_COPY_DEFAULTS;
 export type EmailCopy = Record<EmailCopyKey, string>;
 export type EmailCopyOverride = Partial<Record<EmailCopyKey, unknown>>;
 
+/** The languages server-rendered emails ship in. Mirrors ServerLocale in
+ *  src/lib/i18n/orgLanguage.ts (kept separate so this file stays import-free for
+ *  the edge mirror). `EMAIL_COPY_DE` below is the complete German base map. */
+export type EmailLocale = "en" | "de";
+
+/** Complete German base map for server-rendered emails. Same keys as
+ *  EMAIL_COPY_DEFAULTS (enforced by emailCopy.test.ts key/placeholder/Du/dash
+ *  gates); selected by resolveEmailCopy(override, "de"). Informal Du, no dashes,
+ *  TERMS glossary (Engagementvertrag etc). Mirrored to the edge with this file. */
+export const EMAIL_COPY_DE: EmailCopy = {
+  "offer-immediate.subject": "Angebot: {{referenceLabel}} · {{date}}",
+  "offer-immediate.heading": "Du hast ein neues Angebot",
+  "offer-immediate.greeting": "Hallo {{displayName}},",
+  "offer-immediate.greetingAnonymous": "Hallo,",
+  "offer-immediate.intro": "Dir wurde {{referenceLabel}} am {{where}} angeboten. Du hast {{hours}} Stunden Zeit, um zu antworten, bevor das Angebot ausläuft.",
+  "offer-immediate.ctaLabel": "Auf dieses Angebot antworten",
+  "offer-immediate.footer": "Fragen? Wende Dich an Deine Ansprechperson, sie hilft Dir gerne weiter.",
+  "offer-immediate.previewText": "Neues Angebot: {{referenceLabel}} auf ShowFlow",
+  "offer-immediate.showLabel": "Show",
+  "offer-immediate.dateLabel": "Datum",
+  "offer-immediate.showFallback": "eine Show",
+
+  "artist-offer-digest.subject": "Du hast {{count}} {{pendingOffer}} auf ShowFlow",
+  "artist-offer-digest.heading": "{{count}} {{pendingOffer}} auf ShowFlow",
+  "artist-offer-digest.greeting": "Hallo {{displayName}},",
+  "artist-offer-digest.greetingAnonymous": "Hallo,",
+  "artist-offer-digest.intro": "Du hast {{count}} {{pendingOffer}}, die auf Deine Antwort warten. Bitte prüfe sie und nimm an oder lehne ab, bevor die untenstehenden Fristen ablaufen.",
+  "artist-offer-digest.ctaLabel": "Deine Angebote ansehen",
+  "artist-offer-digest.footer": "Fragen? Wende Dich an Deine Ansprechperson, sie hilft Dir gerne weiter.",
+  "artist-offer-digest.previewText": "Du hast {{count}} {{pendingOffer}} auf ShowFlow",
+  "artist-offer-digest.pendingOfferSingular": "offenes Angebot",
+  "artist-offer-digest.pendingOfferPlural": "offene Angebote",
+  "artist-offer-digest.showLabel": "Show",
+  "artist-offer-digest.dateLabel": "Datum",
+  "artist-offer-digest.cityLabel": "Stadt",
+  "artist-offer-digest.expiresLabel": "Läuft ab",
+
+  "offer-expiry-reminder.subjectSingular": "Erinnerung: Dein Angebot läuft bald ab",
+  "offer-expiry-reminder.subjectPlural": "Erinnerung: {{count}} Angebote laufen bald ab",
+  "offer-expiry-reminder.headingSingular": "Dein Angebot läuft bald ab",
+  "offer-expiry-reminder.headingPlural": "{{count}} Angebote laufen bald ab",
+  "offer-expiry-reminder.greeting": "Hallo {{displayName}},",
+  "offer-expiry-reminder.greetingAnonymous": "Hallo,",
+  "offer-expiry-reminder.introSingular": "Eines Deiner Angebote läuft innerhalb der nächsten 24 Stunden ab. Antworte bald, um die Buchung zu behalten.",
+  "offer-expiry-reminder.introPlural": "{{count}} Deiner Angebote laufen innerhalb der nächsten 24 Stunden ab. Antworte bald, um die Buchungen zu behalten.",
+  "offer-expiry-reminder.ctaLabelSingular": "Auf dieses Angebot antworten",
+  "offer-expiry-reminder.ctaLabelPlural": "Auf Deine Angebote antworten",
+  "offer-expiry-reminder.footer": "Fragen? Wende Dich an Deine Ansprechperson, sie hilft Dir gerne weiter.",
+  "offer-expiry-reminder.previewSingular": "Erinnerung: Dein Angebot läuft bald ab auf ShowFlow",
+  "offer-expiry-reminder.previewPlural": "Erinnerung: {{count}} Angebote laufen bald ab auf ShowFlow",
+  "offer-expiry-reminder.offerLine": "{{referenceLabel}} am {{date}}: antworte bis {{expiresAt}}",
+
+  "artist-confirmation-digest.subjectUpdates": "Deine Buchungsupdates auf ShowFlow",
+  "artist-confirmation-digest.subjectConfirmed": "Deine Buchungen sind bestätigt auf ShowFlow",
+  "artist-confirmation-digest.headingUpdates": "Deine Buchungsupdates",
+  "artist-confirmation-digest.headingConfirmed": "Deine Buchungen sind bestätigt",
+  "artist-confirmation-digest.greeting": "Hallo {{displayName}},",
+  "artist-confirmation-digest.greetingAnonymous": "Hallo,",
+  "artist-confirmation-digest.introUpdates": "Das hat sich bei Deinen Buchungen geändert.",
+  "artist-confirmation-digest.introConfirmed": "Das wurde gerade bestätigt. Wir freuen uns, Dich auf der Bühne zu haben!",
+  "artist-confirmation-digest.ctaLabel": "Deine Buchungen ansehen",
+  "artist-confirmation-digest.footer": "Fragen? Wende Dich an Deine Ansprechperson, sie hilft Dir gerne weiter.",
+  "artist-confirmation-digest.cancelledHeading": "Storniert",
+  "artist-confirmation-digest.scheduleChangesHeading": "Terminänderungen",
+  "artist-confirmation-digest.confirmedHeading": "Bestätigt",
+  "artist-confirmation-digest.showLabel": "Show",
+  "artist-confirmation-digest.dateLabel": "Datum",
+  "artist-confirmation-digest.cityLabel": "Stadt",
+  "artist-confirmation-digest.reasonLabel": "Grund",
+  "artist-confirmation-digest.changeLabel": "Änderung",
+  "artist-confirmation-digest.reasonFallback": "Nicht angegeben",
+  "artist-confirmation-digest.emptyState": "Noch keine bestätigten Buchungen.",
+
+  "cast-escalation-requested.subject": "Eskalation nötig: Stufe {{tier}} für {{program}} am {{date}}",
+  "cast-escalation-requested.heading": "Besetzungseskalation nötig",
+  "cast-escalation-requested.intro": "Stufe {{tier}} für {{program}} am {{date}} ist abgelaufen, nur {{accepted}}/{{required}} Plätze sind besetzt.",
+  "cast-escalation-requested.followup": "Öffne die nächste Prioritätsstufe, um diesen Termin im Zeitplan zu halten.",
+  "cast-escalation-requested.ctaLabel": "Buchungen öffnen",
+  "cast-escalation-requested.footer": "Fragen? Wende Dich an Deine Ansprechperson, sie hilft Dir gerne weiter.",
+  "cast-escalation-requested.previewText": "Eskalation nötig: Stufe {{tier}} für {{program}} am {{date}}",
+  "cast-escalation-requested.showLabel": "Show",
+  "cast-escalation-requested.dateLabel": "Datum",
+  "cast-escalation-requested.tierLabel": "Stufe",
+  "cast-escalation-requested.filledLabel": "Besetzt",
+  "cast-escalation-requested.slotsLabel": "Plätze",
+  "cast-escalation-requested.showFallback": "eine Show",
+  "cast-escalation-requested.dateFallback": "noch offen",
+
+  "tier-at-risk.subject": "Eine Stufe wird knapp für {{program}} am {{date}}",
+  "tier-at-risk.heading": "Eine Stufe wird knapp",
+  "tier-at-risk.body": "Stufe {{tier}} für {{program}} am {{date}} kann mit den aktuellen Angeboten nicht gefüllt werden. {{pending}} offen, {{accepted}} angenommen und {{required}} benötigt. Öffne die nächste Stufe oder buche direkt aus der Eignungsliste.",
+  "tier-at-risk.ctaLabel": "Diesen Termin ansehen",
+  "tier-at-risk.footer": "Fragen? Wende Dich an Deine Ansprechperson, sie hilft Dir gerne weiter.",
+  "tier-at-risk.previewText": "Eine Stufe wird knapp für {{program}} am {{date}}",
+  "tier-at-risk.showFallback": "eine Show",
+  "tier-at-risk.dateFallback": "noch offen",
+
+  "hire-order-issued.subject": "Dein Engagementvertrag für {{dateLabel}} im {{venue}}",
+  "hire-order-issued.heading": "Engagementvertrag ausgestellt",
+  "hire-order-issued.greeting": "Hallo {{artistName}},",
+  "hire-order-issued.intro": "Dein Engagementvertrag für {{dateLabel}} im {{venue}} wurde ausgestellt. Sieh Dir die Details unten an und lade Deine Kopie herunter.",
+  "hire-order-issued.ctaLabel": "Ansehen und herunterladen",
+  "hire-order-issued.signCtaLabel": "Dokument prüfen",
+  "hire-order-issued.footer": "Fragen? Wende Dich an Deine Ansprechperson, sie hilft Dir gerne weiter.",
+  "hire-order-issued.previewText": "Dein Engagementvertrag für {{dateLabel}} im {{venue}}",
+  "hire-order-issued.orderLabel": "Vertrag.",
+  "hire-order-issued.engagementDatesLabel": "Engagementtermine.",
+  "hire-order-issued.venueLabel": "Veranstaltungsort.",
+  "hire-order-issued.cityLabel": "Stadt.",
+  "hire-order-issued.feeLabel": "Gage.",
+  "hire-order-issued.signPrompt": "Prüfe und unterschreibe Deinen Engagementvertrag online, um ihn zu bestätigen.",
+  "hire-order-issued.signButton": "Prüfen und unterschreiben",
+  "hire-order-issued.pasteLink": "Oder füge diesen Link in Deinen Browser ein:",
+  "hire-order-issued.manualPrompt": "Antworte, um zu bestätigen, oder unterschreibe das angehängte PDF und sende es zurück.",
+  "hire-order-issued.artistFallback": "Du",
+  "hire-order-issued.dateFallback": "Deinen Termin",
+  "hire-order-issued.venueFallback": "Veranstaltungsort",
+
+  "hire-order-countersigned.subject": "Dein Engagementvertrag für {{dateLabel}} wurde gegengezeichnet",
+  "hire-order-countersigned.heading": "Engagementvertrag gegengezeichnet",
+  "hire-order-countersigned.greeting": "Hallo {{artistName}},",
+  "hire-order-countersigned.intro": "Dein Engagementvertrag für {{dateLabel}} im {{venue}} wurde gegengezeichnet. Eine Kopie des unterschriebenen Dokuments ist zu Deinen Unterlagen beigefügt.",
+  "hire-order-countersigned.ctaLabel": "Unterschriebenen Vertrag ansehen",
+  "hire-order-countersigned.footer": "Fragen? Wende Dich an Deine Ansprechperson, sie hilft Dir gerne weiter.",
+  "hire-order-countersigned.previewText": "Dein Engagementvertrag für {{dateLabel}} wurde gegengezeichnet",
+  "hire-order-countersigned.orderLabel": "Vertrag.",
+  "hire-order-countersigned.dateLabel": "Datum.",
+  "hire-order-countersigned.venueLabel": "Veranstaltungsort.",
+  "hire-order-countersigned.artistFallback": "Du",
+  "hire-order-countersigned.dateFallback": "Deinen Termin",
+  "hire-order-countersigned.venueFallback": "Veranstaltungsort",
+
+  "org-invitation.subject": "Du bist eingeladen, {{orgName}} auf ShowFlow beizutreten",
+  "org-invitation.heading": "{{orgName}} beitreten",
+  "org-invitation.greeting": "Hallo,",
+  "org-invitation.productIntro": "ShowFlow ist die Plattform, auf der {{orgName}} seine Shows plant und die Artists dafür bucht.",
+  "org-invitation.roleIntro": "Deine Rolle ist {{role}}.",
+  "org-invitation.roleIntroAdmin": "Du hast die volle Kontrolle über diesen Workspace, einschließlich Personen, Besetzungen, Einstellungen und jeder Buchung.",
+  "org-invitation.roleIntroProducer": "Du planst Produktionen und Show-Termine und buchst Artists dafür.",
+  "org-invitation.roleIntroArtist": "Du stehst auf der Liste. Du wirst für Shows gebucht und siehst jedes bestätigte Engagement.",
+  "org-invitation.roleIntroArtistOffers": "Du stehst auf der Liste. Du bekommst Buchungsangebote per E-Mail, nimmst sie mit einem Klick an oder lehnst sie ab und siehst danach jedes bestätigte Engagement.",
+  "org-invitation.ctaLabel": "Einladung annehmen",
+  "org-invitation.ctaHintNewUser": "Fahre sicher fort, um Dich anzumelden oder Dein Konto zu erstellen.",
+  "org-invitation.ctaHintExistingUser": "Fahre sicher fort, um Dich anzumelden oder Dein Konto zu erstellen.",
+  "org-invitation.ctaHintFallback": "Fahre sicher fort, um Dich anzumelden oder Dein Konto zu erstellen.",
+  "org-invitation.expiryLine": "Deine Einladung ist gültig bis mindestens {{expiresOn}}. Eine neuere Einladungs-E-Mail kann dieses Datum verlängern.",
+  "org-invitation.expiryFallback": "Falls der Anmeldebutton nicht funktioniert, bitte darum, dass die Einladung erneut gesendet wird.",
+  "org-invitation.footer": "Falls Du diese Einladung nicht erwartet hast, kannst Du diese E-Mail einfach ignorieren.",
+  "org-invitation.previewText": "Du bist eingeladen, {{orgName}} auf ShowFlow beizutreten",
+  "org-invitation.invitedBy": "Eingeladen von {{inviter}}.",
+  "org-invitation.inviterFallback": "dem ShowFlow-Team",
+  "org-invitation.pasteLink": "Oder füge diesen Link in Deinen Browser ein:",
+  "org-invitation.linkRecovery": "Falls nichts davon funktioniert, bitte diejenige Person, die Dich eingeladen hat, eine neue Einladung zu senden.",
+  "org-invitation.orgFallback": "eine Organisation",
+
+  "account-email-changed.subject": "Deine ShowFlow-Anmelde-E-Mail wurde geändert",
+  "account-email-changed.heading": "Deine Anmelde-E-Mail wurde geändert",
+  "account-email-changed.greeting": "Hallo,",
+  "account-email-changed.intro": "Die Anmelde-E-Mail für Dein ShowFlow-Konto wurde von einer Administratorin oder einem Administrator geändert.",
+  "account-email-changed.footer": "Falls Du diese Änderung nicht erwartet hast, kontaktiere sofort Deine Administratorin oder Deinen Administrator.",
+  "account-email-changed.previewText": "Deine ShowFlow-Anmelde-E-Mail wurde geändert",
+  "account-email-changed.previousEmailLabel": "Bisherige E-Mail",
+  "account-email-changed.newEmailLabel": "Neue E-Mail",
+  "account-email-changed.signInPrompt": "Melde Dich unter {{signInUrl}} mit Deiner neuen E-Mail-Adresse an.",
+  "account-email-changed.emailFallback": "unbekannt",
+
+  "magic-link.subject": "Dein Anmeldelink für ShowFlow",
+  "magic-link.heading": "Bei ShowFlow anmelden",
+  "magic-link.greeting": "Hallo,",
+  "magic-link.intro": "Nutze den Button unten, um Dich anzumelden. Dieser Link funktioniert nur einmal und läuft in Kürze ab. Falls Du ihn nicht angefordert hast, kannst Du diese E-Mail ignorieren.",
+  "magic-link.ctaLabel": "Anmelden",
+  "magic-link.footer": "Zu Deiner Sicherheit kann dieser Link nur einmal verwendet werden.",
+  "magic-link.previewText": "Dein einmaliger Anmeldelink für ShowFlow",
+  "magic-link.pasteLink": "Oder füge diesen Link in Deinen Browser ein:",
+
+  "cron-health-alert.subject": "Cron-Status: {{jobName}} schlägt fehl ({{statusCode}})",
+  "cron-health-alert.heading": "Geplanter Job schlägt fehl",
+  "cron-health-alert.intro": "Der geplante Job {{jobName}} hat zuletzt {{statusCode}} zurückgegeben. Ein Teil der Booking Engine könnte beeinträchtigt sein, bis das behoben ist.",
+  "cron-health-alert.ctaLabel": "System Health öffnen",
+  "cron-health-alert.footer": "Das ShowFlow-Team",
+  "cron-health-alert.previewText": "Cron-Alarm: {{jobName}} schlägt fehl",
+  "cron-health-alert.jobLabel": "Job",
+  "cron-health-alert.lastStatusLabel": "Letzter Status",
+  "cron-health-alert.lastErrorLabel": "Letzter Fehler",
+  "cron-health-alert.lastHealthyLabel": "Zuletzt fehlerfrei",
+  "cron-health-alert.jobFallback": "ein geplanter Job",
+  "cron-health-alert.valueFallback": "unbekannt",
+
+  "airtable-sync-held.subject": "Airtable-Sync braucht Aufmerksamkeit in {{orgName}}",
+  "airtable-sync-held.heading": "Airtable-Sync braucht Aufmerksamkeit",
+  "airtable-sync-held.heldRecordSingular": "Eintrag",
+  "airtable-sync-held.heldRecordPlural": "Einträge",
+  "airtable-sync-held.introHeld": "{{heldCount}} Airtable-{{heldRecord}} in {{orgName}} konnten nicht in ShowFlow übernommen werden.",
+  "airtable-sync-held.topReasonLine": "{{topReasonCount}} von {{heldCount}} sind {{topReasonLabel}}.",
+  "airtable-sync-held.topReasonLineOne": "{{topReasonCount}} von {{heldCount}} ist {{topReasonLabel}}.",
+  "airtable-sync-held.topReasonLineSingle": "Er ist {{topReasonLabel}}.",
+  "airtable-sync-held.topReasonLineAll": "Alle {{heldCount}} sind {{topReasonLabel}}.",
+  "airtable-sync-held.topReasonMissingDate": "ohne Datum",
+  "airtable-sync-held.topReasonUnlinkedProgram": "nicht mit einer Deiner Shows verknüpft",
+  "airtable-sync-held.topReasonUnlinkedCity": "einer Stadt zugeordnet, die nicht verknüpft ist",
+  "airtable-sync-held.followupHeld": "Öffne den Sync-Bericht, um zu sehen, welche und warum, und behebe sie, damit sie beim nächsten Sync übernommen werden.",
+  "airtable-sync-held.followupHeldSingle": "Öffne den Sync-Bericht, um zu sehen, warum, und behebe es, damit es beim nächsten Sync übernommen wird.",
+  "airtable-sync-held.followupHeldKnownReason": "Öffne den Sync-Bericht, um zu sehen, welche, und behebe sie, damit sie beim nächsten Sync übernommen werden.",
+  "airtable-sync-held.followupHeldSingleKnownReason": "Behebe es im Sync-Bericht, damit es beim nächsten Sync übernommen wird.",
+  "airtable-sync-held.introZeroImport": "Der Airtable-Sync in {{orgName}} lief, hat aber diesmal keine Termine übernommen, obwohl Daten bereitstehen. Aus Airtable gelangt nichts zu ShowFlow, bis das behoben ist.",
+  "airtable-sync-held.followupZeroImport": "Öffne den Sync-Bericht, um zu sehen, was bei diesem Lauf passiert ist, und behebe es, damit Deine Termine wieder ankommen.",
+  "airtable-sync-held.ctaLabel": "Sync-Bericht ansehen",
+  "airtable-sync-held.footer": "Das ShowFlow-Team",
+  "airtable-sync-held.previewTextHeld": "{{heldCount}} Airtable-{{heldRecord}} warten auf Dich in {{orgName}}.",
+  "airtable-sync-held.previewTextZeroImport": "Der Airtable-Sync in {{orgName}} hat diesmal nichts übernommen.",
+  "airtable-sync-held.orgFallback": "Deine Organisation",
+};
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -420,10 +633,16 @@ function withLegacyCarryForward<T extends Record<string, unknown>>(raw: Record<s
  *  (non-blank) override for the CURRENT key always wins over a carried-forward legacy
  *  one; a present-but-blank current-key value does not count as explicit, so the legacy
  *  value still carries forward in that case. */
-export function resolveEmailCopy(override?: EmailCopyOverride | string | null): EmailCopy {
+export function resolveEmailCopy(
+  override?: EmailCopyOverride | string | null,
+  locale: EmailLocale = "en",
+): EmailCopy {
   const input = parseOverride(override);
   const raw = input as Record<string, unknown>;
-  const resolved = withLegacyCarryForward(raw, { ...EMAIL_COPY_DEFAULTS } as EmailCopy);
+  // Select the language base; a sparse per-org override still layers on top of
+  // whichever base was chosen. English is byte-identical to before (default).
+  const base = locale === "de" ? EMAIL_COPY_DE : EMAIL_COPY_DEFAULTS;
+  const resolved = withLegacyCarryForward(raw, { ...base } as EmailCopy);
   for (const key of Object.keys(EMAIL_COPY_DEFAULTS) as EmailCopyKey[]) {
     const value = input[key];
     if (hasExplicitValue(value)) resolved[key] = value;

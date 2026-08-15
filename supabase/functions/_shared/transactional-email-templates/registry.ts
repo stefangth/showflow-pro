@@ -5,6 +5,7 @@ import {
   resolveEmailCopy,
   type EmailCopy,
   type EmailCopyOverride,
+  type EmailLocale,
   type EmailTemplateKey,
 } from './_shell/emailCopy.ts'
 import {
@@ -75,6 +76,9 @@ export interface TemplatePresentationOptions {
   legacySubjectOverride?: unknown
   themeOverride?: EmailThemeOverride | string | null
   highlightRole?: unknown
+  /** Language the copy base resolves to. Defaults to English; delivery sets this
+   *  from resolveOrgLocale (entitlement-gated) and preview from an explicit param. */
+  locale?: EmailLocale
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -189,7 +193,7 @@ export function resolveTemplatePresentation(
   const template = TEMPLATES[templateName]
   if (!template) return null
 
-  const copy = resolveEmailCopy(options.copyOverride)
+  const copy = resolveEmailCopy(options.copyOverride, options.locale)
   const theme = resolveEmailTheme(options.themeOverride)
   const defaultSubject = typeof template.subject === 'function'
     ? template.subject(data)
@@ -209,6 +213,7 @@ export function resolveTemplatePresentation(
       _emailCopy: copyForTemplate(copy, templateName),
       _emailTheme: theme,
       _emailFamily: template.family,
+      _emailLocale: options.locale ?? 'en',
       ...(isEmailRoleKey(options.highlightRole) ? { _highlightRole: options.highlightRole } : {}),
     },
     copy,

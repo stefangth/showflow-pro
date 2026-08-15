@@ -1,6 +1,7 @@
 import {
   assert,
   assertEquals,
+  assertExists,
 } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import { handle, resolveOrderDefaults } from "./index.ts";
 import { makeFakeDeps, makeRequest } from "../_shared/testing.ts";
@@ -2506,6 +2507,57 @@ Deno.test("resend rejects null and empty provider data without stamping last_sen
     );
   }
 });
+
+Deno.test("resend threads the frozen issue-snapshot locale to the wrapper email (de, entitled)", async () => {
+  const { deps, invokeCalls } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    now: new Date("2026-06-01T12:00:00.000Z"),
+    emailResult: { data: { success: true }, error: null },
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      hire_orders: [
+        {
+          when: { __write: false },
+          data: issuableOrder({
+            status: "issued",
+            pdf_path: `${ORG}/HO-1.pdf`,
+            countersign_mode: "manual",
+            issue_snapshot: { countersign_mode: "manual", locale: "de" },
+          }),
+        },
+        { when: { __write: true }, data: null },
+      ],
+    },
+  });
+  installStorageDownload(deps, {
+    data: new Blob([new Uint8Array([0x25, 0x50, 0x44, 0x46])], {
+      type: "application/pdf",
+    }),
+    error: null,
+  });
+
+  const response = await handle(
+    makeRequest({
+      headers: JWT,
+      body: { action: "resend", org_id: ORG, order_id: "o-1" },
+    }),
+    deps,
+  );
+
+  assertEquals(response.status, 200);
+  const email = invokeCalls.find((c) => c.name === "send-transactional-email");
+  assert(email, "resend delivers through send-transactional-email");
+  assertEquals(
+    (email!.body as { locale?: string }).locale,
+    "de",
+    "the frozen snapshot locale is forced on the whole email",
+  );
+});
+
+// The entitlement re-gate on the replayed locale (a frozen "de" falling back to
+// "en" when the org later loses language_packages) lives in resolveOrgLocale and
+// is covered at the send-transactional-email layer; it can't be exercised here
+// because a false is_feature_enabled fake would also trip the hire_orders gate.
 
 Deno.test("issue refuses orders failing the ready gate and reports issue codes", async () => {
   const { deps, calls } = makeFakeDeps({
@@ -5415,4 +5467,136 @@ Deno.test("sign re-resolves the live theme setting for a legacy order with a nul
   );
   assertEquals(res.status, 200);
   assertEquals(captured!.theme?.base.scale, 1.45, "no issue_snapshot at all -> re-resolve the live theme setting");
+});
+
+// ===========================================================================
+// Per-org language (Section C): issue renders German copy + locale for a de,
+// entitled org, and freezes the locale into issue_snapshot. English default is
+// covered implicitly by every other issue test (org_language unset => "en").
+// The gate (de setting but language_packages off => English) is covered by
+// orgLocale.test.ts and the send-transactional-email di tests; the fake's
+// is_feature_enabled returns one value for all features, so it cannot represent
+// hire_orders-on + language_packages-off here.
+// ===========================================================================
+Deno.test("issue: a de, entitled org renders the German copy base and freezes locale='de'", async () => {
+  const { deps, calls } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      hire_orders: [
+        { when: { __write: false }, data: issuableOrder({}) },
+        { when: { __write: true }, data: null },
+      ],
+      artists: { data: { user_id: "u-artist" } },
+      app_settings: [
+        { when: { key: "hire_order_letterhead" }, data: [LETTERHEAD] },
+        { when: { key: "hire_order_terms" }, data: [TERMS_TEMPLATES_DEFAULT_FILLED] },
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+        { when: { key: "org_language" }, data: [{ org_id: ORG, value: "de" }] },
+      ],
+    },
+  });
+  let captured: { locale?: string; copy?: { header_eyebrow?: string } } | null = null;
+  deps.renderHireOrderPdf = (a) => {
+    captured = a as unknown as typeof captured;
+    return Promise.resolve(new Uint8Array([0x25, 0x50, 0x44, 0x46]));
+  };
+
+  const res = await handle(
+    makeRequest({ headers: JWT, body: { action: "issue", org_id: ORG, order_ids: ["o-1"] } }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.issued, ["o-1"]);
+  assertEquals(captured!.locale, "de");
+  assertEquals(captured!.copy?.header_eyebrow, "Engagementvertrag");
+
+  // Locale is frozen into issue_snapshot alongside the copy.
+  const issueWrite = calls.find(
+    (c) => c.table === "hire_orders" && c.method === "update" &&
+      typeof c.args?.[0] === "object" && c.args[0] !== null &&
+      (c.args[0] as { status?: string }).status === "issued",
+  );
+  assertExists(issueWrite);
+  const snapshot = (issueWrite!.args[0] as { issue_snapshot?: { locale?: string } }).issue_snapshot;
+  assertEquals(snapshot?.locale, "de");
+});
+
+Deno.test("issue: an org with no org_language renders the English copy base and locale='en'", async () => {
+  const { deps } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      hire_orders: [
+        { when: { __write: false }, data: issuableOrder({}) },
+        { when: { __write: true }, data: null },
+      ],
+      artists: { data: { user_id: "u-artist" } },
+      app_settings: [
+        { when: { key: "hire_order_letterhead" }, data: [LETTERHEAD] },
+        { when: { key: "hire_order_terms" }, data: [TERMS_TEMPLATES_DEFAULT_FILLED] },
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+      ],
+    },
+  });
+  let captured: { locale?: string; copy?: { header_eyebrow?: string } } | null = null;
+  deps.renderHireOrderPdf = (a) => {
+    captured = a as unknown as typeof captured;
+    return Promise.resolve(new Uint8Array([0x25, 0x50, 0x44, 0x46]));
+  };
+
+  const res = await handle(
+    makeRequest({ headers: JWT, body: { action: "issue", org_id: ORG, order_ids: ["o-1"] } }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  assertEquals(captured!.locale, "en");
+  assertEquals(captured!.copy?.header_eyebrow, "Performance hire order");
+});
+
+// Regression (Section C): a hire order issued in German countersigns in German —
+// the frozen issue_snapshot.locale drives BOTH the re-rendered signed PDF and the
+// countersigned artist email (not the org's live locale). Gated: resolveOrgLocale
+// still checks language_packages (featureOn), matching the resend path.
+Deno.test("sign: a de, entitled order countersigns in German (PDF + artist email)", async () => {
+  const deSnapshot = {
+    countersign_mode: "electronic",
+    locale: "de",
+    letterhead: LETTERHEAD,
+    terms: [{ title: "Terms", body: "Body" }],
+    currency: "EUR",
+  };
+  const { deps, invokeCalls } = signDeps({
+    order: { ...SIGN_ORDER, issue_snapshot: deSnapshot },
+    featureOn: true,
+  });
+  let renderedLocale: string | undefined;
+  deps.renderHireOrderPdf = (input) => {
+    renderedLocale = (input as { locale?: string }).locale;
+    return Promise.resolve(new Uint8Array([0x25, 0x50, 0x44, 0x46]));
+  };
+  const res = await handle(
+    makeRequest({ headers: { Authorization: "Bearer artist" }, body: SIGN_BODY }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  assertEquals((await res.json()).countersigned, true);
+  // The signed PDF re-renders in the frozen German locale.
+  assertEquals(renderedLocale, "de");
+  // The countersigned email that ships it matches the PDF locale.
+  const email = invokeCalls.find(
+    (c) => c.name === "send-transactional-email" &&
+      (c.body as { template_name?: string }).template_name === "hire-order-countersigned",
+  );
+  assertExists(email);
+  assertEquals((email!.body as { locale?: string }).locale, "de");
+  // The date_label TOKEN is formatted in German too (not just the wrapper).
+  const expectedDe = new Date("2026-06-15T00:00:00Z").toLocaleDateString("de-DE", {
+    weekday: "short", month: "short", day: "numeric", year: "numeric", timeZone: "UTC",
+  });
+  assertEquals(
+    (email!.body as { templateData: { date_label: string } }).templateData.date_label,
+    expectedDe,
+  );
 });

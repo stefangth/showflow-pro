@@ -1,5 +1,29 @@
 [
   {
+    "version": "1.17.0",
+    "date": "2026-08-15",
+    "dateLabel": "August 15, 2026",
+    "title": "Emails and contracts in your workspace's language",
+    "changes": {
+      "new": [
+        {
+          "title": "German emails and hire order PDFs",
+          "description": "When your workspace runs in German, the offer, confirmation, and hire order emails ShowFlow sends, and the hire order PDF documents it generates, now go out in German, with German dates and money formatting."
+        },
+        {
+          "title": "Set your workspace language",
+          "description": "Admins choose the language for everything the workspace sends, from Settings then Organization. Each person still picks their own in-app language separately in the account menu."
+        }
+      ],
+      "improved": [
+        {
+          "title": "Preview an email in either language",
+          "description": "The email template editor can now show each transactional email in English or German before you send it."
+        }
+      ]
+    }
+  },
+  {
     "version": "1.16.0",
     "date": "2026-08-14",
     "dateLabel": "August 14, 2026",

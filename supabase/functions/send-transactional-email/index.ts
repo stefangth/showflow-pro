@@ -6,6 +6,7 @@ import type { EmailThemeOverride } from '../_shared/transactional-email-template
 import { preflight, json } from "../_shared/http.ts";
 import { realDeps, type Deps, type EmailAttachment } from "../_shared/deps.ts";
 import { resolveOrgSetting, BOOKING_ENGINE_DEFAULTS } from "../_shared/settings.ts";
+import { coerceLocale, resolveOrgLocale, type ServerLocale } from "../_shared/orgLocale.ts";
 import { categoryForTemplate } from "../_shared/notificationCategories.ts";
 import { isServiceRole } from "../_shared/auth.ts";
 import { redactEmail } from "../_shared/identity.ts";
@@ -58,6 +59,9 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   let templateData: TemplateData = {}
   let orgId: string | null = null
   let attachments: EmailAttachment[] | undefined
+  // An explicit locale forces the email language (still entitlement-gated in
+  // resolveOrgLocale); undefined means "resolve the org's live org_language".
+  let localeOverride: ServerLocale | null = null
   try {
     const body = await req.json()
     templateName = body.templateName || body.template_name
@@ -70,6 +74,9 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     }
     if (Array.isArray(body.attachments) && body.attachments.length > 0) {
       attachments = body.attachments as EmailAttachment[]
+    }
+    if (body.locale != null) {
+      localeOverride = coerceLocale(body.locale)
     }
   } catch {
     return json({ error: 'Invalid JSON in request body' }, 400)
@@ -256,6 +263,10 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     const legacyOverrides = await resolveOrgSetting<unknown>(
       admin, orgId, 'email_template_overrides', {})
     const copyOverride = copySetting ?? legacyEmailOverridesToCopy(legacyOverrides)
+    // Per-org language: German only when the org set it AND is entitled to
+    // language_packages (resolveOrgLocale double-gates). Org-less sends (null
+    // orgId: magic-link, account-email-changed) stay English.
+    const locale = await resolveOrgLocale(admin, orgId, localeOverride)
     const presentation = resolveTemplatePresentation(templateName, templateData, {
       copyOverride,
       copyIsExplicit: copySetting !== null,
@@ -263,6 +274,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
         ? legacyTemplateSubjectOverride(legacyOverrides, templateName)
         : undefined,
       themeOverride: themeSetting,
+      locale,
     })
     if (!presentation) throw new Error(`Template '${templateName}' not found during presentation resolution`)
 

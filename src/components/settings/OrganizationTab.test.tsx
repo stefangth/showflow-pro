@@ -10,10 +10,19 @@ vi.mock("@/features/auth/AuthContext", () => ({
   useAuth: () => ({ currentOrg: { id: "org-1", name: "Acme", slug: "acme", status: "active" }, refreshOrgs }),
 }));
 
+// Controllable entitlement + org-language data for the workspace-language picker.
+const h = vi.hoisted(() => ({ langPacks: false, orgLang: "en" as string }));
+vi.mock("@/hooks/useEntitlements", () => ({ useFeature: () => h.langPacks }));
+const setOrgLanguage = vi.fn((..._a: unknown[]) => Promise.resolve());
+vi.mock("@/data/settings", () => ({
+  fetchOrgLanguage: () => Promise.resolve(h.orgLang),
+  setOrgLanguage: (...a: unknown[]) => setOrgLanguage(...a),
+}));
+
 import { OrganizationTab } from "./OrganizationTab";
 
 describe("OrganizationTab", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => { vi.clearAllMocks(); h.langPacks = false; h.orgLang = "en"; });
 
   it("prefills the name and shows slug read-only", () => {
     renderWithProviders(<OrganizationTab />);
@@ -51,6 +60,31 @@ describe("OrganizationTab", () => {
       renderWithProviders(<OrganizationTab readOnly={false} />);
       expect(screen.getByLabelText(/organization name/i)).toBeEnabled();
       expect(screen.getByRole("button", { name: /save/i })).toBeEnabled();
+    });
+  });
+
+  // Workspace-language picker: gated by the language_packages entitlement.
+  describe("workspace language picker", () => {
+    it("is hidden when language_packages is off", () => {
+      h.langPacks = false;
+      renderWithProviders(<OrganizationTab />);
+      expect(screen.queryByLabelText(/workspace language/i)).toBeNull();
+    });
+
+    it("is shown and prefilled from the stored setting when entitled", async () => {
+      h.langPacks = true;
+      h.orgLang = "de";
+      renderWithProviders(<OrganizationTab />);
+      expect(await screen.findByLabelText(/workspace language/i)).toBeInTheDocument();
+      // The selected value renders its native endonym in the trigger.
+      await waitFor(() => expect(screen.getByText("Deutsch")).toBeInTheDocument());
+    });
+
+    it("disables the picker for a read-only producer, without writing on mount", async () => {
+      h.langPacks = true;
+      renderWithProviders(<OrganizationTab readOnly />);
+      expect(await screen.findByLabelText(/workspace language/i)).toBeDisabled();
+      expect(setOrgLanguage).not.toHaveBeenCalled();
     });
   });
 });

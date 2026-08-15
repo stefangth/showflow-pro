@@ -68,7 +68,12 @@
     "required": "Erforderlich",
     "save": "Speichern",
     "saving": "Speichert…",
-    "renamed": "Organisation umbenannt"
+    "renamed": "Organisation umbenannt",
+    "language": {
+      "label": "Sprache des Arbeitsbereichs",
+      "help": "Die Sprache der E-Mails und Engagementvertrag-PDFs, die dein Arbeitsbereich versendet. Jede Person wählt ihre eigene App-Sprache weiterhin im Kontomenü.",
+      "saved": "Sprache des Arbeitsbereichs aktualisiert"
+    }
   },
   "permissions": {
     "loading": "Rechte werden geladen...",

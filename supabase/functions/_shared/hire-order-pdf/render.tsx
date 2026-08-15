@@ -287,12 +287,14 @@ function formatDateDMY(dateOnly: string): string {
   return `${dateOnly.slice(8, 10)}/${dateOnly.slice(5, 7)}/${dateOnly.slice(0, 4)}`;
 }
 
-/** Weekday for a `YYYY-MM-DD` string, pinned to UTC so it is deterministic. */
-function weekdayOf(dateOnly: string): string {
+/** Weekday for a `YYYY-MM-DD` string, pinned to UTC so it is deterministic.
+ *  `locale` localizes the weekday name only (Monday vs Montag); "en" uses en-GB.
+ *  Exported for direct unit testing (the rest of the render is PDF bytes). */
+export function weekdayOf(dateOnly: string, locale: "en" | "de" = "en"): string {
   if (!/^\d{4}-\d{2}-\d{2}/.test(dateOnly)) return "";
   const d = new Date(`${dateOnly.slice(0, 10)}T00:00:00Z`);
   if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleDateString("en-GB", { weekday: "long", timeZone: "UTC" });
+  return d.toLocaleDateString(locale === "de" ? "de-DE" : "en-GB", { weekday: "long", timeZone: "UTC" });
 }
 
 /** `dd/MM/yyyy` from a full ISO timestamp, on the UTC calendar date. */
@@ -362,6 +364,11 @@ function HireOrderDoc(input: RenderInput & { available?: ReadonlySet<FontFamilyK
   const copy: HireOrderCopy = input.copy ?? HIRE_ORDER_COPY_DEFAULTS;
   const theme = input.theme ?? HIRE_ORDER_THEME_DEFAULTS;
   const s = buildStyles(theme, available, input.highlightRole);
+  // Locale localizes only the weekday name and the money digit-grouping; every
+  // other string comes from `copy`. Defaults to English so legacy callers and
+  // English orgs render byte-identically to before.
+  const locale = input.locale ?? "en";
+  const moneyLocale = locale === "de" ? "de-DE" : "en-US";
 
   const artist = str(data, "artist_name");
   const email = str(data, "recipient_email");
@@ -375,7 +382,7 @@ function HireOrderDoc(input: RenderInput & { available?: ReadonlySet<FontFamilyK
   const fee = data.fee?.value;
   const feeText = fee === undefined || fee === null || fee === ""
     ? ""
-    : formatMoney(fee as string | number, currency);
+    : formatMoney(fee as string | number, currency, moneyLocale);
   const sessions = sessionsOf(data);
   const engagementDates = engagementDatesOf(data);
   const feeBasis = str(data, "fee_basis");
@@ -395,7 +402,7 @@ function HireOrderDoc(input: RenderInput & { available?: ReadonlySet<FontFamilyK
       ? applyTokens(
         feeDateCount === 1 ? copy.fees_per_date_single : copy.fees_per_date,
         {
-          amount: formatMoney(feePerDateValue as string | number, currency),
+          amount: formatMoney(feePerDateValue as string | number, currency, moneyLocale),
           count: feeDateCount,
         },
       )
@@ -468,7 +475,7 @@ function HireOrderDoc(input: RenderInput & { available?: ReadonlySet<FontFamilyK
           <View style={s.factCell}>
             <Text style={s.factLabel}>{copy.facts_date_label}</Text>
             <Text style={s.factValueMono}>{dateLabel}</Text>
-            <Text style={s.factSub}>{isAggregate ? applyTokens(copy.facts_dates_count, { count: engagementDates.length }) : weekdayOf(date)}</Text>
+            <Text style={s.factSub}>{isAggregate ? applyTokens(copy.facts_dates_count, { count: engagementDates.length }) : weekdayOf(date, locale)}</Text>
           </View>
           <View style={[s.factCell, s.factDivider]}>
             <Text style={s.factLabel}>{copy.facts_venue_label}</Text>

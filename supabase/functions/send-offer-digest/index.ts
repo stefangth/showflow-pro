@@ -2,6 +2,7 @@ import { preflight, json } from "../_shared/http.ts";
 import { requireCronOrRole } from "../_shared/auth.ts";
 import { emailWasSent, realDeps, type Deps } from "../_shared/deps.ts";
 import { getActiveOrgs, resolveOrgSetting, BOOKING_ENGINE_DEFAULTS } from "../_shared/settings.ts";
+import { resolveOrgLocale } from "../_shared/orgLocale.ts";
 import { filterEntitledOrgs } from "../_shared/entitlements.ts";
 import { resolveContactEmail, resolveAccountDisplayName } from "../_shared/identity.ts";
 import { resolveBookingFlow, referenceLabel } from "../_shared/bookingFlow.ts";
@@ -117,8 +118,11 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       console.error('send-offer-digest: settings read failed', { org: org.id, error: (e as Error).message });
       continue;
     }
+    // Per-org locale (entitlement-gated) so the expiry timestamp embedded in the
+    // now-German-capable digest matches the rest of the email's language.
+    const locale = await resolveOrgLocale(admin, org.id);
     const offerExpiresAt = new Date(now.getTime() + offerWindowHours * 60 * 60 * 1000);
-    const expiresDisplay = new Intl.DateTimeFormat('en-GB', {
+    const expiresDisplay = new Intl.DateTimeFormat(locale === 'de' ? 'de-DE' : 'en-GB', {
       timeZone: 'Europe/Berlin', day: '2-digit', month: '2-digit', year: 'numeric',
       hour: '2-digit', minute: '2-digit', hour12: false,
     }).format(offerExpiresAt);
@@ -189,6 +193,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
           template_name: 'artist-offer-digest',
           recipient_email: entry.recipientEmail,
           org_id: org.id,
+          locale,
           templateData: { displayName: entry.displayName, offers: entry.offers },
           idempotency_key: `offer-digest-${org.id}-${artistId}-${now.toISOString().slice(0, 13)}`,
         });

@@ -68,7 +68,12 @@
     "required": "Required",
     "save": "Save",
     "saving": "Saving…",
-    "renamed": "Organization renamed"
+    "renamed": "Organization renamed",
+    "language": {
+      "label": "Workspace language",
+      "help": "The language of emails and hire order PDFs your workspace sends. Each person still picks their own app language in their account menu.",
+      "saved": "Workspace language updated"
+    }
   },
   "permissions": {
     "loading": "Loading rights...",
