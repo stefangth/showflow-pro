@@ -1,3 +1,4 @@
+import { DISPLAY_ORDER, NEEDS_YOU_GROUP_LABELS } from '@/lib/calendar/needsYou';
 import type { NeedsYouGroupKey, NeedsYouQueue } from '@/lib/calendar/needsYou';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -26,17 +27,6 @@ interface QueueRailProps {
   onOffer?: (dateId: string, artistId: string) => void;
   className?: string;
 }
-
-/** Canonical display order for the breakdown rows — matches
- *  `buildNeedsYouQueue`'s `DISPLAY_ORDER` (spec §4.1). */
-const GROUP_ORDER: NeedsYouGroupKey[] = ['expires-today', 'at-risk', 'ready-to-issue', 'cancelled'];
-
-const GROUP_LABELS: Record<NeedsYouGroupKey, string> = {
-  'expires-today': 'Expiring today',
-  'at-risk': 'At risk of running short',
-  'ready-to-issue': 'Ready to issue',
-  cancelled: 'Cancelled, cast not notified',
-};
 
 const GROUP_DOT_CLASS: Record<NeedsYouGroupKey, string> = {
   'expires-today': 'bg-destructive',
@@ -67,7 +57,7 @@ export function QueueRail({ queue, clearedToday, shortlist, onOffer, className }
   const denominator = clearedToday + queue.totalItems;
   const progressPct = denominator > 0 ? Math.round((clearedToday / denominator) * 100) : 100;
 
-  const breakdown = GROUP_ORDER
+  const breakdown = DISPLAY_ORDER
     .map((key) => ({ key, count: queue.countByGroup[key] }))
     .filter((row) => row.count > 0);
 
@@ -94,7 +84,7 @@ export function QueueRail({ queue, clearedToday, shortlist, onOffer, className }
             {breakdown.map(({ key, count }) => (
               <div key={key} className="flex items-center gap-2">
                 <span className={cn('h-1 w-2.5 shrink-0 rounded-full', GROUP_DOT_CLASS[key])} />
-                <span className="text-[12.5px] text-foreground">{GROUP_LABELS[key]}</span>
+                <span className="text-[12.5px] text-foreground">{NEEDS_YOU_GROUP_LABELS[key]}</span>
                 <span className="ml-auto font-mono text-xs font-medium tabular-nums text-foreground">
                   {count}
                 </span>

@@ -52,8 +52,21 @@ export interface NeedsYouQueue {
   countByGroup: Record<NeedsYouGroupKey, number>;
 }
 
-/** Display order — also the order groups are emitted in `NeedsYouQueue.groups`. */
-const DISPLAY_ORDER: NeedsYouGroupKey[] = ['expires-today', 'at-risk', 'ready-to-issue', 'cancelled'];
+/** Display order — also the order groups are emitted in `NeedsYouQueue.groups`.
+ *  Exported so callers that render group breakdowns/sections (`QueueRail`,
+ *  `NeedsYouLens`) share one canonical order instead of each redeclaring it. */
+export const DISPLAY_ORDER: NeedsYouGroupKey[] = ['expires-today', 'at-risk', 'ready-to-issue', 'cancelled'];
+
+/** Shared human-readable label per group — the single source for `QueueRail`'s
+ *  breakdown rows and `NeedsYouLens`'s section headers, so the two surfaces
+ *  never drift apart on wording. Plain English for now; Task 9 routes these
+ *  through `t('bookings:needsYou.group.*')`. */
+export const NEEDS_YOU_GROUP_LABELS: Record<NeedsYouGroupKey, string> = {
+  'expires-today': 'Expiring today',
+  'at-risk': 'At risk of running short',
+  'ready-to-issue': 'Ready to issue',
+  cancelled: 'Cancelled, cast not notified',
+};
 
 function toPerson(row: BookingWithArtistRow): NeedsYouPerson | null {
   if (!row.artist) return null;
