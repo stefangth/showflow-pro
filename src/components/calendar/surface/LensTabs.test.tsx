@@ -64,4 +64,33 @@ describe('LensTabs', () => {
     expect(badge.className).toContain('bg-foreground/[.06]');
     expect(badge.className).toContain('text-muted-foreground');
   });
+
+  it('without scrollable, keeps the default inline-flex layout', () => {
+    render(<LensTabs lenses={lenses} active="month" onChange={vi.fn()} />);
+    const track = screen.getByRole('tablist');
+    expect(track.className).toContain('inline-flex');
+    expect(track.className).not.toContain('overflow-x-auto');
+  });
+
+  it('with scrollable, renders a single non-wrapping horizontally-scrolling row', () => {
+    const manyLenses = [
+      { key: 'needs-you', label: 'Needs you', count: 3 },
+      { key: 'month', label: 'Month' },
+      { key: 'week', label: 'Week' },
+      { key: 'day', label: 'Day' },
+      { key: 'agenda', label: 'Agenda' },
+    ];
+    render(
+      <LensTabs lenses={manyLenses} active="month" onChange={vi.fn()} scrollable />
+    );
+    const track = screen.getByRole('tablist');
+    expect(track.className).toContain('flex');
+    expect(track.className).toContain('overflow-x-auto');
+    expect(track.className).not.toContain('flex-wrap');
+    manyLenses.forEach(lens => {
+      expect(screen.getByTestId(`lens-tab-${lens.key}`)).toBeInTheDocument();
+    });
+    const activeTab = screen.getByTestId('lens-tab-month');
+    expect(activeTab).toHaveAttribute('data-active', 'true');
+  });
 });

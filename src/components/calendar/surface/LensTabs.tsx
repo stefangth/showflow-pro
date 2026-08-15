@@ -11,6 +11,12 @@ interface LensTabsProps {
   active: string;
   onChange: (key: string) => void;
   className?: string;
+  /**
+   * Renders the tab row as a single non-wrapping, horizontally-scrolling
+   * strip with snap points — the mobile lens switcher. Default (false)
+   * keeps the desktop inline-flex segmented-control layout unchanged.
+   */
+  scrollable?: boolean;
 }
 
 /**
@@ -19,11 +25,12 @@ interface LensTabsProps {
  * fill — mirroring the app's own `TabsTrigger`/`SegmentedControl` active
  * convention (`bg-card text-foreground shadow-elev1`).
  */
-export function LensTabs({ lenses, active, onChange, className }: LensTabsProps) {
+export function LensTabs({ lenses, active, onChange, className, scrollable = false }: LensTabsProps) {
   return (
     <div
       className={cn(
-        'inline-flex items-center gap-0.5 rounded-m border border-[var(--line-strong)] bg-[var(--surface-3)] p-0.5',
+        'items-center rounded-m border border-[var(--line-strong)] bg-[var(--surface-3)] p-0.5',
+        scrollable ? 'flex gap-2 overflow-x-auto snap-x' : 'inline-flex gap-0.5',
         className
       )}
       role="tablist"
@@ -40,7 +47,8 @@ export function LensTabs({ lenses, active, onChange, className }: LensTabsProps)
             data-active={isActive}
             onClick={() => onChange(lens.key)}
             className={cn(
-              'inline-flex items-center gap-1.5 rounded-s px-3 py-1.5 text-[13px] font-medium transition-colors',
+              'inline-flex shrink-0 items-center gap-1.5 rounded-s px-3 py-1.5 text-[13px] font-medium transition-colors',
+              scrollable && 'snap-start',
               isActive ? 'bg-card text-foreground shadow-elev1' : 'text-muted-foreground hover:text-foreground'
             )}
           >
