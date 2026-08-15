@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { getDay } from 'date-fns';
 import type { ProducerDateEntry } from '@/lib/calendar/types';
 import { toSeasonModel, seasonKpis, type SeasonCell } from '@/lib/calendar/seasonData';
@@ -114,7 +114,9 @@ function SeasonCellButton({
  * columns (mousedown a column, mouseenter another) drives
  * `onRangeStart`/`onRangeExtend`/`onRangeCommit`, and columns whose day key
  * is in `rangeKeys` render a `bg-accent-50` highlight on the header + every
- * program-row cell.
+ * program-row cell. While a drag is active, the grid container gets
+ * `select-none` (mirrors `MonthGrid`'s `rangeActive` prop) so the pointer
+ * move doesn't also select cell text.
  */
 export function SeasonLens({
   entries,
@@ -144,6 +146,10 @@ export function SeasonLens({
   const pendingAnchorRef = useRef<string | null>(null);
   const draggingRef = useRef(false);
   const currentKeyRef = useRef<string | null>(null);
+  // Mirrors `draggingRef` as render-visible state, purely to drive the
+  // `select-none` class on the grid container (a ref alone wouldn't
+  // re-render) — MonthGrid's `rangeActive` serves the same purpose there.
+  const [dragging, setDragging] = useState(false);
 
   useEffect(() => {
     const handleWindowMouseUp = () => {
@@ -153,6 +159,7 @@ export function SeasonLens({
       pendingAnchorRef.current = null;
       currentKeyRef.current = null;
       draggingRef.current = false;
+      setDragging(false);
     };
     window.addEventListener('mouseup', handleWindowMouseUp);
     return () => window.removeEventListener('mouseup', handleWindowMouseUp);
@@ -170,13 +177,17 @@ export function SeasonLens({
     if (!draggingRef.current) {
       onRangeStart?.(pendingAnchorRef.current);
       draggingRef.current = true;
+      setDragging(true);
     }
     onRangeExtend?.(key);
   };
 
   return (
     <div data-testid="season-lens" className={cn('flex w-full flex-col gap-5', className)}>
-      <div className="w-full overflow-x-auto rounded-m border border-border bg-card">
+      <div
+        data-testid="season-grid"
+        className={cn('w-full overflow-x-auto rounded-m border border-border bg-card', dragging && 'select-none')}
+      >
         {/* Day header row. */}
         <div className="grid border-b border-border" style={{ gridTemplateColumns: gridCols }}>
           <div className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">

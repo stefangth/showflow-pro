@@ -259,23 +259,57 @@ export function CalendarSurface({
     setRange(null);
   }, [lens]);
 
-  // Every selected date key that maps to a real producer entry, in range
-  // order — a key with no entry (an empty day inside the drag span) is
-  // silently excluded rather than passed through as a missing id.
+  // Every producer entry id for a given date key, in entry order — a day can
+  // hold more than one entry (two shows on the same day; the Season lens
+  // renders one row per show), so this must fan out to every entry on that
+  // day rather than keep only the last one written.
   const producerEntryIdByKey = useMemo(() => {
-    const map = new Map<string, string>();
-    producerEntries.forEach((entry) => map.set(toDateKey(entry.date), entry.id));
+    const map = new Map<string, string[]>();
+    producerEntries.forEach((entry) => {
+      const key = toDateKey(entry.date);
+      const ids = map.get(key);
+      if (ids) ids.push(entry.id);
+      else map.set(key, [entry.id]);
+    });
     return map;
   }, [producerEntries]);
+  // Every selected date key's entry ids, in range order — a key with no
+  // entry (an empty day inside the drag span) contributes nothing, and a key
+  // with multiple entries (co-shows sharing a day) contributes all of them,
+  // so this is a show_date count, not a day count.
   const selectedDateIds = useMemo(
     () =>
       selectedKeys(range).reduce<string[]>((ids, key) => {
-        const entryId = producerEntryIdByKey.get(key);
-        if (entryId) ids.push(entryId);
+        const entryIds = producerEntryIdByKey.get(key);
+        if (entryIds) ids.push(...entryIds);
         return ids;
       }, []),
     [range, producerEntryIdByKey]
   );
+
+  // Shared range-selection handlers (Phase 4, producer-only) — one instance
+  // wired to both the Month and Season lenses below, since they share the
+  // same `range` state (selection is by day-key, not by lens).
+  //
+  // `handleRangeExtend` is what shift-click relies on: MonthGrid's
+  // shift-click path calls `onRangeExtend` directly with no preceding
+  // `onRangeStart`/`onSelectDay`, so when there's no drag-established
+  // `range` yet, the anchor is seeded from `selectedDay` (the last plain
+  // click) rather than collapsing into a single-day range at the shift-click
+  // target.
+  const seedRangeFromSelectedDay = (): RangeSelection | null =>
+    selectedDay ? { anchor: toDateKey(selectedDay), focus: toDateKey(selectedDay) } : null;
+  const handleRangeStart = (key: string) => setRange({ anchor: key, focus: key });
+  const handleRangeExtend = (key: string) => setRange((r) => extendTo(r ?? seedRangeFromSelectedDay(), key));
+  const handleRangeCommit = () => {};
+
+  // A plain click both relocates `selectedDay` (existing behavior) and
+  // drops any stale range from a prior drag/shift-click — a fresh click
+  // starts a new single-day anchor, it doesn't extend an old selection.
+  const handleSelectDay = (day: Date) => {
+    setSelectedDay(day);
+    setRange(null);
+  };
 
   const dayProducerEntries = entriesForDay(producerEntries, selectedDay);
   const dayArtistEntries = entriesForDay(artistEntries, selectedDay);
@@ -483,16 +517,17 @@ export function CalendarSurface({
                   role={role}
                   anchor={anchor}
                   selectedDay={selectedDay}
-                  onSelectDay={setSelectedDay}
+                  onSelectDay={handleSelectDay}
                   onOpenDay={handleOpenDay}
                   onPeekDay={role === 'producer' ? setPeekDay : undefined}
                   producerEntries={producerEntries}
                   artistEntries={artistEntries}
                   today={now}
                   rangeKeys={role === 'producer' ? selectedKeys(range) : undefined}
-                  onRangeStart={role === 'producer' ? (key) => setRange({ anchor: key, focus: key }) : undefined}
-                  onRangeExtend={role === 'producer' ? (key) => setRange((r) => extendTo(r, key)) : undefined}
-                  onRangeCommit={role === 'producer' ? () => {} : undefined}
+                  onRangeStart={role === 'producer' ? handleRangeStart : undefined}
+                  onRangeExtend={role === 'producer' ? handleRangeExtend : undefined}
+                  onRangeCommit={role === 'producer' ? handleRangeCommit : undefined}
+                  rangeActive={role === 'producer' ? range !== null : undefined}
                 />
               </div>
             </PopoverPrimitive.Anchor>
@@ -546,9 +581,9 @@ export function CalendarSurface({
               readyIds={seasonReadyIds}
               onOpenDate={(dateId) => actions.openDate?.(dateId)}
               rangeKeys={role === 'producer' ? selectedKeys(range) : undefined}
-              onRangeStart={role === 'producer' ? (key) => setRange({ anchor: key, focus: key }) : undefined}
-              onRangeExtend={role === 'producer' ? (key) => setRange((r) => extendTo(r, key)) : undefined}
-              onRangeCommit={role === 'producer' ? () => {} : undefined}
+              onRangeStart={role === 'producer' ? handleRangeStart : undefined}
+              onRangeExtend={role === 'producer' ? handleRangeExtend : undefined}
+              onRangeCommit={role === 'producer' ? handleRangeCommit : undefined}
             />
           )}
           {activeLens === 'agenda' && (

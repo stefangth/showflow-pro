@@ -213,5 +213,27 @@ describe('SeasonLens', () => {
       expect(onRangeExtend).not.toHaveBeenCalled();
       expect(onRangeCommit).not.toHaveBeenCalled();
     });
+
+    it('applies select-none to the grid container while a drag is active, and removes it on mouseup', () => {
+      // Regression: MonthGrid suppresses text selection during a drag via
+      // `rangeActive`; SeasonLens had no equivalent, so text could be
+      // selected while dragging across day columns.
+      render(
+        <SeasonLens entries={[entryA, entryB]} anchor={ANCHOR} readyIds={new Set()} onOpenDate={vi.fn()} />
+      );
+      const grid = screen.getByTestId('season-grid');
+      expect(grid).not.toHaveClass('select-none');
+
+      const startCell = screen.getByTestId(`season-cell-show-a-${toDateKey(new Date(2026, 7, 5))}`);
+      const midCell = screen.getByTestId(`season-cell-show-b-${toDateKey(new Date(2026, 7, 6))}`);
+      fireEvent.mouseDown(startCell);
+      expect(grid).not.toHaveClass('select-none');
+
+      fireEvent.mouseEnter(midCell);
+      expect(grid).toHaveClass('select-none');
+
+      fireEvent.mouseUp(midCell);
+      expect(grid).not.toHaveClass('select-none');
+    });
   });
 });

@@ -121,6 +121,38 @@ describe('MonthLens', () => {
     expect(peekedWith.getDate()).toBe(12);
   });
 
+  it('forwards rangeActive to MonthGrid, applying select-none to cells while a range is active', () => {
+    // Regression: MonthGrid grew a `rangeActive` prop (select-none during a
+    // drag) but MonthLens never declared/forwarded it.
+    const { rerender } = render(
+      <MonthLens
+        role="producer"
+        anchor={new Date(2026, 7, 1)}
+        selectedDay={null}
+        onSelectDay={vi.fn()}
+        onOpenDay={vi.fn()}
+        producerEntries={[]}
+        today={new Date(2026, 7, 15)}
+        rangeActive={false}
+      />
+    );
+    expect(screen.getByTestId('month-grid-cell-2026-08-12')).not.toHaveClass('select-none');
+
+    rerender(
+      <MonthLens
+        role="producer"
+        anchor={new Date(2026, 7, 1)}
+        selectedDay={null}
+        onSelectDay={vi.fn()}
+        onOpenDay={vi.fn()}
+        producerEntries={[]}
+        today={new Date(2026, 7, 15)}
+        rangeActive={true}
+      />
+    );
+    expect(screen.getByTestId('month-grid-cell-2026-08-12')).toHaveClass('select-none');
+  });
+
   it('marks the selected day cell via the selectedDay prop', () => {
     render(
       <MonthLens

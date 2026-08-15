@@ -20,6 +20,10 @@ interface MonthLensProps {
   onRangeStart?: (key: string) => void;
   onRangeExtend?: (key: string) => void;
   onRangeCommit?: () => void;
+  /** True while a range selection exists — forwarded straight through to
+   *  `MonthGrid`, which applies `select-none` to suppress text selection
+   *  during a drag. Producer-only, same as the other range props. */
+  rangeActive?: boolean;
   /** Override for "today", so tests get a deterministic today-marker. */
   today?: Date;
   className?: string;
@@ -31,9 +35,9 @@ interface MonthLensProps {
  * (`src/lib/calendar/{producer,artist}Data.ts`), then renders the shared
  * `<MonthGrid>`. The design's month block (lines 267-307) is already the kit's
  * `MonthGrid` — this lens only owns the role-specific cell derivation.
- * `rangeKeys`/`onRangeStart`/`onRangeExtend`/`onRangeCommit` are forwarded
- * straight through to `MonthGrid`; `CalendarSurface` owns the actual
- * `RangeSelection` state and only wires these for the producer role
+ * `rangeKeys`/`onRangeStart`/`onRangeExtend`/`onRangeCommit`/`rangeActive`
+ * are forwarded straight through to `MonthGrid`; `CalendarSurface` owns the
+ * actual `RangeSelection` state and only wires these for the producer role
  * (default: no range, so the artist lens is unaffected).
  */
 export function MonthLens({
@@ -49,6 +53,7 @@ export function MonthLens({
   onRangeStart,
   onRangeExtend,
   onRangeCommit,
+  rangeActive,
   today = new Date(),
   className,
 }: MonthLensProps) {
@@ -68,6 +73,7 @@ export function MonthLens({
       onRangeStart={onRangeStart}
       onRangeExtend={onRangeExtend}
       onRangeCommit={onRangeCommit}
+      rangeActive={rangeActive}
       className={className}
     />
   );

@@ -979,6 +979,81 @@ describe('CalendarSurface — range selection + SelectionBar (producer, month le
     expect(screen.queryByTestId('selection-bar')).not.toBeInTheDocument();
   });
 
+  it('shift-click-to-range: plain click date A then shift-click date C selects the full A..C span; a fresh plain click clears the range', () => {
+    // Regression for the whole-branch review finding: shift-click without a
+    // preceding drag must seed the anchor from the last plain click
+    // (`selectedDay`), not leave `range` null (which would collapse the
+    // shift-click into a single-day selection).
+    const entries = [
+      producerEntry({ id: 'pd-10', date: new Date(2026, 7, 10) }),
+      producerEntry({ id: 'pd-11', date: new Date(2026, 7, 11) }),
+      producerEntry({ id: 'pd-13', date: new Date(2026, 7, 13) }),
+    ];
+    render(
+      <CalendarSurface
+        role="producer"
+        producerEntries={entries}
+        actions={noopActions()}
+        lens="month"
+        onLensChange={vi.fn()}
+        today={TODAY}
+      />
+    );
+
+    // Plain click date A (10 Aug) — no drag, so no range should appear yet.
+    fireEvent.click(screen.getByTestId('month-grid-cell-2026-08-10'));
+    expect(screen.queryByTestId('selection-bar')).not.toBeInTheDocument();
+
+    // Shift-click date C (13 Aug) — MonthGrid's shift-click path only calls
+    // onRangeExtend (no onSelectDay), so this must extend from the plain
+    // click's anchor, not start a fresh single-day range.
+    fireEvent.mouseDown(screen.getByTestId('month-grid-cell-2026-08-13'), { shiftKey: true });
+
+    expect(screen.getByTestId('month-grid-cell-2026-08-10')).toHaveAttribute('data-in-range', 'true');
+    expect(screen.getByTestId('month-grid-cell-2026-08-11')).toHaveAttribute('data-in-range', 'true');
+    expect(screen.getByTestId('month-grid-cell-2026-08-12')).toHaveAttribute('data-in-range', 'true');
+    expect(screen.getByTestId('month-grid-cell-2026-08-13')).toHaveAttribute('data-in-range', 'true');
+    const bar = screen.getByTestId('selection-bar');
+    expect(bar).toHaveTextContent('3 selected');
+
+    // A fresh plain click resets the anchor — the stale range must disappear.
+    fireEvent.click(screen.getByTestId('month-grid-cell-2026-08-11'));
+    expect(screen.queryByTestId('selection-bar')).not.toBeInTheDocument();
+  });
+
+  it('a range over a day with two producer entries dispatches both ids and the count includes both', () => {
+    // Regression: producerEntryIdByKey used to be last-write-wins per
+    // day-key, so a day with two co-shows only contributed one id to the
+    // bulk dispatch and the SelectionBar count.
+    const onBulkConfirm = vi.fn();
+    const entries = [
+      producerEntry({ id: 'pd-10a', date: new Date(2026, 7, 10) }),
+      producerEntry({ id: 'pd-10b', date: new Date(2026, 7, 10) }),
+      producerEntry({ id: 'pd-11', date: new Date(2026, 7, 11) }),
+    ];
+    render(
+      <CalendarSurface
+        role="producer"
+        producerEntries={entries}
+        actions={noopActions()}
+        lens="month"
+        onLensChange={vi.fn()}
+        today={TODAY}
+        onBulkConfirm={onBulkConfirm}
+      />
+    );
+
+    fireEvent.mouseDown(screen.getByTestId('month-grid-cell-2026-08-10'));
+    fireEvent.mouseEnter(screen.getByTestId('month-grid-cell-2026-08-11'));
+    fireEvent.mouseUp(screen.getByTestId('month-grid-cell-2026-08-11'));
+
+    const bar = screen.getByTestId('selection-bar');
+    expect(bar).toHaveTextContent('3 selected');
+
+    fireEvent.click(screen.getByTestId('selection-bar-action-confirm'));
+    expect(onBulkConfirm).toHaveBeenCalledWith(['pd-10a', 'pd-10b', 'pd-11']);
+  });
+
   it('does not render the SelectionBar for the artist role', () => {
     render(
       <CalendarSurface
