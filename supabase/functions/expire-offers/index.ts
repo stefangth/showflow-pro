@@ -400,6 +400,9 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       if (!recipientEmail) continue
       try {
         await deps.sendEmail({ template_name: 'cast-escalation-requested', recipient_email: recipientEmail,
+          // Pass org_id so send-transactional-email can resolve the org's locale
+          // (otherwise this producer-facing email can never render in German).
+          org_id: orgId,
           templateData: { program, date: sdRow.date, tier: row.tier, accepted, required: requiredSlots } })
       } catch (e) {
         console.error('expire-offers: email send failed', { uid, error: (e as Error).message })

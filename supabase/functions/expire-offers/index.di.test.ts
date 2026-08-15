@@ -1726,3 +1726,33 @@ Deno.test("expire-offers: show ladder exhausted (only the current tier) falls th
   assertEquals(rows.length, 1);
   assertEquals(rows[0].type, "cast_escalation_requested");
 });
+
+// Regression (Section C, per-org i18n): the cast-escalation email must carry org_id
+// so send-transactional-email can resolve the org's locale. Without it the email
+// permanently renders English for every org, even German+entitled ones.
+Deno.test("expire-offers: cast-escalation email carries org_id (locale can resolve)", async () => {
+  const bookings = [{ status: "suggested", offer_tier: 1, offer_expires_at: FIXED_NOW.toISOString() }];
+  const { deps, invokeCalls } = makeFakeDeps({
+    tables: {
+      app_settings: appSettingsSeed(),
+      show_date_offer_tiers: { data: [OPEN_TIER], error: null },
+      show_dates: { data: SHOW_DATE, error: null },
+      bookings: { data: bookings, error: null },
+      notifications: { data: null, error: null },
+    },
+    rpcs: {
+      expire_soft_bookings: { data: null, error: null },
+      resolve_show_assignments: { data: [{ producer_user_id: "prod-1" }], error: null },
+    },
+    usersById: { "prod-1": { email: "prod@example.com" } },
+    now: FIXED_NOW,
+  });
+  const res = await handle(cronReq(), deps);
+  assertEquals(res.status, 200);
+  const email = invokeCalls.find(
+    (c) => c.name === "send-transactional-email" &&
+      (c.body as { template_name?: string }).template_name === "cast-escalation-requested",
+  );
+  assertExists(email);
+  assertEquals((email!.body as { org_id?: string }).org_id, "00000000-0000-0000-0000-000000000001");
+});

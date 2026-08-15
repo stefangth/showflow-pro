@@ -5554,3 +5554,41 @@ Deno.test("issue: an org with no org_language renders the English copy base and 
   assertEquals(captured!.locale, "en");
   assertEquals(captured!.copy?.header_eyebrow, "Performance hire order");
 });
+
+// Regression (Section C): a hire order issued in German countersigns in German —
+// the frozen issue_snapshot.locale drives BOTH the re-rendered signed PDF and the
+// countersigned artist email (not the org's live locale). Gated: resolveOrgLocale
+// still checks language_packages (featureOn), matching the resend path.
+Deno.test("sign: a de, entitled order countersigns in German (PDF + artist email)", async () => {
+  const deSnapshot = {
+    countersign_mode: "electronic",
+    locale: "de",
+    letterhead: LETTERHEAD,
+    terms: [{ title: "Terms", body: "Body" }],
+    currency: "EUR",
+  };
+  const { deps, invokeCalls } = signDeps({
+    order: { ...SIGN_ORDER, issue_snapshot: deSnapshot },
+    featureOn: true,
+  });
+  let renderedLocale: string | undefined;
+  deps.renderHireOrderPdf = (input) => {
+    renderedLocale = (input as { locale?: string }).locale;
+    return Promise.resolve(new Uint8Array([0x25, 0x50, 0x44, 0x46]));
+  };
+  const res = await handle(
+    makeRequest({ headers: { Authorization: "Bearer artist" }, body: SIGN_BODY }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  assertEquals((await res.json()).countersigned, true);
+  // The signed PDF re-renders in the frozen German locale.
+  assertEquals(renderedLocale, "de");
+  // The countersigned email that ships it matches the PDF locale.
+  const email = invokeCalls.find(
+    (c) => c.name === "send-transactional-email" &&
+      (c.body as { template_name?: string }).template_name === "hire-order-countersigned",
+  );
+  assertExists(email);
+  assertEquals((email!.body as { locale?: string }).locale, "de");
+});

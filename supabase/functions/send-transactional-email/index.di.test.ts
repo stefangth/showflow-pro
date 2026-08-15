@@ -820,7 +820,7 @@ Deno.test("send-transactional-email: uses the org's resend_from_address override
   let sentFrom = "";
   const baseFetch = deps.fetch;
   deps.fetch = (url, init) => {
-    if (String(url).includes("api.resend.com")) {
+    if (new URL(String(url)).hostname === "api.resend.com") {
       sentFrom = JSON.parse(String((init as RequestInit).body)).from;
     }
     return baseFetch(url, init);
@@ -861,7 +861,7 @@ Deno.test("send-transactional-email: applies new copy and theme settings to the 
     },
   }), deps);
   assertEquals(res.status, 200);
-  const resend = fetchCalls.find((call) => call.url.includes("api.resend.com"));
+  const resend = fetchCalls.find((call) => new URL(call.url).hostname === "api.resend.com");
   assertExists(resend);
   const sent = JSON.parse(String((resend!.init as RequestInit).body)) as { subject: string; html: string };
   assertEquals(sent.subject, "Welcome Studio");
@@ -890,7 +890,7 @@ Deno.test("send-transactional-email: maps legacy copy only while new copy is abs
       body: { templateName: "org-invitation", recipientEmail: "invitee@example.com", org_id: ORG, templateData: { orgName: "Studio" } },
     }), deps);
     assertEquals(res.status, 200);
-    const resend = fetchCalls.find((call) => call.url.includes("api.resend.com"));
+    const resend = fetchCalls.find((call) => new URL(call.url).hostname === "api.resend.com");
     assertExists(resend);
     return JSON.parse(String((resend!.init as RequestInit).body)) as { subject: string };
   };
@@ -919,7 +919,7 @@ Deno.test("send-transactional-email: retains legacy generic subjects for conditi
       body: { templateName, recipientEmail: "artist@example.com", org_id: ORG, templateData },
     }), deps);
     assertEquals(response.status, 200);
-    const resend = fetchCalls.find((call) => call.url.includes("api.resend.com"));
+    const resend = fetchCalls.find((call) => new URL(call.url).hostname === "api.resend.com");
     assertExists(resend);
     return JSON.parse(String((resend!.init as RequestInit).body)) as { subject: string };
   };

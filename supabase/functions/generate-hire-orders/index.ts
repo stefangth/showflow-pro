@@ -2557,7 +2557,10 @@ async function signOrder(
     // theme for orders issued after this change and undefined for older ones;
     // resolveHireOrderTheme fills any gaps from the built-in defaults either way.
     renderTheme = resolveHireOrderTheme(snapshot.theme);
-    renderLocale = snapshot.locale ?? "en";
+    // Replay the frozen locale, but STILL through the entitlement gate: an org that
+    // has since lost language_packages re-renders the signed doc in English rather
+    // than bypassing the gate off the raw snapshot value.
+    renderLocale = await resolveOrgLocale(admin, org, snapshot.locale ?? "en");
   } else {
     const termsSetting = normalizeTermsSetting(rawTerms);
     renderLetterhead = {
@@ -2700,6 +2703,7 @@ async function signOrder(
     signedBytes,
     currency,
     !!countersign.email_producers_on_countersign,
+    renderLocale,
   ).catch((e) =>
     console.error("generate-hire-orders: countersigned email failed", {
       org,
@@ -2780,6 +2784,7 @@ async function sendCountersignedEmails(
   signedBytes: Uint8Array,
   _currency: string,
   emailProducers: boolean,
+  locale: ServerLocale,
 ): Promise<void> {
   const attachment = {
     filename: `${order.order_no}-signed.pdf`,
@@ -2798,6 +2803,9 @@ async function sendCountersignedEmails(
       template_name: "hire-order-countersigned",
       recipient_email: artistEmail,
       org_id: org,
+      // Match the frozen, entitlement-gated locale the signed PDF was rendered in,
+      // instead of re-resolving the org's live language at send time.
+      locale,
       templateData,
       attachments: [attachment],
       idempotency_key: `hire-order-countersigned-${order.id}`,
