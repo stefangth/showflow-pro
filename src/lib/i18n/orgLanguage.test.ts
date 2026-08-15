@@ -12,6 +12,9 @@ describe("orgLanguage", () => {
     expect(coerceLocale("de")).toBe("de");
   });
 
+  // Keep this coercion table byte-identical with the edge twin's shared table in
+  // supabase/functions/_shared/orgLocale.test.ts, so a divergence in either
+  // hand-duplicated coerceLocale body fails that body's own test.
   it("coerces everything else to English", () => {
     expect(coerceLocale("en")).toBe("en");
     expect(coerceLocale("fr")).toBe("en");

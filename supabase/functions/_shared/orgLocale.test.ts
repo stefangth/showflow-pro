@@ -51,10 +51,20 @@ Deno.test("resolveOrgLocale: setting 'de' never calls the entitlement RPC when i
   assertEquals(calls.some((c) => c.table === "rpc:is_feature_enabled"), false);
 });
 
-Deno.test("coerceLocale + key literal agree with the src/ twin", () => {
+// This asserts the EXACT SAME coercion table as src/lib/i18n/orgLanguage.test.ts.
+// The two coerceLocale implementations are hand-duplicated (edge can't import from
+// src/), so keep this table byte-identical with the src twin's: if either body ever
+// diverges (e.g. someone teaches one to accept a third locale), the file whose body
+// changed fails its own test against the shared table below.
+Deno.test("coerceLocale + key literal agree with the src/ twin (shared table)", () => {
   assertEquals(ORG_LANGUAGE_SETTING_KEY, "org_language");
   assertEquals(coerceLocale("de"), "de");
   assertEquals(coerceLocale("en"), "en");
-  assertEquals(coerceLocale("xx"), "en");
+  assertEquals(coerceLocale("fr"), "en");
+  assertEquals(coerceLocale("DE"), "en"); // case-sensitive on purpose
+  assertEquals(coerceLocale(""), "en");
   assertEquals(coerceLocale(null), "en");
+  assertEquals(coerceLocale(undefined), "en");
+  assertEquals(coerceLocale(42), "en");
+  assertEquals(coerceLocale({}), "en");
 });
