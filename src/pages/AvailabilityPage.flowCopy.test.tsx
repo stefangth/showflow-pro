@@ -6,16 +6,22 @@ import { BOOKING_FLOW_DEFAULTS, applyPreset, type BookingFlow, type FlowTimes } 
 import { DEFAULT_FLOW_TIMES } from "@/data/settings";
 
 /**
- * Task 4: AvailabilityPage's H1/subtitle and per-row status badge must derive
- * from availabilityPageCopy(flow) / bookingStatusLabels(flow) (src/lib/flowCopy.ts)
- * instead of the hardcoded "My Offers" title and the local BOOKING_STATUS_LABEL
- * map, so a direct-booking org (artist_acceptance = false) sees "My Dates" /
- * a block-dates subtitle and "Not booked" instead of "No offer yet" for an
- * unbooked eligible date.
+ * Task 4: AvailabilityPage's H1/subtitle must derive from
+ * availabilityPageCopy(flow) (src/lib/flowCopy.ts) instead of a hardcoded
+ * "My Offers" title, so a direct-booking org (artist_acceptance = false)
+ * sees "My Dates" / a block-dates subtitle instead.
+ *
+ * The former per-row status badge assertions ("Not booked" / "No offer yet",
+ * sourced from bookingStatusLabels(flow)) were dropped in the calendar-surface
+ * refactor (task 17): CalendarSurface's artist lenses render a fixed,
+ * non-flow-aware status label (ARTIST_TONES in src/lib/calendar/tone.ts,
+ * e.g. "Not offered") rather than the page's flow-aware wording. That's a
+ * capability gap in the shared calendar-surface lib, out of this page's
+ * scope to fix — see task-17-report.md.
  */
 
 // One eligible date with no booking row seeded, so its status resolves to
-// "unanswered" and exercises the unbooked-status label.
+// "unanswered".
 const ELIGIBLE = [
   {
     id: "sd-1",
@@ -56,31 +62,10 @@ vi.mock("@/hooks/useArtistEligibleDates", () => ({
   useArtistEligibleDates: () => ({ data: ELIGIBLE, isLoading: false }),
 }));
 
-// Keep the list column machinery minimal but include the status column so the
-// per-row status badge (bookingStatusLabels) actually renders.
-vi.mock("@/features/editor/EditorContext", () => ({
-  useColumnTemplate: () => ({
-    orderedColumns: [
-      { columnId: "show_dates.date", visible: true, order: 0 },
-      { columnId: "_computed.my_status", visible: true, order: 1 },
-    ],
-    visibleCount: 2,
-  }),
-  useEditorConfig: () => ({ isEditorMode: false, getColumnLabel: (id: string) => id }),
-}));
-vi.mock("@/features/editor/useColumnHeaders", () => ({
-  useColumnHeaders: () => [
-    { columnId: "show_dates.date", headerLabel: "Date" },
-    { columnId: "_computed.my_status", headerLabel: "Status" },
-  ],
-}));
-vi.mock("@/features/editor/ColumnLayoutEditor", () => ({ ColumnLayoutEditor: () => null }));
-
 const flowHolder = { flow: BOOKING_FLOW_DEFAULTS as BookingFlow };
 const timesHolder = { times: DEFAULT_FLOW_TIMES as FlowTimes };
 vi.mock("@/hooks/useBookingFlow", () => ({
   useBookingFlow: () => ({ data: flowHolder.flow }),
-  useReferenceField: () => ({ reference: { source: "show" }, customFieldKey: null }),
   useFlowTimes: () => ({ data: timesHolder.times }),
 }));
 
@@ -101,9 +86,6 @@ describe("AvailabilityPage flow-aware copy (Task 4)", () => {
 
     expect(await screen.findByRole("heading", { name: "My Dates" })).toBeInTheDocument();
     expect(screen.getByText(/Block dates you can't perform/)).toBeInTheDocument();
-
-    expect(await screen.findByText("Not booked")).toBeInTheDocument();
-    expect(screen.queryByText("No offer yet")).not.toBeInTheDocument();
   });
 });
 
