@@ -57,10 +57,10 @@
     },
     "needsYou": {
       "groups": {
-        "expires-today": "Expiring today",
-        "at-risk": "At risk of running short",
+        "expires-today": "Expires today",
+        "at-risk": "At risk · under-cast inside {{days}} days",
         "ready-to-issue": "Ready to issue",
-        "cancelled": "Cancelled, cast not notified"
+        "cancelled": "Cancelled · needs a decision"
       },
       "scopeChips": {
         "all": "All",
@@ -115,7 +115,7 @@
       "rulesTitle": "What lands here",
       "rules": {
         "expiresToday": "Offers expiring today, so they do not lapse unanswered.",
-        "atRisk": "Dates at risk of running short of confirmed cast before the show.",
+        "atRisk": "An under-cast date inside {{days}} days of the show.",
         "readyToIssue": "Dates whose cast is confirmed and ready for a hire order.",
         "cancelled": "Cancelled dates the cast has not been notified about yet."
       }

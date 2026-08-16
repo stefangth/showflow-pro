@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildNeedsYouQueue, filterNeedsYouQueueByScope } from './needsYou';
+import { buildNeedsYouQueue, filterNeedsYouQueueByScope, RISK_WINDOW_DAYS } from './needsYou';
 import type { NeedsYouQueue } from './needsYou';
 import type { ProducerDateEntry } from './types';
 import type { BookingWithArtistRow } from '@/data/bookings';
@@ -225,6 +225,41 @@ describe('buildNeedsYouQueue', () => {
     });
 
     const queue = buildNeedsYouQueue({ entries: [pastEntry], people: [], readyIds: new Set(), now: NOW });
+
+    expect(queue.groups).toHaveLength(0);
+    expect(queue.totalItems).toBe(0);
+  });
+
+  it('includes an under-cast date exactly RISK_WINDOW_DAYS out as at-risk', () => {
+    const boundaryEntry = makeEntry({
+      id: 'd-boundary',
+      date: new Date(2026, 7, 15 + RISK_WINDOW_DAYS), // exactly 30 days after NOW's 15 Aug
+      status: 'open',
+      mainSlots: 2,
+      confirmedMain: 0,
+      acceptedMain: 0,
+      pendingMain: 0,
+    });
+
+    const queue = buildNeedsYouQueue({ entries: [boundaryEntry], people: [], readyIds: new Set(), now: NOW });
+
+    expect(queue.groups).toHaveLength(1);
+    expect(queue.groups[0].key).toBe('at-risk');
+    expect(queue.groups[0].items[0].dateId).toBe('d-boundary');
+  });
+
+  it('excludes an under-cast date RISK_WINDOW_DAYS + 1 out from at-risk', () => {
+    const beyondWindowEntry = makeEntry({
+      id: 'd-beyond',
+      date: new Date(2026, 7, 15 + RISK_WINDOW_DAYS + 1), // 31 days after NOW's 15 Aug
+      status: 'open',
+      mainSlots: 2,
+      confirmedMain: 0,
+      acceptedMain: 0,
+      pendingMain: 0,
+    });
+
+    const queue = buildNeedsYouQueue({ entries: [beyondWindowEntry], people: [], readyIds: new Set(), now: NOW });
 
     expect(queue.groups).toHaveLength(0);
     expect(queue.totalItems).toBe(0);

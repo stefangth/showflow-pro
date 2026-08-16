@@ -23,11 +23,11 @@ describe('QueueRail', () => {
 
     expect(screen.getByTestId('queue-rail-progress')).toBeInTheDocument();
     expect(screen.getByText('4 cleared today')).toBeInTheDocument();
-    expect(screen.getByText('Expiring today')).toBeInTheDocument();
-    expect(screen.getByText('At risk of running short')).toBeInTheDocument();
+    expect(screen.getByText('Expires today')).toBeInTheDocument();
+    expect(screen.getByText('At risk · under-cast inside 30 days')).toBeInTheDocument();
     // Zero-count groups are omitted from the breakdown.
     expect(screen.queryByText('Ready to issue')).not.toBeInTheDocument();
-    expect(screen.queryByText('Cancelled, cast not notified')).not.toBeInTheDocument();
+    expect(screen.queryByText('Cancelled · needs a decision')).not.toBeInTheDocument();
   });
 
   it('renders an eligible-artist shortlist row per artist and fires onOffer with the date + artist ids', () => {
@@ -70,7 +70,7 @@ describe('QueueRail', () => {
     render(<QueueRail queue={makeQueue()} clearedToday={0} shortlist={null} />);
     const rules = screen.getByTestId('queue-rail-rules');
     expect(rules).toHaveTextContent('Offers expiring today');
-    expect(rules).toHaveTextContent('at risk');
+    expect(rules).toHaveTextContent('under-cast date inside 30 days');
     expect(rules).toHaveTextContent('ready for a hire order');
     expect(rules).toHaveTextContent('Cancelled dates');
   });

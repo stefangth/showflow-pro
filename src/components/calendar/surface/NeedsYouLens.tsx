@@ -4,7 +4,7 @@ import { ChevronDown } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { dfLocale } from '@/lib/dates';
-import { filterNeedsYouQueueByScope, type NeedsYouGroupKey, type NeedsYouItem, type NeedsYouQueue, type NeedsYouScopeKey } from '@/lib/calendar/needsYou';
+import { filterNeedsYouQueueByScope, RISK_WINDOW_DAYS, type NeedsYouGroupKey, type NeedsYouItem, type NeedsYouQueue, type NeedsYouScopeKey } from '@/lib/calendar/needsYou';
 import type { ActionGates, ProducerActionKey, Tone } from '@/lib/calendar/types';
 import { PRODUCER_TONES, TONE_BG, TONE_TEXT } from '@/lib/calendar/tone';
 import { cn } from '@/lib/utils';
@@ -281,7 +281,7 @@ export function NeedsYouLens({
                 data-testid={`needs-you-group-title-${group.key}`}
                 className={cn('text-[11px] font-semibold uppercase tracking-[1.6px]', GROUP_HEADER_CLASS[group.key])}
               >
-                {t(`calendar.needsYou.groups.${group.key}`)}
+                {t(`calendar.needsYou.groups.${group.key}`, { days: RISK_WINDOW_DAYS })}
               </p>
               {bulk && (
                 <Button
