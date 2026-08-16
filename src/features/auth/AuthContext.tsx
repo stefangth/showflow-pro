@@ -18,7 +18,7 @@ export interface ViewAsUser {
   roles: AppRole[];
 }
 
-interface AuthContextType {
+export interface AuthContextType {
   user: User | null;
   session: Session | null;
   roles: AppRole[];
@@ -46,7 +46,11 @@ interface AuthContextType {
   setViewAsUser: (u: ViewAsUser | null) => void;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+// Exported (only) so the shared test harness (src/test/renderWithProviders.tsx) can mount
+// a lightweight test-only `AuthContext.Provider` — real `AuthProvider` performs a live
+// Supabase auth bootstrap that has no place in a unit-test render. Application code should
+// keep consuming `useAuth()`, never this context object directly.
+export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
