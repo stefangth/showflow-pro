@@ -18,7 +18,7 @@ import { useMyArtist } from '@/hooks/useMyArtist';
 import { useMyHireOrders } from '@/hooks/useHireOrders';
 import { UnlinkedArtistCard } from '@/components/artists/UnlinkedArtistCard';
 import { CalendarSurface } from '@/components/calendar/surface/CalendarSurface';
-import { toArtistEntries } from '@/lib/calendar/artistData';
+import { toArtistEntries, type ArtistBookingStatus } from '@/lib/calendar/artistData';
 import type { ArtistDateEntry, ArtistStatus } from '@/lib/calendar/types';
 import { respondToOffer } from '@/data/bookings';
 import { fetchMyActiveBookedDates } from '@/data/artists';
@@ -126,17 +126,17 @@ function ArtistAvailability() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('bookings')
-        .select('id, show_date_id, status')
+        .select('id, show_date_id, status, offer_expires_at')
         .eq('artist_id', artist!.id)
         .neq('status', 'cancelled');
       if (error) throw error;
-      return (data ?? []) as { id: string; show_date_id: string; status: string }[];
+      return (data ?? []) as { id: string; show_date_id: string; status: string; offer_expires_at: string | null }[];
     },
   });
 
   const statusByDateId = useMemo(() => {
-    const m = new Map<string, { bookingId: string; status: string }>();
-    myBookings?.forEach((b) => m.set(b.show_date_id, { bookingId: b.id, status: b.status }));
+    const m = new Map<string, ArtistBookingStatus>();
+    myBookings?.forEach((b) => m.set(b.show_date_id, { bookingId: b.id, status: b.status, offerExpiresAt: b.offer_expires_at }));
     return m;
   }, [myBookings]);
 

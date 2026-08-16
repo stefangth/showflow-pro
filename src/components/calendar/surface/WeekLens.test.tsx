@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { WeekLens } from './WeekLens';
+import { toDateKey } from '@/lib/dates';
 import type { ProducerDateEntry } from '@/lib/calendar/types';
 
 // Deterministic anchor: Fri 14 Aug 2026 -> week window is Mon 10 Aug .. Sun 16 Aug
@@ -62,6 +63,9 @@ describe('WeekLens', () => {
     // at the top of the grid and block2 (19:30) is 5.5 hours down.
     expect(block1).toHaveStyle({ top: '0px' });
     expect(block2).toHaveStyle({ top: '242px' }); // 5.5h * 44px/h
+
+    // Header shows the day's unfilled-main-slot flag (4/6 filled -> -2).
+    expect(screen.getByTestId(`week-day-unfilled-${toDateKey(timedEntry.date)}`)).toHaveTextContent('2');
 
     expect(block1).toHaveTextContent('14:00');
     expect(block1).toHaveTextContent('Aida');

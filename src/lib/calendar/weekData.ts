@@ -28,6 +28,10 @@ export interface WeekModel {
   band: { startMinutes: number; endMinutes: number };
   blocks: WeekBlock[];
   untimed: { entryId: string; columnIndex: number; title: string }[]; // all-null-session dates
+  /** Open main slots per day column (0..6 Mon..Sun): summed `mainSlots -
+   *  confirmedMain` (floored at 0) across that day's non-cancelled entries.
+   *  Drives the header's `-N` unfilled flag. */
+  unfilledByColumn: number[];
 }
 
 function meterFor(entry: ProducerDateEntry): MeterSegment[] {
@@ -48,9 +52,14 @@ export function toWeekModel(entries: ProducerDateEntry[], anchor: Date): WeekMod
   const blocks: WeekBlock[] = [];
   const untimed: WeekModel['untimed'] = [];
   const sessionValues: (string | null | undefined)[] = [];
+  const unfilledByColumn = Array.from({ length: 7 }, () => 0);
 
   for (const entry of inWeek) {
     const columnIndex = differenceInCalendarDays(entry.date, weekStart);
+
+    if (columnIndex >= 0 && columnIndex < 7 && entry.status !== 'cancelled') {
+      unfilledByColumn[columnIndex] += Math.max(0, entry.mainSlots - entry.confirmedMain);
+    }
     const sessions: { session: 1 | 2 | 3; value: string | null }[] = [
       { session: 1, value: entry.session1 },
       { session: 2, value: entry.session2 },
@@ -83,5 +92,5 @@ export function toWeekModel(entries: ProducerDateEntry[], anchor: Date): WeekMod
 
   const band = bandBounds(sessionValues);
 
-  return { weekStart, columns, band, blocks, untimed };
+  return { weekStart, columns, band, blocks, untimed, unfilledByColumn };
 }

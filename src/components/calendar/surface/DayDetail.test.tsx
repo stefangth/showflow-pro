@@ -139,6 +139,58 @@ describe('DayDetail', () => {
     expect(onPrimary).not.toHaveBeenCalled();
   });
 
+  describe('mobile info tiles (showInfoTiles)', () => {
+    it('artist: renders Session + Expires tiles when the offer clock has started', () => {
+      render(
+        <DayDetail
+          role="artist"
+          day={new Date(2026, 7, 20)}
+          artistEntries={[artistEntry({ myStatus: 'suggested', session1: '19:00', offerExpiresAt: '2026-08-20T17:00:00' })]}
+          showInfoTiles
+        />
+      );
+      expect(screen.getByTestId('day-detail-tiles')).toBeInTheDocument();
+      expect(screen.getByTestId('day-detail-tile-session')).toHaveTextContent('19:00');
+      expect(screen.getByTestId('day-detail-tile-expires')).toBeInTheDocument();
+    });
+
+    it('artist: hides the Expires tile while offerExpiresAt is null (clock not started)', () => {
+      render(
+        <DayDetail
+          role="artist"
+          day={new Date(2026, 7, 20)}
+          artistEntries={[artistEntry({ myStatus: 'suggested', session1: '19:00', offerExpiresAt: null })]}
+          showInfoTiles
+        />
+      );
+      expect(screen.getByTestId('day-detail-tile-session')).toBeInTheDocument();
+      expect(screen.queryByTestId('day-detail-tile-expires')).not.toBeInTheDocument();
+    });
+
+    it('never renders tiles for a producer, even with showInfoTiles set', () => {
+      render(
+        <DayDetail
+          role="producer"
+          day={new Date(2026, 7, 20)}
+          producerEntries={[producerEntry()]}
+          showInfoTiles
+        />
+      );
+      expect(screen.queryByTestId('day-detail-tiles')).not.toBeInTheDocument();
+    });
+
+    it('renders no tiles by default (desktop DayRail path is unaffected)', () => {
+      render(
+        <DayDetail
+          role="artist"
+          day={new Date(2026, 7, 20)}
+          artistEntries={[artistEntry({ myStatus: 'suggested', offerExpiresAt: '2026-08-20T17:00:00' })]}
+        />
+      );
+      expect(screen.queryByTestId('day-detail-tiles')).not.toBeInTheDocument();
+    });
+  });
+
   it('applies an incoming className to the root card element', () => {
     const { container } = render(
       <DayDetail role="producer" day={new Date(2026, 7, 20)} producerEntries={[]} className="mobile-sheet" />

@@ -1,4 +1,4 @@
-import { format } from 'date-fns';
+import { format, isSameDay } from 'date-fns';
 import type { ActionGates, ArtistDateEntry, ArtistStatus, ProducerDateEntry, Tone } from '@/lib/calendar/types';
 import { ARTIST_TONES, PRODUCER_TONES, TONE_TEXT, artistStatusLabel } from '@/lib/calendar/tone';
 import { resolveProducerPrimary } from '@/lib/calendar/producerPrimary';
@@ -32,7 +32,41 @@ export interface DayDetailProps {
    *  secondary label. `DayRail` never sets it, so its desktop output is
    *  unaffected. */
   hideSecondary?: boolean;
+  /** Renders the artist offer info tiles (Session, Expires) above the action
+   *  buttons — set only by `CalendarDaySheet` for the mobile artist sheet
+   *  (design mock 2c). `DayRail` never sets it, so the desktop rail is
+   *  unaffected/byte-identical. Ignored for `role="producer"`. Call time is
+   *  intentionally omitted (locked "omit call time" decision). Each tile
+   *  hides when its source is absent — the Expires tile stays dark until the
+   *  offer's `offerExpiresAt` clock has started. */
+  showInfoTiles?: boolean;
   className?: string;
+}
+
+interface InfoTile {
+  key: string;
+  label: string;
+  value: string;
+  warn?: boolean;
+}
+
+/** Session + Expires tiles for the mobile artist sheet, derived from the day's
+ *  first offered entry. Call time is deliberately excluded. */
+function artistInfoTiles(day: Date, entries: ArtistDateEntry[]): InfoTile[] {
+  const entry = entries[0];
+  if (!entry) return [];
+  const tiles: InfoTile[] = [];
+  if (entry.session1) tiles.push({ key: 'session', label: 'Session', value: entry.session1 });
+  if (entry.offerExpiresAt) {
+    const expiry = new Date(entry.offerExpiresAt);
+    tiles.push({
+      key: 'expires',
+      label: 'Expires',
+      value: isSameDay(expiry, day) ? format(expiry, 'HH:mm') : format(expiry, 'd MMM'),
+      warn: true,
+    });
+  }
+  return tiles;
 }
 
 /** Artist primary-action default (spec §4): a pending offer to answer beats
@@ -204,11 +238,13 @@ export function DayDetail({
   statusLabels,
   actionGates,
   hideSecondary,
+  showInfoTiles,
   className,
 }: DayDetailProps) {
   const resolvedProducerEntries = producerEntries ?? [];
   const resolvedArtistEntries = artistEntries ?? [];
   const entries = role === 'producer' ? resolvedProducerEntries : resolvedArtistEntries;
+  const infoTiles = role === 'artist' && showInfoTiles ? artistInfoTiles(day, resolvedArtistEntries) : [];
 
   const header = buildRailHeader(role, day, resolvedProducerEntries, resolvedArtistEntries, statusLabels);
   const emptyText = role === 'producer' ? 'No dates scheduled on this day.' : 'No date offered to you on this day.';
@@ -251,6 +287,28 @@ export function DayDetail({
           <p data-testid="day-rail-empty" className="text-[13px] text-muted-foreground">
             {emptyText}
           </p>
+        )}
+
+        {infoTiles.length > 0 && (
+          <div data-testid="day-detail-tiles" className="grid grid-cols-2 gap-2">
+            {infoTiles.map(tile => (
+              <div
+                key={tile.key}
+                data-testid={`day-detail-tile-${tile.key}`}
+                className={cn(
+                  'rounded-m border px-3 py-2',
+                  tile.warn ? 'border-warning/40 bg-warning/10' : 'border-border'
+                )}
+              >
+                <p className={cn('text-[10px] font-semibold uppercase tracking-wide', tile.warn ? 'text-warning' : 'text-muted-foreground')}>
+                  {tile.label}
+                </p>
+                <p className={cn('mt-0.5 font-mono text-sm font-semibold', tile.warn ? 'text-warning' : 'text-foreground')}>
+                  {tile.value}
+                </p>
+              </div>
+            ))}
+          </div>
         )}
 
         {(resolvedPrimaryLabel || resolvedSecondaryLabel) && (

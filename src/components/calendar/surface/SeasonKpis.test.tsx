@@ -5,7 +5,10 @@ import type { SeasonKpis as SeasonKpisData } from '@/lib/calendar/seasonData';
 
 const KPIS: SeasonKpisData = {
   unfilledMainSlots: 14,
+  unfilledDates: 6,
   heaviestWeekLabel: '10/08/2026',
+  heaviestWeekDates: 5,
+  heaviestWeekOpen: 9,
   readyForHireOrder: 3,
 };
 
@@ -27,5 +30,25 @@ describe('SeasonKpis', () => {
     const ready = screen.getByTestId('season-kpi-readyForHireOrder');
     expect(ready).toHaveTextContent('Ready for hire order');
     expect(ready).toHaveTextContent('3');
+  });
+
+  it('renders a context note under each tile derived from the kpis data', () => {
+    render(<SeasonKpis kpis={KPIS} />);
+
+    expect(screen.getByTestId('season-kpi-unfilledMainSlots')).toHaveTextContent('across 6 dates');
+    expect(screen.getByTestId('season-kpi-heaviestWeek')).toHaveTextContent('5 dates · 9 slots open');
+    expect(screen.getByTestId('season-kpi-readyForHireOrder')).toHaveTextContent('fully filled, no order yet');
+  });
+
+  it('singularizes the date word and copes with an empty heaviest week', () => {
+    render(
+      <SeasonKpis
+        kpis={{ unfilledMainSlots: 2, unfilledDates: 1, heaviestWeekLabel: '', heaviestWeekDates: 0, heaviestWeekOpen: 0, readyForHireOrder: 0 }}
+      />
+    );
+    expect(screen.getByTestId('season-kpi-unfilledMainSlots')).toHaveTextContent('across 1 date');
+    // no heaviest-week label -> value dash, no note line crash
+    expect(screen.getByTestId('season-kpi-heaviestWeek')).toHaveTextContent('-');
+    expect(screen.getByTestId('season-kpi-readyForHireOrder')).toHaveTextContent('none waiting');
   });
 });

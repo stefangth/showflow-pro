@@ -39,7 +39,14 @@ export interface SeasonModel {
 
 export interface SeasonKpis {
   unfilledMainSlots: number;
+  /** Count of in-window non-cancelled dates that still have an open main slot
+   *  — the "across N dates" context under the unfilled-slots KPI. */
+  unfilledDates: number;
   heaviestWeekLabel: string;
+  /** Dates in, and open main slots across, the heaviest week — the
+   *  "N dates · M slots open" context under the heaviest-week KPI. */
+  heaviestWeekDates: number;
+  heaviestWeekOpen: number;
   readyForHireOrder: number;
 }
 
@@ -114,33 +121,49 @@ export function seasonKpis(entries: ProducerDateEntry[], anchor: Date, readyIds:
   const inWindow = entries.filter((e) => e.date >= start && e.date <= end);
 
   let unfilledMainSlots = 0;
+  let unfilledDates = 0;
   let readyForHireOrder = 0;
-  const weekCounts = new Map<number, { monday: Date; count: number }>();
+  const weekCounts = new Map<number, { monday: Date; count: number; open: number }>();
 
   for (const entry of inWindow) {
     if (entry.status !== 'cancelled') {
-      unfilledMainSlots += Math.max(0, entry.mainSlots - entry.confirmedMain);
+      const open = Math.max(0, entry.mainSlots - entry.confirmedMain);
+      unfilledMainSlots += open;
+      if (open > 0) unfilledDates++;
     }
     if (readyIds.has(entry.id)) readyForHireOrder++;
 
+    const openSlots = entry.status === 'cancelled' ? 0 : Math.max(0, entry.mainSlots - entry.confirmedMain);
     const monday = startOfWeek(entry.date, { weekStartsOn: 1 });
     const key = monday.getTime();
     const bucket = weekCounts.get(key);
     if (bucket) {
       bucket.count++;
+      bucket.open += openSlots;
     } else {
-      weekCounts.set(key, { monday, count: 1 });
+      weekCounts.set(key, { monday, count: 1, open: openSlots });
     }
   }
 
   let heaviestWeekLabel = '';
+  let heaviestWeekDates = 0;
+  let heaviestWeekOpen = 0;
   let maxCount = 0;
-  for (const { monday, count } of weekCounts.values()) {
+  for (const { monday, count, open } of weekCounts.values()) {
     if (count > maxCount) {
       maxCount = count;
       heaviestWeekLabel = formatDateDMY(monday);
+      heaviestWeekDates = count;
+      heaviestWeekOpen = open;
     }
   }
 
-  return { unfilledMainSlots, readyForHireOrder, heaviestWeekLabel };
+  return {
+    unfilledMainSlots,
+    unfilledDates,
+    readyForHireOrder,
+    heaviestWeekLabel,
+    heaviestWeekDates,
+    heaviestWeekOpen,
+  };
 }

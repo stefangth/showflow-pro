@@ -90,6 +90,7 @@ export function CalendarDaySheet({
             statusLabels={statusLabels}
             actionGates={actionGates}
             hideSecondary
+            showInfoTiles={role === 'artist'}
           />
 
           <div className="flex flex-col items-center gap-1">

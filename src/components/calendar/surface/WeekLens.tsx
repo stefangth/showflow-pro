@@ -96,6 +96,7 @@ export function WeekLens({ entries, anchor, onOpenEntry, today = new Date(), cla
         <div />
         {model.columns.map((day, i) => {
           const isToday = isSameDay(day, today);
+          const unfilled = model.unfilledByColumn[i] ?? 0;
           return (
             <div
               key={toDateKey(day)}
@@ -108,6 +109,14 @@ export function WeekLens({ entries, anchor, onOpenEntry, today = new Date(), cla
               <span className={cn('font-mono text-[17px] tabular-nums', isToday ? 'font-semibold text-primary' : 'text-foreground')}>
                 {day.getDate()}
               </span>
+              {unfilled > 0 && (
+                <span
+                  data-testid={`week-day-unfilled-${toDateKey(day)}`}
+                  className="font-mono text-[10px] font-semibold leading-none text-warning"
+                >
+                  &minus;{unfilled}
+                </span>
+              )}
             </div>
           );
         })}
