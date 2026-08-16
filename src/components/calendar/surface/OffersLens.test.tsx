@@ -172,6 +172,26 @@ describe('OffersLens', () => {
     expect(actionsBlock?.className).toContain('md:w-[232px]');
   });
 
+  it('formats a raw HH:MM:SS session value as HH:MM, not the raw string', () => {
+    const suggested = entry({ id: 'ad-6', myStatus: 'suggested', session1: '18:00:00' });
+
+    render(
+      <OffersLens
+        entries={[suggested]}
+        onAccept={vi.fn()}
+        onDecline={vi.fn()}
+        onBlock={vi.fn()}
+        answeredToday={[]}
+        notOfferedYet={[]}
+        today={TODAY}
+      />
+    );
+
+    const card = screen.getByTestId('offer-card-ad-6');
+    expect(card).toHaveTextContent('18:00');
+    expect(card).not.toHaveTextContent('18:00:00');
+  });
+
   it('renders the "Answered today" rows and the "not offered yet" rows with a working Block button', () => {
     const onBlock = vi.fn();
     const notOffered = entry({ id: 'ad-5', myStatus: 'unanswered', bookingId: null, date: new Date(2026, 7, 20) });

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import type { ArtistDateEntry, ArtistStatus } from '@/lib/calendar/types';
 import { ARTIST_TONES, artistStatusLabel } from '@/lib/calendar/tone';
 import { dfLocale, isPastDate } from '@/lib/dates';
+import { sessionLabel } from '@/lib/calendar/time';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 
@@ -32,10 +33,10 @@ function entryTitle(entry: ArtistDateEntry): string {
   return entry.program + (entry.subProgram ? ` · ${entry.subProgram}` : '');
 }
 
-/** Venue + call time, joined for the queue card's detail line — skips
+/** Venue + session time, joined for the queue card's detail line — skips
  *  either half when absent rather than leaving a stray separator. */
 function entryDetail(entry: ArtistDateEntry): string {
-  return [entry.venue, entry.session1].filter(Boolean).join(' · ');
+  return [entry.venue, sessionLabel(entry.session1)].filter(Boolean).join(' · ');
 }
 
 /**
