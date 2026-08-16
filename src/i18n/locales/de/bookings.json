@@ -7,6 +7,15 @@
       "season": "Saison",
       "agenda": "Agenda"
     },
+    "toolbar": {
+      "keyHint": {
+        "needsYou": "Klick auf eine Karte öffnet den Termin",
+        "month": "⏎ öffnen · Leertaste Vorschau",
+        "week": "⏎ / Leertaste öffnen",
+        "season": "⏎ / Leertaste öffnen",
+        "agenda": "⏎ / Leertaste öffnen"
+      }
+    },
     "header": {
       "eyebrow": "BUCHUNGEN",
       "title": "Shows & Buchungen"
@@ -51,6 +60,13 @@
         "at-risk": "Droht knapp zu werden",
         "ready-to-issue": "Bereit zum Ausstellen",
         "cancelled": "Storniert, Besetzung nicht informiert"
+      },
+      "scopeChips": {
+        "all": "Alle",
+        "expires-today": "Vormerkungen",
+        "at-risk": "Besetzung",
+        "ready-to-issue": "Verträge",
+        "cancelled": "Storniert"
       },
       "primary": {
         "confirmHolds_one": "{{count}} Vormerkung bestätigen",

@@ -374,4 +374,61 @@ describe('CalendarSurface — mobile shell (useIsMobile true)', () => {
     expect(rail).toBeInTheDocument();
     expect(group.compareDocumentPosition(rail) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
+
+  it('renders the scope-chip row on mobile Needs-you too, filtering the groups the same way as desktop', () => {
+    const queue = {
+      groups: [
+        {
+          key: 'at-risk' as const,
+          items: [
+            {
+              dateId: 'pd-1',
+              entry: producerEntry({ id: 'pd-1', status: 'partially_filled' }),
+              group: 'at-risk' as const,
+              people: [],
+              earliestExpiry: null,
+              openMainSlots: 3,
+              leadDays: 2,
+            },
+          ],
+        },
+        {
+          key: 'cancelled' as const,
+          items: [
+            {
+              dateId: 'pd-2',
+              entry: producerEntry({ id: 'pd-2', status: 'cancelled' }),
+              group: 'cancelled' as const,
+              people: [],
+              earliestExpiry: null,
+              openMainSlots: 0,
+              leadDays: 4,
+            },
+          ],
+        },
+      ],
+      totalItems: 2,
+      countByGroup: { 'expires-today': 0, 'at-risk': 1, 'ready-to-issue': 0, cancelled: 1 },
+    };
+
+    render(
+      <CalendarSurface
+        role="producer"
+        producerEntries={[
+          producerEntry({ id: 'pd-1', status: 'partially_filled' }),
+          producerEntry({ id: 'pd-2', status: 'cancelled' }),
+        ]}
+        actions={noopActions()}
+        lens="needs-you"
+        onLensChange={vi.fn()}
+        today={TODAY}
+        needsYouQueue={queue}
+      />
+    );
+
+    expect(screen.getByTestId('scope-chip-row')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('scope-chip-cancelled'));
+    expect(screen.getByTestId('needs-you-group-cancelled')).toBeInTheDocument();
+    expect(screen.queryByTestId('needs-you-group-at-risk')).not.toBeInTheDocument();
+  });
 });

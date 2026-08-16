@@ -7,6 +7,15 @@
       "season": "Season",
       "agenda": "Agenda"
     },
+    "toolbar": {
+      "keyHint": {
+        "needsYou": "Click a card to open its date",
+        "month": "⏎ open · Space preview",
+        "week": "⏎ / Space open",
+        "season": "⏎ / Space open",
+        "agenda": "⏎ / Space open"
+      }
+    },
     "header": {
       "eyebrow": "BOOKINGS",
       "title": "Shows & bookings"
@@ -51,6 +60,13 @@
         "at-risk": "At risk of running short",
         "ready-to-issue": "Ready to issue",
         "cancelled": "Cancelled, cast not notified"
+      },
+      "scopeChips": {
+        "all": "All",
+        "expires-today": "Holds",
+        "at-risk": "Casting",
+        "ready-to-issue": "Paperwork",
+        "cancelled": "Cancelled"
       },
       "primary": {
         "confirmHolds_one": "Confirm {{count}} hold",

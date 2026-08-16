@@ -58,6 +58,23 @@ export interface NeedsYouQueue {
  *  `NeedsYouLens`) share one canonical order instead of each redeclaring it. */
 export const DISPLAY_ORDER: NeedsYouGroupKey[] = ['expires-today', 'at-risk', 'ready-to-issue', 'cancelled'];
 
+/** The toolbar's Needs-you scope-chip selection: a single group key, or
+ *  `'all'` for no filter (the default). */
+export type NeedsYouScopeKey = 'all' | NeedsYouGroupKey;
+
+/**
+ * Filters an already-built `NeedsYouQueue` down to a single group for the
+ * toolbar's scope-chip row — a pure slice of the groups already computed by
+ * `buildNeedsYouQueue`, no re-derivation or data fetch. `totalItems` and
+ * `countByGroup` are left untouched so a chip row can keep showing the full
+ * breakdown (each chip's live count) even while the queue body only renders
+ * the selected group. `scope === 'all'` returns `queue` unchanged.
+ */
+export function filterNeedsYouQueueByScope(queue: NeedsYouQueue, scope: NeedsYouScopeKey): NeedsYouQueue {
+  if (scope === 'all') return queue;
+  return { ...queue, groups: queue.groups.filter((group) => group.key === scope) };
+}
+
 function toPerson(row: BookingWithArtistRow): NeedsYouPerson | null {
   if (!row.artist) return null;
   return { artistId: row.artist.id, name: row.artist.name, status: row.status, isUnderstudy: row.isUnderstudy };

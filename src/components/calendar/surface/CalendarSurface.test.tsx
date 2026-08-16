@@ -587,6 +587,194 @@ describe('CalendarSurface — needs-you (producer default)', () => {
   });
 });
 
+function needsYouQueueWithAtRiskAndCancelled(atRisk: ProducerDateEntry, cancelled: ProducerDateEntry): NeedsYouQueue {
+  const atRiskItem: NeedsYouItem = {
+    dateId: atRisk.id,
+    entry: atRisk,
+    group: 'at-risk',
+    people: [],
+    earliestExpiry: null,
+    openMainSlots: Math.max(0, atRisk.mainSlots - atRisk.confirmedMain),
+    leadDays: 3,
+  };
+  const cancelledItem: NeedsYouItem = {
+    dateId: cancelled.id,
+    entry: cancelled,
+    group: 'cancelled',
+    people: [],
+    earliestExpiry: null,
+    openMainSlots: 0,
+    leadDays: 5,
+  };
+  return {
+    groups: [
+      { key: 'at-risk', items: [atRiskItem] },
+      { key: 'cancelled', items: [cancelledItem] },
+    ],
+    totalItems: 2,
+    countByGroup: { 'expires-today': 0, 'at-risk': 1, 'ready-to-issue': 0, cancelled: 1 },
+  };
+}
+
+describe('CalendarSurface — Needs-you scope chips + toolbar key hint', () => {
+  it('renders the scope-chip row only on the Needs-you lens, with an "All" chip plus one per non-empty group', () => {
+    const atRisk = producerEntry({ id: 'pd-risk', mainSlots: 6, confirmedMain: 2 });
+    const cancelled = producerEntry({ id: 'pd-cancelled', status: 'cancelled' });
+    const queue = needsYouQueueWithAtRiskAndCancelled(atRisk, cancelled);
+    const { rerender } = render(
+      <CalendarSurface
+        role="producer"
+        producerEntries={[atRisk, cancelled]}
+        actions={noopActions()}
+        lens="needs-you"
+        onLensChange={vi.fn()}
+        today={TODAY}
+        needsYouQueue={queue}
+      />
+    );
+
+    expect(screen.getByTestId('scope-chip-row')).toBeInTheDocument();
+    expect(screen.getByTestId('scope-chip-all')).toHaveTextContent('2');
+    expect(screen.getByTestId('scope-chip-at-risk')).toHaveTextContent('1');
+    expect(screen.getByTestId('scope-chip-cancelled')).toHaveTextContent('1');
+    // No expires-today or ready-to-issue items in this queue, so no chip for them.
+    expect(screen.queryByTestId('scope-chip-expires-today')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('scope-chip-ready-to-issue')).not.toBeInTheDocument();
+
+    rerender(
+      <CalendarSurface
+        role="producer"
+        producerEntries={[atRisk, cancelled]}
+        actions={noopActions()}
+        lens="month"
+        onLensChange={vi.fn()}
+        today={TODAY}
+        needsYouQueue={queue}
+      />
+    );
+    expect(screen.queryByTestId('scope-chip-row')).not.toBeInTheDocument();
+  });
+
+  it('selecting a scope chip filters the queue body to that category, without touching the QueueRail overview', () => {
+    const atRisk = producerEntry({ id: 'pd-risk', mainSlots: 6, confirmedMain: 2 });
+    const cancelled = producerEntry({ id: 'pd-cancelled', status: 'cancelled' });
+    const queue = needsYouQueueWithAtRiskAndCancelled(atRisk, cancelled);
+    render(
+      <CalendarSurface
+        role="producer"
+        producerEntries={[atRisk, cancelled]}
+        actions={noopActions()}
+        lens="needs-you"
+        onLensChange={vi.fn()}
+        today={TODAY}
+        needsYouQueue={queue}
+      />
+    );
+
+    // Both groups render before any chip is selected (default "All").
+    expect(screen.getByTestId('needs-you-group-at-risk')).toBeInTheDocument();
+    expect(screen.getByTestId('needs-you-group-cancelled')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('scope-chip-cancelled'));
+
+    expect(screen.getByTestId('needs-you-group-cancelled')).toBeInTheDocument();
+    expect(screen.queryByTestId('needs-you-group-at-risk')).not.toBeInTheDocument();
+    // The chip row itself keeps showing the full, unfiltered counts.
+    expect(screen.getByTestId('scope-chip-all')).toHaveTextContent('2');
+    expect(screen.getByTestId('scope-chip-at-risk')).toHaveTextContent('1');
+    // The side QueueRail (desktop) still reports both groups in its breakdown.
+    const rail = screen.getByTestId('queue-rail');
+    expect(rail).toHaveTextContent('At risk of running short');
+    expect(rail).toHaveTextContent('Cancelled, cast not notified');
+
+    fireEvent.click(screen.getByTestId('scope-chip-all'));
+    expect(screen.getByTestId('needs-you-group-at-risk')).toBeInTheDocument();
+    expect(screen.getByTestId('needs-you-group-cancelled')).toBeInTheDocument();
+  });
+
+  it('resets the scope filter to "All" when the lens changes away from Needs-you and back', () => {
+    const atRisk = producerEntry({ id: 'pd-risk', mainSlots: 6, confirmedMain: 2 });
+    const cancelled = producerEntry({ id: 'pd-cancelled', status: 'cancelled' });
+    const queue = needsYouQueueWithAtRiskAndCancelled(atRisk, cancelled);
+    const { rerender } = render(
+      <CalendarSurface
+        role="producer"
+        producerEntries={[atRisk, cancelled]}
+        actions={noopActions()}
+        lens="needs-you"
+        onLensChange={vi.fn()}
+        today={TODAY}
+        needsYouQueue={queue}
+      />
+    );
+    fireEvent.click(screen.getByTestId('scope-chip-cancelled'));
+    expect(screen.queryByTestId('needs-you-group-at-risk')).not.toBeInTheDocument();
+
+    rerender(
+      <CalendarSurface
+        role="producer"
+        producerEntries={[atRisk, cancelled]}
+        actions={noopActions()}
+        lens="month"
+        onLensChange={vi.fn()}
+        today={TODAY}
+        needsYouQueue={queue}
+      />
+    );
+    rerender(
+      <CalendarSurface
+        role="producer"
+        producerEntries={[atRisk, cancelled]}
+        actions={noopActions()}
+        lens="needs-you"
+        onLensChange={vi.fn()}
+        today={TODAY}
+        needsYouQueue={queue}
+      />
+    );
+    expect(screen.getByTestId('needs-you-group-at-risk')).toBeInTheDocument();
+    expect(screen.getByTestId('needs-you-group-cancelled')).toBeInTheDocument();
+  });
+
+  it('renders a right-aligned key-hint on the toolbar row for month/week/season/agenda/needs-you, and none for Offers/All dates', () => {
+    const { rerender } = render(
+      <CalendarSurface
+        role="producer"
+        producerEntries={[producerEntry()]}
+        actions={noopActions()}
+        lens="month"
+        onLensChange={vi.fn()}
+        today={TODAY}
+      />
+    );
+    expect(screen.getByTestId('calendar-toolbar-key-hint')).toBeInTheDocument();
+
+    rerender(
+      <CalendarSurface
+        role="producer"
+        producerEntries={[producerEntry()]}
+        actions={noopActions()}
+        lens="needs-you"
+        onLensChange={vi.fn()}
+        today={TODAY}
+      />
+    );
+    expect(screen.getByTestId('calendar-toolbar-key-hint')).toBeInTheDocument();
+
+    rerender(
+      <CalendarSurface
+        role="artist"
+        artistEntries={[artistEntry()]}
+        actions={noopActions()}
+        lens="offers"
+        onLensChange={vi.fn()}
+        today={TODAY}
+      />
+    );
+    expect(screen.queryByTestId('calendar-toolbar-key-hint')).not.toBeInTheDocument();
+  });
+});
+
 describe('CalendarSurface — artist', () => {
   it('defaults to the Offers lens and renders [Offers, Month, All dates] tabs', () => {
     render(
