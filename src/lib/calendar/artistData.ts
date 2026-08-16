@@ -2,6 +2,7 @@ import type { ArtistDateEntry, ArtistStatus, MonthGridCell, MonthGridChip } from
 import type { EligibleDate } from '@/hooks/useArtistEligibleDates';
 import { isPastDate, parseDateOnly, toDateKey } from '@/lib/dates';
 import { monthMatrix } from './period';
+import { sessionLabel } from './time';
 import { ARTIST_TONES } from './tone';
 
 /** The booking-status values that flow straight through to `ArtistStatus` —
@@ -75,7 +76,7 @@ function artistFlag(dayEntries: ArtistDateEntry[]): MonthGridCell['flag'] {
 function chipFor(entry: ArtistDateEntry): MonthGridChip {
   return {
     title: entry.program,
-    time: entry.session1 ?? undefined,
+    time: sessionLabel(entry.session1) || undefined,
     tone: ARTIST_TONES[entry.myStatus].tone,
     // Artist cells are status-only — no fill meter.
   };

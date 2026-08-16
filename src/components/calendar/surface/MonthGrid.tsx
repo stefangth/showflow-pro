@@ -216,13 +216,21 @@ export function MonthGrid({
                     )}
                   >
                     <div className={cn('truncate font-medium', TONE_TEXT[chip.tone])}>{chip.title}</div>
-                    {(chip.time || chip.meter) && (
+                    {(chip.time || chip.meter || (chip.extraSessions ?? 0) > 0) && (
                       <div
                         data-testid={`month-grid-chip-meter-row-${key}-${chipIndex}`}
                         className="mt-0.5 flex items-center gap-1"
                       >
                         {chip.time && (
                           <span className="font-mono text-[9.5px] text-muted-foreground">{chip.time}</span>
+                        )}
+                        {(chip.extraSessions ?? 0) > 0 && (
+                          <span
+                            data-testid={`month-grid-chip-sessions-${key}-${chipIndex}`}
+                            className="inline-flex items-center rounded-[4px] bg-accent-50 px-1 text-[9px] font-medium text-accent-700"
+                          >
+                            +{chip.extraSessions}
+                          </span>
                         )}
                         {chip.meter && (
                           <FillMeter segments={chip.meter} tone={chip.tone} size="chip" className="ml-auto" />
@@ -232,7 +240,7 @@ export function MonthGrid({
                   </div>
                 ))}
                 {moreCount > 0 && (
-                  <span className="text-[11px] text-muted-foreground">{t('common:calendar.grid.more', { count: moreCount })}</span>
+                  <span className="text-[11px] font-medium text-accent-700">{t('common:calendar.grid.more', { count: moreCount })}</span>
                 )}
               </div>
             </div>

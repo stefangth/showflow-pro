@@ -58,7 +58,7 @@ export interface ActionGate { disabled: boolean; title?: string }
 export type ActionGates = Partial<Record<ProducerActionKey, ActionGate>>;
 
 export interface MeterSegment { filled: boolean }
-export interface MonthGridChip { title: string; time?: string; tone: Tone; meter?: MeterSegment[] }
+export interface MonthGridChip { title: string; time?: string; tone: Tone; meter?: MeterSegment[]; extraSessions?: number }
 export interface MonthGridCell {
   day: Date | null; dayNum: number | null;
   isToday: boolean; isPast: boolean; isSelected: boolean; inRange: boolean;
