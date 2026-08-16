@@ -292,6 +292,27 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     // Omitted entirely when there are no attachments, so pre-Task-10 sends are byte-for-byte unchanged.
     const resendAttachments = attachments?.map((a) => ({ filename: a.filename, content: a.content_base64 }))
 
+    // Demo guardrail: never deliver from a demo org. Capture the fully-rendered
+    // artifact for the in-app "demo outbox" and short-circuit with a success shape
+    // so every caller's emailWasSent(...) behaves exactly as for a real send.
+    if (orgId) {
+      const { data: orgRow } = await admin.from('organizations').select('is_demo').eq('id', orgId).maybeSingle()
+      if ((orgRow as { is_demo?: boolean } | null)?.is_demo) {
+        await admin.from('demo_captured_sends').insert({
+          org_id: orgId,
+          kind: (resendAttachments && resendAttachments.length > 0) ? 'pdf' : 'email',
+          to_label: effectiveRecipient,
+          subject: presentation.subject,
+          preview_html: html,
+        })
+        await admin.from('email_send_log').update({
+          status: 'sent',
+          sent_at: deps.now().toISOString(),
+        }).eq('message_id', messageId)
+        return json({ success: true, message_id: messageId }, 200)
+      }
+    }
+
     // Send via Resend
     const sendResponse = await deps.fetch('https://api.resend.com/emails', {
       method: 'POST',
