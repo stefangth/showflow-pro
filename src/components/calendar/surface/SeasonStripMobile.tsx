@@ -19,8 +19,9 @@ export interface SeasonStripMobileProps {
  *  viewport (mock 2e). */
 const LABEL_WIDTH = 92;
 const DAY_WIDTH = 20;
-/** Bar track height (px) for the per-program fill-height bars — matches the
- *  brief's `Math.max(12, Math.round(32 * intensity))` formula. */
+/** Bar track height (px) for the per-program fill-height bars. Height is
+ *  `Math.max(12, Math.round(42 * Math.max(intensity, 0.25)))` — the fill ratio
+ *  floored at 25% so a configured-but-empty date still shows a visible stub. */
 const BAR_TRACK_HEIGHT = 42;
 /** A day's "Unfilled slots" load bar renders amber once it is at least half
  *  of the window's busiest day, muted otherwise. */
@@ -163,7 +164,7 @@ export function SeasonStripMobile({ entries, anchor, readyIds, onOpenDate, class
               >
                 <span className="truncate text-[11px] font-medium text-foreground">{row.label}</span>
                 <span className="font-mono text-[9px] tabular-nums text-muted-foreground">
-                  {dateCount} dates · -{unfilled}
+                  {dateCount} {dateCount === 1 ? 'date' : 'dates'} · -{unfilled}
                 </span>
               </div>
               {row.cells.map(cell => (

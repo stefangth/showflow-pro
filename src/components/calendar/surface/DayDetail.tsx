@@ -50,10 +50,13 @@ interface InfoTile {
   warn?: boolean;
 }
 
-/** Session + Expires tiles for the mobile artist sheet, derived from the day's
- *  first offered entry. Call time is deliberately excluded. */
+/** Session + Expires tiles for the mobile artist sheet, derived from the entry
+ *  the primary action targets: the first pending offer (matching
+ *  `artistPrimaryLabel`'s "Accept offer" selection) so the tiles describe the
+ *  offer being acted on, falling back to the day's first entry otherwise. Call
+ *  time is deliberately excluded. */
 function artistInfoTiles(day: Date, entries: ArtistDateEntry[]): InfoTile[] {
-  const entry = entries[0];
+  const entry = entries.find(e => e.myStatus === 'suggested') ?? entries[0];
   if (!entry) return [];
   const tiles: InfoTile[] = [];
   if (entry.session1) tiles.push({ key: 'session', label: 'Session', value: entry.session1 });

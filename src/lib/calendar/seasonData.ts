@@ -126,22 +126,21 @@ export function seasonKpis(entries: ProducerDateEntry[], anchor: Date, readyIds:
   const weekCounts = new Map<number, { monday: Date; count: number; open: number }>();
 
   for (const entry of inWindow) {
+    const deficit = entry.status === 'cancelled' ? 0 : Math.max(0, entry.mainSlots - entry.confirmedMain);
     if (entry.status !== 'cancelled') {
-      const open = Math.max(0, entry.mainSlots - entry.confirmedMain);
-      unfilledMainSlots += open;
-      if (open > 0) unfilledDates++;
+      unfilledMainSlots += deficit;
+      if (deficit > 0) unfilledDates++;
     }
     if (readyIds.has(entry.id)) readyForHireOrder++;
 
-    const openSlots = entry.status === 'cancelled' ? 0 : Math.max(0, entry.mainSlots - entry.confirmedMain);
     const monday = startOfWeek(entry.date, { weekStartsOn: 1 });
     const key = monday.getTime();
     const bucket = weekCounts.get(key);
     if (bucket) {
       bucket.count++;
-      bucket.open += openSlots;
+      bucket.open += deficit;
     } else {
-      weekCounts.set(key, { monday, count: 1, open: openSlots });
+      weekCounts.set(key, { monday, count: 1, open: deficit });
     }
   }
 

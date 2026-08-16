@@ -35,7 +35,20 @@ function byColumn<T extends { columnIndex: number }>(items: T[]): Map<number, T[
   return map;
 }
 
-function WeekBlockCard({ block, band, onOpenEntry }: { block: WeekBlock; band: WeekModel['band']; onOpenEntry: (entryId: string) => void }) {
+function WeekBlockCard({
+  block,
+  band,
+  heightPx = BLOCK_HEIGHT,
+  onOpenEntry,
+}: {
+  block: WeekBlock;
+  band: WeekModel['band'];
+  /** Clamped block height — sessions carry no duration, so a block defaults to
+   *  `BLOCK_HEIGHT` but is shortened to the gap before the next session in the
+   *  same column so closely-timed sessions don't overlap. */
+  heightPx?: number;
+  onOpenEntry: (entryId: string) => void;
+}) {
   const toneSpec = PRODUCER_TONES[block.status];
   const filled = block.meter.filter(s => s.filled).length;
   const top = ((block.startMinutes - band.startMinutes) / 60) * HOUR_HEIGHT;
@@ -45,7 +58,7 @@ function WeekBlockCard({ block, band, onOpenEntry }: { block: WeekBlock; band: W
       type="button"
       data-testid={`week-block-${block.entryId}-${block.session}`}
       onClick={() => onOpenEntry(block.entryId)}
-      style={{ top, height: BLOCK_HEIGHT }}
+      style={{ top, height: heightPx }}
       className="absolute inset-x-1 flex flex-col justify-between overflow-hidden rounded-[6px] border border-border bg-card px-1.5 py-1 text-left shadow-elev1 hover:bg-muted/40"
     >
       <span aria-hidden="true" className={cn('absolute inset-y-0 left-0 w-[3px]', toneSpec.railClass)} />
@@ -176,9 +189,25 @@ export function WeekLens({ entries, anchor, onOpenEntry, today = new Date(), cla
                   style={{ top: ((m - band.startMinutes) / 60) * HOUR_HEIGHT }}
                 />
               ))}
-              {(blocksByColumn.get(i) ?? []).map(block => (
-                <WeekBlockCard key={`${block.entryId}-${block.session}`} block={block} band={band} onOpenEntry={onOpenEntry} />
-              ))}
+              {[...(blocksByColumn.get(i) ?? [])]
+                .sort((a, b) => a.startMinutes - b.startMinutes)
+                .map((block, bi, sorted) => {
+                  const next = sorted[bi + 1];
+                  // Clamp height to the gap before the next session so
+                  // closely-timed blocks in the same column never overlap.
+                  const heightPx = next
+                    ? Math.min(BLOCK_HEIGHT, ((next.startMinutes - block.startMinutes) / 60) * HOUR_HEIGHT)
+                    : BLOCK_HEIGHT;
+                  return (
+                    <WeekBlockCard
+                      key={`${block.entryId}-${block.session}`}
+                      block={block}
+                      band={band}
+                      heightPx={heightPx}
+                      onOpenEntry={onOpenEntry}
+                    />
+                  );
+                })}
             </div>
           );
         })}

@@ -74,9 +74,9 @@ describe('SeasonStripMobile', () => {
     render(<SeasonStripMobile entries={[entryA, entryB]} anchor={ANCHOR} readyIds={new Set()} onOpenDate={vi.fn()} />);
 
     // show-a: 1 date, unfilled = 6 - 3 = 3.
-    expect(screen.getByTestId('season-strip-label-show-a')).toHaveTextContent('1 dates · -3');
+    expect(screen.getByTestId('season-strip-label-show-a')).toHaveTextContent('1 date · -3');
     // show-b: 1 date, unfilled = 4 - 4 = 0.
-    expect(screen.getByTestId('season-strip-label-show-b')).toHaveTextContent('1 dates · -0');
+    expect(screen.getByTestId('season-strip-label-show-b')).toHaveTextContent('1 date · -0');
   });
 
   it('colours each program bar by status tone and shows an x for a cancelled date', () => {

@@ -154,6 +154,25 @@ describe('DayDetail', () => {
       expect(screen.getByTestId('day-detail-tile-expires')).toBeInTheDocument();
     });
 
+    it('artist: on a multi-offer day the tiles follow the pending offer, not entries[0]', () => {
+      // entries[0] is a confirmed booking with no expiry; entries[1] is the
+      // pending offer the "Accept offer" primary acts on. Tiles must describe
+      // the offer, not the confirmed date.
+      render(
+        <DayDetail
+          role="artist"
+          day={new Date(2026, 7, 20)}
+          artistEntries={[
+            artistEntry({ id: 'ad-confirmed', myStatus: 'confirmed', session1: '14:00', offerExpiresAt: null }),
+            artistEntry({ id: 'ad-offer', myStatus: 'suggested', session1: '19:00', offerExpiresAt: '2026-08-20T17:00:00' }),
+          ]}
+          showInfoTiles
+        />
+      );
+      expect(screen.getByTestId('day-detail-tile-session')).toHaveTextContent('19:00');
+      expect(screen.getByTestId('day-detail-tile-expires')).toBeInTheDocument();
+    });
+
     it('artist: hides the Expires tile while offerExpiresAt is null (clock not started)', () => {
       render(
         <DayDetail
