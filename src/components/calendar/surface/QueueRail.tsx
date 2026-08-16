@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { DISPLAY_ORDER } from '@/lib/calendar/needsYou';
+import { DISPLAY_ORDER, RISK_WINDOW_DAYS } from '@/lib/calendar/needsYou';
 import type { NeedsYouGroupKey, NeedsYouQueue } from '@/lib/calendar/needsYou';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -83,7 +83,9 @@ export function QueueRail({ queue, clearedToday, shortlist, onOffer, className }
             {breakdown.map(({ key, count }) => (
               <div key={key} className="flex items-center gap-2">
                 <span className={cn('h-1 w-2.5 shrink-0 rounded-full', GROUP_DOT_CLASS[key])} />
-                <span className="text-[12.5px] text-foreground">{t(`calendar.needsYou.groups.${key}`)}</span>
+                <span className="text-[12.5px] text-foreground">
+                  {t(`calendar.needsYou.groups.${key}`, { days: RISK_WINDOW_DAYS })}
+                </span>
                 <span className="ml-auto font-mono text-xs font-medium tabular-nums text-foreground">
                   {count}
                 </span>
@@ -135,7 +137,7 @@ export function QueueRail({ queue, clearedToday, shortlist, onOffer, className }
         </p>
         <ul className="flex flex-col gap-1.5 text-xs text-muted-foreground">
           {RULE_KEYS.map((key) => (
-            <li key={key}>{t(`calendar.queue.rules.${key}`)}</li>
+            <li key={key}>{t(`calendar.queue.rules.${key}`, { days: RISK_WINDOW_DAYS })}</li>
           ))}
         </ul>
       </div>

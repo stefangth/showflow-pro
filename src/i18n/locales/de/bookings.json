@@ -58,9 +58,9 @@
     "needsYou": {
       "groups": {
         "expires-today": "Läuft heute ab",
-        "at-risk": "Droht knapp zu werden",
+        "at-risk": "Im Risiko · unterbesetzt in {{days}} Tagen",
         "ready-to-issue": "Bereit zum Ausstellen",
-        "cancelled": "Storniert, Besetzung nicht informiert"
+        "cancelled": "Storniert · Entscheidung nötig"
       },
       "scopeChips": {
         "all": "Alle",
@@ -115,7 +115,7 @@
       "rulesTitle": "Was hier landet",
       "rules": {
         "expiresToday": "Angebote, die heute ablaufen, damit sie nicht unbeantwortet verfallen.",
-        "atRisk": "Termine, bei denen die bestätigte Besetzung vor der Show knapp zu werden droht.",
+        "atRisk": "Ein unterbesetzter Termin innerhalb von {{days}} Tagen vor der Show.",
         "readyToIssue": "Termine, deren Besetzung bestätigt und bereit für einen Engagementvertrag ist.",
         "cancelled": "Stornierte Termine, über die die Besetzung noch nicht informiert wurde."
       }

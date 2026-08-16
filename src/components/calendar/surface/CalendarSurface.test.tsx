@@ -684,8 +684,8 @@ describe('CalendarSurface — Needs-you scope chips + toolbar key hint', () => {
     expect(screen.getByTestId('scope-chip-at-risk')).toHaveTextContent('1');
     // The side QueueRail (desktop) still reports both groups in its breakdown.
     const rail = screen.getByTestId('queue-rail');
-    expect(rail).toHaveTextContent('At risk of running short');
-    expect(rail).toHaveTextContent('Cancelled, cast not notified');
+    expect(rail).toHaveTextContent('At risk · under-cast inside 30 days');
+    expect(rail).toHaveTextContent('Cancelled · needs a decision');
 
     fireEvent.click(screen.getByTestId('scope-chip-all'));
     expect(screen.getByTestId('needs-you-group-at-risk')).toBeInTheDocument();

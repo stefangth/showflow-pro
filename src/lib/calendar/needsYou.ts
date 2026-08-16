@@ -18,6 +18,11 @@ import type { ProducerDateEntry } from './types';
 
 export type NeedsYouGroupKey = 'expires-today' | 'at-risk' | 'ready-to-issue' | 'cancelled';
 
+/** Upper bound (in calendar days) on how far out an under-cast date can be
+ *  and still land in the `at-risk` group — matches the design mock's
+ *  "under-cast inside {RISK_WINDOW} days" group title (mock lines 947-950). */
+export const RISK_WINDOW_DAYS = 30;
+
 export interface NeedsYouPerson {
   artistId: string;
   name: string;
@@ -100,8 +105,9 @@ function classify(args: {
   earliestExpiry: Date | null;
   readyIds: Set<string>;
   todayKey: string;
+  todayLocal: Date;
 }): NeedsYouGroupKey | null {
-  const { entry, earliestExpiry, readyIds, todayKey } = args;
+  const { entry, earliestExpiry, readyIds, todayKey, todayLocal } = args;
   const isCancelled = entry.status === 'cancelled';
 
   // 1. cancelled — priority-first so a cancelled+unnotified date that also
@@ -115,12 +121,16 @@ function classify(args: {
   //    date that's still in readyIds falls through to here).
   if (readyIds.has(entry.id)) return 'ready-to-issue';
 
-  // 4. at-risk — non-cancelled, future-or-today (Berlin), understaffed.
+  // 4. at-risk — non-cancelled, future-or-today (Berlin), understaffed, and
+  //    inside the RISK_WINDOW_DAYS window (design mock's "under-cast inside
+  //    30 days" group title) — an understaffed date further out than that
+  //    isn't urgent enough yet to surface in the queue.
   if (
     !isCancelled &&
     toDateKey(entry.date) >= todayKey &&
     entry.mainSlots > 0 &&
-    openToOfferSlots(entry) > 0
+    openToOfferSlots(entry) > 0 &&
+    differenceInCalendarDays(entry.date, todayLocal) <= RISK_WINDOW_DAYS
   ) {
     return 'at-risk';
   }
@@ -156,7 +166,7 @@ export function buildNeedsYouQueue(args: {
   for (const entry of entries) {
     const rows = peopleByDate.get(entry.id) ?? [];
     const earliestExpiry = earliestExpiryToday(rows, todayKey);
-    const group = classify({ entry, earliestExpiry, readyIds, todayKey });
+    const group = classify({ entry, earliestExpiry, readyIds, todayKey, todayLocal });
     if (!group) continue;
 
     const peopleOut = rows

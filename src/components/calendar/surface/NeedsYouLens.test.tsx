@@ -303,8 +303,8 @@ describe('NeedsYouLens', () => {
     // The folded overview's breakdown still reports both groups — it always
     // reads the unfiltered `queue` prop, never the scope-narrowed list.
     const overview = screen.getByTestId('queue-rail-progress');
-    expect(overview).toHaveTextContent('At risk of running short');
-    expect(overview).toHaveTextContent('Cancelled, cast not notified');
+    expect(overview).toHaveTextContent('At risk · under-cast inside 30 days');
+    expect(overview).toHaveTextContent('Cancelled · needs a decision');
 
     rerender(
       <NeedsYouLens
