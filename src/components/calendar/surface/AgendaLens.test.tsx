@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+import { renderWithProviders } from '@/test/renderWithProviders';
 import { AgendaLens } from './AgendaLens';
 import type { ProducerDateEntry } from '@/lib/calendar/types';
 
@@ -186,6 +187,70 @@ describe('AgendaLens', () => {
     const title = screen.getByText('Cirque Noir');
     expect(title.parentElement?.className).toMatch(/\bw-full\b/);
     expect(title.parentElement?.className).toMatch(/\bmd:flex-1\b/);
+  });
+
+  describe('grouping toggle (per-date / per-show)', () => {
+    it('defaults to per-date: a multi-session entry renders as one row with HH:MM time and a +1 badge', () => {
+      const e = entry({ id: 'pd-1', session1: '18:00:00', session2: '21:00:00', session3: null });
+      renderWithProviders(<AgendaLens entries={[e]} onOpenEntry={vi.fn()} onAction={vi.fn()} />);
+
+      expect(screen.getByTestId('agenda-row-pd-1')).toBeInTheDocument();
+      expect(screen.queryByTestId('agenda-row-pd-1-s1')).not.toBeInTheDocument();
+      expect(screen.getByText('18:00')).toBeInTheDocument();
+      expect(screen.queryByText('18:00:00')).not.toBeInTheDocument();
+      expect(screen.getByText('+1')).toBeInTheDocument();
+    });
+
+    it('clicking "Per show" expands a multi-session entry into one row per performance, with no +N badge and no action on the follow-on row', () => {
+      const e = entry({
+        id: 'pd-1',
+        session1: '18:00:00',
+        session2: '21:00:00',
+        session3: null,
+        status: 'open',
+      });
+      renderWithProviders(<AgendaLens entries={[e]} onOpenEntry={vi.fn()} onAction={vi.fn()} />);
+
+      fireEvent.click(screen.getByTestId('agenda-grouping-per-show'));
+
+      expect(screen.queryByTestId('agenda-row-pd-1')).not.toBeInTheDocument();
+      const row1 = screen.getByTestId('agenda-row-pd-1-s1');
+      const row2 = screen.getByTestId('agenda-row-pd-1-s2');
+      expect(row1).toHaveTextContent('18:00');
+      expect(row2).toHaveTextContent('21:00');
+      expect(screen.queryByText('+1')).not.toBeInTheDocument();
+      // Only the first performance row carries the row action.
+      expect(screen.getByTestId('agenda-action-pd-1')).toBeInTheDocument();
+      expect(row2.querySelector('button')).toBeNull();
+    });
+
+    it('toggles aria-pressed and active styling between the two grouping buttons', () => {
+      const e = entry({ id: 'pd-1' });
+      renderWithProviders(<AgendaLens entries={[e]} onOpenEntry={vi.fn()} onAction={vi.fn()} />);
+
+      const perDateBtn = screen.getByTestId('agenda-grouping-per-date');
+      const perShowBtn = screen.getByTestId('agenda-grouping-per-show');
+      expect(perDateBtn).toHaveAttribute('aria-pressed', 'true');
+      expect(perShowBtn).toHaveAttribute('aria-pressed', 'false');
+
+      fireEvent.click(perShowBtn);
+
+      expect(perDateBtn).toHaveAttribute('aria-pressed', 'false');
+      expect(perShowBtn).toHaveAttribute('aria-pressed', 'true');
+    });
+
+    it('persists the grouping choice to localStorage and restores it on the next mount', () => {
+      const e = entry({ id: 'pd-1', session1: '18:00:00', session2: '21:00:00', session3: null });
+      const { unmount } = renderWithProviders(<AgendaLens entries={[e]} onOpenEntry={vi.fn()} onAction={vi.fn()} />);
+
+      fireEvent.click(screen.getByTestId('agenda-grouping-per-show'));
+      expect(localStorage.getItem('showflow.calendar.agendaGrouping')).toBe('per-show');
+      unmount();
+
+      renderWithProviders(<AgendaLens entries={[e]} onOpenEntry={vi.fn()} onAction={vi.fn()} />);
+      expect(screen.getByTestId('agenda-grouping-per-show')).toHaveAttribute('aria-pressed', 'true');
+      expect(screen.getByTestId('agenda-row-pd-1-s1')).toBeInTheDocument();
+    });
   });
 
   it('leaves the action button enabled when its gate is absent or not disabled', () => {

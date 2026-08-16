@@ -110,7 +110,10 @@
       "weekOfHeading": "Woche vom {{weekStart}}",
       "dateCount_one": "{{count}} Termin",
       "dateCount_other": "{{count}} Termine",
-      "mainFillCount": "{{filled}}/{{total}} Haupt"
+      "mainFillCount": "{{filled}}/{{total}} Haupt",
+      "groupingLabel": "Gruppierung",
+      "groupingPerDate": "Pro Termin",
+      "groupingPerShow": "Pro Vorstellung"
     },
     "week": {
       "tbdLabel": "n.n."

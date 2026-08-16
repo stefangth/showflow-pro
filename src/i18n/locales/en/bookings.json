@@ -110,7 +110,10 @@
       "weekOfHeading": "Week of {{weekStart}}",
       "dateCount_one": "{{count}} date",
       "dateCount_other": "{{count}} dates",
-      "mainFillCount": "{{filled}}/{{total}} main"
+      "mainFillCount": "{{filled}}/{{total}} main",
+      "groupingLabel": "Grouping",
+      "groupingPerDate": "Per date",
+      "groupingPerShow": "Per show"
     },
     "week": {
       "tbdLabel": "TBD"
