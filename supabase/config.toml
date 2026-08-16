@@ -52,6 +52,9 @@ verify_jwt = true
 [functions.delete-my-account]
 verify_jwt = true
 
+[functions.demo-ops]
+verify_jwt = true
+
 [functions.export-org-data]
 verify_jwt = true
 

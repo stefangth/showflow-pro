@@ -1,0 +1,80 @@
+// Demo-ops: the callable surface for demo-org operations.
+//
+// Consumes the `wipe_demo_org` / `seed_demo_org` RPCs (Task 3). Four actions:
+//  - `flag_and_seed` (super-admin only): marks an already-provisioned org
+//    `is_demo = true`, upserts the `hire_orders` entitlement on, and seeds it.
+//    The frontend calls `provision-org` FIRST (org + first-admin + invite),
+//    then this — `demo-ops` cannot re-invoke `provision-org` itself (its
+//    `requireSuperAdmin` gate rejects a service-role fn-to-fn call), and
+//    re-implementing account/membership/email would duplicate that code.
+//  - `reset` / `reseed` / `wipe` (org-admin; super-admins pass too via the
+//    requireOrgRole fallback): re-asserts `is_demo` at the edge (defense in
+//    depth on top of each RPC's own guard), then calls wipe/seed.
+//    `reset` = wipe then seed; `reseed` = seed only; `wipe` = wipe only.
+import { preflight, json } from "../_shared/http.ts";
+import { requireOrgRole, requireSuperAdmin } from "../_shared/auth.ts";
+import { realDeps, type Deps } from "../_shared/deps.ts";
+
+type Body = {
+  action: "reset" | "reseed" | "wipe" | "flag_and_seed";
+  org_id?: string;
+  volume?: "small" | "full";
+};
+
+async function assertDemoOrg(deps: Deps, orgId: string): Promise<boolean> {
+  const { data } = await deps.admin.from("organizations").select("is_demo").eq("id", orgId).maybeSingle();
+  return (data as { is_demo?: boolean } | null)?.is_demo === true;
+}
+
+export async function handle(req: Request, deps: Deps): Promise<Response> {
+  if (req.method === "OPTIONS") return preflight();
+
+  const body = (await req.json().catch(() => null)) as Body | null;
+  if (!body?.action || !body?.org_id) return json({ error: "bad_request" }, 400);
+  const orgId = body.org_id;
+  const volume = body.volume ?? "full";
+
+  // flag_and_seed is platform-only: the org already exists (provision-org created it +
+  // its admin + invite); here we only stamp is_demo, enable hire_orders, and seed.
+  if (body.action === "flag_and_seed") {
+    const gate = await requireSuperAdmin(deps, req);
+    if (!gate.ok) return gate.response;
+
+    await deps.admin.from("organizations").update({ is_demo: true }).eq("id", orgId);
+    await deps.admin.from("org_entitlements").upsert(
+      [{ org_id: orgId, feature: "hire_orders", enabled: true }],
+      { onConflict: "org_id,feature" },
+    );
+
+    const { error: seedErr } = await deps.admin.rpc("seed_demo_org", {
+      p_org: orgId,
+      p_volume: volume,
+      p_actor: gate.userId ?? undefined,
+    });
+    if (seedErr) return json({ error: seedErr.message }, 500);
+    return json({ ok: true });
+  }
+
+  // The destructive/seed actions are org-admin (super-admins pass too via requireOrgRole's fallback).
+  const gate = await requireOrgRole(deps, req, orgId, ["admin"]);
+  if (!gate.ok) return gate.response;
+
+  // Re-assert the flag at the edge (defense in depth on top of the RPC guard).
+  if (!(await assertDemoOrg(deps, orgId))) return json({ error: "not_a_demo_org" }, 400);
+
+  if (body.action === "wipe" || body.action === "reset") {
+    const { error } = await deps.admin.rpc("wipe_demo_org", { p_org: orgId });
+    if (error) return json({ error: error.message }, 500);
+  }
+  if (body.action === "reseed" || body.action === "reset") {
+    const { error } = await deps.admin.rpc("seed_demo_org", {
+      p_org: orgId,
+      p_volume: volume,
+      p_actor: gate.userId ?? undefined,
+    });
+    if (error) return json({ error: error.message }, 500);
+  }
+  return json({ ok: true });
+}
+
+if (import.meta.main) Deno.serve((req) => handle(req, realDeps()));
