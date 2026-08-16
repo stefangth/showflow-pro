@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import type { ProducerDateEntry } from '@/lib/calendar/types';
 import { toWeekModel, type WeekBlock, type WeekModel } from '@/lib/calendar/weekData';
 import { minutesToLabel } from '@/lib/calendar/time';
-import { PRODUCER_TONES, TONE_TEXT } from '@/lib/calendar/tone';
+import { PRODUCER_TONES, TONE_BG, TONE_TEXT } from '@/lib/calendar/tone';
 import { toDateKey, weekdayShortLabels } from '@/lib/dates';
 import { cn } from '@/lib/utils';
 import { FillMeter } from './FillMeter';
@@ -60,14 +60,17 @@ function WeekBlockCard({
       data-testid={`week-block-${block.entryId}-${block.session}`}
       onClick={() => onOpenEntry(block.entryId)}
       style={{ top, height: heightPx }}
-      className="absolute inset-x-1 flex flex-col justify-between overflow-hidden rounded-[6px] border border-border bg-card px-1.5 py-1 text-left shadow-elev1 hover:bg-muted/40"
+      className={cn(
+        'absolute inset-x-1 flex flex-col justify-between overflow-hidden rounded-[6px] border-[0.5px] border-border px-1.5 py-1 text-left shadow-elev1',
+        TONE_BG[toneSpec.tone]
+      )}
     >
       <span aria-hidden="true" className={cn('absolute inset-y-0 left-0 w-[3px]', toneSpec.railClass)} />
-      <span className="truncate pl-1.5 font-mono text-[10px] text-muted-foreground">
+      <span className={cn('truncate pl-1.5 font-mono text-[10px]', TONE_TEXT[toneSpec.tone])}>
         {minutesToLabel(block.startMinutes)}
       </span>
-      <p className="truncate pl-1.5 text-[12px] font-semibold text-foreground">{block.title}</p>
-      <p className="truncate pl-1.5 text-[10.5px] text-muted-foreground">
+      <p className={cn('truncate pl-1.5 text-[12px] font-semibold', TONE_TEXT[toneSpec.tone])}>{block.title}</p>
+      <p className={cn('truncate pl-1.5 text-[10.5px]', TONE_TEXT[toneSpec.tone])}>
         {[block.venue, block.city].filter(Boolean).join(' · ')}
       </p>
       <div className="flex items-center gap-1.5 pl-1.5">
@@ -110,9 +113,15 @@ export function WeekLens({ entries, anchor, onOpenEntry, today = new Date(), cla
   const untimedByColumn = byColumn(model.untimed);
 
   return (
-    <div data-testid="week-lens" className={cn('flex w-full flex-col', className)}>
+    <div
+      data-testid="week-lens"
+      className={cn(
+        'flex w-full flex-col overflow-hidden rounded-[10px] border-[0.5px] border-border bg-card shadow-[var(--shadow-2)]',
+        className
+      )}
+    >
       {/* Day header row: weekday + date, today tinted. */}
-      <div className="grid grid-cols-[52px_repeat(7,1fr)] border-b border-border">
+      <div className="grid grid-cols-[52px_repeat(7,1fr)] border-b-[0.5px] border-border">
         <div />
         {model.columns.map((day, i) => {
           const isToday = isSameDay(day, today);
@@ -121,7 +130,7 @@ export function WeekLens({ entries, anchor, onOpenEntry, today = new Date(), cla
             <div
               key={toDateKey(day)}
               data-testid={`week-day-header-${toDateKey(day)}`}
-              className={cn('flex flex-col items-center gap-0.5 border-l border-border px-1 py-2', isToday && 'bg-accent-50')}
+              className={cn('flex flex-col items-center gap-0.5 border-l-[0.5px] border-border px-1 py-2', isToday && 'bg-accent-50')}
             >
               <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                 {weekdays[i]}
@@ -143,10 +152,10 @@ export function WeekLens({ entries, anchor, onOpenEntry, today = new Date(), cla
       </div>
 
       {/* "All day / times TBD" strip for untimed dates. */}
-      <div className="grid grid-cols-[52px_repeat(7,1fr)] border-b border-border">
+      <div className="grid grid-cols-[52px_repeat(7,1fr)] border-b-[0.5px] border-border">
         <div className="px-1 py-1.5 text-[10px] uppercase tracking-wide text-muted-foreground">{t('calendar.week.tbdLabel')}</div>
         {model.columns.map((day, i) => (
-          <div key={toDateKey(day)} className="flex flex-col gap-1 border-l border-border px-1 py-1.5">
+          <div key={toDateKey(day)} className="flex flex-col gap-1 border-l-[0.5px] border-border px-1 py-1.5">
             {(untimedByColumn.get(i) ?? []).map(item => (
               <button
                 key={item.entryId}
@@ -185,14 +194,14 @@ export function WeekLens({ entries, anchor, onOpenEntry, today = new Date(), cla
               key={key}
               data-testid={`week-column-${key}`}
               data-today={isToday}
-              className={cn('relative border-l border-border', isToday && 'bg-accent-50')}
+              className={cn('relative border-l-[0.5px] border-border', isToday && 'bg-accent-50')}
               style={{ height: totalHeight }}
             >
               {hourMarks.map(m => (
                 <span
                   key={m}
                   aria-hidden="true"
-                  className="absolute inset-x-0 border-t border-border/60"
+                  className="absolute inset-x-0 border-t-[0.5px] border-border/60"
                   style={{ top: ((m - band.startMinutes) / 60) * HOUR_HEIGHT }}
                 />
               ))}

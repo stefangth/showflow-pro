@@ -83,7 +83,7 @@ export function DayRail({
         actionGates={actionGates}
       />
 
-      <div className="rounded-m border border-border bg-muted p-3.5">
+      <div className="rounded-[10px] border-[0.5px] border-border bg-muted p-3.5">
         <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-[1.6px] text-muted-foreground">
           {statsTitle}
         </p>
@@ -100,7 +100,7 @@ export function DayRail({
         </div>
       </div>
 
-      <div className="rounded-m border border-border bg-card p-3.5">
+      <div className="rounded-[10px] border-[0.5px] border-border bg-card p-3.5">
         <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-[1.6px] text-muted-foreground">
           {t('common:calendar.rail.legendTitle')}
         </p>

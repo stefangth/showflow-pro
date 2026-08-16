@@ -1,5 +1,4 @@
 import { useTranslation } from 'react-i18next';
-import { Card, CardContent } from '@/components/ui/card';
 import type { SeasonKpis as SeasonKpisData } from '@/lib/calendar/seasonData';
 import { cn } from '@/lib/utils';
 
@@ -8,10 +7,22 @@ interface SeasonKpisProps {
   className?: string;
 }
 
-/** The Season lens's 3 KPI tiles, mirroring `OrdersKpis`' card markup:
- *  Unfilled main slots · Heaviest week · Ready for hire order. Each tile
- *  carries a context sub-line derived from the same `kpis` data so the bare
- *  number explains itself (design mock). */
+/** Per-tile eyebrow tint (design mock): amber for the "unfilled" warning
+ *  metric, brand-violet for the neutral "heaviest week" metric, green for
+ *  the positive "ready for hire order" metric — keyed by the tile's `key`
+ *  so the color mapping can't drift out of sync with the (translated,
+ *  dynamic) label/value/note strings. */
+const KPI_EYEBROW_TONE_CLASS: Record<string, string> = {
+  unfilledMainSlots: 'text-[var(--amber-600)]',
+  heaviestWeek: 'text-accent-700',
+  readyForHireOrder: 'text-[var(--green-600)]',
+};
+
+/** The Season lens's 3 KPI tiles (design lines 413-415): a plain `bg-card`
+ *  box, uniform 14px padding, no shadow — deliberately NOT the generic
+ *  shadcn `Card`, which adds an unwanted shadow and asymmetric padding.
+ *  Each tile carries a context sub-line derived from the same `kpis` data so
+ *  the bare number explains itself (design mock). */
 export function SeasonKpis({ kpis, className }: SeasonKpisProps) {
   const { t } = useTranslation('bookings');
   const tiles: { key: string; label: string; value: string; note: string | null }[] = [
@@ -46,13 +57,18 @@ export function SeasonKpis({ kpis, className }: SeasonKpisProps) {
   return (
     <div data-testid="season-kpis" className={cn('grid grid-cols-1 gap-3 sm:grid-cols-3', className)}>
       {tiles.map(tile => (
-        <Card key={tile.key} data-testid={`season-kpi-${tile.key}`}>
-          <CardContent className="pt-6">
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{tile.label}</p>
-            <p className="mt-1 text-2xl font-semibold tabular-nums text-foreground">{tile.value}</p>
-            {tile.note && <p className="mt-1 text-xs text-muted-foreground">{tile.note}</p>}
-          </CardContent>
-        </Card>
+        <div key={tile.key} data-testid={`season-kpi-${tile.key}`} className="rounded-[10px] bg-card p-[14px]">
+          <p
+            className={cn(
+              'text-xs font-medium uppercase tracking-wide',
+              KPI_EYEBROW_TONE_CLASS[tile.key] ?? 'text-muted-foreground'
+            )}
+          >
+            {tile.label}
+          </p>
+          <p className="mt-1 font-mono text-2xl font-semibold tabular-nums text-foreground">{tile.value}</p>
+          {tile.note && <p className="mt-1 text-xs text-muted-foreground">{tile.note}</p>}
+        </div>
       ))}
     </div>
   );

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { MonthGrid } from './MonthGrid';
+import { TONE_BG } from '@/lib/calendar/tone';
 import type { MonthGridCell } from '@/lib/calendar/types';
 
 function buildCells(): MonthGridCell[] {
@@ -92,6 +93,27 @@ describe('MonthGrid', () => {
     expect(selectedCell).toHaveAttribute('data-in-range', 'true');
   });
 
+  it('gives a single-day selection (isSelected but not inRange) the accent-50 fill too, not just the ring', () => {
+    const cells = buildCells();
+    const cell12 = cells.find(c => c.day?.getDate() === 12)!;
+    cell12.isSelected = true;
+    cell12.inRange = false;
+    render(<MonthGrid cells={cells} onSelectDay={vi.fn()} onOpenDay={vi.fn()} />);
+    const cell = screen.getByTestId('month-grid-cell-2026-08-12');
+    expect(cell.className).toContain('bg-accent-50');
+    expect(cell.className).toContain('ring-primary');
+  });
+
+  it('dims a past cell with a flat bg-muted swap, not opacity (which would also dim chip tint/text)', () => {
+    const cells = buildCells();
+    const cell10 = cells.find(c => c.day?.getDate() === 10)!;
+    cell10.isPast = true;
+    render(<MonthGrid cells={cells} onSelectDay={vi.fn()} onOpenDay={vi.fn()} />);
+    const cell = screen.getByTestId('month-grid-cell-2026-08-10');
+    expect(cell.className).toContain('bg-muted');
+    expect(cell.className).not.toContain('opacity-60');
+  });
+
   it('fires onSelectDay with the clicked Date when a day cell is clicked', () => {
     const onSelectDay = vi.fn();
     render(<MonthGrid cells={buildCells()} onSelectDay={onSelectDay} onOpenDay={vi.fn()} />);
@@ -118,6 +140,26 @@ describe('MonthGrid', () => {
     expect(meterRow.contains(time)).toBe(true);
     expect(meterRow.contains(meter)).toBe(true);
     expect(meter).toHaveAttribute('data-size', 'chip');
+  });
+
+  it('gives a chip a status-tinted background from TONE_BG, keyed by its tone', () => {
+    render(<MonthGrid cells={buildCells()} onSelectDay={vi.fn()} onOpenDay={vi.fn()} />);
+    // day 10 chip 0 is tone 'success'.
+    const successChip = screen.getByTestId('month-grid-chip-2026-08-10-0');
+    expect(successChip.className).toContain(TONE_BG.success);
+
+    // day 10 chip 1 is tone 'warning'.
+    const warningChip = screen.getByTestId('month-grid-chip-2026-08-10-1');
+    expect(warningChip.className).toContain(TONE_BG.warning);
+  });
+
+  it('renders the outer grid wrapped in an elevated white card (radius + hairline border + shadow)', () => {
+    render(<MonthGrid cells={buildCells()} onSelectDay={vi.fn()} onOpenDay={vi.fn()} />);
+    const wrapper = screen.getByTestId('month-grid');
+    expect(wrapper.className).toContain('bg-card');
+    expect(wrapper.className).toContain('rounded-[10px]');
+    expect(wrapper.className).toContain('border-[0.5px]');
+    expect(wrapper.className).toContain('shadow-[var(--shadow-2)]');
   });
 
   it('renders the purple session +N badge when a chip has extraSessions, and none when absent/zero', () => {

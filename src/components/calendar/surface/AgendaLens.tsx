@@ -164,7 +164,7 @@ export function AgendaLens({ entries, onOpenEntry, onAction, actionGates, classN
               {t('calendar.agenda.dateCount', { count: week.entries.length })}
             </span>
           </div>
-          <div className="overflow-hidden rounded-m border border-border bg-card">
+          <div className="overflow-hidden rounded-[10px] border-[0.5px] border-border bg-card">
             {week.entries.flatMap(entry => buildAgendaRows(entry, grouping)).map(row => {
               const toneSpec = PRODUCER_TONES[row.entry.status];
               const meter =
@@ -186,7 +186,7 @@ export function AgendaLens({ entries, onOpenEntry, onAction, actionGates, classN
                   // restores the desktop single-line row exactly at >=768px
                   // (matching `useIsMobile`'s breakpoint) — every `md:`-only
                   // utility below reproduces a value this row already had.
-                  className="flex cursor-pointer flex-col items-start gap-2 border-b border-border px-3.5 py-3 last:border-b-0 hover:bg-muted/50 md:flex-row md:items-center md:gap-3.5 md:py-2.5"
+                  className="flex cursor-pointer flex-col items-start gap-2 border-b-[0.5px] border-border px-3.5 py-3 last:border-b-0 hover:bg-muted md:flex-row md:items-center md:gap-3.5 md:py-2.5"
                 >
                   <div className="shrink-0 md:w-[62px]">
                     <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
