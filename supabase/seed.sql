@@ -176,17 +176,20 @@ on conflict (id) do nothing;
 -- Dates are relative to the run date on purpose: a fixture pinned to fixed
 -- calendar dates silently drifts into the past and stops appearing in the UI.
 -- Status stays `open` so no fill-status or hire-order dispatch trigger fires.
-insert into public.show_dates (id, org_id, show_id, date, city_id, venue, status, session_1, duration_minutes)
+-- `d1` deliberately carries a second session (a matinee + an evening show the
+-- same day) so the calendar's inline session "+N" indicator is demonstrable on
+-- a fresh local stack: Month/Agenda show "15:00 +1" for this production-date.
+insert into public.show_dates (id, org_id, show_id, date, city_id, venue, status, session_1, session_2, session_3, duration_minutes)
 values
   ('5eed0000-0000-0000-0000-0000000000d1', '00000000-0000-0000-0000-00000000b007',
    '5eed0000-0000-0000-0000-0000000000e1', current_date + 14,
-   '5eed0000-0000-0000-0000-0000000000c1', 'Example Venue', 'open', '19:30', 90),
+   '5eed0000-0000-0000-0000-0000000000c1', 'Example Venue', 'open', '15:00', '19:30', null, 90),
   ('5eed0000-0000-0000-0000-0000000000d2', '00000000-0000-0000-0000-00000000b007',
    '5eed0000-0000-0000-0000-0000000000e1', current_date + 21,
-   '5eed0000-0000-0000-0000-0000000000c1', 'Example Venue', 'open', '19:30', 90),
+   '5eed0000-0000-0000-0000-0000000000c1', 'Example Venue', 'open', '19:30', null, null, 90),
   ('5eed0000-0000-0000-0000-0000000000d3', '00000000-0000-0000-0000-00000000b007',
    '5eed0000-0000-0000-0000-0000000000e2', current_date + 28,
-   '5eed0000-0000-0000-0000-0000000000c1', 'Example Venue', 'open', '15:00', 75)
+   '5eed0000-0000-0000-0000-0000000000c1', 'Example Venue', 'open', '15:00', null, null, 75)
 on conflict (id) do nothing;
 
 -- ── Scale-up: a fuller world, heavy on FUTURE show dates ─────────────────────
