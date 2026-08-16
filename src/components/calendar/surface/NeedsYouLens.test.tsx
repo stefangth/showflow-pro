@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { NeedsYouLens } from './NeedsYouLens';
+import { TONE_BG, TONE_TEXT } from '@/lib/calendar/tone';
 import type { NeedsYouItem, NeedsYouQueue } from '@/lib/calendar/needsYou';
 import type { ProducerDateEntry } from '@/lib/calendar/types';
 
@@ -84,7 +85,7 @@ describe('NeedsYouLens', () => {
         onItemAction={onItemAction}
         onOpenDate={onOpenDate}
         onBulk={onBulk}
-        receipts={[{ dateId: 'd-cleared', title: 'Cirque Noir', label: 'Confirmed holds' }]}
+        receipts={[{ dateId: 'd-cleared', title: 'Cirque Noir', label: 'Confirmed holds', kind: 'confirmedAll' }]}
         onUndoLast={onUndoLast}
       />
     );
@@ -129,8 +130,8 @@ describe('NeedsYouLens', () => {
 
     // Receipts footer: a receipt row + "Undo last" fires onUndoLast, and the
     // receipt renders as a colored tone pill (not flat gray text) — this
-    // fixture's "Confirmed holds" label matches the confirmedAll toast
-    // template, so it resolves to the success tone's classes.
+    // fixture's `kind: 'confirmedAll'` resolves via RECEIPT_TONE_BY_KIND to
+    // the success tone's classes, independent of the label text.
     expect(screen.getByTestId('needs-you-receipts')).toBeInTheDocument();
     expect(screen.getByText('Cirque Noir')).toBeInTheDocument();
     const pill = screen.getByTestId('needs-you-receipt-pill-0');
@@ -228,7 +229,7 @@ describe('NeedsYouLens', () => {
         onItemAction={vi.fn()}
         onOpenDate={vi.fn()}
         onBulk={vi.fn()}
-        receipts={[{ dateId: 'd-cleared', title: 'Cirque Noir', label: 'Confirmed' }]}
+        receipts={[{ dateId: 'd-cleared', title: 'Cirque Noir', label: 'Confirmed', kind: 'confirmedAll' }]}
         layout="stacked"
         queueShortlist={{ dateId: 'd-atrisk', dateLabel: 'Thu 20 Aug', artists: [{ artistId: 'a-1', name: 'Jo Reyes' }] }}
       />
@@ -319,5 +320,34 @@ describe('NeedsYouLens', () => {
     );
     expect(screen.getByTestId('needs-you-group-cancelled')).toBeInTheDocument();
     expect(screen.getByTestId('needs-you-group-at-risk')).toBeInTheDocument();
+  });
+
+  it('resolves a receipt pill tone from its kind, not its label text', () => {
+    const queue: NeedsYouQueue = {
+      groups: [],
+      totalItems: 0,
+      countByGroup: { 'expires-today': 0, 'at-risk': 0, 'ready-to-issue': 0, cancelled: 0 },
+    };
+
+    render(
+      <NeedsYouLens
+        queue={queue}
+        onItemAction={vi.fn()}
+        onOpenDate={vi.fn()}
+        onBulk={vi.fn()}
+        // Deliberately mismatched labels vs. kind — the pill tone must come
+        // from `kind` alone, never from re-rendering/matching the label.
+        receipts={[
+          { dateId: 'd-1', title: 'Cirque Noir', label: 'Some free-form text', kind: 'confirmedAll' },
+          { dateId: 'd-2', title: 'Aida', label: 'Other free-form text', kind: 'released' },
+        ]}
+      />
+    );
+
+    const successPill = screen.getByTestId('needs-you-receipt-pill-0');
+    expect(successPill).toHaveClass(TONE_BG.success, TONE_TEXT.success);
+
+    const mutedPill = screen.getByTestId('needs-you-receipt-pill-1');
+    expect(mutedPill).toHaveClass(TONE_BG.muted, TONE_TEXT.muted);
   });
 });

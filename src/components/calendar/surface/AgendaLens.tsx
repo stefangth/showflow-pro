@@ -182,6 +182,12 @@ export function AgendaLens({ entries, onOpenEntry, onAction, actionGates, classN
                   role="button"
                   tabIndex={0}
                   onClick={() => onOpenEntry(row.entry)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
+                      e.preventDefault();
+                      onOpenEntry(row.entry);
+                    }
+                  }}
                   // Mobile-first: rows stack single-column (spec §4.5); `md:`
                   // restores the desktop single-line row exactly at >=768px
                   // (matching `useIsMobile`'s breakpoint) — every `md:`-only

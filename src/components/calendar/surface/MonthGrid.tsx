@@ -186,7 +186,7 @@ export function MonthGrid({
                 'relative flex flex-col gap-1 bg-card text-left outline-none transition-colors',
                 dense ? 'min-h-[62px] p-1' : 'min-h-[104px] p-1.5',
                 'hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset',
-                cell.isPast && !cell.isSelected && 'bg-muted',
+                cell.isPast && !cell.isSelected && !cell.inRange && 'bg-muted',
                 (cell.inRange || cell.isSelected) && 'bg-accent-50',
                 cell.isSelected && 'ring-2 ring-inset ring-primary',
                 rangeActive && 'select-none'

@@ -36,7 +36,7 @@ import { AgendaLens, type AgendaAction } from './AgendaLens';
 import { OffersLens } from './OffersLens';
 import { AllDatesLens } from './AllDatesLens';
 import { DayRail, type DayRailLegendItem, type DayRailStat } from './DayRail';
-import { NeedsYouLens, type NeedsYouAction } from './NeedsYouLens';
+import { NeedsYouLens, type NeedsYouAction, type NeedsYouReceipt } from './NeedsYouLens';
 import { QueueRail, type QueueShortlistArtist } from './QueueRail';
 import { SelectionBar, type SelectionBarAction } from './SelectionBar';
 import { CalendarDaySheet } from './CalendarDaySheet';
@@ -166,7 +166,7 @@ interface CalendarSurfaceProps {
   queueShortlist?: { dateId: string; dateLabel: string; artists: QueueShortlistArtist[] } | null;
   /** Today's cleared-queue receipts, threaded straight to `NeedsYouLens`'s
    *  footer. Omitted renders an empty receipts list. */
-  clearedToday?: { dateId: string; title: string; label: string }[];
+  clearedToday?: NeedsYouReceipt[];
   onUndoLastReceipt?: () => void;
   /** Date ids ready to issue a hire order, threaded straight to `SeasonLens`'s
    *  KPI computation. Ignored for `role="artist"` and outside the Season
