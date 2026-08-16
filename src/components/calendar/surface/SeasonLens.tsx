@@ -39,7 +39,7 @@ const HEAVY_LOAD_SLOTS = 5;
 /** Monday gridline — a heavier left border marking the start of an ISO week,
  *  so a wide season grid stays readable without a full week-boundary chrome. */
 function columnBorder(day: Date): string {
-  return getDay(day) === 1 ? 'border-l-2 border-l-foreground/25' : 'border-l border-l-border';
+  return getDay(day) === 1 ? 'border-l-2 border-l-foreground/25' : 'border-l-[0.5px] border-l-border';
 }
 
 /** Cell bar track (px) inside the 52px row and its minimum drawn height, so an
@@ -210,10 +210,13 @@ export function SeasonLens({
     <div data-testid="season-lens" className={cn('flex w-full flex-col gap-5', className)}>
       <div
         data-testid="season-grid"
-        className={cn('w-full overflow-x-auto rounded-m border border-border bg-card', dragging && 'select-none')}
+        className={cn(
+          'w-full overflow-x-auto rounded-[10px] border-[0.5px] border-border bg-card shadow-[var(--shadow-2)]',
+          dragging && 'select-none'
+        )}
       >
         {/* Day header row. */}
-        <div className="grid border-b border-border" style={{ gridTemplateColumns: gridCols }}>
+        <div className="grid border-b-[0.5px] border-border" style={{ gridTemplateColumns: gridCols }}>
           <div className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
             {t('calendar.season.programHeader')}
           </div>
@@ -254,7 +257,7 @@ export function SeasonLens({
           <div
             key={row.showId}
             data-testid={`season-row-${row.showId}`}
-            className="grid border-b border-border last:border-b-0"
+            className="grid border-b-[0.5px] border-border last:border-b-0"
             style={{ gridTemplateColumns: gridCols }}
           >
             <div className="flex flex-col justify-center gap-0.5 truncate px-2 py-2" title={rowLabel}>

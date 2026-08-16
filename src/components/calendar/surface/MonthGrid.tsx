@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import type { KeyboardEvent, MouseEvent as ReactMouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { MonthGridCell, Tone } from '@/lib/calendar/types';
-import { TONE_TEXT } from '@/lib/calendar/tone';
+import { TONE_BG, TONE_TEXT } from '@/lib/calendar/tone';
 import { toDateKey, weekdayShortLabels } from '@/lib/dates';
 import { cn } from '@/lib/utils';
 import { FillMeter } from './FillMeter';
@@ -127,13 +127,19 @@ export function MonthGrid({
   };
 
   return (
-    <div className={cn('w-full', className)} data-testid="month-grid">
-      <div className="grid grid-cols-7 border-b border-border pb-1.5">
+    <div
+      className={cn(
+        'w-full overflow-hidden rounded-[10px] border-[0.5px] border-border bg-card shadow-[var(--shadow-2)]',
+        className
+      )}
+      data-testid="month-grid"
+    >
+      <div className="grid grid-cols-7 border-b-[0.5px] border-border pb-1.5">
         {weekdays.map(day => (
           <div
             key={day}
             data-testid="month-grid-weekday"
-            className="px-1 text-center text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
+            className="px-1 text-center text-[11px] font-medium uppercase tracking-wide text-[var(--text-faint)]"
           >
             {day}
           </div>
@@ -177,11 +183,11 @@ export function MonthGrid({
               onMouseEnter={() => handleMouseEnter(cell)}
               onKeyDown={e => handleKeyDown(e, cell)}
               className={cn(
-                'relative flex flex-col gap-1 bg-background text-left outline-none transition-colors',
+                'relative flex flex-col gap-1 bg-card text-left outline-none transition-colors',
                 dense ? 'min-h-[62px] p-1' : 'min-h-[104px] p-1.5',
                 'hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset',
-                cell.isPast && 'opacity-60',
-                cell.inRange && 'bg-accent-50',
+                cell.isPast && 'bg-muted',
+                (cell.inRange || cell.isSelected) && 'bg-accent-50',
                 cell.isSelected && 'ring-2 ring-inset ring-primary',
                 rangeActive && 'select-none'
               )}
@@ -195,7 +201,9 @@ export function MonthGrid({
               )}
 
               <div className="flex items-center justify-between">
-                <span className="font-mono text-xs tabular-nums text-foreground">{cell.dayNum}</span>
+                <span className={cn('font-mono text-xs tabular-nums text-foreground', cell.isToday && 'font-semibold')}>
+                  {cell.dayNum}
+                </span>
                 {cell.flag && (
                   <span className={cn('text-[11px] font-medium', TONE_TEXT[cell.flag.tone])}>
                     {cell.flag.text === 'answer' || cell.flag.text === 'blocked'
@@ -211,18 +219,19 @@ export function MonthGrid({
                     key={chipIndex}
                     data-testid={`month-grid-chip-${key}-${chipIndex}`}
                     className={cn(
-                      'rounded-[4px] border-l-2 bg-muted/40 py-0.5 pl-1.5 pr-1 text-[11px]',
-                      TONE_RAIL[chip.tone]
+                      'rounded-[4px] border-l-2 py-0.5 pl-1.5 pr-1 text-[11px]',
+                      TONE_RAIL[chip.tone],
+                      TONE_BG[chip.tone]
                     )}
                   >
-                    <div className={cn('truncate font-medium', TONE_TEXT[chip.tone])}>{chip.title}</div>
+                    <div className={cn('truncate font-semibold', TONE_TEXT[chip.tone])}>{chip.title}</div>
                     {(chip.time || chip.meter || (chip.extraSessions ?? 0) > 0) && (
                       <div
                         data-testid={`month-grid-chip-meter-row-${key}-${chipIndex}`}
                         className="mt-0.5 flex items-center gap-1"
                       >
                         {chip.time && (
-                          <span className="font-mono text-[9.5px] text-muted-foreground">{chip.time}</span>
+                          <span className={cn('font-mono text-[9.5px] opacity-80', TONE_TEXT[chip.tone])}>{chip.time}</span>
                         )}
                         {(chip.extraSessions ?? 0) > 0 && (
                           <span

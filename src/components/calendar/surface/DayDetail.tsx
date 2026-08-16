@@ -292,8 +292,8 @@ export function DayDetail({
   const primaryDisabled = primaryGate?.disabled ?? false;
 
   return (
-    <div className={cn('overflow-hidden rounded-m border border-border bg-card shadow-elev1', className)}>
-      <div data-testid="day-rail-header" className="border-b border-border px-4 pb-3 pt-3.5">
+    <div className={cn('overflow-hidden rounded-[10px] border-[0.5px] border-border bg-card shadow-[var(--shadow-2)]', className)}>
+      <div data-testid="day-rail-header" className="border-b-[0.5px] border-border px-4 pb-3 pt-3.5">
         <p className={cn('mb-1 text-[11px] font-semibold uppercase tracking-[1.6px]', TONE_TEXT[header.eyebrowTone])}>
           {header.eyebrow}
         </p>
