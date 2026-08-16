@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { useDemo } from "@/features/demo/DemoContext";
 import { useAuth } from "@/features/auth/AuthContext";
 import { roleLabel, type AppRole } from "@/config/app.config";
+import { DemoOutbox } from "@/components/demo/DemoOutbox";
 
 const ROLE_OPTIONS: AppRole[] = ["admin", "producer", "artist"];
 
@@ -41,6 +42,7 @@ export function DemoBar() {
         </div>
       </div>
       <div className="ml-auto flex items-center gap-2">
+        <DemoOutbox />
         <Button size="sm" variant="outline" onClick={reset} disabled={isResetting} className="gap-1.5">
           <RotateCcw className="h-3.5 w-3.5" /> {isResetting ? "Resetting" : "Reset"}
         </Button>
