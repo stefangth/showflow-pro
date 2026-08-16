@@ -736,6 +736,51 @@ describe('CalendarSurface — Needs-you scope chips + toolbar key hint', () => {
     expect(screen.getByTestId('needs-you-group-cancelled')).toBeInTheDocument();
   });
 
+  it('snaps the selected scope back to "All" when its group empties out on a refetch, instead of stranding an empty body', () => {
+    const atRisk = producerEntry({ id: 'pd-risk', mainSlots: 6, confirmedMain: 2 });
+    const cancelled = producerEntry({ id: 'pd-cancelled', status: 'cancelled' });
+    const queue = needsYouQueueWithAtRiskAndCancelled(atRisk, cancelled);
+    const { rerender } = render(
+      <CalendarSurface
+        role="producer"
+        producerEntries={[atRisk, cancelled]}
+        actions={noopActions()}
+        lens="needs-you"
+        onLensChange={vi.fn()}
+        today={TODAY}
+        needsYouQueue={queue}
+      />
+    );
+    fireEvent.click(screen.getByTestId('scope-chip-cancelled'));
+    expect(screen.queryByTestId('needs-you-group-at-risk')).not.toBeInTheDocument();
+    expect(screen.getByTestId('needs-you-group-cancelled')).toBeInTheDocument();
+
+    // A refetch (same lens, same "cancelled" scope selected) clears the
+    // cancelled group out from under the user — e.g. it was reopened
+    // elsewhere. `ScopeChips` would drop the now-zero "Cancelled" chip
+    // entirely, so without the reset the body would show nothing with no
+    // active chip to explain why.
+    const refetchedQueue: NeedsYouQueue = {
+      groups: [{ key: 'at-risk', items: queue.groups[0].items }],
+      totalItems: 1,
+      countByGroup: { 'expires-today': 0, 'at-risk': 1, 'ready-to-issue': 0, cancelled: 0 },
+    };
+    rerender(
+      <CalendarSurface
+        role="producer"
+        producerEntries={[atRisk, cancelled]}
+        actions={noopActions()}
+        lens="needs-you"
+        onLensChange={vi.fn()}
+        today={TODAY}
+        needsYouQueue={refetchedQueue}
+      />
+    );
+
+    expect(screen.getByTestId('scope-chip-all')).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByTestId('needs-you-group-at-risk')).toBeInTheDocument();
+  });
+
   it('renders a right-aligned key-hint on the toolbar row for month/week/season/agenda/needs-you, and none for Offers/All dates', () => {
     const { rerender } = render(
       <CalendarSurface
@@ -772,6 +817,34 @@ describe('CalendarSurface — Needs-you scope chips + toolbar key hint', () => {
       />
     );
     expect(screen.queryByTestId('calendar-toolbar-key-hint')).not.toBeInTheDocument();
+  });
+
+  it('the Month lens key hint promises Space-peek only for the producer, never for the artist', () => {
+    const { rerender } = render(
+      <CalendarSurface
+        role="producer"
+        producerEntries={[producerEntry()]}
+        actions={noopActions()}
+        lens="month"
+        onLensChange={vi.fn()}
+        today={TODAY}
+      />
+    );
+    expect(screen.getByTestId('calendar-toolbar-key-hint')).toHaveTextContent(/Space/);
+
+    rerender(
+      <CalendarSurface
+        role="artist"
+        artistEntries={[artistEntry()]}
+        actions={noopActions()}
+        lens="month"
+        onLensChange={vi.fn()}
+        today={TODAY}
+      />
+    );
+    const artistHint = screen.getByTestId('calendar-toolbar-key-hint');
+    expect(artistHint).toBeInTheDocument();
+    expect(artistHint).not.toHaveTextContent(/Space/);
   });
 });
 

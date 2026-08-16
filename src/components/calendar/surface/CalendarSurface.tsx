@@ -230,13 +230,19 @@ function artistStats(entries: ArtistDateEntry[], anchor: Date, t: SurfaceTF): Da
  *  Enter and Space both already fire the row's click. Needs-you cards have
  *  no keyboard handler of their own, so its hint stays mouse-only rather
  *  than promise a shortcut that doesn't exist. `undefined` for any other
- *  lens (Offers/All dates), which render no toolbar at all. */
-function keyHintForLens(lensKey: string, t: SurfaceTF): string | undefined {
+ *  lens (Offers/All dates), which render no toolbar at all.
+ *  Role-aware for Month: Space-peek (`MonthLens.onPeekDay`) is wired only
+ *  for `role==="producer"` (see the `peekDay` state below), so on the
+ *  artist path Space falls back to `onSelectDay` — the same thing Enter
+ *  already does — and the hint must not promise a preview it never opens. */
+function keyHintForLens(lensKey: string, role: 'producer' | 'artist', t: SurfaceTF): string | undefined {
   switch (lensKey) {
     case 'needs-you':
       return t('calendar.toolbar.keyHint.needsYou');
     case 'month':
-      return t('calendar.toolbar.keyHint.month');
+      return role === 'artist'
+        ? t('calendar.toolbar.keyHint.monthArtist')
+        : t('calendar.toolbar.keyHint.month');
     case 'week':
       return t('calendar.toolbar.keyHint.week');
     case 'season':
@@ -342,6 +348,18 @@ export function CalendarSurface({
     setRange(null);
     setNeedsYouScope('all');
   }, [lens]);
+
+  // A selected scope's group can empty out from under the user on a refetch
+  // (e.g. the last "at risk" date gets confirmed elsewhere). `ScopeChips`
+  // drops a zero-count chip entirely, so the active scope would otherwise be
+  // left pointing at a chip that's no longer rendered — no chip shows
+  // active, and the queue body silently filters to nothing with no
+  // explanation. Snap back to "All" the moment the selected group hits zero.
+  useEffect(() => {
+    if (needsYouScope !== 'all' && resolvedNeedsYouQueue.countByGroup[needsYouScope] === 0) {
+      setNeedsYouScope('all');
+    }
+  }, [needsYouScope, resolvedNeedsYouQueue.countByGroup]);
 
   // Every producer entry id for a given date key, in entry order — a day can
   // hold more than one entry (two shows on the same day; the Season lens
@@ -606,7 +624,7 @@ export function CalendarSurface({
       </CalendarSurfaceHeader>
 
       {(activeLens === 'needs-you' || activeLens === 'month' || activeLens === 'week' || activeLens === 'season' || activeLens === 'agenda') && (
-        <CalendarToolbar keyHint={keyHintForLens(activeLens, t)}>
+        <CalendarToolbar keyHint={keyHintForLens(activeLens, role, t)}>
           {activeLens === 'needs-you' ? (
             <ScopeChips queue={resolvedNeedsYouQueue} active={needsYouScope} onChange={setNeedsYouScope} />
           ) : (
@@ -789,8 +807,15 @@ export function CalendarSurface({
       </CalendarSurfaceHeader>
 
       {(activeLens === 'needs-you' || activeLens === 'month' || activeLens === 'week' || activeLens === 'season') && (
-        <CalendarToolbar keyHint={keyHintForLens(activeLens, t)}>
-          {activeLens === 'needs-you' ? (
+        <CalendarToolbar keyHint={keyHintForLens(activeLens, role, t)}>
+          {role === 'producer' && activeLens === 'needs-you' ? (
+            // Needs-you is a producer-only lens (`artistLenses` never
+            // defines a 'needs-you' key, so `activeLens` can never equal it
+            // on the artist path) — the explicit `role === 'producer'` guard
+            // makes that unreachable-for-artists invariant self-evident here
+            // rather than relying on a reader tracing it through
+            // `artistLenses()`, matching the same guard already used for
+            // the mobile `SurfaceFab` below.
             <ScopeChips queue={resolvedNeedsYouQueue} active={needsYouScope} onChange={setNeedsYouScope} />
           ) : (
             <PeriodNavigator

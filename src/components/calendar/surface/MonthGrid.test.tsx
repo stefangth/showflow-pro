@@ -114,6 +114,22 @@ describe('MonthGrid', () => {
     expect(cell.className).not.toContain('opacity-60');
   });
 
+  it('a past + selected cell renders the accent-50 selection fill, not the muted past fill', () => {
+    const cells = buildCells();
+    const cell10 = cells.find(c => c.day?.getDate() === 10)!;
+    cell10.isPast = true;
+    cell10.isSelected = true;
+    render(<MonthGrid cells={cells} onSelectDay={vi.fn()} onOpenDay={vi.fn()} />);
+    const cell = screen.getByTestId('month-grid-cell-2026-08-10');
+    // Split into exact class tokens — the cell also carries the unconditional
+    // `hover:bg-muted/50` hover class, which substring-contains "bg-muted"
+    // and would otherwise make a naive `.toContain('bg-muted')` check a
+    // false negative.
+    const classes = cell.className.split(/\s+/);
+    expect(classes).toContain('bg-accent-50');
+    expect(classes).not.toContain('bg-muted');
+  });
+
   it('fires onSelectDay with the clicked Date when a day cell is clicked', () => {
     const onSelectDay = vi.fn();
     render(<MonthGrid cells={buildCells()} onSelectDay={onSelectDay} onOpenDay={vi.fn()} />);

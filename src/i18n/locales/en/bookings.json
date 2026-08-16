@@ -11,6 +11,7 @@
       "keyHint": {
         "needsYou": "Click a card to open its date",
         "month": "⏎ open · Space preview",
+        "monthArtist": "⏎ open",
         "week": "⏎ / Space open",
         "season": "⏎ / Space open",
         "agenda": "⏎ / Space open"
