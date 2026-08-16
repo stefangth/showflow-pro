@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { getDay } from 'date-fns';
 import type { ProducerDateEntry } from '@/lib/calendar/types';
 import { toSeasonModel, seasonKpis, type SeasonCell } from '@/lib/calendar/seasonData';
+import { unconfirmedSlots } from '@/lib/calendar/slots';
 import { PRODUCER_TONES, seasonBarClass } from '@/lib/calendar/tone';
 import { toDateKey } from '@/lib/dates';
 import { cn } from '@/lib/utils';
@@ -248,7 +249,7 @@ export function SeasonLens({
         {model.rows.map(row => {
           const populated = row.cells.filter(cell => cell.dateId != null);
           const dateCount = populated.length;
-          const unfilled = populated.reduce((sum, cell) => sum + Math.max(0, cell.mainSlots - cell.filledMain), 0);
+          const unfilled = populated.reduce((sum, cell) => sum + unconfirmedSlots({ mainSlots: cell.mainSlots, confirmedMain: cell.filledMain }), 0);
           return (
           <div
             key={row.showId}

@@ -4,6 +4,7 @@ import { showSlots } from '@/lib/settings';
 import { isPastDate, parseDateOnly, toDateKey } from '@/lib/dates';
 import { monthMatrix } from './period';
 import { PRODUCER_TONES } from './tone';
+import { unconfirmedSlots } from './slots';
 
 /**
  * The structural row shape this module consumes — matches `SHOW_DATE_LIST_COLS`
@@ -96,7 +97,7 @@ export function toProducerEntries(
 function producerFlag(dayEntries: ProducerDateEntry[]): MonthGridCell['flag'] {
   const deficit = dayEntries
     .filter((e) => e.status !== 'cancelled')
-    .reduce((sum, e) => sum + Math.max(0, e.mainSlots - e.confirmedMain), 0);
+    .reduce((sum, e) => sum + unconfirmedSlots(e), 0);
   if (deficit <= 0) return undefined;
   return { text: `−${deficit}`, tone: 'warning' };
 }

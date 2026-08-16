@@ -14,6 +14,7 @@
 import { startOfWeek, differenceInCalendarDays } from 'date-fns';
 import type { ProducerDateEntry } from './types';
 import { periodWindow } from './period';
+import { unconfirmedSlots } from './slots';
 import { formatDateDMY } from '@/lib/dates';
 
 export interface SeasonCell {
@@ -111,7 +112,7 @@ export function toSeasonModel(entries: ProducerDateEntry[], anchor: Date): Seaso
       // Exclude cancelled dates so the load bar agrees with the "Unfilled
       // main slots" KPI, which also zeroes cancelled deficits.
       if (cell.status === 'cancelled') continue;
-      openMainSlots += Math.max(0, cell.mainSlots - cell.filledMain);
+      openMainSlots += unconfirmedSlots({ mainSlots: cell.mainSlots, confirmedMain: cell.filledMain });
     }
     return { date, openMainSlots };
   });
@@ -129,7 +130,7 @@ export function seasonKpis(entries: ProducerDateEntry[], anchor: Date, readyIds:
   const weekCounts = new Map<number, { monday: Date; count: number; open: number }>();
 
   for (const entry of inWindow) {
-    const deficit = entry.status === 'cancelled' ? 0 : Math.max(0, entry.mainSlots - entry.confirmedMain);
+    const deficit = entry.status === 'cancelled' ? 0 : unconfirmedSlots(entry);
     if (entry.status !== 'cancelled') {
       unfilledMainSlots += deficit;
       if (deficit > 0) unfilledDates++;

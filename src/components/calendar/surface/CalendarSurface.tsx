@@ -13,6 +13,7 @@ import type {
 } from '@/lib/calendar/types';
 import { PRODUCER_TONES, ARTIST_TONES, artistStatusLabel } from '@/lib/calendar/tone';
 import { periodLabel, periodWindow, shiftPeriod, type LensPeriod } from '@/lib/calendar/period';
+import { unconfirmedSlots } from '@/lib/calendar/slots';
 import { resolveProducerPrimary } from '@/lib/calendar/producerPrimary';
 import { clearSelection, extendTo, selectedKeys, type RangeSelection } from '@/lib/calendar/selection';
 import { isPastDate, toDateKey } from '@/lib/dates';
@@ -191,7 +192,7 @@ function producerStats(entries: ProducerDateEntry[], anchor: Date): DayRailStat[
   const { start, end } = periodWindow(anchor, 'month');
   const inWindow = entries.filter((e) => e.status !== 'cancelled' && e.date >= start && e.date <= end);
   const confirmed = inWindow.reduce((sum, e) => sum + e.confirmedMain, 0);
-  const openSlots = inWindow.reduce((sum, e) => sum + Math.max(0, e.mainSlots - e.confirmedMain), 0);
+  const openSlots = inWindow.reduce((sum, e) => sum + unconfirmedSlots(e), 0);
   return [
     { label: 'Confirmed this month', value: String(confirmed), dotClass: 'bg-success' },
     { label: 'Slots still open', value: String(openSlots), dotClass: 'bg-warning' },
