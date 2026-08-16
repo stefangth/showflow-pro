@@ -117,11 +117,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   // (Task 2); issue_hire_order is a separate action on generate-hire-orders.
   if (body.action === "cue") {
     const cueId = body.cue_id;
-    if (cueId === "issue_hire_order") {
-      const { error } = await deps.invokeFunction("generate-hire-orders", { action: "issue", org_id: orgId });
-      if (error) return json({ error: (error as Error).message }, 500);
-      return json({ ok: true });
-    }
+    if (cueId === "issue_hire_order") return issueHireOrderCue(deps, req, orgId);
     if (!cueId || !DB_CUES.includes(cueId)) return json({ error: "unknown_cue" }, 400);
     const { error } = await deps.admin.rpc("run_demo_cue", {
       p_org: orgId,
@@ -133,6 +129,102 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   }
 
   return json({ ok: true });
+}
+
+interface DraftHireOrderRow {
+  id: string;
+  artist_id: string | null;
+}
+
+interface IssueOrdersResult {
+  issued?: string[];
+  failed?: Array<{ order_id: string; issues: string[] }>;
+}
+
+/**
+ * The `issue_hire_order` cue: find (or synchronously create) an issuable, artist
+ * -linked draft hire order for the demo org and issue it, landing a real ISSUED
+ * PDF in the demo outbox (Phase 1's send-transactional-email divert), without
+ * depending on the async `dispatch_hire_order_drafts` DB trigger (fired by the
+ * `fill_date` cue) having already landed.
+ *
+ * generate-hire-orders' `issue` action 400s on an empty `order_ids` (see
+ * issueOrders in generate-hire-orders/index.ts) — the original bug here was
+ * calling it with none at all. The seed's HO-DEMO-0001 draft is deliberately
+ * UNLINKED (no artist_id/show_date_id, no recipient_email — see
+ * 20260816205135_demo_mode_seed_rpcs.sql) so it can never pass
+ * generate-hire-orders' orderReadyIssues gate; only a real artist-linked draft
+ * (created by fill_date's auto-draft trigger, or synchronously below) is
+ * issuable, so linked-ness is exactly what distinguishes a usable draft.
+ *
+ * Both internal generate-hire-orders calls forward the CALLING admin's own
+ * Bearer JWT (already verified admin-of-this-org by requireOrgRole above)
+ * rather than demo-ops's own service-role bearer: generate-hire-orders has no
+ * `isServiceRole` bypass on its draft/issue actions (unlike open-offer-tier), so
+ * a bare service-role call 401s on its requireOrgRole gate — confirmed against
+ * the local stack.
+ */
+async function issueHireOrderCue(deps: Deps, req: Request, orgId: string): Promise<Response> {
+  const authHeader = req.headers.get("Authorization") ?? "";
+  const headers = authHeader ? { Authorization: authHeader } : undefined;
+
+  const findLinkedDraft = async (): Promise<string | null> => {
+    const { data } = await deps.admin
+      .from("hire_orders")
+      .select("id, artist_id")
+      .eq("org_id", orgId)
+      .eq("status", "draft")
+      .order("created_at", { ascending: true });
+    const rows = (data ?? []) as unknown as DraftHireOrderRow[];
+    return rows.find((r) => r.artist_id !== null)?.id ?? null;
+  };
+
+  let orderId = await findLinkedDraft();
+
+  if (!orderId) {
+    // No linked draft yet -- the async auto-draft trigger from `fill_date` may not
+    // have landed, or `fill_date` hasn't run for this org. Draft synchronously
+    // from the org's fully_filled date so there is always something to issue.
+    const { data: dateRow } = await deps.admin
+      .from("show_dates")
+      .select("id")
+      .eq("org_id", orgId)
+      .eq("status", "fully_filled")
+      .order("date", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    const showDateId = (dateRow as { id: string } | null)?.id ?? null;
+
+    if (showDateId) {
+      const { error: draftErr } = await deps.invokeFunction(
+        "generate-hire-orders",
+        { action: "draft", org_id: orgId, show_date_id: showDateId, notify: true },
+        headers,
+      );
+      if (draftErr) return json({ error: (draftErr as Error).message }, 500);
+      orderId = await findLinkedDraft();
+    }
+  }
+
+  if (!orderId) {
+    // Nothing issuable yet (fill_date hasn't run for this org) -- a no-op, not a
+    // hard failure: a demo shouldn't crash when a rep clicks a cue out of order.
+    return json({ ok: true, issued: false, reason: "no_issuable_draft" });
+  }
+
+  const { data, error } = await deps.invokeFunction(
+    "generate-hire-orders",
+    { action: "issue", org_id: orgId, order_ids: [orderId] },
+    headers,
+  );
+  if (error) return json({ error: (error as Error).message }, 500);
+
+  const result = data as IssueOrdersResult | null;
+  if (result?.issued?.includes(orderId)) {
+    return json({ ok: true, issued: true, order_id: orderId });
+  }
+  const issues = result?.failed?.find((f) => f.order_id === orderId)?.issues;
+  return json({ error: issues?.join(",") ?? "issue_failed" }, 500);
 }
 
 if (import.meta.main) Deno.serve((req) => handle(req, realDeps()));

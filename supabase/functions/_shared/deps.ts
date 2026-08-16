@@ -59,7 +59,14 @@ export interface Deps {
   userClient: (authHeader: string) => TypedClient;
   env: (key: string) => string | undefined;
   now: () => Date;
-  invokeFunction: (name: string, body: unknown) => Promise<InvokeResult>;
+  /**
+   * `headers` (optional) are merged OVER the default service-role Authorization
+   * header — e.g. demo-ops's `issue_hire_order` cue forwards the calling admin's
+   * OWN Bearer JWT so the callee's org-role gate authorizes as that admin, since
+   * a bare service-role bearer 401s on functions with no `isServiceRole` bypass
+   * (confirmed against generate-hire-orders, which has none — unlike open-offer-tier).
+   */
+  invokeFunction: (name: string, body: unknown, headers?: Record<string, string>) => Promise<InvokeResult>;
   sendEmail: (msg: EmailMessage) => Promise<InvokeResult>;
   /** Render a hire-order PDF (Task 7 concrete impl, injected so tests can fake it). */
   renderHireOrderPdf: RenderHireOrderPdf;
@@ -97,8 +104,16 @@ export function realDeps(getEnv: (k: string) => string | undefined = (k) => Deno
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
-  const invokeFunction = async (name: string, body: unknown): Promise<InvokeResult> => {
-    const { data, error } = await admin.functions.invoke(name, serviceInvokeOptions(body, serviceKey));
+  const invokeFunction = async (
+    name: string,
+    body: unknown,
+    headers?: Record<string, string>,
+  ): Promise<InvokeResult> => {
+    const opts = serviceInvokeOptions(body, serviceKey);
+    const { data, error } = await admin.functions.invoke(name, {
+      ...opts,
+      headers: { ...opts.headers, ...headers },
+    });
     return { data, error };
   };
 

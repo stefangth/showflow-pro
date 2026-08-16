@@ -384,13 +384,17 @@ export interface FakeDepsOptions extends FakeClientOptions {
 /** Build a fake Deps for handler tests. Records invokeFunction/sendEmail calls. */
 export function makeFakeDeps(opts: FakeDepsOptions = {}) {
   const { client, calls } = createFakeClient(opts);
-  const invokeCalls: Array<{ name: string; body: unknown }> = [];
+  const invokeCalls: Array<{ name: string; body: unknown; headers?: Record<string, string> }> = [];
   const env = opts.envVars ?? {};
   const fixedNow = opts.now ?? new Date("2026-06-01T12:00:00.000Z");
   const emailResult: InvokeResult = opts.emailResult ?? { data: { success: true }, error: null };
 
-  const invokeFunction = (name: string, body: unknown): Promise<InvokeResult> => {
-    invokeCalls.push({ name, body });
+  const invokeFunction = (
+    name: string,
+    body: unknown,
+    headers?: Record<string, string>,
+  ): Promise<InvokeResult> => {
+    invokeCalls.push({ name, body, headers });
     return Promise.resolve(emailResult);
   };
 

@@ -12,21 +12,29 @@
  */
 
 import { assertEquals } from "../_shared/test-asserts.ts";
-import { makeFakeDeps, makeRequest } from "../_shared/testing.ts";
+import { makeFakeDeps, makeRequest, type TableSeed } from "../_shared/testing.ts";
+import type { InvokeResult } from "../_shared/deps.ts";
 import { handle } from "./index.ts";
 
 function authedReq(body: Record<string, unknown>) {
   return makeRequest({ headers: { Authorization: "Bearer jwt" }, body });
 }
 
-function adminDeps(opts: { isDemo: boolean; rpcs?: Record<string, { data?: unknown; error?: unknown }> }) {
+function adminDeps(opts: {
+  isDemo: boolean;
+  rpcs?: Record<string, { data?: unknown; error?: unknown }>;
+  tables?: Record<string, TableSeed>;
+  emailResult?: InvokeResult;
+}) {
   return makeFakeDeps({
     authUser: { id: "u1" },
     tables: {
       organizations: { data: { is_demo: opts.isDemo }, error: null },
       org_memberships: { data: { role: "admin" }, error: null },
+      ...opts.tables,
     },
     rpcs: opts.rpcs,
+    emailResult: opts.emailResult,
   });
 }
 
@@ -224,14 +232,88 @@ Deno.test("demo-ops: cue with an unknown cue_id → 400 unknown_cue", async () =
   assertEquals(body.error, "unknown_cue");
 });
 
-Deno.test("demo-ops: cue issue_hire_order invokes generate-hire-orders", async () => {
-  const { deps, invokeCalls } = adminDeps({ isDemo: true });
+Deno.test("demo-ops: cue issue_hire_order issues an existing linked draft with a non-empty order_ids", async () => {
+  const { deps, invokeCalls } = adminDeps({
+    isDemo: true,
+    tables: {
+      // A linked (artist_id set) draft — the seed's HO-DEMO-0001 is unlinked and
+      // would never be picked; this models a real fill_date-drafted order.
+      hire_orders: { data: [{ id: "ho1", artist_id: "artist-1" }], error: null },
+    },
+    // generate-hire-orders' issue action responds {issued:[...], failed:[...]}.
+    emailResult: { data: { issued: ["ho1"], failed: [] }, error: null },
+  });
   const res = await handle(authedReq({ action: "cue", org_id: "o1", cue_id: "issue_hire_order" }), deps);
   assertEquals(res.status, 200);
-  const body = await res.json() as { ok: boolean };
+  const body = await res.json() as { ok: boolean; issued: boolean; order_id: string };
   assertEquals(body.ok, true);
+  assertEquals(body.issued, true);
+  assertEquals(body.order_id, "ho1");
 
-  const invokeCall = invokeCalls.find((c) => c.name === "generate-hire-orders");
-  assertEquals(invokeCall !== undefined, true);
-  assertEquals(invokeCall?.body, { action: "issue", org_id: "o1" });
+  // No draft call needed — a linked draft already existed.
+  assertEquals(invokeCalls.some((c) => c.name === "generate-hire-orders" && (c.body as { action?: string }).action === "draft"), false);
+
+  const issueCall = invokeCalls.find((c) => c.name === "generate-hire-orders" && (c.body as { action?: string }).action === "issue");
+  assertEquals(issueCall !== undefined, true);
+  assertEquals(issueCall?.body, { action: "issue", org_id: "o1", order_ids: ["ho1"] });
+  // The caller's OWN Bearer JWT is forwarded (generate-hire-orders has no
+  // service-role bypass on draft/issue — a bare service-role bearer 401s).
+  assertEquals(issueCall?.headers, { Authorization: "Bearer jwt" });
+});
+
+Deno.test("demo-ops: cue issue_hire_order drafts synchronously when no linked draft exists yet", async () => {
+  const { deps, invokeCalls } = adminDeps({
+    isDemo: true,
+    tables: {
+      // No linked draft (only the unlinked seed row, or none at all).
+      hire_orders: { data: [], error: null },
+      show_dates: { data: { id: "sd1" }, error: null },
+    },
+  });
+  const res = await handle(authedReq({ action: "cue", org_id: "o1", cue_id: "issue_hire_order" }), deps);
+  assertEquals(res.status, 200);
+
+  const draftCall = invokeCalls.find((c) => c.name === "generate-hire-orders" && (c.body as { action?: string }).action === "draft");
+  assertEquals(draftCall !== undefined, true);
+  assertEquals(draftCall?.body, { action: "draft", org_id: "o1", show_date_id: "sd1", notify: true });
+  assertEquals(draftCall?.headers, { Authorization: "Bearer jwt" });
+
+  // The fake client's read of hire_orders never changes after the (faked) draft
+  // invoke, so the re-query still finds nothing — a correct, honest reflection of
+  // "drafted, but nothing came back yet" rather than a fabricated success.
+  const body = await res.json() as { ok: boolean; issued: boolean };
+  assertEquals(body.ok, true);
+  assertEquals(body.issued, false);
+  assertEquals(invokeCalls.some((c) => c.name === "generate-hire-orders" && (c.body as { action?: string }).action === "issue"), false);
+});
+
+Deno.test("demo-ops: cue issue_hire_order is a no-op when nothing is fully_filled yet", async () => {
+  const { deps, invokeCalls } = adminDeps({
+    isDemo: true,
+    tables: {
+      hire_orders: { data: [], error: null },
+      show_dates: { data: null, error: null },
+    },
+  });
+  const res = await handle(authedReq({ action: "cue", org_id: "o1", cue_id: "issue_hire_order" }), deps);
+  assertEquals(res.status, 200);
+  const body = await res.json() as { ok: boolean; issued: boolean; reason: string };
+  assertEquals(body.ok, true);
+  assertEquals(body.issued, false);
+  assertEquals(body.reason, "no_issuable_draft");
+  assertEquals(invokeCalls.some((c) => c.name === "generate-hire-orders"), false);
+});
+
+Deno.test("demo-ops: cue issue_hire_order surfaces a readiness failure as an error", async () => {
+  const { deps } = adminDeps({
+    isDemo: true,
+    tables: {
+      hire_orders: { data: [{ id: "ho1", artist_id: "artist-1" }], error: null },
+    },
+    emailResult: { data: { issued: [], failed: [{ order_id: "ho1", issues: ["missing_letterhead"] }] }, error: null },
+  });
+  const res = await handle(authedReq({ action: "cue", org_id: "o1", cue_id: "issue_hire_order" }), deps);
+  assertEquals(res.status, 500);
+  const body = await res.json() as { error: string };
+  assertEquals(body.error, "missing_letterhead");
 });
