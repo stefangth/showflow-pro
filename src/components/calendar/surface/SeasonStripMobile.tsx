@@ -20,7 +20,7 @@ const LABEL_WIDTH = 92;
 const DAY_WIDTH = 20;
 /** Bar track height (px) for the per-program fill-height bars — matches the
  *  brief's `Math.max(12, Math.round(32 * intensity))` formula. */
-const BAR_TRACK_HEIGHT = 32;
+const BAR_TRACK_HEIGHT = 42;
 /** A day's "Unfilled slots" load bar renders amber once it is at least half
  *  of the window's busiest day, muted otherwise. */
 const HEAVY_LOAD_PCT = 50;
@@ -60,7 +60,7 @@ function SeasonStripCell({
       <div
         data-testid={testId}
         aria-hidden="true"
-        className="flex h-8 items-end justify-center border-l border-l-border"
+        className="flex h-[54px] items-end justify-center border-l border-l-border"
       />
     );
   }
@@ -72,7 +72,7 @@ function SeasonStripCell({
       data-ready={ready}
       onClick={() => onOpenDate(cell.dateId as string)}
       title={`${cell.filledMain}/${cell.mainSlots} main`}
-      className="flex h-8 items-end justify-center border-l border-l-border py-0.5"
+      className="flex h-[54px] items-end justify-center border-l border-l-border py-0.5"
     >
       {cell.mainSlots > 0 && (
         <span

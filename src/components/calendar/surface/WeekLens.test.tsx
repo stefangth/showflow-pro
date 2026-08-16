@@ -61,7 +61,7 @@ describe('WeekLens', () => {
     // band = 14:00..20:00 (from the two session times), so block1 (14:00) sits
     // at the top of the grid and block2 (19:30) is 5.5 hours down.
     expect(block1).toHaveStyle({ top: '0px' });
-    expect(block2).toHaveStyle({ top: '330px' }); // 5.5h * 60px/h
+    expect(block2).toHaveStyle({ top: '242px' }); // 5.5h * 44px/h
 
     expect(block1).toHaveTextContent('14:00');
     expect(block1).toHaveTextContent('Aida');

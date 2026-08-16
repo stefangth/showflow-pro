@@ -10,10 +10,10 @@ import { FillMeter } from './FillMeter';
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 /** Px per hour of the time grid. Positions/heights are derived from minutes,
  *  so this is layout math, not a color/token concern. */
-const HOUR_HEIGHT = 60;
+const HOUR_HEIGHT = 44;
 /** Fixed block height (px) — session rows have no duration in the data, so
  *  every block renders the same height regardless of what follows it. */
-const BLOCK_HEIGHT = 78;
+const BLOCK_HEIGHT = 124;
 
 interface WeekLensProps {
   entries: ProducerDateEntry[];
@@ -46,9 +46,9 @@ function WeekBlockCard({ block, band, onOpenEntry }: { block: WeekBlock; band: W
       data-testid={`week-block-${block.entryId}-${block.session}`}
       onClick={() => onOpenEntry(block.entryId)}
       style={{ top, height: BLOCK_HEIGHT }}
-      className="absolute inset-x-1 flex flex-col justify-between overflow-hidden rounded-[4px] border border-border bg-card px-1.5 py-1 text-left shadow-elev1 hover:bg-muted/40"
+      className="absolute inset-x-1 flex flex-col justify-between overflow-hidden rounded-[6px] border border-border bg-card px-1.5 py-1 text-left shadow-elev1 hover:bg-muted/40"
     >
-      <span aria-hidden="true" className={cn('absolute inset-y-0 left-0 w-1', toneSpec.railClass)} />
+      <span aria-hidden="true" className={cn('absolute inset-y-0 left-0 w-[3px]', toneSpec.railClass)} />
       <span className="truncate pl-1.5 font-mono text-[10px] text-muted-foreground">
         {minutesToLabel(block.startMinutes)}
       </span>
@@ -92,7 +92,7 @@ export function WeekLens({ entries, anchor, onOpenEntry, today = new Date(), cla
   return (
     <div data-testid="week-lens" className={cn('flex w-full flex-col', className)}>
       {/* Day header row: weekday + date, today tinted. */}
-      <div className="grid grid-cols-[56px_repeat(7,1fr)] border-b border-border">
+      <div className="grid grid-cols-[52px_repeat(7,1fr)] border-b border-border">
         <div />
         {model.columns.map((day, i) => {
           const isToday = isSameDay(day, today);
@@ -105,7 +105,7 @@ export function WeekLens({ entries, anchor, onOpenEntry, today = new Date(), cla
               <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                 {WEEKDAYS[i]}
               </span>
-              <span className={cn('font-mono text-sm tabular-nums', isToday ? 'font-semibold text-primary' : 'text-foreground')}>
+              <span className={cn('font-mono text-[17px] tabular-nums', isToday ? 'font-semibold text-primary' : 'text-foreground')}>
                 {day.getDate()}
               </span>
             </div>
@@ -114,7 +114,7 @@ export function WeekLens({ entries, anchor, onOpenEntry, today = new Date(), cla
       </div>
 
       {/* "All day / times TBD" strip for untimed dates. */}
-      <div className="grid grid-cols-[56px_repeat(7,1fr)] border-b border-border">
+      <div className="grid grid-cols-[52px_repeat(7,1fr)] border-b border-border">
         <div className="px-1 py-1.5 text-[10px] uppercase tracking-wide text-muted-foreground">TBD</div>
         {model.columns.map((day, i) => (
           <div key={toDateKey(day)} className="flex flex-col gap-1 border-l border-border px-1 py-1.5">
@@ -134,7 +134,7 @@ export function WeekLens({ entries, anchor, onOpenEntry, today = new Date(), cla
       </div>
 
       {/* Time grid: hour gutter + 7 day columns. */}
-      <div className="grid grid-cols-[56px_repeat(7,1fr)]">
+      <div className="grid grid-cols-[52px_repeat(7,1fr)]">
         <div className="relative" style={{ height: totalHeight }}>
           {hourMarks.map(m => (
             <span

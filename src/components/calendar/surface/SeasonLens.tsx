@@ -27,7 +27,15 @@ interface SeasonLensProps {
 }
 
 /** Left label column width (px), shared by every grid row so columns line up. */
-const LABEL_WIDTH = 176;
+const LABEL_WIDTH = 208;
+
+/** Single-letter weekday initials (Sun..Sat, indexed by `getDay()`), shown
+ *  above each date number in the day header — weekend columns render greyed. */
+const WEEKDAY_INITIALS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+
+/** A day's "Unfilled slots" load bar renders in saturated warning once it
+ *  carries this many open main slots, a lighter tint below it (mock). */
+const HEAVY_LOAD_SLOTS = 5;
 
 /** Monday gridline — a heavier left border marking the start of an ISO week,
  *  so a wide season grid stays readable without a full week-boundary chrome. */
@@ -74,7 +82,7 @@ function SeasonCellButton({
         aria-hidden="true"
         onMouseDown={onColumnMouseDown}
         onMouseEnter={onColumnMouseEnter}
-        className={cn('h-9 bg-transparent', columnBorder(cell.date), inRange && 'bg-accent-50')}
+        className={cn('h-[52px] bg-transparent', columnBorder(cell.date), inRange && 'bg-accent-50')}
       />
     );
   }
@@ -91,7 +99,7 @@ function SeasonCellButton({
       onMouseEnter={onColumnMouseEnter}
       title={`${cell.filledMain}/${cell.mainSlots} main`}
       className={cn(
-        'flex h-9 items-center justify-center text-[10px] font-medium tabular-nums',
+        'flex h-[52px] items-center justify-center text-[10px] font-medium tabular-nums',
         columnBorder(cell.date),
         bg,
         text,
@@ -191,11 +199,13 @@ export function SeasonLens({
         {/* Day header row. */}
         <div className="grid border-b border-border" style={{ gridTemplateColumns: gridCols }}>
           <div className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Show
+            Program
           </div>
           {model.days.map(day => {
             const key = toDateKey(day);
             const inRange = rangeKeySet.has(key);
+            const dow = getDay(day);
+            const isWeekend = dow === 0 || dow === 6;
             return (
               <div
                 key={key}
@@ -204,11 +214,14 @@ export function SeasonLens({
                 onMouseDown={() => handleColumnMouseDown(key)}
                 onMouseEnter={() => handleColumnMouseEnter(key)}
                 className={cn(
-                  'flex flex-col items-center justify-center py-1 font-mono text-[9px] tabular-nums text-muted-foreground',
+                  'flex flex-col items-center justify-center gap-0.5 py-1 font-mono text-[9px] tabular-nums text-muted-foreground',
                   columnBorder(day),
                   inRange && 'bg-accent-50'
                 )}
               >
+                <span className={cn('text-[8px] font-sans not-italic', isWeekend ? 'text-muted-foreground/50' : 'text-muted-foreground/80')}>
+                  {WEEKDAY_INITIALS[dow]}
+                </span>
                 {day.getDate()}
               </div>
             );
@@ -216,15 +229,22 @@ export function SeasonLens({
         </div>
 
         {/* One row per show. */}
-        {model.rows.map(row => (
+        {model.rows.map(row => {
+          const populated = row.cells.filter(cell => cell.dateId != null);
+          const dateCount = populated.length;
+          const unfilled = populated.reduce((sum, cell) => sum + Math.max(0, cell.mainSlots - cell.filledMain), 0);
+          return (
           <div
             key={row.showId}
             data-testid={`season-row-${row.showId}`}
             className="grid border-b border-border last:border-b-0"
             style={{ gridTemplateColumns: gridCols }}
           >
-            <div className="truncate px-2 py-2 text-[12px] font-medium text-foreground" title={row.label}>
-              {row.label}
+            <div className="flex flex-col justify-center gap-0.5 truncate px-2 py-2" title={row.label}>
+              <span className="truncate text-[12px] font-medium text-foreground">{row.label}</span>
+              <span className="truncate text-[11px] text-muted-foreground">
+                {dateCount} {dateCount === 1 ? 'date' : 'dates'} · {unfilled} unfilled
+              </span>
             </div>
             {row.cells.map(cell => {
               const key = toDateKey(cell.date);
@@ -241,7 +261,8 @@ export function SeasonLens({
               );
             })}
           </div>
-        ))}
+          );
+        })}
 
         {/* "Unfilled slots" load-bar row. */}
         <div className="grid bg-muted/30" style={{ gridTemplateColumns: gridCols }}>
@@ -250,21 +271,23 @@ export function SeasonLens({
           </div>
           {model.loadByDay.map(({ date, openMainSlots }) => {
             const pct = (openMainSlots / maxOpen) * 100;
+            // Two-tier load colour (mock): saturated warning once a day carries
+            // 5+ open main slots, a lighter warning tint for anything above zero.
+            const heavy = openMainSlots >= HEAVY_LOAD_SLOTS;
             return (
               <div
                 key={toDateKey(date)}
                 data-testid={`season-loadbar-${toDateKey(date)}`}
                 data-open-main-slots={openMainSlots}
-                className={cn('flex h-9 flex-col items-center justify-end gap-0.5 px-0.5 pb-0.5', columnBorder(date))}
+                className={cn('flex h-9 flex-col items-center justify-end px-0.5 pb-0.5', columnBorder(date))}
               >
                 {openMainSlots > 0 && (
                   <span
                     aria-hidden="true"
                     style={{ height: `${Math.max(10, pct)}%` }}
-                    className="w-1.5 rounded-t-[2px] bg-warning"
+                    className={cn('w-1.5 rounded-t-[2px]', heavy ? 'bg-warning' : 'bg-warning/40')}
                   />
                 )}
-                <span className="font-mono text-[8px] tabular-nums text-muted-foreground">{openMainSlots}</span>
               </div>
             );
           })}

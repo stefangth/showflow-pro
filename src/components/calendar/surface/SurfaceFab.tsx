@@ -21,12 +21,12 @@ export function SurfaceFab({ label, onClick, icon, className }: SurfaceFabProps)
       data-testid="surface-fab"
       onClick={onClick}
       className={cn(
-        'fixed right-4 bottom-12 z-40 inline-flex items-center gap-2 rounded-pill',
-        'bg-primary px-4 py-3 text-sm font-medium text-primary-foreground shadow-elev3',
+        'fixed right-4 bottom-12 z-40 inline-flex h-[52px] items-center gap-2 rounded-[8px]',
+        'bg-primary px-5 text-[15px] font-medium text-primary-foreground shadow-elev3',
         className,
       )}
     >
-      {icon ?? <Plus className="h-4 w-4" aria-hidden="true" />}
+      {icon ?? <Plus className="h-[18px] w-[18px]" aria-hidden="true" />}
       {label}
     </button>
   );
