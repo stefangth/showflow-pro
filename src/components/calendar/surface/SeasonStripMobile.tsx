@@ -4,7 +4,7 @@ import type { ProducerDateEntry } from '@/lib/calendar/types';
 import { toSeasonModel, type SeasonCell } from '@/lib/calendar/seasonData';
 import { unconfirmedSlots } from '@/lib/calendar/slots';
 import { seasonBarClass } from '@/lib/calendar/tone';
-import { toDateKey } from '@/lib/dates';
+import { dfLocale, toDateKey } from '@/lib/dates';
 import { cn } from '@/lib/utils';
 
 export interface SeasonStripMobileProps {
@@ -113,7 +113,7 @@ export function SeasonStripMobile({ entries, anchor, readyIds, onOpenDate, class
     <div data-testid="season-strip-mobile" className={cn('flex w-full flex-col gap-2', className)}>
       <div className="flex items-baseline justify-between px-1">
         <p className="text-sm font-semibold text-foreground">
-          {t('calendar.seasonStripMobile.heading', { month: format(anchor, 'MMM yyyy') })}
+          {t('calendar.seasonStripMobile.heading', { month: format(anchor, 'MMM yyyy', { locale: dfLocale() }) })}
         </p>
         <p className="text-[11px] text-muted-foreground">{t('calendar.seasonStripMobile.swipeHint')}</p>
       </div>

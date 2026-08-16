@@ -3,6 +3,7 @@ import { format } from 'date-fns';
 import { ChevronDown } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
+import { dfLocale } from '@/lib/dates';
 import type { NeedsYouGroupKey, NeedsYouItem, NeedsYouQueue } from '@/lib/calendar/needsYou';
 import type { ActionGates, ProducerActionKey } from '@/lib/calendar/types';
 import { PRODUCER_TONES } from '@/lib/calendar/tone';
@@ -269,7 +270,7 @@ export function NeedsYouLens({
                           )}
                         </div>
                         <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                          {format(item.entry.date, 'EEE d MMM')}
+                          {format(item.entry.date, 'EEE d MMM', { locale: dfLocale() })}
                           {entryDetail(item) ? ` · ${entryDetail(item)}` : ''}
                         </p>
                       </div>

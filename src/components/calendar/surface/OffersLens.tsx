@@ -2,7 +2,7 @@ import { format } from 'date-fns';
 import { useTranslation } from 'react-i18next';
 import type { ArtistDateEntry, ArtistStatus } from '@/lib/calendar/types';
 import { ARTIST_TONES, artistStatusLabel } from '@/lib/calendar/tone';
-import { isPastDate } from '@/lib/dates';
+import { dfLocale, isPastDate } from '@/lib/dates';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 
@@ -92,12 +92,12 @@ export function OffersLens({
             >
               <div className="flex w-full shrink-0 flex-row items-center justify-start gap-2 border-b border-border bg-muted px-4 py-2.5 text-left md:w-[92px] md:flex-col md:items-center md:justify-center md:gap-0 md:border-b-0 md:border-r md:px-0 md:py-4 md:text-center">
                 <p className="text-[11px] font-semibold uppercase tracking-[1.6px] text-muted-foreground">
-                  {format(entry.date, 'EEE')}
+                  {format(entry.date, 'EEE', { locale: dfLocale() })}
                 </p>
                 <p className="font-mono text-[28px] font-semibold leading-8 tabular-nums text-foreground">
                   {format(entry.date, 'd')}
                 </p>
-                <p className="text-[11px] text-muted-foreground">{format(entry.date, 'MMM')}</p>
+                <p className="text-[11px] text-muted-foreground">{format(entry.date, 'MMM', { locale: dfLocale() })}</p>
               </div>
 
               <div className="w-full min-w-0 px-4 py-3.5 md:flex-1">
@@ -234,7 +234,7 @@ export function OffersLens({
             className="flex items-center gap-3 border-b border-border/60 px-3.5 py-2.5 last:border-b-0"
           >
             <span className="w-[52px] shrink-0 font-mono text-xs font-medium tabular-nums text-muted-foreground">
-              {format(entry.date, 'd MMM')}
+              {format(entry.date, 'd MMM', { locale: dfLocale() })}
             </span>
             <span className="min-w-0 flex-1 truncate text-[12.5px] font-medium text-foreground">
               {entryTitle(entry)}

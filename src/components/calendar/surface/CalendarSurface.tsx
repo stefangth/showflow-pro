@@ -17,7 +17,7 @@ import { periodLabel, periodWindow, shiftPeriod, type LensPeriod } from '@/lib/c
 import { unconfirmedSlots } from '@/lib/calendar/slots';
 import { resolveProducerPrimary } from '@/lib/calendar/producerPrimary';
 import { clearSelection, extendTo, selectedKeys, type RangeSelection } from '@/lib/calendar/selection';
-import { isPastDate, toDateKey } from '@/lib/dates';
+import { dfLocale, isPastDate, toDateKey } from '@/lib/dates';
 import { computeDatePeek } from '@/lib/bookingCockpit';
 import { ROUTES } from '@/config/app.config';
 import { cn } from '@/lib/utils';
@@ -634,7 +634,7 @@ export function CalendarSurface({
               {peekEntry && (
                 <div className="rounded-[var(--radius-l)] border border-border bg-[var(--surface)] shadow-elev3">
                   <RowPeek
-                    dateLabel={format(peekEntry.date, 'EEE d MMM')}
+                    dateLabel={format(peekEntry.date, 'EEE d MMM', { locale: dfLocale() })}
                     peek={peek}
                     canConfirm={canConfirmPeek}
                     confirming={false}

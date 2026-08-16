@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import type { ParseKeys } from 'i18next';
 import type { ActionGates, ProducerActionKey, ProducerDateEntry, ProducerStatus } from '@/lib/calendar/types';
 import { PRODUCER_TONES, TONE_TEXT } from '@/lib/calendar/tone';
-import { toDateKey } from '@/lib/dates';
+import { dfLocale, toDateKey } from '@/lib/dates';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { HireOrderStatusBadge } from '@/components/hireOrders/HireOrderStatusBadge';
@@ -100,7 +100,7 @@ export function AgendaLens({ entries, onOpenEntry, onAction, actionGates, classN
         <div key={week.key} data-testid={`agenda-week-${week.key}`}>
           <div className="flex items-baseline gap-2.5 pb-2">
             <p className="text-[11px] font-semibold uppercase tracking-[1.6px] text-primary">
-              {t('calendar.agenda.weekOfHeading', { weekStart: format(week.weekStart, 'd MMM') })}
+              {t('calendar.agenda.weekOfHeading', { weekStart: format(week.weekStart, 'd MMM', { locale: dfLocale() }) })}
             </p>
             <span className="font-mono text-[11px] text-muted-foreground">
               {t('calendar.agenda.dateCount', { count: week.entries.length })}
@@ -132,7 +132,7 @@ export function AgendaLens({ entries, onOpenEntry, onAction, actionGates, classN
                 >
                   <div className="shrink-0 md:w-[62px]">
                     <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      {format(entry.date, 'EEE')}
+                      {format(entry.date, 'EEE', { locale: dfLocale() })}
                     </p>
                     <p className="font-mono text-sm font-semibold tabular-nums text-foreground">
                       {format(entry.date, 'd')}

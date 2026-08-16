@@ -5,7 +5,7 @@ import type { ProducerDateEntry } from '@/lib/calendar/types';
 import { toSeasonModel, seasonKpis, type SeasonCell } from '@/lib/calendar/seasonData';
 import { unconfirmedSlots } from '@/lib/calendar/slots';
 import { seasonBarClass } from '@/lib/calendar/tone';
-import { toDateKey } from '@/lib/dates';
+import { toDateKey, weekdayNarrow } from '@/lib/dates';
 import { cn } from '@/lib/utils';
 import { SeasonKpis } from './SeasonKpis';
 
@@ -31,10 +31,6 @@ interface SeasonLensProps {
 
 /** Left label column width (px), shared by every grid row so columns line up. */
 const LABEL_WIDTH = 208;
-
-/** Single-letter weekday initials (Sun..Sat, indexed by `getDay()`), shown
- *  above each date number in the day header — weekend columns render greyed. */
-const WEEKDAY_INITIALS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
 /** A day's "Unfilled slots" load bar renders in saturated warning once it
  *  carries this many open main slots, a lighter tint below it (mock). */
@@ -240,7 +236,7 @@ export function SeasonLens({
                 )}
               >
                 <span className={cn('text-[8px] font-sans not-italic', isWeekend ? 'text-muted-foreground/50' : 'text-muted-foreground/80')}>
-                  {WEEKDAY_INITIALS[dow]}
+                  {weekdayNarrow(day)}
                 </span>
                 {day.getDate()}
               </div>

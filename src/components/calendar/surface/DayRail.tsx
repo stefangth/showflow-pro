@@ -1,7 +1,7 @@
 import { format } from 'date-fns';
 import { useTranslation } from 'react-i18next';
 import type { ActionGates, ArtistDateEntry, ArtistStatus, ProducerDateEntry } from '@/lib/calendar/types';
-import { toDateKey } from '@/lib/dates';
+import { dfLocale, toDateKey } from '@/lib/dates';
 import { cn } from '@/lib/utils';
 import { DayDetail } from './DayDetail';
 
@@ -66,7 +66,7 @@ export function DayRail({
   const statsTitle =
     role === 'producer'
       ? t('calendar.rail.statsTitle')
-      : t('availability:calendar.rail.statsTitleMonth', { month: format(day, 'MMMM') });
+      : t('availability:calendar.rail.statsTitleMonth', { month: format(day, 'MMMM', { locale: dfLocale() }) });
 
   return (
     <div data-testid="day-rail" data-day={toDateKey(day)} className={cn('flex flex-col gap-3', className)}>

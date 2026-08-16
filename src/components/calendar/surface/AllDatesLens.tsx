@@ -3,7 +3,7 @@ import { Ticket } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { ArtistDateEntry, ArtistStatus } from '@/lib/calendar/types';
 import { ARTIST_TONES, artistStatusLabel } from '@/lib/calendar/tone';
-import { isPastDate } from '@/lib/dates';
+import { dfLocale, isPastDate } from '@/lib/dates';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 
@@ -94,9 +94,9 @@ export function AllDatesLens({ entries, onBlock, hireOrderHref, statusLabels, to
           >
             <div className="flex items-center gap-2 md:contents">
               <span className="font-mono text-[12.5px] font-medium tabular-nums text-foreground md:w-24 md:shrink-0">
-                {format(entry.date, 'd MMM')}
+                {format(entry.date, 'd MMM', { locale: dfLocale() })}
               </span>
-              <span className="text-xs text-muted-foreground md:w-[42px] md:shrink-0">{format(entry.date, 'EEE')}</span>
+              <span className="text-xs text-muted-foreground md:w-[42px] md:shrink-0">{format(entry.date, 'EEE', { locale: dfLocale() })}</span>
             </div>
             <div className="min-w-0 w-full md:flex-1">
               <p className="truncate text-[13.5px] font-semibold text-foreground">

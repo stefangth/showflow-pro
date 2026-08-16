@@ -32,13 +32,18 @@ Therefore **every EN key value must byte-match the current literal** (including
 - Components branching on role load both needed namespaces:
   `useTranslation(['bookings','availability','common'])`, key via `t('bookings:…')`.
 
-## Weekday headers → date-fns locale, NOT t()
+## Weekday headers + date fragments → date-fns locale, NOT t()
 
-`MonthGrid`/`WeekLens` `WEEKDAYS` and `SeasonLens` `WEEKDAY_INITIALS` are calendrical.
-`src/lib/dates.ts` already exposes an active-language date-fns locale helper
-("a language switch reformats weekday names"). Generate Monday-first weekday
-labels from that locale instead of hardcoded English arrays. This matches app
-convention and localizes DE for free. No catalog keys for weekdays.
+`MonthGrid`/`WeekLens` `WEEKDAYS` and `SeasonLens` `WEEKDAY_INITIALS` are
+calendrical, and so are the ad-hoc `format(date, 'EEE d MMM')`-style date labels
+scattered across the surface. `src/lib/dates.ts` already exposes an
+active-language date-fns locale helper ("a language switch reformats weekday
+names"). Weekday headers derive from `weekdayShortLabels()` (Mon-first) /
+`weekdayNarrow()` (per-date initial) instead of hardcoded English arrays; the
+ad-hoc month/weekday `format()` calls thread `dfLocale()` (now exported) so
+month/weekday names render in German too. This matches app convention and
+localizes DE for free; English output is byte-identical (`dfLocale()` →
+`undefined`). No catalog keys for weekdays.
 
 ## Pure modules (no hooks) — per-module decision
 

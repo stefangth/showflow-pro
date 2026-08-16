@@ -2,7 +2,7 @@ import { format } from 'date-fns';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import type { ActionGates, ArtistDateEntry, ArtistStatus, ProducerDateEntry, Tone } from '@/lib/calendar/types';
-import { berlinDateKey, toDateKey } from '@/lib/dates';
+import { berlinDateKey, dfLocale, toDateKey } from '@/lib/dates';
 import { ARTIST_TONES, PRODUCER_TONES, TONE_TEXT, artistStatusLabel } from '@/lib/calendar/tone';
 import { resolveProducerPrimary } from '@/lib/calendar/producerPrimary';
 import { unconfirmedSlots } from '@/lib/calendar/slots';
@@ -78,7 +78,7 @@ function artistInfoTiles(day: Date, entries: ArtistDateEntry[], t: DayTF): InfoT
     tiles.push({
       key: 'expires',
       label: t('availability:calendar.day.expires'),
-      value: sameDay ? format(expiry, 'HH:mm') : format(expiry, 'd MMM'),
+      value: sameDay ? format(expiry, 'HH:mm') : format(expiry, 'd MMM', { locale: dfLocale() }),
       warn: true,
     });
   }
@@ -131,7 +131,7 @@ function buildRailHeader(
   t: DayTF,
   statusLabels?: Partial<Record<ArtistStatus, string>>,
 ): RailHeader {
-  const dateLabel = format(day, 'EEE d MMM');
+  const dateLabel = format(day, 'EEE d MMM', { locale: dfLocale() });
   const entries = role === 'producer' ? producerEntries : artistEntries;
 
   if (entries.length === 0) {
