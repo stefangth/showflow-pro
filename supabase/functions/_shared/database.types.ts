@@ -919,20 +919,29 @@ export type Database = {
       }
       demo_state: {
         Row: {
+          current_scene_id: string | null
           org_id: string
           prospect_label: string | null
+          script_id: string | null
+          sim_now: string | null
           updated_at: string
           volume: string
         }
         Insert: {
+          current_scene_id?: string | null
           org_id: string
           prospect_label?: string | null
+          script_id?: string | null
+          sim_now?: string | null
           updated_at?: string
           volume?: string
         }
         Update: {
+          current_scene_id?: string | null
           org_id?: string
           prospect_label?: string | null
+          script_id?: string | null
+          sim_now?: string | null
           updated_at?: string
           volume?: string
         }
