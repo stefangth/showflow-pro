@@ -9,16 +9,18 @@ import { fetchPlatformOrgStats, fetchAllOrgEntitlements, setOrgStatus, type OrgS
 import { enabledFeatures, FEATURE_KEYS, FEATURE_REGISTRY, type FeatureKey, type EntitlementRow } from "@/lib/entitlements";
 import { formatLastActivity } from "./platformFormat";
 import { NewOrgDialog } from "./NewOrgDialog";
+import { NewDemoOrgDialog } from "./NewDemoOrgDialog";
 import { EditOrgDialog } from "./EditOrgDialog";
 import { OrgInvitePopover } from "./OrgInvitePopover";
 import { OrgMembersPopover } from "./OrgMembersPopover";
+import { useReseedDemoOrg, useWipeDemoOrg } from "@/hooks/useDemo";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { IconTooltip } from "@/components/common/IconTooltip";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { LogIn, Pause, Play, Pencil } from "lucide-react";
+import { LogIn, Pause, Play, Pencil, RefreshCw, Eraser } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -30,6 +32,7 @@ export function OrganizationsTab() {
   const { switchOrg } = useAuth();
   const [editing, setEditing] = useState<OrgStat | null>(null);
   const [toSuspend, setToSuspend] = useState<OrgStat | null>(null);
+  const [toWipe, setToWipe] = useState<OrgStat | null>(null);
 
   const { data: orgs, isLoading, isError, error } = useQuery({
     queryKey: ["platform", "org-stats"],
@@ -61,6 +64,9 @@ export function OrganizationsTab() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const reseed = useReseedDemoOrg();
+  const wipe = useWipeDemoOrg();
+
   const enter = (orgId: string) => { switchOrg(orgId); navigate(ROUTES.DASHBOARD); };
 
   if (isLoading) return <div className="space-y-2">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-[var(--row-h)] w-full" />)}</div>;
@@ -68,7 +74,7 @@ export function OrganizationsTab() {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end"><NewOrgDialog /></div>
+      <div className="flex justify-end gap-2"><NewDemoOrgDialog /><NewOrgDialog /></div>
       <Table>
         <TableHeader>
           <TableRow>
@@ -82,7 +88,12 @@ export function OrganizationsTab() {
             <TableRow key={o.org_id}>
               <TableCell className="font-medium">{o.name}</TableCell>
               <TableCell className="text-muted-foreground">{o.slug}</TableCell>
-              <TableCell><Badge variant={o.status === "suspended" ? "destructive" : "secondary"}>{o.status}</Badge></TableCell>
+              <TableCell>
+                <div className="flex items-center gap-1">
+                  <Badge variant={o.status === "suspended" ? "destructive" : "secondary"}>{o.status}</Badge>
+                  {o.is_demo && <Badge variant="outline" className="border-primary text-primary">DEMO</Badge>}
+                </div>
+              </TableCell>
               <TableCell>
                 <div className="flex flex-wrap gap-1">
                   {[...enabledFeatures(entitlementsByOrg.get(o.org_id) ?? [])].map((feature) => (
@@ -109,6 +120,27 @@ export function OrganizationsTab() {
                       {o.status === "suspended" ? <Play className="h-3.5 w-3.5" /> : <Pause className="h-3.5 w-3.5" />}
                     </Button>
                   </IconTooltip>
+                  {o.is_demo && (
+                    <>
+                      <IconTooltip label="Reseed demo">
+                        <Button size="sm" variant="ghost" aria-label="Reseed demo" disabled={reseed.isPending}
+                          onClick={() => reseed.mutate(
+                            { orgId: o.org_id, volume: "full" },
+                            {
+                              onSuccess: () => toast.success("Demo org reseeded"),
+                              onError: (e: Error) => toast.error(e.message),
+                            },
+                          )}>
+                          <RefreshCw className="h-3.5 w-3.5" />
+                        </Button>
+                      </IconTooltip>
+                      <IconTooltip label="Wipe demo">
+                        <Button size="sm" variant="ghost" aria-label="Wipe demo" onClick={() => setToWipe(o)}>
+                          <Eraser className="h-3.5 w-3.5" />
+                        </Button>
+                      </IconTooltip>
+                    </>
+                  )}
                   <Button size="sm" variant="outline" onClick={() => enter(o.org_id)}><LogIn className="h-3.5 w-3.5 mr-1" />Enter</Button>
                 </div>
               </TableCell>
@@ -127,6 +159,24 @@ export function OrganizationsTab() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={() => { if (toSuspend) statusMutation.mutate({ id: toSuspend.org_id, status: "suspended" }); setToSuspend(null); }}>Suspend</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog open={toWipe !== null} onOpenChange={(o) => !o && setToWipe(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Wipe demo org?</AlertDialogTitle>
+            <AlertDialogDescription>All seeded data for {toWipe?.name} will be permanently deleted. This cannot be undone.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              if (toWipe) wipe.mutate(
+                { orgId: toWipe.org_id },
+                { onSuccess: () => toast.success("Demo org wiped"), onError: (e: Error) => toast.error(e.message) },
+              );
+              setToWipe(null);
+            }}>Wipe</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
