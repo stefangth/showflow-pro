@@ -53,7 +53,7 @@ const EMPTY_COPY: Partial<Record<EmailCopyKey, string>> = {};
 const EMPTY_THEME: EmailThemeOverride = {};
 
 function EmailTemplateEditorWorkspace({ template, orgId, readOnly }: WorkspaceProps) {
-  const { t } = useTranslation("settingsEmailTemplates");
+  const { t, i18n } = useTranslation("settingsEmailTemplates");
   const queryClient = useQueryClient();
   const settingsQuery = useQuery({
     queryKey: ["app-settings", "email-templates", orgId],
@@ -106,7 +106,9 @@ function EmailTemplateEditorWorkspace({ template, orgId, readOnly }: WorkspacePr
 
   // Translated once per language change, not per render (EMAIL_EDITOR_SECTIONS used to be
   // a static English constant; now it must be rebuilt whenever `t` resolves a new language).
-  const editorSections = useMemo(() => buildEmailEditorSections(t), [t]);
+  // `i18n.language` forces this to recompute on every real language change.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const editorSections = useMemo(() => buildEmailEditorSections(t), [t, i18n.language]);
 
   const previewInput = useMemo(() => ({
     templateKey: template.templateKey,

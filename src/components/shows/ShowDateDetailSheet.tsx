@@ -186,7 +186,7 @@ interface ShowDateDetailRow {
 }
 
 export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager, initialTab }: Props) {
-  const { t } = useTranslation('showsDetail');
+  const { t, i18n } = useTranslation('showsDetail');
   const { t: tBooking } = useTranslation('bookingCopy');
   const { hasRole, user, roles, currentOrg } = useAuth();
   const { isEditorMode, getCustomFieldDefs } = useEditorConfig();
@@ -846,10 +846,12 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager, ini
             onOpenSlot: () => setActiveTab('offers'),
           })
         : [],
+    // `i18n.language` forces this to recompute on every real language change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       open, showDate, bookingModuleAllowed, bookings, slotConfig, canManage,
       canConfirmBookings, canRunOfferEngine, flow.artist_acceptance,
-      mutateBookingStatus, setActiveTab, t,
+      mutateBookingStatus, setActiveTab, t, i18n.language,
     ],
   );
 

@@ -49,7 +49,7 @@ interface RolesRightsTabProps {
  *  desired state; nothing writes until Apply, which batches every changed key and asks
  *  for one confirmation up front when any changed key is sensitive. */
 export function RolesRightsTab({ orgId }: RolesRightsTabProps) {
-  const { t } = useTranslation("settingsRolesRights");
+  const { t, i18n } = useTranslation("settingsRolesRights");
   const qc = useQueryClient();
   const { cells, isLoading } = useCapabilityMatrix(orgId);
   const hireOrdersEnabled = useFeature("hire_orders");
@@ -83,7 +83,9 @@ export function RolesRightsTab({ orgId }: RolesRightsTabProps) {
         effective: c.effective,
         locked: c.locked,
       })),
-    [cells, t],
+    // `i18n.language` forces this to recompute on every real language change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [cells, t, i18n.language],
   );
   const rowByKey = useMemo(() => new Map(allRows.map((r) => [r.key, r])), [allRows]);
 

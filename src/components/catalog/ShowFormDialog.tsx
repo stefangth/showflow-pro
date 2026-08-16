@@ -40,14 +40,16 @@ export function ShowFormDialog({
   allShows: ShowWithStats[];
   onSaved?: (id: string) => void;
 }) {
-  const { t } = useTranslation("productions");
+  const { t, i18n } = useTranslation("productions");
   const { user, currentOrg } = useAuth();
   const canEditScheduling = useCan("edit_scheduling");
   const schema = useMemo(
     () => baseSchema.refine((v) => !!(v.program || v.subProgram), {
       message: t("form.validation.programOrSubRequired"), path: ["program"],
     }),
-    [t],
+    // `i18n.language` forces this to recompute on every real language change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [t, i18n.language],
   );
   const isEdit = !!show;
   const synced = !!show && isSyncedShow(show);
