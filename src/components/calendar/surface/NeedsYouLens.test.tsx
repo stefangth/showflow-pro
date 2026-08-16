@@ -84,7 +84,7 @@ describe('NeedsYouLens', () => {
         onItemAction={onItemAction}
         onOpenDate={onOpenDate}
         onBulk={onBulk}
-        receipts={[{ dateId: 'd-cleared', title: 'Cirque Noir', label: 'Confirmed' }]}
+        receipts={[{ dateId: 'd-cleared', title: 'Cirque Noir', label: 'Confirmed holds' }]}
         onUndoLast={onUndoLast}
       />
     );
@@ -102,6 +102,21 @@ describe('NeedsYouLens', () => {
     expect(screen.getByTestId('needs-you-expiry-d-expires')).toBeInTheDocument();
     expect(screen.queryByTestId('needs-you-expiry-d-ready')).not.toBeInTheDocument();
 
+    // Urgent-card styling (3-column ticket, gap-analysis §2): only the
+    // expires-today card gets the violet border + shadow-3 elevation + the
+    // violet-tinted date block; the ready-to-issue card stays neutral.
+    expect(screen.getByTestId('needs-you-item-d-expires')).toHaveClass(
+      'border-[var(--accent-200)]',
+      'shadow-[var(--shadow-3)]'
+    );
+    expect(screen.getByTestId('needs-you-date-d-expires')).toHaveClass('bg-accent-50');
+    expect(screen.getByTestId('needs-you-item-d-ready')).toHaveClass('border-border', 'shadow-[var(--shadow-2)]');
+    expect(screen.getByTestId('needs-you-date-d-ready')).toHaveClass('bg-muted');
+
+    // Group headers are color-coded per group key, not all the same violet.
+    expect(screen.getByTestId('needs-you-group-title-expires-today')).toHaveClass('text-accent-700');
+    expect(screen.getByTestId('needs-you-group-title-ready-to-issue')).toHaveClass('text-[var(--green-600)]');
+
     // Bulk button for expires-today fires onBulk('expires-today', 'confirm').
     fireEvent.click(screen.getByTestId('needs-you-bulk-expires-today'));
     expect(onBulk).toHaveBeenCalledTimes(1);
@@ -112,9 +127,15 @@ describe('NeedsYouLens', () => {
     expect(onItemAction).toHaveBeenCalledTimes(1);
     expect(onItemAction).toHaveBeenCalledWith(readyItem, 'generate');
 
-    // Receipts footer: a receipt row + "Undo last" fires onUndoLast.
+    // Receipts footer: a receipt row + "Undo last" fires onUndoLast, and the
+    // receipt renders as a colored tone pill (not flat gray text) — this
+    // fixture's "Confirmed holds" label matches the confirmedAll toast
+    // template, so it resolves to the success tone's classes.
     expect(screen.getByTestId('needs-you-receipts')).toBeInTheDocument();
     expect(screen.getByText('Cirque Noir')).toBeInTheDocument();
+    const pill = screen.getByTestId('needs-you-receipt-pill-0');
+    expect(pill).toHaveTextContent('Confirmed holds');
+    expect(pill).toHaveClass('bg-[var(--green-100)]', 'text-[var(--green-600)]');
     fireEvent.click(screen.getByTestId('needs-you-undo-last'));
     expect(onUndoLast).toHaveBeenCalledTimes(1);
   });
