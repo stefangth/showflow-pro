@@ -68,12 +68,13 @@ vi.mock("@/features/editor/EditorToolbar", () => ({
   EditorPageBadge: () => null,
 }));
 vi.mock("@/components/layout/ThemeToggle", () => ({ ThemeToggle: () => null }));
-// DemoBadge and DemoBar both call useDemo(), which requires a real DemoProvider (itself
-// requiring a real AuthContext) — neither is mounted by this file's standalone AppLayout
-// render (AuthContext is mocked wholesale above). Their own behavior is covered by
-// DemoBar.test.tsx.
+// DemoBadge, DemoBar, and RunOfShowRail all call useDemo(), which requires a real
+// DemoProvider (itself requiring a real AuthContext) — none is mounted by this file's
+// standalone AppLayout render (AuthContext is mocked wholesale above). Their own behavior
+// is covered by DemoBar.test.tsx / RunOfShowRail.test.tsx.
 vi.mock("@/components/demo/DemoBadge", () => ({ DemoBadge: () => null }));
 vi.mock("@/components/demo/DemoBar", () => ({ DemoBar: () => null }));
+vi.mock("@/components/demo/RunOfShowRail", () => ({ RunOfShowRail: () => null }));
 
 // The prop under test. A trivial stub in place of the real NotificationsList (its own
 // deep-link/read/onNavigate contract is covered by NotificationsList.test.tsx) exposes
