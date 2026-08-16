@@ -584,7 +584,7 @@ function ProducerShowsBookings() {
           programOptions={programOptions}
           programs={programs}
           onProgramsChange={setPrograms}
-          showTimeframe={canSee('timeframe')}
+          showTimeframe={false}
           timeframe={timeframe}
           onTimeframeChange={setTimeframe}
           filterableDefs={filterableDefs}

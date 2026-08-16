@@ -166,7 +166,7 @@ export function FilterChipsBar<TStatus extends string>({
           removeLabel={t('filters.removeAria', { label: program })}
         />
       ))}
-      {timeframeActive && (
+      {showTimeframe && timeframeActive && (
         <Chip
           testId="filter-chip-timeframe"
           label={describeTimeframe(timeframe, t)}
