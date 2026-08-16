@@ -1,32 +1,38 @@
 // Demo-ops: the callable surface for demo-org operations.
 //
-// Consumes the `wipe_demo_org` / `seed_demo_org` RPCs (Task 3). Three actions:
+// Consumes the `wipe_demo_org` / `seed_demo_org` / `run_demo_cue` RPCs. Four actions:
 //  - `flag_and_seed` (super-admin only): marks an already-provisioned org
 //    `is_demo = true`, upserts the `hire_orders` entitlement on, and seeds it.
 //    The frontend calls `provision-org` FIRST (org + first-admin + invite),
 //    then this — `demo-ops` cannot re-invoke `provision-org` itself (its
 //    `requireSuperAdmin` gate rejects a service-role fn-to-fn call), and
 //    re-implementing account/membership/email would duplicate that code.
-//  - `reset` / `wipe` (org-admin; super-admins pass too via the requireOrgRole
-//    fallback): re-asserts `is_demo` at the edge (defense in depth on top of each
-//    RPC's own guard), then calls wipe/seed. `reset` = wipe then seed; `wipe` =
-//    wipe only. There is deliberately NO bare seed-only action: `seed_demo_org`
-//    inserts fixed rows (e.g. order_no HO-DEMO-0001..0003) and is NOT idempotent
-//    against its own prior output, so it is only ever run on a fresh org
-//    (flag_and_seed) or immediately after a wipe (reset).
+//  - `reset` / `wipe` / `cue` (org-admin; super-admins pass too via the
+//    requireOrgRole fallback): re-asserts `is_demo` at the edge (defense in depth
+//    on top of each RPC's own guard), then dispatches. `reset` = wipe then seed;
+//    `wipe` = wipe only. There is deliberately NO bare seed-only action:
+//    `seed_demo_org` inserts fixed rows (e.g. order_no HO-DEMO-0001..0003) and is
+//    NOT idempotent, so it only runs on a fresh org (flag_and_seed) or right after
+//    a wipe (reset). `cue` drives the guided demo tour: DB-mutation cue ids go to
+//    `run_demo_cue`; `cue_id: "issue_hire_order"` goes to `generate-hire-orders`.
 import { preflight, json } from "../_shared/http.ts";
 import { requireOrgRole, requireSuperAdmin } from "../_shared/auth.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
 
-type Action = "reset" | "wipe" | "flag_and_seed";
+type Action = "reset" | "wipe" | "flag_and_seed" | "cue";
 
 type Body = {
   action: Action;
   org_id?: string;
   volume?: "small" | "full";
+  cue_id?: string;
 };
 
-const VALID_ACTIONS: Action[] = ["reset", "wipe", "flag_and_seed"];
+const VALID_ACTIONS: Action[] = ["reset", "wipe", "flag_and_seed", "cue"];
+
+// DB-mutation cues dispatched to the run_demo_cue RPC (Task 2). `issue_hire_order`
+// is handled separately below via generate-hire-orders.
+const DB_CUES = ["artist_accepts_offer", "run_clock_to_1700", "drop_notifications", "fill_date", "advance_clock"];
 
 async function assertDemoOrg(deps: Deps, orgId: string): Promise<boolean> {
   const { data } = await deps.admin.from("organizations").select("is_demo").eq("id", orgId).maybeSingle();
@@ -106,6 +112,26 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     });
     if (error) return json({ error: error.message }, 500);
   }
+
+  // `cue` drives the guided demo tour: DB-mutation cues go through run_demo_cue
+  // (Task 2); issue_hire_order is a separate action on generate-hire-orders.
+  if (body.action === "cue") {
+    const cueId = body.cue_id;
+    if (cueId === "issue_hire_order") {
+      const { error } = await deps.invokeFunction("generate-hire-orders", { action: "issue", org_id: orgId });
+      if (error) return json({ error: (error as Error).message }, 500);
+      return json({ ok: true });
+    }
+    if (!cueId || !DB_CUES.includes(cueId)) return json({ error: "unknown_cue" }, 400);
+    const { error } = await deps.admin.rpc("run_demo_cue", {
+      p_org: orgId,
+      p_cue: cueId,
+      p_actor: gate.userId ?? undefined,
+    });
+    if (error) return json({ error: error.message }, 500);
+    return json({ ok: true });
+  }
+
   return json({ ok: true });
 }
 

@@ -2780,6 +2780,10 @@ export type Database = {
         Returns: undefined
       }
       revoke_invitation: { Args: { p_id: string }; Returns: undefined }
+      run_demo_cue: {
+        Args: { p_actor?: string; p_cue: string; p_org: string }
+        Returns: undefined
+      }
       seed_demo_org: {
         Args: { p_actor?: string; p_org: string; p_volume?: string }
         Returns: undefined
