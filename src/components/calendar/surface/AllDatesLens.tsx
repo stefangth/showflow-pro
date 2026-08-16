@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import type { ArtistDateEntry, ArtistStatus } from '@/lib/calendar/types';
 import { ARTIST_TONES, artistStatusLabel } from '@/lib/calendar/tone';
 import { dfLocale, isPastDate } from '@/lib/dates';
+import { sessionLabel } from '@/lib/calendar/time';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 
@@ -106,7 +107,7 @@ export function AllDatesLens({ entries, onBlock, hireOrderHref, statusLabels, to
               {entry.venue && <p className="truncate text-xs text-muted-foreground">{entry.venue}</p>}
             </div>
             <span className="font-mono text-xs tabular-nums text-muted-foreground md:w-[52px] md:shrink-0">
-              {entry.session1 ?? ''}
+              {sessionLabel(entry.session1)}
             </span>
             <span
               className={cn(

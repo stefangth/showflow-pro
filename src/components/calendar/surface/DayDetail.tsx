@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import type { ActionGates, ArtistDateEntry, ArtistStatus, ProducerDateEntry, Tone } from '@/lib/calendar/types';
 import { berlinDateKey, dfLocale, toDateKey } from '@/lib/dates';
+import { sessionLabel } from '@/lib/calendar/time';
 import { ARTIST_TONES, PRODUCER_TONES, TONE_TEXT, artistStatusLabel } from '@/lib/calendar/tone';
 import { resolveProducerPrimary } from '@/lib/calendar/producerPrimary';
 import { unconfirmedSlots } from '@/lib/calendar/slots';
@@ -68,7 +69,7 @@ function artistInfoTiles(day: Date, entries: ArtistDateEntry[], t: DayTF): InfoT
   const entry = entries.find(e => e.myStatus === 'suggested') ?? entries[0];
   if (!entry) return [];
   const tiles: InfoTile[] = [];
-  if (entry.session1) tiles.push({ key: 'session', label: t('availability:calendar.day.session'), value: entry.session1 });
+  if (entry.session1) tiles.push({ key: 'session', label: t('availability:calendar.day.session'), value: sessionLabel(entry.session1) });
   if (entry.offerExpiresAt) {
     const expiry = new Date(entry.offerExpiresAt);
     // Compare on the Berlin calendar (the booking engine anchors offer-expiry
@@ -183,7 +184,7 @@ function ProducerDayCard({ entry }: { entry: ProducerDateEntry }) {
         </p>
         {entry.session1 && (
           <span className="shrink-0 whitespace-nowrap font-mono text-[11px] text-muted-foreground">
-            {entry.session1}
+            {sessionLabel(entry.session1)}
           </span>
         )}
       </div>
@@ -224,7 +225,7 @@ function ArtistDayCard({ entry, statusLabels }: { entry: ArtistDateEntry; status
         </p>
         {entry.session1 && (
           <span className="shrink-0 whitespace-nowrap font-mono text-[11px] text-muted-foreground">
-            {entry.session1}
+            {sessionLabel(entry.session1)}
           </span>
         )}
       </div>

@@ -96,6 +96,18 @@ describe('AllDatesLens', () => {
     expect(row).toHaveTextContent('Hold');
   });
 
+  it('formats a raw HH:MM:SS session value as HH:MM, not the raw string', () => {
+    const e = entry({ id: 'ad-6', session1: '18:00:00' });
+
+    render(
+      <AllDatesLens entries={[e]} onBlock={vi.fn()} hireOrderHref={(id) => `/hire-orders/${id}`} today={TODAY} />
+    );
+
+    const row = screen.getByTestId('all-dates-row-ad-6');
+    expect(row).toHaveTextContent('18:00');
+    expect(row).not.toHaveTextContent('18:00:00');
+  });
+
   it('a row stacks single-column by default (mobile) with md: classes restoring the desktop table row, and the header hides until md:', () => {
     const e = entry({ id: 'ad-1' });
     render(
