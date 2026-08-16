@@ -13,7 +13,7 @@ import { NewDemoOrgDialog } from "./NewDemoOrgDialog";
 import { EditOrgDialog } from "./EditOrgDialog";
 import { OrgInvitePopover } from "./OrgInvitePopover";
 import { OrgMembersPopover } from "./OrgMembersPopover";
-import { useReseedDemoOrg, useWipeDemoOrg } from "@/hooks/useDemo";
+import { useResetDemo, useWipeDemoOrg } from "@/hooks/useDemo";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { IconTooltip } from "@/components/common/IconTooltip";
@@ -64,7 +64,7 @@ export function OrganizationsTab() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const reseed = useReseedDemoOrg();
+  const reseed = useResetDemo();
   const wipe = useWipeDemoOrg();
 
   const enter = (orgId: string) => { switchOrg(orgId); navigate(ROUTES.DASHBOARD); };
@@ -127,7 +127,7 @@ export function OrganizationsTab() {
                           onClick={() => reseed.mutate(
                             { orgId: o.org_id, volume: "full" },
                             {
-                              onSuccess: () => toast.success("Demo org reseeded"),
+                              onSuccess: () => toast.success("Demo data reset"),
                               onError: (e: Error) => toast.error(e.message),
                             },
                           )}>
