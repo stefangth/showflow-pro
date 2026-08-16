@@ -42,7 +42,7 @@ export default tseslint.config(
     },
   },
   // shadcn primitives are generated (never hand-edited) and the test harness
-  // is never HMR'd — fast-refresh hygiene is meaningless in both. The three
+  // is never HMR'd — fast-refresh hygiene is meaningless in both. These
   // context modules deliberately co-locate provider + hooks (editing them
   // full-reloads the dev server; accepted). Splitting them for fast refresh
   // is deferred to a standalone PR — that PR deletes this carve-out.
@@ -59,6 +59,7 @@ export default tseslint.config(
       "src/test/**",
       "src/features/auth/AuthContext.tsx",
       "src/features/editor/EditorContext.tsx",
+      "src/features/demo/DemoContext.tsx",
       "src/features/consent/ConsentContext.tsx",
       "src/features/i18n/LanguageContext.tsx",
       "src/lib/hireOrders/pdf/render.tsx",
