@@ -5,8 +5,8 @@ import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { dfLocale } from '@/lib/dates';
 import type { NeedsYouGroupKey, NeedsYouItem, NeedsYouQueue } from '@/lib/calendar/needsYou';
-import type { ActionGates, ProducerActionKey } from '@/lib/calendar/types';
-import { PRODUCER_TONES } from '@/lib/calendar/tone';
+import type { ActionGates, ProducerActionKey, Tone } from '@/lib/calendar/types';
+import { PRODUCER_TONES, TONE_BG, TONE_TEXT } from '@/lib/calendar/tone';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -99,6 +99,36 @@ const BULK_ACTION: Partial<
   'ready-to-issue': { action: 'generate', gateKey: 'generateHireOrder' },
 };
 
+/** Group-header title color, matching the design's per-group `fg` (queueCard
+ *  group builder, design line 947-950): violet for the most urgent group,
+ *  then amber/green/red for at-risk/ready/cancelled — lets a producer scan
+ *  the queue by color instead of reading every header. */
+const GROUP_HEADER_CLASS: Record<NeedsYouGroupKey, string> = {
+  'expires-today': 'text-accent-700',
+  'at-risk': 'text-[var(--amber-600)]',
+  'ready-to-issue': 'text-[var(--green-600)]',
+  cancelled: 'text-[var(--red-600)]',
+};
+
+/** Toast-label "kind" a "Cleared today" receipt can be built from — mirrors
+ *  the five `addReceipt` call sites in `ShowsBookingsPage`. Mapped to the
+ *  tone of its colored pill: an extended hold is still a live, time-pressured
+ *  state (warning); a released hold just returns to the pool, no verdict
+ *  either way (muted); a cast notification is closer to a casting-style
+ *  broadcast (accent, matching the design's violet "Casting opened" example);
+ *  a bulk confirm or hire-order generation is an unambiguous positive outcome
+ *  (success). */
+const RECEIPT_TONE_BY_KIND: Record<
+  'extended' | 'released' | 'notified' | 'confirmedAll' | 'generatedAll',
+  Tone
+> = {
+  extended: 'warning',
+  released: 'muted',
+  notified: 'accent',
+  confirmedAll: 'success',
+  generatedAll: 'success',
+};
+
 function primaryLabel(group: NeedsYouGroupKey, item: NeedsYouItem, t: TF): string {
   switch (group) {
     case 'expires-today':
@@ -155,6 +185,34 @@ function noteForItem(item: NeedsYouItem, t: TF): string {
   }
 }
 
+/** Optional "in Nd" / "today" lead-time line under the date block (design
+ *  line 193-195), reusing the `at-risk` note's existing `atRiskLeadDays`/
+ *  `atRiskLeadToday` translations rather than introducing new copy for what
+ *  is the same "days from today" concept. Omitted for a past date. */
+function leadLabel(leadDays: number, t: TF): string | null {
+  if (leadDays > 0) return t('calendar.needsYou.note.atRiskLeadDays', { count: leadDays });
+  if (leadDays === 0) return t('calendar.needsYou.note.atRiskLeadToday');
+  return null;
+}
+
+/** Infers a "Cleared today" receipt's pill tone from its already-rendered
+ *  `label` by re-rendering each known `needsYou.toast.*` template (with any
+ *  interpolated count blanked to `0`) and comparing digit-stripped text —
+ *  locale-safe (works whether the label was built in English or German)
+ *  because it replays the same i18n keys `ShowsBookingsPage.addReceipt`
+ *  callers used, rather than pattern-matching hardcoded English words. A
+ *  receipt whose label doesn't match any known toast (e.g. a future caller
+ *  supplying free-form text) falls back to `success` — "cleared" already
+ *  implies a positive outcome. */
+function receiptTone(label: string, t: TF): Tone {
+  const strip = (s: string) => s.replace(/\d+/g, '').trim();
+  const target = strip(label);
+  for (const kind of Object.keys(RECEIPT_TONE_BY_KIND) as (keyof typeof RECEIPT_TONE_BY_KIND)[]) {
+    if (strip(t(`needsYou.toast.${kind}`, { count: 0 })) === target) return RECEIPT_TONE_BY_KIND[kind];
+  }
+  return 'success';
+}
+
 function entryTitle(item: NeedsYouItem): string {
   const { entry } = item;
   return entry.program + (entry.subProgram ? ` · ${entry.subProgram}` : '');
@@ -209,7 +267,10 @@ export function NeedsYouLens({
         return (
           <div key={group.key} data-testid={`needs-you-group-${group.key}`}>
             <div className="flex items-baseline justify-between gap-2 pb-2">
-              <p className="text-[11px] font-semibold uppercase tracking-[1.6px] text-primary">
+              <p
+                data-testid={`needs-you-group-title-${group.key}`}
+                className={cn('text-[11px] font-semibold uppercase tracking-[1.6px]', GROUP_HEADER_CLASS[group.key])}
+              >
                 {t(`calendar.needsYou.groups.${group.key}`)}
               </p>
               {bulk && (
@@ -238,6 +299,12 @@ export function NeedsYouLens({
                 const secondary = SECONDARY_ACTIONS[group.key];
                 const primaryGate = primary.gateKey ? actionGates?.[primary.gateKey] : undefined;
                 const primaryDisabled = primaryGate?.disabled ?? false;
+                // Only `expires-today` gets the design's violet-tinted date
+                // block + the heavier shadow-3 elevation (gap-analysis §2
+                // "Urgent-card distinct styling") — every other group keeps
+                // the neutral card treatment.
+                const isUrgent = group.key === 'expires-today';
+                const lead = leadLabel(item.leadDays, t);
 
                 return (
                   <div
@@ -246,65 +313,104 @@ export function NeedsYouLens({
                     role="button"
                     tabIndex={0}
                     onClick={() => onOpenDate(item.dateId)}
-                    className="flex cursor-pointer flex-col gap-2.5 rounded-m border border-border bg-card p-3.5 hover:bg-muted/50"
+                    className={cn(
+                      'flex cursor-pointer flex-col overflow-hidden rounded-[14px] border-[0.5px] bg-card md:flex-row md:items-stretch',
+                      isUrgent
+                        ? 'border-[var(--accent-200)] shadow-[var(--shadow-3)]'
+                        : 'border-border shadow-[var(--shadow-2)]'
+                    )}
                   >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <p className="truncate text-[13.5px] font-semibold text-foreground">{entryTitle(item)}</p>
-                          <span
-                            className={cn(
-                              'inline-flex h-5 shrink-0 items-center whitespace-nowrap rounded-xs px-1.5 text-[11px] font-medium',
-                              toneSpec.badgeClass
-                            )}
-                          >
-                            {t(`calendar.producerStatus.${item.entry.status}`)}
-                          </span>
-                          {item.group === 'expires-today' && item.earliestExpiry && (
-                            <span
-                              data-testid={`needs-you-expiry-${item.dateId}`}
-                              className="inline-flex h-5 shrink-0 items-center whitespace-nowrap rounded-xs bg-destructive/10 px-1.5 text-[11px] font-medium text-destructive"
-                            >
-                              {t('calendar.needsYou.expires', { time: format(item.earliestExpiry, 'HH:mm') })}
-                            </span>
-                          )}
-                        </div>
-                        <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                          {format(item.entry.date, 'EEE d MMM', { locale: dfLocale() })}
-                          {entryDetail(item) ? ` · ${entryDetail(item)}` : ''}
+                    {/* 1. Date block — weekday / big day number / month, optional lead-time line. */}
+                    <div
+                      data-testid={`needs-you-date-${item.dateId}`}
+                      className={cn(
+                        'flex shrink-0 flex-row items-center gap-3 border-b-[0.5px] border-border px-4 py-3 text-left',
+                        'md:w-[92px] md:flex-col md:items-center md:justify-center md:gap-0.5 md:border-b-0 md:border-r-[0.5px] md:px-0 md:py-4 md:text-center',
+                        isUrgent ? 'bg-accent-50' : 'bg-muted'
+                      )}
+                    >
+                      <p
+                        className={cn(
+                          'text-[11px] font-semibold uppercase tracking-[1.6px]',
+                          isUrgent ? 'text-[var(--primary-hover)]' : 'text-muted-foreground'
+                        )}
+                      >
+                        {format(item.entry.date, 'EEE', { locale: dfLocale() })}
+                      </p>
+                      <p
+                        className={cn(
+                          'font-mono text-[28px] font-semibold leading-8 tabular-nums',
+                          isUrgent ? 'text-accent-700' : 'text-foreground'
+                        )}
+                      >
+                        {format(item.entry.date, 'd')}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground">
+                        {format(item.entry.date, 'MMM', { locale: dfLocale() })}
+                      </p>
+                      {lead && <p className="font-mono text-[10px] text-[var(--text-faint)] md:mt-1.5">{lead}</p>}
+                    </div>
+
+                    {/* 2. Content column — eyebrow+countdown, title, detail, meter, people, note. */}
+                    <div className="min-w-0 flex-1 px-4 py-3.5">
+                      <div className="flex flex-wrap items-baseline gap-2">
+                        <p className={cn('text-[11px] font-semibold uppercase tracking-[1.6px]', TONE_TEXT[toneSpec.tone])}>
+                          {t(`calendar.producerStatus.${item.entry.status}`)}
                         </p>
+                        {item.group === 'expires-today' && item.earliestExpiry && (
+                          <span
+                            data-testid={`needs-you-expiry-${item.dateId}`}
+                            className="font-mono text-[11px] font-medium text-[var(--red-600)]"
+                          >
+                            {t('calendar.needsYou.expires', { time: format(item.earliestExpiry, 'HH:mm') })}
+                          </span>
+                        )}
                       </div>
+                      <p className="mt-1 truncate text-[17px] font-semibold tracking-[-0.1px] text-foreground">
+                        {entryTitle(item)}
+                      </p>
+                      {entryDetail(item) && (
+                        <p className="mt-0.5 truncate text-[13px] text-muted-foreground">{entryDetail(item)}</p>
+                      )}
+
                       {meter.length > 0 && (
-                        <div className="flex shrink-0 items-center gap-2">
+                        <div className="mt-2.5 flex items-center gap-2">
                           <FillMeter segments={meter} tone={toneSpec.tone} />
-                          <span className="font-mono text-[11px] font-medium text-muted-foreground">
+                          <span className="font-mono text-[11.5px] font-medium text-muted-foreground">
                             {item.entry.confirmedMain}/{item.entry.mainSlots}
                           </span>
                         </div>
                       )}
+
+                      {item.people.length > 0 && (
+                        <div className="mt-2.5 flex flex-wrap gap-1.5">
+                          {item.people.map((person) => (
+                            <span
+                              key={person.artistId}
+                              data-testid={`needs-you-person-${item.dateId}-${person.artistId}`}
+                              className="inline-flex items-center rounded-pill bg-muted px-2 py-0.5 text-[11px] font-medium text-foreground"
+                            >
+                              {person.name}
+                              {person.isUnderstudy ? ` (${t('calendar.needsYou.understudyAbbrev')})` : ''}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      <p className="mt-2.5 text-xs text-muted-foreground">{noteForItem(item, t)}</p>
                     </div>
 
-                    <p className="text-xs text-muted-foreground">{noteForItem(item, t)}</p>
-
-                    {item.people.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5">
-                        {item.people.map((person) => (
-                          <span
-                            key={person.artistId}
-                            data-testid={`needs-you-person-${item.dateId}-${person.artistId}`}
-                            className="inline-flex items-center rounded-pill bg-muted px-2 py-0.5 text-[11px] font-medium text-foreground"
-                          >
-                            {person.name}
-                            {person.isUnderstudy ? ` (${t('calendar.needsYou.understudyAbbrev')})` : ''}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-
-                    <div className="flex flex-wrap items-center gap-2">
+                    {/* 3. Action column — primary (full width), up to 2 secondary side by side. */}
+                    <div
+                      className={cn(
+                        'flex shrink-0 flex-col justify-center gap-2 border-t-[0.5px] border-border px-4 py-3.5',
+                        'md:w-[232px] md:border-l-[0.5px] md:border-t-0',
+                        isUrgent ? 'bg-card' : 'bg-muted'
+                      )}
+                    >
                       <Button
                         type="button"
-                        size="sm"
+                        className="w-full"
                         data-testid={`needs-you-primary-${item.dateId}`}
                         disabled={primaryDisabled}
                         title={primaryDisabled ? primaryGate?.title : undefined}
@@ -315,21 +421,26 @@ export function NeedsYouLens({
                       >
                         {primaryLabel(group.key, item, t)}
                       </Button>
-                      {secondary.map((spec) => (
-                        <Button
-                          key={spec.action}
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          data-testid={`needs-you-secondary-${item.dateId}-${spec.action}`}
-                          onClick={(event: MouseEvent) => {
-                            event.stopPropagation();
-                            onItemAction(item, spec.action);
-                          }}
-                        >
-                          {secondaryLabel(spec.action, t)}
-                        </Button>
-                      ))}
+                      {secondary.length > 0 && (
+                        <div className="flex gap-2">
+                          {secondary.map((spec) => (
+                            <Button
+                              key={spec.action}
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="flex-1"
+                              data-testid={`needs-you-secondary-${item.dateId}-${spec.action}`}
+                              onClick={(event: MouseEvent) => {
+                                event.stopPropagation();
+                                onItemAction(item, spec.action);
+                              }}
+                            >
+                              {secondaryLabel(spec.action, t)}
+                            </Button>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
@@ -364,8 +475,8 @@ export function NeedsYouLens({
         </Collapsible>
       )}
 
-      <div data-testid="needs-you-receipts" className="overflow-hidden rounded-m border border-border bg-muted">
-        <div className="flex items-center gap-2 border-b border-border px-3.5 py-2.5">
+      <div data-testid="needs-you-receipts" className="overflow-hidden rounded-[10px] border-[0.5px] border-border bg-muted">
+        <div className="flex items-center gap-2 border-b-[0.5px] border-border px-3.5 py-2.5">
           <p className="text-[11px] font-semibold uppercase tracking-[1.6px] text-muted-foreground">
             {t('calendar.needsYou.clearedToday')}
           </p>
@@ -382,16 +493,28 @@ export function NeedsYouLens({
             {t('calendar.needsYou.undoLast')}
           </Button>
         </div>
-        {receipts.map((receipt, i) => (
-          <div
-            key={`${receipt.dateId}-${i}`}
-            data-testid={`needs-you-receipt-${i}`}
-            className="flex items-center gap-3 border-b border-border/60 px-3.5 py-2.5 last:border-b-0"
-          >
-            <span className="min-w-0 flex-1 truncate text-[12.5px] font-medium text-foreground">{receipt.title}</span>
-            <span className="truncate text-xs text-muted-foreground">{receipt.label}</span>
-          </div>
-        ))}
+        {receipts.map((receipt, i) => {
+          const tone = receiptTone(receipt.label, t);
+          return (
+            <div
+              key={`${receipt.dateId}-${i}`}
+              data-testid={`needs-you-receipt-${i}`}
+              className="flex items-center gap-3 border-b-[0.5px] border-border/60 px-3.5 py-2.5 last:border-b-0"
+            >
+              <span className="min-w-0 flex-1 truncate text-[12.5px] font-medium text-foreground">{receipt.title}</span>
+              <span
+                data-testid={`needs-you-receipt-pill-${i}`}
+                className={cn(
+                  'inline-flex h-5 shrink-0 items-center whitespace-nowrap rounded-[4px] px-1.5 text-[11px] font-medium',
+                  TONE_BG[tone],
+                  TONE_TEXT[tone]
+                )}
+              >
+                {receipt.label}
+              </span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
