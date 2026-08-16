@@ -83,6 +83,16 @@ describe("FilterChipsBar", () => {
     expect(onTimeframeChange).toHaveBeenCalledWith({ from: null, to: null });
   });
 
+  it("hides the timeframe filter entirely when showTimeframe is false, even with an active deep-linked range", () => {
+    renderBar(<FilterChipsBar {...baseProps({
+      showTimeframe: false,
+      timeframe: { from: new Date("2026-08-01T00:00:00"), to: new Date("2026-08-31T00:00:00"), preset: "month" },
+    })} />);
+    expect(screen.queryByTestId("filter-chip-timeframe")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("add-filter"));
+    expect(screen.queryByTestId("add-filter-option-timeframe")).not.toBeInTheDocument();
+  });
+
   it("renders an active custom-field chip as 'Label: value' and clears it via the def-keyed callback", () => {
     const onCustomFilterClear = vi.fn();
     const customFilters: Record<string, CustomFilterState> = { "custom.headliner": { kind: "select", value: "Carmen" } };
