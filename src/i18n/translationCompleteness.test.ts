@@ -28,6 +28,7 @@ const IDENTICAL_OK: Record<string, string> = {
   'availability.calendar.allDates.headerSession': 'domain loanword "Session", kept untranslated',
   'availability.calendar.allDates.headerShow': 'loanword "Show", kept untranslated across the app (matches settingsCastsCoverage)',
 
+  'bookings.filters.status': '"Status" is identical in German',
   'bookings.producer.statusPlaceholder': 'proper noun "Status" is identical in German',
   'bookings.producer.sortAsc': 'interpolation + arrow only, no translatable words',
   'bookings.producer.sortDesc': 'interpolation + arrow only, no translatable words',
