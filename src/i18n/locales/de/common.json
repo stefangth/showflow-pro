@@ -1,4 +1,32 @@
 {
+  "calendar": {
+    "nav": {
+      "previous": "Vorheriger Zeitraum",
+      "next": "Nächster Zeitraum",
+      "today": "Heute"
+    },
+    "selection": {
+      "bulkActions": "Sammelaktionen",
+      "count": "{{count}} ausgewählt",
+      "clear": "Leeren"
+    },
+    "grid": {
+      "more": "+{{count}} weitere"
+    },
+    "fillMeter": {
+      "filled": "{{filled}} von {{total}} besetzt"
+    },
+    "rail": {
+      "legendTitle": "Legende"
+    },
+    "day": {
+      "nothingScheduled": "nichts geplant",
+      "pickADay": "Tag wählen",
+      "pickADayHint": "Wähle einen Tag, um seine Termine zu sehen und zu bearbeiten.",
+      "keyHint": "↵ öffnen · Leertaste auswählen",
+      "openDate": "Termin öffnen"
+    }
+  },
   "nav": {
     "workspace": "Arbeitsbereich",
     "catalog": "Katalog",

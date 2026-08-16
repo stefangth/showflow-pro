@@ -21,6 +21,13 @@ function leaves(obj: unknown, prefix = '', out: Record<string, string> = {}): Re
 // languages (proper nouns, symbol/interpolation-only strings) are allowlisted with
 // the reason they match; every other identical pair fails the test.
 const IDENTICAL_OK: Record<string, string> = {
+  // calendar surface
+  'bookings.calendar.lens.agenda': 'loanword "Agenda", identical in German (die Agenda)',
+  'bookings.calendar.needsYou.note.atRisk': 'interpolation + punctuation only ("{{slots}}, {{lead}}."), no translatable words',
+  'availability.calendar.day.session': 'domain loanword "Session", kept untranslated (matches showsDetail.showDateForm.session)',
+  'availability.calendar.allDates.headerSession': 'domain loanword "Session", kept untranslated',
+  'availability.calendar.allDates.headerShow': 'loanword "Show", kept untranslated across the app (matches settingsCastsCoverage)',
+
   'bookings.producer.statusPlaceholder': 'proper noun "Status" is identical in German',
   'bookings.producer.sortAsc': 'interpolation + arrow only, no translatable words',
   'bookings.producer.sortDesc': 'interpolation + arrow only, no translatable words',

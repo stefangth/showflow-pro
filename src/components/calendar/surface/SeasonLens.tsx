@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { getDay } from 'date-fns';
+import { useTranslation } from 'react-i18next';
 import type { ProducerDateEntry } from '@/lib/calendar/types';
 import { toSeasonModel, seasonKpis, type SeasonCell } from '@/lib/calendar/seasonData';
 import { unconfirmedSlots } from '@/lib/calendar/slots';
-import { PRODUCER_TONES, seasonBarClass } from '@/lib/calendar/tone';
+import { seasonBarClass } from '@/lib/calendar/tone';
 import { toDateKey } from '@/lib/dates';
 import { cn } from '@/lib/utils';
 import { SeasonKpis } from './SeasonKpis';
@@ -71,6 +72,7 @@ function SeasonCellButton({
   onColumnMouseDown: () => void;
   onColumnMouseEnter: () => void;
 }) {
+  const { t } = useTranslation('bookings');
   const key = toDateKey(cell.date);
   const testId = `season-cell-${showId}-${key}`;
 
@@ -91,7 +93,7 @@ function SeasonCellButton({
   // (fully→success, casting→warning, open→muted), its height showing fill;
   // a cancelled date shows a destructive "x" instead of a bar.
   const cancelled = cell.status === 'cancelled';
-  const toneLabel = cell.status ? PRODUCER_TONES[cell.status].label : 'Open';
+  const toneLabel = cell.status ? t(`calendar.producerStatus.${cell.status}`) : t('calendar.season.openStatusFallback');
 
   return (
     <button
@@ -102,7 +104,7 @@ function SeasonCellButton({
       onClick={() => onOpenDate(cell.dateId as string)}
       onMouseDown={onColumnMouseDown}
       onMouseEnter={onColumnMouseEnter}
-      title={`${cell.filledMain}/${cell.mainSlots} main · ${toneLabel}`}
+      title={t('calendar.season.cellTooltip', { filled: cell.filledMain, total: cell.mainSlots, status: toneLabel })}
       className={cn(
         'flex h-[52px] items-end justify-center px-0.5 pb-1',
         columnBorder(cell.date),
@@ -152,6 +154,7 @@ export function SeasonLens({
   onRangeCommit,
   className,
 }: SeasonLensProps) {
+  const { t } = useTranslation('bookings');
   // Memoized so a producer's range-select drag (which updates `rangeKeys` on
   // every mouseenter) doesn't rebuild the whole 3-month grid + KPIs each move.
   const model = useMemo(() => toSeasonModel(entries, anchor), [entries, anchor]);
@@ -216,7 +219,7 @@ export function SeasonLens({
         {/* Day header row. */}
         <div className="grid border-b border-border" style={{ gridTemplateColumns: gridCols }}>
           <div className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Program
+            {t('calendar.season.programHeader')}
           </div>
           {model.days.map(day => {
             const key = toDateKey(day);
@@ -250,6 +253,7 @@ export function SeasonLens({
           const populated = row.cells.filter(cell => cell.dateId != null);
           const dateCount = populated.length;
           const unfilled = populated.reduce((sum, cell) => sum + unconfirmedSlots({ mainSlots: cell.mainSlots, confirmedMain: cell.filledMain }), 0);
+          const rowLabel = row.label || t('calendar.season.untitled');
           return (
           <div
             key={row.showId}
@@ -257,10 +261,10 @@ export function SeasonLens({
             className="grid border-b border-border last:border-b-0"
             style={{ gridTemplateColumns: gridCols }}
           >
-            <div className="flex flex-col justify-center gap-0.5 truncate px-2 py-2" title={row.label}>
-              <span className="truncate text-[12px] font-medium text-foreground">{row.label}</span>
+            <div className="flex flex-col justify-center gap-0.5 truncate px-2 py-2" title={rowLabel}>
+              <span className="truncate text-[12px] font-medium text-foreground">{rowLabel}</span>
               <span className="truncate text-[11px] text-muted-foreground">
-                {dateCount} {dateCount === 1 ? 'date' : 'dates'} · {unfilled} unfilled
+                {t('calendar.season.rowSummary', { count: dateCount, unfilled })}
               </span>
             </div>
             {row.cells.map(cell => {
@@ -284,7 +288,7 @@ export function SeasonLens({
         {/* "Unfilled slots" load-bar row. */}
         <div className="grid bg-muted/30" style={{ gridTemplateColumns: gridCols }}>
           <div className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Unfilled slots
+            {t('calendar.season.unfilledSlotsHeader')}
           </div>
           {model.loadByDay.map(({ date, openMainSlots }) => {
             const pct = (openMainSlots / maxOpen) * 100;

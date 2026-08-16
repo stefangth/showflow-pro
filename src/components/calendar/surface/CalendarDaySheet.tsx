@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import type { ActionGates, ArtistDateEntry, ArtistStatus, ProducerDateEntry } from '@/lib/calendar/types';
 import { Drawer, DrawerContent } from '@/components/ui/drawer';
 import { Button } from '@/components/ui/button';
@@ -72,6 +73,8 @@ export function CalendarDaySheet({
   statusLabels,
   actionGates,
 }: CalendarDaySheetProps) {
+  const { t } = useTranslation(['availability', 'common']);
+
   if (!day) return null;
 
   return (
@@ -101,7 +104,7 @@ export function CalendarDaySheet({
               data-testid="day-sheet-open-date"
               onClick={() => onOpenDate?.()}
             >
-              Open date
+              {t('common:calendar.day.openDate')}
             </Button>
             {role === 'artist' && (
               <Button
@@ -111,7 +114,7 @@ export function CalendarDaySheet({
                 data-testid="day-sheet-message-producer"
                 onClick={() => onMessageProducer?.()}
               >
-                Message producer
+                {t('calendar.day.messageProducer')}
               </Button>
             )}
           </div>

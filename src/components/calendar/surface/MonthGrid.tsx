@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import type { KeyboardEvent, MouseEvent as ReactMouseEvent } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { MonthGridCell, Tone } from '@/lib/calendar/types';
 import { TONE_TEXT } from '@/lib/calendar/tone';
 import { toDateKey } from '@/lib/dates';
@@ -55,6 +56,7 @@ export function MonthGrid({
   dense,
   className,
 }: MonthGridProps) {
+  const { t } = useTranslation(['common', 'availability']);
   // Anchor cell captured on mousedown, held provisionally until movement
   // confirms this is a real drag (not a plain click). `dragging` only
   // flips true once a *different* cell reports mouseenter — that is what
@@ -197,7 +199,9 @@ export function MonthGrid({
                 <span className="font-mono text-xs tabular-nums text-foreground">{cell.dayNum}</span>
                 {cell.flag && (
                   <span className={cn('text-[11px] font-medium', TONE_TEXT[cell.flag.tone])}>
-                    {cell.flag.text}
+                    {cell.flag.text === 'answer' || cell.flag.text === 'blocked'
+                      ? t(`availability:calendar.monthFlag.${cell.flag.text}`)
+                      : cell.flag.text}
                   </span>
                 )}
               </div>
@@ -229,7 +233,7 @@ export function MonthGrid({
                   </div>
                 ))}
                 {moreCount > 0 && (
-                  <span className="text-[11px] text-muted-foreground">+{moreCount} more</span>
+                  <span className="text-[11px] text-muted-foreground">{t('common:calendar.grid.more', { count: moreCount })}</span>
                 )}
               </div>
             </div>

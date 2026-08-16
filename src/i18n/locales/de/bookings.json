@@ -1,4 +1,151 @@
 {
+  "calendar": {
+    "lens": {
+      "needsYou": "Zu erledigen",
+      "month": "Monat",
+      "week": "Woche",
+      "season": "Saison",
+      "agenda": "Agenda"
+    },
+    "header": {
+      "eyebrow": "BUCHUNGEN",
+      "title": "Shows & Buchungen"
+    },
+    "stat": {
+      "confirmedThisMonth": "Diesen Monat bestätigt",
+      "slotsStillOpen": "Noch offene Plätze"
+    },
+    "bulk": {
+      "confirmHolds": "Vormerkungen bestätigen",
+      "generateHireOrders": "Engagementverträge erstellen"
+    },
+    "fab": {
+      "newDate": "Neuer Termin"
+    },
+    "rail": {
+      "statsTitle": "Dieser Monat"
+    },
+    "producerStatus": {
+      "fully_filled": "Voll besetzt",
+      "partially_filled": "Besetzung läuft",
+      "open": "Offen",
+      "cancelled": "Storniert",
+      "unconfigured": "Nicht konfiguriert"
+    },
+    "primary": {
+      "confirmHolds": "Vormerkungen bestätigen",
+      "generateHireOrder": "Engagementvertrag erstellen"
+    },
+    "day": {
+      "eyebrowCasting": "Besetzung läuft",
+      "eyebrowFullyFilled": "voll besetzt",
+      "subCasting_one": "{{count}} Termin · {{open}} Plätze noch offen",
+      "subCasting_other": "{{count}} Termine · {{open}} Plätze noch offen",
+      "subComplete_one": "{{count}} Termin · Besetzung komplett",
+      "subComplete_other": "{{count}} Termine · Besetzung komplett",
+      "empty": "An diesem Tag sind keine Termine geplant."
+    },
+    "needsYou": {
+      "groups": {
+        "expires-today": "Läuft heute ab",
+        "at-risk": "Droht knapp zu werden",
+        "ready-to-issue": "Bereit zum Ausstellen",
+        "cancelled": "Storniert, Besetzung nicht informiert"
+      },
+      "primary": {
+        "confirmHolds_one": "{{count}} Vormerkung bestätigen",
+        "confirmHolds_other": "{{count}} Vormerkungen bestätigen",
+        "openCasting": "Besetzung öffnen",
+        "generateHireOrder": "Engagementvertrag erstellen",
+        "notifyCast": "Besetzung benachrichtigen"
+      },
+      "secondary": {
+        "extend": "Um 24 Std. verlängern",
+        "release": "Freigeben",
+        "cancelDate": "Termin absagen",
+        "preview": "Vorschau",
+        "undoCancel": "Absage rückgängig"
+      },
+      "bulk": {
+        "confirmAll": "Alle bestätigen",
+        "generateHireOrders_one": "{{count}} Engagementvertrag erstellen",
+        "generateHireOrders_other": "{{count}} Engagementverträge erstellen"
+      },
+      "note": {
+        "expiresToday_one": "{{count}} vorgemerkter Artist verliert sein Angebot, wenn es heute nicht bestätigt wird.",
+        "expiresToday_other": "{{count}} vorgemerkte Artists verlieren ihr Angebot, wenn es heute nicht bestätigt wird.",
+        "atRisk": "{{slots}}, {{lead}}.",
+        "atRiskSlots_one": "{{count}} offener Platz",
+        "atRiskSlots_other": "{{count}} offene Plätze",
+        "atRiskLeadToday": "heute",
+        "atRiskLeadDays_one": "in {{count}} Tag",
+        "atRiskLeadDays_other": "in {{count}} Tagen",
+        "readyToIssue": "Die Besetzung ist bestätigt und bereit für den Engagementvertrag.",
+        "cancelled": "Die Besetzung wurde über diese Absage noch nicht informiert."
+      },
+      "expires": "Läuft ab {{time}}",
+      "understudyAbbrev": "ZB",
+      "queueOverview": "Übersicht Warteschlange",
+      "clearedToday": "Heute erledigt",
+      "undoLast": "Letzte rückgängig"
+    },
+    "queue": {
+      "clearQueueTitle": "Warteschlange abarbeiten",
+      "clearedToday": "{{count}} heute erledigt",
+      "shortlistTitle": "Auswahlliste",
+      "shortlistEmpty": "Keine passenden Artists für diesen Termin.",
+      "offerButton": "Anbieten",
+      "rulesTitle": "Was hier landet",
+      "rules": {
+        "expiresToday": "Angebote, die heute ablaufen, damit sie nicht unbeantwortet verfallen.",
+        "atRisk": "Termine, bei denen die bestätigte Besetzung vor der Show knapp zu werden droht.",
+        "readyToIssue": "Termine, deren Besetzung bestätigt und bereit für einen Engagementvertrag ist.",
+        "cancelled": "Stornierte Termine, über die die Besetzung noch nicht informiert wurde."
+      }
+    },
+    "agenda": {
+      "generateHireOrder": "Engagementvertrag erstellen",
+      "confirmHolds": "Vormerkungen bestätigen",
+      "openCasting": "Besetzung öffnen",
+      "weekOfHeading": "Woche vom {{weekStart}}",
+      "dateCount_one": "{{count}} Termin",
+      "dateCount_other": "{{count}} Termine",
+      "mainFillCount": "{{filled}}/{{total}} Haupt"
+    },
+    "week": {
+      "tbdLabel": "n.n."
+    },
+    "season": {
+      "openStatusFallback": "Offen",
+      "cellTooltip": "{{filled}}/{{total}} Haupt · {{status}}",
+      "programHeader": "Programm",
+      "untitled": "Ohne Titel",
+      "rowSummary_one": "{{count}} Termin · {{unfilled}} unbesetzt",
+      "rowSummary_other": "{{count}} Termine · {{unfilled}} unbesetzt",
+      "unfilledSlotsHeader": "Unbesetzte Plätze"
+    },
+    "seasonKpis": {
+      "unfilledMainSlotsLabel": "Unbesetzte Hauptplätze",
+      "unfilledMainSlotsNote_one": "über {{count}} Termin",
+      "unfilledMainSlotsNote_other": "über {{count}} Termine",
+      "allMainCastFilled": "gesamte Hauptbesetzung besetzt",
+      "heaviestWeekLabel": "Stärkste Woche",
+      "heaviestWeekNote_one": "{{count}} Termin · {{open}} Plätze offen",
+      "heaviestWeekNote_other": "{{count}} Termine · {{open}} Plätze offen",
+      "readyForHireOrderLabel": "Bereit für Engagementvertrag",
+      "readyForHireOrderNoteFilled": "voll besetzt, noch kein Vertrag",
+      "readyForHireOrderNoteNone": "keine ausstehend"
+    },
+    "seasonStripMobile": {
+      "heading": "Saison-Auslastung · {{month}}",
+      "swipeHint": "wischen →",
+      "cornerLabel": "Saison",
+      "rowSummary_one": "{{count}} Termin · -{{unfilled}}",
+      "rowSummary_other": "{{count}} Termine · -{{unfilled}}",
+      "cellTooltip": "{{filled}}/{{total}} Haupt",
+      "openFooterLabel": "Offen"
+    }
+  },
   "rowPeek": {
     "eyebrowUnconfigured": "nicht konfiguriert",
     "noConfig": "Lege in den Einstellungen Besetzungsplätze fest, um den Füllstand zu verfolgen.",

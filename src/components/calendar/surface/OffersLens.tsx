@@ -1,4 +1,5 @@
 import { format } from 'date-fns';
+import { useTranslation } from 'react-i18next';
 import type { ArtistDateEntry, ArtistStatus } from '@/lib/calendar/types';
 import { ARTIST_TONES, artistStatusLabel } from '@/lib/calendar/tone';
 import { isPastDate } from '@/lib/dates';
@@ -61,6 +62,7 @@ export function OffersLens({
   today = new Date(),
   className,
 }: OffersLensProps) {
+  const { t } = useTranslation('availability');
   const queue = entries
     .filter((e) => e.myStatus === 'suggested' || (e.myStatus === 'soft_booked' && !isPastDate(e.date, today)))
     .sort((a, b) => a.date.getTime() - b.date.getTime());
@@ -105,7 +107,7 @@ export function OffersLens({
                     isLive ? 'text-primary' : 'text-warning'
                   )}
                 >
-                  {isLive ? `Offer · ${entry.program}` : 'Hold placed'}
+                  {isLive ? t('calendar.offers.offerLabel', { program: entry.program }) : t('calendar.offers.holdPlaced')}
                 </p>
                 <p className="mt-1 text-[17px] font-semibold tracking-tight text-foreground">
                   {entryTitle(entry)}
@@ -123,7 +125,7 @@ export function OffersLens({
                       // sourced from a live booking row, so bookingId is set.
                       onClick={() => onAccept(entry.bookingId!)}
                     >
-                      Accept
+                      {t('calendar.offers.accept')}
                     </Button>
                     <div className="flex gap-2">
                       <Button
@@ -134,7 +136,7 @@ export function OffersLens({
                         data-testid={`offer-decline-${entry.id}`}
                         onClick={() => onDecline(entry.bookingId!)}
                       >
-                        Decline
+                        {t('calendar.offers.decline')}
                       </Button>
                       <Button
                         type="button"
@@ -144,7 +146,7 @@ export function OffersLens({
                         data-testid={`offer-block-${entry.id}`}
                         onClick={() => onBlock(entry.id, entry.date)}
                       >
-                        Block date
+                        {t('calendar.shared.blockDate')}
                       </Button>
                     </div>
                   </div>
@@ -158,7 +160,7 @@ export function OffersLens({
                     >
                       {artistStatusLabel(entry.myStatus, statusLabels)}
                     </span>
-                    <span className="text-xs text-muted-foreground">Awaiting producer confirmation</span>
+                    <span className="text-xs text-muted-foreground">{t('calendar.offers.awaitingConfirmation')}</span>
                   </div>
                 )}
               </div>
@@ -169,13 +171,13 @@ export function OffersLens({
 
       <div className="flex items-center gap-2.5 px-0.5">
         <span className="whitespace-nowrap font-mono text-[11px] text-muted-foreground">
-          A accept · D decline · B block · J next
+          {t('calendar.offersProgress.keyboardHint')}
         </span>
         <span
           data-testid="offers-progress-label"
           className="ml-auto whitespace-nowrap text-xs font-medium text-muted-foreground"
         >
-          {answeredCount} of {totalToAnswer} answered
+          {t('calendar.offersProgress.answeredCount', { answered: answeredCount, total: totalToAnswer })}
         </span>
         <div className="h-1 w-[120px] shrink-0 overflow-hidden rounded-pill bg-muted">
           <div
@@ -189,11 +191,11 @@ export function OffersLens({
       <div className="overflow-hidden rounded-m border border-border bg-muted">
         <div className="flex items-center gap-2 border-b border-border px-3.5 py-2.5">
           <p className="text-[11px] font-semibold uppercase tracking-[1.6px] text-muted-foreground">
-            Answered today
+            {t('calendar.offersAnswered.title')}
           </p>
           <span className="font-mono text-[11px] text-muted-foreground">{answeredToday.length}</span>
           {/* "Undo last" is an inert stub for now — wired up in a later wave. */}
-          <span className="ml-auto cursor-pointer text-xs font-medium text-primary">Undo last</span>
+          <span className="ml-auto cursor-pointer text-xs font-medium text-primary">{t('calendar.offersAnswered.undoLast')}</span>
         </div>
         {answeredToday.map((row, i) => (
           <div
@@ -221,9 +223,9 @@ export function OffersLens({
       <div className="overflow-hidden rounded-m border border-border bg-card">
         <div className="flex items-center gap-2 border-b border-border px-3.5 py-2.5">
           <p className="text-[11px] font-semibold uppercase tracking-[1.6px] text-muted-foreground">
-            Later this month · not offered yet
+            {t('calendar.notOffered.title')}
           </p>
-          <span className="ml-auto text-xs text-muted-foreground">Eligible from your casts</span>
+          <span className="ml-auto text-xs text-muted-foreground">{t('calendar.notOffered.eligibleFromCasts')}</span>
         </div>
         {notOfferedYet.map((entry) => (
           <div
@@ -246,7 +248,7 @@ export function OffersLens({
               data-testid={`not-offered-block-${entry.id}`}
               onClick={() => onBlock(entry.id, entry.date)}
             >
-              Block date
+              {t('calendar.shared.blockDate')}
             </Button>
           </div>
         ))}

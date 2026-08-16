@@ -58,18 +58,6 @@ export interface NeedsYouQueue {
  *  `NeedsYouLens`) share one canonical order instead of each redeclaring it. */
 export const DISPLAY_ORDER: NeedsYouGroupKey[] = ['expires-today', 'at-risk', 'ready-to-issue', 'cancelled'];
 
-/** Shared human-readable label per group — the single source for `QueueRail`'s
- *  breakdown rows and `NeedsYouLens`'s section headers, so the two surfaces
- *  never drift apart on wording. Plain English, matching every other literal
- *  label on the calendar surface kit (Month/Agenda/Offers tabs, etc.) — the
- *  whole surface's i18n is a tracked follow-up, not scoped to this group. */
-export const NEEDS_YOU_GROUP_LABELS: Record<NeedsYouGroupKey, string> = {
-  'expires-today': 'Expiring today',
-  'at-risk': 'At risk of running short',
-  'ready-to-issue': 'Ready to issue',
-  cancelled: 'Cancelled, cast not notified',
-};
-
 function toPerson(row: BookingWithArtistRow): NeedsYouPerson | null {
   if (!row.artist) return null;
   return { artistId: row.artist.id, name: row.artist.name, status: row.status, isUnderstudy: row.isUnderstudy };

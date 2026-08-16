@@ -16,6 +16,72 @@
     "blockDate": "Termin sperren"
   },
   "calendar": {
+    "lens": {
+      "offers": "Angebote",
+      "month": "Monat",
+      "allDates": "Alle Termine"
+    },
+    "header": {
+      "eyebrow": "VERFÜGBARKEIT",
+      "title": "Dein Kalender"
+    },
+    "stat": {
+      "openOffers": "Offene Angebote",
+      "holds": "Vormerkungen"
+    },
+    "rail": {
+      "statsTitleMonth": "Dein {{month}}"
+    },
+    "artistStatus": {
+      "confirmed": "Bestätigt",
+      "soft_booked": "Vormerkung",
+      "suggested": "Angebot",
+      "blocked": "Gesperrt",
+      "unanswered": "Nicht angeboten"
+    },
+    "day": {
+      "session": "Session",
+      "expires": "Läuft ab",
+      "sub": "Deine Zusage für diesen Termin",
+      "empty": "An diesem Tag wird dir kein Termin angeboten.",
+      "primaryAccept": "Angebot annehmen",
+      "primaryBlock": "Termin sperren",
+      "messageProducer": "Produktionsteam schreiben"
+    },
+    "monthFlag": {
+      "answer": "antwort",
+      "blocked": "gesperrt"
+    },
+    "offers": {
+      "offerLabel": "Angebot · {{program}}",
+      "holdPlaced": "Vormerkung gesetzt",
+      "accept": "Annehmen",
+      "decline": "Ablehnen",
+      "awaitingConfirmation": "Wartet auf Bestätigung durch dein Produktionsteam"
+    },
+    "offersProgress": {
+      "keyboardHint": "A annehmen · D ablehnen · B sperren · J weiter",
+      "answeredCount": "{{answered}} von {{total}} beantwortet"
+    },
+    "offersAnswered": {
+      "title": "Heute beantwortet",
+      "undoLast": "Letzte rückgängig"
+    },
+    "notOffered": {
+      "title": "Später diesen Monat · noch nicht angeboten",
+      "eligibleFromCasts": "Passend aus deinen Besetzungen"
+    },
+    "allDates": {
+      "headerDate": "Datum",
+      "headerDay": "Tag",
+      "headerShow": "Show",
+      "headerSession": "Session",
+      "headerMyStatus": "Mein Status",
+      "hireOrder": "Engagementvertrag"
+    },
+    "shared": {
+      "blockDate": "Termin sperren"
+    },
     "ineligibleReason": "Dieser Termin wird dir nicht angeboten. Angebotene Termine ergeben sich aus deinen Besetzungen und den dafür nötigen Skills.",
     "prevMonth": "Voriger Monat",
     "nextMonth": "Nächster Monat",

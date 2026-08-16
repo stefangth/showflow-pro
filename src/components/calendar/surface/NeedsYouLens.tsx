@@ -1,7 +1,8 @@
 import type { MouseEvent } from 'react';
 import { format } from 'date-fns';
 import { ChevronDown } from 'lucide-react';
-import { NEEDS_YOU_GROUP_LABELS } from '@/lib/calendar/needsYou';
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import type { NeedsYouGroupKey, NeedsYouItem, NeedsYouQueue } from '@/lib/calendar/needsYou';
 import type { ActionGates, ProducerActionKey } from '@/lib/calendar/types';
 import { PRODUCER_TONES } from '@/lib/calendar/tone';
@@ -10,6 +11,8 @@ import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { FillMeter } from './FillMeter';
 import { QueueRail, type QueueShortlistArtist } from './QueueRail';
+
+type TF = TFunction<'bookings'>;
 
 /** Every action a "Needs you" card (or its group's bulk button) can fire.
  *  `confirm` covers both the per-item "Confirm N holds" primary and the
@@ -56,9 +59,8 @@ interface NeedsYouLensProps {
   className?: string;
 }
 
-interface ActionSpec {
+interface ActionMeta {
   action: NeedsYouAction;
-  label: (item: NeedsYouItem) => string;
   /** Maps to the shared `ActionGates` key, when this action is one of the
    *  three capability-gated producer actions. Secondary actions here
    *  (extend/release/cancel-date/preview/undo-cancel) have no gate key —
@@ -73,70 +75,80 @@ function heldCount(item: NeedsYouItem): number {
   return item.people.filter((p) => p.status === 'suggested' || p.status === 'soft_booked').length;
 }
 
-function plural(count: number, singular: string, plural_: string): string {
-  return count === 1 ? singular : plural_;
-}
-
-const PRIMARY_ACTION: Record<NeedsYouGroupKey, ActionSpec> = {
-  'expires-today': {
-    action: 'confirm',
-    label: (item) => `Confirm ${heldCount(item)} hold${plural(heldCount(item), '', 's')}`,
-    gateKey: 'confirmHolds',
-  },
-  'at-risk': {
-    action: 'open-casting',
-    label: () => 'Open casting',
-    gateKey: 'openCasting',
-  },
-  'ready-to-issue': {
-    action: 'generate',
-    label: () => 'Generate hire order',
-    gateKey: 'generateHireOrder',
-  },
-  cancelled: {
-    action: 'notify',
-    label: () => 'Notify cast',
-  },
+const PRIMARY_ACTION: Record<NeedsYouGroupKey, ActionMeta> = {
+  'expires-today': { action: 'confirm', gateKey: 'confirmHolds' },
+  'at-risk': { action: 'open-casting', gateKey: 'openCasting' },
+  'ready-to-issue': { action: 'generate', gateKey: 'generateHireOrder' },
+  cancelled: { action: 'notify' },
 };
 
-const SECONDARY_ACTIONS: Record<NeedsYouGroupKey, ActionSpec[]> = {
-  'expires-today': [
-    { action: 'extend', label: () => 'Extend 24h' },
-    { action: 'release', label: () => 'Release' },
-  ],
-  'at-risk': [{ action: 'cancel-date', label: () => 'Cancel date' }],
-  'ready-to-issue': [{ action: 'preview', label: () => 'Preview' }],
-  cancelled: [{ action: 'undo-cancel', label: () => 'Undo cancel' }],
+const SECONDARY_ACTIONS: Record<NeedsYouGroupKey, ActionMeta[]> = {
+  'expires-today': [{ action: 'extend' }, { action: 'release' }],
+  'at-risk': [{ action: 'cancel-date' }],
+  'ready-to-issue': [{ action: 'preview' }],
+  cancelled: [{ action: 'undo-cancel' }],
 };
 
-/** Group-level bulk action, where applicable — `null` for groups with no
+/** Group-level bulk action, where applicable — omitted for groups with no
  *  bulk button (`at-risk`, `cancelled`). */
 const BULK_ACTION: Partial<
-  Record<NeedsYouGroupKey, { action: 'confirm' | 'generate'; label: (count: number) => string; gateKey: ProducerActionKey }>
+  Record<NeedsYouGroupKey, { action: 'confirm' | 'generate'; gateKey: ProducerActionKey }>
 > = {
-  'expires-today': { action: 'confirm', label: () => 'Confirm all', gateKey: 'confirmHolds' },
-  'ready-to-issue': {
-    action: 'generate',
-    label: (count) => `Generate ${count} hire order${plural(count, '', 's')}`,
-    gateKey: 'generateHireOrder',
-  },
+  'expires-today': { action: 'confirm', gateKey: 'confirmHolds' },
+  'ready-to-issue': { action: 'generate', gateKey: 'generateHireOrder' },
 };
 
-function noteForItem(item: NeedsYouItem): string {
+function primaryLabel(group: NeedsYouGroupKey, item: NeedsYouItem, t: TF): string {
+  switch (group) {
+    case 'expires-today':
+      return t('calendar.needsYou.primary.confirmHolds', { count: heldCount(item) });
+    case 'at-risk':
+      return t('calendar.needsYou.primary.openCasting');
+    case 'ready-to-issue':
+      return t('calendar.needsYou.primary.generateHireOrder');
+    case 'cancelled':
+      return t('calendar.needsYou.primary.notifyCast');
+  }
+}
+
+function secondaryLabel(action: NeedsYouAction, t: TF): string {
+  switch (action) {
+    case 'extend':
+      return t('calendar.needsYou.secondary.extend');
+    case 'release':
+      return t('calendar.needsYou.secondary.release');
+    case 'cancel-date':
+      return t('calendar.needsYou.secondary.cancelDate');
+    case 'preview':
+      return t('calendar.needsYou.secondary.preview');
+    case 'undo-cancel':
+      return t('calendar.needsYou.secondary.undoCancel');
+    default:
+      return '';
+  }
+}
+
+function bulkLabel(group: NeedsYouGroupKey, count: number, t: TF): string {
+  if (group === 'ready-to-issue') return t('calendar.needsYou.bulk.generateHireOrders', { count });
+  return t('calendar.needsYou.bulk.confirmAll');
+}
+
+function noteForItem(item: NeedsYouItem, t: TF): string {
   switch (item.group) {
-    case 'expires-today': {
-      const held = heldCount(item);
-      return `${held} held ${plural(held, 'artist', 'artists')} will lose their offer if not confirmed today.`;
-    }
+    case 'expires-today':
+      return t('calendar.needsYou.note.expiresToday', { count: heldCount(item) });
     case 'at-risk': {
-      const slots = `${item.openMainSlots} open slot${plural(item.openMainSlots, '', 's')}`;
-      const lead = item.leadDays <= 0 ? 'today' : `in ${item.leadDays} day${plural(item.leadDays, '', 's')}`;
-      return `${slots}, ${lead}.`;
+      const slots = t('calendar.needsYou.note.atRiskSlots', { count: item.openMainSlots });
+      const lead =
+        item.leadDays <= 0
+          ? t('calendar.needsYou.note.atRiskLeadToday')
+          : t('calendar.needsYou.note.atRiskLeadDays', { count: item.leadDays });
+      return t('calendar.needsYou.note.atRisk', { slots, lead });
     }
     case 'ready-to-issue':
-      return 'Cast is confirmed and ready for its hire order.';
+      return t('calendar.needsYou.note.readyToIssue');
     case 'cancelled':
-      return 'The cast has not been notified about this cancellation yet.';
+      return t('calendar.needsYou.note.cancelled');
     default:
       return '';
   }
@@ -184,6 +196,8 @@ export function NeedsYouLens({
   onOfferArtist,
   className,
 }: NeedsYouLensProps) {
+  const { t } = useTranslation('bookings');
+
   return (
     <div data-testid="needs-you-lens" className={cn('flex flex-col gap-5', className)}>
       {queue.groups.map((group) => {
@@ -195,7 +209,7 @@ export function NeedsYouLens({
           <div key={group.key} data-testid={`needs-you-group-${group.key}`}>
             <div className="flex items-baseline justify-between gap-2 pb-2">
               <p className="text-[11px] font-semibold uppercase tracking-[1.6px] text-primary">
-                {NEEDS_YOU_GROUP_LABELS[group.key]}
+                {t(`calendar.needsYou.groups.${group.key}`)}
               </p>
               {bulk && (
                 <Button
@@ -207,7 +221,7 @@ export function NeedsYouLens({
                   title={bulkDisabled ? bulkGate?.title : undefined}
                   onClick={() => onBulk(group.key, bulk.action)}
                 >
-                  {bulk.label(group.items.length)}
+                  {bulkLabel(group.key, group.items.length, t)}
                 </Button>
               )}
             </div>
@@ -243,14 +257,14 @@ export function NeedsYouLens({
                               toneSpec.badgeClass
                             )}
                           >
-                            {toneSpec.label}
+                            {t(`calendar.producerStatus.${item.entry.status}`)}
                           </span>
                           {item.group === 'expires-today' && item.earliestExpiry && (
                             <span
                               data-testid={`needs-you-expiry-${item.dateId}`}
                               className="inline-flex h-5 shrink-0 items-center whitespace-nowrap rounded-xs bg-destructive/10 px-1.5 text-[11px] font-medium text-destructive"
                             >
-                              Expires {format(item.earliestExpiry, 'HH:mm')}
+                              {t('calendar.needsYou.expires', { time: format(item.earliestExpiry, 'HH:mm') })}
                             </span>
                           )}
                         </div>
@@ -269,7 +283,7 @@ export function NeedsYouLens({
                       )}
                     </div>
 
-                    <p className="text-xs text-muted-foreground">{noteForItem(item)}</p>
+                    <p className="text-xs text-muted-foreground">{noteForItem(item, t)}</p>
 
                     {item.people.length > 0 && (
                       <div className="flex flex-wrap gap-1.5">
@@ -280,7 +294,7 @@ export function NeedsYouLens({
                             className="inline-flex items-center rounded-pill bg-muted px-2 py-0.5 text-[11px] font-medium text-foreground"
                           >
                             {person.name}
-                            {person.isUnderstudy ? ' (US)' : ''}
+                            {person.isUnderstudy ? ` (${t('calendar.needsYou.understudyAbbrev')})` : ''}
                           </span>
                         ))}
                       </div>
@@ -298,7 +312,7 @@ export function NeedsYouLens({
                           onItemAction(item, primary.action);
                         }}
                       >
-                        {primary.label(item)}
+                        {primaryLabel(group.key, item, t)}
                       </Button>
                       {secondary.map((spec) => (
                         <Button
@@ -312,7 +326,7 @@ export function NeedsYouLens({
                             onItemAction(item, spec.action);
                           }}
                         >
-                          {spec.label(item)}
+                          {secondaryLabel(spec.action, t)}
                         </Button>
                       ))}
                     </div>
@@ -333,7 +347,7 @@ export function NeedsYouLens({
               className="group flex w-full items-center justify-between gap-2 rounded-m border border-border bg-card px-3.5 py-2.5 text-left"
             >
               <span className="text-[11px] font-semibold uppercase tracking-[1.6px] text-muted-foreground">
-                Queue overview
+                {t('calendar.needsYou.queueOverview')}
               </span>
               <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
             </button>
@@ -352,7 +366,7 @@ export function NeedsYouLens({
       <div data-testid="needs-you-receipts" className="overflow-hidden rounded-m border border-border bg-muted">
         <div className="flex items-center gap-2 border-b border-border px-3.5 py-2.5">
           <p className="text-[11px] font-semibold uppercase tracking-[1.6px] text-muted-foreground">
-            Cleared today
+            {t('calendar.needsYou.clearedToday')}
           </p>
           <span className="font-mono text-[11px] text-muted-foreground">{receipts.length}</span>
           <Button
@@ -364,7 +378,7 @@ export function NeedsYouLens({
             disabled={receipts.length === 0}
             onClick={() => onUndoLast?.()}
           >
-            Undo last
+            {t('calendar.needsYou.undoLast')}
           </Button>
         </div>
         {receipts.map((receipt, i) => (

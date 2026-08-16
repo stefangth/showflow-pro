@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { Card, CardContent } from '@/components/ui/card';
 import type { SeasonKpis as SeasonKpisData } from '@/lib/calendar/seasonData';
 import { cn } from '@/lib/utils';
@@ -12,27 +13,33 @@ interface SeasonKpisProps {
  *  carries a context sub-line derived from the same `kpis` data so the bare
  *  number explains itself (design mock). */
 export function SeasonKpis({ kpis, className }: SeasonKpisProps) {
-  const dateWord = (n: number) => (n === 1 ? 'date' : 'dates');
+  const { t } = useTranslation('bookings');
   const tiles: { key: string; label: string; value: string; note: string | null }[] = [
     {
       key: 'unfilledMainSlots',
-      label: 'Unfilled main slots',
+      label: t('calendar.seasonKpis.unfilledMainSlotsLabel'),
       value: String(kpis.unfilledMainSlots),
-      note: kpis.unfilledMainSlots > 0 ? `across ${kpis.unfilledDates} ${dateWord(kpis.unfilledDates)}` : 'all main cast filled',
+      note:
+        kpis.unfilledMainSlots > 0
+          ? t('calendar.seasonKpis.unfilledMainSlotsNote', { count: kpis.unfilledDates })
+          : t('calendar.seasonKpis.allMainCastFilled'),
     },
     {
       key: 'heaviestWeek',
-      label: 'Heaviest week',
+      label: t('calendar.seasonKpis.heaviestWeekLabel'),
       value: kpis.heaviestWeekLabel || '-',
       note: kpis.heaviestWeekLabel
-        ? `${kpis.heaviestWeekDates} ${dateWord(kpis.heaviestWeekDates)} · ${kpis.heaviestWeekOpen} slots open`
+        ? t('calendar.seasonKpis.heaviestWeekNote', { count: kpis.heaviestWeekDates, open: kpis.heaviestWeekOpen })
         : null,
     },
     {
       key: 'readyForHireOrder',
-      label: 'Ready for hire order',
+      label: t('calendar.seasonKpis.readyForHireOrderLabel'),
       value: String(kpis.readyForHireOrder),
-      note: kpis.readyForHireOrder > 0 ? 'fully filled, no order yet' : 'none waiting',
+      note:
+        kpis.readyForHireOrder > 0
+          ? t('calendar.seasonKpis.readyForHireOrderNoteFilled')
+          : t('calendar.seasonKpis.readyForHireOrderNoteNone'),
     },
   ];
 

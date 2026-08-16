@@ -1,4 +1,5 @@
-import { DISPLAY_ORDER, NEEDS_YOU_GROUP_LABELS } from '@/lib/calendar/needsYou';
+import { useTranslation } from 'react-i18next';
+import { DISPLAY_ORDER } from '@/lib/calendar/needsYou';
 import type { NeedsYouGroupKey, NeedsYouQueue } from '@/lib/calendar/needsYou';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -35,12 +36,9 @@ const GROUP_DOT_CLASS: Record<NeedsYouGroupKey, string> = {
   cancelled: 'bg-muted-foreground',
 };
 
-const RULES: string[] = [
-  'Offers expiring today, so they do not lapse unanswered.',
-  'Dates at risk of running short of confirmed cast before the show.',
-  'Dates whose cast is confirmed and ready for a hire order.',
-  'Cancelled dates the cast has not been notified about yet.',
-];
+// Rule copy keys, in the same order the rules render — each resolves under
+// `calendar.queue.rules.*` (see the bookings catalog).
+const RULE_KEYS = ['expiresToday', 'atRisk', 'readyToIssue', 'cancelled'] as const;
 
 /**
  * Right rail for the producer "Needs you" lens (spec §3.4): a "Clear the
@@ -52,6 +50,7 @@ const RULES: string[] = [
  * `onOffer`, fired per shortlist row.
  */
 export function QueueRail({ queue, clearedToday, shortlist, onOffer, className }: QueueRailProps) {
+  const { t } = useTranslation('bookings');
   // Denominator is "already cleared" + "still in the queue"; with nothing in
   // either bucket there's nothing left to clear, so the bar reads full.
   const denominator = clearedToday + queue.totalItems;
@@ -66,10 +65,10 @@ export function QueueRail({ queue, clearedToday, shortlist, onOffer, className }
       <div data-testid="queue-rail-progress" className="rounded-m border border-border bg-card p-3.5">
         <div className="mb-2 flex items-baseline justify-between gap-2">
           <p className="text-[11px] font-semibold uppercase tracking-[1.6px] text-muted-foreground">
-            Clear the queue
+            {t('calendar.queue.clearQueueTitle')}
           </p>
           <span className="whitespace-nowrap font-mono text-xs font-medium tabular-nums text-foreground">
-            {clearedToday} cleared today
+            {t('calendar.queue.clearedToday', { count: clearedToday })}
           </span>
         </div>
         <div className="h-1 w-full overflow-hidden rounded-pill bg-muted">
@@ -84,7 +83,7 @@ export function QueueRail({ queue, clearedToday, shortlist, onOffer, className }
             {breakdown.map(({ key, count }) => (
               <div key={key} className="flex items-center gap-2">
                 <span className={cn('h-1 w-2.5 shrink-0 rounded-full', GROUP_DOT_CLASS[key])} />
-                <span className="text-[12.5px] text-foreground">{NEEDS_YOU_GROUP_LABELS[key]}</span>
+                <span className="text-[12.5px] text-foreground">{t(`calendar.needsYou.groups.${key}`)}</span>
                 <span className="ml-auto font-mono text-xs font-medium tabular-nums text-foreground">
                   {count}
                 </span>
@@ -98,7 +97,7 @@ export function QueueRail({ queue, clearedToday, shortlist, onOffer, className }
         <div data-testid="queue-rail-shortlist" className="overflow-hidden rounded-m border border-border bg-card">
           <div className="border-b border-border px-3.5 py-2.5">
             <p className="text-[11px] font-semibold uppercase tracking-[1.6px] text-muted-foreground">
-              Shortlist
+              {t('calendar.queue.shortlistTitle')}
             </p>
             <p className="mt-0.5 truncate text-xs text-muted-foreground">{shortlist.dateLabel}</p>
           </div>
@@ -120,23 +119,23 @@ export function QueueRail({ queue, clearedToday, shortlist, onOffer, className }
                   data-testid={`queue-offer-${artist.artistId}`}
                   onClick={() => onOffer?.(shortlist.dateId, artist.artistId)}
                 >
-                  Offer
+                  {t('calendar.queue.offerButton')}
                 </Button>
               </div>
             ))
           ) : (
-            <p className="px-3.5 py-2.5 text-xs text-muted-foreground">No eligible artists for this date.</p>
+            <p className="px-3.5 py-2.5 text-xs text-muted-foreground">{t('calendar.queue.shortlistEmpty')}</p>
           )}
         </div>
       )}
 
       <div data-testid="queue-rail-rules" className="rounded-m border border-border bg-muted p-3.5">
         <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-[1.6px] text-muted-foreground">
-          What lands here
+          {t('calendar.queue.rulesTitle')}
         </p>
         <ul className="flex flex-col gap-1.5 text-xs text-muted-foreground">
-          {RULES.map((rule, i) => (
-            <li key={i}>{rule}</li>
+          {RULE_KEYS.map((key) => (
+            <li key={key}>{t(`calendar.queue.rules.${key}`)}</li>
           ))}
         </ul>
       </div>

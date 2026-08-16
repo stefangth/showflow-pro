@@ -1,4 +1,151 @@
 {
+  "calendar": {
+    "lens": {
+      "needsYou": "Needs you",
+      "month": "Month",
+      "week": "Week",
+      "season": "Season",
+      "agenda": "Agenda"
+    },
+    "header": {
+      "eyebrow": "BOOKINGS",
+      "title": "Shows & bookings"
+    },
+    "stat": {
+      "confirmedThisMonth": "Confirmed this month",
+      "slotsStillOpen": "Slots still open"
+    },
+    "bulk": {
+      "confirmHolds": "Confirm holds",
+      "generateHireOrders": "Generate hire orders"
+    },
+    "fab": {
+      "newDate": "New date"
+    },
+    "rail": {
+      "statsTitle": "This month"
+    },
+    "producerStatus": {
+      "fully_filled": "Fully filled",
+      "partially_filled": "Casting",
+      "open": "Open",
+      "cancelled": "Cancelled",
+      "unconfigured": "Unconfigured"
+    },
+    "primary": {
+      "confirmHolds": "Confirm holds",
+      "generateHireOrder": "Generate hire order"
+    },
+    "day": {
+      "eyebrowCasting": "casting",
+      "eyebrowFullyFilled": "fully filled",
+      "subCasting_one": "{{count}} date · {{open}} slots still open",
+      "subCasting_other": "{{count}} dates · {{open}} slots still open",
+      "subComplete_one": "{{count}} date · cast complete",
+      "subComplete_other": "{{count}} dates · cast complete",
+      "empty": "No dates scheduled on this day."
+    },
+    "needsYou": {
+      "groups": {
+        "expires-today": "Expiring today",
+        "at-risk": "At risk of running short",
+        "ready-to-issue": "Ready to issue",
+        "cancelled": "Cancelled, cast not notified"
+      },
+      "primary": {
+        "confirmHolds_one": "Confirm {{count}} hold",
+        "confirmHolds_other": "Confirm {{count}} holds",
+        "openCasting": "Open casting",
+        "generateHireOrder": "Generate hire order",
+        "notifyCast": "Notify cast"
+      },
+      "secondary": {
+        "extend": "Extend 24h",
+        "release": "Release",
+        "cancelDate": "Cancel date",
+        "preview": "Preview",
+        "undoCancel": "Undo cancel"
+      },
+      "bulk": {
+        "confirmAll": "Confirm all",
+        "generateHireOrders_one": "Generate {{count}} hire order",
+        "generateHireOrders_other": "Generate {{count}} hire orders"
+      },
+      "note": {
+        "expiresToday_one": "{{count}} held artist will lose their offer if not confirmed today.",
+        "expiresToday_other": "{{count}} held artists will lose their offer if not confirmed today.",
+        "atRisk": "{{slots}}, {{lead}}.",
+        "atRiskSlots_one": "{{count}} open slot",
+        "atRiskSlots_other": "{{count}} open slots",
+        "atRiskLeadToday": "today",
+        "atRiskLeadDays_one": "in {{count}} day",
+        "atRiskLeadDays_other": "in {{count}} days",
+        "readyToIssue": "Cast is confirmed and ready for its hire order.",
+        "cancelled": "The cast has not been notified about this cancellation yet."
+      },
+      "expires": "Expires {{time}}",
+      "understudyAbbrev": "US",
+      "queueOverview": "Queue overview",
+      "clearedToday": "Cleared today",
+      "undoLast": "Undo last"
+    },
+    "queue": {
+      "clearQueueTitle": "Clear the queue",
+      "clearedToday": "{{count}} cleared today",
+      "shortlistTitle": "Shortlist",
+      "shortlistEmpty": "No eligible artists for this date.",
+      "offerButton": "Offer",
+      "rulesTitle": "What lands here",
+      "rules": {
+        "expiresToday": "Offers expiring today, so they do not lapse unanswered.",
+        "atRisk": "Dates at risk of running short of confirmed cast before the show.",
+        "readyToIssue": "Dates whose cast is confirmed and ready for a hire order.",
+        "cancelled": "Cancelled dates the cast has not been notified about yet."
+      }
+    },
+    "agenda": {
+      "generateHireOrder": "Generate hire order",
+      "confirmHolds": "Confirm holds",
+      "openCasting": "Open casting",
+      "weekOfHeading": "Week of {{weekStart}}",
+      "dateCount_one": "{{count}} date",
+      "dateCount_other": "{{count}} dates",
+      "mainFillCount": "{{filled}}/{{total}} main"
+    },
+    "week": {
+      "tbdLabel": "TBD"
+    },
+    "season": {
+      "openStatusFallback": "Open",
+      "cellTooltip": "{{filled}}/{{total}} main · {{status}}",
+      "programHeader": "Program",
+      "untitled": "Untitled",
+      "rowSummary_one": "{{count}} date · {{unfilled}} unfilled",
+      "rowSummary_other": "{{count}} dates · {{unfilled}} unfilled",
+      "unfilledSlotsHeader": "Unfilled slots"
+    },
+    "seasonKpis": {
+      "unfilledMainSlotsLabel": "Unfilled main slots",
+      "unfilledMainSlotsNote_one": "across {{count}} date",
+      "unfilledMainSlotsNote_other": "across {{count}} dates",
+      "allMainCastFilled": "all main cast filled",
+      "heaviestWeekLabel": "Heaviest week",
+      "heaviestWeekNote_one": "{{count}} date · {{open}} slots open",
+      "heaviestWeekNote_other": "{{count}} dates · {{open}} slots open",
+      "readyForHireOrderLabel": "Ready for hire order",
+      "readyForHireOrderNoteFilled": "fully filled, no order yet",
+      "readyForHireOrderNoteNone": "none waiting"
+    },
+    "seasonStripMobile": {
+      "heading": "Season load · {{month}}",
+      "swipeHint": "swipe →",
+      "cornerLabel": "Season",
+      "rowSummary_one": "{{count}} date · -{{unfilled}}",
+      "rowSummary_other": "{{count}} dates · -{{unfilled}}",
+      "cellTooltip": "{{filled}}/{{total}} main",
+      "openFooterLabel": "Open"
+    }
+  },
   "rowPeek": {
     "eyebrowUnconfigured": "unconfigured",
     "noConfig": "Set cast slots in Settings to track fill.",
