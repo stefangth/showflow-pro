@@ -25,7 +25,7 @@ describe('FillMeter', () => {
     const emptyBars = bars.filter(b => b.getAttribute('data-filled') === 'false');
     expect(filledBars).toHaveLength(4);
     expect(emptyBars).toHaveLength(2);
-    filledBars.forEach(b => expect(b.className).toContain('bg-warning'));
+    filledBars.forEach(b => expect(b.className).toContain('bg-[var(--amber-500)]'));
     emptyBars.forEach(b => expect(b.className).toContain('bg-foreground/10'));
   });
 
