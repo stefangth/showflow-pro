@@ -1,4 +1,5 @@
 import type { MouseEvent } from 'react';
+import { useState } from 'react';
 import { format, startOfWeek } from 'date-fns';
 import { useTranslation } from 'react-i18next';
 import type { ParseKeys } from 'i18next';
@@ -8,7 +9,19 @@ import { dfLocale, toDateKey } from '@/lib/dates';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { HireOrderStatusBadge } from '@/components/hireOrders/HireOrderStatusBadge';
+import { buildAgendaRows, type AgendaGrouping } from '@/lib/calendar/agendaRows';
 import { FillMeter } from './FillMeter';
+
+const AGENDA_GROUPING_STORAGE_KEY = 'showflow.calendar.agendaGrouping';
+
+function readStoredGrouping(): AgendaGrouping {
+  try {
+    const stored = localStorage.getItem(AGENDA_GROUPING_STORAGE_KEY);
+    return stored === 'per-date' || stored === 'per-show' ? stored : 'per-date';
+  } catch {
+    return 'per-date';
+  }
+}
 
 export type AgendaAction = 'generate' | 'confirm' | 'open';
 
@@ -93,9 +106,54 @@ interface AgendaLensProps {
 export function AgendaLens({ entries, onOpenEntry, onAction, actionGates, className }: AgendaLensProps) {
   const { t } = useTranslation('bookings');
   const weeks = groupByWeek(entries);
+  const [grouping, setGrouping] = useState<AgendaGrouping>(readStoredGrouping);
+
+  const setGroupingPersisted = (next: AgendaGrouping) => {
+    setGrouping(next);
+    try {
+      localStorage.setItem(AGENDA_GROUPING_STORAGE_KEY, next);
+    } catch {
+      // localStorage unavailable (e.g. private browsing) — grouping just
+      // won't persist across reloads, which is a harmless degradation.
+    }
+  };
 
   return (
     <div data-testid="agenda-lens" className={cn('flex flex-col gap-5', className)}>
+      <div
+        role="group"
+        aria-label={t('calendar.agenda.groupingLabel')}
+        className="flex items-center justify-end gap-0.5 self-end rounded-m border border-border p-0.5"
+      >
+        <button
+          type="button"
+          data-testid="agenda-grouping-per-date"
+          aria-pressed={grouping === 'per-date'}
+          onClick={() => setGroupingPersisted('per-date')}
+          className={cn(
+            'rounded-s px-2 py-1 text-xs transition-colors',
+            grouping === 'per-date'
+              ? 'bg-accent-50 font-medium text-accent-700'
+              : 'text-muted-foreground hover:text-foreground'
+          )}
+        >
+          {t('calendar.agenda.groupingPerDate')}
+        </button>
+        <button
+          type="button"
+          data-testid="agenda-grouping-per-show"
+          aria-pressed={grouping === 'per-show'}
+          onClick={() => setGroupingPersisted('per-show')}
+          className={cn(
+            'rounded-s px-2 py-1 text-xs transition-colors',
+            grouping === 'per-show'
+              ? 'bg-accent-50 font-medium text-accent-700'
+              : 'text-muted-foreground hover:text-foreground'
+          )}
+        >
+          {t('calendar.agenda.groupingPerShow')}
+        </button>
+      </div>
       {weeks.map(week => (
         <div key={week.key} data-testid={`agenda-week-${week.key}`}>
           <div className="flex items-baseline gap-2.5 pb-2">
@@ -107,23 +165,23 @@ export function AgendaLens({ entries, onOpenEntry, onAction, actionGates, classN
             </span>
           </div>
           <div className="overflow-hidden rounded-m border border-border bg-card">
-            {week.entries.map(entry => {
-              const toneSpec = PRODUCER_TONES[entry.status];
+            {week.entries.flatMap(entry => buildAgendaRows(entry, grouping)).map(row => {
+              const toneSpec = PRODUCER_TONES[row.entry.status];
               const meter =
-                entry.mainSlots > 0
-                  ? Array.from({ length: entry.mainSlots }, (_, i) => ({ filled: i < entry.confirmedMain }))
+                row.entry.mainSlots > 0
+                  ? Array.from({ length: row.entry.mainSlots }, (_, i) => ({ filled: i < row.entry.confirmedMain }))
                   : [];
-              const actionDef = actionForEntry(entry);
+              const actionDef = actionForEntry(row.entry);
               const actionGate = actionDef ? actionGates?.[GATE_KEY_BY_ACTION[actionDef.action]] : undefined;
               const actionDisabled = actionGate?.disabled ?? false;
 
               return (
                 <div
-                  key={entry.id}
-                  data-testid={`agenda-row-${entry.id}`}
+                  key={row.key}
+                  data-testid={`agenda-row-${row.key}`}
                   role="button"
                   tabIndex={0}
-                  onClick={() => onOpenEntry(entry)}
+                  onClick={() => onOpenEntry(row.entry)}
                   // Mobile-first: rows stack single-column (spec §4.5); `md:`
                   // restores the desktop single-line row exactly at >=768px
                   // (matching `useIsMobile`'s breakpoint) — every `md:`-only
@@ -132,25 +190,30 @@ export function AgendaLens({ entries, onOpenEntry, onAction, actionGates, classN
                 >
                   <div className="shrink-0 md:w-[62px]">
                     <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      {format(entry.date, 'EEE', { locale: dfLocale() })}
+                      {format(row.entry.date, 'EEE', { locale: dfLocale() })}
                     </p>
                     <p className="font-mono text-sm font-semibold tabular-nums text-foreground">
-                      {format(entry.date, 'd')}
+                      {format(row.entry.date, 'd')}
                     </p>
                   </div>
-                  <span className="shrink-0 font-mono text-xs tabular-nums text-muted-foreground md:w-[46px]">
-                    {entry.session1 ?? ''}
-                  </span>
+                  <div className="flex shrink-0 items-center gap-1.5 md:w-[84px]">
+                    <span className="font-mono text-xs tabular-nums text-muted-foreground">{row.time}</span>
+                    {row.extraSessions > 0 && (
+                      <span className="inline-flex items-center rounded-[4px] bg-accent-50 px-1 text-[10px] font-medium text-accent-700">
+                        +{row.extraSessions}
+                      </span>
+                    )}
+                  </div>
                   <div className="w-full min-w-0 md:flex-1">
-                    <p className="truncate text-[13.5px] font-semibold text-foreground">{entry.program}</p>
+                    <p className="truncate text-[13.5px] font-semibold text-foreground">{row.entry.program}</p>
                     <p className="truncate text-xs text-muted-foreground">
-                      {[entry.venue, entry.city].filter(Boolean).join(' · ')}
+                      {[row.entry.venue, row.entry.city].filter(Boolean).join(' · ')}
                     </p>
                   </div>
                   <div className="flex w-full items-center gap-2 md:w-[150px] md:shrink-0">
                     {meter.length > 0 && <FillMeter segments={meter} tone={toneSpec.tone} />}
                     <span className={cn('font-mono text-[11px] font-medium', TONE_TEXT[toneSpec.tone])}>
-                      {t('calendar.agenda.mainFillCount', { filled: entry.confirmedMain, total: entry.mainSlots })}
+                      {t('calendar.agenda.mainFillCount', { filled: row.entry.confirmedMain, total: row.entry.mainSlots })}
                     </span>
                   </div>
                   <span
@@ -159,33 +222,34 @@ export function AgendaLens({ entries, onOpenEntry, onAction, actionGates, classN
                       toneSpec.badgeClass
                     )}
                   >
-                    {t(`calendar.producerStatus.${entry.status}`)}
+                    {t(`calendar.producerStatus.${row.entry.status}`)}
                   </span>
                   <div className="flex w-full justify-start md:w-[132px] md:shrink-0 md:justify-end">
-                    {actionDef ? (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        data-testid={`agenda-action-${entry.id}`}
-                        disabled={actionDisabled}
-                        title={actionDisabled ? actionGate?.title : undefined}
-                        onClick={(event: MouseEvent) => {
-                          event.stopPropagation();
-                          onAction(entry, actionDef.action);
-                        }}
-                      >
-                        {t(actionDef.i18nKey)}
-                      </Button>
-                    ) : (
-                      entry.status === 'fully_filled' &&
-                      entry.hireOrderId &&
-                      entry.hireOrderStatus && (
-                        <span data-testid={`agenda-order-status-${entry.id}`}>
-                          <HireOrderStatusBadge status={entry.hireOrderStatus} />
-                        </span>
-                      )
-                    )}
+                    {row.showAction &&
+                      (actionDef ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          data-testid={`agenda-action-${row.entry.id}`}
+                          disabled={actionDisabled}
+                          title={actionDisabled ? actionGate?.title : undefined}
+                          onClick={(event: MouseEvent) => {
+                            event.stopPropagation();
+                            onAction(row.entry, actionDef.action);
+                          }}
+                        >
+                          {t(actionDef.i18nKey)}
+                        </Button>
+                      ) : (
+                        row.entry.status === 'fully_filled' &&
+                        row.entry.hireOrderId &&
+                        row.entry.hireOrderStatus && (
+                          <span data-testid={`agenda-order-status-${row.entry.id}`}>
+                            <HireOrderStatusBadge status={row.entry.hireOrderStatus} />
+                          </span>
+                        )
+                      ))}
                   </div>
                 </div>
               );
