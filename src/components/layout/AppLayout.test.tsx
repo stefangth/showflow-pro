@@ -114,7 +114,7 @@ function mockAuth() {
       viewAsRole: null,
       viewAsUser: null,
       isSuperAdmin: false,
-      currentOrg: { id: "o1", name: "Acme Shows", slug: "acme", status: "active" },
+      currentOrg: { id: "o1", name: "Acme Shows", slug: "acme", status: "active", is_demo: false },
       orgs: [],
       switchOrg: vi.fn(),
       signOut: vi.fn(),

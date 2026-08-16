@@ -19,6 +19,7 @@ export interface OrgStat {
   active_artist_count: number;
   bookings_30d: number;
   last_activity_at: string | null;
+  is_demo: boolean;
 }
 
 export interface PlatformAdmin {
@@ -201,7 +202,7 @@ export async function fetchEmailHealth(
 
 /** Every organization (super-admin only; RLS short-circuits is_org_member). */
 export async function fetchAllOrgs(client: SupabaseClient<Database>): Promise<Organization[]> {
-  const { data, error } = await client.from("organizations").select("id, name, slug, status").order("name");
+  const { data, error } = await client.from("organizations").select("id, name, slug, status, is_demo").order("name");
   if (error) throw error;
   return (data ?? []) as Organization[];
 }

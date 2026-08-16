@@ -173,8 +173,8 @@ vi.mock("@/components/auth/PasswordSetupForm", () => ({
   ),
 }));
 
-const org1: Organization = { id: "org-1", name: "Riverside Opera", slug: "riverside", status: "active" };
-const oldOrg: Organization = { id: "org-0", name: "Old Org", slug: "old-org", status: "active" };
+const org1: Organization = { id: "org-1", name: "Riverside Opera", slug: "riverside", status: "active", is_demo: false };
+const oldOrg: Organization = { id: "org-0", name: "Old Org", slug: "old-org", status: "active", is_demo: false };
 
 function membershipFor(role: Membership["role"]): Membership {
   return { org_id: org1.id, role, organizations: org1 };

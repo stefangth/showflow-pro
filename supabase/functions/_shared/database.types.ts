@@ -876,6 +876,76 @@ export type Database = {
           },
         ]
       }
+      demo_captured_sends: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string
+          org_id: string
+          preview_html: string | null
+          storage_path: string | null
+          subject: string | null
+          to_label: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind: string
+          org_id: string
+          preview_html?: string | null
+          storage_path?: string | null
+          subject?: string | null
+          to_label?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+          org_id?: string
+          preview_html?: string | null
+          storage_path?: string | null
+          subject?: string | null
+          to_label?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "demo_captured_sends_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      demo_state: {
+        Row: {
+          org_id: string
+          prospect_label: string | null
+          updated_at: string
+          volume: string
+        }
+        Insert: {
+          org_id: string
+          prospect_label?: string | null
+          updated_at?: string
+          volume?: string
+        }
+        Update: {
+          org_id?: string
+          prospect_label?: string | null
+          updated_at?: string
+          volume?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "demo_state_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: true
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_health_state: {
         Row: {
           id: boolean
@@ -1603,6 +1673,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           id: string
+          is_demo: boolean
           name: string
           slug: string
           status: string
@@ -1612,6 +1683,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
+          is_demo?: boolean
           name: string
           slug: string
           status?: string
@@ -1621,6 +1693,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
+          is_demo?: boolean
           name?: string
           slug?: string
           status?: string
@@ -2435,6 +2508,7 @@ export type Database = {
         Args: { p_artist: string; p_dates: string[]; p_org: string }
         Returns: undefined
       }
+      backfill_show_slots_from_legacy: { Args: never; Returns: undefined }
       bulk_import_artists: {
         Args: { p_org: string; p_rows: Json }
         Returns: Json
@@ -2619,6 +2693,7 @@ export type Database = {
         Returns: {
           active_artist_count: number
           bookings_30d: number
+          is_demo: boolean
           last_activity_at: string
           member_count: number
           name: string
@@ -2650,6 +2725,10 @@ export type Database = {
         Returns: Json
       }
       prune_email_log: { Args: never; Returns: number }
+      recompute_show_slot_derivations: {
+        Args: { p_show_id: string }
+        Returns: undefined
+      }
       remove_org_member: {
         Args: { p_org: string; p_user: string }
         Returns: undefined
@@ -2685,6 +2764,10 @@ export type Database = {
         Returns: undefined
       }
       revoke_invitation: { Args: { p_id: string }; Returns: undefined }
+      seed_demo_org: {
+        Args: { p_actor?: string; p_org: string; p_volume?: string }
+        Returns: undefined
+      }
       seed_org_starter_catalog: { Args: { _org: string }; Returns: undefined }
       set_org_airtable_key: {
         Args: { _key: string; _org: string }
@@ -2722,6 +2805,7 @@ export type Database = {
         }[]
       }
       upsert_health_daily: { Args: { p_rows: Json }; Returns: number }
+      wipe_demo_org: { Args: { p_org: string }; Returns: undefined }
     }
     Enums: {
       app_role: "admin" | "producer" | "artist"
@@ -2880,3 +2964,4 @@ export const Constants = {
     },
   },
 } as const
+

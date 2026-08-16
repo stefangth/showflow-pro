@@ -21,9 +21,9 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { MemoryRouter } from "react-router-dom";
 import { ROUTES } from "@/config/app.config";
 
-const ACME = { id: "o1", name: "Acme", slug: "acme", status: "active" };
-const BETA = { id: "o2", name: "Beta Productions", slug: "beta", status: "active" };
-const GONE = { id: "o3", name: "Dormant Co", slug: "dormant", status: "suspended" };
+const ACME = { id: "o1", name: "Acme", slug: "acme", status: "active", is_demo: false };
+const BETA = { id: "o2", name: "Beta Productions", slug: "beta", status: "active", is_demo: false };
+const GONE = { id: "o3", name: "Dormant Co", slug: "dormant", status: "suspended", is_demo: false };
 
 function setAuth(over: Partial<ReturnType<typeof useAuth>> = {}) {
   const switchOrg = vi.fn();

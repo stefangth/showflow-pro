@@ -52,8 +52,8 @@ describe("SupportContactLine", () => {
 describe("SuspendedOrgScreen", () => {
   it("shows the suspended org's name with no contact line, since APP_META.SUPPORT_EMAIL ships null", () => {
     authState = {
-      currentOrg: { id: "o1", name: "Acme Shows", slug: "acme", status: "suspended" },
-      orgs: [{ id: "o1", name: "Acme Shows", slug: "acme", status: "suspended" }],
+      currentOrg: { id: "o1", name: "Acme Shows", slug: "acme", status: "suspended", is_demo: false },
+      orgs: [{ id: "o1", name: "Acme Shows", slug: "acme", status: "suspended", is_demo: false }],
       switchOrg: vi.fn(),
       signOut: vi.fn(),
     };
@@ -64,10 +64,10 @@ describe("SuspendedOrgScreen", () => {
 
   it("offers to switch to another non-suspended org", () => {
     authState = {
-      currentOrg: { id: "o1", name: "Acme Shows", slug: "acme", status: "suspended" },
+      currentOrg: { id: "o1", name: "Acme Shows", slug: "acme", status: "suspended", is_demo: false },
       orgs: [
-        { id: "o1", name: "Acme Shows", slug: "acme", status: "suspended" },
-        { id: "o2", name: "Other Org", slug: "other", status: "active" },
+        { id: "o1", name: "Acme Shows", slug: "acme", status: "suspended", is_demo: false },
+        { id: "o2", name: "Other Org", slug: "other", status: "active", is_demo: false },
       ],
       switchOrg: vi.fn(),
       signOut: vi.fn(),
