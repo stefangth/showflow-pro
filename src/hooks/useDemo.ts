@@ -3,7 +3,6 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   createDemoOrg,
   fetchCapturedSends,
-  reseedDemoOrg,
   resetDemoOrg,
   wipeDemoOrg,
 } from "@/data/demo";
@@ -29,14 +28,6 @@ export function useResetDemo() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (args: { orgId: string; volume: "small" | "full" }) => resetDemoOrg(supabase, args),
-    onSuccess: () => invalidateEverything(qc),
-  });
-}
-
-export function useReseedDemoOrg() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (args: { orgId: string; volume: "small" | "full" }) => reseedDemoOrg(supabase, args),
     onSuccess: () => invalidateEverything(qc),
   });
 }

@@ -32,14 +32,6 @@ export function resetDemoOrg(
   return invokeDemoOps(client, { action: "reset", org_id: args.orgId, volume: args.volume });
 }
 
-/** Reseed a demo org without wiping first (org-admin action). */
-export function reseedDemoOrg(
-  client: SupabaseClient<Database>,
-  args: { orgId: string; volume: "small" | "full" },
-) {
-  return invokeDemoOps(client, { action: "reseed", org_id: args.orgId, volume: args.volume });
-}
-
 /** Wipe a demo org's data without reseeding (org-admin action). */
 export function wipeDemoOrg(client: SupabaseClient<Database>, args: { orgId: string }) {
   return invokeDemoOps(client, { action: "wipe", org_id: args.orgId });
