@@ -130,6 +130,33 @@ describe('producerData', () => {
       expect(cell!.chips[0].meter?.filter((m) => m.filled)).toHaveLength(4);
     });
 
+    it('formats time as HH:MM (seconds stripped) and reports extraSessions from session2/session3', () => {
+      const twoSessionRow: ProducerShowDateRow = {
+        ...rows[0],
+        id: 'sd-two-sessions',
+        date: '2026-08-24',
+        session_1: '19:30:00',
+        session_2: '22:00:00',
+        session_3: null,
+      };
+      const entries = toProducerEntries([twoSessionRow], counts);
+      const anchor = new Date(2026, 7, 1);
+      const today = new Date(2026, 7, 15);
+      const cells = monthCellsProducer(entries, anchor, '', [], today);
+      const cell = cells.find((c) => c.day && toDateKey(c.day) === '2026-08-24');
+      expect(cell!.chips[0].time).toBe('19:30');
+      expect(cell!.chips[0].extraSessions).toBe(1);
+    });
+
+    it('reports extraSessions:0 for a single-session entry', () => {
+      const entries = toProducerEntries(rows, counts);
+      const anchor = new Date(2026, 7, 1);
+      const today = new Date(2026, 7, 15);
+      const cells = monthCellsProducer(entries, anchor, '', [], today);
+      const cell = cells.find((c) => c.day && toDateKey(c.day) === '2026-08-18');
+      expect(cell!.chips[0].extraSessions).toBe(0);
+    });
+
     it('places no flag on a fully-filled date', () => {
       const fullyFilledRow: ProducerShowDateRow = {
         ...rows[0],

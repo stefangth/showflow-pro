@@ -3,6 +3,7 @@ import type { DateBookingCounts } from '@/data/bookings';
 import { showSlots } from '@/lib/settings';
 import { isPastDate, parseDateOnly, toDateKey } from '@/lib/dates';
 import { monthMatrix } from './period';
+import { sessionLabel } from './time';
 import { PRODUCER_TONES } from './tone';
 import { unconfirmedSlots } from './slots';
 
@@ -109,9 +110,10 @@ function chipFor(entry: ProducerDateEntry): MonthGridChip {
       : undefined;
   return {
     title: entry.program,
-    time: entry.session1 ?? undefined,
+    time: sessionLabel(entry.session1) || undefined,
     tone: PRODUCER_TONES[entry.status].tone,
     meter,
+    extraSessions: [entry.session2, entry.session3].filter(Boolean).length,
   };
 }
 

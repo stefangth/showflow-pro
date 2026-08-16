@@ -120,6 +120,42 @@ describe('MonthGrid', () => {
     expect(meter).toHaveAttribute('data-size', 'chip');
   });
 
+  it('renders the purple session +N badge when a chip has extraSessions, and none when absent/zero', () => {
+    render(<MonthGrid cells={buildCells()} onSelectDay={vi.fn()} onOpenDay={vi.fn()} />);
+    // day 10 chip 0 has no extraSessions set (undefined) -> no badge.
+    expect(screen.queryByTestId('month-grid-chip-sessions-2026-08-10-0')).not.toBeInTheDocument();
+  });
+
+  it('shows the +N session badge next to the time when extraSessions is set', () => {
+    const cells = buildCells();
+    const cell10 = cells.find((c) => c.day?.getDate() === 10)!;
+    cell10.chips = [
+      { title: 'Show A', time: '19:00', tone: 'success', extraSessions: 1 },
+    ];
+    render(<MonthGrid cells={cells} onSelectDay={vi.fn()} onOpenDay={vi.fn()} />);
+    const badge = screen.getByTestId('month-grid-chip-sessions-2026-08-10-0');
+    expect(badge).toHaveTextContent('+1');
+    expect(badge.className).toContain('bg-accent-50');
+    expect(badge.className).toContain('text-accent-700');
+  });
+
+  it('does not render the +N session badge when extraSessions is 0', () => {
+    const cells = buildCells();
+    const cell10 = cells.find((c) => c.day?.getDate() === 10)!;
+    cell10.chips = [
+      { title: 'Show A', time: '19:00', tone: 'success', extraSessions: 0 },
+    ];
+    render(<MonthGrid cells={cells} onSelectDay={vi.fn()} onOpenDay={vi.fn()} />);
+    expect(screen.queryByTestId('month-grid-chip-sessions-2026-08-10-0')).not.toBeInTheDocument();
+  });
+
+  it('recolors the "+N more" overflow text to the accent/purple tone', () => {
+    render(<MonthGrid cells={buildCells()} onSelectDay={vi.fn()} onOpenDay={vi.fn()} />);
+    const overflow = screen.getByText('+1 more');
+    expect(overflow.className).toContain('text-accent-700');
+    expect(overflow.className).not.toContain('text-muted-foreground');
+  });
+
   it('keyboard: Enter fires onOpenDay, Space fires onSelectDay, on a focused day cell', () => {
     const onSelectDay = vi.fn();
     const onOpenDay = vi.fn();

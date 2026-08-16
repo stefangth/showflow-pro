@@ -107,6 +107,18 @@ describe('artistData', () => {
       expect(cell!.flag?.tone).toBe('accent');
     });
 
+    it('formats the chip time as HH:MM, stripping seconds', () => {
+      const secondsEligible: EligibleDate[] = [
+        { ...eligible[0], id: 'sd-secs', date: '2026-08-24', session_1: '19:30:00' },
+      ];
+      const entries = toArtistEntries(secondsEligible, new Map(), new Set(), new Map());
+      const anchor = new Date(2026, 7, 1);
+      const today = new Date(2026, 7, 15);
+      const cells = monthCellsArtist(entries, anchor, '', today);
+      const cell = cells.find((c) => c.day && toDateKey(c.day) === '2026-08-24');
+      expect(cell!.chips[0].time).toBe('19:30');
+    });
+
     it('renders a "blocked" flag with destructive tone for a blocked date', () => {
       const entries = toArtistEntries(eligible, new Map(), new Set(['2026-08-19']), new Map());
       const anchor = new Date(2026, 7, 1);

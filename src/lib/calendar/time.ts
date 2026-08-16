@@ -22,6 +22,13 @@ export function minutesToLabel(minutes: number): string {
   return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
 }
 
+/** Format a raw `show_dates.session_*` value ("14:30:00" | "14:30" | null)
+ *  as a display HH:MM. Empty string for null/undefined/empty. Idempotent. */
+export function sessionLabel(value: string | null | undefined): string {
+  if (!value) return '';
+  return minutesToLabel(sessionMinutes(value));
+}
+
 /**
  * Derives the padded whole-hour extent (in minutes since midnight) spanning
  * every parseable session time in `values`. Padding floors the earliest time
