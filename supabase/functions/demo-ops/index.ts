@@ -15,11 +15,15 @@ import { preflight, json } from "../_shared/http.ts";
 import { requireOrgRole, requireSuperAdmin } from "../_shared/auth.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
 
+type Action = "reset" | "reseed" | "wipe" | "flag_and_seed";
+
 type Body = {
-  action: "reset" | "reseed" | "wipe" | "flag_and_seed";
+  action: Action;
   org_id?: string;
   volume?: "small" | "full";
 };
+
+const VALID_ACTIONS: Action[] = ["reset", "reseed", "wipe", "flag_and_seed"];
 
 async function assertDemoOrg(deps: Deps, orgId: string): Promise<boolean> {
   const { data } = await deps.admin.from("organizations").select("is_demo").eq("id", orgId).maybeSingle();
@@ -31,6 +35,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
 
   const body = (await req.json().catch(() => null)) as Body | null;
   if (!body?.action || !body?.org_id) return json({ error: "bad_request" }, 400);
+  if (!VALID_ACTIONS.includes(body.action)) return json({ error: "bad_request" }, 400);
   const orgId = body.org_id;
   const volume = body.volume ?? "full";
 

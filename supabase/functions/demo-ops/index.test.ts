@@ -44,6 +44,14 @@ Deno.test("demo-ops: missing action or org_id → 400 bad_request", async () => 
   assertEquals(body.error, "bad_request");
 });
 
+Deno.test("demo-ops: unknown action → 400 bad_request", async () => {
+  const { deps } = adminDeps({ isDemo: true });
+  const res = await handle(authedReq({ action: "not_a_real_action", org_id: "o1" }), deps);
+  assertEquals(res.status, 400);
+  const body = await res.json() as { error: string };
+  assertEquals(body.error, "bad_request");
+});
+
 Deno.test("demo-ops: no Bearer → 401", async () => {
   const { deps } = makeFakeDeps();
   const res = await handle(makeRequest({ body: { action: "reset", org_id: "o1" } }), deps);

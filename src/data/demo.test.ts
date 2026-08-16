@@ -2,7 +2,6 @@ import { describe, it, expect } from "vitest";
 import { createFakeSupabase } from "@/test/supabaseFake";
 import {
   createDemoOrg,
-  reseedDemoOrg,
   resetDemoOrg,
   wipeDemoOrg,
   fetchCapturedSends,
@@ -35,20 +34,6 @@ describe("resetDemoOrg", () => {
       "fn:demo-ops": { data: null, error: { message: "network" } },
     });
     await expect(resetDemoOrg(fake as never, { orgId: "o1", volume: "small" })).rejects.toBeTruthy();
-  });
-});
-
-describe("reseedDemoOrg", () => {
-  it("invokes demo-ops with action reseed", async () => {
-    const fake = createFakeSupabase({
-      "fn:demo-ops": { data: { ok: true }, error: null },
-    });
-    await reseedDemoOrg(fake as never, { orgId: "o1", volume: "small" });
-    expect(fake.calls).toContainEqual({
-      table: "fn:demo-ops",
-      method: "invoke",
-      args: [{ action: "reseed", org_id: "o1", volume: "small" }],
-    });
   });
 });
 
