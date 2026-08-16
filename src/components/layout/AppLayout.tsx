@@ -24,6 +24,7 @@ import { StageMark } from '@/components/brand/StageMark';
 import { BrandWordmark } from '@/components/brand/BrandWordmark';
 import { OrgSwitcher } from '@/components/layout/OrgSwitcher';
 import { NotificationsList } from '@/components/layout/NotificationsList';
+import { DemoBadge } from '@/components/demo/DemoBadge';
 import { ThemeToggle } from '@/components/layout/ThemeToggle';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useNavCounts } from '@/hooks/useNavCounts';
@@ -310,6 +311,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 <p className="text-[10px] font-mono text-warning truncate">{viewAsUser.email}</p>
               </div>
             )}
+            <DemoBadge />
           </div>
         )}
       </div>
