@@ -159,7 +159,7 @@ describe('MonthGrid', () => {
     expect(wrapper.className).toContain('bg-card');
     expect(wrapper.className).toContain('rounded-[10px]');
     expect(wrapper.className).toContain('border-[0.5px]');
-    expect(wrapper.className).toContain('shadow-[var(--shadow-2)]');
+    expect(wrapper.className).toContain('shadow-elev2');
   });
 
   it('renders the purple session +N badge when a chip has extraSessions, and none when absent/zero', () => {

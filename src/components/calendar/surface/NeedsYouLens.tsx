@@ -326,8 +326,8 @@ export function NeedsYouLens({
                     className={cn(
                       'flex cursor-pointer flex-col overflow-hidden rounded-[14px] border-[0.5px] bg-card md:flex-row md:items-stretch',
                       isUrgent
-                        ? 'border-[var(--accent-200)] shadow-[var(--shadow-3)]'
-                        : 'border-border shadow-[var(--shadow-2)]'
+                        ? 'border-[var(--accent-200)] shadow-elev3'
+                        : 'border-border shadow-elev2'
                     )}
                   >
                     {/* 1. Date block — weekday / big day number / month, optional lead-time line. */}

@@ -107,10 +107,10 @@ describe('NeedsYouLens', () => {
     // violet-tinted date block; the ready-to-issue card stays neutral.
     expect(screen.getByTestId('needs-you-item-d-expires')).toHaveClass(
       'border-[var(--accent-200)]',
-      'shadow-[var(--shadow-3)]'
+      'shadow-elev3'
     );
     expect(screen.getByTestId('needs-you-date-d-expires')).toHaveClass('bg-accent-50');
-    expect(screen.getByTestId('needs-you-item-d-ready')).toHaveClass('border-border', 'shadow-[var(--shadow-2)]');
+    expect(screen.getByTestId('needs-you-item-d-ready')).toHaveClass('border-border', 'shadow-elev2');
     expect(screen.getByTestId('needs-you-date-d-ready')).toHaveClass('bg-muted');
 
     // Group headers are color-coded per group key, not all the same violet.

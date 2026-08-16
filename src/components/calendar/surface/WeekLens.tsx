@@ -116,7 +116,7 @@ export function WeekLens({ entries, anchor, onOpenEntry, today = new Date(), cla
     <div
       data-testid="week-lens"
       className={cn(
-        'flex w-full flex-col overflow-hidden rounded-[10px] border-[0.5px] border-border bg-card shadow-[var(--shadow-2)]',
+        'flex w-full flex-col overflow-hidden rounded-[10px] border-[0.5px] border-border bg-card shadow-elev2',
         className
       )}
     >

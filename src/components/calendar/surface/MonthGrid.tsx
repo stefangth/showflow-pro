@@ -129,7 +129,7 @@ export function MonthGrid({
   return (
     <div
       className={cn(
-        'w-full overflow-hidden rounded-[10px] border-[0.5px] border-border bg-card shadow-[var(--shadow-2)]',
+        'w-full overflow-hidden rounded-[10px] border-[0.5px] border-border bg-card shadow-elev2',
         className
       )}
       data-testid="month-grid"
