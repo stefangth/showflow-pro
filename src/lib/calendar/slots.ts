@@ -32,9 +32,11 @@ export interface SlotCounts {
 
 /** Main slots with no active booking of any kind (confirmed, accepted, or a
  *  pending offer all count as handled), floored at 0. Drives the Needs-you
- *  action queue. */
-export function openToOfferSlots(entry: SlotCounts): number {
-  const inFlight = entry.confirmedMain + (entry.acceptedMain ?? 0) + (entry.pendingMain ?? 0);
+ *  action queue. Requires `acceptedMain`/`pendingMain` — the whole point of
+ *  this metric is subtracting offers, so a caller omitting them (getting the
+ *  unconfirmed count instead) is a bug this type refuses to compile. */
+export function openToOfferSlots(entry: Required<SlotCounts>): number {
+  const inFlight = entry.confirmedMain + entry.acceptedMain + entry.pendingMain;
   return Math.max(0, entry.mainSlots - inFlight);
 }
 

@@ -13,10 +13,6 @@ describe('openToOfferSlots', () => {
   it('floors at 0 when offers exceed the slot count', () => {
     expect(openToOfferSlots({ mainSlots: 2, confirmedMain: 1, acceptedMain: 2, pendingMain: 1 })).toBe(0);
   });
-
-  it('defaults missing acceptedMain/pendingMain to 0', () => {
-    expect(openToOfferSlots({ mainSlots: 4, confirmedMain: 1 })).toBe(3);
-  });
 });
 
 describe('unconfirmedSlots', () => {

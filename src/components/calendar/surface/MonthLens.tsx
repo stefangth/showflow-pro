@@ -64,10 +64,15 @@ export function MonthLens({
   onRangeCommit,
   rangeActive,
   dense,
-  today = new Date(),
+  today: todayProp,
   className,
 }: MonthLensProps) {
   const selectedKey = selectedDay ? toDateKey(selectedDay) : '';
+
+  // Memoize the "today" fallback so an omitted `today` prop stays a stable ref
+  // across renders (mirrors `CalendarSurface`'s own `now`) — otherwise a fresh
+  // `new Date()` each render would bust the cell memo below and negate it.
+  const today = useMemo(() => todayProp ?? new Date(), [todayProp]);
 
   // Memoized on its inputs so unrelated parent re-renders don't rebuild every
   // cell (chips, tones, flags). During an active drag `rangeKeys` genuinely
