@@ -409,7 +409,9 @@ function ProducerShowsBookings() {
       const label = t('needsYou.toast.notified', { count: notified });
       toast.success(label);
       queryClient.invalidateQueries({ queryKey: ['show-dates'] });
-      addReceipt(showDateId, label);
+      // Only record a "cleared today" receipt when someone was actually
+      // notified — mirrors extendHold/releaseHoldForDate gating on `affected`.
+      if (notified) addReceipt(showDateId, label);
     } catch (e) {
       toast.error((e as Error).message);
     }

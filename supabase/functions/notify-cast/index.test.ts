@@ -113,6 +113,51 @@ Deno.test("notify-cast: skips artists with no linked user_id", async () => {
   const rows = notifInsert?.args[0] as Array<Record<string, unknown>> | undefined;
   assertEquals(rows?.length, 1);
   assertEquals(rows?.[0].user_id, USER_1);
+
+  // An unregistered artist (user_id null) has only the 20:00 digest email as a
+  // channel, so the change-log 'cancelled' row must be LEFT undigested for the
+  // digest to still reach them — this endpoint must not consume it here.
+  const changeLogUpdate = calls.find((c) => c.table === "show_date_change_log" && c.method === "update");
+  assertEquals(changeLogUpdate, undefined);
+});
+
+Deno.test("notify-cast: already-notified date is idempotent — no re-insert, returns alreadyNotified", async () => {
+  const { deps, calls } = makeFakeDeps({
+    authUser: { id: PRODUCER },
+    tables: {
+      show_dates: { data: { id: DATE, org_id: ORG, cast_notified_at: "2026-09-01T10:00:00Z" }, error: null },
+      org_memberships: { data: { role: "producer" }, error: null },
+      bookings: { data: cancelledBookings(), error: null },
+      show_date_change_log: { data: [], error: null },
+    },
+  });
+
+  const res = await handle(producerReq(), deps);
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.notified, 0);
+  assertEquals(body.alreadyNotified, true);
+  // Nothing re-inserted; the cast was already alerted on the first call.
+  assertEquals(calls.find((c) => c.table === "notifications" && c.method === "insert"), undefined);
+});
+
+Deno.test("notify-cast: cast_notified_at stamp failure → 500 (no false success)", async () => {
+  const { deps } = makeFakeDeps({
+    authUser: { id: PRODUCER },
+    tables: {
+      // Read succeeds (fallback entry), the update write errors (__write:true).
+      show_dates: [
+        { when: { __write: true }, data: null, error: { message: "stamp failed" } },
+        { data: { id: DATE, org_id: ORG, cast_notified_at: null } },
+      ],
+      org_memberships: { data: { role: "producer" }, error: null },
+      bookings: { data: cancelledBookings(), error: null },
+      show_date_change_log: { data: [], error: null },
+    },
+  });
+
+  const res = await handle(producerReq(), deps);
+  assertEquals(res.status, 500);
 });
 
 Deno.test("notify-cast: caller lacking producer/admin role ANYWHERE → 403, rejected by the coarse gate BEFORE any show_dates lookup", async () => {

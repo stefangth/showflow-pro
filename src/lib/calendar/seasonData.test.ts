@@ -253,4 +253,32 @@ describe('seasonKpis', () => {
     expect(kpis.readyForHireOrder).toBe(0);
     expect(kpis.heaviestWeekLabel).toBe('');
   });
+
+  it('keeps the heaviest-week date count and open-slot sum consistent by excluding cancelled dates from both', () => {
+    // Week of Mon 3 Aug: one active date (2 open) plus one cancelled date. The
+    // cancelled date must not pad the "N dates" count, so N and M agree.
+    const active = makeEntry({
+      id: 'sd-w1', showId: 'show-a', date: new Date(2026, 7, 4), mainSlots: 6, confirmedMain: 4, status: 'partially_filled',
+    });
+    const cancelled = makeEntry({
+      id: 'sd-w2', showId: 'show-b', date: new Date(2026, 7, 5), mainSlots: 6, confirmedMain: 0, status: 'cancelled',
+    });
+
+    const kpis = seasonKpis([active, cancelled], ANCHOR, new Set());
+    expect(kpis.heaviestWeekLabel).toBe('03/08/2026');
+    expect(kpis.heaviestWeekDates).toBe(1); // cancelled date excluded from the count
+    expect(kpis.heaviestWeekOpen).toBe(2); // 6 - 4, cancelled contributes 0
+    expect(kpis.unfilledDates).toBe(1); // only the active date has an open slot
+  });
+});
+
+describe('toSeasonModel loadByDay', () => {
+  it('excludes cancelled dates so the load bar agrees with the unfilled KPI', () => {
+    const cancelled = makeEntry({
+      id: 'sd-x', showId: 'show-x', date: new Date(2026, 7, 4), mainSlots: 6, confirmedMain: 0, status: 'cancelled',
+    });
+    const model = toSeasonModel([cancelled], ANCHOR);
+    const idx = 3; // Tue 4 Aug is 3 days after Sat 1 Aug
+    expect(model.loadByDay[idx].openMainSlots).toBe(0);
+  });
 });

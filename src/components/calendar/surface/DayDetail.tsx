@@ -1,5 +1,6 @@
-import { format, isSameDay } from 'date-fns';
+import { format } from 'date-fns';
 import type { ActionGates, ArtistDateEntry, ArtistStatus, ProducerDateEntry, Tone } from '@/lib/calendar/types';
+import { berlinDateKey, toDateKey } from '@/lib/dates';
 import { ARTIST_TONES, PRODUCER_TONES, TONE_TEXT, artistStatusLabel } from '@/lib/calendar/tone';
 import { resolveProducerPrimary } from '@/lib/calendar/producerPrimary';
 import { cn } from '@/lib/utils';
@@ -62,10 +63,14 @@ function artistInfoTiles(day: Date, entries: ArtistDateEntry[]): InfoTile[] {
   if (entry.session1) tiles.push({ key: 'session', label: 'Session', value: entry.session1 });
   if (entry.offerExpiresAt) {
     const expiry = new Date(entry.offerExpiresAt);
+    // Compare on the Berlin calendar (the booking engine anchors offer-expiry
+    // deadlines to Berlin — see `earliestExpiryToday`/`berlinDateKey`), so the
+    // time-vs-date format doesn't flip near midnight in another timezone.
+    const sameDay = berlinDateKey(expiry) === toDateKey(day);
     tiles.push({
       key: 'expires',
       label: 'Expires',
-      value: isSameDay(expiry, day) ? format(expiry, 'HH:mm') : format(expiry, 'd MMM'),
+      value: sameDay ? format(expiry, 'HH:mm') : format(expiry, 'd MMM'),
       warn: true,
     });
   }

@@ -8,6 +8,7 @@ import type { ArtistJoin } from "../_shared/rows.ts";
 interface ShowDateOrgRow {
   id: string;
   org_id: string;
+  cast_notified_at: string | null;
 }
 
 /** Mirrors the show_dates join nested in the bookings select below (mirrors
@@ -58,9 +59,14 @@ interface NotificationInsertRow {
  * booking on the date for some other reason like a decline or an expired offer).
  *
  * After notifying, it stamps `show_dates.cast_notified_at` (marks the queue item
- * done) and consumes the date's undigested 'cancelled' `show_date_change_log`
- * row (`digested_at`) so send-confirmation-digest does not re-notify the same
- * artists again at 20:00.
+ * done). That stamp is also the idempotency guard: a repeat call on an
+ * already-notified date returns `{ notified: 0, alreadyNotified: true }` without
+ * re-alerting anyone. It then consumes the date's undigested 'cancelled'
+ * `show_date_change_log` row (`digested_at`) so send-confirmation-digest does not
+ * re-notify the same artists at 20:00 — but ONLY when every affected artist is
+ * registered (has a `user_id`) and was reachable by the in-app notice. If any
+ * artist is booking-email-only, the change-log row is left undigested so the
+ * 20:00 digest email still reaches them (their only channel).
  *
  * Auth: user JWT. A coarse `requireRole(['admin','producer'])` gate runs FIRST,
  * before any admin-client (service-role) lookup — resolving show_dates.org_id
@@ -97,17 +103,25 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   // Resolve the date's org — it drives the org-scoped auth check below.
   const { data: showDateRaw, error: sdErr } = await admin
     .from("show_dates")
-    .select("id, org_id")
+    .select("id, org_id, cast_notified_at")
     .eq("id", show_date_id)
     .maybeSingle();
   if (sdErr || !showDateRaw) return json({ error: "Show date not found" }, 404);
-  const orgId = (showDateRaw as ShowDateOrgRow).org_id;
+  const showDate = showDateRaw as ShowDateOrgRow;
+  const orgId = showDate.org_id;
 
   const auth = await requireOrgRole(deps, req, orgId, ["admin", "producer"]);
   if (!auth.ok) return auth.response;
 
   const featureGate = await requireFeature(deps, orgId, "booking_flow");
   if (featureGate) return featureGate;
+
+  // Idempotency: if this date's cast was already notified, don't re-insert the
+  // "Booking cancelled" notifications (a double-click or a queue refetch must
+  // not re-alert the same artists). The stamp is the guard.
+  if (showDate.cast_notified_at) {
+    return json({ notified: 0, alreadyNotified: true });
+  }
 
   const { data: bookingsRaw, error: bookingsErr } = await admin
     .from("bookings")
@@ -152,20 +166,30 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     .update({ cast_notified_at: now.toISOString() })
     .eq("id", show_date_id);
   if (stampErr) {
+    // Surface the failure instead of returning a false success: without the
+    // stamp the date reappears in the "cancelled" queue, and the caller must
+    // know the action didn't complete rather than silently record it done.
     console.error("notify-cast: cast_notified_at stamp failed", { showDateId: show_date_id, error: stampErr.message });
+    return json({ error: "Failed to record notification" }, 500);
   }
 
   // Consume the undigested cancellation change-log row(s) for this date so
-  // send-confirmation-digest's undigested-row query does not re-notify the same
-  // artists at 20:00 for a cancellation already delivered here.
-  const { error: digestStampErr } = await admin
-    .from("show_date_change_log")
-    .update({ digested_at: now.toISOString() })
-    .eq("show_date_id", show_date_id)
-    .eq("change_type", "cancelled")
-    .is("digested_at", null);
-  if (digestStampErr) {
-    console.error("notify-cast: change-log stamp failed", { showDateId: show_date_id, error: digestStampErr.message });
+  // send-confirmation-digest does not re-notify the same artists at 20:00 —
+  // but ONLY when every affected artist is registered (has a user_id) and thus
+  // reachable by the in-app notice above. If any artist is booking-email-only,
+  // leave the row undigested so the 20:00 digest email still reaches them (it
+  // is their only channel; the registered artists just also get that email).
+  const hasUnregistered = bookings.some((b) => !b.artists?.user_id);
+  if (!hasUnregistered) {
+    const { error: digestStampErr } = await admin
+      .from("show_date_change_log")
+      .update({ digested_at: now.toISOString() })
+      .eq("show_date_id", show_date_id)
+      .eq("change_type", "cancelled")
+      .is("digested_at", null);
+    if (digestStampErr) {
+      console.error("notify-cast: change-log stamp failed", { showDateId: show_date_id, error: digestStampErr.message });
+    }
   }
 
   return json({ notified: notificationRows.length });

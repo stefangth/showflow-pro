@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { getDay } from 'date-fns';
 import type { ProducerDateEntry } from '@/lib/calendar/types';
 import { toSeasonModel, seasonKpis, type SeasonCell } from '@/lib/calendar/seasonData';
@@ -151,8 +151,10 @@ export function SeasonLens({
   onRangeCommit,
   className,
 }: SeasonLensProps) {
-  const model = toSeasonModel(entries, anchor);
-  const kpis = seasonKpis(entries, anchor, readyIds);
+  // Memoized so a producer's range-select drag (which updates `rangeKeys` on
+  // every mouseenter) doesn't rebuild the whole 3-month grid + KPIs each move.
+  const model = useMemo(() => toSeasonModel(entries, anchor), [entries, anchor]);
+  const kpis = useMemo(() => seasonKpis(entries, anchor, readyIds), [entries, anchor, readyIds]);
   const gridCols = `${LABEL_WIDTH}px repeat(${model.days.length}, minmax(20px, 1fr))`;
 
   const maxOpen = Math.max(1, ...model.loadByDay.map(d => d.openMainSlots));

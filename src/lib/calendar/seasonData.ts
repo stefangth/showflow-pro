@@ -108,6 +108,9 @@ export function toSeasonModel(entries: ProducerDateEntry[], anchor: Date): Seaso
     for (const row of rows) {
       const cell = row.cells[index];
       if (cell.dateId == null) continue;
+      // Exclude cancelled dates so the load bar agrees with the "Unfilled
+      // main slots" KPI, which also zeroes cancelled deficits.
+      if (cell.status === 'cancelled') continue;
       openMainSlots += Math.max(0, cell.mainSlots - cell.filledMain);
     }
     return { date, openMainSlots };
@@ -133,14 +136,18 @@ export function seasonKpis(entries: ProducerDateEntry[], anchor: Date, readyIds:
     }
     if (readyIds.has(entry.id)) readyForHireOrder++;
 
-    const monday = startOfWeek(entry.date, { weekStartsOn: 1 });
-    const key = monday.getTime();
-    const bucket = weekCounts.get(key);
-    if (bucket) {
-      bucket.count++;
-      bucket.open += deficit;
-    } else {
-      weekCounts.set(key, { monday, count: 1, open: deficit });
+    // Heaviest-week bucket excludes cancelled dates entirely, so its "N dates"
+    // count and "M slots open" sum stay consistent with each other.
+    if (entry.status !== 'cancelled') {
+      const monday = startOfWeek(entry.date, { weekStartsOn: 1 });
+      const key = monday.getTime();
+      const bucket = weekCounts.get(key);
+      if (bucket) {
+        bucket.count++;
+        bucket.open += deficit;
+      } else {
+        weekCounts.set(key, { monday, count: 1, open: deficit });
+      }
     }
   }
 
