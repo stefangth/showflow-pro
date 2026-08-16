@@ -5,6 +5,9 @@ import {
   resetDemoOrg,
   wipeDemoOrg,
   fetchCapturedSends,
+  fetchDemoState,
+  updateDemoState,
+  runCue,
 } from "@/data/demo";
 
 describe("resetDemoOrg", () => {
@@ -136,5 +139,76 @@ describe("fetchCapturedSends", () => {
   it("throws on a supabase error", async () => {
     const fake = createFakeSupabase({ demo_captured_sends: { data: null, error: { message: "boom" } } });
     await expect(fetchCapturedSends(fake as never, "o1")).rejects.toBeTruthy();
+  });
+});
+
+describe("fetchDemoState", () => {
+  it("reads the demo_state row for the org", async () => {
+    const fake = createFakeSupabase({
+      demo_state: {
+        data: {
+          org_id: "o1",
+          volume: "full",
+          prospect_label: "Acme",
+          sim_now: null,
+          current_scene_id: "scene-1",
+          script_id: "script-1",
+          updated_at: "2026-08-17T00:00:00Z",
+        },
+        error: null,
+      },
+    });
+    const row = await fetchDemoState(fake as never, "o1");
+    expect(row?.prospect_label).toBe("Acme");
+    expect(fake.calls).toContainEqual({ table: "demo_state", method: "eq", args: ["org_id", "o1"] });
+    expect(fake.calls).toContainEqual({ table: "demo_state", method: "maybeSingle", args: [] });
+  });
+
+  it("returns null when there is no row", async () => {
+    const fake = createFakeSupabase({ demo_state: { data: null, error: null } });
+    expect(await fetchDemoState(fake as never, "o1")).toBeNull();
+  });
+
+  it("throws on a supabase error", async () => {
+    const fake = createFakeSupabase({ demo_state: { data: null, error: { message: "boom" } } });
+    await expect(fetchDemoState(fake as never, "o1")).rejects.toBeTruthy();
+  });
+});
+
+describe("updateDemoState", () => {
+  it("upserts demo_state with the patch and org_id, conflict target org_id", async () => {
+    const fake = createFakeSupabase({ demo_state: { data: null, error: null } });
+    await updateDemoState(fake as never, { orgId: "o1", patch: { volume: "small", prospect_label: "Acme" } });
+    expect(fake.calls).toContainEqual({
+      table: "demo_state",
+      method: "upsert",
+      args: [{ org_id: "o1", volume: "small", prospect_label: "Acme" }, { onConflict: "org_id" }],
+    });
+  });
+
+  it("throws on upsert error", async () => {
+    const fake = createFakeSupabase({ demo_state: { data: null, error: { message: "boom" } } });
+    await expect(updateDemoState(fake as never, { orgId: "o1", patch: { volume: "full" } })).rejects.toBeTruthy();
+  });
+});
+
+describe("runCue", () => {
+  it("invokes demo-ops with action cue, org_id, and cue_id", async () => {
+    const fake = createFakeSupabase({
+      "fn:demo-ops": { data: { ok: true }, error: null },
+    });
+    await runCue(fake as never, { orgId: "o1", cueId: "cue-1" });
+    expect(fake.calls).toContainEqual({
+      table: "fn:demo-ops",
+      method: "invoke",
+      args: [{ action: "cue", org_id: "o1", cue_id: "cue-1" }],
+    });
+  });
+
+  it("throws when demo-ops returns a payload error", async () => {
+    const fake = createFakeSupabase({
+      "fn:demo-ops": { data: { error: "no_cue" }, error: null },
+    });
+    await expect(runCue(fake as never, { orgId: "o1", cueId: "bad" })).rejects.toThrow("no_cue");
   });
 });
