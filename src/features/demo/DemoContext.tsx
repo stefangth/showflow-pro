@@ -46,7 +46,9 @@ export function DemoProvider({ children }: { children: ReactNode }) {
   const resetMut = useResetDemo();
   const updateDemoState = useUpdateDemoState();
   const runCueMut = useRunCue();
-  const { data: demoState } = useDemoState(currentOrg?.id ?? null);
+  // Only demo orgs carry a demo_state row — gate the read so switching to (or
+  // starting on) a non-demo org never fires a demo_state query for it.
+  const { data: demoState } = useDemoState(demo ? currentOrg?.id ?? null : null);
 
   const volume: "small" | "full" = demoState?.volume ?? "full";
   const simNow = demoState?.sim_now ?? null;
