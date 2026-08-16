@@ -1,8 +1,14 @@
+import { useMemo } from 'react';
 import type { ArtistDateEntry, ProducerDateEntry } from '@/lib/calendar/types';
 import { monthCellsArtist } from '@/lib/calendar/artistData';
 import { monthCellsProducer } from '@/lib/calendar/producerData';
 import { toDateKey } from '@/lib/dates';
 import { MonthGrid } from './MonthGrid';
+
+/** Stable empty-range default so a range-less lens (the artist role, or any
+ *  render before a drag starts) keeps the same `rangeKeys` reference across
+ *  renders and the cell memo below holds. */
+const EMPTY_KEYS: string[] = [];
 
 interface MonthLensProps {
   role: 'producer' | 'artist';
@@ -52,7 +58,7 @@ export function MonthLens({
   onPeekDay,
   producerEntries,
   artistEntries,
-  rangeKeys = [],
+  rangeKeys = EMPTY_KEYS,
   onRangeStart,
   onRangeExtend,
   onRangeCommit,
@@ -63,10 +69,18 @@ export function MonthLens({
 }: MonthLensProps) {
   const selectedKey = selectedDay ? toDateKey(selectedDay) : '';
 
-  const cells =
-    role === 'producer'
-      ? monthCellsProducer(producerEntries ?? [], anchor, selectedKey, rangeKeys, today)
-      : monthCellsArtist(artistEntries ?? [], anchor, selectedKey, today);
+  // Memoized on its inputs so unrelated parent re-renders don't rebuild every
+  // cell (chips, tones, flags). During an active drag `rangeKeys` genuinely
+  // changes each mouseenter, so the highlight still repaints then by design;
+  // `today` is a stable ref from `CalendarSurface` (memoized `now`), and the
+  // empty-range default keeps the reference steady when no range is active.
+  const cells = useMemo(
+    () =>
+      role === 'producer'
+        ? monthCellsProducer(producerEntries ?? [], anchor, selectedKey, rangeKeys, today)
+        : monthCellsArtist(artistEntries ?? [], anchor, selectedKey, today),
+    [role, producerEntries, artistEntries, anchor, selectedKey, rangeKeys, today],
+  );
 
   return (
     <MonthGrid

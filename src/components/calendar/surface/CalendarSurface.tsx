@@ -305,6 +305,15 @@ export function CalendarSurface({
     [range, producerEntryIdByKey]
   );
 
+  // Referentially stable array of the drag-selected date keys, so the Month
+  // and Week lenses can memoize their cell/model derivation on it instead of
+  // rebuilding on every parent render. Recomputed only when `range` actually
+  // changes (each mouseenter during a drag) — exactly when the highlight moves.
+  const producerRangeKeys = useMemo(
+    () => (role === 'producer' ? selectedKeys(range) : undefined),
+    [role, range]
+  );
+
   // Shared range-selection handlers (Phase 4, producer-only) — one instance
   // wired to both the Month and Season lenses below, since they share the
   // same `range` state (selection is by day-key, not by lens).
@@ -571,7 +580,7 @@ export function CalendarSurface({
                   producerEntries={producerEntries}
                   artistEntries={artistEntries}
                   today={now}
-                  rangeKeys={role === 'producer' ? selectedKeys(range) : undefined}
+                  rangeKeys={producerRangeKeys}
                   onRangeStart={role === 'producer' ? handleRangeStart : undefined}
                   onRangeExtend={role === 'producer' ? handleRangeExtend : undefined}
                   onRangeCommit={role === 'producer' ? handleRangeCommit : undefined}
@@ -628,7 +637,7 @@ export function CalendarSurface({
               anchor={anchor}
               readyIds={seasonReadyIds}
               onOpenDate={(dateId) => actions.openDate?.(dateId)}
-              rangeKeys={role === 'producer' ? selectedKeys(range) : undefined}
+              rangeKeys={producerRangeKeys}
               onRangeStart={role === 'producer' ? handleRangeStart : undefined}
               onRangeExtend={role === 'producer' ? handleRangeExtend : undefined}
               onRangeCommit={role === 'producer' ? handleRangeCommit : undefined}

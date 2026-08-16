@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { isSameDay } from 'date-fns';
 import type { ProducerDateEntry } from '@/lib/calendar/types';
 import { toWeekModel, type WeekBlock, type WeekModel } from '@/lib/calendar/weekData';
@@ -92,7 +93,11 @@ function WeekBlockCard({
  * (the rail is `DayRail`, composed by the caller/`CalendarSurface`).
  */
 export function WeekLens({ entries, anchor, onOpenEntry, today = new Date(), className }: WeekLensProps) {
-  const model = toWeekModel(entries, anchor);
+  // Memoized on its only inputs so a producer's range-select drag (which
+  // mutates range state on every mouseenter, but never `entries`/`anchor`)
+  // doesn't rebuild the whole time-grid model per cell entered — mirrors the
+  // SeasonLens memoization.
+  const model = useMemo(() => toWeekModel(entries, anchor), [entries, anchor]);
   const { band } = model;
 
   const hourMarks: number[] = [];
