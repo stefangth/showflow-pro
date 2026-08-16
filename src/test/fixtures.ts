@@ -87,6 +87,7 @@ export function anOrganization(overrides: Partial<OrgRow> = {}): OrgRow {
     name: "Test Org",
     slug: id("slug"),
     status: "active",
+    is_demo: false,
     created_by: null,
     created_at: ISO,
     updated_at: ISO,

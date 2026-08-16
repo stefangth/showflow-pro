@@ -8,6 +8,7 @@ export interface Organization {
   name: string;
   slug: string;
   status: string;
+  is_demo: boolean;
 }
 
 export interface Membership {
@@ -23,7 +24,7 @@ export async function fetchMyMemberships(
 ): Promise<Membership[]> {
   const { data, error } = await client
     .from("org_memberships")
-    .select("org_id, role, organizations ( id, name, slug, status )")
+    .select("org_id, role, organizations ( id, name, slug, status, is_demo )")
     .eq("user_id", userId);
   if (error) throw error;
   return (data ?? []) as unknown as Membership[];

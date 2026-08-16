@@ -8,13 +8,28 @@ describe("fetchMyMemberships", () => {
       {
         org_id: "o1",
         role: "admin",
-        organizations: { id: "o1", name: "Cirque", slug: "cirque", status: "active" },
+        organizations: { id: "o1", name: "Cirque", slug: "cirque", status: "active", is_demo: false },
       },
     ];
     const fake = createFakeSupabase({ org_memberships: { data: rows, error: null } });
     const result = await fetchMyMemberships(fake as never, "u1");
     expect(result).toEqual(rows);
     expect(fake.calls).toContainEqual({ table: "org_memberships", method: "eq", args: ["user_id", "u1"] });
+  });
+
+  it("selects is_demo on the joined org and round-trips it", async () => {
+    const rows = [
+      {
+        org_id: "o1",
+        role: "admin",
+        organizations: { id: "o1", name: "Demo", slug: "demo", status: "active", is_demo: true },
+      },
+    ];
+    const fake = createFakeSupabase({ org_memberships: { data: rows, error: null } });
+    const result = await fetchMyMemberships(fake as never, "u1");
+    expect(result[0].organizations?.is_demo).toBe(true);
+    const selectCall = fake.calls.find((c) => c.table === "org_memberships" && c.method === "select");
+    expect(selectCall?.args[0]).toContain("is_demo");
   });
 
   it("returns [] when the user has no memberships", async () => {
