@@ -271,4 +271,53 @@ describe('NeedsYouLens', () => {
     fireEvent.click(screen.getByTestId('queue-offer-a-1'));
     expect(onOfferArtist).toHaveBeenCalledWith('d-atrisk', 'a-1');
   });
+
+  it('scope narrows the visible groups; the stacked layout\'s folded QueueRail overview stays unfiltered', () => {
+    const atRiskEntry = makeEntry({ id: 'd-atrisk', date: new Date(2026, 7, 20), status: 'partially_filled' });
+    const cancelledEntry = makeEntry({ id: 'd-cancelled', date: new Date(2026, 7, 22), status: 'cancelled' });
+    const atRiskItem = makeItem({ dateId: 'd-atrisk', entry: atRiskEntry, group: 'at-risk' });
+    const cancelledItem = makeItem({ dateId: 'd-cancelled', entry: cancelledEntry, group: 'cancelled' });
+    const queue: NeedsYouQueue = {
+      groups: [
+        { key: 'at-risk', items: [atRiskItem] },
+        { key: 'cancelled', items: [cancelledItem] },
+      ],
+      totalItems: 2,
+      countByGroup: { 'expires-today': 0, 'at-risk': 1, 'ready-to-issue': 0, cancelled: 1 },
+    };
+
+    const { rerender } = render(
+      <NeedsYouLens
+        queue={queue}
+        scope="cancelled"
+        onItemAction={vi.fn()}
+        onOpenDate={vi.fn()}
+        onBulk={vi.fn()}
+        receipts={[]}
+        layout="stacked"
+      />
+    );
+
+    expect(screen.getByTestId('needs-you-group-cancelled')).toBeInTheDocument();
+    expect(screen.queryByTestId('needs-you-group-at-risk')).not.toBeInTheDocument();
+    // The folded overview's breakdown still reports both groups — it always
+    // reads the unfiltered `queue` prop, never the scope-narrowed list.
+    const overview = screen.getByTestId('queue-rail-progress');
+    expect(overview).toHaveTextContent('At risk of running short');
+    expect(overview).toHaveTextContent('Cancelled, cast not notified');
+
+    rerender(
+      <NeedsYouLens
+        queue={queue}
+        scope="all"
+        onItemAction={vi.fn()}
+        onOpenDate={vi.fn()}
+        onBulk={vi.fn()}
+        receipts={[]}
+        layout="stacked"
+      />
+    );
+    expect(screen.getByTestId('needs-you-group-cancelled')).toBeInTheDocument();
+    expect(screen.getByTestId('needs-you-group-at-risk')).toBeInTheDocument();
+  });
 });

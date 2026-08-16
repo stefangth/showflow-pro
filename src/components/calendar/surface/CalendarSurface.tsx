@@ -28,6 +28,7 @@ import { CalendarSurfaceHeader } from './CalendarSurfaceHeader';
 import { LensTabs, type LensTabDef } from './LensTabs';
 import { CalendarToolbar } from './CalendarToolbar';
 import { PeriodNavigator } from './PeriodNavigator';
+import { ScopeChips } from './ScopeChips';
 import { MonthLens } from './MonthLens';
 import { WeekLens } from './WeekLens';
 import { SeasonLens } from './SeasonLens';
@@ -41,7 +42,7 @@ import { SelectionBar, type SelectionBarAction } from './SelectionBar';
 import { CalendarDaySheet } from './CalendarDaySheet';
 import { SurfaceFab } from './SurfaceFab';
 import { SeasonStripMobile } from './SeasonStripMobile';
-import type { NeedsYouGroupKey, NeedsYouItem, NeedsYouQueue } from '@/lib/calendar/needsYou';
+import type { NeedsYouGroupKey, NeedsYouItem, NeedsYouQueue, NeedsYouScopeKey } from '@/lib/calendar/needsYou';
 
 /** Bound to the surface's three copy namespaces: producer chrome/status/stats
  *  (`bookings`), artist chrome/status/stats (`availability`), and role-agnostic
@@ -220,6 +221,33 @@ function artistStats(entries: ArtistDateEntry[], anchor: Date, t: SurfaceTF): Da
   ];
 }
 
+/** Right-aligned toolbar key-hint text (design gap-analysis §1, mock line
+ *  167), one per lens. Deliberately narrower than the mock's own copy
+ *  ("⌘K jump to date · ↑↓←→ move · Space peek · ⏎ open") — this app has no
+ *  ⌘K jump-to-date or arrow-key day roving, so those aren't claimed here.
+ *  Month keeps its real Enter-opens/Space-previews behavior (`MonthGrid`'s
+ *  `handleKeyDown`); Week/Season/Agenda rows are native `<button>`s, where
+ *  Enter and Space both already fire the row's click. Needs-you cards have
+ *  no keyboard handler of their own, so its hint stays mouse-only rather
+ *  than promise a shortcut that doesn't exist. `undefined` for any other
+ *  lens (Offers/All dates), which render no toolbar at all. */
+function keyHintForLens(lensKey: string, t: SurfaceTF): string | undefined {
+  switch (lensKey) {
+    case 'needs-you':
+      return t('calendar.toolbar.keyHint.needsYou');
+    case 'month':
+      return t('calendar.toolbar.keyHint.month');
+    case 'week':
+      return t('calendar.toolbar.keyHint.week');
+    case 'season':
+      return t('calendar.toolbar.keyHint.season');
+    case 'agenda':
+      return t('calendar.toolbar.keyHint.agenda');
+    default:
+      return undefined;
+  }
+}
+
 /**
  * The calendar surface orchestrator: composes the shell (header + lens tabs
  * + toolbar/period-nav) with the active Phase-1 lens body and, for the Month
@@ -268,6 +296,11 @@ export function CalendarSurface({
   // forwards here via `MonthLens.onPeekDay`, wired only for `role==="producer"`
   // below so an artist Space press is never routed into this state at all.
   const [peekDay, setPeekDay] = useState<Date | null>(null);
+  // Needs-you toolbar scope-chip selection (design gap-analysis §1) — which
+  // group the queue body is narrowed to; 'all' is no filter. Lives here
+  // (rather than inside `NeedsYouLens`) so the chip row in `CalendarToolbar`
+  // and the queue body stay in sync from one source of truth.
+  const [needsYouScope, setNeedsYouScope] = useState<NeedsYouScopeKey>('all');
   const { t: tBooking } = useTranslation('bookingCopy');
   const { t } = useTranslation(['bookings', 'availability', 'common']);
 
@@ -302,8 +335,12 @@ export function CalendarSurface({
   // Range selection is producer-only (spec §6) and scoped to one lens view —
   // stale highlighted cells/bar surviving a lens switch would be confusing,
   // so drop the selection whenever the caller navigates to a different lens.
+  // Same reasoning for the Needs-you scope-chip filter: leaving the lens with
+  // e.g. "Cancelled" selected and returning later to a silently-filtered
+  // queue would be confusing, so it resets to "All" on any lens change too.
   useEffect(() => {
     setRange(null);
+    setNeedsYouScope('all');
   }, [lens]);
 
   // Every producer entry id for a given date key, in entry order — a day can
@@ -568,17 +605,21 @@ export function CalendarSurface({
         <LensTabs lenses={lenses} active={activeLens} onChange={onLensChange} />
       </CalendarSurfaceHeader>
 
-      {(activeLens === 'month' || activeLens === 'week' || activeLens === 'season' || activeLens === 'agenda') && (
-        <CalendarToolbar>
-          <PeriodNavigator
-            label={periodLabel(anchor, activePeriod)}
-            onPrev={() => setAnchor((a) => shiftPeriod(a, activePeriod, -1))}
-            onNext={() => setAnchor((a) => shiftPeriod(a, activePeriod, 1))}
-            onToday={() => {
-              setAnchor(now);
-              setSelectedDay(now);
-            }}
-          />
+      {(activeLens === 'needs-you' || activeLens === 'month' || activeLens === 'week' || activeLens === 'season' || activeLens === 'agenda') && (
+        <CalendarToolbar keyHint={keyHintForLens(activeLens, t)}>
+          {activeLens === 'needs-you' ? (
+            <ScopeChips queue={resolvedNeedsYouQueue} active={needsYouScope} onChange={setNeedsYouScope} />
+          ) : (
+            <PeriodNavigator
+              label={periodLabel(anchor, activePeriod)}
+              onPrev={() => setAnchor((a) => shiftPeriod(a, activePeriod, -1))}
+              onNext={() => setAnchor((a) => shiftPeriod(a, activePeriod, 1))}
+              onToday={() => {
+                setAnchor(now);
+                setSelectedDay(now);
+              }}
+            />
+          )}
         </CalendarToolbar>
       )}
 
@@ -587,6 +628,7 @@ export function CalendarSurface({
           <div className="min-w-0 flex-1">
             <NeedsYouLens
               queue={resolvedNeedsYouQueue}
+              scope={needsYouScope}
               onItemAction={handleNeedsYouAction}
               onOpenDate={(dateId) => actions.openDate?.(dateId)}
               onBulk={handleNeedsYouBulk}
@@ -746,23 +788,28 @@ export function CalendarSurface({
         <LensTabs lenses={lenses} active={activeLens} onChange={onLensChange} scrollable />
       </CalendarSurfaceHeader>
 
-      {(activeLens === 'month' || activeLens === 'week' || activeLens === 'season') && (
-        <CalendarToolbar>
-          <PeriodNavigator
-            label={periodLabel(anchor, activePeriod)}
-            onPrev={() => setAnchor((a) => shiftPeriod(a, activePeriod, -1))}
-            onNext={() => setAnchor((a) => shiftPeriod(a, activePeriod, 1))}
-            onToday={() => {
-              setAnchor(now);
-              setSelectedDay(now);
-            }}
-          />
+      {(activeLens === 'needs-you' || activeLens === 'month' || activeLens === 'week' || activeLens === 'season') && (
+        <CalendarToolbar keyHint={keyHintForLens(activeLens, t)}>
+          {activeLens === 'needs-you' ? (
+            <ScopeChips queue={resolvedNeedsYouQueue} active={needsYouScope} onChange={setNeedsYouScope} />
+          ) : (
+            <PeriodNavigator
+              label={periodLabel(anchor, activePeriod)}
+              onPrev={() => setAnchor((a) => shiftPeriod(a, activePeriod, -1))}
+              onNext={() => setAnchor((a) => shiftPeriod(a, activePeriod, 1))}
+              onToday={() => {
+                setAnchor(now);
+                setSelectedDay(now);
+              }}
+            />
+          )}
         </CalendarToolbar>
       )}
 
       {activeLens === 'needs-you' ? (
         <NeedsYouLens
           queue={resolvedNeedsYouQueue}
+          scope={needsYouScope}
           onItemAction={handleNeedsYouAction}
           onOpenDate={(dateId) => actions.openDate?.(dateId)}
           onBulk={handleNeedsYouBulk}

@@ -4,7 +4,7 @@ import { ChevronDown } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { dfLocale } from '@/lib/dates';
-import type { NeedsYouGroupKey, NeedsYouItem, NeedsYouQueue } from '@/lib/calendar/needsYou';
+import { filterNeedsYouQueueByScope, type NeedsYouGroupKey, type NeedsYouItem, type NeedsYouQueue, type NeedsYouScopeKey } from '@/lib/calendar/needsYou';
 import type { ActionGates, ProducerActionKey, Tone } from '@/lib/calendar/types';
 import { PRODUCER_TONES, TONE_BG, TONE_TEXT } from '@/lib/calendar/tone';
 import { cn } from '@/lib/utils';
@@ -39,6 +39,14 @@ interface NeedsYouReceipt {
 
 interface NeedsYouLensProps {
   queue: NeedsYouQueue;
+  /** Toolbar scope-chip filter (design gap-analysis §1) — narrows which
+   *  groups render in the main list below to a single category; `'all'`
+   *  (default) renders every group, unfiltered. Applied via
+   *  `filterNeedsYouQueueByScope`, so the `layout==='stacked'` fold's
+   *  internal `QueueRail` below keeps reading the unfiltered `queue` prop
+   *  directly — the queue overview never narrows with the chip filter, only
+   *  the group list does. */
+  scope?: NeedsYouScopeKey;
   onItemAction: (item: NeedsYouItem, action: NeedsYouAction) => void;
   onOpenDate: (dateId: string) => void;
   onBulk: (group: NeedsYouGroupKey, action: 'confirm' | 'generate') => void;
@@ -244,6 +252,7 @@ function entryDetail(item: NeedsYouItem): string {
  */
 export function NeedsYouLens({
   queue,
+  scope = 'all',
   onItemAction,
   onOpenDate,
   onBulk,
@@ -256,10 +265,11 @@ export function NeedsYouLens({
   className,
 }: NeedsYouLensProps) {
   const { t } = useTranslation('bookings');
+  const visibleGroups = filterNeedsYouQueueByScope(queue, scope).groups;
 
   return (
     <div data-testid="needs-you-lens" className={cn('flex flex-col gap-5', className)}>
-      {queue.groups.map((group) => {
+      {visibleGroups.map((group) => {
         const bulk = BULK_ACTION[group.key];
         const bulkGate = bulk ? actionGates?.[bulk.gateKey] : undefined;
         const bulkDisabled = bulkGate?.disabled ?? false;

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { buildNeedsYouQueue } from './needsYou';
+import { buildNeedsYouQueue, filterNeedsYouQueueByScope } from './needsYou';
+import type { NeedsYouQueue } from './needsYou';
 import type { ProducerDateEntry } from './types';
 import type { BookingWithArtistRow } from '@/data/bookings';
 
@@ -227,5 +228,43 @@ describe('buildNeedsYouQueue', () => {
 
     expect(queue.groups).toHaveLength(0);
     expect(queue.totalItems).toBe(0);
+  });
+});
+
+describe('filterNeedsYouQueueByScope', () => {
+  function sampleQueue(): NeedsYouQueue {
+    const atRiskEntry = makeEntry({ id: 'd-at-risk', date: new Date(2026, 7, 18), status: 'open', mainSlots: 2 });
+    const cancelledEntry = makeEntry({ id: 'd-cancelled', date: new Date(2026, 7, 20), status: 'cancelled' });
+    return {
+      groups: [
+        { key: 'at-risk', items: [{ dateId: 'd-at-risk', entry: atRiskEntry, group: 'at-risk', people: [], earliestExpiry: null, openMainSlots: 2, leadDays: 3 }] },
+        { key: 'cancelled', items: [{ dateId: 'd-cancelled', entry: cancelledEntry, group: 'cancelled', people: [], earliestExpiry: null, openMainSlots: 0, leadDays: 5 }] },
+      ],
+      totalItems: 2,
+      countByGroup: { 'expires-today': 0, 'at-risk': 1, 'ready-to-issue': 0, cancelled: 1 },
+    };
+  }
+
+  it('"all" returns the queue unchanged', () => {
+    const queue = sampleQueue();
+    expect(filterNeedsYouQueueByScope(queue, 'all')).toBe(queue);
+  });
+
+  it('a group key narrows groups to just that group, leaving totals/counts untouched', () => {
+    const queue = sampleQueue();
+    const filtered = filterNeedsYouQueueByScope(queue, 'cancelled');
+
+    expect(filtered.groups).toHaveLength(1);
+    expect(filtered.groups[0].key).toBe('cancelled');
+    // Counts/totals stay at the full breakdown so a chip row built from them
+    // keeps showing every category's live count, not just the visible one.
+    expect(filtered.totalItems).toBe(2);
+    expect(filtered.countByGroup).toEqual(queue.countByGroup);
+  });
+
+  it('a group key with no items in the queue narrows to an empty group list', () => {
+    const queue = sampleQueue();
+    const filtered = filterNeedsYouQueueByScope(queue, 'ready-to-issue');
+    expect(filtered.groups).toHaveLength(0);
   });
 });
