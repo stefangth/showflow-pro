@@ -164,10 +164,10 @@ describe('toSeasonModel', () => {
       expect(model.rows[0].label).toBe('Community Hall');
     });
 
-    it('falls back to "Untitled" when program, sub_program, and venue are all blank', () => {
+    it('falls back to a blank label (component renders the localized Untitled fallback) when program, sub_program, and venue are all blank', () => {
       const entry = makeEntry({ id: 'sd-5', showId: 'show-5', date: new Date(2026, 7, 5), program: '', subProgram: null, venue: null });
       const model = toSeasonModel([entry], ANCHOR);
-      expect(model.rows[0].label).toBe('Untitled');
+      expect(model.rows[0].label).toBe('');
     });
 
     it('keys rows by showId, not by program, so two shows sharing a program+sub_program pair stay separate rows', () => {

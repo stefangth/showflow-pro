@@ -1,8 +1,9 @@
 import { format } from 'date-fns';
 import { Ticket } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import type { ArtistDateEntry, ArtistStatus } from '@/lib/calendar/types';
 import { ARTIST_TONES, artistStatusLabel } from '@/lib/calendar/tone';
-import { isPastDate } from '@/lib/dates';
+import { dfLocale, isPastDate } from '@/lib/dates';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 
@@ -10,17 +11,6 @@ interface AllDatesHeader {
   label: string;
   className: string;
 }
-
-const HEADERS: AllDatesHeader[] = [
-  { label: 'Date', className: 'w-24 shrink-0' },
-  { label: 'Day', className: 'w-[42px] shrink-0' },
-  { label: 'Show', className: 'min-w-0 flex-1' },
-  // "Session" replaces the design's "Call" column — this project doesn't
-  // model a separate call time, so it shows the entry's session_1 instead.
-  { label: 'Session', className: 'w-[52px] shrink-0' },
-  { label: 'My status', className: 'w-[104px] shrink-0' },
-  { label: '', className: 'w-[150px] shrink-0' },
-];
 
 interface AllDatesLensProps {
   entries: ArtistDateEntry[];
@@ -52,6 +42,19 @@ interface AllDatesLensProps {
  * desktop and mobile branches).
  */
 export function AllDatesLens({ entries, onBlock, hireOrderHref, statusLabels, today = new Date(), className }: AllDatesLensProps) {
+  const { t } = useTranslation('availability');
+
+  const headers: AllDatesHeader[] = [
+    { label: t('calendar.allDates.headerDate'), className: 'w-24 shrink-0' },
+    { label: t('calendar.allDates.headerDay'), className: 'w-[42px] shrink-0' },
+    { label: t('calendar.allDates.headerShow'), className: 'min-w-0 flex-1' },
+    // "Session" replaces the design's "Call" column — this project doesn't
+    // model a separate call time, so it shows the entry's session_1 instead.
+    { label: t('calendar.allDates.headerSession'), className: 'w-[52px] shrink-0' },
+    { label: t('calendar.allDates.headerMyStatus'), className: 'w-[104px] shrink-0' },
+    { label: '', className: 'w-[150px] shrink-0' },
+  ];
+
   return (
     <div
       data-testid="all-dates-lens"
@@ -61,7 +64,7 @@ export function AllDatesLens({ entries, onBlock, hireOrderHref, statusLabels, to
       )}
     >
       <div className="hidden items-center gap-3.5 border-b border-border bg-muted px-3.5 py-2.5 md:flex">
-        {HEADERS.map((header) => (
+        {headers.map((header) => (
           <span
             key={header.label || 'action'}
             className={cn(
@@ -91,9 +94,9 @@ export function AllDatesLens({ entries, onBlock, hireOrderHref, statusLabels, to
           >
             <div className="flex items-center gap-2 md:contents">
               <span className="font-mono text-[12.5px] font-medium tabular-nums text-foreground md:w-24 md:shrink-0">
-                {format(entry.date, 'd MMM')}
+                {format(entry.date, 'd MMM', { locale: dfLocale() })}
               </span>
-              <span className="text-xs text-muted-foreground md:w-[42px] md:shrink-0">{format(entry.date, 'EEE')}</span>
+              <span className="text-xs text-muted-foreground md:w-[42px] md:shrink-0">{format(entry.date, 'EEE', { locale: dfLocale() })}</span>
             </div>
             <div className="min-w-0 w-full md:flex-1">
               <p className="truncate text-[13.5px] font-semibold text-foreground">
@@ -121,7 +124,7 @@ export function AllDatesLens({ entries, onBlock, hireOrderHref, statusLabels, to
                   className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
                 >
                   <Ticket className="h-3 w-3" />
-                  Hire order
+                  {t('calendar.allDates.hireOrder')}
                 </a>
               )}
               {showBlock && (
@@ -132,7 +135,7 @@ export function AllDatesLens({ entries, onBlock, hireOrderHref, statusLabels, to
                   data-testid={`all-dates-block-${entry.id}`}
                   onClick={() => onBlock(entry.id, entry.date)}
                 >
-                  Block date
+                  {t('calendar.shared.blockDate')}
                 </Button>
               )}
             </div>

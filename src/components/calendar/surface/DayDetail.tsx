@@ -1,6 +1,8 @@
 import { format } from 'date-fns';
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import type { ActionGates, ArtistDateEntry, ArtistStatus, ProducerDateEntry, Tone } from '@/lib/calendar/types';
-import { berlinDateKey, toDateKey } from '@/lib/dates';
+import { berlinDateKey, dfLocale, toDateKey } from '@/lib/dates';
 import { ARTIST_TONES, PRODUCER_TONES, TONE_TEXT, artistStatusLabel } from '@/lib/calendar/tone';
 import { resolveProducerPrimary } from '@/lib/calendar/producerPrimary';
 import { unconfirmedSlots } from '@/lib/calendar/slots';
@@ -45,6 +47,11 @@ export interface DayDetailProps {
   className?: string;
 }
 
+/** Bound to the three namespaces this card draws copy from: producer status /
+ *  actions (`bookings`), artist actions/labels (`availability`), and the
+ *  role-agnostic empty-day + key-hint chrome (`common`). */
+type DayTF = TFunction<['bookings', 'availability', 'common']>;
+
 interface InfoTile {
   key: string;
   label: string;
@@ -57,11 +64,11 @@ interface InfoTile {
  *  `artistPrimaryLabel`'s "Accept offer" selection) so the tiles describe the
  *  offer being acted on, falling back to the day's first entry otherwise. Call
  *  time is deliberately excluded. */
-function artistInfoTiles(day: Date, entries: ArtistDateEntry[]): InfoTile[] {
+function artistInfoTiles(day: Date, entries: ArtistDateEntry[], t: DayTF): InfoTile[] {
   const entry = entries.find(e => e.myStatus === 'suggested') ?? entries[0];
   if (!entry) return [];
   const tiles: InfoTile[] = [];
-  if (entry.session1) tiles.push({ key: 'session', label: 'Session', value: entry.session1 });
+  if (entry.session1) tiles.push({ key: 'session', label: t('availability:calendar.day.session'), value: entry.session1 });
   if (entry.offerExpiresAt) {
     const expiry = new Date(entry.offerExpiresAt);
     // Compare on the Berlin calendar (the booking engine anchors offer-expiry
@@ -70,8 +77,8 @@ function artistInfoTiles(day: Date, entries: ArtistDateEntry[]): InfoTile[] {
     const sameDay = berlinDateKey(expiry) === toDateKey(day);
     tiles.push({
       key: 'expires',
-      label: 'Expires',
-      value: sameDay ? format(expiry, 'HH:mm') : format(expiry, 'd MMM'),
+      label: t('availability:calendar.day.expires'),
+      value: sameDay ? format(expiry, 'HH:mm') : format(expiry, 'd MMM', { locale: dfLocale() }),
       warn: true,
     });
   }
@@ -80,9 +87,9 @@ function artistInfoTiles(day: Date, entries: ArtistDateEntry[]): InfoTile[] {
 
 /** Artist primary-action default (spec §4): a pending offer to answer beats
  *  nudging toward blocking an unoffered date. */
-function artistPrimaryLabel(entries: ArtistDateEntry[]): string | undefined {
-  if (entries.some(e => e.myStatus === 'suggested')) return 'Accept offer';
-  if (entries.some(e => e.myStatus === 'unanswered')) return 'Block date';
+function artistPrimaryLabel(entries: ArtistDateEntry[], t: DayTF): string | undefined {
+  if (entries.some(e => e.myStatus === 'suggested')) return t('availability:calendar.day.primaryAccept');
+  if (entries.some(e => e.myStatus === 'unanswered')) return t('availability:calendar.day.primaryBlock');
   return undefined;
 }
 
@@ -121,17 +128,18 @@ function buildRailHeader(
   day: Date,
   producerEntries: ProducerDateEntry[],
   artistEntries: ArtistDateEntry[],
+  t: DayTF,
   statusLabels?: Partial<Record<ArtistStatus, string>>,
 ): RailHeader {
-  const dateLabel = format(day, 'EEE d MMM');
+  const dateLabel = format(day, 'EEE d MMM', { locale: dfLocale() });
   const entries = role === 'producer' ? producerEntries : artistEntries;
 
   if (entries.length === 0) {
     return {
-      eyebrow: `${dateLabel} · nothing scheduled`,
+      eyebrow: `${dateLabel} · ${t('common:calendar.day.nothingScheduled')}`,
       eyebrowTone: 'muted',
-      title: 'Pick a day',
-      sub: 'Select a day to see its dates and act on them.',
+      title: t('common:calendar.day.pickADay'),
+      sub: t('common:calendar.day.pickADayHint'),
     };
   }
 
@@ -139,12 +147,12 @@ function buildRailHeader(
     const openSlots = producerOpenSlots(producerEntries);
     const casting = openSlots > 0;
     return {
-      eyebrow: `${dateLabel} · ${casting ? 'casting' : 'fully filled'}`,
+      eyebrow: `${dateLabel} · ${t(casting ? 'calendar.day.eyebrowCasting' : 'calendar.day.eyebrowFullyFilled')}`,
       eyebrowTone: casting ? 'warning' : 'success',
       title: entryTitle(producerEntries[0]),
-      sub: `${producerEntries.length} date${producerEntries.length === 1 ? '' : 's'} · ${
-        casting ? `${openSlots} slots still open` : 'cast complete'
-      }`,
+      sub: casting
+        ? t('calendar.day.subCasting', { count: producerEntries.length, open: openSlots })
+        : t('calendar.day.subComplete', { count: producerEntries.length }),
     };
   }
 
@@ -154,11 +162,12 @@ function buildRailHeader(
     eyebrow: `${dateLabel} · ${label.toLowerCase()}`,
     eyebrowTone: toneSpec.tone,
     title: entryTitle(artistEntries[0]),
-    sub: 'Your commitment on this date',
+    sub: t('availability:calendar.day.sub'),
   };
 }
 
 function ProducerDayCard({ entry }: { entry: ProducerDateEntry }) {
+  const { t } = useTranslation('bookings');
   const toneSpec = PRODUCER_TONES[entry.status];
   const meter =
     entry.mainSlots > 0
@@ -192,7 +201,7 @@ function ProducerDayCard({ entry }: { entry: ProducerDateEntry }) {
           </span>
         </div>
       ) : (
-        <p className={cn('mt-1.5 text-xs', TONE_TEXT[toneSpec.tone])}>{toneSpec.label}</p>
+        <p className={cn('mt-1.5 text-xs', TONE_TEXT[toneSpec.tone])}>{t(`calendar.producerStatus.${entry.status}`)}</p>
       )}
       {entry.hireOrderId && entry.hireOrderStatus && (
         <div className="mt-1.5" data-testid={`day-rail-order-status-${entry.id}`}>
@@ -250,13 +259,14 @@ export function DayDetail({
   showInfoTiles,
   className,
 }: DayDetailProps) {
+  const { t } = useTranslation(['bookings', 'availability', 'common']);
   const resolvedProducerEntries = producerEntries ?? [];
   const resolvedArtistEntries = artistEntries ?? [];
   const entries = role === 'producer' ? resolvedProducerEntries : resolvedArtistEntries;
-  const infoTiles = role === 'artist' && showInfoTiles ? artistInfoTiles(day, resolvedArtistEntries) : [];
+  const infoTiles = role === 'artist' && showInfoTiles ? artistInfoTiles(day, resolvedArtistEntries, t) : [];
 
-  const header = buildRailHeader(role, day, resolvedProducerEntries, resolvedArtistEntries, statusLabels);
-  const emptyText = role === 'producer' ? 'No dates scheduled on this day.' : 'No date offered to you on this day.';
+  const header = buildRailHeader(role, day, resolvedProducerEntries, resolvedArtistEntries, t, statusLabels);
+  const emptyText = role === 'producer' ? t('calendar.day.empty') : t('availability:calendar.day.empty');
 
   // Single resolution — feeds both the label below and the gate lookup, so
   // they can never point at different actions (see `resolveProducerPrimary`).
@@ -264,10 +274,15 @@ export function DayDetail({
 
   const resolvedPrimaryLabel =
     primaryLabel ??
-    (role === 'producer' ? producerPrimary?.label : artistPrimaryLabel(resolvedArtistEntries));
+    (role === 'producer'
+      ? producerPrimary
+        ? t(`calendar.primary.${producerPrimary.kind}`)
+        : undefined
+      : artistPrimaryLabel(resolvedArtistEntries, t));
   const resolvedSecondaryLabel = hideSecondary
     ? undefined
-    : secondaryLabel ?? (role === 'producer' ? 'Open date' : 'Message producer');
+    : secondaryLabel ??
+      (role === 'producer' ? t('common:calendar.day.openDate') : t('availability:calendar.day.messageProducer'));
 
   // Only the producer primary maps to a capability-gated action (Confirm
   // holds / Generate hire order); "Open date" and every artist action are
@@ -348,7 +363,7 @@ export function DayDetail({
           </div>
         )}
 
-        <p className="font-mono text-[11px] text-muted-foreground">↵ open · space select</p>
+        <p className="font-mono text-[11px] text-muted-foreground">{t('common:calendar.day.keyHint')}</p>
       </div>
     </div>
   );

@@ -1,9 +1,10 @@
 import { format, isToday } from 'date-fns';
+import { useTranslation } from 'react-i18next';
 import type { ProducerDateEntry } from '@/lib/calendar/types';
 import { toSeasonModel, type SeasonCell } from '@/lib/calendar/seasonData';
 import { unconfirmedSlots } from '@/lib/calendar/slots';
 import { seasonBarClass } from '@/lib/calendar/tone';
-import { toDateKey } from '@/lib/dates';
+import { dfLocale, toDateKey } from '@/lib/dates';
 import { cn } from '@/lib/utils';
 
 export interface SeasonStripMobileProps {
@@ -43,6 +44,7 @@ function SeasonStripCell({
   ready: boolean;
   onOpenDate: (dateId: string) => void;
 }) {
+  const { t } = useTranslation('bookings');
   const key = toDateKey(cell.date);
   const testId = `season-strip-cell-${showId}-${key}`;
 
@@ -65,7 +67,7 @@ function SeasonStripCell({
       data-ready={ready}
       data-status={cell.status ?? 'open'}
       onClick={() => onOpenDate(cell.dateId as string)}
-      title={`${cell.filledMain}/${cell.mainSlots} main`}
+      title={t('calendar.seasonStripMobile.cellTooltip', { filled: cell.filledMain, total: cell.mainSlots })}
       className={cn('flex h-[54px] justify-center border-l border-l-border py-0.5', cancelled ? 'items-center' : 'items-end')}
     >
       {cancelled ? (
@@ -102,16 +104,18 @@ function SeasonStripCell({
  * for.
  */
 export function SeasonStripMobile({ entries, anchor, readyIds, onOpenDate, className }: SeasonStripMobileProps) {
+  const { t } = useTranslation('bookings');
   const model = toSeasonModel(entries, anchor);
   const gridCols = `${LABEL_WIDTH}px repeat(${model.days.length}, ${DAY_WIDTH}px)`;
   const maxOpen = Math.max(1, ...model.loadByDay.map(d => d.openMainSlots));
-  const heading = format(anchor, 'MMM yyyy');
 
   return (
     <div data-testid="season-strip-mobile" className={cn('flex w-full flex-col gap-2', className)}>
       <div className="flex items-baseline justify-between px-1">
-        <p className="text-sm font-semibold text-foreground">Season load · {heading}</p>
-        <p className="text-[11px] text-muted-foreground">swipe →</p>
+        <p className="text-sm font-semibold text-foreground">
+          {t('calendar.seasonStripMobile.heading', { month: format(anchor, 'MMM yyyy', { locale: dfLocale() }) })}
+        </p>
+        <p className="text-[11px] text-muted-foreground">{t('calendar.seasonStripMobile.swipeHint')}</p>
       </div>
 
       <div
@@ -124,7 +128,7 @@ export function SeasonStripMobile({ entries, anchor, readyIds, onOpenDate, class
             data-testid="season-strip-corner"
             className="sticky left-0 z-10 truncate bg-card px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
           >
-            Season
+            {t('calendar.seasonStripMobile.cornerLabel')}
           </div>
           {model.days.map(day => {
             const key = toDateKey(day);
@@ -150,6 +154,7 @@ export function SeasonStripMobile({ entries, anchor, readyIds, onOpenDate, class
           const populated = row.cells.filter(cell => cell.dateId != null);
           const dateCount = populated.length;
           const unfilled = populated.reduce((sum, cell) => sum + unconfirmedSlots({ mainSlots: cell.mainSlots, confirmedMain: cell.filledMain }), 0);
+          const rowLabel = row.label || t('calendar.season.untitled');
 
           return (
             <div
@@ -160,12 +165,14 @@ export function SeasonStripMobile({ entries, anchor, readyIds, onOpenDate, class
             >
               <div
                 data-testid={`season-strip-label-${row.showId}`}
-                title={row.label}
+                title={rowLabel}
                 className="sticky left-0 z-10 flex flex-col justify-center gap-0.5 truncate bg-card px-2 py-1.5"
               >
-                <span className="truncate text-[11px] font-medium text-foreground">{row.label}</span>
+                <span className="truncate text-[11px] font-medium text-foreground">
+                  {rowLabel}
+                </span>
                 <span className="font-mono text-[9px] tabular-nums text-muted-foreground">
-                  {dateCount} {dateCount === 1 ? 'date' : 'dates'} · -{unfilled}
+                  {t('calendar.seasonStripMobile.rowSummary', { count: dateCount, unfilled })}
                 </span>
               </div>
               {row.cells.map(cell => (
@@ -187,7 +194,7 @@ export function SeasonStripMobile({ entries, anchor, readyIds, onOpenDate, class
             data-testid="season-strip-label-open"
             className="sticky left-0 z-10 flex items-center bg-muted/30 px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
           >
-            Open
+            {t('calendar.seasonStripMobile.openFooterLabel')}
           </div>
           {model.loadByDay.map(({ date, openMainSlots }) => {
             const pct = (openMainSlots / maxOpen) * 100;

@@ -16,7 +16,7 @@ import i18n from '@/i18n';
  * and yyyy-MM-dd shapes below are numeric and locale-invariant, so they never
  * pass this.
  */
-function dfLocale() {
+export function dfLocale() {
   return i18n.language?.startsWith('de') ? de : undefined;
 }
 
@@ -103,6 +103,14 @@ export function weekdayShort(input: string | Date): string {
  *  localized to the active language. 2024-01-01 is a Monday. */
 export function weekdayShortLabels(): string[] {
   return Array.from({ length: 7 }, (_, i) => format(new Date(2024, 0, 1 + i), 'EEE', { locale: dfLocale() }));
+}
+
+/** Localized single-letter weekday initial for a `YYYY-MM-DD` string or Date,
+ *  e.g. `M` (Mon), `S` (Sun). Derived from the date itself, so callers keyed on
+ *  `getDay()` stay correct in every locale without a fixed initials array. */
+export function weekdayNarrow(input: string | Date): string {
+  const d = typeof input === 'string' ? parseDateOnly(input) : input;
+  return format(d, 'EEEEE', { locale: dfLocale() });
 }
 
 /** Format a date-only string/Date as day + short month + year, e.g. `23 Apr 2026`

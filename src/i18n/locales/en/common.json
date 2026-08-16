@@ -1,4 +1,32 @@
 {
+  "calendar": {
+    "nav": {
+      "previous": "Previous period",
+      "next": "Next period",
+      "today": "Today"
+    },
+    "selection": {
+      "bulkActions": "Bulk actions",
+      "count": "{{count}} selected",
+      "clear": "Clear"
+    },
+    "grid": {
+      "more": "+{{count}} more"
+    },
+    "fillMeter": {
+      "filled": "{{filled}} of {{total}} filled"
+    },
+    "rail": {
+      "legendTitle": "Legend"
+    },
+    "day": {
+      "nothingScheduled": "nothing scheduled",
+      "pickADay": "Pick a day",
+      "pickADayHint": "Select a day to see its dates and act on them.",
+      "keyHint": "↵ open · space select",
+      "openDate": "Open date"
+    }
+  },
   "nav": {
     "workspace": "Workspace",
     "catalog": "Catalog",

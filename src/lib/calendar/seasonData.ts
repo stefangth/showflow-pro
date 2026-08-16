@@ -9,7 +9,8 @@
  * pair, which would silently merge their dates into one row if we keyed on
  * that instead. `program` is falsy-coalescable (nullable upstream, always a
  * string here), so a blank program falls back to `sub_program` alone, then
- * to the date's venue, then to a literal "Untitled" — see `rowLabel` below.
+ * to the date's venue, then to a blank label (the component renders a
+ * localized "Untitled" fallback) — see `rowLabel` below.
  */
 import { startOfWeek, differenceInCalendarDays } from 'date-fns';
 import type { ProducerDateEntry } from './types';
@@ -28,7 +29,7 @@ export interface SeasonCell {
 
 export interface SeasonRow {
   showId: string;
-  label: string; // "program · sub_program" (trimmed; blank program → sub_program alone → venue → "Untitled")
+  label: string; // "program · sub_program" (trimmed; blank program → sub_program alone → venue → "" for the component's Untitled fallback)
   cells: SeasonCell[]; // one per day column, in window order
 }
 
@@ -52,11 +53,14 @@ export interface SeasonKpis {
 }
 
 /** "program · sub_program" when both present; falls back to sub_program
- *  alone, then the date's venue, then a literal "Untitled". */
+ *  alone, then the date's venue, then an empty string. A blank label is the
+ *  signal for the "Untitled" fallback, which is resolved (and localized) by
+ *  the rendering component via `t('bookings:calendar.season.untitled')` —
+ *  this pure module carries no user-facing copy. */
 function rowLabel(entry: ProducerDateEntry): string {
   const parts = [entry.program, entry.subProgram].filter((part): part is string => Boolean(part));
   if (parts.length > 0) return parts.join(' · ');
-  return entry.venue ?? 'Untitled';
+  return entry.venue ?? '';
 }
 
 /** Day-by-day list of Dates from `start` through `end`, inclusive. */

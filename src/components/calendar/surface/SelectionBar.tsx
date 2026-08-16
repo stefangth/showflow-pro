@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -24,13 +25,14 @@ interface SelectionBarProps {
  * Purely presentational: renders nothing when `count` is 0.
  */
 export function SelectionBar({ count, actions, onAction, onClear, className }: SelectionBarProps) {
+  const { t } = useTranslation('common');
   if (count === 0) return null;
 
   return (
     <div
       data-testid="selection-bar"
       role="toolbar"
-      aria-label="Bulk actions"
+      aria-label={t('calendar.selection.bulkActions')}
       className={cn(
         'fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background px-4 py-3 shadow-elev3',
         className
@@ -38,7 +40,7 @@ export function SelectionBar({ count, actions, onAction, onClear, className }: S
     >
       <div className="mx-auto flex max-w-5xl items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <span className="text-sm font-medium text-foreground">{count} selected</span>
+          <span className="text-sm font-medium text-foreground">{t('calendar.selection.count', { count })}</span>
           <Button
             type="button"
             variant="ghost"
@@ -46,7 +48,7 @@ export function SelectionBar({ count, actions, onAction, onClear, className }: S
             data-testid="selection-bar-clear"
             onClick={onClear}
           >
-            Clear
+            {t('calendar.selection.clear')}
           </Button>
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-2">

@@ -1,8 +1,10 @@
 import type { MouseEvent } from 'react';
 import { format, startOfWeek } from 'date-fns';
+import { useTranslation } from 'react-i18next';
+import type { ParseKeys } from 'i18next';
 import type { ActionGates, ProducerActionKey, ProducerDateEntry, ProducerStatus } from '@/lib/calendar/types';
 import { PRODUCER_TONES, TONE_TEXT } from '@/lib/calendar/tone';
-import { toDateKey } from '@/lib/dates';
+import { dfLocale, toDateKey } from '@/lib/dates';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { HireOrderStatusBadge } from '@/components/hireOrders/HireOrderStatusBadge';
@@ -15,15 +17,15 @@ export type AgendaAction = 'generate' | 'confirm' | 'open';
  *  `fully_filled` date only offers Generate when it has no active order yet
  *  (`hireOrderId == null`); an already-ordered date gets no action here — the
  *  row instead renders its order status badge in the action column. */
-const ACTION_BY_STATUS: Partial<Record<ProducerStatus, { label: string; action: AgendaAction }>> = {
-  fully_filled: { label: 'Generate hire order', action: 'generate' },
-  partially_filled: { label: 'Confirm holds', action: 'confirm' },
-  open: { label: 'Open casting', action: 'open' },
+const ACTION_BY_STATUS_KEY: Partial<Record<ProducerStatus, { i18nKey: ParseKeys<'bookings'>; action: AgendaAction }>> = {
+  fully_filled: { i18nKey: 'calendar.agenda.generateHireOrder', action: 'generate' },
+  partially_filled: { i18nKey: 'calendar.agenda.confirmHolds', action: 'confirm' },
+  open: { i18nKey: 'calendar.agenda.openCasting', action: 'open' },
 };
 
-function actionForEntry(entry: ProducerDateEntry): { label: string; action: AgendaAction } | undefined {
+function actionForEntry(entry: ProducerDateEntry): { i18nKey: ParseKeys<'bookings'>; action: AgendaAction } | undefined {
   if (entry.status === 'fully_filled' && entry.hireOrderId != null) return undefined;
-  return ACTION_BY_STATUS[entry.status];
+  return ACTION_BY_STATUS_KEY[entry.status];
 }
 
 /** Maps a row's resolved `AgendaAction` to the `ActionGates` key that gates
@@ -89,6 +91,7 @@ interface AgendaLensProps {
  * `CalendarSurface`'s mobile branch), this component just renders.
  */
 export function AgendaLens({ entries, onOpenEntry, onAction, actionGates, className }: AgendaLensProps) {
+  const { t } = useTranslation('bookings');
   const weeks = groupByWeek(entries);
 
   return (
@@ -97,10 +100,10 @@ export function AgendaLens({ entries, onOpenEntry, onAction, actionGates, classN
         <div key={week.key} data-testid={`agenda-week-${week.key}`}>
           <div className="flex items-baseline gap-2.5 pb-2">
             <p className="text-[11px] font-semibold uppercase tracking-[1.6px] text-primary">
-              Week of {format(week.weekStart, 'd MMM')}
+              {t('calendar.agenda.weekOfHeading', { weekStart: format(week.weekStart, 'd MMM', { locale: dfLocale() }) })}
             </p>
             <span className="font-mono text-[11px] text-muted-foreground">
-              {week.entries.length} date{week.entries.length === 1 ? '' : 's'}
+              {t('calendar.agenda.dateCount', { count: week.entries.length })}
             </span>
           </div>
           <div className="overflow-hidden rounded-m border border-border bg-card">
@@ -129,7 +132,7 @@ export function AgendaLens({ entries, onOpenEntry, onAction, actionGates, classN
                 >
                   <div className="shrink-0 md:w-[62px]">
                     <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      {format(entry.date, 'EEE')}
+                      {format(entry.date, 'EEE', { locale: dfLocale() })}
                     </p>
                     <p className="font-mono text-sm font-semibold tabular-nums text-foreground">
                       {format(entry.date, 'd')}
@@ -147,7 +150,7 @@ export function AgendaLens({ entries, onOpenEntry, onAction, actionGates, classN
                   <div className="flex w-full items-center gap-2 md:w-[150px] md:shrink-0">
                     {meter.length > 0 && <FillMeter segments={meter} tone={toneSpec.tone} />}
                     <span className={cn('font-mono text-[11px] font-medium', TONE_TEXT[toneSpec.tone])}>
-                      {entry.confirmedMain}/{entry.mainSlots} main
+                      {t('calendar.agenda.mainFillCount', { filled: entry.confirmedMain, total: entry.mainSlots })}
                     </span>
                   </div>
                   <span
@@ -156,7 +159,7 @@ export function AgendaLens({ entries, onOpenEntry, onAction, actionGates, classN
                       toneSpec.badgeClass
                     )}
                   >
-                    {toneSpec.label}
+                    {t(`calendar.producerStatus.${entry.status}`)}
                   </span>
                   <div className="flex w-full justify-start md:w-[132px] md:shrink-0 md:justify-end">
                     {actionDef ? (
@@ -172,7 +175,7 @@ export function AgendaLens({ entries, onOpenEntry, onAction, actionGates, classN
                           onAction(entry, actionDef.action);
                         }}
                       >
-                        {actionDef.label}
+                        {t(actionDef.i18nKey)}
                       </Button>
                     ) : (
                       entry.status === 'fully_filled' &&

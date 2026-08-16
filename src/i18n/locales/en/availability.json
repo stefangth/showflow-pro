@@ -16,6 +16,72 @@
     "blockDate": "Block date"
   },
   "calendar": {
+    "lens": {
+      "offers": "Offers",
+      "month": "Month",
+      "allDates": "All dates"
+    },
+    "header": {
+      "eyebrow": "AVAILABILITY",
+      "title": "Your calendar"
+    },
+    "stat": {
+      "openOffers": "Open offers",
+      "holds": "Holds"
+    },
+    "rail": {
+      "statsTitleMonth": "Your {{month}}"
+    },
+    "artistStatus": {
+      "confirmed": "Confirmed",
+      "soft_booked": "Hold",
+      "suggested": "Offer",
+      "blocked": "Blocked",
+      "unanswered": "Not offered"
+    },
+    "day": {
+      "session": "Session",
+      "expires": "Expires",
+      "sub": "Your commitment on this date",
+      "empty": "No date offered to you on this day.",
+      "primaryAccept": "Accept offer",
+      "primaryBlock": "Block date",
+      "messageProducer": "Message producer"
+    },
+    "monthFlag": {
+      "answer": "answer",
+      "blocked": "blocked"
+    },
+    "offers": {
+      "offerLabel": "Offer · {{program}}",
+      "holdPlaced": "Hold placed",
+      "accept": "Accept",
+      "decline": "Decline",
+      "awaitingConfirmation": "Awaiting producer confirmation"
+    },
+    "offersProgress": {
+      "keyboardHint": "A accept · D decline · B block · J next",
+      "answeredCount": "{{answered}} of {{total}} answered"
+    },
+    "offersAnswered": {
+      "title": "Answered today",
+      "undoLast": "Undo last"
+    },
+    "notOffered": {
+      "title": "Later this month · not offered yet",
+      "eligibleFromCasts": "Eligible from your casts"
+    },
+    "allDates": {
+      "headerDate": "Date",
+      "headerDay": "Day",
+      "headerShow": "Show",
+      "headerSession": "Session",
+      "headerMyStatus": "My status",
+      "hireOrder": "Hire order"
+    },
+    "shared": {
+      "blockDate": "Block date"
+    },
     "ineligibleReason": "This date is not offered to you. Offered dates come from your casts and their required skills.",
     "prevMonth": "Previous month",
     "nextMonth": "Next month",

@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import type { MeterSegment, Tone } from '@/lib/calendar/types';
 import { TONE_FILL } from '@/lib/calendar/tone';
 import { cn } from '@/lib/utils';
@@ -27,6 +28,7 @@ const SIZE_CLASSES: Record<FillMeterSize, { gap: string; bar: string }> = {
  * how many segments and which tone (see `PRODUCER_TONES`/`ARTIST_TONES`).
  */
 export function FillMeter({ segments, tone, label, size = 'row', className }: FillMeterProps) {
+  const { t } = useTranslation('common');
   const filled = segments.filter(s => s.filled).length;
   const { gap, bar } = SIZE_CLASSES[size];
 
@@ -38,7 +40,7 @@ export function FillMeter({ segments, tone, label, size = 'row', className }: Fi
       data-total={segments.length}
       data-size={size}
     >
-      <div className={cn('flex items-center', gap)} role="img" aria-label={`${filled} of ${segments.length} filled`}>
+      <div className={cn('flex items-center', gap)} role="img" aria-label={t('calendar.fillMeter.filled', { filled, total: segments.length })}>
         {segments.map((segment, i) => (
           <span
             key={i}

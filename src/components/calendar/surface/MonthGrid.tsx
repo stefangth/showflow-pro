@@ -1,12 +1,11 @@
 import { useEffect, useRef } from 'react';
 import type { KeyboardEvent, MouseEvent as ReactMouseEvent } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { MonthGridCell, Tone } from '@/lib/calendar/types';
 import { TONE_TEXT } from '@/lib/calendar/tone';
-import { toDateKey } from '@/lib/dates';
+import { toDateKey, weekdayShortLabels } from '@/lib/dates';
 import { cn } from '@/lib/utils';
 import { FillMeter } from './FillMeter';
-
-const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 /** Chip left-rail border color per tone — the flush `border-l-2` on the chip
  *  box (design lines 286-296), mirroring `TONE_FILL`'s bg tint. */
@@ -55,6 +54,8 @@ export function MonthGrid({
   dense,
   className,
 }: MonthGridProps) {
+  const { t } = useTranslation(['common', 'availability']);
+  const weekdays = weekdayShortLabels();
   // Anchor cell captured on mousedown, held provisionally until movement
   // confirms this is a real drag (not a plain click). `dragging` only
   // flips true once a *different* cell reports mouseenter — that is what
@@ -128,7 +129,7 @@ export function MonthGrid({
   return (
     <div className={cn('w-full', className)} data-testid="month-grid">
       <div className="grid grid-cols-7 border-b border-border pb-1.5">
-        {WEEKDAYS.map(day => (
+        {weekdays.map(day => (
           <div
             key={day}
             data-testid="month-grid-weekday"
@@ -197,7 +198,9 @@ export function MonthGrid({
                 <span className="font-mono text-xs tabular-nums text-foreground">{cell.dayNum}</span>
                 {cell.flag && (
                   <span className={cn('text-[11px] font-medium', TONE_TEXT[cell.flag.tone])}>
-                    {cell.flag.text}
+                    {cell.flag.text === 'answer' || cell.flag.text === 'blocked'
+                      ? t(`availability:calendar.monthFlag.${cell.flag.text}`)
+                      : cell.flag.text}
                   </span>
                 )}
               </div>
@@ -229,7 +232,7 @@ export function MonthGrid({
                   </div>
                 ))}
                 {moreCount > 0 && (
-                  <span className="text-[11px] text-muted-foreground">+{moreCount} more</span>
+                  <span className="text-[11px] text-muted-foreground">{t('common:calendar.grid.more', { count: moreCount })}</span>
                 )}
               </div>
             </div>

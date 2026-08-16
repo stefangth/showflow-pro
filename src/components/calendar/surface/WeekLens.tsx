@@ -1,14 +1,14 @@
 import { useMemo } from 'react';
 import { isSameDay } from 'date-fns';
+import { useTranslation } from 'react-i18next';
 import type { ProducerDateEntry } from '@/lib/calendar/types';
 import { toWeekModel, type WeekBlock, type WeekModel } from '@/lib/calendar/weekData';
 import { minutesToLabel } from '@/lib/calendar/time';
 import { PRODUCER_TONES, TONE_TEXT } from '@/lib/calendar/tone';
-import { toDateKey } from '@/lib/dates';
+import { toDateKey, weekdayShortLabels } from '@/lib/dates';
 import { cn } from '@/lib/utils';
 import { FillMeter } from './FillMeter';
 
-const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 /** Px per hour of the time grid. Positions/heights are derived from minutes,
  *  so this is layout math, not a color/token concern. */
 const HOUR_HEIGHT = 44;
@@ -93,6 +93,8 @@ function WeekBlockCard({
  * (the rail is `DayRail`, composed by the caller/`CalendarSurface`).
  */
 export function WeekLens({ entries, anchor, onOpenEntry, today = new Date(), className }: WeekLensProps) {
+  const { t } = useTranslation('bookings');
+  const weekdays = weekdayShortLabels();
   // Memoized on its only inputs so a producer's range-select drag (which
   // mutates range state on every mouseenter, but never `entries`/`anchor`)
   // doesn't rebuild the whole time-grid model per cell entered — mirrors the
@@ -122,7 +124,7 @@ export function WeekLens({ entries, anchor, onOpenEntry, today = new Date(), cla
               className={cn('flex flex-col items-center gap-0.5 border-l border-border px-1 py-2', isToday && 'bg-accent-50')}
             >
               <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                {WEEKDAYS[i]}
+                {weekdays[i]}
               </span>
               <span className={cn('font-mono text-[17px] tabular-nums', isToday ? 'font-semibold text-primary' : 'text-foreground')}>
                 {day.getDate()}
@@ -142,7 +144,7 @@ export function WeekLens({ entries, anchor, onOpenEntry, today = new Date(), cla
 
       {/* "All day / times TBD" strip for untimed dates. */}
       <div className="grid grid-cols-[52px_repeat(7,1fr)] border-b border-border">
-        <div className="px-1 py-1.5 text-[10px] uppercase tracking-wide text-muted-foreground">TBD</div>
+        <div className="px-1 py-1.5 text-[10px] uppercase tracking-wide text-muted-foreground">{t('calendar.week.tbdLabel')}</div>
         {model.columns.map((day, i) => (
           <div key={toDateKey(day)} className="flex flex-col gap-1 border-l border-border px-1 py-1.5">
             {(untimedByColumn.get(i) ?? []).map(item => (

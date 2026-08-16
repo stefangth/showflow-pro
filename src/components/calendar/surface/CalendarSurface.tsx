@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { format } from 'date-fns';
 import * as PopoverPrimitive from '@radix-ui/react-popover';
 import type {
@@ -11,12 +12,12 @@ import type {
   ProducerStatus,
   Tone,
 } from '@/lib/calendar/types';
-import { PRODUCER_TONES, ARTIST_TONES, artistStatusLabel } from '@/lib/calendar/tone';
+import { PRODUCER_TONES, ARTIST_TONES } from '@/lib/calendar/tone';
 import { periodLabel, periodWindow, shiftPeriod, type LensPeriod } from '@/lib/calendar/period';
 import { unconfirmedSlots } from '@/lib/calendar/slots';
 import { resolveProducerPrimary } from '@/lib/calendar/producerPrimary';
 import { clearSelection, extendTo, selectedKeys, type RangeSelection } from '@/lib/calendar/selection';
-import { isPastDate, toDateKey } from '@/lib/dates';
+import { dfLocale, isPastDate, toDateKey } from '@/lib/dates';
 import { computeDatePeek } from '@/lib/bookingCockpit';
 import { ROUTES } from '@/config/app.config';
 import { cn } from '@/lib/utils';
@@ -42,26 +43,33 @@ import { SurfaceFab } from './SurfaceFab';
 import { SeasonStripMobile } from './SeasonStripMobile';
 import type { NeedsYouGroupKey, NeedsYouItem, NeedsYouQueue } from '@/lib/calendar/needsYou';
 
+/** Bound to the surface's three copy namespaces: producer chrome/status/stats
+ *  (`bookings`), artist chrome/status/stats (`availability`), and role-agnostic
+ *  bits handled by the shared components (`common`). */
+type SurfaceTF = TFunction<['bookings', 'availability', 'common']>;
+
 /**
  * Producer lens set (spec §2/§4): Needs you (first and default — spec §3),
  * Month, Week, Season, Agenda. Artist gets Offers + Month + All dates.
  * `LensTabs` renders whatever list it's given, so this function is the only
  * place the producer tab order/membership is defined.
  */
-function producerLenses(needsYouQueue: NeedsYouQueue | undefined): LensTabDef[] {
+function producerLenses(needsYouQueue: NeedsYouQueue | undefined, t: SurfaceTF): LensTabDef[] {
   return [
-    { key: 'needs-you', label: 'Needs you', count: needsYouQueue?.totalItems },
-    { key: 'month', label: 'Month' },
-    { key: 'week', label: 'Week' },
-    { key: 'season', label: 'Season' },
-    { key: 'agenda', label: 'Agenda' },
+    { key: 'needs-you', label: t('calendar.lens.needsYou'), count: needsYouQueue?.totalItems },
+    { key: 'month', label: t('calendar.lens.month') },
+    { key: 'week', label: t('calendar.lens.week') },
+    { key: 'season', label: t('calendar.lens.season') },
+    { key: 'agenda', label: t('calendar.lens.agenda') },
   ];
 }
-const ARTIST_LENSES: LensTabDef[] = [
-  { key: 'offers', label: 'Offers' },
-  { key: 'month', label: 'Month' },
-  { key: 'all-dates', label: 'All dates' },
-];
+function artistLenses(t: SurfaceTF): LensTabDef[] {
+  return [
+    { key: 'offers', label: t('availability:calendar.lens.offers') },
+    { key: 'month', label: t('availability:calendar.lens.month') },
+    { key: 'all-dates', label: t('availability:calendar.lens.allDates') },
+  ];
+}
 
 /** Empty queue shape passed to `NeedsYouLens`/`QueueRail` when the caller
  *  hasn't wired `needsYouQueue` yet (or it's genuinely empty) — the lens
@@ -80,11 +88,13 @@ const PRODUCER_STATUS_ORDER: ProducerStatus[] = [
   'cancelled',
   'unconfigured',
 ];
-const PRODUCER_LEGEND: DayRailLegendItem[] = PRODUCER_STATUS_ORDER.map((status) => ({
-  label: PRODUCER_TONES[status].label,
-  badgeClass: PRODUCER_TONES[status].badgeClass,
-  railClass: PRODUCER_TONES[status].railClass,
-}));
+function producerLegend(t: SurfaceTF): DayRailLegendItem[] {
+  return PRODUCER_STATUS_ORDER.map((status) => ({
+    label: t(`calendar.producerStatus.${status}`),
+    badgeClass: PRODUCER_TONES[status].badgeClass,
+    railClass: PRODUCER_TONES[status].railClass,
+  }));
+}
 
 const ARTIST_STATUS_ORDER: ArtistStatus[] = ['confirmed', 'soft_booked', 'suggested', 'blocked', 'unanswered'];
 
@@ -188,25 +198,25 @@ function entriesForDay<T extends { date: Date }>(entries: T[], day: Date): T[] {
   return entries.filter((e) => toDateKey(e.date) === key);
 }
 
-function producerStats(entries: ProducerDateEntry[], anchor: Date): DayRailStat[] {
+function producerStats(entries: ProducerDateEntry[], anchor: Date, t: SurfaceTF): DayRailStat[] {
   const { start, end } = periodWindow(anchor, 'month');
   const inWindow = entries.filter((e) => e.status !== 'cancelled' && e.date >= start && e.date <= end);
   const confirmed = inWindow.reduce((sum, e) => sum + e.confirmedMain, 0);
   const openSlots = inWindow.reduce((sum, e) => sum + unconfirmedSlots(e), 0);
   return [
-    { label: 'Confirmed this month', value: String(confirmed), dotClass: 'bg-success' },
-    { label: 'Slots still open', value: String(openSlots), dotClass: 'bg-warning' },
+    { label: t('calendar.stat.confirmedThisMonth'), value: String(confirmed), dotClass: 'bg-success' },
+    { label: t('calendar.stat.slotsStillOpen'), value: String(openSlots), dotClass: 'bg-warning' },
   ];
 }
 
-function artistStats(entries: ArtistDateEntry[], anchor: Date): DayRailStat[] {
+function artistStats(entries: ArtistDateEntry[], anchor: Date, t: SurfaceTF): DayRailStat[] {
   const { start, end } = periodWindow(anchor, 'month');
   const inWindow = entries.filter((e) => e.date >= start && e.date <= end);
   const offers = inWindow.filter((e) => e.myStatus === 'suggested').length;
   const holds = inWindow.filter((e) => e.myStatus === 'soft_booked').length;
   return [
-    { label: 'Open offers', value: String(offers), dotClass: 'bg-primary' },
-    { label: 'Holds', value: String(holds), dotClass: 'bg-warning' },
+    { label: t('availability:calendar.stat.openOffers'), value: String(offers), dotClass: 'bg-primary' },
+    { label: t('availability:calendar.stat.holds'), value: String(holds), dotClass: 'bg-warning' },
   ];
 }
 
@@ -259,16 +269,35 @@ export function CalendarSurface({
   // below so an artist Space press is never routed into this state at all.
   const [peekDay, setPeekDay] = useState<Date | null>(null);
   const { t: tBooking } = useTranslation('bookingCopy');
+  const { t } = useTranslation(['bookings', 'availability', 'common']);
 
   const resolvedNeedsYouQueue = needsYouQueue ?? EMPTY_NEEDS_YOU_QUEUE;
-  const lenses = role === 'producer' ? producerLenses(needsYouQueue) : ARTIST_LENSES;
+  const lenses = role === 'producer' ? producerLenses(needsYouQueue, t) : artistLenses(t);
   const defaultLensKey = role === 'producer' ? 'needs-you' : 'offers';
   const activeLens = lenses.some((l) => l.key === lens) ? lens : defaultLensKey;
   const activePeriod: LensPeriod =
     activeLens === 'week' ? 'week' : activeLens === 'season' ? 'season' : 'month';
 
-  const resolvedEyebrow = eyebrow ?? (role === 'producer' ? 'BOOKINGS' : 'AVAILABILITY');
-  const resolvedTitle = title ?? (role === 'producer' ? 'Shows & bookings' : 'Your calendar');
+  const resolvedEyebrow =
+    eyebrow ?? (role === 'producer' ? t('calendar.header.eyebrow') : t('availability:calendar.header.eyebrow'));
+  const resolvedTitle =
+    title ?? (role === 'producer' ? t('calendar.header.title') : t('availability:calendar.header.title'));
+
+  // Complete, localized artist status-label map: the caller's flow-aware
+  // overrides (e.g. a direct-booking org's `bookingStatusLabels(flow)` wording)
+  // win where present, and every remaining status — notably `blocked`, which
+  // has no flow-aware variant — falls back to the localized `artistStatus.*`
+  // copy rather than `ARTIST_TONES`' fixed English label. Threaded to every
+  // artist child so a status label is never left in English in German.
+  // Producer children ignore `statusLabels`, so skip the lookups for them.
+  const resolvedArtistStatusLabels = useMemo(() => {
+    const out: Partial<Record<ArtistStatus, string>> = {};
+    if (role !== 'artist') return out;
+    for (const status of ARTIST_STATUS_ORDER) {
+      out[status] = statusLabels?.[status] ?? t(`availability:calendar.artistStatus.${status}`);
+    }
+    return out;
+  }, [role, statusLabels, t]);
 
   // Range selection is producer-only (spec §6) and scoped to one lens view —
   // stale highlighted cells/bar surviving a lens switch would be confusing,
@@ -506,18 +535,27 @@ export function CalendarSurface({
   const artistLegend: DayRailLegendItem[] = useMemo(
     () =>
       ARTIST_STATUS_ORDER.map((status) => ({
-        label: artistStatusLabel(status, statusLabels),
+        label: resolvedArtistStatusLabels[status] ?? '',
         badgeClass: ARTIST_TONES[status].badgeClass,
         railClass: ARTIST_TONES[status].railClass,
       })),
-    [statusLabels],
+    [resolvedArtistStatusLabels],
   );
+  // Memoized to match `artistLegend` — otherwise the inline call would rebuild
+  // this 5-item array (and hand `DayRail` a fresh identity) on every render,
+  // e.g. each mouseenter during a producer range-select drag.
+  const producerLegendItems = useMemo(() => producerLegend(t), [t]);
 
   const bulkActions: SelectionBarAction[] = [
-    { key: 'confirm', label: 'Confirm holds', disabled: bulkGates?.confirm?.disabled, title: bulkGates?.confirm?.title },
+    {
+      key: 'confirm',
+      label: t('calendar.bulk.confirmHolds'),
+      disabled: bulkGates?.confirm?.disabled,
+      title: bulkGates?.confirm?.title,
+    },
     {
       key: 'generate',
-      label: 'Generate hire orders',
+      label: t('calendar.bulk.generateHireOrders'),
       disabled: bulkGates?.generate?.disabled,
       title: bulkGates?.generate?.title,
     },
@@ -596,7 +634,7 @@ export function CalendarSurface({
               {peekEntry && (
                 <div className="rounded-[var(--radius-l)] border border-border bg-[var(--surface)] shadow-elev3">
                   <RowPeek
-                    dateLabel={format(peekEntry.date, 'EEE d MMM')}
+                    dateLabel={format(peekEntry.date, 'EEE d MMM', { locale: dfLocale() })}
                     peek={peek}
                     canConfirm={canConfirmPeek}
                     confirming={false}
@@ -612,11 +650,11 @@ export function CalendarSurface({
             day={selectedDay}
             producerEntries={dayProducerEntries}
             artistEntries={dayArtistEntries}
-            stats={role === 'producer' ? producerStats(producerEntries, anchor) : artistStats(artistEntries, anchor)}
-            legend={role === 'producer' ? PRODUCER_LEGEND : artistLegend}
+            stats={role === 'producer' ? producerStats(producerEntries, anchor, t) : artistStats(artistEntries, anchor, t)}
+            legend={role === 'producer' ? producerLegendItems : artistLegend}
             onPrimary={handleRailPrimary}
             onSecondary={handleRailSecondary}
-            statusLabels={statusLabels}
+            statusLabels={resolvedArtistStatusLabels}
             actionGates={actionGates}
             className="w-[280px] shrink-0"
           />
@@ -659,7 +697,7 @@ export function CalendarSurface({
               onBlock={(dateId, date) => actions.block?.(dateId, date)}
               answeredToday={[]}
               notOfferedYet={notOfferedYet}
-              statusLabels={statusLabels}
+              statusLabels={resolvedArtistStatusLabels}
               today={now}
             />
           )}
@@ -668,7 +706,7 @@ export function CalendarSurface({
               entries={artistEntries}
               onBlock={(dateId, date) => actions.block?.(dateId, date)}
               hireOrderHref={hireOrderHref}
-              statusLabels={statusLabels}
+              statusLabels={resolvedArtistStatusLabels}
               today={now}
             />
           )}
@@ -793,7 +831,7 @@ export function CalendarSurface({
               onBlock={(dateId, date) => actions.block?.(dateId, date)}
               answeredToday={[]}
               notOfferedYet={notOfferedYet}
-              statusLabels={statusLabels}
+              statusLabels={resolvedArtistStatusLabels}
               today={now}
             />
           )}
@@ -802,7 +840,7 @@ export function CalendarSurface({
               entries={artistEntries}
               onBlock={(dateId, date) => actions.block?.(dateId, date)}
               hireOrderHref={hireOrderHref}
-              statusLabels={statusLabels}
+              statusLabels={resolvedArtistStatusLabels}
               today={now}
             />
           )}
@@ -821,12 +859,12 @@ export function CalendarSurface({
         // "Message producer" has no wired action yet — same inert stub as
         // the desktop rail's artist secondary (`handleRailSecondary`); the
         // sheet's button simply no-ops on click until one exists.
-        statusLabels={statusLabels}
+        statusLabels={resolvedArtistStatusLabels}
         actionGates={actionGates}
       />
 
       {role === 'producer' && activeLens === 'needs-you' && (
-        <SurfaceFab label="New date" onClick={() => onNewDate?.()} />
+        <SurfaceFab label={t('calendar.fab.newDate')} onClick={() => onNewDate?.()} />
       )}
     </div>
   );

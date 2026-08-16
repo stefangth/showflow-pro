@@ -478,19 +478,19 @@ export const HELP_ITEMS: readonly HelpItem[] = [
     },
   },
   {
-    id: 'R3.4', role: 'artist', stage: 3, status: 'new', surface: 'Availability calendar', updated: '2026-08-14',
-    q: { en: 'Why can I not click this date?', de: 'Warum kann ich diesen Termin nicht anklicken?' },
+    id: 'R3.4', role: 'artist', stage: 3, status: 'new', surface: 'Availability calendar', updated: '2026-08-16',
+    q: { en: 'Why is this date not offered to me?', de: 'Warum wird mir dieser Termin nicht angeboten?' },
     a: {
-      en: 'Because it is not offered to you. Dimmed cells now say so: offered dates come from your casts and the skills those casts require.',
-      de: 'Weil er dir nicht angeboten wird. Abgeblendete Felder sagen das jetzt: angebotene Termine kommen aus deinen Besetzungen und den Skills, die diese Besetzungen verlangen.',
+      en: 'Offered dates come from the casts you are in and the skills those casts require. You can still open any day: if nothing is offered to you that day, the detail panel says so.',
+      de: 'Angebotene Termine ergeben sich aus den Besetzungen, in denen du bist, und den Skills, die diese Besetzungen verlangen. Du kannst trotzdem jeden Tag öffnen: Wird dir an dem Tag nichts angeboten, sagt dir das Detailfeld das.',
     },
   },
   {
-    id: 'R3.5', role: 'artist', stage: 3, status: 'new', surface: 'Availability calendar, empty state', updated: '2026-08-14',
+    id: 'R3.5', role: 'artist', stage: 3, status: 'new', surface: 'Availability calendar, empty state', updated: '2026-08-16',
     q: { en: 'Why do I see no dates at all?', de: 'Warum sehe ich überhaupt keine Termine?' },
     a: {
-      en: 'The calendar no longer shows a grid of dead cells with no explanation. It says: no eligible dates yet, and once you are added to a cast, offered dates appear here.',
-      de: 'Der Kalender zeigt nicht mehr ein Raster toter Felder ohne Erklärung. Er sagt: noch keine berechtigten Termine, und sobald du einer Besetzung hinzugefügt wirst, erscheinen die angebotenen Termine hier.',
+      en: 'You have no offered dates yet. Dates appear once you are added to a cast that is eligible for them and you hold the required skills. The All dates lens then lists every one.',
+      de: 'Du hast noch keine angebotenen Termine. Termine erscheinen, sobald du einer Besetzung hinzugefügt wirst, die dafür infrage kommt, und du die nötigen Skills hast. Die Lens Alle Termine listet dann jeden auf.',
     },
   },
   {

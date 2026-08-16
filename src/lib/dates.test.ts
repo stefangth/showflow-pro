@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach } from "vitest";
 import i18n from "@/i18n";
-import { parseDateOnly, formatDateDMY, formatTimestampDMY, formatTimestampLocal, formatDateWithWeekday, toDateKey, isPastDate, PAST_DATE_TINT, pastRowClassName, weekdayShort, weekdayShortLabels, formatDayMonthShortYear, formatMonthYear, formatDayMonthYear, formatFullWeekdayDate, berlinDateKey } from "./dates";
+import { parseDateOnly, formatDateDMY, formatTimestampDMY, formatTimestampLocal, formatDateWithWeekday, toDateKey, isPastDate, PAST_DATE_TINT, pastRowClassName, weekdayShort, weekdayShortLabels, weekdayNarrow, formatDayMonthShortYear, formatMonthYear, formatDayMonthYear, formatFullWeekdayDate, berlinDateKey } from "./dates";
 
 describe("parseDateOnly", () => {
   it("parses a YYYY-MM-DD string at local midnight (no UTC drift)", () => {
@@ -63,6 +63,7 @@ describe("locale-aware formatting", () => {
   it("keeps English numeric shapes and English weekday by default", () => {
     expect(weekdayShort("2026-04-23")).toBe("Thu");
     expect(weekdayShortLabels()).toEqual(["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]);
+    expect(weekdayNarrow("2026-04-23")).toBe("T");
     expect(formatDayMonthShortYear("2026-04-23")).toBe("23 Apr 2026");
   });
 
@@ -71,6 +72,7 @@ describe("locale-aware formatting", () => {
     expect(formatDateWithWeekday("2026-04-23")).toBe("Do., 23/04/2026");
     expect(weekdayShort("2026-04-23")).toBe("Do.");
     expect(weekdayShortLabels()).toEqual(["Mo.", "Di.", "Mi.", "Do.", "Fr.", "Sa.", "So."]);
+    expect(weekdayNarrow("2026-04-23")).toBe("D");
     // dd/MM/yyyy stays numeric regardless of language.
     expect(formatDateDMY("2026-04-23")).toBe("23/04/2026");
   });
