@@ -48,6 +48,13 @@ const WIDE_TABS = new Set(['trust']);
 type FilterKey = 'program' | 'timeframe' | 'sort' | 'status';
 const FILTER_KEYS: FilterKey[] = ['program', 'timeframe', 'sort', 'status'];
 const PAGES: ('shows' | 'artists' | 'bookings')[] = ['shows', 'artists', 'bookings'];
+
+// The bookings calendar surface's PeriodNavigator owns the visible period, so
+// ShowsBookingsPage no longer calls canSee('timeframe') — the toggle would be
+// dead for that page. shows/artists still use TimeframeFilter and keep it.
+function keysForPage(page: (typeof PAGES)[number]): FilterKey[] {
+  return page === 'bookings' ? FILTER_KEYS.filter(k => k !== 'timeframe') : FILTER_KEYS;
+}
 const ROLES: ('producer' | 'artist')[] = ['producer', 'artist'];
 
 // Every app_settings key this page's draft can edit. Used for the dirty calc so a
@@ -421,6 +428,7 @@ export default function SettingsPage() {
             <CardContent className="space-y-8">
               {PAGES.map(page => {
                 const pageVis = (get('filters_visibility', {}) as FiltersVisibility)?.[page] ?? {};
+                const pageKeys = keysForPage(page);
                 return (
                   <div key={page} className="space-y-3">
                     <h4 className="font-display font-semibold capitalize">{t(`filters.pages.${page}`)}</h4>
@@ -429,7 +437,7 @@ export default function SettingsPage() {
                         <thead>
                           <tr className="text-muted-foreground text-xs">
                             <th className="text-left py-2 pr-4 font-medium">{t('filters.role')}</th>
-                            {FILTER_KEYS.map(k => <th key={k} className="text-center py-2 px-2 font-medium capitalize">{t(`filters.keys.${k}`)}</th>)}
+                            {pageKeys.map(k => <th key={k} className="text-center py-2 px-2 font-medium capitalize">{t(`filters.keys.${k}`)}</th>)}
                           </tr>
                         </thead>
                         <tbody>
@@ -438,7 +446,7 @@ export default function SettingsPage() {
                             return (
                               <tr key={role} className="border-t border-border">
                                 <td className="py-2 pr-4 font-medium">{roleLabel(role)}</td>
-                                {FILTER_KEYS.map(key => (
+                                {pageKeys.map(key => (
                                   <td key={key} className="text-center py-2 px-2">
                                     <Switch
                                       checked={!!row[key]}
