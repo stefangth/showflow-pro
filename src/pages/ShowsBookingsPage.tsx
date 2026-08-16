@@ -103,14 +103,18 @@ function ArtistShowsBookings() {
 }
 
 function ProducerShowsBookings() {
-  const { t } = useTranslation('bookings');
+  const { t, i18n } = useTranslation('bookings');
   const STATUS_LABEL: Record<DisplayStatus, string> = useMemo(() => ({
     open: t('status.open'),
     partially_filled: t('status.partiallyFilled'),
     fully_filled: t('status.fullyFilled'),
     cancelled: t('status.cancelled'),
     unconfigured: t('status.unconfigured'),
-  }), [t]);
+    // `t`'s identity is not a reliable recompute signal on its own across every
+    // react-i18next config (keyPrefix/bindI18n variations); `i18n.language`
+    // guarantees this recomputes on every real language change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [t, i18n.language]);
   // Options for the FilterChipsBar's status picker — same five values the old
   // always-visible Select rendered, just shaped as {value,label} pairs.
   const STATUS_OPTIONS = useMemo(() => ([

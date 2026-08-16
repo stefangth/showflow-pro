@@ -1,7 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { screen, fireEvent } from "@testing-library/react";
+import { screen, fireEvent, act } from "@testing-library/react";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import type { SetupRailMode } from "@/components/setup/setupRailMode";
+import i18n from "@/i18n";
+import { STORAGE_KEY } from "@/i18n/config";
 
 /**
  * Task 16: ProducerShowsBookings now renders `<CalendarSurface>` instead of
@@ -367,5 +369,51 @@ describe("ShowsBookingsPage — setup checklist uncramp + re-invoke (Plan B Task
     expect(screen.queryByText(/get bookings running/i)).not.toBeInTheDocument();
     fireEvent.click(btn);
     expect(await screen.findByTestId("booking-setup-rail")).toBeInTheDocument();
+  });
+});
+
+/**
+ * Task K: STATUS_LABEL (and STATUS_OPTIONS, derived from it) was `useMemo`d on
+ * `[t]` only. react-i18next's `t` reference is stable across
+ * `i18n.changeLanguage()` calls (only a re-render is triggered), so the memo
+ * never recomputed on a real language change and stayed frozen in whatever
+ * language was active on first render — reproducing the bug seen when
+ * `AppLayout` force-resets a dark-entitlement org to English after i18next
+ * initially detected a non-English browser locale.
+ */
+describe("ShowsBookingsPage — STATUS_LABEL recomputes on language change (Task K)", () => {
+  beforeEach(() => {
+    showDatesRef.value = [
+      showDate({ id: "sd-1", date: "2030-06-20", show_id: "s1" }),
+    ];
+  });
+
+  afterEach(async () => {
+    await act(async () => {
+      await i18n.changeLanguage("en");
+    });
+  });
+
+  it("re-renders the status filter options in the new language after i18n.changeLanguage", async () => {
+    // Match LanguageProvider's mount-time sync (`detectInitialLang` reads this
+    // key): without it, the provider's own effect would immediately revert
+    // our `de` back to whatever the browser/localStorage default is.
+    localStorage.setItem(STORAGE_KEY, "de");
+    await act(async () => {
+      await i18n.changeLanguage("de");
+    });
+    renderWithProviders(<ShowsBookingsPage />);
+
+    fireEvent.click(await screen.findByTestId("add-filter"));
+    fireEvent.click(screen.getByTestId("add-filter-option-status"));
+    expect(screen.getByTestId("add-filter-status-open")).toHaveTextContent("Offen");
+
+    // Simulate AppLayout's dark-entitlement reset: a direct `i18n.changeLanguage`
+    // call, not a LanguageProvider `setLang` (see AppLayout.tsx ~line 89).
+    await act(async () => {
+      await i18n.changeLanguage("en");
+    });
+
+    expect(screen.getByTestId("add-filter-status-open")).toHaveTextContent("Open");
   });
 });

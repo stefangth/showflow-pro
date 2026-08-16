@@ -43,7 +43,7 @@ type ArtistLens = 'offers' | 'month' | 'all-dates';
  * Artist view — calendar surface (Offers/Month/All dates) + blocked dates
  * ============================================================ */
 function ArtistAvailability() {
-  const { t } = useTranslation('availability');
+  const { t, i18n } = useTranslation('availability');
   const { t: tFlow } = useTranslation('flowCopy');
   const { t: tBooking } = useTranslation('bookingCopy');
   const { currentOrg } = useAuth();
@@ -112,7 +112,9 @@ function ArtistAvailability() {
       suggested: labels.suggested,
       unanswered: labels.unanswered,
     };
-  }, [flow, tFlow]);
+    // `i18n.language` forces this to recompute on every real language change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [flow, tFlow, i18n.language]);
 
   // NOTE: distinct cache key from the other artist-bookings queries. This one
   // selects `id` (required to accept/decline an offer); ArtistDashboard and

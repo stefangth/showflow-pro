@@ -108,7 +108,7 @@ function Row({
   bookingFlowEnabled: boolean;
   confirmationDigestHour: number;
 }) {
-  const { t } = useTranslation("showsDetail");
+  const { t, i18n } = useTranslation("showsDetail");
   const { t: tAction } = useTranslation("bookingCopy");
   const [cancelOpen, setCancelOpen] = useState(false);
   // Only an explicit active===false pauses promotion, matching the same convention used
@@ -130,7 +130,9 @@ function Row({
         confirmationDigestHour,
         t: tAction,
       }),
-    [row.name, understudyPromotionEnabled, bookingFlowEnabled, flow, confirmationDigestHour, t, tAction],
+    // `i18n.language` forces this to recompute on every real language change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [row.name, understudyPromotionEnabled, bookingFlowEnabled, flow, confirmationDigestHour, t, tAction, i18n.language],
   );
 
   return (

@@ -308,7 +308,7 @@ export function CalendarSurface({
   // and the queue body stay in sync from one source of truth.
   const [needsYouScope, setNeedsYouScope] = useState<NeedsYouScopeKey>('all');
   const { t: tBooking } = useTranslation('bookingCopy');
-  const { t } = useTranslation(['bookings', 'availability', 'common']);
+  const { t, i18n } = useTranslation(['bookings', 'availability', 'common']);
 
   const resolvedNeedsYouQueue = needsYouQueue ?? EMPTY_NEEDS_YOU_QUEUE;
   const lenses = role === 'producer' ? producerLenses(needsYouQueue, t) : artistLenses(t);
@@ -336,7 +336,10 @@ export function CalendarSurface({
       out[status] = statusLabels?.[status] ?? t(`availability:calendar.artistStatus.${status}`);
     }
     return out;
-  }, [role, statusLabels, t]);
+    // `i18n.language` forces this to recompute on every real language change,
+    // independent of `t`'s own identity semantics.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [role, statusLabels, t, i18n.language]);
 
   // Range selection is producer-only (spec §6) and scoped to one lens view —
   // stale highlighted cells/bar surviving a lens switch would be confusing,
@@ -453,7 +456,9 @@ export function CalendarSurface({
             t: tBooking,
           })
         : null,
-    [peekEntry, tBooking]
+    // `i18n.language` forces this to recompute on every real language change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [peekEntry, tBooking, i18n.language]
   );
   const peekOpen = role === 'producer' && peekDay !== null;
   const canConfirmPeek = !actionGates?.confirmHolds?.disabled;
@@ -599,7 +604,9 @@ export function CalendarSurface({
   // Memoized to match `artistLegend` — otherwise the inline call would rebuild
   // this 5-item array (and hand `DayRail` a fresh identity) on every render,
   // e.g. each mouseenter during a producer range-select drag.
-  const producerLegendItems = useMemo(() => producerLegend(t), [t]);
+  // `i18n.language` forces this to recompute on every real language change.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const producerLegendItems = useMemo(() => producerLegend(t), [t, i18n.language]);
 
   const bulkActions: SelectionBarAction[] = [
     {
