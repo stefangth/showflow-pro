@@ -26,6 +26,7 @@ import { OrgSwitcher } from '@/components/layout/OrgSwitcher';
 import { NotificationsList } from '@/components/layout/NotificationsList';
 import { DemoBadge } from '@/components/demo/DemoBadge';
 import { DemoBar } from '@/components/demo/DemoBar';
+import { RunOfShowRail } from '@/components/demo/RunOfShowRail';
 import { ThemeToggle } from '@/components/layout/ThemeToggle';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useNavCounts } from '@/hooks/useNavCounts';
@@ -438,6 +439,10 @@ export default function AppLayout({ children }: AppLayoutProps) {
           {children}
         </main>
       </div>
+
+      {/* Docked "run of show" rail — self-gates on isDemoOrg, so it renders nothing
+          (and reserves no layout space) outside a demo org. */}
+      <RunOfShowRail />
     </div>
   );
 }
