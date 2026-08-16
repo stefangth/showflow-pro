@@ -47,6 +47,7 @@ import { useEditorConfig } from '@/features/editor/EditorContext';
 import { compareCustomValues, customFilterMatches, type CustomFilterState } from '@/lib/customFields';
 import { PageMini } from '@/components/minis/PageMini';
 import { CalendarSurface } from '@/components/calendar/surface/CalendarSurface';
+import type { NeedsYouReceipt, NeedsYouReceiptKind } from '@/components/calendar/surface/NeedsYouLens';
 import { toProducerEntries } from '@/lib/calendar/producerData';
 import { buildNeedsYouQueue } from '@/lib/calendar/needsYou';
 import { useBookingsWithArtist } from '@/hooks/useBookingsWithArtist';
@@ -366,11 +367,11 @@ function ProducerShowsBookings() {
   // "Cleared today" receipts (Needs-you lens footer) — session-local, visual only;
   // "Undo last" pops the most recent entry but does NOT revert the underlying
   // mutation (best-effort visual, per the queue's own design).
-  const [clearedToday, setClearedToday] = useState<{ dateId: string; title: string; label: string }[]>([]);
-  const addReceipt = (dateId: string, label: string) => {
+  const [clearedToday, setClearedToday] = useState<NeedsYouReceipt[]>([]);
+  const addReceipt = (dateId: string, label: string, kind: NeedsYouReceiptKind) => {
     const entry = producerEntries.find((e) => e.id === dateId);
     const title = entry ? entry.program + (entry.subProgram ? ` · ${entry.subProgram}` : '') : dateId;
-    setClearedToday((prev) => [...prev, { dateId, title, label }]);
+    setClearedToday((prev) => [...prev, { dateId, title, label, kind }]);
   };
   const onUndoLastReceipt = () => setClearedToday((prev) => prev.slice(0, -1));
 
@@ -383,7 +384,7 @@ function ProducerShowsBookings() {
         const label = t('needsYou.toast.extended', { count: affected });
         toast.success(label);
         queryClient.invalidateQueries({ queryKey: ['bookings'] });
-        if (affected) addReceipt(dateId, label);
+        if (affected) addReceipt(dateId, label, 'extended');
       })
       .catch((e) => toast.error((e as Error).message));
   };
@@ -401,7 +402,7 @@ function ProducerShowsBookings() {
         : t('producer.toast.nothingToConfirm');
       toast.success(label);
       queryClient.invalidateQueries({ queryKey: ['bookings'] });
-      if (affected) addReceipt(showDateId, label);
+      if (affected) addReceipt(showDateId, label, 'released');
     } catch (e) {
       toast.error((e as Error).message);
     }
@@ -421,7 +422,7 @@ function ProducerShowsBookings() {
       queryClient.invalidateQueries({ queryKey: ['show-dates'] });
       // Only record a "cleared today" receipt when someone was actually
       // notified — mirrors extendHold/releaseHoldForDate gating on `affected`.
-      if (notified) addReceipt(showDateId, label);
+      if (notified) addReceipt(showDateId, label, 'notified');
     } catch (e) {
       toast.error((e as Error).message);
     }
@@ -462,14 +463,14 @@ function ProducerShowsBookings() {
   const confirmAll = (ids: string[]) => {
     if (!(canConfirmBookings && bookingOn)) return;
     void Promise.all(ids.map((id) => confirmHoldsForDate(id))).then(() => {
-      ids.forEach((id) => addReceipt(id, t('needsYou.toast.confirmedAll')));
+      ids.forEach((id) => addReceipt(id, t('needsYou.toast.confirmedAll'), 'confirmedAll'));
     });
   };
   const generateAll = (ids: string[]) => {
     if (!canGenerateHireOrders) return;
     ids.forEach((id) => {
       draftHireOrderForDate(id);
-      addReceipt(id, t('needsYou.toast.generatedAll'));
+      addReceipt(id, t('needsYou.toast.generatedAll'), 'generatedAll');
     });
   };
 

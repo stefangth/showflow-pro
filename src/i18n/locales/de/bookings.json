@@ -234,8 +234,6 @@
     "noHireOrderPermission": "Du hast keine Berechtigung, Engagementverträge zu erstellen",
     "noConfirmPermission": "Du hast keine Berechtigung, Buchungen zu bestätigen",
     "searchPlaceholder": "Programm, Spielstätte, Stadt suchen…",
-    "statusPlaceholder": "Status",
-    "allStatuses": "Alle Status",
     "sortChronoLabel": "Datum",
     "sortAsc": "{{label}} ↑",
     "sortDesc": "{{label}} ↓",

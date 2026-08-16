@@ -577,7 +577,7 @@ describe('CalendarSurface — needs-you (producer default)', () => {
         onLensChange={vi.fn()}
         today={TODAY}
         needsYouQueue={queue}
-        clearedToday={[{ dateId: 'pd-cleared', title: 'Cirque Noir', label: 'Confirmed' }]}
+        clearedToday={[{ dateId: 'pd-cleared', title: 'Cirque Noir', label: 'Confirmed', kind: 'confirmedAll' }]}
         onUndoLastReceipt={onUndoLastReceipt}
       />
     );

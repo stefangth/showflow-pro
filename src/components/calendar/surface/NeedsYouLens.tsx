@@ -31,10 +31,17 @@ export type NeedsYouAction =
   | 'notify' // Notify cast (cancelled)
   | 'undo-cancel'; // Undo cancel (cancelled secondary)
 
-interface NeedsYouReceipt {
+/** Toast-label "kind" a "Cleared today" receipt is built from — mirrors the
+ *  five `addReceipt` call sites in `ShowsBookingsPage`, each of which passes
+ *  the `kind` matching its own action so the receipt's pill tone can be
+ *  looked up directly instead of reverse-derived from the rendered label. */
+export type NeedsYouReceiptKind = 'extended' | 'released' | 'notified' | 'confirmedAll' | 'generatedAll';
+
+export interface NeedsYouReceipt {
   dateId: string;
   title: string;
   label: string;
+  kind: NeedsYouReceiptKind;
 }
 
 interface NeedsYouLensProps {
@@ -126,10 +133,7 @@ const GROUP_HEADER_CLASS: Record<NeedsYouGroupKey, string> = {
  *  broadcast (accent, matching the design's violet "Casting opened" example);
  *  a bulk confirm or hire-order generation is an unambiguous positive outcome
  *  (success). */
-const RECEIPT_TONE_BY_KIND: Record<
-  'extended' | 'released' | 'notified' | 'confirmedAll' | 'generatedAll',
-  Tone
-> = {
+const RECEIPT_TONE_BY_KIND: Record<NeedsYouReceiptKind, Tone> = {
   extended: 'warning',
   released: 'muted',
   notified: 'accent',
@@ -201,24 +205,6 @@ function leadLabel(leadDays: number, t: TF): string | null {
   if (leadDays > 0) return t('calendar.needsYou.note.atRiskLeadDays', { count: leadDays });
   if (leadDays === 0) return t('calendar.needsYou.note.atRiskLeadToday');
   return null;
-}
-
-/** Infers a "Cleared today" receipt's pill tone from its already-rendered
- *  `label` by re-rendering each known `needsYou.toast.*` template (with any
- *  interpolated count blanked to `0`) and comparing digit-stripped text —
- *  locale-safe (works whether the label was built in English or German)
- *  because it replays the same i18n keys `ShowsBookingsPage.addReceipt`
- *  callers used, rather than pattern-matching hardcoded English words. A
- *  receipt whose label doesn't match any known toast (e.g. a future caller
- *  supplying free-form text) falls back to `success` — "cleared" already
- *  implies a positive outcome. */
-function receiptTone(label: string, t: TF): Tone {
-  const strip = (s: string) => s.replace(/\d+/g, '').trim();
-  const target = strip(label);
-  for (const kind of Object.keys(RECEIPT_TONE_BY_KIND) as (keyof typeof RECEIPT_TONE_BY_KIND)[]) {
-    if (strip(t(`needsYou.toast.${kind}`, { count: 0 })) === target) return RECEIPT_TONE_BY_KIND[kind];
-  }
-  return 'success';
 }
 
 function entryTitle(item: NeedsYouItem): string {
@@ -504,7 +490,7 @@ export function NeedsYouLens({
           </Button>
         </div>
         {receipts.map((receipt, i) => {
-          const tone = receiptTone(receipt.label, t);
+          const tone = RECEIPT_TONE_BY_KIND[receipt.kind];
           return (
             <div
               key={`${receipt.dateId}-${i}`}

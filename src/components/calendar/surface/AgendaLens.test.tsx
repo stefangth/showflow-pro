@@ -101,6 +101,26 @@ describe('AgendaLens', () => {
     expect(onAction).not.toHaveBeenCalled();
   });
 
+  it('pressing Enter on a focused row fires onOpenEntry with that row entry', () => {
+    const e = entry({ id: 'pd-1', status: 'partially_filled' });
+    const onOpenEntry = vi.fn();
+    render(<AgendaLens entries={[e]} onOpenEntry={onOpenEntry} onAction={vi.fn()} />);
+
+    fireEvent.keyDown(screen.getByTestId('agenda-row-pd-1'), { key: 'Enter' });
+    expect(onOpenEntry).toHaveBeenCalledTimes(1);
+    expect(onOpenEntry).toHaveBeenCalledWith(e);
+  });
+
+  it('pressing Space on a focused row fires onOpenEntry with that row entry', () => {
+    const e = entry({ id: 'pd-1', status: 'partially_filled' });
+    const onOpenEntry = vi.fn();
+    render(<AgendaLens entries={[e]} onOpenEntry={onOpenEntry} onAction={vi.fn()} />);
+
+    fireEvent.keyDown(screen.getByTestId('agenda-row-pd-1'), { key: ' ' });
+    expect(onOpenEntry).toHaveBeenCalledTimes(1);
+    expect(onOpenEntry).toHaveBeenCalledWith(e);
+  });
+
   it('clicking the row action button fires onAction but not onOpenEntry (no bubbling)', () => {
     const e = entry({ id: 'pd-3', status: 'fully_filled', confirmedMain: 6 });
     const onOpenEntry = vi.fn();
