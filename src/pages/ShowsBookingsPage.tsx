@@ -16,15 +16,14 @@ import {
 import { fetchShowDatesList } from '@/data/showDates';
 import { useAuth } from '@/features/auth/AuthContext';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { pagerPosition } from '@/lib/bookingCockpit';
 import { Search, ListChecks } from 'lucide-react';
 import { parseISO } from 'date-fns';
-import { ProgramFilter } from '@/components/filters/ProgramFilter';
 import type { TimeframeValue } from '@/components/filters/TimeframeFilter';
 import { SortControl, type SortValue } from '@/components/filters/SortControl';
 import { useFilterVisibility } from '@/components/filters/useFilterVisibility';
 import { applySort, inTimeframe } from '@/components/filters/filterUtils';
+import { FilterChipsBar } from '@/components/filters/FilterChipsBar';
 import { ArtistBookingsView } from '@/components/bookings/ArtistBookingsView';
 import { FirstOfferCard } from '@/components/bookings/setup/FirstOfferCard';
 import { DashboardSetupRail } from '@/components/dashboard/firstRun/DashboardSetupRail';
@@ -46,8 +45,6 @@ import { showSlots } from '@/lib/settings';
 import { formatDateWithWeekday, parseDateOnly } from '@/lib/dates';
 import { useEditorConfig } from '@/features/editor/EditorContext';
 import { compareCustomValues, customFilterMatches, type CustomFilterState } from '@/lib/customFields';
-import { CustomFieldFilter } from '@/components/filters/CustomFieldFilter';
-import { emptyCustomFilter } from '@/components/filters/customFilterState';
 import { PageMini } from '@/components/minis/PageMini';
 import { CalendarSurface } from '@/components/calendar/surface/CalendarSurface';
 import { toProducerEntries } from '@/lib/calendar/producerData';
@@ -114,6 +111,15 @@ function ProducerShowsBookings() {
     cancelled: t('status.cancelled'),
     unconfigured: t('status.unconfigured'),
   }), [t]);
+  // Options for the FilterChipsBar's status picker — same five values the old
+  // always-visible Select rendered, just shaped as {value,label} pairs.
+  const STATUS_OPTIONS = useMemo(() => ([
+    { value: 'open' as DisplayStatus, label: STATUS_LABEL.open },
+    { value: 'partially_filled' as DisplayStatus, label: STATUS_LABEL.partially_filled },
+    { value: 'fully_filled' as DisplayStatus, label: STATUS_LABEL.fully_filled },
+    { value: 'cancelled' as DisplayStatus, label: STATUS_LABEL.cancelled },
+    { value: 'unconfigured' as DisplayStatus, label: STATUS_LABEL.unconfigured },
+  ]), [STATUS_LABEL]);
   const { canSee } = useFilterVisibility('bookings');
   const { getCustomFieldDefs } = useEditorConfig();
   const customDefs = useMemo(() => getCustomFieldDefs('show_dates'), [getCustomFieldDefs]);
@@ -565,29 +571,28 @@ function ProducerShowsBookings() {
             className="pl-10"
           />
         </div>
-        {canSee('status') && (
-          <Select value={statusFilter} onValueChange={v => updateStatusFilter(v as 'all' | DisplayStatus)}>
-            <SelectTrigger className="w-[180px]"><SelectValue placeholder={t('producer.statusPlaceholder')} /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{t('producer.allStatuses')}</SelectItem>
-              <SelectItem value="open">{STATUS_LABEL.open}</SelectItem>
-              <SelectItem value="partially_filled">{STATUS_LABEL.partially_filled}</SelectItem>
-              <SelectItem value="fully_filled">{STATUS_LABEL.fully_filled}</SelectItem>
-              <SelectItem value="cancelled">{STATUS_LABEL.cancelled}</SelectItem>
-              <SelectItem value="unconfigured">{STATUS_LABEL.unconfigured}</SelectItem>
-            </SelectContent>
-          </Select>
-        )}
-        {canSee('program') && <ProgramFilter options={programOptions} value={programs} onChange={setPrograms} />}
+        <FilterChipsBar
+          showStatus={canSee('status')}
+          statusValue={statusFilter}
+          statusOptions={STATUS_OPTIONS}
+          onStatusChange={updateStatusFilter}
+          showProgram={canSee('program')}
+          programOptions={programOptions}
+          programs={programs}
+          onProgramsChange={setPrograms}
+          showTimeframe={canSee('timeframe')}
+          timeframe={timeframe}
+          onTimeframeChange={setTimeframe}
+          filterableDefs={filterableDefs}
+          customFilters={customFilters}
+          onCustomFilterChange={(def, v) => setCustomFilters(prev => ({ ...prev, [`custom.${def.key}`]: v }))}
+          onCustomFilterClear={(def) => setCustomFilters(prev => {
+            const next = { ...prev };
+            delete next[`custom.${def.key}`];
+            return next;
+          })}
+        />
         {canSee('sort') && <SortControl value={sort} onChange={setSort} chronoLabel={t('producer.sortChronoLabel')} extraOptions={sortExtraOptions} />}
-        {filterableDefs.map(def => (
-          <CustomFieldFilter
-            key={def.id}
-            def={def}
-            value={customFilters[`custom.${def.key}`] ?? emptyCustomFilter(def.type)}
-            onChange={(v) => setCustomFilters(prev => ({ ...prev, [`custom.${def.key}`]: v }))}
-          />
-        ))}
       </div>
 
       {isLoading ? (

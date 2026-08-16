@@ -189,6 +189,23 @@
     "cancelled": "Cancelled",
     "unconfigured": "Unconfigured"
   },
+  "filters": {
+    "addFilter": "Add filter",
+    "status": "Status",
+    "program": "Program",
+    "dateRange": "Date range",
+    "dateRangeValue": "{{from}} to {{to}}",
+    "dateFromValue": "From {{from}}",
+    "dateToValue": "Up to {{to}}",
+    "numberRange": "{{min}} to {{max}}",
+    "numberMin": "From {{min}}",
+    "numberMax": "Up to {{max}}",
+    "yes": "Yes",
+    "no": "No",
+    "allActive": "Every filter is already set",
+    "backAria": "Back to filter list",
+    "removeAria": "Remove {{label}} filter"
+  },
   "needsYou": {
     "toast": {
       "extended": "Extended {{count}}",
