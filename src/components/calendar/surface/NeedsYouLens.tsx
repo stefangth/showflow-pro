@@ -342,7 +342,7 @@ export function NeedsYouLens({
                       <p
                         className={cn(
                           'text-[11px] font-semibold uppercase tracking-[1.6px]',
-                          isUrgent ? 'text-[var(--primary-hover)]' : 'text-muted-foreground'
+                          isUrgent ? 'text-primary-hover' : 'text-muted-foreground'
                         )}
                       >
                         {format(item.entry.date, 'EEE', { locale: dfLocale() })}
