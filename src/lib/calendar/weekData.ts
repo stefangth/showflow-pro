@@ -8,6 +8,7 @@ import { differenceInCalendarDays } from 'date-fns';
 import type { MeterSegment, ProducerDateEntry } from './types';
 import { bandBounds, sessionMinutes } from './time';
 import { periodWindow } from './period';
+import { unconfirmedSlots } from './slots';
 
 export interface WeekBlock {
   entryId: string;
@@ -58,7 +59,7 @@ export function toWeekModel(entries: ProducerDateEntry[], anchor: Date): WeekMod
     const columnIndex = differenceInCalendarDays(entry.date, weekStart);
 
     if (columnIndex >= 0 && columnIndex < 7 && entry.status !== 'cancelled') {
-      unfilledByColumn[columnIndex] += Math.max(0, entry.mainSlots - entry.confirmedMain);
+      unfilledByColumn[columnIndex] += unconfirmedSlots(entry);
     }
     const sessions: { session: 1 | 2 | 3; value: string | null }[] = [
       { session: 1, value: entry.session1 },

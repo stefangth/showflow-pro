@@ -13,6 +13,7 @@ import type {
 } from '@/lib/calendar/types';
 import { PRODUCER_TONES, ARTIST_TONES, artistStatusLabel } from '@/lib/calendar/tone';
 import { periodLabel, periodWindow, shiftPeriod, type LensPeriod } from '@/lib/calendar/period';
+import { unconfirmedSlots } from '@/lib/calendar/slots';
 import { resolveProducerPrimary } from '@/lib/calendar/producerPrimary';
 import { clearSelection, extendTo, selectedKeys, type RangeSelection } from '@/lib/calendar/selection';
 import { isPastDate, toDateKey } from '@/lib/dates';
@@ -191,7 +192,7 @@ function producerStats(entries: ProducerDateEntry[], anchor: Date): DayRailStat[
   const { start, end } = periodWindow(anchor, 'month');
   const inWindow = entries.filter((e) => e.status !== 'cancelled' && e.date >= start && e.date <= end);
   const confirmed = inWindow.reduce((sum, e) => sum + e.confirmedMain, 0);
-  const openSlots = inWindow.reduce((sum, e) => sum + Math.max(0, e.mainSlots - e.confirmedMain), 0);
+  const openSlots = inWindow.reduce((sum, e) => sum + unconfirmedSlots(e), 0);
   return [
     { label: 'Confirmed this month', value: String(confirmed), dotClass: 'bg-success' },
     { label: 'Slots still open', value: String(openSlots), dotClass: 'bg-warning' },
@@ -302,6 +303,15 @@ export function CalendarSurface({
         return ids;
       }, []),
     [range, producerEntryIdByKey]
+  );
+
+  // Referentially stable array of the drag-selected date keys, so the Month
+  // and Week lenses can memoize their cell/model derivation on it instead of
+  // rebuilding on every parent render. Recomputed only when `range` actually
+  // changes (each mouseenter during a drag) — exactly when the highlight moves.
+  const producerRangeKeys = useMemo(
+    () => (role === 'producer' ? selectedKeys(range) : undefined),
+    [role, range]
   );
 
   // Shared range-selection handlers (Phase 4, producer-only) — one instance
@@ -570,7 +580,7 @@ export function CalendarSurface({
                   producerEntries={producerEntries}
                   artistEntries={artistEntries}
                   today={now}
-                  rangeKeys={role === 'producer' ? selectedKeys(range) : undefined}
+                  rangeKeys={producerRangeKeys}
                   onRangeStart={role === 'producer' ? handleRangeStart : undefined}
                   onRangeExtend={role === 'producer' ? handleRangeExtend : undefined}
                   onRangeCommit={role === 'producer' ? handleRangeCommit : undefined}
@@ -627,7 +637,7 @@ export function CalendarSurface({
               anchor={anchor}
               readyIds={seasonReadyIds}
               onOpenDate={(dateId) => actions.openDate?.(dateId)}
-              rangeKeys={role === 'producer' ? selectedKeys(range) : undefined}
+              rangeKeys={producerRangeKeys}
               onRangeStart={role === 'producer' ? handleRangeStart : undefined}
               onRangeExtend={role === 'producer' ? handleRangeExtend : undefined}
               onRangeCommit={role === 'producer' ? handleRangeCommit : undefined}

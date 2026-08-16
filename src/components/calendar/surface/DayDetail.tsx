@@ -3,6 +3,7 @@ import type { ActionGates, ArtistDateEntry, ArtistStatus, ProducerDateEntry, Ton
 import { berlinDateKey, toDateKey } from '@/lib/dates';
 import { ARTIST_TONES, PRODUCER_TONES, TONE_TEXT, artistStatusLabel } from '@/lib/calendar/tone';
 import { resolveProducerPrimary } from '@/lib/calendar/producerPrimary';
+import { unconfirmedSlots } from '@/lib/calendar/slots';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { HireOrderStatusBadge } from '@/components/hireOrders/HireOrderStatusBadge';
@@ -92,7 +93,7 @@ function artistPrimaryLabel(entries: ArtistDateEntry[]): string | undefined {
 function producerOpenSlots(entries: ProducerDateEntry[]): number {
   return entries
     .filter(e => e.status !== 'cancelled')
-    .reduce((sum, e) => sum + Math.max(0, e.mainSlots - e.confirmedMain), 0);
+    .reduce((sum, e) => sum + unconfirmedSlots(e), 0);
 }
 
 interface RailHeader {

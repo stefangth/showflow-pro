@@ -13,6 +13,7 @@
 import { differenceInCalendarDays } from 'date-fns';
 import type { BookingWithArtistRow } from '@/data/bookings';
 import { berlinDateKey, parseDateOnly, toDateKey } from '@/lib/dates';
+import { openToOfferSlots } from './slots';
 import type { ProducerDateEntry } from './types';
 
 export type NeedsYouGroupKey = 'expires-today' | 'at-risk' | 'ready-to-issue' | 'cancelled';
@@ -114,7 +115,7 @@ function classify(args: {
     !isCancelled &&
     toDateKey(entry.date) >= todayKey &&
     entry.mainSlots > 0 &&
-    entry.confirmedMain + entry.acceptedMain + entry.pendingMain < entry.mainSlots
+    openToOfferSlots(entry) > 0
   ) {
     return 'at-risk';
   }
@@ -156,10 +157,7 @@ export function buildNeedsYouQueue(args: {
     const peopleOut = rows
       .map(toPerson)
       .filter((p): p is NeedsYouPerson => p !== null);
-    const openMainSlots = Math.max(
-      0,
-      entry.mainSlots - (entry.confirmedMain + entry.acceptedMain + entry.pendingMain),
-    );
+    const openMainSlots = openToOfferSlots(entry);
     const leadDays = differenceInCalendarDays(entry.date, todayLocal);
 
     buckets[group].push({
