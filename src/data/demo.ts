@@ -84,3 +84,46 @@ export async function fetchCapturedSends(
   if (error) throw error;
   return (data ?? []) as unknown as CapturedSend[];
 }
+
+export interface DemoStateRow {
+  org_id: string;
+  volume: "small" | "full";
+  prospect_label: string | null;
+  sim_now: string | null;
+  current_scene_id: string | null;
+  script_id: string | null;
+  updated_at: string;
+}
+
+/** Read a demo org's simulation state (volume, prospect label, sim clock, current scene/script). */
+export async function fetchDemoState(
+  client: SupabaseClient<Database>,
+  orgId: string,
+): Promise<DemoStateRow | null> {
+  const { data, error } = await client
+    .from("demo_state")
+    .select("*")
+    .eq("org_id", orgId)
+    .maybeSingle();
+  if (error) throw error;
+  return data as unknown as DemoStateRow | null;
+}
+
+/** Upsert a demo org's simulation state (org-admin action, drives the demo rail). */
+export async function updateDemoState(
+  client: SupabaseClient<Database>,
+  args: {
+    orgId: string;
+    patch: Partial<Pick<DemoStateRow, "volume" | "prospect_label" | "sim_now" | "current_scene_id" | "script_id">>;
+  },
+): Promise<void> {
+  const { error } = await client
+    .from("demo_state")
+    .upsert({ org_id: args.orgId, ...args.patch }, { onConflict: "org_id" });
+  if (error) throw error;
+}
+
+/** Fire a scripted demo cue (advances the current scene, may mutate domain data). */
+export function runCue(client: SupabaseClient<Database>, args: { orgId: string; cueId: string }) {
+  return invokeDemoOps(client, { action: "cue", org_id: args.orgId, cue_id: args.cueId });
+}
