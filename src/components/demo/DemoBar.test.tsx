@@ -3,6 +3,8 @@ import { fireEvent } from '@testing-library/react';
 import { render, screen } from '@/test/renderWithProviders';
 import { DemoBadge } from '@/components/demo/DemoBadge';
 import { DemoBar } from '@/components/demo/DemoBar';
+import { DemoOutbox } from '@/components/demo/DemoOutbox';
+import type { CapturedSend } from '@/data/demo';
 
 // renderWithProviders supplies a DemoProvider whose currentOrg.is_demo is controllable
 // via the `authOverrides` option (a test-only AuthContext.Provider mounted underneath it).
@@ -29,12 +31,16 @@ describe('DemoBadge', () => {
 // binds the REAL supabase singleton — a real click would attempt a network call. Mock the
 // mutation hook itself (not the whole DemoContext, which is exercised for real everywhere
 // else in this file) so `reset()` is observable as a plain spy without a network dependency.
+// useCapturedSends binds the same real singleton for DemoOutbox, so it is mocked the same
+// way — seeded rows come from `capturedSends`, mutated per-test.
 const resetMutate = vi.fn();
+let capturedSends: CapturedSend[] = [];
 vi.mock('@/hooks/useDemo', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/hooks/useDemo')>();
   return {
     ...actual,
     useResetDemo: () => ({ mutate: resetMutate, isPending: false }),
+    useCapturedSends: () => ({ data: capturedSends, isLoading: false }),
   };
 });
 
@@ -73,5 +79,40 @@ describe('DemoBar', () => {
 
     expect(resetMutate).toHaveBeenCalledTimes(1);
     expect(resetMutate).toHaveBeenCalledWith({ orgId: 'o', volume: 'full' });
+  });
+});
+
+describe('DemoOutbox', () => {
+  it('lists captured sends after opening the dialog', async () => {
+    capturedSends = [
+      {
+        id: 'c1',
+        org_id: 'o1',
+        kind: 'email',
+        to_label: 'a@demo.invalid',
+        subject: 'Offer sent',
+        preview_html: null,
+        storage_path: null,
+        created_at: '2026-08-16T00:00:00.000Z',
+      },
+    ];
+    render(<DemoOutbox />, {
+      authOverrides: { currentOrg: { id: 'o1', name: 'n', slug: 's', status: 'active', is_demo: true } },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /outbox/i }));
+
+    expect(await screen.findByText('Offer sent')).toBeInTheDocument();
+  });
+
+  it('shows the empty state with no captured sends', () => {
+    capturedSends = [];
+    render(<DemoOutbox />, {
+      authOverrides: { currentOrg: { id: 'o1', name: 'n', slug: 's', status: 'active', is_demo: true } },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /outbox/i }));
+
+    expect(screen.getByText(/nothing sent yet/i)).toBeInTheDocument();
   });
 });
