@@ -82,7 +82,11 @@ interface AgendaLensProps {
  * fully_filled/partially_filled/open dates only — a single contextual
  * action button (`ACTION_BY_STATUS`). Clicking the row opens that row's date;
  * clicking the action button fires `onAction` instead (its click does not
- * bubble into the row's `onOpenEntry`).
+ * bubble into the row's `onOpenEntry`). Rows reflow to a single-column stack
+ * below the `md:` breakpoint (768px, matching `useIsMobile`) via responsive
+ * classes — the caller decides what a row tap means (mobile routes it
+ * through the day sheet instead of navigating straight to the date; see
+ * `CalendarSurface`'s mobile branch), this component just renders.
  */
 export function AgendaLens({ entries, onOpenEntry, onAction, actionGates, className }: AgendaLensProps) {
   const weeks = groupByWeek(entries);
@@ -117,9 +121,13 @@ export function AgendaLens({ entries, onOpenEntry, onAction, actionGates, classN
                   role="button"
                   tabIndex={0}
                   onClick={() => onOpenEntry(entry)}
-                  className="flex cursor-pointer items-center gap-3.5 border-b border-border px-3.5 py-2.5 last:border-b-0 hover:bg-muted/50"
+                  // Mobile-first: rows stack single-column (spec §4.5); `md:`
+                  // restores the desktop single-line row exactly at >=768px
+                  // (matching `useIsMobile`'s breakpoint) — every `md:`-only
+                  // utility below reproduces a value this row already had.
+                  className="flex cursor-pointer flex-col items-start gap-2 border-b border-border px-3.5 py-3 last:border-b-0 hover:bg-muted/50 md:flex-row md:items-center md:gap-3.5 md:py-2.5"
                 >
-                  <div className="w-[62px] shrink-0">
+                  <div className="shrink-0 md:w-[62px]">
                     <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                       {format(entry.date, 'EEE')}
                     </p>
@@ -127,16 +135,16 @@ export function AgendaLens({ entries, onOpenEntry, onAction, actionGates, classN
                       {format(entry.date, 'd')}
                     </p>
                   </div>
-                  <span className="w-[46px] shrink-0 font-mono text-xs tabular-nums text-muted-foreground">
+                  <span className="shrink-0 font-mono text-xs tabular-nums text-muted-foreground md:w-[46px]">
                     {entry.session1 ?? ''}
                   </span>
-                  <div className="min-w-0 flex-1">
+                  <div className="w-full min-w-0 md:flex-1">
                     <p className="truncate text-[13.5px] font-semibold text-foreground">{entry.program}</p>
                     <p className="truncate text-xs text-muted-foreground">
                       {[entry.venue, entry.city].filter(Boolean).join(' · ')}
                     </p>
                   </div>
-                  <div className="flex w-[150px] shrink-0 items-center gap-2">
+                  <div className="flex w-full items-center gap-2 md:w-[150px] md:shrink-0">
                     {meter.length > 0 && <FillMeter segments={meter} tone={toneSpec.tone} />}
                     <span className={cn('font-mono text-[11px] font-medium', TONE_TEXT[toneSpec.tone])}>
                       {entry.confirmedMain}/{entry.mainSlots} main
@@ -150,7 +158,7 @@ export function AgendaLens({ entries, onOpenEntry, onAction, actionGates, classN
                   >
                     {toneSpec.label}
                   </span>
-                  <div className="flex w-[132px] shrink-0 justify-end">
+                  <div className="flex w-full justify-start md:w-[132px] md:shrink-0 md:justify-end">
                     {actionDef ? (
                       <Button
                         type="button"

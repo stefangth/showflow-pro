@@ -1,4 +1,5 @@
-import type { KeyboardEvent } from 'react';
+import { useEffect, useRef } from 'react';
+import type { KeyboardEvent, MouseEvent as ReactMouseEvent } from 'react';
 import type { MonthGridCell, Tone } from '@/lib/calendar/types';
 import { TONE_TEXT } from '@/lib/calendar/tone';
 import { toDateKey } from '@/lib/dates';
@@ -21,7 +22,19 @@ interface MonthGridProps {
   cells: MonthGridCell[];
   onSelectDay: (day: Date) => void;
   onOpenDay: (day: Date) => void;
+  /** Fired on Space when provided; falls back to `onSelectDay` otherwise. */
+  onPeekDay?: (day: Date) => void;
+  onRangeStart?: (key: string) => void;
   onRangeExtend?: (key: string) => void;
+  onRangeCommit?: () => void;
+  /** True while a selection exists (enables drag visuals, e.g. suppressing
+   *  text selection while the pointer is dragging across cells). */
+  rangeActive?: boolean;
+  /** Mobile "status-bar per day" variant: compact cell min-height, tighter
+   *  padding, and a single visible chip per cell (any second chip is folded
+   *  into the `moreCount` overflow badge instead of being dropped). Desktop
+   *  behavior (the default) is unchanged when this is false/absent. */
+  dense?: boolean;
   className?: string;
 }
 
@@ -30,11 +43,47 @@ interface MonthGridProps {
  * (Monday-first, always 42) from `monthMatrix`/the caller's cell builder —
  * this component only renders them and reports interaction back up.
  */
-export function MonthGrid({ cells, onSelectDay, onOpenDay, onRangeExtend, className }: MonthGridProps) {
-  const handleSelect = (cell: MonthGridCell) => {
+export function MonthGrid({
+  cells,
+  onSelectDay,
+  onOpenDay,
+  onPeekDay,
+  onRangeStart,
+  onRangeExtend,
+  onRangeCommit,
+  rangeActive,
+  dense,
+  className,
+}: MonthGridProps) {
+  // Anchor cell captured on mousedown, held provisionally until movement
+  // confirms this is a real drag (not a plain click). `dragging` only
+  // flips true once a *different* cell reports mouseenter — that is what
+  // lets a mousedown+mouseup on the same cell with no mouseenter elsewhere
+  // fall through to a plain click (onSelectDay) instead of firing a
+  // 1-cell range (onRangeStart + onRangeCommit with no onRangeExtend).
+  const pendingAnchorRef = useRef<string | null>(null);
+  const draggingRef = useRef(false);
+
+  useEffect(() => {
+    const handleWindowMouseUp = () => {
+      if (draggingRef.current) {
+        onRangeCommit?.();
+      }
+      pendingAnchorRef.current = null;
+      draggingRef.current = false;
+    };
+    window.addEventListener('mouseup', handleWindowMouseUp);
+    return () => window.removeEventListener('mouseup', handleWindowMouseUp);
+  }, [onRangeCommit]);
+
+  const handleSelect = (cell: MonthGridCell, event: ReactMouseEvent<HTMLDivElement>) => {
     if (!cell.day) return;
+    // A shift-click's mousedown already extended the range (see
+    // `handleMouseDown`) — its accompanying click must not also relocate
+    // `selectedDay`, or a shift-click would both extend the range AND move
+    // the single-day selection.
+    if (event.shiftKey) return;
     onSelectDay(cell.day);
-    onRangeExtend?.(toDateKey(cell.day));
   };
 
   const handleOpen = (cell: MonthGridCell) => {
@@ -42,15 +91,37 @@ export function MonthGrid({ cells, onSelectDay, onOpenDay, onRangeExtend, classN
     onOpenDay(cell.day);
   };
 
+  const handleMouseDown = (cell: MonthGridCell, event: ReactMouseEvent<HTMLDivElement>) => {
+    if (!cell.day) return;
+    const key = toDateKey(cell.day);
+    if (event.shiftKey) {
+      // Extend the caller's existing anchor to this cell — no new drag.
+      onRangeExtend?.(key);
+      return;
+    }
+    pendingAnchorRef.current = key;
+    draggingRef.current = false;
+  };
+
+  const handleMouseEnter = (cell: MonthGridCell) => {
+    if (!cell.day || pendingAnchorRef.current === null) return;
+    const key = toDateKey(cell.day);
+    if (!draggingRef.current) {
+      // First movement since mousedown — this is now a genuine drag.
+      onRangeStart?.(pendingAnchorRef.current);
+      draggingRef.current = true;
+    }
+    onRangeExtend?.(key);
+  };
+
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>, cell: MonthGridCell) => {
     if (!cell.day) return;
     if (event.key === 'Enter') {
       event.preventDefault();
       handleOpen(cell);
-    } else if (event.key === ' ') {
-      // Space = select for now; peek is deferred to Phase 4.
+    } else if (event.key === ' ' || event.key === 'Spacebar') {
       event.preventDefault();
-      handleSelect(cell);
+      (onPeekDay ?? onSelectDay)(cell.day);
     }
   };
 
@@ -71,11 +142,24 @@ export function MonthGrid({ cells, onSelectDay, onOpenDay, onRangeExtend, classN
       <div className="grid grid-cols-7 gap-px bg-border">
         {cells.map((cell, i) => {
           if (!cell.day) {
-            return <div key={i} className="min-h-[104px] bg-muted/30" data-testid="month-grid-cell-empty" />;
+            return (
+              <div
+                key={i}
+                className={cn('bg-muted/30', dense ? 'min-h-[62px]' : 'min-h-[104px]')}
+                data-testid="month-grid-cell-empty"
+              />
+            );
           }
 
           const key = toDateKey(cell.day);
-          const visibleChips = cell.chips.slice(0, 2);
+          // `cell.chips` arrives UNCAPPED from the producers (producerData.ts /
+          // artistData.ts map every day entry to a chip); the overflow badge is
+          // derived here from the visible cap, not added to `cell.moreCount` —
+          // that field is itself `Math.max(0, dayEntries.length - 2)` off the
+          // same uncapped array, so summing the two would double-count.
+          const chipCap = dense ? 1 : 2;
+          const visibleChips = cell.chips.slice(0, chipCap);
+          const moreCount = Math.max(0, cell.chips.length - chipCap);
 
           return (
             <div
@@ -86,15 +170,19 @@ export function MonthGrid({ cells, onSelectDay, onOpenDay, onRangeExtend, classN
               data-in-range={cell.inRange}
               role="button"
               tabIndex={0}
-              onClick={() => handleSelect(cell)}
+              onClick={e => handleSelect(cell, e)}
               onDoubleClick={() => handleOpen(cell)}
+              onMouseDown={e => handleMouseDown(cell, e)}
+              onMouseEnter={() => handleMouseEnter(cell)}
               onKeyDown={e => handleKeyDown(e, cell)}
               className={cn(
-                'relative flex min-h-[104px] flex-col gap-1 bg-background p-1.5 text-left outline-none transition-colors',
+                'relative flex flex-col gap-1 bg-background text-left outline-none transition-colors',
+                dense ? 'min-h-[62px] p-1' : 'min-h-[104px] p-1.5',
                 'hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset',
                 cell.isPast && 'opacity-60',
                 cell.inRange && 'bg-accent-50',
-                cell.isSelected && 'ring-2 ring-inset ring-primary'
+                cell.isSelected && 'ring-2 ring-inset ring-primary',
+                rangeActive && 'select-none'
               )}
             >
               {cell.isToday && (
@@ -140,8 +228,8 @@ export function MonthGrid({ cells, onSelectDay, onOpenDay, onRangeExtend, classN
                     )}
                   </div>
                 ))}
-                {cell.moreCount > 0 && (
-                  <span className="text-[11px] text-muted-foreground">+{cell.moreCount} more</span>
+                {moreCount > 0 && (
+                  <span className="text-[11px] text-muted-foreground">+{moreCount} more</span>
                 )}
               </div>
             </div>

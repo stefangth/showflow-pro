@@ -24,6 +24,10 @@ export interface ProducerShowDateRow {
   city_id: string | null;
   show_id: string;
   custom: Record<string, unknown> | null;
+  /** Optional (not `| undefined` via `?`) so the Wave-A1 inline `rows` fixtures
+   *  in `producerData.test.ts` keep compiling unchanged — same rationale as
+   *  `ProducerDateEntry.castNotifiedAt` in `types.ts`. */
+  cast_notified_at?: string | null;
   show: {
     program: string | null;
     sub_program: string | null;
@@ -80,6 +84,8 @@ export function toProducerEntries(
       custom: sd.custom,
       hireOrderId: order?.id ?? null,
       hireOrderStatus: order?.status ?? null,
+      castNotifiedAt: sd.cast_notified_at ?? null,
+      showId: sd.show_id,
     };
   });
 }

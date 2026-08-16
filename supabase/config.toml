@@ -138,6 +138,9 @@ verify_jwt = false
 [functions.tier-at-risk-watcher]
 verify_jwt = false
 
+[functions.notify-cast]
+verify_jwt = true
+
 # send-login-link: called from the unauthenticated login screen to request a branded
 # magic-link email, so the gateway must not require a JWT. It hides account existence
 # (always 200) and self-throttles via the claim_login_link_slot RPC.

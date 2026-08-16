@@ -1,7 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import { CalendarSurface, type CalendarSurfaceActions } from './CalendarSurface';
 import type { ArtistDateEntry, ProducerDateEntry } from '@/lib/calendar/types';
+import type { NeedsYouItem, NeedsYouQueue } from '@/lib/calendar/needsYou';
 
 const TODAY = new Date(2026, 7, 15); // 15 Aug 2026 (Sat)
 
@@ -52,9 +53,35 @@ function noopActions(): CalendarSurfaceActions {
     generateHireOrder: vi.fn(),
     openDate: vi.fn(),
     openCasting: vi.fn(),
+    extendHold: vi.fn(),
+    releaseHold: vi.fn(),
+    notifyCast: vi.fn(),
+    cancelDate: vi.fn(),
+    undoCancel: vi.fn(),
+    previewHireOrder: vi.fn(),
+    offerArtist: vi.fn(),
+    confirmAll: vi.fn(),
+    generateAll: vi.fn(),
     accept: vi.fn(),
     decline: vi.fn(),
     block: vi.fn(),
+  };
+}
+
+function needsYouQueueWithAtRisk(entry: ProducerDateEntry): NeedsYouQueue {
+  const item: NeedsYouItem = {
+    dateId: entry.id,
+    entry,
+    group: 'at-risk',
+    people: [],
+    earliestExpiry: null,
+    openMainSlots: Math.max(0, entry.mainSlots - entry.confirmedMain),
+    leadDays: 3,
+  };
+  return {
+    groups: [{ key: 'at-risk', items: [item] }],
+    totalItems: 1,
+    countByGroup: { 'expires-today': 0, 'at-risk': 1, 'ready-to-issue': 0, cancelled: 0 },
   };
 }
 
@@ -114,7 +141,7 @@ describe('CalendarSurface — producer', () => {
     expect(screen.queryByTestId('day-rail')).not.toBeInTheDocument();
   });
 
-  it('an unrecognised lens key falls back to the Month default', () => {
+  it('an unrecognised lens key falls back to the producer default (Needs you)', () => {
     render(
       <CalendarSurface
         role="producer"
@@ -125,8 +152,8 @@ describe('CalendarSurface — producer', () => {
         today={TODAY}
       />
     );
-    expect(screen.getByTestId('lens-tab-month')).toHaveAttribute('data-active', 'true');
-    expect(screen.getByTestId('day-rail')).toBeInTheDocument();
+    expect(screen.getByTestId('lens-tab-needs-you')).toHaveAttribute('data-active', 'true');
+    expect(screen.getByTestId('needs-you-lens')).toBeInTheDocument();
   });
 
   it('agenda "Generate hire order" fires actions.generateHireOrder with the entry id', () => {
@@ -329,6 +356,237 @@ describe('CalendarSurface — producer', () => {
   });
 });
 
+describe('CalendarSurface — needs-you (producer default)', () => {
+  it('mounts with lens="needs-you": Needs you is the first/active tab, NeedsYouLens renders the item, QueueRail renders alongside, and there is no PeriodNavigator', () => {
+    const entry = producerEntry({ id: 'pd-risk', mainSlots: 6, confirmedMain: 2 });
+    const queue = needsYouQueueWithAtRisk(entry);
+    render(
+      <CalendarSurface
+        role="producer"
+        producerEntries={[entry]}
+        actions={noopActions()}
+        lens="needs-you"
+        onLensChange={vi.fn()}
+        today={TODAY}
+        needsYouQueue={queue}
+      />
+    );
+
+    const tabs = screen.getAllByRole('tab');
+    expect(tabs[0]).toHaveAttribute('data-testid', 'lens-tab-needs-you');
+    expect(screen.getByTestId('lens-tab-needs-you')).toHaveAttribute('data-active', 'true');
+
+    expect(screen.getByTestId('needs-you-lens')).toBeInTheDocument();
+    expect(screen.getByTestId('needs-you-item-pd-risk')).toBeInTheDocument();
+    expect(screen.getByTestId('queue-rail')).toBeInTheDocument();
+
+    expect(screen.queryByTestId('period-navigator-pill')).not.toBeInTheDocument();
+  });
+
+  it('renders gracefully with no needsYouQueue prop (empty groups, no crash)', () => {
+    render(
+      <CalendarSurface
+        role="producer"
+        producerEntries={[producerEntry()]}
+        actions={noopActions()}
+        lens="needs-you"
+        onLensChange={vi.fn()}
+        today={TODAY}
+      />
+    );
+    expect(screen.getByTestId('needs-you-lens')).toBeInTheDocument();
+    expect(screen.getByTestId('queue-rail')).toBeInTheDocument();
+  });
+
+  it('switching to Month from needs-you still works', () => {
+    const onLensChange = vi.fn();
+    const entry = producerEntry({ id: 'pd-risk', mainSlots: 6, confirmedMain: 2 });
+    const queue = needsYouQueueWithAtRisk(entry);
+    const { rerender } = render(
+      <CalendarSurface
+        role="producer"
+        producerEntries={[entry]}
+        actions={noopActions()}
+        lens="needs-you"
+        onLensChange={onLensChange}
+        today={TODAY}
+        needsYouQueue={queue}
+      />
+    );
+    fireEvent.click(screen.getByTestId('lens-tab-month'));
+    expect(onLensChange).toHaveBeenCalledWith('month');
+
+    // Simulate the caller applying the lens change.
+    rerender(
+      <CalendarSurface
+        role="producer"
+        producerEntries={[entry]}
+        actions={noopActions()}
+        lens="month"
+        onLensChange={onLensChange}
+        today={TODAY}
+        needsYouQueue={queue}
+      />
+    );
+    expect(screen.getByTestId('month-grid-cell-2026-08-10')).toBeInTheDocument();
+    expect(screen.getByTestId('day-rail')).toBeInTheDocument();
+  });
+
+  it('the "Needs you" tab count reflects needsYouQueue.totalItems', () => {
+    const entry = producerEntry({ id: 'pd-risk', mainSlots: 6, confirmedMain: 2 });
+    const queue = needsYouQueueWithAtRisk(entry);
+    render(
+      <CalendarSurface
+        role="producer"
+        producerEntries={[entry]}
+        actions={noopActions()}
+        lens="needs-you"
+        onLensChange={vi.fn()}
+        today={TODAY}
+        needsYouQueue={queue}
+      />
+    );
+    expect(screen.getByTestId('lens-tab-needs-you')).toHaveTextContent('1');
+  });
+
+  it('maps NeedsYouAction "open-casting" (at-risk primary) to actions.openCasting with the date id', () => {
+    const actions = noopActions();
+    const entry = producerEntry({ id: 'pd-risk', mainSlots: 6, confirmedMain: 2 });
+    const queue = needsYouQueueWithAtRisk(entry);
+    render(
+      <CalendarSurface
+        role="producer"
+        producerEntries={[entry]}
+        actions={actions}
+        lens="needs-you"
+        onLensChange={vi.fn()}
+        today={TODAY}
+        needsYouQueue={queue}
+      />
+    );
+    fireEvent.click(screen.getByTestId('needs-you-primary-pd-risk'));
+    expect(actions.openCasting).toHaveBeenCalledWith('pd-risk');
+  });
+
+  it('maps NeedsYouAction "cancel-date" (at-risk secondary) to actions.cancelDate with the date id', () => {
+    const actions = noopActions();
+    const entry = producerEntry({ id: 'pd-risk', mainSlots: 6, confirmedMain: 2 });
+    const queue = needsYouQueueWithAtRisk(entry);
+    render(
+      <CalendarSurface
+        role="producer"
+        producerEntries={[entry]}
+        actions={actions}
+        lens="needs-you"
+        onLensChange={vi.fn()}
+        today={TODAY}
+        needsYouQueue={queue}
+      />
+    );
+    fireEvent.click(screen.getByTestId('needs-you-secondary-pd-risk-cancel-date'));
+    expect(actions.cancelDate).toHaveBeenCalledWith('pd-risk');
+  });
+
+  it('clicking a needs-you card fires actions.openDate with the date id', () => {
+    const actions = noopActions();
+    const entry = producerEntry({ id: 'pd-risk', mainSlots: 6, confirmedMain: 2 });
+    const queue = needsYouQueueWithAtRisk(entry);
+    render(
+      <CalendarSurface
+        role="producer"
+        producerEntries={[entry]}
+        actions={actions}
+        lens="needs-you"
+        onLensChange={vi.fn()}
+        today={TODAY}
+        needsYouQueue={queue}
+      />
+    );
+    fireEvent.click(screen.getByTestId('needs-you-item-pd-risk'));
+    expect(actions.openDate).toHaveBeenCalledWith('pd-risk');
+  });
+
+  it('onBulk("expires-today", "confirm") fires actions.confirmAll with that group\'s date ids', () => {
+    const actions = noopActions();
+    const entry = producerEntry({
+      id: 'pd-expiring',
+      mainSlots: 6,
+      confirmedMain: 2,
+      acceptedMain: 0,
+      pendingMain: 1,
+    });
+    const item: NeedsYouItem = {
+      dateId: entry.id,
+      entry,
+      group: 'expires-today',
+      people: [],
+      earliestExpiry: new Date(2026, 7, 15, 18, 0),
+      openMainSlots: 4,
+      leadDays: 0,
+    };
+    const queue: NeedsYouQueue = {
+      groups: [{ key: 'expires-today', items: [item] }],
+      totalItems: 1,
+      countByGroup: { 'expires-today': 1, 'at-risk': 0, 'ready-to-issue': 0, cancelled: 0 },
+    };
+    render(
+      <CalendarSurface
+        role="producer"
+        producerEntries={[entry]}
+        actions={actions}
+        lens="needs-you"
+        onLensChange={vi.fn()}
+        today={TODAY}
+        needsYouQueue={queue}
+      />
+    );
+    fireEvent.click(screen.getByTestId('needs-you-bulk-expires-today'));
+    expect(actions.confirmAll).toHaveBeenCalledWith(['pd-expiring']);
+  });
+
+  it('QueueRail "Offer" fires actions.offerArtist with the shortlist date and artist ids', () => {
+    const actions = noopActions();
+    const entry = producerEntry({ id: 'pd-risk', mainSlots: 6, confirmedMain: 2 });
+    const queue = needsYouQueueWithAtRisk(entry);
+    render(
+      <CalendarSurface
+        role="producer"
+        producerEntries={[entry]}
+        actions={actions}
+        lens="needs-you"
+        onLensChange={vi.fn()}
+        today={TODAY}
+        needsYouQueue={queue}
+        queueShortlist={{ dateId: 'pd-risk', dateLabel: 'Sat 15 Aug', artists: [{ artistId: 'art-1', name: 'Jo Doe' }] }}
+      />
+    );
+    fireEvent.click(screen.getByTestId('queue-offer-art-1'));
+    expect(actions.offerArtist).toHaveBeenCalledWith('pd-risk', 'art-1');
+  });
+
+  it('onUndoLastReceipt fires when "Undo last" is clicked with a non-empty clearedToday', () => {
+    const onUndoLastReceipt = vi.fn();
+    const entry = producerEntry({ id: 'pd-risk', mainSlots: 6, confirmedMain: 2 });
+    const queue = needsYouQueueWithAtRisk(entry);
+    render(
+      <CalendarSurface
+        role="producer"
+        producerEntries={[entry]}
+        actions={noopActions()}
+        lens="needs-you"
+        onLensChange={vi.fn()}
+        today={TODAY}
+        needsYouQueue={queue}
+        clearedToday={[{ dateId: 'pd-cleared', title: 'Cirque Noir', label: 'Confirmed' }]}
+        onUndoLastReceipt={onUndoLastReceipt}
+      />
+    );
+    expect(screen.getByTestId('needs-you-receipt-0')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('needs-you-undo-last'));
+    expect(onUndoLastReceipt).toHaveBeenCalled();
+  });
+});
+
 describe('CalendarSurface — artist', () => {
   it('defaults to the Offers lens and renders [Offers, Month, All dates] tabs', () => {
     render(
@@ -504,6 +762,408 @@ describe('CalendarSurface — period navigator visibility', () => {
   });
 });
 
+describe('CalendarSurface — Week + Season lenses', () => {
+  it('producer lens order is Needs you, Month, Week, Season, Agenda', () => {
+    render(
+      <CalendarSurface
+        role="producer"
+        producerEntries={[producerEntry()]}
+        actions={noopActions()}
+        lens="month"
+        onLensChange={vi.fn()}
+        today={TODAY}
+      />
+    );
+    const tabs = screen.getAllByRole('tab');
+    const keys = tabs.map((t) => t.getAttribute('data-testid'));
+    expect(keys).toEqual([
+      'lens-tab-needs-you',
+      'lens-tab-month',
+      'lens-tab-week',
+      'lens-tab-season',
+      'lens-tab-agenda',
+    ]);
+  });
+
+  it('lens="week": WeekLens time grid renders, and the PeriodNavigator shows the week label and advances by a week on Next', () => {
+    const entry = producerEntry({ date: TODAY, session1: '19:00' });
+    render(
+      <CalendarSurface
+        role="producer"
+        producerEntries={[entry]}
+        actions={noopActions()}
+        lens="week"
+        onLensChange={vi.fn()}
+        today={TODAY}
+      />
+    );
+
+    expect(screen.getByTestId('lens-tab-week')).toHaveAttribute('data-active', 'true');
+    expect(screen.getByTestId('week-lens')).toBeInTheDocument();
+    expect(screen.getByTestId('week-column-2026-08-15')).toBeInTheDocument();
+    expect(screen.queryByTestId('day-rail')).not.toBeInTheDocument();
+
+    expect(screen.getByTestId('period-navigator-pill')).toHaveTextContent('10 Aug - 16 Aug 2026');
+
+    fireEvent.click(screen.getByTestId('period-navigator-next'));
+    expect(screen.getByTestId('period-navigator-pill')).toHaveTextContent('17 Aug - 23 Aug 2026');
+  });
+
+  it('lens="season": SeasonLens renders and the PeriodNavigator shows the season label', () => {
+    const entry = producerEntry({ date: TODAY });
+    render(
+      <CalendarSurface
+        role="producer"
+        producerEntries={[entry]}
+        actions={noopActions()}
+        lens="season"
+        onLensChange={vi.fn()}
+        today={TODAY}
+      />
+    );
+
+    expect(screen.getByTestId('lens-tab-season')).toHaveAttribute('data-active', 'true');
+    expect(screen.getByTestId('season-lens')).toBeInTheDocument();
+    expect(screen.queryByTestId('day-rail')).not.toBeInTheDocument();
+    expect(screen.getByTestId('period-navigator-pill')).toHaveTextContent('Aug - Oct 2026');
+  });
+
+  it('week/season lens clicks fire actions.openDate with the entry id', () => {
+    const actions = noopActions();
+    const entry = producerEntry({ id: 'pd-week', date: TODAY, session1: '19:00' });
+    render(
+      <CalendarSurface
+        role="producer"
+        producerEntries={[entry]}
+        actions={actions}
+        lens="week"
+        onLensChange={vi.fn()}
+        today={TODAY}
+      />
+    );
+    fireEvent.click(screen.getByTestId('week-block-pd-week-1'));
+    expect(actions.openDate).toHaveBeenCalledWith('pd-week');
+  });
+});
+
+describe('CalendarSurface — range selection + SelectionBar (producer, month lens)', () => {
+  it('a drag across the month grid selects the range, the bar counts only keys that map to real entries, Confirm dispatches onBulkConfirm with those ids, and Clear hides the bar', () => {
+    const onBulkConfirm = vi.fn();
+    const onBulkGenerate = vi.fn();
+    // Range Aug 10-13 (4 days): entries at 10, 11, 13 — 12 has no entry and
+    // must be excluded from the count and from the dispatched ids.
+    const entries = [
+      producerEntry({ id: 'pd-10', date: new Date(2026, 7, 10) }),
+      producerEntry({ id: 'pd-11', date: new Date(2026, 7, 11) }),
+      producerEntry({ id: 'pd-13', date: new Date(2026, 7, 13) }),
+    ];
+    render(
+      <CalendarSurface
+        role="producer"
+        producerEntries={entries}
+        actions={noopActions()}
+        lens="month"
+        onLensChange={vi.fn()}
+        today={TODAY}
+        onBulkConfirm={onBulkConfirm}
+        onBulkGenerate={onBulkGenerate}
+      />
+    );
+
+    expect(screen.queryByTestId('selection-bar')).not.toBeInTheDocument();
+
+    const cellStart = screen.getByTestId('month-grid-cell-2026-08-10');
+    const cellEnd = screen.getByTestId('month-grid-cell-2026-08-13');
+
+    fireEvent.mouseDown(cellStart);
+    fireEvent.mouseEnter(cellEnd);
+    fireEvent.mouseUp(cellEnd);
+
+    // The whole 4-day span is highlighted in-range, including the entryless day.
+    expect(screen.getByTestId('month-grid-cell-2026-08-10')).toHaveAttribute('data-in-range', 'true');
+    expect(screen.getByTestId('month-grid-cell-2026-08-11')).toHaveAttribute('data-in-range', 'true');
+    expect(screen.getByTestId('month-grid-cell-2026-08-12')).toHaveAttribute('data-in-range', 'true');
+    expect(screen.getByTestId('month-grid-cell-2026-08-13')).toHaveAttribute('data-in-range', 'true');
+
+    const bar = screen.getByTestId('selection-bar');
+    expect(bar).toHaveTextContent('3 selected');
+
+    fireEvent.click(screen.getByTestId('selection-bar-action-confirm'));
+    expect(onBulkConfirm).toHaveBeenCalledWith(['pd-10', 'pd-11', 'pd-13']);
+    expect(onBulkGenerate).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByTestId('selection-bar-clear'));
+    expect(screen.queryByTestId('selection-bar')).not.toBeInTheDocument();
+  });
+
+  it("Generate fires onBulkGenerate with the selected date ids", () => {
+    const onBulkGenerate = vi.fn();
+    const entries = [
+      producerEntry({ id: 'pd-10', date: new Date(2026, 7, 10) }),
+      producerEntry({ id: 'pd-11', date: new Date(2026, 7, 11) }),
+    ];
+    render(
+      <CalendarSurface
+        role="producer"
+        producerEntries={entries}
+        actions={noopActions()}
+        lens="month"
+        onLensChange={vi.fn()}
+        today={TODAY}
+        onBulkGenerate={onBulkGenerate}
+      />
+    );
+
+    fireEvent.mouseDown(screen.getByTestId('month-grid-cell-2026-08-10'));
+    fireEvent.mouseEnter(screen.getByTestId('month-grid-cell-2026-08-11'));
+    fireEvent.mouseUp(screen.getByTestId('month-grid-cell-2026-08-11'));
+
+    fireEvent.click(screen.getByTestId('selection-bar-action-generate'));
+    expect(onBulkGenerate).toHaveBeenCalledWith(['pd-10', 'pd-11']);
+  });
+
+  it('bulkGates disable the Confirm/Generate buttons with a title, and the range clears when the lens changes', () => {
+    const onLensChange = vi.fn();
+    const entries = [producerEntry({ id: 'pd-10', date: new Date(2026, 7, 10) })];
+    const { rerender } = render(
+      <CalendarSurface
+        role="producer"
+        producerEntries={entries}
+        actions={noopActions()}
+        lens="month"
+        onLensChange={onLensChange}
+        today={TODAY}
+        bulkGates={{
+          confirm: { disabled: true, title: 'No permission to confirm' },
+          generate: { disabled: true, title: 'No permission to generate' },
+        }}
+      />
+    );
+
+    fireEvent.mouseDown(screen.getByTestId('month-grid-cell-2026-08-10'));
+    fireEvent.mouseEnter(screen.getByTestId('month-grid-cell-2026-08-10'));
+    // A single-cell "drag" needs a genuine move to arm — extend onto the
+    // same cell via shift-click instead, which unconditionally extends.
+    fireEvent.mouseDown(screen.getByTestId('month-grid-cell-2026-08-10'), { shiftKey: true });
+
+    const bar = screen.getByTestId('selection-bar');
+    expect(bar).toHaveTextContent('1 selected');
+    const confirmBtn = screen.getByTestId('selection-bar-action-confirm');
+    const generateBtn = screen.getByTestId('selection-bar-action-generate');
+    expect(confirmBtn).toBeDisabled();
+    expect(confirmBtn).toHaveAttribute('title', 'No permission to confirm');
+    expect(generateBtn).toBeDisabled();
+    expect(generateBtn).toHaveAttribute('title', 'No permission to generate');
+
+    // Switching lens away and back must drop the prior range selection.
+    rerender(
+      <CalendarSurface
+        role="producer"
+        producerEntries={entries}
+        actions={noopActions()}
+        lens="agenda"
+        onLensChange={onLensChange}
+        today={TODAY}
+      />
+    );
+    rerender(
+      <CalendarSurface
+        role="producer"
+        producerEntries={entries}
+        actions={noopActions()}
+        lens="month"
+        onLensChange={onLensChange}
+        today={TODAY}
+      />
+    );
+    expect(screen.queryByTestId('selection-bar')).not.toBeInTheDocument();
+  });
+
+  it('shift-click-to-range: plain click date A then shift-click date C selects the full A..C span; a fresh plain click clears the range', () => {
+    // Regression for the whole-branch review finding: shift-click without a
+    // preceding drag must seed the anchor from the last plain click
+    // (`selectedDay`), not leave `range` null (which would collapse the
+    // shift-click into a single-day selection).
+    const entries = [
+      producerEntry({ id: 'pd-10', date: new Date(2026, 7, 10) }),
+      producerEntry({ id: 'pd-11', date: new Date(2026, 7, 11) }),
+      producerEntry({ id: 'pd-13', date: new Date(2026, 7, 13) }),
+    ];
+    render(
+      <CalendarSurface
+        role="producer"
+        producerEntries={entries}
+        actions={noopActions()}
+        lens="month"
+        onLensChange={vi.fn()}
+        today={TODAY}
+      />
+    );
+
+    // Plain click date A (10 Aug) — no drag, so no range should appear yet.
+    fireEvent.click(screen.getByTestId('month-grid-cell-2026-08-10'));
+    expect(screen.queryByTestId('selection-bar')).not.toBeInTheDocument();
+
+    // Shift-click date C (13 Aug) — MonthGrid's shift-click path only calls
+    // onRangeExtend (no onSelectDay), so this must extend from the plain
+    // click's anchor, not start a fresh single-day range.
+    fireEvent.mouseDown(screen.getByTestId('month-grid-cell-2026-08-13'), { shiftKey: true });
+
+    expect(screen.getByTestId('month-grid-cell-2026-08-10')).toHaveAttribute('data-in-range', 'true');
+    expect(screen.getByTestId('month-grid-cell-2026-08-11')).toHaveAttribute('data-in-range', 'true');
+    expect(screen.getByTestId('month-grid-cell-2026-08-12')).toHaveAttribute('data-in-range', 'true');
+    expect(screen.getByTestId('month-grid-cell-2026-08-13')).toHaveAttribute('data-in-range', 'true');
+    const bar = screen.getByTestId('selection-bar');
+    expect(bar).toHaveTextContent('3 selected');
+
+    // A fresh plain click resets the anchor — the stale range must disappear.
+    fireEvent.click(screen.getByTestId('month-grid-cell-2026-08-11'));
+    expect(screen.queryByTestId('selection-bar')).not.toBeInTheDocument();
+  });
+
+  it('a range over a day with two producer entries dispatches both ids and the count includes both', () => {
+    // Regression: producerEntryIdByKey used to be last-write-wins per
+    // day-key, so a day with two co-shows only contributed one id to the
+    // bulk dispatch and the SelectionBar count.
+    const onBulkConfirm = vi.fn();
+    const entries = [
+      producerEntry({ id: 'pd-10a', date: new Date(2026, 7, 10) }),
+      producerEntry({ id: 'pd-10b', date: new Date(2026, 7, 10) }),
+      producerEntry({ id: 'pd-11', date: new Date(2026, 7, 11) }),
+    ];
+    render(
+      <CalendarSurface
+        role="producer"
+        producerEntries={entries}
+        actions={noopActions()}
+        lens="month"
+        onLensChange={vi.fn()}
+        today={TODAY}
+        onBulkConfirm={onBulkConfirm}
+      />
+    );
+
+    fireEvent.mouseDown(screen.getByTestId('month-grid-cell-2026-08-10'));
+    fireEvent.mouseEnter(screen.getByTestId('month-grid-cell-2026-08-11'));
+    fireEvent.mouseUp(screen.getByTestId('month-grid-cell-2026-08-11'));
+
+    const bar = screen.getByTestId('selection-bar');
+    expect(bar).toHaveTextContent('3 selected');
+
+    fireEvent.click(screen.getByTestId('selection-bar-action-confirm'));
+    expect(onBulkConfirm).toHaveBeenCalledWith(['pd-10a', 'pd-10b', 'pd-11']);
+  });
+
+  it('does not render the SelectionBar for the artist role', () => {
+    render(
+      <CalendarSurface
+        role="artist"
+        artistEntries={[artistEntry({ date: new Date(2026, 7, 10) })]}
+        actions={noopActions()}
+        lens="month"
+        onLensChange={vi.fn()}
+        today={TODAY}
+      />
+    );
+
+    fireEvent.mouseDown(screen.getByTestId('month-grid-cell-2026-08-10'));
+    fireEvent.mouseEnter(screen.getByTestId('month-grid-cell-2026-08-11'));
+    fireEvent.mouseUp(screen.getByTestId('month-grid-cell-2026-08-11'));
+
+    expect(screen.queryByTestId('selection-bar')).not.toBeInTheDocument();
+  });
+});
+
+describe('CalendarSurface — range selection + SelectionBar (producer, season lens)', () => {
+  it('a day-column drag on the Season lens selects the range, shows the SelectionBar with the count of dates in the span, and Confirm dispatches those ids', () => {
+    const onBulkConfirm = vi.fn();
+    // Span Aug 10-13 (4 days): entries at 10, 11, 13 — 12 has no entry and
+    // must be excluded from the count and from the dispatched ids, same as
+    // the Month-lens contract (selection is by shared day-key).
+    const entries = [
+      producerEntry({ id: 'pd-10', date: new Date(2026, 7, 10) }),
+      producerEntry({ id: 'pd-11', date: new Date(2026, 7, 11) }),
+      producerEntry({ id: 'pd-13', date: new Date(2026, 7, 13) }),
+    ];
+    render(
+      <CalendarSurface
+        role="producer"
+        producerEntries={entries}
+        actions={noopActions()}
+        lens="season"
+        onLensChange={vi.fn()}
+        today={TODAY}
+        onBulkConfirm={onBulkConfirm}
+      />
+    );
+
+    expect(screen.queryByTestId('selection-bar')).not.toBeInTheDocument();
+
+    const cellStart = screen.getByTestId('season-cell-pd-10-2026-08-10');
+    const cellEnd = screen.getByTestId('season-cell-pd-13-2026-08-13');
+
+    fireEvent.mouseDown(cellStart);
+    fireEvent.mouseEnter(cellEnd);
+    fireEvent.mouseUp(cellEnd);
+
+    // The whole 4-day span is highlighted in-range, including the entryless day.
+    expect(screen.getByTestId('season-day-2026-08-10')).toHaveAttribute('data-in-range', 'true');
+    expect(screen.getByTestId('season-day-2026-08-11')).toHaveAttribute('data-in-range', 'true');
+    expect(screen.getByTestId('season-day-2026-08-12')).toHaveAttribute('data-in-range', 'true');
+    expect(screen.getByTestId('season-day-2026-08-13')).toHaveAttribute('data-in-range', 'true');
+
+    const bar = screen.getByTestId('selection-bar');
+    expect(bar).toHaveTextContent('3 selected');
+
+    fireEvent.click(screen.getByTestId('selection-bar-action-confirm'));
+    expect(onBulkConfirm).toHaveBeenCalledWith(['pd-10', 'pd-11', 'pd-13']);
+
+    fireEvent.click(screen.getByTestId('selection-bar-clear'));
+    expect(screen.queryByTestId('selection-bar')).not.toBeInTheDocument();
+  });
+
+  it('the range clears when switching from Season to another lens', () => {
+    const entries = [producerEntry({ id: 'pd-10', date: new Date(2026, 7, 10) })];
+    const { rerender } = render(
+      <CalendarSurface
+        role="producer"
+        producerEntries={entries}
+        actions={noopActions()}
+        lens="season"
+        onLensChange={vi.fn()}
+        today={TODAY}
+      />
+    );
+
+    fireEvent.mouseDown(screen.getByTestId('season-cell-pd-10-2026-08-10'));
+    fireEvent.mouseEnter(screen.getByTestId('season-day-2026-08-11'));
+    fireEvent.mouseUp(screen.getByTestId('season-day-2026-08-11'));
+    expect(screen.getByTestId('selection-bar')).toBeInTheDocument();
+
+    rerender(
+      <CalendarSurface
+        role="producer"
+        producerEntries={entries}
+        actions={noopActions()}
+        lens="agenda"
+        onLensChange={vi.fn()}
+        today={TODAY}
+      />
+    );
+    rerender(
+      <CalendarSurface
+        role="producer"
+        producerEntries={entries}
+        actions={noopActions()}
+        lens="season"
+        onLensChange={vi.fn()}
+        today={TODAY}
+      />
+    );
+    expect(screen.queryByTestId('selection-bar')).not.toBeInTheDocument();
+  });
+});
+
 describe('CalendarSurface — agenda is period-windowed', () => {
   it('clicking Prev swaps the agenda body to the previous month', () => {
     const augEntry = producerEntry({ id: 'pd-aug', date: new Date(2026, 7, 10) });
@@ -526,5 +1186,95 @@ describe('CalendarSurface — agenda is period-windowed', () => {
 
     expect(screen.getByTestId('agenda-row-pd-jul')).toBeInTheDocument();
     expect(screen.queryByTestId('agenda-row-pd-aug')).not.toBeInTheDocument();
+  });
+});
+
+describe('CalendarSurface — Space-peek popover (producer, month lens)', () => {
+  it('Space on a producer date cell opens a RowPeek showing the headline/meter; Confirm and Open date dispatch with the entry id', () => {
+    const actions = noopActions();
+    const entry = producerEntry({
+      id: 'pd-peek',
+      date: new Date(2026, 7, 10),
+      mainSlots: 4,
+      confirmedMain: 2,
+      acceptedMain: 1,
+      understudySlots: 0,
+      confirmedUs: 0,
+    });
+    render(
+      <CalendarSurface
+        role="producer"
+        producerEntries={[entry]}
+        actions={actions}
+        lens="month"
+        onLensChange={vi.fn()}
+        today={TODAY}
+      />
+    );
+
+    const cell = screen.getByTestId('month-grid-cell-2026-08-10');
+    cell.focus();
+    fireEvent.keyDown(cell, { key: ' ' });
+
+    const popover = screen.getByTestId('date-peek-popover');
+    // Headline reflects computeDatePeek's math: 1 accepted waiting, 1 main slot open.
+    expect(within(popover).getByText('1 accepted waiting on you · 1 main slot open')).toBeInTheDocument();
+
+    fireEvent.click(within(popover).getByRole('button', { name: 'Confirm 1' }));
+    expect(actions.confirmHolds).toHaveBeenCalledWith('pd-peek');
+
+    fireEvent.click(within(popover).getByRole('button', { name: 'Open date' }));
+    expect(actions.openDate).toHaveBeenCalledWith('pd-peek');
+  });
+
+  it('actionGates.confirmHolds disabled hides the peek Confirm button', () => {
+    const actions = noopActions();
+    const entry = producerEntry({
+      id: 'pd-peek-2',
+      date: new Date(2026, 7, 11),
+      mainSlots: 4,
+      confirmedMain: 2,
+      acceptedMain: 1,
+    });
+    render(
+      <CalendarSurface
+        role="producer"
+        producerEntries={[entry]}
+        actions={actions}
+        lens="month"
+        onLensChange={vi.fn()}
+        today={TODAY}
+        actionGates={{ confirmHolds: { disabled: true, title: 'Gated' } }}
+      />
+    );
+
+    const cell = screen.getByTestId('month-grid-cell-2026-08-11');
+    cell.focus();
+    fireEvent.keyDown(cell, { key: ' ' });
+
+    const popover = screen.getByTestId('date-peek-popover');
+    expect(within(popover).getByRole('button', { name: 'Open date' })).toBeInTheDocument();
+    expect(within(popover).queryByRole('button', { name: /Confirm/ })).not.toBeInTheDocument();
+  });
+
+  it('does not open a peek for the artist role (Space falls through to plain selection)', () => {
+    const actions = noopActions();
+    const entry = artistEntry({ id: 'ad-peek', date: new Date(2026, 7, 10) });
+    render(
+      <CalendarSurface
+        role="artist"
+        artistEntries={[entry]}
+        actions={actions}
+        lens="month"
+        onLensChange={vi.fn()}
+        today={TODAY}
+      />
+    );
+
+    const cell = screen.getByTestId('month-grid-cell-2026-08-10');
+    cell.focus();
+    fireEvent.keyDown(cell, { key: ' ' });
+
+    expect(screen.queryByRole('button', { name: 'Open date' })).not.toBeInTheDocument();
   });
 });

@@ -348,6 +348,14 @@ export const HELP_ITEMS: readonly HelpItem[] = [
     },
   },
   {
+    id: 'P4.4', role: 'producer', stage: 4, status: 'new', surface: 'Bookings, Needs you lens', updated: '2026-08-15',
+    q: { en: 'What is Needs you, and why do I land there first now?', de: 'Was ist Needs you, und warum lande ich jetzt zuerst dort?' },
+    a: {
+      en: 'Shows and bookings now opens on Needs you: everything that actually needs you today, grouped into holds expiring today, dates at risk of running short, orders ready to issue, and cancellations the cast has not heard about yet. Switch to Month, Week, Season, or Agenda for the full calendar.',
+      de: 'Shows und Buchungen öffnet jetzt auf Needs you: alles, was heute wirklich von dir gebraucht wird, gruppiert in heute ablaufende Vormerkungen, Termine mit Besetzungsrisiko, ausstellbereite Engagementverträge, und Absagen, über die die Besetzung noch nicht informiert wurde. Wechsle zu Month, Week, Season oder Agenda für den vollständigen Kalender.',
+    },
+  },
+  {
     id: 'P4.5', role: 'producer', stage: 4, status: 'new', surface: 'Hire order, void dialog', updated: '2026-08-14',
     q: { en: 'Can I undo an issued hire order?', de: 'Kann ich einen ausgestellten Engagementvertrag rückgängig machen?' },
     a: {
@@ -361,6 +369,22 @@ export const HELP_ITEMS: readonly HelpItem[] = [
     a: {
       en: 'The order timeline now shows a Seen step, reached when the linked artist opens the order in the app. It is deliberately not email open tracking.',
       de: 'Die Vertrags-Timeline zeigt jetzt einen Gesehen-Schritt, erreicht, sobald der verknüpfte Artist den Engagementvertrag in der App öffnet. Das ist bewusst kein E-Mail-Öffnungs-Tracking.',
+    },
+  },
+  {
+    id: 'P4.7', role: 'producer', stage: 4, status: 'new', surface: 'Needs you queue, cancelled card', updated: '2026-08-15',
+    q: { en: 'A cancelled date sits in Needs you with a Notify cast button. Did cancelling not already tell the cast?', de: 'Ein abgesagter Termin steht mit einem Notify-cast-Button in Needs you. Wurde die Besetzung nicht schon beim Absagen informiert?' },
+    a: {
+      en: 'Not yet: the only automatic notice is the confirmation digest at 20:00, so a date you cancelled during the day sits here until then. Notify cast sends it immediately and clears the item.',
+      de: 'Noch nicht: Die einzige automatische Benachrichtigung ist die Bestätigungs-Tagesübersicht um 20 Uhr, also bleibt ein tagsüber abgesagter Termin bis dahin hier stehen. Notify cast verschickt sie sofort und erledigt den Eintrag.',
+    },
+  },
+  {
+    id: 'P4.8', role: 'producer', stage: 4, status: 'new', surface: 'Bookings, Month and Season lens, selection bar', updated: '2026-08-15',
+    q: { en: 'Can I confirm holds or generate hire orders for several dates at once?', de: 'Kann ich Vormerkungen für mehrere Termine gleichzeitig bestätigen oder Engagementverträge erstellen?' },
+    a: {
+      en: 'Yes, in Month or Season: drag across a span of dates, or click one date and shift-click another, to select a range. A bar appears at the bottom with Confirm holds and Generate hire orders, each applied to every selected date, and Clear to drop the selection. Both still respect your permissions and only act on dates where the action makes sense.',
+      de: 'Ja, in Month oder Season: Ziehe über mehrere Termine, oder klicke einen Termin an und dann mit Shift auf einen weiteren, um einen Zeitraum auszuwählen. Unten erscheint eine Leiste mit Confirm holds und Generate hire orders, beide werden auf jeden ausgewählten Termin angewendet, und Clear hebt die Auswahl auf. Beide respektieren weiterhin deine Berechtigungen und wirken nur auf Termine, wo die Aktion sinnvoll ist.',
     },
   },
   {

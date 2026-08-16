@@ -9,30 +9,39 @@ import { ARTIST_TONES } from './tone';
  *  workflow rules: suggested → soft_booked → confirmed). */
 const BOOKING_STATUSES: ReadonlySet<string> = new Set(['confirmed', 'soft_booked', 'suggested']);
 
+/** The per-date booking facts the artist calendar needs: the active booking's
+ *  id + status, plus its `offer_expires_at` (null until the offer clock
+ *  starts). */
+export interface ArtistBookingStatus {
+  bookingId: string;
+  status: string;
+  offerExpiresAt?: string | null;
+}
+
 function resolveMyStatus(
   dateId: string,
   dateKey: string,
-  statusByDateId: Map<string, { bookingId: string; status: string }>,
+  statusByDateId: Map<string, ArtistBookingStatus>,
   blockedKeys: Set<string>,
-): { status: ArtistStatus; bookingId: string | null } {
+): { status: ArtistStatus; bookingId: string | null; offerExpiresAt: string | null } {
   const booking = statusByDateId.get(dateId);
   if (booking && BOOKING_STATUSES.has(booking.status)) {
-    return { status: booking.status as ArtistStatus, bookingId: booking.bookingId };
+    return { status: booking.status as ArtistStatus, bookingId: booking.bookingId, offerExpiresAt: booking.offerExpiresAt ?? null };
   }
   if (blockedKeys.has(dateKey)) {
-    return { status: 'blocked', bookingId: null };
+    return { status: 'blocked', bookingId: null, offerExpiresAt: null };
   }
-  return { status: 'unanswered', bookingId: null };
+  return { status: 'unanswered', bookingId: null, offerExpiresAt: null };
 }
 
 export function toArtistEntries(
   eligible: EligibleDate[],
-  statusByDateId: Map<string, { bookingId: string; status: string }>,
+  statusByDateId: Map<string, ArtistBookingStatus>,
   blockedKeys: Set<string>,
   hireOrderByDateId: Map<string, string>,
 ): ArtistDateEntry[] {
   return eligible.map((ed) => {
-    const { status, bookingId } = resolveMyStatus(ed.id, ed.date, statusByDateId, blockedKeys);
+    const { status, bookingId, offerExpiresAt } = resolveMyStatus(ed.id, ed.date, statusByDateId, blockedKeys);
     return {
       id: ed.id,
       date: parseDateOnly(ed.date),
@@ -44,6 +53,7 @@ export function toArtistEntries(
       session1: ed.session_1,
       myStatus: status,
       hireOrderId: hireOrderByDateId.get(ed.id) ?? null,
+      offerExpiresAt,
     };
   });
 }

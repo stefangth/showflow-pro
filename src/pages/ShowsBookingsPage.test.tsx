@@ -212,6 +212,9 @@ describe("ShowsBookingsPage — producer no default timeframe bound + past-day d
 
   it("shows both the past and future date's chips in the same month by default, past one dimmed — and it stays clickable", async () => {
     renderWithProviders(<ShowsBookingsPage />);
+    // "Needs you" is the producer default lens (Task 8); switch to Month to
+    // exercise the grid's past-day dimming.
+    fireEvent.click(await screen.findByRole("tab", { name: "Month" }));
 
     const futureChip = await screen.findByText("Future Show");
     const futureCell = futureChip.closest('[data-testid^="month-grid-cell-"]')!;

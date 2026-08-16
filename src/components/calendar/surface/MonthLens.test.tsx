@@ -97,6 +97,101 @@ describe('MonthLens', () => {
     expect(screen.getByText('answer')).toBeInTheDocument();
   });
 
+  it('forwards onPeekDay to MonthGrid: Space on a focused cell fires onPeekDay, not onSelectDay', () => {
+    const onSelectDay = vi.fn();
+    const onPeekDay = vi.fn();
+    render(
+      <MonthLens
+        role="producer"
+        anchor={new Date(2026, 7, 1)}
+        selectedDay={null}
+        onSelectDay={onSelectDay}
+        onOpenDay={vi.fn()}
+        onPeekDay={onPeekDay}
+        producerEntries={[]}
+        today={new Date(2026, 7, 15)}
+      />
+    );
+    const cell = screen.getByTestId('month-grid-cell-2026-08-12');
+    cell.focus();
+    fireEvent.keyDown(cell, { key: ' ' });
+    expect(onPeekDay).toHaveBeenCalledTimes(1);
+    expect(onSelectDay).not.toHaveBeenCalled();
+    const peekedWith = onPeekDay.mock.calls[0][0] as Date;
+    expect(peekedWith.getDate()).toBe(12);
+  });
+
+  it('forwards rangeActive to MonthGrid, applying select-none to cells while a range is active', () => {
+    // Regression: MonthGrid grew a `rangeActive` prop (select-none during a
+    // drag) but MonthLens never declared/forwarded it.
+    const { rerender } = render(
+      <MonthLens
+        role="producer"
+        anchor={new Date(2026, 7, 1)}
+        selectedDay={null}
+        onSelectDay={vi.fn()}
+        onOpenDay={vi.fn()}
+        producerEntries={[]}
+        today={new Date(2026, 7, 15)}
+        rangeActive={false}
+      />
+    );
+    expect(screen.getByTestId('month-grid-cell-2026-08-12')).not.toHaveClass('select-none');
+
+    rerender(
+      <MonthLens
+        role="producer"
+        anchor={new Date(2026, 7, 1)}
+        selectedDay={null}
+        onSelectDay={vi.fn()}
+        onOpenDay={vi.fn()}
+        producerEntries={[]}
+        today={new Date(2026, 7, 15)}
+        rangeActive={true}
+      />
+    );
+    expect(screen.getByTestId('month-grid-cell-2026-08-12')).toHaveClass('select-none');
+  });
+
+  it('forwards dense to MonthGrid: compact min-height and a single visible chip per cell', () => {
+    const entries: ProducerDateEntry[] = [
+      {
+        id: 'pd-1',
+        date: new Date(2026, 7, 12),
+        program: 'Cirque Noir',
+        subProgram: null,
+        venue: 'Big Top',
+        city: 'Berlin',
+        session1: '19:00',
+        session2: null,
+        session3: null,
+        status: 'partially_filled',
+        mainSlots: 6,
+        confirmedMain: 3,
+        acceptedMain: 0,
+        pendingMain: 1,
+        understudySlots: 0,
+        confirmedUs: 0,
+        custom: null,
+        hireOrderId: null,
+        hireOrderStatus: null,
+      },
+    ];
+    render(
+      <MonthLens
+        role="producer"
+        anchor={new Date(2026, 7, 1)}
+        selectedDay={null}
+        onSelectDay={vi.fn()}
+        onOpenDay={vi.fn()}
+        producerEntries={entries}
+        today={new Date(2026, 7, 15)}
+        dense
+      />
+    );
+    expect(screen.getByTestId('month-grid-cell-2026-08-12')).toHaveClass('min-h-[62px]');
+  });
+
   it('marks the selected day cell via the selectedDay prop', () => {
     render(
       <MonthLens

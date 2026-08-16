@@ -229,6 +229,43 @@ export async function bulkConfirmSoftBooked(
   return { affected: (data ?? []).length };
 }
 
+/**
+ * Bump `offer_expires_at` on a date's pending offers (suggested/soft_booked) by
+ * `hours` — the producer "Needs you" queue's "Extend 24h" action. PostgREST can't
+ * express a column-relative `+ interval` update, so this calls the
+ * `extend_offer_expiry` SQL RPC (SECURITY INVOKER — RLS still gates which rows,
+ * if any, are affected). Returns the number of bookings whose expiry advanced.
+ */
+export async function extendOfferExpiry(
+  client: SupabaseClient<Database>,
+  args: { showDateId: string; hours: number },
+): Promise<{ affected: number }> {
+  const { data, error } = await client.rpc("extend_offer_expiry", {
+    p_show_date_id: args.showDateId,
+    p_hours: args.hours,
+  });
+  if (error) throw error;
+  return { affected: (data as number | null) ?? 0 };
+}
+
+/**
+ * Immediately notify a cancelled date's held/confirmed cast — the producer
+ * "Needs you" queue's "Notify cast" action (invokes the `notify-cast` edge
+ * function). The only other cancellation notice is the delayed 20:00 Berlin
+ * confirmation digest, which never covers a producer-cancelled individual hold
+ * outside that window. Returns the number of artists notified.
+ */
+export async function notifyCast(
+  client: SupabaseClient<Database>,
+  args: { showDateId: string },
+): Promise<{ notified: number }> {
+  const { data, error } = await client.functions.invoke("notify-cast", {
+    body: { show_date_id: args.showDateId },
+  });
+  if (error) throw error;
+  return { notified: (data as { notified?: number } | null)?.notified ?? 0 };
+}
+
 /** The ids of a date's still-soft_booked bookings — the row-peek confirm target. */
 export async function fetchSoftBookedIdsForDate(
   client: SupabaseClient<Database>,
@@ -511,6 +548,52 @@ export async function fetchBookingsLight(
     .neq("status", "cancelled");
   if (error) throw error;
   return (data ?? []) as unknown as BookingJoin[];
+}
+
+export interface BookingWithArtistRow {
+  id: string;
+  showDateId: string;
+  status: "suggested" | "soft_booked" | "confirmed" | "cancelled";
+  isUnderstudy: boolean;
+  offerExpiresAt: string | null;
+  artist: { id: string; name: string } | null;
+}
+
+/** Joined row shape of the fetchBookingsWithArtistForDates select below. */
+interface BookingWithArtistJoinRow {
+  id: string;
+  show_date_id: string;
+  status: "suggested" | "soft_booked" | "confirmed" | "cancelled";
+  is_understudy: boolean;
+  offer_expires_at: string | null;
+  artist: { id: string; name: string } | null;
+}
+
+/**
+ * A set of dates' bookings with their artist names and offer expiry, no status
+ * filter (the derivation layer buckets by status) — feeds the "Needs you" queue's
+ * per-date people chips AND its "Expires today" earliest-expiry read, so
+ * `offerExpiresAt` is selected here rather than in a second query.
+ */
+export async function fetchBookingsWithArtistForDates(
+  client: SupabaseClient<Database>,
+  args: { orgId: string; showDateIds: string[] },
+): Promise<BookingWithArtistRow[]> {
+  if (args.showDateIds.length === 0) return [];
+  const { data, error } = await client
+    .from("bookings")
+    .select("id, show_date_id, status, is_understudy, offer_expires_at, artist:artists(id, name)")
+    .eq("org_id", args.orgId)
+    .in("show_date_id", args.showDateIds);
+  if (error) throw error;
+  return ((data ?? []) as unknown as BookingWithArtistJoinRow[]).map((r) => ({
+    id: r.id,
+    showDateId: r.show_date_id,
+    status: r.status,
+    isUnderstudy: r.is_understudy,
+    offerExpiresAt: r.offer_expires_at,
+    artist: r.artist,
+  }));
 }
 
 /** Row shape of the fetchOpenedTier1DateIds select below. */

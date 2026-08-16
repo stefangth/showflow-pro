@@ -22,6 +22,16 @@
     "cancelled": "Storniert",
     "unconfigured": "Nicht konfiguriert"
   },
+  "needsYou": {
+    "toast": {
+      "extended": "{{count}} verlängert",
+      "released": "{{count}} freigegeben",
+      "notified": "{{count}} benachrichtigt",
+      "offered": "{{count}} angeboten",
+      "confirmedAll": "Bestätigt",
+      "generatedAll": "Engagementvertrag erstellt"
+    }
+  },
   "producer": {
     "toast": {
       "confirmed": "{{count}} bestätigt",

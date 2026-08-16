@@ -18,8 +18,8 @@ const STEP2 = {
 const STEP3 = {
   label: LABELS.youConfirm,
   text: {
-    en: 'Accepted offers become soft-booked depending on your setting. Confirming is yours, singly or in bulk from the date sheet.',
-    de: 'Angenommene Angebote werden je nach Einstellung vorläufig gebucht. Das Bestätigen liegt bei dir, einzeln oder gesammelt im Terminblatt.',
+    en: 'Accepted offers become soft-booked depending on your setting. Confirming is yours, singly, from the queue, or across a range of dates you select in Month or Season.',
+    de: 'Angenommene Angebote werden je nach Einstellung vorläufig gebucht. Das Bestätigen liegt bei dir, einzeln, aus der Queue, oder für einen Zeitraum, den du in Month oder Season auswählst.',
   },
 };
 const STEP4 = {

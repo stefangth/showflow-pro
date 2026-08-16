@@ -321,6 +321,26 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       console.warn('send-confirmation-digest: in-app delivery failed — NOT consuming change log (will retry)', { org: org.id, count: consumedChangeIds.length });
     }
 
+    // Cancellation notices only: stamp show_dates.cast_notified_at for every date
+    // whose 'cancelled' change was just delivered above, mirroring notify-cast's
+    // manual "Notify cast" stamp. Without this, a cancelled date left un-worked
+    // until this 20:00 digest gets its notice but never leaves the "Needs you"
+    // cancelled queue (it classifies on cast_notified_at IS NULL) — and a producer
+    // who later clicks the queue's own Notify cast double-notifies the same
+    // artists. Gated on inAppDelivered (same as the digested_at stamp above): if
+    // the notification insert failed, leave cast_notified_at null so both the
+    // change log and the queue retry next run instead of marking a cast "notified"
+    // for a notice that was never actually delivered. Does NOT touch show_dates
+    // for a plain confirmation digest (no cancellation involved).
+    const cancelledDateIds = [...new Set(coalesced.filter((c) => c.cancelled).map((c) => c.showDateId))];
+    if (cancelledDateIds.length > 0 && inAppDelivered) {
+      const { error: castNotifiedErr } = await admin
+        .from('show_dates')
+        .update({ cast_notified_at: now.toISOString() })
+        .in('id', cancelledDateIds);
+      if (castNotifiedErr) console.error('send-confirmation-digest: cast_notified_at stamp failed', { org: org.id, error: castNotifiedErr.message });
+    }
+
     // EMAIL SEND: the ONLY section confirmation_digest gates (see the flow-resolve comment
     // above). Everything up to here (in-app schedule_change notifications + change-log
     // consumption) already ran unconditionally. One email per artist (confirmations +

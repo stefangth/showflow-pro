@@ -143,6 +143,35 @@ describe('OffersLens', () => {
     expect(screen.getByTestId('offers-progress-label')).toHaveTextContent('1 of 3 answered');
   });
 
+  it('an offer card stacks single-column by default (mobile) with md: classes restoring the desktop 3-column row', () => {
+    const suggested = entry({ id: 'ad-1', myStatus: 'suggested', bookingId: 'bk-1' });
+
+    render(
+      <OffersLens
+        entries={[suggested]}
+        onAccept={vi.fn()}
+        onDecline={vi.fn()}
+        onBlock={vi.fn()}
+        answeredToday={[]}
+        notOfferedYet={[]}
+        today={TODAY}
+      />
+    );
+
+    const card = screen.getByTestId('offer-card-ad-1');
+    // Mobile-first: the card is a vertical stack (no side-by-side columns);
+    // `md:` restores the desktop 3-column row exactly at >=768px.
+    expect(card.className).toMatch(/\bflex-col\b/);
+    expect(card.className).toMatch(/\bmd:flex-row\b/);
+
+    // The actions block (Accept/Decline/Block) is full width on mobile,
+    // restoring its fixed desktop width only at md:.
+    const acceptButton = screen.getByTestId('offer-accept-ad-1');
+    const actionsBlock = acceptButton.closest('[data-testid="offer-card-ad-1"] > div:last-child');
+    expect(actionsBlock?.className).toMatch(/\bw-full\b/);
+    expect(actionsBlock?.className).toContain('md:w-[232px]');
+  });
+
   it('renders the "Answered today" rows and the "not offered yet" rows with a working Block button', () => {
     const onBlock = vi.fn();
     const notOffered = entry({ id: 'ad-5', myStatus: 'unanswered', bookingId: null, date: new Date(2026, 7, 20) });

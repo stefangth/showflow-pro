@@ -17,6 +17,18 @@ export interface ProducerDateEntry {
    *  date eligible for "Generate hire order". */
   hireOrderId: string | null;
   hireOrderStatus: string | null;
+  /** `show_dates.cast_notified_at` — non-null once a producer has notified the
+   *  cast that this date is cancelled. Optional so the many inline
+   *  `ProducerDateEntry` fixtures elsewhere keep compiling unchanged; treat a
+   *  missing field the same as `null` (not yet notified). Drives the "Needs
+   *  you" queue's `cancelled` group — see `src/lib/calendar/needsYou.ts`. */
+  castNotifiedAt?: string | null;
+  /** `show_dates.show_id` — the production this date belongs to. Optional so
+   *  the many inline `ProducerDateEntry` fixtures elsewhere keep compiling
+   *  unchanged, same rationale as `castNotifiedAt` above. Consumers that need
+   *  a stable per-production grouping key should fall back to `id` (the date
+   *  id, which never collides) when this is absent — e.g. the Season lens. */
+  showId?: string;
 }
 
 export type ArtistStatus = 'confirmed' | 'soft_booked' | 'suggested' | 'blocked' | 'unanswered';
@@ -27,6 +39,12 @@ export interface ArtistDateEntry {
   session1: string | null;
   myStatus: ArtistStatus;
   hireOrderId: string | null;
+  /** `bookings.offer_expires_at` for this date's active offer, if the response
+   *  clock has started (it stays null until the offer digest sends — see the
+   *  booking workflow). Optional so the many inline `ArtistDateEntry` fixtures
+   *  keep compiling; drives the mobile day-sheet's "Expires" info tile, which
+   *  simply hides while this is absent/null. */
+  offerExpiresAt?: string | null;
 }
 
 /** Capability-gating for the producer action buttons (Confirm holds /

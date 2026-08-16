@@ -123,6 +123,26 @@ export function isPastDate(date: Date, today: Date = new Date()): boolean {
 }
 
 /**
+ * Today's calendar date (YYYY-MM-DD) in Europe/Berlin, derived from `date`.
+ * Mirrors `supabase/functions/_shared/tierFill.ts`'s `berlinDateKey` — the
+ * booking engine (offer expiry windows, tier-at-risk) is Berlin-anchored, so
+ * any "is this today / already expired" read on the frontend must agree with
+ * the edge runtime's notion of "today" rather than the visitor's local
+ * timezone. Kept as a separate frontend twin (not imported across runtimes)
+ * per the edge/frontend split — see the `needsYou` queue derivation for the
+ * primary consumer.
+ */
+export function berlinDateKey(date: Date): string {
+  // en-CA yields ISO-style YYYY-MM-DD.
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Berlin",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+}
+
+/**
  * Shared "dimmed but interactive" class for a past-date row/card/cell.
  * Deliberately opacity-only — never combine with `pointer-events-none` — so
  * past dates stay fully clickable across every surface that uses it.

@@ -22,6 +22,16 @@
     "cancelled": "Cancelled",
     "unconfigured": "Unconfigured"
   },
+  "needsYou": {
+    "toast": {
+      "extended": "Extended {{count}}",
+      "released": "Released {{count}}",
+      "notified": "Notified {{count}}",
+      "offered": "Offered {{count}}",
+      "confirmedAll": "Confirmed holds",
+      "generatedAll": "Generated hire order"
+    }
+  },
   "producer": {
     "toast": {
       "confirmed": "Confirmed {{count}}",
