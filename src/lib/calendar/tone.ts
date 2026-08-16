@@ -26,6 +26,18 @@ export const PRODUCER_TONES: Record<ProducerStatus, ToneSpec> = {
   unconfigured:     { label: 'Unconfigured', badgeClass: 'bg-destructive/10 text-destructive',   railClass: 'bg-destructive',       tone: 'destructive' },
 };
 
+/**
+ * Solid bar colour for a Season heatmap cell, keyed to producer *status*
+ * (fully_filled → success, partially_filled/casting → warning, open → muted,
+ * cancelled/unconfigured → destructive) rather than to a monochrome fill
+ * ramp. Shared by the desktop `SeasonLens` and the mobile `SeasonStripMobile`
+ * so the two encodings can never drift apart. A null status (only reachable
+ * for an empty, no-date cell, which renders no bar) falls back to the muted
+ * "open" tone. */
+export function seasonBarClass(status: ProducerStatus | null): string {
+  return status ? PRODUCER_TONES[status].railClass : PRODUCER_TONES.open.railClass;
+}
+
 export const ARTIST_TONES: Record<ArtistStatus, ToneSpec> = {
   confirmed:   { label: 'Confirmed',   badgeClass: 'bg-success/10 text-success',         railClass: 'bg-success',          tone: 'success' },
   soft_booked: { label: 'Hold',        badgeClass: 'bg-warning/10 text-warning',         railClass: 'bg-warning',          tone: 'warning' },

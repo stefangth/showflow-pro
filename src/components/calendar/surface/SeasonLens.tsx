@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { getDay } from 'date-fns';
 import type { ProducerDateEntry } from '@/lib/calendar/types';
 import { toSeasonModel, seasonKpis, type SeasonCell } from '@/lib/calendar/seasonData';
+import { PRODUCER_TONES, seasonBarClass } from '@/lib/calendar/tone';
 import { toDateKey } from '@/lib/dates';
 import { cn } from '@/lib/utils';
 import { SeasonKpis } from './SeasonKpis';
@@ -43,17 +44,15 @@ function columnBorder(day: Date): string {
   return getDay(day) === 1 ? 'border-l-2 border-l-foreground/25' : 'border-l border-l-border';
 }
 
-/** Buckets a 0..1 `intensity` (filledMain/mainSlots) into one of 4 solid
- *  accent stops — accent numbered stops don't take a Tailwind opacity
- *  modifier, so every stop here is a plain solid class, never `/NN`. The
- *  hottest stop (`accent-700`) needs a fixed light foreground rather than
- *  `text-foreground` to stay legible, mirroring the dashboard stage-chain's
- *  hot-card fix. */
-function intensityClasses(intensity: number): { bg: string; text: string } {
-  if (intensity >= 0.75) return { bg: 'bg-accent-700', text: 'text-accent-50' };
-  if (intensity >= 0.5) return { bg: 'bg-accent-500', text: 'text-accent-50' };
-  if (intensity >= 0.25) return { bg: 'bg-accent-300', text: 'text-accent-700' };
-  return { bg: 'bg-accent-100', text: 'text-accent-700' };
+/** Cell bar track (px) inside the 52px row and its minimum drawn height, so an
+ *  all-but-empty date still shows a visible stub. Height is proportional to
+ *  the fill ratio (floored at 25% so a 0-filled but configured date reads as
+ *  "open, nothing yet" rather than invisible). */
+const BAR_TRACK = 34;
+const BAR_MIN = 14;
+
+function barHeightPx(intensity: number): number {
+  return Math.max(BAR_MIN, Math.round(BAR_TRACK * Math.max(intensity, 0.25)));
 }
 
 function SeasonCellButton({
@@ -87,26 +86,39 @@ function SeasonCellButton({
     );
   }
 
-  const { bg, text } = intensityClasses(cell.intensity);
+  // Status-tone encoding (mock): a bottom-anchored bar coloured by *status*
+  // (fully→success, casting→warning, open→muted), its height showing fill;
+  // a cancelled date shows a destructive "x" instead of a bar.
+  const cancelled = cell.status === 'cancelled';
+  const toneLabel = cell.status ? PRODUCER_TONES[cell.status].label : 'Open';
 
   return (
     <button
       type="button"
       data-testid={testId}
       data-in-range={inRange}
+      data-status={cell.status ?? 'open'}
       onClick={() => onOpenDate(cell.dateId as string)}
       onMouseDown={onColumnMouseDown}
       onMouseEnter={onColumnMouseEnter}
-      title={`${cell.filledMain}/${cell.mainSlots} main`}
+      title={`${cell.filledMain}/${cell.mainSlots} main · ${toneLabel}`}
       className={cn(
-        'flex h-[52px] items-center justify-center text-[10px] font-medium tabular-nums',
+        'flex h-[52px] items-end justify-center px-0.5 pb-1',
         columnBorder(cell.date),
-        bg,
-        text,
         inRange && 'bg-accent-50'
       )}
     >
-      {cell.mainSlots > 0 ? `${cell.filledMain}/${cell.mainSlots}` : ''}
+      {cancelled ? (
+        <span aria-hidden="true" className="mb-1.5 font-mono text-[11px] font-semibold leading-none text-destructive">
+          &times;
+        </span>
+      ) : cell.mainSlots > 0 ? (
+        <span
+          aria-hidden="true"
+          style={{ height: `${barHeightPx(cell.intensity)}px` }}
+          className={cn('w-2.5 rounded-t-[2px]', seasonBarClass(cell.status))}
+        />
+      ) : null}
     </button>
   );
 }
@@ -114,8 +126,10 @@ function SeasonCellButton({
 /**
  * Producer Season lens: a program × day heatmap over `toSeasonModel(entries,
  * anchor)` (task 3). One row per show (design's row `label`), a cell per day
- * tinted by `intensity` (4 solid accent stops, `filledMain/mainSlots` shown
- * inside), Monday gridlines running through every row. Below the grid, the
+ * showing a bottom-anchored bar whose colour is the date's *status* (via
+ * `seasonBarClass`: fully→success, casting→warning, open→muted) and whose
+ * height tracks the fill ratio, a cancelled date showing a destructive "x";
+ * Monday gridlines running through every row. Below the grid, the
  * "Unfilled slots" load-bar row (`loadByDay.openMainSlots` per day), then the
  * `SeasonKpis` summary. Clicking a populated cell fires `onOpenDate`; empty
  * (no-date) cells are inert. Full width. Phase 4: dragging across day

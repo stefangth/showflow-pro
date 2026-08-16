@@ -105,6 +105,34 @@ describe('SeasonLens', () => {
     expect(screen.getByTestId('season-kpi-readyForHireOrder')).toHaveTextContent('1');
   });
 
+  it('encodes each cell by status tone: success bar for fully filled, warning for casting, and an x for cancelled', () => {
+    const entryCancelled = makeEntry({
+      id: 'sd-c',
+      showId: 'show-c',
+      date: new Date(2026, 7, 7), // Fri 7 Aug
+      status: 'cancelled',
+      mainSlots: 4,
+      confirmedMain: 0,
+    });
+    render(
+      <SeasonLens entries={[entryA, entryB, entryCancelled]} anchor={ANCHOR} readyIds={new Set()} onOpenDate={vi.fn()} />
+    );
+
+    // fully_filled -> success-toned bar; partially_filled -> warning-toned bar.
+    expect(screen.getByTestId(`season-cell-show-b-${toDateKey(entryB.date)}`).querySelector('span')).toHaveClass(
+      'bg-success'
+    );
+    expect(screen.getByTestId(`season-cell-show-a-${toDateKey(entryA.date)}`).querySelector('span')).toHaveClass(
+      'bg-warning'
+    );
+
+    // cancelled -> a destructive "x", no coloured fill bar.
+    const cancelledCell = screen.getByTestId(`season-cell-show-c-${toDateKey(entryCancelled.date)}`);
+    expect(cancelledCell).toHaveAttribute('data-status', 'cancelled');
+    expect(cancelledCell).toHaveTextContent('×');
+    expect(cancelledCell.querySelector('span.bg-destructive')).toBeNull();
+  });
+
   describe('range selection across day columns', () => {
     it('dragging across 3 day columns fires onRangeStart/onRangeExtend/onRangeCommit in order and does not fire onOpenDate', () => {
       const onOpenDate = vi.fn();

@@ -1,6 +1,7 @@
 import { format, isToday } from 'date-fns';
 import type { ProducerDateEntry } from '@/lib/calendar/types';
 import { toSeasonModel, type SeasonCell } from '@/lib/calendar/seasonData';
+import { seasonBarClass } from '@/lib/calendar/tone';
 import { toDateKey } from '@/lib/dates';
 import { cn } from '@/lib/utils';
 
@@ -25,20 +26,8 @@ const BAR_TRACK_HEIGHT = 42;
  *  of the window's busiest day, muted otherwise. */
 const HEAVY_LOAD_PCT = 50;
 
-/** Buckets a 0..1 `intensity` (filledMain/mainSlots) into one of 4 solid
- *  accent stops — accent numbered stops don't take a Tailwind opacity
- *  modifier, so every stop here is a plain solid class, never `/NN`. Mirrors
- *  `SeasonLens`'s bucketing (kept local since that helper isn't exported and
- *  desktop `SeasonLens.tsx` is not touched by this task). */
-function intensityBg(intensity: number): string {
-  if (intensity >= 0.75) return 'bg-accent-700';
-  if (intensity >= 0.5) return 'bg-accent-500';
-  if (intensity >= 0.25) return 'bg-accent-300';
-  return 'bg-accent-100';
-}
-
 function barHeightPx(intensity: number): number {
-  return Math.max(12, Math.round(BAR_TRACK_HEIGHT * intensity));
+  return Math.max(12, Math.round(BAR_TRACK_HEIGHT * Math.max(intensity, 0.25)));
 }
 
 function SeasonStripCell({
@@ -65,22 +54,29 @@ function SeasonStripCell({
     );
   }
 
+  const cancelled = cell.status === 'cancelled';
+
   return (
     <button
       type="button"
       data-testid={testId}
       data-ready={ready}
+      data-status={cell.status ?? 'open'}
       onClick={() => onOpenDate(cell.dateId as string)}
       title={`${cell.filledMain}/${cell.mainSlots} main`}
-      className="flex h-[54px] items-end justify-center border-l border-l-border py-0.5"
+      className={cn('flex h-[54px] justify-center border-l border-l-border py-0.5', cancelled ? 'items-center' : 'items-end')}
     >
-      {cell.mainSlots > 0 && (
+      {cancelled ? (
+        <span aria-hidden="true" className="font-mono text-[10px] font-semibold leading-none text-destructive">
+          &times;
+        </span>
+      ) : cell.mainSlots > 0 ? (
         <span
           aria-hidden="true"
           style={{ height: `${barHeightPx(cell.intensity)}px` }}
-          className={cn('w-2.5 rounded-t-[2px]', intensityBg(cell.intensity), ready && 'ring-1 ring-accent-700')}
+          className={cn('w-2.5 rounded-t-[2px]', seasonBarClass(cell.status), ready && 'ring-1 ring-accent-700')}
         />
-      )}
+      ) : null}
     </button>
   );
 }
@@ -91,8 +87,9 @@ function SeasonStripCell({
  * (`sticky left-0 z-10`, one row per show plus an "Open" footer row) sits
  * beside a horizontally-scrolling day grid built from
  * `toSeasonModel(entries, anchor)` (Phase 3) — a today-tinted date header,
- * per-program fill-height bars (solid accent stops, never `/opacity` on the
- * numbered accent scale), and a bottom "Unfilled slots" load-bar row that
+ * per-program fill-height bars coloured by date *status* (via the shared
+ * `seasonBarClass`, matching the desktop `SeasonLens`; a cancelled date
+ * shows a destructive "x"), and a bottom "Unfilled slots" load-bar row that
  * turns amber once a day is at least half as loaded as the window's busiest
  * day. The label column and the day grid live in one `overflow-x-auto`
  * scroll region so the scroll never escapes the strip onto the page body.

@@ -79,6 +79,31 @@ describe('SeasonStripMobile', () => {
     expect(screen.getByTestId('season-strip-label-show-b')).toHaveTextContent('1 dates · -0');
   });
 
+  it('colours each program bar by status tone and shows an x for a cancelled date', () => {
+    const entryCancelled = makeEntry({
+      id: 'sd-c',
+      showId: 'show-c',
+      date: new Date(2026, 7, 7), // Fri 7 Aug
+      status: 'cancelled',
+      mainSlots: 4,
+      confirmedMain: 0,
+    });
+    render(
+      <SeasonStripMobile entries={[entryA, entryB, entryCancelled]} anchor={ANCHOR} readyIds={new Set()} onOpenDate={vi.fn()} />
+    );
+
+    expect(screen.getByTestId(`season-strip-cell-show-b-${toDateKey(entryB.date)}`).querySelector('span')).toHaveClass(
+      'bg-success'
+    );
+    expect(screen.getByTestId(`season-strip-cell-show-a-${toDateKey(entryA.date)}`).querySelector('span')).toHaveClass(
+      'bg-warning'
+    );
+
+    const cancelled = screen.getByTestId(`season-strip-cell-show-c-${toDateKey(entryCancelled.date)}`);
+    expect(cancelled).toHaveAttribute('data-status', 'cancelled');
+    expect(cancelled).toHaveTextContent('×');
+  });
+
   it('fires onOpenDate with the dateId when a populated cell is tapped', () => {
     const onOpenDate = vi.fn();
     render(<SeasonStripMobile entries={[entryA, entryB]} anchor={ANCHOR} readyIds={new Set()} onOpenDate={onOpenDate} />);
