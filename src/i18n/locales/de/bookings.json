@@ -189,6 +189,23 @@
     "cancelled": "Storniert",
     "unconfigured": "Nicht konfiguriert"
   },
+  "filters": {
+    "addFilter": "Filter hinzufügen",
+    "status": "Status",
+    "program": "Programm",
+    "dateRange": "Zeitraum",
+    "dateRangeValue": "{{from}} bis {{to}}",
+    "dateFromValue": "Ab {{from}}",
+    "dateToValue": "Bis {{to}}",
+    "numberRange": "{{min}} bis {{max}}",
+    "numberMin": "Ab {{min}}",
+    "numberMax": "Bis {{max}}",
+    "yes": "Ja",
+    "no": "Nein",
+    "allActive": "Alle Filter sind schon gesetzt",
+    "backAria": "Zurück zur Filterliste",
+    "removeAria": "Filter {{label}} entfernen"
+  },
   "needsYou": {
     "toast": {
       "extended": "{{count}} verlängert",
