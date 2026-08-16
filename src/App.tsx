@@ -8,6 +8,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AuthProvider } from "@/features/auth/AuthContext";
 import { EditorProvider } from "@/features/editor/EditorContext";
+import { DemoProvider } from "@/features/demo/DemoContext";
 import { ConsentProvider } from "@/features/consent/ConsentContext";
 import { LanguageProvider } from "@/features/i18n/LanguageContext";
 import "@/i18n";
@@ -68,6 +69,7 @@ const App = () => (
           <AuthProvider>
             <AnalyticsIdentityBridge />
             <EditorProvider>
+            <DemoProvider>
           <Routes>
             <Route path={ROUTES.HOME} element={<Navigate to={ROUTES.LOGIN} replace />} />
             <Route path={ROUTES.LOGIN} element={<LoginPage />} />
@@ -121,6 +123,7 @@ const App = () => (
             <Route path={ROUTES.IMPRESSUM} element={<ImpressumPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
+            </DemoProvider>
             </EditorProvider>
           </AuthProvider>
         </AppErrorBoundary>
