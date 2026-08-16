@@ -1,10 +1,28 @@
 begin;
-select plan(28);
+select plan(31);
 
 -- Scene + sim-clock columns (Phase 2) exist on demo_state.
 select has_column('public', 'demo_state', 'sim_now', 'demo_state.sim_now exists');
 select has_column('public', 'demo_state', 'current_scene_id', 'demo_state.current_scene_id exists');
 select has_column('public', 'demo_state', 'script_id', 'demo_state.script_id exists');
+
+-- Privilege regression guard: the demo RPCs are SECURITY DEFINER and revoke
+-- EXECUTE from public, but the demo-ops edge function calls them via the
+-- service-role client, so service_role must retain EXECUTE explicitly.
+-- pgTAP itself runs as postgres (superuser, bypasses grants), so only an
+-- explicit has_function_privilege check catches a missing grant.
+select ok(
+  has_function_privilege('service_role', 'public.run_demo_cue(uuid,text,uuid)', 'EXECUTE'),
+  'service_role can execute run_demo_cue'
+);
+select ok(
+  has_function_privilege('service_role', 'public.seed_demo_org(uuid,text,uuid)', 'EXECUTE'),
+  'service_role can execute seed_demo_org'
+);
+select ok(
+  has_function_privilege('service_role', 'public.wipe_demo_org(uuid)', 'EXECUTE'),
+  'service_role can execute wipe_demo_org'
+);
 
 -- Guard: refuses a non-demo org (the bootstrap org always exists, is_demo = false).
 select throws_ok(

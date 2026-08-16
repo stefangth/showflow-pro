@@ -65,7 +65,7 @@ begin
       delete from public.notifications
         where user_id = p_actor and org_id = p_org and type = 'demo_cue';
       insert into public.notifications (user_id, org_id, type, title, message, read) values
-        (p_actor, p_org, 'demo_cue', 'Angebot angenommen', 'Yasmin Aydin hat zugesagt.', false),
+        (p_actor, p_org, 'demo_cue', 'Angebot angenommen', 'Yasmin Aydın hat zugesagt.', false),
         (p_actor, p_org, 'demo_cue', 'Frist laeuft ab', 'Zwei Angebote laufen heute um 17:00 ab.', false),
         (p_actor, p_org, 'demo_cue', 'Vertrag bereit', 'Ein Engagementvertrag wartet auf Ausstellung.', false);
     end if;
