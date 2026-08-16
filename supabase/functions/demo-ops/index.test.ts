@@ -192,3 +192,46 @@ Deno.test("demo-ops: flag_and_seed surfaces a seed_demo_org RPC error → 500", 
   const res = await handle(authedReq({ action: "flag_and_seed", org_id: "o1" }), deps);
   assertEquals(res.status, 500);
 });
+
+Deno.test("demo-ops: cue drop_notifications on a demo org calls run_demo_cue with p_actor = caller", async () => {
+  const { deps, calls } = adminDeps({
+    isDemo: true,
+    rpcs: { run_demo_cue: { data: null, error: null } },
+  });
+  const res = await handle(authedReq({ action: "cue", org_id: "o1", cue_id: "drop_notifications" }), deps);
+  assertEquals(res.status, 200);
+  const body = await res.json() as { ok: boolean };
+  assertEquals(body.ok, true);
+
+  const cueCall = calls.find((c) => c.table === "rpc:run_demo_cue");
+  assertEquals(cueCall !== undefined, true);
+  assertEquals(cueCall?.args[0], { p_org: "o1", p_cue: "drop_notifications", p_actor: "u1" });
+});
+
+Deno.test("demo-ops: cue refuses a non-demo org", async () => {
+  const { deps } = adminDeps({ isDemo: false });
+  const res = await handle(authedReq({ action: "cue", org_id: "o1", cue_id: "drop_notifications" }), deps);
+  assertEquals(res.status, 400);
+  const body = await res.json() as { error: string };
+  assertEquals(body.error, "not_a_demo_org");
+});
+
+Deno.test("demo-ops: cue with an unknown cue_id → 400 unknown_cue", async () => {
+  const { deps } = adminDeps({ isDemo: true });
+  const res = await handle(authedReq({ action: "cue", org_id: "o1", cue_id: "not_a_real_cue" }), deps);
+  assertEquals(res.status, 400);
+  const body = await res.json() as { error: string };
+  assertEquals(body.error, "unknown_cue");
+});
+
+Deno.test("demo-ops: cue issue_hire_order invokes generate-hire-orders", async () => {
+  const { deps, invokeCalls } = adminDeps({ isDemo: true });
+  const res = await handle(authedReq({ action: "cue", org_id: "o1", cue_id: "issue_hire_order" }), deps);
+  assertEquals(res.status, 200);
+  const body = await res.json() as { ok: boolean };
+  assertEquals(body.ok, true);
+
+  const invokeCall = invokeCalls.find((c) => c.name === "generate-hire-orders");
+  assertEquals(invokeCall !== undefined, true);
+  assertEquals(invokeCall?.body, { action: "issue", org_id: "o1" });
+});
