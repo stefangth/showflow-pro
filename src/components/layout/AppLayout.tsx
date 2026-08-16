@@ -25,6 +25,7 @@ import { BrandWordmark } from '@/components/brand/BrandWordmark';
 import { OrgSwitcher } from '@/components/layout/OrgSwitcher';
 import { NotificationsList } from '@/components/layout/NotificationsList';
 import { DemoBadge } from '@/components/demo/DemoBadge';
+import { DemoBar } from '@/components/demo/DemoBar';
 import { ThemeToggle } from '@/components/layout/ThemeToggle';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useNavCounts } from '@/hooks/useNavCounts';
@@ -424,6 +425,9 @@ export default function AppLayout({ children }: AppLayoutProps) {
             </Popover>
           </div>
         </header>
+
+        {/* Demo mode control bar */}
+        <DemoBar />
 
         {/* Editor toolbar */}
         <EditorToolbar />
