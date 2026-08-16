@@ -93,10 +93,10 @@ describe('SeasonStripMobile', () => {
     );
 
     expect(screen.getByTestId(`season-strip-cell-show-b-${toDateKey(entryB.date)}`).querySelector('span')).toHaveClass(
-      'bg-success'
+      'bg-[var(--green-500)]'
     );
     expect(screen.getByTestId(`season-strip-cell-show-a-${toDateKey(entryA.date)}`).querySelector('span')).toHaveClass(
-      'bg-warning'
+      'bg-[var(--amber-500)]'
     );
 
     const cancelled = screen.getByTestId(`season-strip-cell-show-c-${toDateKey(entryCancelled.date)}`);

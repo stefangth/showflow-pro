@@ -120,10 +120,10 @@ describe('SeasonLens', () => {
 
     // fully_filled -> success-toned bar; partially_filled -> warning-toned bar.
     expect(screen.getByTestId(`season-cell-show-b-${toDateKey(entryB.date)}`).querySelector('span')).toHaveClass(
-      'bg-success'
+      'bg-[var(--green-500)]'
     );
     expect(screen.getByTestId(`season-cell-show-a-${toDateKey(entryA.date)}`).querySelector('span')).toHaveClass(
-      'bg-warning'
+      'bg-[var(--amber-500)]'
     );
 
     // cancelled -> a destructive "x", no coloured fill bar.
