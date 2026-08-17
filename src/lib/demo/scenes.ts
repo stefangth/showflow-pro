@@ -118,8 +118,8 @@ export const SEASON_HANDOVER: Scene[] = [
     route: ROUTES.DASHBOARD,
     persona: 'admin',
     say: {
-      en: 'Hand them the keys. This sandbox resets on its own, so they can break things and try again.',
-      de: 'Gib ihnen die Schlüssel. Diese Sandbox setzt sich von selbst zurück, also können sie ausprobieren und Fehler machen.',
+      en: 'Hand them a link they can open for the next two weeks. It is read only, so nothing they click changes your demo. Use the Sandbox link button up top.',
+      de: 'Gib ihnen einen Link, den sie zwei Wochen lang offen haben. Er ist nur zum Ansehen, also verändert niemand deine Demo. Nutz den Sandbox Link Knopf oben.',
     },
     cues: [],
     estMin: 1,
