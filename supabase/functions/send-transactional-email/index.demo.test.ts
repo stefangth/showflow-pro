@@ -55,6 +55,36 @@ function recordingFetch(): { fetchImpl: typeof fetch; resendCalled: () => boolea
   return { fetchImpl, resendCalled: () => resendCalled };
 }
 
+Deno.test("send-transactional-email: demo guardrail fails CLOSED when the org lookup errors", async () => {
+  const { fetchImpl, resendCalled } = recordingFetch();
+  const { deps, calls } = makeFakeDeps({
+    envVars: ENV,
+    fetchImpl,
+    // The is_demo lookup errors: we can't tell if this is a demo org, so the send
+    // must be blocked (500), NOT fall through to Resend.
+    tables: baseTables({
+      organizations: { data: null, error: { message: "db hiccup" } },
+    }),
+  });
+
+  const res = await handle(
+    authedReq({
+      body: {
+        template_name: KNOWN_TEMPLATE,
+        recipient_email: "artist@demo.invalid",
+        org_id: "org-demo-1",
+        templateData: {},
+      },
+    }),
+    deps,
+  );
+
+  assertEquals(res.status, 500, "a failed demo-status lookup blocks the send");
+  assertEquals(resendCalled(), false, "Resend must not be called when demo status is unknown");
+  const captured = calls.filter((c) => c.table === "demo_captured_sends" && c.method === "insert");
+  assertEquals(captured.length, 0, "nothing captured when the lookup failed");
+});
+
 Deno.test("send-transactional-email: demo org diverts to capture, no Resend", async () => {
   const { fetchImpl, resendCalled } = recordingFetch();
   const { deps, calls } = makeFakeDeps({

@@ -27,11 +27,18 @@ create trigger demo_state_set_updated_at
   before update on public.demo_state
   for each row execute function public.update_updated_at_column();
 
--- Members of the (demo) org may read their presenter state; only org admins
--- may write it (has_org_role takes a single app_role in this repo, not an array).
-create policy demo_state_rw on public.demo_state
+-- Members of the (demo) org may READ their presenter state; only org admins may
+-- write it. Split into a read policy + an admin FOR-ALL write policy (not a single
+-- FOR ALL with WITH CHECK): WITH CHECK is not evaluated for DELETE, so a lone
+-- member-scoped USING would let a non-admin member DELETE the row. Mirrors the
+-- broad-read/narrow-write split in 20260723185429_show_assignments_capability_rls.sql.
+create policy demo_state_read on public.demo_state
+  for select to authenticated
+  using (public.is_org_member(auth.uid(), org_id));
+
+create policy demo_state_write on public.demo_state
   for all to authenticated
-  using (public.is_org_member(auth.uid(), org_id))
+  using (public.has_org_role(auth.uid(), org_id, 'admin'::app_role))
   with check (public.has_org_role(auth.uid(), org_id, 'admin'::app_role));
 
 -- Pooled-tenancy isolation floor (ADR-0003).
