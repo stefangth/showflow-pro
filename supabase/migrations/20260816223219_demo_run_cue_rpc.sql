@@ -135,4 +135,7 @@ begin
 end;
 $$;
 
-revoke all on function public.run_demo_cue(uuid, text, uuid) from public;
+-- Service-role-only (via the demo-ops edge function): block direct anon/authenticated
+-- calls through PostgREST so the edge role gate can't be bypassed. (service_role grant
+-- lives in the demo_rpc_service_role_grants migration.)
+revoke all on function public.run_demo_cue(uuid, text, uuid) from public, anon, authenticated;
