@@ -1,8 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { fireEvent } from '@testing-library/react';
+import { toast } from 'sonner';
 import { render, screen } from '@/test/renderWithProviders';
 import { SandboxLinkDialog } from '@/components/demo/SandboxLinkDialog';
 import type { SandboxLink } from '@/data/demo';
+
+vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 // SandboxLinkDialog binds the real supabase-backed hooks (useSandboxLinks,
 // useCreateSandboxLink, useRevokeSandboxLink) from src/hooks/useDemo.ts. Mock just
@@ -32,6 +35,7 @@ describe('SandboxLinkDialog', () => {
   beforeEach(() => {
     createMutate.mockClear();
     revokeMutate.mockClear();
+    vi.mocked(toast.error).mockClear();
     sandboxLinks = [];
   });
 
@@ -57,6 +61,19 @@ describe('SandboxLinkDialog', () => {
     expect(createMutate).toHaveBeenCalledWith('o1', expect.any(Object));
 
     expect(await screen.findByText(/\/sandbox\/tok12345/)).toBeInTheDocument();
+  });
+
+  it('shows an error toast when creating a link fails', async () => {
+    createMutate.mockImplementation((_orgId: string, opts?: { onError?: () => void }) => {
+      opts?.onError?.();
+    });
+
+    render(<SandboxLinkDialog />, { authOverrides: { currentOrg: DEMO_ORG } });
+
+    fireEvent.click(screen.getByRole('button', { name: /sandbox link/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /create link/i }));
+
+    expect(toast.error).toHaveBeenCalledWith('Could not create a sandbox link');
   });
 
   it('an existing active link renders with a Revoke control that calls the revoke mutation', async () => {

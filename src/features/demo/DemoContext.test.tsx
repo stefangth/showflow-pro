@@ -11,14 +11,16 @@ import type { DemoStateRow } from "@/data/demo";
 // provider's derived scene/cue/mutation behavior is observable without a network dependency.
 const updateMutate = vi.fn();
 const runCueMutate = vi.fn();
+const resetMutate = vi.fn();
 let demoStateRow: DemoStateRow | null = null;
+let demoStateLoading = false;
 
 vi.mock("@/hooks/useDemo", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/hooks/useDemo")>();
   return {
     ...actual,
-    useResetDemo: () => ({ mutate: vi.fn(), isPending: false }),
-    useDemoState: () => ({ data: demoStateRow, isLoading: false }),
+    useResetDemo: () => ({ mutate: resetMutate, isPending: false }),
+    useDemoState: () => ({ data: demoStateRow, isLoading: demoStateLoading }),
     useUpdateDemoState: () => ({ mutate: updateMutate, isPending: false }),
     useRunCue: () => ({ mutate: runCueMutate, isPending: false }),
   };
@@ -27,7 +29,7 @@ vi.mock("@/hooks/useDemo", async (importOriginal) => {
 const demoOrg = { id: "o1", name: "n", slug: "s", status: "active" as const, is_demo: true };
 
 function Probe() {
-  const { currentScene, simNow, prospectLabel, volume, goToScene, runCue, advanceClock, setProspectLabel, setVolume } =
+  const { currentScene, simNow, prospectLabel, volume, goToScene, runCue, advanceClock, setProspectLabel, setVolume, reset } =
     useDemo();
   return (
     <div>
@@ -40,6 +42,7 @@ function Probe() {
       <button onClick={() => advanceClock("10m")}>advance-10m</button>
       <button onClick={() => setProspectLabel("Acme Theatre")}>label</button>
       <button onClick={() => setVolume("small")}>volume-small</button>
+      <button onClick={reset}>reset</button>
     </div>
   );
 }
@@ -48,7 +51,9 @@ describe("DemoContext scene + sim-clock state", () => {
   beforeEach(() => {
     updateMutate.mockClear();
     runCueMutate.mockClear();
+    resetMutate.mockClear();
     demoStateRow = null;
+    demoStateLoading = false;
   });
 
   it("falls back to the first scene when current_scene_id is null", () => {
@@ -110,6 +115,32 @@ describe("DemoContext scene + sim-clock state", () => {
     expect(updateMutate).toHaveBeenCalledWith({ orgId: "o1", patch: { prospect_label: "Acme Theatre" } });
     fireEvent.click(screen.getByText("volume-small"));
     expect(updateMutate).toHaveBeenCalledWith({ orgId: "o1", patch: { volume: "small" } });
+  });
+
+  it("reset() no-ops while demo_state is still loading, then fires once loaded", () => {
+    // Guard against reseeding a "small" org at the "full" fallback mid-load. The Reset
+    // button is a new-prospect restart, so once loaded it also clears scene/clock/label.
+    demoStateLoading = true;
+    demoStateRow = {
+      org_id: "o1",
+      volume: "small",
+      prospect_label: null,
+      sim_now: null,
+      current_scene_id: null,
+      script_id: null,
+      updated_at: "2026-08-17T00:00:00.000Z",
+    };
+    const { rerender } = render(<Probe />, { authOverrides: { currentOrg: demoOrg } });
+    fireEvent.click(screen.getByText("reset"));
+    expect(resetMutate).not.toHaveBeenCalled();
+
+    demoStateLoading = false;
+    rerender(<Probe />);
+    fireEvent.click(screen.getByText("reset"));
+    expect(resetMutate).toHaveBeenCalledWith(
+      { orgId: "o1", volume: "small", resetState: true },
+      expect.any(Object),
+    );
   });
 
   it("mutations no-op without a current org", () => {
