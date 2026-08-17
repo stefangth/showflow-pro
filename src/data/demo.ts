@@ -41,6 +41,13 @@ export function wipeDemoOrg(client: SupabaseClient<Database>, args: { orgId: str
  * Create a brand-new demo org: provision it via the battle-tested
  * provision-org flow (org + first-admin account + membership + invite
  * email), then flag it `is_demo` and seed it via demo-ops.
+ *
+ * If `flag_and_seed` fails after `provisionOrg` already succeeded, the org would
+ * otherwise be left half-baked (starter catalog only, never seeded). We can't undo
+ * the invite email that was already sent, but we DO best-effort `delete_org` the
+ * just-created org so it doesn't linger in Platform — the blast radius is exactly
+ * the empty org we made moments ago. The original error is always rethrown so the
+ * caller surfaces the real failure; a failed cleanup is logged, not masked.
  */
 export async function createDemoOrg(
   client: SupabaseClient<Database>,
@@ -54,7 +61,13 @@ export async function createDemoOrg(
     appOrigin: args.appOrigin,
     features: { hire_orders: true, booking_flow: true },
   });
-  await invokeDemoOps(client, { action: "flag_and_seed", org_id: orgId, volume: args.volume });
+  try {
+    await invokeDemoOps(client, { action: "flag_and_seed", org_id: orgId, volume: args.volume });
+  } catch (err) {
+    const { error: cleanupErr } = await client.rpc("delete_org", { p_org: orgId });
+    if (cleanupErr) console.error("createDemoOrg: cleanup delete_org failed", { orgId, error: cleanupErr });
+    throw err;
+  }
   return orgId;
 }
 
