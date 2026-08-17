@@ -296,7 +296,15 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     // artifact for the in-app "demo outbox" and short-circuit with a success shape
     // so every caller's emailWasSent(...) behaves exactly as for a real send.
     if (orgId) {
-      const { data: orgRow } = await admin.from('organizations').select('is_demo').eq('id', orgId).maybeSingle()
+      const { data: orgRow, error: orgErr } = await admin.from('organizations').select('is_demo').eq('id', orgId).maybeSingle()
+      // Fail CLOSED: if we can't determine whether this is a demo org, do NOT fall
+      // through to Resend — that would deliver a real email from a possibly-demo org,
+      // defeating the guardrail. Block the send instead (like every other lookup here).
+      if (orgErr) {
+        console.error('Demo guardrail org lookup failed — refusing to send', { orgId, error: orgErr })
+        await logFailed(`Demo guardrail lookup failed: ${orgErr.message ?? 'unknown error'}`)
+        return json({ error: 'Failed to verify demo status' }, 500)
+      }
       if ((orgRow as { is_demo?: boolean } | null)?.is_demo) {
         await admin.from('demo_captured_sends').insert({
           org_id: orgId,

@@ -1,5 +1,5 @@
 begin;
-select plan(9);
+select plan(15);
 
 -- Column exists with the safe default.
 select has_column('public', 'organizations', 'is_demo', 'organizations.is_demo exists');
@@ -16,6 +16,18 @@ select throws_ok(
   'wipe_demo_org refused: 00000000-0000-0000-0000-00000000b007 is not a demo org',
   'wipe guard fires for non-demo org'
 );
+
+-- Function-level grants: these are service-role-only (called via the demo-ops edge
+-- function). anon/authenticated must NOT be able to call them directly through
+-- PostgREST; service_role must. (has_function_privilege works even as superuser,
+-- unlike an actual privilege check, so this catches a dropped grant that RLS/pgTAP
+-- would otherwise miss.)
+select ok(not has_function_privilege('anon', 'public.wipe_demo_org(uuid)', 'execute'), 'wipe_demo_org not executable by anon');
+select ok(not has_function_privilege('authenticated', 'public.wipe_demo_org(uuid)', 'execute'), 'wipe_demo_org not executable by authenticated');
+select ok(has_function_privilege('service_role', 'public.wipe_demo_org(uuid)', 'execute'), 'wipe_demo_org executable by service_role');
+select ok(not has_function_privilege('anon', 'public.seed_demo_org(uuid, text, uuid)', 'execute'), 'seed_demo_org not executable by anon');
+select ok(not has_function_privilege('authenticated', 'public.seed_demo_org(uuid, text, uuid)', 'execute'), 'seed_demo_org not executable by authenticated');
+select ok(has_function_privilege('service_role', 'public.seed_demo_org(uuid, text, uuid)', 'execute'), 'seed_demo_org executable by service_role');
 
 -- Set up a demo org and seed it.
 insert into public.organizations (id, name, slug, status, is_demo)
