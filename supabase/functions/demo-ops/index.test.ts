@@ -150,7 +150,16 @@ Deno.test("demo-ops: wipe removes the org's hire-order PDFs via the Storage API"
   const { deps, calls } = adminDeps({
     isDemo: true,
     rpcs: { wipe_demo_org: { data: null, error: null } },
-    storageListResult: { data: [{ name: "HO-DEMO-0002.pdf" }, { name: "HO-DEMO-0003.pdf" }], error: null },
+    // Mixed listing: two order PDFs plus the letterhead agent-signature PNG, which
+    // lives in preserved settings and must NOT be deleted by a wipe.
+    storageListResult: {
+      data: [
+        { name: "HO-DEMO-0002.pdf" },
+        { name: "agent-signature.png" },
+        { name: "HO-DEMO-0003-signed.pdf" },
+      ],
+      error: null,
+    },
   });
   const res = await handle(authedReq({ action: "wipe", org_id: "o1" }), deps);
   assertEquals(res.status, 200);
@@ -159,7 +168,8 @@ Deno.test("demo-ops: wipe removes the org's hire-order PDFs via the Storage API"
   assertEquals(listCall?.args[0], "o1");
   const removeCall = calls.find((c) => c.table === "storage:hire-orders" && c.method === "remove");
   assertEquals(!!removeCall, true, "expected a storage remove");
-  assertEquals(removeCall?.args[0], ["o1/HO-DEMO-0002.pdf", "o1/HO-DEMO-0003.pdf"]);
+  // Only the PDFs, prefixed by the org id; the signature PNG is preserved.
+  assertEquals(removeCall?.args[0], ["o1/HO-DEMO-0002.pdf", "o1/HO-DEMO-0003-signed.pdf"]);
 });
 
 Deno.test("demo-ops: wipe with no stored PDFs performs no storage remove", async () => {
