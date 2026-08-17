@@ -126,6 +126,7 @@
     "notes": "Notizen",
     "openTier1Now": "Stufe-1-Angebote jetzt öffnen",
     "openTier1NowConfigure": "Stufe-1-Angebote jetzt öffnen (zuerst Slots konfigurieren)",
+    "openTier1FlowHint": "Das folgt deiner Buchungsablauf-Einstellung „Stufe 1 automatisch öffnen, wenn ein neuer Termin bereit ist“. Du kannst es für diesen Termin ändern.",
     "saving": "Speichern…",
     "saveDate": "Termin speichern",
     "createDate": "Termin erstellen"

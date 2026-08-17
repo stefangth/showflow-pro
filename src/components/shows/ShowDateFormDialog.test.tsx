@@ -44,23 +44,42 @@ describe("ShowDateFormDialog", () => {
     mockBookingFlowPending = false;
   });
 
-  it("leaves opening tier-1 offers unchecked for a new date", () => {
-    mockFlow = { ...BOOKING_FLOW_DEFAULTS, auto_open_tier1: true };
-    renderWithProviders(<ShowDateFormDialog open onOpenChange={() => {}} mode="create" />);
+  // The create-mode tier-1 default mirrors the org's booking flow (Settings > Booking flow >
+  // "Open tier 1 automatically when a new date is ready"): checked when the flow auto-opens
+  // tier 1, unchecked when it does not. This replaces the old always-opt-in (unchecked) default.
+  it("checks opening tier-1 offers for a new date when the org's flow auto-opens tier 1", () => {
+    mockFlow = { ...BOOKING_FLOW_DEFAULTS, auto_open_tier1: true, artist_acceptance: true };
+    renderWithProviders(<ShowDateFormDialog open onOpenChange={() => {}} mode="create" defaultShowId="s1" />);
+    expect(screen.getByRole("checkbox", { name: /open tier-1 offers now/i })).toBeChecked();
+  });
+
+  it("leaves opening tier-1 offers unchecked for a new date when the org's flow does not auto-open tier 1", () => {
+    mockFlow = { ...BOOKING_FLOW_DEFAULTS, auto_open_tier1: false, artist_acceptance: true };
+    renderWithProviders(<ShowDateFormDialog open onOpenChange={() => {}} mode="create" defaultShowId="s1" />);
     expect(screen.getByRole("checkbox", { name: /open tier-1 offers now/i })).not.toBeChecked();
   });
 
-  it("does not reset a user's create-mode offer choice when the flow query resolves", () => {
+  it("references the booking flow setting the tier-1 default follows", () => {
+    mockFlow = { ...BOOKING_FLOW_DEFAULTS, auto_open_tier1: true, artist_acceptance: true };
+    renderWithProviders(<ShowDateFormDialog open onOpenChange={() => {}} mode="create" defaultShowId="s1" />);
+    expect(screen.getByText(/Open tier 1 automatically when a new date is ready/i)).toBeInTheDocument();
+  });
+
+  // The default re-seeds from the flow when the query resolves, but a producer who toggles the
+  // box by hand owns their choice for this date: a later flow refetch must not clobber it.
+  it("does not re-seed the create-mode offer choice from the flow once the user toggles it", () => {
+    mockFlow = { ...BOOKING_FLOW_DEFAULTS, auto_open_tier1: true, artist_acceptance: true };
     const props = { open: true, onOpenChange: () => {}, mode: "create" as const, defaultShowId: "s1" };
     const { rerender } = renderWithProviders(<ShowDateFormDialog {...props} />);
     const checkbox = screen.getByRole("checkbox", { name: /open tier-1 offers now/i });
-    fireEvent.click(checkbox);
     expect(checkbox).toBeChecked();
+    fireEvent.click(checkbox);
+    expect(checkbox).not.toBeChecked();
 
-    mockFlow = { ...BOOKING_FLOW_DEFAULTS, auto_open_tier1: true };
+    mockFlow = { ...BOOKING_FLOW_DEFAULTS, auto_open_tier1: true, artist_acceptance: true };
     rerender(<ShowDateFormDialog {...props} />);
 
-    expect(screen.getByRole("checkbox", { name: /open tier-1 offers now/i })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: /open tier-1 offers now/i })).not.toBeChecked();
   });
 
   it("create requires a production and a date", async () => {

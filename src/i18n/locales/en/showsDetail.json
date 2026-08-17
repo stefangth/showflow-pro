@@ -126,6 +126,7 @@
     "notes": "Notes",
     "openTier1Now": "Open tier-1 offers now",
     "openTier1NowConfigure": "Open tier-1 offers now (configure slots first)",
+    "openTier1FlowHint": "This follows your booking flow setting \"Open tier 1 automatically when a new date is ready\". You can change it for this date.",
     "saving": "Saving…",
     "saveDate": "Save date",
     "createDate": "Create date"
