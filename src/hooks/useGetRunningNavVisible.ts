@@ -20,7 +20,9 @@ import { useRailDismissed } from "@/components/setup/useRailDismissed";
  * sidebar read the same answer.
  *
  * Fails open (visible) while `model` is still loading, so the item never blinks away
- * mid-fetch only to reappear.
+ * mid-fetch only to reappear. A nothing-on org (no module entitled) has no board to set
+ * up, so the item is hidden outright rather than left pointing at an undismissable
+ * "nothing to set up" card.
  */
 export function useGetRunningNavVisible(): boolean {
   const { currentOrg, hasRole } = useAuth();
@@ -32,5 +34,7 @@ export function useGetRunningNavVisible(): boolean {
 
   if (!isNonArtist) return true;
   if (!model) return true;
+  // Nothing to set up (no module entitled) → no board, so don't advertise the item.
+  if (!model.bookingOn && !model.hireOrdersOn) return false;
   return !(model.complete && dismissed);
 }
