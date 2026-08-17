@@ -48,24 +48,47 @@ async function assertDemoOrg(deps: Deps, orgId: string): Promise<boolean> {
   return (data as { is_demo?: boolean } | null)?.is_demo === true;
 }
 
-// Hire-order PDFs live under `<orgId>/<order_no>.pdf` in the `hire-orders` bucket.
-// wipe_demo_org cannot delete storage.objects (a protect_delete trigger forbids
-// direct SQL deletes), so a wipe/reset removes them via the Storage API here.
-// Best-effort: a storage hiccup during demo cleanup must never fail the operation
-// the rep is watching, so failures are swallowed.
-async function removeOrgHireOrderPdfs(deps: Deps, orgId: string): Promise<void> {
+const STORAGE_PAGE = 1000;
+
+// List one storage prefix and remove the objects `shouldRemove` selects. Best-effort:
+// storage cleanup is demo hygiene, not correctness, so failures are logged (not thrown)
+// and a full page is logged as "may be incomplete" rather than silently truncated.
+async function removeStorageObjects(
+  deps: Deps,
+  prefix: string,
+  shouldRemove: (name: string) => boolean,
+): Promise<void> {
   try {
-    const { data } = await deps.admin.storage.from("hire-orders").list(orgId, { limit: 1000 });
-    // Only order PDFs (`<order_no>.pdf` / `<order_no>-signed.pdf`). The same prefix
-    // also holds the letterhead agent-signature PNG, which lives in preserved
-    // app_settings (hire_order_letterhead.agent_signature_path) and must survive a
-    // wipe -- deleting it would blank the signature line on future issued PDFs.
-    const pdfs = ((data as Array<{ name: string }> | null) ?? []).filter((o) => o.name.endsWith(".pdf"));
-    if (pdfs.length === 0) return;
-    await deps.admin.storage.from("hire-orders").remove(pdfs.map((o) => `${orgId}/${o.name}`));
-  } catch (_e) {
-    // Swallow: storage cleanup is demo hygiene, not correctness.
+    const { data, error } = await deps.admin.storage.from("hire-orders").list(prefix, { limit: STORAGE_PAGE });
+    if (error) {
+      console.warn("demo cleanup: storage list failed", { prefix, error: error.message });
+      return;
+    }
+    const names = (data as Array<{ name: string }> | null) ?? [];
+    if (names.length === STORAGE_PAGE) {
+      console.warn("demo cleanup: storage list hit the page limit, some objects may remain", { prefix });
+    }
+    const paths = names.filter((o) => shouldRemove(o.name)).map((o) => `${prefix}/${o.name}`);
+    if (paths.length === 0) return;
+    const { error: rmErr } = await deps.admin.storage.from("hire-orders").remove(paths);
+    if (rmErr) console.warn("demo cleanup: storage remove failed", { prefix, error: rmErr.message });
+  } catch (e) {
+    console.warn("demo cleanup: storage cleanup threw", { prefix, error: (e as Error).message });
   }
+}
+
+// Hire-order artifacts live under `<orgId>/` in the `hire-orders` bucket: order PDFs
+// (`<order_no>.pdf` / `<order_no>-signed.pdf`) at the top level, and per-order drawn
+// signatures at `<orgId>/signatures/<order_no>.png`. wipe_demo_org cannot delete
+// storage.objects (a protect_delete trigger forbids direct SQL deletes), so a
+// wipe/reset removes them via the Storage API here.
+async function removeOrgHireOrderPdfs(deps: Deps, orgId: string): Promise<void> {
+  // Top level: only order PDFs. The letterhead agent signature (`agent-signature.png`,
+  // top level) lives in preserved app_settings and must survive a wipe -- deleting it
+  // would blank the signature line on future issued PDFs, so keep every non-PDF here.
+  await removeStorageObjects(deps, orgId, (name) => name.endsWith(".pdf"));
+  // Nested: every per-order drawn signature (all orphaned once hire_orders are wiped).
+  await removeStorageObjects(deps, `${orgId}/signatures`, () => true);
 }
 
 export async function handle(req: Request, deps: Deps): Promise<Response> {

@@ -70,8 +70,12 @@ export default function SandboxViewerPage() {
   // Treat a genuine query error, a missing :token (query stays idle), or an
   // explicit ok:false from the edge function all as the same "invalid link"
   // state, so the page never renders as a bare top-bar-and-footer shell.
+  // Gate on the ABSENCE of a valid snapshot too: React Query keeps the last
+  // successful `data` when a background refetch fails, so isError can be true
+  // while a prior ok:true snapshot is still cached — without this guard the
+  // error card and the snapshot table would render at the same time.
   const invalidReason =
-    !isLoading && (isError || !token || data?.ok === false)
+    !isLoading && !data?.snapshot && (isError || !token || data?.ok === false)
       ? (data && data.ok === false && data.reason) || "not_found"
       : null;
 
