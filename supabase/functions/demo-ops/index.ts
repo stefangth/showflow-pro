@@ -1,21 +1,24 @@
 // Demo-ops: the callable surface for demo-org operations.
 //
-// Consumes the `wipe_demo_org` / `seed_demo_org` RPCs (Task 3). Four actions:
+// Consumes the `wipe_demo_org` / `seed_demo_org` RPCs (Task 3). Three actions:
 //  - `flag_and_seed` (super-admin only): marks an already-provisioned org
 //    `is_demo = true`, upserts the `hire_orders` entitlement on, and seeds it.
 //    The frontend calls `provision-org` FIRST (org + first-admin + invite),
 //    then this — `demo-ops` cannot re-invoke `provision-org` itself (its
 //    `requireSuperAdmin` gate rejects a service-role fn-to-fn call), and
 //    re-implementing account/membership/email would duplicate that code.
-//  - `reset` / `reseed` / `wipe` (org-admin; super-admins pass too via the
-//    requireOrgRole fallback): re-asserts `is_demo` at the edge (defense in
-//    depth on top of each RPC's own guard), then calls wipe/seed.
-//    `reset` = wipe then seed; `reseed` = seed only; `wipe` = wipe only.
+//  - `reset` / `wipe` (org-admin; super-admins pass too via the requireOrgRole
+//    fallback): re-asserts `is_demo` at the edge (defense in depth on top of each
+//    RPC's own guard), then calls wipe/seed. `reset` = wipe then seed; `wipe` =
+//    wipe only. There is deliberately NO bare seed-only action: `seed_demo_org`
+//    inserts fixed rows (e.g. order_no HO-DEMO-0001..0003) and is NOT idempotent
+//    against its own prior output, so it is only ever run on a fresh org
+//    (flag_and_seed) or immediately after a wipe (reset).
 import { preflight, json } from "../_shared/http.ts";
 import { requireOrgRole, requireSuperAdmin } from "../_shared/auth.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
 
-type Action = "reset" | "reseed" | "wipe" | "flag_and_seed";
+type Action = "reset" | "wipe" | "flag_and_seed";
 
 type Body = {
   action: Action;
@@ -23,7 +26,7 @@ type Body = {
   volume?: "small" | "full";
 };
 
-const VALID_ACTIONS: Action[] = ["reset", "reseed", "wipe", "flag_and_seed"];
+const VALID_ACTIONS: Action[] = ["reset", "wipe", "flag_and_seed"];
 
 async function assertDemoOrg(deps: Deps, orgId: string): Promise<boolean> {
   const { data } = await deps.admin.from("organizations").select("is_demo").eq("id", orgId).maybeSingle();
@@ -77,7 +80,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     const { error } = await deps.admin.rpc("wipe_demo_org", { p_org: orgId });
     if (error) return json({ error: error.message }, 500);
   }
-  if (body.action === "reseed" || body.action === "reset") {
+  if (body.action === "reset") {
     const { error } = await deps.admin.rpc("seed_demo_org", {
       p_org: orgId,
       p_volume: volume,

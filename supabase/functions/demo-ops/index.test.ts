@@ -3,9 +3,9 @@
  *
  * Contract:
  *  - OPTIONS → preflight
- *  - `reset` / `reseed` / `wipe`: org-admin (or super-admin) via requireOrgRole; re-asserts
+ *  - `reset` / `wipe`: org-admin (or super-admin) via requireOrgRole; re-asserts
  *    `is_demo` at the edge on top of the RPC's own guard. `reset` = wipe then seed,
- *    `reseed` = seed only, `wipe` = wipe only.
+ *    `wipe` = wipe only. There is no bare seed-only action (non-idempotent seed).
  *  - `flag_and_seed`: super-admin only. Stamps `is_demo`, upserts the `hire_orders`
  *    entitlement on, then seeds.
  *  - missing action/org_id → 400 bad_request.
@@ -112,16 +112,12 @@ Deno.test("demo-ops: wipe on a demo org calls wipe only, not seed", async () => 
   assertEquals(rpcNames.includes("rpc:seed_demo_org"), false);
 });
 
-Deno.test("demo-ops: reseed on a demo org calls seed only, not wipe", async () => {
-  const { deps, calls } = adminDeps({
-    isDemo: true,
-    rpcs: { wipe_demo_org: { data: null, error: null }, seed_demo_org: { data: null, error: null } },
-  });
+Deno.test("demo-ops: reseed is not a valid action (seed-only would duplicate non-idempotent seed)", async () => {
+  const { deps } = adminDeps({ isDemo: true });
   const res = await handle(authedReq({ action: "reseed", org_id: "o1" }), deps);
-  assertEquals(res.status, 200);
-  const rpcNames = calls.filter((c) => c.method === "rpc").map((c) => c.table);
-  assertEquals(rpcNames.includes("rpc:wipe_demo_org"), false);
-  assertEquals(rpcNames.includes("rpc:seed_demo_org"), true);
+  assertEquals(res.status, 400);
+  const body = await res.json() as { error: string };
+  assertEquals(body.error, "bad_request");
 });
 
 Deno.test("demo-ops: wipe_demo_org RPC error → 500", async () => {
