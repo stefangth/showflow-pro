@@ -22,6 +22,10 @@
       "producer": "Das ist hier, damit du weißt, warum Shows und Bookings leer aussieht, nicht damit du alles davon lösen kannst."
     }
   },
+  "nothingToSetUp": {
+    "title": "Nichts einzurichten",
+    "body": "Für diesen Arbeitsbereich ist noch kein Modul eingeschaltet, das eine Einrichtung braucht. Schau vorbei, sobald Booking Engine oder Engagementverträge eingeschaltet ist."
+  },
   "progress": {
     "title": "Einrichtung",
     "of": "von {{total}} erledigt",

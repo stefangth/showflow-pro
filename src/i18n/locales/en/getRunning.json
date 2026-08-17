@@ -22,6 +22,10 @@
       "producer": "This is here so you know why Shows and Bookings looks empty, not so you can fix all of it."
     }
   },
+  "nothingToSetUp": {
+    "title": "Nothing to set up",
+    "body": "This workspace has no module that needs setup yet. Come back once booking or hire orders is switched on."
+  },
   "progress": {
     "title": "Set up",
     "of": "of {{total}} done",

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { Users } from "lucide-react";
 import { useAuth } from "@/features/auth/AuthContext";
 import { useGetRunning } from "@/hooks/useGetRunning";
@@ -10,8 +10,29 @@ import { PhaseCard } from "@/components/getRunning/PhaseCard";
 import { RetiredBoard } from "@/components/getRunning/RetiredBoard";
 import { TaskPanel } from "@/components/getRunning/TaskPanel";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ROUTES } from "@/config/app.config";
 import { producerRoleNote, roleExplainerLinkLabel, ROLE_EXPLAINER_LINK_ROUTE } from "@/lib/dashboard/moduleOnboarding";
 import type { GetRunningModel, GetRunningTask, GetRunningTaskKey } from "@/lib/getRunning/tasks";
+
+/**
+ * Screen 03 of the setup/settings design's "nothing-on org" edge state: an org entitled
+ * to neither `booking_flow` nor `hire_orders` has no board to show (both phases the
+ * composer would otherwise build are gated on those flags, so `model.phases` is already
+ * empty) — a bare "nothing to set up" card in place of `RetiredBoard`/the phase list, so
+ * this reads as "there is nothing here yet" rather than "you finished everything".
+ */
+function NothingToSetUp(): JSX.Element {
+  const { t } = useTranslation("getRunning");
+  return (
+    <div
+      data-testid="get-running-nothing"
+      className="flex w-full max-w-[560px] flex-col gap-2 rounded-[var(--radius-xl)] border border-border bg-card p-6 shadow-elev3"
+    >
+      <h1 className="text-base font-semibold tracking-[-0.1px] text-foreground">{t("nothingToSetUp.title")}</h1>
+      <p className="text-[13px] leading-[19px] text-muted-foreground text-pretty">{t("nothingToSetUp.body")}</p>
+    </div>
+  );
+}
 
 /** The first task worth opening automatically: the earliest not-done task (in board
  *  order) that holds up either offers or booking — the same "first offer blocker" set
@@ -34,7 +55,12 @@ export default function GetRunningPage() {
   const { currentOrg, hasRole } = useAuth();
   const { model, isLoading } = useGetRunning();
   const [selectedTask, setSelectedTask] = useState<GetRunningTaskKey | null>(null);
-  const role = hasRole("admin") ? "admin" : "producer";
+  // The board itself is admin/producer-only (the nav item is gated the same way), so an
+  // artist reaches `role === "artist"` only via a direct URL hit — the early return below
+  // bounces them to Availability before any board markup renders. Narrowing this union via
+  // that return is what lets `role` keep flowing into GetRunningHeader/PhaseCard's
+  // "admin" | "producer" prop unchanged for the rest of the function.
+  const role = hasRole("admin") ? "admin" : hasRole("producer") ? "producer" : "artist";
   const orgId = currentOrg?.id ?? null;
   // Only the producer board ever names an admin (screen 03's "Waits on {admin}" chips + the
   // header's "wait on {admin}" headline), so the fetch is skipped entirely for an admin
@@ -56,6 +82,25 @@ export default function GetRunningPage() {
     return (
       <div className="flex flex-col gap-5 p-6">
         <Skeleton className="h-[140px] w-full" />
+      </div>
+    );
+  }
+
+  // The artist board is screen 08, a later phase — until it lands, a direct URL hit
+  // bounces to Availability rather than rendering (or half-rendering) the admin/producer
+  // board an artist has no business seeing.
+  if (role === "artist") {
+    return <Navigate to={ROUTES.AVAILABILITY} replace />;
+  }
+
+  // An org entitled to neither module has nothing for this board to show — both phases
+  // the composer would otherwise build are gated on bookingOn/hireOrdersOn, so
+  // model.phases is already empty here; render a single explanatory card instead of an
+  // empty board or the "everything's done" retirement state.
+  if (model.bookingOn === false && model.hireOrdersOn === false) {
+    return (
+      <div className="flex flex-col gap-5 p-6">
+        <NothingToSetUp />
       </div>
     );
   }
