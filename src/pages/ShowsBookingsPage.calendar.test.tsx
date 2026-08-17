@@ -78,12 +78,6 @@ vi.mock("@/hooks/useEntitlements", () => ({
 vi.mock("@/hooks/useCapabilities", () => ({
   useCan: () => true,
 }));
-vi.mock("@/components/bookings/setup/useBookingSetupRailVisible", () => ({
-  useBookingSetupRailVisible: () => ({ mode: "hidden" }),
-}));
-vi.mock("@/components/bookings/setup/BookingSetupRail", () => ({
-  BookingSetupRail: () => <div data-testid="booking-setup-rail" />,
-}));
 vi.mock("@/hooks/useBookingSetup", () => ({
   // Full status object: useModuleOnboardingRail composes the banner rail off status.steps
   // and its "N of M" label off the counts. Composed by the real engine rather than listed

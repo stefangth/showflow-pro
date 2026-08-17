@@ -44,12 +44,6 @@ vi.mock("@/hooks/useEntitlements", () => ({
 vi.mock("@/hooks/useCapabilities", () => ({
   useCan: () => true,
 }));
-vi.mock("@/components/bookings/setup/useBookingSetupRailVisible", () => ({
-  useBookingSetupRailVisible: () => ({ mode: "hidden" }),
-}));
-vi.mock("@/components/bookings/setup/BookingSetupRail", () => ({
-  BookingSetupRail: () => <div data-testid="booking-setup-rail" />,
-}));
 vi.mock("@/hooks/useBookingSetup", () => ({
   useBookingSetupStatus: () => ({
     status: { steps: [], doneCount: 0, totalCount: 0, canOffer: true, complete: true },

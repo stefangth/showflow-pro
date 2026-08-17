@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { ListChecks, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/features/auth/AuthContext";
-import { useEntitlements, useModuleGate } from "@/hooks/useEntitlements";
+import { useModuleGate } from "@/hooks/useEntitlements";
 import { useHireOrders, useDatesReadyForHireOrder } from "@/hooks/useHireOrders";
 import { OrdersKpis } from "@/components/hireOrders/OrdersKpis";
 import { computeOrderKpis } from "@/lib/hireOrders/kpis";
@@ -11,11 +11,6 @@ import { OrdersTable } from "@/components/hireOrders/OrdersTable";
 import { OrderSlideOver } from "@/components/hireOrders/OrderSlideOver";
 import { NewOrderWizard } from "@/components/hireOrders/NewOrderWizard";
 import { HireOrderImportDialog } from "@/components/hireOrders/import/HireOrderImportDialog";
-import { DashboardSetupRail } from "@/components/dashboard/firstRun/DashboardSetupRail";
-import { DashboardWelcomeCollapsed } from "@/components/dashboard/firstRun/DashboardWelcomeCollapsed";
-import { useModuleOnboardingRail } from "@/components/setup/useModuleOnboardingRail";
-import { SetupChecklistSheet } from "@/components/setup/SetupChecklistSheet";
-import type { ComposedStep } from "@/lib/dashboard/types";
 import { FeatureOffBanner } from "@/components/layout/FeatureOffBanner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -61,26 +56,12 @@ export default function HireOrdersPage() {
   const { t, i18n } = useTranslation("hireOrdersPages");
   const { currentOrg } = useAuth();
   const orgId = currentOrg?.id ?? null;
-  // TWO gates, deliberately, because they answer different questions.
-  //
   // `allow` / `pending` (useModuleGate) governs what this page OFFERS. It neither
   // fails open while entitlements load -- which would mount live controls for an org
   // that may turn out unentitled -- nor flashes the off-state banner at an entitled
   // org, because `pending` lets both the banner and the controls stay quiet until the
-  // answer is known. That replaces the old `entitlementsLoading || ...` fail-open,
-  // which existed only to suppress that flash and had no better tool at the time.
+  // answer is known.
   const { allow: featureOn, pending: featurePending } = useModuleGate("hire_orders");
-  // `entitledForWrites` governs what this page lets anyone CHANGE. It must NOT fail open
-  // while entitlements load: useEntitlements().features falls back to each feature's
-  // registry default during that window (hire_orders defaults off, but do not rely on
-  // that), so a default-on module would briefly read as entitled and mount a live
-  // settings-write surface. Gate on !loading AND the resolved entitlement -- the same
-  // "treat loading as not-entitled" stance useModuleGate takes with its `pending` flag.
-  // No super-admin exemption (useModuleGate has one, right for viewing, wrong here):
-  // app_settings RLS checks role, not entitlement, so a super-admin confirming the setup
-  // rail on an unentitled org would really write those settings.
-  const { features, isLoading: entitlementsLoading } = useEntitlements();
-  const entitledForWrites = !entitlementsLoading && features.has("hire_orders");
 
   const [statusChip, setStatusChip] = useState<StatusChip>("all");
   // Defaults to All time (not the Upcoming preset the sibling booking surfaces
@@ -133,26 +114,6 @@ export default function HireOrdersPage() {
   // flash "N dates are ready" on every mount, before the first page arrived.
   const noOrdersYet = !allOrdersLoading && allOrders.length === 0;
 
-  // A null child does not collapse a grid track, so the page has to know whether the
-  // rail will render before it picks its column template. Gated on the entitlement
-  // too: app_settings RLS checks role, not entitlement, so an unentitled org's setup
-  // writes would land, directly contradicting the FeatureOffBanner above.
-  // Gated on the raw entitlement so the three app_settings reads never fire for an
-  // org that cannot use them. The `&&` stays as well as the null argument: this is
-  // the gate that keeps an interactive setup checklist off a page already showing
-  // "changes cannot be saved", and it should not depend on another module's
-  // null-handling to hold.
-  //
-  // `rail.mode` is one of "banner" (full wizard), "collapsed" (compact bar,
-  // re-expandable), "button" (setup complete, permanent header re-entry), or
-  // "hidden" (nothing actionable). All four render states below key off this
-  // single value, behind the same write-gate as the rail itself.
-  const rail = useModuleOnboardingRail("hire_orders", entitledForWrites ? orgId : null);
-  const setupMode = entitledForWrites ? rail.mode : "hidden";
-  const [setupSheetOpen, setSetupSheetOpen] = useState(false);
-  const [setupStep, setSetupStep] = useState<string | undefined>(undefined);
-  const openSetupAt = (step: ComposedStep) => { setSetupStep(step.key); setSetupSheetOpen(true); };
-
   const stats = computeOrderKpis(allOrders, i18n.language);
   const selectedOrder =
     filteredOrders.find((o) => o.id === slideOverId) ?? allOrders.find((o) => o.id === slideOverId) ?? null;
@@ -173,16 +134,6 @@ export default function HireOrdersPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {setupMode === "button" && (
-            <Button
-              variant="outline"
-              className="gap-1.5"
-              onClick={() => { setSetupStep(undefined); setSetupSheetOpen(true); }}
-            >
-              <ListChecks className="h-4 w-4" />
-              {t("hireOrdersPage.setupChecklist")}
-            </Button>
-          )}
           {IMPORT_READY && (
             <Button variant="outline" disabled={!featureOn} onClick={() => setImportOpen(true)}>
               {t("hireOrdersPage.importFromSpreadsheet")}
@@ -195,36 +146,6 @@ export default function HireOrdersPage() {
       </div>
 
       <PageMini page="hireOrders" />
-
-      {/* The dashboard-style setup rail, module-scoped, above the KPIs. Its step
-          buttons open the inline checklist Sheet at that step (the "do it here"
-          surface); Hide dismisses it on this surface only. */}
-      {setupMode === "banner" && (
-        <DashboardSetupRail
-          layout="banner"
-          eyebrow={rail.eyebrow}
-          title={rail.title}
-          body={rail.body}
-          complete={false}
-          steps={rail.steps}
-          rules={rail.rules}
-          offFooters={rail.offFooters}
-          progressLabel={rail.progressLabel}
-          progressFilled={rail.progressFilled}
-          progressTotal={rail.progressTotal}
-          onStepAction={openSetupAt}
-          onClose={rail.dismiss}
-          onDismiss={rail.dismiss}
-        />
-      )}
-      {setupMode === "collapsed" && (
-        <DashboardWelcomeCollapsed
-          label={rail.collapsedLabel}
-          hint={rail.collapsedHint}
-          ctaLabel={rail.collapsedCta}
-          onOpen={rail.expand}
-        />
-      )}
 
       <OrdersKpis orders={allOrders} />
 
@@ -277,14 +198,6 @@ export default function HireOrdersPage() {
           </p>
         )}
       </div>
-
-      <SetupChecklistSheet
-        feature="hire_orders"
-        orgId={entitledForWrites ? orgId : null}
-        open={setupSheetOpen}
-        onOpenChange={setSetupSheetOpen}
-        initialStep={setupStep}
-      />
 
       <OrderSlideOver
         order={selectedOrder}

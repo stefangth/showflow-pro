@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -21,10 +21,7 @@ import { useBookingFlow, useReferenceField } from '@/hooks/useBookingFlow';
 import { referenceLabel, BOOKING_FLOW_DEFAULTS } from '@/lib/bookingFlow';
 import { artistMeter } from '@/lib/flowCopy';
 import { ROUTES } from '@/config/app.config';
-import type { FeatureKey } from '@/lib/entitlements';
 import type { OrderData } from '@/lib/hireOrders/types';
-import { useDashboardFirstRun } from '@/components/dashboard/firstRun/useDashboardFirstRun';
-import { DashboardFirstRun } from '@/components/dashboard/firstRun/DashboardFirstRun';
 import { UnlinkedArtistCard } from '@/components/artists/UnlinkedArtistCard';
 
 type BookingLite = { show_date_id: string; status: string };
@@ -45,7 +42,6 @@ function snap(data: OrderData, key: keyof OrderData): string {
 export function ArtistDashboard() {
   const { t } = useTranslation('dashboard');
   const { t: tFlow } = useTranslation('flowCopy');
-  const navigate = useNavigate();
   const { data: artist } = useMyArtist();
   const { data: eligibleDates } = useArtistEligibleDates();
   const { reference, customFieldKey } = useReferenceField();
@@ -58,12 +54,6 @@ export function ArtistDashboard() {
   const { data: myHireOrders, isSuccess: hireOrdersLoaded } = useMyHireOrders();
   const { currentOrg } = useAuth();
   const hireOrderAction = useHireOrderAction();
-  const fr = useDashboardFirstRun('artist');
-  // The artist chain's stage CTAs are route actions (DashboardFirstRun resolves them via
-  // navigate() internally, e.g. -> ROUTES.AVAILABILITY), so onOpenSetup rarely fires here --
-  // there is no setup Sheet on this page. Safe same-destination fallback rather than a
-  // no-op, in case a future artist stage emits an openSetup action.
-  const handleOpenSetup = (_feature: FeatureKey, _step: string) => navigate(ROUTES.AVAILABILITY);
 
   function handleDownloadHireOrder(orderId: string) {
     void (async () => {
@@ -141,31 +131,8 @@ export function ArtistDashboard() {
     );
   }
 
-  // KPI-visibility rule (mirrors DashboardPage's producer rule): the body always renders
-  // once there is real content of the artist's own -- eligible dates / offers -- even
-  // while the first-run surface is still showing and its own setup step is incomplete.
-  // Unlike an admin configuring an empty org, an artist has real per-user content
-  // immediately, so hiding it behind the surface would hide genuinely actionable content.
-  // Safety invariant, no settled-guard needed: fr.show shares useArtistEligibleDates'
-  // exact query (via useFirstRunMetrics), so it cannot flip true before hasArtistData is.
-  const hasArtistData = total > 0;
-  const showFirstRun = fr.show && !fr.dismissed;
-
   return (
     <div className="space-y-6">
-      {fr.show && (
-        <DashboardFirstRun
-          result={fr.result}
-          queueRows={fr.queueRows}
-          dismissed={fr.dismissed}
-          onDismiss={fr.dismiss}
-          onUndismiss={fr.undismiss}
-          onOpenSetup={handleOpenSetup}
-        />
-      )}
-
-      {(!showFirstRun || hasArtistData) && (
-        <div className="space-y-6">
           <div>
             <h1 className="font-display text-[32px] font-semibold tracking-tight">{t('artist.heading')}</h1>
             {/* Stays in the heading block so it reads as a subtitle (mt-1, not the
@@ -360,8 +327,6 @@ export function ArtistDashboard() {
               )}
             </CardContent>
           </Card>
-        </div>
-      )}
     </div>
   );
 }

@@ -3,7 +3,6 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import { createFakeSupabase, type TableSeed } from "@/test/supabaseFake";
-import type { SetupRailMode } from "@/components/setup/setupRailMode";
 
 // Same harness as HireOrderDetailPage.test.tsx: a call-recording fake swapped
 // into a hoisted holder (never a hand-rolled vi.mock chain), and useAuth as a
@@ -15,10 +14,8 @@ const { client } = vi.hoisted(() => ({ client: {} as Record<string, unknown> }))
 vi.mock("@/integrations/supabase/client", () => ({ supabase: client }));
 vi.mock("@/features/auth/AuthContext", () => ({ useAuth: vi.fn() }));
 vi.mock("@/components/minis/PageMini", () => ({ PageMini: () => null }));
-// The banner setup rail (DashboardSetupRail) and the module-scoped hook both read useCan
-// for step CTAs. Real useCan already resolves true in this harness (the slide-over's
-// Issue/Void buttons rely on it), so a flat true mock is behavior-preserving and keeps the
-// null-org booking-visibility branch inside useModuleOnboardingRail from needing providers.
+// The slide-over's Issue/Void buttons read useCan; a flat true mock is
+// behavior-preserving here.
 vi.mock("@/hooks/useCapabilities", () => ({ useCan: () => true }));
 // The page now always mounts NewOrderWizard (Task 2), which calls useNavigate
 // for its "Open order" success action; OrderSlideOver's Edit button (Task 2b)
@@ -31,46 +28,6 @@ vi.mock("react-router-dom", () => ({
   Link: ({ to, className, children }: { to: string; className?: string; children?: ReactNode }) => (
     <a href={to} className={className}>{children}</a>
   ),
-}));
-// The rail is exercised on its own in SetupRail.test.tsx; stub it here so this
-// page's tests don't also have to seed its three app_settings reads. The page
-// reads the same hook the rail does for `visible` (a null child does not
-// collapse a grid track) and, since Plan B's fix wave, for `reinvocable` too
-// (the header re-invoke button used to be gated independently, which could
-// offer to reopen a rail that would render nothing actionable -- now it reads
-// the exact same hook output as the callout, just a different field).
-const { railState } = vi.hoisted(() => ({
-  railState: { value: { mode: "banner" } as { mode: SetupRailMode } },
-}));
-vi.mock("@/components/hireOrders/setup/SetupRail", () => ({
-  SetupRail: () => <div data-testid="setup-rail" />,
-}));
-vi.mock("@/components/hireOrders/setup/useSetupRailVisible", () => ({
-  useSetupRailVisible: () => railState.value,
-}));
-// Feeds useModuleOnboardingRail's compose (the banner rail's steps + progress). The real
-// hook reads status.steps + status.complete, so the mock must carry a full steps array.
-// Partial mock: this module also exports useOrgLetterhead/useOrgTerms/useImportTermsTemplates,
-// which NewOrderWizard and OrderSlideOver (unmocked here) depend on.
-type HireStatus = {
-  steps: { key: string; done: boolean; blocksIssue: boolean }[];
-  doneCount: number; totalCount: number; canIssue: boolean; complete: boolean;
-};
-const { hireOrderSetupStatus } = vi.hoisted(() => ({
-  hireOrderSetupStatus: {
-    value: {
-      steps: [
-        { key: "letterhead", done: false, blocksIssue: true },
-        { key: "terms", done: false, blocksIssue: true },
-        { key: "countersign", done: false, blocksIssue: false },
-      ],
-      doneCount: 0, totalCount: 3, canIssue: false, complete: false,
-    } as HireStatus,
-  },
-}));
-vi.mock("@/hooks/useHireOrderSetup", async (orig) => ({
-  ...(await orig<typeof import("@/hooks/useHireOrderSetup")>()),
-  useHireOrderSetupStatus: () => ({ status: hireOrderSetupStatus.value, isLoading: false }),
 }));
 
 function seedClient(seed: Record<string, TableSeed>) {
@@ -88,18 +45,6 @@ function authAs(role: "admin" | "producer" = "producer", orgId = "org-1", isSupe
     roles: [role],
     isSuperAdmin,
   } as never);
-}
-
-/** Build a hire-order setup status with `done` of the three steps complete. */
-function makeHireStatus(done: number, complete: boolean): HireStatus {
-  return {
-    steps: [
-      { key: "letterhead", done: done > 0, blocksIssue: true },
-      { key: "terms", done: done > 1, blocksIssue: true },
-      { key: "countersign", done: done > 2, blocksIssue: false },
-    ],
-    doneCount: done, totalCount: 3, canIssue: done >= 2, complete,
-  };
 }
 
 /** A hire_orders row shaped like fetchHireOrders returns it (artist + show_date joined). */
@@ -222,8 +167,6 @@ describe("HireOrdersPage", () => {
   beforeEach(() => {
     navigate.mockClear();
     authAs("producer");
-    railState.value = { mode: "banner" };
-    hireOrderSetupStatus.value = makeHireStatus(0, false);
     localStorage.clear();
     seedFor(ROWS);
   });
@@ -546,126 +489,6 @@ describe("HireOrdersPage", () => {
     await waitFor(() => expect(screen.queryByText(/is off for this organization/)).not.toBeInTheDocument());
     expect(screen.getByRole("button", { name: /new order/i })).toBeEnabled();
     expect(screen.getByRole("button", { name: /import from spreadsheet/i })).toBeEnabled();
-  });
-
-  it("shows the banner setup rail (not a cramped side column) and opens the checklist Sheet at a clicked step", async () => {
-    renderPage();
-    await screen.findByText("Hire orders");
-    // findBy, not getBy: the rail runs on the RAW entitlement with no fail-open, so it
-    // appears once org_entitlements resolves rather than optimistically on first
-    // paint. That wait is the point. Mounting a live app_settings write surface before
-    // knowing the org is entitled is what the two-gate split exists to prevent.
-    expect(await screen.findByText(/get hire orders ready/i)).toBeInTheDocument();
-    // No fixed side-column grid track anywhere on the page (Plan B Task 3 uncramp).
-    expect(document.querySelector(".lg\\:grid-cols-\\[1fr_340px\\]")).toBeNull();
-    expect(screen.queryByTestId("setup-rail")).not.toBeInTheDocument();
-
-    // A step button opens the inline checklist Sheet expanded at that step.
-    fireEvent.click(screen.getByRole("button", { name: "Set letterhead" }));
-    expect(await screen.findByTestId("setup-rail")).toBeInTheDocument();
-  });
-
-  it("places the setup rail above the KPI tiles and drops the old dashed callout button", async () => {
-    renderPage();
-    const railTitle = await screen.findByText(/get hire orders ready/i);
-    const kpis = screen.getByTestId("orders-kpis");
-    // Rail precedes the KPI region in document order (Node.DOCUMENT_POSITION_FOLLOWING = 4).
-    expect(railTitle.compareDocumentPosition(kpis) & 4).toBeTruthy();
-    expect(screen.queryByRole("button", { name: /open checklist/i })).not.toBeInTheDocument();
-  });
-
-  it("shows nothing when the rail is hidden", async () => {
-    railState.value = { mode: "hidden" };
-    renderPage();
-    await screen.findByText("Hire orders");
-    expect(screen.queryByText(/get hire orders ready/i)).not.toBeInTheDocument();
-    expect(screen.queryByTestId("setup-rail")).not.toBeInTheDocument();
-    expect(screen.queryByText(/set up in progress/i)).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /setup checklist/i })).not.toBeInTheDocument();
-  });
-
-  it("shows no re-invoke button by default (not dismissed)", async () => {
-    renderPage();
-    await screen.findByText("Hire orders");
-    expect(screen.queryByRole("button", { name: /setup checklist/i })).not.toBeInTheDocument();
-  });
-
-  it("collapses to a bar, not the checklist button, when dismissed while setup is incomplete", async () => {
-    railState.value = { mode: "collapsed" };
-    localStorage.setItem("showflow.hireOrderSetup.hidden.org-1", "true");
-    renderPage();
-    await screen.findByText("Hire orders");
-    // Not the completed-state button and not the full wizard:
-    expect(screen.queryByRole("button", { name: /setup checklist/i })).not.toBeInTheDocument();
-    expect(screen.queryByText(/get hire orders ready/i)).not.toBeInTheDocument();
-    // The compact progress bar with a Resume affordance:
-    expect(await screen.findByText(/set up in progress/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /resume/i })).toBeInTheDocument();
-  });
-
-  it("the collapsed bar's Resume clears the dismissal so the wizard re-expands", async () => {
-    railState.value = { mode: "collapsed" };
-    localStorage.setItem("showflow.hireOrderSetup.hidden.org-1", "true");
-    renderPage();
-    fireEvent.click(await screen.findByRole("button", { name: /resume/i }));
-    expect(localStorage.getItem("showflow.hireOrderSetup.hidden.org-1")).toBeNull();
-  });
-
-  it("shows the permanent checklist button once setup is complete, and it opens the Sheet", async () => {
-    railState.value = { mode: "button" };
-    hireOrderSetupStatus.value = makeHireStatus(3, true);
-    renderPage();
-    const btn = await screen.findByRole("button", { name: /setup checklist/i });
-    // No bar and no full wizard in the complete state:
-    expect(screen.queryByText(/set up in progress/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/get hire orders ready/i)).not.toBeInTheDocument();
-    fireEvent.click(btn);
-    expect(await screen.findByTestId("setup-rail")).toBeInTheDocument();
-  });
-
-  it("shows neither the bar nor the button in the hidden (not actionable) state", async () => {
-    railState.value = { mode: "hidden" };
-    localStorage.setItem("showflow.hireOrderSetup.hidden.org-1", "true");
-    hireOrderSetupStatus.value = makeHireStatus(2, false);
-    renderPage();
-    await screen.findByText("Hire orders");
-    expect(screen.queryByRole("button", { name: /setup checklist/i })).not.toBeInTheDocument();
-    expect(screen.queryByText(/set up in progress/i)).not.toBeInTheDocument();
-  });
-
-  it("does not show the re-invoke button when the module is off, even if dismissed", async () => {
-    localStorage.setItem("showflow.hireOrderSetup.hidden.org-1", "true");
-    seedFor(ROWS, { org_entitlements: { data: [{ feature: "hire_orders", enabled: false }], error: null } });
-    renderPage();
-    await screen.findByText(/Hire orders is off for this organization/);
-    expect(screen.queryByRole("button", { name: /setup checklist/i })).not.toBeInTheDocument();
-  });
-
-  it("does not mount the setup rail when the module is off", async () => {
-    // Super-admins bypass the route's entitlement gate, and hire_orders defaults
-    // off, so a module-off org is the normal case for them. The page must not
-    // offer an interactive setup checklist right beside its own "changes cannot
-    // be saved" banner -- app_settings RLS checks role, not entitlement, so those
-    // saves would land and configure a module the org does not have.
-    seedFor(ROWS, { org_entitlements: { data: [{ feature: "hire_orders", enabled: false }], error: null } });
-    renderPage();
-    await screen.findByText(/Hire orders is off for this organization/);
-    expect(screen.queryByTestId("setup-rail")).not.toBeInTheDocument();
-  });
-
-  it("withholds the setup rail from a super-admin on a module-off org", async () => {
-    // The page runs two gates on purpose. useModuleGate exempts super-admins, so
-    // god-mode still gets the page itself and no off-state banner. The setup rail is
-    // a WRITE surface and runs on the raw entitlement instead: app_settings RLS
-    // checks role, not entitlement, so a super-admin confirming the rail here would
-    // really write those settings and configure a module this org does not have.
-    authAs("admin", "org-1", true);
-    seedFor(ROWS, { org_entitlements: { data: [{ feature: "hire_orders", enabled: false }], error: null } });
-    renderPage();
-    await screen.findByText("Hire orders");
-    expect(screen.queryByTestId("setup-rail")).not.toBeInTheDocument();
-    // The super-admin exemption is what distinguishes this from the test above.
-    expect(screen.queryByText(/Hire orders is off for this organization/)).not.toBeInTheDocument();
   });
 
   it("points at the dates that are ready when there are no orders yet", async () => {
