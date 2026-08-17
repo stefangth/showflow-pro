@@ -8,6 +8,9 @@
  *    `wipe` = wipe only. There is no bare seed-only action (non-idempotent seed).
  *  - `flag_and_seed`: super-admin only. Stamps `is_demo`, upserts the `hire_orders`
  *    entitlement on, then seeds.
+ *  - `link_create` / `link_revoke`: org-admin (or super-admin); re-asserts `is_demo`.
+ *    `link_create` inserts a `demo_sandbox_links` row and returns its token +
+ *    expires_at; `link_revoke` stamps `revoked_at` scoped to org+token (idempotent).
  *  - missing action/org_id → 400 bad_request.
  */
 
@@ -323,6 +326,79 @@ Deno.test("demo-ops: cue issue_hire_order is a no-op when nothing is fully_fille
   assertEquals(body.issued, false);
   assertEquals(body.reason, "no_issuable_draft");
   assertEquals(invokeCalls.some((c) => c.name === "generate-hire-orders"), false);
+});
+
+Deno.test("demo-ops: link_create rejects a non-admin", async () => {
+  const { deps } = makeFakeDeps({
+    authUser: { id: "u2" },
+    tables: {
+      organizations: { data: { is_demo: true }, error: null },
+      org_memberships: { data: { role: "artist" }, error: null },
+    },
+  });
+  const res = await handle(authedReq({ action: "link_create", org_id: "o1" }), deps);
+  assertEquals(res.status, 403);
+});
+
+Deno.test("demo-ops: link_create rejects a non-demo org", async () => {
+  const { deps } = adminDeps({ isDemo: false });
+  const res = await handle(authedReq({ action: "link_create", org_id: "o1" }), deps);
+  assertEquals(res.status, 400);
+  const body = await res.json() as { error: string };
+  assertEquals(body.error, "not_a_demo_org");
+});
+
+Deno.test("demo-ops: link_create inserts a link and returns token + expires_at", async () => {
+  const { deps, calls } = adminDeps({
+    isDemo: true,
+    tables: {
+      demo_sandbox_links: {
+        data: { token: "a".repeat(64), expires_at: "2026-08-31T00:00:00.000Z" },
+        error: null,
+      },
+    },
+  });
+  const res = await handle(authedReq({ action: "link_create", org_id: "o1" }), deps);
+  assertEquals(res.status, 200);
+  const body = await res.json() as { ok: boolean; token: string; expires_at: string };
+  assertEquals(body.ok, true);
+  assertEquals(body.token, "a".repeat(64));
+  assertEquals(body.expires_at, "2026-08-31T00:00:00.000Z");
+
+  const insertCall = calls.find((c) => c.table === "demo_sandbox_links" && c.method === "insert");
+  assertEquals(insertCall?.args[0], { org_id: "o1", created_by: "u1" });
+});
+
+Deno.test("demo-ops: link_revoke stamps revoked_at scoped to org+token and returns ok", async () => {
+  const { deps, calls } = adminDeps({
+    isDemo: true,
+    tables: {
+      demo_sandbox_links: { data: null, error: null },
+    },
+  });
+  const res = await handle(authedReq({ action: "link_revoke", org_id: "o1", token: "tok123" }), deps);
+  assertEquals(res.status, 200);
+  const body = await res.json() as { ok: boolean };
+  assertEquals(body.ok, true);
+
+  const updateCall = calls.find((c) => c.table === "demo_sandbox_links" && c.method === "update");
+  assertEquals(updateCall !== undefined, true);
+  const eqCalls = calls.filter((c) => c.table === "demo_sandbox_links" && c.method === "eq");
+  assertEquals(eqCalls.some((c) => c.args[0] === "org_id" && c.args[1] === "o1"), true);
+  assertEquals(eqCalls.some((c) => c.args[0] === "token" && c.args[1] === "tok123"), true);
+});
+
+Deno.test("demo-ops: link_revoke is idempotent for an already-revoked/unknown token", async () => {
+  const { deps } = adminDeps({
+    isDemo: true,
+    tables: {
+      demo_sandbox_links: { data: null, error: null },
+    },
+  });
+  const res = await handle(authedReq({ action: "link_revoke", org_id: "o1", token: "unknown-tok" }), deps);
+  assertEquals(res.status, 200);
+  const body = await res.json() as { ok: boolean };
+  assertEquals(body.ok, true);
 });
 
 Deno.test("demo-ops: cue issue_hire_order surfaces a readiness failure as an error", async () => {
