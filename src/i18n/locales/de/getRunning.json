@@ -65,6 +65,36 @@
     "adminOnly": "Nur Admin",
     "allCovered": "Alles abgedeckt"
   },
+  "panel": {
+    "close": "Schließen",
+    "later": "Später",
+    "eyebrow": {
+      "dates": "Dokument · läuft von allein",
+      "slots": "Werte · eine Zahl pro Show",
+      "flow": "Wahl · legt den weiteren Ablauf fest",
+      "people": "Dokument · deine Besetzungsliste",
+      "ladder": "Dokument · entscheidet, wer zuerst gefragt wird",
+      "eligibility": "Dokument · zeigt die Lücken",
+      "timing": "Werte · zwei Felder",
+      "team": "Dokument · dein Production Team",
+      "letterhead": "Dokument · blockiert den Versand",
+      "terms": "Dokument · blockiert den Versand",
+      "countersign": "Dokument · blockiert den Versand nicht"
+    },
+    "footerNote": {
+      "dates": "Läuft von allein, stündlich",
+      "slots": "Wird automatisch gespeichert",
+      "flow": "Änderung wird protokolliert",
+      "people": "Importieren oder von Hand hinzufügen",
+      "ladder": "Reihenfolge liegt in den Einstellungen",
+      "eligibility": "Abdeckung liegt in den Einstellungen",
+      "timing": "Gilt für die heutige Tagesübersicht",
+      "team": "Einladungen laufen über People",
+      "letterhead": "Wird auf jedem Vertrag verwendet",
+      "terms": "Wird auf jedem Vertrag verwendet",
+      "countersign": "Wird auf jedem Vertrag verwendet"
+    }
+  },
   "tasks": {
     "dates": {
       "title": "Shows werden synchronisiert",

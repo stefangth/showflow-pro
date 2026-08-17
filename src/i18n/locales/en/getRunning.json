@@ -65,6 +65,36 @@
     "adminOnly": "Admin only",
     "allCovered": "All covered"
   },
+  "panel": {
+    "close": "Close",
+    "later": "Later",
+    "eyebrow": {
+      "dates": "Document · runs on its own",
+      "slots": "Values · one number per show",
+      "flow": "Choice · sets everything downstream",
+      "people": "Document · your roster",
+      "ladder": "Document · decides who is asked first",
+      "eligibility": "Document · shows the gaps",
+      "timing": "Values · two fields",
+      "team": "Document · your production team",
+      "letterhead": "Document · blocks issuing",
+      "terms": "Document · blocks issuing",
+      "countersign": "Document · does not block issuing"
+    },
+    "footerNote": {
+      "dates": "Runs on its own, hourly",
+      "slots": "Saved as you go",
+      "flow": "Change is logged",
+      "people": "Import or add by hand",
+      "ladder": "Ranking lives in Settings",
+      "eligibility": "Coverage lives in Settings",
+      "timing": "Applies to tonight's digest",
+      "team": "Invites happen from People",
+      "letterhead": "Used on every order",
+      "terms": "Used on every order",
+      "countersign": "Used on every order"
+    }
+  },
   "tasks": {
     "dates": {
       "title": "Shows are synced in",
