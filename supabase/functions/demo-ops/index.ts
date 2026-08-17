@@ -7,30 +7,37 @@
 //    then this — `demo-ops` cannot re-invoke `provision-org` itself (its
 //    `requireSuperAdmin` gate rejects a service-role fn-to-fn call), and
 //    re-implementing account/membership/email would duplicate that code.
-//  - `reset` / `wipe` / `cue` (org-admin; super-admins pass too via the
-//    requireOrgRole fallback): re-asserts `is_demo` at the edge (defense in depth
-//    on top of each RPC's own guard), then dispatches. `reset` = wipe then seed;
-//    `wipe` = wipe only. There is deliberately NO bare seed-only action:
-//    `seed_demo_org` inserts fixed rows (e.g. order_no HO-DEMO-0001..0003) and is
-//    NOT idempotent, so it only runs on a fresh org (flag_and_seed) or right after
-//    a wipe (reset). `cue` drives the guided demo tour: DB-mutation cue ids go to
+//  - `reset` / `wipe` / `cue` / `link_create` / `link_revoke` (org-admin;
+//    super-admins pass too via the requireOrgRole fallback): re-asserts `is_demo`
+//    at the edge (defense in depth on top of each RPC's own guard), then dispatches.
+//    `reset` = wipe then seed; `wipe` = wipe only. There is deliberately NO bare
+//    seed-only action: `seed_demo_org` inserts fixed rows (e.g. order_no
+//    HO-DEMO-0001..0003) and is NOT idempotent, so it only runs on a fresh org
+//    (flag_and_seed) or right after a wipe (reset). `cue` drives the guided demo
+//    tour: DB-mutation cue ids go to
 //    `run_demo_cue`; `cue_id: "issue_hire_order"` goes to `generate-hire-orders`.
+//    `link_create` mints a `demo_sandbox_links` row (returns its token +
+//    expires_at) for the read-only sandbox link (Phase 3); `link_revoke`
+//    stamps `revoked_at` scoped to org+token, idempotently. Both write via
+//    the service-role client because RLS has no authenticated write policy
+//    on `demo_sandbox_links` — that is exactly why they run inside demo-ops.
 import { preflight, json } from "../_shared/http.ts";
 import { requireOrgRole, requireSuperAdmin } from "../_shared/auth.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
 
-type Action = "reset" | "wipe" | "flag_and_seed" | "cue";
+type Action = "reset" | "wipe" | "flag_and_seed" | "cue" | "link_create" | "link_revoke";
 
 type Body = {
   action: Action;
   org_id?: string;
   volume?: "small" | "full";
   cue_id?: string;
+  token?: string;
   /** reset only: also clear scene position / sim clock / prospect label (new-prospect restart). */
   reset_state?: boolean;
 };
 
-const VALID_ACTIONS: Action[] = ["reset", "wipe", "flag_and_seed", "cue"];
+const VALID_ACTIONS: Action[] = ["reset", "wipe", "flag_and_seed", "cue", "link_create", "link_revoke"];
 
 // DB-mutation cues dispatched to the run_demo_cue RPC (Task 2). `issue_hire_order`
 // is handled separately below via generate-hire-orders.
@@ -137,6 +144,30 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       p_cue: cueId,
       p_actor: gate.userId ?? undefined,
     });
+    if (error) return json({ error: error.message }, 500);
+    return json({ ok: true });
+  }
+
+  if (body.action === "link_create") {
+    const { data, error } = await deps.admin
+      .from("demo_sandbox_links")
+      .insert({ org_id: orgId, created_by: gate.userId ?? null })
+      .select("token, expires_at")
+      .single();
+    if (error) return json({ error: error.message }, 500);
+    const row = data as unknown as { token: string; expires_at: string };
+    return json({ ok: true, token: row.token, expires_at: row.expires_at });
+  }
+
+  if (body.action === "link_revoke") {
+    const token = body.token;
+    if (!token) return json({ error: "bad_request" }, 400);
+    const { error } = await deps.admin
+      .from("demo_sandbox_links")
+      .update({ revoked_at: new Date().toISOString() })
+      .eq("org_id", orgId)
+      .eq("token", token)
+      .is("revoked_at", null);
     if (error) return json({ error: error.message }, 500);
     return json({ ok: true });
   }
