@@ -8,6 +8,10 @@ import {
   fetchDemoState,
   updateDemoState,
   runCue,
+  fetchSandboxLinks,
+  createSandboxLink,
+  revokeSandboxLink,
+  fetchSandboxSnapshot,
 } from "@/data/demo";
 
 describe("resetDemoOrg", () => {
@@ -223,5 +227,123 @@ describe("runCue", () => {
       "fn:demo-ops": { data: { error: "no_cue" }, error: null },
     });
     await expect(runCue(fake as never, { orgId: "o1", cueId: "bad" })).rejects.toThrow("no_cue");
+  });
+});
+
+describe("fetchSandboxLinks", () => {
+  it("reads demo_sandbox_links for the org, newest-first", async () => {
+    const fake = createFakeSupabase({
+      demo_sandbox_links: {
+        data: [
+          {
+            id: "l1",
+            org_id: "o1",
+            token: "tok-1",
+            expires_at: "2026-08-24T00:00:00Z",
+            revoked_at: null,
+            created_by: "u1",
+            created_at: "2026-08-17T00:00:00Z",
+          },
+        ],
+        error: null,
+      },
+    });
+    const rows = await fetchSandboxLinks(fake as never, "o1");
+    expect(rows[0].token).toBe("tok-1");
+    expect(fake.calls).toContainEqual({ table: "demo_sandbox_links", method: "eq", args: ["org_id", "o1"] });
+    expect(fake.calls).toContainEqual({
+      table: "demo_sandbox_links",
+      method: "order",
+      args: ["created_at", { ascending: false }],
+    });
+  });
+
+  it("returns [] when there are no rows", async () => {
+    const fake = createFakeSupabase({ demo_sandbox_links: { data: null, error: null } });
+    expect(await fetchSandboxLinks(fake as never, "o1")).toEqual([]);
+  });
+
+  it("throws on a supabase error", async () => {
+    const fake = createFakeSupabase({ demo_sandbox_links: { data: null, error: { message: "boom" } } });
+    await expect(fetchSandboxLinks(fake as never, "o1")).rejects.toBeTruthy();
+  });
+});
+
+describe("createSandboxLink", () => {
+  it("invokes demo-ops with action link_create and org_id, returning token + expires_at", async () => {
+    const fake = createFakeSupabase({
+      "fn:demo-ops": { data: { ok: true, token: "tok-new", expires_at: "2026-08-24T00:00:00Z" }, error: null },
+    });
+    const result = await createSandboxLink(fake as never, "o1");
+    expect(result).toEqual({ token: "tok-new", expires_at: "2026-08-24T00:00:00Z" });
+    expect(fake.calls).toContainEqual({
+      table: "fn:demo-ops",
+      method: "invoke",
+      args: [{ action: "link_create", org_id: "o1" }],
+    });
+  });
+
+  it("throws when demo-ops returns a payload error", async () => {
+    const fake = createFakeSupabase({
+      "fn:demo-ops": { data: { error: "not_a_demo_org" }, error: null },
+    });
+    await expect(createSandboxLink(fake as never, "o1")).rejects.toThrow("not_a_demo_org");
+  });
+});
+
+describe("revokeSandboxLink", () => {
+  it("invokes demo-ops with action link_revoke, org_id, and token", async () => {
+    const fake = createFakeSupabase({
+      "fn:demo-ops": { data: { ok: true }, error: null },
+    });
+    await revokeSandboxLink(fake as never, { orgId: "o1", token: "tok-1" });
+    expect(fake.calls).toContainEqual({
+      table: "fn:demo-ops",
+      method: "invoke",
+      args: [{ action: "link_revoke", org_id: "o1", token: "tok-1" }],
+    });
+  });
+});
+
+describe("fetchSandboxSnapshot", () => {
+  it("invokes sandbox-view with the token and returns the body on success", async () => {
+    const snapshot = {
+      org: { label: "Acme", volume: "full" },
+      generatedAt: "2026-08-17T00:00:00Z",
+      kpis: { upcomingDates: 3, confirmedBookings: 5, fillRate: 80, hireOrdersIssued: 2 },
+      shows: [{ label: "Hamlet" }],
+      dates: [],
+      bookingsByStatus: { confirmed: 5 },
+      hireOrders: [],
+    };
+    const fake = createFakeSupabase({
+      "fn:sandbox-view": { data: { ok: true, snapshot }, error: null },
+    });
+    const result = await fetchSandboxSnapshot(fake as never, "tok-1");
+    expect(result).toEqual({ ok: true, snapshot });
+    expect(fake.calls).toContainEqual({
+      table: "fn:sandbox-view",
+      method: "invoke",
+      args: [{ token: "tok-1" }],
+    });
+  });
+
+  it("recovers the ok:false reason from a non-2xx error's context, without throwing", async () => {
+    const fake = createFakeSupabase({
+      "fn:sandbox-view": {
+        data: null,
+        error: { context: { json: async () => ({ ok: false, reason: "expired" }) } },
+      },
+    });
+    const result = await fetchSandboxSnapshot(fake as never, "tok-expired");
+    expect(result).toEqual({ ok: false, reason: "expired" });
+  });
+
+  it("falls back to a generic not_found reason when the error has no context", async () => {
+    const fake = createFakeSupabase({
+      "fn:sandbox-view": { data: null, error: { message: "network" } },
+    });
+    const result = await fetchSandboxSnapshot(fake as never, "tok-bad");
+    expect(result).toEqual({ ok: false, reason: "not_found" });
   });
 });

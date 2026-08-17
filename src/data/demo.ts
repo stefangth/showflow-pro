@@ -16,10 +16,12 @@ export interface CapturedSend {
 async function invokeDemoOps(
   client: SupabaseClient<Database>,
   body: Record<string, unknown>,
-): Promise<{ org_id?: string }> {
+): Promise<{ org_id?: string; ok?: boolean; token?: string; expires_at?: string }> {
   const { data, error } = await client.functions.invoke("demo-ops", { body });
   if (error) throw error;
-  const payload = data as { error?: string; org_id?: string; ok?: boolean } | null;
+  const payload = data as
+    | { error?: string; org_id?: string; ok?: boolean; token?: string; expires_at?: string }
+    | null;
   if (payload?.error) throw new Error(payload.error);
   return payload ?? {};
 }
@@ -135,4 +137,104 @@ export async function updateDemoState(
 /** Fire a scripted demo cue (advances the current scene, may mutate domain data). */
 export function runCue(client: SupabaseClient<Database>, args: { orgId: string; cueId: string }) {
   return invokeDemoOps(client, { action: "cue", org_id: args.orgId, cue_id: args.cueId });
+}
+
+export interface SandboxLink {
+  id: string;
+  org_id: string;
+  token: string;
+  expires_at: string;
+  revoked_at: string | null;
+  created_by: string;
+  created_at: string;
+}
+
+/**
+ * A curated, display-safe read-only snapshot of a demo org, returned by the
+ * public `sandbox-view` edge function. This shape is hand-synced (no
+ * generator) with the object built in `supabase/functions/sandbox-view/index.ts`
+ * (`buildSnapshot`) — update both together.
+ */
+export interface SandboxSnapshot {
+  org: { label: string; volume: "small" | "full" };
+  generatedAt: string;
+  kpis: {
+    upcomingDates: number;
+    confirmedBookings: number;
+    fillRate: number;
+    hireOrdersIssued: number;
+  };
+  shows: Array<{ label: string }>;
+  dates: Array<{
+    id: string;
+    date: string;
+    showLabel: string;
+    city: string | null;
+    status: string;
+    filled: number;
+    needed: number;
+  }>;
+  bookingsByStatus: Record<string, number>;
+  hireOrders: Array<{
+    status: string;
+    showLabel: string | null;
+    dateOn: string | null;
+  }>;
+}
+
+/** Read a demo org's sandbox links (leave-behind read-only URLs), newest-first. */
+export async function fetchSandboxLinks(
+  client: SupabaseClient<Database>,
+  orgId: string,
+): Promise<SandboxLink[]> {
+  const { data, error } = await client
+    .from("demo_sandbox_links")
+    .select("*")
+    .eq("org_id", orgId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as unknown as SandboxLink[];
+}
+
+/** Mint a new sandbox link for a demo org (org-admin action). */
+export async function createSandboxLink(
+  client: SupabaseClient<Database>,
+  orgId: string,
+): Promise<{ token: string; expires_at: string }> {
+  const payload = await invokeDemoOps(client, { action: "link_create", org_id: orgId });
+  return { token: payload.token as string, expires_at: payload.expires_at as string };
+}
+
+/** Revoke a sandbox link (org-admin action, idempotent). */
+export function revokeSandboxLink(
+  client: SupabaseClient<Database>,
+  args: { orgId: string; token: string },
+) {
+  return invokeDemoOps(client, { action: "link_revoke", org_id: args.orgId, token: args.token });
+}
+
+/**
+ * Fetch a sandbox snapshot via the public `sandbox-view` function. Never
+ * throws on an `ok:false` response (not_found/revoked/expired) — the caller
+ * (the sandbox viewer page) drives its empty/error state off `reason`.
+ */
+export async function fetchSandboxSnapshot(
+  client: SupabaseClient<Database>,
+  token: string,
+): Promise<{ ok: boolean; reason?: string; snapshot?: SandboxSnapshot }> {
+  const { data, error } = await client.functions.invoke("sandbox-view", { body: { token } });
+  if (error) {
+    // A 404/410 from the function surfaces as a FunctionsHttpError with the
+    // raw Response on `context` — recover the JSON body it carries.
+    const ctx = (error as { context?: Response }).context;
+    if (ctx) {
+      try {
+        return (await ctx.json()) as { ok: boolean; reason?: string; snapshot?: SandboxSnapshot };
+      } catch {
+        // fall through to the generic reason below
+      }
+    }
+    return { ok: false, reason: "not_found" };
+  }
+  return data as { ok: boolean; reason?: string; snapshot?: SandboxSnapshot };
 }
