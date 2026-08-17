@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {
   createDemoOrg,
@@ -68,6 +69,9 @@ export function useUpdateDemoState() {
     mutationFn: (args: { orgId: string; patch: Partial<Pick<DemoStateRow, "volume" | "prospect_label" | "sim_now" | "current_scene_id" | "script_id">> }) =>
       updateDemoState(supabase, args),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["demo", "state"] }),
+    // Surface a failure so a scene/clock/label change that silently fails mid-demo
+    // (RLS, transient error) isn't mistaken for "the click did nothing".
+    onError: (e: Error) => toast.error(e.message),
   });
 }
 
@@ -78,5 +82,8 @@ export function useRunCue() {
   return useMutation({
     mutationFn: (args: { orgId: string; cueId: string }) => runCue(supabase, args),
     onSuccess: () => invalidateEverything(qc),
+    // A cue firing in front of a prospect must never fail silently: surface the
+    // error (unknown_cue, not_a_demo_org, transient RPC failure) as a toast.
+    onError: (e: Error) => toast.error(e.message),
   });
 }
