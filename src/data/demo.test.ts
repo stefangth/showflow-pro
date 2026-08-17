@@ -19,7 +19,20 @@ describe("resetDemoOrg", () => {
     expect(fake.calls).toContainEqual({
       table: "fn:demo-ops",
       method: "invoke",
-      args: [{ action: "reset", org_id: "o1", volume: "full" }],
+      // resetState defaults to false (the rail volume toggle keeps the rep's place).
+      args: [{ action: "reset", org_id: "o1", volume: "full", reset_state: false }],
+    });
+  });
+
+  it("passes reset_state true for a new-prospect restart", async () => {
+    const fake = createFakeSupabase({
+      "fn:demo-ops": { data: { ok: true }, error: null },
+    });
+    await resetDemoOrg(fake as never, { orgId: "o1", volume: "small", resetState: true });
+    expect(fake.calls).toContainEqual({
+      table: "fn:demo-ops",
+      method: "invoke",
+      args: [{ action: "reset", org_id: "o1", volume: "small", reset_state: true }],
     });
   });
 
