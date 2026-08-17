@@ -18,11 +18,11 @@ export const HELP_ITEMS: readonly HelpItem[] = [
     },
   },
   {
-    id: 'A0.2', role: 'admin', stage: 0, status: 'new', surface: 'Invitation email · role descriptions', updated: '2026-08-14',
+    id: 'A0.2', role: 'admin', stage: 0, status: 'new', surface: 'Invitation email · role descriptions', updated: '2026-08-18',
     q: { en: 'What does being the admin mean? What am I signing up to own?', de: 'Was heißt es, Admin zu sein? Wofür übernehme ich die Verantwortung?' },
     a: {
-      en: 'The invitation now spells the role out instead of appending it as a suffix. As admin you decide how booking works for the organization, invite the team, and confirm bookings. The same role descriptions appear in the role menu in Admin, People.',
-      de: 'Die Einladung schreibt die Rolle jetzt aus, statt sie nur als Zusatz anzuhängen. Als Admin entscheidest du, wie das Buchen für die Organisation funktioniert, lädst das Team ein und bestätigst Buchungen. Dieselben Rollenbeschreibungen findest du im Rollenmenü unter Admin, People.',
+      en: 'The invitation now spells the role out instead of appending it as a suffix. As admin you decide how booking works for the organization, invite the team, and confirm bookings. The same role descriptions appear in the role menu in Settings, People.',
+      de: 'Die Einladung schreibt die Rolle jetzt aus, statt sie nur als Zusatz anzuhängen. Als Admin entscheidest du, wie das Buchen für die Organisation funktioniert, lädst das Team ein und bestätigst Buchungen. Dieselben Rollenbeschreibungen findest du im Rollenmenü unter Einstellungen, Personen.',
     },
   },
   {
