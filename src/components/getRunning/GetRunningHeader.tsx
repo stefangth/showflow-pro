@@ -41,7 +41,7 @@ export function GetRunningHeader({ model, orgName }: {
   return (
     <div className="flex items-start gap-6">
       <div className="min-w-0 flex-1">
-        <div className="text-[11px] font-semibold uppercase tracking-[1.6px] text-primary">
+        <div className="text-[11px] font-semibold uppercase tracking-[1.6px] text-accent-600">
           {t("header.eyebrow", { org: orgName || t("header.fallbackOrg") })}
         </div>
         <h1 className="mt-2 max-w-[620px] text-[32px] font-semibold leading-[38px] tracking-[-0.6px] text-foreground text-pretty">
@@ -76,7 +76,7 @@ export function GetRunningHeader({ model, orgName }: {
               <div className={`h-1.5 w-1.5 shrink-0 rounded-[2px] ${m.on ? "bg-primary" : "bg-[var(--text-faint)]"}`} />
               <div className="text-xs font-medium text-foreground">{m.label}</div>
               <div className="flex-1" />
-              <div className={`text-[11px] font-semibold ${m.on ? "text-primary" : "text-[var(--text-faint)]"}`}>
+              <div className={`text-[11px] font-semibold ${m.on ? "text-accent-600" : "text-[var(--text-faint)]"}`}>
                 {m.on ? t("progress.module.on") : t("progress.module.off")}
               </div>
             </div>
