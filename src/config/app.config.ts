@@ -228,6 +228,7 @@ export const ROUTES = {
   LOGIN: '/login',
   SIGNUP: '/signup',
   DASHBOARD: '/dashboard',
+  GET_RUNNING: '/get-running',
   BOOKINGS: '/bookings',
   PRODUCTIONS: '/productions',
   ARTISTS: '/artists',
