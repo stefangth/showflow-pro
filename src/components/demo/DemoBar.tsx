@@ -9,6 +9,7 @@ import { useDemo } from "@/features/demo/DemoContext";
 import { useAuth } from "@/features/auth/AuthContext";
 import { roleLabel, type AppRole } from "@/config/app.config";
 import { DemoOutbox } from "@/components/demo/DemoOutbox";
+import { SandboxLinkDialog } from "@/components/demo/SandboxLinkDialog";
 import { SceneSelect } from "@/components/demo/SceneSelect";
 import { formatTimestampLocal } from "@/lib/dates";
 
@@ -22,7 +23,8 @@ const ROLE_OPTIONS: AppRole[] = ["admin", "producer", "artist"];
  *  themselves an admin view. Gate on `roles`, never `hasRole('admin')`, which is itself
  *  viewAsRole-influenced and would make the check self-satisfying. Shows a "Demo mode"
  *  indicator, the scene selector, a role toggle, a simulated clock with quick-advance,
- *  the outbox, a confirmed Reset (it wipes+reseeds), and hide/exit controls. */
+ *  the outbox, a Sandbox link dialog for minting a read-only leave-behind URL, a
+ *  confirmed Reset (it wipes+reseeds), and hide/exit controls. */
 export function DemoBar() {
   const { isDemoOrg, isBarHidden, hideBar, simNow, advanceClock, reset, isResetting, isAdvancing } = useDemo();
   const { viewAsRole, setViewAsRole, setViewAsUser, roles, isSuperAdmin } = useAuth();
@@ -83,6 +85,7 @@ export function DemoBar() {
       </div>
       <div className="ml-auto flex items-center gap-2">
         <DemoOutbox />
+        <SandboxLinkDialog />
         <AlertDialog>
           <AlertDialogTrigger asChild>
             <Button size="sm" variant="outline" disabled={isResetting} className="gap-1.5">
