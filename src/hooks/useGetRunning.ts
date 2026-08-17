@@ -37,9 +37,14 @@ export function useGetRunning(): { model: GetRunningModel | null; isLoading: boo
   const hireOrgId = isNonArtist && hireOrdersOn ? orgId : null;
   const booking = useBookingSetupStatus(bookingOrgId);
   const hire = useHireOrderSetupStatus(hireOrgId);
-  // Admin-only nudge, same as the dashboard's "team" step: only an admin dashboard at a
-  // booking_flow org pays for this read.
-  const producerCount = useProducerCount(orgId, isNonArtist && role === "admin" && bookingOn);
+  // Both admin and producer viewers pay for this read: the "team" task's `done` reflects
+  // whether the org has ANY producer at all, which is a fact a producer viewer needs too
+  // (composeGetRunning still marks `team` adminOnly for actionability — a producer can see
+  // it's done but can't invite another producer). Producers can read the org member count
+  // under RLS; gating this to admins only left `producerCount` null for every producer
+  // viewer, so `team.done` was permanently false and the board could never reach
+  // `model.complete` for a producer.
+  const producerCount = useProducerCount(orgId, isNonArtist && bookingOn);
 
   // A producer granted either edit_* capability can actually run the org setup, same as the
   // dashboard's own capability reads. Called unconditionally (rules of hooks).

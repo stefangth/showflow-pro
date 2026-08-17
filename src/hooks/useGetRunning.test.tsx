@@ -119,6 +119,52 @@ describe("useGetRunning", () => {
     expect(result.current.model!.hireOrdersOn).toBe(false);
   });
 
+  it("marks the team task done for a PRODUCER viewer when the org has a producer (regression: producerCount was admin-only-gated)", async () => {
+    // Same fully-entitled seed as the admin test, but org_memberships reports a
+    // non-zero producer count. Before the fix, useProducerCount's `enabled` gate
+    // required role === "admin", so a producer viewer never issued this read at
+    // all: producerCount stayed null, and composeGetRunning's `team` task
+    // (`done: (producerCount ?? 0) > 0`) was permanently false — this assertion
+    // would have failed on the pre-fix code regardless of how many producers the
+    // org actually has.
+    seed({
+      org_entitlements: {
+        data: [
+          { feature: "booking_flow", enabled: true },
+          { feature: "hire_orders", enabled: true },
+        ],
+        error: null,
+      },
+      app_settings: {
+        data: [{ key: "booking_flow", org_id: ORG_ID, value: { active: true } }],
+        error: null,
+      },
+      shows: { data: [], error: null },
+      show_dates: { data: [], error: null },
+      show_cast_eligibility: { data: [], error: null },
+      cast_city_priority: { data: [], error: null },
+      artists: { data: null, error: null, count: 0 },
+      // A non-zero producer-role membership count for this org.
+      org_memberships: { data: null, error: null, count: 2 },
+    });
+
+    const { result } = renderHookWithProviders(() => useGetRunning(), {
+      authOverrides: {
+        currentOrg: TEST_ORG,
+        roles: ["producer"],
+        hasRole: (r) => r === "producer",
+      },
+    });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.model).not.toBeNull();
+
+    const bookablePhase = result.current.model!.phases.find((p) => p.key === "bookable");
+    const teamTask = bookablePhase?.tasks.find((t) => t.key === "team");
+    expect(teamTask).toBeDefined();
+    expect(teamTask!.done).toBe(true);
+  });
+
   it("does not read booking/hire-order setup status for an artist (defensive gate)", async () => {
     const { result } = renderHookWithProviders(() => useGetRunning(), {
       authOverrides: {
