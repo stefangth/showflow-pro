@@ -93,7 +93,7 @@ describe('DemoBar', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'Reset' }));
 
     expect(resetMutate).toHaveBeenCalledTimes(1);
-    expect(resetMutate).toHaveBeenCalledWith({ orgId: 'o', volume: 'full' });
+    expect(resetMutate).toHaveBeenCalledWith({ orgId: 'o', volume: 'full' }, expect.any(Object));
   });
 });
 

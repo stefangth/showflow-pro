@@ -138,11 +138,11 @@ Deno.test("demo-ops: flag_and_seed by a non-super-admin → 403", async () => {
   assertEquals(res.status, 403);
 });
 
-Deno.test("demo-ops: flag_and_seed happy path — flags, enables hire_orders, seeds", async () => {
+Deno.test("demo-ops: flag_and_seed happy path — flags, enables hire_orders, wipes starter catalog, seeds", async () => {
   const { deps, calls } = makeFakeDeps({
     authUser: { id: "super1" },
     tables: { platform_admins: { data: { user_id: "super1" }, error: null } },
-    rpcs: { seed_demo_org: { data: null, error: null } },
+    rpcs: { wipe_demo_org: { data: null, error: null }, seed_demo_org: { data: null, error: null } },
   });
   const res = await handle(authedReq({ action: "flag_and_seed", org_id: "o1", volume: "small" }), deps);
   assertEquals(res.status, 200);
@@ -155,6 +155,10 @@ Deno.test("demo-ops: flag_and_seed happy path — flags, enables hire_orders, se
   const entitlementUpsert = calls.find((c) => c.table === "org_entitlements" && c.method === "upsert");
   assertEquals(entitlementUpsert !== undefined, true);
   assertEquals(entitlementUpsert?.args[0], [{ org_id: "o1", feature: "hire_orders", enabled: true }]);
+
+  // provision-org's starter catalog is cleared BEFORE seeding the curated dataset.
+  const rpcOrder = calls.filter((c) => c.method === "rpc").map((c) => c.table);
+  assertEquals(rpcOrder.indexOf("rpc:wipe_demo_org") < rpcOrder.indexOf("rpc:seed_demo_org"), true);
 
   const seedCall = calls.find((c) => c.table === "rpc:seed_demo_org");
   assertEquals(seedCall?.args[0], { p_org: "o1", p_volume: "small", p_actor: "super1" });

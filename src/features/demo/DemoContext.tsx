@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useState, type ReactNode } from "react";
+import { toast } from "sonner";
 import { useAuth } from "@/features/auth/AuthContext";
 import { isDemoOrg } from "@/features/demo/demoAccess";
 import { useResetDemo } from "@/hooks/useDemo";
@@ -25,7 +26,11 @@ export function DemoProvider({ children }: { children: ReactNode }) {
   const volume: "small" | "full" = "full";
 
   const reset = useCallback(() => {
-    if (currentOrg) resetMut.mutate({ orgId: currentOrg.id, volume });
+    if (!currentOrg) return;
+    resetMut.mutate(
+      { orgId: currentOrg.id, volume },
+      { onSuccess: () => toast.success("Demo reset"), onError: (e: Error) => toast.error(e.message) },
+    );
   }, [currentOrg, resetMut, volume]);
 
   const value: DemoContextType = {
