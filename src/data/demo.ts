@@ -145,7 +145,7 @@ export interface SandboxLink {
   token: string;
   expires_at: string;
   revoked_at: string | null;
-  created_by: string;
+  created_by: string | null;
   created_at: string;
 }
 

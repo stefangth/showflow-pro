@@ -10,9 +10,9 @@ interface LinkRow { org_id: string; expires_at: string; revoked_at: string | nul
 
 export async function handle(req: Request, deps: Deps): Promise<Response> {
   if (req.method === "OPTIONS") return preflight();
-  const body = (await req.json().catch(() => null)) as { token?: string } | null;
+  const body = (await req.json().catch(() => null)) as { token?: unknown } | null;
   const token = body?.token;
-  if (!token) return json({ error: "bad_request" }, 400);
+  if (!token || typeof token !== "string") return json({ error: "bad_request" }, 400);
 
   const { data: linkData } = await deps.admin
     .from("demo_sandbox_links")
