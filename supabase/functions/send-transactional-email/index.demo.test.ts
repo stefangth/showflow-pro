@@ -136,6 +136,62 @@ Deno.test("send-transactional-email: demo org diverts to capture, no Resend", as
   assertExists(sentUpdate, "expected email_send_log to be transitioned to 'sent'");
 });
 
+Deno.test("send-transactional-email: demo org diverts even with no RESEND_API_KEY (keyless local stack)", async () => {
+  const { fetchImpl, resendCalled } = recordingFetch();
+  // Env WITHOUT RESEND_API_KEY -- mirrors the local stack. A demo send must still
+  // divert and succeed; only a real (non-demo) send should require the key.
+  const { deps, calls } = makeFakeDeps({
+    envVars: { SUPABASE_URL: "https://proj.supabase.co", SUPABASE_SERVICE_ROLE_KEY: "service_role_svc" },
+    fetchImpl,
+    tables: baseTables({
+      organizations: { data: { is_demo: true }, error: null },
+    }),
+  });
+
+  const res = await handle(
+    authedReq({
+      body: {
+        template_name: KNOWN_TEMPLATE,
+        recipient_email: "artist@demo.invalid",
+        org_id: "org-demo-1",
+        templateData: {},
+      },
+    }),
+    deps,
+  );
+
+  assertEquals(res.status, 200, "demo send must succeed without RESEND_API_KEY");
+  assertEquals(resendCalled(), false, "Resend must not be called for a demo org");
+  const captured = calls.filter((c) => c.table === "demo_captured_sends" && c.method === "insert");
+  assertEquals(captured.length, 1, "expected exactly one demo_captured_sends insert");
+});
+
+Deno.test("send-transactional-email: real org with no RESEND_API_KEY fails config check", async () => {
+  const { fetchImpl, resendCalled } = recordingFetch();
+  const { deps } = makeFakeDeps({
+    envVars: { SUPABASE_URL: "https://proj.supabase.co", SUPABASE_SERVICE_ROLE_KEY: "service_role_svc" },
+    fetchImpl,
+    tables: baseTables({
+      organizations: { data: { is_demo: false }, error: null },
+    }),
+  });
+
+  const res = await handle(
+    authedReq({
+      body: {
+        template_name: KNOWN_TEMPLATE,
+        recipient_email: "artist@real.example",
+        org_id: "org-real-1",
+        templateData: {},
+      },
+    }),
+    deps,
+  );
+
+  assertEquals(res.status, 500, "a real send without the key is a config error");
+  assertEquals(resendCalled(), false, "Resend must not be called when the key is missing");
+});
+
 Deno.test("send-transactional-email: demo org with attachments captures kind 'pdf'", async () => {
   const { fetchImpl, resendCalled } = recordingFetch();
   const { deps, calls } = makeFakeDeps({
