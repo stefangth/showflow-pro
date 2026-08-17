@@ -45,11 +45,17 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     const gate = await requireSuperAdmin(deps, req);
     if (!gate.ok) return gate.response;
 
-    await deps.admin.from("organizations").update({ is_demo: true }).eq("id", orgId);
-    await deps.admin.from("org_entitlements").upsert(
+    // Flag the org first (checked): if this fails, seed_demo_org's is_demo guard would
+    // reject anyway, so surface it directly instead of failing obscurely downstream.
+    const { error: flagErr } = await deps.admin.from("organizations").update({ is_demo: true }).eq("id", orgId);
+    if (flagErr) return json({ error: flagErr.message }, 500);
+    // Enable hire_orders (checked): a silent failure here would leave a demo org that
+    // looks seeded but has the hire-orders module dark, which is confusing to debug.
+    const { error: entErr } = await deps.admin.from("org_entitlements").upsert(
       [{ org_id: orgId, feature: "hire_orders", enabled: true }],
       { onConflict: "org_id,feature" },
     );
+    if (entErr) return json({ error: entErr.message }, 500);
 
     const { error: seedErr } = await deps.admin.rpc("seed_demo_org", {
       p_org: orgId,
