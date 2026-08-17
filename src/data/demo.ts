@@ -161,6 +161,7 @@ export interface SandboxSnapshot {
   kpis: {
     upcomingDates: number;
     confirmedBookings: number;
+    /** Whole-number percentage 0-100 (already rounded by sandbox-view); render as `${fillRate}%`. */
     fillRate: number;
     hireOrdersIssued: number;
   };

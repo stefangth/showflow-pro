@@ -13,7 +13,7 @@ vi.mock("@/data/demo", () => ({
 const SNAPSHOT: SandboxSnapshot = {
   org: { label: "Aurora Live", volume: "full" },
   generatedAt: "2026-08-17T10:00:00.000Z",
-  kpis: { upcomingDates: 12, confirmedBookings: 34, fillRate: 0.82, hireOrdersIssued: 5 },
+  kpis: { upcomingDates: 12, confirmedBookings: 34, fillRate: 82, hireOrdersIssued: 5 },
   shows: [{ label: "Winter Cabaret" }, { label: "Spring Revue" }],
   dates: [
     {
@@ -58,6 +58,8 @@ describe("SandboxViewerPage", () => {
     expect(screen.getByText(/demo, read only/i)).toBeInTheDocument();
     expect(screen.getByText("12")).toBeInTheDocument();
     expect(screen.getByText("34")).toBeInTheDocument();
+    // fillRate is already a 0-100 percentage from the edge; render as-is (not *100).
+    expect(screen.getByText("82%")).toBeInTheDocument();
     expect(screen.getAllByText("Winter Cabaret").length).toBeGreaterThan(0);
     expect(screen.getByText("Berlin")).toBeInTheDocument();
     expect(screen.getByText(/read only demo/i)).toBeInTheDocument();
