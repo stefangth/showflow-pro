@@ -28,6 +28,7 @@ function adminDeps(opts: {
   rpcs?: Record<string, { data?: unknown; error?: unknown }>;
   tables?: Record<string, TableSeed>;
   emailResult?: InvokeResult;
+  storageListResult?: { data?: unknown; error?: unknown };
 }) {
   return makeFakeDeps({
     authUser: { id: "u1" },
@@ -38,6 +39,7 @@ function adminDeps(opts: {
     },
     rpcs: opts.rpcs,
     emailResult: opts.emailResult,
+    storageListResult: opts.storageListResult,
   });
 }
 
@@ -142,6 +144,33 @@ Deno.test("demo-ops: wipe on a demo org calls wipe only, not seed", async () => 
   const rpcNames = calls.filter((c) => c.method === "rpc").map((c) => c.table);
   assertEquals(rpcNames.includes("rpc:wipe_demo_org"), true);
   assertEquals(rpcNames.includes("rpc:seed_demo_org"), false);
+});
+
+Deno.test("demo-ops: wipe removes the org's hire-order PDFs via the Storage API", async () => {
+  const { deps, calls } = adminDeps({
+    isDemo: true,
+    rpcs: { wipe_demo_org: { data: null, error: null } },
+    storageListResult: { data: [{ name: "HO-DEMO-0002.pdf" }, { name: "HO-DEMO-0003.pdf" }], error: null },
+  });
+  const res = await handle(authedReq({ action: "wipe", org_id: "o1" }), deps);
+  assertEquals(res.status, 200);
+  const listCall = calls.find((c) => c.table === "storage:hire-orders" && c.method === "list");
+  assertEquals(!!listCall, true, "expected a storage list scoped to the org prefix");
+  assertEquals(listCall?.args[0], "o1");
+  const removeCall = calls.find((c) => c.table === "storage:hire-orders" && c.method === "remove");
+  assertEquals(!!removeCall, true, "expected a storage remove");
+  assertEquals(removeCall?.args[0], ["o1/HO-DEMO-0002.pdf", "o1/HO-DEMO-0003.pdf"]);
+});
+
+Deno.test("demo-ops: wipe with no stored PDFs performs no storage remove", async () => {
+  const { deps, calls } = adminDeps({
+    isDemo: true,
+    rpcs: { wipe_demo_org: { data: null, error: null } },
+    storageListResult: { data: [], error: null },
+  });
+  const res = await handle(authedReq({ action: "wipe", org_id: "o1" }), deps);
+  assertEquals(res.status, 200);
+  assertEquals(calls.some((c) => c.table === "storage:hire-orders" && c.method === "remove"), false);
 });
 
 Deno.test("demo-ops: reseed is not a valid action (seed-only would duplicate non-idempotent seed)", async () => {

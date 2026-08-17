@@ -48,6 +48,22 @@ async function assertDemoOrg(deps: Deps, orgId: string): Promise<boolean> {
   return (data as { is_demo?: boolean } | null)?.is_demo === true;
 }
 
+// Hire-order PDFs live under `<orgId>/<order_no>.pdf` in the `hire-orders` bucket.
+// wipe_demo_org cannot delete storage.objects (a protect_delete trigger forbids
+// direct SQL deletes), so a wipe/reset removes them via the Storage API here.
+// Best-effort: a storage hiccup during demo cleanup must never fail the operation
+// the rep is watching, so failures are swallowed.
+async function removeOrgHireOrderPdfs(deps: Deps, orgId: string): Promise<void> {
+  try {
+    const { data } = await deps.admin.storage.from("hire-orders").list(orgId, { limit: 1000 });
+    const objects = (data as Array<{ name: string }> | null) ?? [];
+    if (objects.length === 0) return;
+    await deps.admin.storage.from("hire-orders").remove(objects.map((o) => `${orgId}/${o.name}`));
+  } catch (_e) {
+    // Swallow: storage cleanup is demo hygiene, not correctness.
+  }
+}
+
 export async function handle(req: Request, deps: Deps): Promise<Response> {
   if (req.method === "OPTIONS") return preflight();
 
@@ -112,6 +128,10 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   if (body.action === "wipe" || body.action === "reset") {
     const { error } = await deps.admin.rpc("wipe_demo_org", { p_org: orgId });
     if (error) return json({ error: error.message }, 500);
+    // wipe_demo_org clears tenant rows but cannot touch storage (a protect_delete
+    // trigger forbids direct SQL deletes of storage.objects), so remove the org's
+    // hire-order PDFs via the Storage API here so they don't accumulate across re-seeds.
+    await removeOrgHireOrderPdfs(deps, orgId);
   }
   if (body.action === "reset") {
     const { error } = await deps.admin.rpc("seed_demo_org", {

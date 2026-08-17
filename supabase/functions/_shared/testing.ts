@@ -53,6 +53,10 @@ export interface FakeClientOptions {
   storageSignedUrlResult?: { data?: unknown; error?: unknown };
   /** Seeded result for storage.from(bucket).download(...) (default: no object). */
   storageDownloadResult?: { data?: unknown; error?: unknown };
+  /** Seeded result for storage.from(bucket).list(...) (default: empty listing). */
+  storageListResult?: { data?: unknown; error?: unknown };
+  /** Seeded result for storage.from(bucket).remove(...) (default: success). */
+  storageRemoveResult?: { data?: unknown; error?: unknown };
   /**
    * Seeded auth-user roster for admin.auth.admin.listUsers() (default: derived from
    * usersById, unchanged). When provided, listUsers() returns exactly this roster —
@@ -358,6 +362,14 @@ export function createFakeClient(opts: FakeClientOptions = {}) {
           download: (path: string) => {
             calls.push({ table: `storage:${bucket}`, method: "download", args: [path] });
             return Promise.resolve(opts.storageDownloadResult ?? { data: null, error: null });
+          },
+          list: (prefix?: string, listOpts?: unknown) => {
+            calls.push({ table: `storage:${bucket}`, method: "list", args: [prefix, listOpts] });
+            return Promise.resolve(opts.storageListResult ?? { data: [], error: null });
+          },
+          remove: (paths: string[]) => {
+            calls.push({ table: `storage:${bucket}`, method: "remove", args: [paths] });
+            return Promise.resolve(opts.storageRemoveResult ?? { data: [], error: null });
           },
         };
       },
