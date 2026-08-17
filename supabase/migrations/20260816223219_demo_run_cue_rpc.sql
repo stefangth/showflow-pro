@@ -46,9 +46,13 @@ begin
     );
 
   elsif p_cue = 'run_clock_to_1700' then
-    -- Expire the staged holds: soft_booked with a due-today-17:00 deadline
-    -- becomes cancelled (same visible effect as expire-offers). Idempotent:
-    -- already-cancelled rows no longer match status = 'soft_booked'.
+    -- Expire the staged holds: the soft_booked rows the seed staged with a
+    -- due-today-17:00 deadline become cancelled. This is a scripted demo effect, NOT
+    -- the expire-offers cron -- that only auto-expires 'suggested' offers and never
+    -- touches accepted soft_booked holds (see 20260702120002_expire_only_suggested_
+    -- offers.sql); the seed uses soft_booked + offer_expires_at as a narrative
+    -- stand-in for "unconfirmed holds". Idempotent: already-cancelled rows no
+    -- longer match status = 'soft_booked'.
     update public.bookings b set status = 'cancelled', cancelled_at = now(),
       cancellation_reason = 'Offer expired'
     from public.show_dates d
