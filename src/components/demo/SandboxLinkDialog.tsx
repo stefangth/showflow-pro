@@ -14,8 +14,14 @@ function sandboxUrl(token: string): string {
 }
 
 async function copyLink(url: string) {
-  await navigator.clipboard.writeText(url);
-  toast.success("Link copied");
+  try {
+    await navigator.clipboard.writeText(url);
+    toast.success("Link copied");
+  } catch {
+    // Insecure context or denied clipboard permission: surface it instead of
+    // failing silently, so the operator knows the copy did not happen.
+    toast.error("Could not copy the link");
+  }
 }
 
 /** Status of a sandbox link at the current moment: active links can still be
@@ -78,12 +84,15 @@ export function SandboxLinkDialog() {
       onSuccess: (data: { token: string; expires_at: string }) => {
         setNewUrl(sandboxUrl(data.token));
       },
+      onError: () => toast.error("Could not create a sandbox link"),
     });
   };
 
   const handleRevoke = (token: string) => {
     if (!orgId) return;
-    revokeLink.mutate({ orgId, token });
+    revokeLink.mutate({ orgId, token }, {
+      onError: () => toast.error("Could not revoke the link"),
+    });
   };
 
   return (

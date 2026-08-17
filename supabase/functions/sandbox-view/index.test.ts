@@ -103,8 +103,10 @@ Deno.test("sandbox-view: 200 returns a display-safe snapshot for a valid token",
       },
       bookings: {
         data: [
-          { status: "confirmed", show_date_id: "sd-1" },
-          { status: "suggested", show_date_id: "sd-1" },
+          { status: "confirmed", show_date_id: "sd-1", is_understudy: false },
+          // An understudy confirmed booking must NOT count toward main-cast filled/fillRate.
+          { status: "confirmed", show_date_id: "sd-1", is_understudy: true },
+          { status: "suggested", show_date_id: "sd-1", is_understudy: false },
         ],
         error: null,
       },
@@ -128,7 +130,7 @@ Deno.test("sandbox-view: 200 returns a display-safe snapshot for a valid token",
   assert(typeof snapshot.kpis.upcomingDates === "number");
   assert(typeof snapshot.kpis.fillRate === "number");
   assert(typeof snapshot.kpis.hireOrdersIssued === "number");
-  assertEquals(snapshot.kpis.confirmedBookings, 1);
+  assertEquals(snapshot.kpis.confirmedBookings, 1); // understudy confirmed excluded
   assertEquals(snapshot.kpis.hireOrdersIssued, 1);
 
   assertEquals(snapshot.shows.length, 1);
@@ -138,10 +140,10 @@ Deno.test("sandbox-view: 200 returns a display-safe snapshot for a valid token",
   assertEquals(snapshot.dates[0].id, "sd-1");
   assertEquals(snapshot.dates[0].showLabel, "Cabaret · Berlin Run");
   assertEquals(snapshot.dates[0].city, "Berlin");
-  assertEquals(snapshot.dates[0].filled, 1);
+  assertEquals(snapshot.dates[0].filled, 1); // understudy confirmed excluded from main-cast filled
   assertEquals(snapshot.dates[0].needed, 3);
 
-  assertEquals(snapshot.bookingsByStatus.confirmed, 1);
+  assertEquals(snapshot.bookingsByStatus.confirmed, 2); // raw tally still counts the understudy
   assertEquals(snapshot.bookingsByStatus.suggested, 1);
 
   assertEquals(snapshot.hireOrders.length, 1);
