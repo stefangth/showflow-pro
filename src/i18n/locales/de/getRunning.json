@@ -82,6 +82,15 @@
   "panel": {
     "close": "Schließen",
     "later": "Später",
+    "waitsOn": {
+      "body": "Von einem Admin festgelegt. Wartet auf {{name}}.",
+      "settingsLink": {
+        "flow": "Booking Flow in den Einstellungen ändern (Booking Engine)",
+        "timing": "Angebotszeitpunkt in den Einstellungen ändern (Booking Engine)",
+        "ladder": "Besetzungen in den Einstellungen reihen (Besetzung und Abdeckung)",
+        "eligibility": "Besetzungen in den Einstellungen verknüpfen (Besetzung und Abdeckung)"
+      }
+    },
     "eyebrow": {
       "dates": "Dokument · läuft von allein",
       "slots": "Werte · eine Zahl pro Show",

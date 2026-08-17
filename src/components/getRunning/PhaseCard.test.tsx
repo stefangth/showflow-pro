@@ -284,6 +284,9 @@ describe("PhaseCard", () => {
     });
 
     it("gives a non-actionable paperwork tile the same Waits-on/View treatment instead of a whole-tile click", () => {
+      // letterhead is also the first not-done paperwork task, so the phase HEADER renders
+      // its own Waits-on/View pair too (FIX 2) — this test scopes to the tile itself
+      // (`paperwork-tile-letterhead`) so it isn't tripped up by that second, header-level one.
       const phase: GetRunningPhase = {
         key: "paperwork",
         tasks: [
@@ -304,14 +307,64 @@ describe("PhaseCard", () => {
         <PhaseCard phase={phase} role="producer" adminNames={["Maja Kern"]} onOpenTask={onOpenTask} />,
       );
 
-      expect(screen.getByText("Waits on Maja Kern")).toBeInTheDocument();
-      const view = screen.getByRole("button", { name: "View" });
-      fireEvent.click(view);
+      const tile = screen.getByTestId("paperwork-tile-letterhead");
+      expect(within(tile).getByText("Waits on Maja Kern")).toBeInTheDocument();
+      fireEvent.click(within(tile).getByRole("button", { name: "View" }));
       expect(onOpenTask).toHaveBeenCalledWith("letterhead");
 
       // The remaining actionable tiles still work exactly as before (whole tile clickable).
       fireEvent.click(screen.getByText("Terms"));
       expect(onOpenTask).toHaveBeenCalledWith("terms");
+    });
+
+    it("swaps the paperwork header's Do-it-now link for the Waits-on/View pair when the first open task isn't actionable", () => {
+      // FIX 2: the header must not say "Do it now" above a tile that itself says
+      // "Waits on {admin}" — the header and the first not-done task's actionability must
+      // agree.
+      const phase: GetRunningPhase = {
+        key: "paperwork",
+        tasks: [
+          task({
+            key: "letterhead",
+            phase: "paperwork",
+            done: false,
+            block: "issuing",
+            adminOnly: true,
+            actionableByViewer: false,
+          }),
+          task({ key: "terms", phase: "paperwork", done: false, block: "issuing" }),
+        ],
+      };
+      const onOpenTask = vi.fn();
+      renderWithProviders(
+        <PhaseCard phase={phase} role="producer" adminNames={["Maja Kern"]} onOpenTask={onOpenTask} />,
+      );
+
+      const header = screen.getByText("Paperwork").parentElement as HTMLElement;
+      expect(within(header).queryByText("Do it now")).not.toBeInTheDocument();
+      expect(within(header).getByText("Waits on Maja Kern")).toBeInTheDocument();
+      fireEvent.click(within(header).getByRole("button", { name: "View" }));
+      expect(onOpenTask).toHaveBeenCalledWith("letterhead");
+    });
+
+    it("keeps the paperwork header's Do-it-now link when the first open task IS actionable", () => {
+      const phase: GetRunningPhase = {
+        key: "paperwork",
+        tasks: [
+          task({ key: "letterhead", phase: "paperwork", done: false, block: "issuing" }),
+          task({
+            key: "terms",
+            phase: "paperwork",
+            done: false,
+            block: "issuing",
+            adminOnly: true,
+            actionableByViewer: false,
+          }),
+        ],
+      };
+      renderWithProviders(<PhaseCard phase={phase} role="admin" onOpenTask={vi.fn()} />);
+
+      expect(screen.getByText("Do it now")).toBeInTheDocument();
     });
   });
 });

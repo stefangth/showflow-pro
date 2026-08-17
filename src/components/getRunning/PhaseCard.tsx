@@ -154,7 +154,11 @@ function PaperworkTiles({
         );
         if (waitsOnAdmin) {
           return (
-            <div key={task.key} className="flex-1 rounded-[var(--radius-m)] border border-border bg-card p-3 text-left">
+            <div
+              key={task.key}
+              data-testid={`paperwork-tile-${task.key}`}
+              className="flex-1 rounded-[var(--radius-m)] border border-border bg-card p-3 text-left"
+            >
               {body}
               <Button
                 type="button"
@@ -171,6 +175,7 @@ function PaperworkTiles({
         return (
           <button
             key={task.key}
+            data-testid={`paperwork-tile-${task.key}`}
             type="button"
             onClick={() => onOpenTask(task.key)}
             className="flex-1 rounded-[var(--radius-m)] border border-border bg-card p-3 text-left"
@@ -216,6 +221,12 @@ export function PhaseCard({ phase, onOpenTask, adminNames }: PhaseCardProps): JS
   // Only the get_dates phase's header ever renders the "dates" review link (see below), so
   // this stays undefined (and unused) for every other phase.
   const datesTask = phase.key === "get_dates" ? phase.tasks.find((task) => task.key === "dates") : undefined;
+  // The paperwork header's "Do it now" link opens whichever task is first not-done (mirrors
+  // the click handler below). That same task drives whether the header says "Do it now" or
+  // waits on an admin — a producer must never read "Do it now" above a tile that is itself
+  // showing "Waits on {admin}" (the carry-forward gap this fixes).
+  const firstOpenPaperworkTask =
+    phase.key === "paperwork" ? (phase.tasks.find((task) => !task.done) ?? phase.tasks[0]) : undefined;
 
   return (
     <div className={`rounded-[var(--radius-l)] ${CARD_CLASS[state]}`} data-testid={`phase-card-${phase.key}`}>
@@ -230,16 +241,27 @@ export function PhaseCard({ phase, onOpenTask, adminNames }: PhaseCardProps): JS
         </div>
         <Badge variant={BADGE_VARIANT[state]}>{t(`phases.${phase.key}.status.${state}`)}</Badge>
         <div className="flex-1" />
-        {phase.key === "paperwork" && state !== "complete" ? (
+        {phase.key === "paperwork" && state !== "complete" && firstOpenPaperworkTask ? (
           <>
             <span className="text-xs text-[var(--text-faint)]">{t("phases.paperwork.note")}</span>
-            <button
-              type="button"
-              className="text-xs font-medium text-accent-600"
-              onClick={() => onOpenTask(phase.tasks.find((task) => !task.done)?.key ?? phase.tasks[0].key)}
-            >
-              {t("phases.paperwork.doItNow")}
-            </button>
+            {firstOpenPaperworkTask.actionableByViewer ? (
+              <button
+                type="button"
+                className="text-xs font-medium text-accent-600"
+                onClick={() => onOpenTask(firstOpenPaperworkTask.key)}
+              >
+                {t("phases.paperwork.doItNow")}
+              </button>
+            ) : (
+              <>
+                <Badge variant="neutral">
+                  {t("chips.waitsOn", { name: adminDisplayName(adminNames, t("waitsOn.fallbackAdmin")) })}
+                </Badge>
+                <Button type="button" variant="outline" size="sm" onClick={() => onOpenTask(firstOpenPaperworkTask.key)}>
+                  {t("actions.view")}
+                </Button>
+              </>
+            )}
           </>
         ) : state === "blocking" ? (
           <span className="font-mono text-xs font-medium text-accent-600">

@@ -82,6 +82,15 @@
   "panel": {
     "close": "Close",
     "later": "Later",
+    "waitsOn": {
+      "body": "Set by an admin. Waits on {{name}}.",
+      "settingsLink": {
+        "flow": "Change booking flow in Settings, Booking engine",
+        "timing": "Change offer timing in Settings, Booking engine",
+        "ladder": "Rank casts in Settings, Casts & coverage",
+        "eligibility": "Link casts in Settings, Casts & coverage"
+      }
+    },
     "eyebrow": {
       "dates": "Document · runs on its own",
       "slots": "Values · one number per show",
