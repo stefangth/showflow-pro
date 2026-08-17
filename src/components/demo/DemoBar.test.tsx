@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { fireEvent } from '@testing-library/react';
+import { fireEvent, within } from '@testing-library/react';
 import { render, screen } from '@/test/renderWithProviders';
 import { DemoBadge } from '@/components/demo/DemoBadge';
 import { DemoBar } from '@/components/demo/DemoBar';
@@ -57,6 +57,15 @@ describe('DemoBar', () => {
     expect(container).toBeEmptyDOMElement();
   });
 
+  it('renders nothing for a non-admin member of a demo org', () => {
+    // The role switcher flips effectiveHasRole client-side, so a non-admin must not
+    // see the bar and grant themselves an admin view (gated on the real role).
+    const { container } = render(<DemoBar />, {
+      authOverrides: { roles: ['producer'], currentOrg: { id: 'o', name: 'n', slug: 's', status: 'active', is_demo: true } },
+    });
+    expect(container).toBeEmptyDOMElement();
+  });
+
   it('clicking a role button switches the active viewAsRole via setViewAsRole', () => {
     render(<DemoBar />, { authOverrides: { currentOrg: { id: 'o', name: 'n', slug: 's', status: 'active', is_demo: true } } });
 
@@ -71,11 +80,17 @@ describe('DemoBar', () => {
     expect(producerButton).toHaveAttribute('aria-pressed', 'false');
   });
 
-  it('reset triggers the reset action', () => {
+  it('reset triggers the reset action only after confirming', () => {
     resetMutate.mockClear();
     render(<DemoBar />, { authOverrides: { currentOrg: { id: 'o', name: 'n', slug: 's', status: 'active', is_demo: true } } });
 
+    // The bar's Reset button opens a confirmation dialog; nothing fires yet.
     fireEvent.click(screen.getByRole('button', { name: /reset/i }));
+    expect(resetMutate).not.toHaveBeenCalled();
+
+    // Confirming in the dialog runs the reset.
+    const dialog = screen.getByRole('alertdialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Reset' }));
 
     expect(resetMutate).toHaveBeenCalledTimes(1);
     expect(resetMutate).toHaveBeenCalledWith({ orgId: 'o', volume: 'full' });

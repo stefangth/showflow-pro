@@ -33,6 +33,7 @@ export function OrganizationsTab() {
   const [editing, setEditing] = useState<OrgStat | null>(null);
   const [toSuspend, setToSuspend] = useState<OrgStat | null>(null);
   const [toWipe, setToWipe] = useState<OrgStat | null>(null);
+  const [toReseed, setToReseed] = useState<OrgStat | null>(null);
 
   const { data: orgs, isLoading, isError, error } = useQuery({
     queryKey: ["platform", "org-stats"],
@@ -124,13 +125,7 @@ export function OrganizationsTab() {
                     <>
                       <IconTooltip label="Reseed demo">
                         <Button size="sm" variant="ghost" aria-label="Reseed demo" disabled={reseed.isPending}
-                          onClick={() => reseed.mutate(
-                            { orgId: o.org_id, volume: "full" },
-                            {
-                              onSuccess: () => toast.success("Demo data reset"),
-                              onError: (e: Error) => toast.error(e.message),
-                            },
-                          )}>
+                          onClick={() => setToReseed(o)}>
                           <RefreshCw className="h-3.5 w-3.5" />
                         </Button>
                       </IconTooltip>
@@ -159,6 +154,24 @@ export function OrganizationsTab() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={() => { if (toSuspend) statusMutation.mutate({ id: toSuspend.org_id, status: "suspended" }); setToSuspend(null); }}>Suspend</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog open={toReseed !== null} onOpenChange={(o) => !o && setToReseed(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reseed demo org?</AlertDialogTitle>
+            <AlertDialogDescription>This wipes {toReseed?.name}'s current demo data and reseeds it from scratch. Anything the rep set up in this session is lost. This cannot be undone.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              if (toReseed) reseed.mutate(
+                { orgId: toReseed.org_id, volume: "full" },
+                { onSuccess: () => toast.success("Demo data reset"), onError: (e: Error) => toast.error(e.message) },
+              );
+              setToReseed(null);
+            }}>Reseed</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
