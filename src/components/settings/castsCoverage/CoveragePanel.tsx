@@ -25,10 +25,13 @@ import { cn } from "@/lib/utils";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { SegmentedControl, type SegmentedControlOption } from "@/components/ui/segmented-control";
 import { IconTooltip } from "@/components/common/IconTooltip";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Trash2, ChevronRight } from "lucide-react";
+import { Trash2, ChevronRight, Plus } from "lucide-react";
+import { CastDetailsSheet } from "@/components/casts/CastDetailsSheet";
+import type { Cast } from "@/types";
 import { TierCell } from "./TierCell";
 import {
   COVERAGE_TIER_COUNT,
@@ -78,6 +81,8 @@ export function CoveragePanel({ orgId, onOpenCast }: CoveragePanelProps) {
 
   const [scope, setScope] = useState<CoverageScope>("org");
   const [selectedShowId, setSelectedShowId] = useState<string | null>(null);
+  const [newCity, setNewCity] = useState("");
+  const [activeCast, setActiveCast] = useState<Cast | null>(null);
 
   // Same query key/behavior as CastsCitiesTab's own city read (["cities","all",orgId] via
   // fetchCities) — useAllCities resolves orgId from useAuth's currentOrg, so caching and
@@ -237,6 +242,19 @@ export function CoveragePanel({ orgId, onOpenCast }: CoveragePanelProps) {
     onError: (e: Error) => toast.error(t('coverage.overridesClearFailed'), { description: e.message }),
   });
 
+  const addCity = useMutation({
+    mutationFn: async (name: string) => {
+      const { error } = await supabase.from("cities").insert({ name, org_id: orgId });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["cities"] });
+      setNewCity("");
+      toast.success(t('coverage.cityAdded'));
+    },
+    onError: (e: Error) => toast.error(e.message ?? t('coverage.cityAddFailed')),
+  });
+
   const deleteCity = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from("cities").delete().eq("id", id);
@@ -369,7 +387,7 @@ export function CoveragePanel({ orgId, onOpenCast }: CoveragePanelProps) {
                       <button
                         key={c.id}
                         type="button"
-                        onClick={() => onOpenCast?.(c.id)}
+                        onClick={() => (onOpenCast ? onOpenCast(c.id) : setActiveCast(c))}
                         className="flex w-full items-center justify-between gap-2 rounded-[var(--radius-s)] px-2 py-2 text-left text-sm hover:bg-[var(--surface-3)]"
                       >
                         <span className="min-w-0 flex-1">
@@ -392,6 +410,26 @@ export function CoveragePanel({ orgId, onOpenCast }: CoveragePanelProps) {
                 <CardTitle className="font-display">{t('coverage.citiesTitle')}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-1">
+                <form
+                  className="mb-2 flex items-center gap-2"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const name = newCity.trim();
+                    if (name) addCity.mutate(name);
+                  }}
+                >
+                  <Input
+                    value={newCity}
+                    onChange={(e) => setNewCity(e.target.value)}
+                    placeholder={t('coverage.addCityPlaceholder')}
+                    disabled={!canManage}
+                    aria-label={t('coverage.addCityPlaceholder')}
+                  />
+                  <Button type="submit" size="sm" disabled={!canManage || !newCity.trim() || addCity.isPending}>
+                    <Plus className="mr-1 h-4 w-4" />
+                    {t('coverage.addCityButton')}
+                  </Button>
+                </form>
                 {cities.length === 0 ? (
                   <p className="text-sm text-muted-foreground">{t('coverage.noCitiesYet')}</p>
                 ) : (
@@ -547,6 +585,14 @@ export function CoveragePanel({ orgId, onOpenCast }: CoveragePanelProps) {
             </Card>
           </div>
         </div>
+      )}
+
+      {!onOpenCast && activeCast && (
+        <CastDetailsSheet
+          cast={activeCast}
+          open
+          onOpenChange={(open) => { if (!open) setActiveCast(null); }}
+        />
       )}
     </div>
   );

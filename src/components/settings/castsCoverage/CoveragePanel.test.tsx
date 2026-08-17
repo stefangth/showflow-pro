@@ -7,6 +7,13 @@ const { client } = vi.hoisted(() => ({ client: {} as Record<string, unknown> }))
 vi.mock("@/integrations/supabase/client", () => ({ supabase: client }));
 vi.mock("@/features/auth/AuthContext", () => ({ useAuth: () => ({ hasRole: () => true, currentOrg: { id: "org-1" } }) }));
 vi.mock("@/hooks/useCapabilities", () => ({ useCan: () => true }));
+// Stub the cast detail sheet: it pulls in EditorProvider/useEditorConfig which the
+// bare test harness doesn't supply. We only need to assert CoveragePanel opens it
+// with the clicked cast.
+vi.mock("@/components/casts/CastDetailsSheet", () => ({
+  CastDetailsSheet: ({ cast, open }: { cast: { name: string } | null; open: boolean }) =>
+    open && cast ? <div data-testid="cast-detail-sheet">Sheet: {cast.name}</div> : null,
+}));
 
 Object.assign(
   client,
@@ -101,6 +108,33 @@ describe("CoveragePanel", () => {
       });
     });
   });
+
+    it("adds a city via the inline form (regression: form was dropped from CastsCitiesTab)", async () => {
+      renderWithProviders(<CoveragePanel orgId="org-1" />);
+
+      const input = await screen.findByPlaceholderText("New city name");
+      fireEvent.change(input, { target: { value: "Munich" } });
+      fireEvent.click(screen.getByRole("button", { name: "Add" }));
+
+      await waitFor(() => {
+        const calls = (client.calls ?? []) as { table: string; method: string; args: unknown[] }[];
+        expect(calls).toContainEqual({
+          table: "cities",
+          method: "insert",
+          args: [{ name: "Munich", org_id: "org-1" }],
+        });
+      });
+    });
+
+    it("opens the cast detail sheet when a cast row is clicked (regression: onOpenCast never wired)", async () => {
+      renderWithProviders(<CoveragePanel orgId="org-1" />);
+
+      // The Casts card lists each cast as a button; click the first one.
+      const castButtons = await screen.findAllByText("Cast A");
+      fireEvent.click(castButtons[castButtons.length - 1]);
+
+      expect(await screen.findByTestId("cast-detail-sheet")).toHaveTextContent("Sheet: Cast A");
+    });
 
   describe("per-show scope", () => {
     it("shows the org default for every city until the show has its own override", async () => {

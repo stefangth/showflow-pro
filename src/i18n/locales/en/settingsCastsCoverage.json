@@ -65,6 +65,10 @@
     "overridesClearFailed": "Failed to clear overrides",
     "cityRemoved": "City removed",
     "cityRemoveFailed": "Failed to remove city",
+    "addCityPlaceholder": "New city name",
+    "addCityButton": "Add",
+    "cityAdded": "City added",
+    "cityAddFailed": "Failed to add city",
     "noShowSelected": "No show selected"
   },
   "tierCell": {
