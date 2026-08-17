@@ -46,8 +46,15 @@ async function buildSnapshot(deps: Deps, orgId: string, orgName: string) {
     .from("demo_state").select("volume, prospect_label").eq("org_id", orgId).maybeSingle();
   const state = stateData as unknown as { volume: "small" | "full"; prospect_label: string | null } | null;
 
+  // This is a public, unauthenticated endpoint (verify_jwt=false) with no per-token
+  // rate limiting, so every read is defensively capped. The caps sit far above any
+  // demo's seed volume (6 shows / ~24 dates), so they never trim a real demo — they
+  // only bound a pathological org that somehow got is_demo set with a huge catalog.
+  const SHOW_CAP = 100;
+  const DATE_CAP = 200;
+
   const { data: showsData } = await deps.admin
-    .from("shows").select("id, program, sub_program, main_cast_slots").eq("org_id", orgId).limit(20);
+    .from("shows").select("id, program, sub_program, main_cast_slots").eq("org_id", orgId).limit(SHOW_CAP);
   const shows = (showsData ?? []) as unknown as Array<{ id: string; program: string | null; sub_program: string | null; main_cast_slots: number | null }>;
   const showById = new Map(shows.map((s) => [s.id, s]));
 
@@ -60,19 +67,34 @@ async function buildSnapshot(deps: Deps, orgId: string, orgName: string) {
     .select("id, date, status, show_id, city_id")
     .eq("org_id", orgId)
     .order("date", { ascending: true })
-    .limit(60);
+    .limit(DATE_CAP);
   const dates = (datesData ?? []) as unknown as Array<{ id: string; date: string; status: string; show_id: string; city_id: string | null }>;
+  const dateIds = dates.map((d) => d.id);
 
-  const { data: bookingsData } = await deps.admin
-    .from("bookings").select("status, show_date_id").eq("org_id", orgId);
-  const bookings = (bookingsData ?? []) as unknown as Array<{ status: string; show_date_id: string }>;
+  // Scope bookings to the fetched date window so the fill-rate numerator (confirmed
+  // main-cast bookings) and denominator (main_cast_slots over `dates`) derive from the
+  // SAME set — this both bounds the read and keeps fillRate consistent at the cap edge.
+  let bookingsData: unknown = [];
+  if (dateIds.length) {
+    const res = await deps.admin
+      .from("bookings").select("status, show_date_id, is_understudy").eq("org_id", orgId).in("show_date_id", dateIds);
+    bookingsData = res.data;
+  }
+  const bookings = (bookingsData ?? []) as unknown as Array<{ status: string; show_date_id: string; is_understudy: boolean }>;
 
+  // `filled`/fillRate measure main-cast fill against `main_cast_slots`, so only
+  // non-understudy confirmed bookings count toward them (an understudy must never
+  // push a date past its main-cast capacity, e.g. show "4/3"). bookingsByStatus is a
+  // raw status tally over the same date window.
   const bookingsByStatus: Record<string, number> = {};
   const confirmedByDate = new Map<string, number>();
+  let confirmedMain = 0;
   for (const b of bookings) {
     bookingsByStatus[b.status] = (bookingsByStatus[b.status] ?? 0) + 1;
-    if (b.status === "confirmed")
+    if (b.status === "confirmed" && !b.is_understudy) {
+      confirmedMain += 1;
       confirmedByDate.set(b.show_date_id, (confirmedByDate.get(b.show_date_id) ?? 0) + 1);
+    }
   }
 
   const { data: hoData } = await deps.admin
@@ -82,7 +104,7 @@ async function buildSnapshot(deps: Deps, orgId: string, orgName: string) {
 
   const now = deps.now().getTime();
   const upcomingDates = dates.filter((d) => new Date(d.date).getTime() >= now).length;
-  const confirmedBookings = bookingsByStatus["confirmed"] ?? 0;
+  const confirmedBookings = confirmedMain;
   // "needed" per date is the date's show's main_cast_slots.
   const totalNeeded = dates.reduce((s, d) => s + (showById.get(d.show_id)?.main_cast_slots ?? 0), 0);
   const fillRate = totalNeeded > 0 ? Math.round((confirmedBookings / totalNeeded) * 100) : 0;
