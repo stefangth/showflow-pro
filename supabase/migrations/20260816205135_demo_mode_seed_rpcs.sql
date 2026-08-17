@@ -40,7 +40,10 @@ begin
 end;
 $$;
 
-revoke all on function public.wipe_demo_org(uuid) from public;
+-- Only the service role (via the demo-ops edge function) may execute this; revoke
+-- from anon/authenticated too so it can never be called directly through PostgREST,
+-- bypassing the edge role gate. (grant to service_role is in a later migration.)
+revoke all on function public.wipe_demo_org(uuid) from public, anon, authenticated;
 
 -- seed_demo_org populates a demo org with a realistic, self-consistent
 -- dataset: cities, one cast, artists, shows, show_dates, bookings covering
@@ -197,4 +200,5 @@ begin
 end;
 $$;
 
-revoke all on function public.seed_demo_org(uuid, text, uuid) from public;
+-- Service-role-only (see wipe_demo_org above): block direct anon/authenticated calls.
+revoke all on function public.seed_demo_org(uuid, text, uuid) from public, anon, authenticated;
