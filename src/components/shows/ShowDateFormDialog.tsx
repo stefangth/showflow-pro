@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
@@ -109,16 +109,19 @@ export function ShowDateFormDialog({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, showDate, defaultShowId]);
 
-  // Creating a date is deliberately opt-in: opening Tier 1 can immediately notify artists.
-  // Initialize only when the dialog opens so a later flow refetch cannot erase the user's choice.
+  // The open-tier-1 default mirrors the org's booking flow: checked when it auto-opens tier 1
+  // for a new date (Settings > Booking flow > "Open tier 1 automatically when a new date is
+  // ready"), unchecked when it does not. Re-seeded when the flow query resolves so a cold open
+  // lands on the real setting, but never once the producer has toggled it by hand
+  // (offersTouched), so a late refetch cannot erase their choice for this date.
+  const offersTouched = useRef(false);
   useEffect(() => {
-    if (open && mode === "create") setOpenOffers(false);
-  }, [open, mode]);
-
-  // Edit mode keeps its existing flow-driven auto-open behavior.
+    if (open) offersTouched.current = false;
+  }, [open]);
   useEffect(() => {
-    if (open && mode === "edit") setOpenOffers((flow?.auto_open_tier1 ?? true) && (flow?.artist_acceptance ?? true));
-  }, [open, flow, mode]);
+    if (!open || offersTouched.current) return;
+    setOpenOffers((flow?.auto_open_tier1 ?? true) && (flow?.artist_acceptance ?? true));
+  }, [open, flow]);
 
   const activeShows = useMemo(() => (shows ?? []).filter((s) => s.status !== "archived"), [shows]);
   const showId = form.watch("showId");
@@ -294,11 +297,14 @@ export function ShowDateFormDialog({
           </div>
 
           {mode === "create" && !(flow && !flow.artist_acceptance) && (
-            <div className="flex items-center gap-2 text-sm">
-              <Checkbox id="open-offers" checked={openOffers} disabled={!slotsConfigured} onCheckedChange={(c) => setOpenOffers(!!c)} />
-              <Label htmlFor="open-offers" className={`font-normal ${slotsConfigured ? "" : "text-muted-foreground"}`}>
-                {slotsConfigured ? t("showDateForm.openTier1Now") : t("showDateForm.openTier1NowConfigure")}
-              </Label>
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2 text-sm">
+                <Checkbox id="open-offers" checked={openOffers} disabled={!slotsConfigured} onCheckedChange={(c) => { offersTouched.current = true; setOpenOffers(!!c); }} />
+                <Label htmlFor="open-offers" className={`font-normal ${slotsConfigured ? "" : "text-muted-foreground"}`}>
+                  {slotsConfigured ? t("showDateForm.openTier1Now") : t("showDateForm.openTier1NowConfigure")}
+                </Label>
+              </div>
+              <p className="pl-6 text-xs text-muted-foreground">{t("showDateForm.openTier1FlowHint")}</p>
             </div>
           )}
 

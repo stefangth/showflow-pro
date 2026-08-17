@@ -518,7 +518,6 @@ function ProducerShowsBookings() {
               {t('producer.setupChecklist')}
             </Button>
           )}
-          {canManage && <Button onClick={() => setNewDateOpen(true)}>{t('producer.newDate')}</Button>}
         </div>
       </div>
 
@@ -598,6 +597,7 @@ function ProducerShowsBookings() {
           })}
         />
         {canSee('sort') && <SortControl value={sort} onChange={setSort} chronoLabel={t('producer.sortChronoLabel')} extraOptions={sortExtraOptions} />}
+        {canManage && <Button className="ml-auto" onClick={() => setNewDateOpen(true)}>{t('producer.newDate')}</Button>}
       </div>
 
       {isLoading ? (
