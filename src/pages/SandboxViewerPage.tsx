@@ -121,8 +121,11 @@ export default function SandboxViewerPage() {
             <Card className="p-4 space-y-3">
               <h2 className="text-sm font-semibold text-foreground">Shows</h2>
               <div className="flex flex-wrap gap-2">
-                {data.snapshot.shows.map((show) => (
-                  <Badge key={show.label} variant="neutral">
+                {data.snapshot.shows.map((show, i) => (
+                  // Index key: the curated snapshot drops show ids and `showLabel` can
+                  // repeat ("Untitled show"), so labels aren't unique; this list is never
+                  // reordered or filtered client-side, so the index is stable.
+                  <Badge key={i} variant="neutral">
                     {show.label}
                   </Badge>
                 ))}

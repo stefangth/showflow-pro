@@ -24,8 +24,9 @@ create table if not exists public.demo_sandbox_links (
   created_at timestamptz not null default now()
 );
 
+-- `token` is UNIQUE (above), which Postgres backs with its own b-tree index that
+-- fully serves sandbox-view's `.eq("token", ...)` lookup — no separate token index.
 create index if not exists demo_sandbox_links_org_idx on public.demo_sandbox_links(org_id);
-create index if not exists demo_sandbox_links_token_idx on public.demo_sandbox_links(token);
 
 alter table public.demo_sandbox_links enable row level security;
 
