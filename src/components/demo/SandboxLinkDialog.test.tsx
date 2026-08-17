@@ -16,6 +16,10 @@ vi.mock('@/hooks/useDemo', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/hooks/useDemo')>();
   return {
     ...actual,
+    // DemoProvider (mounted by renderWithProviders with an is_demo org) calls
+    // useDemoState on mount; stub it so no real fetchDemoState network call fires,
+    // same as DemoBar.test.tsx / RunOfShowRail.test.tsx.
+    useDemoState: () => ({ data: undefined }),
     useSandboxLinks: () => ({ data: sandboxLinks, isLoading: false }),
     useCreateSandboxLink: () => ({ mutate: createMutate, isPending: false }),
     useRevokeSandboxLink: () => ({ mutate: revokeMutate, isPending: false }),
