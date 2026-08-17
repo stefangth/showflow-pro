@@ -1,10 +1,15 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
+import { Users } from "lucide-react";
 import { useAuth } from "@/features/auth/AuthContext";
 import { useGetRunning } from "@/hooks/useGetRunning";
+import { useOrgAdminNames } from "@/hooks/useOrgAdminNames";
 import { GetRunningHeader } from "@/components/getRunning/GetRunningHeader";
 import { PhaseCard } from "@/components/getRunning/PhaseCard";
 import { TaskPanel } from "@/components/getRunning/TaskPanel";
 import { Skeleton } from "@/components/ui/skeleton";
+import { producerRoleNote, roleExplainerLinkLabel, ROLE_EXPLAINER_LINK_ROUTE } from "@/lib/dashboard/moduleOnboarding";
 import type { GetRunningModel, GetRunningTask, GetRunningTaskKey } from "@/lib/getRunning/tasks";
 
 /** The first task worth opening automatically: the earliest not-done task (in board
@@ -24,11 +29,16 @@ function firstBlockingTask(model: GetRunningModel): GetRunningTask | null {
  * on mount, so a fresh org lands with its first real decision already open.
  */
 export default function GetRunningPage() {
+  const { t: tOnboarding } = useTranslation("onboarding");
   const { currentOrg, hasRole } = useAuth();
   const { model, isLoading } = useGetRunning();
   const [selectedTask, setSelectedTask] = useState<GetRunningTaskKey | null>(null);
   const role = hasRole("admin") ? "admin" : "producer";
   const orgId = currentOrg?.id ?? null;
+  // Only the producer board ever names an admin (screen 03's "Waits on {admin}" chips + the
+  // header's "wait on {admin}" headline), so the fetch is skipped entirely for an admin
+  // viewer, who never renders either.
+  const { data: adminNames } = useOrgAdminNames(currentOrg?.id, { enabled: role === "producer" });
 
   // Runs once per mount, not on every model refetch: without the ref guard, a viewer who
   // deliberately closed the panel (selectedTask -> null) would have it reopened on the
@@ -65,11 +75,11 @@ export default function GetRunningPage() {
 
   return (
     <div className="flex flex-col gap-5 p-6">
-      <GetRunningHeader model={model} orgName={currentOrg?.name} />
+      <GetRunningHeader model={model} orgName={currentOrg?.name} role={role} adminNames={adminNames} />
       <div className={selected ? "grid items-start gap-5 lg:grid-cols-[1fr_440px]" : "flex flex-col gap-5"}>
         <div className="flex min-w-0 flex-col gap-5">
           {model.phases.map((phase) => (
-            <PhaseCard key={phase.key} phase={phase} role={role} onOpenTask={setSelectedTask} />
+            <PhaseCard key={phase.key} phase={phase} role={role} adminNames={adminNames} onOpenTask={setSelectedTask} />
           ))}
         </div>
         {selected && (
@@ -81,6 +91,20 @@ export default function GetRunningPage() {
           />
         )}
       </div>
+      {/* Role-cover footer (screen 03): a producer's reachable explanation of what
+          "Production Team" covers versus the admin. Same copy + link BookingProducerWaitingCard
+          already carries (the `onboarding` catalog's `producerRole.note`), laid out as the
+          design's icon + text + right-aligned link row rather than that card's stacked one. */}
+      {role === "producer" && (
+        <div className="flex items-center gap-3 rounded-[var(--radius-l)] border border-border bg-card px-4 py-3">
+          <Users className="h-3.5 w-3.5 shrink-0 text-[var(--text-faint)]" aria-hidden="true" />
+          <p className="text-xs leading-[17px] text-muted-foreground">{producerRoleNote(tOnboarding)}</p>
+          <div className="flex-1" />
+          <Link to={ROLE_EXPLAINER_LINK_ROUTE} className="shrink-0 text-xs font-medium text-accent-600">
+            {roleExplainerLinkLabel(tOnboarding)}
+          </Link>
+        </div>
+      )}
     </div>
   );
 }

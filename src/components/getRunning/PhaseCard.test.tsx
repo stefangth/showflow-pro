@@ -159,7 +159,11 @@ describe("PhaseCard", () => {
     expect(within(flowRow).queryByText("All covered")).not.toBeInTheDocument();
   });
 
-  it("disables the done-task link and ignores clicks when the viewer cannot act on it", () => {
+  it("renders a Waits-on chip and an enabled View affordance instead of the done-task link when the viewer cannot act on it", () => {
+    // Task 8: this used to be a disabled "Invite" link. Screen 03 names and attributes the
+    // task instead of disabling it in place, so the done-task link is gone entirely for a
+    // !actionableByViewer row, replaced by a "Waits on {admin}" chip and an enabled "View"
+    // button that still opens the panel (read-only, not the "Invite" primary action).
     const onOpenTask = vi.fn();
     const phase: GetRunningPhase = {
       key: "bookable",
@@ -167,13 +171,147 @@ describe("PhaseCard", () => {
         task({ key: "team", phase: "bookable", done: true, adminOnly: true, actionableByViewer: false }),
       ],
     };
-    renderWithProviders(<PhaseCard phase={phase} role="producer" onOpenTask={onOpenTask} />);
+    renderWithProviders(
+      <PhaseCard phase={phase} role="producer" adminNames={["Maja Kern"]} onOpenTask={onOpenTask} />,
+    );
 
     const row = screen.getByTestId("task-row-team");
-    const link = within(row).getByText("Invite");
-    expect(link).toBeDisabled();
+    expect(within(row).queryByText("Invite")).not.toBeInTheDocument();
+    expect(within(row).getByText("Waits on Maja Kern")).toBeInTheDocument();
 
-    fireEvent.click(link);
-    expect(onOpenTask).not.toHaveBeenCalled();
+    const view = within(row).getByRole("button", { name: "View" });
+    expect(view).not.toBeDisabled();
+    fireEvent.click(view);
+    expect(onOpenTask).toHaveBeenCalledWith("team");
+  });
+
+  describe("producer-scoped board (screen 03)", () => {
+    function makeProducerBookablePhase(): GetRunningPhase {
+      return {
+        key: "bookable",
+        tasks: [
+          task({ key: "people", phase: "bookable", done: false, block: "booking", actionableByViewer: true }),
+          task({
+            key: "ladder",
+            phase: "bookable",
+            done: false,
+            block: "offers",
+            adminOnly: true,
+            actionableByViewer: false,
+          }),
+          task({ key: "team", phase: "bookable", done: false, adminOnly: true, actionableByViewer: false }),
+        ],
+      };
+    }
+
+    it("names the admin a producer's admin-only tasks wait on, with a View affordance instead of a primary CTA", () => {
+      renderWithProviders(
+        <PhaseCard
+          phase={makeProducerBookablePhase()}
+          role="producer"
+          adminNames={["Maja Kern"]}
+          onOpenTask={vi.fn()}
+        />,
+      );
+
+      const ladderRow = screen.getByTestId("task-row-ladder");
+      expect(within(ladderRow).getByText("Waits on Maja Kern")).toBeInTheDocument();
+      expect(within(ladderRow).getByRole("button", { name: "View" })).toBeInTheDocument();
+      // Never the primary CTA a blocking-and-actionable row would otherwise get.
+      expect(within(ladderRow).queryByText("Rank here")).not.toBeInTheDocument();
+
+      const teamRow = screen.getByTestId("task-row-team");
+      expect(within(teamRow).getByText("Waits on Maja Kern")).toBeInTheDocument();
+      expect(within(teamRow).getByRole("button", { name: "View" })).toBeInTheDocument();
+    });
+
+    it("falls back to a role-neutral name when no admin has a display name yet", () => {
+      renderWithProviders(
+        <PhaseCard phase={makeProducerBookablePhase()} role="producer" adminNames={[]} onOpenTask={vi.fn()} />,
+      );
+
+      const teamRow = screen.getByTestId("task-row-team");
+      expect(within(teamRow).getByText("Waits on an admin")).toBeInTheDocument();
+    });
+
+    it("renders an actionable producer row exactly as the admin board would", () => {
+      renderWithProviders(
+        <PhaseCard
+          phase={makeProducerBookablePhase()}
+          role="producer"
+          adminNames={["Maja Kern"]}
+          onOpenTask={vi.fn()}
+        />,
+      );
+
+      const peopleRow = screen.getByTestId("task-row-people");
+      expect(within(peopleRow).queryByText(/Waits on/)).not.toBeInTheDocument();
+      expect(within(peopleRow).getByText("Blocks booking")).toBeInTheDocument();
+      // people is undone + blocking + actionable -> the primary CTA, same as admin.
+      expect(within(peopleRow).getByRole("button", { name: "Add here" })).toBeInTheDocument();
+    });
+
+    it("never renders a Nudge control anywhere on the board (confirmed decision: nudge deferred)", () => {
+      const { container } = renderWithProviders(
+        <PhaseCard
+          phase={makeProducerBookablePhase()}
+          role="producer"
+          adminNames={["Maja Kern"]}
+          onOpenTask={vi.fn()}
+        />,
+      );
+      expect(container.textContent).not.toMatch(/nudge/i);
+    });
+
+    it("gives the get_dates phase-header review link the same Waits-on/View treatment when the dates task isn't actionable", () => {
+      const phase: GetRunningPhase = {
+        key: "get_dates",
+        tasks: [
+          task({ key: "dates", phase: "get_dates", done: false, adminOnly: true, actionableByViewer: false }),
+          task({ key: "slots", phase: "get_dates", done: true, block: "filling" }),
+        ],
+      };
+      const onOpenTask = vi.fn();
+      const { container } = renderWithProviders(
+        <PhaseCard phase={phase} role="producer" adminNames={["Maja Kern"]} onOpenTask={onOpenTask} />,
+      );
+
+      expect(screen.queryByText("Review")).not.toBeInTheDocument();
+      expect(screen.getByText("Waits on Maja Kern")).toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: "View" }));
+      expect(onOpenTask).toHaveBeenCalledWith("dates");
+      expect(container.textContent).not.toMatch(/nudge/i);
+    });
+
+    it("gives a non-actionable paperwork tile the same Waits-on/View treatment instead of a whole-tile click", () => {
+      const phase: GetRunningPhase = {
+        key: "paperwork",
+        tasks: [
+          task({
+            key: "letterhead",
+            phase: "paperwork",
+            done: false,
+            block: "issuing",
+            adminOnly: true,
+            actionableByViewer: false,
+          }),
+          task({ key: "terms", phase: "paperwork", done: false, block: "issuing" }),
+          task({ key: "countersign", phase: "paperwork", done: false }),
+        ],
+      };
+      const onOpenTask = vi.fn();
+      renderWithProviders(
+        <PhaseCard phase={phase} role="producer" adminNames={["Maja Kern"]} onOpenTask={onOpenTask} />,
+      );
+
+      expect(screen.getByText("Waits on Maja Kern")).toBeInTheDocument();
+      const view = screen.getByRole("button", { name: "View" });
+      fireEvent.click(view);
+      expect(onOpenTask).toHaveBeenCalledWith("letterhead");
+
+      // The remaining actionable tiles still work exactly as before (whole tile clickable).
+      fireEvent.click(screen.getByText("Terms"));
+      expect(onOpenTask).toHaveBeenCalledWith("terms");
+    });
   });
 });

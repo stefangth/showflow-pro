@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import { Check } from "lucide-react";
 import { Badge, type BadgeProps } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { adminDisplayName } from "@/data/orgAdmins";
 import type { GetRunningTask, GetRunningTaskKey, TaskBlock } from "@/lib/getRunning/tasks";
 
 /** Amber "Blocks …" chip keys, one per hard-ish block kind a `TaskRow` can actually see.
@@ -62,27 +63,37 @@ function StatusDot({ done, blockingOpen }: { done: boolean; blockingOpen: boolea
 export interface TaskRowProps {
   task: GetRunningTask;
   onOpen: (key: GetRunningTaskKey) => void;
-  /** Reserved for the producer-scoped board (Task 8): a producer viewing a task they can't
-   *  act on gets a disabled/"View" affordance instead of the admin CTA. */
-  viewerRole?: "admin" | "producer";
+  /** The active org's admin display names (from `useOrgAdminNames`, fetched once by the
+   *  page and threaded down through `PhaseCard`), for the producer-scoped board (screen 03):
+   *  a task `!actionableByViewer` names the admin it waits on instead of the generic
+   *  "Admin only" chip. Omitted entirely for the admin board, where every task is
+   *  actionable and this never renders. */
+  adminNames?: string[];
 }
 
 /**
- * One task row inside a `PhaseCard` (screen 01 board column): status dot, title, block/
+ * One task row inside a `PhaseCard` (screen 01/03 board column): status dot, title, block/
  * admin-only chips, a derived value chip where the model already carries the value, a
  * one-line description, and a right-side action. The action is a filled primary button
  * only for a task that is both undone AND blocking (offers/booking/issuing); every other
  * row gets a lighter ghost affordance — a bordered button for an undone, non-blocking task,
- * or a plain text link ("Change") once the task is done. A task the viewer cannot act on
- * (`actionableByViewer === false`) never gets the primary treatment, even if it blocks —
- * and the done-task link is disabled/inert in that case too (not just the not-done button),
- * so a producer never gets a clickable affordance on a task they hold no capability for. The
- * producer-specific "Waits on {admin}" copy lands in Task 8.
+ * or a plain text link ("Change") once the task is done.
+ *
+ * A task the viewer cannot act on (`actionableByViewer === false`, always a producer on an
+ * `adminOnly` task) never gets the primary/disabled treatment screen 01 uses for the admin:
+ * per screen 03, it is NAMED and ATTRIBUTED instead — a grey "Waits on {admin}" chip
+ * (`adminDisplayName` picks the first org admin name, falling back to a role-neutral "an
+ * admin") replaces the generic "Admin only" chip, and a ghost "View" button (still enabled,
+ * still opens the task panel — just never the primary/disabled control) replaces both the
+ * not-done primary button and the done-task text link. Deliberately no "Nudge" control here:
+ * the design's 3-channel nudge (in-app + email + chat) is a locked, confirmed-deferred scope
+ * cut for this pass — only the attribution + view affordance ship.
  */
-export function TaskRow({ task, onOpen }: TaskRowProps): JSX.Element {
+export function TaskRow({ task, onOpen, adminNames }: TaskRowProps): JSX.Element {
   const { t } = useTranslation("getRunning");
   const isBlockingOpen = task.block !== null && !task.done && task.actionableByViewer;
   const value = valueChip(task);
+  const waitsOnAdmin = !task.actionableByViewer;
 
   return (
     <div
@@ -98,21 +109,24 @@ export function TaskRow({ task, onOpen }: TaskRowProps): JSX.Element {
           {task.block !== null && !task.done && (
             <Badge variant="risk">{t(BLOCK_CHIP_KEY[task.block])}</Badge>
           )}
-          {task.adminOnly && <Badge variant="neutral">{t("chips.adminOnly")}</Badge>}
+          {waitsOnAdmin ? (
+            <Badge variant="neutral">
+              {t("chips.waitsOn", { name: adminDisplayName(adminNames, t("waitsOn.fallbackAdmin")) })}
+            </Badge>
+          ) : (
+            task.adminOnly && <Badge variant="neutral">{t("chips.adminOnly")}</Badge>
+          )}
         </div>
         <div className="mt-0.5 text-xs leading-[17px] text-muted-foreground">{t(`tasks.${task.key}.description`)}</div>
       </div>
       <div className="flex shrink-0 items-center gap-2">
         {value && <Badge variant={value.variant}>{t(value.labelKey)}</Badge>}
-        {task.done ? (
-          <button
-            type="button"
-            disabled={!task.actionableByViewer}
-            className={`text-xs font-medium ${
-              task.actionableByViewer ? "text-accent-600" : "cursor-not-allowed text-[var(--text-faint)]"
-            }`}
-            onClick={() => task.actionableByViewer && onOpen(task.key)}
-          >
+        {waitsOnAdmin ? (
+          <Button type="button" variant="outline" size="sm" onClick={() => onOpen(task.key)}>
+            {t("actions.view")}
+          </Button>
+        ) : task.done ? (
+          <button type="button" className="text-xs font-medium text-accent-600" onClick={() => onOpen(task.key)}>
             {t(`tasks.${task.key}.action`)}
           </button>
         ) : (
@@ -120,7 +134,6 @@ export function TaskRow({ task, onOpen }: TaskRowProps): JSX.Element {
             type="button"
             variant={isBlockingOpen ? "default" : "outline"}
             size="sm"
-            disabled={!task.actionableByViewer}
             onClick={() => onOpen(task.key)}
           >
             {t(`tasks.${task.key}.action`)}

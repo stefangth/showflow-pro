@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { adminDisplayName } from "@/data/orgAdmins";
 import type { GetRunningModel, GetRunningTask } from "@/lib/getRunning/tasks";
 
 /** A task blocks the first offer when it holds up either offers or booking (mirrors
@@ -8,30 +9,64 @@ function isFirstOfferBlocker(task: GetRunningTask): boolean {
 }
 
 /**
- * Board header for `/get-running` (screen 01): eyebrow + headline + body on the left,
+ * Board header for `/get-running` (screen 01/03): eyebrow + headline + body on the left,
  * a 236px "Set up" progress card (ticks + module on/off list) on the right. Pure
  * presentational leaf — see docs/superpowers/specs/2026-08-17-setup-settings-design/
- * screens/01_01_Get_running.html for the source markup this mirrors.
+ * screens/01_01_Get_running.html (admin) and screens/03_03_Producer_view.html (producer)
+ * for the source markup this mirrors.
+ *
+ * `role`/`adminNames` are both optional and default to the admin/screen-01 wording when
+ * omitted, so every existing caller (and this component's own pre-Task-8 tests) is
+ * unaffected. Passing `role="producer"` swaps the headline+body for the screen-03 variant,
+ * which counts each not-done task's own `actionableByViewer` ("yours" vs "waits on
+ * {admin}") rather than re-deriving anything — the same single source of truth `TaskRow`
+ * and `PhaseCard` already read.
  */
-export function GetRunningHeader({ model, orgName }: {
+export function GetRunningHeader({ model, orgName, role, adminNames }: {
   model: GetRunningModel;
   orgName: string | null | undefined;
+  role?: "admin" | "producer";
+  adminNames?: string[];
 }): JSX.Element {
   const { t } = useTranslation("getRunning");
 
-  const blockingCount = model.phases
-    .flatMap((p) => p.tasks)
-    .filter((task) => isFirstOfferBlocker(task) && !task.done).length;
+  const allTasks = model.phases.flatMap((p) => p.tasks);
+  const blockingCount = allTasks.filter((task) => isFirstOfferBlocker(task) && !task.done).length;
 
   const state = model.complete ? "complete" : model.canFirstOffer ? "ready" : "blocking";
-  const headline =
-    state === "blocking"
-      ? t("header.headline.blocking", { count: blockingCount })
-      : t(`header.headline.${state}`);
-  const body =
-    state === "blocking"
-      ? t("header.body.blocking", { count: blockingCount, minutes: blockingCount * 3 })
-      : t(`header.body.${state}`);
+
+  // A producer's own "yours" vs "waits on {admin}" split, straight off each not-done
+  // task's `actionableByViewer` — never re-derived from role/capabilities here.
+  const yoursCount = allTasks.filter((task) => !task.done && task.actionableByViewer).length;
+  const waitsCount = allTasks.filter((task) => !task.done && !task.actionableByViewer).length;
+
+  let headline: string;
+  let body: string;
+  if (role === "producer" && (yoursCount > 0 || waitsCount > 0)) {
+    const adminName = adminDisplayName(adminNames, t("waitsOn.fallbackAdmin"));
+    if (yoursCount > 0 && waitsCount > 0) {
+      headline = `${t("header.headline.producerYours", { count: yoursCount })} ${t("header.headline.producerWaits", {
+        count: waitsCount,
+        name: adminName,
+      })}`;
+    } else if (yoursCount > 0) {
+      headline = t("header.headline.producerYours", { count: yoursCount });
+    } else {
+      headline = t("header.headline.producerOnlyWaits", { count: waitsCount, name: adminName });
+    }
+    body = t("header.body.producer");
+  } else {
+    // Nothing left at all (producer or admin, board complete/ready) reads the same
+    // role-neutral wording the admin board always has.
+    headline =
+      state === "blocking"
+        ? t("header.headline.blocking", { count: blockingCount })
+        : t(`header.headline.${state}`);
+    body =
+      state === "blocking"
+        ? t("header.body.blocking", { count: blockingCount, minutes: blockingCount * 3 })
+        : t(`header.body.${state}`);
+  }
 
   const modules: { key: string; label: string; on: boolean }[] = [
     { key: "booking", label: t("progress.module.booking"), on: model.bookingOn },

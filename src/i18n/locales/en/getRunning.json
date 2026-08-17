@@ -6,13 +6,20 @@
       "blocking_one": "One thing stands between you and your first offer",
       "blocking_other": "{{count}} things stand between you and your first offer",
       "ready": "You are ready to send your first offer",
-      "complete": "Everything here is set up"
+      "complete": "Everything here is set up",
+      "producerYours_one": "One task here is yours.",
+      "producerYours_other": "{{count}} tasks here are yours.",
+      "producerWaits_one": "The other task waits on {{name}}.",
+      "producerWaits_other": "The other {{count}} wait on {{name}}.",
+      "producerOnlyWaits_one": "This one waits on {{name}}.",
+      "producerOnlyWaits_other": "All {{count}} of these wait on {{name}}."
     },
     "body": {
       "blocking_one": "It is yours to do and takes about {{minutes}} minutes. Nothing else here blocks anything, and nothing here stops you using the rest of the app.",
       "blocking_other": "They are yours to do and take about {{minutes}} minutes. Nothing else here blocks anything, and nothing here stops you using the rest of the app.",
       "ready": "Everything blocking your first offer is done. The rest of this board is worth finishing, but nothing here holds you back anymore.",
-      "complete": "Every task on this board is done. Come back to Settings any time if something changes."
+      "complete": "Every task on this board is done. Come back to Settings any time if something changes.",
+      "producer": "This is here so you know why Shows and Bookings looks empty, not so you can fix all of it."
     }
   },
   "progress": {
@@ -63,7 +70,14 @@
     "blocksIssuing": "Blocks issuing",
     "blocksFilling": "Holds up filling",
     "adminOnly": "Admin only",
-    "allCovered": "All covered"
+    "allCovered": "All covered",
+    "waitsOn": "Waits on {{name}}"
+  },
+  "actions": {
+    "view": "View"
+  },
+  "waitsOn": {
+    "fallbackAdmin": "an admin"
   },
   "panel": {
     "close": "Close",

@@ -6,13 +6,20 @@
       "blocking_one": "Eine Sache steht zwischen dir und deinem ersten Angebot",
       "blocking_other": "{{count}} Dinge stehen zwischen dir und deinem ersten Angebot",
       "ready": "Du bist bereit für dein erstes Angebot",
-      "complete": "Hier ist alles eingerichtet"
+      "complete": "Hier ist alles eingerichtet",
+      "producerYours_one": "Eine Aufgabe hier ist deine.",
+      "producerYours_other": "{{count}} Aufgaben hier sind deine.",
+      "producerWaits_one": "Die andere Aufgabe wartet auf {{name}}.",
+      "producerWaits_other": "Die anderen {{count}} warten auf {{name}}.",
+      "producerOnlyWaits_one": "Diese eine wartet auf {{name}}.",
+      "producerOnlyWaits_other": "Alle {{count}} davon warten auf {{name}}."
     },
     "body": {
       "blocking_one": "Das erledigst du, es dauert etwa {{minutes}} Minuten. Sonst blockiert hier nichts, und nichts hier hindert dich, den Rest der App zu nutzen.",
       "blocking_other": "Das erledigst du, es dauert etwa {{minutes}} Minuten. Sonst blockiert hier nichts, und nichts hier hindert dich, den Rest der App zu nutzen.",
       "ready": "Alles, was dein erstes Angebot blockiert, ist erledigt. Der Rest dieser Liste lohnt sich noch, hält dich aber nicht mehr auf.",
-      "complete": "Jede Aufgabe hier ist erledigt. Schau jederzeit in den Einstellungen vorbei, falls sich etwas ändert."
+      "complete": "Jede Aufgabe hier ist erledigt. Schau jederzeit in den Einstellungen vorbei, falls sich etwas ändert.",
+      "producer": "Das ist hier, damit du weißt, warum Shows und Bookings leer aussieht, nicht damit du alles davon lösen kannst."
     }
   },
   "progress": {
@@ -63,7 +70,14 @@
     "blocksIssuing": "Blockiert den Versand",
     "blocksFilling": "Hält die Vollbesetzung auf",
     "adminOnly": "Nur Admin",
-    "allCovered": "Alles abgedeckt"
+    "allCovered": "Alles abgedeckt",
+    "waitsOn": "Wartet auf {{name}}"
+  },
+  "actions": {
+    "view": "Ansehen"
+  },
+  "waitsOn": {
+    "fallbackAdmin": "einen Admin"
   },
   "panel": {
     "close": "Schließen",

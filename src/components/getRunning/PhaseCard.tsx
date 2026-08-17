@@ -1,6 +1,8 @@
 import { useTranslation } from "react-i18next";
 import { Check } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { adminDisplayName } from "@/data/orgAdmins";
 import type { GetRunningPhase, GetRunningPhaseKey, GetRunningTask, GetRunningTaskKey } from "@/lib/getRunning/tasks";
 import { TaskRow } from "./TaskRow";
 
@@ -109,45 +111,90 @@ function SubCheck({ done, label }: { done: boolean; label: string }): JSX.Elemen
 }
 
 /** The paperwork phase renders its three steps as tiles (letterhead / terms / countersign),
- *  per the design's 3-tile row, rather than as `TaskRow`s. */
+ *  per the design's 3-tile row, rather than as `TaskRow`s.
+ *
+ *  A tile the viewer cannot act on (`!actionableByViewer` — a producer without
+ *  `edit_hire_order_settings`) drops the whole-tile click and gets the same screen-03
+ *  treatment `TaskRow` gives a `!actionableByViewer` row: a "Waits on {admin}" chip next to
+ *  the title and a ghost "View" button in place of the implicit whole-tile action, so it
+ *  reads as attributed-and-viewable rather than a dead button with no explanation. */
 function PaperworkTiles({
   tasks,
   onOpenTask,
+  adminNames,
 }: {
   tasks: GetRunningTask[];
   onOpenTask: (key: GetRunningTaskKey) => void;
+  adminNames?: string[];
 }): JSX.Element {
   const { t } = useTranslation("getRunning");
   return (
     <div className="flex gap-2.5 px-4 pb-3.5">
-      {tasks.map((task) => (
-        <button
-          key={task.key}
-          type="button"
-          onClick={() => onOpenTask(task.key)}
-          className="flex-1 rounded-[var(--radius-m)] border border-border bg-card p-3 text-left"
-        >
-          <div className="flex items-center gap-2">
-            <div className="text-[13px] font-medium text-foreground">{t(`tasks.${task.key}.title`)}</div>
-            {task.block === "issuing" && (
-              <Badge variant="risk" className="h-[18px] px-1.5 text-[10px]">
-                {t("chips.blocksIssuing")}
-              </Badge>
-            )}
-          </div>
-          <div className="mt-0.5 text-xs leading-[17px] text-[var(--text-faint)]">
-            {t(`tasks.${task.key}.description`)}
-          </div>
-        </button>
-      ))}
+      {tasks.map((task) => {
+        const waitsOnAdmin = !task.actionableByViewer;
+        const body = (
+          <>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="text-[13px] font-medium text-foreground">{t(`tasks.${task.key}.title`)}</div>
+              {task.block === "issuing" && (
+                <Badge variant="risk" className="h-[18px] px-1.5 text-[10px]">
+                  {t("chips.blocksIssuing")}
+                </Badge>
+              )}
+              {waitsOnAdmin && (
+                <Badge variant="neutral" className="h-[18px] px-1.5 text-[10px]">
+                  {t("chips.waitsOn", { name: adminDisplayName(adminNames, t("waitsOn.fallbackAdmin")) })}
+                </Badge>
+              )}
+            </div>
+            <div className="mt-0.5 text-xs leading-[17px] text-[var(--text-faint)]">
+              {t(`tasks.${task.key}.description`)}
+            </div>
+          </>
+        );
+        if (waitsOnAdmin) {
+          return (
+            <div key={task.key} className="flex-1 rounded-[var(--radius-m)] border border-border bg-card p-3 text-left">
+              {body}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="mt-2"
+                onClick={() => onOpenTask(task.key)}
+              >
+                {t("actions.view")}
+              </Button>
+            </div>
+          );
+        }
+        return (
+          <button
+            key={task.key}
+            type="button"
+            onClick={() => onOpenTask(task.key)}
+            className="flex-1 rounded-[var(--radius-m)] border border-border bg-card p-3 text-left"
+          >
+            {body}
+          </button>
+        );
+      })}
     </div>
   );
 }
 
 export interface PhaseCardProps {
   phase: GetRunningPhase;
+  /** Kept for caller/test compatibility (`GetRunningPage` still computes it once for the
+   *  header and the board). `PhaseCard` itself reads role-awareness straight off each task's
+   *  own `actionableByViewer`/`adminOnly` — the single source of truth `composeGetRunning`
+   *  already derived it from — rather than re-deriving anything from `role` here. */
   role: "admin" | "producer";
   onOpenTask: (key: GetRunningTaskKey) => void;
+  /** The active org's admin display names (screen 03, producer board only) — threaded
+   *  straight through to `TaskRow` and `PaperworkTiles` for their "Waits on {admin}" chips.
+   *  Never fetched here: `GetRunningPage` owns the single `useOrgAdminNames` call. */
+  adminNames?: string[];
 }
 
 /**
@@ -157,7 +204,7 @@ export interface PhaseCardProps {
  * paperwork phase renders `PaperworkTiles`, and the bookable phase (and any other phase
  * with ordinary tasks) renders a `TaskRow` per task.
  */
-export function PhaseCard({ phase, role, onOpenTask }: PhaseCardProps): JSX.Element {
+export function PhaseCard({ phase, onOpenTask, adminNames }: PhaseCardProps): JSX.Element {
   const { t } = useTranslation("getRunning");
   const state = derivePhaseState(phase.tasks);
   const leftCount = phase.tasks.filter((task) => !task.done).length;
@@ -166,6 +213,9 @@ export function PhaseCard({ phase, role, onOpenTask }: PhaseCardProps): JSX.Elem
   ).length;
   const doneCount = phase.tasks.length - leftCount;
   const orderIndex = PHASE_ORDER.indexOf(phase.key) + 1;
+  // Only the get_dates phase's header ever renders the "dates" review link (see below), so
+  // this stays undefined (and unused) for every other phase.
+  const datesTask = phase.key === "get_dates" ? phase.tasks.find((task) => task.key === "dates") : undefined;
 
   return (
     <div className={`rounded-[var(--radius-l)] ${CARD_CLASS[state]}`} data-testid={`phase-card-${phase.key}`}>
@@ -200,20 +250,30 @@ export function PhaseCard({ phase, role, onOpenTask }: PhaseCardProps): JSX.Elem
             {t("phases.counts.doneOfTotal", { done: doneCount, total: phase.tasks.length })}
           </span>
         )}
-        {phase.key === "get_dates" && (
-          <button type="button" className="text-xs font-medium text-accent-600" onClick={() => onOpenTask("dates")}>
-            {t("tasks.dates.action")}
-          </button>
-        )}
+        {datesTask &&
+          (datesTask.actionableByViewer ? (
+            <button type="button" className="text-xs font-medium text-accent-600" onClick={() => onOpenTask("dates")}>
+              {t("tasks.dates.action")}
+            </button>
+          ) : (
+            <>
+              <Badge variant="neutral">
+                {t("chips.waitsOn", { name: adminDisplayName(adminNames, t("waitsOn.fallbackAdmin")) })}
+              </Badge>
+              <Button type="button" variant="outline" size="sm" onClick={() => onOpenTask("dates")}>
+                {t("actions.view")}
+              </Button>
+            </>
+          ))}
       </div>
 
       {phase.key === "get_dates" ? (
         <GetDatesSummary tasks={phase.tasks} onOpenTask={onOpenTask} />
       ) : phase.key === "paperwork" ? (
-        <PaperworkTiles tasks={phase.tasks} onOpenTask={onOpenTask} />
+        <PaperworkTiles tasks={phase.tasks} onOpenTask={onOpenTask} adminNames={adminNames} />
       ) : (
         phase.tasks.map((task) => (
-          <TaskRow key={task.key} task={task} viewerRole={role} onOpen={onOpenTask} />
+          <TaskRow key={task.key} task={task} adminNames={adminNames} onOpen={onOpenTask} />
         ))
       )}
     </div>
