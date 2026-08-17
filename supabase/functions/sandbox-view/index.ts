@@ -1,0 +1,116 @@
+// Public read-only sandbox viewer for demo orgs. verify_jwt=false: a leave-behind
+// link a prospect opens with no login. Validation is INLINE over the service-role
+// client (no SECURITY DEFINER RPC, so no service-role-grant footgun); the snapshot
+// is curated + display-safe (no PII, no PDF bytes, no signed URLs). Only ever
+// resolves is_demo orgs. Ships dark.
+import { preflight, json } from "../_shared/http.ts";
+import { realDeps, type Deps } from "../_shared/deps.ts";
+
+interface LinkRow { org_id: string; expires_at: string; revoked_at: string | null; }
+
+export async function handle(req: Request, deps: Deps): Promise<Response> {
+  if (req.method === "OPTIONS") return preflight();
+  const body = (await req.json().catch(() => null)) as { token?: string } | null;
+  const token = body?.token;
+  if (!token) return json({ error: "bad_request" }, 400);
+
+  const { data: linkData } = await deps.admin
+    .from("demo_sandbox_links")
+    .select("org_id, expires_at, revoked_at")
+    .eq("token", token)
+    .maybeSingle();
+  const link = linkData as unknown as LinkRow | null;
+  if (!link) return json({ ok: false, reason: "not_found" }, 404);
+  if (link.revoked_at) return json({ ok: false, reason: "revoked" }, 410);
+  if (new Date(link.expires_at).getTime() <= deps.now().getTime())
+    return json({ ok: false, reason: "expired" }, 410);
+
+  // Defense in depth: only demo orgs are ever exposed.
+  const { data: orgData } = await deps.admin
+    .from("organizations").select("name, is_demo").eq("id", link.org_id).maybeSingle();
+  const org = orgData as unknown as { name: string; is_demo: boolean } | null;
+  if (!org?.is_demo) return json({ ok: false, reason: "not_found" }, 404);
+
+  const snapshot = await buildSnapshot(deps, link.org_id, org.name);
+  return json({ ok: true, snapshot });
+}
+
+// Assemble a curated, DISPLAY-SAFE snapshot. NEVER select email/phone/user_id/
+// storage_path/preview_html or any PDF/signed-url field.
+function showLabel(s: { program: string | null; sub_program: string | null } | undefined): string {
+  return [s?.program, s?.sub_program].filter(Boolean).join(" · ") || "Untitled show";
+}
+
+async function buildSnapshot(deps: Deps, orgId: string, orgName: string) {
+  const { data: stateData } = await deps.admin
+    .from("demo_state").select("volume, prospect_label").eq("org_id", orgId).maybeSingle();
+  const state = stateData as unknown as { volume: "small" | "full"; prospect_label: string | null } | null;
+
+  const { data: showsData } = await deps.admin
+    .from("shows").select("id, program, sub_program, main_cast_slots").eq("org_id", orgId).limit(20);
+  const shows = (showsData ?? []) as unknown as Array<{ id: string; program: string | null; sub_program: string | null; main_cast_slots: number | null }>;
+  const showById = new Map(shows.map((s) => [s.id, s]));
+
+  const { data: citiesData } = await deps.admin
+    .from("cities").select("id, name").eq("org_id", orgId);
+  const cityName = new Map(((citiesData ?? []) as unknown as Array<{ id: string; name: string }>).map((c) => [c.id, c.name]));
+
+  const { data: datesData } = await deps.admin
+    .from("show_dates")
+    .select("id, date, status, show_id, city_id")
+    .eq("org_id", orgId)
+    .order("date", { ascending: true })
+    .limit(60);
+  const dates = (datesData ?? []) as unknown as Array<{ id: string; date: string; status: string; show_id: string; city_id: string | null }>;
+
+  const { data: bookingsData } = await deps.admin
+    .from("bookings").select("status, show_date_id").eq("org_id", orgId);
+  const bookings = (bookingsData ?? []) as unknown as Array<{ status: string; show_date_id: string }>;
+
+  const bookingsByStatus: Record<string, number> = {};
+  const confirmedByDate = new Map<string, number>();
+  for (const b of bookings) {
+    bookingsByStatus[b.status] = (bookingsByStatus[b.status] ?? 0) + 1;
+    if (b.status === "confirmed")
+      confirmedByDate.set(b.show_date_id, (confirmedByDate.get(b.show_date_id) ?? 0) + 1);
+  }
+
+  const { data: hoData } = await deps.admin
+    .from("hire_orders").select("status, show_date_id").eq("org_id", orgId).limit(40);
+  const hos = (hoData ?? []) as unknown as Array<{ status: string; show_date_id: string | null }>;
+  const dateById = new Map(dates.map((d) => [d.id, d]));
+
+  const now = deps.now().getTime();
+  const upcomingDates = dates.filter((d) => new Date(d.date).getTime() >= now).length;
+  const confirmedBookings = bookingsByStatus["confirmed"] ?? 0;
+  // "needed" per date is the date's show's main_cast_slots.
+  const totalNeeded = dates.reduce((s, d) => s + (showById.get(d.show_id)?.main_cast_slots ?? 0), 0);
+  const fillRate = totalNeeded > 0 ? Math.round((confirmedBookings / totalNeeded) * 100) : 0;
+  const hireOrdersIssued = hos.filter((h) => h.status === "issued" || h.status === "countersigned").length;
+
+  return {
+    org: { label: state?.prospect_label ?? orgName, volume: state?.volume ?? "full" },
+    generatedAt: deps.now().toISOString(),
+    kpis: { upcomingDates, confirmedBookings, fillRate, hireOrdersIssued },
+    shows: shows.map((s) => ({ label: showLabel(s) })),
+    dates: dates.map((d) => ({
+      id: d.id, date: d.date,
+      showLabel: showLabel(showById.get(d.show_id)),
+      city: d.city_id ? (cityName.get(d.city_id) ?? null) : null,
+      status: d.status,
+      filled: confirmedByDate.get(d.id) ?? 0,
+      needed: showById.get(d.show_id)?.main_cast_slots ?? 0,
+    })),
+    bookingsByStatus,
+    hireOrders: hos.map((h) => {
+      const d = h.show_date_id ? dateById.get(h.show_date_id) : null;
+      return {
+        status: h.status,
+        showLabel: d ? showLabel(showById.get(d.show_id)) : null,
+        dateOn: d?.date ?? null,
+      };
+    }),
+  };
+}
+
+if (import.meta.main) Deno.serve((req) => handle(req, realDeps()));
