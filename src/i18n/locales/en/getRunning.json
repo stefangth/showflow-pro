@@ -31,7 +31,6 @@
       "title": "Get dates in",
       "status": {
         "complete": "Running",
-        "blocking": "Blocks your first offer",
         "neutral": "Not started yet"
       }
     },
@@ -63,7 +62,8 @@
     "blocksBooking": "Blocks booking",
     "blocksIssuing": "Blocks issuing",
     "blocksFilling": "Holds up filling",
-    "adminOnly": "Admin only"
+    "adminOnly": "Admin only",
+    "allCovered": "All covered"
   },
   "tasks": {
     "dates": {

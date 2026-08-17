@@ -83,6 +83,34 @@ describe("PhaseCard", () => {
     expect(screen.getByText("Slots set on every show")).toBeInTheDocument();
   });
 
+  it("hides the Resolve link once the get_dates phase is complete", () => {
+    const phase: GetRunningPhase = {
+      key: "get_dates",
+      tasks: [
+        task({ key: "dates", phase: "get_dates", done: true }),
+        task({ key: "slots", phase: "get_dates", done: true, block: "filling" }),
+      ],
+    };
+    renderWithProviders(<PhaseCard phase={phase} role="admin" onOpenTask={vi.fn()} />);
+
+    expect(screen.queryByText("Resolve")).not.toBeInTheDocument();
+  });
+
+  it("shows the Resolve link while the get_dates phase still has an outstanding task", () => {
+    const onOpenTask = vi.fn();
+    const phase: GetRunningPhase = {
+      key: "get_dates",
+      tasks: [
+        task({ key: "dates", phase: "get_dates", done: true }),
+        task({ key: "slots", phase: "get_dates", done: false, block: "filling" }),
+      ],
+    };
+    renderWithProviders(<PhaseCard phase={phase} role="admin" onOpenTask={onOpenTask} />);
+
+    fireEvent.click(screen.getByText("Resolve"));
+    expect(onOpenTask).toHaveBeenCalledWith("slots");
+  });
+
   it("renders the paperwork phase as three tiles with a blocks-issuing chip", () => {
     const phase: GetRunningPhase = {
       key: "paperwork",
@@ -114,5 +142,38 @@ describe("PhaseCard", () => {
     const change = within(row).getByText("Change");
     fireEvent.click(change);
     expect(onOpenTask).toHaveBeenCalledWith("flow");
+  });
+
+  it("renders the All covered value chip on a done eligibility task", () => {
+    renderWithProviders(<PhaseCard phase={makeBookablePhase()} role="admin" onOpenTask={vi.fn()} />);
+
+    const row = screen.getByTestId("task-row-eligibility");
+    expect(within(row).getByText("All covered")).toBeInTheDocument();
+  });
+
+  it("does not render the All covered chip on an undone or non-eligibility task", () => {
+    renderWithProviders(<PhaseCard phase={makeBookablePhase()} role="admin" onOpenTask={vi.fn()} />);
+
+    // flow is done but isn't eligibility, so it gets no value chip.
+    const flowRow = screen.getByTestId("task-row-flow");
+    expect(within(flowRow).queryByText("All covered")).not.toBeInTheDocument();
+  });
+
+  it("disables the done-task link and ignores clicks when the viewer cannot act on it", () => {
+    const onOpenTask = vi.fn();
+    const phase: GetRunningPhase = {
+      key: "bookable",
+      tasks: [
+        task({ key: "team", phase: "bookable", done: true, adminOnly: true, actionableByViewer: false }),
+      ],
+    };
+    renderWithProviders(<PhaseCard phase={phase} role="producer" onOpenTask={onOpenTask} />);
+
+    const row = screen.getByTestId("task-row-team");
+    const link = within(row).getByText("Invite");
+    expect(link).toBeDisabled();
+
+    fireEvent.click(link);
+    expect(onOpenTask).not.toHaveBeenCalled();
   });
 });

@@ -74,6 +74,7 @@ function GetDatesSummary({
   const { t } = useTranslation("getRunning");
   const dates = tasks.find((task) => task.key === "dates");
   const slots = tasks.find((task) => task.key === "slots");
+  const allDone = tasks.every((task) => task.done);
 
   return (
     <div className="flex flex-wrap items-center gap-3.5 px-4 py-3 text-[13px] text-muted-foreground">
@@ -81,13 +82,15 @@ function GetDatesSummary({
       <span className="text-border">·</span>
       <SubCheck done={slots?.done ?? false} label={t("tasks.slots.subLabel")} />
       <div className="flex-1" />
-      <button
-        type="button"
-        className="text-xs font-medium text-accent-600"
-        onClick={() => onOpenTask("slots")}
-      >
-        {t("tasks.slots.action")}
-      </button>
+      {!allDone && (
+        <button
+          type="button"
+          className="text-xs font-medium text-accent-600"
+          onClick={() => onOpenTask("slots")}
+        >
+          {t("tasks.slots.action")}
+        </button>
+      )}
     </div>
   );
 }

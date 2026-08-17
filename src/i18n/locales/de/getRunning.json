@@ -31,7 +31,6 @@
       "title": "Termine reinholen",
       "status": {
         "complete": "Läuft",
-        "blocking": "Blockiert dein erstes Angebot",
         "neutral": "Noch nicht gestartet"
       }
     },
@@ -63,7 +62,8 @@
     "blocksBooking": "Blockiert Buchungen",
     "blocksIssuing": "Blockiert den Versand",
     "blocksFilling": "Hält die Vollbesetzung auf",
-    "adminOnly": "Nur Admin"
+    "adminOnly": "Nur Admin",
+    "allCovered": "Alles abgedeckt"
   },
   "tasks": {
     "dates": {
