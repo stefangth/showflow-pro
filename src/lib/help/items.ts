@@ -66,27 +66,27 @@ export const HELP_ITEMS: readonly HelpItem[] = [
     },
   },
   {
-    id: 'A2.1', role: 'admin', stage: 2, status: 'ok', surface: 'Dashboard, welcome panel', updated: '2026-08-14',
+    id: 'A2.1', role: 'admin', stage: 2, status: 'ok', surface: 'Get running board', updated: '2026-08-18',
     q: { en: 'Where am I? Is this thing empty, or broken?', de: 'Wo bin ich? Ist das hier leer, oder kaputt?' },
     a: {
-      en: 'Empty. A fresh workspace says so: you are the first admin, the database is empty, and a few steps put real dates on the page. The numbers below are a clearly marked sample of what the dashboard becomes.',
-      de: 'Leer. Ein frischer Workspace sagt das auch: du bist der erste Admin, die Datenbank ist leer, und ein paar Schritte bringen echte Termine auf die Seite. Die Zahlen darunter sind ein klar markiertes Beispiel dafür, was das Dashboard einmal wird.',
+      en: 'Neither. The dashboard shows your organization’s real numbers straight away, starting at zero. Get running, in the sidebar under Workspace, is the walk through for the setup that still needs doing, in order.',
+      de: 'Weder noch. Das Dashboard zeigt dir sofort die echten Zahlen deiner Organisation, sie fangen einfach bei null an. Get running, in der Sidebar unter Workspace, ist der Rundgang durch das Setup, das noch aussteht, der Reihe nach.',
     },
   },
   {
-    id: 'A2.2', role: 'admin', stage: 2, status: 'ok', surface: 'Dashboard, setup checklist', updated: '2026-08-14',
+    id: 'A2.2', role: 'admin', stage: 2, status: 'ok', surface: 'Get running board', updated: '2026-08-18',
     q: { en: 'What do I do first, and how long will it take?', de: 'Was mache ich zuerst, und wie lange dauert es?' },
     a: {
-      en: 'Start setup opens an ordered checklist built from the modules your organization has switched on. About 15 minutes for a fresh workspace.',
-      de: 'Setup starten öffnet eine geordnete Checkliste, die sich aus den Modulen ergibt, die deine Organisation aktiviert hat. Etwa 15 Minuten für einen frischen Workspace.',
+      en: 'Open Get running from the sidebar. It walks you through the setup tasks in order, and its header adds up how long what is left will take, about 3 minutes for each task still blocking your first offer.',
+      de: 'Öffne Get running in der Sidebar. Es führt dich der Reihe nach durch die Setup-Aufgaben, und die Kopfzeile rechnet dir zusammen, wie lange der Rest noch dauert, etwa 3 Minuten pro Aufgabe, die noch dein erstes Angebot blockiert.',
     },
   },
   {
-    id: 'A2.3', role: 'admin', stage: 2, status: 'ok', surface: 'Dashboard, setup checklist', updated: '2026-08-14',
+    id: 'A2.3', role: 'admin', stage: 2, status: 'ok', surface: 'Get running board', updated: '2026-08-18',
     q: { en: 'What blocks what? Can I explore without breaking things?', de: 'Was blockiert was? Kann ich mich umsehen, ohne etwas kaputtzumachen?' },
     a: {
-      en: 'Each step says whether it blocks offers, blocks a date filling, or blocks issuing paperwork. Nothing in the checklist stops you using the rest of the app.',
-      de: 'Jeder Schritt sagt, ob er Angebote blockiert, das Füllen eines Termins blockiert, oder das Ausstellen von Papierkram blockiert. Nichts in der Checkliste hält dich davon ab, den Rest der App zu nutzen.',
+      en: 'Each task carries a chip: blocks offers, blocks booking, blocks issuing, or holds up filling. Nothing on the Get running board stops you using the rest of the app.',
+      de: 'Jede Aufgabe trägt einen Chip: blockiert Angebote, blockiert Buchungen, blockiert den Versand, oder hält die Vollbesetzung auf. Nichts auf dem Get running Board hält dich davon ab, den Rest der App zu nutzen.',
     },
   },
   {
@@ -98,35 +98,35 @@ export const HELP_ITEMS: readonly HelpItem[] = [
     },
   },
   {
-    id: 'A3.2', role: 'admin', stage: 3, status: 'new', surface: 'Setup checklist, people step', updated: '2026-08-14',
+    id: 'A3.2', role: 'admin', stage: 3, status: 'new', surface: 'Get running board, add your artists task', updated: '2026-08-18',
     q: { en: 'How do my people get in? How do artists get accounts?', de: 'Wie kommen meine Leute rein? Wie bekommen Artists ein Konto?' },
     a: {
-      en: 'Setup now has a people step, so you can no longer finish setup with nobody in the workspace. It counts as done once there is at least one active artist. Offers reach booking email addresses without app accounts, so adding artists to the roster is the real prerequisite and login invites are optional.',
-      de: 'Das Setup hat jetzt einen People-Schritt, du kannst das Setup also nicht mehr abschließen, wenn niemand im Workspace ist. Er gilt als erledigt, sobald es mindestens einen aktiven Artist gibt. Angebote erreichen Buchungs-E-Mail-Adressen auch ohne App-Konto, das eigentliche Muss ist also, Artists in die Künstlerliste aufzunehmen, Login-Einladungen sind optional.',
+      en: 'Get running has an Add your artists task, so you can no longer finish setup with nobody in the workspace. It counts as done once there is at least one active artist. Offers reach booking email addresses without app accounts, so adding artists to the roster is the real prerequisite and login invites are optional.',
+      de: 'Get running hat eine Aufgabe Deine Artists hinzufügen, du kannst das Setup also nicht abschließen, wenn niemand im Workspace ist. Sie gilt als erledigt, sobald es mindestens einen aktiven Artist gibt. Angebote erreichen Buchungs-E-Mail-Adressen auch ohne App-Konto, das eigentliche Muss ist also, Artists in die Künstlerliste aufzunehmen, Login-Einladungen sind optional.',
     },
   },
   {
-    id: 'A3.1', role: 'admin', stage: 3, status: 'new', surface: 'Setup checklist · Help center', updated: '2026-08-14',
+    id: 'A3.1', role: 'admin', stage: 3, status: 'new', surface: 'Get running board · Help center', updated: '2026-08-18',
     q: { en: 'What are casts, ladders and tiers? What is the mental model?', de: 'Was sind Besetzungen, Rangfolgen und Stufen? Was ist das Denkmodell dahinter?' },
     a: {
-      en: 'The steps that assume those concepts now link straight to the Help center, which carries the model end to end.',
-      de: 'Die Schritte, die diese Konzepte voraussetzen, verlinken jetzt direkt auf das Hilfe-Center, das das Modell von Anfang bis Ende erklärt.',
+      en: 'The Rank your casts and Check who is eligible tasks on Get running assume those concepts, and each links straight to the Help center, which carries the model end to end.',
+      de: 'Die Aufgaben Deine Besetzungen reihen und Prüfen, wer berechtigt ist auf Get running setzen diese Konzepte voraus, und beide verlinken direkt auf das Hilfe-Center, das das Modell von Anfang bis Ende erklärt.',
     },
   },
   {
-    id: 'A3.3', role: 'admin', stage: 3, status: 'new', surface: 'Setup checklist, timing step', updated: '2026-08-14',
+    id: 'A3.3', role: 'admin', stage: 3, status: 'new', surface: 'Get running board, timing task', updated: '2026-08-18',
     q: { en: 'What happens tonight, once I finish setup?', de: 'Was passiert heute Abend, sobald ich das Setup abgeschlossen habe?' },
     a: {
-      en: 'The checklist narrates it from your own flow rather than a generic example: whether offers go out the moment a tier opens, wait for the evening digest, or are switched off entirely.',
-      de: 'Die Checkliste erzählt es aus deinem eigenen Flow, nicht aus einem allgemeinen Beispiel: ob Angebote in dem Moment rausgehen, in dem eine Stufe öffnet, auf die Abend-Tagesübersicht warten, oder ganz ausgeschaltet sind.',
+      en: 'The Confirm the offer timing task narrates it from your own flow rather than a generic example: whether offers go out the moment a tier opens, wait for the evening digest, or are switched off entirely.',
+      de: 'Die Aufgabe Angebotszeitpunkt bestätigen erzählt es aus deinem eigenen Flow, nicht aus einem allgemeinen Beispiel: ob Angebote in dem Moment rausgehen, in dem eine Stufe öffnet, auf die Abend-Tagesübersicht warten, oder ganz ausgeschaltet sind.',
     },
   },
   {
-    id: 'A3.4', role: 'admin', stage: 3, status: 'new', surface: 'Editor toolbar, view as', updated: '2026-08-14',
+    id: 'A3.4', role: 'admin', stage: 3, status: 'new', surface: 'Editor toolbar, view as', updated: '2026-08-18',
     q: { en: 'Do artists see what I see? What does their side look like?', de: 'Sehen Artists dasselbe wie ich? Wie sieht ihre Seite aus?' },
     a: {
-      en: 'Use view as in the editor toolbar to look at the app as an artist. Setup now points you at it, scoped to what the picker can genuinely show.',
-      de: 'Nutz View as in der Editor-Leiste, um die App als Artist zu sehen. Das Setup weist dich jetzt darauf hin, begrenzt auf das, was der Umschalter wirklich zeigen kann.',
+      en: 'Use view as in the editor toolbar to look at the app as an artist, scoped to what the picker can genuinely show.',
+      de: 'Nutz View as in der Editor-Leiste, um die App als Artist zu sehen, begrenzt auf das, was der Umschalter wirklich zeigen kann.',
     },
   },
   {
@@ -170,11 +170,11 @@ export const HELP_ITEMS: readonly HelpItem[] = [
     },
   },
   {
-    id: 'A4.3', role: 'admin', stage: 4, status: 'new', surface: 'Admin, People', updated: '2026-08-14',
+    id: 'A4.3', role: 'admin', stage: 4, status: 'new', surface: 'Settings, People', updated: '2026-08-18',
     q: { en: 'How do I change someone’s role or remove them, and what happens to their data?', de: 'Wie ändere ich die Rolle von jemandem oder entferne die Person, und was passiert mit ihren Daten?' },
     a: {
-      en: 'Admin, People handles the mechanics. The remove dialog now narrates the consequences before you confirm, and the role menu carries a description of what each role can do.',
-      de: 'Admin, People übernimmt den Ablauf. Der Entfernen-Dialog erklärt jetzt die Folgen, bevor du bestätigst, und das Rollenmenü trägt eine Beschreibung, was jede Rolle darf.',
+      en: 'Settings, People handles the mechanics (the old Admin page now redirects there). The remove dialog narrates the consequences before you confirm, and the role menu carries a description of what each role can do.',
+      de: 'Einstellungen, Personen übernimmt den Ablauf (die alte Admin Seite leitet jetzt dorthin weiter). Der Entfernen-Dialog erklärt die Folgen, bevor du bestätigst, und das Rollenmenü trägt eine Beschreibung, was jede Rolle darf.',
     },
   },
   {
@@ -186,11 +186,11 @@ export const HELP_ITEMS: readonly HelpItem[] = [
     },
   },
   {
-    id: 'A4.5', role: 'admin', stage: 4, status: 'ok', surface: 'Dashboard, rules list · Help center', updated: '2026-08-14',
+    id: 'A4.5', role: 'admin', stage: 4, status: 'ok', surface: 'Settings, How this org works · Help center', updated: '2026-08-18',
     q: { en: 'What runs automatically, and what still needs a person?', de: 'Was läuft automatisch, und was braucht noch einen Menschen?' },
     a: {
-      en: 'Once setup is complete the same panel becomes a read-only list of the rules your organization inherited. The Help center explains how those rules play out.',
-      de: 'Sobald das Setup fertig ist, wird dasselbe Panel zu einer schreibgeschützten Liste der Regeln, die deine Organisation geerbt hat. Das Hilfe-Center erklärt, wie sich diese Regeln auswirken.',
+      en: 'Settings, How this org works is a read-only list of the rules currently in effect (booking flow, offer timing, cast coverage, paperwork), each one showing who set it and when. It is there from day one, and once your Get running board is complete, its own How this org works button lands you on the same page. The Help center explains how those rules play out.',
+      de: 'Einstellungen, Wie diese Organisation funktioniert ist eine schreibgeschützte Liste der Regeln, die gerade gelten (Booking Flow, Angebotszeitpunkt, Besetzungsabdeckung, Papierkram), jede mit Angabe, wer sie wann festgelegt hat. Das gibt es von Anfang an, und sobald dein Get running Board fertig ist, führt dessen eigener Wie diese Organisation funktioniert Button auf dieselbe Seite. Das Hilfe-Center erklärt, wie sich diese Regeln auswirken.',
     },
   },
   {
@@ -236,43 +236,43 @@ export const HELP_ITEMS: readonly HelpItem[] = [
     },
   },
   {
-    id: 'P0.2', role: 'producer', stage: 0, status: 'new', surface: 'Dashboard · Help center', updated: '2026-08-14',
+    id: 'P0.2', role: 'producer', stage: 0, status: 'new', surface: 'Get running board · Help center', updated: '2026-08-18',
     q: { en: 'What is the difference between me and an admin?', de: 'Was ist der Unterschied zwischen mir und einem Admin?' },
     a: {
-      en: 'Broadly: you run the work, an admin sets the rules. Your waiting card and the rules list now carry a short note on what Production Team covers, with a link to what each role can do in the Help center.',
-      de: 'Grob gesagt: du machst die Arbeit, ein Admin setzt die Regeln. Deine Warte-Karte und die Regel-Liste tragen jetzt eine kurze Notiz dazu, was das Produktionsteam abdeckt, mit einem Link darauf, was jede Rolle darf, im Hilfe-Center.',
+      en: 'Broadly: you run the work, an admin sets the rules. The Production Team note at the bottom of Get running carries a short line on what Production Team covers, with a link to what each role can do in the Help center.',
+      de: 'Grob gesagt: du machst die Arbeit, ein Admin setzt die Regeln. Die Production-Team-Notiz unten auf Get running trägt eine kurze Zeile dazu, was das Produktionsteam abdeckt, mit einem Link darauf, was jede Rolle darf, im Hilfe-Center.',
     },
   },
   {
-    id: 'P2.1', role: 'producer', stage: 2, status: 'ok', surface: 'Dashboard, welcome panel', updated: '2026-08-14',
+    id: 'P2.1', role: 'producer', stage: 2, status: 'ok', surface: 'Get running board', updated: '2026-08-18',
     q: { en: 'Is this organization ready, or still being built?', de: 'Ist diese Organisation startklar, oder noch im Aufbau?' },
     a: {
-      en: 'The dashboard tells you which. A workspace still being set up says so, and says dates, offers and confirmations appear the moment the first import lands.',
-      de: 'Das Dashboard sagt dir, was von beidem. Ein Workspace, der noch eingerichtet wird, sagt das, und sagt: Termine, Angebote und Bestätigungen erscheinen in dem Moment, in dem der erste Import ankommt.',
+      en: 'Get running, in the sidebar under Workspace, says which. While setup is still open its header lists what is yours to do and what waits on an admin. Once nothing is left, it says the workspace is running.',
+      de: 'Get running in der Sidebar unter Workspace sagt dir, was zutrifft. Solange das Setup offen ist, listet die Kopfzeile, was deine Aufgabe ist und was auf einen Admin wartet. Ist nichts mehr offen, sagt es, dass der Workspace läuft.',
     },
   },
   {
-    id: 'P2.2', role: 'producer', stage: 2, status: 'ok', surface: 'Dashboard, waiting card', updated: '2026-08-14',
+    id: 'P2.2', role: 'producer', stage: 2, status: 'ok', surface: 'Get running board', updated: '2026-08-18',
     q: { en: 'Why is everything empty? Is it me, or the organization?', de: 'Warum ist alles leer? Liegt es an mir, oder an der Organisation?' },
     a: {
-      en: 'It is the organization. The waiting card is explicit: only an admin can do these, and it is there so you know why the page is empty, not so you can fix it.',
-      de: 'Es liegt an der Organisation. Die Warte-Karte ist eindeutig: nur ein Admin kann das erledigen, und sie ist da, damit du weißt, warum die Seite leer ist, nicht damit du es behebst.',
+      en: 'It is the organization. Get running says so directly at the top: it is there so you know why Shows and Bookings looks empty, not so you can fix all of it.',
+      de: 'Es liegt an der Organisation. Get running sagt das oben direkt: es ist da, damit du weißt, warum Shows und Bookings leer aussieht, nicht damit du alles davon lösen kannst.',
     },
   },
   {
-    id: 'P2.3', role: 'producer', stage: 2, status: 'new', surface: 'Dashboard, waiting card', updated: '2026-08-14',
+    id: 'P2.3', role: 'producer', stage: 2, status: 'new', surface: 'Get running board', updated: '2026-08-18',
     q: { en: 'Who exactly do I ask to finish setup?', de: 'Wen genau frage ich, um das Setup abzuschließen?' },
     a: {
-      en: 'The waiting card now names your admins, for example ask Nadia or Tom to finish setup. Names only, and only to members of your own organization. If there are no admins it falls back to the generic line.',
-      de: 'Die Warte-Karte nennt jetzt deine Admins, zum Beispiel: bitte Nadia oder Tom, das Setup abzuschließen. Nur Namen, und nur für Mitglieder deiner eigenen Organisation. Gibt es keine Admins, greift sie auf die allgemeine Zeile zurück.',
+      en: 'Get running names your first admin, for example waits on Nadia, on every task and chip that is not yours to do. Only members of your own organization, and only the one name on record. With nobody named yet it falls back to the generic waits on an admin.',
+      de: 'Get running nennt deinen ersten Admin, zum Beispiel wartet auf Nadia, bei jeder Aufgabe und jedem Chip, der nicht deine ist. Nur Mitglieder deiner eigenen Organisation, und nur der eine hinterlegte Name. Ist noch keiner hinterlegt, greift es auf die allgemeine Zeile wartet auf einen Admin zurück.',
     },
   },
   {
-    id: 'P2.4', role: 'producer', stage: 2, status: 'ok', surface: 'Dashboard, waiting card', updated: '2026-08-14',
+    id: 'P2.4', role: 'producer', stage: 2, status: 'ok', surface: 'Get running board', updated: '2026-08-18',
     q: { en: 'What can I do while I wait?', de: 'Was kann ich tun, während ich warte?' },
     a: {
-      en: 'Plan dates now, offer later. Nothing stops you adding dates and sessions before the booking rules exist.',
-      de: 'Termine jetzt planen, später anbieten. Nichts hält dich davon ab, Termine und Sessions anzulegen, bevor die Buchungsregeln existieren.',
+      en: 'Plan dates now, offer later. Nothing stops you adding dates and sessions before the booking rules exist, and Get running never blocks you from doing that either.',
+      de: 'Termine jetzt planen, später anbieten. Nichts hält dich davon ab, Termine und Sessions anzulegen, bevor die Buchungsregeln existieren, und auch Get running hält dich nicht davon ab.',
     },
   },
   {
