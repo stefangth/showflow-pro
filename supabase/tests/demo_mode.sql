@@ -1,5 +1,5 @@
 begin;
-select plan(15);
+select plan(18);
 
 -- Column exists with the safe default.
 select has_column('public', 'organizations', 'is_demo', 'organizations.is_demo exists');
@@ -44,6 +44,22 @@ select cmp_ok(
 select cmp_ok(
   (select count(distinct status)::int from public.hire_orders where org_id = '5eedde00-0000-0000-0000-0000000000d0'),
   '>=', 3, 'seed covers >= 3 hire-order states');
+
+-- Seed configures the hire-order org settings a fresh demo org needs to ISSUE
+-- (letterhead legal_name + >=1 terms clause + a default fee); recipient_email
+-- and date are resolved from the artist/show_date, so these three unblock issue.
+select is(
+  (select value->>'legal_name' from public.app_settings
+     where org_id = '5eedde00-0000-0000-0000-0000000000d0' and key = 'hire_order_letterhead'),
+  'Rheinbühne Köln GmbH', 'seed sets a non-blank letterhead legal_name');
+select cmp_ok(
+  (select jsonb_array_length(value->'templates'->0->'clauses') from public.app_settings
+     where org_id = '5eedde00-0000-0000-0000-0000000000d0' and key = 'hire_order_terms'),
+  '>=', 1, 'seed sets >= 1 terms clause');
+select isnt(
+  (select value->>'default_fee' from public.app_settings
+     where org_id = '5eedde00-0000-0000-0000-0000000000d0' and key = 'hire_order_defaults'),
+  null, 'seed sets a default_fee');
 
 -- Wipe clears the demo org's tenant rows.
 select public.wipe_demo_org('5eedde00-0000-0000-0000-0000000000d0');
