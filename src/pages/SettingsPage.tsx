@@ -18,7 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import { Settings as SettingsIcon, Database, Bell, Wand2, Save, SlidersHorizontal, MapPin, BookOpen, Building2, FileSignature, ShieldCheck, Lock, Sparkles, Users, Activity } from 'lucide-react';
+import { Settings as SettingsIcon, Database, Bell, Wand2, Save, SlidersHorizontal, MapPin, BookOpen, Building2, FileSignature, ShieldCheck, Lock, Sparkles, Users, Activity, Rocket } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { upsertOrgSetting, mergeOrgRows } from '@/data/settings';
 import { computeSettingsDirtyKeys } from '@/lib/settings';
@@ -35,6 +35,7 @@ import { HireOrdersTab } from '@/components/settings/hireOrders/HireOrdersTab';
 import { RolesRightsTab } from '@/components/settings/rolesRights/RolesRightsTab';
 import { EmailTemplatesTab } from '@/components/settings/emailTemplates/EmailTemplatesTab';
 import { PeopleTab } from '@/components/admin/people/PeopleTab';
+import { HowThisOrgWorks } from '@/components/getRunning/HowThisOrgWorks';
 import { Badge } from '@/components/ui/badge';
 import { PageMini } from '@/components/minis/PageMini';
 
@@ -297,6 +298,7 @@ export default function SettingsPage() {
   const navGroups: { heading: string; items: { value: string; label: string; icon: typeof Building2; show: boolean; moduleState?: boolean }[] }[] = [
     { heading: t('nav.groups.organization'), items: [
       { value: "organization", label: t('nav.items.organization'), icon: Building2, show: isAdmin || isProducer },
+      { value: "how-it-works", label: t('nav.items.howItWorks'), icon: Rocket, show: isAdmin || isProducer },
       { value: "permissions", label: t('nav.items.permissions'), icon: ShieldCheck, show: isAdmin },
       { value: "trust", label: t('nav.items.trust'), icon: Lock, show: isAdmin || isProducer },
       { value: "casts-coverage", label: t('nav.items.castsCoverage'), icon: MapPin, show: isAdmin || isProducer },
@@ -427,6 +429,12 @@ export default function SettingsPage() {
         {(isAdmin || isProducer) && (
           <TabsContent value="organization" className="mt-4">
             <OrganizationTab readOnly={!canRenameOrg} />
+          </TabsContent>
+        )}
+
+        {(isAdmin || isProducer) && (
+          <TabsContent value="how-it-works" className="mt-4">
+            <HowThisOrgWorks orgId={orgId} />
           </TabsContent>
         )}
 

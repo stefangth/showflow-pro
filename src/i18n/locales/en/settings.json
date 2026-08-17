@@ -24,6 +24,7 @@
     },
     "items": {
       "organization": "Organization",
+      "howItWorks": "How this org works",
       "permissions": "Roles & rights",
       "trust": "Trust & data",
       "castsCoverage": "Casts & coverage",

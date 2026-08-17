@@ -19,6 +19,7 @@
 /** Every `?tab=` value the page is willing to open. */
 export const SETTINGS_TAB_PARAMS = [
   "organization",
+  "how-it-works",
   "permissions",
   "people",
   "activity",

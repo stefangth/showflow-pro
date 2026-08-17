@@ -24,6 +24,7 @@
     },
     "items": {
       "organization": "Organisation",
+      "howItWorks": "Wie diese Organisation funktioniert",
       "permissions": "Rollen und Rechte",
       "trust": "Vertrauen und Daten",
       "castsCoverage": "Besetzung und Abdeckung",

@@ -176,5 +176,51 @@
       "description": "Who signs on behalf of the org.",
       "action": "Open"
     }
+  },
+  "retired": {
+    "title": "This workspace is running",
+    "count": "{{done}} of {{total}}",
+    "howItWorks": "How this org works",
+    "hideFromNav": "Hide from nav",
+    "cards": {
+      "whereItGoes": {
+        "title": "Where it goes",
+        "body": "Get running leaves the sidebar. The rules it set stay readable in Settings under \"How this org works\", with who changed what and when."
+      },
+      "whenItComesBack": {
+        "title": "When it comes back",
+        "body": "A new module switched on, or a rule going empty, brings this back with only the tasks that need attention."
+      }
+    }
+  },
+  "reference": {
+    "title": "How this org works",
+    "intro": "A read-only summary of the rules currently in effect for this workspace.",
+    "emptyModules": "Neither the booking engine nor hire orders is switched on for this workspace yet.",
+    "provenance": {
+      "withDate": "Set by {{name}}, {{date}}",
+      "nameOnly": "Set by {{name}}"
+    },
+    "rows": {
+      "bookingFlow": {
+        "label": "Booking flow"
+      },
+      "offerTiming": {
+        "label": "Offer timing",
+        "value": "{{hour}} digest, {{hours}}h response window"
+      },
+      "castCoverage": {
+        "label": "Cast coverage",
+        "allCovered": "All covered",
+        "partial": "{{covered}} of {{total}} cities covered"
+      },
+      "letterhead": { "label": "Letterhead" },
+      "terms": { "label": "Terms" },
+      "countersign": { "label": "Countersignature" }
+    },
+    "setNotSet": {
+      "set": "Set",
+      "notSet": "Not set"
+    }
   }
 }

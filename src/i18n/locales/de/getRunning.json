@@ -176,5 +176,51 @@
       "description": "Wer im Namen der Organisation unterschreibt.",
       "action": "Öffnen"
     }
+  },
+  "retired": {
+    "title": "Dieser Arbeitsbereich läuft",
+    "count": "{{done}} von {{total}}",
+    "howItWorks": "Wie diese Organisation funktioniert",
+    "hideFromNav": "Aus der Navigation ausblenden",
+    "cards": {
+      "whereItGoes": {
+        "title": "Wohin es geht",
+        "body": "Get running verlässt die Seitenleiste. Die Regeln, die dort festgelegt wurden, bleiben in den Einstellungen unter \"Wie diese Organisation funktioniert\" lesbar, inklusive wer was wann geändert hat."
+      },
+      "whenItComesBack": {
+        "title": "Wann es zurückkommt",
+        "body": "Ein neu eingeschaltetes Modul oder eine leer gewordene Regel bringt das hier zurück, nur mit den Aufgaben, die Aufmerksamkeit brauchen."
+      }
+    }
+  },
+  "reference": {
+    "title": "Wie diese Organisation funktioniert",
+    "intro": "Eine schreibgeschützte Übersicht der Regeln, die für diesen Arbeitsbereich gerade gelten.",
+    "emptyModules": "Weder die Booking Engine noch Engagementverträge sind für diesen Arbeitsbereich eingeschaltet.",
+    "provenance": {
+      "withDate": "Festgelegt von {{name}}, {{date}}",
+      "nameOnly": "Festgelegt von {{name}}"
+    },
+    "rows": {
+      "bookingFlow": {
+        "label": "Booking Flow"
+      },
+      "offerTiming": {
+        "label": "Angebotszeitpunkt",
+        "value": "{{hour}} Tagesübersicht, {{hours}} Std Antwortfrist"
+      },
+      "castCoverage": {
+        "label": "Besetzungsabdeckung",
+        "allCovered": "Alles abgedeckt",
+        "partial": "{{covered}} von {{total}} Städten abgedeckt"
+      },
+      "letterhead": { "label": "Briefkopf" },
+      "terms": { "label": "Bedingungen" },
+      "countersign": { "label": "Gegenzeichnung" }
+    },
+    "setNotSet": {
+      "set": "Festgelegt",
+      "notSet": "Nicht festgelegt"
+    }
   }
 }

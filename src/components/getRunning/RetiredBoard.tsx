@@ -1,0 +1,76 @@
+import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
+import { Check } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ROUTES } from "@/config/app.config";
+import { useRailDismissed } from "@/components/setup/useRailDismissed";
+import type { GetRunningModel } from "@/lib/getRunning/tasks";
+
+/**
+ * Screen 04 of the setup/settings design
+ * (docs/superpowers/specs/2026-08-17-setup-settings-design/screens/04_04_Running.html):
+ * once every applicable task is done (`model.complete`), the multi-phase board
+ * (`GetRunningHeader` + the `PhaseCard` list) collapses into this single summary row
+ * plus two info cards, in place of the phase checklist.
+ *
+ * "Hide from nav" is the same per-person, per-org dismissal every other setup rail
+ * uses (`useRailDismissed`), consumed by `useGetRunningNavVisible` to drop the sidebar
+ * item — it does not hide THIS row: visiting `/get-running` directly still renders it,
+ * it is just no longer linked from the sidebar. "How this org works" opens the durable
+ * home the same data lives on once the board itself is gone: `HowThisOrgWorks`,
+ * hosted at Settings → How this org works.
+ *
+ * The design's subtitle line names live counts ("148 dates in, 36 offerable tonight")
+ * that have no field on `GetRunningModel` yet (see `GetDatesSummary` in `PhaseCard.tsx`
+ * for the same omission on the in-progress board) — reusing the existing
+ * `header.body.complete` copy here instead of fabricating numbers.
+ */
+export function RetiredBoard({ model, orgId }: { model: GetRunningModel; orgId: string | null }): JSX.Element {
+  const { t } = useTranslation("getRunning");
+  const [, dismiss] = useRailDismissed("getRunning", orgId);
+
+  return (
+    <div
+      data-testid="get-running-retired"
+      className="flex w-full max-w-[1100px] flex-col gap-4 rounded-[var(--radius-xl)] border border-border bg-background p-6 shadow-elev3"
+    >
+      <div className="flex items-center gap-4 rounded-[var(--radius-l)] border border-border bg-card p-4">
+        <span className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
+          <Check className="h-[15px] w-[15px]" strokeWidth={2.5} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="text-base font-semibold tracking-[-0.1px] text-foreground">{t("retired.title")}</div>
+          <p className="mt-0.5 text-[13px] leading-[19px] text-muted-foreground text-pretty">
+            {t("header.body.complete")}
+          </p>
+        </div>
+        <span className="shrink-0 font-mono text-xs font-medium text-[var(--text-faint)]">
+          {t("retired.count", { done: model.doneCount, total: model.totalCount })}
+        </span>
+        <Button asChild variant="secondary">
+          <Link to={`${ROUTES.SETTINGS}?tab=how-it-works`}>{t("retired.howItWorks")}</Link>
+        </Button>
+        <Button onClick={dismiss}>{t("retired.hideFromNav")}</Button>
+      </div>
+
+      <div className="flex gap-4">
+        <div className="flex-1 rounded-[var(--radius-l)] border border-border bg-card p-4">
+          <div className="text-[11px] font-semibold uppercase tracking-[1.6px] text-[var(--text-faint)]">
+            {t("retired.cards.whereItGoes.title")}
+          </div>
+          <p className="mt-2 text-[13px] leading-[19px] text-muted-foreground text-pretty">
+            {t("retired.cards.whereItGoes.body")}
+          </p>
+        </div>
+        <div className="flex-1 rounded-[var(--radius-l)] border border-border bg-card p-4">
+          <div className="text-[11px] font-semibold uppercase tracking-[1.6px] text-[var(--text-faint)]">
+            {t("retired.cards.whenItComesBack.title")}
+          </div>
+          <p className="mt-2 text-[13px] leading-[19px] text-muted-foreground text-pretty">
+            {t("retired.cards.whenItComesBack.body")}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}

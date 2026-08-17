@@ -7,6 +7,7 @@ import { useGetRunning } from "@/hooks/useGetRunning";
 import { useOrgAdminNames } from "@/hooks/useOrgAdminNames";
 import { GetRunningHeader } from "@/components/getRunning/GetRunningHeader";
 import { PhaseCard } from "@/components/getRunning/PhaseCard";
+import { RetiredBoard } from "@/components/getRunning/RetiredBoard";
 import { TaskPanel } from "@/components/getRunning/TaskPanel";
 import { Skeleton } from "@/components/ui/skeleton";
 import { producerRoleNote, roleExplainerLinkLabel, ROLE_EXPLAINER_LINK_ROUTE } from "@/lib/dashboard/moduleOnboarding";
@@ -75,35 +76,45 @@ export default function GetRunningPage() {
 
   return (
     <div className="flex flex-col gap-5 p-6">
-      <GetRunningHeader model={model} orgName={currentOrg?.name} role={role} adminNames={adminNames} />
-      <div className={selected ? "grid items-start gap-5 lg:grid-cols-[1fr_440px]" : "flex flex-col gap-5"}>
-        <div className="flex min-w-0 flex-col gap-5">
-          {model.phases.map((phase) => (
-            <PhaseCard key={phase.key} phase={phase} role={role} adminNames={adminNames} onOpenTask={setSelectedTask} />
-          ))}
-        </div>
-        {selected && (
-          <TaskPanel
-            task={selected}
-            orgId={orgId}
-            onClose={() => setSelectedTask(null)}
-            onNext={handleNext}
-          />
-        )}
-      </div>
-      {/* Role-cover footer (screen 03): a producer's reachable explanation of what
-          "Production Team" covers versus the admin. Same copy + link BookingProducerWaitingCard
-          already carries (the `onboarding` catalog's `producerRole.note`), laid out as the
-          design's icon + text + right-aligned link row rather than that card's stacked one. */}
-      {role === "producer" && (
-        <div className="flex items-center gap-3 rounded-[var(--radius-l)] border border-border bg-card px-4 py-3">
-          <Users className="h-3.5 w-3.5 shrink-0 text-[var(--text-faint)]" aria-hidden="true" />
-          <p className="text-xs leading-[17px] text-muted-foreground">{producerRoleNote(tOnboarding)}</p>
-          <div className="flex-1" />
-          <Link to={ROLE_EXPLAINER_LINK_ROUTE} className="shrink-0 text-xs font-medium text-accent-600">
-            {roleExplainerLinkLabel(tOnboarding)}
-          </Link>
-        </div>
+      {/* Screen 04 of the setup/settings design: once every applicable task is done, the
+          multi-phase board (header + phase checklist) retires into RetiredBoard's single
+          summary row + two info cards, and the producer role-cover footer goes with it
+          (nothing is left for it to explain once nothing blocks anyone). */}
+      {model.complete ? (
+        <RetiredBoard model={model} orgId={orgId} />
+      ) : (
+        <>
+          <GetRunningHeader model={model} orgName={currentOrg?.name} role={role} adminNames={adminNames} />
+          <div className={selected ? "grid items-start gap-5 lg:grid-cols-[1fr_440px]" : "flex flex-col gap-5"}>
+            <div className="flex min-w-0 flex-col gap-5">
+              {model.phases.map((phase) => (
+                <PhaseCard key={phase.key} phase={phase} role={role} adminNames={adminNames} onOpenTask={setSelectedTask} />
+              ))}
+            </div>
+            {selected && (
+              <TaskPanel
+                task={selected}
+                orgId={orgId}
+                onClose={() => setSelectedTask(null)}
+                onNext={handleNext}
+              />
+            )}
+          </div>
+          {/* Role-cover footer (screen 03): a producer's reachable explanation of what
+              "Production Team" covers versus the admin. Same copy + link BookingProducerWaitingCard
+              already carries (the `onboarding` catalog's `producerRole.note`), laid out as the
+              design's icon + text + right-aligned link row rather than that card's stacked one. */}
+          {role === "producer" && (
+            <div className="flex items-center gap-3 rounded-[var(--radius-l)] border border-border bg-card px-4 py-3">
+              <Users className="h-3.5 w-3.5 shrink-0 text-[var(--text-faint)]" aria-hidden="true" />
+              <p className="text-xs leading-[17px] text-muted-foreground">{producerRoleNote(tOnboarding)}</p>
+              <div className="flex-1" />
+              <Link to={ROLE_EXPLAINER_LINK_ROUTE} className="shrink-0 text-xs font-medium text-accent-600">
+                {roleExplainerLinkLabel(tOnboarding)}
+              </Link>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
