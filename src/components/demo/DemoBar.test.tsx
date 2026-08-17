@@ -109,7 +109,8 @@ describe('DemoBar', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'Reset' }));
 
     expect(resetMutate).toHaveBeenCalledTimes(1);
-    expect(resetMutate).toHaveBeenCalledWith({ orgId: 'o', volume: 'full' }, expect.any(Object));
+    // The Reset button is a new-prospect restart, so it also clears scene/clock/label.
+    expect(resetMutate).toHaveBeenCalledWith({ orgId: 'o', volume: 'full', resetState: true }, expect.any(Object));
   });
 
   it('picking a scene from the selector calls goToScene with that scene id', () => {

@@ -24,12 +24,21 @@ async function invokeDemoOps(
   return payload ?? {};
 }
 
-/** Wipe a demo org's data then reseed it (org-admin action). */
+/**
+ * Wipe a demo org's data then reseed it (org-admin action). `resetState` also clears
+ * the rep's scene position, sim clock, and prospect label — pass it for the "restart
+ * for a new prospect" Reset, omit it for a data-only volume change that keeps place.
+ */
 export function resetDemoOrg(
   client: SupabaseClient<Database>,
-  args: { orgId: string; volume: "small" | "full" },
+  args: { orgId: string; volume: "small" | "full"; resetState?: boolean },
 ) {
-  return invokeDemoOps(client, { action: "reset", org_id: args.orgId, volume: args.volume });
+  return invokeDemoOps(client, {
+    action: "reset",
+    org_id: args.orgId,
+    volume: args.volume,
+    reset_state: args.resetState ?? false,
+  });
 }
 
 /** Wipe a demo org's data without reseeding (org-admin action). */

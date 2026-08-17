@@ -26,13 +26,15 @@ type Body = {
   org_id?: string;
   volume?: "small" | "full";
   cue_id?: string;
+  /** reset only: also clear scene position / sim clock / prospect label (new-prospect restart). */
+  reset_state?: boolean;
 };
 
 const VALID_ACTIONS: Action[] = ["reset", "wipe", "flag_and_seed", "cue"];
 
 // DB-mutation cues dispatched to the run_demo_cue RPC (Task 2). `issue_hire_order`
 // is handled separately below via generate-hire-orders.
-const DB_CUES = ["artist_accepts_offer", "run_clock_to_1700", "drop_notifications", "fill_date", "advance_clock"];
+const DB_CUES = ["artist_accepts_offer", "run_clock_to_1700", "drop_notifications", "fill_date"];
 
 async function assertDemoOrg(deps: Deps, orgId: string): Promise<boolean> {
   const { data } = await deps.admin.from("organizations").select("is_demo").eq("id", orgId).maybeSingle();
@@ -111,6 +113,17 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       p_actor: gate.userId ?? undefined,
     });
     if (error) return json({ error: error.message }, 500);
+    // A "restart for a new prospect" Reset also clears the rep's walkthrough position:
+    // seed_demo_org's demo_state upsert only touches volume, and wipe_demo_org leaves the
+    // row alone, so scene/sim_now/prospect_label would otherwise persist across the reseed.
+    // The rail's volume toggle omits reset_state, keeping the rep's place.
+    if (body.reset_state) {
+      const { error: stateErr } = await deps.admin
+        .from("demo_state")
+        .update({ current_scene_id: null, sim_now: null, prospect_label: null })
+        .eq("org_id", orgId);
+      if (stateErr) return json({ error: stateErr.message }, 500);
+    }
   }
 
   // `cue` drives the guided demo tour: DB-mutation cues go through run_demo_cue
@@ -196,13 +209,17 @@ async function issueHireOrderCue(deps: Deps, req: Request, orgId: string): Promi
     const showDateId = (dateRow as { id: string } | null)?.id ?? null;
 
     if (showDateId) {
-      const { error: draftErr } = await deps.invokeFunction(
+      const { data: draftData, error: draftErr } = await deps.invokeFunction(
         "generate-hire-orders",
         { action: "draft", org_id: orgId, show_date_id: showDateId, notify: true },
         headers,
       );
       if (draftErr) return json({ error: (draftErr as Error).message }, 500);
-      orderId = await findLinkedDraft();
+      // draftOrders returns the ids it created; use the first authoritatively rather than
+      // re-querying for it. Every draft off a fully_filled date's confirmed bookings is
+      // artist-linked (so issuable). Fall back to a re-query only if the body carried none.
+      const created = (draftData as { created?: string[] } | null)?.created ?? [];
+      orderId = created[0] ?? (await findLinkedDraft());
     }
   }
 

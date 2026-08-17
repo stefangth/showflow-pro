@@ -5,7 +5,7 @@ import { HELP_ITEMS } from '@/lib/help/items';
 import { STAGES } from '@/lib/help/stages';
 import { GLOSSARY } from '@/lib/help/glossary';
 import { MINIS, PAGE_KEYS } from '@/lib/minis';
-import { SEASON_HANDOVER } from '@/lib/demo/scenes';
+import { CUE_LABELS, SEASON_HANDOVER } from '@/lib/demo/scenes';
 import type { Lang } from './config';
 
 const DASH = /[—–]/; // em dash, en dash
@@ -41,6 +41,7 @@ const enContent = [
   ...Object.values(TERMS).map((t) => t.en),
   ...miniStrings('en'),
   ...SEASON_HANDOVER.flatMap((s) => [s.title.en, s.say.en]),
+  ...Object.values(CUE_LABELS).map((l) => l.en),
 ];
 const deContent = [
   ...strings(resources.de),
@@ -50,6 +51,7 @@ const deContent = [
   ...Object.values(TERMS).map((t) => t.de),
   ...miniStrings('de'),
   ...SEASON_HANDOVER.flatMap((s) => [s.title.de, s.say.de]),
+  ...Object.values(CUE_LABELS).map((l) => l.de),
 ];
 
 describe('copy lint', () => {

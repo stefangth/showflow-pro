@@ -1,7 +1,8 @@
 import { ROUTES } from '@/config/app.config';
+import type { Lang } from '@/i18n/config';
 
 /**
- * The six cues the demo engine supports (`run_demo_cue` RPC + demo-ops `cue` action).
+ * The cues the demo engine supports (`run_demo_cue` RPC + demo-ops `cue` action).
  * A scene's `cues` array references these ids in the order the rep should trigger them.
  */
 export const CUE_IDS = [
@@ -10,7 +11,6 @@ export const CUE_IDS = [
   'drop_notifications',
   'fill_date',
   'issue_hire_order',
-  'advance_clock',
 ] as const;
 
 export type CueId = (typeof CUE_IDS)[number];
@@ -125,3 +125,31 @@ export const SEASON_HANDOVER: Scene[] = [
     estMin: 1,
   },
 ];
+
+/**
+ * Rep-facing labels for the cue buttons, bilingual like the rest of the run-of-show
+ * copy (spec §6E). Wired into `src/i18n/copyLint.test.ts` alongside the scene titles
+ * and Say-lines so a future dash or non-Du slip here is caught.
+ */
+export const CUE_LABELS: Record<CueId, Bilingual> = {
+  artist_accepts_offer: { en: 'Artist accepts', de: 'Artist sagt zu' },
+  run_clock_to_1700: { en: 'Run clock to 17:00', de: 'Uhr auf 17:00 stellen' },
+  drop_notifications: { en: 'Drop notifications', de: 'Benachrichtigungen auslösen' },
+  fill_date: { en: 'Fill the date', de: 'Termin besetzen' },
+  issue_hire_order: { en: 'Issue hire order', de: 'Engagementvertrag ausstellen' },
+};
+
+/** Resolve a scene's title in the viewer's language, falling back to English. */
+export function sceneTitle(scene: Scene, lang: Lang): string {
+  return scene.title[lang] ?? scene.title.en;
+}
+
+/** Resolve a scene's "Say:" talk-track in the viewer's language, falling back to English. */
+export function sceneSay(scene: Scene, lang: Lang): string {
+  return scene.say[lang] ?? scene.say.en;
+}
+
+/** Resolve a cue button's label in the viewer's language, falling back to English. */
+export function cueLabel(cueId: CueId, lang: Lang): string {
+  return CUE_LABELS[cueId][lang] ?? CUE_LABELS[cueId].en;
+}
