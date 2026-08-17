@@ -154,3 +154,10 @@ verify_jwt = false
 # atomically throttled by claim_invitation_auth_exchange before minting a link.
 [functions.exchange-invitation]
 verify_jwt = false
+
+# sandbox-view: unauthenticated read-only demo snapshot for a leave-behind link
+# a prospect opens with no login. Auth is the high-entropy demo_sandbox_links
+# token, validated inline (expiry/revocation + org.is_demo re-assertion); the
+# response is a curated, display-safe snapshot (see index.ts).
+[functions.sandbox-view]
+verify_jwt = false
