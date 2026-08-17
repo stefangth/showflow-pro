@@ -44,7 +44,12 @@ function recordingFetch(): { fetchImpl: typeof fetch; resendCalled: () => boolea
   let resendCalled = false;
   const fetchImpl = ((...args: Parameters<typeof fetch>) => {
     const [url] = args;
-    if (String(url).includes("api.resend.com")) resendCalled = true;
+    // Match on the exact host, not a substring: `.includes("api.resend.com")` would
+    // also match a URL that merely contains that text elsewhere (CodeQL: incomplete
+    // URL substring sanitization).
+    let host = "";
+    try { host = new URL(String(url)).hostname; } catch { /* non-URL input stays "" */ }
+    if (host === "api.resend.com") resendCalled = true;
     return Promise.resolve(new Response(JSON.stringify({ id: "re_should_not_happen" }), { status: 200 }));
   }) as typeof fetch;
   return { fetchImpl, resendCalled: () => resendCalled };
