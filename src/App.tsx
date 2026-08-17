@@ -24,7 +24,6 @@ import LoginPage from "./pages/LoginPage";
 import DashboardPage from "./pages/DashboardPage";
 import ShowsBookingsPage from "./pages/ShowsBookingsPage";
 import AvailabilityPage from "./pages/AvailabilityPage";
-import AdminPage from "./pages/AdminPage";
 import SettingsPage from "./pages/SettingsPage";
 import ChatsListPage from "./pages/ChatsListPage";
 import HelpPage from "./pages/HelpPage";
@@ -98,7 +97,14 @@ const App = () => (
               }
             />
             <Route path={ROUTES.AVAILABILITY} element={<ProtectedRoute requiredRoles={['artist']}><AppLayout><AvailabilityPage /></AppLayout></ProtectedRoute>} />
-            <Route path={ROUTES.ADMIN} element={<ProtectedRoute requiredRoles={['admin']}><AppLayout><AdminPage /></AppLayout></ProtectedRoute>} />
+            {/* Admin folded into Settings as an admin-only "People & access" nav group.
+                Stays behind ProtectedRoute (not a bare Navigate) so the Editor's
+                DEFAULT_PAGE_ACCESS override for '/admin' still means something: if an
+                org admin ever broadens it beyond ['admin'], the redirect target itself
+                (Settings) still gates the People/Activity/Sync-log tabs to isAdmin, so a
+                producer let through here resolves onto Settings' own default tab instead
+                of a blank pane. */}
+            <Route path={ROUTES.ADMIN} element={<ProtectedRoute requiredRoles={['admin']}><Navigate to={`${ROUTES.SETTINGS}?tab=people`} replace /></ProtectedRoute>} />
             <Route path={ROUTES.SETTINGS} element={<ProtectedRoute requiredRoles={['admin', 'producer']}><AppLayout><SettingsPage /></AppLayout></ProtectedRoute>} />
             <Route
               path={ROUTES.EMAIL_TEMPLATE}
