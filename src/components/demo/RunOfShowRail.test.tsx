@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { fireEvent } from "@testing-library/react";
+import { fireEvent, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { render, screen } from "@/test/renderWithProviders";
 import { RunOfShowRail } from "@/components/demo/RunOfShowRail";
@@ -102,11 +102,30 @@ describe("RunOfShowRail", () => {
     expect(updateMutate).toHaveBeenCalledWith({ orgId: "o1", patch: { prospect_label: "Acme Theatre" } });
   });
 
-  it("switching volume reseeds at the chosen volume", () => {
+  it("switching volume asks to confirm, then reseeds at the chosen volume", () => {
     renderRail();
+    // The volume toggle wipes+reseeds, so it opens a confirmation first: nothing fires yet.
     fireEvent.click(screen.getByText("Small"));
+    expect(updateMutate).not.toHaveBeenCalled();
+    expect(resetMutate).not.toHaveBeenCalled();
+
+    // Confirming reseeds at the chosen volume; resetState is omitted so the rep keeps place.
+    const dialog = screen.getByRole("alertdialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: /switch and reseed/i }));
     expect(updateMutate).toHaveBeenCalledWith({ orgId: "o1", patch: { volume: "small" } });
     expect(resetMutate).toHaveBeenCalledWith({ orgId: "o1", volume: "small" });
+  });
+
+  it("renders nothing for a non-admin member of a demo org", () => {
+    // Mirrors DemoBar: the rail exposes cue/reset controls, so a non-admin member
+    // (whose role switcher would flip effectiveHasRole client-side) must not see it.
+    const { container } = render(
+      <MemoryRouter>
+        <RunOfShowRail />
+      </MemoryRouter>,
+      { authOverrides: { roles: ["producer"], currentOrg: DEMO_ORG } },
+    );
+    expect(container).toBeEmptyDOMElement();
   });
 
   it("disables Next scene on the final scene", () => {

@@ -3,47 +3,36 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useAuth } from "@/features/auth/AuthContext";
 import { useDemo } from "@/features/demo/DemoContext";
 import { useResetDemo } from "@/hooks/useDemo";
 import { useLanguage } from "@/features/i18n/LanguageContext";
-import type { Lang } from "@/i18n/config";
-import type { CueId, Scene } from "@/lib/demo/scenes";
+import { cueLabel, sceneSay, sceneTitle } from "@/lib/demo/scenes";
 import { cn } from "@/lib/utils";
 
-/** Short, readable English labels for the demo cue catalog (`CueId`). Bar chrome stays
- *  English per existing convention (see DemoBar/SceneSelect) — no translation here. */
-const CUE_LABELS: Record<CueId, string> = {
-  run_clock_to_1700: "Run clock to 17:00",
-  artist_accepts_offer: "Artist accepts",
-  drop_notifications: "Drop notifications",
-  fill_date: "Fill the date",
-  issue_hire_order: "Issue hire order",
-  advance_clock: "Advance a day",
-};
-
-function sceneTitle(scene: Scene, lang: Lang): string {
-  return scene.title[lang] ?? scene.title.en;
-}
-
-function sceneSay(scene: Scene, lang: Lang): string {
-  return scene.say[lang] ?? scene.say.en;
-}
-
 /** The docked "run of show" rail (design option 1a, right dock): the rep's teleprompter
- *  for the season-handover script. Self-gates on `isDemoOrg && !isBarHidden`, mirroring
- *  DemoBar/DemoBadge. Header shows progress through the script; the scene list shows
- *  every beat with its time estimate; the active scene expands into its "Say:" line, one
- *  button per scripted cue, and a "Next scene" advance; the footer holds the
- *  prospect-label personalization and the small/full volume toggle. */
+ *  for the season-handover script. Self-gates on `isDemoOrg && !isBarHidden && canOperate`,
+ *  mirroring DemoBar (a non-admin member must not render the teleprompter + cue buttons,
+ *  even though the RPCs are also blocked server-side). Header shows progress through the
+ *  script; the scene list shows every beat with its time estimate; the active scene expands
+ *  into its "Say:" line, one button per scripted cue, and a "Next scene" advance; the footer
+ *  holds the prospect-label personalization and the small/full volume toggle. */
 export function RunOfShowRail() {
   const { isDemoOrg, isBarHidden, scenes, currentScene, prospectLabel, volume, goToScene, runCue, setProspectLabel, setVolume, setRole } =
     useDemo();
-  const { currentOrg } = useAuth();
+  const { currentOrg, roles, isSuperAdmin } = useAuth();
+  const canOperate = isSuperAdmin || roles.includes("admin");
   const { lang } = useLanguage();
   const navigate = useNavigate();
   const resetMut = useResetDemo();
   const [labelDraft, setLabelDraft] = useState(prospectLabel ?? "");
+  // The volume toggle reseeds the demo (wipe + seed), so it's gated behind a confirm
+  // dialog like DemoBar's Reset. `pendingVolume` holds the choice awaiting confirmation.
+  const [pendingVolume, setPendingVolume] = useState<"small" | "full" | null>(null);
 
   // Keep the draft in sync when the underlying state changes from outside the input
   // (a fresh scene load, a Reset, or another tab writing demo_state).
@@ -51,7 +40,7 @@ export function RunOfShowRail() {
     setLabelDraft(prospectLabel ?? "");
   }, [prospectLabel]);
 
-  if (!isDemoOrg || isBarHidden) return null;
+  if (!isDemoOrg || isBarHidden || !canOperate) return null;
 
   const currentIndex = Math.max(
     scenes.findIndex((s) => s.id === currentScene.id),
@@ -73,11 +62,14 @@ export function RunOfShowRail() {
 
   // Switching volume must reseed at the CHOSEN volume, not whatever `volume` settles to
   // after the state refetch (which can lag the click) — so pass `v` explicitly to both
-  // the persisted setting and the reseed mutation rather than relying on `reset()`.
-  const handleVolumeChange = (v: "small" | "full") => {
-    if (v === volume) return;
-    setVolume(v);
-    if (currentOrg) resetMut.mutate({ orgId: currentOrg.id, volume: v });
+  // the persisted setting and the reseed mutation. Reseeding here keeps the rep's scene
+  // position and prospect label (resetState defaults false) — it's a data-volume change,
+  // not a new-prospect restart.
+  const confirmVolumeChange = () => {
+    if (!pendingVolume || !currentOrg) return setPendingVolume(null);
+    setVolume(pendingVolume);
+    resetMut.mutate({ orgId: currentOrg.id, volume: pendingVolume });
+    setPendingVolume(null);
   };
 
   return (
@@ -131,7 +123,7 @@ export function RunOfShowRail() {
                           className="h-6 px-2 text-[11px]"
                           onClick={() => runCue(cueId)}
                         >
-                          {CUE_LABELS[cueId]}
+                          {cueLabel(cueId, lang)}
                         </Button>
                       ))}
                     </div>
@@ -166,9 +158,12 @@ export function RunOfShowRail() {
               key={v}
               type="button"
               aria-pressed={volume === v}
-              onClick={() => handleVolumeChange(v)}
+              disabled={resetMut.isPending}
+              onClick={() => {
+                if (v !== volume) setPendingVolume(v);
+              }}
               className={cn(
-                "h-6 rounded-md px-2.5 text-xs font-medium",
+                "h-6 rounded-md px-2.5 text-xs font-medium disabled:opacity-50",
                 volume === v ? "bg-background text-foreground shadow-sm" : "text-muted-foreground",
               )}
             >
@@ -177,6 +172,21 @@ export function RunOfShowRail() {
           ))}
         </div>
       </div>
+
+      <AlertDialog open={pendingVolume !== null} onOpenChange={(open) => { if (!open) setPendingVolume(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Switch demo volume?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This reseeds the demo data at the {pendingVolume === "small" ? "small" : "full"} volume. Bookings, cues, and hire orders from this run are cleared. Your scene position and prospect stay. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmVolumeChange}>Switch and reseed</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </aside>
   );
 }

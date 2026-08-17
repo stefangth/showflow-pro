@@ -35,6 +35,9 @@ interface DemoContextType {
   setRole: (role: AppRole | null) => void;
   reset: () => void;
   isResetting: boolean;
+  /** True while a sim-clock advance is in flight — guards the +10m/+1d buttons
+   *  against rapid clicks sending the same target timestamp (stale-closure race). */
+  isAdvancing: boolean;
 }
 
 const DemoContext = createContext<DemoContextType | undefined>(undefined);
@@ -60,8 +63,11 @@ export function DemoProvider({ children }: { children: ReactNode }) {
 
   const reset = useCallback(() => {
     if (!currentOrg) return;
+    // The Reset button restarts the walkthrough for a fresh prospect, so it also
+    // clears the rep's scene position, sim clock, and prospect label (resetState:
+    // true) — unlike the rail's volume toggle, which reseeds data but keeps place.
     resetMut.mutate(
-      { orgId: currentOrg.id, volume },
+      { orgId: currentOrg.id, volume, resetState: true },
       { onSuccess: () => toast.success("Demo reset"), onError: (e: Error) => toast.error(e.message) },
     );
   }, [currentOrg, resetMut, volume]);
@@ -128,6 +134,7 @@ export function DemoProvider({ children }: { children: ReactNode }) {
     setRole,
     reset,
     isResetting: resetMut.isPending,
+    isAdvancing: updateDemoState.isPending,
   };
   return <DemoContext.Provider value={value}>{children}</DemoContext.Provider>;
 }

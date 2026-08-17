@@ -31,7 +31,7 @@ function invalidateEverything(qc: QueryClient) {
 export function useResetDemo() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (args: { orgId: string; volume: "small" | "full" }) => resetDemoOrg(supabase, args),
+    mutationFn: (args: { orgId: string; volume: "small" | "full"; resetState?: boolean }) => resetDemoOrg(supabase, args),
     onSuccess: () => invalidateEverything(qc),
   });
 }

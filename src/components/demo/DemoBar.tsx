@@ -24,7 +24,7 @@ const ROLE_OPTIONS: AppRole[] = ["admin", "producer", "artist"];
  *  indicator, the scene selector, a role toggle, a simulated clock with quick-advance,
  *  the outbox, a confirmed Reset (it wipes+reseeds), and hide/exit controls. */
 export function DemoBar() {
-  const { isDemoOrg, isBarHidden, hideBar, simNow, advanceClock, reset, isResetting } = useDemo();
+  const { isDemoOrg, isBarHidden, hideBar, simNow, advanceClock, reset, isResetting, isAdvancing } = useDemo();
   const { viewAsRole, setViewAsRole, setViewAsUser, roles, isSuperAdmin } = useAuth();
   const canOperate = isSuperAdmin || roles.includes("admin");
   if (!isDemoOrg || isBarHidden || !canOperate) return null;
@@ -65,6 +65,7 @@ export function DemoBar() {
         <Button
           size="sm"
           variant="ghost"
+          disabled={isAdvancing}
           className="h-6 px-1.5 text-xs font-mono"
           onClick={() => advanceClock("10m")}
         >
@@ -73,6 +74,7 @@ export function DemoBar() {
         <Button
           size="sm"
           variant="ghost"
+          disabled={isAdvancing}
           className="h-6 px-1.5 text-xs font-mono"
           onClick={() => advanceClock("1d")}
         >

@@ -108,6 +108,27 @@ Deno.test("demo-ops: reset passes the caller as p_actor to seed_demo_org", async
   assertEquals((seedCall?.args[0] as { p_actor?: string } | undefined)?.p_actor, "u1");
 });
 
+Deno.test("demo-ops: reset with reset_state clears scene/clock/label on demo_state", async () => {
+  const { deps, calls } = adminDeps({
+    isDemo: true,
+    rpcs: { wipe_demo_org: { data: null, error: null }, seed_demo_org: { data: null, error: null } },
+  });
+  const res = await handle(authedReq({ action: "reset", org_id: "o1", reset_state: true }), deps);
+  assertEquals(res.status, 200);
+  const stateUpdate = calls.find((c) => c.table === "demo_state" && c.method === "update");
+  assertEquals(stateUpdate?.args[0], { current_scene_id: null, sim_now: null, prospect_label: null });
+});
+
+Deno.test("demo-ops: reset without reset_state leaves demo_state untouched", async () => {
+  const { deps, calls } = adminDeps({
+    isDemo: true,
+    rpcs: { wipe_demo_org: { data: null, error: null }, seed_demo_org: { data: null, error: null } },
+  });
+  const res = await handle(authedReq({ action: "reset", org_id: "o1" }), deps);
+  assertEquals(res.status, 200);
+  assertEquals(calls.some((c) => c.table === "demo_state" && c.method === "update"), false);
+});
+
 Deno.test("demo-ops: wipe on a demo org calls wipe only, not seed", async () => {
   const { deps, calls } = adminDeps({
     isDemo: true,

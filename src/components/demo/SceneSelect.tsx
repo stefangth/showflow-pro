@@ -1,14 +1,14 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useDemo } from "@/features/demo/DemoContext";
 import { useLanguage } from "@/features/i18n/LanguageContext";
-import type { Scene } from "@/lib/demo/scenes";
+import { sceneTitle, type Scene } from "@/lib/demo/scenes";
 import type { Lang } from "@/i18n/config";
 
 /** "01 Where the season stands" — a 1-based, zero-padded index plus the scene's title
  *  in the viewer's current language (falling back to English for a missing translation). */
 function sceneLabel(scene: Scene, index: number, lang: Lang): string {
   const n = String(index + 1).padStart(2, "0");
-  return `${n} ${scene.title[lang] ?? scene.title.en}`;
+  return `${n} ${sceneTitle(scene, lang)}`;
 }
 
 /** The demo bar's scene selector: shows the current scene of the season-handover

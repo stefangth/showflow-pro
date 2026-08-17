@@ -1,5 +1,5 @@
 begin;
-select plan(31);
+select plan(29);
 
 -- Scene + sim-clock columns (Phase 2) exist on demo_state.
 select has_column('public', 'demo_state', 'sim_now', 'demo_state.sim_now exists');
@@ -166,18 +166,6 @@ select is(
   (select count(*)::int from public.bookings where show_date_id = (select id from cue_fill_target)
     and status = 'confirmed' and is_understudy = false),
   3, 'fill_date idempotent: still exactly 3 confirmed non-understudy bookings'
-);
-
--- advance_clock: bumps demo_state.sim_now by 1 day from whatever
--- run_clock_to_1700 left it at (today 17:00).
-select lives_ok(
-  $$ select public.run_demo_cue('5eedc0e0-0000-0000-0000-0000000000c0', 'advance_clock', null) $$,
-  'advance_clock runs'
-);
-select is(
-  (select sim_now from public.demo_state where org_id = '5eedc0e0-0000-0000-0000-0000000000c0'),
-  (current_date + interval '17 hours' + interval '1 day')::timestamptz,
-  'advance_clock: sim_now advances one day past run_clock_to_1700''s 17:00'
 );
 
 -- Unknown cue raises.

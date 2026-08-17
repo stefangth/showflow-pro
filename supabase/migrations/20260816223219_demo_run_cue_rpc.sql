@@ -125,10 +125,6 @@ begin
       end if;
     end if;
 
-  elsif p_cue = 'advance_clock' then
-    update public.demo_state set sim_now = coalesce(sim_now, now()) + interval '1 day', updated_at = now()
-      where org_id = p_org;
-
   else
     raise exception 'run_demo_cue: unknown cue %', p_cue using errcode = 'raise_exception';
   end if;
