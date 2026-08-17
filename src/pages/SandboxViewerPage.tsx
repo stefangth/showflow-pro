@@ -61,11 +61,19 @@ function StatCard({ label, value }: { label: string; value: string }) {
 export default function SandboxViewerPage() {
   const { token } = useParams<{ token: string }>();
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: ["sandbox", token],
     queryFn: () => fetchSandboxSnapshot(supabase, token as string),
     enabled: !!token,
   });
+
+  // Treat a genuine query error, a missing :token (query stays idle), or an
+  // explicit ok:false from the edge function all as the same "invalid link"
+  // state, so the page never renders as a bare top-bar-and-footer shell.
+  const invalidReason =
+    !isLoading && (isError || !token || data?.ok === false)
+      ? (data && data.ok === false && data.reason) || "not_found"
+      : null;
 
   return (
     <main className="min-h-screen bg-background">
@@ -84,16 +92,16 @@ export default function SandboxViewerPage() {
           </div>
         )}
 
-        {!isLoading && data?.ok === false && (
+        {invalidReason && (
           <div className="flex items-center justify-center py-16">
             <Card className="w-full max-w-md p-8 space-y-4 text-center">
               <div className="flex flex-col items-center gap-3 text-destructive">
                 <XCircle className="h-10 w-10" />
                 <h1 className="font-display text-xl font-semibold text-foreground">
-                  {(data.reason && REASON_COPY[data.reason]?.title) || REASON_COPY.not_found.title}
+                  {(REASON_COPY[invalidReason] ?? REASON_COPY.not_found).title}
                 </h1>
                 <p className="text-sm text-muted-foreground">
-                  {(data.reason && REASON_COPY[data.reason]?.message) || REASON_COPY.not_found.message}
+                  {(REASON_COPY[invalidReason] ?? REASON_COPY.not_found).message}
                 </p>
               </div>
             </Card>

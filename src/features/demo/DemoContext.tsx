@@ -51,7 +51,7 @@ export function DemoProvider({ children }: { children: ReactNode }) {
   const runCueMut = useRunCue();
   // Only demo orgs carry a demo_state row — gate the read so switching to (or
   // starting on) a non-demo org never fires a demo_state query for it.
-  const { data: demoState } = useDemoState(demo ? currentOrg?.id ?? null : null);
+  const { data: demoState, isLoading: demoStateLoading } = useDemoState(demo ? currentOrg?.id ?? null : null);
 
   const volume: "small" | "full" = demoState?.volume ?? "full";
   const simNow = demoState?.sim_now ?? null;
@@ -62,7 +62,10 @@ export function DemoProvider({ children }: { children: ReactNode }) {
   );
 
   const reset = useCallback(() => {
-    if (!currentOrg) return;
+    // Don't reset until demo_state has loaded: `volume` falls back to "full" while
+    // the query is in flight, so a reset fired mid-load would reseed a "small" org
+    // at "full". Once loaded, `volume` reflects the stored value.
+    if (!currentOrg || demoStateLoading) return;
     // The Reset button restarts the walkthrough for a fresh prospect, so it also
     // clears the rep's scene position, sim clock, and prospect label (resetState:
     // true) — unlike the rail's volume toggle, which reseeds data but keeps place.
@@ -70,7 +73,7 @@ export function DemoProvider({ children }: { children: ReactNode }) {
       { orgId: currentOrg.id, volume, resetState: true },
       { onSuccess: () => toast.success("Demo reset"), onError: (e: Error) => toast.error(e.message) },
     );
-  }, [currentOrg, resetMut, volume]);
+  }, [currentOrg, resetMut, volume, demoStateLoading]);
 
   const goToScene = useCallback(
     (id: string) => {

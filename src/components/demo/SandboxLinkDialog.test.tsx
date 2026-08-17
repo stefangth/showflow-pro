@@ -79,7 +79,7 @@ describe('SandboxLinkDialog', () => {
     const revokeButton = await screen.findByRole('button', { name: /revoke/i });
     fireEvent.click(revokeButton);
 
-    expect(revokeMutate).toHaveBeenCalledWith({ orgId: 'o1', token: 'activeToken1' });
+    expect(revokeMutate).toHaveBeenCalledWith({ orgId: 'o1', token: 'activeToken1' }, expect.any(Object));
   });
 
   it('an expired link shows a muted status badge instead of a Revoke control', async () => {
