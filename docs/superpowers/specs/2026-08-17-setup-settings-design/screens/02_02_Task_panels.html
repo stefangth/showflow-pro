@@ -1,0 +1,138 @@
+═══════════ 02 · TASK PANEL VARIANTS ═══════════ -->
+  <div data-screen-label="02 Task panels" style="display:flex;flex-direction:column;gap:10px">
+    <div style="display:flex;align-items:baseline;gap:10px">
+      <span style="font:600 11px/1 'Geist Mono',monospace;letter-spacing:1.6px;text-transform:uppercase;color:#8B8A85">02 · task panels</span>
+      <span style="font-size:13px;color:#5B5A57">Three shapes cover all eleven tasks: a choice, a pair of values, and a document. Same frame, same footer.</span>
+    </div>
+
+    <div style="display:flex;gap:20px;flex-wrap:wrap">
+
+      <!-- choice panel -->
+      <div style="width:440px;display:flex;flex-direction:column;border:0.5px solid #E6E3E0;border-radius:14px;background:#fff;box-shadow:0 1px 2px rgba(20,18,14,.04),0 8px 24px rgba(20,18,14,.08);overflow:hidden">
+        <div style="padding:16px;border-bottom:1px solid #E6E3E0">
+          <div style="font-size:11px;font-weight:600;letter-spacing:1.6px;text-transform:uppercase;color:#5848D8">Choice · sets everything downstream</div>
+          <div style="margin-top:6px;font-size:22px;font-weight:600;letter-spacing:-0.3px">Booking flow</div>
+          <div style="margin-top:6px;font-size:13px;line-height:19px;color:#5B5A57;text-wrap:pretty">Offers, or straight to booked. You can change it later, and every number on the dashboard follows it.</div>
+        </div>
+        <div style="padding:16px;display:flex;flex-direction:column;gap:10px">
+          <div style="border:1px solid #6E5CF6;border-radius:10px;background:#F4F1FF;padding:14px">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="height:16px;width:16px;border-radius:999px;border:5px solid #6E5CF6;background:#fff"></span>
+              <div style="font-size:14px;font-weight:600">Offers with tiers</div>
+              <span style="flex:1"></span>
+              <span style="font:500 11px 'Geist Mono',monospace;color:#4738B0">Current</span>
+            </div>
+            <div style="margin-top:8px;display:flex;flex-direction:column;gap:5px;font-size:12px;line-height:17px;color:#15131C">
+              <div>Tier 1 is asked first. Tier 2 opens 24 h later if unfilled.</div>
+              <div>Artists answer from the email. An accepted offer waits for a producer to confirm.</div>
+            </div>
+            <div style="margin-top:10px;padding-top:10px;border-top:0.5px solid #CABBFF;font-size:12px;color:#4738B0">Needs cast priorities per city. 2 cities are unranked.</div>
+          </div>
+          <div style="border:1px solid #E6E3E0;border-radius:10px;background:#fff;padding:14px">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="height:16px;width:16px;border-radius:999px;border:1.5px solid #DCD9D6"></span>
+              <div style="font-size:14px;font-weight:500">Book directly</div>
+            </div>
+            <div style="margin-top:8px;display:flex;flex-direction:column;gap:5px;font-size:12px;line-height:17px;color:#5B5A57">
+              <div>A producer books straight from the eligibility list. Nothing to accept.</div>
+              <div>A booked date shows in the artist's calendar as confirmed.</div>
+            </div>
+            <div style="margin-top:10px;padding-top:10px;border-top:0.5px solid #E6E3E0;font-size:12px;color:#8B8A85">Cast ranking stops mattering. Blocked dates still come off the list.</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;padding:14px 16px;border-top:1px solid #E6E3E0;background:#FAF8F4">
+          <span style="font-size:12px;color:#8B8A85">Change is logged</span>
+          <span style="flex:1"></span>
+          <button style="height:36px;padding:0 12px;border:1px solid #E6E3E0;border-radius:8px;background:#fff;font:500 13px Geist,sans-serif">Later</button>
+          <button style="height:36px;padding:0 14px;border:0;border-radius:8px;background:#6E5CF6;color:#fff;font:500 13px Geist,sans-serif">Keep offers</button>
+        </div>
+      </div>
+
+      <!-- values panel -->
+      <div style="width:440px;display:flex;flex-direction:column;border:0.5px solid #E6E3E0;border-radius:14px;background:#fff;box-shadow:0 1px 2px rgba(20,18,14,.04),0 8px 24px rgba(20,18,14,.08);overflow:hidden">
+        <div style="padding:16px;border-bottom:1px solid #E6E3E0">
+          <div style="font-size:11px;font-weight:600;letter-spacing:1.6px;text-transform:uppercase;color:#5848D8">Values · two fields</div>
+          <div style="margin-top:6px;font-size:22px;font-weight:600;letter-spacing:-0.3px">Offer timing</div>
+          <div style="margin-top:6px;font-size:13px;line-height:19px;color:#5B5A57;text-wrap:pretty">One digest a day, never a mail per date. The window is how long an artist has before the offer expires.</div>
+        </div>
+        <div style="padding:16px;display:flex;flex-direction:column;gap:16px">
+          <div style="display:flex;gap:12px">
+            <div style="flex:1;display:flex;flex-direction:column;gap:5px">
+              <label style="font-size:12px;font-weight:500;color:#5B5A57">Digest leaves at</label>
+              <div style="display:flex;align-items:center;justify-content:space-between;height:36px;border:1px solid #DCD9D6;border-radius:6px;background:#fff;padding:0 10px;font:500 14px 'Geist Mono',monospace;box-shadow:0 1px 2px rgba(20,18,14,.05)"><span>19:00</span><span style="color:#8B8A85;display:flex"><i data-lucide="chevron-down" data-size="14"></i></span></div>
+              <span style="font-size:11px;color:#8B8A85">Berlin time</span>
+            </div>
+            <div style="flex:1;display:flex;flex-direction:column;gap:5px">
+              <label style="font-size:12px;font-weight:500;color:#5B5A57">Answer window</label>
+              <div style="display:flex;align-items:center;justify-content:space-between;height:36px;border:1px solid #DCD9D6;border-radius:6px;background:#fff;padding:0 10px;font:500 14px 'Geist Mono',monospace;box-shadow:0 1px 2px rgba(20,18,14,.05)"><span>48 h</span><span style="color:#8B8A85;display:flex"><i data-lucide="chevron-down" data-size="14"></i></span></div>
+              <span style="font-size:11px;color:#8B8A85">Then the tier reopens</span>
+            </div>
+          </div>
+          <div style="border:0.5px solid #E6E3E0;border-radius:10px;background:#FAF8F4;padding:12px;display:flex;flex-direction:column;gap:6px">
+            <div style="font-size:11px;font-weight:600;letter-spacing:1.6px;text-transform:uppercase;color:#8B8A85">On these settings</div>
+            <div style="display:flex;align-items:baseline;gap:8px;font-size:12px"><span style="font:500 12px 'Geist Mono',monospace;color:#15131C">Today 19:00</span><span style="color:#5B5A57">tier 1 goes out for 36 dates</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px;font-size:12px"><span style="font:500 12px 'Geist Mono',monospace;color:#15131C">19 Aug 19:00</span><span style="color:#5B5A57">window closes, unfilled dates open tier 2</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px;font-size:12px"><span style="font:500 12px 'Geist Mono',monospace;color:#15131C">20 Aug 20:00</span><span style="color:#5B5A57">confirmation digest to your producers</span></div>
+          </div>
+          <div style="display:flex;align-items:flex-start;gap:8px;font-size:12px;line-height:17px;color:#8B8A85">
+            <span style="margin-top:1px;display:flex"><i data-lucide="mail" data-size="14"></i></span>
+            <span>Sender address and the confirmation hour sit under Advanced in Settings · Booking.</span>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;padding:14px 16px;border-top:1px solid #E6E3E0;background:#FAF8F4">
+          <span style="font-size:12px;color:#8B8A85">Applies to tonight's digest</span>
+          <span style="flex:1"></span>
+          <button style="height:36px;padding:0 12px;border:1px solid #E6E3E0;border-radius:8px;background:#fff;font:500 13px Geist,sans-serif">Later</button>
+          <button style="height:36px;padding:0 14px;border:0;border-radius:8px;background:#6E5CF6;color:#fff;font:500 13px Geist,sans-serif">Confirm timing</button>
+        </div>
+      </div>
+
+      <!-- document panel -->
+      <div style="width:440px;display:flex;flex-direction:column;border:0.5px solid #E6E3E0;border-radius:14px;background:#fff;box-shadow:0 1px 2px rgba(20,18,14,.04),0 8px 24px rgba(20,18,14,.08);overflow:hidden">
+        <div style="padding:16px;border-bottom:1px solid #E6E3E0">
+          <div style="font-size:11px;font-weight:600;letter-spacing:1.6px;text-transform:uppercase;color:#5848D8">Document · blocks issuing</div>
+          <div style="margin-top:6px;font-size:22px;font-weight:600;letter-spacing:-0.3px">Letterhead</div>
+          <div style="margin-top:6px;font-size:13px;line-height:19px;color:#5B5A57;text-wrap:pretty">Printed at the top of every hire order PDF. An order cannot be issued without it.</div>
+        </div>
+        <div style="padding:16px;display:flex;flex-direction:column;gap:12px">
+          <div style="display:flex;gap:12px">
+            <div style="flex:1;display:flex;flex-direction:column;gap:12px">
+              <div style="display:flex;flex-direction:column;gap:5px">
+                <label style="font-size:12px;font-weight:500;color:#5B5A57">Legal name</label>
+                <div style="height:36px;border:1px solid #DCD9D6;border-radius:6px;background:#fff;padding:0 10px;display:flex;align-items:center;font-size:14px;box-shadow:0 1px 2px rgba(20,18,14,.05)">Nordstadt Produktionen GmbH</div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:5px">
+                <label style="font-size:12px;font-weight:500;color:#5B5A57">Address</label>
+                <div style="height:56px;border:1px solid #DCD9D6;border-radius:6px;background:#fff;padding:8px 10px;font-size:14px;line-height:20px;box-shadow:0 1px 2px rgba(20,18,14,.05)">Rothenbaumchaussee 12<br>20148 Hamburg</div>
+              </div>
+            </div>
+            <div style="width:150px;flex-shrink:0;display:flex;flex-direction:column;gap:5px">
+              <label style="font-size:12px;font-weight:500;color:#5B5A57">Preview</label>
+              <div style="flex:1;border:0.5px solid #E6E3E0;border-radius:8px;background:#FAF8F4;padding:10px;display:flex;flex-direction:column;gap:6px">
+                <div style="font-size:9px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#8B8A85">Performance hire order</div>
+                <div style="font-size:10px;font-weight:600;line-height:13px">Nordstadt Produktionen GmbH</div>
+                <div style="font:400 8px/12px 'Geist Mono',monospace;color:#8B8A85">Rothenbaumchaussee 12<br>20148 Hamburg</div>
+                <div style="margin-top:auto;height:1px;background:#E6E3E0"></div>
+                <div style="font:400 8px 'Geist Mono',monospace;color:#8B8A85">HO-2026-0001</div>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;border:0.5px solid #E6E3E0;border-radius:10px;background:#FAF8F4;padding:12px">
+            <span style="color:#8B8A85;display:flex"><i data-lucide="file-signature" data-size="14"></i></span>
+            <div style="font-size:12px;line-height:17px;color:#5B5A57">Terms and countersignature are the other two. Both are needed before issuing.</div>
+            <span style="flex:1"></span>
+            <span style="font:500 12px 'Geist Mono',monospace;color:#9A6314">2 left</span>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;padding:14px 16px;border-top:1px solid #E6E3E0;background:#FAF8F4">
+          <span style="font-size:12px;color:#8B8A85">Used on every order</span>
+          <span style="flex:1"></span>
+          <button style="height:36px;padding:0 12px;border:1px solid #E6E3E0;border-radius:8px;background:#fff;font:500 13px Geist,sans-serif">Later</button>
+          <button style="height:36px;padding:0 14px;border:0;border-radius:8px;background:#6E5CF6;color:#fff;font:500 13px Geist,sans-serif">Save letterhead</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ 03 · PRODUCER VIEW ═══════════ -->
+  <div 
