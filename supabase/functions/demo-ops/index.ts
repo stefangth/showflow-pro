@@ -48,14 +48,15 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     const gate = await requireSuperAdmin(deps, req);
     if (!gate.ok) return gate.response;
 
-    // Blast-radius guard: flag_and_seed is for a freshly provisioned org. Refuse if it
-    // already has bookings — a real, in-use org (never layer demo data onto it), or an
-    // already-seeded demo org (which must use `reset`, since the seed isn't idempotent).
-    const { data: existingBookings, error: existErr } = await deps.admin
-      .from("bookings").select("id").eq("org_id", orgId).limit(1);
-    if (existErr) return json({ error: existErr.message }, 500);
-    if (existingBookings && (existingBookings as unknown[]).length > 0) {
-      return json({ error: "org_not_empty" }, 409);
+    // Blast-radius guard: flag_and_seed FLAGS + WIPES + SEEDS, so it must only ever run
+    // on a freshly provisioned org. provision-org's starter catalog is only
+    // casts/cities/skills, so the presence of any shows, artists, or bookings means this
+    // is a real (or already-seeded) org — refuse rather than wipe it. Checking bookings
+    // alone was insufficient once flag_and_seed started wiping.
+    for (const table of ["shows", "artists", "bookings"] as const) {
+      const { data: rows, error: chkErr } = await deps.admin.from(table).select("id").eq("org_id", orgId).limit(1);
+      if (chkErr) return json({ error: chkErr.message }, 500);
+      if (rows && (rows as unknown[]).length > 0) return json({ error: "org_not_empty" }, 409);
     }
 
     // Flag the org first (checked): if this fails, seed_demo_org's is_demo guard would

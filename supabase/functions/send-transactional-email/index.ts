@@ -306,13 +306,16 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
         return json({ error: 'Failed to verify demo status' }, 500)
       }
       if ((orgRow as { is_demo?: boolean } | null)?.is_demo) {
-        await admin.from('demo_captured_sends').insert({
+        const { error: captureErr } = await admin.from('demo_captured_sends').insert({
           org_id: orgId,
           kind: (resendAttachments && resendAttachments.length > 0) ? 'pdf' : 'email',
           to_label: effectiveRecipient,
           subject: presentation.subject,
           preview_html: html,
         })
+        // The real send is still correctly blocked either way; a failed capture only
+        // means the demo outbox won't show this artifact, so log it rather than swallow.
+        if (captureErr) console.error('Demo capture insert failed (real send still blocked)', { orgId, error: captureErr })
         await admin.from('email_send_log').update({
           status: 'sent',
           sent_at: deps.now().toISOString(),
