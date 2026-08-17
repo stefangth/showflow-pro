@@ -23,6 +23,14 @@ Deno.test("sandbox-view: 400 when token missing", async () => {
   assertEquals(body.error, "bad_request");
 });
 
+Deno.test("sandbox-view: 400 when token is not a string", async () => {
+  const { deps } = makeFakeDeps({});
+  const res = await handle(makeRequest({ body: { token: 12345 } }), deps);
+  assertEquals(res.status, 400);
+  const body = await res.json();
+  assertEquals(body.error, "bad_request");
+});
+
 Deno.test("sandbox-view: 404 not_found for unknown token", async () => {
   // demo_sandbox_links left unseeded — the fake defaults to an empty result,
   // which .maybeSingle() normalizes to null.
