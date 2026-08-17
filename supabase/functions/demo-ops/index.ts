@@ -70,6 +70,13 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     );
     if (entErr) return json({ error: entErr.message }, 500);
 
+    // provision-org already ran seed_org_starter_catalog on this org, so clear that
+    // generic starter catalog before seeding the curated demo dataset — otherwise the
+    // two mix and the demo shows a polluted catalog. Safe now: is_demo=true (satisfies
+    // wipe_demo_org's guard) and the bookings guard above proved the org is fresh.
+    const { error: wipeErr } = await deps.admin.rpc("wipe_demo_org", { p_org: orgId });
+    if (wipeErr) return json({ error: wipeErr.message }, 500);
+
     const { error: seedErr } = await deps.admin.rpc("seed_demo_org", {
       p_org: orgId,
       p_volume: volume,
