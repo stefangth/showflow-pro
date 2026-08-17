@@ -56,9 +56,13 @@ async function assertDemoOrg(deps: Deps, orgId: string): Promise<boolean> {
 async function removeOrgHireOrderPdfs(deps: Deps, orgId: string): Promise<void> {
   try {
     const { data } = await deps.admin.storage.from("hire-orders").list(orgId, { limit: 1000 });
-    const objects = (data as Array<{ name: string }> | null) ?? [];
-    if (objects.length === 0) return;
-    await deps.admin.storage.from("hire-orders").remove(objects.map((o) => `${orgId}/${o.name}`));
+    // Only order PDFs (`<order_no>.pdf` / `<order_no>-signed.pdf`). The same prefix
+    // also holds the letterhead agent-signature PNG, which lives in preserved
+    // app_settings (hire_order_letterhead.agent_signature_path) and must survive a
+    // wipe -- deleting it would blank the signature line on future issued PDFs.
+    const pdfs = ((data as Array<{ name: string }> | null) ?? []).filter((o) => o.name.endsWith(".pdf"));
+    if (pdfs.length === 0) return;
+    await deps.admin.storage.from("hire-orders").remove(pdfs.map((o) => `${orgId}/${o.name}`));
   } catch (_e) {
     // Swallow: storage cleanup is demo hygiene, not correctness.
   }
