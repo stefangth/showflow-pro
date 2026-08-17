@@ -40,6 +40,7 @@ import HireOrdersPage from "./pages/HireOrdersPage";
 import HireOrderDetailPage from "./pages/HireOrderDetailPage";
 import HireOrderEditPage from "./pages/HireOrderEditPage";
 import SandboxViewerPage from "./pages/SandboxViewerPage";
+import GetRunningPage from "./pages/GetRunningPage";
 import NotFound from "./pages/NotFound";
 
 // DEV-ONLY visual harness for the Show Date Cockpit (see DevCockpitHarness.tsx).
@@ -78,6 +79,9 @@ const App = () => (
             )}
             <Route path={ROUTES.SIGNUP} element={<Navigate to={ROUTES.LOGIN} replace />} />
             <Route path={ROUTES.DASHBOARD} element={<ProtectedRoute><AppLayout><DashboardPage /></AppLayout></ProtectedRoute>} />
+            {/* All roles for now: role branching happens inside the page. Artists get a
+                later-phase bounce (nav already hides the link for them). */}
+            <Route path={ROUTES.GET_RUNNING} element={<ProtectedRoute><AppLayout><GetRunningPage /></AppLayout></ProtectedRoute>} />
             <Route path={ROUTES.ARTISTS} element={<ProtectedRoute requiredRoles={['admin', 'producer']}><AppLayout><ArtistsPage /></AppLayout></ProtectedRoute>} />
             <Route path={ROUTES.BOOKINGS} element={<ProtectedRoute requiredRoles={['admin', 'producer']}><AppLayout><ShowsBookingsPage /></AppLayout></ProtectedRoute>} />
             <Route path={ROUTES.PRODUCTIONS} element={<ProtectedRoute requiredRoles={['admin', 'producer']}><AppLayout><ProductionsPage /></AppLayout></ProtectedRoute>} />

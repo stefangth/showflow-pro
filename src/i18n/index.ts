@@ -55,6 +55,8 @@ import enFlowCopy from './locales/en/flowCopy.json';
 import deFlowCopy from './locales/de/flowCopy.json';
 import enBookingCopy from './locales/en/bookingCopy.json';
 import deBookingCopy from './locales/de/bookingCopy.json';
+import enGetRunning from './locales/en/getRunning.json';
+import deGetRunning from './locales/de/getRunning.json';
 
 export const resources = {
   en: {
@@ -67,6 +69,7 @@ export const resources = {
     auth: enAuth, admin: enAdmin, artists: enArtists, productions: enProductions,
     hireOrdersPages: enHireOrdersPages, showsDetail: enShowsDetail, chats: enChats, profile: enProfile,
     onboarding: enOnboarding, flowCopy: enFlowCopy, bookingCopy: enBookingCopy,
+    getRunning: enGetRunning,
   },
   de: {
     common: deCommon, help: deHelp, dashboard: deDashboard, bookings: deBookings, availability: deAvailability,
@@ -78,6 +81,7 @@ export const resources = {
     auth: deAuth, admin: deAdmin, artists: deArtists, productions: deProductions,
     hireOrdersPages: deHireOrdersPages, showsDetail: deShowsDetail, chats: deChats, profile: deProfile,
     onboarding: deOnboarding, flowCopy: deFlowCopy, bookingCopy: deBookingCopy,
+    getRunning: deGetRunning,
   },
 } as const;
 
@@ -92,7 +96,7 @@ i18n.use(initReactI18next).init({
     'settingsAirtable', 'settingsBookingFlow', 'settingsHireOrders', 'settingsEmailTemplates',
     'settingsRolesRights', 'settingsEditor',
     'auth', 'admin', 'artists', 'productions', 'hireOrdersPages', 'showsDetail', 'chats', 'profile',
-    'onboarding', 'flowCopy', 'bookingCopy',
+    'onboarding', 'flowCopy', 'bookingCopy', 'getRunning',
   ],
   defaultNS: 'common',
   returnEmptyString: false,

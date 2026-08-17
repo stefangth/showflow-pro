@@ -1,0 +1,29 @@
+{
+  "header": {
+    "eyebrow": "{{org}} · Loslegen",
+    "fallbackOrg": "deinen Arbeitsbereich",
+    "headline": {
+      "blocking_one": "Eine Sache steht zwischen dir und deinem ersten Angebot",
+      "blocking_other": "{{count}} Dinge stehen zwischen dir und deinem ersten Angebot",
+      "ready": "Du bist bereit für dein erstes Angebot",
+      "complete": "Hier ist alles eingerichtet"
+    },
+    "body": {
+      "blocking_one": "Das erledigst du, es dauert etwa {{minutes}} Minuten. Sonst blockiert hier nichts, und nichts hier hindert dich, den Rest der App zu nutzen.",
+      "blocking_other": "Das erledigst du, es dauert etwa {{minutes}} Minuten. Sonst blockiert hier nichts, und nichts hier hindert dich, den Rest der App zu nutzen.",
+      "ready": "Alles, was dein erstes Angebot blockiert, ist erledigt. Der Rest dieser Liste lohnt sich noch, hält dich aber nicht mehr auf.",
+      "complete": "Jede Aufgabe hier ist erledigt. Schau jederzeit in den Einstellungen vorbei, falls sich etwas ändert."
+    }
+  },
+  "progress": {
+    "title": "Einrichtung",
+    "of": "von {{total}} erledigt",
+    "module": {
+      "booking": "Booking Engine",
+      "hireOrders": "Engagementverträge",
+      "on": "An",
+      "off": "Aus"
+    },
+    "footer": "Module werden von deinem Account Manager eingeschaltet."
+  }
+}
