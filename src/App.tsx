@@ -40,6 +40,7 @@ import ProductionsPage from "./pages/ProductionsPage";
 import HireOrdersPage from "./pages/HireOrdersPage";
 import HireOrderDetailPage from "./pages/HireOrderDetailPage";
 import HireOrderEditPage from "./pages/HireOrderEditPage";
+import SandboxViewerPage from "./pages/SandboxViewerPage";
 import NotFound from "./pages/NotFound";
 
 // DEV-ONLY visual harness for the Show Date Cockpit (see DevCockpitHarness.tsx).
@@ -119,6 +120,7 @@ const App = () => (
             <Route path={ROUTES.RESET_PASSWORD} element={<ResetPasswordPage />} />
             <Route path={ROUTES.AUTH_CALLBACK} element={<AuthCallbackPage />} />
             <Route path={ROUTES.UNSUBSCRIBE} element={<UnsubscribePage />} />
+            <Route path={ROUTES.SANDBOX} element={<SandboxViewerPage />} />
             <Route path={ROUTES.PRIVACY} element={<PrivacyPage />} />
             <Route path={ROUTES.IMPRESSUM} element={<ImpressumPage />} />
             <Route path="*" element={<NotFound />} />
