@@ -85,6 +85,29 @@ describe("createDemoOrg", () => {
       args: [{ action: "flag_and_seed", org_id: "org-new", volume: "full" }],
     });
   });
+
+  it("best-effort deletes the just-provisioned org and rethrows if flag_and_seed fails", async () => {
+    const fake = createFakeSupabase({
+      "fn:provision-org": { data: { org_id: "org-new" }, error: null },
+      "fn:demo-ops": { data: { error: "seed failed" }, error: null },
+      "rpc:delete_org": { data: null, error: null },
+    });
+    await expect(
+      createDemoOrg(fake as never, {
+        name: "Demo Org",
+        slug: "demo-org",
+        adminEmail: "admin@example.com",
+        appOrigin: "https://app.showflow.pro",
+        volume: "full",
+      }),
+    ).rejects.toThrow("seed failed");
+    // The half-baked org is cleaned up.
+    expect(fake.calls).toContainEqual({
+      table: "rpc:delete_org",
+      method: "rpc",
+      args: [{ p_org: "org-new" }],
+    });
+  });
 });
 
 describe("fetchCapturedSends", () => {
