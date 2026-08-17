@@ -25,6 +25,10 @@ begin
   delete from public.hire_order_signatures where org_id = p_org;
   delete from public.hire_order_dates where org_id = p_org;
   delete from public.hire_orders where org_id = p_org;
+  -- NOTE: issued/countersigned hire-order PDFs in the `hire-orders` storage bucket
+  -- (under the `<org_id>/` prefix) are NOT deleted here: this Postgres version guards
+  -- storage.objects with a protect_delete() trigger that forbids direct SQL deletes.
+  -- The demo-ops edge function removes those via the Storage API after this RPC.
   delete from public.chat_messages where org_id = p_org;
   delete from public.chats where org_id = p_org;
   delete from public.show_date_offer_tiers where org_id = p_org;
@@ -196,6 +200,33 @@ begin
   -- One artist with declared blocked dates.
   insert into public.blocked_dates (org_id, artist_id, date, reason)
   values (p_org, v_artist_ids[1], current_date + 40, 'Urlaub');
+
+  -- Hire-order org settings so a fresh demo org can ISSUE a hire order out of the
+  -- box. The issue readiness gate needs a letterhead legal_name, at least one terms
+  -- clause, and a fee; recipient_email is resolved from the artist (seeded above with
+  -- an @demo.invalid address) and the date from the show_date, so only these three
+  -- org-level settings are missing on a fresh org. Upserted so a re-seed refreshes
+  -- them (wipe preserves app_settings, so a bare re-seed would otherwise no-op).
+  insert into public.app_settings (org_id, key, value) values
+    (p_org, 'hire_order_letterhead', jsonb_build_object(
+       'legal_name', 'Rheinbühne Köln GmbH',
+       'address_lines', jsonb_build_array('Rheinuferstraße 12', '50667 Köln'),
+       'registration_line', 'HRB 90210 Amtsgericht Köln')),
+    (p_org, 'hire_order_terms', jsonb_build_object(
+       'templates', jsonb_build_array(jsonb_build_object(
+         'id', 'standard',
+         'name', 'Standard',
+         'clauses', jsonb_build_array(
+           jsonb_build_object('title', 'Engagement',
+             'body', 'Die Künstlerin oder der Künstler wird für die genannte Vorstellung engagiert.'),
+           jsonb_build_object('title', 'Vergütung',
+             'body', 'Die vereinbarte Vergütung ist am Vorstellungstag fällig.')))),
+       'default_id', 'standard')),
+    (p_org, 'hire_order_defaults', jsonb_build_object(
+       'default_fee', 450,
+       'currency', 'EUR',
+       'default_fee_basis', 'per_date'))
+  on conflict (org_id, key) do update set value = excluded.value, updated_at = now();
 
   -- Record the chosen volume.
   insert into public.demo_state (org_id, volume) values (p_org, p_volume)
