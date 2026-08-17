@@ -65,6 +65,10 @@
     "overridesClearFailed": "Ausnahmen konnten nicht gelöscht werden",
     "cityRemoved": "Stadt entfernt",
     "cityRemoveFailed": "Stadt konnte nicht entfernt werden",
+    "addCityPlaceholder": "Name der neuen Stadt",
+    "addCityButton": "Hinzufügen",
+    "cityAdded": "Stadt hinzugefügt",
+    "cityAddFailed": "Stadt konnte nicht hinzugefügt werden",
     "noShowSelected": "Keine Show ausgewählt"
   },
   "tierCell": {
