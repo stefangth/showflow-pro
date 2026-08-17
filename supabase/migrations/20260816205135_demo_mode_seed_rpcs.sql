@@ -42,8 +42,11 @@ $$;
 
 -- Only the service role (via the demo-ops edge function) may execute this; revoke
 -- from anon/authenticated too so it can never be called directly through PostgREST,
--- bypassing the edge role gate. (grant to service_role is in a later migration.)
+-- bypassing the edge role gate, and grant service_role explicitly (not via Supabase's
+-- implicit default-privileges) in the same migration, per the hardening precedent in
+-- 20260703100321_harden_rpc_grants_service_role_only.sql.
 revoke all on function public.wipe_demo_org(uuid) from public, anon, authenticated;
+grant execute on function public.wipe_demo_org(uuid) to service_role;
 
 -- seed_demo_org populates a demo org with a realistic, self-consistent
 -- dataset: cities, one cast, artists, shows, show_dates, bookings covering
@@ -200,5 +203,7 @@ begin
 end;
 $$;
 
--- Service-role-only (see wipe_demo_org above): block direct anon/authenticated calls.
+-- Service-role-only (see wipe_demo_org above): block direct anon/authenticated calls
+-- and grant service_role explicitly in the same migration.
 revoke all on function public.seed_demo_org(uuid, text, uuid) from public, anon, authenticated;
+grant execute on function public.seed_demo_org(uuid, text, uuid) to service_role;
