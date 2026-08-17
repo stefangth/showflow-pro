@@ -3,9 +3,12 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {
   createDemoOrg,
+  createSandboxLink,
   fetchCapturedSends,
   fetchDemoState,
+  fetchSandboxLinks,
   resetDemoOrg,
+  revokeSandboxLink,
   runCue,
   updateDemoState,
   wipeDemoOrg,
@@ -85,5 +88,30 @@ export function useRunCue() {
     // A cue firing in front of a prospect must never fail silently: surface the
     // error (unknown_cue, not_a_demo_org, transient RPC failure) as a toast.
     onError: (e: Error) => toast.error(e.message),
+  });
+}
+
+/** A demo org's sandbox links (leave-behind read-only URLs), newest-first. */
+export function useSandboxLinks(orgId: string | undefined) {
+  return useQuery({
+    queryKey: ["demo", "sandbox-links", orgId],
+    queryFn: () => fetchSandboxLinks(supabase, orgId as string),
+    enabled: !!orgId,
+  });
+}
+
+export function useCreateSandboxLink() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (orgId: string) => createSandboxLink(supabase, orgId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["demo", "sandbox-links"] }),
+  });
+}
+
+export function useRevokeSandboxLink() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (args: { orgId: string; token: string }) => revokeSandboxLink(supabase, args),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["demo", "sandbox-links"] }),
   });
 }
