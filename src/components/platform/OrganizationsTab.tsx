@@ -130,7 +130,7 @@ export function OrganizationsTab() {
                         </Button>
                       </IconTooltip>
                       <IconTooltip label="Wipe demo">
-                        <Button size="sm" variant="ghost" aria-label="Wipe demo" onClick={() => setToWipe(o)}>
+                        <Button size="sm" variant="ghost" aria-label="Wipe demo" disabled={wipe.isPending} onClick={() => setToWipe(o)}>
                           <Eraser className="h-3.5 w-3.5" />
                         </Button>
                       </IconTooltip>

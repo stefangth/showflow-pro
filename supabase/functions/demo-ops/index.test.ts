@@ -160,6 +160,25 @@ Deno.test("demo-ops: flag_and_seed happy path — flags, enables hire_orders, se
   assertEquals(seedCall?.args[0], { p_org: "o1", p_volume: "small", p_actor: "super1" });
 });
 
+Deno.test("demo-ops: flag_and_seed refuses an org that already has bookings → 409", async () => {
+  const { deps, calls } = makeFakeDeps({
+    authUser: { id: "super1" },
+    tables: {
+      platform_admins: { data: { user_id: "super1" }, error: null },
+      // A non-empty org (real or already-seeded): flag_and_seed must not layer demo data on it.
+      bookings: { data: [{ id: "b1" }], error: null },
+    },
+    rpcs: { seed_demo_org: { data: null, error: null } },
+  });
+  const res = await handle(authedReq({ action: "flag_and_seed", org_id: "o1" }), deps);
+  assertEquals(res.status, 409);
+  const body = await res.json() as { error: string };
+  assertEquals(body.error, "org_not_empty");
+  // Must not have flagged, entitled, or seeded the org.
+  assertEquals(calls.find((c) => c.table === "rpc:seed_demo_org"), undefined);
+  assertEquals(calls.find((c) => c.table === "organizations" && c.method === "update"), undefined);
+});
+
 Deno.test("demo-ops: flag_and_seed surfaces a seed_demo_org RPC error → 500", async () => {
   const { deps } = makeFakeDeps({
     authUser: { id: "super1" },
