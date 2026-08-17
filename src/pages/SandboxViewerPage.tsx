@@ -114,7 +114,7 @@ export default function SandboxViewerPage() {
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
               <StatCard label="Upcoming dates" value={String(data.snapshot.kpis.upcomingDates)} />
               <StatCard label="Confirmed bookings" value={String(data.snapshot.kpis.confirmedBookings)} />
-              <StatCard label="Fill rate" value={`${Math.round(data.snapshot.kpis.fillRate * 100)}%`} />
+              <StatCard label="Fill rate" value={`${data.snapshot.kpis.fillRate}%`} />
               <StatCard label="Hire orders issued" value={String(data.snapshot.kpis.hireOrdersIssued)} />
             </div>
 
