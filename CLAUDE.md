@@ -96,7 +96,7 @@ These are public values (anon key, not service role). Never commit `.env`. The s
 
 ## Versioning & changelog
 
-- **Semver tags on releases.** Tag the release commit `vMAJOR.MINOR.PATCH` (`git tag -a v1.4.0 -m "<theme>"` then `git push origin --tags`). MINOR = new user-facing features, PATCH = fixes, MAJOR = breaking changes. Tags exist through `v1.9.0` (all of `v1.4.1`–`v1.9.0` were cut in one catch-up batch on Jul 15, 2026) — every release since (`1.9.1`–`1.15.0`, current) has shipped without a tag; catch up the tagging when convenient, don't skip it going forward.
+- **Semver tags on releases.** Tag the release commit `vMAJOR.MINOR.PATCH` (`git tag -a v1.4.0 -m "<theme>"` then `git push origin --tags`). MINOR = new user-facing features, PATCH = fixes, MAJOR = breaking changes. Tags exist through `v1.9.0` (all of `v1.4.1`–`v1.9.0` were cut in one catch-up batch on Jul 15, 2026) — every release since (`1.9.1`–`1.17.0`, current) has shipped without a tag; catch up the tagging when convenient, don't skip it going forward.
 - **Bump the version in two places to match the tag:** `version` in `package.json` and `APP_META.VERSION` in `src/config/app.config.ts` (the latter renders next to the brand name in the top-left of `AppLayout`).
 - **Update `public/changelog.md`** (the single source of truth). Add a newest-first block: `## X.Y.Z — Mon D, YYYY`, a one-line `*theme*`, then `### New` / `### Improved` / `### Fixed` bullets written for end users (no refactors, tests, CI, or docs). Bullets use the form `- **Title** — description`. Never mention super-admin or platform-admin actions (Platform console, org provisioning, org-module toggles, etc.) — there is no public super-admin or platform-admin role, so those changes have no customer-facing angle and don't belong in this file at all.
 - **Regenerate the JSON:** `deno run --allow-read --allow-write scripts/changelog-to-json.ts` rewrites `public/changelog.json` from the markdown — never hand-edit the JSON.
@@ -117,16 +117,30 @@ src/
                    #   peopleMatch.ts (isValidEmail/parseEmails/matchContact/filterPeople) +
                    #   roleOptions.ts (shared ROLE_OPTIONS)
     artists/       # ArtistProfileSheet
-    availability/  # ArtistAvailabilityCalendar, AvailabilityPicker, OfferResponseButtons
     bookings/      # ArtistBookingsView and booking surfaces
                    #   + setup/ (BookingSetupRail, BookingProducerWaitingCard, EligibilityStep,
-                   #   FirstOfferCard, FlowStep, LadderStep, RehearsalBlock, SlotsStep, TimingStep
+                   #   FirstOfferCard, FlowStep, LadderStep, PeopleStep, RehearsalBlock, ShowsStep,
+                   #   SlotsStep, TeamStep, TimingStep, TonightNote, useBookingSetupRailVisible
                    #   — the guided booking-flow setup checklist shown on Shows & Bookings until
                    #   the first offer can go out; note CoverageSteps.test.tsx in this directory
                    #   is a misnamed leftover that actually tests EligibilityStep — there is no
                    #   CoverageSteps component)
     brand/         # StageMark — brand mark SVG (variants: mono outline "mark", violet tile "tile")
-    calendar/      # EntityCalendar (shared month grid)
+    calendar/      # EntityCalendar (shared month grid, legacy) + surface/ — the role-aware
+                   #   "Calendar Integrated surface": CalendarSurface renders a lens tab strip
+                   #   (producer: Needs-you/Month/Week/Season/Agenda; artist: Offers/Month/
+                   #   All-dates) over CalendarSurfaceHeader/CalendarToolbar/PeriodNavigator,
+                   #   per-lens views (MonthLens+MonthGrid, WeekLens, SeasonLens+SeasonKpis+
+                   #   SeasonStripMobile, AgendaLens, NeedsYouLens+QueueRail, OffersLens,
+                   #   AllDatesLens), day drill-down (DayRail, DayDetail, CalendarDaySheet),
+                   #   range-select + bulk actions (SelectionBar, SurfaceFab), and
+                   #   ScopeChips/FillMeter/LensTabs chrome. Pure logic lives in
+                   #   src/lib/calendar/ (period.ts, selection.ts, slots.ts, tone.ts, time.ts,
+                   #   producerData/artistData/weekData/seasonData/agendaRows/needsYou/
+                   #   producerPrimary — the per-lens data shaping). Mounted directly by both
+                   #   ShowsBookingsPage (producer/admin) and AvailabilityPage (artist) — there
+                   #   is no separate availability/ component directory anymore, it was retired
+                   #   in favor of this shared surface.
     casts/         # Cast grouping UI (dialog, sheet, section)
     chat/          # ChatPanel, MessageBubble (per-show-date threads)
     common/        # IconTooltip — shared tooltip-wrapped-icon-button helper
@@ -162,8 +176,11 @@ src/
                    #   MapStep/RangeStep/ResolveStep/ReviewStep — bulk hire-order import wizard);
                    #   setup/ (SetupRail, CountersignStep, LetterheadStep, TermsStep,
                    #   ProducerWaitingCard — the guided hire-orders setup checklist)
-    settings/      # AirtableSyncTab (schema-driven mapping + catalog linking), OrganizationTab,
-                   #   CastsCitiesTab, ProductionOwnershipTab, DocumentationTab (+ MarkdownDoc,
+    settings/      # AirtableSyncTab (orchestrator: schema-driven mapping + catalog linking) +
+                   #   airtable/ (ConsoleTabs, SetupWizard, StatusHeader, OverviewTab, MappingTab,
+                   #   CatalogTab, ActivityTab, AttentionPanel, ReadOnlyBanner, console.ts — the
+                   #   Airtable Sync Console UI AirtableSyncTab composes), OrganizationTab,
+                   #   DocumentationTab (+ MarkdownDoc,
                    #   SystemMapCanvas, SystemMapReference — Settings → Documentation → System Map),
                    #   hireOrders/HireOrdersTab (Letterhead, Numbering, OrderDefaults,
                    #   TermsVariants, Countersign cards; Settings > Hire orders, admin-only)
@@ -189,6 +206,11 @@ src/
                    #   platform-mode capability editor embedded in
                    #   src/components/platform/EditOrgDialog.tsx; the org-admin surface moved to
                    #   rolesRights/ above)
+                   #   + castsCoverage/ (CastsCoverageTab, CoveragePanel, OwnershipPanel, TierCell,
+                   #   coverageMatrix.ts — Settings → Casts & coverage, merging the former
+                   #   CastsCitiesTab and ProductionOwnershipTab into one tab)
+                   #   + skills/ (SkillsTab — Settings → Skills, replacing the old settings-page
+                   #   SkillsCard)
                    #   + trust/ (TrustDataTab, OrgDataCard, VisibilityMatrix, RetentionCard,
                    #   YourDataCard, DocumentsCard — Settings → Trust & data, the in-app half of
                    #   the Trust Center; renders src/lib/trust/facts.ts scoped to the active org)
@@ -253,7 +275,8 @@ src/
                    #   download-url actions, terms, useDatesReadyForHireOrder), useHireOrderSetup
                    #   (hire-orders-setup-rail readiness), useOrderBlockers (issuing blockers),
                    #   useMyBlockedDatesCount, usePlatformUsers (Platform → Users query/mutations),
-                   #   useSettingsAudit)
+                   #   useSettingsAudit, useBookingsWithArtist (per-date bookings + artist name/
+                   #   offer-expiry, feeding the Needs-you queue's people rows))
                    #   + UI hooks (use-mobile, use-toast)
   integrations/
     supabase/
@@ -267,6 +290,11 @@ src/
                    #   (the two per-org gating registries, see Key files table), identity.ts
                    #   (re-exports the login-email-first contact resolution from
                    #   _shared/identity.ts — see ADR-0011), notificationCategories.ts,
+                   #   calendar/ (pure per-lens data shaping for components/calendar/surface/ —
+                   #   period.ts, selection.ts, slots.ts, tone.ts, time.ts, producerData.ts,
+                   #   artistData.ts, weekData.ts, seasonData.ts, agendaRows.ts, needsYou.ts,
+                   #   producerPrimary.ts), capabilities/ (presets.ts, rightsFilter.ts,
+                   #   stagedDiff.ts — supports the Settings → Roles and rights staged-edit flow),
                    #   minis/ (page-mini content: types.ts, pages/<page>.ts bilingual MiniDefs,
                    #   index.ts MINIS registry, resolveMiniRole; illustrations live in
                    #   src/components/minis. See the New page checklist)
@@ -381,7 +409,7 @@ When adding a new page:
   - **Magic-link login:** `send-login-link` — public, unauthenticated "email me a sign-in link" endpoint (`verify_jwt = false`, necessarily). Existence-hiding by design: the success path and the no-such-account path both return an identical `200 {ok:true}` (genuine RPC/lookup failures instead return a generic `500`, so this isn't a bare-`try/catch`-free endpoint — only the two "did this email have an account" outcomes are indistinguishable). Looks up the user via the indexed `get_user_id_by_email` RPC (not `listUsers` pagination), throttles via the `claim_login_link_slot` RPC (60s cooldown per email, backed by the `auth_link_throttle` table), mints a Supabase `magiclink` via `generateLink` with `redirectTo` = `<appOrigin>/auth/callback?redirect=<clamped path>`, and sends the `magic-link` transactional email. The redirect path is clamped again client-side (`safeRedirectPath`, mirroring `resetPassword.ts`'s `safeRelativeRedirect`) so an absolute/protocol-relative value can't be smuggled through. Existing-user invites also mint a magic link (instead of hitting the password-reset flow) so they land straight on `/auth/callback`.
   - **Airtable sync:** `airtable-schema` (admin-only, user-JWT via `requireOrgRole(org_id, ['admin'])`) reads the org's Airtable schema with the Vault PAT for the mapping UI — returns `{ schemaAccessible, bases }` (no `baseId` in body) or `{ schemaAccessible, tables }` (with `baseId`); an Airtable `403` (PAT missing the `schema.bases:read` scope) surfaces as `{ schemaAccessible: false }` so the UI falls back to typed inputs, and the PAT is never returned to the client. `airtable-poll` is the `*/5 * * * *` cron that upserts `show_dates` from each org's base (each org is throttled by its `airtable_poll_interval_minutes` setting, min 5; an org-admin "Sync now" triggers a single-org poll on demand) (see the Airtable-sync key decision in `docs/adr/README.md`).
   - **Transactional email:** `send-transactional-email`, `preview-transactional-email`, `handle-email-suppression`, `handle-email-unsubscribe`. New templates must be registered in `_shared/transactional-email-templates/registry.ts`.
-  - **Booking engine:** `open-offer-tier` (create suggested bookings) and `close-offer-tier` (close a tier ± withdraw its pending offers) are per-request endpoints taking a `show_date_id`, not crons. The cron functions — `expire-offers` (hourly expiry), `send-offer-digest` (daily 19:00 Berlin), `send-confirmation-digest` (daily 20:00 Berlin) — are org-aware: they iterate active orgs via `getActiveOrgs(admin)` from `_shared/settings.ts` and resolve settings per-org with `resolveOrgSetting`. The whole engine is gated behind the `booking_flow` entitlement at RLS, edge (`requireFeature`/`checkFeature`), and UI layers — see the `booking_flow` key decision in `docs/adr/README.md` before assuming it's unconditionally on for every org.
+  - **Booking engine:** `open-offer-tier` (create suggested bookings), `close-offer-tier` (close a tier ± withdraw its pending offers), and `notify-cast` (the "Needs you" queue's on-demand "Notify cast" action: fires an immediate in-app `schedule_change` notification to every registered artist whose held/confirmed booking was released by a date-level cancellation, stamps `show_dates.cast_notified_at` as an idempotency guard, and suppresses the redundant 20:00 confirmation-digest email for artists it already reached in-app) are per-request endpoints taking a `show_date_id`, not crons. The cron functions — `expire-offers` (hourly expiry), `send-offer-digest` (daily 19:00 Berlin), `send-confirmation-digest` (daily 20:00 Berlin) — are org-aware: they iterate active orgs via `getActiveOrgs(admin)` from `_shared/settings.ts` and resolve settings per-org with `resolveOrgSetting`. The whole engine is gated behind the `booking_flow` entitlement at RLS, edge (`requireFeature`/`checkFeature`), and UI layers — see the `booking_flow` key decision in `docs/adr/README.md` before assuming it's unconditionally on for every org.
   - **Watchers:** `tier-at-risk-watcher` — scans open offer tiers and fires an in-app `tier_at_risk` notification when remaining pending + accepted < required slots. Idempotent (one notification per date/tier). No email; visual only. `cron-health-watcher` — 15-min cron that classifies every cron job healthy/failing/stale from the dispatch-capture tables and alerts super-admins on failure transitions. `health-rollup` — 15-min cron that recomputes **today's and yesterday's** per-function run/failure counts from the Analytics API into `health_daily`, the durable source behind the System Health 30-day uptime bar (Analytics itself retains only 24h, so nothing older can be reconstructed and nothing can be backfilled). Recomputes whole days rather than incrementing, so it is idempotent under a double-fire or retry, and aborts without writing when Analytics is unavailable so an outage cannot punch a permanent hole in the bar. `email-health-watcher` — ~15-min cron (platform-scoped, `X-Cron-Secret` only, no org-role fallback) that snapshots email deliverability via the `email_health_snapshot` RPC, derives operational/degraded/down, and alerts super-admins in-app (never by email — that's exactly what may be broken) on a fresh transition into degraded/down. Idempotent via `email_health_state.last_state`; volume-gated so a couple of bounces can't false-alarm; aborts without writing on any read/write failure so an outage can't corrupt state or spam alerts.
   - **Platform (super-admin):** `provision-org` (atomic org creation + catalog seeding + first-admin invite, requires super-admin); `resend-invitation` (resend an existing `org_invitations` row's email); `platform-edge-metrics` (System Health metrics proxy to the Supabase Analytics API via the dedicated `ANALYTICS` PAT); `platform-list-users` (cross-org user directory — paginated, capped at 1000, reports `truncated` — joined against `org_memberships`/`organizations`/`artists`/`profiles`, backs Platform → Users); `platform-manage-user` (one endpoint, five actions — `change_email`, `send_password_reset`, `suspend`, `unsuspend`, `delete` — against `auth.admin`; guards against self-action and against removing the last platform admin or the sole admin of any org via `sole_admin_orgs`; every action writes `platform_audit_log`). `platform-list-users`/`platform-manage-user` are cross-org and super-admin-only, distinct from the org-scoped `admin-list-users` above.
   - **Account & data (GDPR):** `delete-my-account` (authenticated; last-admin-guarded via `sole_admin_orgs`; calls `anonymize_user` **via the caller's JWT client** then `auth.admin.deleteUser`) and `export-org-data` (super-admin; full org JSON bundle). Per-user export is the `export_my_data` RPC; org deletion is the `delete_org` RPC (super-admin); account anonymization is the `anonymize_user` RPC.
