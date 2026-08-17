@@ -72,17 +72,22 @@ function happyPathTables(_email = "artist@example.com") {
 // 1. Env guard
 // ===========================================================================
 
-Deno.test("env guard: missing RESEND_API_KEY → 500", async () => {
+// RESEND_API_KEY is no longer an UPFRONT guard: demo orgs divert without it
+// (see index.demo.test.ts). It is required only at the actual send, so a real
+// (non-demo) send with no key fails at send time and never calls Resend.
+Deno.test("missing RESEND_API_KEY: real send fails at send time, Resend uncalled", async () => {
+  const { fetchImpl, fetchCalls } = recordingFetch();
   const { deps } = makeFakeDeps({
-    envVars: { SUPABASE_URL: "https://x", SUPABASE_SERVICE_ROLE_KEY: "svc" },
+    envVars: { SUPABASE_URL: "https://proj.supabase.co", SUPABASE_SERVICE_ROLE_KEY: "service_role_svc" },
+    tables: happyPathTables("real@b.com"),
+    fetchImpl,
   });
   const res = await handle(
-    authedReq({ body: { templateName: KNOWN_TEMPLATE, recipientEmail: "a@b.com" } }),
+    authedReq({ body: { templateName: KNOWN_TEMPLATE, recipientEmail: "real@b.com" } }),
     deps,
   );
   assertEquals(res.status, 500);
-  const body = await res.json();
-  assertExists(body.error);
+  assertEquals(fetchCalls.length, 0, "Resend must not be called without the key");
 });
 
 Deno.test("env guard: missing SUPABASE_URL → 500", async () => {

@@ -40,7 +40,10 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   const supabaseServiceKey = deps.env('SUPABASE_SERVICE_ROLE_KEY')
   const resendApiKey = deps.env('RESEND_API_KEY')
 
-  if (!supabaseUrl || !supabaseServiceKey || !resendApiKey) {
+  // RESEND_API_KEY is required only for a REAL send (checked just before the Resend
+  // call). Demo orgs divert into demo_captured_sends and never reach Resend, so a
+  // keyless environment (e.g. the local stack) must still be able to send demo mail.
+  if (!supabaseUrl || !supabaseServiceKey) {
     console.error('Missing required environment variables')
     return json({ error: 'Server configuration error' }, 500)
   }
@@ -322,6 +325,17 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
         }).eq('message_id', messageId)
         return json({ success: true, message_id: messageId }, 200)
       }
+    }
+
+    // A real (non-demo) send needs the Resend key. Missing here (not caught upfront,
+    // so demo diverts still work keyless) means a misconfigured live environment.
+    if (!resendApiKey) {
+      console.error('Missing RESEND_API_KEY for a live send', { templateName })
+      await admin.from('email_send_log').update({
+        status: 'failed',
+        error_message: 'Missing RESEND_API_KEY',
+      }).eq('message_id', messageId)
+      return json({ error: 'Server configuration error' }, 500)
     }
 
     // Send via Resend
