@@ -25,5 +25,103 @@
       "off": "Aus"
     },
     "footer": "Module werden von deinem Account Manager eingeschaltet."
+  },
+  "phases": {
+    "get_dates": {
+      "title": "Termine reinholen",
+      "status": {
+        "complete": "Läuft",
+        "blocking": "Blockiert dein erstes Angebot",
+        "neutral": "Noch nicht gestartet"
+      }
+    },
+    "bookable": {
+      "title": "Buchbar machen",
+      "status": {
+        "complete": "Erledigt",
+        "blocking": "Blockiert dein erstes Angebot",
+        "neutral": "Nichts blockiert"
+      }
+    },
+    "paperwork": {
+      "title": "Papierkram",
+      "status": {
+        "complete": "Startklar",
+        "blocking": "Blockiert den Versand",
+        "neutral": "Blockiert noch nichts"
+      },
+      "note": "Wird vor dem ersten Engagementvertrag gebraucht",
+      "doItNow": "Jetzt erledigen"
+    },
+    "counts": {
+      "leftBlocking": "{{left}} offen, {{blocking}} blockierend",
+      "doneOfTotal": "{{done}} von {{total}} erledigt"
+    }
+  },
+  "chips": {
+    "blocksOffers": "Blockiert Angebote",
+    "blocksBooking": "Blockiert Buchungen",
+    "blocksIssuing": "Blockiert den Versand",
+    "blocksFilling": "Hält die Vollbesetzung auf",
+    "adminOnly": "Nur Admin"
+  },
+  "tasks": {
+    "dates": {
+      "title": "Shows werden synchronisiert",
+      "subLabel": "Shows kommen rein, von Airtable, stündlich",
+      "description": "Deine Shows kommen automatisch rein, sodass immer etwas zum Planen da ist.",
+      "action": "Prüfen"
+    },
+    "slots": {
+      "title": "Plätze bei jeder Show festgelegt",
+      "subLabel": "Plätze bei jeder Show festgelegt",
+      "description": "Wie viele Artists jede Show braucht, Haupt- und Zweitbesetzung.",
+      "action": "Klären"
+    },
+    "flow": {
+      "title": "Booking Flow",
+      "description": "Angebote gehen stufenweise raus. Stufe 1 zuerst, spätere Stufen öffnen nur, wenn eine Stufe nicht reicht.",
+      "action": "Ändern"
+    },
+    "people": {
+      "title": "Deine Artists hinzufügen",
+      "description": "Niemand kann gebucht werden, solange deine Besetzungsliste keine aktiven Artists hat. Importiere eine Tabelle oder füge sie von Hand hinzu.",
+      "action": "Hier hinzufügen"
+    },
+    "ladder": {
+      "title": "Deine Besetzungen reihen",
+      "description": "Besetzungsreihenfolge entscheidet, wer zuerst angefragt wird. Eine Stadt ohne Stufe 1 öffnet sich für niemanden.",
+      "action": "Hier reihen"
+    },
+    "eligibility": {
+      "title": "Prüfen, wer berechtigt ist",
+      "description": "Welche Besetzungen zu welcher Show in welcher Stadt gehören.",
+      "action": "Öffnen"
+    },
+    "timing": {
+      "title": "Angebotszeitpunkt bestätigen",
+      "description": "Wann Angebote rausgehen und wie lange Artists zum Antworten haben.",
+      "action": "Öffnen"
+    },
+    "team": {
+      "title": "Dein Production Team einladen",
+      "description": "Die Producer, die Termine planen, Angebote versenden und Buchungen bestätigen. Bestätigen kann bei dir bleiben.",
+      "action": "Einladen"
+    },
+    "letterhead": {
+      "title": "Briefkopf",
+      "description": "Dein Name, deine Adresse und dein Logo auf jedem Vertrag.",
+      "action": "Öffnen"
+    },
+    "terms": {
+      "title": "Bedingungen",
+      "description": "ShowFlow liefert keine Standardklauseln. Die schreibst du selbst.",
+      "action": "Öffnen"
+    },
+    "countersign": {
+      "title": "Gegenzeichnung",
+      "description": "Wer im Namen der Organisation unterschreibt.",
+      "action": "Öffnen"
+    }
   }
 }
