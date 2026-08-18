@@ -97,9 +97,11 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
     queryFn: () => fetchArtists(supabase, currentOrg?.id ?? null),
   });
 
-  // Primary skill chip per artist (org-wide map; first skill shown).
+  // Primary skill chip per artist. Shares ArtistsPage's cache key: both fetch the same
+  // org-wide artist_skills map, so opening a cast sheet after the Artists page (or vice
+  // versa) reuses the cached result instead of re-fetching.
   const { data: skillsByArtist } = useQuery({
-    queryKey: ['skills', 'by-artist', currentOrg?.id],
+    queryKey: ['artist-skills', 'all', currentOrg?.id],
     enabled: !!currentOrg,
     queryFn: () => fetchSkillsByArtist(supabase, currentOrg?.id ?? null),
   });
@@ -171,8 +173,13 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
 
   // Coverage gaps: eligible somewhere but never placed in a tier → never offered there.
   const coverageGapCities = useMemo(
-    () => (cities ?? []).filter((c) => eligibleCityIds.has(c.id) && !tierByCity.has(c.id)),
-    [cities, eligibleCityIds, tierByCity],
+    // Wait for the priority query before reporting gaps: eligibility and
+    // castCityPriorities are independent queries, so if eligibility lands first
+    // tierByCity is momentarily empty and every eligible city would flash as a gap.
+    () => (castCityPriorities === undefined
+      ? []
+      : (cities ?? []).filter((c) => eligibleCityIds.has(c.id) && !tierByCity.has(c.id))),
+    [cities, eligibleCityIds, tierByCity, castCityPriorities],
   );
 
   const tier1Count = useMemo(
@@ -272,9 +279,10 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
     onError: (e: Error) => toast.error(t('castDetails.toast.failedUpdateEligibility'), { description: e.message }),
   });
 
+  const candidateQuery = search.trim().toLowerCase();
   const candidates = (artists ?? []).filter((a) =>
     !memberIds.has(a.id) &&
-    (search === '' || a.name.toLowerCase().includes(search.toLowerCase())),
+    (candidateQuery === '' || a.name.toLowerCase().includes(candidateQuery)),
   );
 
   const eyebrow = `${t('castDetails.eyebrow')} · ${currentOrg?.name ?? ''}`.replace(/ · $/, '');
@@ -286,74 +294,79 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
       >
         {/* ── Header ── */}
         <SheetHeader className="shrink-0 space-y-0 border-b border-border p-6 text-left">
-          {editMode ? (
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (editName.trim()) updateCast.mutate({ name: editName.trim(), description: editDescription.trim() });
-              }}
-              className="space-y-2"
-            >
-              <SheetTitle className="sr-only">{cast?.name}</SheetTitle>
-              <Input
-                value={editName}
-                onChange={(e) => setEditName(e.target.value)}
-                placeholder={t('castDetails.castNamePlaceholder')}
-                required
-                autoFocus
-                className="font-display text-lg font-semibold"
-              />
-              <Textarea
-                value={editDescription}
-                onChange={(e) => setEditDescription(e.target.value)}
-                placeholder={t('castDetails.descriptionOptional')}
-                rows={2}
-              />
-              <div className="flex gap-2">
-                <Button type="submit" size="sm" disabled={updateCast.isPending || !editName.trim()}>
-                  <Check className="mr-1 h-4 w-4" />{updateCast.isPending ? t('castDetails.saving') : t('castDetails.save')}
-                </Button>
-                <Button type="button" size="sm" variant="ghost" onClick={cancelEdit} disabled={updateCast.isPending}>
-                  {t('castDetails.cancel')}
-                </Button>
-              </div>
-            </form>
-          ) : (
-            <div className="flex items-start gap-3.5">
-              <span
-                aria-hidden
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-l bg-accent-100 font-mono text-[15px] font-semibold text-accent-700"
+          {/* One row: identity (or edit form) on the left, actions on the right. The
+              close control lives in this cluster and renders in BOTH modes, so editing
+              never leaves the sheet without a visible way out. */}
+          <div className="flex items-start gap-3.5">
+            {editMode ? (
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (editName.trim()) updateCast.mutate({ name: editName.trim(), description: editDescription.trim() });
+                }}
+                className="min-w-0 flex-1 space-y-2"
               >
-                {initialsOf(cast?.name ?? '')}
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="text-[11px] font-semibold uppercase tracking-[1.6px] text-accent-600">{eyebrow}</p>
-                <SheetTitle className="mt-0.5 font-display text-[22px] font-semibold tracking-[-0.3px] text-foreground">
-                  {cast?.name}
-                </SheetTitle>
-                <SheetDescription className="mt-1 text-sm leading-5 text-muted-foreground">
-                  {cast?.description || t('castDetails.manageDefault')}
-                </SheetDescription>
-              </div>
-              <div className="flex items-center gap-2">
-                {canManage && (
-                  <Button size="sm" variant="outline" className="h-9 shadow-elev1" onClick={startEdit}>
-                    <Pencil className="mr-1.5 h-4 w-4" />{t('castDetails.editCast')}
+                <SheetTitle className="sr-only">{cast?.name}</SheetTitle>
+                <Input
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  placeholder={t('castDetails.castNamePlaceholder')}
+                  required
+                  autoFocus
+                  className="font-display text-lg font-semibold"
+                />
+                <Textarea
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  placeholder={t('castDetails.descriptionOptional')}
+                  rows={2}
+                />
+                <div className="flex gap-2">
+                  <Button type="submit" size="sm" disabled={updateCast.isPending || !editName.trim()}>
+                    <Check className="mr-1 h-4 w-4" />{updateCast.isPending ? t('castDetails.saving') : t('castDetails.save')}
                   </Button>
-                )}
-                {canManage && (
-                  <Button size="sm" className="h-9 shadow-elev1" onClick={focusAddArtist}>
-                    <Plus className="mr-1.5 h-4 w-4" />{t('castDetails.addArtists')}
+                  <Button type="button" size="sm" variant="ghost" onClick={cancelEdit} disabled={updateCast.isPending}>
+                    {t('castDetails.cancel')}
                   </Button>
-                )}
-                <SheetClose asChild>
-                  <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" aria-label={t('castDetails.close')}>
-                    <X className="h-[18px] w-[18px]" />
-                  </Button>
-                </SheetClose>
-              </div>
+                </div>
+              </form>
+            ) : (
+              <>
+                <span
+                  aria-hidden
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-l bg-accent-100 font-mono text-[15px] font-semibold text-accent-700"
+                >
+                  {initialsOf(cast?.name ?? '')}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[11px] font-semibold uppercase tracking-[1.6px] text-accent-600">{eyebrow}</p>
+                  <SheetTitle className="mt-0.5 font-display text-[22px] font-semibold tracking-[-0.3px] text-foreground">
+                    {cast?.name}
+                  </SheetTitle>
+                  <SheetDescription className="mt-1 text-sm leading-5 text-muted-foreground">
+                    {cast?.description || t('castDetails.manageDefault')}
+                  </SheetDescription>
+                </div>
+              </>
+            )}
+            <div className="flex shrink-0 items-center gap-2">
+              {!editMode && canManage && (
+                <Button size="sm" variant="outline" className="h-9 shadow-elev1" onClick={startEdit}>
+                  <Pencil className="mr-1.5 h-4 w-4" />{t('castDetails.editCast')}
+                </Button>
+              )}
+              {!editMode && canManage && (
+                <Button size="sm" className="h-9 shadow-elev1" onClick={focusAddArtist}>
+                  <Plus className="mr-1.5 h-4 w-4" />{t('castDetails.addArtists')}
+                </Button>
+              )}
+              <SheetClose asChild>
+                <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" aria-label={t('castDetails.close')}>
+                  <X className="h-[18px] w-[18px]" />
+                </Button>
+              </SheetClose>
             </div>
-          )}
+          </div>
 
           {/* KPI rail */}
           <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -381,7 +394,7 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
                 data-coverage-gap
                 className="flex items-center gap-3 rounded-m border border-border bg-[var(--amber-100)] px-3 py-2.5"
               >
-                <span className="inline-flex h-5 shrink-0 items-center rounded-xs bg-white/60 px-1.5 text-[11px] font-medium text-[var(--amber-600)]">
+                <span className="inline-flex h-5 shrink-0 items-center rounded-xs bg-card px-1.5 text-[11px] font-medium text-[var(--amber-600)]">
                   {t('castDetails.coverageGap.badge')}
                 </span>
                 <p className="flex-1 text-[13px] text-[var(--amber-600)]">

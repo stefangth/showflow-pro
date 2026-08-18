@@ -159,6 +159,17 @@ describe("CastDetailsSheet (design 2a)", () => {
     expect(within(candidate.closest("[data-candidate]") as HTMLElement).getByRole("button")).toBeEnabled();
   });
 
+  it("keeps a visible close control in edit mode", async () => {
+    render();
+    expect(await screen.findByText("Artist One")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Edit cast" }));
+    // The edit form is shown...
+    expect(screen.getByPlaceholderText("Cast name")).toBeInTheDocument();
+    // ...and the sheet still exposes a way out (regression: close was previously
+    // only rendered in the non-edit branch).
+    expect(screen.getByLabelText("Close")).toBeInTheDocument();
+  });
+
   it("manage_casts off: edit and remove controls are disabled/absent, roster still reads", async () => {
     vi.mocked(useCan).mockReturnValue(false);
     render();
