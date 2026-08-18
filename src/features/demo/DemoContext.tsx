@@ -3,8 +3,8 @@ import { toast } from "sonner";
 import { useAuth } from "@/features/auth/AuthContext";
 import type { AppRole } from "@/config/app.config";
 import { isDemoOrg } from "@/features/demo/demoAccess";
-import { useDemoState, useResetDemo, useRunCue, useUpdateDemoState } from "@/hooks/useDemo";
-import { SEASON_HANDOVER, type CueId, type Scene } from "@/lib/demo/scenes";
+import { useDemoState, useResetDemo, useUpdateDemoState } from "@/hooks/useDemo";
+import { SEASON_HANDOVER, type Scene } from "@/lib/demo/scenes";
 
 /** Millisecond deltas for the narrative "advance the sim clock" cue. This is a
  *  client-side display convenience only — there is no server clock backing it. */
@@ -28,7 +28,6 @@ interface DemoContextType {
   prospectLabel: string | null;
   volume: "small" | "full";
   goToScene: (id: string) => void;
-  runCue: (cueId: CueId) => void;
   advanceClock: (step: "10m" | "1d") => void;
   setProspectLabel: (label: string) => void;
   setVolume: (v: "small" | "full") => void;
@@ -48,7 +47,6 @@ export function DemoProvider({ children }: { children: ReactNode }) {
   const [isBarHidden, setBarHidden] = useState(false);
   const resetMut = useResetDemo();
   const updateDemoState = useUpdateDemoState();
-  const runCueMut = useRunCue();
   // Only demo orgs carry a demo_state row — gate the read so switching to (or
   // starting on) a non-demo org never fires a demo_state query for it.
   const { data: demoState, isLoading: demoStateLoading } = useDemoState(demo ? currentOrg?.id ?? null : null);
@@ -81,14 +79,6 @@ export function DemoProvider({ children }: { children: ReactNode }) {
       updateDemoState.mutate({ orgId: currentOrg.id, patch: { current_scene_id: id } });
     },
     [currentOrg, updateDemoState],
-  );
-
-  const runCue = useCallback(
-    (cueId: CueId) => {
-      if (!currentOrg) return;
-      runCueMut.mutate({ orgId: currentOrg.id, cueId });
-    },
-    [currentOrg, runCueMut],
   );
 
   const advanceClock = useCallback(
@@ -130,7 +120,6 @@ export function DemoProvider({ children }: { children: ReactNode }) {
     prospectLabel,
     volume,
     goToScene,
-    runCue,
     advanceClock,
     setProspectLabel,
     setVolume,

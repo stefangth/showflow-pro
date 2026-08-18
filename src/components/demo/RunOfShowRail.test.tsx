@@ -47,6 +47,7 @@ describe("RunOfShowRail", () => {
     runCueMutate.mockReset();
     resetMutate.mockClear();
     vi.mocked(toast.success).mockClear();
+    vi.mocked(toast.error).mockClear();
     // Scene 03 ("holds-expire"): three cues, next scene is "artists-side".
     demoStateRow = {
       org_id: "o1",
@@ -111,6 +112,31 @@ describe("RunOfShowRail", () => {
     renderRail();
     fireEvent.click(screen.getByRole("button", { name: /Artist accepts/i }));
     expect(toast.success).toHaveBeenCalledWith("Cue done: Artist accepts");
+  });
+
+  it("marks the cue failed (retryable) when it rejects, without a second toast", () => {
+    // Drive onError + onSettled: the rail records the inline failed state and clears pending.
+    // useRunCue owns the error toast, so the rail must NOT fire its own.
+    runCueMutate.mockImplementation((_args, opts) => {
+      opts?.onError?.(new Error("boom"));
+      opts?.onSettled?.();
+    });
+    renderRail();
+    const btn = screen.getByRole("button", { name: /Artist accepts/i });
+    fireEvent.click(btn);
+    expect(toast.error).not.toHaveBeenCalled();
+    // Inline failed affordance: destructive styling + sr-only retry hint; pending cleared so
+    // the button is enabled and clickable again.
+    expect(btn).toHaveClass("border-destructive");
+    expect(btn).toHaveAttribute("aria-busy", "false");
+    expect(btn).not.toBeDisabled();
+    expect(within(btn).getByText(/click to retry/i)).toBeInTheDocument();
+
+    // Retrying clears the failed mark and re-invokes the mutation.
+    runCueMutate.mockImplementation(() => {}); // second attempt stays pending
+    fireEvent.click(btn);
+    expect(runCueMutate).toHaveBeenCalledTimes(2);
+    expect(btn).not.toHaveClass("border-destructive");
   });
 
   it("clicking Next scene calls goToScene with the next scene id", () => {
