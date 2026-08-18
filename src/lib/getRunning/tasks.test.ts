@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { computeBookingSetupStatus, type BookingSetupStatusInput } from "@/lib/bookings/setupStatus";
 import { computeSetupStatus, type SetupStatusInput } from "@/lib/hireOrders/setupStatus";
-import { composeGetRunning, firstOfferBlockingCount, type GetRunningInput, type GetRunningTask, type GetRunningTaskKey } from "./tasks";
+import { composeGetRunning, firstOfferBlockingCount, getRunningState, type GetRunningInput, type GetRunningModel, type GetRunningTask, type GetRunningTaskKey } from "./tasks";
 
 // Real booking-status inputs, not hand-faked step shapes. "Full" = every step done;
 // "empty" = a blank org (nothing configured, honest 0-of-N).
@@ -315,5 +315,21 @@ describe("firstOfferBlockingCount", () => {
 
   it("is zero for a fully-done board", () => {
     expect(firstOfferBlockingCount(composeGetRunning(baseInput()))).toBe(0);
+  });
+});
+
+describe("getRunningState", () => {
+  const model = (over: Partial<GetRunningModel>): GetRunningModel => ({
+    phases: [], doneCount: 0, totalCount: 1, canFirstOffer: false, complete: false,
+    bookingOn: true, hireOrdersOn: false, ...over,
+  });
+  it("is blocking while the first offer is held up", () => {
+    expect(getRunningState(model({ canFirstOffer: false, complete: false }))).toBe("blocking");
+  });
+  it("is ready once the first offer can go out but tasks remain", () => {
+    expect(getRunningState(model({ canFirstOffer: true, complete: false }))).toBe("ready");
+  });
+  it("is complete once every task is done, even if canFirstOffer is also true", () => {
+    expect(getRunningState(model({ canFirstOffer: true, complete: true }))).toBe("complete");
   });
 });

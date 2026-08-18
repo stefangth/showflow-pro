@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { adminDisplayName } from "@/data/orgAdmins";
-import { firstOfferBlockingCount, type GetRunningModel } from "@/lib/getRunning/tasks";
+import { firstOfferBlockingCount, getRunningState, type GetRunningModel } from "@/lib/getRunning/tasks";
 
 /**
  * Board header for `/get-running` (screen 01/03): eyebrow + headline + body on the left,
@@ -27,7 +27,7 @@ export function GetRunningHeader({ model, orgName, role, adminNames }: {
   const allTasks = model.phases.flatMap((p) => p.tasks);
   const blockingCount = firstOfferBlockingCount(model);
 
-  const state = model.complete ? "complete" : model.canFirstOffer ? "ready" : "blocking";
+  const state = getRunningState(model);
 
   // A producer's own "yours" vs "waits on {admin}" split, straight off each not-done
   // task's `actionableByViewer` — never re-derived from role/capabilities here.

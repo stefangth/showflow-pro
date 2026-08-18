@@ -223,3 +223,11 @@ export function firstOfferBlockingCount(model: GetRunningModel): number {
     .flatMap((p) => p.tasks)
     .filter((t) => !t.done && (t.block === "offers" || t.block === "booking")).length;
 }
+
+/** The board's one headline state: every task done -> "complete"; the first offer can go
+ *  out but optional tasks remain -> "ready"; still held up -> "blocking". Single source of
+ *  truth so GetRunningHeader and the accept-invite handoff summary can never disagree. */
+export type GetRunningState = "blocking" | "ready" | "complete";
+export function getRunningState(model: GetRunningModel): GetRunningState {
+  return model.complete ? "complete" : model.canFirstOffer ? "ready" : "blocking";
+}

@@ -13,7 +13,7 @@ import { useBookingFlow } from '@/hooks/useBookingFlow';
 import { useFeature, useEntitlements } from '@/hooks/useEntitlements';
 import { useGetRunning } from '@/hooks/useGetRunning';
 import type { BookingFlow } from '@/lib/bookingFlow';
-import { firstOfferBlockingCount, type GetRunningModel } from '@/lib/getRunning/tasks';
+import { firstOfferBlockingCount, getRunningState, type GetRunningModel, type GetRunningState } from '@/lib/getRunning/tasks';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -119,13 +119,13 @@ export function resolveHandoffPrimary(role: AppRole | null, boardHasTasks: boole
   return 'dashboard';
 }
 
-export type BoardHandoffState = 'blocking' | 'ready' | 'complete';
+export type BoardHandoffState = GetRunningState;
 
-/** The board-summary variant, mirroring GetRunningHeader's own state derivation so the
- *  handoff and the board it leads to never disagree. */
+/** The board-summary state, delegating to the shared `getRunningState` so the handoff and
+ *  the board it leads to derive their state from one source and can never disagree. */
 // eslint-disable-next-line react-refresh/only-export-components
 export function resolveBoardHandoffState(model: GetRunningModel): BoardHandoffState {
-  return model.complete ? 'complete' : model.canFirstOffer ? 'ready' : 'blocking';
+  return getRunningState(model);
 }
 
 // Plain data record, not a component; exported so tests can sweep every role/state line
