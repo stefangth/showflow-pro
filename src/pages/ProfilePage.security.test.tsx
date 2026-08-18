@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@/features/auth/AuthContext", () => ({ useAuth: () => ({ user: { id: "u1", email: "ada@example.com" } }) }));
+vi.mock("@/features/auth/AuthContext", () => ({ useAuth: () => ({ user: { id: "u1", email: "ada@example.com" }, hasRole: () => true }) }));
 vi.mock("@/hooks/useMyProfile", () => ({
   useMyProfile: () => ({ data: { display_name: "Ada", phone: "" }, isLoading: false }),
   useUpdateMyProfile: () => ({ mutate: vi.fn(), isPending: false }),
@@ -12,6 +12,16 @@ vi.mock("@/hooks/useNotificationPreferences", () => ({
   useUpdateNotificationPreferences: () => ({ mutate: vi.fn(), isPending: false }),
 }));
 vi.mock("@/hooks/useEntitlements", () => ({ useFeature: () => false }));
+// hasRole() => true above keeps isArtistOnly false, so the sidebar never renders — but
+// useMyArtist/useMyBlockedDatesCount are still called unconditionally on every render, and
+// (via useEffectiveUserId) would otherwise reach into the fully-replaced AuthContext mock
+// above, which no longer exports it. Stub both hooks directly instead.
+vi.mock("@/hooks/useMyArtist", () => ({ useMyArtist: () => ({ data: null }) }));
+vi.mock("@/hooks/useMyBlockedDatesCount", () => ({ useMyBlockedDatesCount: () => ({ data: 0 }) }));
+// This file renders with a bare QueryClientProvider (no LanguageProvider), unlike
+// renderWithProviders — ProfilePage now calls useLanguage() unconditionally for the
+// artist-only Language card, so stub it too.
+vi.mock("@/features/i18n/LanguageContext", () => ({ useLanguage: () => ({ lang: "en", setLang: vi.fn() }) }));
 vi.mock("react-router-dom", () => ({ useNavigate: () => vi.fn() }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: { auth: { signOut: vi.fn() } } }));
 vi.mock("@/data/account", () => ({ exportMyData: vi.fn(), deleteMyAccount: vi.fn() }));
@@ -51,7 +61,7 @@ describe("ProfilePage sign-in and security", () => {
   it("shows magic links as active and offers password setup when no password exists", () => {
     renderProfile();
 
-    expect(screen.getByRole("heading", { name: "Sign-in & security" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Sign-in" })).toBeInTheDocument();
     expect(screen.getByText("Active")).toBeInTheDocument();
     expect(screen.getByText("Not set")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Add password" })).toBeInTheDocument();

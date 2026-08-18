@@ -1,13 +1,16 @@
 {
   "page": {
-    "documentTitle": "Profil · ShowFlow",
-    "title": "Profil",
-    "subtitle": "Deine Kontodaten und Anmeldemethoden"
+    "documentTitle": "Konto · ShowFlow",
+    "title": "Konto",
+    "subtitle": "Deine Details, wie du dich anmeldest, und was dich erreicht."
   },
   "details": {
     "title": "Details",
     "email": "E-Mail",
+    "emailHint": "Wo Anmeldelinks und Angebote ankommen.",
+    "emailFixed": "Fest",
     "displayName": "Anzeigename",
+    "displayNameHint": "Wird auf Besetzungslisten und in Termin-Chats angezeigt.",
     "phone": "Telefon",
     "contactNote": "Getrennt von den Kontodaten oben: Admins und das Production Team in deiner Organisation sehen die Kontaktdaten auf deinem Artist-Datensatz, damit sie dich zu Buchungen erreichen können.",
     "save": "Speichern",
@@ -15,12 +18,12 @@
     "saved": "Profil gespeichert"
   },
   "security": {
-    "title": "Anmeldung & Sicherheit",
+    "title": "Anmeldung",
     "magicLinks": "Magic Links",
     "magicLinksHint": "Melde dich mit einem sicheren Link an, der an deine E-Mail gesendet wird.",
     "active": "Aktiv",
     "password": "Passwort",
-    "passwordHint": "Melde dich mit deiner E-Mail und deinem Passwort an.",
+    "passwordHint": "Optional. Magic Links funktionieren so oder so weiter.",
     "statusChecking": "Wird geprüft…",
     "statusUnavailable": "Nicht verfügbar",
     "statusSet": "Festgelegt",
@@ -31,24 +34,29 @@
     "retry": "Erneut versuchen"
   },
   "notifications": {
-    "title": "Benachrichtigungen",
-    "description": "Wähle, wie du über jede Art von Update informiert wirst. Kritische Konto-E-Mails werden immer gesendet.",
+    "title": "Was dich erreicht",
     "columnEmail": "E-Mail",
     "columnInApp": "In-App",
     "channelEmail": "E-Mail",
     "channelInApp": "In-App",
     "channelAria": "{{category}} {{channel}}"
   },
+  "audience": {
+    "footer": "Kritische Konto-E-Mails werden immer gesendet. Einladungen und Passwort-Resets ignorieren diese Schalter."
+  },
   "data": {
     "title": "Deine Daten",
-    "description": "Lade eine Kopie deiner persönlichen Daten (Profil, Talentdatensätze, Buchungen, Verfügbarkeit, Nachrichten und Benachrichtigungen) als JSON-Datei herunter.",
+    "downloadTitle": "Kopie herunterladen",
+    "description": "Profil, Talentdatensätze, Buchungen, Verfügbarkeit, Nachrichten und Benachrichtigungen, als JSON.",
     "preparing": "Wird vorbereitet…",
     "download": "Meine Daten herunterladen",
-    "downloaded": "Deine Daten wurden heruntergeladen"
+    "downloaded": "Deine Daten wurden heruntergeladen",
+    "deleteRow": {
+      "title": "Konto löschen",
+      "description": "Lösche dein Konto dauerhaft. Dein Konto und deine Profildaten werden entfernt. Deine geteilte Buchungshistorie, einschließlich offener Angebote, bleibt erhalten, wird aber anonymisiert. Dies kann nicht rückgängig gemacht werden."
+    }
   },
   "delete": {
-    "title": "Konto löschen",
-    "description": "Lösche dein Konto dauerhaft. Dein Konto und deine Profildaten werden entfernt. Deine geteilte Buchungshistorie, einschließlich offener Angebote, bleibt erhalten, wird aber anonymisiert. Dies kann nicht rückgängig gemacht werden.",
     "hireOrdersNote": "Bereits von dir zugestimmte, unterzeichnete Engagementverträge werden für die Unterlagen der Organisation aufbewahrt.",
     "trigger": "Konto löschen",
     "dialogTitle": "Dein Konto löschen?",
@@ -58,5 +66,21 @@
     "deleting": "Wird gelöscht…",
     "confirmAction": "Dauerhaft löschen",
     "deleted": "Dein Konto wurde gelöscht"
-  }
+  },
+  "reference": {
+    "title": "Referenz",
+    "bookingRules": "So funktioniert Buchen hier",
+    "bookingRulesHint": "Die Regeln, die du geerbt hast, und wer sie festgelegt hat.",
+    "blockedDates": "Deine gesperrten Termine",
+    "blockedDatesHint_one": "{{count}} gesperrt. Bearbeiten geht in Verfügbarkeit.",
+    "blockedDatesHint_other": "{{count}} gesperrt. Bearbeiten geht in Verfügbarkeit.",
+    "blockedDatesHintZero": "Keine gesperrt. Bearbeiten geht in Verfügbarkeit.",
+    "office": "Nachricht ans Büro",
+    "officeHint": "Chats. Für alles, was du hier nicht ändern kannst."
+  },
+  "language": {
+    "title": "Sprache",
+    "hint": "Deine App-Sprache. E-Mails und PDFs folgen der Workspace-Sprache, die die Organisation gewählt hat."
+  },
+  "sidebarNote": "Kein Setup, kein Fortschritt, kein Erklärstreifen. Das Konto eines Artists sind vier Gruppen und wächst nie zu einem Assistenten."
 }

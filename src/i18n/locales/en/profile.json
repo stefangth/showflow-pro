@@ -1,13 +1,16 @@
 {
   "page": {
     "documentTitle": "Profile · ShowFlow",
-    "title": "Profile",
-    "subtitle": "Your account details and sign-in methods"
+    "title": "Account",
+    "subtitle": "Your details, how you sign in, and what reaches you."
   },
   "details": {
     "title": "Details",
     "email": "Email",
+    "emailHint": "Where sign-in links and offers arrive.",
+    "emailFixed": "Fixed",
     "displayName": "Display name",
+    "displayNameHint": "Shown on cast lists and in date chats.",
     "phone": "Phone",
     "contactNote": "Separate from the account details above: admins and producers in your organization can see the contact details on your artist record so they can reach you about bookings.",
     "save": "Save",
@@ -15,12 +18,12 @@
     "saved": "Profile saved"
   },
   "security": {
-    "title": "Sign-in & security",
+    "title": "Sign-in",
     "magicLinks": "Magic links",
     "magicLinksHint": "Sign in with a secure link sent to your email.",
     "active": "Active",
     "password": "Password",
-    "passwordHint": "Sign in using your email and password.",
+    "passwordHint": "Optional. Magic links keep working either way.",
     "statusChecking": "Checking…",
     "statusUnavailable": "Unavailable",
     "statusSet": "Set",
@@ -31,24 +34,29 @@
     "retry": "Retry"
   },
   "notifications": {
-    "title": "Notifications",
-    "description": "Choose how you hear about each kind of update. Critical account emails are always sent.",
+    "title": "What reaches you",
     "columnEmail": "Email",
     "columnInApp": "In-app",
     "channelEmail": "email",
     "channelInApp": "in-app",
     "channelAria": "{{category}} {{channel}}"
   },
+  "audience": {
+    "footer": "Critical account emails are always sent. Invitations and password resets ignore these switches."
+  },
   "data": {
     "title": "Your data",
-    "description": "Download a copy of your personal data (profile, talent records, bookings, availability, messages, and notifications) as a JSON file.",
+    "downloadTitle": "Download a copy",
+    "description": "Profile, talent records, bookings, availability, messages and notifications, as JSON.",
     "preparing": "Preparing…",
     "download": "Download my data",
-    "downloaded": "Your data has been downloaded"
+    "downloaded": "Your data has been downloaded",
+    "deleteRow": {
+      "title": "Delete account",
+      "description": "Permanently delete your account. Your account and profile details are removed. Your shared booking history, including any open offers, is kept but de-identified. This cannot be undone."
+    }
   },
   "delete": {
-    "title": "Delete account",
-    "description": "Permanently delete your account. Your account and profile details are removed. Your shared booking history, including any open offers, is kept but de-identified. This cannot be undone.",
     "hireOrdersNote": "Signed hire orders you already agreed to are kept for the organization's records.",
     "trigger": "Delete account",
     "dialogTitle": "Delete your account?",
@@ -58,5 +66,21 @@
     "deleting": "Deleting…",
     "confirmAction": "Permanently delete",
     "deleted": "Your account has been deleted"
-  }
+  },
+  "reference": {
+    "title": "Reference",
+    "bookingRules": "How booking works here",
+    "bookingRulesHint": "The rules you inherited, and who set them.",
+    "blockedDates": "Your blocked dates",
+    "blockedDatesHint_one": "{{count}} blocked. Editing them lives in Availability.",
+    "blockedDatesHint_other": "{{count}} blocked. Editing them lives in Availability.",
+    "blockedDatesHintZero": "None blocked. Editing them lives in Availability.",
+    "office": "Message the office",
+    "officeHint": "Chats. For anything you cannot change here."
+  },
+  "language": {
+    "title": "Language",
+    "hint": "Your app language. Emails and PDFs follow the workspace language the org picked."
+  },
+  "sidebarNote": "No setup, no progress, no explainer strip. An artist's account is four groups and never grows a wizard."
 }

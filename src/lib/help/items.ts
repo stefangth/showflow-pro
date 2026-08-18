@@ -589,4 +589,20 @@ export const HELP_ITEMS: readonly HelpItem[] = [
       de: 'Das ist der Seitenüberblick: ein kurzer Vierschritt-Erklärer, wie die Seite funktioniert und welcher Schritt deiner ist. Mit Ausblenden verschwindet er für diese Seite in diesem Browser, und es bleibt eine schmale Leiste, über die du ihn wieder einblenden kannst.',
     },
   },
+  {
+    id: 'R5.7', role: 'artist', stage: 5, status: 'new', surface: 'Account · what reaches you', updated: '2026-08-18',
+    q: { en: 'Why do I not see switches for booking activity or at-risk notifications?', de: 'Warum sehe ich keine Schalter für Buchungsaktivität oder Risiko-Benachrichtigungen?' },
+    a: {
+      en: 'Those two are never sent to artists in the first place, so your account no longer shows them as a choice to make. They stay visible to admins and the production team, whose notification matrix keeps all six categories.',
+      de: 'Diese beiden werden grundsätzlich nie an Artists gesendet, deshalb zeigt dein Konto sie nicht mehr als Wahlmöglichkeit. Für Admins und das Production Team bleiben sie sichtbar, deren Benachrichtigungsmatrix behält alle sechs Kategorien.',
+    },
+  },
+  {
+    id: 'R5.8', role: 'artist', stage: 5, status: 'new', surface: 'Account · Reference sidebar', updated: '2026-08-18',
+    q: { en: 'What is the Reference panel on my Account page?', de: 'Was ist das Referenz-Panel auf meiner Kontoseite?' },
+    a: {
+      en: 'Three shortcuts, not settings: how booking works here, how many dates you currently have blocked, and a link to message the office. Nothing there changes anything, it just points at where the real controls live.',
+      de: 'Drei Abkürzungen, keine Einstellungen: wie das Buchen hier funktioniert, wie viele Termine du gerade gesperrt hast, und ein Link, um dem Büro zu schreiben. Nichts davon ändert etwas, es zeigt nur, wo die eigentlichen Einstellungen liegen.',
+    },
+  },
 ] as const;
