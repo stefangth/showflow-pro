@@ -49,6 +49,7 @@ function baseInput(overrides: Partial<GetRunningInput> = {}): GetRunningInput {
     hire: computeSetupStatus(FULL_HIRE_INPUT),
     datesDone: true,
     producerCount: 2,
+    canManageShows: true,
     canEditBooking: true,
     canEditHire: true,
     canAddArtists: true,
@@ -129,6 +130,7 @@ describe("composeGetRunning", () => {
     const model = composeGetRunning(
       baseInput({
         role: "producer",
+        canManageShows: false,
         canEditBooking: false,
         canEditHire: false,
         canAddArtists: false,
@@ -158,6 +160,7 @@ describe("composeGetRunning", () => {
     const model = composeGetRunning(
       baseInput({
         role: "producer",
+        canManageShows: true,
         canEditBooking: true,
         canEditHire: true,
         canAddArtists: true,
@@ -172,6 +175,32 @@ describe("composeGetRunning", () => {
     // team is always adminOnly, regardless of canInvite or any other capability.
     expect(taskByKey(allTasks, "team").adminOnly).toBe(true);
     expect(taskByKey(allTasks, "team").actionableByViewer).toBe(false);
+  });
+
+  it("(b) get_dates phase gates on show-management, not booking settings: a producer who can create shows but cannot edit booking settings can still act on dates + slots", () => {
+    const model = composeGetRunning(
+      baseInput({
+        role: "producer",
+        canManageShows: true,
+        canEditBooking: false,
+        canEditHire: false,
+        canAddArtists: false,
+        canInvite: false,
+      }),
+    );
+    const allTasks = model.phases.flatMap((p) => p.tasks);
+
+    // The get_dates phase is show authoring, so manage_productions (not edit_booking_settings)
+    // decides it — this producer creates shows in the real UI, so must not read "Waits on admin".
+    expect(taskByKey(allTasks, "dates").adminOnly).toBe(false);
+    expect(taskByKey(allTasks, "dates").actionableByViewer).toBe(true);
+    expect(taskByKey(allTasks, "slots").adminOnly).toBe(false);
+    expect(taskByKey(allTasks, "slots").actionableByViewer).toBe(true);
+
+    // The bookable settings tasks remain gated on edit_booking_settings, so they stay admin-only.
+    expect(taskByKey(allTasks, "flow").actionableByViewer).toBe(false);
+    expect(taskByKey(allTasks, "ladder").actionableByViewer).toBe(false);
+    expect(taskByKey(allTasks, "timing").actionableByViewer).toBe(false);
   });
 
   it("(b) admin viewer is always actionable, even on team", () => {

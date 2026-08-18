@@ -283,6 +283,24 @@ describe("PhaseCard", () => {
       expect(container.textContent).not.toMatch(/nudge/i);
     });
 
+    it("hides the get_dates summary Resolve link when the slots task isn't actionable by the viewer", () => {
+      // A producer without manage_productions cannot act on the get_dates phase; the header
+      // already attributes it ("Waits on {admin}" + View), so the inline "Resolve" would be a
+      // dead button with no explanation.
+      const phase: GetRunningPhase = {
+        key: "get_dates",
+        tasks: [
+          task({ key: "dates", phase: "get_dates", done: false, adminOnly: true, actionableByViewer: false }),
+          task({ key: "slots", phase: "get_dates", done: false, block: "filling", adminOnly: true, actionableByViewer: false }),
+        ],
+      };
+      renderWithProviders(
+        <PhaseCard phase={phase} role="producer" adminNames={["Maja Kern"]} onOpenTask={vi.fn()} />,
+      );
+
+      expect(screen.queryByText("Resolve")).not.toBeInTheDocument();
+    });
+
     it("gives a non-actionable paperwork tile the same Waits-on/View treatment instead of a whole-tile click", () => {
       // letterhead is also the first not-done paperwork task, so the phase HEADER renders
       // its own Waits-on/View pair too (FIX 2) — this test scopes to the tile itself

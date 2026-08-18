@@ -16,7 +16,6 @@ import {
 import { fetchShowDatesList, fetchUpcomingShowDates } from "./showDates";
 import { fetchArtists, fetchActiveArtistOptions, fetchMyArtist } from "./artists";
 import { fetchSkills, fetchSkillsByArtist } from "./skills";
-import { fetchAdminStats } from "./admin";
 
 const ORG = "org-1";
 const OTHER = "org-2";
@@ -217,26 +216,5 @@ describe("skills reads are org-scoped", () => {
     expect(res.get("a1")).toEqual([{ id: "s1", name: "Juggling" }]);
     expect(res.get("a2")).toEqual([{ id: "s2", name: "Aerial" }]);
     expect(fake.calls).toContainEqual({ table: "artist_skills", method: "eq", args: ["org_id", ORG] });
-  });
-});
-
-describe("admin stats are org-scoped", () => {
-  it("fetchAdminStats counts only the org's rows", async () => {
-    const fake = createFakeSupabase({
-      shows: { data: null, error: null, count: 5 },
-      artists: { data: null, error: null, count: 1 },
-      bookings: { data: null, error: null, count: 2 },
-    });
-    const res = await fetchAdminStats(fake as never, ORG);
-    expect(res).toEqual({ shows: 5, artists: 1, bookings: 2 });
-    for (const table of ["shows", "artists", "bookings"]) {
-      expect(fake.calls).toContainEqual({ table, method: "eq", args: ["org_id", ORG] });
-    }
-  });
-
-  it("fetchAdminStats reports zeroes for a null org without querying", async () => {
-    const fake = createFakeSupabase({});
-    expect(await fetchAdminStats(fake as never, null)).toEqual({ shows: 0, artists: 0, bookings: 0 });
-    expect(fake.calls).toEqual([]);
   });
 });

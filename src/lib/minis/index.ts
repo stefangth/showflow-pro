@@ -5,7 +5,6 @@ import { availabilityMini } from './pages/availability';
 import { chatsMini } from './pages/chats';
 import { productionsMini } from './pages/productions';
 import { artistsMini } from './pages/artists';
-import { adminMini } from './pages/admin';
 import { platformMini } from './pages/platform';
 import { hireOrdersMini } from './pages/hireOrders';
 
@@ -25,7 +24,6 @@ export const MINIS = {
   chats: chatsMini,
   productions: productionsMini,
   artists: artistsMini,
-  admin: adminMini,
   platform: platformMini,
   hireOrders: hireOrdersMini,
 } as const satisfies Record<PageKey, MiniDef>;

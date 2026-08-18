@@ -6,7 +6,6 @@ import { availabilityArt } from './AvailabilityMini';
 import { chatsArt } from './ChatsMini';
 import { productionsArt } from './ProductionsMini';
 import { artistsArt } from './ArtistsMini';
-import { adminArt } from './AdminMini';
 import { platformArt } from './PlatformMini';
 import { hireOrdersArt } from './HireOrdersMini';
 
@@ -20,7 +19,6 @@ export const ART: Record<RegisteredPageKey, ArtTuple> = {
   chats: chatsArt,
   productions: productionsArt,
   artists: artistsArt,
-  admin: adminArt,
   platform: platformArt,
   hireOrders: hireOrdersArt,
 };

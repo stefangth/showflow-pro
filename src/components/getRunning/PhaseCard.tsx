@@ -84,7 +84,11 @@ function GetDatesSummary({
       <span className="text-border">·</span>
       <SubCheck done={slots?.done ?? false} label={t("tasks.slots.subLabel")} />
       <div className="flex-1" />
-      {!allDone && (
+      {/* Only offer the slots action to a viewer who can actually act on it. A producer
+          without manage_productions sees the phase attributed to an admin ("Waits on
+          {admin}" + View) in the header instead, so this inline "Resolve" would be a dead
+          button with no explanation — the screen-03 gap this closes. */}
+      {!allDone && (slots?.actionableByViewer ?? false) && (
         <button
           type="button"
           className="text-xs font-medium text-accent-600"

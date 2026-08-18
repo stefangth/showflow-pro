@@ -95,7 +95,6 @@ export interface ComposeResult {
 }
 
 // Component prop contracts (Wave A components bind to these).
-export interface DashboardWelcomeCollapsedProps { label: string; hint: string; ctaLabel: string; onOpen: () => void; }
 export interface DashboardSetupRailProps {
   eyebrow: string; title: string; body: string; complete: boolean;
   steps: ComposedStep[]; rules: InheritedRule[]; offFooters: string[];

@@ -63,6 +63,7 @@ export interface GetRunningInput {
   hire: HireOrderSetupStatus | null;
   datesDone: boolean; // Airtable connected+synced OR shows exist by hand
   producerCount: number | null; // team step done when > 0
+  canManageShows: boolean; // viewer holds manage_productions (author shows + slot counts)
   canEditBooking: boolean; // viewer holds edit_booking_settings
   canEditHire: boolean; // viewer holds edit_hire_order_settings
   canAddArtists: boolean; // viewer holds add_artists
@@ -135,19 +136,23 @@ export function composeGetRunning(input: GetRunningInput): GetRunningModel {
   const phases: GetRunningPhase[] = [];
 
   if (input.bookingOn) {
+    // The get_dates phase is show authoring, not booking-engine config: `dates` completes
+    // on shows existing (its panel is ShowsStep) and `slots` writes show_slots (the
+    // ShowFormDialog model). So both gate on manage_productions, not edit_booking_settings —
+    // a producer who can create shows must not read "Waits on admin" here.
     const datesTask: GetRunningTask = withActionability(
       {
         key: "dates",
         phase: "get_dates",
         done: input.datesDone,
         block: null,
-        adminOnly: !input.canEditBooking,
+        adminOnly: !input.canManageShows,
         actionableByViewer: false,
       },
       input.role,
     );
     const slotsTask = withActionability(
-      makeBookingTask("slots", "get_dates", input.booking, !input.canEditBooking),
+      makeBookingTask("slots", "get_dates", input.booking, !input.canManageShows),
       input.role,
     );
     phases.push({ key: "get_dates", tasks: [datesTask, slotsTask] });
