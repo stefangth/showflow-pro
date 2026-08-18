@@ -239,11 +239,13 @@ interface JoinedState {
 }
 
 function PostAcceptanceHandoff({
-  dashboardIsDeadEnd,
-  onDashboard,
+  primaryLabel,
+  primaryIsDeadEnd,
+  onPrimary,
 }: {
-  dashboardIsDeadEnd: boolean;
-  onDashboard: () => void;
+  primaryLabel: string;
+  primaryIsDeadEnd: boolean;
+  onPrimary: () => void;
 }) {
   const { t } = useTranslation('auth');
   const passwordStatus = usePasswordStatus();
@@ -264,8 +266,8 @@ function PostAcceptanceHandoff({
         <p role="status" className="text-sm font-medium text-foreground">
           {t('acceptInvite.handoff.passwordReady')}
         </p>
-        <Button variant={dashboardIsDeadEnd ? 'outline' : 'default'} onClick={onDashboard}>
-          {t('acceptInvite.goToDashboard')}
+        <Button variant={primaryIsDeadEnd ? 'outline' : 'default'} onClick={onPrimary}>
+          {primaryLabel}
         </Button>
       </>
     );
@@ -281,8 +283,8 @@ function PostAcceptanceHandoff({
         <p role="status" className="text-sm text-muted-foreground">
           {t('acceptInvite.handoff.manageFromProfile')}
         </p>
-        <Button variant={dashboardIsDeadEnd ? 'outline' : 'default'} onClick={onDashboard}>
-          {t('acceptInvite.goToDashboard')}
+        <Button variant={primaryIsDeadEnd ? 'outline' : 'default'} onClick={onPrimary}>
+          {primaryLabel}
         </Button>
       </>
     );
@@ -291,8 +293,8 @@ function PostAcceptanceHandoff({
   if (passwordStatus.data) {
     return (
       <>
-        <Button variant={dashboardIsDeadEnd ? 'outline' : 'default'} onClick={onDashboard}>
-          {t('acceptInvite.goToDashboard')}
+        <Button variant={primaryIsDeadEnd ? 'outline' : 'default'} onClick={onPrimary}>
+          {primaryLabel}
         </Button>
       </>
     );
@@ -321,7 +323,7 @@ function PostAcceptanceHandoff({
               variant="outline"
               aria-pressed="false"
               className="min-h-11 h-auto justify-start whitespace-normal px-3 py-3 text-left transition-colors motion-reduce:transition-none focus-visible:ring-2"
-              onClick={onDashboard}
+              onClick={onPrimary}
             >
               <Mail aria-hidden="true" className="shrink-0" />
               <span><span className="block">{t('acceptInvite.handoff.continueMagic')}</span><span className="block text-xs font-normal text-muted-foreground">{t('acceptInvite.handoff.continueMagicCaption')}</span></span>
@@ -620,8 +622,9 @@ export default function AcceptInvitePage() {
               )
             )}
             <PostAcceptanceHandoff
-              dashboardIsDeadEnd={dashboardIsDeadEnd}
-              onDashboard={() => navigate(ROUTES.DASHBOARD, { replace: true })}
+              primaryLabel={t('acceptInvite.goToDashboard')}
+              primaryIsDeadEnd={dashboardIsDeadEnd}
+              onPrimary={() => navigate(ROUTES.DASHBOARD, { replace: true })}
             />
           </CardContent>
         </Card>
