@@ -102,7 +102,7 @@
       "flow": "Choice · sets everything downstream",
       "people": "Roster · blocks booking",
       "ladder": "Priorities · blocks offers",
-      "eligibility": "Document · shows the gaps",
+      "eligibility": "Coverage · blocks offers",
       "timing": "Values · two fields",
       "team": "Team · admin only",
       "letterhead": "Document · blocks issuing",
@@ -115,7 +115,7 @@
       "flow": "Change is logged",
       "people": "No email until you offer a date",
       "ladder": "Ranking is per city",
-      "eligibility": "Coverage lives in Settings",
+      "eligibility": "A show's own cast beats the city ranking",
       "timing": "Applies to tonight's digest",
       "team": "They get an email invite",
       "letterhead": "Used on every order",
@@ -174,6 +174,24 @@
         "unlocksDone": "Every city with dates has a tier 1.",
         "tierUpdated": "Tier 1 set",
         "tierUpdateFailed": "Could not set tier 1"
+      },
+      "eligibility": {
+        "showsWithDates": "Shows with dates",
+        "gapCount_one": "{{count}} gap",
+        "gapCount_other": "{{count}} gaps",
+        "dateCount_one": "{{count}} date",
+        "dateCount_other": "{{count}} dates",
+        "covered": "Covered",
+        "linkACast": "Link a cast",
+        "noCastsAvailable": "No casts yet",
+        "memberCount_one": "{{count}} member",
+        "memberCount_other": "{{count}} members",
+        "nullCityNote": "Some dates have no city set. Fix the date to include it.",
+        "unlocks_one": "Link a cast to {{show}} and its {{count}} date becomes offerable.",
+        "unlocks_other": "Link a cast to {{show}} and its {{count}} dates become offerable.",
+        "unlocksDone": "Every show and city has a cast at tier 1.",
+        "castLinked": "Cast linked",
+        "castLinkFailed": "Could not link cast"
       }
     }
   },

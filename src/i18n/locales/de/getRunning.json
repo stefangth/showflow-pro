@@ -102,7 +102,7 @@
       "flow": "Wahl · legt den weiteren Ablauf fest",
       "people": "Besetzungsliste · blockiert Buchungen",
       "ladder": "Prioritäten · blockiert Angebote",
-      "eligibility": "Dokument · zeigt die Lücken",
+      "eligibility": "Abdeckung · blockiert Angebote",
       "timing": "Werte · zwei Felder",
       "team": "Team · nur Admin",
       "letterhead": "Dokument · blockiert den Versand",
@@ -115,7 +115,7 @@
       "flow": "Änderung wird protokolliert",
       "people": "Keine E-Mail, bevor du ein Datum anbietest",
       "ladder": "Reihenfolge ist pro Stadt",
-      "eligibility": "Abdeckung liegt in den Einstellungen",
+      "eligibility": "Die eigene Besetzung einer Show schlägt die Stadtrangfolge",
       "timing": "Gilt für die heutige Tagesübersicht",
       "team": "Sie erhalten eine E-Mail-Einladung",
       "letterhead": "Wird auf jedem Vertrag verwendet",
@@ -174,6 +174,24 @@
         "unlocksDone": "Jede Stadt mit Terminen hat eine Stufe 1.",
         "tierUpdated": "Stufe 1 gesetzt",
         "tierUpdateFailed": "Stufe 1 konnte nicht gesetzt werden"
+      },
+      "eligibility": {
+        "showsWithDates": "Shows mit Terminen",
+        "gapCount_one": "{{count}} Lücke",
+        "gapCount_other": "{{count}} Lücken",
+        "dateCount_one": "{{count}} Termin",
+        "dateCount_other": "{{count}} Termine",
+        "covered": "Abgedeckt",
+        "linkACast": "Besetzung verknüpfen",
+        "noCastsAvailable": "Noch keine Besetzungen",
+        "memberCount_one": "{{count}} Mitglied",
+        "memberCount_other": "{{count}} Mitglieder",
+        "nullCityNote": "Manche Termine haben keine Stadt gesetzt. Behebe das Datum, damit es eine Stadt hat.",
+        "unlocks_one": "Verknüpfe eine Besetzung mit {{show}} und {{count}} Termin wird anbietbar.",
+        "unlocks_other": "Verknüpfe eine Besetzung mit {{show}} und {{count}} Termine werden anbietbar.",
+        "unlocksDone": "Jede Show und Stadt hat eine Besetzung auf Stufe 1.",
+        "castLinked": "Besetzung verknüpft",
+        "castLinkFailed": "Besetzung konnte nicht verknüpft werden"
       }
     }
   },
