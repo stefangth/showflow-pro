@@ -23,12 +23,12 @@ Object.assign(client, createFakeSupabase({
     data: [{ artist_id: "a1", skill: { id: "sk1", name: "Aerial" } }],
     error: null,
   },
-  // fetchUpcomingBookingCountsByArtist: two far-future (always upcoming) + one past.
+  // fetchUpcomingConfirmedDateCounts: two far-future (always upcoming) + one past.
   bookings: {
     data: [
-      { artist_id: "a1", show_date: { date: "2099-01-01" } },
-      { artist_id: "a1", show_date: { date: "2099-02-01" } },
-      { artist_id: "a1", show_date: { date: "2000-01-01" } },
+      { artist_id: "a1", show_date_id: "d1", show_date: { date: "2099-01-01" } },
+      { artist_id: "a1", show_date_id: "d2", show_date: { date: "2099-02-01" } },
+      { artist_id: "a1", show_date_id: "d3", show_date: { date: "2000-01-01" } },
     ],
     error: null,
   },

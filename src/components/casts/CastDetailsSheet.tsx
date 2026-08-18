@@ -11,7 +11,7 @@ import {
 import { fetchArtists } from '@/data/artists';
 import { fetchShowsForEligibility } from '@/data/shows';
 import { fetchSkillsByArtist } from '@/data/skills';
-import { fetchUpcomingBookingCountsByArtist } from '@/data/bookings';
+import { fetchUpcomingConfirmedDateCounts } from '@/data/bookings';
 import { useAuth } from '@/features/auth/AuthContext';
 import { useCan } from '@/hooks/useCapabilities';
 import { useEditorConfig } from '@/features/editor/EditorContext';
@@ -106,14 +106,15 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
 
   const memberArtistIds = useMemo(() => (members ?? []).map((m) => m.artist_id), [members]);
 
-  // Real "N dates" per member: upcoming, non-cancelled bookings. `today` is derived
-  // once at render; the query re-runs when the member set changes.
+  // Real "N dates" per member + the distinct-dates KPI: confirmed, upcoming bookings.
+  // `today` is derived once at render; the query re-runs when the member set changes.
   const todayKey = toDateKey(new Date());
-  const { data: bookingCounts } = useQuery({
-    queryKey: ['bookings', 'upcoming-counts-by-artist', cast?.id, memberArtistIds, todayKey],
+  const { data: upcomingDates } = useQuery({
+    queryKey: ['bookings', 'upcoming-confirmed-dates', cast?.id, memberArtistIds, todayKey],
     enabled: !!currentOrg && memberArtistIds.length > 0,
-    queryFn: () => fetchUpcomingBookingCountsByArtist(supabase, currentOrg?.id ?? null, memberArtistIds, todayKey),
+    queryFn: () => fetchUpcomingConfirmedDateCounts(supabase, currentOrg?.id ?? null, memberArtistIds, todayKey),
   });
+  const bookingCounts = upcomingDates?.perArtist;
 
   // Eligibility (cities × shows)
   const { data: cities } = useAllCities();
@@ -179,10 +180,8 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
     [tierByCity],
   );
 
-  const upcomingDatesTotal = useMemo(
-    () => Array.from((bookingCounts ?? new Map()).values()).reduce((a, b) => a + b, 0),
-    [bookingCounts],
-  );
+  // Distinct upcoming dates the cast covers (deduped across members), not a per-member sum.
+  const upcomingDatesTotal = upcomingDates?.distinctDates ?? 0;
 
   const memberCount = members?.length ?? 0;
   const cityCount = cities?.length ?? 0;
@@ -380,16 +379,12 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
             {coverageGapCities.length > 0 && (
               <div
                 data-coverage-gap
-                className="flex items-center gap-3 rounded-m border border-border px-3 py-2.5"
-                style={{ background: 'var(--amber-100)' }}
+                className="flex items-center gap-3 rounded-m border border-border bg-[var(--amber-100)] px-3 py-2.5"
               >
-                <span
-                  className="inline-flex h-5 shrink-0 items-center rounded-xs px-1.5 text-[11px] font-medium"
-                  style={{ background: 'rgba(255,255,255,.6)', color: 'var(--amber-600)' }}
-                >
+                <span className="inline-flex h-5 shrink-0 items-center rounded-xs bg-white/60 px-1.5 text-[11px] font-medium text-[var(--amber-600)]">
                   {t('castDetails.coverageGap.badge')}
                 </span>
-                <p className="flex-1 text-[13px]" style={{ color: 'var(--amber-600)' }}>
+                <p className="flex-1 text-[13px] text-[var(--amber-600)]">
                   {t('castDetails.coverageGap.text', { cities: coverageGapCities.map((c) => c.name).join(', ') })}
                 </p>
                 <Link
@@ -412,7 +407,11 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
               <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
                 {(members ?? []).map((m) => {
                   const tone = getAvatarTone(m.artist_id || m.artist.name);
-                  const skill = skillsByArtist?.get(m.artist_id)?.[0]?.name;
+                  // Deterministic "primary" skill: alphabetically first, since
+                  // fetchSkillsByArtist returns skills in unsorted DB row order.
+                  const skill = (skillsByArtist?.get(m.artist_id) ?? [])
+                    .map((s) => s.name)
+                    .sort((a, b) => a.localeCompare(b))[0];
                   const dates = bookingCounts?.get(m.artist_id) ?? 0;
                   return (
                     <div key={m.id} className="flex h-10 items-center gap-2.5 rounded-m border border-border bg-card px-2">

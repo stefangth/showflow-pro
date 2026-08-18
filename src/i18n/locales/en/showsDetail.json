@@ -309,9 +309,7 @@
       "count_other": "{{count}} members",
       "dates_one": "{{count}} date",
       "dates_other": "{{count}} dates",
-      "searchPlaceholder": "Search the roster or add an artist",
-      "add": "Add",
-      "enterToAdd": "to add"
+      "searchPlaceholder": "Search the roster or add an artist"
     },
     "coverage": {
       "title": "City coverage",
@@ -334,28 +332,13 @@
       "castUpdated": "Cast details updated",
       "empty": "No activity yet."
     },
-    "tabs": {
-      "members": "Members",
-      "cityEligibility": "City eligibility",
-      "offerOrder": "Offer order"
-    },
-    "membersCount": "Members ({{count}})",
     "removeMember": "Remove {{name}}",
     "noMembers": "No members yet.",
     "addArtists": "Add artists",
-    "searchArtists": "Search artists…",
     "noMatches": "No matches.",
-    "eligibilityNote": "Tick the cells where this cast is eligible. New show dates synced from Airtable will inherit these settings; per-date overrides are configured on each show date.",
     "addCitiesFirst": "Add cities first in Settings → Casts & coverage.",
     "noShows": "No shows available.",
-    "cityShowHeader": "City \\ Show",
-    "offerOrderNote": "Where this cast sits in the offer order. Manage it in Settings, Casts & coverage, same setting.",
-    "neverOffered": "Never offered here.",
-    "offeredFirst": "Offered first here.",
-    "offeredAfter": "Offered after {{cast}}.",
-    "previousTier": "the previous tier",
     "tierN": "Tier {{tier}}",
-    "notInOrder": "Not in order",
     "manageOfferOrderLink": "Manage offer order in Settings, Casts & coverage"
   },
   "castDialog": {

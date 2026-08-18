@@ -309,9 +309,7 @@
       "count_other": "{{count}} Mitglieder",
       "dates_one": "{{count}} Termin",
       "dates_other": "{{count}} Termine",
-      "searchPlaceholder": "Besetzung durchsuchen oder Artist hinzufügen",
-      "add": "Hinzufügen",
-      "enterToAdd": "zum Hinzufügen"
+      "searchPlaceholder": "Besetzung durchsuchen oder Artist hinzufügen"
     },
     "coverage": {
       "title": "Städte-Abdeckung",
@@ -334,28 +332,13 @@
       "castUpdated": "Besetzungsdetails aktualisiert",
       "empty": "Noch keine Aktivität."
     },
-    "tabs": {
-      "members": "Mitglieder",
-      "cityEligibility": "Städte-Berechtigung",
-      "offerOrder": "Angebotsreihenfolge"
-    },
-    "membersCount": "Mitglieder ({{count}})",
     "removeMember": "{{name}} entfernen",
     "noMembers": "Noch keine Mitglieder.",
     "addArtists": "Artists hinzufügen",
-    "searchArtists": "Artists suchen…",
     "noMatches": "Keine Treffer.",
-    "eligibilityNote": "Kreuze die Zellen an, in denen diese Besetzung berechtigt ist. Neue aus Airtable synchronisierte Termine erben diese Einstellungen; Überschreibungen pro Termin werden an jedem Termin konfiguriert.",
     "addCitiesFirst": "Füge zuerst Städte unter Einstellungen → Besetzungen & Abdeckung hinzu.",
     "noShows": "Keine Shows verfügbar.",
-    "cityShowHeader": "Stadt \\ Show",
-    "offerOrderNote": "Wo diese Besetzung in der Angebotsreihenfolge steht. Verwalte es unter Einstellungen, Besetzungen & Abdeckung, dieselbe Einstellung.",
-    "neverOffered": "Hier nie angeboten.",
-    "offeredFirst": "Hier zuerst angeboten.",
-    "offeredAfter": "Angeboten nach {{cast}}.",
-    "previousTier": "der vorherigen Stufe",
     "tierN": "Stufe {{tier}}",
-    "notInOrder": "Nicht in der Reihenfolge",
     "manageOfferOrderLink": "Angebotsreihenfolge unter Einstellungen, Besetzungen & Abdeckung verwalten"
   },
   "castDialog": {

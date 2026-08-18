@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { createFakeSupabase } from "@/test/supabaseFake";
-import { openOfferTier, fetchOfferTiers, fetchOpenedTiers, closeOfferTier, dryRunOfferTier, fetchPendingConfirmationsCount, fetchMyOpenOffersCount, bulkConfirmSoftBooked, bulkDeclineSoftBooked, updateBookingStatusGuarded, respondToOffer, createBooking, fetchTierAttention, extendOfferExpiry, notifyCast, fetchBookingsWithArtistForDates, fetchUpcomingBookingCountsByArtist } from "./bookings";
+import { openOfferTier, fetchOfferTiers, fetchOpenedTiers, closeOfferTier, dryRunOfferTier, fetchPendingConfirmationsCount, fetchMyOpenOffersCount, bulkConfirmSoftBooked, bulkDeclineSoftBooked, updateBookingStatusGuarded, respondToOffer, createBooking, fetchTierAttention, extendOfferExpiry, notifyCast, fetchBookingsWithArtistForDates, fetchUpcomingConfirmedDateCounts } from "./bookings";
 
 describe("openOfferTier", () => {
   it("sends snake_case body and returns offersCreated", async () => {
@@ -523,33 +523,36 @@ describe("fetchBookingsWithArtistForDates", () => {
   });
 });
 
-describe("fetchUpcomingBookingCountsByArtist", () => {
-  it("counts today-or-later non-cancelled bookings per artist, ignoring past dates", async () => {
+describe("fetchUpcomingConfirmedDateCounts", () => {
+  it("counts confirmed upcoming bookings per artist and dedupes distinct dates", async () => {
     const fake = createFakeSupabase({
       bookings: {
         data: [
-          { artist_id: "a1", show_date: { date: "2026-09-01" } }, // upcoming
-          { artist_id: "a1", show_date: { date: "2026-08-18" } }, // today (inclusive)
-          { artist_id: "a1", show_date: { date: "2026-01-01" } }, // past -> excluded
-          { artist_id: "a2", show_date: { date: "2026-12-31" } }, // upcoming
-          { artist_id: "a3", show_date: null },                   // no date -> excluded
+          { artist_id: "a1", show_date_id: "d1", show_date: { date: "2026-09-01" } }, // upcoming
+          { artist_id: "a1", show_date_id: "d2", show_date: { date: "2026-08-18" } }, // today (inclusive)
+          { artist_id: "a1", show_date_id: "d3", show_date: { date: "2026-01-01" } }, // past -> excluded
+          { artist_id: "a2", show_date_id: "d1", show_date: { date: "2026-09-01" } }, // shares d1 with a1
         ],
         error: null,
       },
     });
-    const res = await fetchUpcomingBookingCountsByArtist(fake as never, "org-1", ["a1", "a2", "a3"], "2026-08-18");
-    expect(res.get("a1")).toBe(2);
-    expect(res.get("a2")).toBe(1);
-    expect(res.has("a3")).toBe(false);
+    const res = await fetchUpcomingConfirmedDateCounts(fake as never, "org-1", ["a1", "a2"], "2026-08-18");
+    // a1 has two upcoming (d1, d2); the past d3 is dropped. a2 has one (d1).
+    expect(res.perArtist.get("a1")).toBe(2);
+    expect(res.perArtist.get("a2")).toBe(1);
+    // d1 is shared by a1 and a2, so the cast covers 2 distinct upcoming dates (d1, d2), not 3.
+    expect(res.distinctDates).toBe(2);
     expect(fake.calls).toContainEqual({ table: "bookings", method: "eq", args: ["org_id", "org-1"] });
-    expect(fake.calls).toContainEqual({ table: "bookings", method: "in", args: ["artist_id", ["a1", "a2", "a3"]] });
-    expect(fake.calls).toContainEqual({ table: "bookings", method: "neq", args: ["status", "cancelled"] });
+    expect(fake.calls).toContainEqual({ table: "bookings", method: "in", args: ["artist_id", ["a1", "a2"]] });
+    expect(fake.calls).toContainEqual({ table: "bookings", method: "eq", args: ["status", "confirmed"] });
+    expect(fake.calls).toContainEqual({ table: "bookings", method: "gte", args: ["show_date.date", "2026-08-18"] });
   });
 
-  it("returns an empty map for no artist ids without querying", async () => {
+  it("returns empty counts for no artist ids without querying", async () => {
     const fake = createFakeSupabase({});
-    const res = await fetchUpcomingBookingCountsByArtist(fake as never, "org-1", [], "2026-08-18");
-    expect(res.size).toBe(0);
+    const res = await fetchUpcomingConfirmedDateCounts(fake as never, "org-1", [], "2026-08-18");
+    expect(res.perArtist.size).toBe(0);
+    expect(res.distinctDates).toBe(0);
     expect(fake.calls).toEqual([]);
   });
 });
