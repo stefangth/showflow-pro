@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, Navigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -58,11 +58,20 @@ export default function DashboardPage() {
   // once we positively know the board is incomplete: while `model` is null (loading) the
   // dashboard renders rather than being gated behind these reads.
   const { model } = useGetRunning();
+  // Reading the flag during render is pure; the WRITE is deferred to the effect below so a
+  // render React discards (StrictMode double-invoke, an interrupted concurrent render, or a
+  // future Suspense boundary on this route) can't consume the one-time landing without the
+  // <Navigate> actually committing. The effect runs only on a committed render, coupling the
+  // mark to the redirect. shouldLand is recomputed each render, so it self-corrects.
+  const shouldLandOnGetRunning =
+    !isArtistOnly && !!orgId && !!model && !model.complete && !hasLandedGetRunning(orgId);
+  useEffect(() => {
+    if (shouldLandOnGetRunning && orgId) markLandedGetRunning(orgId);
+  }, [shouldLandOnGetRunning, orgId]);
   if (isArtistOnly) {
     return <ArtistDashboard />;
   }
-  if (orgId && model && !model.complete && !hasLandedGetRunning(orgId)) {
-    markLandedGetRunning(orgId);
+  if (shouldLandOnGetRunning) {
     return <Navigate to={ROUTES.GET_RUNNING} replace />;
   }
   return <ProducerDashboard />;

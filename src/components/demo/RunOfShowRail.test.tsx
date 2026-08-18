@@ -114,9 +114,9 @@ describe("RunOfShowRail", () => {
     expect(toast.success).toHaveBeenCalledWith("Cue done: Artist accepts");
   });
 
-  it("marks the cue failed (retryable) when it rejects, without a second toast", () => {
-    // Drive onError + onSettled: the rail records the inline failed state and clears pending.
-    // useRunCue owns the error toast, so the rail must NOT fire its own.
+  it("marks the cue failed (retryable) and toasts the error when it rejects", () => {
+    // Drive onError + onSettled: the rail records the inline failed state, clears pending,
+    // and owns the error toast (useRunCue no longer toasts), so it fires exactly once here.
     runCueMutate.mockImplementation((_args, opts) => {
       opts?.onError?.(new Error("boom"));
       opts?.onSettled?.();
@@ -124,7 +124,7 @@ describe("RunOfShowRail", () => {
     renderRail();
     const btn = screen.getByRole("button", { name: /Artist accepts/i });
     fireEvent.click(btn);
-    expect(toast.error).not.toHaveBeenCalled();
+    expect(toast.error).toHaveBeenCalledWith("boom");
     // Inline failed affordance: destructive styling + sr-only retry hint; pending cleared so
     // the button is enabled and clickable again.
     expect(btn).toHaveClass("border-destructive");

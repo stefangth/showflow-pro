@@ -92,16 +92,17 @@ export function RunOfShowRail() {
     cueMut.mutate(
       { orgId: currentOrg.id, cueId },
       {
-        // useRunCue already toasts on error, so the per-cue onError only records the inline
-        // failed state (no second toast); onSuccess adds the confirmation toast + inline check.
+        // The rail owns both toasts (useRunCue no longer toasts) so they can be gen-guarded:
+        // a cue that settles after a reseed wiped its data paints nothing and stays silent.
         onSuccess: () => {
           if (reseedGen.current !== gen) return;
           setDoneCues((prev) => new Set(prev).add(cueId));
           toast.success(`Cue done: ${cueLabel(cueId, lang)}`);
         },
-        onError: () => {
+        onError: (e: Error) => {
           if (reseedGen.current !== gen) return;
           setFailedCues((prev) => new Set(prev).add(cueId));
+          toast.error(e.message);
         },
         // Gen-guard here too: a reseed already cleared pendingCue (and may have started a
         // fresh mutation for the same cue), so a stale settle must not null the newer
