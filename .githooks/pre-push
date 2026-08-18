@@ -1,20 +1,31 @@
 #!/usr/bin/env bash
 #
-# Pre-push hook — requires the Docker-free CI mirror (verify:fast) before a push
-# so the cheap layers (lint + mirror-sync, typecheck app+tools, build, unit tests
-# + coverage, Deno checks + tests) fail locally instead of burning a red GitHub
-# CI run. An exact content fingerprint reuses a successful fast/full run.
+# Pre-push hook — runs the Docker-free CI mirror (verify:fast) locally so the
+# cheap layers (lint + mirror-sync, typecheck app+tools, build, unit tests +
+# coverage, Deno checks + tests) fail on your machine instead of turning an
+# open PR's GitHub CI red. An exact content fingerprint reuses a successful run.
+#
+# verify:fast is gated on an OPEN PR for the branch being pushed: while a branch
+# is still pre-PR it is churned rapidly and CI has nothing to go red, so those
+# pushes stay fast (secret scan only). Once a PR is open, GitHub CI runs the same
+# suite on every push to the branch anyway (see .github/workflows/ci.yml,
+# `pull_request: ["**"]`) — the local gate just lets you catch the failure before
+# it lands on the PR. Detected via the `gh` CLI; if `gh` is absent or can't answer,
+# the hook skips verify:fast (CI still gates the PR) rather than blocking the push.
 #
 # This is a convenience gate, NOT the source of truth. GitHub CI stays the
 # enforced gate: it runs on the merged commit regardless, and the prod
 # edge-function deploy keys off a green CI run (see .github/workflows). The hook
 # only shortens the loop; it never makes CI skippable.
 #
+# The secret scan runs on EVERY push regardless of PR state — it is the cheap
+# security gate that keeps a hardcoded credential off the remote.
+#
 # verify:full (pgTAP + Playwright, needs the Docker stack) is deliberately NOT
 # run here — a container cold-start on every push would just train everyone to
 # reach for --no-verify, and a bypassed hook protects nothing.
 #
-# Bypass when you need to (a WIP push, a docs-only branch):
+# Bypass when you need to (a WIP push on a PR branch, a docs-only branch):
 #   git push --no-verify            # git skips every pre-push hook
 #   SHOWFLOW_SKIP_VERIFY=1 git push # targeted skip, still logged
 #
@@ -30,22 +41,83 @@ fi
 repo_root="$(git rev-parse --show-toplevel)"
 cd "$repo_root" || exit 1
 
+# git feeds the ref-update lines on stdin, and stdin can only be read once — both
+# the secret scan (--prepush) and the open-PR detection below need them, so
+# capture once and replay to each. `$(cat)` strips only the trailing newline(s).
+stdin_data="$(cat)"
+
 # Secret scan first — cheapest possible fail, and the one that keeps a hardcoded
-# credential (the Resend-key class of leak) off the remote. Mirrored by the CI
-# "Lint" job so a --no-verify bypass is still caught server-side.
+# credential (the Resend-key class of leak) off the remote. Runs on every push,
+# independent of PR state. Mirrored by the CI "Lint" job so a --no-verify bypass
+# is still caught server-side.
 echo "pre-push: scanning pushed commits + tracked files for secrets…" >&2
 # `|| exit 1` is load-bearing: the hook runs `set -uo pipefail` (no `-e`), so a
-# bare failing statement would fall through to verify:fast and the hook would
-# exit with verify:fast's code — pushing the secret anyway. Abort explicitly.
-# --prepush consumes git's ref-update lines on stdin and scans each pushed
-# commit's diff (so an add-then-remove within the push is still caught), plus a
-# tracked-tree snapshot. Mirrored by the CI "Lint" job for --no-verify bypasses.
-node scripts/scan-secrets.mjs --prepush || exit 1
+# bare failing statement would fall through and the hook would exit with a later
+# command's code — pushing the secret anyway. Abort explicitly. --prepush consumes
+# git's ref-update lines on stdin (replayed from the captured copy) and scans each
+# pushed commit's diff, plus a tracked-tree snapshot.
+printf '%s\n' "$stdin_data" | node scripts/scan-secrets.mjs --prepush || exit 1
 
+# Does any branch in this push already have an open PR? verify:fast only gates
+# those — a pre-PR branch push stays fast (secret scan only, above).
+#
+# The whole point of this gate is snappy pushes, so the `gh` probe must never
+# stall one: it is wrapped in a short timeout, and a timeout OR any query failure
+# (unauthenticated, offline, rate-limited) is treated the same as "can't tell" —
+# skip verify:fast with a DISTINCT message so a silent skip is never mistaken for
+# a real "no open PR". GitHub CI remains the enforced gate in every case.
+if ! command -v gh >/dev/null 2>&1; then
+  echo "pre-push: gh CLI not found — can't check for an open PR; skipping verify:fast (CI still gates the PR)" >&2
+  exit 0
+fi
+
+# Bounded runner: prefer `timeout`, then macOS/Homebrew `gtimeout`; if neither is
+# installed, run bare (no portable 5s cap available — the documented fallback).
+run_bounded() {
+  if command -v timeout >/dev/null 2>&1; then timeout 5 "$@"
+  elif command -v gtimeout >/dev/null 2>&1; then gtimeout 5 "$@"
+  else "$@"; fi
+}
+
+has_open_pr=0
+pr_check_failed=0
+while read -r _local_ref local_sha remote_ref _remote_sha; do
+  [ -z "${remote_ref:-}" ] && continue
+  case "$remote_ref" in
+    refs/heads/*) branch="${remote_ref#refs/heads/}" ;;
+    *) continue ;; # tags and other non-branch refs never have a PR
+  esac
+  # A branch delete pushes the all-zero sha as the local sha — nothing to verify.
+  case "${local_sha:-}" in ''|*[!0]*) : ;; *) continue ;; esac
+  pr_count="$(run_bounded gh pr list --head "$branch" --state open --json number --jq 'length' 2>/dev/null)"
+  rc=$?
+  if [ "$rc" -ne 0 ]; then
+    pr_check_failed=1   # timeout (124) or gh error (auth / network / rate-limit)
+    continue
+  fi
+  case "$pr_count" in
+    ''|*[!0-9]*) pr_check_failed=1 ;;  # empty / unexpected non-numeric output
+    0) : ;;                            # genuinely no open PR for this branch
+    *) has_open_pr=1; break ;;
+  esac
+done <<EOF
+$stdin_data
+EOF
+
+if [ "$has_open_pr" != "1" ]; then
+  if [ "$pr_check_failed" = "1" ]; then
+    echo "pre-push: couldn't determine open-PR state (gh errored or timed out) — skipping verify:fast (CI still gates the PR)" >&2
+  else
+    echo "pre-push: no open PR for the pushed branch — skipping verify:fast (CI runs it once a PR is open)" >&2
+  fi
+  exit 0
+fi
+
+# The branch has an open PR — run the local gate, reusing a matching cached result.
 if node scripts/verify-cache.mjs check fast; then
   echo "pre-push: source snapshot already passed verify:fast — skipping duplicate suite" >&2
   exit 0
 fi
 
-echo "pre-push: running verify:fast (bypass with --no-verify or SHOWFLOW_SKIP_VERIFY=1)…" >&2
+echo "pre-push: open PR detected — running verify:fast (bypass with --no-verify or SHOWFLOW_SKIP_VERIFY=1)…" >&2
 npm run --silent verify:fast
