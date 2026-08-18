@@ -160,6 +160,28 @@ describe("DashboardPage onboarding gate (drop into Get running until setup is do
     expect(screen.queryByText("get running board")).not.toBeInTheDocument();
   });
 
+  // The landing flag is per-org: a multi-org producer/admin who consumed org A's landing
+  // must still land on org B's board when they switch to it mid-session (B is also
+  // incomplete). A single shared flag would drop them on B's empty dashboard instead.
+  it("lands independently per org: consuming org A's landing does not suppress org B's", () => {
+    resetGetRunningLanding();
+    vi.mocked(useGetRunning).mockReturnValue({ model: { ...COMPLETE_MODEL, complete: false }, isLoading: false });
+    const asOrg = (id: string) =>
+      vi.mocked(useAuth).mockReturnValue({
+        hasRole: (r: string) => r === "producer",
+        currentOrg: { id, name: id },
+      } as never);
+    // Org A: first visit consumes A's landing (redirects to the board)…
+    asOrg("org-A");
+    const { unmount } = renderAt();
+    expect(screen.getByText("get running board")).toBeInTheDocument();
+    unmount();
+    // …switch to org B (also incomplete) in the same tab: B hasn't landed, so it redirects.
+    asOrg("org-B");
+    renderAt();
+    expect(screen.getByText("get running board")).toBeInTheDocument();
+  });
+
   it("does not redirect once the board is complete — the dashboard renders", () => {
     authAs("producer");
     vi.mocked(useGetRunning).mockReturnValue({ model: COMPLETE_MODEL, isLoading: false });

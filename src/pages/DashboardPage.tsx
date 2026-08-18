@@ -42,7 +42,8 @@ type ShowRef = { program: string | null; sub_program: string | null; main_cast_s
 type DateRow = { id: string; date: string; show_id: string };
 
 export default function DashboardPage() {
-  const { hasRole } = useAuth();
+  const { hasRole, currentOrg } = useAuth();
+  const orgId = currentOrg?.id ?? null;
   const isArtistOnly = hasRole('artist') && !hasRole('producer') && !hasRole('admin');
   // Onboarding gate: on the FIRST dashboard visit of a session, while the Get running board
   // still has open tasks, a non-artist lands on the board instead of the (still-empty)
@@ -60,8 +61,8 @@ export default function DashboardPage() {
   if (isArtistOnly) {
     return <ArtistDashboard />;
   }
-  if (model && !model.complete && !hasLandedGetRunning()) {
-    markLandedGetRunning();
+  if (orgId && model && !model.complete && !hasLandedGetRunning(orgId)) {
+    markLandedGetRunning(orgId);
     return <Navigate to={ROUTES.GET_RUNNING} replace />;
   }
   return <ProducerDashboard />;
