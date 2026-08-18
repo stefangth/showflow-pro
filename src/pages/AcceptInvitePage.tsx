@@ -11,10 +11,9 @@ import { rolesForOrg } from '@/features/auth/orgRoles';
 import type { Membership } from '@/data/orgs';
 import { useBookingFlow } from '@/hooks/useBookingFlow';
 import { useFeature, useEntitlements } from '@/hooks/useEntitlements';
-import { useCan } from '@/hooks/useCapabilities';
-import { useBookingSetupStatus } from '@/hooks/useBookingSetup';
+import { useGetRunning } from '@/hooks/useGetRunning';
 import type { BookingFlow } from '@/lib/bookingFlow';
-import type { GetRunningModel } from '@/lib/getRunning/tasks';
+import { firstOfferBlockingCount, type GetRunningModel } from '@/lib/getRunning/tasks';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -139,12 +138,10 @@ export const NEXT_STEP_LINES: Record<AppRole, Record<BookingRunState, string>> =
     off: 'Your dashboard shows what this workspace needs from you next.',
   },
   producer: {
-    // Confirm-capability-neutral default: see PRODUCER_OFFERS_CONFIRM_LINE for why this
-    // fires only when the producer lacks confirm_bookings.
+    // Reached only for a nothing-on org (bookingState 'off'); the offers/direct entries
+    // stay as data so resolveNextStepLine remains a total resolver, but an org with the
+    // booking module on now shows the board summary instead of any producer line.
     offers: 'Dates and offers land on your dashboard, and confirmations are handled by an admin.',
-    // Not gated on the capability: this states the booking's state ("waiting on
-    // confirmation"), not a permission claim the reader might not hold, and an admin can
-    // always confirm regardless -- there is always someone for the booking to wait on.
     direct: 'Bookings waiting on your confirmation land on your dashboard.',
     off: 'Your dashboard shows what is waiting on you.',
   },
@@ -154,21 +151,6 @@ export const NEXT_STEP_LINES: Record<AppRole, Record<BookingRunState, string>> =
     off: 'Your dashboard shows what is next for you.',
   },
 };
-
-/**
- * Producer variant of the 'offers' next-step line for an org where the joined producer
- * holds the confirm_bookings capability (producer_can_confirm_bookings in
- * src/lib/capabilities.ts: default on, admin-revocable in Settings > Roles and
- * permissions). Canonical home for this rationale -- see resolveNextStepLine and
- * NEXT_STEP_LINES.producer.offers for the pointers back here.
- *
- * useCan('confirm_bookings')'s own loading fallback for a producer is `true`, the same
- * value this branch answers to, so it needs no loading gate of its own: the settle
- * window before the capability query resolves can only ever show this line, never swap
- * away from it.
- */
-export const PRODUCER_OFFERS_CONFIRM_LINE =
-  'Dates, offers and confirmations land on your dashboard, and confirming bookings is yours to do.';
 
 /**
  * Shown for an artist whose invitation could not link a catalog artist row (an admin
@@ -181,48 +163,22 @@ export const PRODUCER_OFFERS_CONFIRM_LINE =
 export const ARTIST_NOT_LINKED_NEXT_STEP_LINE =
   'Once an admin links your artist profile, offers and bookings will start landing on your dashboard.';
 
-/** Shown instead of NEXT_STEP_LINES.admin's setup-list promise when the joined org's
- *  booking setup is already complete. Mirrors the signal firstRun.ts's welcomeCopy uses
- *  to retire the dashboard rail itself ("This workspace is already set up. Nothing to
- *  configure."), so this screen and the dashboard the button leads to never disagree
- *  about whether a setup list exists. See resolveNextStepLine. */
-export const ADMIN_SETUP_COMPLETE_LINE =
-  "This workspace is already set up. Your dashboard shows what needs you next.";
-
 /**
- * Resolves the one next-step sentence for a role, checked in order of what would make
- * the sentence false if skipped:
+ * The one next-step sentence for the non-board path: artists (all booking states), and
+ * admin/producer only at a nothing-on org (both modules off -> bookingState 'off'). The
+ * board summary replaces this for any admin/producer whose org has a module on.
  *
- * 1. `!artistLinked` (artist only): no `artists` row exists yet for this account, so
- *    neither the offers nor the direct-booking promise can come true -- see
- *    ARTIST_NOT_LINKED_NEXT_STEP_LINE.
- * 2. Admin whose booking setup already ran to completion (`bookingSetupComplete`, from
- *    useBookingSetupStatus -- the same signal the dashboard rail retires its own setup
- *    list on): the setup-list promise in NEXT_STEP_LINES.admin would be false for the
- *    common case of a second-or-later admin invited into an already-live org. Skipped
- *    entirely for `bookingState === 'off'` (no pipeline to have set up) and for
- *    producer/artist (their lines describe what is WAITING on them, true either way).
- *    An unresolved `bookingSetupComplete` reads `false` by construction (every unread
- *    step reports outstanding), matching the fail-safe default used throughout the
- *    setup engine.
- * 3. Producer at an offers-running org who still holds `confirm_bookings`
- *    (producer_can_confirm_bookings in src/lib/capabilities.ts, admin-revocable): see
- *    PRODUCER_OFFERS_CONFIRM_LINE. Defaults to `true`, matching useCan's own loading
- *    fallback for a producer.
- *
- * Falls through to the plain NEXT_STEP_LINES entry when none of the above apply.
+ * 1. `!artistLinked` (artist only): no `artists` row exists yet, so neither the offers nor
+ *    the direct-booking promise can come true -- see ARTIST_NOT_LINKED_NEXT_STEP_LINE.
+ * 2. Otherwise the plain NEXT_STEP_LINES entry for the role and booking state.
  */
 // eslint-disable-next-line react-refresh/only-export-components
 export function resolveNextStepLine(
   role: AppRole,
   bookingState: BookingRunState,
-  bookingSetupComplete: boolean,
-  canConfirmBookings = true,
   artistLinked = true,
 ): string {
   if (role === 'artist' && !artistLinked) return ARTIST_NOT_LINKED_NEXT_STEP_LINE;
-  if (role === 'admin' && bookingState !== 'off' && bookingSetupComplete) return ADMIN_SETUP_COMPLETE_LINE;
-  if (role === 'producer' && bookingState === 'offers' && canConfirmBookings) return PRODUCER_OFFERS_CONFIRM_LINE;
   return NEXT_STEP_LINES[role][bookingState];
 }
 
@@ -401,45 +357,25 @@ export default function AcceptInvitePage() {
   // useFeature('booking_flow') below already subscribes to (react-query dedupes the
   // network fetch on that shared key), called again here purely because useFeature does
   // not expose isLoading. bookingModuleOn fails OPEN to the registry default while this is
-  // loading (see useFeature's own doc comment), so `entitlementsLoading` lets
-  // `nextStepReady` and `setupStatusOrgId` below both wait for a real answer instead of
-  // trusting that default -- otherwise a module-off org could briefly fetch the five-query
-  // setup status, or render the offers/direct line, before swapping to the correct 'off'
-  // state once the real entitlement lands.
+  // loading (see useFeature's own doc comment), so `entitlementsLoading` lets the artist
+  // next-step line wait for a real answer instead of trusting that default -- otherwise a
+  // module-off org could briefly render the offers/direct line before swapping to the
+  // correct 'off' state once the real entitlement lands.
   const { isLoading: entitlementsLoading } = useEntitlements();
   // useBookingFlow(joined?.orgId ?? null) is called unconditionally too; the shared hook
   // gates itself off for a null org (enabled: orgId !== null), so no `app_settings` read
   // fires on first mount or on the unauthenticated bounce-to-login path. A disabled query
-  // reports isLoading false, so `nextStepReady` below is not held up before `joined`
+  // reports isLoading false, so the artist next-step gate is not held up before `joined`
   // exists; the moment it is set the query starts and the readiness gate takes over.
   const bookingModuleOn = useFeature('booking_flow');
   const { data: bookingFlow, isLoading: bookingFlowLoading } = useBookingFlow(joined?.orgId ?? null);
-  // Producer-only capability gate for the 'offers' next-step line (see
-  // PRODUCER_OFFERS_CONFIRM_LINE): producer_can_confirm_bookings (src/lib/capabilities.ts)
-  // is on by default but admin-revocable in Settings > Roles and permissions, so this
-  // screen cannot assert confirming is the producer's to do without checking it. Called
-  // unconditionally like the hooks above -- useCan reads useAuth().currentOrg internally,
-  // which is already the joined org by the time `joined` is set, same reasoning as
-  // useFeature('booking_flow') above.
-  const canConfirmBookings = useCan('confirm_bookings');
-  // Fetched only once we know the joined org, entitlements have resolved (not the
-  // fail-open default), its booking module is on, AND the resolved role is admin --
-  // resolveNextStepLine reads bookingSetupComplete for no other role, and an admin at a
-  // module-off org never needs a setup-completion answer either (resolveNextStepLine skips
-  // the check entirely for bookingState 'off'). Passing null in every other case means
-  // useBookingSetupStatus's own `enabled: !!orgId` on all five of its reads keeps them from
-  // firing at all -- not just from being read.
-  const setupStatusOrgId =
-    !entitlementsLoading && bookingModuleOn && role === 'admin' ? (joined?.orgId ?? null) : null;
-  const { status: bookingSetupStatus, isLoading: bookingSetupLoading } = useBookingSetupStatus(setupStatusOrgId);
-  // These queries only start fetching on the render where `joined` is set, so on that
-  // first paint none of the three has a real answer yet. Rendering a next-step line off
-  // that transient state would show a claim that can then silently swap once the real
-  // data lands. `nextStepReady` holds the line back (a Skeleton takes its place, see the
-  // render below) until all three settle -- bookingSetupLoading is a no-op wait for any
-  // role/org this gate doesn't cover, per setupStatusOrgId's comment above.
-  // canConfirmBookings is deliberately excluded: see PRODUCER_OFFERS_CONFIRM_LINE.
-  const nextStepReady = !entitlementsLoading && !bookingFlowLoading && !bookingSetupLoading;
+  // The Get running board model, for the admin/producer handoff summary. useGetRunning reads
+  // useAuth().currentOrg internally, which is already the joined org by the time `joined` is
+  // set (switchOrg ran in the same batched `.then`, same reasoning as useFeature above). It
+  // gates its own reads off for a non-admin/non-producer viewer and for a null org, so before
+  // `joined` exists a fresh invitee fires no board reads; a multi-org accepter may trigger one
+  // harmless cache-warming read for their prior org.
+  const getRunning = useGetRunning();
 
   useEffect(() => {
     if (loading) return;
@@ -554,11 +490,18 @@ export default function AcceptInvitePage() {
     // resolved above, before this component's hooks, so it can gate them.
     const orgName = orgs.find((o) => o.id === joined.orgId)?.name ?? t('acceptInvite.success.orgFallback');
     const bookingState = resolveBookingRunState(bookingModuleOn, bookingFlow);
-    // The dashboard is a dead end for an artist whose profile did not link (it can only
-    // say no artist profile is linked yet), so it is demoted to a secondary action here,
-    // matching the wrong-email error card's remedy-outranks-escape pattern -- the alert
-    // below names the actual remedy (an admin linking the profile).
-    const dashboardIsDeadEnd = role === 'artist' && !joined.artistLinked;
+    const boardHasTasks = role !== 'artist' && !!getRunning.model && getRunning.model.totalCount > 0;
+    const primary = resolveHandoffPrimary(role, boardHasTasks);
+    const boardState = getRunning.model ? resolveBoardHandoffState(getRunning.model) : 'blocking';
+    const blockingCount = getRunning.model ? firstOfferBlockingCount(getRunning.model) : 0;
+    // The artist's availability target is a dead end while their profile is unlinked (it can
+    // only say an admin still has to link it), matching the prior dashboard-dead-end demotion.
+    const primaryIsDeadEnd = role === 'artist' && !joined.artistLinked;
+    const primaryCta = {
+      board: { label: t('acceptInvite.board.open'), route: ROUTES.GET_RUNNING },
+      availability: { label: t('acceptInvite.goToAvailability'), route: ROUTES.AVAILABILITY },
+      dashboard: { label: t('acceptInvite.goToDashboard'), route: ROUTES.DASHBOARD },
+    }[primary];
 
     return (
       <div className="flex min-h-screen items-center justify-center bg-background p-4">
@@ -602,29 +545,39 @@ export default function AcceptInvitePage() {
                 </AlertDescription>
               </Alert>
             )}
-            {role && (
-              nextStepReady ? (
+            {primary === 'board' ? (
+              getRunning.model && !getRunning.isLoading ? (
+                <div className="space-y-1 text-center" data-testid="board-handoff-summary">
+                  <p className="text-sm font-medium text-foreground">
+                    {boardState === 'blocking'
+                      ? t('acceptInvite.board.blocking', { count: blockingCount })
+                      : t(`acceptInvite.board.${boardState}`)}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {boardState === 'blocking'
+                      ? t('acceptInvite.board.blockingSub', { minutes: blockingCount * 3 })
+                      : t(`acceptInvite.board.${boardState}Sub`)}
+                  </p>
+                </div>
+              ) : (
+                <Skeleton data-testid="board-summary-loading" className="mx-auto h-8 w-3/4" />
+              )
+            ) : role ? (
+              !entitlementsLoading && !bookingFlowLoading ? (
                 <p className="text-sm text-muted-foreground">
-                  {resolveNextStepLine(
-                    role,
-                    bookingState,
-                    bookingSetupStatus.complete,
-                    canConfirmBookings,
-                    joined.artistLinked,
-                  )}
+                  {resolveNextStepLine(role, bookingState, joined.artistLinked)}
                 </p>
               ) : (
-                // Placeholder for the line above, shown only until both the booking-flow
-                // and (for an admin) the booking-setup-status queries have settled --
-                // see nextStepReady's doc comment for why this must not just render
-                // NEXT_STEP_LINES against still-loading data.
+                // Placeholder for the line above, shown only until the booking-flow and
+                // entitlement queries have settled -- see the artist next-step gate for why
+                // this must not render NEXT_STEP_LINES against still-loading data.
                 <Skeleton data-testid="next-step-line-loading" className="mx-auto h-4 w-3/4" />
               )
-            )}
+            ) : null}
             <PostAcceptanceHandoff
-              primaryLabel={t('acceptInvite.goToDashboard')}
-              primaryIsDeadEnd={dashboardIsDeadEnd}
-              onPrimary={() => navigate(ROUTES.DASHBOARD, { replace: true })}
+              primaryLabel={primaryCta.label}
+              primaryIsDeadEnd={primaryIsDeadEnd}
+              onPrimary={() => navigate(primaryCta.route, { replace: true })}
             />
           </CardContent>
         </Card>
