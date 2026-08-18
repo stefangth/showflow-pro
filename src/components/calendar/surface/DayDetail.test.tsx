@@ -62,7 +62,7 @@ describe('DayDetail', () => {
     expect(onPrimary).toHaveBeenCalledTimes(1);
   });
 
-  it('artist: shows "Accept offer" as primary when myStatus is suggested and fires onPrimary', () => {
+  it('artist: shows "Answer the ask" as primary when myStatus is suggested and fires onPrimary', () => {
     const onPrimary = vi.fn();
     render(
       <DayDetail
@@ -73,7 +73,7 @@ describe('DayDetail', () => {
       />
     );
     const btn = screen.getByTestId('day-rail-primary');
-    expect(btn).toHaveTextContent('Accept offer');
+    expect(btn).toHaveTextContent('Answer the ask');
     fireEvent.click(btn);
     expect(onPrimary).toHaveBeenCalledTimes(1);
   });
@@ -156,7 +156,7 @@ describe('DayDetail', () => {
 
     it('artist: on a multi-offer day the tiles follow the pending offer, not entries[0]', () => {
       // entries[0] is a confirmed booking with no expiry; entries[1] is the
-      // pending offer the "Accept offer" primary acts on. Tiles must describe
+      // pending offer the "Answer the ask" primary acts on. Tiles must describe
       // the offer, not the confirmed date.
       render(
         <DayDetail

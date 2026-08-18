@@ -1,23 +1,23 @@
 {
   "offer": {
-    "accept": "Accept",
-    "decline": "Decline",
+    "accept": "Yes, I can do it",
+    "decline": "No, not this one",
     "toast": {
-      "unavailableTitle": "This offer is no longer available",
-      "unavailableDesc": "It may have been withdrawn or expired. Refresh to see the latest.",
-      "declinedTitle": "Offer declined",
-      "declinedDesc": "This just cancels this one offer. It will not affect future offers.",
+      "unavailableTitle": "This ask is no longer available",
+      "unavailableDesc": "It may have been withdrawn, or the time to answer ran out. Refresh to see the latest.",
+      "declinedTitle": "You said no",
+      "declinedDesc": "If you say no it will not count against you, and it does not affect any other date.",
       "errorTitle": "Error"
     }
   },
   "picker": {
     "loadError": "Couldn't load",
-    "blocked": "Blocked",
+    "blocked": "Not free",
     "blockDate": "Block date"
   },
   "calendar": {
     "lens": {
-      "offers": "Offers",
+      "offers": "Asks",
       "month": "Month",
       "allDates": "All dates"
     },
@@ -26,41 +26,41 @@
       "title": "Your calendar"
     },
     "stat": {
-      "openOffers": "Open offers",
-      "holds": "Holds"
+      "openOffers": "Open asks",
+      "holds": "Said yes"
     },
     "rail": {
       "statsTitleMonth": "Your {{month}}"
     },
     "artistStatus": {
-      "confirmed": "Confirmed",
-      "soft_booked": "Hold",
-      "suggested": "Offer",
-      "blocked": "Blocked",
-      "unanswered": "Not offered"
+      "confirmed": "Booked",
+      "soft_booked": "Said yes",
+      "suggested": "Asked",
+      "blocked": "Not free",
+      "unanswered": "Not asked yet"
     },
     "day": {
       "session": "Session",
-      "expires": "Expires",
-      "sub": "Your commitment on this date",
-      "empty": "No date offered to you on this day.",
-      "primaryAccept": "Accept offer",
+      "expires": "Answer by",
+      "sub": "Where things stand for this date",
+      "empty": "You have not been asked about anything this day.",
+      "primaryAccept": "Answer the ask",
       "primaryBlock": "Block date",
-      "messageProducer": "Message producer"
+      "messageProducer": "Message the office"
     },
     "monthFlag": {
       "answer": "answer",
-      "blocked": "blocked"
+      "blocked": "not free"
     },
     "offers": {
-      "offerLabel": "Offer · {{program}}",
-      "holdPlaced": "Hold placed",
-      "accept": "Accept",
-      "decline": "Decline",
-      "awaitingConfirmation": "Awaiting producer confirmation"
+      "offerLabel": "Ask · {{program}}",
+      "holdPlaced": "Said yes",
+      "accept": "Yes, I can do it",
+      "decline": "No, not this one",
+      "awaitingConfirmation": "Waiting on the office"
     },
     "offersProgress": {
-      "keyboardHint": "A accept · D decline · B block · J next",
+      "keyboardHint": "A yes · D no · B block · J next",
       "answeredCount": "{{answered}} of {{total}} answered"
     },
     "offersAnswered": {
@@ -68,8 +68,8 @@
       "undoLast": "Undo last"
     },
     "notOffered": {
-      "title": "Later this month · not offered yet",
-      "eligibleFromCasts": "Eligible from your casts"
+      "title": "Later this month · not asked yet",
+      "eligibleFromCasts": "From your casts"
     },
     "allDates": {
       "headerDate": "Date",
@@ -77,49 +77,49 @@
       "headerShow": "Show",
       "headerSession": "Session",
       "headerMyStatus": "My status",
-      "hireOrder": "Hire order"
+      "hireOrder": "Contract"
     },
     "shared": {
       "blockDate": "Block date"
     },
-    "ineligibleReason": "This date is not offered to you. Offered dates come from your casts and their required skills.",
+    "ineligibleReason": "You have not been asked about this date. Dates you can be asked about come from your casts and the skills they need.",
     "prevMonth": "Previous month",
     "nextMonth": "Next month",
-    "loadError": "Couldn't load your bookings or blocked dates · statuses may be incomplete. Please refresh.",
-    "empty": "No eligible dates yet. Once you are added to a cast, offered dates appear here.",
+    "loadError": "Couldn't load your bookings or your not-free dates · statuses may be incomplete. Please refresh.",
+    "empty": "No dates yet. Once you are added to a cast, dates you can be asked about appear here.",
     "label": {
       "booked": "Booked",
-      "hold": "Hold",
-      "offer": "Offer",
-      "blocked": "Blocked"
+      "hold": "Said yes",
+      "offer": "Ask",
+      "blocked": "Not free"
     },
     "popover": {
-      "confirmed": "Booking confirmed",
-      "hold": "Hold placed · awaiting producer confirmation"
+      "confirmed": "Booked",
+      "hold": "Said yes · waiting on the office"
     },
     "legend": {
       "title": "Legend:",
-      "eligible": "Eligible",
-      "confirmed": "Confirmed",
-      "hold": "Hold",
-      "offerPending": "Offer pending",
-      "blocked": "Blocked"
+      "eligible": "Can be asked",
+      "confirmed": "Booked",
+      "hold": "Said yes",
+      "offerPending": "Asked",
+      "blocked": "Not free"
     },
-    "srIneligible": "Dimmed dates are not offered to you. Offered dates come from your casts and their required skills."
+    "srIneligible": "Dimmed dates have not been asked of you. Dates you can be asked about come from your casts and the skills they need."
   },
   "toast": {
-    "dateBlocked": "Date blocked",
+    "dateBlocked": "Marked not free",
     "errorTitle": "Error",
-    "blockRemoved": "Block removed"
+    "blockRemoved": "Marked free again"
   },
   "filter": {
-    "allOffers": "All offers",
+    "allOffers": "All asks",
     "unanswered": "Unanswered"
   },
   "sortChronoLabel": "Date",
-  "offersLoadError": "Failed to load your offers. Please refresh · don't block dates until this loads, as pending offers may not be shown.",
-  "emptyUnanswered": "No unanswered offers · great work!",
-  "emptyAll": "No eligible dates yet.",
+  "offersLoadError": "Failed to load your asks. Please refresh · don't block dates until this loads, as pending asks may not be shown.",
+  "emptyUnanswered": "No asks waiting on you · great work!",
+  "emptyAll": "No dates yet.",
   "firstRun": {
     "eyebrow": "{{org}} · your calendar",
     "headline": "One thing here is yours, and it takes two minutes",
@@ -136,26 +136,26 @@
       "cta": "Block dates"
     },
     "rules": {
-      "heading": "How booking works here",
+      "heading": "How you get booked here",
       "setBy": "Set by {{org}}. You cannot change these.",
-      "eligibilityTitle": "Eligibility comes from your cast",
-      "eligibilityBody": "A date appears when a cast you are in is eligible for it and you hold every required skill.",
-      "offersTitle": "Offers arrive by email",
-      "offersBody": "One digest at {{time}}, never a mail per date. Accepting soft books you until a producer confirms.",
-      "offersBodyDirect": "You are booked directly, so there is nothing to accept.",
-      "windowTitle": "You have {{hours}} hours to answer",
-      "windowBody": "After that the offer expires and goes to the next tier."
+      "eligibilityTitle": "Who can be asked comes from your cast",
+      "eligibilityBody": "A date appears when a cast you are in can be asked for it and you have every skill it needs.",
+      "offersTitle": "Asks arrive by email",
+      "offersBody": "One daily send at {{time}}, never a mail per date. Saying yes holds your place until the office has the last word.",
+      "offersBodyDirect": "You are booked directly, so there is nothing to answer.",
+      "windowTitle": "Answer within {{hours}} hours",
+      "windowBody": "After that the ask expires and goes to who this date asks next."
     },
-    "hireOrdersFooter": "Hire orders are on. You sign in the browser and the countersigned PDF lands in your mail.",
+    "hireOrdersFooter": "Contracts are on. You sign in the browser and the countersigned PDF lands in your mail.",
     "bookingOffTitle": "Availability",
     "bookingOff": "Dates do not run in ShowFlow for this org, so there is nothing to set here."
   },
   "blocked": {
     "title": "Blocked Dates",
-    "description": "Mark dates you cannot play so the system will not send you offers for them. Dates you are already booked for are not affected.",
+    "description": "Mark dates you cannot play so the system will not ask you about them. Dates you are already booked for are not affected.",
     "dateLabel": "Date",
     "selectAriaLabel": "Block date",
-    "noEligibleOption": "No eligible dates",
+    "noEligibleOption": "No dates available",
     "selectPlaceholder": "Select a date…",
     "reasonLabel": "Reason (optional)",
     "reasonPlaceholder": "Vacation, other work…",

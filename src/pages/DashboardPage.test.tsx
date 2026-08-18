@@ -99,7 +99,7 @@ describe("DashboardPage (producer) confirm_bookings gate", () => {
     renderWithProviders(<MemoryRouter><DashboardPage /></MemoryRouter>);
     await screen.findByText("Ada Lovelace");
     fireEvent.click(screen.getAllByRole("checkbox")[0]); // select-all header checkbox
-    expect(await screen.findByRole("button", { name: /^confirm 1$/i })).toBeEnabled();
+    expect(await screen.findByRole("button", { name: /^book 1$/i })).toBeEnabled();
   });
 
   it("confirm_bookings off: bulk Confirm is disabled, Decline stays enabled (not gated)", async () => {
@@ -107,8 +107,8 @@ describe("DashboardPage (producer) confirm_bookings gate", () => {
     renderWithProviders(<MemoryRouter><DashboardPage /></MemoryRouter>);
     await screen.findByText("Ada Lovelace");
     fireEvent.click(screen.getAllByRole("checkbox")[0]);
-    expect(await screen.findByRole("button", { name: /^confirm 1$/i })).toBeDisabled();
-    expect(screen.getByRole("button", { name: /^decline 1$/i })).toBeEnabled();
+    expect(await screen.findByRole("button", { name: /^book 1$/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /^turn down 1$/i })).toBeEnabled();
   });
 });
 

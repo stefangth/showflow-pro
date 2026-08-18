@@ -121,7 +121,7 @@ describe("PhaseCard", () => {
     expect(screen.getByText("Get dates in")).toBeInTheDocument();
     expect(screen.getByText("Running")).toBeInTheDocument();
     expect(screen.getByText("Shows in, from Airtable, hourly")).toBeInTheDocument();
-    expect(screen.getByText("Slots set on every show")).toBeInTheDocument();
+    expect(screen.getByText("Places set on every show")).toBeInTheDocument();
   });
 
   it("hides the Resolve link once the get_dates phase is complete", () => {

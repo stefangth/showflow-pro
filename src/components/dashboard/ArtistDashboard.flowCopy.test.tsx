@@ -170,13 +170,13 @@ describe("ArtistDashboard flow-aware meter (Task 3)", () => {
   it("classic flow shows the awaiting-response card; direct flow hides it", async () => {
     flowHolder.flow = BOOKING_FLOW_DEFAULTS;
     const classic = renderWithProviders(<ArtistDashboard />);
-    expect(await classic.findByText("Awaiting your response")).toBeInTheDocument();
+    expect(await classic.findByText("Waiting on you")).toBeInTheDocument();
     classic.unmount();
 
     flowHolder.flow = applyPreset(BOOKING_FLOW_DEFAULTS, "direct");
     renderWithProviders(<ArtistDashboard />);
     expect(await screen.findByText("Booked dates")).toBeInTheDocument();
-    expect(screen.queryByText("Awaiting your response")).not.toBeInTheDocument();
+    expect(screen.queryByText("Waiting on you")).not.toBeInTheDocument();
   });
 
   it("shows the module notice instead of offers when booking_flow is off", async () => {
