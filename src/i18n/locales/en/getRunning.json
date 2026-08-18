@@ -97,7 +97,7 @@
       }
     },
     "eyebrow": {
-      "dates": "Document · runs on its own",
+      "dates": "Dates · feeds every step",
       "slots": "Values · one number per show",
       "flow": "Choice · sets everything downstream",
       "people": "Roster · blocks booking",
@@ -110,7 +110,7 @@
       "countersign": "Document · does not block issuing"
     },
     "footerNote": {
-      "dates": "Runs on its own, hourly",
+      "dates": "Sync runs hourly",
       "slots": "Saved as you go",
       "flow": "Change is logged",
       "people": "No email until you offer a date",
@@ -123,6 +123,20 @@
       "countersign": "Used on every order"
     },
     "body": {
+      "dates": {
+        "connectedBadge": "Airtable connected",
+        "syncedAt": "Synced {{time}}",
+        "recordCount_one": "{{count}} date",
+        "recordCount_other": "{{count}} dates",
+        "heldLine_one": "{{count}} record held on the last run",
+        "heldLine_other": "{{count}} records held on the last run",
+        "resolve": "Resolve",
+        "emptyLine": "No dates yet. Connect Airtable or add a show by hand.",
+        "setup": "Set up Airtable sync",
+        "dividerOr": "or add one by hand",
+        "newShow": "New show",
+        "unlocks": "Every downstream step reads from these dates: slots, priorities and eligibility."
+      },
       "team": {
         "emailLabel": "Invite by email",
         "emailPlaceholder": "name@company.com",

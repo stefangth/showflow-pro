@@ -97,7 +97,7 @@
       }
     },
     "eyebrow": {
-      "dates": "Dokument · läuft von allein",
+      "dates": "Termine · versorgt jeden Schritt",
       "slots": "Werte · eine Zahl pro Show",
       "flow": "Wahl · legt den weiteren Ablauf fest",
       "people": "Besetzungsliste · blockiert Buchungen",
@@ -110,7 +110,7 @@
       "countersign": "Dokument · blockiert den Versand nicht"
     },
     "footerNote": {
-      "dates": "Läuft von allein, stündlich",
+      "dates": "Sync läuft stündlich",
       "slots": "Wird automatisch gespeichert",
       "flow": "Änderung wird protokolliert",
       "people": "Keine E-Mail, bevor du ein Datum anbietest",
@@ -123,6 +123,20 @@
       "countersign": "Wird auf jedem Vertrag verwendet"
     },
     "body": {
+      "dates": {
+        "connectedBadge": "Airtable verbunden",
+        "syncedAt": "Synchronisiert {{time}}",
+        "recordCount_one": "{{count}} Termin",
+        "recordCount_other": "{{count}} Termine",
+        "heldLine_one": "{{count}} Eintrag beim letzten Lauf zurückgehalten",
+        "heldLine_other": "{{count}} Einträge beim letzten Lauf zurückgehalten",
+        "resolve": "Lösen",
+        "emptyLine": "Noch keine Termine. Verbinde Airtable oder füge eine Show von Hand hinzu.",
+        "setup": "Airtable Sync einrichten",
+        "dividerOr": "oder von Hand hinzufügen",
+        "newShow": "Neue Show",
+        "unlocks": "Jeder folgende Schritt liest aus diesen Terminen: Plätze, Rangfolge und Berechtigung."
+      },
       "team": {
         "emailLabel": "Per E-Mail einladen",
         "emailPlaceholder": "name@firma.de",
