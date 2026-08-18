@@ -1,3 +1,4 @@
+import { createContext, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { X } from "lucide-react";
@@ -9,6 +10,20 @@ import { adminDisplayName } from "@/data/orgAdmins";
 import type { SettingsTabParam } from "@/lib/settingsTabs";
 import type { GetRunningTask, GetRunningTaskKey } from "@/lib/getRunning/tasks";
 import { TaskPanelEditor } from "./taskPanelRegistry";
+
+/**
+ * Optional footer-action SLOT for the task panel frame. An editor mounted in the scroll body
+ * may portal its OWN primary action into the pinned footer (next to "Later") by reading this
+ * context for the footer slot's DOM node and `createPortal`-ing its button into it. The
+ * mutation still lives entirely in the editor (its state, validation, disabled logic and
+ * `onDone` are unchanged) — the frame only lends a stable, always-visible mount point, so the
+ * design constraint from the frame comment below still holds: the footer carries no
+ * frame-level primary of its own. Editors that do NOT consume this (all but `FlowStep` today)
+ * keep their inline button and the footer shows only "Later", exactly as before. The value is
+ * `null` until the footer has mounted its slot, so consumers must guard for that.
+ */
+// eslint-disable-next-line react-refresh/only-export-components -- context co-located with the frame that owns the footer slot; kept beside TaskPanel per the task's design.
+export const TaskPanelFooterContext = createContext<HTMLDivElement | null>(null);
 
 /** Where a producer reading a non-actionable task's read-only panel (see `WaitsOnPanelBody`
  *  below) can go to see the real thing in Settings — only for the tasks that already have a
@@ -105,6 +120,29 @@ export interface TaskPanelProps {
  */
 export function TaskPanel({ task, orgId, onClose, onNext }: TaskPanelProps): JSX.Element {
   const { t } = useTranslation("getRunning");
+  // The footer slot the mounted editor may portal its primary action into (see
+  // `TaskPanelFooterContext`). Held in state so the portal re-runs once the ref attaches.
+  const [footerSlotEl, setFooterSlotEl] = useState<HTMLDivElement | null>(null);
+  // The scroll cue below only earns its place when the body can actually scroll and isn't
+  // already at the bottom — otherwise it just washes out the last line of short content.
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const contentRef = useRef<HTMLDivElement | null>(null);
+  const [showScrollCue, setShowScrollCue] = useState(false);
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const update = () => setShowScrollCue(el.scrollHeight - el.scrollTop - el.clientHeight > 1);
+    update();
+    el.addEventListener("scroll", update, { passive: true });
+    // Recompute when the viewport or the content height changes (async data load, preset switch).
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    if (contentRef.current) ro.observe(contentRef.current);
+    return () => {
+      el.removeEventListener("scroll", update);
+      ro.disconnect();
+    };
+  }, [task.key]);
   const handleDone = () => (onNext ? onNext() : onClose());
   // letterhead/terms carry a "· blocks issuing" eyebrow while outstanding (they are the only
   // tasks with block === "issuing"); once done that clause is stale, so swap to the "· set"
@@ -139,20 +177,37 @@ export function TaskPanel({ task, orgId, onClose, onNext }: TaskPanelProps): JSX
         </p>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4">
-        {task.actionableByViewer ? (
-          <TaskPanelEditor task={task} orgId={orgId} onDone={handleDone} />
-        ) : (
-          <WaitsOnPanelBody task={task} orgId={orgId} />
+      <div ref={scrollRef} className="relative flex-1 overflow-y-auto p-4">
+        <div ref={contentRef}>
+          <TaskPanelFooterContext.Provider value={footerSlotEl}>
+            {task.actionableByViewer ? (
+              <TaskPanelEditor task={task} orgId={orgId} onDone={handleDone} />
+            ) : (
+              <WaitsOnPanelBody task={task} orgId={orgId} />
+            )}
+          </TaskPanelFooterContext.Provider>
+        </div>
+        {/* Scroll cue: a subtle bottom fade so it reads as "more content continues above the
+            footer". Rendered only while the body actually overflows and isn't scrolled to the
+            bottom, so it never washes out the last line of short content. Sticky so it hugs the
+            bottom of the scroll viewport; matches the panel's `bg-card` so it is dark-mode safe. */}
+        {showScrollCue && (
+          <div className="pointer-events-none sticky bottom-0 -mt-4 h-4 bg-gradient-to-t from-card to-transparent" />
         )}
       </div>
 
       <div className="flex items-center gap-2.5 border-t border-border bg-muted px-4 py-3.5">
         <span className="text-xs text-muted-foreground">{t(`panel.footerNote.${task.key}`)}</span>
         <div className="flex-1" />
-        <Button type="button" variant="outline" size="sm" onClick={onClose}>
-          {t("panel.later")}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button type="button" variant="outline" size="sm" onClick={onClose}>
+            {t("panel.later")}
+          </Button>
+          {/* Optional editor-provided primary action portals in here (see
+              `TaskPanelFooterContext`). Empty for every editor that does not opt in, so the
+              footer then looks identical to before. */}
+          <div ref={setFooterSlotEl} className="flex items-center gap-2" />
+        </div>
       </div>
     </div>
   );

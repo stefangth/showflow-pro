@@ -26,6 +26,7 @@ import { OrgSwitcher } from '@/components/layout/OrgSwitcher';
 import { NotificationsList } from '@/components/layout/NotificationsList';
 import { DemoBadge } from '@/components/demo/DemoBadge';
 import { DemoBar } from '@/components/demo/DemoBar';
+import { DemoModeToggle } from '@/components/demo/DemoModeToggle';
 import { RunOfShowRail } from '@/components/demo/RunOfShowRail';
 import { ThemeToggle } from '@/components/layout/ThemeToggle';
 import { useNotifications } from '@/hooks/useNotifications';
@@ -404,6 +405,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
           <div className="flex-1" />
           <div className="flex items-center gap-1">
+            <DemoModeToggle />
+
             <EditorModeToggle />
 
             <ThemeToggle />

@@ -153,10 +153,12 @@ function PaperworkTiles({
   tasks,
   onOpenTask,
   adminNames,
+  activeKey,
 }: {
   tasks: GetRunningTask[];
   onOpenTask: (key: GetRunningTaskKey) => void;
   adminNames?: string[];
+  activeKey?: GetRunningTaskKey | null;
 }): JSX.Element {
   const { t } = useTranslation("getRunning");
   return (
@@ -167,6 +169,7 @@ function PaperworkTiles({
     <div className="flex gap-2.5 px-4 py-3.5">
       {tasks.map((task) => {
         const waitsOnAdmin = !task.actionableByViewer;
+        const active = activeKey === task.key;
         const body = (
           <>
             <div className="flex flex-wrap items-center gap-2">
@@ -178,7 +181,11 @@ function PaperworkTiles({
                   <Check className="h-2.5 w-2.5" strokeWidth={3} />
                 </span>
               )}
-              <div className={`text-[13px] font-medium ${task.done ? "text-muted-foreground" : "text-foreground"}`}>
+              <div
+                className={`text-[13px] font-medium ${
+                  active ? "text-primary" : task.done ? "text-muted-foreground" : "text-foreground"
+                }`}
+              >
                 {t(`tasks.${task.key}.title`)}
               </div>
               {/* "Blocks issuing" is what the tile costs while OUTSTANDING; once done it holds
@@ -205,7 +212,10 @@ function PaperworkTiles({
             <div
               key={task.key}
               data-testid={`paperwork-tile-${task.key}`}
-              className="flex-1 rounded-[var(--radius-m)] border border-border bg-card p-3 text-left shadow-elev1"
+              data-active={active}
+              className={`flex-1 rounded-[var(--radius-m)] border p-3 text-left shadow-elev1 transition-colors ${
+                active ? "border-primary bg-primary/10" : "border-border bg-card"
+              }`}
             >
               {body}
               <Button
@@ -224,9 +234,12 @@ function PaperworkTiles({
           <button
             key={task.key}
             data-testid={`paperwork-tile-${task.key}`}
+            data-active={active}
             type="button"
             onClick={() => onOpenTask(task.key)}
-            className="flex-1 rounded-[var(--radius-m)] border border-border bg-card p-3 text-left shadow-elev1"
+            className={`flex-1 rounded-[var(--radius-m)] border p-3 text-left shadow-elev1 transition-colors ${
+              active ? "border-primary bg-primary/10" : "border-border bg-card"
+            }`}
           >
             {body}
           </button>
@@ -248,6 +261,10 @@ export interface PhaseCardProps {
    *  straight through to `TaskRow` and `PaperworkTiles` for their "Waits on {admin}" chips.
    *  Never fetched here: `GetRunningPage` owns the single `useOrgAdminNames` call. */
   adminNames?: string[];
+  /** The task whose panel is currently popped out beside the board, so the matching row/tile
+   *  in this phase can render its selected (violet `primary`) active state. `null` when no
+   *  panel is open. */
+  activeKey?: GetRunningTaskKey | null;
 }
 
 /**
@@ -257,7 +274,7 @@ export interface PhaseCardProps {
  * paperwork phase renders `PaperworkTiles`, and the bookable phase (and any other phase
  * with ordinary tasks) renders a `TaskRow` per task.
  */
-export function PhaseCard({ phase, onOpenTask, adminNames }: PhaseCardProps): JSX.Element {
+export function PhaseCard({ phase, onOpenTask, adminNames, activeKey }: PhaseCardProps): JSX.Element {
   const { t } = useTranslation("getRunning");
   const state = derivePhaseState(phase.tasks);
   const leftCount = phase.tasks.filter((task) => !task.done).length;
@@ -345,10 +362,16 @@ export function PhaseCard({ phase, onOpenTask, adminNames }: PhaseCardProps): JS
       {phase.key === "get_dates" ? (
         <GetDatesSummary tasks={phase.tasks} onOpenTask={onOpenTask} adminNames={adminNames} />
       ) : phase.key === "paperwork" ? (
-        <PaperworkTiles tasks={phase.tasks} onOpenTask={onOpenTask} adminNames={adminNames} />
+        <PaperworkTiles tasks={phase.tasks} onOpenTask={onOpenTask} adminNames={adminNames} activeKey={activeKey} />
       ) : (
         phase.tasks.map((task) => (
-          <TaskRow key={task.key} task={task} adminNames={adminNames} onOpen={onOpenTask} />
+          <TaskRow
+            key={task.key}
+            task={task}
+            adminNames={adminNames}
+            onOpen={onOpenTask}
+            active={activeKey === task.key}
+          />
         ))
       )}
     </div>

@@ -1,11 +1,17 @@
 import { useMemo, useState } from "react";
+import type { FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/features/auth/AuthContext";
+import { useCan } from "@/hooks/useCapabilities";
 import { useAllCities } from "@/hooks/useAllCities";
-import { fetchCasts, fetchCastMemberCounts, setCastCityPriority } from "@/data/casts";
+import { createCast, fetchCasts, fetchCastMemberCounts, setCastCityPriority } from "@/data/casts";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { LadderCoverageInputs } from "@/lib/bookings/setupStatus";
 import { UnlocksNote } from "./UnlocksNote";
@@ -45,6 +51,9 @@ export function LadderPanelBody({
 }) {
   const { t } = useTranslation("getRunning");
   const qc = useQueryClient();
+  const { user } = useAuth();
+  const canManageCasts = useCan("manage_casts");
+  const [newCastName, setNewCastName] = useState("");
 
   const citiesQ = useAllCities();
   const castsQ = useQuery({
@@ -123,12 +132,58 @@ export function LadderPanelBody({
       toast.error(e.message ?? t("panel.body.ladder.tierUpdateFailed", { tier: variables.priority })),
   });
 
+  const createCastMut = useMutation({
+    mutationFn: (args: { orgId: string; name: string }) =>
+      createCast(supabase, args.orgId, { name: args.name, description: "", createdBy: user?.id ?? null }),
+    onSuccess: () => {
+      // Matches castOptions' ["casts", orgId] query key, so the picker list refreshes.
+      qc.invalidateQueries({ queryKey: ["casts"] });
+      toast.success(t("panel.body.ladder.castCreated"));
+      // Stays open on purpose: seeding casts is a several-in-a-row task, so only clear
+      // the field and let the ["casts"] invalidation surface the new cast in the pickers.
+      setNewCastName("");
+    },
+    onError: (e: Error) => toast.error(e.message ?? t("panel.body.ladder.castCreateFailed")),
+  });
+
+  const trimmedCastName = newCastName.trim();
+  const canSubmitCast = !!orgId && trimmedCastName.length > 0 && !createCastMut.isPending;
+
+  const handleCreateCast = (e: FormEvent) => {
+    e.preventDefault();
+    if (!canSubmitCast) return;
+    createCastMut.mutate({ orgId: orgId!, name: trimmedCastName });
+  };
+
   const firstUnrankedId = unrankedCityIds[0];
   const firstUnrankedName = firstUnrankedId ? cityNameById.get(firstUnrankedId) ?? "" : "";
   const firstUnrankedCount = firstUnrankedId ? dateCountByCity[firstUnrankedId] ?? 0 : 0;
 
   return (
     <div className="space-y-3">
+      {canManageCasts && (
+        <form onSubmit={handleCreateCast} className="space-y-2">
+          <Label
+            htmlFor="ladder-add-cast"
+            className="text-[10px] uppercase tracking-wider text-muted-foreground"
+          >
+            {t("panel.body.ladder.createLabel")}
+          </Label>
+          <div className="flex gap-2">
+            <Input
+              id="ladder-add-cast"
+              className="h-8 flex-1"
+              placeholder={t("panel.body.ladder.namePlaceholder")}
+              value={newCastName}
+              onChange={(e) => setNewCastName(e.target.value)}
+            />
+            <Button type="submit" size="sm" disabled={!canSubmitCast}>
+              {t("panel.body.ladder.create")}
+            </Button>
+          </div>
+        </form>
+      )}
+
       <div className="flex items-center justify-between gap-2">
         <span className="text-xs text-muted-foreground">{t("panel.body.ladder.citiesWithDates")}</span>
         <span className="font-mono text-xs text-[var(--amber-600)]">

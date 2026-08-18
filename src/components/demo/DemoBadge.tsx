@@ -12,7 +12,7 @@ export function DemoBadge() {
   if (isBarHidden) {
     return (
       <button type="button" onClick={showBar} className="mt-2 inline-flex" aria-label="Show demo controls">
-        <Badge variant="outline" className="cursor-pointer border-primary text-primary hover:bg-accent-50">
+        <Badge variant="outline" className="cursor-pointer border-primary text-primary hover:bg-primary/10">
           DEMO
         </Badge>
       </button>

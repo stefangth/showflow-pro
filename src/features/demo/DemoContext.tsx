@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { useAuth } from "@/features/auth/AuthContext";
 import type { AppRole } from "@/config/app.config";
@@ -12,6 +12,36 @@ const CLOCK_STEP_MS: Record<"10m" | "1d", number> = {
   "10m": 10 * 60 * 1000,
   "1d": 24 * 60 * 60 * 1000,
 };
+
+/** Persist the "demo bar hidden" flag so hide/show survives a page reload —
+ *  mirroring how EditorContext persists its editor-mode flag. Keyed PER ORG so hiding
+ *  the bar in one demo org doesn't hide it in another. Guarded so SSR or a
+ *  storage-blocked browser degrades to the default (bar shown) rather than throwing. */
+const DEMO_BAR_HIDDEN_KEY_PREFIX = "showflow_demo_bar_hidden";
+
+function barHiddenKey(orgId: string | null | undefined): string {
+  return `${DEMO_BAR_HIDDEN_KEY_PREFIX}:${orgId ?? ""}`;
+}
+
+function readBarHidden(orgId: string | null | undefined): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return window.localStorage.getItem(barHiddenKey(orgId)) === "true";
+  } catch {
+    return false;
+  }
+}
+
+function writeBarHidden(orgId: string | null | undefined, hidden: boolean): void {
+  if (typeof window === "undefined") return;
+  try {
+    if (hidden) window.localStorage.setItem(barHiddenKey(orgId), "true");
+    else window.localStorage.removeItem(barHiddenKey(orgId));
+  } catch {
+    // Storage unavailable (private mode, quota) — the in-memory flag still works
+    // for this session; only cross-reload persistence is lost.
+  }
+}
 
 interface DemoContextType {
   isDemoOrg: boolean;
@@ -44,7 +74,16 @@ const DemoContext = createContext<DemoContextType | undefined>(undefined);
 export function DemoProvider({ children }: { children: ReactNode }) {
   const { currentOrg, setViewAsRole } = useAuth();
   const demo = isDemoOrg(currentOrg);
-  const [isBarHidden, setBarHidden] = useState(false);
+  const orgId = currentOrg?.id ?? null;
+  // Lazy-init from this org's localStorage flag so a hidden bar stays hidden across
+  // reloads. Unlike EditorContext's mode flag, this is not access-gated, so the
+  // initializer is safe: there is no "identity not yet loaded" first render to miss.
+  const [isBarHidden, setBarHidden] = useState<boolean>(() => readBarHidden(orgId));
+  // Re-read the per-org flag when the active org changes, so a bar hidden in org A does
+  // not carry its hidden state into org B (each org keeps its own flag).
+  useEffect(() => {
+    setBarHidden(readBarHidden(orgId));
+  }, [orgId]);
   const resetMut = useResetDemo();
   const updateDemoState = useUpdateDemoState();
   // Only demo orgs carry a demo_state row — gate the read so switching to (or
@@ -112,8 +151,14 @@ export function DemoProvider({ children }: { children: ReactNode }) {
   const value: DemoContextType = {
     isDemoOrg: demo,
     isBarHidden,
-    hideBar: useCallback(() => setBarHidden(true), []),
-    showBar: useCallback(() => setBarHidden(false), []),
+    hideBar: useCallback(() => {
+      setBarHidden(true);
+      writeBarHidden(orgId, true);
+    }, [orgId]),
+    showBar: useCallback(() => {
+      setBarHidden(false);
+      writeBarHidden(orgId, false);
+    }, [orgId]),
     scenes: SEASON_HANDOVER,
     currentScene,
     simNow,

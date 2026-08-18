@@ -157,7 +157,7 @@ export function RunOfShowRail() {
           const active = scene.id === currentScene.id;
           const done = i < currentIndex;
           return (
-            <div key={scene.id} className={cn("border-b-[0.5px] border-border px-4 py-2.5", active && "bg-accent-50")}>
+            <div key={scene.id} className={cn("border-b-[0.5px] border-border px-4 py-2.5", active && "bg-primary/10")}>
               <button
                 type="button"
                 onClick={() => goToScene(scene.id)}

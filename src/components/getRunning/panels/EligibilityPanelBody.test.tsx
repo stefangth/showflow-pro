@@ -74,12 +74,23 @@ describe("EligibilityPanelBody", () => {
     seed();
   });
 
-  it("shows a Covered badge for the covered pair and Link a cast for the gap", async () => {
+  it("shows one card per production: Fully covered with its cast chip, and a gap card with Link a cast", async () => {
     renderPanel(COVERAGE);
 
-    expect(await screen.findByText(/Carmen · Hamburg/)).toBeInTheDocument();
-    expect(await screen.findByText(/Die Zauberflöte · Leipzig/)).toBeInTheDocument();
-    expect(screen.getByText("Covered")).toBeInTheDocument();
+    // One card per PRODUCTION, not per (show, city) pair.
+    expect(await screen.findByText("Carmen")).toBeInTheDocument();
+    expect(await screen.findByText("Die Zauberflöte")).toBeInTheDocument();
+
+    // Carmen's Hamburg date is covered by the org-wide "nord" ladder → Fully covered
+    // with the covering cast surfaced as an accent chip.
+    expect(screen.getByText("Fully covered")).toBeInTheDocument();
+    expect(screen.getByText("Nord Ensemble")).toBeInTheDocument();
+
+    // Die Zauberflöte's Leipzig date has no tier-1 cast → a "1 gap" badge, the
+    // uncovered-city hint, and the dashed Link a cast affordance. "1 gap" appears
+    // twice: the header total and this production's own badge (the sole gap).
+    expect(screen.getAllByText("1 gap")).toHaveLength(2);
+    expect(screen.getByText(/no cast in leipzig yet/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /link a cast/i })).toBeInTheDocument();
   });
 

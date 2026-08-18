@@ -41,6 +41,19 @@ export async function linkCityAirtableKey(
   if (error) throw error;
 }
 
+/** Rename a city. The per-org unique index cities_org_name_uniq raises 23505 on a name
+ *  collision within the org; callers surface that as a friendly duplicate-name message. */
+export async function updateCity(
+  client: SupabaseClient<Database>,
+  id: string,
+  name: string,
+): Promise<CityRow> {
+  const { data, error } = await client
+    .from("cities").update({ name: name.trim() }).eq("id", id).select().single();
+  if (error) throw error;
+  return data as CityRow;
+}
+
 /** Bulk-create cities from Airtable City options. Each row: { name, key }. org_id set; idempotency
  *  (skipping already-linked keys) is the caller's job — pass only unlinked options. */
 export async function importCitiesFromOptions(
