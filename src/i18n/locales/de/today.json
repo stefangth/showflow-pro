@@ -42,11 +42,25 @@
   "feed": {
     "title": "Für Dich erledigt seit {{day}}",
     "review": "Prüfen",
-    "undo": "Rückgängig"
+    "undo": "Rückgängig",
+    "book_one": "{{names}} auf {{show}}, {{date}} gebucht. Sie haben zugesagt, der Platz gehört ihnen.",
+    "book_other": "{{names}} auf {{show}}, {{date}} gebucht. Sie haben zugesagt, die Plätze gehören ihnen.",
+    "ask_one": "{{count}} Artist über {{show}}, {{date}} gefragt. Bis {{deadline}} haben sie Zeit zu antworten.",
+    "ask_other": "{{count}} Artists über {{show}}, {{date}} gefragt. Bis {{deadline}} haben sie Zeit zu antworten.",
+    "draft_one": "{{count}} Engagementvertrag für {{show}}, {{date}} entworfen. Er geht raus, sobald Du zufrieden bist.",
+    "draft_other": "{{count}} Engagementverträge für {{show}}, {{date}} entworfen. Sie gehen raus, sobald Du zufrieden bist.",
+    "notify": "{{names}} gesagt, dass {{show}}, {{date}} ausfällt."
   },
   "sidebar": {
-    "title": "Autopilot an",
-    "body": "Anfragen gehen um {{time}} raus. Ein Ja wird zur Buchung. Engagementverträge werden entworfen, sobald ein Termin voll ist.",
-    "link": "Autopilot ausschalten"
+    "producer": {
+      "title": "Autopilot an",
+      "body": "Anfragen gehen um {{time}} raus. Ein Ja wird zur Buchung. Engagementverträge werden entworfen, sobald ein Termin voll ist.",
+      "link": "Autopilot ausschalten"
+    },
+    "artist": {
+      "title": "So funktioniert es",
+      "body": "Du wirst per E-Mail gefragt. Ein Ja bucht Dich sofort, ohne dass danach noch etwas bestätigt werden muss.",
+      "link": "Termine blockieren, die Du nicht spielen kannst"
+    }
   }
 }

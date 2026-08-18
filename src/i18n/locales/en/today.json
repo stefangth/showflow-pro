@@ -42,11 +42,25 @@
   "feed": {
     "title": "Done for you since {{day}}",
     "review": "Review",
-    "undo": "Undo"
+    "undo": "Undo",
+    "book_one": "Booked {{names}} onto {{show}}, {{date}}. They said yes, so the place is theirs.",
+    "book_other": "Booked {{names}} onto {{show}}, {{date}}. They said yes, so the places are theirs.",
+    "ask_one": "Asked {{count}} artist about {{show}}, {{date}}. They have until {{deadline}} to answer.",
+    "ask_other": "Asked {{count}} artists about {{show}}, {{date}}. They have until {{deadline}} to answer.",
+    "draft_one": "Drafted {{count}} contract for {{show}}, {{date}}. They send when you are happy with them.",
+    "draft_other": "Drafted {{count}} contracts for {{show}}, {{date}}. They send when you are happy with them.",
+    "notify": "Told {{names}} that {{show}}, {{date}} is off."
   },
   "sidebar": {
-    "title": "Autopilot on",
-    "body": "Asks go out at {{time}}. A yes becomes a booking. Contracts draft when a date fills.",
-    "link": "Take it off autopilot"
+    "producer": {
+      "title": "Autopilot on",
+      "body": "Asks go out at {{time}}. A yes becomes a booking. Contracts draft when a date fills.",
+      "link": "Take it off autopilot"
+    },
+    "artist": {
+      "title": "How this works",
+      "body": "You get asked by email. A yes books you on the spot, no confirming afterwards.",
+      "link": "Block dates you cannot play"
+    }
   }
 }
