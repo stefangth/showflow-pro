@@ -8,12 +8,12 @@ import { fetchMyArtist } from '@/data/artists';
  * in the active org. The org is part of both the key and the query: one user can be
  * an artist in several orgs, so the linkage is per-org, not global.
  */
-export function useMyArtist() {
+export function useMyArtist(opts: { enabled?: boolean } = {}) {
   const userId = useEffectiveUserId();
   const { currentOrg } = useAuth();
   return useQuery({
     queryKey: ['my-artist', userId, currentOrg?.id],
-    enabled: !!userId && !!currentOrg,
+    enabled: (opts.enabled ?? true) && !!userId && !!currentOrg,
     // Artist↔user linkage is stable within a session; cache it so non-artist
     // users (admins/producers) don't re-query on every window focus/navigation.
     staleTime: 5 * 60_000,

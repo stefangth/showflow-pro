@@ -64,6 +64,8 @@ const IDENTICAL_OK: Record<string, string> = {
   'settingsAirtable.overviewTab.rowToken': '"Token" is identical in German',
   'settingsAirtable.setupWizard.keyPlaceholder': 'Airtable token-prefix convention "pat…"',
   'settingsAirtable.console.badge.ok': 'short status abbreviation "ok", kept unlocalized',
+  'settingsAirtable.connection.tokenLabel': '"Token" is identical in German (matches overviewTab.rowToken)',
+  'settingsAirtable.connection.baseTableRow': 'interpolation + punctuation only ("{{base}} › {{table}} · {{view}} · {{frequency}}"), no translatable words',
 
   // settingsBookingFlow
   'settingsBookingFlow.flowRail.actorSystem': '"System" is identical in German',

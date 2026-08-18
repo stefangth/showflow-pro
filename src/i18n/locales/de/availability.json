@@ -120,6 +120,36 @@
   "offersLoadError": "Deine Angebote konnten nicht geladen werden. Bitte aktualisiere · sperre keine Termine, bevor das geladen ist, sonst werden offene Angebote möglicherweise nicht angezeigt.",
   "emptyUnanswered": "Keine unbeantworteten Angebote · gut gemacht!",
   "emptyAll": "Noch keine passenden Termine.",
+  "firstRun": {
+    "eyebrow": "{{org}} · dein Kalender",
+    "headline": "Eine Sache hier gehört dir, und sie dauert zwei Minuten",
+    "body": "Sperre die Termine, die du nicht spielen kannst. Sie fallen aus der Liste, bevor dich jemand bucht, damit du nur von Terminen hörst, die passen. Alles andere auf dieser Seite legt die Organisation fest.",
+    "setup": {
+      "label": "Dein Setup",
+      "ofOne": "von 1 erledigt",
+      "hint": "Ein leerer Kalender ist eine gültige Antwort. Sperre nur die Termine, die du nicht spielen kannst."
+    },
+    "task": {
+      "title": "Sperre, was du nicht spielen kannst",
+      "blocksNothing": "Blockiert nichts",
+      "body": "Gesperrte Termine fallen aus der Liste, bevor dich jemand bucht, damit du nur von Terminen hörst, die passen.",
+      "cta": "Termine sperren"
+    },
+    "rules": {
+      "heading": "So funktioniert das Buchen hier",
+      "setBy": "Festgelegt von {{org}}. Das kannst du nicht ändern.",
+      "eligibilityTitle": "Deine Eignung kommt aus deiner Besetzung",
+      "eligibilityBody": "Ein Termin erscheint, wenn eine Besetzung, in der du bist, dafür geeignet ist und du alle nötigen Skills hast.",
+      "offersTitle": "Angebote kommen per E-Mail",
+      "offersBody": "Eine Übersicht um {{time}}, nie eine Mail pro Termin. Wenn du annimmst, bist du vorläufig gebucht, bis das Produktionsteam bestätigt.",
+      "offersBodyDirect": "Du wirst direkt gebucht, es gibt also nichts anzunehmen.",
+      "windowTitle": "Du hast {{hours}} Stunden Zeit zu antworten",
+      "windowBody": "Danach läuft das Angebot ab und geht an die nächste Stufe."
+    },
+    "hireOrdersFooter": "Engagementverträge sind aktiv. Du unterschreibst im Browser und das gegengezeichnete PDF landet in deiner Mail.",
+    "bookingOffTitle": "Verfügbarkeit",
+    "bookingOff": "Termine laufen in ShowFlow für diese Organisation nicht, hier gibt es also nichts einzurichten."
+  },
   "blocked": {
     "title": "Gesperrte Termine",
     "description": "Markiere Termine, an denen du nicht spielen kannst, damit dir das System keine Angebote dafür schickt. Termine, für die du bereits gebucht bist, sind davon nicht betroffen.",

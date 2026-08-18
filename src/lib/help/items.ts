@@ -589,4 +589,36 @@ export const HELP_ITEMS: readonly HelpItem[] = [
       de: 'Das ist der Seitenüberblick: ein kurzer Vierschritt-Erklärer, wie die Seite funktioniert und welcher Schritt deiner ist. Mit Ausblenden verschwindet er für diese Seite in diesem Browser, und es bleibt eine schmale Leiste, über die du ihn wieder einblenden kannst.',
     },
   },
+  {
+    id: 'R5.7', role: 'artist', stage: 5, status: 'new', surface: 'Account · what reaches you', updated: '2026-08-18',
+    q: { en: 'Why do I not see switches for booking activity or at-risk notifications?', de: 'Warum sehe ich keine Schalter für Buchungsaktivität oder Risiko-Benachrichtigungen?' },
+    a: {
+      en: 'Those two are never sent to artists in the first place, so your account no longer shows them as a choice to make. They stay visible to admins and the production team, whose notification matrix keeps all six categories.',
+      de: 'Diese beiden werden grundsätzlich nie an Artists gesendet, deshalb zeigt dein Konto sie nicht mehr als Wahlmöglichkeit. Für Admins und das Production Team bleiben sie sichtbar, deren Benachrichtigungsmatrix behält alle sechs Kategorien.',
+    },
+  },
+  {
+    id: 'R5.8', role: 'artist', stage: 5, status: 'new', surface: 'Account · Reference sidebar', updated: '2026-08-18',
+    q: { en: 'What is the Reference panel on my Account page?', de: 'Was ist das Referenz-Panel auf meiner Kontoseite?' },
+    a: {
+      en: 'Three shortcuts, not settings: how booking works here, how many dates you currently have blocked, and a link to message the office. Nothing there changes anything, it just points at where the real controls live.',
+      de: 'Drei Abkürzungen, keine Einstellungen: wie das Buchen hier funktioniert, wie viele Termine du gerade gesperrt hast, und ein Link, um dem Büro zu schreiben. Nichts davon ändert etwas, es zeigt nur, wo die eigentlichen Einstellungen liegen.',
+    },
+  },
+  {
+    id: 'R5.9', role: 'artist', stage: 5, status: 'new', surface: 'Availability · Your setup', updated: '2026-08-18',
+    q: { en: 'What is the "Your setup, 0 of 1 done" card on Availability?', de: 'Was ist die Karte "Dein Setup, 0 von 1 erledigt" bei der Verfügbarkeit?' },
+    a: {
+      en: 'It tracks one step: block the dates you cannot play. An empty calendar is a valid answer, you are not required to block anything. The step retires the moment you block your first date.',
+      de: 'Sie verfolgt einen Schritt: sperre die Termine, die du nicht spielen kannst. Ein leerer Kalender ist eine gültige Antwort, du musst nichts sperren. Der Schritt gilt als erledigt, sobald du deinen ersten Termin sperrst.',
+    },
+  },
+  {
+    id: 'R5.10', role: 'artist', stage: 5, status: 'new', surface: 'Availability · How booking works here', updated: '2026-08-18',
+    q: { en: 'Why do the booking rules on Availability look different for me, and where do the offer time and response window come from?', de: 'Warum sehen die Buchungsregeln bei der Verfügbarkeit bei mir anders aus, und woher kommen die Angebotszeit und das Antwortfenster?' },
+    a: {
+      en: 'The "How booking works here" card is read-only and set by your organization, it is not something you configure. If your organization books artists directly, there is no response window to show, since there is nothing to accept.',
+      de: 'Die Karte "So funktioniert das Buchen hier" ist nur lesbar und wird von deiner Organisation festgelegt, du stellst sie nicht selbst ein. Wenn deine Organisation Artists direkt bucht, gibt es kein Antwortfenster zu zeigen, weil es nichts anzunehmen gibt.',
+    },
+  },
 ] as const;

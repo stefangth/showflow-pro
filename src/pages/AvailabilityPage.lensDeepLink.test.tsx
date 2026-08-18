@@ -53,7 +53,7 @@ vi.mock("@/hooks/useHireOrders", () => ({
   useMyHireOrders: () => ({ data: [] }),
 }));
 vi.mock("@/hooks/useEntitlements", () => ({
-  useFeature: () => false,
+  useFeature: (feature: string) => feature === "booking_flow",
 }));
 
 import AvailabilityPage from "./AvailabilityPage";

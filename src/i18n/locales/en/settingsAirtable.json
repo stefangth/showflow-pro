@@ -282,5 +282,26 @@
       "detail_one": "holding {{count}} record",
       "detail_other": "holding {{count}} records"
     }
+  },
+  "connection": {
+    "title": "Connect Airtable",
+    "description": "Nothing syncs until the last group is done. You can leave and come back, each one saves as you go.",
+    "tokenLabel": "Token",
+    "tokenSaved": "Saved {{date}}, stored in Vault, never displayed",
+    "baseTableRow": "{{base}} › {{table}} · {{view}} · {{frequency}}",
+    "change": "Change",
+    "requiredCount": "{{mapped}} of {{total}} required",
+    "mapSessions": "Map sessions",
+    "catalogHint": "Match options to your shows. Unlinked options hold their records.",
+    "reviewCatalog": "Review"
+  },
+  "rail": {
+    "footer": {
+      "stepOf": "Step {{n}} of 4",
+      "savedAsYouGo": "Saved as you go",
+      "later": "Later",
+      "continue": "Continue",
+      "finish": "Finish"
+    }
   }
 }

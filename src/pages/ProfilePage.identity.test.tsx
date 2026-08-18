@@ -9,8 +9,15 @@ import { createFakeSupabase } from "@/test/supabaseFake";
 // useEntitlements' query disabled, so useFeature('hire_orders') falls back to
 // its registry default (off) without needing an entitlements-table seed.
 // That gate is irrelevant to this note; R5.4's tests cover it separately.
-vi.mock("@/features/auth/AuthContext", () => ({ useAuth: () => ({ user: { id: "u1", email: "a@x.com" } }) }));
+vi.mock("@/features/auth/AuthContext", () => ({ useAuth: () => ({ user: { id: "u1", email: "a@x.com" }, hasRole: () => true }) }));
 vi.mock("react-router-dom", () => ({ useNavigate: () => vi.fn() }));
+// ProfilePage now also reads the artist-only Reference sidebar's data unconditionally;
+// with hasRole() => true above (isArtistOnly is false) that sidebar never renders, but the
+// hooks are still called on every render, and useMyArtist/useMyBlockedDatesCount reach
+// useEffectiveUserId() from the (fully replaced) AuthContext mock above, which no longer
+// exports it. Stub both hooks directly so they never touch the real AuthContext exports.
+vi.mock("@/hooks/useMyArtist", () => ({ useMyArtist: () => ({ data: null }) }));
+vi.mock("@/hooks/useMyBlockedDatesCount", () => ({ useMyBlockedDatesCount: () => ({ data: 0 }) }));
 
 const { client } = vi.hoisted(() => ({ client: {} as Record<string, unknown> }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: client }));

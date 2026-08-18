@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
-vi.mock("@/features/auth/AuthContext", () => ({ useAuth: () => ({ user: { id: "u1", email: "a@x.com" } }) }));
+vi.mock("@/features/auth/AuthContext", () => ({ useAuth: () => ({ user: { id: "u1", email: "a@x.com" }, hasRole: () => true }) }));
 vi.mock("@/hooks/useMyProfile", () => ({
   useMyProfile: () => ({ data: { display_name: "Ada", phone: "" }, isLoading: false }),
   useUpdateMyProfile: () => ({ mutate: vi.fn(), isPending: false }),
@@ -11,6 +11,14 @@ vi.mock("@/hooks/useNotificationPreferences", () => ({
   useNotificationPreferences: () => ({ data: {}, isLoading: false }),
   useUpdateNotificationPreferences: () => ({ mutate: vi.fn(), isPending: false }),
 }));
+// hasRole() => true above keeps isArtistOnly false, so the sidebar never renders — but
+// useMyArtist/useMyBlockedDatesCount are still called unconditionally on every render, and
+// (via useEffectiveUserId) would otherwise reach into the fully-replaced AuthContext mock
+// above, which no longer exports it. Stub both hooks directly instead.
+vi.mock("@/hooks/useMyArtist", () => ({ useMyArtist: () => ({ data: null }) }));
+vi.mock("@/hooks/useMyBlockedDatesCount", () => ({ useMyBlockedDatesCount: () => ({ data: 0 }) }));
+// This file renders with a bare QueryClientProvider (no LanguageProvider) — stub useLanguage.
+vi.mock("@/features/i18n/LanguageContext", () => ({ useLanguage: () => ({ lang: "en", setLang: vi.fn() }) }));
 const deleteSpy = vi.fn().mockResolvedValue(undefined);
 vi.mock("@/data/account", () => ({ exportMyData: vi.fn(), deleteMyAccount: () => deleteSpy() }));
 const navigate = vi.fn();
@@ -40,8 +48,8 @@ const renderProfilePage = ({ hireOrders = false }: { hireOrders?: boolean } = {}
 describe("ProfilePage delete account", () => {
   it("requires typing DELETE before confirming", async () => {
     renderProfilePage();
-    // "Delete account" is both the card title and the trigger button — target the button by role.
-    const trigger = await screen.findByRole("button", { name: /delete account/i });
+    // "Delete account" is the row title (a <p>); the trigger button itself is the shorter "Delete".
+    const trigger = await screen.findByRole("button", { name: /^delete$/i });
     fireEvent.click(trigger);
     const confirm = await screen.findByRole("button", { name: /permanently delete/i });
     expect(confirm).toBeDisabled();

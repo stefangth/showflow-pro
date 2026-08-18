@@ -120,6 +120,36 @@
   "offersLoadError": "Failed to load your offers. Please refresh · don't block dates until this loads, as pending offers may not be shown.",
   "emptyUnanswered": "No unanswered offers · great work!",
   "emptyAll": "No eligible dates yet.",
+  "firstRun": {
+    "eyebrow": "{{org}} · your calendar",
+    "headline": "One thing here is yours, and it takes two minutes",
+    "body": "Block the dates you cannot play. They come off the list before anyone books you, so you only hear about dates that work. Everything else on this page is set by the org.",
+    "setup": {
+      "label": "Your setup",
+      "ofOne": "of 1 done",
+      "hint": "An empty calendar is a valid answer. Block only the dates you cannot play."
+    },
+    "task": {
+      "title": "Block what you cannot play",
+      "blocksNothing": "Blocks nothing",
+      "body": "Blocked dates come off the list before anyone books you, so you only hear about dates that work.",
+      "cta": "Block dates"
+    },
+    "rules": {
+      "heading": "How booking works here",
+      "setBy": "Set by {{org}}. You cannot change these.",
+      "eligibilityTitle": "Eligibility comes from your cast",
+      "eligibilityBody": "A date appears when a cast you are in is eligible for it and you hold every required skill.",
+      "offersTitle": "Offers arrive by email",
+      "offersBody": "One digest at {{time}}, never a mail per date. Accepting soft books you until a producer confirms.",
+      "offersBodyDirect": "You are booked directly, so there is nothing to accept.",
+      "windowTitle": "You have {{hours}} hours to answer",
+      "windowBody": "After that the offer expires and goes to the next tier."
+    },
+    "hireOrdersFooter": "Hire orders are on. You sign in the browser and the countersigned PDF lands in your mail.",
+    "bookingOffTitle": "Availability",
+    "bookingOff": "Dates do not run in ShowFlow for this org, so there is nothing to set here."
+  },
   "blocked": {
     "title": "Blocked Dates",
     "description": "Mark dates you cannot play so the system will not send you offers for them. Dates you are already booked for are not affected.",
