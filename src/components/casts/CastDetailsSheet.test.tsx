@@ -170,6 +170,17 @@ describe("CastDetailsSheet (design 2a)", () => {
     expect(screen.getByLabelText("Close")).toBeInTheDocument();
   });
 
+  it("does not add anyone when Enter is pressed with an empty search box", async () => {
+    render();
+    expect(await screen.findByText("Artist One")).toBeInTheDocument();
+    const calls = (client as unknown as { calls: { table: string; method: string }[] }).calls;
+    const insertsBefore = calls.filter((c) => c.table === "cast_members" && c.method === "insert").length;
+    const input = screen.getByPlaceholderText(/Search the roster/);
+    fireEvent.keyDown(input, { key: "Enter" });
+    const insertsAfter = calls.filter((c) => c.table === "cast_members" && c.method === "insert").length;
+    expect(insertsAfter).toBe(insertsBefore);
+  });
+
   it("manage_casts off: edit and remove controls are disabled/absent, roster still reads", async () => {
     vi.mocked(useCan).mockReturnValue(false);
     render();

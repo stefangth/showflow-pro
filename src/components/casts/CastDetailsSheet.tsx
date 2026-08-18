@@ -481,7 +481,12 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter' && canManage && candidates[0]) {
+                      // Gate on a non-empty query (same condition as the visible
+                      // candidate dropdown): with an empty box every non-member is a
+                      // "candidate", so a reflexive Enter would silently add an
+                      // arbitrary artist — reachable via the "Add artists" button,
+                      // which focuses this input while it is still empty.
+                      if (e.key === 'Enter' && canManage && candidateQuery !== '' && candidates[0]) {
                         e.preventDefault();
                         addMember.mutate(candidates[0].id);
                         setSearch('');
