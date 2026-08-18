@@ -60,6 +60,47 @@ describe("PhaseCard", () => {
     expect(onOpenTask).toHaveBeenCalledWith("people");
   });
 
+  // A phase that is being worked on (some tasks done, nothing blocking) must read as a solid
+  // card, not the dashed/ghosted "not started" treatment: the two are different visual states
+  // (active vs dormant), so a half-done phase no longer clashes with the solid cards beside it.
+  it("renders an in-progress phase (some done, nothing blocking) as a solid card", () => {
+    const phase: GetRunningPhase = {
+      key: "bookable",
+      tasks: [
+        task({ key: "flow", phase: "bookable", done: true }),
+        task({ key: "people", phase: "bookable", done: true }),
+        task({ key: "ladder", phase: "bookable", done: true }),
+        task({ key: "eligibility", phase: "bookable", done: true }),
+        task({ key: "timing", phase: "bookable", done: true }),
+        task({ key: "team", phase: "bookable", done: false, adminOnly: true }),
+      ],
+    };
+    renderWithProviders(<PhaseCard phase={phase} role="admin" onOpenTask={vi.fn()} />);
+    const card = screen.getByTestId("phase-card-bookable");
+    expect(card.className).toContain("bg-card");
+    expect(card.className).not.toContain("border-dashed");
+    expect(screen.getByText("Nothing blocking")).toBeInTheDocument();
+  });
+
+  it("renders a not-started phase (nothing done, nothing blocking) as a dashed, transparent card", () => {
+    const phase: GetRunningPhase = {
+      key: "bookable",
+      tasks: [
+        task({ key: "flow", phase: "bookable" }),
+        task({ key: "people", phase: "bookable" }),
+        task({ key: "ladder", phase: "bookable" }),
+        task({ key: "eligibility", phase: "bookable" }),
+        task({ key: "timing", phase: "bookable" }),
+        task({ key: "team", phase: "bookable", adminOnly: true }),
+      ],
+    };
+    renderWithProviders(<PhaseCard phase={phase} role="admin" onOpenTask={vi.fn()} />);
+    const card = screen.getByTestId("phase-card-bookable");
+    expect(card.className).toContain("border-dashed");
+    expect(card.className).toContain("bg-transparent");
+    expect(screen.getByText("Not started yet")).toBeInTheDocument();
+  });
+
   it("renders the admin-only chip on the team task", () => {
     renderWithProviders(<PhaseCard phase={makeBookablePhase()} role="admin" onOpenTask={vi.fn()} />);
 

@@ -42,7 +42,8 @@
       "title": "Get dates in",
       "status": {
         "complete": "Running",
-        "neutral": "Not started yet"
+        "active": "In progress",
+        "dormant": "Not started yet"
       }
     },
     "bookable": {
@@ -50,7 +51,8 @@
       "status": {
         "complete": "All set",
         "blocking": "Blocks your first offer",
-        "neutral": "Nothing blocking"
+        "active": "Nothing blocking",
+        "dormant": "Not started yet"
       }
     },
     "paperwork": {
@@ -58,7 +60,8 @@
       "status": {
         "complete": "Ready",
         "blocking": "Blocks issuing",
-        "neutral": "Not blocking yet"
+        "active": "In progress",
+        "dormant": "Not blocking yet"
       },
       "note": "Needed before the first hire order goes out",
       "doItNow": "Do it now"
@@ -291,9 +294,15 @@
         "allCovered": "All covered",
         "partial": "{{covered}} of {{total}} cities covered"
       },
-      "letterhead": { "label": "Letterhead" },
-      "terms": { "label": "Terms" },
-      "countersign": { "label": "Countersignature" }
+      "letterhead": {
+        "label": "Letterhead"
+      },
+      "terms": {
+        "label": "Terms"
+      },
+      "countersign": {
+        "label": "Countersignature"
+      }
     },
     "setNotSet": {
       "set": "Set",

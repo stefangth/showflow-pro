@@ -8,37 +8,47 @@ import { TaskRow } from "./TaskRow";
 
 const PHASE_ORDER: GetRunningPhaseKey[] = ["get_dates", "bookable", "paperwork"];
 
-type PhaseVisualState = "complete" | "blocking" | "neutral";
+type PhaseVisualState = "complete" | "blocking" | "active" | "dormant";
 
-/** The same three visual states, generically derived, drive every phase: a filled-check
- *  solid card once every task is done, an accent-elevated card while an offers/booking task
- *  is still outstanding (this phase blocks the org's first offer), else a dashed, quieter
- *  card. `docs/superpowers/specs/2026-08-17-setup-settings-design/screens/01_01_Get_running.html`
- *  shows exactly one instance of each: Phase 1 (complete), Phase 2 (blocking), Phase 3
- *  (neutral) — this function generalizes that pattern to every phase/state combination. */
+/** Four visual states drive every phase, structurally: `complete` (every task done, solid
+ *  card + green badge), `blocking` (an offers/booking task is still outstanding, so this
+ *  phase holds up the first offer — accent-elevated card), `active` (in progress: at least
+ *  one task done but not all, nothing blocking — a plain SOLID card, because the phase is
+ *  being worked on) and `dormant` (nothing started yet and nothing blocking — a dashed,
+ *  recessed card that reads as "not your concern yet").
+ *
+ *  Splitting the old single "neutral" into `active` vs `dormant` is what keeps the board
+ *  coherent in EVERY state combination, not just the design's one worked example: a phase
+ *  that is half-done no longer renders as a ghosted, dashed, "not started yet" card next to
+ *  a solid completed one. `screens/01_01_Get_running.html` shows get_dates=complete,
+ *  bookable=blocking, paperwork=dormant; this generalises that to the rest of the matrix. */
 function derivePhaseState(tasks: GetRunningTask[]): PhaseVisualState {
-  const leftCount = tasks.filter((task) => !task.done).length;
-  if (leftCount === 0) return "complete";
+  const doneCount = tasks.filter((task) => task.done).length;
+  if (doneCount === tasks.length) return "complete";
   const hasHardBlock = tasks.some((task) => !task.done && (task.block === "offers" || task.block === "booking"));
-  return hasHardBlock ? "blocking" : "neutral";
+  if (hasHardBlock) return "blocking";
+  return doneCount > 0 ? "active" : "dormant";
 }
 
 const CARD_CLASS: Record<PhaseVisualState, string> = {
   complete: "border border-border bg-card",
   blocking: "border border-accent-200 bg-card shadow-elev2",
-  neutral: "border border-dashed border-border bg-transparent",
+  active: "border border-border bg-card",
+  dormant: "border border-dashed border-border bg-transparent",
 };
 
 const HEADER_CLASS: Record<PhaseVisualState, string> = {
   complete: "border-b border-border",
   blocking: "border-b border-accent-100 bg-accent",
-  neutral: "",
+  active: "border-b border-border",
+  dormant: "",
 };
 
 const BADGE_VARIANT: Record<PhaseVisualState, "confirmed" | "risk" | "neutral"> = {
   complete: "confirmed",
   blocking: "risk",
-  neutral: "neutral",
+  active: "neutral",
+  dormant: "neutral",
 };
 
 function PhaseIcon({ state, index }: { state: PhaseVisualState; index: number }): JSX.Element {
@@ -174,7 +184,7 @@ function PaperworkTiles({
             <div
               key={task.key}
               data-testid={`paperwork-tile-${task.key}`}
-              className="flex-1 rounded-[var(--radius-m)] border border-border bg-card p-3 text-left"
+              className="flex-1 rounded-[var(--radius-m)] border border-border bg-card p-3 text-left shadow-elev1"
             >
               {body}
               <Button
@@ -195,7 +205,7 @@ function PaperworkTiles({
             data-testid={`paperwork-tile-${task.key}`}
             type="button"
             onClick={() => onOpenTask(task.key)}
-            className="flex-1 rounded-[var(--radius-m)] border border-border bg-card p-3 text-left"
+            className="flex-1 rounded-[var(--radius-m)] border border-border bg-card p-3 text-left shadow-elev1"
           >
             {body}
           </button>
@@ -251,7 +261,7 @@ export function PhaseCard({ phase, onOpenTask, adminNames }: PhaseCardProps): JS
         <PhaseIcon state={state} index={orderIndex} />
         <div
           className={`text-base font-semibold tracking-[-0.1px] ${
-            state === "neutral" ? "text-muted-foreground" : "text-foreground"
+            state === "dormant" ? "text-muted-foreground" : "text-foreground"
           }`}
         >
           {t(`phases.${phase.key}.title`)}

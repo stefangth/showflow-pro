@@ -42,7 +42,8 @@
       "title": "Termine reinholen",
       "status": {
         "complete": "Läuft",
-        "neutral": "Noch nicht gestartet"
+        "active": "In Arbeit",
+        "dormant": "Noch nicht gestartet"
       }
     },
     "bookable": {
@@ -50,7 +51,8 @@
       "status": {
         "complete": "Erledigt",
         "blocking": "Blockiert dein erstes Angebot",
-        "neutral": "Nichts blockiert"
+        "active": "Nichts blockiert",
+        "dormant": "Noch nicht gestartet"
       }
     },
     "paperwork": {
@@ -58,7 +60,8 @@
       "status": {
         "complete": "Startklar",
         "blocking": "Blockiert den Versand",
-        "neutral": "Blockiert noch nichts"
+        "active": "In Arbeit",
+        "dormant": "Blockiert noch nichts"
       },
       "note": "Wird vor dem ersten Engagementvertrag gebraucht",
       "doItNow": "Jetzt erledigen"
@@ -291,9 +294,15 @@
         "allCovered": "Alles abgedeckt",
         "partial": "{{covered}} von {{total}} Städten abgedeckt"
       },
-      "letterhead": { "label": "Briefkopf" },
-      "terms": { "label": "Bedingungen" },
-      "countersign": { "label": "Gegenzeichnung" }
+      "letterhead": {
+        "label": "Briefkopf"
+      },
+      "terms": {
+        "label": "Bedingungen"
+      },
+      "countersign": {
+        "label": "Gegenzeichnung"
+      }
     },
     "setNotSet": {
       "set": "Festgelegt",
