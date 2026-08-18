@@ -2,40 +2,40 @@
   "availabilityPage": {
     "direct": {
       "title": "My Dates",
-      "subtitle": "Your bookings and availability. Block dates you can't perform."
+      "subtitle": "Your bookings and availability. Mark dates you're not free."
     },
     "offer": {
-      "title": "My Offers",
-      "subtitle": "View your offers and block dates you're unavailable for."
+      "title": "My Asks",
+      "subtitle": "See what you've been asked and mark dates you're not free for."
     }
   },
   "bookingsView": {
     "title": "My Bookings",
-    "offerSubtitle": "Dates you've been offered for, based on your cast eligibility.",
+    "offerSubtitle": "Dates you've been asked about, based on your cast eligibility.",
     "directSubtitle": "Dates you're booked for, based on your cast eligibility."
   },
   "statusLabels": {
     "offer": {
-      "suggested": "Offer pending",
-      "soft_booked": "Hold placed",
-      "confirmed": "Confirmed",
-      "unanswered": "No offer yet",
+      "suggested": "Asked",
+      "soft_booked": "Said yes, waiting on you",
+      "confirmed": "Booked",
+      "unanswered": "Not asked yet",
       "cancelled": "Cancelled"
     },
     "direct": {
-      "suggested": "Offer pending",
-      "soft_booked": "Hold placed",
+      "suggested": "Asked",
+      "soft_booked": "Said yes, waiting on you",
       "confirmed": "Booked",
-      "unanswered": "Not booked",
+      "unanswered": "Not asked yet",
       "cancelled": "Cancelled"
     }
   },
   "meter": {
     "offer": {
-      "title": "Response rate",
-      "headerSentence": "Your response rate on dates you've been offered.",
-      "footer": "Click to see pending offers →",
-      "explainer": "Counts dates you accepted or were booked for, out of dates you were offered. It is just for you, no one is scored on it."
+      "title": "Answer rate",
+      "headerSentence": "Your answer rate on dates you've been asked about.",
+      "footer": "Click to see your open asks →",
+      "explainer": "Counts dates you said yes to or were booked for, out of dates you were asked about. It is just for you, no one is scored on it."
     },
     "direct": {
       "title": "Booked dates",
@@ -44,5 +44,5 @@
       "explainer": "Dates you are booked for, out of dates you are eligible for."
     }
   },
-  "deliveryHint": "Offers email artists immediately when a tier opens."
+  "deliveryHint": "Artists get asked by email as soon as a tier opens."
 }

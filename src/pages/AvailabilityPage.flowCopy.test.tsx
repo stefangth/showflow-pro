@@ -174,9 +174,9 @@ describe("AvailabilityPage calendar-surface flow-aware status wording (Task 18)"
     fireEvent.click(await screen.findByRole("tab", { name: "All dates" }));
 
     const row = await screen.findByTestId("all-dates-row-sd-1");
-    // "Not booked" is statusLabels.direct.unanswered (src/lib/flowCopy.ts); the
+    // "Not asked yet" is statusLabels.direct.unanswered (src/lib/flowCopy.ts); the
     // fixed ARTIST_TONES.unanswered.label this replaces is "Not offered".
-    expect(row).toHaveTextContent("Not booked");
+    expect(row).toHaveTextContent("Not asked yet");
     expect(row).not.toHaveTextContent("Not offered");
   });
 });
