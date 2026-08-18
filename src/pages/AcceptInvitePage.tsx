@@ -14,6 +14,7 @@ import { useFeature, useEntitlements } from '@/hooks/useEntitlements';
 import { useCan } from '@/hooks/useCapabilities';
 import { useBookingSetupStatus } from '@/hooks/useBookingSetup';
 import type { BookingFlow } from '@/lib/bookingFlow';
+import type { GetRunningModel } from '@/lib/getRunning/tasks';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -104,6 +105,28 @@ export function resolveBookingRunState(
 ): BookingRunState {
   if (!moduleOn || !flow || !flow.active) return 'off';
   return flow.artist_acceptance ? 'offers' : 'direct';
+}
+
+export type HandoffPrimary = 'board' | 'availability' | 'dashboard';
+
+/** Where the success card's primary CTA points, and which summary it shows. Artists have
+ *  no Get running board (screen 08), so they go straight to Availability. An admin/producer
+ *  whose org has at least one module on gets the board; with no module on there is nothing
+ *  to set up, so they fall back to the dashboard. */
+// eslint-disable-next-line react-refresh/only-export-components
+export function resolveHandoffPrimary(role: AppRole | null, boardHasTasks: boolean): HandoffPrimary {
+  if (role === 'artist') return 'availability';
+  if (boardHasTasks) return 'board';
+  return 'dashboard';
+}
+
+export type BoardHandoffState = 'blocking' | 'ready' | 'complete';
+
+/** The board-summary variant, mirroring GetRunningHeader's own state derivation so the
+ *  handoff and the board it leads to never disagree. */
+// eslint-disable-next-line react-refresh/only-export-components
+export function resolveBoardHandoffState(model: GetRunningModel): BoardHandoffState {
+  return model.complete ? 'complete' : model.canFirstOffer ? 'ready' : 'blocking';
 }
 
 // Plain data record, not a component; exported so tests can sweep every role/state line

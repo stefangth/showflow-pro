@@ -9,7 +9,10 @@ import AcceptInvitePage, {
   ARTIST_NOT_LINKED_NEXT_STEP_LINE,
   resolveBookingRunState,
   resolveNextStepLine,
+  resolveHandoffPrimary,
+  resolveBoardHandoffState,
 } from "./AcceptInvitePage";
+import type { GetRunningModel } from "@/lib/getRunning/tasks";
 import { ROUTES, roleLabel, roleDescription } from "@/config/app.config";
 import { BOOKING_FLOW_DEFAULTS, applyPreset, type BookingFlow } from "@/lib/bookingFlow";
 import type { Membership, Organization } from "@/data/orgs";
@@ -1294,5 +1297,39 @@ describe("useFeature really reads useAuth().currentOrg, not a stale org (unmocke
     await waitFor(() =>
       expect(fetchEntitlementsMock).toHaveBeenCalledWith(expect.anything(), org1.id),
     );
+  });
+});
+
+describe("resolveHandoffPrimary", () => {
+  it("sends an artist to availability regardless of the board", () => {
+    expect(resolveHandoffPrimary("artist", false)).toBe("availability");
+    expect(resolveHandoffPrimary("artist", true)).toBe("availability");
+  });
+  it("sends an admin/producer with a board to the board", () => {
+    expect(resolveHandoffPrimary("admin", true)).toBe("board");
+    expect(resolveHandoffPrimary("producer", true)).toBe("board");
+  });
+  it("falls back to the dashboard for an admin/producer with no board (nothing on)", () => {
+    expect(resolveHandoffPrimary("admin", false)).toBe("dashboard");
+    expect(resolveHandoffPrimary("producer", false)).toBe("dashboard");
+  });
+  it("falls back to the dashboard when the role is unknown", () => {
+    expect(resolveHandoffPrimary(null, false)).toBe("dashboard");
+  });
+});
+
+describe("resolveBoardHandoffState", () => {
+  const model = (over: Partial<GetRunningModel>): GetRunningModel => ({
+    phases: [], doneCount: 0, totalCount: 1, canFirstOffer: false, complete: false,
+    bookingOn: true, hireOrdersOn: false, ...over,
+  });
+  it("is blocking while the first offer is held up", () => {
+    expect(resolveBoardHandoffState(model({ canFirstOffer: false, complete: false }))).toBe("blocking");
+  });
+  it("is ready once the first offer can go out but tasks remain", () => {
+    expect(resolveBoardHandoffState(model({ canFirstOffer: true, complete: false }))).toBe("ready");
+  });
+  it("is complete once every task is done", () => {
+    expect(resolveBoardHandoffState(model({ canFirstOffer: true, complete: true }))).toBe("complete");
   });
 });
