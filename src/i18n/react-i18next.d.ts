@@ -27,6 +27,7 @@ import type enOnboarding from './locales/en/onboarding.json';
 import type enFlowCopy from './locales/en/flowCopy.json';
 import type enBookingCopy from './locales/en/bookingCopy.json';
 import type enGetRunning from './locales/en/getRunning.json';
+import type enToday from './locales/en/today.json';
 
 // Typed resources: `t('nav.help')` autocompletes and an unknown key is a compile error.
 // English is the canonical shape; the key-parity test enforces German matches it.
@@ -62,6 +63,7 @@ declare module 'react-i18next' {
       flowCopy: typeof enFlowCopy;
       bookingCopy: typeof enBookingCopy;
       getRunning: typeof enGetRunning;
+      today: typeof enToday;
     };
   }
 }

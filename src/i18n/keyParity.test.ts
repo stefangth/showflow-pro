@@ -20,7 +20,7 @@ describe('catalog key parity', () => {
     'settingsAirtable', 'settingsBookingFlow', 'settingsHireOrders', 'settingsEmailTemplates',
     'settingsRolesRights', 'settingsEditor',
     'auth', 'admin', 'artists', 'productions', 'hireOrdersPages', 'showsDetail', 'chats', 'profile',
-    'onboarding', 'flowCopy', 'bookingCopy', 'getRunning',
+    'onboarding', 'flowCopy', 'bookingCopy', 'getRunning', 'today',
   ] as const) {
     it(`de matches en for namespace "${ns}"`, () => {
       const en = keyset(resources.en[ns]).sort();
