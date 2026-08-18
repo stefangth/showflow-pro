@@ -101,7 +101,7 @@
       "slots": "Values · one number per show",
       "flow": "Choice · sets everything downstream",
       "people": "Roster · blocks booking",
-      "ladder": "Document · decides who is asked first",
+      "ladder": "Priorities · blocks offers",
       "eligibility": "Document · shows the gaps",
       "timing": "Values · two fields",
       "team": "Team · admin only",
@@ -114,7 +114,7 @@
       "slots": "Saved as you go",
       "flow": "Change is logged",
       "people": "No email until you offer a date",
-      "ladder": "Ranking lives in Settings",
+      "ladder": "Ranking is per city",
       "eligibility": "Coverage lives in Settings",
       "timing": "Applies to tonight's digest",
       "team": "They get an email invite",
@@ -156,6 +156,24 @@
         "or": "or",
         "importButton": "Import a sheet",
         "unlocks": "Offers and direct bookings both pick from this list. Artists get no email until you offer them a date."
+      },
+      "ladder": {
+        "citiesWithDates": "Cities with dates",
+        "unrankedCount_one": "{{count}} unranked",
+        "unrankedCount_other": "{{count}} unranked",
+        "dateCount_one": "{{count}} date",
+        "dateCount_other": "{{count}} dates",
+        "noTier1": "no tier 1",
+        "pickTier1": "Pick tier 1",
+        "addTier2": "Add tier 2",
+        "noCastsAvailable": "No casts yet",
+        "memberCount_one": "{{count}} member",
+        "memberCount_other": "{{count}} members",
+        "unlocks_one": "Rank {{city}} too and {{count}} date becomes offerable in tonight's digest.",
+        "unlocks_other": "Rank {{city}} too and {{count}} dates become offerable in tonight's digest.",
+        "unlocksDone": "Every city with dates has a tier 1.",
+        "tierUpdated": "Tier 1 set",
+        "tierUpdateFailed": "Could not set tier 1"
       }
     }
   },

@@ -101,7 +101,7 @@
       "slots": "Werte · eine Zahl pro Show",
       "flow": "Wahl · legt den weiteren Ablauf fest",
       "people": "Besetzungsliste · blockiert Buchungen",
-      "ladder": "Dokument · entscheidet, wer zuerst gefragt wird",
+      "ladder": "Prioritäten · blockiert Angebote",
       "eligibility": "Dokument · zeigt die Lücken",
       "timing": "Werte · zwei Felder",
       "team": "Team · nur Admin",
@@ -114,7 +114,7 @@
       "slots": "Wird automatisch gespeichert",
       "flow": "Änderung wird protokolliert",
       "people": "Keine E-Mail, bevor du ein Datum anbietest",
-      "ladder": "Reihenfolge liegt in den Einstellungen",
+      "ladder": "Reihenfolge ist pro Stadt",
       "eligibility": "Abdeckung liegt in den Einstellungen",
       "timing": "Gilt für die heutige Tagesübersicht",
       "team": "Sie erhalten eine E-Mail-Einladung",
@@ -156,6 +156,24 @@
         "or": "oder",
         "importButton": "Tabelle importieren",
         "unlocks": "Angebote und Direktbuchungen wählen beide aus dieser Liste. Artists bekommen keine E-Mail, bevor du ihnen ein Datum anbietest."
+      },
+      "ladder": {
+        "citiesWithDates": "Städte mit Terminen",
+        "unrankedCount_one": "{{count}} ohne Rang",
+        "unrankedCount_other": "{{count}} ohne Rang",
+        "dateCount_one": "{{count}} Termin",
+        "dateCount_other": "{{count}} Termine",
+        "noTier1": "keine Stufe 1",
+        "pickTier1": "Stufe 1 wählen",
+        "addTier2": "Stufe 2 hinzufügen",
+        "noCastsAvailable": "Noch keine Besetzungen",
+        "memberCount_one": "{{count}} Mitglied",
+        "memberCount_other": "{{count}} Mitglieder",
+        "unlocks_one": "Reihe auch {{city}} und {{count}} Termin wird in der heutigen Tagesübersicht anbietbar.",
+        "unlocks_other": "Reihe auch {{city}} und {{count}} Termine werden in der heutigen Tagesübersicht anbietbar.",
+        "unlocksDone": "Jede Stadt mit Terminen hat eine Stufe 1.",
+        "tierUpdated": "Stufe 1 gesetzt",
+        "tierUpdateFailed": "Stufe 1 konnte nicht gesetzt werden"
       }
     }
   },

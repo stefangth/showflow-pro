@@ -70,9 +70,8 @@ export interface TaskPanelProps {
    *  the panel. */
   onClose: () => void;
   /** Called after the mounted editor's own `onDone` fires (a successful save). Optional:
-   *  read-only tasks (ladder/eligibility) and link-out tasks (dates/people/team) never
-   *  reach `onDone` at all, since their editors have no save step to complete. When
-   *  omitted, `onDone` falls back to `onClose`. */
+   *  the read-only `eligibility` task never reaches `onDone` at all, since its editor has
+   *  no save step to complete. When omitted, `onDone` falls back to `onClose`. */
   onNext?: () => void;
 }
 
