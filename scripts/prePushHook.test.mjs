@@ -1,18 +1,22 @@
 // Guards the committed pre-push hook and the `prepare` script that installs it.
 //
 // The hook runs `verify:fast` (the Docker-free CI mirror: lint, mirrors,
-// typecheck, build, unit+coverage, Deno) before every push, so the cheap layers
-// fail on the developer's machine instead of burning a red GitHub CI run. It is
-// a convenience gate, NOT the source of truth — GitHub CI stays the enforced
+// typecheck, build, unit+coverage, Deno) before pushing a branch that already
+// has an open PR (pre-PR pushes run only the secret scan), so the cheap layers
+// fail on the developer's machine instead of turning the PR's GitHub CI red. It
+// is a convenience gate, NOT the source of truth — GitHub CI stays the enforced
 // gate and runs on the merged commit regardless.
 //
-// Three things a future edit could silently break, each guarded below:
+// Four things a future edit could silently break, each guarded below:
 //   1. The hook must be tracked AND recorded executable in the index — a 100644
 //      blob is checked out non-executable, and git then silently skips it, so a
 //      clone/CI checkout would install a dead hook.
 //   2. `verify:full` (pgTAP + Playwright, Docker) must NOT be wired here — a
 //      container cold-start on every push just trains everyone to --no-verify.
 //   3. `prepare` must point git at `.githooks`, else the hook is never installed.
+//   4. verify:fast must stay gated on an open PR (via the `gh` CLI), not run on
+//      every push — an every-push regression re-introduces the slow-loop the gate
+//      was removed to fix; the secret scan must still run on every push.
 //
 // Runs in the vitest suite via the `scripts/**/*.test.{ts,mjs}` include glob, so
 // a regression fails CI's unit-tests job.
@@ -76,6 +80,22 @@ describe("pre-push hook (.githooks/pre-push)", () => {
     // just the string. (Guards the review finding on PR #229.) Matches either
     // the npm alias (`scan:secrets`) or the direct `scan-secrets.mjs --prepush`.
     expect(code).toMatch(/scan[:-]secrets\b[^\n]*\|\|\s*exit\b/);
+  });
+
+  it("gates verify:fast on an open PR (gh) rather than running it on every push", () => {
+    const code = readFileSync(hookPath, "utf8")
+      .split("\n")
+      .filter((l) => !/^\s*#/.test(l))
+      .join("\n");
+    // The gate is the `gh pr list --head <branch> ... --state open` probe feeding a
+    // decision flag; removing it would silently return verify:fast to every push.
+    expect(code).toMatch(/gh pr list\b[^\n]*--head[^\n]*--state open/);
+    expect(code).toMatch(/has_open_pr/);
+    // ...and the branch is skipped when no open PR is found.
+    expect(code).toMatch(/has_open_pr[^\n]*!=\s*"?1"?[\s\S]*exit 0/);
+    // The secret scan must STILL run on every push (it is the security gate, not
+    // the PR-gated convenience gate).
+    expect(code).toMatch(/scan-secrets\.mjs --prepush/);
   });
 });
 
