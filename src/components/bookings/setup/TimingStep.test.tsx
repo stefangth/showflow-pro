@@ -251,15 +251,21 @@ describe("TimingStep", () => {
   it("names the timezone once, not on every line that states an hour", async () => {
     // The scope note is the single carrier: it renders under every flow and covers the
     // three hour inputs as well as the sentence below it, so a "Berlin" in the narrative
-    // too is the word twice on one small panel. Checked on both delivery modes, since it
-    // was the immediate one that carried it in its very next clause. (The direct-book
-    // sentence is held to the same rule in its own test above, which cannot join this loop
-    // because it deliberately prints no "When a tier opens" line to wait on.)
+    // too is the word twice on one small panel. Checked on both shipped presets that reach
+    // this "When a tier opens" sentence — classic and autopilot (the fasttrack preset) —
+    // and both now deliver by digest (autopilot/fasttrack switched from immediate to
+    // digest), so both state the offer hour AND the confirmation hour: two "Berlin"
+    // mentions each, one per clock time. The single-vs-double contrast this loop used to
+    // draw between digest and immediate delivery is covered at the unit level instead, in
+    // timingCopy.test.ts's hand-configured immediateFlow, since no shipped preset reaches
+    // that branch anymore. (The direct-book sentence is held to the same rule in its own
+    // test above, which cannot join this loop because it deliberately prints no "When a
+    // tier opens" line to wait on.)
     for (const preset of ["classic", "fasttrack"] as const) {
       flowRef.value = applyPreset(BOOKING_FLOW_DEFAULTS, preset);
       const { container, unmount } = renderWithProviders(<TimingStep orgId="org-1" onDone={() => {}} />);
       expect(await screen.findByText(/When a tier opens/)).toBeInTheDocument();
-      expect(container.textContent?.match(/Berlin/g) ?? []).toHaveLength(preset === "classic" ? 2 : 1);
+      expect(container.textContent?.match(/Berlin/g) ?? []).toHaveLength(2);
       unmount();
     }
   });
@@ -281,11 +287,14 @@ describe("TimingStep", () => {
     ).toBeInTheDocument();
   });
 
-  it("does not promise a digest to a fast-track org, which mails at tier open", async () => {
+  it("promises a digest to an autopilot org, which now mails at the digest hour, not at tier open", async () => {
+    // The fasttrack preset (labeled "Autopilot" in the UI) switched offer_delivery from
+    // "immediate" to "digest", so it now runs the same digest pipeline as classic instead
+    // of mailing offers the instant a tier opens.
     flowRef.value = applyPreset(BOOKING_FLOW_DEFAULTS, "fasttrack");
     renderWithProviders(<TimingStep orgId="org-1" onDone={() => {}} />);
-    expect(await screen.findByText(/offers email straight away/)).toBeInTheDocument();
-    expect(screen.queryByText(/\d{2}:00 digest/)).not.toBeInTheDocument();
+    expect(await screen.findByText(/19:00h \(Berlin, Germany\) digest/)).toBeInTheDocument();
+    expect(screen.queryByText(/offers email straight away/)).not.toBeInTheDocument();
   });
 
   it("drops the confirmation clause when the confirmation digest is off", async () => {

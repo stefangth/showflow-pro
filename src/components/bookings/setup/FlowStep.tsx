@@ -22,7 +22,9 @@ import type { Json } from "@/integrations/supabase/types";
 // Onboarding hides the "Off" tile (FlowPresets showOff={false}): pausing the flow is a
 // deliberate Settings action, and choosing Off here would leave the setup step outstanding
 // (flowChosen requires an active flow). The map still needs the key for the PresetName type.
-const PRESET_NAMES: Record<PresetName, string> = { classic: "Classic", fasttrack: "Fast-track", direct: "Direct book", off: "Off" };
+// "fasttrack" is the preset KEY (unchanged in code and the database); its user-facing label
+// is "Autopilot", matching the name FlowPresets renders below via i18n.
+const PRESET_NAMES: Record<PresetName, string> = { classic: "Classic", fasttrack: "Autopilot", direct: "Direct book", off: "Off" };
 const CHIP_TONE: Record<LifecycleChip["tone"], string> = {
   violet: "bg-[var(--accent-500)]", amber: "bg-[var(--amber-500)]",
   green: "bg-[var(--green-500)]", neutral: "bg-muted-foreground",

@@ -45,7 +45,7 @@ describe("FlowStep", () => {
   it("renders the three preset cards and a live lifecycle preview", async () => {
     renderWithProviders(<FlowStep orgId="org-1" onDone={() => {}} />);
     expect(await screen.findByText("Classic")).toBeInTheDocument();
-    expect(screen.getByText("Fast-track")).toBeInTheDocument();
+    expect(screen.getByText("Autopilot")).toBeInTheDocument();
     expect(screen.getByText("Direct book")).toBeInTheDocument();
     // Classic lifecycle chips: Offered / Soft booked / Confirmed
     expect(screen.getByText("Soft booked")).toBeInTheDocument();
@@ -101,8 +101,8 @@ describe("FlowStep", () => {
   it("persists the selected template identity with the onboarding flow", async () => {
     renderWithProviders(<FlowStep orgId="org-1" onDone={() => {}} />);
 
-    fireEvent.click(await screen.findByRole("button", { name: /fast-track/i }));
-    fireEvent.click(screen.getByRole("button", { name: /use fast-track/i }));
+    fireEvent.click(await screen.findByRole("button", { name: /autopilot/i }));
+    fireEvent.click(screen.getByRole("button", { name: /use autopilot/i }));
 
     await waitFor(() => expect(upsertOrgSettings).toHaveBeenCalledWith(
       expect.anything(),
@@ -124,10 +124,10 @@ describe("FlowStep", () => {
     fetchTemplates.mockResolvedValue(templates);
     renderWithProviders(<FlowStep orgId="org-1" onDone={() => {}} />);
 
-    fireEvent.click(await screen.findByRole("button", { name: /fast-track/i }));
+    fireEvent.click(await screen.findByRole("button", { name: /autopilot/i }));
     expect(screen.getByText(/tiers open manually/i)).toBeInTheDocument();
     expect(screen.getByText(/72 h response window/i)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /use fast-track/i }));
+    fireEvent.click(screen.getByRole("button", { name: /use autopilot/i }));
 
     await waitFor(() => expect(upsertOrgSettings).toHaveBeenCalledWith(
       expect.anything(),

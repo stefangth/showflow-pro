@@ -100,7 +100,7 @@ describe("BookingFlowTab", () => {
   it("preserves the org reference field when switching templates", async () => {
     renderWithProviders(<Harness orgFlow={{ ...BOOKING_FLOW_DEFAULTS, reference_field: { source: "program" } }} />);
 
-    fireEvent.click(await screen.findByRole("button", { name: /fast-track/i }));
+    fireEvent.click(await screen.findByRole("button", { name: /autopilot/i }));
 
     expect(screen.getByRole("combobox", { name: /reference field/i })).toHaveTextContent("Program only");
   });
@@ -125,7 +125,7 @@ describe("BookingFlowTab", () => {
   // bypassed the ref tracking in onFlowChange, so the restore used a stale value.
   it("a preset's producer_confirmation choice survives an acceptance off/on round trip", async () => {
     renderWithProviders(<Harness />);
-    fireEvent.click(await screen.findByRole("button", { name: /fast-track/i }));
+    fireEvent.click(await screen.findByRole("button", { name: /autopilot/i }));
     expect(screen.getByRole("switch", { name: /^producer confirmation$/i })).toHaveAttribute("aria-checked", "false");
     fireEvent.click(screen.getByRole("button", { name: /direct book/i }));
     fireEvent.click(screen.getByRole("switch", { name: /^artist acceptance$/i }));
@@ -135,7 +135,7 @@ describe("BookingFlowTab", () => {
   it("restores the user's producer_confirmation choice after an acceptance off/on round trip", async () => {
     renderWithProviders(<Harness />);
     // Fast-track: artist_acceptance stays on, producer_confirmation goes off.
-    fireEvent.click(await screen.findByRole("button", { name: /fast-track/i }));
+    fireEvent.click(await screen.findByRole("button", { name: /autopilot/i }));
     const acceptance = screen.getByRole("switch", { name: /^artist acceptance$/i });
     const confirmation = screen.getByRole("switch", { name: /^producer confirmation$/i });
     expect(confirmation).toHaveAttribute("aria-checked", "false");
@@ -165,7 +165,7 @@ describe("BookingFlowTab", () => {
 
       // Preset chips disabled.
       expect(await screen.findByRole("button", { name: /direct book/i })).toBeDisabled();
-      expect(screen.getByRole("button", { name: /fast-track/i })).toBeDisabled();
+      expect(screen.getByRole("button", { name: /autopilot/i })).toBeDisabled();
 
       // A representative FlowTimeline input is disabled.
       expect(screen.getByRole("switch", { name: /^artist acceptance$/i })).toBeDisabled();
