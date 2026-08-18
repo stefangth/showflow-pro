@@ -1,12 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { adminDisplayName } from "@/data/orgAdmins";
-import type { GetRunningModel, GetRunningTask } from "@/lib/getRunning/tasks";
-
-/** A task blocks the first offer when it holds up either offers or booking (mirrors
- *  `composeGetRunning`'s own `canFirstOffer` derivation in src/lib/getRunning/tasks.ts). */
-function isFirstOfferBlocker(task: GetRunningTask): boolean {
-  return task.block === "offers" || task.block === "booking";
-}
+import { firstOfferBlockingCount, type GetRunningModel } from "@/lib/getRunning/tasks";
 
 /**
  * Board header for `/get-running` (screen 01/03): eyebrow + headline + body on the left,
@@ -31,7 +25,7 @@ export function GetRunningHeader({ model, orgName, role, adminNames }: {
   const { t } = useTranslation("getRunning");
 
   const allTasks = model.phases.flatMap((p) => p.tasks);
-  const blockingCount = allTasks.filter((task) => isFirstOfferBlocker(task) && !task.done).length;
+  const blockingCount = firstOfferBlockingCount(model);
 
   const state = model.complete ? "complete" : model.canFirstOffer ? "ready" : "blocking";
 

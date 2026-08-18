@@ -214,3 +214,12 @@ export function composeGetRunning(input: GetRunningInput): GetRunningModel {
     hireOrdersOn: input.hireOrdersOn,
   };
 }
+
+/** Count of not-done tasks that hold up the org's first offer (the offers/booking
+ *  blockers `canFirstOffer` is derived from). Shared by GetRunningHeader and the
+ *  accept-invite handoff so both report the same number. */
+export function firstOfferBlockingCount(model: GetRunningModel): number {
+  return model.phases
+    .flatMap((p) => p.tasks)
+    .filter((t) => !t.done && (t.block === "offers" || t.block === "booking")).length;
+}

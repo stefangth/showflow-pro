@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { computeBookingSetupStatus, type BookingSetupStatusInput } from "@/lib/bookings/setupStatus";
 import { computeSetupStatus, type SetupStatusInput } from "@/lib/hireOrders/setupStatus";
-import { composeGetRunning, type GetRunningInput, type GetRunningTask, type GetRunningTaskKey } from "./tasks";
+import { composeGetRunning, firstOfferBlockingCount, type GetRunningInput, type GetRunningTask, type GetRunningTaskKey } from "./tasks";
 
 // Real booking-status inputs, not hand-faked step shapes. "Full" = every step done;
 // "empty" = a blank org (nothing configured, honest 0-of-N).
@@ -292,5 +292,28 @@ describe("composeGetRunning", () => {
 
     expect(taskByKey(allTasks, "letterhead").done).toBe(false);
     expect(model.canFirstOffer).toBe(true);
+  });
+});
+
+describe("firstOfferBlockingCount", () => {
+  it("counts only not-done offers/booking blockers", () => {
+    const model = composeGetRunning(
+      baseInput({
+        booking: computeBookingSetupStatus(EMPTY_BOOKING_INPUT),
+        hire: computeSetupStatus(EMPTY_HIRE_INPUT),
+        datesDone: false,
+        producerCount: 0,
+      }),
+    );
+    // people (block "booking") and ladder (block "offers") are the first-offer blockers in
+    // a blank org; slots is "filling" and letterhead/terms are "issuing" -- excluded.
+    expect(firstOfferBlockingCount(model)).toBe(model.phases
+      .flatMap((p) => p.tasks)
+      .filter((t) => !t.done && (t.block === "offers" || t.block === "booking")).length);
+    expect(firstOfferBlockingCount(model)).toBeGreaterThan(0);
+  });
+
+  it("is zero for a fully-done board", () => {
+    expect(firstOfferBlockingCount(composeGetRunning(baseInput()))).toBe(0);
   });
 });
