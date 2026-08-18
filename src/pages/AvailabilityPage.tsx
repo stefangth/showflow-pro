@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useRef, useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
@@ -15,8 +15,10 @@ import { useAuth } from '@/features/auth/AuthContext';
 import { useFeature } from '@/hooks/useEntitlements';
 import { useArtistEligibleDates } from '@/hooks/useArtistEligibleDates';
 import { useMyArtist } from '@/hooks/useMyArtist';
+import { useMyBlockedDatesCount } from '@/hooks/useMyBlockedDatesCount';
 import { useMyHireOrders } from '@/hooks/useHireOrders';
 import { UnlinkedArtistCard } from '@/components/artists/UnlinkedArtistCard';
+import { AvailabilityFirstRun } from '@/components/availability/AvailabilityFirstRun';
 import { CalendarSurface } from '@/components/calendar/surface/CalendarSurface';
 import { toArtistEntries, type ArtistBookingStatus } from '@/lib/calendar/artistData';
 import type { ArtistDateEntry, ArtistStatus } from '@/lib/calendar/types';
@@ -74,6 +76,15 @@ function ArtistAvailability() {
   // window. Only artists who actually receive offers see this line.
   const showTiming = flow.artist_acceptance && !!tonight;
   const pageCopy = availabilityPageCopy(flow, tFlow);
+  // First-run chrome (screen 08): one step, retires once a date is blocked.
+  const { data: blockedCount = 0 } = useMyBlockedDatesCount(artist?.id ?? null);
+  const flowTimes = timesQ.data ?? DEFAULT_FLOW_TIMES;
+  const digestLabel = `${String(flowTimes.offerDigestHour).padStart(2, '0')}:00`;
+  const blockFormRef = useRef<HTMLFormElement>(null);
+  const focusBlockForm = () => {
+    blockFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    blockFormRef.current?.querySelector('select')?.focus();
+  };
   const { toast } = useToast();
   const qc = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -301,12 +312,31 @@ function ArtistAvailability() {
     );
   }
 
+  // Booking engine off: dates don't run in ShowFlow for this org, so there is nothing
+  // to set here (screen 08 edge case). No strip, no rules card, no calendar.
+  if (!bookingFlowEnabled) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="font-display text-[32px] font-semibold tracking-tight">{pageCopy.title}</h1>
+          <p className="text-muted-foreground mt-1">{pageCopy.subtitle}</p>
+        </div>
+        <p className="text-sm text-muted-foreground">{t('firstRun.bookingOff')}</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-display text-[32px] font-semibold tracking-tight">{pageCopy.title}</h1>
-        <p className="text-muted-foreground mt-1">{pageCopy.subtitle}</p>
-      </div>
+      <AvailabilityFirstRun
+        orgName={currentOrg?.name ?? ''}
+        blockedCount={blockedCount}
+        hireOrdersEnabled={hireOrdersEnabled}
+        artistAcceptance={flow.artist_acceptance}
+        digestLabel={digestLabel}
+        windowHours={flowTimes.windowHours}
+        onBlockDates={focusBlockForm}
+      />
 
       <PageMini page="availability" />
 
@@ -353,6 +383,7 @@ function ArtistAvailability() {
           )}
 
           <form
+            ref={blockFormRef}
             className="flex flex-wrap items-end gap-3"
             onSubmit={(e) => {
               e.preventDefault();

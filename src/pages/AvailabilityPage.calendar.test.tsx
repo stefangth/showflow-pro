@@ -56,8 +56,11 @@ vi.mock("@/hooks/useArtistEligibleDates", () => ({
 vi.mock("@/hooks/useHireOrders", () => ({
   useMyHireOrders: () => ({ data: [] }),
 }));
+// booking_flow must be on for the artist calendar/offers surface to render at all
+// (screen 08 shows a single "dates do not run here" line when it is off); hire_orders
+// stays off, matching the useMyHireOrders stub above.
 vi.mock("@/hooks/useEntitlements", () => ({
-  useFeature: () => false,
+  useFeature: (feature: string) => feature === "booking_flow",
 }));
 
 import AvailabilityPage from "./AvailabilityPage";
