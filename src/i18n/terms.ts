@@ -8,16 +8,16 @@ import type { Lang } from './config';
  * (ShowFlow, Airtable) are deliberately NOT translated and are not listed here.
  */
 export const TERMS = {
-  hold:           { en: 'Hold',            de: 'Vormerkung' },
-  softBooked:     { en: 'Soft-booked',     de: 'Vorläufig gebucht' },
-  cast:           { en: 'Cast',            de: 'Besetzung' },
-  tierLadder:     { en: 'Tier and ladder', de: 'Stufe und Rangfolge' },
-  responseWindow: { en: 'Response window', de: 'Antwortfrist' },
-  digest:         { en: 'Digest',          de: 'Tagesübersicht' },
-  understudy:     { en: 'Understudy',      de: 'Zweitbesetzung' },
-  hireOrder:      { en: 'Hire order',      de: 'Engagementvertrag' },
-  voidOrder:      { en: 'Void',            de: 'Ungültig machen' },
-  blockedDate:    { en: 'Blocked date',    de: 'Gesperrter Termin' },
+  hold:           { en: 'Waiting on you',           de: 'Wartet auf dich' },
+  softBooked:     { en: 'Said yes, waiting on you', de: 'Hat zugesagt, wartet auf dich' },
+  cast:           { en: 'Cast',                     de: 'Besetzung' },
+  tierLadder:     { en: 'Who this date asks',       de: 'Wer bei diesem Termin gefragt wird' },
+  responseWindow: { en: 'Answer by',                de: 'Antworten bis' },
+  digest:         { en: 'Daily send',               de: 'Täglicher Versand' },
+  understudy:     { en: 'Understudy',               de: 'Zweitbesetzung' },
+  hireOrder:      { en: 'Contract',                 de: 'Engagementvertrag' },
+  voidOrder:      { en: 'Void',                     de: 'Ungültig machen' },
+  blockedDate:    { en: 'Not free',                 de: 'Nicht frei' },
 } as const satisfies Record<string, Record<Lang, string>>;
 
 export type TermKey = keyof typeof TERMS;

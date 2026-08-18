@@ -2,40 +2,40 @@
   "availabilityPage": {
     "direct": {
       "title": "Meine Termine",
-      "subtitle": "Deine Buchungen und Verfügbarkeit. Sperre Termine, an denen du nicht auftreten kannst."
+      "subtitle": "Deine Buchungen und Verfügbarkeit. Markiere Termine, an denen du nicht frei bist."
     },
     "offer": {
-      "title": "Meine Angebote",
-      "subtitle": "Sieh dir deine Angebote an und sperre Termine, an denen du nicht verfügbar bist."
+      "title": "Meine Anfragen",
+      "subtitle": "Sieh, wofür du angefragt wurdest, und markiere Termine, an denen du nicht frei bist."
     }
   },
   "bookingsView": {
     "title": "Meine Buchungen",
-    "offerSubtitle": "Termine, für die du ein Angebot bekommen hast, basierend auf deiner Besetzungs-Eignung.",
+    "offerSubtitle": "Termine, für die du angefragt wurdest, basierend auf deiner Besetzungs-Eignung.",
     "directSubtitle": "Termine, für die du gebucht bist, basierend auf deiner Besetzungs-Eignung."
   },
   "statusLabels": {
     "offer": {
-      "suggested": "Angebot offen",
-      "soft_booked": "Vormerkung gesetzt",
-      "confirmed": "Bestätigt",
-      "unanswered": "Noch kein Angebot",
+      "suggested": "Angefragt",
+      "soft_booked": "Hat zugesagt, wartet auf dich",
+      "confirmed": "Gebucht",
+      "unanswered": "Noch nicht angefragt",
       "cancelled": "Storniert"
     },
     "direct": {
-      "suggested": "Angebot offen",
-      "soft_booked": "Vormerkung gesetzt",
+      "suggested": "Angefragt",
+      "soft_booked": "Hat zugesagt, wartet auf dich",
       "confirmed": "Gebucht",
-      "unanswered": "Nicht gebucht",
+      "unanswered": "Noch nicht angefragt",
       "cancelled": "Storniert"
     }
   },
   "meter": {
     "offer": {
       "title": "Antwortquote",
-      "headerSentence": "Deine Antwortquote bei Terminen, für die du ein Angebot bekommen hast.",
-      "footer": "Klicke, um offene Angebote zu sehen →",
-      "explainer": "Zählt Termine, die du angenommen hast oder für die du gebucht wurdest, von allen Terminen, für die du ein Angebot bekommen hast. Nur für dich, niemand wird damit bewertet."
+      "headerSentence": "Deine Antwortquote bei Terminen, für die du angefragt wurdest.",
+      "footer": "Klicke, um deine offenen Anfragen zu sehen →",
+      "explainer": "Zählt Termine, bei denen du zugesagt hast oder gebucht wurdest, von allen Terminen, für die du angefragt wurdest. Nur für dich, niemand wird damit bewertet."
     },
     "direct": {
       "title": "Gebuchte Termine",
@@ -44,5 +44,5 @@
       "explainer": "Termine, für die du gebucht bist, von allen Terminen, für die du geeignet bist."
     }
   },
-  "deliveryHint": "Angebote werden den Artists sofort per E-Mail geschickt, wenn eine Stufe geöffnet wird."
+  "deliveryHint": "Artists werden per E-Mail angefragt, sobald eine Stufe geöffnet wird."
 }

@@ -9,7 +9,7 @@ import { BOOKING_FLOW_DEFAULTS, applyPreset, type BookingFlow } from "@/lib/book
  * from bookingsViewCopy(flow) / bookingStatusLabels(flow) (src/lib/flowCopy.ts)
  * instead of the hardcoded offer-worded subtitle and the local STATUS_LABEL
  * map, so a direct-booking org (artist_acceptance = false) sees a
- * booked-worded subtitle and "Booked" / "Not booked" instead of
+ * booked-worded subtitle and "Booked" / "Not asked yet" instead of
  * "Confirmed" / "No offer yet".
  */
 
@@ -134,7 +134,7 @@ describe("ArtistBookingsView flow-aware copy (Task 4)", () => {
     flowHolder.flow = BOOKING_FLOW_DEFAULTS;
     renderWithProviders(<ArtistBookingsView />);
 
-    expect(await screen.findByText(/been offered for/)).toBeInTheDocument();
+    expect(await screen.findByText(/been asked about/)).toBeInTheDocument();
   });
 
   it("direct flow: swaps to a booked-for subtitle and Booked/Not booked status labels", async () => {
@@ -143,7 +143,7 @@ describe("ArtistBookingsView flow-aware copy (Task 4)", () => {
 
     expect(await screen.findByText(/you're booked for/)).toBeInTheDocument();
     expect(await screen.findByText("Booked")).toBeInTheDocument();
-    expect(screen.getByText("Not booked")).toBeInTheDocument();
+    expect(screen.getByText("Not asked yet")).toBeInTheDocument();
     expect(screen.queryByText("Confirmed")).not.toBeInTheDocument();
     expect(screen.queryByText("No offer yet")).not.toBeInTheDocument();
   });

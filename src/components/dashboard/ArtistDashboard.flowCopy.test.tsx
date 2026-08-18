@@ -140,9 +140,9 @@ describe("ArtistDashboard flow-aware meter (Task 3)", () => {
     flowHolder.flow = BOOKING_FLOW_DEFAULTS;
     renderWithProviders(<ArtistDashboard />);
 
-    expect(await screen.findByText("Response rate")).toBeInTheDocument();
+    expect(await screen.findByText("Answer rate")).toBeInTheDocument();
     expect(
-      screen.getByText("Your response rate on dates you've been offered."),
+      screen.getByText("Your answer rate on dates you've been asked about."),
     ).toBeInTheDocument();
     expect(await screen.findByText("2 of 4 dates")).toBeInTheDocument();
     expect(screen.getByText(/no one is scored on it/i)).toBeInTheDocument();
@@ -187,7 +187,7 @@ describe("ArtistDashboard flow-aware meter (Task 3)", () => {
 
   it("drops the pipeline header sentence with the gated region", async () => {
     flowHolder.flow = BOOKING_FLOW_DEFAULTS;
-    const sentence = "Your response rate on dates you've been offered.";
+    const sentence = "Your answer rate on dates you've been asked about.";
 
     vi.mocked(useFeature).mockReturnValue(true);
     const on = renderDashboard();
