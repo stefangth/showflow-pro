@@ -1,4 +1,4 @@
-import { createContext, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { X } from "lucide-react";
@@ -10,20 +10,9 @@ import { adminDisplayName } from "@/data/orgAdmins";
 import type { SettingsTabParam } from "@/lib/settingsTabs";
 import type { GetRunningTask, GetRunningTaskKey } from "@/lib/getRunning/tasks";
 import { TaskPanelEditor } from "./taskPanelRegistry";
-
-/**
- * Optional footer-action SLOT for the task panel frame. An editor mounted in the scroll body
- * may portal its OWN primary action into the pinned footer (next to "Later") by reading this
- * context for the footer slot's DOM node and `createPortal`-ing its button into it. The
- * mutation still lives entirely in the editor (its state, validation, disabled logic and
- * `onDone` are unchanged) — the frame only lends a stable, always-visible mount point, so the
- * design constraint from the frame comment below still holds: the footer carries no
- * frame-level primary of its own. Editors that do NOT consume this (all but `FlowStep` today)
- * keep their inline button and the footer shows only "Later", exactly as before. The value is
- * `null` until the footer has mounted its slot, so consumers must guard for that.
- */
-// eslint-disable-next-line react-refresh/only-export-components -- context co-located with the frame that owns the footer slot; kept beside TaskPanel per the task's design.
-export const TaskPanelFooterContext = createContext<HTMLDivElement | null>(null);
+// The footer-slot context lives in its own leaf module so an editor can read it without
+// importing this frame (which would cycle: frame → registry → editor → frame).
+import { TaskPanelFooterContext } from "./TaskPanelFooterContext";
 
 /** Where a producer reading a non-actionable task's read-only panel (see `WaitsOnPanelBody`
  *  below) can go to see the real thing in Settings — only for the tasks that already have a
@@ -177,7 +166,7 @@ export function TaskPanel({ task, orgId, onClose, onNext }: TaskPanelProps): JSX
         </p>
       </div>
 
-      <div ref={scrollRef} className="relative flex-1 overflow-y-auto p-4">
+      <div ref={scrollRef} data-testid="task-panel-scroll" className="relative flex-1 overflow-y-auto p-4">
         <div ref={contentRef}>
           <TaskPanelFooterContext.Provider value={footerSlotEl}>
             {task.actionableByViewer ? (
@@ -192,7 +181,10 @@ export function TaskPanel({ task, orgId, onClose, onNext }: TaskPanelProps): JSX
             bottom, so it never washes out the last line of short content. Sticky so it hugs the
             bottom of the scroll viewport; matches the panel's `bg-card` so it is dark-mode safe. */}
         {showScrollCue && (
-          <div className="pointer-events-none sticky bottom-0 -mt-4 h-4 bg-gradient-to-t from-card to-transparent" />
+          <div
+            data-testid="task-panel-scroll-cue"
+            className="pointer-events-none sticky bottom-0 -mt-4 h-4 bg-gradient-to-t from-card to-transparent"
+          />
         )}
       </div>
 

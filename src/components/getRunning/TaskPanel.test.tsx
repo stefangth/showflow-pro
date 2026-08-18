@@ -9,9 +9,32 @@ import type { GetRunningTask } from "@/lib/getRunning/tasks";
 // data through react-query/Supabase, which this test has no interest in exercising --
 // mocking the whole module to a probe (same pattern as SetupChecklistSheet.test.tsx)
 // proves the registry wired the right editor in without paying for its data layer.
-vi.mock("@/components/bookings/setup/FlowStep", () => ({
-  FlowStep: () => <div data-testid="flow-step-probe">flow step probe</div>,
-}));
+// The probe also mirrors FlowStep's real footer-portal behavior: it reads the frame's
+// TaskPanelFooterContext and portals its primary action into the footer slot when one is
+// provided, else falls back to an inline action -- so the tests below can assert the slot
+// actually mounts and receives the portal.
+vi.mock("@/components/bookings/setup/FlowStep", async () => {
+  const { useContext } = await import("react");
+  const { createPortal } = await import("react-dom");
+  // Leaf module — importing TaskPanel here would deadlock (frame → registry → this mock).
+  const { TaskPanelFooterContext } = await import("@/components/getRunning/TaskPanelFooterContext");
+  return {
+    FlowStep: () => {
+      const footerSlot = useContext(TaskPanelFooterContext);
+      const action = (
+        <button type="button" data-testid={footerSlot ? "flow-footer-action" : "flow-inline-action"}>
+          Use preset
+        </button>
+      );
+      return (
+        <div data-testid="flow-step-probe">
+          flow step probe
+          {footerSlot ? createPortal(action, footerSlot) : action}
+        </div>
+      );
+    },
+  };
+});
 
 // Same probe treatment for TermsStep so the eyebrow-variant tests below don't pay for the
 // real terms editor's data layer.
@@ -171,5 +194,49 @@ describe("TaskPanel", () => {
 
     expect(screen.getByTestId("flow-step-probe")).toBeInTheDocument();
     expect(screen.queryByText(/waits on/i)).not.toBeInTheDocument();
+  });
+
+  // The footer slot lets an editor mounted in the scroll body portal its primary action
+  // into the frame's pinned footer, so a verbose editor can't push it below the fold. The
+  // probe portals when a slot is provided and falls back inline otherwise, so seeing the
+  // footer action (and NOT the inline one) proves the frame supplied a live slot node.
+  describe("footer action slot", () => {
+    it("provides a slot the editor portals its primary action into, beside Later", () => {
+      renderWithProviders(<TaskPanel task={flowTask()} orgId="org-1" onClose={vi.fn()} />);
+
+      const action = screen.getByTestId("flow-footer-action");
+      expect(action).toBeInTheDocument();
+      // Not the inline fallback -> the context handed the editor a real footer node.
+      expect(screen.queryByTestId("flow-inline-action")).not.toBeInTheDocument();
+      // The portaled action lands in the footer row alongside Later, not in the scroll body.
+      expect(screen.getByText("Later").closest("div")).toContainElement(action);
+      expect(screen.getByTestId("task-panel-scroll")).not.toContainElement(action);
+    });
+  });
+
+  // The scroll cue is a bottom fade that must appear ONLY while the body actually overflows
+  // and is not scrolled to the bottom -- otherwise it washes out the last line of short
+  // content. jsdom reports zero layout, so overflow is simulated by overriding the scroll
+  // element's measurements and firing scroll.
+  describe("scroll cue", () => {
+    it("hides on non-overflowing content and shows/hides with overflow position", () => {
+      renderWithProviders(<TaskPanel task={flowTask()} orgId="org-1" onClose={vi.fn()} />);
+      const scroll = screen.getByTestId("task-panel-scroll");
+
+      // Mount: jsdom reports zero for every measurement, so nothing overflows -> no cue.
+      expect(screen.queryByTestId("task-panel-scroll-cue")).not.toBeInTheDocument();
+
+      // Content taller than the viewport, scrolled to the top -> more below -> cue shows.
+      Object.defineProperty(scroll, "scrollHeight", { value: 500, configurable: true });
+      Object.defineProperty(scroll, "clientHeight", { value: 100, configurable: true });
+      Object.defineProperty(scroll, "scrollTop", { value: 0, configurable: true });
+      fireEvent.scroll(scroll);
+      expect(screen.getByTestId("task-panel-scroll-cue")).toBeInTheDocument();
+
+      // Scrolled to the bottom -> nothing more below -> cue hides again.
+      Object.defineProperty(scroll, "scrollTop", { value: 400, configurable: true });
+      fireEvent.scroll(scroll);
+      expect(screen.queryByTestId("task-panel-scroll-cue")).not.toBeInTheDocument();
+    });
   });
 });

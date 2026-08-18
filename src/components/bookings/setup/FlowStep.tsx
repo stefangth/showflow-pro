@@ -12,7 +12,7 @@ import {
   BOOKING_FLOW_DEFAULTS, type PresetName, type LifecycleChip,
 } from "@/lib/bookingFlow";
 import { FlowPresets } from "@/components/settings/bookingFlow/FlowPresets";
-import { TaskPanelFooterContext } from "@/components/getRunning/TaskPanel";
+import { TaskPanelFooterContext } from "@/components/getRunning/TaskPanelFooterContext";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";

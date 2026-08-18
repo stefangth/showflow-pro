@@ -488,4 +488,39 @@ describe("PhaseCard", () => {
       expect(screen.getByText("Do it now")).toBeInTheDocument();
     });
   });
+
+  // The popped-out step's row must read as SELECTED so the board makes clear which step the
+  // open editor belongs to: violet row background, primary title color, primary status dot.
+  describe("active step highlighting", () => {
+    it("marks the active task's row and highlights its three visual channels", () => {
+      renderWithProviders(
+        <PhaseCard phase={makeBookablePhase()} role="admin" onOpenTask={vi.fn()} activeKey="ladder" />,
+      );
+
+      const active = screen.getByTestId("task-row-ladder");
+      expect(active).toHaveAttribute("data-active", "true");
+      // Row background, title color, and status-dot border all switch to the primary token.
+      expect(active.className).toContain("bg-primary/10");
+      expect(active.querySelector(".text-primary")).not.toBeNull();
+      expect(active.querySelector(".border-primary")).not.toBeNull();
+    });
+
+    it("leaves the non-active rows unstyled", () => {
+      renderWithProviders(
+        <PhaseCard phase={makeBookablePhase()} role="admin" onOpenTask={vi.fn()} activeKey="ladder" />,
+      );
+
+      const inactive = screen.getByTestId("task-row-timing");
+      expect(inactive).toHaveAttribute("data-active", "false");
+      expect(inactive.className).not.toContain("bg-primary/10");
+    });
+
+    it("marks no row active when activeKey is null", () => {
+      renderWithProviders(
+        <PhaseCard phase={makeBookablePhase()} role="admin" onOpenTask={vi.fn()} activeKey={null} />,
+      );
+
+      expect(screen.getByTestId("task-row-ladder")).toHaveAttribute("data-active", "false");
+    });
+  });
 });
