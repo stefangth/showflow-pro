@@ -103,7 +103,13 @@ export function RunOfShowRail() {
           if (reseedGen.current !== gen) return;
           setFailedCues((prev) => new Set(prev).add(cueId));
         },
-        onSettled: () => setPendingCue((cur) => (cur === cueId ? null : cur)),
+        // Gen-guard here too: a reseed already cleared pendingCue (and may have started a
+        // fresh mutation for the same cue), so a stale settle must not null the newer
+        // mutation's pending state by matching on cueId alone.
+        onSettled: () => {
+          if (reseedGen.current !== gen) return;
+          setPendingCue((cur) => (cur === cueId ? null : cur));
+        },
       },
     );
   };

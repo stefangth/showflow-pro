@@ -369,8 +369,7 @@ logic, **promote it to a real typed column** via a migration (add the column, ba
 | `resend_from_address` | Settings → Booking Engine | Sender address used for transactional email |
 | `airtable_sync_enabled` | Settings → Airtable Sync | Enable/disable the per-org Airtable → `show_dates` polling cron |
 | `notifications_enabled` | Settings → Notifications | Toggle in-app notifications |
-| `filters_visibility` | Settings → Filters | Which filter controls producers and artists see on each page |
 
-Slot capacity is **not** an app setting — it lives in `shows.main_cast_slots` / `shows.understudy_slots`, edited via Settings → Scheduling (Slots per Show) or the Productions page. The `soft_book_expiry_hours`, `sub_program_slots_defaults`, `auto_suggest_enabled`, and `max_suggestions` settings have been retired (no longer read by any code).
+Slot capacity is **not** an app setting — it lives in `shows.main_cast_slots` / `shows.understudy_slots`, edited via Settings → Scheduling (Slots per Show) or the Productions page. The `soft_book_expiry_hours`, `sub_program_slots_defaults`, `auto_suggest_enabled`, `max_suggestions`, and `filters_visibility` settings have been retired (no longer read by any code; `filters_visibility` backed the removed Settings → Filters tab, whose per-role filter controls now always show).
 
 Static developer constants (feature flags, route definitions) live in `src/config/app.config.ts` and require a code deploy to change.
