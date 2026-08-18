@@ -231,3 +231,8 @@ export type GetRunningState = "blocking" | "ready" | "complete";
 export function getRunningState(model: GetRunningModel): GetRunningState {
   return model.complete ? "complete" : model.canFirstOffer ? "ready" : "blocking";
 }
+
+/** Rough minutes-per-task estimate behind the "~N minutes" line both the board header and
+ *  the accept-invite handoff show. Shared (rather than a bare `* 3` at each call site) so
+ *  the estimate can be tuned in one place and both quotes stay in sync. */
+export const MINUTES_PER_TASK = 3;

@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { adminDisplayName } from "@/data/orgAdmins";
-import { firstOfferBlockingCount, getRunningState, type GetRunningModel } from "@/lib/getRunning/tasks";
+import { firstOfferBlockingCount, getRunningState, MINUTES_PER_TASK, type GetRunningModel } from "@/lib/getRunning/tasks";
 
 /**
  * Board header for `/get-running` (screen 01/03): eyebrow + headline + body on the left,
@@ -58,7 +58,7 @@ export function GetRunningHeader({ model, orgName, role, adminNames }: {
         : t(`header.headline.${state}`);
     body =
       state === "blocking"
-        ? t("header.body.blocking", { count: blockingCount, minutes: blockingCount * 3 })
+        ? t("header.body.blocking", { count: blockingCount, minutes: blockingCount * MINUTES_PER_TASK })
         : t(`header.body.${state}`);
   }
 

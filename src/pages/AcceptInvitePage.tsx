@@ -13,7 +13,7 @@ import { useBookingFlow } from '@/hooks/useBookingFlow';
 import { useFeature, useEntitlements } from '@/hooks/useEntitlements';
 import { useGetRunning } from '@/hooks/useGetRunning';
 import type { BookingFlow } from '@/lib/bookingFlow';
-import { firstOfferBlockingCount, getRunningState, type GetRunningModel, type GetRunningState } from '@/lib/getRunning/tasks';
+import { firstOfferBlockingCount, getRunningState, MINUTES_PER_TASK, type GetRunningModel, type GetRunningState } from '@/lib/getRunning/tasks';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -561,7 +561,7 @@ export default function AcceptInvitePage() {
                   </p>
                   <p className="text-sm text-muted-foreground">
                     {boardState === 'blocking'
-                      ? t('acceptInvite.board.blockingSub', { minutes: blockingCount * 3 })
+                      ? t('acceptInvite.board.blockingSub', { minutes: blockingCount * MINUTES_PER_TASK })
                       : t(`acceptInvite.board.${boardState}Sub`)}
                   </p>
                 </div>
