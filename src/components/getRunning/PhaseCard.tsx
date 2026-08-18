@@ -69,14 +69,20 @@ function PhaseIcon({ state, index }: { state: PhaseVisualState; index: number })
 function GetDatesSummary({
   tasks,
   onOpenTask,
+  adminNames,
 }: {
   tasks: GetRunningTask[];
   onOpenTask: (key: GetRunningTaskKey) => void;
+  adminNames?: string[];
 }): JSX.Element {
   const { t } = useTranslation("getRunning");
   const dates = tasks.find((task) => task.key === "dates");
   const slots = tasks.find((task) => task.key === "slots");
-  const allDone = tasks.every((task) => task.done);
+  // This trailing control speaks for the `slots` task specifically (the header owns the
+  // `dates` task's own review/waits-on affordance). Since `slots.done` implies `dates.done`
+  // (a slot count needs a show to exist), an open slots task is the only thing that leaves
+  // the phase incomplete here.
+  const slotsOpen = slots ? !slots.done : false;
 
   return (
     <div className="flex flex-wrap items-center gap-3.5 px-4 py-3 text-[13px] text-muted-foreground">
@@ -84,15 +90,26 @@ function GetDatesSummary({
       <span className="text-border">·</span>
       <SubCheck done={slots?.done ?? false} label={t("tasks.slots.subLabel")} />
       <div className="flex-1" />
-      {!allDone && (
-        <button
-          type="button"
-          className="text-xs font-medium text-accent-600"
-          onClick={() => onOpenTask("slots")}
-        >
-          {t("tasks.slots.action")}
-        </button>
-      )}
+      {/* The slots task gates on edit_scheduling, independently of the dates task's
+          manage_productions. So a producer can hold one but not the other: when slots is not
+          actionable, attribute it ("Waits on {admin}") rather than silently dropping the
+          action, otherwise the gap reads as a dead/absent control with no explanation (the
+          header, which speaks only for `dates`, may be showing an actionable link in that
+          same state). */}
+      {slotsOpen &&
+        (slots?.actionableByViewer ? (
+          <button
+            type="button"
+            className="text-xs font-medium text-accent-600"
+            onClick={() => onOpenTask("slots")}
+          >
+            {t("tasks.slots.action")}
+          </button>
+        ) : (
+          <Badge variant="neutral" className="h-[18px] px-1.5 text-[10px]">
+            {t("chips.waitsOn", { name: adminDisplayName(adminNames, t("waitsOn.fallbackAdmin")) })}
+          </Badge>
+        ))}
     </div>
   );
 }
@@ -290,7 +307,7 @@ export function PhaseCard({ phase, onOpenTask, adminNames }: PhaseCardProps): JS
       </div>
 
       {phase.key === "get_dates" ? (
-        <GetDatesSummary tasks={phase.tasks} onOpenTask={onOpenTask} />
+        <GetDatesSummary tasks={phase.tasks} onOpenTask={onOpenTask} adminNames={adminNames} />
       ) : phase.key === "paperwork" ? (
         <PaperworkTiles tasks={phase.tasks} onOpenTask={onOpenTask} adminNames={adminNames} />
       ) : (

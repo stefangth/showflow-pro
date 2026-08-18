@@ -217,7 +217,6 @@ const ROUTE_TO_FILE: Record<string, string> = {
   [ROUTES.HIRE_ORDERS]:  'HireOrdersPage.tsx',
   [ROUTES.ARTISTS]:      'ArtistsPage.tsx',
   [ROUTES.AVAILABILITY]: 'AvailabilityPage.tsx',
-  [ROUTES.ADMIN]:        'AdminPage.tsx',
   [ROUTES.SETTINGS]:     'SettingsPage.tsx',
   [ROUTES.CHATS]:        'ChatsListPage.tsx',
 };

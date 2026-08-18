@@ -49,6 +49,8 @@ function baseInput(overrides: Partial<GetRunningInput> = {}): GetRunningInput {
     hire: computeSetupStatus(FULL_HIRE_INPUT),
     datesDone: true,
     producerCount: 2,
+    canManageShows: true,
+    canEditScheduling: true,
     canEditBooking: true,
     canEditHire: true,
     canAddArtists: true,
@@ -129,6 +131,8 @@ describe("composeGetRunning", () => {
     const model = composeGetRunning(
       baseInput({
         role: "producer",
+        canManageShows: false,
+        canEditScheduling: false,
         canEditBooking: false,
         canEditHire: false,
         canAddArtists: false,
@@ -158,6 +162,8 @@ describe("composeGetRunning", () => {
     const model = composeGetRunning(
       baseInput({
         role: "producer",
+        canManageShows: true,
+        canEditScheduling: true,
         canEditBooking: true,
         canEditHire: true,
         canAddArtists: true,
@@ -172,6 +178,54 @@ describe("composeGetRunning", () => {
     // team is always adminOnly, regardless of canInvite or any other capability.
     expect(taskByKey(allTasks, "team").adminOnly).toBe(true);
     expect(taskByKey(allTasks, "team").actionableByViewer).toBe(false);
+  });
+
+  it("(b) get_dates gates by write path, not booking settings: `dates` on manage_productions, `slots` on edit_scheduling", () => {
+    // A producer who can create shows (manage_productions) and edit slot counts
+    // (edit_scheduling) but cannot edit booking settings can act on the whole get_dates
+    // phase, while the bookable settings tasks stay admin-only.
+    const model = composeGetRunning(
+      baseInput({
+        role: "producer",
+        canManageShows: true,
+        canEditScheduling: true,
+        canEditBooking: false,
+        canEditHire: false,
+        canAddArtists: false,
+        canInvite: false,
+      }),
+    );
+    const allTasks = model.phases.flatMap((p) => p.tasks);
+
+    expect(taskByKey(allTasks, "dates").actionableByViewer).toBe(true);
+    expect(taskByKey(allTasks, "slots").actionableByViewer).toBe(true);
+    expect(taskByKey(allTasks, "flow").actionableByViewer).toBe(false);
+    expect(taskByKey(allTasks, "ladder").actionableByViewer).toBe(false);
+    expect(taskByKey(allTasks, "timing").actionableByViewer).toBe(false);
+  });
+
+  it("(b) `slots` gates on edit_scheduling independently of manage_productions: a producer who can create shows but not edit scheduling waits on admin for slots only", () => {
+    // Guards the show_slots RLS boundary: edit_scheduling is separately toggleable from
+    // manage_productions, and writing show_slots requires producer_can_edit_scheduling. So a
+    // producer with manage_productions but not edit_scheduling can add shows (dates
+    // actionable) yet must NOT be handed an actionable slots "Resolve" that would fail on save.
+    const model = composeGetRunning(
+      baseInput({
+        role: "producer",
+        canManageShows: true,
+        canEditScheduling: false,
+        canEditBooking: false,
+        canEditHire: false,
+        canAddArtists: false,
+        canInvite: false,
+      }),
+    );
+    const allTasks = model.phases.flatMap((p) => p.tasks);
+
+    expect(taskByKey(allTasks, "dates").adminOnly).toBe(false);
+    expect(taskByKey(allTasks, "dates").actionableByViewer).toBe(true);
+    expect(taskByKey(allTasks, "slots").adminOnly).toBe(true);
+    expect(taskByKey(allTasks, "slots").actionableByViewer).toBe(false);
   });
 
   it("(b) admin viewer is always actionable, even on team", () => {
