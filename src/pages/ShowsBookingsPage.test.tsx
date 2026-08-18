@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { screen, fireEvent, act } from "@testing-library/react";
 import { renderWithProviders } from "@/test/renderWithProviders";
-import type { SetupRailMode } from "@/components/setup/setupRailMode";
 import i18n from "@/i18n";
 import { STORAGE_KEY } from "@/i18n/config";
 
@@ -101,48 +100,6 @@ const { canRef } = vi.hoisted(() => ({ canRef: { value: true } }));
 vi.mock("@/hooks/useCapabilities", () => ({
   useCan: () => canRef.value,
 }));
-// `visible` drives the inline callout, `reinvocable` drives the header
-// re-invoke button -- both read off this one mocked hook (Plan B fix wave:
-// the button used to be gated independently and could drift from the rail's
-// own eligibility).
-const { railState } = vi.hoisted(() => ({
-  railState: { value: { mode: "hidden" } as { mode: SetupRailMode } },
-}));
-vi.mock("@/components/bookings/setup/useBookingSetupRailVisible", () => ({
-  useBookingSetupRailVisible: () => railState.value,
-}));
-// The rail is exercised on its own in BookingSetupRail.test.tsx; stub it here so
-// this page's tests don't also have to seed its five app_settings/shows reads.
-vi.mock("@/components/bookings/setup/BookingSetupRail", () => ({
-  BookingSetupRail: () => <div data-testid="booking-setup-rail" />,
-}));
-// The banner rail's steps come from useModuleOnboardingRail, which reads this status's
-// `steps` + `complete`, so the mock must carry a full steps array (not just counts).
-type BookingStatus = {
-  steps: { key: string; done: boolean; block: "offers" | "filling" | null }[];
-  doneCount: number; totalCount: number; canOffer: boolean; complete: boolean;
-};
-const { bookingSetupStatus } = vi.hoisted(() => ({
-  bookingSetupStatus: {
-    value: {
-      steps: [
-        { key: "flow", done: false, block: null },
-        { key: "slots", done: false, block: "filling" },
-        { key: "ladder", done: false, block: "offers" },
-        { key: "eligibility", done: false, block: null },
-        { key: "timing", done: false, block: null },
-      ],
-      doneCount: 0, totalCount: 5, canOffer: false, complete: false,
-    } as BookingStatus,
-  },
-}));
-vi.mock("@/hooks/useBookingSetup", () => ({
-  useBookingSetupStatus: () => ({ status: bookingSetupStatus.value, coverage: undefined, isLoading: false, isError: false }),
-  // The banner rail now also reads this for the admin-only team nudge; this page's role is
-  // producer throughout (see the useAuth mock above), so it is always called disabled and
-  // only needs to exist here, not vary.
-  useProducerCount: () => null,
-}));
 vi.mock("@/hooks/useHireOrders", () => ({
   useDatesReadyForHireOrder: () => ({ data: undefined }),
   useHireOrderAction: () => ({ mutate: vi.fn(), isPending: false, variables: undefined }),
@@ -160,18 +117,6 @@ vi.mock("@/components/hireOrders/NewOrderWizard", () => ({ NewOrderWizard: () =>
 
 import ShowsBookingsPage from "./ShowsBookingsPage";
 
-/** Build a booking setup status with `done` of the five steps complete. */
-function makeBookingStatus(done: number, complete: boolean): BookingStatus {
-  const keys = ["flow", "slots", "ladder", "eligibility", "timing"] as const;
-  const block: Record<string, "offers" | "filling" | null> = {
-    flow: null, slots: "filling", ladder: "offers", eligibility: null, timing: null,
-  };
-  return {
-    steps: keys.map((k, i) => ({ key: k, done: i < done, block: block[k] })),
-    doneCount: done, totalCount: 5, canOffer: done >= 3, complete,
-  };
-}
-
 function showDate(overrides: Partial<ShowDateFixture> & Pick<ShowDateFixture, "id" | "date" | "show_id">): ShowDateFixture {
   return {
     session_1: "19:00", session_2: null, session_3: null,
@@ -188,8 +133,6 @@ beforeEach(() => {
   featureFlags.value = {};
   entLoading.value = false;
   canRef.value = true;
-  railState.value = { mode: "hidden" };
-  bookingSetupStatus.value = makeBookingStatus(0, false);
 });
 
 describe("ShowsBookingsPage — producer no default timeframe bound + past-day dimming (calendar surface)", () => {
@@ -261,114 +204,6 @@ describe("ShowsBookingsPage — empty state on the calendar surface", () => {
     expect(await screen.findByText("No show dates match the current filters.")).toBeInTheDocument();
     expect(screen.queryByTestId("month-grid")).not.toBeInTheDocument();
     expect(screen.queryByTestId("calendar-surface")).not.toBeInTheDocument();
-  });
-});
-
-/**
- * Plan B Task 3: the setup rail moved out of the cramped 340px grid column into
- * a right-side Sheet, and a dismissed-but-incomplete rail is now re-invokable
- * from a persistent header button (previously there was no way back once
- * "Hide" was clicked). booking_flow must be on for any of this to matter --
- * the page's own gate nulls out the org id (and therefore the rail) otherwise.
- *
- * These tests don't care what the calendar surface renders (its fixture dates
- * are arbitrary and won't fall in the real current month), only that the page
- * has finished loading and mounted the surface — so they wait on the
- * `calendar-surface` testid rather than on any particular chip text.
- */
-describe("ShowsBookingsPage — setup checklist uncramp + re-invoke (Plan B Task 3)", () => {
-  beforeEach(() => {
-    showDatesRef.value = [
-      showDate({ id: "sd-1", date: "2020-01-01", show_id: "s1", show: { id: "s1", program: "Past Show", sub_program: null, status: "active", main_cast_slots: 2, understudy_slots: 1 } }),
-      showDate({ id: "sd-2", date: "2030-01-01", show_id: "s2", show: { id: "s2", program: "Future Show", sub_program: null, status: "active", main_cast_slots: 2, understudy_slots: 1 } }),
-    ];
-  });
-
-  it("shows no re-invoke button and no inline callout by default (not dismissed, rail not visible)", async () => {
-    featureFlags.value = { booking_flow: true };
-    renderWithProviders(<ShowsBookingsPage />);
-    await screen.findByTestId("calendar-surface");
-    expect(screen.queryByRole("button", { name: /setup checklist/i })).not.toBeInTheDocument();
-    expect(screen.queryByTestId("booking-setup-rail")).not.toBeInTheDocument();
-    // The hidden mode must not render the collapsed bar either (symmetric with
-    // HireOrdersPage's hidden-state test).
-    expect(screen.queryByText(/set up in progress/i)).not.toBeInTheDocument();
-  });
-
-  it("labels the collapsed bar 'Org setup' for a viewer who cannot edit", async () => {
-    // Both other setup tests run with useCan -> true; this exercises the non-editor
-    // collapsed label the adapter derives from canEdit.
-    featureFlags.value = { booking_flow: true };
-    canRef.value = false;
-    railState.value = { mode: "collapsed" };
-    localStorage.setItem("showflow.bookingSetup.hidden.org-1", "true");
-    renderWithProviders(<ShowsBookingsPage />);
-    await screen.findByTestId("calendar-surface");
-    expect(await screen.findByText(/org setup in progress/i)).toBeInTheDocument();
-  });
-
-  it("shows a full-width inline callout (not a cramped side column) while setup is incomplete and visible", async () => {
-    featureFlags.value = { booking_flow: true };
-    railState.value = { mode: "banner" };
-    renderWithProviders(<ShowsBookingsPage />);
-    expect(await screen.findByText(/get bookings running/i)).toBeInTheDocument();
-    // No fixed side-column grid track left anywhere on the page.
-    expect(document.querySelector(".lg\\:grid-cols-\\[1fr_340px\\]")).toBeNull();
-  });
-
-  it("does not mount the setup rail while entitlements are still loading (no fail-open on default-on booking_flow)", async () => {
-    // booking_flow defaults ON, so `features.has('booking_flow')` reads true during the
-    // load window; the write-gate must still withhold the rail until loading resolves.
-    featureFlags.value = { booking_flow: true };
-    railState.value = { mode: "banner" };
-    entLoading.value = true;
-    renderWithProviders(<ShowsBookingsPage />);
-    await screen.findByTestId("calendar-surface");
-    expect(screen.queryByText(/get bookings running/i)).not.toBeInTheDocument();
-  });
-
-  it("opens the checklist Sheet at the clicked step, and drops the old dashed callout button", async () => {
-    featureFlags.value = { booking_flow: true };
-    railState.value = { mode: "banner" };
-    renderWithProviders(<ShowsBookingsPage />);
-    await screen.findByText(/get bookings running/i);
-    // The old dashed "Open checklist" button is gone; each step opens the Sheet in place.
-    expect(screen.queryByRole("button", { name: /open checklist/i })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Choose flow" }));
-    expect(await screen.findByTestId("booking-setup-rail")).toBeInTheDocument();
-  });
-
-  it("collapses to a bar, not the checklist button, when dismissed while setup is incomplete", async () => {
-    featureFlags.value = { booking_flow: true };
-    railState.value = { mode: "collapsed" };
-    localStorage.setItem("showflow.bookingSetup.hidden.org-1", "true");
-    renderWithProviders(<ShowsBookingsPage />);
-    await screen.findByTestId("calendar-surface");
-    expect(screen.queryByRole("button", { name: /setup checklist/i })).not.toBeInTheDocument();
-    expect(screen.queryByText(/get bookings running/i)).not.toBeInTheDocument();
-    expect(await screen.findByText(/set up in progress/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /resume/i })).toBeInTheDocument();
-  });
-
-  it("the collapsed bar's Resume clears the dismissal so the wizard re-expands", async () => {
-    featureFlags.value = { booking_flow: true };
-    railState.value = { mode: "collapsed" };
-    localStorage.setItem("showflow.bookingSetup.hidden.org-1", "true");
-    renderWithProviders(<ShowsBookingsPage />);
-    fireEvent.click(await screen.findByRole("button", { name: /resume/i }));
-    expect(localStorage.getItem("showflow.bookingSetup.hidden.org-1")).toBeNull();
-  });
-
-  it("shows the permanent checklist button once setup is complete, and it opens the Sheet", async () => {
-    featureFlags.value = { booking_flow: true };
-    railState.value = { mode: "button" };
-    bookingSetupStatus.value = makeBookingStatus(5, true);
-    renderWithProviders(<ShowsBookingsPage />);
-    const btn = await screen.findByRole("button", { name: /setup checklist/i });
-    expect(screen.queryByText(/set up in progress/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/get bookings running/i)).not.toBeInTheDocument();
-    fireEvent.click(btn);
-    expect(await screen.findByTestId("booking-setup-rail")).toBeInTheDocument();
   });
 });
 

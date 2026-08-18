@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/features/auth/AuthContext';
@@ -16,12 +16,7 @@ import { toast } from 'sonner';
 import { ArtistDashboard } from '@/components/dashboard/ArtistDashboard';
 import { TierAttentionCard } from '@/components/dashboard/TierAttentionCard';
 import { DirectBookingCard } from '@/components/dashboard/DirectBookingCard';
-import { useDashboardFirstRun } from '@/components/dashboard/firstRun/useDashboardFirstRun';
-import { DashboardFirstRun } from '@/components/dashboard/firstRun/DashboardFirstRun';
-import { SetupChecklistSheet } from '@/components/setup/SetupChecklistSheet';
 import { ModuleGate } from '@/components/layout/ModuleGate';
-import { ROUTES } from '@/config/app.config';
-import type { FeatureKey } from '@/lib/entitlements';
 import { useFeature } from '@/hooks/useEntitlements';
 import { showSlots } from '@/lib/settings';
 import { formatDateDMY } from '@/lib/dates';
@@ -68,29 +63,14 @@ function ProducerDashboard() {
   const in30 = format(addDays(today, 30), 'yyyy-MM-dd');
 
   const qc = useQueryClient();
-  const navigate = useNavigate();
-  const { currentOrg, hasRole } = useAuth();
+  const { currentOrg } = useAuth();
   const orgId = currentOrg?.id ?? null;
-  const role = hasRole('admin') ? 'admin' : 'producer';
-  const fr = useDashboardFirstRun(role);
   // Only the bulk Confirm action is capability-gated (decline/cancel is deliberately not).
   const canConfirmBookings = useCan('confirm_bookings');
   const bookingFlowEnabled = useFeature('booking_flow');
   const { reference, customFieldKey } = useReferenceField();
   const flow = useBookingFlow().data ?? BOOKING_FLOW_DEFAULTS;
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  // A stage's openSetup action opens that module's inline setup Sheet at the step, in
-  // place — no routing away to Settings/Productions. The dashboard hosts both modules'
-  // Sheets and picks by the action's feature. Open state is tracked separately from the
-  // selection so the last-opened {feature, step} persists through the Sheet's ~300ms close
-  // animation (SetupChecklistSheet keeps its content mounted for the exit) — nulling it on
-  // close would flip the content to the other module mid-slide-out.
-  const [setupOpen, setSetupOpen] = useState(false);
-  const [setupSel, setSetupSel] = useState<{ feature: FeatureKey; step: string } | null>(null);
-  const handleOpenSetup = (feature: FeatureKey, step: string) => { setSetupSel({ feature, step }); setSetupOpen(true); };
-  // The header card's ghost CTA: a "how this org works" explainer target, pointing at
-  // the Help center (same destination the rest of the app's role explainers use).
-  const handleGhost = () => navigate(ROUTES.HELP);
 
   const { data: upcomingDates } = useQuery({
     queryKey: ['dashboard-upcoming-dates', todayStr, orgId],
@@ -243,35 +223,8 @@ function ProducerDashboard() {
     },
   ];
 
-  // KPI-visibility rule: a fresh org still in first-run with NO real data shows ONLY the
-  // first-run surface (its sample queue stands in for the empty body); an org with real
-  // data, or a dismissed surface, shows the KPI body too (alongside the surface when it is
-  // still showing). Not wrapped in any sample/greyed component -- when it renders, it is
-  // the real thing.
-  // No datesSettled guard needed: useFirstRunMetrics reads upcoming dates under its own
-  // ["first-run", ...] key (it needs a wider column set than this page's upcomingDates
-  // below), so fr.show and hasData are separate reads of the SAME filtered row set. They
-  // can settle a beat apart, but the only visible effect is when the KPI body appears
-  // below the chain; there is no fake-data body to flash, so a brief stagger is harmless.
-  const hasData = (upcomingDates?.length ?? 0) > 0;
-  const showFirstRun = fr.show && !fr.dismissed;
-
   return (
     <div className="space-y-6">
-      {fr.show && (
-        <DashboardFirstRun
-          result={fr.result}
-          queueRows={fr.queueRows}
-          dismissed={fr.dismissed}
-          onDismiss={fr.dismiss}
-          onUndismiss={fr.undismiss}
-          onOpenSetup={handleOpenSetup}
-          onGhost={handleGhost}
-        />
-      )}
-
-      {(!showFirstRun || hasData) && (
-        <div className="space-y-6">
           <div>
             <h1 className="font-display text-[32px] font-semibold tracking-tight">{t('producer.heading')}</h1>
             <p className="text-muted-foreground mt-1">{t('producer.subheading')}</p>
@@ -404,16 +357,6 @@ function ProducerDashboard() {
               </motion.div>
             ))}
           </div>
-        </div>
-      )}
-
-      <SetupChecklistSheet
-        feature={setupSel?.feature ?? 'booking_flow'}
-        orgId={orgId}
-        open={setupOpen}
-        onOpenChange={setSetupOpen}
-        initialStep={setupSel?.step}
-      />
     </div>
   );
 }

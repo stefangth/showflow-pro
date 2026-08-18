@@ -33,6 +33,16 @@ describe("resolveInitialTab", () => {
     expect(resolveInitialTab("permissions", true)).toBe("permissions");
   });
 
+  it("gives a non-admin the default rather than the admin-only People/Activity/Sync-log tabs", () => {
+    // Folded in from the retired standalone Admin page: same admin-only floor it always had.
+    expect(resolveInitialTab("people", false)).toBe("organization");
+    expect(resolveInitialTab("people", true)).toBe("people");
+    expect(resolveInitialTab("activity", false)).toBe("organization");
+    expect(resolveInitialTab("activity", true)).toBe("activity");
+    expect(resolveInitialTab("sync-log", false)).toBe("organization");
+    expect(resolveInitialTab("sync-log", true)).toBe("sync-log");
+  });
+
   it("redirects the retired casts-cities and production-ownership params to casts-coverage", () => {
     // Both sections folded into Casts & coverage; an old bookmark or notification link
     // must still land somewhere valid rather than falling back to the role default.

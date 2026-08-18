@@ -1,0 +1,1479 @@
+<!DOCTYPE html><html><head><meta charset="utf-8">
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="_ds/showflow-design-system-019dff72-08b4-7b0e-96d7-3d7004e1efcb/colors_and_type.css">
+<script src="_ds/showflow-design-system-019dff72-08b4-7b0e-96d7-3d7004e1efcb/_ds_bundle.js"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  html, body { margin: 0; padding: 0; background: #EBE8E1; }
+  body { font-family: Geist, system-ui, sans-serif; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+  a { color: #5848D8; text-decoration: none; }
+  a:hover { color: #4738B0; text-decoration: underline; }
+  svg.lucide { display: block; }
+</style>
+</head><body>
+
+<div style="display:flex;flex-direction:column;gap:56px;padding:44px 44px 90px;background:#EBE8E1;color:#15131C">
+
+  <div style="display:flex;flex-direction:column;gap:8px;max-width:920px">
+    <div style="font:600 11px/1 'Geist Mono',monospace;letter-spacing:1.6px;text-transform:uppercase;color:#8B8A85">1b · built out</div>
+    <div style="font-size:32px;font-weight:600;letter-spacing:-0.6px;text-wrap:pretty">Get running owns the order. Settings answers where a thing lives.</div>
+    <div style="font-size:14px;line-height:21px;color:#5B5A57;text-wrap:pretty">Eleven setup steps, three phases, one board. Every task is finished in a panel on the same screen, so nobody is sent into a settings tab to guess. Underneath sits 1a: the twelve tabs collapsed into five sections, searchable, with every setting that exists today mapped on screen 06 and every surface checked on screen 10.</div>
+    <div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:8px;font:500 12px 'Geist Mono',monospace;color:#5B5A57">
+      <span style="border:0.5px solid #E6E3E0;border-radius:4px;background:#fff;padding:4px 8px">01 Get running · admin</span>
+      <span style="border:0.5px solid #E6E3E0;border-radius:4px;background:#fff;padding:4px 8px">02 Task panels</span>
+      <span style="border:0.5px solid #E6E3E0;border-radius:4px;background:#fff;padding:4px 8px">03 Producer view</span>
+      <span style="border:0.5px solid #E6E3E0;border-radius:4px;background:#fff;padding:4px 8px">04 Running, board retires</span>
+      <span style="border:0.5px solid #E6E3E0;border-radius:4px;background:#fff;padding:4px 8px">05 Settings · five sections</span>
+      <span style="border:0.5px solid #E6E3E0;border-radius:4px;background:#fff;padding:4px 8px">06 Coverage of all 12 tabs</span>
+      <span style="border:0.5px solid #E6E3E0;border-radius:4px;background:#fff;padding:4px 8px">07 Invite handoff</span>
+      <span style="border:0.5px solid #E6E3E0;border-radius:4px;background:#fff;padding:4px 8px">08 Artist first run</span>
+      <span style="border:0.5px solid #E6E3E0;border-radius:4px;background:#fff;padding:4px 8px">09 Artist account</span>
+      <span style="border:0.5px solid #E6E3E0;border-radius:4px;background:#fff;padding:4px 8px">10 Validation</span>
+      <span style="border:0.5px solid #E6E3E0;border-radius:4px;background:#fff;padding:4px 8px">11 Airtable connect</span>
+    </div>
+  </div>
+
+  <!-- ═══════════ 01 · GET RUNNING, ADMIN ═══════════ -->
+  <div data-screen-label="01 Get running" style="display:flex;flex-direction:column;gap:10px">
+    <div style="display:flex;align-items:baseline;gap:10px">
+      <span style="font:600 11px/1 'Geist Mono',monospace;letter-spacing:1.6px;text-transform:uppercase;color:#8B8A85">01 · /get-running</span>
+      <span style="font-size:13px;color:#5B5A57">Admin, both modules on, 148 dates synced, 3 of 11 done. Panel open on the blocking task.</span>
+    </div>
+
+    <div style="width:1520px;border:0.5px solid #E6E3E0;border-radius:12px;overflow:hidden;box-shadow:0 1px 2px rgba(20,18,14,.04),0 8px 24px rgba(20,18,14,.08);background:#F6F4EF">
+      <div style="display:flex;height:1150px">
+
+        <aside style="width:220px;flex-shrink:0;display:flex;flex-direction:column;background:#F1EEE6;border-right:0.5px solid #E6E3E0">
+          <div style="display:flex;align-items:center;gap:10px;padding:16px 14px;border-bottom:0.5px solid #E6E3E0">
+            <svg width="32" height="32" viewBox="0 0 32 32" fill="none" style="flex-shrink:0;color:#6E5CF6">
+              <path d="M4 26V16C4 8.8 10 4 16 4C22 4 28 8.8 28 16V26Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"></path>
+              <path d="M10 26L16 12L22 26" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.6"></path>
+              <circle cx="16" cy="10" r="1.5" fill="currentColor"></circle>
+            </svg>
+            <div style="display:flex;align-items:baseline;gap:6px;flex:1;min-width:0">
+              <span style="font-size:15px;font-weight:600;letter-spacing:-0.02em"><span style="color:#15131C">Show</span><span style="color:#6E5CF6">Flow</span></span>
+              <span style="margin-left:auto;border:1px solid #E6E3E0;border-radius:4px;padding:1px 4px;font:500 9px/1.4 'Geist Mono',monospace;color:#5B5A57">v1.17.0</span>
+            </div>
+          </div>
+          <div style="padding:8px;border-bottom:0.5px solid #E6E3E0">
+            <div style="display:flex;align-items:center;gap:8px;border-radius:7px;padding:8px 10px;font-size:13px;font-weight:500;color:rgba(21,19,28,.8)"><i data-lucide="building-2" data-size="14"></i><span>Nordstadt Produktionen</span></div>
+          </div>
+          <nav style="flex:1;display:flex;flex-direction:column;gap:16px;padding:12px 8px">
+            <div style="display:flex;flex-direction:column;gap:2px">
+              <p style="margin:0;padding:0 10px 4px;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:rgba(91,90,87,.7)">Workspace</p>
+              <div style="display:flex;align-items:center;gap:10px;border-radius:7px;padding:8px 10px;font-size:13px;font-weight:600;background:#E5DEFF;color:#4738B0"><i data-lucide="rocket" data-size="14"></i><span style="flex:1">Get running</span><span style="border-radius:4px;background:#fff;color:#4738B0;padding:1px 5px;font:600 10px 'Geist Mono',monospace">3/11</span></div>
+              <div style="display:flex;align-items:center;gap:10px;border-radius:7px;padding:8px 10px;font-size:13px;font-weight:500;color:rgba(21,19,28,.7)"><i data-lucide="layout-dashboard" data-size="14"></i><span>Dashboard</span></div>
+              <div style="display:flex;align-items:center;gap:10px;border-radius:7px;padding:8px 10px;font-size:13px;font-weight:500;color:rgba(21,19,28,.7)"><i data-lucide="book-open" data-size="14"></i><span style="flex:1">Shows &amp; Bookings</span></div>
+              <div style="display:flex;align-items:center;gap:10px;border-radius:7px;padding:8px 10px;font-size:13px;font-weight:500;color:rgba(21,19,28,.7)"><i data-lucide="file-signature" data-size="14"></i><span>Hire orders</span></div>
+              <div style="display:flex;align-items:center;gap:10px;border-radius:7px;padding:8px 10px;font-size:13px;font-weight:500;color:rgba(21,19,28,.7)"><i data-lucide="message-square" data-size="14"></i><span>Chats</span></div>
+              <div style="display:flex;align-items:center;gap:10px;border-radius:7px;padding:8px 10px;font-size:13px;font-weight:500;color:rgba(21,19,28,.7)"><i data-lucide="circle-help" data-size="14"></i><span>Help</span></div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:2px">
+              <p style="margin:0;padding:0 10px 4px;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:rgba(91,90,87,.7)">Catalog</p>
+              <div style="display:flex;align-items:center;gap:10px;border-radius:7px;padding:8px 10px;font-size:13px;font-weight:500;color:rgba(21,19,28,.7)"><i data-lucide="theater" data-size="14"></i><span>Productions</span></div>
+              <div style="display:flex;align-items:center;gap:10px;border-radius:7px;padding:8px 10px;font-size:13px;font-weight:500;color:rgba(21,19,28,.7)"><i data-lucide="users" data-size="14"></i><span>Artists</span></div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:2px">
+              <p style="margin:0;padding:0 10px 4px;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:rgba(91,90,87,.7)">System</p>
+              <div style="display:flex;align-items:center;gap:10px;border-radius:7px;padding:8px 10px;font-size:13px;font-weight:500;color:rgba(21,19,28,.7)"><i data-lucide="shield" data-size="14"></i><span>Admin</span></div>
+              <div style="display:flex;align-items:center;gap:10px;border-radius:7px;padding:8px 10px;font-size:13px;font-weight:500;color:rgba(21,19,28,.7)"><i data-lucide="settings" data-size="14"></i><span>Settings</span></div>
+            </div>
+          </nav>
+          <div style="border-top:0.5px solid #E6E3E0;padding:8px">
+            <div style="border:1px solid #E6E3E0;border-radius:10px;background:rgba(246,244,239,.7);padding:8px 10px;display:flex;align-items:center;gap:10px">
+              <div style="height:32px;width:32px;border-radius:999px;background:#E5DEFF;color:#4738B0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600">MK</div>
+              <div style="flex:1;min-width:0"><p style="margin:0;font-size:12.5px;font-weight:600;line-height:1.25">Maja Kern</p><p style="margin:0;font-size:10.5px;line-height:1.25;color:#5B5A57">Admin · Nordstadt</p></div>
+              <span style="color:rgba(21,19,28,.6);display:flex"><i data-lucide="settings" data-size="15"></i></span>
+            </div>
+          </div>
+        </aside>
+
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+          <header style="display:flex;align-items:center;gap:12px;height:52px;padding:0 24px;border-bottom:0.5px solid #E6E3E0;flex-shrink:0">
+            <nav style="display:flex;align-items:center;gap:6px;font-size:13px"><span style="color:#5B5A57">Home</span><span style="color:rgba(91,90,87,.5);display:flex"><i data-lucide="chevron-right" data-size="14"></i></span><span style="font-weight:500">Get running</span></nav>
+            <div style="flex:1"></div>
+            <div style="display:inline-flex;align-items:center;gap:2px;border:1px solid #E6E3E0;border-radius:999px;background:#FAF8F4;padding:4px">
+              <span style="height:28px;width:28px;border-radius:999px;background:#F6F4EF;box-shadow:0 1px 2px rgba(20,18,14,.05);display:flex;align-items:center;justify-content:center"><i data-lucide="sun" data-size="15"></i></span>
+              <span style="height:28px;width:28px;border-radius:999px;color:#5B5A57;display:flex;align-items:center;justify-content:center"><i data-lucide="monitor" data-size="15"></i></span>
+              <span style="height:28px;width:28px;border-radius:999px;color:#5B5A57;display:flex;align-items:center;justify-content:center"><i data-lucide="moon" data-size="15"></i></span>
+            </div>
+            <span style="position:relative;height:36px;width:36px;border-radius:8px;display:flex;align-items:center;justify-content:center"><i data-lucide="bell" data-size="18"></i><span style="position:absolute;top:5px;right:5px;height:8px;width:8px;border-radius:999px;background:#6E5CF6;box-shadow:0 0 0 2px #F6F4EF"></span></span>
+          </header>
+
+          <main style="flex:1;padding:24px;display:flex;gap:20px;overflow:hidden">
+
+            <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:20px">
+
+              <div style="display:flex;align-items:flex-start;gap:24px;flex-shrink:0">
+                <div style="min-width:0;flex:1">
+                  <div style="font-size:11px;font-weight:600;letter-spacing:1.6px;text-transform:uppercase;color:#5848D8">Nordstadt Produktionen · get running</div>
+                  <h1 style="margin:8px 0 0;font-size:32px;font-weight:600;line-height:38px;letter-spacing:-0.6px;max-width:620px;text-wrap:pretty">Two things stand between you and your first offer</h1>
+                  <p style="margin:8px 0 0;max-width:600px;font-size:14px;line-height:21px;color:#5B5A57;text-wrap:pretty">Both are yours to do and take about 6 minutes. Nothing else here blocks anything, and nothing here stops you using the rest of the app.</p>
+                </div>
+                <div style="width:236px;flex-shrink:0;border:0.5px solid #E6E3E0;border-radius:10px;background:#fff;padding:14px">
+                  <div style="font-size:11px;font-weight:600;letter-spacing:1.6px;text-transform:uppercase;color:#8B8A85">Set up</div>
+                  <div style="margin-top:8px;display:flex;align-items:baseline;gap:6px"><span style="font:600 22px 'Geist Mono',monospace;letter-spacing:-0.4px">3</span><span style="font-size:12px;color:#8B8A85">of 11 done</span></div>
+                  <div style="margin-top:10px;display:flex;gap:3px">
+                    <div style="height:3px;flex:1;border-radius:999px;background:#6E5CF6"></div><div style="height:3px;flex:1;border-radius:999px;background:#6E5CF6"></div><div style="height:3px;flex:1;border-radius:999px;background:#6E5CF6"></div>
+                    <div style="height:3px;flex:1;border-radius:999px;background:#EFEDE7"></div><div style="height:3px;flex:1;border-radius:999px;background:#EFEDE7"></div><div style="height:3px;flex:1;border-radius:999px;background:#EFEDE7"></div><div style="height:3px;flex:1;border-radius:999px;background:#EFEDE7"></div><div style="height:3px;flex:1;border-radius:999px;background:#EFEDE7"></div><div style="height:3px;flex:1;border-radius:999px;background:#EFEDE7"></div><div style="height:3px;flex:1;border-radius:999px;background:#EFEDE7"></div><div style="height:3px;flex:1;border-radius:999px;background:#EFEDE7"></div>
+                  </div>
+                  <div style="margin-top:12px;display:flex;flex-direction:column;gap:8px;border-top:1px solid #E6E3E0;padding-top:10px">
+                    <div style="display:flex;align-items:baseline;gap:7px"><div style="height:6px;width:6px;border-radius:2px;background:#6E5CF6"></div><div style="font-size:12px;font-weight:500">Booking engine</div><div style="flex:1"></div><div style="font-size:11px;font-weight:600;color:#5848D8">On</div></div>
+                    <div style="display:flex;align-items:baseline;gap:7px"><div style="height:6px;width:6px;border-radius:2px;background:#6E5CF6"></div><div style="font-size:12px;font-weight:500">Hire orders</div><div style="flex:1"></div><div style="font-size:11px;font-weight:600;color:#5848D8">On</div></div>
+                  </div>
+                  <div style="margin-top:10px;font-size:11px;line-height:16px;color:#8B8A85;text-wrap:pretty">Modules are switched on by your account manager.</div>
+                </div>
+              </div>
+
+              <!-- PHASE 01 -->
+              <div style="border:0.5px solid #E6E3E0;border-radius:10px;background:#fff;flex-shrink:0">
+                <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid #E6E3E0">
+                  <span style="display:flex;height:22px;width:22px;align-items:center;justify-content:center;border-radius:999px;background:#6E5CF6;color:#fff"><i data-lucide="check" data-size="13"></i></span>
+                  <div style="font-size:16px;font-weight:600;letter-spacing:-0.1px">Get dates in</div>
+                  <span style="display:inline-flex;align-items:center;height:20px;padding:0 6px;border-radius:4px;background:#E7F5EC;color:#157F3D;font-size:11px;font-weight:600">Running</span>
+                  <span style="flex:1"></span>
+                  <span style="font:500 12px 'Geist Mono',monospace;color:#8B8A85">148 dates in · synced 11:00</span>
+                  <span style="font-size:12px;font-weight:500;color:#5848D8">Review</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:14px;padding:12px 16px;font-size:13px;color:#5B5A57;flex-wrap:wrap">
+                  <span style="display:flex;align-items:center;gap:6px"><span style="color:#6E5CF6;display:flex"><i data-lucide="check" data-size="14"></i></span>Shows in, from Airtable, hourly</span>
+                  <span style="color:#DCD9D6">·</span>
+                  <span style="display:flex;align-items:center;gap:6px"><span style="color:#6E5CF6;display:flex"><i data-lucide="check" data-size="14"></i></span>Slots set on every show</span>
+                  <span style="flex:1"></span>
+                  <span style="font-size:12px;color:#8B8A85">4 records held on the last run</span>
+                  <span style="font-size:12px;font-weight:500;color:#5848D8">Resolve</span>
+                </div>
+              </div>
+
+              <!-- PHASE 02 -->
+              <div style="border:0.5px solid #CABBFF;border-radius:10px;background:#fff;flex-shrink:0;box-shadow:0 1px 2px rgba(20,18,14,.04),0 4px 10px rgba(20,18,14,.05)">
+                <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;background:#F4F1FF;border-bottom:1px solid #E5DEFF">
+                  <span style="display:flex;height:22px;width:22px;align-items:center;justify-content:center;border-radius:999px;border:1.5px solid #6E5CF6;color:#4738B0;font:600 11px 'Geist Mono',monospace">2</span>
+                  <div style="font-size:16px;font-weight:600;letter-spacing:-0.1px">Make it bookable</div>
+                  <span style="display:inline-flex;align-items:center;height:20px;padding:0 6px;border-radius:4px;background:#FCF1DA;color:#9A6314;font-size:11px;font-weight:600">Blocks your first offer</span>
+                  <span style="flex:1"></span>
+                  <span style="font:500 12px 'Geist Mono',monospace;color:#5848D8">5 left, 2 blocking</span>
+                </div>
+
+                <div style="display:flex;align-items:flex-start;gap:12px;padding:13px 16px;border-bottom:1px solid #E6E3E0">
+                  <span style="margin-top:2px;color:#6E5CF6;display:flex"><i data-lucide="check" data-size="16"></i></span>
+                  <div style="min-width:0;flex:1">
+                    <div style="font-size:14px;font-weight:500;color:#5B5A57">Booking flow</div>
+                    <div style="margin-top:2px;font-size:12px;color:#8B8A85">Offers with tiers. Tier 1 first, tier 2 opens 24 h later if unfilled.</div>
+                  </div>
+                  <span style="font-size:12px;font-weight:500;color:#5848D8">Change</span>
+                </div>
+
+                <div style="display:flex;align-items:flex-start;gap:12px;padding:13px 16px;border-bottom:1px solid #E6E3E0">
+                  <span style="margin-top:3px;height:14px;width:14px;flex-shrink:0;border-radius:999px;border:1.5px solid #6E5CF6"></span>
+                  <div style="min-width:0;flex:1">
+                    <div style="display:flex;align-items:center;gap:8px">
+                      <div style="font-size:14px;font-weight:600">Add your artists</div>
+                      <span style="display:inline-flex;align-items:center;height:20px;padding:0 6px;border-radius:4px;background:#FCF1DA;color:#9A6314;font-size:11px;font-weight:600">Blocks booking</span>
+                    </div>
+                    <div style="margin-top:3px;font-size:12px;line-height:17px;color:#5B5A57">Nobody to book until your roster has active artists. Import a sheet or add them by hand.</div>
+                  </div>
+                  <button style="flex-shrink:0;height:32px;padding:0 12px;border:0.5px solid rgba(20,18,14,.14);border-radius:8px;background:transparent;font:500 13px Geist,sans-serif;color:#15131C">Add here</button>
+                </div>
+
+                <div style="display:flex;align-items:flex-start;gap:12px;padding:13px 16px;border-bottom:1px solid #E6E3E0;background:#FAF8F4">
+                  <span style="margin-top:3px;height:14px;width:14px;flex-shrink:0;border-radius:999px;border:1.5px solid #6E5CF6"></span>
+                  <div style="min-width:0;flex:1">
+                    <div style="display:flex;align-items:center;gap:8px">
+                      <div style="font-size:14px;font-weight:600">Rank your casts in Hamburg and Leipzig</div>
+                      <span style="display:inline-flex;align-items:center;height:20px;padding:0 6px;border-radius:4px;background:#FCF1DA;color:#9A6314;font-size:11px;font-weight:600">Blocks offers</span>
+                      <span style="display:inline-flex;align-items:center;height:20px;padding:0 6px;border-radius:4px;background:#E5DEFF;color:#4738B0;font-size:11px;font-weight:600">Open</span>
+                    </div>
+                    <div style="margin-top:3px;font-size:12px;line-height:17px;color:#5B5A57;text-wrap:pretty">7 of 9 cities are ranked. A city with no tier 1 opens to nobody, so 36 dates there sit still.</div>
+                  </div>
+                  <button style="flex-shrink:0;height:32px;padding:0 12px;border:0;border-radius:8px;background:#6E5CF6;color:#fff;font:500 13px Geist,sans-serif">Rank here</button>
+                </div>
+
+                <div style="display:flex;align-items:flex-start;gap:12px;padding:13px 16px;border-bottom:1px solid #E6E3E0">
+                  <span style="margin-top:3px;height:14px;width:14px;flex-shrink:0;border-radius:999px;border:1.5px solid rgba(20,18,14,.14)"></span>
+                  <div style="min-width:0;flex:1">
+                    <div style="font-size:14px;font-weight:500">Check who is eligible</div>
+                    <div style="margin-top:3px;font-size:12px;line-height:17px;color:#5B5A57">Which casts belong to which show, in which city. Every scheduled show has a cast today.</div>
+                  </div>
+                  <span style="display:inline-flex;align-items:center;height:24px;padding:0 8px;border-radius:4px;background:#E7F5EC;color:#157F3D;font:500 12px 'Geist Mono',monospace">All covered</span>
+                  <button style="flex-shrink:0;height:32px;padding:0 12px;border:0.5px solid rgba(20,18,14,.14);border-radius:8px;background:transparent;font:500 13px Geist,sans-serif;color:#15131C">Open</button>
+                </div>
+
+                <div style="display:flex;align-items:flex-start;gap:12px;padding:13px 16px;border-bottom:1px solid #E6E3E0">
+                  <span style="margin-top:3px;height:14px;width:14px;flex-shrink:0;border-radius:999px;border:1.5px solid rgba(20,18,14,.14)"></span>
+                  <div style="min-width:0;flex:1">
+                    <div style="font-size:14px;font-weight:500">Confirm the offer timing</div>
+                    <div style="margin-top:3px;font-size:12px;line-height:17px;color:#5B5A57">Currently 19:00, 48 h to answer. Platform default until you touch it.</div>
+                  </div>
+                  <span style="display:inline-flex;align-items:center;height:24px;padding:0 8px;border:1px solid #E6E3E0;border-radius:4px;background:#FAF8F4;font:500 12px 'Geist Mono',monospace">19:00 · 48 h</span>
+                  <button style="flex-shrink:0;height:32px;padding:0 12px;border:0.5px solid rgba(20,18,14,.14);border-radius:8px;background:transparent;font:500 13px Geist,sans-serif;color:#15131C">Open</button>
+                </div>
+
+                <div style="display:flex;align-items:flex-start;gap:12px;padding:13px 16px">
+                  <span style="margin-top:3px;height:14px;width:14px;flex-shrink:0;border-radius:999px;border:1.5px solid rgba(20,18,14,.14)"></span>
+                  <div style="min-width:0;flex:1">
+                    <div style="display:flex;align-items:center;gap:8px">
+                      <div style="font-size:14px;font-weight:500">Invite your production team</div>
+                      <span style="display:inline-flex;align-items:center;height:20px;padding:0 6px;border-radius:4px;background:#EFEDE7;color:#5B5A57;font-size:11px;font-weight:600">Admin only</span>
+                    </div>
+                    <div style="margin-top:3px;font-size:12px;line-height:17px;color:#5B5A57">The producers who plan dates, run offers and confirm bookings. Confirming can stay with you.</div>
+                  </div>
+                  <button style="flex-shrink:0;height:32px;padding:0 12px;border:0.5px solid rgba(20,18,14,.14);border-radius:8px;background:transparent;font:500 13px Geist,sans-serif;color:#15131C">Invite</button>
+                </div>
+              </div>
+
+              <!-- PHASE 03 -->
+              <div style="border:0.5px dashed rgba(20,18,14,.14);border-radius:10px;flex-shrink:0">
+                <div style="display:flex;align-items:center;gap:12px;padding:14px 16px">
+                  <span style="display:flex;height:22px;width:22px;align-items:center;justify-content:center;border-radius:999px;border:1.5px solid rgba(20,18,14,.14);color:#8B8A85;font:600 11px 'Geist Mono',monospace">3</span>
+                  <div style="font-size:16px;font-weight:600;letter-spacing:-0.1px;color:#5B5A57">Paperwork</div>
+                  <span style="display:inline-flex;align-items:center;height:20px;padding:0 6px;border-radius:4px;background:#EFEDE7;color:#5B5A57;font-size:11px;font-weight:600">Not blocking yet</span>
+                  <span style="flex:1"></span>
+                  <span style="font-size:12px;color:#8B8A85">Needed before the first hire order goes out</span>
+                  <span style="font-size:12px;font-weight:500;color:#5848D8">Do it now</span>
+                </div>
+                <div style="display:flex;gap:10px;padding:0 16px 14px">
+                  <div style="flex:1;border:0.5px solid #E6E3E0;border-radius:8px;background:#fff;padding:12px">
+                    <div style="display:flex;align-items:center;gap:8px"><div style="font-size:13px;font-weight:500">Letterhead</div><span style="display:inline-flex;align-items:center;height:18px;padding:0 5px;border-radius:4px;background:#FCF1DA;color:#9A6314;font-size:10px;font-weight:600">Blocks issuing</span></div>
+                    <div style="margin-top:3px;font-size:12px;line-height:17px;color:#8B8A85">Your name, address and logo on every order.</div>
+                  </div>
+                  <div style="flex:1;border:0.5px solid #E6E3E0;border-radius:8px;background:#fff;padding:12px">
+                    <div style="display:flex;align-items:center;gap:8px"><div style="font-size:13px;font-weight:500">Terms</div><span style="display:inline-flex;align-items:center;height:18px;padding:0 5px;border-radius:4px;background:#FCF1DA;color:#9A6314;font-size:10px;font-weight:600">Blocks issuing</span></div>
+                    <div style="margin-top:3px;font-size:12px;line-height:17px;color:#8B8A85">ShowFlow ships no default clauses. Yours to author.</div>
+                  </div>
+                  <div style="flex:1;border:0.5px solid #E6E3E0;border-radius:8px;background:#fff;padding:12px">
+                    <div style="font-size:13px;font-weight:500">Countersignature</div>
+                    <div style="margin-top:3px;font-size:12px;line-height:17px;color:#8B8A85">Who signs on behalf of the org.</div>
+                  </div>
+                </div>
+              </div>
+
+              <div style="display:flex;align-items:center;gap:12px;border:0.5px solid #E6E3E0;border-radius:10px;background:#FAF8F4;padding:12px 16px;flex-shrink:0">
+                <span style="color:#8B8A85;display:flex"><i data-lucide="eye" data-size="14"></i></span>
+                <div style="font-size:12px;line-height:17px;color:#5B5A57">See it as an artist does before you send anything. Not a step, worth two minutes.</div>
+                <span style="flex:1"></span>
+                <span style="font-size:12px;font-weight:500;color:#5848D8">Preview as artist</span>
+              </div>
+
+              <div style="display:flex;align-items:center;gap:10px;font-size:12px;color:#8B8A85;flex-wrap:wrap;flex-shrink:0">
+                <span>Every task here is also a setting.</span>
+                <span style="color:#DCD9D6">·</span>
+                <span>This page only knows the order and what each one holds up.</span>
+                <span style="color:#DCD9D6">·</span>
+                <span style="font-weight:500;color:#5848D8">Open Settings instead</span>
+              </div>
+            </div>
+
+            <!-- TASK PANEL -->
+            <div style="width:440px;flex-shrink:0;display:flex;flex-direction:column;border:0.5px solid #E6E3E0;border-radius:14px;background:#fff;box-shadow:0 1px 2px rgba(20,18,14,.04),0 8px 24px rgba(20,18,14,.08);overflow:hidden">
+              <div style="display:flex;align-items:flex-start;gap:12px;padding:16px;border-bottom:1px solid #E6E3E0">
+                <div style="min-width:0;flex:1">
+                  <div style="font-size:11px;font-weight:600;letter-spacing:1.6px;text-transform:uppercase;color:#5848D8">Blocking task · 1 of 2</div>
+                  <div style="margin-top:6px;font-size:22px;font-weight:600;letter-spacing:-0.3px">Cast priorities</div>
+                  <div style="margin-top:6px;font-size:13px;line-height:19px;color:#5B5A57;text-wrap:pretty">Tier 1 is asked first. If a tier falls short, the next one opens. Ranking is per city.</div>
+                </div>
+                <span style="color:#8B8A85;display:flex"><i data-lucide="x" data-size="18"></i></span>
+              </div>
+
+              <div style="flex:1;padding:16px;display:flex;flex-direction:column;gap:12px;overflow:hidden">
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span style="font-size:11px;font-weight:600;letter-spacing:1.6px;text-transform:uppercase;color:#8B8A85">Cities with dates</span>
+                  <span style="flex:1"></span>
+                  <span style="font:500 12px 'Geist Mono',monospace;color:#9A6314">2 unranked</span>
+                </div>
+
+                <div style="border:1px solid #E6E3E0;border-radius:10px;overflow:hidden">
+                  <div style="display:flex;align-items:center;gap:10px;padding:12px;border-bottom:1px solid #E6E3E0;background:#FAF8F4">
+                    <div style="min-width:0;flex:1"><div style="font-size:13px;font-weight:600">Hamburg</div><div style="margin-top:2px;font:400 11px 'Geist Mono',monospace;color:#8B8A85">22 dates · tier 1 set just now</div></div>
+                    <div style="display:flex;gap:6px">
+                      <span style="display:inline-flex;align-items:center;height:24px;padding:0 8px;border-radius:4px;background:#E5DEFF;color:#4738B0;font-size:12px;font-weight:500">Ensemble Nord</span>
+                      <span style="display:inline-flex;align-items:center;height:24px;padding:0 8px;border:1px dashed #DCD9D6;border-radius:4px;color:#8B8A85;font-size:12px">Add tier 2</span>
+                    </div>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:10px;padding:12px;border-bottom:1px solid #E6E3E0">
+                    <div style="min-width:0;flex:1"><div style="font-size:13px;font-weight:600">Leipzig</div><div style="margin-top:2px;font:400 11px 'Geist Mono',monospace;color:#8B8A85">14 dates · no tier 1</div></div>
+                    <span style="display:inline-flex;align-items:center;height:24px;padding:0 8px;border:1px dashed #CABBFF;border-radius:4px;color:#4738B0;font-size:12px;font-weight:500">Pick tier 1</span>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:10px;padding:12px;border-bottom:1px solid #E6E3E0;opacity:.7">
+                    <div style="min-width:0;flex:1"><div style="font-size:13px;font-weight:500">Berlin</div><div style="margin-top:2px;font:400 11px 'Geist Mono',monospace;color:#8B8A85">39 dates</div></div>
+                    <span style="display:inline-flex;align-items:center;height:24px;padding:0 8px;border-radius:4px;background:#EFEDE7;color:#5B5A57;font-size:12px">3 tiers</span>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:10px;padding:12px;opacity:.7">
+                    <div style="min-width:0;flex:1"><div style="font-size:13px;font-weight:500">Köln</div><div style="margin-top:2px;font:400 11px 'Geist Mono',monospace;color:#8B8A85">18 dates</div></div>
+                    <span style="display:inline-flex;align-items:center;height:24px;padding:0 8px;border-radius:4px;background:#EFEDE7;color:#5B5A57;font-size:12px">2 tiers</span>
+                  </div>
+                </div>
+
+                <div style="border:0.5px solid #CABBFF;border-radius:10px;background:#F4F1FF;padding:12px;display:flex;flex-direction:column;gap:4px">
+                  <div style="font-size:11px;font-weight:600;letter-spacing:1.6px;text-transform:uppercase;color:#4738B0">What this unlocks</div>
+                  <div style="font-size:13px;line-height:19px;text-wrap:pretty">Rank Leipzig too and 36 dates become offerable in tonight's 19:00 digest.</div>
+                </div>
+
+                <div style="display:flex;align-items:flex-start;gap:8px;font-size:12px;line-height:17px;color:#8B8A85">
+                  <span style="margin-top:1px;display:flex"><i data-lucide="clock" data-size="14"></i></span>
+                  <span>Same rules the offer engine reads. Changing them later lives in Settings · Booking.</span>
+                </div>
+              </div>
+
+              <div style="display:flex;align-items:center;gap:10px;padding:14px 16px;border-top:1px solid #E6E3E0;background:#FAF8F4">
+                <span style="font-size:12px;color:#8B8A85">Saved as you go</span>
+                <span style="flex:1"></span>
+                <button style="height:36px;padding:0 12px;border:1px solid #E6E3E0;border-radius:8px;background:#fff;font:500 13px Geist,sans-serif;color:#15131C">Later</button>
+                <button style="height:36px;padding:0 14px;border:0;border-radius:8px;background:#6E5CF6;color:#fff;font:500 13px Geist,sans-serif">Next blocking task</button>
+              </div>
+            </div>
+
+          </main>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ 02 · TASK PANEL VARIANTS ═══════════ -->
+  <div data-screen-label="02 Task panels" style="display:flex;flex-direction:column;gap:10px">
+    <div style="display:flex;align-items:baseline;gap:10px">
+      <span style="font:600 11px/1 'Geist Mono',monospace;letter-spacing:1.6px;text-transform:uppercase;color:#8B8A85">02 · task panels</span>
+      <span style="font-size:13px;color:#5B5A57">Three shapes cover all eleven tasks: a choice, a pair of values, and a document. Same frame, same footer.</span>
+    </div>
+
+    <div style="display:flex;gap:20px;flex-wrap:wrap">
+
+      <!-- choice panel -->
+      <div style="width:440px;display:flex;flex-direction:column;border:0.5px solid #E6E3E0;border-radius:14px;background:#fff;box-shadow:0 1px 2px rgba(20,18,14,.04),0 8px 24px rgba(20,18,14,.08);overflow:hidden">
+        <div style="padding:16px;border-bottom:1px solid #E6E3E0">
+          <div style="font-size:11px;font-weight:600;letter-spacing:1.6px;text-transform:uppercase;color:#5848D8">Choice · sets everything downstream</div>
+          <div style="margin-top:6px;font-size:22px;font-weight:600;letter-spacing:-0.3px">Booking flow</div>
+          <div style="margin-top:6px;font-size:13px;line-height:19px;color:#5B5A57;text-wrap:pretty">Offers, or straight to booked. You can change it later, and every number on the dashboard follows it.</div>
+        </div>
+        <div style="padding:16px;display:flex;flex-direction:column;gap:10px">
+          <div style="border:1px solid #6E5CF6;border-radius:10px;background:#F4F1FF;padding:14px">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="height:16px;width:16px;border-radius:999px;border:5px solid #6E5CF6;background:#fff"></span>
+              <div style="font-size:14px;font-weight:600">Offers with tiers</div>
+              <span style="flex:1"></span>
+              <span style="font:500 11px 'Geist Mono',monospace;color:#4738B0">Current</span>
+            </div>
+            <div style="margin-top:8px;display:flex;flex-direction:column;gap:5px;font-size:12px;line-height:17px;color:#15131C">
+              <div>Tier 1 is asked first. Tier 2 opens 24 h later if unfilled.</div>
+              <div>Artists answer from the email. An accepted offer waits for a producer to confirm.</div>
+            </div>
+            <div style="margin-top:10px;padding-top:10px;border-top:0.5px solid #CABBFF;font-size:12px;color:#4738B0">Needs cast priorities per city. 2 cities are unranked.</div>
+          </div>
+          <div style="border:1px solid #E6E3E0;border-radius:10px;background:#fff;padding:14px">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="height:16px;width:16px;border-radius:999px;border:1.5px solid #DCD9D6"></span>
+              <div style="font-size:14px;font-weight:500">Book directly</div>
+            </div>
+            <div style="margin-top:8px;display:flex;flex-direction:column;gap:5px;font-size:12px;line-height:17px;color:#5B5A57">
+              <div>A producer books straight from the eligibility list. Nothing to accept.</div>
+              <div>A booked date shows in the artist's calendar as confirmed.</div>
+            </div>
+            <div style="margin-top:10px;padding-top:10px;border-top:0.5px solid #E6E3E0;font-size:12px;color:#8B8A85">Cast ranking stops mattering. Blocked dates still come off the list.</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;padding:14px 16px;border-top:1px solid #E6E3E0;background:#FAF8F4">
+          <span style="font-size:12px;color:#8B8A85">Change is logged</span>
+          <span style="flex:1"></span>
+          <button style="height:36px;padding:0 12px;border:1px solid #E6E3E0;border-radius:8px;background:#fff;font:500 13px Geist,sans-serif">Later</button>
+          <button style="height:36px;padding:0 14px;border:0;border-radius:8px;background:#6E5CF6;color:#fff;font:500 13px Geist,sans-serif">Keep offers</button>
+        </div>
+      </div>
+
+      <!-- values panel -->
+      <div style="width:440px;display:flex;flex-direction:column;border:0.5px solid #E6E3E0;border-radius:14px;background:#fff;box-shadow:0 1px 2px rgba(20,18,14,.04),0 8px 24px rgba(20,18,14,.08);overflow:hidden">
+        <div style="padding:16px;border-bottom:1px solid #E6E3E0">
+          <div style="font-size:11px;font-weight:600;letter-spacing:1.6px;text-transform:uppercase;color:#5848D8">Values · two fields</div>
+          <div style="margin-top:6px;font-size:22px;font-weight:600;letter-spacing:-0.3px">Offer timing</div>
+          <div style="margin-top:6px;font-size:13px;line-height:19px;color:#5B5A57;text-wrap:pretty">One digest a day, never a mail per date. The window is how long an artist has before the offer expires.</div>
+        </div>
+        <div style="padding:16px;display:flex;flex-direction:column;gap:16px">
+          <div style="display:flex;gap:12px">
+            <div style="flex:1;display:flex;flex-direction:column;gap:5px">
+              <label style="font-size:12px;font-weight:500;color:#5B5A57">Digest leaves at</label>
+              <div style="display:flex;align-items:center;justify-content:space-between;height:36px;border:1px solid #DCD9D6;border-radius:6px;background:#fff;padding:0 10px;font:500 14px 'Geist Mono',monospace;box-shadow:0 1px 2px rgba(20,18,14,.05)"><span>19:00</span><span style="color:#8B8A85;display:flex"><i data-lucide="chevron-down" data-size="14"></i></span></div>
+              <span style="font-size:11px;color:#8B8A85">Berlin time</span>
+            </div>
+            <div style="flex:1;display:flex;flex-direction:column;gap:5px">
+              <label style="font-size:12px;font-weight:500;color:#5B5A57">Answer window</label>
+              <div style="display:flex;align-items:center;justify-content:space-between;height:36px;border:1px solid #DCD9D6;border-radius:6px;background:#fff;padding:0 10px;font:500 14px 'Geist Mono',monospace;box-shadow:0 1px 2px rgba(20,18,14,.05)"><span>48 h</span><span style="color:#8B8A85;display:flex"><i data-lucide="chevron-down" data-size="14"></i></span></div>
+              <span style="font-size:11px;color:#8B8A85">Then the tier reopens</span>
+            </div>
+          </div>
+          <div style="border:0.5px solid #E6E3E0;border-radius:10px;background:#FAF8F4;padding:12px;display:flex;flex-direction:column;gap:6px">
+            <div style="font-size:11px;font-weight:600;letter-spacing:1.6px;text-transform:uppercase;color:#8B8A85">On these settings</div>
+            <div style="display:flex;align-items:baseline;gap:8px;font-size:12px"><span style="font:500 12px 'Geist Mono',monospace;color:#15131C">Today 19:00</span><span style="color:#5B5A57">tier 1 goes out for 36 dates</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px;font-size:12px"><span style="font:500 12px 'Geist Mono',monospace;color:#15131C">19 Aug 19:00</span><span style="color:#5B5A57">window closes, unfilled dates open tier 2</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px;font-size:12px"><span style="font:500 12px 'Geist Mono',monospace;color:#15131C">20 Aug 20:00</span><span style="color:#5B5A57">confirmation digest to your producers</span></div>
+          </div>
+          <div style="display:flex;align-items:flex-start;gap:8px;font-size:12px;line-height:17px;color:#8B8A85">
+            <span style="margin-top:1px;display:flex"><i data-lucide="mail" data-size="14"></i></span>
+            <span>Sender address and the confirmation hour sit under Advanced in Settings · Booking.</span>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;padding:14px 16px;border-top:1px solid #E6E3E0;background:#FAF8F4">
+          <span style="font-size:12px;color:#8B8A85">Applies to tonight's digest</span>
+          <span style="flex:1"></span>
+          <button style="height:36px;padding:0 12px;border:1px solid #E6E3E0;border-radius:8px;background:#fff;font:500 13px Geist,sans-serif">Later</button>
+          <button style="height:36px;padding:0 14px;border:0;border-radius:8px;background:#6E5CF6;color:#fff;font:500 13px Geist,sans-serif">Confirm timing</button>
+        </div>
+      </div>
+
+      <!-- document panel -->
+      <div style="width:440px;display:flex;flex-direction:column;border:0.5px solid #E6E3E0;border-radius:14px;background:#fff;box-shadow:0 1px 2px rgba(20,18,14,.04),0 8px 24px rgba(20,18,14,.08);overflow:hidden">
+        <div style="padding:16px;border-bottom:1px solid #E6E3E0">
+          <div style="font-size:11px;font-weight:600;letter-spacing:1.6px;text-transform:uppercase;color:#5848D8">Document · blocks issuing</div>
+          <div style="margin-top:6px;font-size:22px;font-weight:600;letter-spacing:-0.3px">Letterhead</div>
+          <div style="margin-top:6px;font-size:13px;line-height:19px;color:#5B5A57;text-wrap:pretty">Printed at the top of every hire order PDF. An order cannot be issued without it.</div>
+        </div>
+        <div style="padding:16px;display:flex;flex-direction:column;gap:12px">
+          <div style="display:flex;gap:12px">
+            <div style="flex:1;display:flex;flex-direction:column;gap:12px">
+              <div style="display:flex;flex-direction:column;gap:5px">
+                <label style="font-size:12px;font-weight:500;color:#5B5A57">Legal name</label>
+                <div style="height:36px;border:1px solid #DCD9D6;border-radius:6px;background:#fff;padding:0 10px;display:flex;align-items:center;font-size:14px;box-shadow:0 1px 2px rgba(20,18,14,.05)">Nordstadt Produktionen GmbH</div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:5px">
+                <label style="font-size:12px;font-weight:500;color:#5B5A57">Address</label>
+                <div style="height:56px;border:1px solid #DCD9D6;border-radius:6px;background:#fff;padding:8px 10px;font-size:14px;line-height:20px;box-shadow:0 1px 2px rgba(20,18,14,.05)">Rothenbaumchaussee 12<br>20148 Hamburg</div>
+              </div>
+            </div>
+            <div style="width:150px;flex-shrink:0;display:flex;flex-direction:column;gap:5px">
+              <label style="font-size:12px;font-weight:500;color:#5B5A57">Preview</label>
+              <div style="flex:1;border:0.5px solid #E6E3E0;border-radius:8px;background:#FAF8F4;padding:10px;display:flex;flex-direction:column;gap:6px">
+                <div style="font-size:9px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#8B8A85">Performance hire order</div>
+                <div style="font-size:10px;font-weight:600;line-height:13px">Nordstadt Produktionen GmbH</div>
+                <div style="font:400 8px/12px 'Geist Mono',monospace;color:#8B8A85">Rothenbaumchaussee 12<br>20148 Hamburg</div>
+                <div style="margin-top:auto;height:1px;background:#E6E3E0"></div>
+                <div style="font:400 8px 'Geist Mono',monospace;color:#8B8A85">HO-2026-0001</div>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;border:0.5px solid #E6E3E0;border-radius:10px;background:#FAF8F4;padding:12px">
+            <span style="color:#8B8A85;display:flex"><i data-lucide="file-signature" data-size="14"></i></span>
+            <div style="font-size:12px;line-height:17px;color:#5B5A57">Terms and countersignature are the other two. Both are needed before issuing.</div>
+            <span style="flex:1"></span>
+            <span style="font:500 12px 'Geist Mono',monospace;color:#9A6314">2 left</span>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;padding:14px 16px;border-top:1px solid #E6E3E0;background:#FAF8F4">
+          <span style="font-size:12px;color:#8B8A85">Used on every order</span>
+          <span style="flex:1"></span>
+          <button style="height:36px;padding:0 12px;border:1px solid #E6E3E0;border-radius:8px;background:#fff;font:500 13px Geist,sans-serif">Later</button>
+          <button style="height:36px;padding:0 14px;border:0;border-radius:8px;background:#6E5CF6;color:#fff;font:500 13px Geist,sans-serif">Save letterhead</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ 03 · PRODUCER VIEW ═══════════ -->
+  <div data-screen-label="03 Producer view" style="display:flex;flex-direction:column;gap:10px">
+    <div style="display:flex;align-items:baseline;gap:10px">
+      <span style="font:600 11px/1 'Geist Mono',monospace;letter-spacing:1.6px;text-transform:uppercase;color:#8B8A85">03 · producer</span>
+      <span style="font-size:13px;color:#5B5A57">Same board, role-scoped. Tasks a producer cannot do are named and attributed, not disabled in place.</span>
+    </div>
+
+    <div style="width:1100px;border:0.5px solid #E6E3E0;border-radius:12px;background:#F6F4EF;padding:24px;box-shadow:0 1px 2px rgba(20,18,14,.04),0 8px 24px rgba(20,18,14,.08);display:flex;flex-direction:column;gap:20px">
+
+      <div>
+        <div style="font-size:11px;font-weight:600;letter-spacing:1.6px;text-transform:uppercase;color:#5848D8">Nordstadt Produktionen · get running</div>
+        <h1 style="margin:8px 0 0;font-size:32px;font-weight:600;line-height:38px;letter-spacing:-0.6px;max-width:640px;text-wrap:pretty">One task here is yours. The other two wait on Maja Kern.</h1>
+        <p style="margin:8px 0 0;max-width:600px;font-size:14px;line-height:21px;color:#5B5A57;text-wrap:pretty">This is here so you know why Shows and Bookings looks empty, not so you can fix all of it.</p>
+      </div>
+
+      <div style="border:0.5px solid #CABBFF;border-radius:10px;background:#fff;overflow:hidden">
+        <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;background:#F4F1FF;border-bottom:1px solid #E5DEFF">
+          <span style="display:flex;height:22px;width:22px;align-items:center;justify-content:center;border-radius:999px;border:1.5px solid #6E5CF6;color:#4738B0;font:600 11px 'Geist Mono',monospace">2</span>
+          <div style="font-size:16px;font-weight:600;letter-spacing:-0.1px">Make it bookable</div>
+          <span style="display:inline-flex;align-items:center;height:20px;padding:0 6px;border-radius:4px;background:#FCF1DA;color:#9A6314;font-size:11px;font-weight:600">Blocks the first offer</span>
+          <span style="flex:1"></span>
+          <span style="font:500 12px 'Geist Mono',monospace;color:#5848D8">1 yours · 2 waiting</span>
+        </div>
+
+        <div style="display:flex;align-items:flex-start;gap:12px;padding:13px 16px;border-bottom:1px solid #E6E3E0;background:#FAF8F4">
+          <span style="margin-top:3px;height:14px;width:14px;flex-shrink:0;border-radius:999px;border:1.5px solid #6E5CF6"></span>
+          <div style="min-width:0;flex:1">
+            <div style="display:flex;align-items:center;gap:8px"><div style="font-size:14px;font-weight:600">Add your artists</div><span style="display:inline-flex;align-items:center;height:20px;padding:0 6px;border-radius:4px;background:#FCF1DA;color:#9A6314;font-size:11px;font-weight:600">Blocks booking</span><span style="display:inline-flex;align-items:center;height:20px;padding:0 6px;border-radius:4px;background:#E5DEFF;color:#4738B0;font-size:11px;font-weight:600">Yours</span></div>
+            <div style="margin-top:3px;font-size:12px;line-height:17px;color:#5B5A57">Nobody to book until your roster has active artists.</div>
+          </div>
+          <button style="flex-shrink:0;height:32px;padding:0 12px;border:0;border-radius:8px;background:#6E5CF6;color:#fff;font:500 13px Geist,sans-serif">Add here</button>
+        </div>
+
+        <div style="display:flex;align-items:flex-start;gap:12px;padding:13px 16px;border-bottom:1px solid #E6E3E0">
+          <span style="margin-top:3px;height:14px;width:14px;flex-shrink:0;border-radius:999px;border:1.5px dashed #DCD9D6"></span>
+          <div style="min-width:0;flex:1">
+            <div style="display:flex;align-items:center;gap:8px"><div style="font-size:14px;font-weight:500;color:#5B5A57">Cast priorities per city</div><span style="display:inline-flex;align-items:center;height:20px;padding:0 6px;border-radius:4px;background:#EFEDE7;color:#5B5A57;font-size:11px;font-weight:600">Waits on Maja Kern</span></div>
+            <div style="margin-top:3px;font-size:12px;line-height:17px;color:#8B8A85">Hamburg and Leipzig have no tier 1 cast, so 36 dates cannot be offered.</div>
+          </div>
+          <button style="flex-shrink:0;height:32px;padding:0 12px;border:0.5px solid rgba(20,18,14,.14);border-radius:8px;background:transparent;font:500 13px Geist,sans-serif;color:#15131C">View</button>
+          <button style="flex-shrink:0;height:32px;padding:0 12px;border:0.5px solid rgba(20,18,14,.14);border-radius:8px;background:transparent;font:500 13px Geist,sans-serif;color:#15131C">Nudge Maja</button>
+        </div>
+
+        <div style="display:flex;align-items:flex-start;gap:12px;padding:13px 16px">
+          <span style="margin-top:3px;height:14px;width:14px;flex-shrink:0;border-radius:999px;border:1.5px dashed #DCD9D6"></span>
+          <div style="min-width:0;flex:1">
+            <div style="display:flex;align-items:center;gap:8px"><div style="font-size:14px;font-weight:500;color:#5B5A57">Offer timing</div><span style="display:inline-flex;align-items:center;height:20px;padding:0 6px;border-radius:4px;background:#EFEDE7;color:#5B5A57;font-size:11px;font-weight:600">Waits on Maja Kern</span></div>
+            <div style="margin-top:3px;font-size:12px;line-height:17px;color:#8B8A85">19:00, 48 h to answer. You read these, an admin sets them.</div>
+          </div>
+          <span style="display:inline-flex;align-items:center;height:24px;padding:0 8px;border:1px solid #E6E3E0;border-radius:4px;background:#FAF8F4;font:500 12px 'Geist Mono',monospace">19:00 · 48 h</span>
+        </div>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:12px;border:0.5px solid #E6E3E0;border-radius:10px;background:#FAF8F4;padding:12px 16px">
+        <span style="color:#8B8A85;display:flex"><i data-lucide="bell" data-size="14"></i></span>
+        <div style="font-size:12px;line-height:17px;color:#5B5A57;text-wrap:pretty">Nudge sends all three at once: an in-app notification, an email, and a message in your thread with the admin, naming the task and what it holds up. One nudge per task per day.</div>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:12px;border:0.5px solid #E6E3E0;border-radius:10px;background:#fff;padding:12px 16px">
+        <span style="color:#8B8A85;display:flex"><i data-lucide="users" data-size="14"></i></span>
+        <div style="font-size:12px;line-height:17px;color:#5B5A57">You are on the Production Team. You plan dates, run offers and confirm bookings. Inviting people, casts and settings stay with the admin.</div>
+        <span style="flex:1"></span>
+        <span style="font-size:12px;font-weight:500;color:#5848D8">What your role covers</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ 04 · RUNNING, BOARD RETIRES ═══════════ -->
+  <div data-screen-label="04 Running" style="display:flex;flex-direction:column;gap:10px">
+    <div style="display:flex;align-items:baseline;gap:10px">
+      <span style="font:600 11px/1 'Geist Mono',monospace;letter-spacing:1.6px;text-transform:uppercase;color:#8B8A85">04 · retirement rule</span>
+      <span style="font-size:13px;color:#5B5A57">All 11 done: the board collapses to one row, leaves the nav, and lives on as a reference in Settings.</span>
+    </div>
+
+    <div style="width:1100px;display:flex;flex-direction:column;gap:16px;border:0.5px solid #E6E3E0;border-radius:12px;background:#F6F4EF;padding:24px;box-shadow:0 1px 2px rgba(20,18,14,.04),0 8px 24px rgba(20,18,14,.08)">
+
+      <div style="display:flex;align-items:center;gap:16px;border:0.5px solid #E6E3E0;border-radius:10px;background:#fff;padding:16px">
+        <span style="display:flex;height:26px;width:26px;align-items:center;justify-content:center;border-radius:999px;background:#6E5CF6;color:#fff"><i data-lucide="check" data-size="15"></i></span>
+        <div style="min-width:0;flex:1">
+          <div style="font-size:16px;font-weight:600;letter-spacing:-0.1px">This workspace is running</div>
+          <div style="margin-top:3px;font-size:13px;line-height:19px;color:#5B5A57;text-wrap:pretty">148 dates in, 36 offerable tonight, paperwork ready. Nothing left to set up.</div>
+        </div>
+        <span style="font:500 12px 'Geist Mono',monospace;color:#8B8A85">11 of 11</span>
+        <button style="height:36px;padding:0 12px;border:1px solid #E6E3E0;border-radius:8px;background:#fff;font:500 13px Geist,sans-serif;color:#15131C">How this org works</button>
+        <button style="height:36px;padding:0 14px;border:0;border-radius:8px;background:#6E5CF6;color:#fff;font:500 13px Geist,sans-serif">Hide from nav</button>
+      </div>
+
+      <div style="display:flex;gap:16px">
+        <div style="flex:1;border:0.5px solid #E6E3E0;border-radius:10px;background:#fff;padding:16px">
+          <div style="font-size:11px;font-weight:600;letter-spacing:1.6px;text-transform:uppercase;color:#8B8A85">Where it goes</div>
+          <div style="margin-top:8px;font-size:13px;line-height:19px;color:#5B5A57;text-wrap:pretty">Get running leaves the sidebar. The rules it set stay readable in Settings under "How this org works", with who changed what and when.</div>
+        </div>
+        <div style="flex:1;border:0.5px solid #E6E3E0;border-radius:10px;background:#fff;padding:16px">
+          <div style="font-size:11px;font-weight:600;letter-spacing:1.6px;text-transform:uppercase;color:#8B8A85">When it comes back</div>
+          <div style="margin-top:8px;font-size:13px;line-height:19px;color:#5B5A57;text-wrap:pretty">A new module switched on, or a rule going empty, puts the row back with only the tasks that module needs. A new admin sees it once.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ 05 · SETTINGS, FIVE SECTIONS ═══════════ -->
+  <div data-screen-label="05 Settings" style="display:flex;flex-direction:column;gap:10px">
+    <div style="display:flex;align-items:baseline;gap:10px">
+      <span style="font:600 11px/1 'Geist Mono',monospace;letter-spacing:1.6px;text-transform:uppercase;color:#8B8A85">05 · /settings</span>
+      <span style="font-size:13px;color:#5B5A57">1a as the foundation: five sections, essentials on top with their current value, everything else under Advanced.</span>
+    </div>
+
+    <div style="width:1440px;border:0.5px solid #E6E3E0;border-radius:12px;overflow:hidden;box-shadow:0 1px 2px rgba(20,18,14,.04),0 8px 24px rgba(20,18,14,.08);background:#F6F4EF">
+      <div style="display:flex;height:900px">
+
+        <aside style="width:220px;flex-shrink:0;display:flex;flex-direction:column;background:#F1EEE6;border-right:0.5px solid #E6E3E0">
+          <div style="display:flex;align-items:center;gap:10px;padding:16px 14px;border-bottom:0.5px solid #E6E3E0">
+            <svg width="32" height="32" viewBox="0 0 32 32" fill="none" style="flex-shrink:0;color:#6E5CF6">
+              <path d="M4 26V16C4 8.8 10 4 16 4C22 4 28 8.8 28 16V26Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"></path>
+              <path d="M10 26L16 12L22 26" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.6"></path>
+              <circle cx="16" cy="10" r="1.5" fill="currentColor"></circle>
+            </svg>
+            <span style="font-size:15px;font-weight:600;letter-spacing:-0.02em"><span style="color:#15131C">Show</span><span style="color:#6E5CF6">Flow</span></span>
+          </div>
+          <nav style="flex:1;display:flex;flex-direction:column;gap:16px;padding:12px 8px">
+            <div style="display:flex;flex-direction:column;gap:2px">
+              <p style="margin:0;padding:0 10px 4px;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:rgba(91,90,87,.7)">Workspace</p>
+              <div style="display:flex;align-items:center;gap:10px;border-radius:7px;padding:8px 10px;font-size:13px;font-weight:500;color:rgba(21,19,28,.7)"><i data-lucide="rocket" data-size="14"></i><span style="flex:1">Get running</span><span style="border-radius:4px;background:#EFEDE7;color:#5B5A57;padding:1px 5px;font:600 10px 'Geist Mono',monospace">8/11</span></div>
+              <div style="display:flex;align-items:center;gap:10px;border-radius:7px;padding:8px 10px;font-size:13px;font-weight:500;color:rgba(21,19,28,.7)"><i data-lucide="layout-dashboard" data-size="14"></i><span>Dashboard</span></div>
+              <div style="display:flex;align-items:center;gap:10px;border-radius:7px;padding:8px 10px;font-size:13px;font-weight:500;color:rgba(21,19,28,.7)"><i data-lucide="book-open" data-size="14"></i><span>Shows &amp; Bookings</span></div>
+              <div style="display:flex;align-items:center;gap:10px;border-radius:7px;padding:8px 10px;font-size:13px;font-weight:500;color:rgba(21,19,28,.7)"><i data-lucide="file-signature" data-size="14"></i><span>Hire orders</span></div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:2px">
+              <p style="margin:0;padding:0 10px 4px;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:rgba(91,90,87,.7)">Catalog</p>
+              <div style="display:flex;align-items:center;gap:10px;border-radius:7px;padding:8px 10px;font-size:13px;font-weight:500;color:rgba(21,19,28,.7)"><i data-lucide="theater" data-size="14"></i><span>Productions</span></div>
+              <div style="display:flex;align-items:center;gap:10px;border-radius:7px;padding:8px 10px;font-size:13px;font-weight:500;color:rgba(21,19,28,.7)"><i data-lucide="users" data-size="14"></i><span>Artists</span></div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:2px">
+              <p style="margin:0;padding:0 10px 4px;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:rgba(91,90,87,.7)">System</p>
+              <div style="display:flex;align-items:center;gap:10px;border-radius:7px;padding:8px 10px;font-size:13px;font-weight:500;color:rgba(21,19,28,.7)"><i data-lucide="shield" data-size="14"></i><span>Admin</span></div>
+              <div style="display:flex;align-items:center;gap:10px;border-radius:7px;padding:8px 10px;font-size:13px;font-weight:600;background:#E5DEFF;color:#4738B0"><i data-lucide="settings" data-size="14"></i><span>Settings</span></div>
+            </div>
+          </nav>
+        </aside>
+
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+          <header style="display:flex;align-items:center;gap:12px;height:52px;padding:0 24px;border-bottom:0.5px solid #E6E3E0;flex-shrink:0">
+            <nav style="display:flex;align-items:center;gap:6px;font-size:13px"><span style="color:#5B5A57">Home</span><span style="color:rgba(91,90,87,.5);display:flex"><i data-lucide="chevron-right" data-size="14"></i></span><span style="color:#5B5A57">Settings</span><span style="color:rgba(91,90,87,.5);display:flex"><i data-lucide="chevron-right" data-size="14"></i></span><span style="font-weight:500">Booking</span></nav>
+            <div style="flex:1"></div>
+            <span style="display:flex"><i data-lucide="bell" data-size="18"></i></span>
+          </header>
+
+          <main style="flex:1;padding:24px;overflow:hidden;position:relative">
+            <div style="max-width:1024px;display:flex;flex-direction:column;gap:24px">
+
+              <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px">
+                <div>
+                  <h1 style="margin:0;font-size:32px;font-weight:600;letter-spacing:-0.6px">Settings</h1>
+                  <p style="margin:4px 0 0;font-size:14px;color:#5B5A57">Five sections. Each opens on what is live today. Setup lives in Get running.</p>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;height:36px;padding:0 12px;border:1px solid #DCD9D6;border-radius:8px;background:#fff;box-shadow:0 1px 2px rgba(20,18,14,.05);min-width:260px;color:#8B8A85">
+                  <i data-lucide="search" data-size="15"></i>
+                  <span style="font-size:13px;flex:1">Find a setting</span>
+                  <span style="font:500 11px 'Geist Mono',monospace;border:1px solid #E6E3E0;border-radius:4px;padding:1px 5px">⌘K</span>
+                </div>
+              </div>
+
+              <div style="display:grid;grid-template-columns:220px 1fr;gap:32px;align-items:start">
+
+                <div style="display:flex;flex-direction:column;gap:2px">
+                  <div style="display:flex;align-items:center;gap:8px;border-radius:8px;padding:9px 12px;font-size:14px;font-weight:500;color:#5B5A57"><i data-lucide="building-2" data-size="16"></i><span>Workspace</span></div>
+                  <div style="display:flex;align-items:center;gap:8px;border-radius:8px;padding:9px 12px;font-size:14px;font-weight:500;color:#5B5A57"><i data-lucide="users" data-size="16"></i><span>People &amp; access</span></div>
+                  <div style="display:flex;align-items:center;gap:8px;border-radius:8px;padding:9px 12px;font-size:14px;font-weight:600;background:#E5DEFF;color:#4738B0"><i data-lucide="wand-2" data-size="16"></i><span style="flex:1">Booking</span><span style="height:6px;width:6px;border-radius:999px;background:#D97706"></span></div>
+                  <div style="display:flex;align-items:center;gap:8px;border-radius:8px;padding:9px 12px;font-size:14px;font-weight:500;color:#5B5A57"><i data-lucide="file-signature" data-size="16"></i><span style="flex:1">Documents &amp; email</span><span style="height:6px;width:6px;border-radius:999px;background:#D97706"></span></div>
+                  <div style="display:flex;align-items:center;gap:8px;border-radius:8px;padding:9px 12px;font-size:14px;font-weight:500;color:#5B5A57"><i data-lucide="lock" data-size="16"></i><span>Data &amp; privacy</span></div>
+
+                  <div style="margin-top:16px;border-top:1px solid #E6E3E0;padding-top:12px;display:flex;flex-direction:column;gap:6px">
+                    <div style="padding:0 12px;font-size:11px;font-weight:600;letter-spacing:1.6px;text-transform:uppercase;color:#8B8A85">Reference</div>
+                    <div style="display:flex;align-items:center;gap:8px;border-radius:8px;padding:9px 12px;font-size:13px;font-weight:500;color:#5B5A57"><i data-lucide="route" data-size="16"></i><span>How this org works</span></div>
+                    <div style="display:flex;align-items:center;gap:8px;border-radius:8px;padding:9px 12px;font-size:13px;font-weight:500;color:#5B5A57"><i data-lucide="clock" data-size="16"></i><span>Change history</span></div>
+                  </div>
+                </div>
+
+                <div style="min-width:0;display:flex;flex-direction:column;gap:16px">
+                  <div>
+                    <h2 style="margin:0;font-size:22px;font-weight:600;letter-spacing:-0.3px">Booking</h2>
+                    <p style="margin:6px 0 0;font-size:14px;line-height:21px;color:#5B5A57;text-wrap:pretty">Who gets asked, when the mail leaves, and how long an artist has. Change one and tonight's digest follows it.</p>
+                  </div>
+
+                  <div style="border:1px solid #E6E3E0;border-radius:10px;background:#fff;overflow:hidden;box-shadow:0 1px 2px rgba(20,18,14,.04),0 4px 10px rgba(20,18,14,.05)">
+                    <div style="display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid #E6E3E0;background:#FAF8F4">
+                      <span style="font-size:11px;font-weight:600;letter-spacing:1.6px;text-transform:uppercase;color:#5B5A57">Live today</span>
+                      <span style="flex:1"></span>
+                      <span style="font-size:12px;color:#8B8A85">Rules set by you · 4 Aug</span>
+                    </div>
+
+                    <div style="display:flex;align-items:center;gap:16px;padding:14px 16px;border-bottom:1px solid #E6E3E0">
+                      <div style="min-width:0;flex:1">
+                        <div style="font-size:14px;font-weight:500">Booking flow</div>
+                        <div style="margin-top:2px;font-size:12px;line-height:17px;color:#5B5A57">Everything downstream reads this.</div>
+                      </div>
+                      <span style="display:inline-flex;align-items:center;height:24px;padding:0 8px;border:1px solid #E6E3E0;border-radius:4px;background:#FAF8F4;font:500 12px 'Geist Mono',monospace">Offers with tiers</span>
+                      <span style="color:#8B8A85;display:flex"><i data-lucide="chevron-right" data-size="16"></i></span>
+                    </div>
+
+                    <div style="display:flex;align-items:center;gap:16px;padding:14px 16px;border-bottom:1px solid #E6E3E0">
+                      <div style="min-width:0;flex:1">
+                        <div style="font-size:14px;font-weight:500">Offer timing</div>
+                        <div style="margin-top:2px;font-size:12px;line-height:17px;color:#5B5A57">Digest hour, and how long an artist has to answer.</div>
+                      </div>
+                      <span style="display:inline-flex;align-items:center;height:24px;padding:0 8px;border:1px solid #E6E3E0;border-radius:4px;background:#FAF8F4;font:500 12px 'Geist Mono',monospace">19:00 · 48 h</span>
+                      <span style="color:#8B8A85;display:flex"><i data-lucide="chevron-right" data-size="16"></i></span>
+                    </div>
+
+                    <div style="display:flex;align-items:center;gap:16px;padding:14px 16px;border-bottom:1px solid #E6E3E0">
+                      <div style="min-width:0;flex:1">
+                        <div style="display:flex;align-items:center;gap:8px">
+                          <div style="font-size:14px;font-weight:500">Cast priorities per city</div>
+                          <span style="display:inline-flex;align-items:center;height:20px;padding:0 6px;border-radius:4px;background:#FCF1DA;color:#9A6314;font-size:11px;font-weight:600">Blocks offers</span>
+                        </div>
+                        <div style="margin-top:2px;font-size:12px;line-height:17px;color:#5B5A57">Leipzig has no tier 1 cast.</div>
+                      </div>
+                      <span style="display:inline-flex;align-items:center;height:24px;padding:0 8px;border:1px solid #E6E3E0;border-radius:4px;background:#FAF8F4;font:500 12px 'Geist Mono',monospace">8 of 9 cities</span>
+                      <span style="color:#8B8A85;display:flex"><i data-lucide="chevron-right" data-size="16"></i></span>
+                    </div>
+
+                    <div style="display:flex;align-items:center;gap:16px;padding:14px 16px;border-bottom:1px solid #E6E3E0">
+                      <div style="min-width:0;flex:1">
+                        <div style="font-size:14px;font-weight:500">Who is eligible</div>
+                        <div style="margin-top:2px;font-size:12px;line-height:17px;color:#5B5A57">Which casts belong to which show, in which city.</div>
+                      </div>
+                      <span style="display:inline-flex;align-items:center;height:24px;padding:0 8px;border-radius:4px;background:#E7F5EC;font:500 12px 'Geist Mono',monospace;color:#157F3D">All covered</span>
+                      <span style="color:#8B8A85;display:flex"><i data-lucide="chevron-right" data-size="16"></i></span>
+                    </div>
+
+                    <div style="display:flex;align-items:center;gap:16px;padding:14px 16px">
+                      <div style="min-width:0;flex:1">
+                        <div style="font-size:14px;font-weight:500">Skills</div>
+                        <div style="margin-top:2px;font-size:12px;line-height:17px;color:#5B5A57">A required skill takes an artist off a date they cannot cover.</div>
+                      </div>
+                      <span style="display:inline-flex;align-items:center;height:24px;padding:0 8px;border:1px solid #E6E3E0;border-radius:4px;background:#FAF8F4;font:500 12px 'Geist Mono',monospace">6 in use</span>
+                      <span style="color:#8B8A85;display:flex"><i data-lucide="chevron-right" data-size="16"></i></span>
+                    </div>
+                  </div>
+
+                  <div style="border:1px solid #E6E3E0;border-radius:10px;background:#fff;box-shadow:0 1px 2px rgba(20,18,14,.05)">
+                    <div style="display:flex;align-items:center;gap:12px;padding:14px 16px">
+                      <span style="color:#8B8A85;display:flex"><i data-lucide="chevron-right" data-size="16"></i></span>
+                      <div style="min-width:0;flex:1">
+                        <div style="font-size:14px;font-weight:500">Advanced</div>
+                        <div style="margin-top:2px;font-size:12px;line-height:17px;color:#5B5A57">Sender address, confirmation digest hour, tier step delay, slot defaults, paused shows, flow presets.</div>
+                      </div>
+                      <span style="font:500 12px 'Geist Mono',monospace;color:#8B8A85">6 settings</span>
+                    </div>
+                  </div>
+
+                  <sc-if value="{{ viewerIsProducer }}" hint-placeholder-val="{{ false }}">
+                    <div style="display:flex;align-items:center;gap:10px;border:0.5px solid #E6E3E0;border-radius:10px;background:#FAF8F4;padding:12px 16px">
+                      <span style="color:#8B8A85;display:flex"><i data-lucide="lock" data-size="14"></i></span>
+                      <div style="font-size:12px;line-height:17px;color:#5B5A57">4 settings in this section are admin-only. Maja Kern can change them.</div>
+                      <span style="flex:1"></span>
+                      <span style="font-size:12px;font-weight:500;color:#5848D8">Ask Maja</span>
+                    </div>
+                  </sc-if>
+
+                  <div style="display:flex;align-items:center;gap:10px;border:0.5px solid #E6E3E0;border-radius:10px;background:#FAF8F4;padding:12px 16px">
+                    <span style="color:#8B8A85;display:flex"><i data-lucide="clock" data-size="14"></i></span>
+                    <div style="font-size:12px;line-height:17px;color:#5B5A57">Timing changed by you, 4 Aug. Flow changed by Jonas Weber, 28 Jul.</div>
+                    <span style="flex:1"></span>
+                    <span style="font-size:12px;font-weight:500;color:#5848D8">See history</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div style="position:absolute;left:24px;right:24px;bottom:24px;max-width:1024px;display:flex;align-items:center;gap:16px;border:0.5px solid #E6E3E0;border-radius:10px;background:#fff;padding:12px 16px;box-shadow:0 1px 2px rgba(20,18,14,.04),0 8px 24px rgba(20,18,14,.08)">
+              <span style="height:8px;width:8px;border-radius:2px;background:#6E5CF6"></span>
+              <div style="font-size:13px;font-weight:500">1 change, not saved</div>
+              <div style="font-size:13px;color:#5B5A57">Answer window 48 h to 24 h</div>
+              <span style="flex:1"></span>
+              <button style="height:36px;padding:0 12px;border:1px solid #E6E3E0;border-radius:8px;background:#fff;font:500 13px Geist,sans-serif;color:#15131C">Discard</button>
+              <button style="height:36px;padding:0 14px;border:0;border-radius:8px;background:#6E5CF6;color:#fff;font:500 13px Geist,sans-serif">Save change</button>
+            </div>
+          </main>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ 06 · COVERAGE ═══════════ -->
+  <div data-screen-label="06 Coverage" style="display:flex;flex-direction:column;gap:10px">
+    <div style="display:flex;align-items:baseline;gap:10px">
+      <span style="font:600 11px/1 'Geist Mono',monospace;letter-spacing:1.6px;text-transform:uppercase;color:#8B8A85">06 · coverage</span>
+      <span style="font-size:13px;color:#5B5A57">Every setting that exists today, and where it lands. Old tab in mono. Nothing is dropped.</span>
+    </div>
+
+    <div style="width:1520px;border:0.5px solid #E6E3E0;border-radius:12px;background:#F6F4EF;padding:24px;box-shadow:0 1px 2px rgba(20,18,14,.04),0 8px 24px rgba(20,18,14,.08);display:flex;flex-direction:column;gap:16px">
+
+      <div style="display:flex;gap:16px;align-items:stretch">
+
+        <div style="flex:1;border:0.5px solid #E6E3E0;border-radius:10px;background:#fff;display:flex;flex-direction:column;overflow:hidden">
+          <div style="display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid #E6E3E0;background:#FAF8F4"><span style="color:#5B5A57;display:flex"><i data-lucide="building-2" data-size="14"></i></span><span style="font-size:13px;font-weight:600">Workspace</span><span style="flex:1"></span><span style="font:500 11px 'Geist Mono',monospace;color:#8B8A85">9</span></div>
+          <div style="padding:8px 0;display:flex;flex-direction:column">
+            <div style="display:flex;align-items:baseline;gap:8px;padding:7px 14px"><span style="font-size:12.5px;flex:1">Organization name</span><span style="font:400 10px 'Geist Mono',monospace;color:#8B8A85">organization</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px;padding:7px 14px"><span style="font-size:12.5px;flex:1">Slug, read only</span><span style="font:400 10px 'Geist Mono',monospace;color:#8B8A85">organization</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px;padding:7px 14px"><span style="font-size:12.5px;flex:1">Workspace language</span><span style="font:400 10px 'Geist Mono',monospace;color:#8B8A85">organization</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px;padding:7px 14px"><span style="font-size:12.5px;flex:1">In-app notifications</span><span style="font:400 10px 'Geist Mono',monospace;color:#8B8A85">notifications</span></div>
+            <div style="height:1px;background:#E6E3E0;margin:6px 14px"></div>
+            <div style="padding:2px 14px 6px;font-size:11px;font-weight:600;letter-spacing:1.6px;text-transform:uppercase;color:#8B8A85">Connections</div>
+            <div style="display:flex;align-items:baseline;gap:8px;padding:7px 14px"><span style="font-size:12.5px;flex:1">Airtable token, base, table, view</span><span style="font:400 10px 'Geist Mono',monospace;color:#8B8A85">airtable</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px;padding:7px 14px"><span style="font-size:12.5px;flex:1">Sync frequency</span><span style="font:400 10px 'Geist Mono',monospace;color:#8B8A85">airtable</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px;padding:7px 14px"><span style="font-size:12.5px;flex:1">Field mapping</span><span style="font:400 10px 'Geist Mono',monospace;color:#8B8A85">airtable</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px;padding:7px 14px"><span style="font-size:12.5px;flex:1">Catalog links, held records</span><span style="font:400 10px 'Geist Mono',monospace;color:#8B8A85">airtable</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px;padding:7px 14px"><span style="font-size:12.5px;flex:1">Run history</span><span style="font:400 10px 'Geist Mono',monospace;color:#8B8A85">airtable</span></div>
+          </div>
+          <div style="margin-top:auto;padding:10px 14px;border-top:1px solid #E6E3E0;font-size:11px;line-height:16px;color:#8B8A85;text-wrap:pretty">The four-step connect wizard becomes a Get running task in phase 1.</div>
+        </div>
+
+        <div style="flex:1;border:0.5px solid #E6E3E0;border-radius:10px;background:#fff;display:flex;flex-direction:column;overflow:hidden">
+          <div style="display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid #E6E3E0;background:#FAF8F4"><span style="color:#5B5A57;display:flex"><i data-lucide="users" data-size="14"></i></span><span style="font-size:13px;font-weight:600">People &amp; access</span><span style="flex:1"></span><span style="font:500 11px 'Geist Mono',monospace;color:#8B8A85">6</span></div>
+          <div style="padding:8px 0;display:flex;flex-direction:column">
+            <div style="display:flex;align-items:baseline;gap:8px;padding:7px 14px"><span style="font-size:12.5px;flex:1">People and invitations</span><span style="font:400 10px 'Geist Mono',monospace;color:#8B8A85">admin page</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px;padding:7px 14px"><span style="font-size:12.5px;flex:1">Roles and rights matrix</span><span style="font:400 10px 'Geist Mono',monospace;color:#8B8A85">permissions</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px;padding:7px 14px"><span style="font-size:12.5px;flex:1">Sensitive right confirmation</span><span style="font:400 10px 'Geist Mono',monospace;color:#8B8A85">permissions</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px;padding:7px 14px"><span style="font-size:12.5px;flex:1">Staged changes and change log</span><span style="font:400 10px 'Geist Mono',monospace;color:#8B8A85">permissions</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px;padding:7px 14px"><span style="font-size:12.5px;flex:1">Producer can confirm bookings</span><span style="font:400 10px 'Geist Mono',monospace;color:#8B8A85">permissions</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px;padding:7px 14px"><span style="font-size:12.5px;flex:1">Filter visibility per role</span><span style="font:400 10px 'Geist Mono',monospace;color:#8B8A85">filters</span></div>
+          </div>
+          <div style="margin-top:auto;padding:10px 14px;border-top:1px solid #E6E3E0;font-size:11px;line-height:16px;color:#8B8A85;text-wrap:pretty">Filters move next to roles: both answer what a role sees. The 22-switch grid keeps its table, one page down.</div>
+        </div>
+
+        <div style="flex:1;border:0.5px solid #E6E3E0;border-radius:10px;background:#fff;display:flex;flex-direction:column;overflow:hidden">
+          <div style="display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid #E6E3E0;background:#FAF8F4"><span style="color:#5B5A57;display:flex"><i data-lucide="wand-2" data-size="14"></i></span><span style="font-size:13px;font-weight:600">Booking</span><span style="flex:1"></span><span style="font:500 11px 'Geist Mono',monospace;color:#8B8A85">11</span></div>
+          <div style="padding:8px 0;display:flex;flex-direction:column">
+            <div style="padding:2px 14px 6px;font-size:11px;font-weight:600;letter-spacing:1.6px;text-transform:uppercase;color:#8B8A85">Live today</div>
+            <div style="display:flex;align-items:baseline;gap:8px;padding:7px 14px"><span style="font-size:12.5px;flex:1">Booking flow and artist acceptance</span><span style="font:400 10px 'Geist Mono',monospace;color:#8B8A85">booking</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px;padding:7px 14px"><span style="font-size:12.5px;flex:1">Offer digest hour, answer window</span><span style="font:400 10px 'Geist Mono',monospace;color:#8B8A85">booking</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px;padding:7px 14px"><span style="font-size:12.5px;flex:1">Cast priorities per city</span><span style="font:400 10px 'Geist Mono',monospace;color:#8B8A85">casts &amp; coverage</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px;padding:7px 14px"><span style="font-size:12.5px;flex:1">Eligibility, casts per show and city</span><span style="font:400 10px 'Geist Mono',monospace;color:#8B8A85">casts &amp; coverage</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px;padding:7px 14px"><span style="font-size:12.5px;flex:1">Cast ownership per producer</span><span style="font:400 10px 'Geist Mono',monospace;color:#8B8A85">casts &amp; coverage</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px;padding:7px 14px"><span style="font-size:12.5px;flex:1">Skills</span><span style="font:400 10px 'Geist Mono',monospace;color:#8B8A85">skills</span></div>
+            <div style="height:1px;background:#E6E3E0;margin:6px 14px"></div>
+            <div style="padding:2px 14px 6px;font-size:11px;font-weight:600;letter-spacing:1.6px;text-transform:uppercase;color:#8B8A85">Advanced</div>
+            <div style="display:flex;align-items:baseline;gap:8px;padding:7px 14px"><span style="font-size:12.5px;flex:1">Sender address</span><span style="font:400 10px 'Geist Mono',monospace;color:#8B8A85">booking</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px;padding:7px 14px"><span style="font-size:12.5px;flex:1">Confirmation digest hour</span><span style="font:400 10px 'Geist Mono',monospace;color:#8B8A85">booking</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px;padding:7px 14px"><span style="font-size:12.5px;flex:1">Flow presets and timeline</span><span style="font:400 10px 'Geist Mono',monospace;color:#8B8A85">booking</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px;padding:7px 14px"><span style="font-size:12.5px;flex:1">Slot defaults</span><span style="font:400 10px 'Geist Mono',monospace;color:#8B8A85">booking</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px;padding:7px 14px"><span style="font-size:12.5px;flex:1">Blocked dates policy</span><span style="font:400 10px 'Geist Mono',monospace;color:#8B8A85">booking</span></div>
+          </div>
+          <div style="margin-top:auto;padding:10px 14px;border-top:1px solid #E6E3E0;font-size:11px;line-height:16px;color:#8B8A85;text-wrap:pretty">The rail's scoped save stays: this section saves itself, the page bar names the change.</div>
+        </div>
+
+        <div style="flex:1;border:0.5px solid #E6E3E0;border-radius:10px;background:#fff;display:flex;flex-direction:column;overflow:hidden">
+          <div style="display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid #E6E3E0;background:#FAF8F4"><span style="color:#5B5A57;display:flex"><i data-lucide="file-signature" data-size="14"></i></span><span style="font-size:13px;font-weight:600">Documents &amp; email</span><span style="flex:1"></span><span style="font:500 11px 'Geist Mono',monospace;color:#8B8A85">8</span></div>
+          <div style="padding:8px 0;display:flex;flex-direction:column">
+            <div style="display:flex;align-items:baseline;gap:8px;padding:7px 14px"><span style="font-size:12.5px;flex:1">Letterhead</span><span style="font:400 10px 'Geist Mono',monospace;color:#8B8A85">hire orders</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px;padding:7px 14px"><span style="font-size:12.5px;flex:1">Terms variants library</span><span style="font:400 10px 'Geist Mono',monospace;color:#8B8A85">hire orders</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px;padding:7px 14px"><span style="font-size:12.5px;flex:1">Countersignature</span><span style="font:400 10px 'Geist Mono',monospace;color:#8B8A85">hire orders</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px;padding:7px 14px"><span style="font-size:12.5px;flex:1">Numbering</span><span style="font:400 10px 'Geist Mono',monospace;color:#8B8A85">hire orders</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px;padding:7px 14px"><span style="font-size:12.5px;flex:1">Order defaults</span><span style="font:400 10px 'Geist Mono',monospace;color:#8B8A85">hire orders</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px;padding:7px 14px"><span style="font-size:12.5px;flex:1">PDF template editor</span><span style="font:400 10px 'Geist Mono',monospace;color:#8B8A85">hire orders</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px;padding:7px 14px"><span style="font-size:12.5px;flex:1">Email templates and previews</span><span style="font:400 10px 'Geist Mono',monospace;color:#8B8A85">email templates</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px;padding:7px 14px"><span style="font-size:12.5px;flex:1">Template editor, per role styles</span><span style="font:400 10px 'Geist Mono',monospace;color:#8B8A85">email templates</span></div>
+          </div>
+          <div style="margin-top:auto;padding:10px 14px;border-top:1px solid #E6E3E0;font-size:11px;line-height:16px;color:#8B8A85;text-wrap:pretty">Both editors stay full-page routes. The section lists them, it does not embed them.</div>
+        </div>
+
+        <div style="flex:1;border:0.5px solid #E6E3E0;border-radius:10px;background:#fff;display:flex;flex-direction:column;overflow:hidden">
+          <div style="display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid #E6E3E0;background:#FAF8F4"><span style="color:#5B5A57;display:flex"><i data-lucide="lock" data-size="14"></i></span><span style="font-size:13px;font-weight:600">Data &amp; privacy</span><span style="flex:1"></span><span style="font:500 11px 'Geist Mono',monospace;color:#8B8A85">7</span></div>
+          <div style="padding:8px 0;display:flex;flex-direction:column">
+            <div style="display:flex;align-items:baseline;gap:8px;padding:7px 14px"><span style="font-size:12.5px;flex:1">Who sees what, visibility matrix</span><span style="font:400 10px 'Geist Mono',monospace;color:#8B8A85">trust &amp; data</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px;padding:7px 14px"><span style="font-size:12.5px;flex:1">Retention window</span><span style="font:400 10px 'Geist Mono',monospace;color:#8B8A85">trust &amp; data</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px;padding:7px 14px"><span style="font-size:12.5px;flex:1">Org data export and deletion</span><span style="font:400 10px 'Geist Mono',monospace;color:#8B8A85">trust &amp; data</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px;padding:7px 14px"><span style="font-size:12.5px;flex:1">Your data</span><span style="font:400 10px 'Geist Mono',monospace;color:#8B8A85">trust &amp; data</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px;padding:7px 14px"><span style="font-size:12.5px;flex:1">Capabilities disclosure</span><span style="font:400 10px 'Geist Mono',monospace;color:#8B8A85">trust &amp; data</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px;padding:7px 14px"><span style="font-size:12.5px;flex:1">Trust center documents</span><span style="font:400 10px 'Geist Mono',monospace;color:#8B8A85">trust &amp; data</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px;padding:7px 14px"><span style="font-size:12.5px;flex:1">Documentation, system map</span><span style="display:inline-flex;align-items:center;height:18px;padding:0 5px;border-radius:4px;background:#EFEDE7;color:#5B5A57;font-size:10px;font-weight:600">Super admin</span></div>
+          </div>
+          <div style="margin-top:auto;padding:10px 14px;border-top:1px solid #E6E3E0;font-size:11px;line-height:16px;color:#8B8A85;text-wrap:pretty">Keeps the full width it has today. Matrices are the one thing that must not be capped to a reading measure.</div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:16px">
+        <div style="flex:1;border:0.5px solid #E6E3E0;border-radius:10px;background:#fff;padding:16px">
+          <div style="font-size:11px;font-weight:600;letter-spacing:1.6px;text-transform:uppercase;color:#8B8A85">What Get running takes over</div>
+          <div style="margin-top:8px;font-size:13px;line-height:19px;color:#5B5A57;text-wrap:pretty">The dashboard stage chain, the module setup rails, the collapsed resume chip and the four-card explainer strip on Settings. All four exist to answer "what now", and one board answers it better. The chain's copy survives as the phase names and the unlock lines.</div>
+        </div>
+        <div style="flex:1;border:0.5px solid #E6E3E0;border-radius:10px;background:#fff;padding:16px">
+          <div style="font-size:11px;font-weight:600;letter-spacing:1.6px;text-transform:uppercase;color:#8B8A85">What must not be lost</div>
+          <div style="margin-top:8px;font-size:13px;line-height:19px;color:#5B5A57;text-wrap:pretty">Per-step capability gating, the admin-only markers, the scoped booking save, provenance on every rule, module-off footers, and the deep links from notifications. Each one has a home above.</div>
+        </div>
+        <div style="flex:1;border:0.5px solid #E6E3E0;border-radius:10px;background:#fff;padding:16px">
+          <div style="font-size:11px;font-weight:600;letter-spacing:1.6px;text-transform:uppercase;color:#8B8A85">Build order</div>
+          <div style="margin-top:8px;font-size:13px;line-height:19px;color:#5B5A57;text-wrap:pretty">Five sections first, since it is a re-grouping of routes that already exist. Then the board reading the same setup status the rails read today. Then panels, in blocking order: casts, timing, artists, letterhead, terms.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ 07 · INVITE HANDOFF ═══════════ -->
+  <div data-screen-label="07 Invite handoff" style="display:flex;flex-direction:column;gap:10px">
+    <div style="display:flex;align-items:baseline;gap:10px">
+      <span style="font:600 11px/1 'Geist Mono',monospace;letter-spacing:1.6px;text-transform:uppercase;color:#8B8A85">07 · /accept-invite</span>
+      <span style="font-size:13px;color:#5B5A57">The handoff now names the board instead of promising a list on the dashboard.</span>
+    </div>
+
+    <div style="width:1024px;height:600px;display:flex;align-items:center;justify-content:center;gap:24px;background:#F6F4EF;border:0.5px solid #E6E3E0;border-radius:12px;box-shadow:0 1px 2px rgba(20,18,14,.04),0 8px 24px rgba(20,18,14,.08)">
+      <div style="width:100%;max-width:448px;border:1px solid #E6E3E0;border-radius:10px;background:#fff;box-shadow:0 1px 2px rgba(20,18,14,.04),0 4px 10px rgba(20,18,14,.05)">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:12px;padding:16px;text-align:center">
+          <svg width="52" height="52" viewBox="0 0 64 64" fill="none">
+            <rect width="64" height="64" rx="14" fill="#6E5CF6"></rect>
+            <path d="M10 50V32C10 18 22 10 32 10C42 10 54 18 54 32V50Z" stroke="white" stroke-width="3" stroke-linejoin="round"></path>
+            <path d="M22 50L32 24L42 50" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity="0.7"></path>
+            <circle cx="32" cy="20" r="2.8" fill="white"></circle>
+          </svg>
+          <h3 style="margin:0;font-size:24px;font-weight:600;letter-spacing:-0.4px;line-height:1.15">You've joined Nordstadt Produktionen</h3>
+          <p style="margin:0;font-size:14px;color:#5B5A57">Signed in as maja.kern@nordstadt.de.</p>
+        </div>
+        <div style="padding:0 16px 16px;display:flex;flex-direction:column;gap:16px">
+          <div style="border:1px solid #E6E3E0;border-radius:8px;background:#FAF8F4;padding:12px;display:flex;flex-direction:column;gap:4px">
+            <p style="margin:0;font-size:14px;font-weight:500">Your role: Admin</p>
+            <p style="margin:0;font-size:14px;color:#5B5A57;text-wrap:pretty">Full control of this workspace, including people, casts, settings, and every booking.</p>
+          </div>
+          <div style="border:0.5px solid #CABBFF;border-radius:8px;background:#F4F1FF;padding:12px;display:flex;align-items:flex-start;gap:10px">
+            <span style="margin-top:1px;color:#4738B0;display:flex"><i data-lucide="rocket" data-size="16"></i></span>
+            <div>
+              <p style="margin:0;font-size:14px;font-weight:500">Two tasks stand between this workspace and its first offer</p>
+              <p style="margin:3px 0 0;font-size:13px;line-height:19px;color:#4738B0;text-wrap:pretty">Get running walks them in order. About 6 minutes.</p>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <button style="height:40px;border:0;border-radius:8px;background:#6E5CF6;color:#fff;font:500 13px Geist,sans-serif">Open Get running</button>
+            <button style="height:40px;border:1px solid #E6E3E0;border-radius:8px;background:#fff;font:500 13px Geist,sans-serif;color:#15131C">Add a password first</button>
+          </div>
+        </div>
+      </div>
+
+      <div style="width:300px;flex-shrink:0;display:flex;flex-direction:column;gap:10px">
+        <div style="font-size:11px;font-weight:600;letter-spacing:1.6px;text-transform:uppercase;color:#8B8A85">Per role</div>
+        <div style="border:0.5px solid #E6E3E0;border-radius:10px;background:#fff;padding:12px"><div style="font-size:13px;font-weight:600">Admin</div><div style="margin-top:3px;font-size:12px;line-height:17px;color:#5B5A57">Opens Get running, all 11 tasks.</div></div>
+        <div style="border:0.5px solid #E6E3E0;border-radius:10px;background:#fff;padding:12px"><div style="font-size:13px;font-weight:600">Production Team</div><div style="margin-top:3px;font-size:12px;line-height:17px;color:#5B5A57">Opens Get running scoped to their tasks, with the waiting ones named.</div></div>
+        <div style="border:0.5px solid #E6E3E0;border-radius:10px;background:#fff;padding:12px"><div style="font-size:13px;font-weight:600">Artist</div><div style="margin-top:3px;font-size:12px;line-height:17px;color:#5B5A57">No board. One task, blocking dates, straight to Availability.</div></div>
+        <div style="border:0.5px solid #E6E3E0;border-radius:10px;background:#FAF8F4;padding:12px"><div style="font-size:12px;line-height:17px;color:#5B5A57">An org with no module on says so, and offers nothing to set up.</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ 08 · ARTIST FIRST RUN ═══════════ -->
+  <div data-screen-label="08 Artist first run" style="display:flex;flex-direction:column;gap:10px">
+    <div style="display:flex;align-items:baseline;gap:10px">
+      <span style="font:600 11px/1 'Geist Mono',monospace;letter-spacing:1.6px;text-transform:uppercase;color:#8B8A85">08 · artist · /availability</span>
+      <span style="font-size:13px;color:#5B5A57">An artist has exactly one step, so they get no board. One strip, the rules they inherited, then their calendar.</span>
+    </div>
+
+    <div style="width:1440px;border:0.5px solid #E6E3E0;border-radius:12px;overflow:hidden;box-shadow:0 1px 2px rgba(20,18,14,.04),0 8px 24px rgba(20,18,14,.08);background:#F6F4EF">
+      <div style="display:flex;height:900px">
+
+        <aside style="width:220px;flex-shrink:0;display:flex;flex-direction:column;background:#F1EEE6;border-right:0.5px solid #E6E3E0">
+          <div style="display:flex;align-items:center;gap:10px;padding:16px 14px;border-bottom:0.5px solid #E6E3E0">
+            <svg width="32" height="32" viewBox="0 0 32 32" fill="none" style="flex-shrink:0;color:#6E5CF6">
+              <path d="M4 26V16C4 8.8 10 4 16 4C22 4 28 8.8 28 16V26Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"></path>
+              <path d="M10 26L16 12L22 26" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.6"></path>
+              <circle cx="16" cy="10" r="1.5" fill="currentColor"></circle>
+            </svg>
+            <span style="font-size:15px;font-weight:600;letter-spacing:-0.02em"><span style="color:#15131C">Show</span><span style="color:#6E5CF6">Flow</span></span>
+          </div>
+          <div style="padding:8px;border-bottom:0.5px solid #E6E3E0">
+            <div style="display:flex;align-items:center;gap:8px;border-radius:7px;padding:8px 10px;font-size:13px;font-weight:500;color:rgba(21,19,28,.8)"><i data-lucide="building-2" data-size="14"></i><span>Nordstadt Produktionen</span></div>
+          </div>
+          <nav style="flex:1;display:flex;flex-direction:column;gap:16px;padding:12px 8px">
+            <div style="display:flex;flex-direction:column;gap:2px">
+              <p style="margin:0;padding:0 10px 4px;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:rgba(91,90,87,.7)">Workspace</p>
+              <div style="display:flex;align-items:center;gap:10px;border-radius:7px;padding:8px 10px;font-size:13px;font-weight:500;color:rgba(21,19,28,.7)"><i data-lucide="layout-dashboard" data-size="14"></i><span>Dashboard</span></div>
+              <div style="display:flex;align-items:center;gap:10px;border-radius:7px;padding:8px 10px;font-size:13px;font-weight:600;background:#E5DEFF;color:#4738B0"><i data-lucide="clock" data-size="14"></i><span style="flex:1">Availability</span><span style="border-radius:999px;background:#fff;color:#4738B0;padding:1px 6px;font:600 10px 'Geist Mono',monospace">3</span></div>
+              <div style="display:flex;align-items:center;gap:10px;border-radius:7px;padding:8px 10px;font-size:13px;font-weight:500;color:rgba(21,19,28,.7)"><i data-lucide="file-signature" data-size="14"></i><span>Hire orders</span></div>
+              <div style="display:flex;align-items:center;gap:10px;border-radius:7px;padding:8px 10px;font-size:13px;font-weight:500;color:rgba(21,19,28,.7)"><i data-lucide="message-square" data-size="14"></i><span>Chats</span></div>
+              <div style="display:flex;align-items:center;gap:10px;border-radius:7px;padding:8px 10px;font-size:13px;font-weight:500;color:rgba(21,19,28,.7)"><i data-lucide="circle-help" data-size="14"></i><span>Help</span></div>
+            </div>
+          </nav>
+          <div style="border-top:0.5px solid #E6E3E0;padding:8px">
+            <div style="border:1px solid #E6E3E0;border-radius:10px;background:rgba(246,244,239,.7);padding:8px 10px;display:flex;align-items:center;gap:10px">
+              <div style="height:32px;width:32px;border-radius:999px;background:#E5DEFF;color:#4738B0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600">LR</div>
+              <div style="flex:1;min-width:0"><p style="margin:0;font-size:12.5px;font-weight:600;line-height:1.25">Lena Roth</p><p style="margin:0;font-size:10.5px;line-height:1.25;color:#5B5A57">Artist · Nordstadt</p></div>
+              <span style="color:rgba(21,19,28,.6);display:flex"><i data-lucide="settings" data-size="15"></i></span>
+            </div>
+          </div>
+        </aside>
+
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+          <header style="display:flex;align-items:center;gap:12px;height:52px;padding:0 24px;border-bottom:0.5px solid #E6E3E0;flex-shrink:0">
+            <nav style="display:flex;align-items:center;gap:6px;font-size:13px"><span style="color:#5B5A57">Home</span><span style="color:rgba(91,90,87,.5);display:flex"><i data-lucide="chevron-right" data-size="14"></i></span><span style="font-weight:500">Availability</span></nav>
+            <div style="flex:1"></div>
+            <span style="display:flex"><i data-lucide="bell" data-size="18"></i></span>
+          </header>
+
+          <main style="flex:1;padding:24px;overflow:hidden;display:flex;flex-direction:column;gap:20px">
+
+            <div style="display:flex;align-items:flex-start;gap:24px;flex-shrink:0">
+              <div style="min-width:0;flex:1">
+                <div style="font-size:11px;font-weight:600;letter-spacing:1.6px;text-transform:uppercase;color:#5848D8">Nordstadt Produktionen · your calendar</div>
+                <h1 style="margin:8px 0 0;font-size:32px;font-weight:600;line-height:38px;letter-spacing:-0.6px;max-width:620px;text-wrap:pretty">One thing here is yours, and it takes two minutes</h1>
+                <p style="margin:8px 0 0;max-width:600px;font-size:14px;line-height:21px;color:#5B5A57;text-wrap:pretty">Block the dates you cannot play. They come off the list before anyone books you, so you only hear about dates that work. Everything else on this page is set by the org.</p>
+              </div>
+              <div style="width:236px;flex-shrink:0;border:0.5px solid #E6E3E0;border-radius:10px;background:#fff;padding:14px">
+                <div style="font-size:11px;font-weight:600;letter-spacing:1.6px;text-transform:uppercase;color:#8B8A85">Your setup</div>
+                <div style="margin-top:8px;display:flex;align-items:baseline;gap:6px"><span style="font:600 22px 'Geist Mono',monospace;letter-spacing:-0.4px">0</span><span style="font-size:12px;color:#8B8A85">of 1 done</span></div>
+                <div style="margin-top:10px;display:flex;gap:3px"><div style="height:3px;flex:1;border-radius:999px;background:#EFEDE7"></div></div>
+                <div style="margin-top:10px;font-size:12px;line-height:17px;color:#5B5A57;text-wrap:pretty">An empty calendar is a valid answer. Opening this page counts it as done.</div>
+              </div>
+            </div>
+
+            <!-- the one task -->
+            <div style="display:flex;align-items:flex-start;gap:14px;border:0.5px solid #CABBFF;border-radius:10px;background:#fff;padding:16px;flex-shrink:0;box-shadow:0 1px 2px rgba(20,18,14,.04),0 4px 10px rgba(20,18,14,.05)">
+              <span style="margin-top:3px;height:16px;width:16px;flex-shrink:0;border-radius:999px;border:1.5px solid #6E5CF6"></span>
+              <div style="min-width:0;flex:1">
+                <div style="display:flex;align-items:center;gap:8px">
+                  <div style="font-size:16px;font-weight:600;letter-spacing:-0.1px">Block what you cannot play</div>
+                  <span style="display:inline-flex;align-items:center;height:20px;padding:0 6px;border-radius:4px;background:#EFEDE7;color:#5B5A57;font-size:11px;font-weight:600">Blocks nothing</span>
+                </div>
+                <div style="margin-top:4px;font-size:13px;line-height:19px;color:#5B5A57;text-wrap:pretty">Blocked dates come off the list before anyone books you, so you only hear about dates that work.</div>
+              </div>
+              <button style="flex-shrink:0;height:36px;padding:0 14px;border:0;border-radius:8px;background:#6E5CF6;color:#fff;font:500 13px Geist,sans-serif">Block dates</button>
+            </div>
+
+            <!-- rules inherited -->
+            <div style="border:0.5px solid #E6E3E0;border-radius:10px;background:#fff;flex-shrink:0">
+              <div style="display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid #E6E3E0;background:#FAF8F4">
+                <span style="font-size:11px;font-weight:600;letter-spacing:1.6px;text-transform:uppercase;color:#5B5A57">How booking works here</span>
+                <span style="flex:1"></span>
+                <span style="font-size:12px;color:#8B8A85">Set by Nordstadt Produktionen. You cannot change these.</span>
+              </div>
+              <div style="display:flex">
+                <div style="flex:1;padding:14px 16px;border-right:1px solid #E6E3E0">
+                  <div style="font-size:13px;font-weight:600">Eligibility comes from your cast</div>
+                  <div style="margin-top:3px;font-size:12px;line-height:17px;color:#5B5A57;text-wrap:pretty">A date appears when a cast you are in is eligible for it and you hold every required skill.</div>
+                </div>
+                <div style="flex:1;padding:14px 16px;border-right:1px solid #E6E3E0">
+                  <div style="font-size:13px;font-weight:600">Offers arrive by email</div>
+                  <div style="margin-top:3px;font-size:12px;line-height:17px;color:#5B5A57;text-wrap:pretty">One digest at 19:00, never a mail per date. Accepting soft-books you until a producer confirms.</div>
+                </div>
+                <div style="flex:1;padding:14px 16px">
+                  <div style="font-size:13px;font-weight:600">You have 48 hours to answer</div>
+                  <div style="margin-top:3px;font-size:12px;line-height:17px;color:#5B5A57;text-wrap:pretty">After that the offer expires and goes to the next tier.</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- calendar / dates -->
+            <div style="display:flex;flex-direction:column;gap:10px;flex-shrink:0">
+              <div style="display:flex;align-items:center;gap:8px">
+                <div style="font-size:11px;font-weight:600;letter-spacing:1.6px;text-transform:uppercase;color:#8B8A85">Your dates</div>
+                <span style="flex:1"></span>
+                <div style="font-size:12px;color:#8B8A85">Live. You only see dates you are eligible for.</div>
+              </div>
+              <div style="border:0.5px solid #E6E3E0;border-radius:10px;background:#fff;overflow:hidden">
+                <div style="display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid #E6E3E0">
+                  <div style="height:6px;width:6px;border-radius:2px;background:#6E5CF6"></div>
+                  <div style="min-width:0;flex:1"><div style="font-size:14px;font-weight:500">3 offers arriving in tomorrow's digest</div><div style="margin-top:1px;font-size:12px;color:#5B5A57">Hamburg and Berlin, tier 1</div></div>
+                  <div style="font:400 12px 'Geist Mono',monospace;color:#5B5A57">19 Aug 19:00</div>
+                </div>
+                <div style="display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid #E6E3E0">
+                  <div style="height:6px;width:6px;border-radius:2px;background:#8B8A85"></div>
+                  <div style="min-width:0;flex:1"><div style="font-size:14px;font-weight:500">Die Zauberflöte · Hamburg</div><div style="margin-top:1px;font-size:12px;color:#5B5A57">Eligible, not offered yet</div></div>
+                  <div style="font:400 12px 'Geist Mono',monospace;color:#5B5A57">22 Aug</div>
+                  <button style="border:0.5px solid rgba(20,18,14,.14);border-radius:8px;background:transparent;padding:5px 11px;font:500 12px Geist,sans-serif;color:#15131C">Block</button>
+                </div>
+                <div style="display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid #E6E3E0">
+                  <div style="height:6px;width:6px;border-radius:2px;background:#8B8A85"></div>
+                  <div style="min-width:0;flex:1"><div style="font-size:14px;font-weight:500">Die Zauberflöte · Leipzig</div><div style="margin-top:1px;font-size:12px;color:#5B5A57">Eligible, not offered yet</div></div>
+                  <div style="font:400 12px 'Geist Mono',monospace;color:#5B5A57">24 Aug</div>
+                  <button style="border:0.5px solid rgba(20,18,14,.14);border-radius:8px;background:transparent;padding:5px 11px;font:500 12px Geist,sans-serif;color:#15131C">Block</button>
+                </div>
+                <div style="display:flex;align-items:center;gap:12px;padding:13px 16px">
+                  <div style="height:6px;width:6px;border-radius:2px;background:#8B8A85"></div>
+                  <div style="min-width:0;flex:1"><div style="font-size:14px;font-weight:500">1 date blocked</div><div style="margin-top:1px;font-size:12px;color:#5B5A57">Kept out of every list before anyone books you</div></div>
+                  <div style="font:400 12px 'Geist Mono',monospace;color:#5B5A57">30 Aug</div>
+                  <button style="border:0.5px solid rgba(20,18,14,.14);border-radius:8px;background:transparent;padding:5px 11px;font:500 12px Geist,sans-serif;color:#15131C">Edit</button>
+                </div>
+              </div>
+            </div>
+
+            <div style="display:flex;align-items:center;gap:10px;font-size:12px;color:#8B8A85;flex-shrink:0;flex-wrap:wrap">
+              <span style="display:flex"><i data-lucide="file-signature" data-size="14"></i></span>
+              <span>Hire orders are on. You sign in the browser and the countersigned PDF lands in your mail.</span>
+              <span style="color:#DCD9D6">·</span>
+              <span>Nothing else here is yours to set.</span>
+            </div>
+          </main>
+        </div>
+      </div>
+    </div>
+
+    <div style="width:1440px;display:flex;gap:24px">
+      <div style="flex:1;font-size:13px;line-height:19px;color:#5B5A57;text-wrap:pretty"><strong style="color:#15131C;font-weight:600">Why no board.</strong> The artist has one step in the source, and it is satisfied by blocking a date or simply opening this page. A three-phase board over a single task reads as bureaucracy. The strip retires itself the moment the step is done, leaving the rules card, which is reference, not setup.</div>
+      <div style="flex:1;font-size:13px;line-height:19px;color:#5B5A57;text-wrap:pretty"><strong style="color:#15131C;font-weight:600">Edge cases kept.</strong> Booking engine off: no strip, no calendar, one line saying dates do not run in ShowFlow for this org. Artist record not linked yet: the strip is replaced by "An admin still has to link your artist profile", which is the real blocker.</div>
+    </div>
+  </div>
+
+  <!-- ═══════════ 09 · ARTIST ACCOUNT ═══════════ -->
+  <div data-screen-label="09 Artist account" style="display:flex;flex-direction:column;gap:10px">
+    <div style="display:flex;align-items:baseline;gap:10px">
+      <span style="font:600 11px/1 'Geist Mono',monospace;letter-spacing:1.6px;text-transform:uppercase;color:#8B8A85">09 · artist · /profile</span>
+      <span style="font-size:13px;color:#5B5A57">Artists never reach Settings. Account is their whole settings surface, so it takes the same row pattern: value on the row, one consequence line.</span>
+    </div>
+
+    <div style="width:1100px;border:0.5px solid #E6E3E0;border-radius:12px;background:#F6F4EF;padding:24px;box-shadow:0 1px 2px rgba(20,18,14,.04),0 8px 24px rgba(20,18,14,.08);display:flex;flex-direction:column;gap:20px">
+
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px">
+        <div>
+          <h1 style="margin:0;font-size:32px;font-weight:600;letter-spacing:-0.6px">Account</h1>
+          <p style="margin:4px 0 0;font-size:14px;color:#5B5A57">Your details, how you sign in, and what reaches you.</p>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;height:36px;padding:0 12px;border:1px solid #DCD9D6;border-radius:8px;background:#fff;box-shadow:0 1px 2px rgba(20,18,14,.05);min-width:220px;color:#8B8A85">
+          <i data-lucide="search" data-size="15"></i><span style="font-size:13px;flex:1">Find a setting</span><span style="font:500 11px 'Geist Mono',monospace;border:1px solid #E6E3E0;border-radius:4px;padding:1px 5px">⌘K</span>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:20px;align-items:flex-start">
+
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:16px">
+
+          <div style="border:1px solid #E6E3E0;border-radius:10px;background:#fff;overflow:hidden;box-shadow:0 1px 2px rgba(20,18,14,.04),0 4px 10px rgba(20,18,14,.05)">
+            <div style="padding:12px 16px;border-bottom:1px solid #E6E3E0;background:#FAF8F4;font-size:11px;font-weight:600;letter-spacing:1.6px;text-transform:uppercase;color:#5B5A57">Details</div>
+            <div style="display:flex;align-items:center;gap:16px;padding:13px 16px;border-bottom:1px solid #E6E3E0">
+              <div style="min-width:0;flex:1"><div style="font-size:14px;font-weight:500">Email</div><div style="margin-top:2px;font-size:12px;color:#5B5A57">Where sign-in links and offers arrive.</div></div>
+              <span style="font:500 12px 'Geist Mono',monospace;color:#15131C">lena.roth@posteo.de</span>
+              <span style="display:inline-flex;align-items:center;height:20px;padding:0 6px;border-radius:4px;background:#EFEDE7;color:#5B5A57;font-size:11px;font-weight:600">Fixed</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:16px;padding:13px 16px;border-bottom:1px solid #E6E3E0">
+              <div style="min-width:0;flex:1"><div style="font-size:14px;font-weight:500">Display name</div><div style="margin-top:2px;font-size:12px;color:#5B5A57">Shown on cast lists and in date chats.</div></div>
+              <span style="font:500 12px 'Geist Mono',monospace;color:#15131C">Lena Roth</span>
+              <span style="color:#8B8A85;display:flex"><i data-lucide="chevron-right" data-size="16"></i></span>
+            </div>
+            <div style="display:flex;align-items:center;gap:16px;padding:13px 16px">
+              <div style="min-width:0;flex:1"><div style="font-size:14px;font-weight:500">Phone</div><div style="margin-top:2px;font-size:12px;line-height:17px;color:#5B5A57;text-wrap:pretty">Separate from your artist record. Admins and producers see the contact details on that record so they can reach you about bookings.</div></div>
+              <span style="font:500 12px 'Geist Mono',monospace;color:#8B8A85">Not set</span>
+              <span style="color:#8B8A85;display:flex"><i data-lucide="chevron-right" data-size="16"></i></span>
+            </div>
+          </div>
+
+          <div style="border:1px solid #E6E3E0;border-radius:10px;background:#fff;overflow:hidden;box-shadow:0 1px 2px rgba(20,18,14,.04),0 4px 10px rgba(20,18,14,.05)">
+            <div style="padding:12px 16px;border-bottom:1px solid #E6E3E0;background:#FAF8F4;font-size:11px;font-weight:600;letter-spacing:1.6px;text-transform:uppercase;color:#5B5A57">Sign-in</div>
+            <div style="display:flex;align-items:center;gap:16px;padding:13px 16px;border-bottom:1px solid #E6E3E0">
+              <div style="min-width:0;flex:1"><div style="font-size:14px;font-weight:500">Magic links</div><div style="margin-top:2px;font-size:12px;color:#5B5A57">Sign in with a secure link sent to your email.</div></div>
+              <span style="display:inline-flex;align-items:center;height:24px;padding:0 8px;border-radius:4px;background:#E7F5EC;color:#157F3D;font:500 12px 'Geist Mono',monospace">Active</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:16px;padding:13px 16px">
+              <div style="min-width:0;flex:1"><div style="font-size:14px;font-weight:500">Password</div><div style="margin-top:2px;font-size:12px;color:#5B5A57">Optional. Magic links keep working either way.</div></div>
+              <span style="display:inline-flex;align-items:center;height:24px;padding:0 8px;border:1px solid #E6E3E0;border-radius:4px;background:#FAF8F4;font:500 12px 'Geist Mono',monospace;color:#5B5A57">Not set</span>
+              <button style="height:32px;padding:0 12px;border:1px solid #E6E3E0;border-radius:8px;background:#fff;font:500 13px Geist,sans-serif;color:#15131C">Add password</button>
+            </div>
+          </div>
+
+          <div style="border:1px solid #E6E3E0;border-radius:10px;background:#fff;overflow:hidden;box-shadow:0 1px 2px rgba(20,18,14,.04),0 4px 10px rgba(20,18,14,.05)">
+            <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid #E6E3E0;background:#FAF8F4">
+              <span style="font-size:11px;font-weight:600;letter-spacing:1.6px;text-transform:uppercase;color:#5B5A57">What reaches you</span>
+              <span style="flex:1"></span>
+              <span style="font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.06em;color:#8B8A85;width:52px;text-align:center">Email</span>
+              <span style="font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.06em;color:#8B8A85;width:52px;text-align:center">In-app</span>
+            </div>
+
+            <div style="display:flex;align-items:center;gap:12px;padding:11px 16px;border-bottom:1px solid #E6E3E0">
+              <div style="min-width:0;flex:1"><div style="font-size:13.5px;font-weight:500">Booking offers</div><div style="margin-top:1px;font-size:12px;color:#5B5A57">New offers awaiting your response</div></div>
+              <div style="width:52px;display:flex;justify-content:center"><span style="display:inline-flex;width:44px;height:24px;border-radius:999px;background:#6E5CF6;padding:2px;box-sizing:border-box;justify-content:flex-end"><span style="width:20px;height:20px;border-radius:999px;background:#fff;box-shadow:0 2px 6px rgba(20,18,14,.2)"></span></span></div>
+              <div style="width:52px;display:flex;justify-content:center"><span style="display:inline-flex;width:44px;height:24px;border-radius:999px;background:#6E5CF6;padding:2px;box-sizing:border-box;justify-content:flex-end"><span style="width:20px;height:20px;border-radius:999px;background:#fff;box-shadow:0 2px 6px rgba(20,18,14,.2)"></span></span></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;padding:11px 16px;border-bottom:1px solid #E6E3E0">
+              <div style="min-width:0;flex:1"><div style="font-size:13.5px;font-weight:500">Booking confirmations</div><div style="margin-top:1px;font-size:12px;color:#5B5A57">When one of your bookings is confirmed</div></div>
+              <div style="width:52px;display:flex;justify-content:center"><span style="display:inline-flex;width:44px;height:24px;border-radius:999px;background:#6E5CF6;padding:2px;box-sizing:border-box;justify-content:flex-end"><span style="width:20px;height:20px;border-radius:999px;background:#fff;box-shadow:0 2px 6px rgba(20,18,14,.2)"></span></span></div>
+              <div style="width:52px;display:flex;justify-content:center"><span style="display:inline-flex;width:44px;height:24px;border-radius:999px;background:#6E5CF6;padding:2px;box-sizing:border-box;justify-content:flex-end"><span style="width:20px;height:20px;border-radius:999px;background:#fff;box-shadow:0 2px 6px rgba(20,18,14,.2)"></span></span></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;padding:11px 16px;border-bottom:1px solid #E6E3E0">
+              <div style="min-width:0;flex:1"><div style="font-size:13.5px;font-weight:500">Schedule changes</div><div style="margin-top:1px;font-size:12px;color:#5B5A57">Date, session, and cancellation changes</div></div>
+              <div style="width:52px;display:flex;justify-content:center"><span style="display:inline-flex;width:44px;height:24px;border-radius:999px;background:#6E5CF6;padding:2px;box-sizing:border-box;justify-content:flex-end"><span style="width:20px;height:20px;border-radius:999px;background:#fff;box-shadow:0 2px 6px rgba(20,18,14,.2)"></span></span></div>
+              <div style="width:52px;display:flex;justify-content:center"><span style="display:inline-flex;width:44px;height:24px;border-radius:999px;background:#6E5CF6;padding:2px;box-sizing:border-box;justify-content:flex-end"><span style="width:20px;height:20px;border-radius:999px;background:#fff;box-shadow:0 2px 6px rgba(20,18,14,.2)"></span></span></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;padding:11px 16px;border-bottom:1px solid #E6E3E0">
+              <div style="min-width:0;flex:1"><div style="font-size:13.5px;font-weight:500">Hire orders</div><div style="margin-top:1px;font-size:12px;line-height:17px;color:#5B5A57">Engagement sheets issued to you and their countersign status</div></div>
+              <div style="width:52px;display:flex;justify-content:center"><span style="display:inline-flex;width:44px;height:24px;border-radius:999px;background:#6E5CF6;padding:2px;box-sizing:border-box;justify-content:flex-end"><span style="width:20px;height:20px;border-radius:999px;background:#fff;box-shadow:0 2px 6px rgba(20,18,14,.2)"></span></span></div>
+              <div style="width:52px;display:flex;justify-content:center"><span style="display:inline-flex;width:44px;height:24px;border-radius:999px;background:#DCD9D6;padding:2px;box-sizing:border-box"><span style="width:20px;height:20px;border-radius:999px;background:#fff;box-shadow:0 2px 6px rgba(20,18,14,.2)"></span></span></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;padding:11px 16px;opacity:.55">
+              <div style="min-width:0;flex:1"><div style="display:flex;align-items:center;gap:8px"><div style="font-size:13.5px;font-weight:500">Booking activity, at-risk and escalations</div><span style="display:inline-flex;align-items:center;height:18px;padding:0 5px;border-radius:4px;background:#EFEDE7;color:#5B5A57;font-size:10px;font-weight:600">Production Team only</span></div><div style="margin-top:1px;font-size:12px;color:#5B5A57">Never sent to artists, so they are not shown as choices.</div></div>
+            </div>
+            <div style="padding:11px 16px;border-top:1px solid #E6E3E0;background:#FAF8F4;font-size:12px;color:#5B5A57">Critical account emails are always sent. Invitations and password resets ignore these switches.</div>
+          </div>
+
+          <div style="border:1px solid #E6E3E0;border-radius:10px;background:#fff;overflow:hidden;box-shadow:0 1px 2px rgba(20,18,14,.04),0 4px 10px rgba(20,18,14,.05)">
+            <div style="padding:12px 16px;border-bottom:1px solid #E6E3E0;background:#FAF8F4;font-size:11px;font-weight:600;letter-spacing:1.6px;text-transform:uppercase;color:#5B5A57">Your data</div>
+            <div style="display:flex;align-items:center;gap:16px;padding:13px 16px;border-bottom:1px solid #E6E3E0">
+              <div style="min-width:0;flex:1"><div style="font-size:14px;font-weight:500">Download a copy</div><div style="margin-top:2px;font-size:12px;line-height:17px;color:#5B5A57;text-wrap:pretty">Profile, talent records, bookings, availability, messages and notifications, as JSON.</div></div>
+              <button style="height:32px;padding:0 12px;border:1px solid #E6E3E0;border-radius:8px;background:#fff;font:500 13px Geist,sans-serif;color:#15131C">Download</button>
+            </div>
+            <div style="display:flex;align-items:center;gap:16px;padding:13px 16px">
+              <div style="min-width:0;flex:1"><div style="font-size:14px;font-weight:500;color:#B91C1C">Delete account</div><div style="margin-top:2px;font-size:12px;line-height:17px;color:#5B5A57;text-wrap:pretty">Your account and profile go. Shared booking history stays, de-identified. Signed hire orders are kept for the org's records.</div></div>
+              <button style="height:32px;padding:0 12px;border:1px solid rgba(185,28,28,.4);border-radius:8px;background:rgba(185,28,28,.1);font:500 13px Geist,sans-serif;color:#B91C1C">Delete</button>
+            </div>
+          </div>
+        </div>
+
+        <div style="width:300px;flex-shrink:0;display:flex;flex-direction:column;gap:12px">
+          <div style="border:0.5px solid #E6E3E0;border-radius:10px;background:#fff;padding:14px">
+            <div style="font-size:11px;font-weight:600;letter-spacing:1.6px;text-transform:uppercase;color:#8B8A85">Reference</div>
+            <div style="margin-top:10px;display:flex;flex-direction:column;gap:10px">
+              <div style="display:flex;align-items:flex-start;gap:8px">
+                <span style="margin-top:2px;color:#6E5CF6;display:flex"><i data-lucide="route" data-size="14"></i></span>
+                <div><div style="font-size:13px;font-weight:500">How booking works here</div><div style="margin-top:1px;font-size:12px;line-height:17px;color:#8B8A85">The rules you inherited, and who set them.</div></div>
+              </div>
+              <div style="display:flex;align-items:flex-start;gap:8px">
+                <span style="margin-top:2px;color:#6E5CF6;display:flex"><i data-lucide="clock" data-size="14"></i></span>
+                <div><div style="font-size:13px;font-weight:500">Your blocked dates</div><div style="margin-top:1px;font-size:12px;line-height:17px;color:#8B8A85">1 blocked. Editing them lives in Availability.</div></div>
+              </div>
+              <div style="display:flex;align-items:flex-start;gap:8px">
+                <span style="margin-top:2px;color:#6E5CF6;display:flex"><i data-lucide="message-square" data-size="14"></i></span>
+                <div><div style="font-size:13px;font-weight:500">Message the office</div><div style="margin-top:1px;font-size:12px;line-height:17px;color:#8B8A85">Chats. For anything you cannot change here.</div></div>
+              </div>
+            </div>
+          </div>
+          <div style="border:0.5px solid #E6E3E0;border-radius:10px;background:#fff;padding:14px">
+            <div style="font-size:11px;font-weight:600;letter-spacing:1.6px;text-transform:uppercase;color:#8B8A85">Language</div>
+            <div style="margin-top:8px;display:flex;align-items:center;justify-content:space-between;height:36px;border:1px solid #DCD9D6;border-radius:6px;background:#fff;padding:0 10px;font-size:14px"><span>English</span><span style="color:#8B8A85;display:flex"><i data-lucide="chevron-down" data-size="14"></i></span></div>
+            <div style="margin-top:8px;font-size:12px;line-height:17px;color:#8B8A85;text-wrap:pretty">Your app language. Emails and PDFs follow the workspace language the org picked.</div>
+          </div>
+          <div style="border:0.5px solid #E6E3E0;border-radius:10px;background:#FAF8F4;padding:14px;font-size:12px;line-height:17px;color:#5B5A57;text-wrap:pretty">No setup, no progress, no explainer strip. An artist's account is four groups and never grows a wizard.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ 10 · VALIDATION ═══════════ -->
+  <div data-screen-label="10 Validation" style="display:flex;flex-direction:column;gap:10px">
+    <div style="display:flex;align-items:baseline;gap:10px">
+      <span style="font:600 11px/1 'Geist Mono',monospace;letter-spacing:1.6px;text-transform:uppercase;color:#8B8A85">10 · validation</span>
+      <span style="font-size:13px;color:#5B5A57">Every onboarding and settings surface in the repo, checked against this design. Nothing silently dropped.</span>
+    </div>
+
+    <div style="width:1520px;border:0.5px solid #E6E3E0;border-radius:12px;background:#F6F4EF;padding:24px;box-shadow:0 1px 2px rgba(20,18,14,.04),0 8px 24px rgba(20,18,14,.08);display:flex;flex-direction:column;gap:16px">
+
+      <div style="display:flex;gap:20px;align-items:center">
+        <div style="display:flex;align-items:center;gap:6px"><span style="height:8px;width:8px;border-radius:2px;background:#6E5CF6"></span><span style="font-size:12px;color:#5B5A57">Redesigned here</span></div>
+        <div style="display:flex;align-items:center;gap:6px"><span style="height:8px;width:8px;border-radius:2px;background:#157F3D"></span><span style="font-size:12px;color:#5B5A57">Unchanged, still reachable</span></div>
+        <div style="display:flex;align-items:center;gap:6px"><span style="height:8px;width:8px;border-radius:2px;background:#D97706"></span><span style="font-size:12px;color:#5B5A57">Needs a decision from you</span></div>
+      </div>
+
+      <div style="display:flex;gap:16px;align-items:stretch">
+
+        <div style="flex:1;border:0.5px solid #E6E3E0;border-radius:10px;background:#fff;overflow:hidden;display:flex;flex-direction:column">
+          <div style="padding:12px 14px;border-bottom:1px solid #E6E3E0;background:#FAF8F4;display:flex;align-items:center;gap:8px"><span style="color:#5B5A57;display:flex"><i data-lucide="rocket" data-size="14"></i></span><span style="font-size:13px;font-weight:600">Onboarding surfaces</span></div>
+          <div style="padding:6px 0">
+            <div style="display:flex;align-items:baseline;gap:8px;padding:7px 14px"><span style="height:7px;width:7px;border-radius:2px;background:#6E5CF6;flex-shrink:0;position:relative;top:-2px"></span><span style="font-size:12.5px;flex:1">Dashboard first-run stage chain</span><span style="font:400 10px 'Geist Mono',monospace;color:#8B8A85">screen 01</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px;padding:7px 14px"><span style="height:7px;width:7px;border-radius:2px;background:#6E5CF6;flex-shrink:0;position:relative;top:-2px"></span><span style="font-size:12.5px;flex:1">Module setup rails, banner and 340px</span><span style="font:400 10px 'Geist Mono',monospace;color:#8B8A85">screen 01</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px;padding:7px 14px"><span style="height:7px;width:7px;border-radius:2px;background:#6E5CF6;flex-shrink:0;position:relative;top:-2px"></span><span style="font-size:12.5px;flex:1">Collapsed welcome chip and resume</span><span style="font:400 10px 'Geist Mono',monospace;color:#8B8A85">screen 04</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px;padding:7px 14px"><span style="height:7px;width:7px;border-radius:2px;background:#6E5CF6;flex-shrink:0;position:relative;top:-2px"></span><span style="font-size:12.5px;flex:1">Settings four-card explainer strip</span><span style="font:400 10px 'Geist Mono',monospace;color:#8B8A85">removed</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px;padding:7px 14px"><span style="height:7px;width:7px;border-radius:2px;background:#6E5CF6;flex-shrink:0;position:relative;top:-2px"></span><span style="font-size:12.5px;flex:1">Artist first run and single step</span><span style="font:400 10px 'Geist Mono',monospace;color:#8B8A85">screen 08</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px;padding:7px 14px"><span style="height:7px;width:7px;border-radius:2px;background:#6E5CF6;flex-shrink:0;position:relative;top:-2px"></span><span style="font-size:12.5px;flex:1">Accept invite success handoff</span><span style="font:400 10px 'Geist Mono',monospace;color:#8B8A85">screen 07</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px;padding:7px 14px"><span style="height:7px;width:7px;border-radius:2px;background:#157F3D;flex-shrink:0;position:relative;top:-2px"></span><span style="font-size:12.5px;flex:1">Invite states: unauth, pending, expired, wrong email, other account</span><span style="font:400 10px 'Geist Mono',monospace;color:#8B8A85">unchanged</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px;padding:7px 14px"><span style="height:7px;width:7px;border-radius:2px;background:#157F3D;flex-shrink:0;position:relative;top:-2px"></span><span style="font-size:12.5px;flex:1">Login, magic link, auth callback, reset password</span><span style="font:400 10px 'Geist Mono',monospace;color:#8B8A85">unchanged</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px;padding:7px 14px"><span style="height:7px;width:7px;border-radius:2px;background:#157F3D;flex-shrink:0;position:relative;top:-2px"></span><span style="font-size:12.5px;flex:1">Page minis on 8 other pages</span><span style="font:400 10px 'Geist Mono',monospace;color:#8B8A85">page help</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px;padding:7px 14px"><span style="height:7px;width:7px;border-radius:2px;background:#6E5CF6;flex-shrink:0;position:relative;top:-2px"></span><span style="font-size:12.5px;flex:1">Airtable connect: four-step rail, then collapsed</span><span style="font:400 10px 'Geist Mono',monospace;color:#5848D8">decided</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px;padding:7px 14px"><span style="height:7px;width:7px;border-radius:2px;background:#D97706;flex-shrink:0;position:relative;top:-2px"></span><span style="font-size:12.5px;flex:1">Get running "Hide from nav": per person or per org</span><span style="font:400 10px 'Geist Mono',monospace;color:#9A6314">screen 04</span></div>
+          </div>
+        </div>
+
+        <div style="flex:1;border:0.5px solid #E6E3E0;border-radius:10px;background:#fff;overflow:hidden;display:flex;flex-direction:column">
+          <div style="padding:12px 14px;border-bottom:1px solid #E6E3E0;background:#FAF8F4;display:flex;align-items:center;gap:8px"><span style="color:#5B5A57;display:flex"><i data-lucide="settings" data-size="14"></i></span><span style="font-size:13px;font-weight:600">Settings and account</span></div>
+          <div style="padding:6px 0">
+            <div style="display:flex;align-items:baseline;gap:8px;padding:7px 14px"><span style="height:7px;width:7px;border-radius:2px;background:#6E5CF6;flex-shrink:0;position:relative;top:-2px"></span><span style="font-size:12.5px;flex:1">12 tabs to 5 sections, all 41 settings</span><span style="font:400 10px 'Geist Mono',monospace;color:#8B8A85">screen 06</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px;padding:7px 14px"><span style="height:7px;width:7px;border-radius:2px;background:#6E5CF6;flex-shrink:0;position:relative;top:-2px"></span><span style="font-size:12.5px;flex:1">Artist account, 4 groups, no Settings route</span><span style="font:400 10px 'Geist Mono',monospace;color:#8B8A85">screen 09</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px;padding:7px 14px"><span style="height:7px;width:7px;border-radius:2px;background:#6E5CF6;flex-shrink:0;position:relative;top:-2px"></span><span style="font-size:12.5px;flex:1">Per-category notification prefs, 2 channels</span><span style="font:400 10px 'Geist Mono',monospace;color:#8B8A85">screen 09</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px;padding:7px 14px"><span style="height:7px;width:7px;border-radius:2px;background:#6E5CF6;flex-shrink:0;position:relative;top:-2px"></span><span style="font-size:12.5px;flex:1">Page-level save and dirty banner to one bar</span><span style="font:400 10px 'Geist Mono',monospace;color:#8B8A85">screen 05</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px;padding:7px 14px"><span style="height:7px;width:7px;border-radius:2px;background:#157F3D;flex-shrink:0;position:relative;top:-2px"></span><span style="font-size:12.5px;flex:1">Hire order PDF template editor route</span><span style="font:400 10px 'Geist Mono',monospace;color:#8B8A85">full page</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px;padding:7px 14px"><span style="height:7px;width:7px;border-radius:2px;background:#157F3D;flex-shrink:0;position:relative;top:-2px"></span><span style="font-size:12.5px;flex:1">Email template editor route</span><span style="font:400 10px 'Geist Mono',monospace;color:#8B8A85">full page</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px;padding:7px 14px"><span style="height:7px;width:7px;border-radius:2px;background:#157F3D;flex-shrink:0;position:relative;top:-2px"></span><span style="font-size:12.5px;flex:1">Admin page: people, invitations, roles</span><span style="font:400 10px 'Geist Mono',monospace;color:#8B8A85">linked</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px;padding:7px 14px"><span style="height:7px;width:7px;border-radius:2px;background:#157F3D;flex-shrink:0;position:relative;top:-2px"></span><span style="font-size:12.5px;flex:1">Platform console, super admin</span><span style="font:400 10px 'Geist Mono',monospace;color:#8B8A85">unchanged</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px;padding:7px 14px"><span style="height:7px;width:7px;border-radius:2px;background:#157F3D;flex-shrink:0;position:relative;top:-2px"></span><span style="font-size:12.5px;flex:1">Documentation and system map</span><span style="font:400 10px 'Geist Mono',monospace;color:#8B8A85">super admin</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px;padding:7px 14px"><span style="height:7px;width:7px;border-radius:2px;background:#6E5CF6;flex-shrink:0;position:relative;top:-2px"></span><span style="font-size:12.5px;flex:1">Cast ownership sits in Booking</span><span style="font:400 10px 'Geist Mono',monospace;color:#5848D8">decided</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px;padding:7px 14px"><span style="height:7px;width:7px;border-radius:2px;background:#6E5CF6;flex-shrink:0;position:relative;top:-2px"></span><span style="font-size:12.5px;flex:1">Old /settings?tab= links keep working</span><span style="font:400 10px 'Geist Mono',monospace;color:#5848D8">map below</span></div>
+          </div>
+        </div>
+
+        <div style="flex:1;border:0.5px solid #E6E3E0;border-radius:10px;background:#fff;overflow:hidden;display:flex;flex-direction:column">
+          <div style="padding:12px 14px;border-bottom:1px solid #E6E3E0;background:#FAF8F4;display:flex;align-items:center;gap:8px"><span style="color:#5B5A57;display:flex"><i data-lucide="shield" data-size="14"></i></span><span style="font-size:13px;font-weight:600">Rules and edge states</span></div>
+          <div style="padding:6px 0">
+            <div style="display:flex;align-items:baseline;gap:8px;padding:7px 14px"><span style="height:7px;width:7px;border-radius:2px;background:#6E5CF6;flex-shrink:0;position:relative;top:-2px"></span><span style="font-size:12.5px;flex:1">Per-step capability gating and Admin markers</span><span style="font:400 10px 'Geist Mono',monospace;color:#8B8A85">screen 03</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px;padding:7px 14px"><span style="height:7px;width:7px;border-radius:2px;background:#6E5CF6;flex-shrink:0;position:relative;top:-2px"></span><span style="font-size:12.5px;flex:1">Producer read-only floor and its banner</span><span style="font:400 10px 'Geist Mono',monospace;color:#8B8A85">screens 03, 05</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px;padding:7px 14px"><span style="height:7px;width:7px;border-radius:2px;background:#6E5CF6;flex-shrink:0;position:relative;top:-2px"></span><span style="font-size:12.5px;flex:1">Provenance: who set a rule, and when</span><span style="font:400 10px 'Geist Mono',monospace;color:#8B8A85">screens 05, 08</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px;padding:7px 14px"><span style="height:7px;width:7px;border-radius:2px;background:#6E5CF6;flex-shrink:0;position:relative;top:-2px"></span><span style="font-size:12.5px;flex:1">Module-off footers and nothing-on state</span><span style="font:400 10px 'Geist Mono',monospace;color:#8B8A85">screens 01, 07</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px;padding:7px 14px"><span style="height:7px;width:7px;border-radius:2px;background:#6E5CF6;flex-shrink:0;position:relative;top:-2px"></span><span style="font-size:12.5px;flex:1">Artist not linked to a catalog record</span><span style="font:400 10px 'Geist Mono',monospace;color:#8B8A85">screen 08</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px;padding:7px 14px"><span style="height:7px;width:7px;border-radius:2px;background:#157F3D;flex-shrink:0;position:relative;top:-2px"></span><span style="font-size:12.5px;flex:1">Feature disabled screen, no org, suspended org</span><span style="font:400 10px 'Geist Mono',monospace;color:#8B8A85">unchanged</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px;padding:7px 14px"><span style="height:7px;width:7px;border-radius:2px;background:#157F3D;flex-shrink:0;position:relative;top:-2px"></span><span style="font-size:12.5px;flex:1">Entitlement locks in the nav</span><span style="font:400 10px 'Geist Mono',monospace;color:#8B8A85">unchanged</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px;padding:7px 14px"><span style="height:7px;width:7px;border-radius:2px;background:#157F3D;flex-shrink:0;position:relative;top:-2px"></span><span style="font-size:12.5px;flex:1">Unsubscribe page, cookie consent, impressum</span><span style="font:400 10px 'Geist Mono',monospace;color:#8B8A85">unchanged</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px;padding:7px 14px"><span style="height:7px;width:7px;border-radius:2px;background:#157F3D;flex-shrink:0;position:relative;top:-2px"></span><span style="font-size:12.5px;flex:1">Unsaved-changes warning on tab close</span><span style="font:400 10px 'Geist Mono',monospace;color:#8B8A85">kept</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px;padding:7px 14px"><span style="height:7px;width:7px;border-radius:2px;background:#6E5CF6;flex-shrink:0;position:relative;top:-2px"></span><span style="font-size:12.5px;flex:1">German copy for every new string</span><span style="font:400 10px 'Geist Mono',monospace;color:#5848D8">en + de</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px;padding:7px 14px"><span style="height:7px;width:7px;border-radius:2px;background:#6E5CF6;flex-shrink:0;position:relative;top:-2px"></span><span style="font-size:12.5px;flex:1">Nudge sends all three: in-app, email, chat message</span><span style="font:400 10px 'Geist Mono',monospace;color:#5848D8">decided</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:16px">
+        <div style="flex:1;border:0.5px solid #E6E3E0;border-radius:10px;background:#fff;padding:16px">
+          <div style="font-size:11px;font-weight:600;letter-spacing:1.6px;text-transform:uppercase;color:#8B8A85">Gaps I found while checking</div>
+          <div style="margin-top:8px;display:flex;flex-direction:column;gap:6px;font-size:13px;line-height:19px;color:#5B5A57">
+            <div>Artists have a second settings surface today, Profile, and it is the only one they can reach. It now follows the same row pattern as Settings rather than a separate card idiom.</div>
+            <div>Two notification categories, booking activity and at-risk, are never sent to artists. Today they render as live switches on an artist's profile. Screen 09 shows them stated and dimmed instead.</div>
+            <div>Filters visibility is a per-role setting living in Preferences. It moved next to Roles and rights, where the same question is already being answered.</div>
+          </div>
+        </div>
+        <div style="flex:1;border:0.5px solid #E6E3E0;border-radius:10px;background:#fff;padding:16px">
+          <div style="font-size:11px;font-weight:600;letter-spacing:1.6px;text-transform:uppercase;color:#8B8A85">Where old links land</div>
+          <div style="margin-top:6px;font-size:12px;line-height:17px;color:#5B5A57;text-wrap:pretty">Notifications, setup steps and bookmarks point at <span style="font:400 11px 'Geist Mono',monospace">/settings?tab=…</span> today. Each param resolves to a section and scrolls to its row.</div>
+          <div style="margin-top:10px;display:flex;flex-direction:column;gap:3px">
+            <div style="display:flex;align-items:baseline;gap:8px"><span style="font:400 11px 'Geist Mono',monospace;color:#8B8A85;width:132px;flex-shrink:0;white-space:nowrap">tab=organization</span><span style="font-size:12px">Workspace</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px"><span style="font:400 11px 'Geist Mono',monospace;color:#8B8A85;width:132px;flex-shrink:0;white-space:nowrap">tab=notifications</span><span style="font-size:12px">Workspace</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px"><span style="font:400 11px 'Geist Mono',monospace;color:#8B8A85;width:132px;flex-shrink:0;white-space:nowrap">tab=airtable</span><span style="font-size:12px">Workspace · connections</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px"><span style="font:400 11px 'Geist Mono',monospace;color:#8B8A85;width:132px;flex-shrink:0;white-space:nowrap">tab=permissions</span><span style="font-size:12px">People &amp; access</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px"><span style="font:400 11px 'Geist Mono',monospace;color:#8B8A85;width:132px;flex-shrink:0;white-space:nowrap">tab=filters</span><span style="font-size:12px">People &amp; access</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px"><span style="font:400 11px 'Geist Mono',monospace;color:#8B8A85;width:132px;flex-shrink:0;white-space:nowrap">tab=booking</span><span style="font-size:12px">Booking</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px"><span style="font:400 11px 'Geist Mono',monospace;color:#8B8A85;width:132px;flex-shrink:0;white-space:nowrap">tab=casts-coverage</span><span style="font-size:12px">Booking · coverage</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px"><span style="font:400 11px 'Geist Mono',monospace;color:#8B8A85;width:132px;flex-shrink:0;white-space:nowrap">tab=skills</span><span style="font-size:12px">Booking · skills</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px"><span style="font:400 11px 'Geist Mono',monospace;color:#8B8A85;width:132px;flex-shrink:0;white-space:nowrap">tab=hire-orders</span><span style="font-size:12px">Documents &amp; email</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px"><span style="font:400 11px 'Geist Mono',monospace;color:#8B8A85;width:132px;flex-shrink:0;white-space:nowrap">tab=email-templates</span><span style="font-size:12px">Documents &amp; email</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px"><span style="font:400 11px 'Geist Mono',monospace;color:#8B8A85;width:132px;flex-shrink:0;white-space:nowrap">tab=trust</span><span style="font-size:12px">Data &amp; privacy</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px"><span style="font:400 11px 'Geist Mono',monospace;color:#8B8A85;width:132px;flex-shrink:0;white-space:nowrap">tab=docs</span><span style="font-size:12px">Data &amp; privacy · super admin</span></div>
+          </div>
+          <div style="margin-top:10px;padding-top:10px;border-top:1px solid #E6E3E0;font-size:12px;line-height:17px;color:#5B5A57;text-wrap:pretty">Setup deep links change target: a step link now opens its Get running task panel, not a tab.</div>
+        </div>
+
+        <div style="flex:1;border:0.5px solid #E6E3E0;border-radius:10px;background:#fff;padding:16px">
+          <div style="font-size:11px;font-weight:600;letter-spacing:1.6px;text-transform:uppercase;color:#8B8A85">Still out of scope, on purpose</div>
+          <div style="margin-top:8px;display:flex;flex-direction:column;gap:6px;font-size:13px;line-height:19px;color:#5B5A57">
+            <div>The 22-switch filter grid keeps its table. It is dense because it is a matrix, and a matrix is the right shape.</div>
+            <div>Coverage, visibility and permissions matrices keep the full page width the current build gives them.</div>
+            <div>The dev cockpit harness and the platform system-health console are not user onboarding and are untouched.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ 11 · AIRTABLE CONNECT, TWO OPTIONS ═══════════ -->
+  <div data-screen-label="11 Airtable connect" style="display:flex;flex-direction:column;gap:10px">
+    <div style="display:flex;align-items:baseline;gap:10px">
+      <span style="font:600 11px/1 'Geist Mono',monospace;letter-spacing:1.6px;text-transform:uppercase;color:#8B8A85">11 · decided</span>
+      <span style="font-size:13px;color:#5B5A57">The rail while connecting, the collapsed panel once connected. Same frame, two states of one task, not two competing designs.</span>
+    </div>
+
+    <div style="display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap">
+
+      <!-- 11a -->
+      <div style="display:flex;flex-direction:column;gap:12px;width:520px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:4px;background:#6E5CF6;color:#fff;font:600 12px 'Geist Mono',monospace">11a</span>
+          <span style="font-size:16px;font-weight:600;letter-spacing:-0.1px">Once connected: four groups, collapsed</span>
+          <span style="display:inline-flex;align-items:center;height:20px;padding:0 6px;border-radius:4px;background:#E5DEFF;color:#4738B0;font-size:11px;font-weight:600">Steady state</span>
+        </div>
+        <div style="font-size:13px;line-height:19px;color:#5B5A57;text-wrap:pretty">No rail once the four things are set. Each group collapses to its own value, so the whole connection reads top to bottom. This is also the Workspace · connections row in Settings, and where a held record or a replaced token is handled later.</div>
+
+        <div style="display:flex;flex-direction:column;border:0.5px solid #E6E3E0;border-radius:14px;background:#fff;box-shadow:0 1px 2px rgba(20,18,14,.04),0 8px 24px rgba(20,18,14,.08);overflow:hidden">
+          <div style="display:flex;align-items:flex-start;gap:12px;padding:16px;border-bottom:1px solid #E6E3E0">
+            <div style="min-width:0;flex:1">
+              <div style="font-size:11px;font-weight:600;letter-spacing:1.6px;text-transform:uppercase;color:#5848D8">Phase 1 · get dates in</div>
+              <div style="margin-top:6px;font-size:22px;font-weight:600;letter-spacing:-0.3px">Connect Airtable</div>
+              <div style="margin-top:6px;font-size:13px;line-height:19px;color:#5B5A57;text-wrap:pretty">Nothing syncs until the last group is done. You can leave and come back, each one saves as you go.</div>
+            </div>
+            <span style="color:#8B8A85;display:flex"><i data-lucide="x" data-size="18"></i></span>
+          </div>
+
+          <div style="padding:16px;display:flex;flex-direction:column;gap:10px">
+
+            <div style="display:flex;align-items:center;gap:10px;border:0.5px solid #E6E3E0;border-radius:10px;background:#FAF8F4;padding:12px">
+              <span style="display:flex;height:20px;width:20px;align-items:center;justify-content:center;border-radius:999px;background:#6E5CF6;color:#fff;flex-shrink:0"><i data-lucide="check" data-size="12"></i></span>
+              <div style="min-width:0;flex:1"><div style="font-size:13px;font-weight:500">Token</div><div style="margin-top:1px;font-size:12px;color:#8B8A85">Saved 17 Aug, stored in Vault, never displayed</div></div>
+              <span style="font-size:12px;font-weight:500;color:#5848D8">Replace</span>
+            </div>
+
+            <div style="display:flex;align-items:center;gap:10px;border:0.5px solid #E6E3E0;border-radius:10px;background:#FAF8F4;padding:12px">
+              <span style="display:flex;height:20px;width:20px;align-items:center;justify-content:center;border-radius:999px;background:#6E5CF6;color:#fff;flex-shrink:0"><i data-lucide="check" data-size="12"></i></span>
+              <div style="min-width:0;flex:1"><div style="font-size:13px;font-weight:500">Base and table</div><div style="margin-top:1px;font:400 11px 'Geist Mono',monospace;color:#8B8A85">Spielplan 2026 › Shows · Grid view · hourly</div></div>
+              <span style="font-size:12px;font-weight:500;color:#5848D8">Change</span>
+            </div>
+
+            <div style="border:0.5px solid #CABBFF;border-radius:10px;background:#fff;overflow:hidden">
+              <div style="display:flex;align-items:center;gap:10px;padding:12px;background:#F4F1FF;border-bottom:1px solid #E5DEFF">
+                <span style="display:flex;height:20px;width:20px;align-items:center;justify-content:center;border-radius:999px;border:1.5px solid #6E5CF6;color:#4738B0;font:600 10px 'Geist Mono',monospace;flex-shrink:0">3</span>
+                <div style="min-width:0;flex:1"><div style="font-size:13px;font-weight:600">Map fields</div><div style="margin-top:1px;font-size:12px;color:#5848D8">Date, program, city, sessions</div></div>
+                <span style="font:500 12px 'Geist Mono',monospace;color:#4738B0">3 of 4 required</span>
+              </div>
+              <div style="padding:12px;display:flex;flex-direction:column;gap:8px">
+                <div style="font-size:12px;line-height:17px;color:#5B5A57;text-wrap:pretty">Every ShowFlow field reads from one column in Shows. Catalog links are keyed on Program · Sub-program.</div>
+                <div style="border:1px solid #E6E3E0;border-radius:8px;overflow:hidden">
+                  <div style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid #E6E3E0;background:#FAF8F4"><span style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#8B8A85;flex:1">ShowFlow field</span><span style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#8B8A85;width:160px">Airtable column</span></div>
+                  <div style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid #E6E3E0"><span style="font-size:13px;flex:1">Date</span><span style="width:160px;font:500 12px 'Geist Mono',monospace">Termin</span></div>
+                  <div style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid #E6E3E0"><span style="font-size:13px;flex:1">Program</span><span style="width:160px;font:500 12px 'Geist Mono',monospace">Produktion</span></div>
+                  <div style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid #E6E3E0"><span style="font-size:13px;flex:1">City</span><span style="width:160px;font:500 12px 'Geist Mono',monospace">Stadt</span></div>
+                  <div style="display:flex;align-items:center;gap:10px;padding:9px 12px;background:#FCF1DA"><span style="font-size:13px;flex:1">Sessions</span><span style="width:160px;font:500 12px 'Geist Mono',monospace;color:#9A6314">Not mapped</span></div>
+                </div>
+              </div>
+            </div>
+
+            <div style="display:flex;align-items:center;gap:10px;border:0.5px dashed rgba(20,18,14,.14);border-radius:10px;padding:12px">
+              <span style="display:flex;height:20px;width:20px;align-items:center;justify-content:center;border-radius:999px;border:1.5px solid rgba(20,18,14,.14);color:#8B8A85;font:600 10px 'Geist Mono',monospace;flex-shrink:0">4</span>
+              <div style="min-width:0;flex:1"><div style="font-size:13px;font-weight:500;color:#5B5A57">Link catalog</div><div style="margin-top:1px;font-size:12px;color:#8B8A85">Match options to your shows. Unlinked options hold their records.</div></div>
+            </div>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:10px;padding:14px 16px;border-top:1px solid #E6E3E0;background:#FAF8F4">
+            <span style="font-size:12px;color:#8B8A85">Saved as you go</span>
+            <span style="flex:1"></span>
+            <button style="height:36px;padding:0 12px;border:1px solid #E6E3E0;border-radius:8px;background:#fff;font:500 13px Geist,sans-serif;color:#15131C">Later</button>
+            <button style="height:36px;padding:0 14px;border:0;border-radius:8px;background:#6E5CF6;color:#fff;font:500 13px Geist,sans-serif">Map sessions</button>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:6px;border:0.5px solid #E6E3E0;border-radius:10px;background:#fff;padding:14px">
+          <div style="font-size:11px;font-weight:600;letter-spacing:1.6px;text-transform:uppercase;color:#8B8A85">Trade-off</div>
+          <div style="font-size:13px;line-height:19px;color:#5B5A57;text-wrap:pretty">Reads as one connection, which is what it becomes after setup: the same panel is how you inspect and change it later. Weaker at conveying order, and the mapping table is cramped at 520px.</div>
+        </div>
+      </div>
+
+      <!-- 11b -->
+      <div style="display:flex;flex-direction:column;gap:12px;width:760px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:4px;background:#6E5CF6;color:#fff;font:600 12px 'Geist Mono',monospace">11b</span>
+          <span style="font-size:16px;font-weight:600;letter-spacing:-0.1px">While connecting: the four-step rail</span>
+          <span style="display:inline-flex;align-items:center;height:20px;padding:0 6px;border-radius:4px;background:#E7F5EC;color:#157F3D;font-size:11px;font-weight:600">Chosen</span>
+        </div>
+        <div style="font-size:13px;line-height:19px;color:#5B5A57;text-wrap:pretty">The wizard that already ships, moved into the task panel. The rail states the order and where you are; the body gets the room the mapping table wants. On the last step it saves and the panel collapses into 11a.</div>
+
+        <div style="display:flex;flex-direction:column;border:0.5px solid #E6E3E0;border-radius:14px;background:#fff;box-shadow:0 1px 2px rgba(20,18,14,.04),0 8px 24px rgba(20,18,14,.08);overflow:hidden">
+          <div style="display:flex;align-items:flex-start;gap:12px;padding:16px;border-bottom:1px solid #E6E3E0">
+            <div style="min-width:0;flex:1">
+              <div style="font-size:11px;font-weight:600;letter-spacing:1.6px;text-transform:uppercase;color:#5848D8">Phase 1 · get dates in</div>
+              <div style="margin-top:6px;font-size:22px;font-weight:600;letter-spacing:-0.3px">Connect a base in four steps</div>
+              <div style="margin-top:6px;font-size:13px;line-height:19px;color:#5B5A57;text-wrap:pretty">Nothing syncs until the last step. You can leave and come back, each step saves as you go.</div>
+            </div>
+            <span style="color:#8B8A85;display:flex"><i data-lucide="x" data-size="18"></i></span>
+          </div>
+
+          <div style="display:grid;grid-template-columns:236px 1fr">
+            <ol style="margin:0;padding:16px 0;list-style:none;border-right:1px solid #E6E3E0;background:#FAF8F4">
+              <li style="display:flex;gap:12px;padding:10px 16px">
+                <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+                  <span style="display:flex;height:22px;width:22px;align-items:center;justify-content:center;border-radius:999px;border:1px solid #CABBFF;background:#E5DEFF;color:#4738B0;font-size:11px;font-weight:600">1</span>
+                  <span style="width:1px;flex:1;background:#E6E3E0"></span>
+                </div>
+                <div style="padding-bottom:6px"><p style="margin:0;font-size:13px;font-weight:600">Connect</p><p style="margin:2px 0 0;font-size:12px;line-height:16px;color:#5B5A57">Personal access token</p></div>
+              </li>
+              <li style="display:flex;gap:12px;padding:10px 16px">
+                <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+                  <span style="display:flex;height:22px;width:22px;align-items:center;justify-content:center;border-radius:999px;border:1px solid #CABBFF;background:#E5DEFF;color:#4738B0;font-size:11px;font-weight:600">2</span>
+                  <span style="width:1px;flex:1;background:#E6E3E0"></span>
+                </div>
+                <div style="padding-bottom:6px"><p style="margin:0;font-size:13px;font-weight:600">Base and table</p><p style="margin:2px 0 0;font:400 11px/16px 'Geist Mono',monospace;color:#5B5A57">Spielplan 2026 › Shows</p></div>
+              </li>
+              <li style="display:flex;gap:12px;padding:10px 16px">
+                <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+                  <span style="display:flex;height:22px;width:22px;align-items:center;justify-content:center;border-radius:999px;background:#6E5CF6;color:#fff;font-size:11px;font-weight:600">3</span>
+                  <span style="width:1px;flex:1;background:#E6E3E0"></span>
+                </div>
+                <div style="padding-bottom:6px"><p style="margin:0;font-size:13px;font-weight:600">Map fields</p><p style="margin:2px 0 0;font-size:12px;line-height:16px;color:#5B5A57">Date, program, city, sessions</p></div>
+              </li>
+              <li style="display:flex;gap:12px;padding:10px 16px">
+                <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+                  <span style="display:flex;height:22px;width:22px;align-items:center;justify-content:center;border-radius:999px;border:1px solid #E6E3E0;background:#fff;color:#5B5A57;font-size:11px;font-weight:600">4</span>
+                </div>
+                <div style="padding-bottom:6px"><p style="margin:0;font-size:13px;font-weight:600;color:#5B5A57">Link catalog</p><p style="margin:2px 0 0;font-size:12px;line-height:16px;color:#5B5A57">Match options to your shows</p></div>
+              </li>
+            </ol>
+
+            <div style="padding:16px;display:flex;flex-direction:column;gap:12px">
+              <div>
+                <h3 style="margin:0;font-size:17px;font-weight:600;letter-spacing:-0.2px">Map fields</h3>
+                <p style="margin:6px 0 0;font-size:13px;line-height:19px;color:#5B5A57;text-wrap:pretty">Every ShowFlow field reads from one column in Shows. Catalog links are keyed on Program · Sub-program.</p>
+              </div>
+              <div style="border:1px solid #E6E3E0;border-radius:8px;overflow:hidden">
+                <div style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid #E6E3E0;background:#FAF8F4"><span style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#8B8A85;flex:1">ShowFlow field</span><span style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#8B8A85;width:220px">Airtable column</span></div>
+                <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid #E6E3E0"><span style="font-size:13px;flex:1">Date</span><div style="width:220px;display:flex;align-items:center;justify-content:space-between;height:32px;border:1px solid #DCD9D6;border-radius:6px;padding:0 10px;font:500 12px 'Geist Mono',monospace"><span>Termin</span><span style="color:#8B8A85;display:flex"><i data-lucide="chevron-down" data-size="14"></i></span></div></div>
+                <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid #E6E3E0"><span style="font-size:13px;flex:1">Program</span><div style="width:220px;display:flex;align-items:center;justify-content:space-between;height:32px;border:1px solid #DCD9D6;border-radius:6px;padding:0 10px;font:500 12px 'Geist Mono',monospace"><span>Produktion</span><span style="color:#8B8A85;display:flex"><i data-lucide="chevron-down" data-size="14"></i></span></div></div>
+                <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid #E6E3E0"><span style="font-size:13px;flex:1">City</span><div style="width:220px;display:flex;align-items:center;justify-content:space-between;height:32px;border:1px solid #DCD9D6;border-radius:6px;padding:0 10px;font:500 12px 'Geist Mono',monospace"><span>Stadt</span><span style="color:#8B8A85;display:flex"><i data-lucide="chevron-down" data-size="14"></i></span></div></div>
+                <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid #E6E3E0;background:#FCF1DA"><span style="font-size:13px;flex:1">Sessions</span><div style="width:220px;display:flex;align-items:center;justify-content:space-between;height:32px;border:1px solid #DCD9D6;border-radius:6px;background:#FCF1DA;padding:0 10px;font:500 12px 'Geist Mono',monospace;color:#9A6314"><span>Not mapped</span><span style="display:flex"><i data-lucide="chevron-down" data-size="14"></i></span></div></div>
+                <div style="display:flex;align-items:center;gap:10px;padding:10px 12px"><span style="font-size:13px;flex:1;color:#5B5A57">Status field<span style="margin-left:6px;font-size:11px;color:#8B8A85">optional</span></span><div style="width:220px;display:flex;align-items:center;justify-content:space-between;height:32px;border:1px solid #DCD9D6;border-radius:6px;padding:0 10px;font:500 12px 'Geist Mono',monospace;color:#5B5A57"><span>None</span><span style="color:#8B8A85;display:flex"><i data-lucide="chevron-down" data-size="14"></i></span></div></div>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:#8B8A85"><span style="display:flex"><i data-lucide="circle-help" data-size="14"></i></span><span>2 columns in Shows are not read by ShowFlow: Besetzung, Notiz.</span><span style="flex:1"></span><span style="font-weight:500;color:#5848D8">Add as custom fields</span></div>
+            </div>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:10px;padding:14px 16px;border-top:1px solid #E6E3E0;background:#FAF8F4">
+            <span style="font:500 12px 'Geist Mono',monospace;color:#5848D8">Step 3 of 4</span>
+            <span style="font-size:12px;color:#8B8A85">Saved as you go</span>
+            <span style="flex:1"></span>
+            <button style="height:36px;padding:0 12px;border:1px solid #E6E3E0;border-radius:8px;background:#fff;font:500 13px Geist,sans-serif;color:#15131C">Later</button>
+            <button style="height:36px;padding:0 14px;border:0;border-radius:8px;background:#6E5CF6;color:#fff;font:500 13px Geist,sans-serif">Link catalog</button>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:16px">
+          <div style="flex:1;display:flex;flex-direction:column;gap:6px;border:0.5px solid #E6E3E0;border-radius:10px;background:#fff;padding:14px">
+            <div style="font-size:11px;font-weight:600;letter-spacing:1.6px;text-transform:uppercase;color:#8B8A85">Trade-off</div>
+            <div style="font-size:13px;line-height:19px;color:#5B5A57;text-wrap:pretty">Order is explicit and the mapping table breathes, which matters because this is the one setup task with a real table in it. Costs a 760px panel, so the board column narrows while it is open.</div>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:6px;border:0.5px solid #CABBFF;border-radius:10px;background:#F4F1FF;padding:14px">
+            <div style="font-size:11px;font-weight:600;letter-spacing:1.6px;text-transform:uppercase;color:#4738B0">Decided</div>
+            <div style="font-size:13px;line-height:19px;text-wrap:pretty">One task, two states. The rail carries the first connect, because four unset things need an order. The moment the last step saves, the panel becomes 11a and stays that way for every later visit.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+
+<script>window.addEventListener("load",()=>{if(window.lucide)lucide.createIcons();});setTimeout(()=>{if(window.lucide)lucide.createIcons();},400);</script>
+</body></html>

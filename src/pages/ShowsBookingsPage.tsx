@@ -17,7 +17,7 @@ import { fetchShowDatesList } from '@/data/showDates';
 import { useAuth } from '@/features/auth/AuthContext';
 import { Input } from '@/components/ui/input';
 import { pagerPosition } from '@/lib/bookingCockpit';
-import { Search, ListChecks } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { parseISO } from 'date-fns';
 import type { TimeframeValue } from '@/components/filters/TimeframeFilter';
 import { SortControl, type SortValue } from '@/components/filters/SortControl';
@@ -26,18 +26,13 @@ import { applySort, inTimeframe } from '@/components/filters/filterUtils';
 import { FilterChipsBar } from '@/components/filters/FilterChipsBar';
 import { ArtistBookingsView } from '@/components/bookings/ArtistBookingsView';
 import { FirstOfferCard } from '@/components/bookings/setup/FirstOfferCard';
-import { DashboardSetupRail } from '@/components/dashboard/firstRun/DashboardSetupRail';
-import { DashboardWelcomeCollapsed } from '@/components/dashboard/firstRun/DashboardWelcomeCollapsed';
-import { useModuleOnboardingRail } from '@/components/setup/useModuleOnboardingRail';
-import { SetupChecklistSheet } from '@/components/setup/SetupChecklistSheet';
-import type { ComposedStep } from '@/lib/dashboard/types';
 import { ShowDateDetailSheet } from '@/components/shows/ShowDateDetailSheet';
 import type { CockpitTab } from '@/components/shows/date/CockpitHeader';
 import { ShowDateFormDialog } from '@/components/shows/ShowDateFormDialog';
 import { NewOrderWizard } from '@/components/hireOrders/NewOrderWizard';
 import { HireOrderReadyBanner } from '@/components/hireOrders/HireOrderReadyBanner';
 import { useDatesReadyForHireOrder, useHireOrderAction } from '@/hooks/useHireOrders';
-import { useFeature, useEntitlements } from '@/hooks/useEntitlements';
+import { useFeature } from '@/hooks/useEntitlements';
 import { useCan } from '@/hooks/useCapabilities';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -167,23 +162,6 @@ function ProducerShowsBookings() {
   const canManage = hasRole('admin') || hasRole('producer');
   const orgId = currentOrg?.id ?? null;
   const bookingOn = useFeature('booking_flow');
-  const { features, isLoading: entitlementsLoading } = useEntitlements();
-  // The setup rail is a WRITE surface (its Sheet persists app_settings), so it must NOT
-  // fail open while entitlements load. `features.has()` alone is not enough: it falls back
-  // to registry defaults during the load window, and booking_flow defaults ON, so a booking
-  // -off org would briefly mount a live settings-write surface. Gate on !loading AND the
-  // resolved entitlement (no super-admin exemption -- app_settings RLS checks role, not
-  // entitlement). Mirrors HireOrdersPage's `entitledForWrites`.
-  const bookingEntitledForWrites = !entitlementsLoading && features.has('booking_flow');
-  // `rail.mode` is one of "banner" (full wizard), "collapsed" (compact bar,
-  // re-expandable), "button" (setup complete, permanent header re-entry), or
-  // "hidden" (nothing actionable). All four render states below key off this
-  // single value, behind the same write-gate as the rail itself.
-  const rail = useModuleOnboardingRail('booking_flow', bookingEntitledForWrites ? orgId : null);
-  const setupMode = bookingEntitledForWrites ? rail.mode : 'hidden';
-  const [setupSheetOpen, setSetupSheetOpen] = useState(false);
-  const [setupStep, setSetupStep] = useState<string | undefined>(undefined);
-  const openSetupAt = (step: ComposedStep) => { setSetupStep(step.key); setSetupSheetOpen(true); };
   // Hire-order CTA: module gate + generate capability + which dates are ready.
   const hireOrdersOn = useFeature('hire_orders');
   const canGenerateHireOrders = useCan('generate_hire_orders');
@@ -507,18 +485,6 @@ function ProducerShowsBookings() {
           <h1 className="font-display text-[32px] font-semibold tracking-tight">{t('producer.title')}</h1>
           <p className="text-muted-foreground mt-1">{t('producer.subtitle')}</p>
         </div>
-        <div className="flex items-center gap-2">
-          {setupMode === "button" && (
-            <Button
-              variant="outline"
-              className="gap-1.5"
-              onClick={() => { setSetupStep(undefined); setSetupSheetOpen(true); }}
-            >
-              <ListChecks className="h-4 w-4" />
-              {t('producer.setupChecklist')}
-            </Button>
-          )}
-        </div>
       </div>
 
       {canManage && hireOrdersOn && readyCount > 0 && (
@@ -533,36 +499,6 @@ function ProducerShowsBookings() {
       )}
 
       <PageMini page="bookings" />
-
-      {/* The dashboard-style setup rail, module-scoped, near the top of the page. Its step
-          buttons open the inline checklist Sheet at that step (the "do it here" surface);
-          Hide dismisses it on this surface only. */}
-      {setupMode === "banner" && (
-        <DashboardSetupRail
-          layout="banner"
-          eyebrow={rail.eyebrow}
-          title={rail.title}
-          body={rail.body}
-          complete={false}
-          steps={rail.steps}
-          rules={rail.rules}
-          offFooters={rail.offFooters}
-          progressLabel={rail.progressLabel}
-          progressFilled={rail.progressFilled}
-          progressTotal={rail.progressTotal}
-          onStepAction={openSetupAt}
-          onClose={rail.dismiss}
-          onDismiss={rail.dismiss}
-        />
-      )}
-      {setupMode === "collapsed" && (
-        <DashboardWelcomeCollapsed
-          label={rail.collapsedLabel}
-          hint={rail.collapsedHint}
-          ctaLabel={rail.collapsedCta}
-          onOpen={rail.expand}
-        />
-      )}
 
       <div className="min-w-0 space-y-6">
       <div className="flex flex-wrap items-center gap-3">
@@ -662,14 +598,6 @@ function ProducerShowsBookings() {
         />
       )}
       </div>
-
-      <SetupChecklistSheet
-        feature="booking_flow"
-        orgId={bookingEntitledForWrites ? orgId : null}
-        open={setupSheetOpen}
-        onOpenChange={setSetupSheetOpen}
-        initialStep={setupStep}
-      />
 
       <ShowDateDetailSheet
         showDateId={activeShowDateId}

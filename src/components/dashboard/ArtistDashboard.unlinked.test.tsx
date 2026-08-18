@@ -38,41 +38,6 @@ vi.mock("@/hooks/useEntitlements", () => {
   return { useFeature, useModuleGate: () => ({ allow: true, pending: false }) };
 });
 
-vi.mock("@/components/dashboard/firstRun/useDashboardFirstRun", () => ({
-  useDashboardFirstRun: () => ({
-    show: false,
-    complete: false,
-    dismissed: false,
-    steps: [],
-    rules: [],
-    offFooters: [],
-    sample: { stats: [], queue: [], week: [] },
-    welcome: {
-      eyebrow: "Welcome",
-      headline: "h",
-      body: "b",
-      primaryLabel: "Start setup",
-      secondaryLabel: "Later",
-      progressLabel: "Set up · 0 of 1",
-      progressFilled: 0,
-      progressTotal: 1,
-      progressHint: "About 2 minutes",
-    },
-    sectionTitle: "What this page becomes",
-    sectionHint: "Sample rows.",
-    railEyebrow: "Set up",
-    railTitle: "Before your first booking",
-    railBody: "b",
-    collapsedLabel: "Set up in progress",
-    collapsedHint: "1 step left",
-    collapsedCta: "Resume",
-    railOpen: false,
-    openRail: vi.fn(),
-    closeRail: vi.fn(),
-    dismiss: vi.fn(),
-  }),
-}));
-
 import { ArtistDashboard } from "./ArtistDashboard";
 
 describe("ArtistDashboard unlinked artist (Task 3)", () => {

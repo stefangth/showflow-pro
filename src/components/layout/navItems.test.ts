@@ -7,16 +7,30 @@ const ctx = (over: Partial<{ isEditorMode: boolean; isRealAdmin: boolean; isSupe
   return { isEditorMode, isRealAdmin, isSuperAdmin, hasRole: (r: string) => roles.includes(r), enabledFeatures, entitlementsLoading, impersonating };
 };
 
+describe("nav IA", () => {
+  it("has a Get running item first in workspace", () => {
+    const ws = NAV_ITEMS.filter((i) => i.section === "workspace");
+    expect(ws[0].to).toBe(ROUTES.GET_RUNNING);
+  });
+  it("Help lives in the system section", () => {
+    const help = NAV_ITEMS.find((i) => i.to === ROUTES.HELP);
+    expect(help?.section).toBe("system");
+  });
+  it("has no Admin nav item", () => {
+    expect(NAV_ITEMS.some((i) => i.to === ROUTES.ADMIN)).toBe(false);
+  });
+});
+
 describe("visibleNavItems", () => {
-  it("an artist sees Availability but not Admin or Platform", () => {
+  it("an artist sees Availability but not Get running or Platform", () => {
     const labels = visibleNavItems(NAV_ITEMS, ctx({ roles: ["artist"] })).map((i) => i.label);
     expect(labels).toContain("Availability");
-    expect(labels).not.toContain("Admin");
+    expect(labels).not.toContain("Get running");
     expect(labels).not.toContain("Platform");
   });
-  it("an org admin sees Admin but not Platform", () => {
+  it("an org admin sees Get running but not Platform", () => {
     const labels = visibleNavItems(NAV_ITEMS, ctx({ roles: ["admin"] })).map((i) => i.label);
-    expect(labels).toContain("Admin");
+    expect(labels).toContain("Get running");
     expect(labels).not.toContain("Platform");
   });
   it("a super-admin sees Platform", () => {
@@ -77,7 +91,7 @@ describe("feature gating", () => {
 
   it("items without a feature key are unaffected by enabledFeatures", () => {
     const labels = visibleNavItems(NAV_ITEMS, ctx({ roles: ["admin"] })).map((i) => i.label);
-    expect(labels).toContain("Admin");
+    expect(labels).toContain("Dashboard");
   });
 });
 
@@ -166,7 +180,9 @@ describe("availability nav item", () => {
 
 describe("isHiddenForViewAs", () => {
   const platform = NAV_ITEMS.find((i) => i.label === "Platform")!;
-  const admin = NAV_ITEMS.find((i) => i.label === "Admin")!;
+  // Availability is the only single-role (artist-only) item left in NAV_ITEMS now
+  // that Admin was retired, so it stands in for "a role-gated item" below.
+  const availability = NAV_ITEMS.find((i) => i.to === ROUTES.AVAILABILITY)!;
   const dashboard = NAV_ITEMS.find((i) => i.label === "Dashboard")!;
   const view = (over: Partial<{ isEditorMode: boolean; viewAsRole: AppRole | null; viewAsUser: { roles: AppRole[] } | null }> = {}) =>
     ({ isEditorMode: true, viewAsRole: null, viewAsUser: null, ...over });
@@ -190,13 +206,13 @@ describe("isHiddenForViewAs", () => {
   });
 
   it("dims a role-gated item for a perspective without that role", () => {
-    expect(isHiddenForViewAs(admin, view({ viewAsRole: "producer" }))).toBe(true);
-    expect(isHiddenForViewAs(admin, view({ viewAsUser: { roles: ["producer"] } }))).toBe(true);
+    expect(isHiddenForViewAs(availability, view({ viewAsRole: "admin" }))).toBe(true);
+    expect(isHiddenForViewAs(availability, view({ viewAsUser: { roles: ["admin"] } }))).toBe(true);
   });
 
   it("does not dim a role-gated item for a perspective that holds the role", () => {
-    expect(isHiddenForViewAs(admin, view({ viewAsRole: "admin" }))).toBe(false);
-    expect(isHiddenForViewAs(admin, view({ viewAsUser: { roles: ["admin", "producer"] } }))).toBe(false);
+    expect(isHiddenForViewAs(availability, view({ viewAsRole: "artist" }))).toBe(false);
+    expect(isHiddenForViewAs(availability, view({ viewAsUser: { roles: ["artist", "admin"] } }))).toBe(false);
   });
 
   it("never dims a universal item (no roles, no superAdmin) like Dashboard", () => {
@@ -210,10 +226,11 @@ describe("sections", () => {
     for (const i of NAV_ITEMS) expect(i.section).toBeTruthy();
   });
 
-  it("an artist sees only the Workspace section", () => {
+  it("an artist sees the workspace section plus Help under system", () => {
     const groups = groupNavBySections(visibleNavItems(NAV_ITEMS, ctx({ roles: ["artist"] })));
-    expect(groups.map((g) => g.section)).toEqual(["workspace"]);
-    expect(groups[0].items.map((i) => i.label)).toEqual(["Dashboard", "Availability", "Chats", "Help"]);
+    expect(groups.map((g) => g.section)).toEqual(["workspace", "system"]);
+    expect(groups.find((g) => g.section === "workspace")!.items.map((i) => i.label)).toEqual(["Dashboard", "Availability", "Chats"]);
+    expect(groups.find((g) => g.section === "system")!.items.map((i) => i.label)).toEqual(["Help"]);
   });
 
   it("an admin sees workspace, catalog and system", () => {

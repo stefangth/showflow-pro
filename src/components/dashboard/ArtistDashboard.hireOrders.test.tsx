@@ -2,7 +2,6 @@ import { describe, it, expect, vi } from "vitest";
 import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import { createFakeSupabase } from "@/test/supabaseFake";
-import type { StageChainResult } from "@/lib/dashboard/stageChain.types";
 
 /**
  * Task 14: ArtistDashboard's "Your hire orders" card lists the artist's own
@@ -52,35 +51,6 @@ vi.mock("@/hooks/useEntitlements", () => {
   // ModuleGate reads useModuleGate; derive it from the same rule so the two stay in step.
   return { useFeature, useModuleGate: () => ({ allow: useFeature(), pending: false }) };
 });
-
-// A minimal but fully-typed StageChainResult -- annotated so a future field rename in
-// the real type is a compile error here, even though vi.mock factories themselves are
-// not type-checked against the real hook signature.
-const EMPTY_STAGE_CHAIN_RESULT: StageChainResult = {
-  eyebrow: "", headline: "", body: "", ghost: "", hint: "",
-  progressLabel: "", progressHint: "", hasSteps: false, ticks: [],
-  modules: [], offFooters: [], hasChain: false, chainTitle: "", rulesBy: "",
-  stages: [], sideTitle: "", sideBody: "", side: [],
-  queueTitle: "", queueHint: "", sample: false, queueOpacity: 0, nothingOn: true,
-};
-
-// The first-run layer greets the artist above the dashboard body; with show:false it
-// is a no-op (no surface) and the real body renders directly, so this card's
-// assertions still exercise it. Mocked here so the real useDashboardFirstRun (which
-// reads useEntitlements/useBookingSetup/etc.) does not run against this file's partial
-// hook mocks. Shape matches the current hook contract (result/queueRows/dismiss/
-// undismiss/openSetupAt) even though show:false keeps it inert, so a future show:true
-// flip cannot crash on a stale pre-rewire shape.
-vi.mock("@/components/dashboard/firstRun/useDashboardFirstRun", () => ({
-  useDashboardFirstRun: () => ({
-    show: false,
-    result: EMPTY_STAGE_CHAIN_RESULT,
-    queueRows: [],
-    dismissed: false,
-    dismiss: () => {},
-    undismiss: () => {},
-  }),
-}));
 
 import { ArtistDashboard } from "./ArtistDashboard";
 

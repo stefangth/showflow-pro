@@ -1,0 +1,230 @@
+{
+  "header": {
+    "eyebrow": "{{org}} · Loslegen",
+    "fallbackOrg": "deinen Arbeitsbereich",
+    "headline": {
+      "blocking_one": "Eine Sache steht zwischen dir und deinem ersten Angebot",
+      "blocking_other": "{{count}} Dinge stehen zwischen dir und deinem ersten Angebot",
+      "ready": "Du bist bereit für dein erstes Angebot",
+      "complete": "Hier ist alles eingerichtet",
+      "producerYours_one": "Eine Aufgabe hier ist deine.",
+      "producerYours_other": "{{count}} Aufgaben hier sind deine.",
+      "producerWaits_one": "Die andere Aufgabe wartet auf {{name}}.",
+      "producerWaits_other": "Die anderen {{count}} warten auf {{name}}.",
+      "producerOnlyWaits_one": "Diese eine wartet auf {{name}}.",
+      "producerOnlyWaits_other": "Alle {{count}} davon warten auf {{name}}."
+    },
+    "body": {
+      "blocking_one": "Das erledigst du, es dauert etwa {{minutes}} Minuten. Sonst blockiert hier nichts, und nichts hier hindert dich, den Rest der App zu nutzen.",
+      "blocking_other": "Das erledigst du, es dauert etwa {{minutes}} Minuten. Sonst blockiert hier nichts, und nichts hier hindert dich, den Rest der App zu nutzen.",
+      "ready": "Alles, was dein erstes Angebot blockiert, ist erledigt. Der Rest dieser Liste lohnt sich noch, hält dich aber nicht mehr auf.",
+      "complete": "Jede Aufgabe hier ist erledigt. Schau jederzeit in den Einstellungen vorbei, falls sich etwas ändert.",
+      "producer": "Das ist hier, damit du weißt, warum Shows und Bookings leer aussieht, nicht damit du alles davon lösen kannst."
+    }
+  },
+  "nothingToSetUp": {
+    "title": "Nichts einzurichten",
+    "body": "Für diesen Arbeitsbereich ist noch kein Modul eingeschaltet, das eine Einrichtung braucht. Schau vorbei, sobald Booking Engine oder Engagementverträge eingeschaltet ist."
+  },
+  "progress": {
+    "title": "Einrichtung",
+    "of": "von {{total}} erledigt",
+    "module": {
+      "booking": "Booking Engine",
+      "hireOrders": "Engagementverträge",
+      "on": "An",
+      "off": "Aus"
+    },
+    "footer": "Module werden von deinem Account Manager eingeschaltet."
+  },
+  "phases": {
+    "get_dates": {
+      "title": "Termine reinholen",
+      "status": {
+        "complete": "Läuft",
+        "neutral": "Noch nicht gestartet"
+      }
+    },
+    "bookable": {
+      "title": "Buchbar machen",
+      "status": {
+        "complete": "Erledigt",
+        "blocking": "Blockiert dein erstes Angebot",
+        "neutral": "Nichts blockiert"
+      }
+    },
+    "paperwork": {
+      "title": "Papierkram",
+      "status": {
+        "complete": "Startklar",
+        "blocking": "Blockiert den Versand",
+        "neutral": "Blockiert noch nichts"
+      },
+      "note": "Wird vor dem ersten Engagementvertrag gebraucht",
+      "doItNow": "Jetzt erledigen"
+    },
+    "counts": {
+      "leftBlocking": "{{left}} offen, {{blocking}} blockierend",
+      "doneOfTotal": "{{done}} von {{total}} erledigt"
+    }
+  },
+  "chips": {
+    "blocksOffers": "Blockiert Angebote",
+    "blocksBooking": "Blockiert Buchungen",
+    "blocksIssuing": "Blockiert den Versand",
+    "blocksFilling": "Hält die Vollbesetzung auf",
+    "adminOnly": "Nur Admin",
+    "allCovered": "Alles abgedeckt",
+    "waitsOn": "Wartet auf {{name}}"
+  },
+  "actions": {
+    "view": "Ansehen"
+  },
+  "waitsOn": {
+    "fallbackAdmin": "einen Admin"
+  },
+  "panel": {
+    "close": "Schließen",
+    "later": "Später",
+    "waitsOn": {
+      "body": "Von einem Admin festgelegt. Wartet auf {{name}}.",
+      "settingsLink": {
+        "flow": "Booking Flow in den Einstellungen ändern (Booking Engine)",
+        "timing": "Angebotszeitpunkt in den Einstellungen ändern (Booking Engine)",
+        "ladder": "Besetzungen in den Einstellungen reihen (Besetzung und Abdeckung)",
+        "eligibility": "Besetzungen in den Einstellungen verknüpfen (Besetzung und Abdeckung)"
+      }
+    },
+    "eyebrow": {
+      "dates": "Dokument · läuft von allein",
+      "slots": "Werte · eine Zahl pro Show",
+      "flow": "Wahl · legt den weiteren Ablauf fest",
+      "people": "Dokument · deine Besetzungsliste",
+      "ladder": "Dokument · entscheidet, wer zuerst gefragt wird",
+      "eligibility": "Dokument · zeigt die Lücken",
+      "timing": "Werte · zwei Felder",
+      "team": "Dokument · dein Production Team",
+      "letterhead": "Dokument · blockiert den Versand",
+      "terms": "Dokument · blockiert den Versand",
+      "countersign": "Dokument · blockiert den Versand nicht"
+    },
+    "footerNote": {
+      "dates": "Läuft von allein, stündlich",
+      "slots": "Wird automatisch gespeichert",
+      "flow": "Änderung wird protokolliert",
+      "people": "Importieren oder von Hand hinzufügen",
+      "ladder": "Reihenfolge liegt in den Einstellungen",
+      "eligibility": "Abdeckung liegt in den Einstellungen",
+      "timing": "Gilt für die heutige Tagesübersicht",
+      "team": "Einladungen laufen über People",
+      "letterhead": "Wird auf jedem Vertrag verwendet",
+      "terms": "Wird auf jedem Vertrag verwendet",
+      "countersign": "Wird auf jedem Vertrag verwendet"
+    }
+  },
+  "tasks": {
+    "dates": {
+      "title": "Shows werden synchronisiert",
+      "subLabel": "Shows kommen rein, von Airtable, stündlich",
+      "description": "Deine Shows kommen automatisch rein, sodass immer etwas zum Planen da ist.",
+      "action": "Prüfen"
+    },
+    "slots": {
+      "title": "Plätze bei jeder Show festgelegt",
+      "subLabel": "Plätze bei jeder Show festgelegt",
+      "description": "Wie viele Artists jede Show braucht, Haupt- und Zweitbesetzung.",
+      "action": "Klären"
+    },
+    "flow": {
+      "title": "Booking Flow",
+      "description": "Angebote gehen stufenweise raus. Stufe 1 zuerst, spätere Stufen öffnen nur, wenn eine Stufe nicht reicht.",
+      "action": "Ändern"
+    },
+    "people": {
+      "title": "Deine Artists hinzufügen",
+      "description": "Niemand kann gebucht werden, solange deine Besetzungsliste keine aktiven Artists hat. Importiere eine Tabelle oder füge sie von Hand hinzu.",
+      "action": "Hier hinzufügen"
+    },
+    "ladder": {
+      "title": "Deine Besetzungen reihen",
+      "description": "Besetzungsreihenfolge entscheidet, wer zuerst angefragt wird. Eine Stadt ohne Stufe 1 öffnet sich für niemanden.",
+      "action": "Hier reihen"
+    },
+    "eligibility": {
+      "title": "Prüfen, wer berechtigt ist",
+      "description": "Welche Besetzungen zu welcher Show in welcher Stadt gehören.",
+      "action": "Öffnen"
+    },
+    "timing": {
+      "title": "Angebotszeitpunkt bestätigen",
+      "description": "Wann Angebote rausgehen und wie lange Artists zum Antworten haben.",
+      "action": "Öffnen"
+    },
+    "team": {
+      "title": "Dein Production Team einladen",
+      "description": "Die Producer, die Termine planen, Angebote versenden und Buchungen bestätigen. Bestätigen kann bei dir bleiben.",
+      "action": "Einladen"
+    },
+    "letterhead": {
+      "title": "Briefkopf",
+      "description": "Dein Name, deine Adresse und dein Logo auf jedem Vertrag.",
+      "action": "Öffnen"
+    },
+    "terms": {
+      "title": "Bedingungen",
+      "description": "ShowFlow liefert keine Standardklauseln. Die schreibst du selbst.",
+      "action": "Öffnen"
+    },
+    "countersign": {
+      "title": "Gegenzeichnung",
+      "description": "Wer im Namen der Organisation unterschreibt.",
+      "action": "Öffnen"
+    }
+  },
+  "retired": {
+    "title": "Dieser Arbeitsbereich läuft",
+    "count": "{{done}} von {{total}}",
+    "howItWorks": "Wie diese Organisation funktioniert",
+    "hideFromNav": "Aus der Navigation ausblenden",
+    "cards": {
+      "whereItGoes": {
+        "title": "Wohin es geht",
+        "body": "Get running verlässt die Seitenleiste. Die Regeln, die dort festgelegt wurden, bleiben in den Einstellungen unter \"Wie diese Organisation funktioniert\" lesbar, inklusive wer was wann geändert hat."
+      },
+      "whenItComesBack": {
+        "title": "Wann es zurückkommt",
+        "body": "Ein neu eingeschaltetes Modul oder eine leer gewordene Regel bringt das hier zurück, nur mit den Aufgaben, die Aufmerksamkeit brauchen."
+      }
+    }
+  },
+  "reference": {
+    "title": "Wie diese Organisation funktioniert",
+    "intro": "Eine schreibgeschützte Übersicht der Regeln, die für diesen Arbeitsbereich gerade gelten.",
+    "emptyModules": "Weder die Booking Engine noch Engagementverträge sind für diesen Arbeitsbereich eingeschaltet.",
+    "provenance": {
+      "withDate": "Festgelegt von {{name}}, {{date}}",
+      "nameOnly": "Festgelegt von {{name}}"
+    },
+    "rows": {
+      "bookingFlow": {
+        "label": "Booking Flow"
+      },
+      "offerTiming": {
+        "label": "Angebotszeitpunkt",
+        "value": "{{hour}} Tagesübersicht, {{hours}} Std Antwortfrist"
+      },
+      "castCoverage": {
+        "label": "Besetzungsabdeckung",
+        "allCovered": "Alles abgedeckt",
+        "partial": "{{covered}} von {{total}} Städten abgedeckt"
+      },
+      "letterhead": { "label": "Briefkopf" },
+      "terms": { "label": "Bedingungen" },
+      "countersign": { "label": "Gegenzeichnung" }
+    },
+    "setNotSet": {
+      "set": "Festgelegt",
+      "notSet": "Nicht festgelegt"
+    }
+  }
+}

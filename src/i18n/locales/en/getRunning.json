@@ -1,0 +1,230 @@
+{
+  "header": {
+    "eyebrow": "{{org}} · get running",
+    "fallbackOrg": "your workspace",
+    "headline": {
+      "blocking_one": "One thing stands between you and your first offer",
+      "blocking_other": "{{count}} things stand between you and your first offer",
+      "ready": "You are ready to send your first offer",
+      "complete": "Everything here is set up",
+      "producerYours_one": "One task here is yours.",
+      "producerYours_other": "{{count}} tasks here are yours.",
+      "producerWaits_one": "The other task waits on {{name}}.",
+      "producerWaits_other": "The other {{count}} wait on {{name}}.",
+      "producerOnlyWaits_one": "This one waits on {{name}}.",
+      "producerOnlyWaits_other": "All {{count}} of these wait on {{name}}."
+    },
+    "body": {
+      "blocking_one": "It is yours to do and takes about {{minutes}} minutes. Nothing else here blocks anything, and nothing here stops you using the rest of the app.",
+      "blocking_other": "They are yours to do and take about {{minutes}} minutes. Nothing else here blocks anything, and nothing here stops you using the rest of the app.",
+      "ready": "Everything blocking your first offer is done. The rest of this board is worth finishing, but nothing here holds you back anymore.",
+      "complete": "Every task on this board is done. Come back to Settings any time if something changes.",
+      "producer": "This is here so you know why Shows and Bookings looks empty, not so you can fix all of it."
+    }
+  },
+  "nothingToSetUp": {
+    "title": "Nothing to set up",
+    "body": "This workspace has no module that needs setup yet. Come back once booking or hire orders is switched on."
+  },
+  "progress": {
+    "title": "Set up",
+    "of": "of {{total}} done",
+    "module": {
+      "booking": "Booking engine",
+      "hireOrders": "Hire orders",
+      "on": "On",
+      "off": "Off"
+    },
+    "footer": "Modules are switched on by your account manager."
+  },
+  "phases": {
+    "get_dates": {
+      "title": "Get dates in",
+      "status": {
+        "complete": "Running",
+        "neutral": "Not started yet"
+      }
+    },
+    "bookable": {
+      "title": "Make it bookable",
+      "status": {
+        "complete": "All set",
+        "blocking": "Blocks your first offer",
+        "neutral": "Nothing blocking"
+      }
+    },
+    "paperwork": {
+      "title": "Paperwork",
+      "status": {
+        "complete": "Ready",
+        "blocking": "Blocks issuing",
+        "neutral": "Not blocking yet"
+      },
+      "note": "Needed before the first hire order goes out",
+      "doItNow": "Do it now"
+    },
+    "counts": {
+      "leftBlocking": "{{left}} left, {{blocking}} blocking",
+      "doneOfTotal": "{{done}} of {{total}} done"
+    }
+  },
+  "chips": {
+    "blocksOffers": "Blocks offers",
+    "blocksBooking": "Blocks booking",
+    "blocksIssuing": "Blocks issuing",
+    "blocksFilling": "Holds up filling",
+    "adminOnly": "Admin only",
+    "allCovered": "All covered",
+    "waitsOn": "Waits on {{name}}"
+  },
+  "actions": {
+    "view": "View"
+  },
+  "waitsOn": {
+    "fallbackAdmin": "an admin"
+  },
+  "panel": {
+    "close": "Close",
+    "later": "Later",
+    "waitsOn": {
+      "body": "Set by an admin. Waits on {{name}}.",
+      "settingsLink": {
+        "flow": "Change booking flow in Settings, Booking engine",
+        "timing": "Change offer timing in Settings, Booking engine",
+        "ladder": "Rank casts in Settings, Casts & coverage",
+        "eligibility": "Link casts in Settings, Casts & coverage"
+      }
+    },
+    "eyebrow": {
+      "dates": "Document · runs on its own",
+      "slots": "Values · one number per show",
+      "flow": "Choice · sets everything downstream",
+      "people": "Document · your roster",
+      "ladder": "Document · decides who is asked first",
+      "eligibility": "Document · shows the gaps",
+      "timing": "Values · two fields",
+      "team": "Document · your production team",
+      "letterhead": "Document · blocks issuing",
+      "terms": "Document · blocks issuing",
+      "countersign": "Document · does not block issuing"
+    },
+    "footerNote": {
+      "dates": "Runs on its own, hourly",
+      "slots": "Saved as you go",
+      "flow": "Change is logged",
+      "people": "Import or add by hand",
+      "ladder": "Ranking lives in Settings",
+      "eligibility": "Coverage lives in Settings",
+      "timing": "Applies to tonight's digest",
+      "team": "Invites happen from People",
+      "letterhead": "Used on every order",
+      "terms": "Used on every order",
+      "countersign": "Used on every order"
+    }
+  },
+  "tasks": {
+    "dates": {
+      "title": "Shows are synced in",
+      "subLabel": "Shows in, from Airtable, hourly",
+      "description": "Your shows come in automatically, so there is always something to schedule against.",
+      "action": "Review"
+    },
+    "slots": {
+      "title": "Slots set on every show",
+      "subLabel": "Slots set on every show",
+      "description": "How many artists each show needs, main and understudy.",
+      "action": "Resolve"
+    },
+    "flow": {
+      "title": "Booking flow",
+      "description": "Offers go out in tiers. Tier 1 is asked first, later tiers open only if a tier falls short.",
+      "action": "Change"
+    },
+    "people": {
+      "title": "Add your artists",
+      "description": "Nobody to book until your roster has active artists. Import a sheet or add them by hand.",
+      "action": "Add here"
+    },
+    "ladder": {
+      "title": "Rank your casts",
+      "description": "Cast priorities decide who is offered first. A city with no tier 1 cast opens to nobody.",
+      "action": "Rank here"
+    },
+    "eligibility": {
+      "title": "Check who is eligible",
+      "description": "Which casts belong to which show, in which city.",
+      "action": "Open"
+    },
+    "timing": {
+      "title": "Confirm the offer timing",
+      "description": "When offers go out, and how long artists have to answer.",
+      "action": "Open"
+    },
+    "team": {
+      "title": "Invite your production team",
+      "description": "The producers who plan dates, run offers and confirm bookings. Confirming can stay with you.",
+      "action": "Invite"
+    },
+    "letterhead": {
+      "title": "Letterhead",
+      "description": "Your name, address and logo on every order.",
+      "action": "Open"
+    },
+    "terms": {
+      "title": "Terms",
+      "description": "ShowFlow ships no default clauses. Yours to author.",
+      "action": "Open"
+    },
+    "countersign": {
+      "title": "Countersignature",
+      "description": "Who signs on behalf of the org.",
+      "action": "Open"
+    }
+  },
+  "retired": {
+    "title": "This workspace is running",
+    "count": "{{done}} of {{total}}",
+    "howItWorks": "How this org works",
+    "hideFromNav": "Hide from nav",
+    "cards": {
+      "whereItGoes": {
+        "title": "Where it goes",
+        "body": "Get running leaves the sidebar. The rules it set stay readable in Settings under \"How this org works\", with who changed what and when."
+      },
+      "whenItComesBack": {
+        "title": "When it comes back",
+        "body": "A new module switched on, or a rule going empty, brings this back with only the tasks that need attention."
+      }
+    }
+  },
+  "reference": {
+    "title": "How this org works",
+    "intro": "A read-only summary of the rules currently in effect for this workspace.",
+    "emptyModules": "Neither the booking engine nor hire orders is switched on for this workspace yet.",
+    "provenance": {
+      "withDate": "Set by {{name}}, {{date}}",
+      "nameOnly": "Set by {{name}}"
+    },
+    "rows": {
+      "bookingFlow": {
+        "label": "Booking flow"
+      },
+      "offerTiming": {
+        "label": "Offer timing",
+        "value": "{{hour}} digest, {{hours}}h response window"
+      },
+      "castCoverage": {
+        "label": "Cast coverage",
+        "allCovered": "All covered",
+        "partial": "{{covered}} of {{total}} cities covered"
+      },
+      "letterhead": { "label": "Letterhead" },
+      "terms": { "label": "Terms" },
+      "countersign": { "label": "Countersignature" }
+    },
+    "setNotSet": {
+      "set": "Set",
+      "notSet": "Not set"
+    }
+  }
+}

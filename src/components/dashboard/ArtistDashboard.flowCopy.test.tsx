@@ -3,7 +3,6 @@ import { screen } from "@testing-library/react";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import { createFakeSupabase } from "@/test/supabaseFake";
 import { BOOKING_FLOW_DEFAULTS, applyPreset, type BookingFlow } from "@/lib/bookingFlow";
-import type { StageChainResult } from "@/lib/dashboard/stageChain.types";
 
 /**
  * Task 3: ArtistDashboard's response/booked-share meter and header sentence
@@ -124,34 +123,6 @@ vi.mock("@/hooks/useEntitlements", () => {
   return { useFeature, useModuleGate: (f: string) => ({ allow: useFeature(f), pending: false }) };
 });
 
-// A minimal but fully-typed StageChainResult -- annotated so a future field rename in
-// the real type is a compile error here, even though vi.mock factories themselves are
-// not type-checked against the real hook signature.
-const EMPTY_STAGE_CHAIN_RESULT: StageChainResult = {
-  eyebrow: "", headline: "", body: "", ghost: "", hint: "",
-  progressLabel: "", progressHint: "", hasSteps: false, ticks: [],
-  modules: [], offFooters: [], hasChain: false, chainTitle: "", rulesBy: "",
-  stages: [], sideTitle: "", sideBody: "", side: [],
-  queueTitle: "", queueHint: "", sample: false, queueOpacity: 0, nothingOn: true,
-};
-
-// The first-run layer greets the artist above the dashboard body; with show:false it
-// is a no-op (no surface) and the real body renders directly, so the meter
-// assertions still exercise it. Mocked here so the real useDashboardFirstRun (which
-// reads useEntitlements/useBookingSetup/etc.) does not run against this file's partial
-// hook mocks. Shape matches the current hook contract (result/queueRows/dismiss/
-// undismiss/openSetupAt) even though show:false keeps it inert, so a future show:true
-// flip cannot crash on a stale pre-rewire shape.
-vi.mock("@/components/dashboard/firstRun/useDashboardFirstRun", () => ({
-  useDashboardFirstRun: () => ({
-    show: false,
-    result: EMPTY_STAGE_CHAIN_RESULT,
-    queueRows: [],
-    dismissed: false,
-    dismiss: () => {},
-    undismiss: () => {},
-  }),
-}));
 
 import { useFeature } from "@/hooks/useEntitlements";
 import { ArtistDashboard } from "./ArtistDashboard";

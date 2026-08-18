@@ -32,6 +32,7 @@ import { useNotifications } from '@/hooks/useNotifications';
 import { useNavCounts } from '@/hooks/useNavCounts';
 import { useMyProfile } from '@/hooks/useMyProfile';
 import { useEntitlements, useFeature } from '@/hooks/useEntitlements';
+import { useGetRunningNavVisible } from '@/hooks/useGetRunningNavVisible';
 import { toast } from 'sonner';
 import type { AppRole } from '@/types';
 
@@ -75,6 +76,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const navCounts = useNavCounts();
   const { features, isLoading: entitlementsLoading } = useEntitlements();
   const languagePacksEnabled = useFeature('language_packages');
+  const getRunningNavVisible = useGetRunningNavVisible();
 
   // The account-menu Popover lives only in the expanded sidebar. Reset its open
   // state when collapsing so it doesn't auto-pop on the next expand.
@@ -116,7 +118,12 @@ export default function AppLayout({ children }: AppLayoutProps) {
     }
   };
 
-  const filteredNav = visibleNavItems(NAV_ITEMS, { isEditorMode, isRealAdmin, isSuperAdmin, hasRole: (r) => hasRole(r as AppRole), enabledFeatures: features, entitlementsLoading, impersonating: isImpersonating({ isSuperAdmin, roles, viewAsRole, viewAsUser }) });
+  // The retired Get running board drops its own nav item once complete + dismissed
+  // (useGetRunningNavVisible), rather than teaching visibleNavItems/NAV_ITEMS about a
+  // per-person localStorage dismissal that every other static nav-visibility rule has
+  // no notion of.
+  const navItemsForViewer = getRunningNavVisible ? NAV_ITEMS : NAV_ITEMS.filter((i) => i.to !== ROUTES.GET_RUNNING);
+  const filteredNav = visibleNavItems(navItemsForViewer, { isEditorMode, isRealAdmin, isSuperAdmin, hasRole: (r) => hasRole(r as AppRole), enabledFeatures: features, entitlementsLoading, impersonating: isImpersonating({ isSuperAdmin, roles, viewAsRole, viewAsUser }) });
   const navGroups = groupNavBySections(filteredNav);
 
   const sidebarContent = (

@@ -24,7 +24,6 @@ import LoginPage from "./pages/LoginPage";
 import DashboardPage from "./pages/DashboardPage";
 import ShowsBookingsPage from "./pages/ShowsBookingsPage";
 import AvailabilityPage from "./pages/AvailabilityPage";
-import AdminPage from "./pages/AdminPage";
 import SettingsPage from "./pages/SettingsPage";
 import ChatsListPage from "./pages/ChatsListPage";
 import HelpPage from "./pages/HelpPage";
@@ -41,6 +40,7 @@ import HireOrdersPage from "./pages/HireOrdersPage";
 import HireOrderDetailPage from "./pages/HireOrderDetailPage";
 import HireOrderEditPage from "./pages/HireOrderEditPage";
 import SandboxViewerPage from "./pages/SandboxViewerPage";
+import GetRunningPage from "./pages/GetRunningPage";
 import NotFound from "./pages/NotFound";
 
 // DEV-ONLY visual harness for the Show Date Cockpit (see DevCockpitHarness.tsx).
@@ -79,6 +79,9 @@ const App = () => (
             )}
             <Route path={ROUTES.SIGNUP} element={<Navigate to={ROUTES.LOGIN} replace />} />
             <Route path={ROUTES.DASHBOARD} element={<ProtectedRoute><AppLayout><DashboardPage /></AppLayout></ProtectedRoute>} />
+            {/* All roles for now: role branching happens inside the page. Artists get a
+                later-phase bounce (nav already hides the link for them). */}
+            <Route path={ROUTES.GET_RUNNING} element={<ProtectedRoute><AppLayout><GetRunningPage /></AppLayout></ProtectedRoute>} />
             <Route path={ROUTES.ARTISTS} element={<ProtectedRoute requiredRoles={['admin', 'producer']}><AppLayout><ArtistsPage /></AppLayout></ProtectedRoute>} />
             <Route path={ROUTES.BOOKINGS} element={<ProtectedRoute requiredRoles={['admin', 'producer']}><AppLayout><ShowsBookingsPage /></AppLayout></ProtectedRoute>} />
             <Route path={ROUTES.PRODUCTIONS} element={<ProtectedRoute requiredRoles={['admin', 'producer']}><AppLayout><ProductionsPage /></AppLayout></ProtectedRoute>} />
@@ -98,7 +101,14 @@ const App = () => (
               }
             />
             <Route path={ROUTES.AVAILABILITY} element={<ProtectedRoute requiredRoles={['artist']}><AppLayout><AvailabilityPage /></AppLayout></ProtectedRoute>} />
-            <Route path={ROUTES.ADMIN} element={<ProtectedRoute requiredRoles={['admin']}><AppLayout><AdminPage /></AppLayout></ProtectedRoute>} />
+            {/* Admin folded into Settings as an admin-only "People & access" nav group.
+                Stays behind ProtectedRoute (not a bare Navigate) so the Editor's
+                DEFAULT_PAGE_ACCESS override for '/admin' still means something: if an
+                org admin ever broadens it beyond ['admin'], the redirect target itself
+                (Settings) still gates the People/Activity/Sync-log tabs to isAdmin, so a
+                producer let through here resolves onto Settings' own default tab instead
+                of a blank pane. */}
+            <Route path={ROUTES.ADMIN} element={<ProtectedRoute requiredRoles={['admin']}><Navigate to={`${ROUTES.SETTINGS}?tab=people`} replace /></ProtectedRoute>} />
             <Route path={ROUTES.SETTINGS} element={<ProtectedRoute requiredRoles={['admin', 'producer']}><AppLayout><SettingsPage /></AppLayout></ProtectedRoute>} />
             <Route
               path={ROUTES.EMAIL_TEMPLATE}

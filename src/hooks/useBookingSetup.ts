@@ -125,9 +125,10 @@ export function useInactiveArtistCount(orgId: string | null, enabled: boolean): 
   return q.data ?? null;
 }
 
-/** Producer-role member count for the admin-only "Add your production team" nudge. Its own
- *  hook (not folded into useBookingSetupStatus) so only the admin surfaces that render the
- *  nudge pay for the read; `enabled` is the caller's is-admin gate. Null while unread. */
+/** Producer-role member count, backing the "Add your production team" task. Its own hook
+ *  (not folded into useBookingSetupStatus) so only surfaces that need it pay for the read.
+ *  `enabled` is the caller's gate: the Get running board reads it for admins AND producers
+ *  (so a producer's `team` task reflects reality), not just admin surfaces. Null while unread. */
 export function useProducerCount(orgId: string | null, enabled: boolean): number | null {
   const q = useQuery({
     queryKey: ["members", "producer-count", orgId],
