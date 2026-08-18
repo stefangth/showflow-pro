@@ -95,8 +95,8 @@ export function berlinNoteFor(line: string): string | null {
  * The one line this panel can always print, whatever the flow.
  *
  * It replaces a fixed helper line that described the classic digest deadline as universal.
- * That line contradicted `describeTonight` at a fast-track org (which mails at tier open,
- * never at the digest hour) and, worse, stood alone at a direct-book org, where
+ * That line contradicted `describeTonight` at an immediate-delivery org (which mails at
+ * tier open, never at the digest hour) and, worse, stood alone at a direct-book org, where
  * `describeTonight` deliberately says nothing: the only sentence on the panel described a
  * pipeline the org does not run.
  *

@@ -19,7 +19,7 @@ import {
 describe("booking flow templates", () => {
   it("uses each template's own defaults for a partial definition", () => {
     const templates = normalizeBookingFlowTemplates({ fasttrack: { flow: {}, times: {} } });
-    expect(templates.fasttrack.flow.offer_delivery).toBe("immediate");
+    expect(templates.fasttrack.flow.offer_delivery).toBe("digest");
     expect(templates.fasttrack.flow.producer_confirmation).toBe(false);
   });
   it("falls back per malformed template without corrupting valid siblings", () => {
@@ -125,6 +125,18 @@ describe("normalizeBookingFlow", () => {
   });
 });
 
+describe("autopilot (fasttrack preset) delivers by digest", () => {
+  // The preset KEY stays "fasttrack" (DB rows, PresetName, template defaults all key on
+  // it); only its offer_delivery field and its display label ("Autopilot") change. See
+  // CLAUDE.md's mirror rule: supabase/functions/_shared/bookingFlow.ts must match.
+  it("fasttrack preset now delivers offers by digest, not immediately", () => {
+    expect(BOOKING_FLOW_PRESETS.fasttrack.offer_delivery).toBe("digest");
+  });
+  it("matchPreset still round-trips an autopilot flow to the fasttrack key", () => {
+    expect(matchPreset(applyPreset(BOOKING_FLOW_DEFAULTS, "fasttrack"))).toBe("fasttrack");
+  });
+});
+
 describe("presets", () => {
   it("classic preset equals the defaults (minus reference_field and active)", () => {
     const { reference_field: _ref, active: _active, ...defaults } = BOOKING_FLOW_DEFAULTS;
@@ -136,7 +148,7 @@ describe("presets", () => {
       reference_field: { source: "custom", custom_field_id: "cf-1" },
     });
     const fast = applyPreset(start, "fasttrack");
-    expect(fast.offer_delivery).toBe("immediate");
+    expect(fast.offer_delivery).toBe("digest");
     expect(fast.producer_confirmation).toBe(false);
     expect(fast.reference_field).toEqual({ source: "custom", custom_field_id: "cf-1" });
   });
@@ -217,11 +229,11 @@ describe("flowPreviewRows", () => {
     expect(texts).toContain("Offer digest emailed");
     expect(texts).toContain("48 h response window");
   });
-  it("fast-track shows immediate email, reminder, and auto-escalation", () => {
+  it("autopilot (fasttrack preset) shows digest email, reminder, and auto-escalation", () => {
     const texts = flowPreviewRows(applyPreset(BOOKING_FLOW_DEFAULTS, "fasttrack"), TIMES)
       .map((r) => r.text)
       .join("\n");
-    expect(texts).toContain("Offers emailed immediately");
+    expect(texts).toContain("Offer digest emailed");
     expect(texts).toContain("expiry reminder");
     expect(texts).toContain("tier 2 opens automatically");
   });
