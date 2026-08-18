@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -6,33 +6,43 @@ import { supabase } from '@/integrations/supabase/client';
 import {
   fetchCastMembers, fetchCastEligibility, updateCast as updateCastRow,
   addCastMember, removeCastMember, setCastEligibility, clearCastEligibility,
-  fetchCasts, fetchCastCityPriority,
+  fetchCastCityPriority,
 } from '@/data/casts';
 import { fetchArtists } from '@/data/artists';
 import { fetchShowsForEligibility } from '@/data/shows';
+import { fetchSkillsByArtist } from '@/data/skills';
+import { fetchUpcomingBookingCountsByArtist } from '@/data/bookings';
 import { useAuth } from '@/features/auth/AuthContext';
 import { useCan } from '@/hooks/useCapabilities';
 import { useEditorConfig } from '@/features/editor/EditorContext';
 import { ROUTES } from '@/config/app.config';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetClose } from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { IconTooltip } from '@/components/common/IconTooltip';
 import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
+import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import { Search, X, Plus, Users, Layers, Pencil, Check, ListOrdered } from 'lucide-react';
+import { Search, X, Plus, Pencil, Check } from 'lucide-react';
 import type { Cast } from '@/types';
 import { showIdentityLabel } from '@/types';
 import { useAllCities } from '@/hooks/useAllCities';
+import { getAvatarTone } from '@/lib/avatar';
+import { formatTimestampDMY, toDateKey } from '@/lib/dates';
 
 interface Props {
   cast: Cast | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onArtistClick?: (artistId: string) => void;
+}
+
+/** Up-to-two-letter uppercase initials from a name. */
+function initialsOf(name: string, fallback = 'C'): string {
+  const parts = name.split(/\s+/).filter(Boolean);
+  const letters = parts.slice(0, 2).map((w) => w[0]).join('');
+  return letters ? letters.toUpperCase() : fallback;
 }
 
 export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Props) {
@@ -46,6 +56,7 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
   const [editMode, setEditMode] = useState(false);
   const [editName, setEditName] = useState('');
   const [editDescription, setEditDescription] = useState('');
+  const searchRef = useRef<HTMLInputElement>(null);
 
   const updateCast = useMutation({
     mutationFn: ({ name, description }: { name: string; description: string }) =>
@@ -68,6 +79,11 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
     setEditMode(false);
   }
 
+  function focusAddArtist() {
+    searchRef.current?.scrollIntoView({ block: 'center' });
+    searchRef.current?.focus();
+  }
+
   // Members
   const { data: members } = useQuery({
     queryKey: ['cast-members', cast?.id],
@@ -79,6 +95,24 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
     queryKey: ['artists', 'list', currentOrg?.id],
     enabled: !!currentOrg,
     queryFn: () => fetchArtists(supabase, currentOrg?.id ?? null),
+  });
+
+  // Primary skill chip per artist (org-wide map; first skill shown).
+  const { data: skillsByArtist } = useQuery({
+    queryKey: ['skills', 'by-artist', currentOrg?.id],
+    enabled: !!currentOrg,
+    queryFn: () => fetchSkillsByArtist(supabase, currentOrg?.id ?? null),
+  });
+
+  const memberArtistIds = useMemo(() => (members ?? []).map((m) => m.artist_id), [members]);
+
+  // Real "N dates" per member: upcoming, non-cancelled bookings. `today` is derived
+  // once at render; the query re-runs when the member set changes.
+  const todayKey = toDateKey(new Date());
+  const { data: bookingCounts } = useQuery({
+    queryKey: ['bookings', 'upcoming-counts-by-artist', cast?.id, memberArtistIds, todayKey],
+    enabled: !!currentOrg && memberArtistIds.length > 0,
+    queryFn: () => fetchUpcomingBookingCountsByArtist(supabase, currentOrg?.id ?? null, memberArtistIds, todayKey),
   });
 
   // Eligibility (cities × shows)
@@ -97,30 +131,98 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
   });
 
   // Offer order (org-default cast_city_priority). Read-only here: the same rows are
-  // edited on Settings → Casts & Cities ("Cast Priority by City"), which also owns the
-  // UNIQUE(cast,city)/UNIQUE(city,priority) swap semantics — this tab just shows where
-  // THIS cast lands per city, with a link out to make a change. Reuses that tab's query
-  // keys (['casts', orgId], ['cast-city-priority', orgId]) so the cache is shared.
-  const { data: allCasts } = useQuery({
-    queryKey: ['casts', currentOrg?.id],
-    enabled: !!currentOrg,
-    queryFn: () => fetchCasts(supabase, currentOrg?.id ?? null),
-  });
-
+  // edited on Settings → Casts & coverage, which owns the UNIQUE(cast,city)/
+  // UNIQUE(city,priority) swap semantics. This surface only reads where THIS cast lands
+  // per city (the tier badge on each city-coverage row) and links out to change it.
   const { data: castCityPriorities } = useQuery({
     queryKey: ['cast-city-priority', currentOrg?.id],
     enabled: !!currentOrg,
     queryFn: () => fetchCastCityPriority(supabase, currentOrg?.id ?? null),
   });
 
+  // key: `${cityId}:${showId}` → row id
   const eligibilityMap = useMemo(() => {
-    // key: `${cityId}:${showId}` → row id
     const map = new Map<string, string>();
-    (eligibility ?? []).forEach(r => map.set(`${r.city_id}:${r.show_id}`, r.id));
+    (eligibility ?? []).forEach((r) => map.set(`${r.city_id}:${r.show_id}`, r.id));
     return map;
   }, [eligibility]);
 
-  const memberIds = useMemo(() => new Set((members ?? []).map(m => m.artist_id)), [members]);
+  const memberIds = useMemo(() => new Set((members ?? []).map((m) => m.artist_id)), [members]);
+
+  // Tier (priority) this cast holds per city, org default.
+  const tierByCity = useMemo(() => {
+    const map = new Map<string, number>();
+    (castCityPriorities ?? [])
+      .filter((r) => r.cast_id === cast?.id)
+      .forEach((r) => map.set(r.city_id, r.priority));
+    return map;
+  }, [castCityPriorities, cast?.id]);
+
+  // Cities (in the org's list) this cast is eligible for at least one show in.
+  const eligibleCityIds = useMemo(() => {
+    const cityIdSet = new Set((cities ?? []).map((c) => c.id));
+    const s = new Set<string>();
+    (eligibility ?? []).forEach((r) => { if (cityIdSet.has(r.city_id)) s.add(r.city_id); });
+    return s;
+  }, [eligibility, cities]);
+
+  const showsCovered = useMemo(() => new Set((eligibility ?? []).map((r) => r.show_id)).size, [eligibility]);
+
+  // Coverage gaps: eligible somewhere but never placed in a tier → never offered there.
+  const coverageGapCities = useMemo(
+    () => (cities ?? []).filter((c) => eligibleCityIds.has(c.id) && !tierByCity.has(c.id)),
+    [cities, eligibleCityIds, tierByCity],
+  );
+
+  const tier1Count = useMemo(
+    () => Array.from(tierByCity.values()).filter((p) => p === 1).length,
+    [tierByCity],
+  );
+
+  const upcomingDatesTotal = useMemo(
+    () => Array.from((bookingCounts ?? new Map()).values()).reduce((a, b) => a + b, 0),
+    [bookingCounts],
+  );
+
+  const memberCount = members?.length ?? 0;
+  const cityCount = cities?.length ?? 0;
+
+  const kpis = [
+    { label: t('castDetails.kpi.members'), value: String(memberCount) },
+    { label: t('castDetails.kpi.citiesEligible'), value: `${eligibleCityIds.size} / ${cityCount}` },
+    { label: t('castDetails.kpi.tier1Cities'), value: String(tier1Count) },
+    { label: t('castDetails.kpi.upcomingDates'), value: String(upcomingDatesTotal) },
+  ];
+
+  const facts = useMemo(() => {
+    if (!cast) return [] as { label: string; value: string }[];
+    return [
+      { label: t('castDetails.fact.created'), value: formatTimestampDMY(cast.created_at) },
+      { label: t('castDetails.fact.updated'), value: formatTimestampDMY(cast.updated_at) },
+      { label: t('castDetails.fact.showsCovered'), value: String(showsCovered) },
+      { label: t('castDetails.fact.coverageGaps'), value: String(coverageGapCities.length) },
+    ];
+  }, [cast, showsCovered, coverageGapCities.length, t]);
+
+  // Activity feed derived from real timestamps (no synthetic events): cast created,
+  // an optional "details updated" when updated_at meaningfully post-dates created_at,
+  // and one entry per member added. Newest first, capped.
+  const activity = useMemo(() => {
+    if (!cast) return [] as { text: string; when: string }[];
+    const evs: { text: string; whenIso: string }[] = [
+      { text: t('castDetails.activity.castCreated'), whenIso: cast.created_at },
+    ];
+    if (cast.updated_at && new Date(cast.updated_at).getTime() - new Date(cast.created_at).getTime() > 60_000) {
+      evs.push({ text: t('castDetails.activity.castUpdated'), whenIso: cast.updated_at });
+    }
+    (members ?? []).forEach((m) =>
+      evs.push({ text: t('castDetails.activity.memberAdded', { name: m.artist.name }), whenIso: m.created_at }),
+    );
+    return evs
+      .sort((a, b) => new Date(b.whenIso).getTime() - new Date(a.whenIso).getTime())
+      .slice(0, 6)
+      .map((e) => ({ text: e.text, when: formatTimestampDMY(e.whenIso) }));
+  }, [cast, members, t]);
 
   const addMember = useMutation({
     mutationFn: (artistId: string) => {
@@ -171,15 +273,20 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
     onError: (e: Error) => toast.error(t('castDetails.toast.failedUpdateEligibility'), { description: e.message }),
   });
 
-  const candidates = (artists ?? []).filter(a =>
+  const candidates = (artists ?? []).filter((a) =>
     !memberIds.has(a.id) &&
-    (search === '' || a.name.toLowerCase().includes(search.toLowerCase()))
+    (search === '' || a.name.toLowerCase().includes(search.toLowerCase())),
   );
+
+  const eyebrow = `${t('castDetails.eyebrow')} · ${currentOrg?.name ?? ''}`.replace(/ · $/, '');
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
-        <SheetHeader>
+      <SheetContent
+        className="flex h-full w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-[1040px] [&>button]:hidden"
+      >
+        {/* ── Header ── */}
+        <SheetHeader className="shrink-0 space-y-0 border-b border-border p-6 text-left">
           {editMode ? (
             <form
               onSubmit={(e) => {
@@ -188,23 +295,24 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
               }}
               className="space-y-2"
             >
+              <SheetTitle className="sr-only">{cast?.name}</SheetTitle>
               <Input
                 value={editName}
-                onChange={e => setEditName(e.target.value)}
+                onChange={(e) => setEditName(e.target.value)}
                 placeholder={t('castDetails.castNamePlaceholder')}
                 required
                 autoFocus
-                className="text-lg font-display font-semibold"
+                className="font-display text-lg font-semibold"
               />
               <Textarea
                 value={editDescription}
-                onChange={e => setEditDescription(e.target.value)}
+                onChange={(e) => setEditDescription(e.target.value)}
                 placeholder={t('castDetails.descriptionOptional')}
                 rows={2}
               />
               <div className="flex gap-2">
                 <Button type="submit" size="sm" disabled={updateCast.isPending || !editName.trim()}>
-                  <Check className="h-4 w-4 mr-1" />{updateCast.isPending ? t('castDetails.saving') : t('castDetails.save')}
+                  <Check className="mr-1 h-4 w-4" />{updateCast.isPending ? t('castDetails.saving') : t('castDetails.save')}
                 </Button>
                 <Button type="button" size="sm" variant="ghost" onClick={cancelEdit} disabled={updateCast.isPending}>
                   {t('castDetails.cancel')}
@@ -212,174 +320,295 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
               </div>
             </form>
           ) : (
-            <div className="flex items-start justify-between gap-2">
-              <div>
-                <SheetTitle className="font-display">{cast?.name}</SheetTitle>
-                <SheetDescription>{cast?.description || t('castDetails.manageDefault')}</SheetDescription>
+            <div className="flex items-start gap-3.5">
+              <span
+                aria-hidden
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-l bg-accent-100 font-mono text-[15px] font-semibold text-accent-700"
+              >
+                {initialsOf(cast?.name ?? '')}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-[11px] font-semibold uppercase tracking-[1.6px] text-accent-600">{eyebrow}</p>
+                <SheetTitle className="mt-0.5 font-display text-[22px] font-semibold tracking-[-0.3px] text-foreground">
+                  {cast?.name}
+                </SheetTitle>
+                <SheetDescription className="mt-1 text-sm leading-5 text-muted-foreground">
+                  {cast?.description || t('castDetails.manageDefault')}
+                </SheetDescription>
               </div>
-              {canManage && (
-                <IconTooltip label={t('castDetails.editCast')}>
-                  <Button size="icon" variant="ghost" className="shrink-0 mt-0.5" onClick={startEdit} aria-label={t('castDetails.editCast')}>
-                    <Pencil className="h-4 w-4" />
+              <div className="flex items-center gap-2">
+                {canManage && (
+                  <Button size="sm" variant="outline" className="h-9 shadow-elev1" onClick={startEdit}>
+                    <Pencil className="mr-1.5 h-4 w-4" />{t('castDetails.editCast')}
                   </Button>
-                </IconTooltip>
-              )}
+                )}
+                {canManage && (
+                  <Button size="sm" className="h-9 shadow-elev1" onClick={focusAddArtist}>
+                    <Plus className="mr-1.5 h-4 w-4" />{t('castDetails.addArtists')}
+                  </Button>
+                )}
+                <SheetClose asChild>
+                  <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" aria-label={t('castDetails.close')}>
+                    <X className="h-[18px] w-[18px]" />
+                  </Button>
+                </SheetClose>
+              </div>
             </div>
           )}
+
+          {/* KPI rail */}
+          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {kpis.map((k) => (
+              <div key={k.label} className="rounded-l border border-border bg-muted px-3.5 py-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[1.6px] text-muted-foreground">{k.label}</p>
+                <p className="mt-1.5 font-mono text-2xl font-semibold tabular-nums text-foreground">{k.value}</p>
+              </div>
+            ))}
+          </div>
+
           {isEditorMode && isRealAdmin && (
-            <Badge variant="outline" className="text-xs font-mono text-muted-foreground w-fit">
+            <Badge variant="outline" className="mt-3 w-fit font-mono text-xs text-muted-foreground">
               CastDetailsSheet.tsx
             </Badge>
           )}
         </SheetHeader>
 
-        <Tabs defaultValue="members" className="mt-6">
-          <TabsList>
-            <TabsTrigger value="members"><Users className="h-4 w-4 mr-2" />{t('castDetails.tabs.members')}</TabsTrigger>
-            <TabsTrigger value="eligibility"><Layers className="h-4 w-4 mr-2" />{t('castDetails.tabs.cityEligibility')}</TabsTrigger>
-            <TabsTrigger value="offer-order"><ListOrdered className="h-4 w-4 mr-2" />{t('castDetails.tabs.offerOrder')}</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="members" className="space-y-6 mt-4">
-            <div>
-              <h4 className="text-sm font-medium mb-2">{t('castDetails.membersCount', { count: members?.length ?? 0 })}</h4>
-              <div className="space-y-2">
-                {(members ?? []).map(m => (
-                  <div key={m.id} className="flex items-center justify-between p-2 rounded-md border border-border">
-                    <button
-                      type="button"
-                      onClick={() => onArtistClick?.(m.artist_id)}
-                      className="text-left flex-1 hover:underline disabled:cursor-default disabled:no-underline"
-                      disabled={!onArtistClick}
-                    >
-                      <p className="text-sm font-medium">{m.artist.name}</p>
-                    </button>
-                    <IconTooltip label={t('castDetails.removeMember', { name: m.artist.name })}>
-                      <Button size="icon" variant="ghost" aria-label={t('castDetails.removeMember', { name: m.artist.name })} onClick={() => removeMember.mutate(m.id)} disabled={!canManage}>
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </IconTooltip>
-                  </div>
-                ))}
-                {(members?.length ?? 0) === 0 && (
-                  <p className="text-xs text-muted-foreground">{t('castDetails.noMembers')}</p>
-                )}
-              </div>
-            </div>
-
-            <div>
-              <h4 className="text-sm font-medium mb-2">{t('castDetails.addArtists')}</h4>
-              <div className="relative mb-2">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input className="pl-10" placeholder={t('castDetails.searchArtists')} value={search} onChange={e => setSearch(e.target.value)} />
-              </div>
-              <div className="space-y-1 max-h-[40vh] overflow-y-auto">
-                {candidates.map(a => (
-                  <div key={a.id} className="flex items-center justify-between p-2 rounded-md hover:bg-muted">
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm">{a.name}</p>
-                      <Badge variant="outline" className="text-xs">{a.status}</Badge>
-                    </div>
-                    <Button size="sm" variant="ghost" onClick={() => addMember.mutate(a.id)} disabled={!canManage}>
-                      <Plus className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-                {candidates.length === 0 && <p className="text-xs text-muted-foreground">{t('castDetails.noMatches')}</p>}
-              </div>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="eligibility" className="mt-4 space-y-3">
-            <p className="text-xs text-muted-foreground">
-              {t('castDetails.eligibilityNote')}
-            </p>
-            {(cities ?? []).length === 0 && (
-              <p className="text-sm text-muted-foreground">{t('castDetails.addCitiesFirst')}</p>
-            )}
-            {(shows ?? []).length === 0 && (
-              <p className="text-sm text-muted-foreground">{t('castDetails.noShows')}</p>
-            )}
-            {(cities ?? []).length > 0 && (shows ?? []).length > 0 && (
-              <div className="border border-border rounded-lg overflow-auto max-h-[55vh]">
-                <table className="w-full text-sm">
-                  <thead className="bg-muted/50 sticky top-0">
-                    <tr>
-                      <th className="text-left p-2 font-medium sticky left-0 bg-muted/50">{t('castDetails.cityShowHeader')}</th>
-                      {(shows ?? []).map(s => (
-                        <th key={s.id} className="text-left p-2 font-medium whitespace-nowrap">{showIdentityLabel(s)}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(cities ?? []).map(city => (
-                      <tr key={city.id} className="border-t border-border">
-                        <td className="p-2 font-medium sticky left-0 bg-background whitespace-nowrap">{city.name}</td>
-                        {(shows ?? []).map(s => {
-                          const on = eligibilityMap.has(`${city.id}:${s.id}`);
-                          return (
-                            <td key={s.id} className="p-2 text-center">
-                              <Checkbox
-                                checked={on}
-                                onCheckedChange={(v) => toggleEligibility.mutate({ cityId: city.id, showId: s.id, on: !!v })}
-                              />
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+        {/* ── Body: main column + at-a-glance rail ── */}
+        <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+          <div className="flex min-w-0 flex-1 flex-col gap-5 overflow-y-auto p-5 lg:p-6">
+            {/* Coverage-gap banner */}
+            {coverageGapCities.length > 0 && (
+              <div
+                data-coverage-gap
+                className="flex items-center gap-3 rounded-m border border-border px-3 py-2.5"
+                style={{ background: 'var(--amber-100)' }}
+              >
+                <span
+                  className="inline-flex h-5 shrink-0 items-center rounded-xs px-1.5 text-[11px] font-medium"
+                  style={{ background: 'rgba(255,255,255,.6)', color: 'var(--amber-600)' }}
+                >
+                  {t('castDetails.coverageGap.badge')}
+                </span>
+                <p className="flex-1 text-[13px]" style={{ color: 'var(--amber-600)' }}>
+                  {t('castDetails.coverageGap.text', { cities: coverageGapCities.map((c) => c.name).join(', ') })}
+                </p>
+                <Link
+                  to={`${ROUTES.SETTINGS}?tab=casts-coverage`}
+                  className="whitespace-nowrap text-[13px] font-medium text-accent-600 underline"
+                >
+                  {t('castDetails.coverageGap.setTier')}
+                </Link>
               </div>
             )}
-          </TabsContent>
 
-          <TabsContent value="offer-order" className="mt-4 space-y-3">
-            <p className="text-xs text-muted-foreground">
-              {t('castDetails.offerOrderNote')}
-            </p>
-            {(cities ?? []).length === 0 ? (
-              <p className="text-sm text-muted-foreground">{t('castDetails.addCitiesFirst')}</p>
-            ) : (
-              <div className="space-y-2">
-                {(cities ?? []).map((city) => {
-                  const row = (castCityPriorities ?? []).find(
-                    (r) => r.city_id === city.id && r.cast_id === cast?.id
-                  );
-                  const tier = row?.priority ?? null;
-                  const previousRow = tier != null && tier > 1
-                    ? (castCityPriorities ?? []).find((r) => r.city_id === city.id && r.priority === tier - 1)
-                    : undefined;
-                  const previousCastName = previousRow
-                    ? (allCasts ?? []).find((c) => c.id === previousRow.cast_id)?.name ?? t('castDetails.previousTier')
-                    : null;
-                  const note = tier == null
-                    ? t('castDetails.neverOffered')
-                    : tier === 1
-                      ? t('castDetails.offeredFirst')
-                      : t('castDetails.offeredAfter', { cast: previousCastName });
+            {/* Roster */}
+            <section>
+              <div className="mb-2 flex items-baseline justify-between">
+                <h4 className="text-sm font-semibold text-foreground">{t('castDetails.roster.title')}</h4>
+                <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
+                  {t('castDetails.roster.count', { count: memberCount })}
+                </span>
+              </div>
+              <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+                {(members ?? []).map((m) => {
+                  const tone = getAvatarTone(m.artist_id || m.artist.name);
+                  const skill = skillsByArtist?.get(m.artist_id)?.[0]?.name;
+                  const dates = bookingCounts?.get(m.artist_id) ?? 0;
                   return (
-                    <div
-                      key={city.id}
-                      className="flex items-center justify-between gap-3 p-2.5 rounded-md border border-border"
-                    >
-                      <div>
-                        <p className="text-sm font-medium">{city.name}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">{note}</p>
-                      </div>
-                      <Badge variant={tier === 1 ? 'accent' : 'neutral'} className="shrink-0">
-                        {tier != null ? t('castDetails.tierN', { tier }) : t('castDetails.notInOrder')}
-                      </Badge>
+                    <div key={m.id} className="flex h-10 items-center gap-2.5 rounded-m border border-border bg-card px-2">
+                      <span
+                        aria-hidden
+                        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-pill text-[11px] font-semibold"
+                        style={{ background: tone.bg, color: tone.text }}
+                      >
+                        {initialsOf(m.artist.name, '?').slice(0, 1)}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => onArtistClick?.(m.artist_id)}
+                        className="truncate text-left text-[13px] font-medium text-foreground hover:underline disabled:cursor-default disabled:no-underline"
+                        disabled={!onArtistClick}
+                      >
+                        {m.artist.name}
+                      </button>
+                      {skill && (
+                        <span className="inline-flex h-5 shrink-0 items-center whitespace-nowrap rounded-xs bg-accent-100 px-1.5 text-[11px] font-medium text-accent-700">
+                          {skill}
+                        </span>
+                      )}
+                      <span className="flex-1" />
+                      <span className="whitespace-nowrap font-mono text-[11px] tabular-nums text-[color:var(--text-faint)]">
+                        {t('castDetails.roster.dates', { count: dates })}
+                      </span>
+                      <IconTooltip label={t('castDetails.removeMember', { name: m.artist.name })}>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7 shrink-0"
+                          aria-label={t('castDetails.removeMember', { name: m.artist.name })}
+                          onClick={() => removeMember.mutate(m.id)}
+                          disabled={!canManage}
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </Button>
+                      </IconTooltip>
                     </div>
                   );
                 })}
               </div>
-            )}
-            <Link to={`${ROUTES.SETTINGS}?tab=casts-coverage`} className="text-xs text-primary underline">
-              {t('castDetails.manageOfferOrderLink')}
-            </Link>
-          </TabsContent>
-        </Tabs>
+              {memberCount === 0 && <p className="mt-1 text-xs text-muted-foreground">{t('castDetails.noMembers')}</p>}
+
+              {/* Inline add: search reveals candidates; Enter adds the first. */}
+              <div className="mt-3">
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    ref={searchRef}
+                    className="h-9 pl-9"
+                    placeholder={t('castDetails.roster.searchPlaceholder')}
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && canManage && candidates[0]) {
+                        e.preventDefault();
+                        addMember.mutate(candidates[0].id);
+                        setSearch('');
+                      }
+                    }}
+                  />
+                </div>
+                {search.trim() !== '' && (
+                  <div className="mt-1.5 max-h-[30vh] space-y-1 overflow-y-auto">
+                    {candidates.map((a) => (
+                      <div
+                        key={a.id}
+                        data-candidate
+                        className="flex items-center justify-between rounded-m px-2 py-1.5 hover:bg-muted"
+                      >
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm text-foreground">{a.name}</p>
+                          <Badge variant="outline" className="text-xs">{a.status}</Badge>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-8"
+                          onClick={() => { addMember.mutate(a.id); }}
+                          disabled={!canManage}
+                        >
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                    {candidates.length === 0 && <p className="px-2 text-xs text-muted-foreground">{t('castDetails.noMatches')}</p>}
+                  </div>
+                )}
+              </div>
+            </section>
+
+            {/* City coverage */}
+            <section>
+              <div className="mb-2 flex items-baseline justify-between gap-3">
+                <h4 className="text-sm font-semibold text-foreground">{t('castDetails.coverage.title')}</h4>
+                <span className="text-xs text-muted-foreground">{t('castDetails.coverage.hint')}</span>
+              </div>
+
+              {cityCount === 0 && <p className="text-sm text-muted-foreground">{t('castDetails.addCitiesFirst')}</p>}
+              {cityCount > 0 && (shows ?? []).length === 0 && (
+                <p className="text-sm text-muted-foreground">{t('castDetails.noShows')}</p>
+              )}
+
+              {cityCount > 0 && (shows ?? []).length > 0 && (
+                <div className="flex flex-col gap-1">
+                  {(cities ?? []).map((city) => {
+                    const tier = tierByCity.get(city.id) ?? null;
+                    return (
+                      <div
+                        key={city.id}
+                        data-city-row
+                        className="flex flex-wrap items-center gap-3 rounded-m border border-border px-2.5 py-2"
+                      >
+                        <span className="w-24 shrink-0 text-[13px] font-medium text-foreground">{city.name}</span>
+                        <span
+                          className={cn(
+                            'inline-flex h-5 shrink-0 items-center rounded-xs border px-1.5 text-[11px] font-medium',
+                            tier === 1
+                              ? 'border-accent-200 bg-accent-100 text-accent-700'
+                              : 'border-border bg-muted text-muted-foreground',
+                          )}
+                        >
+                          {tier != null ? t('castDetails.tierN', { tier }) : t('castDetails.coverage.noTier')}
+                        </span>
+                        <div className="flex flex-1 flex-wrap gap-1.5">
+                          {(shows ?? []).map((s) => {
+                            const on = eligibilityMap.has(`${city.id}:${s.id}`);
+                            return (
+                              <button
+                                key={s.id}
+                                type="button"
+                                aria-pressed={on}
+                                disabled={!canManage}
+                                onClick={() => toggleEligibility.mutate({ cityId: city.id, showId: s.id, on: !on })}
+                                className={cn(
+                                  'inline-flex h-6 items-center gap-1.5 rounded-s border px-2 text-xs font-medium transition-colors',
+                                  on
+                                    ? 'border-accent-200 bg-accent-50 text-accent-700'
+                                    : 'border-border bg-muted text-muted-foreground',
+                                  canManage ? 'hover:border-accent-300' : 'cursor-default',
+                                )}
+                              >
+                                {on && <Check className="h-3 w-3" />}
+                                {showIdentityLabel(s)}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              <Link to={`${ROUTES.SETTINGS}?tab=casts-coverage`} className="mt-3 inline-block text-xs text-primary underline">
+                {t('castDetails.manageOfferOrderLink')}
+              </Link>
+            </section>
+          </div>
+
+          {/* At-a-glance + Activity rail */}
+          <aside className="flex shrink-0 flex-col gap-5 overflow-y-auto border-t border-border bg-muted p-5 lg:w-[264px] lg:border-l lg:border-t-0">
+            <div>
+              <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[1.6px] text-muted-foreground">
+                {t('castDetails.rail.atAGlance')}
+              </h3>
+              <div className="flex flex-col gap-3">
+                {facts.map((f) => (
+                  <div key={f.label} className="flex items-baseline justify-between gap-3">
+                    <span className="text-[13px] text-muted-foreground">{f.label}</span>
+                    <span className="text-right text-[13px] text-foreground">{f.value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="border-t border-border pt-4">
+              <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[1.6px] text-muted-foreground">
+                {t('castDetails.rail.activity')}
+              </h3>
+              {activity.length === 0 ? (
+                <p className="text-xs text-muted-foreground">{t('castDetails.activity.empty')}</p>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  {activity.map((a, i) => (
+                    <div key={`${a.text}-${i}`}>
+                      <p className="text-[12.5px] leading-[17px] text-foreground">{a.text}</p>
+                      <p className="mt-0.5 text-[11px] text-[color:var(--text-faint)]">{a.when}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </aside>
+        </div>
       </SheetContent>
     </Sheet>
   );

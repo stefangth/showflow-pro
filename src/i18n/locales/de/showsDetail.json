@@ -290,6 +290,50 @@
     "cancel": "Abbrechen",
     "manageDefault": "Besetzungsmitglieder und Städte-Berechtigung verwalten",
     "editCast": "Besetzung bearbeiten",
+    "close": "Schließen",
+    "eyebrow": "Besetzung",
+    "kpi": {
+      "members": "Mitglieder",
+      "citiesEligible": "Berechtigte Städte",
+      "tier1Cities": "Städte mit Stufe 1",
+      "upcomingDates": "Anstehende Termine"
+    },
+    "coverageGap": {
+      "badge": "Abdeckungslücke",
+      "text": "{{cities}} in keiner Stufe, daher wird diese Besetzung dort nie angeboten.",
+      "setTier": "Stufe setzen"
+    },
+    "roster": {
+      "title": "Besetzung",
+      "count_one": "{{count}} Mitglied",
+      "count_other": "{{count}} Mitglieder",
+      "dates_one": "{{count}} Termin",
+      "dates_other": "{{count}} Termine",
+      "searchPlaceholder": "Besetzung durchsuchen oder Artist hinzufügen",
+      "add": "Hinzufügen",
+      "enterToAdd": "zum Hinzufügen"
+    },
+    "coverage": {
+      "title": "Städte-Abdeckung",
+      "hint": "Klicke auf eine Show, um die Berechtigung umzuschalten.",
+      "noTier": "Keine Stufe"
+    },
+    "rail": {
+      "atAGlance": "Auf einen Blick",
+      "activity": "Aktivität"
+    },
+    "fact": {
+      "created": "Erstellt",
+      "updated": "Zuletzt aktualisiert",
+      "showsCovered": "Abgedeckte Shows",
+      "coverageGaps": "Abdeckungslücken"
+    },
+    "activity": {
+      "memberAdded": "{{name}} zur Besetzung hinzugefügt",
+      "castCreated": "Besetzung erstellt",
+      "castUpdated": "Besetzungsdetails aktualisiert",
+      "empty": "Noch keine Aktivität."
+    },
     "tabs": {
       "members": "Mitglieder",
       "cityEligibility": "Städte-Berechtigung",

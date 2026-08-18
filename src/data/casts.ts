@@ -20,7 +20,7 @@ import type { Artist, Cast } from "@/types";
 
 type CastCityPriorityRow = Database["public"]["Tables"]["cast_city_priority"]["Row"];
 
-export interface CastMemberWithArtist { id: string; artist_id: string; artist: Artist }
+export interface CastMemberWithArtist { id: string; artist_id: string; created_at: string; artist: Artist }
 
 /** The org's casts, ordered by name. */
 export async function fetchCasts(
@@ -57,7 +57,7 @@ export async function fetchCastMembers(
 ): Promise<CastMemberWithArtist[]> {
   if (!castId) return [];
   const { data, error } = await client
-    .from("cast_members").select("id, artist_id, artist:artists(*)").eq("cast_id", castId);
+    .from("cast_members").select("id, artist_id, created_at, artist:artists(*)").eq("cast_id", castId);
   if (error) throw error;
   return (data ?? []) as unknown as CastMemberWithArtist[];
 }

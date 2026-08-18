@@ -488,6 +488,38 @@ export async function fetchBookingCountsByDate(
   return map;
 }
 
+/**
+ * Upcoming (today-or-later) non-cancelled booking counts per artist, for the given
+ * artist ids in an org — powers the "N dates" figure on each cast roster row. Scoped
+ * to the passed artist ids (a cast's members) so the read stays bounded rather than
+ * scanning the org's whole bookings table. `fromDateKey` is the inclusive lower bound
+ * (a `YYYY-MM-DD` string, injected so the "today" boundary is deterministic in tests).
+ * Dates are filtered client-side (rather than via an embedded-resource `.gte`) so the
+ * call-recording fake client exercises the same code path.
+ */
+export async function fetchUpcomingBookingCountsByArtist(
+  client: SupabaseClient<Database>,
+  orgId: string | null,
+  artistIds: string[],
+  fromDateKey: string,
+): Promise<Map<string, number>> {
+  const map = new Map<string, number>();
+  if (!orgId || artistIds.length === 0) return map;
+  const { data, error } = await client
+    .from("bookings")
+    .select("artist_id, show_date:show_dates(date)")
+    .eq("org_id", orgId)
+    .in("artist_id", artistIds)
+    .neq("status", "cancelled");
+  if (error) throw error;
+  interface CountRow { artist_id: string; show_date: { date: string } | null }
+  for (const b of (data ?? []) as unknown as CountRow[]) {
+    if (!b.show_date || b.show_date.date < fromDateKey) continue;
+    map.set(b.artist_id, (map.get(b.artist_id) ?? 0) + 1);
+  }
+  return map;
+}
+
 export interface BookingLite { show_date_id: string; status: string; is_understudy: boolean }
 
 /** The org's confirmed bookings, minimal projection, for dashboard slot maths. */

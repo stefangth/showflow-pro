@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { createFakeSupabase } from "@/test/supabaseFake";
-import { openOfferTier, fetchOfferTiers, fetchOpenedTiers, closeOfferTier, dryRunOfferTier, fetchPendingConfirmationsCount, fetchMyOpenOffersCount, bulkConfirmSoftBooked, bulkDeclineSoftBooked, updateBookingStatusGuarded, respondToOffer, createBooking, fetchTierAttention, extendOfferExpiry, notifyCast, fetchBookingsWithArtistForDates } from "./bookings";
+import { openOfferTier, fetchOfferTiers, fetchOpenedTiers, closeOfferTier, dryRunOfferTier, fetchPendingConfirmationsCount, fetchMyOpenOffersCount, bulkConfirmSoftBooked, bulkDeclineSoftBooked, updateBookingStatusGuarded, respondToOffer, createBooking, fetchTierAttention, extendOfferExpiry, notifyCast, fetchBookingsWithArtistForDates, fetchUpcomingBookingCountsByArtist } from "./bookings";
 
 describe("openOfferTier", () => {
   it("sends snake_case body and returns offersCreated", async () => {
@@ -520,5 +520,36 @@ describe("fetchBookingsWithArtistForDates", () => {
   it("throws on a supabase error", async () => {
     const fake = createFakeSupabase({ bookings: { data: null, error: { message: "boom" } } });
     await expect(fetchBookingsWithArtistForDates(fake as never, { orgId: "org-1", showDateIds: ["d1"] })).rejects.toBeTruthy();
+  });
+});
+
+describe("fetchUpcomingBookingCountsByArtist", () => {
+  it("counts today-or-later non-cancelled bookings per artist, ignoring past dates", async () => {
+    const fake = createFakeSupabase({
+      bookings: {
+        data: [
+          { artist_id: "a1", show_date: { date: "2026-09-01" } }, // upcoming
+          { artist_id: "a1", show_date: { date: "2026-08-18" } }, // today (inclusive)
+          { artist_id: "a1", show_date: { date: "2026-01-01" } }, // past -> excluded
+          { artist_id: "a2", show_date: { date: "2026-12-31" } }, // upcoming
+          { artist_id: "a3", show_date: null },                   // no date -> excluded
+        ],
+        error: null,
+      },
+    });
+    const res = await fetchUpcomingBookingCountsByArtist(fake as never, "org-1", ["a1", "a2", "a3"], "2026-08-18");
+    expect(res.get("a1")).toBe(2);
+    expect(res.get("a2")).toBe(1);
+    expect(res.has("a3")).toBe(false);
+    expect(fake.calls).toContainEqual({ table: "bookings", method: "eq", args: ["org_id", "org-1"] });
+    expect(fake.calls).toContainEqual({ table: "bookings", method: "in", args: ["artist_id", ["a1", "a2", "a3"]] });
+    expect(fake.calls).toContainEqual({ table: "bookings", method: "neq", args: ["status", "cancelled"] });
+  });
+
+  it("returns an empty map for no artist ids without querying", async () => {
+    const fake = createFakeSupabase({});
+    const res = await fetchUpcomingBookingCountsByArtist(fake as never, "org-1", [], "2026-08-18");
+    expect(res.size).toBe(0);
+    expect(fake.calls).toEqual([]);
   });
 });

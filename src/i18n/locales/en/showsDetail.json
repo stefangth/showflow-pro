@@ -290,6 +290,50 @@
     "cancel": "Cancel",
     "manageDefault": "Manage cast members and city eligibility",
     "editCast": "Edit cast",
+    "close": "Close",
+    "eyebrow": "Cast",
+    "kpi": {
+      "members": "Members",
+      "citiesEligible": "Cities eligible",
+      "tier1Cities": "Tier 1 cities",
+      "upcomingDates": "Upcoming dates"
+    },
+    "coverageGap": {
+      "badge": "Coverage gap",
+      "text": "{{cities}} not in any tier, so this cast is never offered there.",
+      "setTier": "Set tier"
+    },
+    "roster": {
+      "title": "Roster",
+      "count_one": "{{count}} member",
+      "count_other": "{{count}} members",
+      "dates_one": "{{count}} date",
+      "dates_other": "{{count}} dates",
+      "searchPlaceholder": "Search the roster or add an artist",
+      "add": "Add",
+      "enterToAdd": "to add"
+    },
+    "coverage": {
+      "title": "City coverage",
+      "hint": "Click a show to toggle eligibility.",
+      "noTier": "No tier"
+    },
+    "rail": {
+      "atAGlance": "At a glance",
+      "activity": "Activity"
+    },
+    "fact": {
+      "created": "Created",
+      "updated": "Last updated",
+      "showsCovered": "Shows covered",
+      "coverageGaps": "Coverage gaps"
+    },
+    "activity": {
+      "memberAdded": "{{name}} added to the roster",
+      "castCreated": "Cast created",
+      "castUpdated": "Cast details updated",
+      "empty": "No activity yet."
+    },
     "tabs": {
       "members": "Members",
       "cityEligibility": "City eligibility",
