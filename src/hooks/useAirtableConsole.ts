@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -115,6 +116,7 @@ export interface AirtableConsole {
   heldCount: number;
   syncNow: () => void;
   syncing: boolean;
+  canTriggerSync: boolean;
 
   // console view-model (StatusHeader/OverviewTab)
   mode: ConsoleMode;
@@ -140,7 +142,7 @@ export function useAirtableConsole(
   orgId: string | null,
   opts: { readOnly?: boolean; canTriggerSync?: boolean } = {},
 ): AirtableConsole {
-  const { readOnly = false } = opts;
+  const { readOnly = false, canTriggerSync = false } = opts;
   const { t } = useTranslation('settingsAirtable');
   const qc = useQueryClient();
   const canWrite = !readOnly;
@@ -456,8 +458,17 @@ export function useAirtableConsole(
   const customDefs = customFieldsQ.data ?? [];
   const customBySourceField = new Set(customDefs.map((d) => d.source_field));
   const mappedFieldNames = new Set(Object.values(fieldMap).filter(Boolean) as string[]);
-  const rawUnboundFields = (selectedTable?.fields ?? []).filter(
-    (f) => !mappedFieldNames.has(f.name) && !customBySourceField.has(f.name),
+  const rawUnboundFields = useMemo(
+    () => (selectedTable?.fields ?? []).filter(
+      (f) => !mappedFieldNames.has(f.name) && !customBySourceField.has(f.name),
+    ),
+    // rawUnboundFields is derived from selectedTable's fields, the mapped field names (from
+    // fieldMap) and the already-custom-defined source fields (from customDefs) — those are the
+    // true inputs; mappedFieldNames/customBySourceField are recomputed fresh each render from
+    // the same fieldMap/customDefs, so keying on the primitives here is equivalent and stays
+    // correct even though the Sets themselves are new objects every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [selectedTable, fieldMap, customDefs],
   );
   const addCustomMut = useMutation({
     mutationFn: async (afs: Array<{ name: string; type: string; options?: Record<string, unknown> }>) => {
@@ -483,6 +494,10 @@ export function useAirtableConsole(
   const addAllCustom = () => {
     addCustomMut.mutate(rawUnboundFields.map((f) => ({ name: f.name, type: f.type, options: f.options as Record<string, unknown> | undefined })));
   };
+  const unboundFields = useMemo(
+    () => rawUnboundFields.map((f) => ({ id: f.id, name: f.name, type: f.type })),
+    [rawUnboundFields],
+  );
 
   // ── Duplicate cities → merge suggestion ──────────────────────────────────────
   const dupeGroups = groupDuplicateCities(citiesQ.data ?? []);
@@ -556,7 +571,7 @@ export function useAirtableConsole(
 
   return {
     canWrite,
-    ready: !keyStatusQ.isLoading && !settingsQ.isLoading,
+    ready: !!orgId && !keyStatusQ.isLoading && !settingsQ.isLoading,
 
     keyPresent,
     keyUpdatedAt: keyStatusQ.data?.updatedAt ?? null,
@@ -583,7 +598,7 @@ export function useAirtableConsole(
     mapped: mappedCounts.mapped,
     mappedTotal: mappedCounts.total,
     optionNames,
-    unboundFields: rawUnboundFields.map((f) => ({ id: f.id, name: f.name, type: f.type })),
+    unboundFields,
     addAllCustom,
     addingCustom: addCustomMut.isPending,
 
@@ -606,8 +621,9 @@ export function useAirtableConsole(
     recentLoading: recentQ.isLoading,
     heldRecords,
     heldCount,
-    syncNow: () => syncNowMut.mutate(),
+    syncNow: () => { if (canTriggerSync) syncNowMut.mutate(); },
     syncing: syncNowMut.isPending,
+    canTriggerSync,
 
     mode,
     hasBaseTable,

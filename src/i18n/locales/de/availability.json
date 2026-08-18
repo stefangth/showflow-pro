@@ -127,7 +127,7 @@
     "setup": {
       "label": "Dein Setup",
       "ofOne": "von 1 erledigt",
-      "hint": "Ein leerer Kalender ist eine gültige Antwort. Diese Seite zu öffnen zählt schon als erledigt."
+      "hint": "Ein leerer Kalender ist eine gültige Antwort. Sperre nur die Termine, die du nicht spielen kannst."
     },
     "task": {
       "title": "Sperre, was du nicht spielen kannst",

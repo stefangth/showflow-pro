@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAirtableConsole } from "@/hooks/useAirtableConsole";
 import { AirtableConnectRail, type AirtableConnectStep } from "./AirtableConnectRail";
 import { AirtableConnectionSummary } from "./AirtableConnectionSummary";
+import { useLatchedOnReady } from "./useLatchedOnReady";
 
 interface AirtableConnectProps {
   orgId: string | null;
@@ -38,14 +39,8 @@ interface AirtableConnectProps {
 export function AirtableConnect({ orgId, readOnly, canTriggerSync, onLater }: AirtableConnectProps) {
   const c = useAirtableConsole(orgId, { readOnly, canTriggerSync });
   const connected = c.keyPresent && c.hasBaseTable;
-  const [mode, setMode] = useState<"rail" | "summary" | null>(null);
+  const [mode, setMode] = useLatchedOnReady<"rail" | "summary">(c.ready, () => (connected ? "summary" : "rail"));
   const [forcedStep, setForcedStep] = useState<AirtableConnectStep | null>(null);
-
-  // Initialize the latch once the console has settled, then transition only on the
-  // explicit events below (never re-derive from `connected` — see the comment above).
-  useEffect(() => {
-    if (mode === null && c.ready) setMode(connected ? "summary" : "rail");
-  }, [mode, c.ready, connected]);
 
   if (mode === null) {
     return <Skeleton className="h-64 w-full rounded-[var(--radius-xl)]" />;

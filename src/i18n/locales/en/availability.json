@@ -127,7 +127,7 @@
     "setup": {
       "label": "Your setup",
       "ofOne": "of 1 done",
-      "hint": "An empty calendar is a valid answer. Opening this page counts it as done."
+      "hint": "An empty calendar is a valid answer. Block only the dates you cannot play."
     },
     "task": {
       "title": "Block what you cannot play",

@@ -76,8 +76,8 @@ export default function ProfilePage() {
   const isArtistOnly = hasRole(ROLES.ARTIST) && !isProducerOrAdmin;
   const categories = visibleNotificationCategories({ isArtistOnly });
 
-  const { data: artist } = useMyArtist();
-  const blockedDatesCount = useMyBlockedDatesCount(artist?.id ?? null);
+  const { data: artist } = useMyArtist({ enabled: isArtistOnly });
+  const blockedDatesCount = useMyBlockedDatesCount(isArtistOnly ? (artist?.id ?? null) : null);
   const blockedCount = blockedDatesCount.data ?? 0;
 
   const identity = useForm<IdentityValues>({ resolver: zodResolver(identitySchema), values: { display_name: profile?.display_name ?? "", phone: profile?.phone ?? "" } });

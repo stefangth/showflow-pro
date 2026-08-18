@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Check, CheckCircle2, CircleHelp } from "lucide-react";
 
@@ -18,6 +18,7 @@ import { airtableFallbackMessage, type FallbackCause } from "@/lib/airtableFallb
 
 import { MappingTab } from "@/components/settings/airtable/MappingTab";
 import { CatalogTab } from "@/components/settings/airtable/CatalogTab";
+import { useLatchedOnReady } from "./useLatchedOnReady";
 
 /** The four steps of the Get-running Airtable connect rail (screen 11b), also the four
  *  group keys the collapsed summary (11a, `AirtableConnectionSummary`) re-opens the rail
@@ -77,10 +78,11 @@ export function AirtableConnectRail({ orgId, readOnly, canTriggerSync, onConnect
   // name or click Continue (screen-11 review finding). Latching on `c.ready` rather than the
   // first render is essential — the key-status query is async, so an eager seed would read
   // keyPresent=false and wrongly park on "connect" until it resolved.
-  const [activeStep, setActiveStep] = useState<AirtableConnectStep | null>(initialStep ?? null);
-  useEffect(() => {
-    if (activeStep === null && c.ready) setActiveStep(firstUnsatisfiedStep(c.keyPresent, c.hasBaseTable));
-  }, [activeStep, c.ready, c.keyPresent, c.hasBaseTable]);
+  const [activeStep, setActiveStep] = useLatchedOnReady<AirtableConnectStep>(
+    c.ready,
+    () => firstUnsatisfiedStep(c.keyPresent, c.hasBaseTable),
+    initialStep ?? null,
+  );
   const goTo = (step: AirtableConnectStep) => setActiveStep(step);
 
   const [tokenValue, setTokenValue] = useState("");
