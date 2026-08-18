@@ -63,7 +63,8 @@ export interface GetRunningInput {
   hire: HireOrderSetupStatus | null;
   datesDone: boolean; // Airtable connected+synced OR shows exist by hand
   producerCount: number | null; // team step done when > 0
-  canManageShows: boolean; // viewer holds manage_productions (author shows + slot counts)
+  canManageShows: boolean; // viewer holds manage_productions (create shows: the `dates` task)
+  canEditScheduling: boolean; // viewer holds edit_scheduling (write show_slots: the `slots` task)
   canEditBooking: boolean; // viewer holds edit_booking_settings
   canEditHire: boolean; // viewer holds edit_hire_order_settings
   canAddArtists: boolean; // viewer holds add_artists
@@ -136,10 +137,15 @@ export function composeGetRunning(input: GetRunningInput): GetRunningModel {
   const phases: GetRunningPhase[] = [];
 
   if (input.bookingOn) {
-    // The get_dates phase is show authoring, not booking-engine config: `dates` completes
-    // on shows existing (its panel is ShowsStep) and `slots` writes show_slots (the
-    // ShowFormDialog model). So both gate on manage_productions, not edit_booking_settings —
-    // a producer who can create shows must not read "Waits on admin" here.
+    // The get_dates phase is show authoring, not booking-engine config, but the two tasks
+    // write different things and are gated by different capabilities:
+    //  - `dates` completes on shows existing (its panel is ShowsStep, which links to
+    //    ProductionsPage's create button) → manage_productions.
+    //  - `slots` writes show_slots (its panel is SlotsStep, the ShowFormDialog model, which
+    //    the show_slots RLS + ShowFormDialog gate on edit_scheduling) → edit_scheduling.
+    // Gating slots on manage_productions would let a producer with manage_productions but not
+    // edit_scheduling open the panel and hit an RLS failure on save, exactly the dead-action
+    // the "Waits on admin" attribution exists to prevent.
     const datesTask: GetRunningTask = withActionability(
       {
         key: "dates",
@@ -152,7 +158,7 @@ export function composeGetRunning(input: GetRunningInput): GetRunningModel {
       input.role,
     );
     const slotsTask = withActionability(
-      makeBookingTask("slots", "get_dates", input.booking, !input.canManageShows),
+      makeBookingTask("slots", "get_dates", input.booking, !input.canEditScheduling),
       input.role,
     );
     phases.push({ key: "get_dates", tasks: [datesTask, slotsTask] });
