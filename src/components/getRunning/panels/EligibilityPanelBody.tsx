@@ -133,10 +133,17 @@ export function EligibilityPanelBody({
       // Checking `uncoveredKeys.size === 0` alone is wrong once every pair is already
       // covered: it would then be trivially true and re-fire onDone on any later write
       // to this mutation. See LadderPanelBody's identical guard for the bug this fixes.
+      //
+      // Also require !hasNullCity, matching the board's OWN eligibility.done rule
+      // (computeBookingSetupStatus: `uncoveredPairs.length === 0 && !hasNullCity`). A
+      // future date with no city set keeps the task outstanding — the nullCityNote below
+      // renders for exactly that case — so advancing/closing the panel on the last
+      // city-scoped link, while the board still flags eligibility, would just make the
+      // admin reopen it. (Ladder has no such dependency, hence no equivalent clause there.)
       const key = `${variables.showId}|${variables.cityId}`;
       const wasUncovered = uncoveredKeys.has(key);
       const remaining = [...uncoveredKeys].filter((k) => k !== key);
-      if (wasUncovered && remaining.length === 0) onDone();
+      if (wasUncovered && remaining.length === 0 && !result.hasNullCity) onDone();
     },
     onError: (e: Error) => toast.error(e.message ?? t("panel.body.eligibility.castLinkFailed")),
   });

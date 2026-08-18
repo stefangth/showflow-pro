@@ -174,4 +174,42 @@ describe("EligibilityPanelBody", () => {
     await new Promise((resolve) => setTimeout(resolve, 20));
     expect(onDone).not.toHaveBeenCalled();
   });
+
+  it("does not call onDone when a null-city future date keeps eligibility outstanding, even after the last city gap is linked", async () => {
+    // A future date with no city set keeps the board's eligibility.done false
+    // (computeBookingSetupStatus requires `!hasNullCity`). Closing the last city-scoped
+    // gap must therefore NOT advance/close the panel — otherwise the board still flags
+    // the task and the admin has to reopen it. (Ladder has no such dependency.)
+    const withNullCity: LadderCoverageInputs = {
+      futurePairs: [
+        { showId: "show-1", cityId: "ham" },
+        { showId: "show-2", cityId: "lei" },
+        { showId: "show-1", cityId: null },
+      ],
+      showPriorities: [],
+      cityPriorities: [{ cityId: "ham", castId: "nord", priority: 1 }],
+    };
+    const onDone = vi.fn();
+    renderPanel(withNullCity, onDone);
+
+    // The null-city footnote renders for exactly this case.
+    expect(await screen.findByText(/no city set/i)).toBeInTheDocument();
+
+    const linkButton = await screen.findByRole("button", { name: /link a cast/i });
+    fireEvent.click(linkButton);
+    const option = await screen.findByRole("button", { name: /süd ensemble/i });
+    fireEvent.click(option);
+
+    await waitFor(() => {
+      expect(client.calls as unknown[]).toContainEqual({
+        table: "show_cast_eligibility",
+        method: "insert",
+        args: [{ show_id: "show-2", city_id: "lei", cast_id: "sued", org_id: "org-1", priority: 1 }],
+      });
+    });
+
+    // The city-scoped gap is closed, but a null-city date remains: the panel must hold.
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(onDone).not.toHaveBeenCalled();
+  });
 });
