@@ -1,0 +1,268 @@
+// Pure derivation for the Autopilot "Today" board: turns already-fetched reads
+// (open-tier attention, cancellation and roster facts, bounced asks, the
+// done-for-you feed) into a single TodayModel of "things that need a human"
+// plus the "done for you" feed. No React, no Supabase imports here — see
+// src/data/autopilot.ts for the data-access layer that populates TodayInput.
+
+import { parseDateOnly } from "@/lib/dates";
+import { computeTierAttention, type TierAttentionInput } from "@/lib/bookingCockpit";
+import type { BookingFlow, FlowTimes } from "@/lib/bookingFlow";
+
+export type TodayItemKind = "at_risk" | "cancelled_untold";
+
+export interface AtRiskDate {
+  kind: "at_risk";
+  showDateId: string;
+  date: string; // yyyy-mm-dd
+  title: string; // "Hamlet, Abend"
+  where: string; // "Thalia Theater, Hamburg"
+  placesEmpty: number;
+  daysOut: number;
+  /** True when no further tier exists AND no eligible artist is left unasked. */
+  exhausted: boolean;
+  nextCastName: string | null; // "Ensemble Nord"
+  nextCastFreeCount: number; // 6
+  rosterCount: number; // 14
+  rosterFreeCount: number; // 9
+}
+
+export interface CancelledUntoldDate {
+  kind: "cancelled_untold";
+  showDateId: string;
+  date: string;
+  title: string;
+  where: string;
+  daysOut: number;
+  artistNames: string[]; // still holding the date
+}
+
+export type TodayItem = AtRiskDate | CancelledUntoldDate;
+
+export interface BouncedAsk {
+  artistId: string;
+  artistName: string;
+  email: string;
+  showDateId: string;
+  dateLabel: string; // "Die Zauberflöte on 12 Sep"
+  bouncedAt: string; // ISO
+}
+
+export type FeedKind = "book" | "ask" | "draft" | "notify";
+export type FeedAffordance = "undo" | "review";
+
+export interface FeedRow {
+  id: string;
+  kind: FeedKind;
+  text: string;
+  at: string; // "07:02" | "Sun 19:00"
+  affordance: FeedAffordance;
+}
+
+export interface TodayModel {
+  items: TodayItem[];
+  bounced: BouncedAsk[];
+  feed: FeedRow[];
+  /** items.length + (bounced.length ? 1 : 0) — drives the headline and nav badge. */
+  openCount: number;
+  fillingOnTheirOwn: number;
+  bookedOvernight: number;
+}
+
+/**
+ * Per-date facts an at-risk card needs beyond what `fetchTierAttention`'s
+ * open-tier row already carries (`src/data/bookings.ts`): the venue/city
+ * label, whether a further tier could still be opened, how many eligible
+ * artists remain unasked across any tier, and the cast/roster figures the
+ * resolution options show. Keyed by `showDateId`.
+ *
+ * A show_date whose current open tier is flagged at-risk/expiring by
+ * `computeTierAttention` but has no matching facts row here is dropped from
+ * the board rather than rendered with a guessed exhaustion state.
+ */
+export interface AtRiskDateFacts {
+  showDateId: string;
+  where: string;
+  /** True when a tier beyond the one `fetchTierAttention` reports as open
+   *  still exists and has not been opened yet. */
+  hasUnopenedTier: boolean;
+  /** Eligible artists for this date, across the whole roster, who have not
+   *  been asked (offered) in any tier so far. */
+  unaskedEligibleCount: number;
+  nextCastName: string | null;
+  nextCastFreeCount: number;
+  rosterCount: number;
+  rosterFreeCount: number;
+}
+
+/**
+ * The raw "cancelled, cast not told" row the data layer produces: a
+ * show_date that cancelled while someone was still holding it.
+ * `artistNames` is expected to already be scoped by the data layer to the
+ * artists who were `confirmed`/`soft_booked` at the moment of cancellation
+ * (not a bare unanswered `suggested` offer, which is not "holding" the
+ * date) — `computeToday` still defensively drops any row whose list comes
+ * through empty, so there is never a card with nobody to tell.
+ */
+export interface CancelledUntoldInput {
+  showDateId: string;
+  date: string;
+  program: string | null;
+  subProgram: string | null;
+  venue: string | null;
+  cancellationReason: string | null;
+  castNotifiedAt: string | null;
+  artistNames: string[];
+}
+
+/**
+ * The raw done-for-you feed row the data layer produces. `at` is the
+ * already-formatted display timestamp ("07:02" | "Sun 19:00"); `actedAt` and
+ * `emailedAt` are the ISO instants `feedAffordance` reasons about.
+ */
+export interface FeedInput {
+  id: string;
+  kind: FeedKind;
+  text: string;
+  at: string;
+  actedAt: string; // ISO
+  emailedAt: string | null; // ISO, or null while the carrying email is unsent
+}
+
+/**
+ * The input bag `computeToday` takes: every read the board needs, already
+ * fetched by `src/data/autopilot.ts` (and `fetchTierAttention` in
+ * `src/data/bookings.ts`), so this module stays pure — no React, no
+ * Supabase.
+ */
+export interface TodayInput {
+  /** Open-tier attention rows, exactly as `fetchTierAttention` returns them. */
+  tierAttention: TierAttentionInput[];
+  /** Per-date facts `tierAttention` alone cannot supply — see `AtRiskDateFacts`. */
+  atRiskFacts: AtRiskDateFacts[];
+  cancelledUntold: CancelledUntoldInput[];
+  bounced: BouncedAsk[];
+  feed: FeedInput[];
+  flow: BookingFlow;
+  times: FlowTimes;
+  fillingOnTheirOwn: number;
+  bookedOvernight: number;
+}
+
+// The booking engine is Berlin-anchored (digest hours, expiry windows), so
+// "today" and the digest boundary must both be read in Europe/Berlin, not
+// the caller's local timezone. Same en-CA/Intl trick as bookingCockpit.ts.
+const berlinDayKey = (iso: string): string =>
+  new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Berlin",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(iso));
+
+const berlinMinutesSinceMidnight = (iso: string): number => {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/Berlin",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(new Date(iso));
+  const hour = Number(parts.find((p) => p.type === "hour")?.value ?? "0");
+  const minute = Number(parts.find((p) => p.type === "minute")?.value ?? "0");
+  return hour * 60 + minute;
+};
+
+/** Whole calendar days between two `yyyy-mm-dd` strings, parsed via the
+ *  timezone-safe `parseDateOnly` helper so the difference is stable
+ *  regardless of the caller's local timezone. */
+function daysBetween(dateKey: string, fromKey: string): number {
+  const ms = parseDateOnly(dateKey).getTime() - parseDateOnly(fromKey).getTime();
+  return Math.round(ms / 86_400_000);
+}
+
+function showTitle(program: string | null, subProgram: string | null): string {
+  return [program, subProgram].filter((part): part is string => !!part).join(", ") || "Untitled show";
+}
+
+/**
+ * The undo invariant. An action is reversible only while the email that
+ * carries it has not yet been sent. `emailedAt` non-null => "review".
+ * A digest-delivery org also loses undo once `now` passes the digest hour
+ * on the action's own day.
+ */
+export function feedAffordance(
+  row: { emailedAt: string | null; actedAt: string },
+  flow: { offer_delivery: "digest" | "immediate" },
+  times: { offerDigestHour: number },
+  now: Date,
+): FeedAffordance {
+  if (row.emailedAt !== null) return "review";
+  // Immediate delivery sends the mail the instant the action happens — there
+  // is no undo window to check the clock against.
+  if (flow.offer_delivery === "immediate") return "review";
+
+  const nowIso = now.toISOString();
+  const actedDay = berlinDayKey(row.actedAt);
+  const nowDay = berlinDayKey(nowIso);
+  if (nowDay > actedDay) return "review"; // a later Berlin day: the digest already ran
+  if (nowDay < actedDay) return "undo"; // defensive: now before the action, shouldn't happen
+  return berlinMinutesSinceMidnight(nowIso) >= times.offerDigestHour * 60 ? "review" : "undo";
+}
+
+export function computeToday(input: TodayInput, now: Date): TodayModel {
+  const todayKey = berlinDayKey(now.toISOString());
+  const factsByDate = new Map(input.atRiskFacts.map((f) => [f.showDateId, f]));
+
+  const atRiskItems: AtRiskDate[] = [];
+  const seenDates = new Set<string>();
+  for (const attention of computeTierAttention(input.tierAttention, now)) {
+    if (seenDates.has(attention.showDateId)) continue;
+    const facts = factsByDate.get(attention.showDateId);
+    if (!facts) continue; // no basis to render the card — drop it rather than guess
+    seenDates.add(attention.showDateId);
+    atRiskItems.push({
+      kind: "at_risk",
+      showDateId: attention.showDateId,
+      date: attention.date,
+      title: showTitle(attention.program, attention.subProgram),
+      where: facts.where,
+      placesEmpty: Math.max(0, attention.required - attention.filled),
+      daysOut: daysBetween(attention.date, todayKey),
+      exhausted: !facts.hasUnopenedTier && facts.unaskedEligibleCount === 0,
+      nextCastName: facts.nextCastName,
+      nextCastFreeCount: facts.nextCastFreeCount,
+      rosterCount: facts.rosterCount,
+      rosterFreeCount: facts.rosterFreeCount,
+    });
+  }
+
+  const cancelledItems: CancelledUntoldDate[] = input.cancelledUntold
+    .filter((row) => row.castNotifiedAt === null && row.artistNames.length > 0)
+    .map((row) => ({
+      kind: "cancelled_untold",
+      showDateId: row.showDateId,
+      date: row.date,
+      title: showTitle(row.program, row.subProgram),
+      where: row.venue ?? "",
+      daysOut: daysBetween(row.date, todayKey),
+      artistNames: row.artistNames,
+    }));
+
+  const items: TodayItem[] = [...atRiskItems, ...cancelledItems].sort((a, b) => a.date.localeCompare(b.date));
+
+  const feed: FeedRow[] = input.feed.map((row) => ({
+    id: row.id,
+    kind: row.kind,
+    text: row.text,
+    at: row.at,
+    affordance: feedAffordance({ emailedAt: row.emailedAt, actedAt: row.actedAt }, input.flow, input.times, now),
+  }));
+
+  return {
+    items,
+    bounced: input.bounced,
+    feed,
+    openCount: items.length + (input.bounced.length > 0 ? 1 : 0),
+    fillingOnTheirOwn: input.fillingOnTheirOwn,
+    bookedOvernight: input.bookedOvernight,
+  };
+}

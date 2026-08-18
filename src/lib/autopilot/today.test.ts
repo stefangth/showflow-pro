@@ -1,0 +1,303 @@
+import { describe, expect, it } from "vitest";
+import { BOOKING_FLOW_DEFAULTS } from "@/lib/bookingFlow";
+import type { TierAttentionInput } from "@/lib/bookingCockpit";
+import {
+  computeToday,
+  feedAffordance,
+  type AtRiskDateFacts,
+  type BouncedAsk,
+  type CancelledUntoldInput,
+  type FeedInput,
+  type TodayInput,
+} from "./today";
+
+const TIMES = { windowHours: 48, offerDigestHour: 19, confirmationDigestHour: 20 };
+const DIGEST_FLOW = { offer_delivery: "digest" as const };
+const IMMEDIATE_FLOW = { offer_delivery: "immediate" as const };
+
+describe("feedAffordance", () => {
+  it("returns review when emailedAt is non-null, regardless of clock", () => {
+    // now is deep in the small hours, well before the digest hour — would be
+    // "undo" on the clock alone, but the email already went out.
+    const now = new Date("2026-07-15T02:00:00Z");
+    const affordance = feedAffordance(
+      { emailedAt: "2026-07-15T01:00:00Z", actedAt: "2026-07-14T20:00:00Z" },
+      DIGEST_FLOW,
+      TIMES,
+      now,
+    );
+    expect(affordance).toBe("review");
+  });
+
+  it("returns undo for a digest org before the digest hour on the action's Berlin day", () => {
+    // Acted at 08:00 Berlin (06:00Z, CEST); now is 10:00 Berlin the same day — before 19:00.
+    const affordance = feedAffordance(
+      { emailedAt: null, actedAt: "2026-07-15T06:00:00Z" },
+      DIGEST_FLOW,
+      TIMES,
+      new Date("2026-07-15T08:00:00Z"),
+    );
+    expect(affordance).toBe("undo");
+  });
+
+  it("returns review for a digest org once past the digest hour on the action's Berlin day", () => {
+    // Acted at 08:00 Berlin (06:00Z); now is 20:00 Berlin the same day — past 19:00.
+    const affordance = feedAffordance(
+      { emailedAt: null, actedAt: "2026-07-15T06:00:00Z" },
+      DIGEST_FLOW,
+      TIMES,
+      new Date("2026-07-15T18:00:00Z"),
+    );
+    expect(affordance).toBe("review");
+  });
+
+  it("returns review immediately for an immediate-delivery org", () => {
+    // The mail is already gone the instant the action happened — no undo window at all.
+    const affordance = feedAffordance(
+      { emailedAt: null, actedAt: "2026-07-15T06:00:00Z" },
+      IMMEDIATE_FLOW,
+      TIMES,
+      new Date("2026-07-15T06:00:01Z"),
+    );
+    expect(affordance).toBe("review");
+  });
+
+  it("evaluates the digest boundary in Europe/Berlin, matching the brief's own example", () => {
+    // 20:00 UTC on the 17th is already 22:00 in Berlin (CEST, UTC+2) — well past a 19:00 digest.
+    const affordance = feedAffordance(
+      { emailedAt: null, actedAt: "2026-08-17T20:00:00Z" },
+      DIGEST_FLOW,
+      TIMES,
+      new Date("2026-08-17T20:15:00Z"),
+    );
+    expect(affordance).toBe("review");
+  });
+
+  it("evaluates the digest boundary in Berlin, not in raw UTC hours", () => {
+    // Acted at 17:30 UTC = 19:30 Berlin (already past the 19:00 digest). "now" is
+    // 18:00 UTC = 20:00 Berlin, same Berlin calendar day, still past the digest.
+    // A UTC-hour-only implementation would see 18 < 19 and wrongly answer "undo".
+    const affordance = feedAffordance(
+      { emailedAt: null, actedAt: "2026-08-17T17:30:00Z" },
+      DIGEST_FLOW,
+      TIMES,
+      new Date("2026-08-17T18:00:00Z"),
+    );
+    expect(affordance).toBe("review");
+  });
+});
+
+const NOW = new Date("2026-07-15T12:00:00Z"); // Berlin day key 2026-07-15
+
+const attentionBase: TierAttentionInput = {
+  showDateId: "d1",
+  date: "2026-07-20",
+  program: "Hamlet",
+  subProgram: "Abend",
+  custom: null,
+  slots: { main_cast: 2, understudies: 1 },
+  tier: 1,
+  bookings: [{ status: "soft_booked", offer_tier: 1, offer_expires_at: null }], // filled=1, required=3 -> at risk
+};
+
+const factsBase: AtRiskDateFacts = {
+  showDateId: "d1",
+  where: "Thalia Theater, Hamburg",
+  hasUnopenedTier: false,
+  unaskedEligibleCount: 0,
+  nextCastName: "Ensemble Nord",
+  nextCastFreeCount: 6,
+  rosterCount: 14,
+  rosterFreeCount: 9,
+};
+
+const cancelledBase: CancelledUntoldInput = {
+  showDateId: "c1",
+  date: "2026-07-18",
+  program: "Die Zauberflöte",
+  subProgram: null,
+  venue: "Opera House, Berlin",
+  cancellationReason: "venue_unavailable",
+  castNotifiedAt: null,
+  artistNames: ["Anna K.", "Ben O."],
+};
+
+function buildInput(overrides: Partial<TodayInput>): TodayInput {
+  return {
+    tierAttention: [],
+    atRiskFacts: [],
+    cancelledUntold: [],
+    bounced: [],
+    feed: [],
+    flow: BOOKING_FLOW_DEFAULTS,
+    times: TIMES,
+    fillingOnTheirOwn: 0,
+    bookedOvernight: 0,
+    ...overrides,
+  };
+}
+
+describe("computeToday: exhausted", () => {
+  it("is true only when there is no unopened tier AND no unasked eligible artist", () => {
+    const model = computeToday(
+      buildInput({
+        tierAttention: [attentionBase],
+        atRiskFacts: [{ ...factsBase, hasUnopenedTier: false, unaskedEligibleCount: 0 }],
+      }),
+      NOW,
+    );
+    expect(model.items).toHaveLength(1);
+    expect(model.items[0]).toMatchObject({ kind: "at_risk", exhausted: true });
+  });
+
+  it("is false when a further tier could still be opened", () => {
+    const model = computeToday(
+      buildInput({
+        tierAttention: [attentionBase],
+        atRiskFacts: [{ ...factsBase, hasUnopenedTier: true, unaskedEligibleCount: 0 }],
+      }),
+      NOW,
+    );
+    expect(model.items[0]).toMatchObject({ exhausted: false });
+  });
+
+  it("is false when an eligible artist has not yet been asked", () => {
+    const model = computeToday(
+      buildInput({
+        tierAttention: [attentionBase],
+        atRiskFacts: [{ ...factsBase, hasUnopenedTier: false, unaskedEligibleCount: 3 }],
+      }),
+      NOW,
+    );
+    expect(model.items[0]).toMatchObject({ exhausted: false });
+  });
+});
+
+describe("computeToday: at-risk date mapping", () => {
+  it("carries the resolution-option figures and computed places/daysOut", () => {
+    const model = computeToday(
+      buildInput({ tierAttention: [attentionBase], atRiskFacts: [factsBase] }),
+      NOW,
+    );
+    expect(model.items[0]).toMatchObject({
+      kind: "at_risk",
+      showDateId: "d1",
+      date: "2026-07-20",
+      title: "Hamlet, Abend",
+      where: "Thalia Theater, Hamburg",
+      placesEmpty: 2, // required 3 - filled 1
+      daysOut: 5, // 2026-07-20 minus 2026-07-15
+      nextCastName: "Ensemble Nord",
+      nextCastFreeCount: 6,
+      rosterCount: 14,
+      rosterFreeCount: 9,
+    });
+  });
+
+  it("drops an at-risk date with no matching facts row rather than guessing", () => {
+    const model = computeToday(
+      buildInput({ tierAttention: [attentionBase], atRiskFacts: [] }),
+      NOW,
+    );
+    expect(model.items).toHaveLength(0);
+  });
+});
+
+describe("computeToday: cancelled, cast not told", () => {
+  it("excludes a cancelled date whose cast_notified_at is set", () => {
+    const model = computeToday(
+      buildInput({ cancelledUntold: [{ ...cancelledBase, castNotifiedAt: "2026-07-10T09:00:00Z" }] }),
+      NOW,
+    );
+    expect(model.items).toHaveLength(0);
+  });
+
+  it("excludes a cancelled date with no confirmed or soft-booked artists (nobody to tell)", () => {
+    const model = computeToday(
+      buildInput({ cancelledUntold: [{ ...cancelledBase, artistNames: [] }] }),
+      NOW,
+    );
+    expect(model.items).toHaveLength(0);
+  });
+
+  it("includes a cancelled date with someone still holding it and not yet told", () => {
+    const model = computeToday(buildInput({ cancelledUntold: [cancelledBase] }), NOW);
+    expect(model.items).toHaveLength(1);
+    expect(model.items[0]).toMatchObject({
+      kind: "cancelled_untold",
+      showDateId: "c1",
+      date: "2026-07-18",
+      title: "Die Zauberflöte",
+      where: "Opera House, Berlin",
+      daysOut: 3,
+      artistNames: ["Anna K.", "Ben O."],
+    });
+  });
+});
+
+describe("computeToday: openCount", () => {
+  it("counts the bounced banner once, not once per bounced ask", () => {
+    const bounced: BouncedAsk[] = [
+      { artistId: "a1", artistName: "Anna K.", email: "anna@example.com", showDateId: "d1", dateLabel: "Hamlet on 20 Jul", bouncedAt: "2026-07-14T09:00:00Z" },
+      { artistId: "a2", artistName: "Ben O.", email: "ben@example.com", showDateId: "d1", dateLabel: "Hamlet on 20 Jul", bouncedAt: "2026-07-14T09:05:00Z" },
+      { artistId: "a3", artistName: "Cara M.", email: "cara@example.com", showDateId: "d1", dateLabel: "Hamlet on 20 Jul", bouncedAt: "2026-07-14T09:10:00Z" },
+    ];
+    const model = computeToday(
+      buildInput({
+        tierAttention: [attentionBase],
+        atRiskFacts: [factsBase],
+        bounced,
+      }),
+      NOW,
+    );
+    expect(model.items).toHaveLength(1);
+    expect(model.bounced).toHaveLength(3);
+    expect(model.openCount).toBe(2); // 1 item + 1 banner, not 1 + 3
+  });
+
+  it("adds nothing for the banner when there are no bounced asks", () => {
+    const model = computeToday(
+      buildInput({ tierAttention: [attentionBase], atRiskFacts: [factsBase], bounced: [] }),
+      NOW,
+    );
+    expect(model.openCount).toBe(1);
+  });
+});
+
+describe("computeToday: sorting", () => {
+  it("sorts items by date ascending, mixing kinds", () => {
+    const laterAtRisk: TierAttentionInput = { ...attentionBase, showDateId: "d2", date: "2026-07-25" };
+    const laterFacts: AtRiskDateFacts = { ...factsBase, showDateId: "d2" };
+    const earlierCancelled: CancelledUntoldInput = { ...cancelledBase, showDateId: "c1", date: "2026-07-16" };
+
+    const model = computeToday(
+      buildInput({
+        tierAttention: [laterAtRisk],
+        atRiskFacts: [laterFacts],
+        cancelledUntold: [earlierCancelled],
+      }),
+      NOW,
+    );
+    expect(model.items.map((i) => i.date)).toEqual(["2026-07-16", "2026-07-25"]);
+    expect(model.items.map((i) => i.kind)).toEqual(["cancelled_untold", "at_risk"]);
+  });
+});
+
+describe("computeToday: feed and pass-through counts", () => {
+  it("maps feed rows through feedAffordance and passes fillingOnTheirOwn/bookedOvernight through", () => {
+    const feed: FeedInput[] = [
+      { id: "f1", kind: "ask", text: "Asked Anna K.", at: "07:02", actedAt: "2026-07-15T06:00:00Z", emailedAt: "2026-07-15T06:01:00Z" },
+      { id: "f2", kind: "book", text: "Booked Ben O.", at: "07:05", actedAt: "2026-07-15T06:00:00Z", emailedAt: null },
+    ];
+    const model = computeToday(
+      buildInput({ feed, fillingOnTheirOwn: 4, bookedOvernight: 2 }),
+      new Date("2026-07-15T08:00:00Z"), // 10:00 Berlin — before the 19:00 digest
+    );
+    expect(model.feed).toEqual([
+      { id: "f1", kind: "ask", text: "Asked Anna K.", at: "07:02", affordance: "review" }, // already emailed
+      { id: "f2", kind: "book", text: "Booked Ben O.", at: "07:05", affordance: "undo" }, // not yet emailed, before digest
+    ]);
+    expect(model.fillingOnTheirOwn).toBe(4);
+    expect(model.bookedOvernight).toBe(2);
+  });
+});
