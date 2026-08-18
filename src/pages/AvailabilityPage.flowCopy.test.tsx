@@ -4,12 +4,19 @@ import { renderWithProviders } from "@/test/renderWithProviders";
 import { createFakeSupabase } from "@/test/supabaseFake";
 import { BOOKING_FLOW_DEFAULTS, applyPreset, type BookingFlow, type FlowTimes } from "@/lib/bookingFlow";
 import { DEFAULT_FLOW_TIMES } from "@/data/settings";
+import i18n from "@/i18n";
 
 /**
- * Task 4: AvailabilityPage's H1/subtitle must derive from
- * availabilityPageCopy(flow) (src/lib/flowCopy.ts) instead of a hardcoded
- * "My Offers" title, so a direct-booking org (artist_acceptance = false)
- * sees "My Dates" / a block-dates subtitle instead.
+ * Task 4 (superseded by the screen-08 redesign): AvailabilityPage's H1 used to
+ * derive from availabilityPageCopy(flow) (src/lib/flowCopy.ts), swapping "My
+ * Offers" for "My Dates" on a direct-booking org (artist_acceptance = false).
+ * The redesign replaced that flow-aware H1 with a fixed headline
+ * (`availability:firstRun.headline`, rendered by AvailabilityFirstRun) — the
+ * flow-awareness moved into the "How booking works here" rules card instead:
+ * `firstRun.rules.offersBody` ("One digest at {{time}}...") for an
+ * offers-by-email org vs `firstRun.rules.offersBodyDirect` ("You are booked
+ * directly...") for a direct-book org. The describe block below asserts that
+ * relocated copy rather than the removed title.
  *
  * The former per-row status badge assertions ("Not booked" / "No offer yet",
  * sourced from bookingStatusLabels(flow)) were dropped in the calendar-surface
@@ -72,21 +79,22 @@ vi.mock("@/hooks/useBookingFlow", () => ({
 
 import AvailabilityPage from "./AvailabilityPage";
 
-describe("AvailabilityPage flow-aware copy (Task 4)", () => {
-  it("classic flow: keeps the My Offers title and offer-worded subtitle", async () => {
+describe("AvailabilityPage flow-aware copy (Task 4, relocated by the screen-08 redesign)", () => {
+  it("offers-by-email flow: fixed headline renders, with the offers-digest rules copy (not the direct-book copy)", async () => {
     flowHolder.flow = BOOKING_FLOW_DEFAULTS;
     renderWithProviders(<AvailabilityPage />);
 
-    expect(await screen.findByRole("heading", { name: "My Offers" })).toBeInTheDocument();
-    expect(screen.getByText(/View your offers/)).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: i18n.t("availability:firstRun.headline") })).toBeInTheDocument();
+    expect(screen.getByText(/One digest at/)).toBeInTheDocument();
+    expect(screen.queryByText(/booked directly/)).not.toBeInTheDocument();
   });
 
-  it("direct flow: swaps to My Dates, a block-dates subtitle, and Not booked status", async () => {
+  it("direct flow: fixed headline renders, with the direct-book rules copy", async () => {
     flowHolder.flow = applyPreset(BOOKING_FLOW_DEFAULTS, "direct");
     renderWithProviders(<AvailabilityPage />);
 
-    expect(await screen.findByRole("heading", { name: "My Dates" })).toBeInTheDocument();
-    expect(screen.getByText(/Block dates you can't perform/)).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: i18n.t("availability:firstRun.headline") })).toBeInTheDocument();
+    expect(screen.getByText(/booked directly/)).toBeInTheDocument();
   });
 });
 
@@ -122,7 +130,7 @@ describe("AvailabilityPage timing line (R2.1/R4.7)", () => {
     timesHolder.times = DEFAULT_FLOW_TIMES;
     renderWithProviders(<AvailabilityPage />);
 
-    expect(await screen.findByRole("heading", { name: "My Dates" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: i18n.t("availability:firstRun.headline") })).toBeInTheDocument();
     expect(screen.queryByTestId("availability-timing")).not.toBeInTheDocument();
   });
 

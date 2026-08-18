@@ -51,6 +51,11 @@ function dedupeRowsByKey<T extends { key: string }>(rows: T[]): T[] {
  *  Get-running Airtable rail/summary, screen 11) can share one data-wiring implementation. */
 export interface AirtableConsole {
   canWrite: boolean;
+  /** True once the two queries that decide connected-vs-not (key status + settings) have
+   *  settled — lets a caller latch a rail-vs-summary mode exactly once instead of
+   *  re-deriving it from `keyPresent`/`hasBaseTable` on every render (see
+   *  `AirtableConnect`, screen 11). */
+  ready: boolean;
 
   // connection / key
   keyPresent: boolean;
@@ -551,6 +556,7 @@ export function useAirtableConsole(
 
   return {
     canWrite,
+    ready: !keyStatusQ.isLoading && !settingsQ.isLoading,
 
     keyPresent,
     keyUpdatedAt: keyStatusQ.data?.updatedAt ?? null,

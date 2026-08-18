@@ -254,7 +254,7 @@ export default function ProfilePage() {
           <div className="rounded-l border border-border bg-card overflow-hidden shadow-elev1">
             <GroupHeader
               right={
-                <div className="flex flex-1 items-center justify-end gap-6">
+                <div className="flex flex-1 items-center justify-end gap-4">
                   <span className="w-[52px] text-center text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{t("notifications.columnEmail")}</span>
                   <span className="w-[52px] text-center text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{t("notifications.columnInApp")}</span>
                 </div>
