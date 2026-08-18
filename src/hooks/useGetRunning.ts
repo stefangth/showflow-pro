@@ -47,7 +47,11 @@ export function useGetRunning(): { model: GetRunningModel | null; isLoading: boo
   const producerCount = useProducerCount(orgId, isNonArtist && bookingOn);
 
   // A producer granted either edit_* capability can actually run the org setup, same as the
-  // dashboard's own capability reads. Called unconditionally (rules of hooks).
+  // dashboard's own capability reads. Called unconditionally (rules of hooks). The get_dates
+  // phase splits by write path: `dates` (create shows) reads manage_productions; `slots`
+  // (write show_slots) reads edit_scheduling — the capability the show_slots RLS enforces.
+  const canManageShows = useCan("manage_productions");
+  const canEditScheduling = useCan("edit_scheduling");
   const canEditBooking = useCan("edit_booking_settings");
   const canEditHire = useCan("edit_hire_order_settings");
   const canAddArtists = useCan("add_artists");
@@ -68,6 +72,8 @@ export function useGetRunning(): { model: GetRunningModel | null; isLoading: boo
     // step, not a real Airtable sync signal.
     datesDone: bookingOn ? (booking.status.steps.find((s) => s.key === "shows")?.done ?? false) : false,
     producerCount,
+    canManageShows,
+    canEditScheduling,
     canEditBooking,
     canEditHire,
     canAddArtists,

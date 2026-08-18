@@ -25,7 +25,6 @@ export type PageKey =
   | 'chats'
   | 'productions'
   | 'artists'
-  | 'admin'
   | 'platform'
   | 'hireOrders';
 

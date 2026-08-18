@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { createFakeSupabase } from "@/test/supabaseFake";
-import { fetchAdminAuditLogs, fetchAdminStats } from "./admin";
+import { fetchAdminAuditLogs } from "./admin";
 
 describe("fetchAdminAuditLogs", () => {
   it("selects newest-first with the artist join and applies the limit", async () => {
@@ -21,30 +21,5 @@ describe("fetchAdminAuditLogs", () => {
   it("throws on error", async () => {
     const fake = createFakeSupabase({ booking_audit_log: { data: null, error: { message: "boom" } } });
     await expect(fetchAdminAuditLogs(fake as never, 50, "org-1")).rejects.toBeTruthy();
-  });
-});
-
-describe("fetchAdminStats", () => {
-  it("returns head counts per table", async () => {
-    const fake = createFakeSupabase({
-      shows: { data: null, count: 5, error: null },
-      artists: { data: null, count: 12, error: null },
-      bookings: { data: null, count: 30, error: null },
-    });
-    const stats = await fetchAdminStats(fake as never, "org-1");
-    expect(stats).toEqual({ shows: 5, artists: 12, bookings: 30 });
-    // Server-side head counts: no row data transferred.
-    expect(fake.calls).toContainEqual({ table: "shows", method: "select", args: ["*", { count: "exact", head: true }] });
-    expect(fake.calls).toContainEqual({ table: "artists", method: "select", args: ["*", { count: "exact", head: true }] });
-    expect(fake.calls).toContainEqual({ table: "bookings", method: "select", args: ["*", { count: "exact", head: true }] });
-  });
-
-  it("defaults missing counts to 0", async () => {
-    const fake = createFakeSupabase({
-      shows: { data: null, count: null, error: null },
-      artists: { data: null, count: null, error: null },
-      bookings: { data: null, count: null, error: null },
-    });
-    expect(await fetchAdminStats(fake as never, "org-1")).toEqual({ shows: 0, artists: 0, bookings: 0 });
   });
 });

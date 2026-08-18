@@ -33,7 +33,6 @@ const ROUTE_LABELS: Record<string, string> = {
   [ROUTES.BOOKINGS]:     'Shows & Bookings',
   [ROUTES.ARTISTS]:      'Artists',
   [ROUTES.AVAILABILITY]: 'Availability',
-  [ROUTES.ADMIN]:        'Admin',
   [ROUTES.SETTINGS]:     'Settings',
   [ROUTES.CHATS]:        'Chats',
 };
@@ -157,7 +156,6 @@ function AccessTab({
                         id={`${route}-${role}`}
                         checked={roles.includes(role)}
                         onCheckedChange={() => toggleRole(route, role)}
-                        disabled={route === ROUTES.ADMIN && role === 'admin'}
                       />
                       <Label htmlFor={`${route}-${role}`} className="text-xs cursor-pointer">
                         {roleLabel(role)}

@@ -3,7 +3,7 @@ import { useAuth } from '@/features/auth/AuthContext';
 import { isImpersonating } from '@/features/auth/orgRoles';
 import { useLanguage } from '@/features/i18n/LanguageContext';
 import { useRailDismissed } from '@/components/setup/useRailDismissed';
-import { DashboardWelcomeCollapsed } from '@/components/dashboard/firstRun/DashboardWelcomeCollapsed';
+import { PageMiniCollapsed } from './PageMiniCollapsed';
 import type { Lang } from '@/i18n/config';
 import { MINIS, resolveMiniRole, type MiniDef, type MiniRole, type RegisteredPageKey } from '@/lib/minis';
 import { ART } from './illustrations';
@@ -34,7 +34,7 @@ export function PageMiniView({ def, role, lang, art, dismissed, onHide, onResume
 
   if (dismissed) {
     return (
-      <DashboardWelcomeCollapsed
+      <PageMiniCollapsed
         label={def.eyebrow[lang]}
         hint={RESUME_HINT[lang]}
         ctaLabel={RESUME_CTA[lang]}
