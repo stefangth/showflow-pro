@@ -133,7 +133,14 @@ export default function GetRunningPage() {
           <div className={selected ? "grid items-start gap-5 lg:grid-cols-[1fr_440px]" : "flex flex-col gap-5"}>
             <div className="flex min-w-0 flex-col gap-5">
               {model.phases.map((phase) => (
-                <PhaseCard key={phase.key} phase={phase} role={role} adminNames={adminNames} onOpenTask={setSelectedTask} />
+                <PhaseCard
+                  key={phase.key}
+                  phase={phase}
+                  role={role}
+                  adminNames={adminNames}
+                  onOpenTask={setSelectedTask}
+                  activeKey={selectedTask}
+                />
               ))}
             </div>
             {selected && (

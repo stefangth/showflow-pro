@@ -2,7 +2,9 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { cn } from "@/lib/utils";
 import { useShows } from "@/hooks/useShows";
 import { useAllCities } from "@/hooks/useAllCities";
 import { fetchCasts, fetchCastMemberCounts } from "@/data/casts";
@@ -18,11 +20,24 @@ interface CastOption {
   memberCount: number;
 }
 
+/** One production's regrouped coverage: its future cities, which of them a tier-1
+ *  cast already covers (and by which distinct casts), which are still gaps, and the
+ *  aggregated date/city totals across the whole production. */
+interface ProductionCoverage {
+  showId: string;
+  cityCount: number;
+  dateTotal: number;
+  uncoveredCityIds: string[];
+  coveringCastIds: string[];
+}
+
 /**
- * The `eligibility` task's in-panel body (screen 02 "list" shape): one row per
- * (show, city) pair with a future date, covered pairs shown as a confirmed badge, gaps
- * shown as a dashed accent "Link a cast" affordance opening a cast picker. Picking a
- * cast writes tier 1 for that exact (show, city, cast) via `setShowCastPriority`
+ * The `eligibility` task's in-panel body (screen 02 "list" shape): one card per
+ * PRODUCTION (show), with the eligible casts listed as chips below each production.
+ * A production with a future date in every city already covered by a tier-1 cast reads
+ * "Fully covered"; a production with one or more uncovered cities reads "N gaps" and
+ * offers a dashed "Link a cast" chip. Picking a cast FANS OUT the write, ranking that
+ * cast tier 1 for the production across EVERY uncovered city via `setShowCastPriority`
  * (`src/data/eligibility.ts`) — the same call that both links the cast (creates the
  * eligibility gate row) and covers the pair, since a prioritized cast is by definition
  * eligible.
@@ -74,6 +89,7 @@ export function EligibilityPanelBody({
     [shows],
   );
   const cityNameById = useMemo(() => new Map(cities.map((c) => [c.id, c.name])), [cities]);
+  const castNameById = useMemo(() => new Map(casts.map((c) => [c.id, c.name])), [casts]);
   const castOptions: CastOption[] = useMemo(
     () => casts.map((c) => ({ id: c.id, name: c.name, memberCount: castCounts[c.id] ?? 0 })),
     [casts, castCounts],
@@ -84,22 +100,6 @@ export function EligibilityPanelBody({
     [coverage],
   );
   const futurePairs = useMemo(() => coverage?.futurePairs ?? [], [coverage]);
-
-  // Unique (show, city) pairs that have a real city, in first-appearance order — the
-  // row list. A null-city future date carries no pair to rank a cast against, so it
-  // surfaces only through the `hasNullCity` footnote below, never as a row here.
-  const pairs = useMemo(() => {
-    const seen = new Set<string>();
-    const out: { showId: string; cityId: string }[] = [];
-    for (const p of futurePairs) {
-      if (!p.cityId) continue;
-      const key = `${p.showId}|${p.cityId}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      out.push({ showId: p.showId, cityId: p.cityId });
-    }
-    return out;
-  }, [futurePairs]);
 
   const dateCountByPair = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -116,80 +116,175 @@ export function EligibilityPanelBody({
     [result],
   );
 
+  // Regroup the flat (show, city) coverage into one entry per PRODUCTION, in stable
+  // first-appearance order of shows. A null-city future date carries no pair to rank a
+  // cast against, so it surfaces only through the `hasNullCity` footnote below, never
+  // as a production city here. The covering cast of a covered city mirrors
+  // resolveCoverage's own scoped-then-fallback ladder lookup, so the chip we show is
+  // exactly the cast the engine would resolve to.
+  const productions = useMemo<ProductionCoverage[]>(() => {
+    const showPriorities = coverage?.showPriorities ?? [];
+    const cityPriorities = coverage?.cityPriorities ?? [];
+    const coveringCastId = (showId: string, cityId: string): string | null => {
+      const scoped = showPriorities.filter((r) => r.showId === showId && r.cityId === cityId);
+      const ladder = scoped.length > 0 ? scoped : cityPriorities.filter((r) => r.cityId === cityId);
+      return ladder.find((r) => r.priority === 1)?.castId ?? null;
+    };
+
+    const order: string[] = [];
+    const cityIdsByShow = new Map<string, string[]>();
+    const seenCity = new Map<string, Set<string>>();
+    for (const p of futurePairs) {
+      if (!p.cityId) continue;
+      if (!cityIdsByShow.has(p.showId)) {
+        cityIdsByShow.set(p.showId, []);
+        seenCity.set(p.showId, new Set());
+        order.push(p.showId);
+      }
+      const seen = seenCity.get(p.showId)!;
+      if (!seen.has(p.cityId)) {
+        seen.add(p.cityId);
+        cityIdsByShow.get(p.showId)!.push(p.cityId);
+      }
+    }
+
+    return order.map((showId) => {
+      const cityIds = cityIdsByShow.get(showId)!;
+      const uncoveredCityIds: string[] = [];
+      const coveringCastIds: string[] = [];
+      const seenCast = new Set<string>();
+      let dateTotal = 0;
+      for (const cityId of cityIds) {
+        dateTotal += dateCountByPair[`${showId}|${cityId}`] ?? 0;
+        if (uncoveredKeys.has(`${showId}|${cityId}`)) {
+          uncoveredCityIds.push(cityId);
+          continue;
+        }
+        const castId = coveringCastId(showId, cityId);
+        if (castId && !seenCast.has(castId)) {
+          seenCast.add(castId);
+          coveringCastIds.push(castId);
+        }
+      }
+      return { showId, cityCount: cityIds.length, dateTotal, uncoveredCityIds, coveringCastIds };
+    });
+  }, [futurePairs, coverage, dateCountByPair, uncoveredKeys]);
+
+  // The fan-out below owns invalidation and the toast: one batch of writes is a single
+  // user action, so it refreshes the queries once (not once per city) and surfaces one
+  // toast, rather than N of each.
   const linkCast = useMutation({
     mutationFn: (args: { showId: string; cityId: string; castId: string; orgId: string }) =>
       setShowCastPriority(supabase, {
         showId: args.showId, cityId: args.cityId, castId: args.castId, orgId: args.orgId, priority: 1,
       }),
-    onSuccess: (_data, variables) => {
+  });
+
+  // Fan the chosen cast across EVERY uncovered city of the production. onDone fires only
+  // on the gap→covered TRANSITION this batch causes: the batch must close the LAST
+  // remaining gaps (nothing still uncovered once this production's cities are excluded)
+  // AND there must be no null-city date left, matching the board's OWN eligibility.done
+  // rule (computeBookingSetupStatus: `uncoveredPairs.length === 0 && !hasNullCity`). A
+  // future date with no city keeps the task outstanding — the nullCityNote below renders
+  // for exactly that case — so advancing on the last city link while the board still
+  // flags eligibility would just make the admin reopen it.
+  const linkCastToProduction = async (showId: string, uncoveredCityIds: string[], castId: string) => {
+    if (!orgId || uncoveredCityIds.length === 0) return;
+    const closing = new Set(uncoveredCityIds.map((cityId) => `${showId}|${cityId}`));
+    const remaining = [...uncoveredKeys].filter((k) => !closing.has(k));
+    const willComplete = remaining.length === 0 && !result.hasNullCity;
+    try {
+      await Promise.all(
+        uncoveredCityIds.map((cityId) => linkCast.mutateAsync({ showId, cityId, castId, orgId })),
+      );
+      toast.success(t("panel.body.eligibility.castLinked"));
+      if (willComplete) onDone();
+    } catch (e) {
+      toast.error((e as Error).message ?? t("panel.body.eligibility.castLinkFailed"));
+    } finally {
+      // Once per batch, and in `finally` so a partial success (some cities written before
+      // another rejected) still refreshes the affected queries.
       qc.invalidateQueries({ queryKey: ["eligibility"] });
       qc.invalidateQueries({ queryKey: ["eligible-artists"] });
       qc.invalidateQueries({ queryKey: ["artist-eligible-dates"] });
       qc.invalidateQueries({ queryKey: ["offer-tiers"] });
-      toast.success(t("panel.body.eligibility.castLinked"));
-      // Fire onDone only on the gap→covered TRANSITION this exact write caused: the
-      // written pair must itself have been uncovered BEFORE this write, and it must
-      // have been the last one (nothing else still uncovered once it's excluded).
-      // Checking `uncoveredKeys.size === 0` alone is wrong once every pair is already
-      // covered: it would then be trivially true and re-fire onDone on any later write
-      // to this mutation. See LadderPanelBody's identical guard for the bug this fixes.
-      //
-      // Also require !hasNullCity, matching the board's OWN eligibility.done rule
-      // (computeBookingSetupStatus: `uncoveredPairs.length === 0 && !hasNullCity`). A
-      // future date with no city set keeps the task outstanding — the nullCityNote below
-      // renders for exactly that case — so advancing/closing the panel on the last
-      // city-scoped link, while the board still flags eligibility, would just make the
-      // admin reopen it. (Ladder has no such dependency, hence no equivalent clause there.)
-      const key = `${variables.showId}|${variables.cityId}`;
-      const wasUncovered = uncoveredKeys.has(key);
-      const remaining = [...uncoveredKeys].filter((k) => k !== key);
-      if (wasUncovered && remaining.length === 0 && !result.hasNullCity) onDone();
-    },
-    onError: (e: Error) => toast.error(e.message ?? t("panel.body.eligibility.castLinkFailed")),
-  });
+    }
+  };
 
-  const firstGap = pairs.find((p) => uncoveredKeys.has(`${p.showId}|${p.cityId}`));
+  const firstGap = productions.find((p) => p.uncoveredCityIds.length > 0);
   const firstGapShowName = firstGap ? showNameById.get(firstGap.showId) ?? "" : "";
-  const firstGapCount = firstGap ? dateCountByPair[`${firstGap.showId}|${firstGap.cityId}`] ?? 0 : 0;
+  const firstGapCount = firstGap
+    ? firstGap.uncoveredCityIds.reduce((sum, c) => sum + (dateCountByPair[`${firstGap.showId}|${c}`] ?? 0), 0)
+    : 0;
 
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2">
-        <span className="text-xs text-muted-foreground">{t("panel.body.eligibility.showsWithDates")}</span>
+        <span className="text-xs text-muted-foreground">{t("panel.body.eligibility.byProduction")}</span>
         <span className="font-mono text-xs text-[var(--amber-600)]">
           {t("panel.body.eligibility.gapCount", { count: result.uncoveredPairs.length })}
         </span>
       </div>
 
-      <div className="divide-y divide-border rounded-[var(--radius-l)] border border-border">
-        {pairs.map((p) => {
-          const key = `${p.showId}|${p.cityId}`;
-          const covered = !uncoveredKeys.has(key);
-          const dateCount = dateCountByPair[key] ?? 0;
+      <div className="space-y-2">
+        {productions.map((prod) => {
+          const hasGap = prod.uncoveredCityIds.length > 0;
+          const uncoveredCityNames = prod.uncoveredCityIds
+            .map((id) => cityNameById.get(id) ?? id)
+            .join(", ");
 
           return (
-            <div key={key} className="flex items-center justify-between gap-3 px-3 py-2.5">
-              <div className="min-w-0">
-                <p className="truncate text-sm font-medium text-foreground">
-                  {showNameById.get(p.showId) ?? p.showId} · {cityNameById.get(p.cityId) ?? p.cityId}
-                </p>
-                <p className="font-mono text-xs text-muted-foreground">
-                  {t("panel.body.eligibility.dateCount", { count: dateCount })}
-                </p>
-              </div>
-              <div className="shrink-0">
-                {covered ? (
-                  <Badge variant="confirmed">{t("panel.body.eligibility.covered")}</Badge>
+            <div
+              key={prod.showId}
+              className={cn(
+                "rounded-[var(--radius-l)] border p-3",
+                hasGap ? "border-accent-200" : "border-border",
+              )}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <span className="min-w-0 truncate text-[13px] font-medium text-foreground">
+                  {showNameById.get(prod.showId) ?? prod.showId}
+                </span>
+                {hasGap ? (
+                  <Badge variant="risk" className="shrink-0">
+                    {t("panel.body.eligibility.gapCount", { count: prod.uncoveredCityIds.length })}
+                  </Badge>
                 ) : (
+                  <Badge variant="confirmed" className="shrink-0">
+                    {t("panel.body.eligibility.fullyCovered")}
+                  </Badge>
+                )}
+              </div>
+
+              <p className="mt-1 font-mono text-[11px] text-muted-foreground">
+                {t("panel.body.eligibility.dateCount", { count: prod.dateTotal })}
+                {" · "}
+                {t("panel.body.eligibility.cityCount", { count: prod.cityCount })}
+              </p>
+
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {prod.coveringCastIds.map((castId) => (
+                  <span
+                    key={castId}
+                    className="inline-flex h-6 items-center gap-1.5 rounded-[var(--radius-s)] border border-accent-200 bg-accent-100 px-2 text-xs font-medium text-accent-700"
+                  >
+                    <Users className="h-3 w-3" />
+                    {castNameById.get(castId) ?? castId}
+                  </span>
+                ))}
+                {hasGap && (
                   <CastPicker
                     options={castOptions}
-                    onSelect={(castId) => {
-                      if (!orgId) return;
-                      linkCast.mutate({ showId: p.showId, cityId: p.cityId, castId, orgId });
-                    }}
+                    onSelect={(castId) => linkCastToProduction(prod.showId, prod.uncoveredCityIds, castId)}
                   />
                 )}
               </div>
+
+              {hasGap && (
+                <p className="mt-2 text-[11px] text-muted-foreground">
+                  {t("panel.body.eligibility.noCastYet", { cities: uncoveredCityNames })}
+                </p>
+              )}
             </div>
           );
         })}
@@ -208,10 +303,10 @@ export function EligibilityPanelBody({
   );
 }
 
-/** A gap row's cast picker: a dashed accent affordance that opens a popover list of
- *  the org's casts (name + member count), the same option-list shape as
- *  `LadderPanelBody`'s `CastPicker` / `TierCell`'s option list — minus any clear
- *  action, since this panel only ever links a cast, it never unlinks one. */
+/** A gap card's cast picker: a dashed accent chip that opens a popover list of the
+ *  org's casts (name + member count), the same option-list shape as `LadderPanelBody`'s
+ *  `CastPicker` / `TierCell`'s option list — minus any clear action, since this panel
+ *  only ever links a cast, it never unlinks one. */
 function CastPicker({
   options,
   onSelect,
@@ -226,7 +321,7 @@ function CastPicker({
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="shrink-0 rounded-[var(--radius-s)] border border-dashed border-accent-200 px-2.5 py-1 text-xs font-medium text-accent-700 hover:bg-accent"
+          className="inline-flex h-6 shrink-0 items-center rounded-[var(--radius-s)] border border-dashed border-accent-200 px-2.5 text-xs font-medium text-accent-700 hover:bg-accent"
         >
           {t("panel.body.eligibility.linkACast")}
         </button>

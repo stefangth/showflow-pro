@@ -38,7 +38,7 @@ export function DemoBar() {
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2 bg-accent-50 border-b-[0.5px] border-border text-sm">
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2 bg-primary/5 border-b-[0.5px] border-border text-sm">
       <Badge variant="outline" className="shrink-0 whitespace-nowrap border-primary text-primary gap-1">
         <Play className="h-3 w-3" /> Demo mode
       </Badge>

@@ -164,6 +164,11 @@
         "unlocks": "Angebote und Direktbuchungen wählen beide aus dieser Liste. Artists bekommen keine E-Mail, bevor du ihnen ein Datum anbietest."
       },
       "ladder": {
+        "createLabel": "Neue Besetzung",
+        "namePlaceholder": "Name der Besetzung",
+        "create": "Besetzung erstellen",
+        "castCreated": "Besetzung erstellt",
+        "castCreateFailed": "Besetzung konnte nicht erstellt werden",
         "citiesWithDates": "Städte mit Terminen",
         "unrankedCount_one": "{{count}} ohne Rang",
         "unrankedCount_other": "{{count}} ohne Rang",
@@ -182,12 +187,10 @@
         "tierUpdateFailed": "Stufe {{tier}} konnte nicht gesetzt werden"
       },
       "eligibility": {
-        "showsWithDates": "Shows mit Terminen",
         "gapCount_one": "{{count}} Lücke",
         "gapCount_other": "{{count}} Lücken",
         "dateCount_one": "{{count}} Termin",
         "dateCount_other": "{{count}} Termine",
-        "covered": "Abgedeckt",
         "linkACast": "Besetzung verknüpfen",
         "noCastsAvailable": "Noch keine Besetzungen",
         "memberCount_one": "{{count}} Mitglied",
@@ -197,7 +200,12 @@
         "unlocks_other": "Verknüpfe eine Besetzung mit {{show}} und {{count}} Termine werden anbietbar.",
         "unlocksDone": "Jede Show und Stadt hat eine Besetzung auf Stufe 1.",
         "castLinked": "Besetzung verknüpft",
-        "castLinkFailed": "Besetzung konnte nicht verknüpft werden"
+        "castLinkFailed": "Besetzung konnte nicht verknüpft werden",
+        "byProduction": "Abdeckung nach Produktion",
+        "fullyCovered": "Vollständig abgedeckt",
+        "cityCount_one": "{{count}} Stadt",
+        "cityCount_other": "{{count}} Städte",
+        "noCastYet": "Noch keine Besetzung in {{cities}}"
       }
     }
   },

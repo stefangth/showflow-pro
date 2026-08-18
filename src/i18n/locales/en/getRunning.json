@@ -164,6 +164,11 @@
         "unlocks": "Offers and direct bookings both pick from this list. Artists get no email until you offer them a date."
       },
       "ladder": {
+        "createLabel": "New cast",
+        "namePlaceholder": "Cast name",
+        "create": "Create cast",
+        "castCreated": "Cast created",
+        "castCreateFailed": "Could not create cast",
         "citiesWithDates": "Cities with dates",
         "unrankedCount_one": "{{count}} unranked",
         "unrankedCount_other": "{{count}} unranked",
@@ -182,12 +187,10 @@
         "tierUpdateFailed": "Could not set tier {{tier}}"
       },
       "eligibility": {
-        "showsWithDates": "Shows with dates",
         "gapCount_one": "{{count}} gap",
         "gapCount_other": "{{count}} gaps",
         "dateCount_one": "{{count}} date",
         "dateCount_other": "{{count}} dates",
-        "covered": "Covered",
         "linkACast": "Link a cast",
         "noCastsAvailable": "No casts yet",
         "memberCount_one": "{{count}} member",
@@ -197,7 +200,12 @@
         "unlocks_other": "Link a cast to {{show}} and its {{count}} dates become offerable.",
         "unlocksDone": "Every show and city has a cast at tier 1.",
         "castLinked": "Cast linked",
-        "castLinkFailed": "Could not link cast"
+        "castLinkFailed": "Could not link cast",
+        "byProduction": "Coverage by production",
+        "fullyCovered": "Fully covered",
+        "cityCount_one": "{{count}} city",
+        "cityCount_other": "{{count}} cities",
+        "noCastYet": "No cast in {{cities}} yet"
       }
     }
   },

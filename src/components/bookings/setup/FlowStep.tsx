@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useContext, useState } from "react";
+import { createPortal } from "react-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,6 +12,7 @@ import {
   BOOKING_FLOW_DEFAULTS, type PresetName, type LifecycleChip,
 } from "@/lib/bookingFlow";
 import { FlowPresets } from "@/components/settings/bookingFlow/FlowPresets";
+import { TaskPanelFooterContext } from "@/components/getRunning/TaskPanelFooterContext";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -30,6 +32,11 @@ const CHIP_TONE: Record<LifecycleChip["tone"], string> = {
  *  consequences (the real policy, not static prose), save through the settings path. */
 export function FlowStep({ orgId, onDone }: { orgId: string | null; onDone: () => void }) {
   const qc = useQueryClient();
+  // When mounted inside the Get-running TaskPanel, the primary action is portaled into the
+  // panel's pinned footer so it is always visible (verbose presets like Fast-track otherwise
+  // push it below the scroll fold). Null outside that frame (or before the footer mounts): the
+  // fallback below then renders the button inline, exactly as it used to.
+  const footerSlot = useContext(TaskPanelFooterContext);
   // The org this panel was HANDED, not whichever org the shell happens to be on. The Save
   // below writes to `orgId`, and the suggested preset is a view of the flow read here: with
   // `useBookingFlow()` resolving its own org out of AuthContext, a switch in the app shell
@@ -123,6 +130,12 @@ export function FlowStep({ orgId, onDone }: { orgId: string | null; onDone: () =
   // super-admin bypasses the org gate), where Save is already disabled.
   if (templatesLoading || (orgId && !flow)) return <Skeleton className="h-40 w-full" />;
 
+  const saveButton = (
+    <Button size="sm" disabled={save.isPending || !orgId || !flow} onClick={() => save.mutate()}>
+      Use {PRESET_NAMES[active]}
+    </Button>
+  );
+
   return (
     <div className="space-y-3">
       <p className="text-xs text-muted-foreground">
@@ -155,10 +168,16 @@ export function FlowStep({ orgId, onDone }: { orgId: string | null; onDone: () =
           The window is reachable because the org switcher lives in the app shell and does
           not unmount this panel: a switch can leave `selected` on the previous org's pick
           while the new org's flow is still loading. The view above fixes what is DISPLAYED;
-          this closes the write in the meantime. */}
-      <Button size="sm" disabled={save.isPending || !orgId || !flow} onClick={() => save.mutate()}>
-        Use {PRESET_NAMES[active]}
-      </Button>
+          this closes the write in the meantime.
+          Portaled into the TaskPanel footer when mounted there so a verbose preset can't push
+          it below the scroll fold; rendered inline as a defensive fallback everywhere else.
+          Same button, same reactive state either way — the portal keeps this component's state
+          co-located. */}
+      {footerSlot ? (
+        createPortal(saveButton, footerSlot)
+      ) : (
+        saveButton
+      )}
     </div>
   );
 }

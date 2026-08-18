@@ -12,6 +12,19 @@ import type { LadderCoverageInputs } from "@/lib/bookings/setupStatus";
 const { client } = vi.hoisted(() => ({ client: {} as Record<string, unknown> }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: client }));
 
+// useCan("manage_casts") gates the inline create-cast form. Mock it to a controllable flag
+// so both the granted and revoked states are deterministic (the real resolver would need
+// seeded org capability rows). Other actions pass through as granted -- the panel only asks
+// for manage_casts.
+const capState = vi.hoisted(() => ({ canManageCasts: true }));
+vi.mock("@/hooks/useCapabilities", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/hooks/useCapabilities")>();
+  return {
+    ...actual,
+    useCan: (action: string) => (action === "manage_casts" ? capState.canManageCasts : true),
+  };
+});
+
 const TEST_ORG = { id: "org-1", name: "Test Org", slug: "test-org", status: "active", is_demo: false };
 
 // Hamburg already has a tier-1 (cast "nord"); Leipzig has a future date but no tier-1 —
@@ -62,6 +75,7 @@ function renderPanel(onDone = vi.fn()) {
 
 describe("LadderPanelBody", () => {
   beforeEach(() => {
+    capState.canManageCasts = true;
     seed();
   });
 
@@ -201,5 +215,52 @@ describe("LadderPanelBody", () => {
 
     await new Promise((resolve) => setTimeout(resolve, 20));
     expect(onDone).not.toHaveBeenCalled();
+  });
+
+  // The inline "create cast" form (task 7): capability-gated, submit-guarded, and it clears
+  // and stays open on success so a run of casts can be seeded quickly.
+  describe("inline create-cast form", () => {
+    it("shows the form for a user with manage_casts", () => {
+      renderPanel();
+
+      expect(screen.getByText("New cast")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /create cast/i })).toBeInTheDocument();
+    });
+
+    it("hides the form for a user without manage_casts", () => {
+      capState.canManageCasts = false;
+      renderPanel();
+
+      expect(screen.queryByText("New cast")).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /create cast/i })).not.toBeInTheDocument();
+    });
+
+    it("disables submit until a name is entered, then creates the cast and clears the field", async () => {
+      renderPanel();
+
+      const submit = screen.getByRole("button", { name: /create cast/i });
+      expect(submit).toBeDisabled();
+
+      const input = screen.getByPlaceholderText("Cast name");
+      fireEvent.change(input, { target: { value: "Touring Cast" } });
+      expect(submit).toBeEnabled();
+
+      fireEvent.click(submit);
+
+      await waitFor(() => {
+        const calls = client.calls as unknown as {
+          table: string;
+          method: string;
+          args: Record<string, unknown>[];
+        }[];
+        const insert = calls.find((c) => c.table === "casts" && c.method === "insert");
+        expect(insert?.args[0]).toMatchObject({ org_id: "org-1", name: "Touring Cast", description: "" });
+      });
+
+      // Stays open and clears the field on success (seed-a-run-of-casts UX).
+      await waitFor(() =>
+        expect((screen.getByPlaceholderText("Cast name") as HTMLInputElement).value).toBe(""),
+      );
+    });
   });
 });

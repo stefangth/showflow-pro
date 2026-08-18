@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { createFakeSupabase } from "@/test/supabaseFake";
-import { fetchCities, fetchCitiesForLinking, linkCityAirtableKey, importCitiesFromOptions, mergeCities } from "./cities";
+import { fetchCities, fetchCitiesForLinking, linkCityAirtableKey, importCitiesFromOptions, mergeCities, updateCity } from "./cities";
 
 describe("cities data-access", () => {
   it("fetchCitiesForLinking selects link fields for the org", async () => {
@@ -65,6 +65,20 @@ describe("cities data-access", () => {
     await linkCityAirtableKey(fake as never, "c1", "Berlin");
     expect(fake.calls).toContainEqual({ table: "cities", method: "update", args: [{ airtable_city_key: "Berlin" }] });
     expect(fake.calls).toContainEqual({ table: "cities", method: "eq", args: ["id", "c1"] });
+  });
+
+  it("updateCity updates the trimmed name on the row and returns it", async () => {
+    const row = { id: "c1", name: "Munich", org_id: "org-1", airtable_city_key: null };
+    const fake = createFakeSupabase({ cities: { data: row, error: null } });
+    const res = await updateCity(fake as never, "c1", "  Munich  ");
+    expect(res).toEqual(row);
+    expect(fake.calls).toContainEqual({ table: "cities", method: "update", args: [{ name: "Munich" }] });
+    expect(fake.calls).toContainEqual({ table: "cities", method: "eq", args: ["id", "c1"] });
+  });
+
+  it("updateCity throws on error (e.g. unique violation)", async () => {
+    const fake = createFakeSupabase({ cities: { data: null, error: { code: "23505", message: "duplicate key value" } } });
+    await expect(updateCity(fake as never, "c1", "Berlin")).rejects.toMatchObject({ code: "23505" });
   });
 
   it("importCitiesFromOptions inserts unlinked options (org-scoped, key set)", async () => {

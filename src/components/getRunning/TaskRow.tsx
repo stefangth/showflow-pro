@@ -42,7 +42,7 @@ function valueChip(task: GetRunningTask): { variant: BadgeProps["variant"]; labe
   return VALUE_CHIP[task.key];
 }
 
-function StatusDot({ done, blockingOpen }: { done: boolean; blockingOpen: boolean }): JSX.Element {
+function StatusDot({ done, blockingOpen, active }: { done: boolean; blockingOpen: boolean; active: boolean }): JSX.Element {
   if (done) {
     return (
       <span className="mt-0.5 flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
@@ -53,7 +53,7 @@ function StatusDot({ done, blockingOpen }: { done: boolean; blockingOpen: boolea
   return (
     <span
       className={`mt-0.5 h-3.5 w-3.5 shrink-0 rounded-full border-[1.5px] ${
-        blockingOpen ? "border-accent-200" : "border-border"
+        active ? "border-primary" : blockingOpen ? "border-accent-200" : "border-border"
       }`}
       aria-hidden="true"
     />
@@ -69,6 +69,10 @@ export interface TaskRowProps {
    *  "Admin only" chip. Omitted entirely for the admin board, where every task is
    *  actionable and this never renders. */
   adminNames?: string[];
+  /** True when this task's panel is the one currently popped out beside the board. The row
+   *  then reads as SELECTED (a `primary` violet tint plus a primary status dot + title), so
+   *  the board makes clear which step the open editor belongs to. */
+  active?: boolean;
 }
 
 /**
@@ -89,21 +93,26 @@ export interface TaskRowProps {
  * the design's 3-channel nudge (in-app + email + chat) is a locked, confirmed-deferred scope
  * cut for this pass — only the attribution + view affordance ship.
  */
-export function TaskRow({ task, onOpen, adminNames }: TaskRowProps): JSX.Element {
+export function TaskRow({ task, onOpen, adminNames, active = false }: TaskRowProps): JSX.Element {
   const { t } = useTranslation("getRunning");
   const isBlockingOpen = task.block !== null && !task.done && task.actionableByViewer;
   const value = valueChip(task);
   const waitsOnAdmin = !task.actionableByViewer;
+  const titleColor = active ? "text-primary" : task.done ? "text-muted-foreground" : "text-foreground";
+  const titleWeight = active || task.done ? "font-medium" : "font-semibold";
 
   return (
     <div
       data-testid={`task-row-${task.key}`}
-      className="flex items-start gap-3 border-b border-border px-4 py-3.5 last:border-b-0"
+      data-active={active}
+      className={`flex items-start gap-3 border-b border-border px-4 py-3.5 transition-colors last:border-b-0 ${
+        active ? "bg-primary/10" : ""
+      }`}
     >
-      <StatusDot done={task.done} blockingOpen={isBlockingOpen} />
+      <StatusDot done={task.done} blockingOpen={isBlockingOpen} active={active} />
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
-          <div className={`text-sm ${task.done ? "font-medium text-muted-foreground" : "font-semibold text-foreground"}`}>
+          <div className={`text-sm ${titleWeight} ${titleColor}`}>
             {t(`tasks.${task.key}.title`)}
           </div>
           {task.block !== null && !task.done && (

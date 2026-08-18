@@ -14,6 +14,7 @@ import {
   clearCastCityPriority,
 } from "@/data/casts";
 import { fetchShowOptions } from "@/data/shows";
+import { updateCity } from "@/data/cities";
 import {
   fetchShowPriorityRows,
   setShowCastPriority,
@@ -29,7 +30,7 @@ import { Input } from "@/components/ui/input";
 import { SegmentedControl, type SegmentedControlOption } from "@/components/ui/segmented-control";
 import { IconTooltip } from "@/components/common/IconTooltip";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Trash2, ChevronRight, Plus } from "lucide-react";
+import { Trash2, ChevronRight, Plus, Pencil, Check, X } from "lucide-react";
 import { CastDetailsSheet } from "@/components/casts/CastDetailsSheet";
 import type { Cast } from "@/types";
 import { TierCell } from "./TierCell";
@@ -82,6 +83,8 @@ export function CoveragePanel({ orgId, onOpenCast }: CoveragePanelProps) {
   const [scope, setScope] = useState<CoverageScope>("org");
   const [selectedShowId, setSelectedShowId] = useState<string | null>(null);
   const [newCity, setNewCity] = useState("");
+  const [editingCityId, setEditingCityId] = useState<string | null>(null);
+  const [editingCityName, setEditingCityName] = useState("");
   const [activeCast, setActiveCast] = useState<Cast | null>(null);
 
   // Same query key/behavior as CastsCitiesTab's own city read (["cities","all",orgId] via
@@ -264,6 +267,42 @@ export function CoveragePanel({ orgId, onOpenCast }: CoveragePanelProps) {
     onError: (e: Error) => toast.error(e.message ?? t('coverage.cityRemoveFailed')),
   });
 
+  const renameCity = useMutation({
+    mutationFn: (args: { id: string; name: string }) => updateCity(supabase, args.id, args.name),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["cities"] });
+      setEditingCityId(null);
+      setEditingCityName("");
+      toast.success(t('coverage.cityRenamed'));
+    },
+    onError: (e: unknown) => {
+      const err = e as { code?: string; message?: string };
+      const isDuplicate =
+        err.code === "23505" || /duplicate|unique/i.test(err.message ?? "");
+      toast.error(isDuplicate ? t('coverage.cityRenameDuplicate') : (err.message ?? t('coverage.cityRenameFailed')));
+    },
+  });
+
+  const startEditCity = (id: string, name: string) => {
+    setEditingCityId(id);
+    setEditingCityName(name);
+  };
+  const cancelEditCity = () => {
+    setEditingCityId(null);
+    setEditingCityName("");
+  };
+  const saveEditCity = (id: string, currentName: string) => {
+    // Guard the Enter path (the Save button is already disabled while pending) so a fast
+    // double Enter can't fire a second write before onSuccess closes the editor.
+    if (renameCity.isPending) return;
+    const next = editingCityName.trim();
+    if (!next || next === currentName) {
+      cancelEditCity();
+      return;
+    }
+    renameCity.mutate({ id, name: next });
+  };
+
   const castOptions = useMemo(
     () => casts.map((c) => ({ id: c.id, name: c.name, memberCount: castCounts[c.id] ?? 0 })),
     [casts, castCounts],
@@ -444,26 +483,78 @@ export function CoveragePanel({ orgId, onOpenCast }: CoveragePanelProps) {
                           : ref.overrideCount > 0
                             ? t('coverage.cityUsageOverride')
                             : t('coverage.cityUsageNone');
+                    const isEditing = editingCityId === c.id;
                     return (
                       <div
                         key={c.id}
                         className="flex items-center justify-between gap-2 rounded-[var(--radius-s)] px-2 py-2 text-sm"
                       >
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate font-medium text-foreground">{c.name}</span>
-                          <span className="block text-xs text-muted-foreground">{usageText}</span>
-                        </span>
-                        <IconTooltip label={referenced ? t('coverage.removeCityReferenced') : t('coverage.removeCity', { name: c.name })}>
-                          <button
-                            type="button"
-                            onClick={() => deleteCity.mutate(c.id)}
-                            disabled={!canDeleteCity || referenced}
-                            aria-label={t('coverage.removeCity', { name: c.name })}
-                            className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-destructive disabled:opacity-50 disabled:pointer-events-none"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
-                        </IconTooltip>
+                        {isEditing ? (
+                          <>
+                            <Input
+                              value={editingCityName}
+                              onChange={(e) => setEditingCityName(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") { e.preventDefault(); saveEditCity(c.id, c.name); }
+                                if (e.key === "Escape") { e.preventDefault(); cancelEditCity(); }
+                              }}
+                              autoFocus
+                              className="h-8 flex-1"
+                              aria-label={t('coverage.renameCity', { name: c.name })}
+                            />
+                            <IconTooltip label={t('coverage.saveCityName')}>
+                              <button
+                                type="button"
+                                onClick={() => saveEditCity(c.id, c.name)}
+                                disabled={renameCity.isPending}
+                                aria-label={t('coverage.saveCityName')}
+                                className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50 disabled:pointer-events-none"
+                              >
+                                <Check className="h-3.5 w-3.5" />
+                              </button>
+                            </IconTooltip>
+                            <IconTooltip label={t('coverage.cancelRename')}>
+                              <button
+                                type="button"
+                                onClick={cancelEditCity}
+                                aria-label={t('coverage.cancelRename')}
+                                className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                              >
+                                <X className="h-3.5 w-3.5" />
+                              </button>
+                            </IconTooltip>
+                          </>
+                        ) : (
+                          <>
+                            <span className="min-w-0 flex-1">
+                              <span className="block truncate font-medium text-foreground">{c.name}</span>
+                              <span className="block text-xs text-muted-foreground">{usageText}</span>
+                            </span>
+                            {canManage && (
+                              <IconTooltip label={t('coverage.renameCity', { name: c.name })}>
+                                <button
+                                  type="button"
+                                  onClick={() => startEditCity(c.id, c.name)}
+                                  aria-label={t('coverage.renameCity', { name: c.name })}
+                                  className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                                >
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </button>
+                              </IconTooltip>
+                            )}
+                            <IconTooltip label={referenced ? t('coverage.removeCityReferenced') : t('coverage.removeCity', { name: c.name })}>
+                              <button
+                                type="button"
+                                onClick={() => deleteCity.mutate(c.id)}
+                                disabled={!canDeleteCity || referenced}
+                                aria-label={t('coverage.removeCity', { name: c.name })}
+                                className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-destructive disabled:opacity-50 disabled:pointer-events-none"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </IconTooltip>
+                          </>
+                        )}
                       </div>
                     );
                   })
