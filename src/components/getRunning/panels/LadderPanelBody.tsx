@@ -108,11 +108,16 @@ export function LadderPanelBody({
       qc.invalidateQueries({ queryKey: ["cast-city-priority"] });
       qc.invalidateQueries({ queryKey: ["eligibility"] });
       toast.success(t("panel.body.ladder.tierUpdated"));
-      // Zero unranked cities left after this write (the one just ranked was the last
-      // gap) means the board's job here is done — advance it, same convention as
-      // TeamPanelBody/PeoplePanelBody calling onDone from their own mutation onSuccess.
+      // Fire onDone only on the unranked→ranked TRANSITION this exact write caused: the
+      // written city must itself have been unranked BEFORE this write (an "Add tier 2"
+      // on an already-tier-1'd city is not that), and it must have been the last gap
+      // (nothing else still unranked once it's excluded). Checking `remaining.length
+      // === 0` alone is wrong once the whole set is already ranked: unrankedCityIds is
+      // then `[]`, so every subsequent write (e.g. every later "Add tier 2" click)
+      // would trivially satisfy it and re-fire onDone, re-closing/advancing the panel.
+      const wasUnranked = unrankedCityIds.includes(variables.cityId);
       const remaining = unrankedCityIds.filter((id) => id !== variables.cityId);
-      if (remaining.length === 0) onDone();
+      if (wasUnranked && remaining.length === 0) onDone();
     },
     onError: (e: Error) => toast.error(e.message ?? t("panel.body.ladder.tierUpdateFailed")),
   });
@@ -153,7 +158,7 @@ export function LadderPanelBody({
                   <>
                     <Badge variant="accent">{castNameById.get(tier1.castId) ?? ""}</Badge>
                     <CastPicker
-                      label={t("panel.body.ladder.addTier2")}
+                      label={t("panel.body.ladder.addTierN", { n: maxPriority + 1 })}
                       options={castOptions}
                       onSelect={(castId) => {
                         if (!orgId) return;

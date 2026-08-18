@@ -165,7 +165,7 @@
         "dateCount_other": "{{count}} dates",
         "noTier1": "no tier 1",
         "pickTier1": "Pick tier 1",
-        "addTier2": "Add tier 2",
+        "addTierN": "Add tier {{n}}",
         "noCastsAvailable": "No casts yet",
         "memberCount_one": "{{count}} member",
         "memberCount_other": "{{count}} members",

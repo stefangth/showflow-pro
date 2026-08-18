@@ -165,7 +165,7 @@
         "dateCount_other": "{{count}} Termine",
         "noTier1": "keine Stufe 1",
         "pickTier1": "Stufe 1 wählen",
-        "addTier2": "Stufe 2 hinzufügen",
+        "addTierN": "Stufe {{n}} hinzufügen",
         "noCastsAvailable": "Noch keine Besetzungen",
         "memberCount_one": "{{count}} Mitglied",
         "memberCount_other": "{{count}} Mitglieder",
