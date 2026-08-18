@@ -25,6 +25,23 @@ vi.mock("@/data/bookings", async (orig) => ({
   ...(await orig<typeof import("@/data/bookings")>()),
   fetchTierAttention: vi.fn(() => Promise.resolve([])),
 }));
+// DashboardPage now reads the onboarding board to decide the get-running redirect. These
+// tests are about the booking-module gate, not the redirect, so pin the board complete so
+// the dashboard renders (a complete/empty board never redirects).
+vi.mock("@/hooks/useGetRunning", () => ({
+  useGetRunning: () => ({
+    model: {
+      phases: [],
+      doneCount: 0,
+      totalCount: 0,
+      canFirstOffer: true,
+      complete: true,
+      bookingOn: true,
+      hireOrdersOn: false,
+    },
+    isLoading: false,
+  }),
+}));
 
 import { useFeature } from "@/hooks/useEntitlements";
 import { useAuth } from "@/features/auth/AuthContext";
