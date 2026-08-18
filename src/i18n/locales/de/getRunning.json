@@ -59,7 +59,6 @@
       "title": "Papierkram",
       "status": {
         "complete": "Startklar",
-        "blocking": "Blockiert den Versand",
         "active": "In Arbeit",
         "dormant": "Blockiert noch nichts"
       },

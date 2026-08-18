@@ -59,7 +59,6 @@
       "title": "Paperwork",
       "status": {
         "complete": "Ready",
-        "blocking": "Blocks issuing",
         "active": "In progress",
         "dormant": "Not blocking yet"
       },

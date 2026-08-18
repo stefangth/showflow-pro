@@ -38,7 +38,7 @@ export function RetiredBoard({ model, orgId }: { model: GetRunningModel; orgId: 
         <span className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
           <Check className="h-[15px] w-[15px]" strokeWidth={2.5} />
         </span>
-        <div className="min-w-[220px] flex-1">
+        <div className="min-w-0 flex-1 sm:min-w-[220px]">
           <div className="text-base font-semibold tracking-[-0.1px] text-foreground">{t("retired.title")}</div>
           <p className="mt-0.5 text-[13px] leading-[19px] text-muted-foreground text-pretty">
             {t("header.body.complete")}

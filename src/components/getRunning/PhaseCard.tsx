@@ -24,16 +24,20 @@ type PhaseVisualState = "complete" | "blocking" | "active" | "dormant";
  *  bookable=blocking, paperwork=dormant; this generalises that to the rest of the matrix. */
 function derivePhaseState(tasks: GetRunningTask[]): PhaseVisualState {
   const doneCount = tasks.filter((task) => task.done).length;
-  if (doneCount === tasks.length) return "complete";
+  if (tasks.length > 0 && doneCount === tasks.length) return "complete";
   const hasHardBlock = tasks.some((task) => !task.done && (task.block === "offers" || task.block === "booking"));
   if (hasHardBlock) return "blocking";
   return doneCount > 0 ? "active" : "dormant";
 }
 
+/** The solid neutral surface shared by the `complete` and `active` states (both read as a
+ *  plain, present card): kept as one const so the two cannot silently drift apart. */
+const SOLID_CARD = "border border-border bg-card";
+
 const CARD_CLASS: Record<PhaseVisualState, string> = {
-  complete: "border border-border bg-card",
+  complete: SOLID_CARD,
   blocking: "border border-accent-200 bg-card shadow-elev2",
-  active: "border border-border bg-card",
+  active: SOLID_CARD,
   dormant: "border border-dashed border-border bg-transparent",
 };
 
@@ -255,6 +259,11 @@ export function PhaseCard({ phase, onOpenTask, adminNames }: PhaseCardProps): JS
   const firstOpenPaperworkTask =
     phase.key === "paperwork" ? (phase.tasks.find((task) => !task.done) ?? phase.tasks[0]) : undefined;
 
+  // overflow-hidden below clips the tinted (blocking) header to the card's rounded corners.
+  // It also clips anything a child paints OUTSIDE its own box (a focus ring, a shadow, an
+  // inline popover): today's action buttons and paperwork tiles sit within the card's
+  // px-4/pb-3.5 padding so nothing is clipped, but keep any new edge-flush, ring- or
+  // popover-bearing control off the card border for that reason.
   return (
     <div className={`overflow-hidden rounded-[var(--radius-l)] ${CARD_CLASS[state]}`} data-testid={`phase-card-${phase.key}`}>
       <div className={`flex flex-wrap items-center gap-3 px-4 py-3.5 ${HEADER_CLASS[state]}`}>
