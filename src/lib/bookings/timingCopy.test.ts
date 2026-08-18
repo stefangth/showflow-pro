@@ -22,6 +22,10 @@ const classic = applyPreset(BOOKING_FLOW_DEFAULTS, "classic");
 const fasttrack = applyPreset(BOOKING_FLOW_DEFAULTS, "fasttrack");
 const direct = applyPreset(BOOKING_FLOW_DEFAULTS, "direct");
 const off = applyPreset(BOOKING_FLOW_DEFAULTS, "off");
+// No shipped preset sets offer_delivery: "immediate" anymore (autopilot/fasttrack
+// switched to digest), but the value is still valid on a hand-configured flow, and
+// describeTonight/describeTonightStandalone still have a real branch for it.
+const immediateFlow = { ...classic, offer_delivery: "immediate" as const };
 
 const times: FlowTimes = { windowHours: 48, offerDigestHour: 19, confirmationDigestHour: 20 };
 
@@ -59,11 +63,12 @@ describe("describeTonight", () => {
     expect(describeTonight({ ...times, windowHours: 1 }, classic, tt)).toContain("get 1 hour to answer");
   });
 
-  // Fast track sets offer_delivery: "immediate"; send-offer-digest skips the hour gate for
-  // those orgs entirely and open-offer-tier mails at tier open, so a digest sentence would
-  // describe a batch that never runs.
+  // An org with offer_delivery: "immediate" has send-offer-digest skip the hour gate for
+  // it entirely; open-offer-tier mails at tier open instead, so a digest sentence would
+  // describe a batch that never runs. No shipped preset sets this anymore (autopilot/
+  // fasttrack switched to digest), but the raw flow value is still supported.
   it("never mentions a digest hour for an immediate-delivery org", () => {
-    const line = describeTonight(times, fasttrack, tt)!;
+    const line = describeTonight(times, immediateFlow, tt)!;
     expect(line).toBe(
       "When a tier opens, offers email straight away. Artists get 48 hours to answer, and confirmations mail at 20:00h (Berlin, Germany).",
     );
@@ -73,7 +78,7 @@ describe("describeTonight", () => {
 
   it("renders for an immediate-delivery org even while the offer-hour field is empty", () => {
     // The sentence never states that hour, so a mid-edit NaN there cannot make it wrong.
-    expect(describeTonight({ ...times, offerDigestHour: Number.NaN }, fasttrack, tt)).toContain(
+    expect(describeTonight({ ...times, offerDigestHour: Number.NaN }, immediateFlow, tt)).toContain(
       "offers email straight away",
     );
   });
@@ -200,7 +205,7 @@ describe("describeTonightStandalone", () => {
     // "Newly confirmed artists get the confirmation digest at 20:00h (Berlin, Germany). Digest times include their timezone."
     // was the panel's vocabulary printed on a surface that does not have the panel's fields.
     expect(describeTonightStandalone(times, classic, tt)).toContain("Berlin, Germany");
-    for (const flow of [fasttrack, direct, { ...classic, confirmation_digest: false }]) {
+    for (const flow of [immediateFlow, direct, { ...classic, confirmation_digest: false }]) {
       const line = describeTonightStandalone(times, flow, tt)!;
       expect(line.match(/\d{2}:\d{2}/g)).toHaveLength(1);
       expect(line).toContain("Berlin, Germany");
@@ -213,7 +218,7 @@ describe("describeTonightStandalone", () => {
     // straight away" plus a window in elapsed hours, and there is no clock time on it to
     // put a zone on. The window is a duration, not a Berlin hour, so a timezone line here
     // would have been answering a question the sentence never raised.
-    const flow = { ...fasttrack, confirmation_digest: false };
+    const flow = { ...immediateFlow, confirmation_digest: false };
     const line = describeTonightStandalone(times, flow, tt)!;
     expect(line).toBe(describeTonight(times, flow, tt));
     expect(line).not.toMatch(/Berlin/);
@@ -245,7 +250,7 @@ describe("describeTonightStandalone", () => {
 
 // The panel used to print one fixed line above the narrative ("An artist offered at the
 // digest hour has until that hour, window later"), which is only true of the classic
-// digest pipeline: it contradicts the narrative at a fast-track org and is the ONLY copy
+// digest pipeline: it contradicts the narrative at an immediate-delivery org and is the ONLY copy
 // left standing at a direct-book org, where describeTonight deliberately says nothing.
 // timingScopeNote is what replaces it: a line that is true under every preset.
 describe("timingScopeNote", () => {

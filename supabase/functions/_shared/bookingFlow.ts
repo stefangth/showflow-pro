@@ -101,7 +101,7 @@ const TEMPLATE_FLOW_FIELDS: Record<Exclude<BookingTemplateName, "off">, Partial<
     auto_open_tier1: true,
     auto_escalate: true,
     at_risk_alerts: true,
-    offer_delivery: "immediate",
+    offer_delivery: "digest",
     expiry_reminder: true,
     artist_acceptance: true,
     producer_confirmation: false,

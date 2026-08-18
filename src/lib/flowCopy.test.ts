@@ -84,8 +84,13 @@ describe("artistMeter", () => {
 
 describe("deliveryHint", () => {
   it("only immediate offer orgs get the hint", () => {
-    expect(deliveryHint(fasttrack, t)).toBe("Offers email artists immediately when a tier opens.");
+    // No shipped preset sets offer_delivery: "immediate" anymore (autopilot/fasttrack
+    // switched to digest), but the field is still a valid custom flow value, so the hint
+    // itself must keep working for an org configured that way by hand.
+    const immediateFlow = { ...classic, offer_delivery: "immediate" as const };
+    expect(deliveryHint(immediateFlow, t)).toBe("Offers email artists immediately when a tier opens.");
     expect(deliveryHint(classic, t)).toBe("");
+    expect(deliveryHint(fasttrack, t)).toBe("");
     expect(deliveryHint(direct, t)).toBe("");
   });
 });

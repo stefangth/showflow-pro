@@ -25,7 +25,7 @@ Deno.test("booking templates: normalize per template and force identity active s
 
 Deno.test("booking templates: partial flow uses that template's defaults", () => {
   const templates = normalizeBookingFlowTemplates({ fasttrack: { flow: {}, times: {} } });
-  assertEquals(templates.fasttrack.flow.offer_delivery, "immediate");
+  assertEquals(templates.fasttrack.flow.offer_delivery, "digest");
   assertEquals(templates.fasttrack.flow.producer_confirmation, false);
 });
 
