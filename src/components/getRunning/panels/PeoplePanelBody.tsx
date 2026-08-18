@@ -29,11 +29,9 @@ import { UnlocksNote } from "./UnlocksNote";
 export function PeoplePanelBody({
   orgId,
   artistCount,
-  onDone,
 }: {
   orgId: string | null;
   artistCount: number | null;
-  onDone: () => void;
 }) {
   const { t } = useTranslation("getRunning");
   const add = useCreateArtistLite();
@@ -42,9 +40,11 @@ export function PeoplePanelBody({
   const [email, setEmail] = useState("");
   const [importOpen, setImportOpen] = useState(false);
 
+  // Only feeds ArtistImportDialog (which also dedups server-side), so there is no
+  // reason to fetch the whole roster's emails until the dialog is actually opened.
   const { data: existingEmails } = useQuery({
     queryKey: ["artists", "emails", orgId],
-    enabled: !!orgId,
+    enabled: !!orgId && importOpen,
     queryFn: () =>
       fetchArtists(supabase, orgId!).then((rows) =>
         rows.map((a) => a.email).filter((e): e is string => !!e),
@@ -60,10 +60,13 @@ export function PeoplePanelBody({
     add.mutate(
       { orgId: orgId!, name: trimmedName, email: email.trim() || null },
       {
+        // Stays open on purpose (unlike TeamPanelBody's single one-off invite):
+        // adding a roster is typically a several-in-a-row task, so only clear the
+        // form and let the ["artists"] invalidation from useCreateArtistLite flip
+        // the board row to done underneath.
         onSuccess: () => {
           setName("");
           setEmail("");
-          onDone();
         },
       },
     );

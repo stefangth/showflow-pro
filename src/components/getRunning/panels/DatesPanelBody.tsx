@@ -8,6 +8,7 @@ import { useCan } from "@/hooks/useCapabilities";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Skeleton } from "@/components/ui/skeleton";
 import { AirtableSyncTab } from "@/components/settings/AirtableSyncTab";
 import { ShowFormDialog } from "@/components/catalog/ShowFormDialog";
 import { formatTimestampLocal } from "@/lib/dates";
@@ -86,15 +87,15 @@ export function DatesPanelBody({
             </div>
           )}
         </div>
+      ) : syncQ.isLoading ? (
+        <Skeleton className="h-12 w-full rounded-[var(--radius-l)]" />
       ) : (
-        !syncQ.isLoading && (
-          <div className="space-y-2">
-            <p className="text-xs text-muted-foreground">{t("panel.body.dates.emptyLine")}</p>
-            <Button type="button" size="sm" onClick={() => setAirtableOpen(true)}>
-              {t("panel.body.dates.setup")}
-            </Button>
-          </div>
-        )
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground">{t("panel.body.dates.emptyLine")}</p>
+          <Button type="button" size="sm" onClick={() => setAirtableOpen(true)}>
+            {t("panel.body.dates.setup")}
+          </Button>
+        </div>
       )}
 
       <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-muted-foreground">

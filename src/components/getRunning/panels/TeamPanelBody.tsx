@@ -58,7 +58,9 @@ export function TeamPanelBody({ orgId, onDone }: { orgId: string | null; onDone:
                   {initials(name)}
                 </span>
                 <span className="min-w-0 flex-1 truncate text-xs font-medium text-foreground">{name}</span>
-                <span className="shrink-0 text-xs text-muted-foreground">{roleLabel(m.roles[0])}</span>
+                <span className="shrink-0 text-xs text-muted-foreground">
+                  {m.roles[0] ? roleLabel(m.roles[0]) : null}
+                </span>
               </div>
             );
           })}

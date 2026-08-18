@@ -54,7 +54,7 @@ export function TaskPanelEditor({
     case "flow":
       return <FlowStep orgId={orgId} onDone={onDone} />;
     case "people":
-      return <PeoplePanelBody orgId={orgId} artistCount={artistCount} onDone={onDone} />;
+      return <PeoplePanelBody orgId={orgId} artistCount={artistCount} />;
     case "ladder":
       return <LadderPanelBody coverage={coverage} orgId={orgId} onDone={onDone} />;
     case "eligibility":

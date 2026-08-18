@@ -37,12 +37,13 @@ describe("PeoplePanelBody", () => {
     vi.mocked(useCan).mockReturnValue(true);
   });
 
-  it("adds an artist without leaving the panel", async () => {
-    const onDone = vi.fn();
-    renderWithProviders(<PeoplePanelBody orgId="org-1" artistCount={2} onDone={onDone} />);
+  it("adds an artist and stays open, clearing the form for the next one", async () => {
+    renderWithProviders(<PeoplePanelBody orgId="org-1" artistCount={2} />);
 
-    fireEvent.change(screen.getByLabelText(/add an artist/i), { target: { value: "Lena Nord" } });
-    fireEvent.change(screen.getByPlaceholderText(/email/i), { target: { value: "lena@nordstadt.de" } });
+    const nameInput = screen.getByLabelText(/add an artist/i);
+    const emailInput = screen.getByPlaceholderText(/email/i);
+    fireEvent.change(nameInput, { target: { value: "Lena Nord" } });
+    fireEvent.change(emailInput, { target: { value: "lena@nordstadt.de" } });
     fireEvent.click(screen.getByRole("button", { name: /^add$/i }));
 
     await waitFor(() => {
@@ -52,11 +53,16 @@ describe("PeoplePanelBody", () => {
         args: [{ name: "Lena Nord", email: "lena@nordstadt.de", org_id: "org-1" }],
       });
     });
-    await waitFor(() => expect(onDone).toHaveBeenCalled());
+
+    // Panel stays mounted (no onDone-style navigation) and the form clears so an
+    // admin can immediately add the next artist.
+    await waitFor(() => expect(nameInput).toHaveValue(""));
+    expect(emailInput).toHaveValue("");
+    expect(screen.getByRole("button", { name: /^add$/i })).toBeInTheDocument();
   });
 
   it("reveals the import dialog instead of navigating to the artists page", () => {
-    renderWithProviders(<PeoplePanelBody orgId="org-1" artistCount={2} onDone={vi.fn()} />);
+    renderWithProviders(<PeoplePanelBody orgId="org-1" artistCount={2} />);
 
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /import a sheet/i }));
@@ -67,13 +73,13 @@ describe("PeoplePanelBody", () => {
   });
 
   it("shows the active roster count", () => {
-    renderWithProviders(<PeoplePanelBody orgId="org-1" artistCount={4} onDone={vi.fn()} />);
+    renderWithProviders(<PeoplePanelBody orgId="org-1" artistCount={4} />);
     expect(screen.getByText(/4 active/)).toBeInTheDocument();
     expect(screen.getByText(/artists on the roster/i)).toBeInTheDocument();
   });
 
   it("says no artists yet for an empty roster", () => {
-    renderWithProviders(<PeoplePanelBody orgId="org-1" artistCount={0} onDone={vi.fn()} />);
+    renderWithProviders(<PeoplePanelBody orgId="org-1" artistCount={0} />);
     expect(screen.getByText(/no artists yet/i)).toBeInTheDocument();
   });
 });
