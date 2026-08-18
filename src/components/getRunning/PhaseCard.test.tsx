@@ -283,10 +283,10 @@ describe("PhaseCard", () => {
       expect(container.textContent).not.toMatch(/nudge/i);
     });
 
-    it("hides the get_dates summary Resolve link when the slots task isn't actionable by the viewer", () => {
-      // A producer without manage_productions cannot act on the get_dates phase; the header
-      // already attributes it ("Waits on {admin}" + View), so the inline "Resolve" would be a
-      // dead button with no explanation.
+    it("attributes the get_dates summary slots gap instead of dropping the action when slots isn't actionable", () => {
+      // Whole-phase admin-blocked: the header attributes `dates` ("Waits on {admin}" + View)
+      // and the summary attributes the `slots` gap the same way, so neither reads as a dead
+      // or absent control.
       const phase: GetRunningPhase = {
         key: "get_dates",
         tasks: [
@@ -299,6 +299,31 @@ describe("PhaseCard", () => {
       );
 
       expect(screen.queryByText("Resolve")).not.toBeInTheDocument();
+      // Header (dates) + summary (slots) each attribute to the admin: two waits-on badges.
+      expect(screen.getAllByText("Waits on Maja Kern")).toHaveLength(2);
+    });
+
+    it("attributes the slots gap when dates is actionable but slots is not (split-capability mixed state)", () => {
+      // `dates` gates on manage_productions, `slots` on edit_scheduling. A producer can hold
+      // the first but not the second: the header shows the actionable dates link, and the
+      // summary must still attribute the slots gap ("Waits on {admin}") rather than silently
+      // hiding it, which would leave a dead/absent control with no explanation.
+      const phase: GetRunningPhase = {
+        key: "get_dates",
+        tasks: [
+          task({ key: "dates", phase: "get_dates", done: false, adminOnly: false, actionableByViewer: true }),
+          task({ key: "slots", phase: "get_dates", done: false, block: "filling", adminOnly: true, actionableByViewer: false }),
+        ],
+      };
+      renderWithProviders(
+        <PhaseCard phase={phase} role="producer" adminNames={["Maja Kern"]} onOpenTask={vi.fn()} />,
+      );
+
+      // dates is actionable, so the header shows its review link, not a waits-on badge.
+      expect(screen.getByText("Review")).toBeInTheDocument();
+      // slots is not actionable: no Resolve action, but a single waits-on attribution for it.
+      expect(screen.queryByText("Resolve")).not.toBeInTheDocument();
+      expect(screen.getByText("Waits on Maja Kern")).toBeInTheDocument();
     });
 
     it("gives a non-actionable paperwork tile the same Waits-on/View treatment instead of a whole-tile click", () => {
