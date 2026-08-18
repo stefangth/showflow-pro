@@ -93,6 +93,11 @@ describe("pre-push hook (.githooks/pre-push)", () => {
     expect(code).toMatch(/has_open_pr/);
     // ...and the branch is skipped when no open PR is found.
     expect(code).toMatch(/has_open_pr[^\n]*!=\s*"?1"?[\s\S]*exit 0/);
+    // The `gh` probe is bounded so a slow/hung GitHub API can't block the push.
+    expect(code).toMatch(/timeout 5|gtimeout 5/);
+    // A query failure/timeout is distinguished from a genuine "no open PR", so a
+    // silent skip is never mistaken for a real result.
+    expect(code).toMatch(/pr_check_failed/);
     // The secret scan must STILL run on every push (it is the security gate, not
     // the PR-gated convenience gate).
     expect(code).toMatch(/scan-secrets\.mjs --prepush/);
