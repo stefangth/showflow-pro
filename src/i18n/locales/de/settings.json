@@ -31,7 +31,6 @@
       "skills": "Skills",
       "people": "Personen",
       "activity": "Aktivität",
-      "syncLog": "Sync-Protokoll",
       "airtable": "Airtable-Synchronisierung",
       "emailTemplates": "E-Mail-Vorlagen",
       "booking": "Booking Engine",
@@ -69,12 +68,6 @@
     "title": "Buchungsaktivität",
     "loadError": "Aktivitätsprotokoll konnte nicht geladen werden.",
     "empty": "Noch keine Aktivität"
-  },
-  "syncLog": {
-    "title": "Airtable-Sync-Protokoll",
-    "loadError": "Sync-Protokoll konnte nicht geladen werden.",
-    "records": "{{n}} Datensätze",
-    "empty": "Noch keine Sync-Ereignisse. Aktiviere Airtable-Sync im Tab Automatisierung, um mit der Synchronisierung zu beginnen."
   },
   "organization": {
     "title": "Organisation",

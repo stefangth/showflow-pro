@@ -31,7 +31,6 @@
       "skills": "Skills",
       "people": "People",
       "activity": "Activity",
-      "syncLog": "Sync log",
       "airtable": "Airtable Sync",
       "emailTemplates": "Email templates",
       "booking": "Booking engine",
@@ -69,12 +68,6 @@
     "title": "Booking activity",
     "loadError": "Failed to load the activity log.",
     "empty": "No activity yet"
-  },
-  "syncLog": {
-    "title": "Airtable sync log",
-    "loadError": "Failed to load the sync log.",
-    "records": "{{n}} records",
-    "empty": "No sync events yet. Turn on Airtable sync in the Automation tab to start syncing."
   },
   "organization": {
     "title": "Organization",

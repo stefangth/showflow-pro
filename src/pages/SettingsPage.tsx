@@ -22,7 +22,7 @@ import { Settings as SettingsIcon, Database, Bell, Wand2, Save, SlidersHorizonta
 import { cn } from '@/lib/utils';
 import { upsertOrgSetting, mergeOrgRows } from '@/data/settings';
 import { computeSettingsDirtyKeys } from '@/lib/settings';
-import { fetchAdminAuditLogs, fetchAdminSyncLogs } from '@/data/admin';
+import { fetchAdminAuditLogs } from '@/data/admin';
 import { AirtableSyncTab } from '@/components/settings/AirtableSyncTab';
 import { OrganizationTab } from '@/components/settings/OrganizationTab';
 import { CastsCoverageTab } from '@/components/settings/castsCoverage/CastsCoverageTab';
@@ -39,10 +39,9 @@ import { HowThisOrgWorks } from '@/components/getRunning/HowThisOrgWorks';
 import { Badge } from '@/components/ui/badge';
 import { PageMini } from '@/components/minis/PageMini';
 
-/** Row caps for the People group's Activity / Sync log panels — mirrors the former
- *  standalone Admin page (AUDIT_LOG_LIMIT / SYNC_LOG_LIMIT). */
+/** Row cap for the People group's Activity panel — mirrors the former
+ *  standalone Admin page (AUDIT_LOG_LIMIT). */
 const AUDIT_LOG_LIMIT = 50;
-const SYNC_LOG_LIMIT = 20;
 
 // Tabs whose content is a wide reference surface rather than a form: they drop
 // the page's reading measure and run to `main`'s own 24px padding at every
@@ -168,19 +167,13 @@ export default function SettingsPage() {
   const canRenameOrg = useCan('rename_org');
   const canEditEmailTemplates = useCan('edit_email_templates');
 
-  // People group's Activity / Sync log panels, folded in from the former standalone Admin
-  // page verbatim — admin-only content, so both stay disabled for a producer even though
+  // People group's Activity panel, folded in from the former standalone Admin page
+  // verbatim — admin-only content, so it stays disabled for a producer even though
   // they could technically read the same org-scoped rows via RLS.
   const { data: auditLogs, isError: auditError } = useQuery({
     queryKey: ['admin-audit', orgId],
     enabled: isAdmin && !!currentOrg,
     queryFn: () => fetchAdminAuditLogs(supabase, AUDIT_LOG_LIMIT, orgId),
-  });
-
-  const { data: syncLogs, isError: syncError } = useQuery({
-    queryKey: ['admin-sync', orgId],
-    enabled: isAdmin && !!currentOrg,
-    queryFn: () => fetchAdminSyncLogs(supabase, SYNC_LOG_LIMIT, orgId),
   });
 
   // Controlled so we know which tab is active: the Booking engine tab renders its own
@@ -307,7 +300,6 @@ export default function SettingsPage() {
     { heading: t('nav.groups.people'), items: [
       { value: "people", label: t('nav.items.people'), icon: Users, show: isAdmin },
       { value: "activity", label: t('nav.items.activity'), icon: Activity, show: isAdmin },
-      { value: "sync-log", label: t('nav.items.syncLog'), icon: Database, show: isAdmin },
     ] },
     { heading: t('nav.groups.automation'), items: [
       { value: "airtable", label: t('nav.items.airtable'), icon: Database, show: isAdmin || isProducer },
@@ -482,40 +474,6 @@ export default function SettingsPage() {
                     </div>
                   ))}
                   {!auditError && auditLogs?.length === 0 && <p className="text-sm text-muted-foreground text-center py-6">{t('activity.empty')}</p>}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        )}
-
-        {isAdmin && currentOrg && (
-          <TabsContent value="sync-log" className="mt-4">
-            <Card>
-              <CardHeader><CardTitle className="font-display">{t('syncLog.title')}</CardTitle></CardHeader>
-              <CardContent>
-                {syncError && (
-                  <Alert variant="destructive" className="mb-3">
-                    <AlertDescription>{t('syncLog.loadError')}</AlertDescription>
-                  </Alert>
-                )}
-                <div className="space-y-2">
-                  {syncError ? null : syncLogs && syncLogs.length > 0 ? syncLogs.map((log) => (
-                    <div key={log.id} className="flex items-center justify-between p-3 rounded-lg border border-border text-sm">
-                      <div className="flex items-center gap-2">
-                        <Badge variant="secondary" className={log.status === 'success' ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'}>
-                          {log.status}
-                        </Badge>
-                        <span>{log.sync_type}</span>
-                        <span className="text-muted-foreground">{t('syncLog.records', { n: log.records_processed })}</span>
-                      </div>
-                      <span className="text-xs text-muted-foreground">{format(new Date(log.synced_at), 'dd/MM/yyyy HH:mm')}</span>
-                    </div>
-                  )) : (
-                    <div className="text-center py-8">
-                      <Database className="h-10 w-10 mx-auto text-muted-foreground opacity-30 mb-3" />
-                      <p className="text-sm text-muted-foreground">{t('syncLog.empty')}</p>
-                    </div>
-                  )}
                 </div>
               </CardContent>
             </Card>

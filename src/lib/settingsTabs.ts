@@ -6,9 +6,10 @@
 // empty pane. Admin-only "permissions" IS listed, but gated below on the caller's role, and
 // "docs" (Documentation) is likewise listed but gated below to super-admins only — it is no
 // longer a reachable deep-link target for an admin or producer. The concept explainers that
-// used to deep-link here now point at the Help center instead (see ROUTES.HELP). "people",
-// "activity", and "sync-log" are the former standalone Admin page's tabs, folded in as an
-// admin-only group; `/admin` now redirects straight to `?tab=people`.
+// used to deep-link here now point at the Help center instead (see ROUTES.HELP). "people"
+// and "activity" are the former standalone Admin page's tabs, folded in as an admin-only
+// group; `/admin` now redirects straight to `?tab=people`. Its former "sync-log" tab was
+// retired (duplicate of the Airtable sync tab's own history view) rather than folded in.
 //
 // For callers building a link: SettingsPage follows the param whether or not it is already
 // mounted (it seeds from this helper and re-runs on a change of `?tab=`), so an in-app
@@ -23,7 +24,6 @@ export const SETTINGS_TAB_PARAMS = [
   "permissions",
   "people",
   "activity",
-  "sync-log",
   "casts-coverage",
   "skills",
   "airtable",
@@ -37,7 +37,7 @@ export const SETTINGS_TAB_PARAMS = [
 export type SettingsTabParam = typeof SETTINGS_TAB_PARAMS[number];
 
 /** Tabs whose trigger and content only render for an admin. */
-const ADMIN_ONLY: readonly SettingsTabParam[] = ["permissions", "people", "activity", "sync-log"];
+const ADMIN_ONLY: readonly SettingsTabParam[] = ["permissions", "people", "activity"];
 
 /** Tabs whose trigger and content only render for a super-admin. */
 const SUPER_ADMIN_ONLY: readonly SettingsTabParam[] = ["docs"];

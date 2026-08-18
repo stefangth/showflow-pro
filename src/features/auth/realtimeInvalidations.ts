@@ -29,7 +29,6 @@ export const REALTIME_INVALIDATIONS: Array<{ table: string; keys: unknown[][] }>
   { table: 'chat_messages',              keys: [['chat-messages']] },
   { table: 'chats',                      keys: [['chat'], ['my-chats']] },
   { table: 'booking_audit_log',          keys: [['admin-audit']] },
-  { table: 'airtable_sync_log',          keys: [['admin-sync']] },
   // blocked_dates and show_date_required_skills both feed fetchTierLadderCounts'
   // waterfall (blocked exclusion, required-skill match). Both were added to the
   // supabase_realtime publication in 20260812190100, so cross-client refresh for
