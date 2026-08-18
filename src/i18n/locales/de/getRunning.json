@@ -86,6 +86,7 @@
   "panel": {
     "close": "Schließen",
     "later": "Später",
+    "unlocksLabel": "Was das freischaltet",
     "waitsOn": {
       "body": "Von einem Admin festgelegt. Wartet auf {{name}}.",
       "settingsLink": {
@@ -103,7 +104,7 @@
       "ladder": "Dokument · entscheidet, wer zuerst gefragt wird",
       "eligibility": "Dokument · zeigt die Lücken",
       "timing": "Werte · zwei Felder",
-      "team": "Dokument · dein Production Team",
+      "team": "Team · nur Admin",
       "letterhead": "Dokument · blockiert den Versand",
       "terms": "Dokument · blockiert den Versand",
       "countersign": "Dokument · blockiert den Versand nicht"
@@ -116,10 +117,19 @@
       "ladder": "Reihenfolge liegt in den Einstellungen",
       "eligibility": "Abdeckung liegt in den Einstellungen",
       "timing": "Gilt für die heutige Tagesübersicht",
-      "team": "Einladungen laufen über People",
+      "team": "Sie erhalten eine E-Mail-Einladung",
       "letterhead": "Wird auf jedem Vertrag verwendet",
       "terms": "Wird auf jedem Vertrag verwendet",
       "countersign": "Wird auf jedem Vertrag verwendet"
+    },
+    "body": {
+      "team": {
+        "emailLabel": "Per E-Mail einladen",
+        "emailPlaceholder": "name@firma.de",
+        "send": "Einladung senden",
+        "roleFixed": "Production Team",
+        "unlocks": "Dein Production Team kann Bestätigungen übernehmen, sobald Angebote reinkommen."
+      }
     }
   },
   "tasks": {

@@ -86,6 +86,7 @@
   "panel": {
     "close": "Close",
     "later": "Later",
+    "unlocksLabel": "What this unlocks",
     "waitsOn": {
       "body": "Set by an admin. Waits on {{name}}.",
       "settingsLink": {
@@ -103,7 +104,7 @@
       "ladder": "Document · decides who is asked first",
       "eligibility": "Document · shows the gaps",
       "timing": "Values · two fields",
-      "team": "Document · your production team",
+      "team": "Team · admin only",
       "letterhead": "Document · blocks issuing",
       "terms": "Document · blocks issuing",
       "countersign": "Document · does not block issuing"
@@ -116,10 +117,19 @@
       "ladder": "Ranking lives in Settings",
       "eligibility": "Coverage lives in Settings",
       "timing": "Applies to tonight's digest",
-      "team": "Invites happen from People",
+      "team": "They get an email invite",
       "letterhead": "Used on every order",
       "terms": "Used on every order",
       "countersign": "Used on every order"
+    },
+    "body": {
+      "team": {
+        "emailLabel": "Invite by email",
+        "emailPlaceholder": "name@company.com",
+        "send": "Send invite",
+        "roleFixed": "Production Team",
+        "unlocks": "Producers can take confirmations off your plate once offers start landing."
+      }
     }
   },
   "tasks": {

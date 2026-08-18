@@ -6,7 +6,7 @@ import { SlotsStep } from "@/components/bookings/setup/SlotsStep";
 import { LadderStep } from "@/components/bookings/setup/LadderStep";
 import { EligibilityStep } from "@/components/bookings/setup/EligibilityStep";
 import { TimingStep } from "@/components/bookings/setup/TimingStep";
-import { TeamStep } from "@/components/bookings/setup/TeamStep";
+import { TeamPanelBody } from "@/components/getRunning/panels/TeamPanelBody";
 import { LetterheadStep } from "@/components/hireOrders/setup/LetterheadStep";
 import { TermsStep } from "@/components/hireOrders/setup/TermsStep";
 import { CountersignStep } from "@/components/hireOrders/setup/CountersignStep";
@@ -15,11 +15,14 @@ import type { GetRunningTask } from "@/lib/getRunning/tasks";
 
 /**
  * Mounts the existing step editor for a `GetRunningTask` inside the `TaskPanel` frame's
- * scroll slot. Every editor listed in the Task 7 brief already exists under
- * `src/components/bookings/setup/*` or `src/components/hireOrders/setup/*` and is reused
- * as-is (wrap, don't modify) — including `ShowsStep` and `TeamStep` for the `dates`/`team`
- * tasks, which the brief expected to need a hand-built link-out body for but which already
- * exist and fit (see the task report).
+ * scroll slot. Most editors here already exist under `src/components/bookings/setup/*`
+ * or `src/components/hireOrders/setup/*` and are reused as-is (wrap, don't modify) —
+ * including `ShowsStep` for the `dates` task. `team` is the one exception: the old
+ * `TeamStep` was a link-out to People, and the "in-panel editors" initiative
+ * (`.superpowers/sdd/2026-08-18-get-running-in-panel-editors`) replaced it with
+ * `TeamPanelBody`, a genuine in-panel producer-invite editor built for this registry —
+ * later tasks in the same initiative do the same for `letterhead`/`terms`/`countersign`/
+ * `slots`.
  *
  * Data hooks are called unconditionally at the top (same convention as
  * `BookingSetupRail`/`SetupRail`, which always fetch coverage/artist-count regardless of
@@ -56,7 +59,7 @@ export function TaskPanelEditor({
     case "timing":
       return <TimingStep orgId={orgId} onDone={onDone} />;
     case "team":
-      return <TeamStep />;
+      return <TeamPanelBody orgId={orgId} onDone={onDone} />;
     case "letterhead":
       return <LetterheadStep orgId={orgId} onDone={onDone} />;
     case "terms":
