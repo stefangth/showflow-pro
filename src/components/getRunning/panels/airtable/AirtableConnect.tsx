@@ -7,6 +7,9 @@ interface AirtableConnectProps {
   orgId: string | null;
   readOnly: boolean;
   canTriggerSync: boolean;
+  /** Forwarded to the rail's footer "Later" button — optional so existing callers keep
+   *  compiling; typically closes whatever overlay hosts `AirtableConnect`. */
+  onLater?: () => void;
 }
 
 /**
@@ -22,7 +25,7 @@ interface AirtableConnectProps {
  * dedupes the identical query keys across all three mounts, so this costs no extra
  * network round-trips (see task-C0-spike.md §8).
  */
-export function AirtableConnect({ orgId, readOnly, canTriggerSync }: AirtableConnectProps) {
+export function AirtableConnect({ orgId, readOnly, canTriggerSync, onLater }: AirtableConnectProps) {
   const c = useAirtableConsole(orgId, { readOnly, canTriggerSync });
   const [forcedStep, setForcedStep] = useState<AirtableConnectStep | null>(null);
   const connected = c.keyPresent && c.hasBaseTable;
@@ -45,6 +48,7 @@ export function AirtableConnect({ orgId, readOnly, canTriggerSync }: AirtableCon
       canTriggerSync={canTriggerSync}
       initialStep={forcedStep ?? undefined}
       onConnected={() => setForcedStep(null)}
+      onLater={onLater}
     />
   );
 }

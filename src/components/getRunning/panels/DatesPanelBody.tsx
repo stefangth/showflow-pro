@@ -127,7 +127,12 @@ export function DatesPanelBody({
           <DialogHeader className="sr-only">
             <DialogTitle>{t("panel.body.dates.airtableDialogTitle")}</DialogTitle>
           </DialogHeader>
-          <AirtableConnect orgId={orgId} readOnly={!canConfigureAirtable} canTriggerSync={canTriggerSync} />
+          <AirtableConnect
+            orgId={orgId}
+            readOnly={!canConfigureAirtable}
+            canTriggerSync={canTriggerSync}
+            onLater={() => setAirtableOpen(false)}
+          />
         </DialogContent>
       </Dialog>
     </div>

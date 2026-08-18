@@ -300,6 +300,7 @@
       "stepOf": "Schritt {{n}} von 4",
       "savedAsYouGo": "Speichert sofort",
       "later": "Später",
+      "continue": "Weiter",
       "finish": "Fertig"
     }
   }

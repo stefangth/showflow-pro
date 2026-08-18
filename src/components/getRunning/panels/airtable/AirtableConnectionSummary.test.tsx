@@ -79,17 +79,19 @@ describe("AirtableConnectionSummary", () => {
     expect(await screen.findByText("2 of 9 required")).toBeInTheDocument();
   });
 
-  it("calls onEditStep with the right key from Replace / Change / Map sessions", async () => {
+  it("calls onEditStep with the right key from Replace / Change / Map sessions / Review", async () => {
     const onEditStep = vi.fn();
     renderSummary(onEditStep);
 
     fireEvent.click(await screen.findByRole("button", { name: "Replace" }));
     fireEvent.click(screen.getByRole("button", { name: "Change" }));
     fireEvent.click(screen.getByRole("button", { name: "Map sessions" }));
+    fireEvent.click(screen.getByRole("button", { name: "Review" }));
 
     expect(onEditStep).toHaveBeenNthCalledWith(1, "connect");
     expect(onEditStep).toHaveBeenNthCalledWith(2, "baseTable");
     expect(onEditStep).toHaveBeenNthCalledWith(3, "map");
+    expect(onEditStep).toHaveBeenNthCalledWith(4, "catalog");
   });
 
   it("hides every row affordance when readOnly", async () => {
@@ -100,5 +102,6 @@ describe("AirtableConnectionSummary", () => {
     expect(screen.queryByRole("button", { name: "Replace" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Change" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Map sessions" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Review" })).not.toBeInTheDocument();
   });
 });

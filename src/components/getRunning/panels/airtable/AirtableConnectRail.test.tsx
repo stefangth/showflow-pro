@@ -81,9 +81,11 @@ beforeEach(() => {
 });
 
 function renderRail(props: Partial<{
-  orgId: string | null; readOnly: boolean; canTriggerSync: boolean; onConnected: () => void; initialStep: AirtableConnectStep;
+  orgId: string | null; readOnly: boolean; canTriggerSync: boolean; onConnected: () => void;
+  initialStep: AirtableConnectStep; onLater: () => void;
 }> = {}) {
   const onConnected = props.onConnected ?? vi.fn();
+  const onLater = props.onLater ?? vi.fn();
   const result = renderWithProviders(
     <AirtableConnectRail
       orgId={props.orgId ?? "org-1"}
@@ -91,9 +93,10 @@ function renderRail(props: Partial<{
       canTriggerSync={props.canTriggerSync ?? true}
       onConnected={onConnected}
       initialStep={props.initialStep}
+      onLater={onLater}
     />,
   );
-  return { ...result, onConnected };
+  return { ...result, onConnected, onLater };
 }
 
 describe("AirtableConnectRail", () => {
@@ -145,5 +148,19 @@ describe("AirtableConnectRail", () => {
     renderRail({ readOnly: true });
     await screen.findByPlaceholderText(/^pat/);
     expect(screen.getByRole("button", { name: "Save and continue" })).toBeDisabled();
+  });
+
+  it("calls onLater when the footer's Later button is clicked", async () => {
+    const { onLater } = renderRail();
+    fireEvent.click(await screen.findByRole("button", { name: "Later" }));
+    expect(onLater).toHaveBeenCalledTimes(1);
+  });
+
+  it("labels the base-and-table step's primary Continue, not Save and continue (it already autosaves)", async () => {
+    mock(fetchAirtableKeyStatus).mockResolvedValue({ present: true, updatedAt: "2026-06-01T00:00:00Z" });
+    renderRail();
+    await screen.findByRole("heading", { level: 3, name: "Base and table" });
+    expect(screen.getByRole("button", { name: "Continue" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Save and continue" })).not.toBeInTheDocument();
   });
 });

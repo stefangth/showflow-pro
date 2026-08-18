@@ -54,6 +54,9 @@ interface AirtableConnectRailProps {
    *  used when the summary's "Replace"/"Change"/"Map sessions"/"Review" re-opens the rail
    *  on the exact group the visitor clicked. */
   initialStep?: AirtableConnectStep;
+  /** Fires on the footer's "Later" button — optional so existing callers keep compiling;
+   *  when omitted the button renders with no handler (design-only, matching the mock). */
+  onLater?: () => void;
 }
 
 /** The four-step connect rail (screen 11b): a numbered step list on the left, the active
@@ -61,7 +64,7 @@ interface AirtableConnectRailProps {
  *  mount the existing `MappingTab`/`CatalogTab` unchanged, fed from `useAirtableConsole` —
  *  the same data-wiring the Settings console (`AirtableSyncTab`) uses, so nothing here
  *  re-implements mapping or catalog logic. */
-export function AirtableConnectRail({ orgId, readOnly, canTriggerSync, onConnected, initialStep }: AirtableConnectRailProps) {
+export function AirtableConnectRail({ orgId, readOnly, canTriggerSync, onConnected, initialStep, onLater }: AirtableConnectRailProps) {
   const { t } = useTranslation("settingsAirtable");
   const c = useAirtableConsole(orgId, { readOnly, canTriggerSync });
   const canWrite = !readOnly;
@@ -77,10 +80,15 @@ export function AirtableConnectRail({ orgId, readOnly, canTriggerSync, onConnect
 
   const activeIndex = STEPS.findIndex((s) => s.step === activeStep);
 
+  // "Save and continue" (reused from SetupWizard) is honest only on the connect step,
+  // where the primary click IS the save. The base/table step already autosaves on
+  // Select-change/Input-blur — the footer press there only navigates forward, so it gets
+  // its own "Continue" label rather than implying a save that already happened.
   const primaryLabel =
-    activeStep === "map" ? t("setupWizard.steps.linkCatalogTitle")
-      : activeStep === "catalog" ? t("rail.footer.finish")
-        : t("setupWizard.saveAndContinue");
+    activeStep === "connect" ? t("setupWizard.saveAndContinue")
+      : activeStep === "baseTable" ? t("rail.footer.continue")
+        : activeStep === "map" ? t("setupWizard.steps.linkCatalogTitle")
+          : t("rail.footer.finish");
 
   const primaryDisabled =
     !canWrite
@@ -209,10 +217,7 @@ export function AirtableConnectRail({ orgId, readOnly, canTriggerSync, onConnect
         <span className="font-mono text-xs font-medium text-accent-600">{t("rail.footer.stepOf", { n: activeIndex + 1 })}</span>
         <span className="text-xs text-muted-foreground">{t("rail.footer.savedAsYouGo")}</span>
         <span className="flex-1" />
-        {/* Deliberately inert: the rail has no `onLater`/`onClose` prop (see the brief's
-         *  fixed prop surface) — closing is left to whatever chrome hosts the rail (a
-         *  Dialog's own close control in `DatesPanelBody`). */}
-        <Button type="button" variant="outline">{t("rail.footer.later")}</Button>
+        <Button type="button" variant="outline" onClick={onLater}>{t("rail.footer.later")}</Button>
         <Button type="button" onClick={handlePrimary} disabled={primaryDisabled}>{primaryLabel}</Button>
       </div>
     </div>
