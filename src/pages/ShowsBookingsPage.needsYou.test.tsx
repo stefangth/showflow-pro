@@ -94,9 +94,6 @@ vi.mock("@/data/bookings", async (orig) => ({
   fetchBookingCountsByDate: () => Promise.resolve(COUNTS),
   fetchBookingsWithArtistForDates: () => Promise.resolve(PEOPLE),
 }));
-vi.mock("@/components/filters/useFilterVisibility", () => ({
-  useFilterVisibility: () => ({ canSee: () => true, isAdmin: true }),
-}));
 vi.mock("@/hooks/useEntitlements", () => ({
   useFeature: (f: string) => f === "booking_flow" || f === "hire_orders",
   useEntitlements: () => ({ features: new Set(["booking_flow", "hire_orders"]), isLoading: false }),

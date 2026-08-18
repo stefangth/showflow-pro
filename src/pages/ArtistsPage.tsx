@@ -22,7 +22,6 @@ import type { Artist } from '@/types';
 import { ProgramFilter } from '@/components/filters/ProgramFilter';
 import { TimeframeFilter, type TimeframeValue } from '@/components/filters/TimeframeFilter';
 import { SortControl, type SortValue } from '@/components/filters/SortControl';
-import { useFilterVisibility } from '@/components/filters/useFilterVisibility';
 import { applySort, inTimeframe } from '@/components/filters/filterUtils';
 import { CastsSection } from '@/components/casts/CastsSection';
 import { ArtistProfileSheet } from '@/components/artists/ArtistProfileSheet';
@@ -49,7 +48,6 @@ export default function ArtistsPage() {
   const { t } = useTranslation('artists');
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { canSee } = useFilterVisibility('artists');
   const canAddArtists = useCan('add_artists');
   const canInviteArtists = useCan('invite_artists');
   const canResendArtistInvite = useCan('resend_account_invite');
@@ -279,9 +277,9 @@ export default function ArtistsPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input placeholder={t('page.searchPlaceholder')} value={search} onChange={e => setSearch(e.target.value)} className="pl-10" />
         </div>
-        {canSee('program') && <ProgramFilter options={programOptions} value={programs} onChange={setPrograms} />}
-        {canSee('timeframe') && <TimeframeFilter value={timeframe} onChange={setTimeframe} />}
-        {canSee('sort') && <SortControl value={sort} onChange={setSort} chronoLabel={t('page.nextBooking')} />}
+        <ProgramFilter options={programOptions} value={programs} onChange={setPrograms} />
+        <TimeframeFilter value={timeframe} onChange={setTimeframe} />
+        <SortControl value={sort} onChange={setSort} chronoLabel={t('page.nextBooking')} />
       </div>
 
       <CastsSection onArtistClick={(id) => setProfileArtistId(id)} />

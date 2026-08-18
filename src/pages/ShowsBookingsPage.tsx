@@ -21,7 +21,6 @@ import { Search } from 'lucide-react';
 import { parseISO } from 'date-fns';
 import type { TimeframeValue } from '@/components/filters/TimeframeFilter';
 import { SortControl, type SortValue } from '@/components/filters/SortControl';
-import { useFilterVisibility } from '@/components/filters/useFilterVisibility';
 import { applySort, inTimeframe } from '@/components/filters/filterUtils';
 import { FilterChipsBar } from '@/components/filters/FilterChipsBar';
 import { ArtistBookingsView } from '@/components/bookings/ArtistBookingsView';
@@ -120,7 +119,6 @@ function ProducerShowsBookings() {
     { value: 'cancelled' as DisplayStatus, label: STATUS_LABEL.cancelled },
     { value: 'unconfigured' as DisplayStatus, label: STATUS_LABEL.unconfigured },
   ]), [STATUS_LABEL]);
-  const { canSee } = useFilterVisibility('bookings');
   const { getCustomFieldDefs } = useEditorConfig();
   const customDefs = useMemo(() => getCustomFieldDefs('show_dates'), [getCustomFieldDefs]);
   const filterableDefs = useMemo(() => customDefs.filter(d => d.filterable), [customDefs]);
@@ -512,11 +510,11 @@ function ProducerShowsBookings() {
           />
         </div>
         <FilterChipsBar
-          showStatus={canSee('status')}
+          showStatus
           statusValue={statusFilter}
           statusOptions={STATUS_OPTIONS}
           onStatusChange={updateStatusFilter}
-          showProgram={canSee('program')}
+          showProgram
           programOptions={programOptions}
           programs={programs}
           onProgramsChange={setPrograms}
@@ -532,7 +530,7 @@ function ProducerShowsBookings() {
             return next;
           })}
         />
-        {canSee('sort') && <SortControl value={sort} onChange={setSort} chronoLabel={t('producer.sortChronoLabel')} extraOptions={sortExtraOptions} />}
+        <SortControl value={sort} onChange={setSort} chronoLabel={t('producer.sortChronoLabel')} extraOptions={sortExtraOptions} />
         {canManage && <Button className="ml-auto" onClick={() => setNewDateOpen(true)}>{t('producer.newDate')}</Button>}
       </div>
 

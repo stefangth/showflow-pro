@@ -80,9 +80,6 @@ vi.mock("@/data/bookings", async (orig) => ({
   ...(await orig<typeof import("@/data/bookings")>()),
   fetchBookingCountsByDate: () => Promise.resolve(new Map()),
 }));
-vi.mock("@/components/filters/useFilterVisibility", () => ({
-  useFilterVisibility: () => ({ canSee: () => true, isAdmin: true }),
-}));
 const { featureFlags } = vi.hoisted(() => ({ featureFlags: { value: {} as Record<string, boolean> } }));
 // Settable entitlements-loading flag so a test can exercise the "loading window must not
 // fail open" write-gate on the setup rail.

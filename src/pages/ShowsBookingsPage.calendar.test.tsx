@@ -67,9 +67,6 @@ vi.mock("@/data/bookings", async (orig) => ({
   ...(await orig<typeof import("@/data/bookings")>()),
   fetchBookingCountsByDate: () => Promise.resolve(COUNTS),
 }));
-vi.mock("@/components/filters/useFilterVisibility", () => ({
-  useFilterVisibility: () => ({ canSee: () => true, isAdmin: true }),
-}));
 vi.mock("@/hooks/useEntitlements", () => ({
   // booking_flow on so Confirm holds is offered; hire_orders off.
   useFeature: (f: string) => f === "booking_flow",

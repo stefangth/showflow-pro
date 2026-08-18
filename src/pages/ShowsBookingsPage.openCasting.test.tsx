@@ -34,9 +34,6 @@ vi.mock("@/data/bookings", async (orig) => ({
   ...(await orig<typeof import("@/data/bookings")>()),
   fetchBookingCountsByDate: () => Promise.resolve(new Map()),
 }));
-vi.mock("@/components/filters/useFilterVisibility", () => ({
-  useFilterVisibility: () => ({ canSee: () => true, isAdmin: true }),
-}));
 vi.mock("@/hooks/useEntitlements", () => ({
   useFeature: (f: string) => f === "booking_flow",
   useEntitlements: () => ({ features: new Set(["booking_flow"]), isLoading: false }),
