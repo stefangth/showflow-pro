@@ -108,7 +108,9 @@ export function AvailabilityFirstRun({
               {t("firstRun.rules.eligibilityBody")}
             </div>
           </div>
-          <div className="flex-1 border-b border-border p-4 sm:border-b-0 sm:border-r">
+          <div
+            className={`flex-1 border-b border-border p-4 sm:border-b-0 ${artistAcceptance ? "sm:border-r" : ""}`}
+          >
             <div className="text-[13px] font-semibold">{t("firstRun.rules.offersTitle")}</div>
             <div className="mt-1 text-xs leading-[17px] text-muted-foreground text-pretty">
               {artistAcceptance
@@ -116,12 +118,16 @@ export function AvailabilityFirstRun({
                 : t("firstRun.rules.offersBodyDirect")}
             </div>
           </div>
-          <div className="flex-1 p-4">
-            <div className="text-[13px] font-semibold">{t("firstRun.rules.windowTitle", { hours: windowHours })}</div>
-            <div className="mt-1 text-xs leading-[17px] text-muted-foreground text-pretty">
-              {t("firstRun.rules.windowBody")}
+          {/* The response window only exists for offer based orgs. A direct book org has
+              no offer to answer, so this column would be misleading and is dropped. */}
+          {artistAcceptance && (
+            <div className="flex-1 p-4">
+              <div className="text-[13px] font-semibold">{t("firstRun.rules.windowTitle", { hours: windowHours })}</div>
+              <div className="mt-1 text-xs leading-[17px] text-muted-foreground text-pretty">
+                {t("firstRun.rules.windowBody")}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
 

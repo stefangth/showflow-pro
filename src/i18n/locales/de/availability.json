@@ -147,6 +147,7 @@
       "windowBody": "Danach läuft das Angebot ab und geht an die nächste Stufe."
     },
     "hireOrdersFooter": "Engagementverträge sind aktiv. Du unterschreibst im Browser und das gegengezeichnete PDF landet in deiner Mail.",
+    "bookingOffTitle": "Verfügbarkeit",
     "bookingOff": "Termine laufen in ShowFlow für diese Organisation nicht, hier gibt es also nichts einzurichten."
   },
   "blocked": {

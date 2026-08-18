@@ -55,6 +55,8 @@ vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.f
 
 import { fetchAirtableKeyStatus, saveAirtableKey } from "@/data/airtableKey";
 import { fetchAirtableSettings } from "@/data/airtableSettings";
+import { fetchAirtableBases } from "@/data/airtableSchema";
+import { upsertOrgSetting } from "@/data/settings";
 import { AirtableConnectRail, type AirtableConnectStep } from "./AirtableConnectRail";
 
 type Fn = ReturnType<typeof vi.fn>;
@@ -162,5 +164,35 @@ describe("AirtableConnectRail", () => {
     await screen.findByRole("heading", { level: 3, name: "Base and table" });
     expect(screen.getByRole("button", { name: "Continue" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Save and continue" })).not.toBeInTheDocument();
+  });
+
+  it("stays on the base-and-table step after a table is autosaved (does not auto-jump to Map fields)", async () => {
+    // Regression for the screen-11 review finding: selecting a table autosaves and flips
+    // hasBaseTable true, but the active step must NOT reactively advance to "map" before the
+    // visitor clicks Continue (or they'd skip the optional view input on this step).
+    mock(fetchAirtableKeyStatus).mockResolvedValue({ present: true, updatedAt: "2026-06-01T00:00:00Z" });
+    // Force the manual-input fallback (plain base/table Inputs with onBlur autosave).
+    mock(fetchAirtableBases).mockResolvedValue({ schemaAccessible: false, bases: [] });
+    // Stateful settings: upsertOrgSetting mutates it, so the invalidated refetch returns the
+    // saved base/table and hasBaseTable flips true — exactly the mid-step reactivity the fix guards.
+    const settingsState: Record<string, unknown> = { ...SETUP_DEFAULTS };
+    mock(fetchAirtableSettings).mockImplementation(() => Promise.resolve({ ...settingsState }));
+    mock(upsertOrgSetting).mockImplementation((_c: unknown, _o: unknown, key: string, value: unknown) => {
+      settingsState[key] = value;
+      return Promise.resolve();
+    });
+
+    renderRail();
+    const baseInput = await screen.findByPlaceholderText("app1234567890");
+    fireEvent.blur(baseInput, { target: { value: "appManual" } });
+    const tableInput = screen.getByPlaceholderText("Shows");
+    fireEvent.blur(tableInput, { target: { value: "Events" } });
+
+    // The base/table are now persisted and hasBaseTable is true; assert the rail is STILL on
+    // the base-and-table step (footer "Step 2 of 4"), not auto-advanced to Map fields ("Step 3 of 4").
+    await waitFor(() => expect(upsertOrgSetting).toHaveBeenCalledWith(expect.anything(), "org-1", "airtable_table_name", "Events"));
+    expect(screen.getByRole("heading", { level: 3, name: "Base and table" })).toBeInTheDocument();
+    expect(screen.getByText("Step 2 of 4")).toBeInTheDocument();
+    expect(screen.queryByText("Step 3 of 4")).not.toBeInTheDocument();
   });
 });

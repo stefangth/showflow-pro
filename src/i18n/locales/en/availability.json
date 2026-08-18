@@ -147,6 +147,7 @@
       "windowBody": "After that the offer expires and goes to the next tier."
     },
     "hireOrdersFooter": "Hire orders are on. You sign in the browser and the countersigned PDF lands in your mail.",
+    "bookingOffTitle": "Availability",
     "bookingOff": "Dates do not run in ShowFlow for this org, so there is nothing to set here."
   },
   "blocked": {

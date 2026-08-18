@@ -318,8 +318,7 @@ function ArtistAvailability() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="font-display text-[32px] font-semibold tracking-tight">{pageCopy.title}</h1>
-          <p className="text-muted-foreground mt-1">{pageCopy.subtitle}</p>
+          <h1 className="font-display text-[32px] font-semibold tracking-tight">{t('firstRun.bookingOffTitle')}</h1>
         </div>
         <p className="text-sm text-muted-foreground">{t('firstRun.bookingOff')}</p>
       </div>

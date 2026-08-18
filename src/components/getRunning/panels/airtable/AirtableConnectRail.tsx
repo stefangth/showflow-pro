@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Check, CheckCircle2, CircleHelp } from "lucide-react";
 
@@ -69,14 +69,27 @@ export function AirtableConnectRail({ orgId, readOnly, canTriggerSync, onConnect
   const c = useAirtableConsole(orgId, { readOnly, canTriggerSync });
   const canWrite = !readOnly;
 
-  // The active step tracks the console's readiness automatically until the visitor makes
-  // their first explicit move (a save, or the footer's primary) — after that, navigation is
-  // manual, since e.g. an incomplete mapping must not auto-jump back to "map" every render.
-  const [manualStep, setManualStep] = useState<AirtableConnectStep | null>(initialStep ?? null);
-  const activeStep = manualStep ?? firstUnsatisfiedStep(c.keyPresent, c.hasBaseTable);
-  const goTo = (step: AirtableConnectStep) => setManualStep(step);
+  // The active step is LATCHED once, the moment the console has settled (`c.ready`), from the
+  // first-unsatisfied step at that instant — and thereafter moves only on an explicit `goTo`
+  // (a token save, or the footer's primary). It must NOT re-derive from readiness every
+  // render: the base/table step autosaves the moment a table is picked, so a reactive
+  // `activeStep` would jump straight to "map" before the visitor can set the optional view
+  // name or click Continue (screen-11 review finding). Latching on `c.ready` rather than the
+  // first render is essential — the key-status query is async, so an eager seed would read
+  // keyPresent=false and wrongly park on "connect" until it resolved.
+  const [activeStep, setActiveStep] = useState<AirtableConnectStep | null>(initialStep ?? null);
+  useEffect(() => {
+    if (activeStep === null && c.ready) setActiveStep(firstUnsatisfiedStep(c.keyPresent, c.hasBaseTable));
+  }, [activeStep, c.ready, c.keyPresent, c.hasBaseTable]);
+  const goTo = (step: AirtableConnectStep) => setActiveStep(step);
 
   const [tokenValue, setTokenValue] = useState("");
+
+  // Latch not yet resolved (key-status/settings still loading) — show a skeleton rather than
+  // flashing the wrong step. All hooks above have run, so this early return is rules-safe.
+  if (activeStep === null) {
+    return <Skeleton className="h-72 w-full rounded-[var(--radius-xl)]" />;
+  }
 
   const activeIndex = STEPS.findIndex((s) => s.step === activeStep);
 

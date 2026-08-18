@@ -44,9 +44,17 @@ test("Block dates button calls onBlockDates", () => {
   expect(onBlockDates).toHaveBeenCalled();
 });
 
-test("offers rule reflects direct-book orgs", () => {
+test("offers rule reflects direct-book orgs and drops the offer-window column", () => {
   renderRun({ blockedCount: 0, artistAcceptance: false });
   expect(screen.getByText(i18n.t("availability:firstRun.rules.offersBodyDirect"))).toBeInTheDocument();
+  // The "48 hours to answer" window column is offer-only; a direct-book org has no offer
+  // to answer, so it must not render (it would otherwise contradict "booked directly").
+  expect(screen.queryByText(i18n.t("availability:firstRun.rules.windowTitle", { hours: 48 }))).not.toBeInTheDocument();
+});
+
+test("offer orgs keep the response-window column", () => {
+  renderRun({ blockedCount: 0, artistAcceptance: true, windowHours: 48 });
+  expect(screen.getByText(i18n.t("availability:firstRun.rules.windowTitle", { hours: 48 }))).toBeInTheDocument();
 });
 
 test("hire-orders footer line only shows when hire orders are on", () => {
