@@ -70,9 +70,8 @@ export interface TaskPanelProps {
    *  the panel. */
   onClose: () => void;
   /** Called after the mounted editor's own `onDone` fires (a successful save). Optional:
-   *  read-only tasks (ladder/eligibility) and link-out tasks (dates/people/team) never
-   *  reach `onDone` at all, since their editors have no save step to complete. When
-   *  omitted, `onDone` falls back to `onClose`. */
+   *  a viewer who cannot act on the task at all renders `WaitsOnPanelBody` instead (see
+   *  below), which never reaches `onDone`. When omitted, `onDone` falls back to `onClose`. */
   onNext?: () => void;
 }
 
@@ -107,6 +106,11 @@ export interface TaskPanelProps {
 export function TaskPanel({ task, orgId, onClose, onNext }: TaskPanelProps): JSX.Element {
   const { t } = useTranslation("getRunning");
   const handleDone = () => (onNext ? onNext() : onClose());
+  // letterhead/terms carry a "· blocks issuing" eyebrow while outstanding (they are the only
+  // tasks with block === "issuing"); once done that clause is stale, so swap to the "· set"
+  // variant — same !done reasoning the board's tiles/rows apply to the block chip.
+  const eyebrowKey =
+    task.done && task.block === "issuing" ? `panel.eyebrowSet.${task.key}` : `panel.eyebrow.${task.key}`;
 
   return (
     <div
@@ -116,7 +120,7 @@ export function TaskPanel({ task, orgId, onClose, onNext }: TaskPanelProps): JSX
       <div className="border-b border-border p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="text-[11px] font-semibold uppercase tracking-[1.6px] text-accent-600">
-            {t(`panel.eyebrow.${task.key}`)}
+            {t(eyebrowKey)}
           </div>
           <button
             type="button"

@@ -64,4 +64,13 @@ describe("SettingsPage People tab", () => {
     await screen.findByText("Modules", { selector: "p" });
     expect(screen.queryByRole("tab", { name: /^people$/i })).not.toBeInTheDocument();
   });
+
+  it("no longer renders a standalone sync-log tab (it lives in Airtable sync)", async () => {
+    vi.mocked(useAuth).mockReturnValue(DEFAULT_AUTH as never);
+    renderWithProviders(
+      <MemoryRouter initialEntries={["/settings?tab=people"]}><SettingsPage /></MemoryRouter>,
+    );
+    await screen.findByRole("tab", { name: /^people$/i });
+    expect(screen.queryByRole("tab", { name: /sync log/i })).not.toBeInTheDocument();
+  });
 });

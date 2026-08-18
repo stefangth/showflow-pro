@@ -60,6 +60,47 @@ describe("PhaseCard", () => {
     expect(onOpenTask).toHaveBeenCalledWith("people");
   });
 
+  // A phase that is being worked on (some tasks done, nothing blocking) must read as a solid
+  // card, not the dashed/ghosted "not started" treatment: the two are different visual states
+  // (active vs dormant), so a half-done phase no longer clashes with the solid cards beside it.
+  it("renders an in-progress phase (some done, nothing blocking) as a solid card", () => {
+    const phase: GetRunningPhase = {
+      key: "bookable",
+      tasks: [
+        task({ key: "flow", phase: "bookable", done: true }),
+        task({ key: "people", phase: "bookable", done: true }),
+        task({ key: "ladder", phase: "bookable", done: true }),
+        task({ key: "eligibility", phase: "bookable", done: true }),
+        task({ key: "timing", phase: "bookable", done: true }),
+        task({ key: "team", phase: "bookable", done: false, adminOnly: true }),
+      ],
+    };
+    renderWithProviders(<PhaseCard phase={phase} role="admin" onOpenTask={vi.fn()} />);
+    const card = screen.getByTestId("phase-card-bookable");
+    expect(card.className).toContain("bg-card");
+    expect(card.className).not.toContain("border-dashed");
+    expect(screen.getByText("Nothing blocking")).toBeInTheDocument();
+  });
+
+  it("renders a not-started phase (nothing done, nothing blocking) as a dashed, transparent card", () => {
+    const phase: GetRunningPhase = {
+      key: "bookable",
+      tasks: [
+        task({ key: "flow", phase: "bookable" }),
+        task({ key: "people", phase: "bookable" }),
+        task({ key: "ladder", phase: "bookable" }),
+        task({ key: "eligibility", phase: "bookable" }),
+        task({ key: "timing", phase: "bookable" }),
+        task({ key: "team", phase: "bookable", adminOnly: true }),
+      ],
+    };
+    renderWithProviders(<PhaseCard phase={phase} role="admin" onOpenTask={vi.fn()} />);
+    const card = screen.getByTestId("phase-card-bookable");
+    expect(card.className).toContain("border-dashed");
+    expect(card.className).toContain("bg-transparent");
+    expect(screen.getByText("Not started yet")).toBeInTheDocument();
+  });
+
   it("renders the admin-only chip on the team task", () => {
     renderWithProviders(<PhaseCard phase={makeBookablePhase()} role="admin" onOpenTask={vi.fn()} />);
 
@@ -132,6 +173,43 @@ describe("PhaseCard", () => {
 
     fireEvent.click(screen.getByText("Letterhead"));
     expect(onOpenTask).toHaveBeenCalledWith("letterhead");
+  });
+
+  it("drops the Blocks-issuing chip from a done paperwork tile even while its block field stays 'issuing'", () => {
+    // Regression: makeHireTask keeps block:"issuing" on a DONE letterhead/terms (the field is
+    // the static "what it holds up if outstanding" value, never cleared), so the tile must
+    // apply the same !done guard TaskRow/derivePhaseState do. A complete paperwork phase was
+    // rendering "Blocks issuing" on every tile despite reading "3 of 3 done · Ready".
+    const phase: GetRunningPhase = {
+      key: "paperwork",
+      tasks: [
+        task({ key: "letterhead", phase: "paperwork", done: true, block: "issuing" }),
+        task({ key: "terms", phase: "paperwork", done: true, block: "issuing" }),
+        task({ key: "countersign", phase: "paperwork", done: true }),
+      ],
+    };
+    renderWithProviders(<PhaseCard phase={phase} role="admin" onOpenTask={vi.fn()} />);
+
+    expect(screen.getByText("Ready")).toBeInTheDocument();
+    expect(screen.queryByText("Blocks issuing")).not.toBeInTheDocument();
+  });
+
+  it("shows the Blocks-issuing chip only on the outstanding tiles in a mixed paperwork phase", () => {
+    const phase: GetRunningPhase = {
+      key: "paperwork",
+      tasks: [
+        task({ key: "letterhead", phase: "paperwork", done: true, block: "issuing" }),
+        task({ key: "terms", phase: "paperwork", done: false, block: "issuing" }),
+        task({ key: "countersign", phase: "paperwork", done: false }),
+      ],
+    };
+    renderWithProviders(<PhaseCard phase={phase} role="admin" onOpenTask={vi.fn()} />);
+
+    // Only the still-outstanding terms tile carries the chip; the done letterhead does not.
+    const done = screen.getByTestId("paperwork-tile-letterhead");
+    const open = screen.getByTestId("paperwork-tile-terms");
+    expect(within(done).queryByText("Blocks issuing")).not.toBeInTheDocument();
+    expect(within(open).getByText("Blocks issuing")).toBeInTheDocument();
   });
 
   it("shows a Change link (not a primary button) for a done task", () => {

@@ -8,37 +8,51 @@ import { TaskRow } from "./TaskRow";
 
 const PHASE_ORDER: GetRunningPhaseKey[] = ["get_dates", "bookable", "paperwork"];
 
-type PhaseVisualState = "complete" | "blocking" | "neutral";
+type PhaseVisualState = "complete" | "blocking" | "active" | "dormant";
 
-/** The same three visual states, generically derived, drive every phase: a filled-check
- *  solid card once every task is done, an accent-elevated card while an offers/booking task
- *  is still outstanding (this phase blocks the org's first offer), else a dashed, quieter
- *  card. `docs/superpowers/specs/2026-08-17-setup-settings-design/screens/01_01_Get_running.html`
- *  shows exactly one instance of each: Phase 1 (complete), Phase 2 (blocking), Phase 3
- *  (neutral) — this function generalizes that pattern to every phase/state combination. */
+/** Four visual states drive every phase, structurally: `complete` (every task done, solid
+ *  card + green badge), `blocking` (an offers/booking task is still outstanding, so this
+ *  phase holds up the first offer — accent-elevated card), `active` (in progress: at least
+ *  one task done but not all, nothing blocking — a plain SOLID card, because the phase is
+ *  being worked on) and `dormant` (nothing started yet and nothing blocking — a dashed,
+ *  recessed card that reads as "not your concern yet").
+ *
+ *  Splitting the old single "neutral" into `active` vs `dormant` is what keeps the board
+ *  coherent in EVERY state combination, not just the design's one worked example: a phase
+ *  that is half-done no longer renders as a ghosted, dashed, "not started yet" card next to
+ *  a solid completed one. `screens/01_01_Get_running.html` shows get_dates=complete,
+ *  bookable=blocking, paperwork=dormant; this generalises that to the rest of the matrix. */
 function derivePhaseState(tasks: GetRunningTask[]): PhaseVisualState {
-  const leftCount = tasks.filter((task) => !task.done).length;
-  if (leftCount === 0) return "complete";
+  const doneCount = tasks.filter((task) => task.done).length;
+  if (tasks.length > 0 && doneCount === tasks.length) return "complete";
   const hasHardBlock = tasks.some((task) => !task.done && (task.block === "offers" || task.block === "booking"));
-  return hasHardBlock ? "blocking" : "neutral";
+  if (hasHardBlock) return "blocking";
+  return doneCount > 0 ? "active" : "dormant";
 }
 
+/** The solid neutral surface shared by the `complete` and `active` states (both read as a
+ *  plain, present card): kept as one const so the two cannot silently drift apart. */
+const SOLID_CARD = "border border-border bg-card";
+
 const CARD_CLASS: Record<PhaseVisualState, string> = {
-  complete: "border border-border bg-card",
+  complete: SOLID_CARD,
   blocking: "border border-accent-200 bg-card shadow-elev2",
-  neutral: "border border-dashed border-border bg-transparent",
+  active: SOLID_CARD,
+  dormant: "border border-dashed border-border bg-transparent",
 };
 
 const HEADER_CLASS: Record<PhaseVisualState, string> = {
   complete: "border-b border-border",
-  blocking: "border-b border-accent-100 bg-accent-50",
-  neutral: "",
+  blocking: "border-b border-accent-100 bg-accent",
+  active: "border-b border-border",
+  dormant: "",
 };
 
 const BADGE_VARIANT: Record<PhaseVisualState, "confirmed" | "risk" | "neutral"> = {
   complete: "confirmed",
   blocking: "risk",
-  neutral: "neutral",
+  active: "neutral",
+  dormant: "neutral",
 };
 
 function PhaseIcon({ state, index }: { state: PhaseVisualState; index: number }): JSX.Element {
@@ -52,7 +66,7 @@ function PhaseIcon({ state, index }: { state: PhaseVisualState; index: number })
   return (
     <span
       className={`flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full border-[1.5px] font-mono text-[11px] font-semibold ${
-        state === "blocking" ? "border-primary text-accent-700" : "border-border text-[var(--text-faint)]"
+        state === "blocking" ? "border-primary text-accent-foreground" : "border-border text-[var(--text-faint)]"
       }`}
     >
       {index}
@@ -146,14 +160,31 @@ function PaperworkTiles({
 }): JSX.Element {
   const { t } = useTranslation("getRunning");
   return (
-    <div className="flex gap-2.5 px-4 pb-3.5">
+    // py-3.5 (not pb-only): in the complete/active states the header carries a bottom
+    // divider, and top padding is what keeps these tiles off that line instead of butting
+    // flush against it (matches GetDatesSummary's symmetric py). The dormant state has no
+    // divider, so the extra top gap simply reads as breathing room.
+    <div className="flex gap-2.5 px-4 py-3.5">
       {tasks.map((task) => {
         const waitsOnAdmin = !task.actionableByViewer;
         const body = (
           <>
             <div className="flex flex-wrap items-center gap-2">
-              <div className="text-[13px] font-medium text-foreground">{t(`tasks.${task.key}.title`)}</div>
-              {task.block === "issuing" && (
+              {/* A done tile carries the same filled-check done marker a done TaskRow does,
+                  so "this document is set" reads at a glance and looks done the same way
+                  across every phase. */}
+              {task.done && (
+                <span className="flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                  <Check className="h-2.5 w-2.5" strokeWidth={3} />
+                </span>
+              )}
+              <div className={`text-[13px] font-medium ${task.done ? "text-muted-foreground" : "text-foreground"}`}>
+                {t(`tasks.${task.key}.title`)}
+              </div>
+              {/* "Blocks issuing" is what the tile costs while OUTSTANDING; once done it holds
+                  up nothing, so guard on !done exactly as TaskRow/derivePhaseState do (block
+                  itself stays the static "what it holds up if outstanding" value). */}
+              {!task.done && task.block === "issuing" && (
                 <Badge variant="risk" className="h-[18px] px-1.5 text-[10px]">
                   {t("chips.blocksIssuing")}
                 </Badge>
@@ -174,7 +205,7 @@ function PaperworkTiles({
             <div
               key={task.key}
               data-testid={`paperwork-tile-${task.key}`}
-              className="flex-1 rounded-[var(--radius-m)] border border-border bg-card p-3 text-left"
+              className="flex-1 rounded-[var(--radius-m)] border border-border bg-card p-3 text-left shadow-elev1"
             >
               {body}
               <Button
@@ -195,7 +226,7 @@ function PaperworkTiles({
             data-testid={`paperwork-tile-${task.key}`}
             type="button"
             onClick={() => onOpenTask(task.key)}
-            className="flex-1 rounded-[var(--radius-m)] border border-border bg-card p-3 text-left"
+            className="flex-1 rounded-[var(--radius-m)] border border-border bg-card p-3 text-left shadow-elev1"
           >
             {body}
           </button>
@@ -245,13 +276,18 @@ export function PhaseCard({ phase, onOpenTask, adminNames }: PhaseCardProps): JS
   const firstOpenPaperworkTask =
     phase.key === "paperwork" ? (phase.tasks.find((task) => !task.done) ?? phase.tasks[0]) : undefined;
 
+  // overflow-hidden below clips the tinted (blocking) header to the card's rounded corners.
+  // It also clips anything a child paints OUTSIDE its own box (a focus ring, a shadow, an
+  // inline popover): today's action buttons and paperwork tiles sit within the card's
+  // px-4/pb-3.5 padding so nothing is clipped, but keep any new edge-flush, ring- or
+  // popover-bearing control off the card border for that reason.
   return (
-    <div className={`rounded-[var(--radius-l)] ${CARD_CLASS[state]}`} data-testid={`phase-card-${phase.key}`}>
+    <div className={`overflow-hidden rounded-[var(--radius-l)] ${CARD_CLASS[state]}`} data-testid={`phase-card-${phase.key}`}>
       <div className={`flex flex-wrap items-center gap-3 px-4 py-3.5 ${HEADER_CLASS[state]}`}>
         <PhaseIcon state={state} index={orderIndex} />
         <div
           className={`text-base font-semibold tracking-[-0.1px] ${
-            state === "neutral" ? "text-muted-foreground" : "text-foreground"
+            state === "dormant" ? "text-muted-foreground" : "text-foreground"
           }`}
         >
           {t(`phases.${phase.key}.title`)}
@@ -281,7 +317,7 @@ export function PhaseCard({ phase, onOpenTask, adminNames }: PhaseCardProps): JS
             )}
           </>
         ) : state === "blocking" ? (
-          <span className="font-mono text-xs font-medium text-accent-600">
+          <span className="font-mono text-xs font-medium text-accent-foreground">
             {t("phases.counts.leftBlocking", { left: leftCount, blocking: blockingCount })}
           </span>
         ) : (

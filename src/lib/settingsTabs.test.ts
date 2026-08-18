@@ -33,14 +33,17 @@ describe("resolveInitialTab", () => {
     expect(resolveInitialTab("permissions", true)).toBe("permissions");
   });
 
-  it("gives a non-admin the default rather than the admin-only People/Activity/Sync-log tabs", () => {
+  it("gives a non-admin the default rather than the admin-only People/Activity tabs", () => {
     // Folded in from the retired standalone Admin page: same admin-only floor it always had.
     expect(resolveInitialTab("people", false)).toBe("organization");
     expect(resolveInitialTab("people", true)).toBe("people");
     expect(resolveInitialTab("activity", false)).toBe("organization");
     expect(resolveInitialTab("activity", true)).toBe("activity");
-    expect(resolveInitialTab("sync-log", false)).toBe("organization");
-    expect(resolveInitialTab("sync-log", true)).toBe("sync-log");
+  });
+
+  it("no longer deep-links the retired sync-log tab (duplicate of Airtable sync's history view)", () => {
+    expect(resolveInitialTab("sync-log", true)).toBe("organization");
+    expect(SETTINGS_TAB_PARAMS).not.toContain("sync-log");
   });
 
   it("redirects the retired casts-cities and production-ownership params to casts-coverage", () => {

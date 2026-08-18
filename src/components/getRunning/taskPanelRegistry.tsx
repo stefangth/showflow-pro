@@ -1,12 +1,12 @@
-import { useBookingSetupStatus, useInactiveArtistCount } from "@/hooks/useBookingSetup";
-import { ShowsStep } from "@/components/bookings/setup/ShowsStep";
+import { useBookingSetupStatus } from "@/hooks/useBookingSetup";
 import { FlowStep } from "@/components/bookings/setup/FlowStep";
-import { PeopleStep } from "@/components/bookings/setup/PeopleStep";
 import { SlotsStep } from "@/components/bookings/setup/SlotsStep";
-import { LadderStep } from "@/components/bookings/setup/LadderStep";
-import { EligibilityStep } from "@/components/bookings/setup/EligibilityStep";
 import { TimingStep } from "@/components/bookings/setup/TimingStep";
-import { TeamStep } from "@/components/bookings/setup/TeamStep";
+import { TeamPanelBody } from "@/components/getRunning/panels/TeamPanelBody";
+import { PeoplePanelBody } from "@/components/getRunning/panels/PeoplePanelBody";
+import { DatesPanelBody } from "@/components/getRunning/panels/DatesPanelBody";
+import { LadderPanelBody } from "@/components/getRunning/panels/LadderPanelBody";
+import { EligibilityPanelBody } from "@/components/getRunning/panels/EligibilityPanelBody";
 import { LetterheadStep } from "@/components/hireOrders/setup/LetterheadStep";
 import { TermsStep } from "@/components/hireOrders/setup/TermsStep";
 import { CountersignStep } from "@/components/hireOrders/setup/CountersignStep";
@@ -15,11 +15,17 @@ import type { GetRunningTask } from "@/lib/getRunning/tasks";
 
 /**
  * Mounts the existing step editor for a `GetRunningTask` inside the `TaskPanel` frame's
- * scroll slot. Every editor listed in the Task 7 brief already exists under
- * `src/components/bookings/setup/*` or `src/components/hireOrders/setup/*` and is reused
- * as-is (wrap, don't modify) — including `ShowsStep` and `TeamStep` for the `dates`/`team`
- * tasks, which the brief expected to need a hand-built link-out body for but which already
- * exist and fit (see the task report).
+ * scroll slot. Most editors here already exist under `src/components/bookings/setup/*`
+ * or `src/components/hireOrders/setup/*` and are reused as-is (wrap, don't modify).
+ * `dates`, `team`, `people`, `ladder` and `eligibility` are exceptions: their old steps
+ * (`ShowsStep`, `TeamStep`, `PeopleStep`, `LadderStep`, `EligibilityStep`) only linked out
+ * to other pages or (for `ladder`/`eligibility`) summarized coverage read-only, and the
+ * "in-panel editors" initiative (`.superpowers/sdd/2026-08-18-get-running-in-panel-editors`)
+ * replaced them with `DatesPanelBody`, `TeamPanelBody`, `PeoplePanelBody`, `LadderPanelBody`
+ * and `EligibilityPanelBody`, genuine in-panel editors built for this registry — later
+ * tasks in the same initiative do the same for `letterhead`/`terms`/`countersign`/`slots`.
+ * `ShowsStep`, `LadderStep` and `EligibilityStep` themselves have since been removed from
+ * `src/components/bookings/setup/` as part of this initiative's cleanup.
  *
  * Data hooks are called unconditionally at the top (same convention as
  * `BookingSetupRail`/`SetupRail`, which always fetch coverage/artist-count regardless of
@@ -38,25 +44,24 @@ export function TaskPanelEditor({
 }): JSX.Element {
   const bookingOrgId = BOOKING_DOMAIN_TASK_KEYS.has(task.key) ? orgId : null;
   const { coverage, artistCount } = useBookingSetupStatus(bookingOrgId);
-  const inactiveArtistCount = useInactiveArtistCount(orgId, task.key === "people");
 
   switch (task.key) {
     case "dates":
-      return <ShowsStep />;
+      return <DatesPanelBody orgId={orgId} onDone={onDone} />;
     case "slots":
       return <SlotsStep orgId={orgId} onDone={onDone} />;
     case "flow":
       return <FlowStep orgId={orgId} onDone={onDone} />;
     case "people":
-      return <PeopleStep count={artistCount} inactiveCount={inactiveArtistCount} />;
+      return <PeoplePanelBody orgId={orgId} artistCount={artistCount} />;
     case "ladder":
-      return <LadderStep coverage={coverage} orgId={orgId} />;
+      return <LadderPanelBody coverage={coverage} orgId={orgId} onDone={onDone} />;
     case "eligibility":
-      return <EligibilityStep coverage={coverage} orgId={orgId} />;
+      return <EligibilityPanelBody coverage={coverage} orgId={orgId} onDone={onDone} />;
     case "timing":
       return <TimingStep orgId={orgId} onDone={onDone} />;
     case "team":
-      return <TeamStep />;
+      return <TeamPanelBody orgId={orgId} />;
     case "letterhead":
       return <LetterheadStep orgId={orgId} onDone={onDone} />;
     case "terms":

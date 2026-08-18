@@ -13,6 +13,24 @@ vi.mock("@/components/bookings/setup/FlowStep", () => ({
   FlowStep: () => <div data-testid="flow-step-probe">flow step probe</div>,
 }));
 
+// Same probe treatment for TermsStep so the eyebrow-variant tests below don't pay for the
+// real terms editor's data layer.
+vi.mock("@/components/hireOrders/setup/TermsStep", () => ({
+  TermsStep: () => <div data-testid="terms-step-probe">terms step probe</div>,
+}));
+
+function termsTask(overrides: Partial<GetRunningTask> = {}): GetRunningTask {
+  return {
+    key: "terms",
+    phase: "paperwork",
+    done: false,
+    block: "issuing",
+    adminOnly: false,
+    actionableByViewer: true,
+    ...overrides,
+  };
+}
+
 function flowTask(overrides: Partial<GetRunningTask> = {}): GetRunningTask {
   return {
     key: "flow",
@@ -129,6 +147,23 @@ describe("TaskPanel", () => {
       expect(screen.getByText("Waits on an admin")).toBeInTheDocument();
       expect(screen.queryByRole("link")).not.toBeInTheDocument();
     });
+  });
+
+  // The eyebrow's "· blocks issuing" clause is what the doc costs while OUTSTANDING; once
+  // done it holds up nothing, so a done letterhead/terms panel must not still read "blocks
+  // issuing" (the state the user hit: Terms with a variant already added, eyebrow still
+  // saying BLOCKS ISSUING).
+  it("shows the blocks-issuing eyebrow while a terms doc is outstanding", () => {
+    renderWithProviders(<TaskPanel task={termsTask()} orgId="org-1" onClose={vi.fn()} />);
+
+    expect(screen.getByText("Document · blocks issuing")).toBeInTheDocument();
+  });
+
+  it("swaps the eyebrow to the set variant once the terms doc is done", () => {
+    renderWithProviders(<TaskPanel task={termsTask({ done: true })} orgId="org-1" onClose={vi.fn()} />);
+
+    expect(screen.getByText("Document · set")).toBeInTheDocument();
+    expect(screen.queryByText("Document · blocks issuing")).not.toBeInTheDocument();
   });
 
   it("still mounts the registry editor for an actionable task (unchanged from before this fix)", () => {

@@ -42,7 +42,8 @@
       "title": "Termine reinholen",
       "status": {
         "complete": "Läuft",
-        "neutral": "Noch nicht gestartet"
+        "active": "In Arbeit",
+        "dormant": "Noch nicht gestartet"
       }
     },
     "bookable": {
@@ -50,15 +51,16 @@
       "status": {
         "complete": "Erledigt",
         "blocking": "Blockiert dein erstes Angebot",
-        "neutral": "Nichts blockiert"
+        "active": "Nichts blockiert",
+        "dormant": "Noch nicht gestartet"
       }
     },
     "paperwork": {
       "title": "Papierkram",
       "status": {
         "complete": "Startklar",
-        "blocking": "Blockiert den Versand",
-        "neutral": "Blockiert noch nichts"
+        "active": "In Arbeit",
+        "dormant": "Blockiert noch nichts"
       },
       "note": "Wird vor dem ersten Engagementvertrag gebraucht",
       "doItNow": "Jetzt erledigen"
@@ -86,6 +88,7 @@
   "panel": {
     "close": "Schließen",
     "later": "Später",
+    "unlocksLabel": "Was das freischaltet",
     "waitsOn": {
       "body": "Von einem Admin festgelegt. Wartet auf {{name}}.",
       "settingsLink": {
@@ -96,30 +99,106 @@
       }
     },
     "eyebrow": {
-      "dates": "Dokument · läuft von allein",
+      "dates": "Termine · versorgt jeden Schritt",
       "slots": "Werte · eine Zahl pro Show",
       "flow": "Wahl · legt den weiteren Ablauf fest",
-      "people": "Dokument · deine Besetzungsliste",
-      "ladder": "Dokument · entscheidet, wer zuerst gefragt wird",
-      "eligibility": "Dokument · zeigt die Lücken",
+      "people": "Besetzungsliste · blockiert Buchungen",
+      "ladder": "Prioritäten · blockiert Angebote",
+      "eligibility": "Abdeckung · blockiert Angebote",
       "timing": "Werte · zwei Felder",
-      "team": "Dokument · dein Production Team",
+      "team": "Team · nur Admin",
       "letterhead": "Dokument · blockiert den Versand",
       "terms": "Dokument · blockiert den Versand",
       "countersign": "Dokument · blockiert den Versand nicht"
     },
+    "eyebrowSet": {
+      "letterhead": "Dokument · gesetzt",
+      "terms": "Dokument · gesetzt"
+    },
     "footerNote": {
-      "dates": "Läuft von allein, stündlich",
+      "dates": "Sync läuft stündlich",
       "slots": "Wird automatisch gespeichert",
       "flow": "Änderung wird protokolliert",
-      "people": "Importieren oder von Hand hinzufügen",
-      "ladder": "Reihenfolge liegt in den Einstellungen",
-      "eligibility": "Abdeckung liegt in den Einstellungen",
+      "people": "Keine E-Mail, bevor du ein Datum anbietest",
+      "ladder": "Reihenfolge ist pro Stadt",
+      "eligibility": "Die eigene Besetzung einer Show schlägt die Stadtrangfolge",
       "timing": "Gilt für die heutige Tagesübersicht",
-      "team": "Einladungen laufen über People",
+      "team": "Sie erhalten eine E-Mail-Einladung",
       "letterhead": "Wird auf jedem Vertrag verwendet",
       "terms": "Wird auf jedem Vertrag verwendet",
       "countersign": "Wird auf jedem Vertrag verwendet"
+    },
+    "body": {
+      "dates": {
+        "connectedBadge": "Airtable verbunden",
+        "syncedAt": "Synchronisiert {{time}}",
+        "recordCount_one": "{{count}} Termin",
+        "recordCount_other": "{{count}} Termine",
+        "heldLine_one": "{{count}} Eintrag beim letzten Lauf zurückgehalten",
+        "heldLine_other": "{{count}} Einträge beim letzten Lauf zurückgehalten",
+        "resolve": "Lösen",
+        "emptyLine": "Noch keine Termine. Verbinde Airtable oder füge eine Show von Hand hinzu.",
+        "setup": "Airtable Sync einrichten",
+        "dividerOr": "oder von Hand hinzufügen",
+        "newShow": "Neue Show",
+        "unlocks": "Jeder folgende Schritt liest aus diesen Terminen: Plätze, Rangfolge und Berechtigung.",
+        "airtableDialogTitle": "Airtable Sync"
+      },
+      "team": {
+        "emailLabel": "Per E-Mail einladen",
+        "emailPlaceholder": "name@firma.de",
+        "send": "Einladung senden",
+        "unlocks": "Dein Production Team kann Bestätigungen übernehmen, sobald Angebote reinkommen."
+      },
+      "people": {
+        "emptyBadge": "Noch keine Artists",
+        "activeBadge": "{{count}} aktiv",
+        "rosterLabel_one": "Artist auf der Besetzungsliste",
+        "rosterLabel_other": "Artists auf der Besetzungsliste",
+        "addLabel": "Einen Artist hinzufügen",
+        "namePlaceholder": "Vollständiger Name",
+        "emailPlaceholder": "E-Mail (optional)",
+        "add": "Hinzufügen",
+        "or": "oder",
+        "importButton": "Tabelle importieren",
+        "unlocks": "Angebote und Direktbuchungen wählen beide aus dieser Liste. Artists bekommen keine E-Mail, bevor du ihnen ein Datum anbietest."
+      },
+      "ladder": {
+        "citiesWithDates": "Städte mit Terminen",
+        "unrankedCount_one": "{{count}} ohne Rang",
+        "unrankedCount_other": "{{count}} ohne Rang",
+        "dateCount_one": "{{count}} Termin",
+        "dateCount_other": "{{count}} Termine",
+        "noTier1": "keine Stufe 1",
+        "pickTier1": "Stufe 1 wählen",
+        "addTierN": "Stufe {{n}} hinzufügen",
+        "noCastsAvailable": "Noch keine Besetzungen",
+        "memberCount_one": "{{count}} Mitglied",
+        "memberCount_other": "{{count}} Mitglieder",
+        "unlocks_one": "Reihe auch {{city}} und {{count}} Termin wird in der heutigen Tagesübersicht anbietbar.",
+        "unlocks_other": "Reihe auch {{city}} und {{count}} Termine werden in der heutigen Tagesübersicht anbietbar.",
+        "unlocksDone": "Jede Stadt mit Terminen hat eine Stufe 1.",
+        "tierUpdated": "Stufe {{tier}} gesetzt",
+        "tierUpdateFailed": "Stufe {{tier}} konnte nicht gesetzt werden"
+      },
+      "eligibility": {
+        "showsWithDates": "Shows mit Terminen",
+        "gapCount_one": "{{count}} Lücke",
+        "gapCount_other": "{{count}} Lücken",
+        "dateCount_one": "{{count}} Termin",
+        "dateCount_other": "{{count}} Termine",
+        "covered": "Abgedeckt",
+        "linkACast": "Besetzung verknüpfen",
+        "noCastsAvailable": "Noch keine Besetzungen",
+        "memberCount_one": "{{count}} Mitglied",
+        "memberCount_other": "{{count}} Mitglieder",
+        "nullCityNote": "Manche Termine haben keine Stadt gesetzt. Behebe das Datum, damit es eine Stadt hat.",
+        "unlocks_one": "Verknüpfe eine Besetzung mit {{show}} und {{count}} Termin wird anbietbar.",
+        "unlocks_other": "Verknüpfe eine Besetzung mit {{show}} und {{count}} Termine werden anbietbar.",
+        "unlocksDone": "Jede Show und Stadt hat eine Besetzung auf Stufe 1.",
+        "castLinked": "Besetzung verknüpft",
+        "castLinkFailed": "Besetzung konnte nicht verknüpft werden"
+      }
     }
   },
   "tasks": {
@@ -218,9 +297,15 @@
         "allCovered": "Alles abgedeckt",
         "partial": "{{covered}} von {{total}} Städten abgedeckt"
       },
-      "letterhead": { "label": "Briefkopf" },
-      "terms": { "label": "Bedingungen" },
-      "countersign": { "label": "Gegenzeichnung" }
+      "letterhead": {
+        "label": "Briefkopf"
+      },
+      "terms": {
+        "label": "Bedingungen"
+      },
+      "countersign": {
+        "label": "Gegenzeichnung"
+      }
     },
     "setNotSet": {
       "set": "Festgelegt",

@@ -9,7 +9,6 @@ import {
   fetchMyActiveBookedDates,
   mergeArtistActiveBookedDates,
   fetchArtistCount,
-  fetchInactiveArtistCount,
   fetchActiveArtistOptions,
 } from "./artists";
 import { partialMock } from "@/test/castHelpers";
@@ -276,39 +275,6 @@ describe("fetchActiveArtistOptions", () => {
       artist_skills: { data: null, error: { message: "boom" } },
     });
     await expect(fetchActiveArtistOptions(fake as never, "org-1")).rejects.toBeTruthy();
-  });
-});
-
-describe("fetchInactiveArtistCount", () => {
-  it("head-counts the roster rows the active count leaves out", async () => {
-    // The companion to fetchArtistCount, and the reason it exists: the setup panel reports
-    // ACTIVE artists while ArtistsPage lists the whole roster with no default status filter,
-    // so an org that parked its people reads "no active artists" and then lands on a page
-    // full of them. This is the number that reconciles the two.
-    const fake = createFakeSupabase({ artists: { data: null, error: null, count: 6 } });
-    expect(await fetchInactiveArtistCount(fake as never, "org-1")).toBe(6);
-    expect(fake.calls).toContainEqual({ table: "artists", method: "select", args: ["*", { count: "exact", head: true }] });
-    expect(fake.calls).toContainEqual({ table: "artists", method: "eq", args: ["org_id", "org-1"] });
-  });
-
-  it("counts every status that is not active, not just 'inactive'", async () => {
-    // artist_status is active | inactive | on_leave, and an on-leave artist is just as
-    // unbookable as an inactive one. A `.eq("status","inactive")` would undercount and the
-    // two numbers still would not add up to what ArtistsPage shows.
-    const fake = createFakeSupabase({ artists: { data: null, error: null, count: 6 } });
-    await fetchInactiveArtistCount(fake as never, "org-1");
-    expect(fake.calls).toContainEqual({ table: "artists", method: "neq", args: ["status", "active"] });
-    expect(fake.calls).not.toContainEqual({ table: "artists", method: "eq", args: ["status", "active"] });
-  });
-
-  it("reads a null count as zero", async () => {
-    const fake = createFakeSupabase({ artists: { data: null, error: null, count: null } });
-    expect(await fetchInactiveArtistCount(fake as never, "org-1")).toBe(0);
-  });
-
-  it("throws when the query errors", async () => {
-    const fake = createFakeSupabase({ artists: { data: null, error: { message: "boom" } } });
-    await expect(fetchInactiveArtistCount(fake as never, "org-1")).rejects.toBeTruthy();
   });
 });
 

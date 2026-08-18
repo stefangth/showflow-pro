@@ -31,20 +31,3 @@ export async function fetchAdminAuditLogs(
   if (error) throw error;
   return (data ?? []) as AdminAuditLog[];
 }
-
-/** The org's most-recent Airtable sync-log rows (newest first), capped at `limit`. */
-export async function fetchAdminSyncLogs(
-  client: SupabaseClient<Database>,
-  limit: number,
-  orgId: string | null,
-): Promise<Database["public"]["Tables"]["airtable_sync_log"]["Row"][]> {
-  if (!orgId) return [];
-  const { data, error } = await client
-    .from("airtable_sync_log")
-    .select("*")
-    .eq("org_id", orgId)
-    .order("synced_at", { ascending: false })
-    .limit(limit);
-  if (error) throw error;
-  return (data ?? []) as Database["public"]["Tables"]["airtable_sync_log"]["Row"][];
-}

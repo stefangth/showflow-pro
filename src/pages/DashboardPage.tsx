@@ -1,10 +1,12 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/features/auth/AuthContext';
 import { useCan } from '@/hooks/useCapabilities';
+import { useGetRunning } from '@/hooks/useGetRunning';
+import { ROUTES } from '@/config/app.config';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -40,8 +42,21 @@ type DateRow = { id: string; date: string; show_id: string };
 
 export default function DashboardPage() {
   const { hasRole } = useAuth();
-  if (hasRole('artist') && !hasRole('producer') && !hasRole('admin')) {
+  const isArtistOnly = hasRole('artist') && !hasRole('producer') && !hasRole('admin');
+  // Onboarding gate: while the Get running board still has open tasks, a non-artist lands
+  // there instead of on the (still-empty) dashboard — the board is the priority until the
+  // workspace is set up, and it stops redirecting the moment `model.complete` flips true
+  // (a fully-set-up org, or a nothing-on org whose empty task set is trivially complete).
+  // `useGetRunning` is called unconditionally (rules of hooks) and reuses the exact reads
+  // the sidebar's nav-visibility hook already issued, so this is a cache hit. Only redirect
+  // once we positively know the board is incomplete: while `model` is null (loading) the
+  // dashboard renders rather than being gated behind these reads.
+  const { model } = useGetRunning();
+  if (isArtistOnly) {
     return <ArtistDashboard />;
+  }
+  if (model && !model.complete) {
+    return <Navigate to={ROUTES.GET_RUNNING} replace />;
   }
   return <ProducerDashboard />;
 }

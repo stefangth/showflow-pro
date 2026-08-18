@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchShowsWithSlots, fetchOwnedSettingKeys, fetchBookingFlow } from "@/data/settings";
 import { fetchLadderCoverageInputs } from "@/data/eligibility";
-import { fetchArtistCount, fetchInactiveArtistCount } from "@/data/artists";
+import { fetchArtistCount } from "@/data/artists";
 import { fetchProducerCount } from "@/data/members";
 import { activeShows } from "@/lib/settings";
 import { toDateKey } from "@/lib/dates";
@@ -95,34 +95,6 @@ export function useBookingSetupStatus(orgId: string | null): {
     isLoading,
     isError,
   };
-}
-
-/**
- * The parked rest of the roster (every status that is not active), so the people panel can
- * reconcile its active count with the unfiltered list on ArtistsPage.
- *
- * Its own hook rather than a sixth read inside `useBookingSetupStatus`, because the two have
- * different audiences: readiness is asked for on every admin and producer surface that shows
- * setup state (DashboardPage, ShowsBookingsPage, useModuleOnboardingRail,
- * useDashboardFirstRun), while this count decorates ONE sentence inside a panel that stays
- * collapsed until somebody opens it. `enabled` is that panel's own visibility, so the read
- * happens when the sentence does and not on every page load.
- *
- * Its own query key too: it is a different question from the readiness count and the two must
- * not share a cache entry (React Query keys are per result shape, not per domain).
- *
- * Returns null while unread, whether that is loading, disabled, or a failed read. A failure is
- * deliberately not an error state anywhere: this is a reconciliation, not a blocker, so it
- * drops the sentence rather than holding the rail in a spinner or flipping a perfectly
- * readable setup into an error.
- */
-export function useInactiveArtistCount(orgId: string | null, enabled: boolean): number | null {
-  const q = useQuery({
-    queryKey: ["artists", "inactive-count", orgId],
-    enabled: !!orgId && enabled,
-    queryFn: () => fetchInactiveArtistCount(supabase, orgId!),
-  });
-  return q.data ?? null;
 }
 
 /** Producer-role member count, backing the "Add your production team" task. Its own hook

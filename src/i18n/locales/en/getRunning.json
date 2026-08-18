@@ -42,7 +42,8 @@
       "title": "Get dates in",
       "status": {
         "complete": "Running",
-        "neutral": "Not started yet"
+        "active": "In progress",
+        "dormant": "Not started yet"
       }
     },
     "bookable": {
@@ -50,15 +51,16 @@
       "status": {
         "complete": "All set",
         "blocking": "Blocks your first offer",
-        "neutral": "Nothing blocking"
+        "active": "Nothing blocking",
+        "dormant": "Not started yet"
       }
     },
     "paperwork": {
       "title": "Paperwork",
       "status": {
         "complete": "Ready",
-        "blocking": "Blocks issuing",
-        "neutral": "Not blocking yet"
+        "active": "In progress",
+        "dormant": "Not blocking yet"
       },
       "note": "Needed before the first hire order goes out",
       "doItNow": "Do it now"
@@ -86,6 +88,7 @@
   "panel": {
     "close": "Close",
     "later": "Later",
+    "unlocksLabel": "What this unlocks",
     "waitsOn": {
       "body": "Set by an admin. Waits on {{name}}.",
       "settingsLink": {
@@ -96,30 +99,106 @@
       }
     },
     "eyebrow": {
-      "dates": "Document · runs on its own",
+      "dates": "Dates · feeds every step",
       "slots": "Values · one number per show",
       "flow": "Choice · sets everything downstream",
-      "people": "Document · your roster",
-      "ladder": "Document · decides who is asked first",
-      "eligibility": "Document · shows the gaps",
+      "people": "Roster · blocks booking",
+      "ladder": "Priorities · blocks offers",
+      "eligibility": "Coverage · blocks offers",
       "timing": "Values · two fields",
-      "team": "Document · your production team",
+      "team": "Team · admin only",
       "letterhead": "Document · blocks issuing",
       "terms": "Document · blocks issuing",
       "countersign": "Document · does not block issuing"
     },
+    "eyebrowSet": {
+      "letterhead": "Document · set",
+      "terms": "Document · set"
+    },
     "footerNote": {
-      "dates": "Runs on its own, hourly",
+      "dates": "Sync runs hourly",
       "slots": "Saved as you go",
       "flow": "Change is logged",
-      "people": "Import or add by hand",
-      "ladder": "Ranking lives in Settings",
-      "eligibility": "Coverage lives in Settings",
+      "people": "No email until you offer a date",
+      "ladder": "Ranking is per city",
+      "eligibility": "A show's own cast beats the city ranking",
       "timing": "Applies to tonight's digest",
-      "team": "Invites happen from People",
+      "team": "They get an email invite",
       "letterhead": "Used on every order",
       "terms": "Used on every order",
       "countersign": "Used on every order"
+    },
+    "body": {
+      "dates": {
+        "connectedBadge": "Airtable connected",
+        "syncedAt": "Synced {{time}}",
+        "recordCount_one": "{{count}} date",
+        "recordCount_other": "{{count}} dates",
+        "heldLine_one": "{{count}} record held on the last run",
+        "heldLine_other": "{{count}} records held on the last run",
+        "resolve": "Resolve",
+        "emptyLine": "No dates yet. Connect Airtable or add a show by hand.",
+        "setup": "Set up Airtable sync",
+        "dividerOr": "or add one by hand",
+        "newShow": "New show",
+        "unlocks": "Every downstream step reads from these dates: slots, priorities and eligibility.",
+        "airtableDialogTitle": "Airtable sync"
+      },
+      "team": {
+        "emailLabel": "Invite by email",
+        "emailPlaceholder": "name@company.com",
+        "send": "Send invite",
+        "unlocks": "Producers can take confirmations off your plate once offers start landing."
+      },
+      "people": {
+        "emptyBadge": "No artists yet",
+        "activeBadge": "{{count}} active",
+        "rosterLabel_one": "artist on the roster",
+        "rosterLabel_other": "artists on the roster",
+        "addLabel": "Add an artist",
+        "namePlaceholder": "Full name",
+        "emailPlaceholder": "Email (optional)",
+        "add": "Add",
+        "or": "or",
+        "importButton": "Import a sheet",
+        "unlocks": "Offers and direct bookings both pick from this list. Artists get no email until you offer them a date."
+      },
+      "ladder": {
+        "citiesWithDates": "Cities with dates",
+        "unrankedCount_one": "{{count}} unranked",
+        "unrankedCount_other": "{{count}} unranked",
+        "dateCount_one": "{{count}} date",
+        "dateCount_other": "{{count}} dates",
+        "noTier1": "no tier 1",
+        "pickTier1": "Pick tier 1",
+        "addTierN": "Add tier {{n}}",
+        "noCastsAvailable": "No casts yet",
+        "memberCount_one": "{{count}} member",
+        "memberCount_other": "{{count}} members",
+        "unlocks_one": "Rank {{city}} too and {{count}} date becomes offerable in tonight's digest.",
+        "unlocks_other": "Rank {{city}} too and {{count}} dates become offerable in tonight's digest.",
+        "unlocksDone": "Every city with dates has a tier 1.",
+        "tierUpdated": "Tier {{tier}} set",
+        "tierUpdateFailed": "Could not set tier {{tier}}"
+      },
+      "eligibility": {
+        "showsWithDates": "Shows with dates",
+        "gapCount_one": "{{count}} gap",
+        "gapCount_other": "{{count}} gaps",
+        "dateCount_one": "{{count}} date",
+        "dateCount_other": "{{count}} dates",
+        "covered": "Covered",
+        "linkACast": "Link a cast",
+        "noCastsAvailable": "No casts yet",
+        "memberCount_one": "{{count}} member",
+        "memberCount_other": "{{count}} members",
+        "nullCityNote": "Some dates have no city set. Fix the date to include it.",
+        "unlocks_one": "Link a cast to {{show}} and its {{count}} date becomes offerable.",
+        "unlocks_other": "Link a cast to {{show}} and its {{count}} dates become offerable.",
+        "unlocksDone": "Every show and city has a cast at tier 1.",
+        "castLinked": "Cast linked",
+        "castLinkFailed": "Could not link cast"
+      }
     }
   },
   "tasks": {
@@ -218,9 +297,15 @@
         "allCovered": "All covered",
         "partial": "{{covered}} of {{total}} cities covered"
       },
-      "letterhead": { "label": "Letterhead" },
-      "terms": { "label": "Terms" },
-      "countersign": { "label": "Countersignature" }
+      "letterhead": {
+        "label": "Letterhead"
+      },
+      "terms": {
+        "label": "Terms"
+      },
+      "countersign": {
+        "label": "Countersignature"
+      }
     },
     "setNotSet": {
       "set": "Set",
