@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, Fragment } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
@@ -263,23 +263,21 @@ export default function ProfilePage() {
               {t("notifications.title")}
             </GroupHeader>
             {categories.map((c) => (
-              <Fragment key={c.key}>
-                <GroupRow>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[13.5px] font-medium">{c.label}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{c.description}</p>
+              <GroupRow key={c.key}>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[13.5px] font-medium">{c.label}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{c.description}</p>
+                </div>
+                {NOTIFICATION_CHANNELS.map((chan) => (
+                  <div key={chan} className="w-[52px] flex justify-center">
+                    <Switch
+                      aria-label={t("notifications.channelAria", { category: c.label, channel: chan === "in_app" ? t("notifications.channelInApp") : t("notifications.channelEmail") })}
+                      checked={isOn(c.key, chan)}
+                      onCheckedChange={(v) => toggle(c.key, chan, v)}
+                    />
                   </div>
-                  {NOTIFICATION_CHANNELS.map((chan) => (
-                    <div key={chan} className="w-[52px] flex justify-center">
-                      <Switch
-                        aria-label={t("notifications.channelAria", { category: c.label, channel: chan === "in_app" ? t("notifications.channelInApp") : t("notifications.channelEmail") })}
-                        checked={isOn(c.key, chan)}
-                        onCheckedChange={(v) => toggle(c.key, chan, v)}
-                      />
-                    </div>
-                  ))}
-                </GroupRow>
-              </Fragment>
+                ))}
+              </GroupRow>
             ))}
             <p className="px-4 py-[11px] bg-muted/40 text-xs text-muted-foreground">{t("audience.footer")}</p>
           </div>

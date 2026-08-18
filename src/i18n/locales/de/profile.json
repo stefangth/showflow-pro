@@ -49,7 +49,7 @@
     "downloadTitle": "Kopie herunterladen",
     "description": "Profil, Talentdatensätze, Buchungen, Verfügbarkeit, Nachrichten und Benachrichtigungen, als JSON.",
     "preparing": "Wird vorbereitet…",
-    "download": "Meine Daten herunterladen",
+    "download": "Herunterladen",
     "downloaded": "Deine Daten wurden heruntergeladen",
     "deleteRow": {
       "title": "Konto löschen",
@@ -58,7 +58,7 @@
   },
   "delete": {
     "hireOrdersNote": "Bereits von dir zugestimmte, unterzeichnete Engagementverträge werden für die Unterlagen der Organisation aufbewahrt.",
-    "trigger": "Konto löschen",
+    "trigger": "Löschen",
     "dialogTitle": "Dein Konto löschen?",
     "confirmBefore": "Dies entfernt dein Konto und deine persönlichen Daten dauerhaft. Tippe",
     "confirmAfter": "zum Bestätigen.",

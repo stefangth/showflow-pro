@@ -49,7 +49,7 @@
     "downloadTitle": "Download a copy",
     "description": "Profile, talent records, bookings, availability, messages and notifications, as JSON.",
     "preparing": "Preparing…",
-    "download": "Download my data",
+    "download": "Download",
     "downloaded": "Your data has been downloaded",
     "deleteRow": {
       "title": "Delete account",
@@ -58,7 +58,7 @@
   },
   "delete": {
     "hireOrdersNote": "Signed hire orders you already agreed to are kept for the organization's records.",
-    "trigger": "Delete account",
+    "trigger": "Delete",
     "dialogTitle": "Delete your account?",
     "confirmBefore": "This permanently removes your account and personal data. Type",
     "confirmAfter": "to confirm.",

@@ -40,7 +40,7 @@ describe("ProfilePage data export", () => {
   it("calls exportMyData when the download button is clicked", async () => {
     render(wrap(<ProfilePage />));
     await waitFor(() => expect(screen.getByText("Your data")).toBeInTheDocument());
-    fireEvent.click(screen.getByRole("button", { name: /download my data/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^download$/i }));
     await waitFor(() => expect(exportSpy).toHaveBeenCalled());
   });
 });

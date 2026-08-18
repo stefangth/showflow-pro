@@ -48,8 +48,8 @@ const renderProfilePage = ({ hireOrders = false }: { hireOrders?: boolean } = {}
 describe("ProfilePage delete account", () => {
   it("requires typing DELETE before confirming", async () => {
     renderProfilePage();
-    // "Delete account" is both the card title and the trigger button — target the button by role.
-    const trigger = await screen.findByRole("button", { name: /delete account/i });
+    // "Delete account" is the row title (a <p>); the trigger button itself is the shorter "Delete".
+    const trigger = await screen.findByRole("button", { name: /^delete$/i });
     fireEvent.click(trigger);
     const confirm = await screen.findByRole("button", { name: /permanently delete/i });
     expect(confirm).toBeDisabled();
