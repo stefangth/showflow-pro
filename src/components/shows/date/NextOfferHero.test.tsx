@@ -49,7 +49,7 @@ describe("NextOfferHero", () => {
     expect(screen.getByText("Cast B")).toBeInTheDocument();
     expect(screen.getByText("7")).toBeInTheDocument();
     expect(
-      screen.getByText("7 of 9 artists in Cast B have Vocals. 1 blocked, 1 already booked or offered."),
+      screen.getByText("7 of 9 artists in Cast B have Vocals. 1 not free, 1 already booked or asked."),
     ).toBeInTheDocument();
 
     const button = screen.getByRole("button", { name: "Open offers to Cast B (7 artists)" });
@@ -63,7 +63,7 @@ describe("NextOfferHero", () => {
       counts: { ...CAST_COUNTS, casts: [CAST_B, { id: "cast-c", name: "Cast C" }] },
     });
 
-    expect(screen.getByText("Tier 2")).toBeInTheDocument();
+    expect(screen.getByText("Round 2")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Open tier 2" })).toBeInTheDocument();
   });
 
@@ -71,13 +71,13 @@ describe("NextOfferHero", () => {
     renderHero({ target: { kind: "tier", tier: 99 }, counts: { ...CAST_COUNTS, tier: 99 } });
 
     expect(screen.getByText("Ad-hoc casts")).toBeInTheDocument();
-    expect(screen.getByText("NEXT OFFER · AD-HOC CASTS")).toBeInTheDocument();
-    expect(screen.queryByText("NEXT OFFER · TIER 99")).not.toBeInTheDocument();
+    expect(screen.getByText("NEXT ASK · AD-HOC CASTS")).toBeInTheDocument();
+    expect(screen.queryByText("NEXT ASK · ROUND 99")).not.toBeInTheDocument();
   });
 
   it("shows the eyebrow with the next tier number", () => {
     renderHero();
-    expect(screen.getByText("NEXT OFFER · TIER 2")).toBeInTheDocument();
+    expect(screen.getByText("NEXT ASK · ROUND 2")).toBeInTheDocument();
   });
 
   it("omits the already-booked-or-offered clause when the next tier is 1, keeping only the blocked count", () => {
@@ -87,9 +87,9 @@ describe("NextOfferHero", () => {
     });
 
     expect(
-      screen.getByText("7 of 9 artists in Cast B have Vocals. 1 blocked."),
+      screen.getByText("7 of 9 artists in Cast B have Vocals. 1 not free."),
     ).toBeInTheDocument();
-    expect(screen.queryByText(/already booked or offered/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/already booked or asked/)).not.toBeInTheDocument();
   });
 
   it("renders an avatar row naming candidates, with an overflow count past four", () => {
@@ -111,19 +111,19 @@ describe("NextOfferHero", () => {
 
   it("shows the exclusion line with both counts joined by a middot", () => {
     renderHero();
-    expect(screen.getByText("1 miss a required skill · 1 blocked on this date")).toBeInTheDocument();
+    expect(screen.getByText("1 miss a required skill · 1 not free on this date")).toBeInTheDocument();
   });
 
   it("omits the exclusion line when both counts are zero", () => {
     renderHero({ counts: { ...CAST_COUNTS, missingSkillCount: 0, blockedCount: 0 } });
     expect(screen.queryByText(/miss a required skill/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/blocked on this date/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/not free on this date/)).not.toBeInTheDocument();
   });
 
   it("omits only the missing-skill half when it is zero", () => {
     renderHero({ counts: { ...CAST_COUNTS, missingSkillCount: 0 } });
     expect(screen.queryByText(/miss a required skill/)).not.toBeInTheDocument();
-    expect(screen.getByText("1 blocked on this date")).toBeInTheDocument();
+    expect(screen.getByText("1 not free on this date")).toBeInTheDocument();
   });
 
   it("clicking See the N artists fires onSeeArtists", () => {
@@ -139,7 +139,7 @@ describe("NextOfferHero", () => {
     });
     expect(screen.queryByText("Dance")).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Narrow this offer" }));
+    fireEvent.click(screen.getByRole("button", { name: "Narrow this ask" }));
     expect(onNarrow).toHaveBeenCalledTimes(1);
   });
 

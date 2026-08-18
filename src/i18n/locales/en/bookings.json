@@ -22,12 +22,12 @@
       "title": "Shows & bookings"
     },
     "stat": {
-      "confirmedThisMonth": "Confirmed this month",
-      "slotsStillOpen": "Slots still open"
+      "confirmedThisMonth": "Booked this month",
+      "slotsStillOpen": "Places still open"
     },
     "bulk": {
-      "confirmHolds": "Confirm holds",
-      "generateHireOrders": "Generate hire orders"
+      "confirmHolds": "Book who said yes",
+      "generateHireOrders": "Draft contracts"
     },
     "fab": {
       "newDate": "New date"
@@ -43,37 +43,37 @@
       "unconfigured": "Unconfigured"
     },
     "primary": {
-      "confirmHolds": "Confirm holds",
-      "generateHireOrder": "Generate hire order"
+      "confirmHolds": "Book who said yes",
+      "generateHireOrder": "Draft the contract"
     },
     "day": {
       "eyebrowCasting": "casting",
       "eyebrowFullyFilled": "fully filled",
-      "subCasting_one": "{{count}} date · {{open}} slots still open",
-      "subCasting_other": "{{count}} dates · {{open}} slots still open",
+      "subCasting_one": "{{count}} date · {{open}} places still open",
+      "subCasting_other": "{{count}} dates · {{open}} places still open",
       "subComplete_one": "{{count}} date · cast complete",
       "subComplete_other": "{{count}} dates · cast complete",
       "empty": "No dates scheduled on this day."
     },
     "needsYou": {
       "groups": {
-        "expires-today": "Expires today",
+        "expires-today": "Book today",
         "at-risk": "At risk · under-cast inside {{days}} days",
-        "ready-to-issue": "Ready to issue",
+        "ready-to-issue": "Ready to send",
         "cancelled": "Cancelled · needs a decision"
       },
       "scopeChips": {
         "all": "All",
-        "expires-today": "Holds",
+        "expires-today": "Waiting on you",
         "at-risk": "Casting",
-        "ready-to-issue": "Paperwork",
+        "ready-to-issue": "Contracts",
         "cancelled": "Cancelled"
       },
       "primary": {
-        "confirmHolds_one": "Confirm {{count}} hold",
-        "confirmHolds_other": "Confirm {{count}} holds",
+        "confirmHolds_one": "Book {{count}} who said yes",
+        "confirmHolds_other": "Book {{count}} who said yes",
         "openCasting": "Open casting",
-        "generateHireOrder": "Generate hire order",
+        "generateHireOrder": "Draft the contract",
         "notifyCast": "Notify cast"
       },
       "secondary": {
@@ -84,23 +84,23 @@
         "undoCancel": "Undo cancel"
       },
       "bulk": {
-        "confirmAll": "Confirm all",
-        "generateHireOrders_one": "Generate {{count}} hire order",
-        "generateHireOrders_other": "Generate {{count}} hire orders"
+        "confirmAll": "Book all",
+        "generateHireOrders_one": "Draft {{count}} contract",
+        "generateHireOrders_other": "Draft {{count}} contracts"
       },
       "note": {
-        "expiresToday_one": "{{count}} held artist will lose their offer if not confirmed today.",
-        "expiresToday_other": "{{count}} held artists will lose their offer if not confirmed today.",
+        "expiresToday_one": "{{count}} artist who said yes will lose the place if you don't book them today.",
+        "expiresToday_other": "{{count}} artists who said yes will lose their places if you don't book them today.",
         "atRisk": "{{slots}}, {{lead}}.",
-        "atRiskSlots_one": "{{count}} open slot",
-        "atRiskSlots_other": "{{count}} open slots",
+        "atRiskSlots_one": "{{count}} open place",
+        "atRiskSlots_other": "{{count}} open places",
         "atRiskLeadToday": "today",
         "atRiskLeadDays_one": "in {{count}} day",
         "atRiskLeadDays_other": "in {{count}} days",
-        "readyToIssue": "Cast is confirmed and ready for its hire order.",
+        "readyToIssue": "Cast is booked and ready for its contract.",
         "cancelled": "The cast has not been notified about this cancellation yet."
       },
-      "expires": "Expires {{time}}",
+      "expires": "Answer by {{time}}",
       "understudyAbbrev": "US",
       "queueOverview": "Queue overview",
       "clearedToday": "Cleared today",
@@ -110,19 +110,19 @@
       "clearQueueTitle": "Clear the queue",
       "clearedToday": "{{count}} cleared today",
       "shortlistTitle": "Shortlist",
-      "shortlistEmpty": "No eligible artists for this date.",
-      "offerButton": "Offer",
+      "shortlistEmpty": "Nobody who can be asked for this date.",
+      "offerButton": "Ask",
       "rulesTitle": "What lands here",
       "rules": {
-        "expiresToday": "Offers expiring today, so they do not lapse unanswered.",
+        "expiresToday": "Asks with today's answer-by deadline, so they do not lapse unanswered.",
         "atRisk": "An under-cast date inside {{days}} days of the show.",
-        "readyToIssue": "Dates whose cast is confirmed and ready for a hire order.",
+        "readyToIssue": "Dates whose cast is booked and ready for a contract.",
         "cancelled": "Cancelled dates the cast has not been notified about yet."
       }
     },
     "agenda": {
-      "generateHireOrder": "Generate hire order",
-      "confirmHolds": "Confirm holds",
+      "generateHireOrder": "Draft the contract",
+      "confirmHolds": "Book who said yes",
       "openCasting": "Open casting",
       "weekOfHeading": "Week of {{weekStart}}",
       "dateCount_one": "{{count}} date",
@@ -142,18 +142,18 @@
       "untitled": "Untitled",
       "rowSummary_one": "{{count}} date · {{unfilled}} unfilled",
       "rowSummary_other": "{{count}} dates · {{unfilled}} unfilled",
-      "unfilledSlotsHeader": "Unfilled slots"
+      "unfilledSlotsHeader": "Unfilled places"
     },
     "seasonKpis": {
-      "unfilledMainSlotsLabel": "Unfilled main slots",
+      "unfilledMainSlotsLabel": "Unfilled main places",
       "unfilledMainSlotsNote_one": "across {{count}} date",
       "unfilledMainSlotsNote_other": "across {{count}} dates",
       "allMainCastFilled": "all main cast filled",
       "heaviestWeekLabel": "Heaviest week",
-      "heaviestWeekNote_one": "{{count}} date · {{open}} slots open",
-      "heaviestWeekNote_other": "{{count}} dates · {{open}} slots open",
-      "readyForHireOrderLabel": "Ready for hire order",
-      "readyForHireOrderNoteFilled": "fully filled, no order yet",
+      "heaviestWeekNote_one": "{{count}} date · {{open}} places open",
+      "heaviestWeekNote_other": "{{count}} dates · {{open}} places open",
+      "readyForHireOrderLabel": "Ready for contract",
+      "readyForHireOrderNoteFilled": "fully filled, no contract yet",
       "readyForHireOrderNoteNone": "none waiting"
     },
     "seasonStripMobile": {
@@ -168,9 +168,9 @@
   },
   "rowPeek": {
     "eyebrowUnconfigured": "unconfigured",
-    "noConfig": "Set cast slots in Settings to track fill.",
-    "confirming": "Confirming…",
-    "confirm": "Confirm {{count}}",
+    "noConfig": "Set cast places in Settings to track fill.",
+    "confirming": "Booking…",
+    "confirm": "Book {{count}}",
     "openDate": "Open date",
     "keyHint": "Space to peek · Enter to open"
   },
@@ -178,9 +178,9 @@
     "cancelHint": "Need to cancel a date you confirmed? Message your producer in the date's chat and they will update the booking.",
     "sortChronoLabel": "Date",
     "loadError": "Failed to load your bookings. Please refresh.",
-    "hireOrderLink": "Hire order",
-    "emptyState": "No eligible dates yet. Once you're added to a cast, offered dates appear here.",
-    "calendarEmpty": "No eligible dates"
+    "hireOrderLink": "Contract",
+    "emptyState": "No dates yet. Once you're added to a cast, dates you're asked about appear here.",
+    "calendarEmpty": "No dates yet"
   },
   "status": {
     "open": "Open",
@@ -211,33 +211,33 @@
       "extended": "Extended {{count}}",
       "released": "Released {{count}}",
       "notified": "Notified {{count}}",
-      "offered": "Offered {{count}}",
-      "confirmedAll": "Confirmed holds",
-      "generatedAll": "Generated hire order"
+      "offered": "Asked {{count}}",
+      "confirmedAll": "Booked who said yes",
+      "generatedAll": "Drafted the contract"
     }
   },
   "producer": {
     "toast": {
-      "confirmed": "Confirmed {{count}}",
-      "nothingToConfirm": "Nothing to confirm, it moved on"
+      "confirmed": "Booked {{count}}",
+      "nothingToConfirm": "Nothing to book, it moved on"
     },
     "title": "Shows & Bookings",
     "subtitle": "All scheduled dates and cast status in one place.",
     "setupChecklist": "Setup checklist",
     "newDate": "New date",
     "hireOrderReady": {
-      "title_one": "{{count}} date is fully filled. Ready for hire order.",
-      "title_other": "{{count}} dates are fully filled. Ready for hire orders.",
-      "description": "Create the orders to confirm the engagements and send them for countersignature.",
-      "cta": "Generate hire orders"
+      "title_one": "{{count}} date is fully filled. Ready for its contract.",
+      "title_other": "{{count}} dates are fully filled. Ready for their contracts.",
+      "description": "Create the contracts to confirm the engagements and send them for countersignature.",
+      "cta": "Draft contracts"
     },
-    "noHireOrderPermission": "You don't have permission to generate hire orders",
-    "noConfirmPermission": "You don't have permission to confirm bookings",
+    "noHireOrderPermission": "You don't have permission to draft contracts",
+    "noConfirmPermission": "You don't have permission to book artists",
     "searchPlaceholder": "Search program, venue, city…",
     "sortChronoLabel": "Date",
     "sortAsc": "{{label}} ↑",
     "sortDesc": "{{label}} ↓",
-    "generateHireOrder": "Generate hire order",
+    "generateHireOrder": "Draft the contract",
     "emptyState": "No show dates match the current filters.",
     "calendarEmpty": "No show dates scheduled"
   }

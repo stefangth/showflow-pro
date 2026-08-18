@@ -74,7 +74,7 @@ describe("TimingStep", () => {
     fireEvent.click(screen.getByRole("button", { name: /save timing/i }));
 
     await waitFor(() =>
-      expect(toast.error).toHaveBeenCalledWith("Enter a window of at least 1 hour and digest hours between 0 and 23."),
+      expect(toast.error).toHaveBeenCalledWith("Enter an answer-by window of at least 1 hour, and daily send hours between 0 and 23."),
     );
     expect(upsertOrgSetting).not.toHaveBeenCalled();
   });
@@ -83,7 +83,7 @@ describe("TimingStep", () => {
     renderWithProviders(<TimingStep orgId="org-1" onDone={() => {}} />);
     expect(
       await screen.findByText(
-        "When a tier opens, offers go out in the next 19:00h (Berlin, Germany) digest. Artists get 48 hours to answer, and confirmations mail at 20:00h (Berlin, Germany).",
+        "When a round opens, asks go out in the next 19:00h (Berlin, Germany) send. Artists get 48 hours to answer, and bookings mail at 20:00h (Berlin, Germany).",
       ),
     ).toBeInTheDocument();
   });
@@ -94,7 +94,7 @@ describe("TimingStep", () => {
     fireEvent.change(screen.getByDisplayValue("48"), { target: { value: "24" } });
     expect(
       await screen.findByText(
-        "When a tier opens, offers go out in the next 08:00h (Berlin, Germany) digest. Artists get 24 hours to answer, and confirmations mail at 20:00h (Berlin, Germany).",
+        "When a round opens, asks go out in the next 08:00h (Berlin, Germany) send. Artists get 24 hours to answer, and bookings mail at 20:00h (Berlin, Germany).",
       ),
     ).toBeInTheDocument();
   });
@@ -103,7 +103,7 @@ describe("TimingStep", () => {
     renderWithProviders(<TimingStep orgId="org-1" onDone={() => {}} />);
     fireEvent.change(await screen.findByDisplayValue("19"), { target: { value: "" } });
     // Number("") is 0, so an unguarded parse would confidently announce a 00:00 digest.
-    await waitFor(() => expect(screen.queryByText(/When a tier opens/)).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByText(/When a round opens/)).not.toBeInTheDocument());
   });
 
   // Both reads land after first paint, and this panel is mounted cold: SetupStepRow only
@@ -115,8 +115,8 @@ describe("TimingStep", () => {
     expect(await screen.findByRole("button", { name: /save timing/i })).toBeInTheDocument();
     // A default flow here would announce the classic digest pipeline to a direct-book or
     // paused org for as long as the settings read takes.
-    expect(screen.queryByText(/When a tier opens/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/offers email straight away/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/When a round opens/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/asks email straight away/)).not.toBeInTheDocument();
   });
 
   it("withholds the whole panel while the org's own hours are still being read", async () => {
@@ -127,7 +127,7 @@ describe("TimingStep", () => {
     // would write 48/19/20 over the org's real hours. The skeleton withholds everything.
     expect(container.querySelector(".animate-pulse")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /save timing/i })).not.toBeInTheDocument();
-    expect(screen.queryByText(/When a tier opens/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/When a round opens/)).not.toBeInTheDocument();
   });
 
   it("starts narrating once both reads land", async () => {
@@ -138,7 +138,7 @@ describe("TimingStep", () => {
     rerender(<TimingStep orgId="org-1" onDone={() => {}} />);
     expect(
       await screen.findByText(
-        "When a tier opens, offers go out in the next 08:00h (Berlin, Germany) digest. Artists get 24 hours to answer, and confirmations mail at 17:00h (Berlin, Germany).",
+        "When a round opens, asks go out in the next 08:00h (Berlin, Germany) send. Artists get 24 hours to answer, and bookings mail at 17:00h (Berlin, Germany).",
       ),
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /save timing/i })).toBeInTheDocument();
@@ -151,14 +151,14 @@ describe("TimingStep", () => {
   // describe two different organizations at once.
   it("stops stating the previous org's hours after an org switch", async () => {
     const { rerender } = renderWithProviders(<TimingStep orgId="org-1" onDone={() => {}} />);
-    expect(await screen.findByText(/next 19:00h \(Berlin, Germany\) digest/)).toBeInTheDocument();
+    expect(await screen.findByText(/next 19:00h \(Berlin, Germany\) send/)).toBeInTheDocument();
 
     timesRef.value = { windowHours: 24, offerDigestHour: 8, confirmationDigestHour: 17 };
     rerender(<TimingStep orgId="org-2" onDone={() => {}} />);
 
     expect(
       await screen.findByText(
-        "When a tier opens, offers go out in the next 08:00h (Berlin, Germany) digest. Artists get 24 hours to answer, and confirmations mail at 17:00h (Berlin, Germany).",
+        "When a round opens, asks go out in the next 08:00h (Berlin, Germany) send. Artists get 24 hours to answer, and bookings mail at 17:00h (Berlin, Germany).",
       ),
     ).toBeInTheDocument();
     expect(screen.getByDisplayValue("24")).toBeInTheDocument();
@@ -166,14 +166,14 @@ describe("TimingStep", () => {
 
   it("falls silent, rather than carrying hours over, while the new org's are still unread", async () => {
     const { rerender } = renderWithProviders(<TimingStep orgId="org-1" onDone={() => {}} />);
-    expect(await screen.findByText(/next 19:00h \(Berlin, Germany\) digest/)).toBeInTheDocument();
+    expect(await screen.findByText(/next 19:00h \(Berlin, Germany\) send/)).toBeInTheDocument();
 
     // The switched-to org has nothing cached yet: keeping the old sentence up would state
     // one org's schedule on another org's screen.
     timesRef.value = undefined;
     rerender(<TimingStep orgId="org-2" onDone={() => {}} />);
 
-    await waitFor(() => expect(screen.queryByText(/When a tier opens/)).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByText(/When a round opens/)).not.toBeInTheDocument());
     // And nothing is on screen to carry over at all: the skeleton withholds the fields, so
     // no value from the previous org (nor a platform default) can be saved to the new one.
     expect(screen.queryByRole("button", { name: /save timing/i })).not.toBeInTheDocument();
@@ -187,9 +187,9 @@ describe("TimingStep", () => {
     flowRef.value = applyPreset(BOOKING_FLOW_DEFAULTS, "direct");
     const { container } = renderWithProviders(<TimingStep orgId="org-1" onDone={() => {}} />);
     expect(await screen.findByRole("button", { name: /save timing/i })).toBeInTheDocument();
-    expect(screen.queryByText(/When a tier opens/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/When a round opens/)).not.toBeInTheDocument();
     expect(
-      screen.getByText("Newly confirmed artists get the confirmation digest at 20:00h (Berlin, Germany)."),
+      screen.getByText("Newly booked artists get the booking send at 20:00h (Berlin, Germany)."),
     ).toBeInTheDocument();
     // The scope note stays the single carrier of the timezone on this flow too.
     expect(container.textContent?.match(/Berlin/g) ?? []).toHaveLength(1);
@@ -202,9 +202,9 @@ describe("TimingStep", () => {
     // artist_acceptance, so this hour is when a cancellation reaches a booked artist.
     flowRef.value = { ...applyPreset(BOOKING_FLOW_DEFAULTS, "direct"), confirmation_digest: false };
     renderWithProviders(<TimingStep orgId="org-1" onDone={() => {}} />);
-    expect(await screen.findByText(/The confirmation hour still runs/)).toBeInTheDocument();
+    expect(await screen.findByText(/The booking send hour still runs/)).toBeInTheDocument();
     expect(screen.getByText(/notified of schedule changes in the app/)).toBeInTheDocument();
-    expect(screen.queryByText(/confirmation digest at/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/booking send at/)).not.toBeInTheDocument();
     expect(screen.queryByText(/none of these hours change anything/)).not.toBeInTheDocument();
   });
 
@@ -214,7 +214,7 @@ describe("TimingStep", () => {
     flowRef.value = applyPreset(BOOKING_FLOW_DEFAULTS, "off");
     renderWithProviders(<TimingStep orgId="org-1" onDone={() => {}} />);
     expect(await screen.findByRole("button", { name: /save timing/i })).toBeInTheDocument();
-    expect(screen.queryByText(/When a tier opens/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/When a round opens/)).not.toBeInTheDocument();
   });
 
   // The panel's fixed helper line is gone: it described the classic digest deadline as if
@@ -238,14 +238,14 @@ describe("TimingStep", () => {
     // never describes a pipeline it has not read for the org in front of it.
     flowRef.value = { ...BOOKING_FLOW_DEFAULTS, artist_acceptance: false, confirmation_digest: false };
     renderWithProviders(<TimingStep orgId={null} onDone={() => {}} />);
-    expect(await screen.findByText("Digest times include their timezone.")).toBeInTheDocument();
+    expect(await screen.findByText("Daily send times include their timezone.")).toBeInTheDocument();
     expect(screen.queryByText(/You book artists directly/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/The confirmation hour still runs/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/The booking send hour still runs/)).not.toBeInTheDocument();
   });
 
   it("keeps the timezone on screen under every flow", async () => {
     renderWithProviders(<TimingStep orgId="org-1" onDone={() => {}} />);
-    expect(await screen.findByText(/Digest times include their timezone/)).toBeInTheDocument();
+    expect(await screen.findByText(/Daily send times include their timezone/)).toBeInTheDocument();
   });
 
   it("names the timezone once, not on every line that states an hour", async () => {
@@ -254,11 +254,11 @@ describe("TimingStep", () => {
     // too is the word twice on one small panel. Checked on both delivery modes, since it
     // was the immediate one that carried it in its very next clause. (The direct-book
     // sentence is held to the same rule in its own test above, which cannot join this loop
-    // because it deliberately prints no "When a tier opens" line to wait on.)
+    // because it deliberately prints no "When a round opens" line to wait on.)
     for (const preset of ["classic", "fasttrack"] as const) {
       flowRef.value = applyPreset(BOOKING_FLOW_DEFAULTS, preset);
       const { container, unmount } = renderWithProviders(<TimingStep orgId="org-1" onDone={() => {}} />);
-      expect(await screen.findByText(/When a tier opens/)).toBeInTheDocument();
+      expect(await screen.findByText(/When a round opens/)).toBeInTheDocument();
       expect(container.textContent?.match(/Berlin/g) ?? []).toHaveLength(preset === "classic" ? 2 : 1);
       unmount();
     }
@@ -284,18 +284,18 @@ describe("TimingStep", () => {
   it("does not promise a digest to a fast-track org, which mails at tier open", async () => {
     flowRef.value = applyPreset(BOOKING_FLOW_DEFAULTS, "fasttrack");
     renderWithProviders(<TimingStep orgId="org-1" onDone={() => {}} />);
-    expect(await screen.findByText(/offers email straight away/)).toBeInTheDocument();
-    expect(screen.queryByText(/\d{2}:00 digest/)).not.toBeInTheDocument();
+    expect(await screen.findByText(/asks email straight away/)).toBeInTheDocument();
+    expect(screen.queryByText(/\d{2}:00 send/)).not.toBeInTheDocument();
   });
 
   it("drops the confirmation clause when the confirmation digest is off", async () => {
     flowRef.value = { ...CLASSIC, confirmation_digest: false };
     renderWithProviders(<TimingStep orgId="org-1" onDone={() => {}} />);
-    expect(await screen.findByText(/When a tier opens/)).toBeInTheDocument();
-    expect(screen.queryByText(/confirmations mail/)).not.toBeInTheDocument();
+    expect(await screen.findByText(/When a round opens/)).toBeInTheDocument();
+    expect(screen.queryByText(/bookings mail/)).not.toBeInTheDocument();
     // But the "Confirmations" input is still on screen and still drives the in-app
     // schedule-change notifications, so it may not be left standing unexplained.
-    expect(screen.getByText(/The confirmation hour still runs/)).toBeInTheDocument();
+    expect(screen.getByText(/The booking send hour still runs/)).toBeInTheDocument();
   });
 
   it("rejects a digest hour outside 0..23", async () => {
@@ -305,7 +305,7 @@ describe("TimingStep", () => {
     fireEvent.click(screen.getByRole("button", { name: /save timing/i }));
 
     await waitFor(() =>
-      expect(toast.error).toHaveBeenCalledWith("Enter a window of at least 1 hour and digest hours between 0 and 23."),
+      expect(toast.error).toHaveBeenCalledWith("Enter an answer-by window of at least 1 hour, and daily send hours between 0 and 23."),
     );
     expect(upsertOrgSetting).not.toHaveBeenCalled();
   });
