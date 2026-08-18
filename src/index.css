@@ -90,6 +90,11 @@
 
     /* ── Component surface tints (semantic, mode-flipping) ── */
     --notification-unread: #F4F1FF;   /* unread-row tint (light) — accent-50; literal so both modes are independently readable */
+    /* Accent TEXT role. The accent 50-900 scale is immutable across modes, so an
+       eyebrow or inline link written as accent-700 (#4738B0) is unreadable on the
+       dark ground. The role lift lives here, as a semantic token, per the rule
+       above: never re-pitch a stop. Light = accent-700. */
+    --accent-text: #4738B0;
 
     /* ── Semantic color scale (raw, for badge patterns and state tones) ──
        Badge pattern = tint bg (-100) + text (-600). The -500 stops are the
@@ -254,6 +259,7 @@
     --surface-3: #24232B;
     --text-faint: #6F6E6A;
     --notification-unread: rgba(110, 92, 246, 0.12);   /* subtle violet wash (dark) */
+    --accent-text: #C9BCFF;   /* lifted accent text on the dark ground */
 
     /* ── Semantic dark overrides — tint-bg + text badge pattern stays legible ── */
     --green-600: #5DD88A;
