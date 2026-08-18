@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Check, CheckCircle2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -43,6 +43,10 @@ export function RunOfShowRail() {
   // The volume toggle reseeds the demo (wipe + seed), so it's gated behind a confirm
   // dialog like DemoBar's Reset. `pendingVolume` holds the choice awaiting confirmation.
   const [pendingVolume, setPendingVolume] = useState<"small" | "full" | null>(null);
+  // Bumped on every reseed. A cue in flight when the reseed lands captures the pre-reseed
+  // value; when it later settles against a stale generation we skip its badge repaint, so a
+  // cue can't paint done/failed over data the reseed just wiped.
+  const reseedGen = useRef(0);
 
   // Keep the draft in sync when the underlying state changes from outside the input
   // (a fresh scene load, a Reset, or another tab writing demo_state).
@@ -82,16 +86,23 @@ export function RunOfShowRail() {
     // fails must not still read as done, and vice versa).
     removeCue(setDoneCues, cueId);
     removeCue(setFailedCues, cueId);
+    // Snapshot the reseed generation: if a reseed lands before this cue settles, its badge is
+    // for wiped data and must be dropped (see reseedGen).
+    const gen = reseedGen.current;
     cueMut.mutate(
       { orgId: currentOrg.id, cueId },
       {
         // useRunCue already toasts on error, so the per-cue onError only records the inline
         // failed state (no second toast); onSuccess adds the confirmation toast + inline check.
         onSuccess: () => {
+          if (reseedGen.current !== gen) return;
           setDoneCues((prev) => new Set(prev).add(cueId));
           toast.success(`Cue done: ${cueLabel(cueId, lang)}`);
         },
-        onError: () => setFailedCues((prev) => new Set(prev).add(cueId)),
+        onError: () => {
+          if (reseedGen.current !== gen) return;
+          setFailedCues((prev) => new Set(prev).add(cueId));
+        },
         onSettled: () => setPendingCue((cur) => (cur === cueId ? null : cur)),
       },
     );
@@ -111,9 +122,13 @@ export function RunOfShowRail() {
     setVolume(pendingVolume);
     resetMut.mutate({ orgId: currentOrg.id, volume: pendingVolume });
     // The reseed wipes the cues these marks refer to, so clear the inline done/failed state
-    // instead of leaving stale checkmarks that no longer match the underlying data.
+    // instead of leaving stale checkmarks that no longer match the underlying data. Bump the
+    // generation and clear pending too, so a cue that was in flight across the reseed neither
+    // repaints its badge (guarded in handleCue) nor leaves the buttons stuck disabled.
+    reseedGen.current += 1;
     setDoneCues(new Set());
     setFailedCues(new Set());
+    setPendingCue(null);
     setPendingVolume(null);
   };
 
