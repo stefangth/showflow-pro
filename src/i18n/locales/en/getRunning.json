@@ -135,7 +135,8 @@
         "setup": "Set up Airtable sync",
         "dividerOr": "or add one by hand",
         "newShow": "New show",
-        "unlocks": "Every downstream step reads from these dates: slots, priorities and eligibility."
+        "unlocks": "Every downstream step reads from these dates: slots, priorities and eligibility.",
+        "airtableDialogTitle": "Airtable sync"
       },
       "team": {
         "emailLabel": "Invite by email",

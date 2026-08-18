@@ -24,9 +24,8 @@ import type { GetRunningTask } from "@/lib/getRunning/tasks";
  * replaced them with `DatesPanelBody`, `TeamPanelBody`, `PeoplePanelBody`, `LadderPanelBody`
  * and `EligibilityPanelBody`, genuine in-panel editors built for this registry — later
  * tasks in the same initiative do the same for `letterhead`/`terms`/`countersign`/`slots`.
- * `ShowsStep`, `LadderStep` and `EligibilityStep` themselves are left in place
- * (`src/components/bookings/setup/`), unused by this registry now, pending their own
- * removal in a later task.
+ * `ShowsStep`, `LadderStep` and `EligibilityStep` themselves have since been removed from
+ * `src/components/bookings/setup/` as part of this initiative's cleanup.
  *
  * Data hooks are called unconditionally at the top (same convention as
  * `BookingSetupRail`/`SetupRail`, which always fetch coverage/artist-count regardless of

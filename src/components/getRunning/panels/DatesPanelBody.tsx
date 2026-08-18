@@ -7,7 +7,7 @@ import { useShows } from "@/hooks/useShows";
 import { useCan } from "@/hooks/useCapabilities";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AirtableSyncTab } from "@/components/settings/AirtableSyncTab";
 import { ShowFormDialog } from "@/components/catalog/ShowFormDialog";
@@ -122,6 +122,9 @@ export function DatesPanelBody({
 
       <Dialog open={airtableOpen} onOpenChange={setAirtableOpen}>
         <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader className="sr-only">
+            <DialogTitle>{t("panel.body.dates.airtableDialogTitle")}</DialogTitle>
+          </DialogHeader>
           <AirtableSyncTab orgId={orgId} readOnly={!canConfigureAirtable} canTriggerSync={canTriggerSync} />
         </DialogContent>
       </Dialog>

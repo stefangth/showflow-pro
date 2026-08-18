@@ -135,7 +135,8 @@
         "setup": "Airtable Sync einrichten",
         "dividerOr": "oder von Hand hinzufügen",
         "newShow": "Neue Show",
-        "unlocks": "Jeder folgende Schritt liest aus diesen Terminen: Plätze, Rangfolge und Berechtigung."
+        "unlocks": "Jeder folgende Schritt liest aus diesen Terminen: Plätze, Rangfolge und Berechtigung.",
+        "airtableDialogTitle": "Airtable Sync"
       },
       "team": {
         "emailLabel": "Per E-Mail einladen",
