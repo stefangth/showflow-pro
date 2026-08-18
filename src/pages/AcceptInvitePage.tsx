@@ -490,7 +490,13 @@ export default function AcceptInvitePage() {
     // resolved above, before this component's hooks, so it can gate them.
     const orgName = orgs.find((o) => o.id === joined.orgId)?.name ?? t('acceptInvite.success.orgFallback');
     const bookingState = resolveBookingRunState(bookingModuleOn, bookingFlow);
-    const boardHasTasks = role !== 'artist' && !!getRunning.model && getRunning.model.totalCount > 0;
+    const boardRole = role === 'admin' || role === 'producer';
+    // A board-role stays on the board path unless the board has loaded and turned out empty
+    // (a nothing-on org). While it is still loading we keep the board path so the summary
+    // region shows a skeleton rather than a dashboard line that then swaps once tasks land.
+    const boardKnownEmpty =
+      boardRole && !getRunning.isLoading && (!getRunning.model || getRunning.model.totalCount === 0);
+    const boardHasTasks = boardRole && !boardKnownEmpty;
     const primary = resolveHandoffPrimary(role, boardHasTasks);
     const boardState = getRunning.model ? resolveBoardHandoffState(getRunning.model) : 'blocking';
     const blockingCount = getRunning.model ? firstOfferBlockingCount(getRunning.model) : 0;
