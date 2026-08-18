@@ -219,7 +219,7 @@ function CastPicker({
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="shrink-0 rounded-[var(--radius-s)] border border-dashed border-accent-200 px-2.5 py-1 text-xs font-medium text-accent-700 hover:bg-accent-50"
+          className="shrink-0 rounded-[var(--radius-s)] border border-dashed border-accent-200 px-2.5 py-1 text-xs font-medium text-accent-700 hover:bg-accent"
         >
           {t("panel.body.eligibility.linkACast")}
         </button>

@@ -31,7 +31,7 @@ const CARD_CLASS: Record<PhaseVisualState, string> = {
 
 const HEADER_CLASS: Record<PhaseVisualState, string> = {
   complete: "border-b border-border",
-  blocking: "border-b border-accent-100 bg-accent-50",
+  blocking: "border-b border-accent-100 bg-accent",
   neutral: "",
 };
 
@@ -52,7 +52,7 @@ function PhaseIcon({ state, index }: { state: PhaseVisualState; index: number })
   return (
     <span
       className={`flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full border-[1.5px] font-mono text-[11px] font-semibold ${
-        state === "blocking" ? "border-primary text-accent-700" : "border-border text-[var(--text-faint)]"
+        state === "blocking" ? "border-primary text-accent-foreground" : "border-border text-[var(--text-faint)]"
       }`}
     >
       {index}
@@ -246,7 +246,7 @@ export function PhaseCard({ phase, onOpenTask, adminNames }: PhaseCardProps): JS
     phase.key === "paperwork" ? (phase.tasks.find((task) => !task.done) ?? phase.tasks[0]) : undefined;
 
   return (
-    <div className={`rounded-[var(--radius-l)] ${CARD_CLASS[state]}`} data-testid={`phase-card-${phase.key}`}>
+    <div className={`overflow-hidden rounded-[var(--radius-l)] ${CARD_CLASS[state]}`} data-testid={`phase-card-${phase.key}`}>
       <div className={`flex flex-wrap items-center gap-3 px-4 py-3.5 ${HEADER_CLASS[state]}`}>
         <PhaseIcon state={state} index={orderIndex} />
         <div
@@ -281,7 +281,7 @@ export function PhaseCard({ phase, onOpenTask, adminNames }: PhaseCardProps): JS
             )}
           </>
         ) : state === "blocking" ? (
-          <span className="font-mono text-xs font-medium text-accent-600">
+          <span className="font-mono text-xs font-medium text-accent-foreground">
             {t("phases.counts.leftBlocking", { left: leftCount, blocking: blockingCount })}
           </span>
         ) : (
