@@ -4,12 +4,13 @@ import { MemoryRouter, Routes, Route } from "react-router-dom";
 import { QueryClientProvider } from "@tanstack/react-query";
 import AcceptInvitePage, {
   NEXT_STEP_LINES,
-  ADMIN_SETUP_COMPLETE_LINE,
-  PRODUCER_OFFERS_CONFIRM_LINE,
   ARTIST_NOT_LINKED_NEXT_STEP_LINE,
   resolveBookingRunState,
   resolveNextStepLine,
+  resolveHandoffPrimary,
+  resolveBoardHandoffState,
 } from "./AcceptInvitePage";
+import type { GetRunningModel } from "@/lib/getRunning/tasks";
 import { ROUTES, roleLabel, roleDescription } from "@/config/app.config";
 import { BOOKING_FLOW_DEFAULTS, applyPreset, type BookingFlow } from "@/lib/bookingFlow";
 import type { Membership, Organization } from "@/data/orgs";
@@ -112,44 +113,35 @@ vi.mock("@/hooks/useEntitlements", async (importOriginal) => {
   };
 });
 
-// canConfirmHolder backs the producer confirm_bookings capability gate (see
-// PRODUCER_OFFERS_CONFIRM_LINE): admins and artists never consume it, so every test that
-// does not set it explicitly (default true) exercises the confirm-capable producer branch,
-// matching useCan's own loading-fallback default for that capability.
-const canConfirmHolder = { value: true };
-vi.mock("@/hooks/useCapabilities", () => ({
-  useCan: (action: string) => (action === "confirm_bookings" ? canConfirmHolder.value : true),
+// A minimal Get running board model. Default: an admin org with two first-offer blockers
+// still open, so the default (admin) success test renders "2 tasks stand between..." +
+// "About 6 minutes". useGetRunning is mocked wholesale, so none of the board's own five
+// sub-queries run under this file.
+function boardModel(over: Partial<GetRunningModel> = {}): GetRunningModel {
+  return {
+    phases: [
+      { key: "bookable", tasks: [
+        { key: "people", phase: "bookable", done: false, block: "booking", adminOnly: false, actionableByViewer: true },
+        { key: "ladder", phase: "bookable", done: false, block: "offers", adminOnly: false, actionableByViewer: true },
+      ] },
+    ],
+    doneCount: 0, totalCount: 8, canFirstOffer: false, complete: false,
+    bookingOn: true, hireOrdersOn: false, ...over,
+  };
+}
+// A nothing-on org (no modules licensed): the board has no tasks, so an admin/producer
+// falls back to the dashboard handoff exactly as a fresh un-provisioned org would.
+function nothingOnModel(): GetRunningModel {
+  return { phases: [], doneCount: 0, totalCount: 0, canFirstOffer: true, complete: true, bookingOn: false, hireOrdersOn: false };
+}
+const getRunningHolder: { model: GetRunningModel | null; isLoading: boolean } = { model: boardModel(), isLoading: false };
+vi.mock("@/hooks/useGetRunning", () => ({
+  useGetRunning: () => getRunningHolder,
 }));
 
 const fetchEntitlementsMock = vi.fn();
 vi.mock("@/data/entitlements", () => ({
   fetchEntitlements: (...args: unknown[]) => fetchEntitlementsMock(...args),
-}));
-
-// The next-step line's admin-only fourth state (resolveNextStepLine) reads whether the
-// joined org's booking SETUP is already complete, separately from whether its booking
-// flow is on/off/offers/direct. Its own holder + mock so the ~40 existing cases (which
-// never set it) keep exercising the "setup still outstanding" branch unchanged.
-//
-// bookingSetupStatusMock is a spy, not a bare stub: the page must gate this hook's org-id
-// argument on `bookingModuleOn && role === 'admin'`, since resolveNextStepLine never reads
-// bookingSetupComplete for a producer/artist or for an admin at a module-off org. Recording
-// the call args lets tests prove the five-query setup-status read is never fired for those
-// cases, rather than only asserting on what got rendered. isLoading mirrors the real hook's
-// own `!!orgId && ...` shape (false whenever the page passes null), so a test that sets
-// bookingSetupLoadingHolder.loading = true only sees it reflected when the page actually
-// asks for a real org id.
-const bookingSetupHolder = { complete: false };
-const bookingSetupLoadingHolder = { loading: false };
-const bookingSetupStatusMock = vi.fn((orgId: string | null) => ({
-  status: { complete: bookingSetupHolder.complete, steps: [], doneCount: 0, totalCount: 0, canOffer: false },
-  coverage: undefined,
-  artistCount: null,
-  isLoading: !!orgId && bookingSetupLoadingHolder.loading,
-  isError: false,
-}));
-vi.mock("@/hooks/useBookingSetup", () => ({
-  useBookingSetupStatus: (orgId: string | null) => bookingSetupStatusMock(orgId),
 }));
 
 const passwordStatusHolder: { data: boolean | undefined; isLoading: boolean; isError: boolean } = {
@@ -224,10 +216,8 @@ beforeEach(() => {
   flowLoadingHolder.loading = false;
   featureHolder.bookingFlowOn = true;
   entitlementsLoadingHolder.loading = false;
-  canConfirmHolder.value = true;
-  bookingSetupHolder.complete = false;
-  bookingSetupLoadingHolder.loading = false;
-  bookingSetupStatusMock.mockClear();
+  getRunningHolder.model = boardModel();
+  getRunningHolder.isLoading = false;
   passwordStatusHolder.data = true;
   passwordStatusHolder.isLoading = false;
   passwordStatusHolder.isError = false;
@@ -395,6 +385,13 @@ describe("AcceptInvitePage error paths (unchanged)", () => {
 
 describe("AcceptInvitePage success screen", () => {
   describe("calm sign-in handoff", () => {
+    // This suite exercises the PostAcceptanceHandoff password/magic-link sub-flow, which is
+    // role- and destination-agnostic. Pin the org to a nothing-on board so the primary CTA
+    // stays "Go to dashboard" and these tests never depend on the board summary's routing.
+    beforeEach(() => {
+      getRunningHolder.model = nothingOnModel();
+    });
+
     it("queries password status only after membership acceptance succeeds", async () => {
       let resolveAcceptance!: (value: { orgId: string; artistLinked: boolean }) => void;
       acceptInvitationMock.mockReturnValue(new Promise((resolve) => { resolveAcceptance = resolve; }));
@@ -584,66 +581,44 @@ describe("AcceptInvitePage success screen", () => {
     expect(card.textContent ?? "").not.toMatch(/you joined as/i);
   });
 
-  describe("next-step line is booking-flow-aware, not a tautology of the button beneath it", () => {
-    // Three real org configurations for the joined org's booking flow: an offer
-    // pipeline, direct booking (artist_acceptance off), and no pipeline at all
-    // (module entitlement off, or the org's flow preset is paused). Each role's line
-    // must name what that configuration actually does, matching the branch style
-    // firstRun.ts's welcomeCopy uses for the same distinction on the dashboard rail.
-    it.each([
-      ["admin", /gets your first offers out/i],
-      ["producer", /confirming bookings is yours to do/i],
-      ["artist", /offers arrive by email/i],
-    ] as const)("%s: names the offer pipeline when the org runs one", async (role, expected) => {
+  describe("artist next-step line is booking-flow-aware, and the CTA goes to Availability", () => {
+    // Artists have no Get running board (screen 08), so their line still names what the
+    // org's booking flow actually does, and their primary CTA points at Availability rather
+    // than the dashboard. Admin/producer no longer render a next-step line at all once a
+    // module is on -- the board summary replaces it (see the board-summary suite below).
+    it("names the offer pipeline when the org runs one, and points the CTA at Availability", async () => {
       flowHolder.flow = BOOKING_FLOW_DEFAULTS; // active: true, artist_acceptance: true
       featureHolder.bookingFlowOn = true;
-      authState.memberships = [membershipFor(role)];
+      authState.memberships = [membershipFor("artist")];
       acceptInvitationMock.mockResolvedValueOnce({ orgId: org1.id, artistLinked: true });
       renderAt(`${ROUTES.ACCEPT_INVITE}?token=abc123`);
 
       await screen.findByRole("heading", { name: /you've joined/i });
-      expect(screen.getByText(expected)).toBeInTheDocument();
+      expect(screen.getByText(/offers arrive by email/i)).toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: "Go to availability" }));
+      expect(navigateSpy).toHaveBeenCalledWith(ROUTES.AVAILABILITY, { replace: true });
     });
 
-    it.each([
-      ["admin", /gets your first date booked/i],
-      ["producer", /bookings waiting on your confirmation/i],
-      ["artist", /your producer books you directly/i],
-    ] as const)("%s: names direct booking when the org skips offers", async (role, expected) => {
+    it("names direct booking when the org skips offers", async () => {
       flowHolder.flow = applyPreset(BOOKING_FLOW_DEFAULTS, "direct"); // artist_acceptance: false
       featureHolder.bookingFlowOn = true;
-      authState.memberships = [membershipFor(role)];
+      authState.memberships = [membershipFor("artist")];
       acceptInvitationMock.mockResolvedValueOnce({ orgId: org1.id, artistLinked: true });
       renderAt(`${ROUTES.ACCEPT_INVITE}?token=abc123`);
 
       await screen.findByRole("heading", { name: /you've joined/i });
-      expect(screen.getByText(expected)).toBeInTheDocument();
+      expect(screen.getByText(/your producer books you directly/i)).toBeInTheDocument();
     });
 
-    it.each([
-      ["admin", /workspace needs from you next/i],
-      ["producer", /shows what is waiting on you/i],
-      ["artist", /what is next for you/i],
-    ] as const)("%s: falls back to a generic line when the booking module is off", async (role, expected) => {
+    it("falls back to a generic line when the booking module is off", async () => {
       flowHolder.flow = BOOKING_FLOW_DEFAULTS;
       featureHolder.bookingFlowOn = false;
-      authState.memberships = [membershipFor(role)];
+      authState.memberships = [membershipFor("artist")];
       acceptInvitationMock.mockResolvedValueOnce({ orgId: org1.id, artistLinked: true });
       renderAt(`${ROUTES.ACCEPT_INVITE}?token=abc123`);
 
       await screen.findByRole("heading", { name: /you've joined/i });
-      expect(screen.getByText(expected)).toBeInTheDocument();
-    });
-
-    it("falls back to the generic line when the org's flow preset is paused (off)", async () => {
-      flowHolder.flow = applyPreset(BOOKING_FLOW_DEFAULTS, "off"); // active: false
-      featureHolder.bookingFlowOn = true;
-      authState.memberships = [membershipFor("admin")];
-      acceptInvitationMock.mockResolvedValueOnce({ orgId: org1.id, artistLinked: true });
-      renderAt(`${ROUTES.ACCEPT_INVITE}?token=abc123`);
-
-      await screen.findByRole("heading", { name: /you've joined/i });
-      expect(screen.getByText(/workspace needs from you next/i)).toBeInTheDocument();
+      expect(screen.getByText(/what is next for you/i)).toBeInTheDocument();
     });
 
     it("falls back to the generic line while the flow has not loaded yet, never guessing", async () => {
@@ -656,260 +631,68 @@ describe("AcceptInvitePage success screen", () => {
       await screen.findByRole("heading", { name: /you've joined/i });
       expect(screen.getByText(/what is next for you/i)).toBeInTheDocument();
     });
+
+    it("holds a skeleton for the artist line until the flow and entitlement queries settle", async () => {
+      flowLoadingHolder.loading = true;
+      featureHolder.bookingFlowOn = true;
+      authState.memberships = [membershipFor("artist")];
+      acceptInvitationMock.mockResolvedValueOnce({ orgId: org1.id, artistLinked: true });
+      renderAt(`${ROUTES.ACCEPT_INVITE}?token=abc123`);
+
+      await screen.findByRole("heading", { name: /you've joined/i });
+      expect(screen.getByTestId("next-step-line-loading")).toBeInTheDocument();
+      expect(screen.queryByText(/offers arrive by email/i)).not.toBeInTheDocument();
+    });
   });
 
-  describe("next-step line waits for its data instead of rendering a claim that then swaps", () => {
-    // Regression: bookingFlow and bookingSetupStatus only start fetching on the render
-    // where `joined` is set, so react-query returns `data: undefined` / an outstanding
-    // status for both on the very first paint. The page must not render NEXT_STEP_LINES
-    // (or ADMIN_SETUP_COMPLETE_LINE) off that transient, wrong state and then silently
-    // swap once the real data lands -- it must hold the line until both queries settle.
-    it("renders neither the offers promise, the already-set-up line, nor any other next-step claim while the flow query is still loading", async () => {
-      flowLoadingHolder.loading = true;
-      featureHolder.bookingFlowOn = true;
-      authState.memberships = [membershipFor("admin")];
+  describe("admin/producer handoff names the Get running board", () => {
+    it("shows the live blocking summary and an Open Get running CTA for an admin", async () => {
+      getRunningHolder.model = boardModel(); // 2 blockers -> 6 minutes
       acceptInvitationMock.mockResolvedValueOnce({ orgId: org1.id, artistLinked: true });
       renderAt(`${ROUTES.ACCEPT_INVITE}?token=abc123`);
-
-      // The card itself (role block, button) is up -- only the next-step line is held back.
-      await screen.findByRole("heading", { name: /you've joined riverside opera/i });
-      expect(await screen.findByText(/your role: admin/i)).toBeInTheDocument();
-      expect(screen.queryByText(/gets your first offers out/i)).not.toBeInTheDocument();
-      expect(screen.queryByText(/gets your first date booked/i)).not.toBeInTheDocument();
-      expect(screen.queryByText(ADMIN_SETUP_COMPLETE_LINE)).not.toBeInTheDocument();
-      expect(screen.queryByText(/workspace needs from you next/i)).not.toBeInTheDocument();
-      expect(screen.getByTestId("next-step-line-loading")).toBeInTheDocument();
+      expect(await screen.findByTestId("board-handoff-summary")).toHaveTextContent(
+        "2 tasks stand between this workspace and its first offer",
+      );
+      expect(screen.getByTestId("board-handoff-summary")).toHaveTextContent("About 6 minutes.");
+      fireEvent.click(screen.getByRole("button", { name: "Open Get running" }));
+      expect(navigateSpy).toHaveBeenCalledWith(ROUTES.GET_RUNNING, { replace: true });
     });
 
-    it("renders neither the offers promise, the already-set-up line, nor any other next-step claim while the entitlements query is still loading", async () => {
-      // Regression: bookingModuleOn (useFeature('booking_flow')) fails open to the
-      // registry default while entitlements load, so this must not be treated as a
-      // resolved answer -- the line must wait for the entitlements query itself to settle,
-      // exactly like it already waits for the flow and setup-status queries.
-      entitlementsLoadingHolder.loading = true;
-      featureHolder.bookingFlowOn = true;
-      authState.memberships = [membershipFor("admin")];
-      acceptInvitationMock.mockResolvedValueOnce({ orgId: org1.id, artistLinked: true });
-      renderAt(`${ROUTES.ACCEPT_INVITE}?token=abc123`);
-
-      await screen.findByRole("heading", { name: /you've joined riverside opera/i });
-      expect(await screen.findByText(/your role: admin/i)).toBeInTheDocument();
-      expect(screen.queryByText(/gets your first offers out/i)).not.toBeInTheDocument();
-      expect(screen.queryByText(ADMIN_SETUP_COMPLETE_LINE)).not.toBeInTheDocument();
-      expect(screen.queryByText(/workspace needs from you next/i)).not.toBeInTheDocument();
-      expect(screen.getByTestId("next-step-line-loading")).toBeInTheDocument();
-    });
-
-    it("does not fetch the admin setup-status query while entitlements are still loading, even though useFeature's fail-open default would otherwise pass", async () => {
-      entitlementsLoadingHolder.loading = true;
-      featureHolder.bookingFlowOn = true; // the fail-open default value; must not be trusted yet
-      authState.memberships = [membershipFor("admin")];
-      acceptInvitationMock.mockResolvedValueOnce({ orgId: org1.id, artistLinked: true });
-      renderAt(`${ROUTES.ACCEPT_INVITE}?token=abc123`);
-
-      await screen.findByRole("heading", { name: /you've joined riverside opera/i });
-      expect(bookingSetupStatusMock).not.toHaveBeenCalledWith(org1.id);
-    });
-
-    it("renders neither the setup-list promise nor the already-set-up line while the setup-status query is still loading for an admin at a module-on org", async () => {
-      flowHolder.flow = BOOKING_FLOW_DEFAULTS;
-      flowLoadingHolder.loading = false;
-      bookingSetupLoadingHolder.loading = true;
-      featureHolder.bookingFlowOn = true;
-      authState.memberships = [membershipFor("admin")];
-      acceptInvitationMock.mockResolvedValueOnce({ orgId: org1.id, artistLinked: true });
-      renderAt(`${ROUTES.ACCEPT_INVITE}?token=abc123`);
-
-      await screen.findByRole("heading", { name: /you've joined riverside opera/i });
-      expect(screen.queryByText(/gets your first offers out/i)).not.toBeInTheDocument();
-      expect(screen.queryByText(ADMIN_SETUP_COMPLETE_LINE)).not.toBeInTheDocument();
-      expect(screen.getByTestId("next-step-line-loading")).toBeInTheDocument();
-    });
-
-    it("swaps the placeholder for the real line, and only the real line, once both queries resolve", async () => {
-      flowLoadingHolder.loading = true;
-      bookingSetupLoadingHolder.loading = true;
-      featureHolder.bookingFlowOn = true;
-      authState.memberships = [membershipFor("admin")];
-      acceptInvitationMock.mockResolvedValueOnce({ orgId: org1.id, artistLinked: true });
-      const { rerender } = renderAt(`${ROUTES.ACCEPT_INVITE}?token=abc123`);
-
-      await screen.findByRole("heading", { name: /you've joined riverside opera/i });
-      expect(screen.getByTestId("next-step-line-loading")).toBeInTheDocument();
-
-      // Both queries land: the flow is an offer pipeline, and setup is already complete.
-      flowHolder.flow = BOOKING_FLOW_DEFAULTS;
-      flowLoadingHolder.loading = false;
-      bookingSetupHolder.complete = true;
-      bookingSetupLoadingHolder.loading = false;
-      rerender(acceptInviteTree(`${ROUTES.ACCEPT_INVITE}?token=abc123`));
-
-      expect(screen.queryByTestId("next-step-line-loading")).not.toBeInTheDocument();
-      expect(await screen.findByText(ADMIN_SETUP_COMPLETE_LINE)).toBeInTheDocument();
-      expect(screen.queryByText(/gets your first offers out/i)).not.toBeInTheDocument();
-    });
-
-    it("a producer or artist is never held back by the admin-only setup-status query: it is not even fetched for them", async () => {
-      // Sanity companion to the "never fetches" describe below -- proves the READY state
-      // (not just the fetch gating) for non-admin roles: since the setup-status hook is
-      // never asked for their org id, its isLoading is always false for them regardless of
-      // bookingSetupLoadingHolder, so only the flow query can hold their line back.
-      flowLoadingHolder.loading = false;
-      bookingSetupLoadingHolder.loading = true;
-      featureHolder.bookingFlowOn = true;
+    it("shows the ready line once the first offer can go out", async () => {
+      getRunningHolder.model = boardModel({ canFirstOffer: true });
       authState.memberships = [membershipFor("producer")];
       acceptInvitationMock.mockResolvedValueOnce({ orgId: org1.id, artistLinked: true });
       renderAt(`${ROUTES.ACCEPT_INVITE}?token=abc123`);
-
-      await screen.findByRole("heading", { name: /you've joined riverside opera/i });
-      expect(screen.queryByTestId("next-step-line-loading")).not.toBeInTheDocument();
-      expect(screen.getByText(PRODUCER_OFFERS_CONFIRM_LINE)).toBeInTheDocument();
-    });
-  });
-
-  describe("the five-query booking setup status read is admin-only, never fetched for roles or orgs whose line does not consume it", () => {
-    // Regression: the page used to gate useBookingSetupStatus's org id on ONLY
-    // `bookingModuleOn`, so a brand-new artist's or producer's success screen fired all
-    // five org-wide catalog reads behind it (app_settings, shows, show_dates,
-    // show_cast_eligibility, cast_city_priority, artists) purely to render a sentence that
-    // discards bookingSetupComplete entirely (resolveNextStepLine only branches on it for
-    // role === 'admin'). Gating must also check the resolved role.
-    it.each(["producer", "artist"] as const)(
-      "%s: the setup-status hook is called only with a null org id, never the real one",
-      async (role) => {
-        featureHolder.bookingFlowOn = true;
-        authState.memberships = [membershipFor(role)];
-        acceptInvitationMock.mockResolvedValueOnce({ orgId: org1.id, artistLinked: true });
-        renderAt(`${ROUTES.ACCEPT_INVITE}?token=abc123`);
-
-        await screen.findByRole("heading", { name: /you've joined riverside opera/i });
-        expect(bookingSetupStatusMock).not.toHaveBeenCalledWith(org1.id);
-        for (const call of bookingSetupStatusMock.mock.calls) {
-          expect(call[0]).toBeNull();
-        }
-      },
-    );
-
-    it("admin at a module-off org: the setup-status hook is called only with a null org id, never the real one", async () => {
-      featureHolder.bookingFlowOn = false;
-      authState.memberships = [membershipFor("admin")];
-      acceptInvitationMock.mockResolvedValueOnce({ orgId: org1.id, artistLinked: true });
-      renderAt(`${ROUTES.ACCEPT_INVITE}?token=abc123`);
-
-      await screen.findByRole("heading", { name: /you've joined riverside opera/i });
-      expect(bookingSetupStatusMock).not.toHaveBeenCalledWith(org1.id);
+      expect(await screen.findByText("This workspace can send its first offer")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Open Get running" })).toBeInTheDocument();
     });
 
-    it("admin at a module-on org: the setup-status hook IS called with the joined org's real id", async () => {
-      featureHolder.bookingFlowOn = true;
-      authState.memberships = [membershipFor("admin")];
+    it("holds a skeleton until the board model settles", async () => {
+      getRunningHolder.model = null;
+      getRunningHolder.isLoading = true;
       acceptInvitationMock.mockResolvedValueOnce({ orgId: org1.id, artistLinked: true });
       renderAt(`${ROUTES.ACCEPT_INVITE}?token=abc123`);
-
-      await screen.findByRole("heading", { name: /you've joined riverside opera/i });
-      await waitFor(() => expect(bookingSetupStatusMock).toHaveBeenCalledWith(org1.id));
+      expect(await screen.findByTestId("board-summary-loading")).toBeInTheDocument();
     });
-  });
 
-  describe("admin next-step line does not promise a setup list an already-configured org does not have", () => {
-    // A second-or-later admin invited into a LIVE org (Admin > People, any time after the
-    // org's first month) is the common case, not an edge case: its booking setup already
-    // ran to completion, so "Your dashboard has a short setup list" would be false the
-    // moment the invitee clicked through. bookingSetupHolder.complete (mocked
-    // useBookingSetupStatus) carries the same signal the dashboard itself retires its
-    // rail on (firstRun.ts's welcomeCopy, `complete` branch).
-    it.each(["offers", "direct"] as const)(
-      "admin, %s flow, setup already complete: shows the already-set-up line, not the setup-list promise",
-      async (preset) => {
-        flowHolder.flow = preset === "offers" ? BOOKING_FLOW_DEFAULTS : applyPreset(BOOKING_FLOW_DEFAULTS, "direct");
-        featureHolder.bookingFlowOn = true;
-        bookingSetupHolder.complete = true;
-        authState.memberships = [membershipFor("admin")];
-        acceptInvitationMock.mockResolvedValueOnce({ orgId: org1.id, artistLinked: true });
-        renderAt(`${ROUTES.ACCEPT_INVITE}?token=abc123`);
-
-        expect(await screen.findByText(ADMIN_SETUP_COMPLETE_LINE)).toBeInTheDocument();
-        expect(screen.queryByText(/short setup list/i)).not.toBeInTheDocument();
-      },
-    );
-
-    it.each([
-      ["producer", PRODUCER_OFFERS_CONFIRM_LINE],
-      ["artist", NEXT_STEP_LINES.artist.offers],
-    ] as const)(
-      "%s is unaffected by setup completion: still names what is waiting, not a setup claim",
-      async (role, expectedLine) => {
-        // Only the admin line makes a setup-list promise in the first place; producer and
-        // artist lines describe what is waiting on them, true either way. The producer
-        // expectation is PRODUCER_OFFERS_CONFIRM_LINE (not NEXT_STEP_LINES.producer.offers)
-        // because canConfirmHolder defaults to true, the confirm-capable branch.
-        flowHolder.flow = BOOKING_FLOW_DEFAULTS;
-        featureHolder.bookingFlowOn = true;
-        bookingSetupHolder.complete = true;
-        authState.memberships = [membershipFor(role)];
-        acceptInvitationMock.mockResolvedValueOnce({ orgId: org1.id, artistLinked: true });
-        renderAt(`${ROUTES.ACCEPT_INVITE}?token=abc123`);
-
-        await screen.findByRole("heading", { name: /you've joined/i });
-        expect(screen.getByText(expectedLine)).toBeInTheDocument();
-        expect(screen.queryByText(ADMIN_SETUP_COMPLETE_LINE)).not.toBeInTheDocument();
-      },
-    );
-
-    it("an admin at an org with the booking module off is unaffected by setup completion (there is no setup to be complete)", async () => {
-      featureHolder.bookingFlowOn = false;
-      bookingSetupHolder.complete = true; // must be ignored: the module is off, not done
-      authState.memberships = [membershipFor("admin")];
+    it("falls back to the dashboard line + CTA for an admin at a nothing-on org", async () => {
+      getRunningHolder.model = nothingOnModel();
+      featureHolder.bookingFlowOn = false; // artist/off line source
       acceptInvitationMock.mockResolvedValueOnce({ orgId: org1.id, artistLinked: true });
       renderAt(`${ROUTES.ACCEPT_INVITE}?token=abc123`);
-
       expect(await screen.findByText(NEXT_STEP_LINES.admin.off)).toBeInTheDocument();
-      expect(screen.queryByText(ADMIN_SETUP_COMPLETE_LINE)).not.toBeInTheDocument();
-    });
-
-    it("an admin whose setup is still outstanding keeps the original setup-list line (unchanged default)", async () => {
-      flowHolder.flow = BOOKING_FLOW_DEFAULTS;
-      featureHolder.bookingFlowOn = true;
-      bookingSetupHolder.complete = false;
-      authState.memberships = [membershipFor("admin")];
-      acceptInvitationMock.mockResolvedValueOnce({ orgId: org1.id, artistLinked: true });
-      renderAt(`${ROUTES.ACCEPT_INVITE}?token=abc123`);
-
-      expect(await screen.findByText(/gets your first offers out/i)).toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: "Go to dashboard" }));
+      expect(navigateSpy).toHaveBeenCalledWith(ROUTES.DASHBOARD, { replace: true });
     });
   });
 
   describe("resolveNextStepLine (pure)", () => {
-    it("returns the setup-list promise for an admin whose booking setup is outstanding", () => {
-      expect(resolveNextStepLine("admin", "offers", false)).toBe(NEXT_STEP_LINES.admin.offers);
-      expect(resolveNextStepLine("admin", "direct", false)).toBe(NEXT_STEP_LINES.admin.direct);
-    });
-
-    it("swaps in ADMIN_SETUP_COMPLETE_LINE for an admin whose booking setup is already done", () => {
-      expect(resolveNextStepLine("admin", "offers", true)).toBe(ADMIN_SETUP_COMPLETE_LINE);
-      expect(resolveNextStepLine("admin", "direct", true)).toBe(ADMIN_SETUP_COMPLETE_LINE);
-    });
-
-    it("never swaps the line for bookingState 'off', regardless of setup completion", () => {
-      expect(resolveNextStepLine("admin", "off", true)).toBe(NEXT_STEP_LINES.admin.off);
-    });
-
-    it("never swaps the line for producer direct/off or artist any state, regardless of setup completion", () => {
-      expect(resolveNextStepLine("producer", "direct", true)).toBe(NEXT_STEP_LINES.producer.direct);
-      expect(resolveNextStepLine("producer", "off", true)).toBe(NEXT_STEP_LINES.producer.off);
-      expect(resolveNextStepLine("artist", "offers", true)).toBe(NEXT_STEP_LINES.artist.offers);
-    });
-
-    it("gates the producer 'offers' confirmation claim on canConfirmBookings, not the org's flow state alone", () => {
-      // The org may have revoked producer_can_confirm_bookings (src/lib/capabilities.ts):
-      // an offer pipeline running does not by itself mean confirming is this producer's
-      // to do.
-      expect(resolveNextStepLine("producer", "offers", true, true)).toBe(PRODUCER_OFFERS_CONFIRM_LINE);
-      expect(resolveNextStepLine("producer", "offers", true, false)).toBe(NEXT_STEP_LINES.producer.offers);
-    });
-
-    it("defaults canConfirmBookings to true when omitted, matching useCan's own loading fallback for a producer", () => {
-      expect(resolveNextStepLine("producer", "offers", true)).toBe(PRODUCER_OFFERS_CONFIRM_LINE);
+    it("returns the plain NEXT_STEP_LINES entry for a role and booking state", () => {
+      expect(resolveNextStepLine("admin", "offers")).toBe(NEXT_STEP_LINES.admin.offers);
+      expect(resolveNextStepLine("admin", "off")).toBe(NEXT_STEP_LINES.admin.off);
+      expect(resolveNextStepLine("producer", "direct")).toBe(NEXT_STEP_LINES.producer.direct);
+      expect(resolveNextStepLine("producer", "off")).toBe(NEXT_STEP_LINES.producer.off);
+      expect(resolveNextStepLine("artist", "offers")).toBe(NEXT_STEP_LINES.artist.offers);
     });
 
     it("returns the artist-not-linked line for an artist whose profile could not be linked, regardless of booking state", () => {
@@ -918,18 +701,18 @@ describe("AcceptInvitePage success screen", () => {
       // accept) leaves the invitee with no artists row. Offers/bookings are keyed on
       // artist_id, so the ordinary offers/direct lines promise something that cannot
       // happen for this account until an admin links it.
-      expect(resolveNextStepLine("artist", "offers", false, true, false)).toBe(ARTIST_NOT_LINKED_NEXT_STEP_LINE);
-      expect(resolveNextStepLine("artist", "direct", false, true, false)).toBe(ARTIST_NOT_LINKED_NEXT_STEP_LINE);
-      expect(resolveNextStepLine("artist", "off", false, true, false)).toBe(ARTIST_NOT_LINKED_NEXT_STEP_LINE);
+      expect(resolveNextStepLine("artist", "offers", false)).toBe(ARTIST_NOT_LINKED_NEXT_STEP_LINE);
+      expect(resolveNextStepLine("artist", "direct", false)).toBe(ARTIST_NOT_LINKED_NEXT_STEP_LINE);
+      expect(resolveNextStepLine("artist", "off", false)).toBe(ARTIST_NOT_LINKED_NEXT_STEP_LINE);
     });
 
     it("defaults artistLinked to true when omitted, matching the common (linked) case", () => {
-      expect(resolveNextStepLine("artist", "offers", false)).toBe(NEXT_STEP_LINES.artist.offers);
+      expect(resolveNextStepLine("artist", "offers")).toBe(NEXT_STEP_LINES.artist.offers);
     });
 
     it("does not affect admin or producer lines: artistLinked only ever gates the artist role", () => {
-      expect(resolveNextStepLine("admin", "offers", false, true, false)).toBe(NEXT_STEP_LINES.admin.offers);
-      expect(resolveNextStepLine("producer", "offers", true, true, false)).toBe(PRODUCER_OFFERS_CONFIRM_LINE);
+      expect(resolveNextStepLine("admin", "offers", false)).toBe(NEXT_STEP_LINES.admin.offers);
+      expect(resolveNextStepLine("producer", "offers", false)).toBe(NEXT_STEP_LINES.producer.offers);
     });
   });
 
@@ -955,16 +738,17 @@ describe("AcceptInvitePage success screen", () => {
     });
   });
 
-  it("navigates to the dashboard, replacing history, only when the button is clicked", async () => {
+  it("navigates to the board, replacing history, only when the button is clicked", async () => {
     // replace: true so the consumed accept-invite URL does not stay in history: Back
-    // would otherwise re-mount this page and re-run acceptInvitation.
+    // would otherwise re-mount this page and re-run acceptInvitation. Default admin org has
+    // a board, so the primary CTA is Open Get running -> /get-running.
     acceptInvitationMock.mockResolvedValueOnce({ orgId: org1.id, artistLinked: true });
     renderAt(`${ROUTES.ACCEPT_INVITE}?token=abc123`);
 
-    const button = await screen.findByRole("button", { name: /go to dashboard/i });
+    const button = await screen.findByRole("button", { name: "Open Get running" });
     expect(navigateSpy).not.toHaveBeenCalled();
     fireEvent.click(button);
-    expect(navigateSpy).toHaveBeenCalledWith(ROUTES.DASHBOARD, { replace: true });
+    expect(navigateSpy).toHaveBeenCalledWith(ROUTES.GET_RUNNING, { replace: true });
   });
 
   it("falls back to 'your organization' when the joined org is not resolvable", async () => {
@@ -1004,63 +788,6 @@ describe("AcceptInvitePage success screen", () => {
 
     await screen.findByRole("heading", { name: /you've joined/i });
     expect(screen.queryByText(/could not automatically link/i)).not.toBeInTheDocument();
-  });
-
-  describe("producer next-step line respects the confirm_bookings capability, not just the org's flow state", () => {
-    // Regression: the producer 'offers' line used to unconditionally claim "confirmations
-    // are yours to make", but producer_can_confirm_bookings (src/lib/capabilities.ts) is
-    // admin-revocable in Settings > Roles and permissions -- enforced at RLS, edge, and UI
-    // (DashboardPage's bulk Confirm button, ShowsBookingsPage / ShowDateDetailSheet's
-    // action visibility). This screen must not promise a right the org may have revoked.
-    it("producer, offers flow, capability ON: promises confirming bookings is theirs to do", async () => {
-      flowHolder.flow = BOOKING_FLOW_DEFAULTS;
-      featureHolder.bookingFlowOn = true;
-      canConfirmHolder.value = true;
-      authState.memberships = [membershipFor("producer")];
-      acceptInvitationMock.mockResolvedValueOnce({ orgId: org1.id, artistLinked: true });
-      renderAt(`${ROUTES.ACCEPT_INVITE}?token=abc123`);
-
-      await screen.findByRole("heading", { name: /you've joined/i });
-      expect(screen.getByText(PRODUCER_OFFERS_CONFIRM_LINE)).toBeInTheDocument();
-    });
-
-    it("producer, offers flow, capability OFF: does not claim confirmations are the producer's to make", async () => {
-      flowHolder.flow = BOOKING_FLOW_DEFAULTS;
-      featureHolder.bookingFlowOn = true;
-      canConfirmHolder.value = false;
-      authState.memberships = [membershipFor("producer")];
-      acceptInvitationMock.mockResolvedValueOnce({ orgId: org1.id, artistLinked: true });
-      renderAt(`${ROUTES.ACCEPT_INVITE}?token=abc123`);
-
-      await screen.findByRole("heading", { name: /you've joined/i });
-      expect(screen.getByText(NEXT_STEP_LINES.producer.offers)).toBeInTheDocument();
-      expect(screen.queryByText(/yours to do/i)).not.toBeInTheDocument();
-      expect(screen.queryByText(PRODUCER_OFFERS_CONFIRM_LINE)).not.toBeInTheDocument();
-    });
-
-    it("producer, direct flow: unaffected by the capability, the direct line only describes the booking's state", async () => {
-      flowHolder.flow = applyPreset(BOOKING_FLOW_DEFAULTS, "direct");
-      featureHolder.bookingFlowOn = true;
-      canConfirmHolder.value = false;
-      authState.memberships = [membershipFor("producer")];
-      acceptInvitationMock.mockResolvedValueOnce({ orgId: org1.id, artistLinked: true });
-      renderAt(`${ROUTES.ACCEPT_INVITE}?token=abc123`);
-
-      await screen.findByRole("heading", { name: /you've joined/i });
-      expect(screen.getByText(NEXT_STEP_LINES.producer.direct)).toBeInTheDocument();
-    });
-
-    it("admin and artist next-step lines are unaffected by the confirm_bookings capability", async () => {
-      flowHolder.flow = BOOKING_FLOW_DEFAULTS;
-      featureHolder.bookingFlowOn = true;
-      canConfirmHolder.value = false;
-      authState.memberships = [membershipFor("artist")];
-      acceptInvitationMock.mockResolvedValueOnce({ orgId: org1.id, artistLinked: true });
-      renderAt(`${ROUTES.ACCEPT_INVITE}?token=abc123`);
-
-      await screen.findByRole("heading", { name: /you've joined/i });
-      expect(screen.getByText(NEXT_STEP_LINES.artist.offers)).toBeInTheDocument();
-    });
   });
 
   describe("artist next-step line accounts for an unlinked profile, and the alert outranks it", () => {
@@ -1121,36 +848,36 @@ describe("AcceptInvitePage success screen", () => {
       expect(alertIndex).toBeLessThan(lineIndex);
     });
 
-    it("demotes the dashboard button to a secondary action when it leads to a dead end for the unlinked artist", async () => {
+    it("demotes the availability button to a secondary action when it leads to a dead end for the unlinked artist", async () => {
       // Mirrors the wrong-email error card: the remedy (an admin linking the profile,
-      // named in the alert) outranks the passive "Go to dashboard" escape, which for this
-      // account currently shows only "No artist profile linked to your account."
+      // named in the alert) outranks the passive "Go to availability" escape, which for this
+      // account currently can only say an admin still has to link the profile.
       acceptInvitationMock.mockResolvedValueOnce({ orgId: org1.id, artistLinked: false });
       authState.memberships = [membershipFor("artist")];
       renderAt(`${ROUTES.ACCEPT_INVITE}?token=abc123`);
 
       await screen.findByRole("heading", { name: /you've joined/i });
-      const button = screen.getByRole("button", { name: /go to dashboard/i });
+      const button = screen.getByRole("button", { name: /go to availability/i });
       expect(button.className).toContain("bg-background");
     });
 
-    it("keeps the dashboard button as the primary action once the artist profile is linked", async () => {
+    it("keeps the availability button as the primary action once the artist profile is linked", async () => {
       acceptInvitationMock.mockResolvedValueOnce({ orgId: org1.id, artistLinked: true });
       authState.memberships = [membershipFor("artist")];
       renderAt(`${ROUTES.ACCEPT_INVITE}?token=abc123`);
 
       await screen.findByRole("heading", { name: /you've joined/i });
-      const button = screen.getByRole("button", { name: /go to dashboard/i });
+      const button = screen.getByRole("button", { name: /go to availability/i });
       expect(button.className).toContain("bg-primary");
     });
 
-    it("does not demote the dashboard button for admin or producer roles, since the dashboard is not a dead end for them", async () => {
+    it("does not demote the primary button for admin or producer roles, since the board is not a dead end for them", async () => {
       acceptInvitationMock.mockResolvedValueOnce({ orgId: org1.id, artistLinked: false });
       authState.memberships = [membershipFor("admin")];
       renderAt(`${ROUTES.ACCEPT_INVITE}?token=abc123`);
 
       await screen.findByRole("heading", { name: /you've joined/i });
-      const button = screen.getByRole("button", { name: /go to dashboard/i });
+      const button = screen.getByRole("button", { name: "Open Get running" });
       expect(button.className).toContain("bg-primary");
     });
   });
@@ -1215,14 +942,12 @@ describe("AcceptInvitePage success screen", () => {
 });
 
 describe("success screen copy has no em or en dashes", () => {
-  it("NEXT_STEP_LINES and ADMIN_SETUP_COMPLETE_LINE have no dashes", () => {
+  it("NEXT_STEP_LINES and the artist-not-linked line have no dashes", () => {
     for (const perRole of Object.values(NEXT_STEP_LINES)) {
       for (const line of Object.values(perRole)) {
         expect(line).not.toMatch(/[—–]/);
       }
     }
-    expect(ADMIN_SETUP_COMPLETE_LINE).not.toMatch(/[—–]/);
-    expect(PRODUCER_OFFERS_CONFIRM_LINE).not.toMatch(/[—–]/);
     expect(ARTIST_NOT_LINKED_NEXT_STEP_LINE).not.toMatch(/[—–]/);
   });
 
@@ -1240,10 +965,8 @@ describe("success screen copy has no em or en dashes", () => {
     },
   );
 
-  it("the rendered admin success card has no dashes when booking setup is already complete", async () => {
-    flowHolder.flow = BOOKING_FLOW_DEFAULTS;
-    featureHolder.bookingFlowOn = true;
-    bookingSetupHolder.complete = true;
+  it("the rendered admin success card has no dashes when the board is already complete", async () => {
+    getRunningHolder.model = boardModel({ canFirstOffer: true, complete: true });
     authState.memberships = [membershipFor("admin")];
     acceptInvitationMock.mockResolvedValueOnce({ orgId: org1.id, artistLinked: false });
     renderAt(`${ROUTES.ACCEPT_INVITE}?token=abc123`);
@@ -1294,5 +1017,39 @@ describe("useFeature really reads useAuth().currentOrg, not a stale org (unmocke
     await waitFor(() =>
       expect(fetchEntitlementsMock).toHaveBeenCalledWith(expect.anything(), org1.id),
     );
+  });
+});
+
+describe("resolveHandoffPrimary", () => {
+  it("sends an artist to availability regardless of the board", () => {
+    expect(resolveHandoffPrimary("artist", false)).toBe("availability");
+    expect(resolveHandoffPrimary("artist", true)).toBe("availability");
+  });
+  it("sends an admin/producer with a board to the board", () => {
+    expect(resolveHandoffPrimary("admin", true)).toBe("board");
+    expect(resolveHandoffPrimary("producer", true)).toBe("board");
+  });
+  it("falls back to the dashboard for an admin/producer with no board (nothing on)", () => {
+    expect(resolveHandoffPrimary("admin", false)).toBe("dashboard");
+    expect(resolveHandoffPrimary("producer", false)).toBe("dashboard");
+  });
+  it("falls back to the dashboard when the role is unknown", () => {
+    expect(resolveHandoffPrimary(null, false)).toBe("dashboard");
+  });
+});
+
+describe("resolveBoardHandoffState", () => {
+  const model = (over: Partial<GetRunningModel>): GetRunningModel => ({
+    phases: [], doneCount: 0, totalCount: 1, canFirstOffer: false, complete: false,
+    bookingOn: true, hireOrdersOn: false, ...over,
+  });
+  it("is blocking while the first offer is held up", () => {
+    expect(resolveBoardHandoffState(model({ canFirstOffer: false, complete: false }))).toBe("blocking");
+  });
+  it("is ready once the first offer can go out but tasks remain", () => {
+    expect(resolveBoardHandoffState(model({ canFirstOffer: true, complete: false }))).toBe("ready");
+  });
+  it("is complete once every task is done", () => {
+    expect(resolveBoardHandoffState(model({ canFirstOffer: true, complete: true }))).toBe("complete");
   });
 });

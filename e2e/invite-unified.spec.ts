@@ -121,7 +121,9 @@ test.describe("Stable invitation onboarding", () => {
     await expect(magic).toHaveAttribute("aria-pressed", "false");
     await magic.focus();
     await page.keyboard.press("Enter");
-    await expect(page).toHaveURL(/\/dashboard/);
+    // Producer joining a booking-on org: the handoff's primary action now opens the Get
+    // running board (screen 07), not the dashboard. See resolveHandoffPrimary.
+    await expect(page).toHaveURL(/\/get-running/);
   });
 
   test("mobile keyboard flow creates a usable password after joining", async ({ page, baseURL }) => {

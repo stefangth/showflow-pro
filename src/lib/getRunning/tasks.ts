@@ -214,3 +214,25 @@ export function composeGetRunning(input: GetRunningInput): GetRunningModel {
     hireOrdersOn: input.hireOrdersOn,
   };
 }
+
+/** Count of not-done tasks that hold up the org's first offer (the offers/booking
+ *  blockers `canFirstOffer` is derived from). Shared by GetRunningHeader and the
+ *  accept-invite handoff so both report the same number. */
+export function firstOfferBlockingCount(model: GetRunningModel): number {
+  return model.phases
+    .flatMap((p) => p.tasks)
+    .filter((t) => !t.done && (t.block === "offers" || t.block === "booking")).length;
+}
+
+/** The board's one headline state: every task done -> "complete"; the first offer can go
+ *  out but optional tasks remain -> "ready"; still held up -> "blocking". Single source of
+ *  truth so GetRunningHeader and the accept-invite handoff summary can never disagree. */
+export type GetRunningState = "blocking" | "ready" | "complete";
+export function getRunningState(model: GetRunningModel): GetRunningState {
+  return model.complete ? "complete" : model.canFirstOffer ? "ready" : "blocking";
+}
+
+/** Rough minutes-per-task estimate behind the "~N minutes" line both the board header and
+ *  the accept-invite handoff show. Shared (rather than a bare `* 3` at each call site) so
+ *  the estimate can be tuned in one place and both quotes stay in sync. */
+export const MINUTES_PER_TASK = 3;

@@ -58,11 +58,11 @@ export const HELP_ITEMS: readonly HelpItem[] = [
     },
   },
   {
-    id: 'A1.3', role: 'admin', stage: 1, status: 'new', surface: 'Accept invite, success card', updated: '2026-08-14',
-    q: { en: 'What did accepting just commit me to?', de: 'Wozu habe ich mich mit dem Annehmen gerade verpflichtet?' },
+    id: 'A1.3', role: 'admin', stage: 1, status: 'new', surface: 'Accept invite, success card', updated: '2026-08-18',
+    q: { en: 'What is my next move after accepting?', de: 'Was ist mein nächster Schritt nach dem Annehmen?' },
     a: {
-      en: 'The success card answers it in one line, checked against what you can actually do. Someone on the production team whose organization has not granted confirm rights does not get told to go and confirm bookings.',
-      de: 'Die Erfolgs-Karte beantwortet das in einer Zeile, abgeglichen mit dem, was du wirklich darfst. Einem Produktionsteam, dessen Organisation keine Bestätigungsrechte vergeben hat, wird nicht gesagt, es solle Buchungen bestätigen.',
+      en: 'The success card names it. As admin or on the production team it names the Get running board and how far the workspace still is from its first offer, with an Open Get running button. As an artist it points you straight to your availability.',
+      de: 'Die Erfolgs-Karte nennt ihn. Als Admin oder im Produktionsteam nennt sie das Get running Board und wie weit der Arbeitsbereich noch von seinem ersten Angebot entfernt ist, mit einem Button Get running öffnen. Als Artist verweist sie dich direkt auf deine Verfügbarkeit.',
     },
   },
   {
