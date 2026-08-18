@@ -15,7 +15,6 @@ vi.mock("@/hooks/useCapabilities", async (orig) => ({
   ...(await orig<typeof import("@/hooks/useCapabilities")>()),
   useCan: vi.fn(),
 }));
-vi.mock("@/components/filters/useFilterVisibility", () => ({ useFilterVisibility: () => ({ canSee: () => false }) }));
 vi.mock("@/components/casts/CastsSection", () => ({ CastsSection: () => null }));
 vi.mock("@/components/artists/ArtistProfileSheet", () => ({ ArtistProfileSheet: () => null }));
 vi.mock("@/components/artists/ArtistImportDialog", () => ({

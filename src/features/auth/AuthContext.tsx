@@ -11,6 +11,7 @@ import { rolesForOrg, effectiveHasRole, effectiveOrgs } from './orgRoles';
 import { REALTIME_INVALIDATIONS } from './realtimeInvalidations';
 import { resolveSessionIdentity, computeAuthReady, bootstrapAuth, type SessionIdentityHandlers } from './sessionState';
 import { maybeDevAutoLogin } from './devAutoLogin';
+import { resetGetRunningLanding } from '@/lib/getRunning/landing';
 
 export interface ViewAsUser {
   id: string;
@@ -276,6 +277,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setViewAsRole(null);
     setViewAsUserState(null);
     localStorage.removeItem('showflow_editor_mode');
+    // Re-arm the one-time Get running landing so the next login in this tab lands on the
+    // board again (the flag otherwise survives until the tab closes).
+    resetGetRunningLanding();
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
   };

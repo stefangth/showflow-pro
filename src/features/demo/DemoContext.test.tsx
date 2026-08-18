@@ -5,12 +5,11 @@ import { useDemo } from "@/features/demo/DemoContext";
 import { SEASON_HANDOVER } from "@/lib/demo/scenes";
 import type { DemoStateRow } from "@/data/demo";
 
-// DemoContext (Phase 2) reads/writes demo_state via useDemoState/useUpdateDemoState/useRunCue
-// (src/hooks/useDemo.ts), which bind the real supabase singleton. Mock those three hooks
+// DemoContext (Phase 2) reads/writes demo_state via useDemoState/useUpdateDemoState
+// (src/hooks/useDemo.ts), which bind the real supabase singleton. Mock those hooks
 // (keeping useResetDemo mocked too, per the existing DemoBar.test.tsx pattern) so the
-// provider's derived scene/cue/mutation behavior is observable without a network dependency.
+// provider's derived scene/mutation behavior is observable without a network dependency.
 const updateMutate = vi.fn();
-const runCueMutate = vi.fn();
 const resetMutate = vi.fn();
 let demoStateRow: DemoStateRow | null = null;
 let demoStateLoading = false;
@@ -22,14 +21,13 @@ vi.mock("@/hooks/useDemo", async (importOriginal) => {
     useResetDemo: () => ({ mutate: resetMutate, isPending: false }),
     useDemoState: () => ({ data: demoStateRow, isLoading: demoStateLoading }),
     useUpdateDemoState: () => ({ mutate: updateMutate, isPending: false }),
-    useRunCue: () => ({ mutate: runCueMutate, isPending: false }),
   };
 });
 
 const demoOrg = { id: "o1", name: "n", slug: "s", status: "active" as const, is_demo: true };
 
 function Probe() {
-  const { currentScene, simNow, prospectLabel, volume, goToScene, runCue, advanceClock, setProspectLabel, setVolume, reset } =
+  const { currentScene, simNow, prospectLabel, volume, goToScene, advanceClock, setProspectLabel, setVolume, reset } =
     useDemo();
   return (
     <div>
@@ -38,7 +36,6 @@ function Probe() {
       <span data-testid="prospect-label">{prospectLabel ?? "none"}</span>
       <span data-testid="volume">{volume}</span>
       <button onClick={() => goToScene("hire-order")}>go</button>
-      <button onClick={() => runCue("fill_date")}>cue</button>
       <button onClick={() => advanceClock("10m")}>advance-10m</button>
       <button onClick={() => setProspectLabel("Acme Theatre")}>label</button>
       <button onClick={() => setVolume("small")}>volume-small</button>
@@ -50,7 +47,6 @@ function Probe() {
 describe("DemoContext scene + sim-clock state", () => {
   beforeEach(() => {
     updateMutate.mockClear();
-    runCueMutate.mockClear();
     resetMutate.mockClear();
     demoStateRow = null;
     demoStateLoading = false;
@@ -86,12 +82,6 @@ describe("DemoContext scene + sim-clock state", () => {
     render(<Probe />, { authOverrides: { currentOrg: demoOrg } });
     fireEvent.click(screen.getByText("go"));
     expect(updateMutate).toHaveBeenCalledWith({ orgId: "o1", patch: { current_scene_id: "hire-order" } });
-  });
-
-  it("runCue calls useRunCue's mutate", () => {
-    render(<Probe />, { authOverrides: { currentOrg: demoOrg } });
-    fireEvent.click(screen.getByText("cue"));
-    expect(runCueMutate).toHaveBeenCalledWith({ orgId: "o1", cueId: "fill_date" });
   });
 
   it("advanceClock('10m') computes sim_now + 10 minutes from the current sim clock", () => {
@@ -146,9 +136,7 @@ describe("DemoContext scene + sim-clock state", () => {
   it("mutations no-op without a current org", () => {
     render(<Probe />, { authOverrides: { currentOrg: null } });
     fireEvent.click(screen.getByText("go"));
-    fireEvent.click(screen.getByText("cue"));
     fireEvent.click(screen.getByText("advance-10m"));
     expect(updateMutate).not.toHaveBeenCalled();
-    expect(runCueMutate).not.toHaveBeenCalled();
   });
 });

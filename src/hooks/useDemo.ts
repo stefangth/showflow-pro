@@ -85,9 +85,9 @@ export function useRunCue() {
   return useMutation({
     mutationFn: (args: { orgId: string; cueId: string }) => runCue(supabase, args),
     onSuccess: () => invalidateEverything(qc),
-    // A cue firing in front of a prospect must never fail silently: surface the
-    // error (unknown_cue, not_a_demo_org, transient RPC failure) as a toast.
-    onError: (e: Error) => toast.error(e.message),
+    // The error toast is deliberately owned by the caller (RunOfShowRail), not here: it
+    // must be suppressed for a cue that settles after a reseed already wiped its data, and
+    // only the rail tracks that reseed generation. See RunOfShowRail's handleCue onError.
   });
 }
 

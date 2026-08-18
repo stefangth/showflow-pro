@@ -35,28 +35,11 @@
       "emailTemplates": "Email templates",
       "booking": "Booking engine",
       "hireOrders": "Hire orders",
-      "filters": "Filters",
       "notifications": "Notifications",
       "docs": "Documentation"
     },
     "moduleOn": "On",
     "moduleOff": "Off"
-  },
-  "filters": {
-    "title": "Filter Visibility per Role",
-    "description": "Toggle which filters producers and artists see on each page. Admins always see everything.",
-    "role": "Role",
-    "pages": {
-      "shows": "shows",
-      "artists": "artists",
-      "bookings": "bookings"
-    },
-    "keys": {
-      "program": "program",
-      "timeframe": "timeframe",
-      "sort": "sort",
-      "status": "status"
-    }
   },
   "notifications": {
     "title": "Notifications",

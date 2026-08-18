@@ -29,7 +29,6 @@ export const SETTINGS_TAB_PARAMS = [
   "airtable",
   "booking",
   "email-templates",
-  "filters",
   "notifications",
   "docs",
 ] as const;

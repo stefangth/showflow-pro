@@ -1,10 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { fireEvent, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
+import { toast } from "sonner";
 import { render, screen } from "@/test/renderWithProviders";
 import { RunOfShowRail } from "@/components/demo/RunOfShowRail";
 import type { DemoStateRow } from "@/data/demo";
 import type { AuthContextType } from "@/features/auth/AuthContext";
+
+vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 // RunOfShowRail (like DemoBar) reads demo_state through DemoContext, which binds the real
 // useDemoState/useUpdateDemoState/useRunCue/useResetDemo hooks (src/hooks/useDemo.ts) to the
@@ -41,8 +44,10 @@ function renderRail(currentOrg: AuthContextType["currentOrg"] = DEMO_ORG) {
 describe("RunOfShowRail", () => {
   beforeEach(() => {
     updateMutate.mockClear();
-    runCueMutate.mockClear();
+    runCueMutate.mockReset();
     resetMutate.mockClear();
+    vi.mocked(toast.success).mockClear();
+    vi.mocked(toast.error).mockClear();
     // Scene 03 ("holds-expire"): three cues, next scene is "artists-side".
     demoStateRow = {
       org_id: "o1",
@@ -85,7 +90,53 @@ describe("RunOfShowRail", () => {
   it("clicking a cue button calls runCue(cueId)", () => {
     renderRail();
     fireEvent.click(screen.getByText("Artist accepts"));
-    expect(runCueMutate).toHaveBeenCalledWith({ orgId: "o1", cueId: "artist_accepts_offer" });
+    expect(runCueMutate).toHaveBeenCalledWith(
+      { orgId: "o1", cueId: "artist_accepts_offer" },
+      expect.any(Object),
+    );
+  });
+
+  it("shows a pending state and disables the cue buttons while a cue is in flight", () => {
+    // The mock's mutate never settles (no onSettled call), so pendingCue stays set:
+    // the clicked cue reports aria-busy and every cue button is disabled meanwhile.
+    renderRail();
+    const clicked = screen.getByRole("button", { name: /Artist accepts/i });
+    fireEvent.click(clicked);
+    expect(clicked).toHaveAttribute("aria-busy", "true");
+    expect(screen.getByRole("button", { name: /Drop notifications/i })).toBeDisabled();
+  });
+
+  it("surfaces a success toast and marks the cue done when the cue resolves", () => {
+    // Drive the mutation's onSuccess so the rail's success affordance runs.
+    runCueMutate.mockImplementation((_args, opts) => opts?.onSuccess?.());
+    renderRail();
+    fireEvent.click(screen.getByRole("button", { name: /Artist accepts/i }));
+    expect(toast.success).toHaveBeenCalledWith("Cue done: Artist accepts");
+  });
+
+  it("marks the cue failed (retryable) and toasts the error when it rejects", () => {
+    // Drive onError + onSettled: the rail records the inline failed state, clears pending,
+    // and owns the error toast (useRunCue no longer toasts), so it fires exactly once here.
+    runCueMutate.mockImplementation((_args, opts) => {
+      opts?.onError?.(new Error("boom"));
+      opts?.onSettled?.();
+    });
+    renderRail();
+    const btn = screen.getByRole("button", { name: /Artist accepts/i });
+    fireEvent.click(btn);
+    expect(toast.error).toHaveBeenCalledWith("boom");
+    // Inline failed affordance: destructive styling + sr-only retry hint; pending cleared so
+    // the button is enabled and clickable again.
+    expect(btn).toHaveClass("border-destructive");
+    expect(btn).toHaveAttribute("aria-busy", "false");
+    expect(btn).not.toBeDisabled();
+    expect(within(btn).getByText(/click to retry/i)).toBeInTheDocument();
+
+    // Retrying clears the failed mark and re-invokes the mutation.
+    runCueMutate.mockImplementation(() => {}); // second attempt stays pending
+    fireEvent.click(btn);
+    expect(runCueMutate).toHaveBeenCalledTimes(2);
+    expect(btn).not.toHaveClass("border-destructive");
   });
 
   it("clicking Next scene calls goToScene with the next scene id", () => {

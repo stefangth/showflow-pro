@@ -23,9 +23,6 @@ Object.assign(client, createFakeSupabase({
 vi.mock("@/features/auth/AuthContext", () => ({
   useAuth: () => ({ hasRole: () => true, currentOrg: { id: "o1" } }),
 }));
-vi.mock("@/components/filters/useFilterVisibility", () => ({
-  useFilterVisibility: () => ({ canSee: () => false }),
-}));
 vi.mock("@/components/casts/CastsSection", () => ({ CastsSection: () => null }));
 vi.mock("@/components/artists/ArtistProfileSheet", () => ({ ArtistProfileSheet: () => null }));
 
