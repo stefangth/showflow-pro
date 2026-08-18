@@ -8,12 +8,12 @@ import { createFakeSupabase } from "@/test/supabaseFake";
 // DatesPanelBody calls the REAL `fetchLatestSyncLog` (src/data/airtableSync.ts), which
 // reads the `airtable_sync_log` table via the shared supabase singleton — the fake
 // stands in for that singleton. When the Airtable overlay opens, the REAL
-// `AirtableSyncTab` mounts too and reads several other (unseeded) tables/RPCs; every
-// one of those falls back to the fake's default `{ data: [], error: null }`, which
-// resolves `keyPresent`/`hasBaseTable` to false and pins AirtableSyncTab's console into
-// its "setup" mode (see `deriveMode` in `airtable/console.ts`) — so it never reaches the
-// recent-runs list that would need a real array shape. That is what makes seeding only
-// `airtable_sync_log` here safe.
+// `AirtableConnect` mounts too and (via `useAirtableConsole`) reads several other
+// (unseeded) tables/RPCs; every one of those falls back to the fake's default
+// `{ data: [], error: null }`, which resolves `keyPresent`/`hasBaseTable` to false and
+// keeps `AirtableConnect` on the connect rail (screen 11b) rather than the collapsed
+// summary (11a) — so it never reaches data shapes this suite doesn't seed. That is what
+// makes seeding only `airtable_sync_log` here safe.
 const { client } = vi.hoisted(() => ({ client: {} as Record<string, unknown> }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: client }));
 

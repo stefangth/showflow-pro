@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AirtableSyncTab } from "@/components/settings/AirtableSyncTab";
+import { AirtableConnect } from "@/components/getRunning/panels/airtable/AirtableConnect";
 import { ShowFormDialog } from "@/components/catalog/ShowFormDialog";
 import { formatTimestampLocal } from "@/lib/dates";
 import { UnlocksNote } from "./UnlocksNote";
@@ -17,19 +17,21 @@ import { UnlocksNote } from "./UnlocksNote";
 /**
  * The `dates` task's in-panel body (screen 02 "status" shape): an Airtable sync-status
  * card (or a "not connected yet" line), a held-records affordance, and an "add a show by
- * hand" overlay — all wired straight to EXISTING surfaces rather than a new first-time
- * connect wizard (owner decision #2 in `.superpowers/sdd/2026-08-18-get-running-in-panel-editors`:
- * the overlay to the existing `AirtableSyncTab` console IS the connect/manage path until
- * design screen 11 lands). Replaces `ShowsStep`, which only linked out to Productions and
- * `/settings?tab=airtable`.
+ * hand" overlay — wired straight to EXISTING surfaces rather than a bespoke card. The
+ * overlay itself is `AirtableConnect` (screen 11): the four-step connect rail (11b) while
+ * the connection is incomplete, collapsing to the four-group summary (11a) once
+ * connected — both fed by the same `useAirtableConsole` data-wiring the Settings
+ * `AirtableSyncTab` console uses, so nothing here re-implements mapping/catalog logic.
+ * Replaces `ShowsStep`, which only linked out to Productions and `/settings?tab=airtable`.
  *
  * Reads `fetchLatestSyncLog` under the exact `["airtable","sync-log",orgId]` key
- * `AirtableSyncTab` uses for its own `syncLogQ`, so the overlay's "Sync now" (which
+ * `useAirtableConsole` uses for its own `syncLogQ`, so the overlay's "Sync now" (which
  * invalidates that key) refreshes this card too without any bespoke wiring.
  *
  * `canConfigureAirtable`/`canTriggerSync` are resolved via `useCan` exactly as
- * `SettingsPage.tsx` does at its own `<AirtableSyncTab>` mount, so the overlay behaves
- * identically whether it is opened from Settings or from this board.
+ * `SettingsPage.tsx` does at its own `<AirtableSyncTab>` mount, so `AirtableConnect`
+ * behaves with the same read-only/sync-trigger floor whether reached from Settings or
+ * from this board.
  */
 export function DatesPanelBody({
   orgId,
@@ -125,7 +127,7 @@ export function DatesPanelBody({
           <DialogHeader className="sr-only">
             <DialogTitle>{t("panel.body.dates.airtableDialogTitle")}</DialogTitle>
           </DialogHeader>
-          <AirtableSyncTab orgId={orgId} readOnly={!canConfigureAirtable} canTriggerSync={canTriggerSync} />
+          <AirtableConnect orgId={orgId} readOnly={!canConfigureAirtable} canTriggerSync={canTriggerSync} />
         </DialogContent>
       </Dialog>
     </div>

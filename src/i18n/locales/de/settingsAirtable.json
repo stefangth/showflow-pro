@@ -282,5 +282,25 @@
       "detail_one": "hält {{count}} Datensatz zurück",
       "detail_other": "hält {{count}} Datensätze zurück"
     }
+  },
+  "connection": {
+    "title": "Airtable verbinden",
+    "description": "Es synchronisiert nichts, bis die letzte Gruppe abgeschlossen ist. Du kannst jederzeit pausieren und zurückkommen, jede Gruppe speichert sofort.",
+    "tokenLabel": "Token",
+    "tokenSaved": "Gespeichert {{date}}, im Vault gespeichert, nie angezeigt",
+    "baseTableRow": "{{base}} › {{table}} · {{view}} · {{frequency}}",
+    "change": "Ändern",
+    "requiredCount": "{{mapped}} von {{total}} erforderlich",
+    "mapSessions": "Sessions zuordnen",
+    "catalogHint": "Ordne Optionen deinen Shows zu. Nicht verknüpfte Optionen halten ihre Datensätze zurück.",
+    "reviewCatalog": "Prüfen"
+  },
+  "rail": {
+    "footer": {
+      "stepOf": "Schritt {{n}} von 4",
+      "savedAsYouGo": "Speichert sofort",
+      "later": "Später",
+      "finish": "Fertig"
+    }
   }
 }
