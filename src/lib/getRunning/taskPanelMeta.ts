@@ -23,14 +23,14 @@ export const BOOKING_DOMAIN_TASK_KEYS: ReadonlySet<GetRunningTaskKey> = new Set(
  * shape variant has a typed source to branch on instead of parsing translated strings.
  */
 export const TASK_PANEL_SHAPE: Record<GetRunningTaskKey, "choice" | "values" | "document"> = {
-  dates: "document",
+  dates: "values",
   slots: "values",
   flow: "choice",
-  people: "document",
-  ladder: "document",
-  eligibility: "document",
+  people: "values",
+  ladder: "values",
+  eligibility: "values",
   timing: "values",
-  team: "document",
+  team: "values",
   letterhead: "document",
   terms: "document",
   countersign: "document",

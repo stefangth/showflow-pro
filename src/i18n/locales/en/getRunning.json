@@ -141,7 +141,6 @@
         "emailLabel": "Invite by email",
         "emailPlaceholder": "name@company.com",
         "send": "Send invite",
-        "roleFixed": "Production Team",
         "unlocks": "Producers can take confirmations off your plate once offers start landing."
       },
       "people": {
