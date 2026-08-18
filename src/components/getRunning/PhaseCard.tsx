@@ -160,14 +160,31 @@ function PaperworkTiles({
 }): JSX.Element {
   const { t } = useTranslation("getRunning");
   return (
-    <div className="flex gap-2.5 px-4 pb-3.5">
+    // py-3.5 (not pb-only): in the complete/active states the header carries a bottom
+    // divider, and top padding is what keeps these tiles off that line instead of butting
+    // flush against it (matches GetDatesSummary's symmetric py). The dormant state has no
+    // divider, so the extra top gap simply reads as breathing room.
+    <div className="flex gap-2.5 px-4 py-3.5">
       {tasks.map((task) => {
         const waitsOnAdmin = !task.actionableByViewer;
         const body = (
           <>
             <div className="flex flex-wrap items-center gap-2">
-              <div className="text-[13px] font-medium text-foreground">{t(`tasks.${task.key}.title`)}</div>
-              {task.block === "issuing" && (
+              {/* A done tile carries the same filled-check done marker a done TaskRow does,
+                  so "this document is set" reads at a glance and looks done the same way
+                  across every phase. */}
+              {task.done && (
+                <span className="flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                  <Check className="h-2.5 w-2.5" strokeWidth={3} />
+                </span>
+              )}
+              <div className={`text-[13px] font-medium ${task.done ? "text-muted-foreground" : "text-foreground"}`}>
+                {t(`tasks.${task.key}.title`)}
+              </div>
+              {/* "Blocks issuing" is what the tile costs while OUTSTANDING; once done it holds
+                  up nothing, so guard on !done exactly as TaskRow/derivePhaseState do (block
+                  itself stays the static "what it holds up if outstanding" value). */}
+              {!task.done && task.block === "issuing" && (
                 <Badge variant="risk" className="h-[18px] px-1.5 text-[10px]">
                   {t("chips.blocksIssuing")}
                 </Badge>

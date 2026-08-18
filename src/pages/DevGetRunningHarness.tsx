@@ -81,12 +81,16 @@ const SCENARIOS: { label: string; phase: GetRunningPhase }[] = [
     },
   },
   {
+    // Done letterhead/terms still carry block:"issuing" in production (makeHireTask never
+    // clears the field — it is the static "what it holds up if outstanding" value), so this
+    // is the exact state that regressed: a complete phase must NOT show "Blocks issuing"
+    // and each done tile shows its check.
     label: "paperwork · COMPLETE (every checkmark)",
     phase: {
       key: "paperwork",
       tasks: [
-        task("letterhead", "paperwork", true),
-        task("terms", "paperwork", true),
+        task("letterhead", "paperwork", true, "issuing"),
+        task("terms", "paperwork", true, "issuing"),
         task("countersign", "paperwork", true),
       ],
     },

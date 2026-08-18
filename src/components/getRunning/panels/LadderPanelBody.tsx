@@ -107,7 +107,7 @@ export function LadderPanelBody({
     onSuccess: (_data, variables) => {
       qc.invalidateQueries({ queryKey: ["cast-city-priority"] });
       qc.invalidateQueries({ queryKey: ["eligibility"] });
-      toast.success(t("panel.body.ladder.tierUpdated"));
+      toast.success(t("panel.body.ladder.tierUpdated", { tier: variables.priority }));
       // Fire onDone only on the unranked→ranked TRANSITION this exact write caused: the
       // written city must itself have been unranked BEFORE this write (an "Add tier 2"
       // on an already-tier-1'd city is not that), and it must have been the last gap
@@ -119,7 +119,8 @@ export function LadderPanelBody({
       const remaining = unrankedCityIds.filter((id) => id !== variables.cityId);
       if (wasUnranked && remaining.length === 0) onDone();
     },
-    onError: (e: Error) => toast.error(e.message ?? t("panel.body.ladder.tierUpdateFailed")),
+    onError: (e: Error, variables) =>
+      toast.error(e.message ?? t("panel.body.ladder.tierUpdateFailed", { tier: variables.priority })),
   });
 
   const firstUnrankedId = unrankedCityIds[0];

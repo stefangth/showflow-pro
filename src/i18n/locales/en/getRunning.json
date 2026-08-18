@@ -111,6 +111,10 @@
       "terms": "Document · blocks issuing",
       "countersign": "Document · does not block issuing"
     },
+    "eyebrowSet": {
+      "letterhead": "Document · set",
+      "terms": "Document · set"
+    },
     "footerNote": {
       "dates": "Sync runs hourly",
       "slots": "Saved as you go",
@@ -174,8 +178,8 @@
         "unlocks_one": "Rank {{city}} too and {{count}} date becomes offerable in tonight's digest.",
         "unlocks_other": "Rank {{city}} too and {{count}} dates become offerable in tonight's digest.",
         "unlocksDone": "Every city with dates has a tier 1.",
-        "tierUpdated": "Tier 1 set",
-        "tierUpdateFailed": "Could not set tier 1"
+        "tierUpdated": "Tier {{tier}} set",
+        "tierUpdateFailed": "Could not set tier {{tier}}"
       },
       "eligibility": {
         "showsWithDates": "Shows with dates",

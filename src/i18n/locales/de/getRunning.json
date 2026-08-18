@@ -111,6 +111,10 @@
       "terms": "Dokument · blockiert den Versand",
       "countersign": "Dokument · blockiert den Versand nicht"
     },
+    "eyebrowSet": {
+      "letterhead": "Dokument · gesetzt",
+      "terms": "Dokument · gesetzt"
+    },
     "footerNote": {
       "dates": "Sync läuft stündlich",
       "slots": "Wird automatisch gespeichert",
@@ -174,8 +178,8 @@
         "unlocks_one": "Reihe auch {{city}} und {{count}} Termin wird in der heutigen Tagesübersicht anbietbar.",
         "unlocks_other": "Reihe auch {{city}} und {{count}} Termine werden in der heutigen Tagesübersicht anbietbar.",
         "unlocksDone": "Jede Stadt mit Terminen hat eine Stufe 1.",
-        "tierUpdated": "Stufe 1 gesetzt",
-        "tierUpdateFailed": "Stufe 1 konnte nicht gesetzt werden"
+        "tierUpdated": "Stufe {{tier}} gesetzt",
+        "tierUpdateFailed": "Stufe {{tier}} konnte nicht gesetzt werden"
       },
       "eligibility": {
         "showsWithDates": "Shows mit Terminen",
