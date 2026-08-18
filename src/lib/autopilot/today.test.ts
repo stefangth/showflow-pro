@@ -85,6 +85,64 @@ describe("feedAffordance", () => {
     );
     expect(affordance).toBe("review");
   });
+
+  // The three cases below all exercise the DAY-KEY comparison branches
+  // (`nowDay > actedDay` / `nowDay < actedDay`), which every case above leaves untouched
+  // by keeping actedAt and now on the same Berlin calendar day. None of the branches
+  // above can regress to a naive UTC-day (or local-day) comparison without being caught,
+  // because a Berlin calendar day and its UTC calendar day only ever disagree in the
+  // narrow band either side of midnight Berlin time (23:00-24:00 UTC in CEST, the summer
+  // dates used here) — exactly the band these three cases sit in.
+
+  it("keeps undo across a Berlin day rollover its UTC calendar day has not shown yet", () => {
+    // actedAt: 2026-08-17T23:30:00Z is CEST (UTC+2) 2026-08-18 01:30 -- already Berlin day
+    // 18, but still UTC day 17. now: 2026-08-18T08:00:00Z is Berlin 10:00 on the 18th (UTC
+    // day 18 too) -- the SAME Berlin day as actedAt, well before the 19:00 digest, so this
+    // must be "undo". A UTC-day comparison would see actedDay=17 and nowDay=18, read that
+    // as a later day, and wrongly answer "review".
+    const affordance = feedAffordance(
+      { emailedAt: null, actedAt: "2026-08-17T23:30:00Z" },
+      DIGEST_FLOW,
+      TIMES,
+      new Date("2026-08-18T08:00:00Z"),
+    );
+    expect(affordance).toBe("undo");
+  });
+
+  it("flips to review once now crosses into the next Berlin day, even while its own UTC day still reads as the acted day", () => {
+    // actedAt: 2026-08-18T10:00:00Z is Berlin 12:00 on the 18th -- Berlin day 18, UTC day
+    // 18. now: 2026-08-18T23:15:00Z is CEST 2026-08-19 01:15 -- already Berlin day 19, but
+    // still UTC day 18, the same UTC day as actedAt. The real (Berlin) comparison must see
+    // this as a later day and answer "review", even though the digest boundary itself
+    // (19:00) has nothing to do with it here -- the day alone already settles it.
+    const affordance = feedAffordance(
+      { emailedAt: null, actedAt: "2026-08-18T10:00:00Z" },
+      DIGEST_FLOW,
+      TIMES,
+      new Date("2026-08-18T23:15:00Z"),
+    );
+    expect(affordance).toBe("review");
+  });
+
+  it("is the symmetric case under CET (winter): a UTC-day comparison would wrongly fall through to undo", () => {
+    // Same mechanism as the CEST case above -- now has rolled into the next Berlin day
+    // while its UTC day still matches actedAt's -- checked under the OTHER Berlin UTC
+    // offset (CET, UTC+1, winter) so the day-key fix is not incidentally only correct
+    // during summer time. actedAt: 2026-01-18T10:00:00Z is Berlin 11:00 on the 18th
+    // (Berlin day 18, UTC day 18). now: 2026-01-18T23:15:00Z is CET 2026-01-19 00:15 --
+    // already Berlin day 19, but still UTC day 18, matching actedAt's UTC day. Correctly
+    // this is a later Berlin day, so "review". A UTC-day comparison sees the same UTC day
+    // for both, falls through to the minutes-since-midnight check, and reads now's Berlin
+    // clock time (00:15, just after midnight) as long before the 19:00 digest -- wrongly
+    // answering "undo".
+    const affordance = feedAffordance(
+      { emailedAt: null, actedAt: "2026-01-18T10:00:00Z" },
+      DIGEST_FLOW,
+      TIMES,
+      new Date("2026-01-18T23:15:00Z"),
+    );
+    expect(affordance).toBe("review");
+  });
 });
 
 const NOW = new Date("2026-07-15T12:00:00Z"); // Berlin day key 2026-07-15
