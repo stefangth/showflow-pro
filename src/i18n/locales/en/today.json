@@ -1,0 +1,52 @@
+{
+  "header": {
+    "headline_one": "One thing needs a human",
+    "headline_other": "{{count}} things need a human",
+    "headlineDone": "Nothing needs you",
+    "sub": "The other {{count}} are filling on their own. {{bookedCount}} artists were booked overnight.",
+    "subDone": "Autopilot cleared the board. {{count}} artists were booked overnight."
+  },
+  "atRisk": {
+    "badge_one": "At risk · {{count}} place empty",
+    "badge_other": "At risk · {{count}} places empty",
+    "body": "Autopilot has asked everyone it can and the date is still {{count}} short, {{days}} days out. It needs a decision only you can make.",
+    "openCastTitle": "Open it up to {{cast}}",
+    "openCastNote_one": "{{count}} artist free that night. They would be asked tonight at {{time}}.",
+    "openCastNote_other": "{{count}} artists free that night. They would be asked tonight at {{time}}.",
+    "runShortTitle": "Run the show with {{count}} fewer",
+    "runShortNote_one": "Sets the date to {{count}} place. Nobody else gets asked.",
+    "runShortNote_other": "Sets the date to {{count}} places. Nobody else gets asked.",
+    "pickYourselfTitle": "Pick the people yourself",
+    "pickYourselfNote": "{{total}} artists on the roster, {{free}} of them free that night.",
+    "doThis": "Do this",
+    "openDate": "Open the date"
+  },
+  "cancelled": {
+    "badge": "Cancelled · cast not told",
+    "body": "The house cancelled this date {{when}}. {{names}} still have it in their calendar. Autopilot does not send bad news on its own.",
+    "cta": "Tell them it is off",
+    "readFirst": "Read the message first"
+  },
+  "bounced": {
+    "title_one": "One ask did not arrive",
+    "title_other": "{{count}} asks did not arrive",
+    "body": "The email to {{names}} bounced {{when}}, so they have not heard about {{show}}. Autopilot will not retry a bad address.",
+    "fix": "Fix their addresses",
+    "later": "Later"
+  },
+  "empty": {
+    "title": "Nothing needs you",
+    "body": "{{count}} dates are filling on their own. If one is at risk, or something has to be said to an artist by a human, it turns up here. Nothing is waiting quietly in a queue.",
+    "cta": "Look at the season anyway"
+  },
+  "feed": {
+    "title": "Done for you since {{day}}",
+    "review": "Review",
+    "undo": "Undo"
+  },
+  "sidebar": {
+    "title": "Autopilot on",
+    "body": "Asks go out at {{time}}. A yes becomes a booking. Contracts draft when a date fills.",
+    "link": "Take it off autopilot"
+  }
+}
