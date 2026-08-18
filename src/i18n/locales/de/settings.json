@@ -35,28 +35,11 @@
       "emailTemplates": "E-Mail-Vorlagen",
       "booking": "Booking Engine",
       "hireOrders": "Engagementverträge",
-      "filters": "Filter",
       "notifications": "Benachrichtigungen",
       "docs": "Dokumentation"
     },
     "moduleOn": "An",
     "moduleOff": "Aus"
-  },
-  "filters": {
-    "title": "Sichtbarkeit der Filter pro Rolle",
-    "description": "Lege fest, welche Filter Production Team und Artists auf jeder Seite sehen. Admins sehen immer alles.",
-    "role": "Rolle",
-    "pages": {
-      "shows": "Shows",
-      "artists": "Artists",
-      "bookings": "Buchungen"
-    },
-    "keys": {
-      "program": "Programm",
-      "timeframe": "Zeitraum",
-      "sort": "Sortierung",
-      "status": "Status"
-    }
   },
   "notifications": {
     "title": "Benachrichtigungen",

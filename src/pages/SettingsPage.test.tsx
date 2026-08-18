@@ -171,7 +171,6 @@ describe("SettingsPage grouped vertical nav", () => {
     expect(screen.getByRole("tab", { name: /airtable sync/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /booking engine/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /email templates/i })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /^filters$/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /^notifications$/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /^organization$/i })).toBeInTheDocument();
     expect(screen.queryByRole("tab", { name: /roles & rights/i })).not.toBeInTheDocument();
@@ -402,9 +401,8 @@ describe("SettingsPage ?tab= deep link", () => {
 });
 
 describe("SettingsPage producer capability read-only floor", () => {
-  // The Filters and Notifications sections are rendered inline (not separate tab
-  // components), so their read-only threading is exercised here rather than in a
-  // component-level test file.
+  // The Notifications section is rendered inline (not a separate tab component), so its
+  // read-only threading is exercised here rather than in a component-level test file.
   beforeEach(() => {
     vi.mocked(useAuth).mockReturnValue({
       ...DEFAULT_AUTH,
@@ -429,15 +427,5 @@ describe("SettingsPage producer capability read-only floor", () => {
     fireEvent.mouseDown(await screen.findByRole("tab", { name: /^notifications$/i }));
 
     expect(await screen.findByRole("switch")).toBeEnabled();
-  });
-
-  it("disables every Filter-visibility switch when edit_filter_settings is off", async () => {
-    vi.mocked(useCan).mockImplementation((action: string) => action !== "edit_filter_settings");
-    renderWithProviders(<MemoryRouter><SettingsPage /></MemoryRouter>);
-    fireEvent.mouseDown(await screen.findByRole("tab", { name: /^filters$/i }));
-
-    const switches = await screen.findAllByRole("switch");
-    expect(switches.length).toBeGreaterThan(0);
-    for (const s of switches) expect(s).toBeDisabled();
   });
 });

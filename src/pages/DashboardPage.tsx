@@ -6,6 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/features/auth/AuthContext';
 import { useCan } from '@/hooks/useCapabilities';
 import { useGetRunning } from '@/hooks/useGetRunning';
+import { hasLandedGetRunning, markLandedGetRunning } from '@/lib/getRunning/landing';
 import { ROUTES } from '@/config/app.config';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -43,10 +44,14 @@ type DateRow = { id: string; date: string; show_id: string };
 export default function DashboardPage() {
   const { hasRole } = useAuth();
   const isArtistOnly = hasRole('artist') && !hasRole('producer') && !hasRole('admin');
-  // Onboarding gate: while the Get running board still has open tasks, a non-artist lands
-  // there instead of on the (still-empty) dashboard — the board is the priority until the
-  // workspace is set up, and it stops redirecting the moment `model.complete` flips true
-  // (a fully-set-up org, or a nothing-on org whose empty task set is trivially complete).
+  // Onboarding gate: on the FIRST dashboard visit of a session, while the Get running board
+  // still has open tasks, a non-artist lands on the board instead of the (still-empty)
+  // dashboard — the board is the priority until the workspace is set up. This is a one-time
+  // post-login landing, NOT a persistent guard: once it has fired we mark it consumed
+  // (session-scoped, see lib/getRunning/landing.ts), so any later navigation to the
+  // dashboard renders it normally and can never be trapped back on the board. The redirect
+  // also never fires once `model.complete` flips true (a fully-set-up org, or a nothing-on
+  // org whose empty task set is trivially complete).
   // `useGetRunning` is called unconditionally (rules of hooks) and reuses the exact reads
   // the sidebar's nav-visibility hook already issued, so this is a cache hit. Only redirect
   // once we positively know the board is incomplete: while `model` is null (loading) the
@@ -55,7 +60,8 @@ export default function DashboardPage() {
   if (isArtistOnly) {
     return <ArtistDashboard />;
   }
-  if (model && !model.complete) {
+  if (model && !model.complete && !hasLandedGetRunning()) {
+    markLandedGetRunning();
     return <Navigate to={ROUTES.GET_RUNNING} replace />;
   }
   return <ProducerDashboard />;

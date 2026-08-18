@@ -4,6 +4,7 @@ import { MemoryRouter, Routes, Route } from "react-router-dom";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import { createFakeSupabase, type TableSeed } from "@/test/supabaseFake";
 import { ROUTES } from "@/config/app.config";
+import { resetGetRunningLanding } from "@/lib/getRunning/landing";
 import type { GetRunningModel } from "@/lib/getRunning/tasks";
 
 // The Producer dashboard's "Ready to Confirm" bulk actions are the only surface
@@ -136,10 +137,27 @@ describe("DashboardPage onboarding gate (drop into Get running until setup is do
   }
 
   it("redirects a non-artist to /get-running while the board is incomplete", () => {
+    resetGetRunningLanding();
     authAs("producer");
     vi.mocked(useGetRunning).mockReturnValue({ model: { ...COMPLETE_MODEL, complete: false }, isLoading: false });
     renderAt();
     expect(screen.getByText("get running board")).toBeInTheDocument();
+  });
+
+  // One-time landing: after the first post-login redirect has fired, a later visit to the
+  // dashboard renders it even while the board is still incomplete — so the user is never
+  // trapped on the board.
+  it("does NOT redirect on a subsequent visit once the landing has been consumed", () => {
+    resetGetRunningLanding();
+    authAs("producer");
+    vi.mocked(useGetRunning).mockReturnValue({ model: { ...COMPLETE_MODEL, complete: false }, isLoading: false });
+    // First visit consumes the one-time landing (redirects to the board)…
+    const { unmount } = renderAt();
+    expect(screen.getByText("get running board")).toBeInTheDocument();
+    unmount();
+    // …a second visit with the board still incomplete now renders the dashboard.
+    renderAt();
+    expect(screen.queryByText("get running board")).not.toBeInTheDocument();
   });
 
   it("does not redirect once the board is complete — the dashboard renders", () => {

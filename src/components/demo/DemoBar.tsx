@@ -38,12 +38,14 @@ export function DemoBar() {
   };
 
   return (
-    <div className="flex items-center gap-3 px-4 py-2 bg-accent-50 border-b-[0.5px] border-border text-sm">
-      <Badge variant="outline" className="border-primary text-primary gap-1">
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2 bg-accent-50 border-b-[0.5px] border-border text-sm">
+      <Badge variant="outline" className="shrink-0 whitespace-nowrap border-primary text-primary gap-1">
         <Play className="h-3 w-3" /> Demo mode
       </Badge>
-      <SceneSelect />
-      <div className="flex items-center gap-2">
+      <div className="shrink-0">
+        <SceneSelect />
+      </div>
+      <div className="flex shrink-0 items-center gap-2">
         <span className="text-xs text-muted-foreground">Role</span>
         <div role="group" className="inline-flex items-center gap-0.5 rounded-md bg-muted p-0.5">
           {ROLE_OPTIONS.map((r) => (
@@ -52,7 +54,7 @@ export function DemoBar() {
               type="button"
               aria-pressed={viewAsRole === r}
               onClick={() => setViewAsRole(viewAsRole === r ? null : r)}
-              className={`h-6 rounded-md px-2.5 text-xs font-medium ${
+              className={`h-6 whitespace-nowrap rounded-md px-2.5 text-xs font-medium ${
                 viewAsRole === r ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"
               }`}
             >
@@ -61,8 +63,8 @@ export function DemoBar() {
           ))}
         </div>
       </div>
-      <div className="flex items-center gap-1.5 font-mono text-xs text-muted-foreground">
-        <Clock className="h-3.5 w-3.5" />
+      <div className="flex shrink-0 items-center gap-1.5 whitespace-nowrap font-mono text-xs text-muted-foreground">
+        <Clock className="h-3.5 w-3.5 shrink-0" />
         <span>{simNow ? formatTimestampLocal(simNow) : "now"}</span>
         <Button
           size="sm"
@@ -83,7 +85,7 @@ export function DemoBar() {
           +1d
         </Button>
       </div>
-      <div className="ml-auto flex items-center gap-2">
+      <div className="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-2">
         <DemoOutbox />
         <SandboxLinkDialog />
         <AlertDialog>

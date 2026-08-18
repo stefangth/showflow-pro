@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useLocation, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { BOOKING_ENGINE_DEFAULTS, roleLabel } from '@/config/app.config';
+import { BOOKING_ENGINE_DEFAULTS } from '@/config/app.config';
 import { resolveInitialTab } from '@/lib/settingsTabs';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -18,7 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import { Settings as SettingsIcon, Database, Bell, Wand2, Save, SlidersHorizontal, MapPin, BookOpen, Building2, FileSignature, ShieldCheck, Lock, Sparkles, Users, Activity, Rocket } from 'lucide-react';
+import { Settings as SettingsIcon, Database, Bell, Wand2, Save, MapPin, BookOpen, Building2, FileSignature, ShieldCheck, Lock, Sparkles, Users, Activity, Rocket } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { upsertOrgSetting, mergeOrgRows } from '@/data/settings';
 import { computeSettingsDirtyKeys } from '@/lib/settings';
@@ -46,32 +46,19 @@ const AUDIT_LOG_LIMIT = 50;
 // Tabs whose content is a wide reference surface rather than a form: they drop
 // the page's reading measure and run to `main`'s own 24px padding at every
 // display width. Everything else keeps `max-w-5xl`, which is what a column of
-// labelled inputs and toggle rows wants — Filters, measured uncapped at 1920,
-// separates each row's four toggles from the label they belong to by 1400px.
+// labelled inputs and toggle rows wants — a form measured uncapped at 1920
+// separates each row's controls from the label they belong to by too much.
 // Trust & data is the opposite case: two tables and a claim matrix that wrapped
 // five of eight row labels inside the capped 772px column. The measure that
 // tabs in this set still need is applied to their own prose (see
 // `src/components/settings/trust/*`), not to the page.
 const WIDE_TABS = new Set(['trust']);
 
-type FilterKey = 'program' | 'timeframe' | 'sort' | 'status';
-const FILTER_KEYS: FilterKey[] = ['program', 'timeframe', 'sort', 'status'];
-const PAGES: ('shows' | 'artists' | 'bookings')[] = ['shows', 'artists', 'bookings'];
-
-// The bookings calendar surface's PeriodNavigator owns the visible period, so
-// ShowsBookingsPage no longer calls canSee('timeframe') — the toggle would be
-// dead for that page. shows/artists still use TimeframeFilter and keep it.
-function keysForPage(page: (typeof PAGES)[number]): FilterKey[] {
-  return page === 'bookings' ? FILTER_KEYS.filter(k => k !== 'timeframe') : FILTER_KEYS;
-}
-const ROLES: ('producer' | 'artist')[] = ['producer', 'artist'];
-
 // Every app_settings key this page's draft can edit. Used for the dirty calc so a
 // first-ever value (a key with no persisted row yet, e.g. resend_from_address) still
 // counts as dirty — iterating only persisted rows would leave it unsavable.
 const EDITABLE_SETTING_KEYS: readonly string[] = [
   ...Object.keys(BOOKING_ENGINE_DEFAULTS),
-  'filters_visibility',
   'notifications_enabled',
   'booking_flow',
   'booking_flow_template',
@@ -81,9 +68,6 @@ type SettingRow = {
   key: string;
   value: unknown;
 };
-
-/** Shape of the `filters_visibility` setting: page → role → filter-key → on/off. */
-type FiltersVisibility = Record<string, Record<string, Record<string, boolean>>>;
 
 // ─── SettingsPage ────────────────────────────────────────────────────────────
 
@@ -126,7 +110,7 @@ export default function SettingsPage() {
     // New entity (org switch or first load) → always adopt server state.
     if (seededOrgRef.current !== orgId) { seed(); return; }
     // Same org refetched: only re-seed when the user has no unsaved edits, otherwise
-    // an unrelated invalidation would silently wipe in-progress Booking-Engine/Filters edits.
+    // an unrelated invalidation would silently wipe in-progress Booking-Engine edits.
     const dirty = computeSettingsDirtyKeys(settings, draft, EDITABLE_SETTING_KEYS);
     if (dirty.length === 0) seed();
     // `draft` is read but DELIBERATELY excluded from the deps: seed() calls setDraft() with a
@@ -310,7 +294,6 @@ export default function SettingsPage() {
       { value: "hire-orders", label: t('nav.items.hireOrders'), icon: FileSignature, show: isAdmin || isProducer, moduleState: hireOrdersEntitled },
     ] },
     { heading: t('nav.groups.preferences'), items: [
-      { value: "filters", label: t('nav.items.filters'), icon: SlidersHorizontal, show: isAdmin || isProducer },
       { value: "notifications", label: t('nav.items.notifications'), icon: Bell, show: isAdmin || isProducer },
     ] },
     { heading: t('nav.groups.help'), items: [
@@ -482,62 +465,6 @@ export default function SettingsPage() {
 
         <TabsContent value="airtable" className="mt-4">
           <AirtableSyncTab orgId={orgId} readOnly={!canConfigureAirtable} canTriggerSync={canTriggerSync} />
-        </TabsContent>
-
-        <TabsContent value="filters" className="mt-4 space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="font-display">{t('filters.title')}</CardTitle>
-              <CardDescription>
-                {t('filters.description')}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-8">
-              {PAGES.map(page => {
-                const pageVis = (get('filters_visibility', {}) as FiltersVisibility)?.[page] ?? {};
-                const pageKeys = keysForPage(page);
-                return (
-                  <div key={page} className="space-y-3">
-                    <h4 className="font-display font-semibold capitalize">{t(`filters.pages.${page}`)}</h4>
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="text-muted-foreground text-xs">
-                            <th className="text-left py-2 pr-4 font-medium">{t('filters.role')}</th>
-                            {pageKeys.map(k => <th key={k} className="text-center py-2 px-2 font-medium capitalize">{t(`filters.keys.${k}`)}</th>)}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {ROLES.map(role => {
-                            const row = pageVis[role] ?? {};
-                            return (
-                              <tr key={role} className="border-t border-border">
-                                <td className="py-2 pr-4 font-medium">{roleLabel(role)}</td>
-                                {pageKeys.map(key => (
-                                  <td key={key} className="text-center py-2 px-2">
-                                    <Switch
-                                      checked={!!row[key]}
-                                      disabled={!canEditFilterSettings}
-                                      onCheckedChange={(v) => {
-                                        const all = (get('filters_visibility', {}) as FiltersVisibility) ?? {};
-                                        const nextPage = { ...(all[page] ?? {}) };
-                                        nextPage[role] = { ...(nextPage[role] ?? {}), [key]: v };
-                                        set('filters_visibility', { ...all, [page]: nextPage });
-                                      }}
-                                    />
-                                  </td>
-                                ))}
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                );
-              })}
-            </CardContent>
-          </Card>
         </TabsContent>
 
         <TabsContent value="booking" className="mt-4">
