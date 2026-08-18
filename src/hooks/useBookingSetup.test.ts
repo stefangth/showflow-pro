@@ -4,7 +4,6 @@ import { renderHookWithProviders } from "@/test/renderWithProviders";
 import {
   createFakeSupabase,
   type TableSeed,
-  type ArraySeedEntry,
   type RecordedCall,
 } from "@/test/supabaseFake";
 
@@ -17,7 +16,7 @@ function seed(s: Record<string, TableSeed>) {
 }
 const calls = () => client.calls as RecordedCall[];
 
-import { useBookingSetupStatus, useInactiveArtistCount } from "./useBookingSetup";
+import { useBookingSetupStatus } from "./useBookingSetup";
 
 beforeEach(() => {
   seed({
@@ -112,12 +111,10 @@ describe("useBookingSetupStatus", () => {
 
   it("does not pay for the parked-roster read on every page that asks for readiness", async () => {
     // This hook runs on every admin and producer surface that shows setup state
-    // (DashboardPage, ShowsBookingsPage, useModuleOnboardingRail, useDashboardFirstRun).
-    // The parked count decorates ONE sentence inside a panel that is collapsed until an
-    // admin opens it, so charging every one of those page loads a second head count for it
-    // is the wrong trade. It lives in `useInactiveArtistCount` below, which the rail turns
-    // on only while the panel is on screen. `neq` is the parked query's signature: the
-    // readiness count eq's status = 'active', the parked one neq's it.
+    // (DashboardPage, ShowsBookingsPage, useModuleOnboardingRail, useDashboardFirstRun), so
+    // it must never pay for a parked-roster head count nobody on this read is asking for.
+    // `neq` is the parked query's signature: the readiness count eq's status = 'active',
+    // a parked count would neq it.
     const { result } = renderHookWithProviders(() => useBookingSetupStatus("org-1"));
     await waitFor(() => expect(result.current.isLoading).toBe(false));
     expect(calls().filter((c) => c.table === "artists" && c.method === "neq")).toHaveLength(0);
@@ -193,44 +190,5 @@ describe("useBookingSetupStatus", () => {
     const { result } = renderHookWithProviders(() => useBookingSetupStatus("org-1"));
     await waitFor(() => expect(result.current.isLoading).toBe(false));
     expect(result.current.status.steps.find((s) => s.key === "slots")!.done).toBe(false);
-  });
-});
-
-describe("useInactiveArtistCount", () => {
-  /** Active and parked counts on the same table, told apart by their status filter: the
-   *  readiness read eq's status = 'active', this hook's read neq's it, so the array seed's
-   *  `when` (matched on eq args only) routes each. The pair is what lets the people panel
-   *  reconcile its own number with the fuller roster ArtistsPage will show. */
-  const rosterSeed = (parked: ArraySeedEntry): Record<string, TableSeed> => ({
-    artists: [{ when: { status: "active" }, data: null, error: null, count: 2 }, parked],
-  });
-
-  it("counts the parked rest of the roster once its panel is on screen", async () => {
-    seed(rosterSeed({ data: null, error: null, count: 7 }));
-    const { result } = renderHookWithProviders(() => useInactiveArtistCount("org-1", true));
-    await waitFor(() => expect(result.current).toBe(7));
-  });
-
-  it("reads nothing while the panel that needs it is closed", async () => {
-    seed(rosterSeed({ data: null, error: null, count: 7 }));
-    const { result } = renderHookWithProviders(() => useInactiveArtistCount("org-1", false));
-    await waitFor(() => expect(result.current).toBeNull());
-    expect(calls().some((c) => c.table === "artists")).toBe(false);
-  });
-
-  it("reads nothing without an org", async () => {
-    seed(rosterSeed({ data: null, error: null, count: 7 }));
-    const { result } = renderHookWithProviders(() => useInactiveArtistCount(null, true));
-    await waitFor(() => expect(result.current).toBeNull());
-    expect(calls().some((c) => c.table === "artists")).toBe(false);
-  });
-
-  it("reports null rather than a number it could not read", async () => {
-    // A reconciliation line, not a blocker: a failed read drops the sentence instead of
-    // showing a count nobody can vouch for, and it never surfaces as a rail-wide error.
-    seed(rosterSeed({ data: null, error: { message: "boom" } }));
-    const { result } = renderHookWithProviders(() => useInactiveArtistCount("org-1", true));
-    await waitFor(() => expect(calls().some((c) => c.table === "artists" && c.method === "neq")).toBe(true));
-    expect(result.current).toBeNull();
   });
 });
