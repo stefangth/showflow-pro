@@ -1,5 +1,5 @@
-// Guards scripts/scan-secrets.mjs — the tracked-file secret scanner wired into
-// the CI "Lint" job and the pre-push hook. A regression here would silently
+// Guards scripts/scan-secrets.mjs — the tracked-file secret scanner run by the
+// CI "Lint" job (and manually via `npm run scan:secrets`). A regression here would silently
 // re-open the exact hole that leaked a Resend key: a hardcoded credential in a
 // tracked file sailing through to GitHub.
 //

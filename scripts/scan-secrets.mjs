@@ -5,11 +5,11 @@
 // WHY THIS EXISTS: a live Resend API key was hardcoded into the tracked
 // `.mcp.json` by a cloud coding session and pushed to GitHub (twice). A local
 // git hook is useless against that class of leak — it never runs in a cloud
-// session. So this scanner runs in TWO places:
-//   1. the CI "Lint" job (see .github/workflows/ci.yml) — runs on every PR/push,
-//      including cloud-session commits and any `git push --no-verify` bypass.
-//   2. the pre-push hook (.githooks/pre-push) — fast local feedback so a secret
-//      fails on your machine before it ever leaves it.
+// session. So the enforced gate is the CI "Lint" job (see
+// .github/workflows/ci.yml), which runs on every PR/push including cloud-session
+// commits and any `git push --no-verify` bypass. Locally it can be run by hand as
+// `npm run scan:secrets` (snapshot) or with `--prepush` (history range); there is
+// no auto-installed hook.
 //
 // TWO SCAN MODES:
 //   • Snapshot (default / `scanRepo`): every git-TRACKED file at the current

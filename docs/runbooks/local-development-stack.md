@@ -94,30 +94,29 @@ Both run all layers, continue past failures, and print a summary. Individual
 layers are still available directly: `npm run test`, `test:coverage`, `test:db`,
 `test:functions`, `test:e2e`.
 
-### The pre-push hook
+### Pre-push verification (manual, no auto-installed hook)
 
-`npm ci` installs a git **pre-push hook** — the `prepare` script points
-`core.hooksPath` at the tracked `.githooks/` directory. It runs `verify:fast`
-before every push so the Docker-free layers fail on your machine instead of in a
-red CI run. It deliberately does **not** run `verify:full`: a Docker cold-start
-on every push would just train everyone to reach for `--no-verify`. Bypass a
-single push when you need to (a WIP push, a docs-only branch):
+There is **no auto-installed git hook**. Run the checks yourself before pushing
+when you want the Docker-free CI layers to fail on your machine instead of in a
+red CI run:
 
 ```bash
-git push --no-verify             # git skips the hook entirely
-SHOWFLOW_SKIP_VERIFY=1 git push  # targeted skip, still logged
+npm run verify:fast   # lint, mirrors, typecheck, build, unit+coverage, Deno
+npm run scan:secrets  # credential scan over the tree
 ```
 
-The hook is a convenience gate, not the enforced one — GitHub CI still runs on
-the merged commit regardless, and the prod edge-function deploy keys off a green
-CI run. The hook only shortens the loop. Guarded by
-`scripts/prePushHook.test.mjs`.
+GitHub CI is the enforced gate: it runs the same suite on every push to a PR
+branch (`.github/workflows/ci.yml`), and the prod edge-function deploy keys off a
+green CI run — so nothing here is skippable, `verify:fast` locally just shortens
+the loop. A successful `verify:fast`/`verify:full` result is still cached
+(`scripts/verify-cache.mjs`) and reused when the exact source snapshot is
+unchanged.
 
-> **Heads-up:** `core.hooksPath` is repo-wide, so once `npm ci` installs it git
-> looks **only** in `.githooks/` — any personal, untracked hooks you keep in
-> `.git/hooks/` (a local `pre-commit`, `commit-msg`, etc.) stop firing. This is
-> the same tradeoff husky makes. If you rely on such a hook, move it into
-> `.githooks/` (it is tracked, so commit it) or chain to it from there.
+> Earlier revisions installed a `pre-push` hook via `core.hooksPath` →
+> `.githooks/` (wired by the `prepare` npm script). That was removed — the same
+> checks run in CI and are invoked manually — so `npm ci` no longer touches
+> `core.hooksPath`. If a clone still has it set from a prior install, clear it
+> with `git config --unset core.hooksPath`.
 
 ---
 
