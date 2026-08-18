@@ -46,13 +46,13 @@ describe("TeamPanelBody", () => {
   });
 
   it("invites a producer without leaving the panel", async () => {
-    const onDone = vi.fn();
-    renderWithProviders(<TeamPanelBody orgId="org-1" onDone={onDone} />);
+    renderWithProviders(<TeamPanelBody orgId="org-1" />);
 
     // Current roster renders inline (no navigation needed to see who's already in).
     expect(await screen.findByText("Ada Admin")).toBeInTheDocument();
 
-    fireEvent.change(screen.getByLabelText(/invite by email/i), { target: { value: "lena@nordstadt.de" } });
+    const emailInput = screen.getByLabelText(/invite by email/i);
+    fireEvent.change(emailInput, { target: { value: "lena@nordstadt.de" } });
     fireEvent.click(screen.getByRole("button", { name: /send invite/i }));
 
     await waitFor(() => {
@@ -62,7 +62,11 @@ describe("TeamPanelBody", () => {
         args: [expect.objectContaining({ role: "producer", email: "lena@nordstadt.de" })],
       });
     });
-    await waitFor(() => expect(onDone).toHaveBeenCalled());
+
+    // The invite is recorded and the email field clears, but the board does NOT
+    // advance: `team.done` counts ACCEPTED members, and a send only creates a
+    // pending invitation, so this panel stays open (mirrors PeoplePanelBody).
+    await waitFor(() => expect(emailInput).toHaveValue(""));
 
     // No navigation / no link out — the whole invite happens inside this panel.
     expect(screen.queryByRole("link", { name: /people|admin/i })).not.toBeInTheDocument();

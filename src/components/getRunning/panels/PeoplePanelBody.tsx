@@ -60,10 +60,9 @@ export function PeoplePanelBody({
     add.mutate(
       { orgId: orgId!, name: trimmedName, email: email.trim() || null },
       {
-        // Stays open on purpose (unlike TeamPanelBody's single one-off invite):
-        // adding a roster is typically a several-in-a-row task, so only clear the
-        // form and let the ["artists"] invalidation from useCreateArtistLite flip
-        // the board row to done underneath.
+        // Stays open on purpose: adding a roster is typically a several-in-a-row
+        // task, so only clear the form and let the ["artists"] invalidation from
+        // useCreateArtistLite flip the board row to done underneath.
         onSuccess: () => {
           setName("");
           setEmail("");

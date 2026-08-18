@@ -28,7 +28,7 @@ function initials(name: string): string {
  * for a producer, so `TaskPanel` renders `WaitsOnPanelBody` instead of this component
  * for anyone else (see TaskPanel.tsx) — this body does not re-check the role itself.
  */
-export function TeamPanelBody({ orgId, onDone }: { orgId: string | null; onDone: () => void }) {
+export function TeamPanelBody({ orgId }: { orgId: string | null }) {
   const { t } = useTranslation("getRunning");
   const { data: members } = useOrgMembers(orgId);
   const { create } = useInvitationMutations(orgId);
@@ -42,7 +42,11 @@ export function TeamPanelBody({ orgId, onDone }: { orgId: string | null; onDone:
     if (!canSend) return;
     create.mutate(
       { email: trimmed, role: "producer" },
-      { onSuccess: () => { setEmail(""); onDone(); } },
+      // Does NOT call onDone: sending an invite only creates a pending
+      // org_invitations row, and the `team` task's done condition counts ACCEPTED
+      // members (producerCount > 0), so the invite alone doesn't satisfy it yet.
+      // Mirrors PeoplePanelBody, which stays open the same way.
+      { onSuccess: () => { setEmail(""); } },
     );
   };
 

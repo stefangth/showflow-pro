@@ -62,7 +62,7 @@ export function TaskPanelEditor({
     case "timing":
       return <TimingStep orgId={orgId} onDone={onDone} />;
     case "team":
-      return <TeamPanelBody orgId={orgId} onDone={onDone} />;
+      return <TeamPanelBody orgId={orgId} />;
     case "letterhead":
       return <LetterheadStep orgId={orgId} onDone={onDone} />;
     case "terms":
