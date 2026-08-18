@@ -488,6 +488,55 @@ export async function fetchBookingCountsByDate(
   return map;
 }
 
+export interface CastUpcomingDateCounts {
+  /** Confirmed upcoming date count per artist id (the roster row's "N dates"). */
+  perArtist: Map<string, number>;
+  /** Distinct upcoming show_dates the cast covers (deduped across members), for the KPI. */
+  distinctDates: number;
+}
+
+/**
+ * Upcoming (today-or-later) **confirmed** booking counts for the given artist ids in an
+ * org — powers the "N dates" figure on each cast roster row and the "Upcoming dates" KPI.
+ *
+ * Only `confirmed` bookings count: `suggested`/`soft_booked` are speculative offers that
+ * may still expire, so counting them would overstate the dates a member is actually
+ * working. `distinctDates` dedupes by `show_date_id` across members so a date two members
+ * share counts once for the cast-level KPI (summing per-artist counts would double it).
+ *
+ * Scoped to the passed artist ids (a cast's members) and bounded server-side with an
+ * embedded `!inner` `.gte` on the date, mirroring `fetchTierAttention`, so a member's
+ * whole booking history never crosses the wire. `fromDateKey` is the inclusive lower
+ * bound (a `YYYY-MM-DD` string, injected so the boundary is deterministic in tests). The
+ * client-side date guard is a defensive backstop for the call-recording fake, which does
+ * not apply the embedded filter.
+ */
+export async function fetchUpcomingConfirmedDateCounts(
+  client: SupabaseClient<Database>,
+  orgId: string | null,
+  artistIds: string[],
+  fromDateKey: string,
+): Promise<CastUpcomingDateCounts> {
+  const perArtist = new Map<string, number>();
+  if (!orgId || artistIds.length === 0) return { perArtist, distinctDates: 0 };
+  const { data, error } = await client
+    .from("bookings")
+    .select("artist_id, show_date_id, show_date:show_dates!inner(date)")
+    .eq("org_id", orgId)
+    .in("artist_id", artistIds)
+    .eq("status", "confirmed")
+    .gte("show_date.date", fromDateKey);
+  if (error) throw error;
+  interface CountRow { artist_id: string; show_date_id: string; show_date: { date: string } | null }
+  const dateIds = new Set<string>();
+  for (const b of (data ?? []) as unknown as CountRow[]) {
+    if (b.show_date && b.show_date.date < fromDateKey) continue;
+    perArtist.set(b.artist_id, (perArtist.get(b.artist_id) ?? 0) + 1);
+    dateIds.add(b.show_date_id);
+  }
+  return { perArtist, distinctDates: dateIds.size };
+}
+
 export interface BookingLite { show_date_id: string; status: string; is_understudy: boolean }
 
 /** The org's confirmed bookings, minimal projection, for dashboard slot maths. */

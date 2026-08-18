@@ -290,28 +290,55 @@
     "cancel": "Abbrechen",
     "manageDefault": "Besetzungsmitglieder und Städte-Berechtigung verwalten",
     "editCast": "Besetzung bearbeiten",
-    "tabs": {
+    "close": "Schließen",
+    "eyebrow": "Besetzung",
+    "kpi": {
       "members": "Mitglieder",
-      "cityEligibility": "Städte-Berechtigung",
-      "offerOrder": "Angebotsreihenfolge"
+      "citiesEligible": "Berechtigte Städte",
+      "tier1Cities": "Städte mit Stufe 1",
+      "upcomingDates": "Anstehende Termine"
     },
-    "membersCount": "Mitglieder ({{count}})",
+    "coverageGap": {
+      "badge": "Abdeckungslücke",
+      "text": "{{cities}} in keiner Stufe, daher wird diese Besetzung dort nie angeboten.",
+      "setTier": "Stufe setzen"
+    },
+    "roster": {
+      "title": "Besetzung",
+      "count_one": "{{count}} Mitglied",
+      "count_other": "{{count}} Mitglieder",
+      "dates_one": "{{count}} Termin",
+      "dates_other": "{{count}} Termine",
+      "searchPlaceholder": "Besetzung durchsuchen oder Artist hinzufügen"
+    },
+    "coverage": {
+      "title": "Städte-Abdeckung",
+      "hint": "Klicke auf eine Show, um die Berechtigung umzuschalten.",
+      "noTier": "Keine Stufe"
+    },
+    "rail": {
+      "atAGlance": "Auf einen Blick",
+      "activity": "Aktivität"
+    },
+    "fact": {
+      "created": "Erstellt",
+      "updated": "Zuletzt aktualisiert",
+      "showsCovered": "Abgedeckte Shows",
+      "coverageGaps": "Abdeckungslücken"
+    },
+    "activity": {
+      "memberAdded": "{{name}} zur Besetzung hinzugefügt",
+      "castCreated": "Besetzung erstellt",
+      "castUpdated": "Besetzungsdetails aktualisiert",
+      "empty": "Noch keine Aktivität."
+    },
     "removeMember": "{{name}} entfernen",
     "noMembers": "Noch keine Mitglieder.",
     "addArtists": "Artists hinzufügen",
-    "searchArtists": "Artists suchen…",
     "noMatches": "Keine Treffer.",
-    "eligibilityNote": "Kreuze die Zellen an, in denen diese Besetzung berechtigt ist. Neue aus Airtable synchronisierte Termine erben diese Einstellungen; Überschreibungen pro Termin werden an jedem Termin konfiguriert.",
     "addCitiesFirst": "Füge zuerst Städte unter Einstellungen → Besetzungen & Abdeckung hinzu.",
     "noShows": "Keine Shows verfügbar.",
-    "cityShowHeader": "Stadt \\ Show",
-    "offerOrderNote": "Wo diese Besetzung in der Angebotsreihenfolge steht. Verwalte es unter Einstellungen, Besetzungen & Abdeckung, dieselbe Einstellung.",
-    "neverOffered": "Hier nie angeboten.",
-    "offeredFirst": "Hier zuerst angeboten.",
-    "offeredAfter": "Angeboten nach {{cast}}.",
-    "previousTier": "der vorherigen Stufe",
     "tierN": "Stufe {{tier}}",
-    "notInOrder": "Nicht in der Reihenfolge",
     "manageOfferOrderLink": "Angebotsreihenfolge unter Einstellungen, Besetzungen & Abdeckung verwalten"
   },
   "castDialog": {

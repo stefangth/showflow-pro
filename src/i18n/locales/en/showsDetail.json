@@ -290,28 +290,55 @@
     "cancel": "Cancel",
     "manageDefault": "Manage cast members and city eligibility",
     "editCast": "Edit cast",
-    "tabs": {
+    "close": "Close",
+    "eyebrow": "Cast",
+    "kpi": {
       "members": "Members",
-      "cityEligibility": "City eligibility",
-      "offerOrder": "Offer order"
+      "citiesEligible": "Cities eligible",
+      "tier1Cities": "Tier 1 cities",
+      "upcomingDates": "Upcoming dates"
     },
-    "membersCount": "Members ({{count}})",
+    "coverageGap": {
+      "badge": "Coverage gap",
+      "text": "{{cities}} not in any tier, so this cast is never offered there.",
+      "setTier": "Set tier"
+    },
+    "roster": {
+      "title": "Roster",
+      "count_one": "{{count}} member",
+      "count_other": "{{count}} members",
+      "dates_one": "{{count}} date",
+      "dates_other": "{{count}} dates",
+      "searchPlaceholder": "Search the roster or add an artist"
+    },
+    "coverage": {
+      "title": "City coverage",
+      "hint": "Click a show to toggle eligibility.",
+      "noTier": "No tier"
+    },
+    "rail": {
+      "atAGlance": "At a glance",
+      "activity": "Activity"
+    },
+    "fact": {
+      "created": "Created",
+      "updated": "Last updated",
+      "showsCovered": "Shows covered",
+      "coverageGaps": "Coverage gaps"
+    },
+    "activity": {
+      "memberAdded": "{{name}} added to the roster",
+      "castCreated": "Cast created",
+      "castUpdated": "Cast details updated",
+      "empty": "No activity yet."
+    },
     "removeMember": "Remove {{name}}",
     "noMembers": "No members yet.",
     "addArtists": "Add artists",
-    "searchArtists": "Search artists…",
     "noMatches": "No matches.",
-    "eligibilityNote": "Tick the cells where this cast is eligible. New show dates synced from Airtable will inherit these settings; per-date overrides are configured on each show date.",
     "addCitiesFirst": "Add cities first in Settings → Casts & coverage.",
     "noShows": "No shows available.",
-    "cityShowHeader": "City \\ Show",
-    "offerOrderNote": "Where this cast sits in the offer order. Manage it in Settings, Casts & coverage, same setting.",
-    "neverOffered": "Never offered here.",
-    "offeredFirst": "Offered first here.",
-    "offeredAfter": "Offered after {{cast}}.",
-    "previousTier": "the previous tier",
     "tierN": "Tier {{tier}}",
-    "notInOrder": "Not in order",
     "manageOfferOrderLink": "Manage offer order in Settings, Casts & coverage"
   },
   "castDialog": {
