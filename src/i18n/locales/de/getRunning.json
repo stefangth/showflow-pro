@@ -100,7 +100,7 @@
       "dates": "Dokument · läuft von allein",
       "slots": "Werte · eine Zahl pro Show",
       "flow": "Wahl · legt den weiteren Ablauf fest",
-      "people": "Dokument · deine Besetzungsliste",
+      "people": "Besetzungsliste · blockiert Buchungen",
       "ladder": "Dokument · entscheidet, wer zuerst gefragt wird",
       "eligibility": "Dokument · zeigt die Lücken",
       "timing": "Werte · zwei Felder",
@@ -113,7 +113,7 @@
       "dates": "Läuft von allein, stündlich",
       "slots": "Wird automatisch gespeichert",
       "flow": "Änderung wird protokolliert",
-      "people": "Importieren oder von Hand hinzufügen",
+      "people": "Keine E-Mail, bevor du ein Datum anbietest",
       "ladder": "Reihenfolge liegt in den Einstellungen",
       "eligibility": "Abdeckung liegt in den Einstellungen",
       "timing": "Gilt für die heutige Tagesübersicht",
@@ -129,6 +129,19 @@
         "send": "Einladung senden",
         "roleFixed": "Production Team",
         "unlocks": "Dein Production Team kann Bestätigungen übernehmen, sobald Angebote reinkommen."
+      },
+      "people": {
+        "emptyBadge": "Noch keine Artists",
+        "activeBadge": "{{count}} aktiv",
+        "rosterLabel_one": "Artist auf der Besetzungsliste",
+        "rosterLabel_other": "Artists auf der Besetzungsliste",
+        "addLabel": "Einen Artist hinzufügen",
+        "namePlaceholder": "Vollständiger Name",
+        "emailPlaceholder": "E-Mail (optional)",
+        "add": "Hinzufügen",
+        "or": "oder",
+        "importButton": "Tabelle importieren",
+        "unlocks": "Angebote und Direktbuchungen wählen beide aus dieser Liste. Artists bekommen keine E-Mail, bevor du ihnen ein Datum anbietest."
       }
     }
   },

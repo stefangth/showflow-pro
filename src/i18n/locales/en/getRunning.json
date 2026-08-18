@@ -100,7 +100,7 @@
       "dates": "Document · runs on its own",
       "slots": "Values · one number per show",
       "flow": "Choice · sets everything downstream",
-      "people": "Document · your roster",
+      "people": "Roster · blocks booking",
       "ladder": "Document · decides who is asked first",
       "eligibility": "Document · shows the gaps",
       "timing": "Values · two fields",
@@ -113,7 +113,7 @@
       "dates": "Runs on its own, hourly",
       "slots": "Saved as you go",
       "flow": "Change is logged",
-      "people": "Import or add by hand",
+      "people": "No email until you offer a date",
       "ladder": "Ranking lives in Settings",
       "eligibility": "Coverage lives in Settings",
       "timing": "Applies to tonight's digest",
@@ -129,6 +129,19 @@
         "send": "Send invite",
         "roleFixed": "Production Team",
         "unlocks": "Producers can take confirmations off your plate once offers start landing."
+      },
+      "people": {
+        "emptyBadge": "No artists yet",
+        "activeBadge": "{{count}} active",
+        "rosterLabel_one": "artist on the roster",
+        "rosterLabel_other": "artists on the roster",
+        "addLabel": "Add an artist",
+        "namePlaceholder": "Full name",
+        "emailPlaceholder": "Email (optional)",
+        "add": "Add",
+        "or": "or",
+        "importButton": "Import a sheet",
+        "unlocks": "Offers and direct bookings both pick from this list. Artists get no email until you offer them a date."
       }
     }
   },
