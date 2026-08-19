@@ -18,6 +18,7 @@
     "badge_one": "At risk · {{count}} place empty",
     "badge_other": "At risk · {{count}} places empty",
     "body": "Autopilot has asked everyone it can and the date is still {{count}} short, {{days}} days out. It needs a decision only you can make.",
+    "exhaustedBody": "Autopilot has nobody left it can ask for this date, {{days}} days out. It is still {{count}} short. Only you can find a way forward now.",
     "openCastTitle": "Open it up to {{cast}}",
     "openCastNote_one": "{{count}} artist free that night. They would be asked tonight at {{time}}.",
     "openCastNote_other": "{{count}} artists free that night. They would be asked tonight at {{time}}.",
@@ -26,6 +27,7 @@
     "runShortNote_other": "Sets the date to {{count}} places. Nobody else gets asked.",
     "pickYourselfTitle": "Pick the people yourself",
     "pickYourselfNote": "{{total}} artists on the roster, {{free}} of them free that night.",
+    "pickYourselfExhaustedNote": "Nobody on the roster is free that night either. Open the date to see what else you can do.",
     "doThis": "Do this",
     "openDate": "Open the date"
   },
@@ -55,11 +57,12 @@
     "undo": "Undo",
     "book_one": "Booked {{names}} onto {{show}}, {{date}}. They said yes, so the place is theirs.",
     "book_other": "Booked {{names}} onto {{show}}, {{date}}. They said yes, so the places are theirs.",
-    "ask_one": "Asked {{count}} artist about {{show}}, {{date}}. They have until {{deadline}} to answer.",
-    "ask_other": "Asked {{count}} artists about {{show}}, {{date}}. They have until {{deadline}} to answer.",
+    "ask_one": "Asked {{count}} artist about {{show}}, {{date}}.",
+    "ask_other": "Asked {{count}} artists about {{show}}, {{date}}.",
     "draft_one": "Drafted {{count}} contract for {{show}}, {{date}}. They send when you are happy with them.",
     "draft_other": "Drafted {{count}} contracts for {{show}}, {{date}}. They send when you are happy with them.",
-    "notify": "Told {{names}} that {{show}}, {{date}} is off."
+    "notify": "Told {{names}} that {{show}}, {{date}} is off.",
+    "theCast": "the cast"
   },
   "toast": {
     "castToldSuccess": "Told the cast that {{title}} is off.",

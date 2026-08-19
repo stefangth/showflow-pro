@@ -54,16 +54,37 @@ export interface BouncedAsk {
 export type FeedKind = "book" | "ask" | "draft" | "notify";
 export type FeedAffordance = "undo" | "review";
 
-export interface FeedRow {
+/**
+ * Structured display values for one feed row — carried as plain data rather
+ * than a pre-rendered sentence so the COMPONENT layer (`DoneForYouFeed`) can
+ * render it through `t("feed.<kind>", ...)`, keeping the data layer free of
+ * hardcoded English (finding 6 in the Today board review: the direction used
+ * to run the other way, with `src/data/autopilot.ts` baking English text and
+ * the `feed.*` i18n keys sitting dead). Not every kind uses every field —
+ * unused ones are `0`/`""`:
+ *  - book   → count (artists who accepted), names, show, date
+ *  - ask    → count (artists asked), show, date
+ *  - draft  → count (contracts drafted), show, date
+ *  - notify → names (empty string when nobody was still holding the date —
+ *             the component falls back to `t("feed.theCast")`), show, date
+ */
+export interface FeedRowDetail {
+  count: number;
+  names: string;
+  show: string;
+  date: string;
+}
+
+export interface FeedRow extends FeedRowDetail {
   id: string;
   kind: FeedKind;
-  text: string;
   at: string; // "07:02" | "Sun 19:00"
   affordance: FeedAffordance;
-  /** The specific booking ids this row describes (for "book" rows — the
-   *  artists who accepted). Undo must act on exactly these, never on every
-   *  soft-booked/confirmed booking for the date. Empty for kinds that have
-   *  no backing booking rows ("ask"/"draft"/"notify"). */
+  /** The specific booking ids this row describes — for "book" rows the
+   *  artists who accepted, for "ask" rows the still-suggested offers that
+   *  were made. Undo must act on exactly these, never on every matching
+   *  booking for the date/tier. Empty for kinds with no backing booking rows
+   *  ("draft"/"notify"). */
   bookingIds: string[];
 }
 
@@ -133,10 +154,9 @@ export interface CancelledUntoldInput {
  * already-formatted display timestamp ("07:02" | "Sun 19:00"); `actedAt` and
  * `emailedAt` are the ISO instants `feedAffordance` reasons about.
  */
-export interface FeedInput {
+export interface FeedInput extends FeedRowDetail {
   id: string;
   kind: FeedKind;
-  text: string;
   at: string;
   actedAt: string; // ISO
   emailedAt: string | null; // ISO, or null while the carrying email is unsent
@@ -204,7 +224,11 @@ function nextDayKey(dayKey: string): string {
   return new Date(Date.UTC(year, month - 1, day + 1)).toISOString().slice(0, 10);
 }
 
-function showTitle(program: string | null, subProgram: string | null): string {
+/** "Hamlet, Abend" — exported for reuse by `src/data/autopilot.ts`, which
+ *  imports it rather than keeping its own copy (this module already imports
+ *  types from that file's sibling data layer types the other direction, so
+ *  the dependency runs data -> lib, never lib -> data/Supabase). */
+export function showTitle(program: string | null, subProgram: string | null): string {
   return [program, subProgram].filter((part): part is string => !!part).join(", ") || "Untitled show";
 }
 
@@ -291,7 +315,10 @@ export function computeToday(input: TodayInput, now: Date): TodayModel {
   const feed: FeedRow[] = input.feed.map((row) => ({
     id: row.id,
     kind: row.kind,
-    text: row.text,
+    count: row.count,
+    names: row.names,
+    show: row.show,
+    date: row.date,
     at: row.at,
     affordance: feedAffordance({ emailedAt: row.emailedAt, actedAt: row.actedAt }, input.flow, input.times, now),
     bookingIds: row.bookingIds,

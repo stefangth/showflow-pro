@@ -329,11 +329,11 @@ describe("fetchAutopilotFeed", () => {
         // ask-shaped rows (show_date_id "d1") never leak into a "d4" notify lookup.
         data: [
           {
-            show_date_id: "d1", offer_tier: 1, offered_at: "2026-07-14T07:00:00Z", digest_sent_at: null,
+            id: "off1", show_date_id: "d1", offer_tier: 1, offered_at: "2026-07-14T07:00:00Z", digest_sent_at: null,
             show_date: { date: "2026-07-20", show: { program: "Hamlet", sub_program: "Abend" } },
           },
           {
-            show_date_id: "d1", offer_tier: 1, offered_at: "2026-07-14T07:02:00Z", digest_sent_at: null,
+            id: "off2", show_date_id: "d1", offer_tier: 1, offered_at: "2026-07-14T07:02:00Z", digest_sent_at: null,
             show_date: { date: "2026-07-20", show: { program: "Hamlet", sub_program: "Abend" } },
           },
         ],
@@ -377,15 +377,18 @@ describe("fetchAutopilotFeed", () => {
     const ask = result.find((r) => r.kind === "ask");
     expect(ask).toMatchObject({
       id: "ask:d1:1", kind: "ask",
-      text: "Asked 2 artists about Hamlet, Abend, 20 Jul.",
+      count: 2, show: "Hamlet, Abend", date: "20 Jul",
       actedAt: "2026-07-14T07:00:00Z", emailedAt: null,
+      // finding 1: undo must withdraw exactly these two suggested bookings,
+      // never a whole-tier close-offer-tier sweep.
+      bookingIds: ["off1", "off2"],
     });
     expect(ask?.at).toMatch(AT_TIME);
 
     const book = result.find((r) => r.kind === "book");
     expect(book).toMatchObject({
       id: "book:d2", kind: "book",
-      text: "Booked Anna K. onto Faust, 21 Jul. They said yes, so the place is theirs.",
+      count: 1, names: "Anna K.", show: "Faust", date: "21 Jul",
       actedAt: "2026-07-14T08:00:00Z", emailedAt: "2026-07-14T20:00:00Z",
       bookingIds: ["b1"], // findings 2/3: undo must act on exactly these booking ids
     });
@@ -393,16 +396,16 @@ describe("fetchAutopilotFeed", () => {
     const draft = result.find((r) => r.kind === "draft");
     expect(draft).toMatchObject({
       id: "draft:d3", kind: "draft",
-      text: "Drafted 1 contract for Macbeth, 22 Jul. They send when you are happy with them.",
+      count: 1, show: "Macbeth", date: "22 Jul",
       actedAt: "2026-07-14T09:00:00Z", emailedAt: null,
     });
 
     const notify = result.find((r) => r.kind === "notify");
     expect(notify).toMatchObject({
       id: "notify:d4", kind: "notify",
+      show: "Carmen", date: "19 Jul",
       actedAt: "2026-07-14T10:00:00Z", emailedAt: "2026-07-14T10:00:00Z",
     });
-    expect(notify?.text).toContain("Carmen, 19 Jul is off");
 
     // Org scoping: every top-level table this reads carries its own explicit filter —
     // bookings/hire_orders/show_dates via a plain org_id eq, booking_audit_log (which

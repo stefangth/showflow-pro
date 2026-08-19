@@ -39,7 +39,10 @@ function aFeedRow(overrides: Partial<FeedRow> = {}): FeedRow {
   return {
     id: "ask:date-1:1",
     kind: "ask",
-    text: "Asked 3 artists about Hamlet, Abend, 3 Sep.",
+    count: 3,
+    names: "",
+    show: "Hamlet, Abend",
+    date: "3 Sep",
     at: "Mon 09:00",
     affordance: "undo",
     bookingIds: [],
@@ -127,8 +130,8 @@ describe("TodayPage", () => {
   it("shows Review for a feed row past its digest and Undo for one still before it", () => {
     const model = aModel({
       feed: [
-        aFeedRow({ id: "ask:date-1:1", affordance: "undo", text: "Undo-able ask" }),
-        aFeedRow({ id: "ask:date-2:1", affordance: "review", text: "Already reviewed ask" }),
+        aFeedRow({ id: "ask:date-1:1", affordance: "undo" }),
+        aFeedRow({ id: "ask:date-2:1", affordance: "review" }),
       ],
     });
     render(<TodayPage {...baseProps({ model })} />);

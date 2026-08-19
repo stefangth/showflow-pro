@@ -33,12 +33,23 @@ interface ResolutionOption {
  * either every tier is already open, or the next tier has no cast assigned),
  * only "Pick the people yourself" renders, promoted to the recessed/primary
  * treatment so the card never shows a gap or a dead row.
+ *
+ * `item.exhausted` (finding 2 in the Today board review) is true only when
+ * BOTH `hasUnopenedTier` is false AND `unaskedEligibleCount` is 0 — i.e.
+ * there is genuinely no further tier to open AND no eligible artist left
+ * unasked. `nextCastName` is mathematically already null whenever that's
+ * true (it is only ever set from a not-yet-opened tier), so the "Open it up
+ * to X" option was already hidden by coincidence; `!item.exhausted` below
+ * makes that explicit and defensive rather than relying on the coincidence.
+ * The body copy and the "pick yourself" note also switch to exhausted-aware
+ * text so the card stops implying Autopilot could still surface a candidate,
+ * or that the roster still has someone free, when it does not.
  */
 export function AtRiskDateCard({ item, askTimeLabel, onOpenNextCast, onOpenDate }: AtRiskDateCardProps) {
   const { t } = useTranslation("today");
 
   const options: ResolutionOption[] = [];
-  if (item.nextCastName) {
+  if (!item.exhausted && item.nextCastName) {
     options.push({
       key: "openCast",
       title: t("atRisk.openCastTitle", { cast: item.nextCastName }),
@@ -47,10 +58,13 @@ export function AtRiskDateCard({ item, askTimeLabel, onOpenNextCast, onOpenDate 
       onClick: () => onOpenNextCast(item),
     });
   }
+  const nobodyFreeEither = item.exhausted && item.rosterFreeCount === 0;
   options.push({
     key: "pickYourself",
     title: t("atRisk.pickYourselfTitle"),
-    note: t("atRisk.pickYourselfNote", { total: item.rosterCount, free: item.rosterFreeCount }),
+    note: nobodyFreeEither
+      ? t("atRisk.pickYourselfExhaustedNote")
+      : t("atRisk.pickYourselfNote", { total: item.rosterCount, free: item.rosterFreeCount }),
     buttonLabel: t("atRisk.openDate"),
     onClick: () => onOpenDate(item),
   });
@@ -67,7 +81,9 @@ export function AtRiskDateCard({ item, askTimeLabel, onOpenNextCast, onOpenDate 
             {item.title} · {item.where}
           </p>
           <p className="m-0 mt-2 text-sm leading-[21px]">
-            {t("atRisk.body", { count: item.placesEmpty, days: item.daysOut })}
+            {item.exhausted
+              ? t("atRisk.exhaustedBody", { count: item.placesEmpty, days: item.daysOut })
+              : t("atRisk.body", { count: item.placesEmpty, days: item.daysOut })}
           </p>
           <div className="mt-3.5 flex flex-col gap-2">
             {options.map((opt, i) => (

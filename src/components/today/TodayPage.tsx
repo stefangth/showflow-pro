@@ -7,7 +7,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import { ROUTES } from "@/config/app.config";
-import { closeOfferTier, cancelAutopilotBookedIds, notifyCast, openOfferTier } from "@/data/bookings";
+import { cancelAutopilotAskedIds, cancelAutopilotBookedIds, notifyCast, openOfferTier } from "@/data/bookings";
 import type { AtRiskDate, CancelledUntoldDate, FeedRow, TodayModel } from "@/lib/autopilot/today";
 import { useAutopilotToday } from "@/hooks/useAutopilotToday";
 import { useModuleGate } from "@/hooks/useEntitlements";
@@ -18,6 +18,7 @@ import { AtRiskDateCard } from "./AtRiskDateCard";
 import { CancelledUntoldCard } from "./CancelledUntoldCard";
 import { TodayEmpty } from "./TodayEmpty";
 import { DoneForYouFeed } from "./DoneForYouFeed";
+import { feedRowText } from "./feedRowText";
 
 export interface TodayPageProps {
   model: TodayModel;
@@ -103,18 +104,6 @@ export function TodayPage({
   );
 }
 
-/** `id: "ask:<showDateId>:<tier>"` — the exact contract documented on
- *  `fetchAutopilotFeed` in src/data/autopilot.ts. Returns null on any
- *  shape mismatch rather than throwing, so a future format change degrades
- *  to a no-op instead of a crash. */
-function parseAskFeedId(id: string): { showDateId: string; tier: number } | null {
-  const parts = id.split(":");
-  if (parts.length !== 3 || parts[0] !== "ask") return null;
-  const tier = Number(parts[2]);
-  if (!Number.isFinite(tier) || tier < 1) return null;
-  return { showDateId: parts[1], tier };
-}
-
 /**
  * Thin data-fetching wrapper: composes `useAutopilotToday` and renders
  * `TodayPage`. This is what `/dashboard` mounts (`DashboardPage`) for any
@@ -126,14 +115,16 @@ function parseAskFeedId(id: string): { showDateId: string; tier: number } | null
  * `enabled` so an unentitled org never fires the underlying queries, not just
  * hides their output.
  *
- * Action handlers here perform the real reversal mutations: `closeOfferTier`
- * to un-ask, `cancelAutopilotBookedIds` to unbook exactly the bookings a
- * "book" feed row described (never a whole-date sweep — see
- * `cancelAutopilotBookedIds`'s own doc comment for why it, and not
- * `bulkDeclineSoftBooked`, is the right mutation here), and `openOfferTier`
- * to actually open the next cast tier from the at-risk card's primary
- * button. Anything needing a piece of data the model still doesn't carry
- * falls back to navigating to the Dates board rather than guessing.
+ * Action handlers here perform the real reversal mutations:
+ * `cancelAutopilotAskedIds` to withdraw exactly the still-suggested offers an
+ * "ask" feed row described, `cancelAutopilotBookedIds` to unbook exactly the
+ * bookings a "book" feed row described (neither is a whole-date/whole-tier
+ * sweep — see each function's own doc comment in `src/data/bookings.ts` for
+ * why they, and not `closeOfferTier`/`bulkDeclineSoftBooked`, are the right
+ * mutations here), and `openOfferTier` to actually open the next cast tier
+ * from the at-risk card's primary button. Anything needing a piece of data
+ * the model still doesn't carry falls back to navigating to the Dates board
+ * rather than guessing.
  */
 export default function TodayContainer() {
   const navigate = useNavigate();
@@ -200,22 +191,34 @@ export default function TodayContainer() {
   }
 
   function handleFeedAction(row: FeedRow) {
+    const context = feedRowText(t, row);
     if (row.affordance === "review") {
-      goToBookings(row.text);
+      goToBookings(context);
       return;
     }
     if (row.kind === "ask") {
-      const parsed = parseAskFeedId(row.id);
-      if (!parsed) {
-        goToBookings(row.text);
+      // Undo acts on exactly the still-suggested offers this row described
+      // (finding 1) — never a whole-tier withdraw, since `open-offer-tier`
+      // is idempotent and can have offered other artists outside this row's
+      // window on a re-open.
+      if (row.bookingIds.length === 0) {
+        goToBookings(context);
         return;
       }
-      closeOfferTier(supabase, { showDateId: parsed.showDateId, tier: parsed.tier, withdraw: true })
-        .then(() => {
-          toast.success(t("toast.askWithdrawnSuccess", { context: row.text }));
+      cancelAutopilotAskedIds(supabase, { ids: row.bookingIds, now: new Date() })
+        .then(({ affected }) => {
+          if (affected === 0) {
+            // The offers already moved on under us (e.g. answered or expired
+            // some other way) — never claim success for a mutation that
+            // changed nothing.
+            toast.error(t("toast.bookingUndoneNothingChanged"));
+            refetch();
+            return;
+          }
+          toast.success(t("toast.askWithdrawnSuccess", { context }));
           refetch();
         })
-        .catch(() => toast.error(t("toast.askWithdrawnError", { context: row.text })));
+        .catch(() => toast.error(t("toast.askWithdrawnError", { context })));
       return;
     }
     if (row.kind === "book") {
@@ -223,7 +226,7 @@ export default function TodayContainer() {
       // — never a fresh date-wide fetch, and never soft_booked-only, since
       // Autopilot writes an accepted ask straight to confirmed.
       if (row.bookingIds.length === 0) {
-        goToBookings(row.text);
+        goToBookings(context);
         return;
       }
       cancelAutopilotBookedIds(supabase, { ids: row.bookingIds, now: new Date() })
@@ -236,15 +239,15 @@ export default function TodayContainer() {
             refetch();
             return;
           }
-          toast.success(t("toast.bookingUndoneSuccess", { count: affected, context: row.text }));
+          toast.success(t("toast.bookingUndoneSuccess", { count: affected, context }));
           refetch();
         })
-        .catch(() => toast.error(t("toast.bookingUndoneError", { context: row.text })));
+        .catch(() => toast.error(t("toast.bookingUndoneError", { context })));
       return;
     }
     // "draft" / "notify" undo has no backing reversal mutation (see the task
     // report) — fall back to the Dates board rather than doing nothing.
-    goToBookings(row.text);
+    goToBookings(context);
   }
 
   return (

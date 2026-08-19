@@ -1,27 +1,4 @@
 {
-  "cards": {
-    "liveUpcoming": "Live und bevorstehend",
-    "next14Days": "Nächste 14 Tage",
-    "next30Days": "Nächste 30 Tage",
-    "liveDate_one": "laufender Termin",
-    "liveDate_other": "laufende Termine",
-    "castConfirmed": "Besetzung bestätigt",
-    "showCount_one": "{{count}} Show",
-    "showCount_other": "{{count}} Shows",
-    "clickToSee": "Klicken, um ausstehende Shows zu sehen →"
-  },
-  "directBooking": {
-    "title": "Termine, die Besetzung brauchen",
-    "row": "{{date}} · {{booked}} von {{slots}} gebucht",
-    "more": "Und {{count}} weitere. Siehe Buchungen."
-  },
-  "tierAttention": {
-    "title": "Braucht Aufmerksamkeit",
-    "row": "{{date}} · Stufe {{tier}} · {{filled}} von {{required}}",
-    "atRisk": "Gefährdet",
-    "expiresSoon": "Läuft bald ab",
-    "more": "Und {{count}} weitere. Siehe Buchungen."
-  },
   "artist": {
     "heading": "Dashboard",
     "offersLoadError": "Deine Anfragen konnten nicht geladen werden. Bitte aktualisiere die Seite.",
@@ -45,18 +22,7 @@
   },
   "producer": {
     "heading": "Dashboard",
-    "subheading": "Wer noch auf deine Buchung wartet, über alle bevorstehenden Termine.",
-    "toastBookingsConfirmed": "Gebucht",
-    "toastBookingsDeclined": "Abgesagt",
-    "toastBookingsChanged": "Einige Buchungen haben sich geändert. Aktualisiere die Seite und versuch es erneut.",
-    "readyToConfirm": "Wartet auf dich",
-    "confirmN": "{{count}} buchen",
-    "declineN": "{{count}} absagen",
-    "colArtist": "Artist",
-    "colDateShow": "Termin / Show",
-    "colType": "Typ",
-    "understudy": "Zweitbesetzung",
-    "main": "Hauptbesetzung"
+    "subheading": "Wer noch auf deine Buchung wartet, über alle bevorstehenden Termine."
   },
   "firstRun": {
     "pickUpWhereLeftOff": "Mach weiter, wo du aufgehört hast",

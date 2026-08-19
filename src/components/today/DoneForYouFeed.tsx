@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import { Bell, Check, FileText, Inbox, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { FeedKind, FeedRow } from "@/lib/autopilot/today";
+import { feedRowText } from "./feedRowText";
 
 interface DoneForYouFeedProps {
   feed: FeedRow[];
@@ -25,12 +26,10 @@ const KIND_TINT: Record<FeedKind, { bg: string; fg: string }> = {
 };
 
 /**
- * "Done for you since {{day}}" feed (prototype lines 240-253). `row.text` is
- * already-formatted English coming straight from `fetchAutopilotFeed`
- * (src/data/autopilot.ts) via the pure `computeToday` — flagged as a known
- * gap in the Task 3 report (concern 3): it bypasses `t()` even in a German
- * session. Not fixed here — fixing it means changing the already-committed
- * data layer's `FeedInput.text` contract, out of this task's scope.
+ * "Done for you since {{day}}" feed (prototype lines 240-253). Each row's
+ * text is rendered through `feedRowText` above, from the structured values
+ * `fetchAutopilotFeed` (src/data/autopilot.ts) returns via the pure
+ * `computeToday` — fully localized, not baked English (finding 6).
  */
 export function DoneForYouFeed({ feed, sinceLabel, onAction }: DoneForYouFeedProps) {
   const { t } = useTranslation("today");
@@ -60,7 +59,7 @@ export function DoneForYouFeed({ feed, sinceLabel, onAction }: DoneForYouFeedPro
             >
               <Icon className="h-[11px] w-[11px]" />
             </span>
-            <p className="m-0 flex-1 text-[13px] leading-[19px]">{row.text}</p>
+            <p className="m-0 flex-1 text-[13px] leading-[19px]">{feedRowText(t, row)}</p>
             <span className="shrink-0 font-mono text-[11.5px] text-[var(--text-faint)]">{row.at}</span>
             <button
               type="button"

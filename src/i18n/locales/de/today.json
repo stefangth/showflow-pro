@@ -18,6 +18,7 @@
     "badge_one": "Gefährdet · {{count}} Platz frei",
     "badge_other": "Gefährdet · {{count}} Plätze frei",
     "body": "Autopilot hat alle gefragt, die es gibt, und dem Termin fehlen noch {{count}}, {{days}} Tage im Voraus. Das braucht eine Entscheidung, die nur Du treffen kannst.",
+    "exhaustedBody": "Autopilot hat niemanden mehr, den es für diesen Termin fragen kann, {{days}} Tage im Voraus. Es fehlen noch {{count}}. Nur Du kannst jetzt einen Weg finden.",
     "openCastTitle": "{{cast}} mit dazu holen",
     "openCastNote_one": "{{count}} Artist ist an dem Abend frei und wird heute Abend um {{time}} gefragt.",
     "openCastNote_other": "{{count}} Artists sind an dem Abend frei und werden heute Abend um {{time}} gefragt.",
@@ -26,6 +27,7 @@
     "runShortNote_other": "Setzt den Termin auf {{count}} Plätze. Niemand sonst wird gefragt.",
     "pickYourselfTitle": "Die Leute selbst aussuchen",
     "pickYourselfNote": "{{total}} Artists auf der Liste, {{free}} davon sind an dem Abend frei.",
+    "pickYourselfExhaustedNote": "Auf der Liste ist an dem Abend auch niemand frei. Öffne den Termin, um zu sehen, was Du sonst tun kannst.",
     "doThis": "Das machen",
     "openDate": "Termin öffnen"
   },
@@ -55,11 +57,12 @@
     "undo": "Rückgängig",
     "book_one": "{{names}} auf {{show}}, {{date}} gebucht. Sie haben zugesagt, der Platz gehört ihnen.",
     "book_other": "{{names}} auf {{show}}, {{date}} gebucht. Sie haben zugesagt, die Plätze gehören ihnen.",
-    "ask_one": "{{count}} Artist über {{show}}, {{date}} gefragt. Bis {{deadline}} haben sie Zeit zu antworten.",
-    "ask_other": "{{count}} Artists über {{show}}, {{date}} gefragt. Bis {{deadline}} haben sie Zeit zu antworten.",
+    "ask_one": "{{count}} Artist über {{show}}, {{date}} gefragt.",
+    "ask_other": "{{count}} Artists über {{show}}, {{date}} gefragt.",
     "draft_one": "{{count}} Engagementvertrag für {{show}}, {{date}} entworfen. Er geht raus, sobald Du zufrieden bist.",
     "draft_other": "{{count}} Engagementverträge für {{show}}, {{date}} entworfen. Sie gehen raus, sobald Du zufrieden bist.",
-    "notify": "{{names}} gesagt, dass {{show}}, {{date}} ausfällt."
+    "notify": "{{names}} gesagt, dass {{show}}, {{date}} ausfällt.",
+    "theCast": "die Besetzung"
   },
   "toast": {
     "castToldSuccess": "Der Besetzung gesagt, dass {{title}} ausfällt.",

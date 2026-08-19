@@ -372,16 +372,30 @@ describe("computeToday: sorting", () => {
 describe("computeToday: feed and pass-through counts", () => {
   it("maps feed rows through feedAffordance and passes fillingOnTheirOwn/bookedOvernight through", () => {
     const feed: FeedInput[] = [
-      { id: "f1", kind: "ask", text: "Asked Anna K.", at: "07:02", actedAt: "2026-07-15T06:00:00Z", emailedAt: "2026-07-15T06:01:00Z", bookingIds: [] },
-      { id: "f2", kind: "book", text: "Booked Ben O.", at: "07:05", actedAt: "2026-07-15T06:00:00Z", emailedAt: null, bookingIds: ["b1"] },
+      {
+        id: "f1", kind: "ask", count: 1, names: "", show: "Hamlet, Abend", date: "20 Jul",
+        at: "07:02", actedAt: "2026-07-15T06:00:00Z", emailedAt: "2026-07-15T06:01:00Z", bookingIds: [],
+      },
+      {
+        id: "f2", kind: "book", count: 1, names: "Ben O.", show: "Faust", date: "21 Jul",
+        at: "07:05", actedAt: "2026-07-15T06:00:00Z", emailedAt: null, bookingIds: ["b1"],
+      },
     ];
     const model = computeToday(
       buildInput({ feed, fillingOnTheirOwn: 4, bookedOvernight: 2 }),
       new Date("2026-07-15T08:00:00Z"), // 10:00 Berlin — before the 19:00 digest
     );
     expect(model.feed).toEqual([
-      { id: "f1", kind: "ask", text: "Asked Anna K.", at: "07:02", affordance: "review", bookingIds: [] }, // already emailed
-      { id: "f2", kind: "book", text: "Booked Ben O.", at: "07:05", affordance: "undo", bookingIds: ["b1"] }, // not yet emailed, before digest
+      // already emailed
+      {
+        id: "f1", kind: "ask", count: 1, names: "", show: "Hamlet, Abend", date: "20 Jul",
+        at: "07:02", affordance: "review", bookingIds: [],
+      },
+      // not yet emailed, before digest
+      {
+        id: "f2", kind: "book", count: 1, names: "Ben O.", show: "Faust", date: "21 Jul",
+        at: "07:05", affordance: "undo", bookingIds: ["b1"],
+      },
     ]);
     expect(model.fillingOnTheirOwn).toBe(4);
     expect(model.bookedOvernight).toBe(2);

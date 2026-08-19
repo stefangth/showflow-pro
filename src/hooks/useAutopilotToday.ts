@@ -62,9 +62,9 @@ export interface UseAutopilotTodayResult {
  *    flagged at-risk — i.e. tiers quietly filling on their own. Not a full
  *    season count (that needs a fetcher this task doesn't add).
  *  - `bookedOvernight` = count of "book"-kind feed rows (dates with an
- *    overnight acceptance), not a per-artist count — `FeedInput.text` bakes
- *    artist names into an opaque string, so an exact artist count isn't
- *    available without parsing it.
+ *    overnight acceptance), not a per-artist count — a "book" row's `names`
+ *    is a comma-joined string, not an id list per artist, so counting
+ *    accepted artists exactly would mean parsing it rather than reading it.
  * Both are flagged in the task report as approximations, not exact figures.
  */
 export interface UseAutopilotTodayOptions {
@@ -107,7 +107,11 @@ export function useAutopilotToday(options?: UseAutopilotTodayOptions): UseAutopi
       );
       const atRiskFacts = await fetchAtRiskDateFacts(supabase, { orgId, showDateIds: atRiskShowDateIds });
 
-      const model = computeToday(
+      const distinctOpenTierDates = new Set(tierAttentionRows.map((r) => r.showDateId));
+      const fillingOnTheirOwn = Math.max(0, distinctOpenTierDates.size - atRiskShowDateIds.length);
+      const bookedOvernight = feed.filter((row) => row.kind === "book").length;
+
+      return computeToday(
         {
           tierAttention: tierAttentionRows,
           atRiskFacts,
@@ -116,17 +120,11 @@ export function useAutopilotToday(options?: UseAutopilotTodayOptions): UseAutopi
           feed,
           flow,
           times,
-          fillingOnTheirOwn: 0,
-          bookedOvernight: 0,
+          fillingOnTheirOwn,
+          bookedOvernight,
         },
         now,
       );
-
-      const distinctOpenTierDates = new Set(tierAttentionRows.map((r) => r.showDateId));
-      const fillingOnTheirOwn = Math.max(0, distinctOpenTierDates.size - atRiskShowDateIds.length);
-      const bookedOvernight = feed.filter((row) => row.kind === "book").length;
-
-      return { ...model, fillingOnTheirOwn, bookedOvernight };
     },
   });
 

@@ -23,19 +23,14 @@ import {
   fetchShowPriorityRows,
   fetchSkillEligibleArtistIds,
 } from "./eligibility";
-import type {
-  AtRiskDateFacts,
-  BouncedAsk,
-  CancelledUntoldInput,
-  FeedInput,
-  FeedKind,
+import {
+  showTitle,
+  type AtRiskDateFacts,
+  type BouncedAsk,
+  type CancelledUntoldInput,
+  type FeedInput,
+  type FeedKind,
 } from "@/lib/autopilot/today";
-
-/** "Hamlet, Abend" — same rule as `today.ts`'s private `showTitle` (kept in
- *  sync by hand since that module deliberately has no Supabase-layer import). */
-function showTitle(program: string | null, subProgram: string | null): string {
-  return [program, subProgram].filter((p): p is string => !!p).join(", ") || "Untitled show";
-}
 
 /** "12 Sep" — day + short month, no year (the board never spans a year boundary). */
 function shortDate(dateKey: string): string {
@@ -171,15 +166,22 @@ interface SuppressedRow {
  *
  * `suppressed_emails` itself has no `org_id` column (it's a global,
  * email-keyed suppression list — ADR N/A, see `supabase/migrations/
- * 20260710231816_email_delivery_tables.sql`), so scoping here is entirely
- * on the org-scoped `bookings` read; the `.in("email", …)` narrows the
- * global list down to this org's own candidates, it isn't an org filter.
+ * 20260710231816_email_delivery_tables.sql`), so it has no direct org scope
+ * of its own; the org narrowing happens upstream, on the `bookings` read,
+ * before the suppression lookup ever runs — `.in("email", …)` only narrows
+ * the global list down to THOSE org-scoped candidates' addresses, it isn't
+ * itself an org filter.
  *
- * KNOWN GAP (see the Task 3 report): `suppressed_emails`' only RLS policy is
- * "super-admin reads only" (`is_super_admin(auth.uid())`). An org admin or
- * producer session calling this as written gets zero rows, not an org-scoped
- * subset — this needs a follow-up RLS policy before the bounced-asks card
- * can work for anyone but a super-admin.
+ * `suppressed_emails` carries two additive SELECT policies, OR'd together by
+ * RLS: the original super-admin-only read, plus `"org members read
+ * suppressed_emails for their artists"` (`supabase/migrations/
+ * 20260819090000_suppressed_emails_org_member_read.sql`), which grants an
+ * org member a row whenever the suppressed email matches an artist in an org
+ * they belong to. Because this function's own candidate set is already
+ * `bookings`-org-scoped before it ever queries `suppressed_emails`, an
+ * ordinary org admin/producer now sees exactly their own org's bounces, not
+ * zero rows — pgTAP proves the cross-org negative (a member of org B cannot
+ * see org A's suppression rows even for a shared email).
  */
 export async function fetchBouncedAsks(
   client: SupabaseClient<Database>,
@@ -267,6 +269,17 @@ interface AtRiskDateContextRow {
  * batched once across every date in `args.showDateIds`. Callers are expected
  * to pass a small set (the show_dates `fetchTierAttention` already flagged
  * as open-tier), not the whole season.
+ *
+ * Concurrency: every date is processed via `Promise.all` (never one date
+ * after another), and within one date the two independent read groups — the
+ * tier-ladder/next-cast branch (`fetchOfferTiersAndNextCast`) and the
+ * eligibility branch (`fetchUnaskedEligibleCount`) — also run concurrently
+ * via `Promise.all`, since neither reads a value the other produces. `Promise.
+ * all` preserves input order in its resolved array regardless of completion
+ * order, so `facts` still comes out in the same order as `dates` (and the
+ * same order `args.showDateIds` implies) — no re-sort needed. Worst case this
+ * takes the per-date sequential chain from ~10-14 round trips down to ~5, and
+ * that ~5 no longer multiplies by the number of at-risk dates.
  */
 export async function fetchAtRiskDateFacts(
   client: SupabaseClient<Database>,
@@ -295,7 +308,6 @@ export async function fetchAtRiskDateFacts(
   const rosterIdSet = new Set(rosterIds);
   const rosterCount = rosterIds.length;
 
-  interface DateBookingRow { show_date_id: string; artist_id: string; status: string }
   const { data: bookingRows, error: bookingErr } = await client
     .from("bookings")
     .select("show_date_id, artist_id, status")
@@ -324,106 +336,166 @@ export async function fetchAtRiskDateFacts(
     blockedByDate.set(r.date, set);
   }
 
-  const facts: AtRiskDateFacts[] = [];
-  for (const d of dates) {
-    const bookingsForDate = bookingsByDate.get(d.id) ?? [];
-    const activeBookedIds = new Set(
-      bookingsForDate.filter((b) => b.status !== "cancelled").map((b) => b.artist_id),
-    );
-    const askedIds = new Set(bookingsForDate.map((b) => b.artist_id));
-    const blockedIds = blockedByDate.get(d.date) ?? new Set<string>();
-    const isFree = (artistId: string) => !activeBookedIds.has(artistId) && !blockedIds.has(artistId);
-
-    const tiers = await fetchOfferTiers(client, { showId: d.show_id, cityId: d.city_id, showDateId: d.id });
-    const opened = await fetchOpenedTiers(client, d.id);
-    const openedSet = new Set(opened.map((o) => o.tier));
-    const availableTiers = new Set(tiers.priorities);
-    if (tiers.hasAdHoc) availableTiers.add(99);
-    const unopened = [...availableTiers].filter((t) => !openedSet.has(t)).sort((a, b) => a - b);
-    const hasUnopenedTier = unopened.length > 0;
-    const nextTier = unopened.length > 0 ? unopened[0] : null;
-
-    let nextCastIds: string[] = [];
-    if (nextTier === 99) {
-      interface CastIdRow { cast_id: string }
-      const { data: adHocRows, error: adHocErr } = await client
-        .from("show_date_cast_eligibility")
-        .select("cast_id")
-        .eq("show_date_id", d.id);
-      if (adHocErr) throw adHocErr;
-      nextCastIds = ((adHocRows ?? []) as unknown as CastIdRow[]).map((r) => r.cast_id);
-    } else if (nextTier !== null && d.city_id) {
-      if (tiers.source === "show") {
-        const showPriorities = await fetchShowPriorityRows(client, d.show_id);
-        nextCastIds = showPriorities
-          .filter((r) => r.cityId === d.city_id && r.priority === nextTier)
-          .map((r) => r.castId);
-      } else {
-        interface CastIdRow { cast_id: string }
-        const { data: cityRows, error: cityErr } = await client
-          .from("cast_city_priority")
-          .select("cast_id")
-          .eq("org_id", orgId)
-          .eq("city_id", d.city_id)
-          .eq("priority", nextTier);
-        if (cityErr) throw cityErr;
-        nextCastIds = ((cityRows ?? []) as unknown as CastIdRow[]).map((r) => r.cast_id);
-      }
-    }
-    nextCastIds = Array.from(new Set(nextCastIds));
-
-    let nextCastName: string | null = null;
-    let nextCastFreeCount = 0;
-    if (nextCastIds.length > 0) {
-      interface CastNameRow { id: string; name: string }
-      const { data: castRows, error: castErr } = await client
-        .from("casts")
-        .select("id, name")
-        .in("id", nextCastIds);
-      if (castErr) throw castErr;
-      const names = ((castRows ?? []) as unknown as CastNameRow[]).map((r) => r.name);
-      nextCastName = names.length > 0 ? names.join(", ") : null;
-
-      interface CastMemberRow { artist_id: string }
-      const { data: memberRows, error: memberErr } = await client
-        .from("cast_members")
-        .select("artist_id")
-        .in("cast_id", nextCastIds);
-      if (memberErr) throw memberErr;
-      const memberIds = new Set(((memberRows ?? []) as unknown as CastMemberRow[]).map((r) => r.artist_id));
-      nextCastFreeCount = [...memberIds].filter((id) => rosterIdSet.has(id) && isFree(id)).length;
-    }
-
-    const gate = await fetchGateArtistIds(client, { showId: d.show_id, cityId: d.city_id, showDateId: d.id });
-    const requiredSkills = await fetchRequiredSkillIds(client, { showId: d.show_id, showDateId: d.id });
-    const skillEligible = await fetchSkillEligibleArtistIds(client, { requiredSkillIds: requiredSkills.all });
-    let eligibleIds = gate === null ? rosterIds : rosterIds.filter((id) => gate.has(id));
-    if (skillEligible !== null) eligibleIds = eligibleIds.filter((id) => skillEligible.has(id));
-    const unaskedEligibleCount = eligibleIds.filter((id) => !askedIds.has(id)).length;
-
-    facts.push({
-      showDateId: d.id,
-      where: [d.venue, d.city?.name ?? null].filter((p): p is string => !!p).join(", "),
-      hasUnopenedTier,
-      unaskedEligibleCount,
-      nextCastName,
-      nextCastFreeCount,
-      rosterCount,
-      rosterFreeCount: rosterIds.filter((id) => isFree(id)).length,
-      nextTierNumber: nextTier,
-    });
-  }
+  const facts = await Promise.all(
+    dates.map((d) =>
+      fetchOneAtRiskDateFacts(client, {
+        d,
+        orgId,
+        rosterIds,
+        rosterIdSet,
+        rosterCount,
+        bookingsForDate: bookingsByDate.get(d.id) ?? [],
+        blockedIds: blockedByDate.get(d.date) ?? new Set<string>(),
+      }),
+    ),
+  );
   return facts;
+}
+
+interface DateBookingRow { show_date_id: string; artist_id: string; status: string }
+
+/** One date's facts, per `fetchAtRiskDateFacts` — split into the two
+ *  independent read branches below and run concurrently. */
+async function fetchOneAtRiskDateFacts(
+  client: SupabaseClient<Database>,
+  args: {
+    d: AtRiskDateContextRow;
+    orgId: string;
+    rosterIds: string[];
+    rosterIdSet: Set<string>;
+    rosterCount: number;
+    bookingsForDate: DateBookingRow[];
+    blockedIds: Set<string>;
+  },
+): Promise<AtRiskDateFacts> {
+  const { d, orgId, rosterIds, rosterIdSet, rosterCount, bookingsForDate, blockedIds } = args;
+  const activeBookedIds = new Set(
+    bookingsForDate.filter((b) => b.status !== "cancelled").map((b) => b.artist_id),
+  );
+  const askedIds = new Set(bookingsForDate.map((b) => b.artist_id));
+  const isFree = (artistId: string) => !activeBookedIds.has(artistId) && !blockedIds.has(artistId);
+
+  const [castBranch, unaskedEligibleCount] = await Promise.all([
+    fetchNextCastBranch(client, { d, orgId, rosterIdSet, isFree }),
+    fetchUnaskedEligibleCount(client, { d, rosterIds, askedIds }),
+  ]);
+
+  return {
+    showDateId: d.id,
+    where: [d.venue, d.city?.name ?? null].filter((p): p is string => !!p).join(", "),
+    hasUnopenedTier: castBranch.hasUnopenedTier,
+    unaskedEligibleCount,
+    nextCastName: castBranch.nextCastName,
+    nextCastFreeCount: castBranch.nextCastFreeCount,
+    rosterCount,
+    rosterFreeCount: rosterIds.filter((id) => isFree(id)).length,
+    nextTierNumber: castBranch.nextTierNumber,
+  };
+}
+
+interface NextCastBranchResult {
+  hasUnopenedTier: boolean;
+  nextTierNumber: number | null;
+  nextCastName: string | null;
+  nextCastFreeCount: number;
+}
+
+/** The tier-ladder / "who gets asked next" branch of one date's facts —
+ *  independent of `fetchUnaskedEligibleCount` below, so the two run
+ *  concurrently in `fetchOneAtRiskDateFacts`. */
+async function fetchNextCastBranch(
+  client: SupabaseClient<Database>,
+  args: { d: AtRiskDateContextRow; orgId: string; rosterIdSet: Set<string>; isFree: (artistId: string) => boolean },
+): Promise<NextCastBranchResult> {
+  const { d, orgId, rosterIdSet, isFree } = args;
+
+  const [tiers, opened] = await Promise.all([
+    fetchOfferTiers(client, { showId: d.show_id, cityId: d.city_id, showDateId: d.id }),
+    fetchOpenedTiers(client, d.id),
+  ]);
+  const openedSet = new Set(opened.map((o) => o.tier));
+  const availableTiers = new Set(tiers.priorities);
+  if (tiers.hasAdHoc) availableTiers.add(99);
+  const unopened = [...availableTiers].filter((t) => !openedSet.has(t)).sort((a, b) => a - b);
+  const hasUnopenedTier = unopened.length > 0;
+  const nextTier = unopened.length > 0 ? unopened[0] : null;
+
+  let nextCastIds: string[] = [];
+  if (nextTier === 99) {
+    interface CastIdRow { cast_id: string }
+    const { data: adHocRows, error: adHocErr } = await client
+      .from("show_date_cast_eligibility")
+      .select("cast_id")
+      .eq("show_date_id", d.id);
+    if (adHocErr) throw adHocErr;
+    nextCastIds = ((adHocRows ?? []) as unknown as CastIdRow[]).map((r) => r.cast_id);
+  } else if (nextTier !== null && d.city_id) {
+    if (tiers.source === "show") {
+      const showPriorities = await fetchShowPriorityRows(client, d.show_id);
+      nextCastIds = showPriorities
+        .filter((r) => r.cityId === d.city_id && r.priority === nextTier)
+        .map((r) => r.castId);
+    } else {
+      interface CastIdRow { cast_id: string }
+      const { data: cityRows, error: cityErr } = await client
+        .from("cast_city_priority")
+        .select("cast_id")
+        .eq("org_id", orgId)
+        .eq("city_id", d.city_id)
+        .eq("priority", nextTier);
+      if (cityErr) throw cityErr;
+      nextCastIds = ((cityRows ?? []) as unknown as CastIdRow[]).map((r) => r.cast_id);
+    }
+  }
+  nextCastIds = Array.from(new Set(nextCastIds));
+
+  let nextCastName: string | null = null;
+  let nextCastFreeCount = 0;
+  if (nextCastIds.length > 0) {
+    interface CastNameRow { id: string; name: string }
+    interface CastMemberRow { artist_id: string }
+    const [castRes, memberRes] = await Promise.all([
+      client.from("casts").select("id, name").in("id", nextCastIds),
+      client.from("cast_members").select("artist_id").in("cast_id", nextCastIds),
+    ]);
+    if (castRes.error) throw castRes.error;
+    if (memberRes.error) throw memberRes.error;
+    const names = ((castRes.data ?? []) as unknown as CastNameRow[]).map((r) => r.name);
+    nextCastName = names.length > 0 ? names.join(", ") : null;
+    const memberIds = new Set(((memberRes.data ?? []) as unknown as CastMemberRow[]).map((r) => r.artist_id));
+    nextCastFreeCount = [...memberIds].filter((id) => rosterIdSet.has(id) && isFree(id)).length;
+  }
+
+  return { hasUnopenedTier, nextTierNumber: nextTier, nextCastName, nextCastFreeCount };
+}
+
+/** The eligibility-gate branch of one date's facts — independent of
+ *  `fetchNextCastBranch` above, so the two run concurrently. */
+async function fetchUnaskedEligibleCount(
+  client: SupabaseClient<Database>,
+  args: { d: AtRiskDateContextRow; rosterIds: string[]; askedIds: Set<string> },
+): Promise<number> {
+  const { d, rosterIds, askedIds } = args;
+  const [gate, requiredSkills] = await Promise.all([
+    fetchGateArtistIds(client, { showId: d.show_id, cityId: d.city_id, showDateId: d.id }),
+    fetchRequiredSkillIds(client, { showId: d.show_id, showDateId: d.id }),
+  ]);
+  const skillEligible = await fetchSkillEligibleArtistIds(client, { requiredSkillIds: requiredSkills.all });
+  let eligibleIds = gate === null ? rosterIds : rosterIds.filter((id) => gate.has(id));
+  if (skillEligible !== null) eligibleIds = eligibleIds.filter((id) => skillEligible.has(id));
+  return eligibleIds.filter((id) => !askedIds.has(id)).length;
 }
 
 /**
  * The "done for you" feed since `args.since` (an ISO instant — typically the
  * previous digest run): every ask/book/draft/notify the engine did on its
- * own, one row per (show_date [, tier]) batch. `text`/`at` are pre-formatted
- * for direct display, matching the convention `BouncedAsk.dateLabel` already
- * establishes (see the Task 3 report for the i18n gap this and `dateLabel`
- * both open — plain English, not routed through `t()`).
+ * own, one row per (show_date [, tier]) batch. `at` is pre-formatted for
+ * direct display; the rest of the row's content (`count`/`names`/`show`/
+ * `date`) is plain structured data, NOT a pre-rendered sentence — the
+ * component layer (`DoneForYouFeed`) renders it through `t("feed.<kind>",
+ * ...)` using the `feed.*` i18n keys (finding 6 in the Today board review).
  *
+
  * `emailedAt` is the timestamp of whichever mail actually carries that row's
  * action irreversible, per kind:
  *  - ask    → `bookings.digest_sent_at` (the offer digest email)
@@ -444,6 +516,7 @@ export async function fetchAutopilotFeed(
 
   // ── "ask": offers batched by (show_date, tier) ──────────────────────────
   interface AskRow {
+    id: string;
     show_date_id: string;
     offer_tier: number | null;
     offered_at: string | null;
@@ -453,7 +526,7 @@ export async function fetchAutopilotFeed(
   const { data: askRows, error: askErr } = await client
     .from("bookings")
     .select(
-      "show_date_id, offer_tier, offered_at, digest_sent_at, " +
+      "id, show_date_id, offer_tier, offered_at, digest_sent_at, " +
       "show_date:show_dates!inner(date, show:shows(program, sub_program))",
     )
     .eq("org_id", orgId)
@@ -472,16 +545,21 @@ export async function fetchAutopilotFeed(
     if (!first.show_date) continue;
     const title = showTitle(first.show_date.show?.program ?? null, first.show_date.show?.sub_program ?? null);
     const actedTimes = group.map((r) => r.offered_at).filter((v): v is string => !!v).sort();
+    // The exact suggested bookings this row describes — undo (finding 1)
+    // must withdraw only these, never every suggested offer on the tier
+    // (`cancelAutopilotAskedIds`, not `closeOfferTier`).
+    const bookingIds = Array.from(new Set(group.map((r) => r.id).filter((id): id is string => !!id)));
     rows.push({
       id: `ask:${key}`,
       kind: "ask" as FeedKind,
-      text: `Asked ${group.length} artist${group.length === 1 ? "" : "s"} about ${title}, ${shortDate(first.show_date.date)}.`,
+      count: group.length,
+      names: "",
+      show: title,
+      date: shortDate(first.show_date.date),
       at: format(new Date(actedTimes[0]), "EEE HH:mm", { locale: dfLocale() }),
       actedAt: actedTimes[0],
       emailedAt: group.find((r) => r.digest_sent_at)?.digest_sent_at ?? null,
-      // Undo for "ask" is close-offer-tier by (date, tier) — see TodayPage's
-      // parseAskFeedId — not a per-booking id list.
-      bookingIds: [],
+      bookingIds,
     });
   }
 
@@ -532,7 +610,10 @@ export async function fetchAutopilotFeed(
     rows.push({
       id: `book:${showDateId}`,
       kind: "book" as FeedKind,
-      text: `Booked ${names.join(", ")} onto ${title}, ${shortDate(showDate.date)}. They said yes, so the place is theirs.`,
+      count: names.length,
+      names: names.join(", "),
+      show: title,
+      date: shortDate(showDate.date),
       at: format(new Date(actedTimes[0]), "EEE HH:mm", { locale: dfLocale() }),
       actedAt: actedTimes[0],
       emailedAt: group.find((r) => r.booking?.confirmation_digest_sent_at)?.booking?.confirmation_digest_sent_at ?? null,
@@ -578,7 +659,10 @@ export async function fetchAutopilotFeed(
     rows.push({
       id: `draft:${showDateId}`,
       kind: "draft" as FeedKind,
-      text: `Drafted ${group.length} contract${group.length === 1 ? "" : "s"} for ${title}, ${shortDate(showDate.date)}. They send when you are happy with them.`,
+      count: group.length,
+      names: "",
+      show: title,
+      date: shortDate(showDate.date),
       at: format(new Date(actedTimes[0]), "EEE HH:mm", { locale: dfLocale() }),
       actedAt: actedTimes[0],
       emailedAt: null,
@@ -613,7 +697,12 @@ export async function fetchAutopilotFeed(
       rows.push({
         id: `notify:${d.id}`,
         kind: "notify" as FeedKind,
-        text: `Told ${names.length > 0 ? names.join(", ") : "the cast"} that ${title}, ${shortDate(d.date)} is off.`,
+        count: names.length,
+        // "" when nobody was still holding the date — the component falls
+        // back to `t("feed.theCast")` for this case.
+        names: names.join(", "),
+        show: title,
+        date: shortDate(d.date),
         at: format(new Date(d.cast_notified_at), "EEE HH:mm", { locale: dfLocale() }),
         actedAt: d.cast_notified_at,
         emailedAt: d.cast_notified_at,

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { createFakeSupabase } from "@/test/supabaseFake";
-import { openOfferTier, fetchOfferTiers, fetchOpenedTiers, closeOfferTier, dryRunOfferTier, fetchPendingConfirmationsCount, fetchMyOpenOffersCount, bulkConfirmSoftBooked, bulkDeclineSoftBooked, updateBookingStatusGuarded, respondToOffer, createBooking, fetchTierAttention, extendOfferExpiry, notifyCast, fetchBookingsWithArtistForDates, fetchUpcomingConfirmedDateCounts } from "./bookings";
+import { openOfferTier, fetchOfferTiers, fetchOpenedTiers, closeOfferTier, dryRunOfferTier, fetchPendingConfirmationsCount, fetchMyOpenOffersCount, bulkConfirmSoftBooked, bulkDeclineSoftBooked, cancelAutopilotBookedIds, cancelAutopilotAskedIds, updateBookingStatusGuarded, respondToOffer, createBooking, fetchTierAttention, extendOfferExpiry, notifyCast, fetchBookingsWithArtistForDates, fetchUpcomingConfirmedDateCounts } from "./bookings";
 
 describe("openOfferTier", () => {
   it("sends snake_case body and returns offersCreated", async () => {
@@ -262,6 +262,82 @@ describe("bulkDeclineSoftBooked", () => {
   it("reports 0 affected for a stale selection", async () => {
     const fake = createFakeSupabase({ bookings: { data: [], error: null } });
     expect(await bulkDeclineSoftBooked(fake as never, { ids: ["b1"], now: NOW })).toEqual({ affected: 0 });
+  });
+});
+
+// Findings 1/3 in the Today board review: the Autopilot "Today" board's feed
+// undo must cancel exactly the ids one feed row described, never a whole
+// date/tier sweep. Neither of these had any test coverage before.
+describe("cancelAutopilotBookedIds", () => {
+  it("cancels only ids still soft_booked or confirmed, stamping autopilot_undo", async () => {
+    const fake = createFakeSupabase({
+      bookings: {
+        data: [
+          { id: "b1", status: "soft_booked" },
+          { id: "b2", status: "confirmed" },
+          { id: "b3", status: "cancelled" }, // already moved on — must not count
+        ],
+        error: null,
+      },
+    });
+    const res = await cancelAutopilotBookedIds(fake as never, { ids: ["b1", "b2", "b3"], now: NOW });
+    expect(res).toEqual({ affected: 2 });
+    expect(fake.calls).toContainEqual({ table: "bookings", method: "in", args: ["id", ["b1", "b2", "b3"]] });
+    expect(fake.calls).toContainEqual({
+      table: "bookings", method: "in", args: ["status", ["soft_booked", "confirmed"]],
+    });
+    expect(fake.calls).toContainEqual({
+      table: "bookings",
+      method: "update",
+      args: [{ status: "cancelled", cancelled_at: NOW.toISOString(), cancellation_reason: "autopilot_undo" }],
+    });
+  });
+
+  it("returns 0 affected and makes no calls for an empty id list", async () => {
+    const fake = createFakeSupabase({});
+    expect(await cancelAutopilotBookedIds(fake as never, { ids: [], now: NOW })).toEqual({ affected: 0 });
+    expect(fake.calls).toEqual([]);
+  });
+
+  it("reports 0 affected when every selected booking already moved on (stale ids)", async () => {
+    const fake = createFakeSupabase({ bookings: { data: [{ id: "b1", status: "cancelled" }], error: null } });
+    expect(await cancelAutopilotBookedIds(fake as never, { ids: ["b1"], now: NOW })).toEqual({ affected: 0 });
+  });
+
+  it("throws on a supabase error", async () => {
+    const fake = createFakeSupabase({ bookings: { data: null, error: { message: "boom" } } });
+    await expect(cancelAutopilotBookedIds(fake as never, { ids: ["b1"], now: NOW })).rejects.toBeTruthy();
+  });
+});
+
+describe("cancelAutopilotAskedIds", () => {
+  it("withdraws only ids still suggested, stamping autopilot_undo", async () => {
+    const fake = createFakeSupabase({ bookings: { data: [{ id: "b1" }], error: null } });
+    const res = await cancelAutopilotAskedIds(fake as never, { ids: ["b1", "b2"], now: NOW });
+    expect(res).toEqual({ affected: 1 });
+    expect(fake.calls).toContainEqual({ table: "bookings", method: "in", args: ["id", ["b1", "b2"]] });
+    expect(fake.calls).toContainEqual({ table: "bookings", method: "eq", args: ["status", "suggested"] });
+    expect(fake.calls).toContainEqual({
+      table: "bookings",
+      method: "update",
+      args: [{ status: "cancelled", cancelled_at: NOW.toISOString(), cancellation_reason: "autopilot_undo" }],
+    });
+  });
+
+  it("returns 0 affected and makes no calls for an empty id list", async () => {
+    const fake = createFakeSupabase({});
+    expect(await cancelAutopilotAskedIds(fake as never, { ids: [], now: NOW })).toEqual({ affected: 0 });
+    expect(fake.calls).toEqual([]);
+  });
+
+  it("reports 0 affected when every selected offer already moved on (stale ids)", async () => {
+    const fake = createFakeSupabase({ bookings: { data: [], error: null } });
+    expect(await cancelAutopilotAskedIds(fake as never, { ids: ["b1"], now: NOW })).toEqual({ affected: 0 });
+  });
+
+  it("throws on a supabase error", async () => {
+    const fake = createFakeSupabase({ bookings: { data: null, error: { message: "boom" } } });
+    await expect(cancelAutopilotAskedIds(fake as never, { ids: ["b1"], now: NOW })).rejects.toBeTruthy();
   });
 });
 

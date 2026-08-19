@@ -348,6 +348,46 @@ export async function cancelAutopilotBookedIds(
 }
 
 /**
+ * Withdraw exactly the given still-unanswered (suggested) offers — the
+ * Autopilot "Today" board's "ask" feed-row undo (finding 1 in the Today
+ * board review). Deliberately NOT a call to `closeOfferTier(..., withdraw:
+ * true)`: that edge function withdraws EVERY still-suggested booking for a
+ * whole `(show_date_id, tier)` (and closes the tier besides), but
+ * `fetchAutopilotFeed` groups an "ask" row by `(show_date_id, tier)` only for
+ * offers made inside its lookback window — `open-offer-tier` is idempotent
+ * and can re-open an already-open tier later, offering newly-eligible
+ * artists a second time. A row saying "Asked 6 artists" must withdraw only
+ * THOSE 6 offers, never a tier-wide sweep that could also cancel offers the
+ * row never described. `closeOfferTier` itself is untouched — other callers
+ * (the tier ladder's own Close control) still need its tier-wide semantics.
+ *
+ * This never closes the tier: withdrawing a handful of named offers should
+ * not stop the tier from continuing to fill from whoever else is still
+ * eligible. Only rows still `suggested` are affected (an offer the artist
+ * already answered is not this function's concern — that is `cancel
+ * AutopilotBookedIds`'s job). Returns the number of rows changed so the
+ * caller can tell a real withdrawal from a stale no-op.
+ */
+export async function cancelAutopilotAskedIds(
+  client: SupabaseClient<Database>,
+  args: { ids: string[]; now: Date },
+): Promise<{ affected: number }> {
+  if (args.ids.length === 0) return { affected: 0 };
+  const { data, error } = await client
+    .from("bookings")
+    .update({
+      status: "cancelled",
+      cancelled_at: args.now.toISOString(),
+      cancellation_reason: "autopilot_undo",
+    })
+    .in("id", args.ids)
+    .eq("status", "suggested")
+    .select("id");
+  if (error) throw error;
+  return { affected: (data ?? []).length };
+}
+
+/**
  * Transition a single booking to `confirmed` or `cancelled` with a status precondition:
  *  - confirmed  requires the booking is currently soft_booked;
  *  - cancelled  requires the booking is currently non-cancelled (any active state).

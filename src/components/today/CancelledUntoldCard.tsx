@@ -2,23 +2,12 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import type { CancelledUntoldDate } from "@/lib/autopilot/today";
 import { DateRail } from "./DateRail";
+import { joinNames } from "./joinNames";
 
 interface CancelledUntoldCardProps {
   item: CancelledUntoldDate;
   onTellCast: (item: CancelledUntoldDate) => void;
   onReadFirst: (item: CancelledUntoldDate) => void;
-}
-
-/** Locale-aware "A and B" / "A, B and C" joiner — native Intl, no hardcoded
- *  " and " literal (that would bypass i18n for German). Duplicated from
- *  BouncedAsksBanner (2 call sites, not worth a shared module). */
-interface ListFormatCtor {
-  new (locale: string, options: { style: "long"; type: "conjunction" }): { format: (list: string[]) => string };
-}
-
-function joinNames(names: string[], locale: string): string {
-  const ListFormatImpl = (Intl as unknown as { ListFormat: ListFormatCtor }).ListFormat;
-  return new ListFormatImpl(locale, { style: "long", type: "conjunction" }).format(names);
 }
 
 /**
