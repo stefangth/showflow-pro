@@ -6,8 +6,8 @@ import { createFakeSupabase } from "@/test/supabaseFake";
 /**
  * H4 regression: when the artist offers query fails, AvailabilityPage must enter
  * the error state (render an Alert) — it must NOT render an empty success that
- * shows "No offer yet" and offers the block-date affordance for a date that may
- * actually have a pending offer.
+ * shows "Not asked yet" and offers the block-date affordance for a date that may
+ * actually have a pending ask.
  */
 
 // One eligible date so the list body would otherwise render a row with the
@@ -83,12 +83,12 @@ describe("AvailabilityPage — offers query error", () => {
 
     // The error Alert (role="alert") is shown.
     await waitFor(() => {
-      expect(screen.getByText(/failed to load your offers/i)).toBeInTheDocument();
+      expect(screen.getByText(/failed to load your asks/i)).toBeInTheDocument();
     });
 
     // Critically: the block-date button must NOT be offered for a date whose
     // real status we could not load.
     expect(screen.queryByText("Block date")).not.toBeInTheDocument();
-    expect(screen.queryByText(/no offer yet/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/not asked yet/i)).not.toBeInTheDocument();
   });
 });
