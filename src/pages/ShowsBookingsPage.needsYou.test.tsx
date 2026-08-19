@@ -183,7 +183,7 @@ describe("ShowsBookingsPage — needs-you queue wiring (Task 8)", () => {
     renderWithProviders(<ShowsBookingsPage />);
 
     const btn = await screen.findByTestId("needs-you-primary-sd-ready");
-    expect(btn).toHaveTextContent("Generate hire order");
+    expect(btn).toHaveTextContent("Draft the contract");
     fireEvent.click(btn);
 
     await waitFor(() => {
