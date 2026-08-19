@@ -27,7 +27,7 @@ it("admin, bf on, ho off, offers, no dates → 8 steps, 3 filled, stage 01 hot",
   expect(r.progressLabel).toBe("Set up · 3 of 8");
   expect(r.stages[0].variant).toBe("hot");
   expect(r.stages[0].name).toBe("Dates");
-  expect(r.offFooters).toContain("Hire orders is off for this org. Ask your account manager to switch it on.");
+  expect(r.offFooters).toContain("Contracts are off for this org. Ask your account manager to switch it on.");
 });
 
 it("no modules → floor state, hasChain false", () => {
@@ -69,7 +69,7 @@ it("artist composition never contains the demo cast name Ensemble A", () => {
 it("direct flow → 'Book directly' + 'Confirmed on the spot' with confirmed metric", () => {
   const r = compose({ ...base, offers:false, imported:true, metrics:{ ...base.metrics, bookableDates:12, confirmed:12 } });
   expect(r.stages.find(s=>s.key==="offers")!.name).toBe("Book directly");
-  expect(r.stages.find(s=>s.key==="confirm")!.name).toBe("Confirmed on the spot");
+  expect(r.stages.find(s=>s.key==="confirm")!.name).toBe("Booked on the spot");
 });
 
 it("artist → exactly one step (blockDates)", () => {
@@ -80,7 +80,7 @@ it("artist → exactly one step (blockDates)", () => {
 it("bf off + ho on → hire stage is the hot manual-order card + booking off-footer", () => {
   const r = compose({ ...base, bookingEntitled:false, hireEntitled:true });
   const hire = r.stages.find(s=>s.key==="hire")!;
-  expect(hire.ctaLabel).toBe("New order");
+  expect(hire.ctaLabel).toBe("New contract");
   expect(r.offFooters).toContain("Booking engine is not enabled for this org. Ask your account manager to switch it on.");
   expect(r.modules).toContainEqual({ label: "Booking engine", on: false });
 });
@@ -153,7 +153,7 @@ it("rulesBy: neither byYou nor a known actor falls back to the generic line", ()
 // stray/lost separator or a mis-wired clause key cannot ship silently.
 it("pins the org imported headline (offers): landed clause + digest clause", () => {
   const r = compose({ ...base, imported: true, metrics: { ...base.metrics, datesIn: 34, readyToOffer: 4 } });
-  expect(r.headline).toBe("34 dates landed. 4 of them can be offered in the next digest.");
+  expect(r.headline).toBe("34 dates landed. 4 of them can be asked in the next daily send.");
 });
 
 it("pins the org imported headline (direct): landed clause + bookable clause", () => {

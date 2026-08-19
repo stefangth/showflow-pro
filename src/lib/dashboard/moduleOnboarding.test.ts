@@ -130,7 +130,7 @@ it("never narrates the offer pipeline to a direct-book org", () => {
 
 it("keeps the response window rule for an org that does send offers", () => {
   const titles = bookingOnboarding.rules("admin", ctxFor(true)).map((r) => r.title);
-  expect(titles).toContain("Response window");
+  expect(titles).toContain("Answer by");
 });
 
 it("states no single offer delivery mode as fact", () => {
@@ -159,7 +159,7 @@ it("never narrates the offer pipeline to an artist of a direct-book org", () => 
   }
 });
 
-it("states the cast limit only where it holds: which dates can be OFFERED", () => {
+it("states the cast limit only where it holds: which dates can be ASKED about", () => {
   // The cast rule used to be flow-neutral ("you can only be booked on your cast's dates"),
   // which is false in exactly the flow that generalization was meant to cover. Verified in
   // the shipped code, not assumed: `useEligibleArtists` resolves `artistIds` to null
@@ -177,7 +177,7 @@ it("states the cast limit only where it holds: which dates can be OFFERED", () =
   }
   const scoped = ARTIST_ONBOARDING.rules(ctxFor(true)).find((r) => /\bcast/i.test(`${r.title} ${r.hint}`));
   expect(scoped).toBeDefined();
-  expect(scoped!.hint).toMatch(/offered/i);
+  expect(scoped!.hint).toMatch(/asked/i);
   expect(scoped!.hint).not.toMatch(/booked/i);
 });
 
@@ -248,7 +248,7 @@ it("keeps the timing step flow-neutral like its siblings", () => {
   // copy names what the row holds (send hours, an answer window); TimingStep's own panel
   // reads the real flow and narrates what THIS org does with them.
   expect(bookingOnboarding.steps.timing.title).toBe("Email timing");
-  expect(bookingOnboarding.steps.timing.todoHint).toBe("When booking email goes out, and the answer window.");
+  expect(bookingOnboarding.steps.timing.todoHint).toBe("When the ask goes out, and how long artists have to answer.");
   expect(bookingOnboarding.steps.timing.doneHint).toBe("Hours set. Change them any time in Settings.");
 });
 
@@ -261,8 +261,12 @@ it("labels the coverage CTAs by what they open, not the page they sit on", () =>
 
 it("keeps the flow step naming both options it is asking the reader to choose between", () => {
   // The exemption above is only sound while that step really is the choice: if the word
-  // ever leaves it, the exemption is dead code hiding the guard.
-  expect(bookingOnboarding.steps.flow.todoHint).toMatch(OFFER_CLAIM);
+  // ever leaves it, the exemption is dead code hiding the guard. The vocabulary rewrite
+  // renamed the pipeline noun from "offer" to "ask" everywhere (including the ladder and
+  // eligibility copy, which legitimately says "asked" in a flow-neutral way per the sweep
+  // above), so this step-specific check now looks for "ask" rather than reusing the shared
+  // OFFER_CLAIM regex, which would false-positive on those flow-neutral steps if widened.
+  expect(bookingOnboarding.steps.flow.todoHint).toMatch(/\basks?\b/i);
 });
 
 it("says what the ladder and eligibility rows actually hold, not what one flow does with it", () => {
