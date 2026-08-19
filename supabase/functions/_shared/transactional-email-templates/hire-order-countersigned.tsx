@@ -57,6 +57,6 @@ const HireOrderCountersignedEmail = ({
 export const template = {
   component: HireOrderCountersignedEmail as React.ComponentType<TemplateData>,
   subject: (data: TemplateData) => applyEmailTokens(EMAIL_COPY_DEFAULTS["hire-order-countersigned.subject"], { dateLabel: String(data.date_label || "your date") }),
-  displayName: "Hire order countersigned",
+  displayName: "Contract countersigned",
   previewData: { artist_name: "Mara Lindqvist", order_no: "HO-2026-0142", date_label: "Sat, Aug 15 2026", venue: "Tempodrom", download_url: `${APP_URL}/hire-orders/HO-2026-0142` },
 } satisfies TemplateEntry;

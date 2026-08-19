@@ -100,5 +100,5 @@ export function digestEmailSubject(data: TemplateData): string {
   const hasUpdates =
     (Array.isArray(scheduleChanges) && scheduleChanges.length > 0) ||
     (Array.isArray(cancellations) && cancellations.length > 0);
-  return hasUpdates ? "Your booking updates on ShowFlow" : "Your bookings are confirmed on ShowFlow";
+  return hasUpdates ? "Updates to your dates on ShowFlow" : "You are booked on ShowFlow";
 }

@@ -234,7 +234,7 @@ Deno.test("preview-transactional-email DI: function subject resolved correctly (
   assertEquals(entry.status, "ready");
   // artist-confirmation-digest now has a FUNCTION subject; its previewData includes a
   // schedule change + a cancellation, so it resolves to the neutral "updates" subject.
-  assertEquals(entry.subject, "Your booking updates on ShowFlow");
+  assertEquals(entry.subject, "Updates to your dates on ShowFlow");
 });
 
 Deno.test("preview-transactional-email DI: function subject (cast-escalation-requested) uses previewData fields", async () => {
@@ -247,7 +247,7 @@ Deno.test("preview-transactional-email DI: function subject (cast-escalation-req
   const entry = templates[0];
   assertEquals(entry.status, "ready");
   // previewData: { program: 'Riverdance', date: '2026-06-15', tier: 1, ... }
-  assertEquals(entry.subject, "Escalation needed: Tier 1 for Riverdance on 2026-06-15");
+  assertEquals(entry.subject, "Tier 1 for Riverdance on 2026-06-15 ran out of time");
 });
 
 // ── Single template rendering ─────────────────────────────────────────────────
@@ -602,7 +602,7 @@ Deno.test("preview: body.locale 'de' renders German copy + <html lang=de> (admin
   assertExists(entry);
   assertEquals(entry.status, "ready");
   assertEquals(entry.html.includes('lang="de"'), true);
-  assertEquals(entry.html.includes("Du hast ein neues Angebot"), true);
+  assertEquals(entry.html.includes("Kannst Du das übernehmen?"), true);
 });
 
 Deno.test("preview: default locale renders English + <html lang=en>", async () => {
@@ -615,5 +615,5 @@ Deno.test("preview: default locale renders English + <html lang=en>", async () =
   const entry = body.templates.find((t: { templateName: string }) => t.templateName === "offer-immediate");
   assertExists(entry);
   assertEquals(entry.html.includes('lang="en"'), true);
-  assertEquals(entry.html.includes("You have a new offer"), true);
+  assertEquals(entry.html.includes("Can you do this one?"), true);
 });

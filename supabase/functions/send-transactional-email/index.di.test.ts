@@ -1071,7 +1071,7 @@ Deno.test("send-transactional-email: entitled org set to German renders German s
   const resend = fetchCalls.find((c) => new URL(c.url).hostname === "api.resend.com");
   assertExists(resend);
   const sent = JSON.parse(String((resend!.init as RequestInit).body)) as { subject: string; html: string };
-  assertEquals(sent.subject.includes("offene Angebote"), true, sent.subject);
+  assertEquals(sent.subject.includes("Termine zum Beantworten"), true, sent.subject);
   assertEquals(sent.html.includes('lang="de"'), true);
 });
 
@@ -1096,7 +1096,7 @@ Deno.test("send-transactional-email: German setting but NOT entitled stays Engli
   const resend = fetchCalls.find((c) => new URL(c.url).hostname === "api.resend.com");
   assertExists(resend);
   const sent = JSON.parse(String((resend!.init as RequestInit).body)) as { subject: string; html: string };
-  assertEquals(sent.subject.includes("pending offers"), true, sent.subject);
+  assertEquals(sent.subject.includes("dates to answer"), true, sent.subject);
   assertEquals(sent.html.includes('lang="en"'), true);
 });
 
@@ -1122,7 +1122,7 @@ Deno.test("send-transactional-email: explicit body.locale forces German even whe
   const resend = fetchCalls.find((c) => new URL(c.url).hostname === "api.resend.com");
   assertExists(resend);
   const sent = JSON.parse(String((resend!.init as RequestInit).body)) as { subject: string; html: string };
-  assertEquals(sent.subject.includes("offene Angebote"), true, sent.subject);
+  assertEquals(sent.subject.includes("Termine zum Beantworten"), true, sent.subject);
   assertEquals(sent.html.includes('lang="de"'), true);
 });
 
@@ -1147,6 +1147,6 @@ Deno.test("send-transactional-email: explicit body.locale stays gated, German is
   const resend = fetchCalls.find((c) => new URL(c.url).hostname === "api.resend.com");
   assertExists(resend);
   const sent = JSON.parse(String((resend!.init as RequestInit).body)) as { subject: string; html: string };
-  assertEquals(sent.subject.includes("pending offers"), true, sent.subject);
+  assertEquals(sent.subject.includes("dates to answer"), true, sent.subject);
   assertEquals(sent.html.includes('lang="en"'), true);
 });

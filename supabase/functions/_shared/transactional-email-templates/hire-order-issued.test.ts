@@ -18,7 +18,7 @@ Deno.test("issued email shows the sign CTA in electronic mode", async () => {
   }));
   assert(html.includes("Review and sign"), "electronic mode shows the sign CTA");
   assert(
-    html.indexOf("Review and sign") < html.indexOf("Review document"),
+    html.indexOf("Review and sign") < html.indexOf("Review contract"),
     "electronic mode prioritises signing before document download",
   );
   assert(!html.includes("View and download"), "electronic mode uses a secondary document CTA label");

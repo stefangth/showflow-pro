@@ -55,8 +55,8 @@ Deno.test('registry presentation: uses compliant default confirmation subjects',
 
   assertExists(updates)
   assertExists(confirmed)
-  assertEquals(updates.subject, 'Your booking updates on ShowFlow')
-  assertEquals(confirmed.subject, 'Your bookings are confirmed on ShowFlow')
+  assertEquals(updates.subject, 'Updates to your dates on ShowFlow')
+  assertEquals(confirmed.subject, 'You are booked on ShowFlow')
 })
 
 Deno.test('registry presentation: keeps legacy generic subjects only as explicit fallback semantics', () => {
@@ -159,7 +159,7 @@ Deno.test('registry presentation: tier-at-risk default subject names the program
   })
 
   assertExists(presentation)
-  assertEquals(presentation.subject, 'A tier is running short for Riverdance on 2026-06-15')
+  assertEquals(presentation.subject, 'Riverdance on 2026-06-15 is at risk')
 })
 
 Deno.test('registry presentation: tier-at-risk subject resolves an org copy override', () => {
