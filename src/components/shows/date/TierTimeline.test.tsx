@@ -69,7 +69,7 @@ describe("TierTimeline", () => {
       />,
     );
     expect(screen.getByText("Skills required on this date")).toBeInTheDocument();
-    expect(screen.getByText(/NEXT OFFER/)).toBeInTheDocument();
+    expect(screen.getByText(/NEXT ASK/)).toBeInTheDocument();
     expect(screen.getByText("WHO THIS DATE ASKS · SHOW-SPECIFIC")).toBeInTheDocument();
   });
 
@@ -77,7 +77,7 @@ describe("TierTimeline", () => {
     const onOpenTier = vi.fn();
     renderTimeline(<TierTimeline {...baseProps} onOpenTier={onOpenTier} />);
     fireEvent.click(screen.getByRole("button", { name: /open tier 1/i }));
-    fireEvent.click(screen.getByRole("button", { name: /^open offers$/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^start asking$/i }));
     expect(onOpenTier).toHaveBeenCalledWith(1, []);
   });
 
@@ -119,9 +119,9 @@ describe("TierTimeline", () => {
   it("disables the confirm action while the open mutation is pending", () => {
     const { rerender } = renderTimeline(<TierTimeline {...baseProps} />);
     fireEvent.click(screen.getByRole("button", { name: /open tier 1/i }));
-    expect(screen.getByRole("button", { name: /^open offers$/i })).toBeEnabled();
+    expect(screen.getByRole("button", { name: /^start asking$/i })).toBeEnabled();
     rerender(<MemoryRouter><TierTimeline {...baseProps} openPending /></MemoryRouter>);
-    expect(screen.getByRole("button", { name: /^open offers$/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /^start asking$/i })).toBeDisabled();
   });
 
   it("renders the show-specific priorities hint only when ladderSource is show", () => {
@@ -136,10 +136,10 @@ describe("TierTimeline", () => {
     renderTimeline(
       <TierTimeline {...baseProps} skills={[{ id: "s1", name: "Juggling" }]} onOpenTier={onOpenTier} />,
     );
-    fireEvent.click(screen.getByRole("button", { name: /narrow this offer/i }));
+    fireEvent.click(screen.getByRole("button", { name: /narrow this ask/i }));
     fireEvent.click(screen.getByRole("button", { name: "Juggling" }));
     fireEvent.click(screen.getByRole("button", { name: /open tier 1/i }));
-    fireEvent.click(screen.getByRole("button", { name: /^open offers$/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^start asking$/i }));
     expect(onOpenTier).toHaveBeenCalledWith(1, ["s1"]);
   });
 
@@ -149,7 +149,7 @@ describe("TierTimeline", () => {
       <TierTimeline {...baseProps} skills={[{ id: "s1", name: "Juggling" }]} onOpenTier={onOpenTier} />,
     );
     fireEvent.click(screen.getByRole("button", { name: /open tier 1/i }));
-    fireEvent.click(screen.getByRole("button", { name: /^open offers$/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^start asking$/i }));
     expect(onOpenTier).toHaveBeenCalledWith(1, []);
   });
 
@@ -157,7 +157,7 @@ describe("TierTimeline", () => {
   // in the (non-cast) tier confirm copy must still name the toggled skill.
   it("names the toggled narrow skill in the tier confirm dialog cue", () => {
     renderTimeline(<TierTimeline {...baseProps} skills={[{ id: "s1", name: "Juggling" }]} />);
-    fireEvent.click(screen.getByRole("button", { name: /narrow this offer/i }));
+    fireEvent.click(screen.getByRole("button", { name: /narrow this ask/i }));
     fireEvent.click(screen.getByRole("button", { name: "Juggling" }));
     fireEvent.click(screen.getByRole("button", { name: /open tier 1/i }));
     expect(
@@ -193,7 +193,7 @@ describe("TierTimeline", () => {
         onCloseTier={onCloseTier}
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: /close tier/i }));
+    fireEvent.click(screen.getByRole("button", { name: /close this round/i }));
     fireEvent.click(screen.getByRole("button", { name: /withdraw unanswered offers/i }));
     expect(onCloseTier).toHaveBeenCalledWith(1, true);
   });

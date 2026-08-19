@@ -57,7 +57,7 @@ describe('DayDetail', () => {
       />
     );
     const btn = screen.getByTestId('day-rail-primary');
-    expect(btn).toHaveTextContent('Confirm holds');
+    expect(btn).toHaveTextContent('Book who said yes');
     fireEvent.click(btn);
     expect(onPrimary).toHaveBeenCalledTimes(1);
   });

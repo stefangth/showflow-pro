@@ -95,7 +95,7 @@ describe("HireOrdersCard", () => {
     await waitFor(() =>
       expect(queryClient.getQueryState(["entitlements", "org-off"])?.status).toBe("success"),
     );
-    expect(screen.queryByText("Hire orders")).not.toBeInTheDocument();
+    expect(screen.queryByText("Contracts")).not.toBeInTheDocument();
   });
 
   it("shows the fully-filled banner and a Generate button when a confirmed booking lacks an order", async () => {
@@ -103,9 +103,9 @@ describe("HireOrdersCard", () => {
     renderWithProviders(
       <HireOrdersCard showDateId="sd-1" showDate={SHOW_DATE_FILLED} bookings={[CONFIRMED_BOOKING]} canManage />,
     );
-    expect(await screen.findByText("Hire orders")).toBeInTheDocument();
-    expect(await screen.findByText(/fully filled\. ready for a hire order/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /generate hire order/i })).toBeInTheDocument();
+    expect(await screen.findByText("Contracts")).toBeInTheDocument();
+    expect(await screen.findByText(/fully filled\. ready for a contract/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /generate contract/i })).toBeInTheDocument();
     // No em/en dashes in the banner copy.
     expect(document.body.textContent).not.toMatch(/[—–]/);
   });
@@ -116,8 +116,8 @@ describe("HireOrdersCard", () => {
     renderWithProviders(
       <HireOrdersCard showDateId="sd-1" showDate={SHOW_DATE_FILLED} bookings={[CONFIRMED_BOOKING]} canManage />,
     );
-    expect(await screen.findByText(/fully filled\. ready for a hire order/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /generate hire order/i })).toBeDisabled();
+    expect(await screen.findByText(/fully filled\. ready for a contract/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /generate contract/i })).toBeDisabled();
   });
 
   it("uses the non-fully-filled banner copy when the date is not fully filled", async () => {
@@ -139,7 +139,7 @@ describe("HireOrdersCard", () => {
     renderWithProviders(
       <HireOrdersCard showDateId="sd-1" showDate={SHOW_DATE_FILLED} bookings={[CONFIRMED_BOOKING]} canManage />,
     );
-    fireEvent.click(await screen.findByRole("button", { name: /generate hire order/i }));
+    fireEvent.click(await screen.findByRole("button", { name: /generate contract/i }));
     await waitFor(() => {
       const calls = (client.calls ?? []) as { table: string; method: string; args: unknown[] }[];
       const invoke = calls.find((c) => c.table === "fn:generate-hire-orders" && c.method === "invoke");
@@ -185,7 +185,7 @@ describe("HireOrdersCard", () => {
     expect(screen.getByRole("button", { name: /download/i })).toBeInTheDocument();
 
     // Every confirmed booking already has an order, so no generate banner.
-    expect(screen.queryByRole("button", { name: /generate hire order/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /generate contract/i })).not.toBeInTheDocument();
   });
 
   it("surfaces a destructive alert when the orders query fails", async () => {
@@ -198,7 +198,7 @@ describe("HireOrdersCard", () => {
       <HireOrdersCard showDateId="sd-1" showDate={SHOW_DATE_FILLED} bookings={[CONFIRMED_BOOKING]} canManage />,
     );
     expect(await screen.findByRole("alert")).toBeInTheDocument();
-    expect(screen.getByText(/could not load hire orders/i)).toBeInTheDocument();
+    expect(screen.getByText(/could not load contracts/i)).toBeInTheDocument();
   });
 });
 
@@ -217,10 +217,10 @@ describe("HireOrdersCard artist variant (Task 14)", () => {
     await waitFor(() =>
       expect(queryClient.getQueryState(["entitlements", "org-on"])?.status).toBe("success"),
     );
-    expect(screen.queryByText("Hire order")).not.toBeInTheDocument();
-    expect(screen.queryByText("Hire orders")).not.toBeInTheDocument();
+    expect(screen.queryByText("Contract")).not.toBeInTheDocument();
+    expect(screen.queryByText("Contracts")).not.toBeInTheDocument();
     // The producer-only controls never appear for an artist viewer.
-    expect(screen.queryByRole("button", { name: /generate hire order/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /generate contract/i })).not.toBeInTheDocument();
   });
 
   it("renders nothing when the artist has no order for this date", async () => {
@@ -239,7 +239,7 @@ describe("HireOrdersCard artist variant (Task 14)", () => {
     await waitFor(() =>
       expect(queryClient.getQueryState(["entitlements", "org-on"])?.status).toBe("success"),
     );
-    expect(screen.queryByText("Hire order")).not.toBeInTheDocument();
+    expect(screen.queryByText("Contract")).not.toBeInTheDocument();
   });
 
   it("renders a read-only row with the order number, status badge and Download for the artist's own order on this date", async () => {
@@ -264,13 +264,13 @@ describe("HireOrdersCard artist variant (Task 14)", () => {
       <HireOrdersCard showDateId="sd-1" showDate={SHOW_DATE_FILLED} bookings={[CONFIRMED_BOOKING]} canManage={false} />,
     );
 
-    expect(await screen.findByText("Hire order")).toBeInTheDocument();
+    expect(await screen.findByText("Contract")).toBeInTheDocument();
     expect(screen.getByText("HO-2026-0201-9")).toBeInTheDocument();
     expect(screen.getByText(/awaiting countersign/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /download/i })).toBeInTheDocument();
 
     // Never the producer's controls.
-    expect(screen.queryByRole("button", { name: /generate hire order/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /generate contract/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /review and issue/i })).not.toBeInTheDocument();
     // No em/en dashes in the row copy.
     expect(document.body.textContent).not.toMatch(/[—–]/);
@@ -299,7 +299,7 @@ describe("HireOrdersCard artist variant (Task 14)", () => {
       <HireOrdersCard showDateId="sd-1" showDate={SHOW_DATE_FILLED} bookings={[CONFIRMED_BOOKING]} canManage={false} />,
     );
 
-    expect(await screen.findByText("Hire order")).toBeInTheDocument();
+    expect(await screen.findByText("Contract")).toBeInTheDocument();
     expect(screen.getByText("HO-2026-MULTI-1")).toBeInTheDocument();
   });
 

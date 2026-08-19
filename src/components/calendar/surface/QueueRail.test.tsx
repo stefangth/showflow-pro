@@ -23,7 +23,7 @@ describe('QueueRail', () => {
 
     expect(screen.getByTestId('queue-rail-progress')).toBeInTheDocument();
     expect(screen.getByText('4 cleared today')).toBeInTheDocument();
-    expect(screen.getByText('Expires today')).toBeInTheDocument();
+    expect(screen.getByText('Book today')).toBeInTheDocument();
     expect(screen.getByText('At risk · under-cast inside 30 days')).toBeInTheDocument();
     // Zero-count groups are omitted from the breakdown.
     expect(screen.queryByText('Ready to issue')).not.toBeInTheDocument();
@@ -69,9 +69,9 @@ describe('QueueRail', () => {
   it('renders a rules card explaining what lands in the queue', () => {
     render(<QueueRail queue={makeQueue()} clearedToday={0} shortlist={null} />);
     const rules = screen.getByTestId('queue-rail-rules');
-    expect(rules).toHaveTextContent('Offers expiring today');
+    expect(rules).toHaveTextContent("Asks with today's answer-by deadline");
     expect(rules).toHaveTextContent('under-cast date inside 30 days');
-    expect(rules).toHaveTextContent('ready for a hire order');
+    expect(rules).toHaveTextContent('ready for a contract');
     expect(rules).toHaveTextContent('Cancelled dates');
   });
 

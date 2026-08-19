@@ -133,7 +133,7 @@ describe("ShowDateDetailSheet cockpit booking_flow gating", () => {
   it("booking_flow on: the Offers tab shows the offers UI", async () => {
     vi.mocked(useFeature).mockImplementation((f) => f === "booking_flow");
     renderSheet();
-    await clickTab(/^offers$/i);
+    await clickTab(/^asks$/i);
     expect(await screen.findByTestId("offers-ui")).toBeInTheDocument();
     expect(screen.queryByTestId("module-gate-booking_flow")).not.toBeInTheDocument();
   });
@@ -141,7 +141,7 @@ describe("ShowDateDetailSheet cockpit booking_flow gating", () => {
   it("booking_flow off: the Offers tab replaces the offers UI with the module notice", async () => {
     vi.mocked(useFeature).mockReturnValue(false);
     renderSheet();
-    await clickTab(/^offers$/i);
+    await clickTab(/^asks$/i);
     expect(await screen.findByTestId("module-gate-booking_flow")).toBeInTheDocument();
     expect(screen.queryByTestId("offers-ui")).not.toBeInTheDocument();
   });
