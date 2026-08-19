@@ -61,7 +61,7 @@ describe("OrdersTable keyboard access", () => {
     const orders = [order({ id: "ho-1", order_no: "HO-2026-0201-1" })];
     renderWithProviders(<OrdersTable orders={orders} orgId="org-1" onRowClick={onRowClick} />);
 
-    const checkbox = screen.getByRole("checkbox", { name: /select order ho-2026-0201-1/i });
+    const checkbox = screen.getByRole("checkbox", { name: /select contract ho-2026-0201-1/i });
     fireEvent.keyDown(checkbox, { key: " " });
     expect(onRowClick).not.toHaveBeenCalled();
   });
@@ -213,8 +213,8 @@ describe("OrdersTable batch issue selection", () => {
   };
 
   function selectBoth() {
-    fireEvent.click(screen.getByRole("checkbox", { name: /select order ho-2026-0201-1/i }));
-    fireEvent.click(screen.getByRole("checkbox", { name: /select order ho-2026-0301-1/i }));
+    fireEvent.click(screen.getByRole("checkbox", { name: /select contract ho-2026-0201-1/i }));
+    fireEvent.click(screen.getByRole("checkbox", { name: /select contract ho-2026-0301-1/i }));
   }
 
   /** Click "Issue selected" (opens the batch preflight dialog), wait for it to report
@@ -222,7 +222,7 @@ describe("OrdersTable batch issue selection", () => {
    *  the selection-bar button and the actual mutation. */
   async function openDialogAndConfirm(expectedCount: number) {
     fireEvent.click(screen.getByRole("button", { name: /issue selected/i }));
-    const confirmBtn = await screen.findByRole("button", { name: new RegExp(`Issue ${expectedCount} orders?`, "i") });
+    const confirmBtn = await screen.findByRole("button", { name: new RegExp(`Issue ${expectedCount} contracts?`, "i") });
     await waitFor(() => expect(confirmBtn).toBeEnabled());
     fireEvent.click(confirmBtn);
   }
@@ -245,11 +245,11 @@ describe("OrdersTable batch issue selection", () => {
     // it (e.g. add the missing fee) and retry immediately, without having
     // to re-find it in the table.
     await waitFor(() => {
-      expect(screen.getByRole("checkbox", { name: /select order ho-2026-0301-1/i })).toBeChecked();
+      expect(screen.getByRole("checkbox", { name: /select contract ho-2026-0301-1/i })).toBeChecked();
     });
     // ho-1 issued successfully -- it clears like the rest of a fully
     // successful batch would.
-    expect(screen.getByRole("checkbox", { name: /select order ho-2026-0201-1/i })).not.toBeChecked();
+    expect(screen.getByRole("checkbox", { name: /select contract ho-2026-0201-1/i })).not.toBeChecked();
     expect(screen.getByText("1 selected")).toBeInTheDocument();
   });
 

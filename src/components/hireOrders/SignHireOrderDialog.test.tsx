@@ -19,7 +19,7 @@ describe("SignHireOrderDialog", () => {
 
   it("keeps Sign disabled until a signature and consent are present, then submits", () => {
     render(<SignHireOrderDialog orderId="ho1" orgId="o1" open onOpenChange={() => {}} />);
-    const signBtn = () => screen.getByRole("button", { name: /sign hire order/i });
+    const signBtn = () => screen.getByRole("button", { name: /sign contract/i });
     expect(signBtn()).toBeDisabled();
 
     fireEvent.click(screen.getByText("set-sig"));       // signature present
@@ -36,7 +36,7 @@ describe("SignHireOrderDialog", () => {
 
   it("keeps Sign disabled when consent is checked but no signature is present", () => {
     render(<SignHireOrderDialog orderId="ho1" orgId="o1" open onOpenChange={() => {}} />);
-    const signBtn = () => screen.getByRole("button", { name: /sign hire order/i });
+    const signBtn = () => screen.getByRole("button", { name: /sign contract/i });
 
     fireEvent.click(screen.getByRole("checkbox"));       // consent checked, no signature
     expect(signBtn()).toBeDisabled();
@@ -44,7 +44,7 @@ describe("SignHireOrderDialog", () => {
 
   it("summarizes the terms and what happens after signing (R4.5)", () => {
     render(<SignHireOrderDialog orderId="ho1" orgId="o1" open onOpenChange={() => {}} />);
-    expect(screen.getByText(/you are agreeing to the fee, dates, and terms shown on this order/i)).toBeInTheDocument();
+    expect(screen.getByText(/you are agreeing to the fee, dates, and terms shown on this contract/i)).toBeInTheDocument();
     // The artist's in-app signature IS the countersignature (signOrder flips
     // issued -> countersigned in the same request with signer_user_id = the
     // artist and emails them the final PDF immediately) -- there is no

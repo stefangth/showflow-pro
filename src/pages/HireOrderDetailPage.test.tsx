@@ -101,7 +101,7 @@ async function renderArtistViewingSignableOrder() {
     artists: { data: LINKED_ARTIST, error: null },
   });
   renderPage();
-  await screen.findByText("Performance hire order");
+  await screen.findByText("Performance contract");
 }
 
 /** Renders the same issued order for a producer -- canManage is true, so
@@ -110,7 +110,7 @@ async function renderProducerViewingIssuedOrder() {
   authAs("producer");
   seedFor(order());
   renderPage();
-  await screen.findByText("Performance hire order");
+  await screen.findByText("Performance contract");
 }
 
 describe("HireOrderDetailPage", () => {
@@ -127,7 +127,7 @@ describe("HireOrderDetailPage", () => {
   it("renders the header with the mono order number and an Awaiting-countersign badge", async () => {
     authAs("producer");
     renderPage();
-    expect(await screen.findByText("Performance hire order")).toBeInTheDocument();
+    expect(await screen.findByText("Performance contract")).toBeInTheDocument();
     expect(screen.getByText("HO-2026-0201-1")).toBeInTheDocument();
     // Issued reads as "Awaiting countersign" on both the status badge and the
     // timeline step, so at least one match is expected here.
@@ -139,7 +139,7 @@ describe("HireOrderDetailPage", () => {
   it("embeds the PDF via the signed URL from the download-url action", async () => {
     authAs("producer");
     renderPage();
-    const frame = await screen.findByTitle(/hire order document/i);
+    const frame = await screen.findByTitle(/contract document/i);
     expect(frame).toHaveAttribute("src", SIGNED_URL);
     // The signed URL is fetched via the generate-hire-orders download-url action.
     await waitFor(() => {
@@ -154,8 +154,8 @@ describe("HireOrderDetailPage", () => {
   it("renders the five-step timeline, Seen included", async () => {
     authAs("producer");
     renderPage();
-    await screen.findByText("Performance hire order");
-    const timeline = screen.getByRole("list", { name: /order status timeline/i });
+    await screen.findByText("Performance contract");
+    const timeline = screen.getByRole("list", { name: /contract status timeline/i });
     expect(within(timeline).getByText("Created")).toBeInTheDocument();
     expect(within(timeline).getByText("Issued to artist")).toBeInTheDocument();
     expect(within(timeline).getByText("Seen")).toBeInTheDocument();
@@ -259,7 +259,7 @@ describe("HireOrderDetailPage", () => {
     seedFor(order({ status: "draft", pdf_path: null, issued_at: null }));
     renderPage();
     expect(await screen.findByText(/not issued yet/i)).toBeInTheDocument();
-    expect(screen.queryByTitle(/hire order document/i)).not.toBeInTheDocument();
+    expect(screen.queryByTitle(/contract document/i)).not.toBeInTheDocument();
   });
 
   it("surfaces a destructive alert when the order cannot be loaded (RLS-denied)", async () => {
@@ -281,7 +281,7 @@ describe("HireOrderDetailPage", () => {
     // The header Download button is the fallback action; it must stay enabled.
     const downloadBtn = screen.getByRole("button", { name: /download/i });
     expect(downloadBtn).toBeEnabled();
-    expect(screen.queryByTitle(/hire order document/i)).not.toBeInTheDocument();
+    expect(screen.queryByTitle(/contract document/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/^not issued yet$/i)).not.toBeInTheDocument();
   });
 
@@ -305,7 +305,7 @@ describe("HireOrderDetailPage", () => {
     authAs("producer");
     seedFor(order({ status: "issued" }));
     renderPage();
-    await screen.findByText("Performance hire order");
+    await screen.findByText("Performance contract");
     expect(screen.queryByRole("button", { name: /^edit$/i })).not.toBeInTheDocument();
   });
 
@@ -326,7 +326,7 @@ describe("HireOrderDetailPage", () => {
     seedFor(order());
     renderPage();
     expect(await screen.findByText(/couldn't load the document/i)).toBeInTheDocument();
-    expect(screen.queryByTitle(/hire order document/i)).not.toBeInTheDocument();
+    expect(screen.queryByTitle(/contract document/i)).not.toBeInTheDocument();
   });
 });
 
@@ -344,7 +344,7 @@ describe("HireOrderDetailPage marks the order seen for the linked artist", () =>
       artists: { data: LINKED_ARTIST, error: null },
     });
     renderPage();
-    await screen.findByText("Performance hire order");
+    await screen.findByText("Performance contract");
     await waitFor(() => {
       expect(seenCalls()).toHaveLength(1);
       expect(seenCalls()[0].args[0]).toEqual({ p_order: "ho-1" });
@@ -355,7 +355,7 @@ describe("HireOrderDetailPage marks the order seen for the linked artist", () =>
     authAs("producer");
     seedFor(order());
     renderPage();
-    await screen.findByText("Performance hire order");
+    await screen.findByText("Performance contract");
     expect(seenCalls()).toHaveLength(0);
   });
 
@@ -379,7 +379,7 @@ describe("HireOrderDetailPage marks the order seen for the linked artist", () =>
       artists: { data: LINKED_ARTIST, error: null },
     });
     renderPage();
-    await screen.findByText("Performance hire order");
+    await screen.findByText("Performance contract");
     expect(seenCalls()).toHaveLength(0);
   });
 });

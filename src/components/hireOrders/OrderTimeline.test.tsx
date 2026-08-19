@@ -23,7 +23,7 @@ function renderTimeline(props: Partial<TimelineProps> = {}) {
       {...props}
     />,
   );
-  return within(screen.getByRole("list", { name: /order status timeline/i }));
+  return within(screen.getByRole("list", { name: /contract status timeline/i }));
 }
 
 describe("OrderTimeline steps", () => {
