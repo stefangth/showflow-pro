@@ -4,8 +4,15 @@
     "headline_one": "Eine Sache braucht einen Menschen",
     "headline_other": "{{count}} Dinge brauchen einen Menschen",
     "headlineDone": "Nichts braucht Dich",
-    "sub": "Die anderen {{count}} füllen sich von selbst. {{bookedCount}} Artists wurden über Nacht gebucht.",
-    "subDone": "Autopilot hat die Liste geleert. {{count}} Artists wurden über Nacht gebucht."
+    "sub_zero": "Gerade läuft sonst nichts. {{bookedText}}",
+    "sub_one": "Der andere eine füllt sich von selbst. {{bookedText}}",
+    "sub_other": "Die anderen {{count}} füllen sich von selbst. {{bookedText}}",
+    "subDone_zero": "Autopilot hat die Liste geleert. Es wurde niemand über Nacht gebucht.",
+    "subDone_one": "Autopilot hat die Liste geleert. Ein Artist wurde über Nacht gebucht.",
+    "subDone_other": "Autopilot hat die Liste geleert. {{count}} Artists wurden über Nacht gebucht.",
+    "bookedOvernight_zero": "Es wurde niemand über Nacht gebucht.",
+    "bookedOvernight_one": "Ein Artist wurde über Nacht gebucht.",
+    "bookedOvernight_other": "{{count}} Artists wurden über Nacht gebucht."
   },
   "atRisk": {
     "badge_one": "Gefährdet · {{count}} Platz frei",
@@ -51,6 +58,18 @@
     "draft_one": "{{count}} Engagementvertrag für {{show}}, {{date}} entworfen. Er geht raus, sobald Du zufrieden bist.",
     "draft_other": "{{count}} Engagementverträge für {{show}}, {{date}} entworfen. Sie gehen raus, sobald Du zufrieden bist.",
     "notify": "{{names}} gesagt, dass {{show}}, {{date}} ausfällt."
+  },
+  "toast": {
+    "castToldSuccess": "Der Besetzung gesagt, dass {{title}} ausfällt.",
+    "castToldError": "Konnte der Besetzung nicht Bescheid geben zu {{title}}. Versuch es noch einmal.",
+    "askWithdrawnSuccess": "Anfrage zurückgezogen. {{context}}",
+    "askWithdrawnError": "Konnte die Anfrage nicht zurückziehen. {{context}} Versuch es noch einmal.",
+    "bookingUndoneSuccess_one": "Buchung rückgängig gemacht. {{context}}",
+    "bookingUndoneSuccess_other": "{{count}} Buchungen rückgängig gemacht. {{context}}",
+    "bookingUndoneError": "Konnte die Buchung nicht rückgängig machen. {{context}} Versuch es noch einmal.",
+    "bookingUndoneNothingChanged": "Nichts zum Rückgängigmachen. Es hat sich schon weiterbewegt, lade neu, um den aktuellen Stand zu sehen.",
+    "castAskedSuccess": "{{cast}} zu {{title}} gefragt.",
+    "castAskedError": "Konnte {{cast}} nicht zu {{title}} fragen. Versuch es noch einmal."
   },
   "sidebar": {
     "producer": {

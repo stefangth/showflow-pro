@@ -271,6 +271,7 @@ describe("fetchAtRiskDateFacts", () => {
         nextCastFreeCount: 2, // a1, a3 free; a2 is blocked on this date
         rosterCount: 4,
         rosterFreeCount: 3, // a2 is blocked, a1/a3/a4 are free
+        nextTierNumber: 2, // tier 1 already open, tier 2 is the next one to open
       },
     ]);
 
@@ -304,6 +305,7 @@ describe("fetchAtRiskDateFacts", () => {
       {
         showDateId: "d1", where: "", hasUnopenedTier: false, unaskedEligibleCount: 0,
         nextCastName: null, nextCastFreeCount: 0, rosterCount: 0, rosterFreeCount: 0,
+        nextTierNumber: null,
       },
     ]);
   });
@@ -342,7 +344,7 @@ describe("fetchAutopilotFeed", () => {
           {
             id: "audit1", created_at: "2026-07-14T08:00:00Z", old_status: "suggested", new_status: "soft_booked",
             booking: {
-              show_date_id: "d2", org_id: "org1", confirmation_digest_sent_at: "2026-07-14T20:00:00Z",
+              id: "b1", show_date_id: "d2", org_id: "org1", confirmation_digest_sent_at: "2026-07-14T20:00:00Z",
               artist: { name: "Anna K." },
               show_date: { date: "2026-07-21", show: { program: "Faust", sub_program: null } },
             },
@@ -385,6 +387,7 @@ describe("fetchAutopilotFeed", () => {
       id: "book:d2", kind: "book",
       text: "Booked Anna K. onto Faust, 21 Jul. They said yes, so the place is theirs.",
       actedAt: "2026-07-14T08:00:00Z", emailedAt: "2026-07-14T20:00:00Z",
+      bookingIds: ["b1"], // findings 2/3: undo must act on exactly these booking ids
     });
 
     const draft = result.find((r) => r.kind === "draft");

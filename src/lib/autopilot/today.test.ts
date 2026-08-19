@@ -63,27 +63,54 @@ describe("feedAffordance", () => {
   });
 
   it("evaluates the digest boundary in Europe/Berlin, matching the brief's own example", () => {
-    // 20:00 UTC on the 17th is already 22:00 in Berlin (CEST, UTC+2) — well past a 19:00 digest.
+    // 20:00 UTC on the 17th is already 22:00 in Berlin (CEST, UTC+2) — after that
+    // day's 19:00 digest has already run. The action therefore rides TOMORROW's
+    // (the 18th's) digest instead, so it stays undoable at 22:15 Berlin the same
+    // (17th) evening — this used to wrongly read "review" by checking the clock
+    // against the digest that had already left without it.
     const affordance = feedAffordance(
       { emailedAt: null, actedAt: "2026-08-17T20:00:00Z" },
       DIGEST_FLOW,
       TIMES,
       new Date("2026-08-17T20:15:00Z"),
     );
-    expect(affordance).toBe("review");
+    expect(affordance).toBe("undo");
   });
 
   it("evaluates the digest boundary in Berlin, not in raw UTC hours", () => {
-    // Acted at 17:30 UTC = 19:30 Berlin (already past the 19:00 digest). "now" is
-    // 18:00 UTC = 20:00 Berlin, same Berlin calendar day, still past the digest.
-    // A UTC-hour-only implementation would see 18 < 19 and wrongly answer "undo".
+    // Acted at 17:30 UTC = 19:30 Berlin — already past that day's 19:00 digest,
+    // so the action rides the NEXT (tomorrow's) digest instead and is still
+    // undoable. "now" is 18:00 UTC = 20:00 Berlin, the SAME Berlin calendar day
+    // as actedAt, still well before tomorrow's digest — must stay "undo". (This
+    // is also the corrected case for finding 1: the code used to check `now`
+    // against the digest hour on actedAt's OWN day, so an action taken at 19:30
+    // — after that digest had already gone — read as reviewable a mere 30
+    // minutes later, 23 hours before the digest that actually carries it.) A
+    // UTC-hour-only implementation would see 18 < 19 and also answer "undo",
+    // but for the wrong reason — it would just as wrongly say "undo" for a
+    // `now` of, say, 2026-08-18T17:00:00Z (19:00 Berlin the NEXT day, i.e. the
+    // exact moment the carrying digest fires), which the Berlin-anchored
+    // boundary correctly flips to "review".
     const affordance = feedAffordance(
       { emailedAt: null, actedAt: "2026-08-17T17:30:00Z" },
       DIGEST_FLOW,
       TIMES,
       new Date("2026-08-17T18:00:00Z"),
     );
-    expect(affordance).toBe("review");
+    expect(affordance).toBe("undo");
+  });
+
+  it("rolls undo over to the NEXT digest when the action landed at/after today's digest hour (finding 1)", () => {
+    // Acted 19:30 Berlin Monday (2026-08-17) — at/after that day's 19:00 digest,
+    // so it rides Tuesday's digest instead of Monday's. Still undoable the next
+    // evening, right up to but not including Tuesday's own 19:00 digest.
+    const actedAt = "2026-08-17T17:30:00Z"; // 19:30 Berlin, Mon 17 Aug
+    expect(
+      feedAffordance({ emailedAt: null, actedAt }, DIGEST_FLOW, TIMES, new Date("2026-08-18T16:00:00Z")), // 18:00 Berlin Tue
+    ).toBe("undo");
+    expect(
+      feedAffordance({ emailedAt: null, actedAt }, DIGEST_FLOW, TIMES, new Date("2026-08-18T17:30:00Z")), // 19:30 Berlin Tue
+    ).toBe("review");
   });
 
   // The three cases below all exercise the DAY-KEY comparison branches
@@ -167,6 +194,7 @@ const factsBase: AtRiskDateFacts = {
   nextCastFreeCount: 6,
   rosterCount: 14,
   rosterFreeCount: 9,
+  nextTierNumber: null,
 };
 
 const cancelledBase: CancelledUntoldInput = {
@@ -344,16 +372,16 @@ describe("computeToday: sorting", () => {
 describe("computeToday: feed and pass-through counts", () => {
   it("maps feed rows through feedAffordance and passes fillingOnTheirOwn/bookedOvernight through", () => {
     const feed: FeedInput[] = [
-      { id: "f1", kind: "ask", text: "Asked Anna K.", at: "07:02", actedAt: "2026-07-15T06:00:00Z", emailedAt: "2026-07-15T06:01:00Z" },
-      { id: "f2", kind: "book", text: "Booked Ben O.", at: "07:05", actedAt: "2026-07-15T06:00:00Z", emailedAt: null },
+      { id: "f1", kind: "ask", text: "Asked Anna K.", at: "07:02", actedAt: "2026-07-15T06:00:00Z", emailedAt: "2026-07-15T06:01:00Z", bookingIds: [] },
+      { id: "f2", kind: "book", text: "Booked Ben O.", at: "07:05", actedAt: "2026-07-15T06:00:00Z", emailedAt: null, bookingIds: ["b1"] },
     ];
     const model = computeToday(
       buildInput({ feed, fillingOnTheirOwn: 4, bookedOvernight: 2 }),
       new Date("2026-07-15T08:00:00Z"), // 10:00 Berlin — before the 19:00 digest
     );
     expect(model.feed).toEqual([
-      { id: "f1", kind: "ask", text: "Asked Anna K.", at: "07:02", affordance: "review" }, // already emailed
-      { id: "f2", kind: "book", text: "Booked Ben O.", at: "07:05", affordance: "undo" }, // not yet emailed, before digest
+      { id: "f1", kind: "ask", text: "Asked Anna K.", at: "07:02", affordance: "review", bookingIds: [] }, // already emailed
+      { id: "f2", kind: "book", text: "Booked Ben O.", at: "07:05", affordance: "undo", bookingIds: ["b1"] }, // not yet emailed, before digest
     ]);
     expect(model.fillingOnTheirOwn).toBe(4);
     expect(model.bookedOvernight).toBe(2);

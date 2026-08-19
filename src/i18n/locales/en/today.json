@@ -4,8 +4,15 @@
     "headline_one": "One thing needs a human",
     "headline_other": "{{count}} things need a human",
     "headlineDone": "Nothing needs you",
-    "sub": "The other {{count}} are filling on their own. {{bookedCount}} artists were booked overnight.",
-    "subDone": "Autopilot cleared the board. {{count}} artists were booked overnight."
+    "sub_zero": "Nothing else is in flight right now. {{bookedText}}",
+    "sub_one": "The other one is filling on its own. {{bookedText}}",
+    "sub_other": "The other {{count}} are filling on their own. {{bookedText}}",
+    "subDone_zero": "Autopilot cleared the board. No artists were booked overnight.",
+    "subDone_one": "Autopilot cleared the board. One artist was booked overnight.",
+    "subDone_other": "Autopilot cleared the board. {{count}} artists were booked overnight.",
+    "bookedOvernight_zero": "No artists were booked overnight.",
+    "bookedOvernight_one": "One artist was booked overnight.",
+    "bookedOvernight_other": "{{count}} artists were booked overnight."
   },
   "atRisk": {
     "badge_one": "At risk · {{count}} place empty",
@@ -51,6 +58,18 @@
     "draft_one": "Drafted {{count}} contract for {{show}}, {{date}}. They send when you are happy with them.",
     "draft_other": "Drafted {{count}} contracts for {{show}}, {{date}}. They send when you are happy with them.",
     "notify": "Told {{names}} that {{show}}, {{date}} is off."
+  },
+  "toast": {
+    "castToldSuccess": "Told the cast that {{title}} is off.",
+    "castToldError": "Could not tell the cast about {{title}}. Try again.",
+    "askWithdrawnSuccess": "Withdrew the ask. {{context}}",
+    "askWithdrawnError": "Could not withdraw the ask. {{context}} Try again.",
+    "bookingUndoneSuccess_one": "Undid the booking. {{context}}",
+    "bookingUndoneSuccess_other": "Undid {{count}} bookings. {{context}}",
+    "bookingUndoneError": "Could not undo the booking. {{context}} Try again.",
+    "bookingUndoneNothingChanged": "Nothing to undo. It already moved on, so refresh to see the latest.",
+    "castAskedSuccess": "Asked {{cast}} about {{title}}.",
+    "castAskedError": "Could not ask {{cast}} about {{title}}. Try again."
   },
   "sidebar": {
     "producer": {

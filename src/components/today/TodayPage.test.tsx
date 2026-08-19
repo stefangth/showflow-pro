@@ -17,6 +17,7 @@ function anAtRisk(overrides: Partial<AtRiskDate> = {}): AtRiskDate {
     nextCastFreeCount: 6,
     rosterCount: 14,
     rosterFreeCount: 9,
+    nextTierNumber: 2,
     ...overrides,
   };
 }
@@ -41,6 +42,7 @@ function aFeedRow(overrides: Partial<FeedRow> = {}): FeedRow {
     text: "Asked 3 artists about Hamlet, Abend, 3 Sep.",
     at: "Mon 09:00",
     affordance: "undo",
+    bookingIds: [],
     ...overrides,
   };
 }

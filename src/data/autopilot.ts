@@ -410,6 +410,7 @@ export async function fetchAtRiskDateFacts(
       nextCastFreeCount,
       rosterCount,
       rosterFreeCount: rosterIds.filter((id) => isFree(id)).length,
+      nextTierNumber: nextTier,
     });
   }
   return facts;
@@ -478,6 +479,9 @@ export async function fetchAutopilotFeed(
       at: format(new Date(actedTimes[0]), "EEE HH:mm", { locale: dfLocale() }),
       actedAt: actedTimes[0],
       emailedAt: group.find((r) => r.digest_sent_at)?.digest_sent_at ?? null,
+      // Undo for "ask" is close-offer-tier by (date, tier) — see TodayPage's
+      // parseAskFeedId — not a per-booking id list.
+      bookingIds: [],
     });
   }
 
@@ -488,7 +492,7 @@ export async function fetchAutopilotFeed(
   const { data: acceptRows, error: acceptErr } = await client
     .from("booking_audit_log")
     .select(
-      "id, created_at, booking:bookings!inner(show_date_id, org_id, confirmation_digest_sent_at, " +
+      "id, created_at, booking:bookings!inner(id, show_date_id, org_id, confirmation_digest_sent_at, " +
       "artist:artists(name), show_date:show_dates(date, show:shows(program, sub_program)))",
     )
     .eq("booking.org_id", orgId)
@@ -500,6 +504,7 @@ export async function fetchAutopilotFeed(
     id: string;
     created_at: string;
     booking: {
+      id: string;
       show_date_id: string;
       confirmation_digest_sent_at: string | null;
       artist: { name: string } | null;
@@ -519,6 +524,11 @@ export async function fetchAutopilotFeed(
     const title = showTitle(showDate.show?.program ?? null, showDate.show?.sub_program ?? null);
     const names = group.map((r) => r.booking?.artist?.name).filter((n): n is string => !!n);
     const actedTimes = group.map((r) => r.created_at).sort();
+    // The exact bookings this row describes — undo must cancel only these,
+    // never every soft-booked/confirmed booking on the date (findings 2/3).
+    const bookingIds = Array.from(
+      new Set(group.map((r) => r.booking?.id).filter((id): id is string => !!id)),
+    );
     rows.push({
       id: `book:${showDateId}`,
       kind: "book" as FeedKind,
@@ -526,6 +536,7 @@ export async function fetchAutopilotFeed(
       at: format(new Date(actedTimes[0]), "EEE HH:mm", { locale: dfLocale() }),
       actedAt: actedTimes[0],
       emailedAt: group.find((r) => r.booking?.confirmation_digest_sent_at)?.booking?.confirmation_digest_sent_at ?? null,
+      bookingIds,
     });
   }
 
@@ -571,6 +582,7 @@ export async function fetchAutopilotFeed(
       at: format(new Date(actedTimes[0]), "EEE HH:mm", { locale: dfLocale() }),
       actedAt: actedTimes[0],
       emailedAt: null,
+      bookingIds: [],
     });
   }
 
@@ -605,6 +617,7 @@ export async function fetchAutopilotFeed(
         at: format(new Date(d.cast_notified_at), "EEE HH:mm", { locale: dfLocale() }),
         actedAt: d.cast_notified_at,
         emailedAt: d.cast_notified_at,
+        bookingIds: [],
       });
     }
   }

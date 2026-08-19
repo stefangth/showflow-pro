@@ -7,7 +7,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import { ROUTES } from "@/config/app.config";
-import { closeOfferTier, bulkDeclineSoftBooked, fetchSoftBookedIdsForDate, notifyCast } from "@/data/bookings";
+import { closeOfferTier, cancelAutopilotBookedIds, notifyCast, openOfferTier } from "@/data/bookings";
 import type { AtRiskDate, CancelledUntoldDate, FeedRow, TodayModel } from "@/lib/autopilot/today";
 import { useAutopilotToday } from "@/hooks/useAutopilotToday";
 import { useModuleGate } from "@/hooks/useEntitlements";
@@ -115,13 +115,6 @@ function parseAskFeedId(id: string): { showDateId: string; tier: number } | null
   return { showDateId: parts[1], tier };
 }
 
-/** `id: "book:<showDateId>"` / `id: "draft:<showDateId>"` / `id: "notify:<showDateId>"`. */
-function parseSimpleFeedId(id: string): { kind: string; showDateId: string } | null {
-  const idx = id.indexOf(":");
-  if (idx < 0) return null;
-  return { kind: id.slice(0, idx), showDateId: id.slice(idx + 1) };
-}
-
 /**
  * Thin data-fetching wrapper: composes `useAutopilotToday` and renders
  * `TodayPage`. This is what `/dashboard` mounts (`DashboardPage`) for any
@@ -133,13 +126,14 @@ function parseSimpleFeedId(id: string): { kind: string; showDateId: string } | n
  * `enabled` so an unentitled org never fires the underlying queries, not just
  * hides their output.
  *
- * Action handlers here perform the two real reversal mutations the plan's
- * self-review calls out by name (`closeOfferTier` to un-ask,
- * `bulkDeclineSoftBooked` to unbook); anything needing a piece of data the
- * model doesn't carry (e.g. which tier to open next has no exposed tier
- * number — see `AtRiskDateFacts`) falls back to navigating to the Dates
- * board rather than guessing. See the task report's "deviations" section for
- * the full list and why.
+ * Action handlers here perform the real reversal mutations: `closeOfferTier`
+ * to un-ask, `cancelAutopilotBookedIds` to unbook exactly the bookings a
+ * "book" feed row described (never a whole-date sweep — see
+ * `cancelAutopilotBookedIds`'s own doc comment for why it, and not
+ * `bulkDeclineSoftBooked`, is the right mutation here), and `openOfferTier`
+ * to actually open the next cast tier from the at-risk card's primary
+ * button. Anything needing a piece of data the model still doesn't carry
+ * falls back to navigating to the Dates board rather than guessing.
  */
 export default function TodayContainer() {
   const navigate = useNavigate();
@@ -155,7 +149,27 @@ export default function TodayContainer() {
   }
 
   function handleOpenNextCast(item: AtRiskDate) {
-    goToBookings(`${item.title} · ${item.where}`);
+    if (item.nextTierNumber === null) {
+      // Nothing left the facts layer knows how to open — fall back to the
+      // Dates board rather than guessing a tier.
+      goToBookings(`${item.title} · ${item.where}`);
+      return;
+    }
+    const cast = item.nextCastName ?? "";
+    openOfferTier(supabase, { showDateId: item.showDateId, tier: item.nextTierNumber })
+      .then(({ offersCreated }) => {
+        if (offersCreated === 0) {
+          // Nobody was actually asked (e.g. the whole cast turned out
+          // ineligible/blocked by the time this ran) — never claim success
+          // for an action that changed nothing.
+          toast.error(t("toast.castAskedError", { cast, title: item.title }));
+          refetch();
+          return;
+        }
+        toast.success(t("toast.castAskedSuccess", { cast, title: item.title }));
+        refetch();
+      })
+      .catch(() => toast.error(t("toast.castAskedError", { cast, title: item.title })));
   }
 
   function handleOpenDate(item: AtRiskDate) {
@@ -169,11 +183,11 @@ export default function TodayContainer() {
   function handleTellCast(item: CancelledUntoldDate) {
     notifyCast(supabase, { showDateId: item.showDateId })
       .then(() => {
-        toast.success(item.title);
+        toast.success(t("toast.castToldSuccess", { title: item.title }));
         refetch();
       })
       .catch(() => {
-        toast.error(item.title);
+        toast.error(t("toast.castToldError", { title: item.title }));
       });
   }
 
@@ -198,25 +212,34 @@ export default function TodayContainer() {
       }
       closeOfferTier(supabase, { showDateId: parsed.showDateId, tier: parsed.tier, withdraw: true })
         .then(() => {
-          toast.success(row.text);
+          toast.success(t("toast.askWithdrawnSuccess", { context: row.text }));
           refetch();
         })
-        .catch(() => toast.error(row.text));
+        .catch(() => toast.error(t("toast.askWithdrawnError", { context: row.text })));
       return;
     }
     if (row.kind === "book") {
-      const parsed = parseSimpleFeedId(row.id);
-      if (!parsed) {
+      // Undo acts on exactly the bookings this row described (findings 2/3)
+      // — never a fresh date-wide fetch, and never soft_booked-only, since
+      // Autopilot writes an accepted ask straight to confirmed.
+      if (row.bookingIds.length === 0) {
         goToBookings(row.text);
         return;
       }
-      fetchSoftBookedIdsForDate(supabase, parsed.showDateId)
-        .then((ids) => bulkDeclineSoftBooked(supabase, { ids, now: new Date() }))
-        .then(() => {
-          toast.success(row.text);
+      cancelAutopilotBookedIds(supabase, { ids: row.bookingIds, now: new Date() })
+        .then(({ affected }) => {
+          if (affected === 0) {
+            // The bookings already moved on under us (e.g. cancelled some
+            // other way) — never claim success for a mutation that changed
+            // nothing.
+            toast.error(t("toast.bookingUndoneNothingChanged"));
+            refetch();
+            return;
+          }
+          toast.success(t("toast.bookingUndoneSuccess", { count: affected, context: row.text }));
           refetch();
         })
-        .catch(() => toast.error(row.text));
+        .catch(() => toast.error(t("toast.bookingUndoneError", { context: row.text })));
       return;
     }
     // "draft" / "notify" undo has no backing reversal mutation (see the task

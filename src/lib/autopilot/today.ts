@@ -24,6 +24,10 @@ export interface AtRiskDate {
   nextCastFreeCount: number; // 6
   rosterCount: number; // 14
   rosterFreeCount: number; // 9
+  /** The tier number to pass to `openOfferTier` for "Open it up to <cast>" —
+   *  see `AtRiskDateFacts.nextTierNumber`. Null when there is nothing left
+   *  to open (mirrors `hasUnopenedTier` being false). */
+  nextTierNumber: number | null;
 }
 
 export interface CancelledUntoldDate {
@@ -56,6 +60,11 @@ export interface FeedRow {
   text: string;
   at: string; // "07:02" | "Sun 19:00"
   affordance: FeedAffordance;
+  /** The specific booking ids this row describes (for "book" rows — the
+   *  artists who accepted). Undo must act on exactly these, never on every
+   *  soft-booked/confirmed booking for the date. Empty for kinds that have
+   *  no backing booking rows ("ask"/"draft"/"notify"). */
+  bookingIds: string[];
 }
 
 export interface TodayModel {
@@ -92,6 +101,11 @@ export interface AtRiskDateFacts {
   nextCastFreeCount: number;
   rosterCount: number;
   rosterFreeCount: number;
+  /** The tier number `openOfferTier` should open next, i.e. the lowest tier
+   *  in the ladder that has not been opened yet — null when `hasUnopenedTier`
+   *  is false (nothing left to open). This is what lets the "Open it up to
+   *  <cast>" button actually call `openOfferTier` instead of only navigating. */
+  nextTierNumber: number | null;
 }
 
 /**
@@ -126,6 +140,8 @@ export interface FeedInput {
   at: string;
   actedAt: string; // ISO
   emailedAt: string | null; // ISO, or null while the carrying email is unsent
+  /** The specific booking ids this row describes — see `FeedRow.bookingIds`. */
+  bookingIds: string[];
 }
 
 /**
@@ -179,6 +195,15 @@ function daysBetween(dateKey: string, fromKey: string): number {
   return Math.round(ms / 86_400_000);
 }
 
+/** `dayKey` plus one calendar day, as a `yyyy-mm-dd` string. Pure Y-M-D
+ *  arithmetic done in UTC so month/year rollovers are correct without any
+ *  timezone involved — `dayKey` is already a Berlin calendar-day key, not an
+ *  instant, so there is no DST to account for here. */
+function nextDayKey(dayKey: string): string {
+  const [year, month, day] = dayKey.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day + 1)).toISOString().slice(0, 10);
+}
+
 function showTitle(program: string | null, subProgram: string | null): string {
   return [program, subProgram].filter((part): part is string => !!part).join(", ") || "Untitled show";
 }
@@ -186,8 +211,15 @@ function showTitle(program: string | null, subProgram: string | null): string {
 /**
  * The undo invariant. An action is reversible only while the email that
  * carries it has not yet been sent. `emailedAt` non-null => "review".
- * A digest-delivery org also loses undo once `now` passes the digest hour
- * on the action's own day.
+ *
+ * For a digest-delivery org with no `emailedAt` yet, undo lasts until the
+ * NEXT digest occurrence strictly after `actedAt`: if the action happened
+ * before that day's digest hour, the boundary is that same day's digest
+ * hour; if it happened at or after it (the digest for that day has already
+ * run), the action rides tomorrow's digest instead, so the boundary is
+ * tomorrow's digest hour. An action taken at 19:30 Berlin — after a 19:00
+ * digest has already gone out — cannot have been carried by that digest; it
+ * stays undoable until the NEXT one, 24h later.
  */
 export function feedAffordance(
   row: { emailedAt: string | null; actedAt: string },
@@ -200,12 +232,18 @@ export function feedAffordance(
   // is no undo window to check the clock against.
   if (flow.offer_delivery === "immediate") return "review";
 
-  const nowIso = now.toISOString();
+  const digestMinutes = times.offerDigestHour * 60;
   const actedDay = berlinDayKey(row.actedAt);
+  const actedMinutes = berlinMinutesSinceMidnight(row.actedAt);
+  // The digest occurrence that actually carries this action: today's if the
+  // action landed before the digest ran, otherwise tomorrow's.
+  const boundaryDay = actedMinutes < digestMinutes ? actedDay : nextDayKey(actedDay);
+
+  const nowIso = now.toISOString();
   const nowDay = berlinDayKey(nowIso);
-  if (nowDay > actedDay) return "review"; // a later Berlin day: the digest already ran
-  if (nowDay < actedDay) return "undo"; // defensive: now before the action, shouldn't happen
-  return berlinMinutesSinceMidnight(nowIso) >= times.offerDigestHour * 60 ? "review" : "undo";
+  if (nowDay > boundaryDay) return "review"; // a later Berlin day: the carrying digest already ran
+  if (nowDay < boundaryDay) return "undo"; // still before the carrying digest's own day
+  return berlinMinutesSinceMidnight(nowIso) >= digestMinutes ? "review" : "undo";
 }
 
 export function computeToday(input: TodayInput, now: Date): TodayModel {
@@ -232,6 +270,7 @@ export function computeToday(input: TodayInput, now: Date): TodayModel {
       nextCastFreeCount: facts.nextCastFreeCount,
       rosterCount: facts.rosterCount,
       rosterFreeCount: facts.rosterFreeCount,
+      nextTierNumber: facts.nextTierNumber,
     });
   }
 
@@ -255,6 +294,7 @@ export function computeToday(input: TodayInput, now: Date): TodayModel {
     text: row.text,
     at: row.at,
     affordance: feedAffordance({ emailedAt: row.emailedAt, actedAt: row.actedAt }, input.flow, input.times, now),
+    bookingIds: row.bookingIds,
   }));
 
   return {

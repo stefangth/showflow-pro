@@ -19,6 +19,12 @@ export function TodayHeader({ openCount, fillingOnTheirOwn, bookedOvernight, tod
   const { t } = useTranslation("today");
   const done = openCount === 0;
 
+  // "sub" pluralizes on fillingOnTheirOwn (its own {{count}}); the booked-overnight
+  // figure inside it is a second quantity with its own zero/one/other shape, so it
+  // is resolved as its own translation first and interpolated in as plain text —
+  // i18next only ever pluralizes a string on its single "count" option.
+  const bookedText = t("header.bookedOvernight", { count: bookedOvernight });
+
   return (
     <div>
       <p className="m-0 text-[11px] font-semibold uppercase tracking-[1.6px] text-accent-text">
@@ -30,7 +36,7 @@ export function TodayHeader({ openCount, fillingOnTheirOwn, bookedOvernight, tod
       <p className="m-0 mt-1.5 text-sm text-muted-foreground">
         {done
           ? t("header.subDone", { count: bookedOvernight })
-          : t("header.sub", { count: fillingOnTheirOwn, bookedCount: bookedOvernight })}
+          : t("header.sub", { count: fillingOnTheirOwn, bookedText })}
       </p>
     </div>
   );
