@@ -38,11 +38,13 @@ Deno.test("booking templates: match all values and infer exact identity", () => 
     templates.classic,
   ), false);
   assertEquals(inferBookingTemplate(templates.direct.flow, templates.direct.times, templates), "direct");
+  // Autopilot is the recommended default, so a flow matching no template exactly
+  // falls back to Autopilot rather than Classic.
   assertEquals(inferBookingTemplate(
     { ...templates.fasttrack.flow, reference_field: { source: "program" } },
     templates.fasttrack.times,
     templates,
-  ), "classic");
+  ), "fasttrack");
 });
 
 Deno.test("normalizeBookingFlow: null and garbage return defaults", () => {

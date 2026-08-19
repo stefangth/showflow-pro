@@ -20,9 +20,11 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 
+// Autopilot leads: it is the recommended default template, so it is both the
+// left-most tab and the tab selected on open (see the `active` initial state).
 const TEMPLATE_LABELS: Record<BookingTemplateName, string> = {
-  classic: "Classic",
   fasttrack: "Autopilot",
+  classic: "Classic",
   direct: "Direct book",
   off: "Off",
 };
@@ -49,7 +51,7 @@ function timingValidationError(templates: BookingFlowTemplates): string | null {
 
 export function BookingTemplatesDefaultsCard() {
   const qc = useQueryClient();
-  const [active, setActive] = useState<BookingTemplateName>("classic");
+  const [active, setActive] = useState<BookingTemplateName>("fasttrack");
   const query = useQuery({
     queryKey: ["platform", "booking-flow-templates"],
     queryFn: () => fetchPlatformBookingTemplates(supabase),

@@ -176,7 +176,10 @@ export function bookingTemplateMatches(flow: BookingFlow, times: FlowTimes, temp
 }
 
 export function inferBookingTemplate(flow: BookingFlow, times: FlowTimes, templates: BookingFlowTemplates): BookingTemplateName {
-  return BOOKING_TEMPLATE_NAMES.find((name) => bookingTemplateMatches(flow, times, templates[name])) ?? "classic";
+  // Fall back to Autopilot (fasttrack) when the flow matches no template exactly:
+  // it is the recommended default, so an org with no chosen template is suggested
+  // Autopilot rather than Classic.
+  return BOOKING_TEMPLATE_NAMES.find((name) => bookingTemplateMatches(flow, times, templates[name])) ?? "fasttrack";
 }
 
 export function referenceLabel(args: {

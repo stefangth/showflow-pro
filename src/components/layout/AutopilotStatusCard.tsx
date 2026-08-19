@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/features/auth/AuthContext';
 import { useBookingFlow, useFlowTimes } from '@/hooks/useBookingFlow';
 import { useFeature } from '@/hooks/useEntitlements';
-import { hh, matchPreset, BOOKING_FLOW_DEFAULTS } from '@/lib/bookingFlow';
+import { hh, BOOKING_FLOW_DEFAULTS } from '@/lib/bookingFlow';
 import { BOOKING_ENGINE_DEFAULTS, ROUTES } from '@/config/app.config';
 
 /**
@@ -14,11 +14,16 @@ import { BOOKING_ENGINE_DEFAULTS, ROUTES } from '@/config/app.config';
  *
  * Copy is derived from the org's LIVE booking-flow policy (`useBookingFlow`), never the
  * preset name, so it can never assert behavior the org doesn't actually have:
- *  - Hidden outright when the `booking_flow` module is off for this org, the flow is
- *    paused (`active: false`), or the org's flow is not the Autopilot preset (fasttrack).
- *    The card's title is literally "Autopilot on", so it must only appear when Autopilot
- *    is the active mode — never for Classic, Direct book, or a custom flow, where that
- *    claim would be untrue.
+ *  - Hidden outright when the `booking_flow` module is off for this org, or the flow is
+ *    paused (`active: false`).
+ *  - Shown only for Autopilot behavior — asks go out AND a yes books on its own:
+ *    `artist_acceptance && !producer_confirmation`. That is precisely what the card
+ *    copy asserts ("Asks go out. A yes becomes a booking."), and it distinguishes
+ *    Autopilot from Classic (a yes waits on a producer -> producer_confirmation) and
+ *    Direct book (no asks -> !artist_acceptance). Gating on the behavior rather than
+ *    the registry preset keeps it correct even when the org's Autopilot flow comes
+ *    from a platform template a super-admin has customized (so it no longer equals
+ *    the hard-coded fasttrack preset field-for-field).
  */
 export function AutopilotStatusCard() {
   const { t } = useTranslation('today');
@@ -32,16 +37,18 @@ export function AutopilotStatusCard() {
 
   const isArtistOnly = hasRole('artist') && !hasRole('producer') && !hasRole('admin');
 
-  // Only Autopilot (the fasttrack preset) may show this card — its title asserts
-  // "Autopilot on", which is false for Classic, Direct book, or any custom flow.
-  if (!bookingFlowEnabled || !flow.active || matchPreset(flow) !== 'fasttrack') return null;
+  // Only Autopilot behavior may show this card: asks go out and a yes books on its
+  // own. This excludes Classic (a yes waits) and Direct book (no asks), and stays
+  // correct when the org's Autopilot flow came from a customized platform template.
+  const isAutopilot = flow.artist_acceptance && !flow.producer_confirmation;
+  if (!bookingFlowEnabled || !flow.active || !isAutopilot) return null;
 
   const title = isArtistOnly ? t('sidebar.artist.title') : t('sidebar.producer.title');
+  // Shown only when !producer_confirmation, so the producer body is always the
+  // auto-confirm variant ("a yes becomes a booking").
   const body = isArtistOnly
     ? t('sidebar.artist.body')
-    : t(flow.producer_confirmation ? 'sidebar.producer.bodyConfirm' : 'sidebar.producer.body', {
-        time: hh(offerDigestHour),
-      });
+    : t('sidebar.producer.body', { time: hh(offerDigestHour) });
   const link = isArtistOnly ? t('sidebar.artist.link') : t('sidebar.producer.link');
   const to = isArtistOnly ? ROUTES.AVAILABILITY : `${ROUTES.SETTINGS}?tab=booking`;
 
