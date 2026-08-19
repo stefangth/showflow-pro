@@ -68,7 +68,7 @@ Deno.test("describeDateChanges renders a human summary", () => {
 
 Deno.test("digestEmailSubject is neutral when changes/cancellations are present", () => {
   assertEquals(digestEmailSubject({ bookings: [{}], scheduleChanges: [], cancellations: [] }),
-    "Your bookings are confirmed on ShowFlow");
-  assertEquals(digestEmailSubject({ scheduleChanges: [{}] }), "Your booking updates on ShowFlow");
-  assertEquals(digestEmailSubject({ cancellations: [{}] }), "Your booking updates on ShowFlow");
+    "You are booked on ShowFlow");
+  assertEquals(digestEmailSubject({ scheduleChanges: [{}] }), "Updates to your dates on ShowFlow");
+  assertEquals(digestEmailSubject({ cancellations: [{}] }), "Updates to your dates on ShowFlow");
 });

@@ -47,7 +47,7 @@ describe("resolveEmailCopy", () => {
 
     expect(resolved["offer-immediate.heading"]).toBe("Your next performance");
     expect(resolved["offer-immediate.footer"]).toBe("Questions? Reach out to your point of contact and they'll be glad to help.");
-    expect(EMAIL_COPY_DEFAULTS["offer-immediate.heading"]).toBe("You have a new offer");
+    expect(EMAIL_COPY_DEFAULTS["offer-immediate.heading"]).toBe("Can you do this one?");
   });
 
   it("carries a stored org-invitation.intro override forward onto the new productIntro slot", () => {
@@ -91,7 +91,7 @@ describe("resolveEmailCopy", () => {
 describe("compactEmailCopy", () => {
   it("removes default and blank draft values but keeps a real override", () => {
     expect(compactEmailCopy({
-      "offer-immediate.heading": "You have a new offer",
+      "offer-immediate.heading": "Can you do this one?",
       "offer-immediate.footer": " ",
       "offer-immediate.ctaLabel": "Answer now",
     })).toEqual({ "offer-immediate.ctaLabel": "Answer now" });
@@ -170,9 +170,9 @@ describe("email copy registry", () => {
 
   it("keeps dynamic plural branches as explicit singular and plural entries", () => {
     expect(EMAIL_COPY_DEFAULTS["artist-offer-digest.pendingOfferSingular"])
-      .toBe("pending offer");
+      .toBe("date to answer");
     expect(EMAIL_COPY_DEFAULTS["artist-offer-digest.pendingOfferPlural"])
-      .toBe("pending offers");
+      .toBe("dates to answer");
     expect(EMAIL_COPY_DEFAULTS["airtable-sync-held.heldRecordSingular"])
       .toBe("record");
     expect(EMAIL_COPY_DEFAULTS["airtable-sync-held.heldRecordPlural"])

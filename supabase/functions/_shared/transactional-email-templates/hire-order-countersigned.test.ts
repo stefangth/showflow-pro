@@ -13,7 +13,7 @@ Deno.test("hire-order-countersigned is registered and renders", async () => {
   // React.createElement matches the existing pattern in app-links.test.ts,
   // preview-transactional-email/index.ts, and send-transactional-email/index.ts.
   const html = await render(React.createElement(entry.component, entry.previewData ?? {}));
-  assert(html.includes("countersigned") || html.includes("Countersigned"), "mentions countersigned");
+  assert(html.includes("signed") || html.includes("Signed"), "mentions signed");
   const subject = typeof entry.subject === "function" ? entry.subject(entry.previewData ?? {}) : entry.subject;
   assertEquals(typeof subject, "string");
 });
