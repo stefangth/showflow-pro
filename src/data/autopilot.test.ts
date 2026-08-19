@@ -6,7 +6,6 @@ import {
   fetchAutopilotFeed,
   fetchBouncedAsks,
   fetchCancelledUntoldDates,
-  setDateSlots,
 } from "./autopilot";
 
 const AT_TIME = /^[A-Za-z]{3} \d{2}:\d{2}$/;
@@ -413,29 +412,5 @@ describe("fetchAutopilotFeed", () => {
       .toContainEqual({ table: "show_dates", method: "eq", args: ["org_id", "org1"] });
     expect(fake.calls.filter((c) => c.table === "booking_audit_log" && c.method === "eq"))
       .toContainEqual({ table: "booking_audit_log", method: "eq", args: ["booking.org_id", "org1"] });
-  });
-});
-
-describe("setDateSlots", () => {
-  it("reads the existing custom jsonb, merges main_cast_slots, and writes it back", async () => {
-    const fake = createFakeSupabase({
-      show_dates: { data: { custom: { some_other_key: "keep-me" } }, error: null },
-    });
-
-    await setDateSlots(asSupabase(fake), { showDateId: "d1", mainCast: 3 });
-
-    const readEq = fake.calls.find((c) => c.table === "show_dates" && c.method === "eq" && c.args[0] === "id");
-    expect(readEq?.args).toEqual(["id", "d1"]);
-    const updateCall = fake.calls.find((c) => c.table === "show_dates" && c.method === "update");
-    expect(updateCall?.args[0]).toEqual({ custom: { some_other_key: "keep-me", main_cast_slots: 3 } });
-  });
-
-  it("merges into an empty custom when the date has none yet", async () => {
-    const fake = createFakeSupabase({
-      show_dates: { data: { custom: null }, error: null },
-    });
-    await setDateSlots(asSupabase(fake), { showDateId: "d1", mainCast: 2 });
-    const updateCall = fake.calls.find((c) => c.table === "show_dates" && c.method === "update");
-    expect(updateCall?.args[0]).toEqual({ custom: { main_cast_slots: 2 } });
   });
 });

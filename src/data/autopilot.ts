@@ -345,12 +345,13 @@ export async function fetchAtRiskDateFacts(
 
     let nextCastIds: string[] = [];
     if (nextTier === 99) {
+      interface CastIdRow { cast_id: string }
       const { data: adHocRows, error: adHocErr } = await client
         .from("show_date_cast_eligibility")
         .select("cast_id")
         .eq("show_date_id", d.id);
       if (adHocErr) throw adHocErr;
-      nextCastIds = ((adHocRows ?? []) as { cast_id: string }[]).map((r) => r.cast_id);
+      nextCastIds = ((adHocRows ?? []) as unknown as CastIdRow[]).map((r) => r.cast_id);
     } else if (nextTier !== null && d.city_id) {
       if (tiers.source === "show") {
         const showPriorities = await fetchShowPriorityRows(client, d.show_id);
@@ -358,6 +359,7 @@ export async function fetchAtRiskDateFacts(
           .filter((r) => r.cityId === d.city_id && r.priority === nextTier)
           .map((r) => r.castId);
       } else {
+        interface CastIdRow { cast_id: string }
         const { data: cityRows, error: cityErr } = await client
           .from("cast_city_priority")
           .select("cast_id")
@@ -365,7 +367,7 @@ export async function fetchAtRiskDateFacts(
           .eq("city_id", d.city_id)
           .eq("priority", nextTier);
         if (cityErr) throw cityErr;
-        nextCastIds = ((cityRows ?? []) as { cast_id: string }[]).map((r) => r.cast_id);
+        nextCastIds = ((cityRows ?? []) as unknown as CastIdRow[]).map((r) => r.cast_id);
       }
     }
     nextCastIds = Array.from(new Set(nextCastIds));
@@ -373,20 +375,22 @@ export async function fetchAtRiskDateFacts(
     let nextCastName: string | null = null;
     let nextCastFreeCount = 0;
     if (nextCastIds.length > 0) {
+      interface CastNameRow { id: string; name: string }
       const { data: castRows, error: castErr } = await client
         .from("casts")
         .select("id, name")
         .in("id", nextCastIds);
       if (castErr) throw castErr;
-      const names = ((castRows ?? []) as { id: string; name: string }[]).map((r) => r.name);
+      const names = ((castRows ?? []) as unknown as CastNameRow[]).map((r) => r.name);
       nextCastName = names.length > 0 ? names.join(", ") : null;
 
+      interface CastMemberRow { artist_id: string }
       const { data: memberRows, error: memberErr } = await client
         .from("cast_members")
         .select("artist_id")
         .in("cast_id", nextCastIds);
       if (memberErr) throw memberErr;
-      const memberIds = new Set(((memberRows ?? []) as { artist_id: string }[]).map((r) => r.artist_id));
+      const memberIds = new Set(((memberRows ?? []) as unknown as CastMemberRow[]).map((r) => r.artist_id));
       nextCastFreeCount = [...memberIds].filter((id) => rosterIdSet.has(id) && isFree(id)).length;
     }
 
@@ -597,38 +601,4 @@ export async function fetchAutopilotFeed(
   }
 
   return rows;
-}
-
-/**
- * "Run the show with 1 fewer": narrows a single date's required main-cast
- * count without touching the show's own (every-date) `main_cast_slots`.
- *
- * KNOWN GAP (see the Task 3 report): the only existing per-date extensibility
- * column is `show_dates.custom` (jsonb) — nothing else on `show_dates`
- * expresses a required-slot override, and the task brief forbids new
- * migrations. This merges `{ main_cast_slots: mainCast }` into `custom`, but
- * neither `computeTierAttention` (`src/lib/bookingCockpit.ts`) nor the DB's
- * `compute_show_date_status` trigger currently reads `custom` for the
- * required-slot count — both read only `shows.main_cast_slots`. Until one of
- * them is taught to prefer a `custom.main_cast_slots` override when present,
- * this write has no visible effect on the board or the date's fill status.
- * Read-modify-write because PostgREST cannot express a partial jsonb merge
- * in a single `.update()` call.
- */
-export async function setDateSlots(
-  client: SupabaseClient<Database>,
-  args: { showDateId: string; mainCast: number },
-): Promise<void> {
-  const { data, error: readErr } = await client
-    .from("show_dates")
-    .select("custom")
-    .eq("id", args.showDateId)
-    .maybeSingle();
-  if (readErr) throw readErr;
-  const existing = (data?.custom ?? {}) as Record<string, unknown>;
-  const { error } = await client
-    .from("show_dates")
-    .update({ custom: { ...existing, main_cast_slots: args.mainCast } })
-    .eq("id", args.showDateId);
-  if (error) throw error;
 }
