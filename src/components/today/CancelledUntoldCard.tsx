@@ -12,8 +12,13 @@ interface CancelledUntoldCardProps {
 /** Locale-aware "A and B" / "A, B and C" joiner — native Intl, no hardcoded
  *  " and " literal (that would bypass i18n for German). Duplicated from
  *  BouncedAsksBanner (2 call sites, not worth a shared module). */
+interface ListFormatCtor {
+  new (locale: string, options: { style: "long"; type: "conjunction" }): { format: (list: string[]) => string };
+}
+
 function joinNames(names: string[], locale: string): string {
-  return new Intl.ListFormat(locale, { style: "long", type: "conjunction" }).format(names);
+  const ListFormatImpl = (Intl as unknown as { ListFormat: ListFormatCtor }).ListFormat;
+  return new ListFormatImpl(locale, { style: "long", type: "conjunction" }).format(names);
 }
 
 /**
