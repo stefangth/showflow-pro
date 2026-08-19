@@ -125,8 +125,8 @@ describe("FlowStep", () => {
     renderWithProviders(<FlowStep orgId="org-1" onDone={() => {}} />);
 
     fireEvent.click(await screen.findByRole("button", { name: /autopilot/i }));
-    expect(screen.getByText(/tiers open manually/i)).toBeInTheDocument();
-    expect(screen.getByText(/72 h response window/i)).toBeInTheDocument();
+    expect(screen.getByText(/you send each ask yourself/i)).toBeInTheDocument();
+    expect(screen.getByText(/answer by 72 h/i)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /use autopilot/i }));
 
     await waitFor(() => expect(upsertOrgSettings).toHaveBeenCalledWith(
