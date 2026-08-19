@@ -51,7 +51,7 @@ describe('AgendaLens', () => {
     render(<AgendaLens entries={[e]} onOpenEntry={vi.fn()} onAction={onAction} />);
 
     const actionBtn = screen.getByTestId('agenda-action-pd-3');
-    expect(actionBtn).toHaveTextContent('Generate hire order');
+    expect(actionBtn).toHaveTextContent('Draft the contract');
     fireEvent.click(actionBtn);
     expect(onAction).toHaveBeenCalledTimes(1);
     expect(onAction).toHaveBeenCalledWith(e, 'generate');
@@ -84,7 +84,7 @@ describe('AgendaLens', () => {
         onAction={vi.fn()}
       />
     );
-    expect(screen.getByTestId('agenda-action-a')).toHaveTextContent('Confirm holds');
+    expect(screen.getByTestId('agenda-action-a')).toHaveTextContent('Book who said yes');
     expect(screen.getByTestId('agenda-action-b')).toHaveTextContent('Open casting');
     expect(screen.queryByTestId('agenda-action-c')).not.toBeInTheDocument();
   });

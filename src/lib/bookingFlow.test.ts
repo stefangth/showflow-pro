@@ -19,7 +19,7 @@ import {
 describe("booking flow templates", () => {
   it("uses each template's own defaults for a partial definition", () => {
     const templates = normalizeBookingFlowTemplates({ fasttrack: { flow: {}, times: {} } });
-    expect(templates.fasttrack.flow.offer_delivery).toBe("immediate");
+    expect(templates.fasttrack.flow.offer_delivery).toBe("digest");
     expect(templates.fasttrack.flow.producer_confirmation).toBe(false);
   });
   it("falls back per malformed template without corrupting valid siblings", () => {
@@ -125,6 +125,18 @@ describe("normalizeBookingFlow", () => {
   });
 });
 
+describe("autopilot (fasttrack preset) delivers by digest", () => {
+  // The preset KEY stays "fasttrack" (DB rows, PresetName, template defaults all key on
+  // it); only its offer_delivery field and its display label ("Autopilot") change. See
+  // CLAUDE.md's mirror rule: supabase/functions/_shared/bookingFlow.ts must match.
+  it("fasttrack preset now delivers offers by digest, not immediately", () => {
+    expect(BOOKING_FLOW_PRESETS.fasttrack.offer_delivery).toBe("digest");
+  });
+  it("matchPreset still round-trips an autopilot flow to the fasttrack key", () => {
+    expect(matchPreset(applyPreset(BOOKING_FLOW_DEFAULTS, "fasttrack"))).toBe("fasttrack");
+  });
+});
+
 describe("presets", () => {
   it("classic preset equals the defaults (minus reference_field and active)", () => {
     const { reference_field: _ref, active: _active, ...defaults } = BOOKING_FLOW_DEFAULTS;
@@ -136,7 +148,7 @@ describe("presets", () => {
       reference_field: { source: "custom", custom_field_id: "cf-1" },
     });
     const fast = applyPreset(start, "fasttrack");
-    expect(fast.offer_delivery).toBe("immediate");
+    expect(fast.offer_delivery).toBe("digest");
     expect(fast.producer_confirmation).toBe(false);
     expect(fast.reference_field).toEqual({ source: "custom", custom_field_id: "cf-1" });
   });
@@ -160,20 +172,20 @@ describe("presets", () => {
 const TIMES = { windowHours: 48, offerDigestHour: 19, confirmationDigestHour: 20 };
 
 describe("lifecycleChips", () => {
-  it("classic: offered → soft booked → confirmed", () => {
+  it("classic: asked → said yes, waiting on you → booked", () => {
     expect(lifecycleChips(BOOKING_FLOW_DEFAULTS).map((c) => c.label)).toEqual([
-      "Offered",
-      "Soft booked",
-      "Confirmed",
+      "Asked",
+      "Said yes, waiting on you",
+      "Booked",
     ]);
   });
-  it("auto-confirm: offered → confirmed", () => {
+  it("auto-confirm: asked → booked", () => {
     const flow = normalizeBookingFlow({ producer_confirmation: false });
-    expect(lifecycleChips(flow).map((c) => c.label)).toEqual(["Offered", "Confirmed"]);
+    expect(lifecycleChips(flow).map((c) => c.label)).toEqual(["Asked", "Booked"]);
   });
-  it("direct: direct booking → confirmed", () => {
+  it("direct: direct booking → booked", () => {
     const flow = applyPreset(BOOKING_FLOW_DEFAULTS, "direct");
-    expect(lifecycleChips(flow).map((c) => c.label)).toEqual(["Direct booking", "Confirmed"]);
+    expect(lifecycleChips(flow).map((c) => c.label)).toEqual(["Direct booking", "Booked"]);
     expect(lifecycleChips(flow)[0].tone).toBe("neutral");
   });
 });
@@ -190,12 +202,12 @@ describe("inPracticeRows", () => {
     const artist = inPracticeRows(BOOKING_FLOW_DEFAULTS, TIMES)[0].text;
     expect(artist).toContain("19:00");
     expect(artist).toContain("48 h");
-    expect(artist).toContain("soft-books");
+    expect(artist).toContain("waiting on you");
   });
-  it("direct mode: artist never sees an offer, producer books directly", () => {
+  it("direct mode: artist never sees an ask, producer books directly", () => {
     const rows = inPracticeRows(applyPreset(BOOKING_FLOW_DEFAULTS, "direct"), TIMES);
-    expect(rows[0].text).toContain("Never sees an offer");
-    expect(rows[1].text).toContain("eligibility list");
+    expect(rows[0].text).toContain("Never sees an ask");
+    expect(rows[1].text).toContain("who can be asked");
   });
   it("direct mode with auto_open_tier1 still true does not claim tier 1 auto-opens", () => {
     const flow = normalizeBookingFlow({ ...applyPreset(BOOKING_FLOW_DEFAULTS, "direct"), auto_open_tier1: true });
@@ -212,25 +224,25 @@ describe("inPracticeRows", () => {
 });
 
 describe("flowPreviewRows", () => {
-  it("classic shows digest send and manual tier wait", () => {
+  it("classic shows daily send and manual group wait", () => {
     const texts = flowPreviewRows(BOOKING_FLOW_DEFAULTS, TIMES).map((r) => r.text).join("\n");
-    expect(texts).toContain("Offer digest emailed");
-    expect(texts).toContain("48 h response window");
+    expect(texts).toContain("Ask daily send goes out");
+    expect(texts).toContain("48 h to answer by");
   });
-  it("fast-track shows immediate email, reminder, and auto-escalation", () => {
+  it("autopilot (fasttrack preset) shows daily send, reminder, and auto-escalation", () => {
     const texts = flowPreviewRows(applyPreset(BOOKING_FLOW_DEFAULTS, "fasttrack"), TIMES)
       .map((r) => r.text)
       .join("\n");
-    expect(texts).toContain("Offers emailed immediately");
+    expect(texts).toContain("Ask daily send goes out");
     expect(texts).toContain("expiry reminder");
-    expect(texts).toContain("tier 2 opens automatically");
+    expect(texts).toContain("next group asked automatically");
   });
-  it("direct mode has no offer rows", () => {
+  it("direct mode has no ask rows", () => {
     const texts = flowPreviewRows(applyPreset(BOOKING_FLOW_DEFAULTS, "direct"), TIMES)
       .map((r) => r.text)
       .join("\n");
-    expect(texts).toContain("eligibility list");
-    expect(texts).not.toContain("digest emailed");
+    expect(texts).toContain("who can be asked");
+    expect(texts).not.toContain("daily send goes out");
   });
   it("contains no em- or en-dashes for any preset", () => {
     for (const preset of ["classic", "fasttrack", "direct"] as const) {
@@ -305,13 +317,13 @@ describe("describeAuditEntry", () => {
         reference_field: { source: "program" },
       },
     });
-    expect(text).toContain("Offer delivery: daily digest → immediate");
+    expect(text).toContain("Ask delivery: daily send → immediate");
     expect(text).toContain("Reference field: show label → program");
   });
   it("formats scalar setting keys", () => {
     expect(
       describeAuditEntry({ key: "offer_response_window_hours", old_value: 72, new_value: 48 }),
-    ).toBe("Response window: 72 → 48");
+    ).toBe("Answer by: 72 → 48");
   });
   it("uses a friendly label for template identity changes", () => {
     expect(

@@ -50,19 +50,19 @@ describe("ShowDateFormDialog", () => {
   it("checks opening tier-1 offers for a new date when the org's flow auto-opens tier 1", () => {
     mockFlow = { ...BOOKING_FLOW_DEFAULTS, auto_open_tier1: true, artist_acceptance: true };
     renderWithProviders(<ShowDateFormDialog open onOpenChange={() => {}} mode="create" defaultShowId="s1" />);
-    expect(screen.getByRole("checkbox", { name: /open tier-1 offers now/i })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: /start asking now/i })).toBeChecked();
   });
 
   it("leaves opening tier-1 offers unchecked for a new date when the org's flow does not auto-open tier 1", () => {
     mockFlow = { ...BOOKING_FLOW_DEFAULTS, auto_open_tier1: false, artist_acceptance: true };
     renderWithProviders(<ShowDateFormDialog open onOpenChange={() => {}} mode="create" defaultShowId="s1" />);
-    expect(screen.getByRole("checkbox", { name: /open tier-1 offers now/i })).not.toBeChecked();
+    expect(screen.getByRole("checkbox", { name: /start asking now/i })).not.toBeChecked();
   });
 
   it("references the booking flow setting the tier-1 default follows", () => {
     mockFlow = { ...BOOKING_FLOW_DEFAULTS, auto_open_tier1: true, artist_acceptance: true };
     renderWithProviders(<ShowDateFormDialog open onOpenChange={() => {}} mode="create" defaultShowId="s1" />);
-    expect(screen.getByText(/Open tier 1 automatically when a new date is ready/i)).toBeInTheDocument();
+    expect(screen.getByText(/Start asking automatically when a new date is ready/i)).toBeInTheDocument();
   });
 
   // The default re-seeds from the flow when the query resolves, but a producer who toggles the
@@ -71,7 +71,7 @@ describe("ShowDateFormDialog", () => {
     mockFlow = { ...BOOKING_FLOW_DEFAULTS, auto_open_tier1: true, artist_acceptance: true };
     const props = { open: true, onOpenChange: () => {}, mode: "create" as const, defaultShowId: "s1" };
     const { rerender } = renderWithProviders(<ShowDateFormDialog {...props} />);
-    const checkbox = screen.getByRole("checkbox", { name: /open tier-1 offers now/i });
+    const checkbox = screen.getByRole("checkbox", { name: /start asking now/i });
     expect(checkbox).toBeChecked();
     fireEvent.click(checkbox);
     expect(checkbox).not.toBeChecked();
@@ -79,7 +79,7 @@ describe("ShowDateFormDialog", () => {
     mockFlow = { ...BOOKING_FLOW_DEFAULTS, auto_open_tier1: true, artist_acceptance: true };
     rerender(<ShowDateFormDialog {...props} />);
 
-    expect(screen.getByRole("checkbox", { name: /open tier-1 offers now/i })).not.toBeChecked();
+    expect(screen.getByRole("checkbox", { name: /start asking now/i })).not.toBeChecked();
   });
 
   it("create requires a production and a date", async () => {
@@ -314,14 +314,14 @@ describe("ShowDateFormDialog", () => {
   it("states the dates-source note in create mode", () => {
     renderWithProviders(<ShowDateFormDialog open onOpenChange={() => {}} mode="create" />);
     expect(
-      screen.getByText(/You can add a show date by hand here\. If your workspace syncs from Airtable/),
+      screen.getByText(/You can add a date by hand here\. If your workspace syncs from Airtable/),
     ).toBeInTheDocument();
   });
 
   it("does not state the dates-source note in edit mode", () => {
     mockFlow = { ...BOOKING_FLOW_DEFAULTS };
     renderWithProviders(<ShowDateFormDialog open onOpenChange={() => {}} mode="edit" showDate={editShowDate} />);
-    expect(screen.queryByText(/You can add a show date by hand here/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/You can add a date by hand here/)).not.toBeInTheDocument();
   });
 
   // Radix wires DialogDescription to the dialog's aria-describedby. Two descriptions in one
@@ -346,6 +346,6 @@ describe("ShowDateFormDialog", () => {
   it("backs the dialog's aria-describedby with exactly one description in create mode", () => {
     const { baseElement } = renderWithProviders(<ShowDateFormDialog open onOpenChange={() => {}} mode="create" />);
     expect(describedByCount(baseElement)).toBe(1);
-    expect(screen.getByText(/You can add a show date by hand here/)).toBeInTheDocument();
+    expect(screen.getByText(/You can add a date by hand here/)).toBeInTheDocument();
   });
 });

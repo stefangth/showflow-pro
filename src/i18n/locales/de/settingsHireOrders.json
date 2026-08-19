@@ -4,7 +4,7 @@
       "letterhead": "Briefkopf",
       "terms": "Bedingungen",
       "numbering": "Nummerierung",
-      "orderDefaults": "Auftragsvorgaben",
+      "orderDefaults": "Vertragsvorgaben",
       "countersign": "Gegenzeichnungsmodus",
       "copy": "PDF-Texte",
       "theme": "PDF-Vorlage"
@@ -48,7 +48,7 @@
   },
   "numberingCard": {
     "title": "Nummerierung",
-    "description": "Steuert die Auftragsnummer, die auf jedem Engagementvertrag steht. Unterstützte Platzhalter: {prefix}, {yyyy}, {mm}, {dd}, {mmdd}, {seq}, {cast}, {cast|seq}.",
+    "description": "Steuert die Nummer, die auf jedem Engagementvertrag steht. Unterstützte Platzhalter: {prefix}, {yyyy}, {mm}, {dd}, {mmdd}, {seq}, {cast}, {cast|seq}.",
     "saved": "Nummerierung gespeichert",
     "loadError": "Die Nummerierungseinstellungen konnten nicht geladen werden.",
     "prefix": "Präfix",
@@ -57,10 +57,10 @@
     "save": "Nummerierung speichern"
   },
   "orderDefaultsCard": {
-    "title": "Auftragsvorgaben",
-    "description": "Füllt Honorar, Berechnungsart und Währung eines neuen Engagementvertrags vor. Ein Honorar pro Termin wird mit der Anzahl der Engagement-Termine im Auftrag multipliziert. Das Produktionsteam kann es jederzeit pro Auftrag anpassen.",
-    "saved": "Auftragsvorgaben gespeichert",
-    "loadError": "Die Auftragsvorgaben konnten nicht geladen werden.",
+    "title": "Vertragsvorgaben",
+    "description": "Füllt Honorar, Berechnungsart und Währung eines neuen Engagementvertrags vor. Ein Honorar pro Termin wird mit der Anzahl der Engagement-Termine im Vertrag multipliziert. Das Produktionsteam kann es jederzeit pro Vertrag anpassen.",
+    "saved": "Vertragsvorgaben gespeichert",
+    "loadError": "Die Vertragsvorgaben konnten nicht geladen werden.",
     "defaultFee": "Standardhonorar",
     "noDefault": "Kein Standardwert",
     "currency": "Währung",
@@ -71,7 +71,7 @@
   },
   "pdfTemplateCard": {
     "title": "PDF-Vorlage",
-    "description": "Texte, Schriften, Größen und Farben für das Engagementvertrag-PDF. Bearbeite ein Element und sieh die Änderung sofort im Dokument. Änderungen gelten für den nächsten ausgestellten Auftrag, nicht für bereits ausgestellte Dokumente.",
+    "description": "Texte, Schriften, Größen und Farben für das Engagementvertrag-PDF. Bearbeite ein Element und sieh die Änderung sofort im Dokument. Änderungen gelten für den nächsten ausgestellten Vertrag, nicht für bereits ausgestellte Dokumente.",
     "loadError": "Die Einstellungen der PDF-Vorlage konnten nicht geladen werden.",
     "summary": "{{family}} bei {{percent}}%, {{customised}}",
     "customisedNone": "keine angepassten Elemente",
@@ -107,9 +107,9 @@
   },
   "countersignFields": {
     "electronicTitle": "Artist unterschreibt in ShowFlow",
-    "electronicBody": "Der Artist prüft und unterschreibt den ausgestellten Auftrag in der App. Unterschrift, Zeitstempel und IP-Adresse werden dazu gespeichert.",
+    "electronicBody": "Der Artist prüft und unterschreibt den ausgestellten Vertrag in der App. Unterschrift, Zeitstempel und IP-Adresse werden dazu gespeichert.",
     "manualTitle": "Unterschriften außerhalb von ShowFlow",
-    "manualBody": "Das Produktionsteam markiert den Auftrag als gegengezeichnet, sobald der Artist anderswo unterschrieben hat.",
+    "manualBody": "Das Produktionsteam markiert den Vertrag als gegengezeichnet, sobald der Artist anderswo unterschrieben hat.",
     "emailProducersTitle": "Auch dem Produktionsteam die unterschriebene Kopie mailen",
     "emailProducersBody": "Wenn der Artist unterschreibt, erhält das zugewiesene Produktionsteam eine Kopie per E-Mail. Das Produktionsteam wird in der App in jedem Fall benachrichtigt."
   },

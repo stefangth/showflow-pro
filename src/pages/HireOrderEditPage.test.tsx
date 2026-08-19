@@ -198,7 +198,7 @@ describe("HireOrderEditPage", () => {
       expect(screen.queryByLabelText("Role")).not.toBeInTheDocument();
       expect(screen.queryByRole("button", { name: /^save draft$/i })).not.toBeInTheDocument();
       expect(screen.queryByRole("button", { name: /issue and send/i })).not.toBeInTheDocument();
-      expect(screen.getByRole("button", { name: /view order/i })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /view contract/i })).toBeInTheDocument();
     },
   );
 
@@ -419,7 +419,7 @@ describe("HireOrderEditPage", () => {
   it("fetches an initial live preview on mount, before any edit", async () => {
     seedFor(order());
     renderPage();
-    const frame = await screen.findByTitle(/hire order live preview/i);
+    const frame = await screen.findByTitle(/contract live preview/i);
     await waitFor(() => expect(frame).toHaveAttribute("src", `data:application/pdf;base64,${PREVIEW_PDF_B64}`));
     expect(previewInvokeCalls().length).toBeGreaterThanOrEqual(1);
   });
@@ -463,7 +463,7 @@ describe("HireOrderEditPage", () => {
       // its result is the final state — never clobbered back to the mount
       // cycle's own (stale) response.
       await waitFor(() => {
-        const frame = screen.getByTitle(/hire order live preview/i);
+        const frame = screen.getByTitle(/contract live preview/i);
         expect(frame).toHaveAttribute("src", "data:application/pdf;base64,RURJVA==");
       });
       expect(invokeCount).toBe(2);
@@ -480,7 +480,7 @@ describe("HireOrderEditPage", () => {
     async () => {
       seedFor(order());
       renderPage();
-      await screen.findByTitle(/hire order live preview/i);
+      await screen.findByTitle(/contract live preview/i);
       await waitFor(() => expect(previewInvokeCalls().length).toBe(1));
 
       fireEvent.change(screen.getByLabelText("Notes"), { target: { value: "Updated note" } });

@@ -18,14 +18,14 @@ const STEP2 = {
 const STEP3 = {
   label: LABELS.youConfirm,
   text: {
-    en: 'Accepted offers become soft-booked depending on your setting. Confirming is yours, singly, from the queue, or across a range of dates you select in Month or Season.',
+    en: 'Accepted offers become said yes, waiting on you depending on your setting. Confirming is yours, singly, from the queue, or across a range of dates you select in Month or Season.',
     de: 'Angenommene Angebote werden je nach Einstellung vorläufig gebucht. Das Bestätigen liegt bei dir, einzeln, aus der Queue, oder für einen Zeitraum, den du in Month oder Season auswählst.',
   },
 };
 const STEP4 = {
   label: LABELS.fullyFilled,
   text: {
-    en: 'At full main cast the date flips to fully filled and, if the module is on, drafts its hire orders.',
+    en: 'At full main cast the date flips to fully filled and, if the module is on, drafts its contracts.',
     de: 'Bei voller Hauptbesetzung springt der Termin auf voll besetzt und entwirft, wenn das Modul an ist, seine Engagementverträge.',
   },
 };

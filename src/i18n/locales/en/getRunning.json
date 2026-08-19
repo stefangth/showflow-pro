@@ -3,9 +3,9 @@
     "eyebrow": "{{org}} · get running",
     "fallbackOrg": "your workspace",
     "headline": {
-      "blocking_one": "One thing stands between you and your first offer",
-      "blocking_other": "{{count}} things stand between you and your first offer",
-      "ready": "You are ready to send your first offer",
+      "blocking_one": "One thing stands between you and your first ask",
+      "blocking_other": "{{count}} things stand between you and your first ask",
+      "ready": "You are ready to send your first ask",
       "complete": "Everything here is set up",
       "producerYours_one": "One task here is yours.",
       "producerYours_other": "{{count}} tasks here are yours.",
@@ -17,21 +17,21 @@
     "body": {
       "blocking_one": "It is yours to do and takes about {{minutes}} minutes. Nothing else here blocks anything, and nothing here stops you using the rest of the app.",
       "blocking_other": "They are yours to do and take about {{minutes}} minutes. Nothing else here blocks anything, and nothing here stops you using the rest of the app.",
-      "ready": "Everything blocking your first offer is done. The rest of this board is worth finishing, but nothing here holds you back anymore.",
+      "ready": "Everything blocking your first ask is done. The rest of this board is worth finishing, but nothing here holds you back anymore.",
       "complete": "Every task on this board is done. Come back to Settings any time if something changes.",
       "producer": "This is here so you know why Shows and Bookings looks empty, not so you can fix all of it."
     }
   },
   "nothingToSetUp": {
     "title": "Nothing to set up",
-    "body": "This workspace has no module that needs setup yet. Come back once booking or hire orders is switched on."
+    "body": "This workspace has no module that needs setup yet. Come back once booking or contracts is switched on."
   },
   "progress": {
     "title": "Set up",
     "of": "of {{total}} done",
     "module": {
       "booking": "Booking engine",
-      "hireOrders": "Hire orders",
+      "hireOrders": "Contracts",
       "on": "On",
       "off": "Off"
     },
@@ -50,7 +50,7 @@
       "title": "Make it bookable",
       "status": {
         "complete": "All set",
-        "blocking": "Blocks your first offer",
+        "blocking": "Blocks your first ask",
         "active": "Nothing blocking",
         "dormant": "Not started yet"
       }
@@ -62,7 +62,7 @@
         "active": "In progress",
         "dormant": "Not blocking yet"
       },
-      "note": "Needed before the first hire order goes out",
+      "note": "Needed before the first contract goes out",
       "doItNow": "Do it now"
     },
     "counts": {
@@ -71,7 +71,7 @@
     }
   },
   "chips": {
-    "blocksOffers": "Blocks offers",
+    "blocksOffers": "Blocks asks",
     "blocksBooking": "Blocks booking",
     "blocksIssuing": "Blocks issuing",
     "blocksFilling": "Holds up filling",
@@ -93,7 +93,7 @@
       "body": "Set by an admin. Waits on {{name}}.",
       "settingsLink": {
         "flow": "Change booking flow in Settings, Booking engine",
-        "timing": "Change offer timing in Settings, Booking engine",
+        "timing": "Change ask timing in Settings, Booking engine",
         "ladder": "Rank casts in Settings, Casts & coverage",
         "eligibility": "Link casts in Settings, Casts & coverage"
       }
@@ -103,8 +103,8 @@
       "slots": "Values · one number per show",
       "flow": "Choice · sets everything downstream",
       "people": "Roster · blocks booking",
-      "ladder": "Priorities · blocks offers",
-      "eligibility": "Coverage · blocks offers",
+      "ladder": "Priorities · blocks asks",
+      "eligibility": "Coverage · blocks asks",
       "timing": "Values · two fields",
       "team": "Team · admin only",
       "letterhead": "Document · blocks issuing",
@@ -119,14 +119,14 @@
       "dates": "Sync runs hourly",
       "slots": "Saved as you go",
       "flow": "Change is logged",
-      "people": "No email until you offer a date",
+      "people": "No email until you ask about a date",
       "ladder": "Ranking is per city",
       "eligibility": "A show's own cast beats the city ranking",
-      "timing": "Applies to tonight's digest",
+      "timing": "Applies to tonight's daily send",
       "team": "They get an email invite",
-      "letterhead": "Used on every order",
-      "terms": "Used on every order",
-      "countersign": "Used on every order"
+      "letterhead": "Used on every contract",
+      "terms": "Used on every contract",
+      "countersign": "Used on every contract"
     },
     "body": {
       "dates": {
@@ -141,14 +141,14 @@
         "setup": "Set up Airtable sync",
         "dividerOr": "or add one by hand",
         "newShow": "New show",
-        "unlocks": "Every downstream step reads from these dates: slots, priorities and eligibility.",
+        "unlocks": "Every downstream step reads from these dates: places, priorities and who can be asked.",
         "airtableDialogTitle": "Airtable sync"
       },
       "team": {
         "emailLabel": "Invite by email",
         "emailPlaceholder": "name@company.com",
         "send": "Send invite",
-        "unlocks": "Producers can take confirmations off your plate once offers start landing."
+        "unlocks": "Producers can take bookings off your plate once asks start landing."
       },
       "people": {
         "emptyBadge": "No artists yet",
@@ -161,7 +161,7 @@
         "add": "Add",
         "or": "or",
         "importButton": "Import a sheet",
-        "unlocks": "Offers and direct bookings both pick from this list. Artists get no email until you offer them a date."
+        "unlocks": "Asks and direct bookings both pick from this list. Artists get no email until you ask them about a date."
       },
       "ladder": {
         "createLabel": "New cast",
@@ -174,17 +174,17 @@
         "unrankedCount_other": "{{count}} unranked",
         "dateCount_one": "{{count}} date",
         "dateCount_other": "{{count}} dates",
-        "noTier1": "no tier 1",
-        "pickTier1": "Pick tier 1",
-        "addTierN": "Add tier {{n}}",
+        "noTier1": "no first group",
+        "pickTier1": "Pick the first group",
+        "addTierN": "Add group {{n}}",
         "noCastsAvailable": "No casts yet",
         "memberCount_one": "{{count}} member",
         "memberCount_other": "{{count}} members",
-        "unlocks_one": "Rank {{city}} too and {{count}} date becomes offerable in tonight's digest.",
-        "unlocks_other": "Rank {{city}} too and {{count}} dates become offerable in tonight's digest.",
-        "unlocksDone": "Every city with dates has a tier 1.",
-        "tierUpdated": "Tier {{tier}} set",
-        "tierUpdateFailed": "Could not set tier {{tier}}"
+        "unlocks_one": "Rank {{city}} too and {{count}} date becomes askable in tonight's daily send.",
+        "unlocks_other": "Rank {{city}} too and {{count}} dates become askable in tonight's daily send.",
+        "unlocksDone": "Every city with dates has a first group.",
+        "tierUpdated": "Group {{tier}} set",
+        "tierUpdateFailed": "Could not set group {{tier}}"
       },
       "eligibility": {
         "gapCount_one": "{{count}} gap",
@@ -196,9 +196,9 @@
         "memberCount_one": "{{count}} member",
         "memberCount_other": "{{count}} members",
         "nullCityNote": "Some dates have no city set. Fix the date to include it.",
-        "unlocks_one": "Link a cast to {{show}} and its {{count}} date becomes offerable.",
-        "unlocks_other": "Link a cast to {{show}} and its {{count}} dates become offerable.",
-        "unlocksDone": "Every show and city has a cast at tier 1.",
+        "unlocks_one": "Link a cast to {{show}} and its {{count}} date becomes askable.",
+        "unlocks_other": "Link a cast to {{show}} and its {{count}} dates become askable.",
+        "unlocksDone": "Every show and city has a cast in the first group.",
         "castLinked": "Cast linked",
         "castLinkFailed": "Could not link cast",
         "byProduction": "Coverage by production",
@@ -217,14 +217,14 @@
       "action": "Review"
     },
     "slots": {
-      "title": "Slots set on every show",
-      "subLabel": "Slots set on every show",
+      "title": "Places set on every show",
+      "subLabel": "Places set on every show",
       "description": "How many artists each show needs, main and understudy.",
       "action": "Resolve"
     },
     "flow": {
       "title": "Booking flow",
-      "description": "Offers go out in tiers. Tier 1 is asked first, later tiers open only if a tier falls short.",
+      "description": "Asks go out in groups. The first group is asked first, later groups open only if a group falls short.",
       "action": "Change"
     },
     "people": {
@@ -234,27 +234,27 @@
     },
     "ladder": {
       "title": "Rank your casts",
-      "description": "Cast priorities decide who is offered first. A city with no tier 1 cast opens to nobody.",
+      "description": "Cast priorities decide who is asked first. A city with no first group opens to nobody.",
       "action": "Rank here"
     },
     "eligibility": {
-      "title": "Check who is eligible",
+      "title": "Check who can be asked",
       "description": "Which casts belong to which show, in which city.",
       "action": "Open"
     },
     "timing": {
-      "title": "Confirm the offer timing",
-      "description": "When offers go out, and how long artists have to answer.",
+      "title": "Confirm the ask timing",
+      "description": "When asks go out, and how long artists have to answer.",
       "action": "Open"
     },
     "team": {
       "title": "Invite your production team",
-      "description": "The producers who plan dates, run offers and confirm bookings. Confirming can stay with you.",
+      "description": "The producers who plan dates, run asks and book the cast. Booking can stay with you.",
       "action": "Invite"
     },
     "letterhead": {
       "title": "Letterhead",
-      "description": "Your name, address and logo on every order.",
+      "description": "Your name, address and logo on every contract.",
       "action": "Open"
     },
     "terms": {
@@ -287,7 +287,7 @@
   "reference": {
     "title": "How this org works",
     "intro": "A read-only summary of the rules currently in effect for this workspace.",
-    "emptyModules": "Neither the booking engine nor hire orders is switched on for this workspace yet.",
+    "emptyModules": "Neither the booking engine nor contracts is switched on for this workspace yet.",
     "provenance": {
       "withDate": "Set by {{name}}, {{date}}",
       "nameOnly": "Set by {{name}}"
@@ -297,8 +297,8 @@
         "label": "Booking flow"
       },
       "offerTiming": {
-        "label": "Offer timing",
-        "value": "{{hour}} digest, {{hours}}h response window"
+        "label": "Ask timing",
+        "value": "{{hour}} daily send, {{hours}}h to answer"
       },
       "castCoverage": {
         "label": "Cast coverage",

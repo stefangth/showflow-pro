@@ -89,7 +89,7 @@ describe("AvailabilityPage — artist calendar surface (Task 17)", () => {
     // gone; the surface offers lens tabs instead.
     expect(screen.queryByRole("button", { name: /^list$/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^calendar$/i })).not.toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Offers" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Asks" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Month" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "All dates" })).toBeInTheDocument();
 
@@ -113,7 +113,7 @@ describe("AvailabilityPage — artist calendar surface (Task 17)", () => {
     // BOOKING_FLOW_DEFAULTS.producer_confirmation is true (no app_settings
     // override seeded), so accepting places a hold — the real
     // acceptConsequenceNote copy, not a stub.
-    expect(await screen.findByText("Offer accepted")).toBeInTheDocument();
+    expect(await screen.findByText("Said yes")).toBeInTheDocument();
 
     const calls = (client as { calls?: RecordedCall[] }).calls ?? [];
     const updateCall = calls.find((c) => c.table === "bookings" && c.method === "update");

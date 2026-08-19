@@ -53,7 +53,7 @@
     "bioLabel": "Bio",
     "skillsLabel": "Skills",
     "catalogCount": "{{held}} of {{total}} in the catalog",
-    "skillsHint": "Skills decide which dates {{name}} can be offered. Removing one takes them out of any offer that requires it.",
+    "skillsHint": "Skills decide which dates {{name}} can be asked about. Removing one takes them out of any ask that requires it.",
     "thisArtist": "this artist",
     "noSkills": "No skills yet.",
     "upcomingDates_one": "{{count}} upcoming date",
@@ -71,22 +71,22 @@
   },
   "linked": {
     "title": "Linked account",
-    "noLoginWithEmail": "No login account. Digests use the booking email ({{email}}).",
-    "noLoginNoEmail": "No login account. Digests use the booking email.",
+    "noLoginWithEmail": "No login account. Daily sends use the booking email ({{email}}).",
+    "noLoginNoEmail": "No login account. Daily sends use the booking email.",
     "inviteToApp": "Invite to app",
     "invitePending": "Invite pending. Awaiting acceptance.",
     "resend": "Resend",
     "loadingAccount": "Loading account…",
     "accountName": "Account name",
     "loginEmail": "Login email",
-    "digestGoesTo": "Digest goes to",
-    "detailsUnavailable": "Account details unavailable. Digests go to {{email}}.",
+    "digestGoesTo": "Daily send goes to",
+    "detailsUnavailable": "Account details unavailable. Daily sends go to {{email}}.",
     "theBookingEmail": "the booking email"
   },
   "unlinked": {
     "headingOrg": "You're on the {{orgName}} roster",
     "heading": "You're on the roster",
-    "body": "Your account is set up. An admin still needs to link it to your artist profile before your dates, casts and offers show up here. You'll get an email as soon as you're booked, so there's nothing you need to do right now."
+    "body": "Your account is set up. An admin still needs to link it to your artist profile before your dates, casts and asks show up here. You'll get an email as soon as you're booked, so there's nothing you need to do right now."
   },
   "import": {
     "title": "Import artists from a sheet",

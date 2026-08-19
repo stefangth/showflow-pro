@@ -19,14 +19,14 @@ const artist: MiniSteps = [
   {
     label: { en: 'Answer an offer', de: 'Angebot beantworten' },
     text: {
-      en: 'Accepting soft-books you. The producer confirms, and the confirmation digest tells you when.',
+      en: 'Accepting says yes. The producer confirms next, and the confirmation digest tells you when.',
       de: 'Mit dem Annehmen wirst du vorläufig gebucht. Das Produktionsteam bestätigt, und die Bestätigungsübersicht sagt dir, wann.',
     },
   },
   {
     label: { en: 'Confirmed', de: 'Bestätigt' },
     text: {
-      en: 'Once confirmed you are on the cast list, in the date chat, and any hire order comes to you.',
+      en: 'Once confirmed you are on the cast list, in the date chat, and any contract comes to you.',
       de: 'Sobald du bestätigt bist, stehst du auf der Besetzungsliste, bist im Termin-Chat und ein etwaiger Engagementvertrag kommt zu dir.',
     },
   },

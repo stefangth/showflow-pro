@@ -36,7 +36,7 @@ export const chatsArt: readonly [ReactNode, ReactNode, ReactNode, ReactNode] = [
       <span className="inline-flex h-[22px] items-center rounded-full bg-muted px-2 text-[10px] font-medium text-muted-foreground">+2</span>
     </div>
     <div className="text-[11px] text-muted-foreground">Admins and producers see every thread</div>
-    <div className="text-[11px] text-muted-foreground">Artists join on confirmed and soft-booked</div>
+    <div className="text-[11px] text-muted-foreground">Artists join once booked or once they say yes</div>
   </MiniCard>,
 
   // 03 Talk about the date — outgoing and incoming chat bubbles

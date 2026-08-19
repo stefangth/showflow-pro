@@ -165,7 +165,7 @@ describe("ShowDateDetailSheet direct-book wiring (design 1h)", () => {
     // rendered order follows the skill ids ("sk-combat" < "sk-voc"), not seed row order.
     expect(
       await screen.findByText(
-        "This date requires Stage combat and Vocals · 2 of 4 artists qualify and are not blocked.",
+        "This date requires Stage combat and Vocals · 2 of 4 artists qualify and are free.",
       ),
     ).toBeInTheDocument();
     // The stale, wrong-in-direct-mode label must not reappear.

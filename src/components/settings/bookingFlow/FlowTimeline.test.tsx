@@ -19,7 +19,7 @@ describe("FlowTimeline", () => {
     renderWithProviders(
       <FlowTimeline flow={BOOKING_FLOW_DEFAULTS} times={TIMES} onFlowChange={noop} onTimesChange={noop} customFields={[]} referencePreview="Offer: X · Apr 30" />,
     );
-    expect(screen.getByText("Open offer tier")).toBeInTheDocument();
+    expect(screen.getByText("Send the first ask")).toBeInTheDocument();
     expect(screen.getByText("Understudy promotion")).toBeInTheDocument();
     expect(screen.queryAllByText("Skipped")).toHaveLength(0);
   });
@@ -63,7 +63,7 @@ describe("FlowTimeline", () => {
     expect(referenceSelects).toHaveLength(2);
     referenceSelects.forEach((select) => expect(select).toBeDisabled());
 
-    const producerConfirmationSwitch = screen.getByRole("switch", { name: /producer confirmation/i });
+    const producerConfirmationSwitch = screen.getByRole("switch", { name: /the last word/i });
     expect(producerConfirmationSwitch).toHaveAttribute("aria-checked", "true");
   });
 
@@ -82,7 +82,7 @@ describe("FlowTimeline", () => {
         referencePreview="x"
       />,
     );
-    const producerConfirmationSwitch = screen.getByRole("switch", { name: /producer confirmation/i });
+    const producerConfirmationSwitch = screen.getByRole("switch", { name: /the last word/i });
     expect(producerConfirmationSwitch).toHaveAttribute("aria-checked", "true");
   });
 });

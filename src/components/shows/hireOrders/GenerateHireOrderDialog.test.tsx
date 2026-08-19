@@ -76,7 +76,7 @@ function renderDialog() {
 describe("GenerateHireOrderDialog", () => {
   it("renders the fee-only review with facts, no deposit/balance", () => {
     renderDialog();
-    expect(screen.getByText("Generate hire order")).toBeInTheDocument();
+    expect(screen.getByText("Generate contract")).toBeInTheDocument();
     expect(screen.getByText(/review the terms before issuing to ada lovelace/i)).toBeInTheDocument();
     expect(screen.getByLabelText("Engagement fee")).toHaveValue(500);
     expect(screen.getByText("Aurora Productions")).toBeInTheDocument();
@@ -417,7 +417,7 @@ describe("GenerateHireOrderDialog", () => {
     expect(screen.getByLabelText("Agent name")).toBeDisabled();
     expect(screen.getByLabelText("Agent email")).toBeDisabled();
     // The disabled state is explained, not silent, so the form doesn't read as broken.
-    expect(screen.getByText(/this order will use your saved default/i)).toBeInTheDocument();
+    expect(screen.getByText(/this contract will use your saved default/i)).toBeInTheDocument();
   });
 
   it("does not lock the agent inputs when there is no active org (letterhead query never runs)", () => {

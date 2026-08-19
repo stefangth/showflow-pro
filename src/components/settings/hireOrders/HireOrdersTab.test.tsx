@@ -62,7 +62,7 @@ describe("HireOrdersTab", () => {
     authAs("org-on");
     renderTab();
     await screen.findByText("Letterhead");
-    expect(screen.getByText("Order defaults")).toBeInTheDocument();
+    expect(screen.getByText("Contract defaults")).toBeInTheDocument();
     expect(screen.getByText("Numbering")).toBeInTheDocument();
     expect(screen.getByText("Terms")).toBeInTheDocument();
     expect(screen.getByText("PDF template")).toBeInTheDocument();

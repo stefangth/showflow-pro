@@ -15,11 +15,11 @@
     "minutes": "{{value}} min",
     "removedWillUseDefault": "Removed (will use default)",
     "untitledTemplate": "Untitled template",
-    "termsTemplateRemoved": "This order's saved terms template was removed. Choose one above before issuing.",
-    "noTermsConfigured": "No terms templates configured. Add one in Settings → Hire orders before issuing.",
+    "termsTemplateRemoved": "This contract's saved terms template was removed. Choose one above before issuing.",
+    "noTermsConfigured": "No terms templates configured. Add one in Settings → Contracts before issuing.",
     "chooseTermsFirst": "Choose a terms template before issuing",
     "noTermsConfiguredShort": "No terms templates configured",
-    "noPermissionIssue": "You don't have permission to issue hire orders"
+    "noPermissionIssue": "You don't have permission to issue contracts"
   },
   "hireOrdersPage": {
     "chipAll": "All",
@@ -28,18 +28,18 @@
     "chipIssued": "Awaiting",
     "chipCountersigned": "Countersigned",
     "workspace": "Workspace",
-    "title": "Hire orders",
-    "meta_one": "{{count}} order · {{value}} committed",
-    "meta_other": "{{count}} orders · {{value}} committed",
+    "title": "Contracts",
+    "meta_one": "{{count}} contract · {{value}} committed",
+    "meta_other": "{{count}} contracts · {{value}} committed",
     "setupChecklist": "Setup checklist",
     "importFromSpreadsheet": "Import from spreadsheet",
-    "newOrder": "New order",
-    "searchPlaceholder": "Search order number or artist",
-    "selectOrg": "Select an organization to view hire orders.",
-    "readyLead_one": "{{count}} date is fully cast and ready for an order.",
-    "readyLead_other": "{{count}} dates are fully cast and ready for an order.",
+    "newOrder": "New contract",
+    "searchPlaceholder": "Search contract number or artist",
+    "selectOrg": "Select an organization to view contracts.",
+    "readyLead_one": "{{count}} date is fully cast and ready for a contract.",
+    "readyLead_other": "{{count}} dates are fully cast and ready for a contract.",
     "readyLink": "Generate from Shows and bookings",
-    "readyTail": ", or use New order above."
+    "readyTail": ", or use New contract above."
   },
   "ordersKpis": {
     "issued": "Issued",
@@ -50,25 +50,25 @@
   "ordersTable": {
     "selected": "{{count}} selected",
     "issueSelected": "Issue selected",
-    "selectAllAria": "Select all orders",
-    "selectRowAria": "Select order {{orderNo}}",
-    "colOrder": "Order",
+    "selectAllAria": "Select all contracts",
+    "selectRowAria": "Select contract {{orderNo}}",
+    "colOrder": "Contract",
     "colArtist": "Artist",
     "colDate": "Date",
     "colFee": "Fee",
     "colStatus": "Status",
     "overdue": "Overdue",
-    "empty": "No hire orders match the current filters."
+    "empty": "No contracts match the current filters."
   },
   "batchPreflight": {
-    "title": "Issue selected orders",
+    "title": "Issue selected contracts",
     "checking": "Checking the selection.",
     "checkError": "Could not check the selection. Reload and try again before issuing.",
     "summary": "{{clean}} of {{total}} can be issued now. The rest stay as drafts.",
     "checkErrorDetail": "Could not check this selection's readiness. Reload the page and try again.",
     "draftFallback": "Draft",
-    "issueCount_one": "Issue {{count}} order",
-    "issueCount_other": "Issue {{count}} orders"
+    "issueCount_one": "Issue {{count}} contract",
+    "issueCount_other": "Issue {{count}} contracts"
   },
   "blockerList": {
     "letterheadSaved": "Letterhead saved",
@@ -79,7 +79,7 @@
     "savedForOrgOnce": "Saved for the whole organization, once.",
     "termsLoadError": "Could not load the organization's terms. {{message}}",
     "createFromTemplate": "Create from this template",
-    "openTheOrder": "Open the order",
+    "openTheOrder": "Open the contract",
     "adminOnly": "Admin only"
   },
   "statusBadge": {
@@ -92,15 +92,15 @@
   "preflightSheet": {
     "draftFallback": "Draft",
     "checking": "Checking",
-    "checkError": "Could not check this order",
+    "checkError": "Could not check this contract",
     "readyToIssue": "Ready to issue",
     "settleOne": "One thing to settle first",
     "settleMany": "{{count}} things to settle first",
     "descError": "The organization's settings could not be read. Reload and try again before issuing.",
     "descClean": "The PDF is generated, numbered and emailed. The artist gets a link to countersign.",
     "descBlocked": "Nothing is sent until these are cleared. The draft is saved either way.",
-    "checkErrorDetail": "Could not check this order's readiness. Reload the page and try again.",
-    "allInPlace": "Everything this order needs is in place.",
+    "checkErrorDetail": "Could not check this contract's readiness. Reload the page and try again.",
+    "allInPlace": "Everything this contract needs is in place.",
     "issueAndSend": "Issue and send",
     "keepAsDraft": "Keep as draft"
   },
@@ -121,30 +121,30 @@
     "selectItemAria": "Select {{label}}",
     "nounArtists": "artists",
     "nounDates": "dates",
-    "title": "New hire order",
-    "description": "Confirm the engagement, set the fee, and issue a hire order.",
-    "created_one": "{{count}} hire order created",
-    "created_other": "{{count}} hire orders created",
+    "title": "New contract",
+    "description": "Confirm the engagement, set the fee, and issue a contract.",
+    "created_one": "{{count}} contract created",
+    "created_other": "{{count}} contracts created",
     "skipped_one": "{{count}} artist skipped",
     "skipped_other": "{{count}} artists skipped",
     "failed_one": "{{count}} artist failed",
     "failed_other": "{{count}} artists failed",
-    "openOrder": "Open order",
+    "openOrder": "Open contract",
     "close": "Close",
-    "closeReturnAria": "Close and return to hire orders",
+    "closeReturnAria": "Close and return to contracts",
     "issueNow": "Issue now",
-    "createError": "Could not create any hire orders",
+    "createError": "Could not create any contracts",
     "engagementSource": "Engagement source",
-    "linkShowDate": "Link a show date",
+    "linkShowDate": "Link a date",
     "noLinkedDate": "No linked date",
     "artists": "Artists",
     "chooseArtists": "Choose artists",
     "selectArtistAria": "Select artist",
     "noArtistsFound": "No artists found.",
-    "commonShowDates": "Common show dates",
+    "commonShowDates": "Common dates",
     "chooseDates": "Choose dates",
-    "selectShowDateAria": "Select show date",
-    "noShowDatesFound": "No show dates found.",
+    "selectShowDateAria": "Select date",
+    "noShowDatesFound": "No dates found.",
     "resetAllToSelected": "Reset all to selected dates",
     "colArtist": "Artist",
     "artistName": "Artist name",
@@ -188,7 +188,7 @@
     "artistDatesAria": "{{name}} dates",
     "reviewDurationLabel": "Duration",
     "reviewSessionsLabel": "Sessions",
-    "previewAvailable": "Document preview available once the order is created.",
+    "previewAvailable": "Document preview available once the contract is created.",
     "saveAsDraft": "Save as draft",
     "issueAndSendToArtist": "Issue and send to artist"
   },
@@ -211,11 +211,11 @@
     "edit": "Edit",
     "view": "View",
     "resend": "Resend",
-    "noPermissionVoid": "You don't have permission to void hire orders",
+    "noPermissionVoid": "You don't have permission to void contracts",
     "void": "Void",
-    "voidTitle": "Void this hire order?",
-    "voidDescription": "Voiding cancels this order for good. If the artist needs a corrected order, you can generate a fresh hire order for this date afterward.",
-    "voidOrder": "Void order"
+    "voidTitle": "Void this contract?",
+    "voidDescription": "Voiding cancels this contract for good. If the artist needs a corrected contract, you can generate a fresh contract for this date afterward.",
+    "voidOrder": "Void contract"
   },
   "timeline": {
     "created": "Created",
@@ -223,7 +223,7 @@
     "seen": "Seen",
     "awaiting": "Awaiting countersign",
     "countersigned": "Countersigned",
-    "ariaLabel": "Order status timeline"
+    "ariaLabel": "Contract status timeline"
   },
   "provenanceChip": {
     "showflow": "SF",
@@ -232,11 +232,11 @@
     "default": "Default"
   },
   "setupCallout": {
-    "checkError": "Could not check this organization's hire order setup. Reload the page before issuing.",
+    "checkError": "Could not check this organization's contract setup. Reload the page before issuing.",
     "headlineBoth": "The header and the back page of this document are empty",
     "headlineHeader": "The header on this document is empty",
     "headlineBack": "The back page of this document is empty",
-    "body": "Set it once here and every future order carries it. This is not specific to this order."
+    "body": "Set it once here and every future contract carries it. This is not specific to this contract."
   },
   "importDialog": {
     "stepSource": "Source",
@@ -248,22 +248,22 @@
     "noRows": "No rows found in that file.",
     "readError": "Could not read the file",
     "fetchError": "Could not fetch the sheet",
-    "title": "Import hire orders from a spreadsheet",
-    "description": "Upload a CSV/XLSX or paste a public Google Sheets link, pick the header row, map the columns, then review and create draft hire orders.",
+    "title": "Import contracts from a spreadsheet",
+    "description": "Upload a CSV/XLSX or paste a public Google Sheets link, pick the header row, map the columns, then review and create draft contracts.",
     "dropZone": "Drop a .csv or .xlsx here, or click to browse",
     "uploadAria": "Upload spreadsheet",
     "linkPlaceholder": "…or paste a public Google Sheets link",
     "fetch": "Fetch",
     "rowsLimit": "Up to {{max}} rows per sheet.",
     "noArtistName": "This row has no artist name to create",
-    "importCount_one": "Import {{count}} order",
-    "importCount_other": "Import {{count}} orders",
-    "createdCount_one": "Created {{count}} draft hire order",
-    "createdCount_other": "Created {{count}} draft hire orders",
+    "importCount_one": "Import {{count}} contract",
+    "importCount_other": "Import {{count}} contracts",
+    "createdCount_one": "Created {{count}} draft contract",
+    "createdCount_other": "Created {{count}} draft contracts",
     "alreadyExisted": "{{count}} already existed",
     "someFailed": ", {{count}} failed",
     "close": "Close",
-    "openHireOrders": "Open hire orders"
+    "openHireOrders": "Open contracts"
   },
   "mapStep": {
     "artistName": "Artist name",
@@ -339,12 +339,12 @@
   "countersignStep": {
     "saved": "Countersign mode saved",
     "loadError": "Could not load the countersign setting. {{message}}",
-    "intro": "How an artist signs the order you send them."
+    "intro": "How an artist signs the contract you send them."
   },
   "letterheadStep": {
     "saved": "Letterhead saved",
     "loadError": "Could not load the letterhead. {{message}}",
-    "intro": "Pulled from your organization profile. Check it, then confirm. It prints at the top of every order.",
+    "intro": "Pulled from your organization profile. Check it, then confirm. It prints at the top of every contract.",
     "confirm": "Confirm letterhead"
   },
   "producerWaiting": {
@@ -353,22 +353,22 @@
     "labelCountersign": "Countersigning",
     "waitingOnAdmin": "Waiting on your admin",
     "draftNow": "Draft now, issue later",
-    "body": "Nothing stops you building orders. An admin needs to finish setup before anything can be sent."
+    "body": "Nothing stops you building contracts. An admin needs to finish setup before anything can be sent."
   },
   "setupRail": {
     "titleLetterhead": "Letterhead",
     "titleTerms": "Terms template",
     "titleCountersign": "Countersigning",
-    "letterheadTodo": "Legal name, address, registration line. Prints on every order.",
-    "letterheadDone": "Set. It prints at the top of every order.",
+    "letterheadTodo": "Legal name, address, registration line. Prints on every contract.",
+    "letterheadDone": "Set. It prints at the top of every contract.",
     "termsTodo": "The wording on the back page. Start from a template.",
     "termsDone": "Set. Edit the wording any time in Settings.",
     "countersignTodo": "How artists sign. The default is signing outside ShowFlow.",
     "countersignDone": "Chosen. Change it any time in Settings.",
     "progress": "Set up · {{done}} of {{total}}",
     "hide": "Hide",
-    "heading": "Get hire orders ready",
-    "body": "You can draft orders right now. These are only needed before the first one goes out.",
+    "heading": "Get contracts ready",
+    "body": "You can draft contracts right now. These are only needed before the first one goes out.",
     "blocksIssue": "Blocks issue"
   },
   "termsStep": {
@@ -377,7 +377,7 @@
     "addToOrg": "Add to this organization"
   },
   "generateDialog": {
-    "title": "Generate hire order",
+    "title": "Generate contract",
     "description": "Review the terms before issuing to {{artistName}}.",
     "descriptionFallbackName": "the artist",
     "producer": "Producer",
@@ -393,30 +393,30 @@
     "agentNamePlaceholder": "Agent name",
     "agentEmailAria": "Agent email",
     "agentEmailPlaceholder": "Agent email",
-    "letterheadError": "Couldn't load your organization letterhead. This order will use your saved default.",
+    "letterheadError": "Couldn't load your organization letterhead. This contract will use your saved default.",
     "letterheadHint": "Prefilled from your organization letterhead.",
     "infoNote": "The PDF includes the running order and a countersignature block. The artist receives it by email.",
     "previewPdf": "Preview PDF"
   },
   "ordersCard": {
-    "hireOrder": "Hire order",
-    "hireOrders": "Hire orders",
-    "loadError": "Could not load hire orders",
+    "hireOrder": "Contract",
+    "hireOrders": "Contracts",
+    "loadError": "Could not load contracts",
     "tryAgain": "Please try again.",
-    "bannerFullyFilled": "This date is fully filled. Ready for a hire order.",
+    "bannerFullyFilled": "This date is fully filled. Ready for a contract.",
     "bannerGenerate": "Generate for confirmed artists",
-    "bannerDescription": "Generate the order to confirm the engagement and send it to {{recipient}} for countersignature.",
+    "bannerDescription": "Generate the contract to confirm the engagement and send it to {{recipient}} for countersignature.",
     "recipientPhrase": "the confirmed cast",
-    "generateCta": "Generate hire order",
-    "noPermissionGenerate": "You don't have permission to generate hire orders",
-    "noOrdersYet": "No hire orders yet."
+    "generateCta": "Generate contract",
+    "noPermissionGenerate": "You don't have permission to generate contracts",
+    "noOrdersYet": "No contracts yet."
   },
   "signDialog": {
-    "title": "Sign your hire order",
+    "title": "Sign your contract",
     "description": "Review the document shown on this page, then add your signature to countersign it.",
-    "body": "You are agreeing to the fee, dates, and terms shown on this order. Adding your signature completes it, and we email you the final signed PDF.",
+    "body": "You are agreeing to the fee, dates, and terms shown on this contract. Adding your signature completes it, and we email you the final signed PDF.",
     "signing": "Signing...",
-    "sign": "Sign hire order"
+    "sign": "Sign contract"
   },
   "signaturePad": {
     "type": "Type",
@@ -425,21 +425,21 @@
     "clear": "Clear"
   },
   "detailPage": {
-    "loadErrorTitle": "Could not load this hire order",
-    "loadErrorBody": "You may not have access to this order, or it no longer exists.",
-    "title": "Performance hire order",
+    "loadErrorTitle": "Could not load this contract",
+    "loadErrorBody": "You may not have access to this contract, or it no longer exists.",
+    "title": "Performance contract",
     "edit": "Edit",
     "notIssuedTitle": "Not issued yet",
-    "notIssuedBody": "This hire order has no document until it is issued to the artist.",
+    "notIssuedBody": "This contract has no document until it is issued to the artist.",
     "previewErrorTitle": "Couldn't load the document",
     "previewErrorBody": "The preview could not be loaded. Use the Download button above instead.",
-    "iframeTitle": "Hire order document",
-    "needsSignatureTitle": "This order needs your signature",
+    "iframeTitle": "Contract document",
+    "needsSignatureTitle": "This contract needs your signature",
     "needsSignatureBody": "Read the document above, then sign. You get a countersigned PDF by email straight after.",
     "countersign": "Countersign",
     "recipient": "Recipient",
     "awaitingArtistSignature": "Awaiting artist signature",
-    "noPermissionCountersign": "You don't have permission to countersign hire orders",
+    "noPermissionCountersign": "You don't have permission to countersign contracts",
     "countersignedByArtist": "Countersigned by artist",
     "downloadPdf": "Download PDF"
   },
@@ -456,12 +456,12 @@
     "engagementFee": "Engagement fee",
     "currency": "Currency",
     "notes": "Notes",
-    "loadErrorTitle": "Could not load this hire order",
-    "loadErrorBody": "You may not have access to this order, or it no longer exists.",
-    "readOnlyTitle": "This hire order can no longer be edited",
-    "readOnlyBody": "is {{status}} and is read-only. View it on the hire order page instead.",
-    "viewOrder": "View order",
-    "editHireOrder": "Edit hire order",
+    "loadErrorTitle": "Could not load this contract",
+    "loadErrorBody": "You may not have access to this contract, or it no longer exists.",
+    "readOnlyTitle": "This contract can no longer be edited",
+    "readOnlyBody": "is {{status}} and is read-only. View it on the contract page instead.",
+    "viewOrder": "View contract",
+    "editHireOrder": "Edit contract",
     "saveDraft": "Save draft",
     "sectionParties": "Parties",
     "sectionEngagement": "Engagement",
@@ -471,13 +471,13 @@
     "totalPayable": "Total payable: {{fee}}",
     "termsVariant": "Terms variant",
     "refresh": "Refresh from ShowFlow",
-    "refreshDisabled": "No linked artist or show date to refresh from",
+    "refreshDisabled": "No linked artist or date to refresh from",
     "livePreview": "Live preview, updates as you edit",
-    "iframeTitle": "Hire order live preview",
+    "iframeTitle": "Contract live preview",
     "draftSaved": "Draft saved",
     "refreshed": "Refreshed from ShowFlow",
     "refreshError": "Could not refresh from ShowFlow",
-    "checking": "Checking this order",
-    "checkError": "Could not check this order. Reload the page and try again."
+    "checking": "Checking this contract",
+    "checkError": "Could not check this contract. Reload the page and try again."
   }
 }

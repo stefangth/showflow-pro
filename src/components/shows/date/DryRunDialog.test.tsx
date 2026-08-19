@@ -22,11 +22,11 @@ describe("DryRunDialog", () => {
         onConfirm={onConfirm}
       />,
     );
-    expect(screen.getByText(/Opening tier 2 would send 1 offers/i)).toBeInTheDocument();
-    expect(screen.getByText(/Excluded: 1 already booked · 2 blocked · 0 inactive/i)).toBeInTheDocument();
+    expect(screen.getByText(/Opening round 2 would send 1 asks/i)).toBeInTheDocument();
+    expect(screen.getByText(/Excluded: 1 already booked · 2 not free · 0 inactive/i)).toBeInTheDocument();
     expect(screen.getByText("Lena")).toBeInTheDocument();
-    expect(screen.getByText(/next daily digest/i)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /open tier 2 · send 1 offers/i }));
+    expect(screen.getByText(/next daily send/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /open round 2 · send 1 asks/i }));
     expect(onConfirm).toHaveBeenCalledTimes(1);
   });
 
@@ -44,12 +44,12 @@ describe("DryRunDialog", () => {
     );
     expect(screen.getByText("No sessions configured for this date")).toBeInTheDocument();
     expect(screen.queryByText("Lena")).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /open tier 1/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /open round 1/i })).toBeDisabled();
   });
 
   // Regression: a dry run with zero eligible candidates but no `message` (e.g. every
-  // eligible artist is already booked, blocked, or inactive, so the tier itself is valid
-  // but nobody would get an offer) left confirm enabled: the button read "send 0 offers"
+  // eligible artist is already booked, not free, or inactive, so the round itself is valid
+  // but nobody would get asked) left confirm enabled: the button read "send 0 asks"
   // yet a producer could still click it. hasMessage-only gating missed this plain-zero case.
   it("disables confirm when there are zero candidates, even without a message", () => {
     renderWithProviders(
@@ -63,11 +63,11 @@ describe("DryRunDialog", () => {
         onConfirm={vi.fn()}
       />,
     );
-    expect(screen.getByRole("button", { name: /open tier 1 · send 0 offers/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /open round 1 · send 0 asks/i })).toBeDisabled();
   });
 
-  // Regression: the confirm button ignored the open-tier mutation's pending state,
-  // so a fast double click could open the tier twice.
+  // Regression: the confirm button ignored the open-round mutation's pending state,
+  // so a fast double click could open the round twice.
   it("disables confirm while the open-tier mutation is pending", () => {
     renderWithProviders(
       <DryRunDialog
@@ -86,7 +86,7 @@ describe("DryRunDialog", () => {
         onConfirm={vi.fn()}
       />,
     );
-    expect(screen.getByRole("button", { name: /open tier 2 · send 1 offers/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /open round 2 · send 1 asks/i })).toBeDisabled();
   });
 
   it("shows a loading state while the dry run is in flight", () => {
@@ -102,7 +102,7 @@ describe("DryRunDialog", () => {
       />,
     );
     expect(screen.getByRole("status")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /open tier 1/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /open round 1/i })).toBeDisabled();
   });
 
   it("renders the not-eligible and missing-skills exclusion rows", () => {
@@ -122,7 +122,7 @@ describe("DryRunDialog", () => {
         onConfirm={vi.fn()}
       />,
     );
-    expect(screen.getByText("Not eligible for this show: 2")).toBeInTheDocument();
+    expect(screen.getByText("Can't be asked for this show: 2")).toBeInTheDocument();
     expect(screen.getByText("Missing required skills: 1")).toBeInTheDocument();
   });
 });

@@ -48,7 +48,7 @@ export function FirstOfferCard() {
     <div className="rounded-lg border border-accent-200 bg-accent-50 p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold text-accent-700">Your first offer</p>
+          <p className="text-sm font-semibold text-accent-700">Your first ask</p>
           <p className="mt-1 text-sm leading-5 text-muted-foreground">{artistRow?.text}</p>
         </div>
         <Button variant="ghost" size="sm" className="h-auto shrink-0 p-1" onClick={dismiss} aria-label="Dismiss">

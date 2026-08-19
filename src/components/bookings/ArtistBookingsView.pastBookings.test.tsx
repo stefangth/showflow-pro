@@ -118,7 +118,7 @@ describe("ArtistBookingsView — past active booking merge (July 31 regression)"
     // touching the filter — an artist should always see where they are booked.
     const dateCell = await screen.findByText("15/01/2026");
     expect(screen.getByText("Old Hall")).toBeInTheDocument();
-    expect(screen.getByText("Hold placed")).toBeInTheDocument();
+    expect(screen.getByText("Said yes, waiting on you")).toBeInTheDocument();
 
     // Grayed but interactive: PAST_DATE_TINT on the row, no pointer-events change.
     const row = dateCell.closest("tr");
@@ -142,7 +142,7 @@ describe("ArtistBookingsView — past active booking merge (July 31 regression)"
     fireEvent.click(screen.getByRole("button", { name: /Any time/ }));
     fireEvent.click(screen.getByRole("button", { name: "Upcoming" }));
 
-    await screen.findByText(/no eligible dates yet/i);
+    await screen.findByText(/no dates yet/i);
     expect(screen.queryByText("Old Hall")).not.toBeInTheDocument();
     expect(screen.queryByText("15/01/2026")).not.toBeInTheDocument();
   });

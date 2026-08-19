@@ -64,7 +64,7 @@ export const BOOKING_FLOW_PRESETS: Record<Exclude<PresetName, "off">, FlowFields
     auto_open_tier1: true,
     auto_escalate: true,
     at_risk_alerts: true,
-    offer_delivery: "immediate",
+    offer_delivery: "digest",
     expiry_reminder: true,
     artist_acceptance: true,
     producer_confirmation: false,
@@ -245,12 +245,12 @@ export function lifecycleChips(flow: BookingFlow): LifecycleChip[] {
   if (!flow.artist_acceptance) {
     return [
       { label: "Direct booking", tone: "neutral" },
-      { label: "Confirmed", tone: "green" },
+      { label: "Booked", tone: "green" },
     ];
   }
-  const chips: LifecycleChip[] = [{ label: "Offered", tone: "violet" }];
-  if (flow.producer_confirmation) chips.push({ label: "Soft booked", tone: "amber" });
-  chips.push({ label: "Confirmed", tone: "green" });
+  const chips: LifecycleChip[] = [{ label: "Asked", tone: "violet" }];
+  if (flow.producer_confirmation) chips.push({ label: "Said yes, waiting on you", tone: "amber" });
+  chips.push({ label: "Booked", tone: "green" });
   return chips;
 }
 
@@ -262,43 +262,43 @@ export interface PracticeRow {
 export function inPracticeRows(flow: BookingFlow, times: FlowTimes): PracticeRow[] {
   if (flow.active === false) {
     return [
-      { who: "Artist", text: "Gets no new offers while the flow is off." },
+      { who: "Artist", text: "Gets no new asks while the flow is off." },
       { who: "Producer", text: "Nothing to review; turn a flow on to start booking." },
-      { who: "Automation", text: "Nothing new runs while the flow is off; offers already sent still time out." },
+      { who: "Automation", text: "Nothing new runs while the flow is off; asks already sent still time out." },
     ];
   }
   let artist: string;
   if (flow.artist_acceptance) {
     const delivery =
       flow.offer_delivery === "digest"
-        ? `Gets the offer in the daily ${hh(times.offerDigestHour)} digest email`
-        : "Gets the offer email the moment the tier opens";
+        ? `Gets the ask in the daily ${hh(times.offerDigestHour)} send`
+        : "Gets the ask the moment the first group is asked";
     const accept = flow.producer_confirmation
-      ? "Accepting soft-books the date."
-      : "Accepting confirms the booking instantly.";
-    artist = `${delivery}, then has ${times.windowHours} h to respond. ${accept}`;
+      ? "Accepting says yes, waiting on you."
+      : "Accepting books it instantly.";
+    artist = `${delivery}, then has ${times.windowHours} h to answer by. ${accept}`;
   } else {
-    artist = `Never sees an offer. The booking appears as confirmed in their calendar${
-      flow.confirmation_digest ? ` and the ${hh(times.confirmationDigestHour)} confirmation digest.` : "."
+    artist = `Never sees an ask. The booking appears as booked in their calendar${
+      flow.confirmation_digest ? ` and the ${hh(times.confirmationDigestHour)} confirmation send.` : "."
     }`;
   }
 
   let producer: string;
   if (!flow.artist_acceptance) {
     producer =
-      "Books artists directly from the per-date eligibility list; each booking is confirmed immediately.";
+      "Books artists directly from the per-date list of who can be asked; each booking is booked immediately.";
   } else if (flow.producer_confirmation) {
-    producer = "Reviews accepted artists in “Ready to Confirm” and bulk-confirms the cast.";
+    producer = "Reviews artists who said yes in “Waiting on you” and books the cast in bulk.";
   } else {
-    producer = "No review queue: acceptances confirm on their own; the dashboard tracks fills as they land.";
+    producer = "No review queue: a yes books on its own; the dashboard tracks fills as they land.";
   }
 
   const autos: string[] = [];
-  if (flow.auto_open_tier1 && flow.artist_acceptance) autos.push("tier 1 opens as soon as a date is ready (sessions and slots configured)");
-  if (flow.auto_escalate && flow.artist_acceptance) autos.push("unfilled windows escalate to the next tier");
+  if (flow.auto_open_tier1 && flow.artist_acceptance) autos.push("the first group is asked as soon as a date is ready (sessions and places configured)");
+  if (flow.auto_escalate && flow.artist_acceptance) autos.push("unfilled windows escalate to the next group");
   if (flow.at_risk_alerts && flow.artist_acceptance) autos.push("producers are alerted when a date can no longer fill in time");
-  if (flow.expiry_reminder && flow.artist_acceptance) autos.push("unanswered artists get a reminder 24 h before their window closes");
-  if (flow.understudy_promotion) autos.push("cancellations promote the longest-waiting accepted understudy");
+  if (flow.expiry_reminder && flow.artist_acceptance) autos.push("unanswered artists get a reminder 24 h before their answer-by time closes");
+  if (flow.understudy_promotion) autos.push("cancellations promote the longest-waiting understudy who said yes");
   const automation = autos.length
     ? `${autos.join("; ").replace(/^./, (c) => c.toUpperCase())}.`
     : "Nothing runs in the background; every step is manual.";
@@ -317,48 +317,48 @@ export interface PreviewRow {
 
 export function flowPreviewRows(flow: BookingFlow, times: FlowTimes): PreviewRow[] {
   if (flow.active === false) {
-    return [{ at: "·", text: "The flow is paused; no new offers, reminders, digests or confirmations are sent." }];
+    return [{ at: "·", text: "The flow is paused; no new asks, reminders, daily sends or confirmations are sent." }];
   }
   const rows: PreviewRow[] = [
-    { at: "09:02", text: "Date created (Airtable sync or in-app) · 12 eligible artists in tier 1" },
+    { at: "09:02", text: "Date created (Airtable sync or in-app) · 12 artists who can be asked in the first group" },
   ];
   if (flow.artist_acceptance) {
     rows.push(
       flow.auto_open_tier1
-        ? { at: "09:02", text: "Tier 1 opens automatically · 12 offers created (suggested)" }
-        : { at: "·", text: "Tier 1 waits for a producer to open it" },
+        ? { at: "09:02", text: "First group asked automatically · 12 asks sent (asked)" }
+        : { at: "·", text: "First group waits for a producer to ask it" },
     );
     rows.push(
       flow.offer_delivery === "digest"
-        ? { at: hh(times.offerDigestHour), text: `Offer digest emailed · ${times.windowHours} h response window starts` }
-        : { at: "09:03", text: `Offers emailed immediately · ${times.windowHours} h response window starts` },
+        ? { at: hh(times.offerDigestHour), text: `Ask daily send goes out · ${times.windowHours} h to answer by starts` }
+        : { at: "09:03", text: `Asks sent immediately · ${times.windowHours} h to answer by starts` },
     );
     if (flow.producer_confirmation) {
-      rows.push({ at: "+1 day", text: "Anna K. accepts → soft booked" });
-      rows.push({ at: "+1 day", text: "Producer confirms the cast → confirmed" });
+      rows.push({ at: "+1 day", text: "Anna K. accepts → said yes, waiting on you" });
+      rows.push({ at: "+1 day", text: "Producer gets the last word → booked" });
     } else {
-      rows.push({ at: "+1 day", text: "Anna K. accepts → confirmed immediately" });
+      rows.push({ at: "+1 day", text: "Anna K. accepts → booked immediately" });
     }
     if (flow.expiry_reminder && times.windowHours > 24) {
       rows.push({ at: `+${times.windowHours - 24} h`, text: "Unanswered artists get an expiry reminder" });
     }
     if (flow.at_risk_alerts) {
-      rows.push({ at: "auto", text: "Producers alerted if remaining offers cannot fill the date" });
+      rows.push({ at: "auto", text: "Producers alerted if remaining asks cannot fill the date" });
     }
     rows.push(
       flow.auto_escalate
-        ? { at: `+${times.windowHours} h`, text: "Window closes short → tier 2 opens automatically" }
-        : { at: `+${times.windowHours} h`, text: "Window closes short; the next tier stays manual" },
+        ? { at: `+${times.windowHours} h`, text: "Answer-by time closes short → next group asked automatically" }
+        : { at: `+${times.windowHours} h`, text: "Answer-by time closes short; the next group stays manual" },
     );
   } else {
-    rows.push({ at: "·", text: "No offers; producer books artists from the eligibility list" });
-    rows.push({ at: "·", text: "Producer booking → confirmed directly" });
+    rows.push({ at: "·", text: "No asks; producer books artists from who can be asked" });
+    rows.push({ at: "·", text: "Producer booking → booked directly" });
   }
   if (flow.confirmation_digest) {
-    rows.push({ at: hh(times.confirmationDigestHour), text: "Confirmation digest email sent to newly confirmed artists" });
+    rows.push({ at: hh(times.confirmationDigestHour), text: "Confirmation send goes to newly booked artists" });
   }
   if (flow.understudy_promotion) {
-    rows.push({ at: "auto", text: "On cancellation, longest-waiting accepted understudy promoted" });
+    rows.push({ at: "auto", text: "On cancellation, longest-waiting understudy who said yes is promoted" });
   }
   return rows;
 }
@@ -383,14 +383,14 @@ export function referenceLabel(args: {
 }
 
 const FLOW_FIELD_LABELS: Record<keyof BookingFlow, string> = {
-  auto_open_tier1: "Auto-open tier 1",
-  auto_escalate: "Auto-escalation",
+  auto_open_tier1: "Auto-ask first group",
+  auto_escalate: "Auto-move to next group",
   at_risk_alerts: "At-risk alerts",
-  offer_delivery: "Offer delivery",
+  offer_delivery: "Ask delivery",
   expiry_reminder: "Expiry reminder",
   artist_acceptance: "Artist acceptance",
-  producer_confirmation: "Producer confirmation",
-  confirmation_digest: "Confirmation digest",
+  producer_confirmation: "The last word",
+  confirmation_digest: "Confirmation send",
   understudy_promotion: "Understudy promotion",
   active: "Booking automation",
   reference_field: "Reference field",
@@ -399,15 +399,15 @@ const FLOW_FIELD_LABELS: Record<keyof BookingFlow, string> = {
 const SETTING_LABELS: Record<string, string> = {
   booking_flow: "Booking engine",
   booking_flow_template: "Booking engine template",
-  offer_response_window_hours: "Response window",
-  offer_digest_hour_berlin: "Offer digest hour",
-  confirmation_digest_hour_berlin: "Confirmation digest hour",
+  offer_response_window_hours: "Answer by",
+  offer_digest_hour_berlin: "Ask daily send hour",
+  confirmation_digest_hour_berlin: "Confirmation send hour",
   resend_from_address: "Sender address",
   email_template_overrides: "Email templates",
 };
 
 function fmtFlowValue(field: keyof BookingFlow, flow: BookingFlow): string {
-  if (field === "offer_delivery") return flow.offer_delivery === "digest" ? "daily digest" : "immediate";
+  if (field === "offer_delivery") return flow.offer_delivery === "digest" ? "daily send" : "immediate";
   if (field === "reference_field") {
     if (flow.reference_field.source === "program") return "program";
     if (flow.reference_field.source === "custom") {

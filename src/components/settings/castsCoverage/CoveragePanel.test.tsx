@@ -62,15 +62,15 @@ describe("CoveragePanel", () => {
       // appears in the Casts card below the matrix, so assert there are at least two.
       expect((await screen.findAllByText("Cast A")).length).toBeGreaterThanOrEqual(2);
       expect(screen.getByText("2 members")).toBeInTheDocument();
-      expect(screen.getByText("Single tier")).toBeInTheDocument();
+      expect(screen.getByText("Only one ask")).toBeInTheDocument();
       // Hamburg: no tiers filled -> "blocked" status.
-      expect(screen.getByText("Offers blocked")).toBeInTheDocument();
+      expect(screen.getByText("Nobody to ask")).toBeInTheDocument();
 
       const citiesKpi = screen.getByText("CITIES").parentElement!;
       expect(within(citiesKpi).getByText("2")).toBeInTheDocument();
-      const blockedKpi = screen.getByText("OFFERS BLOCKED").parentElement!;
+      const blockedKpi = screen.getByText("ASKS BLOCKED").parentElement!;
       expect(within(blockedKpi).getByText("1")).toBeInTheDocument();
-      const singleKpi = screen.getByText("SINGLE TIER").parentElement!;
+      const singleKpi = screen.getByText("SINGLE ASK").parentElement!;
       expect(within(singleKpi).getByText("1")).toBeInTheDocument();
       const overridesKpi = screen.getByText("SHOW OVERRIDES").parentElement!;
       expect(within(overridesKpi).getByText("0")).toBeInTheDocument();
@@ -84,7 +84,7 @@ describe("CoveragePanel", () => {
       renderWithProviders(<CoveragePanel orgId="org-1" />);
 
       expect(await screen.findByRole("button", { name: "Remove Berlin" })).toBeDisabled();
-      expect(screen.getByText("used in the offer order")).toBeInTheDocument();
+      expect(screen.getByText("used in the ask order")).toBeInTheDocument();
 
       // Hamburg has no tiers, no overrides, and no shows -> genuinely unreferenced.
       expect(screen.getByRole("button", { name: "Remove Hamburg" })).not.toBeDisabled();
@@ -95,7 +95,7 @@ describe("CoveragePanel", () => {
       renderWithProviders(<CoveragePanel orgId="org-1" />);
 
       // Hamburg has no tiers filled, so its Tier 1 cell is the only "Set tier 1" button.
-      fireEvent.click(await screen.findByRole("button", { name: "Set tier 1" }));
+      fireEvent.click(await screen.findByRole("button", { name: "Set ask 1" }));
       fireEvent.click(await screen.findByRole("button", { name: "Assign Cast B" }));
 
       await waitFor(() => {
@@ -150,7 +150,7 @@ describe("CoveragePanel", () => {
       renderWithProviders(<CoveragePanel orgId="org-1" />);
       fireEvent.click(screen.getByRole("tab", { name: "Per show" }));
 
-      fireEvent.click(await screen.findByRole("button", { name: "Set tier 1" }));
+      fireEvent.click(await screen.findByRole("button", { name: "Set ask 1" }));
       fireEvent.click(await screen.findByRole("button", { name: "Assign Cast B" }));
 
       await waitFor(() => {

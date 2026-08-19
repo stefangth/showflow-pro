@@ -91,7 +91,7 @@ describe('DayRail characterization (pre-DayDetail-extraction baseline)', () => {
 });
 
 describe('DayRail', () => {
-  it('producer: shows "Confirm holds" as primary when acceptedMain>0 and fires onPrimary', () => {
+  it('producer: shows "Book who said yes" as primary when acceptedMain>0 and fires onPrimary', () => {
     const onPrimary = vi.fn();
     render(
       <DayRail
@@ -104,12 +104,12 @@ describe('DayRail', () => {
       />
     );
     const btn = screen.getByTestId('day-rail-primary');
-    expect(btn).toHaveTextContent('Confirm holds');
+    expect(btn).toHaveTextContent('Book who said yes');
     fireEvent.click(btn);
     expect(onPrimary).toHaveBeenCalledTimes(1);
   });
 
-  it('producer: shows "Generate hire order" as primary when fully filled with no accepted holds', () => {
+  it('producer: shows "Draft the contract" as primary when fully filled with no accepted holds', () => {
     render(
       <DayRail
         role="producer"
@@ -119,7 +119,7 @@ describe('DayRail', () => {
         legend={[]}
       />
     );
-    expect(screen.getByTestId('day-rail-primary')).toHaveTextContent('Generate hire order');
+    expect(screen.getByTestId('day-rail-primary')).toHaveTextContent('Draft the contract');
   });
 
   it('producer: does not offer "Generate hire order" when the fully-filled date already has an active order', () => {
@@ -159,7 +159,7 @@ describe('DayRail', () => {
     expect(screen.queryByTestId('day-rail-primary')).not.toBeInTheDocument();
   });
 
-  it('artist: shows "Accept offer" as primary when myStatus is suggested and fires onPrimary', () => {
+  it('artist: shows "Answer the ask" as primary when myStatus is suggested and fires onPrimary', () => {
     const onPrimary = vi.fn();
     render(
       <DayRail
@@ -172,7 +172,7 @@ describe('DayRail', () => {
       />
     );
     const btn = screen.getByTestId('day-rail-primary');
-    expect(btn).toHaveTextContent('Accept offer');
+    expect(btn).toHaveTextContent('Answer the ask');
     fireEvent.click(btn);
     expect(onPrimary).toHaveBeenCalledTimes(1);
   });
@@ -216,7 +216,7 @@ describe('DayRail', () => {
         legend={[]}
       />
     );
-    expect(screen.getByTestId('day-rail-secondary')).toHaveTextContent('Message producer');
+    expect(screen.getByTestId('day-rail-secondary')).toHaveTextContent('Message the office');
   });
 
   it('renders stats rows (dot/label/value)', () => {
@@ -347,7 +347,7 @@ describe('DayRail', () => {
       />
     );
     const btn = screen.getByTestId('day-rail-primary');
-    expect(btn).toHaveTextContent('Confirm holds');
+    expect(btn).toHaveTextContent('Book who said yes');
     expect(btn).toBeDisabled();
     expect(btn).toHaveAttribute('title', "You don't have permission to confirm bookings");
     fireEvent.click(btn);
@@ -366,7 +366,7 @@ describe('DayRail', () => {
       />
     );
     const btn = screen.getByTestId('day-rail-primary');
-    expect(btn).toHaveTextContent('Generate hire order');
+    expect(btn).toHaveTextContent('Draft the contract');
     expect(btn).toBeDisabled();
     expect(btn).toHaveAttribute('title', 'No permission');
   });
@@ -399,7 +399,7 @@ describe('DayRail', () => {
       />
     );
     const btn = screen.getByTestId('day-rail-primary');
-    expect(btn).toHaveTextContent('Confirm holds');
+    expect(btn).toHaveTextContent('Book who said yes');
     expect(btn).not.toBeDisabled();
   });
 

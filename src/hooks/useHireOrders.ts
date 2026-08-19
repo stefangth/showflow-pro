@@ -205,7 +205,7 @@ export function useHireOrderAction() {
       if (action === "draft") {
         const { created = [], skipped = [] } = (data ?? {}) as DraftResult;
         if (created.length > 0) {
-          toast.success(`Drafted ${created.length} hire order${created.length === 1 ? "" : "s"}`);
+          toast.success(`Drafted ${created.length} contract${created.length === 1 ? "" : "s"}`);
           // Some bookings were still skipped (e.g. they already had an order) —
           // surface that rather than letting it pass silently under the success.
           if (skipped.length > 0) {
@@ -214,15 +214,15 @@ export function useHireOrderAction() {
             );
           }
         } else if (skipped.length > 0) {
-          toast.error(`No hire orders drafted: ${describeDraftSkips(skipped)}`);
+          toast.error(`No contracts drafted: ${describeDraftSkips(skipped)}`);
         } else {
           // Zero eligible bookings for this date — not a failure, just nothing to do.
-          toast.info("No bookings need hire orders");
+          toast.info("No bookings need contracts");
         }
       } else if (action === "draft-batch") {
         const { created = [], skipped = [], errors = [], date_conflicts = [] } = (data ?? {}) as DraftBatchResult;
         if (created.length > 0) {
-          toast.success(`Drafted ${created.length} hire order${created.length === 1 ? "" : "s"}`);
+          toast.success(`Drafted ${created.length} contract${created.length === 1 ? "" : "s"}`);
         }
         if (skipped.length > 0) {
           toast.warning(
@@ -241,7 +241,7 @@ export function useHireOrderAction() {
           );
         }
         if (created.length === 0 && skipped.length === 0 && errors.length === 0) {
-          toast.info("No artists need hire orders");
+          toast.info("No artists need contracts");
         }
       } else if (action === "issue") {
         const { issued = [], failed = [] } = (data ?? {}) as IssueResult;
@@ -255,25 +255,25 @@ export function useHireOrderAction() {
         const genuineFailed = failed.filter((f) => !f.issues.includes("documenso_failed"));
         const documensoFailed = failed.filter((f) => f.issues.includes("documenso_failed"));
         if (issued.length > 0) {
-          toast.success(`Issued ${issued.length} hire order${issued.length === 1 ? "" : "s"}`);
+          toast.success(`Issued ${issued.length} contract${issued.length === 1 ? "" : "s"}`);
         }
         if (genuineFailed.length > 0) {
           toast.error(
-            `${genuineFailed.length} hire order${genuineFailed.length === 1 ? "" : "s"} failed to issue: ${describeIssueFailures(genuineFailed)}`,
+            `${genuineFailed.length} contract${genuineFailed.length === 1 ? "" : "s"} failed to issue: ${describeIssueFailures(genuineFailed)}`,
           );
         }
         if (documensoFailed.length > 0) {
           toast.warning(
-            `${documensoFailed.length} hire order${documensoFailed.length === 1 ? "" : "s"} issued, but countersign delivery failed`,
+            `${documensoFailed.length} contract${documensoFailed.length === 1 ? "" : "s"} issued, but countersign delivery failed`,
           );
         }
       } else if (action === "resend") {
-        toast.success("Hire order resent");
+        toast.success("Contract resent");
       }
       // preview / download-url: no toast — the caller opens the returned PDF/URL directly.
     },
     onError: (error: Error) => {
-      toast.error(error.message || "Hire order action failed");
+      toast.error(error.message || "Contract action failed");
     },
   });
 }
@@ -289,7 +289,7 @@ export function useUpdateHireOrderReview() {
       updateHireOrderReview(supabase, vars.id, vars.review, vars.currentData),
     onSuccess: () => invalidateHireOrders(qc),
     onError: (error: Error) => {
-      toast.error(error.message || "Could not save hire order changes");
+      toast.error(error.message || "Could not save contract changes");
     },
   });
 }
@@ -308,7 +308,7 @@ export function useUpdateHireOrderDraft() {
       updateHireOrderDraft(supabase, vars.id, vars.patch),
     onSuccess: () => invalidateHireOrders(qc),
     onError: (error: Error) => {
-      toast.error(error.message || "Could not save hire order changes");
+      toast.error(error.message || "Could not save contract changes");
     },
   });
 }
@@ -321,7 +321,7 @@ export function useMarkCountersigned() {
     mutationFn: (id: string) => updateHireOrderStatus(supabase, id, "countersigned"),
     onSuccess: () => {
       invalidateHireOrders(qc);
-      toast.success("Hire order marked as countersigned");
+      toast.success("Contract marked as countersigned");
     },
     onError: (error: Error) => {
       toast.error(error.message || "Could not mark as countersigned");
@@ -363,10 +363,10 @@ export function useSignHireOrder() {
     mutationFn: (args: SignHireOrderArgs) => signHireOrder(supabase, args),
     onSuccess: () => {
       invalidateHireOrders(qc);
-      toast.success("Hire order signed");
+      toast.success("Contract signed");
     },
     onError: (error: Error) => {
-      toast.error(error.message || "Could not sign the hire order");
+      toast.error(error.message || "Could not sign the contract");
     },
   });
 }
@@ -383,7 +383,7 @@ export function useBulkImportHireOrders() {
     mutationFn: (args: BulkImportHireOrdersArgs) => bulkImportHireOrders(supabase, args),
     onSuccess: () => invalidateHireOrders(qc),
     onError: (error: Error) => {
-      toast.error(error.message || "Could not import hire orders");
+      toast.error(error.message || "Could not import contracts");
     },
   });
 }
@@ -417,10 +417,10 @@ export function useVoidHireOrder() {
     mutationFn: (id: string) => updateHireOrderStatus(supabase, id, "void"),
     onSuccess: () => {
       invalidateHireOrders(qc);
-      toast.success("Hire order voided");
+      toast.success("Contract voided");
     },
     onError: (error: Error) => {
-      toast.error(error.message || "Could not void hire order");
+      toast.error(error.message || "Could not void contract");
     },
   });
 }

@@ -594,7 +594,7 @@ describe("AcceptInvitePage success screen", () => {
       renderAt(`${ROUTES.ACCEPT_INVITE}?token=abc123`);
 
       await screen.findByRole("heading", { name: /you've joined/i });
-      expect(screen.getByText(/offers arrive by email/i)).toBeInTheDocument();
+      expect(screen.getByText(/asks arrive by email/i)).toBeInTheDocument();
       fireEvent.click(screen.getByRole("button", { name: "Go to availability" }));
       expect(navigateSpy).toHaveBeenCalledWith(ROUTES.AVAILABILITY, { replace: true });
     });
@@ -641,7 +641,7 @@ describe("AcceptInvitePage success screen", () => {
 
       await screen.findByRole("heading", { name: /you've joined/i });
       expect(screen.getByTestId("next-step-line-loading")).toBeInTheDocument();
-      expect(screen.queryByText(/offers arrive by email/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/asks arrive by email/i)).not.toBeInTheDocument();
     });
   });
 
@@ -651,7 +651,7 @@ describe("AcceptInvitePage success screen", () => {
       acceptInvitationMock.mockResolvedValueOnce({ orgId: org1.id, artistLinked: true });
       renderAt(`${ROUTES.ACCEPT_INVITE}?token=abc123`);
       expect(await screen.findByTestId("board-handoff-summary")).toHaveTextContent(
-        "2 tasks stand between this workspace and its first offer",
+        "2 tasks stand between this workspace and its first ask",
       );
       expect(screen.getByTestId("board-handoff-summary")).toHaveTextContent("About 6 minutes.");
       fireEvent.click(screen.getByRole("button", { name: "Open Get running" }));
@@ -663,7 +663,7 @@ describe("AcceptInvitePage success screen", () => {
       authState.memberships = [membershipFor("producer")];
       acceptInvitationMock.mockResolvedValueOnce({ orgId: org1.id, artistLinked: true });
       renderAt(`${ROUTES.ACCEPT_INVITE}?token=abc123`);
-      expect(await screen.findByText("This workspace can send its first offer")).toBeInTheDocument();
+      expect(await screen.findByText("This workspace can send its first ask")).toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Open Get running" })).toBeInTheDocument();
     });
 
@@ -792,7 +792,7 @@ describe("AcceptInvitePage success screen", () => {
 
   describe("artist next-step line accounts for an unlinked profile, and the alert outranks it", () => {
     // Regression: when joined.artistLinked is false, the card still rendered
-    // NEXT_STEP_LINES.artist.offers/direct ("Offers arrive by email...", "Your producer
+    // NEXT_STEP_LINES.artist.offers/direct ("Asks arrive by email...", "Your producer
     // books you directly...") directly above the alert explaining the link failed.
     // bookings.artist_id has no row to key on for this account, so neither promise can
     // come true until an admin links the profile.

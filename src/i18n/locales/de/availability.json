@@ -1,23 +1,23 @@
 {
   "offer": {
-    "accept": "Annehmen",
-    "decline": "Ablehnen",
+    "accept": "Ja, ich kann",
+    "decline": "Nein, diesmal nicht",
     "toast": {
-      "unavailableTitle": "Dieses Angebot ist nicht mehr verfügbar",
-      "unavailableDesc": "Es wurde vielleicht zurückgezogen oder ist abgelaufen. Aktualisiere, um den aktuellen Stand zu sehen.",
-      "declinedTitle": "Angebot abgelehnt",
-      "declinedDesc": "Damit sagst du nur dieses eine Angebot ab. Zukünftige Angebote sind nicht betroffen.",
+      "unavailableTitle": "Diese Anfrage ist nicht mehr verfügbar",
+      "unavailableDesc": "Sie wurde vielleicht zurückgezogen, oder die Antwortzeit ist abgelaufen. Aktualisiere, um den aktuellen Stand zu sehen.",
+      "declinedTitle": "Du hast abgesagt",
+      "declinedDesc": "Wenn du absagst, zählt das nicht gegen dich, und es hat keine Auswirkung auf andere Termine.",
       "errorTitle": "Fehler"
     }
   },
   "picker": {
     "loadError": "Konnte nicht geladen werden",
-    "blocked": "Gesperrt",
+    "blocked": "Nicht frei",
     "blockDate": "Termin sperren"
   },
   "calendar": {
     "lens": {
-      "offers": "Angebote",
+      "offers": "Anfragen",
       "month": "Monat",
       "allDates": "Alle Termine"
     },
@@ -26,41 +26,41 @@
       "title": "Dein Kalender"
     },
     "stat": {
-      "openOffers": "Offene Angebote",
-      "holds": "Vormerkungen"
+      "openOffers": "Offene Anfragen",
+      "holds": "Zugesagt"
     },
     "rail": {
       "statsTitleMonth": "Dein {{month}}"
     },
     "artistStatus": {
-      "confirmed": "Bestätigt",
-      "soft_booked": "Vormerkung",
-      "suggested": "Angebot",
-      "blocked": "Gesperrt",
-      "unanswered": "Nicht angeboten"
+      "confirmed": "Gebucht",
+      "soft_booked": "Zugesagt",
+      "suggested": "Angefragt",
+      "blocked": "Nicht frei",
+      "unanswered": "Noch nicht angefragt"
     },
     "day": {
       "session": "Session",
-      "expires": "Läuft ab",
-      "sub": "Deine Zusage für diesen Termin",
-      "empty": "An diesem Tag wird dir kein Termin angeboten.",
-      "primaryAccept": "Angebot annehmen",
+      "expires": "Antworten bis",
+      "sub": "So steht es um diesen Termin",
+      "empty": "An diesem Tag wurde dir nichts angefragt.",
+      "primaryAccept": "Anfrage beantworten",
       "primaryBlock": "Termin sperren",
-      "messageProducer": "Produktionsteam schreiben"
+      "messageProducer": "Büro schreiben"
     },
     "monthFlag": {
       "answer": "antwort",
-      "blocked": "gesperrt"
+      "blocked": "nicht frei"
     },
     "offers": {
-      "offerLabel": "Angebot · {{program}}",
-      "holdPlaced": "Vormerkung gesetzt",
-      "accept": "Annehmen",
-      "decline": "Ablehnen",
-      "awaitingConfirmation": "Wartet auf Bestätigung durch dein Produktionsteam"
+      "offerLabel": "Anfrage · {{program}}",
+      "holdPlaced": "Zugesagt",
+      "accept": "Ja, ich kann",
+      "decline": "Nein, diesmal nicht",
+      "awaitingConfirmation": "Wartet auf das letzte Wort vom Büro"
     },
     "offersProgress": {
-      "keyboardHint": "A annehmen · D ablehnen · B sperren · J weiter",
+      "keyboardHint": "A ja · D nein · B sperren · J weiter",
       "answeredCount": "{{answered}} von {{total}} beantwortet"
     },
     "offersAnswered": {
@@ -68,8 +68,8 @@
       "undoLast": "Letzte rückgängig"
     },
     "notOffered": {
-      "title": "Später diesen Monat · noch nicht angeboten",
-      "eligibleFromCasts": "Passend aus deinen Besetzungen"
+      "title": "Später diesen Monat · noch nicht angefragt",
+      "eligibleFromCasts": "Aus deinen Besetzungen"
     },
     "allDates": {
       "headerDate": "Datum",
@@ -77,49 +77,49 @@
       "headerShow": "Show",
       "headerSession": "Session",
       "headerMyStatus": "Mein Status",
-      "hireOrder": "Engagementvertrag"
+      "hireOrder": "Vertrag"
     },
     "shared": {
       "blockDate": "Termin sperren"
     },
-    "ineligibleReason": "Dieser Termin wird dir nicht angeboten. Angebotene Termine ergeben sich aus deinen Besetzungen und den dafür nötigen Skills.",
+    "ineligibleReason": "Dieser Termin wurde dir nicht angefragt. Termine, die dir angefragt werden können, ergeben sich aus deinen Besetzungen und den dafür nötigen Skills.",
     "prevMonth": "Voriger Monat",
     "nextMonth": "Nächster Monat",
-    "loadError": "Deine Buchungen oder gesperrten Termine konnten nicht geladen werden · Status kann unvollständig sein. Bitte aktualisiere.",
-    "empty": "Noch keine passenden Termine. Sobald du einer Besetzung hinzugefügt wirst, erscheinen angebotene Termine hier.",
+    "loadError": "Deine Buchungen oder deine nicht freien Termine konnten nicht geladen werden · Status kann unvollständig sein. Bitte aktualisiere.",
+    "empty": "Noch keine Termine. Sobald du einer Besetzung hinzugefügt wirst, erscheinen hier Termine, die dir angefragt werden können.",
     "label": {
       "booked": "Gebucht",
-      "hold": "Vormerkung",
-      "offer": "Angebot",
-      "blocked": "Gesperrt"
+      "hold": "Zugesagt",
+      "offer": "Anfrage",
+      "blocked": "Nicht frei"
     },
     "popover": {
-      "confirmed": "Buchung bestätigt",
-      "hold": "Vormerkung gesetzt · wartet auf Bestätigung durch dein Produktionsteam"
+      "confirmed": "Gebucht",
+      "hold": "Zugesagt · wartet auf das letzte Wort vom Büro"
     },
     "legend": {
       "title": "Legende:",
-      "eligible": "Verfügbar",
-      "confirmed": "Bestätigt",
-      "hold": "Vormerkung",
-      "offerPending": "Angebot offen",
-      "blocked": "Gesperrt"
+      "eligible": "Kann angefragt werden",
+      "confirmed": "Gebucht",
+      "hold": "Zugesagt",
+      "offerPending": "Angefragt",
+      "blocked": "Nicht frei"
     },
-    "srIneligible": "Abgeblendete Termine werden dir nicht angeboten. Angebotene Termine ergeben sich aus deinen Besetzungen und den dafür nötigen Skills."
+    "srIneligible": "Abgeblendete Termine wurden dir nicht angefragt. Termine, die dir angefragt werden können, ergeben sich aus deinen Besetzungen und den dafür nötigen Skills."
   },
   "toast": {
-    "dateBlocked": "Termin gesperrt",
+    "dateBlocked": "Als nicht frei markiert",
     "errorTitle": "Fehler",
-    "blockRemoved": "Sperre entfernt"
+    "blockRemoved": "Wieder als frei markiert"
   },
   "filter": {
-    "allOffers": "Alle Angebote",
+    "allOffers": "Alle Anfragen",
     "unanswered": "Unbeantwortet"
   },
   "sortChronoLabel": "Datum",
-  "offersLoadError": "Deine Angebote konnten nicht geladen werden. Bitte aktualisiere · sperre keine Termine, bevor das geladen ist, sonst werden offene Angebote möglicherweise nicht angezeigt.",
-  "emptyUnanswered": "Keine unbeantworteten Angebote · gut gemacht!",
-  "emptyAll": "Noch keine passenden Termine.",
+  "offersLoadError": "Deine Anfragen konnten nicht geladen werden. Bitte aktualisiere · sperre keine Termine, bevor das geladen ist, sonst werden offene Anfragen möglicherweise nicht angezeigt.",
+  "emptyUnanswered": "Keine Anfragen, die auf dich warten · gut gemacht!",
+  "emptyAll": "Noch keine Termine.",
   "firstRun": {
     "eyebrow": "{{org}} · dein Kalender",
     "headline": "Eine Sache hier gehört dir, und sie dauert zwei Minuten",
@@ -136,26 +136,26 @@
       "cta": "Termine sperren"
     },
     "rules": {
-      "heading": "So funktioniert das Buchen hier",
+      "heading": "So wirst du hier gebucht",
       "setBy": "Festgelegt von {{org}}. Das kannst du nicht ändern.",
-      "eligibilityTitle": "Deine Eignung kommt aus deiner Besetzung",
-      "eligibilityBody": "Ein Termin erscheint, wenn eine Besetzung, in der du bist, dafür geeignet ist und du alle nötigen Skills hast.",
-      "offersTitle": "Angebote kommen per E-Mail",
-      "offersBody": "Eine Übersicht um {{time}}, nie eine Mail pro Termin. Wenn du annimmst, bist du vorläufig gebucht, bis das Produktionsteam bestätigt.",
-      "offersBodyDirect": "Du wirst direkt gebucht, es gibt also nichts anzunehmen.",
-      "windowTitle": "Du hast {{hours}} Stunden Zeit zu antworten",
-      "windowBody": "Danach läuft das Angebot ab und geht an die nächste Stufe."
+      "eligibilityTitle": "Wer angefragt wird, ergibt sich aus deiner Besetzung",
+      "eligibilityBody": "Ein Termin erscheint, wenn eine Besetzung, in der du bist, dafür angefragt werden kann und du alle nötigen Skills hast.",
+      "offersTitle": "Anfragen kommen per E-Mail",
+      "offersBody": "Eine tägliche Sendung um {{time}}, nie eine Mail pro Termin. Wenn du zusagst, hältst du dir den Platz frei, bis das Büro das letzte Wort hat.",
+      "offersBodyDirect": "Du wirst direkt gebucht, es gibt also nichts zu beantworten.",
+      "windowTitle": "Antworte innerhalb von {{hours}} Stunden",
+      "windowBody": "Danach läuft die Anfrage ab und geht an die Nächsten in der Reihe."
     },
-    "hireOrdersFooter": "Engagementverträge sind aktiv. Du unterschreibst im Browser und das gegengezeichnete PDF landet in deiner Mail.",
+    "hireOrdersFooter": "Verträge sind aktiv. Du unterschreibst im Browser und das gegengezeichnete PDF landet in deiner Mail.",
     "bookingOffTitle": "Verfügbarkeit",
     "bookingOff": "Termine laufen in ShowFlow für diese Organisation nicht, hier gibt es also nichts einzurichten."
   },
   "blocked": {
     "title": "Gesperrte Termine",
-    "description": "Markiere Termine, an denen du nicht spielen kannst, damit dir das System keine Angebote dafür schickt. Termine, für die du bereits gebucht bist, sind davon nicht betroffen.",
+    "description": "Markiere Termine, an denen du nicht spielen kannst, damit das System dich dazu nicht anfragt. Termine, für die du bereits gebucht bist, sind davon nicht betroffen.",
     "dateLabel": "Datum",
     "selectAriaLabel": "Termin sperren",
-    "noEligibleOption": "Keine passenden Termine",
+    "noEligibleOption": "Keine Termine verfügbar",
     "selectPlaceholder": "Termin auswählen…",
     "reasonLabel": "Grund (optional)",
     "reasonPlaceholder": "Urlaub, anderer Job…",

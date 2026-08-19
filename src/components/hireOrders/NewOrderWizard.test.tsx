@@ -81,9 +81,9 @@ async function pickArtist(name: string) {
 }
 
 async function pickShowDate(labelSubstring: string) {
-  fireEvent.click(screen.getByRole("combobox", { name: /select show date/i }));
+  fireEvent.click(screen.getByRole("combobox", { name: /select date/i }));
   fireEvent.click(await screen.findByText(new RegExp(labelSubstring, "i")));
-  fireEvent.click(screen.getByRole("combobox", { name: /select show date/i }));
+  fireEvent.click(screen.getByRole("combobox", { name: /select date/i }));
   fireEvent.click(screen.getByRole("button", { name: /reset all to selected dates/i }));
   await flush();
 }
@@ -96,21 +96,21 @@ async function selectArtists(...names: string[]) {
 }
 
 async function selectCommonDates(...labels: string[]) {
-  fireEvent.click(screen.getByRole("combobox", { name: /select show date/i }));
+  fireEvent.click(screen.getByRole("combobox", { name: /select date/i }));
   for (const label of labels) {
     fireEvent.click(await screen.findByText(new RegExp(label, "i")));
   }
-  fireEvent.click(screen.getByRole("combobox", { name: /select show date/i }));
+  fireEvent.click(screen.getByRole("combobox", { name: /select date/i }));
   fireEvent.click(screen.getByRole("button", { name: /reset all to selected dates/i }));
   await flush();
 }
 
 async function selectCommonDatesWithoutApplying(...labels: string[]) {
-  fireEvent.click(screen.getByRole("combobox", { name: /select show date/i }));
+  fireEvent.click(screen.getByRole("combobox", { name: /select date/i }));
   for (const label of labels) {
     fireEvent.click(await screen.findByText(new RegExp(label, "i")));
   }
-  fireEvent.click(screen.getByRole("combobox", { name: /select show date/i }));
+  fireEvent.click(screen.getByRole("combobox", { name: /select date/i }));
   await flush();
 }
 
@@ -283,8 +283,8 @@ describe("NewOrderWizard", () => {
     expect(body.date_overrides).toEqual({ sd1: { sessions: ["Main set 19:00", "22:00"] } });
 
     // Success screen.
-    expect(await screen.findByText(/hire order created/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /open order/i })).toBeInTheDocument();
+    expect(await screen.findByText(/contract created/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /open contract/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /issue now/i })).toBeInTheDocument();
   });
 
@@ -339,8 +339,8 @@ describe("NewOrderWizard", () => {
     expect(invokeCalls()[0].action).toBe("draft-batch");
     expect(invokeCalls()[1]).toMatchObject({ action: "issue", org_id: ORG, order_ids: ["ho-new-2"] });
 
-    expect(await screen.findByText(/hire order created/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /open order/i })).toBeInTheDocument();
+    expect(await screen.findByText(/contract created/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /open contract/i })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /issue now/i })).not.toBeInTheDocument();
   });
 
@@ -364,7 +364,7 @@ describe("NewOrderWizard", () => {
 
     // The draft succeeded, so the user still lands on the success screen (not
     // stuck on step 4) and can retry issuing from there.
-    expect(await screen.findByText(/hire order created/i)).toBeInTheDocument();
+    expect(await screen.findByText(/contract created/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /issue now/i })).toBeInTheDocument();
   });
 
@@ -419,7 +419,7 @@ describe("NewOrderWizard", () => {
     clickContinue();
     clickContinue();
     fireEvent.click(await screen.findByRole("button", { name: /save as draft/i }));
-    fireEvent.click(await screen.findByRole("button", { name: /open order/i }));
+    fireEvent.click(await screen.findByRole("button", { name: /open contract/i }));
     expect(navigate).toHaveBeenCalledWith("/hire-orders/ho-new-1");
   });
 
@@ -455,9 +455,9 @@ describe("NewOrderWizard", () => {
     await selectArtists("Ann Artist", "Ben Booker");
     await selectCommonDates("Berlin", "Hamburg");
 
-    fireEvent.click(screen.getByRole("combobox", { name: /select show date/i }));
+    fireEvent.click(screen.getByRole("combobox", { name: /select date/i }));
     fireEvent.click(await screen.findByRole("option", { name: /hamburg/i }));
-    fireEvent.click(screen.getByRole("combobox", { name: /select show date/i }));
+    fireEvent.click(screen.getByRole("combobox", { name: /select date/i }));
 
     expect(screen.queryByRole("checkbox", { name: /hamburg/i })).not.toBeInTheDocument();
     await reachReviewWithFee();
@@ -482,9 +482,9 @@ describe("NewOrderWizard", () => {
 
     // Deselect A (Berlin) via the common date picker - the same deselect path
     // toggleShowDate takes in normal use.
-    fireEvent.click(screen.getByRole("combobox", { name: /select show date/i }));
+    fireEvent.click(screen.getByRole("combobox", { name: /select date/i }));
     fireEvent.click(await screen.findByRole("option", { name: /berlin/i }));
-    fireEvent.click(screen.getByRole("combobox", { name: /select show date/i }));
+    fireEvent.click(screen.getByRole("combobox", { name: /select date/i }));
     await flush();
 
     // Reselect A (Berlin): it is appended at the end of both arrays.
@@ -738,9 +738,9 @@ describe("NewOrderWizard", () => {
       org_id: ORG,
       order_ids: ["ho-new-1", "ho-new-2"],
     });
-    expect(await screen.findByText("2 hire orders created")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /open order/i })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /close and return to hire orders/i }));
+    expect(await screen.findByText("2 contracts created")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /open contract/i })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /close and return to contracts/i }));
     expect(navigate).toHaveBeenCalledWith("/hire-orders");
   });
 

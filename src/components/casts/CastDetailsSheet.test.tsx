@@ -117,8 +117,8 @@ describe("CastDetailsSheet (design 2a)", () => {
   it("renders the KPI tiles derived from real data", async () => {
     render();
     expect(await screen.findByText("Artist One")).toBeInTheDocument();
-    expect(screen.getByText("Cities eligible")).toBeInTheDocument();
-    expect(screen.getByText("Tier 1 cities")).toBeInTheDocument();
+    expect(screen.getByText("Cities that can be asked")).toBeInTheDocument();
+    expect(screen.getByText("First-round cities")).toBeInTheDocument();
     // 2 of 3 cities are eligible.
     expect(screen.getByText("2 / 3")).toBeInTheDocument();
   });
@@ -127,7 +127,7 @@ describe("CastDetailsSheet (design 2a)", () => {
     render();
     expect(await screen.findByText("Coverage gap")).toBeInTheDocument();
     // Munich is eligible for Show One but has no tier for this cast.
-    expect(screen.getByText(/Munich not in any tier/)).toBeInTheDocument();
+    expect(screen.getByText(/Munich not in any round/)).toBeInTheDocument();
   });
 
   it("renders the city coverage rows with tier badges and toggleable show chips", async () => {
@@ -135,9 +135,9 @@ describe("CastDetailsSheet (design 2a)", () => {
     expect(await screen.findByText("City coverage")).toBeInTheDocument();
     // Berlin holds tier 1 for this cast; Munich holds none.
     const berlinRow = (await screen.findByText("Berlin")).closest("[data-city-row]")!;
-    expect(within(berlinRow as HTMLElement).getByText("Tier 1")).toBeInTheDocument();
+    expect(within(berlinRow as HTMLElement).getByText("Round 1")).toBeInTheDocument();
     const munichRow = screen.getByText("Munich").closest("[data-city-row]")!;
-    expect(within(munichRow as HTMLElement).getByText("No tier")).toBeInTheDocument();
+    expect(within(munichRow as HTMLElement).getByText("No round")).toBeInTheDocument();
     // Each row exposes a toggle chip per show.
     expect(within(berlinRow as HTMLElement).getByRole("button", { name: /Show One/ })).toBeEnabled();
   });
@@ -192,7 +192,7 @@ describe("CastDetailsSheet (design 2a)", () => {
   it("links out to the offer-order coverage matrix in Settings", async () => {
     render();
     expect(await screen.findByText("Artist One")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Manage offer order/i })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /Manage ask order/i })).toHaveAttribute(
       "href",
       "/settings?tab=casts-coverage",
     );

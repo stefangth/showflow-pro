@@ -60,7 +60,7 @@ describe('CalendarDaySheet', () => {
 
     const sheet = screen.getByTestId('calendar-day-sheet');
     expect(sheet).toBeInTheDocument();
-    expect(screen.getByTestId('day-rail-primary')).toHaveTextContent('Confirm holds');
+    expect(screen.getByTestId('day-rail-primary')).toHaveTextContent('Book who said yes');
 
     // Exactly one grab handle (vaul's own — DrawerContent renders it via a
     // hardcoded `rounded-full bg-muted` div; CalendarDaySheet must not add
@@ -80,7 +80,7 @@ describe('CalendarDaySheet', () => {
 
     // Producer variant never shows the artist-only "Message producer" button.
     expect(screen.queryByTestId('day-sheet-message-producer')).not.toBeInTheDocument();
-    expect(screen.queryByText('Message producer')).not.toBeInTheDocument();
+    expect(screen.queryByText('Message the office')).not.toBeInTheDocument();
   });
 
   it('artist: shows "Message producer" button firing onMessageProducer', () => {
@@ -96,15 +96,15 @@ describe('CalendarDaySheet', () => {
       />
     );
 
-    expect(screen.getByTestId('day-rail-primary')).toHaveTextContent('Accept offer');
+    expect(screen.getByTestId('day-rail-primary')).toHaveTextContent('Answer the ask');
 
     // DayDetail's own secondary button (default label "Message producer")
     // must be suppressed — only the sheet's own button renders.
     expect(screen.queryByTestId('day-rail-secondary')).not.toBeInTheDocument();
-    expect(screen.getAllByText('Message producer')).toHaveLength(1);
+    expect(screen.getAllByText('Message the office')).toHaveLength(1);
 
     const messageBtn = screen.getByTestId('day-sheet-message-producer');
-    expect(messageBtn).toHaveTextContent('Message producer');
+    expect(messageBtn).toHaveTextContent('Message the office');
     fireEvent.click(messageBtn);
     expect(onMessageProducer).toHaveBeenCalledTimes(1);
 

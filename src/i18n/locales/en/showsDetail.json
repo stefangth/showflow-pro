@@ -1,6 +1,6 @@
 {
   "showDateSheet": {
-    "titleFallback": "Show Date",
+    "titleFallback": "Date",
     "castFallback": "Cast",
     "assignedArtists": {
       "title": "Assigned Artists",
@@ -12,7 +12,7 @@
       "noActiveOrg": "No active organization",
       "castOverrideNotFound": "Cast override not found, try refreshing",
       "cityUpdated": "City updated",
-      "castEligibilityUpdated": "Cast eligibility updated",
+      "castEligibilityUpdated": "Updated where this cast can be asked",
       "requiredSkillAdded": "Required skill added",
       "requiredSkillAddFailed": "Failed to add required skill",
       "requiredSkillRemoved": "Required skill removed",
@@ -27,47 +27,47 @@
       "bookingUpdateFailed": "This booking could not be updated. Refresh and retry.",
       "bookedNamed": "Booked {{name}}.",
       "bookingUpdated": "Booking updated",
-      "confirmed": "Confirmed {{count}}",
-      "nothingToConfirm": "Nothing to confirm, it moved on",
-      "tierTrackingFailed": "Tier tracking failed to record. Re-open the tier to restore escalation and at-risk alerts.",
+      "confirmed": "Booked {{count}}",
+      "nothingToConfirm": "Nothing to book, it moved on",
+      "tierTrackingFailed": "Could not save who this date asks next. Reopen this step to restore at-risk alerts.",
       "dateCancelled": "Date cancelled",
       "dateDeleted": "Date deleted"
     },
     "status": {
       "cancelled": "Cancelled",
-      "allConfirmed": "All slots confirmed",
-      "tierOpenExpiry": "Tier {{tier}} open · {{detail}}",
-      "tierOpen": "Tier {{tier}} open",
-      "acceptedWaiting": "{{count}} accepted, waiting on confirm"
+      "allConfirmed": "All places booked",
+      "tierOpenExpiry": "Round {{tier}} open · {{detail}}",
+      "tierOpen": "Round {{tier}} open",
+      "acceptedWaiting": "{{count}} said yes, waiting on you"
     },
-    "slotWarning": "Slot config missing for {{program}}. Set cast slots in Settings.",
+    "slotWarning": "Cast places aren't set up for {{program}}. Set them in Settings.",
     "thisShow": "this show",
     "pagerLabel": "Date {{index}} of {{total}}",
-    "flowClassic": "Classic offers",
+    "flowClassic": "Classic asking",
     "flowDirect": "Direct booking",
     "tabs": {
       "cast": "Cast",
-      "offers": "Offers",
+      "offers": "Asks",
       "book": "Book artists",
-      "order": "Hire order",
+      "order": "Contract",
       "chat": "Chat",
       "setup": "Setup"
     },
-    "slotActionOpenTier": "Open next tier",
+    "slotActionOpenTier": "Open the next round",
     "slotActionBook": "Book artist",
     "editNotes": "Edit notes",
     "editSchedule": "Edit schedule",
     "overflow": {
       "editDateSetup": "Edit date setup"
     },
-    "generateHireOrder": "Generate hire order",
-    "generateHireOrderNoPermission": "You don't have permission to generate hire orders",
+    "generateHireOrder": "Draft the contract",
+    "generateHireOrderNoPermission": "You don't have permission to draft contracts",
     "footer": {
       "drafted": "DRAFTED",
-      "alreadyCovers": "A hire order already covers this date",
-      "openHireOrder": "Open hire order",
-      "generateHireOrder": "Generate hire order",
-      "generate": "Generate"
+      "alreadyCovers": "A contract already covers this date",
+      "openHireOrder": "Open the contract",
+      "generateHireOrder": "Draft the contract",
+      "generate": "Draft"
     },
     "banner": {
       "cancelled": "Cancelled"
@@ -77,13 +77,13 @@
       "city": "City",
       "selectCity": "Select city",
       "none": "None",
-      "extraEligibleCasts": "Extra eligible casts (this date)",
+      "extraEligibleCasts": "Extra casts that can be asked (this date)",
       "addCastForDate": "Add cast for this date…",
       "addedCount": "{{count}} added",
       "noCastsYet": "No casts yet.",
       "inherited": "inherited",
       "inheritedVia": "inherited via {{city}}",
-      "inheritedNote": "Inherited casts come from the city eligibility matrix in Settings → Cities & Casts. Update the city above or adjust cast eligibility there.",
+      "inheritedNote": "Inherited casts come from the city's cast matrix in Settings → Cities & Casts. Update the city above or adjust who can be asked there.",
       "editNotesPermission": "You don't have permission to edit show dates",
       "cancelDate": "Cancel date",
       "cancelDateTitle": "Cancel this date?",
@@ -99,16 +99,16 @@
     }
   },
   "bookingRow": {
-    "confirm": "Confirm",
+    "confirm": "Book",
     "cancel": "Cancel"
   },
   "showDateForm": {
     "toast": {
       "dateUpdated": "Date updated",
-      "tier1AutoOpened": "Tier 1 opened automatically · {{count}} offers sent",
+      "tier1AutoOpened": "First round opened automatically · {{count}} asks sent",
       "noActiveOrg": "No active organization",
-      "dateCreatedWithOffers": "Date created · {{count}} offer(s) opened",
-      "dateCreatedOffersFailed": "Date created (offers could not be opened)",
+      "dateCreatedWithOffers": "Date created · {{count}} ask(s) sent",
+      "dateCreatedOffersFailed": "Date created (asks could not be sent)",
       "dateCreated": "Date created"
     },
     "editDate": "Edit date",
@@ -124,32 +124,32 @@
     "venue": "Venue",
     "city": "City",
     "notes": "Notes",
-    "openTier1Now": "Open tier-1 offers now",
-    "openTier1NowConfigure": "Open tier-1 offers now (configure slots first)",
-    "openTier1FlowHint": "This follows your booking flow setting \"Open tier 1 automatically when a new date is ready\". You can change it for this date.",
+    "openTier1Now": "Start asking now",
+    "openTier1NowConfigure": "Start asking now (set places first)",
+    "openTier1FlowHint": "This follows your booking flow setting \"Start asking automatically when a new date is ready\". You can change it for this date.",
     "saving": "Saving…",
     "saveDate": "Save date",
     "createDate": "Create date"
   },
   "cockpitCastList": {
-    "accepted": "Accepted",
-    "confirmed": "Confirmed",
-    "offered": "Offered",
-    "openSlot": "Open slot",
-    "confirm": "Confirm",
+    "accepted": "Said yes",
+    "confirmed": "Booked",
+    "offered": "Asked",
+    "openSlot": "Open place",
+    "confirm": "Book",
     "cancel": "Cancel",
     "keepBooking": "Keep booking",
     "cancelBooking": "Cancel booking",
     "thisArtist": "this artist"
   },
   "cockpitFooter": {
-    "hireOrder": "Hire order"
+    "hireOrder": "Contract"
   },
   "cockpitHeader": {
-    "generateHireOrder": "Generate hire order",
+    "generateHireOrder": "Draft the contract",
     "moreActions": "More actions",
-    "slotsCount": "{{confirmed}} of {{total}} slots",
-    "slotFill": "Slot fill",
+    "slotsCount": "{{confirmed}} of {{total}} places",
+    "slotFill": "Places filled",
     "flow": "Flow:"
   },
   "cockpitPager": {
@@ -159,11 +159,11 @@
   "cockpitRail": {
     "date": "Date",
     "details": "Details",
-    "eligibility": "Eligibility",
+    "eligibility": "Who can be asked",
     "upNext": "Up next",
     "activity": "Activity",
     "chat": "Chat",
-    "noRestrictions": "No eligibility restrictions.",
+    "noRestrictions": "Anyone can be asked.",
     "inherited": "inherited",
     "editDateSetup": "Edit date setup",
     "airtableLocked": "Airtable · locked",
@@ -172,65 +172,65 @@
     "messageCast": "Message the cast in the Chat tab"
   },
   "dryRunDialog": {
-    "previewOfferTier": "Preview offer tier",
-    "deliveryDigest": "Offers go out with the next daily digest.",
-    "deliveryImmediate": "Offer emails send immediately.",
-    "checkingTitle": "Checking who gets offers…",
-    "openingTitle": "Opening tier {{tier}} would send {{count}} offers",
-    "checkingDesc": "Checking who is eligible for this tier…",
-    "notReadyDesc": "This tier isn't ready to open yet.",
+    "previewOfferTier": "Preview who gets asked",
+    "deliveryDigest": "Asks go out with the next daily send.",
+    "deliveryImmediate": "Ask emails send immediately.",
+    "checkingTitle": "Checking who gets asked…",
+    "openingTitle": "Opening round {{tier}} would send {{count}} asks",
+    "checkingDesc": "Checking who can be asked in this round…",
+    "notReadyDesc": "This round isn't ready to open yet.",
     "loadingPreview": "Loading preview",
-    "excludedLine": "Excluded: {{alreadyBooked}} already booked · {{blocked}} blocked · {{inactive}} inactive",
-    "notEligible": "Not eligible for this show: {{count}}",
+    "excludedLine": "Excluded: {{alreadyBooked}} already booked · {{blocked}} not free · {{inactive}} inactive",
+    "notEligible": "Can't be asked for this show: {{count}}",
     "missingSkills": "Missing required skills: {{count}}",
     "cancel": "Cancel",
-    "openTierConfirm": "Open tier {{tier}} · send {{count}} offers",
-    "openTier": "Open tier"
+    "openTierConfirm": "Open round {{tier}} · send {{count}} asks",
+    "openTier": "Open round"
   },
   "eligibilityBookList": {
     "joinTwo": "{{a}} and {{b}}",
     "joinMany": "{{list}}, and {{last}}",
     "reqHasSkills": "This date requires {{skills}}",
     "reqNoSkills": "This date has no skill requirements",
-    "factSentence": "{{requirement}} · {{qualifying}} of {{total}} artists qualify and are not blocked.",
-    "error": "Could not load the eligible artists. Reload the page to try again.",
+    "factSentence": "{{requirement}} · {{qualifying}} of {{total}} artists qualify and are free.",
+    "error": "Could not load who can be asked. Reload the page to try again.",
     "bookAsUnderstudy": "Book as understudy",
     "narrowList": "Narrow the list further",
-    "noEligible": "No eligible artists for this date. Check casts and city in Settings.",
+    "noEligible": "Nobody can be asked for this date. Check casts and city in Settings.",
     "booked": "Booked",
     "book": "Book",
     "bookUnderstudyTitle": "Book {{name}} as understudy for this date?",
     "bookTitle": "Book {{name}} for this date?",
-    "bookUnderstudyDesc": "This books and confirms {{name}} as understudy immediately. There is no offer step in direct booking mode.",
-    "bookDesc": "This books and confirms {{name}} immediately. There is no offer step in direct booking mode.",
+    "bookUnderstudyDesc": "This books {{name}} as understudy immediately. There is no asking step in direct booking mode.",
+    "bookDesc": "This books {{name}} immediately. There is no asking step in direct booking mode.",
     "cancel": "Cancel",
-    "bookAndConfirm": "Book and confirm"
+    "bookAndConfirm": "Book now"
   },
   "nextOfferHero": {
     "adHocCasts": "Ad-hoc casts",
-    "tierN": "Tier {{tier}}",
+    "tierN": "Round {{tier}}",
     "artistWord_one": "artist",
     "artistWord_other": "artists",
     "bodyWithSkills_one": "{{matchCount}} of {{castTotal}} {{artistWord}} in {{label}} has {{skills}}.",
     "bodyWithSkills_other": "{{matchCount}} of {{castTotal}} {{artistWord}} in {{label}} have {{skills}}.",
     "bodyAvailable_one": "{{matchCount}} of {{castTotal}} {{artistWord}} in {{label}} is available.",
     "bodyAvailable_other": "{{matchCount}} of {{castTotal}} {{artistWord}} in {{label}} are available.",
-    "tier1Suffix": "{{first}} {{blocked}} blocked.",
-    "priorSuffix": "{{first}} {{blocked}} blocked, {{alreadyOffered}} already booked or offered.",
+    "tier1Suffix": "{{first}} {{blocked}} not free.",
+    "priorSuffix": "{{first}} {{blocked}} not free, {{alreadyOffered}} already booked or asked.",
     "missReqSkill": "{{count}} miss a required skill",
-    "blockedOnDate": "{{count}} blocked on this date",
+    "blockedOnDate": "{{count}} not free on this date",
     "andMore": " and {{count}} more",
-    "nextOfferAdHoc": "NEXT OFFER · AD-HOC CASTS",
-    "nextOfferTier": "NEXT OFFER · TIER {{tier}}",
-    "getOffers": "GET OFFERS",
+    "nextOfferAdHoc": "NEXT ASK · AD-HOC CASTS",
+    "nextOfferTier": "NEXT ASK · ROUND {{tier}}",
+    "getOffers": "SEND ASKS",
     "seeArtists": "See the {{count}} artists",
-    "narrowOffer": "Narrow this offer",
-    "onlyOfferWith": "Only offer to artists with",
+    "narrowOffer": "Narrow this ask",
+    "onlyOfferWith": "Only ask artists with",
     "noExtraSkills": "No extra skills to narrow by."
   },
   "requiredSkillsCard": {
     "title": "Skills required on this date",
-    "computedFrom": "Computed from the {{count}} slots on {{show}}. Only artists holding all of them can be offered or booked.",
+    "computedFrom": "Computed from the {{count}} places on {{show}}. Only artists holding all of them can be asked or booked.",
     "droppedOnDate": "dropped on this date",
     "addedOnDate": "added on this date",
     "noSkillsRequired": "No skills required.",
@@ -241,7 +241,7 @@
   },
   "requiredSkillsSection": {
     "requiredSkills": "Required skills",
-    "mustHaveAll": "Artists must have all of these skills to receive offers or be booked.",
+    "mustHaveAll": "Artists must have all of these skills to be asked or booked.",
     "droppedOnDate": "dropped on this date",
     "restore": "Restore {{name}}",
     "fromShow": "From show",
@@ -251,26 +251,26 @@
     "emptyHint": "No skills yet. Add skills on artist profiles first."
   },
   "tierLadder": {
-    "tierN": "Tier {{tier}}",
+    "tierN": "Round {{tier}}",
     "adHocCasts": "Ad-hoc casts",
-    "title": "TIER LADDER · SHOW-SPECIFIC",
+    "title": "WHO THIS DATE ASKS · SHOW-SPECIFIC",
     "priorityOrder": "Casts in priority order for {{city}}",
-    "ariaLabel": "Tier ladder",
-    "statusCounts": "{{sent}} offers sent · {{accepted}} accepted · {{pending}} pending · {{cancelled}} cancelled",
+    "ariaLabel": "Who this date asks",
+    "statusCounts": "{{sent}} asked · {{accepted}} said yes · {{pending}} waiting · {{cancelled}} cancelled",
     "matchCounts": "{{matchCount}} of {{castTotal}} artists match{{missDetail}}",
     "missDetail": " · {{count}} miss a required skill",
-    "closeTier": "Close tier"
+    "closeTier": "Close this round"
   },
   "tierTimeline": {
-    "directBooking": "Direct booking: producers book from the eligibility list",
-    "offerTiers": "Offer tiers",
-    "offerTierTimeline": "Offer tier timeline",
+    "directBooking": "Direct booking: producers book from who can be asked",
+    "offerTiers": "Rounds",
+    "offerTierTimeline": "Who gets asked, and when",
     "usingShowPriorities": "Using show-specific priorities",
-    "howCastsTiersWork": "How casts and tiers work",
-    "addSessionTime": "Add a session time before opening offers.",
-    "addSessionTimeDialog": "Add a session time to this date before opening offers.",
+    "howCastsTiersWork": "How casts and rounds work",
+    "addSessionTime": "Add a session time before you start asking.",
+    "addSessionTimeDialog": "Add a session time to this date before you start asking.",
     "cancel": "Cancel",
-    "openOffers": "Open offers"
+    "openOffers": "Start asking"
   },
   "castDetails": {
     "toast": {
@@ -280,28 +280,28 @@
       "failedAddArtist": "Failed to add artist",
       "artistRemovedFromCast": "Artist removed from cast",
       "failedRemoveArtist": "Failed to remove artist",
-      "eligibilityUpdated": "Eligibility updated",
-      "failedUpdateEligibility": "Failed to update eligibility"
+      "eligibilityUpdated": "Updated who can be asked",
+      "failedUpdateEligibility": "Failed to update who can be asked"
     },
     "castNamePlaceholder": "Cast name",
     "descriptionOptional": "Description (optional)",
     "saving": "Saving…",
     "save": "Save",
     "cancel": "Cancel",
-    "manageDefault": "Manage cast members and city eligibility",
+    "manageDefault": "Manage cast members and which cities can be asked",
     "editCast": "Edit cast",
     "close": "Close",
     "eyebrow": "Cast",
     "kpi": {
       "members": "Members",
-      "citiesEligible": "Cities eligible",
-      "tier1Cities": "Tier 1 cities",
+      "citiesEligible": "Cities that can be asked",
+      "tier1Cities": "First-round cities",
       "upcomingDates": "Upcoming dates"
     },
     "coverageGap": {
       "badge": "Coverage gap",
-      "text": "{{cities}} not in any tier, so this cast is never offered there.",
-      "setTier": "Set tier"
+      "text": "{{cities}} not in any round, so this cast is never asked there.",
+      "setTier": "Set round"
     },
     "roster": {
       "title": "Roster",
@@ -313,8 +313,8 @@
     },
     "coverage": {
       "title": "City coverage",
-      "hint": "Click a show to toggle eligibility.",
-      "noTier": "No tier"
+      "hint": "Click a show to toggle whether this cast can be asked.",
+      "noTier": "No round"
     },
     "rail": {
       "atAGlance": "At a glance",
@@ -338,8 +338,8 @@
     "noMatches": "No matches.",
     "addCitiesFirst": "Add cities first in Settings → Casts & coverage.",
     "noShows": "No shows available.",
-    "tierN": "Tier {{tier}}",
-    "manageOfferOrderLink": "Manage offer order in Settings, Casts & coverage"
+    "tierN": "Round {{tier}}",
+    "manageOfferOrderLink": "Manage ask order in Settings, Casts & coverage"
   },
   "castDialog": {
     "toast": {
@@ -354,7 +354,7 @@
   },
   "castsSection": {
     "casts": "Casts",
-    "noCasts": "No casts yet. Create one to group artists for show eligibility.",
+    "noCasts": "No casts yet. Create one to group artists for who can be asked to a show.",
     "memberCount_one": "{{count}} member",
     "memberCount_other": "{{count}} members"
   }

@@ -83,6 +83,6 @@ const HireOrderIssuedEmail = ({
 export const template = {
   component: HireOrderIssuedEmail as React.ComponentType<TemplateData>,
   subject: (data: TemplateData) => applyEmailTokens(EMAIL_COPY_DEFAULTS["hire-order-issued.subject"], { dateLabel: String(data.date_label || "your date"), venue: String(data.venue || "the venue") }),
-  displayName: "Hire order issued",
+  displayName: "Contract issued",
   previewData: { artist_name: "Mara Lindqvist", order_no: "HO-2026-0142", date_label: "Sat, Aug 15 2026", venue: "Tempodrom", city: "Berlin", fee_label: "€850.00", download_url: `${APP_URL}/hire-orders/HO-2026-0142`, countersign_mode: "manual" },
 } satisfies TemplateEntry;

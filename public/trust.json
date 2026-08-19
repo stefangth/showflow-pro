@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "generatedAt": "2026-08-11",
+  "generatedAt": "2026-08-19",
   "roles": [
     {
       "value": "admin",
@@ -407,7 +407,7 @@
         "countLabel": "2"
       },
       {
-        "group": "Productions & show dates",
+        "group": "Productions & dates",
         "entries": [
           {
             "label": "Create and edit productions",
@@ -438,15 +438,15 @@
             "defaultLabel": "Off by default"
           },
           {
-            "label": "Create and edit show dates",
-            "description": "Producers can create and edit show dates.",
+            "label": "Create and edit dates",
+            "description": "Producers can create and edit dates.",
             "sensitive": false,
             "defaultEnabled": true,
             "defaultLabel": "On by default"
           },
           {
-            "label": "Delete show dates",
-            "description": "Producers can permanently delete show dates.",
+            "label": "Delete dates",
+            "description": "Producers can permanently delete dates.",
             "sensitive": true,
             "defaultEnabled": false,
             "defaultLabel": "Off by default"
@@ -466,15 +466,15 @@
             "defaultLabel": "On by default"
           },
           {
-            "label": "Open and close offer tiers",
-            "description": "Producers can open and close offer tiers.",
+            "label": "Send and close asks",
+            "description": "Producers can send and close asks.",
             "sensitive": false,
             "defaultEnabled": true,
             "defaultLabel": "On by default"
           },
           {
             "label": "Confirm bookings",
-            "description": "Producers can confirm soft-booked artists.",
+            "description": "Producers can confirm artists who said yes.",
             "sensitive": false,
             "defaultEnabled": true,
             "defaultLabel": "On by default"
@@ -519,25 +519,25 @@
         "countLabel": "3"
       },
       {
-        "group": "Hire orders",
+        "group": "Contracts",
         "entries": [
           {
-            "label": "Generate and draft hire orders",
-            "description": "Producers can draft hire orders.",
+            "label": "Generate and draft contracts",
+            "description": "Producers can draft contracts.",
             "sensitive": false,
             "defaultEnabled": true,
             "defaultLabel": "On by default"
           },
           {
-            "label": "Issue hire orders",
-            "description": "Producers can issue hire orders and email the PDF to artists.",
+            "label": "Issue contracts",
+            "description": "Producers can issue contracts and email the PDF to artists.",
             "sensitive": true,
             "defaultEnabled": true,
             "defaultLabel": "On by default"
           },
           {
-            "label": "Void hire orders",
-            "description": "Producers can void issued hire orders.",
+            "label": "Void contracts",
+            "description": "Producers can void issued contracts.",
             "sensitive": true,
             "defaultEnabled": true,
             "defaultLabel": "On by default"
@@ -550,7 +550,7 @@
             "defaultLabel": "On by default"
           },
           {
-            "label": "Edit hire-order settings",
+            "label": "Edit contract settings",
             "description": "Producers can change letterhead, numbering, and terms.",
             "sensitive": true,
             "defaultEnabled": false,

@@ -1,55 +1,55 @@
 import type { GlossaryEntry } from './types';
 
 /** "The words we use" cards. The card title is TERMS[term][lang]; the body is def[lang].
- *  German bodies use the TERMS vocabulary (Besetzung, Stufe, Engagementvertrag, ...). */
+ *  German bodies use the TERMS vocabulary (Besetzung, Engagementvertrag, ...). */
 export const GLOSSARY: readonly GlossaryEntry[] = [
   {
     term: 'hold',
     def: {
-      en: 'An artist accepted an offer, but the production team has not confirmed it yet. The date is reserved, not booked.',
-      de: 'Ein Artist hat ein Angebot angenommen, aber das Produktionsteam hat es noch nicht bestätigt. Der Termin ist reserviert, nicht gebucht.',
+      en: 'How many said-yes artists are still waiting on your last word, shown on the dashboard queue. The date is reserved for them, not booked, until you act.',
+      de: 'Wie viele Artists, die zugesagt haben, noch auf dein letztes Wort warten, gezeigt in der Dashboard-Queue. Der Termin ist für sie reserviert, aber erst gebucht, wenn du handelst.',
     },
   },
   {
     term: 'softBooked',
     def: {
-      en: 'The production-team side of the same state. The slot is claimed and waiting on a confirm.',
-      de: 'Die Seite des Produktionsteams für denselben Zustand. Der Slot ist belegt und wartet auf eine Bestätigung.',
+      en: 'The status on an individual booking once an artist says yes but before it is booked. The place is claimed, waiting on the last word, wherever your organization keeps one.',
+      de: 'Der Status einer einzelnen Buchung, sobald ein Artist zugesagt hat, aber bevor sie gebucht ist. Der Platz ist belegt und wartet auf das letzte Wort, sofern deine Organisation sich eines vorbehält.',
     },
   },
   {
     term: 'cast',
     def: {
-      en: 'A named group of artists. Your casts, and the skills they require, decide which dates you are offered.',
-      de: 'Eine benannte Gruppe von Artists. Deine Besetzungen, und die Skills, die sie verlangen, entscheiden, welche Termine dir angeboten werden.',
+      en: 'A named group of artists. Your casts, and the skills they require, decide which dates you are asked about.',
+      de: 'Eine benannte Gruppe von Artists. Deine Besetzungen, und die Skills, die sie verlangen, entscheiden, zu welchen Terminen du gefragt wirst.',
     },
   },
   {
     term: 'tierLadder',
     def: {
-      en: 'The order casts get asked in. Opening the next tier widens the offer to the next group down the ladder.',
-      de: 'Die Reihenfolge, in der Besetzungen angefragt werden. Öffnest du die nächste Stufe, geht das Angebot an die nächste Gruppe weiter unten in der Rangfolge.',
+      en: 'The order casts get asked in. Opening it up further widens who gets asked to the next group down.',
+      de: 'Die Reihenfolge, in der Besetzungen gefragt werden. Öffnest du es für mehr Leute, weitet sich der Kreis der Gefragten auf die nächste Gruppe aus.',
     },
   },
   {
     term: 'responseWindow',
     def: {
-      en: 'How long an offer stays open for you. Miss it and the offer expires and passes to the next tier.',
-      de: 'Wie lange ein Angebot für dich offen bleibt. Verpasst du es, läuft das Angebot ab und geht an die nächste Stufe.',
+      en: 'How long you have to answer an ask. Miss it and the ask expires and passes to the next cast.',
+      de: 'Wie lange du Zeit hast, eine Anfrage zu beantworten. Verpasst du es, läuft die Anfrage ab und geht an die nächste Besetzung.',
     },
   },
   {
     term: 'digest',
     def: {
-      en: 'The one daily email that carries your open offers, and a second that carries confirmations. Your organization sets the hours.',
-      de: 'Die eine tägliche E-Mail mit deinen offenen Angeboten, und eine zweite mit den Bestätigungen. Deine Organisation legt die Uhrzeiten fest.',
+      en: 'The one daily email that carries your open asks, and a second that carries bookings. Your organization sets the hours.',
+      de: 'Die eine tägliche E-Mail mit deinen offenen Anfragen, und eine zweite mit den Buchungen. Deine Organisation legt die Uhrzeiten fest.',
     },
   },
   {
     term: 'understudy',
     def: {
-      en: 'Cover for a confirmed artist. If someone cancels, the understudy whose skills fit best is promoted automatically.',
-      de: 'Absicherung für einen bestätigten Artist. Sagt jemand ab, rückt automatisch die Zweitbesetzung nach, deren Skills am besten passen.',
+      en: 'Cover for a booked artist. If someone cancels, the understudy whose skills fit best is promoted automatically.',
+      de: 'Absicherung für einen gebuchten Artist. Sagt jemand ab, rückt automatisch die Zweitbesetzung nach, deren Skills am besten passen.',
     },
   },
   {
@@ -62,15 +62,15 @@ export const GLOSSARY: readonly GlossaryEntry[] = [
   {
     term: 'voidOrder',
     def: {
-      en: 'An issued order cannot be edited. Void it and issue a fresh one instead.',
+      en: 'An issued contract cannot be edited. Void it and issue a fresh one instead.',
       de: 'Ein ausgestellter Engagementvertrag lässt sich nicht mehr bearbeiten. Mach ihn ungültig und stell stattdessen einen neuen aus.',
     },
   },
   {
     term: 'blockedDate',
     def: {
-      en: 'A date you marked as unavailable. You stop being offered it. Dates you are already booked for are not affected.',
-      de: 'Ein Termin, den du als nicht verfügbar markiert hast. Er wird dir nicht mehr angeboten. Termine, für die du schon gebucht bist, bleiben davon unberührt.',
+      en: 'A date you marked as not free. You stop being asked about it. Dates you are already booked for are not affected.',
+      de: 'Ein Termin, den du als nicht frei markiert hast. Du wirst dazu nicht mehr gefragt. Termine, für die du schon gebucht bist, bleiben davon unberührt.',
     },
   },
 ] as const;

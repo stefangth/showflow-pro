@@ -34,9 +34,9 @@ describe("CockpitHeader", () => {
 
   it("shows the Generate hire order button only when enabled by the flag", () => {
     const { rerender } = render(<CockpitHeader {...base} showGenerateHireOrder={false} />);
-    expect(screen.queryByRole("button", { name: /generate hire order/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /draft the contract/i })).not.toBeInTheDocument();
     rerender(<CockpitHeader {...base} showGenerateHireOrder onGenerate={vi.fn()} />);
-    expect(screen.getByRole("button", { name: /generate hire order/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /draft the contract/i })).toBeInTheDocument();
   });
 
   it("renders flow label as a Settings link only when onEditFlow is provided", () => {

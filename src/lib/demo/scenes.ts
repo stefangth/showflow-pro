@@ -90,11 +90,11 @@ export const SEASON_HANDOVER: Scene[] = [
   },
   {
     id: 'hire-order',
-    title: { en: 'Hire order, auto drafted', de: 'Engagementvertrag, automatisch entworfen' },
+    title: { en: 'Contract, auto drafted', de: 'Engagementvertrag, automatisch entworfen' },
     route: ROUTES.BOOKINGS,
     persona: 'producer',
     say: {
-      en: 'Fill the last slot and watch the hire order draft itself before you even open the tab.',
+      en: 'Fill the last place and watch the contract draft itself before you even open the tab.',
       de: 'Fülle den letzten Platz und schau zu, wie sich der Engagementvertrag von selbst entwirft, bevor du den Tab überhaupt öffnest.',
     },
     cues: ['fill_date', 'issue_hire_order'],
@@ -136,7 +136,7 @@ export const CUE_LABELS: Record<CueId, Bilingual> = {
   run_clock_to_1700: { en: 'Run clock to 17:00', de: 'Uhr auf 17:00 stellen' },
   drop_notifications: { en: 'Drop notifications', de: 'Benachrichtigungen auslösen' },
   fill_date: { en: 'Fill the date', de: 'Termin besetzen' },
-  issue_hire_order: { en: 'Issue hire order', de: 'Engagementvertrag ausstellen' },
+  issue_hire_order: { en: 'Issue contract', de: 'Engagementvertrag ausstellen' },
 };
 
 /** Resolve a scene's title in the viewer's language, falling back to English. */

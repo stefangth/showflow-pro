@@ -1,14 +1,14 @@
 {
   "list": {
     "title": "Chats",
-    "subtitle": "One chat per show date. Hidden {{days}} days after the show.",
+    "subtitle": "One chat per date. Hidden {{days}} days after the show.",
     "empty": "No active chats.",
     "open": "Open"
   },
   "panel": {
     "loading": "Loading chat…",
-    "notParticipant": "Chat is only available to producers, admins, and artists booked or soft-booked for this date.",
-    "archivedNotice": "This chat was archived {{days}} days after the show date.",
+    "notParticipant": "Chat is only available to producers, admins, and artists who are booked or who said yes for this date.",
+    "archivedNotice": "This chat was archived {{days}} days after the show.",
     "title": "Chat",
     "archivedBadge": "Archived (read-only)",
     "emptyMessages": "No messages yet. Say hello.",

@@ -85,7 +85,7 @@ describe("AvailabilityPage flow-aware copy (Task 4, relocated by the screen-08 r
     renderWithProviders(<AvailabilityPage />);
 
     expect(await screen.findByRole("heading", { name: i18n.t("availability:firstRun.headline") })).toBeInTheDocument();
-    expect(screen.getByText(/One digest at/)).toBeInTheDocument();
+    expect(screen.getByText(/One daily send at/)).toBeInTheDocument();
     expect(screen.queryByText(/booked directly/)).not.toBeInTheDocument();
   });
 
@@ -119,7 +119,7 @@ describe("AvailabilityPage timing line (R2.1/R4.7)", () => {
 
     const timing = await screen.findByTestId("availability-timing");
     expect(timing).toHaveTextContent(/48 hours to answer/i);
-    expect(timing).toHaveTextContent(/19:00h \(Berlin, Germany\) digest/i);
+    expect(timing).toHaveTextContent(/19:00h \(Berlin, Germany\) send/i);
   });
 
   it("shows no timing line for a direct-book org (real defaults: confirmation_digest stays true)", async () => {
@@ -152,7 +152,7 @@ describe("AvailabilityPage timing line (R2.1/R4.7)", () => {
     renderWithProviders(<AvailabilityPage />);
 
     const timing = await screen.findByTestId("availability-timing");
-    expect(timing).toHaveTextContent(/offers email straight away/i);
+    expect(timing).toHaveTextContent(/asks email straight away/i);
     expect(timing).toHaveTextContent(/48 hours to answer/i);
     expect(timing).not.toHaveTextContent(/digest/i);
   });
@@ -174,9 +174,9 @@ describe("AvailabilityPage calendar-surface flow-aware status wording (Task 18)"
     fireEvent.click(await screen.findByRole("tab", { name: "All dates" }));
 
     const row = await screen.findByTestId("all-dates-row-sd-1");
-    // "Not booked" is statusLabels.direct.unanswered (src/lib/flowCopy.ts); the
+    // "Not asked yet" is statusLabels.direct.unanswered (src/lib/flowCopy.ts); the
     // fixed ARTIST_TONES.unanswered.label this replaces is "Not offered".
-    expect(row).toHaveTextContent("Not booked");
+    expect(row).toHaveTextContent("Not asked yet");
     expect(row).not.toHaveTextContent("Not offered");
   });
 });

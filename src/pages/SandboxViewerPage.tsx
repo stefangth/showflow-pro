@@ -127,7 +127,7 @@ export default function SandboxViewerPage() {
               <StatCard label="Upcoming dates" value={String(data.snapshot.kpis.upcomingDates)} />
               <StatCard label="Confirmed bookings" value={String(data.snapshot.kpis.confirmedBookings)} />
               <StatCard label="Fill rate" value={`${data.snapshot.kpis.fillRate}%`} />
-              <StatCard label="Hire orders issued" value={String(data.snapshot.kpis.hireOrdersIssued)} />
+              <StatCard label="Contracts issued" value={String(data.snapshot.kpis.hireOrdersIssued)} />
             </div>
 
             <Card className="p-4 space-y-3">
@@ -192,10 +192,10 @@ export default function SandboxViewerPage() {
               </Card>
 
               <Card className="p-4 space-y-3">
-                <h2 className="text-sm font-semibold text-foreground">Hire orders</h2>
+                <h2 className="text-sm font-semibold text-foreground">Contracts</h2>
                 <div className="flex flex-wrap gap-2">
                   {data.snapshot.hireOrders.length === 0 && (
-                    <p className="text-sm text-muted-foreground">No hire orders yet.</p>
+                    <p className="text-sm text-muted-foreground">No contracts yet.</p>
                   )}
                   {data.snapshot.hireOrders.map((order, i) => (
                     <Badge key={`${order.status}-${i}`} variant="neutral">

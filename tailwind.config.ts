@@ -61,6 +61,10 @@ export default {
           800: "var(--accent-800)",
           900: "var(--accent-900)",
         },
+        /* Accent TEXT role. Semantic + mode-flipping, unlike the immutable
+           accent-50..900 scale above: use this for eyebrows and inline links
+           so they stay legible on the dark ground. */
+        "accent-text": "var(--accent-text)",
         popover: {
           DEFAULT: "hsl(var(--popover))",
           foreground: "hsl(var(--popover-foreground))",

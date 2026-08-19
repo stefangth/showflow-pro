@@ -303,6 +303,91 @@ export async function bulkDeclineSoftBooked(
 }
 
 /**
+ * Cancel exactly the given bookings — the Autopilot "Today" board's "book"
+ * feed-row undo (findings 2/3 in the Today board review). Two things make
+ * this a distinct function rather than a call to `bulkDeclineSoftBooked`:
+ *
+ *  - The row's undo must act on the SPECIFIC bookings that row described,
+ *    never every soft-booked/confirmed booking on the date — the caller
+ *    supplies `ids` scoped to one feed row (`FeedRow.bookingIds`), not a
+ *    date-wide re-fetch.
+ *  - Under Autopilot (`booking_flow.producer_confirmation: false`) an
+ *    accepted offer writes straight to `confirmed`, skipping `soft_booked`
+ *    entirely, so a "book" row's bookings can legitimately already be
+ *    `confirmed` by the time Undo is pressed. `bulkDeclineSoftBooked`'s
+ *    `.eq("status","soft_booked")` guard is correct for ITS caller (the
+ *    producer bulk-decline queue, where only a still-pending soft_booked
+ *    hold should ever be declined) and must stay that way; loosening it
+ *    there would let a stray call cancel an already-confirmed booking the
+ *    queue never showed. This function is safe to affect a `confirmed` row
+ *    only because the Today board never offers Undo once the confirmation
+ *    email has gone out (`feedAffordance` in `src/lib/autopilot/today.ts`) —
+ *    the artist has not been told yet, so reversing it is harmless.
+ *
+ * Only rows still in `soft_booked` or `confirmed` are affected. Returns the
+ * number of rows changed so the caller can tell a real reversal from a
+ * stale no-op (0 rows) and avoid a false-success toast.
+ */
+export async function cancelAutopilotBookedIds(
+  client: SupabaseClient<Database>,
+  args: { ids: string[]; now: Date },
+): Promise<{ affected: number }> {
+  if (args.ids.length === 0) return { affected: 0 };
+  const { data, error } = await client
+    .from("bookings")
+    .update({
+      status: "cancelled",
+      cancelled_at: args.now.toISOString(),
+      cancellation_reason: "autopilot_undo",
+    })
+    .in("id", args.ids)
+    .in("status", ["soft_booked", "confirmed"])
+    .select("id");
+  if (error) throw error;
+  return { affected: (data ?? []).length };
+}
+
+/**
+ * Withdraw exactly the given still-unanswered (suggested) offers — the
+ * Autopilot "Today" board's "ask" feed-row undo (finding 1 in the Today
+ * board review). Deliberately NOT a call to `closeOfferTier(..., withdraw:
+ * true)`: that edge function withdraws EVERY still-suggested booking for a
+ * whole `(show_date_id, tier)` (and closes the tier besides), but
+ * `fetchAutopilotFeed` groups an "ask" row by `(show_date_id, tier)` only for
+ * offers made inside its lookback window — `open-offer-tier` is idempotent
+ * and can re-open an already-open tier later, offering newly-eligible
+ * artists a second time. A row saying "Asked 6 artists" must withdraw only
+ * THOSE 6 offers, never a tier-wide sweep that could also cancel offers the
+ * row never described. `closeOfferTier` itself is untouched — other callers
+ * (the tier ladder's own Close control) still need its tier-wide semantics.
+ *
+ * This never closes the tier: withdrawing a handful of named offers should
+ * not stop the tier from continuing to fill from whoever else is still
+ * eligible. Only rows still `suggested` are affected (an offer the artist
+ * already answered is not this function's concern — that is `cancel
+ * AutopilotBookedIds`'s job). Returns the number of rows changed so the
+ * caller can tell a real withdrawal from a stale no-op.
+ */
+export async function cancelAutopilotAskedIds(
+  client: SupabaseClient<Database>,
+  args: { ids: string[]; now: Date },
+): Promise<{ affected: number }> {
+  if (args.ids.length === 0) return { affected: 0 };
+  const { data, error } = await client
+    .from("bookings")
+    .update({
+      status: "cancelled",
+      cancelled_at: args.now.toISOString(),
+      cancellation_reason: "autopilot_undo",
+    })
+    .in("id", args.ids)
+    .eq("status", "suggested")
+    .select("id");
+  if (error) throw error;
+  return { affected: (data ?? []).length };
+}
+
+/**
  * Transition a single booking to `confirmed` or `cancelled` with a status precondition:
  *  - confirmed  requires the booking is currently soft_booked;
  *  - cancelled  requires the booking is currently non-cancelled (any active state).

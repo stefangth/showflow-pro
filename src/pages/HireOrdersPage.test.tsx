@@ -141,7 +141,7 @@ function readyOrder(overrides: Record<string, unknown> = {}) {
  *  report the expected count clean, then confirm from the dialog. */
 async function openBulkDialogAndConfirm(expectedCount: number) {
   fireEvent.click(screen.getByRole("button", { name: /issue selected/i }));
-  const confirmBtn = await screen.findByRole("button", { name: new RegExp(`Issue ${expectedCount} orders?`, "i") });
+  const confirmBtn = await screen.findByRole("button", { name: new RegExp(`Issue ${expectedCount} contracts?`, "i") });
   await waitFor(() => expect(confirmBtn).toBeEnabled());
   fireEvent.click(confirmBtn);
 }
@@ -173,18 +173,18 @@ describe("HireOrdersPage", () => {
 
   it("renders the page head with eyebrow, title, and a meta line summarizing count and value", async () => {
     renderPage();
-    expect(await screen.findByText("Hire orders")).toBeInTheDocument();
+    expect(await screen.findByText("Contracts")).toBeInTheDocument();
     expect(screen.getByText("Workspace")).toBeInTheDocument();
     // 5 total orders fetched (unfiltered); value committed excludes the void row
     // (1000+2000+3000+4000 = 10000).
-    expect(await screen.findByText(/5 orders/i)).toBeInTheDocument();
+    expect(await screen.findByText(/5 contracts/i)).toBeInTheDocument();
     expect(screen.getByText(/€10,000\.00 committed/i)).toBeInTheDocument();
     expect(document.body.textContent).not.toMatch(/[—–]/);
   });
 
   it("renders the four KPI tiles with counts derived from the unfiltered order set", async () => {
     renderPage();
-    await screen.findByText("Hire orders");
+    await screen.findByText("Contracts");
     const kpiRegion = screen.getByTestId("orders-kpis");
     expect(within(kpiRegion).getByText("Issued")).toBeInTheDocument();
     expect(within(kpiRegion).getByText("Awaiting countersign")).toBeInTheDocument();
@@ -283,7 +283,7 @@ describe("HireOrdersPage", () => {
     fireEvent.click(cell);
     const dialog = await screen.findByRole("dialog");
     fireEvent.click(within(dialog).getByRole("button", { name: /^void$/i }));
-    const confirmBtn = await screen.findByRole("button", { name: /void order/i });
+    const confirmBtn = await screen.findByRole("button", { name: /void contract/i });
     fireEvent.click(confirmBtn);
     await waitFor(() => {
       const calls = (client.calls ?? []) as { table: string; method: string; args: unknown[] }[];
@@ -302,7 +302,7 @@ describe("HireOrdersPage", () => {
     });
     expect(screen.getByText("HO-2026-0201-1")).toBeInTheDocument();
     // KPI totals stay computed from the unfiltered set even while the table is filtered.
-    expect(screen.getByText(/5 orders/i)).toBeInTheDocument();
+    expect(screen.getByText(/5 contracts/i)).toBeInTheDocument();
   });
 
   it("searches by artist name across the whole set", async () => {
@@ -353,8 +353,8 @@ describe("HireOrdersPage", () => {
   it("enables the bulk bar on row selection and disables Issue selected unless every selected row is draft/ready", async () => {
     renderPage();
     await screen.findByText("HO-2026-0201-1");
-    fireEvent.click(screen.getByRole("checkbox", { name: /select order ho-2026-0201-1/i }));
-    fireEvent.click(screen.getByRole("checkbox", { name: /select order ho-2026-0401-1/i }));
+    fireEvent.click(screen.getByRole("checkbox", { name: /select contract ho-2026-0201-1/i }));
+    fireEvent.click(screen.getByRole("checkbox", { name: /select contract ho-2026-0401-1/i }));
     const issueBtn = screen.getByRole("button", { name: /issue selected/i });
     expect(issueBtn).toBeDisabled();
   });
@@ -372,8 +372,8 @@ describe("HireOrdersPage", () => {
     );
     renderPage();
     await screen.findByText("HO-2026-0201-1");
-    fireEvent.click(screen.getByRole("checkbox", { name: /select order ho-2026-0201-1/i }));
-    fireEvent.click(screen.getByRole("checkbox", { name: /select order ho-2026-0301-1/i }));
+    fireEvent.click(screen.getByRole("checkbox", { name: /select contract ho-2026-0201-1/i }));
+    fireEvent.click(screen.getByRole("checkbox", { name: /select contract ho-2026-0301-1/i }));
     const issueBtn = screen.getByRole("button", { name: /issue selected/i });
     expect(issueBtn).toBeEnabled();
     await openBulkDialogAndConfirm(2);
@@ -389,7 +389,7 @@ describe("HireOrdersPage", () => {
   it("prunes a selected row from the bulk-issue bar once it is filtered out of view, so a hidden selection can never be issued unrevalidated", async () => {
     renderPage();
     await screen.findByText("HO-2026-0201-1");
-    fireEvent.click(screen.getByRole("checkbox", { name: /select order ho-2026-0201-1/i })); // ho-1, draft
+    fireEvent.click(screen.getByRole("checkbox", { name: /select contract ho-2026-0201-1/i })); // ho-1, draft
     expect(screen.getByRole("button", { name: /issue selected/i })).toBeEnabled();
 
     fireEvent.change(screen.getByPlaceholderText(/search/i), { target: { value: "zed" } });
@@ -415,8 +415,8 @@ describe("HireOrdersPage", () => {
     );
     renderPage();
     await screen.findByText("HO-2026-0201-1");
-    fireEvent.click(screen.getByRole("checkbox", { name: /select order ho-2026-0201-1/i })); // ho-1, draft
-    fireEvent.click(screen.getByRole("checkbox", { name: /select order ho-2026-0301-1/i })); // ho-2, ready
+    fireEvent.click(screen.getByRole("checkbox", { name: /select contract ho-2026-0201-1/i })); // ho-1, draft
+    fireEvent.click(screen.getByRole("checkbox", { name: /select contract ho-2026-0301-1/i })); // ho-2, ready
     expect(screen.getByRole("button", { name: /issue selected/i })).toBeEnabled();
 
     // Narrow to the Draft chip: ho-2 (ready) drops out of view, but stays
@@ -439,30 +439,32 @@ describe("HireOrdersPage", () => {
 
   it("shows New order and Import from spreadsheet, both enabled (Task 5: import wizard shipped)", async () => {
     renderPage();
-    await screen.findByText("Hire orders");
+    await screen.findByText("Contracts");
     // hire_orders defaults OFF in the entitlements registry, so useFeature
     // reports disabled for the brief instant the entitlements query is still
     // loading (Task 7) — wait for it to settle to the seeded "enabled" value
     // rather than asserting on the very first render.
-    await waitFor(() => expect(screen.getByRole("button", { name: /new order/i })).toBeEnabled());
+    await waitFor(() => expect(screen.getByRole("button", { name: /new contract/i })).toBeEnabled());
     expect(screen.getByRole("button", { name: /import from spreadsheet/i })).toBeEnabled();
   });
 
   it("opens the import wizard on Import from spreadsheet", async () => {
     renderPage();
-    await screen.findByText("Hire orders");
+    await screen.findByText("Contracts");
     await waitFor(() => expect(screen.getByRole("button", { name: /import from spreadsheet/i })).toBeEnabled());
     fireEvent.click(screen.getByRole("button", { name: /import from spreadsheet/i }));
-    expect(await screen.findByText("Import hire orders from a spreadsheet")).toBeInTheDocument();
+    expect(await screen.findByText("Import contracts from a spreadsheet")).toBeInTheDocument();
   });
 
   it("opens the guided wizard on New order and does not self-disable to a dead-end", async () => {
     renderPage();
-    await screen.findByText("Hire orders");
-    await waitFor(() => expect(screen.getByRole("button", { name: /new order/i })).toBeEnabled());
-    const newOrderBtn = screen.getByRole("button", { name: /new order/i });
+    await screen.findByText("Contracts");
+    await waitFor(() => expect(screen.getByRole("button", { name: /new contract/i })).toBeEnabled());
+    const newOrderBtn = screen.getByRole("button", { name: /new contract/i });
     fireEvent.click(newOrderBtn);
-    expect(await screen.findByText("New hire order")).toBeInTheDocument();
+    // The button and the wizard's dialog title now share the identical "New
+    // contract" copy, so scope this to the heading role -- the button isn't one.
+    expect(await screen.findByRole("heading", { name: "New contract" })).toBeInTheDocument();
     // Task-1 Minor resolved: the button used to disable itself to `wizardOpen`,
     // leaving no way to reopen the wizard after a first click.
     expect(newOrderBtn).toBeEnabled();
@@ -477,17 +479,17 @@ describe("HireOrdersPage", () => {
     seedFor(ROWS, { org_entitlements: { data: [{ feature: "hire_orders", enabled: false }], error: null } });
     renderPage();
     expect(await screen.findByText(/Hire orders is off for this organization/)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /new order/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /new contract/i })).toBeDisabled();
     expect(screen.getByRole("button", { name: /import from spreadsheet/i })).toBeDisabled();
   });
 
   it("shows no banner and enabled actions when the module is on", async () => {
     renderPage();
-    await screen.findByText("Hire orders");
+    await screen.findByText("Contracts");
     // Same loading-race note as above: wait for the entitlements query to
     // settle before asserting the banner is gone and actions are enabled.
     await waitFor(() => expect(screen.queryByText(/is off for this organization/)).not.toBeInTheDocument());
-    expect(screen.getByRole("button", { name: /new order/i })).toBeEnabled();
+    expect(screen.getByRole("button", { name: /new contract/i })).toBeEnabled();
     expect(screen.getByRole("button", { name: /import from spreadsheet/i })).toBeEnabled();
   });
 
@@ -516,7 +518,7 @@ describe("HireOrdersPage", () => {
       hire_order_dates: { data: [], error: null },
     });
     renderPage();
-    await screen.findByText("Hire orders");
+    await screen.findByText("Contracts");
     await waitFor(() => expect(screen.getAllByText(/HO-2026-0201-1/).length).toBeGreaterThan(0));
     expect(screen.queryByText(/fully cast and ready/i)).not.toBeInTheDocument();
   });
@@ -579,7 +581,7 @@ describe("HireOrdersPage", () => {
         }),
       ]);
       renderPage();
-      await screen.findByText("Hire orders");
+      await screen.findByText("Contracts");
 
       fireEvent.click(screen.getByRole("button", { name: "Any time" }));
       fireEvent.click(screen.getByRole("button", { name: "Past" }));

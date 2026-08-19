@@ -1,57 +1,28 @@
 {
-  "cards": {
-    "liveUpcoming": "Live & upcoming",
-    "next14Days": "Next 14 days",
-    "next30Days": "Next 30 days",
-    "liveDate_one": "live date",
-    "liveDate_other": "live dates",
-    "castConfirmed": "Cast confirmed",
-    "showCount_one": "{{count}} show",
-    "showCount_other": "{{count}} shows",
-    "clickToSee": "Click to see pending shows →"
-  },
-  "directBooking": {
-    "title": "Dates needing artists",
-    "row": "{{date}} · {{booked}} of {{slots}} booked",
-    "more": "And {{count}} more. See Bookings."
-  },
-  "tierAttention": {
-    "title": "Needs attention",
-    "row": "{{date}} · Tier {{tier}} · {{filled}} of {{required}}",
-    "atRisk": "At risk",
-    "expiresSoon": "Expires soon",
-    "more": "And {{count}} more. See Bookings."
-  },
   "artist": {
     "heading": "Dashboard",
-    "offersLoadError": "Failed to load your offers. Please refresh.",
-    "awaitingResponse": "Awaiting your response",
-    "allCaughtUp": "You're all caught up. No pending offers.",
-    "respond": "Respond",
-    "hireOrdersTitle": "Your hire orders",
-    "hireOrdersEmpty": "Your booking paperwork shows up here. When your production team sends you a hire order, it arrives by email and you can review and sign it here.",
+    "offersLoadError": "Failed to load your asks. Please refresh.",
+    "awaitingResponse": "Waiting on you",
+    "allCaughtUp": "You're all caught up. Nothing to answer.",
+    "respond": "Answer",
+    "hireOrdersTitle": "Your contracts",
+    "hireOrdersEmpty": "Your contracts show up here. When your production team sends you one, it arrives by email and you can review and sign it here.",
     "download": "Download",
     "myCasts": "My Casts",
     "castsLoadError": "Failed to load your casts.",
     "noCastsYet": "You haven't been added to any casts yet.",
     "member": "Member",
     "respondedOfTotal": "{{responded}} of {{total}} dates",
-    "unansweredMore": "+{{count}} more"
+    "unansweredMore": "+{{count}} more",
+    "offer": {
+      "question": "Can you do this one?",
+      "acceptNote": "Say yes and the place is yours, nobody has to confirm it afterwards.",
+      "acceptNoteConfirm": "Say yes and the place is yours to lose, your production team still has to confirm it."
+    }
   },
   "producer": {
     "heading": "Dashboard",
-    "subheading": "Cast confirmation status across upcoming dates.",
-    "toastBookingsConfirmed": "Bookings confirmed",
-    "toastBookingsDeclined": "Bookings declined",
-    "toastBookingsChanged": "Some bookings changed. Refresh and retry.",
-    "readyToConfirm": "Ready to Confirm",
-    "confirmN": "Confirm {{count}}",
-    "declineN": "Decline {{count}}",
-    "colArtist": "Artist",
-    "colDateShow": "Date / Show",
-    "colType": "Type",
-    "understudy": "Understudy",
-    "main": "Main"
+    "subheading": "Who's waiting on you to book, across upcoming dates."
   },
   "firstRun": {
     "pickUpWhereLeftOff": "Pick up where you left off",
@@ -69,14 +40,14 @@
     "open": "Open",
     "edit": "Edit",
     "nothingYet": "Nothing yet",
-    "offersArriving_one": "{{count}} offer arriving in tomorrow's digest",
-    "offersArriving_other": "{{count}} offers arriving in tomorrow's digest",
+    "offersArriving_one": "{{count}} ask arriving in tomorrow's daily send",
+    "offersArriving_other": "{{count}} asks arriving in tomorrow's daily send",
     "datesBookedAppearHere": "Dates booked for you appear here",
     "producerSchedule": "Your production team's schedule",
     "keptOutOfList": "Kept out of every list before anyone books you",
-    "firstOfferHint": "Your first offer lands here once {{orgName}} has dates for your cast.",
+    "firstOfferHint": "Your first ask lands here once {{orgName}} has dates for your cast.",
     "firstBookingHint": "Your first booking lands here once {{orgName}} has dates.",
-    "blockedTitle_one": "{{count}} date blocked",
-    "blockedTitle_other": "{{count}} dates blocked"
+    "blockedTitle_one": "{{count}} date not free",
+    "blockedTitle_other": "{{count}} dates not free"
   }
 }

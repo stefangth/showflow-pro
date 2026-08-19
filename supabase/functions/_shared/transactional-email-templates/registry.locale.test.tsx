@@ -12,8 +12,8 @@ Deno.test("presentation: locale 'de' selects German copy, subject, and _emailLoc
   assertExists(p);
   assertEquals(p.props._emailLocale, "de");
   assertEquals(p.copy["offer-immediate.heading"], EMAIL_COPY_DE["offer-immediate.heading"]);
-  // Subject resolves from the German base ("Angebot: ...").
-  assertEquals(p.subject.startsWith("Angebot:"), true);
+  // Subject resolves from the German base ("Kannst Du ...").
+  assertEquals(p.subject.startsWith("Kannst Du"), true);
 });
 
 Deno.test("presentation: default locale is English and stays byte-identical", () => {
@@ -21,7 +21,7 @@ Deno.test("presentation: default locale is English and stays byte-identical", ()
   assertExists(p);
   assertEquals(p.props._emailLocale, "en");
   assertEquals(p.copy["offer-immediate.heading"], EMAIL_COPY_DEFAULTS["offer-immediate.heading"]);
-  assertEquals(p.subject.startsWith("Offer:"), true);
+  assertEquals(p.subject.startsWith("Can you do"), true);
 });
 
 Deno.test("render: a German presentation produces <html lang=\"de\"> and German body copy", async () => {

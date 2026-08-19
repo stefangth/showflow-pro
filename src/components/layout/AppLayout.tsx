@@ -24,6 +24,7 @@ import { StageMark } from '@/components/brand/StageMark';
 import { BrandWordmark } from '@/components/brand/BrandWordmark';
 import { OrgSwitcher } from '@/components/layout/OrgSwitcher';
 import { NotificationsList } from '@/components/layout/NotificationsList';
+import { AutopilotStatusCard } from '@/components/layout/AutopilotStatusCard';
 import { DemoBadge } from '@/components/demo/DemoBadge';
 import { DemoBar } from '@/components/demo/DemoBar';
 import { DemoModeToggle } from '@/components/demo/DemoModeToggle';
@@ -223,6 +224,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
           </div>
         ))}
       </nav>
+
+      {!collapsed && <AutopilotStatusCard />}
 
       {/* User / profile card */}
       <div className="border-t-[0.5px] border-sidebar-border p-2">

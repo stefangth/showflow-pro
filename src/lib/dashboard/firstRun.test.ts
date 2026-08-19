@@ -145,11 +145,11 @@ it("composeArtist rules reflect ctx.artistAcceptance", () => {
   const offers = composeArtist(artistStatus, ARTIST_ONBOARDING, { ...ctx, artistAcceptance: true } as OnboardingCtx);
   // Titled by the channel, not by the batching: offer_delivery is per org, so an artist at
   // a fast-track org gets the mail the moment a tier opens, not in a daily digest.
-  expect(offers.rules.some((rule) => rule.title === "Offers arrive by email")).toBe(true);
+  expect(offers.rules.some((rule) => rule.title === "Asks arrive by email")).toBe(true);
   const direct = composeArtist(artistStatus, ARTIST_ONBOARDING, { ...ctx, artistAcceptance: false } as OnboardingCtx);
   expect(direct.rules.some((rule) => rule.title === "You are booked directly")).toBe(true);
-  // A direct-book artist has no offer to answer, so the window rule is not theirs.
-  expect(direct.rules.some((rule) => rule.title === "You have a response window")).toBe(false);
+  // A direct-book artist has no ask to answer, so the window rule is not theirs.
+  expect(direct.rules.some((rule) => rule.title === "You have a window to answer")).toBe(false);
 });
 
 it("never tells a direct-book artist that offers are on the way", () => {
@@ -161,13 +161,13 @@ it("never tells a direct-book artist that offers are on the way", () => {
   const direct = { ...ctx, artistAcceptance: false } as OnboardingCtx;
   for (const complete of [true, false]) {
     const w = welcomeCopy("artist", complete, direct, { filled: 1, total: 2 }, false, t);
-    expect(`${w.headline} ${w.body}`).not.toMatch(/\boffers?\b/i);
+    expect(`${w.headline} ${w.body}`).not.toMatch(/\basks?\b/i);
     expect(w.body.length).toBeGreaterThan(0);
     expect(`${w.headline}${w.body}`).not.toMatch(/[—–]/);
   }
   // An org that does run offers keeps the offer narrative.
-  expect(welcomeCopy("artist", false, ctx, { filled: 1, total: 2 }, false, t).body).toMatch(/^Offers arrive by email/);
-  expect(welcomeCopy("artist", true, ctx, { filled: 2, total: 2 }, false, t).headline).toMatch(/offers/i);
+  expect(welcomeCopy("artist", false, ctx, { filled: 1, total: 2 }, false, t).body).toMatch(/^Asks arrive by email/);
+  expect(welcomeCopy("artist", true, ctx, { filled: 2, total: 2 }, false, t).headline).toMatch(/asks/i);
 });
 
 it("labels the artist's rules block without naming a pipeline the org may not run", () => {
@@ -175,11 +175,11 @@ it("labels the artist's rules block without naming a pipeline the org may not ru
   // a direct-book org. "How offers work here" is itself a claim that offers exist, and it
   // sat directly on top of a rules list saying they do not. These labels carry no flow.
   expect(railHeaderCopy("artist", true, false, t).eyebrow).toBe("How booking works here");
-  expect(railHeaderCopy("artist", true, false, t).body).not.toMatch(/\boffers?\b/i);
-  expect(railHeaderCopy("artist", false, false, t).title).not.toMatch(/\boffers?\b/i);
-  expect(railHeaderCopy("artist", false, false, t).body).not.toMatch(/\boffers?\b/i);
+  expect(railHeaderCopy("artist", true, false, t).body).not.toMatch(/\basks?\b/i);
+  expect(railHeaderCopy("artist", false, false, t).title).not.toMatch(/\basks?\b/i);
+  expect(railHeaderCopy("artist", false, false, t).body).not.toMatch(/\basks?\b/i);
   expect(collapsedCopy("artist", true, 0, t).cta).toBe("How booking works here");
-  expect(collapsedCopy("artist", true, 0, t).hint).not.toMatch(/\boffers?\b/i);
+  expect(collapsedCopy("artist", true, 0, t).hint).not.toMatch(/\basks?\b/i);
   // The producer/admin labels are untouched: their rails cover the whole org, not a pipeline.
   expect(railHeaderCopy("admin", true, false, t).eyebrow).toBe("How this org works");
 });
@@ -194,7 +194,7 @@ it("never names an offer in a rail header, at any role or grant", () => {
     for (const complete of [true, false]) {
       for (const canEditSetup of [true, false]) {
         const r = railHeaderCopy(role, complete, canEditSetup, t);
-        expect(`${r.eyebrow} ${r.title} ${r.body}`).not.toMatch(/\boffers?\b/i);
+        expect(`${r.eyebrow} ${r.title} ${r.body}`).not.toMatch(/\basks?\b/i);
       }
     }
   }
@@ -207,12 +207,12 @@ it("never tells a direct-book producer that offers will appear here", () => {
   const direct = { ...ctx, artistAcceptance: false } as OnboardingCtx;
   for (const complete of [true, false]) {
     const w = welcomeCopy("producer", complete, direct, { filled: 1, total: 4 }, false, t);
-    expect(`${w.headline} ${w.body}`).not.toMatch(/\boffers?\b/i);
+    expect(`${w.headline} ${w.body}`).not.toMatch(/\basks?\b/i);
     expect(w.body.length).toBeGreaterThan(0);
     expect(`${w.headline}${w.body}`).not.toMatch(/[—–]/);
   }
   // An org that does run offers still gets told about them.
-  expect(welcomeCopy("producer", false, ctx, { filled: 1, total: 4 }, false, t).body).toMatch(/offers/i);
+  expect(welcomeCopy("producer", false, ctx, { filled: 1, total: 4 }, false, t).body).toMatch(/asks/i);
 });
 
 it("welcomeCopy interpolates org name and progress", () => {

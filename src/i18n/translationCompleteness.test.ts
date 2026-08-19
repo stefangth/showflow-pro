@@ -69,6 +69,7 @@ const IDENTICAL_OK: Record<string, string> = {
 
   // settingsBookingFlow
   'settingsBookingFlow.flowRail.actorSystem': '"System" is identical in German',
+  'settingsBookingFlow.flowPresets.names.fasttrack': 'loanword "Autopilot", kept untranslated in German by design',
 
   // settingsHireOrders
   'settingsHireOrders.hireOrdersTab.rail.systemActor': '"System" is identical in German',
@@ -147,7 +148,7 @@ describe('German catalog is translated (not English left in place)', () => {
     'settingsAirtable', 'settingsBookingFlow', 'settingsHireOrders', 'settingsEmailTemplates',
     'settingsRolesRights', 'settingsEditor',
     'auth', 'admin', 'artists', 'productions', 'hireOrdersPages', 'showsDetail', 'chats', 'profile',
-    'onboarding', 'flowCopy', 'bookingCopy',
+    'onboarding', 'flowCopy', 'bookingCopy', 'today',
   ] as const) {
     it(`de differs from en for translatable keys in "${ns}"`, () => {
       const en = leaves(resources.en[ns]);

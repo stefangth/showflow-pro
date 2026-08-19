@@ -22,12 +22,12 @@
       "title": "Shows & Buchungen"
     },
     "stat": {
-      "confirmedThisMonth": "Diesen Monat bestätigt",
+      "confirmedThisMonth": "Diesen Monat gebucht",
       "slotsStillOpen": "Noch offene Plätze"
     },
     "bulk": {
-      "confirmHolds": "Vormerkungen bestätigen",
-      "generateHireOrders": "Engagementverträge erstellen"
+      "confirmHolds": "Buchen, wer zugesagt hat",
+      "generateHireOrders": "Verträge entwerfen"
     },
     "fab": {
       "newDate": "Neuer Termin"
@@ -43,8 +43,8 @@
       "unconfigured": "Nicht konfiguriert"
     },
     "primary": {
-      "confirmHolds": "Vormerkungen bestätigen",
-      "generateHireOrder": "Engagementvertrag erstellen"
+      "confirmHolds": "Buchen, wer zugesagt hat",
+      "generateHireOrder": "Vertrag entwerfen"
     },
     "day": {
       "eyebrowCasting": "Besetzung läuft",
@@ -57,23 +57,23 @@
     },
     "needsYou": {
       "groups": {
-        "expires-today": "Läuft heute ab",
+        "expires-today": "Heute buchen",
         "at-risk": "Im Risiko · unterbesetzt in {{days}} Tagen",
-        "ready-to-issue": "Bereit zum Ausstellen",
+        "ready-to-issue": "Bereit zum Versenden",
         "cancelled": "Storniert · Entscheidung nötig"
       },
       "scopeChips": {
         "all": "Alle",
-        "expires-today": "Vormerkungen",
+        "expires-today": "Wartet auf dich",
         "at-risk": "Besetzung",
         "ready-to-issue": "Verträge",
         "cancelled": "Storniert"
       },
       "primary": {
-        "confirmHolds_one": "{{count}} Vormerkung bestätigen",
-        "confirmHolds_other": "{{count}} Vormerkungen bestätigen",
+        "confirmHolds_one": "{{count}} buchen, der zugesagt hat",
+        "confirmHolds_other": "{{count}} buchen, die zugesagt haben",
         "openCasting": "Besetzung öffnen",
-        "generateHireOrder": "Engagementvertrag erstellen",
+        "generateHireOrder": "Vertrag entwerfen",
         "notifyCast": "Besetzung benachrichtigen"
       },
       "secondary": {
@@ -84,23 +84,23 @@
         "undoCancel": "Absage rückgängig"
       },
       "bulk": {
-        "confirmAll": "Alle bestätigen",
-        "generateHireOrders_one": "{{count}} Engagementvertrag erstellen",
-        "generateHireOrders_other": "{{count}} Engagementverträge erstellen"
+        "confirmAll": "Alle buchen",
+        "generateHireOrders_one": "{{count}} Vertrag entwerfen",
+        "generateHireOrders_other": "{{count}} Verträge entwerfen"
       },
       "note": {
-        "expiresToday_one": "{{count}} vorgemerkter Artist verliert sein Angebot, wenn es heute nicht bestätigt wird.",
-        "expiresToday_other": "{{count}} vorgemerkte Artists verlieren ihr Angebot, wenn es heute nicht bestätigt wird.",
+        "expiresToday_one": "{{count}} Artist, der zugesagt hat, verliert den Platz, wenn du ihn heute nicht buchst.",
+        "expiresToday_other": "{{count}} Artists, die zugesagt haben, verlieren ihre Plätze, wenn du sie heute nicht buchst.",
         "atRisk": "{{slots}}, {{lead}}.",
         "atRiskSlots_one": "{{count}} offener Platz",
         "atRiskSlots_other": "{{count}} offene Plätze",
         "atRiskLeadToday": "heute",
         "atRiskLeadDays_one": "in {{count}} Tag",
         "atRiskLeadDays_other": "in {{count}} Tagen",
-        "readyToIssue": "Die Besetzung ist bestätigt und bereit für den Engagementvertrag.",
+        "readyToIssue": "Die Besetzung ist gebucht und bereit für ihren Vertrag.",
         "cancelled": "Die Besetzung wurde über diese Absage noch nicht informiert."
       },
-      "expires": "Läuft ab {{time}}",
+      "expires": "Antworten bis {{time}}",
       "understudyAbbrev": "ZB",
       "queueOverview": "Übersicht Warteschlange",
       "clearedToday": "Heute erledigt",
@@ -110,19 +110,19 @@
       "clearQueueTitle": "Warteschlange abarbeiten",
       "clearedToday": "{{count}} heute erledigt",
       "shortlistTitle": "Auswahlliste",
-      "shortlistEmpty": "Keine passenden Artists für diesen Termin.",
-      "offerButton": "Anbieten",
+      "shortlistEmpty": "Niemand kann für diesen Termin angefragt werden.",
+      "offerButton": "Anfragen",
       "rulesTitle": "Was hier landet",
       "rules": {
-        "expiresToday": "Angebote, die heute ablaufen, damit sie nicht unbeantwortet verfallen.",
+        "expiresToday": "Anfragen mit heutiger Antwortfrist, damit sie nicht unbeantwortet verfallen.",
         "atRisk": "Ein unterbesetzter Termin innerhalb von {{days}} Tagen vor der Show.",
-        "readyToIssue": "Termine, deren Besetzung bestätigt und bereit für einen Engagementvertrag ist.",
+        "readyToIssue": "Termine, deren Besetzung gebucht und bereit für einen Vertrag ist.",
         "cancelled": "Stornierte Termine, über die die Besetzung noch nicht informiert wurde."
       }
     },
     "agenda": {
-      "generateHireOrder": "Engagementvertrag erstellen",
-      "confirmHolds": "Vormerkungen bestätigen",
+      "generateHireOrder": "Vertrag entwerfen",
+      "confirmHolds": "Buchen, wer zugesagt hat",
       "openCasting": "Besetzung öffnen",
       "weekOfHeading": "Woche vom {{weekStart}}",
       "dateCount_one": "{{count}} Termin",
@@ -152,7 +152,7 @@
       "heaviestWeekLabel": "Stärkste Woche",
       "heaviestWeekNote_one": "{{count}} Termin · {{open}} Plätze offen",
       "heaviestWeekNote_other": "{{count}} Termine · {{open}} Plätze offen",
-      "readyForHireOrderLabel": "Bereit für Engagementvertrag",
+      "readyForHireOrderLabel": "Bereit für Vertrag",
       "readyForHireOrderNoteFilled": "voll besetzt, noch kein Vertrag",
       "readyForHireOrderNoteNone": "keine ausstehend"
     },
@@ -169,8 +169,8 @@
   "rowPeek": {
     "eyebrowUnconfigured": "nicht konfiguriert",
     "noConfig": "Lege in den Einstellungen Besetzungsplätze fest, um den Füllstand zu verfolgen.",
-    "confirming": "Wird bestätigt…",
-    "confirm": "{{count}} bestätigen",
+    "confirming": "Wird gebucht…",
+    "confirm": "{{count}} buchen",
     "openDate": "Termin öffnen",
     "keyHint": "Leertaste für Vorschau · Enter zum Öffnen"
   },
@@ -178,9 +178,9 @@
     "cancelHint": "Du musst einen bestätigten Termin absagen? Schreib deinem Produktionsteam im Chat des Termins, dann aktualisieren sie die Buchung.",
     "sortChronoLabel": "Datum",
     "loadError": "Deine Buchungen konnten nicht geladen werden. Bitte aktualisiere.",
-    "hireOrderLink": "Engagementvertrag",
-    "emptyState": "Noch keine passenden Termine. Sobald du einer Besetzung hinzugefügt wirst, erscheinen angebotene Termine hier.",
-    "calendarEmpty": "Keine passenden Termine"
+    "hireOrderLink": "Vertrag",
+    "emptyState": "Noch keine Termine. Sobald du einer Besetzung hinzugefügt wirst, erscheinen Termine, für die du angefragt wirst, hier.",
+    "calendarEmpty": "Noch keine Termine"
   },
   "status": {
     "open": "Offen",
@@ -211,33 +211,33 @@
       "extended": "{{count}} verlängert",
       "released": "{{count}} freigegeben",
       "notified": "{{count}} benachrichtigt",
-      "offered": "{{count}} angeboten",
-      "confirmedAll": "Bestätigt",
-      "generatedAll": "Engagementvertrag erstellt"
+      "offered": "{{count}} angefragt",
+      "confirmedAll": "Gebucht, wer zugesagt hat",
+      "generatedAll": "Vertrag entworfen"
     }
   },
   "producer": {
     "toast": {
-      "confirmed": "{{count}} bestätigt",
-      "nothingToConfirm": "Nichts zu bestätigen, es hat sich schon erledigt"
+      "confirmed": "{{count}} gebucht",
+      "nothingToConfirm": "Nichts zu buchen, es hat sich schon erledigt"
     },
     "title": "Shows & Buchungen",
     "subtitle": "Alle geplanten Termine und der Besetzungsstatus an einem Ort.",
     "setupChecklist": "Einrichtungscheckliste",
     "newDate": "Neuer Termin",
     "hireOrderReady": {
-      "title_one": "{{count}} Termin ist voll besetzt. Bereit für den Engagementvertrag.",
-      "title_other": "{{count}} Termine sind voll besetzt. Bereit für Engagementverträge.",
+      "title_one": "{{count}} Termin ist voll besetzt. Bereit für seinen Vertrag.",
+      "title_other": "{{count}} Termine sind voll besetzt. Bereit für ihre Verträge.",
       "description": "Erstelle die Verträge, um die Engagements zu bestätigen und sie zur Gegenzeichnung zu versenden.",
-      "cta": "Engagementverträge erstellen"
+      "cta": "Verträge entwerfen"
     },
-    "noHireOrderPermission": "Du hast keine Berechtigung, Engagementverträge zu erstellen",
-    "noConfirmPermission": "Du hast keine Berechtigung, Buchungen zu bestätigen",
+    "noHireOrderPermission": "Du hast keine Berechtigung, Verträge zu entwerfen",
+    "noConfirmPermission": "Du hast keine Berechtigung, Artists zu buchen",
     "searchPlaceholder": "Programm, Spielstätte, Stadt suchen…",
     "sortChronoLabel": "Datum",
     "sortAsc": "{{label}} ↑",
     "sortDesc": "{{label}} ↓",
-    "generateHireOrder": "Engagementvertrag erstellen",
+    "generateHireOrder": "Vertrag entwerfen",
     "emptyState": "Keine Termine entsprechen den aktuellen Filtern.",
     "calendarEmpty": "Keine Termine geplant"
   }

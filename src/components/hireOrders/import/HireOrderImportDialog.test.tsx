@@ -247,7 +247,7 @@ describe("HireOrderImportDialog", () => {
     expect(screen.getByRole("checkbox", { name: /select ann artist/i })).toBeChecked();
     expect(screen.getByRole("checkbox", { name: /select new person/i })).toBeChecked();
 
-    fireEvent.click(screen.getByRole("button", { name: /import 2 orders/i }));
+    fireEvent.click(screen.getByRole("button", { name: /import 2 contracts/i }));
 
     await waitFor(() => expect(rpcCalls("bulk_import_hire_orders").length).toBe(1));
     const body = rpcCalls("bulk_import_hire_orders")[0];
@@ -267,10 +267,10 @@ describe("HireOrderImportDialog", () => {
     expect(annRow!.fee_currency).toBe("EUR");
     expect(annRow!.terms_variant).toBe("standard");
 
-    expect(await screen.findByText(/Created 1 draft hire order/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Created 1 draft contract/i)).toBeInTheDocument();
     expect(screen.getByText(/1 already existed/i)).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: /open hire orders/i }));
+    fireEvent.click(screen.getByRole("button", { name: /open contracts/i }));
     expect(navigate).toHaveBeenCalledWith("/hire-orders");
   });
 
@@ -312,7 +312,7 @@ describe("HireOrderImportDialog", () => {
     fireEvent.click(screen.getByRole("button", { name: /^continue$/i })); // -> review
 
     await screen.findByText("Needs attention");
-    fireEvent.click(screen.getByRole("button", { name: /import 2 orders/i }));
+    fireEvent.click(screen.getByRole("button", { name: /import 2 contracts/i }));
 
     await waitFor(() => expect(rpcCalls("bulk_import_hire_orders").length).toBe(1));
     const rows = rpcCalls("bulk_import_hire_orders")[0].p_rows as Record<string, unknown>[];
@@ -370,7 +370,7 @@ Ann Artist,ann@example.com,2026-08-01,Main Hall,Berlin,750,`;
     fireEvent.click(screen.getByRole("button", { name: /^continue$/i })); // -> resolve
     fireEvent.click(screen.getByRole("button", { name: /^continue$/i })); // -> review
 
-    fireEvent.click(await screen.findByRole("button", { name: /import 2 orders/i }));
+    fireEvent.click(await screen.findByRole("button", { name: /import 2 contracts/i }));
 
     await waitFor(() => expect(rpcCalls("bulk_import_hire_orders").length).toBe(1));
     const rows = rpcCalls("bulk_import_hire_orders")[0].p_rows as Record<string, unknown>[];

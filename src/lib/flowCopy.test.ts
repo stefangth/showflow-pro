@@ -16,14 +16,14 @@ const fasttrack = applyPreset(BOOKING_FLOW_DEFAULTS, "fasttrack");
 describe("availabilityPageCopy", () => {
   it("offer orgs keep the offers framing", () => {
     expect(availabilityPageCopy(classic, t)).toEqual({
-      title: "My Offers",
-      subtitle: "View your offers and block dates you're unavailable for.",
+      title: "My Asks",
+      subtitle: "See what you've been asked and mark dates you're not free for.",
     });
   });
   it("direct orgs get dates framing", () => {
     expect(availabilityPageCopy(direct, t)).toEqual({
       title: "My Dates",
-      subtitle: "Your bookings and availability. Block dates you can't perform.",
+      subtitle: "Your bookings and availability. Mark dates you're not free.",
     });
   });
 });
@@ -31,21 +31,21 @@ describe("availabilityPageCopy", () => {
 describe("bookingStatusLabels", () => {
   it("direct orgs never claim offers", () => {
     const labels = bookingStatusLabels(direct, t);
-    expect(labels.unanswered).toBe("Not booked");
+    expect(labels.unanswered).toBe("Not asked yet");
     expect(labels.confirmed).toBe("Booked");
   });
   it("offer orgs keep existing labels", () => {
     const labels = bookingStatusLabels(classic, t);
     expect(labels).toMatchObject({
-      suggested: "Offer pending", soft_booked: "Hold placed",
-      confirmed: "Confirmed", unanswered: "No offer yet",
+      suggested: "Asked", soft_booked: "Said yes, waiting on you",
+      confirmed: "Booked", unanswered: "Not asked yet",
     });
   });
 });
 
 describe("bookingsViewCopy", () => {
   it("subtitle adapts per mode", () => {
-    expect(bookingsViewCopy(classic, t).subtitle).toBe("Dates you've been offered for, based on your cast eligibility.");
+    expect(bookingsViewCopy(classic, t).subtitle).toBe("Dates you've been asked about, based on your cast eligibility.");
     expect(bookingsViewCopy(direct, t).subtitle).toBe("Dates you're booked for, based on your cast eligibility.");
     expect(bookingsViewCopy(direct, t).title).toBe("My Bookings");
   });
@@ -54,9 +54,9 @@ describe("bookingsViewCopy", () => {
 describe("artistMeter", () => {
   it("offer orgs keep response rate counting confirmed + soft_booked", () => {
     const m = artistMeter(classic, t);
-    expect(m.title).toBe("Response rate");
-    expect(m.headerSentence).toBe("Your response rate on dates you've been offered.");
-    expect(m.footer).toBe("Click to see pending offers →");
+    expect(m.title).toBe("Answer rate");
+    expect(m.headerSentence).toBe("Your answer rate on dates you've been asked about.");
+    expect(m.footer).toBe("Click to see your open asks →");
     expect(m.filterUnanswered).toBe(true);
     expect(m.countStatuses).toEqual(["confirmed", "soft_booked"]);
   });
@@ -71,7 +71,7 @@ describe("artistMeter", () => {
 
   it("offer meter explains what counts and that no one is scored", () => {
     expect(artistMeter({ artist_acceptance: true } as BookingFlow, t).explainer).toBe(
-      "Counts dates you accepted or were booked for, out of dates you were offered. It is just for you, no one is scored on it.",
+      "Counts dates you said yes to or were booked for, out of dates you were asked about. It is just for you, no one is scored on it.",
     );
   });
 
@@ -84,8 +84,13 @@ describe("artistMeter", () => {
 
 describe("deliveryHint", () => {
   it("only immediate offer orgs get the hint", () => {
-    expect(deliveryHint(fasttrack, t)).toBe("Offers email artists immediately when a tier opens.");
+    // No shipped preset sets offer_delivery: "immediate" anymore (autopilot/fasttrack
+    // switched to digest), but the field is still a valid custom flow value, so the hint
+    // itself must keep working for an org configured that way by hand.
+    const immediateFlow = { ...classic, offer_delivery: "immediate" as const };
+    expect(deliveryHint(immediateFlow, t)).toBe("Artists get asked by email as soon as a tier opens.");
     expect(deliveryHint(classic, t)).toBe("");
+    expect(deliveryHint(fasttrack, t)).toBe("");
     expect(deliveryHint(direct, t)).toBe("");
   });
 });

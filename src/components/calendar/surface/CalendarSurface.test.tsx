@@ -287,7 +287,7 @@ describe('CalendarSurface — producer', () => {
       />
     );
     const enabledBtn = screen.getByTestId('day-rail-primary');
-    expect(enabledBtn).toHaveTextContent('Confirm holds');
+    expect(enabledBtn).toHaveTextContent('Book who said yes');
     expect(enabledBtn).not.toBeDisabled();
     fireEvent.click(enabledBtn);
     expect(actions.confirmHolds).toHaveBeenCalledWith('pd-1');
@@ -305,7 +305,7 @@ describe('CalendarSurface — producer', () => {
       />
     );
     const gatedBtn = screen.getByTestId('day-rail-primary');
-    expect(gatedBtn).toHaveTextContent('Confirm holds');
+    expect(gatedBtn).toHaveTextContent('Book who said yes');
     expect(gatedBtn).toBeDisabled();
     expect(gatedBtn).toHaveAttribute('title', 'Gated');
   });
@@ -332,7 +332,7 @@ describe('CalendarSurface — producer', () => {
       />
     );
     const enabledBtn = screen.getByTestId('day-rail-primary');
-    expect(enabledBtn).toHaveTextContent('Generate hire order');
+    expect(enabledBtn).toHaveTextContent('Draft the contract');
     expect(enabledBtn).not.toBeDisabled();
     fireEvent.click(enabledBtn);
     expect(actions.generateHireOrder).toHaveBeenCalledWith('pd-2');
@@ -350,7 +350,7 @@ describe('CalendarSurface — producer', () => {
       />
     );
     const gatedBtn = screen.getByTestId('day-rail-primary');
-    expect(gatedBtn).toHaveTextContent('Generate hire order');
+    expect(gatedBtn).toHaveTextContent('Draft the contract');
     expect(gatedBtn).toBeDisabled();
     expect(gatedBtn).toHaveAttribute('title', 'Gated');
   });
@@ -1479,9 +1479,9 @@ describe('CalendarSurface — Space-peek popover (producer, month lens)', () => 
 
     const popover = screen.getByTestId('date-peek-popover');
     // Headline reflects computeDatePeek's math: 1 accepted waiting, 1 main slot open.
-    expect(within(popover).getByText('1 accepted waiting on you · 1 main slot open')).toBeInTheDocument();
+    expect(within(popover).getByText('1 said yes, waiting on you · 1 main place open')).toBeInTheDocument();
 
-    fireEvent.click(within(popover).getByRole('button', { name: 'Confirm 1' }));
+    fireEvent.click(within(popover).getByRole('button', { name: 'Book 1' }));
     expect(actions.confirmHolds).toHaveBeenCalledWith('pd-peek');
 
     fireEvent.click(within(popover).getByRole('button', { name: 'Open date' }));

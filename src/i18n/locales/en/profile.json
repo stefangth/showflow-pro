@@ -7,7 +7,7 @@
   "details": {
     "title": "Details",
     "email": "Email",
-    "emailHint": "Where sign-in links and offers arrive.",
+    "emailHint": "Where sign-in links and asks arrive.",
     "emailFixed": "Fixed",
     "displayName": "Display name",
     "displayNameHint": "Shown on cast lists and in date chats.",
@@ -53,11 +53,11 @@
     "downloaded": "Your data has been downloaded",
     "deleteRow": {
       "title": "Delete account",
-      "description": "Permanently delete your account. Your account and profile details are removed. Your shared booking history, including any open offers, is kept but de-identified. This cannot be undone."
+      "description": "Permanently delete your account. Your account and profile details are removed. Your shared booking history, including any open asks, is kept but de-identified. This cannot be undone."
     }
   },
   "delete": {
-    "hireOrdersNote": "Signed hire orders you already agreed to are kept for the organization's records.",
+    "hireOrdersNote": "Signed contracts you already agreed to are kept for the organization's records.",
     "trigger": "Delete",
     "dialogTitle": "Delete your account?",
     "confirmBefore": "This permanently removes your account and personal data. Type",

@@ -42,7 +42,7 @@ describe("RequiredSkillsCard", () => {
     expect(screen.getByText("Skills required on this date")).toBeInTheDocument();
     expect(
       screen.getByText(
-        "Computed from the 3 slots on Hamlet. Only artists holding all of them can be offered or booked.",
+        "Computed from the 3 places on Hamlet. Only artists holding all of them can be asked or booked.",
       ),
     ).toBeInTheDocument();
   });

@@ -160,7 +160,7 @@ describe("ShowDateDetailSheet capability gates", () => {
     renderSheet();
     // Fully filled surfaces the CTA in both the header and the persistent footer
     // (both fire the same draft action); assert it exists and click the first.
-    const btns = await screen.findAllByRole("button", { name: /generate hire order/i });
+    const btns = await screen.findAllByRole("button", { name: /draft the contract/i });
     expect(btns[0]).toBeEnabled();
     fireEvent.click(btns[0]);
     await waitFor(() => {
@@ -182,7 +182,7 @@ describe("ShowDateDetailSheet capability gates", () => {
     });
     renderSheet();
     await screen.findByText("Main Hall");
-    expect(screen.queryByRole("button", { name: /generate hire order/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /draft the contract/i })).not.toBeInTheDocument();
   });
 
   it("manage_show_dates on: Edit schedule is enabled", async () => {
@@ -217,13 +217,13 @@ describe("ShowDateDetailSheet capability gates", () => {
   it("run_offer_engine off: TierTimeline receives canManage=false", async () => {
     vi.mocked(useCan).mockImplementation((action: string) => action !== "run_offer_engine");
     renderSheet();
-    await clickTab(/^offers$/i);
+    await clickTab(/^asks$/i);
     expect(await screen.findByTestId("tier-timeline-can-manage")).toHaveTextContent("false");
   });
 
   it("run_offer_engine on: TierTimeline receives canManage=true", async () => {
     renderSheet();
-    await clickTab(/^offers$/i);
+    await clickTab(/^asks$/i);
     expect(await screen.findByTestId("tier-timeline-can-manage")).toHaveTextContent("true");
   });
 
@@ -237,7 +237,7 @@ describe("ShowDateDetailSheet capability gates", () => {
     vi.mocked(useCan).mockImplementation((action: string) => action !== "confirm_bookings");
     renderSheet();
     expect(await screen.findByText("Ada Lovelace")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /^confirm$/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^book$/i })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^cancel$/i })).toBeInTheDocument();
   });
 
@@ -249,7 +249,7 @@ describe("ShowDateDetailSheet capability gates", () => {
       show_date_cast_eligibility: { data: [], error: null },
     });
     renderSheet();
-    expect(await screen.findByRole("button", { name: /^confirm$/i })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: /^book$/i })).toBeInTheDocument();
   });
 
   // The per-row Confirm on the cockpit cast list used to report a bare "Booking updated",
@@ -264,7 +264,7 @@ describe("ShowDateDetailSheet capability gates", () => {
       show_date_cast_eligibility: { data: [], error: null },
     });
     renderSheet();
-    fireEvent.click(await screen.findByRole("button", { name: /^confirm$/i }));
+    fireEvent.click(await screen.findByRole("button", { name: /^book$/i }));
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Booked Ada Lovelace."));
   });
 
@@ -306,7 +306,7 @@ describe("ShowDateDetailSheet capability gates", () => {
       show_date_cast_eligibility: { data: [], error: null },
     });
     renderSheet();
-    expect(await screen.findByRole("button", { name: /confirm 1 accepted/i })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: /book 1 who said yes/i })).toBeInTheDocument();
   });
 
   it("booking_flow off: no header 'Confirm accepted' CTA even with a soft_booked booking (module gate)", async () => {
@@ -363,7 +363,7 @@ describe("ShowDateDetailSheet capability gates", () => {
       "fn:open-offer-tier": { data: { candidates: [], excluded: {} }, error: null },
     });
     renderSheet();
-    await clickTab(/^offers$/i);
+    await clickTab(/^asks$/i);
     // nextTier reaches the (mocked) TierTimeline as 3, not null -- the prop that
     // gates the real NextOfferHero's visibility, so this proves the hero would
     // render instead of disappearing into the gap.
@@ -371,7 +371,7 @@ describe("ShowDateDetailSheet capability gates", () => {
 
     // Tier 3 maps to exactly one cast (Cast C), so the RELABEL rule names it.
     // Clicking it previews (dry-runs) tier 3 -- the real "open" action's target.
-    const cta = await screen.findByRole("button", { name: /open offers to cast c/i });
+    const cta = await screen.findByRole("button", { name: /ask cast c/i });
     fireEvent.click(cta);
     await waitFor(() => {
       const calls = (client.calls ?? []) as { table: string; method: string; args: unknown[] }[];

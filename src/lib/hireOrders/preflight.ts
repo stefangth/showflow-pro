@@ -72,7 +72,7 @@ export const BLOCKER_COPY: Record<BlockerKey, { label: string; detail: string; a
   },
   missing_letterhead: {
     label: "Letterhead legal name",
-    detail: "The document header is empty. A hire order needs a legal party on it.",
+    detail: "The document header is empty. A contract needs a legal party on it.",
     action: "Add a letterhead in Settings before issuing",
   },
   missing_terms: {

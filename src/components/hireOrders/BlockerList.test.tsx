@@ -42,7 +42,7 @@ describe("BlockerList", () => {
     const onFix = vi.fn();
     const blockers: Blocker[] = [{ key: "missing_date", scope: "order", fixable: true }];
     renderWithProviders(<BlockerList orgId="org-1" blockers={blockers} onFixOrderField={onFix} />);
-    screen.getByRole("button", { name: /Open the order/i }).click();
+    screen.getByRole("button", { name: /Open the contract/i }).click();
     expect(onFix).toHaveBeenCalledWith("missing_date");
   });
 

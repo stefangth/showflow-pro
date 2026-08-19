@@ -11,9 +11,9 @@ const b = (o: Partial<B>): B => ({ artist_id: "a1", status: "suggested", is_unde
 
 describe("bookingStatusDisplayLabel", () => {
   it("maps known statuses to producer-facing labels", () => {
-    expect(bookingStatusDisplayLabel("suggested")).toBe("Offered");
-    expect(bookingStatusDisplayLabel("soft_booked")).toBe("Soft-booked");
-    expect(bookingStatusDisplayLabel("confirmed")).toBe("Confirmed");
+    expect(bookingStatusDisplayLabel("suggested")).toBe("Asked");
+    expect(bookingStatusDisplayLabel("soft_booked")).toBe("Said yes, waiting on you");
+    expect(bookingStatusDisplayLabel("confirmed")).toBe("Booked");
     expect(bookingStatusDisplayLabel("cancelled")).toBe("Cancelled");
   });
 

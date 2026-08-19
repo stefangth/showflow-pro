@@ -4,7 +4,7 @@ import { renderWithProviders } from "@/test/renderWithProviders";
 import { createFakeSupabase } from "@/test/supabaseFake";
 
 /**
- * Task 14: ArtistBookingsView shows a "Hire order" chip (FileText icon,
+ * Task 14: ArtistBookingsView shows a "Contract" chip (FileText icon,
  * linking to ROUTES.HIRE_ORDER_DETAIL) inside the `_computed.my_status` cell
  * for any row whose date has an issued/countersigned hire order for this
  * artist (matched via useMyHireOrders' show_date_id). Hidden when the
@@ -123,10 +123,10 @@ describe("ArtistBookingsView hire-order chip (Task 14)", () => {
 
     renderWithProviders(<ArtistBookingsView />);
 
-    const chip = await screen.findByText("Hire order");
+    const chip = await screen.findByText("Contract");
     expect(chip.closest("a")?.getAttribute("href")).toBe("/hire-orders/ho-1");
     // Only one row has an order, so only one chip renders.
-    expect(screen.getAllByText("Hire order")).toHaveLength(1);
+    expect(screen.getAllByText("Contract")).toHaveLength(1);
   });
 
   it("does not show a chip when there is no matching hire order for a date", async () => {
@@ -145,7 +145,7 @@ describe("ArtistBookingsView hire-order chip (Task 14)", () => {
     renderWithProviders(<ArtistBookingsView />);
 
     await screen.findByText("10/08/2028");
-    expect(screen.queryByText("Hire order")).not.toBeInTheDocument();
+    expect(screen.queryByText("Contract")).not.toBeInTheDocument();
   });
 
   it("hides the chip when the hire_orders feature is off, even with a matching order", async () => {
@@ -171,6 +171,6 @@ describe("ArtistBookingsView hire-order chip (Task 14)", () => {
     renderWithProviders(<ArtistBookingsView />);
 
     await screen.findByText("10/08/2028");
-    expect(screen.queryByText("Hire order")).not.toBeInTheDocument();
+    expect(screen.queryByText("Contract")).not.toBeInTheDocument();
   });
 });

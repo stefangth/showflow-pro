@@ -152,10 +152,10 @@ describe("ShowsBookingsPage — producer calendar surface (Task 16)", () => {
     fireEvent.click(cell);
 
     const confirmBtn = await screen.findByTestId("day-rail-primary");
-    expect(confirmBtn).toHaveTextContent("Confirm holds");
+    expect(confirmBtn).toHaveTextContent("Book who said yes");
     fireEvent.click(confirmBtn);
 
-    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Confirmed 2"));
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Booked 2"));
 
     const calls = client.calls as RecordedCall[];
     const selectCall = calls.find((c) => c.table === "bookings" && c.method === "eq" && c.args[0] === "show_date_id");

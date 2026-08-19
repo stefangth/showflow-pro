@@ -51,7 +51,7 @@ describe("GetRunningHeader", () => {
     expect(screen.getByText("of 11 done")).toBeInTheDocument();
     expect(screen.getAllByTestId("get-running-tick")).toHaveLength(11);
     expect(screen.getByText("Booking engine")).toBeInTheDocument();
-    expect(screen.getByText("Hire orders")).toBeInTheDocument();
+    expect(screen.getByText("Contracts")).toBeInTheDocument();
     expect(screen.getAllByText("On")).toHaveLength(2);
   });
 

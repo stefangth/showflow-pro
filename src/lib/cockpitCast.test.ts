@@ -40,23 +40,23 @@ describe("buildCastGroups", () => {
       { main_cast: 2, understudies: 0 },
       opts(),
     );
-    // suggested is a named "Offered" row, plus one open slot noting the pending offer
+    // suggested is a named "Offered" row, plus one open slot noting the ask still waiting
     const offered = main.rows.find((r) => r.status === "offered");
-    expect(offered?.meta).toContain("offer pending");
+    expect(offered?.meta).toContain("asked");
     const open = main.rows.find((r) => r.open);
-    expect(open?.meta).toBe("1 offer pending");
+    expect(open?.meta).toBe("1 ask waiting");
   });
 
-  it("annotates the pending-offers total only on the first open slot", () => {
+  it("annotates the pending-asks total only on the first open slot", () => {
     // 1 suggested + capacity 4, 0 filled → 1 named row + 4 open rows; the
-    // "1 offer pending" note must appear once, not repeated on every open slot.
+    // "1 ask waiting" note must appear once, not repeated on every open slot.
     const [main] = buildCastGroups(
       [b({ id: "s1", status: "suggested", offer_tier: 2 })],
       { main_cast: 4, understudies: 0 },
       opts(),
     );
     const openMetas = main.rows.filter((r) => r.open).map((r) => r.meta);
-    expect(openMetas).toEqual(["1 offer pending", "No booking yet", "No booking yet", "No booking yet"]);
+    expect(openMetas).toEqual(["1 ask waiting", "No booking yet", "No booking yet", "No booking yet"]);
   });
 
   it("does not let offered (suggested) bookings consume open slots — meter parity", () => {

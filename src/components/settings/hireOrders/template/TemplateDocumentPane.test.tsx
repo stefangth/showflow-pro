@@ -71,7 +71,7 @@ describe("TemplateDocumentPane", () => {
   it("renders the document into an iframe", async () => {
     render(<TemplateDocumentPane input={baseInput} />);
     await waitFor(() =>
-      expect(screen.getByTitle("Hire order preview")).toHaveAttribute("src", expect.stringContaining("blob:")),
+      expect(screen.getByTitle("Contract preview")).toHaveAttribute("src", expect.stringContaining("blob:")),
     );
   });
 
@@ -118,13 +118,13 @@ describe("TemplateDocumentPane", () => {
     expect(renderHireOrderPdf).toHaveBeenCalledTimes(1);
     // Nothing has resolved yet - no frame at all, but definitely not stuck
     // waiting forever without ever having rendered once.
-    expect(screen.queryByTitle("Hire order preview")).not.toBeInTheDocument();
+    expect(screen.queryByTitle("Contract preview")).not.toBeInTheDocument();
 
     await act(async () => {
       first.resolve(new Uint8Array([1]));
       await first.promise;
     });
-    expect(screen.getByTitle("Hire order preview")).toHaveAttribute("src", "blob:mock-1");
+    expect(screen.getByTitle("Contract preview")).toHaveAttribute("src", "blob:mock-1");
 
     const second = deferred<Uint8Array>();
     vi.mocked(renderHireOrderPdf).mockReturnValueOnce(second.promise);
@@ -136,13 +136,13 @@ describe("TemplateDocumentPane", () => {
 
     // The second render is in flight and unresolved - the OLD frame must
     // still be showing, not a blank pane.
-    expect(screen.getByTitle("Hire order preview")).toHaveAttribute("src", "blob:mock-1");
+    expect(screen.getByTitle("Contract preview")).toHaveAttribute("src", "blob:mock-1");
 
     await act(async () => {
       second.resolve(new Uint8Array([2]));
       await second.promise;
     });
-    expect(screen.getByTitle("Hire order preview")).toHaveAttribute("src", "blob:mock-2");
+    expect(screen.getByTitle("Contract preview")).toHaveAttribute("src", "blob:mock-2");
   });
 
   it("does not let a stale, earlier-started render clobber a later one that resolves first", async () => {
@@ -171,7 +171,7 @@ describe("TemplateDocumentPane", () => {
       second.resolve(new Uint8Array([2]));
       await second.promise;
     });
-    expect(screen.getByTitle("Hire order preview")).toHaveAttribute("src", "blob:mock-1");
+    expect(screen.getByTitle("Contract preview")).toHaveAttribute("src", "blob:mock-1");
     expect(createObjectURLMock).toHaveBeenCalledTimes(1);
 
     // Now resolve the EARLIER-started render (#1), which is stale by the
@@ -180,7 +180,7 @@ describe("TemplateDocumentPane", () => {
       first.resolve(new Uint8Array([1]));
       await first.promise;
     });
-    expect(screen.getByTitle("Hire order preview")).toHaveAttribute("src", "blob:mock-1");
+    expect(screen.getByTitle("Contract preview")).toHaveAttribute("src", "blob:mock-1");
     // The stale render must never even reach URL.createObjectURL - only one
     // object URL should exist for the whole test.
     expect(createObjectURLMock).toHaveBeenCalledTimes(1);
@@ -206,7 +206,7 @@ describe("TemplateDocumentPane", () => {
       second.resolve(new Uint8Array([2]));
       await second.promise;
     });
-    expect(screen.getByTitle("Hire order preview")).toHaveAttribute("src", "blob:mock-1");
+    expect(screen.getByTitle("Contract preview")).toHaveAttribute("src", "blob:mock-1");
 
     // The earlier-started render (#1) then rejects. Its failure is stale and
     // must not blank out or error-banner the already-current, successful frame.
@@ -215,7 +215,7 @@ describe("TemplateDocumentPane", () => {
       await first.promise.catch(() => {});
     });
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
-    expect(screen.getByTitle("Hire order preview")).toHaveAttribute("src", "blob:mock-1");
+    expect(screen.getByTitle("Contract preview")).toHaveAttribute("src", "blob:mock-1");
   });
 
   it("revokes the previous object URL when a newer render replaces it", async () => {

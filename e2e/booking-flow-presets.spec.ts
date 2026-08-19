@@ -101,7 +101,7 @@ test.describe("Booking flow presets: one happy path per preset", () => {
 
     // See booking-lifecycle.spec.ts for why this retries the click and waits
     // on the button disappearing rather than the transient sonner toast.
-    const acceptButton = page.getByRole("button", { name: /accept/i }).first();
+    const acceptButton = page.getByRole("button", { name: /^yes, i can do it$/i }).first();
     await expect(acceptButton).toBeVisible({ timeout: 15_000 });
     await expect(async () => {
       if (await acceptButton.isVisible()) {
@@ -125,7 +125,7 @@ test.describe("Booking flow presets: one happy path per preset", () => {
     await loginAsAndAwaitDashboard(page, ARTIST_EMAIL, ARTIST_PASSWORD);
     await navViaSidebar(page, /^availability$/i);
 
-    const acceptButton = page.getByRole("button", { name: /accept/i }).first();
+    const acceptButton = page.getByRole("button", { name: /^yes, i can do it$/i }).first();
     await expect(acceptButton).toBeVisible({ timeout: 15_000 });
     await expect(async () => {
       if (await acceptButton.isVisible()) {
@@ -156,7 +156,7 @@ test.describe("Booking flow presets: one happy path per preset", () => {
     // producer opens the date sheet and books the artist from the "Book artists"
     // card (EligibilityBookList), which books AND confirms in one step.
     await loginAsAndAwaitDashboard(page, TEST_PRODUCER_EMAIL, TEST_PRODUCER_PASSWORD);
-    await navViaSidebar(page, /^shows & bookings$/i);
+    await navViaSidebar(page, /^dates$/i);
 
     // Open THIS date's sheet via the calendar surface (each e2e date hangs off
     // the same seeded "e2e-program" show, so target by show_date id).
@@ -177,7 +177,7 @@ test.describe("Booking flow presets: one happy path per preset", () => {
     // present, since the dialog content mounts after the click. Guarding re-click
     // on the action NOT being visible means we only click while the dialog is
     // closed (no overlay), so it never double-fires.
-    const confirmBooking = page.getByRole("button", { name: /^book and confirm$/i });
+    const confirmBooking = page.getByRole("button", { name: /^book now$/i });
     await expect(async () => {
       if (!(await confirmBooking.isVisible())) {
         await bookButton.click();

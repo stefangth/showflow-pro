@@ -21,9 +21,9 @@ describe("EligibilityBookList", () => {
     expect(onBook).not.toHaveBeenCalled();
     expect(screen.getByText("Book Lena for this date?")).toBeInTheDocument();
     expect(
-      screen.getByText("This books and confirms Lena immediately. There is no offer step in direct booking mode."),
+      screen.getByText("This books Lena immediately. There is no asking step in direct booking mode."),
     ).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Book and confirm" }));
+    fireEvent.click(screen.getByRole("button", { name: "Book now" }));
     expect(onBook).toHaveBeenCalledWith("a1", false);
     expect(screen.getByText("Booked")).toBeInTheDocument();
   });
@@ -48,7 +48,7 @@ describe("EligibilityBookList", () => {
       <EligibilityBookList artists={[]} bookedArtistIds={new Set()} onBook={vi.fn()} booking={false} />,
     );
     expect(
-      screen.getByText("No eligible artists for this date. Check casts and city in Settings."),
+      screen.getByText("Nobody can be asked for this date. Check casts and city in Settings."),
     ).toBeInTheDocument();
   });
 
@@ -67,9 +67,9 @@ describe("EligibilityBookList", () => {
     // Understudy variant of the confirmation copy.
     expect(screen.getByText("Book Lena as understudy for this date?")).toBeInTheDocument();
     expect(
-      screen.getByText("This books and confirms Lena as understudy immediately. There is no offer step in direct booking mode."),
+      screen.getByText("This books Lena as understudy immediately. There is no asking step in direct booking mode."),
     ).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Book and confirm" }));
+    fireEvent.click(screen.getByRole("button", { name: "Book now" }));
     expect(onBook).toHaveBeenCalledWith("a1", true);
   });
 
@@ -77,7 +77,7 @@ describe("EligibilityBookList", () => {
     const { container } = renderWithProviders(
       <EligibilityBookList artists={[]} bookedArtistIds={new Set()} onBook={() => {}} booking={false} loading />,
     );
-    expect(screen.queryByText(/No eligible artists/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Nobody can be asked/)).not.toBeInTheDocument();
     expect(container.querySelectorAll(".animate-pulse").length).toBeGreaterThan(0);
   });
 
@@ -85,8 +85,8 @@ describe("EligibilityBookList", () => {
     renderWithProviders(
       <EligibilityBookList artists={[]} bookedArtistIds={new Set()} onBook={() => {}} booking={false} error />,
     );
-    expect(screen.queryByText(/No eligible artists/)).not.toBeInTheDocument();
-    expect(screen.getByText(/Could not load the eligible artists/)).toBeInTheDocument();
+    expect(screen.queryByText(/Nobody can be asked/)).not.toBeInTheDocument();
+    expect(screen.getByText(/Could not load who can be asked/)).toBeInTheDocument();
   });
 
   it("renders skill filter chips and fires onSkillFilterChange when a chip is toggled", () => {
@@ -107,7 +107,7 @@ describe("EligibilityBookList", () => {
     expect(screen.getByRole("button", { name: /^Singing/ })).toHaveAttribute("aria-pressed", "false");
     fireEvent.click(screen.getByRole("button", { name: /^Singing/ }));
     expect(onSkillFilterChange).toHaveBeenCalledWith("s2");
-    expect(screen.queryByText("Only offer to artists with")).not.toBeInTheDocument();
+    expect(screen.queryByText("Only ask artists with")).not.toBeInTheDocument();
   });
 
   // Hiding the count (rather than showing a hard-coded "0") when the caller has not wired
@@ -219,9 +219,9 @@ describe("EligibilityBookList", () => {
       />,
     );
     expect(
-      screen.getByText("This date requires Vocals and Stage combat · 7 of 24 artists qualify and are not blocked."),
+      screen.getByText("This date requires Vocals and Stage combat · 7 of 24 artists qualify and are free."),
     ).toBeInTheDocument();
-    expect(screen.queryByText("Only offer to artists with")).not.toBeInTheDocument();
+    expect(screen.queryByText("Only ask artists with")).not.toBeInTheDocument();
   });
 
   it("states there are no skill requirements when the date requires none", () => {
@@ -236,7 +236,7 @@ describe("EligibilityBookList", () => {
       />,
     );
     expect(
-      screen.getByText("This date has no skill requirements · 1 of 5 artists qualify and are not blocked."),
+      screen.getByText("This date has no skill requirements · 1 of 5 artists qualify and are free."),
     ).toBeInTheDocument();
   });
 

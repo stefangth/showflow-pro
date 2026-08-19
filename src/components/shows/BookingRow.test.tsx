@@ -26,14 +26,14 @@ describe('BookingRow', () => {
       <BookingRow booking={makeBooking({ status: 'soft_booked' })} canManage={false} showConfirm onConfirm={vi.fn()} onCancel={vi.fn()} />,
     );
     expect(screen.getByText('Jane Doe')).toBeInTheDocument();
-    expect(screen.getByText('Soft-booked')).toBeInTheDocument();
+    expect(screen.getByText('Said yes, waiting on you')).toBeInTheDocument();
   });
 
-  it('labels a suggested booking "Offered", never the raw enum', () => {
+  it('labels a suggested booking "Asked", never the raw enum', () => {
     render(
       <BookingRow booking={makeBooking({ status: 'suggested' })} canManage={false} showConfirm onConfirm={vi.fn()} onCancel={vi.fn()} />,
     );
-    expect(screen.getByText('Offered')).toBeInTheDocument();
+    expect(screen.getByText('Asked')).toBeInTheDocument();
     expect(screen.queryByText('suggested')).not.toBeInTheDocument();
   });
 
@@ -41,7 +41,7 @@ describe('BookingRow', () => {
     render(
       <BookingRow booking={makeBooking({ status: 'soft_booked' })} canManage={false} showConfirm onConfirm={vi.fn()} onCancel={vi.fn()} />,
     );
-    expect(screen.queryByRole('button', { name: 'Confirm' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Book' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument();
   });
 
@@ -49,7 +49,7 @@ describe('BookingRow', () => {
     const booking = makeBooking({ status: 'soft_booked' });
     const onConfirm = vi.fn();
     render(<BookingRow booking={booking} canManage showConfirm onConfirm={onConfirm} onCancel={vi.fn()} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Confirm' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Book' }));
     expect(onConfirm).toHaveBeenCalledWith(booking.id);
   });
 
@@ -57,20 +57,21 @@ describe('BookingRow', () => {
     const booking = makeBooking({ status: 'confirmed' });
     const onCancel = vi.fn();
     render(<BookingRow booking={booking} canManage showConfirm onConfirm={vi.fn()} onCancel={onCancel} />);
-    expect(screen.queryByRole('button', { name: 'Confirm' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Book' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(onCancel).toHaveBeenCalledWith(booking.id);
   });
 
-  // P3.3: the module-off Soft-booked badge means the same thing as the cockpit's Accepted
-  // badge — accepted, held, not booked until confirmed — so it carries the same tooltip.
-  it('carries the soft-booked meaning as a tooltip on the Soft-booked badge', async () => {
+  // P3.3: the module-off "Said yes, waiting on you" badge means the same thing as the
+  // cockpit's Accepted badge — accepted, held, not booked until confirmed — so it carries
+  // the same tooltip.
+  it('carries the soft-booked meaning as a tooltip on the "Said yes, waiting on you" badge', async () => {
     render(
       <TooltipProvider delayDuration={0}>
         <BookingRow booking={makeBooking({ status: 'soft_booked' })} canManage={false} showConfirm onConfirm={vi.fn()} onCancel={vi.fn()} />
       </TooltipProvider>,
     );
-    fireEvent.pointerMove(screen.getByText('Soft-booked'), { pointerType: 'mouse' });
+    fireEvent.pointerMove(screen.getByText('Said yes, waiting on you'), { pointerType: 'mouse' });
     expect(await screen.findAllByText(softBookedMeaning(i18n.getFixedT('en', 'bookingCopy')))).not.toHaveLength(0);
   });
 
@@ -87,13 +88,13 @@ describe('BookingRow confirm gate', () => {
     render(
       <BookingRow booking={artistBooking} canManage showConfirm onConfirm={vi.fn()} onCancel={vi.fn()} />,
     );
-    expect(screen.getByRole('button', { name: 'Confirm' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Book' })).toBeInTheDocument();
   });
 
   it('hides Confirm when showConfirm is false (auto-confirm flow)', () => {
     render(
       <BookingRow booking={artistBooking} canManage showConfirm={false} onConfirm={vi.fn()} onCancel={vi.fn()} />,
     );
-    expect(screen.queryByRole('button', { name: 'Confirm' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Book' })).toBeNull();
   });
 });

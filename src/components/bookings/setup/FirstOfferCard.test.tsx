@@ -37,7 +37,7 @@ beforeEach(() => {
 describe("FirstOfferCard", () => {
   it("explains the classic flow while an offer is pending", async () => {
     renderWithProviders(<FirstOfferCard />);
-    expect(await screen.findByText(/soft-books the date/i)).toBeInTheDocument();
+    expect(await screen.findByText(/says yes, waiting on you/i)).toBeInTheDocument();
   });
 
   it("reads the flow and the hours from one org, not two", async () => {
@@ -46,7 +46,7 @@ describe("FirstOfferCard", () => {
     // lookup, so the two were free to drift apart the moment either source changed. Same
     // rule as TimingStep and RehearsalBlock: the org is resolved once and passed down.
     renderWithProviders(<FirstOfferCard />);
-    await screen.findByText(/soft-books the date/i);
+    await screen.findByText(/says yes, waiting on you/i);
     expect(flowOrgSpy).toHaveBeenCalledWith("org-1");
     expect(timesOrgSpy).toHaveBeenCalledWith("org-1");
   });
@@ -62,8 +62,8 @@ describe("FirstOfferCard", () => {
     // produce different sentences and the assertion can tell them apart.
     flowRef.value = { artist_acceptance: true, producer_confirmation: false, offer_delivery: "immediate", confirmation_digest: true };
     renderWithProviders(<FirstOfferCard />);
-    expect(await screen.findByText(/soft-books the date/i)).toBeInTheDocument();
-    expect(screen.queryByText(/confirms the booking instantly/i)).not.toBeInTheDocument();
+    expect(await screen.findByText(/says yes, waiting on you/i)).toBeInTheDocument();
+    expect(screen.queryByText(/books it instantly/i)).not.toBeInTheDocument();
   });
 
   it("renders nothing when there is no pending offer", async () => {
@@ -75,6 +75,6 @@ describe("FirstOfferCard", () => {
   it("changes the wording under fast-track", async () => {
     flowRef.value = { artist_acceptance: true, producer_confirmation: false, offer_delivery: "immediate", confirmation_digest: true };
     renderWithProviders(<FirstOfferCard />);
-    expect(await screen.findByText(/confirms the booking instantly/i)).toBeInTheDocument();
+    expect(await screen.findByText(/books it instantly/i)).toBeInTheDocument();
   });
 });
