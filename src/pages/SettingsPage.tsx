@@ -274,10 +274,8 @@ export default function SettingsPage() {
 
   const navGroups: { heading: string; items: { value: string; label: string; icon: typeof Building2; show: boolean; moduleState?: boolean }[] }[] = [
     { heading: t('nav.groups.organization'), items: [
-      { value: "organization", label: t('nav.items.organization'), icon: Building2, show: isAdmin || isProducer },
       { value: "how-it-works", label: t('nav.items.howItWorks'), icon: Rocket, show: isAdmin || isProducer },
       { value: "permissions", label: t('nav.items.permissions'), icon: ShieldCheck, show: isAdmin },
-      { value: "trust", label: t('nav.items.trust'), icon: Lock, show: isAdmin || isProducer },
       { value: "casts-coverage", label: t('nav.items.castsCoverage'), icon: MapPin, show: isAdmin || isProducer },
       { value: "skills", label: t('nav.items.skills'), icon: Sparkles, show: isAdmin || isProducer },
     ] },
@@ -294,9 +292,11 @@ export default function SettingsPage() {
       { value: "hire-orders", label: t('nav.items.hireOrders'), icon: FileSignature, show: isAdmin || isProducer, moduleState: hireOrdersEntitled },
     ] },
     { heading: t('nav.groups.preferences'), items: [
+      { value: "organization", label: t('nav.items.organization'), icon: Building2, show: isAdmin || isProducer },
       { value: "notifications", label: t('nav.items.notifications'), icon: Bell, show: isAdmin || isProducer },
     ] },
     { heading: t('nav.groups.help'), items: [
+      { value: "trust", label: t('nav.items.trust'), icon: Lock, show: isAdmin || isProducer },
       { value: "docs", label: t('nav.items.docs'), icon: BookOpen, show: isSuperAdmin },
     ] },
   ];

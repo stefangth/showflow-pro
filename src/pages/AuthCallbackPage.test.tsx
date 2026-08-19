@@ -41,10 +41,10 @@ describe("AuthCallbackPage", () => {
     await waitFor(() => expect(navigateSpy).toHaveBeenCalledWith("/accept-invite?token=x", { replace: true }));
   });
 
-  it("clamps an unsafe redirect to /dashboard", async () => {
+  it("clamps an unsafe redirect to the app root (HomeLanding then decides)", async () => {
     renderAt("/auth/callback?redirect=//evil.com");
     authCbs.forEach((cb) => cb("SIGNED_IN", { user: { id: "u" } }));
-    await waitFor(() => expect(navigateSpy).toHaveBeenCalledWith("/dashboard", { replace: true }));
+    await waitFor(() => expect(navigateSpy).toHaveBeenCalledWith("/", { replace: true }));
   });
 
   it("shows the recovery state immediately on an error hash (first commit, no timers, no auth listener)", () => {

@@ -34,7 +34,7 @@ export default function AuthCallbackPage() {
   useEffect(() => {
     if (failed) return; // error hash already detected at render; no session wiring needed.
 
-    const target = safeRelativeRedirect(searchParams.get("redirect"), ROUTES.DASHBOARD);
+    const target = safeRelativeRedirect(searchParams.get("redirect"), ROUTES.HOME);
     let done = false;
     const go = () => { if (!done) { done = true; navigate(target, { replace: true }); } };
 

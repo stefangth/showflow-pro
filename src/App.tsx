@@ -17,6 +17,7 @@ import { AnalyticsBridge } from "@/features/analytics/AnalyticsBridge";
 import { AnalyticsIdentityBridge } from "@/features/analytics/AnalyticsIdentityBridge";
 import { AppErrorBoundary } from "@/features/analytics/AppErrorBoundary";
 import { ProtectedRoute, PlatformRoute } from "@/features/auth/ProtectedRoute";
+import HomeLanding from "@/features/auth/HomeLanding";
 import PlatformPage from "./pages/PlatformPage";
 import AppLayout from "@/components/layout/AppLayout";
 import { ROUTES } from "@/config/app.config";
@@ -73,7 +74,10 @@ const App = () => (
             <EditorProvider>
             <DemoProvider>
           <Routes>
-            <Route path={ROUTES.HOME} element={<Navigate to={ROUTES.LOGIN} replace />} />
+            {/* Wrapped in ProtectedRoute so the no-org / suspended-org gates run
+                BEFORE HomeLanding fires any org-scoped reads — post-auth redirects
+                default here, so this path runs on essentially every login. */}
+            <Route path={ROUTES.HOME} element={<ProtectedRoute><HomeLanding /></ProtectedRoute>} />
             <Route path={ROUTES.LOGIN} element={<LoginPage />} />
             {DevCockpitHarness && (
               <Route path="/dev/cockpit" element={<Suspense fallback={null}><DevCockpitHarness /></Suspense>} />

@@ -139,11 +139,21 @@ export default function TodayContainer() {
     navigate(ROUTES.BOOKINGS);
   }
 
+  /** Deep-link straight into a date's detail sheet on the Bookings page
+   *  (`?date=<id>`), optionally landing on the Offers tab. Used by the card
+   *  CTAs that carry a concrete `showDateId`, so "Open the date" opens the
+   *  sheet instead of dropping the user on the unfiltered board. */
+  function openDateSheet(showDateId: string, tab?: "offers") {
+    const params = new URLSearchParams({ date: showDateId });
+    if (tab) params.set("tab", tab);
+    navigate(`${ROUTES.BOOKINGS}?${params.toString()}`);
+  }
+
   function handleOpenNextCast(item: AtRiskDate) {
     if (item.nextTierNumber === null) {
-      // Nothing left the facts layer knows how to open — fall back to the
-      // Dates board rather than guessing a tier.
-      goToBookings(`${item.title} · ${item.where}`);
+      // Nothing left the facts layer knows how to open — open the date's sheet
+      // so the producer can act on it directly, rather than guessing a tier.
+      openDateSheet(item.showDateId);
       return;
     }
     const cast = item.nextCastName ?? "";
@@ -164,11 +174,11 @@ export default function TodayContainer() {
   }
 
   function handleOpenDate(item: AtRiskDate) {
-    goToBookings(`${item.title} · ${item.where}`);
+    openDateSheet(item.showDateId);
   }
 
   function handleReadFirst(item: CancelledUntoldDate) {
-    goToBookings(`${item.title} · ${item.where}`);
+    openDateSheet(item.showDateId);
   }
 
   function handleTellCast(item: CancelledUntoldDate) {

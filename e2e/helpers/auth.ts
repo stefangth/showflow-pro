@@ -25,7 +25,12 @@ export async function loginAsAndAwaitDashboard(
   password: string
 ): Promise<void> {
   await loginAs(page, email, password);
-  await expect(page).toHaveURL(/\/dashboard/, { timeout: 15_000 });
+  // Post-login lands at '/' (HomeLanding), which then decides: an artist and a
+  // fully-set-up org go to /dashboard, while a non-artist whose Get running board
+  // still has open setup tasks lands on /get-running. Accept either landed route
+  // (never /login and never the transient '/') — callers that need a specific page
+  // navigate there via the sidebar afterwards.
+  await expect(page).toHaveURL(/\/(dashboard|get-running)/, { timeout: 15_000 });
 }
 
 /**
