@@ -1,7 +1,9 @@
 import { useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { format } from 'date-fns';
+import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -15,7 +17,7 @@ import { HireOrderStatusBadge } from '@/components/hireOrders/HireOrderStatusBad
 import { useFeature } from '@/hooks/useEntitlements';
 import { ModuleGate } from '@/components/layout/ModuleGate';
 import { useAuth } from '@/features/auth/AuthContext';
-import { formatDateDMY, parseDateOnly, pastRowClassName } from '@/lib/dates';
+import { formatDateDMY, parseDateOnly, pastRowClassName, dfLocale } from '@/lib/dates';
 import { cn } from '@/lib/utils';
 import { useBookingFlow, useReferenceField } from '@/hooks/useBookingFlow';
 import { referenceLabel, BOOKING_FLOW_DEFAULTS } from '@/lib/bookingFlow';
@@ -23,8 +25,12 @@ import { artistMeter } from '@/lib/flowCopy';
 import { ROUTES } from '@/config/app.config';
 import type { OrderData } from '@/lib/hireOrders/types';
 import { UnlinkedArtistCard } from '@/components/artists/UnlinkedArtistCard';
+import { respondToOffer } from '@/data/bookings';
+import { acceptConsequenceNote } from '@/lib/bookings/actionCopy';
+import { termLabel } from '@/i18n/terms';
+import type { Lang } from '@/i18n/config';
 
-type BookingLite = { show_date_id: string; status: string };
+type BookingLite = { id: string; show_date_id: string; status: string; offer_expires_at: string | null };
 type CastMembershipRow = { id: string; cast: { id: string; name: string } | null };
 
 /** Read a resolved snapshot field as a trimmed string ("" when absent). Mirrors
@@ -40,20 +46,24 @@ function snap(data: OrderData, key: keyof OrderData): string {
  * Artist dashboard: offer response rate + list of pending offers.
  */
 export function ArtistDashboard() {
-  const { t } = useTranslation('dashboard');
+  const { t, i18n } = useTranslation('dashboard');
   const { t: tFlow } = useTranslation('flowCopy');
+  const { t: tAvail } = useTranslation('availability');
+  const { t: tBookingCopy } = useTranslation('bookingCopy');
   const { data: artist } = useMyArtist();
   const { data: eligibleDates } = useArtistEligibleDates();
   const { reference, customFieldKey } = useReferenceField();
   const flowQ = useBookingFlow();
   const flow = flowQ.data ?? BOOKING_FLOW_DEFAULTS;
   const meter = artistMeter(flow, tFlow);
+  const lang: Lang = i18n.language?.startsWith('de') ? 'de' : 'en';
 
   const hireOrdersEnabled = useFeature('hire_orders');
   const bookingFlowEnabled = useFeature('booking_flow');
   const { data: myHireOrders, isSuccess: hireOrdersLoaded } = useMyHireOrders();
   const { currentOrg } = useAuth();
   const hireOrderAction = useHireOrderAction();
+  const qc = useQueryClient();
 
   function handleDownloadHireOrder(orderId: string) {
     void (async () => {
@@ -80,12 +90,39 @@ export function ArtistDashboard() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('bookings')
-        .select('show_date_id, status')
+        .select('id, show_date_id, status, offer_expires_at')
         .eq('artist_id', artist!.id)
         .neq('status', 'cancelled');
       if (error) throw error;
       return (data ?? []) as BookingLite[];
     },
+  });
+
+  // Accept/decline a pending offer straight from the dashboard's hero card.
+  // `autoConfirm` mirrors AvailabilityPage's OffersLens derivation: when the org's
+  // flow skips producer confirmation, accepting writes straight to `confirmed`.
+  const respond = useMutation({
+    mutationFn: (args: { bookingId: string; accept: boolean }) =>
+      respondToOffer(supabase, {
+        bookingId: args.bookingId,
+        accept: args.accept,
+        now: new Date(),
+        autoConfirm: !flow.producer_confirmation,
+      }),
+    onSuccess: ({ affected }, args) => {
+      qc.invalidateQueries({ queryKey: ['bookings'] });
+      if (affected === 0) {
+        toast.error(tAvail('offer.toast.unavailableTitle'), { description: tAvail('offer.toast.unavailableDesc') });
+        return;
+      }
+      if (args.accept) {
+        const note = acceptConsequenceNote(flow, tBookingCopy);
+        toast.success(note.title, { description: note.description });
+      } else {
+        toast.success(tAvail('offer.toast.declinedTitle'), { description: tAvail('offer.toast.declinedDesc') });
+      }
+    },
+    onError: (e: Error) => toast.error(tAvail('offer.toast.errorTitle'), { description: e.message }),
   });
 
   const { data: myMemberships, isError: membershipsError } = useQuery({
@@ -104,6 +141,16 @@ export function ArtistDashboard() {
   const bookingMap = useMemo(() => {
     const m = new Map<string, string>();
     myBookings?.forEach((b) => m.set(b.show_date_id, b.status));
+    return m;
+  }, [myBookings]);
+
+  // Suggested (still-pending) offers, keyed by show_date_id, carrying the booking id
+  // (needed to accept/decline) and the response deadline for the "Answer by" label.
+  const suggestedByDateId = useMemo(() => {
+    const m = new Map<string, { bookingId: string; expiresAt: string | null }>();
+    myBookings?.forEach((b) => {
+      if (b.status === 'suggested') m.set(b.show_date_id, { bookingId: b.id, expiresAt: b.offer_expires_at });
+    });
     return m;
   }, [myBookings]);
 
@@ -152,7 +199,7 @@ export function ArtistDashboard() {
               </Alert>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="max-w-md">
               <Link
                 to={meter.filterUnanswered ? `${ROUTES.AVAILABILITY}?filter=unanswered` : ROUTES.AVAILABILITY}
                 className="block"
@@ -184,10 +231,11 @@ export function ArtistDashboard() {
                   </CardContent>
                 </Card>
               </Link>
+            </div>
 
-              {/* Direct-booking orgs have no offer step, so there is never anything
-                  to respond to; hide the card instead of showing offer language. */}
-              {flow.artist_acceptance && (
+            {/* Direct-booking orgs have no offer step, so there is never anything
+                to respond to; hide the card instead of showing offer language. */}
+            {flow.artist_acceptance && (
               <Card>
                 <CardHeader>
                   <CardTitle className="font-display flex items-center gap-2 text-base">
@@ -202,35 +250,80 @@ export function ArtistDashboard() {
                       {t('artist.allCaughtUp')}
                     </p>
                   ) : (
-                    <div className="space-y-2 max-h-72 overflow-y-auto">
-                      {unanswered.slice(0, 8).map((d) => (
-                        <Link
-                          key={d.id}
-                          to={`${ROUTES.AVAILABILITY}?filter=unanswered`}
-                          className="flex items-center justify-between p-2 rounded-md hover:bg-muted text-sm"
-                        >
-                          <div className="min-w-0">
-                            <p className="font-medium truncate">
-                              {referenceLabel({ reference, show: d.show, custom: d.custom, customFieldKey })}
-                            </p>
-                            <p className="text-xs text-muted-foreground">{formatDateDMY(d.date)}</p>
+                    <div className="space-y-3">
+                      {unanswered.slice(0, 3).map((d) => {
+                        const offer = suggestedByDateId.get(d.id);
+                        const date = parseDateOnly(d.date);
+                        const deadline = offer?.expiresAt
+                          ? `${termLabel('responseWindow', lang)} ${format(new Date(offer.expiresAt), 'EEE HH:mm', { locale: dfLocale() })}`
+                          : null;
+                        return (
+                          <div
+                            key={d.id}
+                            className="flex items-stretch overflow-hidden rounded-[14px] border border-border bg-card shadow-elev2"
+                          >
+                            <div className="flex w-[92px] shrink-0 flex-col items-center justify-center gap-0.5 border-r border-border bg-accent-50 py-5">
+                              <p className="m-0 text-[11px] font-semibold uppercase tracking-[1.6px] text-accent-text">
+                                {format(date, 'EEE', { locale: dfLocale() })}
+                              </p>
+                              <p className="m-0 font-mono text-[28px] font-semibold leading-8 text-accent-text">
+                                {format(date, 'd', { locale: dfLocale() })}
+                              </p>
+                              <p className="m-0 text-[11px] text-muted-foreground">
+                                {format(date, 'MMM', { locale: dfLocale() })}
+                              </p>
+                            </div>
+                            <div className="min-w-0 flex-1 p-5">
+                              <p className="m-0 text-[19px] font-semibold tracking-[-0.2px]">
+                                {referenceLabel({ reference, show: d.show, custom: d.custom, customFieldKey })}
+                              </p>
+                              <p className="m-0 mt-1 text-[13.5px] text-muted-foreground">{formatDateDMY(d.date)}</p>
+                              <p className="m-0 mt-3.5 text-sm leading-[21px]">
+                                {t('artist.offer.question')}{' '}
+                                <strong>
+                                  {flow.producer_confirmation
+                                    ? t('artist.offer.acceptNoteConfirm')
+                                    : t('artist.offer.acceptNote')}
+                                </strong>{' '}
+                                {tAvail('offer.toast.declinedDesc')}
+                              </p>
+                              <div className="mt-4 flex flex-wrap items-center gap-2.5">
+                                <Button
+                                  type="button"
+                                  disabled={!offer || respond.isPending}
+                                  onClick={() => offer && respond.mutate({ bookingId: offer.bookingId, accept: true })}
+                                >
+                                  {tAvail('offer.accept')}
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  disabled={!offer || respond.isPending}
+                                  onClick={() => offer && respond.mutate({ bookingId: offer.bookingId, accept: false })}
+                                >
+                                  {tAvail('offer.decline')}
+                                </Button>
+                                {deadline && (
+                                  <span className="ml-1.5 font-mono text-xs text-warning">{deadline}</span>
+                                )}
+                              </div>
+                            </div>
                           </div>
-                          <Badge variant="outline" className="text-xs">
-                            {t('artist.respond')}
-                          </Badge>
+                        );
+                      })}
+                      {unanswered.length > 3 && (
+                        <Link
+                          to={`${ROUTES.AVAILABILITY}?filter=unanswered`}
+                          className="block text-center text-xs text-muted-foreground pt-1"
+                        >
+                          {t('artist.unansweredMore', { count: unanswered.length - 3 })}
                         </Link>
-                      ))}
-                      {unanswered.length > 8 && (
-                        <p className="text-xs text-muted-foreground text-center pt-1">
-                          {t('artist.unansweredMore', { count: unanswered.length - 8 })}
-                        </p>
                       )}
                     </div>
                   )}
                 </CardContent>
               </Card>
-              )}
-            </div>
+            )}
           </ModuleGate>
 
           {hireOrdersEnabled && (

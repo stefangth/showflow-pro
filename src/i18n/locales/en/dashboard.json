@@ -36,7 +36,12 @@
     "noCastsYet": "You haven't been added to any casts yet.",
     "member": "Member",
     "respondedOfTotal": "{{responded}} of {{total}} dates",
-    "unansweredMore": "+{{count}} more"
+    "unansweredMore": "+{{count}} more",
+    "offer": {
+      "question": "Can you do this one?",
+      "acceptNote": "Say yes and the place is yours, nobody has to confirm it afterwards.",
+      "acceptNoteConfirm": "Say yes and the place is yours to lose, your production team still has to confirm it."
+    }
   },
   "producer": {
     "heading": "Dashboard",

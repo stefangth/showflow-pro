@@ -1,54 +1,26 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { fireEvent, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
 import { renderWithProviders } from "@/test/renderWithProviders";
-import { createFakeSupabase, type TableSeed } from "@/test/supabaseFake";
 import { ROUTES } from "@/config/app.config";
 import { resetGetRunningLanding } from "@/lib/getRunning/landing";
 import type { GetRunningModel } from "@/lib/getRunning/tasks";
 
-// The Producer dashboard's "Ready to Confirm" bulk actions are the only surface
-// under test here. Everything else (upcoming-dates cards, the tier-attention /
-// direct-booking cockpit cards) is either seeded empty or stubbed so the file
-// stays focused on the confirm_bookings gate (decline is deliberately NOT gated).
-const { client } = vi.hoisted(() => ({ client: {} as Record<string, unknown> }));
-vi.mock("@/integrations/supabase/client", () => ({ supabase: client }));
+// This file exercises only the onboarding (Get running) landing gate — the
+// artist/producer branch and the one-time redirect. The Autopilot Today board
+// mounted for the producer/admin branch (TodayContainer) is stubbed with a
+// probe, the same way the artist branch's ArtistDashboard is, so these tests
+// don't pay for its data layer and stay focused on the gate itself.
 vi.mock("@/features/auth/AuthContext", () => ({ useAuth: vi.fn() }));
-vi.mock("@/hooks/useCapabilities", async (orig) => ({
-  ...(await orig<typeof import("@/hooks/useCapabilities")>()),
-  useCan: vi.fn(),
-}));
-vi.mock("@/hooks/useBookingFlow", () => ({
-  useBookingFlow: () => ({ data: undefined }), // falls back to BOOKING_FLOW_DEFAULTS (artist_acceptance: true)
-  useReferenceField: () => ({ reference: { source: "show" }, customFieldKey: null }),
-}));
-vi.mock("@/components/dashboard/TierAttentionCard", () => ({ TierAttentionCard: () => null }));
-vi.mock("@/components/dashboard/DirectBookingCard", () => ({ DirectBookingCard: () => null }));
-// The onboarding gate reads the composed board model; drive it directly here so these
-// tests exercise the gate/dashboard split without the whole entitlement+setup plumbing.
 vi.mock("@/hooks/useGetRunning", () => ({ useGetRunning: vi.fn() }));
-// Probe for the artist branch so the artist-does-not-redirect test doesn't pay for the
-// real ArtistDashboard's data layer.
 vi.mock("@/components/dashboard/ArtistDashboard", () => ({
   ArtistDashboard: () => <div>artist dashboard probe</div>,
 }));
-
-const bulkConfirmSoftBooked = vi.fn((..._a: unknown[]) => Promise.resolve({ affected: 1 }));
-const bulkDeclineSoftBooked = vi.fn((..._a: unknown[]) => Promise.resolve({ affected: 1 }));
-vi.mock("@/data/bookings", async (orig) => ({
-  ...(await orig<typeof import("@/data/bookings")>()),
-  fetchTierAttention: vi.fn(() => Promise.resolve([])),
-  bulkConfirmSoftBooked: (...a: unknown[]) => bulkConfirmSoftBooked(...a),
-  bulkDeclineSoftBooked: (...a: unknown[]) => bulkDeclineSoftBooked(...a),
+vi.mock("@/components/today/TodayPage", () => ({
+  default: () => <div>today board probe</div>,
 }));
 
-function seedClient(seed: Record<string, TableSeed>) {
-  for (const key of Object.keys(client)) delete client[key];
-  Object.assign(client, createFakeSupabase(seed));
-}
-
 import { useAuth } from "@/features/auth/AuthContext";
-import { useCan } from "@/hooks/useCapabilities";
 import { useGetRunning } from "@/hooks/useGetRunning";
 import DashboardPage from "./DashboardPage";
 
@@ -64,13 +36,6 @@ const COMPLETE_MODEL: GetRunningModel = {
   hireOrdersOn: false,
 };
 
-const SOFT_BOOKED_ROW = {
-  id: "bk-1",
-  is_understudy: false,
-  artist: { id: "ar-1", name: "Ada Lovelace" },
-  show_date: { id: "sd-1", date: "2026-03-01", show: { program: "Aurora", sub_program: null } },
-};
-
 function authAs(role: "producer" | "admin" | "artist") {
   vi.mocked(useAuth).mockReturnValue({
     hasRole: (r: string) => r === role,
@@ -78,51 +43,9 @@ function authAs(role: "producer" | "admin" | "artist") {
   } as never);
 }
 
-describe("DashboardPage (producer) confirm_bookings gate", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    authAs("producer");
-    // Complete board → the onboarding gate lets the dashboard render (these tests are about
-    // the confirm gate, not the redirect).
-    vi.mocked(useGetRunning).mockReturnValue({ model: COMPLETE_MODEL, isLoading: false });
-    seedClient({
-      show_dates: { data: [], error: null },
-      bookings: [
-        { when: { status: "confirmed" }, data: [], error: null },
-        { when: { status: "soft_booked" }, data: [SOFT_BOOKED_ROW], error: null },
-      ],
-    });
-    vi.mocked(useCan).mockReturnValue(true);
-  });
-
-  it("confirm_bookings on: bulk Confirm is enabled once a row is selected", async () => {
-    renderWithProviders(<MemoryRouter><DashboardPage /></MemoryRouter>);
-    await screen.findByText("Ada Lovelace");
-    fireEvent.click(screen.getAllByRole("checkbox")[0]); // select-all header checkbox
-    expect(await screen.findByRole("button", { name: /^book 1$/i })).toBeEnabled();
-  });
-
-  it("confirm_bookings off: bulk Confirm is disabled, Decline stays enabled (not gated)", async () => {
-    vi.mocked(useCan).mockReturnValue(false);
-    renderWithProviders(<MemoryRouter><DashboardPage /></MemoryRouter>);
-    await screen.findByText("Ada Lovelace");
-    fireEvent.click(screen.getAllByRole("checkbox")[0]);
-    expect(await screen.findByRole("button", { name: /^book 1$/i })).toBeDisabled();
-    expect(screen.getByRole("button", { name: /^turn down 1$/i })).toBeEnabled();
-  });
-});
-
 describe("DashboardPage onboarding gate (drop into Get running until setup is done)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    seedClient({
-      show_dates: { data: [], error: null },
-      bookings: [
-        { when: { status: "confirmed" }, data: [], error: null },
-        { when: { status: "soft_booked" }, data: [], error: null },
-      ],
-    });
-    vi.mocked(useCan).mockReturnValue(true);
   });
 
   function renderAt() {
@@ -187,6 +110,7 @@ describe("DashboardPage onboarding gate (drop into Get running until setup is do
     vi.mocked(useGetRunning).mockReturnValue({ model: COMPLETE_MODEL, isLoading: false });
     renderAt();
     expect(screen.queryByText("get running board")).not.toBeInTheDocument();
+    expect(screen.getByText("today board probe")).toBeInTheDocument();
   });
 
   it("does not redirect while the board model is still loading", () => {

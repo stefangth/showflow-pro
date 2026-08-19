@@ -67,7 +67,19 @@ export interface UseAutopilotTodayResult {
  *    available without parsing it.
  * Both are flagged in the task report as approximations, not exact figures.
  */
-export function useAutopilotToday(): UseAutopilotTodayResult {
+export interface UseAutopilotTodayOptions {
+  /**
+   * Whether the query should run at all. Defaults to true. The `booking_flow`
+   * module gate (see `TodayContainer` in `src/components/today/TodayPage.tsx`)
+   * passes its resolved `allow` here so a org without the entitlement never
+   * fires these booking-derived reads in the first place — mirroring
+   * `ModuleGate`'s "don't mount children whose queries can't be acted on".
+   */
+  enabled?: boolean;
+}
+
+export function useAutopilotToday(options?: UseAutopilotTodayOptions): UseAutopilotTodayResult {
+  const enabled = options?.enabled ?? true;
   const { currentOrg } = useAuth();
   const orgId = currentOrg?.id ?? null;
   const flowQ = useBookingFlow();
@@ -77,7 +89,7 @@ export function useAutopilotToday(): UseAutopilotTodayResult {
 
   const modelQ = useQuery({
     queryKey: ["autopilot", "today", orgId, flow.offer_delivery, times.offerDigestHour, times.confirmationDigestHour],
-    enabled: !!orgId,
+    enabled: !!orgId && enabled,
     queryFn: async (): Promise<TodayModel> => {
       const now = new Date();
       const today = berlinDateKey(now);

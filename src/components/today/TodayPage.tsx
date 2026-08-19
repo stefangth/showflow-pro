@@ -9,6 +9,8 @@ import { ROUTES } from "@/config/app.config";
 import { closeOfferTier, bulkDeclineSoftBooked, fetchSoftBookedIdsForDate, notifyCast } from "@/data/bookings";
 import type { AtRiskDate, CancelledUntoldDate, FeedRow, TodayModel } from "@/lib/autopilot/today";
 import { useAutopilotToday } from "@/hooks/useAutopilotToday";
+import { useModuleGate } from "@/hooks/useEntitlements";
+import { ModuleGate } from "@/components/layout/ModuleGate";
 import { TodayHeader } from "./TodayHeader";
 import { BouncedAsksBanner } from "./BouncedAsksBanner";
 import { AtRiskDateCard } from "./AtRiskDateCard";
@@ -121,17 +123,29 @@ function parseSimpleFeedId(id: string): { kind: string; showDateId: string } | n
 
 /**
  * Thin data-fetching wrapper: composes `useAutopilotToday` and renders
- * `TodayPage`. This is what a route mounts. Action handlers here perform the
- * two real reversal mutations the plan's self-review calls out by name
- * (`closeOfferTier` to un-ask, `bulkDeclineSoftBooked` to unbook); anything
- * needing a piece of data the model doesn't carry (e.g. which tier to open
- * next has no exposed tier number — see `AtRiskDateFacts`) falls back to
- * navigating to the Dates board rather than guessing. See the task report's
- * "deviations" section for the full list and why.
+ * `TodayPage`. This is what `/dashboard` mounts (`DashboardPage`) for any
+ * non-artist-only viewer. Every card on the board is booking-engine content
+ * (open tiers, at-risk dates, offer digests), so the whole thing is wrapped
+ * in `ModuleGate feature="booking_flow"` — mirrors the gate the old
+ * `ProducerBookingSection` used to apply on the dashboard it replaced. The
+ * `booking_flow` allow state is also threaded into `useAutopilotToday` as
+ * `enabled` so an unentitled org never fires the underlying queries, not just
+ * hides their output.
+ *
+ * Action handlers here perform the two real reversal mutations the plan's
+ * self-review calls out by name (`closeOfferTier` to un-ask,
+ * `bulkDeclineSoftBooked` to unbook); anything needing a piece of data the
+ * model doesn't carry (e.g. which tier to open next has no exposed tier
+ * number — see `AtRiskDateFacts`) falls back to navigating to the Dates
+ * board rather than guessing. See the task report's "deviations" section for
+ * the full list and why.
  */
 export default function TodayContainer() {
   const navigate = useNavigate();
-  const { model, isLoading, isError, askTimeLabel, feedSinceLabel, refetch } = useAutopilotToday();
+  const { allow: bookingFlowAllowed } = useModuleGate("booking_flow");
+  const { model, isLoading, isError, askTimeLabel, feedSinceLabel, refetch } = useAutopilotToday({
+    enabled: bookingFlowAllowed,
+  });
 
   function goToBookings(reason?: string) {
     if (reason) toast.info(reason);
@@ -208,37 +222,33 @@ export default function TodayContainer() {
     goToBookings(row.text);
   }
 
-  if (isLoading) {
-    return (
-      <div className="flex max-w-[920px] flex-col gap-5">
-        <Skeleton className="h-8 w-64" />
-        <Skeleton className="h-40 w-full rounded-[14px]" />
-        <Skeleton className="h-32 w-full rounded-[14px]" />
-      </div>
-    );
-  }
-
-  if (isError || !model) {
-    return (
-      <Alert variant="destructive" className="max-w-[920px]">
-        <TriangleAlert className="h-4 w-4" />
-      </Alert>
-    );
-  }
-
   return (
-    <TodayPage
-      model={model}
-      askTimeLabel={askTimeLabel}
-      feedSinceLabel={feedSinceLabel}
-      today={new Date()}
-      onOpenNextCast={handleOpenNextCast}
-      onOpenDate={handleOpenDate}
-      onTellCast={handleTellCast}
-      onReadFirst={handleReadFirst}
-      onFixBounced={handleFixBounced}
-      onFeedAction={handleFeedAction}
-      onLookAtSeason={handleLookAtSeason}
-    />
+    <ModuleGate feature="booking_flow">
+      {isLoading ? (
+        <div className="flex max-w-[920px] flex-col gap-5">
+          <Skeleton className="h-8 w-64" />
+          <Skeleton className="h-40 w-full rounded-[14px]" />
+          <Skeleton className="h-32 w-full rounded-[14px]" />
+        </div>
+      ) : isError || !model ? (
+        <Alert variant="destructive" className="max-w-[920px]">
+          <TriangleAlert className="h-4 w-4" />
+        </Alert>
+      ) : (
+        <TodayPage
+          model={model}
+          askTimeLabel={askTimeLabel}
+          feedSinceLabel={feedSinceLabel}
+          today={new Date()}
+          onOpenNextCast={handleOpenNextCast}
+          onOpenDate={handleOpenDate}
+          onTellCast={handleTellCast}
+          onReadFirst={handleReadFirst}
+          onFixBounced={handleFixBounced}
+          onFeedAction={handleFeedAction}
+          onLookAtSeason={handleLookAtSeason}
+        />
+      )}
+    </ModuleGate>
   );
 }
