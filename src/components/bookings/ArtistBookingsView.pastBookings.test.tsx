@@ -142,7 +142,7 @@ describe("ArtistBookingsView — past active booking merge (July 31 regression)"
     fireEvent.click(screen.getByRole("button", { name: /Any time/ }));
     fireEvent.click(screen.getByRole("button", { name: "Upcoming" }));
 
-    await screen.findByText(/no eligible dates yet/i);
+    await screen.findByText(/no dates yet/i);
     expect(screen.queryByText("Old Hall")).not.toBeInTheDocument();
     expect(screen.queryByText("15/01/2026")).not.toBeInTheDocument();
   });
