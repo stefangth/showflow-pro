@@ -15,6 +15,11 @@ import { ROUTES } from '@/config/app.config';
  * ROUTES.DASHBOARD, which always renders the Today board and never redirects,
  * so the user can never be bounced off Today onto the board.
  *
+ * It is mounted wrapped in <ProtectedRoute> (see App.tsx), so the auth / no-org /
+ * suspended-org gates run FIRST — HomeLanding only mounts (and only then fires
+ * useGetRunning's org-scoped reads) for an authenticated member of an active org.
+ * The loading / !user guards below are belt-and-suspenders for a direct mount.
+ *
  * - Signed out → the login screen.
  * - Artist-only viewer → the dashboard (they have no Get running board).
  * - Non-artist with an incomplete board → Get running (the landing).

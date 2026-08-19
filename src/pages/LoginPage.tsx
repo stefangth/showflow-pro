@@ -84,8 +84,9 @@ export default function LoginPage() {
     setLinkSending(true);
     const sent = t('login.magicLinkSent');
     // Thread the same validated ?redirect= the password path honors, so an accept-invite
-    // bounce completes the invitation. safeRelativeRedirect falls back to /dashboard, which
-    // the edge function also clamps to, so passing it explicitly is harmless.
+    // bounce completes the invitation. safeRelativeRedirect falls back to the app root
+    // (ROUTES.HOME), where HomeLanding then decides Get running vs. the dashboard; the
+    // edge function clamps to its own default, so passing this explicitly is harmless.
     const redirect = safeRelativeRedirect(searchParams.get('redirect'), ROUTES.HOME);
     try {
       await requestLoginLink(supabase, trimmed, window.location.origin, redirect);

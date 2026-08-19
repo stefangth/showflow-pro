@@ -74,7 +74,10 @@ const App = () => (
             <EditorProvider>
             <DemoProvider>
           <Routes>
-            <Route path={ROUTES.HOME} element={<HomeLanding />} />
+            {/* Wrapped in ProtectedRoute so the no-org / suspended-org gates run
+                BEFORE HomeLanding fires any org-scoped reads — post-auth redirects
+                default here, so this path runs on essentially every login. */}
+            <Route path={ROUTES.HOME} element={<ProtectedRoute><HomeLanding /></ProtectedRoute>} />
             <Route path={ROUTES.LOGIN} element={<LoginPage />} />
             {DevCockpitHarness && (
               <Route path="/dev/cockpit" element={<Suspense fallback={null}><DevCockpitHarness /></Suspense>} />
