@@ -97,7 +97,7 @@ describe("buildCapabilityInventory", () => {
     expect(inventory.totalDefaultOff).toBe(entries.filter((e) => !e.defaultEnabled).length);
 
     const sensitiveButOn = entries.filter((e) => e.sensitive && e.defaultEnabled).map((e) => e.label);
-    expect(sensitiveButOn).toEqual(["Issue hire orders", "Void hire orders"]);
+    expect(sensitiveButOn).toEqual(["Issue contracts", "Void contracts"]);
   });
 
   it("counts groups from the registry rather than a literal", () => {
