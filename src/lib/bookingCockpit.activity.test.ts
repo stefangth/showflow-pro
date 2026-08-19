@@ -17,10 +17,10 @@ describe("buildActivity", () => {
       ],
       limit: 6,
     });
-    expect(items[0]).toEqual({ iso: "2026-03-10T08:12:00Z", text: "Tier 2 opened" });
-    expect(items.map((i) => i.text)).toContain("Marek Kowalczyk confirmed");
-    expect(items.map((i) => i.text)).toContain("Tier 1 closed");
-    expect(items.map((i) => i.text)).toContain("Tier 1 opened");
+    expect(items[0]).toEqual({ iso: "2026-03-10T08:12:00Z", text: "Round 2 opened" });
+    expect(items.map((i) => i.text)).toContain("Marek Kowalczyk booked");
+    expect(items.map((i) => i.text)).toContain("Round 1 closed");
+    expect(items.map((i) => i.text)).toContain("Round 1 opened");
     expect(items.length).toBeLessThanOrEqual(6);
     const isos = items.map((i) => i.iso);
     expect([...isos].sort((a, b) => b.localeCompare(a))).toEqual(isos);

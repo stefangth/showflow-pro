@@ -23,7 +23,7 @@ describe("computeDatePeek", () => {
     expect(p.acceptedWaiting).toBe(2);
     expect(p.openSlots).toBe(2);
     expect(p.confirmable).toBe(true);
-    expect(p.headline).toBe("2 accepted waiting on you · 2 main slots open");
+    expect(p.headline).toBe("2 said yes, waiting on you · 2 main places open");
     expect(p.meter.map((s) => s.tone)).toEqual([
       "confirmed", "confirmed", "accepted", "accepted", "open", "open",
     ]);
@@ -36,7 +36,7 @@ describe("computeDatePeek", () => {
     })!;
     expect(p.tone).toBe("filled");
     expect(p.eyebrowSuffix).toBe("filled");
-    expect(p.headline).toBe("All 6 slots confirmed");
+    expect(p.headline).toBe("All 6 places booked");
     expect(p.confirmable).toBe(false);
     expect(p.meter.every((s) => s.tone === "confirmed")).toBe(true);
   });
@@ -46,7 +46,7 @@ describe("computeDatePeek", () => {
       counts: C({ confirmedMain: 4 }),
       slots: { main_cast: 4, understudies: 2 },
     })!;
-    expect(p.headline).toBe("2 understudy slots open");
+    expect(p.headline).toBe("2 understudy places open");
     expect(p.tone).toBe("at-risk");
   });
 });

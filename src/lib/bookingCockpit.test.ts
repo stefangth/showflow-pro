@@ -33,8 +33,8 @@ describe("computeUpNext", () => {
     });
     const texts = items.map((i) => i.text).join("\n");
     expect(texts).toContain("19:00");
-    expect(texts).toContain("3 offers expire");
-    expect(texts).toContain("Auto-escalate: off");
+    expect(texts).toContain("3 asks expire");
+    expect(texts).toContain("Auto-open next round: off");
   });
   it("shows the Berlin-local day when an expiry crosses midnight in UTC", () => {
     // 23:30 UTC on Jul 15 is already 01:30 on Jul 16 in Berlin (CEST, UTC+2),
@@ -43,7 +43,7 @@ describe("computeUpNext", () => {
       flow: BOOKING_FLOW_DEFAULTS, times: TIMES, pendingCount: 1,
       nextExpiry: "2026-07-15T23:30:00Z", hasOpenTier: false,
     });
-    const expiry = items.find((i) => i.text.includes("offer expires"));
+    const expiry = items.find((i) => i.text.includes("ask expires"));
     expect(expiry?.text).toContain("16/07/2026");
   });
   it("direct mode shows the single direct-booking pill", () => {
@@ -52,7 +52,7 @@ describe("computeUpNext", () => {
       pendingCount: 0, nextExpiry: null, hasOpenTier: false,
     });
     expect(items).toHaveLength(1);
-    expect(items[0].text).toContain("eligibility list");
+    expect(items[0].text).toContain("who can be asked");
   });
   it("emits no em- or en-dashes", () => {
     for (const i of computeUpNext({ t, flow: BOOKING_FLOW_DEFAULTS, times: TIMES, pendingCount: 1, nextExpiry: null, hasOpenTier: true })) {
