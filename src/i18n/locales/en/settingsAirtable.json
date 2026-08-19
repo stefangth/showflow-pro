@@ -34,7 +34,7 @@
   "mergeSuggestion": {
     "joiner": " and ",
     "title": "{{names}} are the same city",
-    "description": "Merging keeps {{survivorName}}'s bookings, eligibility and producer routing, and removes the other row.",
+    "description": "Merging keeps {{survivorName}}'s bookings, ask order and producer routing, and removes the other row.",
     "actionLabel": "Merge into {{survivorName}}"
   },
   "eyebrow": {

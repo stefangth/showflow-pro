@@ -35,7 +35,7 @@ const CHIP_TONE: Record<LifecycleChip["tone"], string> = {
 export function FlowStep({ orgId, onDone }: { orgId: string | null; onDone: () => void }) {
   const qc = useQueryClient();
   // When mounted inside the Get-running TaskPanel, the primary action is portaled into the
-  // panel's pinned footer so it is always visible (verbose presets like Fast-track otherwise
+  // panel's pinned footer so it is always visible (verbose presets like Autopilot otherwise
   // push it below the scroll fold). Null outside that frame (or before the footer mounts): the
   // fallback below then renders the button inline, exactly as it used to.
   const footerSlot = useContext(TaskPanelFooterContext);

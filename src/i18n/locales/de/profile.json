@@ -7,7 +7,7 @@
   "details": {
     "title": "Details",
     "email": "E-Mail",
-    "emailHint": "Wo Anmeldelinks und Angebote ankommen.",
+    "emailHint": "Wo Anmeldelinks und Anfragen ankommen.",
     "emailFixed": "Fest",
     "displayName": "Anzeigename",
     "displayNameHint": "Wird auf Besetzungslisten und in Termin-Chats angezeigt.",
@@ -53,7 +53,7 @@
     "downloaded": "Deine Daten wurden heruntergeladen",
     "deleteRow": {
       "title": "Konto löschen",
-      "description": "Lösche dein Konto dauerhaft. Dein Konto und deine Profildaten werden entfernt. Deine geteilte Buchungshistorie, einschließlich offener Angebote, bleibt erhalten, wird aber anonymisiert. Dies kann nicht rückgängig gemacht werden."
+      "description": "Lösche dein Konto dauerhaft. Dein Konto und deine Profildaten werden entfernt. Deine geteilte Buchungshistorie, einschließlich offener Anfragen, bleibt erhalten, wird aber anonymisiert. Dies kann nicht rückgängig gemacht werden."
     }
   },
   "delete": {

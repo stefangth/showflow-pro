@@ -126,10 +126,10 @@ describe("BookingFlowTab", () => {
   it("a preset's producer_confirmation choice survives an acceptance off/on round trip", async () => {
     renderWithProviders(<Harness />);
     fireEvent.click(await screen.findByRole("button", { name: /autopilot/i }));
-    expect(screen.getByRole("switch", { name: /^producer confirmation$/i })).toHaveAttribute("aria-checked", "false");
+    expect(screen.getByRole("switch", { name: /^the last word$/i })).toHaveAttribute("aria-checked", "false");
     fireEvent.click(screen.getByRole("button", { name: /direct book/i }));
     fireEvent.click(screen.getByRole("switch", { name: /^artist acceptance$/i }));
-    expect(screen.getByRole("switch", { name: /^producer confirmation$/i })).toHaveAttribute("aria-checked", "false");
+    expect(screen.getByRole("switch", { name: /^the last word$/i })).toHaveAttribute("aria-checked", "false");
   });
 
   it("restores the user's producer_confirmation choice after an acceptance off/on round trip", async () => {
@@ -137,15 +137,15 @@ describe("BookingFlowTab", () => {
     // Fast-track: artist_acceptance stays on, producer_confirmation goes off.
     fireEvent.click(await screen.findByRole("button", { name: /autopilot/i }));
     const acceptance = screen.getByRole("switch", { name: /^artist acceptance$/i });
-    const confirmation = screen.getByRole("switch", { name: /^producer confirmation$/i });
+    const confirmation = screen.getByRole("switch", { name: /^the last word$/i });
     expect(confirmation).toHaveAttribute("aria-checked", "false");
 
     // Toggle acceptance off then back on.
     fireEvent.click(acceptance);
-    expect(screen.getByRole("switch", { name: /^producer confirmation$/i })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByRole("switch", { name: /^the last word$/i })).toHaveAttribute("aria-checked", "true");
     fireEvent.click(screen.getByRole("switch", { name: /^artist acceptance$/i }));
 
-    expect(screen.getByRole("switch", { name: /^producer confirmation$/i })).toHaveAttribute("aria-checked", "false");
+    expect(screen.getByRole("switch", { name: /^the last word$/i })).toHaveAttribute("aria-checked", "false");
   });
 
   describe("entitlement gating", () => {
@@ -159,7 +159,7 @@ describe("BookingFlowTab", () => {
       await waitFor(() => expect(screen.getByText("Booking engine is not enabled")).toBeInTheDocument());
       expect(
         screen.getByText(
-          "Booking is switched off for your organization, so no offers, reminders or confirmations are sent. Contact your ShowFlow administrator to enable it.",
+          "Booking is switched off for your organization, so no asks, reminders or confirmations are sent. Contact your ShowFlow administrator to enable it.",
         ),
       ).toBeInTheDocument();
 

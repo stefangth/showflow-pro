@@ -2,16 +2,16 @@
   "bookingFlowTab": {
     "lockedAlert": {
       "title": "Booking engine is not enabled",
-      "description": "Booking is switched off for your organization, so no offers, reminders or confirmations are sent. Contact your ShowFlow administrator to enable it."
+      "description": "Booking is switched off for your organization, so no asks, reminders or confirmations are sent. Contact your ShowFlow administrator to enable it."
     },
     "offAlert": {
       "title": "Booking flow is off",
-      "description": "No new offers open, and no reminders, digests or confirmations are sent. Offers already sent still run out their response window. Pick a flow above to turn it on."
+      "description": "No new asks go out, and no reminders, daily sends or confirmations are sent. Asks already sent still run until their answer-by time. Pick a flow above to turn it on."
     },
     "templatesError": {
       "title": "Booking templates could not be loaded"
     },
-    "referencePreview": "Offer: {{label}} · Apr 30, Berlin",
+    "referencePreview": "Ask: {{label}} · Apr 30, Berlin",
     "fromAddress": {
       "label": "From address (Resend)",
       "helper": "Overrides the default sender address for all outgoing emails."
@@ -27,15 +27,15 @@
     },
     "custom": "Custom",
     "describe": {
-      "paused": "Booking flow paused. No new offers, reminders, digests or confirmations are sent.",
-      "directBooking": "Artists are booked directly; no offer response is required.",
-      "tierAuto": "Tier 1 opens automatically",
-      "tierManual": "Tiers open manually",
-      "deliveryImmediate": "offers go out immediately",
-      "deliveryDigest": "offers go out in the {{hour}} digest",
-      "confirmProducer": "producer confirms accepted offers",
-      "confirmInstant": "artist acceptance confirms instantly",
-      "summary": "{{opening}}; {{delivery}}; {{hours}} h response window; {{confirmation}}."
+      "paused": "Booking flow paused. No new asks, reminders, daily sends or confirmations are sent.",
+      "directBooking": "Artists are booked directly; nobody has to answer first.",
+      "tierAuto": "The first ask goes out automatically",
+      "tierManual": "You send each ask yourself",
+      "deliveryImmediate": "asks go out immediately",
+      "deliveryDigest": "asks go out in the {{hour}} daily send",
+      "confirmProducer": "you get the last word",
+      "confirmInstant": "a yes books it instantly",
+      "summary": "{{opening}}; {{delivery}}; answer by {{hours}} h; {{confirmation}}."
     }
   },
   "flowRail": {
@@ -55,9 +55,9 @@
   "flowTimeline": {
     "badges": {
       "alwaysOn": "Always on",
-      "offered": "Offered",
+      "offered": "Asked",
       "skipped": "Skipped",
-      "confirmed": "Confirmed",
+      "confirmed": "Booked",
       "lockedOn": "Locked on"
     },
     "steps": {
@@ -66,25 +66,25 @@
         "desc": "Via Airtable sync or in-app; either way the date enters the flow here."
       },
       "openOfferTier": {
-        "title": "Open offer tier",
-        "desc": "Creates suggested bookings for every eligible artist in the tier.",
-        "autoOpenLabel": "Open tier 1 automatically when a new date is ready",
-        "autoOpenAria": "Auto-open tier 1",
-        "autoEscalateLabel": "Escalate to the next tier automatically when a window closes short",
-        "autoEscalateAria": "Auto-escalate tiers",
-        "atRiskLabel": "Alert the production team when the open tier cannot fill the remaining primary slots",
+        "title": "Send the first ask",
+        "desc": "Asks everyone who can be asked in that group.",
+        "autoOpenLabel": "Ask the first group automatically when a new date is ready",
+        "autoOpenAria": "Auto-ask the first group",
+        "autoEscalateLabel": "Move to the next group automatically when the answer-by time closes short",
+        "autoEscalateAria": "Auto-move to the next group",
+        "atRiskLabel": "Alert the production team when the group being asked cannot fill the remaining places",
         "atRiskAria": "At-risk alerts",
-        "atRiskHelper": "Checked hourly. An alert is sent when accepted bookings plus live pending offers are fewer than the required primary slots."
+        "atRiskHelper": "Checked hourly. An alert is sent when booked artists plus live pending asks are fewer than the places needed."
       },
       "notifyArtists": {
         "title": "Notify artists",
-        "desc": "How and when offers reach artists. The response window starts at delivery.",
-        "deliveryGroupAria": "Offer delivery",
-        "dailyDigest": "Daily digest · {{hour}}",
+        "desc": "How and when asks reach artists. The answer-by clock starts at delivery.",
+        "deliveryGroupAria": "Ask delivery",
+        "dailyDigest": "Daily send · {{hour}}",
         "immediate": "Immediately",
-        "digestHourLabel": "Digest hour (Berlin, Germany)",
-        "responseWindowLabel": "Response window (h)",
-        "expiryReminderLabel": "Remind artists 24 h before their window closes",
+        "digestHourLabel": "Daily send hour (Berlin, Germany)",
+        "responseWindowLabel": "Answer by (h)",
+        "expiryReminderLabel": "Remind artists 24 h before they need to answer",
         "expiryReminderAria": "Expiry reminder",
         "referenceFieldLabel": "Reference field",
         "referenceFieldAria": "Reference field",
@@ -96,25 +96,25 @@
       },
       "artistAcceptance": {
         "title": "Artist acceptance",
-        "desc": "Artists accept or decline from their calendar. Off means producers book directly, with no offers at all.",
+        "desc": "Artists say yes or no from their calendar. Off means producers book directly, with no asks at all.",
         "aria": "Artist acceptance",
-        "offNotice": "Offers, digests, and response windows are skipped. Producers book from eligibility lists; the artist's first touchpoint is the confirmation."
+        "offNotice": "Asks, daily sends, and answer-by times are skipped. Producers book from the who-can-be-asked list; the artist's first touchpoint is the confirmation."
       },
       "producerConfirmation": {
-        "title": "Producer confirmation",
-        "desc": "Producer reviews soft-booked artists and confirms the cast. Off means an acceptance confirms immediately.",
-        "aria": "Producer confirmation",
-        "offNotice": "With artist acceptance off, the producer's booking is itself the confirmation, so this step can't be skipped."
+        "title": "The last word",
+        "desc": "You review artists who said yes and confirm the cast. Off means a yes books it immediately.",
+        "aria": "The last word",
+        "offNotice": "With artist acceptance off, booking the artist is itself the confirmation, so this step can't be skipped."
       },
       "confirmationDigest": {
-        "title": "Confirmation digest",
-        "desc": "Daily summary email to newly confirmed artists.",
+        "title": "Confirmation send",
+        "desc": "Daily summary email to newly booked artists.",
         "hourLabel": "Hour (Berlin, Germany)",
-        "aria": "Confirmation digest"
+        "aria": "Confirmation send"
       },
       "understudyPromotion": {
         "title": "Understudy promotion",
-        "desc": "When a main-cast booking cancels, the longest-waiting accepted understudy is promoted automatically.",
+        "desc": "When a main-cast booking cancels, the longest-waiting understudy who said yes is promoted automatically.",
         "aria": "Understudy promotion"
       }
     }

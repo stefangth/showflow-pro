@@ -15,7 +15,7 @@
     "minutes": "{{value}} Min.",
     "removedWillUseDefault": "Entfernt (nutzt Standard)",
     "untitledTemplate": "Vorlage ohne Titel",
-    "termsTemplateRemoved": "Die gespeicherte Bedingungsvorlage dieses Auftrags wurde entfernt. Wähle oben eine aus, bevor du ausstellst.",
+    "termsTemplateRemoved": "Die gespeicherte Bedingungsvorlage dieses Vertrags wurde entfernt. Wähle oben eine aus, bevor du ausstellst.",
     "noTermsConfigured": "Keine Bedingungsvorlagen eingerichtet. Lege in Einstellungen → Engagementverträge eine an, bevor du ausstellst.",
     "chooseTermsFirst": "Wähle eine Bedingungsvorlage, bevor du ausstellst",
     "noTermsConfiguredShort": "Keine Bedingungsvorlagen eingerichtet",
@@ -29,17 +29,17 @@
     "chipCountersigned": "Gegengezeichnet",
     "workspace": "Arbeitsbereich",
     "title": "Engagementverträge",
-    "meta_one": "{{count}} Auftrag · {{value}} zugesagt",
-    "meta_other": "{{count}} Aufträge · {{value}} zugesagt",
+    "meta_one": "{{count}} Vertrag · {{value}} zugesagt",
+    "meta_other": "{{count}} Verträge · {{value}} zugesagt",
     "setupChecklist": "Einrichtungscheckliste",
     "importFromSpreadsheet": "Aus Tabelle importieren",
-    "newOrder": "Neuer Auftrag",
-    "searchPlaceholder": "Auftragsnummer oder Artist suchen",
+    "newOrder": "Neuer Vertrag",
+    "searchPlaceholder": "Vertragsnummer oder Artist suchen",
     "selectOrg": "Wähle eine Organisation, um Engagementverträge anzuzeigen.",
-    "readyLead_one": "{{count}} Termin ist vollständig besetzt und bereit für einen Auftrag.",
-    "readyLead_other": "{{count}} Termine sind vollständig besetzt und bereit für einen Auftrag.",
+    "readyLead_one": "{{count}} Termin ist vollständig besetzt und bereit für einen Vertrag.",
+    "readyLead_other": "{{count}} Termine sind vollständig besetzt und bereit für einen Vertrag.",
     "readyLink": "Aus Shows und Buchungen erzeugen",
-    "readyTail": ", oder nutze oben Neuer Auftrag."
+    "readyTail": ", oder nutze oben Neuer Vertrag."
   },
   "ordersKpis": {
     "issued": "Ausgestellt",
@@ -50,9 +50,9 @@
   "ordersTable": {
     "selected": "{{count}} ausgewählt",
     "issueSelected": "Ausgewählte ausstellen",
-    "selectAllAria": "Alle Aufträge auswählen",
-    "selectRowAria": "Auftrag {{orderNo}} auswählen",
-    "colOrder": "Auftrag",
+    "selectAllAria": "Alle Verträge auswählen",
+    "selectRowAria": "Vertrag {{orderNo}} auswählen",
+    "colOrder": "Vertrag",
     "colArtist": "Artist",
     "colDate": "Datum",
     "colFee": "Honorar",
@@ -61,14 +61,14 @@
     "empty": "Keine Engagementverträge entsprechen den aktuellen Filtern."
   },
   "batchPreflight": {
-    "title": "Ausgewählte Aufträge ausstellen",
+    "title": "Ausgewählte Verträge ausstellen",
     "checking": "Auswahl wird geprüft.",
     "checkError": "Auswahl konnte nicht geprüft werden. Lade neu und versuche es erneut, bevor du ausstellst.",
     "summary": "{{clean}} von {{total}} können jetzt ausgestellt werden. Der Rest bleibt Entwurf.",
     "checkErrorDetail": "Die Bereitschaft dieser Auswahl konnte nicht geprüft werden. Lade die Seite neu und versuche es erneut.",
     "draftFallback": "Entwurf",
-    "issueCount_one": "{{count}} Auftrag ausstellen",
-    "issueCount_other": "{{count}} Aufträge ausstellen"
+    "issueCount_one": "{{count}} Vertrag ausstellen",
+    "issueCount_other": "{{count}} Verträge ausstellen"
   },
   "blockerList": {
     "letterheadSaved": "Briefkopf gespeichert",
@@ -79,7 +79,7 @@
     "savedForOrgOnce": "Einmalig für die ganze Organisation gespeichert.",
     "termsLoadError": "Die Bedingungen der Organisation konnten nicht geladen werden. {{message}}",
     "createFromTemplate": "Aus dieser Vorlage erstellen",
-    "openTheOrder": "Auftrag öffnen",
+    "openTheOrder": "Vertrag öffnen",
     "adminOnly": "Nur Admin"
   },
   "statusBadge": {
@@ -92,15 +92,15 @@
   "preflightSheet": {
     "draftFallback": "Entwurf",
     "checking": "Wird geprüft",
-    "checkError": "Dieser Auftrag konnte nicht geprüft werden",
+    "checkError": "Dieser Vertrag konnte nicht geprüft werden",
     "readyToIssue": "Bereit zum Ausstellen",
     "settleOne": "Zuerst ist eine Sache zu klären",
     "settleMany": "Zuerst sind {{count}} Dinge zu klären",
     "descError": "Die Einstellungen der Organisation konnten nicht gelesen werden. Lade neu und versuche es erneut, bevor du ausstellst.",
     "descClean": "Das PDF wird erzeugt, nummeriert und per E-Mail versendet. Der Artist erhält einen Link zur Gegenzeichnung.",
     "descBlocked": "Es wird nichts gesendet, bis diese geklärt sind. Der Entwurf wird in jedem Fall gespeichert.",
-    "checkErrorDetail": "Die Bereitschaft dieses Auftrags konnte nicht geprüft werden. Lade die Seite neu und versuche es erneut.",
-    "allInPlace": "Alles, was dieser Auftrag braucht, ist vorhanden.",
+    "checkErrorDetail": "Die Bereitschaft dieses Vertrags konnte nicht geprüft werden. Lade die Seite neu und versuche es erneut.",
+    "allInPlace": "Alles, was dieser Vertrag braucht, ist vorhanden.",
     "issueAndSend": "Ausstellen und senden",
     "keepAsDraft": "Als Entwurf behalten"
   },
@@ -129,22 +129,22 @@
     "skipped_other": "{{count}} Artists übersprungen",
     "failed_one": "{{count}} Artist fehlgeschlagen",
     "failed_other": "{{count}} Artists fehlgeschlagen",
-    "openOrder": "Auftrag öffnen",
+    "openOrder": "Vertrag öffnen",
     "close": "Schließen",
     "closeReturnAria": "Schließen und zu Engagementverträgen zurückkehren",
     "issueNow": "Jetzt ausstellen",
     "createError": "Es konnten keine Engagementverträge erstellt werden",
     "engagementSource": "Engagementquelle",
-    "linkShowDate": "Showtermin verknüpfen",
+    "linkShowDate": "Termin verknüpfen",
     "noLinkedDate": "Kein verknüpfter Termin",
     "artists": "Artists",
     "chooseArtists": "Artists wählen",
     "selectArtistAria": "Artist auswählen",
     "noArtistsFound": "Keine Artists gefunden.",
-    "commonShowDates": "Gemeinsame Showtermine",
+    "commonShowDates": "Gemeinsame Termine",
     "chooseDates": "Termine wählen",
-    "selectShowDateAria": "Showtermin auswählen",
-    "noShowDatesFound": "Keine Showtermine gefunden.",
+    "selectShowDateAria": "Termin auswählen",
+    "noShowDatesFound": "Keine Termine gefunden.",
     "resetAllToSelected": "Alle auf gewählte Termine zurücksetzen",
     "colArtist": "Artist",
     "artistName": "Name des Artists",
@@ -188,7 +188,7 @@
     "artistDatesAria": "{{name}} Termine",
     "reviewDurationLabel": "Dauer",
     "reviewSessionsLabel": "Durchgänge",
-    "previewAvailable": "Dokumentvorschau verfügbar, sobald der Auftrag erstellt ist.",
+    "previewAvailable": "Dokumentvorschau verfügbar, sobald der Vertrag erstellt ist.",
     "saveAsDraft": "Als Entwurf speichern",
     "issueAndSendToArtist": "Ausstellen und an Artist senden"
   },
@@ -214,8 +214,8 @@
     "noPermissionVoid": "Du hast keine Berechtigung, Engagementverträge ungültig zu machen",
     "void": "Ungültig machen",
     "voidTitle": "Diesen Engagementvertrag ungültig machen?",
-    "voidDescription": "Ungültig machen storniert diesen Auftrag endgültig. Wenn der Artist einen korrigierten Auftrag braucht, kannst du danach einen neuen Engagementvertrag für diesen Termin erzeugen.",
-    "voidOrder": "Auftrag ungültig machen"
+    "voidDescription": "Ungültig machen storniert diesen Vertrag endgültig. Wenn der Artist einen korrigierten Vertrag braucht, kannst du danach einen neuen Engagementvertrag für diesen Termin erzeugen.",
+    "voidOrder": "Vertrag ungültig machen"
   },
   "timeline": {
     "created": "Erstellt",
@@ -223,7 +223,7 @@
     "seen": "Gesehen",
     "awaiting": "Gegenzeichnung ausstehend",
     "countersigned": "Gegengezeichnet",
-    "ariaLabel": "Auftragsstatus Zeitleiste"
+    "ariaLabel": "Vertragsstatus Zeitleiste"
   },
   "provenanceChip": {
     "showflow": "SF",
@@ -236,7 +236,7 @@
     "headlineBoth": "Der Briefkopf und die Rückseite dieses Dokuments sind leer",
     "headlineHeader": "Der Briefkopf dieses Dokuments ist leer",
     "headlineBack": "Die Rückseite dieses Dokuments ist leer",
-    "body": "Lege es einmal hier fest und jeder künftige Auftrag übernimmt es. Das ist nicht spezifisch für diesen Auftrag."
+    "body": "Lege es einmal hier fest und jeder künftige Vertrag übernimmt es. Das ist nicht spezifisch für diesen Vertrag."
   },
   "importDialog": {
     "stepSource": "Quelle",
@@ -256,8 +256,8 @@
     "fetch": "Abrufen",
     "rowsLimit": "Bis zu {{max}} Zeilen pro Tabelle.",
     "noArtistName": "Diese Zeile hat keinen Artist Namen zum Erstellen",
-    "importCount_one": "{{count}} Auftrag importieren",
-    "importCount_other": "{{count}} Aufträge importieren",
+    "importCount_one": "{{count}} Vertrag importieren",
+    "importCount_other": "{{count}} Verträge importieren",
     "createdCount_one": "{{count}} Engagementvertrag Entwurf erstellt",
     "createdCount_other": "{{count}} Engagementvertrag Entwürfe erstellt",
     "alreadyExisted": "{{count}} existierten bereits",
@@ -339,12 +339,12 @@
   "countersignStep": {
     "saved": "Gegenzeichnungsmodus gespeichert",
     "loadError": "Die Gegenzeichnungseinstellung konnte nicht geladen werden. {{message}}",
-    "intro": "Wie ein Artist den Auftrag signiert, den du ihm sendest."
+    "intro": "Wie ein Artist den Vertrag signiert, den du ihm sendest."
   },
   "letterheadStep": {
     "saved": "Briefkopf gespeichert",
     "loadError": "Briefkopf konnte nicht geladen werden. {{message}}",
-    "intro": "Aus deinem Organisationsprofil übernommen. Prüfe es und bestätige dann. Es wird oben auf jedem Auftrag gedruckt.",
+    "intro": "Aus deinem Organisationsprofil übernommen. Prüfe es und bestätige dann. Es wird oben auf jedem Vertrag gedruckt.",
     "confirm": "Briefkopf bestätigen"
   },
   "producerWaiting": {
@@ -353,14 +353,14 @@
     "labelCountersign": "Gegenzeichnung",
     "waitingOnAdmin": "Warten auf deinen Admin",
     "draftNow": "Jetzt Entwurf, später ausstellen",
-    "body": "Nichts hindert dich daran, Aufträge zu erstellen. Ein Admin muss die Einrichtung abschließen, bevor etwas gesendet werden kann."
+    "body": "Nichts hindert dich daran, Verträge zu erstellen. Ein Admin muss die Einrichtung abschließen, bevor etwas gesendet werden kann."
   },
   "setupRail": {
     "titleLetterhead": "Briefkopf",
     "titleTerms": "Bedingungsvorlage",
     "titleCountersign": "Gegenzeichnung",
-    "letterheadTodo": "Rechtlicher Name, Adresse, Registereintrag. Wird auf jedem Auftrag gedruckt.",
-    "letterheadDone": "Gesetzt. Wird oben auf jedem Auftrag gedruckt.",
+    "letterheadTodo": "Rechtlicher Name, Adresse, Registereintrag. Wird auf jedem Vertrag gedruckt.",
+    "letterheadDone": "Gesetzt. Wird oben auf jedem Vertrag gedruckt.",
     "termsTodo": "Der Wortlaut auf der Rückseite. Starte mit einer Vorlage.",
     "termsDone": "Gesetzt. Bearbeite den Wortlaut jederzeit in den Einstellungen.",
     "countersignTodo": "Wie Artists signieren. Der Standard ist Signieren außerhalb von ShowFlow.",
@@ -368,7 +368,7 @@
     "progress": "Einrichten · {{done}} von {{total}}",
     "hide": "Ausblenden",
     "heading": "Engagementverträge einsatzbereit machen",
-    "body": "Du kannst jetzt schon Aufträge als Entwurf anlegen. Diese sind nur nötig, bevor der erste rausgeht.",
+    "body": "Du kannst jetzt schon Verträge als Entwurf anlegen. Diese sind nur nötig, bevor der erste rausgeht.",
     "blocksIssue": "Blockiert Ausstellen"
   },
   "termsStep": {
@@ -393,7 +393,7 @@
     "agentNamePlaceholder": "Name des Agenten",
     "agentEmailAria": "E-Mail des Agenten",
     "agentEmailPlaceholder": "E-Mail des Agenten",
-    "letterheadError": "Dein Organisationsbriefkopf konnte nicht geladen werden. Dieser Auftrag nutzt deinen gespeicherten Standard.",
+    "letterheadError": "Dein Organisationsbriefkopf konnte nicht geladen werden. Dieser Vertrag nutzt deinen gespeicherten Standard.",
     "letterheadHint": "Vorausgefüllt aus deinem Organisationsbriefkopf.",
     "infoNote": "Das PDF enthält den Ablaufplan und einen Gegenzeichnungsblock. Der Artist erhält es per E-Mail.",
     "previewPdf": "PDF Vorschau"
@@ -405,7 +405,7 @@
     "tryAgain": "Bitte versuche es erneut.",
     "bannerFullyFilled": "Dieser Termin ist vollständig besetzt. Bereit für einen Engagementvertrag.",
     "bannerGenerate": "Für bestätigte Artists erzeugen",
-    "bannerDescription": "Erzeuge den Auftrag, um das Engagement zu bestätigen, und sende ihn zur Gegenzeichnung an {{recipient}}.",
+    "bannerDescription": "Erzeuge den Vertrag, um das Engagement zu bestätigen, und sende ihn zur Gegenzeichnung an {{recipient}}.",
     "recipientPhrase": "die bestätigte Besetzung",
     "generateCta": "Engagementvertrag erzeugen",
     "noPermissionGenerate": "Du hast keine Berechtigung, Engagementverträge zu erzeugen",
@@ -414,7 +414,7 @@
   "signDialog": {
     "title": "Signiere deinen Engagementvertrag",
     "description": "Prüfe das auf dieser Seite gezeigte Dokument und füge dann deine Signatur hinzu, um es gegenzuzeichnen.",
-    "body": "Du stimmst dem Honorar, den Terminen und den Bedingungen dieses Auftrags zu. Deine Signatur schließt ihn ab und wir senden dir das finale signierte PDF per E-Mail.",
+    "body": "Du stimmst dem Honorar, den Terminen und den Bedingungen dieses Vertrags zu. Deine Signatur schließt ihn ab und wir senden dir das finale signierte PDF per E-Mail.",
     "signing": "Signieren...",
     "sign": "Engagementvertrag signieren"
   },
@@ -426,7 +426,7 @@
   },
   "detailPage": {
     "loadErrorTitle": "Dieser Engagementvertrag konnte nicht geladen werden",
-    "loadErrorBody": "Du hast möglicherweise keinen Zugriff auf diesen Auftrag oder er existiert nicht mehr.",
+    "loadErrorBody": "Du hast möglicherweise keinen Zugriff auf diesen Vertrag oder er existiert nicht mehr.",
     "title": "Engagementvertrag für den Auftritt",
     "edit": "Bearbeiten",
     "notIssuedTitle": "Noch nicht ausgestellt",
@@ -434,7 +434,7 @@
     "previewErrorTitle": "Dokument konnte nicht geladen werden",
     "previewErrorBody": "Die Vorschau konnte nicht geladen werden. Nutze stattdessen oben die Schaltfläche Herunterladen.",
     "iframeTitle": "Engagementvertrag Dokument",
-    "needsSignatureTitle": "Dieser Auftrag braucht deine Signatur",
+    "needsSignatureTitle": "Dieser Vertrag braucht deine Signatur",
     "needsSignatureBody": "Lies das Dokument oben und signiere dann. Gleich danach bekommst du ein gegengezeichnetes PDF per E-Mail.",
     "countersign": "Gegenzeichnen",
     "recipient": "Empfänger",
@@ -457,10 +457,10 @@
     "currency": "Währung",
     "notes": "Notizen",
     "loadErrorTitle": "Dieser Engagementvertrag konnte nicht geladen werden",
-    "loadErrorBody": "Du hast möglicherweise keinen Zugriff auf diesen Auftrag oder er existiert nicht mehr.",
+    "loadErrorBody": "Du hast möglicherweise keinen Zugriff auf diesen Vertrag oder er existiert nicht mehr.",
     "readOnlyTitle": "Dieser Engagementvertrag kann nicht mehr bearbeitet werden",
     "readOnlyBody": "ist {{status}} und ist schreibgeschützt. Sieh ihn stattdessen auf der Engagementvertrag Seite an.",
-    "viewOrder": "Auftrag ansehen",
+    "viewOrder": "Vertrag ansehen",
     "editHireOrder": "Engagementvertrag bearbeiten",
     "saveDraft": "Entwurf speichern",
     "sectionParties": "Parteien",
@@ -471,13 +471,13 @@
     "totalPayable": "Gesamt zahlbar: {{fee}}",
     "termsVariant": "Bedingungsvariante",
     "refresh": "Aus ShowFlow aktualisieren",
-    "refreshDisabled": "Kein verknüpfter Artist oder Showtermin zum Aktualisieren",
+    "refreshDisabled": "Kein verknüpfter Artist oder Termin zum Aktualisieren",
     "livePreview": "Live Vorschau, aktualisiert sich beim Bearbeiten",
     "iframeTitle": "Engagementvertrag Live Vorschau",
     "draftSaved": "Entwurf gespeichert",
     "refreshed": "Aus ShowFlow aktualisiert",
     "refreshError": "Konnte nicht aus ShowFlow aktualisieren",
-    "checking": "Diesen Auftrag prüfen",
-    "checkError": "Dieser Auftrag konnte nicht geprüft werden. Lade die Seite neu und versuche es erneut."
+    "checking": "Diesen Vertrag prüfen",
+    "checkError": "Dieser Vertrag konnte nicht geprüft werden. Lade die Seite neu und versuche es erneut."
   }
 }

@@ -8,10 +8,10 @@
  *  components — the react-refresh/only-export-components lint rule. */
 export const GROUP_LABEL_SLUG: Record<string, string> = {
   "Members & access": "membersAndAccess",
-  "Productions & show dates": "productionsAndShowDates",
+  "Productions & dates": "productionsAndShowDates",
   "Bookings & engine": "bookingsAndEngine",
   "Artists": "artists",
-  "Hire orders": "hireOrders",
+  "Contracts": "hireOrders",
   "Settings & organization": "settingsAndOrganization",
   "Integrations": "integrations",
   "Email": "email",
