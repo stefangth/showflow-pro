@@ -207,13 +207,13 @@ describe("OrderSlideOver void dialog copy", () => {
     renderWithProviders(<OrderSlideOver order={order({ id: "ho-1", status: "draft" })} open onOpenChange={() => {}} orgId="org-1" />);
     fireEvent.click(screen.getByRole("button", { name: /^void$/i }));
     const dialog = screen.getByRole("alertdialog");
-    expect(within(dialog).getByText("Void this hire order?")).toBeInTheDocument();
+    expect(within(dialog).getByText("Void this contract?")).toBeInTheDocument();
     expect(
       within(dialog).getByText(
-        "Voiding cancels this order for good. If the artist needs a corrected order, you can generate a fresh hire order for this date afterward.",
+        "Voiding cancels this contract for good. If the artist needs a corrected contract, you can generate a fresh contract for this date afterward.",
       ),
     ).toBeInTheDocument();
-    expect(within(dialog).getByRole("button", { name: /^void order$/i })).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: /^void contract$/i })).toBeInTheDocument();
   });
 });
 
