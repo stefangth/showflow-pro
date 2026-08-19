@@ -236,7 +236,7 @@ test.describe("Hire orders: spreadsheet import wizard", () => {
 
   test("producer imports a spreadsheet, resolves an unknown artist, fixes a bad date, and creates 3 drafts", async ({ page }) => {
     await loginAsAndAwaitDashboard(page, TEST_PRODUCER_EMAIL, TEST_PRODUCER_PASSWORD);
-    await navViaSidebar(page, /^hire orders$/i);
+    await navViaSidebar(page, /^contracts$/i);
 
     const importButton = page.getByRole("button", { name: /import from spreadsheet/i });
     await expect(importButton).toBeVisible({ timeout: 15_000 });
@@ -307,7 +307,7 @@ test.describe("Hire orders: spreadsheet import wizard", () => {
     await page.getByRole("button", { name: /^import 3 orders$/i }).click();
 
     // ── Done: 3 created, none skipped/errored ───────────────────────────────
-    await expect(page.getByText(/Created 3 draft hire orders/i)).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByText(/Created 3 draft contracts/i)).toBeVisible({ timeout: 20_000 });
     await expect(page.getByText(/^0 already existed$/i)).toBeVisible();
 
     // Ground truth: 3 draft hire_orders now exist against our seeded show_dates.
@@ -317,7 +317,7 @@ test.describe("Hire orders: spreadsheet import wizard", () => {
     }).toPass({ timeout: 15_000 });
 
     // ── V4 table: search scopes to our 3 new drafts ─────────────────────────
-    await page.getByRole("button", { name: /open hire orders/i }).click();
+    await page.getByRole("button", { name: /open contracts/i }).click();
     await expect(page.getByRole("dialog")).not.toBeVisible({ timeout: 10_000 });
 
     await page.getByPlaceholder(/search order number or artist/i).fill(SEARCH_TAG);

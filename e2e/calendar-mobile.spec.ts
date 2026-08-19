@@ -192,7 +192,7 @@ test.describe("Calendar mobile smoke", () => {
     page,
   }) => {
     await loginAsAndAwaitDashboard(page, TEST_PRODUCER_EMAIL, TEST_PRODUCER_PASSWORD);
-    await navViaMobileNav(page, /^shows & bookings$/i);
+    await navViaMobileNav(page, /^dates$/i);
 
     // Needs-you is the producer mobile landing lens and default (spec §3);
     // the FAB only renders here (`CalendarSurface.tsx`: `activeLens ===

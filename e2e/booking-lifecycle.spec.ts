@@ -61,7 +61,7 @@ test.describe("Flow B — booking lifecycle", () => {
 
   // Pre-decide cookie consent so the bottom-fixed CookieConsentBanner never
   // renders. It overlaps page-bottom controls (intercepting Playwright clicks),
-  // and its "Accept all" button would otherwise also match the /accept/i offer
+  // and its "Accept all" button would otherwise also collide with the ask
   // locator below — making `.first()` ambiguous. Matches the other UI specs.
   test.beforeEach(async ({ page }) => {
     await seedConsent(page);
@@ -73,12 +73,12 @@ test.describe("Flow B — booking lifecycle", () => {
     // race AuthContext.fetchRoles.
     await navViaSidebar(page, /^availability$/i);
 
-    // The row for our seeded date renders an Accept button via OfferResponseButtons.
-    // With consent pre-seeded (beforeEach) the cookie banner is gone, so /accept/i
-    // no longer matches its "Accept all" button — only offer Accept buttons remain.
+    // The row for our seeded date renders a "Yes, I can do it" button via the
+    // OffersLens. With consent pre-seeded (beforeEach) the cookie banner is
+    // gone, so this exact match no longer collides with its "Accept all" button.
     // The fixture seeds one booking, so there's a single such button; .first() is
     // defensive against a future fixture seeding more.
-    const acceptButton = page.getByRole("button", { name: /accept/i }).first();
+    const acceptButton = page.getByRole("button", { name: /^yes, i can do it$/i }).first();
     await expect(acceptButton).toBeVisible({ timeout: 15_000 });
 
     // Retry the click until it takes effect, then wait on DURABLE state — the
@@ -105,7 +105,7 @@ test.describe("Flow B — booking lifecycle", () => {
 
   test("producer confirms the soft-booked artist", async ({ page }) => {
     await loginAsAndAwaitDashboard(page, TEST_PRODUCER_EMAIL, TEST_PRODUCER_PASSWORD);
-    await navViaSidebar(page, /^shows & bookings$/i);
+    await navViaSidebar(page, /^dates$/i);
 
     // Open the seeded date's ShowDateDetailSheet via the calendar surface.
     await openBookingsDate(page, { showDateId: fixture.showDateId, dateISO: fixture.dateISO });
@@ -117,7 +117,7 @@ test.describe("Flow B — booking lifecycle", () => {
     // race the button) and wait for it to disappear instead of the transient
     // "Booking updated" toast. The fixture has one soft_booked booking, so a
     // single Confirm button; .first() is defensive.
-    const confirmButton = page.getByRole("button", { name: /^confirm$/i }).first();
+    const confirmButton = page.getByRole("button", { name: /^book$/i }).first();
     await expect(confirmButton).toBeVisible({ timeout: 15_000 });
 
     await expect(async () => {

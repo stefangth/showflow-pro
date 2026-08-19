@@ -10,7 +10,7 @@
  *      opens the review dialog, sets an engagement fee, and issues the order.
  *      The edge function renders the PDF, uploads it, and stamps the order
  *      `issued`.
- *   2. Artist signs in, sees the dashboard "Your hire orders" card listing that
+ *   2. Artist signs in, sees the dashboard "Your contracts" card listing that
  *      issued order, and downloads it. The test captures the signed URL the
  *      download-url action returns and asserts it responds 200 with
  *      `content-type: application/pdf`, the concrete "the artist can get the
@@ -219,14 +219,14 @@ test.describe("Hire orders: producer issues, artist downloads", () => {
 
   test("producer generates a draft, sets a fee, and issues the hire order", async ({ page }) => {
     await loginAsAndAwaitDashboard(page, TEST_PRODUCER_EMAIL, TEST_PRODUCER_PASSWORD);
-    await navViaSidebar(page, /^shows & bookings$/i);
+    await navViaSidebar(page, /^dates$/i);
 
     // Open THIS date's sheet via the calendar surface (every e2e date hangs off
     // the same seeded show, so target by show_date id).
     await openBookingsDate(page, { showDateId: fixture.showDateId, dateISO: DATE_ISO });
 
-    // Cockpit: the hire-orders card (with its Generate banner) is under the "Hire order" tab.
-    await page.getByRole("dialog").getByRole("button", { name: /^hire order$/i }).click();
+    // Cockpit: the hire-orders card (with its Generate banner) is under the "Contract" tab.
+    await page.getByRole("dialog").getByRole("button", { name: /^contract$/i }).click();
 
     // The hire-orders card shows a "Generate hire order" banner because there is
     // a confirmed booking with no active order yet. Clicking it drafts one order
@@ -238,7 +238,7 @@ test.describe("Hire orders: producer issues, artist downloads", () => {
     // sheet's top CTA and the card banner (both draft the same single-date order).
     const generateBtn = page
       .getByRole("dialog")
-      .getByRole("button", { name: /generate hire order/i })
+      .getByRole("button", { name: /generate contract/i })
       .first();
     const reviewBtn = page.getByRole("button", { name: /review and issue/i });
     await expect(generateBtn).toBeVisible({ timeout: 15_000 });
@@ -301,8 +301,8 @@ test.describe("Hire orders: producer issues, artist downloads", () => {
 
     await loginAsAndAwaitDashboard(page, ARTIST_EMAIL, ARTIST_PASSWORD);
 
-    // The dashboard "Your hire orders" card lists the issued order.
-    await expect(page.getByText("Your hire orders")).toBeVisible({ timeout: 15_000 });
+    // The dashboard "Your contracts" card lists the issued order.
+    await expect(page.getByText("Your contracts")).toBeVisible({ timeout: 15_000 });
     const order = await getHireOrderForDate(fixture.showDateId);
     expect(order?.order_no).toBeTruthy();
     await expect(page.getByText(order!.order_no)).toBeVisible({ timeout: 15_000 });
@@ -383,7 +383,7 @@ test.describe("Hire orders: PDF template editor", () => {
   test("admin can retheme the hire order PDF", async ({ page }) => {
     await loginAsAndAwaitDashboard(page, TEST_ADMIN_EMAIL, TEST_ADMIN_PASSWORD);
     await navViaSidebar(page, /^settings$/i);
-    await page.getByRole("tab", { name: /hire orders/i }).click();
+    await page.getByRole("tab", { name: /^contracts$/i }).click();
 
     // Enter via the card this task ships, not a deep link, so the spec also
     // proves PdfTemplateCard actually wires up to the editor route.
@@ -405,7 +405,7 @@ test.describe("Hire orders: PDF template editor", () => {
       await scaleSlider.press("ArrowRight");
     }
     await expect(page.getByText("130%")).toBeVisible();
-    await expect(page.getByTitle("Hire order preview")).toBeVisible();
+    await expect(page.getByTitle("Contract preview")).toBeVisible();
 
     // Section heading: a real number <input>, so `.fill()` is correct here.
     await page.getByRole("button", { name: "Section heading" }).click();
@@ -424,7 +424,7 @@ test.describe("Hire orders: PDF template editor", () => {
     // one this step means, and clicking it exercises the real return path.
     await page.getByRole("main").getByRole("link", { name: "Settings" }).click();
     await expect(page).toHaveURL(/\/settings$/);
-    await page.getByRole("tab", { name: /hire orders/i }).click();
+    await page.getByRole("tab", { name: /^contracts$/i }).click();
     await page.getByRole("link", { name: "Open template editor" }).click();
     await expect(page.getByRole("navigation", { name: "Document outline" })).toBeVisible();
 

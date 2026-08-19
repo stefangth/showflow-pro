@@ -166,7 +166,7 @@ test.describe("Configurable eligibility: show ladders and required skills", () =
 
     await seedConsent(page);
     await loginAsAndAwaitDashboard(page, TEST_PRODUCER_EMAIL, TEST_PRODUCER_PASSWORD);
-    await navViaSidebar(page, /^shows & bookings$/i);
+    await navViaSidebar(page, /^dates$/i);
 
     await openBookingsDate(page, { showDateId: dateId, dateISO });
 
@@ -174,7 +174,7 @@ test.describe("Configurable eligibility: show ladders and required skills", () =
     await page.getByRole("dialog").getByRole("button", { name: /^book artists$/i }).click();
 
     const emptyState = page.getByText(
-      /No eligible artists for this date\. Check casts and city in Settings\./i
+      /Nobody can be asked for this date\. Check casts and city in Settings\./i
     );
     await expect(emptyState).toBeVisible({ timeout: 20_000 });
     await expect(page.getByRole("button", { name: /^book$/i })).toHaveCount(0);
