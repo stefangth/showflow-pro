@@ -53,16 +53,16 @@ function renderLadder(overrides: Partial<TierLadderProps> = {}) {
 describe("TierLadder", () => {
   it("renders the header and city-scoped subtitle", () => {
     renderLadder();
-    expect(screen.getByText("TIER LADDER · SHOW-SPECIFIC")).toBeInTheDocument();
+    expect(screen.getByText("WHO THIS DATE ASKS · SHOW-SPECIFIC")).toBeInTheDocument();
     expect(screen.getByText("Casts in priority order for Berlin")).toBeInTheDocument();
   });
 
   it("shows the opened tier's status line and a Close tier control", () => {
     renderLadder();
     expect(
-      screen.getByText("9 offers sent · 4 accepted · 3 pending · 2 cancelled"),
+      screen.getByText("9 asked · 4 said yes · 3 waiting · 2 cancelled"),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Close tier" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Close this round" })).toBeInTheDocument();
   });
 
   it("shows the next tier's match line and count badge, with no Close tier control", () => {
@@ -78,7 +78,7 @@ describe("TierLadder", () => {
 
   it("renders Close tier only for the opened tier, and clicking it fires onCloseTier with that tier", () => {
     const { onCloseTier } = renderLadder();
-    const closeButtons = screen.getAllByRole("button", { name: "Close tier" });
+    const closeButtons = screen.getAllByRole("button", { name: "Close this round" });
     expect(closeButtons).toHaveLength(1);
 
     fireEvent.click(closeButtons[0]);
@@ -88,10 +88,10 @@ describe("TierLadder", () => {
 
   it("does not render Close tier for an opened tier that is already closed", () => {
     renderLadder({ openedTiers: [{ tier: 1, closed: true }] });
-    expect(screen.queryByRole("button", { name: "Close tier" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Close this round" })).not.toBeInTheDocument();
     // Still shows the status line for the closed tier.
     expect(
-      screen.getByText("9 offers sent · 4 accepted · 3 pending · 2 cancelled"),
+      screen.getByText("9 asked · 4 said yes · 3 waiting · 2 cancelled"),
     ).toBeInTheDocument();
   });
 });

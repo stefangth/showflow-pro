@@ -1,81 +1,81 @@
 {
   "actionCopy": {
     "confirm": {
-      "bareConsequence": "Confirm places the booking.",
-      "withDigest": "Confirm places the booking. The artist sees it in the app right away. The confirmation email goes out in the daily summary at {{time}}.",
-      "appOnly": "Confirm places the booking and notifies the artist in the app right away."
+      "bareConsequence": "Book gives them the place.",
+      "withDigest": "Book gives them the place. The artist sees it in the app right away. The booking email goes out in the daily send at {{time}}.",
+      "appOnly": "Book gives them the place and notifies the artist in the app right away."
     },
     "accept": {
-      "holdTitle": "Offer accepted",
-      "holdDescription": "Hold placed. Your producer confirms next.",
-      "bookedTitle": "Offer accepted. You're booked."
+      "holdTitle": "Said yes",
+      "holdDescription": "You said yes. Your producer has the last word next.",
+      "bookedTitle": "Said yes. You're booked."
     },
-    "softBookedMeaning": "Accepted the offer. Held for you, not booked, until you confirm.",
-    "tierConceptNote": "Tiers are your casts in priority order. Offers open with tier 1. If it cannot fill, you open the next tier.",
-    "dateSourceNote": "You can add a show date by hand here. If your workspace syncs from Airtable, those dates keep updating on their own, and a date you add here is not changed by a sync.",
+    "softBookedMeaning": "Said yes, waiting on you. Not booked until you book it.",
+    "tierConceptNote": "Casts are asked in priority order. Asking starts with the first round. If it can't fill the date, you open the next round.",
+    "dateSourceNote": "You can add a date by hand here. If your workspace syncs from Airtable, those dates keep updating on their own, and a date you add here is not changed by a sync.",
     "unrestrictedEligibility": "This date has no cast limits, so anyone in {{org}} can be booked here.",
     "cancel": {
       "title": "Cancel {{artist}}'s booking?",
-      "understudyLine": "If {{artist}} is in the main cast, the longest waiting accepted understudy is promoted automatically.",
+      "understudyLine": "If {{artist}} is in the main cast, the understudy who has been waiting longest and said yes moves up automatically.",
       "whoHearsFallback": "The artist is notified in the app."
     }
   },
   "timingCopy": {
-    "boundsError": "Enter a window of at least 1 hour and digest hours between 0 and 23.",
+    "boundsError": "Enter an answer-by window of at least 1 hour, and daily send hours between 0 and 23.",
     "scope": {
-      "berlin": "Digest times include their timezone.",
+      "berlin": "Daily send times include their timezone.",
       "offNote": "These hours change nothing while the booking flow is off.",
-      "directBookDeadFields": "You book artists directly, so the offer window and the offer digest hour change nothing.",
-      "onlyConfirmationLive": "Only the confirmation hour is live.",
-      "confirmationHourStillLive": "The confirmation hour still runs: it sets when booked artists are notified of schedule changes in the app."
+      "directBookDeadFields": "You book artists directly, so the answer-by window and the daily send hour change nothing.",
+      "onlyConfirmationLive": "Only the booking send hour is live.",
+      "confirmationHourStillLive": "The booking send hour still runs: it sets when booked artists are notified of schedule changes in the app."
     },
     "tonight": {
-      "directConfirm": "Newly confirmed artists get the confirmation digest at {{time}}.",
-      "digestConfirm_one": "When a tier opens, offers go out in the next {{offerTime}} digest. Artists get {{count}} hour to answer, and confirmations mail at {{time}}.",
-      "digestConfirm_other": "When a tier opens, offers go out in the next {{offerTime}} digest. Artists get {{count}} hours to answer, and confirmations mail at {{time}}.",
-      "digestNoConfirm_one": "When a tier opens, offers go out in the next {{offerTime}} digest. Artists get {{count}} hour to answer.",
-      "digestNoConfirm_other": "When a tier opens, offers go out in the next {{offerTime}} digest. Artists get {{count}} hours to answer.",
-      "immediateConfirm_one": "When a tier opens, offers email straight away. Artists get {{count}} hour to answer, and confirmations mail at {{time}}.",
-      "immediateConfirm_other": "When a tier opens, offers email straight away. Artists get {{count}} hours to answer, and confirmations mail at {{time}}.",
-      "immediateNoConfirm_one": "When a tier opens, offers email straight away. Artists get {{count}} hour to answer.",
-      "immediateNoConfirm_other": "When a tier opens, offers email straight away. Artists get {{count}} hours to answer."
+      "directConfirm": "Newly booked artists get the booking send at {{time}}.",
+      "digestConfirm_one": "When a round opens, asks go out in the next {{offerTime}} send. Artists get {{count}} hour to answer, and bookings mail at {{time}}.",
+      "digestConfirm_other": "When a round opens, asks go out in the next {{offerTime}} send. Artists get {{count}} hours to answer, and bookings mail at {{time}}.",
+      "digestNoConfirm_one": "When a round opens, asks go out in the next {{offerTime}} send. Artists get {{count}} hour to answer.",
+      "digestNoConfirm_other": "When a round opens, asks go out in the next {{offerTime}} send. Artists get {{count}} hours to answer.",
+      "immediateConfirm_one": "When a round opens, asks email straight away. Artists get {{count}} hour to answer, and bookings mail at {{time}}.",
+      "immediateConfirm_other": "When a round opens, asks email straight away. Artists get {{count}} hours to answer, and bookings mail at {{time}}.",
+      "immediateNoConfirm_one": "When a round opens, asks email straight away. Artists get {{count}} hour to answer.",
+      "immediateNoConfirm_other": "When a round opens, asks email straight away. Artists get {{count}} hours to answer."
     }
   },
   "cockpit": {
     "upNext": {
-      "direct": "Direct booking: producers book from the eligibility list",
-      "digest": "Digest sends daily · {{time}}",
-      "expiry_one": "{{count}} offer expires {{date}}",
-      "expiry_other": "{{count}} offers expire {{date}}",
-      "escalateOn": "Auto-escalate: on",
-      "escalateOff": "Auto-escalate: off"
+      "direct": "Direct booking: producers book from who can be asked",
+      "digest": "Daily send · {{time}}",
+      "expiry_one": "{{count}} ask expires {{date}}",
+      "expiry_other": "{{count}} asks expire {{date}}",
+      "escalateOn": "Auto-open next round: on",
+      "escalateOff": "Auto-open next round: off"
     },
     "peek": {
-      "allConfirmed": "All {{total}} slots confirmed",
-      "acceptedWaiting": "{{count}} accepted waiting on you",
-      "mainSlotOpen_one": "{{count}} main slot open",
-      "mainSlotOpen_other": "{{count}} main slots open",
-      "understudySlotOpen_one": "{{count}} understudy slot open",
-      "understudySlotOpen_other": "{{count}} understudy slots open",
-      "readyToConfirm": "Ready to confirm"
+      "allConfirmed": "All {{total}} places booked",
+      "acceptedWaiting": "{{count}} said yes, waiting on you",
+      "mainSlotOpen_one": "{{count}} main place open",
+      "mainSlotOpen_other": "{{count}} main places open",
+      "understudySlotOpen_one": "{{count}} understudy place open",
+      "understudySlotOpen_other": "{{count}} understudy places open",
+      "readyToConfirm": "Waiting on you"
     },
     "headerCta": {
-      "confirm": "Confirm {{count}} accepted",
-      "book": "Book from eligibility",
-      "reviewOffers": "Review open offers",
-      "openOffersTo": "Open offers to {{name}}",
-      "openTier": "Open tier {{tier}}"
+      "confirm": "Book {{count}} who said yes",
+      "book": "Book from who can be asked",
+      "reviewOffers": "Review who's been asked",
+      "openOffersTo": "Ask {{name}}",
+      "openTier": "Open round {{tier}}"
     },
     "activity": {
-      "confirmed": "{{name}} confirmed",
-      "tierOpened": "Tier {{tier}} opened",
-      "tierClosed": "Tier {{tier}} closed"
+      "confirmed": "{{name}} booked",
+      "tierOpened": "Round {{tier}} opened",
+      "tierClosed": "Round {{tier}} closed"
     },
     "hireFooter": {
       "ready": "READY",
       "left": "{{count}} LEFT",
-      "detailReady": "All slots confirmed, drafts one order per artist",
-      "detailWaiting": "Waiting on {{remaining}} of {{total}} slots"
+      "detailReady": "All places booked, drafts one contract per artist",
+      "detailWaiting": "Waiting on {{remaining}} of {{total}} places"
     }
   }
 }

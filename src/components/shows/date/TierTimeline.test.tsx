@@ -70,7 +70,7 @@ describe("TierTimeline", () => {
     );
     expect(screen.getByText("Skills required on this date")).toBeInTheDocument();
     expect(screen.getByText(/NEXT OFFER/)).toBeInTheDocument();
-    expect(screen.getByText("TIER LADDER · SHOW-SPECIFIC")).toBeInTheDocument();
+    expect(screen.getByText("WHO THIS DATE ASKS · SHOW-SPECIFIC")).toBeInTheDocument();
   });
 
   it("opens the confirm dialog from the hero and fires onOpenTier for the next tier", () => {
@@ -222,7 +222,7 @@ describe("TierTimeline", () => {
   it("states the tier concept and links to the docs", () => {
     renderTimeline(<TierTimeline {...baseProps} />);
     expect(screen.getByText(tierConceptNote(i18n.getFixedT("en", "bookingCopy")))).toBeInTheDocument();
-    const link = screen.getByRole("link", { name: "How casts and tiers work" });
+    const link = screen.getByRole("link", { name: "How casts and rounds work" });
     expect(link).toHaveAttribute("href", ROUTES.HELP);
   });
 });

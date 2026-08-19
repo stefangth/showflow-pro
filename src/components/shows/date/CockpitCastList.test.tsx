@@ -36,7 +36,7 @@ describe("CockpitCastList confirm consequence line", () => {
     renderWithProviders(
       <CockpitCastList groups={acceptedGroups()} flow={classic} bookingFlowEnabled confirmationDigestHour={21} />,
     );
-    expect(screen.getByText(/goes out in the daily summary at 21:00h \(Berlin, Germany\)/)).toBeInTheDocument();
+    expect(screen.getByText(/goes out in the daily send at 21:00h \(Berlin, Germany\)/)).toBeInTheDocument();
   });
 
   it("renders nothing about Confirm when no row is awaiting it", () => {
@@ -51,7 +51,7 @@ describe("CockpitCastList confirm consequence line", () => {
     renderWithProviders(
       <CockpitCastList groups={groups} flow={classic} bookingFlowEnabled confirmationDigestHour={21} />,
     );
-    expect(screen.queryByText(/Confirm places the booking/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Book gives them the place/)).not.toBeInTheDocument();
   });
 
   it("still states the bare consequence when the flow is paused", () => {
@@ -59,7 +59,7 @@ describe("CockpitCastList confirm consequence line", () => {
     renderWithProviders(
       <CockpitCastList groups={acceptedGroups()} flow={off} bookingFlowEnabled confirmationDigestHour={21} />,
     );
-    expect(screen.getByText("Confirm places the booking.")).toBeInTheDocument();
+    expect(screen.getByText("Book gives them the place.")).toBeInTheDocument();
   });
 
   it("states only the bare consequence when the org has no booking_flow entitlement, even with the flow active and the confirmation digest on", () => {
@@ -69,8 +69,8 @@ describe("CockpitCastList confirm consequence line", () => {
     renderWithProviders(
       <CockpitCastList groups={acceptedGroups()} flow={classic} bookingFlowEnabled={false} confirmationDigestHour={21} />,
     );
-    expect(screen.getByText("Confirm places the booking.")).toBeInTheDocument();
-    expect(screen.queryByText(/daily summary/)).not.toBeInTheDocument();
+    expect(screen.getByText("Book gives them the place.")).toBeInTheDocument();
+    expect(screen.queryByText(/daily send/)).not.toBeInTheDocument();
   });
 });
 
@@ -85,7 +85,7 @@ describe("CockpitCastList Accepted badge tooltip", () => {
     );
     // Radix opens a tooltip from pointermove on the trigger, not mouseover/mouseenter, and
     // renders the visible bubble plus a visually-hidden copy, hence findAllByText.
-    fireEvent.pointerMove(screen.getByText("Accepted"), { pointerType: "mouse" });
+    fireEvent.pointerMove(screen.getByText("Said yes"), { pointerType: "mouse" });
     expect(await screen.findAllByText(softBookedMeaning(i18n.getFixedT("en", "bookingCopy")))).not.toHaveLength(0);
   });
 });
@@ -104,9 +104,9 @@ describe("CockpitCastList per-row cancel confirmation", () => {
     fireEvent.click(screen.getByRole("button", { name: /^cancel$/i }));
     expect(screen.getByText("Cancel Ada Lovelace's booking?")).toBeInTheDocument();
     expect(
-      screen.getByText(/If Ada Lovelace is in the main cast, the longest waiting accepted understudy is promoted automatically\./),
+      screen.getByText(/If Ada Lovelace is in the main cast, the understudy who has been waiting longest and said yes moves up automatically\./),
     ).toBeInTheDocument();
-    expect(screen.getByText(/goes out in the daily summary at 21:00h \(Berlin, Germany\)/)).toBeInTheDocument();
+    expect(screen.getByText(/goes out in the daily send at 21:00h \(Berlin, Germany\)/)).toBeInTheDocument();
     expect(onCancel).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole("button", { name: "Keep booking" }));
@@ -147,7 +147,7 @@ describe("CockpitCastList per-row cancel confirmation", () => {
       />,
     );
     fireEvent.click(screen.getByRole("button", { name: /^cancel$/i }));
-    expect(screen.queryByText(/longest waiting accepted understudy/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/waiting longest and said yes moves up/)).not.toBeInTheDocument();
     expect(onCancel).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole("button", { name: "Cancel booking" }));
@@ -168,7 +168,7 @@ describe("CockpitCastList with no flow/entitlement props (mirrors DevCockpitHarn
     // Defaults to BOOKING_FLOW_DEFAULTS (active, confirmation_digest on) rather than any
     // stripped-down "no flow" shape, so the consequence line still states something honest.
     expect(result).toBeDefined();
-    expect(screen.getByText(/Confirm places the booking/)).toBeInTheDocument();
+    expect(screen.getByText(/Book gives them the place/)).toBeInTheDocument();
 
     // The Cancel dialog also has to build without a real flow/entitlement: bookingFlowEnabled
     // defaults to false (fail closed), so cancelBookingCopy falls back to the plain in-app

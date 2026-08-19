@@ -12,7 +12,7 @@
       "noActiveOrg": "Keine aktive Organisation",
       "castOverrideNotFound": "Besetzungsüberschreibung nicht gefunden, aktualisiere die Seite",
       "cityUpdated": "Stadt aktualisiert",
-      "castEligibilityUpdated": "Besetzungsberechtigung aktualisiert",
+      "castEligibilityUpdated": "Aktualisiert, wo diese Besetzung angefragt werden kann",
       "requiredSkillAdded": "Erforderliche Fähigkeit hinzugefügt",
       "requiredSkillAddFailed": "Erforderliche Fähigkeit konnte nicht hinzugefügt werden",
       "requiredSkillRemoved": "Erforderliche Fähigkeit entfernt",
@@ -27,47 +27,47 @@
       "bookingUpdateFailed": "Diese Buchung konnte nicht aktualisiert werden. Aktualisiere und versuche es erneut.",
       "bookedNamed": "{{name}} gebucht.",
       "bookingUpdated": "Buchung aktualisiert",
-      "confirmed": "{{count}} bestätigt",
-      "nothingToConfirm": "Nichts zu bestätigen, es hat sich weiterbewegt",
-      "tierTrackingFailed": "Stufen-Tracking konnte nicht gespeichert werden. Öffne die Stufe erneut, um Eskalation und Risiko-Warnungen wiederherzustellen.",
+      "confirmed": "{{count}} gebucht",
+      "nothingToConfirm": "Nichts zu buchen, es hat sich weiterbewegt",
+      "tierTrackingFailed": "Wer als Nächstes angefragt wird, konnte nicht gespeichert werden. Öffne diesen Schritt erneut, um die Risiko-Warnungen wiederherzustellen.",
       "dateCancelled": "Termin abgesagt",
       "dateDeleted": "Termin gelöscht"
     },
     "status": {
       "cancelled": "Abgesagt",
-      "allConfirmed": "Alle Slots bestätigt",
-      "tierOpenExpiry": "Stufe {{tier}} offen · {{detail}}",
-      "tierOpen": "Stufe {{tier}} offen",
-      "acceptedWaiting": "{{count}} angenommen, warten auf Bestätigung"
+      "allConfirmed": "Alle Plätze gebucht",
+      "tierOpenExpiry": "Runde {{tier}} offen · {{detail}}",
+      "tierOpen": "Runde {{tier}} offen",
+      "acceptedWaiting": "{{count}} haben zugesagt, warten auf dich"
     },
-    "slotWarning": "Slot-Konfiguration fehlt für {{program}}. Lege Besetzungs-Slots in den Einstellungen fest.",
+    "slotWarning": "Besetzungsplätze für {{program}} sind nicht eingerichtet. Lege sie in den Einstellungen fest.",
     "thisShow": "diese Show",
     "pagerLabel": "Termin {{index}} von {{total}}",
-    "flowClassic": "Klassische Angebote",
+    "flowClassic": "Klassisches Anfragen",
     "flowDirect": "Direktbuchung",
     "tabs": {
       "cast": "Besetzung",
-      "offers": "Angebote",
+      "offers": "Anfragen",
       "book": "Artists buchen",
-      "order": "Engagementvertrag",
+      "order": "Vertrag",
       "chat": "Chat",
       "setup": "Einrichtung"
     },
-    "slotActionOpenTier": "Nächste Stufe öffnen",
+    "slotActionOpenTier": "Nächste Runde öffnen",
     "slotActionBook": "Artist buchen",
     "editNotes": "Notizen bearbeiten",
     "editSchedule": "Zeitplan bearbeiten",
     "overflow": {
       "editDateSetup": "Termin-Einrichtung bearbeiten"
     },
-    "generateHireOrder": "Engagementvertrag erstellen",
-    "generateHireOrderNoPermission": "Du hast keine Berechtigung, Engagementverträge zu erstellen",
+    "generateHireOrder": "Vertrag entwerfen",
+    "generateHireOrderNoPermission": "Du hast keine Berechtigung, Verträge zu entwerfen",
     "footer": {
       "drafted": "ENTWURF",
-      "alreadyCovers": "Ein Engagementvertrag deckt diesen Termin bereits ab",
-      "openHireOrder": "Engagementvertrag öffnen",
-      "generateHireOrder": "Engagementvertrag erstellen",
-      "generate": "Erstellen"
+      "alreadyCovers": "Ein Vertrag deckt diesen Termin bereits ab",
+      "openHireOrder": "Vertrag öffnen",
+      "generateHireOrder": "Vertrag entwerfen",
+      "generate": "Entwerfen"
     },
     "banner": {
       "cancelled": "Abgesagt"
@@ -77,13 +77,13 @@
       "city": "Stadt",
       "selectCity": "Stadt auswählen",
       "none": "Keine",
-      "extraEligibleCasts": "Zusätzlich berechtigte Besetzungen (dieser Termin)",
+      "extraEligibleCasts": "Zusätzlich anfragbare Besetzungen (dieser Termin)",
       "addCastForDate": "Besetzung für diesen Termin hinzufügen…",
       "addedCount": "{{count}} hinzugefügt",
       "noCastsYet": "Noch keine Besetzungen.",
       "inherited": "geerbt",
       "inheritedVia": "geerbt über {{city}}",
-      "inheritedNote": "Geerbte Besetzungen stammen aus der Städte-Berechtigungsmatrix unter Einstellungen → Städte & Besetzungen. Ändere die Stadt oben oder passe die Besetzungsberechtigung dort an.",
+      "inheritedNote": "Geerbte Besetzungen stammen aus der Besetzungsmatrix der Stadt unter Einstellungen → Städte & Besetzungen. Ändere die Stadt oben oder passe dort an, wer angefragt werden kann.",
       "editNotesPermission": "Du hast keine Berechtigung, Termine zu bearbeiten",
       "cancelDate": "Termin absagen",
       "cancelDateTitle": "Diesen Termin absagen?",
@@ -99,16 +99,16 @@
     }
   },
   "bookingRow": {
-    "confirm": "Bestätigen",
+    "confirm": "Buchen",
     "cancel": "Abbrechen"
   },
   "showDateForm": {
     "toast": {
       "dateUpdated": "Termin aktualisiert",
-      "tier1AutoOpened": "Stufe 1 automatisch geöffnet · {{count}} Angebote gesendet",
+      "tier1AutoOpened": "Erste Runde automatisch geöffnet · {{count}} Anfragen gesendet",
       "noActiveOrg": "Keine aktive Organisation",
-      "dateCreatedWithOffers": "Termin erstellt · {{count}} Angebot(e) geöffnet",
-      "dateCreatedOffersFailed": "Termin erstellt (Angebote konnten nicht geöffnet werden)",
+      "dateCreatedWithOffers": "Termin erstellt · {{count}} Anfrage(n) gesendet",
+      "dateCreatedOffersFailed": "Termin erstellt (Anfragen konnten nicht gesendet werden)",
       "dateCreated": "Termin erstellt"
     },
     "editDate": "Termin bearbeiten",
@@ -124,32 +124,32 @@
     "venue": "Veranstaltungsort",
     "city": "Stadt",
     "notes": "Notizen",
-    "openTier1Now": "Stufe-1-Angebote jetzt öffnen",
-    "openTier1NowConfigure": "Stufe-1-Angebote jetzt öffnen (zuerst Slots konfigurieren)",
-    "openTier1FlowHint": "Das folgt deiner Buchungsablauf-Einstellung „Stufe 1 automatisch öffnen, wenn ein neuer Termin bereit ist“. Du kannst es für diesen Termin ändern.",
+    "openTier1Now": "Jetzt mit dem Anfragen beginnen",
+    "openTier1NowConfigure": "Jetzt mit dem Anfragen beginnen (zuerst Plätze festlegen)",
+    "openTier1FlowHint": "Das folgt deiner Buchungsablauf-Einstellung „Automatisch mit dem Anfragen beginnen, wenn ein neuer Termin bereit ist“. Du kannst es für diesen Termin ändern.",
     "saving": "Speichern…",
     "saveDate": "Termin speichern",
     "createDate": "Termin erstellen"
   },
   "cockpitCastList": {
-    "accepted": "Angenommen",
-    "confirmed": "Bestätigt",
-    "offered": "Angeboten",
-    "openSlot": "Offener Slot",
-    "confirm": "Bestätigen",
+    "accepted": "Zugesagt",
+    "confirmed": "Gebucht",
+    "offered": "Angefragt",
+    "openSlot": "Offener Platz",
+    "confirm": "Buchen",
     "cancel": "Abbrechen",
     "keepBooking": "Buchung behalten",
     "cancelBooking": "Buchung stornieren",
     "thisArtist": "diesen Artist"
   },
   "cockpitFooter": {
-    "hireOrder": "Engagementvertrag"
+    "hireOrder": "Vertrag"
   },
   "cockpitHeader": {
-    "generateHireOrder": "Engagementvertrag erstellen",
+    "generateHireOrder": "Vertrag entwerfen",
     "moreActions": "Weitere Aktionen",
-    "slotsCount": "{{confirmed}} von {{total}} Slots",
-    "slotFill": "Slot-Belegung",
+    "slotsCount": "{{confirmed}} von {{total}} Plätzen",
+    "slotFill": "Plätze belegt",
     "flow": "Ablauf:"
   },
   "cockpitPager": {
@@ -159,11 +159,11 @@
   "cockpitRail": {
     "date": "Termin",
     "details": "Details",
-    "eligibility": "Berechtigung",
+    "eligibility": "Wer angefragt werden kann",
     "upNext": "Als Nächstes",
     "activity": "Aktivität",
     "chat": "Chat",
-    "noRestrictions": "Keine Berechtigungsbeschränkungen.",
+    "noRestrictions": "Jeder kann angefragt werden.",
     "inherited": "geerbt",
     "editDateSetup": "Termin-Einrichtung bearbeiten",
     "airtableLocked": "Airtable · gesperrt",
@@ -172,65 +172,65 @@
     "messageCast": "Schreibe der Besetzung im Chat-Tab"
   },
   "dryRunDialog": {
-    "previewOfferTier": "Angebotsstufe vorschauen",
-    "deliveryDigest": "Angebote gehen mit der nächsten täglichen Tagesübersicht raus.",
-    "deliveryImmediate": "Angebots-E-Mails werden sofort gesendet.",
-    "checkingTitle": "Prüfe, wer Angebote erhält…",
-    "openingTitle": "Das Öffnen von Stufe {{tier}} würde {{count}} Angebote senden",
-    "checkingDesc": "Prüfe, wer für diese Stufe berechtigt ist…",
-    "notReadyDesc": "Diese Stufe ist noch nicht bereit zum Öffnen.",
+    "previewOfferTier": "Vorschau, wer angefragt wird",
+    "deliveryDigest": "Anfragen gehen mit dem nächsten täglichen Versand raus.",
+    "deliveryImmediate": "Anfrage-E-Mails werden sofort gesendet.",
+    "checkingTitle": "Prüfe, wer angefragt wird…",
+    "openingTitle": "Das Öffnen von Runde {{tier}} würde {{count}} Anfragen senden",
+    "checkingDesc": "Prüfe, wer in dieser Runde angefragt werden kann…",
+    "notReadyDesc": "Diese Runde ist noch nicht bereit zum Öffnen.",
     "loadingPreview": "Vorschau wird geladen",
-    "excludedLine": "Ausgeschlossen: {{alreadyBooked}} bereits gebucht · {{blocked}} gesperrt · {{inactive}} inaktiv",
-    "notEligible": "Nicht berechtigt für diese Show: {{count}}",
+    "excludedLine": "Ausgeschlossen: {{alreadyBooked}} bereits gebucht · {{blocked}} nicht frei · {{inactive}} inaktiv",
+    "notEligible": "Kann für diese Show nicht angefragt werden: {{count}}",
     "missingSkills": "Fehlende erforderliche Fähigkeiten: {{count}}",
     "cancel": "Abbrechen",
-    "openTierConfirm": "Stufe {{tier}} öffnen · {{count}} Angebote senden",
-    "openTier": "Stufe öffnen"
+    "openTierConfirm": "Runde {{tier}} öffnen · {{count}} Anfragen senden",
+    "openTier": "Runde öffnen"
   },
   "eligibilityBookList": {
     "joinTwo": "{{a}} und {{b}}",
     "joinMany": "{{list}} und {{last}}",
     "reqHasSkills": "Dieser Termin erfordert {{skills}}",
     "reqNoSkills": "Dieser Termin hat keine Fähigkeitsanforderungen",
-    "factSentence": "{{requirement}} · {{qualifying}} von {{total}} Artists qualifizieren sich und sind nicht gesperrt.",
-    "error": "Die berechtigten Artists konnten nicht geladen werden. Lade die Seite neu, um es erneut zu versuchen.",
+    "factSentence": "{{requirement}} · {{qualifying}} von {{total}} Artists qualifizieren sich und sind frei.",
+    "error": "Wer angefragt werden kann, konnte nicht geladen werden. Lade die Seite neu, um es erneut zu versuchen.",
     "bookAsUnderstudy": "Als Zweitbesetzung buchen",
     "narrowList": "Liste weiter eingrenzen",
-    "noEligible": "Keine berechtigten Artists für diesen Termin. Prüfe Besetzungen und Stadt in den Einstellungen.",
+    "noEligible": "Niemand kann für diesen Termin angefragt werden. Prüfe Besetzungen und Stadt in den Einstellungen.",
     "booked": "Gebucht",
     "book": "Buchen",
     "bookUnderstudyTitle": "{{name}} als Zweitbesetzung für diesen Termin buchen?",
     "bookTitle": "{{name}} für diesen Termin buchen?",
-    "bookUnderstudyDesc": "Dies bucht und bestätigt {{name}} sofort als Zweitbesetzung. Im Direktbuchungsmodus gibt es keinen Angebotsschritt.",
-    "bookDesc": "Dies bucht und bestätigt {{name}} sofort. Im Direktbuchungsmodus gibt es keinen Angebotsschritt.",
+    "bookUnderstudyDesc": "Dies bucht {{name}} sofort als Zweitbesetzung. Im Direktbuchungsmodus gibt es keinen Anfrageschritt.",
+    "bookDesc": "Dies bucht {{name}} sofort. Im Direktbuchungsmodus gibt es keinen Anfrageschritt.",
     "cancel": "Abbrechen",
-    "bookAndConfirm": "Buchen und bestätigen"
+    "bookAndConfirm": "Jetzt buchen"
   },
   "nextOfferHero": {
     "adHocCasts": "Ad-hoc-Besetzungen",
-    "tierN": "Stufe {{tier}}",
+    "tierN": "Runde {{tier}}",
     "artistWord_one": "Artist",
     "artistWord_other": "Artists",
     "bodyWithSkills_one": "{{matchCount}} von {{castTotal}} {{artistWord}} in {{label}} hat {{skills}}.",
     "bodyWithSkills_other": "{{matchCount}} von {{castTotal}} {{artistWord}} in {{label}} haben {{skills}}.",
     "bodyAvailable_one": "{{matchCount}} von {{castTotal}} {{artistWord}} in {{label}} ist verfügbar.",
     "bodyAvailable_other": "{{matchCount}} von {{castTotal}} {{artistWord}} in {{label}} sind verfügbar.",
-    "tier1Suffix": "{{first}} {{blocked}} gesperrt.",
-    "priorSuffix": "{{first}} {{blocked}} gesperrt, {{alreadyOffered}} bereits gebucht oder angeboten.",
+    "tier1Suffix": "{{first}} {{blocked}} nicht frei.",
+    "priorSuffix": "{{first}} {{blocked}} nicht frei, {{alreadyOffered}} bereits gebucht oder angefragt.",
     "missReqSkill": "{{count}} fehlt eine erforderliche Fähigkeit",
-    "blockedOnDate": "{{count}} an diesem Termin gesperrt",
+    "blockedOnDate": "{{count}} an diesem Termin nicht frei",
     "andMore": " und {{count}} weitere",
-    "nextOfferAdHoc": "NÄCHSTES ANGEBOT · AD-HOC-BESETZUNGEN",
-    "nextOfferTier": "NÄCHSTES ANGEBOT · STUFE {{tier}}",
-    "getOffers": "ANGEBOTE ERHALTEN",
+    "nextOfferAdHoc": "NÄCHSTE ANFRAGE · AD-HOC-BESETZUNGEN",
+    "nextOfferTier": "NÄCHSTE ANFRAGE · RUNDE {{tier}}",
+    "getOffers": "ANFRAGEN SENDEN",
     "seeArtists": "Die {{count}} Artists ansehen",
-    "narrowOffer": "Dieses Angebot eingrenzen",
-    "onlyOfferWith": "Nur Artists anbieten mit",
+    "narrowOffer": "Diese Anfrage eingrenzen",
+    "onlyOfferWith": "Nur Artists anfragen mit",
     "noExtraSkills": "Keine zusätzlichen Fähigkeiten zum Eingrenzen."
   },
   "requiredSkillsCard": {
     "title": "An diesem Termin erforderliche Fähigkeiten",
-    "computedFrom": "Berechnet aus den {{count}} Slots in {{show}}. Nur Artists, die alle davon besitzen, können ein Angebot erhalten oder gebucht werden.",
+    "computedFrom": "Berechnet aus den {{count}} Plätzen in {{show}}. Nur Artists, die alle davon besitzen, können angefragt oder gebucht werden.",
     "droppedOnDate": "an diesem Termin entfernt",
     "addedOnDate": "an diesem Termin hinzugefügt",
     "noSkillsRequired": "Keine Fähigkeiten erforderlich.",
@@ -241,7 +241,7 @@
   },
   "requiredSkillsSection": {
     "requiredSkills": "Erforderliche Fähigkeiten",
-    "mustHaveAll": "Artists müssen alle diese Fähigkeiten haben, um Angebote zu erhalten oder gebucht zu werden.",
+    "mustHaveAll": "Artists müssen alle diese Fähigkeiten haben, um angefragt oder gebucht zu werden.",
     "droppedOnDate": "an diesem Termin entfernt",
     "restore": "{{name}} wiederherstellen",
     "fromShow": "Aus Show",
@@ -251,26 +251,26 @@
     "emptyHint": "Noch keine Fähigkeiten. Füge zuerst Fähigkeiten in den Artist-Profilen hinzu."
   },
   "tierLadder": {
-    "tierN": "Stufe {{tier}}",
+    "tierN": "Runde {{tier}}",
     "adHocCasts": "Ad-hoc-Besetzungen",
-    "title": "STUFEN-RANGFOLGE · SHOW-SPEZIFISCH",
+    "title": "WER FÜR DIESEN TERMIN ANGEFRAGT WIRD · SHOW-SPEZIFISCH",
     "priorityOrder": "Besetzungen in Prioritätsreihenfolge für {{city}}",
-    "ariaLabel": "Stufen-Rangfolge",
-    "statusCounts": "{{sent}} Angebote gesendet · {{accepted}} angenommen · {{pending}} ausstehend · {{cancelled}} storniert",
+    "ariaLabel": "Wer für diesen Termin angefragt wird",
+    "statusCounts": "{{sent}} angefragt · {{accepted}} zugesagt · {{pending}} wartend · {{cancelled}} storniert",
     "matchCounts": "{{matchCount}} von {{castTotal}} Artists passen{{missDetail}}",
     "missDetail": " · {{count}} fehlt eine erforderliche Fähigkeit",
-    "closeTier": "Stufe schließen"
+    "closeTier": "Diese Runde schließen"
   },
   "tierTimeline": {
-    "directBooking": "Direktbuchung: Das Produktionsteam bucht aus der Berechtigungsliste",
-    "offerTiers": "Angebotsstufen",
-    "offerTierTimeline": "Zeitleiste der Angebotsstufen",
+    "directBooking": "Direktbuchung: Das Produktionsteam bucht aus wer angefragt werden kann",
+    "offerTiers": "Runden",
+    "offerTierTimeline": "Wer angefragt wird, und wann",
     "usingShowPriorities": "Show-spezifische Prioritäten werden verwendet",
-    "howCastsTiersWork": "Wie Besetzungen und Stufen funktionieren",
-    "addSessionTime": "Füge eine Session-Zeit hinzu, bevor du Angebote öffnest.",
-    "addSessionTimeDialog": "Füge diesem Termin eine Session-Zeit hinzu, bevor du Angebote öffnest.",
+    "howCastsTiersWork": "Wie Besetzungen und Runden funktionieren",
+    "addSessionTime": "Füge eine Session-Zeit hinzu, bevor du mit dem Anfragen beginnst.",
+    "addSessionTimeDialog": "Füge diesem Termin eine Session-Zeit hinzu, bevor du mit dem Anfragen beginnst.",
     "cancel": "Abbrechen",
-    "openOffers": "Angebote öffnen"
+    "openOffers": "Mit dem Anfragen beginnen"
   },
   "castDetails": {
     "toast": {
@@ -280,28 +280,28 @@
       "failedAddArtist": "Artist konnte nicht hinzugefügt werden",
       "artistRemovedFromCast": "Artist aus der Besetzung entfernt",
       "failedRemoveArtist": "Artist konnte nicht entfernt werden",
-      "eligibilityUpdated": "Berechtigung aktualisiert",
-      "failedUpdateEligibility": "Berechtigung konnte nicht aktualisiert werden"
+      "eligibilityUpdated": "Aktualisiert, wer angefragt werden kann",
+      "failedUpdateEligibility": "Wer angefragt werden kann, konnte nicht aktualisiert werden"
     },
     "castNamePlaceholder": "Besetzungsname",
     "descriptionOptional": "Beschreibung (optional)",
     "saving": "Speichern…",
     "save": "Speichern",
     "cancel": "Abbrechen",
-    "manageDefault": "Besetzungsmitglieder und Städte-Berechtigung verwalten",
+    "manageDefault": "Besetzungsmitglieder verwalten und festlegen, welche Städte anfragen können",
     "editCast": "Besetzung bearbeiten",
     "close": "Schließen",
     "eyebrow": "Besetzung",
     "kpi": {
       "members": "Mitglieder",
-      "citiesEligible": "Berechtigte Städte",
-      "tier1Cities": "Städte mit Stufe 1",
+      "citiesEligible": "Städte, die anfragen können",
+      "tier1Cities": "Städte mit erster Runde",
       "upcomingDates": "Anstehende Termine"
     },
     "coverageGap": {
       "badge": "Abdeckungslücke",
-      "text": "{{cities}} in keiner Stufe, daher wird diese Besetzung dort nie angeboten.",
-      "setTier": "Stufe setzen"
+      "text": "{{cities}} in keiner Runde, daher wird diese Besetzung dort nie angefragt.",
+      "setTier": "Runde festlegen"
     },
     "roster": {
       "title": "Besetzung",
@@ -313,8 +313,8 @@
     },
     "coverage": {
       "title": "Städte-Abdeckung",
-      "hint": "Klicke auf eine Show, um die Berechtigung umzuschalten.",
-      "noTier": "Keine Stufe"
+      "hint": "Klicke auf eine Show, um umzuschalten, ob diese Besetzung angefragt werden kann.",
+      "noTier": "Keine Runde"
     },
     "rail": {
       "atAGlance": "Auf einen Blick",
@@ -338,8 +338,8 @@
     "noMatches": "Keine Treffer.",
     "addCitiesFirst": "Füge zuerst Städte unter Einstellungen → Besetzungen & Abdeckung hinzu.",
     "noShows": "Keine Shows verfügbar.",
-    "tierN": "Stufe {{tier}}",
-    "manageOfferOrderLink": "Angebotsreihenfolge unter Einstellungen, Besetzungen & Abdeckung verwalten"
+    "tierN": "Runde {{tier}}",
+    "manageOfferOrderLink": "Anfragereihenfolge unter Einstellungen, Besetzungen & Abdeckung verwalten"
   },
   "castDialog": {
     "toast": {
@@ -354,7 +354,7 @@
   },
   "castsSection": {
     "casts": "Besetzungen",
-    "noCasts": "Noch keine Besetzungen. Erstelle eine, um Artists für die Show-Berechtigung zu gruppieren.",
+    "noCasts": "Noch keine Besetzungen. Erstelle eine, um festzulegen, wer für eine Show angefragt werden kann.",
     "memberCount_one": "{{count}} Mitglied",
     "memberCount_other": "{{count}} Mitglieder"
   }
