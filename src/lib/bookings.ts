@@ -37,9 +37,9 @@ export function bookingStatusBadgeClass(status: string): string {
 // open-offer-tier creates when the offer goes out to the artist, so it reads as
 // "Offered", never the internal enum. Unknown values humanize.
 const BOOKING_STATUS_DISPLAY_LABEL: Record<string, string> = {
-  suggested: "Offered",
-  soft_booked: "Soft-booked",
-  confirmed: "Confirmed",
+  suggested: "Asked",
+  soft_booked: "Said yes, waiting on you",
+  confirmed: "Booked",
   cancelled: "Cancelled",
 };
 

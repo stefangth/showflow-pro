@@ -237,7 +237,7 @@ export const SAMPLE_PREVIEW: Record<Exclude<DashboardRole, "artist">, SamplePrev
     queue: [
       { title: "4 artists accepted and are waiting on a confirm", hint: "Kammerkonzert 12 Aug, Nachtstück 14 Aug", when: "now", cta: "Confirm", tone: "accent" },
       { title: "2 offers expire at 17:00", hint: "Tier 1 · Nachtstück 14 Aug", when: "17:00", cta: "Open date", tone: "warning" },
-      { title: "1 hire order awaits your countersign", hint: "Nora Lindqvist", when: "today", cta: "Sign", tone: "faint" },
+      { title: "1 contract awaits your countersign", hint: "Nora Lindqvist", when: "today", cta: "Sign", tone: "faint" },
     ],
     week: [
       { date: "10 Aug", ref: "Kammerkonzert · Halle B", status: "Cast complete" },

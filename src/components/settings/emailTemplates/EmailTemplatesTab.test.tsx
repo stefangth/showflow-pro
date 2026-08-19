@@ -45,7 +45,7 @@ describe("EmailTemplatesTab", () => {
     expect(screen.getByText("Contracts")).toBeInTheDocument();
     expect(screen.getByText("Accounts & access")).toBeInTheDocument();
     expect(screen.getByText("Immediate offer")).toBeInTheDocument();
-    expect(screen.getByText("Hire order countersigned")).toBeInTheDocument();
+    expect(screen.getByText("Contract countersigned")).toBeInTheDocument();
     expect(screen.getByText("Password reset")).toBeInTheDocument();
     // cron-health-alert and magic-link are platform-only internal rows: hidden from non-super-admins.
     expect(screen.queryByText("Cron health alert")).not.toBeInTheDocument();

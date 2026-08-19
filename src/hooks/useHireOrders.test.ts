@@ -196,7 +196,7 @@ describe("useHireOrderAction", () => {
     });
 
     expect(invokeHireOrderAction).toHaveBeenCalledWith(expect.anything(), { action: "draft", org_id: "org-1", show_date_id: "d1" });
-    expect(toast.success).toHaveBeenCalledWith("Drafted 2 hire orders");
+    expect(toast.success).toHaveBeenCalledWith("Drafted 2 contracts");
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["hire-orders"] });
   });
 
@@ -209,7 +209,7 @@ describe("useHireOrderAction", () => {
       await result.current.mutateAsync({ action: "draft", org_id: "org-1" });
     });
 
-    expect(toast.error).toHaveBeenCalledWith("No hire orders drafted: already ordered");
+    expect(toast.error).toHaveBeenCalledWith("No contracts drafted: already ordered");
     expect(toast.success).not.toHaveBeenCalled();
     expect(toast.info).not.toHaveBeenCalled();
   });
@@ -229,7 +229,7 @@ describe("useHireOrderAction", () => {
       await result.current.mutateAsync({ action: "draft", org_id: "org-1", show_date_id: "d1" });
     });
 
-    expect(toast.success).toHaveBeenCalledWith("Drafted 1 hire order");
+    expect(toast.success).toHaveBeenCalledWith("Drafted 1 contract");
     // Deduped, number-agnostic reason copy: two `exists` skips collapse to one phrase
     // that reads correctly after a plural count ("2 bookings skipped: already ordered").
     expect(toast.warning).toHaveBeenCalledWith("2 bookings skipped: already ordered");
@@ -245,7 +245,7 @@ describe("useHireOrderAction", () => {
       await result.current.mutateAsync({ action: "draft", org_id: "org-1", show_date_id: "d1" });
     });
 
-    expect(toast.info).toHaveBeenCalledWith("No bookings need hire orders");
+    expect(toast.info).toHaveBeenCalledWith("No bookings need contracts");
     expect(toast.success).not.toHaveBeenCalled();
     expect(toast.error).not.toHaveBeenCalled();
   });
@@ -268,7 +268,7 @@ describe("useHireOrderAction", () => {
       });
     });
 
-    expect(toast.success).toHaveBeenCalledWith("Drafted 2 hire orders");
+    expect(toast.success).toHaveBeenCalledWith("Drafted 2 contracts");
     expect(toast.warning).toHaveBeenCalledWith("1 artist skipped: already ordered");
     expect(toast.error).toHaveBeenCalledWith("1 artist failed: artist not found");
   });
@@ -290,7 +290,7 @@ describe("useHireOrderAction", () => {
       await result.current.mutateAsync({ action: "draft-batch", org_id: "org-1", artists: [], manual: {} });
     });
 
-    expect(toast.success).toHaveBeenCalledWith("Drafted 1 hire order");
+    expect(toast.success).toHaveBeenCalledWith("Drafted 1 contract");
     expect(toast.warning).toHaveBeenCalledWith("3 dates already had an order and were left out");
   });
 
@@ -320,7 +320,7 @@ describe("useHireOrderAction", () => {
       await result.current.mutateAsync({ action: "resend", org_id: "org-1", order_id: "ho-1" });
     });
 
-    expect(toast.success).toHaveBeenCalledWith("Hire order resent");
+    expect(toast.success).toHaveBeenCalledWith("Contract resent");
   });
 
   it("toasts issued and failed counts separately for issue, with friendly copy for missing_terms", async () => {
@@ -335,9 +335,9 @@ describe("useHireOrderAction", () => {
       await result.current.mutateAsync({ action: "issue", org_id: "org-1", order_ids: ["ho-1", "ho-2"] });
     });
 
-    expect(toast.success).toHaveBeenCalledWith("Issued 1 hire order");
+    expect(toast.success).toHaveBeenCalledWith("Issued 1 contract");
     expect(toast.error).toHaveBeenCalledWith(
-      "1 hire order failed to issue: Add terms in Settings before issuing",
+      "1 contract failed to issue: Add terms in Settings before issuing",
     );
   });
 
@@ -358,7 +358,7 @@ describe("useHireOrderAction", () => {
     });
 
     expect(toast.error).toHaveBeenCalledWith(
-      "3 hire orders failed to issue: Set an engagement fee before issuing, Add a recipient email before issuing, some_unmapped_code",
+      "3 contracts failed to issue: Set an engagement fee before issuing, Add a recipient email before issuing, some_unmapped_code",
     );
   });
 
@@ -374,8 +374,8 @@ describe("useHireOrderAction", () => {
       await result.current.mutateAsync({ action: "issue", org_id: "org-1", order_ids: ["ho-1"] });
     });
 
-    expect(toast.success).toHaveBeenCalledWith("Issued 1 hire order");
-    expect(toast.warning).toHaveBeenCalledWith("1 hire order issued, but countersign delivery failed");
+    expect(toast.success).toHaveBeenCalledWith("Issued 1 contract");
+    expect(toast.warning).toHaveBeenCalledWith("1 contract issued, but countersign delivery failed");
     // The order counts toward "Issued 1" only -- it must not also read as a
     // failure, which would contradict the success toast right above it.
     expect(toast.error).not.toHaveBeenCalled();
@@ -396,13 +396,13 @@ describe("useHireOrderAction", () => {
       await result.current.mutateAsync({ action: "issue", org_id: "org-1", order_ids: ["ho-1", "ho-2"] });
     });
 
-    expect(toast.success).toHaveBeenCalledWith("Issued 1 hire order");
+    expect(toast.success).toHaveBeenCalledWith("Issued 1 contract");
     // Only the genuinely-failed order (ho-2) counts toward "failed to issue" --
     // the documenso_failed order (ho-1) does not inflate this count.
     expect(toast.error).toHaveBeenCalledWith(
-      "1 hire order failed to issue: Add terms in Settings before issuing",
+      "1 contract failed to issue: Add terms in Settings before issuing",
     );
-    expect(toast.warning).toHaveBeenCalledWith("1 hire order issued, but countersign delivery failed");
+    expect(toast.warning).toHaveBeenCalledWith("1 contract issued, but countersign delivery failed");
   });
 
   it("stays silent (no toast) for preview", async () => {
@@ -501,7 +501,7 @@ describe("useMarkCountersigned", () => {
     });
 
     expect(updateHireOrderStatus).toHaveBeenCalledWith(expect.anything(), "ho-1", "countersigned");
-    expect(toast.success).toHaveBeenCalledWith("Hire order marked as countersigned");
+    expect(toast.success).toHaveBeenCalledWith("Contract marked as countersigned");
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["hire-orders"] });
   });
 
@@ -565,7 +565,7 @@ describe("useVoidHireOrder", () => {
     });
 
     expect(updateHireOrderStatus).toHaveBeenCalledWith(expect.anything(), "ho-1", "void");
-    expect(toast.success).toHaveBeenCalledWith("Hire order voided");
+    expect(toast.success).toHaveBeenCalledWith("Contract voided");
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["hire-orders"] });
   });
 

@@ -272,7 +272,7 @@ export function RunOfShowRail() {
           <AlertDialogHeader>
             <AlertDialogTitle>Switch demo volume?</AlertDialogTitle>
             <AlertDialogDescription>
-              This reseeds the demo data at the {pendingVolume === "small" ? "small" : "full"} volume. Bookings, cues, and hire orders from this run are cleared. Your scene position and prospect stay. This cannot be undone.
+              This reseeds the demo data at the {pendingVolume === "small" ? "small" : "full"} volume. Bookings, cues, and contracts from this run are cleared. Your scene position and prospect stay. This cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -107,11 +107,11 @@ describe("BookingFlowTab", () => {
 
   it("shows the resulting lifecycle chips in the rail", () => {
     renderWithProviders(<Harness />);
-    // "Offered"/"Soft booked" also appear as timeline step badges, so scope the
-    // assertion to the rail's Resulting lifecycle card to keep it unambiguous.
+    // "Asked"/"Said yes, waiting on you" also appear as timeline step badges, so scope
+    // the assertion to the rail's Resulting lifecycle card to keep it unambiguous.
     const lifecycle = screen.getByText("Resulting lifecycle").parentElement as HTMLElement;
-    expect(within(lifecycle).getByText("Offered")).toBeInTheDocument();
-    expect(within(lifecycle).getByText("Soft booked")).toBeInTheDocument();
+    expect(within(lifecycle).getByText("Asked")).toBeInTheDocument();
+    expect(within(lifecycle).getByText("Said yes, waiting on you")).toBeInTheDocument();
   });
 
   // Regression: normalizeBookingFlow forces producer_confirmation on whenever

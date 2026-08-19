@@ -52,7 +52,7 @@ const producer: MiniSteps = [
 export const hireOrdersMini: MiniDef = {
   page: 'hireOrders',
   route: ROUTES.HIRE_ORDERS,
-  eyebrow: { en: 'How hire orders work', de: 'Wie Engagementverträge funktionieren' },
+  eyebrow: { en: 'How contracts work', de: 'Wie Engagementverträge funktionieren' },
   subnote: {
     en: 'Numbering and defaults from Settings · Hire orders',
     de: 'Nummerierung und Vorgaben aus Einstellungen · Engagementverträge',

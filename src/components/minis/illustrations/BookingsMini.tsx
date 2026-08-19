@@ -8,27 +8,27 @@ import { Badge, MiniCard, MiniWell, MiniRow, MiniAvatar, MiniCheck, MiniMeter, M
  * these illustrations are role-invariant.
  */
 export const bookingsArt: readonly [ReactNode, ReactNode, ReactNode, ReactNode] = [
-  // 01 Tier opens — offers go out to the tier
+  // 01 Tier opens — asks go out to the tier
   <MiniCard key="b1">
-    <MiniWell label="Tier 1 · Berlin Principal" trailing="6 offers" />
+    <MiniWell label="Tier 1 · Berlin Principal" trailing="6 asks" />
     <MiniRow
       avatar={<MiniAvatar initials="IV" tone="bg-accent-500" />}
       name="Ines Vermeer"
-      trailing={<Badge variant="hold" dot>Offer pending</Badge>}
+      trailing={<Badge variant="hold" dot>Asked</Badge>}
     />
     <MiniRow
       avatar={<MiniAvatar initials="PJ" tone="bg-accent-600" />}
       name="Pavel Janák"
-      trailing={<Badge variant="hold" dot>Offer pending</Badge>}
+      trailing={<Badge variant="hold" dot>Asked</Badge>}
     />
   </MiniCard>,
 
-  // 02 Artist responds — the offer window, accept or decline
+  // 02 Artist responds — the ask window, accept or decline
   <MiniCard key="b2">
     <div className="flex items-center gap-2">
       <span className="text-[12px] font-semibold text-foreground">July</span>
       <span className="flex-1" />
-      <Badge variant="accent" dot>Offer · Jul 24</Badge>
+      <Badge variant="accent" dot>Ask · Jul 24</Badge>
     </div>
     <MiniWeek
       days={[
@@ -53,21 +53,21 @@ export const bookingsArt: readonly [ReactNode, ReactNode, ReactNode, ReactNode] 
       avatar={<MiniAvatar initials="TB" tone="bg-accent-700" />}
       name="Theo Brandt"
       sub="Accepted · Jul 24"
-      trailing={<Badge variant="hold">Soft-booked</Badge>}
+      trailing={<Badge variant="hold">Said yes</Badge>}
     />
     <MiniRow
       avatar={<MiniAvatar initials="NR" tone="bg-accent-500" />}
       name="Nadia Raab"
       sub="Accepted · Jul 24"
-      trailing={<Badge variant="confirmed">Confirmed</Badge>}
+      trailing={<Badge variant="confirmed">Booked</Badge>}
     />
-    <MiniButton primary>Confirm selected</MiniButton>
+    <MiniButton primary>Book selected</MiniButton>
   </MiniCard>,
 
-  // 04 Fully filled — slots met, hire orders drafted
+  // 04 Fully filled — places met, contracts drafted
   <MiniCard key="b4">
     <MiniMeter pct={100} label="4/4 main" />
     <MiniMeter pct={50} label="1/2 understudy" />
-    <MiniWell icon={<MiniCheck />} label="Hire orders" trailing="4 drafted" />
+    <MiniWell icon={<MiniCheck />} label="Contracts" trailing="4 drafted" />
   </MiniCard>,
 ];

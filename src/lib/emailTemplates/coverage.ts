@@ -94,7 +94,7 @@ export const EMAIL_TEMPLATE_COVERAGE: readonly EmailTemplateCoverage[] = [
   },
   {
     key: "hire-order-issued",
-    displayName: "Hire order issued",
+    displayName: "Contract issued",
     group: "Hire orders",
     family: "pine",
     trigger: "Producer issues an order (generate-hire-orders)",
@@ -104,7 +104,7 @@ export const EMAIL_TEMPLATE_COVERAGE: readonly EmailTemplateCoverage[] = [
   },
   {
     key: "hire-order-countersigned",
-    displayName: "Hire order countersigned",
+    displayName: "Contract countersigned",
     group: "Hire orders",
     family: "steel",
     trigger: "Order countersigned (generate-hire-orders)",

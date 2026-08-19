@@ -81,14 +81,14 @@ function primaryRoleForOrg(memberships: Membership[], orgId: string): AppRole | 
 /**
  * What to expect right after landing on the dashboard, by role AND by the joined org's
  * booking flow. A single flattened line per role ("Your dashboard shows what happens
- * next") made no claim at all: on an org that runs an offer pipeline it read as filler
- * beside "Go to dashboard", one line below "Offers arrive by email and land on this
+ * next") made no claim at all: on an org that runs an ask pipeline it read as filler
+ * beside "Go to dashboard", one line below "Asks arrive by email and land on this
  * page." on that same dashboard's own first-run rail (firstRun.ts's welcomeCopy, which
  * branches this exact distinction on ctx.artistAcceptance for the same reason).
  *
  * `offers` = the booking_flow module is entitled, the org's flow preset is active, and
- * artist_acceptance is on (the org opens offer tiers). `direct` = entitled and active
- * but artist_acceptance is off (bookings go straight to soft_booked, no offer step).
+ * artist_acceptance is on (the org sends asks). `direct` = entitled and active
+ * but artist_acceptance is off (bookings go straight to soft_booked, no ask step).
  * `off` = the module is not entitled for this org, OR its flow preset is paused, OR the
  * flow has not loaded yet. Deliberately the safe fallback in all three cases: it names
  * no pipeline, so it can never assert something this org does not do.
@@ -133,7 +133,7 @@ export function resolveBoardHandoffState(model: GetRunningModel): BoardHandoffSt
 // eslint-disable-next-line react-refresh/only-export-components
 export const NEXT_STEP_LINES: Record<AppRole, Record<BookingRunState, string>> = {
   admin: {
-    offers: 'Your dashboard has a short setup list that gets your first offers out.',
+    offers: 'Your dashboard has a short setup list that gets your first asks out.',
     direct: 'Your dashboard has a short setup list that gets your first date booked.',
     off: 'Your dashboard shows what this workspace needs from you next.',
   },
@@ -141,12 +141,12 @@ export const NEXT_STEP_LINES: Record<AppRole, Record<BookingRunState, string>> =
     // Reached only for a nothing-on org (bookingState 'off'); the offers/direct entries
     // stay as data so resolveNextStepLine remains a total resolver, but an org with the
     // booking module on now shows the board summary instead of any producer line.
-    offers: 'Dates and offers land on your dashboard, and confirmations are handled by an admin.',
+    offers: 'Dates and asks land on your dashboard, and confirmations are handled by an admin.',
     direct: 'Bookings waiting on your confirmation land on your dashboard.',
     off: 'Your dashboard shows what is waiting on you.',
   },
   artist: {
-    offers: 'Offers arrive by email and land on your dashboard.',
+    offers: 'Asks arrive by email and land on your dashboard.',
     direct: 'Your producer books you directly, and confirmed dates land on your dashboard.',
     off: 'Your dashboard shows what is next for you.',
   },
@@ -161,7 +161,7 @@ export const NEXT_STEP_LINES: Record<AppRole, Record<BookingRunState, string>> =
  * cannot yet act on.
  */
 export const ARTIST_NOT_LINKED_NEXT_STEP_LINE =
-  'Once an admin links your artist profile, offers and bookings will start landing on your dashboard.';
+  'Once an admin links your artist profile, asks and bookings will start landing on your dashboard.';
 
 /**
  * The one next-step sentence for the non-board path: artists (all booking states), and

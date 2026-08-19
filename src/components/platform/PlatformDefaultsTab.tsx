@@ -310,10 +310,10 @@ function HireOrderTermsLibraryCard() {
 
   return (
     <Card>
-      <CardHeader><CardTitle className="font-display">Hire order terms library</CardTitle></CardHeader>
+      <CardHeader><CardTitle className="font-display">Contract terms library</CardTitle></CardHeader>
       <CardContent className="space-y-4">
         <p className="text-sm text-muted-foreground">
-          Templates an organization can add to its own hire-order terms in one click. Organizations get a copy they
+          Templates an organization can add to its own contract terms in one click. Organizations get a copy they
           own, so changes here never alter terms already in use. Shape:{" "}
           <code>{`[{ "id": "...", "name": "...", "clauses": [{ "title": "...", "body": "..." }] }]`}</code>
         </p>

@@ -22,7 +22,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 const TEMPLATE_LABELS: Record<BookingTemplateName, string> = {
   classic: "Classic",
-  fasttrack: "Fast-track",
+  fasttrack: "Autopilot",
   direct: "Direct book",
   off: "Off",
 };
@@ -42,7 +42,7 @@ function timingValidationError(templates: BookingFlowTemplates): string | null {
     || times.confirmationDigestHour < 0
     || times.confirmationDigestHour > 23
   )) {
-    return "Digest hours must be between 0 and 23.";
+    return "Daily send hours must be between 0 and 23.";
   }
   return null;
 }
@@ -103,7 +103,7 @@ export function BookingTemplatesDefaultsCard() {
           })}
           onTimesChange={(patch) => update({ times: { ...definition.times, ...patch } })}
           customFields={[]}
-          referencePreview="Offer: Candlelight · Apr 30, Berlin"
+          referencePreview="Ask: Candlelight · Apr 30, Berlin"
           allowCustomReference={false}
         />
         {validationError && (

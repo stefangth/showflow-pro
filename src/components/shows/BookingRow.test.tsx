@@ -26,14 +26,14 @@ describe('BookingRow', () => {
       <BookingRow booking={makeBooking({ status: 'soft_booked' })} canManage={false} showConfirm onConfirm={vi.fn()} onCancel={vi.fn()} />,
     );
     expect(screen.getByText('Jane Doe')).toBeInTheDocument();
-    expect(screen.getByText('Soft-booked')).toBeInTheDocument();
+    expect(screen.getByText('Said yes, waiting on you')).toBeInTheDocument();
   });
 
-  it('labels a suggested booking "Offered", never the raw enum', () => {
+  it('labels a suggested booking "Asked", never the raw enum', () => {
     render(
       <BookingRow booking={makeBooking({ status: 'suggested' })} canManage={false} showConfirm onConfirm={vi.fn()} onCancel={vi.fn()} />,
     );
-    expect(screen.getByText('Offered')).toBeInTheDocument();
+    expect(screen.getByText('Asked')).toBeInTheDocument();
     expect(screen.queryByText('suggested')).not.toBeInTheDocument();
   });
 
@@ -62,15 +62,16 @@ describe('BookingRow', () => {
     expect(onCancel).toHaveBeenCalledWith(booking.id);
   });
 
-  // P3.3: the module-off Soft-booked badge means the same thing as the cockpit's Accepted
-  // badge — accepted, held, not booked until confirmed — so it carries the same tooltip.
-  it('carries the soft-booked meaning as a tooltip on the Soft-booked badge', async () => {
+  // P3.3: the module-off "Said yes, waiting on you" badge means the same thing as the
+  // cockpit's Accepted badge — accepted, held, not booked until confirmed — so it carries
+  // the same tooltip.
+  it('carries the soft-booked meaning as a tooltip on the "Said yes, waiting on you" badge', async () => {
     render(
       <TooltipProvider delayDuration={0}>
         <BookingRow booking={makeBooking({ status: 'soft_booked' })} canManage={false} showConfirm onConfirm={vi.fn()} onCancel={vi.fn()} />
       </TooltipProvider>,
     );
-    fireEvent.pointerMove(screen.getByText('Soft-booked'), { pointerType: 'mouse' });
+    fireEvent.pointerMove(screen.getByText('Said yes, waiting on you'), { pointerType: 'mouse' });
     expect(await screen.findAllByText(softBookedMeaning(i18n.getFixedT('en', 'bookingCopy')))).not.toHaveLength(0);
   });
 

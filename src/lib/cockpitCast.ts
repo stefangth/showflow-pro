@@ -43,7 +43,7 @@ function metaFor(b: CastBookingLike): string {
       : b.status === "soft_booked"
         ? "accepted"
         : b.status === "suggested"
-          ? "offer pending"
+          ? "asked"
           : bookingStatusDisplayLabel(b.status);
   return [tier, word].filter(Boolean).join(" · ");
 }
@@ -107,8 +107,8 @@ export function buildCastGroups(
         id: `${isUnderstudy ? "us" : "main"}-open-${i}`,
         open: true,
         // `pending` is a group total, so annotate only the first open row —
-        // repeating "N offers pending" on every open slot reads as N-per-slot.
-        meta: i === 0 && pending > 0 ? `${pending} ${pending === 1 ? "offer" : "offers"} pending` : "No booking yet",
+        // repeating "N asks waiting" on every open slot reads as N-per-slot.
+        meta: i === 0 && pending > 0 ? `${pending} ${pending === 1 ? "ask" : "asks"} waiting` : "No booking yet",
         slotActionLabel: opts.canOpenSlot ? opts.slotActionLabel : undefined,
         onSlotAction: opts.onOpenSlot,
       });

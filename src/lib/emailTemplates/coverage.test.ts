@@ -30,8 +30,8 @@ describe("EMAIL_TEMPLATE_COVERAGE", () => {
       expect.objectContaining({ key: "artist-confirmation-digest", displayName: "Artist confirmation digest", group: "Booking engine", family: "violet", recipient: "Newly confirmed artists" }),
       expect.objectContaining({ key: "cast-escalation-requested", displayName: "Cast escalation requested", group: "Booking engine", family: "ember", recipient: "Producers" }),
       expect.objectContaining({ key: "tier-at-risk", displayName: "Tier at risk", group: "Booking engine", family: "ember", recipient: "Producers" }),
-      expect.objectContaining({ key: "hire-order-issued", displayName: "Hire order issued", group: "Hire orders", family: "pine", recipient: "Artist (PDF attached)" }),
-      expect.objectContaining({ key: "hire-order-countersigned", displayName: "Hire order countersigned", group: "Hire orders", family: "steel", recipient: "Producer + artist" }),
+      expect.objectContaining({ key: "hire-order-issued", displayName: "Contract issued", group: "Hire orders", family: "pine", recipient: "Artist (PDF attached)" }),
+      expect.objectContaining({ key: "hire-order-countersigned", displayName: "Contract countersigned", group: "Hire orders", family: "steel", recipient: "Producer + artist" }),
       expect.objectContaining({ key: "org-invitation", displayName: "Organization invitation", group: "Accounts & access", family: "violet", recipient: "The invitee" }),
       expect.objectContaining({ key: "account-email-changed", displayName: "Account email changed", group: "Accounts & access", family: "steel", recipient: "The user (security)" }),
     ]);

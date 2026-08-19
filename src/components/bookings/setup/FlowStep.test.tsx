@@ -47,8 +47,8 @@ describe("FlowStep", () => {
     expect(await screen.findByText("Classic")).toBeInTheDocument();
     expect(screen.getByText("Autopilot")).toBeInTheDocument();
     expect(screen.getByText("Direct book")).toBeInTheDocument();
-    // Classic lifecycle chips: Offered / Soft booked / Confirmed
-    expect(screen.getByText("Soft booked")).toBeInTheDocument();
+    // Classic lifecycle chips: Asked / Said yes, waiting on you / Booked
+    expect(screen.getByText("Said yes, waiting on you")).toBeInTheDocument();
   });
 
   // Like TimingStep, this step had no loading gate: `base` fell back to
