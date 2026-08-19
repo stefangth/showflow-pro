@@ -78,19 +78,19 @@ describe("AvailabilityPage — ?lens= deep link (Task 18)", () => {
     renderAt("/availability?lens=all-dates");
     expect(await screen.findByTestId("calendar-surface")).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "All dates" })).toHaveAttribute("aria-selected", "true");
-    expect(screen.getByRole("tab", { name: "Offers" })).toHaveAttribute("aria-selected", "false");
+    expect(screen.getByRole("tab", { name: "Asks" })).toHaveAttribute("aria-selected", "false");
   });
 
   it("an unrecognised ?lens= value is ignored, keeping the Offers default", async () => {
     renderAt("/availability?lens=bogus");
     expect(await screen.findByTestId("calendar-surface")).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Offers" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tab", { name: "Asks" })).toHaveAttribute("aria-selected", "true");
   });
 
   it("?filter=unanswered (the dashboard deep link) lands on the Offers lens", async () => {
     renderAt("/availability?filter=unanswered");
     expect(await screen.findByTestId("calendar-surface")).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Offers" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tab", { name: "Asks" })).toHaveAttribute("aria-selected", "true");
   });
 
   it("an explicit ?lens= wins over ?filter=unanswered when both are present", async () => {
