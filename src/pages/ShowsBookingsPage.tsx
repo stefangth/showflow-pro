@@ -215,6 +215,14 @@ function ProducerShowsBookings() {
     if (lensParam === 'needs-you' || lensParam === 'month' || lensParam === 'week' || lensParam === 'season' || lensParam === 'agenda') {
       setLens(lensParam);
     }
+    // `?date=<show_date_id>` deep-links straight into the detail sheet (e.g. the
+    // Today board's "Open the date" / "Read it first" CTAs). `?tab=offers` lands
+    // it on the Offers tab, mirroring the in-page "Open casting" action.
+    const dateParam = searchParams.get('date');
+    if (dateParam) {
+      if (searchParams.get('tab') === 'offers') setSheetInitialTab('offers');
+      setActiveShowDateId(dateParam);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -469,6 +477,16 @@ function ProducerShowsBookings() {
     setSearchParams(next, { replace: true });
   };
 
+  // Strip the `?date=`/`?tab=` deep-link params when the sheet closes so an
+  // in-tab reload doesn't reopen a date the user has already dismissed.
+  const clearDeepLinkParams = () => {
+    if (!searchParams.has('date') && !searchParams.has('tab')) return;
+    const next = new URLSearchParams(searchParams);
+    next.delete('date');
+    next.delete('tab');
+    setSearchParams(next, { replace: true });
+  };
+
   const updateLens = (key: string) => {
     setLens(key as 'needs-you' | 'month' | 'week' | 'season' | 'agenda');
     const next = new URLSearchParams(searchParams);
@@ -600,7 +618,7 @@ function ProducerShowsBookings() {
       <ShowDateDetailSheet
         showDateId={activeShowDateId}
         open={!!activeShowDateId}
-        onOpenChange={o => { if (!o) setActiveShowDateId(null); }}
+        onOpenChange={o => { if (!o) { setActiveShowDateId(null); clearDeepLinkParams(); } }}
         pager={sheetPager}
         initialTab={sheetInitialTab}
       />
