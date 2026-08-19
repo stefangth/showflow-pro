@@ -24,37 +24,37 @@ const digestOff = { ...classic, confirmation_digest: false };
 describe("confirmConsequenceNote", () => {
   it("states the app-and-digest consequence when the flow is active with the confirmation digest on", () => {
     expect(confirmConsequenceNote(classic, 19, true, t)).toBe(
-      "Confirm places the booking. The artist sees it in the app right away. The confirmation email goes out in the daily summary at 19:00h (Berlin, Germany).",
+      "Book gives them the place. The artist sees it in the app right away. The booking email goes out in the daily send at 19:00h (Berlin, Germany).",
     );
   });
 
   it("zero-pads a single-digit hour the same way scheduleChangeNote does", () => {
     expect(confirmConsequenceNote(classic, 7, true, t)).toBe(
-      "Confirm places the booking. The artist sees it in the app right away. The confirmation email goes out in the daily summary at 07:00h (Berlin, Germany).",
+      "Book gives them the place. The artist sees it in the app right away. The booking email goes out in the daily send at 07:00h (Berlin, Germany).",
     );
   });
 
   it("drops the email clause when the confirmation digest is off", () => {
     expect(confirmConsequenceNote(digestOff, 19, true, t)).toBe(
-      "Confirm places the booking and notifies the artist in the app right away.",
+      "Book gives them the place and notifies the artist in the app right away.",
     );
   });
 
   it("states only the bare consequence when the flow is paused", () => {
-    expect(confirmConsequenceNote(off, 19, true, t)).toBe("Confirm places the booking.");
+    expect(confirmConsequenceNote(off, 19, true, t)).toBe("Book gives them the place.");
     expect(off.active).toBe(false);
   });
 
   it("states only the bare consequence when the flow is unread", () => {
-    expect(confirmConsequenceNote(null, 19, true, t)).toBe("Confirm places the booking.");
-    expect(confirmConsequenceNote(undefined, 19, true, t)).toBe("Confirm places the booking.");
+    expect(confirmConsequenceNote(null, 19, true, t)).toBe("Book gives them the place.");
+    expect(confirmConsequenceNote(undefined, 19, true, t)).toBe("Book gives them the place.");
   });
 
   it("states only the bare consequence when the org has no booking_flow entitlement, even with the flow active and the confirmation digest on", () => {
     // Same bug class as cancelBookingCopy's who-hears line: a super-admin viewing an org
     // without the booking_flow entitlement must not see a promise about an email that
     // send-confirmation-digest (entitlement-gated) will never send.
-    expect(confirmConsequenceNote(classic, 19, false, t)).toBe("Confirm places the booking.");
+    expect(confirmConsequenceNote(classic, 19, false, t)).toBe("Book gives them the place.");
   });
 });
 
@@ -81,7 +81,7 @@ describe("cancelBookingCopy", () => {
       t,
     });
     expect(copy.understudyLine).toBe(
-      "If Ada Lovelace is in the main cast, the longest waiting accepted understudy is promoted automatically.",
+      "If Ada Lovelace is in the main cast, the understudy who has been waiting longest and said yes moves up automatically.",
     );
   });
 
@@ -150,20 +150,20 @@ describe("cancelBookingCopy", () => {
 describe("acceptConsequenceNote", () => {
   it("hold-then-confirm flow tells the artist a hold is placed", () => {
     expect(acceptConsequenceNote({ producer_confirmation: true }, t)).toEqual({
-      title: "Offer accepted",
-      description: "Hold placed. Your producer confirms next.",
+      title: "Said yes",
+      description: "You said yes. Your producer has the last word next.",
     });
   });
 
   it("auto-confirm flow tells the artist they are booked", () => {
     expect(acceptConsequenceNote({ producer_confirmation: false }, t)).toEqual({
-      title: "Offer accepted. You're booked.",
+      title: "Said yes. You're booked.",
     });
   });
 
   it("defaults to hold-then-confirm when the flow is unknown", () => {
-    expect(acceptConsequenceNote(null, t).description).toBe("Hold placed. Your producer confirms next.");
-    expect(acceptConsequenceNote(undefined, t).description).toBe("Hold placed. Your producer confirms next.");
+    expect(acceptConsequenceNote(null, t).description).toBe("You said yes. Your producer has the last word next.");
+    expect(acceptConsequenceNote(undefined, t).description).toBe("You said yes. Your producer has the last word next.");
   });
 });
 
@@ -177,12 +177,12 @@ describe("unrestrictedEligibilityNote", () => {
 
 describe("fixed copy constants", () => {
   it("state the shipped strings exactly", () => {
-    expect(SOFT_BOOKED_MEANING).toBe("Accepted the offer. Held for you, not booked, until you confirm.");
+    expect(SOFT_BOOKED_MEANING).toBe("Said yes, waiting on you. Not booked until you book it.");
     expect(TIER_CONCEPT_NOTE).toBe(
-      "Tiers are your casts in priority order. Offers open with tier 1. If it cannot fill, you open the next tier.",
+      "Casts are asked in priority order. Asking starts with the first round. If it can't fill the date, you open the next round.",
     );
     expect(DATE_SOURCE_NOTE).toBe(
-      "You can add a show date by hand here. If your workspace syncs from Airtable, those dates keep updating on their own, and a date you add here is not changed by a sync.",
+      "You can add a date by hand here. If your workspace syncs from Airtable, those dates keep updating on their own, and a date you add here is not changed by a sync.",
     );
   });
 });

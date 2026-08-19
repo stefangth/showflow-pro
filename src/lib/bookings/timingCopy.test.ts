@@ -79,7 +79,7 @@ describe("describeTonight", () => {
   it("renders for an immediate-delivery org even while the offer-hour field is empty", () => {
     // The sentence never states that hour, so a mid-edit NaN there cannot make it wrong.
     expect(describeTonight({ ...times, offerDigestHour: Number.NaN }, immediateFlow, tt)).toContain(
-      "offers email straight away",
+      "asks email straight away",
     );
   });
 
