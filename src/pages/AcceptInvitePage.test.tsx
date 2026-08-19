@@ -651,7 +651,7 @@ describe("AcceptInvitePage success screen", () => {
       acceptInvitationMock.mockResolvedValueOnce({ orgId: org1.id, artistLinked: true });
       renderAt(`${ROUTES.ACCEPT_INVITE}?token=abc123`);
       expect(await screen.findByTestId("board-handoff-summary")).toHaveTextContent(
-        "2 tasks stand between this workspace and its first offer",
+        "2 tasks stand between this workspace and its first ask",
       );
       expect(screen.getByTestId("board-handoff-summary")).toHaveTextContent("About 6 minutes.");
       fireEvent.click(screen.getByRole("button", { name: "Open Get running" }));
@@ -663,7 +663,7 @@ describe("AcceptInvitePage success screen", () => {
       authState.memberships = [membershipFor("producer")];
       acceptInvitationMock.mockResolvedValueOnce({ orgId: org1.id, artistLinked: true });
       renderAt(`${ROUTES.ACCEPT_INVITE}?token=abc123`);
-      expect(await screen.findByText("This workspace can send its first offer")).toBeInTheDocument();
+      expect(await screen.findByText("This workspace can send its first ask")).toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Open Get running" })).toBeInTheDocument();
     });
 
