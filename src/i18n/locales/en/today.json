@@ -80,7 +80,6 @@
     "producer": {
       "title": "Autopilot on",
       "body": "Asks go out at {{time}}. A yes becomes a booking. Contracts draft when a date fills.",
-      "bodyConfirm": "Asks go out at {{time}}. A yes waits for your confirm before it books. Contracts draft when a date fills.",
       "link": "Take it off autopilot"
     },
     "artist": {
