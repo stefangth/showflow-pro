@@ -81,7 +81,7 @@ describe("ArtistDashboard hire-orders card (Task 14)", () => {
 
     renderWithProviders(<ArtistDashboard />);
 
-    expect(await screen.findByText("Your hire orders")).toBeInTheDocument();
+    expect(await screen.findByText("Your contracts")).toBeInTheDocument();
     // The card now renders as soon as the module is on (Task 7's zero-state), independent
     // of myHireOrders resolving, so the order row itself needs an async query rather than
     // assuming it is already in the DOM alongside the card header.
@@ -103,11 +103,11 @@ describe("ArtistDashboard hire-orders card (Task 14)", () => {
 
     renderWithProviders(<ArtistDashboard />);
 
-    expect(await screen.findByText("Your hire orders")).toBeInTheDocument();
+    expect(await screen.findByText("Your contracts")).toBeInTheDocument();
     // The zero-state now renders only after the query resolves (not while loading /
     // on error), so wait for it rather than asserting synchronously.
     expect(
-      await screen.findByText(/your booking paperwork shows up here/i),
+      await screen.findByText(/your contracts show up here/i),
     ).toBeInTheDocument();
     // No em/en dashes in the zero-state copy.
     expect(document.body.textContent).not.toMatch(/[—–]/);
@@ -123,8 +123,8 @@ describe("ArtistDashboard hire-orders card (Task 14)", () => {
     renderWithProviders(<ArtistDashboard />);
 
     await screen.findByText("Dashboard");
-    expect(screen.queryByText("Your hire orders")).not.toBeInTheDocument();
-    expect(screen.queryByText(/your booking paperwork/i)).not.toBeInTheDocument();
+    expect(screen.queryByText("Your contracts")).not.toBeInTheDocument();
+    expect(screen.queryByText(/your contracts show up here/i)).not.toBeInTheDocument();
   });
 
   it("tints a hire-order row whose snapshotted date is in the past (Plan B Task 2), leaves a future one untinted", async () => {

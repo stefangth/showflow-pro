@@ -159,7 +159,7 @@ describe('DayRail', () => {
     expect(screen.queryByTestId('day-rail-primary')).not.toBeInTheDocument();
   });
 
-  it('artist: shows "Accept offer" as primary when myStatus is suggested and fires onPrimary', () => {
+  it('artist: shows "Answer the ask" as primary when myStatus is suggested and fires onPrimary', () => {
     const onPrimary = vi.fn();
     render(
       <DayRail
@@ -172,7 +172,7 @@ describe('DayRail', () => {
       />
     );
     const btn = screen.getByTestId('day-rail-primary');
-    expect(btn).toHaveTextContent('Accept offer');
+    expect(btn).toHaveTextContent('Answer the ask');
     fireEvent.click(btn);
     expect(onPrimary).toHaveBeenCalledTimes(1);
   });

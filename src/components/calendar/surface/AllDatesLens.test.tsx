@@ -41,7 +41,7 @@ describe('AllDatesLens', () => {
 
     const link = screen.getByTestId('all-dates-link-ad-1');
     expect(link).toHaveAttribute('href', '/hire-orders/ho-9');
-    expect(link).toHaveTextContent('Hire order');
+    expect(link).toHaveTextContent('Contract');
     expect(screen.queryByTestId('all-dates-block-ad-1')).not.toBeInTheDocument();
   });
 

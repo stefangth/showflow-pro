@@ -3,9 +3,9 @@
     "eyebrow": "{{org}} · Loslegen",
     "fallbackOrg": "deinen Arbeitsbereich",
     "headline": {
-      "blocking_one": "Eine Sache steht zwischen dir und deinem ersten Angebot",
-      "blocking_other": "{{count}} Dinge stehen zwischen dir und deinem ersten Angebot",
-      "ready": "Du bist bereit für dein erstes Angebot",
+      "blocking_one": "Eine Sache steht zwischen dir und deiner ersten Anfrage",
+      "blocking_other": "{{count}} Dinge stehen zwischen dir und deiner ersten Anfrage",
+      "ready": "Du bist bereit für deine erste Anfrage",
       "complete": "Hier ist alles eingerichtet",
       "producerYours_one": "Eine Aufgabe hier ist deine.",
       "producerYours_other": "{{count}} Aufgaben hier sind deine.",
@@ -17,21 +17,21 @@
     "body": {
       "blocking_one": "Das erledigst du, es dauert etwa {{minutes}} Minuten. Sonst blockiert hier nichts, und nichts hier hindert dich, den Rest der App zu nutzen.",
       "blocking_other": "Das erledigst du, es dauert etwa {{minutes}} Minuten. Sonst blockiert hier nichts, und nichts hier hindert dich, den Rest der App zu nutzen.",
-      "ready": "Alles, was dein erstes Angebot blockiert, ist erledigt. Der Rest dieser Liste lohnt sich noch, hält dich aber nicht mehr auf.",
+      "ready": "Alles, was deine erste Anfrage blockiert, ist erledigt. Der Rest dieser Liste lohnt sich noch, hält dich aber nicht mehr auf.",
       "complete": "Jede Aufgabe hier ist erledigt. Schau jederzeit in den Einstellungen vorbei, falls sich etwas ändert.",
       "producer": "Das ist hier, damit du weißt, warum Shows und Bookings leer aussieht, nicht damit du alles davon lösen kannst."
     }
   },
   "nothingToSetUp": {
     "title": "Nichts einzurichten",
-    "body": "Für diesen Arbeitsbereich ist noch kein Modul eingeschaltet, das eine Einrichtung braucht. Schau vorbei, sobald die Booking Engine oder Engagementverträge eingeschaltet werden."
+    "body": "Für diesen Arbeitsbereich ist noch kein Modul eingeschaltet, das eine Einrichtung braucht. Schau vorbei, sobald die Booking Engine oder Verträge eingeschaltet werden."
   },
   "progress": {
     "title": "Einrichtung",
     "of": "von {{total}} erledigt",
     "module": {
       "booking": "Booking Engine",
-      "hireOrders": "Engagementverträge",
+      "hireOrders": "Verträge",
       "on": "An",
       "off": "Aus"
     },
@@ -50,7 +50,7 @@
       "title": "Buchbar machen",
       "status": {
         "complete": "Erledigt",
-        "blocking": "Blockiert dein erstes Angebot",
+        "blocking": "Blockiert deine erste Anfrage",
         "active": "Nichts blockiert",
         "dormant": "Noch nicht gestartet"
       }
@@ -62,7 +62,7 @@
         "active": "In Arbeit",
         "dormant": "Blockiert noch nichts"
       },
-      "note": "Wird vor dem ersten Engagementvertrag gebraucht",
+      "note": "Wird vor dem ersten Vertrag gebraucht",
       "doItNow": "Jetzt erledigen"
     },
     "counts": {
@@ -71,7 +71,7 @@
     }
   },
   "chips": {
-    "blocksOffers": "Blockiert Angebote",
+    "blocksOffers": "Blockiert Anfragen",
     "blocksBooking": "Blockiert Buchungen",
     "blocksIssuing": "Blockiert den Versand",
     "blocksFilling": "Hält die Vollbesetzung auf",
@@ -93,7 +93,7 @@
       "body": "Von einem Admin festgelegt. Wartet auf {{name}}.",
       "settingsLink": {
         "flow": "Booking Flow in den Einstellungen ändern (Booking Engine)",
-        "timing": "Angebotszeitpunkt in den Einstellungen ändern (Booking Engine)",
+        "timing": "Anfragezeitpunkt in den Einstellungen ändern (Booking Engine)",
         "ladder": "Besetzungen in den Einstellungen reihen (Besetzung und Abdeckung)",
         "eligibility": "Besetzungen in den Einstellungen verknüpfen (Besetzung und Abdeckung)"
       }
@@ -103,8 +103,8 @@
       "slots": "Werte · eine Zahl pro Show",
       "flow": "Wahl · legt den weiteren Ablauf fest",
       "people": "Besetzungsliste · blockiert Buchungen",
-      "ladder": "Prioritäten · blockiert Angebote",
-      "eligibility": "Abdeckung · blockiert Angebote",
+      "ladder": "Prioritäten · blockiert Anfragen",
+      "eligibility": "Abdeckung · blockiert Anfragen",
       "timing": "Werte · zwei Felder",
       "team": "Team · nur Admin",
       "letterhead": "Dokument · blockiert den Versand",
@@ -119,10 +119,10 @@
       "dates": "Sync läuft stündlich",
       "slots": "Wird automatisch gespeichert",
       "flow": "Änderung wird protokolliert",
-      "people": "Keine E-Mail, bevor du ein Datum anbietest",
+      "people": "Keine E-Mail, bevor du zu einem Datum anfragst",
       "ladder": "Reihenfolge ist pro Stadt",
       "eligibility": "Die eigene Besetzung einer Show schlägt die Stadtrangfolge",
-      "timing": "Gilt für die heutige Tagesübersicht",
+      "timing": "Gilt für die heutige tägliche Sendung",
       "team": "Sie erhalten eine E-Mail-Einladung",
       "letterhead": "Wird auf jedem Vertrag verwendet",
       "terms": "Wird auf jedem Vertrag verwendet",
@@ -141,14 +141,14 @@
         "setup": "Airtable Sync einrichten",
         "dividerOr": "oder von Hand hinzufügen",
         "newShow": "Neue Show",
-        "unlocks": "Jeder folgende Schritt liest aus diesen Terminen: Plätze, Rangfolge und Berechtigung.",
+        "unlocks": "Jeder folgende Schritt liest aus diesen Terminen: Plätze, Rangfolge und wer angefragt werden kann.",
         "airtableDialogTitle": "Airtable Sync"
       },
       "team": {
         "emailLabel": "Per E-Mail einladen",
         "emailPlaceholder": "name@firma.de",
         "send": "Einladung senden",
-        "unlocks": "Dein Production Team kann Bestätigungen übernehmen, sobald Angebote reinkommen."
+        "unlocks": "Dein Production Team kann Buchungen übernehmen, sobald Anfragen reinkommen."
       },
       "people": {
         "emptyBadge": "Noch keine Artists",
@@ -161,7 +161,7 @@
         "add": "Hinzufügen",
         "or": "oder",
         "importButton": "Tabelle importieren",
-        "unlocks": "Angebote und Direktbuchungen wählen beide aus dieser Liste. Artists bekommen keine E-Mail, bevor du ihnen ein Datum anbietest."
+        "unlocks": "Anfragen und Direktbuchungen wählen beide aus dieser Liste. Artists bekommen keine E-Mail, bevor du sie zu einem Datum anfragst."
       },
       "ladder": {
         "createLabel": "Neue Besetzung",
@@ -174,17 +174,17 @@
         "unrankedCount_other": "{{count}} ohne Rang",
         "dateCount_one": "{{count}} Termin",
         "dateCount_other": "{{count}} Termine",
-        "noTier1": "keine Stufe 1",
-        "pickTier1": "Stufe 1 wählen",
-        "addTierN": "Stufe {{n}} hinzufügen",
+        "noTier1": "keine erste Gruppe",
+        "pickTier1": "Erste Gruppe wählen",
+        "addTierN": "Gruppe {{n}} hinzufügen",
         "noCastsAvailable": "Noch keine Besetzungen",
         "memberCount_one": "{{count}} Mitglied",
         "memberCount_other": "{{count}} Mitglieder",
-        "unlocks_one": "Reihe auch {{city}} und {{count}} Termin wird in der heutigen Tagesübersicht anbietbar.",
-        "unlocks_other": "Reihe auch {{city}} und {{count}} Termine werden in der heutigen Tagesübersicht anbietbar.",
-        "unlocksDone": "Jede Stadt mit Terminen hat eine Stufe 1.",
-        "tierUpdated": "Stufe {{tier}} gesetzt",
-        "tierUpdateFailed": "Stufe {{tier}} konnte nicht gesetzt werden"
+        "unlocks_one": "Reihe auch {{city}} und {{count}} Termin wird in der heutigen täglichen Sendung anfragbar.",
+        "unlocks_other": "Reihe auch {{city}} und {{count}} Termine werden in der heutigen täglichen Sendung anfragbar.",
+        "unlocksDone": "Jede Stadt mit Terminen hat eine erste Gruppe.",
+        "tierUpdated": "Gruppe {{tier}} gesetzt",
+        "tierUpdateFailed": "Gruppe {{tier}} konnte nicht gesetzt werden"
       },
       "eligibility": {
         "gapCount_one": "{{count}} Lücke",
@@ -196,9 +196,9 @@
         "memberCount_one": "{{count}} Mitglied",
         "memberCount_other": "{{count}} Mitglieder",
         "nullCityNote": "Manche Termine haben keine Stadt gesetzt. Behebe das Datum, damit es eine Stadt hat.",
-        "unlocks_one": "Verknüpfe eine Besetzung mit {{show}} und {{count}} Termin wird anbietbar.",
-        "unlocks_other": "Verknüpfe eine Besetzung mit {{show}} und {{count}} Termine werden anbietbar.",
-        "unlocksDone": "Jede Show und Stadt hat eine Besetzung auf Stufe 1.",
+        "unlocks_one": "Verknüpfe eine Besetzung mit {{show}} und {{count}} Termin wird anfragbar.",
+        "unlocks_other": "Verknüpfe eine Besetzung mit {{show}} und {{count}} Termine werden anfragbar.",
+        "unlocksDone": "Jede Show und Stadt hat eine Besetzung in der ersten Gruppe.",
         "castLinked": "Besetzung verknüpft",
         "castLinkFailed": "Besetzung konnte nicht verknüpft werden",
         "byProduction": "Abdeckung nach Produktion",
@@ -224,7 +224,7 @@
     },
     "flow": {
       "title": "Booking Flow",
-      "description": "Angebote gehen stufenweise raus. Stufe 1 zuerst, spätere Stufen öffnen nur, wenn eine Stufe nicht reicht.",
+      "description": "Anfragen gehen gruppenweise raus. Die erste Gruppe zuerst, spätere Gruppen öffnen nur, wenn eine Gruppe nicht reicht.",
       "action": "Ändern"
     },
     "people": {
@@ -234,22 +234,22 @@
     },
     "ladder": {
       "title": "Deine Besetzungen reihen",
-      "description": "Besetzungsreihenfolge entscheidet, wer zuerst angefragt wird. Eine Stadt ohne Stufe 1 öffnet sich für niemanden.",
+      "description": "Besetzungsreihenfolge entscheidet, wer zuerst angefragt wird. Eine Stadt ohne erste Gruppe öffnet sich für niemanden.",
       "action": "Hier reihen"
     },
     "eligibility": {
-      "title": "Prüfen, wer berechtigt ist",
+      "title": "Prüfen, wer angefragt werden kann",
       "description": "Welche Besetzungen zu welcher Show in welcher Stadt gehören.",
       "action": "Öffnen"
     },
     "timing": {
-      "title": "Angebotszeitpunkt bestätigen",
-      "description": "Wann Angebote rausgehen und wie lange Artists zum Antworten haben.",
+      "title": "Anfragezeitpunkt bestätigen",
+      "description": "Wann Anfragen rausgehen und wie lange Artists zum Antworten haben.",
       "action": "Öffnen"
     },
     "team": {
       "title": "Dein Production Team einladen",
-      "description": "Die Producer, die Termine planen, Angebote versenden und Buchungen bestätigen. Bestätigen kann bei dir bleiben.",
+      "description": "Die Producer, die Termine planen, Anfragen versenden und die Besetzung buchen. Buchen kann bei dir bleiben.",
       "action": "Einladen"
     },
     "letterhead": {
@@ -287,7 +287,7 @@
   "reference": {
     "title": "Wie diese Organisation funktioniert",
     "intro": "Eine schreibgeschützte Übersicht der Regeln, die für diesen Arbeitsbereich gerade gelten.",
-    "emptyModules": "Weder die Booking Engine noch Engagementverträge sind für diesen Arbeitsbereich eingeschaltet.",
+    "emptyModules": "Weder die Booking Engine noch Verträge sind für diesen Arbeitsbereich eingeschaltet.",
     "provenance": {
       "withDate": "Festgelegt von {{name}}, {{date}}",
       "nameOnly": "Festgelegt von {{name}}"
@@ -297,8 +297,8 @@
         "label": "Booking Flow"
       },
       "offerTiming": {
-        "label": "Angebotszeitpunkt",
-        "value": "{{hour}} Tagesübersicht, {{hours}} Std Antwortfrist"
+        "label": "Anfragezeitpunkt",
+        "value": "{{hour}} tägliche Sendung, {{hours}} Std zum Antworten"
       },
       "castCoverage": {
         "label": "Besetzungsabdeckung",

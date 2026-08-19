@@ -85,14 +85,14 @@ describe("LadderPanelBody", () => {
     expect(await screen.findByText("Nord Ensemble")).toBeInTheDocument();
     expect(screen.getByText("Hamburg")).toBeInTheDocument();
     expect(screen.getByText("Leipzig")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /pick tier 1/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /pick the first group/i })).toBeInTheDocument();
   });
 
   it("writes cast_city_priority when a tier-1 cast is picked for an unranked city", async () => {
     const onDone = vi.fn();
     renderPanel(onDone);
 
-    const pickButton = await screen.findByRole("button", { name: /pick tier 1/i });
+    const pickButton = await screen.findByRole("button", { name: /pick the first group/i });
     fireEvent.click(pickButton);
 
     const option = await screen.findByRole("button", { name: /süd ensemble/i });
@@ -153,7 +153,7 @@ describe("LadderPanelBody", () => {
     );
 
     // Two unranked rows (Leipzig, Stuttgart) — pick the first, which is Leipzig's.
-    const pickButtons = await screen.findAllByRole("button", { name: /pick tier 1/i });
+    const pickButtons = await screen.findAllByRole("button", { name: /pick the first group/i });
     expect(pickButtons).toHaveLength(2);
     fireEvent.click(pickButtons[0]);
 
@@ -198,8 +198,8 @@ describe("LadderPanelBody", () => {
     );
 
     // Fully ranked: no "Pick tier 1" affordance anywhere, only "Add tier 2".
-    expect(screen.queryByRole("button", { name: /pick tier 1/i })).not.toBeInTheDocument();
-    const addTierButtons = await screen.findAllByRole("button", { name: /add tier 2/i });
+    expect(screen.queryByRole("button", { name: /pick the first group/i })).not.toBeInTheDocument();
+    const addTierButtons = await screen.findAllByRole("button", { name: /add group 2/i });
     fireEvent.click(addTierButtons[0]);
 
     const option = await screen.findByRole("button", { name: /süd ensemble/i });

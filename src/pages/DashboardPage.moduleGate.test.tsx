@@ -96,7 +96,7 @@ describe("DashboardPage producer booking section", () => {
     vi.mocked(useFeature).mockReturnValue(true);
     renderWithProviders(<MemoryRouter><DashboardPage /></MemoryRouter>);
     expect(await screen.findByText("Ada Lovelace")).toBeInTheDocument();
-    expect(screen.getByText("Ready to Confirm")).toBeInTheDocument();
+    expect(screen.getByText("Waiting on you")).toBeInTheDocument();
     expect(screen.getAllByRole("checkbox").length).toBeGreaterThan(0);
   });
 
@@ -104,7 +104,7 @@ describe("DashboardPage producer booking section", () => {
     vi.mocked(useFeature).mockReturnValue(false);
     renderWithProviders(<MemoryRouter><DashboardPage /></MemoryRouter>);
     expect(await screen.findByTestId("module-gate-booking_flow")).toBeInTheDocument();
-    expect(screen.queryByText("Ready to Confirm")).not.toBeInTheDocument();
+    expect(screen.queryByText("Waiting on you")).not.toBeInTheDocument();
     expect(screen.queryByText("Ada Lovelace")).not.toBeInTheDocument();
     expect(screen.queryAllByRole("checkbox")).toHaveLength(0);
   });

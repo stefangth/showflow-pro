@@ -96,7 +96,7 @@ describe('CalendarDaySheet', () => {
       />
     );
 
-    expect(screen.getByTestId('day-rail-primary')).toHaveTextContent('Accept offer');
+    expect(screen.getByTestId('day-rail-primary')).toHaveTextContent('Answer the ask');
 
     // DayDetail's own secondary button (default label "Message producer")
     // must be suppressed — only the sheet's own button renders.
