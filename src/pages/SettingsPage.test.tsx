@@ -151,7 +151,7 @@ describe("SettingsPage grouped vertical nav", () => {
     expect(screen.getByText("Organization", { selector: "p" })).toBeInTheDocument();
     expect(screen.getByText("Modules", { selector: "p" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /booking engine on/i })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /hire orders off/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /contracts off/i })).toBeInTheDocument();
     expect(screen.queryByRole("tab", { name: /scheduling/i })).not.toBeInTheDocument();
     // Switching a section swaps the visible content.
     fireEvent.mouseDown(screen.getByRole("tab", { name: /casts & coverage/i }));

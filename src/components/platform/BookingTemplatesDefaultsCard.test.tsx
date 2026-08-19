@@ -27,7 +27,7 @@ describe("BookingTemplatesDefaultsCard", () => {
 
     fireEvent.click(screen.getByRole("tab", { name: "Fast-track" }));
     await waitFor(() => expect(screen.getByRole("tab", { name: "Fast-track" })).toHaveAttribute("data-state", "active"));
-    const windowInput = screen.getByLabelText("Response window (h)");
+    const windowInput = screen.getByLabelText("Answer by (h)");
     fireEvent.change(windowInput, { target: { value: "72" } });
     await waitFor(() => expect(windowInput).toHaveValue(72));
     fireEvent.click(screen.getByRole("button", { name: "Save booking templates" }));
@@ -48,8 +48,8 @@ describe("BookingTemplatesDefaultsCard", () => {
   });
 
   it.each([
-    ["Response window (h)", "0", /window must be between 1 and 336 hours/i],
-    ["Digest hour (Berlin, Germany)", "24", /digest hours must be between 0 and 23/i],
+    ["Answer by (h)", "0", /window must be between 1 and 336 hours/i],
+    ["Daily send hour (Berlin, Germany)", "24", /digest hours must be between 0 and 23/i],
     ["Hour (Berlin, Germany)", "-1", /digest hours must be between 0 and 23/i],
   ])("blocks saving an invalid %s", async (label, value, message) => {
     renderWithProviders(<BookingTemplatesDefaultsCard />);
