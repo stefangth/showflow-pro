@@ -64,7 +64,7 @@ describe("BatchIssuePreflightDialog", () => {
     renderWithProviders(
       <BatchIssuePreflightDialog open orgId="org-1" orders={[CLEAN, NO_FEE]} onOpenChange={vi.fn()} onConfirm={onConfirm} />,
     );
-    const btn = await screen.findByRole("button", { name: /Issue 1 order/i });
+    const btn = await screen.findByRole("button", { name: /Issue 1 contract/i });
     btn.click();
     expect(onConfirm).toHaveBeenCalledWith(["a"]);
   });
@@ -73,7 +73,7 @@ describe("BatchIssuePreflightDialog", () => {
     renderWithProviders(
       <BatchIssuePreflightDialog open orgId="org-1" orders={[NO_FEE]} onOpenChange={vi.fn()} onConfirm={vi.fn()} />,
     );
-    await waitFor(() => expect(screen.getByRole("button", { name: /Issue 0 orders/i })).toBeDisabled());
+    await waitFor(() => expect(screen.getByRole("button", { name: /Issue 0 contracts/i })).toBeDisabled());
   });
 
   // Carried forward from plan 1's review: the dialog must not present a clean bill of
@@ -86,7 +86,7 @@ describe("BatchIssuePreflightDialog", () => {
       <BatchIssuePreflightDialog open orgId="org-1" orders={[CLEAN, NO_FEE]} onOpenChange={vi.fn()} onConfirm={vi.fn()} />,
     );
     expect(await screen.findAllByText(/could not check/i)).not.toHaveLength(0);
-    const btn = screen.getByRole("button", { name: /Issue \d+ orders?/i });
+    const btn = screen.getByRole("button", { name: /Issue \d+ contracts?/i });
     expect(btn).toBeDisabled();
   });
 
@@ -102,14 +102,14 @@ describe("BatchIssuePreflightDialog", () => {
       <BatchIssuePreflightDialog open orgId="org-1" orders={[CLEAN, NO_FEE]} onOpenChange={vi.fn()} onConfirm={vi.fn()} />,
       { queryClient },
     );
-    expect(await screen.findByRole("button", { name: /Issue 1 order/i })).toBeEnabled();
+    expect(await screen.findByRole("button", { name: /Issue 1 contract/i })).toBeEnabled();
 
     seedClient({ app_settings: { data: null, error: new Error("boom") } });
     await act(async () => {
       await queryClient.invalidateQueries({ queryKey: ["app-settings"] });
     });
 
-    await waitFor(() => expect(screen.getByRole("button", { name: /Issue 0 orders/i })).toBeDisabled());
+    await waitFor(() => expect(screen.getByRole("button", { name: /Issue 0 contracts/i })).toBeDisabled());
     expect(screen.queryByText(/can be issued now/i)).not.toBeInTheDocument();
   });
 });
