@@ -42,7 +42,7 @@ describe("EmailTemplatesTab", () => {
     renderTab({ readOnly: false, isSuperAdmin: false });
 
     expect(await screen.findByText("Booking engine")).toBeInTheDocument();
-    expect(screen.getByText("Hire orders")).toBeInTheDocument();
+    expect(screen.getByText("Contracts")).toBeInTheDocument();
     expect(screen.getByText("Accounts & access")).toBeInTheDocument();
     expect(screen.getByText("Immediate offer")).toBeInTheDocument();
     expect(screen.getByText("Hire order countersigned")).toBeInTheDocument();
