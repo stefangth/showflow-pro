@@ -112,10 +112,10 @@ describe("capability grouping", () => {
   it("lists the 8 groups in registry order", () => {
     expect(CAPABILITY_GROUPS).toEqual([
       "Members & access",
-      "Productions & show dates",
+      "Productions & dates",
       "Bookings & engine",
       "Artists",
-      "Hire orders",
+      "Contracts",
       "Settings & organization",
       "Integrations",
       "Email",

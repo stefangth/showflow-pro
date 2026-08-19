@@ -92,24 +92,24 @@
       "description": "Producers can permanently delete productions."
     },
     "producer_can_manage_show_dates": {
-      "label": "Create and edit show dates",
-      "description": "Producers can create and edit show dates."
+      "label": "Create and edit dates",
+      "description": "Producers can create and edit dates."
     },
     "producer_can_hard_delete_show_dates": {
-      "label": "Delete show dates",
-      "description": "Producers can permanently delete show dates."
+      "label": "Delete dates",
+      "description": "Producers can permanently delete dates."
     },
     "producer_can_manage_casts": {
       "label": "Manage casts",
       "description": "Producers can create, edit, and delete casts."
     },
     "producer_can_run_offer_engine": {
-      "label": "Open and close offer tiers",
-      "description": "Producers can open and close offer tiers."
+      "label": "Send and close asks",
+      "description": "Producers can send and close asks."
     },
     "producer_can_confirm_bookings": {
       "label": "Confirm bookings",
-      "description": "Producers can confirm soft-booked artists."
+      "description": "Producers can confirm artists who said yes."
     },
     "producer_can_edit_booking_settings": {
       "label": "Edit booking-engine settings",
@@ -128,23 +128,23 @@
       "description": "Producers can resend an artist's app-login invite."
     },
     "producer_can_generate_hire_orders": {
-      "label": "Generate and draft hire orders",
-      "description": "Producers can draft hire orders."
+      "label": "Generate and draft contracts",
+      "description": "Producers can draft contracts."
     },
     "producer_can_issue_hire_orders": {
-      "label": "Issue hire orders",
-      "description": "Producers can issue hire orders and email the PDF to artists."
+      "label": "Issue contracts",
+      "description": "Producers can issue contracts and email the PDF to artists."
     },
     "producer_can_void_hire_orders": {
-      "label": "Void hire orders",
-      "description": "Producers can void issued hire orders."
+      "label": "Void contracts",
+      "description": "Producers can void issued contracts."
     },
     "producer_can_manage_countersign": {
       "label": "Manage countersign",
       "description": "Producers can manage the countersign step."
     },
     "producer_can_edit_hire_order_settings": {
-      "label": "Edit hire-order settings",
+      "label": "Edit contract settings",
       "description": "Producers can change letterhead, numbering, and terms."
     },
     "producer_can_rename_org": {
@@ -186,10 +186,10 @@
   },
   "capabilityGroups": {
     "membersAndAccess": "Members & access",
-    "productionsAndShowDates": "Productions & show dates",
+    "productionsAndShowDates": "Productions & dates",
     "bookingsAndEngine": "Bookings & engine",
     "artists": "Artists",
-    "hireOrders": "Hire orders",
+    "hireOrders": "Contracts",
     "settingsAndOrganization": "Settings & organization",
     "integrations": "Integrations",
     "email": "Email"

@@ -4,7 +4,7 @@
       "letterhead": "Letterhead",
       "terms": "Terms",
       "numbering": "Numbering",
-      "orderDefaults": "Order defaults",
+      "orderDefaults": "Contract defaults",
       "countersign": "Countersign mode",
       "copy": "PDF copy",
       "theme": "PDF template"
@@ -12,24 +12,24 @@
     "entryUpdated": "{{label}} updated",
     "rail": {
       "aboutTitle": "About this tab",
-      "aboutBody": "Each card saves independently. Changes apply to the next hire order generated for this organization, not to documents already issued.",
+      "aboutBody": "Each card saves independently. Changes apply to the next contract generated for this organization, not to documents already issued.",
       "historyTitle": "Change history",
       "historyError": "Could not load change history.",
       "historyEmpty": "No changes recorded yet.",
       "systemActor": "System"
     },
-    "disabled": "Hire orders are not enabled for this organization. Contact your ShowFlow administrator to enable the module."
+    "disabled": "Contracts are not enabled for this organization. Contact your ShowFlow administrator to enable the module."
   },
   "countersignCard": {
     "title": "Countersign mode",
-    "description": "How the artist's signature is captured once a hire order is issued.",
+    "description": "How the artist's signature is captured once a contract is issued.",
     "save": "Save countersign mode",
     "saved": "Countersign mode saved",
     "loadError": "Could not load the countersign settings."
   },
   "letterheadCard": {
     "title": "Letterhead",
-    "description": "Appears at the top of every hire order PDF alongside the Hiring party block.",
+    "description": "Appears at the top of every contract PDF alongside the Hiring party block.",
     "saved": "Letterhead saved",
     "loadError": "Could not load the letterhead settings.",
     "pngOnly": "Please choose a PNG image",
@@ -37,7 +37,7 @@
     "agentName": "Agent name (optional)",
     "agentEmail": "Agent email (optional)",
     "agentSignature": "Agent signature (optional)",
-    "agentSignatureHelp": "A PNG of the booking agent's signature, drawn on the producer line of issued hire orders. Save the letterhead to apply.",
+    "agentSignatureHelp": "A PNG of the booking agent's signature, drawn on the producer line of issued contracts. Save the letterhead to apply.",
     "signaturePreviewAlt": "Agent signature preview",
     "signatureOnFile": "Signature on file",
     "remove": "Remove",
@@ -48,7 +48,7 @@
   },
   "numberingCard": {
     "title": "Numbering",
-    "description": "Controls the order number stamped on every hire order. Supported tokens: {prefix}, {yyyy}, {mm}, {dd}, {mmdd}, {seq}, {cast}, {cast|seq}.",
+    "description": "Controls the number stamped on every contract. Supported tokens: {prefix}, {yyyy}, {mm}, {dd}, {mmdd}, {seq}, {cast}, {cast|seq}.",
     "saved": "Numbering saved",
     "loadError": "Could not load the numbering settings.",
     "prefix": "Prefix",
@@ -57,10 +57,10 @@
     "save": "Save numbering"
   },
   "orderDefaultsCard": {
-    "title": "Order defaults",
-    "description": "Prefills a new hire order's fee, basis, and currency. A per-date fee is multiplied by the number of engagement dates on the order. A producer can always adjust it per order.",
-    "saved": "Order defaults saved",
-    "loadError": "Could not load the order defaults.",
+    "title": "Contract defaults",
+    "description": "Prefills a new contract's fee, basis, and currency. A per-date fee is multiplied by the number of engagement dates on the contract. A producer can always adjust it per contract.",
+    "saved": "Contract defaults saved",
+    "loadError": "Could not load the contract defaults.",
     "defaultFee": "Default fee",
     "noDefault": "No default",
     "currency": "Currency",
@@ -71,7 +71,7 @@
   },
   "pdfTemplateCard": {
     "title": "PDF template",
-    "description": "Wording, fonts, sizes, and colours for the hire order PDF. Edit any element and see the document update as you type. Changes apply to the next order issued, not to documents already issued.",
+    "description": "Wording, fonts, sizes, and colours for the contract PDF. Edit any element and see the document update as you type. Changes apply to the next contract issued, not to documents already issued.",
     "loadError": "Could not load the PDF template settings.",
     "summary": "{{family}} at {{percent}}%, {{customised}}",
     "customisedNone": "no customised elements",
@@ -81,12 +81,12 @@
   },
   "termsVariantsCard": {
     "title": "Terms",
-    "description": "Templates of clauses printed on the hire order PDF. A hire order picks one template when it is issued, and one template is marked as the default. ShowFlow ships no default clauses, so your organization authors its own.",
+    "description": "Templates of clauses printed on the contract PDF. A contract picks one template when it is issued, and one template is marked as the default. ShowFlow ships no default clauses, so your organization authors its own.",
     "saved": "Terms saved",
     "loadError": "Could not load the terms settings.",
     "clausesHeading": "Clauses",
     "addClause": "Add clause",
-    "noClauses": "No clauses yet. Add the clauses your organization wants printed on a \"{{label}}\" hire order before issuing one.",
+    "noClauses": "No clauses yet. Add the clauses your organization wants printed on a \"{{label}}\" contract before issuing one.",
     "clauseTitlePlaceholder": "Clause title",
     "clauseTitleAria": "{{label}} clause {{index}} title",
     "removeClause": "Remove clause",
@@ -107,9 +107,9 @@
   },
   "countersignFields": {
     "electronicTitle": "Artist signs in ShowFlow",
-    "electronicBody": "The artist reviews and signs the issued order in the app. Signature, timestamp and IP are stored with it.",
+    "electronicBody": "The artist reviews and signs the issued contract in the app. Signature, timestamp and IP are stored with it.",
     "manualTitle": "Signatures handled outside ShowFlow",
-    "manualBody": "A producer marks the order countersigned once the artist has signed elsewhere.",
+    "manualBody": "A producer marks the contract countersigned once the artist has signed elsewhere.",
     "emailProducersTitle": "Also email producers the signed copy",
     "emailProducersBody": "When the artist signs, email the assigned producers a copy. Producers are notified in-app either way."
   },
@@ -132,7 +132,7 @@
     "renderError": "Could not render the preview.",
     "updating": "Updating",
     "ariaLabel": "Document preview",
-    "iframeTitle": "Hire order preview"
+    "iframeTitle": "Contract preview"
   },
   "templateEditorPage": {
     "saved": "PDF template saved",

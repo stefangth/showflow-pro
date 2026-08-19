@@ -53,7 +53,7 @@
     "bioLabel": "Biografie",
     "skillsLabel": "Fähigkeiten",
     "catalogCount": "{{held}} von {{total}} im Katalog",
-    "skillsHint": "Fähigkeiten entscheiden, für welche Termine {{name}} angeboten werden kann. Wenn du eine entfernst, fällt der Artist aus jedem Angebot, das sie erfordert.",
+    "skillsHint": "Fähigkeiten entscheiden, für welche Termine {{name}} angefragt werden kann. Wenn du eine entfernst, fällt der Artist aus jeder Anfrage, die sie erfordert.",
     "thisArtist": "dieser Artist",
     "noSkills": "Noch keine Fähigkeiten.",
     "upcomingDates_one": "{{count}} anstehender Termin",
@@ -71,22 +71,22 @@
   },
   "linked": {
     "title": "Verknüpftes Konto",
-    "noLoginWithEmail": "Kein Login-Konto. Tagesübersichten nutzen die Buchungs-E-Mail ({{email}}).",
-    "noLoginNoEmail": "Kein Login-Konto. Tagesübersichten nutzen die Buchungs-E-Mail.",
+    "noLoginWithEmail": "Kein Login-Konto. Tagesversände nutzen die Buchungs-E-Mail ({{email}}).",
+    "noLoginNoEmail": "Kein Login-Konto. Tagesversände nutzen die Buchungs-E-Mail.",
     "inviteToApp": "In die App einladen",
     "invitePending": "Einladung offen. Warte auf Annahme.",
     "resend": "Erneut senden",
     "loadingAccount": "Konto wird geladen…",
     "accountName": "Kontoname",
     "loginEmail": "Login-E-Mail",
-    "digestGoesTo": "Tagesübersicht geht an",
-    "detailsUnavailable": "Kontodetails nicht verfügbar. Tagesübersichten gehen an {{email}}.",
+    "digestGoesTo": "Tagesversand geht an",
+    "detailsUnavailable": "Kontodetails nicht verfügbar. Tagesversände gehen an {{email}}.",
     "theBookingEmail": "die Buchungs-E-Mail"
   },
   "unlinked": {
     "headingOrg": "Du stehst auf der Liste von {{orgName}}",
     "heading": "Du stehst auf der Liste",
-    "body": "Dein Konto ist eingerichtet. Ein Admin muss es noch mit deinem Artist-Profil verknüpfen, bevor deine Termine, Besetzungen und Angebote hier erscheinen. Du bekommst eine E-Mail, sobald du gebucht bist, du musst also gerade nichts tun."
+    "body": "Dein Konto ist eingerichtet. Ein Admin muss es noch mit deinem Artist-Profil verknüpfen, bevor deine Termine, Besetzungen und Anfragen hier erscheinen. Du bekommst eine E-Mail, sobald du gebucht bist, du musst also gerade nichts tun."
   },
   "import": {
     "title": "Artists aus einer Tabelle importieren",

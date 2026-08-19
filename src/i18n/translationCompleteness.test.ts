@@ -69,6 +69,7 @@ const IDENTICAL_OK: Record<string, string> = {
 
   // settingsBookingFlow
   'settingsBookingFlow.flowRail.actorSystem': '"System" is identical in German',
+  'settingsBookingFlow.flowPresets.names.fasttrack': 'brand term "Autopilot", kept untranslated (matches the Autopilot design prototype)',
 
   // settingsHireOrders
   'settingsHireOrders.hireOrdersTab.rail.systemActor': '"System" is identical in German',

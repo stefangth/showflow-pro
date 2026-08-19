@@ -34,7 +34,7 @@
   "mergeSuggestion": {
     "joiner": " und ",
     "title": "{{names}} sind dieselbe Stadt",
-    "description": "Beim Zusammenführen bleiben Buchungen, Verfügbarkeit und Produzenten-Routing von {{survivorName}} erhalten, die andere Zeile wird entfernt.",
+    "description": "Beim Zusammenführen bleiben Buchungen, Anfragereihenfolge und Produzenten-Routing von {{survivorName}} erhalten, die andere Zeile wird entfernt.",
     "actionLabel": "In {{survivorName}} zusammenführen"
   },
   "eyebrow": {

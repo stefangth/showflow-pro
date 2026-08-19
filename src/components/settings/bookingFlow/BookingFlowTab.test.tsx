@@ -100,7 +100,7 @@ describe("BookingFlowTab", () => {
   it("preserves the org reference field when switching templates", async () => {
     renderWithProviders(<Harness orgFlow={{ ...BOOKING_FLOW_DEFAULTS, reference_field: { source: "program" } }} />);
 
-    fireEvent.click(await screen.findByRole("button", { name: /fast-track/i }));
+    fireEvent.click(await screen.findByRole("button", { name: /autopilot/i }));
 
     expect(screen.getByRole("combobox", { name: /reference field/i })).toHaveTextContent("Program only");
   });
@@ -125,27 +125,27 @@ describe("BookingFlowTab", () => {
   // bypassed the ref tracking in onFlowChange, so the restore used a stale value.
   it("a preset's producer_confirmation choice survives an acceptance off/on round trip", async () => {
     renderWithProviders(<Harness />);
-    fireEvent.click(await screen.findByRole("button", { name: /fast-track/i }));
-    expect(screen.getByRole("switch", { name: /^producer confirmation$/i })).toHaveAttribute("aria-checked", "false");
+    fireEvent.click(await screen.findByRole("button", { name: /autopilot/i }));
+    expect(screen.getByRole("switch", { name: /^the last word$/i })).toHaveAttribute("aria-checked", "false");
     fireEvent.click(screen.getByRole("button", { name: /direct book/i }));
     fireEvent.click(screen.getByRole("switch", { name: /^artist acceptance$/i }));
-    expect(screen.getByRole("switch", { name: /^producer confirmation$/i })).toHaveAttribute("aria-checked", "false");
+    expect(screen.getByRole("switch", { name: /^the last word$/i })).toHaveAttribute("aria-checked", "false");
   });
 
   it("restores the user's producer_confirmation choice after an acceptance off/on round trip", async () => {
     renderWithProviders(<Harness />);
     // Fast-track: artist_acceptance stays on, producer_confirmation goes off.
-    fireEvent.click(await screen.findByRole("button", { name: /fast-track/i }));
+    fireEvent.click(await screen.findByRole("button", { name: /autopilot/i }));
     const acceptance = screen.getByRole("switch", { name: /^artist acceptance$/i });
-    const confirmation = screen.getByRole("switch", { name: /^producer confirmation$/i });
+    const confirmation = screen.getByRole("switch", { name: /^the last word$/i });
     expect(confirmation).toHaveAttribute("aria-checked", "false");
 
     // Toggle acceptance off then back on.
     fireEvent.click(acceptance);
-    expect(screen.getByRole("switch", { name: /^producer confirmation$/i })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByRole("switch", { name: /^the last word$/i })).toHaveAttribute("aria-checked", "true");
     fireEvent.click(screen.getByRole("switch", { name: /^artist acceptance$/i }));
 
-    expect(screen.getByRole("switch", { name: /^producer confirmation$/i })).toHaveAttribute("aria-checked", "false");
+    expect(screen.getByRole("switch", { name: /^the last word$/i })).toHaveAttribute("aria-checked", "false");
   });
 
   describe("entitlement gating", () => {
@@ -159,13 +159,13 @@ describe("BookingFlowTab", () => {
       await waitFor(() => expect(screen.getByText("Booking engine is not enabled")).toBeInTheDocument());
       expect(
         screen.getByText(
-          "Booking is switched off for your organization, so no offers, reminders or confirmations are sent. Contact your ShowFlow administrator to enable it.",
+          "Booking is switched off for your organization, so no asks, reminders or confirmations are sent. Contact your ShowFlow administrator to enable it.",
         ),
       ).toBeInTheDocument();
 
       // Preset chips disabled.
       expect(await screen.findByRole("button", { name: /direct book/i })).toBeDisabled();
-      expect(screen.getByRole("button", { name: /fast-track/i })).toBeDisabled();
+      expect(screen.getByRole("button", { name: /autopilot/i })).toBeDisabled();
 
       // A representative FlowTimeline input is disabled.
       expect(screen.getByRole("switch", { name: /^artist acceptance$/i })).toBeDisabled();

@@ -1,7 +1,7 @@
 {
   "page": {
     "title": "Productions",
-    "description": "Your show catalog: slots, status, and order.",
+    "description": "Your show catalog: places, status, and order.",
     "newProduction": "New production"
   },
   "filter": {
@@ -55,31 +55,31 @@
     "subProgramLabel": "Sub-program",
     "categoryLabel": "Category",
     "descriptionLabel": "Description",
-    "slotsHeading": "Slots",
+    "slotsHeading": "Places",
     "slotTotals": "{{main}} main · {{understudy}} understudy",
-    "slotsHelp": "Name each slot and give it the skills it needs. Every date of this production then requires the union of these skills. There is no separate required-skills list to keep in sync.",
-    "slotGroupNamed": "Slot: {{name}}",
-    "slotGroupIndex": "Slot {{index}}",
+    "slotsHelp": "Name each place and give it the skills it needs. Every date of this production then requires the union of these skills. There is no separate required-skills list to keep in sync.",
+    "slotGroupNamed": "Place: {{name}}",
+    "slotGroupIndex": "Place {{index}}",
     "roleNameLabel": "Role name",
     "countLabel": "Count",
     "kindMain": "Main",
     "kindUnderstudy": "Understudy",
     "removeSlot": "Remove {{name}}",
-    "slotFallback": "slot",
+    "slotFallback": "place",
     "skillsEmptyHint": "No skills yet. Add skills on artist profiles first.",
-    "addSlot": "Add slot",
+    "addSlot": "Add place",
     "saving": "Saving…",
     "save": "Save",
     "create": "Create",
     "callout": {
       "withSkills": "Every date of this production will require {{skills}}. A single date can still add or drop a skill without changing the production.",
-      "none": "No skills are required yet. Add skills to a slot to require them on every date."
+      "none": "No skills are required yet. Add skills to a place to require them on every date."
     },
     "validation": {
       "programOrSubRequired": "Program or sub-program required"
     },
     "toasts": {
-      "saveSlotsFailed": "Failed to save slots",
+      "saveSlotsFailed": "Failed to save places",
       "noActiveOrg": "No active organization",
       "updated": "Production updated",
       "created": "Production created"

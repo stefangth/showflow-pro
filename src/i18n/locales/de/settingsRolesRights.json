@@ -92,24 +92,24 @@
       "description": "Das Production Team kann Produktionen dauerhaft löschen."
     },
     "producer_can_manage_show_dates": {
-      "label": "Showtermine anlegen und bearbeiten",
-      "description": "Das Production Team kann Showtermine anlegen und bearbeiten."
+      "label": "Termine anlegen und bearbeiten",
+      "description": "Das Production Team kann Termine anlegen und bearbeiten."
     },
     "producer_can_hard_delete_show_dates": {
-      "label": "Showtermine löschen",
-      "description": "Das Production Team kann Showtermine dauerhaft löschen."
+      "label": "Termine löschen",
+      "description": "Das Production Team kann Termine dauerhaft löschen."
     },
     "producer_can_manage_casts": {
       "label": "Besetzungen verwalten",
       "description": "Das Production Team kann Besetzungen anlegen, bearbeiten und löschen."
     },
     "producer_can_run_offer_engine": {
-      "label": "Angebotsstufen öffnen und schließen",
-      "description": "Das Production Team kann Angebotsstufen öffnen und schließen."
+      "label": "Anfragen verschicken und schließen",
+      "description": "Das Production Team kann Anfragen verschicken und schließen."
     },
     "producer_can_confirm_bookings": {
       "label": "Buchungen bestätigen",
-      "description": "Das Production Team kann vorläufig gebuchte Artists bestätigen."
+      "description": "Das Production Team kann Artists bestätigen, die zugesagt haben."
     },
     "producer_can_edit_booking_settings": {
       "label": "Booking-Engine-Einstellungen bearbeiten",
@@ -186,7 +186,7 @@
   },
   "capabilityGroups": {
     "membersAndAccess": "Mitglieder & Zugriff",
-    "productionsAndShowDates": "Produktionen & Showtermine",
+    "productionsAndShowDates": "Produktionen & Termine",
     "bookingsAndEngine": "Buchungen & Booking Engine",
     "artists": "Artists",
     "hireOrders": "Engagementverträge",
