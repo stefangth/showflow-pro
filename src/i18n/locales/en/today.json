@@ -44,7 +44,9 @@
   },
   "empty": {
     "title": "Nothing needs you",
-    "body": "{{count}} dates are filling on their own. If one is at risk, or something has to be said to an artist by a human, it turns up here. Nothing is waiting quietly in a queue.",
+    "body_zero": "No dates are waiting on anything right now. If one is at risk, or something has to be said to an artist by a human, it turns up here. Nothing is waiting quietly in a queue.",
+    "body_one": "{{count}} date is filling on its own. If one is at risk, or something has to be said to an artist by a human, it turns up here. Nothing is waiting quietly in a queue.",
+    "body_other": "{{count}} dates are filling on their own. If one is at risk, or something has to be said to an artist by a human, it turns up here. Nothing is waiting quietly in a queue.",
     "cta": "Look at the season anyway"
   },
   "feed": {

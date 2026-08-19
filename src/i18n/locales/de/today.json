@@ -44,7 +44,9 @@
   },
   "empty": {
     "title": "Nichts braucht Dich",
-    "body": "{{count}} Termine füllen sich von selbst. Wenn einer gefährdet ist oder ein Mensch einem Artist etwas sagen muss, taucht es hier auf. Nichts wartet still in einer Warteschlange.",
+    "body_zero": "Im Moment wartet kein Termin auf etwas. Wenn einer gefährdet ist oder ein Mensch einem Artist etwas sagen muss, taucht es hier auf. Nichts wartet still in einer Warteschlange.",
+    "body_one": "{{count}} Termin füllt sich von selbst. Wenn einer gefährdet ist oder ein Mensch einem Artist etwas sagen muss, taucht es hier auf. Nichts wartet still in einer Warteschlange.",
+    "body_other": "{{count}} Termine füllen sich von selbst. Wenn einer gefährdet ist oder ein Mensch einem Artist etwas sagen muss, taucht es hier auf. Nichts wartet still in einer Warteschlange.",
     "cta": "Trotzdem die Saison ansehen"
   },
   "feed": {
