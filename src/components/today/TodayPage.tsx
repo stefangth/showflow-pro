@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { TriangleAlert } from "lucide-react";
-import { Alert } from "@/components/ui/alert";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import { ROUTES } from "@/config/app.config";
@@ -142,6 +143,7 @@ function parseSimpleFeedId(id: string): { kind: string; showDateId: string } | n
  */
 export default function TodayContainer() {
   const navigate = useNavigate();
+  const { t } = useTranslation("today");
   const { allow: bookingFlowAllowed } = useModuleGate("booking_flow");
   const { model, isLoading, isError, askTimeLabel, feedSinceLabel, refetch } = useAutopilotToday({
     enabled: bookingFlowAllowed,
@@ -233,6 +235,7 @@ export default function TodayContainer() {
       ) : isError || !model ? (
         <Alert variant="destructive" className="max-w-[920px]">
           <TriangleAlert className="h-4 w-4" />
+          <AlertDescription>{t("error")}</AlertDescription>
         </Alert>
       ) : (
         <TodayPage

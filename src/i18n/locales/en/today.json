@@ -1,4 +1,5 @@
 {
+  "error": "Could not load today's board. Try refreshing the page.",
   "header": {
     "headline_one": "One thing needs a human",
     "headline_other": "{{count}} things need a human",
@@ -23,7 +24,7 @@
   },
   "cancelled": {
     "badge": "Cancelled · cast not told",
-    "body": "The house cancelled this date {{when}}. {{names}} still have it in their calendar. Autopilot does not send bad news on its own.",
+    "body": "The house cancelled this date. {{names}} still have it in their calendar. Autopilot does not send bad news on its own.",
     "cta": "Tell them it is off",
     "readFirst": "Read the message first"
   },

@@ -1,4 +1,5 @@
 {
+  "error": "Das Board von heute konnte nicht geladen werden. Lade die Seite neu.",
   "header": {
     "headline_one": "Eine Sache braucht einen Menschen",
     "headline_other": "{{count}} Dinge brauchen einen Menschen",
@@ -23,7 +24,7 @@
   },
   "cancelled": {
     "badge": "Abgesagt · Besetzung nicht informiert",
-    "body": "Das Haus hat diesen Termin {{when}} abgesagt. {{names}} haben ihn noch im Kalender. Autopilot verschickt schlechte Nachrichten nicht von allein.",
+    "body": "Das Haus hat diesen Termin abgesagt. {{names}} haben ihn noch im Kalender. Autopilot verschickt schlechte Nachrichten nicht von allein.",
     "cta": "Sag ihnen, dass es ausfällt",
     "readFirst": "Erst die Nachricht lesen"
   },

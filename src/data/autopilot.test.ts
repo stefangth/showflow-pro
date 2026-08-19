@@ -413,4 +413,20 @@ describe("fetchAutopilotFeed", () => {
     expect(fake.calls.filter((c) => c.table === "booking_audit_log" && c.method === "eq"))
       .toContainEqual({ table: "booking_audit_log", method: "eq", args: ["booking.org_id", "org1"] });
   });
+
+  // Regression guard for the PGRST201 "ambiguous embed" bug (HTTP 300 Multiple
+  // Choices): `hire_orders` has two relationships to `show_dates` (the direct
+  // FK and the `hire_order_dates` join table), so an unhinted embed 300s
+  // against the real PostgREST schema cache. `supabaseFake` only records calls
+  // and never models relationship resolution, so it can't catch that itself —
+  // this is a string-level check that the disambiguating `!<fkey>` hint is
+  // present in the emitted `select`, not a semantic guarantee the hint is
+  // correct against the live schema.
+  it("disambiguates the hire_orders -> show_dates embed with an explicit FK hint", async () => {
+    const fake = createFakeSupabase({ hire_orders: { data: [], error: null } });
+    await fetchAutopilotFeed(asSupabase(fake), { orgId: "org1", since: "2026-07-14T00:00:00Z" });
+
+    const draftSelect = fake.calls.find((c) => c.table === "hire_orders" && c.method === "select");
+    expect(draftSelect?.args[0]).toContain("show_date:show_dates!hire_orders_show_date_id_fkey");
+  });
 });

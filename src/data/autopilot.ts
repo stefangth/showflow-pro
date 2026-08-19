@@ -536,9 +536,18 @@ export async function fetchAutopilotFeed(
     created_at: string;
     show_date: { date: string; show: { program: string | null; sub_program: string | null } | null } | null;
   }
+  // `hire_orders` has TWO relationships to `show_dates` — the direct
+  // `hire_orders_show_date_id_fkey` column and the `hire_order_dates`
+  // many-to-many join table — so PostgREST refuses to embed without a hint
+  // (PGRST201, HTTP 300 Multiple Choices). Disambiguate to the direct FK,
+  // confirmed against `src/integrations/supabase/types.ts` (the generated
+  // `hire_orders` table's Relationships array) and the live local DB error.
   const { data: draftRows, error: draftErr } = await client
     .from("hire_orders")
-    .select("id, show_date_id, created_at, show_date:show_dates(date, show:shows(program, sub_program))")
+    .select(
+      "id, show_date_id, created_at, " +
+      "show_date:show_dates!hire_orders_show_date_id_fkey(date, show:shows(program, sub_program))",
+    )
     .eq("org_id", orgId)
     .eq("status", "draft")
     .gte("created_at", args.since);

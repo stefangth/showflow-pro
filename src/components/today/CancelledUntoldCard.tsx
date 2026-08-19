@@ -24,19 +24,22 @@ function joinNames(names: string[], locale: string): string {
 /**
  * "Cancelled, cast not told" card (prototype lines 209-229).
  *
- * `cancelled.body`'s `{{when}}` slot ("The house cancelled this date
- * {{when}}.") has no backing data: neither `CancelledUntoldDate` nor its raw
- * `CancelledUntoldInput` carries a cancellation timestamp anywhere in the
- * pipeline (today.ts / autopilot.ts, both already committed) — only the show
- * date itself, which is a different thing. Rather than fabricate a day,
- * `when` renders as empty and the resulting stray space before the following
- * period is trimmed. Flagged in the task report as a real data gap, not a
- * silent guess.
+ * `cancelled.body` used to carry a `{{when}}` slot ("The house cancelled
+ * this date {{when}}.") with no backing data: neither `CancelledUntoldDate`
+ * nor its raw `CancelledUntoldInput` carries a cancellation timestamp
+ * anywhere in the pipeline (today.ts / autopilot.ts), and `show_dates` has
+ * no `cancelled_at` column to source one from — only `cast_notified_at`
+ * (a different event: telling the cast, not cancelling the date) and the
+ * generic `updated_at` (touched by any field edit, not reliably the
+ * cancellation moment, and itself gets bumped by the notify action this
+ * card's own CTA triggers). Adding a real column is a schema change, out of
+ * scope for a copy fix. Rewrote the sentence in both languages instead of
+ * shipping a hole in it.
  */
 export function CancelledUntoldCard({ item, onTellCast, onReadFirst }: CancelledUntoldCardProps) {
   const { t, i18n } = useTranslation("today");
   const names = joinNames(item.artistNames, i18n.language);
-  const body = t("cancelled.body", { when: "", names }).replace(/ +\./g, ".");
+  const body = t("cancelled.body", { names });
 
   return (
     <div className="flex items-stretch overflow-hidden rounded-[14px] border border-border bg-card shadow-elev2">

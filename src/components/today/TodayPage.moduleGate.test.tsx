@@ -80,4 +80,20 @@ describe("TodayContainer booking_flow gating", () => {
     // their output — useAutopilotToday gets told not to run.
     expect(useAutopilotToday).toHaveBeenCalledWith({ enabled: false });
   });
+
+  // Bug 2 regression guard: a failed load must say something, not render a
+  // textless destructive alert (the container's error branch had no backing
+  // copy key until this was added to the "today" i18n namespace).
+  it("load error: renders a non-empty error message, not an empty alert", () => {
+    vi.mocked(useFeature).mockImplementation((f) => f === "booking_flow");
+    vi.mocked(useAutopilotToday).mockReturnValue(
+      aResult({ isError: true, model: undefined, error: new Error("boom") }),
+    );
+
+    renderWithProviders(<TodayContainer />);
+
+    const alert = screen.getByRole("alert");
+    expect(alert.textContent?.trim()).not.toBe("");
+    expect(alert).toHaveTextContent("Could not load today's board. Try refreshing the page.");
+  });
 });
