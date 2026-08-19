@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/features/auth/AuthContext';
 import { useBookingFlow, useFlowTimes } from '@/hooks/useBookingFlow';
 import { useFeature } from '@/hooks/useEntitlements';
-import { hh, BOOKING_FLOW_DEFAULTS } from '@/lib/bookingFlow';
+import { hh, matchPreset, BOOKING_FLOW_DEFAULTS } from '@/lib/bookingFlow';
 import { BOOKING_ENGINE_DEFAULTS, ROUTES } from '@/config/app.config';
 
 /**
@@ -14,14 +14,11 @@ import { BOOKING_ENGINE_DEFAULTS, ROUTES } from '@/config/app.config';
  *
  * Copy is derived from the org's LIVE booking-flow policy (`useBookingFlow`), never the
  * preset name, so it can never assert behavior the org doesn't actually have:
- *  - Hidden outright when the `booking_flow` module is off for this org, or the flow is
- *    paused (`active: false`) — there is no "autopilot" to describe in either case, and
- *    none of the authored copy has a truthful off-state variant.
- *  - The producer/admin body branches on `producer_confirmation`: when the org keeps the
- *    last word, a yes does NOT become a booking on its own (it soft-books and waits on a
- *    producer to confirm), so `sidebar.producer.bodyConfirm` is used instead of the
- *    shipped `sidebar.producer.body`, whose "a yes becomes a booking" line only holds
- *    for auto-confirm orgs.
+ *  - Hidden outright when the `booking_flow` module is off for this org, the flow is
+ *    paused (`active: false`), or the org's flow is not the Autopilot preset (fasttrack).
+ *    The card's title is literally "Autopilot on", so it must only appear when Autopilot
+ *    is the active mode — never for Classic, Direct book, or a custom flow, where that
+ *    claim would be untrue.
  */
 export function AutopilotStatusCard() {
   const { t } = useTranslation('today');
@@ -35,7 +32,9 @@ export function AutopilotStatusCard() {
 
   const isArtistOnly = hasRole('artist') && !hasRole('producer') && !hasRole('admin');
 
-  if (!bookingFlowEnabled || !flow.active) return null;
+  // Only Autopilot (the fasttrack preset) may show this card — its title asserts
+  // "Autopilot on", which is false for Classic, Direct book, or any custom flow.
+  if (!bookingFlowEnabled || !flow.active || matchPreset(flow) !== 'fasttrack') return null;
 
   const title = isArtistOnly ? t('sidebar.artist.title') : t('sidebar.producer.title');
   const body = isArtistOnly

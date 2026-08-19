@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { Button } from '@/components/ui/button';
 import { DISPLAY_ORDER, type NeedsYouQueue, type NeedsYouScopeKey } from '@/lib/calendar/needsYou';
 import { cn } from '@/lib/utils';
 
@@ -20,18 +21,16 @@ interface ScopeChipProps {
 }
 
 function ScopeChip({ scopeKey, label, count, active, onClick }: ScopeChipProps) {
+  // Same shape as the hire-orders status chips: shadcn Button, size sm, violet
+  // default when active vs outline otherwise. The count badge is preserved.
   return (
-    <button
+    <Button
       type="button"
+      size="sm"
+      variant={active ? 'default' : 'outline'}
       data-testid={`scope-chip-${scopeKey}`}
       aria-pressed={active}
       onClick={onClick}
-      className={cn(
-        'inline-flex items-center gap-1.5 rounded-pill border-[0.5px] px-2.5 py-1 text-[12px] font-medium transition-colors',
-        active
-          ? 'border-transparent bg-primary text-primary-foreground'
-          : 'border-border bg-card text-muted-foreground hover:bg-muted'
-      )}
     >
       <span>{label}</span>
       <span
@@ -42,7 +41,7 @@ function ScopeChip({ scopeKey, label, count, active, onClick }: ScopeChipProps) 
       >
         {count}
       </span>
-    </button>
+    </Button>
   );
 }
 

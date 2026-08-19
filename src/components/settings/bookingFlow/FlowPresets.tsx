@@ -66,8 +66,15 @@ export function FlowPresets({
     direct: t("flowPresets.names.direct"),
     off: t("flowPresets.names.off"),
   };
+  // Autopilot leads, then the remaining presets in their registry order.
+  const presetOrder: Exclude<PresetName, "off">[] = [
+    "fasttrack",
+    ...(Object.keys(BOOKING_FLOW_PRESETS) as Exclude<PresetName, "off">[]).filter(
+      (p) => p !== "fasttrack",
+    ),
+  ];
   const presets: PresetName[] = [
-    ...(Object.keys(BOOKING_FLOW_PRESETS) as Exclude<PresetName, "off">[]),
+    ...presetOrder,
     ...(showOff ? (["off"] as const) : []),
   ];
   return (
