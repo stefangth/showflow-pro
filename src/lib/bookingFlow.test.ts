@@ -62,15 +62,17 @@ describe("booking flow templates", () => {
     )).toBe(false);
   });
 
-  it("infers an exact template and falls back to classic for legacy customization", () => {
+  it("infers an exact template and falls back to autopilot for unmatched customization", () => {
     const templates = BOOKING_FLOW_TEMPLATE_DEFAULTS;
 
     expect(inferBookingTemplate(templates.direct.flow, templates.direct.times, templates)).toBe("direct");
+    // Autopilot is the recommended default, so a flow that matches no template
+    // exactly is suggested as Autopilot rather than Classic.
     expect(inferBookingTemplate(
       { ...templates.fasttrack.flow, reference_field: { source: "program" } },
       templates.fasttrack.times,
       templates,
-    )).toBe("classic");
+    )).toBe("fasttrack");
   });
 });
 

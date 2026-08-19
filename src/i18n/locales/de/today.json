@@ -80,7 +80,6 @@
     "producer": {
       "title": "Autopilot an",
       "body": "Anfragen gehen um {{time}} raus. Ein Ja wird zur Buchung. Engagementverträge werden entworfen, sobald ein Termin voll ist.",
-      "bodyConfirm": "Anfragen gehen um {{time}} raus. Ein Ja wartet auf Deine Bestätigung, bevor es gebucht wird. Engagementverträge werden entworfen, sobald ein Termin voll ist.",
       "link": "Autopilot ausschalten"
     },
     "artist": {
