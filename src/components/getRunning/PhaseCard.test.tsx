@@ -33,7 +33,7 @@ describe("PhaseCard", () => {
     renderWithProviders(<PhaseCard phase={makeBookablePhase()} role="admin" onOpenTask={vi.fn()} />);
 
     expect(screen.getByText("Make it bookable")).toBeInTheDocument();
-    expect(screen.getByText("Blocks your first offer")).toBeInTheDocument();
+    expect(screen.getByText("Blocks your first ask")).toBeInTheDocument();
   });
 
   it("renders the amber blocking chip on the undone-and-blocking people task", () => {
@@ -47,7 +47,7 @@ describe("PhaseCard", () => {
     renderWithProviders(<PhaseCard phase={makeBookablePhase()} role="admin" onOpenTask={vi.fn()} />);
 
     const row = screen.getByTestId("task-row-ladder");
-    expect(within(row).getByText("Blocks offers")).toBeInTheDocument();
+    expect(within(row).getByText("Blocks asks")).toBeInTheDocument();
   });
 
   it("calls onOpenTask('people') when the blocking task's button is clicked", () => {

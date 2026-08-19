@@ -121,7 +121,7 @@ describe("HowThisOrgWorks", () => {
 
   it("shows offer timing values", () => {
     renderWithProviders(<HowThisOrgWorks orgId="org-1" />);
-    expect(screen.getByText("19:00h (Berlin, Germany) digest, 48h response window")).toBeInTheDocument();
+    expect(screen.getByText("19:00h (Berlin, Germany) daily send, 48h to answer")).toBeInTheDocument();
   });
 
   it("shows all covered when there are no uncovered future (show, city) pairs", () => {
@@ -181,6 +181,6 @@ describe("HowThisOrgWorks", () => {
   it("shows the empty-modules message when neither module is entitled", () => {
     h.features.mockReturnValue(new Set());
     renderWithProviders(<HowThisOrgWorks orgId="org-1" />);
-    expect(screen.getByText(/Neither the booking engine nor hire orders/)).toBeInTheDocument();
+    expect(screen.getByText(/Neither the booking engine nor contracts/)).toBeInTheDocument();
   });
 });
