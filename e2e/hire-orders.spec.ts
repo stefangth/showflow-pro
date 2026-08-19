@@ -383,7 +383,10 @@ test.describe("Hire orders: PDF template editor", () => {
   test("admin can retheme the hire order PDF", async ({ page }) => {
     await loginAsAndAwaitDashboard(page, TEST_ADMIN_EMAIL, TEST_ADMIN_PASSWORD);
     await navViaSidebar(page, /^settings$/i);
-    await page.getByRole("tab", { name: /^contracts$/i }).click();
+    // The tab's accessible name carries its module-state badge inline
+    // ("Contracts On"/"Contracts Off" — see SettingsPage.tsx's TabsTrigger), so
+    // match the prefix rather than the exact label.
+    await page.getByRole("tab", { name: /^contracts\b/i }).click();
 
     // Enter via the card this task ships, not a deep link, so the spec also
     // proves PdfTemplateCard actually wires up to the editor route.
@@ -424,7 +427,7 @@ test.describe("Hire orders: PDF template editor", () => {
     // one this step means, and clicking it exercises the real return path.
     await page.getByRole("main").getByRole("link", { name: "Settings" }).click();
     await expect(page).toHaveURL(/\/settings$/);
-    await page.getByRole("tab", { name: /^contracts$/i }).click();
+    await page.getByRole("tab", { name: /^contracts\b/i }).click();
     await page.getByRole("link", { name: "Open template editor" }).click();
     await expect(page.getByRole("navigation", { name: "Document outline" })).toBeVisible();
 

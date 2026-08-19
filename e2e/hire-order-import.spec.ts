@@ -293,7 +293,7 @@ test.describe("Hire orders: spreadsheet import wizard", () => {
     await expect(page.getByRole("checkbox", { name: `Select ${GHOST_ARTIST_NAME}` })).toBeChecked();
     const badDateCheckbox = page.getByRole("checkbox", { name: `Select ${LINK_TARGET_ARTIST_NAME}` });
     await expect(badDateCheckbox).not.toBeChecked();
-    await expect(page.getByRole("button", { name: /^import 2 orders$/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: /^import 2 contracts$/i })).toBeVisible();
 
     // Fix the bad date inline — a valid ISO date that matches SHOW_DATE_B
     // exactly (the only way buildOrderRows resolves it without an
@@ -303,8 +303,8 @@ test.describe("Hire orders: spreadsheet import wizard", () => {
 
     // Select all 3 and submit.
     await badDateCheckbox.check();
-    await expect(page.getByRole("button", { name: /^import 3 orders$/i })).toBeVisible();
-    await page.getByRole("button", { name: /^import 3 orders$/i }).click();
+    await expect(page.getByRole("button", { name: /^import 3 contracts$/i })).toBeVisible();
+    await page.getByRole("button", { name: /^import 3 contracts$/i }).click();
 
     // ── Done: 3 created, none skipped/errored ───────────────────────────────
     await expect(page.getByText(/Created 3 draft contracts/i)).toBeVisible({ timeout: 20_000 });
@@ -320,7 +320,7 @@ test.describe("Hire orders: spreadsheet import wizard", () => {
     await page.getByRole("button", { name: /open contracts/i }).click();
     await expect(page.getByRole("dialog")).not.toBeVisible({ timeout: 10_000 });
 
-    await page.getByPlaceholder(/search order number or artist/i).fill(SEARCH_TAG);
+    await page.getByPlaceholder(/search contract number or artist/i).fill(SEARCH_TAG);
     const tableRows = page.locator("table tbody tr");
     await expect(tableRows).toHaveCount(3, { timeout: 15_000 });
     await expect(page.locator("table tbody").getByText("Draft", { exact: true })).toHaveCount(3);
