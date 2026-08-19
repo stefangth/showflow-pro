@@ -44,8 +44,8 @@ describe('HelpPage', () => {
   it('renders the "still stuck" guidance and a glossary term', async () => {
     await i18n.changeLanguage('en');
     renderWithProviders(<HelpPage />);
-    // The "still stuck" card is informational (no action buttons).
-    expect(screen.getByText('STILL STUCK')).toBeInTheDocument();
+    // The "still need help" card is informational (no action buttons).
+    expect(screen.getByText('STILL NEED HELP')).toBeInTheDocument();
     // A glossary card title comes from termLabel(term, lang).
     expect(screen.getByText('Understudy')).toBeInTheDocument();
   });
