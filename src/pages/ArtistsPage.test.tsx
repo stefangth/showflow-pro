@@ -109,7 +109,7 @@ describe("ArtistsPage — Part B pending-invite revoke/resend controls", () => {
     mockUseCan({ resend_account_invite: true, manage_artist_invitations: true });
     renderWithProviders(<ArtistsPage />);
     await waitFor(() => expect(screen.getByText("Ned None")).toBeInTheDocument());
-    const nedCard = screen.getByText("Ned None").closest(".pt-6") as HTMLElement;
+    const nedCard = screen.getByText("Ned None").closest(".cursor-pointer") as HTMLElement;
     expect(nedCard).not.toBeNull();
     expect(within(nedCard).queryByRole("button", { name: "Resend invite" })).not.toBeInTheDocument();
     expect(within(nedCard).queryByRole("button", { name: "Revoke invite" })).not.toBeInTheDocument();

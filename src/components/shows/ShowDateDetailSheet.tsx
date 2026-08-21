@@ -110,7 +110,7 @@ function AssignedArtistsCard({ bookings, canManage, showConfirm, onConfirm, onCa
   // same sort/filter work the sheet already memoizes for bookedArtistIds.
   const { active, main, understudy } = useMemo(() => deriveBookingGroups(bookings), [bookings]);
   return (
-    <Card>
+    <Card elevation={2}>
       <CardHeader>
         <CardTitle className="font-display text-lg flex items-center gap-2">
           <Users className="h-5 w-5" />{t('showDateSheet.assignedArtists.title')}
@@ -1019,7 +1019,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager, ini
                 {activeTab === 'offers' && (
                   <ModuleGate feature="booking_flow">
                     {canManage && showDate.status !== 'cancelled' && (
-                      <Card>
+                      <Card elevation={2}>
                         <CardHeader>
                           <CardTitle className="font-display text-base">
                             {flow.artist_acceptance ? t('showDateSheet.tabs.offers') : t('showDateSheet.tabs.book')}
@@ -1133,7 +1133,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager, ini
 
                 {activeTab === 'setup' && canManage && (
                   <div className="space-y-6">
-                    <Card>
+                    <Card elevation={2}>
                       <CardHeader>
                         <CardTitle className="font-display text-base">{t('showDateSheet.setup.dateConfiguration')}</CardTitle>
                       </CardHeader>

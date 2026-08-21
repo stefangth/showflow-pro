@@ -51,7 +51,7 @@ describe("ArtistsPage roster card — labelled SKILLS / CASTS rows (1j)", () => 
   it("caps skill badges at 3 with a +2 mono overflow badge for an artist with 5 skills", async () => {
     renderWithProviders(<ArtistsPage />);
     await waitFor(() => expect(screen.getByText("Sam Skilled")).toBeInTheDocument());
-    const card = screen.getByText("Sam Skilled").closest(".pt-6") as HTMLElement;
+    const card = screen.getByText("Sam Skilled").closest(".cursor-pointer") as HTMLElement;
     expect(card).not.toBeNull();
 
     expect(within(card).getByText("Vocals")).toBeInTheDocument();
@@ -65,7 +65,7 @@ describe("ArtistsPage roster card — labelled SKILLS / CASTS rows (1j)", () => 
   it("renders casts as hairline-neutral badges under the CASTS row", async () => {
     renderWithProviders(<ArtistsPage />);
     await waitFor(() => expect(screen.getByText("Sam Skilled")).toBeInTheDocument());
-    const card = screen.getByText("Sam Skilled").closest(".pt-6") as HTMLElement;
+    const card = screen.getByText("Sam Skilled").closest(".cursor-pointer") as HTMLElement;
     expect(within(card).getByText("Cast A")).toBeInTheDocument();
     expect(within(card).getByText("Cast B")).toBeInTheDocument();
   });

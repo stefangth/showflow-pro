@@ -21,7 +21,7 @@ export function OrdersKpis({ orders }: Props) {
     <div data-testid="orders-kpis" className="grid grid-cols-2 gap-3 sm:grid-cols-4">
       {tiles.map((t) => (
         <Card key={t.label}>
-          <CardContent className="pt-6">
+          <CardContent>
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t.label}</p>
             <p className="mt-1 text-2xl font-semibold tabular-nums text-foreground">{t.value}</p>
           </CardContent>

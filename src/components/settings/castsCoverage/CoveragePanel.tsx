@@ -621,7 +621,7 @@ export function CoveragePanel({ orgId, onOpenCast }: CoveragePanelProps) {
             )}
 
             <Card>
-              <CardContent className="pt-4">
+              <CardContent>
                 {!effectiveShowId ? (
                   <p className="text-sm text-muted-foreground">{t('coverage.selectShowHint')}</p>
                 ) : cities.length === 0 ? (

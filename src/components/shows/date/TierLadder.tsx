@@ -54,7 +54,7 @@ function tierLabel(t: TFunction<"showsDetail">, tier: number): string {
 export function TierLadder({ rows, city, openedTiers, statusByTier, nextTier, onCloseTier }: TierLadderProps) {
   const { t } = useTranslation("showsDetail");
   return (
-    <Card>
+    <Card elevation={2}>
       <CardHeader className="space-y-1.5">
         <CardTitle className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           {t("tierLadder.title")}

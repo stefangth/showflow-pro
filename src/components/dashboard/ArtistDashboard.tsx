@@ -205,7 +205,7 @@ export function ArtistDashboard() {
                 className="block"
               >
                 <Card className="hover:shadow-elev3 transition-shadow cursor-pointer h-full">
-                  <CardContent className="pt-6">
+                  <CardContent>
                     <div className="flex items-start justify-between mb-4">
                       <p className="text-sm text-muted-foreground font-medium">{meter.title}</p>
                       <CalendarDays className="h-8 w-8 text-primary opacity-30" />

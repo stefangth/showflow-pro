@@ -64,7 +64,7 @@ function ArtistHireOrders({ showDateId }: Props) {
   }
 
   return (
-    <Card>
+    <Card elevation={2}>
       <CardHeader>
         <CardTitle className="font-display text-lg flex items-center gap-2">
           <FileText className="h-5 w-5" />{t("ordersCard.hireOrder")}
@@ -124,7 +124,7 @@ function ProducerHireOrders({ showDateId, showDate, bookings, canManage }: Props
   }
 
   return (
-    <Card>
+    <Card elevation={2}>
       <CardHeader>
         <CardTitle className="font-display text-lg flex items-center gap-2">
           <FileText className="h-5 w-5" />{t("ordersCard.hireOrders")}

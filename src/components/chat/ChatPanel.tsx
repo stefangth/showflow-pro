@@ -127,12 +127,12 @@ export function ChatPanel({ showDateId, showDate }: Props) {
   });
 
   if (participantLoading) {
-    return <Card><CardContent className="py-6 text-sm text-muted-foreground">{t('panel.loading')}</CardContent></Card>;
+    return <Card elevation={2}><CardContent className="py-6 text-sm text-muted-foreground">{t('panel.loading')}</CardContent></Card>;
   }
 
   if (!isParticipant) {
     return (
-      <Card>
+      <Card elevation={2}>
         <CardContent className="py-6 text-sm text-muted-foreground">
           {t('panel.notParticipant')}
         </CardContent>
@@ -142,7 +142,7 @@ export function ChatPanel({ showDateId, showDate }: Props) {
 
   if (archived && !isAdmin) {
     return (
-      <Card>
+      <Card elevation={2}>
         <CardContent className="py-6 flex items-center gap-3 text-sm text-muted-foreground">
           <Archive className="h-4 w-4" />
           {t('panel.archivedNotice', { days: CHAT_ARCHIVE_DAYS })}
@@ -152,7 +152,7 @@ export function ChatPanel({ showDateId, showDate }: Props) {
   }
 
   return (
-    <Card className="flex flex-col h-[500px]">
+    <Card elevation={2} className="flex flex-col h-[500px]">
       <CardHeader className="border-b border-border py-3 space-y-0">
         <div className="flex items-center justify-between">
           <CardTitle className="font-display text-base flex items-center gap-2">
