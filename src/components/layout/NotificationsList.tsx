@@ -44,7 +44,7 @@ export function NotificationsList({ onNavigate }: NotificationsListProps = {}) {
         <span className="text-[13px] font-semibold">Notifications</span>
         {unread.length > 0 && (
           <Button
-            variant="ghost"
+            variant="secondary"
             size="sm"
             className="h-6 px-2 text-[11px] text-muted-foreground"
             onClick={() => markAll.mutate()}

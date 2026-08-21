@@ -51,7 +51,7 @@ export function FirstOfferCard() {
           <p className="text-sm font-semibold text-accent-700">Your first ask</p>
           <p className="mt-1 text-sm leading-5 text-muted-foreground">{artistRow?.text}</p>
         </div>
-        <Button variant="ghost" size="sm" className="h-auto shrink-0 p-1" onClick={dismiss} aria-label="Dismiss">
+        <Button variant="ghost" size="icon" className="h-auto shrink-0 p-1" onClick={dismiss} aria-label="Dismiss">
           <X className="h-4 w-4" />
         </Button>
       </div>

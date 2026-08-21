@@ -325,7 +325,7 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
                   <Button type="submit" size="sm" disabled={updateCast.isPending || !editName.trim()}>
                     <Check className="mr-1 h-4 w-4" />{updateCast.isPending ? t('castDetails.saving') : t('castDetails.save')}
                   </Button>
-                  <Button type="button" size="sm" variant="ghost" onClick={cancelEdit} disabled={updateCast.isPending}>
+                  <Button type="button" size="sm" variant="secondary" onClick={cancelEdit} disabled={updateCast.isPending}>
                     {t('castDetails.cancel')}
                   </Button>
                 </div>
@@ -507,9 +507,9 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
                           <Badge variant="outline" className="text-xs">{a.status}</Badge>
                         </div>
                         <Button
-                          size="sm"
+                          size="icon"
                           variant="ghost"
-                          className="h-8"
+                          className="h-8 w-8"
                           onClick={() => { addMember.mutate(a.id); }}
                           disabled={!canManage}
                         >

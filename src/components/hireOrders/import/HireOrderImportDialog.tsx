@@ -453,7 +453,7 @@ export function HireOrderImportDialog({ open, onOpenChange, orgId }: Props) {
               onRangeChange={setRange}
             />
             <div className="flex justify-between gap-2">
-              <Button type="button" variant="ghost" onClick={goBack}>{t("common.back")}</Button>
+              <Button type="button" variant="secondary" onClick={goBack}>{t("common.back")}</Button>
               <Button type="button" onClick={goToMap} disabled={dataRows.length === 0}>{t("common.continue")}</Button>
             </div>
           </div>
@@ -463,7 +463,7 @@ export function HireOrderImportDialog({ open, onOpenChange, orgId }: Props) {
           <div className="space-y-4">
             <MapStep headers={headers} mapping={mapping} onMappingChange={setMapping} />
             <div className="flex justify-between gap-2">
-              <Button type="button" variant="ghost" onClick={goBack}>{t("common.back")}</Button>
+              <Button type="button" variant="secondary" onClick={goBack}>{t("common.back")}</Button>
               <Button type="button" onClick={() => setStep("resolve")}>{t("common.continue")}</Button>
             </div>
           </div>
@@ -480,7 +480,7 @@ export function HireOrderImportDialog({ open, onOpenChange, orgId }: Props) {
               creatingRowIndex={creatingRowIndex}
             />
             <div className="flex justify-between gap-2">
-              <Button type="button" variant="ghost" onClick={goBack}>{t("common.back")}</Button>
+              <Button type="button" variant="secondary" onClick={goBack}>{t("common.back")}</Button>
               <Button type="button" onClick={goToReview}>{t("common.continue")}</Button>
             </div>
           </div>
@@ -498,7 +498,7 @@ export function HireOrderImportDialog({ open, onOpenChange, orgId }: Props) {
               onEditDate={editDate}
             />
             <div className="flex justify-between gap-2">
-              <Button type="button" variant="ghost" onClick={goBack} disabled={submitting}>{t("common.back")}</Button>
+              <Button type="button" variant="secondary" onClick={goBack} disabled={submitting}>{t("common.back")}</Button>
               <Button type="button" onClick={handleSubmit} disabled={selection.size === 0 || submitting}>
                 {submitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                 {t("importDialog.importCount", { count: selection.size })}

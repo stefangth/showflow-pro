@@ -396,7 +396,7 @@ export function ArtistProfileSheet({ artistId, open, onOpenChange }: Props) {
 
             {canEdit && (
               <div className="flex justify-end gap-2 pt-2">
-                <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
+                <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
                   {t('sheet.cancel')}
                 </Button>
                 <Button type="submit" disabled={save.isPending}>

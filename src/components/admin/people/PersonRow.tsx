@@ -116,19 +116,19 @@ export function PersonRow({
         {invited && inv ? (
           <div className="flex items-center justify-end gap-1 sm:w-40">
             <IconTooltip label={t("personRow.copyInviteLink")}>
-              <Button size="sm" variant="ghost" className="h-9 w-9 p-0 sm:h-8 sm:w-8" onClick={() => onCopyLink(inv.token)} aria-label={t("personRow.copyInviteLinkFor", { email: inv.email })}>
+              <Button size="icon" variant="ghost" className="h-9 w-9 sm:h-8 sm:w-8" onClick={() => onCopyLink(inv.token)} aria-label={t("personRow.copyInviteLinkFor", { email: inv.email })}>
                 <Copy className="h-4 w-4" />
               </Button>
             </IconTooltip>
             <IconTooltip label={t("personRow.resendInvitation")}>
-              <Button size="sm" variant="ghost" className="h-9 w-9 p-0 sm:h-8 sm:w-8" disabled={resendPending} onClick={() => onResend(inv.id)} aria-label={t("personRow.resendInvitationTo", { email: inv.email })}>
+              <Button size="icon" variant="ghost" className="h-9 w-9 sm:h-8 sm:w-8" disabled={resendPending} onClick={() => onResend(inv.id)} aria-label={t("personRow.resendInvitationTo", { email: inv.email })}>
                 <RefreshCw className={`h-4 w-4 ${resendPending ? "animate-spin" : ""}`} />
               </Button>
             </IconTooltip>
             <IconTooltip label={t("personRow.revokeInvitation")}>
               <Button
-                size="sm" variant="ghost"
-                className="ml-0.5 h-9 w-9 p-0 text-[var(--red-600)] hover:bg-[var(--red-100)] sm:h-8 sm:w-8"
+                size="icon" variant="ghost"
+                className="ml-0.5 h-9 w-9 text-[var(--red-600)] hover:bg-[var(--red-100)] sm:h-8 sm:w-8"
                 disabled={revokePending} onClick={() => onRevoke(inv.id)} aria-label={t("personRow.revokeInvitationFor", { email: inv.email })}
               >
                 <X className="h-4 w-4" />
@@ -175,8 +175,8 @@ export function PersonRow({
             <div className="flex sm:w-[4.75rem] sm:justify-end">
               {!isSelf && person.userId && (
                 <Button
-                  size="sm" variant="ghost"
-                  className="h-9 px-2.5 text-xs text-[var(--red-600)] hover:bg-[var(--red-100)] sm:h-8"
+                  size="sm" variant="destructive"
+                  className="h-9 px-2.5 text-xs sm:h-8"
                   onClick={() => onRequestRemove({ user_id: person.userId!, email: person.email })}
                   aria-label={t("personRow.removeAria", { who: person.displayName || person.email })}
                 >

@@ -43,7 +43,7 @@ export function SelectionBar({ count, actions, onAction, onClear, className }: S
           <span className="text-sm font-medium text-foreground">{t('calendar.selection.count', { count })}</span>
           <Button
             type="button"
-            variant="ghost"
+            variant="secondary"
             size="sm"
             data-testid="selection-bar-clear"
             onClick={onClear}

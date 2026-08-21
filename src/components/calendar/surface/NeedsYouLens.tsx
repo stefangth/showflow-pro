@@ -477,17 +477,15 @@ export function NeedsYouLens({
             {t('calendar.needsYou.clearedToday')}
           </p>
           <span className="font-mono text-[11px] text-muted-foreground">{receipts.length}</span>
-          <Button
+          <button
             type="button"
-            variant="ghost"
-            size="sm"
-            className="ml-auto h-auto p-0 text-xs font-medium text-primary hover:bg-transparent"
+            className="ml-auto text-[13px] font-medium text-accent-text hover:underline disabled:pointer-events-none disabled:opacity-50"
             data-testid="needs-you-undo-last"
             disabled={receipts.length === 0}
             onClick={() => onUndoLast?.()}
           >
             {t('calendar.needsYou.undoLast')}
-          </Button>
+          </button>
         </div>
         {receipts.map((receipt, i) => {
           const tone = RECEIPT_TONE_BY_KIND[receipt.kind];

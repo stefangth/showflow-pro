@@ -295,7 +295,7 @@ export function ArtistImportDialog({ open, onOpenChange, orgId, existingEmails, 
               })}
             </div>
             <div className="flex justify-between gap-2">
-              <Button type="button" variant="ghost" onClick={() => setStep('source')}>{t('import.back')}</Button>
+              <Button type="button" variant="secondary" onClick={() => setStep('source')}>{t('import.back')}</Button>
               <Button type="button" onClick={enterReview} disabled={!mapping.name}>{t('import.continue')}</Button>
             </div>
           </div>
@@ -374,7 +374,7 @@ export function ArtistImportDialog({ open, onOpenChange, orgId, existingEmails, 
             )}
 
             <div className="flex justify-between gap-2">
-              <Button type="button" variant="ghost" onClick={() => setStep('map')}>{t('import.back')}</Button>
+              <Button type="button" variant="secondary" onClick={() => setStep('map')}>{t('import.back')}</Button>
               <Button type="button" onClick={() => commit.mutate()} disabled={selectedNewCount === 0 || commit.isPending}>
                 {commit.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                 {t('import.review.importBtn', { count: selectedNewCount })}

@@ -52,7 +52,7 @@ export function RemovedPersonRow({ member, onUndo, onClear, onDelete, undoPendin
         <div className="flex items-center justify-end gap-1 sm:w-40">
           <IconTooltip label={t("removedRow.undoRemoval")}>
             <Button
-              size="sm" variant="ghost" className="h-8 gap-1.5 px-2.5 text-xs"
+              size="sm" variant="secondary" className="h-8 gap-1.5 px-2.5 text-xs"
               disabled={undoPending} onClick={() => onUndo(member.user_id)}
               aria-label={t("removedRow.undoRemovalOf", { who })}
             >
@@ -61,15 +61,15 @@ export function RemovedPersonRow({ member, onUndo, onClear, onDelete, undoPendin
           </IconTooltip>
           {member.deletable ? (
             <Button
-              size="sm" variant="ghost"
-              className="h-8 px-2.5 text-xs text-[var(--red-600)] hover:bg-[var(--red-100)]"
+              size="sm" variant="destructive"
+              className="h-8 px-2.5 text-xs"
               onClick={() => onDelete(member)} aria-label={t("removedRow.deleteAccountOf", { who })}
             >
               {t("removedRow.deleteAccount")}
             </Button>
           ) : (
             <Button
-              size="sm" variant="ghost" className="h-8 px-2.5 text-xs text-muted-foreground"
+              size="sm" variant="secondary" className="h-8 px-2.5 text-xs text-muted-foreground"
               onClick={() => onClear(member)} aria-label={t("removedRow.clearAria", { who })}
             >
               {t("removedRow.clearFromList")}
