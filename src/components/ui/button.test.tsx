@@ -3,7 +3,8 @@ import { describe, it, expect } from 'vitest';
 import { Button } from './button';
 
 describe('Button', () => {
-  const variants = ['default', 'secondary', 'destructive', 'ghost', 'outline', 'link'] as const;
+  // 'link' is gone (ADR 0012, D1) and 'ghost' is icon-only (D2) — exercised separately below.
+  const variants = ['default', 'secondary', 'destructive', 'outline'] as const;
   const sizes = ['sm', 'default', 'lg', 'icon'] as const;
 
   it.each(variants)('renders variant=%s without crashing', (variant) => {
@@ -14,6 +15,15 @@ describe('Button', () => {
   it.each(sizes)('renders size=%s without crashing', (size) => {
     render(<Button size={size}>T</Button>);
     expect(screen.getByRole('button')).toBeInTheDocument();
+  });
+
+  it('renders ghost variant with icon size without crashing', () => {
+    render(
+      <Button variant="ghost" size="icon" aria-label="Ghost icon">
+        <svg />
+      </Button>,
+    );
+    expect(screen.getByRole('button', { name: 'Ghost icon' })).toBeInTheDocument();
   });
 
   it('applies primary design-system class for default variant', () => {

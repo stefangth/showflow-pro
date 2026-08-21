@@ -73,7 +73,7 @@ export function InviteBar({ members, invites, onOpenBulk, onResend, resendPendin
           </SelectContent>
         </Select>
         <Button type="submit" disabled={!canInvite}>{t("inviteBar.invite")}</Button>
-        <Button type="button" variant="ghost" onClick={onOpenBulk}>
+        <Button type="button" variant="secondary" onClick={onOpenBulk}>
           <UserPlus className="h-4 w-4 mr-1" />{t("inviteBar.bulkInvite")}
         </Button>
       </form>
@@ -84,7 +84,7 @@ export function InviteBar({ members, invites, onOpenBulk, onResend, resendPendin
       ) : match === "pending" && pendingInvite ? (
         <p className="text-xs text-muted-foreground flex items-center gap-2">
           {t("inviteBar.alreadyInvited")}
-          <Button size="sm" variant="link" className="h-auto p-0 text-xs" disabled={resendPendingId === pendingInvite.id} onClick={() => onResend(pendingInvite.id)}>
+          <Button size="sm" variant="secondary" className="text-xs" disabled={resendPendingId === pendingInvite.id} onClick={() => onResend(pendingInvite.id)}>
             {t("inviteBar.resend")}
           </Button>
         </p>

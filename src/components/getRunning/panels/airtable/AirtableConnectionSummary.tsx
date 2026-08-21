@@ -129,7 +129,7 @@ function SummaryRow({ title, detail, mono, badge, action, onAction, stepNumber, 
       </div>
       {badge && <span className="shrink-0 font-mono text-xs font-medium text-accent-700">{badge}</span>}
       {action && (
-        <Button type="button" variant="link" size="sm" className="h-auto shrink-0 p-0 text-xs font-medium" onClick={onAction}>
+        <Button type="button" variant="secondary" size="sm" className="shrink-0 text-xs font-medium" onClick={onAction}>
           {action}
         </Button>
       )}
