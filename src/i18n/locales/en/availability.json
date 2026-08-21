@@ -118,7 +118,7 @@
   },
   "sortChronoLabel": "Date",
   "offersLoadError": "Failed to load your asks. Please refresh · don't block dates until this loads, as pending asks may not be shown.",
-  "emptyUnanswered": "No asks waiting on you · great work!",
+  "emptyUnanswered": "No asks waiting on you. Great work.",
   "emptyAll": "No dates yet.",
   "firstRun": {
     "eyebrow": "{{org}} · your calendar",
@@ -132,7 +132,7 @@
     "task": {
       "title": "Block what you cannot play",
       "blocksNothing": "Blocks nothing",
-      "body": "Blocked dates come off the list before anyone books you, so you only hear about dates that work.",
+      "body": "Dates you block come off the list before anyone books you, so you only hear about dates that work.",
       "cta": "Block dates"
     },
     "rules": {
