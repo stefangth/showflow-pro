@@ -51,10 +51,17 @@ const LEGACY_TAB_REDIRECTS: Readonly<Record<string, SettingsTabParam>> = {
   "production-ownership": "casts-coverage",
 };
 
-/** Where the page lands with no (or an unusable) `?tab=`, matching what it did before
- *  deep-linking existed. */
-export function defaultSettingsTab(_isAdmin: boolean): SettingsTabParam {
-  return "organization";
+/** Where the page lands with no (or an unusable) `?tab=`.
+ *
+ *  "How this org works" is the intended landing screen. Today it is also the only branch that
+ *  runs in practice: ROUTES.SETTINGS is guarded to `['admin','producer']` in App.tsx, so every
+ *  caller that reaches SettingsPage satisfies `isAdmin || isProducer`. The "organization" branch
+ *  is a defensive fallback for a hypothetically role-less caller (e.g. if that route guard is
+ *  ever loosened). Note it is NOT a safe universal fallback: "organization" is itself gated
+ *  `show: isAdmin || isProducer` in SettingsPage `navGroups`, so such a caller would have no
+ *  visible Settings tab at all — this fallback (and the guard) would need revisiting together. */
+export function defaultSettingsTab(isAdmin: boolean, isProducer: boolean = false): SettingsTabParam {
+  return isAdmin || isProducer ? "how-it-works" : "organization";
 }
 
 /**
@@ -68,8 +75,9 @@ export function resolveInitialTab(
   param: string | null,
   isAdmin: boolean,
   isSuperAdmin: boolean = false,
+  isProducer: boolean = false,
 ): SettingsTabParam {
-  const fallback = defaultSettingsTab(isAdmin);
+  const fallback = defaultSettingsTab(isAdmin, isProducer);
   if (!param) return fallback;
   const redirected = LEGACY_TAB_REDIRECTS[param];
   const match = redirected ?? SETTINGS_TAB_PARAMS.find((t) => t === param);

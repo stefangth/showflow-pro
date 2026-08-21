@@ -185,14 +185,18 @@ export function CockpitHeader({
         <div className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
           <span>{t("cockpitHeader.flow")}</span>
           {onEditFlow ? (
-            <button
+            <Button
               type="button"
+              variant="link"
+              size="sm"
               onClick={onEditFlow}
-              className="inline-flex items-center gap-1 font-medium text-muted-foreground transition-colors hover:text-foreground"
+              className="h-auto gap-1 p-0 text-xs font-medium text-muted-foreground no-underline hover:text-foreground hover:no-underline"
             >
-              <Settings2 className="h-3 w-3" />
+              {/* Inline size wins over Button's base `[&_svg]:size-4` deterministically,
+                  without relying on tailwind-merge to collapse two arbitrary-variant classes. */}
+              <Settings2 style={{ width: 12, height: 12 }} />
               {flowLabel}
-            </button>
+            </Button>
           ) : (
             <span className="font-medium text-foreground">{flowLabel}</span>
           )}

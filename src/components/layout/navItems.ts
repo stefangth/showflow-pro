@@ -1,10 +1,10 @@
-import { LayoutDashboard, BookOpen, Clock, Settings, MessageSquare, Users, Building2, Theater, FileSignature, HelpCircle, Rocket } from 'lucide-react';
+import { CalendarCheck, BookOpen, Clock, Settings, MessageSquare, Users, Building2, Theater, FileSignature, HelpCircle, Rocket } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { ROUTES, type AppRole } from '@/config/app.config';
 import type { FeatureKey } from '@/lib/entitlements';
 
 export type NavSection = 'workspace' | 'catalog' | 'system';
-export type NavBadge = 'pendingConfirmations' | 'openOffers' | 'awaitingCountersign';
+export type NavBadge = 'needsYou' | 'openOffers' | 'awaitingCountersign';
 
 /** i18n keys (common namespace) for nav labels. AppLayout resolves them via t(),
  *  falling back to the English `label`. */
@@ -33,8 +33,8 @@ const SECTION_ORDER: NavSection[] = ['workspace', 'catalog', 'system'];
 
 export const NAV_ITEMS: NavItem[] = [
   { to: ROUTES.GET_RUNNING, icon: Rocket, label: 'Get running', labelKey: 'nav.getRunning', section: 'workspace', roles: ['admin', 'producer'] },
-  { to: ROUTES.DASHBOARD, icon: LayoutDashboard, label: 'Dashboard', labelKey: 'nav.dashboard', section: 'workspace' },
-  { to: ROUTES.BOOKINGS, icon: BookOpen, label: 'Shows & Bookings', labelKey: 'nav.bookings', section: 'workspace', roles: ['admin', 'producer'], badge: 'pendingConfirmations' },
+  { to: ROUTES.DASHBOARD, icon: CalendarCheck, label: 'Dashboard', labelKey: 'nav.dashboard', section: 'workspace' },
+  { to: ROUTES.BOOKINGS, icon: BookOpen, label: 'Shows & Bookings', labelKey: 'nav.bookings', section: 'workspace', roles: ['admin', 'producer'], badge: 'needsYou' },
   { to: ROUTES.HIRE_ORDERS, icon: FileSignature, label: 'Hire orders', labelKey: 'nav.hireOrders', section: 'workspace', roles: ['admin', 'producer'], feature: 'hire_orders', badge: 'awaitingCountersign' },
   { to: ROUTES.AVAILABILITY, icon: Clock, label: 'Availability', labelKey: 'nav.availability', section: 'workspace', roles: ['artist'], feature: 'booking_flow', badge: 'openOffers' },
   { to: ROUTES.CHATS, icon: MessageSquare, label: 'Chats', labelKey: 'nav.chats', section: 'workspace' },

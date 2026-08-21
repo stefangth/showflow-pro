@@ -146,8 +146,8 @@ describe("SettingsPage grouped vertical nav", () => {
     expect(automationHeading).toBeInTheDocument();
     expect(automationHeading).toHaveAttribute("aria-hidden", "true");
     // The "Organization" group heading shares its literal text with the "Organization" tab
-    // trigger AND the OrganizationTab card's own CardTitle (rendered because "organization" is
-    // the default active tab for an admin) — scope to the heading <p> to disambiguate.
+    // trigger — scope to the heading <p> to disambiguate. (The admin default tab is now
+    // "How this org works", so the OrganizationTab card is not mounted here.)
     expect(screen.getByText("Organization", { selector: "p" })).toBeInTheDocument();
     expect(screen.getByText("Modules", { selector: "p" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /booking engine on/i })).toBeInTheDocument();
@@ -240,10 +240,10 @@ describe("SettingsPage ?tab= deep link", () => {
     expect(await screen.findByRole("tab", { name: /airtable sync/i })).toHaveAttribute("aria-selected", "true");
   });
 
-  it("lands on the admin default when no tab is named", async () => {
+  it("lands on 'How this org works' by default for an admin", async () => {
     vi.mocked(useAuth).mockReturnValue(DEFAULT_AUTH as never);
     renderWithProviders(<MemoryRouter initialEntries={["/settings"]}><SettingsPage /></MemoryRouter>);
-    expect(await screen.findByRole("tab", { name: /^organization$/i })).toHaveAttribute("aria-selected", "true");
+    expect(await screen.findByRole("tab", { name: /how this org works/i })).toHaveAttribute("aria-selected", "true");
   });
 
   it("redirects a retired casts-cities or production-ownership deep link to Casts & coverage", async () => {
@@ -264,11 +264,13 @@ describe("SettingsPage ?tab= deep link", () => {
   });
 
   it("ignores an admin-only tab asked for by a producer", async () => {
+    // A producer cannot see "permissions", so the page falls back to their default,
+    // which is now "How this org works" (producers can see it).
     vi.mocked(useAuth).mockReturnValue({ ...DEFAULT_AUTH, hasRole: (r: string) => r === "producer" } as never);
     renderWithProviders(
       <MemoryRouter initialEntries={["/settings?tab=permissions"]}><SettingsPage /></MemoryRouter>,
     );
-    expect(await screen.findByRole("tab", { name: /^organization$/i })).toHaveAttribute("aria-selected", "true");
+    expect(await screen.findByRole("tab", { name: /how this org works/i })).toHaveAttribute("aria-selected", "true");
   });
 
   it("ignores the docs tab asked for by a non-super-admin, from the page's side too", async () => {
@@ -278,7 +280,7 @@ describe("SettingsPage ?tab= deep link", () => {
     renderWithProviders(
       <MemoryRouter initialEntries={["/settings?tab=docs"]}><SettingsPage /></MemoryRouter>,
     );
-    expect(await screen.findByRole("tab", { name: /^organization$/i })).toHaveAttribute("aria-selected", "true");
+    expect(await screen.findByRole("tab", { name: /how this org works/i })).toHaveAttribute("aria-selected", "true");
   });
 
   it("opens the docs tab for a super-admin", async () => {
@@ -335,7 +337,7 @@ describe("SettingsPage ?tab= deep link", () => {
     renderWithProviders(
       <MemoryRouter initialEntries={["/settings?tab=hire-orders"]}><SettingsPage /></MemoryRouter>,
     );
-    expect(await screen.findByRole("tab", { name: /^organization$/i })).toHaveAttribute("aria-selected", "true");
+    expect(await screen.findByRole("tab", { name: /how this org works/i })).toHaveAttribute("aria-selected", "true");
   });
 
   it("still lets the user switch tabs after arriving through a deep link", async () => {

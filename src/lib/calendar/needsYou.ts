@@ -18,6 +18,14 @@ import type { ProducerDateEntry } from './types';
 
 export type NeedsYouGroupKey = 'expires-today' | 'at-risk' | 'ready-to-issue' | 'cancelled';
 
+/** The show_date ids `buildNeedsYouQueue` can actually surface an item for: every
+ *  non-cancelled date, plus a cancelled date whose cast has not been notified yet. Shared
+ *  by the Dates page and the sidebar badge (`useNeedsYouCount`) so the two derive the same
+ *  candidate set from one place and cannot silently drift. */
+export function needsYouCandidateDateIds(entries: ProducerDateEntry[]): string[] {
+  return entries.filter((e) => e.status !== 'cancelled' || !e.castNotifiedAt).map((e) => e.id);
+}
+
 /** Upper bound (in calendar days) on how far out an under-cast date can be
  *  and still land in the `at-risk` group — matches the design mock's
  *  "under-cast inside {RISK_WINDOW} days" group title (mock lines 947-950). */

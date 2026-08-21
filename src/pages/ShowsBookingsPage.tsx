@@ -43,7 +43,7 @@ import { PageMini } from '@/components/minis/PageMini';
 import { CalendarSurface } from '@/components/calendar/surface/CalendarSurface';
 import type { NeedsYouReceipt, NeedsYouReceiptKind } from '@/components/calendar/surface/NeedsYouLens';
 import { toProducerEntries } from '@/lib/calendar/producerData';
-import { buildNeedsYouQueue } from '@/lib/calendar/needsYou';
+import { buildNeedsYouQueue, needsYouCandidateDateIds } from '@/lib/calendar/needsYou';
 import { useBookingsWithArtist } from '@/hooks/useBookingsWithArtist';
 
 type ShowRef = {
@@ -313,12 +313,11 @@ function ProducerShowsBookings() {
   );
 
   // ── "Needs you" queue (calendar surface default lens) ─────────────────────
-  // Queue-relevant date ids: every non-cancelled date, plus a cancelled date
-  // whose cast hasn't been notified yet — the union `buildNeedsYouQueue` can
-  // actually surface. Bounded by the page's own search/status/program filters,
-  // same as `producerEntries` itself.
+  // Queue-relevant date ids via the shared `needsYouCandidateDateIds` predicate (also used
+  // by the sidebar badge's useNeedsYouCount, so the two cannot drift). Bounded here by the
+  // page's own search/status/program filters, same as `producerEntries` itself.
   const needsYouDateIds = useMemo(
-    () => producerEntries.filter((e) => e.status !== 'cancelled' || !e.castNotifiedAt).map((e) => e.id),
+    () => needsYouCandidateDateIds(producerEntries),
     [producerEntries]
   );
   const { data: needsYouPeople } = useBookingsWithArtist(orgId, needsYouDateIds);

@@ -233,13 +233,15 @@ export function CockpitRail({
         {chatPreview ? (
           <p className="text-xs leading-[17px] text-muted-foreground">{smartQuotes(chatPreview)}</p>
         ) : onOpenChat ? (
-          <button
+          <Button
             type="button"
+            variant="link"
+            size="sm"
             onClick={onOpenChat}
-            className="text-left text-xs leading-[17px] text-muted-foreground hover:text-foreground"
+            className="h-auto justify-start p-0 text-xs font-normal leading-[17px] text-muted-foreground no-underline hover:text-foreground hover:no-underline"
           >
             {t("cockpitRail.openChat")}
-          </button>
+          </Button>
         ) : (
           <p className="text-xs leading-[17px] text-muted-foreground">{t("cockpitRail.messageCast")}</p>
         )}
