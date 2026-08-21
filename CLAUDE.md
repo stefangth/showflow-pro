@@ -2,6 +2,35 @@
 
 Guidance for AI coding agents (Claude Code and others) and new developers. Read this before writing any code.
 
+## UI work: read this before writing a component
+
+`docs/ui-conventions.md` is the spec. It wins over `Design System/`, which is brand
+history and describes an older product framing (ADR 0012). Do not take conventions,
+copy voice or component behaviour from that folder.
+
+Hard rules, in order of how often they are broken:
+
+1. **Check `src/components/ui` first.** 54 primitives exist. If one is close, use it with
+   `className`. Do not write a local version. The eight most-reimplemented patterns are
+   now primitives too: `Eyebrow`, `StatusPill`, `StatusDot`, `KpiTile`, `EmptyState`,
+   `Metric`, `CountChip`, `PageHeader`.
+2. **No raw values.** No hex, no `rgba()`, no `text-[13px]`, no `rounded-[10px]`, no
+   `bg-foreground/[0.04]` outside `src/components/ui`. The lint fails. Use tokens.
+3. **13px is the control size.** Buttons, inputs, table cells, nav rows. 14 is body.
+   11 is the eyebrow.
+4. **Uppercase text is `<Eyebrow>`.** Never hand-write
+   `text-[11px] font-semibold uppercase tracking-[1.6px]`.
+5. **Status colour comes from `TONES`.** Never a local tone map. Amber is waiting, red is
+   risk.
+6. **No dashes in copy.** Em and en dashes fail CI in both languages. Use a period, a
+   colon, or "to" for a range. No exclamation marks, no emoji. German is Du-form.
+7. **Plain language in the UI, domain terms in code.** The label is "Waiting on you";
+   the identifier is `hold`. New user-facing terms go in `src/i18n/terms.ts`.
+8. **Numbers are `<Metric>`.** Geist Mono, tabular, always.
+
+If you believe a rule is wrong, change `docs/ui-conventions.md` in the same PR and say so
+in the description. Do not route around it.
+
 > Do **not** put secrets, API keys, sprint goals, or current task lists here. See `memory.md` for living project state.
 
 ---
