@@ -79,13 +79,13 @@ describe("useNeedsYouCount", () => {
       { wrapper: wrapper() },
     );
     // Off → the ready query is handed a null org and stays disabled.
-    expect(useDatesReadyForHireOrder).toHaveBeenLastCalledWith(null);
+    expect(useDatesReadyForHireOrder).toHaveBeenLastCalledWith(null, expect.objectContaining({ staleTime: expect.any(Number) }));
 
     vi.mocked(useDatesReadyForHireOrder).mockClear();
     renderHook(
       () => useNeedsYouCount({ orgId: "org-1", enabled: true, hireOrdersOn: true }),
       { wrapper: wrapper() },
     );
-    expect(useDatesReadyForHireOrder).toHaveBeenLastCalledWith("org-1");
+    expect(useDatesReadyForHireOrder).toHaveBeenLastCalledWith("org-1", expect.objectContaining({ staleTime: expect.any(Number) }));
   });
 });

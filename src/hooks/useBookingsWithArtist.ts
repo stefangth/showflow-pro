@@ -9,10 +9,16 @@ import { fetchBookingsWithArtistForDates } from "@/data/bookings";
  * `ShowsBookingsPage`'s queue-relevant id list); an empty list short-circuits
  * without querying.
  */
-export function useBookingsWithArtist(orgId: string | null | undefined, dateIds: string[]) {
+export function useBookingsWithArtist(
+  orgId: string | null | undefined,
+  dateIds: string[],
+  options?: { staleTime?: number },
+) {
   return useQuery({
     queryKey: ["bookings", "with-artist", orgId, dateIds],
     enabled: !!orgId && dateIds.length > 0,
+    // Undefined by default → React Query's default (0), unchanged for existing callers.
+    staleTime: options?.staleTime,
     queryFn: () => fetchBookingsWithArtistForDates(supabase, { orgId: orgId!, showDateIds: dateIds }),
   });
 }

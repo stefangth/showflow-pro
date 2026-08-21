@@ -29,6 +29,12 @@ import { buildNeedsYouQueue, needsYouCandidateDateIds } from "@/lib/calendar/nee
  * @param enabled     caller's gate (e.g. admin/producer with booking_flow); off → 0, no fetch.
  * @param hireOrdersOn gates the ready-to-issue bucket's data, matching the page.
  */
+/** The badge derivation runs from the always-mounted sidebar on every admin/producer route,
+ *  so it holds its reads longer than a page view would (5 min) to keep the per-navigation cost
+ *  down. Freshness is unaffected on real changes: booking/show-date/hire-order mutations
+ *  invalidate these prefixes regardless of staleTime. */
+const BADGE_STALE_MS = 5 * 60_000;
+
 export function useNeedsYouCount(args: {
   orgId: string | null;
   enabled: boolean;
@@ -40,18 +46,18 @@ export function useNeedsYouCount(args: {
   const showDatesQ = useQuery({
     queryKey: ["show-dates", "list", orgId],
     enabled: on,
-    staleTime: 60_000,
+    staleTime: BADGE_STALE_MS,
     queryFn: () => fetchShowDatesList<ProducerShowDateRow>(supabase, orgId),
   });
 
   const countsQ = useQuery({
     queryKey: ["bookings", "counts-by-date", orgId],
     enabled: on,
-    staleTime: 60_000,
+    staleTime: BADGE_STALE_MS,
     queryFn: () => fetchBookingCountsByDate(supabase, orgId),
   });
 
-  const readyQ = useDatesReadyForHireOrder(on && hireOrdersOn ? orgId : null);
+  const readyQ = useDatesReadyForHireOrder(on && hireOrdersOn ? orgId : null, { staleTime: BADGE_STALE_MS });
 
   const entries = useMemo(
     () => (showDatesQ.data ? toProducerEntries(showDatesQ.data, countsQ.data, readyQ.data?.orderByDate) : []),
@@ -62,7 +68,7 @@ export function useNeedsYouCount(args: {
   // (`needsYouCandidateDateIds`), so the two cannot drift.
   const dateIds = useMemo(() => needsYouCandidateDateIds(entries), [entries]);
 
-  const peopleQ = useBookingsWithArtist(on ? orgId : null, dateIds);
+  const peopleQ = useBookingsWithArtist(on ? orgId : null, dateIds, { staleTime: BADGE_STALE_MS });
 
   return useMemo(() => {
     if (!on || !showDatesQ.data) return 0;
