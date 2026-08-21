@@ -27,9 +27,14 @@ export function useNavCounts(): { needsYou: number; openOffers: number; awaiting
   const canSeeOrgBookings = hasRole("admin") || hasRole("producer");
   const artistId = artist?.id ?? null;
 
+  // NOT gated by booking_flow: the Shows & Bookings ("Dates") page renders its "Needs you"
+  // queue unconditionally (per the booking_flow ADR a disabled module freezes data read-only
+  // rather than hiding it, and /bookings is not a ROUTE_FEATURES-gated route), so gating the
+  // badge on booking_flow would let a module-off org show a non-empty list with a 0 badge.
+  // Role is the only gate, matching the page.
   const needsYou = useNeedsYouCount({
     orgId,
-    enabled: canSeeOrgBookings && hasBookingFlow,
+    enabled: canSeeOrgBookings,
     hireOrdersOn: hasHireOrders,
   });
 
@@ -47,13 +52,12 @@ export function useNavCounts(): { needsYou: number; openOffers: number; awaiting
     queryFn: () => fetchAwaitingCountersignCount(supabase, orgId!),
   });
 
-  // Gate the VALUES, not just `enabled`. booking_flow is default-on, so useFeature
-  // reports true while entitlements load and the booking query fires and resolves;
-  // flipping `enabled` to false afterwards does not evict what React Query already
-  // cached, so an unentitled org would keep rendering a live count next to a locked
-  // nav item. (needsYou already applies the same gate internally via its `enabled`
-  // arg AND returns 0 when off; hire_orders is default-off, so its query never fires
-  // during loading and does not need the same treatment.)
+  // Gate the `openOffers` VALUE, not just its `enabled`. booking_flow is default-on, so
+  // useFeature reports true while entitlements load and the offers query fires and resolves;
+  // flipping `enabled` to false afterwards does not evict what React Query already cached, so
+  // an unentitled org would keep rendering a live offer count next to a locked Availability
+  // nav item. (needsYou is role-gated only, above; hire_orders is default-off, so its query
+  // never fires during loading and does not need the same treatment.)
   return {
     needsYou,
     openOffers: hasBookingFlow ? (offers.data ?? 0) : 0,

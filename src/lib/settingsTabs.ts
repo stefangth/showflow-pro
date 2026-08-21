@@ -53,10 +53,13 @@ const LEGACY_TAB_REDIRECTS: Readonly<Record<string, SettingsTabParam>> = {
 
 /** Where the page lands with no (or an unusable) `?tab=`.
  *
- *  "How this org works" is the intended landing screen, but its trigger and content only
- *  render for an admin or producer (see SettingsPage `navGroups`). Anyone who cannot see it
- *  (e.g. an artist) falls back to "organization", which is in the always-visible Preferences
- *  group. */
+ *  "How this org works" is the intended landing screen. Today it is also the only branch that
+ *  runs in practice: ROUTES.SETTINGS is guarded to `['admin','producer']` in App.tsx, so every
+ *  caller that reaches SettingsPage satisfies `isAdmin || isProducer`. The "organization" branch
+ *  is a defensive fallback for a hypothetically role-less caller (e.g. if that route guard is
+ *  ever loosened). Note it is NOT a safe universal fallback: "organization" is itself gated
+ *  `show: isAdmin || isProducer` in SettingsPage `navGroups`, so such a caller would have no
+ *  visible Settings tab at all — this fallback (and the guard) would need revisiting together. */
 export function defaultSettingsTab(isAdmin: boolean, isProducer: boolean = false): SettingsTabParam {
   return isAdmin || isProducer ? "how-it-works" : "organization";
 }

@@ -131,13 +131,14 @@ describe("useNavCounts booking_flow gating", () => {
     vi.mocked(useNeedsYouCount).mockReturnValue(0);
   });
 
-  it("gates needs-you and open offers off when booking_flow is off", async () => {
+  it("keeps needs-you enabled but gates open offers off when booking_flow is off", async () => {
     vi.mocked(useFeature).mockImplementation((f) => f !== "booking_flow");
     const { result } = renderHook(() => useNavCounts(), { wrapper: wrapper() });
-    // booking_flow off → the needs-you hook is called disabled, and offers read 0.
-    expect(useNeedsYouCount).toHaveBeenLastCalledWith({ orgId: "org-1", enabled: false, hireOrdersOn: true });
+    // needs-you tracks the (ungated) Dates page, so it stays enabled on role alone
+    // regardless of booking_flow — the badge and page must not disagree for a module-off org.
+    expect(useNeedsYouCount).toHaveBeenLastCalledWith({ orgId: "org-1", enabled: true, hireOrdersOn: true });
+    // open offers remain a booking_flow concept and stay gated off.
     expect(fetchMyOpenOffersCount).not.toHaveBeenCalled();
-    expect(result.current.needsYou).toBe(0);
     expect(result.current.openOffers).toBe(0);
   });
 });
