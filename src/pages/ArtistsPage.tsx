@@ -298,7 +298,7 @@ export default function ArtistsPage() {
                   className="h-full cursor-pointer hover:shadow-elev2 transition-shadow"
                   onClick={() => setProfileArtistId(artist.id)}
                 >
-                  <CardContent className="pt-6">
+                  <CardContent>
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center gap-3">
                         <div

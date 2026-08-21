@@ -36,7 +36,7 @@ export function RequiredSkillsCard({
   const card = computeRequiredSkillCard({ slots, showSkillIds, dateSkillIds, droppedSkillIds, skills });
 
   return (
-    <Card>
+    <Card elevation={2}>
       <CardHeader className="space-y-1.5">
         <CardTitle className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           {t("requiredSkillsCard.title")}

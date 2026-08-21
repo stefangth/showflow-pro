@@ -255,7 +255,7 @@ export function UserDetailSheet({ user: propUser, open, onOpenChange }: Props) {
         </SheetHeader>
 
         <div className="mt-6 space-y-4">
-          <Card>
+          <Card elevation={2}>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium">Account</CardTitle>
             </CardHeader>
@@ -292,7 +292,7 @@ export function UserDetailSheet({ user: propUser, open, onOpenChange }: Props) {
               <p className="text-sm text-muted-foreground">Not a member of any organization.</p>
             )}
             {user.memberships.map((m) => (
-              <Card key={m.org_id}>
+              <Card key={m.org_id} elevation={2}>
                 <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
                   <CardTitle className="text-sm font-medium">{m.org_name}</CardTitle>
                   <IconTooltip
@@ -377,7 +377,7 @@ export function UserDetailSheet({ user: propUser, open, onOpenChange }: Props) {
             ))}
           </div>
 
-          <Card>
+          <Card elevation={2}>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium">Add to an organization</CardTitle>
             </CardHeader>

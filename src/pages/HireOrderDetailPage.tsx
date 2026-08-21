@@ -321,7 +321,7 @@ function HireOrderDetail({
         {/* RIGHT: status rail */}
         <aside className="space-y-4">
           <Card>
-            <CardContent className="space-y-4 pt-6">
+            <CardContent className="space-y-4">
               <OrderTimeline
                 status={order.status}
                 createdAt={order.created_at}
@@ -333,7 +333,7 @@ function HireOrderDetail({
           </Card>
 
           <Card>
-            <CardContent className="space-y-1 pt-6">
+            <CardContent className="space-y-1">
               <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("detailPage.recipient")}</h3>
               <p className="text-sm font-medium text-foreground">{artistName}</p>
               {email && <p className="text-sm text-muted-foreground break-words">{email}</p>}
@@ -341,7 +341,7 @@ function HireOrderDetail({
           </Card>
 
           <Card>
-            <CardContent className="space-y-5 pt-6">
+            <CardContent className="space-y-5">
               <OrderFactsRail fee={fee} duration={duration} sessions={sessions} />
               <PrimaryAction
                 canManage={canManage}

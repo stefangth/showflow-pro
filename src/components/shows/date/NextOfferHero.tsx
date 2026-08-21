@@ -121,7 +121,7 @@ export function NextOfferHero({
     : null;
 
   return (
-    <Card>
+    <Card elevation={2}>
       <CardHeader className="space-y-1.5">
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1">

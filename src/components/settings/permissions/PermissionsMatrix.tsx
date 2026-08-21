@@ -58,7 +58,7 @@ export function PermissionsMatrix({ orgId, mode, moduleEnabled }: Props) {
         const visible = defs.filter((d) => !d.module || moduleEnabled(d.module));
         if (visible.length === 0) return null;
         return (
-          <Card key={group}>
+          <Card key={group} elevation={2}>
             <CardHeader><CardTitle className="font-display text-base">{group}</CardTitle></CardHeader>
             <CardContent className="pt-0">
               {visible.map((def) => {
