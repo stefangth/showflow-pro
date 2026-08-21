@@ -50,7 +50,7 @@
     },
     "blockDates": {
       "title": "Sperre, was du nicht spielen kannst",
-      "todoHint": "Gesperrte Termine fallen aus der Liste, bevor dich jemand bucht, sodass du nur von Terminen hörst, die passen.",
+      "todoHint": "Von dir gesperrte Termine fallen aus der Liste, bevor dich jemand bucht, sodass du nur von Terminen hörst, die passen.",
       "doneHint": "Dein Kalender ist aktuell.",
       "ctaLabel": "Verfügbarkeit öffnen"
     },
@@ -156,7 +156,7 @@
     },
     "blockingIsNo": {
       "title": "Sperren ist deine Art, Nein zu sagen",
-      "hint": "Gesperrte Termine fallen aus der Liste, aus der dein Producer bucht, und genau da hast du ein Wort mitzureden."
+      "hint": "Von dir gesperrte Termine fallen aus der Liste, aus der dein Producer bucht, und genau da hast du ein Wort mitzureden."
     }
   },
   "welcome": {

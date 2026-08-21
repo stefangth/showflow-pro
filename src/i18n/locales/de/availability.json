@@ -118,7 +118,7 @@
   },
   "sortChronoLabel": "Datum",
   "offersLoadError": "Deine Anfragen konnten nicht geladen werden. Bitte aktualisiere · sperre keine Termine, bevor das geladen ist, sonst werden offene Anfragen möglicherweise nicht angezeigt.",
-  "emptyUnanswered": "Keine Anfragen, die auf dich warten · gut gemacht!",
+  "emptyUnanswered": "Keine Anfragen, die auf dich warten. Gut gemacht.",
   "emptyAll": "Noch keine Termine.",
   "firstRun": {
     "eyebrow": "{{org}} · dein Kalender",
@@ -132,7 +132,7 @@
     "task": {
       "title": "Sperre, was du nicht spielen kannst",
       "blocksNothing": "Blockiert nichts",
-      "body": "Gesperrte Termine fallen aus der Liste, bevor dich jemand bucht, damit du nur von Terminen hörst, die passen.",
+      "body": "Von dir gesperrte Termine fallen aus der Liste, bevor dich jemand bucht, damit du nur von Terminen hörst, die passen.",
       "cta": "Termine sperren"
     },
     "rules": {

@@ -50,7 +50,7 @@
     },
     "blockDates": {
       "title": "Block what you cannot play",
-      "todoHint": "Blocked dates come off the list before anyone books you, so you only hear about dates that work.",
+      "todoHint": "Dates you block come off the list before anyone books you, so you only hear about dates that work.",
       "doneHint": "Your calendar is up to date.",
       "ctaLabel": "Open availability"
     },
@@ -156,7 +156,7 @@
     },
     "blockingIsNo": {
       "title": "Blocking is how you say no",
-      "hint": "Blocked dates come out of the list your producer books from, and that is where your say goes."
+      "hint": "Dates you block come out of the list your producer books from, and that is where your say goes."
     }
   },
   "welcome": {
