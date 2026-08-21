@@ -189,7 +189,7 @@ it("tells a direct-book artist what they do control", () => {
   const rules = ARTIST_ONBOARDING.rules(ctxFor(false));
   expect(rules.length).toBeGreaterThanOrEqual(2);
   expect(rules.map((r) => r.title)).toContain("You are booked directly");
-  expect(rules.some((r) => /blocked dates/i.test(r.hint))).toBe(true);
+  expect(rules.some((r) => /dates you block/i.test(r.hint))).toBe(true);
 });
 
 it("words the artist's blocking step for every flow, not just the offer ones", () => {
@@ -198,7 +198,7 @@ it("words the artist's blocking step for every flow, not just the offer ones", (
   // so the hint states that instead of the pipeline.
   const step = ARTIST_ONBOARDING.steps.blockDates;
   expect(`${step.todoHint}${step.doneHint}`).not.toMatch(/\boffers?\b/i);
-  expect(step.todoHint).toMatch(/blocked dates/i);
+  expect(step.todoHint).toMatch(/dates you block/i);
 });
 
 it("leads the people hint with the consequence, the way its siblings do", () => {
