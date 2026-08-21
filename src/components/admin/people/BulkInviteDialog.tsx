@@ -143,7 +143,7 @@ export function BulkInviteDialog({ open, onOpenChange, members, invites, dedupeH
         </div>
         <DialogFooter className="sm:items-center">
           {dedupeHint && <p className="text-xs text-muted-foreground sm:mr-auto">{dedupeHint}</p>}
-          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={sending}>{t("actions.cancel")}</Button>
+          <Button variant="secondary" onClick={() => onOpenChange(false)} disabled={sending}>{t("actions.cancel")}</Button>
           <Button onClick={submit} disabled={sending || okCount === 0 || dedupeUnready}>
             {sending ? t("bulk.inviting") : `${t("bulk.invite")} ${okCount || ""}`.trim()}
           </Button>

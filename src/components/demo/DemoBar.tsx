@@ -68,7 +68,7 @@ export function DemoBar() {
         <span>{simNow ? formatTimestampLocal(simNow) : "now"}</span>
         <Button
           size="sm"
-          variant="ghost"
+          variant="secondary"
           disabled={isAdvancing}
           className="h-6 px-1.5 text-xs font-mono"
           onClick={() => advanceClock("10m")}
@@ -77,7 +77,7 @@ export function DemoBar() {
         </Button>
         <Button
           size="sm"
-          variant="ghost"
+          variant="secondary"
           disabled={isAdvancing}
           className="h-6 px-1.5 text-xs font-mono"
           onClick={() => advanceClock("1d")}

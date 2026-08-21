@@ -46,7 +46,7 @@ function LinkRow({ link, onRevoke }: { link: SandboxLink; onRevoke: (token: stri
       </div>
       {status === "active" ? (
         <>
-          <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => copyLink(url)}>
+          <Button size="icon" variant="ghost" className="h-7 w-7 px-2" onClick={() => copyLink(url)}>
             <Copy className="h-3.5 w-3.5" />
           </Button>
           <Button size="sm" variant="outline" className="h-7 px-2" onClick={() => onRevoke(link.token)}>
@@ -125,7 +125,7 @@ export function SandboxLinkDialog() {
         {newUrl && (
           <div className="flex items-center gap-2 rounded-md border border-border bg-primary/5 px-2 py-1.5">
             <p className="min-w-0 flex-1 truncate font-mono text-xs">{newUrl}</p>
-            <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => copyLink(newUrl)}>
+            <Button size="sm" variant="secondary" className="h-7 px-2" onClick={() => copyLink(newUrl)}>
               <Copy className="h-3.5 w-3.5" /> Copy
             </Button>
           </div>

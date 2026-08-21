@@ -28,11 +28,11 @@ export function OrgSwitcher({ collapsed }: { collapsed?: boolean }) {
     <Popover>
       <PopoverTrigger asChild>
         <Button
-          variant="ghost"
+          variant="secondary"
           size="sm"
           aria-label="Switch organization"
           className={cn(
-            'w-full justify-between gap-2 px-2.5 py-2 h-auto text-[13px] font-medium text-sidebar-foreground/80 hover:bg-foreground/[0.04]',
+            'w-full justify-between gap-2 px-2.5 py-2 h-auto text-[13px] font-medium text-sidebar-foreground/80',
             collapsed && 'justify-center px-0',
           )}
         >

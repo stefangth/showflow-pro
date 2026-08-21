@@ -96,7 +96,7 @@ export function SignaturePad({ value, onChange, disabled }: Props) {
           )}
         />
         <div className="flex justify-end">
-          <Button type="button" variant="ghost" size="sm" onClick={clearDrawn} disabled={disabled}>
+          <Button type="button" variant="secondary" size="sm" onClick={clearDrawn} disabled={disabled}>
             {t("signaturePad.clear")}
           </Button>
         </div>
