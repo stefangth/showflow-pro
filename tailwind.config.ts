@@ -15,6 +15,20 @@ export default {
       },
     },
     extend: {
+      fontSize: {
+        /* design-system type scale (ADR 0012). Plain string values (no
+           line-height tuple) so a size utility emits only font-size and
+           preserves inherited line-height. Additive: Tailwind's built-in
+           text-xs/sm/base/lg/xl are untouched. See docs/ui-conventions.md §3. */
+        eyebrow: "11px",       /* eyebrow / badge */
+        caption: "12px",       /* captions, count chips */
+        control: "13px",       /* buttons, inputs, table cells, nav rows */
+        body: "14px",          /* body copy */
+        "title-sm": "17px",    /* card titles */
+        title: "22px",         /* section headers */
+        "display-sm": "32px",  /* page H1 */
+        display: "48px",       /* hero */
+      },
       fontFamily: {
         sans: ["Geist", "system-ui", "sans-serif"],
         display: ["Geist", "system-ui", "sans-serif"],

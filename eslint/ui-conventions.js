@@ -20,11 +20,22 @@ export const uiConventions = {
         message: 'Bracket radius. Use rounded-xs|s|m|l|xl|xxl|pill. See section 2.',
       },
       {
-        selector: "Literal[value=/\\b(bg|text|border)-[a-z-]+\\/\\[?[0-9.]+\\]?/]",
-        message: 'Ad hoc alpha. Use a tint token. Opacity modifiers silently do nothing on the accent scale. See section 2.',
+        // Bracket alpha only: bg-foreground/[0.04], text-x/[0.6]. Valid
+        // HSL-channel utilities (bg-primary/80, bg-muted/80, active:bg-accent/80)
+        // are legitimate and NOT flagged.
+        selector: "Literal[value=/\\b(bg|text|border)-[a-z-]+\\/\\[[0-9.]+\\]/]",
+        message: 'Ad hoc bracket alpha. Use a tint token or a solid stop. See section 2.',
       },
       {
-        selector: "Literal[value=/uppercase/]",
+        // Accent numbered stops are plain hex, so an opacity modifier
+        // (bg-accent-500/20) silently no-ops. Must be a solid stop or rgba().
+        selector: "Literal[value=/\\b(bg|text|border)-accent-[0-9]00\\/[0-9]+/]",
+        message: 'Opacity on the accent scale silently no-ops (the stops are hex). Use a solid stop, rgba(), or a tint token. See section 2.',
+      },
+      {
+        // Only the Tailwind `uppercase` utility inside a className token, not
+        // any literal that merely contains the substring (comments, data values).
+        selector: "Literal[value=/(^|[\\s'\"`(])uppercase([\\s'\"`)]|$)/]",
         message: 'Uppercase text is <Eyebrow>. Do not hand-roll the eyebrow. See section 5.',
       },
       {
