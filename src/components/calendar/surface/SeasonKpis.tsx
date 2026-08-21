@@ -19,8 +19,8 @@ const KPI_EYEBROW_TONE_CLASS: Record<string, string> = {
 };
 
 /** The Season lens's 3 KPI tiles (design lines 413-415): a plain `bg-card`
- *  box, uniform 14px padding, no shadow — deliberately NOT the generic
- *  shadcn `Card`, which adds an unwanted shadow and asymmetric padding.
+ *  box, uniform 14px padding, no shadow. This is the same shape as the shared
+ *  `KpiTile` primitive (ADR 0012); a later pass can migrate these tiles to it.
  *  Each tile carries a context sub-line derived from the same `kpis` data so
  *  the bare number explains itself (design mock). */
 export function SeasonKpis({ kpis, className }: SeasonKpisProps) {
