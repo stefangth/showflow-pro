@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildNeedsYouQueue, filterNeedsYouQueueByScope, RISK_WINDOW_DAYS } from './needsYou';
+import { buildNeedsYouQueue, filterNeedsYouQueueByScope, needsYouCandidateDateIds, RISK_WINDOW_DAYS } from './needsYou';
 import type { NeedsYouQueue } from './needsYou';
 import type { ProducerDateEntry } from './types';
 import type { BookingWithArtistRow } from '@/data/bookings';
@@ -301,5 +301,16 @@ describe('filterNeedsYouQueueByScope', () => {
     const queue = sampleQueue();
     const filtered = filterNeedsYouQueueByScope(queue, 'ready-to-issue');
     expect(filtered.groups).toHaveLength(0);
+  });
+});
+
+describe('needsYouCandidateDateIds', () => {
+  it('keeps every non-cancelled date, plus cancelled dates whose cast has not been told', () => {
+    const entries = [
+      makeEntry({ id: 'open', date: new Date(2026, 7, 20), status: 'open' }),
+      makeEntry({ id: 'cancelled-untold', date: new Date(2026, 7, 21), status: 'cancelled', castNotifiedAt: null }),
+      makeEntry({ id: 'cancelled-told', date: new Date(2026, 7, 22), status: 'cancelled', castNotifiedAt: '2026-08-01T00:00:00Z' }),
+    ];
+    expect(needsYouCandidateDateIds(entries)).toEqual(['open', 'cancelled-untold']);
   });
 });

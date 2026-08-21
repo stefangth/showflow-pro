@@ -51,10 +51,14 @@ const LEGACY_TAB_REDIRECTS: Readonly<Record<string, SettingsTabParam>> = {
   "production-ownership": "casts-coverage",
 };
 
-/** Where the page lands with no (or an unusable) `?tab=`, matching what it did before
- *  deep-linking existed. */
-export function defaultSettingsTab(_isAdmin: boolean): SettingsTabParam {
-  return "organization";
+/** Where the page lands with no (or an unusable) `?tab=`.
+ *
+ *  "How this org works" is the intended landing screen, but its trigger and content only
+ *  render for an admin or producer (see SettingsPage `navGroups`). Anyone who cannot see it
+ *  (e.g. an artist) falls back to "organization", which is in the always-visible Preferences
+ *  group. */
+export function defaultSettingsTab(isAdmin: boolean, isProducer: boolean = false): SettingsTabParam {
+  return isAdmin || isProducer ? "how-it-works" : "organization";
 }
 
 /**
@@ -68,8 +72,9 @@ export function resolveInitialTab(
   param: string | null,
   isAdmin: boolean,
   isSuperAdmin: boolean = false,
+  isProducer: boolean = false,
 ): SettingsTabParam {
-  const fallback = defaultSettingsTab(isAdmin);
+  const fallback = defaultSettingsTab(isAdmin, isProducer);
   if (!param) return fallback;
   const redirected = LEGACY_TAB_REDIRECTS[param];
   const match = redirected ?? SETTINGS_TAB_PARAMS.find((t) => t === param);

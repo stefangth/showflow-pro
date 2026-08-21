@@ -31,7 +31,7 @@ vi.mock("@/hooks/useNotifications", () => ({
   useNotifications: () => ({ data: [] }),
 }));
 vi.mock("@/hooks/useNavCounts", () => ({
-  useNavCounts: () => ({ pendingConfirmations: 0, openOffers: 0, awaitingCountersign: 0 }),
+  useNavCounts: () => ({ needsYou: 0, openOffers: 0, awaitingCountersign: 0 }),
 }));
 vi.mock("@/hooks/useMyProfile", () => ({
   useMyProfile: () => ({ data: undefined }),

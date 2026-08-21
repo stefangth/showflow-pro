@@ -1,5 +1,29 @@
 [
   {
+    "version": "1.17.1",
+    "date": "2026-08-21",
+    "dateLabel": "August 21, 2026",
+    "title": "A clearer start in Settings, an honest Dates count, and buttons you can see",
+    "changes": {
+      "improved": [
+        {
+          "title": "Settings opens on \"How this org works\"",
+          "description": "Opening Settings now lands on the summary of how your workspace runs, instead of the Organization tab."
+        },
+        {
+          "title": "Clearer actions on a date",
+          "description": "The controls on a date, like closing a round, now look like buttons you can click rather than plain text."
+        }
+      ],
+      "fixed": [
+        {
+          "title": "The Dates count matches your list",
+          "description": "The number beside Dates in the sidebar now counts only the dates that need you, the same total as the \"Needs you\" list on the page."
+        }
+      ]
+    }
+  },
+  {
     "version": "1.17.0",
     "date": "2026-08-15",
     "dateLabel": "August 15, 2026",

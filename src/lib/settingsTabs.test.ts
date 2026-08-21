@@ -8,7 +8,8 @@ describe("resolveInitialTab", () => {
   });
 
   it("docs deep-link falls back for a non-super-admin", () => {
-    expect(resolveInitialTab("docs", true, false)).toBe("organization");
+    // Admin/producer fall back to "how this org works"; a plain member to "organization".
+    expect(resolveInitialTab("docs", true, false)).toBe("how-it-works");
     expect(resolveInitialTab("docs", false, false)).toBe("organization");
   });
 
@@ -16,13 +17,18 @@ describe("resolveInitialTab", () => {
     expect(resolveInitialTab("docs", true, true)).toBe("docs");
   });
 
-  it("falls back to the role default when no tab is asked for", () => {
-    expect(resolveInitialTab(null, true)).toBe("organization");
+  it("lands on 'how this org works' for an admin or producer when no tab is asked for", () => {
+    expect(resolveInitialTab(null, true)).toBe("how-it-works");
+    // Producer is the 4th arg (isAdmin=false, isSuperAdmin=false, isProducer=true).
+    expect(resolveInitialTab(null, false, false, true)).toBe("how-it-works");
+  });
+
+  it("lands on 'organization' for a member who cannot see 'how this org works'", () => {
     expect(resolveInitialTab(null, false)).toBe("organization");
   });
 
   it("falls back to the role default on an unknown tab", () => {
-    expect(resolveInitialTab("nope", true)).toBe("organization");
+    expect(resolveInitialTab("nope", true)).toBe("how-it-works");
     expect(resolveInitialTab("", false)).toBe("organization");
   });
 
@@ -42,7 +48,7 @@ describe("resolveInitialTab", () => {
   });
 
   it("no longer deep-links the retired sync-log tab (duplicate of Airtable sync's history view)", () => {
-    expect(resolveInitialTab("sync-log", true)).toBe("organization");
+    expect(resolveInitialTab("sync-log", true)).toBe("how-it-works");
     expect(SETTINGS_TAB_PARAMS).not.toContain("sync-log");
   });
 
@@ -58,7 +64,7 @@ describe("resolveInitialTab", () => {
   it("does not deep-link the entitlement-gated hire-orders tab", () => {
     // Whether that tab exists depends on the org's entitlement, which this pure helper
     // cannot see, so it is deliberately not a deep-link target for anyone.
-    expect(resolveInitialTab("hire-orders", true)).toBe("organization");
+    expect(resolveInitialTab("hire-orders", true)).toBe("how-it-works");
     expect(SETTINGS_TAB_PARAMS).not.toContain("hire-orders");
   });
 });

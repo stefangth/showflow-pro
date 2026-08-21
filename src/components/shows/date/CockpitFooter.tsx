@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 export interface CockpitFooterProps {
@@ -38,19 +39,23 @@ export function CockpitFooter({ badgeLabel, ready, detail, ctaLabel, ctaDisabled
         </span>
         <p className="truncate text-xs leading-4 text-muted-foreground">{detail}</p>
       </div>
-      <button
+      <Button
         type="button"
         onClick={onCta}
         disabled={ctaDisabled}
+        variant="secondary"
         className={cn(
-          "h-[34px] shrink-0 rounded-[var(--radius-m)] font-medium leading-none transition-colors",
+          "h-[34px] shrink-0 rounded-[var(--radius-m)]",
+          // Solid brand-accent only when the action is actually available; a ready-but-
+          // disabled CTA (draft generating, or no generate permission) falls back to the
+          // muted `secondary` disabled look rather than a faded accent.
           ready && !ctaDisabled
-            ? "border-0 bg-accent-500 px-[14px] text-sm text-white hover:bg-accent-600"
-            : "cursor-not-allowed border-[0.5px] border-[var(--line-strong)] bg-[var(--surface)] px-3 text-[13px] text-[var(--text-faint)]",
+            ? "border-0 bg-accent-500 px-[14px] text-sm text-white hover:bg-accent-600 active:bg-accent-600"
+            : "px-3 text-[13px]",
         )}
       >
         {ctaLabel}
-      </button>
+      </Button>
     </div>
   );
 }

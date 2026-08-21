@@ -101,7 +101,7 @@ export function TierLadder({ rows, city, openedTiers, statusByTier, nextTier, on
                     <Badge variant="neutral" className="font-mono">{row.matchCount}</Badge>
                   )}
                   {opened && !opened.closed && (
-                    <Button type="button" variant="ghost" size="sm" onClick={() => onCloseTier(row.tier)}>
+                    <Button type="button" variant="secondary" size="sm" onClick={() => onCloseTier(row.tier)}>
                       {t("tierLadder.closeTier")}
                     </Button>
                   )}

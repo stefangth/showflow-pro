@@ -51,7 +51,7 @@ export async function fetchArtists(
 /**
  * How many ACTIVE artists the org has on its roster. A server-side head count, so no row
  * data crosses the wire and there is no PostgREST max-rows truncation to misread as an
- * empty roster (see fetchPendingConfirmationsCount).
+ * empty roster (see fetchMyOpenOffersCount).
  *
  * Scoped to `status = 'active'` because that is exactly the population the offer engine
  * reads (open-offer-tier filters the same way, as does fetchActiveArtistOptions). This
