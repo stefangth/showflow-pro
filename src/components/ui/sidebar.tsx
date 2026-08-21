@@ -216,7 +216,15 @@ const Sidebar = React.forwardRef<
 });
 Sidebar.displayName = "Sidebar";
 
-const SidebarTrigger = React.forwardRef<React.ElementRef<typeof Button>, React.ComponentProps<typeof Button>>(
+// This trigger always renders variant="ghost" size="icon" (legal under the patched
+// Button type, ADR 0012). The forwarded prop type intentionally omits variant/size
+// rather than forwarding the full discriminated ButtonProps union, so the fixed
+// literals below aren't fought by a wider `...props` spread.
+type SidebarTriggerProps = Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "onClick"> & {
+  onClick?: React.MouseEventHandler<HTMLButtonElement>;
+};
+
+const SidebarTrigger = React.forwardRef<React.ElementRef<typeof Button>, SidebarTriggerProps>(
   ({ className, onClick, ...props }, ref) => {
     const { toggleSidebar } = useSidebar();
 

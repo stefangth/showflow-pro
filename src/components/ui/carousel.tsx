@@ -28,6 +28,17 @@ type CarouselContextProps = {
 
 const CarouselContext = React.createContext<CarouselContextProps | null>(null);
 
+/**
+ * The patched Button's `ButtonProps` is a discriminated union (ghost is icon-only).
+ * These nav buttons only ever use the non-ghost branch, so their local prop type
+ * narrows `variant` accordingly rather than forwarding the full union — forwarding
+ * the union here would defeat the discriminant (see ADR 0012 / button.tsx).
+ */
+type CarouselNavButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
+  variant?: "default" | "secondary" | "destructive" | "outline";
+  size?: "sm" | "default" | "lg" | "icon";
+};
+
 function useCarousel() {
   const context = React.useContext(CarouselContext);
 
@@ -165,7 +176,7 @@ const CarouselItem = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLD
 );
 CarouselItem.displayName = "CarouselItem";
 
-const CarouselPrevious = React.forwardRef<HTMLButtonElement, React.ComponentProps<typeof Button>>(
+const CarouselPrevious = React.forwardRef<HTMLButtonElement, CarouselNavButtonProps>(
   ({ className, variant = "outline", size = "icon", ...props }, ref) => {
     const { orientation, scrollPrev, canScrollPrev } = useCarousel();
 
@@ -193,7 +204,7 @@ const CarouselPrevious = React.forwardRef<HTMLButtonElement, React.ComponentProp
 );
 CarouselPrevious.displayName = "CarouselPrevious";
 
-const CarouselNext = React.forwardRef<HTMLButtonElement, React.ComponentProps<typeof Button>>(
+const CarouselNext = React.forwardRef<HTMLButtonElement, CarouselNavButtonProps>(
   ({ className, variant = "outline", size = "icon", ...props }, ref) => {
     const { orientation, scrollNext, canScrollNext } = useCarousel();
 

@@ -1,7 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import type { ActionGates, ArtistDateEntry, ArtistStatus, ProducerDateEntry } from '@/lib/calendar/types';
 import { Drawer, DrawerContent } from '@/components/ui/drawer';
-import { Button } from '@/components/ui/button';
 import { DayDetail } from './DayDetail';
 
 export interface CalendarDaySheetProps {
@@ -97,25 +96,23 @@ export function CalendarDaySheet({
           />
 
           <div className="flex flex-col items-center gap-1">
-            <Button
+            <button
               type="button"
-              variant="link"
-              size="sm"
+              className="text-[13px] font-medium text-accent-text hover:underline"
               data-testid="day-sheet-open-date"
               onClick={() => onOpenDate?.()}
             >
               {t('common:calendar.day.openDate')}
-            </Button>
+            </button>
             {role === 'artist' && (
-              <Button
+              <button
                 type="button"
-                variant="link"
-                size="sm"
+                className="text-[13px] font-medium text-accent-text hover:underline"
                 data-testid="day-sheet-message-producer"
                 onClick={() => onMessageProducer?.()}
               >
                 {t('calendar.day.messageProducer')}
-              </Button>
+              </button>
             )}
           </div>
         </div>

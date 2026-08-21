@@ -970,8 +970,8 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
                               assigned date, offer to stamp it into every other date. */}
                           {assignedDateIds.length > 1 && parseDurationValue(schedule.durationMin) !== null && (
                             <Button
-                              type="button" variant="link" size="sm"
-                              className="h-auto p-0 text-xs"
+                              type="button" variant="secondary" size="sm"
+                              className="text-xs"
                               aria-label={t("wizard.copyToAllAria", { label })}
                               onClick={() => {
                                 setDateSchedules((current) => copyDurationToAll(current, dateId));
@@ -1109,7 +1109,7 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
 
             {step < 4 ? (
               <div className="flex justify-between pt-2">
-                <Button type="button" variant="ghost" onClick={() => setStep((s) => (s - 1) as WizardStep)} disabled={step === 1}>
+                <Button type="button" variant="secondary" onClick={() => setStep((s) => (s - 1) as WizardStep)} disabled={step === 1}>
                   {t("common.back")}
                 </Button>
                 <Button type="button" onClick={() => setStep((s) => (s + 1) as WizardStep)} disabled={!canContinue}>
@@ -1118,7 +1118,7 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
               </div>
             ) : (
               <div className="flex flex-col gap-2 pt-2 sm:flex-row sm:justify-between">
-                <Button type="button" variant="ghost" onClick={() => setStep(3)} disabled={submitting !== null}>
+                <Button type="button" variant="secondary" onClick={() => setStep(3)} disabled={submitting !== null}>
                   {t("common.back")}
                 </Button>
                 <div className="flex gap-2">
