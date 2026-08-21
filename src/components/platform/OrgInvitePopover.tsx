@@ -46,7 +46,7 @@ export function OrgInvitePopover({ orgId }: { orgId: string }) {
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild><Button size="sm" variant="ghost" aria-label="Invitations"><Mail className="h-3.5 w-3.5" /></Button></PopoverTrigger>
+      <PopoverTrigger asChild><Button size="icon" variant="ghost" aria-label="Invitations"><Mail className="h-3.5 w-3.5" /></Button></PopoverTrigger>
       <PopoverContent align="end" className="w-72 p-2 space-y-2">
         <form
           onSubmit={(e) => {
@@ -90,7 +90,7 @@ export function OrgInvitePopover({ orgId }: { orgId: string }) {
             <span className="truncate">{i.email}</span>
             <div className="flex gap-1 shrink-0">
               <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => resend.mutate(i.id)}>Resend</Button>
-              <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => revoke.mutate(i.id)}>Revoke</Button>
+              <Button size="sm" variant="destructive" className="h-7 px-2 text-xs" onClick={() => revoke.mutate(i.id)}>Revoke</Button>
             </div>
           </div>
         ))}

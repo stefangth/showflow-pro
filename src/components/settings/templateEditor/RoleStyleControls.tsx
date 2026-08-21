@@ -1,5 +1,4 @@
 import { useTranslation } from "react-i18next";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -73,9 +72,9 @@ export function RoleStyleControls<RoleKey extends string>({
       <div className="flex items-center justify-between gap-2">
         <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("roleStyle.style")}</p>
         {hasOwnKeys(override) && !readOnly && (
-          <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-xs" aria-label={t("roleStyle.resetAria", { label: role.label })} onClick={onResetRole}>
+          <button type="button" className="text-[13px] font-medium text-accent-text hover:underline" aria-label={t("roleStyle.resetAria", { label: role.label })} onClick={onResetRole}>
             {t("roleStyle.reset")}
-          </Button>
+          </button>
         )}
       </div>
       <div className="space-y-1.5">

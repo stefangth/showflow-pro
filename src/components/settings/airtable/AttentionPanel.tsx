@@ -101,10 +101,9 @@ export function AttentionPanel({
                   {label}
                 </Button>
               )}
-              <Button
-                variant="ghost"
-                size="sm"
-                className="gap-1 text-muted-foreground"
+              <button
+                type="button"
+                className="inline-flex items-center gap-1 text-[13px] font-medium text-accent-text hover:underline"
                 onClick={() => onToggle(cause.category)}
                 aria-expanded={isOpen}
               >
@@ -114,7 +113,7 @@ export function AttentionPanel({
                 ) : (
                   <ChevronDown className="h-3.5 w-3.5" />
                 )}
-              </Button>
+              </button>
             </div>
 
             {isOpen && (

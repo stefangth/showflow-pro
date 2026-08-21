@@ -303,8 +303,7 @@ export function UserDetailSheet({ user: propUser, open, onOpenChange }: Props) {
                     <Button
                       type="button"
                       size="sm"
-                      variant="ghost"
-                      className="text-destructive hover:text-destructive"
+                      variant="destructive"
                       onClick={() => setOrgToRemove(m)}
                     >
                       Remove from org
@@ -338,7 +337,7 @@ export function UserDetailSheet({ user: propUser, open, onOpenChange }: Props) {
                           <Button
                             type="button"
                             size="sm"
-                            variant="ghost"
+                            variant="secondary"
                             onClick={() => handleLinkArtist(m.org_id, null)}
                             disabled={linkArtist.isPending}
                           >
@@ -446,7 +445,7 @@ export function UserDetailSheet({ user: propUser, open, onOpenChange }: Props) {
               />
             </div>
             <DialogFooter>
-              <Button type="button" variant="ghost" onClick={() => setEmailDialogOpen(false)}>Cancel</Button>
+              <Button type="button" variant="secondary" onClick={() => setEmailDialogOpen(false)}>Cancel</Button>
               <Button
                 type="button"
                 onClick={handleChangeEmail}

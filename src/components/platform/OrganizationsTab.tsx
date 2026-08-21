@@ -111,10 +111,10 @@ export function OrganizationsTab() {
                   <OrgInvitePopover orgId={o.org_id} />
                   <OrgMembersPopover orgId={o.org_id} />
                   <IconTooltip label="Edit org">
-                    <Button size="sm" variant="ghost" onClick={() => setEditing(o)} aria-label="Edit org"><Pencil className="h-3.5 w-3.5" /></Button>
+                    <Button size="icon" variant="ghost" onClick={() => setEditing(o)} aria-label="Edit org"><Pencil className="h-3.5 w-3.5" /></Button>
                   </IconTooltip>
                   <IconTooltip label={o.status === "suspended" ? "Reactivate" : "Suspend"}>
-                    <Button size="sm" variant="ghost" aria-label={o.status === "suspended" ? "Reactivate" : "Suspend"}
+                    <Button size="icon" variant="ghost" aria-label={o.status === "suspended" ? "Reactivate" : "Suspend"}
                       onClick={() => o.status === "suspended"
                         ? statusMutation.mutate({ id: o.org_id, status: "active" })
                         : setToSuspend(o)}>
@@ -124,13 +124,13 @@ export function OrganizationsTab() {
                   {o.is_demo && (
                     <>
                       <IconTooltip label="Reseed demo">
-                        <Button size="sm" variant="ghost" aria-label="Reseed demo" disabled={reseed.isPending}
+                        <Button size="icon" variant="ghost" aria-label="Reseed demo" disabled={reseed.isPending}
                           onClick={() => setToReseed(o)}>
                           <RefreshCw className="h-3.5 w-3.5" />
                         </Button>
                       </IconTooltip>
                       <IconTooltip label="Wipe demo">
-                        <Button size="sm" variant="ghost" aria-label="Wipe demo" disabled={wipe.isPending} onClick={() => setToWipe(o)}>
+                        <Button size="icon" variant="ghost" aria-label="Wipe demo" disabled={wipe.isPending} onClick={() => setToWipe(o)}>
                           <Eraser className="h-3.5 w-3.5" />
                         </Button>
                       </IconTooltip>

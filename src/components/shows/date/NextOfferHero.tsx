@@ -158,7 +158,7 @@ export function NextOfferHero({
 
         <div className="flex flex-wrap items-center gap-2 pt-1">
           <Button type="button" onClick={onOpen} disabled={counts.matchCount === 0}>{primaryLabel}</Button>
-          <Button type="button" variant="ghost" size="sm" onClick={onSeeArtists}>
+          <Button type="button" variant="secondary" size="sm" onClick={onSeeArtists}>
             {t("nextOfferHero.seeArtists", { count: counts.matchCount })}
           </Button>
           <Button type="button" variant="outline" size="sm" aria-pressed={narrowActive} onClick={onNarrow}>

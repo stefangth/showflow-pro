@@ -138,9 +138,9 @@ function EmailTemplateEditorWorkspace({ template, orgId, readOnly }: WorkspacePr
     <TemplateEditorShell
       title={template.label}
       breadcrumb={
-        <Button asChild variant="ghost" size="sm">
-          <Link to={ROUTES.SETTINGS}>{t("emailTemplateEditorPage.breadcrumb")}</Link>
-        </Button>
+        <Link to={ROUTES.SETTINGS} className="text-[13px] font-medium text-accent-text hover:underline">
+          {t("emailTemplateEditorPage.breadcrumb")}
+        </Link>
       }
       actions={
         <>
@@ -193,7 +193,7 @@ function EmailTemplateEditorWorkspace({ template, orgId, readOnly }: WorkspacePr
                       key={variant.label}
                       type="button"
                       size="sm"
-                      variant={index === variantIdx ? "secondary" : "ghost"}
+                      variant={index === variantIdx ? "secondary" : "outline"}
                       aria-pressed={index === variantIdx}
                       onClick={() => setVariantIdx(index)}
                     >
@@ -210,7 +210,7 @@ function EmailTemplateEditorWorkspace({ template, orgId, readOnly }: WorkspacePr
                       key={code}
                       type="button"
                       size="sm"
-                      variant={code === previewLocale ? "secondary" : "ghost"}
+                      variant={code === previewLocale ? "secondary" : "outline"}
                       aria-pressed={code === previewLocale}
                       onClick={() => setPreviewLocale(code)}
                     >

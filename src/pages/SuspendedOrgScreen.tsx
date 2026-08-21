@@ -54,7 +54,7 @@ export default function SuspendedOrgScreen() {
             {t('suspended.switchTo', { name: others[0].name })}
           </Button>
         )}
-        <Button variant="ghost" onClick={signOut}>{t('suspended.signOut')}</Button>
+        <Button variant="secondary" onClick={signOut}>{t('suspended.signOut')}</Button>
       </div>
     </div>
   );

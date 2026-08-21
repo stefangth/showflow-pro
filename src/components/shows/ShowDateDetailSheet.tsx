@@ -1273,7 +1273,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager, ini
                           <AlertDialog>
                             <IconTooltip label={deletable ? '' : synced ? t('showDateSheet.setup.deleteSyncedTooltip') : t('showDateSheet.setup.deleteHasBookingsTooltip')}>
                               <AlertDialogTrigger asChild>
-                                <Button variant="ghost" size="sm" className="text-destructive" disabled={!deletable}>
+                                <Button variant="destructive" size="sm" disabled={!deletable}>
                                   {t('showDateSheet.setup.delete')}
                                 </Button>
                               </AlertDialogTrigger>

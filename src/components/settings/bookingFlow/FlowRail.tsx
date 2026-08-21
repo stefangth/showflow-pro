@@ -102,7 +102,7 @@ export function FlowRail(props: {
             {dirtyCount > 0 ? t("flowRail.save", { count: dirtyCount }) : t("flowRail.saved")}
           </Button>
           {dirtyCount > 0 && (
-            <Button variant="ghost" onClick={onDiscard}>
+            <Button variant="secondary" onClick={onDiscard}>
               {t("flowRail.discard")}
             </Button>
           )}

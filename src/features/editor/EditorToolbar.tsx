@@ -166,7 +166,7 @@ export function EditorToolbar() {
         <Separator orientation="vertical" className="h-5 bg-warning/30" />
 
         <Button
-          variant="ghost"
+          variant="secondary"
           size="sm"
           className="h-7 gap-1.5 text-xs"
           onClick={() => setSidePanelOpen(true)}

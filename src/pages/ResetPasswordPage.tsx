@@ -108,7 +108,7 @@ export default function ResetPasswordPage() {
                 <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t("resetPassword.emailPlaceholder")} required />
               </div>
               <Button type="submit" className="w-full" disabled={sending || !email}>{sending ? t("resetPassword.sending") : t("resetPassword.sendButton")}</Button>
-              <Button type="button" variant="ghost" className="w-full" onClick={() => navigate(ROUTES.LOGIN)}>{t("resetPassword.backToSignIn")}</Button>
+              <Button type="button" variant="secondary" className="w-full" onClick={() => navigate(ROUTES.LOGIN)}>{t("resetPassword.backToSignIn")}</Button>
             </form>
           )}
         </CardContent>

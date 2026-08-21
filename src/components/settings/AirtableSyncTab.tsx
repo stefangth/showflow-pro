@@ -276,7 +276,7 @@ function ManageConnectionDialog(p: ManageConnectionProps) {
                   <Button variant="outline" size="sm" disabled={!p.canWrite} onClick={() => p.setReplacing(true)}>{t('manageDialog.token.replace')}</Button>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
-                      <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" disabled={!p.canWrite || p.deletingKey}>
+                      <Button variant="destructive" size="sm" disabled={!p.canWrite || p.deletingKey}>
                         <Trash2 className="mr-1 h-4 w-4" /> {t('manageDialog.token.delete')}
                       </Button>
                     </AlertDialogTrigger>
@@ -299,7 +299,7 @@ function ManageConnectionDialog(p: ManageConnectionProps) {
                   <Input type="password" autoComplete="off" placeholder={p.keyPresent ? t('manageDialog.token.placeholderReplace') : t('manageDialog.token.placeholderNew')} value={p.airtableKey} disabled={!p.canWrite} onChange={(e) => p.setAirtableKey(e.target.value)} />
                   <Button onClick={p.onSaveKey} disabled={!p.canWrite || p.savingKey}>{p.keyPresent ? t('manageDialog.token.update') : t('manageDialog.token.saveKey')}</Button>
                   {p.keyPresent && p.replacing && (
-                    <Button variant="ghost" onClick={() => { p.setReplacing(false); p.setAirtableKey(""); }}>{t('manageDialog.token.cancel')}</Button>
+                    <Button variant="secondary" onClick={() => { p.setReplacing(false); p.setAirtableKey(""); }}>{t('manageDialog.token.cancel')}</Button>
                   )}
                 </div>
                 <p className="text-sm text-muted-foreground">

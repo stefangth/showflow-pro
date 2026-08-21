@@ -204,9 +204,9 @@ function TemplateEditorWorkspace({ orgId, readOnly }: { orgId: string | null; re
     <TemplateEditorShell
       title={t("templateEditorPage.title")}
       breadcrumb={
-        <Button asChild variant="ghost" size="sm">
-          <Link to={ROUTES.SETTINGS}><ArrowLeft className="mr-1 h-4 w-4" />{t("templateEditorPage.settings")}</Link>
-        </Button>
+        <Link to={ROUTES.SETTINGS} className="inline-flex items-center text-[13px] font-medium text-accent-text hover:underline">
+          <ArrowLeft className="mr-1 h-4 w-4" />{t("templateEditorPage.settings")}
+        </Link>
       }
       actions={
         <>

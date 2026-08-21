@@ -454,7 +454,7 @@ export default function HireOrderEditPage() {
   if (isError || !order) {
     return (
       <div className="mx-auto max-w-6xl p-4 sm:p-6">
-        <Button variant="ghost" size="sm" className="mb-4 -ml-2" onClick={() => navigate(-1)}>
+        <Button variant="secondary" size="sm" className="mb-4 -ml-2" onClick={() => navigate(-1)}>
           <ArrowLeft className="mr-1 h-4 w-4" /> {t("common.back")}
         </Button>
         <Alert variant="destructive">
@@ -470,7 +470,7 @@ export default function HireOrderEditPage() {
   if (isReadOnly) {
     return (
       <div className="mx-auto max-w-2xl space-y-4 p-4 sm:p-6">
-        <Button variant="ghost" size="sm" className="-ml-2" onClick={() => navigate(-1)}>
+        <Button variant="secondary" size="sm" className="-ml-2" onClick={() => navigate(-1)}>
           <ArrowLeft className="mr-1 h-4 w-4" /> {t("common.back")}
         </Button>
         <Alert>

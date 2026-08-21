@@ -178,7 +178,7 @@ export function ColumnLayoutEditor({ pageKey }: ColumnLayoutEditorProps) {
 
       {/* Actions */}
       <div className="flex items-center gap-1.5 ml-auto shrink-0">
-        <Button variant="ghost" size="sm" className="h-6 px-2 text-xs gap-1" onClick={reset}>
+        <Button variant="secondary" size="sm" className="h-6 px-2 text-xs gap-1" onClick={reset}>
           <RotateCcw className="h-3 w-3" />
           Reset
         </Button>

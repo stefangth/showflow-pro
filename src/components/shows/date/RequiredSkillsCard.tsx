@@ -88,7 +88,7 @@ export function RequiredSkillsCard({
           </div>
           <div className="flex items-center gap-2 shrink-0">
             {card.changeCount > 0 && (
-              <Button type="button" variant="ghost" size="sm" onClick={onReset}>
+              <Button type="button" variant="secondary" size="sm" onClick={onReset}>
                 {t("requiredSkillsCard.resetToComputed")}
               </Button>
             )}

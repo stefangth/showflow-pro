@@ -30,13 +30,13 @@ export function OrgMembersPopover({ orgId }: { orgId: string }) {
   return (
     <>
       <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild><Button size="sm" variant="ghost" aria-label="Members"><Users className="h-3.5 w-3.5" /></Button></PopoverTrigger>
+        <PopoverTrigger asChild><Button size="icon" variant="ghost" aria-label="Members"><Users className="h-3.5 w-3.5" /></Button></PopoverTrigger>
         <PopoverContent align="end" className="w-72 p-2 space-y-2">
           {(members ?? []).length === 0 && <p className="text-sm text-muted-foreground px-1 py-2">No members</p>}
           {(members ?? []).map((m) => (
             <div key={m.user_id} className="flex items-center justify-between gap-2 text-sm">
               <span className="truncate">{m.display_name || m.email}</span>
-              <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => setTarget({ user_id: m.user_id, label: m.display_name || m.email || "this member" })}>Remove</Button>
+              <Button size="sm" variant="destructive" className="h-7 px-2 text-xs" onClick={() => setTarget({ user_id: m.user_id, label: m.display_name || m.email || "this member" })}>Remove</Button>
             </div>
           ))}
         </PopoverContent>

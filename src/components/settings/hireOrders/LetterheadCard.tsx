@@ -180,7 +180,7 @@ export function LetterheadCard({ orgId, readOnly = false }: { orgId: string | nu
                   <span className="text-sm text-muted-foreground">{t("letterheadCard.signatureOnFile")}</span>
                 )}
                 {!readOnly && (
-                  <Button type="button" variant="ghost" size="sm" onClick={removeSignature}>
+                  <Button type="button" variant="destructive" size="sm" onClick={removeSignature}>
                     {t("letterheadCard.remove")}
                   </Button>
                 )}
