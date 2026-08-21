@@ -184,7 +184,7 @@ export function CatalogTab(props: CatalogTabProps) {
             <span className="text-[13px] text-foreground truncate">{row.linkedLabel}</span>
             <Button
               size="sm"
-              variant="ghost"
+              variant="secondary"
               className="h-[26px] shrink-0 px-2 text-muted-foreground"
               disabled={disabled}
               onClick={() => onUnlink(kind, row.linkedId!)}

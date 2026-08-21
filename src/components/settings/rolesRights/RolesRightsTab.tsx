@@ -266,7 +266,7 @@ export function RolesRightsTab({ orgId }: RolesRightsTabProps) {
               <SegmentedControl value={activePreset} onChange={applyPreset} options={PRESET_OPTIONS} />
               <Button
                 type="button"
-                variant="ghost"
+                variant="secondary"
                 size="sm"
                 disabled={changed.length === 0}
                 onClick={() => setStaged({})}

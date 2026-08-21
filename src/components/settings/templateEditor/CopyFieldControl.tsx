@@ -1,5 +1,4 @@
 import { useTranslation } from "react-i18next";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -37,9 +36,9 @@ export function CopyFieldControl<CopyKey extends string, FieldKey extends CopyKe
       <div className="flex items-center justify-between gap-2">
         <Label htmlFor={id}>{field.label}</Label>
         {modified && !readOnly && (
-          <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-xs" aria-label={t("copyField.resetAria", { label: field.label })} onClick={reset}>
+          <button type="button" className="text-[13px] font-medium text-accent-text hover:underline" aria-label={t("copyField.resetAria", { label: field.label })} onClick={reset}>
             {t("copyField.reset")}
-          </Button>
+          </button>
         )}
       </div>
       {field.multiline ? (

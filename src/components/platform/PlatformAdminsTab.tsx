@@ -46,7 +46,7 @@ export function PlatformAdminsTab() {
           {(admins ?? []).map((a) => (
             <div key={a.user_id} className="flex items-center justify-between p-3 rounded-lg border border-border text-sm">
               <span className="truncate">{a.email}</span>
-              <Button size="sm" variant="ghost" disabled={a.user_id === user?.id}
+              <Button size="sm" variant="destructive" disabled={a.user_id === user?.id}
                 onClick={() => setToRemove({ user_id: a.user_id, email: a.email })}>
                 {a.user_id === user?.id ? "You" : "Remove"}
               </Button>

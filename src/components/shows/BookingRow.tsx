@@ -54,8 +54,7 @@ export function BookingRow({ booking: b, canManage, showConfirm, onConfirm, onCa
           )}
           <Button
             size="sm"
-            variant="ghost"
-            className="text-destructive"
+            variant="destructive"
             onClick={() => onCancel(b.id)}
           >
             {t('bookingRow.cancel')}

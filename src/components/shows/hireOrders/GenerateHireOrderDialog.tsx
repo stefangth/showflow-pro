@@ -348,8 +348,8 @@ export function GenerateHireOrderDialog({ open, onOpenChange, order, showDate, o
         </div>
 
         <DialogFooter className="gap-2 sm:gap-2">
-          <Button variant="ghost" onClick={handlePreview} disabled={busy}>{t("generateDialog.previewPdf")}</Button>
-          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={busy}>{t("common.cancel")}</Button>
+          <Button variant="secondary" onClick={handlePreview} disabled={busy}>{t("generateDialog.previewPdf")}</Button>
+          <Button variant="secondary" onClick={() => onOpenChange(false)} disabled={busy}>{t("common.cancel")}</Button>
           <Button onClick={handleIssue} disabled={busy || !canIssue || !variantIsLive}
             title={
               !canIssue

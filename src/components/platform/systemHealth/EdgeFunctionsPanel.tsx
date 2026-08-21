@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { StatusPill, StatusDot, LatencyStat } from "./primitives";
 import { UptimeBar } from "./UptimeBar";
 import { RecentRunsList } from "./RecentRunsList";
@@ -84,9 +83,9 @@ function EdgeFnRow({ m, rollup }: { m: EdgeFnMetric; rollup: HealthDay[] }) {
               Last failure {new Date(m.lastFailure.at).toLocaleString()}, status {m.lastFailure.status}
             </p>
           )}
-          <Button variant="ghost" size="sm" className="mt-1 h-7 px-2 text-xs" onClick={() => setOpen((v) => !v)}>
+          <button type="button" className="mt-1 text-[13px] font-medium text-accent-text hover:underline" onClick={() => setOpen((v) => !v)}>
             {open ? "Hide recent errors" : "View recent errors"}
-          </Button>
+          </button>
           {open && (
             <div className="mt-2 rounded-md bg-muted/40 p-2">
               {logs.isLoading && <p className="text-xs text-muted-foreground">Loading log lines.</p>}
