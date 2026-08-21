@@ -3,7 +3,7 @@ import { describe, it, expect } from 'vitest';
 import { Badge } from './badge';
 
 describe('Badge', () => {
-  const variants = ['default','secondary','destructive','outline','confirmed','hold','risk','accent','neutral'] as const;
+  const variants = ['default','secondary','destructive','outline','confirmed','waiting','hold','risk','accent','neutral','tone'] as const;
 
   it.each(variants)('renders variant=%s without crashing', (variant) => {
     render(<Badge variant={variant}>x</Badge>);
@@ -17,18 +17,20 @@ describe('Badge', () => {
     expect(el.className).toContain('var(--red-600)');
   });
 
-  it('confirmed uses the DS green tint, hold the amber tint', () => {
-    render(<><Badge variant="confirmed">c</Badge><Badge variant="hold">h</Badge></>);
+  it('confirmed uses the DS green tint, hold/waiting the amber tint', () => {
+    render(<><Badge variant="confirmed">c</Badge><Badge variant="hold">h</Badge><Badge variant="waiting">w</Badge></>);
     expect(screen.getByText('c').className).toContain('var(--green-100)');
     expect(screen.getByText('c').className).toContain('var(--green-600)');
     expect(screen.getByText('h').className).toContain('var(--amber-100)');
     expect(screen.getByText('h').className).toContain('var(--amber-600)');
+    expect(screen.getByText('w').className).toContain('var(--amber-100)');
+    expect(screen.getByText('w').className).toContain('var(--amber-600)');
   });
 
-  it('risk uses the DS amber tint pattern', () => {
+  it('risk uses the DS red tint pattern (ADR 0012)', () => {
     render(<Badge variant="risk">r</Badge>);
     const el = screen.getByText('r');
-    expect(el.className).toContain('var(--amber-100)');
-    expect(el.className).toContain('var(--amber-600)');
+    expect(el.className).toContain('var(--red-100)');
+    expect(el.className).toContain('var(--red-600)');
   });
 });
