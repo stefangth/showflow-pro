@@ -50,7 +50,11 @@
     "stepOf": "Step {{step}} of {{total}}",
     "finishLater": "Finish later",
     "howThisWorks": "How this works",
-    "helpCenter": "Help center"
+    "helpCenter": "Help center",
+    "blocksFirstAsk": "Blocks your first ask",
+    "adminOnly": "Admin only",
+    "waitsOnAdmin": "Waits on your admin",
+    "footerNote": "Changes here are saved as you go."
   },
   "steps": {
     "source": {
