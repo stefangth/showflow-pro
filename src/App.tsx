@@ -141,6 +141,15 @@ const App = () => (
             <Route path={ROUTES.SANDBOX} element={<SandboxViewerPage />} />
             <Route path={ROUTES.PRIVACY} element={<PrivacyPage />} />
             <Route path={ROUTES.IMPRESSUM} element={<ImpressumPage />} />
+            {/* Legacy slug redirects (renamed in the today/dates/contracts slug pass).
+                Keep indefinitely: bookmarks, already-sent emails, and the marketing site
+                still point at the old paths. */}
+            <Route path="/dashboard" element={<Navigate to={ROUTES.DASHBOARD} replace />} />
+            <Route path="/bookings" element={<Navigate to={ROUTES.BOOKINGS} replace />} />
+            <Route path="/hire-orders" element={<Navigate to={ROUTES.HIRE_ORDERS} replace />} />
+            <Route path="/hire-orders/:id" element={<Navigate to={ROUTES.HIRE_ORDERS} replace />} />
+            <Route path="/hire-orders/:id/edit" element={<Navigate to={ROUTES.HIRE_ORDERS} replace />} />
+            <Route path="/settings/hire-orders/template" element={<Navigate to={ROUTES.HIRE_ORDER_TEMPLATE} replace />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
             </DemoProvider>
