@@ -84,4 +84,26 @@ describe("SegmentedControl", () => {
 
     expect(screen.getByRole("tablist")).toBeInTheDocument();
   });
+
+  it("tints the count chip by active state", () => {
+    render(
+      <SegmentedControl
+        value="a"
+        onChange={() => {}}
+        options={[
+          { value: "a", label: "A", count: 3 },
+          { value: "b", label: "B", count: 5 },
+        ]}
+      />,
+    );
+    expect(screen.getByText("3").className).toContain("bg-accent-tint");
+    expect(screen.getByText("5").className).toContain("bg-well-tint");
+  });
+
+  it("scrolls when scrollable", () => {
+    const { container } = render(
+      <SegmentedControl scrollable value="a" onChange={() => {}} options={[{ value: "a", label: "A" }]} />,
+    );
+    expect(container.querySelector('[role="tablist"]')!.className).toContain("overflow-x-auto");
+  });
 });

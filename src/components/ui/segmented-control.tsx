@@ -13,6 +13,8 @@ export interface SegmentedControlProps<T extends string> {
   onChange: (value: T) => void;
   options: Array<SegmentedControlOption<T>>;
   className?: string;
+  /** Non-wrapping, horizontally scrolling strip with snap points (mobile). */
+  scrollable?: boolean;
 }
 
 export function SegmentedControl<T extends string>({
@@ -20,12 +22,14 @@ export function SegmentedControl<T extends string>({
   onChange,
   options,
   className,
+  scrollable = false,
 }: SegmentedControlProps<T>) {
   return (
     <div
       role="tablist"
       className={cn(
-        "inline-flex items-center gap-[2px] rounded-m bg-[var(--surface-3)] p-[2px]",
+        "items-center rounded-m bg-well-tint p-[2px]",
+        scrollable ? "flex gap-2 overflow-x-auto snap-x" : "inline-flex gap-[2px]",
         className,
       )}
     >
@@ -40,7 +44,8 @@ export function SegmentedControl<T extends string>({
             aria-selected={active}
             onClick={() => onChange(option.value)}
             className={cn(
-              "inline-flex h-[29px] cursor-pointer items-center gap-1.5 rounded-[var(--radius-s)] px-3 text-[13px] font-medium transition-colors",
+              "inline-flex h-[29px] cursor-pointer items-center gap-1.5 rounded-s px-3 text-control font-medium transition-colors",
+              scrollable && "shrink-0 snap-start",
               active
                 ? "bg-card text-foreground shadow-elev1"
                 : "bg-transparent text-muted-foreground shadow-none",
@@ -48,7 +53,12 @@ export function SegmentedControl<T extends string>({
           >
             <span>{option.label}</span>
             {option.count != null && (
-              <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
+              <span
+                className={cn(
+                  "inline-flex h-4 min-w-4 items-center justify-center rounded-xs px-1 font-mono text-eyebrow font-semibold tabular-nums",
+                  active ? "bg-accent-tint text-accent-text" : "bg-well-tint text-muted-foreground",
+                )}
+              >
                 {option.count}
               </span>
             )}
