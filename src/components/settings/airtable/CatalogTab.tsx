@@ -56,7 +56,7 @@ function CatalogLinkCombobox({
   return (
     <Popover open={open} onOpenChange={(o) => { setOpen(o); if (!o) setSearch(""); }}>
       <PopoverTrigger asChild>
-        <Button variant="outline" size="sm" className="h-[30px] flex-1 justify-between bg-muted font-normal" aria-label={ariaLabel} disabled={disabled}>
+        <Button variant="outline" size="sm" className="h-[30px] flex-1 justify-between bg-well-tint font-normal" aria-label={ariaLabel} disabled={disabled}>
           <span className="truncate text-muted-foreground">{t('catalogTab.linkToExisting')}</span>
           <ChevronsUpDown className="h-3.5 w-3.5 ml-2 shrink-0 opacity-50" />
         </Button>
@@ -153,7 +153,7 @@ export function CatalogTab(props: CatalogTabProps) {
         key={row.key}
         className={cn(
           "grid grid-cols-[20px_1fr_300px] gap-3 items-center px-4 py-2.5 border-b border-border last:border-b-0",
-          sel && "bg-muted",
+          sel && "bg-well-tint",
         )}
       >
         <button
@@ -241,10 +241,10 @@ export function CatalogTab(props: CatalogTabProps) {
             onChange={(e) => setSearch(e.target.value)}
             placeholder={t('catalogTab.searchPlaceholder')}
             aria-label={t('catalogTab.searchAriaLabel')}
-            className="h-8 pl-8 bg-muted text-sm"
+            className="h-8 pl-8 bg-well-tint text-sm"
           />
         </div>
-        <div className="inline-flex gap-0.5 p-0.5 rounded-m bg-muted">
+        <div className="inline-flex gap-0.5 p-0.5 rounded-m bg-well-tint">
           {FILTERS.map((f) => {
             const active = filter === f;
             return (
@@ -276,21 +276,21 @@ export function CatalogTab(props: CatalogTabProps) {
 
       {/* Programs section */}
       {/* eslint-disable-next-line no-restricted-syntax -- non-standard tracking (0.1em) */}
-      <p className="px-4 py-2.5 text-eyebrow font-semibold uppercase tracking-[0.1em] text-muted-foreground bg-muted border-b border-border">
+      <p className="px-4 py-2.5 text-eyebrow font-semibold uppercase tracking-[0.1em] text-muted-foreground bg-well-tint border-b border-border">
         {t('catalogTab.programsSection', { source: programSource })}
       </p>
       {filteredPrograms.map((row) => renderRow("program", row, programExisting, "show"))}
 
       {/* Cities section */}
       {/* eslint-disable-next-line no-restricted-syntax -- non-standard tracking (0.1em) */}
-      <p className="px-4 py-2.5 text-eyebrow font-semibold uppercase tracking-[0.1em] text-muted-foreground bg-muted border-b border-border">
+      <p className="px-4 py-2.5 text-eyebrow font-semibold uppercase tracking-[0.1em] text-muted-foreground bg-well-tint border-b border-border">
         {t('catalogTab.citiesSection', { source: citySource })}
       </p>
       {filteredCities.map((row) => renderRow("city", row, cityExisting, "city"))}
 
       {/* Merge-suggestion footer */}
       {merge && (
-        <div className="flex items-center gap-3 px-4 py-3 bg-muted">
+        <div className="flex items-center gap-3 px-4 py-3 bg-well-tint">
           <Copy className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
           <div className="flex-1 min-w-0">
             <p className="text-control font-medium">{merge.title}</p>

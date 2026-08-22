@@ -33,7 +33,7 @@ export function ConsoleTabs({
   const { t } = useTranslation('settingsAirtable');
   return (
     <div className="flex items-center justify-between gap-3">
-      <div className="inline-flex gap-0.5 rounded-m bg-muted p-0.5">
+      <div className="inline-flex gap-0.5 rounded-m bg-well-tint p-0.5">
         {TAB_KEYS.map((tab) => {
           const active = tab.key === value;
           return (
@@ -50,7 +50,7 @@ export function ConsoleTabs({
             >
               {t(tab.labelKey)}
               {tab.key === "catalog" && heldCount > 0 && (
-                <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-xs bg-accent-100 px-1 text-eyebrow font-semibold tabular-nums text-accent-text">
+                <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-xs bg-accent-tint px-1 text-eyebrow font-semibold tabular-nums text-accent-text">
                   {heldCount}
                 </span>
               )}

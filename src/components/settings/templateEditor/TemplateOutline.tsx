@@ -19,7 +19,7 @@ function OutlineButton({ label, modified, active, onClick }: OutlineButtonProps)
       onClick={onClick}
       className={cn(
         "flex w-full items-center justify-between gap-2 rounded-m px-2 py-1.5 text-left text-sm transition-colors",
-        active ? "bg-accent-100 text-accent-800" : "hover:bg-muted",
+        active ? "bg-accent-tint text-accent-800" : "hover:bg-hover-tint",
       )}
     >
       <span className="truncate">

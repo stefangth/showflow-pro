@@ -41,7 +41,7 @@ function TimelineStep({
         <span
           className={cn(
             "flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold tabular-nums",
-            n === 0 || dim ? "bg-muted text-muted-foreground" : "bg-accent text-accent-foreground",
+            n === 0 || dim ? "bg-well-tint text-muted-foreground" : "bg-accent text-accent-foreground",
           )}
         >
           {n}
@@ -150,7 +150,7 @@ export function FlowTimeline({
         chips={respOff ? skippedChip : undefined}
       >
         <div className="flex flex-wrap items-center gap-4">
-          <div className="inline-flex rounded-m bg-muted p-0.5" role="group" aria-label={t("flowTimeline.steps.notifyArtists.deliveryGroupAria")}>
+          <div className="inline-flex rounded-m bg-well-tint p-0.5" role="group" aria-label={t("flowTimeline.steps.notifyArtists.deliveryGroupAria")}>
             {(["digest", "immediate"] as const).map((mode) => (
               <button
                 key={mode}
@@ -253,7 +253,7 @@ export function FlowTimeline({
               </SelectContent>
             </Select>
           )}
-          <span className="rounded-m border border-border bg-muted px-2.5 py-1.5 font-mono text-xs text-muted-foreground">
+          <span className="rounded-m border border-border bg-well-tint px-2.5 py-1.5 font-mono text-xs text-muted-foreground">
             {referencePreview}
           </span>
         </div>
@@ -300,7 +300,7 @@ export function FlowTimeline({
         }
       >
         {respOff && (
-          <p className="rounded-m bg-muted px-2.5 py-1.5 text-xs text-muted-foreground">
+          <p className="rounded-m bg-well-tint px-2.5 py-1.5 text-xs text-muted-foreground">
             {t("flowTimeline.steps.producerConfirmation.offNotice")}
           </p>
         )}

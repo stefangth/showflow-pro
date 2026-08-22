@@ -509,7 +509,7 @@ export function CoveragePanel({ orgId, onOpenCast }: CoveragePanelProps) {
                                 onClick={() => saveEditCity(c.id, c.name)}
                                 disabled={renameCity.isPending}
                                 aria-label={t('coverage.saveCityName')}
-                                className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50 disabled:pointer-events-none"
+                                className="rounded p-1 text-muted-foreground hover:bg-hover-tint hover:text-foreground disabled:opacity-50 disabled:pointer-events-none"
                               >
                                 <Check className="h-3.5 w-3.5" />
                               </button>
@@ -519,7 +519,7 @@ export function CoveragePanel({ orgId, onOpenCast }: CoveragePanelProps) {
                                 type="button"
                                 onClick={cancelEditCity}
                                 aria-label={t('coverage.cancelRename')}
-                                className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                                className="rounded p-1 text-muted-foreground hover:bg-hover-tint hover:text-foreground"
                               >
                                 <X className="h-3.5 w-3.5" />
                               </button>
@@ -537,7 +537,7 @@ export function CoveragePanel({ orgId, onOpenCast }: CoveragePanelProps) {
                                   type="button"
                                   onClick={() => startEditCity(c.id, c.name)}
                                   aria-label={t('coverage.renameCity', { name: c.name })}
-                                  className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                                  className="rounded p-1 text-muted-foreground hover:bg-hover-tint hover:text-foreground"
                                 >
                                   <Pencil className="h-3.5 w-3.5" />
                                 </button>
@@ -549,7 +549,7 @@ export function CoveragePanel({ orgId, onOpenCast }: CoveragePanelProps) {
                                 onClick={() => deleteCity.mutate(c.id)}
                                 disabled={!canDeleteCity || referenced}
                                 aria-label={t('coverage.removeCity', { name: c.name })}
-                                className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-destructive disabled:opacity-50 disabled:pointer-events-none"
+                                className="rounded p-1 text-muted-foreground hover:bg-hover-tint hover:text-destructive disabled:opacity-50 disabled:pointer-events-none"
                               >
                                 <Trash2 className="h-3.5 w-3.5" />
                               </button>

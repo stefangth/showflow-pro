@@ -149,7 +149,7 @@ export function EmailTemplatesTab({ readOnly, isSuperAdmin }: EmailTemplatesTabP
                 data-testid={`email-template-group-${group}`}
                 className="overflow-hidden rounded-l border border-border bg-card text-foreground"
               >
-                <div className="border-b border-border bg-muted px-4 py-3">
+                <div className="border-b border-border bg-well-tint px-4 py-3">
                   <h3 className="font-display text-sm font-semibold">{t(`emailTemplatesTab.groups.${group}`)}</h3>
                 </div>
                 <div className="divide-y divide-border">

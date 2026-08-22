@@ -84,7 +84,7 @@ export function TemplateDocumentPane({ input }: TemplateDocumentPaneProps) {
   }, []);
 
   return (
-    <section aria-label={t("templateDocumentPane.ariaLabel")} className="relative h-full overflow-y-auto bg-muted/30">
+    <section aria-label={t("templateDocumentPane.ariaLabel")} className="relative h-full overflow-y-auto bg-well-tint">
       {error && (
         <Alert variant="destructive" className="m-3">
           <AlertDescription>{t("templateDocumentPane.renderError")} {error}</AlertDescription>

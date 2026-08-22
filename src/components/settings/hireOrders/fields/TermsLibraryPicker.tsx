@@ -56,7 +56,7 @@ export function TermsLibraryPicker({
               <span className="flex items-center gap-2">
                 <span className="text-sm font-medium">{tpl.name}</span>
                 {isHeld && (
-                  <span className="rounded bg-muted px-1.5 py-0.5 text-eyebrow font-medium text-muted-foreground">
+                  <span className="rounded bg-well-tint px-1.5 py-0.5 text-eyebrow font-medium text-muted-foreground">
                     {t("termsLibraryPicker.alreadyAdded")}
                   </span>
                 )}

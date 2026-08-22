@@ -63,7 +63,7 @@ function Tile({
     // element on the two surfaces was a tile on one and an invisible one on
     // the other. `border-border` is the app's equivalent of `--line`; the fill
     // goes to full `bg-muted` so the edge is not the only thing carrying it.
-    <div className="flex flex-col gap-1.5 rounded-l border border-border bg-muted p-3.5">
+    <div className="flex flex-col gap-1.5 rounded-l border border-border bg-well-tint p-3.5">
       {/* eslint-disable-next-line no-restricted-syntax -- non-standard tracking (tracking-widest) */}
       <div className="text-eyebrow font-semibold uppercase tracking-widest text-muted-foreground">
         {label}

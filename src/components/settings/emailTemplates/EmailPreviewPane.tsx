@@ -67,7 +67,7 @@ export function EmailPreviewPane({
   }, []);
 
   return (
-    <section aria-label={t("emailPreviewPane.ariaLabel")} className="relative h-full overflow-y-auto bg-muted/30">
+    <section aria-label={t("emailPreviewPane.ariaLabel")} className="relative h-full overflow-y-auto bg-well-tint">
       {error ? (
         <Alert variant="destructive" className="m-3">
           <AlertDescription>{t("emailPreviewPane.loadError", { message: error })}</AlertDescription>

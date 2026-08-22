@@ -125,7 +125,7 @@ function RolePicker({ value, onChange }: { value: TrustRole; onChange: (r: Trust
     <div
       role="radiogroup"
       aria-label={t('visibilityMatrix.roleToInspect')}
-      className="inline-flex gap-0.5 rounded-l bg-muted p-0.5"
+      className="inline-flex gap-0.5 rounded-l bg-well-tint p-0.5"
     >
       {TRUST_ROLES.map((role, index) => {
         const selected = role.value === value;
