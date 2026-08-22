@@ -100,6 +100,17 @@ jobs:
 
             Note: The PR branch is already checked out in the current working directory.
 
+            Review the diff yourself, directly, in THIS turn, and post every comment
+            before you finish. This runs inside a GitHub Actions job that is torn down
+            the instant your turn ends, so any work left running in the background is
+            killed before it can post.
+            - Do NOT invoke the `/code-review` skill (or any skill/command that runs the
+              review as a background or multi-agent workflow).
+            - Do NOT spawn background subagents or defer the review with the Task tool.
+            - Do NOT end your turn saying you will "report back later" or that a review
+              is "still running" - there is no later. If you say you posted comments,
+              they must already be posted.
+
             Use `gh pr comment` for top-level feedback.
             Use `mcp__github_inline_comment__create_inline_comment` (with `confirmed: true`) to highlight specific code issues.
             Only post GitHub comments - don't submit review text as messages.
