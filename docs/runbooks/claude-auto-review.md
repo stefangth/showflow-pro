@@ -35,8 +35,11 @@ The guard is in `claude_args`:
 silently no-op if the runtime uses the other identifier. Disallowing a name the runtime does not
 know is harmless. The bare name (no parentheses) matches every subagent type, and deny beats allow
 in the permission evaluation order, so background fan-out is impossible regardless of what the agent
-decides. Do not remove this without replacing it with an equally deterministic guard - a prompt
-instruction telling the agent to stay synchronous had already been tried and did not hold.
+decides. Replace it only with an equally deterministic guard, and do not downgrade it to a prompt
+instruction telling the agent to stay synchronous: one was authored in `871455e` on
+`claude/fix-ci-review-sync` but never reached `main`, because PR #273 restored the workflow to the
+main-branch version instead. So nothing here establishes that a prompt alone holds, and the failure
+it would be guarding against is silent.
 
 ## Editing this workflow self-skips the review on your own PR
 
