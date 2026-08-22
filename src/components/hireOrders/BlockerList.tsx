@@ -157,7 +157,7 @@ export function BlockerList({ orgId, blockers, onFixOrderField, idPrefix = "bloc
               <TermsFix orgId={orgId} idPrefix={`${idPrefix}-terms`} />
             )}
             {b.scope === "org" && !b.fixable && (
-              <span className="mt-2 inline-flex items-center gap-1.5 rounded bg-muted px-2 py-1 text-xs font-medium text-muted-foreground">
+              <span className="mt-2 inline-flex items-center gap-1.5 rounded bg-well-tint px-2 py-1 text-xs font-medium text-muted-foreground">
                 <Lock className="h-3 w-3" />
                 {t("blockerList.adminOnly")}
               </span>

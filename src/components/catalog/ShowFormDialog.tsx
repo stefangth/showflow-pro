@@ -204,7 +204,7 @@ export function ShowFormDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {isEdit ? t("form.editTitle") : t("form.newTitle")}
-            {synced && <Badge variant="secondary" className="bg-muted text-muted-foreground">{t("form.syncedBadge")}</Badge>}
+            {synced && <Badge variant="secondary" className="bg-well-tint text-muted-foreground">{t("form.syncedBadge")}</Badge>}
           </DialogTitle>
         </DialogHeader>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">

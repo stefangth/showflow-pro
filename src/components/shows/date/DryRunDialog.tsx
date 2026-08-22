@@ -84,7 +84,7 @@ export function DryRunDialog({
               {candidates.map((c) => (
                 <span
                   key={c.id}
-                  className="inline-flex items-center rounded-full border border-border bg-muted px-2.5 py-1 text-xs"
+                  className="inline-flex items-center rounded-full border border-border bg-well-tint px-2.5 py-1 text-xs"
                 >
                   {c.name}
                 </span>

@@ -161,7 +161,7 @@ export function RangeStep({ sheets, sheetIndex, onSheetIndexChange, range, onRan
               return (
                 <tr
                   key={rowNumber}
-                  className={isHeader ? "bg-accent-50 font-medium" : included ? "" : "text-muted-foreground"}
+                  className={isHeader ? "bg-accent-tint font-medium" : included ? "" : "text-muted-foreground"}
                 >
                   <td className="w-16 shrink-0 border-r border-border px-2 py-1 align-middle text-muted-foreground">
                     {range.mode === "picked" && !isHeader ? (

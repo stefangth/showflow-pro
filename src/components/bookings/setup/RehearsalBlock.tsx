@@ -65,7 +65,7 @@ export function RehearsalBlock({ orgId }: { orgId: string | null }) {
   const when = formatDateWithWeekday(next.data.date);
 
   return (
-    <div className="bg-accent-50 p-3.5">
+    <div className="bg-accent-tint p-3.5">
       {/* eslint-disable-next-line no-restricted-syntax -- eyebrow label paired with a headline, primitive adoption deferred */}
       <p className="text-eyebrow font-semibold uppercase tracking-wider text-accent-text">Rehearsal</p>
       <p className="mt-1 text-sm font-semibold">See it run before it runs</p>

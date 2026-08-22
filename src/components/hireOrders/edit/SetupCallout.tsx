@@ -56,7 +56,7 @@ export function SetupCallout({ orgId, blockers, isLoading, isError }: SetupCallo
         : t("setupCallout.headlineBack");
 
   return (
-    <div className="mb-3 rounded-l border border-accent-200 bg-accent-50 p-3">
+    <div className="mb-3 rounded-l border border-accent-200 bg-accent-tint p-3">
       <p className="text-sm font-semibold text-accent-text">{headline}</p>
       <p className="mt-0.5 text-xs text-muted-foreground">
         {t("setupCallout.body")}

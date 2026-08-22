@@ -163,7 +163,7 @@ export function EligibilityBookList({
         <div key={a.id} className="flex items-center justify-between rounded-l border border-border p-3">
           <p className="text-sm font-medium">{a.name}</p>
           {bookedArtistIds.has(a.id) ? (
-            <Badge variant="secondary" className="bg-muted text-muted-foreground">{t("eligibilityBookList.booked")}</Badge>
+            <Badge variant="secondary" className="bg-well-tint text-muted-foreground">{t("eligibilityBookList.booked")}</Badge>
           ) : (
             <Button size="sm" variant="outline" disabled={booking} onClick={() => setConfirmTarget(a)}>
               {t("eligibilityBookList.book")}

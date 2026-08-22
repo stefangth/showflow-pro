@@ -91,7 +91,7 @@ export function OrderTimeline({ status, createdAt, issuedAt, seenAt, countersign
                   "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border",
                   done && "border-transparent bg-[var(--green-600)] text-white",
                   isActive && "border-transparent bg-[var(--amber-500)] text-white",
-                  !done && !isActive && "border-border bg-muted text-transparent",
+                  !done && !isActive && "border-border bg-well-tint text-transparent",
                 )}
               >
                 {done ? <Check className="h-3 w-3" strokeWidth={3} /> : <span className="h-1.5 w-1.5 rounded-full bg-current" />}

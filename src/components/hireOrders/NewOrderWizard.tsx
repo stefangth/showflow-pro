@@ -684,7 +684,7 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
 
         {result ? (
           <div className="space-y-4 py-6 text-center">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-accent-50">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-accent-tint">
               <CheckCircle2 className="h-6 w-6 text-accent-text" />
             </div>
             <p className="text-lg font-medium">
@@ -899,7 +899,7 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
                     </Select>
                   </div>
                 </div>
-                <div className="rounded-l border border-accent-200 bg-accent-50 p-3">
+                <div className="rounded-l border border-accent-200 bg-accent-tint p-3">
                   <p className="text-xs text-accent-text" data-testid="wiz-fee-summary">
                     {feeSummaryText()}
                   </p>
