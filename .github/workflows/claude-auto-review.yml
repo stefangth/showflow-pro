@@ -111,5 +111,27 @@ jobs:
           # Broadened beyond the stock example: the v2.1.x review agent explores
           # the checked-out branch with Read/Grep/Glob and git inspection, so the
           # old minimal allowlist got it blocked (67 denials) and it never posted.
+          #
+          # --disallowedTools "Agent" is the real reliability guard, not the prompt
+          # text above: the review must run inline in this one turn, because the
+          # Actions job is torn down the instant the turn ends. When the agent
+          # instead delegated to the `/code-review` skill, that skill fanned the
+          # review out into background subagents (a failing run showed 5
+          # `general-purpose` subagents, `completed: 0`) and returned "I'll report
+          # back once it completes" -- the runner then killed them and the
+          # post-step logged "No buffered inline comments". The bare tool name
+          # (no parentheses) matches every subagent type, so this blocks all
+          # background fan-out. Deny overrides allow in the permission evaluation
+          # order, so it holds regardless of what the agent decides; the runs that
+          # posted reliably never spawned a subagent. Both `Agent` (current name)
+          # and `Task` (older name) are listed so the guard can't silently no-op
+          # if the runtime uses the other identifier -- disallowing a name the
+          # runtime doesn't know is harmless.
+          #
+          # NOTE: claude-code-action validates this workflow file against the copy
+          # on the default branch and self-skips if they differ, so a
+          # workflow_dispatch from this branch is a no-op "success"; the change is
+          # only exercised on real pull_request events after it merges to main.
           claude_args: |
             --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr checks:*),Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git blame:*),Read,Grep,Glob"
+            --disallowedTools "Agent,Task"
