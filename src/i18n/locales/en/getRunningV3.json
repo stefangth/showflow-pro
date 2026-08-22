@@ -54,7 +54,9 @@
     "blocksFirstAsk": "Blocks your first ask",
     "adminOnly": "Admin only",
     "waitsOnAdmin": "Waits on your admin",
-    "footerNote": "Changes here are saved as you go."
+    "footerNote": "Changes here are saved as you go.",
+    "stepsNav": "Steps",
+    "stepOfRich": "Step <0>{{step}}</0> of <1>{{total}}</1>"
   },
   "steps": {
     "source": {

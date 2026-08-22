@@ -40,3 +40,32 @@ it("shows the how-this-works guide for the active step", () => {
   // guide.coverage.title from getRunningV3 — assert the section landmark, not exact copy.
   expect(screen.getByText(/how this works/i)).toBeInTheDocument();
 });
+
+it("renders the blocks-first-ask chip for a booking-blocked step (get_dates phase)", () => {
+  const bookingSteps: GetRunningStep[] = [
+    { key: "cities", phase: "get_dates", done: false, block: "booking", adminOnly: false, actionableByViewer: true, placeholder: false },
+  ];
+  render(
+    <MemoryRouter>
+      <WizardShell phaseKey="get_dates" steps={bookingSteps} activeKey="cities" onSelectStep={vi.fn()} onCollapse={vi.fn()}>
+        <div>BODY</div>
+      </WizardShell>
+    </MemoryRouter>
+  );
+  expect(screen.getByText(/blocks your first ask/i)).toBeInTheDocument();
+});
+
+it("does not render the blocks-first-ask chip for an issuing-blocked step (paperwork phase)", () => {
+  const paperworkSteps: GetRunningStep[] = [
+    { key: "letterhead", phase: "paperwork", done: false, block: "issuing", adminOnly: true, actionableByViewer: true, placeholder: false },
+  ];
+  render(
+    <MemoryRouter>
+      <WizardShell phaseKey="paperwork" steps={paperworkSteps} activeKey="letterhead" onSelectStep={vi.fn()} onCollapse={vi.fn()}>
+        <div>BODY</div>
+      </WizardShell>
+    </MemoryRouter>
+  );
+  expect(screen.queryByText(/blocks your first ask/i)).not.toBeInTheDocument();
+  expect(screen.getByText(/admin only/i)).toBeInTheDocument();
+});

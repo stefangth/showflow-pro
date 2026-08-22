@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useTranslation } from "react-i18next";
+import { Trans, useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -60,7 +60,19 @@ export function WizardShell({
   const stepNumber = activeIndex >= 0 ? activeIndex + 1 : 1;
   const totalSteps = steps.length;
   const phaseOrder = PHASE_ORDER.indexOf(phaseKey) + 1;
+  // The header counter renders a bare "N / M" (through <Metric>, numbers are always Metric
+  // per the design system) with the localized sentence attached only via aria-label so
+  // assistive tech still hears a real sentence rather than a slash-separated pair of digits.
   const stepOfLabel = t("wizard.stepOf", { step: stepNumber, total: totalSteps });
+  const stepCounter = `${stepNumber} / ${totalSteps}`;
+
+  // Per the design, a red "blocks your first ask" chip means the step gates the FIRST offer:
+  // that's true for the get_dates phase (block: "booking", nothing can be offered until dates
+  // exist) and the bookable phase's own offers-blocking steps (block: "offers"). The
+  // paperwork/contracts phase (block: "issuing"/"filling"/null) never renders this red chip —
+  // contracts are never "blocking the first ask", only "not yet finished" — so those steps
+  // fall through to the neutral admin-only chip below instead.
+  const blocksFirstAsk = activeStep?.block === "offers" || activeStep?.block === "booking";
 
   return (
     <div className="flex w-full flex-col overflow-hidden rounded-l border border-border bg-card shadow-elev2">
@@ -74,16 +86,14 @@ export function WizardShell({
         <div className="text-title-sm font-semibold tracking-[-0.2px] text-foreground">
           {t(`phases.${phaseKey}.name`)}
         </div>
-        {activeStep?.block === "offers" && (
-          <StatusPill tone="risk">{t("wizard.blocksFirstAsk")}</StatusPill>
-        )}
+        {blocksFirstAsk && <StatusPill tone="risk">{t("wizard.blocksFirstAsk")}</StatusPill>}
         {activeStep?.adminOnly && <StatusPill tone="neutral">{t("wizard.adminOnly")}</StatusPill>}
         {activeStep && !activeStep.actionableByViewer && (
           <StatusPill tone="waiting">{t("wizard.waitsOnAdmin")}</StatusPill>
         )}
         <div className="flex-1" />
         <span aria-label={stepOfLabel} className="text-control text-muted-foreground">
-          <Metric size="body">{`${stepNumber} / ${totalSteps}`}</Metric>
+          <Metric size="body">{stepCounter}</Metric>
         </span>
         <Button type="button" variant="outline" size="sm" onClick={onCollapse}>
           <X className="h-3.5 w-3.5" aria-hidden="true" />
@@ -94,7 +104,7 @@ export function WizardShell({
       {/* Body */}
       <div className="grid grid-cols-[216px_minmax(0,1fr)_268px] items-start gap-0">
         {/* Left: step rail */}
-        <nav aria-label={t("wizard.stepOf", { step: stepNumber, total: totalSteps })} className="flex flex-col gap-0.5 border-r border-border p-3">
+        <nav aria-label={t("wizard.stepsNav")} className="flex flex-col gap-0.5 border-r border-border p-3">
           {steps.map((step) => {
             const isActive = step.key === activeKey;
             return (
@@ -156,7 +166,25 @@ export function WizardShell({
 
       {/* Footer */}
       <div className="flex items-center gap-2.5 border-t border-border bg-well-tint px-4 py-3.5">
-        <span className="text-xs text-muted-foreground">{stepOfLabel}</span>
+        {/* Same "step N of M" fact as the header counter, worded as a full sentence here
+            (distinct visible text from the header's bare "N / M") but with the numbers
+            still routed through <Metric> (Geist Mono, tabular) per the numbers-are-Metric
+            rule, exactly like the header counter. */}
+        <span className="text-xs text-muted-foreground">
+          <Trans
+            t={t}
+            i18nKey="wizard.stepOfRich"
+            values={{ step: stepNumber, total: totalSteps }}
+            components={[
+              <Metric key="step" size="inline">
+                {""}
+              </Metric>,
+              <Metric key="total" size="inline">
+                {""}
+              </Metric>,
+            ]}
+          />
+        </span>
         <span className="text-xs text-muted-foreground">{t("wizard.footerNote")}</span>
         <div className="flex-1" />
         <div className="flex items-center gap-2">
