@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { resolveCoverage, type LadderCoverageInputs } from "@/lib/bookings/setupStatus";
 import { UnlocksNote } from "./UnlocksNote";
+import { CastRosterList } from "./CastRosterList";
 
 interface CastOption {
   id: string;
@@ -226,6 +227,16 @@ export function EligibilityPanelBody({
         </span>
       </div>
 
+      <CastRosterList casts={castOptions} keyPrefix="panel.body.eligibility" />
+
+      {productions.length === 0 && (
+        <p className="rounded-[var(--radius-l)] border border-border bg-accent-tint px-3 py-2.5 text-xs leading-[17px] text-muted-foreground">
+          {/* Distinguish "no future dates at all" from "dates exist but all lack a city":
+              with a null-city-only backlog, futurePairs is non-empty but productions is [] */}
+          {t(futurePairs.length > 0 ? "panel.body.eligibility.datesNeedCity" : "panel.body.eligibility.noProductionsYet")}
+        </p>
+      )}
+
       <div className="space-y-2">
         {productions.map((prod) => {
           const hasGap = prod.uncoveredCityIds.length > 0;
@@ -290,15 +301,25 @@ export function EligibilityPanelBody({
         })}
       </div>
 
-      {result.hasNullCity && (
+      {/* Suppress this footnote when there are no productions to show: the datesNeedCity
+          empty-state above already says the same thing (dates exist but have no city), and
+          showing both reads as the point made twice. It still renders in the mixed case
+          (some productions covered, plus a stray null-city date). */}
+      {result.hasNullCity && productions.length > 0 && (
         <p className="text-xs text-[var(--text-faint)]">{t("panel.body.eligibility.nullCityNote")}</p>
       )}
 
-      <UnlocksNote>
-        {firstGap
-          ? t("panel.body.eligibility.unlocks", { count: firstGapCount, show: firstGapShowName })
-          : t("panel.body.eligibility.unlocksDone")}
-      </UnlocksNote>
+      {/* Only speak to coverage when there is a production with a city-bearing date to
+          cover. With none, the datesNeedCity/noProductionsYet empty-state above already
+          explains the state; the "Every show and city has a cast" reassurance would
+          contradict it. */}
+      {productions.length > 0 && (
+        <UnlocksNote>
+          {firstGap
+            ? t("panel.body.eligibility.unlocks", { count: firstGapCount, show: firstGapShowName })
+            : t("panel.body.eligibility.unlocksDone")}
+        </UnlocksNote>
+      )}
     </div>
   );
 }

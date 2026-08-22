@@ -43,7 +43,7 @@ vi.mock("@/hooks/useCapabilities", () => ({
 }));
 vi.mock("@/hooks/useBookingSetup", () => ({
   useBookingSetupStatus: () => ({
-    status: { steps: [], doneCount: 0, totalCount: 0, canOffer: true, complete: true },
+    status: { steps: [], doneCount: 0, totalCount: 0, canOffer: true, complete: true, datesWithoutCity: 0 },
     coverage: undefined, isLoading: false, isError: false,
   }),
   useProducerCount: () => null,

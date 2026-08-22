@@ -40,6 +40,7 @@ function emptyModel(overrides: Partial<GetRunningModel> = {}): GetRunningModel {
     complete: true,
     bookingOn: false,
     hireOrdersOn: false,
+    datesWithoutCity: 0,
     ...overrides,
   };
 }
@@ -61,6 +62,7 @@ function boardModel(): GetRunningModel {
     complete: false,
     bookingOn: true,
     hireOrdersOn: false,
+    datesWithoutCity: 0,
   };
 }
 

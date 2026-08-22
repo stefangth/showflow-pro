@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { LadderCoverageInputs } from "@/lib/bookings/setupStatus";
 import { UnlocksNote } from "./UnlocksNote";
+import { CastRosterList } from "./CastRosterList";
 
 interface CastOption {
   id: string;
@@ -159,6 +160,36 @@ export function LadderPanelBody({
   const firstUnrankedName = firstUnrankedId ? cityNameById.get(firstUnrankedId) ?? "" : "";
   const firstUnrankedCount = firstUnrankedId ? dateCountByCity[firstUnrankedId] ?? 0 : 0;
 
+  // Where each cast is ranked across the org's city ladders, so a cast made ANYWHERE (this
+  // panel, /artists, Settings) is visible here with its standing — not only as an option
+  // hidden inside a per-city picker that never renders when no city has a future date. This
+  // is the fix for question (3): a cast that isn't tied to a city-with-a-date used to vanish
+  // from the board entirely. Reads the same `cityPriorities` the pickers do.
+  const rankByCast = useMemo(() => {
+    const map = new Map<string, { cityId: string; priority: number }[]>();
+    for (const row of cityPriorities) {
+      const arr = map.get(row.castId) ?? [];
+      arr.push({ cityId: row.cityId, priority: row.priority });
+      map.set(row.castId, arr);
+    }
+    for (const arr of map.values()) arr.sort((a, b) => a.priority - b.priority);
+    return map;
+  }, [cityPriorities]);
+
+  const rankLabel = (castId: string): string => {
+    const ranks = rankByCast.get(castId) ?? [];
+    if (ranks.length === 0) return t("panel.body.ladder.castNotRanked");
+    // Count distinct CITIES, not priority rows: a cast ranked at two tiers in one city is
+    // "ranked in 1 city", not 2.
+    const distinctCities = new Set(ranks.map((r) => r.cityId));
+    if (distinctCities.size > 1) return t("panel.body.ladder.castRankMulti", { count: distinctCities.size });
+    const only = ranks[0];
+    const cityName = cityNameById.get(only.cityId) ?? only.cityId;
+    return only.priority === 1
+      ? t("panel.body.ladder.castRankFirst", { city: cityName })
+      : t("panel.body.ladder.castRankGroup", { n: only.priority, city: cityName });
+  };
+
   return (
     <div className="space-y-3">
       {canManageCasts && (
@@ -185,6 +216,8 @@ export function LadderPanelBody({
         </form>
       )}
 
+      <CastRosterList casts={castOptions} keyPrefix="panel.body.ladder" subline={rankLabel} />
+
       <div className="flex items-center justify-between gap-2">
         <span className="text-xs text-muted-foreground">{t("panel.body.ladder.citiesWithDates")}</span>
         <span className="font-mono text-xs text-[var(--amber-600)]">
@@ -192,6 +225,13 @@ export function LadderPanelBody({
         </span>
       </div>
 
+      {cityIds.length === 0 ? (
+        <p className="rounded-[var(--radius-l)] border border-border bg-accent-tint px-3 py-2.5 text-xs leading-[17px] text-muted-foreground">
+          {/* "No future dates at all" vs "dates exist but all lack a city": with a
+              null-city-only backlog, futurePairs is non-empty but cityIds is []. */}
+          {t(futurePairs.length > 0 ? "panel.body.ladder.datesNeedCity" : "panel.body.ladder.noCitiesYet")}
+        </p>
+      ) : (
       <div className="divide-y divide-border rounded-[var(--radius-l)] border border-border">
         {cityIds.map((cityId) => {
           const tiers = tiersByCity.get(cityId) ?? [];
@@ -238,12 +278,19 @@ export function LadderPanelBody({
           );
         })}
       </div>
+      )}
 
-      <UnlocksNote>
-        {firstUnrankedId
-          ? t("panel.body.ladder.unlocks", { count: firstUnrankedCount, city: firstUnrankedName })
-          : t("panel.body.ladder.unlocksDone")}
-      </UnlocksNote>
+      {/* Only speak to ranking when there is actually a city with a date to rank. With no
+          such city the datesNeedCity/noCitiesYet empty-state above already explains the
+          state; the "Every city with dates has a first group" reassurance would contradict
+          it. */}
+      {cityIds.length > 0 && (
+        <UnlocksNote>
+          {firstUnrankedId
+            ? t("panel.body.ladder.unlocks", { count: firstUnrankedCount, city: firstUnrankedName })
+            : t("panel.body.ladder.unlocksDone")}
+        </UnlocksNote>
+      )}
     </div>
   );
 }

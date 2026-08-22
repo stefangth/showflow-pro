@@ -10,7 +10,7 @@ vi.mock("@/components/setup/useRailDismissed", () => ({
   useRailDismissed: () => [false, dismissFn, vi.fn()],
 }));
 
-function makeModel(): GetRunningModel {
+function makeModel(over: Partial<GetRunningModel> = {}): GetRunningModel {
   return {
     phases: [],
     doneCount: 11,
@@ -19,13 +19,15 @@ function makeModel(): GetRunningModel {
     complete: true,
     bookingOn: true,
     hireOrdersOn: true,
+    datesWithoutCity: 0,
+    ...over,
   };
 }
 
-function renderBoard() {
+function renderBoard(over: Partial<GetRunningModel> = {}) {
   return renderWithProviders(
     <MemoryRouter>
-      <RetiredBoard model={makeModel()} orgId="org-1" />
+      <RetiredBoard model={makeModel(over)} orgId="org-1" />
     </MemoryRouter>,
   );
 }
@@ -53,5 +55,17 @@ describe("RetiredBoard", () => {
     renderBoard();
     expect(screen.getByText("Where it goes")).toBeInTheDocument();
     expect(screen.getByText("When it comes back")).toBeInTheDocument();
+  });
+
+  it("keeps the null-city advisory visible after retirement (with a /dates link)", () => {
+    // A retired board can still have a stray city-less date; the advisory must not go dark.
+    renderBoard({ datesWithoutCity: 2 });
+    expect(screen.getByText(/2 dates have no city yet/i)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Fix on Dates/i })).toHaveAttribute("href", "/dates");
+  });
+
+  it("omits the advisory when every date has a city", () => {
+    renderBoard({ datesWithoutCity: 0 });
+    expect(screen.queryByText(/no city yet/i)).not.toBeInTheDocument();
   });
 });

@@ -165,7 +165,39 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   if (!showDate.session_1 && !showDate.session_2 && !showDate.session_3) {
     // ≥1-session rule: a times-TBD date is not yet bookable. Benign skip (200, not
     // 400) so airtable-poll's batch caller does not log a false "offer-tier failed".
-    return benignExit('Show date has no sessions yet — offers not opened')
+    return benignExit("This date has no times yet, so it can't be offered. Add a time on the date.")
+  }
+
+  // Slot-count gate: a show with no main slot count set has no fill target, so a date
+  // against it can never reach fully_filled. Refuse to open offers until slots are set —
+  // the server-side counterpart to the /get-running board marking `slots` a hard blocker.
+  // Mirrors showSlots() (src/lib/settings.ts): unconfigured iff main is null, or both main
+  // and understudy caps are effectively zero (understudy is optional, so a main-only show
+  // counts as configured). Benign skip (200) so the batch/cron callers do not log a
+  // failure. A show row that cannot be read (data null/error) is production-impossible —
+  // the FK guarantees it — so this fails OPEN there rather than halting every offer on a
+  // transient read blip.
+  // One read of the show row, reused below for the offer's display label (was a second
+  // fetch of the same row in the immediate-delivery branch).
+  const { data: showRowData, error: showErr } = await admin
+    .from('shows')
+    .select('program, sub_program, main_cast_slots, understudy_slots')
+    .eq('id', showDate.show_id)
+    .maybeSingle()
+  // A real read failure (RLS misconfig, transient network) is otherwise indistinguishable
+  // from the FK-impossible "no row" case below and would silently defeat this gate. Log it
+  // so a systemic failure is observable, then fall through to the fail-open path.
+  if (showErr) console.error('open-offer-tier: shows read failed for slot gate', showErr)
+  const showRow = showRowData as
+    | { program: string | null; sub_program: string | null; main_cast_slots: number | null; understudy_slots: number | null }
+    | null
+  if (showRow) {
+    const mainSlots = showRow.main_cast_slots
+    const understudySlots = showRow.understudy_slots ?? 0
+    const slotsConfigured = mainSlots != null && !(mainSlots <= 0 && understudySlots <= 0)
+    if (!slotsConfigured) {
+      return benignExit("This show has no slot count yet, so it can't be offered. Set slot counts on the show.")
+    }
   }
 
   // Resolve the effective ladder once: show-scoped priorities win outright for
@@ -194,7 +226,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     }
   } else {
     if (!showDate.city_id) {
-      return benignExit('Show date has no city, cannot resolve priority casts')
+      return benignExit("This date has no city yet, so it can't be offered. Add a city on the date.")
     }
     const ladder = await resolveTierLadder(admin, showDate.show_id, showDate.city_id)
     eligibleCastIds = ladderCastIdsAtTier(ladder, tier)
@@ -415,8 +447,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       const expiresAt = new Date(offeredAt.getTime() + windowHours * 60 * 60 * 1000)
 
       // Resolve the offer's display label (mirrors send-offer-digest / the flow ref field).
-      const { data: showRow } = await admin
-        .from('shows').select('program, sub_program').eq('id', showDate.show_id).maybeSingle()
+      // Reuses the single `showRow` fetched by the slot gate above rather than re-reading it.
       let cityName: string | null = null
       if (showDate.city_id) {
         const { data: cityRow } = await admin

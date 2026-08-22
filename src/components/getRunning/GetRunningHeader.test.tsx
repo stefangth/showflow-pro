@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { screen } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import { GetRunningHeader } from "./GetRunningHeader";
 import type { GetRunningModel, GetRunningTask } from "@/lib/getRunning/tasks";
@@ -13,6 +14,7 @@ function makeModel(overrides: Partial<GetRunningModel> = {}): GetRunningModel {
     complete: false,
     bookingOn: true,
     hireOrdersOn: true,
+    datesWithoutCity: 0,
     ...overrides,
   };
 }
@@ -68,6 +70,23 @@ describe("GetRunningHeader", () => {
     );
     expect(screen.getByText("On")).toBeInTheDocument();
     expect(screen.getByText("Off")).toBeInTheDocument();
+  });
+
+  it("shows the non-blocking null-city advisory (with a /dates link) when datesWithoutCity > 0", () => {
+    renderWithProviders(
+      <MemoryRouter>
+        <GetRunningHeader model={makeModel({ datesWithoutCity: 2 })} orgName="Nordstadt Produktionen" />
+      </MemoryRouter>,
+    );
+    expect(screen.getByText(/2 dates have no city yet/i)).toBeInTheDocument();
+    const link = screen.getByRole("link", { name: /Fix on Dates/i });
+    expect(link).toHaveAttribute("href", "/dates");
+  });
+
+  it("omits the null-city advisory when every future date has a city", () => {
+    renderWithProviders(<GetRunningHeader model={makeModel({ datesWithoutCity: 0 })} orgName="Nordstadt Produktionen" />);
+    expect(screen.queryByText(/no city yet/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Fix on Dates/i })).not.toBeInTheDocument();
   });
 
   it("renders the eyebrow with the org name and the footer note", () => {

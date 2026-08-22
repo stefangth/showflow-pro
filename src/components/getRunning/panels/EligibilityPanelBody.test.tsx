@@ -84,7 +84,10 @@ describe("EligibilityPanelBody", () => {
     // Carmen's Hamburg date is covered by the org-wide "nord" ladder → Fully covered
     // with the covering cast surfaced as an accent chip.
     expect(screen.getByText("Fully covered")).toBeInTheDocument();
-    expect(screen.getByText("Nord Ensemble")).toBeInTheDocument();
+    // "Nord Ensemble" now shows both as the covering-cast chip AND in the "Your casts"
+    // roster list (casts are visible even when tied to no city-with-a-date), so assert at
+    // least one occurrence rather than a single unique node.
+    expect(screen.getAllByText("Nord Ensemble").length).toBeGreaterThan(0);
 
     // Die Zauberflöte's Leipzig date has no tier-1 cast → a "1 gap" badge, the
     // uncovered-city hint, and the dashed Link a cast affordance. "1 gap" appears
@@ -222,5 +225,16 @@ describe("EligibilityPanelBody", () => {
     // The city-scoped gap is closed, but a null-city date remains: the panel must hold.
     await new Promise((resolve) => setTimeout(resolve, 20));
     expect(onDone).not.toHaveBeenCalled();
+  });
+
+  it("null-city-only backlog: shows datesNeedCity, suppresses the duplicate nullCityNote, keeps the roster", async () => {
+    renderPanel({ futurePairs: [{ showId: "show-1", cityId: null }], showPriorities: [], cityPriorities: [] });
+    // Await the async roster (casts query) so the sync assertions see a settled DOM.
+    expect(await screen.findByText("Nord Ensemble")).toBeInTheDocument();
+    expect(screen.getByText(/no city set yet/i)).toBeInTheDocument();
+    // The pre-existing nullCityNote must NOT also render (it would say the same thing twice).
+    expect(screen.queryByText(/Fix the date to include it/i)).not.toBeInTheDocument();
+    // And the all-covered UnlocksNote reassurance is suppressed in this state too.
+    expect(screen.queryByText(/has a cast in the first group/i)).not.toBeInTheDocument();
   });
 });

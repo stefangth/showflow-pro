@@ -395,14 +395,14 @@ it("the two Settings steps deep-link to the tab their label names", () => {
   expect(bookingOnboarding.steps.timing.ctaRoute).toBe(`${ROUTES.SETTINGS}?tab=booking`);
 });
 
-it("leaves the hire-order steps on bare Settings", () => {
-  // `hire-orders` is deliberately absent from SETTINGS_TAB_PARAMS: the tab is
-  // entitlement-gated and the pure resolver cannot see an org's entitlement, so deep-linking
-  // it would strand an unentitled org on an empty pane. These three keep the bare route.
+it("deep-links the hire-order steps to the Contracts tab", () => {
+  // `hire-orders` is now a real deep-link target (SettingsPage renders its trigger for any
+  // admin/producer regardless of entitlement, and HireOrdersTab self-gates), so these steps
+  // land on the Contracts tab like the booking steps land on `?tab=booking`.
   for (const s of Object.values(hireOrderOnboarding.steps)) {
-    expect(s.ctaRoute).toBe(ROUTES.SETTINGS);
+    expect(s.ctaRoute).toBe(`${ROUTES.SETTINGS}?tab=hire-orders`);
   }
-  expect(SETTINGS_TAB_PARAMS as readonly string[]).not.toContain("hire-orders");
+  expect(SETTINGS_TAB_PARAMS as readonly string[]).toContain("hire-orders");
 });
 
 it("every module has railHeader copy with no em/en dashes", () => {

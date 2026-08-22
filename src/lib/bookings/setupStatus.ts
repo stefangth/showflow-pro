@@ -31,6 +31,12 @@ export interface BookingSetupStatus {
   canOffer: boolean;
   /** Every step is done: the rail retires. */
   complete: boolean;
+  /** Count of future non-cancelled dates with no city set. Advisory only, NOT a step and
+   *  NOT part of `canOffer`/`complete`: such a date can never be offered by the engine
+   *  (`open-offer-tier` benign-exits with "no city"), but it is a per-date data gap, not an
+   *  org-setup failure, so it never gates readiness — the /get-running board surfaces it as
+   *  a non-blocking advisory instead. 0 while coverage is unread. */
+  datesWithoutCity: number;
 }
 
 export interface LadderCoverageInputs {
@@ -205,5 +211,7 @@ export function computeBookingSetupStatus(input: BookingSetupStatusInput): Booki
     // org's empty roster count as ready.
     canOffer: steps.every((s) => !HARD_BLOCKS.includes(s.block) || s.done),
     complete: steps.every((s) => s.done),
+    // Per-date advisory signal (see the field doc): count of future dates with no city.
+    datesWithoutCity: input.coverage?.futurePairs.filter((p) => p.cityId === null).length ?? 0,
   };
 }

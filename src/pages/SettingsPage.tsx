@@ -183,8 +183,8 @@ export default function SettingsPage() {
   // is still never undone by a re-render.
   //
   // Widened to `string` on purpose: the seed is a SettingsTabParam, but Tabs.onValueChange
-  // hands back a plain string (and "hire-orders", deliberately not a deep-link target, is a
-  // reachable tab), so narrowing the state to the whitelist would reject legitimate switches.
+  // hands back a plain string, so narrowing the state to the whitelist would reject
+  // legitimate switches.
   const [searchParams] = useSearchParams();
   const tabParam = searchParams.get('tab');
   const navKey = useLocation().key;

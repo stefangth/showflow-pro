@@ -59,6 +59,10 @@ export async function seedBookingFixture(opts: SeedOptions): Promise<BookingFixt
       program: `${E2E_TAG}-program`,
       sub_program: `${E2E_TAG}-sub`,
       org_id: BOOTSTRAP_ORG_ID,
+      // open-offer-tier now refuses to open offers for a show with no slot count set
+      // (matches production: a real show is sized before offers go out). Seed a main
+      // slot count well above the single seeded artist so dates never auto-fill.
+      main_cast_slots: 4,
     })
     .select("id")
     .single();

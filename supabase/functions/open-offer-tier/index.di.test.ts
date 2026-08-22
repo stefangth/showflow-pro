@@ -275,6 +275,49 @@ Deno.test("open-offer-tier: tier 3 — no casts at that priority → offers_crea
   assertExists(body.message);
 });
 
+// ------ Slot-count gate: refuse to open offers for a show with no slot count ------
+
+Deno.test("open-offer-tier: benign skip when the show has no slot count set — no bookings", async () => {
+  const { deps, calls } = makeFakeDeps({
+    envVars,
+    tables: {
+      show_dates: { data: SHOW_DATE_OPEN, error: null },
+      // Show row present but main_cast_slots null and no understudy cap → unconfigured.
+      shows: { data: { main_cast_slots: null, understudy_slots: null }, error: null },
+      cast_city_priority: { data: [{ cast_id: "cast-a", priority: 1 }], error: null },
+      cast_members: { data: [{ artist_id: "art-1" }], error: null },
+      artists: { data: [{ id: "art-1" }], error: null },
+      bookings: bookingsSeed("d1", ["b1"]),
+      blocked_dates: { data: [], error: null },
+    },
+  });
+  const res = await handle(makeRequest({ headers: SVC, body: { show_date_id: "d1", tier: 1 } }), deps);
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.offers_created, 0);
+  const insertCall = calls.find((c) => c.table === "bookings" && c.method === "insert");
+  assertEquals(insertCall, undefined, "no bookings insert when slots are unset");
+});
+
+Deno.test("open-offer-tier: a main-only slot count (understudy null) still opens offers", async () => {
+  const { deps } = makeFakeDeps({
+    envVars,
+    tables: {
+      show_dates: { data: SHOW_DATE_OPEN, error: null },
+      shows: { data: { main_cast_slots: 4, understudy_slots: null }, error: null },
+      cast_city_priority: { data: [{ cast_id: "cast-a", priority: 1 }], error: null },
+      cast_members: { data: [{ artist_id: "art-1" }], error: null },
+      artists: { data: [{ id: "art-1" }], error: null },
+      bookings: bookingsSeed("d1", ["b1"]),
+      blocked_dates: { data: [], error: null },
+    },
+  });
+  const res = await handle(makeRequest({ headers: SVC, body: { show_date_id: "d1", tier: 1 } }), deps);
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.offers_created, 1);
+});
+
 // ------ Full happy path: tier 1, 2 artists, both active, none booked ------
 
 Deno.test("open-offer-tier: tier 1 happy path — creates 2 suggested bookings", async () => {
@@ -846,7 +889,7 @@ Deno.test("open-offer-tier: zero-session date is a benign skip — no offers, no
   assertEquals(res.status, 200);
   const body = await res.json();
   assertEquals(body.offers_created, 0);
-  assertEquals(body.message, "Show date has no sessions yet — offers not opened");
+  assertEquals(body.message, "This date has no times yet, so it can't be offered. Add a time on the date.");
   assertEquals(calls.some((c) => c.table === "bookings" && c.method === "insert"), false);
 });
 
@@ -864,7 +907,7 @@ Deno.test("open-offer-tier: a date with ≥1 session passes the session gate", a
   const res = await handle(makeRequest({ headers: SVC, body: { show_date_id: "d1", tier: 1 } }), deps);
   const body = await res.json();
   // Past the session gate; stops later for lack of priority casts (a different message).
-  assertEquals(body.message !== "Show date has no sessions yet — offers not opened", true);
+  assertEquals(body.message !== "This date has no times yet, so it can't be offered. Add a time on the date.", true);
 });
 
 // ------ Tier-tracking warning when the show_date_offer_tiers upsert fails ------
@@ -1064,7 +1107,7 @@ const IMMEDIATE_TABLES = {
     { when: { key: "booking_flow" }, data: [{ org_id: "org-A", value: { offer_delivery: "immediate" } }], error: null },
     { when: { key: "offer_response_window_hours" }, data: [{ org_id: "org-A", value: 48 }], error: null },
   ],
-  shows: { data: { program: "Candlelight", sub_program: "Strings" }, error: null },
+  shows: { data: { program: "Candlelight", sub_program: "Strings", main_cast_slots: 4, understudy_slots: null }, error: null },
   cities: { data: { name: "Berlin" }, error: null },
   cast_city_priority: { data: [{ cast_id: "c1", priority: 1 }], error: null },
   cast_members: { data: [{ artist_id: "a1" }], error: null },

@@ -20,7 +20,10 @@
       "ready": "Everything blocking your first ask is done. The rest of this board is worth finishing, but nothing here holds you back anymore.",
       "complete": "Every task on this board is done. Come back to Settings any time if something changes.",
       "producer": "This is here so you know why Shows and Bookings looks empty, not so you can fix all of it."
-    }
+    },
+    "datesWithoutCity_one": "1 date has no city yet, so the engine can't offer it.",
+    "datesWithoutCity_other": "{{count}} dates have no city yet, so the engine can't offer them.",
+    "datesWithoutCityLink": "Fix on Dates"
   },
   "nothingToSetUp": {
     "title": "Nothing to set up",
@@ -43,7 +46,8 @@
       "status": {
         "complete": "Running",
         "active": "In progress",
-        "dormant": "Not started yet"
+        "dormant": "Not started yet",
+        "blocking": "Blocks your first ask"
       }
     },
     "bookable": {
@@ -95,25 +99,11 @@
         "flow": "Change booking flow in Settings, Booking engine",
         "timing": "Change ask timing in Settings, Booking engine",
         "ladder": "Rank casts in Settings, Casts & coverage",
-        "eligibility": "Link casts in Settings, Casts & coverage"
+        "eligibility": "Link casts in Settings, Casts & coverage",
+        "letterhead": "Set letterhead in Settings, Contracts",
+        "terms": "Set terms in Settings, Contracts",
+        "countersign": "Set countersignature in Settings, Contracts"
       }
-    },
-    "eyebrow": {
-      "dates": "Dates · feeds every step",
-      "slots": "Values · one number per show",
-      "flow": "Choice · sets everything downstream",
-      "people": "Roster · blocks booking",
-      "ladder": "Priorities · blocks asks",
-      "eligibility": "Coverage · blocks asks",
-      "timing": "Values · two fields",
-      "team": "Team · admin only",
-      "letterhead": "Document · blocks issuing",
-      "terms": "Document · blocks issuing",
-      "countersign": "Document · does not block issuing"
-    },
-    "eyebrowSet": {
-      "letterhead": "Document · set",
-      "terms": "Document · set"
     },
     "footerNote": {
       "dates": "Sync runs hourly",
@@ -184,7 +174,17 @@
         "unlocks_other": "Rank {{city}} too and {{count}} dates become askable in tonight's daily send.",
         "unlocksDone": "Every city with dates has a first group.",
         "tierUpdated": "Group {{tier}} set",
-        "tierUpdateFailed": "Could not set group {{tier}}"
+        "tierUpdateFailed": "Could not set group {{tier}}",
+        "yourCasts": "Your casts",
+        "castCountLabel_one": "{{count}} cast",
+        "castCountLabel_other": "{{count}} casts",
+        "castRankFirst": "First group in {{city}}",
+        "castRankGroup": "Group {{n}} in {{city}}",
+        "castRankMulti_one": "Ranked in {{count}} city",
+        "castRankMulti_other": "Ranked in {{count}} cities",
+        "castNotRanked": "Not ranked yet",
+        "noCitiesYet": "No city has a future date yet, so there is nothing to rank. Casts you add now will wait here.",
+        "datesNeedCity": "Your upcoming dates have no city set yet, so there is nothing to rank until you add one on the date."
       },
       "eligibility": {
         "gapCount_one": "{{count}} gap",
@@ -205,7 +205,12 @@
         "fullyCovered": "Fully covered",
         "cityCount_one": "{{count}} city",
         "cityCount_other": "{{count}} cities",
-        "noCastYet": "No cast in {{cities}} yet"
+        "noCastYet": "No cast in {{cities}} yet",
+        "yourCasts": "Your casts",
+        "castCountLabel_one": "{{count}} cast",
+        "castCountLabel_other": "{{count}} casts",
+        "noProductionsYet": "No show has a future date yet, so there is nothing to cover. Casts you add now will wait here.",
+        "datesNeedCity": "Your upcoming dates have no city set yet, so there is nothing to cover until you add one on the date."
       }
     }
   },
@@ -319,5 +324,34 @@
       "set": "Set",
       "notSet": "Not set"
     }
+  },
+  "feature": {
+    "crumb": {
+      "dates": "Dates",
+      "slots": "Productions",
+      "flow": "Settings › Booking engine",
+      "people": "Artists",
+      "ladder": "Settings › Casts & coverage",
+      "eligibility": "Settings › Casts & coverage",
+      "timing": "Settings › Booking engine",
+      "team": "Settings › People",
+      "letterhead": "Settings › Contracts",
+      "terms": "Settings › Contracts",
+      "countersign": "Settings › Contracts"
+    },
+    "short": {
+      "dates": "Dates",
+      "slots": "Productions",
+      "flow": "Booking engine",
+      "people": "Artists",
+      "ladder": "Casts & coverage",
+      "eligibility": "Casts & coverage",
+      "timing": "Booking engine",
+      "team": "People",
+      "letterhead": "Contracts",
+      "terms": "Contracts",
+      "countersign": "Contracts"
+    },
+    "open": "Open"
   }
 }

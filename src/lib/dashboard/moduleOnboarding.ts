@@ -155,9 +155,9 @@ export function buildHireOrderOnboarding(t: OnbT): ModuleOnboardingDef<SetupStep
       body: t("railHeader.hire.body"),
     },
     steps: {
-      letterhead: { title: t("steps.letterhead.title"), todoHint: t("steps.letterhead.todoHint"), doneHint: t("steps.letterhead.doneHint"), ctaLabel: t("steps.letterhead.ctaLabel"), ctaRoute: ROUTES.SETTINGS, ctaCapability: "edit_hire_order_settings" },
-      terms: { title: t("steps.terms.title"), todoHint: t("steps.terms.todoHint"), doneHint: t("steps.terms.doneHint"), ctaLabel: t("steps.terms.ctaLabel"), ctaRoute: ROUTES.SETTINGS, ctaCapability: "edit_hire_order_settings" },
-      countersign: { title: t("steps.countersign.title"), todoHint: t("steps.countersign.todoHint"), doneHint: t("steps.countersign.doneHint"), ctaLabel: t("steps.countersign.ctaLabel"), ctaRoute: ROUTES.SETTINGS, ctaCapability: "edit_hire_order_settings" },
+      letterhead: { title: t("steps.letterhead.title"), todoHint: t("steps.letterhead.todoHint"), doneHint: t("steps.letterhead.doneHint"), ctaLabel: t("steps.letterhead.ctaLabel"), ctaRoute: `${ROUTES.SETTINGS}?tab=hire-orders`, ctaCapability: "edit_hire_order_settings" },
+      terms: { title: t("steps.terms.title"), todoHint: t("steps.terms.todoHint"), doneHint: t("steps.terms.doneHint"), ctaLabel: t("steps.terms.ctaLabel"), ctaRoute: `${ROUTES.SETTINGS}?tab=hire-orders`, ctaCapability: "edit_hire_order_settings" },
+      countersign: { title: t("steps.countersign.title"), todoHint: t("steps.countersign.todoHint"), doneHint: t("steps.countersign.doneHint"), ctaLabel: t("steps.countersign.ctaLabel"), ctaRoute: `${ROUTES.SETTINGS}?tab=hire-orders`, ctaCapability: "edit_hire_order_settings" },
     },
     rules: () => ([
       { title: t("hireRules.autoDrafted.title"), hint: t("hireRules.autoDrafted.hint") },

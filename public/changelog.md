@@ -11,6 +11,8 @@ What's new in ShowFlow, newest first.
 - **Clearer actions on a date** — The controls on a date, like closing a round, now look like buttons you can click rather than plain text.
 - **Risk stands out from waiting** — Anything at risk, like a date that can no longer fill in time, now shows in red, while amber stays for what is waiting on a person. The two are easy to tell apart at a glance.
 - **A steadier, more consistent look** — Cards, badges, labels, and buttons across the app now share one set of sizes, shapes, and depth, so pages read as one calm, uniform system.
+- **Setup steps point to where they live** — Each step on the Get running board names the part of the app it sets up, like Settings then Casts and coverage, and links straight there.
+- **Casts show up wherever you add them** — A cast you create in Artists or Settings now appears on the Get running board right away, even before a city has a date to rank it against.
 
 ### Fixed
 - **The Dates count matches your list** — The number beside Dates in the sidebar now counts only the dates that need you, the same total as the "Needs you" list on the page.
@@ -19,6 +21,8 @@ What's new in ShowFlow, newest first.
 - **One language at a time** — Short explainers and help text no longer appear in German while the rest of the app is in English.
 - **Today respects what you are allowed to do** — Where an admin has taken booking or asking rights away from the production team, Today no longer asks them to do it, no longer offers actions that would be turned down, and points the date at an admin instead.
 - **A truer count of overnight yeses** — The number of artists who said yes overnight now counts the artists, not the dates they said yes to.
+- **A date with no city no longer blocks your whole setup** — Get running flags just that date and points you to Dates to fix it. Every other date can still go out.
+- **Asks only go out for dates that are ready** — The engine no longer sends asks for a date with no city or no slot count.
 
 ## 1.17.0 — August 15, 2026
 

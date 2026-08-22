@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
-import { X } from "lucide-react";
+import { ExternalLink, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Eyebrow } from "@/components/ui/eyebrow";
@@ -10,27 +10,30 @@ import { useOrgAdminNames } from "@/hooks/useOrgAdminNames";
 import { adminDisplayName } from "@/data/orgAdmins";
 import type { SettingsTabParam } from "@/lib/settingsTabs";
 import type { GetRunningTask, GetRunningTaskKey } from "@/lib/getRunning/tasks";
+import { TASK_FEATURE, taskFeatureLink } from "@/lib/getRunning/taskFeature";
 import { TaskPanelEditor } from "./taskPanelRegistry";
 // The footer-slot context lives in its own leaf module so an editor can read it without
 // importing this frame (which would cycle: frame → registry → editor → frame).
 import { TaskPanelFooterContext } from "./TaskPanelFooterContext";
 
 /** Where a producer reading a non-actionable task's read-only panel (see `WaitsOnPanelBody`
- *  below) can go to see the real thing in Settings — only for the tasks that already have a
- *  stable, producer-reachable `?tab=` destination naming exactly that section (mirrors the
- *  deep-links `LadderStep`/`EligibilityStep` already carry for their own actionable case).
- *  Deliberately NOT exhaustive: `letterhead`/`terms`/`countersign` have no such target
- *  (Settings, Hire orders is intentionally excluded from `resolveInitialTab`'s deep-link
- *  whitelist — see `src/lib/settingsTabs.ts` — so a `?tab=hire-orders` link would silently
- *  bounce to the role default), `team`/`people` point at admin-only or non-Settings
+ *  below) can go to see the real thing in Settings — only for the tasks that have a stable,
+ *  producer-reachable `?tab=` destination naming exactly that section (mirrors the admin
+ *  breadcrumb `TASK_FEATURE` carries for the actionable case). Kept in sync with
+ *  `TASK_FEATURE.tab` (`src/lib/getRunning/taskFeature.ts`), just narrowed to the tasks
+ *  whose home is a real Settings tab. `letterhead`/`terms`/`countersign` live in the
+ *  now-deep-linkable `hire-orders` tab; `team`/`people` point at admin-only or non-Settings
  *  destinations a producer cannot reach either way, and `dates`/`slots` have no org-level
- *  Settings section at all (per-show, not a setting). Those tasks' read-only panels render
- *  the waits-on body with no link rather than a link to nowhere. */
+ *  Settings section at all (per-show, not a setting). Those last five render the waits-on
+ *  body with no link rather than a link to nowhere. */
 const WAITS_ON_SETTINGS_TAB: Partial<Record<GetRunningTaskKey, SettingsTabParam>> = {
   flow: "booking",
   timing: "booking",
   ladder: "casts-coverage",
   eligibility: "casts-coverage",
+  letterhead: "hire-orders",
+  terms: "hire-orders",
+  countersign: "hire-orders",
 };
 
 /**
@@ -134,11 +137,12 @@ export function TaskPanel({ task, orgId, onClose, onNext }: TaskPanelProps): JSX
     };
   }, [task.key]);
   const handleDone = () => (onNext ? onNext() : onClose());
-  // letterhead/terms carry a "· blocks issuing" eyebrow while outstanding (they are the only
-  // tasks with block === "issuing"); once done that clause is stale, so swap to the "· set"
-  // variant — same !done reasoning the board's tiles/rows apply to the block chip.
-  const eyebrowKey =
-    task.done && task.block === "issuing" ? `panel.eyebrowSet.${task.key}` : `panel.eyebrow.${task.key}`;
+  // The eyebrow is a breadcrumb to where this setting really LIVES (question 1), replacing
+  // the old shape word ("Values · …") that meant nothing to a user. When the viewer can act
+  // on the task, the crumb is a live deep link to that home; a producer viewing a task they
+  // cannot act on gets the same crumb as plain text (the home is admin-only or the deep link
+  // would bounce), with `WaitsOnPanelBody` carrying its own producer-safe Settings link below.
+  const crumb = t(TASK_FEATURE[task.key].crumbKey);
 
   return (
     <div
@@ -147,9 +151,17 @@ export function TaskPanel({ task, orgId, onClose, onNext }: TaskPanelProps): JSX
     >
       <div className="border-b border-border p-4">
         <div className="flex items-start justify-between gap-3">
-          <Eyebrow className="text-accent-600">
-            {t(eyebrowKey)}
-          </Eyebrow>
+          {task.actionableByViewer ? (
+            <Link
+              to={taskFeatureLink(task.key)}
+              className="group inline-flex items-center gap-1 text-accent-600 hover:text-accent-700"
+            >
+              <Eyebrow className="text-inherit">{crumb}</Eyebrow>
+              <ExternalLink className="h-3 w-3 opacity-70 group-hover:opacity-100" aria-hidden="true" />
+            </Link>
+          ) : (
+            <Eyebrow className="text-accent-600">{crumb}</Eyebrow>
+          )}
           <button
             type="button"
             onClick={onClose}

@@ -4,6 +4,7 @@ import { Badge, type BadgeProps } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { adminDisplayName } from "@/data/orgAdmins";
 import type { GetRunningTask, GetRunningTaskKey, TaskBlock } from "@/lib/getRunning/tasks";
+import { TASK_FEATURE } from "@/lib/getRunning/taskFeature";
 
 /** Amber "Blocks …" chip keys, one per hard-ish block kind a `TaskRow` can actually see.
  *  `filling` never reaches this component: the only task carrying it (`slots`) lives in the
@@ -126,7 +127,15 @@ export function TaskRow({ task, onOpen, adminNames, active = false }: TaskRowPro
             task.adminOnly && <Badge variant="neutral">{t("chips.adminOnly")}</Badge>
           )}
         </div>
-        <div className="mt-0.5 text-xs leading-[17px] text-muted-foreground">{t(`tasks.${task.key}.description`)}</div>
+        <div className="mt-0.5 flex items-baseline gap-2 text-xs leading-[17px] text-muted-foreground">
+          <span className="min-w-0 flex-1">{t(`tasks.${task.key}.description`)}</span>
+          {/* Quiet route label: names where this step's setting really lives (question 1),
+              so the board teaches the app even before a panel is opened. Hidden on the
+              narrowest widths so it never crowds the description. */}
+          <span className="hidden shrink-0 font-mono text-eyebrow text-[var(--text-faint)] sm:inline">
+            {t(TASK_FEATURE[task.key].shortKey)}
+          </span>
+        </div>
       </div>
       <div className="flex shrink-0 items-center gap-2">
         {value && <Badge variant={value.variant}>{t(value.labelKey)}</Badge>}
