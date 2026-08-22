@@ -12,7 +12,7 @@ export const platformArt: readonly [ReactNode, ReactNode, ReactNode, ReactNode] 
   <MiniCard key="f1">
     <MiniField label="Organization">Zirkus Nord</MiniField>
     <MiniField label="First admin">
-      <span className="font-mono text-[11px]">ada@zirkusnord.de</span>
+      <span className="font-mono text-eyebrow">ada@zirkusnord.de</span>
     </MiniField>
     <MiniButton primary>Provision</MiniButton>
   </MiniCard>,
@@ -51,6 +51,6 @@ export const platformArt: readonly [ReactNode, ReactNode, ReactNode, ReactNode] 
     <MiniField label="Email">
       <Badge variant="risk">Degraded</Badge>
     </MiniField>
-    <div className="text-[11px] text-muted-foreground">30-day uptime</div>
+    <div className="text-eyebrow text-muted-foreground">30-day uptime</div>
   </MiniCard>,
 ];

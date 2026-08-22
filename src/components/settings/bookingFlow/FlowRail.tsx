@@ -27,7 +27,8 @@ function RailCard({ label, children }: { label: string; children: ReactNode }) {
   return (
     <Card>
       <CardContent className="p-4">
-        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
+        {/* eslint-disable-next-line no-restricted-syntax -- non-standard tracking */}
+        <p className="text-eyebrow font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
         {children}
       </CardContent>
     </Card>
@@ -58,7 +59,7 @@ export function FlowRail(props: {
           locked comes from the from-address input, which the page-level Save handles
           instead. The page-level banner carries that messaging. */}
       {!locked && dirtyCount > 0 && (
-        <div className="rounded-lg bg-[var(--amber-100)] px-3 py-2 text-xs font-medium text-[var(--amber-600)]">
+        <div className="rounded-l bg-[var(--amber-100)] px-3 py-2 text-xs font-medium text-[var(--amber-600)]">
           {t("flowRail.unsavedDraft", { count: dirtyCount })}
         </div>
       )}
@@ -78,7 +79,8 @@ export function FlowRail(props: {
         <div className="mt-2.5 space-y-2">
           {inPracticeRows(flow, times).map((r) => (
             <div key={r.who} className="flex gap-2.5 text-xs">
-              <span className="w-20 flex-none rounded bg-muted px-1 py-0.5 text-center text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              {/* eslint-disable-next-line no-restricted-syntax -- non-standard tracking */}
+              <span className="w-20 flex-none rounded bg-muted px-1 py-0.5 text-center text-eyebrow font-semibold uppercase tracking-wide text-muted-foreground">
                 {r.who}
               </span>
               <span>{r.text}</span>
@@ -90,7 +92,7 @@ export function FlowRail(props: {
         <div className="mt-2.5 space-y-1.5">
           {flowPreviewRows(flow, times).map((r, i) => (
             <div key={i} className="flex gap-2.5 text-xs">
-              <span className="w-14 flex-none text-right font-mono text-[10px] text-muted-foreground">{r.at}</span>
+              <span className="w-14 flex-none text-right font-mono text-eyebrow text-muted-foreground">{r.at}</span>
               <span>{r.text}</span>
             </div>
           ))}
@@ -124,7 +126,7 @@ export function FlowRail(props: {
               {audit.length === 0 && <p className="mt-1.5 text-xs text-muted-foreground">{t("flowRail.historyEmpty")}</p>}
               {audit.map((e) => (
                 <div key={e.id} className="border-t border-border pt-2 mt-2 first:border-t-0 first:mt-1.5">
-                  <p className="font-mono text-[10px] text-muted-foreground">
+                  <p className="font-mono text-eyebrow text-muted-foreground">
                     {formatDateDMY(e.created_at.slice(0, 10))} · {e.actorName ?? t("flowRail.actorSystem")}
                   </p>
                   <p className="mt-0.5 text-xs">{describeAuditEntry(e)}</p>

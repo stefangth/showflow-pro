@@ -76,7 +76,7 @@ export function DatesPanelBody({
           {heldCount > 0 && (
             <div className="flex items-center justify-between gap-2 border-t border-border pt-2">
               <div className="flex items-center gap-2">
-                <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--amber-100)] px-1 text-[11px] font-semibold text-[var(--amber-600)]">
+                <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--amber-100)] px-1 text-eyebrow font-semibold text-[var(--amber-600)]">
                   {heldCount}
                 </span>
                 <span className="text-xs text-muted-foreground">
@@ -100,7 +100,8 @@ export function DatesPanelBody({
         </div>
       )}
 
-      <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-muted-foreground">
+      {/* eslint-disable-next-line no-restricted-syntax -- "or" divider row (two rule spans + label), not a block eyebrow */}
+      <div className="flex items-center gap-2 text-eyebrow uppercase tracking-wider text-muted-foreground">
         <span className="h-px flex-1 bg-border" aria-hidden="true" />
         {t("panel.body.dates.dividerOr")}
         <span className="h-px flex-1 bg-border" aria-hidden="true" />

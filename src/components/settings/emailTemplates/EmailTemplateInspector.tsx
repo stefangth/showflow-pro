@@ -140,6 +140,7 @@ export function EmailTemplateInspector({
           <h3 className="font-display text-sm">{role.label}</h3>
           {copyFields.length > 0 ? (
             <div className="space-y-3">
+              {/* eslint-disable-next-line no-restricted-syntax -- non-standard tracking */}
               <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("emailTemplateInspector.text")}</p>
               {copyFields.map((field) => (
                 <CopyFieldControl

@@ -8,6 +8,7 @@ import { PRODUCER_TONES, TONE_TEXT } from '@/lib/calendar/tone';
 import { dfLocale, toDateKey } from '@/lib/dates';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { Eyebrow } from '@/components/ui/eyebrow';
 import { HireOrderStatusBadge } from '@/components/hireOrders/HireOrderStatusBadge';
 import { buildAgendaRows, type AgendaGrouping } from '@/lib/calendar/agendaRows';
 import { FillMeter } from './FillMeter';
@@ -133,7 +134,7 @@ export function AgendaLens({ entries, onOpenEntry, onAction, actionGates, classN
           className={cn(
             'rounded-s px-2 py-1 text-xs transition-colors',
             grouping === 'per-date'
-              ? 'bg-accent-50 font-medium text-accent-700'
+              ? 'bg-accent-50 font-medium text-accent-text'
               : 'text-muted-foreground hover:text-foreground'
           )}
         >
@@ -147,7 +148,7 @@ export function AgendaLens({ entries, onOpenEntry, onAction, actionGates, classN
           className={cn(
             'rounded-s px-2 py-1 text-xs transition-colors',
             grouping === 'per-show'
-              ? 'bg-accent-50 font-medium text-accent-700'
+              ? 'bg-accent-50 font-medium text-accent-text'
               : 'text-muted-foreground hover:text-foreground'
           )}
         >
@@ -157,14 +158,14 @@ export function AgendaLens({ entries, onOpenEntry, onAction, actionGates, classN
       {weeks.map(week => (
         <div key={week.key} data-testid={`agenda-week-${week.key}`}>
           <div className="flex items-baseline gap-2.5 pb-2">
-            <p className="text-[11px] font-semibold uppercase tracking-[1.6px] text-primary">
+            <Eyebrow className="text-primary">
               {t('calendar.agenda.weekOfHeading', { weekStart: format(week.weekStart, 'd MMM', { locale: dfLocale() }) })}
-            </p>
-            <span className="font-mono text-[11px] text-muted-foreground">
+            </Eyebrow>
+            <span className="font-mono text-eyebrow text-muted-foreground">
               {t('calendar.agenda.dateCount', { count: week.entries.length })}
             </span>
           </div>
-          <div className="overflow-hidden rounded-[10px] border-[0.5px] border-border bg-card">
+          <div className="overflow-hidden rounded-l border-[0.5px] border-border bg-card">
             {week.entries.flatMap(entry => buildAgendaRows(entry, grouping)).map(row => {
               const toneSpec = PRODUCER_TONES[row.entry.status];
               const meter =
@@ -195,9 +196,7 @@ export function AgendaLens({ entries, onOpenEntry, onAction, actionGates, classN
                   className="flex cursor-pointer flex-col items-start gap-2 border-b-[0.5px] border-border px-3.5 py-3 last:border-b-0 hover:bg-muted md:flex-row md:items-center md:gap-3.5 md:py-2.5"
                 >
                   <div className="shrink-0 md:w-[62px]">
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      {format(row.entry.date, 'EEE', { locale: dfLocale() })}
-                    </p>
+                    <Eyebrow className="tracking-wide">{format(row.entry.date, 'EEE', { locale: dfLocale() })}</Eyebrow>
                     <p className="font-mono text-sm font-semibold tabular-nums text-foreground">
                       {format(row.entry.date, 'd')}
                     </p>
@@ -205,26 +204,26 @@ export function AgendaLens({ entries, onOpenEntry, onAction, actionGates, classN
                   <div className="flex shrink-0 items-center gap-1.5 md:w-[84px]">
                     <span className="font-mono text-xs tabular-nums text-muted-foreground">{row.time}</span>
                     {row.extraSessions > 0 && (
-                      <span className="inline-flex items-center rounded-[4px] bg-accent-50 px-1 text-[10px] font-medium text-accent-700">
+                      <span className="inline-flex items-center rounded-xs bg-accent-50 px-1 text-eyebrow font-medium text-accent-text">
                         +{row.extraSessions}
                       </span>
                     )}
                   </div>
                   <div className="w-full min-w-0 md:flex-1">
-                    <p className="truncate text-[13.5px] font-semibold text-foreground">{row.entry.program}</p>
+                    <p className="truncate text-control font-semibold text-foreground">{row.entry.program}</p>
                     <p className="truncate text-xs text-muted-foreground">
                       {[row.entry.venue, row.entry.city].filter(Boolean).join(' · ')}
                     </p>
                   </div>
                   <div className="flex w-full items-center gap-2 md:w-[150px] md:shrink-0">
                     {meter.length > 0 && <FillMeter segments={meter} tone={toneSpec.tone} />}
-                    <span className={cn('font-mono text-[11px] font-medium', TONE_TEXT[toneSpec.tone])}>
+                    <span className={cn('font-mono text-eyebrow font-medium', TONE_TEXT[toneSpec.tone])}>
                       {t('calendar.agenda.mainFillCount', { filled: row.entry.confirmedMain, total: row.entry.mainSlots })}
                     </span>
                   </div>
                   <span
                     className={cn(
-                      'inline-flex h-5 w-24 shrink-0 items-center whitespace-nowrap rounded-[4px] px-1.5 text-[11px] font-medium',
+                      'inline-flex h-5 w-24 shrink-0 items-center whitespace-nowrap rounded-xs px-1.5 text-eyebrow font-medium',
                       toneSpec.badgeClass
                     )}
                   >

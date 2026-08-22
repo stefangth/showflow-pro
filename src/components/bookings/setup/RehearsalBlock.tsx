@@ -66,7 +66,8 @@ export function RehearsalBlock({ orgId }: { orgId: string | null }) {
 
   return (
     <div className="bg-accent-50 p-3.5">
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-accent-700">Rehearsal</p>
+      {/* eslint-disable-next-line no-restricted-syntax -- eyebrow label paired with a headline, primitive adoption deferred */}
+      <p className="text-eyebrow font-semibold uppercase tracking-wider text-accent-text">Rehearsal</p>
       <p className="mt-1 text-sm font-semibold">See it run before it runs</p>
       <p className="mt-0.5 text-xs leading-[18px] text-muted-foreground">
         A dry run on {when}. Resolves the real tier, the real artists, the real send time. Nothing is created and no email leaves.
@@ -77,14 +78,14 @@ export function RehearsalBlock({ orgId }: { orgId: string | null }) {
         </Button>
       )}
       {run.data && (
-        <div className="mt-2.5 overflow-hidden rounded-md border border-border bg-card">
+        <div className="mt-2.5 overflow-hidden rounded-m border border-border bg-card">
           <div className="border-b border-border p-2.5 text-xs text-muted-foreground">
             {run.data.message ?? `Tier 1, ${run.data.candidates.length} artist${run.data.candidates.length === 1 ? "" : "s"} would be offered`}
           </div>
           {run.data.candidates.map((c) => (
             <div key={c.id} className="border-b border-border p-2 text-sm last:border-b-0">{c.name}</div>
           ))}
-          <div className="p-2.5 font-mono text-[11px] text-muted-foreground">{foot}</div>
+          <div className="p-2.5 font-mono text-eyebrow text-muted-foreground">{foot}</div>
         </div>
       )}
     </div>

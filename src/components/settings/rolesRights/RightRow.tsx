@@ -36,7 +36,7 @@ export function RightRow({ row, changed, desired, onToggle }: RightRowProps) {
     >
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <p className="text-[13.5px] font-medium text-foreground">{label}</p>
+          <p className="text-control font-medium text-foreground">{label}</p>
           {risk === "sensitive" && (
             <Badge variant="hold">{t("rightRow.sensitiveBadge")}</Badge>
           )}
@@ -47,7 +47,7 @@ export function RightRow({ row, changed, desired, onToggle }: RightRowProps) {
             </Badge>
           )}
         </div>
-        <p className="text-[12px] text-muted-foreground">{description}</p>
+        <p className="text-caption text-muted-foreground">{description}</p>
       </div>
       <div className="flex items-center gap-2 shrink-0">
         {changed && (

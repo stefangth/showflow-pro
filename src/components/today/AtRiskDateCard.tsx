@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
+import { Eyebrow } from "@/components/ui/eyebrow";
 import { cn } from "@/lib/utils";
 import type { AtRiskDate } from "@/lib/autopilot/today";
 import { DateRail } from "./DateRail";
@@ -70,14 +71,14 @@ export function AtRiskDateCard({ item, askTimeLabel, onOpenNextCast, onOpenDate 
   });
 
   return (
-    <div className="flex items-stretch overflow-hidden rounded-[14px] border border-border bg-card shadow-elev3">
+    <div className="flex items-stretch overflow-hidden rounded-[var(--radius-xl)] border border-border bg-card shadow-elev3">
       <DateRail dateKey={item.date} daysOut={item.daysOut} tone="amber" />
       <div className="flex min-w-0 flex-1 items-start gap-4 p-5">
         <div className="min-w-0 flex-1">
-          <p className="m-0 mb-1 text-[11px] font-semibold uppercase tracking-[1.6px] text-[var(--amber-600)]">
+          <Eyebrow tone="waiting" className="mb-1">
             {t("atRisk.badge", { count: item.placesEmpty })}
-          </p>
-          <p className="m-0 text-[18px] font-semibold tracking-[-0.2px]">
+          </Eyebrow>
+          <p className="m-0 text-title-sm font-semibold tracking-[-0.2px]">
             {item.title} · {item.where}
           </p>
           <p className="m-0 mt-2 text-sm leading-[21px]">
@@ -90,13 +91,13 @@ export function AtRiskDateCard({ item, askTimeLabel, onOpenNextCast, onOpenDate 
               <div
                 key={opt.key}
                 className={cn(
-                  "flex items-center gap-3 rounded-[10px] border border-border p-3.5",
+                  "flex items-center gap-3 rounded-l border border-border p-3.5",
                   i === 0 && "bg-muted",
                 )}
               >
                 <div className="min-w-0 flex-1">
-                  <p className="m-0 text-[13.5px] font-semibold">{opt.title}</p>
-                  <p className="m-0 mt-0.5 text-[12.5px] text-muted-foreground">{opt.note}</p>
+                  <p className="m-0 text-control font-semibold">{opt.title}</p>
+                  <p className="m-0 mt-0.5 text-control text-muted-foreground">{opt.note}</p>
                 </div>
                 <Button
                   size="sm"

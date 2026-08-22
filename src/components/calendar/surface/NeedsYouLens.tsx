@@ -9,6 +9,7 @@ import type { ActionGates, ProducerActionKey, Tone } from '@/lib/calendar/types'
 import { PRODUCER_TONES, TONE_BG, TONE_TEXT } from '@/lib/calendar/tone';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { Eyebrow } from '@/components/ui/eyebrow';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { FillMeter } from './FillMeter';
 import { QueueRail, type QueueShortlistArtist } from './QueueRail';
@@ -119,7 +120,7 @@ const BULK_ACTION: Partial<
  *  then amber/green/red for at-risk/ready/cancelled — lets a producer scan
  *  the queue by color instead of reading every header. */
 const GROUP_HEADER_CLASS: Record<NeedsYouGroupKey, string> = {
-  'expires-today': 'text-accent-700',
+  'expires-today': 'text-accent-text',
   'at-risk': 'text-[var(--amber-600)]',
   'ready-to-issue': 'text-[var(--green-600)]',
   cancelled: 'text-[var(--red-600)]',
@@ -265,7 +266,8 @@ export function NeedsYouLens({
             <div className="flex items-baseline justify-between gap-2 pb-2">
               <p
                 data-testid={`needs-you-group-title-${group.key}`}
-                className={cn('text-[11px] font-semibold uppercase tracking-[1.6px]', GROUP_HEADER_CLASS[group.key])}
+                // eslint-disable-next-line no-restricted-syntax -- needs a data-testid, which <Eyebrow> (no pass-through props) can't carry
+                className={cn('text-eyebrow font-semibold uppercase tracking-[1.6px]', GROUP_HEADER_CLASS[group.key])}
               >
                 {t(`calendar.needsYou.groups.${group.key}`, { days: RISK_WINDOW_DAYS })}
               </p>
@@ -310,7 +312,7 @@ export function NeedsYouLens({
                     tabIndex={0}
                     onClick={() => onOpenDate(item.dateId)}
                     className={cn(
-                      'flex cursor-pointer flex-col overflow-hidden rounded-[14px] border-[0.5px] bg-card md:flex-row md:items-stretch',
+                      'flex cursor-pointer flex-col overflow-hidden rounded-[var(--radius-xl)] border-[0.5px] bg-card md:flex-row md:items-stretch',
                       isUrgent
                         ? 'border-[var(--accent-200)] shadow-elev3'
                         : 'border-border shadow-elev2'
@@ -325,54 +327,49 @@ export function NeedsYouLens({
                         isUrgent ? 'bg-accent-50' : 'bg-muted'
                       )}
                     >
-                      <p
-                        className={cn(
-                          'text-[11px] font-semibold uppercase tracking-[1.6px]',
-                          isUrgent ? 'text-primary-hover' : 'text-muted-foreground'
-                        )}
-                      >
+                      <Eyebrow className={isUrgent ? 'text-primary-hover' : undefined}>
                         {format(item.entry.date, 'EEE', { locale: dfLocale() })}
-                      </p>
+                      </Eyebrow>
                       <p
                         className={cn(
-                          'font-mono text-[28px] font-semibold leading-8 tabular-nums',
-                          isUrgent ? 'text-accent-700' : 'text-foreground'
+                          'font-mono text-display-sm font-semibold leading-8 tabular-nums',
+                          isUrgent ? 'text-accent-text' : 'text-foreground'
                         )}
                       >
                         {format(item.entry.date, 'd')}
                       </p>
-                      <p className="text-[11px] text-muted-foreground">
+                      <p className="text-eyebrow text-muted-foreground">
                         {format(item.entry.date, 'MMM', { locale: dfLocale() })}
                       </p>
-                      {lead && <p className="font-mono text-[10px] text-[var(--text-faint)] md:mt-1.5">{lead}</p>}
+                      {lead && <p className="font-mono text-eyebrow text-[var(--text-faint)] md:mt-1.5">{lead}</p>}
                     </div>
 
                     {/* 2. Content column — eyebrow+countdown, title, detail, meter, people, note. */}
                     <div className="min-w-0 flex-1 px-4 py-3.5">
                       <div className="flex flex-wrap items-baseline gap-2">
-                        <p className={cn('text-[11px] font-semibold uppercase tracking-[1.6px]', TONE_TEXT[toneSpec.tone])}>
+                        <Eyebrow className={TONE_TEXT[toneSpec.tone]}>
                           {t(`calendar.producerStatus.${item.entry.status}`)}
-                        </p>
+                        </Eyebrow>
                         {item.group === 'expires-today' && item.earliestExpiry && (
                           <span
                             data-testid={`needs-you-expiry-${item.dateId}`}
-                            className="font-mono text-[11px] font-medium text-[var(--red-600)]"
+                            className="font-mono text-eyebrow font-medium text-[var(--red-600)]"
                           >
                             {t('calendar.needsYou.expires', { time: format(item.earliestExpiry, 'HH:mm') })}
                           </span>
                         )}
                       </div>
-                      <p className="mt-1 truncate text-[17px] font-semibold tracking-[-0.1px] text-foreground">
+                      <p className="mt-1 truncate text-title-sm font-semibold tracking-[-0.1px] text-foreground">
                         {entryTitle(item)}
                       </p>
                       {entryDetail(item) && (
-                        <p className="mt-0.5 truncate text-[13px] text-muted-foreground">{entryDetail(item)}</p>
+                        <p className="mt-0.5 truncate text-control text-muted-foreground">{entryDetail(item)}</p>
                       )}
 
                       {meter.length > 0 && (
                         <div className="mt-2.5 flex items-center gap-2">
                           <FillMeter segments={meter} tone={toneSpec.tone} />
-                          <span className="font-mono text-[11.5px] font-medium text-muted-foreground">
+                          <span className="font-mono text-caption font-medium text-muted-foreground">
                             {item.entry.confirmedMain}/{item.entry.mainSlots}
                           </span>
                         </div>
@@ -384,7 +381,7 @@ export function NeedsYouLens({
                             <span
                               key={person.artistId}
                               data-testid={`needs-you-person-${item.dateId}-${person.artistId}`}
-                              className="inline-flex items-center rounded-pill bg-muted px-2 py-0.5 text-[11px] font-medium text-foreground"
+                              className="inline-flex items-center rounded-pill bg-muted px-2 py-0.5 text-eyebrow font-medium text-foreground"
                             >
                               {person.name}
                               {person.isUnderstudy ? ` (${t('calendar.needsYou.understudyAbbrev')})` : ''}
@@ -454,7 +451,8 @@ export function NeedsYouLens({
               data-testid="needs-you-queue-fold-trigger"
               className="group flex w-full items-center justify-between gap-2 rounded-m border border-border bg-card px-3.5 py-2.5 text-left"
             >
-              <span className="text-[11px] font-semibold uppercase tracking-[1.6px] text-muted-foreground">
+              {/* eslint-disable-next-line no-restricted-syntax -- inline <span> inside a <button>; <Eyebrow> renders a block <p>, invalid button content */}
+              <span className="text-eyebrow font-semibold uppercase tracking-[1.6px] text-muted-foreground">
                 {t('calendar.needsYou.queueOverview')}
               </span>
               <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
@@ -471,15 +469,13 @@ export function NeedsYouLens({
         </Collapsible>
       )}
 
-      <div data-testid="needs-you-receipts" className="overflow-hidden rounded-[10px] border-[0.5px] border-border bg-muted">
+      <div data-testid="needs-you-receipts" className="overflow-hidden rounded-l border-[0.5px] border-border bg-muted">
         <div className="flex items-center gap-2 border-b-[0.5px] border-border px-3.5 py-2.5">
-          <p className="text-[11px] font-semibold uppercase tracking-[1.6px] text-muted-foreground">
-            {t('calendar.needsYou.clearedToday')}
-          </p>
-          <span className="font-mono text-[11px] text-muted-foreground">{receipts.length}</span>
+          <Eyebrow>{t('calendar.needsYou.clearedToday')}</Eyebrow>
+          <span className="font-mono text-eyebrow text-muted-foreground">{receipts.length}</span>
           <button
             type="button"
-            className="ml-auto text-[13px] font-medium text-accent-text hover:underline disabled:pointer-events-none disabled:opacity-50"
+            className="ml-auto text-control font-medium text-accent-text hover:underline disabled:pointer-events-none disabled:opacity-50"
             data-testid="needs-you-undo-last"
             disabled={receipts.length === 0}
             onClick={() => onUndoLast?.()}
@@ -495,11 +491,11 @@ export function NeedsYouLens({
               data-testid={`needs-you-receipt-${i}`}
               className="flex items-center gap-3 border-b-[0.5px] border-border/60 px-3.5 py-2.5 last:border-b-0"
             >
-              <span className="min-w-0 flex-1 truncate text-[12.5px] font-medium text-foreground">{receipt.title}</span>
+              <span className="min-w-0 flex-1 truncate text-control font-medium text-foreground">{receipt.title}</span>
               <span
                 data-testid={`needs-you-receipt-pill-${i}`}
                 className={cn(
-                  'inline-flex h-5 shrink-0 items-center whitespace-nowrap rounded-[4px] px-1.5 text-[11px] font-medium',
+                  'inline-flex h-5 shrink-0 items-center whitespace-nowrap rounded-xs px-1.5 text-eyebrow font-medium',
                   TONE_BG[tone],
                   TONE_TEXT[tone]
                 )}

@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
+import { Eyebrow } from "@/components/ui/eyebrow";
 import { cn } from "@/lib/utils";
 
 export interface StagedChange {
@@ -34,18 +35,16 @@ export function StagedChangesCard({
   return (
     <div className="rounded-[var(--radius-l)] border border-border shadow-elev2 bg-card">
       <div className="px-4 pt-4">
-        <p className="text-[11px] font-semibold uppercase tracking-[1.6px] text-muted-foreground">
-          {t("stagedChangesCard.heading")}
-        </p>
-        <p className="mt-1 font-mono tabular-nums text-[22px] font-medium text-foreground">
+        <Eyebrow>{t("stagedChangesCard.heading")}</Eyebrow>
+        <p className="mt-1 font-mono tabular-nums text-title font-medium text-foreground">
           {count}
         </p>
-        <p className="text-[12px] text-muted-foreground">{scopeLine}</p>
+        <p className="text-caption text-muted-foreground">{scopeLine}</p>
       </div>
 
       <div className="px-4 pt-3 pb-4">
         {count === 0 ? (
-          <p className="text-[12.5px] text-muted-foreground">
+          <p className="text-control text-muted-foreground">
             {t("stagedChangesCard.emptyState")}
           </p>
         ) : (
@@ -64,10 +63,10 @@ export function StagedChangesCard({
                     aria-hidden="true"
                   />
                   <div className="min-w-0 flex-1">
-                    <p className="text-[13px] font-medium text-foreground">
+                    <p className="text-control font-medium text-foreground">
                       {change.label}
                     </p>
-                    <p className="text-[11.5px] text-muted-foreground">
+                    <p className="text-caption text-muted-foreground">
                       {change.transition}
                     </p>
                   </div>
@@ -75,7 +74,7 @@ export function StagedChangesCard({
               ))}
             </div>
             {deltaSentence && (
-              <p className="mt-3 border-t border-[var(--line)] pt-3 text-[12px] text-muted-foreground">
+              <p className="mt-3 border-t border-[var(--line)] pt-3 text-caption text-muted-foreground">
                 {deltaSentence}
               </p>
             )}

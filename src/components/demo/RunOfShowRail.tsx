@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
+import { Eyebrow } from "@/components/ui/eyebrow";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -142,11 +143,11 @@ export function RunOfShowRail() {
   return (
     <aside className="hidden w-[308px] shrink-0 flex-col border-l-[0.5px] border-border bg-background xl:flex">
       <div className="border-b-[0.5px] border-border px-4 py-3">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Run of show</p>
+        <Eyebrow section>Run of show</Eyebrow>
         <p className="text-sm font-semibold text-foreground">Season handover</p>
         <div className="mt-2 flex items-center gap-2">
           <Progress value={((currentIndex + 1) / total) * 100} className="h-1.5" />
-          <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground">
+          <span className="shrink-0 text-eyebrow tabular-nums text-muted-foreground">
             {currentIndex + 1} / {total}
           </span>
         </div>
@@ -165,7 +166,7 @@ export function RunOfShowRail() {
               >
                 <span
                   className={cn(
-                    "mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center font-mono text-[11px]",
+                    "mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center font-mono text-eyebrow",
                     active ? "font-semibold text-primary" : "text-muted-foreground",
                   )}
                 >
@@ -176,16 +177,16 @@ export function RunOfShowRail() {
                   )}
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className={cn("block text-[13px]", active ? "font-semibold text-foreground" : "text-foreground/80")}>
+                  <span className={cn("block text-control", active ? "font-semibold text-foreground" : "text-foreground/80")}>
                     {sceneTitle(scene, lang)}
                   </span>
                 </span>
-                <span className="shrink-0 text-[11px] text-muted-foreground">{scene.estMin}m</span>
+                <span className="shrink-0 text-eyebrow text-muted-foreground">{scene.estMin}m</span>
               </button>
 
               {active && (
                 <div className="mt-2 space-y-2 pl-6">
-                  <p className="text-[12.5px] leading-snug text-foreground/90">
+                  <p className="text-control leading-snug text-foreground/90">
                     <span className="font-semibold">Say: </span>
                     {sceneSay(scene, lang)}
                   </p>
@@ -204,7 +205,7 @@ export function RunOfShowRail() {
                             disabled={pendingCue !== null}
                             aria-busy={isPending}
                             className={cn(
-                              "h-6 gap-1 px-2 text-[11px]",
+                              "h-6 gap-1 px-2 text-eyebrow",
                               isDone && "border-primary text-primary",
                               isFailed && "border-destructive text-destructive",
                             )}
@@ -234,7 +235,8 @@ export function RunOfShowRail() {
 
       <div className="space-y-2.5 border-t-[0.5px] border-border px-4 py-3">
         <div className="space-y-1">
-          <label htmlFor="demo-prospect-label" className="text-[10px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
+          {/* eslint-disable-next-line no-restricted-syntax -- form <label>, not a standard 11px/1.6px eyebrow (can't swap to the block <Eyebrow> primitive) */}
+          <label htmlFor="demo-prospect-label" className="text-eyebrow font-semibold uppercase tracking-[0.06em] text-muted-foreground">
             Prospect
           </label>
           <Input
@@ -246,7 +248,7 @@ export function RunOfShowRail() {
             className="h-7 text-xs"
           />
         </div>
-        <div role="group" aria-label="Volume" className="inline-flex items-center gap-0.5 rounded-md bg-muted p-0.5">
+        <div role="group" aria-label="Volume" className="inline-flex items-center gap-0.5 rounded-m bg-muted p-0.5">
           {(["small", "full"] as const).map((v) => (
             <button
               key={v}
@@ -257,7 +259,7 @@ export function RunOfShowRail() {
                 if (v !== volume) setPendingVolume(v);
               }}
               className={cn(
-                "h-6 rounded-md px-2.5 text-xs font-medium disabled:opacity-50",
+                "h-6 rounded-m px-2.5 text-xs font-medium disabled:opacity-50",
                 volume === v ? "bg-background text-foreground shadow-sm" : "text-muted-foreground",
               )}
             >

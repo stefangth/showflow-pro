@@ -77,12 +77,12 @@ export function IssuePreflightSheet({
           {isLoading ? (
             <Skeleton className="h-24 w-full" />
           ) : isError ? (
-            <div className="flex items-center gap-2.5 rounded-lg border border-border p-3">
+            <div className="flex items-center gap-2.5 rounded-l border border-border p-3">
               <AlertTriangle className="h-4 w-4 shrink-0 text-[var(--amber-600)]" />
               <p className="text-sm text-muted-foreground">{t("preflightSheet.checkErrorDetail")}</p>
             </div>
           ) : clean ? (
-            <div className="flex items-center gap-2.5 rounded-lg border border-border p-3">
+            <div className="flex items-center gap-2.5 rounded-l border border-border p-3">
               <CheckCircle2 className="h-4 w-4 shrink-0 text-[var(--green-500)]" />
               <p className="text-sm text-muted-foreground">{t("preflightSheet.allInPlace")}</p>
             </div>

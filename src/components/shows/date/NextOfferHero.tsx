@@ -125,13 +125,15 @@ export function NextOfferHero({
       <CardHeader className="space-y-1.5">
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1">
-            <p className="text-xs font-semibold uppercase tracking-wide text-accent-700">
+            {/* eslint-disable-next-line no-restricted-syntax -- eyebrow label paired with a title, primitive adoption deferred */}
+            <p className="text-xs font-semibold uppercase tracking-wide text-accent-text">
               {target.tier === 99 ? t("nextOfferHero.nextOfferAdHoc") : t("nextOfferHero.nextOfferTier", { tier: target.tier })}
             </p>
             <p className="font-display text-xl font-semibold tracking-tight text-foreground">{title}</p>
           </div>
           <div className="shrink-0 text-right">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{t("nextOfferHero.getOffers")}</p>
+            {/* eslint-disable-next-line no-restricted-syntax -- eyebrow label paired with a metric, primitive adoption deferred */}
+            <p className="text-eyebrow font-semibold uppercase tracking-wide text-muted-foreground">{t("nextOfferHero.getOffers")}</p>
             <p className="font-display text-3xl font-semibold leading-none text-foreground">{counts.matchCount}</p>
           </div>
         </div>

@@ -23,7 +23,8 @@ export function RowPeek({ dateLabel, peek, canConfirm, confirming, onConfirm, on
   const { t } = useTranslation("bookings");
   return (
     <div className="w-80 p-3.5">
-      <p className={cn("text-[11px] font-semibold uppercase tracking-[1.6px]", peek ? EYEBROW_TONE[peek.tone] : "text-muted-foreground")}>
+      {/* eslint-disable-next-line no-restricted-syntax -- tone-driven eyebrow className, primitive adoption deferred */}
+      <p className={cn("text-eyebrow font-semibold uppercase tracking-[1.6px]", peek ? EYEBROW_TONE[peek.tone] : "text-muted-foreground")}>
         {dateLabel}{peek ? ` · ${peek.eyebrowSuffix}` : ` · ${t("rowPeek.eyebrowUnconfigured")}`}
       </p>
       {peek ? (
@@ -48,7 +49,7 @@ export function RowPeek({ dateLabel, peek, canConfirm, confirming, onConfirm, on
           {t("rowPeek.openDate")}
         </Button>
       </div>
-      <p className="mt-2.5 font-mono text-[11px] text-[var(--text-faint)]">{t("rowPeek.keyHint")}</p>
+      <p className="mt-2.5 font-mono text-eyebrow text-[var(--text-faint)]">{t("rowPeek.keyHint")}</p>
     </div>
   );
 }

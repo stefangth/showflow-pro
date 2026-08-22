@@ -70,9 +70,10 @@ export function RoleStyleControls<RoleKey extends string>({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2">
+        {/* eslint-disable-next-line no-restricted-syntax -- non-standard tracking */}
         <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("roleStyle.style")}</p>
         {hasOwnKeys(override) && !readOnly && (
-          <button type="button" className="text-[13px] font-medium text-accent-text hover:underline" aria-label={t("roleStyle.resetAria", { label: role.label })} onClick={onResetRole}>
+          <button type="button" className="text-control font-medium text-accent-text hover:underline" aria-label={t("roleStyle.resetAria", { label: role.label })} onClick={onResetRole}>
             {t("roleStyle.reset")}
           </button>
         )}
@@ -121,6 +122,7 @@ export function RoleStyleControls<RoleKey extends string>({
         <Label htmlFor="tpl-role-case">{t("roleStyle.case")}</Label>
         <Select value={transform} onValueChange={(value) => setRole({ transform: value })} disabled={readOnly}>
           <SelectTrigger id="tpl-role-case" aria-label={t("roleStyle.case")}><SelectValue /></SelectTrigger>
+          {/* eslint-disable-next-line no-restricted-syntax -- "uppercase" is a text-transform enum value, not a Tailwind class */}
           <SelectContent><SelectItem value="none">{t("roleStyle.asTyped")}</SelectItem><SelectItem value="uppercase">{t("roleStyle.uppercase")}</SelectItem></SelectContent>
         </Select>
       </div>

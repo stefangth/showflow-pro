@@ -18,7 +18,7 @@ function OutlineButton({ label, modified, active, onClick }: OutlineButtonProps)
       aria-current={active ? "true" : undefined}
       onClick={onClick}
       className={cn(
-        "flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors",
+        "flex w-full items-center justify-between gap-2 rounded-m px-2 py-1.5 text-left text-sm transition-colors",
         active ? "bg-accent-100 text-accent-800" : "hover:bg-muted",
       )}
     >
@@ -60,7 +60,8 @@ export function TemplateOutline<RoleKey extends string, CopyKey extends string =
           />
           {sections.map((section) => (
             <div key={section.title}>
-              <p className="px-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              {/* eslint-disable-next-line no-restricted-syntax -- non-standard tracking */}
+              <p className="px-2 text-eyebrow font-semibold uppercase tracking-wider text-muted-foreground">
                 {section.title}
               </p>
               <div className="mt-1 space-y-0.5">

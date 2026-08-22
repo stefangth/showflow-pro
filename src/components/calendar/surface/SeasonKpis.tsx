@@ -14,7 +14,7 @@ interface SeasonKpisProps {
  *  dynamic) label/value/note strings. */
 const KPI_EYEBROW_TONE_CLASS: Record<string, string> = {
   unfilledMainSlots: 'text-[var(--amber-600)]',
-  heaviestWeek: 'text-accent-700',
+  heaviestWeek: 'text-accent-text',
   readyForHireOrder: 'text-[var(--green-600)]',
 };
 
@@ -57,9 +57,10 @@ export function SeasonKpis({ kpis, className }: SeasonKpisProps) {
   return (
     <div data-testid="season-kpis" className={cn('grid grid-cols-1 gap-3 sm:grid-cols-3', className)}>
       {tiles.map(tile => (
-        <div key={tile.key} data-testid={`season-kpi-${tile.key}`} className="rounded-[10px] bg-card p-[14px]">
+        <div key={tile.key} data-testid={`season-kpi-${tile.key}`} className="rounded-l bg-card p-[14px]">
           <p
             className={cn(
+              // eslint-disable-next-line no-restricted-syntax -- 12px/font-medium tile label, not the standard 11px/font-semibold eyebrow; <Eyebrow> would change size and weight
               'text-xs font-medium uppercase tracking-wide',
               KPI_EYEBROW_TONE_CLASS[tile.key] ?? 'text-muted-foreground'
             )}

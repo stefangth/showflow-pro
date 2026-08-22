@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
+import { Eyebrow } from "@/components/ui/eyebrow";
 import type { CancelledUntoldDate } from "@/lib/autopilot/today";
 import { DateRail } from "./DateRail";
 import { joinNames } from "./joinNames";
@@ -31,14 +32,14 @@ export function CancelledUntoldCard({ item, onTellCast, onReadFirst }: Cancelled
   const body = t("cancelled.body", { names });
 
   return (
-    <div className="flex items-stretch overflow-hidden rounded-[14px] border border-border bg-card shadow-elev2">
+    <div className="flex items-stretch overflow-hidden rounded-[var(--radius-xl)] border border-border bg-card shadow-elev2">
       <DateRail dateKey={item.date} daysOut={item.daysOut} tone="accent" />
       <div className="flex min-w-0 flex-1 items-start gap-4 p-5">
         <div className="min-w-0 flex-1">
-          <p className="m-0 mb-1 text-[11px] font-semibold uppercase tracking-[1.6px] text-accent-text">
+          <Eyebrow tone="accent" className="mb-1">
             {t("cancelled.badge")}
-          </p>
-          <p className="m-0 text-[18px] font-semibold tracking-[-0.2px]">
+          </Eyebrow>
+          <p className="m-0 text-title-sm font-semibold tracking-[-0.2px]">
             {item.title} · {item.where}
           </p>
           <p className="m-0 mt-2 text-sm leading-[21px]">{body}</p>
@@ -49,7 +50,7 @@ export function CancelledUntoldCard({ item, onTellCast, onReadFirst }: Cancelled
             <button
               type="button"
               onClick={() => onReadFirst(item)}
-              className="border-0 bg-transparent p-0 text-[12.5px] font-medium text-accent-text"
+              className="border-0 bg-transparent p-0 text-control font-medium text-accent-text"
             >
               {t("cancelled.readFirst")}
             </button>

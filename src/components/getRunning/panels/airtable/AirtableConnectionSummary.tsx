@@ -40,8 +40,9 @@ export function AirtableConnectionSummary({ orgId, readOnly, canTriggerSync, onE
   return (
     <div className="flex flex-col overflow-hidden rounded-[var(--radius-xl)] border border-border bg-card shadow-elev3">
       <div className="border-b border-border p-4">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-accent-600">{c.eyebrow}</p>
-        <h2 className="mt-1.5 font-display text-[22px] font-semibold tracking-tight">{t("connection.title")}</h2>
+        {/* eslint-disable-next-line no-restricted-syntax -- tracking-[0.1em] differs from the standard Eyebrow's tracking-[1.6px]; not a drop-in swap */}
+        <p className="text-eyebrow font-semibold uppercase tracking-[0.1em] text-accent-600">{c.eyebrow}</p>
+        <h2 className="mt-1.5 font-display text-title font-semibold tracking-tight">{t("connection.title")}</h2>
         <p className="mt-1.5 text-sm text-muted-foreground">{t("connection.description")}</p>
       </div>
 
@@ -113,21 +114,21 @@ function SummaryRow({ title, detail, mono, badge, action, onAction, stepNumber, 
     >
       <span
         className={cn(
-          "flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold",
+          "flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-eyebrow font-semibold",
           finished
             ? "bg-primary text-primary-foreground"
             : emphasis
-              ? "border border-accent-300 text-accent-700"
+              ? "border border-accent-300 text-accent-text"
               : "border border-border text-muted-foreground",
         )}
       >
         {finished ? <Check className="h-3 w-3" /> : stepNumber}
       </span>
       <div className="min-w-0 flex-1">
-        <p className={cn("text-[13px] font-medium", emphasis && "font-semibold")}>{title}</p>
-        <p className={cn("mt-0.5 text-xs text-muted-foreground", mono && "font-mono text-[11px]")}>{detail}</p>
+        <p className={cn("text-control font-medium", emphasis && "font-semibold")}>{title}</p>
+        <p className={cn("mt-0.5 text-xs text-muted-foreground", mono && "font-mono text-eyebrow")}>{detail}</p>
       </div>
-      {badge && <span className="shrink-0 font-mono text-xs font-medium text-accent-700">{badge}</span>}
+      {badge && <span className="shrink-0 font-mono text-xs font-medium text-accent-text">{badge}</span>}
       {action && (
         <Button type="button" variant="secondary" size="sm" className="shrink-0 text-xs font-medium" onClick={onAction}>
           {action}

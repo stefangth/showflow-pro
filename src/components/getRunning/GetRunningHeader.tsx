@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { Eyebrow } from "@/components/ui/eyebrow";
 import { adminDisplayName } from "@/data/orgAdmins";
 import { firstOfferBlockingCount, getRunningState, MINUTES_PER_TASK, type GetRunningModel } from "@/lib/getRunning/tasks";
 
@@ -70,21 +71,21 @@ export function GetRunningHeader({ model, orgName, role, adminNames }: {
   return (
     <div className="flex items-start gap-6">
       <div className="min-w-0 flex-1">
-        <div className="text-[11px] font-semibold uppercase tracking-[1.6px] text-accent-600">
+        <Eyebrow className="text-accent-600">
           {t("header.eyebrow", { org: orgName || t("header.fallbackOrg") })}
-        </div>
-        <h1 className="mt-2 max-w-[620px] text-[32px] font-semibold leading-[38px] tracking-[-0.6px] text-foreground text-pretty">
+        </Eyebrow>
+        <h1 className="mt-2 max-w-[620px] text-display-sm font-semibold leading-[38px] tracking-[-0.6px] text-foreground text-pretty">
           {headline}
         </h1>
         <p className="mt-2 max-w-[600px] text-sm leading-[21px] text-muted-foreground text-pretty">{body}</p>
       </div>
 
       <div className="w-[236px] shrink-0 rounded-[var(--radius-l)] border border-border bg-card p-3.5">
-        <div className="text-[11px] font-semibold uppercase tracking-[1.6px] text-[var(--text-faint)]">
+        <Eyebrow className="text-[var(--text-faint)]">
           {t("progress.title")}
-        </div>
+        </Eyebrow>
         <div className="mt-2 flex items-baseline gap-1.5">
-          <span className="font-mono text-[22px] font-semibold tracking-[-0.4px] text-foreground">
+          <span className="font-mono text-title font-semibold tracking-[-0.4px] text-foreground">
             {model.doneCount}
           </span>
           <span className="text-xs text-[var(--text-faint)]">{t("progress.of", { total: model.totalCount })}</span>
@@ -102,16 +103,16 @@ export function GetRunningHeader({ model, orgName, role, adminNames }: {
         <div className="mt-3 flex flex-col gap-2 border-t border-border pt-2.5">
           {modules.map((m) => (
             <div key={m.key} data-testid={`get-running-module-${m.key}`} className="flex items-baseline gap-[7px]">
-              <div className={`h-1.5 w-1.5 shrink-0 rounded-[2px] ${m.on ? "bg-primary" : "bg-[var(--text-faint)]"}`} />
+              <div className={`h-1.5 w-1.5 shrink-0 rounded-xs ${m.on ? "bg-primary" : "bg-[var(--text-faint)]"}`} />
               <div className="text-xs font-medium text-foreground">{m.label}</div>
               <div className="flex-1" />
-              <div className={`text-[11px] font-semibold ${m.on ? "text-accent-600" : "text-[var(--text-faint)]"}`}>
+              <div className={`text-eyebrow font-semibold ${m.on ? "text-accent-600" : "text-[var(--text-faint)]"}`}>
                 {m.on ? t("progress.module.on") : t("progress.module.off")}
               </div>
             </div>
           ))}
         </div>
-        <div className="mt-2.5 text-[11px] leading-4 text-[var(--text-faint)] text-pretty">
+        <div className="mt-2.5 text-eyebrow leading-4 text-[var(--text-faint)] text-pretty">
           {t("progress.footer")}
         </div>
       </div>

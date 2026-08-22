@@ -98,7 +98,7 @@ export function CalendarDaySheet({
           <div className="flex flex-col items-center gap-1">
             <button
               type="button"
-              className="text-[13px] font-medium text-accent-text hover:underline"
+              className="text-control font-medium text-accent-text hover:underline"
               data-testid="day-sheet-open-date"
               onClick={() => onOpenDate?.()}
             >
@@ -107,7 +107,7 @@ export function CalendarDaySheet({
             {role === 'artist' && (
               <button
                 type="button"
-                className="text-[13px] font-medium text-accent-text hover:underline"
+                className="text-control font-medium text-accent-text hover:underline"
                 data-testid="day-sheet-message-producer"
                 onClick={() => onMessageProducer?.()}
               >

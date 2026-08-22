@@ -21,8 +21,8 @@ export function SurfaceFab({ label, onClick, icon, className }: SurfaceFabProps)
       data-testid="surface-fab"
       onClick={onClick}
       className={cn(
-        'fixed right-4 bottom-12 z-40 inline-flex h-[52px] items-center gap-2 rounded-[8px]',
-        'bg-primary px-5 text-[15px] font-medium text-primary-foreground shadow-elev3',
+        'fixed right-4 bottom-12 z-40 inline-flex h-[52px] items-center gap-2 rounded-m',
+        'bg-primary px-5 text-body font-medium text-primary-foreground shadow-elev3',
         className,
       )}
     >

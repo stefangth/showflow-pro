@@ -16,7 +16,7 @@ export function UnlinkedArtistCard({ orgName }: { orgName?: string | null }) {
   return (
     <Card>
       <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
-        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-accent-100 text-accent-700">
+        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-accent-100 text-accent-text">
           <Theater className="h-6 w-6" />
         </div>
         <div className="space-y-1">

@@ -530,6 +530,7 @@ export default function HireOrderEditPage() {
             </Button>
           </IconTooltip>
           <div className="min-w-0">
+            {/* eslint-disable-next-line no-restricted-syntax -- 12px + tracking-wide page-header caption, not the 11px Eyebrow pattern */}
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("editPage.editHireOrder")}</p>
             <div className="flex items-center gap-2">
               <h1 className="font-mono text-lg text-foreground">{order.order_no}</h1>
@@ -732,10 +733,10 @@ export default function HireOrderEditPage() {
               <iframe
                 title={t("editPage.iframeTitle")}
                 src={previewSrc}
-                className="h-[600px] w-full rounded-lg border border-border bg-background lg:h-[720px]"
+                className="h-[600px] w-full rounded-l border border-border bg-background lg:h-[720px]"
               />
             ) : (
-              <Skeleton className="h-[600px] w-full rounded-lg" />
+              <Skeleton className="h-[600px] w-full rounded-l" />
             )}
           </div>
         </div>
@@ -749,7 +750,7 @@ function Section({ index, title, children }: { index: number; title: string; chi
   return (
     <div className="space-y-4 rounded-xl border border-border bg-card p-4">
       <div className="flex items-center gap-2">
-        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent-500 text-[11px] font-medium text-primary-foreground">
+        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent-500 text-eyebrow font-medium text-primary-foreground">
           {index}
         </span>
         <h2 className="text-sm font-medium text-foreground">{title}</h2>

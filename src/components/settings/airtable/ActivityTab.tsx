@@ -13,7 +13,8 @@ interface ActivityTabProps {
 }
 
 const GRID = "grid grid-cols-[minmax(150px,1.6fr)_repeat(5,minmax(56px,1fr))] gap-3";
-const EYEBROW = "text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground";
+// eslint-disable-next-line no-restricted-syntax -- non-standard tracking (0.1em)
+const EYEBROW = "text-eyebrow font-semibold uppercase tracking-[0.1em] text-muted-foreground";
 
 /** Status-badge colour by tone. Red uses the semantic destructive utilities;
  *  green/amber come from the DS CSS vars (not wired as Tailwind utilities). */
@@ -31,9 +32,9 @@ function badgeStyle(tone: StatusTone): CSSProperties | undefined {
 export function ActivityTab({ runs, loading }: ActivityTabProps) {
   const { t } = useTranslation('settingsAirtable');
   return (
-    <div className="rounded-lg border border-border bg-card shadow-sm">
+    <div className="rounded-l border border-border bg-card shadow-sm">
       <div className="border-b border-border p-4">
-        <h3 className="text-[17px] font-semibold tracking-tight">{t('activityTab.title')}</h3>
+        <h3 className="text-title-sm font-semibold tracking-tight">{t('activityTab.title')}</h3>
         <p className="mt-1 text-sm text-muted-foreground">
           {t('activityTab.subtitle')}
         </p>
@@ -82,7 +83,7 @@ export function ActivityTab({ runs, loading }: ActivityTabProps) {
                   <span>
                     <span
                       className={cn(
-                        "inline-flex items-center rounded-[4px] px-1.5 py-0.5 font-sans text-[11px] font-medium",
+                        "inline-flex items-center rounded-xs px-1.5 py-0.5 font-sans text-eyebrow font-medium",
                         badgeClass(badge.tone),
                       )}
                       style={badgeStyle(badge.tone)}

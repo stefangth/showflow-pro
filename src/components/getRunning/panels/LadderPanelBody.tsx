@@ -165,7 +165,8 @@ export function LadderPanelBody({
         <form onSubmit={handleCreateCast} className="space-y-2">
           <Label
             htmlFor="ladder-add-cast"
-            className="text-[10px] uppercase tracking-wider text-muted-foreground"
+            // eslint-disable-next-line no-restricted-syntax -- form <Label>, not a block eyebrow: <Eyebrow> renders a <p> and would drop the htmlFor association
+            className="text-eyebrow uppercase tracking-wider text-muted-foreground"
           >
             {t("panel.body.ladder.createLabel")}
           </Label>
@@ -268,7 +269,7 @@ function CastPicker({
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="shrink-0 rounded-[var(--radius-s)] border border-dashed border-accent-200 px-2.5 py-1 text-xs font-medium text-accent-700 hover:bg-accent"
+          className="shrink-0 rounded-[var(--radius-s)] border border-dashed border-accent-200 px-2.5 py-1 text-xs font-medium text-accent-text hover:bg-accent"
         >
           {label}
         </button>

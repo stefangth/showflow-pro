@@ -91,14 +91,15 @@ export function CockpitHeader({
     <div className="px-6 py-3.5">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="truncate text-[11px] font-semibold uppercase leading-[14px] tracking-[1.6px] text-accent-600">{title}</p>
+          {/* eslint-disable-next-line no-restricted-syntax -- truncating title eyebrow, primitive adoption deferred */}
+          <p className="truncate text-eyebrow font-semibold uppercase leading-[14px] tracking-[1.6px] text-accent-600">{title}</p>
           {devBadge && (
             <Badge variant="outline" className="mt-1 text-xs font-mono text-muted-foreground w-fit">
               ShowDateDetailSheet.tsx
             </Badge>
           )}
-          <p className="mt-[5px] font-display text-[22px] font-semibold leading-7 tracking-[-0.3px]">{dateLine}</p>
-          <p className="mt-1 text-[13px] leading-[18px] text-muted-foreground">{metaLine}</p>
+          <p className="mt-[5px] font-display text-title font-semibold leading-7 tracking-[-0.3px]">{dateLine}</p>
+          <p className="mt-1 text-control leading-[18px] text-muted-foreground">{metaLine}</p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {workflowCta && (
@@ -164,7 +165,7 @@ export function CockpitHeader({
                 <>
                   <span className="h-3.5 w-px bg-[var(--line)]" />
                   <span className={cn("inline-flex items-center gap-1.5 text-xs", STATUS_TEXT[statusTone])}>
-                    <span className={cn("h-1.5 w-1.5 rounded-[2px]", STATUS_DOT[statusTone])} />
+                    <span className={cn("h-1.5 w-1.5 rounded-xs", STATUS_DOT[statusTone])} />
                     {statusText}
                   </span>
                 </>
@@ -188,7 +189,7 @@ export function CockpitHeader({
             <button
               type="button"
               onClick={onEditFlow}
-              className="inline-flex items-center gap-1 text-[13px] font-medium text-accent-text hover:underline"
+              className="inline-flex items-center gap-1 text-control font-medium text-accent-text hover:underline"
             >
               {/* Inline size wins over the button's default svg sizing deterministically,
                   without relying on tailwind-merge to collapse two arbitrary-variant classes. */}
@@ -211,7 +212,7 @@ export function CockpitHeader({
               type="button"
               onClick={() => onTab(t.id)}
               className={cn(
-                "-mb-px border-b-2 px-3 py-[9px] text-[13px] leading-4 transition-colors",
+                "-mb-px border-b-2 px-3 py-[9px] text-control leading-4 transition-colors",
                 active
                   ? "border-accent-500 text-foreground font-semibold"
                   : "border-transparent font-medium text-muted-foreground hover:text-foreground",
@@ -221,7 +222,7 @@ export function CockpitHeader({
               {t.badge && (
                 <span
                   className={cn(
-                    "ml-1.5 rounded-[var(--radius-xs)] px-[5px] py-px font-mono text-[10px] font-semibold leading-[14px]",
+                    "ml-1.5 rounded-[var(--radius-xs)] px-[5px] py-px font-mono text-eyebrow font-semibold leading-[14px]",
                     t.id === "order"
                       ? t.badge === "READY"
                         ? "bg-[var(--green-100)] text-[var(--green-600)]"

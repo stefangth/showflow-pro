@@ -169,7 +169,7 @@ export function LetterheadCard({ orgId, readOnly = false }: { orgId: string | nu
               {t("letterheadCard.agentSignatureHelp")}
             </p>
             {hasSignature && (
-              <div className="flex items-center gap-3 rounded-md border border-border p-2 w-fit">
+              <div className="flex items-center gap-3 rounded-m border border-border p-2 w-fit">
                 {previewUrl ? (
                   <img
                     src={previewUrl}

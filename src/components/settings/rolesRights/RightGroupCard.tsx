@@ -25,14 +25,14 @@ export function RightGroupCard({
       <div className="flex items-center justify-between gap-4 px-4 py-3 border-b border-[var(--line)]">
         <p className="text-sm font-medium text-foreground">{group}</p>
         <div className="flex items-center gap-3 shrink-0">
-          <span className="font-mono text-[12px] text-muted-foreground">
+          <span className="font-mono text-caption text-muted-foreground">
             {summary}
           </span>
           <button
             type="button"
             onClick={onToggleAll}
             className={cn(
-              "text-[12px] font-medium text-accent-700 hover:underline",
+              "text-caption font-medium text-accent-text hover:underline",
             )}
           >
             {allOn ? t("groupCard.turnAllOff") : t("groupCard.turnAllOn")}

@@ -30,7 +30,7 @@ export function DemoModeToggle() {
           aria-label={label}
           title={label}
           className={cn(
-            "h-8 gap-1 rounded-md border-primary px-2 text-xs font-medium text-primary hover:bg-primary/10 hover:text-primary",
+            "h-8 gap-1 rounded-m border-primary px-2 text-xs font-medium text-primary hover:bg-primary/10 hover:text-primary",
             isBarHidden ? "bg-primary/5" : "bg-transparent",
           )}
         >

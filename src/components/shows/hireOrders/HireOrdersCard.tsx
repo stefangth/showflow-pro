@@ -71,7 +71,7 @@ function ArtistHireOrders({ showDateId }: Props) {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="flex items-center justify-between gap-3 rounded-lg border border-border p-3">
+        <div className="flex items-center justify-between gap-3 rounded-l border border-border p-3">
           <p className="text-sm font-mono text-muted-foreground">{order.order_no}</p>
           <div className="flex items-center gap-2 shrink-0">
             <HireOrderStatusBadge status={order.status} />
@@ -161,7 +161,7 @@ function ProducerHireOrders({ showDateId, showDate, bookings, canManage }: Props
                 {(orders ?? []).map((o) => (
                   <div
                     key={o.id}
-                    className="flex items-center justify-between gap-3 rounded-lg border border-border p-3"
+                    className="flex items-center justify-between gap-3 rounded-l border border-border p-3"
                   >
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-foreground truncate">

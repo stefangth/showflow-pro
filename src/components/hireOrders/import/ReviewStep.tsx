@@ -69,21 +69,21 @@ export function ReviewStep({ rows, selection, onToggleRow, onToggleAll, manualEd
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-3 gap-3">
-        <div className="rounded-md bg-muted/50 p-3">
+        <div className="rounded-m bg-muted/50 p-3">
           <p className="text-xs text-muted-foreground">{t("reviewStep.ready")}</p>
           <p className="text-2xl font-semibold text-foreground">{readyCount}</p>
         </div>
-        <div className="rounded-md bg-muted/50 p-3">
+        <div className="rounded-m bg-muted/50 p-3">
           <p className="text-xs text-muted-foreground">{t("reviewStep.needsAttention")}</p>
           <p className="text-2xl font-semibold text-foreground">{attentionCount}</p>
         </div>
-        <div className="rounded-md bg-muted/50 p-3">
+        <div className="rounded-m bg-muted/50 p-3">
           <p className="text-xs text-muted-foreground">{t("reviewStep.skipped")}</p>
           <p className="text-2xl font-semibold text-muted-foreground">{skippedCount}</p>
         </div>
       </div>
 
-      <div className="max-h-72 overflow-auto rounded-md border border-border">
+      <div className="max-h-72 overflow-auto rounded-m border border-border">
         <Table>
           <TableHeader>
             <TableRow>

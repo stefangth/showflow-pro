@@ -38,6 +38,7 @@ export function RequiredSkillsCard({
   return (
     <Card elevation={2}>
       <CardHeader className="space-y-1.5">
+        {/* eslint-disable-next-line no-restricted-syntax -- CardTitle label, not a standard 11px/1.6px eyebrow */}
         <CardTitle className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           {t("requiredSkillsCard.title")}
         </CardTitle>
@@ -52,7 +53,8 @@ export function RequiredSkillsCard({
               return (
                 <Badge key={row.skillId} variant="outline" className="gap-1 border-dashed border-[var(--line-strong)]">
                   <span className="line-through text-[var(--text-faint)]">{row.name}</span>
-                  <span className="text-[10px] uppercase text-[var(--text-faint)]">{t("requiredSkillsCard.droppedOnDate")}</span>
+                  {/* eslint-disable-next-line no-restricted-syntax -- inline badge suffix, not a block eyebrow */}
+                  <span className="text-eyebrow uppercase text-[var(--text-faint)]">{t("requiredSkillsCard.droppedOnDate")}</span>
                 </Badge>
               );
             }
@@ -60,7 +62,8 @@ export function RequiredSkillsCard({
               return (
                 <Badge key={row.skillId} variant="hold" className="gap-1">
                   {row.name}
-                  <span className="text-[10px] uppercase opacity-80">{t("requiredSkillsCard.addedOnDate")}</span>
+                  {/* eslint-disable-next-line no-restricted-syntax -- inline badge suffix, not a block eyebrow */}
+                  <span className="text-eyebrow uppercase opacity-80">{t("requiredSkillsCard.addedOnDate")}</span>
                 </Badge>
               );
             }
@@ -68,7 +71,7 @@ export function RequiredSkillsCard({
               <Badge key={row.skillId} variant="accent" className="gap-1">
                 {row.name}
                 {row.provenance && (
-                  <span className="text-[10px] opacity-80">{row.provenance}</span>
+                  <span className="text-eyebrow opacity-80">{row.provenance}</span>
                 )}
               </Badge>
             );

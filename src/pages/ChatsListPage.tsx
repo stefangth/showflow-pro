@@ -40,7 +40,7 @@ export default function ChatsListPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-display text-[32px] font-semibold tracking-tight flex items-center gap-3">
+        <h1 className="font-display text-display-sm font-semibold tracking-tight flex items-center gap-3">
           <MessageSquare className="h-7 w-7 text-primary" /> {t('list.title')}
         </h1>
         <p className="text-muted-foreground mt-1">
@@ -52,7 +52,7 @@ export default function ChatsListPage() {
 
       {isLoading ? (
         <div className="grid gap-3">
-          {[1, 2, 3].map(i => <Skeleton key={i} className="h-20 rounded-lg" />)}
+          {[1, 2, 3].map(i => <Skeleton key={i} className="h-20 rounded-l" />)}
         </div>
       ) : visible.length === 0 ? (
         <Card><CardContent className="py-10 text-center text-muted-foreground">{t('list.empty')}</CardContent></Card>

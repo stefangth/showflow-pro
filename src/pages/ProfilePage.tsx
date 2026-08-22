@@ -47,7 +47,8 @@ type IdentityValues = z.infer<typeof identitySchema>;
 function GroupHeader({ children, right }: { children: React.ReactNode; right?: React.ReactNode }) {
   return (
     <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-muted/40">
-      <h3 className="text-[11px] font-semibold uppercase tracking-[1.2px] text-muted-foreground">{children}</h3>
+      {/* eslint-disable-next-line no-restricted-syntax -- must stay a real <h3> for the heading outline/getByRole('heading'), not the <p>-based Eyebrow */}
+      <h3 className="text-eyebrow font-semibold uppercase tracking-[1.2px] text-muted-foreground">{children}</h3>
       {right}
     </div>
   );
@@ -153,7 +154,7 @@ export default function ProfilePage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-display text-[32px] font-semibold tracking-tight">{t("page.title")}</h1>
+        <h1 className="font-display text-display-sm font-semibold tracking-tight">{t("page.title")}</h1>
         <p className="text-muted-foreground mt-1">{t("page.subtitle")}</p>
       </div>
 
@@ -255,8 +256,10 @@ export default function ProfilePage() {
             <GroupHeader
               right={
                 <div className="flex flex-1 items-center justify-end gap-4">
-                  <span className="w-[52px] text-center text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{t("notifications.columnEmail")}</span>
-                  <span className="w-[52px] text-center text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{t("notifications.columnInApp")}</span>
+                  {/* eslint-disable-next-line no-restricted-syntax -- inline column-header span, not a block-level Eyebrow */}
+                  <span className="w-[52px] text-center text-eyebrow font-medium uppercase tracking-wide text-muted-foreground">{t("notifications.columnEmail")}</span>
+                  {/* eslint-disable-next-line no-restricted-syntax -- inline column-header span, not a block-level Eyebrow */}
+                  <span className="w-[52px] text-center text-eyebrow font-medium uppercase tracking-wide text-muted-foreground">{t("notifications.columnInApp")}</span>
                 </div>
               }
             >
@@ -265,7 +268,7 @@ export default function ProfilePage() {
             {categories.map((c) => (
               <GroupRow key={c.key}>
                 <div className="min-w-0 flex-1">
-                  <p className="text-[13.5px] font-medium">{c.label}</p>
+                  <p className="text-control font-medium">{c.label}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">{c.description}</p>
                 </div>
                 {NOTIFICATION_CHANNELS.map((chan) => (
@@ -332,28 +335,29 @@ export default function ProfilePage() {
         {isArtistOnly && (
           <div className="w-[300px] shrink-0 space-y-3">
             <div className="rounded-[var(--radius-l)] border border-border bg-card p-3.5">
-              <p className="text-[11px] font-semibold uppercase tracking-[1.2px] text-muted-foreground">{t("reference.title")}</p>
+              {/* eslint-disable-next-line no-restricted-syntax -- non-standard tracking-[1.2px], not the Eyebrow's tracking-[1.6px] */}
+              <p className="text-eyebrow font-semibold uppercase tracking-[1.2px] text-muted-foreground">{t("reference.title")}</p>
               <div className="mt-2.5 flex flex-col gap-2.5">
                 <Link to={ROUTES.AVAILABILITY} className="flex items-start gap-2 group">
-                  <Route className="mt-0.5 h-3.5 w-3.5 text-accent-700 shrink-0" aria-hidden="true" />
+                  <Route className="mt-0.5 h-3.5 w-3.5 text-accent-text shrink-0" aria-hidden="true" />
                   <div className="min-w-0">
-                    <p className="text-[13px] font-medium text-foreground group-hover:underline">{t("reference.bookingRules")}</p>
+                    <p className="text-control font-medium text-foreground group-hover:underline">{t("reference.bookingRules")}</p>
                     <p className="text-xs text-muted-foreground mt-0.5">{t("reference.bookingRulesHint")}</p>
                   </div>
                 </Link>
                 <Link to={ROUTES.AVAILABILITY} className="flex items-start gap-2 group">
-                  <Clock className="mt-0.5 h-3.5 w-3.5 text-accent-700 shrink-0" aria-hidden="true" />
+                  <Clock className="mt-0.5 h-3.5 w-3.5 text-accent-text shrink-0" aria-hidden="true" />
                   <div className="min-w-0">
-                    <p className="text-[13px] font-medium text-foreground group-hover:underline">{t("reference.blockedDates")}</p>
+                    <p className="text-control font-medium text-foreground group-hover:underline">{t("reference.blockedDates")}</p>
                     <p className="text-xs text-muted-foreground mt-0.5">
                       {blockedCount > 0 ? t("reference.blockedDatesHint", { count: blockedCount }) : t("reference.blockedDatesHintZero")}
                     </p>
                   </div>
                 </Link>
                 <Link to={ROUTES.CHATS} className="flex items-start gap-2 group">
-                  <MessageSquare className="mt-0.5 h-3.5 w-3.5 text-accent-700 shrink-0" aria-hidden="true" />
+                  <MessageSquare className="mt-0.5 h-3.5 w-3.5 text-accent-text shrink-0" aria-hidden="true" />
                   <div className="min-w-0">
-                    <p className="text-[13px] font-medium text-foreground group-hover:underline">{t("reference.office")}</p>
+                    <p className="text-control font-medium text-foreground group-hover:underline">{t("reference.office")}</p>
                     <p className="text-xs text-muted-foreground mt-0.5">{t("reference.officeHint")}</p>
                   </div>
                 </Link>
@@ -361,7 +365,8 @@ export default function ProfilePage() {
             </div>
 
             <div className="rounded-[var(--radius-l)] border border-border bg-card p-3.5">
-              <p className="text-[11px] font-semibold uppercase tracking-[1.2px] text-muted-foreground">{t("language.title")}</p>
+              {/* eslint-disable-next-line no-restricted-syntax -- non-standard tracking-[1.2px], not the Eyebrow's tracking-[1.6px] */}
+              <p className="text-eyebrow font-semibold uppercase tracking-[1.2px] text-muted-foreground">{t("language.title")}</p>
               {languagePacksEnabled && (
                 <div className="mt-2">
                   <Select value={lang} onValueChange={(v) => setLang(v as Lang)}>

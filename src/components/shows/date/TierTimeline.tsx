@@ -254,7 +254,7 @@ export function TierTimeline({
                     type="button"
                     disabled={closePending}
                     onClick={() => onCloseTier(closeTarget, true)}
-                    className="w-full text-left rounded-lg border border-border p-3 hover:bg-muted disabled:opacity-50"
+                    className="w-full text-left rounded-l border border-border p-3 hover:bg-muted disabled:opacity-50"
                   >
                     <p className="text-sm font-medium">{closeCopy.withdraw.label}</p>
                     <p className="text-xs text-muted-foreground mt-0.5">{closeCopy.withdraw.caption}</p>
@@ -265,7 +265,7 @@ export function TierTimeline({
                     type="button"
                     disabled={closePending}
                     onClick={() => onCloseTier(closeTarget, false)}
-                    className="w-full text-left rounded-lg border border-border p-3 hover:bg-muted disabled:opacity-50"
+                    className="w-full text-left rounded-l border border-border p-3 hover:bg-muted disabled:opacity-50"
                   >
                     <p className="text-sm font-medium">{closeCopy.keep.label}</p>
                     <p className="text-xs text-muted-foreground mt-0.5">{closeCopy.keep.caption}</p>

@@ -32,7 +32,7 @@ export const artistsArt: readonly [ReactNode, ReactNode, ReactNode, ReactNode] =
     <div className="flex items-center gap-2">
       <Badge variant="risk" dot>Missing a required skill</Badge>
     </div>
-    <div className="text-[11px] text-muted-foreground">No offer until every required skill is held</div>
+    <div className="text-eyebrow text-muted-foreground">No offer until every required skill is held</div>
   </MiniCard>,
 
   // 03 Casts — grouping into named tiers
@@ -49,6 +49,6 @@ export const artistsArt: readonly [ReactNode, ReactNode, ReactNode, ReactNode] =
       sub="nadia@example.com"
       trailing={<Badge variant="hold">Invited</Badge>}
     />
-    <div className="text-[11px] text-muted-foreground">On accept, login links to this record</div>
+    <div className="text-eyebrow text-muted-foreground">On accept, login links to this record</div>
   </MiniCard>,
 ];

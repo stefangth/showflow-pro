@@ -334,13 +334,14 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
               <>
                 <span
                   aria-hidden
-                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-l bg-accent-100 font-mono text-[15px] font-semibold text-accent-700"
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-l bg-accent-100 font-mono text-body font-semibold text-accent-text"
                 >
                   {initialsOf(cast?.name ?? '')}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="text-[11px] font-semibold uppercase tracking-[1.6px] text-accent-600">{eyebrow}</p>
-                  <SheetTitle className="mt-0.5 font-display text-[22px] font-semibold tracking-[-0.3px] text-foreground">
+                  {/* eslint-disable-next-line no-restricted-syntax -- eyebrow label paired with the sheet title, primitive adoption deferred */}
+                  <p className="text-eyebrow font-semibold uppercase tracking-[1.6px] text-accent-600">{eyebrow}</p>
+                  <SheetTitle className="mt-0.5 font-display text-title font-semibold tracking-[-0.3px] text-foreground">
                     {cast?.name}
                   </SheetTitle>
                   <SheetDescription className="mt-1 text-sm leading-5 text-muted-foreground">
@@ -372,7 +373,8 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
           <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
             {kpis.map((k) => (
               <div key={k.label} className="rounded-l border border-border bg-muted px-3.5 py-3">
-                <p className="text-[11px] font-semibold uppercase tracking-[1.6px] text-muted-foreground">{k.label}</p>
+                {/* eslint-disable-next-line no-restricted-syntax -- KPI tile label, KpiTile adoption deferred to primitive-adoption task */}
+                <p className="text-eyebrow font-semibold uppercase tracking-[1.6px] text-muted-foreground">{k.label}</p>
                 <p className="mt-1.5 font-mono text-2xl font-semibold tabular-nums text-foreground">{k.value}</p>
               </div>
             ))}
@@ -394,15 +396,15 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
                 data-coverage-gap
                 className="flex items-center gap-3 rounded-m border border-border bg-[var(--amber-100)] px-3 py-2.5"
               >
-                <span className="inline-flex h-5 shrink-0 items-center rounded-xs bg-card px-1.5 text-[11px] font-medium text-[var(--amber-600)]">
+                <span className="inline-flex h-5 shrink-0 items-center rounded-xs bg-card px-1.5 text-eyebrow font-medium text-[var(--amber-600)]">
                   {t('castDetails.coverageGap.badge')}
                 </span>
-                <p className="flex-1 text-[13px] text-[var(--amber-600)]">
+                <p className="flex-1 text-control text-[var(--amber-600)]">
                   {t('castDetails.coverageGap.text', { cities: coverageGapCities.map((c) => c.name).join(', ') })}
                 </p>
                 <Link
                   to={`${ROUTES.SETTINGS}?tab=casts-coverage`}
-                  className="whitespace-nowrap text-[13px] font-medium text-accent-600 underline"
+                  className="whitespace-nowrap text-control font-medium text-accent-600 underline"
                 >
                   {t('castDetails.coverageGap.setTier')}
                 </Link>
@@ -413,7 +415,7 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
             <section>
               <div className="mb-2 flex items-baseline justify-between">
                 <h4 className="text-sm font-semibold text-foreground">{t('castDetails.roster.title')}</h4>
-                <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
+                <span className="font-mono text-eyebrow tabular-nums text-muted-foreground">
                   {t('castDetails.roster.count', { count: memberCount })}
                 </span>
               </div>
@@ -430,7 +432,7 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
                     <div key={m.id} className="flex h-10 items-center gap-2.5 rounded-m border border-border bg-card px-2">
                       <span
                         aria-hidden
-                        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-pill text-[11px] font-semibold"
+                        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-pill text-eyebrow font-semibold"
                         style={{ background: tone.bg, color: tone.text }}
                       >
                         {initialsOf(m.artist.name, '?').slice(0, 1)}
@@ -438,18 +440,18 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
                       <button
                         type="button"
                         onClick={() => onArtistClick?.(m.artist_id)}
-                        className="truncate text-left text-[13px] font-medium text-foreground hover:underline disabled:cursor-default disabled:no-underline"
+                        className="truncate text-left text-control font-medium text-foreground hover:underline disabled:cursor-default disabled:no-underline"
                         disabled={!onArtistClick}
                       >
                         {m.artist.name}
                       </button>
                       {skill && (
-                        <span className="inline-flex h-5 shrink-0 items-center whitespace-nowrap rounded-xs bg-accent-100 px-1.5 text-[11px] font-medium text-accent-700">
+                        <span className="inline-flex h-5 shrink-0 items-center whitespace-nowrap rounded-xs bg-accent-100 px-1.5 text-eyebrow font-medium text-accent-text">
                           {skill}
                         </span>
                       )}
                       <span className="flex-1" />
-                      <span className="whitespace-nowrap font-mono text-[11px] tabular-nums text-[color:var(--text-faint)]">
+                      <span className="whitespace-nowrap font-mono text-eyebrow tabular-nums text-[color:var(--text-faint)]">
                         {t('castDetails.roster.dates', { count: dates })}
                       </span>
                       <IconTooltip label={t('castDetails.removeMember', { name: m.artist.name })}>
@@ -545,12 +547,12 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
                         data-city-row
                         className="flex flex-wrap items-center gap-3 rounded-m border border-border px-2.5 py-2"
                       >
-                        <span className="w-24 shrink-0 text-[13px] font-medium text-foreground">{city.name}</span>
+                        <span className="w-24 shrink-0 text-control font-medium text-foreground">{city.name}</span>
                         <span
                           className={cn(
-                            'inline-flex h-5 shrink-0 items-center rounded-xs border px-1.5 text-[11px] font-medium',
+                            'inline-flex h-5 shrink-0 items-center rounded-xs border px-1.5 text-eyebrow font-medium',
                             tier === 1
-                              ? 'border-accent-200 bg-accent-100 text-accent-700'
+                              ? 'border-accent-200 bg-accent-100 text-accent-text'
                               : 'border-border bg-muted text-muted-foreground',
                           )}
                         >
@@ -569,7 +571,7 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
                                 className={cn(
                                   'inline-flex h-6 items-center gap-1.5 rounded-s border px-2 text-xs font-medium transition-colors',
                                   on
-                                    ? 'border-accent-200 bg-accent-50 text-accent-700'
+                                    ? 'border-accent-200 bg-accent-50 text-accent-text'
                                     : 'border-border bg-muted text-muted-foreground',
                                   canManage ? 'hover:border-accent-300' : 'cursor-default',
                                 )}
@@ -595,20 +597,22 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
           {/* At-a-glance + Activity rail */}
           <aside className="flex shrink-0 flex-col gap-5 overflow-y-auto border-t border-border bg-muted p-5 lg:w-[264px] lg:border-l lg:border-t-0">
             <div>
-              <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[1.6px] text-muted-foreground">
+              {/* eslint-disable-next-line no-restricted-syntax -- rail section heading, primitive adoption deferred */}
+              <h3 className="mb-3 text-eyebrow font-semibold uppercase tracking-[1.6px] text-muted-foreground">
                 {t('castDetails.rail.atAGlance')}
               </h3>
               <div className="flex flex-col gap-3">
                 {facts.map((f) => (
                   <div key={f.label} className="flex items-baseline justify-between gap-3">
-                    <span className="text-[13px] text-muted-foreground">{f.label}</span>
-                    <span className="text-right text-[13px] text-foreground">{f.value}</span>
+                    <span className="text-control text-muted-foreground">{f.label}</span>
+                    <span className="text-right text-control text-foreground">{f.value}</span>
                   </div>
                 ))}
               </div>
             </div>
             <div className="border-t border-border pt-4">
-              <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[1.6px] text-muted-foreground">
+              {/* eslint-disable-next-line no-restricted-syntax -- rail section heading, primitive adoption deferred */}
+              <h3 className="mb-3 text-eyebrow font-semibold uppercase tracking-[1.6px] text-muted-foreground">
                 {t('castDetails.rail.activity')}
               </h3>
               {activity.length === 0 ? (
@@ -617,8 +621,8 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
                 <div className="flex flex-col gap-3">
                   {activity.map((a, i) => (
                     <div key={`${a.text}-${i}`}>
-                      <p className="text-[12.5px] leading-[17px] text-foreground">{a.text}</p>
-                      <p className="mt-0.5 text-[11px] text-[color:var(--text-faint)]">{a.when}</p>
+                      <p className="text-control leading-[17px] text-foreground">{a.text}</p>
+                      <p className="mt-0.5 text-eyebrow text-[color:var(--text-faint)]">{a.when}</p>
                     </div>
                   ))}
                 </div>

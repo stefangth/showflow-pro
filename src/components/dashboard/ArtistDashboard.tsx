@@ -172,7 +172,7 @@ export function ArtistDashboard() {
   if (!artist) {
     return (
       <div className="space-y-6">
-        <h1 className="font-display text-[32px] font-semibold tracking-tight">{t('artist.heading')}</h1>
+        <h1 className="font-display text-display-sm font-semibold tracking-tight">{t('artist.heading')}</h1>
         <UnlinkedArtistCard orgName={currentOrg?.name} />
       </div>
     );
@@ -181,7 +181,7 @@ export function ArtistDashboard() {
   return (
     <div className="space-y-6">
           <div>
-            <h1 className="font-display text-[32px] font-semibold tracking-tight">{t('artist.heading')}</h1>
+            <h1 className="font-display text-display-sm font-semibold tracking-tight">{t('artist.heading')}</h1>
             {/* Stays in the heading block so it reads as a subtitle (mt-1, not the
                 parent's space-y-6), but still module-gated: the sentence describes the
                 offer pipeline ("your response rate on dates you've been offered"),
@@ -211,7 +211,7 @@ export function ArtistDashboard() {
                       <CalendarDays className="h-8 w-8 text-primary opacity-30" />
                     </div>
                     <div className="flex items-baseline gap-2 mb-3">
-                      <p className="text-[36px] font-display font-semibold tracking-tight">{pct}%</p>
+                      <p className="text-display-sm font-display font-semibold tracking-tight">{pct}%</p>
                       <p className="text-sm text-muted-foreground">
                         {t('artist.respondedOfTotal', { responded, total })}
                       </p>
@@ -260,24 +260,25 @@ export function ArtistDashboard() {
                         return (
                           <div
                             key={d.id}
-                            className="flex items-stretch overflow-hidden rounded-[14px] border border-border bg-card shadow-elev2"
+                            className="flex items-stretch overflow-hidden rounded-[var(--radius-xl)] border border-border bg-card shadow-elev2"
                           >
                             <div className="flex w-[92px] shrink-0 flex-col items-center justify-center gap-0.5 border-r border-border bg-accent-50 py-5">
-                              <p className="m-0 text-[11px] font-semibold uppercase tracking-[1.6px] text-accent-text">
+                              {/* eslint-disable-next-line no-restricted-syntax -- weekday eyebrow inside a date-tile stack, primitive adoption deferred */}
+                              <p className="m-0 text-eyebrow font-semibold uppercase tracking-[1.6px] text-accent-text">
                                 {format(date, 'EEE', { locale: dfLocale() })}
                               </p>
-                              <p className="m-0 font-mono text-[28px] font-semibold leading-8 text-accent-text">
+                              <p className="m-0 font-mono text-display-sm font-semibold leading-8 text-accent-text">
                                 {format(date, 'd', { locale: dfLocale() })}
                               </p>
-                              <p className="m-0 text-[11px] text-muted-foreground">
+                              <p className="m-0 text-eyebrow text-muted-foreground">
                                 {format(date, 'MMM', { locale: dfLocale() })}
                               </p>
                             </div>
                             <div className="min-w-0 flex-1 p-5">
-                              <p className="m-0 text-[19px] font-semibold tracking-[-0.2px]">
+                              <p className="m-0 text-title-sm font-semibold tracking-[-0.2px]">
                                 {referenceLabel({ reference, show: d.show, custom: d.custom, customFieldKey })}
                               </p>
-                              <p className="m-0 mt-1 text-[13.5px] text-muted-foreground">{formatDateDMY(d.date)}</p>
+                              <p className="m-0 mt-1 text-control text-muted-foreground">{formatDateDMY(d.date)}</p>
                               <p className="m-0 mt-3.5 text-sm leading-[21px]">
                                 {t('artist.offer.question')}{' '}
                                 <strong>
@@ -365,7 +366,7 @@ export function ArtistDashboard() {
                       <div
                         key={o.id}
                         className={cn(
-                          'flex items-center justify-between gap-3 rounded-lg border border-border p-3',
+                          'flex items-center justify-between gap-3 rounded-l border border-border p-3',
                           pastRowClassName(parsedDate),
                         )}
                       >
@@ -411,7 +412,7 @@ export function ArtistDashboard() {
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {myMemberships!.map(m => (
-                    <div key={m.id} className="flex items-center justify-between p-2 rounded-md border border-border">
+                    <div key={m.id} className="flex items-center justify-between p-2 rounded-m border border-border">
                       <p className="text-sm font-medium">{m.cast?.name ?? '—'}</p>
                       <Badge variant="outline" className="text-xs">{t('artist.member')}</Badge>
                     </div>

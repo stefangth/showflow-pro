@@ -151,7 +151,7 @@ export function RangeStep({ sheets, sheetIndex, onSheetIndexChange, range, onRan
         {t("rangeStep.columns", { count: headers.length })} · {t("rangeStep.rowsSelected", { count: dataRows.length })}
       </p>
 
-      <div className="max-h-64 overflow-auto rounded-md border border-border">
+      <div className="max-h-64 overflow-auto rounded-m border border-border">
         <table className="w-full text-xs">
           <tbody>
             {previewRows.map((cells, i) => {

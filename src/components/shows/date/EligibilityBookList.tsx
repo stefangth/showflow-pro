@@ -144,7 +144,7 @@ export function EligibilityBookList({
                   >
                     {s.name}
                     {hasSkillData && (
-                      <span className="font-mono text-[11px] opacity-75">{count}</span>
+                      <span className="font-mono text-eyebrow opacity-75">{count}</span>
                     )}
                   </button>
                 );
@@ -160,7 +160,7 @@ export function EligibilityBookList({
         <p className="text-sm text-muted-foreground">{t("eligibilityBookList.noEligible")}</p>
       )}
       {artists.map((a) => (
-        <div key={a.id} className="flex items-center justify-between rounded-lg border border-border p-3">
+        <div key={a.id} className="flex items-center justify-between rounded-l border border-border p-3">
           <p className="text-sm font-medium">{a.name}</p>
           {bookedArtistIds.has(a.id) ? (
             <Badge variant="secondary" className="bg-muted text-muted-foreground">{t("eligibilityBookList.booked")}</Badge>

@@ -303,7 +303,7 @@ export function ArtistProfileSheet({ artistId, open, onOpenChange }: Props) {
             <div className="space-y-2">
               <div className="flex items-baseline justify-between gap-3">
                 <label className="text-sm font-medium">{t('sheet.skillsLabel')}</label>
-                <p className="font-mono text-[11px] tabular-nums text-muted-foreground">
+                <p className="font-mono text-eyebrow tabular-nums text-muted-foreground">
                   {t('sheet.catalogCount', { held: selectedSkills.length, total: catalogDenominator })}
                 </p>
               </div>
@@ -323,17 +323,17 @@ export function ArtistProfileSheet({ artistId, open, onOpenChange }: Props) {
                     <div
                       key={skill.id}
                       data-testid={`skill-row-${skill.id}`}
-                      className="flex h-[34px] items-center gap-2.5 rounded-lg border border-accent-200 bg-accent-50 pl-2.5 pr-2"
+                      className="flex h-[34px] items-center gap-2.5 rounded-l border border-accent-200 bg-accent-50 pl-2.5 pr-2"
                     >
-                      <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-[4px] bg-primary text-primary-foreground">
+                      <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-xs bg-primary text-primary-foreground">
                         <Check className="h-[11px] w-[11px]" strokeWidth={3} />
                       </span>
-                      <span className="flex-1 truncate text-sm font-medium text-accent-700">{skill.name}</span>
+                      <span className="flex-1 truncate text-sm font-medium text-accent-text">{skill.name}</span>
                       {/* Render only once the counts query has data — while it's still
                           loading, upcomingDateCounts is undefined and every row would
                           otherwise flash the false "Not required yet" default. */}
                       {showSkillCounts && upcomingDateCounts && (
-                        <span className="font-mono text-[11px] tabular-nums text-accent-700">
+                        <span className="font-mono text-eyebrow tabular-nums text-accent-text">
                           {count > 0 ? t('sheet.upcomingDates', { count }) : t('sheet.notRequiredYet')}
                         </span>
                       )}
@@ -342,7 +342,7 @@ export function ArtistProfileSheet({ artistId, open, onOpenChange }: Props) {
                           type="button"
                           aria-label={t('sheet.removeSkill', { name: skill.name })}
                           onClick={() => setSelectedSkills((prev) => prev.filter((s) => s.id !== skill.id))}
-                          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-accent-700 hover:bg-destructive/10 hover:text-destructive"
+                          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-m text-accent-text hover:bg-destructive/10 hover:text-destructive"
                         >
                           <X className="h-3.5 w-3.5" />
                         </button>
@@ -361,7 +361,7 @@ export function ArtistProfileSheet({ artistId, open, onOpenChange }: Props) {
                           key={skill.id}
                           type="button"
                           onClick={() => setSelectedSkills((prev) => [...prev, skill])}
-                          className="inline-flex h-[26px] items-center gap-1.5 rounded-md border border-input bg-background px-2.5 text-xs font-medium text-foreground hover:bg-accent-50"
+                          className="inline-flex h-[26px] items-center gap-1.5 rounded-m border border-input bg-background px-2.5 text-xs font-medium text-foreground hover:bg-accent-50"
                         >
                           <Plus className="h-3 w-3" />
                           {skill.name}

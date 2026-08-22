@@ -55,13 +55,13 @@ describe('LensTabs', () => {
     ).toBeTruthy();
     expect(activeTab.contains(badge)).toBe(true);
     expect(badge.className).toContain('bg-accent-50');
-    expect(badge.className).toContain('text-accent-700');
+    expect(badge.className).toContain('text-accent-text');
   });
 
   it('tints an inactive tab count badge neutrally', () => {
     render(<LensTabs lenses={lenses} active="month" onChange={vi.fn()} />);
     const badge = screen.getByText('3');
-    expect(badge.className).toContain('bg-foreground/[.06]');
+    expect(badge.className).toContain('bg-foreground/5');
     expect(badge.className).toContain('text-muted-foreground');
   });
 

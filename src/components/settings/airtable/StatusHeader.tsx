@@ -44,7 +44,8 @@ function kpiClass(tone: Kpi["tone"]): string {
   return "";
 }
 
-const EYEBROW = "text-[11px] font-semibold uppercase tracking-[0.1em]";
+// eslint-disable-next-line no-restricted-syntax -- non-standard tracking (0.1em)
+const EYEBROW = "text-eyebrow font-semibold uppercase tracking-[0.1em]";
 
 /** The console's headline card: eyebrow + status dot + headline + one line of
  *  detail, a Saved indicator and a "Sync now" action, over a four-up KPI row. */
@@ -59,16 +60,16 @@ export function StatusHeader({
 }: StatusHeaderProps) {
   const { t } = useTranslation('settingsAirtable');
   return (
-    <div className="rounded-lg border border-border bg-card shadow-sm">
+    <div className="rounded-l border border-border bg-card shadow-sm">
       <div className="flex items-start justify-between gap-4 p-4">
         <div className="min-w-0">
           <p className={cn(EYEBROW, "text-accent-600")}>{eyebrow}</p>
           <div className="mt-1.5 flex items-center gap-2.5">
             <span
-              className={cn("h-2 w-2 shrink-0 rounded-sm", dotClass(status.tone))}
+              className={cn("h-2 w-2 shrink-0 rounded-s", dotClass(status.tone))}
               style={dotStyle(status.tone)}
             />
-            <h2 className="font-display text-[22px] font-semibold tracking-tight">
+            <h2 className="font-display text-title font-semibold tracking-tight">
               {status.headline}
             </h2>
           </div>
@@ -96,7 +97,7 @@ export function StatusHeader({
             <p className={cn(EYEBROW, "text-muted-foreground")}>{kpi.label}</p>
             <p
               className={cn(
-                "mt-1.5 font-mono text-[17px] font-medium tabular-nums",
+                "mt-1.5 font-mono text-title-sm font-medium tabular-nums",
                 kpiClass(kpi.tone),
               )}
               style={kpiStyle(kpi.tone)}

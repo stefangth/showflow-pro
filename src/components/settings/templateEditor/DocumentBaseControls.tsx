@@ -86,7 +86,7 @@ export function DocumentBaseControls<Theme extends ThemeDraft>({
         <div className="space-y-4 p-4">
           <div className="flex items-center justify-between gap-2">
             <h3 className="font-display text-sm">{title}</h3>
-            {baseModified && !readOnly && <button type="button" className="text-[13px] font-medium text-accent-text hover:underline" aria-label={t("documentBase.resetAria")} onClick={resetBase}>{t("documentBase.reset")}</button>}
+            {baseModified && !readOnly && <button type="button" className="text-control font-medium text-accent-text hover:underline" aria-label={t("documentBase.resetAria")} onClick={resetBase}>{t("documentBase.reset")}</button>}
           </div>
           {fontFields.map((field) => (
             <div key={field.key} className="space-y-1.5">
@@ -105,6 +105,7 @@ export function DocumentBaseControls<Theme extends ThemeDraft>({
             </div>
           )}
           {colors.length > 0 && <div className="space-y-2">
+            {/* eslint-disable-next-line no-restricted-syntax -- non-standard tracking */}
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("documentBase.colours")}</p>
             {colors.map((field) => (
               <div key={field.key} className="flex items-center justify-between gap-2">
@@ -115,6 +116,7 @@ export function DocumentBaseControls<Theme extends ThemeDraft>({
           </div>}
           {fieldGroups.map((group) => (
             <div key={group.label} className="space-y-2">
+              {/* eslint-disable-next-line no-restricted-syntax -- non-standard tracking */}
               <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{group.label}</p>
               {group.fields.map((field) => field.kind === "number" ? (
                 <div key={field.key} className="space-y-1">

@@ -362,6 +362,7 @@ export function CoveragePanel({ orgId, onOpenCast }: CoveragePanelProps) {
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[640px] border-separate border-spacing-y-1.5">
                     <thead>
+                      {/* eslint-disable-next-line no-restricted-syntax -- table header row, non-standard tracking */}
                       <tr className="text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                         <th className="w-40 px-2 py-1">{t('coverage.cityHeader')}</th>
                         {TIER_LABELS.map((label) => (
@@ -567,6 +568,7 @@ export function CoveragePanel({ orgId, onOpenCast }: CoveragePanelProps) {
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-[220px_1fr]">
           <Card>
             <CardHeader>
+              {/* eslint-disable-next-line no-restricted-syntax -- CardTitle label, non-standard tracking */}
               <CardTitle className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 {t('coverage.showsTitle')}
               </CardTitle>
@@ -630,6 +632,7 @@ export function CoveragePanel({ orgId, onOpenCast }: CoveragePanelProps) {
                   <div className="overflow-x-auto">
                     <table className="w-full min-w-[720px] border-separate border-spacing-y-1.5">
                       <thead>
+                        {/* eslint-disable-next-line no-restricted-syntax -- table header row, non-standard tracking */}
                         <tr className="text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                           <th className="w-40 px-2 py-1">{t('coverage.cityHeader')}</th>
                           {TIER_LABELS.map((label) => (
@@ -693,7 +696,8 @@ function KpiCard({ label, value, note, tone }: { label: string; value: number; n
   return (
     <Card>
       <CardContent className="space-y-1 p-4">
-        <p className="text-[11px] font-semibold uppercase tracking-[1.2px] text-muted-foreground">{label}</p>
+        {/* eslint-disable-next-line no-restricted-syntax -- non-standard tracking (1.2px) */}
+        <p className="text-eyebrow font-semibold uppercase tracking-[1.2px] text-muted-foreground">{label}</p>
         <p
           className={cn(
             "font-mono text-2xl font-semibold tabular-nums",

@@ -32,7 +32,7 @@ export function CountersignFields({
         disabled={readOnly}
         className="gap-3"
       >
-        <div className="flex items-start gap-3 rounded-lg border border-border p-3">
+        <div className="flex items-start gap-3 rounded-l border border-border p-3">
           <RadioGroupItem value="electronic" id={`${idPrefix}-electronic`} className="mt-0.5" />
           <Label htmlFor={`${idPrefix}-electronic`} className="cursor-pointer font-normal">
             <span className="block text-sm font-medium">{t("countersignFields.electronicTitle")}</span>
@@ -41,7 +41,7 @@ export function CountersignFields({
             </span>
           </Label>
         </div>
-        <div className="flex items-start gap-3 rounded-lg border border-border p-3">
+        <div className="flex items-start gap-3 rounded-l border border-border p-3">
           <RadioGroupItem value="manual" id={`${idPrefix}-manual`} className="mt-0.5" />
           <Label htmlFor={`${idPrefix}-manual`} className="cursor-pointer font-normal">
             <span className="block text-sm font-medium">{t("countersignFields.manualTitle")}</span>
@@ -52,7 +52,7 @@ export function CountersignFields({
         </div>
       </RadioGroup>
       {value.mode === "electronic" && (
-        <div className="flex items-start gap-3 rounded-lg border border-border p-3">
+        <div className="flex items-start gap-3 rounded-l border border-border p-3">
           <Checkbox
             id={`${idPrefix}-email-producers`}
             className="mt-0.5"

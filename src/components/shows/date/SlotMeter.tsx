@@ -34,7 +34,7 @@ export function SlotMeter({
       aria-label={ariaLabel}
     >
       {tones.map((t, i) => (
-        <span key={i} className={cn("h-1.5 rounded-[2px]", fixed ? "w-4" : "flex-1", SLOT_SEG_BG[t])} />
+        <span key={i} className={cn("h-1.5 rounded-xs", fixed ? "w-4" : "flex-1", SLOT_SEG_BG[t])} />
       ))}
     </div>
   );

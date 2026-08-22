@@ -90,7 +90,8 @@ export function PeoplePanelBody({
       <form onSubmit={handleSubmit} className="space-y-2">
         <Label
           htmlFor="people-add-name"
-          className="text-[10px] uppercase tracking-wider text-muted-foreground"
+          // eslint-disable-next-line no-restricted-syntax -- form <Label>, not a block eyebrow: <Eyebrow> renders a <p> and would drop the htmlFor association
+          className="text-eyebrow uppercase tracking-wider text-muted-foreground"
         >
           {t("panel.body.people.addLabel")}
         </Label>
@@ -115,7 +116,8 @@ export function PeoplePanelBody({
         </div>
       </form>
 
-      <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-muted-foreground">
+      {/* eslint-disable-next-line no-restricted-syntax -- "or" divider row (two rule spans + label), not a block eyebrow */}
+      <div className="flex items-center gap-2 text-eyebrow uppercase tracking-wider text-muted-foreground">
         <span className="h-px flex-1 bg-border" aria-hidden="true" />
         {t("panel.body.people.or")}
         <span className="h-px flex-1 bg-border" aria-hidden="true" />

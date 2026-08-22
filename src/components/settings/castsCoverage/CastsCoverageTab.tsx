@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { SegmentedControl, type SegmentedControlOption } from "@/components/ui/segmented-control";
+import { Eyebrow } from "@/components/ui/eyebrow";
 import { CoveragePanel } from "./CoveragePanel";
 import { OwnershipPanel } from "./OwnershipPanel";
 
@@ -21,9 +22,7 @@ export function CastsCoverageTab({ orgId }: { orgId: string }) {
   return (
     <div className="space-y-6">
       <div>
-        <p className="text-[11px] font-semibold uppercase tracking-[1.6px] text-muted-foreground">
-          {t('tab.eyebrow')}
-        </p>
+        <Eyebrow>{t('tab.eyebrow')}</Eyebrow>
         <h1 className="mt-1 font-display text-xl font-semibold text-foreground">{t('tab.title')}</h1>
         <p className="mt-1 max-w-xl text-sm text-muted-foreground">
           {t('tab.description')}

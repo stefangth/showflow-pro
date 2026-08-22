@@ -56,7 +56,7 @@ export function CapabilitiesCard() {
               <AccordionTrigger className="py-3 text-sm hover:no-underline">
                 <span className="flex items-center gap-2">
                   <span className="font-medium">{group.group}</span>
-                  <span className="font-mono text-[11px] text-muted-foreground">{group.countLabel}</span>
+                  <span className="font-mono text-eyebrow text-muted-foreground">{group.countLabel}</span>
                 </span>
               </AccordionTrigger>
               <AccordionContent>
@@ -71,7 +71,7 @@ export function CapabilitiesCard() {
                         <p className="mt-0.5 text-xs leading-4 text-muted-foreground">{entry.description}</p>
                       </div>
                       <span
-                        className={`shrink-0 whitespace-nowrap font-mono text-[11px] font-medium ${
+                        className={`shrink-0 whitespace-nowrap font-mono text-eyebrow font-medium ${
                           entry.defaultEnabled ? "text-[var(--green-600)]" : "text-muted-foreground"
                         }`}
                       >

@@ -56,7 +56,8 @@ export default function HelpPage() {
   return (
     <div className="mx-auto flex max-w-[1080px] flex-col gap-6">
       <div>
-        <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-accent-600">
+        {/* eslint-disable-next-line no-restricted-syntax -- non-standard tracking/color + two children, not a straight Eyebrow swap */}
+        <p className="mb-1.5 text-eyebrow font-semibold uppercase tracking-[0.14em] text-accent-600">
           {t('eyebrow')}
           {orgName ? ` · ${orgName.toUpperCase()}` : ''}
         </p>
@@ -76,7 +77,7 @@ export default function HelpPage() {
       ))}
 
       {groups.length === 0 && (
-        <div className="rounded-[10px] border-[0.5px] border-border bg-muted/40 p-8 text-center">
+        <div className="rounded-l border-[0.5px] border-border bg-muted/40 p-8 text-center">
           <p className="mb-1 text-sm font-semibold text-foreground">{t('empty.title')}</p>
           <p className="mb-3.5 text-sm text-muted-foreground">{t('empty.body')}</p>
           <Button onClick={clearFilters}>{t('empty.clear')}</Button>

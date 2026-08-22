@@ -270,7 +270,7 @@ function ManageConnectionDialog(p: ManageConnectionProps) {
               )}
             </div>
             {p.keyPresent && !p.replacing ? (
-              <div className="flex items-center justify-between gap-2 rounded-md border border-border px-3 py-2">
+              <div className="flex items-center justify-between gap-2 rounded-m border border-border px-3 py-2">
                 <span className="flex items-center gap-2 text-sm text-muted-foreground"><Lock className="h-4 w-4" /> {t('manageDialog.token.maskedValue')}</span>
                 <div className="flex gap-2">
                   <Button variant="outline" size="sm" disabled={!p.canWrite} onClick={() => p.setReplacing(true)}>{t('manageDialog.token.replace')}</Button>

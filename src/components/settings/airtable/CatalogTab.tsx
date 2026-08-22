@@ -162,7 +162,7 @@ export function CatalogTab(props: CatalogTabProps) {
           aria-label={t('catalogTab.selectRowAria', { display: row.display })}
           aria-pressed={sel}
           className={cn(
-            "h-4 w-4 rounded-[4px] border flex items-center justify-center",
+            "h-4 w-4 rounded-xs border flex items-center justify-center",
             sel ? "bg-primary border-primary" : "border-border bg-card",
           )}
         >
@@ -172,7 +172,7 @@ export function CatalogTab(props: CatalogTabProps) {
         <div className="min-w-0 flex items-center gap-2">
           <span className="text-sm font-medium truncate">{row.display}</span>
           {holding > 0 && (
-            <span className="h-[18px] shrink-0 inline-flex items-center rounded-[4px] bg-[var(--amber-100)] px-1.5 text-[11px] font-medium text-[color:var(--amber-600)]">
+            <span className="h-[18px] shrink-0 inline-flex items-center rounded-xs bg-[var(--amber-100)] px-1.5 text-eyebrow font-medium text-[color:var(--amber-600)]">
               {t('catalogTab.holding', { count: holding })}
             </span>
           )}
@@ -181,7 +181,7 @@ export function CatalogTab(props: CatalogTabProps) {
         {row.linkedId ? (
           <div className="flex items-center gap-2 justify-end min-w-0">
             <ArrowRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/70" aria-hidden />
-            <span className="text-[13px] text-foreground truncate">{row.linkedLabel}</span>
+            <span className="text-control text-foreground truncate">{row.linkedLabel}</span>
             <Button
               size="sm"
               variant="secondary"
@@ -195,7 +195,7 @@ export function CatalogTab(props: CatalogTabProps) {
         ) : !row.key ? (
           // A blank source value has no usable link key: offer no link/create, since an empty
           // key would match every unresolved record on the next poll.
-          <span className="justify-self-end text-[13px] text-muted-foreground">{t('catalogTab.blankKeyPlaceholder')}</span>
+          <span className="justify-self-end text-control text-muted-foreground">{t('catalogTab.blankKeyPlaceholder')}</span>
         ) : (
           <div className="flex items-center gap-2 justify-end min-w-0">
             <CatalogLinkCombobox
@@ -223,11 +223,11 @@ export function CatalogTab(props: CatalogTabProps) {
   };
 
   return (
-    <div className="bg-card border border-border rounded-lg shadow-sm">
+    <div className="bg-card border border-border rounded-l shadow-sm">
       {/* Header */}
       <div className="px-4 py-3.5 border-b border-border">
-        <h3 className="text-[17px] font-semibold tracking-tight">{t('catalogTab.title')}</h3>
-        <p className="mt-1 text-[13px] text-muted-foreground">
+        <h3 className="text-title-sm font-semibold tracking-tight">{t('catalogTab.title')}</h3>
+        <p className="mt-1 text-control text-muted-foreground">
           {t('catalogTab.description')}
         </p>
       </div>
@@ -244,7 +244,7 @@ export function CatalogTab(props: CatalogTabProps) {
             className="h-8 pl-8 bg-muted text-sm"
           />
         </div>
-        <div className="inline-flex gap-0.5 p-0.5 rounded-md bg-muted">
+        <div className="inline-flex gap-0.5 p-0.5 rounded-m bg-muted">
           {FILTERS.map((f) => {
             const active = filter === f;
             return (
@@ -275,13 +275,15 @@ export function CatalogTab(props: CatalogTabProps) {
       </div>
 
       {/* Programs section */}
-      <p className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground bg-muted border-b border-border">
+      {/* eslint-disable-next-line no-restricted-syntax -- non-standard tracking (0.1em) */}
+      <p className="px-4 py-2.5 text-eyebrow font-semibold uppercase tracking-[0.1em] text-muted-foreground bg-muted border-b border-border">
         {t('catalogTab.programsSection', { source: programSource })}
       </p>
       {filteredPrograms.map((row) => renderRow("program", row, programExisting, "show"))}
 
       {/* Cities section */}
-      <p className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground bg-muted border-b border-border">
+      {/* eslint-disable-next-line no-restricted-syntax -- non-standard tracking (0.1em) */}
+      <p className="px-4 py-2.5 text-eyebrow font-semibold uppercase tracking-[0.1em] text-muted-foreground bg-muted border-b border-border">
         {t('catalogTab.citiesSection', { source: citySource })}
       </p>
       {filteredCities.map((row) => renderRow("city", row, cityExisting, "city"))}
@@ -291,7 +293,7 @@ export function CatalogTab(props: CatalogTabProps) {
         <div className="flex items-center gap-3 px-4 py-3 bg-muted">
           <Copy className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
           <div className="flex-1 min-w-0">
-            <p className="text-[13px] font-medium">{merge.title}</p>
+            <p className="text-control font-medium">{merge.title}</p>
             <p className="mt-0.5 text-xs text-muted-foreground">{merge.description}</p>
           </div>
           <Button variant="outline" size="sm" className="h-[26px] shrink-0" disabled={disabled} onClick={merge.onMerge}>

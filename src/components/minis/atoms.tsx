@@ -22,8 +22,8 @@ export function MiniCard({ children, className }: { children: ReactNode; classNa
 export function MiniField({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="flex items-center gap-2">
-      <span className="w-[92px] shrink-0 text-[11px] text-muted-foreground">{label}</span>
-      <span className="flex min-w-0 flex-1 items-center gap-1.5 truncate text-[12px] font-medium text-foreground">
+      <span className="w-[92px] shrink-0 text-eyebrow text-muted-foreground">{label}</span>
+      <span className="flex min-w-0 flex-1 items-center gap-1.5 truncate text-caption font-medium text-foreground">
         {children}
       </span>
     </div>
@@ -35,8 +35,8 @@ export function MiniWell({ icon, label, trailing }: { icon?: ReactNode; label: R
   return (
     <div className="flex items-center gap-2 rounded-s border-[0.5px] border-border bg-muted px-2.5 py-2">
       {icon}
-      <span className="min-w-0 flex-1 truncate text-[12px] text-muted-foreground">{label}</span>
-      {trailing && <span className="shrink-0 font-mono text-[11px] text-muted-foreground/80">{trailing}</span>}
+      <span className="min-w-0 flex-1 truncate text-caption text-muted-foreground">{label}</span>
+      {trailing && <span className="shrink-0 font-mono text-eyebrow text-muted-foreground/80">{trailing}</span>}
     </div>
   );
 }
@@ -46,7 +46,7 @@ export function MiniWell({ icon, label, trailing }: { icon?: ReactNode; label: R
 export function MiniAvatar({ initials, tone = 'bg-accent-500' }: { initials: string; tone?: string }) {
   return (
     <span
-      className={cn('inline-flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full text-[8px] font-semibold text-white', tone)}
+      className={cn('inline-flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full text-eyebrow font-semibold text-white', tone)}
     >
       {initials}
     </span>
@@ -59,8 +59,8 @@ export function MiniRow({ avatar, name, sub, trailing }: { avatar?: ReactNode; n
     <div className="flex items-center gap-2">
       {avatar}
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-[12px] font-medium text-foreground">{name}</span>
-        {sub && <span className="block truncate text-[11px] text-muted-foreground/70">{sub}</span>}
+        <span className="block truncate text-caption font-medium text-foreground">{name}</span>
+        {sub && <span className="block truncate text-eyebrow text-muted-foreground/70">{sub}</span>}
       </span>
       {trailing}
     </div>
@@ -71,7 +71,7 @@ export function MiniRow({ avatar, name, sub, trailing }: { avatar?: ReactNode; n
 export function MiniCheck() {
   return (
     <span className="inline-flex h-[18px] w-[18px] items-center justify-center rounded-full bg-accent-100">
-      <Check className="h-3 w-3 text-accent-700" strokeWidth={3} />
+      <Check className="h-3 w-3 text-accent-text" strokeWidth={3} />
     </span>
   );
 }
@@ -83,7 +83,7 @@ export function MiniMeter({ pct, label }: { pct: number; label: string }) {
       <span className="h-1 flex-1 overflow-hidden rounded-full bg-muted">
         <span className="block h-full rounded-full bg-accent-500" style={{ width: `${Math.max(0, Math.min(100, pct))}%` }} />
       </span>
-      <span className="shrink-0 font-mono text-[11px] tabular-nums text-muted-foreground">{label}</span>
+      <span className="shrink-0 font-mono text-eyebrow tabular-nums text-muted-foreground">{label}</span>
     </div>
   );
 }
@@ -97,10 +97,10 @@ export function MiniTimelineRow({ initials, name, detail, time, tone = 'bg-accen
         {!last && <span className="w-px flex-1 min-h-[10px] bg-border" />}
       </span>
       <span className={cn('min-w-0 flex-1', !last && 'pb-2')}>
-        <span className="block truncate text-[12px] text-foreground">
+        <span className="block truncate text-caption text-foreground">
           <span className="font-medium">{name}</span> {detail}
         </span>
-        <span className="block font-mono text-[10px] tabular-nums text-muted-foreground/70">{time}</span>
+        <span className="block font-mono text-eyebrow tabular-nums text-muted-foreground/70">{time}</span>
       </span>
     </div>
   );
@@ -111,7 +111,7 @@ export function MiniButton({ children, primary }: { children: ReactNode; primary
   return (
     <span
       className={cn(
-        'inline-flex h-7 flex-1 items-center justify-center rounded-s border-[0.5px] text-[12px] font-medium',
+        'inline-flex h-7 flex-1 items-center justify-center rounded-s border-[0.5px] text-caption font-medium',
         primary
           ? 'border-accent-600 bg-accent-500 text-white'
           : 'border-border bg-card text-foreground',
@@ -136,7 +136,7 @@ export function MiniWeek({ days }: { days: readonly { n: number; tone: DayTone }
       {days.map((d, i) => (
         <span
           key={i}
-          className={cn('flex aspect-square items-center justify-center rounded-xs border-[0.5px] font-mono text-[11px] font-semibold tabular-nums', fill[d.tone])}
+          className={cn('flex aspect-square items-center justify-center rounded-xs border-[0.5px] font-mono text-eyebrow font-semibold tabular-nums', fill[d.tone])}
         >
           {d.n}
         </span>

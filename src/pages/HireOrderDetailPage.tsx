@@ -293,19 +293,19 @@ function HireOrderDetail({
               </p>
             </div>
           ) : pdfUrlLoading || !pdfUrl ? (
-            <Skeleton className="h-[600px] w-full rounded-lg" />
+            <Skeleton className="h-[600px] w-full rounded-l" />
           ) : (
             <iframe
               title={t("detailPage.iframeTitle")}
               src={pdfUrl}
-              className="h-[600px] w-full rounded-lg border border-border bg-background lg:h-[720px]"
+              className="h-[600px] w-full rounded-l border border-border bg-background lg:h-[720px]"
             />
           )}
           {canSign && (
-            <div className="mt-3 rounded-lg border border-accent-200 bg-accent-50 p-4">
+            <div className="mt-3 rounded-l border border-accent-200 bg-accent-50 p-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-accent-700">{t("detailPage.needsSignatureTitle")}</p>
+                  <p className="text-sm font-semibold text-accent-text">{t("detailPage.needsSignatureTitle")}</p>
                   <p className="mt-0.5 text-sm text-muted-foreground">
                     {t("detailPage.needsSignatureBody")}
                   </p>
@@ -334,6 +334,7 @@ function HireOrderDetail({
 
           <Card>
             <CardContent className="space-y-1">
+              {/* eslint-disable-next-line no-restricted-syntax -- 12px + tracking-wide card-header caption, not the 11px Eyebrow pattern */}
               <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("detailPage.recipient")}</h3>
               <p className="text-sm font-medium text-foreground">{artistName}</p>
               {email && <p className="text-sm text-muted-foreground break-words">{email}</p>}
@@ -404,7 +405,7 @@ function PrimaryAction({
   }
   if (canManage && status === "countersigned") {
     return (
-      <div className="flex items-center gap-2 rounded-lg border border-[var(--green-600-a30)] bg-[var(--green-100)] px-3 py-2 text-sm font-medium text-[var(--green-600)]">
+      <div className="flex items-center gap-2 rounded-l border border-[var(--green-600-a30)] bg-[var(--green-100)] px-3 py-2 text-sm font-medium text-[var(--green-600)]">
         <CheckCircle2 className="h-4 w-4 shrink-0" />
         {t("detailPage.countersignedByArtist")}
       </div>

@@ -47,7 +47,7 @@ export function LensTabs({ lenses, active, onChange, className, scrollable = fal
             data-active={isActive}
             onClick={() => onChange(lens.key)}
             className={cn(
-              'inline-flex items-center gap-1.5 rounded-s px-3 py-1.5 text-[13px] font-medium transition-colors',
+              'inline-flex items-center gap-1.5 rounded-s px-3 py-1.5 text-control font-medium transition-colors',
               scrollable && 'shrink-0 snap-start',
               isActive ? 'bg-card text-foreground shadow-elev1' : 'text-muted-foreground hover:text-foreground'
             )}
@@ -55,8 +55,8 @@ export function LensTabs({ lenses, active, onChange, className, scrollable = fal
             {typeof lens.count === 'number' && (
               <span
                 className={cn(
-                  'inline-flex h-4 min-w-4 items-center justify-center rounded-[4px] px-1 font-mono text-[10px] font-semibold tabular-nums',
-                  isActive ? 'bg-accent-50 text-accent-700' : 'bg-foreground/[.06] text-muted-foreground'
+                  'inline-flex h-4 min-w-4 items-center justify-center rounded-xs px-1 font-mono text-eyebrow font-semibold tabular-nums',
+                  isActive ? 'bg-accent-50 text-accent-text' : 'bg-foreground/5 text-muted-foreground'
                 )}
               >
                 {lens.count}

@@ -42,7 +42,7 @@ function EdgeFnRow({ m, rollup }: { m: EdgeFnMetric; rollup: HealthDay[] }) {
   const logs = useEdgeFnLogs(m.fn, open);
 
   return (
-    <div className="rounded-lg border border-border p-3">
+    <div className="rounded-l border border-border p-3">
       <div className="flex items-center gap-3">
         <StatusDot state={state} />
         <span className="font-mono text-sm font-medium flex-1 truncate">{m.fn}</span>
@@ -62,8 +62,8 @@ function EdgeFnRow({ m, rollup }: { m: EdgeFnMetric; rollup: HealthDay[] }) {
             <span
               key={c.code}
               className={c.code >= 500
-                ? "rounded-md bg-destructive/10 px-2 py-0.5 font-mono text-destructive"
-                : "rounded-md bg-warning/10 px-2 py-0.5 font-mono text-warning"}
+                ? "rounded-m bg-destructive/10 px-2 py-0.5 font-mono text-destructive"
+                : "rounded-m bg-warning/10 px-2 py-0.5 font-mono text-warning"}
             >
               {c.code} × {c.count}
             </span>
@@ -83,16 +83,16 @@ function EdgeFnRow({ m, rollup }: { m: EdgeFnMetric; rollup: HealthDay[] }) {
               Last failure {new Date(m.lastFailure.at).toLocaleString()}, status {m.lastFailure.status}
             </p>
           )}
-          <button type="button" className="mt-1 text-[13px] font-medium text-accent-text hover:underline" onClick={() => setOpen((v) => !v)}>
+          <button type="button" className="mt-1 text-control font-medium text-accent-text hover:underline" onClick={() => setOpen((v) => !v)}>
             {open ? "Hide recent errors" : "View recent errors"}
           </button>
           {open && (
-            <div className="mt-2 rounded-md bg-muted/40 p-2">
+            <div className="mt-2 rounded-m bg-muted/40 p-2">
               {logs.isLoading && <p className="text-xs text-muted-foreground">Loading log lines.</p>}
               {logs.isError && <p className="text-xs text-muted-foreground">{edgeLogUnavailableMessage(logs.error)}</p>}
               {logs.data?.length === 0 && <p className="text-xs text-muted-foreground">No error output in this window.</p>}
               {logs.data?.map((l, i) => (
-                <p key={i} className="font-mono text-[11px] leading-relaxed text-muted-foreground">
+                <p key={i} className="font-mono text-eyebrow leading-relaxed text-muted-foreground">
                   {l.at.slice(11, 19)} {l.message}
                 </p>
               ))}

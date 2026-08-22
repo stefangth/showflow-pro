@@ -71,7 +71,8 @@ function smartQuotes(text: string): string {
 const Divider = () => <div className="h-px bg-[var(--line)]" />;
 
 const SectionLabel = ({ children }: { children: React.ReactNode }) => (
-  <p className="text-[11px] font-semibold uppercase leading-[14px] tracking-[1.6px] text-muted-foreground">{children}</p>
+  // eslint-disable-next-line no-restricted-syntax -- reusable section-label wrapper, primitive adoption deferred
+  <p className="text-eyebrow font-semibold uppercase leading-[14px] tracking-[1.6px] text-muted-foreground">{children}</p>
 );
 
 /** The cockpit's left rail: date facts, eligibility chips, a derived activity
@@ -92,7 +93,7 @@ export function CockpitRail({
       {/* Date facts */}
       <div className="space-y-2">
         <SectionLabel>{t("cockpitRail.date")}</SectionLabel>
-        <div className="space-y-[7px] text-[13px] text-muted-foreground">
+        <div className="space-y-[7px] text-control text-muted-foreground">
           {times && (
             <p className="flex items-center gap-2">
               <Clock className="h-3.5 w-3.5 shrink-0" />
@@ -159,7 +160,7 @@ export function CockpitRail({
             {skillChips.map((s) => (
               <span
                 key={s}
-                className="rounded-[var(--radius-xs)] bg-accent-100 px-[7px] py-[3px] text-xs font-medium text-accent-700"
+                className="rounded-[var(--radius-xs)] bg-accent-100 px-[7px] py-[3px] text-xs font-medium text-accent-text"
               >
                 {s}
               </span>
@@ -206,7 +207,7 @@ export function CockpitRail({
             <ul data-testid="cockpit-activity" className="space-y-[11px]">
               {activity.map((a, i) => (
                 <li key={`${a.iso}-${i}`} className="grid grid-cols-[46px_1fr] gap-2">
-                  <span className="font-mono text-[11px] font-medium leading-4 text-[var(--text-faint)]">{shortStamp(a.iso, activity[0]?.iso)}</span>
+                  <span className="font-mono text-eyebrow font-medium leading-4 text-[var(--text-faint)]">{shortStamp(a.iso, activity[0]?.iso)}</span>
                   <span className="text-xs leading-4 text-muted-foreground">{a.text}</span>
                 </li>
               ))}
@@ -224,7 +225,7 @@ export function CockpitRail({
           {chatUnread > 0 && (
             <span
               data-testid="chat-unread"
-              className="rounded-[var(--radius-xs)] bg-accent-500 px-1.5 py-px font-mono text-[10px] font-semibold leading-[15px] text-white"
+              className="rounded-[var(--radius-xs)] bg-accent-500 px-1.5 py-px font-mono text-eyebrow font-semibold leading-[15px] text-white"
             >
               {chatUnread}
             </span>
@@ -236,7 +237,7 @@ export function CockpitRail({
           <button
             type="button"
             onClick={onOpenChat}
-            className="text-left text-[13px] font-medium text-accent-text hover:underline"
+            className="text-left text-control font-medium text-accent-text hover:underline"
           >
             {t("cockpitRail.openChat")}
           </button>

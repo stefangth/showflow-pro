@@ -125,8 +125,9 @@ export function AirtableConnectRail({ orgId, readOnly, canTriggerSync, onConnect
   return (
     <div className="overflow-hidden rounded-[var(--radius-xl)] border border-border bg-card shadow-elev3">
       <div className="border-b border-border p-4">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-accent-600">{c.eyebrow}</p>
-        <h2 className="mt-1.5 font-display text-[22px] font-semibold tracking-tight">{t("setupWizard.heading")}</h2>
+        {/* eslint-disable-next-line no-restricted-syntax -- tracking-[0.1em] differs from the standard Eyebrow's tracking-[1.6px]; not a drop-in swap */}
+        <p className="text-eyebrow font-semibold uppercase tracking-[0.1em] text-accent-600">{c.eyebrow}</p>
+        <h2 className="mt-1.5 font-display text-title font-semibold tracking-tight">{t("setupWizard.heading")}</h2>
         <p className="mt-1.5 text-sm text-muted-foreground">{t("setupWizard.subheading")}</p>
       </div>
 
@@ -141,11 +142,11 @@ export function AirtableConnectRail({ orgId, readOnly, canTriggerSync, onConnect
                 <div className="flex flex-col items-center gap-1">
                   <span
                     className={cn(
-                      "flex h-[22px] w-[22px] items-center justify-center rounded-full text-[11px] font-semibold",
+                      "flex h-[22px] w-[22px] items-center justify-center rounded-full text-eyebrow font-semibold",
                       current
                         ? "bg-primary text-primary-foreground"
                         : done
-                          ? "border border-accent-200 bg-accent-100 text-accent-700"
+                          ? "border border-accent-200 bg-accent-100 text-accent-text"
                           : "border border-border bg-card text-muted-foreground",
                     )}
                   >
@@ -154,7 +155,7 @@ export function AirtableConnectRail({ orgId, readOnly, canTriggerSync, onConnect
                   {!last && <span className="w-px flex-1 bg-border" />}
                 </div>
                 <div className="pb-1.5">
-                  <p className={cn("text-[13px] font-semibold", i <= activeIndex ? "text-foreground" : "text-muted-foreground")}>
+                  <p className={cn("text-control font-semibold", i <= activeIndex ? "text-foreground" : "text-muted-foreground")}>
                     {t(s.titleKey)}
                   </p>
                   <p className="mt-0.5 text-xs leading-4 text-muted-foreground">{t(s.hintKey)}</p>
@@ -245,7 +246,7 @@ function TokenStep({ value, onChange, canWrite }: { value: string; onChange: (v:
   const { t } = useTranslation("settingsAirtable");
   return (
     <div>
-      <h3 className="text-[17px] font-semibold tracking-tight">{t("setupWizard.tokenStepTitle")}</h3>
+      <h3 className="text-title-sm font-semibold tracking-tight">{t("setupWizard.tokenStepTitle")}</h3>
       <p className="mt-1.5 text-sm text-muted-foreground">
         {t("setupWizard.tokenHelpPrefix")}{" "}
         <span className="font-mono text-xs">data.records:read</span> {t("setupWizard.tokenHelpAnd")}{" "}
@@ -288,7 +289,7 @@ function BaseTableStep(p: BaseTableStepProps) {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-        <h3 className="text-[17px] font-semibold tracking-tight">{t("manageDialog.baseTable.label")}</h3>
+        <h3 className="text-title-sm font-semibold tracking-tight">{t("manageDialog.baseTable.label")}</h3>
         {p.schemaState === "accessible" && (
           <Badge variant="secondary" className="gap-1"><CheckCircle2 className="h-3 w-3" /> {t("manageDialog.baseTable.schemaConnected")}</Badge>
         )}

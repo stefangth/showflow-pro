@@ -35,12 +35,12 @@ export function HireOrderReadyBanner({
   icon,
 }: HireOrderReadyBannerProps) {
   return (
-    <div className="flex items-center gap-4 rounded-lg border border-accent-200 bg-accent-50 p-4">
-      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-accent-100 text-accent-700">
+    <div className="flex items-center gap-4 rounded-l border border-accent-200 bg-accent-50 p-4">
+      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-m bg-accent-100 text-accent-text">
         {icon ?? <Sparkles className="h-5 w-5" />}
       </div>
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-semibold text-accent-700">{title}</p>
+        <p className="text-sm font-semibold text-accent-text">{title}</p>
         <p className="mt-0.5 text-sm text-muted-foreground">{description}</p>
       </div>
       <Button size="sm" onClick={onCta} disabled={disabled} title={ctaTitle} className="shrink-0">

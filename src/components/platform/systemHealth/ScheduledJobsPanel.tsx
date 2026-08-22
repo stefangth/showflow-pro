@@ -24,7 +24,7 @@ export function ScheduledJobsPanel({ cronRows, metrics, healthDaily }: {
           const reason = describeJobHealth(c.status, metric, budget);
           const rollup = healthDaily.filter((r) => r.fn === slug);
           return (
-            <div key={c.job_name} className="rounded-lg border border-border p-3">
+            <div key={c.job_name} className="rounded-l border border-border p-3">
               <div className="flex items-center gap-3">
                 <StatusDot state={state} />
                 <span className="font-mono text-sm font-medium flex-1 truncate">{c.job_name}</span>
@@ -50,7 +50,7 @@ export function ScheduledJobsPanel({ cronRows, metrics, healthDaily }: {
                   <summary className="cursor-pointer font-medium text-foreground">
                     Failure history ({c.recentFailures.length} in {SYSTEM_HEALTH.logRetentionDays} days) · last {new Date(c.recentFailures[0].observed_at).toLocaleString()}
                   </summary>
-                  <div className="mt-2 space-y-1 rounded-md bg-muted/40 p-2">
+                  <div className="mt-2 space-y-1 rounded-m bg-muted/40 p-2">
                     {c.recentFailures.map((failure) => (
                       <p key={`${failure.observed_at}-${failure.status_code ?? "none"}`}>
                         {new Date(failure.observed_at).toLocaleString()} · {failure.status_code === null ? "no HTTP response" : `HTTP ${failure.status_code}`} · {failure.error ?? "No error detail recorded"}

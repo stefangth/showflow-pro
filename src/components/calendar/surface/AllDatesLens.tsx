@@ -69,7 +69,8 @@ export function AllDatesLens({ entries, onBlock, hireOrderHref, statusLabels, to
           <span
             key={header.label || 'action'}
             className={cn(
-              'shrink-0 text-[11px] font-semibold uppercase tracking-[1.6px] text-muted-foreground',
+              // eslint-disable-next-line no-restricted-syntax -- inline <span> table-header cell with a width class per column; Eyebrow renders a block <p> and would break the flex row layout
+              'shrink-0 text-eyebrow font-semibold uppercase tracking-[1.6px] text-muted-foreground',
               header.className
             )}
           >
@@ -94,13 +95,13 @@ export function AllDatesLens({ entries, onBlock, hireOrderHref, statusLabels, to
             className="flex flex-col items-start gap-2 border-b border-border/60 px-3.5 py-3 last:border-b-0 hover:bg-muted/50 md:flex-row md:items-center md:gap-3.5 md:py-2.5"
           >
             <div className="flex items-center gap-2 md:contents">
-              <span className="font-mono text-[12.5px] font-medium tabular-nums text-foreground md:w-24 md:shrink-0">
+              <span className="font-mono text-control font-medium tabular-nums text-foreground md:w-24 md:shrink-0">
                 {format(entry.date, 'd MMM', { locale: dfLocale() })}
               </span>
               <span className="text-xs text-muted-foreground md:w-[42px] md:shrink-0">{format(entry.date, 'EEE', { locale: dfLocale() })}</span>
             </div>
             <div className="min-w-0 w-full md:flex-1">
-              <p className="truncate text-[13.5px] font-semibold text-foreground">
+              <p className="truncate text-control font-semibold text-foreground">
                 {entry.program}
                 {entry.subProgram ? ` · ${entry.subProgram}` : ''}
               </p>
@@ -111,7 +112,7 @@ export function AllDatesLens({ entries, onBlock, hireOrderHref, statusLabels, to
             </span>
             <span
               className={cn(
-                'inline-flex h-5 items-center whitespace-nowrap rounded-xs px-1.5 text-[11px] font-medium md:w-[104px] md:shrink-0',
+                'inline-flex h-5 items-center whitespace-nowrap rounded-xs px-1.5 text-eyebrow font-medium md:w-[104px] md:shrink-0',
                 toneSpec.badgeClass
               )}
             >

@@ -108,6 +108,7 @@ export function TemplateInspector({ selected, readOnly, copyDraft, themeDraft, o
           <h3 className="font-display text-sm">{role.label}</h3>
           {role.copyKeys.length > 0 && (
             <div className="space-y-3">
+              {/* eslint-disable-next-line no-restricted-syntax -- non-standard tracking */}
               <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("templateInspector.textSectionHeading")}</p>
               {role.copyKeys.map((key) => {
                 const field = COPY_FIELDS[key];

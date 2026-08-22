@@ -138,7 +138,7 @@ function EmailTemplateEditorWorkspace({ template, orgId, readOnly }: WorkspacePr
     <TemplateEditorShell
       title={template.label}
       breadcrumb={
-        <Link to={ROUTES.SETTINGS} className="text-[13px] font-medium text-accent-text hover:underline">
+        <Link to={ROUTES.SETTINGS} className="text-control font-medium text-accent-text hover:underline">
           {t("emailTemplateEditorPage.breadcrumb")}
         </Link>
       }

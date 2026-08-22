@@ -241,7 +241,7 @@ export function ShowFormDialog({
                   key={s.id}
                   role="group"
                   aria-label={s.name ? t("form.slotGroupNamed", { name: s.name }) : t("form.slotGroupIndex", { index: i + 1 })}
-                  className="space-y-2 rounded-md border border-border p-2.5"
+                  className="space-y-2 rounded-m border border-border p-2.5"
                 >
                   <div className="flex items-center gap-2">
                     <Input
@@ -263,7 +263,7 @@ export function ShowFormDialog({
                         updateSlot(i, { count: digits === "" ? 0 : parseInt(digits, 10) });
                       }}
                     />
-                    <div className="inline-flex overflow-hidden rounded-md border border-border">
+                    <div className="inline-flex overflow-hidden rounded-m border border-border">
                       {(["main", "understudy"] as SlotKind[]).map((k) => (
                         <button
                           key={k}
@@ -309,7 +309,7 @@ export function ShowFormDialog({
             </div>
 
             {slots.length > 0 && (
-              <div className="rounded-md border border-primary/20 bg-primary/5 px-3 py-2 text-xs text-primary">
+              <div className="rounded-m border border-primary/20 bg-primary/5 px-3 py-2 text-xs text-primary">
                 {calloutText}
               </div>
             )}

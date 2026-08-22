@@ -61,21 +61,21 @@ function WeekBlockCard({
       onClick={() => onOpenEntry(block.entryId)}
       style={{ top, height: heightPx }}
       className={cn(
-        'absolute inset-x-1 flex flex-col justify-between overflow-hidden rounded-[6px] border-[0.5px] border-border px-1.5 py-1 text-left shadow-elev1',
+        'absolute inset-x-1 flex flex-col justify-between overflow-hidden rounded-s border-[0.5px] border-border px-1.5 py-1 text-left shadow-elev1',
         TONE_BG[toneSpec.tone]
       )}
     >
       <span aria-hidden="true" className={cn('absolute inset-y-0 left-0 w-[3px]', toneSpec.railClass)} />
-      <span className={cn('truncate pl-1.5 font-mono text-[10px]', TONE_TEXT[toneSpec.tone])}>
+      <span className={cn('truncate pl-1.5 font-mono text-eyebrow', TONE_TEXT[toneSpec.tone])}>
         {minutesToLabel(block.startMinutes)}
       </span>
-      <p className={cn('truncate pl-1.5 text-[12px] font-semibold', TONE_TEXT[toneSpec.tone])}>{block.title}</p>
-      <p className={cn('truncate pl-1.5 text-[10.5px]', TONE_TEXT[toneSpec.tone])}>
+      <p className={cn('truncate pl-1.5 text-caption font-semibold', TONE_TEXT[toneSpec.tone])}>{block.title}</p>
+      <p className={cn('truncate pl-1.5 text-eyebrow', TONE_TEXT[toneSpec.tone])}>
         {[block.venue, block.city].filter(Boolean).join(' · ')}
       </p>
       <div className="flex items-center gap-1.5 pl-1.5">
         <FillMeter segments={block.meter} tone={toneSpec.tone} size="chip" />
-        <span className={cn('font-mono text-[10px] font-medium', TONE_TEXT[toneSpec.tone])}>
+        <span className={cn('font-mono text-eyebrow font-medium', TONE_TEXT[toneSpec.tone])}>
           {filled}/{block.meter.length}
         </span>
       </div>
@@ -116,7 +116,7 @@ export function WeekLens({ entries, anchor, onOpenEntry, today = new Date(), cla
     <div
       data-testid="week-lens"
       className={cn(
-        'flex w-full flex-col overflow-hidden rounded-[10px] border-[0.5px] border-border bg-card shadow-elev2',
+        'flex w-full flex-col overflow-hidden rounded-l border-[0.5px] border-border bg-card shadow-elev2',
         className
       )}
     >
@@ -132,16 +132,17 @@ export function WeekLens({ entries, anchor, onOpenEntry, today = new Date(), cla
               data-testid={`week-day-header-${toDateKey(day)}`}
               className={cn('flex flex-col items-center gap-0.5 border-l-[0.5px] border-border px-1 py-2', isToday && 'bg-accent-50')}
             >
-              <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+              {/* eslint-disable-next-line no-restricted-syntax -- weekday header keeps font-medium (not the standard eyebrow's font-semibold), so <Eyebrow> would change the rendered weight */}
+              <span className="text-eyebrow font-medium uppercase tracking-wide text-muted-foreground">
                 {weekdays[i]}
               </span>
-              <span className={cn('font-mono text-[17px] tabular-nums', isToday ? 'font-semibold text-primary' : 'text-foreground')}>
+              <span className={cn('font-mono text-title-sm tabular-nums', isToday ? 'font-semibold text-primary' : 'text-foreground')}>
                 {day.getDate()}
               </span>
               {unfilled > 0 && (
                 <span
                   data-testid={`week-day-unfilled-${toDateKey(day)}`}
-                  className="font-mono text-[10px] font-semibold leading-none text-warning"
+                  className="font-mono text-eyebrow font-semibold leading-none text-warning"
                 >
                   &minus;{unfilled}
                 </span>
@@ -153,7 +154,8 @@ export function WeekLens({ entries, anchor, onOpenEntry, today = new Date(), cla
 
       {/* "All day / times TBD" strip for untimed dates. */}
       <div className="grid grid-cols-[52px_repeat(7,1fr)] border-b-[0.5px] border-border">
-        <div className="px-1 py-1.5 text-[10px] uppercase tracking-wide text-muted-foreground">{t('calendar.week.tbdLabel')}</div>
+        {/* eslint-disable-next-line no-restricted-syntax -- regular-weight label (not the standard eyebrow's font-semibold), so <Eyebrow> would change the rendered weight */}
+        <div className="px-1 py-1.5 text-eyebrow uppercase tracking-wide text-muted-foreground">{t('calendar.week.tbdLabel')}</div>
         {model.columns.map((day, i) => (
           <div key={toDateKey(day)} className="flex flex-col gap-1 border-l-[0.5px] border-border px-1 py-1.5">
             {(untimedByColumn.get(i) ?? []).map(item => (
@@ -162,7 +164,7 @@ export function WeekLens({ entries, anchor, onOpenEntry, today = new Date(), cla
                 type="button"
                 data-testid={`week-untimed-${item.entryId}`}
                 onClick={() => onOpenEntry(item.entryId)}
-                className="truncate rounded-[4px] bg-muted px-1.5 py-0.5 text-left text-[11px] font-medium text-foreground hover:bg-muted/70"
+                className="truncate rounded-xs bg-muted px-1.5 py-0.5 text-left text-eyebrow font-medium text-foreground hover:bg-muted/70"
               >
                 {item.title}
               </button>
@@ -179,7 +181,7 @@ export function WeekLens({ entries, anchor, onOpenEntry, today = new Date(), cla
               key={m}
               data-testid={`week-hour-${m}`}
               style={{ top: ((m - band.startMinutes) / 60) * HOUR_HEIGHT }}
-              className="absolute right-1.5 -translate-y-1/2 font-mono text-[10px] text-muted-foreground"
+              className="absolute right-1.5 -translate-y-1/2 font-mono text-eyebrow text-muted-foreground"
             >
               {minutesToLabel(m)}
             </span>

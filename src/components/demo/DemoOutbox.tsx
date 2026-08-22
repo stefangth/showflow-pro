@@ -40,6 +40,7 @@ export function DemoOutbox() {
             {sends.map((s) => (
               <li key={s.id} className="py-2">
                 <div className="flex items-center gap-2">
+                  {/* eslint-disable-next-line no-restricted-syntax -- badge kind label, not a standard 11px/1.6px eyebrow */}
                   <Badge variant="outline" className="uppercase">
                     {s.kind}
                   </Badge>

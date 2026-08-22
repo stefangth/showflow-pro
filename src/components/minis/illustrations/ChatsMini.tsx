@@ -33,21 +33,21 @@ export const chatsArt: readonly [ReactNode, ReactNode, ReactNode, ReactNode] = [
         <MiniAvatar initials="IV" tone="bg-accent-600" />
         <MiniAvatar initials="NR" tone="bg-accent-700" />
       </span>
-      <span className="inline-flex h-[22px] items-center rounded-full bg-muted px-2 text-[10px] font-medium text-muted-foreground">+2</span>
+      <span className="inline-flex h-[22px] items-center rounded-full bg-muted px-2 text-eyebrow font-medium text-muted-foreground">+2</span>
     </div>
-    <div className="text-[11px] text-muted-foreground">Admins and producers see every thread</div>
-    <div className="text-[11px] text-muted-foreground">Artists join once booked or once they say yes</div>
+    <div className="text-eyebrow text-muted-foreground">Admins and producers see every thread</div>
+    <div className="text-eyebrow text-muted-foreground">Artists join once booked or once they say yes</div>
   </MiniCard>,
 
   // 03 Talk about the date — outgoing and incoming chat bubbles
   <MiniCard key="c3">
     <div className="flex flex-col gap-1.5">
-      <span className="ml-auto max-w-[85%] rounded-m rounded-br-none bg-accent-500 px-2.5 py-1.5 text-[11px] text-white">
+      <span className="ml-auto max-w-[85%] rounded-m rounded-br-none bg-accent-500 px-2.5 py-1.5 text-eyebrow text-white">
         Doors 19:00, soundcheck moved to 17:30.
       </span>
       <span className="flex flex-col">
-        <span className="text-[10px] font-medium text-muted-foreground">Theo Brandt</span>
-        <span className="mr-auto max-w-[85%] rounded-m rounded-bl-none bg-muted px-2.5 py-1.5 text-[11px] text-foreground">
+        <span className="text-eyebrow font-medium text-muted-foreground">Theo Brandt</span>
+        <span className="mr-auto max-w-[85%] rounded-m rounded-bl-none bg-muted px-2.5 py-1.5 text-eyebrow text-foreground">
           Understood, I will be there at 17:00.
         </span>
       </span>
@@ -57,6 +57,6 @@ export const chatsArt: readonly [ReactNode, ReactNode, ReactNode, ReactNode] = [
   // 04 Archived — read-only after the retention window
   <MiniCard key="c4">
     <MiniWell label="Archived 30 days after the date" trailing={<Badge variant="neutral">Read-only</Badge>} />
-    <div className="text-[11px] text-muted-foreground">Admins keep full access</div>
+    <div className="text-eyebrow text-muted-foreground">Admins keep full access</div>
   </MiniCard>,
 ];

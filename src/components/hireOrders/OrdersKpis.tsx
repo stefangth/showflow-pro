@@ -22,6 +22,7 @@ export function OrdersKpis({ orders }: Props) {
       {tiles.map((t) => (
         <Card key={t.label}>
           <CardContent>
+            {/* eslint-disable-next-line no-restricted-syntax -- not a standard eyebrow; whole tile is slated for KpiTile migration (Task 12) */}
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t.label}</p>
             <p className="mt-1 text-2xl font-semibold tabular-nums text-foreground">{t.value}</p>
           </CardContent>

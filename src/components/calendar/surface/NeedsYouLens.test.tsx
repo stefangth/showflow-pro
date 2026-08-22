@@ -115,7 +115,7 @@ describe('NeedsYouLens', () => {
     expect(screen.getByTestId('needs-you-date-d-ready')).toHaveClass('bg-muted');
 
     // Group headers are color-coded per group key, not all the same violet.
-    expect(screen.getByTestId('needs-you-group-title-expires-today')).toHaveClass('text-accent-700');
+    expect(screen.getByTestId('needs-you-group-title-expires-today')).toHaveClass('text-accent-text');
     expect(screen.getByTestId('needs-you-group-title-ready-to-issue')).toHaveClass('text-[var(--green-600)]');
 
     // Bulk button for expires-today fires onBulk('expires-today', 'confirm').
