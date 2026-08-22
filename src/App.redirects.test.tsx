@@ -13,12 +13,33 @@ function LocationProbe() {
   return <div data-testid="resolved-path">{location.pathname}</div>;
 }
 
+function LocationSearchProbe() {
+  const location = useLocation();
+  return <div data-testid="resolved-path-search">{location.pathname + location.search}</div>;
+}
+
 function LegacyRedirects() {
   return (
     <Routes>
       {legacyRedirectRoutes()}
-      <Route path={ROUTES.DASHBOARD} element={<div>today-page</div>} />
-      <Route path={ROUTES.BOOKINGS} element={<div>dates-page</div>} />
+      <Route
+        path={ROUTES.DASHBOARD}
+        element={
+          <>
+            <div>today-page</div>
+            <LocationSearchProbe />
+          </>
+        }
+      />
+      <Route
+        path={ROUTES.BOOKINGS}
+        element={
+          <>
+            <div>dates-page</div>
+            <LocationSearchProbe />
+          </>
+        }
+      />
       <Route path={ROUTES.HIRE_ORDERS} element={<div>contracts-list-page</div>} />
       <Route
         path={ROUTES.HIRE_ORDER_DETAIL}
@@ -26,6 +47,7 @@ function LegacyRedirects() {
           <>
             <div>contract-detail-page</div>
             <LocationProbe />
+            <LocationSearchProbe />
           </>
         }
       />
@@ -64,5 +86,30 @@ describe('legacy slug redirects', () => {
   it('preserves the id when redirecting a legacy hire-order edit link', () => {
     render(<MemoryRouter initialEntries={['/hire-orders/abc-uuid/edit']}><LegacyRedirects /></MemoryRouter>);
     expect(screen.getByTestId('resolved-path')).toHaveTextContent('/contracts/abc-uuid/edit');
+  });
+
+  it('preserves the query string on a bare legacy redirect', () => {
+    render(<MemoryRouter initialEntries={['/bookings?date=d1&tab=offers']}><LegacyRedirects /></MemoryRouter>);
+    expect(screen.getByTestId('resolved-path-search')).toHaveTextContent('/dates?date=d1&tab=offers');
+  });
+
+  it('preserves the query string on the dashboard legacy redirect', () => {
+    render(<MemoryRouter initialEntries={['/dashboard?foo=bar']}><LegacyRedirects /></MemoryRouter>);
+    expect(screen.getByTestId('resolved-path-search')).toHaveTextContent('/today?foo=bar');
+  });
+
+  it('preserves the query string on a param-preserving legacy hire-order redirect', () => {
+    render(<MemoryRouter initialEntries={['/hire-orders/abc?x=1']}><LegacyRedirects /></MemoryRouter>);
+    expect(screen.getByTestId('resolved-path-search')).toHaveTextContent('/contracts/abc?x=1');
+  });
+
+  it('does not mangle a legacy hire-order id containing a $-replacement sequence', () => {
+    // A string-form `String.prototype.replace` interprets $&, $`, $', $$ in
+    // the replacement text; the function-form fix must pass the id through
+    // verbatim. `$&` is URL-safe and survives MemoryRouter path decoding
+    // unmodified, unlike `$'` which gets percent-decoded oddly across
+    // history implementations.
+    render(<MemoryRouter initialEntries={['/hire-orders/a$&b']}><LegacyRedirects /></MemoryRouter>);
+    expect(screen.getByTestId('resolved-path')).toHaveTextContent('/contracts/a$&b');
   });
 });
