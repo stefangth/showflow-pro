@@ -67,7 +67,7 @@ it("states the people consequence once and leaves the explaining to the panel", 
   // at `people`) showed the duplicate, not some edge case.
   //
   // One owner per fact: the row states the consequence in one line, the way every sibling
-  // does ("A show with no slot count never reads as full."), and PeopleStep owns the
+  // does ("A production with no casting breakdown never reads as full."), and PeopleStep owns the
   // mechanism, the counts and the address/invite explanation. The scoping of that address
   // claim is enforced where it now lives, in PeopleStep.test.tsx.
   const people = bookingOnboarding.steps.people;

@@ -43,7 +43,7 @@ describe("SlotsStep", () => {
     const [mainInput, usInput] = screen.getAllByRole("spinbutton");
     fireEvent.change(mainInput, { target: { value: "4" } });
     fireEvent.change(usInput, { target: { value: "2" } });
-    fireEvent.click(screen.getByRole("button", { name: /save slot counts/i }));
+    fireEvent.click(screen.getByRole("button", { name: /save casting breakdown/i }));
 
     await waitFor(() =>
       expect(saveShowSlots).toHaveBeenCalledWith(expect.anything(), {
@@ -64,7 +64,7 @@ describe("SlotsStep", () => {
 
     const [mainInput] = screen.getAllByRole("spinbutton");
     fireEvent.change(mainInput, { target: { value: "3" } });
-    fireEvent.click(screen.getByRole("button", { name: /save slot counts/i }));
+    fireEvent.click(screen.getByRole("button", { name: /save casting breakdown/i }));
 
     // The single-element slots array asserts no understudy slot was created (an extra
     // element would fail the array match).
@@ -91,7 +91,7 @@ describe("SlotsStep", () => {
 
     const [mainInput] = screen.getAllByRole("spinbutton");
     fireEvent.change(mainInput, { target: { value: "3" } });
-    fireEvent.click(screen.getByRole("button", { name: /save slot counts/i }));
+    fireEvent.click(screen.getByRole("button", { name: /save casting breakdown/i }));
 
     // The submitted array keeps the existing understudy (id + skills intact) and adds the
     // Main slot -- exactly two rows, so the understudy was neither dropped nor duplicated.
@@ -116,7 +116,7 @@ describe("SlotsStep", () => {
       </MemoryRouter>,
     );
     expect(await screen.findByText(/no productions yet/i)).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /save slot counts/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /save casting breakdown/i })).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: /add a production/i })).toHaveAttribute(
       "href",
       expect.stringContaining("/productions"),
@@ -128,8 +128,8 @@ describe("SlotsStep", () => {
       { id: "s2", program: "Set", sub_program: "Done", main_cast_slots: 4, understudy_slots: 2, status: "active" },
     ];
     renderWithProviders(<MemoryRouter><SlotsStep orgId="org-1" onDone={() => {}} /></MemoryRouter>);
-    expect(await screen.findByText(/already has its slot counts set/i)).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /save slot counts/i })).not.toBeInTheDocument();
+    expect(await screen.findByText(/already has its casting breakdown set/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /save casting breakdown/i })).not.toBeInTheDocument();
   });
 
   it("treats a main-only show as already set (understudy optional)", async () => {
@@ -137,7 +137,7 @@ describe("SlotsStep", () => {
       { id: "s4", program: "Solo", sub_program: null, main_cast_slots: 2, understudy_slots: null, status: "active" },
     ];
     renderWithProviders(<MemoryRouter><SlotsStep orgId="org-1" onDone={() => {}} /></MemoryRouter>);
-    expect(await screen.findByText(/already has its slot counts set/i)).toBeInTheDocument();
+    expect(await screen.findByText(/already has its casting breakdown set/i)).toBeInTheDocument();
     expect(screen.queryByText(/Solo/)).not.toBeInTheDocument();
   });
 });
