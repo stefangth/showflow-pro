@@ -153,7 +153,7 @@ export function MonthGrid({
             return (
               <div
                 key={i}
-                className={cn('bg-muted/30', dense ? 'min-h-[62px]' : 'min-h-[104px]')}
+                className={cn('bg-well-tint', dense ? 'min-h-[62px]' : 'min-h-[104px]')}
                 data-testid="month-grid-cell-empty"
               />
             );
@@ -186,9 +186,9 @@ export function MonthGrid({
               className={cn(
                 'relative flex flex-col gap-1 bg-card text-left outline-none transition-colors',
                 dense ? 'min-h-[62px] p-1' : 'min-h-[104px] p-1.5',
-                'hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset',
-                cell.isPast && !cell.isSelected && !cell.inRange && 'bg-muted',
-                (cell.inRange || cell.isSelected) && 'bg-accent-50',
+                'hover:bg-hover-tint focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset',
+                cell.isPast && !cell.isSelected && !cell.inRange && 'bg-well-tint',
+                (cell.inRange || cell.isSelected) && 'bg-accent-tint',
                 cell.isSelected && 'ring-2 ring-inset ring-primary',
                 rangeActive && 'select-none'
               )}
@@ -237,7 +237,7 @@ export function MonthGrid({
                         {(chip.extraSessions ?? 0) > 0 && (
                           <span
                             data-testid={`month-grid-chip-sessions-${key}-${chipIndex}`}
-                            className="inline-flex items-center rounded-xs bg-accent-50 px-1 text-eyebrow font-medium text-accent-text"
+                            className="inline-flex items-center rounded-xs bg-accent-tint px-1 text-eyebrow font-medium text-accent-text"
                           >
                             +{chip.extraSessions}
                           </span>

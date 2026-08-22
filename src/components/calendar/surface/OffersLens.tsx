@@ -92,7 +92,7 @@ export function OffersLens({
               // utility below reproduces a value this card already had.
               className="flex flex-col overflow-hidden rounded-l border border-border bg-card shadow-elev1 md:flex-row md:items-stretch"
             >
-              <div className="flex w-full shrink-0 flex-row items-center justify-start gap-2 border-b border-border bg-muted px-4 py-2.5 text-left md:w-[92px] md:flex-col md:items-center md:justify-center md:gap-0 md:border-b-0 md:border-r md:px-0 md:py-4 md:text-center">
+              <div className="flex w-full shrink-0 flex-row items-center justify-start gap-2 border-b border-border bg-well-tint px-4 py-2.5 text-left md:w-[92px] md:flex-col md:items-center md:justify-center md:gap-0 md:border-b-0 md:border-r md:px-0 md:py-4 md:text-center">
                 <Eyebrow>{format(entry.date, 'EEE', { locale: dfLocale() })}</Eyebrow>
                 <p className="font-mono text-display-sm font-semibold leading-8 tabular-nums text-foreground">
                   {format(entry.date, 'd')}
@@ -174,7 +174,7 @@ export function OffersLens({
         >
           {t('calendar.offersProgress.answeredCount', { answered: answeredCount, total: totalToAnswer })}
         </span>
-        <div className="h-1 w-[120px] shrink-0 overflow-hidden rounded-pill bg-muted">
+        <div className="h-1 w-[120px] shrink-0 overflow-hidden rounded-pill bg-well-tint">
           <div
             data-testid="offers-progress-bar"
             className="h-1 rounded-pill bg-primary"
@@ -183,7 +183,7 @@ export function OffersLens({
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-m border border-border bg-muted">
+      <div className="overflow-hidden rounded-m border border-border bg-well-tint">
         <div className="flex items-center gap-2 border-b border-border px-3.5 py-2.5">
           <Eyebrow>{t('calendar.offersAnswered.title')}</Eyebrow>
           <span className="font-mono text-eyebrow text-muted-foreground">{answeredToday.length}</span>

@@ -84,7 +84,7 @@ export function DayRail({
         actionGates={actionGates}
       />
 
-      <div className="rounded-l border-[0.5px] border-border bg-muted p-3.5">
+      <div className="rounded-l border-[0.5px] border-border bg-well-tint p-3.5">
         <Eyebrow className="mb-2.5">{statsTitle}</Eyebrow>
         <div className="flex flex-col gap-2">
           {stats.map((stat, i) => (

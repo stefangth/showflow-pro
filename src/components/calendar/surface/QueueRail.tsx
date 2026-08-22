@@ -70,7 +70,7 @@ export function QueueRail({ queue, clearedToday, shortlist, onOffer, className }
             {t('calendar.queue.clearedToday', { count: clearedToday })}
           </span>
         </div>
-        <div className="h-1 w-full overflow-hidden rounded-pill bg-muted">
+        <div className="h-1 w-full overflow-hidden rounded-pill bg-well-tint">
           <div
             data-testid="queue-rail-progress-bar"
             className="h-1 rounded-pill bg-primary"
@@ -128,7 +128,7 @@ export function QueueRail({ queue, clearedToday, shortlist, onOffer, className }
         </div>
       )}
 
-      <div data-testid="queue-rail-rules" className="rounded-m border border-border bg-muted p-3.5">
+      <div data-testid="queue-rail-rules" className="rounded-m border border-border bg-well-tint p-3.5">
         <Eyebrow className="mb-2.5">{t('calendar.queue.rulesTitle')}</Eyebrow>
         <ul className="flex flex-col gap-1.5 text-xs text-muted-foreground">
           {RULE_KEYS.map((key) => (

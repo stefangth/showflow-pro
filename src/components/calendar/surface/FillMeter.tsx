@@ -24,7 +24,7 @@ const SIZE_CLASSES: Record<FillMeterSize, { gap: string; bar: string }> = {
 
 /**
  * Segmented fill meter — one bar per slot, tinted by `tone` when filled,
- * `bg-foreground/10` when empty. Presentational only; the caller decides
+ * `bg-well-tint` when empty. Presentational only; the caller decides
  * how many segments and which tone (see `PRODUCER_TONES`/`ARTIST_TONES`).
  */
 export function FillMeter({ segments, tone, label, size = 'row', className }: FillMeterProps) {
@@ -46,7 +46,7 @@ export function FillMeter({ segments, tone, label, size = 'row', className }: Fi
             key={i}
             data-testid="fill-meter-segment"
             data-filled={segment.filled}
-            className={cn(bar, segment.filled ? TONE_FILL[tone] : 'bg-foreground/10')}
+            className={cn(bar, segment.filled ? TONE_FILL[tone] : 'bg-well-tint')}
           />
         ))}
       </div>

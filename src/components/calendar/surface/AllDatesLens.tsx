@@ -64,7 +64,7 @@ export function AllDatesLens({ entries, onBlock, hireOrderHref, statusLabels, to
         className
       )}
     >
-      <div className="hidden items-center gap-3.5 border-b border-border bg-muted px-3.5 py-2.5 md:flex">
+      <div className="hidden items-center gap-3.5 border-b border-border bg-well-tint px-3.5 py-2.5 md:flex">
         {headers.map((header) => (
           <span
             key={header.label || 'action'}
@@ -92,7 +92,7 @@ export function AllDatesLens({ entries, onBlock, hireOrderHref, statusLabels, to
             // restores the desktop single-line row exactly at >=768px
             // (matching `useIsMobile`'s breakpoint) — every `md:`-only
             // utility below reproduces a value this row already had.
-            className="flex flex-col items-start gap-2 border-b border-border/60 px-3.5 py-3 last:border-b-0 hover:bg-muted/50 md:flex-row md:items-center md:gap-3.5 md:py-2.5"
+            className="flex flex-col items-start gap-2 border-b border-border/60 px-3.5 py-3 last:border-b-0 hover:bg-hover-tint md:flex-row md:items-center md:gap-3.5 md:py-2.5"
           >
             <div className="flex items-center gap-2 md:contents">
               <span className="font-mono text-control font-medium tabular-nums text-foreground md:w-24 md:shrink-0">

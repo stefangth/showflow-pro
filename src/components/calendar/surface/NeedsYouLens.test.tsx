@@ -110,9 +110,9 @@ describe('NeedsYouLens', () => {
       'border-[var(--accent-200)]',
       'shadow-elev3'
     );
-    expect(screen.getByTestId('needs-you-date-d-expires')).toHaveClass('bg-accent-50');
+    expect(screen.getByTestId('needs-you-date-d-expires')).toHaveClass('bg-accent-tint');
     expect(screen.getByTestId('needs-you-item-d-ready')).toHaveClass('border-border', 'shadow-elev2');
-    expect(screen.getByTestId('needs-you-date-d-ready')).toHaveClass('bg-muted');
+    expect(screen.getByTestId('needs-you-date-d-ready')).toHaveClass('bg-well-tint');
 
     // Group headers are color-coded per group key, not all the same violet.
     expect(screen.getByTestId('needs-you-group-title-expires-today')).toHaveClass('text-accent-text');

@@ -134,7 +134,7 @@ export function AgendaLens({ entries, onOpenEntry, onAction, actionGates, classN
           className={cn(
             'rounded-s px-2 py-1 text-xs transition-colors',
             grouping === 'per-date'
-              ? 'bg-accent-50 font-medium text-accent-text'
+              ? 'bg-accent-tint font-medium text-accent-text'
               : 'text-muted-foreground hover:text-foreground'
           )}
         >
@@ -148,7 +148,7 @@ export function AgendaLens({ entries, onOpenEntry, onAction, actionGates, classN
           className={cn(
             'rounded-s px-2 py-1 text-xs transition-colors',
             grouping === 'per-show'
-              ? 'bg-accent-50 font-medium text-accent-text'
+              ? 'bg-accent-tint font-medium text-accent-text'
               : 'text-muted-foreground hover:text-foreground'
           )}
         >
@@ -193,7 +193,7 @@ export function AgendaLens({ entries, onOpenEntry, onAction, actionGates, classN
                   // restores the desktop single-line row exactly at >=768px
                   // (matching `useIsMobile`'s breakpoint) — every `md:`-only
                   // utility below reproduces a value this row already had.
-                  className="flex cursor-pointer flex-col items-start gap-2 border-b-[0.5px] border-border px-3.5 py-3 last:border-b-0 hover:bg-muted md:flex-row md:items-center md:gap-3.5 md:py-2.5"
+                  className="flex cursor-pointer flex-col items-start gap-2 border-b-[0.5px] border-border px-3.5 py-3 last:border-b-0 hover:bg-hover-tint md:flex-row md:items-center md:gap-3.5 md:py-2.5"
                 >
                   <div className="shrink-0 md:w-[62px]">
                     <Eyebrow className="tracking-wide">{format(row.entry.date, 'EEE', { locale: dfLocale() })}</Eyebrow>
@@ -204,7 +204,7 @@ export function AgendaLens({ entries, onOpenEntry, onAction, actionGates, classN
                   <div className="flex shrink-0 items-center gap-1.5 md:w-[84px]">
                     <span className="font-mono text-xs tabular-nums text-muted-foreground">{row.time}</span>
                     {row.extraSessions > 0 && (
-                      <span className="inline-flex items-center rounded-xs bg-accent-50 px-1 text-eyebrow font-medium text-accent-text">
+                      <span className="inline-flex items-center rounded-xs bg-accent-tint px-1 text-eyebrow font-medium text-accent-text">
                         +{row.extraSessions}
                       </span>
                     )}
