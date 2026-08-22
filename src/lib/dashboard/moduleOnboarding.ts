@@ -14,41 +14,8 @@ import type {
 type OnbT = TFunction<"onboarding">;
 
 /**
- * The one place this tip is worded, because two surfaces render it and they render it at
- * OPPOSITE times.
- *
- * As a `rules` entry (below) it belongs to the rail's COMPLETE state, so on its own it only
- * ever reached an admin who had already finished setup. The gap it answers is the other one:
- * nothing suggests looking at the app as an artist WHILE you are still building it, which is
- * exactly when the decisions it would inform are being made. So `BookingSetupRail` also
- * prints it in its footer, which is on screen from the first unfinished step onward.
- *
- * Admin (or super-admin) only, wherever it renders: Editor Mode is gated by
- * editorAccess.canUseEditor, so a producer told to use it would be sent to a control that is
- * not in their toolbar.
- *
- * Why the copy (now in the `onboarding` catalog under `viewAsArtist`) is worded the way it
- * is: the hint stops at what the toolbar can deliver. Its "as user" picker is filled from
- * admin-list-users, an auth.users enumeration, so an artist who is on the roster but holds no
- * account is not selectable at all; the always-available fallback is the "Viewing as: Artist"
- * role option, which switches the shell but leaves the admin as themselves, so useMyArtist
- * finds no artist row. Both surfaces sit next to a roster panel that has just said an artist
- * needs no account, which is precisely when the picker is empty, so the precondition is
- * stated rather than assumed.
- *
- * That precondition is the ACCOUNT, not a recent sign-in: the picker enumerates auth.users,
- * so an artist who accepted their invitation and never came back is still in it. "Account" is
- * also the word the product already uses at the one place an admin can check, the artist
- * card's account-status chip (AccountStatusChip: "Active account" / "No account").
- */
-export function viewAsArtistTip(t: OnbT): InheritedRule {
-  return { title: t("viewAsArtist.title"), hint: t("viewAsArtist.hint") };
-}
-
-/**
  * A producer's reachable explanation of what "Production Team" covers versus the admin.
- * Co-located here, the one place a role's narrative already lives (see viewAsArtistTip
- * above), and imported into BookingProducerWaitingCard so both surfaces state it the same
+ * Co-located here, the one place a role's narrative already lives, imported into BookingProducerWaitingCard so both surfaces state it the same
  * way instead of drifting into two versions of the same fact.
  *
  * Rendered by the rules block below regardless of ctx.artistAcceptance: unlike the rules
@@ -137,8 +104,6 @@ export function buildBookingOnboarding(t: OnbT): ModuleOnboardingDef<BookingSetu
         : [
             { title: t("bookingRules.nothingToAccept.title"), hint: t("bookingRules.nothingToAccept.hint") },
           ]),
-      // Admins only, and the same object BookingSetupRail's footer renders.
-      ...(role === "admin" ? [viewAsArtistTip(t)] : []),
       // Producer only: the rail renders this as static title + hint (no href), so the title is
       // declarative, not the clickable link label; the actual link lives on BookingProducerWaitingCard.
       ...(role === "producer" ? [{ title: producerRoleRuleTitle(t), hint: producerRoleNote(t) }] : []),

@@ -406,7 +406,7 @@ export function composeStageChain(input: StageChainInput, t: OnbT): StageChainRe
       progressHint = !input.canEditBooking ? t("stageChain.headline.orgProgressHintReadOnly") : t("stageChain.headline.orgEmptyProgressHint");
     }
     side = admin
-      ? [{ title: t("stageChain.side.seeItAsArtists"), where: t("stageChain.side.editorBarHint") }, { title: t("stageChain.side.readRoleCovers"), where: t("stageChain.side.helpCenter") }]
+      ? [{ title: t("stageChain.side.readRoleCovers"), where: t("stageChain.side.helpCenter") }]
       : [{ title: t("stageChain.side.seeWhatEachRoleCanDo"), where: t("stageChain.side.helpCenter") }, { title: t("stageChain.side.messageAdmin"), where: t("stageChain.side.chats") }];
     queueTitle = t("stageChain.headline.orgQueueTitle");
     queueHint = t("stageChain.headline.orgQueueHint");

@@ -10,7 +10,6 @@ import {
   producerRoleNote,
   producerRoleRuleTitle,
   roleExplainerLinkLabel,
-  viewAsArtistTip,
 } from "./moduleOnboarding";
 import { FEATURE_KEYS, type FeatureKey } from "@/lib/entitlements";
 import { computeBookingSetupStatus } from "@/lib/bookings/setupStatus";
@@ -29,7 +28,6 @@ const ARTIST_ONBOARDING = buildArtistOnboarding(t);
 const PRODUCER_ROLE_NOTE = producerRoleNote(t);
 const PRODUCER_ROLE_RULE_TITLE = producerRoleRuleTitle(t);
 const ROLE_EXPLAINER_LINK_LABEL = roleExplainerLinkLabel(t);
-const VIEW_AS_ARTIST_TIP = viewAsArtistTip(t);
 
 it("every MODULE_ONBOARDING key is a real, still-registered FeatureKey", () => {
   // Not every FeatureKey has an onboarding module (language_packages is a settings-page
@@ -289,61 +287,13 @@ it("every step ctaCapability is a real capability action", () => {
   }
 });
 
-it("offers admins the view-as tip, and never offers it to producers", () => {
-  // Editor Mode is admin-or-super-admin only (editorAccess.canUseEditor), so a producer
-  // shown this rule would be told to use a control they cannot see.
+it("no longer offers the view-as-artist tip to admins now that the editor is super-admin only", () => {
+  // The pencil / editor bar this tip pointed at is now super-admin only
+  // (editorAccess.canUseEditor), so an org admin no longer has that control; the tip was
+  // removed rather than left pointing at something they cannot see.
   const ctx = { orgName: "Test Org", artistAcceptance: true, counts: { pendingConfirmations: 0, openOffers: 0, awaitingCountersign: 0 } };
   const adminTitles = bookingOnboarding.rules("admin", ctx).map((r) => r.title);
-  const producerTitles = bookingOnboarding.rules("producer", ctx).map((r) => r.title);
-  expect(adminTitles).toContain("See it as your artists do");
-  expect(producerTitles).not.toContain("See it as your artists do");
-});
-
-it("points the view-as tip at the control, not at the name of a mode", () => {
-  // Every other hint in this registry tells the reader what happens to them. Naming a
-  // mode as the actor ("Editor Mode can view this app...") leaves an admin hunting for a
-  // menu; the pencil is the thing they actually click.
-  const ctx = { orgName: "Test Org", artistAcceptance: true, counts: { pendingConfirmations: 0, openOffers: 0, awaitingCountersign: 0 } };
-  const tip = bookingOnboarding.rules("admin", ctx).find((r) => r.title === "See it as your artists do")!;
-  expect(tip.hint).toMatch(/^The pencil icon top right/);
-});
-
-it("promises only what the view-as control can actually do, and names its precondition", () => {
-  // Two facts this rule may not overstate. (1) The toolbar's "as user" picker is fed by
-  // the admin-list-users edge function, which enumerates auth.users, so an artist added
-  // to the roster or invited but never signed in is not in that list at all. (2) The
-  // always-available fallback, the "Viewing as: Artist" role option, sets viewAsRole and
-  // no viewAsUser, so useEffectiveUserId still returns the admin and useMyArtist resolves
-  // nothing: they get the artist shell, not that person's data. This rule renders in the
-  // rail's COMPLETE state, straight after the people panel said an artist can be added
-  // before they ever sign in, which is precisely when the picker holds no artists.
-  //
-  // The precondition is stated as the ACCOUNT, not a login. admin-list-users enumerates
-  // auth.users, so an artist who accepted their invitation and has not been back since is
-  // still in the picker, and "once they have logged in" reads as a recency condition that
-  // would have the admin waiting for nothing. "Account" is also the word the product
-  // already uses at the only place an admin can check: the artist card's account-status
-  // chip ("Active account" / "No account", see AccountStatusChip).
-  const ctx = { orgName: "Test Org", artistAcceptance: true, counts: { pendingConfirmations: 0, openOffers: 0, awaitingCountersign: 0 } };
-  const tip = bookingOnboarding.rules("admin", ctx).find((r) => r.title === "See it as your artists do")!;
-  expect(tip.hint).toMatch(/has an account/i);
-  expect(tip.hint).not.toMatch(/logged in|signed in|logs in/i);
-  expect(tip.hint).not.toMatch(/exactly as they do/i);
-  expect(tip.hint).not.toMatch(/\bany artist\b/i);
-});
-
-it("keeps the view-as tip as one shared object, since two surfaces render it", () => {
-  // `rules` is the rail's COMPLETE state, so as a rule alone this tip only ever reached an
-  // admin who had already finished setup. The gap it answers is the opposite one: nothing
-  // suggests viewing the app as an artist WHILE you are still setting it up. So
-  // BookingSetupRail renders it in its own footer too, and that surface is on screen only
-  // while setup is unfinished. One shared builder (viewAsArtistTip) rather than two literals:
-  // a reworded tip that lands on one of the two surfaces is exactly the drift this registry
-  // exists to stop. Both surfaces call the same builder off the same catalog keys, so the
-  // rendered value matches (value equality; the builder returns a fresh object each call).
-  const ctx = ctxFor(true);
-  const fromRules = bookingOnboarding.rules("admin", ctx).find((r) => r.title === VIEW_AS_ARTIST_TIP.title);
-  expect(fromRules).toEqual(VIEW_AS_ARTIST_TIP);
+  expect(adminTitles).not.toContain("See it as your artists do");
 });
 
 it("no inherited rule copy uses em/en dashes", () => {
@@ -446,7 +396,7 @@ it("artist CTA routes are real ROUTES values and no copy uses em/en dashes", () 
 
 // P0.2: a producer had no reachable explanation of what "Production Team" covers versus
 // the admin. The rail's complete-state rules are the one place every role's narrative
-// already lives (VIEW_AS_ARTIST_TIP above is the admin-only precedent), so the explainer
+// already lives, so the explainer
 // joins that block rather than opening a new surface.
 it("gives a producer a reachable explanation of their role, absent for admin", () => {
   const ctx = ctxFor(true);
