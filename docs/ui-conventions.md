@@ -35,6 +35,8 @@ reversed.
 **[review]** A hairline carries elevation on the page. Shadow only where the surface
 floats above another one.
 
+**[review]** Tint backgrounds use the token roles: `bg-hover-tint` for hover washes, `bg-well-tint` for recessed wells / inactive chips / tracks, `bg-accent-tint` for the active count chip / accent wash. Ad-hoc `bg-muted` and `bg-foreground/N` washes are retired in feature code **[ci]**. Solid accent fills stay on the accent scale (`bg-accent-500` etc.); only the low accent washes moved to `bg-accent-tint`.
+
 ## 3. Type
 
 The scale is **48 / 32 / 22 / 17 / 14 / 13 / 12 / 11**.

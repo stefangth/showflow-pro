@@ -449,6 +449,7 @@ When adding a new page:
 
 - **Use semantic tokens only**: `bg-background`, `text-foreground`, `text-primary`, `border-border`, etc. Never hardcode colors like `bg-white` or `text-black` in components.
 - **Accent numbered stops (`accent-50`–`900`) do NOT support Tailwind opacity modifiers** (`bg-accent-500/20`, `text-accent-700/60`, …) — those vars are plain hex, not HSL channels, so the `/<alpha>` silently yields a solid color with no error. For an alpha accent, use a solid stop, an `rgba()` literal, or a dedicated token.
+- **Tint washes** use `bg-hover-tint` / `bg-well-tint` / `bg-accent-tint`. Ad-hoc `bg-muted` and `bg-foreground/N` washes are lint-banned in feature code (Wave 2.1).
 - All design tokens live in `src/index.css` (HSL, except the hex `--accent-50`–`900` scale) and `tailwind.config.ts`.
 - Display font: `font-display` (Geist). Body: default Geist (`font-sans`); mono: `font-mono` (Geist Mono). Fonts are loaded in `index.html` and set in `tailwind.config.ts`.
 - Match the existing component patterns: `Card` for grouped content, `Tabs` for sectioned admin UIs, `Badge` for status pills.
