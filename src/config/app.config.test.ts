@@ -41,27 +41,27 @@ describe("requiredFeatureForPath", () => {
   });
 
   it("gates the hire-order detail route on the hire_orders feature", () => {
-    expect(ROUTE_FEATURES["/hire-orders/:id"]).toBe("hire_orders");
+    expect(ROUTE_FEATURES["/contracts/:id"]).toBe("hire_orders");
   });
 
   it("gates the hire-orders tracking (list) route on the hire_orders feature", () => {
-    expect(ROUTE_FEATURES["/hire-orders"]).toBe("hire_orders");
+    expect(ROUTE_FEATURES["/contracts"]).toBe("hire_orders");
   });
 
   it("gates the hire-order edit (V2 builder) route on the hire_orders feature", () => {
-    expect(ROUTE_FEATURES["/hire-orders/:id/edit"]).toBe("hire_orders");
-    expect(requiredFeatureForPath("/hire-orders/abc-123-uuid/edit")).toBe("hire_orders");
+    expect(ROUTE_FEATURES["/contracts/:id/edit"]).toBe("hire_orders");
+    expect(requiredFeatureForPath("/contracts/abc-123-uuid/edit")).toBe("hire_orders");
   });
 
   it("resolves the detail route via its own 2-segment pattern, not the 3-segment edit pattern", () => {
-    // /hire-orders/:id (2 segs) and /hire-orders/:id/edit (3 segs) must never
+    // /contracts/:id (2 segs) and /contracts/:id/edit (3 segs) must never
     // cross-match — segment count keeps them isolated.
-    expect(requiredFeatureForPath("/hire-orders/abc-123-uuid")).toBe("hire_orders");
-    expect(requiredFeatureForPath("/hire-orders/abc-123-uuid/edit")).toBe("hire_orders");
+    expect(requiredFeatureForPath("/contracts/abc-123-uuid")).toBe("hire_orders");
+    expect(requiredFeatureForPath("/contracts/abc-123-uuid/edit")).toBe("hire_orders");
   });
 
   it("returns undefined for a path with no configured feature", () => {
-    expect(requiredFeatureForPath("/dashboard")).toBeUndefined();
+    expect(requiredFeatureForPath("/today")).toBeUndefined();
   });
 
   it("returns the feature key for a route present in ROUTE_FEATURES", () => {
@@ -70,33 +70,33 @@ describe("requiredFeatureForPath", () => {
   });
 
   it("matches a dynamic `:param` route pattern against a concrete pathname", () => {
-    // The real URL is `/hire-orders/<uuid>`, which never exact-matches the
-    // `/hire-orders/:id` key — the gate must pattern-match or it silently no-ops.
-    expect(requiredFeatureForPath("/hire-orders/abc-123-uuid")).toBe("hire_orders");
+    // The real URL is `/contracts/<uuid>`, which never exact-matches the
+    // `/contracts/:id` key — the gate must pattern-match or it silently no-ops.
+    expect(requiredFeatureForPath("/contracts/abc-123-uuid")).toBe("hire_orders");
   });
 
   it("resolves the plain list route via the exact key, not the dynamic :id pattern", () => {
-    // /hire-orders is its own exact ROUTE_FEATURES entry (the V4 tracking
+    // /contracts is its own exact ROUTE_FEATURES entry (the V4 tracking
     // page) — it must resolve without ever falling through to the
-    // /hire-orders/:id pattern match (segment counts differ: 2 vs 3).
-    expect(requiredFeatureForPath("/hire-orders")).toBe("hire_orders");
+    // /contracts/:id pattern match (segment counts differ: 2 vs 3).
+    expect(requiredFeatureForPath("/contracts")).toBe("hire_orders");
   });
 
   it("does not match the dynamic pattern for the wrong segment count", () => {
-    expect(requiredFeatureForPath("/hire-orders/abc/extra")).toBeUndefined();
+    expect(requiredFeatureForPath("/contracts/abc/extra")).toBeUndefined();
   });
 
   it("does not match an empty `:param` segment", () => {
-    expect(requiredFeatureForPath("/hire-orders/")).toBeUndefined();
+    expect(requiredFeatureForPath("/contracts/")).toBeUndefined();
   });
 
-  it("gates the pdf template editor route on its own exact key, never the /hire-orders/:id pattern", () => {
-    // /settings/hire-orders/template contains the literal segment "hire-orders",
+  it("gates the pdf template editor route on its own exact key, never the /contracts/:id pattern", () => {
+    // /settings/contracts/template contains the literal segment "contracts",
     // but it must resolve via its own exact ROUTE_FEATURES entry — never by
-    // accidentally pattern-matching /hire-orders/:id (different segment counts,
+    // accidentally pattern-matching /contracts/:id (different segment counts,
     // 4 vs 3, keep them isolated regardless).
-    expect(ROUTE_FEATURES["/settings/hire-orders/template"]).toBe("hire_orders");
-    expect(requiredFeatureForPath("/settings/hire-orders/template")).toBe("hire_orders");
+    expect(ROUTE_FEATURES["/settings/contracts/template"]).toBe("hire_orders");
+    expect(requiredFeatureForPath("/settings/contracts/template")).toBe("hire_orders");
   });
 
   it("gates /availability behind booking_flow", () => {

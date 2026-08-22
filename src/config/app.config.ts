@@ -13,20 +13,20 @@ import type { HireOrderTermsSetting } from '@/lib/hireOrders/terms';
  * have the feature enabled (see src/hooks/useEntitlements.ts).
  *
  * Keys may be dynamic route patterns with `:param` segments (e.g.
- * `/hire-orders/:id`); requiredFeatureForPath matches those against the
+ * `/contracts/:id`); requiredFeatureForPath matches those against the
  * concrete pathname so the gate fires for dynamic routes too.
  */
 export const ROUTE_FEATURES: Record<string, FeatureKey> = {
-  '/hire-orders': 'hire_orders',
-  '/hire-orders/:id': 'hire_orders',
-  '/hire-orders/:id/edit': 'hire_orders',
-  '/settings/hire-orders/template': 'hire_orders',
+  '/contracts': 'hire_orders',
+  '/contracts/:id': 'hire_orders',
+  '/contracts/:id/edit': 'hire_orders',
+  '/settings/contracts/template': 'hire_orders',
   '/availability': 'booking_flow',
 };
 
 /** Whether a route pattern (which may carry `:param` segments) matches a
- *  concrete pathname. Pure and segment-based — `/hire-orders/:id` matches
- *  `/hire-orders/abc-uuid` but not `/hire-orders` or `/hire-orders/a/b`. */
+ *  concrete pathname. Pure and segment-based — `/contracts/:id` matches
+ *  `/contracts/abc-uuid` but not `/contracts` or `/contracts/a/b`. */
 function matchesRoutePattern(pattern: string, pathname: string): boolean {
   const patternSegs = pattern.split('/');
   const pathSegs = pathname.split('/');
@@ -39,7 +39,7 @@ function matchesRoutePattern(pattern: string, pathname: string): boolean {
 /**
  * Pure lookup: which FeatureKey (if any) gates a given pathname. Exact static
  * matches win first (fast path); dynamic patterns (keys containing `:`) are
- * then matched segment-by-segment so a real URL like `/hire-orders/<uuid>`
+ * then matched segment-by-segment so a real URL like `/contracts/<uuid>`
  * still resolves to its feature. Without this the route-level entitlement gate
  * would silently never fire for `:param` routes.
  */
@@ -227,9 +227,9 @@ export const ROUTES = {
   HOME: '/',
   LOGIN: '/login',
   SIGNUP: '/signup',
-  DASHBOARD: '/dashboard',
+  DASHBOARD: '/today',
   GET_RUNNING: '/get-running',
-  BOOKINGS: '/bookings',
+  BOOKINGS: '/dates',
   PRODUCTIONS: '/productions',
   ARTISTS: '/artists',
   AVAILABILITY: '/availability',
@@ -245,10 +245,10 @@ export const ROUTES = {
   UNSUBSCRIBE: '/unsubscribe',
   ACCEPT_INVITE: '/accept-invite',
   PLATFORM: '/platform',
-  HIRE_ORDERS: '/hire-orders',
-  HIRE_ORDER_DETAIL: '/hire-orders/:id',
-  HIRE_ORDER_EDIT: '/hire-orders/:id/edit',
-  HIRE_ORDER_TEMPLATE: '/settings/hire-orders/template',
+  HIRE_ORDERS: '/contracts',
+  HIRE_ORDER_DETAIL: '/contracts/:id',
+  HIRE_ORDER_EDIT: '/contracts/:id/edit',
+  HIRE_ORDER_TEMPLATE: '/settings/contracts/template',
   EMAIL_TEMPLATE: '/settings/email-templates/:templateKey',
   SANDBOX: '/sandbox/:token',
 } as const;
