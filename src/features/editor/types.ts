@@ -29,8 +29,8 @@ export type ColumnTemplates = Record<string, Partial<Record<AppRole, ColumnTempl
 export type TablePermissions = Record<string, Partial<Record<AppRole, TablePermissionLevel>>>;
 
 export const DEFAULT_PAGE_ACCESS: PageAccessConfig = {
-  '/dashboard':    ['admin', 'producer', 'artist'],
-  '/bookings':     ['admin', 'producer'],
+  '/today':        ['admin', 'producer', 'artist'],
+  '/dates':        ['admin', 'producer'],
   '/artists':      ['admin', 'producer'],
   '/availability': ['artist'],
   '/admin':        ['admin'],
