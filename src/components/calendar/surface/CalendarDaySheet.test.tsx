@@ -80,7 +80,7 @@ describe('CalendarDaySheet', () => {
 
     // Producer variant never shows the artist-only "Message producer" button.
     expect(screen.queryByTestId('day-sheet-message-producer')).not.toBeInTheDocument();
-    expect(screen.queryByText('Message the office')).not.toBeInTheDocument();
+    expect(screen.queryByText('Message your production team')).not.toBeInTheDocument();
   });
 
   it('artist: shows "Message producer" button firing onMessageProducer', () => {
@@ -101,10 +101,10 @@ describe('CalendarDaySheet', () => {
     // DayDetail's own secondary button (default label "Message producer")
     // must be suppressed — only the sheet's own button renders.
     expect(screen.queryByTestId('day-rail-secondary')).not.toBeInTheDocument();
-    expect(screen.getAllByText('Message the office')).toHaveLength(1);
+    expect(screen.getAllByText('Message your production team')).toHaveLength(1);
 
     const messageBtn = screen.getByTestId('day-sheet-message-producer');
-    expect(messageBtn).toHaveTextContent('Message the office');
+    expect(messageBtn).toHaveTextContent('Message your production team');
     fireEvent.click(messageBtn);
     expect(onMessageProducer).toHaveBeenCalledTimes(1);
 

@@ -17,14 +17,16 @@
   "statusLabels": {
     "offer": {
       "suggested": "Asked",
-      "soft_booked": "Said yes, waiting on you",
+      "soft_booked": "Said yes · waiting on your production team",
+      "soft_booked_autoConfirm": "Said yes",
       "confirmed": "Booked",
       "unanswered": "Not asked yet",
       "cancelled": "Cancelled"
     },
     "direct": {
       "suggested": "Asked",
-      "soft_booked": "Said yes, waiting on you",
+      "soft_booked": "Said yes · waiting on your production team",
+      "soft_booked_autoConfirm": "Said yes",
       "confirmed": "Booked",
       "unanswered": "Not asked yet",
       "cancelled": "Cancelled"

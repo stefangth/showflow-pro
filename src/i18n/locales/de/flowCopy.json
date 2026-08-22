@@ -17,14 +17,16 @@
   "statusLabels": {
     "offer": {
       "suggested": "Angefragt",
-      "soft_booked": "Hat zugesagt, wartet auf dich",
+      "soft_booked": "Zugesagt · wartet auf dein Produktionsteam",
+      "soft_booked_autoConfirm": "Zugesagt",
       "confirmed": "Gebucht",
       "unanswered": "Noch nicht angefragt",
       "cancelled": "Storniert"
     },
     "direct": {
       "suggested": "Angefragt",
-      "soft_booked": "Hat zugesagt, wartet auf dich",
+      "soft_booked": "Zugesagt · wartet auf dein Produktionsteam",
+      "soft_booked_autoConfirm": "Zugesagt",
       "confirmed": "Gebucht",
       "unanswered": "Noch nicht angefragt",
       "cancelled": "Storniert"

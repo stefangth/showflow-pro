@@ -29,7 +29,7 @@ function anAtRisk(overrides: Partial<AtRiskDate> = {}): AtRiskDate {
 describe("AtRiskDateCard: exhausted", () => {
   it("shows the ordinary body and the openCast option for a non-exhausted date", () => {
     render(
-      <AtRiskDateCard item={anAtRisk()} askTimeLabel="19:00" onOpenNextCast={vi.fn()} onOpenDate={vi.fn()} />,
+      <AtRiskDateCard item={anAtRisk()} askTimeLabel="19:00" canAsk canBook onOpenNextCast={vi.fn()} onOpenDate={vi.fn()} />,
     );
     expect(screen.getByText(/Autopilot has asked everyone it can/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Do this" })).toBeInTheDocument();
@@ -40,6 +40,8 @@ describe("AtRiskDateCard: exhausted", () => {
       <AtRiskDateCard
         item={anAtRisk({ exhausted: true, nextCastName: null })}
         askTimeLabel="19:00"
+        canAsk
+        canBook
         onOpenNextCast={vi.fn()}
         onOpenDate={vi.fn()}
       />,
@@ -52,6 +54,8 @@ describe("AtRiskDateCard: exhausted", () => {
       <AtRiskDateCard
         item={anAtRisk({ exhausted: true, nextCastName: null, nextCastFreeCount: 0 })}
         askTimeLabel="19:00"
+        canAsk
+        canBook
         onOpenNextCast={vi.fn()}
         onOpenDate={vi.fn()}
       />,
@@ -65,6 +69,8 @@ describe("AtRiskDateCard: exhausted", () => {
       <AtRiskDateCard
         item={anAtRisk({ exhausted: true, nextCastName: null, nextCastFreeCount: 0, rosterFreeCount: 0 })}
         askTimeLabel="19:00"
+        canAsk
+        canBook
         onOpenNextCast={vi.fn()}
         onOpenDate={vi.fn()}
       />,
@@ -82,6 +88,8 @@ describe("AtRiskDateCard: exhausted", () => {
       <AtRiskDateCard
         item={anAtRisk({ exhausted: true, nextCastName: null, nextCastFreeCount: 0, rosterFreeCount: 4 })}
         askTimeLabel="19:00"
+        canAsk
+        canBook
         onOpenNextCast={vi.fn()}
         onOpenDate={vi.fn()}
       />,

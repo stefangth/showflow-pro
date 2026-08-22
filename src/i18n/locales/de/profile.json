@@ -75,7 +75,7 @@
     "blockedDatesHint_one": "{{count}} gesperrt. Bearbeiten geht in Verfügbarkeit.",
     "blockedDatesHint_other": "{{count}} gesperrt. Bearbeiten geht in Verfügbarkeit.",
     "blockedDatesHintZero": "Keine gesperrt. Bearbeiten geht in Verfügbarkeit.",
-    "office": "Nachricht ans Büro",
+    "office": "Nachricht an dein Produktionsteam",
     "officeHint": "Chats. Für alles, was du hier nicht ändern kannst."
   },
   "language": {

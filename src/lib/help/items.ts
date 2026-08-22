@@ -457,8 +457,8 @@ export const HELP_ITEMS: readonly HelpItem[] = [
     id: 'R3.1', role: 'artist', stage: 3, status: 'new', surface: 'Accept offer', updated: '2026-08-14',
     q: { en: 'I accepted. Am I booked now?', de: 'Ich habe angenommen. Bin ich jetzt gebucht?' },
     a: {
-      en: 'Usually not yet. Accepting now shows the status Said yes, waiting on you: your production team still has the last word before it becomes a booking. Where your organization does not keep the last word, accepting books you immediately instead.',
-      de: 'Meist noch nicht. Das Annehmen zeigt jetzt den Status Hat zugesagt, wartet auf dich: dein Produktionsteam hat noch das letzte Wort, bevor daraus eine Buchung wird. Behält deine Organisation sich das letzte Wort nicht vor, bucht dich das Annehmen sofort.',
+      en: 'Usually not yet. Accepting shows the status Said yes, waiting on your production team: they still have the last word before it becomes a booking. Where your organization does not keep the last word, accepting books you immediately instead, and the status reads Said yes.',
+      de: 'Meist noch nicht. Das Annehmen zeigt den Status Zugesagt, wartet auf dein Produktionsteam: es hat noch das letzte Wort, bevor daraus eine Buchung wird. Behält deine Organisation sich das letzte Wort nicht vor, bucht dich das Annehmen sofort, und der Status heißt nur Zugesagt.',
     },
   },
   {
@@ -513,8 +513,8 @@ export const HELP_ITEMS: readonly HelpItem[] = [
     id: 'R4.3', role: 'artist', stage: 4, status: 'ok', surface: 'Chat panel', updated: '2026-08-14',
     q: { en: 'Who can see this chat? Why is there no chat for a date I was asked about?', de: 'Wer kann diesen Chat sehen? Warum gibt es keinen Chat für einen Termin, zu dem ich gefragt wurde?' },
     a: {
-      en: 'Chat is only available to the production team, admins, and artists who are Booked or Said yes, waiting on you for that date. Being asked is not enough on its own.',
-      de: 'Chat gibt es nur für das Produktionsteam, Admins und Artists mit dem Status Gebucht oder Hat zugesagt, wartet auf dich für diesen Termin. Nur gefragt worden zu sein reicht nicht.',
+      en: 'Chat is only available to the production team, admins, and artists who are Booked or have said yes for that date. Being asked is not enough on its own.',
+      de: 'Chat gibt es nur für das Produktionsteam, Admins und Artists, die für diesen Termin gebucht sind oder zugesagt haben. Nur gefragt worden zu sein reicht nicht.',
     },
   },
   {
@@ -601,8 +601,8 @@ export const HELP_ITEMS: readonly HelpItem[] = [
     id: 'R5.8', role: 'artist', stage: 5, status: 'new', surface: 'Account · Reference sidebar', updated: '2026-08-18',
     q: { en: 'What is the Reference panel on my Account page?', de: 'Was ist das Referenz-Panel auf meiner Kontoseite?' },
     a: {
-      en: 'Three shortcuts, not settings: how booking works here, how many dates you currently have blocked, and a link to message the office. Nothing there changes anything, it just points at where the real controls live.',
-      de: 'Drei Abkürzungen, keine Einstellungen: wie das Buchen hier funktioniert, wie viele Termine du gerade gesperrt hast, und ein Link, um dem Büro zu schreiben. Nichts davon ändert etwas, es zeigt nur, wo die eigentlichen Einstellungen liegen.',
+      en: 'Three shortcuts, not settings: how booking works here, how many dates you currently have blocked, and a link to message your production team. Nothing there changes anything, it just points at where the real controls live.',
+      de: 'Drei Abkürzungen, keine Einstellungen: wie das Buchen hier funktioniert, wie viele Termine du gerade gesperrt hast, und ein Link, um deinem Produktionsteam zu schreiben. Nichts davon ändert etwas, es zeigt nur, wo die eigentlichen Einstellungen liegen.',
     },
   },
   {

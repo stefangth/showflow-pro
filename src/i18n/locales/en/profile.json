@@ -75,7 +75,7 @@
     "blockedDatesHint_one": "{{count}} blocked. Editing them lives in Availability.",
     "blockedDatesHint_other": "{{count}} blocked. Editing them lives in Availability.",
     "blockedDatesHintZero": "None blocked. Editing them lives in Availability.",
-    "office": "Message the office",
+    "office": "Message your production team",
     "officeHint": "Chats. For anything you cannot change here."
   },
   "language": {

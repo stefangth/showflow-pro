@@ -18,8 +18,8 @@ const STEP2 = {
 const STEP3 = {
   label: LABELS.youConfirm,
   text: {
-    en: 'Accepted offers become said yes, waiting on you depending on your setting. Confirming is yours, singly, from the queue, or across a range of dates you select in Month or Season.',
-    de: 'Angenommene Angebote werden je nach Einstellung vorläufig gebucht. Das Bestätigen liegt bei dir, einzeln, aus der Queue, oder für einen Zeitraum, den du in Month oder Season auswählst.',
+    en: 'If your workspace keeps the last word, a yes waits on you to book it. Booking is yours, singly, from the queue, or across a range of dates you select in Month or Season.',
+    de: 'Behält dein Workspace das letzte Wort, wartet eine Zusage darauf, dass du buchst. Das Buchen liegt bei dir, einzeln, aus der Queue, oder für einen Zeitraum, den du in Month oder Season auswählst.',
   },
 };
 const STEP4 = {

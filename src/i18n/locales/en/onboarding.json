@@ -314,7 +314,7 @@
       "hireName": "Contract",
       "hireOnLine": "You sign in the browser. The countersigned PDF lands in your mail.",
       "hireOnMetricLabel": "to sign",
-      "hireOffLine": "The office emails your paperwork after you are booked.",
+      "hireOffLine": "Your production team emails your paperwork after you are booked.",
       "hireOffNeeds": "Nothing for you to do here"
     },
     "org": {
@@ -433,7 +433,7 @@
       "chats": "Chats",
       "howBookingWorksHere": "How booking works here",
       "rulesYouInherited": "The rules you inherited",
-      "messageOffice": "Message the office",
+      "messageOffice": "Message your production team",
       "blockingIsHowYouSayNo": "Blocking is how you say no",
       "availability": "Availability",
       "seeItAsArtists": "See it as your artists do",

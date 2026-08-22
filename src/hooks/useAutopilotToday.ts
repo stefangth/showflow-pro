@@ -61,11 +61,13 @@ export interface UseAutopilotTodayResult {
  *  - `fillingOnTheirOwn` = dates with an open offer tier, minus the ones
  *    flagged at-risk — i.e. tiers quietly filling on their own. Not a full
  *    season count (that needs a fetcher this task doesn't add).
- *  - `bookedOvernight` = count of "book"-kind feed rows (dates with an
- *    overnight acceptance), not a per-artist count — a "book" row's `names`
- *    is a comma-joined string, not an id list per artist, so counting
- *    accepted artists exactly would mean parsing it rather than reading it.
- * Both are flagged in the task report as approximations, not exact figures.
+ *  - `bookedOvernight` = the number of ARTISTS who accepted overnight, summed
+ *    from each "book" row's own `count` (which `fetchAutopilotFeed` sets to
+ *    that row's artist count). It used to count the ROWS, i.e. the dates with
+ *    an acceptance, while the copy around it says "N artists" — five
+ *    acceptances across two dates read as "2 artists", and the Classic wording
+ *    turns that into an instruction ("waiting on you to book them").
+ * `fillingOnTheirOwn` is still an approximation, not an exact figure.
  */
 export interface UseAutopilotTodayOptions {
   /**
@@ -88,7 +90,21 @@ export function useAutopilotToday(options?: UseAutopilotTodayOptions): UseAutopi
   const times = timesQ.data ?? DEFAULT_FLOW_TIMES;
 
   const modelQ = useQuery({
-    queryKey: ["autopilot", "today", orgId, flow.offer_delivery, times.offerDigestHour, times.confirmationDigestHour],
+    // Every flow/times value the MODEL is built from belongs in the key: the query
+    // is not re-run just because the closure changed, so a value left out here
+    // serves a cached model built under the old setting. `offer_delivery` was
+    // already listed for `feedAffordance`; `producer_confirmation` decides the
+    // board's said-yes-vs-booked wording (`TodayModel.producerConfirmation`) and
+    // would otherwise keep the pre-change copy after an admin switches the flow.
+    queryKey: [
+      "autopilot",
+      "today",
+      orgId,
+      flow.offer_delivery,
+      flow.producer_confirmation,
+      times.offerDigestHour,
+      times.confirmationDigestHour,
+    ],
     enabled: !!orgId && enabled,
     queryFn: async (): Promise<TodayModel> => {
       const now = new Date();
@@ -109,7 +125,9 @@ export function useAutopilotToday(options?: UseAutopilotTodayOptions): UseAutopi
 
       const distinctOpenTierDates = new Set(tierAttentionRows.map((r) => r.showDateId));
       const fillingOnTheirOwn = Math.max(0, distinctOpenTierDates.size - atRiskShowDateIds.length);
-      const bookedOvernight = feed.filter((row) => row.kind === "book").length;
+      const bookedOvernight = feed
+        .filter((row) => row.kind === "book")
+        .reduce((total, row) => total + row.count, 0);
 
       return computeToday(
         {

@@ -46,7 +46,7 @@
       "empty": "An diesem Tag wurde dir nichts angefragt.",
       "primaryAccept": "Anfrage beantworten",
       "primaryBlock": "Termin sperren",
-      "messageProducer": "Büro schreiben"
+      "messageProducer": "Produktionsteam schreiben"
     },
     "monthFlag": {
       "answer": "antwort",
@@ -56,8 +56,7 @@
       "offerLabel": "Anfrage · {{program}}",
       "holdPlaced": "Zugesagt",
       "accept": "Ja, ich kann",
-      "decline": "Nein, diesmal nicht",
-      "awaitingConfirmation": "Wartet auf das letzte Wort vom Büro"
+      "decline": "Nein, diesmal nicht"
     },
     "offersProgress": {
       "keyboardHint": "A ja · D nein · B sperren · J weiter",
@@ -95,7 +94,7 @@
     },
     "popover": {
       "confirmed": "Gebucht",
-      "hold": "Zugesagt · wartet auf das letzte Wort vom Büro"
+      "hold": "Zugesagt · wartet auf dein Produktionsteam"
     },
     "legend": {
       "title": "Legende:",
@@ -141,7 +140,7 @@
       "eligibilityTitle": "Wer angefragt wird, ergibt sich aus deiner Besetzung",
       "eligibilityBody": "Ein Termin erscheint, wenn eine Besetzung, in der du bist, dafür angefragt werden kann und du alle nötigen Skills hast.",
       "offersTitle": "Anfragen kommen per E-Mail",
-      "offersBody": "Eine tägliche Sendung um {{time}}, nie eine Mail pro Termin. Wenn du zusagst, hältst du dir den Platz frei, bis das Büro das letzte Wort hat.",
+      "offersBody": "Eine tägliche Sendung um {{time}}, nie eine Mail pro Termin. Wenn du zusagst, hältst du dir den Platz frei, bis dein Produktionsteam das letzte Wort hat.",
       "offersBodyDirect": "Du wirst direkt gebucht, es gibt also nichts zu beantworten.",
       "windowTitle": "Antworte innerhalb von {{hours}} Stunden",
       "windowBody": "Danach läuft die Anfrage ab und geht an die Nächsten in der Reihe."

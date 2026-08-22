@@ -42,11 +42,21 @@ export function bookingsViewCopy(flow: BookingFlow, t: FlowT): PageCopy {
 // Shared by AvailabilityPage and ArtistBookingsView (both kept private copies
 // before). suggested/soft_booked are unreachable in direct mode but keep sane
 // fallbacks; cancelled only renders in the bookings view.
+//
+// These labels are read by an ARTIST looking at their own date, so `soft_booked`
+// is written from the artist's side: a yes they have already given, waiting on
+// their production team. It used to read "Said yes, waiting on you", which is the
+// producer's view of the same row and told the artist to act when the to-do is the
+// production team's. It is also flow-aware: an org that does not keep the last word
+// (producer_confirmation off) has nobody to wait for, so the waiting clause is
+// dropped rather than promising a confirmation step the org does not run.
 export function bookingStatusLabels(flow: BookingFlow, t: FlowT): Record<string, string> {
   if (!flow.artist_acceptance) {
     return {
       suggested: t("statusLabels.direct.suggested"),
-      soft_booked: t("statusLabels.direct.soft_booked"),
+      soft_booked: flow.producer_confirmation
+        ? t("statusLabels.direct.soft_booked")
+        : t("statusLabels.direct.soft_booked_autoConfirm"),
       confirmed: t("statusLabels.direct.confirmed"),
       unanswered: t("statusLabels.direct.unanswered"),
       cancelled: t("statusLabels.direct.cancelled"),
@@ -54,7 +64,9 @@ export function bookingStatusLabels(flow: BookingFlow, t: FlowT): Record<string,
   }
   return {
     suggested: t("statusLabels.offer.suggested"),
-    soft_booked: t("statusLabels.offer.soft_booked"),
+    soft_booked: flow.producer_confirmation
+      ? t("statusLabels.offer.soft_booked")
+      : t("statusLabels.offer.soft_booked_autoConfirm"),
     confirmed: t("statusLabels.offer.confirmed"),
     unanswered: t("statusLabels.offer.unanswered"),
     cancelled: t("statusLabels.offer.cancelled"),

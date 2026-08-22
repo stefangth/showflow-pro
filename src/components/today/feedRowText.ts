@@ -11,10 +11,25 @@ import type { FeedRow } from "@/lib/autopilot/today";
  * navigation fallbacks, so they render the exact same text rather than
  * `TodayPage` keeping its own English copy.
  */
-export function feedRowText(t: TFunction<"today">, row: FeedRow): string {
+export function feedRowText(
+  t: TFunction<"today">,
+  row: FeedRow,
+  opts?: { producerConfirmation?: boolean; canBook?: boolean },
+): string {
   switch (row.kind) {
     case "book":
-      return t("feed.book", { count: row.count, names: row.names, show: row.show, date: row.date });
+      // A "book" row is an artist saying yes. Whether that yes IS a booking depends
+      // on the org's flow: with producer_confirmation on (Classic) it is only a hold
+      // until someone books it, so the row may not claim the place is theirs. Who
+      // that someone is depends on the VIEWER: a producer whose org revoked
+      // `confirm_bookings` cannot book, so the row names an admin instead of telling
+      // them to do it. Autopilot orgs (a yes books on its own) keep booked wording.
+      if (!opts?.producerConfirmation) {
+        return t("feed.book", { count: row.count, names: row.names, show: row.show, date: row.date });
+      }
+      return opts.canBook === false
+        ? t("feed.bookHoldAdmin", { count: row.count, names: row.names, show: row.show, date: row.date })
+        : t("feed.bookHold", { count: row.count, names: row.names, show: row.show, date: row.date });
     case "ask":
       return t("feed.ask", { count: row.count, show: row.show, date: row.date });
     case "draft":
