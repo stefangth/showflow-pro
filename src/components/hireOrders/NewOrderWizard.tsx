@@ -802,7 +802,7 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
                     {selectedArtistIds.length > 0 && selectedShowDateIds.length > 0 && (
                       <div className="overflow-x-auto rounded-l border">
                         <table className="w-full text-left text-sm">
-                          <thead className="bg-muted/50 text-xs text-muted-foreground">
+                          <thead className="bg-well-tint text-xs text-muted-foreground">
                             <tr>
                               <th className="px-3 py-2 font-medium">{t("wizard.colArtist")}</th>
                               {selectedShowDateIds.map((showDateId) => {
