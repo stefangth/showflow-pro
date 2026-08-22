@@ -56,6 +56,7 @@ export function TierLadder({ rows, city, openedTiers, statusByTier, nextTier, on
   return (
     <Card elevation={2}>
       <CardHeader className="space-y-1.5">
+        {/* eslint-disable-next-line no-restricted-syntax -- CardTitle label, not a standard 11px/1.6px eyebrow */}
         <CardTitle className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           {t("tierLadder.title")}
         </CardTitle>

@@ -74,7 +74,7 @@ export function EmailPreviewPane({
         </Alert>
       ) : null}
       {pending ? (
-        <p role="status" className="absolute right-3 top-3 z-10 rounded-md bg-background/90 px-2 py-1 text-xs text-muted-foreground shadow">
+        <p role="status" className="absolute right-3 top-3 z-10 rounded-m bg-background/90 px-2 py-1 text-xs text-muted-foreground shadow">
           {t("emailPreviewPane.updating")}
         </p>
       ) : null}

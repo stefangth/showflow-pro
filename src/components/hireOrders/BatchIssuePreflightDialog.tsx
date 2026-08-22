@@ -93,7 +93,7 @@ export function BatchIssuePreflightDialog({
         {isLoading ? (
           <Skeleton className="h-24 w-full" />
         ) : isError ? (
-          <div className="flex items-center gap-2.5 rounded-lg border border-border p-3">
+          <div className="flex items-center gap-2.5 rounded-l border border-border p-3">
             <AlertTriangle className="h-4 w-4 shrink-0 text-[var(--amber-600)]" />
             <p className="text-sm text-muted-foreground">{t("batchPreflight.checkErrorDetail")}</p>
           </div>
@@ -101,7 +101,7 @@ export function BatchIssuePreflightDialog({
           blocked.length > 0 && (
             <div className="max-h-64 space-y-2 overflow-y-auto">
               {blocked.map(({ order, blockers }) => (
-                <div key={order.id} className="rounded-lg border border-border p-3">
+                <div key={order.id} className="rounded-l border border-border p-3">
                   <p className="text-sm font-medium">{order.artistName}</p>
                   <p className="font-mono text-xs text-muted-foreground">{order.order_no ?? t("batchPreflight.draftFallback")}</p>
                   <p className="mt-1 text-xs text-[var(--amber-600)]">

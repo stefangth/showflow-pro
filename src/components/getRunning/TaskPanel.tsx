@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Eyebrow } from "@/components/ui/eyebrow";
 import { ROUTES } from "@/config/app.config";
 import { useOrgAdminNames } from "@/hooks/useOrgAdminNames";
 import { adminDisplayName } from "@/data/orgAdmins";
@@ -146,9 +147,9 @@ export function TaskPanel({ task, orgId, onClose, onNext }: TaskPanelProps): JSX
     >
       <div className="border-b border-border p-4">
         <div className="flex items-start justify-between gap-3">
-          <div className="text-[11px] font-semibold uppercase tracking-[1.6px] text-accent-600">
+          <Eyebrow className="text-accent-600">
             {t(eyebrowKey)}
-          </div>
+          </Eyebrow>
           <button
             type="button"
             onClick={onClose}
@@ -158,10 +159,10 @@ export function TaskPanel({ task, orgId, onClose, onNext }: TaskPanelProps): JSX
             <X className="h-4 w-4" />
           </button>
         </div>
-        <div className="mt-1.5 text-[22px] font-semibold tracking-[-0.3px] text-foreground">
+        <div className="mt-1.5 text-title font-semibold tracking-[-0.3px] text-foreground">
           {t(`tasks.${task.key}.title`)}
         </div>
-        <p className="mt-1.5 text-[13px] leading-[19px] text-muted-foreground text-pretty">
+        <p className="mt-1.5 text-control leading-[19px] text-muted-foreground text-pretty">
           {t(`tasks.${task.key}.description`)}
         </p>
       </div>

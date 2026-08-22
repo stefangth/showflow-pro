@@ -229,7 +229,7 @@ export default function ArtistsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h1 className="font-display text-[32px] font-semibold tracking-tight">{t('page.title')}</h1>
+          <h1 className="font-display text-display-sm font-semibold tracking-tight">{t('page.title')}</h1>
           <p className="text-muted-foreground mt-1">{t('page.subtitle')}</p>
         </div>
         <div className="flex items-center gap-2">
@@ -250,7 +250,7 @@ export default function ArtistsPage() {
                 <Input type="email" placeholder={t('page.dialog.emailPlaceholder')} value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} required={alsoInvite} />
                 <Input placeholder={t('page.dialog.phonePlaceholder')} value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} />
                 <Textarea placeholder={t('page.dialog.bioPlaceholder')} value={form.bio} onChange={e => setForm(f => ({ ...f, bio: e.target.value }))} />
-                <div className="flex items-start gap-2 rounded-md border border-border p-3">
+                <div className="flex items-start gap-2 rounded-m border border-border p-3">
                   <Checkbox id="also-invite" checked={alsoInvite} onCheckedChange={(v) => setAlsoInvite(!!v)} className="mt-0.5" />
                   <div className="space-y-1">
                     <label htmlFor="also-invite" className="text-sm font-medium leading-none">{t('page.dialog.alsoInvite')}</label>
@@ -286,7 +286,7 @@ export default function ArtistsPage() {
 
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[1,2,3].map(i => <Skeleton key={i} className="h-40 rounded-lg" />)}
+          {[1,2,3].map(i => <Skeleton key={i} className="h-40 rounded-l" />)}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -302,7 +302,7 @@ export default function ArtistsPage() {
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center gap-3">
                         <div
-                          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[12px] font-semibold"
+                          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-caption font-semibold"
                           style={{ backgroundColor: getAvatarTone(artist.id).bg, color: getAvatarTone(artist.id).text }}
                         >
                           {artist.name.charAt(0).toUpperCase()}
@@ -368,18 +368,19 @@ export default function ArtistsPage() {
                     </div>
                     {skills.length > 0 && (
                       <div className="grid grid-cols-[52px_1fr] items-start gap-2 mb-2.5">
-                        <p className="text-[11px] font-semibold uppercase leading-5 tracking-[1.6px] text-muted-foreground">{t('page.skillsLabel')}</p>
+                        {/* eslint-disable-next-line no-restricted-syntax -- keeps explicit leading-5 (behavior-preserving); not a straight Eyebrow swap */}
+                        <p className="text-eyebrow font-semibold uppercase leading-5 tracking-[1.6px] text-muted-foreground">{t('page.skillsLabel')}</p>
                         <div className="flex flex-wrap gap-1">
                           {skills.slice(0, 3).map(s => (
                             <span
                               key={s.id}
-                              className="inline-flex h-5 items-center rounded-[4px] bg-accent-100 px-1.5 text-[11px] font-medium text-accent-700"
+                              className="inline-flex h-5 items-center rounded-xs bg-accent-100 px-1.5 text-eyebrow font-medium text-accent-text"
                             >
                               {s.name}
                             </span>
                           ))}
                           {skills.length > 3 && (
-                            <span className="inline-flex h-5 items-center rounded-[4px] px-1.5 font-mono text-[11px] font-medium text-muted-foreground">
+                            <span className="inline-flex h-5 items-center rounded-xs px-1.5 font-mono text-eyebrow font-medium text-muted-foreground">
                               +{skills.length - 3}
                             </span>
                           )}
@@ -388,12 +389,13 @@ export default function ArtistsPage() {
                     )}
                     {artistCasts?.get(artist.id) && artistCasts.get(artist.id)!.length > 0 && (
                       <div className="grid grid-cols-[52px_1fr] items-start gap-2 border-t border-border pt-2.5 mt-2.5">
-                        <p className="text-[11px] font-semibold uppercase leading-5 tracking-[1.6px] text-muted-foreground">{t('page.castsLabel')}</p>
+                        {/* eslint-disable-next-line no-restricted-syntax -- keeps explicit leading-5 (behavior-preserving); not a straight Eyebrow swap */}
+                        <p className="text-eyebrow font-semibold uppercase leading-5 tracking-[1.6px] text-muted-foreground">{t('page.castsLabel')}</p>
                         <div className="flex flex-wrap gap-1">
                           {artistCasts.get(artist.id)!.map(c => (
                             <span
                               key={c.id}
-                              className="inline-flex h-5 items-center rounded-[4px] border-[0.5px] border-[var(--line-strong)] px-1.5 text-[11px] font-medium text-muted-foreground"
+                              className="inline-flex h-5 items-center rounded-xs border-[0.5px] border-[var(--line-strong)] px-1.5 text-eyebrow font-medium text-muted-foreground"
                             >
                               {c.name}
                             </span>

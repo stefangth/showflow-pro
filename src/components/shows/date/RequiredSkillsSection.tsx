@@ -43,7 +43,8 @@ export function RequiredSkillsSection({
             return (
               <Badge key={id} variant="outline" className="gap-1 border-dashed border-[var(--line-strong)]">
                 <span className="line-through text-[var(--text-faint)]">{name}</span>
-                <span className="text-[10px] uppercase text-[var(--text-faint)]">{t("requiredSkillsSection.droppedOnDate")}</span>
+                {/* eslint-disable-next-line no-restricted-syntax -- inline badge suffix, not a block eyebrow */}
+                <span className="text-eyebrow uppercase text-[var(--text-faint)]">{t("requiredSkillsSection.droppedOnDate")}</span>
                 <IconTooltip label={t("requiredSkillsSection.restore", { name })}>
                   <button
                     type="button"
@@ -61,7 +62,8 @@ export function RequiredSkillsSection({
           return (
             <Badge key={id} variant="secondary" className="gap-1">
               {name}
-              <span className="text-[10px] uppercase text-muted-foreground">{t("requiredSkillsSection.fromShow")}</span>
+              {/* eslint-disable-next-line no-restricted-syntax -- inline badge suffix, not a block eyebrow */}
+              <span className="text-eyebrow uppercase text-muted-foreground">{t("requiredSkillsSection.fromShow")}</span>
               <IconTooltip label={t("requiredSkillsSection.dropOnDate", { name })}>
                 <button
                   type="button"

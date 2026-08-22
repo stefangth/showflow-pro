@@ -1,9 +1,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { StatusPill, StatusDot } from "./primitives";
+import { StatusPill } from "@/components/ui/status-pill";
+import { StatusDot } from "@/components/ui/status-dot";
 import { redactEmail, redactEmailsInText } from "@/lib/identity";
 import { EMAIL_HEALTH } from "@/config/app.config";
-import type { EmailHealth, HealthState } from "@/lib/systemHealth";
+import { healthTone, healthLabel, type EmailHealth, type HealthState } from "@/lib/systemHealth";
 
 const pct = (n: number) => `${(n * 100).toFixed(n >= 0.01 || n === 0 ? 1 : 2)}%`;
 const toneForRate = (rate: number, warn: number, down: number) =>
@@ -11,7 +12,7 @@ const toneForRate = (rate: number, warn: number, down: number) =>
 
 function Kpi({ label, value, sub, tone }: { label: string; value: string; sub: string; tone: string }) {
   return (
-    <div className="rounded-lg bg-muted/40 p-3">
+    <div className="rounded-l bg-muted/40 p-3">
       <div className="text-xs text-muted-foreground">{label}</div>
       <div className={`mt-1 text-2xl font-medium tabular-nums ${tone}`}>{value}</div>
       <div className="mt-1 text-xs text-muted-foreground">{sub}</div>
@@ -31,9 +32,9 @@ export function EmailDeliveryPanel({
     <Card>
       <CardHeader className="flex flex-row items-center gap-3 space-y-0">
         <CardTitle className="font-display text-base">Email delivery</CardTitle>
-        <StatusPill state={state} />
+        <StatusPill tone={healthTone(state)} dot>{healthLabel(state)}</StatusPill>
         <span className="flex-1" />
-        <div className="inline-flex overflow-hidden rounded-md border border-border text-xs">
+        <div className="inline-flex overflow-hidden rounded-m border border-border text-xs">
           {EMAIL_HEALTH.windowOptions.map((m) => (
             <button key={m} onClick={() => onWindowChange(m)}
               className={`px-3 py-1 ${window === m ? "bg-muted font-medium text-foreground" : "text-muted-foreground"}`}>
@@ -58,8 +59,8 @@ export function EmailDeliveryPanel({
           <div className="mb-2 text-sm font-medium text-muted-foreground">By template</div>
           <div className="space-y-1.5">
             {h.byTemplate.map((t) => (
-              <div key={t.templateName} className="flex items-center gap-3 rounded-lg border border-border p-2.5">
-                <StatusDot state={t.bounced > 0 || t.failed > 0 ? "degraded" : "operational"} />
+              <div key={t.templateName} className="flex items-center gap-3 rounded-l border border-border p-2.5">
+                <StatusDot tone={healthTone(t.bounced > 0 || t.failed > 0 ? "degraded" : "operational")} />
                 <span className="flex-1 truncate font-mono text-sm">{t.templateName}</span>
                 <span className="text-xs text-muted-foreground">{t.sent} sent · {t.bounced} bounced · {t.failed} failed</span>
                 <span className="min-w-[52px] text-right text-sm font-medium tabular-nums">{pct(t.deliveryRate)}</span>
@@ -74,7 +75,7 @@ export function EmailDeliveryPanel({
           <div className="space-y-1.5">
             {h.recentIssues.map((i, idx) => (
               <div key={idx} className="flex items-center gap-3 border-b border-border py-1.5 last:border-0">
-                <Badge variant="outline" className={`text-[11px] ${badge(i.status)}`}>{i.status}</Badge>
+                <Badge variant="outline" className={`text-eyebrow ${badge(i.status)}`}>{i.status}</Badge>
                 <span className="font-mono text-xs text-muted-foreground">{redactEmail(i.recipientEmail)}</span>
                 <span className="flex-1 truncate text-xs text-muted-foreground">{redactEmailsInText(i.errorMessage) ?? i.templateName}</span>
                 <span className="text-xs text-muted-foreground">{new Date(i.occurredAt).toLocaleString()}</span>

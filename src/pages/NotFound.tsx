@@ -13,8 +13,8 @@ const NotFound = () => {
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted">
       <div className="text-center">
-        <h1 className="mb-4 text-[48px] font-display font-semibold tracking-tight">404</h1>
-        <p className="mb-4 text-[18px] text-muted-foreground">{t("notFound.subtitle")}</p>
+        <h1 className="mb-4 text-display font-display font-semibold tracking-tight">404</h1>
+        <p className="mb-4 text-title-sm text-muted-foreground">{t("notFound.subtitle")}</p>
         <a href="/" className="text-primary underline hover:text-primary/90">
           {t("notFound.returnHome")}
         </a>

@@ -3,6 +3,7 @@ import { DISPLAY_ORDER, RISK_WINDOW_DAYS } from '@/lib/calendar/needsYou';
 import type { NeedsYouGroupKey, NeedsYouQueue } from '@/lib/calendar/needsYou';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { Eyebrow } from '@/components/ui/eyebrow';
 
 export interface QueueShortlistArtist {
   artistId: string;
@@ -64,9 +65,7 @@ export function QueueRail({ queue, clearedToday, shortlist, onOffer, className }
     <div data-testid="queue-rail" className={cn('flex flex-col gap-3', className)}>
       <div data-testid="queue-rail-progress" className="rounded-m border border-border bg-card p-3.5">
         <div className="mb-2 flex items-baseline justify-between gap-2">
-          <p className="text-[11px] font-semibold uppercase tracking-[1.6px] text-muted-foreground">
-            {t('calendar.queue.clearQueueTitle')}
-          </p>
+          <Eyebrow>{t('calendar.queue.clearQueueTitle')}</Eyebrow>
           <span className="whitespace-nowrap font-mono text-xs font-medium tabular-nums text-foreground">
             {t('calendar.queue.clearedToday', { count: clearedToday })}
           </span>
@@ -83,7 +82,7 @@ export function QueueRail({ queue, clearedToday, shortlist, onOffer, className }
             {breakdown.map(({ key, count }) => (
               <div key={key} className="flex items-center gap-2">
                 <span className={cn('h-1 w-2.5 shrink-0 rounded-full', GROUP_DOT_CLASS[key])} />
-                <span className="text-[12.5px] text-foreground">
+                <span className="text-control text-foreground">
                   {t(`calendar.needsYou.groups.${key}`, { days: RISK_WINDOW_DAYS })}
                 </span>
                 <span className="ml-auto font-mono text-xs font-medium tabular-nums text-foreground">
@@ -98,9 +97,7 @@ export function QueueRail({ queue, clearedToday, shortlist, onOffer, className }
       {shortlist && (
         <div data-testid="queue-rail-shortlist" className="overflow-hidden rounded-m border border-border bg-card">
           <div className="border-b border-border px-3.5 py-2.5">
-            <p className="text-[11px] font-semibold uppercase tracking-[1.6px] text-muted-foreground">
-              {t('calendar.queue.shortlistTitle')}
-            </p>
+            <Eyebrow>{t('calendar.queue.shortlistTitle')}</Eyebrow>
             <p className="mt-0.5 truncate text-xs text-muted-foreground">{shortlist.dateLabel}</p>
           </div>
           {shortlist.artists.length > 0 ? (
@@ -110,7 +107,7 @@ export function QueueRail({ queue, clearedToday, shortlist, onOffer, className }
                 data-testid={`queue-shortlist-row-${artist.artistId}`}
                 className="flex items-center gap-3 border-b border-border/60 px-3.5 py-2.5 last:border-b-0"
               >
-                <span className="min-w-0 flex-1 truncate text-[12.5px] font-medium text-foreground">
+                <span className="min-w-0 flex-1 truncate text-control font-medium text-foreground">
                   {artist.name}
                 </span>
                 <Button
@@ -132,9 +129,7 @@ export function QueueRail({ queue, clearedToday, shortlist, onOffer, className }
       )}
 
       <div data-testid="queue-rail-rules" className="rounded-m border border-border bg-muted p-3.5">
-        <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-[1.6px] text-muted-foreground">
-          {t('calendar.queue.rulesTitle')}
-        </p>
+        <Eyebrow className="mb-2.5">{t('calendar.queue.rulesTitle')}</Eyebrow>
         <ul className="flex flex-col gap-1.5 text-xs text-muted-foreground">
           {RULE_KEYS.map((key) => (
             <li key={key}>{t(`calendar.queue.rules.${key}`, { days: RISK_WINDOW_DAYS })}</li>

@@ -11,7 +11,7 @@ export const hireOrdersArt: readonly [ReactNode, ReactNode, ReactNode, ReactNode
   // 01 Draft from booking — the auto-drafted order snapshot
   <MiniCard key="h1">
     <div className="flex items-center justify-between gap-2">
-      <span className="font-mono text-[11px] font-semibold">SF-2026-0724-1</span>
+      <span className="font-mono text-eyebrow font-semibold">SF-2026-0724-1</span>
       <Badge variant="neutral">Draft</Badge>
     </div>
     <MiniField label="Artist">Theo Brandt</MiniField>
@@ -25,7 +25,7 @@ export const hireOrdersArt: readonly [ReactNode, ReactNode, ReactNode, ReactNode
   <MiniCard key="h2">
     <MiniRow avatar={<MiniAvatar initials="TB" tone="bg-accent-700" />} name="Theo Brandt" sub="theo.brandt@posteo.de" />
     <MiniField label="PDF">
-      <span className="font-mono text-[11px]">SF-2026-0724-1.pdf</span>
+      <span className="font-mono text-eyebrow">SF-2026-0724-1.pdf</span>
     </MiniField>
     <MiniField label="Status">
       <Badge variant="hold">Awaiting countersign</Badge>
@@ -37,29 +37,29 @@ export const hireOrdersArt: readonly [ReactNode, ReactNode, ReactNode, ReactNode
     <div className="flex items-start gap-2">
       <MiniCheck />
       <div>
-        <div className="text-[12px] text-foreground">Drafted</div>
-        <div className="font-mono text-[10px] tabular-nums text-muted-foreground/70">22/07 · 09:14</div>
+        <div className="text-caption text-foreground">Drafted</div>
+        <div className="font-mono text-eyebrow tabular-nums text-muted-foreground/70">22/07 · 09:14</div>
       </div>
     </div>
     <div className="flex items-start gap-2">
       <MiniCheck />
       <div>
-        <div className="text-[12px] text-foreground">Issued</div>
-        <div className="font-mono text-[10px] tabular-nums text-muted-foreground/70">22/07 · 11:02</div>
+        <div className="text-caption text-foreground">Issued</div>
+        <div className="font-mono text-eyebrow tabular-nums text-muted-foreground/70">22/07 · 11:02</div>
       </div>
     </div>
     <div className="flex items-start gap-2">
       <MiniCheck />
       <div>
-        <div className="text-[12px] text-foreground">Opened by artist</div>
-        <div className="font-mono text-[10px] tabular-nums text-muted-foreground/70">22/07 · 18:47</div>
+        <div className="text-caption text-foreground">Opened by artist</div>
+        <div className="font-mono text-eyebrow tabular-nums text-muted-foreground/70">22/07 · 18:47</div>
       </div>
     </div>
     <div className="flex items-start gap-2">
       <span className="mt-1 inline-block h-[18px] w-[18px] rounded-full border-[0.5px] border-border bg-muted" />
       <div>
-        <div className="text-[12px] text-muted-foreground">Countersigned</div>
-        <div className="text-[10px] text-muted-foreground/70">waiting</div>
+        <div className="text-caption text-muted-foreground">Countersigned</div>
+        <div className="text-eyebrow text-muted-foreground/70">waiting</div>
       </div>
     </div>
   </MiniCard>,

@@ -11,8 +11,8 @@ export const availabilityArt: readonly [ReactNode, ReactNode, ReactNode, ReactNo
   // 01 Eligible dates — the month strip showing which dates are open to declare
   <MiniCard key="a1">
     <div className="flex items-center gap-2">
-      <span className="text-[12px] font-semibold">July</span>
-      <span className="text-[11px] text-muted-foreground">Nachtlicht · Berlin</span>
+      <span className="text-caption font-semibold">July</span>
+      <span className="text-eyebrow text-muted-foreground">Nachtlicht · Berlin</span>
     </div>
     <MiniWeek
       days={[
@@ -46,7 +46,7 @@ export const availabilityArt: readonly [ReactNode, ReactNode, ReactNode, ReactNo
   // 03 Answer an offer — session times + response deadline + accept/decline
   <MiniCard key="a3">
     <div className="flex items-center gap-2">
-      <span className="text-[12px] font-medium">Nachtlicht · Jul 24</span>
+      <span className="text-caption font-medium">Nachtlicht · Jul 24</span>
       <Badge variant="accent" dot>Offer</Badge>
     </div>
     <MiniField label="Sessions">
@@ -66,22 +66,22 @@ export const availabilityArt: readonly [ReactNode, ReactNode, ReactNode, ReactNo
     <div className="flex items-start gap-2">
       <MiniCheck />
       <div>
-        <div className="text-[12px] text-foreground">Accepted</div>
-        <div className="font-mono text-[10px] tabular-nums text-muted-foreground/70">22/07 · 20:11</div>
+        <div className="text-caption text-foreground">Accepted</div>
+        <div className="font-mono text-eyebrow tabular-nums text-muted-foreground/70">22/07 · 20:11</div>
       </div>
     </div>
     <div className="flex items-start gap-2">
       <MiniCheck />
       <div>
-        <div className="text-[12px] text-foreground">Confirmed by producer</div>
-        <div className="font-mono text-[10px] tabular-nums text-muted-foreground/70">23/07 · 09:02</div>
+        <div className="text-caption text-foreground">Confirmed by producer</div>
+        <div className="font-mono text-eyebrow tabular-nums text-muted-foreground/70">23/07 · 09:02</div>
       </div>
     </div>
     <div className="flex items-start gap-2">
       <MiniCheck />
       <div>
-        <div className="text-[12px] text-foreground">Chat opens</div>
-        <div className="font-mono text-[10px] tabular-nums text-muted-foreground/70">with the date</div>
+        <div className="text-caption text-foreground">Chat opens</div>
+        <div className="font-mono text-eyebrow tabular-nums text-muted-foreground/70">with the date</div>
       </div>
     </div>
   </MiniCard>,

@@ -129,7 +129,7 @@ export function MonthGrid({
   return (
     <div
       className={cn(
-        'w-full overflow-hidden rounded-[10px] border-[0.5px] border-border bg-card shadow-elev2',
+        'w-full overflow-hidden rounded-l border-[0.5px] border-border bg-card shadow-elev2',
         className
       )}
       data-testid="month-grid"
@@ -139,7 +139,8 @@ export function MonthGrid({
           <div
             key={day}
             data-testid="month-grid-weekday"
-            className="px-1 text-center text-[11px] font-medium uppercase tracking-wide text-[var(--text-faint)]"
+            // eslint-disable-next-line no-restricted-syntax -- weekday header keeps font-medium (not the standard eyebrow's font-semibold), so <Eyebrow> would change the rendered weight
+            className="px-1 text-center text-eyebrow font-medium uppercase tracking-wide text-[var(--text-faint)]"
           >
             {day}
           </div>
@@ -205,7 +206,7 @@ export function MonthGrid({
                   {cell.dayNum}
                 </span>
                 {cell.flag && (
-                  <span className={cn('text-[11px] font-medium', TONE_TEXT[cell.flag.tone])}>
+                  <span className={cn('text-eyebrow font-medium', TONE_TEXT[cell.flag.tone])}>
                     {cell.flag.text === 'answer' || cell.flag.text === 'blocked'
                       ? t(`availability:calendar.monthFlag.${cell.flag.text}`)
                       : cell.flag.text}
@@ -219,7 +220,7 @@ export function MonthGrid({
                     key={chipIndex}
                     data-testid={`month-grid-chip-${key}-${chipIndex}`}
                     className={cn(
-                      'rounded-[4px] border-l-2 py-0.5 pl-1.5 pr-1 text-[11px]',
+                      'rounded-xs border-l-2 py-0.5 pl-1.5 pr-1 text-eyebrow',
                       TONE_RAIL[chip.tone],
                       TONE_BG[chip.tone]
                     )}
@@ -231,12 +232,12 @@ export function MonthGrid({
                         className="mt-0.5 flex items-center gap-1"
                       >
                         {chip.time && (
-                          <span className={cn('font-mono text-[9.5px] opacity-80', TONE_TEXT[chip.tone])}>{chip.time}</span>
+                          <span className={cn('font-mono text-eyebrow opacity-80', TONE_TEXT[chip.tone])}>{chip.time}</span>
                         )}
                         {(chip.extraSessions ?? 0) > 0 && (
                           <span
                             data-testid={`month-grid-chip-sessions-${key}-${chipIndex}`}
-                            className="inline-flex items-center rounded-[4px] bg-accent-50 px-1 text-[9px] font-medium text-accent-700"
+                            className="inline-flex items-center rounded-xs bg-accent-50 px-1 text-eyebrow font-medium text-accent-text"
                           >
                             +{chip.extraSessions}
                           </span>
@@ -249,7 +250,7 @@ export function MonthGrid({
                   </div>
                 ))}
                 {moreCount > 0 && (
-                  <span className="text-[11px] font-medium text-accent-700">{t('common:calendar.grid.more', { count: moreCount })}</span>
+                  <span className="text-eyebrow font-medium text-accent-text">{t('common:calendar.grid.more', { count: moreCount })}</span>
                 )}
               </div>
             </div>

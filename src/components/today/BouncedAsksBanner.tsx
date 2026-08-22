@@ -28,11 +28,11 @@ export function BouncedAsksBanner({ bounced, onFix, onDismiss }: BouncedAsksBann
   const when = format(new Date(first.bouncedAt), "EEEE 'at' HH:mm", { locale: dfLocale() });
 
   return (
-    <div className="flex items-center gap-3 rounded-[10px] border border-border bg-[var(--red-100)] p-4">
+    <div className="flex items-center gap-3 rounded-l border border-border bg-[var(--red-100)] p-4">
       <span className="flex shrink-0 text-[var(--red-600)]">
         <TriangleAlert className="h-4 w-4" />
       </span>
-      <p className="m-0 flex-1 text-[13px] leading-[19px] text-foreground">
+      <p className="m-0 flex-1 text-control leading-[19px] text-foreground">
         {t("bounced.title", { count: bounced.length })}
         {". "}
         {t("bounced.body", { names, when, show: first.dateLabel })}

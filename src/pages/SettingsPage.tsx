@@ -319,7 +319,7 @@ export default function SettingsPage() {
     <div className={cn('space-y-6', !WIDE_TABS.has(activeTab) && 'max-w-5xl')}>
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="font-display text-[32px] font-semibold tracking-tight flex items-center gap-3">
+          <h1 className="font-display text-display-sm font-semibold tracking-tight flex items-center gap-3">
             <SettingsIcon className="h-7 w-7 text-primary" />
             {t('page.title')}
           </h1>
@@ -336,7 +336,7 @@ export default function SettingsPage() {
       </div>
 
       {isDirty && !hidePageLevelSave && (
-        <div className="flex items-center justify-between gap-4 rounded-lg border border-warning bg-warning/10 px-4 py-2.5 text-sm text-warning">
+        <div className="flex items-center justify-between gap-4 rounded-l border border-warning bg-warning/10 px-4 py-2.5 text-sm text-warning">
           <span>{t('page.unsavedChanges')}</span>
           <Button size="sm" onClick={handleSave} disabled={saveMutation.isPending}>
             <Save className="h-3.5 w-3.5 mr-1.5" />
@@ -362,17 +362,19 @@ export default function SettingsPage() {
                 {/* Decorative visual grouping only. aria-hidden so this stray non-tab
                     child isn't announced inside the role="tablist"; the tabs themselves
                     carry clear labels, so screen-reader users get a clean flat list. */}
+                {/* eslint-disable no-restricted-syntax -- 12px + tracking-wide decorative group heading, not the 11px Eyebrow pattern */}
                 <p
                   aria-hidden="true"
                   className="hidden px-3 pb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground md:block"
                 >
                   {group.heading}
                 </p>
+                {/* eslint-enable no-restricted-syntax */}
                 {items.map((item) => (
                   <TabsTrigger
                     key={item.value}
                     value={item.value}
-                    className="shrink-0 justify-start gap-2 rounded-md px-3 py-2 text-muted-foreground data-[state=active]:bg-muted data-[state=active]:text-foreground data-[state=active]:shadow-none hover:bg-muted/60 md:w-full"
+                    className="shrink-0 justify-start gap-2 rounded-m px-3 py-2 text-muted-foreground data-[state=active]:bg-muted data-[state=active]:text-foreground data-[state=active]:shadow-none hover:bg-muted/60 md:w-full"
                   >
                     <item.icon className="h-4 w-4 shrink-0" />
                     <span>{item.label}</span>
@@ -443,7 +445,7 @@ export default function SettingsPage() {
                 )}
                 <div className="space-y-2">
                   {auditLogs?.map((log) => (
-                    <div key={log.id} className="flex items-center justify-between p-3 rounded-lg border border-border text-sm">
+                    <div key={log.id} className="flex items-center justify-between p-3 rounded-l border border-border text-sm">
                       <div>
                         <span className="font-medium">{log.action}</span>
                         {log.booking?.artist?.name && <span className="text-muted-foreground"> — {log.booking.artist.name}</span>}

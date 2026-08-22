@@ -7,6 +7,7 @@ import { unconfirmedSlots } from '@/lib/calendar/slots';
 import { seasonBarClass } from '@/lib/calendar/tone';
 import { toDateKey, weekdayNarrow } from '@/lib/dates';
 import { cn } from '@/lib/utils';
+import { Eyebrow } from '@/components/ui/eyebrow';
 import { SeasonKpis } from './SeasonKpis';
 
 interface SeasonLensProps {
@@ -108,7 +109,7 @@ function SeasonCellButton({
       )}
     >
       {cancelled ? (
-        <span aria-hidden="true" className="mb-1.5 font-mono text-[11px] font-semibold leading-none text-destructive">
+        <span aria-hidden="true" className="mb-1.5 font-mono text-eyebrow font-semibold leading-none text-destructive">
           &times;
         </span>
       ) : cell.mainSlots > 0 ? (
@@ -211,15 +212,13 @@ export function SeasonLens({
       <div
         data-testid="season-grid"
         className={cn(
-          'w-full overflow-x-auto rounded-[10px] border-[0.5px] border-border bg-card shadow-elev2',
+          'w-full overflow-x-auto rounded-l border-[0.5px] border-border bg-card shadow-elev2',
           dragging && 'select-none'
         )}
       >
         {/* Day header row. */}
         <div className="grid border-b-[0.5px] border-border" style={{ gridTemplateColumns: gridCols }}>
-          <div className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-            {t('calendar.season.programHeader')}
-          </div>
+          <Eyebrow className="px-2 py-1.5 tracking-wide">{t('calendar.season.programHeader')}</Eyebrow>
           {model.days.map(day => {
             const key = toDateKey(day);
             const inRange = rangeKeySet.has(key);
@@ -233,12 +232,12 @@ export function SeasonLens({
                 onMouseDown={() => handleColumnMouseDown(key)}
                 onMouseEnter={() => handleColumnMouseEnter(key)}
                 className={cn(
-                  'flex flex-col items-center justify-center gap-0.5 py-1 font-mono text-[9px] tabular-nums text-muted-foreground',
+                  'flex flex-col items-center justify-center gap-0.5 py-1 font-mono text-eyebrow tabular-nums text-muted-foreground',
                   columnBorder(day),
                   inRange && 'bg-accent-50'
                 )}
               >
-                <span className={cn('text-[8px] font-sans not-italic', isWeekend ? 'text-muted-foreground/50' : 'text-muted-foreground/80')}>
+                <span className={cn('text-eyebrow font-sans not-italic', isWeekend ? 'text-muted-foreground/50' : 'text-muted-foreground/80')}>
                   {weekdayNarrow(day)}
                 </span>
                 {day.getDate()}
@@ -261,8 +260,8 @@ export function SeasonLens({
             style={{ gridTemplateColumns: gridCols }}
           >
             <div className="flex flex-col justify-center gap-0.5 truncate px-2 py-2" title={rowLabel}>
-              <span className="truncate text-[12px] font-medium text-foreground">{rowLabel}</span>
-              <span className="truncate text-[11px] text-muted-foreground">
+              <span className="truncate text-caption font-medium text-foreground">{rowLabel}</span>
+              <span className="truncate text-eyebrow text-muted-foreground">
                 {t('calendar.season.rowSummary', { count: dateCount, unfilled })}
               </span>
             </div>
@@ -286,9 +285,7 @@ export function SeasonLens({
 
         {/* "Unfilled slots" load-bar row. */}
         <div className="grid bg-muted/30" style={{ gridTemplateColumns: gridCols }}>
-          <div className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-            {t('calendar.season.unfilledSlotsHeader')}
-          </div>
+          <Eyebrow className="px-2 py-1.5 tracking-wide">{t('calendar.season.unfilledSlotsHeader')}</Eyebrow>
           {model.loadByDay.map(({ date, openMainSlots }) => {
             const pct = (openMainSlots / maxOpen) * 100;
             // Two-tier load colour (mock): saturated warning once a day carries

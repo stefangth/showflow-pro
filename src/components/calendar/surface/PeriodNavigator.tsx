@@ -31,7 +31,7 @@ export function PeriodNavigator({ label, onPrev, onNext, onToday, className }: P
         >
           <ChevronLeft className="h-4 w-4" />
         </Button>
-        <span className="min-w-[8rem] text-center text-[13px] font-medium">{label}</span>
+        <span className="min-w-[8rem] text-center text-control font-medium">{label}</span>
         <Button
           type="button"
           variant="ghost"

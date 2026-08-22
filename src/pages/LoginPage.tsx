@@ -150,7 +150,7 @@ export default function LoginPage() {
             </div>
 
             {/* Headline over the photo */}
-            <h1 className="mb-7 max-w-sm text-balance font-display text-3xl font-semibold leading-[1.15] tracking-tight text-[var(--auth-fg)] sm:text-[34px]">
+            <h1 className="mb-7 max-w-sm text-balance font-display text-3xl font-semibold leading-[1.15] tracking-tight text-[var(--auth-fg)] sm:text-display-sm">
               {t('login.headline')}
             </h1>
 

@@ -326,7 +326,7 @@ export function UserDetailSheet({ user: propUser, open, onOpenChange }: Props) {
                     </Select>
                   </div>
 
-                  <div className="rounded-md border border-border p-2 space-y-2">
+                  <div className="rounded-m border border-border p-2 space-y-2">
                     <div className="flex items-center justify-between gap-2">
                       <div className="text-sm">
                         <span className="text-muted-foreground">Artist link: </span>

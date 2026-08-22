@@ -242,6 +242,7 @@ export function SystemMapCanvas() {
                     {subGroups.map((sg, idx) => (
                       <div key={sg.group ?? `ungrouped-${idx}`} className="flex flex-col gap-2">
                         {sg.group ? (
+                          // eslint-disable-next-line no-restricted-syntax -- inline group label, not a standard 11px/1.6px eyebrow
                           <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                             {sg.group}
                           </p>
@@ -258,7 +259,7 @@ export function SystemMapCanvas() {
                             aria-pressed={selectedId === node.id}
                             aria-label={node.label}
                             className={cn(
-                              "rounded-md border border-border border-l-4 bg-card px-3 py-2 text-left text-sm shadow-sm",
+                              "rounded-m border border-border border-l-4 bg-card px-3 py-2 text-left text-sm shadow-sm",
                               "motion-safe:transition-colors hover:bg-muted",
                               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                               KIND_BORDER_CLASS[node.kind],
@@ -285,7 +286,7 @@ export function SystemMapCanvas() {
         {selectedNode ? (
           <aside
             aria-label={t('systemMapCanvas.nodeDetails')}
-            className="w-72 shrink-0 rounded-md border border-border bg-card p-4"
+            className="w-72 shrink-0 rounded-m border border-border bg-card p-4"
           >
             <div className="mb-3 flex items-start justify-between gap-2">
               <div>
@@ -299,7 +300,7 @@ export function SystemMapCanvas() {
                 onClick={() => setSelectedId(null)}
                 aria-label={t('systemMapCanvas.closeDetails')}
                 className={cn(
-                  "rounded-sm p-1 text-muted-foreground hover:text-foreground",
+                  "rounded-s p-1 text-muted-foreground hover:text-foreground",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                 )}
               >
@@ -309,6 +310,7 @@ export function SystemMapCanvas() {
             <dl className="space-y-2">
               {Object.entries(selectedNode.detail).map(([key, value]) => (
                 <div key={key}>
+                  {/* eslint-disable-next-line no-restricted-syntax -- inline detail label, not a standard 11px/1.6px eyebrow */}
                   <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                     {key}
                   </dt>

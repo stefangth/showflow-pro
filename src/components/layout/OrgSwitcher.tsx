@@ -17,7 +17,7 @@ export function OrgSwitcher({ collapsed }: { collapsed?: boolean }) {
   if (orgs.length <= 1) {
     if (collapsed) return null;
     return (
-      <div className="flex items-center gap-2 rounded-[7px] px-2.5 py-2 text-[13px] font-medium text-sidebar-foreground/80">
+      <div className="flex items-center gap-2 rounded-s px-2.5 py-2 text-control font-medium text-sidebar-foreground/80">
         <Building2 className="h-[14px] w-[14px] shrink-0" />
         <span className="truncate">{currentOrg.name}</span>
       </div>
@@ -32,7 +32,7 @@ export function OrgSwitcher({ collapsed }: { collapsed?: boolean }) {
           size="sm"
           aria-label="Switch organization"
           className={cn(
-            'w-full justify-between gap-2 px-2.5 py-2 h-auto text-[13px] font-medium text-sidebar-foreground/80',
+            'w-full justify-between gap-2 px-2.5 py-2 h-auto text-control font-medium text-sidebar-foreground/80',
             collapsed && 'justify-center px-0',
           )}
         >
@@ -52,7 +52,7 @@ export function OrgSwitcher({ collapsed }: { collapsed?: boolean }) {
           >
             <Check className={cn('h-4 w-4 shrink-0', o.id === currentOrg.id ? 'opacity-100' : 'opacity-0')} />
             <span className="truncate">{o.name}</span>
-            {isOrgSuspended(o) && <span className="ml-auto text-[10px] text-muted-foreground">suspended</span>}
+            {isOrgSuspended(o) && <span className="ml-auto text-eyebrow text-muted-foreground">suspended</span>}
           </button>
         ))}
       </PopoverContent>

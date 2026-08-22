@@ -89,7 +89,7 @@ export function SlotsStep({ orgId, onDone }: { orgId: string | null; onDone: () 
         <p className="text-xs text-muted-foreground">
           A date with no slot count never reads as full, so it can't reach fully filled or auto-draft a hire order.
         </p>
-        <div className="flex items-center gap-2.5 rounded-md border border-dashed border-border p-3">
+        <div className="flex items-center gap-2.5 rounded-m border border-dashed border-border p-3">
           <span className="min-w-0 flex-1 text-sm text-muted-foreground">
             {hasActiveShows
               ? "Every active show already has its slot counts set."
@@ -108,17 +108,17 @@ export function SlotsStep({ orgId, onDone }: { orgId: string | null; onDone: () 
       <p className="text-xs text-muted-foreground">
         A date with no slot count never reads as full, so it can't reach fully filled or auto-draft a hire order.
       </p>
-      <div className="overflow-hidden rounded-md border border-border">
+      <div className="overflow-hidden rounded-m border border-border">
         {unset.map((s) => (
           <div key={s.id} className="flex items-center gap-2.5 border-b border-border p-2 last:border-b-0">
             <span className="min-w-0 flex-1 truncate text-sm">
               {s.program}
               {s.sub_program ? <span className="text-muted-foreground"> · {s.sub_program}</span> : null}
             </span>
-            <label className="text-[11px] text-muted-foreground">main</label>
+            <label className="text-eyebrow text-muted-foreground">main</label>
             <Input type="number" min={0} className="h-7 w-14" value={val(s.id, "main")}
               onChange={(e) => setVal(s.id, "main", e.target.value)} />
-            <label className="text-[11px] text-muted-foreground">u/s</label>
+            <label className="text-eyebrow text-muted-foreground">u/s</label>
             <Input type="number" min={0} className="h-7 w-14" value={val(s.id, "us")}
               onChange={(e) => setVal(s.id, "us", e.target.value)} />
           </div>

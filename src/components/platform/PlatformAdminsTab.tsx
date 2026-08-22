@@ -44,7 +44,7 @@ export function PlatformAdminsTab() {
         {isError && <Alert variant="destructive"><AlertDescription>{(error as Error).message}</AlertDescription></Alert>}
         <div className="space-y-2">
           {(admins ?? []).map((a) => (
-            <div key={a.user_id} className="flex items-center justify-between p-3 rounded-lg border border-border text-sm">
+            <div key={a.user_id} className="flex items-center justify-between p-3 rounded-l border border-border text-sm">
               <span className="truncate">{a.email}</span>
               <Button size="sm" variant="destructive" disabled={a.user_id === user?.id}
                 onClick={() => setToRemove({ user_id: a.user_id, email: a.email })}>

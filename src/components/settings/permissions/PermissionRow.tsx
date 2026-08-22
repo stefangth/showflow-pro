@@ -39,12 +39,12 @@ export function PermissionRow({ cell, mode, onToggleOverride, onToggleLock, onSe
       <div className="flex items-center gap-4 shrink-0">
         {/* Admin column: always granted, read-only */}
         <div className="flex flex-col items-center gap-1 w-16">
-          <span className="text-[11px] text-muted-foreground">{t("permissions.row.admin")}</span>
+          <span className="text-eyebrow text-muted-foreground">{t("permissions.row.admin")}</span>
           <Check className="h-4 w-4 text-muted-foreground" role="img" aria-label={t("permissions.row.adminAlwaysHasRight")} />
         </div>
         {/* Production Team control */}
         <div className="flex flex-col items-center gap-1 w-24">
-          <span className="text-[11px] text-muted-foreground">{roleLabel("producer")}</span>
+          <span className="text-eyebrow text-muted-foreground">{roleLabel("producer")}</span>
           {mode === "org" ? (
             <Switch
               checked={effective}

@@ -95,7 +95,8 @@ export function PersonRow({
               {person.displayName || person.email}
             </p>
             {isSelf && (
-              <Badge variant="secondary" className="shrink-0 border-border/60 px-1.5 text-[10px] font-medium uppercase tracking-wide">
+              // eslint-disable-next-line no-restricted-syntax -- inline badge label, not a standard 11px/1.6px eyebrow
+              <Badge variant="secondary" className="shrink-0 border-border/60 px-1.5 text-eyebrow font-medium uppercase tracking-wide">
                 {t("personRow.you")}
               </Badge>
             )}

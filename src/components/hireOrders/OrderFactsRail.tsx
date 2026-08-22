@@ -31,6 +31,7 @@ export function OrderFactsRail({ fee, duration, sessions }: Props) {
 
   return (
     <div>
+      {/* eslint-disable-next-line no-restricted-syntax -- section subheading, not a standard eyebrow (12px/tracking-wide, font-medium not font-semibold) */}
       <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("factsRail.atAGlance")}</h3>
       <dl className="mt-3 space-y-3">
         {facts.map((f) => (

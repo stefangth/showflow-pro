@@ -10,13 +10,13 @@ interface Props {
 
 export function ViewToggle({ value, onChange }: Props) {
   return (
-    <div className="inline-flex rounded-md border border-input bg-background p-0.5">
+    <div className="inline-flex rounded-m border border-input bg-background p-0.5">
       {(['list', 'calendar'] as const).map(mode => (
         <button
           key={mode}
           onClick={() => onChange(mode)}
           className={cn(
-            'inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-sm transition-colors',
+            'inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-s transition-colors',
             value === mode ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
           )}
         >

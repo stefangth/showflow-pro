@@ -120,7 +120,7 @@ export function ResolveStep({ rows, artists, links, onLink, onCreate, creatingRo
       <p className="text-sm text-muted-foreground">
         {t("resolveStep.intro", { count: rows.length })}
       </p>
-      <div className="rounded-md border border-border">
+      <div className="rounded-m border border-border">
         {rows.map((row) => {
           const artistName = (row.sheet.artist_name as string | undefined) || t("resolveStep.rowFallback", { index: row.rowIndex });
           const email = row.sheet.recipient_email as string | undefined;

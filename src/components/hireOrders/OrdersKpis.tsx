@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Card, CardContent } from "@/components/ui/card";
+import { KpiTile } from "@/components/ui/kpi-tile";
 import { computeOrderKpis } from "@/lib/hireOrders/kpis";
 import type { HireOrderListRow } from "@/data/hireOrders";
 
@@ -19,13 +19,8 @@ export function OrdersKpis({ orders }: Props) {
   ];
   return (
     <div data-testid="orders-kpis" className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-      {tiles.map((t) => (
-        <Card key={t.label}>
-          <CardContent>
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t.label}</p>
-            <p className="mt-1 text-2xl font-semibold tabular-nums text-foreground">{t.value}</p>
-          </CardContent>
-        </Card>
+      {tiles.map((tile) => (
+        <KpiTile key={tile.label} label={tile.label} value={tile.value} />
       ))}
     </div>
   );

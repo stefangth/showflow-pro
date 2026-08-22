@@ -1,11 +1,21 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { StatusPill, LatencyStat } from "./primitives";
+import { StatusPill } from "@/components/ui/status-pill";
+import { healthTone, healthLabel } from "@/lib/systemHealth";
+import { LatencyStat } from "./primitives";
 
-describe("StatusPill", () => {
+describe("healthTone / healthLabel", () => {
   it("labels each state in sentence case", () => {
-    render(<StatusPill state="degraded" />);
+    render(<StatusPill tone={healthTone("degraded")} dot>{healthLabel("degraded")}</StatusPill>);
     expect(screen.getByText("Degraded")).toBeInTheDocument();
+  });
+
+  it("maps states to the canonical tones (amber = waiting, red = risk)", () => {
+    expect(healthTone("operational")).toBe("confirmed");
+    expect(healthTone("degraded")).toBe("waiting");
+    expect(healthTone("down")).toBe("risk");
+    expect(healthTone("stale")).toBe("neutral");
+    expect(healthTone("pending")).toBe("neutral");
   });
 });
 

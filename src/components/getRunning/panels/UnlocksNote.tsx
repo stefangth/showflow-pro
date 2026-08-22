@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import type { ReactNode } from "react";
+import { Eyebrow } from "@/components/ui/eyebrow";
 
 /**
  * Shared accent callout used by in-panel editors to say what a task's change unlocks
@@ -12,10 +13,10 @@ export function UnlocksNote({ children }: { children: ReactNode }) {
   const { t } = useTranslation("getRunning");
   return (
     <div className="flex flex-col gap-1 rounded-[var(--radius-l)] border border-accent-200 bg-accent p-3">
-      <span className="text-[11px] font-semibold uppercase tracking-[1.6px] text-accent-foreground">
+      <Eyebrow className="text-accent-foreground">
         {t("panel.unlocksLabel")}
-      </span>
-      <p className="text-[13px] leading-[19px] text-foreground">{children}</p>
+      </Eyebrow>
+      <p className="text-control leading-[19px] text-foreground">{children}</p>
     </div>
   );
 }

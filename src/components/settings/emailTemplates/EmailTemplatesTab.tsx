@@ -147,7 +147,7 @@ export function EmailTemplatesTab({ readOnly, isSuperAdmin }: EmailTemplatesTabP
               <section
                 key={group}
                 data-testid={`email-template-group-${group}`}
-                className="overflow-hidden rounded-lg border border-border bg-card text-foreground"
+                className="overflow-hidden rounded-l border border-border bg-card text-foreground"
               >
                 <div className="border-b border-border bg-muted px-4 py-3">
                   <h3 className="font-display text-sm font-semibold">{t(`emailTemplatesTab.groups.${group}`)}</h3>
@@ -203,7 +203,7 @@ export function EmailTemplatesTab({ readOnly, isSuperAdmin }: EmailTemplatesTabP
               title={t("emailTemplatesTab.previewDialog.iframeTitle")}
               srcDoc={preview.html}
               sandbox="allow-same-origin"
-              className="h-[520px] w-full rounded-lg border border-border bg-background"
+              className="h-[520px] w-full rounded-l border border-border bg-background"
             />
           )}
         </DialogContent>

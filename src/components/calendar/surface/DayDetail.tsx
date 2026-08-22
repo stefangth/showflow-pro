@@ -9,6 +9,7 @@ import { resolveProducerPrimary } from '@/lib/calendar/producerPrimary';
 import { unconfirmedSlots } from '@/lib/calendar/slots';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { Eyebrow } from '@/components/ui/eyebrow';
 import { HireOrderStatusBadge } from '@/components/hireOrders/HireOrderStatusBadge';
 import { FillMeter } from './FillMeter';
 
@@ -178,12 +179,12 @@ function ProducerDayCard({ entry }: { entry: ProducerDateEntry }) {
   return (
     <div data-testid={`day-rail-entry-${entry.id}`}>
       <div className="flex items-baseline justify-between gap-2">
-        <p className="text-[13px] font-semibold text-foreground">
+        <p className="text-control font-semibold text-foreground">
           {entry.program}
           {entry.subProgram ? ` · ${entry.subProgram}` : ''}
         </p>
         {entry.session1 && (
-          <span className="shrink-0 whitespace-nowrap font-mono text-[11px] text-muted-foreground">
+          <span className="shrink-0 whitespace-nowrap font-mono text-eyebrow text-muted-foreground">
             {sessionLabel(entry.session1)}
           </span>
         )}
@@ -197,7 +198,7 @@ function ProducerDayCard({ entry }: { entry: ProducerDateEntry }) {
       {meter ? (
         <div className="mt-1.5 flex items-center gap-2">
           <FillMeter segments={meter} tone={toneSpec.tone} />
-          <span className={cn('font-mono text-[11px] font-medium', TONE_TEXT[toneSpec.tone])}>
+          <span className={cn('font-mono text-eyebrow font-medium', TONE_TEXT[toneSpec.tone])}>
             {entry.confirmedMain}/{entry.mainSlots} main
           </span>
         </div>
@@ -219,12 +220,12 @@ function ArtistDayCard({ entry, statusLabels }: { entry: ArtistDateEntry; status
   return (
     <div data-testid={`day-rail-entry-${entry.id}`}>
       <div className="flex items-baseline justify-between gap-2">
-        <p className="text-[13px] font-semibold text-foreground">
+        <p className="text-control font-semibold text-foreground">
           {entry.program}
           {entry.subProgram ? ` · ${entry.subProgram}` : ''}
         </p>
         {entry.session1 && (
-          <span className="shrink-0 whitespace-nowrap font-mono text-[11px] text-muted-foreground">
+          <span className="shrink-0 whitespace-nowrap font-mono text-eyebrow text-muted-foreground">
             {sessionLabel(entry.session1)}
           </span>
         )}
@@ -292,12 +293,10 @@ export function DayDetail({
   const primaryDisabled = primaryGate?.disabled ?? false;
 
   return (
-    <div className={cn('overflow-hidden rounded-[10px] border-[0.5px] border-border bg-card shadow-elev2', className)}>
+    <div className={cn('overflow-hidden rounded-l border-[0.5px] border-border bg-card shadow-elev2', className)}>
       <div data-testid="day-rail-header" className="border-b-[0.5px] border-border px-4 pb-3 pt-3.5">
-        <p className={cn('mb-1 text-[11px] font-semibold uppercase tracking-[1.6px]', TONE_TEXT[header.eyebrowTone])}>
-          {header.eyebrow}
-        </p>
-        <h3 className="text-[17px] font-semibold tracking-tight text-foreground">{header.title}</h3>
+        <Eyebrow className={cn('mb-1', TONE_TEXT[header.eyebrowTone])}>{header.eyebrow}</Eyebrow>
+        <h3 className="text-title-sm font-semibold tracking-tight text-foreground">{header.title}</h3>
         <p className="mt-1 text-xs text-muted-foreground">{header.sub}</p>
       </div>
 
@@ -309,7 +308,7 @@ export function DayDetail({
             resolvedArtistEntries.map(entry => <ArtistDayCard key={entry.id} entry={entry} statusLabels={statusLabels} />)
           )
         ) : (
-          <p data-testid="day-rail-empty" className="text-[13px] text-muted-foreground">
+          <p data-testid="day-rail-empty" className="text-control text-muted-foreground">
             {emptyText}
           </p>
         )}
@@ -325,9 +324,9 @@ export function DayDetail({
                   tile.warn ? 'border-warning/40 bg-warning/10' : 'border-border'
                 )}
               >
-                <p className={cn('text-[10px] font-semibold uppercase tracking-wide', tile.warn ? 'text-warning' : 'text-muted-foreground')}>
+                <Eyebrow className={cn('tracking-wide', tile.warn ? 'text-warning' : undefined)}>
                   {tile.label}
-                </p>
+                </Eyebrow>
                 <p className={cn('mt-0.5 font-mono text-sm font-semibold', tile.warn ? 'text-warning' : 'text-foreground')}>
                   {tile.value}
                 </p>
@@ -364,7 +363,7 @@ export function DayDetail({
           </div>
         )}
 
-        <p className="font-mono text-[11px] text-muted-foreground">{t('common:calendar.day.keyHint')}</p>
+        <p className="font-mono text-eyebrow text-muted-foreground">{t('common:calendar.day.keyHint')}</p>
       </div>
     </div>
   );

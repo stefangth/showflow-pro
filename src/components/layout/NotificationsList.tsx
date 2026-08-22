@@ -41,12 +41,12 @@ export function NotificationsList({ onNavigate }: NotificationsListProps = {}) {
     <div className="flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-        <span className="text-[13px] font-semibold">Notifications</span>
+        <span className="text-control font-semibold">Notifications</span>
         {unread.length > 0 && (
           <Button
             variant="secondary"
             size="sm"
-            className="h-6 px-2 text-[11px] text-muted-foreground"
+            className="h-6 px-2 text-eyebrow text-muted-foreground"
             onClick={() => markAll.mutate()}
             disabled={markAll.isPending}
           >
@@ -61,7 +61,7 @@ export function NotificationsList({ onNavigate }: NotificationsListProps = {}) {
         {notifications.length === 0 ? (
           <div className="flex flex-col items-center justify-center gap-2 py-10 text-muted-foreground">
             <Bell className="h-8 w-8 opacity-30" />
-            <p className="text-[13px]">No notifications yet</p>
+            <p className="text-control">No notifications yet</p>
           </div>
         ) : (
           notifications.map(n => {
@@ -105,11 +105,11 @@ export function NotificationsList({ onNavigate }: NotificationsListProps = {}) {
                   />
                 )}
                 <div className={cn("flex-1 min-w-0", n.read && "pl-3.5")}>
-                  <p className="text-[13px] font-medium truncate">{n.title}</p>
+                  <p className="text-control font-medium truncate">{n.title}</p>
                   {n.message && (
-                    <p className="text-[12px] text-muted-foreground line-clamp-2 mt-0.5">{n.message}</p>
+                    <p className="text-caption text-muted-foreground line-clamp-2 mt-0.5">{n.message}</p>
                   )}
-                  <p className="text-[11px] text-muted-foreground mt-1">
+                  <p className="text-eyebrow text-muted-foreground mt-1">
                     {formatDistanceToNow(new Date(n.created_at), { addSuffix: true })}
                   </p>
                 </div>

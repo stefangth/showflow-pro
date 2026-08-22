@@ -61,18 +61,18 @@ export function AttentionPanel({
 }: AttentionPanelProps) {
   const { t } = useTranslation('settingsAirtable');
   return (
-    <div className="rounded-lg border border-border bg-card shadow-sm">
+    <div className="rounded-l border border-border bg-card shadow-sm">
       <div className="flex items-center justify-between gap-3 border-b border-border p-4">
         <div>
-          <h3 className="text-[17px] font-semibold tracking-[-0.1px] text-foreground">
+          <h3 className="text-title-sm font-semibold tracking-[-0.1px] text-foreground">
             {t('attentionPanel.title')}
           </h3>
-          <p className="mt-1 text-[13px] text-muted-foreground">
+          <p className="mt-1 text-control text-muted-foreground">
             {t('attentionPanel.description', { count: heldCount })}
           </p>
         </div>
         <span
-          className="inline-flex h-5 shrink-0 items-center rounded px-1.5 text-[11px] font-medium"
+          className="inline-flex h-5 shrink-0 items-center rounded px-1.5 text-eyebrow font-medium"
           style={{ background: "var(--amber-100)", color: "var(--amber-600)" }}
         >
           {t('attentionPanel.heldBadge', { count: heldCount })}
@@ -95,7 +95,7 @@ export function AttentionPanel({
                 <Button
                   variant="outline"
                   size="sm"
-                  className="border-accent-200 bg-accent-50 text-accent-700 hover:bg-accent-100"
+                  className="border-accent-200 bg-accent-50 text-accent-text hover:bg-accent-100"
                   onClick={() => onFix(cause)}
                 >
                   {label}
@@ -103,7 +103,7 @@ export function AttentionPanel({
               )}
               <button
                 type="button"
-                className="inline-flex items-center gap-1 text-[13px] font-medium text-accent-text hover:underline"
+                className="inline-flex items-center gap-1 text-control font-medium text-accent-text hover:underline"
                 onClick={() => onToggle(cause.category)}
                 aria-expanded={isOpen}
               >

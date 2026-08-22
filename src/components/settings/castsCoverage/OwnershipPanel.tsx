@@ -364,6 +364,7 @@ export function OwnershipPanel({ orgId }: Props) {
                   const isOrphan = !programDateCounts.has(program);
                   return (
                     <div key={program} className="space-y-1.5">
+                      {/* eslint-disable-next-line no-restricted-syntax -- inline program label, non-standard tracking */}
                       <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                         {program}
                         {isOrphan && (
@@ -424,6 +425,7 @@ export function OwnershipPanel({ orgId }: Props) {
 
         <Card>
           <CardHeader>
+            {/* eslint-disable-next-line no-restricted-syntax -- CardTitle label, non-standard tracking */}
             <CardTitle className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               {t('ownership.routingCheckTitle')}
             </CardTitle>
@@ -463,7 +465,8 @@ export function OwnershipPanel({ orgId }: Props) {
             </div>
 
             <div className="space-y-1.5 rounded-[var(--radius-m)] border border-accent-200 bg-accent-50 p-3">
-              <p className="text-[11px] font-semibold uppercase tracking-[1.2px] text-accent-700">{t('ownership.notified')}</p>
+              {/* eslint-disable-next-line no-restricted-syntax -- non-standard tracking (1.2px) */}
+              <p className="text-eyebrow font-semibold uppercase tracking-[1.2px] text-accent-text">{t('ownership.notified')}</p>
               <p className="text-sm font-semibold text-foreground">
                 {routingResult.notified.length > 0
                   ? routingResult.notified.map((a) => a.owner).join(", ")
@@ -473,7 +476,8 @@ export function OwnershipPanel({ orgId }: Props) {
             </div>
 
             <div className="space-y-1">
-              <p className="text-[11px] font-semibold uppercase tracking-[1.2px] text-muted-foreground">
+              {/* eslint-disable-next-line no-restricted-syntax -- non-standard tracking (1.2px) */}
+              <p className="text-eyebrow font-semibold uppercase tracking-[1.2px] text-muted-foreground">
                 {t('ownership.precedenceTitle')}
               </p>
               {[...routingResult.ladder].reverse().map((entry) => (

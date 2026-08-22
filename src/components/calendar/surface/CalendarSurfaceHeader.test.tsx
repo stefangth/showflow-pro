@@ -39,7 +39,7 @@ describe('CalendarSurfaceHeader', () => {
   it('sizes the title at 32px semibold tracking-tight, matching the app page-title convention', () => {
     render(<CalendarSurfaceHeader eyebrow="Bookings" eyebrowTone="accent" title="Shows & bookings" />);
     const title = screen.getByText('Shows & bookings');
-    expect(title.className).toContain('text-[32px]');
+    expect(title.className).toContain('text-display-sm');
     expect(title.className).toContain('font-semibold');
     expect(title.className).toContain('tracking-tight');
     expect(title.className).not.toContain('text-2xl');

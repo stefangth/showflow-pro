@@ -24,6 +24,7 @@ export function ProvenanceChip({ source }: { source: FieldSource }) {
   const { t } = useTranslation("hireOrdersPages");
   const cfg = SOURCE_CHIP[source];
   return (
+    // eslint-disable-next-line no-restricted-syntax -- Badge pill text-transform, not a standalone hand-rolled eyebrow
     <Badge variant={cfg.variant} className="shrink-0 uppercase">
       {t(cfg.labelKey)}
     </Badge>

@@ -58,7 +58,7 @@ export function TeamPanelBody({ orgId }: { orgId: string | null }) {
             const name = m.display_name || m.email || "";
             return (
               <div key={m.user_id} className="flex items-center gap-2.5">
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent-100 text-[10px] font-semibold text-accent-700">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent-100 text-eyebrow font-semibold text-accent-text">
                   {initials(name)}
                 </span>
                 <span className="min-w-0 flex-1 truncate text-xs font-medium text-foreground">{name}</span>
@@ -72,7 +72,11 @@ export function TeamPanelBody({ orgId }: { orgId: string | null }) {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-2">
-        <Label htmlFor="team-invite-email" className="text-[10px] uppercase tracking-wider text-muted-foreground">
+        <Label
+          htmlFor="team-invite-email"
+          // eslint-disable-next-line no-restricted-syntax -- form <Label>, not a block eyebrow: <Eyebrow> renders a <p> and would drop the htmlFor association
+          className="text-eyebrow uppercase tracking-wider text-muted-foreground"
+        >
           {t("panel.body.team.emailLabel")}
         </Label>
         <div className="flex gap-2">

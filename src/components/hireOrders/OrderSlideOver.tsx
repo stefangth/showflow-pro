@@ -159,20 +159,24 @@ export function OrderSlideOver({ order, open, onOpenChange, orgId }: Props) {
             <div className="mt-6 space-y-6">
               <dl className="grid grid-cols-2 gap-4 text-sm">
                 <div>
+                  {/* eslint-disable-next-line no-restricted-syntax -- dl/dt field label, not a standard eyebrow (12px/tracking-wide, no font-semibold) */}
                   <dt className="text-xs uppercase tracking-wide text-muted-foreground">{t("slideOver.artist")}</dt>
                   <dd className="mt-0.5 text-foreground">{artistName}</dd>
                 </div>
                 {email && (
                   <div>
+                    {/* eslint-disable-next-line no-restricted-syntax -- dl/dt field label, not a standard eyebrow */}
                     <dt className="text-xs uppercase tracking-wide text-muted-foreground">{t("slideOver.email")}</dt>
                     <dd className="mt-0.5 break-words text-foreground">{email}</dd>
                   </div>
                 )}
                 <div>
+                  {/* eslint-disable-next-line no-restricted-syntax -- dl/dt field label, not a standard eyebrow */}
                   <dt className="text-xs uppercase tracking-wide text-muted-foreground">{t("slideOver.venue")}</dt>
                   <dd className="mt-0.5 text-foreground">{venue || t("common.notSet")}</dd>
                 </div>
                 <div>
+                  {/* eslint-disable-next-line no-restricted-syntax -- dl/dt field label, not a standard eyebrow */}
                   <dt className="text-xs uppercase tracking-wide text-muted-foreground">{t("slideOver.date")}</dt>
                   <dd className="mt-0.5 font-mono text-foreground">{dateStr ? formatDateDMY(dateStr) : t("common.notSet")}</dd>
                 </div>
@@ -181,6 +185,7 @@ export function OrderSlideOver({ order, open, onOpenChange, orgId }: Props) {
               <OrderFactsRail fee={fee} duration={duration} sessions={sessions} />
 
               <div>
+                {/* eslint-disable-next-line no-restricted-syntax -- section subheading, not a standard eyebrow (12px/tracking-wide, font-medium not font-semibold) */}
                 <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("slideOver.delivery")}</h3>
                 <dl className="mt-3 space-y-3 text-sm">
                   <div className="flex items-baseline justify-between gap-3">

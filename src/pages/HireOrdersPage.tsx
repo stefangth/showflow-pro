@@ -127,8 +127,9 @@ export default function HireOrdersPage() {
 
       <div className="flex items-start justify-between gap-3">
         <div>
+          {/* eslint-disable-next-line no-restricted-syntax -- 12px + tracking-wide page-header caption, not the 11px Eyebrow pattern */}
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("hireOrdersPage.workspace")}</p>
-          <h1 className="font-display text-[32px] font-semibold tracking-tight">{t("hireOrdersPage.title")}</h1>
+          <h1 className="font-display text-display-sm font-semibold tracking-tight">{t("hireOrdersPage.title")}</h1>
           <p className="mt-1 text-muted-foreground">
             {t("hireOrdersPage.meta", { count: stats.totalCount, value: stats.valueCommitted })}
           </p>

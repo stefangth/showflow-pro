@@ -46,10 +46,11 @@ export function AvailabilityFirstRun({
       {/* Header row: intro + "Your setup" progress card */}
       <div className="flex flex-col items-start gap-6 sm:flex-row">
         <div className="min-w-0 flex-1">
-          <div className="text-[11px] font-semibold uppercase tracking-[1.6px] text-accent-600">
+          {/* eslint-disable-next-line no-restricted-syntax -- eyebrow label paired with the headline, primitive adoption deferred */}
+          <div className="text-eyebrow font-semibold uppercase tracking-[1.6px] text-accent-600">
             {t("firstRun.eyebrow", { org: orgName })}
           </div>
-          <h1 className="mt-2 max-w-[620px] font-display text-[32px] font-semibold leading-[38px] tracking-[-0.6px] text-pretty">
+          <h1 className="mt-2 max-w-[620px] font-display text-display-sm font-semibold leading-[38px] tracking-[-0.6px] text-pretty">
             {t("firstRun.headline")}
           </h1>
           <p className="mt-2 max-w-[600px] text-sm leading-[21px] text-muted-foreground text-pretty">
@@ -57,11 +58,12 @@ export function AvailabilityFirstRun({
           </p>
         </div>
         <div className="w-full shrink-0 rounded-[var(--radius-l)] border border-border bg-card p-3.5 sm:w-[236px]">
-          <div className="text-[11px] font-semibold uppercase tracking-[1.6px] text-[var(--text-faint)]">
+          {/* eslint-disable-next-line no-restricted-syntax -- eyebrow label above the progress metric, primitive adoption deferred */}
+          <div className="text-eyebrow font-semibold uppercase tracking-[1.6px] text-[var(--text-faint)]">
             {t("firstRun.setup.label")}
           </div>
           <div className="mt-2 flex items-baseline gap-1.5">
-            <span className="font-mono text-[22px] font-semibold tracking-[-0.4px]">{done}</span>
+            <span className="font-mono text-title font-semibold tracking-[-0.4px]">{done}</span>
             <span className="text-xs text-[var(--text-faint)]">{t("firstRun.setup.ofOne")}</span>
           </div>
           <div className="mt-2.5 flex gap-[3px]">
@@ -82,7 +84,7 @@ export function AvailabilityFirstRun({
               <div className="text-base font-semibold tracking-[-0.1px]">{t("firstRun.task.title")}</div>
               <Badge variant="neutral">{t("firstRun.task.blocksNothing")}</Badge>
             </div>
-            <div className="mt-1 text-[13px] leading-[19px] text-muted-foreground text-pretty">
+            <div className="mt-1 text-control leading-[19px] text-muted-foreground text-pretty">
               {t("firstRun.task.body")}
             </div>
           </div>
@@ -95,7 +97,8 @@ export function AvailabilityFirstRun({
       {/* Rules inherited from the org — read-only reference, always shown */}
       <div className="rounded-[var(--radius-l)] border border-border bg-card">
         <div className="flex items-center gap-2 border-b border-border bg-muted px-4 py-3">
-          <span className="text-[11px] font-semibold uppercase tracking-[1.6px] text-muted-foreground">
+          {/* eslint-disable-next-line no-restricted-syntax -- section heading followed by a spacer + sibling, primitive adoption deferred */}
+          <span className="text-eyebrow font-semibold uppercase tracking-[1.6px] text-muted-foreground">
             {t("firstRun.rules.heading")}
           </span>
           <span className="flex-1" />
@@ -103,7 +106,7 @@ export function AvailabilityFirstRun({
         </div>
         <div className="flex flex-col sm:flex-row">
           <div className="flex-1 border-b border-border p-4 sm:border-b-0 sm:border-r">
-            <div className="text-[13px] font-semibold">{t("firstRun.rules.eligibilityTitle")}</div>
+            <div className="text-control font-semibold">{t("firstRun.rules.eligibilityTitle")}</div>
             <div className="mt-1 text-xs leading-[17px] text-muted-foreground text-pretty">
               {t("firstRun.rules.eligibilityBody")}
             </div>
@@ -111,7 +114,7 @@ export function AvailabilityFirstRun({
           <div
             className={`flex-1 border-b border-border p-4 sm:border-b-0 ${artistAcceptance ? "sm:border-r" : ""}`}
           >
-            <div className="text-[13px] font-semibold">{t("firstRun.rules.offersTitle")}</div>
+            <div className="text-control font-semibold">{t("firstRun.rules.offersTitle")}</div>
             <div className="mt-1 text-xs leading-[17px] text-muted-foreground text-pretty">
               {artistAcceptance
                 ? t("firstRun.rules.offersBody", { time: digestLabel })
@@ -122,7 +125,7 @@ export function AvailabilityFirstRun({
               no offer to answer, so this column would be misleading and is dropped. */}
           {artistAcceptance && (
             <div className="flex-1 p-4">
-              <div className="text-[13px] font-semibold">{t("firstRun.rules.windowTitle", { hours: windowHours })}</div>
+              <div className="text-control font-semibold">{t("firstRun.rules.windowTitle", { hours: windowHours })}</div>
               <div className="mt-1 text-xs leading-[17px] text-muted-foreground text-pretty">
                 {t("firstRun.rules.windowBody")}
               </div>

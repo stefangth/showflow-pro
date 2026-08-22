@@ -48,7 +48,9 @@ export function SignaturePad({ value, onChange, disabled }: Props) {
     // supplied by CSS. That makes the exported PNG opaque: dark-mode white ink
     // remains visible when the stored image is embedded on the PDF's white page.
     const pad = new SignaturePadLib(node, {
+      // eslint-disable-next-line no-restricted-syntax -- canvas ink color for signature_pad (raster PNG export), not a Tailwind token
       penColor: dark ? "#ffffff" : "#15131C",
+      // eslint-disable-next-line no-restricted-syntax -- canvas ground color for signature_pad (raster PNG export), not a Tailwind token
       backgroundColor: dark ? "#15131C" : "#ffffff",
     });
     pad.addEventListener("endStroke", () => {
@@ -82,7 +84,7 @@ export function SignaturePad({ value, onChange, disabled }: Props) {
           }}
         />
         {typed.trim() !== "" && (
-          <div className="rounded-md border border-border bg-muted px-4 py-3 font-serif text-2xl text-foreground">
+          <div className="rounded-m border border-border bg-muted px-4 py-3 font-serif text-2xl text-foreground">
             {typed}
           </div>
         )}
@@ -91,7 +93,7 @@ export function SignaturePad({ value, onChange, disabled }: Props) {
         <canvas
           ref={setCanvas}
           className={cn(
-            "h-40 w-full rounded-md border border-border bg-background touch-none",
+            "h-40 w-full rounded-m border border-border bg-background touch-none",
             disabled && "pointer-events-none opacity-50",
           )}
         />

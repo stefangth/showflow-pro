@@ -242,7 +242,7 @@ export function EligibilityPanelBody({
               )}
             >
               <div className="flex items-start justify-between gap-2">
-                <span className="min-w-0 truncate text-[13px] font-medium text-foreground">
+                <span className="min-w-0 truncate text-control font-medium text-foreground">
                   {showNameById.get(prod.showId) ?? prod.showId}
                 </span>
                 {hasGap ? (
@@ -256,7 +256,7 @@ export function EligibilityPanelBody({
                 )}
               </div>
 
-              <p className="mt-1 font-mono text-[11px] text-muted-foreground">
+              <p className="mt-1 font-mono text-eyebrow text-muted-foreground">
                 {t("panel.body.eligibility.dateCount", { count: prod.dateTotal })}
                 {" · "}
                 {t("panel.body.eligibility.cityCount", { count: prod.cityCount })}
@@ -266,7 +266,7 @@ export function EligibilityPanelBody({
                 {prod.coveringCastIds.map((castId) => (
                   <span
                     key={castId}
-                    className="inline-flex h-6 items-center gap-1.5 rounded-[var(--radius-s)] border border-accent-200 bg-accent-100 px-2 text-xs font-medium text-accent-700"
+                    className="inline-flex h-6 items-center gap-1.5 rounded-[var(--radius-s)] border border-accent-200 bg-accent-100 px-2 text-xs font-medium text-accent-text"
                   >
                     <Users className="h-3 w-3" />
                     {castNameById.get(castId) ?? castId}
@@ -281,7 +281,7 @@ export function EligibilityPanelBody({
               </div>
 
               {hasGap && (
-                <p className="mt-2 text-[11px] text-muted-foreground">
+                <p className="mt-2 text-eyebrow text-muted-foreground">
                   {t("panel.body.eligibility.noCastYet", { cities: uncoveredCityNames })}
                 </p>
               )}
@@ -321,7 +321,7 @@ function CastPicker({
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="inline-flex h-6 shrink-0 items-center rounded-[var(--radius-s)] border border-dashed border-accent-200 px-2.5 text-xs font-medium text-accent-700 hover:bg-accent"
+          className="inline-flex h-6 shrink-0 items-center rounded-[var(--radius-s)] border border-dashed border-accent-200 px-2.5 text-xs font-medium text-accent-text hover:bg-accent"
         >
           {t("panel.body.eligibility.linkACast")}
         </button>

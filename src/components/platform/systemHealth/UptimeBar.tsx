@@ -36,7 +36,7 @@ export function UptimeBar({ rows, days, now = new Date() }: {
                 <span
                   data-uptime-day
                   data-state={c.state}
-                  className={cn("h-6 min-w-[3px] flex-1 rounded-sm cursor-default", TONE[c.state])}
+                  className={cn("h-6 min-w-[3px] flex-1 rounded-s cursor-default", TONE[c.state])}
                 />
               </TooltipTrigger>
               <TooltipContent side="top" className="px-2 py-1 text-xs">
@@ -46,7 +46,7 @@ export function UptimeBar({ rows, days, now = new Date() }: {
           ))}
         </div>
       </TooltipProvider>
-      <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+      <div className="flex items-center justify-between text-eyebrow text-muted-foreground">
         <span>{days} days ago</span>
         <span className="tabular-nums">
           {pct === null ? "no data yet" : `${pct.toFixed(1)}% uptime`}

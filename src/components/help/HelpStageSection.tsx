@@ -20,10 +20,10 @@ export function HelpStageSection({
   return (
     <section className="flex flex-col gap-2">
       <div className="flex items-baseline gap-2.5">
-        <h2 className="text-[17px] font-semibold tracking-tight text-foreground">{s.title[lang]}</h2>
+        <h2 className="text-title-sm font-semibold tracking-tight text-foreground">{s.title[lang]}</h2>
         <span className="text-xs text-muted-foreground/60">{s.moment[lang]}</span>
       </div>
-      <div className="overflow-hidden rounded-[10px] border-[0.5px] border-border bg-card">
+      <div className="overflow-hidden rounded-l border-[0.5px] border-border bg-card">
         {items.map((i) => (
           <HelpItemRow key={i.id} item={i} lang={lang} open={!!openMap[i.id]} onToggle={() => onToggle(i.id)} />
         ))}

@@ -16,7 +16,7 @@ export type CastTone = "green" | "violet" | "amber";
 // the status badges below — CLAUDE.md: never hardcode colors.
 const AVATAR_TONE: Record<CastTone, string> = {
   green: "bg-[var(--green-100)] text-[var(--green-600)]",
-  violet: "bg-accent-100 text-accent-700",
+  violet: "bg-accent-100 text-accent-text",
   amber: "bg-[var(--amber-100)] text-[var(--amber-600)]",
 };
 
@@ -63,7 +63,7 @@ function Avatar({ row }: { row: CastRow }) {
   return (
     <span
       className={cn(
-        "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold",
+        "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-eyebrow font-semibold",
         AVATAR_TONE[row.tone ?? "violet"],
       )}
     >
@@ -83,7 +83,7 @@ function StatusBadge({ status }: { status: NonNullable<CastRow["status"]> }) {
     // for anyone who reads "Accepted" as already-booked.
     return (
       <IconTooltip label={softBookedMeaning(tAction)}>
-        <span className={cn(STATUS_BADGE_BASE, "bg-accent-100 text-accent-700")}>{t("cockpitCastList.accepted")}</span>
+        <span className={cn(STATUS_BADGE_BASE, "bg-accent-100 text-accent-text")}>{t("cockpitCastList.accepted")}</span>
       </IconTooltip>
     );
   }
@@ -148,7 +148,7 @@ function Row({
           <p className={cn("text-sm leading-[18px]", row.open ? "font-normal text-[var(--text-faint)]" : "font-medium text-foreground")}>
             {row.name ?? t("cockpitCastList.openSlot")}
           </p>
-          <p className={cn("mt-px font-mono text-[11px] leading-[14px]", row.open ? "text-[var(--amber-600)]" : "text-[var(--text-faint)]")}>
+          <p className={cn("mt-px font-mono text-eyebrow leading-[14px]", row.open ? "text-[var(--amber-600)]" : "text-[var(--text-faint)]")}>
             {row.meta}
           </p>
         </div>
@@ -258,7 +258,8 @@ export function CockpitCastList({
           key={g.key}
           className="overflow-hidden rounded-[var(--radius-l)] border-[0.5px] border-[var(--line)] bg-[var(--surface)]"
         >
-          <p className="border-b-[0.5px] border-[var(--line)] px-3.5 py-3 text-[11px] font-semibold uppercase leading-[14px] tracking-[1.6px] text-muted-foreground">
+          {/* eslint-disable-next-line no-restricted-syntax -- group header combines title + count, not a plain Eyebrow */}
+          <p className="border-b-[0.5px] border-[var(--line)] px-3.5 py-3 text-eyebrow font-semibold uppercase leading-[14px] tracking-[1.6px] text-muted-foreground">
             {g.title} · {g.count}
           </p>
           {g.rows.map((r, i) => (

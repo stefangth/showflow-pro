@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import type { ActionGates, ArtistDateEntry, ArtistStatus, ProducerDateEntry } from '@/lib/calendar/types';
 import { dfLocale, toDateKey } from '@/lib/dates';
 import { cn } from '@/lib/utils';
+import { Eyebrow } from '@/components/ui/eyebrow';
 import { DayDetail } from './DayDetail';
 
 export interface DayRailStat {
@@ -83,15 +84,13 @@ export function DayRail({
         actionGates={actionGates}
       />
 
-      <div className="rounded-[10px] border-[0.5px] border-border bg-muted p-3.5">
-        <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-[1.6px] text-muted-foreground">
-          {statsTitle}
-        </p>
+      <div className="rounded-l border-[0.5px] border-border bg-muted p-3.5">
+        <Eyebrow className="mb-2.5">{statsTitle}</Eyebrow>
         <div className="flex flex-col gap-2">
           {stats.map((stat, i) => (
             <div key={i} className="flex items-center gap-2">
               <span className={cn('h-1 w-2.5 shrink-0 rounded-full', stat.dotClass)} />
-              <span className="text-[12.5px] text-foreground">{stat.label}</span>
+              <span className="text-control text-foreground">{stat.label}</span>
               <span className="ml-auto font-mono text-xs font-medium tabular-nums text-foreground">
                 {stat.value}
               </span>
@@ -100,14 +99,12 @@ export function DayRail({
         </div>
       </div>
 
-      <div className="rounded-[10px] border-[0.5px] border-border bg-card p-3.5">
-        <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-[1.6px] text-muted-foreground">
-          {t('common:calendar.rail.legendTitle')}
-        </p>
+      <div className="rounded-l border-[0.5px] border-border bg-card p-3.5">
+        <Eyebrow className="mb-2.5">{t('common:calendar.rail.legendTitle')}</Eyebrow>
         <div className="flex flex-col gap-1.5">
           {legend.map((item, i) => (
             <div key={i} className="flex items-center gap-2">
-              <span className="relative h-[11px] w-4 shrink-0 overflow-hidden rounded-[3px]">
+              <span className="relative h-[11px] w-4 shrink-0 overflow-hidden rounded-xs">
                 <span className={cn('absolute inset-0', item.badgeClass)} />
                 <span className={cn('absolute inset-y-0 left-0 w-0.5', item.railClass)} />
               </span>

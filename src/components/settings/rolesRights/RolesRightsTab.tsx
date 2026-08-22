@@ -17,6 +17,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { SegmentedControl, type SegmentedControlOption } from "@/components/ui/segmented-control";
+import { Eyebrow } from "@/components/ui/eyebrow";
 import { CAPABILITY_GROUPS } from "@/lib/capabilities";
 import { presetOnKeys, matchesPreset, type Preset } from "@/lib/capabilities/presets";
 import {
@@ -246,9 +247,7 @@ export function RolesRightsTab({ orgId }: RolesRightsTabProps) {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[1.6px] text-muted-foreground">
-            {t("tab.eyebrow")}
-          </p>
+          <Eyebrow>{t("tab.eyebrow")}</Eyebrow>
           <h1 className="mt-1 font-display text-xl font-semibold text-foreground">{t("tab.title")}</h1>
           <p className="mt-1 max-w-xl text-sm text-muted-foreground">
             {t("tab.description")}
@@ -274,7 +273,7 @@ export function RolesRightsTab({ orgId }: RolesRightsTabProps) {
                 {t("tab.resetToBaseline")}
               </Button>
             </div>
-            <p className="text-[12.5px] text-muted-foreground">{diffText}</p>
+            <p className="text-control text-muted-foreground">{diffText}</p>
           </div>
 
           <div className="flex flex-wrap items-center gap-3">

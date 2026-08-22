@@ -30,7 +30,8 @@ const STEPS: WizardStep[] = [
   { n: 4, titleKey: "setupWizard.steps.linkCatalogTitle", hintKey: "setupWizard.steps.linkCatalogHint" },
 ];
 
-const EYEBROW = "text-[11px] font-semibold uppercase tracking-[0.1em] text-accent-600";
+// eslint-disable-next-line no-restricted-syntax -- non-standard tracking (0.1em)
+const EYEBROW = "text-eyebrow font-semibold uppercase tracking-[0.1em] text-accent-600";
 
 /** The empty-state setup card: a four-step rail on the left, the personal
  *  access token step active on the right. Presentational: the orchestrator
@@ -47,10 +48,10 @@ export function SetupWizard({
   const { t } = useTranslation('settingsAirtable');
   const currentStep = keyPresent ? 2 : 1;
   return (
-    <div className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+    <div className="overflow-hidden rounded-l border border-border bg-card shadow-sm">
       <div className="border-b border-border p-5">
         <p className={EYEBROW}>{t('setupWizard.eyebrow')}</p>
-        <h2 className="mt-1.5 font-display text-[22px] font-semibold tracking-tight">
+        <h2 className="mt-1.5 font-display text-title font-semibold tracking-tight">
           {t('setupWizard.heading')}
         </h2>
         <p className="mt-1.5 text-sm text-muted-foreground">
@@ -68,11 +69,11 @@ export function SetupWizard({
                 <div className="flex flex-col items-center gap-1">
                   <span
                     className={cn(
-                      "flex h-[22px] w-[22px] items-center justify-center rounded-full text-[11px] font-semibold",
+                      "flex h-[22px] w-[22px] items-center justify-center rounded-full text-eyebrow font-semibold",
                       current
                         ? "bg-primary text-primary-foreground"
                         : done
-                          ? "border border-accent-200 bg-accent-100 text-accent-700"
+                          ? "border border-accent-200 bg-accent-100 text-accent-text"
                           : "border border-border bg-card text-muted-foreground",
                     )}
                   >
@@ -83,7 +84,7 @@ export function SetupWizard({
                 <div className="pb-1.5">
                   <p
                     className={cn(
-                      "text-[13px] font-semibold",
+                      "text-control font-semibold",
                       step.n <= currentStep ? "text-foreground" : "text-muted-foreground",
                     )}
                   >
@@ -97,7 +98,7 @@ export function SetupWizard({
         </ol>
         {keyPresent ? (
           <div className="p-5">
-            <h3 className="text-[17px] font-semibold tracking-tight">{t('setupWizard.baseTableStepTitle')}</h3>
+            <h3 className="text-title-sm font-semibold tracking-tight">{t('setupWizard.baseTableStepTitle')}</h3>
             <p className="mt-1.5 text-sm text-muted-foreground">
               {t('setupWizard.baseTableStepDescription')}
             </p>
@@ -107,7 +108,7 @@ export function SetupWizard({
           </div>
         ) : (
           <div className="p-5">
-            <h3 className="text-[17px] font-semibold tracking-tight">{t('setupWizard.tokenStepTitle')}</h3>
+            <h3 className="text-title-sm font-semibold tracking-tight">{t('setupWizard.tokenStepTitle')}</h3>
             <p className="mt-1.5 text-sm text-muted-foreground">
               {t('setupWizard.tokenHelpPrefix')}{" "}
               <span className="font-mono text-xs">data.records:read</span> {t('setupWizard.tokenHelpAnd')}{" "}

@@ -42,6 +42,7 @@ function ClauseListEditor({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
+        {/* eslint-disable-next-line no-restricted-syntax -- non-standard tracking */}
         <h5 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("termsVariantsCard.clausesHeading")}</h5>
         <Button
           type="button"
@@ -55,12 +56,12 @@ function ClauseListEditor({
         </Button>
       </div>
       {clauses.length === 0 && (
-        <p className="rounded-lg border border-dashed border-border p-3 text-xs text-muted-foreground">
+        <p className="rounded-l border border-dashed border-border p-3 text-xs text-muted-foreground">
           {t("termsVariantsCard.noClauses", { label })}
         </p>
       )}
       {clauses.map((clause, i) => (
-        <div key={i} className="space-y-2 rounded-lg border border-border p-3">
+        <div key={i} className="space-y-2 rounded-l border border-border p-3">
           <div className="flex items-center gap-2">
             <Input
               aria-label={t("termsVariantsCard.clauseTitleAria", { label, index: i + 1 })}
@@ -198,7 +199,7 @@ export function TermsVariantsCard({ orgId, readOnly = false }: { orgId: string |
       </CardHeader>
       <CardContent className="space-y-6">
         {library.data && library.data.length > 0 && (
-          <div className="space-y-3 rounded-lg border border-border p-3">
+          <div className="space-y-3 rounded-l border border-border p-3">
             <div>
               <h5 className="text-sm font-medium">{t("termsVariantsCard.startFromTemplate")}</h5>
               <p className="text-xs text-muted-foreground">
@@ -232,7 +233,7 @@ export function TermsVariantsCard({ orgId, readOnly = false }: { orgId: string |
           </div>
         )}
         {form.templates.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-border p-3 text-xs text-muted-foreground">
+          <p className="rounded-l border border-dashed border-border p-3 text-xs text-muted-foreground">
             {t("termsVariantsCard.noTemplates")}
           </p>
         ) : (
@@ -249,7 +250,7 @@ export function TermsVariantsCard({ orgId, readOnly = false }: { orgId: string |
                 <div
                   key={tpl.id}
                   data-testid={`terms-template-${tpl.id}`}
-                  className="space-y-3 rounded-lg border border-border p-4"
+                  className="space-y-3 rounded-l border border-border p-4"
                 >
                   <div className="flex items-center gap-3">
                     <Input

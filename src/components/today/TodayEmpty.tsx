@@ -12,12 +12,12 @@ export function TodayEmpty({ fillingOnTheirOwn, onLookAtSeason }: TodayEmptyProp
   const { t } = useTranslation("today");
 
   return (
-    <div className="rounded-[14px] border border-dashed border-border px-8 py-11 text-center">
+    <div className="rounded-[var(--radius-xl)] border border-dashed border-border px-8 py-11 text-center">
       <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[var(--green-100)] text-[var(--green-600)]">
         <Check className="h-5 w-5" />
       </span>
-      <p className="m-0 mt-3.5 text-[22px] font-semibold tracking-[-0.3px]">{t("empty.title")}</p>
-      <p className="mx-auto mb-0 mt-2 max-w-[420px] text-[13.5px] leading-5 text-muted-foreground">
+      <p className="m-0 mt-3.5 text-title font-semibold tracking-[-0.3px]">{t("empty.title")}</p>
+      <p className="mx-auto mb-0 mt-2 max-w-[420px] text-control leading-5 text-muted-foreground">
         {t("empty.body", { count: fillingOnTheirOwn })}
       </p>
       <Button variant="secondary" onClick={onLookAtSeason} className="mt-[18px]">

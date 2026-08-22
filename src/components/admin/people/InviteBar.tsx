@@ -84,9 +84,14 @@ export function InviteBar({ members, invites, onOpenBulk, onResend, resendPendin
       ) : match === "pending" && pendingInvite ? (
         <p className="text-xs text-muted-foreground flex items-center gap-2">
           {t("inviteBar.alreadyInvited")}
-          <Button size="sm" variant="secondary" className="text-xs" disabled={resendPendingId === pendingInvite.id} onClick={() => onResend(pendingInvite.id)}>
+          <button
+            type="button"
+            disabled={resendPendingId === pendingInvite.id}
+            onClick={() => onResend(pendingInvite.id)}
+            className="text-control font-medium text-accent-text hover:underline disabled:pointer-events-none disabled:opacity-50"
+          >
             {t("inviteBar.resend")}
-          </Button>
+          </button>
         </p>
       ) : null}
     </div>

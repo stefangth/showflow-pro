@@ -23,6 +23,7 @@ import { EditorToolbar, EditorModeToggle, EditorPageBadge } from '@/features/edi
 import { StageMark } from '@/components/brand/StageMark';
 import { BrandWordmark } from '@/components/brand/BrandWordmark';
 import { OrgSwitcher } from '@/components/layout/OrgSwitcher';
+import { Eyebrow } from '@/components/ui/eyebrow';
 import { NotificationsList } from '@/components/layout/NotificationsList';
 import { AutopilotStatusCard } from '@/components/layout/AutopilotStatusCard';
 import { DemoBadge } from '@/components/demo/DemoBadge';
@@ -146,9 +147,9 @@ export default function AppLayout({ children }: AppLayoutProps) {
         {navGroups.map(group => (
           <div key={group.section} className="space-y-0.5">
             {!collapsed && (
-              <p className="px-2.5 pb-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground/70">
+              <Eyebrow section className="px-2.5 pb-1 text-muted-foreground/70">
                 {t(SECTION_KEY[group.section])}
-              </p>
+              </Eyebrow>
             )}
             {group.items.map(item => {
               const showWarningDot = item.to === ROUTES.SETTINGS && hasAnyWarning;
@@ -160,7 +161,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                     key={item.to}
                     aria-disabled="true"
                     title={`${item.label} is not enabled for this organization`}
-                    className="flex cursor-not-allowed items-center gap-2.5 rounded-[7px] px-2.5 py-2 text-[13px] font-medium text-muted-foreground/50"
+                    className="flex cursor-not-allowed items-center gap-2.5 rounded-s px-2.5 py-2 text-control font-medium text-muted-foreground/50"
                   >
                     <span className="relative shrink-0">
                       <item.icon className="h-[14px] w-[14px]" />
@@ -181,11 +182,11 @@ export default function AppLayout({ children }: AppLayoutProps) {
                   onClick={() => setMobileOpen(false)}
                   className={({ isActive }) =>
                     cn(
-                      'flex items-center gap-2.5 rounded-[7px] px-2.5 py-2 text-[13px] font-medium transition-colors',
+                      'flex items-center gap-2.5 rounded-s px-2.5 py-2 text-control font-medium transition-colors',
                       hiddenForRole ? 'opacity-40' : '',
                       isActive
                         ? 'bg-sidebar-accent text-sidebar-accent-foreground font-semibold'
-                        : 'text-sidebar-foreground/70 hover:bg-foreground/[0.04] hover:text-sidebar-foreground'
+                        : 'text-sidebar-foreground/70 hover:bg-foreground/5 hover:text-sidebar-foreground'
                     )
                   }
                 >
@@ -209,7 +210,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                     <span className="flex items-center gap-2 flex-1 min-w-0">
                       <span className="truncate">{item.labelKey ? t(item.labelKey) : item.label}</span>
                       {badgeCount > 0 && (
-                        <span className="ml-auto shrink-0 rounded-full bg-sidebar-accent px-1.5 py-px text-[10px] font-semibold tabular-nums text-sidebar-accent-foreground">
+                        <span className="ml-auto shrink-0 rounded-full bg-sidebar-accent px-1.5 py-px text-eyebrow font-semibold tabular-nums text-sidebar-accent-foreground">
                           {badgeCount}
                         </span>
                       )}
@@ -258,14 +259,14 @@ export default function AppLayout({ children }: AppLayoutProps) {
             </IconTooltip>
           </div>
         ) : (
-          <div className="rounded-[10px] border border-sidebar-border bg-background/70 px-2.5 py-2 shadow-sm">
+          <div className="rounded-l border border-sidebar-border bg-background/70 px-2.5 py-2 shadow-sm">
             <div className="flex items-center gap-2.5">
               <Avatar className="h-8 w-8 shrink-0">
                 <AvatarFallback seed={user?.email ?? ''}>{initials}</AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
-                <p className="text-[12.5px] font-semibold leading-tight truncate">{displayName}</p>
-                <p className="text-[10.5px] text-muted-foreground leading-tight truncate">{profileSubtitle}</p>
+                <p className="text-control font-semibold leading-tight truncate">{displayName}</p>
+                <p className="text-eyebrow text-muted-foreground leading-tight truncate">{profileSubtitle}</p>
               </div>
               <Popover open={profileMenuOpen} onOpenChange={setProfileMenuOpen}>
                 <IconTooltip label="Account menu" side="top">
@@ -278,13 +279,13 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 <PopoverContent align="end" side="top" sideOffset={8} className="w-52 p-1">
                   {languagePacksEnabled && (
                     <>
-                      <p className="px-2.5 pb-1 pt-1.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-muted-foreground/70">
+                      <Eyebrow section className="px-2.5 pb-1 pt-1.5 text-muted-foreground/70">
                         {t('account.language')}
-                      </p>
+                      </Eyebrow>
                       {SUPPORTED_LANGUAGES.map((code) => (
                         <button
                           key={code}
-                          className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] text-foreground hover:bg-muted transition-colors"
+                          className="flex w-full items-center gap-2.5 rounded-m px-2.5 py-2 text-control text-foreground hover:bg-muted transition-colors"
                           onClick={() => { setLang(code); setProfileMenuOpen(false); }}
                           aria-pressed={lang === code}
                         >
@@ -297,13 +298,13 @@ export default function AppLayout({ children }: AppLayoutProps) {
                     </>
                   )}
                   <button
-                    className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] text-foreground hover:bg-muted transition-colors"
+                    className="flex w-full items-center gap-2.5 rounded-m px-2.5 py-2 text-control text-foreground hover:bg-muted transition-colors"
                     onClick={() => { setProfileMenuOpen(false); navigate(ROUTES.PROFILE); }}
                   >
                     <User className="h-[14px] w-[14px]" /> {t('account.profile')}
                   </button>
                   <button
-                    className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] text-foreground hover:bg-muted transition-colors"
+                    className="flex w-full items-center gap-2.5 rounded-m px-2.5 py-2 text-control text-foreground hover:bg-muted transition-colors"
                     onClick={() => { setProfileMenuOpen(false); handleSignOut(); }}
                   >
                     <LogOut className="h-[14px] w-[14px]" /> {t('account.signOut')}
@@ -321,7 +322,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 <Badge variant="outline" className="border-warning text-warning">
                   Viewing as: {viewAsUser.roles.map(roleLabel).join(', ') || 'no role'}
                 </Badge>
-                <p className="text-[10px] font-mono text-warning truncate">{viewAsUser.email}</p>
+                <p className="text-eyebrow font-mono text-warning truncate">{viewAsUser.email}</p>
               </div>
             )}
             <DemoBadge />
@@ -345,7 +346,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
           <button
             onClick={() => setCollapsed(!collapsed)}
             aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            className="flex items-center justify-center py-3 border-t-[0.5px] border-sidebar-border hover:bg-foreground/[0.04] transition-colors"
+            className="flex items-center justify-center py-3 border-t-[0.5px] border-sidebar-border hover:bg-foreground/5 transition-colors"
           >
             {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
           </button>
@@ -371,7 +372,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
         {/* Top bar — 52 px */}
         <header className="flex items-center gap-3 h-[52px] px-6 border-b-[0.5px] border-border bg-background shrink-0">
           <button
-            className="lg:hidden p-1 -ml-1 rounded-md hover:bg-muted transition-colors"
+            className="lg:hidden p-1 -ml-1 rounded-m hover:bg-muted transition-colors"
             onClick={() => setMobileOpen(true)}
             aria-label="Open navigation"
           >
@@ -383,7 +384,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
           </div>
 
           {/* Breadcrumb — current page path (desktop) */}
-          <nav aria-label="Breadcrumb" className="hidden lg:flex items-center gap-1.5 text-[13px] min-w-0">
+          <nav aria-label="Breadcrumb" className="hidden lg:flex items-center gap-1.5 text-control min-w-0">
             {location.pathname === ROUTES.DASHBOARD ? (
               <span aria-current="page" className="font-medium text-foreground">{t('nav.dashboard')}</span>
             ) : (

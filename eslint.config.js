@@ -4,9 +4,9 @@ import reactHooks from "eslint-plugin-react-hooks";
 import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 
-// Wave 2 (ADR 0012): activate UI convention lint AFTER the ~1,000-violation codemod sweep.
-// import { uiConventions } from './eslint/ui-conventions.js';
-// ...then add `uiConventions` to the exported config array, flipping its rules to 'error'.
+// Wave 2 (ADR 0012): UI convention lint is active (sweep complete). Its rules are
+// 'error' and the lint script runs --max-warnings 0, so any raw value fails CI.
+import { uiConventions } from './eslint/ui-conventions.js';
 
 // All three rules are errors and the lint script runs with --max-warnings 0:
 // any new violation fails CI. The `any` boundary policy lives in CLAUDE.md
@@ -83,4 +83,5 @@ export default tseslint.config(
       ...strictness,
     },
   },
+  uiConventions,
 );

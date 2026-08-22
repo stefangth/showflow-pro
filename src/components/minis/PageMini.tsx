@@ -46,17 +46,18 @@ export function PageMiniView({ def, role, lang, art, dismissed, onHide, onResume
   return (
     <section className="rounded-l border-[0.5px] border-border bg-card p-4" aria-label={def.eyebrow[lang]}>
       <div className="flex items-center gap-3 pb-3">
-        <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+        {/* eslint-disable-next-line no-restricted-syntax -- inline label sharing a flex row with the spacer/subnote/hide-button, not the sole child <Eyebrow> requires */}
+        <span className="text-eyebrow font-semibold uppercase tracking-[0.14em] text-muted-foreground">
           {def.eyebrow[lang]}
         </span>
         <span className="flex-1" />
         {def.subnote && (
-          <span className="hidden text-[12px] text-muted-foreground/70 sm:inline">{def.subnote[lang]}</span>
+          <span className="hidden text-caption text-muted-foreground/70 sm:inline">{def.subnote[lang]}</span>
         )}
         <button
           type="button"
           onClick={onHide}
-          className="text-[12px] text-muted-foreground transition-colors hover:text-foreground"
+          className="text-caption text-muted-foreground transition-colors hover:text-foreground"
         >
           {lang === 'de' ? 'Ausblenden' : 'Hide'}
         </button>
@@ -66,13 +67,14 @@ export function PageMiniView({ def, role, lang, art, dismissed, onHide, onResume
         {steps.map((step, i) => (
           <div key={i} className="flex flex-col gap-3 rounded-l border-[0.5px] border-border bg-background p-4">
             <div className="flex items-center gap-2">
-              <span className="font-mono text-[12px] font-semibold text-accent-600">{STEP_NUMBERS[i]}</span>
-              <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-accent-600">
+              <span className="font-mono text-caption font-semibold text-accent-600">{STEP_NUMBERS[i]}</span>
+              {/* eslint-disable-next-line no-restricted-syntax -- step-number label shares a flex row with the numeral span, not the sole child <Eyebrow> requires */}
+              <span className="text-eyebrow font-semibold uppercase tracking-[0.14em] text-accent-600">
                 {step.label[lang]}
               </span>
             </div>
             {art[i]}
-            <p className="text-pretty text-[12px] leading-4 text-muted-foreground">{step.text[lang]}</p>
+            <p className="text-pretty text-caption leading-4 text-muted-foreground">{step.text[lang]}</p>
           </div>
         ))}
       </div>

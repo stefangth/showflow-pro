@@ -40,7 +40,8 @@ function HireOrdersRail() {
     <div className="flex flex-col gap-3 lg:sticky lg:top-4">
       <Card>
         <CardContent className="p-4">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("hireOrdersTab.rail.aboutTitle")}</p>
+          {/* eslint-disable-next-line no-restricted-syntax -- non-standard tracking */}
+          <p className="text-eyebrow font-semibold uppercase tracking-wider text-muted-foreground">{t("hireOrdersTab.rail.aboutTitle")}</p>
           <p className="mt-2 text-xs text-muted-foreground">
             {t("hireOrdersTab.rail.aboutBody")}
           </p>
@@ -48,7 +49,8 @@ function HireOrdersRail() {
       </Card>
       <Card>
         <CardContent className="p-4">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("hireOrdersTab.rail.historyTitle")}</p>
+          {/* eslint-disable-next-line no-restricted-syntax -- non-standard tracking */}
+          <p className="text-eyebrow font-semibold uppercase tracking-wider text-muted-foreground">{t("hireOrdersTab.rail.historyTitle")}</p>
           <div className="mt-1">
             {audit.isLoading ? (
               <div className="mt-1.5 space-y-1.5">
@@ -66,7 +68,7 @@ function HireOrdersRail() {
                 )}
                 {(audit.data ?? []).map((e) => (
                   <div key={e.id} className="border-t border-border pt-2 mt-2 first:border-t-0 first:mt-1.5">
-                    <p className="font-mono text-[10px] text-muted-foreground">
+                    <p className="font-mono text-eyebrow text-muted-foreground">
                       {formatDateDMY(e.created_at.slice(0, 10))} · {e.actorName ?? t("hireOrdersTab.rail.systemActor")}
                     </p>
                     <p className="mt-0.5 text-xs">{describeEntry(e, t)}</p>

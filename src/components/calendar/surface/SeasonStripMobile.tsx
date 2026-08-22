@@ -71,7 +71,7 @@ function SeasonStripCell({
       className={cn('flex h-[54px] justify-center border-l border-l-border py-0.5', cancelled ? 'items-center' : 'items-end')}
     >
       {cancelled ? (
-        <span aria-hidden="true" className="font-mono text-[10px] font-semibold leading-none text-destructive">
+        <span aria-hidden="true" className="font-mono text-eyebrow font-semibold leading-none text-destructive">
           &times;
         </span>
       ) : cell.mainSlots > 0 ? (
@@ -115,7 +115,7 @@ export function SeasonStripMobile({ entries, anchor, readyIds, onOpenDate, class
         <p className="text-sm font-semibold text-foreground">
           {t('calendar.seasonStripMobile.heading', { month: format(anchor, 'MMM yyyy', { locale: dfLocale() }) })}
         </p>
-        <p className="text-[11px] text-muted-foreground">{t('calendar.seasonStripMobile.swipeHint')}</p>
+        <p className="text-eyebrow text-muted-foreground">{t('calendar.seasonStripMobile.swipeHint')}</p>
       </div>
 
       <div
@@ -126,7 +126,8 @@ export function SeasonStripMobile({ entries, anchor, readyIds, onOpenDate, class
         <div className="grid border-b border-border" style={{ gridTemplateColumns: gridCols }}>
           <div
             data-testid="season-strip-corner"
-            className="sticky left-0 z-10 truncate bg-card px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
+            // eslint-disable-next-line no-restricted-syntax -- needs a data-testid, which <Eyebrow> (no pass-through props) can't carry
+            className="sticky left-0 z-10 truncate bg-card px-2 py-1.5 text-eyebrow font-semibold uppercase tracking-wide text-muted-foreground"
           >
             {t('calendar.seasonStripMobile.cornerLabel')}
           </div>
@@ -139,8 +140,8 @@ export function SeasonStripMobile({ entries, anchor, readyIds, onOpenDate, class
                 data-testid={`season-strip-day-${key}`}
                 data-today={today}
                 className={cn(
-                  'flex items-center justify-center border-l border-l-border py-1 font-mono text-[9px] tabular-nums text-muted-foreground',
-                  today && 'bg-accent-100 text-accent-700'
+                  'flex items-center justify-center border-l border-l-border py-1 font-mono text-eyebrow tabular-nums text-muted-foreground',
+                  today && 'bg-accent-100 text-accent-text'
                 )}
               >
                 {day.getDate()}
@@ -168,10 +169,10 @@ export function SeasonStripMobile({ entries, anchor, readyIds, onOpenDate, class
                 title={rowLabel}
                 className="sticky left-0 z-10 flex flex-col justify-center gap-0.5 truncate bg-card px-2 py-1.5"
               >
-                <span className="truncate text-[11px] font-medium text-foreground">
+                <span className="truncate text-eyebrow font-medium text-foreground">
                   {rowLabel}
                 </span>
-                <span className="font-mono text-[9px] tabular-nums text-muted-foreground">
+                <span className="font-mono text-eyebrow tabular-nums text-muted-foreground">
                   {t('calendar.seasonStripMobile.rowSummary', { count: dateCount, unfilled })}
                 </span>
               </div>
@@ -192,7 +193,8 @@ export function SeasonStripMobile({ entries, anchor, readyIds, onOpenDate, class
         <div data-testid="season-strip-loadbar-row" className="grid bg-muted/30" style={{ gridTemplateColumns: gridCols }}>
           <div
             data-testid="season-strip-label-open"
-            className="sticky left-0 z-10 flex items-center bg-muted/30 px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
+            // eslint-disable-next-line no-restricted-syntax -- needs a data-testid, which <Eyebrow> (no pass-through props) can't carry
+            className="sticky left-0 z-10 flex items-center bg-muted/30 px-2 py-1.5 text-eyebrow font-semibold uppercase tracking-wide text-muted-foreground"
           >
             {t('calendar.seasonStripMobile.openFooterLabel')}
           </div>
@@ -213,7 +215,7 @@ export function SeasonStripMobile({ entries, anchor, readyIds, onOpenDate, class
                     className={cn('w-1.5 rounded-t-[2px]', heavy ? 'bg-warning' : 'bg-muted-foreground/40')}
                   />
                 )}
-                <span className="font-mono text-[8px] tabular-nums text-muted-foreground">{openMainSlots}</span>
+                <span className="font-mono text-eyebrow tabular-nums text-muted-foreground">{openMainSlots}</span>
               </div>
             );
           })}

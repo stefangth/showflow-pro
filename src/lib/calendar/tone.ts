@@ -24,7 +24,7 @@ export const TONE_TEXT: Record<Tone, string> = {
   warning: 'text-[var(--amber-600)]',
   muted: 'text-muted-foreground',
   destructive: 'text-[var(--red-600)]',
-  accent: 'text-accent-700',
+  accent: 'text-accent-text',
 };
 
 /** Chip/block tint (background) class for the given tone. */
@@ -59,7 +59,7 @@ export function seasonBarClass(status: ProducerStatus | null): string {
 export const ARTIST_TONES: Record<ArtistStatus, ToneSpec> = {
   confirmed:   { label: 'Confirmed',   badgeClass: 'bg-[var(--green-100)] text-[var(--green-600)]', railClass: 'bg-[var(--green-500)]',  tone: 'success' },
   soft_booked: { label: 'Hold',        badgeClass: 'bg-[var(--amber-100)] text-[var(--amber-600)]', railClass: 'bg-[var(--amber-500)]',  tone: 'warning' },
-  suggested:   { label: 'Offer',       badgeClass: 'bg-accent-50 text-accent-700',                  railClass: 'bg-primary',             tone: 'accent' },
+  suggested:   { label: 'Offer',       badgeClass: 'bg-accent-50 text-accent-text',                 railClass: 'bg-primary',             tone: 'accent' },
   blocked:     { label: 'Blocked',     badgeClass: 'bg-[var(--red-100)] text-[var(--red-600)]',     railClass: 'bg-[var(--red-500)]',    tone: 'destructive' },
   unanswered:  { label: 'Not offered', badgeClass: 'bg-[var(--surface-3)] text-muted-foreground',   railClass: 'bg-[var(--text-faint)]', tone: 'muted' },
 };

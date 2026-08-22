@@ -340,6 +340,7 @@ function PeopleGroup({ label, count, children }: { label: string; count: number;
   const headingId = `people-group-${label.toLowerCase().replace(/\s+/g, "-")}`;
   return (
     <section>
+      {/* eslint-disable-next-line no-restricted-syntax -- heading with a trailing count span, not a sole-child standard eyebrow */}
       <h3 id={headingId} className="mb-1 px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         {label}
         <span className="ml-1.5 font-normal tabular-nums text-muted-foreground">· {count}</span>

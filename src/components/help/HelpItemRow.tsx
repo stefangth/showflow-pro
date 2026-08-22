@@ -24,11 +24,11 @@ export function HelpItemRow({
       >
         <span className="min-w-0 flex-1 text-sm font-medium text-foreground">{item.q[lang]}</span>
         {item.status === 'new' ? (
-          <span className="shrink-0 rounded bg-accent-100 px-1.5 py-0.5 text-[11px] font-semibold text-accent-700">
+          <span className="shrink-0 rounded bg-accent-100 px-1.5 py-0.5 text-eyebrow font-semibold text-accent-text">
             {t('badge.new')}
           </span>
         ) : (
-          <span className="shrink-0 rounded bg-success/10 px-1.5 py-0.5 text-[11px] font-semibold text-success">
+          <span className="shrink-0 rounded bg-success/10 px-1.5 py-0.5 text-eyebrow font-semibold text-success">
             {t('badge.ok')}
           </span>
         )}
@@ -40,10 +40,10 @@ export function HelpItemRow({
         <div className="animate-in fade-in slide-in-from-top-1 px-4 pb-4 duration-150">
           <p className="mb-2.5 max-w-[78ch] text-sm leading-relaxed text-foreground">{item.a[lang]}</p>
           <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[11px] text-muted-foreground">
+            <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-eyebrow text-muted-foreground">
               {item.surface}
             </span>
-            <span className="font-mono text-[11px] text-muted-foreground/60">{item.id}</span>
+            <span className="font-mono text-eyebrow text-muted-foreground/60">{item.id}</span>
           </div>
         </div>
       )}

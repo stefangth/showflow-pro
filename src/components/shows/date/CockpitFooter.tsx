@@ -29,7 +29,7 @@ export function CockpitFooter({ badgeLabel, ready, detail, ctaLabel, ctaDisabled
         <p className="text-sm font-medium leading-[18px] text-foreground">{t("cockpitFooter.hireOrder")}</p>
         <span
           className={cn(
-            "ml-1.5 rounded-[var(--radius-xs)] px-[5px] py-px font-mono text-[10px] font-semibold leading-[14px]",
+            "ml-1.5 rounded-[var(--radius-xs)] px-[5px] py-px font-mono text-eyebrow font-semibold leading-[14px]",
             ready
               ? "bg-[var(--green-100)] text-[var(--green-600)]"
               : "bg-[var(--amber-100)] text-[var(--amber-600)]",
@@ -51,7 +51,7 @@ export function CockpitFooter({ badgeLabel, ready, detail, ctaLabel, ctaDisabled
           // muted `secondary` disabled look rather than a faded accent.
           ready && !ctaDisabled
             ? "border-0 bg-accent-500 px-[14px] text-sm text-white hover:bg-accent-600 active:bg-accent-600"
-            : "px-3 text-[13px]",
+            : "px-3 text-control",
         )}
       >
         {ctaLabel}

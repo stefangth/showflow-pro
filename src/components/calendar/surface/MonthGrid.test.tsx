@@ -190,7 +190,7 @@ describe('MonthGrid', () => {
     render(<MonthGrid cells={buildCells()} onSelectDay={vi.fn()} onOpenDay={vi.fn()} />);
     const wrapper = screen.getByTestId('month-grid');
     expect(wrapper.className).toContain('bg-card');
-    expect(wrapper.className).toContain('rounded-[10px]');
+    expect(wrapper.className).toContain('rounded-l');
     expect(wrapper.className).toContain('border-[0.5px]');
     expect(wrapper.className).toContain('shadow-elev2');
   });
@@ -211,7 +211,7 @@ describe('MonthGrid', () => {
     const badge = screen.getByTestId('month-grid-chip-sessions-2026-08-10-0');
     expect(badge).toHaveTextContent('+1');
     expect(badge.className).toContain('bg-accent-50');
-    expect(badge.className).toContain('text-accent-700');
+    expect(badge.className).toContain('text-accent-text');
   });
 
   it('does not render the +N session badge when extraSessions is 0', () => {
@@ -227,7 +227,7 @@ describe('MonthGrid', () => {
   it('recolors the "+N more" overflow text to the accent/purple tone', () => {
     render(<MonthGrid cells={buildCells()} onSelectDay={vi.fn()} onOpenDay={vi.fn()} />);
     const overflow = screen.getByText('+1 more');
-    expect(overflow.className).toContain('text-accent-700');
+    expect(overflow.className).toContain('text-accent-text');
     expect(overflow.className).not.toContain('text-muted-foreground');
   });
 

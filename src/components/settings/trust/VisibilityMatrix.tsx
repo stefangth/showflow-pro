@@ -83,7 +83,7 @@ function ExceptionsMark() {
   // row height — a fraction of a pixel, but the point of a declared row height
   // is that there are no steps at all.
   return (
-    <sup aria-hidden="true" className="ml-0.5 font-mono text-[10px] leading-[0]">
+    <sup aria-hidden="true" className="ml-0.5 font-mono text-eyebrow leading-[0]">
       1
     </sup>
   );
@@ -125,7 +125,7 @@ function RolePicker({ value, onChange }: { value: TrustRole; onChange: (r: Trust
     <div
       role="radiogroup"
       aria-label={t('visibilityMatrix.roleToInspect')}
-      className="inline-flex gap-0.5 rounded-lg bg-muted p-0.5"
+      className="inline-flex gap-0.5 rounded-l bg-muted p-0.5"
     >
       {TRUST_ROLES.map((role, index) => {
         const selected = role.value === value;
@@ -140,7 +140,7 @@ function RolePicker({ value, onChange }: { value: TrustRole; onChange: (r: Trust
             onClick={() => onChange(role.value)}
             onKeyDown={(event) => handleKeyDown(event, index)}
             className={cn(
-              "whitespace-nowrap rounded-[6px] px-3.5 py-1.5 text-[12px] font-medium transition-colors",
+              "whitespace-nowrap rounded-s px-3.5 py-1.5 text-caption font-medium transition-colors",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
               // Selection is carried by the raised surface and a NEUTRAL
               // hairline, never by `--ring`. Two reasons, both keyboard-facing:
@@ -276,7 +276,8 @@ export function VisibilityMatrix() {
             <col />
           </colgroup>
           <thead>
-            <tr className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+            {/* eslint-disable-next-line no-restricted-syntax -- table header row, non-standard tracking */}
+            <tr className="text-eyebrow font-semibold uppercase tracking-widest text-muted-foreground">
               <th scope="col" className="pb-2 font-semibold">{t('visibilityMatrix.columnData')}</th>
               <th scope="col" className="pb-2 font-semibold">{t('visibilityMatrix.columnAccess')}</th>
               <th scope="col" className="pb-2 font-semibold">{t('visibilityMatrix.columnMechanism')}</th>

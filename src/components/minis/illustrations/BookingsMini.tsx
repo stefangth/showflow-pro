@@ -26,7 +26,7 @@ export const bookingsArt: readonly [ReactNode, ReactNode, ReactNode, ReactNode] 
   // 02 Artist responds — the ask window, accept or decline
   <MiniCard key="b2">
     <div className="flex items-center gap-2">
-      <span className="text-[12px] font-semibold text-foreground">July</span>
+      <span className="text-caption font-semibold text-foreground">July</span>
       <span className="flex-1" />
       <Badge variant="accent" dot>Ask · Jul 24</Badge>
     </div>

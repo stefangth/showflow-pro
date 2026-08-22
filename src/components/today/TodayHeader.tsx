@@ -1,6 +1,7 @@
 import { format } from "date-fns";
 import { useTranslation } from "react-i18next";
 import { dfLocale } from "@/lib/dates";
+import { Eyebrow } from "@/components/ui/eyebrow";
 
 interface TodayHeaderProps {
   openCount: number;
@@ -27,10 +28,10 @@ export function TodayHeader({ openCount, fillingOnTheirOwn, bookedOvernight, tod
 
   return (
     <div>
-      <p className="m-0 text-[11px] font-semibold uppercase tracking-[1.6px] text-accent-text">
+      <Eyebrow tone="accent">
         {format(today, "EEEE d MMMM", { locale: dfLocale() })}
-      </p>
-      <h1 className="m-0 mt-1 text-[32px] font-semibold tracking-[-0.6px]">
+      </Eyebrow>
+      <h1 className="m-0 mt-1 text-display-sm font-semibold tracking-[-0.6px]">
         {done ? t("header.headlineDone") : t("header.headline", { count: openCount })}
       </h1>
       <p className="m-0 mt-1.5 text-sm text-muted-foreground">

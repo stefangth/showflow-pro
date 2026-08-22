@@ -2,6 +2,8 @@ import { format } from "date-fns";
 import { useTranslation } from "react-i18next";
 import { dfLocale, parseDateOnly } from "@/lib/dates";
 import { cn } from "@/lib/utils";
+import { Eyebrow } from "@/components/ui/eyebrow";
+import type { Tone } from "@/components/ui/tones";
 
 export type DateRailTone = "amber" | "accent";
 
@@ -16,6 +18,11 @@ const TONE_CLASSES: Record<DateRailTone, { bg: string; text: string }> = {
   amber: { bg: "bg-[var(--amber-100)]", text: "text-[var(--amber-600)]" },
   accent: { bg: "bg-accent-50", text: "text-accent-text" },
 };
+
+// The two `DateRailTone` values render an identical color to the matching `TONES`
+// entry (amber = waiting, accent = accent), so the weekday eyebrow can use the
+// canonical `<Eyebrow>` primitive instead of a hand-rolled uppercase block.
+const TONE_TO_TONES: Record<DateRailTone, Tone> = { amber: "waiting", accent: "accent" };
 
 /**
  * The 92px weekday/day/month/"in Nd" rail shared by the at-risk and
@@ -41,14 +48,14 @@ export function DateRail({ dateKey, daysOut, tone }: DateRailProps) {
         toneClasses.bg,
       )}
     >
-      <p className={cn("m-0 text-[11px] font-semibold uppercase tracking-[1.6px]", toneClasses.text)}>
+      <Eyebrow tone={TONE_TO_TONES[tone]}>
         {format(date, "EEE", { locale: dfLocale() })}
-      </p>
-      <p className={cn("m-0 font-mono text-[28px] font-semibold leading-8", toneClasses.text)}>
+      </Eyebrow>
+      <p className={cn("m-0 font-mono text-display-sm font-semibold leading-8", toneClasses.text)}>
         {format(date, "dd", { locale: dfLocale() })}
       </p>
-      <p className="m-0 text-[11px] text-muted-foreground">{format(date, "MMM", { locale: dfLocale() })}</p>
-      <p className={cn("m-0 mt-1.5 font-mono text-[10px]", toneClasses.text)}>
+      <p className="m-0 text-eyebrow text-muted-foreground">{format(date, "MMM", { locale: dfLocale() })}</p>
+      <p className={cn("m-0 mt-1.5 font-mono text-eyebrow", toneClasses.text)}>
         {t("calendar.needsYou.note.atRiskLeadDays", { count: daysOut })}
       </p>
     </div>

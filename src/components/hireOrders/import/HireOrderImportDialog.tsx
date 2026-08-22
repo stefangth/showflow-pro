@@ -415,7 +415,7 @@ export function HireOrderImportDialog({ open, onOpenChange, orgId }: Props) {
         {step === "source" && (
           <div className="space-y-4">
             <label
-              className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border p-8 text-center hover:bg-muted/50"
+              className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-l border border-dashed border-border p-8 text-center hover:bg-muted/50"
               onDragOver={(e) => e.preventDefault()}
               onDrop={(e) => { e.preventDefault(); const f = e.dataTransfer.files?.[0]; if (f) onFile(f); }}
             >
@@ -510,7 +510,7 @@ export function HireOrderImportDialog({ open, onOpenChange, orgId }: Props) {
         {step === "done" && result && (
           <div className="space-y-4 py-4 text-center">
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-accent-50">
-              <CheckCircle2 className="h-6 w-6 text-accent-700" />
+              <CheckCircle2 className="h-6 w-6 text-accent-text" />
             </div>
             <div>
               <p className="text-lg font-medium">

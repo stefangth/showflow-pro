@@ -126,15 +126,18 @@ export function TimingStep({ orgId, onDone }: { orgId: string | null; onDone: ()
     <div className="space-y-3">
       <div className="flex gap-2.5">
         <div className="flex-1">
-          <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Window (h)</Label>
+          {/* eslint-disable-next-line no-restricted-syntax -- form field label above an Input, not a block eyebrow */}
+          <Label className="text-eyebrow uppercase tracking-wider text-muted-foreground">Window (h)</Label>
           <Input type="number" min={1} className="mt-1 h-8" value={win} onChange={(e) => setWin(e.target.value)} />
         </div>
         <div className="flex-1">
-          <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Offer digest</Label>
+          {/* eslint-disable-next-line no-restricted-syntax -- form field label above an Input, not a block eyebrow */}
+          <Label className="text-eyebrow uppercase tracking-wider text-muted-foreground">Offer digest</Label>
           <Input type="number" min={0} max={23} className="mt-1 h-8" value={offer} onChange={(e) => setOffer(e.target.value)} />
         </div>
         <div className="flex-1">
-          <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Confirmations</Label>
+          {/* eslint-disable-next-line no-restricted-syntax -- form field label above an Input, not a block eyebrow */}
+          <Label className="text-eyebrow uppercase tracking-wider text-muted-foreground">Confirmations</Label>
           <Input type="number" min={0} max={23} className="mt-1 h-8" value={conf} onChange={(e) => setConf(e.target.value)} />
         </div>
       </div>

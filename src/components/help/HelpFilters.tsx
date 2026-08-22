@@ -32,7 +32,7 @@ export function HelpFilters({
           onChange={(e) => onQuery(e.target.value)}
           placeholder={t('search')}
           aria-label={t('search')}
-          className="h-9 w-full rounded-lg border-[0.5px] border-border bg-card pl-8 pr-3 text-sm text-foreground shadow-sm outline-none focus:border-accent-400"
+          className="h-9 w-full rounded-l border-[0.5px] border-border bg-card pl-8 pr-3 text-sm text-foreground shadow-sm outline-none focus:border-accent-400"
         />
       </div>
       <div className="flex gap-1.5">
@@ -44,7 +44,7 @@ export function HelpFilters({
             className={cn(
               'rounded px-2.5 py-1.5 text-xs transition-colors',
               filter === key
-                ? 'bg-accent-100 font-semibold text-accent-700'
+                ? 'bg-accent-100 font-semibold text-accent-text'
                 : 'border-[0.5px] border-border font-medium text-muted-foreground hover:bg-muted/50',
             )}
           >

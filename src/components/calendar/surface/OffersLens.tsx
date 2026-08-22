@@ -6,6 +6,7 @@ import { dfLocale, isPastDate } from '@/lib/dates';
 import { sessionLabel } from '@/lib/calendar/time';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { Eyebrow } from '@/components/ui/eyebrow';
 
 export interface AnsweredTodayRow {
   date: string;
@@ -92,28 +93,21 @@ export function OffersLens({
               className="flex flex-col overflow-hidden rounded-l border border-border bg-card shadow-elev1 md:flex-row md:items-stretch"
             >
               <div className="flex w-full shrink-0 flex-row items-center justify-start gap-2 border-b border-border bg-muted px-4 py-2.5 text-left md:w-[92px] md:flex-col md:items-center md:justify-center md:gap-0 md:border-b-0 md:border-r md:px-0 md:py-4 md:text-center">
-                <p className="text-[11px] font-semibold uppercase tracking-[1.6px] text-muted-foreground">
-                  {format(entry.date, 'EEE', { locale: dfLocale() })}
-                </p>
-                <p className="font-mono text-[28px] font-semibold leading-8 tabular-nums text-foreground">
+                <Eyebrow>{format(entry.date, 'EEE', { locale: dfLocale() })}</Eyebrow>
+                <p className="font-mono text-display-sm font-semibold leading-8 tabular-nums text-foreground">
                   {format(entry.date, 'd')}
                 </p>
-                <p className="text-[11px] text-muted-foreground">{format(entry.date, 'MMM', { locale: dfLocale() })}</p>
+                <p className="text-eyebrow text-muted-foreground">{format(entry.date, 'MMM', { locale: dfLocale() })}</p>
               </div>
 
               <div className="w-full min-w-0 px-4 py-3.5 md:flex-1">
-                <p
-                  className={cn(
-                    'text-[11px] font-semibold uppercase tracking-[1.6px]',
-                    isLive ? 'text-primary' : 'text-warning'
-                  )}
-                >
+                <Eyebrow className={isLive ? 'text-primary' : 'text-warning'}>
                   {isLive ? t('calendar.offers.offerLabel', { program: entry.program }) : t('calendar.offers.holdPlaced')}
-                </p>
-                <p className="mt-1 text-[17px] font-semibold tracking-tight text-foreground">
+                </Eyebrow>
+                <p className="mt-1 text-title-sm font-semibold tracking-tight text-foreground">
                   {entryTitle(entry)}
                 </p>
-                {detail && <p className="mt-0.5 text-[13px] text-muted-foreground">{detail}</p>}
+                {detail && <p className="mt-0.5 text-control text-muted-foreground">{detail}</p>}
               </div>
 
               <div className="flex w-full shrink-0 flex-col justify-center gap-2 px-4 py-3.5 md:w-[232px]">
@@ -155,7 +149,7 @@ export function OffersLens({
                   <div className="flex items-center gap-2">
                     <span
                       className={cn(
-                        'inline-flex h-5 shrink-0 items-center whitespace-nowrap rounded-xs px-1.5 text-[11px] font-medium',
+                        'inline-flex h-5 shrink-0 items-center whitespace-nowrap rounded-xs px-1.5 text-eyebrow font-medium',
                         toneSpec.badgeClass
                       )}
                     >
@@ -171,7 +165,7 @@ export function OffersLens({
       </div>
 
       <div className="flex items-center gap-2.5 px-0.5">
-        <span className="whitespace-nowrap font-mono text-[11px] text-muted-foreground">
+        <span className="whitespace-nowrap font-mono text-eyebrow text-muted-foreground">
           {t('calendar.offersProgress.keyboardHint')}
         </span>
         <span
@@ -191,10 +185,8 @@ export function OffersLens({
 
       <div className="overflow-hidden rounded-m border border-border bg-muted">
         <div className="flex items-center gap-2 border-b border-border px-3.5 py-2.5">
-          <p className="text-[11px] font-semibold uppercase tracking-[1.6px] text-muted-foreground">
-            {t('calendar.offersAnswered.title')}
-          </p>
-          <span className="font-mono text-[11px] text-muted-foreground">{answeredToday.length}</span>
+          <Eyebrow>{t('calendar.offersAnswered.title')}</Eyebrow>
+          <span className="font-mono text-eyebrow text-muted-foreground">{answeredToday.length}</span>
           {/* "Undo last" is an inert stub for now — wired up in a later wave. */}
           <span className="ml-auto cursor-pointer text-xs font-medium text-primary">{t('calendar.offersAnswered.undoLast')}</span>
         </div>
@@ -207,11 +199,11 @@ export function OffersLens({
             <span className="w-[52px] shrink-0 font-mono text-xs font-medium tabular-nums text-muted-foreground">
               {row.date}
             </span>
-            <span className="min-w-0 flex-1 truncate text-[12.5px] font-medium text-foreground">{row.title}</span>
+            <span className="min-w-0 flex-1 truncate text-control font-medium text-foreground">{row.title}</span>
             <span className="truncate text-xs text-muted-foreground">{row.venue}</span>
             <span
               className={cn(
-                'ml-auto inline-flex h-5 shrink-0 items-center whitespace-nowrap rounded-xs px-1.5 text-[11px] font-medium',
+                'ml-auto inline-flex h-5 shrink-0 items-center whitespace-nowrap rounded-xs px-1.5 text-eyebrow font-medium',
                 row.badgeClass
               )}
             >
@@ -223,9 +215,7 @@ export function OffersLens({
 
       <div className="overflow-hidden rounded-m border border-border bg-card">
         <div className="flex items-center gap-2 border-b border-border px-3.5 py-2.5">
-          <p className="text-[11px] font-semibold uppercase tracking-[1.6px] text-muted-foreground">
-            {t('calendar.notOffered.title')}
-          </p>
+          <Eyebrow>{t('calendar.notOffered.title')}</Eyebrow>
           <span className="ml-auto text-xs text-muted-foreground">{t('calendar.notOffered.eligibleFromCasts')}</span>
         </div>
         {notOfferedYet.map((entry) => (
@@ -237,7 +227,7 @@ export function OffersLens({
             <span className="w-[52px] shrink-0 font-mono text-xs font-medium tabular-nums text-muted-foreground">
               {format(entry.date, 'd MMM', { locale: dfLocale() })}
             </span>
-            <span className="min-w-0 flex-1 truncate text-[12.5px] font-medium text-foreground">
+            <span className="min-w-0 flex-1 truncate text-control font-medium text-foreground">
               {entryTitle(entry)}
             </span>
             <span className="truncate text-xs text-muted-foreground">{entry.venue}</span>

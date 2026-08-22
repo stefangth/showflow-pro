@@ -29,7 +29,7 @@ function NothingToSetUp(): JSX.Element {
       className="flex w-full max-w-[560px] flex-col gap-2 rounded-[var(--radius-xl)] border border-border bg-card p-6 shadow-elev3"
     >
       <h1 className="text-base font-semibold tracking-[-0.1px] text-foreground">{t("nothingToSetUp.title")}</h1>
-      <p className="text-[13px] leading-[19px] text-muted-foreground text-pretty">{t("nothingToSetUp.body")}</p>
+      <p className="text-control leading-[19px] text-muted-foreground text-pretty">{t("nothingToSetUp.body")}</p>
     </div>
   );
 }

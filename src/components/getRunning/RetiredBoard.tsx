@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Eyebrow } from "@/components/ui/eyebrow";
 import { ROUTES } from "@/config/app.config";
 import { useRailDismissed } from "@/components/setup/useRailDismissed";
 import type { GetRunningModel } from "@/lib/getRunning/tasks";
@@ -40,7 +41,7 @@ export function RetiredBoard({ model, orgId }: { model: GetRunningModel; orgId: 
         </span>
         <div className="min-w-0 flex-1 sm:min-w-[220px]">
           <div className="text-base font-semibold tracking-[-0.1px] text-foreground">{t("retired.title")}</div>
-          <p className="mt-0.5 text-[13px] leading-[19px] text-muted-foreground text-pretty">
+          <p className="mt-0.5 text-control leading-[19px] text-muted-foreground text-pretty">
             {t("header.body.complete")}
           </p>
         </div>
@@ -55,18 +56,14 @@ export function RetiredBoard({ model, orgId }: { model: GetRunningModel; orgId: 
 
       <div className="flex flex-col gap-4 sm:flex-row">
         <div className="flex-1 rounded-[var(--radius-l)] border border-border bg-card p-4">
-          <div className="text-[11px] font-semibold uppercase tracking-[1.6px] text-[var(--text-faint)]">
-            {t("retired.cards.whereItGoes.title")}
-          </div>
-          <p className="mt-2 text-[13px] leading-[19px] text-muted-foreground text-pretty">
+          <Eyebrow className="text-[var(--text-faint)]">{t("retired.cards.whereItGoes.title")}</Eyebrow>
+          <p className="mt-2 text-control leading-[19px] text-muted-foreground text-pretty">
             {t("retired.cards.whereItGoes.body")}
           </p>
         </div>
         <div className="flex-1 rounded-[var(--radius-l)] border border-border bg-card p-4">
-          <div className="text-[11px] font-semibold uppercase tracking-[1.6px] text-[var(--text-faint)]">
-            {t("retired.cards.whenItComesBack.title")}
-          </div>
-          <p className="mt-2 text-[13px] leading-[19px] text-muted-foreground text-pretty">
+          <Eyebrow className="text-[var(--text-faint)]">{t("retired.cards.whenItComesBack.title")}</Eyebrow>
+          <p className="mt-2 text-control leading-[19px] text-muted-foreground text-pretty">
             {t("retired.cards.whenItComesBack.body")}
           </p>
         </div>

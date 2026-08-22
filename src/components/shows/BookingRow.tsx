@@ -28,7 +28,7 @@ export function BookingRow({ booking: b, canManage, showConfirm, onConfirm, onCa
   const { t } = useTranslation('showsDetail');
   const { t: tAction } = useTranslation('bookingCopy');
   return (
-    <div className="flex items-center justify-between p-3 rounded-lg border border-border">
+    <div className="flex items-center justify-between p-3 rounded-l border border-border">
       <div>
         <p className="font-medium text-sm">{b.artist?.name}</p>
         {/* Soft-booked is the module-off surface's name for the same state the cockpit

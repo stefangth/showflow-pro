@@ -121,6 +121,7 @@ function AssignedArtistsCard({ bookings, canManage, showConfirm, onConfirm, onCa
           <div className="space-y-4">
             {main.length > 0 && (
               <div className="space-y-2">
+                {/* eslint-disable-next-line no-restricted-syntax -- inline section label, not a standard 11px/1.6px eyebrow */}
                 <p className="text-xs text-muted-foreground uppercase tracking-wide">{t('showDateSheet.assignedArtists.mainCast')}</p>
                 {main.map(b => (
                   <BookingRow
@@ -138,6 +139,7 @@ function AssignedArtistsCard({ bookings, canManage, showConfirm, onConfirm, onCa
             )}
             {understudy.length > 0 && (
               <div className="space-y-2">
+                {/* eslint-disable-next-line no-restricted-syntax -- inline section label, not a standard 11px/1.6px eyebrow */}
                 <p className="text-xs text-muted-foreground uppercase tracking-wide">{t('showDateSheet.assignedArtists.understudies')}</p>
                 {understudy.map(b => (
                   <BookingRow
@@ -964,7 +966,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager, ini
                       meter's place); only the cancelled notice remains a banner. */}
                   {showDate.status === 'cancelled' && (
                     <div className="px-6 pt-4">
-                      <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3">
+                      <div className="rounded-l border border-destructive/30 bg-destructive/10 p-3">
                         <p className="text-sm font-medium text-destructive">{t('showDateSheet.banner.cancelled')}</p>
                         {showDate.cancellation_reason && (
                           <p className="text-sm text-destructive/90 mt-0.5">{showDate.cancellation_reason}</p>

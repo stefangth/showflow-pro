@@ -1,28 +1,29 @@
 import { useTranslation } from 'react-i18next';
 import type { SeasonKpis as SeasonKpisData } from '@/lib/calendar/seasonData';
 import { cn } from '@/lib/utils';
+import { KpiTile } from '@/components/ui/kpi-tile';
+import type { Tone } from '@/components/ui/tones';
 
 interface SeasonKpisProps {
   kpis: SeasonKpisData;
   className?: string;
 }
 
-/** Per-tile eyebrow tint (design mock): amber for the "unfilled" warning
- *  metric, brand-violet for the neutral "heaviest week" metric, green for
- *  the positive "ready for hire order" metric — keyed by the tile's `key`
- *  so the color mapping can't drift out of sync with the (translated,
- *  dynamic) label/value/note strings. */
-const KPI_EYEBROW_TONE_CLASS: Record<string, string> = {
-  unfilledMainSlots: 'text-[var(--amber-600)]',
-  heaviestWeek: 'text-accent-700',
-  readyForHireOrder: 'text-[var(--green-600)]',
+/** Per-tile tone (design mock): amber for the "unfilled" warning metric,
+ *  brand-violet (accent) for the neutral "heaviest week" metric, green
+ *  (confirmed) for the positive "ready for hire order" metric — keyed by
+ *  the tile's `key` so the color mapping can't drift out of sync with the
+ *  (translated, dynamic) label/value/note strings. */
+const KPI_TONE: Record<string, Tone> = {
+  unfilledMainSlots: 'waiting',
+  heaviestWeek: 'accent',
+  readyForHireOrder: 'confirmed',
 };
 
-/** The Season lens's 3 KPI tiles (design lines 413-415): a plain `bg-card`
- *  box, uniform 14px padding, no shadow. This is the same shape as the shared
- *  `KpiTile` primitive (ADR 0012); a later pass can migrate these tiles to it.
- *  Each tile carries a context sub-line derived from the same `kpis` data so
- *  the bare number explains itself (design mock). */
+/** The Season lens's 3 KPI tiles (design lines 413-415), built on the shared
+ *  `KpiTile` primitive (ADR 0012 Task 12). Each tile carries a context
+ *  sub-line derived from the same `kpis` data so the bare number explains
+ *  itself (design mock). */
 export function SeasonKpis({ kpis, className }: SeasonKpisProps) {
   const { t } = useTranslation('bookings');
   const tiles: { key: string; label: string; value: string; note: string | null }[] = [
@@ -57,17 +58,8 @@ export function SeasonKpis({ kpis, className }: SeasonKpisProps) {
   return (
     <div data-testid="season-kpis" className={cn('grid grid-cols-1 gap-3 sm:grid-cols-3', className)}>
       {tiles.map(tile => (
-        <div key={tile.key} data-testid={`season-kpi-${tile.key}`} className="rounded-[10px] bg-card p-[14px]">
-          <p
-            className={cn(
-              'text-xs font-medium uppercase tracking-wide',
-              KPI_EYEBROW_TONE_CLASS[tile.key] ?? 'text-muted-foreground'
-            )}
-          >
-            {tile.label}
-          </p>
-          <p className="mt-1 font-mono text-2xl font-semibold tabular-nums text-foreground">{tile.value}</p>
-          {tile.note && <p className="mt-1 text-xs text-muted-foreground">{tile.note}</p>}
+        <div key={tile.key} data-testid={`season-kpi-${tile.key}`}>
+          <KpiTile label={tile.label} value={tile.value} note={tile.note} tone={KPI_TONE[tile.key]} />
         </div>
       ))}
     </div>

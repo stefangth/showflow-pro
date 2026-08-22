@@ -8,14 +8,14 @@ const TAB_KEY = { admin: 'tabs.admin', producer: 'tabs.producer', artist: 'tabs.
 export function HelpRoleTabs({ role, onRole }: { role: HelpRole; onRole: (r: HelpRole) => void }) {
   const { t } = useTranslation('help');
   return (
-    <div className="inline-flex gap-0.5 self-start rounded-lg bg-muted p-[3px]">
+    <div className="inline-flex gap-0.5 self-start rounded-l bg-muted p-[3px]">
       {ROLES.map((r) => (
         <button
           key={r}
           onClick={() => onRole(r)}
           aria-pressed={role === r}
           className={cn(
-            'rounded-md px-3.5 py-[7px] text-[13px] transition-colors',
+            'rounded-m px-3.5 py-[7px] text-control transition-colors',
             role === r
               ? 'bg-card font-semibold text-foreground shadow-sm'
               : 'font-medium text-muted-foreground hover:text-foreground',

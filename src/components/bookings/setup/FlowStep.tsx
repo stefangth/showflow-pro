@@ -145,11 +145,12 @@ export function FlowStep({ orgId, onDone }: { orgId: string | null; onDone: () =
       </p>
       <FlowPresets active={active} onSelect={(p) => setSelected(p)} templates={platformTemplates} showOff={false} />
       <div>
-        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">A booking then goes</p>
+        {/* eslint-disable-next-line no-restricted-syntax -- eyebrow label above a chip row, primitive adoption deferred */}
+        <p className="text-eyebrow font-semibold uppercase tracking-wider text-muted-foreground">A booking then goes</p>
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
           {chips.map((c) => (
             <span key={c.label} className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-2 py-0.5 text-xs font-medium">
-              <span className={cn("h-1.5 w-1.5 rounded-sm", CHIP_TONE[c.tone])} />
+              <span className={cn("h-1.5 w-1.5 rounded-s", CHIP_TONE[c.tone])} />
               {c.label}
             </span>
           ))}
@@ -158,7 +159,8 @@ export function FlowStep({ orgId, onDone }: { orgId: string | null; onDone: () =
       <div className="space-y-2">
         {rows.map((r) => (
           <div key={r.who} className="grid grid-cols-[78px_1fr] gap-2.5">
-            <span className="pt-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{r.who}</span>
+            {/* eslint-disable-next-line no-restricted-syntax -- inline row label in a two-column grid, not a block eyebrow */}
+            <span className="pt-0.5 text-eyebrow font-semibold uppercase tracking-wider text-muted-foreground">{r.who}</span>
             <span className="text-xs leading-[18px] text-muted-foreground">{r.text}</span>
           </div>
         ))}

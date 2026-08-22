@@ -65,7 +65,7 @@ function PhaseIcon({ state, index }: { state: PhaseVisualState; index: number })
   }
   return (
     <span
-      className={`flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full border-[1.5px] font-mono text-[11px] font-semibold ${
+      className={`flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full border-[1.5px] font-mono text-eyebrow font-semibold ${
         state === "blocking" ? "border-primary text-accent-foreground" : "border-border text-[var(--text-faint)]"
       }`}
     >
@@ -99,7 +99,7 @@ function GetDatesSummary({
   const slotsOpen = slots ? !slots.done : false;
 
   return (
-    <div className="flex flex-wrap items-center gap-3.5 px-4 py-3 text-[13px] text-muted-foreground">
+    <div className="flex flex-wrap items-center gap-3.5 px-4 py-3 text-control text-muted-foreground">
       <SubCheck done={dates?.done ?? false} label={t("tasks.dates.subLabel")} />
       <span className="text-border">·</span>
       <SubCheck done={slots?.done ?? false} label={t("tasks.slots.subLabel")} />
@@ -120,7 +120,7 @@ function GetDatesSummary({
             {t("tasks.slots.action")}
           </button>
         ) : (
-          <Badge variant="neutral" className="h-[18px] px-1.5 text-[10px]">
+          <Badge variant="neutral" className="h-[18px] px-1.5 text-eyebrow">
             {t("chips.waitsOn", { name: adminDisplayName(adminNames, t("waitsOn.fallbackAdmin")) })}
           </Badge>
         ))}
@@ -182,7 +182,7 @@ function PaperworkTiles({
                 </span>
               )}
               <div
-                className={`text-[13px] font-medium ${
+                className={`text-control font-medium ${
                   active ? "text-primary" : task.done ? "text-muted-foreground" : "text-foreground"
                 }`}
               >
@@ -192,12 +192,12 @@ function PaperworkTiles({
                   up nothing, so guard on !done exactly as TaskRow/derivePhaseState do (block
                   itself stays the static "what it holds up if outstanding" value). */}
               {!task.done && task.block === "issuing" && (
-                <Badge variant="risk" className="h-[18px] px-1.5 text-[10px]">
+                <Badge variant="risk" className="h-[18px] px-1.5 text-eyebrow">
                   {t("chips.blocksIssuing")}
                 </Badge>
               )}
               {waitsOnAdmin && (
-                <Badge variant="neutral" className="h-[18px] px-1.5 text-[10px]">
+                <Badge variant="neutral" className="h-[18px] px-1.5 text-eyebrow">
                   {t("chips.waitsOn", { name: adminDisplayName(adminNames, t("waitsOn.fallbackAdmin")) })}
                 </Badge>
               )}

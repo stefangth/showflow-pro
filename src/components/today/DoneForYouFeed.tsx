@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { Bell, Check, FileText, Inbox, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Eyebrow } from "@/components/ui/eyebrow";
 import type { FeedKind, FeedRow } from "@/lib/autopilot/today";
 import { feedRowText } from "./feedRowText";
 
@@ -19,7 +20,7 @@ const KIND_ICON: Record<FeedKind, LucideIcon> = {
 };
 
 const KIND_TINT: Record<FeedKind, { bg: string; fg: string }> = {
-  ask: { bg: "bg-accent-100", fg: "text-accent-700" },
+  ask: { bg: "bg-accent-100", fg: "text-accent-text" },
   book: { bg: "bg-[var(--green-100)]", fg: "text-[var(--green-600)]" },
   draft: { bg: "bg-muted", fg: "text-muted-foreground" },
   notify: { bg: "bg-[var(--amber-100)]", fg: "text-[var(--amber-600)]" },
@@ -35,12 +36,12 @@ export function DoneForYouFeed({ feed, sinceLabel, onAction }: DoneForYouFeedPro
   const { t } = useTranslation("today");
 
   return (
-    <div className="overflow-hidden rounded-[14px] border border-border bg-card">
+    <div className="overflow-hidden rounded-[var(--radius-xl)] border border-border bg-card">
       <div className="flex items-center gap-2.5 border-b border-border px-[18px] py-3.5">
-        <p className="m-0 flex-1 text-[11px] font-semibold uppercase tracking-[1.6px] text-muted-foreground">
+        <Eyebrow className="flex-1">
           {t("feed.title", { day: sinceLabel })}
-        </p>
-        <span className="font-mono text-[11.5px] text-[var(--text-faint)]">{feed.length}</span>
+        </Eyebrow>
+        <span className="font-mono text-caption text-[var(--text-faint)]">{feed.length}</span>
       </div>
       {feed.map((row) => {
         const Icon = KIND_ICON[row.kind];
@@ -59,12 +60,12 @@ export function DoneForYouFeed({ feed, sinceLabel, onAction }: DoneForYouFeedPro
             >
               <Icon className="h-[11px] w-[11px]" />
             </span>
-            <p className="m-0 flex-1 text-[13px] leading-[19px]">{feedRowText(t, row)}</p>
-            <span className="shrink-0 font-mono text-[11.5px] text-[var(--text-faint)]">{row.at}</span>
+            <p className="m-0 flex-1 text-control leading-[19px]">{feedRowText(t, row)}</p>
+            <span className="shrink-0 font-mono text-caption text-[var(--text-faint)]">{row.at}</span>
             <button
               type="button"
               onClick={() => onAction(row)}
-              className="shrink-0 border-0 bg-transparent p-0 text-[12.5px] font-medium text-accent-text"
+              className="shrink-0 border-0 bg-transparent p-0 text-control font-medium text-accent-text"
             >
               {row.affordance === "undo" ? t("feed.undo") : t("feed.review")}
             </button>

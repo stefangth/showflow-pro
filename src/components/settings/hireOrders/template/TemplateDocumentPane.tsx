@@ -91,7 +91,7 @@ export function TemplateDocumentPane({ input }: TemplateDocumentPaneProps) {
         </Alert>
       )}
       {pending && (
-        <div className="absolute right-3 top-3 z-10 flex items-center gap-1.5 rounded-md bg-background/90 px-2 py-1 text-xs text-muted-foreground shadow">
+        <div className="absolute right-3 top-3 z-10 flex items-center gap-1.5 rounded-m bg-background/90 px-2 py-1 text-xs text-muted-foreground shadow">
           <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
           {t("templateDocumentPane.updating")}
         </div>

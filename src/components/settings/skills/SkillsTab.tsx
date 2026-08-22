@@ -172,7 +172,8 @@ export function SkillsTab({ orgId }: { orgId: string }) {
   return (
     <div className="space-y-5">
       <div className="space-y-1">
-        <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+        {/* eslint-disable-next-line no-restricted-syntax -- non-standard tracking (tracking-widest) */}
+        <p className="text-eyebrow font-semibold uppercase tracking-widest text-muted-foreground">
           {t('header.eyebrow')}
         </p>
         <h1 className="font-display text-2xl font-semibold tracking-tight">{t('header.title')}</h1>
@@ -197,14 +198,18 @@ export function SkillsTab({ orgId }: { orgId: string }) {
             </Button>
           </div>
 
-          <div className="overflow-hidden rounded-lg border border-border">
+          <div className="overflow-hidden rounded-l border border-border">
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
-                  <TableHead className="h-9 text-[11px] font-semibold uppercase tracking-wider">{t('table.headSkill')}</TableHead>
-                  <TableHead className="h-9 text-[11px] font-semibold uppercase tracking-wider">{t('table.headArtists')}</TableHead>
-                  <TableHead className="h-9 text-[11px] font-semibold uppercase tracking-wider">{t('table.headRequiredBy')}</TableHead>
-                  <TableHead className="h-9 text-right text-[11px] font-semibold uppercase tracking-wider"> </TableHead>
+                  {/* eslint-disable-next-line no-restricted-syntax -- non-standard tracking */}
+                  <TableHead className="h-9 text-eyebrow font-semibold uppercase tracking-wider">{t('table.headSkill')}</TableHead>
+                  {/* eslint-disable-next-line no-restricted-syntax -- non-standard tracking */}
+                  <TableHead className="h-9 text-eyebrow font-semibold uppercase tracking-wider">{t('table.headArtists')}</TableHead>
+                  {/* eslint-disable-next-line no-restricted-syntax -- non-standard tracking */}
+                  <TableHead className="h-9 text-eyebrow font-semibold uppercase tracking-wider">{t('table.headRequiredBy')}</TableHead>
+                  {/* eslint-disable-next-line no-restricted-syntax -- non-standard tracking */}
+                  <TableHead className="h-9 text-right text-eyebrow font-semibold uppercase tracking-wider"> </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -240,7 +245,7 @@ export function SkillsTab({ orgId }: { orgId: string }) {
                             type="button"
                             disabled={!canManage}
                             onClick={() => handleRestore(row.id)}
-                            className="text-xs font-semibold text-accent-700 hover:underline disabled:cursor-not-allowed disabled:opacity-50 disabled:no-underline"
+                            className="text-xs font-semibold text-accent-text hover:underline disabled:cursor-not-allowed disabled:opacity-50 disabled:no-underline"
                           >
                             {t('row.restore')}
                           </button>
@@ -250,7 +255,7 @@ export function SkillsTab({ orgId }: { orgId: string }) {
                               type="button"
                               disabled={!canManage}
                               onClick={() => openRename(row)}
-                              className="text-xs font-semibold text-accent-700 hover:underline disabled:cursor-not-allowed disabled:opacity-50 disabled:no-underline"
+                              className="text-xs font-semibold text-accent-text hover:underline disabled:cursor-not-allowed disabled:opacity-50 disabled:no-underline"
                             >
                               {t('row.rename')}
                             </button>

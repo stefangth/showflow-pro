@@ -67,7 +67,7 @@ export function SignHireOrderDialog({ orderId, orgId, open, onOpenChange }: Prop
             {t("signDialog.body")}
           </p>
           <SignaturePad value={sig} onChange={setSig} disabled={sign.isPending} />
-          <div className="flex items-start gap-2 rounded-lg border border-border p-3">
+          <div className="flex items-start gap-2 rounded-l border border-border p-3">
             <Checkbox id="sign-consent" checked={consent} onCheckedChange={(c) => setConsent(c === true)} className="mt-0.5" />
             <Label htmlFor="sign-consent" className="cursor-pointer text-xs font-normal text-muted-foreground">
               {CONSENT_TEXT}

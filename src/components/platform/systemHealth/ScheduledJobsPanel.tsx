@@ -1,8 +1,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { StatusPill, StatusDot, LatencyStat } from "./primitives";
+import { StatusPill } from "@/components/ui/status-pill";
+import { StatusDot } from "@/components/ui/status-dot";
+import { LatencyStat } from "./primitives";
 import { UptimeBar } from "./UptimeBar";
 import { RecentRunsList } from "./RecentRunsList";
-import { describeJobHealth, deriveJobStatus, CRON_JOB_TO_FN, type EdgeFnMetric } from "@/lib/systemHealth";
+import { describeJobHealth, deriveJobStatus, healthTone, healthLabel, CRON_JOB_TO_FN, type EdgeFnMetric } from "@/lib/systemHealth";
 import type { HealthDay } from "@/lib/uptime";
 import { SYSTEM_HEALTH_BUDGET as budget, SYSTEM_HEALTH } from "@/config/app.config";
 import type { CronHealthRow } from "@/data/platform";
@@ -24,11 +26,11 @@ export function ScheduledJobsPanel({ cronRows, metrics, healthDaily }: {
           const reason = describeJobHealth(c.status, metric, budget);
           const rollup = healthDaily.filter((r) => r.fn === slug);
           return (
-            <div key={c.job_name} className="rounded-lg border border-border p-3">
+            <div key={c.job_name} className="rounded-l border border-border p-3">
               <div className="flex items-center gap-3">
-                <StatusDot state={state} />
+                <StatusDot tone={healthTone(state)} />
                 <span className="font-mono text-sm font-medium flex-1 truncate">{c.job_name}</span>
-                <StatusPill state={state} />
+                <StatusPill tone={healthTone(state)} dot>{healthLabel(state)}</StatusPill>
               </div>
               <div className="mt-3">
                 <UptimeBar rows={rollup} days={SYSTEM_HEALTH.uptimeDays} />
@@ -50,7 +52,7 @@ export function ScheduledJobsPanel({ cronRows, metrics, healthDaily }: {
                   <summary className="cursor-pointer font-medium text-foreground">
                     Failure history ({c.recentFailures.length} in {SYSTEM_HEALTH.logRetentionDays} days) · last {new Date(c.recentFailures[0].observed_at).toLocaleString()}
                   </summary>
-                  <div className="mt-2 space-y-1 rounded-md bg-muted/40 p-2">
+                  <div className="mt-2 space-y-1 rounded-m bg-muted/40 p-2">
                     {c.recentFailures.map((failure) => (
                       <p key={`${failure.observed_at}-${failure.status_code ?? "none"}`}>
                         {new Date(failure.observed_at).toLocaleString()} · {failure.status_code === null ? "no HTTP response" : `HTTP ${failure.status_code}`} · {failure.error ?? "No error detail recorded"}

@@ -189,7 +189,7 @@ export default function ProductionsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="font-display text-[32px] font-semibold tracking-tight">{t("page.title")}</h1>
+          <h1 className="font-display text-display-sm font-semibold tracking-tight">{t("page.title")}</h1>
           <p className="text-muted-foreground mt-1">{t("page.description")}</p>
         </div>
         <Button onClick={openCreate} disabled={!canManageProductions}

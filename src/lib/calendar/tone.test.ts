@@ -32,7 +32,7 @@ describe('calendar tones', () => {
     expect(ARTIST_TONES.suggested.label).toBe('Offer');
     expect(ARTIST_TONES.soft_booked.label).toBe('Hold');
 
-    expect(ARTIST_TONES.suggested.badgeClass).toBe('bg-accent-50 text-accent-700');
+    expect(ARTIST_TONES.suggested.badgeClass).toBe('bg-accent-50 text-accent-text');
     expect(ARTIST_TONES.suggested.railClass).toBe('bg-primary');
 
     expect(ARTIST_TONES.confirmed.badgeClass).toBe('bg-[var(--green-100)] text-[var(--green-600)]');
@@ -75,7 +75,7 @@ describe('calendar tones', () => {
     expect(TONE_TEXT.warning).toBe('text-[var(--amber-600)]');
     expect(TONE_TEXT.muted).toBe('text-muted-foreground');
     expect(TONE_TEXT.destructive).toBe('text-[var(--red-600)]');
-    expect(TONE_TEXT.accent).toBe('text-accent-700');
+    expect(TONE_TEXT.accent).toBe('text-accent-text');
   });
 
   it('maps every Tone to a tint (chip/block background) class, all DS tokens', () => {
