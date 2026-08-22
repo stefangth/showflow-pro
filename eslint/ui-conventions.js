@@ -48,9 +48,20 @@ export const uiConventions = {
         message: 'Opacity on the accent scale silently no-ops (the stops are hex). Use a solid stop, rgba(), or a tint token. See section 2.',
       },
       {
+        // Tailwind's default opacity scale is multiples of 5 (0,5,10,...,100).
+        // A non-multiple like bg-foreground/6 or /4 generates NO class, so the
+        // tint silently vanishes. Match an opacity step whose last digit is not
+        // 0 or 5 (\\u002F is the escaped "/", which esquery would otherwise read
+        // as the regex terminator).
+        selector: "Literal[value=/\\b(bg|text|border|ring|fill|stroke)-[a-z0-9-]+\\u002F[0-9]*[1-46-9]\\b/]",
+        message: 'Non-standard opacity step (not a multiple of 5). Tailwind emits no class for it, so the tint disappears. Use /5, /10, ... or a token. See section 2.',
+      },
+      {
         // Only the Tailwind `uppercase` utility inside a className token, not
         // any literal that merely contains the substring (comments, data values).
-        selector: "Literal[value=/(^|[\\s'\"`(])uppercase([\\s'\"`)]|$)/]",
+        // ':' is in the boundary set so variant-prefixed uses (hover:uppercase,
+        // md:uppercase) are caught too.
+        selector: "Literal[value=/(^|[\\s'\"`(:])uppercase([\\s'\"`)]|$)/]",
         message: 'Uppercase text is <Eyebrow>. Do not hand-roll the eyebrow. See section 5.',
       },
       {
