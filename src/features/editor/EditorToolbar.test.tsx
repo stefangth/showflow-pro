@@ -32,7 +32,7 @@ function setAuth(over: Partial<ReturnType<typeof useAuth>> = {}) {
   vi.mocked(useAuth).mockReturnValue(
     partialMock<ReturnType<typeof useAuth>>({
       roles: ["admin"],
-      isSuperAdmin: false,
+      isSuperAdmin: true,
       orgs: [ACME, BETA],
       currentOrg: ACME,
       switchOrg,
@@ -111,15 +111,13 @@ describe("EditorToolbar org selector", () => {
     expect(orgSelect()).toHaveTextContent("Select organization");
   });
 
-  it("will not let an ordinary admin switch into a suspended org", async () => {
-    // ProtectedRoute swaps the whole layout for SuspendedOrgScreen, taking this very
-    // toolbar with it, so entering one is a one-way trip for a non-super-admin.
-    const { switchOrg } = setAuth({ orgs: [ACME, GONE] });
-    renderWithProviders(<EditorToolbar />);
+  it("does not render at all for an org admin who is not a super-admin", () => {
+    // The editor is super-admin only now, so an ordinary org admin never gets the
+    // toolbar (and therefore can never switch into a suspended org through it).
+    const { switchOrg } = setAuth({ roles: ["admin"], isSuperAdmin: false, orgs: [ACME, GONE] });
+    const { container } = renderWithProviders(<EditorToolbar />);
 
-    fireEvent.click(orgSelect());
-    fireEvent.click(await screen.findByRole("option", { name: "Dormant Co (suspended)" }));
-
+    expect(container.firstChild).toBeNull();
     expect(switchOrg).not.toHaveBeenCalled();
   });
 
@@ -189,7 +187,7 @@ describe("EditorPageBadge", () => {
   });
 
   it("renders nothing for a producer, without AppLayout having to gate it", () => {
-    setAuth({ roles: ["producer"] });
+    setAuth({ roles: ["producer"], isSuperAdmin: false });
     const { container } = renderBadge(ROUTES.BOOKINGS);
     expect(container.querySelector("[class*='font-mono']")).toBeNull();
   });
@@ -203,7 +201,7 @@ describe("EditorToolbar access", () => {
   });
 
   it("renders nothing for a producer", () => {
-    setAuth({ roles: ["producer"] });
+    setAuth({ roles: ["producer"], isSuperAdmin: false });
     const { container } = renderWithProviders(<EditorToolbar />);
     expect(container.firstChild).toBeNull();
   });
@@ -308,10 +306,12 @@ describe("EditorModeToggle preview indicator", () => {
     expect(container.querySelector("svg")).not.toHaveClass("text-destructive");
   });
 
-  it("leaves the pencil unshaded when the chosen role equals the login role", () => {
+  it("shades the pencil red for a super-admin previewing any org role, even admin", () => {
+    // The toggle is super-admin only, so the real vantage is never an org role: picking
+    // any concrete role (admin included) is a preview and shades the pencil.
     setAuth({ roles: ["admin"], viewAsRole: "admin" });
     const { container } = renderToggle();
-    expect(container.querySelector("svg")).not.toHaveClass("text-destructive");
+    expect(container.querySelector("svg")).toHaveClass("text-destructive");
   });
 });
 

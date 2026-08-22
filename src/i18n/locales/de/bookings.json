@@ -19,11 +19,11 @@
     },
     "header": {
       "eyebrow": "BUCHUNGEN",
-      "title": "Shows & Buchungen"
+      "title": "Termine"
     },
     "stat": {
       "confirmedThisMonth": "Diesen Monat gebucht",
-      "slotsStillOpen": "Noch offene Plätze"
+      "slotsStillOpen": "Noch offene Positionen"
     },
     "bulk": {
       "confirmHolds": "Buchen, wer zugesagt hat",
@@ -49,8 +49,8 @@
     "day": {
       "eyebrowCasting": "Besetzung läuft",
       "eyebrowFullyFilled": "voll besetzt",
-      "subCasting_one": "{{count}} Termin · {{open}} Plätze noch offen",
-      "subCasting_other": "{{count}} Termine · {{open}} Plätze noch offen",
+      "subCasting_one": "{{count}} Termin · {{open}} Positionen noch offen",
+      "subCasting_other": "{{count}} Termine · {{open}} Positionen noch offen",
       "subComplete_one": "{{count}} Termin · Besetzung komplett",
       "subComplete_other": "{{count}} Termine · Besetzung komplett",
       "empty": "An diesem Tag sind keine Termine geplant."
@@ -89,11 +89,11 @@
         "generateHireOrders_other": "{{count}} Verträge entwerfen"
       },
       "note": {
-        "expiresToday_one": "{{count}} Artist, der zugesagt hat, verliert den Platz, wenn du ihn heute nicht buchst.",
-        "expiresToday_other": "{{count}} Artists, die zugesagt haben, verlieren ihre Plätze, wenn du sie heute nicht buchst.",
+        "expiresToday_one": "{{count}} Artist, der zugesagt hat, verliert die Position, wenn du ihn heute nicht buchst.",
+        "expiresToday_other": "{{count}} Artists, die zugesagt haben, verlieren ihre Positionen, wenn du sie heute nicht buchst.",
         "atRisk": "{{slots}}, {{lead}}.",
-        "atRiskSlots_one": "{{count}} offener Platz",
-        "atRiskSlots_other": "{{count}} offene Plätze",
+        "atRiskSlots_one": "{{count}} offene Position",
+        "atRiskSlots_other": "{{count}} offene Positionen",
         "atRiskLeadToday": "heute",
         "atRiskLeadDays_one": "in {{count}} Tag",
         "atRiskLeadDays_other": "in {{count}} Tagen",
@@ -142,16 +142,16 @@
       "untitled": "Ohne Titel",
       "rowSummary_one": "{{count}} Termin · {{unfilled}} unbesetzt",
       "rowSummary_other": "{{count}} Termine · {{unfilled}} unbesetzt",
-      "unfilledSlotsHeader": "Unbesetzte Plätze"
+      "unfilledSlotsHeader": "Unbesetzte Positionen"
     },
     "seasonKpis": {
-      "unfilledMainSlotsLabel": "Unbesetzte Hauptplätze",
+      "unfilledMainSlotsLabel": "Unbesetzte Hauptpositionen",
       "unfilledMainSlotsNote_one": "über {{count}} Termin",
       "unfilledMainSlotsNote_other": "über {{count}} Termine",
       "allMainCastFilled": "gesamte Hauptbesetzung besetzt",
       "heaviestWeekLabel": "Stärkste Woche",
-      "heaviestWeekNote_one": "{{count}} Termin · {{open}} Plätze offen",
-      "heaviestWeekNote_other": "{{count}} Termine · {{open}} Plätze offen",
+      "heaviestWeekNote_one": "{{count}} Termin · {{open}} Positionen offen",
+      "heaviestWeekNote_other": "{{count}} Termine · {{open}} Positionen offen",
       "readyForHireOrderLabel": "Bereit für Vertrag",
       "readyForHireOrderNoteFilled": "voll besetzt, noch kein Vertrag",
       "readyForHireOrderNoteNone": "keine ausstehend"
@@ -168,7 +168,7 @@
   },
   "rowPeek": {
     "eyebrowUnconfigured": "nicht konfiguriert",
-    "noConfig": "Lege in den Einstellungen Besetzungsplätze fest, um den Füllstand zu verfolgen.",
+    "noConfig": "Lege in den Einstellungen den Besetzungsplan fest, um den Füllstand zu verfolgen.",
     "confirming": "Wird gebucht…",
     "confirm": "{{count}} buchen",
     "openDate": "Termin öffnen",
@@ -221,7 +221,7 @@
       "confirmed": "{{count}} gebucht",
       "nothingToConfirm": "Nichts zu buchen, es hat sich schon erledigt"
     },
-    "title": "Shows & Buchungen",
+    "title": "Termine",
     "subtitle": "Alle geplanten Termine und der Besetzungsstatus an einem Ort.",
     "setupChecklist": "Einrichtungscheckliste",
     "newDate": "Neuer Termin",

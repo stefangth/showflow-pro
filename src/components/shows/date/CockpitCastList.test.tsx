@@ -51,7 +51,7 @@ describe("CockpitCastList confirm consequence line", () => {
     renderWithProviders(
       <CockpitCastList groups={groups} flow={classic} bookingFlowEnabled confirmationDigestHour={21} />,
     );
-    expect(screen.queryByText(/Book gives them the place/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Book gives them the part/)).not.toBeInTheDocument();
   });
 
   it("still states the bare consequence when the flow is paused", () => {
@@ -59,7 +59,7 @@ describe("CockpitCastList confirm consequence line", () => {
     renderWithProviders(
       <CockpitCastList groups={acceptedGroups()} flow={off} bookingFlowEnabled confirmationDigestHour={21} />,
     );
-    expect(screen.getByText("Book gives them the place.")).toBeInTheDocument();
+    expect(screen.getByText("Book gives them the part.")).toBeInTheDocument();
   });
 
   it("states only the bare consequence when the org has no booking_flow entitlement, even with the flow active and the confirmation digest on", () => {
@@ -69,7 +69,7 @@ describe("CockpitCastList confirm consequence line", () => {
     renderWithProviders(
       <CockpitCastList groups={acceptedGroups()} flow={classic} bookingFlowEnabled={false} confirmationDigestHour={21} />,
     );
-    expect(screen.getByText("Book gives them the place.")).toBeInTheDocument();
+    expect(screen.getByText("Book gives them the part.")).toBeInTheDocument();
     expect(screen.queryByText(/daily send/)).not.toBeInTheDocument();
   });
 });
@@ -168,7 +168,7 @@ describe("CockpitCastList with no flow/entitlement props (mirrors DevCockpitHarn
     // Defaults to BOOKING_FLOW_DEFAULTS (active, confirmation_digest on) rather than any
     // stripped-down "no flow" shape, so the consequence line still states something honest.
     expect(result).toBeDefined();
-    expect(screen.getByText(/Book gives them the place/)).toBeInTheDocument();
+    expect(screen.getByText(/Book gives them the part/)).toBeInTheDocument();
 
     // The Cancel dialog also has to build without a real flow/entitlement: bookingFlowEnabled
     // defaults to false (fail closed), so cancelBookingCopy falls back to the plain in-app

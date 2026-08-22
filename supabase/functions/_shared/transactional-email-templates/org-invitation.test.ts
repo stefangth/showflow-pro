@@ -16,7 +16,7 @@ Deno.test("org-invitation email: explains the product and, when the role is know
     roleKey: "producer",
     token: "tok",
   });
-  assert(html.includes("ShowFlow is where Cirque Lumière plans its shows and books the artists for them"), "shows what ShowFlow is for, naming the org");
+  assert(html.includes("ShowFlow is where Cirque Lumière plans its productions and books the artists for them"), "shows what ShowFlow is for, naming the org");
   assert(html.includes("Your role is Production Team."), "states the invitee's role");
   assert(
     html.includes("You plan productions and show dates, and book artists into them."),
@@ -146,7 +146,7 @@ Deno.test("org-invitation email: reads product, then role, then expiry, then who
     token: "tok",
   });
   const iGreeting = html.indexOf(EMAIL_COPY_DEFAULTS["org-invitation.greeting"]);
-  const iProduct = html.indexOf("plans its shows and books the artists for them");
+  const iProduct = html.indexOf("plans its productions and books the artists for them");
   const iRole = html.indexOf("Your role is Production Team.");
   const iExpiry = html.indexOf("Your invitation is valid until at least August 24, 2026. A newer invitation email may extend this date.");
   const iInvitedBy = html.indexOf("Invited by Jane Admin.");

@@ -1,7 +1,7 @@
 {
   "page": {
     "title": "Produktionen",
-    "description": "Dein Showkatalog: Plätze, Status und Reihenfolge.",
+    "description": "Dein Produktionskatalog: Besetzungsplan, Status und Reihenfolge.",
     "newProduction": "Neue Produktion"
   },
   "filter": {
@@ -55,31 +55,31 @@
     "subProgramLabel": "Unterprogramm",
     "categoryLabel": "Kategorie",
     "descriptionLabel": "Beschreibung",
-    "slotsHeading": "Plätze",
+    "slotsHeading": "Besetzungsplan",
     "slotTotals": "{{main}} Hauptbesetzung · {{understudy}} Zweitbesetzung",
-    "slotsHelp": "Benenne jeden Platz und gib ihm die nötigen Skills. Jeder Termin dieser Produktion braucht dann die Summe dieser Skills. Es gibt keine separate Liste erforderlicher Skills, die du pflegen musst.",
-    "slotGroupNamed": "Platz: {{name}}",
-    "slotGroupIndex": "Platz {{index}}",
-    "roleNameLabel": "Rollenname",
+    "slotsHelp": "Benenne jede Position und gib ihr die nötigen Skills. Jeder Termin dieser Produktion braucht dann die Summe dieser Skills. Es gibt keine separate Liste erforderlicher Skills, die du pflegen musst.",
+    "slotGroupNamed": "Position: {{name}}",
+    "slotGroupIndex": "Position {{index}}",
+    "roleNameLabel": "Positionsname",
     "countLabel": "Anzahl",
     "kindMain": "Hauptbesetzung",
     "kindUnderstudy": "Zweitbesetzung",
     "removeSlot": "{{name}} entfernen",
-    "slotFallback": "Platz",
+    "slotFallback": "Position",
     "skillsEmptyHint": "Noch keine Skills. Füge zuerst Skills in den Artist-Profilen hinzu.",
-    "addSlot": "Platz hinzufügen",
+    "addSlot": "Position hinzufügen",
     "saving": "Speichert…",
     "save": "Speichern",
     "create": "Erstellen",
     "callout": {
       "withSkills": "Jeder Termin dieser Produktion wird {{skills}} erfordern. Ein einzelner Termin kann trotzdem einen Skill ergänzen oder weglassen, ohne die Produktion zu ändern.",
-      "none": "Es sind noch keine Skills erforderlich. Füge einem Platz Skills hinzu, um sie für jeden Termin zu verlangen."
+      "none": "Es sind noch keine Skills erforderlich. Füge einer Position Skills hinzu, um sie für jeden Termin zu verlangen."
     },
     "validation": {
       "programOrSubRequired": "Programm oder Unterprogramm erforderlich"
     },
     "toasts": {
-      "saveSlotsFailed": "Plätze konnten nicht gespeichert werden",
+      "saveSlotsFailed": "Positionen konnten nicht gespeichert werden",
       "noActiveOrg": "Keine aktive Organisation",
       "updated": "Produktion aktualisiert",
       "created": "Produktion erstellt"

@@ -144,7 +144,7 @@ describe("TodayPage", () => {
   });
 
   // Regression: the feed row and the header both asserted a booking ("Booked them
-  // ... the place is theirs", "were booked overnight") for every org. In Classic
+  // ... the part is theirs", "were booked overnight") for every org. In Classic
   // (producer_confirmation on) a yes is only a hold until the producer books it, so
   // the board was telling a producer a date was settled when it was still their move.
   it("says a said-yes date is still waiting on the producer when the org keeps the last word", () => {
@@ -157,7 +157,7 @@ describe("TodayPage", () => {
     render(<TodayPage {...baseProps({ model })} />);
 
     expect(
-      screen.getByText("Lena Fischer said yes to Hamlet, Abend, 3 Sep. Book them and the place is theirs."),
+      screen.getByText("Lena Fischer said yes to Hamlet, Abend, 3 Sep. Book them and the part is theirs."),
     ).toBeInTheDocument();
     expect(
       screen.getByText(
@@ -176,7 +176,7 @@ describe("TodayPage", () => {
     render(<TodayPage {...baseProps({ model })} />);
 
     expect(
-      screen.getByText("Booked Lena Fischer onto Hamlet, Abend, 3 Sep. They said yes, so the place is theirs."),
+      screen.getByText("Booked Lena Fischer onto Hamlet, Abend, 3 Sep. They said yes, so the part is theirs."),
     ).toBeInTheDocument();
     expect(screen.getByText("Autopilot cleared the board. 2 artists were booked overnight.")).toBeInTheDocument();
   });

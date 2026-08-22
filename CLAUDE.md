@@ -272,9 +272,9 @@ src/
     consent/       # ConsentContext, ConsentProvider, useConsent hook — localStorage-backed GDPR consent state
                    #   (key: showflow.consent.v1; categories: analytics, sessionReplay, errorTracking)
                    #   ConsentProvider wraps the routing tree (inside BrowserRouter, outside AuthProvider/EditorProvider).
-    editor/        # Admin-only UI editor: EditorContext, EditorToolbar, EditorSidePanel,
+    editor/        # Super-admin-only UI editor: EditorContext, EditorToolbar, EditorSidePanel,
                    #   ColumnLayoutEditor, columnRegistries, types,
-                   #   editorAccess.ts (canUseEditor — the org-admin-or-super-admin gate
+                   #   editorAccess.ts (canUseEditor — the super-admin-only gate
                    #   shared by the provider, toolbar, toggle and AppLayout).
                    #   Persists page access / column templates / table permissions in
                    #   app_settings (keys: editor_page_access, editor_column_templates,
@@ -548,7 +548,7 @@ Suggested emails:
 | `src/features/auth/AuthContext.tsx` | Auth state, org-scoped role helpers, `currentOrg`/`orgs`/`switchOrg`, `isSuperAdmin` |
 | `src/features/auth/resetPassword.ts` | Pure helpers for reset-password flow (hash parse, redirect safety, schema) |
 | `src/features/consent/ConsentContext.tsx` | GDPR consent state (analytics / sessionReplay / errorTracking) |
-| `src/features/editor/EditorContext.tsx` | Editor mode state, page access and column/permission config (admin only) |
+| `src/features/editor/EditorContext.tsx` | Editor mode state, page access and column/permission config (super-admin only) |
 | `src/data/settings.ts` | `resolveOrgSetting` / `upsertOrgSetting` — org-aware settings resolver (frontend) |
 | `src/data/platform.ts` | Super-admin data access: `fetchAllOrgs`, `provisionOrg`, `fetchPlatformOrgStats`, platform admin CRUD |
 | `src/data/platformUsers.ts` | Super-admin cross-org user directory + membership/artist-link/manage-user data access, backing the Platform → Users tab (`platform-list-users`/`platform-manage-user`) |

@@ -13,14 +13,14 @@
     "keySaveFailed": "Failed to save Airtable key",
     "keyDeleted": "Airtable API key deleted",
     "keyDeleteFailed": "Failed to delete Airtable key",
-    "alreadyMatchesShow": "Already matches a catalog show. It will link on the next sync.",
-    "nothingToCreateShows": "Nothing to create. Those options already match catalog shows.",
-    "showCreatedAndLinked": "Show created and linked",
+    "alreadyMatchesShow": "Already matches a catalog production. It will link on the next sync.",
+    "nothingToCreateShows": "Nothing to create. Those options already match catalog productions.",
+    "showCreatedAndLinked": "Production created and linked",
     "createFailed": "Create failed",
     "alreadyMatchesCity": "Already matches a catalog city.",
     "cityCreatedAndLinked": "City created and linked",
     "cityLinked": "City linked",
-    "createdSelectedShows": "Created the selected shows",
+    "createdSelectedShows": "Created the selected productions",
     "createdSelectedCities": "Created the selected cities",
     "linked": "Linked",
     "linkFailed": "Link failed",
@@ -55,7 +55,7 @@
   "mappingTab": {
     "pickBaseAndTable": "Pick a base and table first. Open",
     "manageConnectionLink": "Manage connection",
-    "pickBaseAndTableSuffix": "to choose where your shows live."
+    "pickBaseAndTableSuffix": "to choose where your productions live."
   },
   "autosaveStatus": {
     "saving": "Saving…",
@@ -121,7 +121,7 @@
     "noRuns": "No runs yet."
   },
   "attentionPanel": {
-    "fixLabelPrograms": "Create shows",
+    "fixLabelPrograms": "Create productions",
     "fixLabelCities": "Create cities",
     "title": "Needs your attention",
     "description_one": "{{count}} record was held on the last run. Held records are never dropped, fix the cause and they import on the next run.",
@@ -142,7 +142,7 @@
     "blankKeyPlaceholder": "·",
     "create": "Create",
     "title": "Catalog links",
-    "description": "Each Airtable option resolves to one ShowFlow show or city. Unlinked options hold their records.",
+    "description": "Each Airtable option resolves to one ShowFlow production or city. Unlinked options hold their records.",
     "searchPlaceholder": "Search options and targets…",
     "searchAriaLabel": "Search options and targets",
     "filters": {
@@ -213,17 +213,17 @@
       "connectTitle": "Connect",
       "connectHint": "Personal access token",
       "baseTableTitle": "Base and table",
-      "baseTableHint": "Pick where shows live",
+      "baseTableHint": "Pick where productions live",
       "mapFieldsTitle": "Map fields",
       "mapFieldsHint": "Date, program, city, sessions",
       "linkCatalogTitle": "Link catalog",
-      "linkCatalogHint": "Match options to your shows"
+      "linkCatalogHint": "Match options to your productions"
     },
     "eyebrow": "Airtable · setup",
     "heading": "Connect a base in four steps",
     "subheading": "Nothing syncs until the last step. You can leave and come back, each step saves as you go.",
     "baseTableStepTitle": "Base and table",
-    "baseTableStepDescription": "Your token is saved. Pick the Airtable base and table your shows live in to finish connecting. Nothing syncs until you do.",
+    "baseTableStepDescription": "Your token is saved. Pick the Airtable base and table your productions live in to finish connecting. Nothing syncs until you do.",
     "chooseBaseAndTable": "Choose base and table",
     "tokenStepTitle": "Personal access token",
     "tokenHelpPrefix": "Stored encrypted in Vault and never displayed again. Needs",
@@ -271,8 +271,8 @@
       "allResolved": "all resolved"
     },
     "causes": {
-      "programTitle_one": "{{count}} program option has no catalog show",
-      "programTitle_other": "{{count}} program options have no catalog show",
+      "programTitle_one": "{{count}} program option has no catalog production",
+      "programTitle_other": "{{count}} program options have no catalog production",
       "cityTitle_one": "{{count}} city option has no catalog city",
       "cityTitle_other": "{{count}} city options have no catalog city",
       "missingDateTitle_one": "{{count}} record has an empty date cell",
@@ -292,7 +292,7 @@
     "change": "Change",
     "requiredCount": "{{mapped}} of {{total}} required",
     "mapSessions": "Map sessions",
-    "catalogHint": "Match options to your shows. Unlinked options hold their records.",
+    "catalogHint": "Match options to your productions. Unlinked options hold their records.",
     "reviewCatalog": "Review"
   },
   "rail": {

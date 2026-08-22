@@ -271,7 +271,7 @@ describe("AirtableSyncTab — attention panel", () => {
     renderTab(connectedSettings());
 
     expect(await screen.findByText("Needs your attention")).toBeInTheDocument();
-    expect(screen.getByText("1 program option has no catalog show")).toBeInTheDocument();
+    expect(screen.getByText("1 program option has no catalog production")).toBeInTheDocument();
   });
 });
 

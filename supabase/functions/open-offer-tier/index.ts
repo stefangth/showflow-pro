@@ -196,7 +196,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     const understudySlots = showRow.understudy_slots ?? 0
     const slotsConfigured = mainSlots != null && !(mainSlots <= 0 && understudySlots <= 0)
     if (!slotsConfigured) {
-      return benignExit("This show has no slot count yet, so it can't be offered. Set slot counts on the show.")
+      return benignExit("This production has no casting breakdown yet, so it can't be offered. Set the casting breakdown on the production.")
     }
   }
 

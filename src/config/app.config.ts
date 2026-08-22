@@ -210,7 +210,7 @@ export const roleLabel = (role: string): string =>
 export const ROLE_DESCRIPTIONS: Record<AppRole, string> = {
   admin: 'Full control of this workspace, including people, casts, settings, and every booking.',
   producer: 'Plans productions and show dates, and books artists into them.',
-  artist: 'Gets booked for shows and sees every confirmed engagement.',
+  artist: 'Gets booked for productions and sees every confirmed engagement.',
 };
 
 /** One-sentence description of what a role can do. Tolerant of unknown strings
@@ -260,7 +260,7 @@ export const CHAT_ARCHIVE_DAYS = 30;
 export const APP_META = {
   NAME: 'ShowFlow',
   DESCRIPTION: 'Artist Booking SaaS for live show productions',
-  VERSION: '1.17.1',
+  VERSION: '1.17.2',
   /** Public marketing site — used for the "Book a demo" CTA on the login page. */
   MARKETING_URL: 'https://showflow.pro',
   /** This app's own public origin. Needed where a link must resolve to the app

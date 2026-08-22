@@ -53,7 +53,7 @@ function renderLadder(overrides: Partial<TierLadderProps> = {}) {
 describe("TierLadder", () => {
   it("renders the header and city-scoped subtitle", () => {
     renderLadder();
-    expect(screen.getByText("WHO THIS DATE ASKS · SHOW-SPECIFIC")).toBeInTheDocument();
+    expect(screen.getByText("WHO THIS DATE ASKS · PRODUCTION-SPECIFIC")).toBeInTheDocument();
     expect(screen.getByText("Casts in priority order for Berlin")).toBeInTheDocument();
   });
 

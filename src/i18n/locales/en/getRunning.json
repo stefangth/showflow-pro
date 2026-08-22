@@ -19,7 +19,7 @@
       "blocking_other": "They are yours to do and take about {{minutes}} minutes. Nothing else here blocks anything, and nothing here stops you using the rest of the app.",
       "ready": "Everything blocking your first ask is done. The rest of this board is worth finishing, but nothing here holds you back anymore.",
       "complete": "Every task on this board is done. Come back to Settings any time if something changes.",
-      "producer": "This is here so you know why Shows and Bookings looks empty, not so you can fix all of it."
+      "producer": "This is here so you know why Dates looks empty, not so you can fix all of it."
     },
     "datesWithoutCity_one": "1 date has no city yet, so the engine can't offer it.",
     "datesWithoutCity_other": "{{count}} dates have no city yet, so the engine can't offer them.",
@@ -111,7 +111,7 @@
       "flow": "Change is logged",
       "people": "No email until you ask about a date",
       "ladder": "Ranking is per city",
-      "eligibility": "A show's own cast beats the city ranking",
+      "eligibility": "A production's own cast beats the city ranking",
       "timing": "Applies to tonight's daily send",
       "team": "They get an email invite",
       "letterhead": "Used on every contract",
@@ -127,11 +127,11 @@
         "heldLine_one": "{{count}} record held on the last run",
         "heldLine_other": "{{count}} records held on the last run",
         "resolve": "Resolve",
-        "emptyLine": "No dates yet. Connect Airtable or add a show by hand.",
+        "emptyLine": "No dates yet. Connect Airtable or add a production by hand.",
         "setup": "Set up Airtable sync",
         "dividerOr": "or add one by hand",
-        "newShow": "New show",
-        "unlocks": "Every downstream step reads from these dates: places, priorities and who can be asked.",
+        "newShow": "New production",
+        "unlocks": "Every downstream step reads from these dates: casting breakdown, priorities and who can be asked.",
         "airtableDialogTitle": "Airtable sync"
       },
       "team": {
@@ -198,7 +198,7 @@
         "nullCityNote": "Some dates have no city set. Fix the date to include it.",
         "unlocks_one": "Link a cast to {{show}} and its {{count}} date becomes askable.",
         "unlocks_other": "Link a cast to {{show}} and its {{count}} dates become askable.",
-        "unlocksDone": "Every show and city has a cast in the first group.",
+        "unlocksDone": "Every production and city has a cast in the first group.",
         "castLinked": "Cast linked",
         "castLinkFailed": "Could not link cast",
         "byProduction": "Coverage by production",
@@ -209,22 +209,22 @@
         "yourCasts": "Your casts",
         "castCountLabel_one": "{{count}} cast",
         "castCountLabel_other": "{{count}} casts",
-        "noProductionsYet": "No show has a future date yet, so there is nothing to cover. Casts you add now will wait here.",
+        "noProductionsYet": "No production has a future date yet, so there is nothing to cover. Casts you add now will wait here.",
         "datesNeedCity": "Your upcoming dates have no city set yet, so there is nothing to cover until you add one on the date."
       }
     }
   },
   "tasks": {
     "dates": {
-      "title": "Shows are synced in",
-      "subLabel": "Shows in, from Airtable, hourly",
-      "description": "Your shows come in automatically, so there is always something to schedule against.",
+      "title": "Productions are synced in",
+      "subLabel": "Productions in, from Airtable, hourly",
+      "description": "Your productions come in automatically, so there is always something to schedule against.",
       "action": "Review"
     },
     "slots": {
-      "title": "Places set on every show",
-      "subLabel": "Places set on every show",
-      "description": "How many artists each show needs, main and understudy.",
+      "title": "Casting breakdown set on every production",
+      "subLabel": "Casting breakdown set on every production",
+      "description": "How many artists each production needs, main and understudy.",
       "action": "Resolve"
     },
     "flow": {
@@ -244,7 +244,7 @@
     },
     "eligibility": {
       "title": "Check who can be asked",
-      "description": "Which casts belong to which show, in which city.",
+      "description": "Which casts belong to which production, in which city.",
       "action": "Open"
     },
     "timing": {

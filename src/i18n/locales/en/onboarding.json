@@ -1,10 +1,10 @@
 {
   "steps": {
     "shows": {
-      "title": "Get your shows in",
-      "todoHint": "Sync from Airtable, import a sheet, or add a show by hand.",
-      "doneHint": "Your shows are in.",
-      "ctaLabel": "Add a show"
+      "title": "Get your productions in",
+      "todoHint": "Sync from Airtable, import a sheet, or add a production by hand.",
+      "doneHint": "Your productions are in.",
+      "ctaLabel": "Add a production"
     },
     "flow": {
       "title": "Booking flow",
@@ -19,10 +19,10 @@
       "ctaLabel": "Add artists"
     },
     "slots": {
-      "title": "Places per show",
-      "todoHint": "A show with no place count never reads as full.",
-      "doneHint": "Set on every show.",
-      "ctaLabel": "Set places"
+      "title": "Casting breakdown per production",
+      "todoHint": "A production with no casting breakdown never reads as full.",
+      "doneHint": "Set on every production.",
+      "ctaLabel": "Set the casting breakdown"
     },
     "ladder": {
       "title": "Cast priorities per city",
@@ -32,8 +32,8 @@
     },
     "eligibility": {
       "title": "Who can be asked",
-      "todoHint": "Which casts belong to which show, in which city.",
-      "doneHint": "Every scheduled show and city has a cast.",
+      "todoHint": "Which casts belong to which production, in which city.",
+      "doneHint": "Every scheduled production and city has a cast.",
       "ctaLabel": "Review coverage"
     },
     "timing": {
@@ -115,10 +115,6 @@
       "title": "Nothing to accept",
       "hint": "An artist you add to a date is booked. It shows in their calendar as booked."
     }
-  },
-  "viewAsArtist": {
-    "title": "See it as your artists do",
-    "hint": "The pencil icon top right opens the editor bar, where you can switch to the artist view. Once an artist has an account, you can preview the app as that exact person."
   },
   "producerRole": {
     "note": "You are on the Production Team. You plan dates, run asks and book the cast. Inviting people, casts and settings stay with the admin.",
@@ -235,7 +231,7 @@
   "collapsed": {
     "completeLabel": "Set up · done",
     "completeHintArtist": "How this org books you",
-    "completeHintOrg": "Booking engine, dates, cast slots, your team",
+    "completeHintOrg": "Booking engine, dates, casting breakdown, your team",
     "completeCtaArtist": "How booking works here",
     "completeCtaOrg": "How this org works",
     "incompleteLabelProducer": "Org setup in progress",
@@ -252,9 +248,9 @@
       "offers": "Your casts ranked per city. The first cast is asked first, then the ones below it."
     },
     "eligibility": {
-      "what": "Which casts belong to a show in a city.",
-      "direct": "Which casts belong to a show in a city. A show and city with no match can be booked from your whole active roster, minus anyone not free on that date or missing a required skill.",
-      "offers": "Which casts belong to a show in a city. Without a match, nobody gets asked."
+      "what": "Which casts belong to a production in a city.",
+      "direct": "Which casts belong to a production in a city. A production and city with no match can be booked from your whole active roster, minus anyone not free on that date or missing a required skill.",
+      "offers": "Which casts belong to a production in a city. Without a match, nobody gets asked."
     }
   },
   "stageChain": {
@@ -285,7 +281,7 @@
       "bookingEngineOff": "Booking engine · off",
       "bookingEngineDirect": "Booking engine · direct",
       "bookingEngineYours": "Booking engine · yours",
-      "showsAndBookings": "Shows and bookings",
+      "showsAndBookings": "Dates",
       "hireOrders": "Contracts",
       "hireOrdersOff": "Contracts · off",
       "hireOrdersManual": "Contracts · manual"
@@ -327,16 +323,16 @@
       "datesImportedLine_other": "{{count}} dates are in your catalog.",
       "datesMetricLabel": "dates in",
       "datesChipOpen": "Open dates",
-      "datesChipSlots": "Set places",
-      "datesActLine": "Nothing downstream can mean anything until shows exist.",
+      "datesChipSlots": "Set the casting breakdown",
+      "datesActLine": "Nothing downstream can mean anything until productions exist.",
       "datesActPrimaryImport": "Import dates",
-      "datesActPrimaryAdd": "Add a show",
+      "datesActPrimaryAdd": "Add a production",
       "datesOffLine": "Dates and bookings do not run in ShowFlow for this org.",
       "offersReadyMetricLabel": "ready to ask",
       "bookableMetricLabel": "bookable dates",
       "offersPrimary": "Ask the first group",
       "offersChip": "Open the picker",
-      "offersWaitsNeeds": "Needs a date with places set",
+      "offersWaitsNeeds": "Needs a date with the casting breakdown set",
       "offersOffName": "Asks",
       "offersOffLine": "No groups to ask, no daily send, no direct picker.",
       "confirmName": "Book",
@@ -396,7 +392,7 @@
       "orgImportedLandedOffersClause": "{{readyToOffer}} of them can be asked in the next daily send.",
       "orgImportedLandedBookableClause_one": "{{count}} is bookable now.",
       "orgImportedLandedBookableClause_other": "{{count}} are bookable now.",
-      "orgImportedBodyOffers": "Stage 01 is running. The remaining dates have no place counts, so the daily send will skip them.",
+      "orgImportedBodyOffers": "Stage 01 is running. The remaining dates have no casting breakdown, so the daily send will skip them.",
       "orgImportedBodyDirect": "Stage 01 is running. A producer books straight from who can be asked. There is no ask step.",
       "orgGhostHowItWorks": "How this org works",
       "orgGhostOutstanding": "What is still outstanding",
@@ -411,7 +407,7 @@
       "orgEmptyGhostHowItWillWork": "How this org will work",
       "orgEmptyHintAdmin": "About 15 minutes",
       "orgEmptyHintCanEdit": "You can do these too",
-      "orgEmptyHintReadOnly": "Adding shows is yours; the settings are not",
+      "orgEmptyHintReadOnly": "Adding productions is yours; the settings are not",
       "orgEmptyProgressHint": "Nothing here stops you using the rest of the app.",
       "orgQueueTitle": "What this page becomes",
       "orgQueueHint": "Sample rows. Yours replace them once the org has dates."
@@ -436,8 +432,6 @@
       "messageOffice": "Message your production team",
       "blockingIsHowYouSayNo": "Blocking is how you say no",
       "availability": "Availability",
-      "seeItAsArtists": "See it as your artists do",
-      "editorBarHint": "The pencil top right opens the editor bar, where you can switch to the artist view.",
       "seeWhatEachRoleCanDo": "See what each role can do",
       "messageAdmin": "Message the admin"
     }

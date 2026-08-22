@@ -35,12 +35,12 @@
     },
     "status": {
       "cancelled": "Abgesagt",
-      "allConfirmed": "Alle Plätze gebucht",
+      "allConfirmed": "Alle Positionen gebucht",
       "tierOpenExpiry": "Runde {{tier}} offen · {{detail}}",
       "tierOpen": "Runde {{tier}} offen",
       "acceptedWaiting": "{{count}} haben zugesagt, warten auf dich"
     },
-    "slotWarning": "Besetzungsplätze für {{program}} sind nicht eingerichtet. Lege sie in den Einstellungen fest.",
+    "slotWarning": "Der Besetzungsplan für {{program}} ist nicht eingerichtet. Lege ihn in den Einstellungen fest.",
     "thisShow": "diese Show",
     "pagerLabel": "Termin {{index}} von {{total}}",
     "flowClassic": "Klassisches Anfragen",
@@ -125,7 +125,7 @@
     "city": "Stadt",
     "notes": "Notizen",
     "openTier1Now": "Jetzt mit dem Anfragen beginnen",
-    "openTier1NowConfigure": "Jetzt mit dem Anfragen beginnen (zuerst Plätze festlegen)",
+    "openTier1NowConfigure": "Jetzt mit dem Anfragen beginnen (zuerst den Besetzungsplan festlegen)",
     "openTier1FlowHint": "Das folgt deiner Buchungsablauf-Einstellung „Automatisch mit dem Anfragen beginnen, wenn ein neuer Termin bereit ist“. Du kannst es für diesen Termin ändern.",
     "saving": "Speichern…",
     "saveDate": "Termin speichern",
@@ -135,7 +135,7 @@
     "accepted": "Zugesagt",
     "confirmed": "Gebucht",
     "offered": "Angefragt",
-    "openSlot": "Offener Platz",
+    "openSlot": "Offene Position",
     "confirm": "Buchen",
     "cancel": "Abbrechen",
     "keepBooking": "Buchung behalten",
@@ -148,8 +148,8 @@
   "cockpitHeader": {
     "generateHireOrder": "Vertrag entwerfen",
     "moreActions": "Weitere Aktionen",
-    "slotsCount": "{{confirmed}} von {{total}} Plätzen",
-    "slotFill": "Plätze belegt",
+    "slotsCount": "{{confirmed}} von {{total}} Positionen",
+    "slotFill": "Positionen belegt",
     "flow": "Ablauf:"
   },
   "cockpitPager": {
@@ -230,7 +230,7 @@
   },
   "requiredSkillsCard": {
     "title": "An diesem Termin erforderliche Fähigkeiten",
-    "computedFrom": "Berechnet aus den {{count}} Plätzen in {{show}}. Nur Artists, die alle davon besitzen, können angefragt oder gebucht werden.",
+    "computedFrom": "Berechnet aus den {{count}} Positionen in {{show}}. Nur Artists, die alle davon besitzen, können angefragt oder gebucht werden.",
     "droppedOnDate": "an diesem Termin entfernt",
     "addedOnDate": "an diesem Termin hinzugefügt",
     "noSkillsRequired": "Keine Fähigkeiten erforderlich.",
@@ -244,7 +244,7 @@
     "mustHaveAll": "Artists müssen alle diese Fähigkeiten haben, um angefragt oder gebucht zu werden.",
     "droppedOnDate": "an diesem Termin entfernt",
     "restore": "{{name}} wiederherstellen",
-    "fromShow": "Aus Show",
+    "fromShow": "Aus Produktion",
     "dropOnDate": "{{name}} an diesem Termin entfernen",
     "remove": "{{name}} entfernen",
     "noSkillsRequired": "Keine Fähigkeiten erforderlich.",
@@ -253,7 +253,7 @@
   "tierLadder": {
     "tierN": "Runde {{tier}}",
     "adHocCasts": "Ad-hoc-Besetzungen",
-    "title": "WER FÜR DIESEN TERMIN ANGEFRAGT WIRD · SHOW-SPEZIFISCH",
+    "title": "WER FÜR DIESEN TERMIN ANGEFRAGT WIRD · PRODUKTIONSSPEZIFISCH",
     "priorityOrder": "Besetzungen in Prioritätsreihenfolge für {{city}}",
     "ariaLabel": "Wer für diesen Termin angefragt wird",
     "statusCounts": "{{sent}} angefragt · {{accepted}} zugesagt · {{pending}} wartend · {{cancelled}} storniert",
@@ -265,7 +265,7 @@
     "directBooking": "Direktbuchung: Das Produktionsteam bucht aus wer angefragt werden kann",
     "offerTiers": "Runden",
     "offerTierTimeline": "Wer angefragt wird, und wann",
-    "usingShowPriorities": "Show-spezifische Prioritäten werden verwendet",
+    "usingShowPriorities": "Produktionsspezifische Prioritäten werden verwendet",
     "howCastsTiersWork": "Wie Besetzungen und Runden funktionieren",
     "addSessionTime": "Füge eine Session-Zeit hinzu, bevor du mit dem Anfragen beginnst.",
     "addSessionTimeDialog": "Füge diesem Termin eine Session-Zeit hinzu, bevor du mit dem Anfragen beginnst.",
@@ -313,7 +313,7 @@
     },
     "coverage": {
       "title": "Städte-Abdeckung",
-      "hint": "Klicke auf eine Show, um umzuschalten, ob diese Besetzung angefragt werden kann.",
+      "hint": "Klicke auf eine Produktion, um umzuschalten, ob diese Besetzung angefragt werden kann.",
       "noTier": "Keine Runde"
     },
     "rail": {
@@ -323,7 +323,7 @@
     "fact": {
       "created": "Erstellt",
       "updated": "Zuletzt aktualisiert",
-      "showsCovered": "Abgedeckte Shows",
+      "showsCovered": "Abgedeckte Produktionen",
       "coverageGaps": "Abdeckungslücken"
     },
     "activity": {
@@ -337,7 +337,7 @@
     "addArtists": "Artists hinzufügen",
     "noMatches": "Keine Treffer.",
     "addCitiesFirst": "Füge zuerst Städte unter Einstellungen → Besetzungen & Abdeckung hinzu.",
-    "noShows": "Keine Shows verfügbar.",
+    "noShows": "Keine Produktionen verfügbar.",
     "tierN": "Runde {{tier}}",
     "manageOfferOrderLink": "Anfragereihenfolge unter Einstellungen, Besetzungen & Abdeckung verwalten"
   },
@@ -354,7 +354,7 @@
   },
   "castsSection": {
     "casts": "Besetzungen",
-    "noCasts": "Noch keine Besetzungen. Erstelle eine, um festzulegen, wer für eine Show angefragt werden kann.",
+    "noCasts": "Noch keine Besetzungen. Erstelle eine, um festzulegen, wer für eine Produktion angefragt werden kann.",
     "memberCount_one": "{{count}} Mitglied",
     "memberCount_other": "{{count}} Mitglieder"
   }

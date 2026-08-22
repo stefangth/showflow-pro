@@ -72,9 +72,9 @@
         "autoOpenAria": "Erste Gruppe automatisch anfragen",
         "autoEscalateLabel": "Automatisch zur nächsten Gruppe wechseln, wenn die Antwortfrist zu früh endet",
         "autoEscalateAria": "Automatisch zur nächsten Gruppe wechseln",
-        "atRiskLabel": "Das Produktionsteam benachrichtigen, wenn die angefragte Gruppe die verbleibenden Plätze nicht füllen kann",
+        "atRiskLabel": "Das Produktionsteam benachrichtigen, wenn die angefragte Gruppe die verbleibenden Positionen nicht füllen kann",
         "atRiskAria": "Risiko-Warnungen",
-        "atRiskHelper": "Wird stündlich geprüft. Eine Warnung wird versendet, wenn gebuchte Künstler plus laufende offene Anfragen weniger sind als die benötigten Plätze."
+        "atRiskHelper": "Wird stündlich geprüft. Eine Warnung wird versendet, wenn gebuchte Künstler plus laufende offene Anfragen weniger sind als die benötigten Positionen."
       },
       "notifyArtists": {
         "title": "Künstler benachrichtigen",
@@ -89,7 +89,7 @@
         "referenceFieldLabel": "Referenzfeld",
         "referenceFieldAria": "Referenzfeld",
         "referenceFieldOptions": {
-          "show": "Show-Bezeichnung (Standard)",
+          "show": "Produktionsbezeichnung (Standard)",
           "program": "Nur Programm",
           "custom": "Benutzerdefiniertes Feld…"
         }

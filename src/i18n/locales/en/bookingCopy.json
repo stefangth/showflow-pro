@@ -1,9 +1,9 @@
 {
   "actionCopy": {
     "confirm": {
-      "bareConsequence": "Book gives them the place.",
-      "withDigest": "Book gives them the place. The artist sees it in the app right away. The booking email goes out in the daily send at {{time}}.",
-      "appOnly": "Book gives them the place and notifies the artist in the app right away."
+      "bareConsequence": "Book gives them the part.",
+      "withDigest": "Book gives them the part. The artist sees it in the app right away. The booking email goes out in the daily send at {{time}}.",
+      "appOnly": "Book gives them the part and notifies the artist in the app right away."
     },
     "accept": {
       "holdTitle": "Said yes",
@@ -51,12 +51,12 @@
       "escalateOff": "Auto-open next round: off"
     },
     "peek": {
-      "allConfirmed": "All {{total}} places booked",
+      "allConfirmed": "All {{total}} parts booked",
       "acceptedWaiting": "{{count}} said yes, waiting on you",
-      "mainSlotOpen_one": "{{count}} main place open",
-      "mainSlotOpen_other": "{{count}} main places open",
-      "understudySlotOpen_one": "{{count}} understudy place open",
-      "understudySlotOpen_other": "{{count}} understudy places open",
+      "mainSlotOpen_one": "{{count}} main part open",
+      "mainSlotOpen_other": "{{count}} main parts open",
+      "understudySlotOpen_one": "{{count}} understudy part open",
+      "understudySlotOpen_other": "{{count}} understudy parts open",
       "readyToConfirm": "Waiting on you"
     },
     "headerCta": {
@@ -74,8 +74,8 @@
     "hireFooter": {
       "ready": "READY",
       "left": "{{count}} LEFT",
-      "detailReady": "All places booked, drafts one contract per artist",
-      "detailWaiting": "Waiting on {{remaining}} of {{total}} places"
+      "detailReady": "All parts booked, drafts one contract per artist",
+      "detailWaiting": "Waiting on {{remaining}} of {{total}} parts"
     }
   }
 }

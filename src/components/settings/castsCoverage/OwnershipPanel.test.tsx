@@ -93,7 +93,7 @@ describe("OwnershipPanel", () => {
     renderWithProviders(<OwnershipPanel orgId="org-1" />);
 
     // Default scope (Hamlet / Any sub-program / Any city) only matches the program-only owner.
-    expect(await screen.findByText(/Every owner whose scope covers this show is notified\./)).toBeInTheDocument();
+    expect(await screen.findByText(/Every owner whose scope covers this production is notified\./)).toBeInTheDocument();
     const notifiedHeading = screen.getByText("Notified");
     expect(notifiedHeading.parentElement).toHaveTextContent("Producer One");
 
@@ -119,7 +119,7 @@ describe("OwnershipPanel", () => {
     fireEvent.click(await screen.findByRole("option", { name: "Macbeth" }));
 
     expect(await screen.findByText("Admins only")).toBeInTheDocument();
-    expect(screen.getByText(/No owner covers this show\. Notifications fall back to the admins\./)).toBeInTheDocument();
+    expect(screen.getByText(/No owner covers this production\. Notifications fall back to the admins\./)).toBeInTheDocument();
     expect(screen.getByText(/Admins are the fallback recipients when no owner matches\./)).toBeInTheDocument();
   });
 

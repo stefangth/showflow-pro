@@ -20,7 +20,7 @@ describe('SeasonKpis', () => {
     expect(within(region).getAllByTestId(/^season-kpi-/)).toHaveLength(3);
 
     const unfilled = screen.getByTestId('season-kpi-unfilledMainSlots');
-    expect(unfilled).toHaveTextContent('Unfilled main places');
+    expect(unfilled).toHaveTextContent('Unfilled main parts');
     expect(unfilled).toHaveTextContent('14');
 
     const heaviest = screen.getByTestId('season-kpi-heaviestWeek');
@@ -36,7 +36,7 @@ describe('SeasonKpis', () => {
     render(<SeasonKpis kpis={KPIS} />);
 
     expect(screen.getByTestId('season-kpi-unfilledMainSlots')).toHaveTextContent('across 6 dates');
-    expect(screen.getByTestId('season-kpi-heaviestWeek')).toHaveTextContent('5 dates · 9 places open');
+    expect(screen.getByTestId('season-kpi-heaviestWeek')).toHaveTextContent('5 dates · 9 parts open');
     expect(screen.getByTestId('season-kpi-readyForHireOrder')).toHaveTextContent('fully filled, no contract yet');
   });
 

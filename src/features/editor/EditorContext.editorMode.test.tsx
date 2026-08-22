@@ -43,8 +43,8 @@ beforeEach(() => {
 });
 
 describe("EditorProvider access gate", () => {
-  it("allows an admin of the active org", () => {
-    setAuth(["admin"], false);
+  it("allows a super-admin who is also an org admin", () => {
+    setAuth(["admin"], true);
     localStorage.setItem(KEY, "true");
     expect(renderEditor().result.current.isEditorMode).toBe(true);
   });
@@ -62,7 +62,7 @@ describe("EditorProvider access gate", () => {
   });
 
   it("exits editor mode when access is lost mid-session", () => {
-    setAuth(["admin"], false);
+    setAuth([], true);
     localStorage.setItem(KEY, "true");
     const { result, rerender } = renderEditor();
     expect(result.current.isEditorMode).toBe(true);
@@ -84,7 +84,7 @@ describe("EditorProvider persistence", () => {
     const { result, rerender } = renderEditor();
     expect(result.current.isEditorMode).toBe(false);
 
-    setAuth(["admin"], false);
+    setAuth([], true);
     rerender();
 
     expect(result.current.isEditorMode).toBe(true);
@@ -97,7 +97,7 @@ describe("EditorProvider persistence", () => {
   });
 
   it("stores the flag when editor mode is entered", () => {
-    setAuth(["admin"], false);
+    setAuth([], true);
     const { result } = renderEditor();
 
     act(() => result.current.enableEditorMode());
@@ -107,7 +107,7 @@ describe("EditorProvider persistence", () => {
   });
 
   it("clears the stored flag when editor mode is exited", () => {
-    setAuth(["admin"], false);
+    setAuth([], true);
     localStorage.setItem(KEY, "true");
     const { result } = renderEditor();
 
@@ -120,7 +120,7 @@ describe("EditorProvider persistence", () => {
 
 describe("EditorProvider toolbar visibility", () => {
   it("hides and shows the toolbar without leaving editor mode", () => {
-    setAuth(["admin"], false);
+    setAuth([], true);
     const { result } = renderEditor();
     act(() => result.current.enableEditorMode());
     expect(result.current.isToolbarHidden).toBe(false);
@@ -134,7 +134,7 @@ describe("EditorProvider toolbar visibility", () => {
   });
 
   it("re-shows the bar when editor mode is re-entered after a hidden exit", () => {
-    setAuth(["admin"], false);
+    setAuth([], true);
     const { result } = renderEditor();
     act(() => result.current.enableEditorMode());
     act(() => result.current.hideToolbar());

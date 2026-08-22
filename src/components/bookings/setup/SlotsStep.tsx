@@ -74,7 +74,7 @@ export function SlotsStep({ orgId, onDone }: { orgId: string | null; onDone: () 
       qc.invalidateQueries({ queryKey: ["show-slots"] });
       qc.invalidateQueries({ queryKey: ["shows"] });
       qc.invalidateQueries({ queryKey: ["show-dates"] });
-      toast.success("Slot counts saved");
+      toast.success("Casting breakdown saved");
       onDone();
     },
     onError: (e: Error) => toast.error(e.message),
@@ -87,16 +87,16 @@ export function SlotsStep({ orgId, onDone }: { orgId: string | null; onDone: () 
     return (
       <div className="space-y-3">
         <p className="text-xs text-muted-foreground">
-          A date with no slot count never reads as full, so it can't reach fully filled or auto-draft a hire order.
+          A date with no casting breakdown never reads as full, so it can't reach fully filled or auto-draft a hire order.
         </p>
         <div className="flex items-center gap-2.5 rounded-m border border-dashed border-border p-3">
           <span className="min-w-0 flex-1 text-sm text-muted-foreground">
             {hasActiveShows
-              ? "Every active show already has its slot counts set."
-              : "No shows yet. Add a show first, then set its slot counts here."}
+              ? "Every active production already has its casting breakdown set."
+              : "No productions yet. Add a production first, then set its casting breakdown here."}
           </span>
           <Button asChild size="sm" variant="outline">
-            <Link to={ROUTES.PRODUCTIONS}>Add a show</Link>
+            <Link to={ROUTES.PRODUCTIONS}>Add a production</Link>
           </Button>
         </div>
       </div>
@@ -106,7 +106,7 @@ export function SlotsStep({ orgId, onDone }: { orgId: string | null; onDone: () 
   return (
     <div className="space-y-3">
       <p className="text-xs text-muted-foreground">
-        A date with no slot count never reads as full, so it can't reach fully filled or auto-draft a hire order.
+        A date with no casting breakdown never reads as full, so it can't reach fully filled or auto-draft a hire order.
       </p>
       <div className="overflow-hidden rounded-m border border-border">
         {unset.map((s) => (
@@ -124,7 +124,7 @@ export function SlotsStep({ orgId, onDone }: { orgId: string | null; onDone: () 
           </div>
         ))}
       </div>
-      <Button size="sm" disabled={save.isPending} onClick={() => save.mutate()}>Save slot counts</Button>
+      <Button size="sm" disabled={save.isPending} onClick={() => save.mutate()}>Save casting breakdown</Button>
     </div>
   );
 }

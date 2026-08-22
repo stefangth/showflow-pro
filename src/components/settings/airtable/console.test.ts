@@ -219,7 +219,7 @@ describe("groupHeldCauses", () => {
     expect(program.optionCount).toBe(2);
     expect(program.recordCount).toBe(2);
     expect(program.icon).toBe("theater");
-    expect(program.title).toBe("2 program options have no catalog show");
+    expect(program.title).toBe("2 program options have no catalog production");
     expect(program.detail).toBe("holding 2 records");
 
     expect(city.optionCount).toBe(1);
@@ -248,7 +248,7 @@ describe("groupHeldCauses", () => {
     expect(causes).toHaveLength(1);
     expect(causes[0].optionCount).toBe(1);
     expect(causes[0].recordCount).toBe(2);
-    expect(causes[0].title).toBe("1 program option has no catalog show");
+    expect(causes[0].title).toBe("1 program option has no catalog production");
   });
 
   it("surfaces unrecognized reasons in a catch-all bucket rather than dropping them", () => {

@@ -56,7 +56,7 @@ export const roleLabel = (role: string): string =>
 export const ROLE_DESCRIPTIONS: Record<AppRole, string> = {
   admin: 'Full control of this workspace, including people, casts, settings, and every booking.',
   producer: 'Plans productions and show dates, and books artists into them.',
-  artist: 'Gets booked for shows and sees every confirmed engagement.',
+  artist: 'Gets booked for productions and sees every confirmed engagement.',
 };
 
 /** One-sentence description of what a role can do. Tolerant of unknown strings

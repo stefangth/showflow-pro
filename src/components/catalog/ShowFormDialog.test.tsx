@@ -53,15 +53,15 @@ describe("ShowFormDialog", () => {
     renderWithProviders(<ShowFormDialog open onOpenChange={() => {}} allShows={[{ sort_order: 4 } as never]} />);
     fireEvent.change(screen.getByLabelText(/^program/i), { target: { value: "Hamlet" } });
 
-    fireEvent.click(screen.getByRole("button", { name: /add place/i }));
-    const slot1 = screen.getByRole("group", { name: "Place 1" });
-    fireEvent.change(within(slot1).getByLabelText(/role name/i), { target: { value: "Ophelia" } });
+    fireEvent.click(screen.getByRole("button", { name: /add part/i }));
+    const slot1 = screen.getByRole("group", { name: "Part 1" });
+    fireEvent.change(within(slot1).getByLabelText(/part name/i), { target: { value: "Ophelia" } });
     fireEvent.change(within(slot1).getByLabelText(/count/i), { target: { value: "1" } });
     fireEvent.click(await within(slot1).findByRole("button", { name: "Singing" }));
 
-    fireEvent.click(screen.getByRole("button", { name: /add place/i }));
-    const slot2 = screen.getByRole("group", { name: "Place 2" });
-    fireEvent.change(within(slot2).getByLabelText(/role name/i), { target: { value: "Chorus" } });
+    fireEvent.click(screen.getByRole("button", { name: /add part/i }));
+    const slot2 = screen.getByRole("group", { name: "Part 2" });
+    fireEvent.change(within(slot2).getByLabelText(/part name/i), { target: { value: "Chorus" } });
     fireEvent.change(within(slot2).getByLabelText(/count/i), { target: { value: "3" } });
 
     fireEvent.click(screen.getByRole("button", { name: /create/i }));
@@ -91,7 +91,7 @@ describe("ShowFormDialog", () => {
     renderWithProviders(<ShowFormDialog open onOpenChange={() => {}} allShows={[]} show={SHOW as never} />);
 
     await screen.findByDisplayValue("Leads");
-    const slot = screen.getByRole("group", { name: "Place: Leads" });
+    const slot = screen.getByRole("group", { name: "Part: Leads" });
     fireEvent.click(within(slot).getByRole("button", { name: "Juggling" }));
 
     fireEvent.click(screen.getByRole("button", { name: /save/i }));
@@ -115,7 +115,7 @@ describe("ShowFormDialog", () => {
     renderWithProviders(<ShowFormDialog open onOpenChange={() => {}} allShows={[]} show={SHOW as never} />);
 
     await screen.findByDisplayValue("Chorus");
-    const slot2 = screen.getByRole("group", { name: "Place: Chorus" });
+    const slot2 = screen.getByRole("group", { name: "Part: Chorus" });
     fireEvent.click(within(slot2).getByRole("button", { name: /remove/i }));
 
     fireEvent.click(screen.getByRole("button", { name: /save/i }));
@@ -131,21 +131,21 @@ describe("ShowFormDialog", () => {
       <ShowFormDialog open onOpenChange={() => {}} allShows={[]} show={SHOW as never} />,
     );
     await screen.findByDisplayValue("Leads");
-    fireEvent.click(screen.getByRole("button", { name: /add place/i }));
-    expect(screen.getByRole("group", { name: "Place 2" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /add part/i }));
+    expect(screen.getByRole("group", { name: "Part 2" })).toBeInTheDocument();
     // Close via the open prop (X/Escape path; the dialog instance stays mounted on ProductionsPage).
     rerender(<ShowFormDialog open={false} onOpenChange={() => {}} allShows={[]} show={SHOW as never} />);
     rerender(<ShowFormDialog open onOpenChange={() => {}} allShows={[]} show={SHOW as never} />);
     await screen.findByDisplayValue("Leads");
     // The unsaved blank slot must be gone: only the persisted slot remains.
-    expect(screen.queryByRole("group", { name: "Place 2" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("group", { name: "Part 2" })).not.toBeInTheDocument();
   });
 
   it("shows a computed callout listing the union of all slot skills", async () => {
     Object.assign(client, createFakeSupabase(TWO_SKILLS));
     renderWithProviders(<ShowFormDialog open onOpenChange={() => {}} allShows={[]} />);
-    fireEvent.click(screen.getByRole("button", { name: /add place/i }));
-    const slot1 = screen.getByRole("group", { name: "Place 1" });
+    fireEvent.click(screen.getByRole("button", { name: /add part/i }));
+    const slot1 = screen.getByRole("group", { name: "Part 1" });
     fireEvent.click(await within(slot1).findByRole("button", { name: "Singing" }));
     expect(screen.getByText(/every date of this production will require Singing\./i)).toBeInTheDocument();
   });
@@ -155,13 +155,13 @@ describe("ShowFormDialog", () => {
     renderWithProviders(<ShowFormDialog open onOpenChange={() => {}} allShows={[]} show={{ ...SHOW, id: "s1", program: "P", airtable_program_key: "K" } as never} />);
     expect(screen.getByText(/synced from airtable/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/^program/i)).toBeDisabled();
-    expect(screen.getByRole("button", { name: /add place/i })).not.toBeDisabled();
+    expect(screen.getByRole("button", { name: /add part/i })).not.toBeDisabled();
   });
 
   it("edit_scheduling off: the slot repeater is disabled, other fields stay editable", () => {
     vi.mocked(useCan).mockReturnValue(false);
     renderWithProviders(<ShowFormDialog open onOpenChange={() => {}} allShows={[]} show={{ ...SHOW, id: "s1", program: "P" } as never} />);
-    expect(screen.getByRole("button", { name: /add place/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /add part/i })).toBeDisabled();
     expect(screen.getByLabelText(/^program/i)).not.toBeDisabled();
   });
 });

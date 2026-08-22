@@ -24,10 +24,10 @@ interface IamUser {
 }
 
 export function EditorToolbar() {
-  const { roles, viewAsRole, setViewAsRole, viewAsUser, setViewAsUser, currentOrg, orgs, switchOrg, isSuperAdmin } = useAuth();
+  const { viewAsRole, setViewAsRole, viewAsUser, setViewAsUser, currentOrg, orgs, switchOrg, isSuperAdmin } = useAuth();
   const { isEditorMode, disableEditorMode, isToolbarHidden, hideToolbar, isSidePanelOpen, setSidePanelOpen } = useEditor();
 
-  const canEdit = canUseEditor(roles, isSuperAdmin);
+  const canEdit = canUseEditor(isSuperAdmin);
 
   // Exiting editor mode means becoming yourself again: drop any active "view as"
   // preview so a leftover impersonation can't silently outlive the toolbar. Hiding
@@ -226,11 +226,11 @@ const ROUTE_TO_FILE: Record<string, string> = {
  * toolbar and the toggle, so its host does not have to restate who may see the editor.
  */
 export function EditorPageBadge() {
-  const { roles, isSuperAdmin } = useAuth();
+  const { isSuperAdmin } = useAuth();
   const { isEditorMode } = useEditor();
   const location = useLocation();
 
-  if (!isEditorMode || !canUseEditor(roles, isSuperAdmin)) return null;
+  if (!isEditorMode || !canUseEditor(isSuperAdmin)) return null;
 
   return (
     <div className="mb-4">
@@ -249,7 +249,7 @@ export function EditorModeToggle() {
   const { roles, isSuperAdmin, viewAsRole, viewAsUser } = useAuth();
   const { isEditorMode, enableEditorMode, isToolbarHidden, hideToolbar, showToolbar } = useEditor();
 
-  if (!canUseEditor(roles, isSuperAdmin)) return null;
+  if (!canUseEditor(isSuperAdmin)) return null;
 
   // A red pencil is a persistent reminder that the app is being previewed as
   // someone other than the signed-in user. It stays visible even with the editor

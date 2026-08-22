@@ -38,7 +38,7 @@
     "selectOrg": "Select an organization to view contracts.",
     "readyLead_one": "{{count}} date is fully cast and ready for a contract.",
     "readyLead_other": "{{count}} dates are fully cast and ready for a contract.",
-    "readyLink": "Generate from Shows and bookings",
+    "readyLink": "Generate from Dates",
     "readyTail": ", or use New contract above."
   },
   "ordersKpis": {

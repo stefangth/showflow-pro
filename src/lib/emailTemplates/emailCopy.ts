@@ -32,9 +32,9 @@ export const EMAIL_COPY_DEFAULTS = {
   "offer-immediate.ctaLabel": "Answer this ask",
   "offer-immediate.footer": "Questions? Reach out to your point of contact and they'll be glad to help.",
   "offer-immediate.previewText": "Can you do {{referenceLabel}} on ShowFlow?",
-  "offer-immediate.showLabel": "Show",
+  "offer-immediate.showLabel": "Production",
   "offer-immediate.dateLabel": "Date",
-  "offer-immediate.showFallback": "a show",
+  "offer-immediate.showFallback": "a production",
 
   "artist-offer-digest.subject": "{{count}} {{pendingOffer}} on ShowFlow",
   "artist-offer-digest.heading": "{{count}} {{pendingOffer}} on ShowFlow",
@@ -46,7 +46,7 @@ export const EMAIL_COPY_DEFAULTS = {
   "artist-offer-digest.previewText": "You have {{count}} {{pendingOffer}}. Say yes and it is held for you.",
   "artist-offer-digest.pendingOfferSingular": "date to answer",
   "artist-offer-digest.pendingOfferPlural": "dates to answer",
-  "artist-offer-digest.showLabel": "Show",
+  "artist-offer-digest.showLabel": "Production",
   "artist-offer-digest.dateLabel": "Date",
   "artist-offer-digest.cityLabel": "City",
   "artist-offer-digest.expiresLabel": "Answer by",
@@ -79,7 +79,7 @@ export const EMAIL_COPY_DEFAULTS = {
   "artist-confirmation-digest.cancelledHeading": "Cancelled",
   "artist-confirmation-digest.scheduleChangesHeading": "Schedule changes",
   "artist-confirmation-digest.confirmedHeading": "Booked",
-  "artist-confirmation-digest.showLabel": "Show",
+  "artist-confirmation-digest.showLabel": "Production",
   "artist-confirmation-digest.dateLabel": "Date",
   "artist-confirmation-digest.cityLabel": "City",
   "artist-confirmation-digest.reasonLabel": "Reason",
@@ -89,17 +89,17 @@ export const EMAIL_COPY_DEFAULTS = {
 
   "cast-escalation-requested.subject": "Tier {{tier}} for {{program}} on {{date}} ran out of time",
   "cast-escalation-requested.heading": "This date needs a decision",
-  "cast-escalation-requested.intro": "Tier {{tier}} for {{program}} on {{date}} ran out of time with only {{accepted}} of {{required}} places filled.",
+  "cast-escalation-requested.intro": "Tier {{tier}} for {{program}} on {{date}} ran out of time with only {{accepted}} of {{required}} parts filled.",
   "cast-escalation-requested.followup": "Open the next tier to keep asking, or book someone directly.",
   "cast-escalation-requested.ctaLabel": "Open this date",
   "cast-escalation-requested.footer": "Questions? Reach out to your point of contact and they'll be glad to help.",
   "cast-escalation-requested.previewText": "Tier {{tier}} for {{program}} on {{date}} ran out of time",
-  "cast-escalation-requested.showLabel": "Show",
+  "cast-escalation-requested.showLabel": "Production",
   "cast-escalation-requested.dateLabel": "Date",
   "cast-escalation-requested.tierLabel": "Tier",
   "cast-escalation-requested.filledLabel": "Filled",
-  "cast-escalation-requested.slotsLabel": "places",
-  "cast-escalation-requested.showFallback": "a show",
+  "cast-escalation-requested.slotsLabel": "parts",
+  "cast-escalation-requested.showFallback": "a production",
   "cast-escalation-requested.dateFallback": "TBD",
 
   // The early-warning twin of cast-escalation-requested above: tier-at-risk-watcher
@@ -109,11 +109,11 @@ export const EMAIL_COPY_DEFAULTS = {
   // a still-open tier can still be filled by a direct booking too.
   "tier-at-risk.subject": "{{program}} on {{date}} is at risk",
   "tier-at-risk.heading": "This date is at risk",
-  "tier-at-risk.body": "Tier {{tier}} for {{program}} on {{date}} cannot fill on the current asks. {{pending}} still waiting to answer, {{accepted}} said yes, and {{required}} places needed. Open the next tier, or book someone directly from who can be asked.",
+  "tier-at-risk.body": "Tier {{tier}} for {{program}} on {{date}} cannot fill on the current asks. {{pending}} still waiting to answer, {{accepted}} said yes, and {{required}} parts needed. Open the next tier, or book someone directly from who can be asked.",
   "tier-at-risk.ctaLabel": "Review this date",
   "tier-at-risk.footer": "Questions? Reach out to your point of contact and they'll be glad to help.",
   "tier-at-risk.previewText": "{{program}} on {{date}} is at risk",
-  "tier-at-risk.showFallback": "a show",
+  "tier-at-risk.showFallback": "a production",
   "tier-at-risk.dateFallback": "TBD",
 
   "hire-order-issued.subject": "Your contract for {{dateLabel}} at {{venue}}",
@@ -163,7 +163,7 @@ export const EMAIL_COPY_DEFAULTS = {
   // _shared/bookingFlow.ts). "Books the artists" is true either way; "sends offers" or
   // "confirms casts via hire orders" would not be. The roleIntro action lines below name
   // the same two facts again in second person, scoped to the invitee's specific role.
-  "org-invitation.productIntro": "ShowFlow is where {{orgName}} plans its shows and books the artists for them.",
+  "org-invitation.productIntro": "ShowFlow is where {{orgName}} plans its productions and books the artists for them.",
   // roleIntro states the role plainly ("Your role is {{role}}."), not "you are joining
   // as {{role}}": that phrasing parses as the invitee BEING a team once {{role}} is
   // "Production Team" rather than joining one, and "on the {{role}} side" reads
@@ -186,7 +186,7 @@ export const EMAIL_COPY_DEFAULTS = {
   // mention. See resolveArtistOffersExpected in _shared/invitations.ts for the full
   // gate. See roleIntroArtistOffers immediately below for the line an artist sees only
   // once that gate has actually confirmed offers are coming.
-  "org-invitation.roleIntroArtist": "You are on the roster. You get booked for shows and can see every confirmed engagement.",
+  "org-invitation.roleIntroArtist": "You are on the roster. You get booked for productions and can see every confirmed engagement.",
   // Rendered instead of roleIntroArtist ONLY when resolveArtistOffersExpected
   // (_shared/invitations.ts) has confirmed the inviting org's booking_flow is entitled,
   // active, AND set to accept offers (booking_flow.artist_acceptance: true) for real:
@@ -315,7 +315,7 @@ export const EMAIL_COPY_DEFAULTS = {
   "airtable-sync-held.topReasonLineSingle": "It's {{topReasonLabel}}.",
   "airtable-sync-held.topReasonLineAll": "All {{heldCount}} are {{topReasonLabel}}.",
   "airtable-sync-held.topReasonMissingDate": "missing a date",
-  "airtable-sync-held.topReasonUnlinkedProgram": "not linked to one of your shows",
+  "airtable-sync-held.topReasonUnlinkedProgram": "not linked to one of your productions",
   "airtable-sync-held.topReasonUnlinkedCity": "using a city that isn't linked to one of yours",
   // Four variants, chosen in the template by (heldCount === 1) x (does a topReasonLine
   // above already name the reason for EVERY held record). A single record is "it", never
@@ -368,9 +368,9 @@ export const EMAIL_COPY_DE: EmailCopy = {
   "offer-immediate.ctaLabel": "Jetzt antworten",
   "offer-immediate.footer": "Fragen? Wende Dich an Deine Ansprechperson, sie hilft Dir gerne weiter.",
   "offer-immediate.previewText": "Kannst Du {{referenceLabel}} auf ShowFlow übernehmen?",
-  "offer-immediate.showLabel": "Show",
+  "offer-immediate.showLabel": "Produktion",
   "offer-immediate.dateLabel": "Datum",
-  "offer-immediate.showFallback": "eine Show",
+  "offer-immediate.showFallback": "eine Produktion",
 
   "artist-offer-digest.subject": "{{count}} {{pendingOffer}} auf ShowFlow",
   "artist-offer-digest.heading": "{{count}} {{pendingOffer}} auf ShowFlow",
@@ -382,7 +382,7 @@ export const EMAIL_COPY_DE: EmailCopy = {
   "artist-offer-digest.previewText": "Du hast {{count}} {{pendingOffer}} zu beantworten.",
   "artist-offer-digest.pendingOfferSingular": "Termin zum Beantworten",
   "artist-offer-digest.pendingOfferPlural": "Termine zum Beantworten",
-  "artist-offer-digest.showLabel": "Show",
+  "artist-offer-digest.showLabel": "Produktion",
   "artist-offer-digest.dateLabel": "Datum",
   "artist-offer-digest.cityLabel": "Stadt",
   "artist-offer-digest.expiresLabel": "Antworte bis",
@@ -415,7 +415,7 @@ export const EMAIL_COPY_DE: EmailCopy = {
   "artist-confirmation-digest.cancelledHeading": "Storniert",
   "artist-confirmation-digest.scheduleChangesHeading": "Terminänderungen",
   "artist-confirmation-digest.confirmedHeading": "Gebucht",
-  "artist-confirmation-digest.showLabel": "Show",
+  "artist-confirmation-digest.showLabel": "Produktion",
   "artist-confirmation-digest.dateLabel": "Datum",
   "artist-confirmation-digest.cityLabel": "Stadt",
   "artist-confirmation-digest.reasonLabel": "Grund",
@@ -425,26 +425,26 @@ export const EMAIL_COPY_DE: EmailCopy = {
 
   "cast-escalation-requested.subject": "Stufe {{tier}} für {{program}} am {{date}} ist abgelaufen",
   "cast-escalation-requested.heading": "Dieser Termin braucht eine Entscheidung",
-  "cast-escalation-requested.intro": "Stufe {{tier}} für {{program}} am {{date}} ist abgelaufen, nur {{accepted}} von {{required}} Plätzen sind besetzt.",
+  "cast-escalation-requested.intro": "Stufe {{tier}} für {{program}} am {{date}} ist abgelaufen, nur {{accepted}} von {{required}} Positionen sind besetzt.",
   "cast-escalation-requested.followup": "Öffne die nächste Stufe, um weiter zu fragen, oder buche direkt.",
   "cast-escalation-requested.ctaLabel": "Diesen Termin öffnen",
   "cast-escalation-requested.footer": "Fragen? Wende Dich an Deine Ansprechperson, sie hilft Dir gerne weiter.",
   "cast-escalation-requested.previewText": "Stufe {{tier}} für {{program}} am {{date}} ist abgelaufen",
-  "cast-escalation-requested.showLabel": "Show",
+  "cast-escalation-requested.showLabel": "Produktion",
   "cast-escalation-requested.dateLabel": "Datum",
   "cast-escalation-requested.tierLabel": "Stufe",
   "cast-escalation-requested.filledLabel": "Besetzt",
-  "cast-escalation-requested.slotsLabel": "Plätze",
-  "cast-escalation-requested.showFallback": "eine Show",
+  "cast-escalation-requested.slotsLabel": "Positionen",
+  "cast-escalation-requested.showFallback": "eine Produktion",
   "cast-escalation-requested.dateFallback": "noch offen",
 
   "tier-at-risk.subject": "{{program}} am {{date}} ist gefährdet",
   "tier-at-risk.heading": "Dieser Termin ist gefährdet",
-  "tier-at-risk.body": "Stufe {{tier}} für {{program}} am {{date}} kann mit den aktuellen Anfragen nicht gefüllt werden. {{pending}} warten noch auf Antwort, {{accepted}} haben ja gesagt und {{required}} Plätze werden gebraucht. Öffne die nächste Stufe oder buche direkt aus der Liste der Anfragbaren.",
+  "tier-at-risk.body": "Stufe {{tier}} für {{program}} am {{date}} kann mit den aktuellen Anfragen nicht gefüllt werden. {{pending}} warten noch auf Antwort, {{accepted}} haben ja gesagt und {{required}} Positionen werden gebraucht. Öffne die nächste Stufe oder buche direkt aus der Liste der Anfragbaren.",
   "tier-at-risk.ctaLabel": "Diesen Termin ansehen",
   "tier-at-risk.footer": "Fragen? Wende Dich an Deine Ansprechperson, sie hilft Dir gerne weiter.",
   "tier-at-risk.previewText": "{{program}} am {{date}} ist gefährdet",
-  "tier-at-risk.showFallback": "eine Show",
+  "tier-at-risk.showFallback": "eine Produktion",
   "tier-at-risk.dateFallback": "noch offen",
 
   "hire-order-issued.subject": "Dein Engagementvertrag für {{dateLabel}} im {{venue}}",
@@ -485,11 +485,11 @@ export const EMAIL_COPY_DE: EmailCopy = {
   "org-invitation.subject": "Du bist eingeladen, {{orgName}} auf ShowFlow beizutreten",
   "org-invitation.heading": "{{orgName}} beitreten",
   "org-invitation.greeting": "Hallo,",
-  "org-invitation.productIntro": "ShowFlow ist die Plattform, auf der {{orgName}} seine Shows plant und die Artists dafür bucht.",
+  "org-invitation.productIntro": "ShowFlow ist die Plattform, auf der {{orgName}} seine Produktionen plant und die Artists dafür bucht.",
   "org-invitation.roleIntro": "Deine Rolle ist {{role}}.",
   "org-invitation.roleIntroAdmin": "Du hast die volle Kontrolle über diesen Workspace, einschließlich Personen, Besetzungen, Einstellungen und jeder Buchung.",
   "org-invitation.roleIntroProducer": "Du planst Produktionen und Show-Termine und buchst Artists dafür.",
-  "org-invitation.roleIntroArtist": "Du stehst auf der Liste. Du wirst für Shows gebucht und siehst jedes bestätigte Engagement.",
+  "org-invitation.roleIntroArtist": "Du stehst auf der Liste. Du wirst für Produktionen gebucht und siehst jedes bestätigte Engagement.",
   "org-invitation.roleIntroArtistOffers": "Du stehst auf der Liste. Du bekommst Buchungsangebote per E-Mail, nimmst sie mit einem Klick an oder lehnst sie ab und siehst danach jedes bestätigte Engagement.",
   "org-invitation.ctaLabel": "Einladung annehmen",
   "org-invitation.ctaHintNewUser": "Fahre sicher fort, um Dich anzumelden oder Dein Konto zu erstellen.",
@@ -548,7 +548,7 @@ export const EMAIL_COPY_DE: EmailCopy = {
   "airtable-sync-held.topReasonLineSingle": "Er ist {{topReasonLabel}}.",
   "airtable-sync-held.topReasonLineAll": "Alle {{heldCount}} sind {{topReasonLabel}}.",
   "airtable-sync-held.topReasonMissingDate": "ohne Datum",
-  "airtable-sync-held.topReasonUnlinkedProgram": "nicht mit einer Deiner Shows verknüpft",
+  "airtable-sync-held.topReasonUnlinkedProgram": "nicht mit einer Deiner Produktionen verknüpft",
   "airtable-sync-held.topReasonUnlinkedCity": "einer Stadt zugeordnet, die nicht verknüpft ist",
   "airtable-sync-held.followupHeld": "Öffne den Sync-Bericht, um zu sehen, welche und warum, und behebe sie, damit sie beim nächsten Sync übernommen werden.",
   "airtable-sync-held.followupHeldSingle": "Öffne den Sync-Bericht, um zu sehen, warum, und behebe es, damit es beim nächsten Sync übernommen wird.",

@@ -18,7 +18,7 @@ interface ProtectedRouteProps {
 
 export function ProtectedRoute({ children, requiredRoles }: ProtectedRouteProps) {
   const { user, loading, roles, currentOrg, isSuperAdmin, viewAsRole, viewAsUser } = useAuth();
-  const { isEditorMode, pageAccess } = useEditorConfig();
+  const { pageAccess } = useEditorConfig();
   const { features, isLoading: entitlementsLoading } = useEntitlements();
   const location = useLocation();
 
@@ -61,13 +61,9 @@ export function ProtectedRoute({ children, requiredRoles }: ProtectedRouteProps)
       : <FeatureDisabledScreen feature={requiredFeature} />;
   }
 
-  // Admins in editor mode bypass all route role gates — they can navigate anywhere.
-  const isRealAdmin = roles.includes('admin');
-  if (isEditorMode && isRealAdmin) {
-    return <>{children}</>;
-  }
-
-  // Platform admins (god-mode) bypass org role gates, like editor-mode admins.
+  // Platform admins (god-mode) bypass org role gates. Editor mode is itself
+  // super-admin only now (editorAccess.canUseEditor), so there is no separate
+  // editor-mode-admin bypass to keep.
   if (isSuperAdmin) {
     return <>{children}</>;
   }
