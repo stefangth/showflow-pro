@@ -15,7 +15,7 @@ interface CalendarSurfaceHeaderProps {
 
 /**
  * Calendar surface page header — a single `justify-between` row: eyebrow +
- * title on the left, the `LensTabs` (`children`) then the primary `cta` on
+ * title on the left, the `SegmentedControl` lens switcher (`children`) then the primary `cta` on
  * the right (design lines 115-135). Title matches this repo's other page
  * titles (`font-display text-display-sm font-semibold tracking-tight`, e.g.
  * `AvailabilityPage`).

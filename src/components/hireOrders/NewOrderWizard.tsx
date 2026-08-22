@@ -684,7 +684,7 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
 
         {result ? (
           <div className="space-y-4 py-6 text-center">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-accent-50">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-accent-tint">
               <CheckCircle2 className="h-6 w-6 text-accent-text" />
             </div>
             <p className="text-lg font-medium">
@@ -802,7 +802,7 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
                     {selectedArtistIds.length > 0 && selectedShowDateIds.length > 0 && (
                       <div className="overflow-x-auto rounded-l border">
                         <table className="w-full text-left text-sm">
-                          <thead className="bg-muted/50 text-xs text-muted-foreground">
+                          <thead className="bg-well-tint text-xs text-muted-foreground">
                             <tr>
                               <th className="px-3 py-2 font-medium">{t("wizard.colArtist")}</th>
                               {selectedShowDateIds.map((showDateId) => {
@@ -899,7 +899,7 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
                     </Select>
                   </div>
                 </div>
-                <div className="rounded-l border border-accent-200 bg-accent-50 p-3">
+                <div className="rounded-l border border-accent-200 bg-accent-tint p-3">
                   <p className="text-xs text-accent-text" data-testid="wiz-fee-summary">
                     {feeSummaryText()}
                   </p>

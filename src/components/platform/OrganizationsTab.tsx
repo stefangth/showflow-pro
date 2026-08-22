@@ -80,7 +80,7 @@ export function OrganizationsTab() {
         <TableHeader>
           <TableRow>
             <TableHead>Name</TableHead><TableHead>Slug</TableHead><TableHead>Status</TableHead><TableHead>Modules</TableHead>
-            <TableHead className="text-right">Members</TableHead><TableHead className="text-right">Active artists</TableHead><TableHead className="text-right">Bookings 30d</TableHead>
+            <TableHead numeric>Members</TableHead><TableHead numeric>Active artists</TableHead><TableHead numeric>Bookings 30d</TableHead>
             <TableHead>Last activity</TableHead><TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
@@ -102,9 +102,9 @@ export function OrganizationsTab() {
                   ))}
                 </div>
               </TableCell>
-              <TableCell className="text-right tabular-nums">{o.member_count}</TableCell>
-              <TableCell className="text-right tabular-nums">{o.active_artist_count}</TableCell>
-              <TableCell className="text-right tabular-nums">{o.bookings_30d}</TableCell>
+              <TableCell numeric>{o.member_count}</TableCell>
+              <TableCell numeric>{o.active_artist_count}</TableCell>
+              <TableCell numeric>{o.bookings_30d}</TableCell>
               <TableCell className="text-muted-foreground">{formatLastActivity(o.last_activity_at)}</TableCell>
               <TableCell className="text-right">
                 <div className="flex items-center justify-end gap-1">

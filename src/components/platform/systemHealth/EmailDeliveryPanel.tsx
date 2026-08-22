@@ -12,7 +12,7 @@ const toneForRate = (rate: number, warn: number, down: number) =>
 
 function Kpi({ label, value, sub, tone }: { label: string; value: string; sub: string; tone: string }) {
   return (
-    <div className="rounded-l bg-muted/40 p-3">
+    <div className="rounded-l bg-well-tint p-3">
       <div className="text-xs text-muted-foreground">{label}</div>
       <div className={`mt-1 text-2xl font-medium tabular-nums ${tone}`}>{value}</div>
       <div className="mt-1 text-xs text-muted-foreground">{sub}</div>
@@ -37,7 +37,7 @@ export function EmailDeliveryPanel({
         <div className="inline-flex overflow-hidden rounded-m border border-border text-xs">
           {EMAIL_HEALTH.windowOptions.map((m) => (
             <button key={m} onClick={() => onWindowChange(m)}
-              className={`px-3 py-1 ${window === m ? "bg-muted font-medium text-foreground" : "text-muted-foreground"}`}>
+              className={`px-3 py-1 ${window === m ? "bg-well-tint font-medium text-foreground" : "text-muted-foreground"}`}>
               {m === 1440 ? "24h" : "7d"}
             </button>
           ))}

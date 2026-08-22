@@ -58,7 +58,7 @@ export function DatesPanelBody({
   return (
     <div className="space-y-3">
       {latest ? (
-        <div className="space-y-2 rounded-[var(--radius-l)] bg-muted p-2.5">
+        <div className="space-y-2 rounded-[var(--radius-l)] bg-well-tint p-2.5">
           <div className="flex items-center justify-between gap-2">
             <div className="flex min-w-0 items-center gap-2">
               <Badge variant="confirmed" dot>

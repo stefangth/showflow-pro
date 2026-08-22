@@ -20,7 +20,7 @@ export function MessageBubble({ body, createdAt, authorName, isMe }: Props) {
       <div
         className={cn(
           'max-w-[80%] rounded-2xl px-3 py-2 text-sm whitespace-pre-wrap break-words',
-          isMe ? 'bg-primary text-primary-foreground rounded-br-sm' : 'bg-muted rounded-bl-sm'
+          isMe ? 'bg-primary text-primary-foreground rounded-br-sm' : 'bg-well-tint rounded-bl-sm'
         )}
       >
         {body}

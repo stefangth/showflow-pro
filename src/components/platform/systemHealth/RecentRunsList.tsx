@@ -12,7 +12,7 @@ export function RecentRunsList({ recent }: { recent: EdgeFnOutcome[] }) {
       <summary className="cursor-pointer font-medium text-foreground">
         Recent runs ({recent.length})
       </summary>
-      <div className="mt-2 space-y-1 rounded-m bg-muted/40 p-2">
+      <div className="mt-2 space-y-1 rounded-m bg-well-tint p-2">
         {recent.map((o, i) => (
           <p
             key={i}

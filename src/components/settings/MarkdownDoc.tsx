@@ -12,11 +12,11 @@ export function MarkdownDoc({ source }: { source: string }) {
       [&_li]:text-sm [&_li]:leading-relaxed
       [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:mb-3
       [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:mb-3
-      [&_code]:bg-muted [&_code]:text-foreground [&_code]:text-xs [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded
-      [&_pre]:bg-muted [&_pre]:rounded-l [&_pre]:p-4 [&_pre]:overflow-x-auto [&_pre]:mb-3 [&_pre]:text-xs
+      [&_code]:bg-well-tint [&_code]:text-foreground [&_code]:text-xs [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded
+      [&_pre]:bg-well-tint [&_pre]:rounded-l [&_pre]:p-4 [&_pre]:overflow-x-auto [&_pre]:mb-3 [&_pre]:text-xs
       [&_pre_code]:bg-transparent [&_pre_code]:p-0
       [&_table]:w-full [&_table]:text-sm [&_table]:border-collapse [&_table]:mb-4
-      [&_th]:text-left [&_th]:font-medium [&_th]:border [&_th]:border-border [&_th]:bg-muted [&_th]:px-3 [&_th]:py-1.5
+      [&_th]:text-left [&_th]:font-medium [&_th]:border [&_th]:border-border [&_th]:bg-well-tint [&_th]:px-3 [&_th]:py-1.5
       [&_td]:border [&_td]:border-border [&_td]:px-3 [&_td]:py-1.5 [&_td]:text-sm [&_td]:align-top
       [&_hr]:border-border [&_hr]:my-4
       [&_strong]:font-semibold [&_strong]:text-foreground

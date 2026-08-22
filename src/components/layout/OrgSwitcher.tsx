@@ -48,7 +48,7 @@ export function OrgSwitcher({ collapsed }: { collapsed?: boolean }) {
           <button
             key={o.id}
             onClick={() => switchOrg(o.id)}
-            className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-muted text-left"
+            className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-hover-tint text-left"
           >
             <Check className={cn('h-4 w-4 shrink-0', o.id === currentOrg.id ? 'opacity-100' : 'opacity-0')} />
             <span className="truncate">{o.name}</span>

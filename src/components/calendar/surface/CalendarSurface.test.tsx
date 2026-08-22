@@ -86,7 +86,7 @@ function needsYouQueueWithAtRisk(entry: ProducerDateEntry): NeedsYouQueue {
 }
 
 describe('CalendarSurface — producer', () => {
-  it('mounts with lens="month": renders LensTabs [Month, Agenda], the month grid, and the DayRail', () => {
+  it('mounts with lens="month": renders the lens SegmentedControl [Month, Agenda], the month grid, and the DayRail', () => {
     render(
       <CalendarSurface
         role="producer"

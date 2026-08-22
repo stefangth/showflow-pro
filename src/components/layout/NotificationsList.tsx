@@ -93,7 +93,7 @@ export function NotificationsList({ onNavigate }: NotificationsListProps = {}) {
             const rowClassName = cn(
               'block w-full text-left px-4 py-3 border-b border-border last:border-0 transition-colors',
               n.read
-                ? 'hover:bg-muted'
+                ? 'hover:bg-hover-tint'
                 : 'bg-[var(--notification-unread)] hover:bg-[var(--notification-unread)]',
             );
             const rowContent = (

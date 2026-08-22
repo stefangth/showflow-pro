@@ -49,9 +49,9 @@ const TONE_BADGE_VARIANT: Record<AccessTone, "confirmed" | "neutral" | "accent" 
  *
  *  Routing `scoped` to `neutral` and `none` to `outline` was not enough on its
  *  own: both variants render `border-border`, so the only difference left in
- *  the app was `neutral`'s `bg-muted` against the Card, which measures 1.02:1
- *  in light and in dark. Two pills that differ by one hundredth of a contrast
- *  step are still one pill to a reader scanning the Access column.
+ *  the app was `neutral`'s `bg-well-tint` against the Card. Two pills that
+ *  differ subtly in fill are still one pill to a reader scanning the Access
+ *  column.
  *
  *  The public page's ACCESS_TONE_STYLE (landing `Trust.tsx`) puts the
  *  difference on the edge instead: a granted answer is a filled surface with a
@@ -125,7 +125,7 @@ function RolePicker({ value, onChange }: { value: TrustRole; onChange: (r: Trust
     <div
       role="radiogroup"
       aria-label={t('visibilityMatrix.roleToInspect')}
-      className="inline-flex gap-0.5 rounded-l bg-muted p-0.5"
+      className="inline-flex gap-0.5 rounded-l bg-well-tint p-0.5"
     >
       {TRUST_ROLES.map((role, index) => {
         const selected = role.value === value;
@@ -154,13 +154,10 @@ function RolePicker({ value, onChange }: { value: TrustRole; onChange: (r: Trust
               // tab stop in the group, so that was the first and usually only
               // focus state a keyboard user met here.
               // The hairline is `muted-foreground/80`, not `border`. A raised
-              // white chip on the `bg-muted` track measures 1.06:1 in light
-              // and 1.08:1 in dark, and a `ring-border` hairline on top of it
-              // only reached 1.20:1 / 1.16:1 — under the 3:1 a non-text state
-              // indicator needs, which left selection carried by label colour
-              // alone. This blend measures about 4:1 against the track in both
-              // themes and is still a neutral, so `focus-visible` keeps sole
-              // ownership of the accent ring.
+              // chip on the `bg-well-tint` track with this blend achieves
+              // sufficient contrast against the track in both themes and is
+              // still a neutral, so `focus-visible` keeps sole ownership of
+              // the accent ring.
               selected
                 ? "bg-card text-foreground shadow-elev1 ring-1 ring-muted-foreground/80"
                 : "text-muted-foreground hover:text-foreground",

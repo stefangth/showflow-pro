@@ -130,7 +130,7 @@ export function WeekLens({ entries, anchor, onOpenEntry, today = new Date(), cla
             <div
               key={toDateKey(day)}
               data-testid={`week-day-header-${toDateKey(day)}`}
-              className={cn('flex flex-col items-center gap-0.5 border-l-[0.5px] border-border px-1 py-2', isToday && 'bg-accent-50')}
+              className={cn('flex flex-col items-center gap-0.5 border-l-[0.5px] border-border px-1 py-2', isToday && 'bg-accent-tint')}
             >
               {/* eslint-disable-next-line no-restricted-syntax -- weekday header keeps font-medium (not the standard eyebrow's font-semibold), so <Eyebrow> would change the rendered weight */}
               <span className="text-eyebrow font-medium uppercase tracking-wide text-muted-foreground">
@@ -164,7 +164,7 @@ export function WeekLens({ entries, anchor, onOpenEntry, today = new Date(), cla
                 type="button"
                 data-testid={`week-untimed-${item.entryId}`}
                 onClick={() => onOpenEntry(item.entryId)}
-                className="truncate rounded-xs bg-muted px-1.5 py-0.5 text-left text-eyebrow font-medium text-foreground hover:bg-muted/70"
+                className="truncate rounded-xs bg-well-tint px-1.5 py-0.5 text-left text-eyebrow font-medium text-foreground hover:bg-hover-tint"
               >
                 {item.title}
               </button>
@@ -196,7 +196,7 @@ export function WeekLens({ entries, anchor, onOpenEntry, today = new Date(), cla
               key={key}
               data-testid={`week-column-${key}`}
               data-today={isToday}
-              className={cn('relative border-l-[0.5px] border-border', isToday && 'bg-accent-50')}
+              className={cn('relative border-l-[0.5px] border-border', isToday && 'bg-accent-tint')}
               style={{ height: totalHeight }}
             >
               {hourMarks.map(m => (

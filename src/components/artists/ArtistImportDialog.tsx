@@ -236,7 +236,7 @@ export function ArtistImportDialog({ open, onOpenChange, orgId, existingEmails, 
         {step === 'source' && (
           <div className="space-y-4">
             <label
-              className="flex flex-col items-center justify-center gap-2 rounded-l border border-dashed border-border p-8 text-center cursor-pointer hover:bg-muted/50"
+              className="flex flex-col items-center justify-center gap-2 rounded-l border border-dashed border-border p-8 text-center cursor-pointer hover:bg-hover-tint"
               onDragOver={(e) => e.preventDefault()}
               onDrop={(e) => { e.preventDefault(); const f = e.dataTransfer.files?.[0]; if (f) onFile(f); }}
             >
@@ -304,9 +304,9 @@ export function ArtistImportDialog({ open, onOpenChange, orgId, existingEmails, 
         {step === 'review' && (
           <div className="space-y-4">
             <div className="grid grid-cols-3 gap-3">
-              <div className="rounded-m bg-muted/50 p-3"><p className="text-xs text-muted-foreground">{t('import.review.toImport')}</p><p className="text-2xl font-semibold">{counts.new}</p></div>
-              <div className="rounded-m bg-muted/50 p-3"><p className="text-xs text-muted-foreground">{t('import.review.duplicate')}</p><p className="text-2xl font-semibold text-muted-foreground">{counts.skipped}</p></div>
-              <div className="rounded-m bg-muted/50 p-3"><p className="text-xs text-muted-foreground">{t('import.review.needAttention')}</p><p className="text-2xl font-semibold text-destructive">{counts.error}</p></div>
+              <div className="rounded-m bg-well-tint p-3"><p className="text-xs text-muted-foreground">{t('import.review.toImport')}</p><p className="text-2xl font-semibold">{counts.new}</p></div>
+              <div className="rounded-m bg-well-tint p-3"><p className="text-xs text-muted-foreground">{t('import.review.duplicate')}</p><p className="text-2xl font-semibold text-muted-foreground">{counts.skipped}</p></div>
+              <div className="rounded-m bg-well-tint p-3"><p className="text-xs text-muted-foreground">{t('import.review.needAttention')}</p><p className="text-2xl font-semibold text-destructive">{counts.error}</p></div>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">

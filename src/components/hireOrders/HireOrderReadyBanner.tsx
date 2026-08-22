@@ -35,8 +35,8 @@ export function HireOrderReadyBanner({
   icon,
 }: HireOrderReadyBannerProps) {
   return (
-    <div className="flex items-center gap-4 rounded-l border border-accent-200 bg-accent-50 p-4">
-      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-m bg-accent-100 text-accent-text">
+    <div className="flex items-center gap-4 rounded-l border border-accent-200 bg-accent-tint p-4">
+      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-m bg-accent-tint text-accent-text">
         {icon ?? <Sparkles className="h-5 w-5" />}
       </div>
       <div className="min-w-0 flex-1">

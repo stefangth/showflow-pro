@@ -202,14 +202,10 @@ export function SkillsTab({ orgId }: { orgId: string }) {
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
-                  {/* eslint-disable-next-line no-restricted-syntax -- non-standard tracking */}
-                  <TableHead className="h-9 text-eyebrow font-semibold uppercase tracking-wider">{t('table.headSkill')}</TableHead>
-                  {/* eslint-disable-next-line no-restricted-syntax -- non-standard tracking */}
-                  <TableHead className="h-9 text-eyebrow font-semibold uppercase tracking-wider">{t('table.headArtists')}</TableHead>
-                  {/* eslint-disable-next-line no-restricted-syntax -- non-standard tracking */}
-                  <TableHead className="h-9 text-eyebrow font-semibold uppercase tracking-wider">{t('table.headRequiredBy')}</TableHead>
-                  {/* eslint-disable-next-line no-restricted-syntax -- non-standard tracking */}
-                  <TableHead className="h-9 text-right text-eyebrow font-semibold uppercase tracking-wider"> </TableHead>
+                  <TableHead>{t('table.headSkill')}</TableHead>
+                  <TableHead numeric>{t('table.headArtists')}</TableHead>
+                  <TableHead>{t('table.headRequiredBy')}</TableHead>
+                  <TableHead className="text-right"> </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -225,19 +221,19 @@ export function SkillsTab({ orgId }: { orgId: string }) {
 
                   return (
                     <TableRow key={row.id} data-testid={`skill-row-${row.id}`}>
-                      <TableCell className="py-2.5">
+                      <TableCell>
                         <span className={cn('font-medium', isArchived && 'text-muted-foreground')}>
                           {row.name}
                         </span>
                         {isArchived && <Badge variant="neutral" className="ml-2">{t('row.archivedBadge')}</Badge>}
                       </TableCell>
-                      <TableCell className="py-2.5 font-mono text-xs tabular-nums text-muted-foreground">
+                      <TableCell numeric className="text-xs text-muted-foreground">
                         {row.artistCount}
                       </TableCell>
-                      <TableCell className="py-2.5 text-xs text-muted-foreground">
+                      <TableCell className="text-xs text-muted-foreground">
                         {requiredByLabel(row, t)}
                       </TableCell>
-                      <TableCell className="py-2.5 text-right">
+                      <TableCell className="text-right">
                         {isArchived ? (
                           // Archived rows offer Restore only, never Rename/Archive/delete
                           // (parity with SkillsCard's design intent).

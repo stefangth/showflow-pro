@@ -89,7 +89,7 @@ function EdgeFnRow({ m, rollup }: { m: EdgeFnMetric; rollup: HealthDay[] }) {
             {open ? "Hide recent errors" : "View recent errors"}
           </button>
           {open && (
-            <div className="mt-2 rounded-m bg-muted/40 p-2">
+            <div className="mt-2 rounded-m bg-well-tint p-2">
               {logs.isLoading && <p className="text-xs text-muted-foreground">Loading log lines.</p>}
               {logs.isError && <p className="text-xs text-muted-foreground">{edgeLogUnavailableMessage(logs.error)}</p>}
               {logs.data?.length === 0 && <p className="text-xs text-muted-foreground">No error output in this window.</p>}

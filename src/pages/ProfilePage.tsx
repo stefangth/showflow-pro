@@ -46,7 +46,7 @@ type IdentityValues = z.infer<typeof identitySchema>;
  *  page's heading outline and remain reachable via `getByRole('heading', ...)`. */
 function GroupHeader({ children, right }: { children: React.ReactNode; right?: React.ReactNode }) {
   return (
-    <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-muted/40">
+    <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-well-tint">
       {/* eslint-disable-next-line no-restricted-syntax -- must stay a real <h3> for the heading outline/getByRole('heading'), not the <p>-based Eyebrow */}
       <h3 className="text-eyebrow font-semibold uppercase tracking-[1.2px] text-muted-foreground">{children}</h3>
       {right}
@@ -282,7 +282,7 @@ export default function ProfilePage() {
                 ))}
               </GroupRow>
             ))}
-            <p className="px-4 py-[11px] bg-muted/40 text-xs text-muted-foreground">{t("audience.footer")}</p>
+            <p className="px-4 py-[11px] bg-well-tint text-xs text-muted-foreground">{t("audience.footer")}</p>
           </div>
 
           {/* Your data */}
@@ -384,7 +384,7 @@ export default function ProfilePage() {
               <p className="mt-2 text-xs text-muted-foreground text-pretty">{t("language.hint")}</p>
             </div>
 
-            <div className="rounded-[var(--radius-l)] border border-border bg-muted/40 p-3.5 text-xs text-muted-foreground text-pretty">
+            <div className="rounded-[var(--radius-l)] border border-border bg-well-tint p-3.5 text-xs text-muted-foreground text-pretty">
               {t("sidebarNote")}
             </div>
           </div>

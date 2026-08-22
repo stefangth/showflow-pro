@@ -185,7 +185,7 @@ export function SystemMapCanvas() {
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
             filter === "all"
               ? "bg-primary text-primary-foreground border-primary"
-              : "bg-background text-foreground hover:bg-muted",
+              : "bg-background text-foreground hover:bg-hover-tint",
           )}
         >
           {t('systemMapCanvas.subsystems.all')}
@@ -201,7 +201,7 @@ export function SystemMapCanvas() {
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
               filter === sub
                 ? "bg-primary text-primary-foreground border-primary"
-                : "bg-background text-foreground hover:bg-muted",
+                : "bg-background text-foreground hover:bg-hover-tint",
             )}
           >
             {SUBSYSTEM_LABELS[sub]}
@@ -260,10 +260,10 @@ export function SystemMapCanvas() {
                             aria-label={node.label}
                             className={cn(
                               "rounded-m border border-border border-l-4 bg-card px-3 py-2 text-left text-sm shadow-sm",
-                              "motion-safe:transition-colors hover:bg-muted",
+                              "motion-safe:transition-colors hover:bg-hover-tint",
                               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                               KIND_BORDER_CLASS[node.kind],
-                              selectedId === node.id && "bg-muted",
+                              selectedId === node.id && "bg-well-tint",
                             )}
                           >
                             <span className="block font-medium text-foreground">{node.label}</span>

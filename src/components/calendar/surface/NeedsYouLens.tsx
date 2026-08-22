@@ -324,7 +324,7 @@ export function NeedsYouLens({
                       className={cn(
                         'flex shrink-0 flex-row items-center gap-3 border-b-[0.5px] border-border px-4 py-3 text-left',
                         'md:w-[92px] md:flex-col md:items-center md:justify-center md:gap-0.5 md:border-b-0 md:border-r-[0.5px] md:px-0 md:py-4 md:text-center',
-                        isUrgent ? 'bg-accent-50' : 'bg-muted'
+                        isUrgent ? 'bg-accent-tint' : 'bg-well-tint'
                       )}
                     >
                       <Eyebrow className={isUrgent ? 'text-primary-hover' : undefined}>
@@ -381,7 +381,7 @@ export function NeedsYouLens({
                             <span
                               key={person.artistId}
                               data-testid={`needs-you-person-${item.dateId}-${person.artistId}`}
-                              className="inline-flex items-center rounded-pill bg-muted px-2 py-0.5 text-eyebrow font-medium text-foreground"
+                              className="inline-flex items-center rounded-pill bg-well-tint px-2 py-0.5 text-eyebrow font-medium text-foreground"
                             >
                               {person.name}
                               {person.isUnderstudy ? ` (${t('calendar.needsYou.understudyAbbrev')})` : ''}
@@ -398,7 +398,7 @@ export function NeedsYouLens({
                       className={cn(
                         'flex shrink-0 flex-col justify-center gap-2 border-t-[0.5px] border-border px-4 py-3.5',
                         'md:w-[232px] md:border-l-[0.5px] md:border-t-0',
-                        isUrgent ? 'bg-card' : 'bg-muted'
+                        isUrgent ? 'bg-card' : 'bg-well-tint'
                       )}
                     >
                       <Button
@@ -469,7 +469,7 @@ export function NeedsYouLens({
         </Collapsible>
       )}
 
-      <div data-testid="needs-you-receipts" className="overflow-hidden rounded-l border-[0.5px] border-border bg-muted">
+      <div data-testid="needs-you-receipts" className="overflow-hidden rounded-l border-[0.5px] border-border bg-well-tint">
         <div className="flex items-center gap-2 border-b-[0.5px] border-border px-3.5 py-2.5">
           <Eyebrow>{t('calendar.needsYou.clearedToday')}</Eyebrow>
           <span className="font-mono text-eyebrow text-muted-foreground">{receipts.length}</span>

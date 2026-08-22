@@ -6,6 +6,8 @@ export interface SegmentedControlOption<T extends string> {
   value: T;
   label: string;
   count?: number;
+  /** Optional `data-testid` for the rendered tab button (identity data, not styling). */
+  testId?: string;
 }
 
 export interface SegmentedControlProps<T extends string> {
@@ -13,6 +15,14 @@ export interface SegmentedControlProps<T extends string> {
   onChange: (value: T) => void;
   options: Array<SegmentedControlOption<T>>;
   className?: string;
+  /** Non-wrapping, horizontally scrolling strip with snap points (mobile). */
+  scrollable?: boolean;
+  /**
+   * Disables the whole control: every option button gets the native
+   * `disabled` attribute (blocking mouse, keyboard, and assistive-tech
+   * activation, not just pointer events) and dims to read as inactive.
+   */
+  disabled?: boolean;
 }
 
 export function SegmentedControl<T extends string>({
@@ -20,12 +30,15 @@ export function SegmentedControl<T extends string>({
   onChange,
   options,
   className,
+  scrollable = false,
+  disabled = false,
 }: SegmentedControlProps<T>) {
   return (
     <div
       role="tablist"
       className={cn(
-        "inline-flex items-center gap-[2px] rounded-m bg-[var(--surface-3)] p-[2px]",
+        "items-center rounded-m bg-well-tint p-[2px]",
+        scrollable ? "flex gap-2 overflow-x-auto snap-x" : "inline-flex gap-[2px]",
         className,
       )}
     >
@@ -38,9 +51,13 @@ export function SegmentedControl<T extends string>({
             type="button"
             role="tab"
             aria-selected={active}
+            data-testid={option.testId}
+            data-active={active}
+            disabled={disabled}
             onClick={() => onChange(option.value)}
             className={cn(
-              "inline-flex h-[29px] cursor-pointer items-center gap-1.5 rounded-[var(--radius-s)] px-3 text-[13px] font-medium transition-colors",
+              "inline-flex h-[29px] cursor-pointer items-center gap-1.5 rounded-s px-3 text-control font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50",
+              scrollable && "shrink-0 snap-start",
               active
                 ? "bg-card text-foreground shadow-elev1"
                 : "bg-transparent text-muted-foreground shadow-none",
@@ -48,7 +65,12 @@ export function SegmentedControl<T extends string>({
           >
             <span>{option.label}</span>
             {option.count != null && (
-              <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
+              <span
+                className={cn(
+                  "inline-flex h-4 min-w-4 items-center justify-center rounded-xs px-1 font-mono text-eyebrow font-semibold tabular-nums",
+                  active ? "bg-accent-tint text-accent-text" : "bg-well-tint text-muted-foreground",
+                )}
+              >
                 {option.count}
               </span>
             )}

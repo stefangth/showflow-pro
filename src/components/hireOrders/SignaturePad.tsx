@@ -84,7 +84,7 @@ export function SignaturePad({ value, onChange, disabled }: Props) {
           }}
         />
         {typed.trim() !== "" && (
-          <div className="rounded-m border border-border bg-muted px-4 py-3 font-serif text-2xl text-foreground">
+          <div className="rounded-m border border-border bg-well-tint px-4 py-3 font-serif text-2xl text-foreground">
             {typed}
           </div>
         )}

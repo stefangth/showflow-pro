@@ -81,7 +81,7 @@ function SeasonCellButton({
         aria-hidden="true"
         onMouseDown={onColumnMouseDown}
         onMouseEnter={onColumnMouseEnter}
-        className={cn('h-[52px] bg-transparent', columnBorder(cell.date), inRange && 'bg-accent-50')}
+        className={cn('h-[52px] bg-transparent', columnBorder(cell.date), inRange && 'bg-accent-tint')}
       />
     );
   }
@@ -105,7 +105,7 @@ function SeasonCellButton({
       className={cn(
         'flex h-[52px] items-end justify-center px-0.5 pb-1',
         columnBorder(cell.date),
-        inRange && 'bg-accent-50'
+        inRange && 'bg-accent-tint'
       )}
     >
       {cancelled ? (
@@ -135,7 +135,7 @@ function SeasonCellButton({
  * (no-date) cells are inert. Full width. Phase 4: dragging across day
  * columns (mousedown a column, mouseenter another) drives
  * `onRangeStart`/`onRangeExtend`/`onRangeCommit`, and columns whose day key
- * is in `rangeKeys` render a `bg-accent-50` highlight on the header + every
+ * is in `rangeKeys` render a `bg-accent-tint` highlight on the header + every
  * program-row cell. While a drag is active, the grid container gets
  * `select-none` (mirrors `MonthGrid`'s `rangeActive` prop) so the pointer
  * move doesn't also select cell text.
@@ -234,7 +234,7 @@ export function SeasonLens({
                 className={cn(
                   'flex flex-col items-center justify-center gap-0.5 py-1 font-mono text-eyebrow tabular-nums text-muted-foreground',
                   columnBorder(day),
-                  inRange && 'bg-accent-50'
+                  inRange && 'bg-accent-tint'
                 )}
               >
                 <span className={cn('text-eyebrow font-sans not-italic', isWeekend ? 'text-muted-foreground/50' : 'text-muted-foreground/80')}>
@@ -284,7 +284,7 @@ export function SeasonLens({
         })}
 
         {/* "Unfilled slots" load-bar row. */}
-        <div className="grid bg-muted/30" style={{ gridTemplateColumns: gridCols }}>
+        <div className="grid bg-well-tint" style={{ gridTemplateColumns: gridCols }}>
           <Eyebrow className="px-2 py-1.5 tracking-wide">{t('calendar.season.unfilledSlotsHeader')}</Eyebrow>
           {model.loadByDay.map(({ date, openMainSlots }) => {
             const pct = (openMainSlots / maxOpen) * 100;

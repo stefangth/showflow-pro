@@ -374,7 +374,7 @@ export default function SettingsPage() {
                   <TabsTrigger
                     key={item.value}
                     value={item.value}
-                    className="shrink-0 justify-start gap-2 rounded-m px-3 py-2 text-muted-foreground data-[state=active]:bg-muted data-[state=active]:text-foreground data-[state=active]:shadow-none hover:bg-muted/60 md:w-full"
+                    className="shrink-0 justify-start gap-2 rounded-m px-3 py-2 text-muted-foreground data-[state=active]:bg-well-tint data-[state=active]:text-foreground data-[state=active]:shadow-none hover:bg-hover-tint md:w-full"
                   >
                     <item.icon className="h-4 w-4 shrink-0" />
                     <span>{item.label}</span>

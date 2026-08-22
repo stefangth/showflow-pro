@@ -20,7 +20,7 @@ const TONE_CLASS: Record<string, string> = {
   violet: "bg-accent text-accent-foreground",
   amber: "bg-[var(--amber-100)] text-[var(--amber-600)]",
   green: "bg-[var(--green-100)] text-[var(--green-600)]",
-  neutral: "bg-muted text-muted-foreground",
+  neutral: "bg-well-tint text-muted-foreground",
 };
 
 function RailCard({ label, children }: { label: string; children: ReactNode }) {
@@ -80,7 +80,7 @@ export function FlowRail(props: {
           {inPracticeRows(flow, times).map((r) => (
             <div key={r.who} className="flex gap-2.5 text-xs">
               {/* eslint-disable-next-line no-restricted-syntax -- non-standard tracking */}
-              <span className="w-20 flex-none rounded bg-muted px-1 py-0.5 text-center text-eyebrow font-semibold uppercase tracking-wide text-muted-foreground">
+              <span className="w-20 flex-none rounded bg-well-tint px-1 py-0.5 text-center text-eyebrow font-semibold uppercase tracking-wide text-muted-foreground">
                 {r.who}
               </span>
               <span>{r.text}</span>

@@ -20,11 +20,11 @@ export function HelpItemRow({
       <button
         onClick={onToggle}
         aria-expanded={open}
-        className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-muted/50"
+        className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-hover-tint"
       >
         <span className="min-w-0 flex-1 text-sm font-medium text-foreground">{item.q[lang]}</span>
         {item.status === 'new' ? (
-          <span className="shrink-0 rounded bg-accent-100 px-1.5 py-0.5 text-eyebrow font-semibold text-accent-text">
+          <span className="shrink-0 rounded bg-accent-tint px-1.5 py-0.5 text-eyebrow font-semibold text-accent-text">
             {t('badge.new')}
           </span>
         ) : (
@@ -40,7 +40,7 @@ export function HelpItemRow({
         <div className="animate-in fade-in slide-in-from-top-1 px-4 pb-4 duration-150">
           <p className="mb-2.5 max-w-[78ch] text-sm leading-relaxed text-foreground">{item.a[lang]}</p>
           <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-eyebrow text-muted-foreground">
+            <span className="rounded bg-well-tint px-1.5 py-0.5 font-mono text-eyebrow text-muted-foreground">
               {item.surface}
             </span>
             <span className="font-mono text-eyebrow text-muted-foreground/60">{item.id}</span>

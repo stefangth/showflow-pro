@@ -72,7 +72,7 @@ function noopActions(): CalendarSurfaceActions {
 }
 
 describe('CalendarSurface — mobile shell (useIsMobile true)', () => {
-  it('renders the mobile tree: scrollable LensTabs, no fixed 280px DayRail', () => {
+  it('renders the mobile tree: scrollable SegmentedControl, no fixed 280px DayRail', () => {
     render(
       <CalendarSurface
         role="producer"

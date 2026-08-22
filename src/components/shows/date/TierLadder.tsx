@@ -73,7 +73,7 @@ export function TierLadder({ rows, city, openedTiers, statusByTier, nextTier, on
               ? "bg-[var(--green-500)]"
               : isNext
                 ? "border-2 border-accent-500 bg-background"
-                : "border border-border bg-muted";
+                : "border border-border bg-well-tint";
 
             const missDetail = row.missingSkillCount > 0 ? t("tierLadder.missDetail", { count: row.missingSkillCount }) : "";
 

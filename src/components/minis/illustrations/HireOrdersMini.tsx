@@ -56,7 +56,7 @@ export const hireOrdersArt: readonly [ReactNode, ReactNode, ReactNode, ReactNode
       </div>
     </div>
     <div className="flex items-start gap-2">
-      <span className="mt-1 inline-block h-[18px] w-[18px] rounded-full border-[0.5px] border-border bg-muted" />
+      <span className="mt-1 inline-block h-[18px] w-[18px] rounded-full border-[0.5px] border-border bg-well-tint" />
       <div>
         <div className="text-caption text-muted-foreground">Countersigned</div>
         <div className="text-eyebrow text-muted-foreground/70">waiting</div>

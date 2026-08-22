@@ -1184,7 +1184,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager, ini
                                       <button
                                         key={c.id}
                                         onClick={() => toggleDateCast.mutate({ castId: c.id, on: !on })}
-                                        className="flex items-center w-full px-2 py-1.5 text-sm rounded hover:bg-muted text-left"
+                                        className="flex items-center w-full px-2 py-1.5 text-sm rounded hover:bg-hover-tint text-left"
                                       >
                                         <Check className={cn('h-4 w-4 mr-2', on ? 'opacity-100' : 'opacity-0')} />
                                         {c.name}

@@ -33,7 +33,7 @@ export const chatsArt: readonly [ReactNode, ReactNode, ReactNode, ReactNode] = [
         <MiniAvatar initials="IV" tone="bg-accent-600" />
         <MiniAvatar initials="NR" tone="bg-accent-700" />
       </span>
-      <span className="inline-flex h-[22px] items-center rounded-full bg-muted px-2 text-eyebrow font-medium text-muted-foreground">+2</span>
+      <span className="inline-flex h-[22px] items-center rounded-full bg-well-tint px-2 text-eyebrow font-medium text-muted-foreground">+2</span>
     </div>
     <div className="text-eyebrow text-muted-foreground">Admins and producers see every thread</div>
     <div className="text-eyebrow text-muted-foreground">Artists join once booked or once they say yes</div>
@@ -47,7 +47,7 @@ export const chatsArt: readonly [ReactNode, ReactNode, ReactNode, ReactNode] = [
       </span>
       <span className="flex flex-col">
         <span className="text-eyebrow font-medium text-muted-foreground">Theo Brandt</span>
-        <span className="mr-auto max-w-[85%] rounded-m rounded-bl-none bg-muted px-2.5 py-1.5 text-eyebrow text-foreground">
+        <span className="mr-auto max-w-[85%] rounded-m rounded-bl-none bg-well-tint px-2.5 py-1.5 text-eyebrow text-foreground">
           Understood, I will be there at 17:00.
         </span>
       </span>

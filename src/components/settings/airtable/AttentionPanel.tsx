@@ -95,7 +95,7 @@ export function AttentionPanel({
                 <Button
                   variant="outline"
                   size="sm"
-                  className="border-accent-200 bg-accent-50 text-accent-text hover:bg-accent-100"
+                  className="border-accent-200 bg-accent-tint text-accent-text hover:bg-accent-tint"
                   onClick={() => onFix(cause)}
                 >
                   {label}
@@ -117,7 +117,7 @@ export function AttentionPanel({
             </div>
 
             {isOpen && (
-              <div className="border-t border-border bg-muted">
+              <div className="border-t border-border bg-well-tint">
                 {cause.records.map((record) => (
                   <div
                     key={record.id}

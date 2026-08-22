@@ -160,7 +160,7 @@ export function CockpitRail({
             {skillChips.map((s) => (
               <span
                 key={s}
-                className="rounded-[var(--radius-xs)] bg-accent-100 px-[7px] py-[3px] text-xs font-medium text-accent-text"
+                className="rounded-[var(--radius-xs)] bg-accent-tint px-[7px] py-[3px] text-xs font-medium text-accent-text"
               >
                 {s}
               </span>

@@ -406,7 +406,7 @@ export function OwnershipPanel({ orgId }: Props) {
                                   onClick={() => deleteAssignment.mutate(a.id)}
                                   disabled={!canManage}
                                   aria-label={t('ownership.removeOwner')}
-                                  className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-destructive disabled:opacity-50 disabled:pointer-events-none"
+                                  className="rounded p-1 text-muted-foreground hover:bg-hover-tint hover:text-destructive disabled:opacity-50 disabled:pointer-events-none"
                                 >
                                   <Trash2 className="h-3.5 w-3.5" />
                                 </button>
@@ -464,7 +464,7 @@ export function OwnershipPanel({ orgId }: Props) {
               </div>
             </div>
 
-            <div className="space-y-1.5 rounded-[var(--radius-m)] border border-accent-200 bg-accent-50 p-3">
+            <div className="space-y-1.5 rounded-[var(--radius-m)] border border-accent-200 bg-accent-tint p-3">
               {/* eslint-disable-next-line no-restricted-syntax -- non-standard tracking (1.2px) */}
               <p className="text-eyebrow font-semibold uppercase tracking-[1.2px] text-accent-text">{t('ownership.notified')}</p>
               <p className="text-sm font-semibold text-foreground">

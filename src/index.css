@@ -56,7 +56,7 @@
     --radius: 0.625rem;
 
     /* ── Sidebar ── */
-    --sidebar-background: 36 27% 92%;  /* #F1EEE6 recessed warm rail */
+    --sidebar-background: 44 20% 92%;   /* = surface-3 #EFEDE7 */
     --sidebar-foreground: 256 20% 9%;
     --sidebar-primary: 249 90% 66%;
     --sidebar-primary-foreground: 0 0% 100%;
@@ -95,6 +95,11 @@
        dark ground. The role lift lives here, as a semantic token, per the rule
        above: never re-pitch a stop. Light = accent-700. */
     --accent-text: #4738B0;
+
+    /* ── Tint backgrounds (semantic, mode-flipping) ── */
+    --hover-tint:  rgba(20, 18, 14, 0.06);   /* row / button hover wash */
+    --well-tint:   rgba(20, 18, 14, 0.08);   /* recessed well / inactive chip / track */
+    --accent-tint: #F4F1FF;                  /* = accent-50; active count chip / accent wash */
 
     /* ── Semantic color scale (raw, for badge patterns and state tones) ──
        Badge pattern = tint bg (-100) + text (-600). The -500 stops are the
@@ -235,7 +240,7 @@
     --ring: 249 90% 66%;
 
     /* ── Sidebar ── */
-    --sidebar-background: 252 11% 12%; /* #1C1B22 = surface-2 in dark */
+    --sidebar-background: 248 10% 15%;   /* = surface-3 #24232B */
     --sidebar-foreground: 36 18% 95%;
     --sidebar-primary: 249 90% 66%;
     --sidebar-primary-foreground: 0 0% 100%;
@@ -260,6 +265,11 @@
     --text-faint: #6F6E6A;
     --notification-unread: rgba(110, 92, 246, 0.12);   /* subtle violet wash (dark) */
     --accent-text: #C9BCFF;   /* lifted accent text on the dark ground */
+
+    /* ── Tint backgrounds (semantic, mode-flipping) ── */
+    --hover-tint:  rgba(245, 244, 241, 0.06);
+    --well-tint:   rgba(245, 244, 241, 0.08);
+    --accent-tint: rgba(110, 92, 246, 0.20); /* violet wash lifted for the dark ground */
 
     /* ── Semantic dark overrides — tint-bg + text badge pattern stays legible ── */
     --green-600: #5DD88A;

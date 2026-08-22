@@ -266,7 +266,7 @@ export function EligibilityPanelBody({
                 {prod.coveringCastIds.map((castId) => (
                   <span
                     key={castId}
-                    className="inline-flex h-6 items-center gap-1.5 rounded-[var(--radius-s)] border border-accent-200 bg-accent-100 px-2 text-xs font-medium text-accent-text"
+                    className="inline-flex h-6 items-center gap-1.5 rounded-[var(--radius-s)] border border-accent-200 bg-accent-tint px-2 text-xs font-medium text-accent-text"
                   >
                     <Users className="h-3 w-3" />
                     {castNameById.get(castId) ?? castId}

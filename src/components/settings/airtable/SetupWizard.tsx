@@ -59,7 +59,7 @@ export function SetupWizard({
         </p>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-[236px_1fr]">
-        <ol className="border-b border-border bg-muted py-4 sm:border-b-0 sm:border-r">
+        <ol className="border-b border-border bg-well-tint py-4 sm:border-b-0 sm:border-r">
           {STEPS.map((step, i) => {
             const current = step.n === currentStep;
             const done = step.n < currentStep;
@@ -73,7 +73,7 @@ export function SetupWizard({
                       current
                         ? "bg-primary text-primary-foreground"
                         : done
-                          ? "border border-accent-200 bg-accent-100 text-accent-text"
+                          ? "border border-accent-200 bg-accent-tint text-accent-text"
                           : "border border-border bg-card text-muted-foreground",
                     )}
                   >
@@ -121,7 +121,7 @@ export function SetupWizard({
                 value={keyValue}
                 onChange={(e) => onKeyChange(e.target.value)}
                 disabled={!canWrite}
-                className="bg-muted"
+                className="bg-well-tint"
               />
               <Button
                 onClick={onSaveKey}

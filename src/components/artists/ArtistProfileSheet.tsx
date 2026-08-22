@@ -323,7 +323,7 @@ export function ArtistProfileSheet({ artistId, open, onOpenChange }: Props) {
                     <div
                       key={skill.id}
                       data-testid={`skill-row-${skill.id}`}
-                      className="flex h-[34px] items-center gap-2.5 rounded-l border border-accent-200 bg-accent-50 pl-2.5 pr-2"
+                      className="flex h-[34px] items-center gap-2.5 rounded-l border border-accent-200 bg-accent-tint pl-2.5 pr-2"
                     >
                       <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-xs bg-primary text-primary-foreground">
                         <Check className="h-[11px] w-[11px]" strokeWidth={3} />
@@ -361,7 +361,7 @@ export function ArtistProfileSheet({ artistId, open, onOpenChange }: Props) {
                           key={skill.id}
                           type="button"
                           onClick={() => setSelectedSkills((prev) => [...prev, skill])}
-                          className="inline-flex h-[26px] items-center gap-1.5 rounded-m border border-input bg-background px-2.5 text-xs font-medium text-foreground hover:bg-accent-50"
+                          className="inline-flex h-[26px] items-center gap-1.5 rounded-m border border-input bg-background px-2.5 text-xs font-medium text-foreground hover:bg-accent-tint"
                         >
                           <Plus className="h-3 w-3" />
                           {skill.name}

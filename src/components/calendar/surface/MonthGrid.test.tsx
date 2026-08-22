@@ -93,28 +93,28 @@ describe('MonthGrid', () => {
     expect(selectedCell).toHaveAttribute('data-in-range', 'true');
   });
 
-  it('gives a single-day selection (isSelected but not inRange) the accent-50 fill too, not just the ring', () => {
+  it('gives a single-day selection (isSelected but not inRange) the accent-tint fill too, not just the ring', () => {
     const cells = buildCells();
     const cell12 = cells.find(c => c.day?.getDate() === 12)!;
     cell12.isSelected = true;
     cell12.inRange = false;
     render(<MonthGrid cells={cells} onSelectDay={vi.fn()} onOpenDay={vi.fn()} />);
     const cell = screen.getByTestId('month-grid-cell-2026-08-12');
-    expect(cell.className).toContain('bg-accent-50');
+    expect(cell.className).toContain('bg-accent-tint');
     expect(cell.className).toContain('ring-primary');
   });
 
-  it('dims a past cell with a flat bg-muted swap, not opacity (which would also dim chip tint/text)', () => {
+  it('dims a past cell with a flat bg-well-tint swap, not opacity (which would also dim chip tint/text)', () => {
     const cells = buildCells();
     const cell10 = cells.find(c => c.day?.getDate() === 10)!;
     cell10.isPast = true;
     render(<MonthGrid cells={cells} onSelectDay={vi.fn()} onOpenDay={vi.fn()} />);
     const cell = screen.getByTestId('month-grid-cell-2026-08-10');
-    expect(cell.className).toContain('bg-muted');
+    expect(cell.className).toContain('bg-well-tint');
     expect(cell.className).not.toContain('opacity-60');
   });
 
-  it('a past + selected cell renders the accent-50 selection fill, not the muted past fill', () => {
+  it('a past + selected cell renders the accent-tint selection fill, not the well-tint past fill', () => {
     const cells = buildCells();
     const cell10 = cells.find(c => c.day?.getDate() === 10)!;
     cell10.isPast = true;
@@ -122,15 +122,15 @@ describe('MonthGrid', () => {
     render(<MonthGrid cells={cells} onSelectDay={vi.fn()} onOpenDay={vi.fn()} />);
     const cell = screen.getByTestId('month-grid-cell-2026-08-10');
     // Split into exact class tokens — the cell also carries the unconditional
-    // `hover:bg-muted/50` hover class, which substring-contains "bg-muted"
-    // and would otherwise make a naive `.toContain('bg-muted')` check a
-    // false negative.
+    // `hover:bg-hover-tint` hover class, which would otherwise make a naive
+    // `.toContain('bg-well-tint')` check ambiguous alongside similarly named
+    // tint utilities.
     const classes = cell.className.split(/\s+/);
-    expect(classes).toContain('bg-accent-50');
-    expect(classes).not.toContain('bg-muted');
+    expect(classes).toContain('bg-accent-tint');
+    expect(classes).not.toContain('bg-well-tint');
   });
 
-  it('a past + in-range (not selected) cell renders the accent-50 range fill, not the muted past fill', () => {
+  it('a past + in-range (not selected) cell renders the accent-tint range fill, not the well-tint past fill', () => {
     const cells = buildCells();
     const cell10 = cells.find(c => c.day?.getDate() === 10)!;
     cell10.isPast = true;
@@ -139,12 +139,12 @@ describe('MonthGrid', () => {
     render(<MonthGrid cells={cells} onSelectDay={vi.fn()} onOpenDay={vi.fn()} />);
     const cell = screen.getByTestId('month-grid-cell-2026-08-10');
     // Split into exact class tokens — the cell also carries the unconditional
-    // `hover:bg-muted/50` hover class, which substring-contains "bg-muted"
-    // and would otherwise make a naive `.toContain('bg-muted')` check a
-    // false negative.
+    // `hover:bg-hover-tint` hover class, which would otherwise make a naive
+    // `.toContain('bg-well-tint')` check ambiguous alongside similarly named
+    // tint utilities.
     const classes = cell.className.split(/\s+/);
-    expect(classes).toContain('bg-accent-50');
-    expect(classes).not.toContain('bg-muted');
+    expect(classes).toContain('bg-accent-tint');
+    expect(classes).not.toContain('bg-well-tint');
   });
 
   it('fires onSelectDay with the clicked Date when a day cell is clicked', () => {
@@ -210,7 +210,7 @@ describe('MonthGrid', () => {
     render(<MonthGrid cells={cells} onSelectDay={vi.fn()} onOpenDay={vi.fn()} />);
     const badge = screen.getByTestId('month-grid-chip-sessions-2026-08-10-0');
     expect(badge).toHaveTextContent('+1');
-    expect(badge.className).toContain('bg-accent-50');
+    expect(badge.className).toContain('bg-accent-tint');
     expect(badge.className).toContain('text-accent-text');
   });
 
@@ -402,7 +402,7 @@ describe('MonthGrid', () => {
       renderRangeGrid();
       const rangedCell = screen.getByTestId('month-grid-cell-2026-08-20');
       expect(rangedCell).toHaveAttribute('data-in-range', 'true');
-      expect(rangedCell.className).toContain('bg-accent-50');
+      expect(rangedCell.className).toContain('bg-accent-tint');
     });
   });
 

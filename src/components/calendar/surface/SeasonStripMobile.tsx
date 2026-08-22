@@ -141,7 +141,7 @@ export function SeasonStripMobile({ entries, anchor, readyIds, onOpenDate, class
                 data-today={today}
                 className={cn(
                   'flex items-center justify-center border-l border-l-border py-1 font-mono text-eyebrow tabular-nums text-muted-foreground',
-                  today && 'bg-accent-100 text-accent-text'
+                  today && 'bg-accent-tint text-accent-text'
                 )}
               >
                 {day.getDate()}
@@ -190,11 +190,11 @@ export function SeasonStripMobile({ entries, anchor, readyIds, onOpenDate, class
         })}
 
         {/* "Open" footer row — the load-bar row's frozen label. */}
-        <div data-testid="season-strip-loadbar-row" className="grid bg-muted/30" style={{ gridTemplateColumns: gridCols }}>
+        <div data-testid="season-strip-loadbar-row" className="grid bg-well-tint" style={{ gridTemplateColumns: gridCols }}>
           <div
             data-testid="season-strip-label-open"
             // eslint-disable-next-line no-restricted-syntax -- needs a data-testid, which <Eyebrow> (no pass-through props) can't carry
-            className="sticky left-0 z-10 flex items-center bg-muted/30 px-2 py-1.5 text-eyebrow font-semibold uppercase tracking-wide text-muted-foreground"
+            className="sticky left-0 z-10 flex items-center bg-well-tint px-2 py-1.5 text-eyebrow font-semibold uppercase tracking-wide text-muted-foreground"
           >
             {t('calendar.seasonStripMobile.openFooterLabel')}
           </div>

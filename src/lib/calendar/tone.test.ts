@@ -32,7 +32,7 @@ describe('calendar tones', () => {
     expect(ARTIST_TONES.suggested.label).toBe('Offer');
     expect(ARTIST_TONES.soft_booked.label).toBe('Hold');
 
-    expect(ARTIST_TONES.suggested.badgeClass).toBe('bg-accent-50 text-accent-text');
+    expect(ARTIST_TONES.suggested.badgeClass).toBe('bg-accent-tint text-accent-text');
     expect(ARTIST_TONES.suggested.railClass).toBe('bg-primary');
 
     expect(ARTIST_TONES.confirmed.badgeClass).toBe('bg-[var(--green-100)] text-[var(--green-600)]');
@@ -88,7 +88,7 @@ describe('calendar tones', () => {
     expect(TONE_BG.warning).toBe('bg-[var(--amber-100)]');
     expect(TONE_BG.muted).toBe('bg-[var(--surface-3)]');
     expect(TONE_BG.destructive).toBe('bg-[var(--red-100)]');
-    expect(TONE_BG.accent).toBe('bg-accent-50');
+    expect(TONE_BG.accent).toBe('bg-accent-tint');
   });
 });
 

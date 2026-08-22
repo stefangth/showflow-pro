@@ -16,7 +16,7 @@ export type CastTone = "green" | "violet" | "amber";
 // the status badges below — CLAUDE.md: never hardcode colors.
 const AVATAR_TONE: Record<CastTone, string> = {
   green: "bg-[var(--green-100)] text-[var(--green-600)]",
-  violet: "bg-accent-100 text-accent-text",
+  violet: "bg-accent-tint text-accent-text",
   amber: "bg-[var(--amber-100)] text-[var(--amber-600)]",
 };
 
@@ -83,7 +83,7 @@ function StatusBadge({ status }: { status: NonNullable<CastRow["status"]> }) {
     // for anyone who reads "Accepted" as already-booked.
     return (
       <IconTooltip label={softBookedMeaning(tAction)}>
-        <span className={cn(STATUS_BADGE_BASE, "bg-accent-100 text-accent-text")}>{t("cockpitCastList.accepted")}</span>
+        <span className={cn(STATUS_BADGE_BASE, "bg-accent-tint text-accent-text")}>{t("cockpitCastList.accepted")}</span>
       </IconTooltip>
     );
   }

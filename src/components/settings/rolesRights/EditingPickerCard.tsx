@@ -21,8 +21,8 @@ export function EditingPickerCard({ roleOnCount }: EditingPickerCardProps) {
       </div>
 
       <div className="px-4 pb-4 pt-3">
-        <div className="flex items-center gap-3 rounded-[var(--radius-m)] bg-accent-50 px-3 py-2.5">
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-s)] bg-accent-100 text-accent-text">
+        <div className="flex items-center gap-3 rounded-[var(--radius-m)] bg-accent-tint px-3 py-2.5">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-s)] bg-accent-tint text-accent-text">
             <Users className="h-4 w-4" aria-hidden="true" />
           </span>
           <div className="min-w-0 flex-1">

@@ -217,7 +217,7 @@ export function ArtistDashboard() {
                       </p>
                     </div>
                     <div className="space-y-1">
-                      <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                      <div className="h-1.5 rounded-full bg-well-tint overflow-hidden">
                         <div
                           className="h-full bg-primary transition-all"
                           style={{ width: `${pct}%` }}
@@ -262,7 +262,7 @@ export function ArtistDashboard() {
                             key={d.id}
                             className="flex items-stretch overflow-hidden rounded-[var(--radius-xl)] border border-border bg-card shadow-elev2"
                           >
-                            <div className="flex w-[92px] shrink-0 flex-col items-center justify-center gap-0.5 border-r border-border bg-accent-50 py-5">
+                            <div className="flex w-[92px] shrink-0 flex-col items-center justify-center gap-0.5 border-r border-border bg-accent-tint py-5">
                               {/* eslint-disable-next-line no-restricted-syntax -- weekday eyebrow inside a date-tile stack, primitive adoption deferred */}
                               <p className="m-0 text-eyebrow font-semibold uppercase tracking-[1.6px] text-accent-text">
                                 {format(date, 'EEE', { locale: dfLocale() })}

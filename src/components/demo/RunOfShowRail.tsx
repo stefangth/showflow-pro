@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Eyebrow } from "@/components/ui/eyebrow";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -248,25 +249,17 @@ export function RunOfShowRail() {
             className="h-7 text-xs"
           />
         </div>
-        <div role="group" aria-label="Volume" className="inline-flex items-center gap-0.5 rounded-m bg-muted p-0.5">
-          {(["small", "full"] as const).map((v) => (
-            <button
-              key={v}
-              type="button"
-              aria-pressed={volume === v}
-              disabled={resetMut.isPending}
-              onClick={() => {
-                if (v !== volume) setPendingVolume(v);
-              }}
-              className={cn(
-                "h-6 rounded-m px-2.5 text-xs font-medium disabled:opacity-50",
-                volume === v ? "bg-background text-foreground shadow-sm" : "text-muted-foreground",
-              )}
-            >
-              {v === "small" ? "Small" : "Full"}
-            </button>
-          ))}
-        </div>
+        <SegmentedControl
+          value={volume}
+          onChange={(v) => {
+            if (v !== volume) setPendingVolume(v);
+          }}
+          options={[
+            { value: "small", label: "Small" },
+            { value: "full", label: "Full" },
+          ]}
+          disabled={resetMut.isPending}
+        />
       </div>
 
       <AlertDialog open={pendingVolume !== null} onOpenChange={(open) => { if (!open) setPendingVolume(null); }}>

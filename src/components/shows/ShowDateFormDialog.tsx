@@ -225,7 +225,7 @@ export function ShowDateFormDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {mode === "edit" ? t("showDateForm.editDate") : t("showDateForm.newDate")}
-            {synced && <Badge variant="secondary" className="bg-muted text-muted-foreground">{t("showDateForm.syncedFromAirtable")}</Badge>}
+            {synced && <Badge variant="secondary" className="bg-well-tint text-muted-foreground">{t("showDateForm.syncedFromAirtable")}</Badge>}
           </DialogTitle>
           {dialogDescription && <DialogDescription className="text-xs">{dialogDescription}</DialogDescription>}
         </DialogHeader>

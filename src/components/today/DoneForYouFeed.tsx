@@ -20,9 +20,9 @@ const KIND_ICON: Record<FeedKind, LucideIcon> = {
 };
 
 const KIND_TINT: Record<FeedKind, { bg: string; fg: string }> = {
-  ask: { bg: "bg-accent-100", fg: "text-accent-text" },
+  ask: { bg: "bg-accent-tint", fg: "text-accent-text" },
   book: { bg: "bg-[var(--green-100)]", fg: "text-[var(--green-600)]" },
-  draft: { bg: "bg-muted", fg: "text-muted-foreground" },
+  draft: { bg: "bg-well-tint", fg: "text-muted-foreground" },
   notify: { bg: "bg-[var(--amber-100)]", fg: "text-[var(--amber-600)]" },
 };
 

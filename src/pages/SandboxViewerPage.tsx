@@ -153,7 +153,7 @@ export default function SandboxViewerPage() {
                     <TableHead>Show</TableHead>
                     <TableHead>City</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Filled</TableHead>
+                    <TableHead numeric>Filled</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -165,7 +165,7 @@ export default function SandboxViewerPage() {
                       <TableCell>
                         <Badge variant="neutral">{d.status}</Badge>
                       </TableCell>
-                      <TableCell className="text-right tabular-nums">
+                      <TableCell numeric>
                         {d.filled}/{d.needed}
                       </TableCell>
                     </TableRow>

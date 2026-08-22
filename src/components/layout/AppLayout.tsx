@@ -186,7 +186,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                       hiddenForRole ? 'opacity-40' : '',
                       isActive
                         ? 'bg-sidebar-accent text-sidebar-accent-foreground font-semibold'
-                        : 'text-sidebar-foreground/70 hover:bg-foreground/5 hover:text-sidebar-foreground'
+                        : 'text-sidebar-foreground/70 hover:bg-hover-tint hover:text-sidebar-foreground'
                     )
                   }
                 >
@@ -285,7 +285,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                       {SUPPORTED_LANGUAGES.map((code) => (
                         <button
                           key={code}
-                          className="flex w-full items-center gap-2.5 rounded-m px-2.5 py-2 text-control text-foreground hover:bg-muted transition-colors"
+                          className="flex w-full items-center gap-2.5 rounded-m px-2.5 py-2 text-control text-foreground hover:bg-hover-tint transition-colors"
                           onClick={() => { setLang(code); setProfileMenuOpen(false); }}
                           aria-pressed={lang === code}
                         >
@@ -298,13 +298,13 @@ export default function AppLayout({ children }: AppLayoutProps) {
                     </>
                   )}
                   <button
-                    className="flex w-full items-center gap-2.5 rounded-m px-2.5 py-2 text-control text-foreground hover:bg-muted transition-colors"
+                    className="flex w-full items-center gap-2.5 rounded-m px-2.5 py-2 text-control text-foreground hover:bg-hover-tint transition-colors"
                     onClick={() => { setProfileMenuOpen(false); navigate(ROUTES.PROFILE); }}
                   >
                     <User className="h-[14px] w-[14px]" /> {t('account.profile')}
                   </button>
                   <button
-                    className="flex w-full items-center gap-2.5 rounded-m px-2.5 py-2 text-control text-foreground hover:bg-muted transition-colors"
+                    className="flex w-full items-center gap-2.5 rounded-m px-2.5 py-2 text-control text-foreground hover:bg-hover-tint transition-colors"
                     onClick={() => { setProfileMenuOpen(false); handleSignOut(); }}
                   >
                     <LogOut className="h-[14px] w-[14px]" /> {t('account.signOut')}
@@ -346,7 +346,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
           <button
             onClick={() => setCollapsed(!collapsed)}
             aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            className="flex items-center justify-center py-3 border-t-[0.5px] border-sidebar-border hover:bg-foreground/5 transition-colors"
+            className="flex items-center justify-center py-3 border-t-[0.5px] border-sidebar-border hover:bg-hover-tint transition-colors"
           >
             {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
           </button>
@@ -372,7 +372,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
         {/* Top bar — 52 px */}
         <header className="flex items-center gap-3 h-[52px] px-6 border-b-[0.5px] border-border bg-background shrink-0">
           <button
-            className="lg:hidden p-1 -ml-1 rounded-m hover:bg-muted transition-colors"
+            className="lg:hidden p-1 -ml-1 rounded-m hover:bg-hover-tint transition-colors"
             onClick={() => setMobileOpen(true)}
             aria-label="Open navigation"
           >

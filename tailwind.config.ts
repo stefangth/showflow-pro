@@ -79,6 +79,9 @@ export default {
            accent-50..900 scale above: use this for eyebrows and inline links
            so they stay legible on the dark ground. */
         "accent-text": "var(--accent-text)",
+        "hover-tint":  "var(--hover-tint)",
+        "well-tint":   "var(--well-tint)",
+        "accent-tint": "var(--accent-tint)",
         popover: {
           DEFAULT: "hsl(var(--popover))",
           foreground: "hsl(var(--popover-foreground))",

@@ -17,7 +17,7 @@ const BOOKING_STATUS_BADGE_CLASS: Record<string, string> = {
   confirmed: "bg-success/10 text-success",
   soft_booked: "bg-warning/10 text-warning",
   suggested: "bg-info/10 text-info",
-  unanswered: "bg-muted text-muted-foreground",
+  unanswered: "bg-well-tint text-muted-foreground",
   cancelled: "bg-destructive/10 text-destructive",
 };
 

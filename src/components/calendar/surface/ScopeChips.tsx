@@ -36,7 +36,7 @@ function ScopeChip({ scopeKey, label, count, active, onClick }: ScopeChipProps) 
       <span
         className={cn(
           'inline-flex h-4 min-w-4 items-center justify-center rounded-xs px-1 font-mono text-eyebrow font-semibold tabular-nums',
-          active ? 'bg-primary-foreground/20 text-primary-foreground' : 'bg-foreground/5 text-muted-foreground'
+          active ? 'bg-primary-foreground/20 text-primary-foreground' : 'bg-well-tint text-muted-foreground'
         )}
       >
         {count}

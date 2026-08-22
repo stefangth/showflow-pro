@@ -535,7 +535,7 @@ export default function AcceptInvitePage() {
               // as Artist." read like "You joined as Artist. Gets booked for shows...",
               // a fragment missing its subject. A label-plus-caption pairing (the same
               // shape PersonRow uses for the same registry) needs no shared subject.
-              <div className="rounded-m border border-border bg-muted/40 p-3 text-left space-y-1">
+              <div className="rounded-m border border-border bg-well-tint p-3 text-left space-y-1">
                 <p className="text-sm font-medium text-foreground">{t('acceptInvite.success.yourRole', { role: roleLabel(role) })}</p>
                 <p className="text-sm text-muted-foreground">{roleDescription(role)}</p>
               </div>

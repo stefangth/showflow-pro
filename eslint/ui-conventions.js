@@ -22,7 +22,7 @@ export const uiConventions = {
       'error',
       {
         selector: "Literal[value=/#[0-9a-fA-F]{6}\\b/]",
-        message: 'Raw hex. Use a token: var(--accent-500), text-foreground, bg-muted. See docs/ui-conventions.md section 2.',
+        message: 'Raw hex. Use a token: var(--accent-500), text-foreground, bg-well-tint. See docs/ui-conventions.md section 2.',
       },
       {
         selector: "Literal[value=/\\btext-\\[[0-9.]+px\\]/]",
@@ -67,6 +67,18 @@ export const uiConventions = {
       {
         selector: "Literal[value=/\\brounded-(sm|md|lg)\\b/]",
         message: 'Retired shadcn radius alias. Use the design-system scale: s (6), m (8), l (10). See section 2.',
+      },
+      {
+        // bg-muted used as a solid wash is retired in feature code; use a tint token
+        // or an explicit surface. Excludes bg-muted-foreground. \\u002F guards the "/"
+        // (esquery treats a literal / as the regex terminator).
+        selector: "Literal[value=/\\bbg-muted(?![-\\w])/]",
+        message: 'Ad hoc bg-muted wash. Use bg-well-tint (recessed) or bg-hover-tint (hover). See docs/ui-conventions.md section 2.',
+      },
+      {
+        // foreground-alpha washes are retired; use the tint tokens.
+        selector: "Literal[value=/\\bbg-foreground\\u002F[0-9]/]",
+        message: 'Ad hoc foreground-alpha wash. Use bg-hover-tint / bg-well-tint. See docs/ui-conventions.md section 2.',
       },
     ],
     'no-restricted-imports': [

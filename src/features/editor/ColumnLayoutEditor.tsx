@@ -147,7 +147,7 @@ export function ColumnLayoutEditor({ pageKey }: ColumnLayoutEditorProps) {
             className={`flex items-center gap-1 rounded border px-1.5 py-0.5 text-xs cursor-grab active:cursor-grabbing select-none transition-all ${
               col.visible
                 ? 'border-border bg-background'
-                : 'border-border/50 bg-muted text-muted-foreground opacity-60'
+                : 'border-border/50 bg-well-tint text-muted-foreground opacity-60'
             } ${dragOverColId === col.columnId ? 'ring-2 ring-primary ring-offset-1' : ''}`}
           >
             <GripHorizontal className="h-3 w-3 text-muted-foreground shrink-0" />

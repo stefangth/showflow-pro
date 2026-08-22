@@ -723,7 +723,7 @@ export default function HireOrderEditPage() {
         {/* RIGHT: live document preview */}
         <div>
           <SetupCallout orgId={orgId} blockers={blockers} isLoading={blockersLoading} isError={blockersError} />
-          <div className="rounded-xl border border-border bg-muted p-3 sm:p-4">
+          <div className="rounded-xl border border-border bg-well-tint p-3 sm:p-4">
             <div className="sticky top-4 z-10 mb-3 flex justify-center">
               <span className="rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-muted-foreground shadow-elev1">
                 {t("editPage.livePreview")}

@@ -53,12 +53,12 @@ export function TeamPanelBody({ orgId }: { orgId: string | null }) {
   return (
     <div className="space-y-3">
       {(members ?? []).length > 0 && (
-        <div className="space-y-1.5 rounded-[var(--radius-l)] bg-muted p-2.5">
+        <div className="space-y-1.5 rounded-[var(--radius-l)] bg-well-tint p-2.5">
           {(members ?? []).map((m) => {
             const name = m.display_name || m.email || "";
             return (
               <div key={m.user_id} className="flex items-center gap-2.5">
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent-100 text-eyebrow font-semibold text-accent-text">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent-tint text-eyebrow font-semibold text-accent-text">
                   {initials(name)}
                 </span>
                 <span className="min-w-0 flex-1 truncate text-xs font-medium text-foreground">{name}</span>
@@ -88,7 +88,7 @@ export function TeamPanelBody({ orgId }: { orgId: string | null }) {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
-          <span className="flex shrink-0 items-center rounded-s border border-border bg-muted px-2.5 text-xs font-medium text-muted-foreground">
+          <span className="flex shrink-0 items-center rounded-s border border-border bg-well-tint px-2.5 text-xs font-medium text-muted-foreground">
             {roleLabel("producer")}
           </span>
         </div>
