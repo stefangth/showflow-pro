@@ -99,7 +99,10 @@
         "flow": "Change booking flow in Settings, Booking engine",
         "timing": "Change ask timing in Settings, Booking engine",
         "ladder": "Rank casts in Settings, Casts & coverage",
-        "eligibility": "Link casts in Settings, Casts & coverage"
+        "eligibility": "Link casts in Settings, Casts & coverage",
+        "letterhead": "Set letterhead in Settings, Contracts",
+        "terms": "Set terms in Settings, Contracts",
+        "countersign": "Set countersignature in Settings, Contracts"
       }
     },
     "footerNote": {

@@ -226,4 +226,15 @@ describe("EligibilityPanelBody", () => {
     await new Promise((resolve) => setTimeout(resolve, 20));
     expect(onDone).not.toHaveBeenCalled();
   });
+
+  it("null-city-only backlog: shows datesNeedCity, suppresses the duplicate nullCityNote, keeps the roster", async () => {
+    renderPanel({ futurePairs: [{ showId: "show-1", cityId: null }], showPriorities: [], cityPriorities: [] });
+    // Await the async roster (casts query) so the sync assertions see a settled DOM.
+    expect(await screen.findByText("Nord Ensemble")).toBeInTheDocument();
+    expect(screen.getByText(/no city set yet/i)).toBeInTheDocument();
+    // The pre-existing nullCityNote must NOT also render (it would say the same thing twice).
+    expect(screen.queryByText(/Fix the date to include it/i)).not.toBeInTheDocument();
+    // And the all-covered UnlocksNote reassurance is suppressed in this state too.
+    expect(screen.queryByText(/has a cast in the first group/i)).not.toBeInTheDocument();
+  });
 });

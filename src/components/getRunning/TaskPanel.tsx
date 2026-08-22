@@ -17,21 +17,23 @@ import { TaskPanelEditor } from "./taskPanelRegistry";
 import { TaskPanelFooterContext } from "./TaskPanelFooterContext";
 
 /** Where a producer reading a non-actionable task's read-only panel (see `WaitsOnPanelBody`
- *  below) can go to see the real thing in Settings — only for the tasks that already have a
- *  stable, producer-reachable `?tab=` destination naming exactly that section (mirrors the
- *  deep-links `LadderStep`/`EligibilityStep` already carry for their own actionable case).
- *  Deliberately NOT exhaustive: `letterhead`/`terms`/`countersign` have no such target
- *  (Settings, Hire orders is intentionally excluded from `resolveInitialTab`'s deep-link
- *  whitelist — see `src/lib/settingsTabs.ts` — so a `?tab=hire-orders` link would silently
- *  bounce to the role default), `team`/`people` point at admin-only or non-Settings
+ *  below) can go to see the real thing in Settings — only for the tasks that have a stable,
+ *  producer-reachable `?tab=` destination naming exactly that section (mirrors the admin
+ *  breadcrumb `TASK_FEATURE` carries for the actionable case). Kept in sync with
+ *  `TASK_FEATURE.tab` (`src/lib/getRunning/taskFeature.ts`), just narrowed to the tasks
+ *  whose home is a real Settings tab. `letterhead`/`terms`/`countersign` live in the
+ *  now-deep-linkable `hire-orders` tab; `team`/`people` point at admin-only or non-Settings
  *  destinations a producer cannot reach either way, and `dates`/`slots` have no org-level
- *  Settings section at all (per-show, not a setting). Those tasks' read-only panels render
- *  the waits-on body with no link rather than a link to nowhere. */
+ *  Settings section at all (per-show, not a setting). Those last five render the waits-on
+ *  body with no link rather than a link to nowhere. */
 const WAITS_ON_SETTINGS_TAB: Partial<Record<GetRunningTaskKey, SettingsTabParam>> = {
   flow: "booking",
   timing: "booking",
   ladder: "casts-coverage",
   eligibility: "casts-coverage",
+  letterhead: "hire-orders",
+  terms: "hire-orders",
+  countersign: "hire-orders",
 };
 
 /**

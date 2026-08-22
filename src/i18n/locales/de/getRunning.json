@@ -99,7 +99,10 @@
         "flow": "Booking Flow in den Einstellungen ändern (Booking Engine)",
         "timing": "Anfragezeitpunkt in den Einstellungen ändern (Booking Engine)",
         "ladder": "Besetzungen in den Einstellungen reihen (Besetzung und Abdeckung)",
-        "eligibility": "Besetzungen in den Einstellungen verknüpfen (Besetzung und Abdeckung)"
+        "eligibility": "Besetzungen in den Einstellungen verknüpfen (Besetzung und Abdeckung)",
+        "letterhead": "Briefkopf in den Einstellungen setzen (Verträge)",
+        "terms": "Bedingungen in den Einstellungen setzen (Verträge)",
+        "countersign": "Gegenzeichnung in den Einstellungen setzen (Verträge)"
       }
     },
     "footerNote": {

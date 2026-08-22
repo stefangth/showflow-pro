@@ -301,7 +301,11 @@ export function EligibilityPanelBody({
         })}
       </div>
 
-      {result.hasNullCity && (
+      {/* Suppress this footnote when there are no productions to show: the datesNeedCity
+          empty-state above already says the same thing (dates exist but have no city), and
+          showing both reads as the point made twice. It still renders in the mixed case
+          (some productions covered, plus a stray null-city date). */}
+      {result.hasNullCity && productions.length > 0 && (
         <p className="text-xs text-[var(--text-faint)]">{t("panel.body.eligibility.nullCityNote")}</p>
       )}
 
