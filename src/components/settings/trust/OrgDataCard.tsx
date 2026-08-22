@@ -53,16 +53,11 @@ function Tile({
   value: string;
 }) {
   return (
-    // A hairline, not a hint. `bg-muted/50` with no border and no shadow drew
-    // no container at all: sampled from the running app across the tile's top
-    // edge, the step was card rgb(255,255,255) -> tile rgb(252,251,250) in
-    // light and rgb(21,20,25) -> rgb(25,24,29) in dark — 1.03:1 and 1.04:1,
-    // three units of grey and nothing else. The public page draws these same
-    // four facts as real cards (var(--surface) + 0.5px var(--line) +
-    // var(--shadow-1) on the page ground), so the most prominent shared
-    // element on the two surfaces was a tile on one and an invisible one on
-    // the other. `border-border` is the app's equivalent of `--line`; the fill
-    // goes to full `bg-muted` so the edge is not the only thing carrying it.
+    // A hairline, not a hint. The `bg-well-tint` fill with `border-border` gives
+    // this tile a visible distinction from the Card background, matching the
+    // public page's real cards (var(--surface) + 0.5px var(--line) +
+    // var(--shadow-1) on the page ground). The border carries the definition
+    // alongside the fill so the tile reads as a coherent container.
     <div className="flex flex-col gap-1.5 rounded-l border border-border bg-well-tint p-3.5">
       {/* eslint-disable-next-line no-restricted-syntax -- non-standard tracking (tracking-widest) */}
       <div className="text-eyebrow font-semibold uppercase tracking-widest text-muted-foreground">

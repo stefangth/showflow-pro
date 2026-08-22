@@ -22,7 +22,7 @@ export const uiConventions = {
       'error',
       {
         selector: "Literal[value=/#[0-9a-fA-F]{6}\\b/]",
-        message: 'Raw hex. Use a token: var(--accent-500), text-foreground, bg-muted. See docs/ui-conventions.md section 2.',
+        message: 'Raw hex. Use a token: var(--accent-500), text-foreground, bg-well-tint. See docs/ui-conventions.md section 2.',
       },
       {
         selector: "Literal[value=/\\btext-\\[[0-9.]+px\\]/]",
