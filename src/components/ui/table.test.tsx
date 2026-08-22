@@ -108,5 +108,25 @@ describe("Table primitives", () => {
       const cell = screen.getByText("Header");
       expect(cell.className).toContain("text-eyebrow");
     });
+
+    // Regression: tailwind-merge doesn't know this project's custom
+    // fontSize scale (eyebrow/control/...) out of the box, so it lumps
+    // `text-eyebrow` into the same conflict group as `text-*` color
+    // utilities and silently drops one of the two when both are present.
+    // See src/lib/utils.ts's extendTailwindMerge config.
+    it("keeps both the eyebrow size and the muted-foreground color", () => {
+      render(
+        <table>
+          <thead>
+            <tr>
+              <TableHead>Header</TableHead>
+            </tr>
+          </thead>
+        </table>,
+      );
+      const cell = screen.getByText("Header");
+      expect(cell.className).toContain("text-eyebrow");
+      expect(cell.className).toContain("text-muted-foreground");
+    });
   });
 });
