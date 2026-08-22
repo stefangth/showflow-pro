@@ -1,0 +1,291 @@
+{
+  "header": {
+    "eyebrow": "{{org}} · get running",
+    "title": "Get running"
+  },
+  "progress": {
+    "done": "{{done}} of {{total}} done"
+  },
+  "hero": {
+    "eyebrowTemplate": "One thing at a time",
+    "openStep": "Open this step",
+    "seeAll": "See all steps",
+    "minutes": "About {{minutes}} minutes"
+  },
+  "stillShut": {
+    "title": "What is still shut",
+    "firstAsk": "Your first ask is shut until this is done.",
+    "firstContract": "Your first contract is shut until this is done.",
+    "nothingElse": "Nothing else here is shut.",
+    "open": "Open",
+    "stepsAway": "{{count}} steps away"
+  },
+  "rails": {
+    "title": "Three phases",
+    "hint": "Work through them in order. Later phases wait on earlier ones.",
+    "clickHint": "Click a phase to see its steps."
+  },
+  "phases": {
+    "get_dates": {
+      "name": "Get dates in",
+      "summary": "Bring your productions and dates into ShowFlow so there is something to book."
+    },
+    "bookable": {
+      "name": "Make it bookable",
+      "summary": "Add your artists, rank your casts and set how asks go out."
+    },
+    "paperwork": {
+      "name": "Paperwork",
+      "summary": "Set up letterhead, fee, terms and countersignature before the first contract goes out."
+    }
+  },
+  "phaseRow": {
+    "continue": "Continue",
+    "start": "Start",
+    "waitsOn": "Waits on {{name}}",
+    "doneOf": "{{done}} of {{total}} done"
+  },
+  "wizard": {
+    "collapse": "Collapse",
+    "stepOf": "Step {{step}} of {{total}}",
+    "finishLater": "Finish later",
+    "howThisWorks": "How this works",
+    "helpCenter": "Help center"
+  },
+  "steps": {
+    "source": {
+      "title": "Choose where your dates come from",
+      "hint": "Connect Airtable or add productions by hand."
+    },
+    "connect": {
+      "title": "Connect Airtable",
+      "hint": "Link your base so productions sync in automatically."
+    },
+    "map": {
+      "title": "Map your fields",
+      "hint": "Match your Airtable columns to ShowFlow's fields."
+    },
+    "cities": {
+      "title": "Set a city on every date",
+      "hint": "The engine can only offer a date once it has a city."
+    },
+    "productions": {
+      "title": "Review your productions",
+      "hint": "Check the productions that came in and add any that are missing."
+    },
+    "artists": {
+      "title": "Add your artists",
+      "hint": "Nobody can be booked until your roster has active artists."
+    },
+    "skills": {
+      "title": "Set skills on your artists",
+      "hint": "Skills decide which artists match which part."
+    },
+    "coverage": {
+      "title": "Rank your casts",
+      "hint": "Cast priorities decide who is asked first in each city."
+    },
+    "flow": {
+      "title": "Set your booking flow",
+      "hint": "Decide how many groups are asked, and in what order."
+    },
+    "timing": {
+      "title": "Confirm the ask timing",
+      "hint": "When asks go out, and how long artists have to answer."
+    },
+    "team": {
+      "title": "Invite your production team",
+      "hint": "Producers can take bookings off your plate."
+    },
+    "letterhead": {
+      "title": "Set your letterhead",
+      "hint": "Your name, address and logo on every contract."
+    },
+    "fee": {
+      "title": "Set your default fee",
+      "hint": "The fee that appears on a new contract by default."
+    },
+    "terms": {
+      "title": "Write your terms",
+      "hint": "ShowFlow ships no default clauses. Yours to author."
+    },
+    "document": {
+      "title": "Style your contract document",
+      "hint": "Choose the layout that goes out on every contract."
+    },
+    "countersign": {
+      "title": "Set your countersignature",
+      "hint": "Who signs on behalf of the org."
+    }
+  },
+  "guide": {
+    "source": {
+      "title": "Choose where your dates come from",
+      "body": "Every downstream step reads from your dates: casting breakdown, priorities and who can be asked. Pick the source that fits how your team already works.",
+      "points": [
+        "Airtable sync brings productions and dates in automatically, hourly.",
+        "Adding by hand works too, and you can mix both.",
+        "You can change your mind later without losing anything."
+      ],
+      "article": "Read more about syncing dates"
+    },
+    "connect": {
+      "title": "Connect Airtable",
+      "body": "Link your Airtable base so ShowFlow can read your productions and dates directly, with no manual copying.",
+      "points": [
+        "Paste your Airtable token to grant read access.",
+        "Pick the base and table that hold your dates.",
+        "ShowFlow checks the connection before you continue."
+      ],
+      "article": "Read more about the Airtable connection"
+    },
+    "map": {
+      "title": "Map your fields",
+      "body": "Match each Airtable column to the ShowFlow field it represents, so every date arrives with the right production, date and city.",
+      "points": [
+        "Required fields must be mapped before sync can run.",
+        "Optional fields can be mapped now or skipped for later.",
+        "You can revisit this mapping any time in Settings."
+      ],
+      "article": "Read more about field mapping"
+    },
+    "cities": {
+      "title": "Set a city on every date",
+      "body": "The booking engine only offers a date once it knows which city it is in. A date with no city sits idle.",
+      "points": [
+        "Fix a missing city directly from the Dates list.",
+        "Cast ranking is set per city, so this comes before ranking.",
+        "New dates synced from Airtable inherit their city automatically."
+      ],
+      "article": "Read more about city assignment"
+    },
+    "productions": {
+      "title": "Review your productions",
+      "body": "Your productions are the shows you book artists against. Check the ones that came in and add any that are missing.",
+      "points": [
+        "Each production needs its casting breakdown set.",
+        "You can edit a production's details at any time.",
+        "New dates attach to an existing production or a new one."
+      ],
+      "article": "Read more about productions"
+    },
+    "artists": {
+      "title": "Add your artists",
+      "body": "Nobody can be booked until your roster has active artists. Add them by hand or import a sheet.",
+      "points": [
+        "Artists get no email until you ask them about a date.",
+        "Importing a sheet is faster for a large roster.",
+        "You can add more artists at any time."
+      ],
+      "article": "Read more about adding artists"
+    },
+    "skills": {
+      "title": "Set skills on your artists",
+      "body": "Skills tell the booking engine which artists match which part in the casting breakdown.",
+      "points": [
+        "A part with no matching skill has nobody eligible.",
+        "You can set skills for several artists at once.",
+        "Skills can be edited later without affecting past bookings."
+      ],
+      "article": "Read more about skills"
+    },
+    "coverage": {
+      "title": "Rank your casts",
+      "body": "Cast priorities decide who is asked first in each city. A city with no first group opens to nobody.",
+      "points": [
+        "Rank at least one group per city with a date.",
+        "A production's own cast beats the city ranking.",
+        "Ranking is per city, not per production."
+      ],
+      "article": "Read more about cast ranking"
+    },
+    "flow": {
+      "title": "Set your booking flow",
+      "body": "Asks go out in groups. The first group is asked first, and later groups open only if a group falls short.",
+      "points": [
+        "Decide how many groups you want, and in what order.",
+        "A change here is logged for later reference.",
+        "This applies from the next daily send onward."
+      ],
+      "article": "Read more about booking flow"
+    },
+    "timing": {
+      "title": "Confirm the ask timing",
+      "body": "This sets when asks go out and how long an artist has to answer before the ask expires.",
+      "points": [
+        "The daily send happens at the hour you choose.",
+        "A longer answer window means a slower fill.",
+        "This applies to tonight's daily send."
+      ],
+      "article": "Read more about ask timing"
+    },
+    "team": {
+      "title": "Invite your production team",
+      "body": "The producers who plan dates, run asks and book the cast. Booking can stay with you if you prefer.",
+      "points": [
+        "Invited producers get an email invite.",
+        "You can remove a producer's access at any time.",
+        "Producers see only the dates in their org."
+      ],
+      "article": "Read more about your team"
+    },
+    "letterhead": {
+      "title": "Set your letterhead",
+      "body": "Your name, address and logo appear on every contract you issue.",
+      "points": [
+        "Used on every contract, no exceptions.",
+        "Update it any time from Settings.",
+        "A missing letterhead blocks issuing."
+      ],
+      "article": "Read more about letterhead"
+    },
+    "fee": {
+      "title": "Set your default fee",
+      "body": "The fee that appears on a new contract by default, before any adjustment for a specific booking.",
+      "points": [
+        "Saves time on every contract you draft.",
+        "You can still adjust the fee per contract.",
+        "Changing this default does not touch issued contracts."
+      ],
+      "article": "Read more about fees"
+    },
+    "terms": {
+      "title": "Write your terms",
+      "body": "ShowFlow ships no default clauses. The terms you write here go out on every contract.",
+      "points": [
+        "Write your own clauses, or paste in an existing template.",
+        "You can keep more than one terms variant.",
+        "A missing terms set blocks issuing."
+      ],
+      "article": "Read more about terms"
+    },
+    "document": {
+      "title": "Style your contract document",
+      "body": "Choose the layout and styling that goes out on every contract you issue.",
+      "points": [
+        "Preview the document before you issue anything.",
+        "Styling applies to every future contract.",
+        "Past contracts keep the styling they were issued with."
+      ],
+      "article": "Read more about the contract document"
+    },
+    "countersign": {
+      "title": "Set your countersignature",
+      "body": "Decide who signs on behalf of the org on every issued contract.",
+      "points": [
+        "A missing countersignature blocks issuing.",
+        "You can change the signer at any time.",
+        "The signature appears on every contract from here on."
+      ],
+      "article": "Read more about countersignature"
+    }
+  },
+  "comingSoon": {
+    "title": "More on the way",
+    "body": "This part of get running is not built yet. Check back soon."
+  },
+  "footerRole": {
+    "admin": "You are seeing this as an admin.",
+    "producer": "You are seeing this as a member of the production team."
+  }
+}

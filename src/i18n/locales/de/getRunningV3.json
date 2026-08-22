@@ -1,0 +1,291 @@
+{
+  "header": {
+    "eyebrow": "{{org}} · loslegen",
+    "title": "Loslegen"
+  },
+  "progress": {
+    "done": "{{done}} von {{total}} erledigt"
+  },
+  "hero": {
+    "eyebrowTemplate": "Eins nach dem anderen",
+    "openStep": "Diesen Schritt öffnen",
+    "seeAll": "Alle Schritte ansehen",
+    "minutes": "Etwa {{minutes}} Minuten"
+  },
+  "stillShut": {
+    "title": "Was noch gesperrt ist",
+    "firstAsk": "Deine erste Anfrage ist gesperrt, bis das hier erledigt ist.",
+    "firstContract": "Dein erster Engagementvertrag ist gesperrt, bis das hier erledigt ist.",
+    "nothingElse": "Hier ist sonst nichts gesperrt.",
+    "open": "Öffnen",
+    "stepsAway": "Noch {{count}} Schritte"
+  },
+  "rails": {
+    "title": "Drei Phasen",
+    "hint": "Arbeite sie der Reihe nach ab. Spätere Phasen warten auf frühere.",
+    "clickHint": "Klick auf eine Phase, um ihre Schritte zu sehen."
+  },
+  "phases": {
+    "get_dates": {
+      "name": "Termine reinholen",
+      "summary": "Bring deine Produktionen und Termine in ShowFlow, damit es etwas zu buchen gibt."
+    },
+    "bookable": {
+      "name": "Buchbar machen",
+      "summary": "Füge deine Artists hinzu, ranke deine Besetzungen und lege fest, wie Anfragen rausgehen."
+    },
+    "paperwork": {
+      "name": "Papierkram",
+      "summary": "Richte Briefkopf, Gage, Bedingungen und Gegenzeichnung ein, bevor der erste Engagementvertrag rausgeht."
+    }
+  },
+  "phaseRow": {
+    "continue": "Weiter",
+    "start": "Starten",
+    "waitsOn": "Wartet auf {{name}}",
+    "doneOf": "{{done}} von {{total}} erledigt"
+  },
+  "wizard": {
+    "collapse": "Einklappen",
+    "stepOf": "Schritt {{step}} von {{total}}",
+    "finishLater": "Später fertig machen",
+    "howThisWorks": "So funktioniert das",
+    "helpCenter": "Hilfe-Center"
+  },
+  "steps": {
+    "source": {
+      "title": "Wähle, woher deine Termine kommen",
+      "hint": "Verbinde Airtable oder lege Produktionen von Hand an."
+    },
+    "connect": {
+      "title": "Airtable verbinden",
+      "hint": "Verknüpfe deine Base, damit Produktionen automatisch synchronisiert werden."
+    },
+    "map": {
+      "title": "Felder zuordnen",
+      "hint": "Ordne deine Airtable-Spalten den Feldern von ShowFlow zu."
+    },
+    "cities": {
+      "title": "Stadt zu jedem Termin setzen",
+      "hint": "Die Engine kann einen Termin erst anbieten, wenn er eine Stadt hat."
+    },
+    "productions": {
+      "title": "Deine Produktionen prüfen",
+      "hint": "Prüfe die eingegangenen Produktionen und ergänze fehlende."
+    },
+    "artists": {
+      "title": "Deine Artists hinzufügen",
+      "hint": "Niemand kann gebucht werden, bis dein Roster aktive Artists hat."
+    },
+    "skills": {
+      "title": "Skills bei deinen Artists setzen",
+      "hint": "Skills entscheiden, welche Artists zu welchem Part passen."
+    },
+    "coverage": {
+      "title": "Deine Besetzungen ranken",
+      "hint": "Die Rangfolge der Besetzung entscheidet, wer zuerst gefragt wird."
+    },
+    "flow": {
+      "title": "Deinen Buchungsablauf festlegen",
+      "hint": "Lege fest, wie viele Gruppen gefragt werden und in welcher Reihenfolge."
+    },
+    "timing": {
+      "title": "Timing der Anfrage bestätigen",
+      "hint": "Wann Anfragen rausgehen und wie lange Artists zum Antworten haben."
+    },
+    "team": {
+      "title": "Dein Produktionsteam einladen",
+      "hint": "Producer können dir Buchungen abnehmen."
+    },
+    "letterhead": {
+      "title": "Deinen Briefkopf setzen",
+      "hint": "Dein Name, Adresse und Logo auf jedem Engagementvertrag."
+    },
+    "fee": {
+      "title": "Deine Standardgage festlegen",
+      "hint": "Die Gage, die standardmäßig auf einem neuen Engagementvertrag erscheint."
+    },
+    "terms": {
+      "title": "Deine Bedingungen schreiben",
+      "hint": "ShowFlow liefert keine Standardklauseln. Die schreibst du selbst."
+    },
+    "document": {
+      "title": "Dein Vertragsdokument gestalten",
+      "hint": "Wähle das Layout, das auf jedem Engagementvertrag rausgeht."
+    },
+    "countersign": {
+      "title": "Deine Gegenzeichnung festlegen",
+      "hint": "Wer im Namen der Organisation unterschreibt."
+    }
+  },
+  "guide": {
+    "source": {
+      "title": "Wähle, woher deine Termine kommen",
+      "body": "Jeder weitere Schritt liest von deinen Terminen: Besetzungsübersicht, Prioritäten und wer gefragt werden kann. Wähle die Quelle, die zu deinem Team passt.",
+      "points": [
+        "Airtable-Sync bringt Produktionen und Termine stündlich automatisch rein.",
+        "Von Hand geht auch, und du kannst beides mischen.",
+        "Du kannst es dir später anders überlegen, ohne etwas zu verlieren."
+      ],
+      "article": "Mehr über den Terminabgleich lesen"
+    },
+    "connect": {
+      "title": "Airtable verbinden",
+      "body": "Verknüpfe deine Airtable-Base, damit ShowFlow deine Produktionen und Termine direkt lesen kann, ohne manuelles Kopieren.",
+      "points": [
+        "Füge deinen Airtable-Token ein, um Lesezugriff zu geben.",
+        "Wähle die Base und Tabelle mit deinen Terminen.",
+        "ShowFlow prüft die Verbindung, bevor du weitermachst."
+      ],
+      "article": "Mehr über die Airtable-Verbindung lesen"
+    },
+    "map": {
+      "title": "Felder zuordnen",
+      "body": "Ordne jede Airtable-Spalte dem Feld in ShowFlow zu, das sie darstellt, damit jeder Termin mit der richtigen Produktion, dem richtigen Datum und der richtigen Stadt ankommt.",
+      "points": [
+        "Pflichtfelder müssen zugeordnet sein, bevor der Sync laufen kann.",
+        "Optionale Felder kannst du jetzt oder später zuordnen.",
+        "Du kannst diese Zuordnung jederzeit in den Einstellungen anpassen."
+      ],
+      "article": "Mehr über die Feldzuordnung lesen"
+    },
+    "cities": {
+      "title": "Stadt zu jedem Termin setzen",
+      "body": "Die Booking-Engine bietet einen Termin erst an, wenn sie weiß, in welcher Stadt er liegt. Ein Termin ohne Stadt bleibt liegen.",
+      "points": [
+        "Fehlende Stadt direkt in der Terminliste ergänzen.",
+        "Die Rangfolge der Besetzung wird pro Stadt gesetzt, das kommt also danach.",
+        "Neue Termine aus Airtable übernehmen ihre Stadt automatisch."
+      ],
+      "article": "Mehr über die Stadtzuordnung lesen"
+    },
+    "productions": {
+      "title": "Deine Produktionen prüfen",
+      "body": "Deine Produktionen sind die Shows, für die du Artists buchst. Prüfe die eingegangenen und ergänze fehlende.",
+      "points": [
+        "Jede Produktion braucht eine gesetzte Besetzungsübersicht.",
+        "Du kannst die Details einer Produktion jederzeit bearbeiten.",
+        "Neue Termine hängen an einer bestehenden oder neuen Produktion."
+      ],
+      "article": "Mehr über Produktionen lesen"
+    },
+    "artists": {
+      "title": "Deine Artists hinzufügen",
+      "body": "Niemand kann gebucht werden, bis dein Roster aktive Artists hat. Füge sie von Hand hinzu oder importiere eine Tabelle.",
+      "points": [
+        "Artists bekommen keine Email, bis du sie zu einem Termin anfragst.",
+        "Der Import einer Tabelle geht schneller bei einem großen Roster.",
+        "Du kannst jederzeit weitere Artists hinzufügen."
+      ],
+      "article": "Mehr über das Hinzufügen von Artists lesen"
+    },
+    "skills": {
+      "title": "Skills bei deinen Artists setzen",
+      "body": "Skills sagen der Booking-Engine, welche Artists zu welchem Part in der Besetzungsübersicht passen.",
+      "points": [
+        "Ein Part ohne passenden Skill hat niemanden, der infrage kommt.",
+        "Du kannst Skills für mehrere Artists auf einmal setzen.",
+        "Skills lassen sich später ändern, ohne vergangene Buchungen zu berühren."
+      ],
+      "article": "Mehr über Skills lesen"
+    },
+    "coverage": {
+      "title": "Deine Besetzungen ranken",
+      "body": "Die Rangfolge der Besetzung entscheidet, wer in jeder Stadt zuerst gefragt wird. Eine Stadt ohne erste Gruppe öffnet für niemanden.",
+      "points": [
+        "Ranke mindestens eine Gruppe pro Stadt mit einem Termin.",
+        "Die eigene Besetzung einer Produktion schlägt die Stadt-Rangfolge.",
+        "Die Rangfolge gilt pro Stadt, nicht pro Produktion."
+      ],
+      "article": "Mehr über die Rangfolge der Besetzung lesen"
+    },
+    "flow": {
+      "title": "Deinen Buchungsablauf festlegen",
+      "body": "Anfragen gehen gruppenweise raus. Die erste Gruppe wird zuerst gefragt, spätere Gruppen öffnen nur, wenn eine Gruppe nicht reicht.",
+      "points": [
+        "Lege fest, wie viele Gruppen du willst und in welcher Reihenfolge.",
+        "Eine Änderung hier wird protokolliert.",
+        "Das gilt ab dem nächsten täglichen Versand."
+      ],
+      "article": "Mehr über den Buchungsablauf lesen"
+    },
+    "timing": {
+      "title": "Timing der Anfrage bestätigen",
+      "body": "Das legt fest, wann Anfragen rausgehen und wie lange ein Artist zum Antworten hat, bevor die Anfrage abläuft.",
+      "points": [
+        "Der tägliche Versand passiert zur Stunde, die du wählst.",
+        "Ein längeres Antwortfenster bedeutet ein langsameres Füllen.",
+        "Das gilt für den heutigen täglichen Versand."
+      ],
+      "article": "Mehr über das Timing der Anfrage lesen"
+    },
+    "team": {
+      "title": "Dein Produktionsteam einladen",
+      "body": "Die Producer, die Termine planen, Anfragen laufen lassen und die Besetzung buchen. Das Buchen kann auch bei dir bleiben.",
+      "points": [
+        "Eingeladene Producer bekommen eine Einladung per Email.",
+        "Du kannst den Zugriff eines Producers jederzeit entziehen.",
+        "Producer sehen nur die Termine ihrer Organisation."
+      ],
+      "article": "Mehr über dein Team lesen"
+    },
+    "letterhead": {
+      "title": "Deinen Briefkopf setzen",
+      "body": "Dein Name, deine Adresse und dein Logo erscheinen auf jedem Engagementvertrag, den du ausstellst.",
+      "points": [
+        "Wird auf jedem Engagementvertrag verwendet, ohne Ausnahme.",
+        "Jederzeit in den Einstellungen aktualisierbar.",
+        "Ein fehlender Briefkopf blockiert das Ausstellen."
+      ],
+      "article": "Mehr über den Briefkopf lesen"
+    },
+    "fee": {
+      "title": "Deine Standardgage festlegen",
+      "body": "Die Gage, die standardmäßig auf einem neuen Engagementvertrag erscheint, bevor sie für eine bestimmte Buchung angepasst wird.",
+      "points": [
+        "Spart Zeit bei jedem Engagementvertrag, den du entwirfst.",
+        "Du kannst die Gage pro Vertrag trotzdem anpassen.",
+        "Eine Änderung dieses Standards betrifft ausgestellte Verträge nicht."
+      ],
+      "article": "Mehr über Gagen lesen"
+    },
+    "terms": {
+      "title": "Deine Bedingungen schreiben",
+      "body": "ShowFlow liefert keine Standardklauseln. Die Bedingungen, die du hier schreibst, gehen auf jedem Engagementvertrag raus.",
+      "points": [
+        "Schreibe eigene Klauseln oder füge eine bestehende Vorlage ein.",
+        "Du kannst mehr als eine Variante der Bedingungen behalten.",
+        "Fehlende Bedingungen blockieren das Ausstellen."
+      ],
+      "article": "Mehr über Bedingungen lesen"
+    },
+    "document": {
+      "title": "Dein Vertragsdokument gestalten",
+      "body": "Wähle das Layout und die Gestaltung, die auf jedem Engagementvertrag rausgeht, den du ausstellst.",
+      "points": [
+        "Sieh dir das Dokument vorab an, bevor du etwas ausstellst.",
+        "Die Gestaltung gilt für jeden zukünftigen Engagementvertrag.",
+        "Vergangene Verträge behalten die Gestaltung, mit der sie ausgestellt wurden."
+      ],
+      "article": "Mehr über das Vertragsdokument lesen"
+    },
+    "countersign": {
+      "title": "Deine Gegenzeichnung festlegen",
+      "body": "Entscheide, wer im Namen der Organisation auf jedem ausgestellten Engagementvertrag unterschreibt.",
+      "points": [
+        "Eine fehlende Gegenzeichnung blockiert das Ausstellen.",
+        "Du kannst die unterschreibende Person jederzeit ändern.",
+        "Die Unterschrift erscheint ab jetzt auf jedem Engagementvertrag."
+      ],
+      "article": "Mehr über die Gegenzeichnung lesen"
+    }
+  },
+  "comingSoon": {
+    "title": "Kommt noch",
+    "body": "Dieser Teil von Loslegen ist noch nicht gebaut. Schau bald wieder vorbei."
+  },
+  "footerRole": {
+    "admin": "Du siehst das hier als Admin.",
+    "producer": "Du siehst das hier als Mitglied des Produktionsteams."
+  }
+}
