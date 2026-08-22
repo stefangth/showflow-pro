@@ -76,10 +76,10 @@ function seedFor(orderRow: Record<string, unknown> | null, error: unknown = null
 
 function renderPage(id = "ho-1") {
   return renderWithProviders(
-    <MemoryRouter initialEntries={[`/hire-orders/${id}`]}>
+    <MemoryRouter initialEntries={[`/contracts/${id}`]}>
       <Routes>
-        <Route path="/hire-orders/:id" element={<HireOrderDetailPage />} />
-        <Route path="/hire-orders/:id/edit" element={<div>EDIT STUB</div>} />
+        <Route path="/contracts/:id" element={<HireOrderDetailPage />} />
+        <Route path="/contracts/:id/edit" element={<div>EDIT STUB</div>} />
       </Routes>
     </MemoryRouter>,
   );

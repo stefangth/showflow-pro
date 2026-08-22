@@ -47,7 +47,7 @@ describe('AnalyticsBridge', () => {
   it('captures each browser route transition only while analytics is enabled', () => {
     state.consent = { analytics: true, sessionReplay: false, errorTracking: false };
     const view = render(<AnalyticsBridge />);
-    state.location = { pathname: '/dashboard', search: '?tab=overview', hash: '' };
+    state.location = { pathname: '/today', search: '?tab=overview', hash: '' };
     view.rerender(<AnalyticsBridge />);
 
     expect(state.capturePageview).toHaveBeenCalledTimes(2);

@@ -420,7 +420,7 @@ describe("NewOrderWizard", () => {
     clickContinue();
     fireEvent.click(await screen.findByRole("button", { name: /save as draft/i }));
     fireEvent.click(await screen.findByRole("button", { name: /open contract/i }));
-    expect(navigate).toHaveBeenCalledWith("/hire-orders/ho-new-1");
+    expect(navigate).toHaveBeenCalledWith("/contracts/ho-new-1");
   });
 
   it("creates one batch payload row per selected artist with its checked dates", async () => {
@@ -741,7 +741,7 @@ describe("NewOrderWizard", () => {
     expect(await screen.findByText("2 contracts created")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /open contract/i })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /close and return to contracts/i }));
-    expect(navigate).toHaveBeenCalledWith("/hire-orders");
+    expect(navigate).toHaveBeenCalledWith("/contracts");
   });
 
   it("shows the per-date total for equal date counts", async () => {

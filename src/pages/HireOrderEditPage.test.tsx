@@ -131,10 +131,10 @@ function seedFor(orderRow: Record<string, unknown> | null, extra: Record<string,
 
 function renderPage(id = "ho-1", opts: { queryClient?: ReturnType<typeof createTestQueryClient> } = {}) {
   return renderWithProviders(
-    <MemoryRouter initialEntries={[`/hire-orders/${id}/edit`]}>
+    <MemoryRouter initialEntries={[`/contracts/${id}/edit`]}>
       <Routes>
-        <Route path="/hire-orders/:id/edit" element={<HireOrderEditPage />} />
-        <Route path="/hire-orders/:id" element={<div>DETAIL STUB</div>} />
+        <Route path="/contracts/:id/edit" element={<HireOrderEditPage />} />
+        <Route path="/contracts/:id" element={<div>DETAIL STUB</div>} />
       </Routes>
     </MemoryRouter>,
     opts,

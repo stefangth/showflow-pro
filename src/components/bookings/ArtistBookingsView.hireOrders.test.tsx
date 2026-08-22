@@ -124,7 +124,7 @@ describe("ArtistBookingsView hire-order chip (Task 14)", () => {
     renderWithProviders(<ArtistBookingsView />);
 
     const chip = await screen.findByText("Contract");
-    expect(chip.closest("a")?.getAttribute("href")).toBe("/hire-orders/ho-1");
+    expect(chip.closest("a")?.getAttribute("href")).toBe("/contracts/ho-1");
     // Only one row has an order, so only one chip renders.
     expect(screen.getAllByText("Contract")).toHaveLength(1);
   });

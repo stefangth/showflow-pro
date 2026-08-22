@@ -23,7 +23,7 @@ describe("FeatureDisabledScreen", () => {
   it("links back to the dashboard", () => {
     renderScreen("hire_orders");
     const link = screen.getByText("Back to dashboard").closest("a");
-    expect(link?.getAttribute("href")).toBe("/dashboard");
+    expect(link?.getAttribute("href")).toBe("/today");
   });
 
   it("copy contains no em-dashes or en-dashes", () => {

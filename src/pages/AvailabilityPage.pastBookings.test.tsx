@@ -90,6 +90,6 @@ describe("AvailabilityPage — past active booking merge (calendar surface)", ()
     expect(row).toHaveTextContent("Old Hall");
 
     const link = screen.getByTestId("all-dates-link-d-past");
-    expect(link).toHaveAttribute("href", "/hire-orders/ho-1");
+    expect(link).toHaveAttribute("href", "/contracts/ho-1");
   });
 });
