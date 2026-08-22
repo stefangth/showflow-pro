@@ -53,6 +53,11 @@ export interface GetRunningModel {
   complete: boolean; // every applicable task done → board retires
   bookingOn: boolean;
   hireOrdersOn: boolean;
+  /** Non-blocking advisory: count of future dates with no city set. Such dates cannot be
+   *  offered until a city is added (the engine bails on a city-less date), but this never
+   *  gates readiness — the header shows it as a calm "N dates need a city" line. 0 when
+   *  booking is off or coverage is unread. */
+  datesWithoutCity: number;
 }
 
 export interface GetRunningInput {
@@ -136,6 +141,29 @@ function withActionability(task: GetRunningTask, role: GetRunningInput["role"]):
 export function composeGetRunning(input: GetRunningInput): GetRunningModel {
   const phases: GetRunningPhase[] = [];
 
+  // The board's hard-gate wording, taken from the booking module's own `people` step so
+  // the board and the setup rail never disagree about which flow the org runs: `people` is
+  // "offers" under an offers flow and "booking" under direct-book, and is never null (see
+  // `blockFor`). `dates` and `slots` are BOARD-level hard gates that the softer
+  // booking-rail contract does not mark (the rail treats slots as `filling`): on the
+  // board, a date that does not exist or has no slot count can never produce a completed
+  // booking, so the "Get dates in" phase must read as blocking until both are in — exactly
+  // what question (2) asks for. We keep this override here rather than in
+  // `computeBookingSetupStatus` so the rail's own readiness is untouched.
+  const hardBlock: TaskBlock = bookingStep(input.booking, "people")?.block ?? "booking";
+  // `eligibility` is deliberately NOT a hard first-offer blocker, and its board-level
+  // done-ness is COVERAGE-ONLY. The booking module's own `eligibility.done`
+  // (computeBookingSetupStatus) is `coverage complete AND no future date has a null city`.
+  // The null-city half is a PER-DATE data gap, not an org-setup failure: a city-less date
+  // can't be offered until a city is set, yet every other date offers fine. If we let it
+  // keep `eligibility` open, `model.complete` would stay false and the board would never
+  // retire on a stray Airtable date with no city (see useGetRunningNavVisible / RetiredBoard,
+  // both keyed on `model.complete`). So on the board we take the coverage-only signal (the
+  // `ladder` step's own `done`, which is exactly `uncoveredPairs.length === 0`, per-show
+  // overrides already merged in by resolveCoverage), and surface the null-city gap instead
+  // as the non-blocking `datesWithoutCity` advisory (header + panel), pointing at /dates.
+  const eligibilityCoverageDone = bookingStep(input.booking, "ladder")?.done ?? false;
+
   if (input.bookingOn) {
     // The get_dates phase is show authoring, not booking-engine config, but the two tasks
     // write different things and are gated by different capabilities:
@@ -151,14 +179,14 @@ export function composeGetRunning(input: GetRunningInput): GetRunningModel {
         key: "dates",
         phase: "get_dates",
         done: input.datesDone,
-        block: null,
+        block: hardBlock,
         adminOnly: !input.canManageShows,
         actionableByViewer: false,
       },
       input.role,
     );
     const slotsTask = withActionability(
-      makeBookingTask("slots", "get_dates", input.booking, !input.canEditScheduling),
+      { ...makeBookingTask("slots", "get_dates", input.booking, !input.canEditScheduling), block: hardBlock },
       input.role,
     );
     phases.push({ key: "get_dates", tasks: [datesTask, slotsTask] });
@@ -168,7 +196,7 @@ export function composeGetRunning(input: GetRunningInput): GetRunningModel {
       withActionability(makeBookingTask("people", "bookable", input.booking, !input.canAddArtists), input.role),
       withActionability(makeBookingTask("ladder", "bookable", input.booking, !input.canEditBooking), input.role),
       withActionability(
-        makeBookingTask("eligibility", "bookable", input.booking, !input.canEditBooking),
+        { ...makeBookingTask("eligibility", "bookable", input.booking, !input.canEditBooking), done: eligibilityCoverageDone },
         input.role,
       ),
       withActionability(makeBookingTask("timing", "bookable", input.booking, !input.canEditBooking), input.role),
@@ -212,6 +240,7 @@ export function composeGetRunning(input: GetRunningInput): GetRunningModel {
     complete,
     bookingOn: input.bookingOn,
     hireOrdersOn: input.hireOrdersOn,
+    datesWithoutCity: input.bookingOn ? (input.booking?.datesWithoutCity ?? 0) : 0,
   };
 }
 

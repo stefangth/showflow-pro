@@ -21,6 +21,14 @@
         {
           "title": "A steadier, more consistent look",
           "description": "Cards, badges, labels, and buttons across the app now share one set of sizes, shapes, and depth, so pages read as one calm, uniform system."
+        },
+        {
+          "title": "Setup steps point to where they live",
+          "description": "Each step on the Get running board names the part of the app it sets up, like Settings then Casts and coverage, and links straight there."
+        },
+        {
+          "title": "Casts show up wherever you add them",
+          "description": "A cast you create in Artists or Settings now appears on the Get running board right away, even before a city has a date to rank it against."
         }
       ],
       "fixed": [
@@ -47,6 +55,14 @@
         {
           "title": "A truer count of overnight yeses",
           "description": "The number of artists who said yes overnight now counts the artists, not the dates they said yes to."
+        },
+        {
+          "title": "A date with no city no longer blocks your whole setup",
+          "description": "Get running flags just that date and points you to Dates to fix it. Every other date can still go out."
+        },
+        {
+          "title": "Asks only go out for dates that are ready",
+          "description": "The engine no longer sends asks for a date with no city or no slot count."
         }
       ]
     }

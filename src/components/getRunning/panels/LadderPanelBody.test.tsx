@@ -82,10 +82,15 @@ describe("LadderPanelBody", () => {
   it("shows the tier-1 chip for a ranked city and a picker for an unranked one", async () => {
     renderPanel();
 
-    expect(await screen.findByText("Nord Ensemble")).toBeInTheDocument();
+    // "Nord Ensemble" now appears both as the ranked city's tier-1 chip AND in the "Your
+    // casts" roster list (the fix for casts made outside a city-with-dates being invisible),
+    // so assert at least one occurrence rather than a single unique node.
+    expect((await screen.findAllByText("Nord Ensemble")).length).toBeGreaterThan(0);
     expect(screen.getByText("Hamburg")).toBeInTheDocument();
     expect(screen.getByText("Leipzig")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /pick the first group/i })).toBeInTheDocument();
+    // The roster list names the cast's standing: Nord ranks first in Hamburg.
+    expect(screen.getByText("First group in Hamburg")).toBeInTheDocument();
   });
 
   it("writes cast_city_priority when a tier-1 cast is picked for an unranked city", async () => {
@@ -261,6 +266,28 @@ describe("LadderPanelBody", () => {
       await waitFor(() =>
         expect((screen.getByPlaceholderText("Cast name") as HTMLInputElement).value).toBe(""),
       );
+    });
+  });
+
+  describe("empty states (no city with a future date)", () => {
+    const renderWith = (coverage: LadderCoverageInputs) =>
+      renderWithProviders(
+        <LadderPanelBody orgId="org-1" coverage={coverage} onDone={vi.fn()} />,
+        { authOverrides: { currentOrg: TEST_ORG, roles: ["admin"], hasRole: (r) => r === "admin" } },
+      );
+
+    it("shows the datesNeedCity copy (not the all-covered reassurance) when future dates exist but all lack a city", async () => {
+      renderWith({ futurePairs: [{ showId: "show-1", cityId: null }], showPriorities: [], cityPriorities: [] });
+      // Await the async roster (casts query) so the sync assertions below see a settled DOM.
+      expect(await screen.findByText("Nord Ensemble")).toBeInTheDocument();
+      expect(screen.getByText(/no city set yet/i)).toBeInTheDocument();
+      // The contradictory UnlocksNote reassurance must be suppressed in this state.
+      expect(screen.queryByText(/has a first group/i)).not.toBeInTheDocument();
+    });
+
+    it("shows the no-future-dates copy when there are no future dates at all", async () => {
+      renderWith({ futurePairs: [], showPriorities: [], cityPriorities: [] });
+      expect(await screen.findByText(/No city has a future date yet/i)).toBeInTheDocument();
     });
   });
 });

@@ -1,3 +1,4 @@
+import type React from "react";
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
@@ -66,23 +67,28 @@ function flowTask(overrides: Partial<GetRunningTask> = {}): GetRunningTask {
   };
 }
 
-describe("TaskPanel", () => {
-  it("renders the choice eyebrow and the task title in the frame header", () => {
-    renderWithProviders(<TaskPanel task={flowTask()} orgId="org-1" onClose={vi.fn()} />);
+function renderPanel(ui: React.ReactElement) {
+  return renderWithProviders(<MemoryRouter>{ui}</MemoryRouter>);
+}
 
-    expect(screen.getByText("Choice · sets everything downstream")).toBeInTheDocument();
+describe("TaskPanel", () => {
+  it("renders the feature breadcrumb eyebrow as a deep link, plus the task title", () => {
+    renderPanel(<TaskPanel task={flowTask()} orgId="org-1" onClose={vi.fn()} />);
+
+    const crumb = screen.getByRole("link", { name: /Settings › Booking engine/ });
+    expect(crumb).toHaveAttribute("href", "/settings?tab=booking");
     expect(screen.getByText("Booking flow")).toBeInTheDocument();
   });
 
   it("mounts the FlowStep editor via the registry for the flow task", () => {
-    renderWithProviders(<TaskPanel task={flowTask()} orgId="org-1" onClose={vi.fn()} />);
+    renderPanel(<TaskPanel task={flowTask()} orgId="org-1" onClose={vi.fn()} />);
 
     expect(screen.getByTestId("flow-step-probe")).toBeInTheDocument();
   });
 
   it("renders the footer note and calls onClose when Later is clicked", () => {
     const onClose = vi.fn();
-    renderWithProviders(<TaskPanel task={flowTask()} orgId="org-1" onClose={onClose} />);
+    renderPanel(<TaskPanel task={flowTask()} orgId="org-1" onClose={onClose} />);
 
     expect(screen.getByText("Change is logged")).toBeInTheDocument();
     fireEvent.click(screen.getByText("Later"));
@@ -91,7 +97,7 @@ describe("TaskPanel", () => {
 
   it("calls onClose from the header close control too", () => {
     const onClose = vi.fn();
-    renderWithProviders(<TaskPanel task={flowTask()} orgId="org-1" onClose={onClose} />);
+    renderPanel(<TaskPanel task={flowTask()} orgId="org-1" onClose={onClose} />);
 
     fireEvent.click(screen.getByLabelText("Close"));
     expect(onClose).toHaveBeenCalledTimes(1);
@@ -135,7 +141,10 @@ describe("TaskPanel", () => {
         </MemoryRouter>,
       );
 
-      expect(screen.getByText("Choice · sets everything downstream")).toBeInTheDocument();
+      // Non-actionable: the breadcrumb is plain text, not a deep link (the home is
+      // admin-only / would bounce a producer); WaitsOnPanelBody carries the safe link below.
+      expect(screen.getByText("Settings › Booking engine")).toBeInTheDocument();
+      expect(screen.queryByRole("link", { name: /Settings › Booking engine/ })).not.toBeInTheDocument();
       expect(screen.getByText("Booking flow")).toBeInTheDocument();
       expect(screen.getByText("Change is logged")).toBeInTheDocument();
       expect(screen.getByText("Later")).toBeInTheDocument();
@@ -172,25 +181,24 @@ describe("TaskPanel", () => {
     });
   });
 
-  // The eyebrow's "· blocks issuing" clause is what the doc costs while OUTSTANDING; once
-  // done it holds up nothing, so a done letterhead/terms panel must not still read "blocks
-  // issuing" (the state the user hit: Terms with a variant already added, eyebrow still
-  // saying BLOCKS ISSUING).
-  it("shows the blocks-issuing eyebrow while a terms doc is outstanding", () => {
-    renderWithProviders(<TaskPanel task={termsTask()} orgId="org-1" onClose={vi.fn()} />);
+  // The eyebrow now names where the setting LIVES (question 1), stable across the task's
+  // own done/outstanding state: an outstanding and a done terms panel both read "Settings ›
+  // Contracts", so the crumb never goes stale the way the old "· blocks issuing" clause did.
+  it("shows the contracts breadcrumb for a terms doc (deep-linking to the hire-orders tab), outstanding or done", () => {
+    const { unmount } = renderPanel(<TaskPanel task={termsTask()} orgId="org-1" onClose={vi.fn()} />);
+    // The contracts crumb is a real deep link to the hire-orders settings tab, not bare /settings.
+    expect(screen.getByRole("link", { name: /Settings › Contracts/ })).toHaveAttribute(
+      "href",
+      "/settings?tab=hire-orders",
+    );
+    unmount();
 
-    expect(screen.getByText("Document · blocks issuing")).toBeInTheDocument();
-  });
-
-  it("swaps the eyebrow to the set variant once the terms doc is done", () => {
-    renderWithProviders(<TaskPanel task={termsTask({ done: true })} orgId="org-1" onClose={vi.fn()} />);
-
-    expect(screen.getByText("Document · set")).toBeInTheDocument();
-    expect(screen.queryByText("Document · blocks issuing")).not.toBeInTheDocument();
+    renderPanel(<TaskPanel task={termsTask({ done: true })} orgId="org-1" onClose={vi.fn()} />);
+    expect(screen.getByRole("link", { name: /Settings › Contracts/ })).toBeInTheDocument();
   });
 
   it("still mounts the registry editor for an actionable task (unchanged from before this fix)", () => {
-    renderWithProviders(<TaskPanel task={flowTask()} orgId="org-1" onClose={vi.fn()} />);
+    renderPanel(<TaskPanel task={flowTask()} orgId="org-1" onClose={vi.fn()} />);
 
     expect(screen.getByTestId("flow-step-probe")).toBeInTheDocument();
     expect(screen.queryByText(/waits on/i)).not.toBeInTheDocument();
@@ -202,7 +210,7 @@ describe("TaskPanel", () => {
   // footer action (and NOT the inline one) proves the frame supplied a live slot node.
   describe("footer action slot", () => {
     it("provides a slot the editor portals its primary action into, beside Later", () => {
-      renderWithProviders(<TaskPanel task={flowTask()} orgId="org-1" onClose={vi.fn()} />);
+      renderPanel(<TaskPanel task={flowTask()} orgId="org-1" onClose={vi.fn()} />);
 
       const action = screen.getByTestId("flow-footer-action");
       expect(action).toBeInTheDocument();
@@ -220,7 +228,7 @@ describe("TaskPanel", () => {
   // element's measurements and firing scroll.
   describe("scroll cue", () => {
     it("hides on non-overflowing content and shows/hides with overflow position", () => {
-      renderWithProviders(<TaskPanel task={flowTask()} orgId="org-1" onClose={vi.fn()} />);
+      renderPanel(<TaskPanel task={flowTask()} orgId="org-1" onClose={vi.fn()} />);
       const scroll = screen.getByTestId("task-panel-scroll");
 
       // Mount: jsdom reports zero for every measurement, so nothing overflows -> no cue.

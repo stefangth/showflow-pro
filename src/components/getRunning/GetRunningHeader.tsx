@@ -1,5 +1,7 @@
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 import { Eyebrow } from "@/components/ui/eyebrow";
+import { ROUTES } from "@/config/app.config";
 import { adminDisplayName } from "@/data/orgAdmins";
 import { firstOfferBlockingCount, getRunningState, MINUTES_PER_TASK, type GetRunningModel } from "@/lib/getRunning/tasks";
 
@@ -78,6 +80,19 @@ export function GetRunningHeader({ model, orgName, role, adminNames }: {
           {headline}
         </h1>
         <p className="mt-2 max-w-[600px] text-sm leading-[21px] text-muted-foreground text-pretty">{body}</p>
+        {/* Non-blocking advisory: a future date with no city can't be offered by the engine
+            until a city is set, but that is a per-date data gap, not a setup blocker, so it
+            never changes the headline/state above. It reads as a calm line pointing at
+            /dates, where the city is actually fixed. */}
+        {model.datesWithoutCity > 0 && (
+          <p className="mt-2.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--amber-600)]" aria-hidden="true" />
+            <span>{t("header.datesWithoutCity", { count: model.datesWithoutCity })}</span>
+            <Link to={ROUTES.BOOKINGS} className="font-medium text-accent-600 hover:text-accent-700">
+              {t("header.datesWithoutCityLink")}
+            </Link>
+          </p>
+        )}
       </div>
 
       <div className="w-[236px] shrink-0 rounded-[var(--radius-l)] border border-border bg-card p-3.5">

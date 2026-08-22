@@ -118,13 +118,121 @@ describe("composeGetRunning", () => {
     );
     const allTasks = model.phases.flatMap((p) => p.tasks);
 
-    expect(taskByKey(allTasks, "slots").block).toBe("filling");
+    // Blank org: artistAcceptance is null, so the board's hard-gate wording is "booking".
+    // dates + slots are now board-level hard gates (question 2): a date that does not exist
+    // or has no slot count holds up the first booking, so the "Get dates in" phase blocks.
+    expect(taskByKey(allTasks, "dates").block).toBe("booking");
+    expect(taskByKey(allTasks, "slots").block).toBe("booking");
+    // eligibility mirrors ladder: null under an unknown/direct-book flow (no offers path to hold up).
+    expect(taskByKey(allTasks, "eligibility").block).toBe(null);
     expect(taskByKey(allTasks, "letterhead").block).toBe("issuing");
     expect(taskByKey(allTasks, "terms").block).toBe("issuing");
     expect(taskByKey(allTasks, "countersign").block).toBe(null);
     expect(taskByKey(allTasks, "team").block).toBe(null);
     expect(taskByKey(allTasks, "team").done).toBe(false);
     expect(taskByKey(allTasks, "dates").done).toBe(false);
+  });
+
+  it("(a2) under an offers flow, dates/slots block with the offers wording", () => {
+    // artistAcceptance true → the board's hard wording is "offers" for dates and slots.
+    const model = composeGetRunning(
+      baseInput({
+        booking: computeBookingSetupStatus({
+          ...FULL_BOOKING_INPUT,
+          hasAnyShows: false,
+          shows: undefined,
+        }),
+        datesDone: false,
+      }),
+    );
+    const allTasks = model.phases.flatMap((p) => p.tasks);
+
+    expect(taskByKey(allTasks, "dates").block).toBe("offers");
+    expect(taskByKey(allTasks, "slots").block).toBe("offers");
+  });
+
+  it("(a3) a future date with no city is a non-blocking advisory, not a first-offer blocker", () => {
+    // One future date with a null city, everything else covered. eligibility.done is false
+    // (computeBookingSetupStatus requires !hasNullCity), but eligibility is NOT a hard
+    // blocker: the board stays offer-ready, and the null-city gap surfaces via the
+    // datesWithoutCity advisory count instead — a per-date data gap, not an org-setup block.
+    const model = composeGetRunning(
+      baseInput({
+        booking: computeBookingSetupStatus({
+          ...FULL_BOOKING_INPUT,
+          coverage: {
+            futurePairs: [{ showId: "s1", cityId: null }],
+            showPriorities: [],
+            cityPriorities: [],
+          },
+        }),
+      }),
+    );
+    const allTasks = model.phases.flatMap((p) => p.tasks);
+
+    // eligibility's board done-ness is COVERAGE-ONLY (mirrors the ladder step), so a
+    // null-city date does NOT hold it open — it's done here even though the booking module's
+    // own eligibility.done is false. This is what lets the board reach complete/retire on a
+    // stray city-less date; the gap lives only in the advisory.
+    expect(taskByKey(allTasks, "eligibility").done).toBe(true);
+    expect(taskByKey(allTasks, "eligibility").block).toBe(null);
+    expect(model.canFirstOffer).toBe(true);
+    expect(model.datesWithoutCity).toBe(1);
+  });
+
+  it("(a5) a null-city date does NOT hold up board completion (reframe: it retires on setup, not per-date data)", () => {
+    // Everything set up, offers flow, one future date with a null city (coverage otherwise
+    // complete). The board must still reach `complete` so it can retire — the null-city gap
+    // is a per-date data issue surfaced by datesWithoutCity, not an org-setup blocker.
+    const model = composeGetRunning(
+      baseInput({
+        hireOrdersOn: false,
+        hire: null,
+        booking: computeBookingSetupStatus({
+          ...FULL_BOOKING_INPUT,
+          coverage: {
+            futurePairs: [{ showId: "s1", cityId: null }],
+            showPriorities: [],
+            cityPriorities: [],
+          },
+        }),
+      }),
+    );
+
+    expect(model.complete).toBe(true);
+    expect(model.datesWithoutCity).toBe(1);
+  });
+
+  it("(a6) a real uncovered (show, city) pair DOES keep the board incomplete and blocking", () => {
+    // Distinct from a null-city date: a city that has a future date but no first group is a
+    // genuine coverage gap. ladder stays undone+blocking, and eligibility's coverage-only
+    // done follows ladder, so the board is neither complete nor offer-ready.
+    const model = composeGetRunning(
+      baseInput({
+        hireOrdersOn: false,
+        hire: null,
+        booking: computeBookingSetupStatus({
+          ...FULL_BOOKING_INPUT,
+          coverage: {
+            futurePairs: [{ showId: "s1", cityId: "c1" }],
+            showPriorities: [],
+            cityPriorities: [], // c1 has a date but no ranked cast → uncovered
+          },
+        }),
+      }),
+    );
+    const allTasks = model.phases.flatMap((p) => p.tasks);
+
+    expect(taskByKey(allTasks, "ladder").done).toBe(false);
+    expect(taskByKey(allTasks, "eligibility").done).toBe(false);
+    expect(model.canFirstOffer).toBe(false);
+    expect(model.complete).toBe(false);
+    expect(model.datesWithoutCity).toBe(0);
+  });
+
+  it("(a4) datesWithoutCity is 0 when every future date has a city, and when booking is off", () => {
+    expect(composeGetRunning(baseInput()).datesWithoutCity).toBe(0);
+    expect(composeGetRunning(baseInput({ bookingOn: false, booking: null })).datesWithoutCity).toBe(0);
   });
 
   it("(b) producer viewer lacking capabilities → team and admin-only settings are not actionable", () => {
@@ -321,7 +429,7 @@ describe("firstOfferBlockingCount", () => {
 describe("getRunningState", () => {
   const model = (over: Partial<GetRunningModel>): GetRunningModel => ({
     phases: [], doneCount: 0, totalCount: 1, canFirstOffer: false, complete: false,
-    bookingOn: true, hireOrdersOn: false, ...over,
+    bookingOn: true, hireOrdersOn: false, datesWithoutCity: 0, ...over,
   });
   it("is blocking while the first offer is held up", () => {
     expect(getRunningState(model({ canFirstOffer: false, complete: false }))).toBe("blocking");

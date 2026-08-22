@@ -19,6 +19,7 @@ function makeModel(): GetRunningModel {
     complete: true,
     bookingOn: true,
     hireOrdersOn: true,
+    datesWithoutCity: 0,
   };
 }
 

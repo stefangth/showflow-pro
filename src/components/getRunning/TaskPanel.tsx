@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
-import { X } from "lucide-react";
+import { ExternalLink, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Eyebrow } from "@/components/ui/eyebrow";
@@ -10,6 +10,7 @@ import { useOrgAdminNames } from "@/hooks/useOrgAdminNames";
 import { adminDisplayName } from "@/data/orgAdmins";
 import type { SettingsTabParam } from "@/lib/settingsTabs";
 import type { GetRunningTask, GetRunningTaskKey } from "@/lib/getRunning/tasks";
+import { TASK_FEATURE, taskFeatureLink } from "@/lib/getRunning/taskFeature";
 import { TaskPanelEditor } from "./taskPanelRegistry";
 // The footer-slot context lives in its own leaf module so an editor can read it without
 // importing this frame (which would cycle: frame → registry → editor → frame).
@@ -134,11 +135,12 @@ export function TaskPanel({ task, orgId, onClose, onNext }: TaskPanelProps): JSX
     };
   }, [task.key]);
   const handleDone = () => (onNext ? onNext() : onClose());
-  // letterhead/terms carry a "· blocks issuing" eyebrow while outstanding (they are the only
-  // tasks with block === "issuing"); once done that clause is stale, so swap to the "· set"
-  // variant — same !done reasoning the board's tiles/rows apply to the block chip.
-  const eyebrowKey =
-    task.done && task.block === "issuing" ? `panel.eyebrowSet.${task.key}` : `panel.eyebrow.${task.key}`;
+  // The eyebrow is a breadcrumb to where this setting really LIVES (question 1), replacing
+  // the old shape word ("Values · …") that meant nothing to a user. When the viewer can act
+  // on the task, the crumb is a live deep link to that home; a producer viewing a task they
+  // cannot act on gets the same crumb as plain text (the home is admin-only or the deep link
+  // would bounce), with `WaitsOnPanelBody` carrying its own producer-safe Settings link below.
+  const crumb = t(TASK_FEATURE[task.key].crumbKey);
 
   return (
     <div
@@ -147,9 +149,17 @@ export function TaskPanel({ task, orgId, onClose, onNext }: TaskPanelProps): JSX
     >
       <div className="border-b border-border p-4">
         <div className="flex items-start justify-between gap-3">
-          <Eyebrow className="text-accent-600">
-            {t(eyebrowKey)}
-          </Eyebrow>
+          {task.actionableByViewer ? (
+            <Link
+              to={taskFeatureLink(task.key)}
+              className="group inline-flex items-center gap-1 text-accent-600 hover:text-accent-700"
+            >
+              <Eyebrow className="text-inherit">{crumb}</Eyebrow>
+              <ExternalLink className="h-3 w-3 opacity-70 group-hover:opacity-100" aria-hidden="true" />
+            </Link>
+          ) : (
+            <Eyebrow className="text-accent-600">{crumb}</Eyebrow>
+          )}
           <button
             type="button"
             onClick={onClose}

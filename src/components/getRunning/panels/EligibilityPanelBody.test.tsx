@@ -84,7 +84,10 @@ describe("EligibilityPanelBody", () => {
     // Carmen's Hamburg date is covered by the org-wide "nord" ladder → Fully covered
     // with the covering cast surfaced as an accent chip.
     expect(screen.getByText("Fully covered")).toBeInTheDocument();
-    expect(screen.getByText("Nord Ensemble")).toBeInTheDocument();
+    // "Nord Ensemble" now shows both as the covering-cast chip AND in the "Your casts"
+    // roster list (casts are visible even when tied to no city-with-a-date), so assert at
+    // least one occurrence rather than a single unique node.
+    expect(screen.getAllByText("Nord Ensemble").length).toBeGreaterThan(0);
 
     // Die Zauberflöte's Leipzig date has no tier-1 cast → a "1 gap" badge, the
     // uncovered-city hint, and the dashed Link a cast affordance. "1 gap" appears

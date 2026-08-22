@@ -61,11 +61,13 @@ describe("resolveInitialTab", () => {
     expect(resolveInitialTab("production-ownership", false)).toBe("casts-coverage");
   });
 
-  it("does not deep-link the entitlement-gated hire-orders tab", () => {
-    // Whether that tab exists depends on the org's entitlement, which this pure helper
-    // cannot see, so it is deliberately not a deep-link target for anyone.
-    expect(resolveInitialTab("hire-orders", true)).toBe("how-it-works");
-    expect(SETTINGS_TAB_PARAMS).not.toContain("hire-orders");
+  it("deep-links the hire-orders tab (a safe target despite the entitlement gate)", () => {
+    // hire-orders is entitlement-gated, but SettingsPage renders its trigger and content for
+    // any admin/producer regardless of entitlement (HireOrdersTab self-gates on useFeature),
+    // so a ?tab=hire-orders link is no worse than the tab an admin can already click by hand.
+    // The /get-running contract-task breadcrumbs rely on this deep link.
+    expect(resolveInitialTab("hire-orders", true)).toBe("hire-orders");
+    expect(SETTINGS_TAB_PARAMS).toContain("hire-orders");
   });
 });
 

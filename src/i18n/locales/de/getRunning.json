@@ -20,7 +20,10 @@
       "ready": "Alles, was deine erste Anfrage blockiert, ist erledigt. Der Rest dieser Liste lohnt sich noch, hält dich aber nicht mehr auf.",
       "complete": "Jede Aufgabe hier ist erledigt. Schau jederzeit in den Einstellungen vorbei, falls sich etwas ändert.",
       "producer": "Das ist hier, damit du weißt, warum Shows und Bookings leer aussieht, nicht damit du alles davon lösen kannst."
-    }
+    },
+    "datesWithoutCity_one": "1 Termin hat noch keine Stadt, daher kann die Engine ihn nicht anfragen.",
+    "datesWithoutCity_other": "{{count}} Termine haben noch keine Stadt, daher kann die Engine sie nicht anfragen.",
+    "datesWithoutCityLink": "In Terminen beheben"
   },
   "nothingToSetUp": {
     "title": "Nichts einzurichten",
@@ -43,7 +46,8 @@
       "status": {
         "complete": "Läuft",
         "active": "In Arbeit",
-        "dormant": "Noch nicht gestartet"
+        "dormant": "Noch nicht gestartet",
+        "blocking": "Blockiert deine erste Anfrage"
       }
     },
     "bookable": {
@@ -97,23 +101,6 @@
         "ladder": "Besetzungen in den Einstellungen reihen (Besetzung und Abdeckung)",
         "eligibility": "Besetzungen in den Einstellungen verknüpfen (Besetzung und Abdeckung)"
       }
-    },
-    "eyebrow": {
-      "dates": "Termine · versorgt jeden Schritt",
-      "slots": "Werte · eine Zahl pro Show",
-      "flow": "Wahl · legt den weiteren Ablauf fest",
-      "people": "Besetzungsliste · blockiert Buchungen",
-      "ladder": "Prioritäten · blockiert Anfragen",
-      "eligibility": "Abdeckung · blockiert Anfragen",
-      "timing": "Werte · zwei Felder",
-      "team": "Team · nur Admin",
-      "letterhead": "Dokument · blockiert den Versand",
-      "terms": "Dokument · blockiert den Versand",
-      "countersign": "Dokument · blockiert den Versand nicht"
-    },
-    "eyebrowSet": {
-      "letterhead": "Dokument · gesetzt",
-      "terms": "Dokument · gesetzt"
     },
     "footerNote": {
       "dates": "Sync läuft stündlich",
@@ -184,7 +171,17 @@
         "unlocks_other": "Reihe auch {{city}} und {{count}} Termine werden in der heutigen täglichen Sendung anfragbar.",
         "unlocksDone": "Jede Stadt mit Terminen hat eine erste Gruppe.",
         "tierUpdated": "Gruppe {{tier}} gesetzt",
-        "tierUpdateFailed": "Gruppe {{tier}} konnte nicht gesetzt werden"
+        "tierUpdateFailed": "Gruppe {{tier}} konnte nicht gesetzt werden",
+        "yourCasts": "Deine Besetzungen",
+        "castCountLabel_one": "{{count}} Besetzung",
+        "castCountLabel_other": "{{count}} Besetzungen",
+        "castRankFirst": "Erste Gruppe in {{city}}",
+        "castRankGroup": "Gruppe {{n}} in {{city}}",
+        "castRankMulti_one": "In {{count}} Stadt gereiht",
+        "castRankMulti_other": "In {{count}} Städten gereiht",
+        "castNotRanked": "Noch nicht gereiht",
+        "noCitiesYet": "Noch hat keine Stadt einen zukünftigen Termin, also gibt es nichts zu reihen. Besetzungen, die du jetzt anlegst, warten hier.",
+        "datesNeedCity": "Deine kommenden Termine haben noch keine Stadt, also gibt es nichts zu reihen, bis du am Termin eine hinzufügst."
       },
       "eligibility": {
         "gapCount_one": "{{count}} Lücke",
@@ -205,7 +202,12 @@
         "fullyCovered": "Vollständig abgedeckt",
         "cityCount_one": "{{count}} Stadt",
         "cityCount_other": "{{count}} Städte",
-        "noCastYet": "Noch keine Besetzung in {{cities}}"
+        "noCastYet": "Noch keine Besetzung in {{cities}}",
+        "yourCasts": "Deine Besetzungen",
+        "castCountLabel_one": "{{count}} Besetzung",
+        "castCountLabel_other": "{{count}} Besetzungen",
+        "noProductionsYet": "Noch hat keine Show einen zukünftigen Termin, also gibt es nichts abzudecken. Besetzungen, die du jetzt anlegst, warten hier.",
+        "datesNeedCity": "Deine kommenden Termine haben noch keine Stadt, also gibt es nichts abzudecken, bis du am Termin eine hinzufügst."
       }
     }
   },
@@ -319,5 +321,34 @@
       "set": "Festgelegt",
       "notSet": "Nicht festgelegt"
     }
+  },
+  "feature": {
+    "crumb": {
+      "dates": "Termine",
+      "slots": "Produktionen",
+      "flow": "Einstellungen › Booking Engine",
+      "people": "Artists",
+      "ladder": "Einstellungen › Besetzung und Abdeckung",
+      "eligibility": "Einstellungen › Besetzung und Abdeckung",
+      "timing": "Einstellungen › Booking Engine",
+      "team": "Einstellungen › Personen",
+      "letterhead": "Einstellungen › Verträge",
+      "terms": "Einstellungen › Verträge",
+      "countersign": "Einstellungen › Verträge"
+    },
+    "short": {
+      "dates": "Termine",
+      "slots": "Produktionen",
+      "flow": "Booking Engine",
+      "people": "Artists",
+      "ladder": "Besetzung und Abdeckung",
+      "eligibility": "Besetzung und Abdeckung",
+      "timing": "Booking Engine",
+      "team": "Personen",
+      "letterhead": "Verträge",
+      "terms": "Verträge",
+      "countersign": "Verträge"
+    },
+    "open": "Öffnen"
   }
 }

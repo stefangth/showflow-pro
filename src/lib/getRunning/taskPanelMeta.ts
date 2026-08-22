@@ -15,12 +15,11 @@ export const BOOKING_DOMAIN_TASK_KEYS: ReadonlySet<GetRunningTaskKey> = new Set(
 
 /**
  * Which of the three screen-02 shapes (choice / values / document) each task's panel
- * reads as. Purely descriptive metadata — every shape shares the same `TaskPanel` frame
- * and the same `panel.eyebrow.<key>` i18n string already carries the shape word, so this
- * is not read by the frame today. Kept as one place documenting the shape assignment
- * (see `docs/superpowers/specs/2026-08-17-setup-settings-design/screens/02_02_Task_panels.html`)
- * rather than only in the eyebrow copy, so a future task deciding how to lay out a new
- * shape variant has a typed source to branch on instead of parsing translated strings.
+ * reads as. Purely descriptive metadata, not read by the frame today (the panel eyebrow is
+ * now a feature breadcrumb, not a shape word). Kept as one place documenting the shape
+ * assignment (see `docs/superpowers/specs/2026-08-17-setup-settings-design/screens/
+ * 02_02_Task_panels.html`) so a future task laying out a new shape variant has a typed
+ * source to branch on.
  */
 export const TASK_PANEL_SHAPE: Record<GetRunningTaskKey, "choice" | "values" | "document"> = {
   dates: "values",

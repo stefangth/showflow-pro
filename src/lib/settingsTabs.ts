@@ -1,9 +1,11 @@
 // Deep-linking into a Settings section: `/settings?tab=<value>`.
 //
-// The values are the SettingsPage <TabsTrigger value> strings. Every one of them is a
-// deep-link target except "hire-orders", which is entitlement-gated: this pure helper
-// cannot see the org's entitlement, so honouring it would strand an unentitled org on an
-// empty pane. Admin-only "permissions" IS listed, but gated below on the caller's role, and
+// The values are the SettingsPage <TabsTrigger value> strings, and every one is a deep-link
+// target. "hire-orders" is entitlement-gated (this pure helper cannot see the org's
+// entitlement) but is still a safe deep-link target: SettingsPage renders its trigger and
+// content for any admin/producer regardless of entitlement (with a module-off indicator),
+// so a `?tab=hire-orders` link is no worse than the tab an admin can already click by hand,
+// and HireOrdersTab self-gates on `useFeature`. Admin-only "permissions" IS listed, but gated below on the caller's role, and
 // "docs" (Documentation) is likewise listed but gated below to super-admins only — it is no
 // longer a reachable deep-link target for an admin or producer. The concept explainers that
 // used to deep-link here now point at the Help center instead (see ROUTES.HELP). "people"
@@ -28,6 +30,7 @@ export const SETTINGS_TAB_PARAMS = [
   "skills",
   "airtable",
   "booking",
+  "hire-orders",
   "email-templates",
   "notifications",
   "docs",

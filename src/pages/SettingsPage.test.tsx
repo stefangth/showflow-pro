@@ -330,14 +330,16 @@ describe("SettingsPage ?tab= deep link", () => {
     expect(triggers.filter((t) => t.getAttribute("aria-selected") === "true")).toHaveLength(1);
   });
 
-  it("leaves the entitlement-gated hire-orders tab out of deep linking, from the page's side too", async () => {
-    // An org without the hire_orders entitlement renders no such trigger, so honouring the
-    // param would strand it on an empty pane. The page lands on the admin default instead.
+  it("deep-links the hire-orders tab (its trigger renders for any admin regardless of entitlement)", async () => {
+    // The hire-orders trigger is gated only by role (show: isAdmin || isProducer), not by the
+    // hire_orders entitlement — an unentitled org just gets a "module off" badge and the
+    // tab's own self-gated content. So honouring ?tab=hire-orders never strands anyone, and
+    // the /get-running contract-task breadcrumbs deep-link straight to it.
     vi.mocked(useAuth).mockReturnValue(DEFAULT_AUTH as never);
     renderWithProviders(
       <MemoryRouter initialEntries={["/settings?tab=hire-orders"]}><SettingsPage /></MemoryRouter>,
     );
-    expect(await screen.findByRole("tab", { name: /how this org works/i })).toHaveAttribute("aria-selected", "true");
+    expect(await screen.findByRole("tab", { name: /contracts/i })).toHaveAttribute("aria-selected", "true");
   });
 
   it("still lets the user switch tabs after arriving through a deep link", async () => {
