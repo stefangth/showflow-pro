@@ -121,7 +121,7 @@
   "guide": {
     "source": {
       "title": "Wähle, woher deine Termine kommen",
-      "body": "Jeder weitere Schritt liest von deinen Terminen: Besetzungsübersicht, Prioritäten und wer gefragt werden kann. Wähle die Quelle, die zu deinem Team passt.",
+      "body": "Jeder weitere Schritt liest von deinen Terminen: Besetzungsplan, Prioritäten und wer gefragt werden kann. Wähle die Quelle, die zu deinem Team passt.",
       "points": [
         "Airtable-Sync bringt Produktionen und Termine stündlich automatisch rein.",
         "Von Hand geht auch, und du kannst beides mischen.",
@@ -161,9 +161,9 @@
     },
     "productions": {
       "title": "Deine Produktionen prüfen",
-      "body": "Deine Produktionen sind die Shows, für die du Artists buchst. Prüfe die eingegangenen und ergänze fehlende.",
+      "body": "Deine Produktionen sind das Werk, für das du Artists buchst. Prüfe die eingegangenen und ergänze fehlende.",
       "points": [
-        "Jede Produktion braucht eine gesetzte Besetzungsübersicht.",
+        "Jede Produktion braucht einen gesetzten Besetzungsplan.",
         "Du kannst die Details einer Produktion jederzeit bearbeiten.",
         "Neue Termine hängen an einer bestehenden oder neuen Produktion."
       ],
@@ -181,7 +181,7 @@
     },
     "skills": {
       "title": "Skills bei deinen Artists setzen",
-      "body": "Skills sagen der Booking-Engine, welche Artists zu welchem Part in der Besetzungsübersicht passen.",
+      "body": "Skills sagen der Booking-Engine, welche Artists zu welchem Part im Besetzungsplan passen.",
       "points": [
         "Ein Part ohne passenden Skill hat niemanden, der infrage kommt.",
         "Du kannst Skills für mehrere Artists auf einmal setzen.",

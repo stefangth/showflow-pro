@@ -161,7 +161,7 @@
     },
     "productions": {
       "title": "Review your productions",
-      "body": "Your productions are the shows you book artists against. Check the ones that came in and add any that are missing.",
+      "body": "Your productions are the work you book artists against. Check the ones that came in and add any that are missing.",
       "points": [
         "Each production needs its casting breakdown set.",
         "You can edit a production's details at any time.",
