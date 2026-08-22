@@ -116,10 +116,6 @@
       "hint": "An artist you add to a date is booked. It shows in their calendar as booked."
     }
   },
-  "viewAsArtist": {
-    "title": "See it as your artists do",
-    "hint": "The pencil icon top right opens the editor bar, where you can switch to the artist view. Once an artist has an account, you can preview the app as that exact person."
-  },
   "producerRole": {
     "note": "You are on the Production Team. You plan dates, run asks and book the cast. Inviting people, casts and settings stay with the admin.",
     "ruleTitle": "What your role covers"
@@ -436,8 +432,6 @@
       "messageOffice": "Message your production team",
       "blockingIsHowYouSayNo": "Blocking is how you say no",
       "availability": "Availability",
-      "seeItAsArtists": "See it as your artists do",
-      "editorBarHint": "The pencil top right opens the editor bar, where you can switch to the artist view.",
       "seeWhatEachRoleCanDo": "See what each role can do",
       "messageAdmin": "Message the admin"
     }

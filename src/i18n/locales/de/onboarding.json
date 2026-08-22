@@ -116,10 +116,6 @@
       "hint": "Ein Artist, den du einem Termin hinzufügst, ist gebucht. Er erscheint in dessen Kalender als gebucht."
     }
   },
-  "viewAsArtist": {
-    "title": "Sieh es wie deine Artists",
-    "hint": "Das Stiftsymbol oben rechts öffnet die Editor-Leiste, in der du zur Artist-Ansicht wechseln kannst. Sobald ein Artist ein Konto hat, kannst du die App als genau diese Person ansehen."
-  },
   "producerRole": {
     "note": "Du bist im Production Team. Du planst Termine, versendest Anfragen und buchst die Besetzung. Personen einladen, Besetzungen und Einstellungen bleiben beim Admin.",
     "ruleTitle": "Was deine Rolle abdeckt"
@@ -436,8 +432,6 @@
       "messageOffice": "Schreib deinem Produktionsteam",
       "blockingIsHowYouSayNo": "Sperren ist deine Art, Nein zu sagen",
       "availability": "Verfügbarkeit",
-      "seeItAsArtists": "Sieh es wie deine Artists",
-      "editorBarHint": "Der Stift oben rechts öffnet die Editor-Leiste, in der du zur Artist-Ansicht wechseln kannst.",
       "seeWhatEachRoleCanDo": "Sieh, was jede Rolle kann",
       "messageAdmin": "Schreib dem Admin"
     }
