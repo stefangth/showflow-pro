@@ -18,9 +18,8 @@ const ROLE_OPTIONS: AppRole[] = ["admin", "producer", "artist"];
 /** The demo control bar: mounted at the header→body seam in AppLayout, visible only
  *  inside a demo org — AND only to an admin (or super-admin) of it. The role toggle
  *  drives AuthContext's viewAsRole simulation (which unconditionally flips
- *  effectiveHasRole client-side), so the bar is gated on the caller's REAL role,
- *  mirroring EditorToolbar's canUseEditor gate — a non-admin must not be able to grant
- *  themselves an admin view. Gate on `roles`, never `hasRole('admin')`, which is itself
+ *  effectiveHasRole client-side), so the bar is gated on the caller's REAL role: a non-admin must not be able to
+ *  grant themselves an admin view. Gate on `roles`, never `hasRole('admin')`, which is itself
  *  viewAsRole-influenced and would make the check self-satisfying. Shows a "Demo mode"
  *  indicator, the scene selector, a role toggle, a simulated clock with quick-advance,
  *  the outbox, a Sandbox link dialog for minting a read-only leave-behind URL, a

@@ -36,9 +36,9 @@ describe('HelpPage', () => {
     await i18n.changeLanguage('en');
     renderWithProviders(<HelpPage />);
     const q = screen.getByRole('button', { name: /What is ShowFlow, and what does it do\?/i });
-    expect(screen.queryByText(/ShowFlow is where your organization plans its shows/i)).toBeNull();
+    expect(screen.queryByText(/ShowFlow is where your organization plans its productions/i)).toBeNull();
     fireEvent.click(q);
-    expect(screen.getByText(/ShowFlow is where your organization plans its shows/i)).toBeInTheDocument();
+    expect(screen.getByText(/ShowFlow is where your organization plans its productions/i)).toBeInTheDocument();
   });
 
   it('renders the "still stuck" guidance and a glossary term', async () => {

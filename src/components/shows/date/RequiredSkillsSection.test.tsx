@@ -19,7 +19,7 @@ describe("RequiredSkillsSection", () => {
     renderRS(<RequiredSkillsSection skills={SKILLS} showSkillIds={["s1"]} dateSkillIds={[]}
       droppedSkillIds={[]} onAdd={noop} onRemove={noop} onDrop={noop} onRestore={noop} pending={false} />);
     expect(screen.getByText("judge")).toBeInTheDocument();
-    expect(screen.getByText("From show")).toBeInTheDocument();
+    expect(screen.getByText("From production")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /remove judge/i })).not.toBeInTheDocument();
   });
   it("date-level skills are removable", () => {
@@ -41,7 +41,7 @@ describe("RequiredSkillsSection", () => {
     renderRS(<RequiredSkillsSection skills={SKILLS} showSkillIds={["s1"]} dateSkillIds={["s1", "s2"]}
       droppedSkillIds={[]} onAdd={noop} onRemove={noop} onDrop={noop} onRestore={noop} pending={false} />);
     expect(screen.getAllByText("judge")).toHaveLength(1);
-    expect(screen.getByText("From show")).toBeInTheDocument();
+    expect(screen.getByText("From production")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /remove judge/i })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /remove juggling/i })).toBeInTheDocument();
   });

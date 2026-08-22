@@ -1,15 +1,13 @@
-import type { AppRole } from '@/config/app.config';
-
 /**
- * Who may use editor mode: an admin of the active org, or a super-admin — including in
- * an org they hold no membership in.
+ * Who may use editor mode: super-admins only.
  *
- * The super-admin arm is load-bearing, not a courtesy. `roles` comes from
- * `rolesForOrg(memberships, currentOrg.id)` and is membership-scoped, so a super-admin
- * viewing an org they never joined has none at all. Gating on `roles.includes('admin')`
- * alone would strip the whole toolbar — including the toggle that lets them back in —
- * the moment they switch orgs from inside editor mode.
+ * The UI editor (page access, table permissions, column templates) is a
+ * platform-operator tool, not an org-admin feature. Org admins no longer see the
+ * editor toolbar or the on-page table and column editor, so the gate depends only on
+ * the platform-admin flag. Org roles are intentionally not a factor: a super-admin
+ * passes even in an org they hold no membership in, and no org role (admin included)
+ * ever confers editor access.
  */
-export function canUseEditor(roles: readonly AppRole[], isSuperAdmin: boolean): boolean {
-  return isSuperAdmin || roles.includes('admin');
+export function canUseEditor(isSuperAdmin: boolean): boolean {
+  return isSuperAdmin;
 }

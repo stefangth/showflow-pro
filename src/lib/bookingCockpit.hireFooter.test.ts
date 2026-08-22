@@ -11,7 +11,7 @@ describe("computeHireFooter", () => {
     const f = computeHireFooter({ t, status: "fully_filled", slots, confirmedMain: 4, confirmedUnderstudy: 2 });
     expect(f.ready).toBe(true);
     expect(f.badgeLabel).toBe("READY");
-    expect(f.detail).toMatch(/All places booked/);
+    expect(f.detail).toMatch(/All parts booked/);
   });
 
   it("does NOT green-light drafting when one role is short, even if the flat sum hits total", () => {
@@ -21,7 +21,7 @@ describe("computeHireFooter", () => {
     expect(f.ready).toBe(false);
     expect(f.remaining).toBe(2); // per-role: 0 main short + 2 understudy short
     expect(f.badgeLabel).toBe("2 LEFT");
-    expect(f.detail).toBe("Waiting on 2 of 6 places");
+    expect(f.detail).toBe("Waiting on 2 of 6 parts");
   });
 
   it("counts remaining per role, not as a flat total", () => {

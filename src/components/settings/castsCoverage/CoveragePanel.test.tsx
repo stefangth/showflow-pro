@@ -72,7 +72,7 @@ describe("CoveragePanel", () => {
       expect(within(blockedKpi).getByText("1")).toBeInTheDocument();
       const singleKpi = screen.getByText("SINGLE ASK").parentElement!;
       expect(within(singleKpi).getByText("1")).toBeInTheDocument();
-      const overridesKpi = screen.getByText("SHOW OVERRIDES").parentElement!;
+      const overridesKpi = screen.getByText("PRODUCTION OVERRIDES").parentElement!;
       expect(within(overridesKpi).getByText("0")).toBeInTheDocument();
     });
 
@@ -139,7 +139,7 @@ describe("CoveragePanel", () => {
   describe("per-show scope", () => {
     it("shows the org default for every city until the show has its own override", async () => {
       renderWithProviders(<CoveragePanel orgId="org-1" />);
-      fireEvent.click(screen.getByRole("tab", { name: "Per show" }));
+      fireEvent.click(screen.getByRole("tab", { name: "Per production" }));
 
       expect(await screen.findAllByText("Org default")).not.toHaveLength(0);
       // Berlin still shows the inherited org-default cast.
@@ -148,7 +148,7 @@ describe("CoveragePanel", () => {
 
     it("assigning a cast for a city writes a show-level override, not the org default", async () => {
       renderWithProviders(<CoveragePanel orgId="org-1" />);
-      fireEvent.click(screen.getByRole("tab", { name: "Per show" }));
+      fireEvent.click(screen.getByRole("tab", { name: "Per production" }));
 
       fireEvent.click(await screen.findByRole("button", { name: "Set ask 1" }));
       fireEvent.click(await screen.findByRole("button", { name: "Assign Cast B" }));

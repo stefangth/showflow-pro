@@ -276,7 +276,7 @@ it("says what the ladder and eligibility rows actually hold, not what one flow d
   expect(bookingOnboarding.steps.ladder.todoHint).toMatch(/casts/i);
   expect(bookingOnboarding.steps.ladder.todoHint).toMatch(/city|cities/i);
   expect(bookingOnboarding.steps.eligibility.todoHint).toMatch(/casts/i);
-  expect(bookingOnboarding.steps.eligibility.todoHint).toMatch(/show/i);
+  expect(bookingOnboarding.steps.eligibility.todoHint).toMatch(/production/i);
 });
 
 it("every step ctaCapability is a real capability action", () => {

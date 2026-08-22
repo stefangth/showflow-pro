@@ -115,9 +115,9 @@ describe("SlotsStep", () => {
         <SlotsStep orgId="org-1" onDone={() => {}} />
       </MemoryRouter>,
     );
-    expect(await screen.findByText(/no shows yet/i)).toBeInTheDocument();
+    expect(await screen.findByText(/no productions yet/i)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /save slot counts/i })).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /add a show/i })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /add a production/i })).toHaveAttribute(
       "href",
       expect.stringContaining("/productions"),
     );

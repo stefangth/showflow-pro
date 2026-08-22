@@ -70,7 +70,7 @@ describe("TierTimeline", () => {
     );
     expect(screen.getByText("Skills required on this date")).toBeInTheDocument();
     expect(screen.getByText(/NEXT ASK/)).toBeInTheDocument();
-    expect(screen.getByText("WHO THIS DATE ASKS · SHOW-SPECIFIC")).toBeInTheDocument();
+    expect(screen.getByText("WHO THIS DATE ASKS · PRODUCTION-SPECIFIC")).toBeInTheDocument();
   });
 
   it("opens the confirm dialog from the hero and fires onOpenTier for the next tier", () => {
@@ -126,9 +126,9 @@ describe("TierTimeline", () => {
 
   it("renders the show-specific priorities hint only when ladderSource is show", () => {
     const { rerender } = renderTimeline(<TierTimeline {...baseProps} ladderSource="show" />);
-    expect(screen.getByText("Using show-specific priorities")).toBeInTheDocument();
+    expect(screen.getByText("Using production-specific priorities")).toBeInTheDocument();
     rerender(<MemoryRouter><TierTimeline {...baseProps} ladderSource="org" /></MemoryRouter>);
-    expect(screen.queryByText("Using show-specific priorities")).not.toBeInTheDocument();
+    expect(screen.queryByText("Using production-specific priorities")).not.toBeInTheDocument();
   });
 
   it("opens with the toggled narrow-skill ids", () => {

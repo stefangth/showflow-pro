@@ -38,7 +38,7 @@
     "selectOrg": "Wähle eine Organisation, um Engagementverträge anzuzeigen.",
     "readyLead_one": "{{count}} Termin ist vollständig besetzt und bereit für einen Vertrag.",
     "readyLead_other": "{{count}} Termine sind vollständig besetzt und bereit für einen Vertrag.",
-    "readyLink": "Aus Shows und Buchungen erzeugen",
+    "readyLink": "Aus Terminen erzeugen",
     "readyTail": ", oder nutze oben Neuer Vertrag."
   },
   "ordersKpis": {

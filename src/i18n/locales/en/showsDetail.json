@@ -35,12 +35,12 @@
     },
     "status": {
       "cancelled": "Cancelled",
-      "allConfirmed": "All places booked",
+      "allConfirmed": "All parts booked",
       "tierOpenExpiry": "Round {{tier}} open · {{detail}}",
       "tierOpen": "Round {{tier}} open",
       "acceptedWaiting": "{{count}} said yes, waiting on you"
     },
-    "slotWarning": "Cast places aren't set up for {{program}}. Set them in Settings.",
+    "slotWarning": "The casting breakdown isn't set up for {{program}}. Set it in Settings.",
     "thisShow": "this show",
     "pagerLabel": "Date {{index}} of {{total}}",
     "flowClassic": "Classic asking",
@@ -125,7 +125,7 @@
     "city": "City",
     "notes": "Notes",
     "openTier1Now": "Start asking now",
-    "openTier1NowConfigure": "Start asking now (set places first)",
+    "openTier1NowConfigure": "Start asking now (set the casting breakdown first)",
     "openTier1FlowHint": "This follows your booking flow setting \"Start asking automatically when a new date is ready\". You can change it for this date.",
     "saving": "Saving…",
     "saveDate": "Save date",
@@ -135,7 +135,7 @@
     "accepted": "Said yes",
     "confirmed": "Booked",
     "offered": "Asked",
-    "openSlot": "Open place",
+    "openSlot": "Open part",
     "confirm": "Book",
     "cancel": "Cancel",
     "keepBooking": "Keep booking",
@@ -148,8 +148,8 @@
   "cockpitHeader": {
     "generateHireOrder": "Draft the contract",
     "moreActions": "More actions",
-    "slotsCount": "{{confirmed}} of {{total}} places",
-    "slotFill": "Places filled",
+    "slotsCount": "{{confirmed}} of {{total}} parts",
+    "slotFill": "Parts filled",
     "flow": "Flow:"
   },
   "cockpitPager": {
@@ -230,7 +230,7 @@
   },
   "requiredSkillsCard": {
     "title": "Skills required on this date",
-    "computedFrom": "Computed from the {{count}} places on {{show}}. Only artists holding all of them can be asked or booked.",
+    "computedFrom": "Computed from the {{count}} parts on {{show}}. Only artists holding all of them can be asked or booked.",
     "droppedOnDate": "dropped on this date",
     "addedOnDate": "added on this date",
     "noSkillsRequired": "No skills required.",
@@ -244,7 +244,7 @@
     "mustHaveAll": "Artists must have all of these skills to be asked or booked.",
     "droppedOnDate": "dropped on this date",
     "restore": "Restore {{name}}",
-    "fromShow": "From show",
+    "fromShow": "From production",
     "dropOnDate": "Drop {{name}} on this date",
     "remove": "Remove {{name}}",
     "noSkillsRequired": "No skills required.",
@@ -253,7 +253,7 @@
   "tierLadder": {
     "tierN": "Round {{tier}}",
     "adHocCasts": "Ad-hoc casts",
-    "title": "WHO THIS DATE ASKS · SHOW-SPECIFIC",
+    "title": "WHO THIS DATE ASKS · PRODUCTION-SPECIFIC",
     "priorityOrder": "Casts in priority order for {{city}}",
     "ariaLabel": "Who this date asks",
     "statusCounts": "{{sent}} asked · {{accepted}} said yes · {{pending}} waiting · {{cancelled}} cancelled",
@@ -265,7 +265,7 @@
     "directBooking": "Direct booking: producers book from who can be asked",
     "offerTiers": "Rounds",
     "offerTierTimeline": "Who gets asked, and when",
-    "usingShowPriorities": "Using show-specific priorities",
+    "usingShowPriorities": "Using production-specific priorities",
     "howCastsTiersWork": "How casts and rounds work",
     "addSessionTime": "Add a session time before you start asking.",
     "addSessionTimeDialog": "Add a session time to this date before you start asking.",
@@ -313,7 +313,7 @@
     },
     "coverage": {
       "title": "City coverage",
-      "hint": "Click a show to toggle whether this cast can be asked.",
+      "hint": "Click a production to toggle whether this cast can be asked.",
       "noTier": "No round"
     },
     "rail": {
@@ -323,7 +323,7 @@
     "fact": {
       "created": "Created",
       "updated": "Last updated",
-      "showsCovered": "Shows covered",
+      "showsCovered": "Productions covered",
       "coverageGaps": "Coverage gaps"
     },
     "activity": {
@@ -337,7 +337,7 @@
     "addArtists": "Add artists",
     "noMatches": "No matches.",
     "addCitiesFirst": "Add cities first in Settings → Casts & coverage.",
-    "noShows": "No shows available.",
+    "noShows": "No productions available.",
     "tierN": "Round {{tier}}",
     "manageOfferOrderLink": "Manage ask order in Settings, Casts & coverage"
   },
@@ -354,7 +354,7 @@
   },
   "castsSection": {
     "casts": "Casts",
-    "noCasts": "No casts yet. Create one to group artists for who can be asked to a show.",
+    "noCasts": "No casts yet. Create one to group artists for who can be asked to a production.",
     "memberCount_one": "{{count}} member",
     "memberCount_other": "{{count}} members"
   }

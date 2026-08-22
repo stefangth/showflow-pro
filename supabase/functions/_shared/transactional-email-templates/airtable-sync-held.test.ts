@@ -136,7 +136,7 @@ Deno.test("airtable-sync-held email: names the most common held reason as a quan
     topReasonCount: 2,
     settingsUrl: "https://app.showflow.pro/settings?tab=airtable",
   });
-  assert(html.includes("2 of the 3 are not linked to one of your shows"), "states the count and reason for the majority category as a sentence, not a report label");
+  assert(html.includes("2 of the 3 are not linked to one of your productions"), "states the count and reason for the majority category as a sentence, not a report label");
 });
 
 // unlinked_city is the third held cause (a mapped, non-empty city with no linked catalog
@@ -192,7 +192,7 @@ Deno.test("airtable-sync-held email: when every held record shares the reason, s
     topReasonCount: 2,
     settingsUrl: "https://app.showflow.pro/settings?tab=airtable",
   });
-  assert(html.includes("All 2 are not linked to one of your shows"), "states the reason applies to the whole held set, as a sentence");
+  assert(html.includes("All 2 are not linked to one of your productions"), "states the reason applies to the whole held set, as a sentence");
   assert(!(html.includes("2 of 2")), "never renders a redundant N-of-N fraction");
 });
 

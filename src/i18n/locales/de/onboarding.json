@@ -1,10 +1,10 @@
 {
   "steps": {
     "shows": {
-      "title": "Deine Shows eintragen",
-      "todoHint": "Synchronisiere von Airtable, importiere eine Tabelle oder füge eine Show manuell hinzu.",
-      "doneHint": "Deine Shows sind eingetragen.",
-      "ctaLabel": "Show hinzufügen"
+      "title": "Deine Produktionen eintragen",
+      "todoHint": "Synchronisiere von Airtable, importiere eine Tabelle oder füge eine Produktion manuell hinzu.",
+      "doneHint": "Deine Produktionen sind eingetragen.",
+      "ctaLabel": "Produktion hinzufügen"
     },
     "flow": {
       "title": "Booking Flow",
@@ -19,10 +19,10 @@
       "ctaLabel": "Artists hinzufügen"
     },
     "slots": {
-      "title": "Plätze pro Show",
-      "todoHint": "Eine Show ohne Platzanzahl gilt nie als voll.",
-      "doneHint": "Bei jeder Show festgelegt.",
-      "ctaLabel": "Plätze festlegen"
+      "title": "Besetzung pro Produktion",
+      "todoHint": "Eine Produktion ohne Besetzung gilt nie als voll.",
+      "doneHint": "Bei jeder Produktion festgelegt.",
+      "ctaLabel": "Besetzung festlegen"
     },
     "ladder": {
       "title": "Besetzungsreihenfolge pro Stadt",
@@ -32,8 +32,8 @@
     },
     "eligibility": {
       "title": "Wer angefragt werden kann",
-      "todoHint": "Welche Besetzungen zu welcher Show in welcher Stadt gehören.",
-      "doneHint": "Jede geplante Show und Stadt hat eine Besetzung.",
+      "todoHint": "Welche Besetzungen zu welcher Produktion in welcher Stadt gehören.",
+      "doneHint": "Jede geplante Produktion und Stadt hat eine Besetzung.",
       "ctaLabel": "Abdeckung prüfen"
     },
     "timing": {
@@ -235,7 +235,7 @@
   "collapsed": {
     "completeLabel": "Eingerichtet · fertig",
     "completeHintArtist": "Wie diese Organisation dich bucht",
-    "completeHintOrg": "Booking Engine, Termine, Besetzungsplätze, dein Team",
+    "completeHintOrg": "Booking Engine, Termine, Besetzung, dein Team",
     "completeCtaArtist": "Wie das Buchen hier funktioniert",
     "completeCtaOrg": "Wie diese Organisation funktioniert",
     "incompleteLabelProducer": "Organisationseinrichtung läuft",
@@ -252,9 +252,9 @@
       "offers": "Deine Besetzungen pro Stadt gereiht. Die erste Besetzung wird zuerst angefragt, dann die darunter."
     },
     "eligibility": {
-      "what": "Welche Besetzungen zu einer Show in einer Stadt gehören.",
-      "direct": "Welche Besetzungen zu einer Show in einer Stadt gehören. Eine Show und Stadt ohne Treffer kann aus deiner gesamten aktiven Besetzungsliste gebucht werden, abzüglich aller, die an diesem Termin nicht frei sind oder eine erforderliche Fähigkeit nicht haben.",
-      "offers": "Welche Besetzungen zu einer Show in einer Stadt gehören. Ohne Treffer wird niemand angefragt."
+      "what": "Welche Besetzungen zu einer Produktion in einer Stadt gehören.",
+      "direct": "Welche Besetzungen zu einer Produktion in einer Stadt gehören. Eine Produktion und Stadt ohne Treffer kann aus deiner gesamten aktiven Besetzungsliste gebucht werden, abzüglich aller, die an diesem Termin nicht frei sind oder eine erforderliche Fähigkeit nicht haben.",
+      "offers": "Welche Besetzungen zu einer Produktion in einer Stadt gehören. Ohne Treffer wird niemand angefragt."
     }
   },
   "stageChain": {
@@ -285,7 +285,7 @@
       "bookingEngineOff": "Booking Engine · aus",
       "bookingEngineDirect": "Booking Engine · direkt",
       "bookingEngineYours": "Booking Engine · deine",
-      "showsAndBookings": "Shows und Buchungen",
+      "showsAndBookings": "Termine",
       "hireOrders": "Verträge",
       "hireOrdersOff": "Verträge · aus",
       "hireOrdersManual": "Verträge · manuell"
@@ -327,16 +327,16 @@
       "datesImportedLine_other": "{{count}} Termine sind in deinem Katalog.",
       "datesMetricLabel": "Termine drin",
       "datesChipOpen": "Termine öffnen",
-      "datesChipSlots": "Plätze festlegen",
-      "datesActLine": "Nichts Nachgelagertes bedeutet etwas, solange keine Shows existieren.",
+      "datesChipSlots": "Besetzung festlegen",
+      "datesActLine": "Nichts Nachgelagertes bedeutet etwas, solange keine Produktionen existieren.",
       "datesActPrimaryImport": "Termine importieren",
-      "datesActPrimaryAdd": "Show hinzufügen",
+      "datesActPrimaryAdd": "Produktion hinzufügen",
       "datesOffLine": "Termine und Buchungen laufen für diese Organisation nicht in ShowFlow.",
       "offersReadyMetricLabel": "anfragebereit",
       "bookableMetricLabel": "buchbare Termine",
       "offersPrimary": "Erste Gruppe anfragen",
       "offersChip": "Auswahl öffnen",
-      "offersWaitsNeeds": "Braucht einen Termin mit festgelegten Plätzen",
+      "offersWaitsNeeds": "Braucht einen Termin mit festgelegter Besetzung",
       "offersOffName": "Anfragen",
       "offersOffLine": "Keine Gruppen zum Anfragen, keine tägliche Sendung, keine Direktauswahl.",
       "confirmName": "Buchen",
@@ -396,7 +396,7 @@
       "orgImportedLandedOffersClause": "{{readyToOffer}} davon können in der nächsten täglichen Sendung angefragt werden.",
       "orgImportedLandedBookableClause_one": "{{count}} ist jetzt buchbar.",
       "orgImportedLandedBookableClause_other": "{{count}} sind jetzt buchbar.",
-      "orgImportedBodyOffers": "Stufe 01 läuft. Die restlichen Termine haben keine Platzanzahl, daher überspringt die tägliche Sendung sie.",
+      "orgImportedBodyOffers": "Stufe 01 läuft. Die restlichen Termine haben keine Besetzung, daher überspringt die tägliche Sendung sie.",
       "orgImportedBodyDirect": "Stufe 01 läuft. Ein Producer bucht direkt aus der Liste, wer angefragt werden kann. Es gibt keinen Anfrageschritt.",
       "orgGhostHowItWorks": "Wie diese Organisation funktioniert",
       "orgGhostOutstanding": "Was noch offen ist",
@@ -411,7 +411,7 @@
       "orgEmptyGhostHowItWillWork": "Wie diese Organisation funktionieren wird",
       "orgEmptyHintAdmin": "Etwa 15 Minuten",
       "orgEmptyHintCanEdit": "Die kannst du auch erledigen",
-      "orgEmptyHintReadOnly": "Shows hinzufügen ist deins, die Einstellungen nicht",
+      "orgEmptyHintReadOnly": "Produktionen hinzufügen ist deins, die Einstellungen nicht",
       "orgEmptyProgressHint": "Nichts hier hindert dich, den Rest der App zu nutzen.",
       "orgQueueTitle": "Was aus dieser Seite wird",
       "orgQueueHint": "Beispielzeilen. Deine ersetzen sie, sobald die Organisation Termine hat."

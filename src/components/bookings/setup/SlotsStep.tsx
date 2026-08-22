@@ -92,11 +92,11 @@ export function SlotsStep({ orgId, onDone }: { orgId: string | null; onDone: () 
         <div className="flex items-center gap-2.5 rounded-m border border-dashed border-border p-3">
           <span className="min-w-0 flex-1 text-sm text-muted-foreground">
             {hasActiveShows
-              ? "Every active show already has its slot counts set."
-              : "No shows yet. Add a show first, then set its slot counts here."}
+              ? "Every active production already has its slot counts set."
+              : "No productions yet. Add a production first, then set its slot counts here."}
           </span>
           <Button asChild size="sm" variant="outline">
-            <Link to={ROUTES.PRODUCTIONS}>Add a show</Link>
+            <Link to={ROUTES.PRODUCTIONS}>Add a production</Link>
           </Button>
         </div>
       </div>

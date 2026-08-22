@@ -19,11 +19,11 @@
     },
     "header": {
       "eyebrow": "BOOKINGS",
-      "title": "Shows & bookings"
+      "title": "Dates"
     },
     "stat": {
       "confirmedThisMonth": "Booked this month",
-      "slotsStillOpen": "Places still open"
+      "slotsStillOpen": "Parts still open"
     },
     "bulk": {
       "confirmHolds": "Book who said yes",
@@ -49,8 +49,8 @@
     "day": {
       "eyebrowCasting": "casting",
       "eyebrowFullyFilled": "fully filled",
-      "subCasting_one": "{{count}} date · {{open}} places still open",
-      "subCasting_other": "{{count}} dates · {{open}} places still open",
+      "subCasting_one": "{{count}} date · {{open}} parts still open",
+      "subCasting_other": "{{count}} dates · {{open}} parts still open",
       "subComplete_one": "{{count}} date · cast complete",
       "subComplete_other": "{{count}} dates · cast complete",
       "empty": "No dates scheduled on this day."
@@ -89,11 +89,11 @@
         "generateHireOrders_other": "Draft {{count}} contracts"
       },
       "note": {
-        "expiresToday_one": "{{count}} artist who said yes will lose the place if you don't book them today.",
-        "expiresToday_other": "{{count}} artists who said yes will lose their places if you don't book them today.",
+        "expiresToday_one": "{{count}} artist who said yes will lose the part if you don't book them today.",
+        "expiresToday_other": "{{count}} artists who said yes will lose their parts if you don't book them today.",
         "atRisk": "{{slots}}, {{lead}}.",
-        "atRiskSlots_one": "{{count}} open place",
-        "atRiskSlots_other": "{{count}} open places",
+        "atRiskSlots_one": "{{count}} open part",
+        "atRiskSlots_other": "{{count}} open parts",
         "atRiskLeadToday": "today",
         "atRiskLeadDays_one": "in {{count}} day",
         "atRiskLeadDays_other": "in {{count}} days",
@@ -142,16 +142,16 @@
       "untitled": "Untitled",
       "rowSummary_one": "{{count}} date · {{unfilled}} unfilled",
       "rowSummary_other": "{{count}} dates · {{unfilled}} unfilled",
-      "unfilledSlotsHeader": "Unfilled places"
+      "unfilledSlotsHeader": "Unfilled parts"
     },
     "seasonKpis": {
-      "unfilledMainSlotsLabel": "Unfilled main places",
+      "unfilledMainSlotsLabel": "Unfilled main parts",
       "unfilledMainSlotsNote_one": "across {{count}} date",
       "unfilledMainSlotsNote_other": "across {{count}} dates",
       "allMainCastFilled": "all main cast filled",
       "heaviestWeekLabel": "Heaviest week",
-      "heaviestWeekNote_one": "{{count}} date · {{open}} places open",
-      "heaviestWeekNote_other": "{{count}} dates · {{open}} places open",
+      "heaviestWeekNote_one": "{{count}} date · {{open}} parts open",
+      "heaviestWeekNote_other": "{{count}} dates · {{open}} parts open",
       "readyForHireOrderLabel": "Ready for contract",
       "readyForHireOrderNoteFilled": "fully filled, no contract yet",
       "readyForHireOrderNoteNone": "none waiting"
@@ -168,7 +168,7 @@
   },
   "rowPeek": {
     "eyebrowUnconfigured": "unconfigured",
-    "noConfig": "Set cast places in Settings to track fill.",
+    "noConfig": "Set the casting breakdown in Settings to track fill.",
     "confirming": "Booking…",
     "confirm": "Book {{count}}",
     "openDate": "Open date",
@@ -221,7 +221,7 @@
       "confirmed": "Booked {{count}}",
       "nothingToConfirm": "Nothing to book, it moved on"
     },
-    "title": "Shows & Bookings",
+    "title": "Dates",
     "subtitle": "All scheduled dates and cast status in one place.",
     "setupChecklist": "Setup checklist",
     "newDate": "New date",

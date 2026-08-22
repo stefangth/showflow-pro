@@ -73,7 +73,7 @@
     "allDates": {
       "headerDate": "Date",
       "headerDay": "Day",
-      "headerShow": "Show",
+      "headerShow": "Production",
       "headerSession": "Session",
       "headerMyStatus": "My status",
       "hireOrder": "Contract"
@@ -140,7 +140,7 @@
       "eligibilityTitle": "Who can be asked comes from your cast",
       "eligibilityBody": "A date appears when a cast you are in can be asked for it and you have every skill it needs.",
       "offersTitle": "Asks arrive by email",
-      "offersBody": "One daily send at {{time}}, never a mail per date. Saying yes holds your place until your production team has the last word.",
+      "offersBody": "One daily send at {{time}}, never a mail per date. Saying yes holds your part until your production team has the last word.",
       "offersBodyDirect": "You are booked directly, so there is nothing to answer.",
       "windowTitle": "Answer within {{hours}} hours",
       "windowBody": "After that the ask expires and goes to who this date asks next."

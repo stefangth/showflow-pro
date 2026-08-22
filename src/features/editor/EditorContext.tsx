@@ -55,8 +55,8 @@ interface EditorContextType {
 const EditorContext = createContext<EditorContextType | undefined>(undefined);
 
 export function EditorProvider({ children }: { children: ReactNode }) {
-  const { roles, currentOrg, isSuperAdmin } = useAuth();
-  const canEdit = canUseEditor(roles, isSuperAdmin);
+  const { currentOrg, isSuperAdmin } = useAuth();
+  const canEdit = canUseEditor(isSuperAdmin);
   const orgId = currentOrg?.id ?? null;
   const qc = useQueryClient();
 
@@ -66,7 +66,7 @@ export function EditorProvider({ children }: { children: ReactNode }) {
 
   // Restore the persisted flag once access is known — NOT in the useState initializer.
   // EditorProvider mounts inside AuthProvider above the routes, so on the very first
-  // render identity has not loaded: roles is [] and isSuperAdmin is false, making
+  // render identity has not loaded: isSuperAdmin is false, making
   // canEdit false for everyone. An initializer runs once and would never see access
   // arrive, and a write-through effect on that same render would delete the flag it
   // was meant to read.

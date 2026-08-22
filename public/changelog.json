@@ -1,5 +1,27 @@
 [
   {
+    "version": "1.17.2",
+    "date": "2026-08-22",
+    "dateLabel": "August 22, 2026",
+    "title": "Clearer, more consistent wording across the app",
+    "changes": {
+      "improved": [
+        {
+          "title": "\"Dates\" everywhere",
+          "description": "The scheduling area is now called Dates in every place it appears, matching the sidebar."
+        },
+        {
+          "title": "\"Production\" for the work in your catalog",
+          "description": "Wherever the app means a staged work you set up, it now says production. Individual performances keep the word show."
+        },
+        {
+          "title": "\"Casting breakdown\" and \"parts\"",
+          "description": "What you set up on a production is now its casting breakdown, made of named parts for main and understudy, instead of the vaguer \"places\"."
+        }
+      ]
+    }
+  },
+  {
     "version": "1.17.1",
     "date": "2026-08-21",
     "dateLabel": "August 21, 2026",

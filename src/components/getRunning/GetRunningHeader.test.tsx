@@ -96,7 +96,7 @@ describe("GetRunningHeader", () => {
   });
 
   describe("producer headline (screen 03)", () => {
-    const PRODUCER_BODY = "This is here so you know why Shows and Bookings looks empty, not so you can fix all of it.";
+    const PRODUCER_BODY = "This is here so you know why Dates looks empty, not so you can fix all of it.";
 
     it("reads every not-done task as the producer's own (producerYours) when nothing waits on an admin", () => {
       const model = modelWithTasks([

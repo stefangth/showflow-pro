@@ -13,8 +13,8 @@ export const GLOSSARY: readonly GlossaryEntry[] = [
   {
     term: 'softBooked',
     def: {
-      en: 'The status on an individual booking once an artist says yes but before it is booked. The place is claimed, waiting on the last word, wherever your organization keeps one.',
-      de: 'Der Status einer einzelnen Buchung, sobald ein Artist zugesagt hat, aber bevor sie gebucht ist. Der Platz ist belegt und wartet auf das letzte Wort, sofern deine Organisation sich eines vorbehält.',
+      en: 'The status on an individual booking once an artist says yes but before it is booked. The part is claimed, waiting on the last word, wherever your organization keeps one.',
+      de: 'Der Status einer einzelnen Buchung, sobald ein Artist zugesagt hat, aber bevor sie gebucht ist. Die Position ist belegt und wartet auf das letzte Wort, sofern deine Organisation sich eines vorbehält.',
     },
   },
   {

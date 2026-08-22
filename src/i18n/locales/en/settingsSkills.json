@@ -2,7 +2,7 @@
   "header": {
     "eyebrow": "ORGANIZATION · CATALOG",
     "title": "Skills",
-    "description": "Skills gate who can be asked or booked. Productions require them per place; artists hold them on their profile."
+    "description": "Skills gate who can be asked or booked. Productions require them per part; artists hold them on their profile."
   },
   "toolbar": {
     "searchPlaceholder": "Find a skill",

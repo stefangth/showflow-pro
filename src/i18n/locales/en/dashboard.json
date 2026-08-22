@@ -16,8 +16,8 @@
     "unansweredMore": "+{{count}} more",
     "offer": {
       "question": "Can you do this one?",
-      "acceptNote": "Say yes and the place is yours, nobody has to confirm it afterwards.",
-      "acceptNoteConfirm": "Say yes and the place is yours to lose, your production team still has to confirm it."
+      "acceptNote": "Say yes and the part is yours, nobody has to confirm it afterwards.",
+      "acceptNoteConfirm": "Say yes and the part is yours to lose, your production team still has to confirm it."
     }
   },
   "producer": {

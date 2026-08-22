@@ -108,14 +108,14 @@ describe("org-invitation body does not repeat the org name in every consecutive 
 
 describe("org-invitation.productIntro", () => {
   // A0.1 asks the invitation email to say what ShowFlow actually IS for a stranger who has
-  // never seen the product before. "Plans shows" and "books artists" are core, always-on
+  // never seen the product before. "Plans productions" and "books artists" are core, always-on
   // concepts (never gated by an entitlement, see src/lib/entitlements.ts), so naming them
   // is always true; the roleIntro action lines below name the same two facts again in
   // second person for the invitee's specific role.
   const productIntro = EMAIL_COPY_DEFAULTS["org-invitation.productIntro"];
 
-  it("names what ShowFlow does (shows, artists), not just a tautology about production work", () => {
-    expect(productIntro.toLowerCase()).toContain("shows");
+  it("names what ShowFlow does (productions, artists), not just a tautology about production work", () => {
+    expect(productIntro.toLowerCase()).toContain("productions");
     expect(productIntro.toLowerCase()).toContain("artists");
   });
 

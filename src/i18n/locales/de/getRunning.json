@@ -19,7 +19,7 @@
       "blocking_other": "Das erledigst du, es dauert etwa {{minutes}} Minuten. Sonst blockiert hier nichts, und nichts hier hindert dich, den Rest der App zu nutzen.",
       "ready": "Alles, was deine erste Anfrage blockiert, ist erledigt. Der Rest dieser Liste lohnt sich noch, hält dich aber nicht mehr auf.",
       "complete": "Jede Aufgabe hier ist erledigt. Schau jederzeit in den Einstellungen vorbei, falls sich etwas ändert.",
-      "producer": "Das ist hier, damit du weißt, warum Shows und Bookings leer aussieht, nicht damit du alles davon lösen kannst."
+      "producer": "Das ist hier, damit du weißt, warum Termine leer aussieht, nicht damit du alles davon lösen kannst."
     },
     "datesWithoutCity_one": "1 Termin hat noch keine Stadt, daher kann die Engine ihn nicht anfragen.",
     "datesWithoutCity_other": "{{count}} Termine haben noch keine Stadt, daher kann die Engine sie nicht anfragen.",
@@ -111,7 +111,7 @@
       "flow": "Änderung wird protokolliert",
       "people": "Keine E-Mail, bevor du zu einem Datum anfragst",
       "ladder": "Reihenfolge ist pro Stadt",
-      "eligibility": "Die eigene Besetzung einer Show schlägt die Stadtrangfolge",
+      "eligibility": "Die eigene Besetzung einer Produktion schlägt die Stadtrangfolge",
       "timing": "Gilt für die heutige tägliche Sendung",
       "team": "Sie erhalten eine E-Mail-Einladung",
       "letterhead": "Wird auf jedem Vertrag verwendet",
@@ -127,11 +127,11 @@
         "heldLine_one": "{{count}} Eintrag beim letzten Lauf zurückgehalten",
         "heldLine_other": "{{count}} Einträge beim letzten Lauf zurückgehalten",
         "resolve": "Lösen",
-        "emptyLine": "Noch keine Termine. Verbinde Airtable oder füge eine Show von Hand hinzu.",
+        "emptyLine": "Noch keine Termine. Verbinde Airtable oder füge eine Produktion von Hand hinzu.",
         "setup": "Airtable Sync einrichten",
         "dividerOr": "oder von Hand hinzufügen",
-        "newShow": "Neue Show",
-        "unlocks": "Jeder folgende Schritt liest aus diesen Terminen: Plätze, Rangfolge und wer angefragt werden kann.",
+        "newShow": "Neue Produktion",
+        "unlocks": "Jeder folgende Schritt liest aus diesen Terminen: Besetzung, Rangfolge und wer angefragt werden kann.",
         "airtableDialogTitle": "Airtable Sync"
       },
       "team": {
@@ -198,7 +198,7 @@
         "nullCityNote": "Manche Termine haben keine Stadt gesetzt. Behebe das Datum, damit es eine Stadt hat.",
         "unlocks_one": "Verknüpfe eine Besetzung mit {{show}} und {{count}} Termin wird anfragbar.",
         "unlocks_other": "Verknüpfe eine Besetzung mit {{show}} und {{count}} Termine werden anfragbar.",
-        "unlocksDone": "Jede Show und Stadt hat eine Besetzung in der ersten Gruppe.",
+        "unlocksDone": "Jede Produktion und Stadt hat eine Besetzung in der ersten Gruppe.",
         "castLinked": "Besetzung verknüpft",
         "castLinkFailed": "Besetzung konnte nicht verknüpft werden",
         "byProduction": "Abdeckung nach Produktion",
@@ -209,22 +209,22 @@
         "yourCasts": "Deine Besetzungen",
         "castCountLabel_one": "{{count}} Besetzung",
         "castCountLabel_other": "{{count}} Besetzungen",
-        "noProductionsYet": "Noch hat keine Show einen zukünftigen Termin, also gibt es nichts abzudecken. Besetzungen, die du jetzt anlegst, warten hier.",
+        "noProductionsYet": "Noch hat keine Produktion einen zukünftigen Termin, also gibt es nichts abzudecken. Besetzungen, die du jetzt anlegst, warten hier.",
         "datesNeedCity": "Deine kommenden Termine haben noch keine Stadt, also gibt es nichts abzudecken, bis du am Termin eine hinzufügst."
       }
     }
   },
   "tasks": {
     "dates": {
-      "title": "Shows werden synchronisiert",
-      "subLabel": "Shows kommen rein, von Airtable, stündlich",
-      "description": "Deine Shows kommen automatisch rein, sodass immer etwas zum Planen da ist.",
+      "title": "Produktionen werden synchronisiert",
+      "subLabel": "Produktionen kommen rein, von Airtable, stündlich",
+      "description": "Deine Produktionen kommen automatisch rein, sodass immer etwas zum Planen da ist.",
       "action": "Prüfen"
     },
     "slots": {
-      "title": "Plätze bei jeder Show festgelegt",
-      "subLabel": "Plätze bei jeder Show festgelegt",
-      "description": "Wie viele Artists jede Show braucht, Haupt- und Zweitbesetzung.",
+      "title": "Besetzung bei jeder Produktion festgelegt",
+      "subLabel": "Besetzung bei jeder Produktion festgelegt",
+      "description": "Wie viele Artists jede Produktion braucht, Haupt- und Zweitbesetzung.",
       "action": "Klären"
     },
     "flow": {
@@ -244,7 +244,7 @@
     },
     "eligibility": {
       "title": "Prüfen, wer angefragt werden kann",
-      "description": "Welche Besetzungen zu welcher Show in welcher Stadt gehören.",
+      "description": "Welche Besetzungen zu welcher Produktion in welcher Stadt gehören.",
       "action": "Öffnen"
     },
     "timing": {

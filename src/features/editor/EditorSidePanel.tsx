@@ -30,7 +30,7 @@ const ALL_ROLES: AppRole[] = ['admin', 'producer', 'artist'];
 
 const ROUTE_LABELS: Record<string, string> = {
   [ROUTES.DASHBOARD]:    'Dashboard',
-  [ROUTES.BOOKINGS]:     'Shows & Bookings',
+  [ROUTES.BOOKINGS]:     'Dates',
   [ROUTES.ARTISTS]:      'Artists',
   [ROUTES.AVAILABILITY]: 'Availability',
   [ROUTES.SETTINGS]:     'Settings',
@@ -189,7 +189,7 @@ function LayoutTab() {
       <div>
         <p className="text-sm font-medium">Edit columns directly on the page</p>
         <p className="text-xs text-muted-foreground mt-1">
-          Navigate to Shows &amp; Bookings or Availability with editor mode on.
+          Navigate to Dates or Availability with editor mode on.
           A column bar appears above each table — drag chips to reorder, click the eye to hide.
         </p>
       </div>

@@ -1479,7 +1479,7 @@ describe('CalendarSurface — Space-peek popover (producer, month lens)', () => 
 
     const popover = screen.getByTestId('date-peek-popover');
     // Headline reflects computeDatePeek's math: 1 accepted waiting, 1 main slot open.
-    expect(within(popover).getByText('1 said yes, waiting on you · 1 main place open')).toBeInTheDocument();
+    expect(within(popover).getByText('1 said yes, waiting on you · 1 main part open')).toBeInTheDocument();
 
     fireEvent.click(within(popover).getByRole('button', { name: 'Book 1' }));
     expect(actions.confirmHolds).toHaveBeenCalledWith('pd-peek');

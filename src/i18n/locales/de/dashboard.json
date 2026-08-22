@@ -16,8 +16,8 @@
     "unansweredMore": "+{{count}} weitere",
     "offer": {
       "question": "Kannst Du diesen Termin übernehmen?",
-      "acceptNote": "Sag Ja, und der Platz gehört Dir, niemand muss das danach noch bestätigen.",
-      "acceptNoteConfirm": "Sag Ja, und der Platz ist so gut wie Deiner, Dein Produktionsteam muss ihn noch bestätigen."
+      "acceptNote": "Sag Ja, und die Position gehört Dir, niemand muss das danach noch bestätigen.",
+      "acceptNoteConfirm": "Sag Ja, und die Position ist so gut wie Deine, Dein Produktionsteam muss sie noch bestätigen."
     }
   },
   "producer": {

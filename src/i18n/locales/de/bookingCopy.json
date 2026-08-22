@@ -1,9 +1,9 @@
 {
   "actionCopy": {
     "confirm": {
-      "bareConsequence": "Buchen gibt ihnen den Platz.",
-      "withDigest": "Buchen gibt ihnen den Platz. Der Artist sieht es sofort in der App. Die Buchungs-E-Mail geht mit dem täglichen Versand um {{time}} raus.",
-      "appOnly": "Buchen gibt ihnen den Platz und benachrichtigt den Artist sofort in der App."
+      "bareConsequence": "Buchen gibt ihnen die Position.",
+      "withDigest": "Buchen gibt ihnen die Position. Der Artist sieht es sofort in der App. Die Buchungs-E-Mail geht mit dem täglichen Versand um {{time}} raus.",
+      "appOnly": "Buchen gibt ihnen die Position und benachrichtigt den Artist sofort in der App."
     },
     "accept": {
       "holdTitle": "Zugesagt",
@@ -51,12 +51,12 @@
       "escalateOff": "Nächste Runde automatisch öffnen: aus"
     },
     "peek": {
-      "allConfirmed": "Alle {{total}} Plätze gebucht",
+      "allConfirmed": "Alle {{total}} Positionen gebucht",
       "acceptedWaiting": "{{count}} zugesagt, warten auf dich",
-      "mainSlotOpen_one": "{{count}} Hauptplatz frei",
-      "mainSlotOpen_other": "{{count}} Hauptplätze frei",
-      "understudySlotOpen_one": "{{count}} Zweitbesetzungsplatz frei",
-      "understudySlotOpen_other": "{{count}} Zweitbesetzungsplätze frei",
+      "mainSlotOpen_one": "{{count}} Hauptposition frei",
+      "mainSlotOpen_other": "{{count}} Hauptpositionen frei",
+      "understudySlotOpen_one": "{{count}} Zweitbesetzungsposition frei",
+      "understudySlotOpen_other": "{{count}} Zweitbesetzungspositionen frei",
       "readyToConfirm": "Wartet auf dich"
     },
     "headerCta": {
@@ -74,8 +74,8 @@
     "hireFooter": {
       "ready": "BEREIT",
       "left": "{{count}} OFFEN",
-      "detailReady": "Alle Plätze gebucht, erstellt einen Vertrag pro Artist",
-      "detailWaiting": "Warten auf {{remaining}} von {{total}} Plätzen"
+      "detailReady": "Alle Positionen gebucht, erstellt einen Vertrag pro Artist",
+      "detailWaiting": "Warten auf {{remaining}} von {{total}} Positionen"
     }
   }
 }

@@ -13,8 +13,8 @@ export const HELP_ITEMS: readonly HelpItem[] = [
     id: 'A0.1', role: 'admin', stage: 0, status: 'new', surface: 'Invitation email', updated: '2026-08-14',
     q: { en: 'What is ShowFlow, and what does it do?', de: 'Was ist ShowFlow, und was macht es?' },
     a: {
-      en: 'ShowFlow is where your organization plans its shows and books the artists for them. Your invitation email now opens with that line, before it asks you to accept anything.',
-      de: 'ShowFlow ist der Ort, an dem deine Organisation ihre Shows plant und die Artists dafür bucht. Deine Einladungs-E-Mail beginnt jetzt mit genau diesem Satz, bevor sie dich um irgendeine Zusage bittet.',
+      en: 'ShowFlow is where your organization plans its productions and books the artists for them. Your invitation email now opens with that line, before it asks you to accept anything.',
+      de: 'ShowFlow ist der Ort, an dem deine Organisation ihre Produktionen plant und die Artists dafür bucht. Deine Einladungs-E-Mail beginnt jetzt mit genau diesem Satz, bevor sie dich um irgendeine Zusage bittet.',
     },
   },
   {
@@ -138,7 +138,7 @@ export const HELP_ITEMS: readonly HelpItem[] = [
     },
   },
   {
-    id: 'A3.6', role: 'admin', stage: 3, status: 'ok', surface: 'Shows and bookings, rehearsal', updated: '2026-08-14',
+    id: 'A3.6', role: 'admin', stage: 3, status: 'ok', surface: 'Dates, rehearsal', updated: '2026-08-14',
     q: { en: 'Can I test this without emailing real people?', de: 'Kann ich das testen, ohne echten Leuten E-Mails zu schicken?' },
     a: {
       en: 'Yes. Rehearse the next date shows exactly who would be asked and when. Nothing is created and no email leaves.',
@@ -255,8 +255,8 @@ export const HELP_ITEMS: readonly HelpItem[] = [
     id: 'P2.2', role: 'producer', stage: 2, status: 'ok', surface: 'Get running board', updated: '2026-08-18',
     q: { en: 'Why is everything empty? Is it me, or the organization?', de: 'Warum ist alles leer? Liegt es an mir, oder an der Organisation?' },
     a: {
-      en: 'It is the organization. Get running says so directly at the top: it is there so you know why Shows and Bookings looks empty, not so you can fix all of it.',
-      de: 'Es liegt an der Organisation. Get running sagt das oben direkt: es ist da, damit du weißt, warum Shows und Bookings leer aussieht, nicht damit du alles davon lösen kannst.',
+      en: 'It is the organization. Get running says so directly at the top: it is there so you know why Dates looks empty, not so you can fix all of it.',
+      de: 'Es liegt an der Organisation. Get running sagt das oben direkt: es ist da, damit du weißt, warum Termine leer aussieht, nicht damit du alles davon lösen kannst.',
     },
   },
   {
@@ -295,8 +295,8 @@ export const HELP_ITEMS: readonly HelpItem[] = [
     id: 'P3.3', role: 'producer', stage: 3, status: 'new', surface: 'Show date cockpit · bookings list', updated: '2026-08-14',
     q: { en: 'What does "Said yes, waiting on you" mean? Why can I not just book someone?', de: 'Was heißt "Hat zugesagt, wartet auf dich"? Warum kann ich jemanden nicht einfach buchen?' },
     a: {
-      en: 'It means the artist said yes and the place is claimed, waiting on your last word. That status only exists for organizations that keep the last word: where an organization does not, a yes books the artist straight away instead, and this status never appears. The Accepted and Said yes, waiting on you badges carry that explanation on hover, on the surface where the status appears.',
-      de: 'Es heißt, der Artist hat zugesagt und der Platz ist belegt, wartet aber auf dein letztes Wort. Diesen Status gibt es nur bei Organisationen, die sich das letzte Wort vorbehalten: behält eine Organisation es sich nicht vor, bucht ein Ja den Artist sofort, und dieser Status taucht nie auf. Die Badges Angenommen und Hat zugesagt, wartet auf dich tragen diese Erklärung beim Hovern, genau dort, wo der Status erscheint.',
+      en: 'It means the artist said yes and the part is claimed, waiting on your last word. That status only exists for organizations that keep the last word: where an organization does not, a yes books the artist straight away instead, and this status never appears. The Accepted and Said yes, waiting on you badges carry that explanation on hover, on the surface where the status appears.',
+      de: 'Es heißt, der Artist hat zugesagt und die Position ist belegt, wartet aber auf dein letztes Wort. Diesen Status gibt es nur bei Organisationen, die sich das letzte Wort vorbehalten: behält eine Organisation es sich nicht vor, bucht ein Ja den Artist sofort, und dieser Status taucht nie auf. Die Badges Angenommen und Hat zugesagt, wartet auf dich tragen diese Erklärung beim Hovern, genau dort, wo der Status erscheint.',
     },
   },
   {
@@ -351,8 +351,8 @@ export const HELP_ITEMS: readonly HelpItem[] = [
     id: 'P4.4', role: 'producer', stage: 4, status: 'new', surface: 'Bookings, Needs you lens', updated: '2026-08-15',
     q: { en: 'What is Needs you, and why do I land there first now?', de: 'Was ist Needs you, und warum lande ich jetzt zuerst dort?' },
     a: {
-      en: 'Shows and bookings now opens on Needs you: everything that actually needs you today, grouped into waiting on you and expiring today, dates at risk, contracts ready to issue, and cancellations the cast has not heard about yet. Switch to Month, Week, Season, or Agenda for the full calendar.',
-      de: 'Shows und Buchungen öffnet jetzt auf Needs you: alles, was heute wirklich von dir gebraucht wird, gruppiert in wartet auf dich und läuft heute ab, gefährdete Termine, ausstellbereite Engagementverträge, und Absagen, über die die Besetzung noch nicht informiert wurde. Wechsle zu Month, Week, Season oder Agenda für den vollständigen Kalender.',
+      en: 'Dates now opens on Needs you: everything that actually needs you today, grouped into waiting on you and expiring today, dates at risk, contracts ready to issue, and cancellations the cast has not heard about yet. Switch to Month, Week, Season, or Agenda for the full calendar.',
+      de: 'Termine öffnet jetzt auf Needs you: alles, was heute wirklich von dir gebraucht wird, gruppiert in wartet auf dich und läuft heute ab, gefährdete Termine, ausstellbereite Engagementverträge, und Absagen, über die die Besetzung noch nicht informiert wurde. Wechsle zu Month, Week, Season oder Agenda für den vollständigen Kalender.',
     },
   },
   {
@@ -417,8 +417,8 @@ export const HELP_ITEMS: readonly HelpItem[] = [
     id: 'R0.1', role: 'artist', stage: 0, status: 'ok', surface: 'Invitation email', updated: '2026-08-14',
     q: { en: 'What is ShowFlow? Is this spam?', de: 'Was ist ShowFlow? Ist das Spam?' },
     a: {
-      en: 'It is the tool your organization books with. Every invitation now opens with the same line: ShowFlow is where the organization plans its shows and books the artists for them.',
-      de: 'Es ist das Tool, mit dem deine Organisation bucht. Jede Einladung beginnt jetzt mit demselben Satz: ShowFlow ist der Ort, an dem die Organisation ihre Shows plant und die Artists dafür bucht.',
+      en: 'It is the tool your organization books with. Every invitation now opens with the same line: ShowFlow is where the organization plans its productions and books the artists for them.',
+      de: 'Es ist das Tool, mit dem deine Organisation bucht. Jede Einladung beginnt jetzt mit demselben Satz: ShowFlow ist der Ort, an dem die Organisation ihre Produktionen plant und die Artists dafür bucht.',
     },
   },
   {

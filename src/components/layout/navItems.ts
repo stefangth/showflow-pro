@@ -34,7 +34,7 @@ const SECTION_ORDER: NavSection[] = ['workspace', 'catalog', 'system'];
 export const NAV_ITEMS: NavItem[] = [
   { to: ROUTES.GET_RUNNING, icon: Rocket, label: 'Get running', labelKey: 'nav.getRunning', section: 'workspace', roles: ['admin', 'producer'] },
   { to: ROUTES.DASHBOARD, icon: CalendarCheck, label: 'Dashboard', labelKey: 'nav.dashboard', section: 'workspace' },
-  { to: ROUTES.BOOKINGS, icon: BookOpen, label: 'Shows & Bookings', labelKey: 'nav.bookings', section: 'workspace', roles: ['admin', 'producer'], badge: 'needsYou' },
+  { to: ROUTES.BOOKINGS, icon: BookOpen, label: 'Dates', labelKey: 'nav.bookings', section: 'workspace', roles: ['admin', 'producer'], badge: 'needsYou' },
   { to: ROUTES.HIRE_ORDERS, icon: FileSignature, label: 'Hire orders', labelKey: 'nav.hireOrders', section: 'workspace', roles: ['admin', 'producer'], feature: 'hire_orders', badge: 'awaitingCountersign' },
   { to: ROUTES.AVAILABILITY, icon: Clock, label: 'Availability', labelKey: 'nav.availability', section: 'workspace', roles: ['artist'], feature: 'booking_flow', badge: 'openOffers' },
   { to: ROUTES.CHATS, icon: MessageSquare, label: 'Chats', labelKey: 'nav.chats', section: 'workspace' },

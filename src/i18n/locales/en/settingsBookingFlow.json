@@ -72,9 +72,9 @@
         "autoOpenAria": "Auto-ask the first group",
         "autoEscalateLabel": "Move to the next group automatically when the answer-by time closes short",
         "autoEscalateAria": "Auto-move to the next group",
-        "atRiskLabel": "Alert the production team when the group being asked cannot fill the remaining places",
+        "atRiskLabel": "Alert the production team when the group being asked cannot fill the remaining parts",
         "atRiskAria": "At-risk alerts",
-        "atRiskHelper": "Checked hourly. An alert is sent when booked artists plus live pending asks are fewer than the places needed."
+        "atRiskHelper": "Checked hourly. An alert is sent when booked artists plus live pending asks are fewer than the parts needed."
       },
       "notifyArtists": {
         "title": "Notify artists",
@@ -89,7 +89,7 @@
         "referenceFieldLabel": "Reference field",
         "referenceFieldAria": "Reference field",
         "referenceFieldOptions": {
-          "show": "Show label (default)",
+          "show": "Production label (default)",
           "program": "Program only",
           "custom": "Custom field…"
         }

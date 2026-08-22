@@ -506,7 +506,7 @@ describe("HireOrdersPage", () => {
     expect(await screen.findByText(/2 dates are fully cast and ready/i)).toBeInTheDocument();
     // A semantic token, not a numbered accent stop: those are identical in light
     // and dark by design, so bare on a card the link failed contrast in dark.
-    expect(screen.getByText(/Generate from Shows and bookings/).className).toContain("text-primary");
+    expect(screen.getByText(/Generate from Dates/).className).toContain("text-primary");
   });
 
   it("never points at ready dates for an org that already has orders", async () => {

@@ -73,7 +73,7 @@
     "allDates": {
       "headerDate": "Datum",
       "headerDay": "Tag",
-      "headerShow": "Show",
+      "headerShow": "Produktion",
       "headerSession": "Session",
       "headerMyStatus": "Mein Status",
       "hireOrder": "Vertrag"
@@ -140,7 +140,7 @@
       "eligibilityTitle": "Wer angefragt wird, ergibt sich aus deiner Besetzung",
       "eligibilityBody": "Ein Termin erscheint, wenn eine Besetzung, in der du bist, dafür angefragt werden kann und du alle nötigen Skills hast.",
       "offersTitle": "Anfragen kommen per E-Mail",
-      "offersBody": "Eine tägliche Sendung um {{time}}, nie eine Mail pro Termin. Wenn du zusagst, hältst du dir den Platz frei, bis dein Produktionsteam das letzte Wort hat.",
+      "offersBody": "Eine tägliche Sendung um {{time}}, nie eine Mail pro Termin. Wenn du zusagst, hältst du dir die Position frei, bis dein Produktionsteam das letzte Wort hat.",
       "offersBodyDirect": "Du wirst direkt gebucht, es gibt also nichts zu beantworten.",
       "windowTitle": "Antworte innerhalb von {{hours}} Stunden",
       "windowBody": "Danach läuft die Anfrage ab und geht an die Nächsten in der Reihe."
