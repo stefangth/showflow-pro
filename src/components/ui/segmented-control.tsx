@@ -6,6 +6,8 @@ export interface SegmentedControlOption<T extends string> {
   value: T;
   label: string;
   count?: number;
+  /** Optional `data-testid` for the rendered tab button (identity data, not styling). */
+  testId?: string;
 }
 
 export interface SegmentedControlProps<T extends string> {
@@ -42,6 +44,8 @@ export function SegmentedControl<T extends string>({
             type="button"
             role="tab"
             aria-selected={active}
+            data-testid={option.testId}
+            data-active={active}
             onClick={() => onChange(option.value)}
             className={cn(
               "inline-flex h-[29px] cursor-pointer items-center gap-1.5 rounded-s px-3 text-control font-medium transition-colors",

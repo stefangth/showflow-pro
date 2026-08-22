@@ -25,7 +25,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { Popover, PopoverContent } from '@/components/ui/popover';
 import { RowPeek } from '@/components/bookings/RowPeek';
 import { CalendarSurfaceHeader } from './CalendarSurfaceHeader';
-import { LensTabs, type LensTabDef } from './LensTabs';
+import { SegmentedControl, type SegmentedControlOption } from '@/components/ui/segmented-control';
 import { CalendarToolbar } from './CalendarToolbar';
 import { PeriodNavigator } from './PeriodNavigator';
 import { ScopeChips } from './ScopeChips';
@@ -52,23 +52,23 @@ type SurfaceTF = TFunction<['bookings', 'availability', 'common']>;
 /**
  * Producer lens set (spec §2/§4): Needs you (first and default — spec §3),
  * Month, Week, Season, Agenda. Artist gets Offers + Month + All dates.
- * `LensTabs` renders whatever list it's given, so this function is the only
- * place the producer tab order/membership is defined.
+ * `SegmentedControl` renders whatever option list it's given, so this
+ * function is the only place the producer tab order/membership is defined.
  */
-function producerLenses(needsYouQueue: NeedsYouQueue | undefined, t: SurfaceTF): LensTabDef[] {
+function producerLenses(needsYouQueue: NeedsYouQueue | undefined, t: SurfaceTF): SegmentedControlOption<string>[] {
   return [
-    { key: 'needs-you', label: t('calendar.lens.needsYou'), count: needsYouQueue?.totalItems },
-    { key: 'month', label: t('calendar.lens.month') },
-    { key: 'week', label: t('calendar.lens.week') },
-    { key: 'season', label: t('calendar.lens.season') },
-    { key: 'agenda', label: t('calendar.lens.agenda') },
+    { value: 'needs-you', label: t('calendar.lens.needsYou'), count: needsYouQueue?.totalItems, testId: 'lens-tab-needs-you' },
+    { value: 'month', label: t('calendar.lens.month'), testId: 'lens-tab-month' },
+    { value: 'week', label: t('calendar.lens.week'), testId: 'lens-tab-week' },
+    { value: 'season', label: t('calendar.lens.season'), testId: 'lens-tab-season' },
+    { value: 'agenda', label: t('calendar.lens.agenda'), testId: 'lens-tab-agenda' },
   ];
 }
-function artistLenses(t: SurfaceTF): LensTabDef[] {
+function artistLenses(t: SurfaceTF): SegmentedControlOption<string>[] {
   return [
-    { key: 'offers', label: t('availability:calendar.lens.offers') },
-    { key: 'month', label: t('availability:calendar.lens.month') },
-    { key: 'all-dates', label: t('availability:calendar.lens.allDates') },
+    { value: 'offers', label: t('availability:calendar.lens.offers'), testId: 'lens-tab-offers' },
+    { value: 'month', label: t('availability:calendar.lens.month'), testId: 'lens-tab-month' },
+    { value: 'all-dates', label: t('availability:calendar.lens.allDates'), testId: 'lens-tab-all-dates' },
   ];
 }
 
@@ -313,7 +313,7 @@ export function CalendarSurface({
   const resolvedNeedsYouQueue = needsYouQueue ?? EMPTY_NEEDS_YOU_QUEUE;
   const lenses = role === 'producer' ? producerLenses(needsYouQueue, t) : artistLenses(t);
   const defaultLensKey = role === 'producer' ? 'needs-you' : 'offers';
-  const activeLens = lenses.some((l) => l.key === lens) ? lens : defaultLensKey;
+  const activeLens = lenses.some((l) => l.value === lens) ? lens : defaultLensKey;
   const activePeriod: LensPeriod =
     activeLens === 'week' ? 'week' : activeLens === 'season' ? 'season' : 'month';
 
@@ -627,7 +627,7 @@ export function CalendarSurface({
   return (
     <div data-testid="calendar-surface" className={cn('flex flex-col gap-4', className)}>
       <CalendarSurfaceHeader eyebrow={resolvedEyebrow} eyebrowTone={eyebrowTone} title={resolvedTitle} cta={cta}>
-        <LensTabs lenses={lenses} active={activeLens} onChange={onLensChange} />
+        <SegmentedControl value={activeLens} onChange={onLensChange} options={lenses} />
       </CalendarSurfaceHeader>
 
       {(activeLens === 'needs-you' || activeLens === 'month' || activeLens === 'week' || activeLens === 'season' || activeLens === 'agenda') && (
@@ -793,7 +793,7 @@ export function CalendarSurface({
   }
 
   // --- Mobile shell (spec §5, Phase 5) ---------------------------------
-  // Single-column layout: compact header with a scrollable `LensTabs`, a
+  // Single-column layout: compact header with a scrollable `SegmentedControl`, a
   // full-width period bar for the lenses that have one (month/week/season —
   // NOT needs-you/agenda/offers/all-dates, unlike desktop which also shows
   // it for agenda), the active lens body with no side rail, the
@@ -810,7 +810,7 @@ export function CalendarSurface({
   return (
     <div data-testid="calendar-surface" className={cn('flex flex-col gap-4', className)}>
       <CalendarSurfaceHeader eyebrow={resolvedEyebrow} eyebrowTone={eyebrowTone} title={resolvedTitle} cta={cta}>
-        <LensTabs lenses={lenses} active={activeLens} onChange={onLensChange} scrollable />
+        <SegmentedControl value={activeLens} onChange={onLensChange} options={lenses} scrollable />
       </CalendarSurfaceHeader>
 
       {(activeLens === 'needs-you' || activeLens === 'month' || activeLens === 'week' || activeLens === 'season') && (
