@@ -14,8 +14,8 @@ asks it to post its findings with `gh pr comment` and
 ## The review must finish inside one agent turn
 
 The Actions job is torn down the moment the agent's turn ends. Anything the agent leaves running in
-the background is killed before it can post, and the job still reports **success** - so a silent
-non-review looks identical to a clean review that found nothing.
+the background is killed before it can post, and the job still reports **success**. A silent
+non-review therefore looks identical to a clean review that found nothing.
 
 This is not hypothetical. Reviews were intermittently posting nothing because the agent delegated to
 the bundled `/code-review` skill, which fans the work out into background subagents and returns
