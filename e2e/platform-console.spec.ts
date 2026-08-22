@@ -44,7 +44,7 @@ test.describe("Platform console", () => {
     await loginAsAndAwaitDashboard(page, TEST_PRODUCER_EMAIL, TEST_PRODUCER_PASSWORD);
     await expect(page.getByRole("link", { name: /platform/i })).toHaveCount(0);
     await page.goto("/platform");
-    await expect(page).toHaveURL(/\/dashboard/, { timeout: 15_000 });
+    await expect(page).toHaveURL(/\/today/, { timeout: 15_000 });
   });
 
   test("super-admin provisions an org, then the invitee accepts and lands in it", async ({ page }) => {

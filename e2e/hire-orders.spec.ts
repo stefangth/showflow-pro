@@ -391,7 +391,7 @@ test.describe("Hire orders: PDF template editor", () => {
     // Enter via the card this task ships, not a deep link, so the spec also
     // proves PdfTemplateCard actually wires up to the editor route.
     await page.getByRole("link", { name: "Open template editor" }).click();
-    await expect(page).toHaveURL(/\/settings\/hire-orders\/template$/);
+    await expect(page).toHaveURL(/\/settings\/contracts\/template$/);
     await expect(page.getByRole("navigation", { name: "Document outline" })).toBeVisible();
 
     // Document pane: nudge the whole-document text scale. This control is a
