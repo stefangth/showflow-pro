@@ -14,6 +14,11 @@ What's new in ShowFlow, newest first.
 
 ### Fixed
 - **The Dates count matches your list** — The number beside Dates in the sidebar now counts only the dates that need you, the same total as the "Needs you" list on the page.
+- **Wording that matches how your workspace books** — Where your team keeps the last word on a booking, Today no longer describes an artist's yes as a finished booking. It says they said yes and that it is waiting on you to book them.
+- **Artist screens say who has the next move** — A date an artist has said yes to now shows that it is waiting on the production team, instead of pointing back at the artist. Artist screens also name the production team consistently, where some said "the office".
+- **One language at a time** — Short explainers and help text no longer appear in German while the rest of the app is in English.
+- **Today respects what you are allowed to do** — Where an admin has taken booking or asking rights away from the production team, Today no longer asks them to do it, no longer offers actions that would be turned down, and points the date at an admin instead.
+- **A truer count of overnight yeses** — The number of artists who said yes overnight now counts the artists, not the dates they said yes to.
 
 ## 1.17.0 — August 15, 2026
 

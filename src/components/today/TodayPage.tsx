@@ -8,9 +8,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import { ROUTES } from "@/config/app.config";
 import { cancelAutopilotAskedIds, cancelAutopilotBookedIds, notifyCast, openOfferTier } from "@/data/bookings";
-import type { AtRiskDate, CancelledUntoldDate, FeedRow, TodayModel } from "@/lib/autopilot/today";
+import { canUndoFeedRow, type AtRiskDate, type CancelledUntoldDate, type FeedRow, type TodayModel } from "@/lib/autopilot/today";
 import { useAutopilotToday } from "@/hooks/useAutopilotToday";
 import { useModuleGate } from "@/hooks/useEntitlements";
+import { useCan } from "@/hooks/useCapabilities";
 import { ModuleGate } from "@/components/layout/ModuleGate";
 import { TodayHeader } from "./TodayHeader";
 import { BouncedAsksBanner } from "./BouncedAsksBanner";
@@ -26,6 +27,12 @@ export interface TodayPageProps {
   askTimeLabel: string;
   /** Weekday the feed's lookback window starts, e.g. "Friday". */
   feedSinceLabel: string;
+  /** The viewer's own booking rights (`confirm_bookings` / `run_offer_engine`).
+   *  Admins always hold both; an org admin can revoke either from producers, and
+   *  the board's copy and actions have to follow — otherwise it tells a producer a
+   *  date is "waiting on you to book them" and hands them buttons that 403. */
+  canBook: boolean;
+  canAsk: boolean;
   /** Today's date, for the page eyebrow. */
   today: Date;
   onOpenNextCast: (item: AtRiskDate) => void;
@@ -47,6 +54,8 @@ export function TodayPage({
   model,
   askTimeLabel,
   feedSinceLabel,
+  canBook,
+  canAsk,
   today,
   onOpenNextCast,
   onOpenDate,
@@ -65,6 +74,8 @@ export function TodayPage({
         openCount={model.openCount}
         fillingOnTheirOwn={model.fillingOnTheirOwn}
         bookedOvernight={model.bookedOvernight}
+        producerConfirmation={model.producerConfirmation}
+        canBook={canBook}
         today={today}
       />
 
@@ -82,6 +93,8 @@ export function TodayPage({
             key={item.showDateId}
             item={item}
             askTimeLabel={askTimeLabel}
+            canAsk={canAsk}
+            canBook={canBook}
             onOpenNextCast={onOpenNextCast}
             onOpenDate={onOpenDate}
           />
@@ -99,7 +112,14 @@ export function TodayPage({
         <TodayEmpty fillingOnTheirOwn={model.fillingOnTheirOwn} onLookAtSeason={onLookAtSeason} />
       )}
 
-      <DoneForYouFeed feed={model.feed} sinceLabel={feedSinceLabel} onAction={onFeedAction} />
+      <DoneForYouFeed
+        feed={model.feed}
+        producerConfirmation={model.producerConfirmation}
+        canBook={canBook}
+        canAsk={canAsk}
+        sinceLabel={feedSinceLabel}
+        onAction={onFeedAction}
+      />
     </div>
   );
 }
@@ -130,6 +150,11 @@ export default function TodayContainer() {
   const navigate = useNavigate();
   const { t } = useTranslation("today");
   const { allow: bookingFlowAllowed } = useModuleGate("booking_flow");
+  // The same two rights every other booking surface gates on. Admins always hold
+  // both (useCan short-circuits); a producer holds them only while the org's
+  // capability policy grants them.
+  const canBook = useCan("confirm_bookings");
+  const canAsk = useCan("run_offer_engine");
   const { model, isLoading, isError, askTimeLabel, feedSinceLabel, refetch } = useAutopilotToday({
     enabled: bookingFlowAllowed,
   });
@@ -201,8 +226,18 @@ export default function TodayContainer() {
   }
 
   function handleFeedAction(row: FeedRow) {
-    const context = feedRowText(t, row);
-    if (row.affordance === "review") {
+    const context = feedRowText(t, row, {
+      producerConfirmation: model?.producerConfirmation,
+      canBook,
+    });
+    // Same rule the button's label reads (`canUndoFeedRow`), so a row shown as
+    // Review can never run an undo mutation the viewer is not allowed to make.
+    // This is also where "draft"/"notify" rows land: neither has a backing
+    // reversal mutation, so `canUndoFeedRow` is false for both and they go to
+    // the Dates board rather than doing nothing. Every kind that gets past this
+    // guard returns from its own branch below, so there is no fallback after
+    // them — a new FeedKind must either be handled here or add its own branch.
+    if (row.affordance === "review" || !canUndoFeedRow(row.kind, { canBook, canAsk })) {
       goToBookings(context);
       return;
     }
@@ -255,9 +290,6 @@ export default function TodayContainer() {
         .catch(() => toast.error(t("toast.bookingUndoneError", { context })));
       return;
     }
-    // "draft" / "notify" undo has no backing reversal mutation (see the task
-    // report) — fall back to the Dates board rather than doing nothing.
-    goToBookings(context);
   }
 
   return (
@@ -278,6 +310,8 @@ export default function TodayContainer() {
           model={model}
           askTimeLabel={askTimeLabel}
           feedSinceLabel={feedSinceLabel}
+          canBook={canBook}
+          canAsk={canAsk}
           today={new Date()}
           onOpenNextCast={handleOpenNextCast}
           onOpenDate={handleOpenDate}

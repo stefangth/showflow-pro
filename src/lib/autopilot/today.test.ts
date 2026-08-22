@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { BOOKING_FLOW_DEFAULTS } from "@/lib/bookingFlow";
 import type { TierAttentionInput } from "@/lib/bookingCockpit";
 import {
+  canUndoFeedRow,
   computeToday,
   feedAffordance,
   type AtRiskDateFacts,
@@ -399,5 +400,31 @@ describe("computeToday: feed and pass-through counts", () => {
     ]);
     expect(model.fillingOnTheirOwn).toBe(4);
     expect(model.bookedOvernight).toBe(2);
+  });
+});
+
+// The board's own copy branches on this, so it has to come off the org's real flow
+// rather than being assumed: with the last word kept, an overnight yes is a hold,
+// not a booking.
+describe("computeToday: producerConfirmation", () => {
+  it("carries the org's producer_confirmation onto the model", () => {
+    expect(computeToday(buildInput({ flow: { ...BOOKING_FLOW_DEFAULTS, producer_confirmation: true } }), NOW)
+      .producerConfirmation).toBe(true);
+    expect(computeToday(buildInput({ flow: { ...BOOKING_FLOW_DEFAULTS, producer_confirmation: false } }), NOW)
+      .producerConfirmation).toBe(false);
+  });
+});
+
+describe("canUndoFeedRow", () => {
+  it("ties each row's reversal to the right the mutation actually needs", () => {
+    const all = { canBook: true, canAsk: true };
+    expect(canUndoFeedRow("book", all)).toBe(true);
+    expect(canUndoFeedRow("ask", all)).toBe(true);
+    // Neither has a reversal mutation at all.
+    expect(canUndoFeedRow("draft", all)).toBe(false);
+    expect(canUndoFeedRow("notify", all)).toBe(false);
+
+    expect(canUndoFeedRow("book", { canBook: false, canAsk: true })).toBe(false);
+    expect(canUndoFeedRow("ask", { canBook: true, canAsk: false })).toBe(false);
   });
 });

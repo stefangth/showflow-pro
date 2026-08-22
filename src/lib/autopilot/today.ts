@@ -96,6 +96,14 @@ export interface TodayModel {
   openCount: number;
   fillingOnTheirOwn: number;
   bookedOvernight: number;
+  /** The org's `booking_flow.producer_confirmation` — true when a yes is only a
+   *  hold until a producer books it (Classic), false when a yes books the artist
+   *  on its own (Autopilot). The board's own copy has to say which of the two
+   *  actually happened: "Booked them, the place is theirs" is only true in the
+   *  second case, and it was being asserted for both. Carried on the model so
+   *  the presentational components (which take a model and nothing else) can
+   *  pick their wording without reaching for the flow themselves. */
+  producerConfirmation: boolean;
 }
 
 /**
@@ -270,6 +278,29 @@ export function feedAffordance(
   return berlinMinutesSinceMidnight(nowIso) >= digestMinutes ? "review" : "undo";
 }
 
+/**
+ * Whether THIS viewer may reverse a feed row, on top of the time-based
+ * `feedAffordance` above. Undoing a "book" row cancels bookings
+ * (`confirm_bookings`); undoing an "ask" row withdraws offers
+ * (`run_offer_engine`) — the same rights every other booking surface gates on
+ * (ShowsBookingsPage, ShowDateDetailSheet) and the same ones `open-offer-tier`
+ * enforces at the edge. An org admin can revoke either from producers, and
+ * offering Undo anyway just produces a 403 the toast reports as "try again".
+ * "draft"/"notify" have no reversal mutation at all, so they are never undoable.
+ *
+ * Lives here, not in the component, so the button's LABEL and the container's
+ * HANDLER read the same rule (a Review label wired to an undo handler would be
+ * worse than either alone).
+ */
+export function canUndoFeedRow(
+  kind: FeedKind,
+  rights: { canBook: boolean; canAsk: boolean },
+): boolean {
+  if (kind === "book") return rights.canBook;
+  if (kind === "ask") return rights.canAsk;
+  return false;
+}
+
 export function computeToday(input: TodayInput, now: Date): TodayModel {
   const todayKey = berlinDayKey(now.toISOString());
   const factsByDate = new Map(input.atRiskFacts.map((f) => [f.showDateId, f]));
@@ -331,5 +362,6 @@ export function computeToday(input: TodayInput, now: Date): TodayModel {
     openCount: items.length + (input.bounced.length > 0 ? 1 : 0),
     fillingOnTheirOwn: input.fillingOnTheirOwn,
     bookedOvernight: input.bookedOvernight,
+    producerConfirmation: input.flow.producer_confirmation,
   };
 }

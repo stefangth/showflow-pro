@@ -37,9 +37,20 @@ describe("bookingStatusLabels", () => {
   it("offer orgs keep existing labels", () => {
     const labels = bookingStatusLabels(classic, t);
     expect(labels).toMatchObject({
-      suggested: "Asked", soft_booked: "Said yes, waiting on you",
+      suggested: "Asked", soft_booked: "Said yes · waiting on your production team",
       confirmed: "Booked", unanswered: "Not asked yet",
     });
+  });
+  // These labels render on the ARTIST's own surfaces (My Asks, My Dates), so a
+  // said-yes date must never tell the artist it is waiting on them: in Classic the
+  // to-do is the production team's.
+  it("never points a said-yes date back at the artist", () => {
+    for (const flow of [classic, direct, fasttrack]) {
+      expect(bookingStatusLabels(flow, t).soft_booked).not.toMatch(/waiting on you(?!r)/i);
+    }
+  });
+  it("drops the waiting clause where the org does not keep the last word", () => {
+    expect(bookingStatusLabels(fasttrack, t).soft_booked).toBe("Said yes");
   });
 });
 

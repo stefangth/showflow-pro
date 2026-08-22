@@ -314,7 +314,7 @@
       "hireName": "Vertrag",
       "hireOnLine": "Du unterschreibst im Browser. Das gegengezeichnete PDF landet in deiner Mail.",
       "hireOnMetricLabel": "zu unterschreiben",
-      "hireOffLine": "Das Büro schickt dir die Unterlagen per E-Mail, sobald du gebucht bist.",
+      "hireOffLine": "Dein Produktionsteam schickt dir die Unterlagen per E-Mail, sobald du gebucht bist.",
       "hireOffNeeds": "Hier gibt es nichts für dich zu tun"
     },
     "org": {
@@ -433,7 +433,7 @@
       "chats": "Chats",
       "howBookingWorksHere": "Wie das Buchen hier funktioniert",
       "rulesYouInherited": "Die Regeln, die du übernommen hast",
-      "messageOffice": "Schreib dem Büro",
+      "messageOffice": "Schreib deinem Produktionsteam",
       "blockingIsHowYouSayNo": "Sperren ist deine Art, Nein zu sagen",
       "availability": "Verfügbarkeit",
       "seeItAsArtists": "Sieh es wie deine Artists",

@@ -46,7 +46,7 @@
       "empty": "You have not been asked about anything this day.",
       "primaryAccept": "Answer the ask",
       "primaryBlock": "Block date",
-      "messageProducer": "Message the office"
+      "messageProducer": "Message your production team"
     },
     "monthFlag": {
       "answer": "answer",
@@ -56,8 +56,7 @@
       "offerLabel": "Ask · {{program}}",
       "holdPlaced": "Said yes",
       "accept": "Yes, I can do it",
-      "decline": "No, not this one",
-      "awaitingConfirmation": "Waiting on the office"
+      "decline": "No, not this one"
     },
     "offersProgress": {
       "keyboardHint": "A yes · D no · B block · J next",
@@ -95,7 +94,7 @@
     },
     "popover": {
       "confirmed": "Booked",
-      "hold": "Said yes · waiting on the office"
+      "hold": "Said yes · waiting on your production team"
     },
     "legend": {
       "title": "Legend:",
@@ -141,7 +140,7 @@
       "eligibilityTitle": "Who can be asked comes from your cast",
       "eligibilityBody": "A date appears when a cast you are in can be asked for it and you have every skill it needs.",
       "offersTitle": "Asks arrive by email",
-      "offersBody": "One daily send at {{time}}, never a mail per date. Saying yes holds your place until the office has the last word.",
+      "offersBody": "One daily send at {{time}}, never a mail per date. Saying yes holds your place until your production team has the last word.",
       "offersBodyDirect": "You are booked directly, so there is nothing to answer.",
       "windowTitle": "Answer within {{hours}} hours",
       "windowBody": "After that the ask expires and goes to who this date asks next."

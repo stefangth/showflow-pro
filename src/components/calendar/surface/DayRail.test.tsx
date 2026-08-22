@@ -216,7 +216,7 @@ describe('DayRail', () => {
         legend={[]}
       />
     );
-    expect(screen.getByTestId('day-rail-secondary')).toHaveTextContent('Message the office');
+    expect(screen.getByTestId('day-rail-secondary')).toHaveTextContent('Message your production team');
   });
 
   it('renders stats rows (dot/label/value)', () => {

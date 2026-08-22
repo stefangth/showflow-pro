@@ -147,6 +147,11 @@ export function OffersLens({
                   </div>
                 ) : (
                   <div className="flex items-center gap-2">
+                    {/* The status label itself is flow-aware and already says who the
+                        date is waiting on ("Said yes · waiting on your production
+                        team", or a bare "Said yes" where the org does not keep the
+                        last word), so there is no second fixed note beside it. The
+                        old one read "Waiting on the office" for every org. */}
                     <span
                       className={cn(
                         'inline-flex h-5 shrink-0 items-center whitespace-nowrap rounded-xs px-1.5 text-eyebrow font-medium',
@@ -155,7 +160,6 @@ export function OffersLens({
                     >
                       {artistStatusLabel(entry.myStatus, statusLabels)}
                     </span>
-                    <span className="text-xs text-muted-foreground">{t('calendar.offers.awaitingConfirmation')}</span>
                   </div>
                 )}
               </div>

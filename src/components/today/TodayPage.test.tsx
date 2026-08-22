@@ -58,6 +58,7 @@ function aModel(overrides: Partial<TodayModel> = {}): TodayModel {
     openCount: 0,
     fillingOnTheirOwn: 12,
     bookedOvernight: 2,
+    producerConfirmation: false,
     ...overrides,
   };
 }
@@ -71,6 +72,8 @@ function baseProps(overrides: Partial<TodayPageProps> = {}): TodayPageProps {
     model: aModel(),
     askTimeLabel: "19:00",
     feedSinceLabel: "Friday",
+    canBook: true,
+    canAsk: true,
     today: new Date("2026-08-17T09:00:00Z"),
     onOpenNextCast: noop,
     onOpenDate: noop,
@@ -139,4 +142,123 @@ describe("TodayPage", () => {
     expect(screen.getByRole("button", { name: "Undo" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Review" })).toBeInTheDocument();
   });
+
+  // Regression: the feed row and the header both asserted a booking ("Booked them
+  // ... the place is theirs", "were booked overnight") for every org. In Classic
+  // (producer_confirmation on) a yes is only a hold until the producer books it, so
+  // the board was telling a producer a date was settled when it was still their move.
+  it("says a said-yes date is still waiting on the producer when the org keeps the last word", () => {
+    const model = aModel({
+      producerConfirmation: true,
+      openCount: 0,
+      bookedOvernight: 2,
+      feed: [aFeedRow({ id: "book:date-1", kind: "book", count: 1, names: "Lena Fischer" })],
+    });
+    render(<TodayPage {...baseProps({ model })} />);
+
+    expect(
+      screen.getByText("Lena Fischer said yes to Hamlet, Abend, 3 Sep. Book them and the place is theirs."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Autopilot cleared the board. 2 artists said yes overnight and are waiting on you to book them.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps the booked wording where a yes books the artist on its own", () => {
+    const model = aModel({
+      producerConfirmation: false,
+      openCount: 0,
+      bookedOvernight: 2,
+      feed: [aFeedRow({ id: "book:date-1", kind: "book", count: 1, names: "Lena Fischer" })],
+    });
+    render(<TodayPage {...baseProps({ model })} />);
+
+    expect(
+      screen.getByText("Booked Lena Fischer onto Hamlet, Abend, 3 Sep. They said yes, so the place is theirs."),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Autopilot cleared the board. 2 artists were booked overnight.")).toBeInTheDocument();
+  });
+
+  // An "ask" row describes artists who were only offered, so it must never gain
+  // said-yes wording from either flow.
+  it("leaves an ask row as an ask in both flows", () => {
+    for (const producerConfirmation of [true, false]) {
+      const view = render(
+        <TodayPage {...baseProps({ model: aModel({ producerConfirmation, feed: [aFeedRow()] }) })} />,
+      );
+      expect(screen.getByText("Asked 3 artists about Hamlet, Abend, 3 Sep.")).toBeInTheDocument();
+      view.unmount();
+    }
+  });
+
+
+  // Role/rights consistency: `confirm_bookings` and `run_offer_engine` are per-org
+  // producer rights an admin can revoke (src/lib/capabilities.ts), and every other
+  // booking surface already gates on them. A producer without them was still being
+  // told the date was "waiting on you to book them" and handed an Open-the-cast
+  // button that open-offer-tier rejects at the edge.
+  it("names an admin, not the viewer, when the viewer may not book", () => {
+    const model = aModel({
+      producerConfirmation: true,
+      openCount: 0,
+      bookedOvernight: 2,
+      feed: [aFeedRow({ id: "book:date-1", kind: "book", count: 1, names: "Lena Fischer" })],
+    });
+    render(<TodayPage {...baseProps({ model, canBook: false })} />);
+
+    expect(
+      screen.getByText("Lena Fischer said yes to Hamlet, Abend, 3 Sep. An admin has to book them."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Autopilot cleared the board. 2 artists said yes overnight and are waiting on an admin to book them.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("offers Undo only for a row the viewer is allowed to reverse", () => {
+    const feed = [
+      aFeedRow({ id: "ask:date-1:1", kind: "ask", affordance: "undo" }),
+      aFeedRow({ id: "book:date-1", kind: "book", names: "Lena Fischer", count: 1, affordance: "undo" }),
+    ];
+    const allowed = render(<TodayPage {...baseProps({ model: aModel({ feed }) })} />);
+    expect(screen.getAllByRole("button", { name: "Undo" })).toHaveLength(2);
+    allowed.unmount();
+
+    // Rights revoked: both rows stay readable, but neither offers a reversal that
+    // could only 403.
+    render(<TodayPage {...baseProps({ model: aModel({ feed }), canBook: false, canAsk: false })} />);
+    expect(screen.queryByRole("button", { name: "Undo" })).not.toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Review" })).toHaveLength(2);
+  });
+
+  // Review finding: dropping "Open it up to X" left "Pick the people yourself" as
+  // the promoted option for a viewer who cannot book either, and the body still
+  // read "a decision only you can make". Both are the admin's, not theirs.
+  it("hands an at-risk date to an admin when the viewer may neither ask nor book", () => {
+    const model = aModel({ items: [anAtRisk()], openCount: 1 });
+    render(<TodayPage {...baseProps({ model, canAsk: false, canBook: false })} />);
+
+    expect(screen.queryByText("Pick the people yourself")).not.toBeInTheDocument();
+    expect(screen.getByText("An admin has to take this one")).toBeInTheDocument();
+    expect(screen.getByText(/It needs a decision an admin has to make/)).toBeInTheDocument();
+    // Opening the date is a read they are allowed, so the way in stays.
+    expect(screen.getByRole("button", { name: "Open the date" })).toBeInTheDocument();
+  });
+
+  it("does not offer to open the next cast to a viewer who may not run the offer engine", () => {
+    const model = aModel({ items: [anAtRisk()], openCount: 1 });
+
+    const allowed = render(<TodayPage {...baseProps({ model })} />);
+    expect(screen.getByText("Open it up to Ensemble Nord")).toBeInTheDocument();
+    allowed.unmount();
+
+    render(<TodayPage {...baseProps({ model, canAsk: false })} />);
+    expect(screen.queryByText("Open it up to Ensemble Nord")).not.toBeInTheDocument();
+    // The card never goes blank: the read-only route into the date stays.
+    expect(screen.getByText("Pick the people yourself")).toBeInTheDocument();
+  });
+
 });

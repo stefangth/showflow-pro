@@ -6,6 +6,7 @@ import { partialMock } from "@/test/castHelpers";
 import type { User } from "@supabase/supabase-js";
 import i18n from "@/i18n";
 import { STORAGE_KEY } from "@/i18n/config";
+import { useLanguage } from "@/features/i18n/LanguageContext";
 import type { FeatureKey } from "@/lib/entitlements";
 
 // AppLayout composes a large shell (nav, org switcher, editor toolbar, theme toggle,
@@ -224,6 +225,34 @@ describe("AppLayout force-English gate (language_packages entitlement)", () => {
     // ...but the user's stored preference is untouched, so a later re-enable restores
     // it rather than defaulting back to English.
     expect(localStorage.getItem(STORAGE_KEY)).toBe("de");
+  });
+
+  // The runtime language is only half the story: page minis, the help center and the
+  // demo rail render from LanguageContext's `lang`, not from t(). If `lang` did not
+  // follow the force, revoking the entitlement would leave those surfaces in German
+  // beside English t() copy (and re-granting it would leave them English). Assert the
+  // consumer-visible value, not just i18n.language.
+  it("flips what LanguageContext reports to consumers when language_packages flips OFF and back ON", async () => {
+    mockAuth();
+    mockEntitlements(true);
+    function LangProbe() {
+      return <span data-testid="lang-probe">{useLanguage().lang}</span>;
+    }
+    const { rerender } = renderWithProviders(<AppLayout><LangProbe /></AppLayout>);
+
+    localStorage.setItem(STORAGE_KEY, "de");
+    await act(async () => { await i18n.changeLanguage("de"); });
+    expect(screen.getByTestId("lang-probe")).toHaveTextContent("de");
+
+    // Entitlement revoked mid-session: every `lang`-driven surface goes English too.
+    mockEntitlements(false);
+    await act(async () => { rerender(<AppLayout><LangProbe /></AppLayout>); });
+    await waitFor(() => expect(screen.getByTestId("lang-probe")).toHaveTextContent("en"));
+
+    // Granted again: the stored preference comes back on those surfaces, not just in t().
+    mockEntitlements(true);
+    await act(async () => { rerender(<AppLayout><LangProbe /></AppLayout>); });
+    await waitFor(() => expect(screen.getByTestId("lang-probe")).toHaveTextContent("de"));
   });
 
   it("restores the stored language when language_packages flips back ON", async () => {

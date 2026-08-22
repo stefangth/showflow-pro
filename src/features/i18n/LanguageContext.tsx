@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import i18n from '@/i18n';
-import { detectInitialLang, persistLang, type Lang } from '@/i18n/config';
+import { detectInitialLang, isLang, persistLang, DEFAULT_LANGUAGE, type Lang } from '@/i18n/config';
 
 interface LanguageState {
   lang: Lang;
@@ -23,6 +23,24 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (i18n.language !== lang) void i18n.changeLanguage(lang);
   }, [lang]);
+
+  // Follow the runtime in the other direction too. Not every language change comes
+  // through setLang: AppLayout forces the runtime to English for an org without the
+  // language_packages entitlement by calling i18n.changeLanguage directly, WITHOUT
+  // touching the stored preference. Without this listener `lang` kept reporting the
+  // stored/detected language, so everything that renders from `lang` rather than
+  // t() (the page minis, the help center, the demo rail) stayed German on a browser
+  // set to German while every t() string around it was English. State only: the
+  // stored preference is deliberately left alone, so flipping the entitlement on
+  // restores the user's own language.
+  useEffect(() => {
+    const onChanged = (next: string) => {
+      const resolved: Lang = isLang(next) ? next : DEFAULT_LANGUAGE;
+      setLangState((current) => (current === resolved ? current : resolved));
+    };
+    i18n.on('languageChanged', onChanged);
+    return () => { i18n.off('languageChanged', onChanged); };
+  }, []);
 
   const setLang = (next: Lang) => {
     setLangState(next);

@@ -62,7 +62,7 @@ describe("ProfilePage — role-aware account layout (screen 09)", () => {
     expect(screen.getByText("Reference")).toBeInTheDocument();
     expect(screen.getByText("How booking works here")).toBeInTheDocument();
     expect(screen.getByText("Your blocked dates")).toBeInTheDocument();
-    expect(screen.getByText("Message the office")).toBeInTheDocument();
+    expect(screen.getByText("Message your production team")).toBeInTheDocument();
     expect(screen.getByText("Language")).toBeInTheDocument();
   });
 

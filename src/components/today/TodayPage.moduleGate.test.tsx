@@ -23,6 +23,10 @@ vi.mock("@/hooks/useEntitlements", async (orig) => {
   };
 });
 vi.mock("@/hooks/useAutopilotToday", () => ({ useAutopilotToday: vi.fn() }));
+// The container now reads the viewer's booking rights (confirm_bookings /
+// run_offer_engine); useCan goes through useAuth, which this bare harness has no
+// provider for. Entitlement gating, not capability gating, is what's under test here.
+vi.mock("@/hooks/useCapabilities", () => ({ useCan: () => true }));
 
 import { useFeature } from "@/hooks/useEntitlements";
 import { useAutopilotToday } from "@/hooks/useAutopilotToday";
@@ -36,6 +40,7 @@ function aModel(overrides: Partial<TodayModel> = {}): TodayModel {
     openCount: 0,
     fillingOnTheirOwn: 0,
     bookedOvernight: 0,
+    producerConfirmation: false,
     ...overrides,
   };
 }
