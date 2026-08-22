@@ -7,7 +7,7 @@ const TONE: Record<DayState, string> = {
   degraded: "bg-warning",
   down: "bg-destructive",
   // Muted, not green: an unrecorded day is an absence of evidence, not evidence of health.
-  nodata: "bg-muted",
+  nodata: "bg-well-tint",
 };
 
 /**

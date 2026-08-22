@@ -447,7 +447,7 @@ function ArtistAvailability() {
                   <IconTooltip label={t('blocked.removeTooltip')}>
                     <button
                       onClick={() => removeBlock.mutate(b.id)}
-                      className="p-0.5 rounded hover:bg-muted text-muted-foreground hover:text-destructive"
+                      className="p-0.5 rounded hover:bg-hover-tint text-muted-foreground hover:text-destructive"
                       aria-label={t('blocked.removeTooltip')}
                     >
                       <Trash2 className="h-3.5 w-3.5" />

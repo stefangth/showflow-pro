@@ -183,7 +183,7 @@ function AccessTab({
 function LayoutTab() {
   return (
     <div className="px-6 py-8 flex flex-col items-center justify-center gap-3 text-center">
-      <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
+      <div className="h-10 w-10 rounded-full bg-well-tint flex items-center justify-center">
         <Columns className="h-5 w-5 text-muted-foreground" />
       </div>
       <div>

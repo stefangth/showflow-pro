@@ -221,7 +221,7 @@ export default function ArtistsPage() {
 
   const statusColor: Record<string, string> = {
     active: 'bg-success/10 text-success',
-    inactive: 'bg-muted text-muted-foreground',
+    inactive: 'bg-well-tint text-muted-foreground',
     on_leave: 'bg-warning/10 text-warning',
   };
 
@@ -374,7 +374,7 @@ export default function ArtistsPage() {
                           {skills.slice(0, 3).map(s => (
                             <span
                               key={s.id}
-                              className="inline-flex h-5 items-center rounded-xs bg-accent-100 px-1.5 text-eyebrow font-medium text-accent-text"
+                              className="inline-flex h-5 items-center rounded-xs bg-accent-tint px-1.5 text-eyebrow font-medium text-accent-text"
                             >
                               {s.name}
                             </span>

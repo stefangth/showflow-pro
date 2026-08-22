@@ -38,7 +38,7 @@ describe("UptimeBar", () => {
     );
     const cells = container.querySelectorAll("[data-uptime-day]");
     expect(cells[29].className).toContain("bg-destructive");
-    expect(cells[0].className).toContain("bg-muted");
+    expect(cells[0].className).toContain("bg-well-tint");
   });
 
   it("reveals that day's detail on hover", async () => {

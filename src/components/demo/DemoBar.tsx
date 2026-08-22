@@ -47,7 +47,7 @@ export function DemoBar() {
       </div>
       <div className="flex shrink-0 items-center gap-2">
         <span className="text-xs text-muted-foreground">Role</span>
-        <div role="group" className="inline-flex items-center gap-0.5 rounded-m bg-muted p-0.5">
+        <div role="group" className="inline-flex items-center gap-0.5 rounded-m bg-well-tint p-0.5">
           {ROLE_OPTIONS.map((r) => (
             <button
               key={r}

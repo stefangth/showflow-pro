@@ -334,7 +334,7 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
               <>
                 <span
                   aria-hidden
-                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-l bg-accent-100 font-mono text-body font-semibold text-accent-text"
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-l bg-accent-tint font-mono text-body font-semibold text-accent-text"
                 >
                   {initialsOf(cast?.name ?? '')}
                 </span>
@@ -372,7 +372,7 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
           {/* KPI rail */}
           <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
             {kpis.map((k) => (
-              <div key={k.label} className="rounded-l border border-border bg-muted px-3.5 py-3">
+              <div key={k.label} className="rounded-l border border-border bg-well-tint px-3.5 py-3">
                 {/* eslint-disable-next-line no-restricted-syntax -- KPI tile label, KpiTile adoption deferred to primitive-adoption task */}
                 <p className="text-eyebrow font-semibold uppercase tracking-[1.6px] text-muted-foreground">{k.label}</p>
                 <p className="mt-1.5 font-mono text-2xl font-semibold tabular-nums text-foreground">{k.value}</p>
@@ -446,7 +446,7 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
                         {m.artist.name}
                       </button>
                       {skill && (
-                        <span className="inline-flex h-5 shrink-0 items-center whitespace-nowrap rounded-xs bg-accent-100 px-1.5 text-eyebrow font-medium text-accent-text">
+                        <span className="inline-flex h-5 shrink-0 items-center whitespace-nowrap rounded-xs bg-accent-tint px-1.5 text-eyebrow font-medium text-accent-text">
                           {skill}
                         </span>
                       )}
@@ -502,7 +502,7 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
                       <div
                         key={a.id}
                         data-candidate
-                        className="flex items-center justify-between rounded-m px-2 py-1.5 hover:bg-muted"
+                        className="flex items-center justify-between rounded-m px-2 py-1.5 hover:bg-hover-tint"
                       >
                         <div className="flex items-center gap-2">
                           <p className="text-sm text-foreground">{a.name}</p>
@@ -552,8 +552,8 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
                           className={cn(
                             'inline-flex h-5 shrink-0 items-center rounded-xs border px-1.5 text-eyebrow font-medium',
                             tier === 1
-                              ? 'border-accent-200 bg-accent-100 text-accent-text'
-                              : 'border-border bg-muted text-muted-foreground',
+                              ? 'border-accent-200 bg-accent-tint text-accent-text'
+                              : 'border-border bg-well-tint text-muted-foreground',
                           )}
                         >
                           {tier != null ? t('castDetails.tierN', { tier }) : t('castDetails.coverage.noTier')}
@@ -571,8 +571,8 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
                                 className={cn(
                                   'inline-flex h-6 items-center gap-1.5 rounded-s border px-2 text-xs font-medium transition-colors',
                                   on
-                                    ? 'border-accent-200 bg-accent-50 text-accent-text'
-                                    : 'border-border bg-muted text-muted-foreground',
+                                    ? 'border-accent-200 bg-accent-tint text-accent-text'
+                                    : 'border-border bg-well-tint text-muted-foreground',
                                   canManage ? 'hover:border-accent-300' : 'cursor-default',
                                 )}
                               >
@@ -595,7 +595,7 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
           </div>
 
           {/* At-a-glance + Activity rail */}
-          <aside className="flex shrink-0 flex-col gap-5 overflow-y-auto border-t border-border bg-muted p-5 lg:w-[264px] lg:border-l lg:border-t-0">
+          <aside className="flex shrink-0 flex-col gap-5 overflow-y-auto border-t border-border bg-well-tint p-5 lg:w-[264px] lg:border-l lg:border-t-0">
             <div>
               {/* eslint-disable-next-line no-restricted-syntax -- rail section heading, primitive adoption deferred */}
               <h3 className="mb-3 text-eyebrow font-semibold uppercase tracking-[1.6px] text-muted-foreground">

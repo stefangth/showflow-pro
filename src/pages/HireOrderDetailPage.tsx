@@ -275,7 +275,7 @@ function HireOrderDetail({
       {/* Document + rail */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_312px]">
         {/* LEFT: the embedded PDF on a paper-tinted desk */}
-        <div className="rounded-xl border border-border bg-muted p-3 sm:p-4">
+        <div className="rounded-xl border border-border bg-well-tint p-3 sm:p-4">
           {!hasPdf ? (
             <div className="flex min-h-[480px] flex-col items-center justify-center gap-2 text-center">
               <FileText className="h-8 w-8 text-muted-foreground" />
@@ -302,7 +302,7 @@ function HireOrderDetail({
             />
           )}
           {canSign && (
-            <div className="mt-3 rounded-l border border-accent-200 bg-accent-50 p-4">
+            <div className="mt-3 rounded-l border border-accent-200 bg-accent-tint p-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-accent-text">{t("detailPage.needsSignatureTitle")}</p>

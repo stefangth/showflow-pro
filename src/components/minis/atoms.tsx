@@ -33,7 +33,7 @@ export function MiniField({ label, children }: { label: string; children: ReactN
 /** A recessed "well" row (e.g. a tier line or a summary chip). */
 export function MiniWell({ icon, label, trailing }: { icon?: ReactNode; label: ReactNode; trailing?: ReactNode }) {
   return (
-    <div className="flex items-center gap-2 rounded-s border-[0.5px] border-border bg-muted px-2.5 py-2">
+    <div className="flex items-center gap-2 rounded-s border-[0.5px] border-border bg-well-tint px-2.5 py-2">
       {icon}
       <span className="min-w-0 flex-1 truncate text-caption text-muted-foreground">{label}</span>
       {trailing && <span className="shrink-0 font-mono text-eyebrow text-muted-foreground/80">{trailing}</span>}
@@ -70,7 +70,7 @@ export function MiniRow({ avatar, name, sub, trailing }: { avatar?: ReactNode; n
 /** A small green "done" tick, e.g. a set letterhead. */
 export function MiniCheck() {
   return (
-    <span className="inline-flex h-[18px] w-[18px] items-center justify-center rounded-full bg-accent-100">
+    <span className="inline-flex h-[18px] w-[18px] items-center justify-center rounded-full bg-accent-tint">
       <Check className="h-3 w-3 text-accent-text" strokeWidth={3} />
     </span>
   );
@@ -80,7 +80,7 @@ export function MiniCheck() {
 export function MiniMeter({ pct, label }: { pct: number; label: string }) {
   return (
     <div className="flex items-center gap-2">
-      <span className="h-1 flex-1 overflow-hidden rounded-full bg-muted">
+      <span className="h-1 flex-1 overflow-hidden rounded-full bg-well-tint">
         <span className="block h-full rounded-full bg-accent-500" style={{ width: `${Math.max(0, Math.min(100, pct))}%` }} />
       </span>
       <span className="shrink-0 font-mono text-eyebrow tabular-nums text-muted-foreground">{label}</span>
@@ -127,7 +127,7 @@ export type DayTone = 'idle' | 'muted' | 'blocked' | 'offer';
 export function MiniWeek({ days }: { days: readonly { n: number; tone: DayTone }[] }) {
   const fill: Record<DayTone, string> = {
     idle: 'bg-card border-border text-muted-foreground/70',
-    muted: 'bg-muted border-border text-muted-foreground',
+    muted: 'bg-well-tint border-border text-muted-foreground',
     blocked: 'bg-background border-border text-muted-foreground/70 line-through',
     offer: 'bg-accent-500 border-accent-600 text-white',
   };

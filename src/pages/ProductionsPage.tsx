@@ -125,7 +125,7 @@ export default function ProductionsPage() {
       case "shows.status":
         return (
           <div className="flex items-center gap-1">
-            {isSyncedShow(s) && <Badge variant="secondary" className="bg-muted text-muted-foreground text-xs">{t("row.synced")}</Badge>}
+            {isSyncedShow(s) && <Badge variant="secondary" className="bg-well-tint text-muted-foreground text-xs">{t("row.synced")}</Badge>}
             <Badge variant="secondary" className="text-xs">{STATUS_LABEL[s.status] ?? s.status}</Badge>
           </div>
         );
@@ -219,7 +219,7 @@ export default function ProductionsPage() {
         <Card><CardContent className="py-12 text-center text-muted-foreground">{t("empty")}</CardContent></Card>
       ) : (
         <Card><CardContent className="p-0">
-          <div className="flex items-center gap-3 px-4 py-2 border-b bg-muted/30 text-xs font-medium text-muted-foreground">
+          <div className="flex items-center gap-3 px-4 py-2 border-b bg-well-tint text-xs font-medium text-muted-foreground">
             {reorderable && <span className="h-4 w-4 shrink-0" aria-hidden />}
             {columnHeaders.map(({ columnId, headerLabel }) => (
               <div key={columnId} className={colWidth(columnId, columnId === firstColId)}>{headerLabel}</div>

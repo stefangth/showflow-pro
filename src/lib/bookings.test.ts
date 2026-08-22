@@ -340,7 +340,7 @@ describe("bookingStatusBadgeClass", () => {
     expect(bookingStatusBadgeClass("cancelled")).toBe("bg-destructive/10 text-destructive");
   });
   it("maps the synthetic artist-only `unanswered` status", () => {
-    expect(bookingStatusBadgeClass("unanswered")).toBe("bg-muted text-muted-foreground");
+    expect(bookingStatusBadgeClass("unanswered")).toBe("bg-well-tint text-muted-foreground");
   });
   it("reconciled the prior drift: `suggested` is the info variant everywhere", () => {
     // Previously `bg-muted text-muted-foreground` in BookingRow only.
