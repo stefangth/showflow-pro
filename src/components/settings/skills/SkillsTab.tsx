@@ -205,7 +205,7 @@ export function SkillsTab({ orgId }: { orgId: string }) {
                   {/* eslint-disable-next-line no-restricted-syntax -- non-standard tracking */}
                   <TableHead className="h-9 text-eyebrow font-semibold uppercase tracking-wider">{t('table.headSkill')}</TableHead>
                   {/* eslint-disable-next-line no-restricted-syntax -- non-standard tracking */}
-                  <TableHead className="h-9 text-eyebrow font-semibold uppercase tracking-wider">{t('table.headArtists')}</TableHead>
+                  <TableHead numeric className="h-9 text-eyebrow font-semibold uppercase tracking-wider">{t('table.headArtists')}</TableHead>
                   {/* eslint-disable-next-line no-restricted-syntax -- non-standard tracking */}
                   <TableHead className="h-9 text-eyebrow font-semibold uppercase tracking-wider">{t('table.headRequiredBy')}</TableHead>
                   {/* eslint-disable-next-line no-restricted-syntax -- non-standard tracking */}
@@ -231,7 +231,7 @@ export function SkillsTab({ orgId }: { orgId: string }) {
                         </span>
                         {isArchived && <Badge variant="neutral" className="ml-2">{t('row.archivedBadge')}</Badge>}
                       </TableCell>
-                      <TableCell className="py-2.5 font-mono text-xs tabular-nums text-muted-foreground">
+                      <TableCell numeric className="py-2.5 text-xs text-muted-foreground">
                         {row.artistCount}
                       </TableCell>
                       <TableCell className="py-2.5 text-xs text-muted-foreground">

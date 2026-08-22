@@ -160,7 +160,7 @@ export function OrdersTable({ orders, orgId, onRowClick }: Props) {
                 <TableHead>{t("ordersTable.colOrder")}</TableHead>
                 <TableHead>{t("ordersTable.colArtist")}</TableHead>
                 <TableHead>{t("ordersTable.colDate")}</TableHead>
-                <TableHead className="text-right">{t("ordersTable.colFee")}</TableHead>
+                <TableHead numeric>{t("ordersTable.colFee")}</TableHead>
                 <TableHead>{t("ordersTable.colStatus")}</TableHead>
                 <TableHead className="w-8" />
               </TableRow>
@@ -197,7 +197,7 @@ export function OrdersTable({ orders, orgId, onRowClick }: Props) {
                   <TableCell className="font-mono text-sm whitespace-nowrap">
                     {o.show_dates?.date ? formatDateDMY(o.show_dates.date) : t("common.notSet")}
                   </TableCell>
-                  <TableCell className="text-right font-mono tabular-nums text-sm">
+                  <TableCell numeric className="text-sm">
                     {o.fee_amount != null ? formatMoney(o.fee_amount, o.fee_currency, i18n.language) : t("common.notSet")}
                   </TableCell>
                   <TableCell>
