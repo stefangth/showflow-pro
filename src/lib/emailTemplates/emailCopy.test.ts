@@ -126,6 +126,18 @@ describe("compactEmailCopy", () => {
 });
 
 describe("email copy registry", () => {
+  it("uses the English 'Production' showLabel in the default registry and German in DE", () => {
+    const showLabelKeys = Object.keys(EMAIL_COPY_DEFAULTS).filter((k) => k.endsWith(".showLabel"));
+    expect(showLabelKeys.length).toBeGreaterThan(0);
+    for (const k of showLabelKeys) {
+      const key = k as keyof typeof EMAIL_COPY_DEFAULTS;
+      expect(EMAIL_COPY_DEFAULTS[key]).toBe("Production");
+      expect(EMAIL_COPY_DE[key]).toBe("Produktion");
+    }
+    // Regression guard: the DE word must never leak into the EN default registry.
+    expect(Object.values(EMAIL_COPY_DEFAULTS)).not.toContain("Produktion");
+  });
+
   it("uses one truthful invitation hint for every account state", () => {
     const hint = "Continue securely to sign in or create your account.";
     expect(EMAIL_COPY_DEFAULTS["org-invitation.ctaHintNewUser"]).toBe(hint);
