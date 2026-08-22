@@ -179,15 +179,18 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   // transient read blip.
   // One read of the show row, reused below for the offer's display label (was a second
   // fetch of the same row in the immediate-delivery branch).
-  const { data: showRowRaw } = await admin
+  const { data: showRowData, error: showErr } = await admin
     .from('shows')
     .select('program, sub_program, main_cast_slots, understudy_slots')
     .eq('id', showDate.show_id)
     .maybeSingle()
-  const showRow = (Array.isArray(showRowRaw) ? showRowRaw[0] : showRowRaw) as
+  // A real read failure (RLS misconfig, transient network) is otherwise indistinguishable
+  // from the FK-impossible "no row" case below and would silently defeat this gate. Log it
+  // so a systemic failure is observable, then fall through to the fail-open path.
+  if (showErr) console.error('open-offer-tier: shows read failed for slot gate', showErr)
+  const showRow = showRowData as
     | { program: string | null; sub_program: string | null; main_cast_slots: number | null; understudy_slots: number | null }
     | null
-    | undefined
   if (showRow) {
     const mainSlots = showRow.main_cast_slots
     const understudySlots = showRow.understudy_slots ?? 0
