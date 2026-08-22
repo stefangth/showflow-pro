@@ -168,7 +168,7 @@
   },
   "rowPeek": {
     "eyebrowUnconfigured": "nicht konfiguriert",
-    "noConfig": "Lege in den Einstellungen die Besetzung fest, um den Füllstand zu verfolgen.",
+    "noConfig": "Lege in den Einstellungen den Besetzungsplan fest, um den Füllstand zu verfolgen.",
     "confirming": "Wird gebucht…",
     "confirm": "{{count}} buchen",
     "openDate": "Termin öffnen",

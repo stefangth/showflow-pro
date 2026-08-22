@@ -40,7 +40,7 @@
       "tierOpen": "Runde {{tier}} offen",
       "acceptedWaiting": "{{count}} haben zugesagt, warten auf dich"
     },
-    "slotWarning": "Die Besetzung für {{program}} ist nicht eingerichtet. Lege sie in den Einstellungen fest.",
+    "slotWarning": "Der Besetzungsplan für {{program}} ist nicht eingerichtet. Lege ihn in den Einstellungen fest.",
     "thisShow": "diese Show",
     "pagerLabel": "Termin {{index}} von {{total}}",
     "flowClassic": "Klassisches Anfragen",
@@ -125,7 +125,7 @@
     "city": "Stadt",
     "notes": "Notizen",
     "openTier1Now": "Jetzt mit dem Anfragen beginnen",
-    "openTier1NowConfigure": "Jetzt mit dem Anfragen beginnen (zuerst die Besetzung festlegen)",
+    "openTier1NowConfigure": "Jetzt mit dem Anfragen beginnen (zuerst den Besetzungsplan festlegen)",
     "openTier1FlowHint": "Das folgt deiner Buchungsablauf-Einstellung „Automatisch mit dem Anfragen beginnen, wenn ein neuer Termin bereit ist“. Du kannst es für diesen Termin ändern.",
     "saving": "Speichern…",
     "saveDate": "Termin speichern",

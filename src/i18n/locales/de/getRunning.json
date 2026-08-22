@@ -131,7 +131,7 @@
         "setup": "Airtable Sync einrichten",
         "dividerOr": "oder von Hand hinzufügen",
         "newShow": "Neue Produktion",
-        "unlocks": "Jeder folgende Schritt liest aus diesen Terminen: Besetzung, Rangfolge und wer angefragt werden kann.",
+        "unlocks": "Jeder folgende Schritt liest aus diesen Terminen: Besetzungsplan, Rangfolge und wer angefragt werden kann.",
         "airtableDialogTitle": "Airtable Sync"
       },
       "team": {
@@ -222,8 +222,8 @@
       "action": "Prüfen"
     },
     "slots": {
-      "title": "Besetzung bei jeder Produktion festgelegt",
-      "subLabel": "Besetzung bei jeder Produktion festgelegt",
+      "title": "Besetzungsplan bei jeder Produktion festgelegt",
+      "subLabel": "Besetzungsplan bei jeder Produktion festgelegt",
       "description": "Wie viele Artists jede Produktion braucht, Haupt- und Zweitbesetzung.",
       "action": "Klären"
     },
