@@ -18,6 +18,7 @@ import { AnalyticsIdentityBridge } from "@/features/analytics/AnalyticsIdentityB
 import { AppErrorBoundary } from "@/features/analytics/AppErrorBoundary";
 import { ProtectedRoute, PlatformRoute } from "@/features/auth/ProtectedRoute";
 import HomeLanding from "@/features/auth/HomeLanding";
+import { legacyRedirectRoutes } from "@/features/auth/legacyRedirects";
 import PlatformPage from "./pages/PlatformPage";
 import AppLayout from "@/components/layout/AppLayout";
 import { ROUTES } from "@/config/app.config";
@@ -143,13 +144,8 @@ const App = () => (
             <Route path={ROUTES.IMPRESSUM} element={<ImpressumPage />} />
             {/* Legacy slug redirects (renamed in the today/dates/contracts slug pass).
                 Keep indefinitely: bookmarks, already-sent emails, and the marketing site
-                still point at the old paths. */}
-            <Route path="/dashboard" element={<Navigate to={ROUTES.DASHBOARD} replace />} />
-            <Route path="/bookings" element={<Navigate to={ROUTES.BOOKINGS} replace />} />
-            <Route path="/hire-orders" element={<Navigate to={ROUTES.HIRE_ORDERS} replace />} />
-            <Route path="/hire-orders/:id" element={<Navigate to={ROUTES.HIRE_ORDERS} replace />} />
-            <Route path="/hire-orders/:id/edit" element={<Navigate to={ROUTES.HIRE_ORDERS} replace />} />
-            <Route path="/settings/hire-orders/template" element={<Navigate to={ROUTES.HIRE_ORDER_TEMPLATE} replace />} />
+                still point at the old paths. See src/features/auth/legacyRedirects.tsx. */}
+            {legacyRedirectRoutes()}
             <Route path="*" element={<NotFound />} />
           </Routes>
             </DemoProvider>
