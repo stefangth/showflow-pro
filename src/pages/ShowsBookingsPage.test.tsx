@@ -15,7 +15,7 @@ import { STORAGE_KEY } from "@/i18n/config";
  *    because the Upcoming-only pre-filter had already dropped those dates).
  *    Both a past and a future date in the same calendar month now render
  *    together by default, with the past one dimmed via the Month grid
- *    cell's own `isPast` styling (`bg-muted`) rather than being hidden.
+ *    cell's own `isPast` styling (`bg-well-tint`) rather than being hidden.
  *  - The setup-rail/checklist behavior (module onboarding), which is
  *    orthogonal to the table-vs-calendar surface and untouched by task 16.
  *
@@ -158,16 +158,16 @@ describe("ShowsBookingsPage — producer no default timeframe bound + past-day d
     // exercise the grid's past-day dimming.
     fireEvent.click(await screen.findByRole("tab", { name: "Month" }));
 
-    // Match the exact `bg-muted` class token — the cell also carries an
-    // unrelated `hover:bg-muted/50` class that a loose /bg-muted/ regex
+    // Match the exact `bg-well-tint` class token — the cell also carries an
+    // unrelated `hover:bg-hover-tint` class that a loose /bg-.*-tint/ regex
     // would false-match on every cell, past or future.
     const futureChip = await screen.findByText("Future Show");
     const futureCell = futureChip.closest('[data-testid^="month-grid-cell-"]')!;
-    expect(futureCell.classList.contains("bg-muted")).toBe(false);
+    expect(futureCell.classList.contains("bg-well-tint")).toBe(false);
 
     const pastChip = screen.getByText("Past Show");
     const pastCell = pastChip.closest('[data-testid^="month-grid-cell-"]')!;
-    expect(pastCell.classList.contains("bg-muted")).toBe(true);
+    expect(pastCell.classList.contains("bg-well-tint")).toBe(true);
 
     // Still clickable: double-clicking the day opens the detail sheet for this show_date.
     fireEvent.doubleClick(pastCell);
