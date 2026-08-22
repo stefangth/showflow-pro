@@ -125,6 +125,27 @@ describe("SegmentedControl", () => {
     expect(inactive.className).toContain("text-muted-foreground");
   });
 
+  it("disables every option button and blocks onChange when disabled", () => {
+    const onChange = vi.fn();
+    render(
+      <SegmentedControl
+        value="a"
+        onChange={onChange}
+        disabled
+        options={[
+          { value: "a", label: "A" },
+          { value: "b", label: "B" },
+        ]}
+      />,
+    );
+
+    const tabs = screen.getAllByRole("tab");
+    tabs.forEach((tab) => expect(tab).toBeDisabled());
+
+    fireEvent.click(screen.getByText("B"));
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
   it("scrolls when scrollable", () => {
     const { container } = render(
       <SegmentedControl scrollable value="a" onChange={() => {}} options={[{ value: "a", label: "A" }]} />,

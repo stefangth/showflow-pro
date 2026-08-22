@@ -258,7 +258,7 @@ export function RunOfShowRail() {
             { value: "small", label: "Small" },
             { value: "full", label: "Full" },
           ]}
-          className={cn(resetMut.isPending && "pointer-events-none opacity-50")}
+          disabled={resetMut.isPending}
         />
       </div>
 

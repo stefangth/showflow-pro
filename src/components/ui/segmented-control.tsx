@@ -17,6 +17,12 @@ export interface SegmentedControlProps<T extends string> {
   className?: string;
   /** Non-wrapping, horizontally scrolling strip with snap points (mobile). */
   scrollable?: boolean;
+  /**
+   * Disables the whole control: every option button gets the native
+   * `disabled` attribute (blocking mouse, keyboard, and assistive-tech
+   * activation, not just pointer events) and dims to read as inactive.
+   */
+  disabled?: boolean;
 }
 
 export function SegmentedControl<T extends string>({
@@ -25,6 +31,7 @@ export function SegmentedControl<T extends string>({
   options,
   className,
   scrollable = false,
+  disabled = false,
 }: SegmentedControlProps<T>) {
   return (
     <div
@@ -46,9 +53,10 @@ export function SegmentedControl<T extends string>({
             aria-selected={active}
             data-testid={option.testId}
             data-active={active}
+            disabled={disabled}
             onClick={() => onChange(option.value)}
             className={cn(
-              "inline-flex h-[29px] cursor-pointer items-center gap-1.5 rounded-s px-3 text-control font-medium transition-colors",
+              "inline-flex h-[29px] cursor-pointer items-center gap-1.5 rounded-s px-3 text-control font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50",
               scrollable && "shrink-0 snap-start",
               active
                 ? "bg-card text-foreground shadow-elev1"
