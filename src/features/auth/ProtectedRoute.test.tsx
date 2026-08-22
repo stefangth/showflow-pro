@@ -186,7 +186,10 @@ describe("ProtectedRoute", () => {
     expect(screen.getByText("Dashboard")).toBeTruthy();
   });
 
-  it("allows admin in editor mode to bypass role restrictions", () => {
+  it("does NOT let an org admin in editor mode bypass role restrictions (editor mode is super-admin only)", () => {
+    // Editor mode is gated by editorAccess.canUseEditor, which is now super-admin only,
+    // so a non-super-admin org admin no longer gets an editor-mode route bypass; they
+    // fall through to the normal role gate and are redirected when they lack the role.
     vi.mocked(useAuth).mockReturnValue(partialMock<ReturnType<typeof useAuth>>({
       user: partialMock<User>({ id: "user-admin" }),
       loading: false,
@@ -200,7 +203,7 @@ describe("ProtectedRoute", () => {
 
     renderProtected({ requiredRoles: ["producer"] });
 
-    expect(screen.getByText("Protected Content")).toBeTruthy();
+    expect(screen.getByText("Dashboard")).toBeTruthy();
   });
 
   it("does NOT allow non-admin in editor mode to bypass role restrictions", () => {
