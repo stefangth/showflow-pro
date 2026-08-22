@@ -38,5 +38,5 @@ export const template = {
   component: MagicLinkEmail as React.ComponentType<TemplateData>,
   subject: EMAIL_COPY_DEFAULTS["magic-link.subject"],
   displayName: "Sign-in link",
-  previewData: { actionLink: "https://app.showflow.pro/auth/callback?redirect=/dashboard" },
+  previewData: { actionLink: "https://app.showflow.pro/auth/callback?redirect=/today" },
 } satisfies TemplateEntry;

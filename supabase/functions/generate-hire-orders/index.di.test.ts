@@ -2087,9 +2087,9 @@ Deno.test("issue renders, uploads to hire-orders/<org>/<order_no>.pdf, stamps is
   assertEquals(td.fee_label, "€500.00"); // same fee/currency the PDF shows
   assertEquals(td.countersign_mode, "manual"); // org default (no hire_order_countersign seeded)
   // Durable auth-gated detail-page link (re-signs on demand), NOT a 3600s signed URL,
-  // and keyed by the order UUID because the route is /hire-orders/:id.
+  // and keyed by the order UUID because the route is /contracts/:id.
   assert(
-    String(td.download_url).includes("/hire-orders/o-1"),
+    String(td.download_url).includes("/contracts/o-1"),
     `download_url was ${td.download_url}`,
   );
   // date_label is a timezone-safe human label, not the raw ISO string.
@@ -2307,14 +2307,14 @@ Deno.test("resend preserves the issued electronic CTA while manual remains manua
         { countersign_mode: "electronic" },
         "manual",
         "electronic",
-        "https://app.showflow.pro/hire-orders/o-1",
+        "https://app.showflow.pro/contracts/o-1",
       ],
       [{ countersign_mode: "manual" }, "electronic", "manual", undefined],
       [
         null,
         "electronic",
         "electronic",
-        "https://app.showflow.pro/hire-orders/o-1",
+        "https://app.showflow.pro/contracts/o-1",
       ],
     ] as const
   ) {
@@ -3128,7 +3128,7 @@ Deno.test("issue in electronic mode emails a signing_url pointing at the in-app 
     (email!.body as { templateData: Record<string, unknown> }).templateData;
   assertEquals(td.countersign_mode, "electronic");
   assert(
-    String(td.signing_url).includes("/hire-orders/o-1"),
+    String(td.signing_url).includes("/contracts/o-1"),
     `signing_url was ${td.signing_url}`,
   );
 });

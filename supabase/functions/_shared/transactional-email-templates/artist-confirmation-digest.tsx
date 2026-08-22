@@ -8,7 +8,7 @@ import { EmailShell, emailRoleStyle } from "./_shell/EmailShell.tsx";
 import { applyEmailTokens, EMAIL_COPY_DEFAULTS, type EmailCopy, type EmailLocale } from "./_shell/emailCopy.ts";
 import { EMAIL_THEME_DEFAULTS, type EmailFamily, type EmailRoleKey, type EmailTheme } from "./_shell/emailTheme.ts";
 
-const BOOKINGS_URL = `${APP_URL}/bookings`;
+const BOOKINGS_URL = `${APP_URL}/dates`;
 
 interface BookingRow { show: string; date: string; city: string; label?: string }
 interface ChangeRow { show: string; date: string; city: string; changes: string }

@@ -12,14 +12,14 @@ const COOLDOWN_SECONDS = 60;
 const UNSAFE_REDIRECT_CHARS = /[\\\u0000-\u001F\u007F]/;
 
 /** Clamp the caller-supplied post-login destination to a safe in-app relative path;
- *  anything absolute / protocol-relative / missing falls back to the dashboard, as does
+ *  anything absolute / protocol-relative / missing falls back to /today, as does
  *  anything the URL parser would rewrite before the `//` check can mean anything: `\` is
  *  folded into `/`, and tab/LF/CR are removed outright, so both `/\evil.example` and
  *  `/<TAB>/evil.example` escape the origin. Mirrors safeRelativeRedirect in
  *  src/features/auth/resetPassword.ts (AuthCallbackPage re-clamps this same value before
  *  navigating, so this is defense-in-depth, not the only guard). */
 function safeRedirectPath(p: string | undefined): string {
-  if (!p || !p.startsWith("/") || p.startsWith("//") || UNSAFE_REDIRECT_CHARS.test(p)) return "/dashboard";
+  if (!p || !p.startsWith("/") || p.startsWith("//") || UNSAFE_REDIRECT_CHARS.test(p)) return "/today";
   return p;
 }
 

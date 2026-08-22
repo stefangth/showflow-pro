@@ -12,9 +12,9 @@ Deno.test("issued email shows the sign CTA in electronic mode", async () => {
   // hire-order-countersigned.test.ts / app-links.test.ts.
   const html = await render(React.createElement(template.component, {
     artist_name: "Ann", order_no: "HO-1", date_label: "Sat, Aug 15 2026", venue: "Tempodrom",
-    download_url: "https://app.example/hire-orders/o-1",
+    download_url: "https://app.example/contracts/o-1",
     countersign_mode: "electronic",
-    signing_url: "https://app.example/hire-orders/o-1",
+    signing_url: "https://app.example/contracts/o-1",
   }));
   assert(html.includes("Review and sign"), "electronic mode shows the sign CTA");
   assert(
@@ -30,7 +30,7 @@ Deno.test("issued email preserves the manual download CTA", async () => {
     artist_name: "Ann",
     date_label: "Sat, Aug 15 2026",
     venue: "Tempodrom",
-    download_url: "https://app.example/hire-orders/o-1",
+    download_url: "https://app.example/contracts/o-1",
     countersign_mode: "manual",
   }));
 
@@ -45,7 +45,7 @@ Deno.test("issued email lists every aggregate engagement date", async () => {
     date_label: "Sat, Aug 15 2026",
     engagement_dates_label: "Sat, Aug 15 2026 · Tempodrom, Berlin; Sun, Aug 16 2026 · Huxleys, Berlin",
     venue: "Tempodrom",
-    download_url: "https://app.example/hire-orders/o-1",
+    download_url: "https://app.example/contracts/o-1",
     countersign_mode: "manual",
   }));
 
@@ -59,9 +59,9 @@ Deno.test("fully signed electronic resend does not offer another signing CTA", a
     artist_name: "Ann",
     date_label: "Sat, Aug 15 2026",
     venue: "Tempodrom",
-    download_url: "https://app.example/hire-orders/o-1",
+    download_url: "https://app.example/contracts/o-1",
     countersign_mode: "electronic",
-    signing_url: "https://app.example/hire-orders/o-1",
+    signing_url: "https://app.example/contracts/o-1",
     is_fully_signed: true,
   }));
 
@@ -75,7 +75,7 @@ Deno.test("Documenso delivery without a durable signing URL does not offer a sig
     artist_name: "Ann",
     date_label: "Sat, Aug 15 2026",
     venue: "Tempodrom",
-    download_url: "https://app.example/hire-orders/o-1",
+    download_url: "https://app.example/contracts/o-1",
     countersign_mode: "documenso",
   }));
 
