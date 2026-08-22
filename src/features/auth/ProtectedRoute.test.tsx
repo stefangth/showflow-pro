@@ -62,7 +62,7 @@ function renderProtected(
         ),
         React.createElement(
           Route,
-          { path: "/dashboard", element: React.createElement("div", null, "Dashboard") }
+          { path: "/today", element: React.createElement("div", null, "Dashboard") }
         ),
         React.createElement(
           Route,
@@ -173,7 +173,7 @@ describe("ProtectedRoute", () => {
     expect(screen.getByText("Protected Content")).toBeTruthy();
   });
 
-  it("redirects to /dashboard when user lacks required role", () => {
+  it("redirects to /today when user lacks required role", () => {
     vi.mocked(useAuth).mockReturnValue(partialMock<ReturnType<typeof useAuth>>({
       user: partialMock<User>({ id: "user-1" }),
       loading: false,

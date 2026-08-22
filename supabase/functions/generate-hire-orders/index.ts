@@ -1897,7 +1897,7 @@ async function issueOne(
   // signs later on the order page. Point the issued email's "Review and sign" CTA
   // at that page (the auth-gated detail route, keyed by the order UUID).
   if (countersignModeUsed === "electronic") {
-    signingUrl = `${APP_URL}/hire-orders/${o.id}`;
+    signingUrl = `${APP_URL}/contracts/${o.id}`;
   }
 
   // Best-effort side effects — a failure here must NOT undo a successful issue.
@@ -1982,7 +1982,7 @@ async function sendIssuedEmail(
     // Contract of _shared/transactional-email-templates/hire-order-issued.tsx (snake_case).
     // download_url points at the auth-gated V3 detail page (re-signs the PDF on demand),
     // NOT a raw signed storage URL — a signed URL expires in 3600s and would be dead in the
-    // inbox. The route is /hire-orders/:id, so it uses order.id (the uuid), not order_no.
+    // inbox. The route is /contracts/:id, so it uses order.id (the uuid), not order_no.
     // signing_url is set in documenso mode and in electronic mode (the in-app order
     // page). It is undefined, so omitted, for manual mode and for a documenso
     // attempt that failed and fell back -- see issueOne.
@@ -1994,7 +1994,7 @@ async function sendIssuedEmail(
       venue: strField(data, "venue"),
       city: strField(data, "city"),
       fee_label: feeLabel,
-      download_url: `${APP_URL}/hire-orders/${order.id}`,
+      download_url: `${APP_URL}/contracts/${order.id}`,
       countersign_mode: countersignMode,
       signing_url: signingUrl ?? undefined,
       is_fully_signed: isFullySigned,
@@ -2050,7 +2050,7 @@ function resendSigningDelivery(
   if (issuedMode === "electronic") {
     return {
       countersignMode: "electronic",
-      signingUrl: `${APP_URL}/hire-orders/${order.id}`,
+      signingUrl: `${APP_URL}/contracts/${order.id}`,
     };
   }
 
@@ -2795,7 +2795,7 @@ async function sendCountersignedEmails(
     order_no: order.order_no,
     date_label: dateLabel(strField(data, "date"), locale),
     venue: strField(data, "venue"),
-    download_url: `${APP_URL}/hire-orders/${order.id}`,
+    download_url: `${APP_URL}/contracts/${order.id}`,
   };
   const artistEmail = strField(data, "recipient_email");
   if (artistEmail) {

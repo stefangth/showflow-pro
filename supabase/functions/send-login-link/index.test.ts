@@ -36,7 +36,7 @@ Deno.test("exists + slot allowed: mints magiclink and sends exactly one magic-li
   const gen = calls.find((c) => c.table === "auth.admin.generateLink");
   const params = gen!.args[0] as { type: string; email: string; options: { redirectTo: string } };
   assertEquals(params.type, "magiclink");
-  assertEquals(params.options.redirectTo.includes("/auth/callback?redirect=%2Fdashboard"), true);
+  assertEquals(params.options.redirectTo.includes("/auth/callback?redirect=%2Ftoday"), true);
 });
 
 Deno.test("safe redirect_path is threaded into the callback redirect", async () => {
@@ -54,7 +54,7 @@ Deno.test("safe redirect_path is threaded into the callback redirect", async () 
   );
 });
 
-Deno.test("unsafe redirect_path (protocol-relative) is clamped to /dashboard", async () => {
+Deno.test("unsafe redirect_path (protocol-relative) is clamped to /today", async () => {
   const { deps, calls } = makeFakeDeps({
     authUsersByEmail: { "user@x.com": { id: "uid-1" } },
     rpcs: { claim_login_link_slot: { data: true } },
@@ -63,13 +63,13 @@ Deno.test("unsafe redirect_path (protocol-relative) is clamped to /dashboard", a
   assertEquals(res.status, 200);
   const gen = calls.find((c) => c.table === "auth.admin.generateLink");
   const params = gen!.args[0] as { options: { redirectTo: string } };
-  assertEquals(params.options.redirectTo.includes("/auth/callback?redirect=%2Fdashboard"), true);
+  assertEquals(params.options.redirectTo.includes("/auth/callback?redirect=%2Ftoday"), true);
 });
 
 // Browsers fold `\` into `/` for http(s), so `/\evil.example` leaves the app's origin even
 // though it passes a naive `//` check. Mirrors the safeRelativeRedirect test in
 // src/features/auth/resetPassword.test.ts — the magic link must never carry such a path.
-Deno.test("unsafe redirect_path (backslash) is clamped to /dashboard", async () => {
+Deno.test("unsafe redirect_path (backslash) is clamped to /today", async () => {
   const { deps, calls } = makeFakeDeps({
     authUsersByEmail: { "user@x.com": { id: "uid-1" } },
     rpcs: { claim_login_link_slot: { data: true } },
@@ -78,13 +78,13 @@ Deno.test("unsafe redirect_path (backslash) is clamped to /dashboard", async () 
   assertEquals(res.status, 200);
   const gen = calls.find((c) => c.table === "auth.admin.generateLink");
   const params = gen!.args[0] as { options: { redirectTo: string } };
-  assertEquals(params.options.redirectTo.includes("/auth/callback?redirect=%2Fdashboard"), true);
+  assertEquals(params.options.redirectTo.includes("/auth/callback?redirect=%2Ftoday"), true);
 });
 
 // Tab/LF/CR are REMOVED by the URL parser, so "/<TAB>/evil.example" becomes "//evil.example".
 // encodeURIComponent would carry it into the magic link as %09, and AuthCallbackPage decodes
 // it straight back. Mirrors the control-character test in resetPassword.test.ts.
-Deno.test("unsafe redirect_path (control character) is clamped to /dashboard", async () => {
+Deno.test("unsafe redirect_path (control character) is clamped to /today", async () => {
   const { deps, calls } = makeFakeDeps({
     authUsersByEmail: { "user@x.com": { id: "uid-1" } },
     rpcs: { claim_login_link_slot: { data: true } },
@@ -94,7 +94,7 @@ Deno.test("unsafe redirect_path (control character) is clamped to /dashboard", a
   assertEquals(res.status, 200);
   const gen = calls.find((c) => c.table === "auth.admin.generateLink");
   const params = gen!.args[0] as { options: { redirectTo: string } };
-  assertEquals(params.options.redirectTo.includes("/auth/callback?redirect=%2Fdashboard"), true);
+  assertEquals(params.options.redirectTo.includes("/auth/callback?redirect=%2Ftoday"), true);
 });
 
 Deno.test("no account: 200 ok, no email, no throttle write", async () => {

@@ -40,7 +40,7 @@ describe("PdfTemplateCard", () => {
     await waitFor(() => expect(screen.getByText("PDF template")).toBeInTheDocument());
     expect(screen.getByRole("link", { name: "Open template editor" })).toHaveAttribute(
       "href",
-      "/settings/hire-orders/template",
+      "/settings/contracts/template",
     );
     expect(screen.getByTestId("tpl-summary")).toHaveTextContent("Geist");
   });

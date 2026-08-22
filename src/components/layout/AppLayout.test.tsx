@@ -100,7 +100,7 @@ interface LinkStubProps {
 vi.mock("react-router-dom", async (orig) => ({
   ...(await orig<typeof import("react-router-dom")>()),
   useNavigate: () => vi.fn(),
-  useLocation: () => ({ pathname: "/dashboard" }),
+  useLocation: () => ({ pathname: "/today" }),
   NavLink: ({ to, className, children }: NavLinkStubProps) => (
     <a href={to} className={typeof className === "function" ? className({ isActive: false }) : className}>
       {children}

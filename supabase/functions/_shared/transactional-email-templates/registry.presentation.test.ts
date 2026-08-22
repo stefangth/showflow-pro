@@ -155,7 +155,7 @@ Deno.test('registry presentation: tier-at-risk default subject names the program
     pending: 1,
     accepted: 1,
     required: 4,
-    reviewUrl: 'https://app.showflow.pro/bookings',
+    reviewUrl: 'https://app.showflow.pro/dates',
   })
 
   assertExists(presentation)

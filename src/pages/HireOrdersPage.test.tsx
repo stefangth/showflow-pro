@@ -248,7 +248,7 @@ describe("HireOrdersPage", () => {
     const dialog = await screen.findByRole("dialog");
     const editBtn = within(dialog).getByRole("button", { name: /^edit$/i });
     fireEvent.click(editBtn);
-    expect(navigate).toHaveBeenCalledWith("/hire-orders/ho-1/edit");
+    expect(navigate).toHaveBeenCalledWith("/contracts/ho-1/edit");
   });
 
   it("downloads via the download-url action and opens the returned signed URL", async () => {

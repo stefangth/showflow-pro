@@ -30,7 +30,7 @@ export async function loginAsAndAwaitDashboard(
   // still has open setup tasks lands on /get-running. Accept either landed route
   // (never /login and never the transient '/') — callers that need a specific page
   // navigate there via the sidebar afterwards.
-  await expect(page).toHaveURL(/\/(dashboard|get-running)/, { timeout: 15_000 });
+  await expect(page).toHaveURL(/\/(today|get-running)/, { timeout: 15_000 });
 }
 
 /**

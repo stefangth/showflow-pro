@@ -1441,7 +1441,7 @@ Deno.test("tier-at-risk-watcher DI: at-risk tier (new pair) → sends tier-at-ri
   assertEquals(msg.recipient_email, "prod1@example.com");
   assertExists(msg.templateData);
   const reviewUrl = msg.templateData!.reviewUrl as string;
-  assertEquals(reviewUrl.endsWith("/bookings"), true, "reviewUrl must be the org's bookings page");
+  assertEquals(reviewUrl.endsWith("/dates"), true, "reviewUrl must be the org's dates page");
 
   // The subject the registry actually resolves for this payload must name the program —
   // this is what "subject containing the program" means end to end (EmailMessage itself

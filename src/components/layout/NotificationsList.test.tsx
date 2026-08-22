@@ -280,7 +280,7 @@ describe("NotificationsList", () => {
   // deep-link feature exists to prevent.
   it("stops routing to bookings once the org's Editor Mode removes this role's access", () => {
     mockRoles(["producer"]);
-    mockPageAccess = { "/bookings": ["admin"] };
+    mockPageAccess = { "/dates": ["admin"] };
     mockNotifications = [{
       id: "n6", title: "Cast escalation requested", message: null, read: false,
       created_at: "2026-08-10T00:00:00Z",
@@ -296,7 +296,7 @@ describe("NotificationsList", () => {
 
   it("routes to bookings once the org's Editor Mode grants this role access, even without the default role", () => {
     mockRoles(["artist"]);
-    mockPageAccess = { "/bookings": ["admin", "producer", "artist"] };
+    mockPageAccess = { "/dates": ["admin", "producer", "artist"] };
     mockNotifications = [{
       id: "n7", title: "Booking confirmed", message: null, read: false,
       created_at: "2026-08-10T00:00:00Z",

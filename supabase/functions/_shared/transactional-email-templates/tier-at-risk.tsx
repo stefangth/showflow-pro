@@ -13,7 +13,7 @@ import { EMAIL_THEME_DEFAULTS, type EmailFamily, type EmailRoleKey, type EmailTh
  *  fires only after the tier has fully expired, the recovery guidance here names
  *  two live remedies (open the next tier, or book directly) — a still-open tier can
  *  still be filled by a direct booking, not only by escalating. */
-const BOOKINGS_URL = `${APP_URL}/bookings`;
+const BOOKINGS_URL = `${APP_URL}/dates`;
 
 interface Props {
   program?: string;

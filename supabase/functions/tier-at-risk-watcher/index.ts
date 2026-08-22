@@ -9,7 +9,7 @@ import type { OrgAdminRow, ProducerAssignmentRow, ResolveShowAssignmentsArgs, Sh
 
 /** CTA target for the tier-at-risk email — same "review the date" destination the
  *  in-app notification's own remedy points at. */
-const REVIEW_URL = `${APP_URL}/bookings`;
+const REVIEW_URL = `${APP_URL}/dates`;
 
 /** Mirrors the show_dates select below — unlike expire-offers' ShowDateWithShow,
  *  this select does NOT include show_id (the loop keys on row.show_date_id). */

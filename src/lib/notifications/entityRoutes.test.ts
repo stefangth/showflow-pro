@@ -47,7 +47,7 @@ describe("notificationTarget", () => {
   it("routes a hire_order notification to its detail page when an id is present, for any role", () => {
     for (const ctx of [admin, producer, artist]) {
       expect(notificationTarget({ related_entity_type: "hire_order", related_entity_id: "ho-1" }, ctx)).toBe(
-        "/hire-orders/ho-1",
+        "/contracts/ho-1",
       );
     }
   });
@@ -96,14 +96,14 @@ describe("notificationTarget", () => {
   describe("per-org Editor Mode page-access overrides", () => {
     it("stops routing a producer to bookings once the org's Editor Mode removes producer access", () => {
       const overridden: NotificationRoleContext = {
-        roles: ["producer"], isSuperAdmin: false, pageAccess: { "/bookings": ["admin"] },
+        roles: ["producer"], isSuperAdmin: false, pageAccess: { "/dates": ["admin"] },
       };
       expect(notificationTarget({ related_entity_type: "booking", related_entity_id: "b1" }, overridden)).toBeNull();
     });
 
     it("routes an artist to bookings once the org's Editor Mode grants artist access", () => {
       const overridden: NotificationRoleContext = {
-        roles: ["artist"], isSuperAdmin: false, pageAccess: { "/bookings": ["admin", "producer", "artist"] },
+        roles: ["artist"], isSuperAdmin: false, pageAccess: { "/dates": ["admin", "producer", "artist"] },
       };
       expect(notificationTarget({ related_entity_type: "booking", related_entity_id: "b1" }, overridden)).toBe(ROUTES.BOOKINGS);
     });
@@ -124,7 +124,7 @@ describe("notificationTarget", () => {
 
     it("still reaches bookings and settings as a super-admin regardless of any override, like ProtectedRoute's god-mode bypass", () => {
       const restricted: NotificationRoleContext = {
-        roles: [], isSuperAdmin: true, pageAccess: { "/bookings": ["admin"], "/settings": ["admin"] },
+        roles: [], isSuperAdmin: true, pageAccess: { "/dates": ["admin"], "/settings": ["admin"] },
       };
       expect(notificationTarget({ related_entity_type: "booking", related_entity_id: "b1" }, restricted)).toBe(ROUTES.BOOKINGS);
       expect(notificationTarget({ related_entity_type: "airtable_sync_log", related_entity_id: null }, restricted)).toBe(
@@ -154,7 +154,7 @@ describe("notificationTarget", () => {
     it("returns null once the org's Editor Mode removes both the availability and dashboard fallbacks", () => {
       const neitherFallback: NotificationRoleContext = {
         roles: ["artist"], isSuperAdmin: false,
-        pageAccess: { "/availability": ["admin", "producer"], "/dashboard": ["admin", "producer"] },
+        pageAccess: { "/availability": ["admin", "producer"], "/today": ["admin", "producer"] },
       };
       expect(notificationTarget({ related_entity_type: "booking", related_entity_id: "b1" }, neitherFallback)).toBeNull();
     });

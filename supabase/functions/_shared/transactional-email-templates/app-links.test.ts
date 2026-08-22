@@ -87,7 +87,7 @@ const BOOKING_TEMPLATES = [
     headingKey: "artist-confirmation-digest.headingUpdates",
     ctaKey: "artist-confirmation-digest.ctaLabel",
     hasCta: true,
-    ctaUrl: "https://app.showflow.pro/bookings",
+    ctaUrl: "https://app.showflow.pro/dates",
   },
 ] as const;
 
