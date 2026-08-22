@@ -271,7 +271,7 @@ describe("HireOrderImportDialog", () => {
     expect(screen.getByText(/1 already existed/i)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /open contracts/i }));
-    expect(navigate).toHaveBeenCalledWith("/hire-orders");
+    expect(navigate).toHaveBeenCalledWith("/contracts");
   });
 
   it("defaults each imported row's terms_variant to the org's default template id, not a hardcoded value", async () => {
