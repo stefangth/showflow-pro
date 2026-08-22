@@ -92,7 +92,7 @@ export function AtRiskDateCard({ item, askTimeLabel, onOpenNextCast, onOpenDate 
                 key={opt.key}
                 className={cn(
                   "flex items-center gap-3 rounded-l border border-border p-3.5",
-                  i === 0 && "bg-muted",
+                  i === 0 && "bg-well-tint",
                 )}
               >
                 <div className="min-w-0 flex-1">

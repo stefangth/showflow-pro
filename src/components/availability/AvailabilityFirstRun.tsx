@@ -96,7 +96,7 @@ export function AvailabilityFirstRun({
 
       {/* Rules inherited from the org — read-only reference, always shown */}
       <div className="rounded-[var(--radius-l)] border border-border bg-card">
-        <div className="flex items-center gap-2 border-b border-border bg-muted px-4 py-3">
+        <div className="flex items-center gap-2 border-b border-border bg-well-tint px-4 py-3">
           {/* eslint-disable-next-line no-restricted-syntax -- section heading followed by a spacer + sibling, primitive adoption deferred */}
           <span className="text-eyebrow font-semibold uppercase tracking-[1.6px] text-muted-foreground">
             {t("firstRun.rules.heading")}

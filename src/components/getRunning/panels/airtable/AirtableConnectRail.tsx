@@ -132,7 +132,7 @@ export function AirtableConnectRail({ orgId, readOnly, canTriggerSync, onConnect
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-[236px_1fr]">
-        <ol className="border-b border-border bg-muted py-4 sm:border-b-0 sm:border-r">
+        <ol className="border-b border-border bg-well-tint py-4 sm:border-b-0 sm:border-r">
           {STEPS.map((s, i) => {
             const current = i === activeIndex;
             const done = i < activeIndex;
@@ -146,7 +146,7 @@ export function AirtableConnectRail({ orgId, readOnly, canTriggerSync, onConnect
                       current
                         ? "bg-primary text-primary-foreground"
                         : done
-                          ? "border border-accent-200 bg-accent-100 text-accent-text"
+                          ? "border border-accent-200 bg-accent-tint text-accent-text"
                           : "border border-border bg-card text-muted-foreground",
                     )}
                   >
@@ -229,7 +229,7 @@ export function AirtableConnectRail({ orgId, readOnly, canTriggerSync, onConnect
         </div>
       </div>
 
-      <div className="flex items-center gap-2.5 border-t border-border bg-muted px-4 py-3.5">
+      <div className="flex items-center gap-2.5 border-t border-border bg-well-tint px-4 py-3.5">
         <span className="font-mono text-xs font-medium text-accent-600">{t("rail.footer.stepOf", { n: activeIndex + 1 })}</span>
         <span className="text-xs text-muted-foreground">{t("rail.footer.savedAsYouGo")}</span>
         <span className="flex-1" />
@@ -258,7 +258,7 @@ function TokenStep({ value, onChange, canWrite }: { value: string; onChange: (v:
         value={value}
         onChange={(e) => onChange(e.target.value)}
         disabled={!canWrite}
-        className="mt-4 max-w-[420px] bg-muted"
+        className="mt-4 max-w-[420px] bg-well-tint"
       />
       <div className="mt-5 flex items-center gap-2 border-t border-border pt-3.5">
         <CircleHelp className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />

@@ -189,7 +189,7 @@ export function TaskPanel({ task, orgId, onClose, onNext }: TaskPanelProps): JSX
         )}
       </div>
 
-      <div className="flex items-center gap-2.5 border-t border-border bg-muted px-4 py-3.5">
+      <div className="flex items-center gap-2.5 border-t border-border bg-well-tint px-4 py-3.5">
         <span className="text-xs text-muted-foreground">{t(`panel.footerNote.${task.key}`)}</span>
         <div className="flex-1" />
         <div className="flex items-center gap-2">

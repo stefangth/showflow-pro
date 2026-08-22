@@ -109,7 +109,7 @@ function SummaryRow({ title, detail, mono, badge, action, onAction, stepNumber, 
     <div
       className={cn(
         "flex items-center gap-2.5 rounded-[var(--radius-l)] border p-3",
-        dashed ? "border-dashed border-border bg-card" : emphasis ? "border-accent-300 bg-accent-50" : "border-border bg-muted",
+        dashed ? "border-dashed border-border bg-card" : emphasis ? "border-accent-300 bg-accent-tint" : "border-border bg-well-tint",
       )}
     >
       <span

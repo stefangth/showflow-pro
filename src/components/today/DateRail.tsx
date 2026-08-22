@@ -16,7 +16,7 @@ interface DateRailProps {
 
 const TONE_CLASSES: Record<DateRailTone, { bg: string; text: string }> = {
   amber: { bg: "bg-[var(--amber-100)]", text: "text-[var(--amber-600)]" },
-  accent: { bg: "bg-accent-50", text: "text-accent-text" },
+  accent: { bg: "bg-accent-tint", text: "text-accent-text" },
 };
 
 // The two `DateRailTone` values render an identical color to the matching `TONES`
