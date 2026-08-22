@@ -4,11 +4,13 @@ What's new in ShowFlow, newest first.
 
 ## 1.17.1 — August 21, 2026
 
-*A clearer start in Settings, an honest Dates count, and buttons you can see*
+*A clearer start in Settings, an honest Dates count, buttons you can see, and a steadier look*
 
 ### Improved
 - **Settings opens on "How this org works"** — Opening Settings now lands on the summary of how your workspace runs, instead of the Organization tab.
 - **Clearer actions on a date** — The controls on a date, like closing a round, now look like buttons you can click rather than plain text.
+- **Risk stands out from waiting** — Anything at risk, like a date that can no longer fill in time, now shows in red, while amber stays for what is waiting on a person. The two are easy to tell apart at a glance.
+- **A steadier, more consistent look** — Cards, badges, labels, and buttons across the app now share one set of sizes, shapes, and depth, so pages read as one calm, uniform system.
 
 ### Fixed
 - **The Dates count matches your list** — The number beside Dates in the sidebar now counts only the dates that need you, the same total as the "Needs you" list on the page.

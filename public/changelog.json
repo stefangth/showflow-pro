@@ -3,7 +3,7 @@
     "version": "1.17.1",
     "date": "2026-08-21",
     "dateLabel": "August 21, 2026",
-    "title": "A clearer start in Settings, an honest Dates count, and buttons you can see",
+    "title": "A clearer start in Settings, an honest Dates count, buttons you can see, and a steadier look",
     "changes": {
       "improved": [
         {
@@ -13,6 +13,14 @@
         {
           "title": "Clearer actions on a date",
           "description": "The controls on a date, like closing a round, now look like buttons you can click rather than plain text."
+        },
+        {
+          "title": "Risk stands out from waiting",
+          "description": "Anything at risk, like a date that can no longer fill in time, now shows in red, while amber stays for what is waiting on a person. The two are easy to tell apart at a glance."
+        },
+        {
+          "title": "A steadier, more consistent look",
+          "description": "Cards, badges, labels, and buttons across the app now share one set of sizes, shapes, and depth, so pages read as one calm, uniform system."
         }
       ],
       "fixed": [
