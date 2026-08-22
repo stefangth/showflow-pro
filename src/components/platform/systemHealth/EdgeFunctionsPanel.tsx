@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { StatusPill, StatusDot, LatencyStat } from "./primitives";
+import { StatusPill } from "@/components/ui/status-pill";
+import { StatusDot } from "@/components/ui/status-dot";
+import { LatencyStat } from "./primitives";
 import { UptimeBar } from "./UptimeBar";
 import { RecentRunsList } from "./RecentRunsList";
-import { describeEdgeFnHealth, deriveEdgeFnStatus, healthRejected, CRON_FNS, type EdgeFnMetric } from "@/lib/systemHealth";
+import { describeEdgeFnHealth, deriveEdgeFnStatus, healthRejected, healthTone, healthLabel, CRON_FNS, type EdgeFnMetric } from "@/lib/systemHealth";
 import { SYSTEM_HEALTH_BUDGET as budget, SYSTEM_HEALTH } from "@/config/app.config";
 import type { HealthDay } from "@/lib/uptime";
 import { useEdgeFnLogs } from "@/hooks/useSystemHealth";
@@ -44,9 +46,9 @@ function EdgeFnRow({ m, rollup }: { m: EdgeFnMetric; rollup: HealthDay[] }) {
   return (
     <div className="rounded-l border border-border p-3">
       <div className="flex items-center gap-3">
-        <StatusDot state={state} />
+        <StatusDot tone={healthTone(state)} />
         <span className="font-mono text-sm font-medium flex-1 truncate">{m.fn}</span>
-        <StatusPill state={state} />
+        <StatusPill tone={healthTone(state)} dot>{healthLabel(state)}</StatusPill>
       </div>
       <div className="mt-3">
         <UptimeBar rows={rollup} days={SYSTEM_HEALTH.uptimeDays} />

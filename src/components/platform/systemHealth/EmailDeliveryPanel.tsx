@@ -1,9 +1,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { StatusPill, StatusDot } from "./primitives";
+import { StatusPill } from "@/components/ui/status-pill";
+import { StatusDot } from "@/components/ui/status-dot";
 import { redactEmail, redactEmailsInText } from "@/lib/identity";
 import { EMAIL_HEALTH } from "@/config/app.config";
-import type { EmailHealth, HealthState } from "@/lib/systemHealth";
+import { healthTone, healthLabel, type EmailHealth, type HealthState } from "@/lib/systemHealth";
 
 const pct = (n: number) => `${(n * 100).toFixed(n >= 0.01 || n === 0 ? 1 : 2)}%`;
 const toneForRate = (rate: number, warn: number, down: number) =>
@@ -31,7 +32,7 @@ export function EmailDeliveryPanel({
     <Card>
       <CardHeader className="flex flex-row items-center gap-3 space-y-0">
         <CardTitle className="font-display text-base">Email delivery</CardTitle>
-        <StatusPill state={state} />
+        <StatusPill tone={healthTone(state)} dot>{healthLabel(state)}</StatusPill>
         <span className="flex-1" />
         <div className="inline-flex overflow-hidden rounded-m border border-border text-xs">
           {EMAIL_HEALTH.windowOptions.map((m) => (
@@ -59,7 +60,7 @@ export function EmailDeliveryPanel({
           <div className="space-y-1.5">
             {h.byTemplate.map((t) => (
               <div key={t.templateName} className="flex items-center gap-3 rounded-l border border-border p-2.5">
-                <StatusDot state={t.bounced > 0 || t.failed > 0 ? "degraded" : "operational"} />
+                <StatusDot tone={healthTone(t.bounced > 0 || t.failed > 0 ? "degraded" : "operational")} />
                 <span className="flex-1 truncate font-mono text-sm">{t.templateName}</span>
                 <span className="text-xs text-muted-foreground">{t.sent} sent · {t.bounced} bounced · {t.failed} failed</span>
                 <span className="min-w-[52px] text-right text-sm font-medium tabular-nums">{pct(t.deliveryRate)}</span>

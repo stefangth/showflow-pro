@@ -1,5 +1,34 @@
+import type { Tone } from "@/components/ui/tones";
+
 export type HealthState = "operational" | "pending" | "degraded" | "down" | "stale";
 export type CronStatus = "healthy" | "failing" | "stale" | "unknown";
+
+/** Maps a system-health state to the canonical status tone (ADR 0012 TONES).
+ *  Amber (`waiting`) means a human is being watched for, red (`risk`) means an
+ *  active fault; `pending`/`stale` carry no signal yet, so they read neutral. */
+const HEALTH_TONE: Record<HealthState, Tone> = {
+  operational: "confirmed",
+  pending: "neutral",
+  degraded: "waiting",
+  down: "risk",
+  stale: "neutral",
+};
+
+const HEALTH_LABEL: Record<HealthState, string> = {
+  operational: "Operational",
+  pending: "Pending",
+  degraded: "Degraded",
+  down: "Down",
+  stale: "Stale",
+};
+
+export function healthTone(state: HealthState): Tone {
+  return HEALTH_TONE[state];
+}
+
+export function healthLabel(state: HealthState): string {
+  return HEALTH_LABEL[state];
+}
 
 /** A single recent invocation outcome, for the run timeline (most-recent-first).
  *  `at` is optional: it was added after the first shipped shape, so a metric cached
