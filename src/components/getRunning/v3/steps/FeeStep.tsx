@@ -125,7 +125,7 @@ export function FeeStep({ orgId, onDone }: { orgId: string | null; onDone: () =>
                     {castNameById.get(fee.cast_id) ?? fee.cast_id} &middot; {showNameById.get(fee.show_id) ?? fee.show_id}
                   </span>
                   <Metric size="body">
-                    {fee.fee_amount ?? "—"} {fee.currency}
+                    {fee.fee_amount ?? t("body.fee.noFee")} {fee.currency}
                   </Metric>
                 </li>
               ))}

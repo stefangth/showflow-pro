@@ -2,7 +2,7 @@
 -- rows into show_dates keyed on the partial-unique (org_id, show_id, date) WHERE source='sheet'.
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT plan(9);
+SELECT plan(11);
 
 -- Seed with RLS bypassed.
 SET session_replication_role = replica;
@@ -16,6 +16,12 @@ INSERT INTO public.shows (id, org_id, program, sub_program, status) VALUES
   ('00000000-0000-0000-0000-0000000000c1', '00000000-0000-0000-0000-0000000000f1', 'Cats', 'Evening', 'active');
 INSERT INTO public.cities (id, org_id, name) VALUES
   ('00000000-0000-0000-0000-0000000000d1', '00000000-0000-0000-0000-0000000000f1', 'Berlin');
+
+-- Second org (B), with its own show, used only for the cross-org write assertion below.
+INSERT INTO public.organizations (id, name, slug) VALUES
+  ('00000000-0000-0000-0000-0000000000f2', 'Org Two', 'v3-import-org-two');
+INSERT INTO public.shows (id, org_id, program, sub_program, status) VALUES
+  ('00000000-0000-0000-0000-0000000000c2', '00000000-0000-0000-0000-0000000000f2', 'Chess', 'Evening', 'active');
 SET session_replication_role = DEFAULT;
 
 -- 1. service_role has EXECUTE on the RPC (the runtime caller; see Global Constraints).
@@ -95,6 +101,25 @@ SELECT throws_ok(
   'P0001', NULL, 'a non-member cannot import sheet dates'
 );
 RESET ROLE;
+
+-- 5. Cross-org write guard: an admin of org A passes p_org=A with a show_id that belongs
+-- to org B. The row must be silently dropped (never inserted anywhere), not just rejected.
+SELECT set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000a1","role":"authenticated"}', true);
+SET LOCAL ROLE authenticated;
+SELECT is(
+  (public.import_sheet_dates(
+     '00000000-0000-0000-0000-0000000000f1',
+     '[{"show_id":"00000000-0000-0000-0000-0000000000c2","date":"2026-09-03"}]'::jsonb
+   ) ->> 'new_count')::int,
+  0, 'a row whose show belongs to a different org than p_org is dropped, not inserted'
+);
+RESET ROLE;
+SELECT is(
+  (SELECT count(*)::int FROM public.show_dates
+    WHERE show_id = '00000000-0000-0000-0000-0000000000c2' AND date = '2026-09-03'),
+  0, 'no show_dates row exists for the foreign-org show/date after the attempted cross-org import'
+);
 
 SELECT * FROM finish();
 ROLLBACK;
