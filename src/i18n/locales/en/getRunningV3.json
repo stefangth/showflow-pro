@@ -418,8 +418,15 @@
     "fee": {
       "heading": "Your default fee",
       "sub": "The fee a new contract starts from. You can change it on any single contract.",
-      "shellTitle": "Fees per production and cast",
-      "shellBody": "Once you have casts, you can set a fee for each production and cast here. Until then every contract uses the default above.",
+      "listTitle": "Fees per production and cast",
+      "listHint": "Set a fee for one cast and one production when it should differ from your default above.",
+      "noCasts": "You have no casts yet. Set them up in Casts and the ladder, then set fees per production and cast here.",
+      "coverageLink": "Casts and the ladder",
+      "addFee": "Add a fee",
+      "castLabel": "Cast",
+      "productionLabel": "Production",
+      "feeLabel": "Fee",
+      "save": "Save",
       "continue": "Continue",
       "readOnly": "Contract settings are set by an admin. You can read them here."
     },

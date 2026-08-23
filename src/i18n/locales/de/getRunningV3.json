@@ -418,8 +418,15 @@
     "fee": {
       "heading": "Deine Standardgage",
       "sub": "Die Gage, mit der ein neuer Engagementvertrag startet. Du kannst sie bei jedem einzelnen Engagementvertrag ändern.",
-      "shellTitle": "Gagen pro Produktion und Cast",
-      "shellBody": "Sobald du Casts hast, kannst du hier eine Gage pro Produktion und Cast setzen. Bis dahin nutzt jeder Engagementvertrag die Standardgage oben.",
+      "listTitle": "Gagen pro Produktion und Cast",
+      "listHint": "Setze eine Gage für einen Cast und eine Produktion, wenn sie von deiner Standardgage oben abweichen soll.",
+      "noCasts": "Du hast noch keine Casts. Richte sie unter Casts und Rangfolge ein und setze dann hier Gagen pro Produktion und Cast.",
+      "coverageLink": "Casts und Rangfolge",
+      "addFee": "Gage hinzufügen",
+      "castLabel": "Cast",
+      "productionLabel": "Produktion",
+      "feeLabel": "Gage",
+      "save": "Speichern",
       "continue": "Weiter",
       "readOnly": "Vertragseinstellungen legt ein Admin fest. Du kannst sie hier lesen."
     },
