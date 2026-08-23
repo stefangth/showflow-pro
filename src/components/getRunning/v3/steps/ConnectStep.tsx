@@ -75,7 +75,12 @@ export function ConnectStep({ orgId, onDone }: { orgId: string | null; onDone: (
   const connected = airtable.keyPresent && airtable.hasBaseTable;
   const effectiveSheetUrl = sheetUrl ?? sheetImport.settings.url;
   const sheetUrlValid = looksLikePublishedSheetUrl(effectiveSheetUrl);
-  const canContinue = isAirtable ? connected : isSheet ? sheetUrlValid : true;
+  // Continue is gated on the URL being SAVED, not merely typed: "Load columns"
+  // persists it (and loads the headers MapStep needs). Advancing on an unsaved
+  // URL would strand MapStep, which reads back an empty `settings.url` on its
+  // fresh useSheetImport mount and can never complete its column mapping.
+  const sheetReady = sheetUrlValid && sheetImport.settings.url === effectiveSheetUrl;
+  const canContinue = isAirtable ? connected : isSheet ? sheetReady : true;
 
   const continueButton = (
     <Button type="button" size="sm" disabled={!canContinue} onClick={onDone}>
