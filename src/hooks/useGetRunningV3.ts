@@ -67,6 +67,9 @@ export function useGetRunningV3(): { model: GetRunningModelV3 | null; isLoading:
   const canManageShows = useCan("manage_productions");
   const canEditScheduling = useCan("edit_scheduling");
   const canEditBooking = useCan("edit_booking_settings");
+  // The `skills` step edits the skill catalog, which SkillsTab gates on manage_skills
+  // (a different capability + producer default than edit_booking_settings).
+  const canManageSkills = useCan("manage_skills");
   const canEditHire = useCan("edit_hire_order_settings");
   const canAddArtists = useCan("add_artists");
 
@@ -118,6 +121,7 @@ export function useGetRunningV3(): { model: GetRunningModelV3 | null; isLoading:
     canManageShows,
     canEditScheduling,
     canEditBooking,
+    canManageSkills,
     canEditHire,
     canAddArtists,
     canInvite: role === "admin",

@@ -49,4 +49,16 @@ describe("SkillsStep", () => {
     expect(screen.queryByRole("button", { name: /continue/i })).toBeNull();
     expect(screen.getByText(/manage skills right/i)).toBeInTheDocument();
   });
+
+  it("gates on manage_skills, not edit_booking_settings", async () => {
+    // The default producer has manage_skills but not edit_booking_settings, and the
+    // embedded SkillsTab enforces manage_skills. Gating this step on edit_booking_settings
+    // would hide Continue and show a false read-only note for a user who can freely edit.
+    vi.mocked(useCan).mockImplementation((action) => action === "manage_skills");
+    const { onDone } = renderStep();
+
+    expect(screen.queryByText(/manage skills right/i)).toBeNull();
+    fireEvent.click(await screen.findByRole("button", { name: /continue/i }));
+    await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1));
+  });
 });

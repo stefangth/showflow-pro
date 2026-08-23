@@ -9,9 +9,10 @@ import { Button } from "@/components/ui/button";
 /**
  * The v3 `skills` step body (Phase 3): the org skill catalog, reusing the Settings
  * `SkillsTab`. `SkillsTab` self-gates its own writes on the `manage_skills`
- * capability; the step's OWN actionability is `edit_booking_settings` (the model's
- * `capability` for this step in `composeGetRunningV3`), which decides whether the
- * viewer sees Continue or a read-only note. Continue simply advances the wizard
+ * capability, so this step gates its Continue vs read-only note on the SAME capability
+ * (the model's `capability` for this step is also `manage_skills`) — otherwise a producer
+ * who can edit skills (manage_skills defaults on) would see an editable catalog with the
+ * Continue hidden and a false "you lack the manage skills right" note. Continue simply advances the wizard
  * (`onDone`) — done-ness is derived by the model from the catalog being non-empty,
  * the same "the dialogs persist, the body advances" pattern as `ProductionsStep`.
  *
@@ -22,7 +23,7 @@ import { Button } from "@/components/ui/button";
 export function SkillsStep({ orgId, onDone }: { orgId: string | null; onDone: () => void }): JSX.Element {
   const { t } = useTranslation("getRunningV3");
   const footerSlot = useContext(WizardFooterContext);
-  const canEdit = useCan("edit_booking_settings");
+  const canEdit = useCan("manage_skills");
 
   const continueButton = (
     <Button type="button" size="sm" onClick={onDone}>
