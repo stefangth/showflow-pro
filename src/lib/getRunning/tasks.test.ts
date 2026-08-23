@@ -12,6 +12,7 @@ const FULL_BOOKING_INPUT: BookingSetupStatusInput = {
   timingChosen: true,
   coverage: { futurePairs: [], showPriorities: [], cityPriorities: [] },
   artistCount: 3,
+  dateCount: 1,
   artistAcceptance: true,
 };
 
@@ -22,6 +23,7 @@ const EMPTY_BOOKING_INPUT: BookingSetupStatusInput = {
   timingChosen: false,
   coverage: undefined,
   artistCount: null,
+  dateCount: null,
   artistAcceptance: null,
 };
 

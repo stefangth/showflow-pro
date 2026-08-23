@@ -102,6 +102,20 @@ export async function fetchUpcomingShowDates<T>(
   return (data ?? []) as unknown as T[];
 }
 
+/** How many non-cancelled dates the org has, past or future. The get-running board
+ *  uses this to tell "no dates yet" (first run) from "no upcoming dates" (between
+ *  seasons); counting only future dates would make an established org look blank. */
+export async function fetchShowDateCount(client: SupabaseClient, orgId: string | null): Promise<number> {
+  if (!orgId) return 0;
+  const { count, error } = await client
+    .from("show_dates")
+    .select("id", { count: "exact", head: true })
+    .eq("org_id", orgId)
+    .neq("status", "cancelled");
+  if (error) throw error;
+  return count ?? 0;
+}
+
 /** The soonest future, non-cancelled show date that has a city, for the setup-rail
  *  rehearsal. Null when none qualifies (a date without a city cannot resolve a tier). */
 export async function fetchNextRehearsalDate(

@@ -37,6 +37,10 @@ export interface BookingSetupStatus {
    *  org-setup failure, so it never gates readiness — the /get-running board surfaces it as
    *  a non-blocking advisory instead. 0 while coverage is unread. */
   datesWithoutCity: number;
+  /** The org has at least one non-cancelled date. Distinguishes a first-run org from
+   *  an established one between seasons; `datesWithoutCity` cannot, since it is 0 for
+   *  both. */
+  hasAnyDates: boolean;
 }
 
 export interface LadderCoverageInputs {
@@ -78,6 +82,10 @@ export interface BookingSetupStatusInput {
    *  failed read) and is treated as 0, so the step reports outstanding rather than falsely
    *  done. */
   artistCount: number | null;
+  /** How many non-cancelled dates the org has, past or future. `null` = unreadable
+   *  (loading or a failed read) and is treated as 0, so a step reports outstanding
+   *  rather than falsely done. */
+  dateCount: number | null;
   /** Whether this org's resolved flow runs offers (`booking_flow.artist_acceptance`).
    *  `null` = not read yet. It changes no step's DONE-ness, only what an outstanding step
    *  costs: the wording of the hard gate `people` holds under either flow, and whether
@@ -213,5 +221,6 @@ export function computeBookingSetupStatus(input: BookingSetupStatusInput): Booki
     complete: steps.every((s) => s.done),
     // Per-date advisory signal (see the field doc): count of future dates with no city.
     datesWithoutCity: input.coverage?.futurePairs.filter((p) => p.cityId === null).length ?? 0,
+    hasAnyDates: (input.dateCount ?? 0) > 0,
   };
 }

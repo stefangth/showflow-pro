@@ -63,6 +63,7 @@ describe("computeBookingSetupStatus", () => {
     timingChosen: true,
     coverage: doneCoverage,
     artistCount: 3,
+    dateCount: 1,
     artistAcceptance: true,
   };
 
@@ -197,6 +198,7 @@ describe("computeBookingSetupStatus", () => {
       timingChosen: false,
       coverage: { futurePairs: [], showPriorities: [], cityPriorities: [] },
       artistCount: 0,
+      dateCount: 0,
       artistAcceptance: null,
     });
     expect(status.doneCount).toBe(0);
@@ -220,6 +222,7 @@ describe("computeBookingSetupStatus", () => {
         cityPriorities: [],
       },
       artistCount: 2,
+      dateCount: 1,
       artistAcceptance: true,
     });
     expect(status.complete).toBe(true);
@@ -235,6 +238,7 @@ describe("computeBookingSetupStatus", () => {
       timingChosen: true,
       coverage: { futurePairs: [], showPriorities: [], cityPriorities: [] },
       artistCount: 5,
+      dateCount: 4,
       artistAcceptance: true,
     });
     expect(status.steps.find((s) => s.key === "ladder")!.done).toBe(true);
@@ -252,6 +256,7 @@ describe("computeBookingSetupStatus", () => {
       timingChosen: true,
       coverage: { futurePairs: [], showPriorities: [], cityPriorities: [] },
       artistCount: 0,
+      dateCount: 0,
       artistAcceptance: true,
     });
     expect(status.steps.find((s) => s.key === "slots")!.done).toBe(false);
@@ -303,10 +308,25 @@ describe("computeBookingSetupStatus", () => {
   it("treats unread inputs as outstanding (fail-safe)", () => {
     const s = computeBookingSetupStatus({
       flowChosen: false, hasAnyShows: false, shows: undefined, timingChosen: false, coverage: undefined,
-      artistCount: null, artistAcceptance: null,
+      artistCount: null, dateCount: null, artistAcceptance: null,
     });
     expect(s.doneCount).toBe(0);
     expect(s.canOffer).toBe(false);
     expect(s.complete).toBe(false);
+  });
+
+  it("reports hasAnyDates false for an org with no dates", () => {
+    const s = computeBookingSetupStatus({ ...base, dateCount: 0 });
+    expect(s.hasAnyDates).toBe(false);
+  });
+
+  it("reports hasAnyDates true for an org whose only dates are in the past", () => {
+    const s = computeBookingSetupStatus({ ...base, dateCount: 4, coverage: { ...base.coverage, futurePairs: [] } });
+    expect(s.hasAnyDates).toBe(true);
+  });
+
+  it("treats an unreadable date count as no dates rather than falsely done", () => {
+    const s = computeBookingSetupStatus({ ...base, dateCount: null });
+    expect(s.hasAnyDates).toBe(false);
   });
 });

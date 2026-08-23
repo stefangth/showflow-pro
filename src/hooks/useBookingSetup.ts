@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { fetchShowsWithSlots, fetchOwnedSettingKeys, fetchBookingFlow } from "@/data/settings";
 import { fetchLadderCoverageInputs } from "@/data/eligibility";
 import { fetchArtistCount } from "@/data/artists";
+import { fetchShowDateCount } from "@/data/showDates";
 import { fetchProducerCount } from "@/data/members";
 import { activeShows } from "@/lib/settings";
 import { toDateKey } from "@/lib/dates";
@@ -59,9 +60,14 @@ export function useBookingSetupStatus(orgId: string | null): {
     enabled: !!orgId,
     queryFn: () => fetchArtistCount(supabase, orgId!),
   });
+  const dateCount = useQuery({
+    queryKey: ["show-dates", "count", orgId],
+    enabled: !!orgId,
+    queryFn: () => fetchShowDateCount(supabase, orgId),
+  });
   const isLoading = !!orgId
-    && (owned.isLoading || shows.isLoading || coverage.isLoading || flow.isLoading || artists.isLoading);
-  const isError = owned.isError || shows.isError || coverage.isError || flow.isError || artists.isError;
+    && (owned.isLoading || shows.isLoading || coverage.isLoading || flow.isLoading || artists.isLoading || dateCount.isLoading);
+  const isError = owned.isError || shows.isError || coverage.isError || flow.isError || artists.isError || dateCount.isError;
   const ownedSet = owned.data;
   const status = computeBookingSetupStatus({
     // The org must own its own booking_flow row AND have that flow currently active
@@ -79,6 +85,9 @@ export function useBookingSetupStatus(orgId: string | null): {
     // `?? null` covers both loading and a failed read, and the engine treats null as an
     // empty roster, so an unread count reports the step outstanding rather than done.
     artistCount: artists.data ?? null,
+    // Same fail-safe as artistCount: null covers loading and a failed read, so the
+    // get-dates steps that depend on hasAnyDates stay outstanding rather than falsely done.
+    dateCount: dateCount.data ?? null,
     // The SAME flow read as `flowChosen` above, used for a different question: not whether
     // the org chose a flow, but which one it runs. A direct-book org never opens a tier, so
     // its blockers must not be worded as offers, and the cast ladder is not one of its
