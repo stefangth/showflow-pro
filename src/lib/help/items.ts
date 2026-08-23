@@ -154,6 +154,22 @@ export const HELP_ITEMS: readonly HelpItem[] = [
     },
   },
   {
+    id: 'A3.8', role: 'admin', stage: 3, status: 'new', surface: 'Get running board, Get dates in phase', updated: '2026-08-23',
+    q: { en: 'Can I import dates from a Google Sheet instead of Airtable?', de: 'Kann ich Termine aus einem Google Sheet importieren statt aus Airtable?' },
+    a: {
+      en: 'Yes. Pick Google Sheet as your source on Get running, paste the link to a sheet published to the web as CSV, map its columns to ShowFlow fields, then run the import. Rows missing a city, date, or production are held rather than skipped: link the missing city and run the import again to bring them in.',
+      de: 'Ja. Wähle Google Sheet als Quelle bei Get running, füge den Link zu einer im Web als CSV veröffentlichten Tabelle ein, ordne ihre Spalten den Feldern von ShowFlow zu, und starte dann den Import. Zeilen ohne Stadt, Datum oder Produktion werden zurückgehalten statt übersprungen: verknüpfe die fehlende Stadt und starte den Import erneut, um sie hereinzuholen.',
+    },
+  },
+  {
+    id: 'A3.9', role: 'admin', stage: 3, status: 'new', surface: 'Get running board, Paperwork phase', updated: '2026-08-23',
+    q: { en: 'Can I set a different fee for one cast on one production?', de: 'Kann ich für einen Cast bei einer Produktion eine andere Gage festlegen?' },
+    a: {
+      en: 'Yes, on Get running under Paperwork. Below your default fee there is a list of fees per production and cast: add one when a cast and production should differ from your default. It applies once an artist in that cast is booked for that production, and only your own fee set on the booking still wins over it. You need at least one cast set up first: the step points you at Rank your casts if you have none yet.',
+      de: 'Ja, bei Get running unter Papierkram. Unter deiner Standardgage gibt es eine Liste mit Gagen pro Produktion und Cast: füge eine hinzu, wenn ein Cast bei einer Produktion von deiner Standardgage abweichen soll. Sie gilt, sobald ein Artist aus diesem Cast für diese Produktion gebucht wird, nur eine eigene Gage, die du direkt an der Buchung gesetzt hast, hat weiterhin Vorrang. Du brauchst zuerst mindestens einen Cast: der Schritt verweist dich auf Deine Besetzungen reihen, falls du noch keinen hast.',
+    },
+  },
+  {
     id: 'A4.1', role: 'admin', stage: 4, status: 'new', surface: 'Notifications', updated: '2026-08-14',
     q: { en: 'Why does clicking a notification do nothing?', de: 'Warum passiert nichts, wenn ich auf eine Benachrichtigung klicke?' },
     a: {
