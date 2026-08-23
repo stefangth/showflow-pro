@@ -445,7 +445,7 @@ describe("SettingsPage get-running mirror tab (wireflow v3 phase 5)", () => {
     datesCitiesDone: true,
     hasAnyDates: true,
     producerCount: 1,
-    skillsDone: true,
+    skillGaps: 0,
     feeDone: false,
     documentDone: false,
     canManageShows: true,

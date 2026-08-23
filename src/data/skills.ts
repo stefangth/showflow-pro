@@ -177,6 +177,37 @@ export async function fetchArtistSkills(
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
+export interface SkillGap { skillId: string; name: string }
+
+/** Skills that some part requires but no ACTIVE artist holds. An empty result means the
+ *  skill model is coherent, which includes an org that requires no skills at all. Reads
+ *  the trigger-maintained `show_required_skills` cache; never write that table. */
+export async function fetchSkillEligibilityGaps(
+  client: SupabaseClient<Database>,
+  orgId: string | null,
+): Promise<SkillGap[]> {
+  if (!orgId) return [];
+  const required = await client.from("show_required_skills").select("skill_id").eq("org_id", orgId);
+  if (required.error) throw required.error;
+  const requiredIds = [...new Set((required.data ?? []).map((r) => r.skill_id as string))];
+  if (requiredIds.length === 0) return [];
+
+  const held = await client
+    .from("artist_skills")
+    .select("skill_id, artists!inner(status)")
+    .eq("org_id", orgId)
+    .eq("artists.status", "active");
+  if (held.error) throw held.error;
+  const heldIds = new Set((held.data ?? []).map((r) => (r as { skill_id: string }).skill_id));
+
+  const missing = requiredIds.filter((id) => !heldIds.has(id));
+  if (missing.length === 0) return [];
+
+  const named = await client.from("skills").select("id, name").in("id", missing);
+  if (named.error) throw named.error;
+  return (named.data ?? []).map((s) => ({ skillId: s.id as string, name: s.name as string }));
+}
+
 /** Create a skill from a (trimmed) name, scoped to the given org. */
 export async function createSkill(
   client: SupabaseClient<Database>,

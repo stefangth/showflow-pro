@@ -3,7 +3,7 @@ import { createFakeSupabase } from "@/test/supabaseFake";
 import { asSupabase } from "@/test/castHelpers";
 import {
   fetchSkills, fetchSkillCatalog, renameSkill, archiveSkill, restoreSkill,
-  deleteSkill, fetchUpcomingDateCountsBySkill,
+  deleteSkill, fetchUpcomingDateCountsBySkill, fetchSkillEligibilityGaps,
 } from "./skills";
 
 describe("fetchSkills", () => {
@@ -100,5 +100,26 @@ describe("fetchUpcomingDateCountsBySkill", () => {
   it("returns an empty map with no org", async () => {
     const counts = await fetchUpcomingDateCountsBySkill(asSupabase(createFakeSupabase({})), null, "2026-08-11");
     expect(counts.size).toBe(0);
+  });
+});
+
+describe("fetchSkillEligibilityGaps", () => {
+  it("returns skills required by a part that no active artist holds", async () => {
+    const client = createFakeSupabase({
+      show_required_skills: { data: [{ skill_id: "sk-1" }, { skill_id: "sk-2" }], error: null },
+      artist_skills: { data: [{ skill_id: "sk-2" }], error: null },
+      skills: { data: [{ id: "sk-1", name: "Lead Vocals" }, { id: "sk-2", name: "Piano" }], error: null },
+    });
+    const gaps = await fetchSkillEligibilityGaps(asSupabase(client), "org-1");
+    expect(gaps).toEqual([{ skillId: "sk-1", name: "Lead Vocals" }]);
+  });
+
+  it("returns no gaps when no part requires a skill", async () => {
+    const client = createFakeSupabase({
+      show_required_skills: { data: [], error: null },
+      artist_skills: { data: [], error: null },
+      skills: { data: [], error: null },
+    });
+    expect(await fetchSkillEligibilityGaps(asSupabase(client), "org-1")).toEqual([]);
   });
 });

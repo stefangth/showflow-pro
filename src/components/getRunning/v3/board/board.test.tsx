@@ -42,7 +42,7 @@ const base: GetRunningInputV3 = {
   datesCitiesDone: true,
   hasAnyDates: true,
   producerCount: 1,
-  skillsDone: true,
+  skillGaps: 0,
   feeDone: false,
   documentDone: false,
   canManageShows: true,

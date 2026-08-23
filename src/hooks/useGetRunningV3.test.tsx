@@ -18,9 +18,10 @@ const TEST_ORG = { id: ORG_ID, name: "Test Org", slug: "test-org", status: "acti
 
 /** A fully entitled, fully configured org: every table read this hook's chain of hooks
  *  touches resolves without error. Mirrors `useGetRunning.test.tsx`'s `fullySeeded()`, plus
- *  a `skills` row so the v3-only `skillsDone` best-effort signal resolves true. Individual
- *  `done` values beyond `skillsDone` are not asserted here (that's `steps.test.ts`'s job) —
- *  this seed only needs to make every query settle so `isLoading` can flip to false. */
+ *  a `skills` row so the skill-eligibility-gaps read settles cleanly. Individual `done`
+ *  values beyond that (including `skillGaps`) are not asserted here, that is
+ *  `steps.test.ts`'s job. This seed only needs to make every query settle so `isLoading`
+ *  can flip to false. */
 function fullySeeded() {
   seed({
     org_entitlements: {

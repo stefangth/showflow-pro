@@ -86,7 +86,11 @@ export interface GetRunningInputV3 {
    *  trivially with no dates, and "review your productions" says nothing about dates. */
   hasAnyDates: boolean;
   producerCount: number | null; // team step done when > 0
-  skillsDone: boolean; // real signal: the org's skill catalog is non-empty (useSkills)
+  /** How many skills are required by at least one part but held by no active artist.
+   *  0 means the skill model is coherent, including the legitimate case of an org that
+   *  requires no skills at all. Replaces a bare "the catalog is non-empty" check, which
+   *  read as done while no artist was eligible for anything. */
+  skillGaps: number;
   feeDone: boolean; // real signal: org owns its hire_order_defaults row (useHireOrderExtraSetup)
   documentDone: boolean; // real signal: org owns its hire_order_numbering row (useHireOrderExtraSetup)
   canManageShows: boolean;
@@ -201,7 +205,7 @@ export function composeGetRunningV3(input: GetRunningInputV3): GetRunningModelV3
       },
       {
         key: "skills",
-        done: input.skillsDone,
+        done: input.skillGaps === 0,
         block: null,
         adminOnly: false,
         placeholder: false,
