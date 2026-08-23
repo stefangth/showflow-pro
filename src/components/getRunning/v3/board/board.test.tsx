@@ -89,6 +89,33 @@ describe("StillShutCard", () => {
     expect(screen.queryByText(/your first contract is shut/i)).not.toBeInTheDocument();
     expect(screen.getByText(/nothing else here is shut/i)).toBeInTheDocument();
   });
+
+  it("excludes a hidden not-done step from the first-ask count (future hidden-but-not-done source)", () => {
+    // A manual dates source marks get_dates' connect/map steps `hidden: true` (steps.ts),
+    // here left NOT done (datesConnectDone/datesMapDone false) so they carry the phase's
+    // `booking`-blocking `block`, same as a future source (Phase 4 Sheet) that can hide a
+    // step which isn't done yet. composeGetRunningV3's own doneCount/nextStep already
+    // exclude hidden steps (steps.test.ts); this proves StillShutCard's raw
+    // `model.phases.flatMap((p) => p.steps)` read does too. Before the fix, this hidden
+    // pair would count toward firstAskCount ("2 steps away" shown); after the fix, the
+    // rest of the model is fully done so nothing is shut at all.
+    const model = composeGetRunningV3({
+      ...base,
+      datesSource: "manual",
+      datesConnectDone: false,
+      datesMapDone: false,
+    });
+    const getDates = model.phases.find((p) => p.key === "get_dates")!;
+    const hiddenNotDone = getDates.steps.filter((s) => s.hidden && !s.done);
+    expect(hiddenNotDone.map((s) => s.key)).toEqual(["connect", "map"]);
+    expect(hiddenNotDone.every((s) => s.block === "booking")).toBe(true);
+
+    renderWithProviders(<StillShutCard model={model} />);
+
+    expect(screen.queryByText(/your first ask is shut/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/steps away/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/nothing else here is shut/i)).toBeInTheDocument();
+  });
 });
 
 describe("PhaseIconRail", () => {

@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { StatusPill } from "@/components/ui/status-pill";
+import { visibleSteps } from "@/lib/getRunning/steps";
 import type { GetRunningModelV3 } from "@/lib/getRunning/steps";
 
 /**
@@ -15,7 +16,7 @@ import type { GetRunningModelV3 } from "@/lib/getRunning/steps";
  */
 export function StillShutCard({ model }: { model: GetRunningModelV3 }): JSX.Element {
   const { t } = useTranslation("getRunningV3");
-  const allSteps = model.phases.flatMap((p) => p.steps);
+  const allSteps = model.phases.flatMap((p) => visibleSteps(p.steps));
 
   const firstAskCount = allSteps.filter(
     (s) => !s.done && (s.block === "offers" || s.block === "booking"),
