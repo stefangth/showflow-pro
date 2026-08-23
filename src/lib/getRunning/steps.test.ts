@@ -89,10 +89,10 @@ describe("composeGetRunningV3", () => {
     expect(m.phases.flatMap((p) => p.steps).some((s) => (s.key as string) === "eligibility")).toBe(false);
   });
 
-  it("marks new steps as placeholders and reuse steps as real", () => {
+  it("all steps are now real, no placeholders", () => {
     const m = composeGetRunningV3(base);
     const byKey = Object.fromEntries(m.phases.flatMap((p) => p.steps).map((s) => [s.key, s.placeholder]));
-    expect(byKey).toMatchObject({ source: false, skills: true, fee: true, document: true, artists: false, flow: false, coverage: false });
+    expect(byKey).toMatchObject({ source: false, skills: false, fee: false, document: false, artists: false, flow: false, coverage: false });
   });
 
   it("a producer cannot act on team (adminOnly)", () => {
@@ -108,6 +108,34 @@ describe("composeGetRunningV3", () => {
     // All real+placeholder signals satisfied → complete.
     const all = composeGetRunningV3({ ...base, skillsDone: true, feeDone: true, documentDone: true });
     expect(all.complete).toBe(true);
+  });
+});
+
+describe("composeGetRunningV3 Phase 3 (skills/fee/document are real steps)", () => {
+  it("marks skills, fee, and document as non-placeholder", () => {
+    const m = composeGetRunningV3(baseInput({ bookingOn: true, hireOrdersOn: true }));
+    const all = m.phases.flatMap((p) => p.steps);
+    for (const key of ["skills", "fee", "document"] as const) {
+      expect(all.find((s) => s.key === key)!.placeholder).toBe(false);
+    }
+  });
+
+  it("no step in the whole model is a placeholder anymore", () => {
+    const m = composeGetRunningV3(baseInput({ bookingOn: true, hireOrdersOn: true }));
+    expect(m.phases.flatMap((p) => p.steps).some((s) => s.placeholder)).toBe(false);
+  });
+
+  it("fee and document done still track their input signals", () => {
+    const m = composeGetRunningV3(baseInput({ bookingOn: true, hireOrdersOn: true, feeDone: true, documentDone: false }));
+    const paper = m.phases.find((p) => p.key === "paperwork")!;
+    expect(paper.steps.find((s) => s.key === "fee")!.done).toBe(true);
+    expect(paper.steps.find((s) => s.key === "document")!.done).toBe(false);
+  });
+
+  it("skills done tracks its input signal", () => {
+    const m = composeGetRunningV3(baseInput({ bookingOn: true, skillsDone: true }));
+    const bookable = m.phases.find((p) => p.key === "bookable")!;
+    expect(bookable.steps.find((s) => s.key === "skills")!.done).toBe(true);
   });
 });
 

@@ -7,15 +7,9 @@
 // (src/lib/getRunning/tasks.ts) so v1 stays byte-stable; it mirrors v1's `makeBookingTask`/
 // `makeHireTask`/`withActionability` idioms instead of sharing code with them.
 //
-// Phase 2 wires the get_dates split to real per-step signals: `source` reads the org's
-// chosen dates source (useDatesSource), `connect`/`map` read the Airtable console's
-// connection + required-field-mapping state (useAirtableConsole) when that source is
-// chosen (and are hidden, not merely done, for a manual source), and `cities` reads the
-// booking module's `datesWithoutCity` advisory. Four more steps (skills/fee/document, plus
-// the merge that retires `productions`' own body) remain placeholders whose UI body is not
-// built yet (`StepComingSoon`, task 7). See the task-2 brief's mapping table for the exact
-// per-step signal source. Later phases replace the remaining placeholder signals with real
-// per-signal reads; nothing here should be read as final semantics.
+// All 16 steps now carry real signals. Phase 2 wired the get_dates split (source/connect/map/cities/productions);
+// Phase 3 wired skills/fee/document. See the task briefs for the exact per-step signal source.
+// The booking/hiring setups + get_dates/skills/fee/document signals compose the whole board.
 //
 // No React, no hooks, no data fetching here — a later task wires this to live queries.
 
@@ -201,7 +195,7 @@ export function composeGetRunningV3(input: GetRunningInputV3): GetRunningModelV3
         done: input.skillsDone,
         block: null,
         adminOnly: false,
-        placeholder: true,
+        placeholder: false,
         capability: input.canEditBooking,
       },
       {
@@ -266,7 +260,7 @@ export function composeGetRunningV3(input: GetRunningInputV3): GetRunningModelV3
         done: input.feeDone,
         block: null,
         adminOnly: true,
-        placeholder: true,
+        placeholder: false,
         capability: input.canEditHire,
       },
       {
@@ -282,7 +276,7 @@ export function composeGetRunningV3(input: GetRunningInputV3): GetRunningModelV3
         done: input.documentDone,
         block: null,
         adminOnly: true,
-        placeholder: true,
+        placeholder: false,
         capability: input.canEditHire,
       },
       {
