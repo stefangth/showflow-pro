@@ -19,6 +19,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Metric } from "@/components/ui/metric";
 import { TONES } from "@/components/ui/tones";
 import type { GetRunningPhaseV3, GetRunningStepKey } from "@/lib/getRunning/steps";
 
@@ -66,8 +67,10 @@ export function PhaseIconRail({
     >
       <div className="flex items-baseline justify-between gap-2">
         <div className="text-control font-semibold text-foreground">{t(`phases.${phase.key}.name`)}</div>
-        <div className="shrink-0 font-mono text-eyebrow text-muted-foreground">
-          {phase.doneCount} / {phase.totalCount}
+        <div className="shrink-0 text-muted-foreground">
+          <Metric size="inline">
+            {phase.doneCount} / {phase.totalCount}
+          </Metric>
         </div>
       </div>
       <p className="mt-1 text-xs leading-[17px] text-muted-foreground">{t(`phases.${phase.key}.summary`)}</p>

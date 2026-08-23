@@ -43,7 +43,8 @@
     "continue": "Continue",
     "start": "Start",
     "waitsOn": "Waits on {{name}}",
-    "doneOf": "{{done}} of {{total}} done"
+    "doneOf": "{{done}} of {{total}} done",
+    "doneOfRich": "<0>{{done}}</0> of <1>{{total}}</1> done"
   },
   "wizard": {
     "collapse": "Collapse",

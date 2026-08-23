@@ -1,6 +1,7 @@
-import { useTranslation } from "react-i18next";
+import { Trans, useTranslation } from "react-i18next";
 import { Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Metric } from "@/components/ui/metric";
 import type { GetRunningModelV3, GetRunningPhaseKey, GetRunningPhaseV3 } from "@/lib/getRunning/steps";
 
 /**
@@ -23,7 +24,6 @@ export function PhaseRow({
   onOpen: (phase: GetRunningPhaseKey) => void;
 }): JSX.Element {
   const { t } = useTranslation("getRunningV3");
-  void model; // reserved for future cross-phase context (e.g. viewer role); unused today.
 
   const waitingOnPhase = phase.waitsOn ? model.phases.find((p) => p.key === phase.waitsOn) : null;
 
@@ -32,13 +32,33 @@ export function PhaseRow({
       data-testid={`phase-row-${phase.key}`}
       className="flex items-center gap-3 border-b border-border px-4 py-3.5 last:border-b-0"
     >
-      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-border font-mono text-eyebrow font-semibold text-muted-foreground">
-        {index}
+      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground">
+        <Metric size="inline">{index}</Metric>
       </span>
       <div className="min-w-0 flex-1">
         <div className="text-control font-semibold text-foreground">{t(`phases.${phase.key}.name`)}</div>
         <div className="mt-0.5 text-xs text-muted-foreground">
-          {t("phaseRow.doneOf", { done: phase.doneCount, total: phase.totalCount })}
+          {/* Numbers-are-Metric (CLAUDE.md rule 8): the "{{done}} of {{total}} done" sentence
+              routes its two interpolated numbers through <Metric>, via the same Trans+Metric
+              idiom WizardShell's footer counter uses for embedding numbers inside a
+              translated sentence. `doneOfRich` mirrors `wizard.stepOfRich`'s <0>/<1> shape;
+              `phaseRow.doneOf` (plain) stays as the aria-label so assistive tech still hears
+              a whole sentence rather than two separate number nodes. */}
+          <span aria-label={t("phaseRow.doneOf", { done: phase.doneCount, total: phase.totalCount })}>
+            <Trans
+              t={t}
+              i18nKey="phaseRow.doneOfRich"
+              values={{ done: phase.doneCount, total: phase.totalCount }}
+              components={[
+                <Metric key="done" size="inline">
+                  {""}
+                </Metric>,
+                <Metric key="total" size="inline">
+                  {""}
+                </Metric>,
+              ]}
+            />
+          </span>
         </div>
       </div>
       {phase.waitsOn ? (
