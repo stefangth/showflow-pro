@@ -21,6 +21,25 @@ export interface AirtableFieldMap {
 
 export interface ShowflowFieldDef { key: keyof AirtableFieldMap; label: string; optional?: boolean }
 
+/** True once the two fields `airtable-poll` actually requires to import a date without
+ *  holding it are mapped: `date` and `sub_program` (the program grain resolves via
+ *  `buildProgramKey(program, sub_program)`, ADR-0010 — `program` is optional broader grain,
+ *  `sub_program` is the field the poll actually keys on). Every other mapping slot (city,
+ *  venue, the three sessions, the cancellation status field) is genuinely optional for a
+ *  first sync.
+ *
+ *  Deliberately narrower than `requiredMappedCount` in
+ *  `src/components/settings/airtable/console.ts`, which counts all nine slots (including
+ *  the optional `session_3` and the non-UI `status_field`) and backs the Settings
+ *  mapping-tab counter/KPI — a progress readout, a different and still-correct use case.
+ *  Gating a go/no-go decision (the get-running board's `map` step Continue button, and its
+ *  `datesMapDone` signal) on that count made "map done" unreachable for a legitimate org
+ *  that never maps every optional field. This predicate is the one shared source of truth
+ *  for that go/no-go question. */
+export function isDatesMapComplete(fieldMap: AirtableFieldMap): boolean {
+  return !!fieldMap.date && !!fieldMap.sub_program;
+}
+
 /** The core fields the admin maps, in display order. session_3 is optional (Fever's base has two). */
 export const SHOWFLOW_FIELDS: ShowflowFieldDef[] = [
   { key: "date", label: "Date" },

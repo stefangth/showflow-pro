@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { buildProgramKey, buildCityKey, normalizeCityName, SHOWFLOW_FIELDS, planCityReconciliation, groupDuplicateCities, planProgramImport } from "./airtableMapping";
+import {
+  buildProgramKey, buildCityKey, normalizeCityName, SHOWFLOW_FIELDS, planCityReconciliation,
+  groupDuplicateCities, planProgramImport, isDatesMapComplete,
+} from "./airtableMapping";
 
 describe("airtableMapping key helpers", () => {
   it("buildProgramKey uses sub_program alone when program value is absent", () => {
@@ -119,5 +122,34 @@ describe("planProgramImport", () => {
       [],
     );
     expect(rows).toEqual([{ program: "BOL", sub_program: "BOL: PP", key: "BOL|BOL: PP" }]);
+  });
+});
+
+describe("isDatesMapComplete", () => {
+  it("is complete once date and sub_program are both mapped", () => {
+    expect(isDatesMapComplete({ date: "Date", sub_program: "Sub Program" })).toBe(true);
+  });
+  it("is incomplete when date is missing", () => {
+    expect(isDatesMapComplete({ date: null, sub_program: "Sub Program" })).toBe(false);
+    expect(isDatesMapComplete({ sub_program: "Sub Program" })).toBe(false);
+  });
+  it("is incomplete when sub_program is missing", () => {
+    expect(isDatesMapComplete({ date: "Date", sub_program: null })).toBe(false);
+    expect(isDatesMapComplete({ date: "Date" })).toBe(false);
+  });
+  it("is incomplete when neither is mapped", () => {
+    expect(isDatesMapComplete({})).toBe(false);
+  });
+  it("is unaffected by optional fields being unmapped: still complete with only date + sub_program set", () => {
+    expect(isDatesMapComplete({
+      date: "Date", sub_program: "Sub Program",
+      city: null, venue: null, session_1: null, session_2: null, session_3: null, status_field: null,
+    })).toBe(true);
+  });
+  it("is unaffected by optional fields being mapped: not complete if date/sub_program are still missing", () => {
+    expect(isDatesMapComplete({
+      city: "City", venue: "Venue", session_1: "Session 1", session_2: "Session 2",
+      session_3: "Session 3", status_field: "Status",
+    })).toBe(false);
   });
 });

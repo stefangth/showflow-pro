@@ -324,6 +324,17 @@
       "saveToken": "Token speichern",
       "connected": "Verbunden mit {{baseName}} › {{tableName}}.",
       "continue": "Weiter"
+    },
+    "map": {
+      "heading": "Felder zuordnen",
+      "sub": "Ordne jede Airtable-Spalte dem Feld in ShowFlow zu, das sie darstellt.",
+      "slotsFold": {
+        "title": "Besetzungsplan",
+        "body": "Jede importierte Produktion braucht noch ihren Besetzungsplan, die Parts und die Personen pro Part. Richte ihn im Schritt Produktionen ein.",
+        "link": "Zu Produktionen"
+      },
+      "continue": "Weiter",
+      "mapIncomplete": "Ordne die Felder Datum und Unterprogramm zu, um fortzufahren."
     }
   }
 }
