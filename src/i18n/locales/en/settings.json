@@ -25,6 +25,7 @@
     "items": {
       "organization": "Organization",
       "howItWorks": "How this org works",
+      "getRunning": "Get running",
       "permissions": "Roles & rights",
       "trust": "Trust & data",
       "castsCoverage": "Casts & coverage",

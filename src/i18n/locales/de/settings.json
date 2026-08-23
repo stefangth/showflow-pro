@@ -25,6 +25,7 @@
     "items": {
       "organization": "Organisation",
       "howItWorks": "Wie diese Organisation funktioniert",
+      "getRunning": "Loslegen",
       "permissions": "Rollen und Rechte",
       "trust": "Vertrauen und Daten",
       "castsCoverage": "Besetzung und Abdeckung",

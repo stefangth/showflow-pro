@@ -1,8 +1,9 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { Link, MemoryRouter } from "react-router-dom";
 import { renderWithProviders } from "@/test/renderWithProviders";
-import { createFakeSupabase } from "@/test/supabaseFake";
+import { createFakeSupabase, type TableSeed } from "@/test/supabaseFake";
+import { composeGetRunningV3, type GetRunningInputV3 } from "@/lib/getRunning/steps";
 
 // SettingsPage queries `app_settings` directly (not through a data-access hook), and the
 // Booking engine tab it renders pulls in its own children (useSettingsAudit, fetchCustomFieldDefs,
@@ -14,9 +15,11 @@ import { createFakeSupabase } from "@/test/supabaseFake";
 // entitled to booking_flow, "org-1" (used by every other test) has no matching entry and
 // falls back to `{ data: [] }`, which resolves to the registry default (entitled) — same
 // as before this file seeded the table at all.
-const { client } = vi.hoisted(() => ({ client: {} as Record<string, unknown> }));
-vi.mock("@/integrations/supabase/client", () => ({ supabase: client }));
-Object.assign(client, createFakeSupabase({
+// Base per-table seed, factored out so the get-running describe block below can reseed
+// `app_settings` alone (per test, to flip the org's `getrunning_v3_enabled` override) while
+// keeping every other table this page's tree reaches intact, then restore this exact shape
+// afterwards.
+const BASE_SEED: Record<string, TableSeed> = {
   app_settings: { data: [], error: null },
   shows: { data: [], error: null },
   custom_field_definitions: { data: [], error: null },
@@ -24,7 +27,11 @@ Object.assign(client, createFakeSupabase({
   org_entitlements: [
     { when: { org_id: "org-locked" }, data: [{ feature: "booking_flow", enabled: false }], error: null },
   ],
-}));
+};
+
+const { client } = vi.hoisted(() => ({ client: {} as Record<string, unknown> }));
+vi.mock("@/integrations/supabase/client", () => ({ supabase: client }));
+Object.assign(client, createFakeSupabase(BASE_SEED));
 
 // useAuth is a vi.fn() (not a fixed factory) so the locked-org test below can swap in a
 // different currentOrg without affecting the other tests in this file — see the
@@ -40,16 +47,27 @@ vi.mock("@/hooks/useCapabilities", async (orig) => ({
   useCan: vi.fn(),
 }));
 
+// The get-running tab (task B3) mounts GetRunningBoardV3, whose useGetRunningV3 aggregates
+// ~10 booking/hire-order/skills/dates hooks. Mocked wholesale, same as
+// GetRunningBoardV3.test.tsx / GetRunningSettingsMirror.test.tsx, so this file doesn't have
+// to seed every table that live-data wiring touches just to prove the tab mounts.
+vi.mock("@/hooks/useGetRunningV3", () => ({ useGetRunningV3: vi.fn() }));
+
 import { useAuth } from "@/features/auth/AuthContext";
 import { useCan } from "@/hooks/useCapabilities";
+import { useGetRunningV3 } from "@/hooks/useGetRunningV3";
 import { SETTINGS_TAB_PARAMS } from "@/lib/settingsTabs";
 import SettingsPage from "./SettingsPage";
 
-// "get-running" is whitelisted in SETTINGS_TAB_PARAMS (v3 phase 5 task B1) so the deep-link
-// resolver accepts it, but SettingsPage does not render its trigger/content yet — that lands
-// in task B3 (the Settings mirror of the /get-running board). Exclude it from the two
-// exhaustiveness sweeps below until then, or every value in the registry would need a real
-// section the same PR that whitelists it, which is not how this task is sequenced.
+// "get-running"'s trigger/content is gated on `isSuperAdmin || ((isAdmin || isProducer) &&
+// v3Enabled)` (task B3), unlike every other value in SETTINGS_TAB_PARAMS, which is a plain
+// role gate that holds for the whole file under DEFAULT_AUTH. The two exhaustiveness sweeps
+// below render every param under a FIXED admin/producer auth with v3 left at its default
+// (disabled, matching production), so "get-running" would have no trigger there and the
+// "exactly one selected tab" assertion would see zero. Excluded here and covered instead by
+// its own dedicated deep-link tests in the "SettingsPage get-running mirror tab" describe
+// block below, which exercise both branches of the OR (super-admin, and admin/producer with
+// the org override on) that this shared sweep can't express for a single param value.
 const WIRED_SETTINGS_TAB_PARAMS = SETTINGS_TAB_PARAMS.filter((tab) => tab !== "get-running");
 
 // Every render wraps in a MemoryRouter: the page reads `?tab=` through useSearchParams and
@@ -408,6 +426,126 @@ describe("SettingsPage ?tab= deep link", () => {
 
     fireEvent.click(screen.getByRole("link", { name: /sync report/i }));
     expect(await screen.findByRole("tab", { name: /airtable sync/i })).toHaveAttribute("aria-selected", "true");
+  });
+});
+
+describe("SettingsPage get-running mirror tab (wireflow v3 phase 5)", () => {
+  // Neither module on is the shallowest board state (get-running-v3-nothing testid), so
+  // this suite doesn't need booking/hire-order fixtures just to prove the tab mounts and
+  // wires through — same minimal input GetRunningSettingsMirror.test.tsx / GetRunningBoardV3.test.tsx use.
+  const NOTHING_TO_SET_UP: GetRunningInputV3 = {
+    role: "admin",
+    bookingOn: false,
+    hireOrdersOn: false,
+    booking: null,
+    hire: null,
+    datesSource: "airtable",
+    datesConnectDone: true,
+    datesMapDone: true,
+    datesCitiesDone: true,
+    producerCount: 1,
+    skillsDone: true,
+    feeDone: false,
+    documentDone: false,
+    canManageShows: true,
+    canEditScheduling: true,
+    canEditBooking: true,
+    canManageSkills: true,
+    canEditHire: true,
+    canAddArtists: true,
+    canInvite: true,
+  };
+
+  beforeEach(() => {
+    vi.mocked(useGetRunningV3).mockReturnValue({ model: composeGetRunningV3(NOTHING_TO_SET_UP), isLoading: false });
+  });
+
+  afterEach(() => {
+    // Restore the file's base seed for every table: the override case below reseeds
+    // `app_settings` alone to flip `getrunning_v3_enabled` for org-1.
+    for (const k of Object.keys(client)) delete client[k];
+    Object.assign(client, createFakeSupabase(BASE_SEED));
+  });
+
+  // `resolveOrgSetting` (fetchGetRunningV3Enabled) queries with `.eq("key", ...)`, which the
+  // fake's array-seed matches on; the page's own bulk settings query has no `key` eq() call,
+  // so it falls through to the `when`-less fallback entry (empty rows) instead.
+  function seedV3Override(orgId: string, enabled: boolean) {
+    for (const k of Object.keys(client)) delete client[k];
+    Object.assign(client, createFakeSupabase({
+      ...BASE_SEED,
+      app_settings: [
+        { when: { key: "getrunning_v3_enabled" }, data: [{ org_id: orgId, value: enabled }], error: null },
+        { data: [], error: null },
+      ],
+    }));
+  }
+
+  it("shows a super-admin the trigger even with v3 disabled for the org", async () => {
+    vi.mocked(useAuth).mockReturnValue({ ...DEFAULT_AUTH, isSuperAdmin: true } as never);
+    renderWithProviders(<MemoryRouter><SettingsPage /></MemoryRouter>);
+    expect(await screen.findByRole("tab", { name: /^get running$/i })).toBeInTheDocument();
+  });
+
+  it("hides the trigger from a plain admin while v3 is disabled for the org", async () => {
+    vi.mocked(useAuth).mockReturnValue(DEFAULT_AUTH as never);
+    renderWithProviders(<MemoryRouter><SettingsPage /></MemoryRouter>);
+    await screen.findByRole("tab", { name: /how this org works/i });
+    expect(screen.queryByRole("tab", { name: /^get running$/i })).not.toBeInTheDocument();
+  });
+
+  it("shows a plain admin the trigger once the org's v3 override is on", async () => {
+    seedV3Override("org-1", true);
+    vi.mocked(useAuth).mockReturnValue(DEFAULT_AUTH as never);
+    renderWithProviders(<MemoryRouter><SettingsPage /></MemoryRouter>);
+    expect(await screen.findByRole("tab", { name: /^get running$/i })).toBeInTheDocument();
+  });
+
+  it("renders the mirror (toggle + board) at ?tab=get-running for a super-admin", async () => {
+    vi.mocked(useAuth).mockReturnValue({ ...DEFAULT_AUTH, isSuperAdmin: true } as never);
+    renderWithProviders(
+      <MemoryRouter initialEntries={["/settings?tab=get-running"]}><SettingsPage /></MemoryRouter>,
+    );
+    expect(await screen.findByRole("tab", { name: /^get running$/i })).toHaveAttribute("aria-selected", "true");
+    expect(await screen.findByRole("switch")).toBeInTheDocument();
+    expect(screen.getByTestId("get-running-v3-nothing")).toBeInTheDocument();
+  });
+
+  it("renders the board (no super-admin toggle) at ?tab=get-running for an admin with the org override on", async () => {
+    seedV3Override("org-1", true);
+    vi.mocked(useAuth).mockReturnValue(DEFAULT_AUTH as never);
+    renderWithProviders(
+      <MemoryRouter initialEntries={["/settings?tab=get-running"]}><SettingsPage /></MemoryRouter>,
+    );
+    expect(await screen.findByRole("tab", { name: /^get running$/i })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByTestId("get-running-v3-nothing")).toBeInTheDocument();
+    expect(screen.queryByRole("switch")).not.toBeInTheDocument();
+  });
+
+  // Same invariant the two shared exhaustiveness sweeps above pin for every other
+  // SETTINGS_TAB_PARAMS value ("exactly one selected tab") — covering both branches of
+  // showGetRunning's OR gate, since neither shared sweep can hold either branch true for a
+  // single param without changing every other param's assertions too (see the
+  // WIRED_SETTINGS_TAB_PARAMS comment above).
+  it("selects exactly one tab at ?tab=get-running for a super-admin", async () => {
+    vi.mocked(useAuth).mockReturnValue({ ...DEFAULT_AUTH, isSuperAdmin: true } as never);
+    renderWithProviders(
+      <MemoryRouter initialEntries={["/settings?tab=get-running"]}><SettingsPage /></MemoryRouter>,
+    );
+    const [navTablist] = await screen.findAllByRole("tablist");
+    const triggers = within(navTablist).getAllByRole("tab");
+    expect(triggers.filter((t) => t.getAttribute("aria-selected") === "true")).toHaveLength(1);
+  });
+
+  it("selects exactly one tab at ?tab=get-running for an admin with the org override on", async () => {
+    seedV3Override("org-1", true);
+    vi.mocked(useAuth).mockReturnValue(DEFAULT_AUTH as never);
+    renderWithProviders(
+      <MemoryRouter initialEntries={["/settings?tab=get-running"]}><SettingsPage /></MemoryRouter>,
+    );
+    const [navTablist] = await screen.findAllByRole("tablist");
+    const triggers = within(navTablist).getAllByRole("tab");
+    expect(triggers.filter((t) => t.getAttribute("aria-selected") === "true")).toHaveLength(1);
   });
 });
 

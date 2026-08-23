@@ -36,6 +36,8 @@ import { RolesRightsTab } from '@/components/settings/rolesRights/RolesRightsTab
 import { EmailTemplatesTab } from '@/components/settings/emailTemplates/EmailTemplatesTab';
 import { PeopleTab } from '@/components/admin/people/PeopleTab';
 import { HowThisOrgWorks } from '@/components/getRunning/HowThisOrgWorks';
+import { GetRunningSettingsMirror } from '@/components/getRunning/v3/GetRunningSettingsMirror';
+import { useGetRunningV3Enabled } from '@/hooks/useGetRunningV3Enabled';
 import { Badge } from '@/components/ui/badge';
 import { PageMini } from '@/components/minis/PageMini';
 
@@ -78,6 +80,7 @@ export default function SettingsPage() {
   const qc = useQueryClient();
   const bookingFlowEntitled = useFeature('booking_flow');
   const hireOrdersEntitled = useFeature('hire_orders');
+  const { enabled: v3Enabled } = useGetRunningV3Enabled();
 
   const { data: settings, isLoading } = useQuery({
     queryKey: ['app-settings', 'all', orgId],
@@ -139,6 +142,11 @@ export default function SettingsPage() {
   const isAdmin = hasRole('admin');
   const isProducer = hasRole('producer');
   const canEnter = isAdmin || isProducer;
+
+  // The Settings mirror of the /get-running board (wireflow v3 phase 5): a super-admin can
+  // always reach it (to flip the org's runtime override), while an admin or producer only
+  // sees it once that override is on for their org.
+  const showGetRunning = isSuperAdmin || ((isAdmin || isProducer) && v3Enabled);
 
   // Broad Settings, read-only floor: these tabs are now visible to producers, but every
   // write control inside them stays gated behind its own capability (admins always pass,
@@ -275,6 +283,7 @@ export default function SettingsPage() {
   const navGroups: { heading: string; items: { value: string; label: string; icon: typeof Building2; show: boolean; moduleState?: boolean }[] }[] = [
     { heading: t('nav.groups.organization'), items: [
       { value: "how-it-works", label: t('nav.items.howItWorks'), icon: Rocket, show: isAdmin || isProducer },
+      { value: "get-running", label: t('nav.items.getRunning'), icon: Rocket, show: showGetRunning },
       { value: "permissions", label: t('nav.items.permissions'), icon: ShieldCheck, show: isAdmin },
       { value: "casts-coverage", label: t('nav.items.castsCoverage'), icon: MapPin, show: isAdmin || isProducer },
       { value: "skills", label: t('nav.items.skills'), icon: Sparkles, show: isAdmin || isProducer },
@@ -412,6 +421,12 @@ export default function SettingsPage() {
         {(isAdmin || isProducer) && (
           <TabsContent value="how-it-works" className="mt-4">
             <HowThisOrgWorks orgId={orgId} />
+          </TabsContent>
+        )}
+
+        {showGetRunning && (
+          <TabsContent value="get-running" className="mt-4">
+            <GetRunningSettingsMirror />
           </TabsContent>
         )}
 
