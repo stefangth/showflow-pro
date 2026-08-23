@@ -113,6 +113,45 @@ describe("useGetRunningV3", () => {
     expect(calls.some((c) => c.table === "shows")).toBe(false);
     expect(calls.some((c) => c.table === "app_settings")).toBe(false);
   });
+
+  it("wires real fee/document done from owned hire-order setting rows", async () => {
+    seed({
+      org_entitlements: {
+        data: [
+          { feature: "booking_flow", enabled: true },
+          { feature: "hire_orders", enabled: true },
+        ],
+        error: null,
+      },
+      app_settings: {
+        data: [
+          { key: "booking_flow", org_id: ORG_ID, value: { active: true } },
+          { key: "hire_order_defaults", org_id: ORG_ID, value: {} },
+        ],
+        error: null,
+      },
+      shows: { data: [], error: null },
+      show_dates: { data: [], error: null },
+      show_cast_eligibility: { data: [], error: null },
+      cast_city_priority: { data: [], error: null },
+      artists: { data: null, error: null, count: 0 },
+      org_memberships: { data: null, error: null, count: 2 },
+      skills: { data: [{ id: "skill-1", name: "Lead" }], error: null },
+    });
+
+    const { result } = renderHookWithProviders(() => useGetRunningV3(), {
+      authOverrides: {
+        currentOrg: TEST_ORG,
+        roles: ["admin"],
+        hasRole: (r) => r === "admin",
+      },
+    });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    const paper = result.current.model!.phases.find((p) => p.key === "paperwork")!;
+    expect(paper.steps.find((s) => s.key === "fee")!.done).toBe(true);
+    expect(paper.steps.find((s) => s.key === "document")!.done).toBe(false);
+  });
 });
 
 describe("useGetRunningV3 dates signals (Phase 2)", () => {
