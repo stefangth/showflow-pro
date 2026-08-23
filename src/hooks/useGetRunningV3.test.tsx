@@ -114,3 +114,91 @@ describe("useGetRunningV3", () => {
     expect(calls.some((c) => c.table === "app_settings")).toBe(false);
   });
 });
+
+describe("useGetRunningV3 dates signals (Phase 2)", () => {
+  // All nine slots requiredMappedCount() checks, so a fully-mapped fixture reads
+  // mapped === mappedTotal.
+  const FULLY_MAPPED_FIELD_MAP = {
+    date: "Date", program: "Program", sub_program: "Sub Program", city: "City", venue: "Venue",
+    session_1: "Session 1", session_2: "Session 2", session_3: "Session 3", status_field: "Status",
+  };
+
+  /** Seeds just enough for the hook's whole chain (booking setup + dates source + Airtable
+   *  console) to settle without erroring. Only the dates-source / Airtable-console rows are
+   *  varied per test; every other read falls back to the fake's empty-table default. */
+  function seedDatesSignals(source: "airtable" | "manual", opts: { connected?: boolean; mapped?: boolean } = {}) {
+    const { connected = true, mapped = true } = opts;
+    seed({
+      org_entitlements: {
+        data: [
+          { feature: "booking_flow", enabled: true },
+          { feature: "hire_orders", enabled: false },
+        ],
+        error: null,
+      },
+      // NOTE: the fake does not filter rows by `.eq("key", ...)` (only `.in()`/`.ilike()`
+      // narrow a single-object seed), so every resolveOrgSetting-based read of this table
+      // (fetchDatesSource, fetchBookingFlow) receives this whole array and picks its first
+      // org-scoped row. Ordering the dates-source row first is what makes fetchDatesSource
+      // resolve correctly here; fetchBookingFlow reading the same row as "booking_flow" is
+      // harmless (normalizeBookingFlow degrades a non-object value to defaults).
+      app_settings: {
+        data: [
+          { key: "getrunning_dates_source", org_id: ORG_ID, value: source },
+          { key: "airtable_base_id", org_id: ORG_ID, value: "base1" },
+          { key: "airtable_table_name", org_id: ORG_ID, value: "Dates" },
+          { key: "airtable_field_map", org_id: ORG_ID, value: mapped ? FULLY_MAPPED_FIELD_MAP : {} },
+        ],
+        error: null,
+      },
+      "rpc:get_org_airtable_key_status": { data: { present: connected, updated_at: null }, error: null },
+      shows: { data: [], error: null },
+      show_dates: { data: [], error: null },
+      show_cast_eligibility: { data: [], error: null },
+      cast_city_priority: { data: [], error: null },
+      artists: { data: null, error: null, count: 0 },
+      org_memberships: { data: null, error: null, count: 0 },
+      skills: { data: [], error: null },
+    });
+  }
+
+  it("marks connect and map done when the airtable source is connected and fully mapped", async () => {
+    seedDatesSignals("airtable", { connected: true, mapped: true });
+
+    const { result } = renderHookWithProviders(() => useGetRunningV3(), {
+      authOverrides: {
+        currentOrg: TEST_ORG,
+        roles: ["admin"],
+        hasRole: (r) => r === "admin",
+      },
+    });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    const getDates = result.current.model!.phases.find((p) => p.key === "get_dates")!;
+    const connect = getDates.steps.find((s) => s.key === "connect")!;
+    const map = getDates.steps.find((s) => s.key === "map")!;
+    expect(connect.hidden).toBeFalsy();
+    expect(connect.done).toBe(true);
+    expect(map.hidden).toBeFalsy();
+    expect(map.done).toBe(true);
+  });
+
+  it("hides connect and map for a manual dates source", async () => {
+    seedDatesSignals("manual");
+
+    const { result } = renderHookWithProviders(() => useGetRunningV3(), {
+      authOverrides: {
+        currentOrg: TEST_ORG,
+        roles: ["admin"],
+        hasRole: (r) => r === "admin",
+      },
+    });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    const getDates = result.current.model!.phases.find((p) => p.key === "get_dates")!;
+    const connect = getDates.steps.find((s) => s.key === "connect")!;
+    const map = getDates.steps.find((s) => s.key === "map")!;
+    expect(connect.hidden).toBe(true);
+    expect(map.hidden).toBe(true);
+  });
+});
