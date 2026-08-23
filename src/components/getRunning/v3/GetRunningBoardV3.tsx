@@ -211,7 +211,7 @@ export function GetRunningBoardV3({ context }: { context: "page" | "settings" })
       <StillShutCard model={model} />
 
       <div data-testid="all-steps-card" className="rounded-l border border-border bg-card p-4">
-        <Eyebrow>{t("rails.title")}</Eyebrow>
+        <Eyebrow>{t("rails.title", { count: model.totalCount })}</Eyebrow>
         <p className="mt-1 text-xs leading-[17px] text-muted-foreground">{t("rails.hint")}</p>
         <div className="mt-3 flex flex-col gap-3 sm:flex-row">
           {model.phases.map((phase) => (

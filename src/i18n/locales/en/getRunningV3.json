@@ -18,10 +18,11 @@
     "firstContract": "Your first contract is shut until this is done.",
     "nothingElse": "Nothing else here is shut.",
     "open": "Open",
-    "stepsAway": "{{count}} steps away"
+    "stepsAway_one": "{{count}} step away",
+    "stepsAway_other": "{{count}} steps away"
   },
   "rails": {
-    "title": "Three phases",
+    "title": "All {{count}} steps",
     "hint": "Work through them in order. Later phases wait on earlier ones.",
     "clickHint": "Click a phase to see its steps."
   },

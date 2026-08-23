@@ -32,22 +32,29 @@ export function HeroCard({
   return (
     <div
       data-testid="hero-card"
-      className="rounded-l border border-accent-200 bg-accent-50 p-5 shadow-elev2"
+      className="rounded-xl bg-accent-600 p-5 shadow-elev3"
     >
-      <Eyebrow tone="accent">{t("hero.eyebrowTemplate")}</Eyebrow>
-      <h2 className="mt-2 max-w-[560px] text-display-sm font-semibold leading-[34px] tracking-[-0.4px] text-foreground text-pretty">
+      <Eyebrow tone="accent" className="text-white">{t("hero.eyebrowTemplate")}</Eyebrow>
+      <h2 className="mt-2 max-w-[560px] text-display-sm font-semibold leading-[34px] tracking-[-0.4px] text-white text-pretty">
         {stepTitle}
       </h2>
       <div className="mt-4 flex flex-wrap items-center gap-3">
-        <Button type="button" onClick={() => onOpenNext(nextStep.phase, nextStep.key)}>
+        <Button
+          type="button"
+          className="bg-white text-accent-700 hover:bg-accent-50"
+          onClick={() => onOpenNext(nextStep.phase, nextStep.key)}
+        >
           {t("hero.openStep")}
           <ArrowRight className="h-4 w-4" />
         </Button>
-        <button type="button" className="text-control font-medium text-accent-600 hover:text-accent-700">
+        <button
+          type="button"
+          className="rounded-m border border-white/40 px-3 py-1.5 text-control font-medium text-white hover:border-white/60"
+        >
           {t("hero.seeAll")}
         </button>
         <div className="flex-1" />
-        <Metric size="body" className="text-muted-foreground">
+        <Metric size="body" className="text-accent-50">
           {t("hero.minutes", { minutes })}
         </Metric>
       </div>

@@ -18,10 +18,11 @@
     "firstContract": "Dein erster Engagementvertrag ist gesperrt, bis das hier erledigt ist.",
     "nothingElse": "Hier ist sonst nichts gesperrt.",
     "open": "Öffnen",
-    "stepsAway": "Noch {{count}} Schritte"
+    "stepsAway_one": "{{count}} Schritt entfernt",
+    "stepsAway_other": "{{count}} Schritte entfernt"
   },
   "rails": {
-    "title": "Drei Phasen",
+    "title": "Alle {{count}} Schritte",
     "hint": "Arbeite sie der Reihe nach ab. Spätere Phasen warten auf frühere.",
     "clickHint": "Klick auf eine Phase, um ihre Schritte zu sehen."
   },
