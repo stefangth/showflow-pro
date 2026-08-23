@@ -1,19 +1,5 @@
 [
   {
-    "version": "1.18.0",
-    "date": "2026-08-23",
-    "dateLabel": "August 23, 2026",
-    "title": "Sources: one home for every date feed",
-    "changes": {
-      "improved": [
-        {
-          "title": "Sources",
-          "description": "The Airtable sync settings are now called Sources and also show your Google Sheet imports next to Airtable runs, each tagged by where it came from."
-        }
-      ]
-    }
-  },
-  {
     "version": "1.17.2",
     "date": "2026-08-22",
     "dateLabel": "August 22, 2026",
@@ -23,6 +9,10 @@
         {
           "title": "\"Dates\" everywhere",
           "description": "The scheduling area is now called Dates in every place it appears, matching the sidebar."
+        },
+        {
+          "title": "Sources",
+          "description": "The Airtable sync settings are now called Sources and also show your Google Sheet imports next to Airtable runs, each tagged by where it came from."
         },
         {
           "title": "\"Production\" for the work in your catalog",
