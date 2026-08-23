@@ -3,6 +3,7 @@ import { useCan } from "@/hooks/useCapabilities";
 import { useEntitlements } from "@/hooks/useEntitlements";
 import { useBookingSetupStatus, useProducerCount } from "@/hooks/useBookingSetup";
 import { useHireOrderSetupStatus } from "@/hooks/useHireOrderSetup";
+import { useHireOrderExtraSetup } from "@/hooks/useHireOrderExtraSetup";
 import { useSkills } from "@/hooks/useSkills";
 import { useDatesSource } from "@/hooks/useDatesSource";
 import { useAirtableConsole } from "@/hooks/useAirtableConsole";
@@ -24,9 +25,10 @@ import { composeGetRunningV3, type GetRunningInputV3, type GetRunningModelV3 } f
  * console's connection + required-field-mapping state (useAirtableConsole) when that source
  * is Airtable, and are trivially done for a manual source (composeGetRunningV3 hides those
  * steps for a manual source instead); `datesCitiesDone` reuses the booking module's
- * `datesWithoutCity` advisory. Two inputs still have no real signal: `feeDone` and
- * `documentDone` are hardcoded false until later phases wire their real signals; `skillsDone`
- * uses a cheap best-effort read (the org's skill catalog is non-empty) rather than a new query.
+ * `datesWithoutCity` advisory. Phase 3 wires `feeDone`/`documentDone` to whether the org owns
+ * its own `hire_order_defaults`/`hire_order_numbering` app_settings row (useHireOrderExtraSetup)
+ * — an inherited platform default is not a decision. `skillsDone` remains a cheap best-effort
+ * read (the org's skill catalog is non-empty) rather than a new query.
  */
 export function useGetRunningV3(): { model: GetRunningModelV3 | null; isLoading: boolean } {
   const { currentOrg, hasRole } = useAuth();
@@ -44,6 +46,7 @@ export function useGetRunningV3(): { model: GetRunningModelV3 | null; isLoading:
   const hireOrgId = isNonArtist && hireOrdersOn ? orgId : null;
   const booking = useBookingSetupStatus(bookingOrgId);
   const hire = useHireOrderSetupStatus(hireOrgId);
+  const hireExtra = useHireOrderExtraSetup(hireOrgId);
   const producerCount = useProducerCount(orgId, isNonArtist && bookingOn);
 
   // The get_dates wizard's chosen source, and (only for an Airtable source) its console
@@ -74,7 +77,7 @@ export function useGetRunningV3(): { model: GetRunningModelV3 | null; isLoading:
   const isLoading = entitlementsLoading
     || (bookingOn && (booking.isLoading || datesSourceLoading))
     || (datesSource === "airtable" && !airtable.ready)
-    || (hireOrdersOn && hire.isLoading);
+    || (hireOrdersOn && (hire.isLoading || hireExtra.isLoading));
 
   if (isLoading) return { model: null, isLoading: true };
 
@@ -110,8 +113,8 @@ export function useGetRunningV3(): { model: GetRunningModelV3 | null; isLoading:
     // Phase 1 placeholder: non-empty skill catalog. Defaults to false while the read is
     // outstanding or the module is off, rather than blocking the whole board on it.
     skillsDone: bookingOn ? (skills.data?.length ?? 0) > 0 : false,
-    feeDone: false,
-    documentDone: false,
+    feeDone: hireOrdersOn ? hireExtra.status.feeDone : false,
+    documentDone: hireOrdersOn ? hireExtra.status.documentDone : false,
     canManageShows,
     canEditScheduling,
     canEditBooking,
