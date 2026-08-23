@@ -117,9 +117,11 @@ describe("GetRunningBoardV3", () => {
     expect(screen.queryByText(/more on the way/i)).not.toBeInTheDocument();
   });
 
-  it("shows a placeholder body for a new step (skills) inside the wizard", () => {
+  it("shows the real skills step body inside the wizard, not a placeholder", () => {
     // skills is undone and every other bookable step is done, so opening "bookable"
-    // lands directly on the "skills" step, a Phase-1 placeholder (StepComingSoon).
+    // lands directly on the "skills" step. As of Phase 3 (Task 6) skills has a real
+    // in-panel editor (SkillsStep, reusing the Settings SkillsTab), not the Phase-1
+    // placeholder (StepComingSoon).
     mockModel(composeGetRunningV3({ ...base, skillsDone: false }));
 
     renderBoard();
@@ -127,7 +129,8 @@ describe("GetRunningBoardV3", () => {
     const bookableRow = screen.getByTestId("phase-row-bookable");
     fireEvent.click(within(bookableRow).getByRole("button", { name: /continue|start/i }));
 
-    expect(screen.getByText(/more on the way/i)).toBeInTheDocument();
+    expect(screen.getByText(/skills for your parts/i)).toBeInTheDocument();
+    expect(screen.queryByText(/more on the way/i)).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /collapse/i })).toBeInTheDocument();
   });
 
