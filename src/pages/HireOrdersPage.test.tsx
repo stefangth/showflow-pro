@@ -182,6 +182,12 @@ describe("HireOrdersPage", () => {
     expect(document.body.textContent).not.toMatch(/[—–]/);
   });
 
+  it("v3 disabled (default in test env): no finish-setup affordance in the action cluster", async () => {
+    renderPage();
+    await screen.findByText("Contracts");
+    expect(screen.queryByRole("link", { name: /finish setup/i })).not.toBeInTheDocument();
+  });
+
   it("renders the four KPI tiles with counts derived from the unfiltered order set", async () => {
     renderPage();
     await screen.findByText("Contracts");

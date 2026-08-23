@@ -25,6 +25,9 @@ import { useColumnTemplate } from "@/features/editor/EditorContext";
 import { useColumnHeaders } from "@/features/editor/useColumnHeaders";
 import { ColumnLayoutEditor } from "@/features/editor/ColumnLayoutEditor";
 import { PageMini } from "@/components/minis/PageMini";
+import { FinishSetupLink } from "@/components/getRunning/v3/FinishSetupLink";
+import { stepsForRoute } from "@/lib/getRunning/stepFeature";
+import { ROUTES } from "@/config/app.config";
 
 type StatusFilter = "active" | "archived" | "all";
 
@@ -192,10 +195,13 @@ export default function ProductionsPage() {
           <h1 className="font-display text-display-sm font-semibold tracking-tight">{t("page.title")}</h1>
           <p className="text-muted-foreground mt-1">{t("page.description")}</p>
         </div>
-        <Button onClick={openCreate} disabled={!canManageProductions}
-          title={canManageProductions ? undefined : t("tooltips.noPermissionCreate")}>
-          {t("page.newProduction")}
-        </Button>
+        <div className="flex items-center gap-2">
+          <FinishSetupLink steps={stepsForRoute(ROUTES.PRODUCTIONS)} />
+          <Button onClick={openCreate} disabled={!canManageProductions}
+            title={canManageProductions ? undefined : t("tooltips.noPermissionCreate")}>
+            {t("page.newProduction")}
+          </Button>
+        </div>
       </div>
 
       <PageMini page="productions" />

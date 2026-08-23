@@ -122,4 +122,9 @@ describe("ProductionsPage", () => {
     // date_count cell for the synced show (dateCount: 3)
     expect(screen.getByText(/3 dates/)).toBeInTheDocument();
   });
+
+  it("v3 disabled (default in test env): no finish-setup affordance beside New production", () => {
+    renderWithProviders(<ProductionsPage />);
+    expect(screen.queryByRole("link", { name: /finish setup/i })).not.toBeInTheDocument();
+  });
 });
