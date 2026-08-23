@@ -82,9 +82,9 @@ export interface GetRunningInputV3 {
   datesMapDone: boolean;
   datesCitiesDone: boolean;
   producerCount: number | null; // team step done when > 0
-  skillsDone: boolean; // Phase-1 placeholder signal
-  feeDone: boolean; // Phase-1 placeholder signal
-  documentDone: boolean; // Phase-1 placeholder signal
+  skillsDone: boolean; // real signal: the org's skill catalog is non-empty (useSkills)
+  feeDone: boolean; // real signal: org owns its hire_order_defaults row (useHireOrderExtraSetup)
+  documentDone: boolean; // real signal: org owns its hire_order_numbering row (useHireOrderExtraSetup)
   canManageShows: boolean;
   canEditScheduling: boolean;
   canEditBooking: boolean;

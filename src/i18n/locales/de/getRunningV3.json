@@ -372,10 +372,10 @@
       "readOnlyReason": "Um eine Produktion hinzuzufügen, brauchst du das Recht Produktionen verwalten, das dieser Account nicht hat."
     },
     "fee": {
-      "heading": "Dein Standardhonorar",
-      "sub": "Das Honorar, mit dem ein neuer Engagementvertrag startet. Du kannst es bei jedem einzelnen Engagementvertrag ändern.",
-      "shellTitle": "Honorare pro Produktion und Cast",
-      "shellBody": "Sobald du Casts hast, kannst du hier ein Honorar pro Produktion und Cast setzen. Bis dahin nutzt jeder Engagementvertrag das Standardhonorar oben.",
+      "heading": "Deine Standardgage",
+      "sub": "Die Gage, mit der ein neuer Engagementvertrag startet. Du kannst sie bei jedem einzelnen Engagementvertrag ändern.",
+      "shellTitle": "Gagen pro Produktion und Cast",
+      "shellBody": "Sobald du Casts hast, kannst du hier eine Gage pro Produktion und Cast setzen. Bis dahin nutzt jeder Engagementvertrag die Standardgage oben.",
       "continue": "Weiter",
       "readOnly": "Vertragseinstellungen legt ein Admin fest. Du kannst sie hier lesen."
     },
