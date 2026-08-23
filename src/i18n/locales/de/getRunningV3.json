@@ -335,6 +335,14 @@
       },
       "continue": "Weiter",
       "mapIncomplete": "Ordne die Felder Datum und Unterprogramm zu, um fortzufahren."
+    },
+    "cities": {
+      "heading": "Jedem Termin eine Stadt zuordnen",
+      "sub": "Verknüpfe jede importierte Stadt mit einer ShowFlow-Stadt, oder lege sie neu an, falls es sie noch nicht gibt.",
+      "continue": "Weiter",
+      "incomplete": "Verknüpfe oder erstelle jede Stadt, um fortzufahren.",
+      "empty": "Noch keine Städte zum Auflösen. Städte werden in den Einstellungen verwaltet.",
+      "manageLink": "Zu den Einstellungen"
     }
   }
 }
