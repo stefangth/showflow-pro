@@ -36,7 +36,7 @@ export function HeroCard({
   return (
     <div
       data-testid="hero-card"
-      className="rounded-xl bg-accent-600 p-5 shadow-elev3"
+      className="rounded-[var(--radius-xl)] bg-accent-600 p-5 shadow-elev3"
     >
       <Eyebrow tone="accent" className="text-white">{t("hero.eyebrowTemplate")}</Eyebrow>
       <h2 className="mt-2 max-w-[560px] text-display-sm font-semibold leading-[34px] tracking-[-0.4px] text-white text-pretty">
