@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { screen } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import { createFakeSupabase, type TableSeed } from "@/test/supabaseFake";
 import { composeGetRunningV3, type GetRunningInputV3, type GetRunningModelV3 } from "@/lib/getRunning/steps";
@@ -10,6 +11,12 @@ import { composeGetRunningV3, type GetRunningInputV3, type GetRunningModelV3 } f
 // live-data hooks, and GetRunningBoardV3.test.tsx's useGetRunningV3 mock + real composer
 // for the board, rather than seeding every table the underlying booking/hire-order setup
 // reads touch.
+//
+// MemoryRouter is required (not optional) even though this mirror renders with
+// context="settings" and never reads `?step=`: GetRunningBoardV3 (Phase 5) calls
+// react-router's useSearchParams unconditionally per the rules of hooks, ignoring the
+// param only after the hook call. In production this mirror is always mounted under the
+// app's real BrowserRouter (it lives on the /settings route), so this just matches that.
 const { client } = vi.hoisted(() => ({ client: {} as Record<string, unknown> }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: client }));
 vi.mock("@/hooks/useGetRunningV3", () => ({ useGetRunningV3: vi.fn() }));
@@ -59,9 +66,12 @@ describe("GetRunningSettingsMirror", () => {
     seed({ app_settings: { data: [], error: null } });
     mockModel(composeGetRunningV3(base));
 
-    renderWithProviders(<GetRunningSettingsMirror />, {
-      authOverrides: { isSuperAdmin: false, currentOrg: TEST_ORG, roles: ["admin"], hasRole: (r) => r === "admin" },
-    });
+    renderWithProviders(
+      <MemoryRouter>
+        <GetRunningSettingsMirror />
+      </MemoryRouter>,
+      { authOverrides: { isSuperAdmin: false, currentOrg: TEST_ORG, roles: ["admin"], hasRole: (r) => r === "admin" } },
+    );
 
     expect(screen.getByTestId("get-running-v3-nothing")).toBeInTheDocument();
   });
@@ -70,9 +80,12 @@ describe("GetRunningSettingsMirror", () => {
     seed({ app_settings: { data: [], error: null } });
     mockModel(composeGetRunningV3(base));
 
-    renderWithProviders(<GetRunningSettingsMirror />, {
-      authOverrides: { isSuperAdmin: true, currentOrg: TEST_ORG, roles: ["admin"], hasRole: (r) => r === "admin" },
-    });
+    renderWithProviders(
+      <MemoryRouter>
+        <GetRunningSettingsMirror />
+      </MemoryRouter>,
+      { authOverrides: { isSuperAdmin: true, currentOrg: TEST_ORG, roles: ["admin"], hasRole: (r) => r === "admin" } },
+    );
 
     expect(await screen.findByRole("switch")).toBeInTheDocument();
     expect(screen.getByTestId("get-running-v3-nothing")).toBeInTheDocument();
