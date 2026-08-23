@@ -221,21 +221,33 @@ async function resolveCastProductionFeeWith(
   args: { orgId: string; showId: string; memberships: Set<string>; eligible: Set<string> },
 ): Promise<{ amount: number | null }> {
   const { orgId, showId, memberships, eligible } = args;
-  if (memberships.size === 0) return { amount: null };
-
-  // Intersect; a fee applies only when the derivation is unambiguous.
-  const intersection = [...memberships].filter((id) => eligible.has(id));
-  if (intersection.length !== 1) return { amount: null };
+  const castId = unambiguousCastId(memberships, eligible);
+  if (!castId) return { amount: null };
 
   const { data: feeRow } = await admin
     .from("cast_production_fees")
     .select("fee_amount")
-    .eq("cast_id", intersection[0])
+    .eq("cast_id", castId)
     .eq("show_id", showId)
     .eq("org_id", orgId)
     .maybeSingle();
   const amount = (feeRow as { fee_amount?: number | null } | null)?.fee_amount;
   return { amount: amount ?? null };
+}
+
+/**
+ * Pure step 2 of the cast-derivation rule (see `resolveCastProductionFee`'s doc
+ * comment): intersect an artist's cast memberships with a show_date's eligible
+ * casts and return the single unambiguous cast_id, or `null` when the artist has
+ * no memberships or the intersection isn't exactly one cast. Factored out of
+ * `resolveCastProductionFeeWith` so `draftOrders` can precompute each booking's
+ * matched cast BEFORE the fee lookup, letting it batch that lookup into one query
+ * for the whole date instead of one query per booking.
+ */
+function unambiguousCastId(memberships: Set<string>, eligible: Set<string>): string | null {
+  if (memberships.size === 0) return null;
+  const intersection = [...memberships].filter((id) => eligible.has(id));
+  return intersection.length === 1 ? intersection[0] : null;
 }
 
 /**
@@ -722,6 +734,36 @@ async function draftOrders(
     set.add(r.cast_id);
   }
 
+  // Precompute each booking's unambiguous cast (same rule as
+  // resolveCastProductionFeeWith, factored into unambiguousCastId) BEFORE the fee
+  // lookup, so the cast_production_fees query below can be batched ONCE for every
+  // matched cast_id on this date instead of once per booking inside the loop.
+  const matchedCastByBooking = new Map<string, string>();
+  const matchedCastIds = new Set<string>();
+  for (const b of bookings) {
+    const castId = unambiguousCastId(membershipsByArtist.get(b.artist_id) ?? new Set<string>(), eligibleCasts);
+    if (castId) {
+      matchedCastByBooking.set(b.id, castId);
+      matchedCastIds.add(castId);
+    }
+  }
+  const feeByCast = new Map<string, number | null>();
+  if (matchedCastIds.size > 0) {
+    const { data: feeRows } = await admin
+      .from("cast_production_fees")
+      .select("cast_id, fee_amount")
+      .eq("show_id", showDate.show_id)
+      .eq("org_id", org)
+      .in("cast_id", Array.from(matchedCastIds));
+    for (
+      const r of (feeRows ?? []) as unknown as Array<
+        { cast_id: string; fee_amount: number | null }
+      >
+    ) {
+      feeByCast.set(r.cast_id, r.fee_amount ?? null);
+    }
+  }
+
   for (const b of bookings) {
     // Per-booking isolation (mirrors issueOrders): an unexpected throw on one
     // booking must not abort the batch into a CORS-less 500.
@@ -748,17 +790,15 @@ async function draftOrders(
       // defaults layer: the (cast x production) fee when the booking's cast is
       // unambiguously derivable, else the org default fee (both are the fallback
       // UNDER a booking fee) + currency. Currency/basis stay from the org default;
-      // only the cast fee's AMOUNT is used (see resolveCastProductionFee).
-      const castFee = await resolveCastProductionFeeWith(admin, {
-        orgId: org,
-        showId: showDate.show_id,
-        memberships: membershipsByArtist.get(b.artist_id) ?? new Set<string>(),
-        eligible: eligibleCasts,
-      });
+      // only the cast fee's AMOUNT is used (see resolveCastProductionFee). Read
+      // from the precomputed matchedCastByBooking/feeByCast maps built above
+      // (batched once for the whole date) instead of a per-booking query.
+      const matchedCastId = matchedCastByBooking.get(b.id);
+      const castFeeAmount = matchedCastId ? feeByCast.get(matchedCastId) ?? null : null;
       const defLayer: Partial<Record<OrderFieldKey, unknown>> = {
         currency: defaults.currency,
       };
-      assign(defLayer, "fee", castFee.amount ?? defaults.default_fee);
+      assign(defLayer, "fee", castFeeAmount ?? defaults.default_fee);
 
       const layers: FieldLayers = { showflow, defaults: defLayer };
       const data = resolveFields(layers);

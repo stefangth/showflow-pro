@@ -103,6 +103,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   const orgId = body?.org_id;
   const rows = body?.rows ?? [];
   if (!orgId) return json({ error: "org_id required" }, 400);
+  if (!Array.isArray(rows)) return json({ error: "rows must be an array" }, 400);
 
   const auth = await requireOrgRole(deps, req, orgId, ["producer", "admin"]);
   if (!auth.ok) return auth.response;
