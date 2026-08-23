@@ -1,6 +1,7 @@
 import { PhaseCard } from "@/components/getRunning/PhaseCard";
 import { GetRunningHeader } from "@/components/getRunning/GetRunningHeader";
 import { RetiredBoard } from "@/components/getRunning/RetiredBoard";
+import { GetRunningBoardV3 } from "@/components/getRunning/v3/GetRunningBoardV3";
 import type { GetRunningModel, GetRunningPhase, GetRunningTask, GetRunningTaskKey, GetRunningPhaseKey, TaskBlock } from "@/lib/getRunning/tasks";
 
 /**
@@ -131,6 +132,11 @@ export default function DevGetRunningHarness() {
         <section className="flex flex-col gap-2">
           <div className="font-mono text-xs text-[var(--text-faint)]">retired board (all complete)</div>
           <RetiredBoard model={retiredModel} orgId={null} />
+        </section>
+
+        <section className="flex flex-col gap-2">
+          <div className="font-mono text-xs text-[var(--text-faint)]">v3 board (always on here, regardless of GETRUNNING_V3)</div>
+          <GetRunningBoardV3 context="page" />
         </section>
       </div>
     </div>

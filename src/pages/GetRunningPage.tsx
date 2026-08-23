@@ -9,8 +9,10 @@ import { GetRunningHeader } from "@/components/getRunning/GetRunningHeader";
 import { PhaseCard } from "@/components/getRunning/PhaseCard";
 import { RetiredBoard } from "@/components/getRunning/RetiredBoard";
 import { TaskPanel } from "@/components/getRunning/TaskPanel";
+import { GetRunningBoardV3 } from "@/components/getRunning/v3/GetRunningBoardV3";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ROUTES } from "@/config/app.config";
+import { GETRUNNING_V3 } from "@/config/flags";
 import { producerRoleNote, roleExplainerLinkLabel, ROLE_EXPLAINER_LINK_ROUTE } from "@/lib/dashboard/moduleOnboarding";
 import type { GetRunningModel, GetRunningTask, GetRunningTaskKey } from "@/lib/getRunning/tasks";
 
@@ -91,6 +93,12 @@ export default function GetRunningPage() {
   // board an artist has no business seeing.
   if (role === "artist") {
     return <Navigate to={ROUTES.AVAILABILITY} replace />;
+  }
+
+  // Wireflow v3 board, gated behind GETRUNNING_V3 (default off — see src/config/flags.ts).
+  // Everything below this point is the v1 board, unchanged, for when the flag is off.
+  if (GETRUNNING_V3) {
+    return <GetRunningBoardV3 context="page" />;
   }
 
   // An org entitled to neither module has nothing for this board to show — both phases

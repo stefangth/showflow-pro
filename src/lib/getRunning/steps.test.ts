@@ -1,0 +1,99 @@
+import { describe, it, expect } from "vitest";
+import { composeGetRunningV3, type GetRunningInputV3 } from "./steps";
+import type { BookingSetupStatus } from "@/lib/bookings/setupStatus";
+import type { HireOrderSetupStatus } from "@/lib/hireOrders/setupStatus";
+
+// Minimal booking status builder: every step done unless overridden.
+function booking(overrides: Partial<Record<string, boolean>> = {}): BookingSetupStatus {
+  const keys = ["shows", "slots", "flow", "people", "ladder", "eligibility", "timing"];
+  return {
+    // Match the real BookingSetupStatus shape; steps carry key/done/block.
+    steps: keys.map((key) => ({ key, done: overrides[key] ?? true, block: null })),
+    // Fields consumed by the coverage merge + advisory:
+    datesWithoutCity: 0,
+  } as unknown as BookingSetupStatus;
+}
+function hire(overrides: Partial<Record<string, boolean>> = {}): HireOrderSetupStatus {
+  const keys = ["letterhead", "terms", "countersign"];
+  return {
+    steps: keys.map((key) => ({ key, done: overrides[key] ?? true, blocksIssue: false })),
+  } as unknown as HireOrderSetupStatus;
+}
+const base: GetRunningInputV3 = {
+  role: "admin",
+  bookingOn: true,
+  hireOrdersOn: true,
+  booking: booking(),
+  hire: hire(),
+  datesDone: true,
+  producerCount: 1,
+  skillsDone: true,
+  feeDone: false,
+  documentDone: false,
+  canManageShows: true,
+  canEditScheduling: true,
+  canEditBooking: true,
+  canEditHire: true,
+  canAddArtists: true,
+  canInvite: true,
+};
+
+describe("composeGetRunningV3", () => {
+  it("produces 16 steps across 3 phases when both modules are on", () => {
+    const m = composeGetRunningV3(base);
+    expect(m.phases.map((p) => p.key)).toEqual(["get_dates", "bookable", "paperwork"]);
+    expect(m.totalCount).toBe(16);
+    expect(m.phases.flatMap((p) => p.steps)).toHaveLength(16);
+  });
+
+  it("drops the paperwork phase and shrinks the denominator when hire_orders is off", () => {
+    const m = composeGetRunningV3({ ...base, hireOrdersOn: false, hire: null });
+    expect(m.phases.map((p) => p.key)).toEqual(["get_dates", "bookable"]);
+    expect(m.totalCount).toBe(11);
+  });
+
+  it("shows only the paperwork phase when booking_flow is off", () => {
+    const m = composeGetRunningV3({ ...base, bookingOn: false, booking: null });
+    expect(m.phases.map((p) => p.key)).toEqual(["paperwork"]);
+  });
+
+  it("maps the four dates-in steps to datesDone and productions to the slots step", () => {
+    const m = composeGetRunningV3({ ...base, datesDone: false, booking: booking({ slots: false }) });
+    const getDates = m.phases.find((p) => p.key === "get_dates")!;
+    const doneByKey = Object.fromEntries(getDates.steps.map((s) => [s.key, s.done]));
+    expect(doneByKey).toMatchObject({ source: false, connect: false, map: false, cities: false, productions: false });
+  });
+
+  it("bookable waits on get_dates until productions (slots) is done", () => {
+    const m = composeGetRunningV3({ ...base, booking: booking({ slots: false }) });
+    expect(m.phases.find((p) => p.key === "bookable")!.waitsOn).toBe("get_dates");
+  });
+
+  it("merges ladder+eligibility into one coverage step", () => {
+    const m = composeGetRunningV3({ ...base, booking: booking({ eligibility: false }) });
+    const coverage = m.phases.find((p) => p.key === "bookable")!.steps.find((s) => s.key === "coverage")!;
+    expect(coverage.done).toBe(false);
+    expect(m.phases.flatMap((p) => p.steps).some((s) => (s.key as string) === "eligibility")).toBe(false);
+  });
+
+  it("marks new steps as placeholders and reuse steps as real", () => {
+    const m = composeGetRunningV3(base);
+    const byKey = Object.fromEntries(m.phases.flatMap((p) => p.steps).map((s) => [s.key, s.placeholder]));
+    expect(byKey).toMatchObject({ source: true, skills: true, fee: true, document: true, artists: false, flow: false, coverage: false });
+  });
+
+  it("a producer cannot act on team (adminOnly)", () => {
+    const m = composeGetRunningV3({ ...base, role: "producer" });
+    const team = m.phases.find((p) => p.key === "bookable")!.steps.find((s) => s.key === "team")!;
+    expect(team.adminOnly).toBe(true);
+    expect(team.actionableByViewer).toBe(false);
+  });
+
+  it("is complete only when every included non-placeholder-blocking step is done", () => {
+    // With placeholders (source/skills/fee/document) not done, board is not complete.
+    expect(composeGetRunningV3(base).complete).toBe(false);
+    // All real+placeholder signals satisfied → complete.
+    const all = composeGetRunningV3({ ...base, skillsDone: true, feeDone: true, documentDone: true });
+    expect(all.complete).toBe(true);
+  });
+});

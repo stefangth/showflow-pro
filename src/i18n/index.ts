@@ -57,6 +57,8 @@ import enBookingCopy from './locales/en/bookingCopy.json';
 import deBookingCopy from './locales/de/bookingCopy.json';
 import enGetRunning from './locales/en/getRunning.json';
 import deGetRunning from './locales/de/getRunning.json';
+import enGetRunningV3 from './locales/en/getRunningV3.json';
+import deGetRunningV3 from './locales/de/getRunningV3.json';
 import enToday from './locales/en/today.json';
 import deToday from './locales/de/today.json';
 
@@ -71,7 +73,7 @@ export const resources = {
     auth: enAuth, admin: enAdmin, artists: enArtists, productions: enProductions,
     hireOrdersPages: enHireOrdersPages, showsDetail: enShowsDetail, chats: enChats, profile: enProfile,
     onboarding: enOnboarding, flowCopy: enFlowCopy, bookingCopy: enBookingCopy,
-    getRunning: enGetRunning, today: enToday,
+    getRunning: enGetRunning, getRunningV3: enGetRunningV3, today: enToday,
   },
   de: {
     common: deCommon, help: deHelp, dashboard: deDashboard, bookings: deBookings, availability: deAvailability,
@@ -83,7 +85,7 @@ export const resources = {
     auth: deAuth, admin: deAdmin, artists: deArtists, productions: deProductions,
     hireOrdersPages: deHireOrdersPages, showsDetail: deShowsDetail, chats: deChats, profile: deProfile,
     onboarding: deOnboarding, flowCopy: deFlowCopy, bookingCopy: deBookingCopy,
-    getRunning: deGetRunning, today: deToday,
+    getRunning: deGetRunning, getRunningV3: deGetRunningV3, today: deToday,
   },
 } as const;
 
@@ -98,7 +100,7 @@ i18n.use(initReactI18next).init({
     'settingsAirtable', 'settingsBookingFlow', 'settingsHireOrders', 'settingsEmailTemplates',
     'settingsRolesRights', 'settingsEditor',
     'auth', 'admin', 'artists', 'productions', 'hireOrdersPages', 'showsDetail', 'chats', 'profile',
-    'onboarding', 'flowCopy', 'bookingCopy', 'getRunning', 'today',
+    'onboarding', 'flowCopy', 'bookingCopy', 'getRunning', 'getRunningV3', 'today',
   ],
   defaultNS: 'common',
   returnEmptyString: false,
