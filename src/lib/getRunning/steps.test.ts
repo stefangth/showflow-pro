@@ -29,6 +29,7 @@ const base: GetRunningInputV3 = {
   datesConnectDone: true,
   datesMapDone: true,
   datesCitiesDone: true,
+  hasAnyDates: true,
   producerCount: 1,
   skillsDone: true,
   feeDone: false,
@@ -208,5 +209,24 @@ describe("composeGetRunningV3 get_dates phase (Phase 2)", () => {
     expect(m.nextStep?.key).toBe("productions");
     const dates = m.phases.find((p) => p.key === "get_dates")!;
     expect(dates.totalCount).toBe(3); // hidden connect/map excluded
+  });
+
+  it("keeps the cities step outstanding for an org with no dates at all", () => {
+    const m = composeGetRunningV3(baseInput({ hasAnyDates: false, datesCitiesDone: true }));
+    const dates = m.phases.find((p) => p.key === "get_dates")!;
+    expect(dates.steps.find((s) => s.key === "cities")!.done).toBe(false);
+  });
+
+  it("keeps the productions step outstanding for an org with no dates at all", () => {
+    const m = composeGetRunningV3(baseInput({ hasAnyDates: false }));
+    const dates = m.phases.find((p) => p.key === "get_dates")!;
+    expect(dates.steps.find((s) => s.key === "productions")!.done).toBe(false);
+    expect(dates.done).toBe(false);
+  });
+
+  it("does not lose a green cities step when the org has dates and every one has a city", () => {
+    const m = composeGetRunningV3(baseInput({ hasAnyDates: true, datesCitiesDone: true }));
+    const dates = m.phases.find((p) => p.key === "get_dates")!;
+    expect(dates.steps.find((s) => s.key === "cities")!.done).toBe(true);
   });
 });

@@ -78,7 +78,7 @@ import { computeBookingSetupStatus } from "@/lib/bookings/setupStatus";
 function blankOrgStatus() {
   return computeBookingSetupStatus({
     flowChosen: false, hasAnyShows: false, shows: [], timingChosen: false,
-    coverage: null, artistCount: 0, artistAcceptance: null,
+    coverage: null, artistCount: 0, dateCount: 0, artistAcceptance: null,
   });
 }
 

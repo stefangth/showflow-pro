@@ -152,6 +152,7 @@ export function useGetRunningV3(options?: { active?: boolean }): { model: GetRun
     datesConnectDone,
     datesMapDone,
     datesCitiesDone,
+    hasAnyDates: bookingOn ? booking.status.hasAnyDates : false,
     producerCount,
     // Phase 1 placeholder: non-empty skill catalog. Defaults to false while the read is
     // outstanding or the module is off, rather than blocking the whole board on it.

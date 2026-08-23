@@ -81,6 +81,10 @@ export interface GetRunningInputV3 {
   datesConnectDone: boolean;
   datesMapDone: boolean;
   datesCitiesDone: boolean;
+  /** The org has at least one non-cancelled date. Guards the two get_dates steps that
+   *  would otherwise be vacuously true on a blank org: "every date has a city" holds
+   *  trivially with no dates, and "review your productions" says nothing about dates. */
+  hasAnyDates: boolean;
   producerCount: number | null; // team step done when > 0
   skillsDone: boolean; // real signal: the org's skill catalog is non-empty (useSkills)
   feeDone: boolean; // real signal: org owns its hire_order_defaults row (useHireOrderExtraSetup)
@@ -156,10 +160,10 @@ export function composeGetRunningV3(input: GetRunningInputV3): GetRunningModelV3
       { key: "source", done: input.datesSource != null, block: hardBlock, adminOnly: false, placeholder: false, capability: input.canManageShows },
       { key: "connect", done: input.datesConnectDone, block: hardBlock, adminOnly: false, placeholder: false, capability: input.canManageShows, hidden: isManualSource },
       { key: "map", done: input.datesMapDone, block: hardBlock, adminOnly: false, placeholder: false, capability: input.canManageShows, hidden: isManualSource },
-      { key: "cities", done: input.datesCitiesDone, block: hardBlock, adminOnly: false, placeholder: false, capability: input.canManageShows },
+      { key: "cities", done: input.hasAnyDates && input.datesCitiesDone, block: hardBlock, adminOnly: false, placeholder: false, capability: input.canManageShows },
       {
         key: "productions",
-        done: bookingStep(input.booking, "slots")?.done ?? false,
+        done: input.hasAnyDates && (bookingStep(input.booking, "slots")?.done ?? false),
         block: bookingStep(input.booking, "slots")?.block ?? null,
         adminOnly: false,
         placeholder: false,

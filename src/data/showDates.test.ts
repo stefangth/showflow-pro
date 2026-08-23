@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { createFakeSupabase } from "@/test/supabaseFake";
-import { createShowDate, updateShowDate, cancelShowDate, deleteShowDate, fetchShowDatesForShow, fetchNextRehearsalDate } from "./showDates";
+import { asSupabase } from "@/test/castHelpers";
+import { createShowDate, updateShowDate, cancelShowDate, deleteShowDate, fetchShowDatesForShow, fetchNextRehearsalDate, fetchShowDateCount } from "./showDates";
 
 describe("showDates data-access", () => {
   it("createShowDate inserts mapped fields (no status set) and returns id", async () => {
@@ -72,5 +73,21 @@ describe("fetchNextRehearsalDate", () => {
     expect(client.calls).toContainEqual({ table: "show_dates", method: "gte", args: ["date", "2026-08-07"] });
     expect(client.calls).toContainEqual({ table: "show_dates", method: "order", args: ["date", { ascending: true }] });
     expect(client.calls).toContainEqual({ table: "show_dates", method: "limit", args: [1] });
+  });
+});
+
+describe("fetchShowDateCount", () => {
+  it("counts non-cancelled dates for the org", async () => {
+    const client = createFakeSupabase({
+      show_dates: { data: null, error: null, count: 7 },
+    });
+    const n = await fetchShowDateCount(asSupabase(client), "org-1");
+    expect(n).toBe(7);
+    expect(client.calls).toContainEqual({ table: "show_dates", method: "neq", args: ["status", "cancelled"] });
+  });
+
+  it("returns 0 when there is no org", async () => {
+    const client = createFakeSupabase({});
+    expect(await fetchShowDateCount(asSupabase(client), null)).toBe(0);
   });
 });

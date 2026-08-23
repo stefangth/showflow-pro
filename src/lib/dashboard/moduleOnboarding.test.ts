@@ -45,7 +45,7 @@ it("has an onboarding module for both booking_flow and hire_orders", () => {
 });
 
 it("booking step keys cover exactly the engine's step keys", () => {
-  const engineKeys = computeBookingSetupStatus({ flowChosen: false, hasAnyShows: false, shows: [], timingChosen: false, coverage: null, artistCount: null, artistAcceptance: null })
+  const engineKeys = computeBookingSetupStatus({ flowChosen: false, hasAnyShows: false, shows: [], timingChosen: false, coverage: null, artistCount: null, dateCount: null, artistAcceptance: null })
     .steps.map((s) => s.key).sort();
   expect(Object.keys(bookingOnboarding.steps).sort()).toEqual(engineKeys);
 });
