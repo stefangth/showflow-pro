@@ -26,11 +26,13 @@ import { showIdentityLabel } from "@/types";
  * let a visitor advance with zero configured productions would reach later steps (skills,
  * cast ranking) with nothing to rank against.
  *
- * `manage_productions` gates the two header "add" actions (creating a production or a date is
- * production-catalog authorship); `edit_scheduling` gates the per-row "Set casting breakdown"
- * button, mirroring `ShowFormDialog`'s own `canEditScheduling` gate on its slot repeater. A
- * viewer with neither capability sees the list read only, with no add/edit affordances,
- * mirroring `CitiesStep`/`MapStep`'s read-only pattern.
+ * `manage_productions` gates "Add a production"; `manage_show_dates` gates "Add a date"
+ * (a distinct capability a producer can hold independently of `manage_productions` via
+ * per-org overrides, so the two header actions are NOT interchangeable); `edit_scheduling`
+ * gates the per-row "Set casting breakdown" button, mirroring `ShowFormDialog`'s own
+ * `canEditScheduling` gate on its slot repeater. A viewer with none of these capabilities
+ * sees the list read only, with no add/edit affordances, mirroring `CitiesStep`/`MapStep`'s
+ * read-only pattern.
  *
  * Portals its Continue into `WizardFooterContext`'s slot, same pattern as the other v3 step
  * bodies.
@@ -39,6 +41,7 @@ export function ProductionsStep({ orgId, onDone }: { orgId: string | null; onDon
   const { t } = useTranslation("getRunningV3");
   const footerSlot = useContext(WizardFooterContext);
   const canManage = useCan("manage_productions");
+  const canManageDates = useCan("manage_show_dates");
   const canSchedule = useCan("edit_scheduling");
 
   const shows = useShows();
@@ -65,14 +68,18 @@ export function ProductionsStep({ orgId, onDone }: { orgId: string | null; onDon
           </div>
           <p className="text-xs text-muted-foreground">{t("body.productions.sub")}</p>
         </div>
-        {canManage && (
+        {(canManageDates || canManage) && (
           <div className="flex shrink-0 gap-2">
-            <Button type="button" size="sm" variant="outline" onClick={() => setDateOpen(true)}>
-              {t("body.productions.addDate")}
-            </Button>
-            <Button type="button" size="sm" variant="outline" onClick={() => setFormOpen(true)}>
-              {t("body.productions.addProduction")}
-            </Button>
+            {canManageDates && (
+              <Button type="button" size="sm" variant="outline" onClick={() => setDateOpen(true)}>
+                {t("body.productions.addDate")}
+              </Button>
+            )}
+            {canManage && (
+              <Button type="button" size="sm" variant="outline" onClick={() => setFormOpen(true)}>
+                {t("body.productions.addProduction")}
+              </Button>
+            )}
           </div>
         )}
       </div>
@@ -126,7 +133,7 @@ export function ProductionsStep({ orgId, onDone }: { orgId: string | null; onDon
       {footerSlot ? createPortal(continueButton, footerSlot) : continueButton}
 
       {canManage && <ShowFormDialog open={formOpen} onOpenChange={setFormOpen} allShows={list} />}
-      {canManage && (
+      {canManageDates && (
         <ShowDateFormDialog
           open={dateOpen}
           onOpenChange={setDateOpen}

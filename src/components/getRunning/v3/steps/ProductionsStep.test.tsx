@@ -57,10 +57,19 @@ function renderStep(onDone = vi.fn()) {
   return { ...result, onDone };
 }
 
+// `useCan` differentiates by action so a test can grant one capability while withholding
+// another — the whole point of the fix this covers is that `manage_productions` and
+// `manage_show_dates` are independently held via per-org overrides, so a mock that returns
+// the same boolean for every action could never have caught the "Add a date" gate reading
+// the wrong capability. Defaults every action to true (all-editor); pass overrides to
+// withhold specific ones.
+const mockUseCan = (overrides: Record<string, boolean> = {}) =>
+  vi.mocked(useCan).mockImplementation((action: string) => overrides[action] ?? true);
+
 describe("ProductionsStep", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(useCan).mockReturnValue(true);
+    mockUseCan();
     showsQuery.mockReturnValue({ data: SHOWS, isLoading: false, isError: false });
   });
 
@@ -108,11 +117,22 @@ describe("ProductionsStep", () => {
   });
 
   it("hides add/edit controls for a read only viewer", () => {
-    vi.mocked(useCan).mockReturnValue(false);
+    mockUseCan({ manage_productions: false, manage_show_dates: false, edit_scheduling: false });
     renderStep();
 
     expect(screen.queryByRole("button", { name: /^add a production$/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^add a date$/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /set casting breakdown/i })).not.toBeInTheDocument();
+  });
+
+  it("gates Add a date on manage_show_dates independently of manage_productions", () => {
+    // manage_productions granted, manage_show_dates withheld: this is exactly the mixed
+    // per-org override case the two capabilities can land in, and the case that would
+    // have caught "Add a date" wrongly reading manage_productions.
+    mockUseCan({ manage_show_dates: false });
+    renderStep();
+
+    expect(screen.getByRole("button", { name: /^add a production$/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^add a date$/i })).not.toBeInTheDocument();
   });
 });
