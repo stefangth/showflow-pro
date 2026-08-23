@@ -66,6 +66,7 @@ const IDENTICAL_OK: Record<string, string> = {
   'settingsAirtable.console.badge.ok': 'short status abbreviation "ok", kept unlocalized',
   'settingsAirtable.connection.tokenLabel': '"Token" is identical in German (matches overviewTab.rowToken)',
   'settingsAirtable.connection.baseTableRow': 'interpolation + punctuation only ("{{base}} › {{table}} · {{view}} · {{frequency}}"), no translatable words',
+  'settingsAirtable.source.airtable': 'brand name "Airtable", identical in German',
 
   // settingsBookingFlow
   'settingsBookingFlow.flowRail.actorSystem': '"System" is identical in German',
