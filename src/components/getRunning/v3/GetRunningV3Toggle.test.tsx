@@ -37,6 +37,11 @@ describe("GetRunningV3Toggle", () => {
       authOverrides: { isSuperAdmin: true, currentOrg: TEST_ORG },
     });
 
-    expect(await screen.findByRole("switch")).toBeInTheDocument();
+    const toggle = await screen.findByRole("switch");
+    expect(toggle).toBeInTheDocument();
+    // Accessible name comes from aria-labelledby pointing at the visible title <p>, not a
+    // redundant aria-label duplicating it.
+    expect(toggle).toHaveAccessibleName("Get running v3");
+    expect(toggle).not.toHaveAttribute("aria-label");
   });
 });

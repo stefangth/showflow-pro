@@ -39,8 +39,12 @@ interface AttentionPanelProps {
   onOpenCatalog: () => void;
   /** "Open the full run log". */
   onOpenActivity: () => void;
-  /** Footer next-run label, e.g. "09:42". */
+  /** Footer next-run label, e.g. "09:42". Only meaningful when `hasScheduledNextRun` is true. */
   nextRunLabel: string;
+  /** False when the latest run was a manual Sheet import: there is no polling interval to
+   *  project a next run from, so the footer must not claim one (`attentionPanel.footerNote`
+   *  would otherwise read "...on the next run at Manual."). */
+  hasScheduledNextRun: boolean;
 }
 
 /**
@@ -58,6 +62,7 @@ export function AttentionPanel({
   onOpenCatalog,
   onOpenActivity,
   nextRunLabel,
+  hasScheduledNextRun,
 }: AttentionPanelProps) {
   const { t } = useTranslation('settingsAirtable');
   return (
@@ -148,7 +153,9 @@ export function AttentionPanel({
 
       <div className="flex items-center justify-between gap-3 px-4 py-2.5">
         <p className="text-xs text-muted-foreground">
-          {t('attentionPanel.footerNote', { nextRunLabel })}
+          {hasScheduledNextRun
+            ? t('attentionPanel.footerNote', { nextRunLabel })
+            : t('attentionPanel.footerNoteManual')}
         </p>
         <button
           type="button"

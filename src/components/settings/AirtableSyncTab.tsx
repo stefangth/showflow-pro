@@ -117,6 +117,7 @@ export function AirtableSyncTab({ orgId, readOnly = false, canTriggerSync = true
                 onOpenCatalog: () => setTab("catalog"),
                 onOpenActivity: () => setTab("activity"),
                 nextRunLabel: c.nextRunLabel,
+                hasScheduledNextRun: c.latest?.sync_type !== "sheet_import",
               } : null}
               connection={{
                 token: c.keyUpdatedAt

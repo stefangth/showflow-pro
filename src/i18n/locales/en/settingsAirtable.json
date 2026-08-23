@@ -132,6 +132,7 @@
     "review": "Review",
     "linkIndividually": "Link individually in Catalog links",
     "footerNote": "Resolving these releases the held records on the next run at {{nextRunLabel}}.",
+    "footerNoteManual": "Resolving these releases the held records on the next import.",
     "openRunLog": "Open the full run log"
   },
   "catalogTab": {

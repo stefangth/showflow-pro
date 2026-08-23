@@ -273,6 +273,21 @@ describe("AirtableSyncTab — attention panel", () => {
     expect(await screen.findByText("Needs your attention")).toBeInTheDocument();
     expect(screen.getByText("1 program option has no catalog production")).toBeInTheDocument();
   });
+
+  it("omits the 'next run at X' clause when the latest run is a manual Sheet import", async () => {
+    connect();
+    mock(fetchLatestSyncLog).mockResolvedValue(
+      syncLog({ status: "partial", held_count: 1, sync_type: "sheet_import" }),
+    );
+    mock(fetchUnresolvedRecords).mockResolvedValue([
+      { id: "r1", airtable_record_id: "recHELD", reason: "program 'Murder' not linked", created_at: "2026-06-17T10:00:00Z", action: "held_unresolved" },
+    ]);
+    renderTab(connectedSettings());
+
+    expect(await screen.findByText("Needs your attention")).toBeInTheDocument();
+    expect(screen.getByText("Resolving these releases the held records on the next import.")).toBeInTheDocument();
+    expect(screen.queryByText(/on the next run at/)).not.toBeInTheDocument();
+  });
 });
 
 describe("AirtableSyncTab — activity tab", () => {

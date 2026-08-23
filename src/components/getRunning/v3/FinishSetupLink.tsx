@@ -32,18 +32,33 @@ export function pickFinishStep(model: GetRunningModelV3, candidates: GetRunningS
  * the v3 `/get-running` board (`?step=<key>`, the same param `GetRunningBoardV3` already
  * reads to auto-open a step) at the first one that is still outstanding for the viewer.
  *
- * Renders nothing when the v3 board is not live for this org (`useGetRunningV3Enabled`),
- * while the live model is still loading, or when none of the candidates are actionable for
- * this viewer right now (`pickFinishStep` returns null) — including the steady state where
- * everything in `steps` is already done, so the affordance disappears on its own rather than
- * linking to a board with nothing left to do.
+ * Split into an outer gate + inner component so a v3-disabled org (the common case, since
+ * this mounts on four pages) never pays for `useGetRunningV3()` — which composes the whole
+ * board model, including the entire `useAirtableConsole` query fan-out. The outer component
+ * only calls the cheap `useGetRunningV3Enabled()` flag check; the inner component, which
+ * calls the heavy hook, is not rendered (and its hooks not evaluated) until the flag says v3
+ * is live for this org. This keeps the conditional strictly at the component-render level, not
+ * inside a single component's hook order.
  */
 export function FinishSetupLink({ steps }: { steps: GetRunningStepKey[] }) {
+  const { enabled, isLoading } = useGetRunningV3Enabled();
+
+  if (!enabled || isLoading) return null;
+
+  return <FinishSetupLinkInner steps={steps} />;
+}
+
+/**
+ * Renders nothing while the live model is still loading, or when none of the candidates are
+ * actionable for this viewer right now (`pickFinishStep` returns null) — including the steady
+ * state where everything in `steps` is already done, so the affordance disappears on its own
+ * rather than linking to a board with nothing left to do.
+ */
+function FinishSetupLinkInner({ steps }: { steps: GetRunningStepKey[] }) {
   const { t } = useTranslation("getRunningV3");
-  const { enabled } = useGetRunningV3Enabled();
   const { model, isLoading } = useGetRunningV3();
 
-  if (!enabled || isLoading || !model) return null;
+  if (isLoading || !model) return null;
 
   const stepKey = pickFinishStep(model, steps);
   if (!stepKey) return null;

@@ -54,11 +54,21 @@ function NothingToSetUpV3(): JSX.Element {
  * `RetiredBoard` prop shape and keeping this in sync with the same `useAuth`-derived
  * value the rest of `GetRunningBoardV3` uses. "Hide from the sidebar" shares v1's
  * `useRailDismissed("getRunning", orgId)` key, so dismissing from either board hides the
- * same sidebar item. "Manage in Settings" opens the Settings mirror of this same board
- * (`GetRunningSettingsMirror`, `?tab=get-running`), the durable home once the standalone
- * page is no longer linked from the sidebar.
+ * same sidebar item, and renders in both contexts. "Manage in Settings" opens the Settings
+ * mirror of this same board (`GetRunningSettingsMirror`, `?tab=get-running`), the durable
+ * home once the standalone page is no longer linked from the sidebar. That link only makes
+ * sense from the standalone `/get-running` page (`context === "page"`); inside the Settings
+ * mirror itself it would point at the tab already on screen, so it's omitted there.
  */
-function RetiredBoardV3({ model, orgId }: { model: GetRunningModelV3; orgId: string | null }): JSX.Element {
+function RetiredBoardV3({
+  model,
+  orgId,
+  context,
+}: {
+  model: GetRunningModelV3;
+  orgId: string | null;
+  context: "page" | "settings";
+}): JSX.Element {
   const { t } = useTranslation("getRunningV3");
   const [, dismiss] = useRailDismissed("getRunning", orgId);
   return (
@@ -76,9 +86,11 @@ function RetiredBoardV3({ model, orgId }: { model: GetRunningModelV3; orgId: str
         </Metric>
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <Button asChild variant="secondary" size="sm">
-          <Link to={`${ROUTES.SETTINGS}?tab=get-running`}>{t("retired.manageInSettings")}</Link>
-        </Button>
+        {context === "page" && (
+          <Button asChild variant="secondary" size="sm">
+            <Link to={`${ROUTES.SETTINGS}?tab=get-running`}>{t("retired.manageInSettings")}</Link>
+          </Button>
+        )}
         <Button variant="outline" size="sm" onClick={dismiss}>
           {t("retired.hideFromNav")}
         </Button>
@@ -196,7 +208,7 @@ export function GetRunningBoardV3({ context }: { context: "page" | "settings" })
   if (model.complete) {
     return (
       <div className={context === "page" ? "flex flex-col gap-5 p-6" : "flex flex-col gap-5"}>
-        <RetiredBoardV3 model={model} orgId={orgId} />
+        <RetiredBoardV3 model={model} orgId={orgId} context={context} />
       </div>
     );
   }

@@ -179,6 +179,18 @@ describe("GetRunningBoardV3", () => {
     expect(dismissFn).toHaveBeenCalled();
   });
 
+  it("retired state omits the Settings link inside the Settings mirror, but keeps hide-from-nav", () => {
+    mockModel(composeGetRunningV3({ ...base, feeDone: true, documentDone: true }));
+
+    renderBoardAt("settings", "/settings?tab=get-running");
+
+    expect(screen.getByTestId("get-running-v3-retired")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /manage in settings/i })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /hide from the sidebar/i }));
+    expect(dismissFn).toHaveBeenCalled();
+  });
+
   it("does not expand a waits-on phase from its rail icon click", () => {
     // bookable waits on get_dates (slots undone -> get_dates not done), so its rail icons
     // must render inert and clicking one must not swap the row for the wizard shell.

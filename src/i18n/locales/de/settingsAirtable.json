@@ -132,6 +132,7 @@
     "review": "Prüfen",
     "linkIndividually": "Einzeln in Katalogverknüpfungen verlinken",
     "footerNote": "Das Beheben gibt die zurückgehaltenen Datensätze beim nächsten Lauf um {{nextRunLabel}} frei.",
+    "footerNoteManual": "Das Beheben gibt die zurückgehaltenen Datensätze beim nächsten Import frei.",
     "openRunLog": "Das vollständige Lauf-Protokoll öffnen"
   },
   "catalogTab": {
