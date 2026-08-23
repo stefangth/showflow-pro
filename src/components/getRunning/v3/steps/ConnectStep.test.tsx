@@ -100,7 +100,7 @@ describe("ConnectStep", () => {
     expect(screen.getByRole("button", { name: /continue/i })).toBeDisabled();
   });
 
-  it("renders the sheet URL body when source is sheet, with Continue disabled until a plausible URL is entered", async () => {
+  it("keeps Continue disabled when a valid sheet URL is only typed, not yet saved", async () => {
     seedSource("sheet");
     seedSheetImport();
     renderStep();
@@ -120,7 +120,11 @@ describe("ConnectStep", () => {
       target: { value: "https://docs.google.com/spreadsheets/d/x/pub?output=csv&format=csv" },
     });
 
-    expect(screen.getByRole("button", { name: /continue/i })).toBeEnabled();
+    // Continue is gated on the URL being SAVED (via Load columns), not merely typed:
+    // advancing on an unsaved URL would strand MapStep, which reads back an empty
+    // settings.url on its fresh useSheetImport mount. The saved-URL -> enabled path is
+    // covered by "preselects the org's already-saved sheet URL" below.
+    expect(screen.getByRole("button", { name: /continue/i })).toBeDisabled();
   });
 
   it("preselects the org's already-saved sheet URL", async () => {
