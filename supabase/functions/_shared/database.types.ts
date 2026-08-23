@@ -579,6 +579,64 @@ export type Database = {
           },
         ]
       }
+      cast_production_fees: {
+        Row: {
+          cast_id: string
+          created_at: string
+          currency: string
+          fee_amount: number | null
+          fee_basis: string
+          id: string
+          org_id: string
+          show_id: string
+          updated_at: string
+        }
+        Insert: {
+          cast_id: string
+          created_at?: string
+          currency?: string
+          fee_amount?: number | null
+          fee_basis?: string
+          id?: string
+          org_id: string
+          show_id: string
+          updated_at?: string
+        }
+        Update: {
+          cast_id?: string
+          created_at?: string
+          currency?: string
+          fee_amount?: number | null
+          fee_basis?: string
+          id?: string
+          org_id?: string
+          show_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cast_production_fees_cast_id_fkey"
+            columns: ["cast_id"]
+            isOneToOne: false
+            referencedRelation: "casts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cast_production_fees_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cast_production_fees_show_id_fkey"
+            columns: ["show_id"]
+            isOneToOne: false
+            referencedRelation: "shows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       casts: {
         Row: {
           created_at: string
