@@ -501,6 +501,30 @@ describe("SettingsPage get-running mirror tab (wireflow v3 phase 5)", () => {
     expect(await screen.findByRole("tab", { name: /^get running$/i })).toBeInTheDocument();
   });
 
+  // Isolates the PRODUCER-only arm of `showGetRunning = isSuperAdmin || ((isAdmin ||
+  // isProducer) && v3Enabled)`. DEFAULT_AUTH's `hasRole: () => true` makes isAdmin AND
+  // isProducer both true, so every case above also exercises this arm incidentally and
+  // would keep passing even if the OR became an AND, or the isProducer disjunct were
+  // dropped entirely. `hasRole: (r) => r === "producer"` (isAdmin: false, isProducer: true,
+  // isSuperAdmin: false, mirroring the existing producer-only sweep fixture above) pins
+  // both directions on their own.
+  it("shows a producer the trigger once the org's v3 override is on, but not while v3 is off", async () => {
+    const producerAuth = { ...DEFAULT_AUTH, hasRole: (r: string) => r === "producer" };
+
+    seedV3Override("org-1", true);
+    vi.mocked(useAuth).mockReturnValue(producerAuth as never);
+    const { unmount } = renderWithProviders(<MemoryRouter><SettingsPage /></MemoryRouter>);
+    expect(await screen.findByRole("tab", { name: /^get running$/i })).toBeInTheDocument();
+    unmount();
+
+    for (const k of Object.keys(client)) delete client[k];
+    Object.assign(client, createFakeSupabase(BASE_SEED));
+    vi.mocked(useAuth).mockReturnValue(producerAuth as never);
+    renderWithProviders(<MemoryRouter><SettingsPage /></MemoryRouter>);
+    await screen.findByRole("tab", { name: /how this org works/i });
+    expect(screen.queryByRole("tab", { name: /^get running$/i })).not.toBeInTheDocument();
+  });
+
   it("renders the mirror (toggle + board) at ?tab=get-running for a super-admin", async () => {
     vi.mocked(useAuth).mockReturnValue({ ...DEFAULT_AUTH, isSuperAdmin: true } as never);
     renderWithProviders(
