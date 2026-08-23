@@ -8,6 +8,8 @@ import { useSkills } from "@/hooks/useSkills";
 import { useDatesSource } from "@/hooks/useDatesSource";
 import { useAirtableConsole } from "@/hooks/useAirtableConsole";
 import { isDatesMapComplete } from "@/data/airtableMapping";
+import { useSheetImport } from "@/hooks/useSheetImport";
+import { isSheetMapComplete } from "@/lib/sheetImport/mapRows";
 import { composeGetRunningV3, type GetRunningInputV3, type GetRunningModelV3 } from "@/lib/getRunning/steps";
 
 /**
@@ -25,7 +27,11 @@ import { composeGetRunningV3, type GetRunningInputV3, type GetRunningModelV3 } f
  * console's connection + required-field-mapping state (useAirtableConsole) when that source
  * is Airtable, and are trivially done for a manual source (composeGetRunningV3 hides those
  * steps for a manual source instead); `datesCitiesDone` reuses the booking module's
- * `datesWithoutCity` advisory. Phase 3 wires `feeDone`/`documentDone` to whether the org owns
+ * `datesWithoutCity` advisory. Task A6 wires the same two signals for a `sheet` source via
+ * `useSheetImport`: `datesConnectDone` is a non-empty saved sheet URL, `datesMapDone` is
+ * `isSheetMapComplete` on the saved column map (program + date both set).
+ *
+ * Phase 3 wires `feeDone`/`documentDone` to whether the org owns
  * its own `hire_order_defaults`/`hire_order_numbering` app_settings row (useHireOrderExtraSetup)
  * — an inherited platform default is not a decision. `skillsDone` remains a cheap best-effort
  * read (the org's skill catalog is non-empty) rather than a new query.
@@ -57,6 +63,9 @@ export function useGetRunningV3(): { model: GetRunningModelV3 | null; isLoading:
   // source is Airtable, so gate its orgId on that instead of mounting it (and its ~7 queries)
   // unconditionally for every manual/by-hand org too.
   const airtable = useAirtableConsole(datesSource === "airtable" ? bookingOrgId : null, { readOnly: true, canTriggerSync: false });
+  // Same gating shape for the sheet source's Connect/Map done-signals (Task A6): only
+  // mounted (and only fetched) when the org's dates source is actually "sheet".
+  const sheetImport = useSheetImport(datesSource === "sheet" ? bookingOrgId : null);
 
   // Cheap best-effort signal for the `skills` step: the org's skill catalog is non-empty.
   // Only fired for a non-artist viewer in a booking-entitled org, same gating shape as the
@@ -80,6 +89,7 @@ export function useGetRunningV3(): { model: GetRunningModelV3 | null; isLoading:
   const isLoading = entitlementsLoading
     || (bookingOn && (booking.isLoading || datesSourceLoading))
     || (datesSource === "airtable" && !airtable.ready)
+    || (datesSource === "sheet" && sheetImport.isLoading)
     || (hireOrdersOn && (hire.isLoading || hireExtra.isLoading));
 
   if (isLoading) return { model: null, isLoading: true };
@@ -96,8 +106,18 @@ export function useGetRunningV3(): { model: GetRunningModelV3 | null; isLoading:
   // reads the same predicate, so the board and the wizard never disagree about "map done".
   const isAirtableConnected = airtable.keyPresent && airtable.hasBaseTable;
   const isAirtableMapped = isDatesMapComplete(airtable.fieldMap);
-  const datesConnectDone = datesSource === "manual" ? true : datesSource === "airtable" ? isAirtableConnected : false;
-  const datesMapDone = datesSource === "manual" ? true : datesSource === "airtable" ? isAirtableMapped : false;
+  const isSheetConnected = Boolean(sheetImport.settings.url);
+  const isSheetMapped = isSheetMapComplete(sheetImport.settings.map);
+  const datesConnectDone =
+    datesSource === "manual" ? true
+    : datesSource === "airtable" ? isAirtableConnected
+    : datesSource === "sheet" ? isSheetConnected
+    : false;
+  const datesMapDone =
+    datesSource === "manual" ? true
+    : datesSource === "airtable" ? isAirtableMapped
+    : datesSource === "sheet" ? isSheetMapped
+    : false;
   // Advisory-only: 0 while coverage is unread or the org has no upcoming dates, same as the
   // booking module's own field (see setupStatus.ts's doc comment on `datesWithoutCity`).
   const datesCitiesDone = bookingOn ? booking.status.datesWithoutCity === 0 : false;

@@ -261,3 +261,82 @@ describe("useGetRunningV3 dates signals (Phase 2)", () => {
     expect(calls.some((c) => c.table === "rpc:get_org_airtable_key_status")).toBe(false);
   });
 });
+
+describe("useGetRunningV3 dates signals (sheet source, Task A6)", () => {
+  /** Seeds just enough for the hook's whole chain (booking setup + dates source + sheet
+   *  import settings) to settle without erroring. Mirrors `seedDatesSignals` above but for
+   *  the `sheet` dates source, seeding `sheet_import_settings` instead of the Airtable rows. */
+  function seedSheetSignals(opts: { url?: string; mapped?: boolean } = {}) {
+    const { url = "https://docs.google.com/spreadsheets/d/abc/pub?output=csv", mapped = true } = opts;
+    seed({
+      org_entitlements: {
+        data: [
+          { feature: "booking_flow", enabled: true },
+          { feature: "hire_orders", enabled: false },
+        ],
+        error: null,
+      },
+      // Array-seed form (matched on the recorded .eq("key", ...) arg) so that
+      // fetchDatesSource and fetchSheetImportSettings each resolve their own row instead of
+      // both seeing whichever row happens to come first (resolveOrgSetting does not filter
+      // by key itself, it relies on the .eq("key", ...) the fake matches against here).
+      app_settings: [
+        { when: { key: "getrunning_dates_source" }, data: [{ key: "getrunning_dates_source", org_id: ORG_ID, value: "sheet" }] },
+        {
+          when: { key: "sheet_import_settings" },
+          data: [{ key: "sheet_import_settings", org_id: ORG_ID, value: { url, map: mapped ? { program: "Program", date: "Date" } : {} } }],
+        },
+        { data: [] },
+      ],
+      shows: { data: [], error: null },
+      show_dates: { data: [], error: null },
+      show_cast_eligibility: { data: [], error: null },
+      cast_city_priority: { data: [], error: null },
+      artists: { data: null, error: null, count: 0 },
+      org_memberships: { data: null, error: null, count: 0 },
+      skills: { data: [], error: null },
+    });
+  }
+
+  it("marks connect and map done when the sheet source has a saved URL and program+date are mapped", async () => {
+    seedSheetSignals({ url: "https://docs.google.com/spreadsheets/d/abc/pub?output=csv", mapped: true });
+
+    const { result } = renderHookWithProviders(() => useGetRunningV3(), {
+      authOverrides: {
+        currentOrg: TEST_ORG,
+        roles: ["admin"],
+        hasRole: (r) => r === "admin",
+      },
+    });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    const getDates = result.current.model!.phases.find((p) => p.key === "get_dates")!;
+    const connect = getDates.steps.find((s) => s.key === "connect")!;
+    const map = getDates.steps.find((s) => s.key === "map")!;
+    expect(connect.hidden).toBeFalsy();
+    expect(connect.done).toBe(true);
+    expect(map.hidden).toBeFalsy();
+    expect(map.done).toBe(true);
+  });
+
+  it("reports connect and map as not done for a sheet source with empty settings", async () => {
+    seedSheetSignals({ url: "", mapped: false });
+
+    const { result } = renderHookWithProviders(() => useGetRunningV3(), {
+      authOverrides: {
+        currentOrg: TEST_ORG,
+        roles: ["admin"],
+        hasRole: (r) => r === "admin",
+      },
+    });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    const getDates = result.current.model!.phases.find((p) => p.key === "get_dates")!;
+    const connect = getDates.steps.find((s) => s.key === "connect")!;
+    const map = getDates.steps.find((s) => s.key === "map")!;
+    expect(connect.hidden).toBeFalsy();
+    expect(connect.done).toBe(false);
+    expect(map.hidden).toBeFalsy();
+    expect(map.done).toBe(false);
+  });
+});
