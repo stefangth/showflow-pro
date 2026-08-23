@@ -70,6 +70,7 @@ const base: GetRunningInputV3 = {
   canManageShows: true,
   canEditScheduling: true,
   canEditBooking: true,
+  canManageSkills: true,
   canEditHire: true,
   canAddArtists: true,
   canInvite: true,

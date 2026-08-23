@@ -88,6 +88,11 @@ export interface GetRunningInputV3 {
   canManageShows: boolean;
   canEditScheduling: boolean;
   canEditBooking: boolean;
+  // The `skills` step edits the skill CATALOG, which `SkillsTab` (and RLS) gate on
+  // `manage_skills` — a different capability from `edit_booking_settings` (booking-engine
+  // settings), with a different producer default. Keep them separate so the step's
+  // actionability matches what the reused SkillsTab actually enforces.
+  canManageSkills: boolean;
   canEditHire: boolean;
   canAddArtists: boolean;
   canInvite: boolean;
@@ -196,7 +201,7 @@ export function composeGetRunningV3(input: GetRunningInputV3): GetRunningModelV3
         block: null,
         adminOnly: false,
         placeholder: false,
-        capability: input.canEditBooking,
+        capability: input.canManageSkills,
       },
       {
         key: "coverage",

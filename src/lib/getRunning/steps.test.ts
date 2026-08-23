@@ -36,6 +36,7 @@ const base: GetRunningInputV3 = {
   canManageShows: true,
   canEditScheduling: true,
   canEditBooking: true,
+  canManageSkills: true,
   canEditHire: true,
   canAddArtists: true,
   canInvite: true,
@@ -136,6 +137,18 @@ describe("composeGetRunningV3 Phase 3 (skills/fee/document are real steps)", () 
     const m = composeGetRunningV3(baseInput({ bookingOn: true, skillsDone: true }));
     const bookable = m.phases.find((p) => p.key === "bookable")!;
     expect(bookable.steps.find((s) => s.key === "skills")!.done).toBe(true);
+  });
+
+  it("skills actionability follows manage_skills, not edit_booking_settings", () => {
+    const skillsStep = (input: Partial<GetRunningInputV3>) =>
+      composeGetRunningV3(baseInput({ role: "producer", bookingOn: true, ...input }))
+        .phases.find((p) => p.key === "bookable")!
+        .steps.find((s) => s.key === "skills")!;
+    // A producer with manage_skills (its default) but NOT edit_booking_settings CAN act on
+    // skills — the reused SkillsTab renders editable for them, so the step must too.
+    expect(skillsStep({ canManageSkills: true, canEditBooking: false }).actionableByViewer).toBe(true);
+    // Without manage_skills they cannot, even if they can edit booking settings.
+    expect(skillsStep({ canManageSkills: false, canEditBooking: true }).actionableByViewer).toBe(false);
   });
 });
 
