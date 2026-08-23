@@ -22,7 +22,16 @@ vi.mock("@/hooks/useCapabilities", async (orig) => ({
   useCan: vi.fn(),
 }));
 
+// useSheetImport is mocked (not driven through the shared app_settings fake), because it
+// reads/writes the SAME app_settings table (under a different `key`) as useDatesSource,
+// and the fake's single-object seed form does not filter by `.eq('key', …)` — seeding both
+// through the same fake would make each hook see the other's row. A controllable mock
+// keeps the sheet branch's Connect-step behavior isolated from the source-seeding helper
+// below, mirroring MapStep.test.tsx's data-module-mock approach for the same reason.
+vi.mock("@/hooks/useSheetImport", () => ({ useSheetImport: vi.fn() }));
+
 import { useCan } from "@/hooks/useCapabilities";
+import { useSheetImport } from "@/hooks/useSheetImport";
 import { ConnectStep } from "./ConnectStep";
 
 function seedSource(source: "airtable" | "manual" | "sheet" | null) {
@@ -37,6 +46,26 @@ function seedSource(source: "airtable" | "manual" | "sheet" | null) {
   );
 }
 
+type SheetImportMock = ReturnType<typeof useSheetImport>;
+
+function seedSheetImport(overrides: Partial<SheetImportMock> = {}) {
+  const base: SheetImportMock = {
+    settings: { url: "", map: {} },
+    isLoading: false,
+    saveSettings: vi.fn(),
+    saving: false,
+    loadHeaders: vi.fn(() => Promise.resolve([])),
+    loadSheet: vi.fn(() => Promise.resolve({ headers: [], rows: [] })),
+    parsed: null,
+    runImport: vi.fn(),
+    importing: false,
+    result: null,
+  };
+  const value = { ...base, ...overrides };
+  vi.mocked(useSheetImport).mockReturnValue(value);
+  return value;
+}
+
 function renderStep(onDone = vi.fn()) {
   const result = renderWithProviders(<ConnectStep orgId="org-1" onDone={onDone} />);
   return { ...result, onDone };
@@ -45,6 +74,7 @@ function renderStep(onDone = vi.fn()) {
 describe("ConnectStep", () => {
   beforeEach(() => {
     vi.mocked(useCan).mockReturnValue(true);
+    seedSheetImport();
   });
 
   it("renders the by-hand info body and Continue calls onDone when source is manual", async () => {
@@ -67,5 +97,45 @@ describe("ConnectStep", () => {
     // Not yet connected (no key, no base/table) — Continue must stay disabled so the
     // wizard can't advance past an unconfigured connection.
     expect(screen.getByRole("button", { name: /continue/i })).toBeDisabled();
+  });
+
+  it("renders the sheet URL body when source is sheet, with Continue disabled until a plausible URL is entered", async () => {
+    seedSource("sheet");
+    seedSheetImport();
+    renderStep();
+
+    expect(await screen.findByLabelText(/sheet url/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /continue/i })).toBeDisabled();
+
+    fireEvent.change(screen.getByLabelText(/sheet url/i), {
+      target: { value: "https://docs.google.com/spreadsheets/d/x/pub?output=csv&format=csv" },
+    });
+
+    await waitFor(() => expect(screen.getByRole("button", { name: /continue/i })).toBeEnabled());
+  });
+
+  it("preselects the org's already-saved sheet URL", async () => {
+    seedSource("sheet");
+    seedSheetImport({ settings: { url: "https://docs.google.com/spreadsheets/d/x/pub?output=csv&format=csv", map: {} } });
+    renderStep();
+
+    expect(await screen.findByDisplayValue(/docs\.google\.com/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /continue/i })).toBeEnabled();
+  });
+
+  it("Load columns saves the URL and loads headers via the sheet-import hook", async () => {
+    seedSource("sheet");
+    const sheet = seedSheetImport({
+      loadSheet: vi.fn(() => Promise.resolve({ headers: ["Program", "Date", "City"], rows: [] })),
+    });
+    renderStep();
+
+    const url = "https://docs.google.com/spreadsheets/d/x/pub?output=csv&format=csv";
+    fireEvent.change(await screen.findByLabelText(/sheet url/i), { target: { value: url } });
+    fireEvent.click(screen.getByRole("button", { name: /load columns/i }));
+
+    await waitFor(() => expect(sheet.loadSheet).toHaveBeenCalledWith(url));
+    expect(sheet.saveSettings).toHaveBeenCalledWith({ url, map: {} });
+    expect(await screen.findByText(/loaded 3 columns/i)).toBeInTheDocument();
   });
 });

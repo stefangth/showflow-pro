@@ -44,7 +44,7 @@ describe("SourceStep", () => {
     vi.mocked(useCan).mockReturnValue(true);
   });
 
-  it("renders the three source cards with the Sheet card disabled", async () => {
+  it("renders all three source cards enabled", async () => {
     seedSource(null);
     renderStep();
 
@@ -57,7 +57,7 @@ describe("SourceStep", () => {
     await waitFor(() => expect(screen.getAllByRole("radio")).toHaveLength(3));
 
     expect(screen.getByRole("radio", { name: /airtable/i })).toBeInTheDocument();
-    expect(screen.getByRole("radio", { name: /google sheet/i })).toBeDisabled();
+    expect(screen.getByRole("radio", { name: /google sheet/i })).not.toBeDisabled();
     expect(screen.getByRole("radio", { name: /by hand/i })).toBeInTheDocument();
   });
 
@@ -91,6 +91,27 @@ describe("SourceStep", () => {
       method: "upsert",
       args: [
         { org_id: "org-1", key: "getrunning_dates_source", value: "manual" },
+        { onConflict: "org_id,key" },
+      ],
+    });
+  });
+
+  it("selecting Google Sheet and clicking Continue saves sheet and calls onDone", async () => {
+    seedSource(null);
+    const { onDone } = renderStep();
+
+    await waitFor(() => expect(screen.getAllByRole("radio")).toHaveLength(3));
+    const sheetRadio = screen.getByRole("radio", { name: /google sheet/i });
+    fireEvent.click(sheetRadio);
+    const continueButton = screen.getByRole("button", { name: /continue/i });
+    fireEvent.click(continueButton);
+
+    await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1));
+    expect((client as unknown as { calls: unknown[] }).calls).toContainEqual({
+      table: "app_settings",
+      method: "upsert",
+      args: [
+        { org_id: "org-1", key: "getrunning_dates_source", value: "sheet" },
         { onConflict: "org_id,key" },
       ],
     });

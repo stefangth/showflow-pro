@@ -75,13 +75,44 @@ vi.mock("@/hooks/useCapabilities", async (orig) => ({
   useCan: vi.fn(),
 }));
 
+// useDatesSource + useSheetImport are mocked directly, same reasoning as
+// MapStep.test.tsx's sheet-branch mocks: CitiesStep now branches on `source`, and the
+// sheet branch needs a controllable `settings`/`parsed`/`result`/`runImport`. Every
+// existing Airtable-branch test below leaves `useDatesSource` at its default (null
+// source), so they exercise the exact same code path as before this file's sheet
+// additions.
+vi.mock("@/hooks/useDatesSource", () => ({ useDatesSource: vi.fn() }));
+vi.mock("@/hooks/useSheetImport", () => ({ useSheetImport: vi.fn() }));
+
 import { useCan } from "@/hooks/useCapabilities";
+import { useDatesSource } from "@/hooks/useDatesSource";
+import { useSheetImport } from "@/hooks/useSheetImport";
 import { fetchAirtableSettings } from "@/data/airtableSettings";
 import { fetchCitiesForLinking, importCitiesFromOptions } from "@/data/cities";
 import { CitiesStep } from "./CitiesStep";
 
 type Fn = ReturnType<typeof vi.fn>;
 const mock = (f: unknown) => f as Fn;
+
+type SheetImportMock = ReturnType<typeof useSheetImport>;
+
+function seedSheetImport(overrides: Partial<SheetImportMock> = {}) {
+  const base: SheetImportMock = {
+    settings: { url: "", map: {} },
+    isLoading: false,
+    saveSettings: vi.fn(),
+    saving: false,
+    loadHeaders: vi.fn(() => Promise.resolve([])),
+    loadSheet: vi.fn(() => Promise.resolve({ headers: [], rows: [] })),
+    parsed: null,
+    runImport: vi.fn(),
+    importing: false,
+    result: null,
+  };
+  const value = { ...base, ...overrides };
+  vi.mocked(useSheetImport).mockReturnValue(value);
+  return value;
+}
 
 const BASE_SETTINGS = {
   airtable_sync_enabled: true,
@@ -108,6 +139,8 @@ describe("CitiesStep", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(useCan).mockReturnValue(true);
+    vi.mocked(useDatesSource).mockReturnValue({ source: null, isLoading: false, save: vi.fn(), saving: false });
+    seedSheetImport();
     mock(fetchCitiesForLinking).mockResolvedValue([]);
   });
 
@@ -193,5 +226,76 @@ describe("CitiesStep", () => {
     await screen.findByText("Berlin");
     const createButtons = screen.getAllByRole("button", { name: /^create$/i });
     for (const btn of createButtons) expect(btn).toBeDisabled();
+  });
+
+  describe("sheet source", () => {
+    beforeEach(() => {
+      vi.mocked(useDatesSource).mockReturnValue({ source: "sheet", isLoading: false, save: vi.fn(), saving: false });
+    });
+
+    it("shows the Import dates now action and keeps Continue disabled before any import has run", async () => {
+      seedSheetImport({ settings: { url: "https://docs.google.com/spreadsheets/d/x", map: { program: "Program", date: "Date" } } });
+      renderStep();
+
+      expect(await screen.findByRole("button", { name: /import dates now/i })).toBeEnabled();
+      expect(screen.getByRole("button", { name: /continue/i })).toBeDisabled();
+      expect(screen.getByText(/nothing imported yet/i)).toBeInTheDocument();
+    });
+
+    it("clicking Import dates now maps the cached parsed sheet and runs the import", async () => {
+      const runImport = vi.fn();
+      seedSheetImport({
+        settings: { url: "https://docs.google.com/spreadsheets/d/x", map: { program: "Program", date: "Date" } },
+        parsed: { headers: ["Program", "Date"], rows: [{ Program: "ShowA", Date: "2026-01-01" }] },
+        runImport,
+      });
+      renderStep();
+
+      fireEvent.click(await screen.findByRole("button", { name: /import dates now/i }));
+
+      await waitFor(() => expect(runImport).toHaveBeenCalledTimes(1));
+      const rows = runImport.mock.calls[0][0];
+      expect(rows).toEqual([
+        expect.objectContaining({ program: "ShowA", date: "2026-01-01", rowIndex: 1 }),
+      ]);
+    });
+
+    it("shows the result KPIs and enables Continue once new dates or updates landed", async () => {
+      seedSheetImport({
+        settings: { url: "https://docs.google.com/spreadsheets/d/x", map: { program: "Program", date: "Date" } },
+        result: { processed: 2, new_dates: 1, updated: 1, held: 0, tiers_opened: 1 },
+      });
+      const { onDone } = renderStep();
+
+      expect(await screen.findByText("2")).toBeInTheDocument();
+      const continueBtn = screen.getByRole("button", { name: /continue/i });
+      expect(continueBtn).toBeEnabled();
+      fireEvent.click(continueBtn);
+      expect(onDone).toHaveBeenCalledTimes(1);
+    });
+
+    it("keeps Continue disabled and shows the held note when a run held every row", async () => {
+      seedSheetImport({
+        settings: { url: "https://docs.google.com/spreadsheets/d/x", map: { program: "Program", date: "Date" } },
+        result: { processed: 2, new_dates: 0, updated: 0, held: 2, tiers_opened: 0 },
+      });
+      renderStep();
+
+      expect(screen.getByRole("button", { name: /continue/i })).toBeDisabled();
+      expect(await screen.findByText(/held rows need a city, date, or production/i)).toBeInTheDocument();
+      const link = screen.getByRole("link", { name: /settings/i });
+      expect(link.getAttribute("href")).toMatch(/\/settings/);
+    });
+
+    it("is read only (Import button disabled) for a viewer without configure_airtable", async () => {
+      vi.mocked(useCan).mockReturnValue(false);
+      seedSheetImport({ settings: { url: "https://docs.google.com/spreadsheets/d/x", map: { program: "Program", date: "Date" } } });
+      renderStep();
+
+      // The sheet import trigger is gated on `configure_airtable` too (mirrors the
+      // Airtable branch's canWrite-disabled controls): capability, not just map
+      // completeness, decides whether the action is enabled.
+      expect(await screen.findByRole("button", { name: /import dates now/i })).toBeDisabled();
+    });
   });
 });

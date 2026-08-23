@@ -70,12 +70,43 @@ vi.mock("@/hooks/useCapabilities", async (orig) => ({
   useCan: vi.fn(),
 }));
 
+// useDatesSource + useSheetImport are mocked directly (not driven through a fake
+// supabase client, which this suite doesn't set up at all): MapStep now branches on
+// `source`, and the sheet branch needs a controllable `settings`/`parsed`/`loadSheet`,
+// same reasoning as ConnectStep.test.tsx's sheet-branch mocks. Every existing
+// Airtable-branch test below leaves `useDatesSource` at its default (null source), so
+// they exercise the exact same code path as before this file's sheet additions.
+vi.mock("@/hooks/useDatesSource", () => ({ useDatesSource: vi.fn() }));
+vi.mock("@/hooks/useSheetImport", () => ({ useSheetImport: vi.fn() }));
+
 import { useCan } from "@/hooks/useCapabilities";
+import { useDatesSource } from "@/hooks/useDatesSource";
+import { useSheetImport } from "@/hooks/useSheetImport";
 import { fetchAirtableSettings } from "@/data/airtableSettings";
 import { MapStep } from "./MapStep";
 
 type Fn = ReturnType<typeof vi.fn>;
 const mock = (f: unknown) => f as Fn;
+
+type SheetImportMock = ReturnType<typeof useSheetImport>;
+
+function seedSheetImport(overrides: Partial<SheetImportMock> = {}) {
+  const base: SheetImportMock = {
+    settings: { url: "", map: {} },
+    isLoading: false,
+    saveSettings: vi.fn(),
+    saving: false,
+    loadHeaders: vi.fn(() => Promise.resolve([])),
+    loadSheet: vi.fn(() => Promise.resolve({ headers: [], rows: [] })),
+    parsed: null,
+    runImport: vi.fn(),
+    importing: false,
+    result: null,
+  };
+  const value = { ...base, ...overrides };
+  vi.mocked(useSheetImport).mockReturnValue(value);
+  return value;
+}
 
 const BASE_SETTINGS = {
   airtable_sync_enabled: true,
@@ -102,6 +133,8 @@ describe("MapStep", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(useCan).mockReturnValue(true);
+    vi.mocked(useDatesSource).mockReturnValue({ source: null, isLoading: false, save: vi.fn(), saving: false });
+    seedSheetImport();
   });
 
   it("renders the mapping table and keeps Continue disabled while a required field (sub_program) is unmapped", async () => {
@@ -142,5 +175,66 @@ describe("MapStep", () => {
     renderStep();
 
     expect(await screen.findByLabelText("Date")).toBeDisabled();
+  });
+
+  describe("sheet source", () => {
+    beforeEach(() => {
+      vi.mocked(useDatesSource).mockReturnValue({ source: "sheet", isLoading: false, save: vi.fn(), saving: false });
+    });
+
+    it("prompts to go back to Connect when no sheet URL is saved yet", async () => {
+      seedSheetImport({ settings: { url: "", map: {} } });
+      renderStep();
+
+      expect(await screen.findByText(/go back to connect/i)).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /continue/i })).toBeDisabled();
+    });
+
+    it("loads headers on mount when a URL is saved but nothing is cached, then renders the mapping selects", async () => {
+      const loadSheet = vi.fn(() => Promise.resolve({ headers: ["Program", "Date", "City"], rows: [] }));
+      seedSheetImport({ settings: { url: "https://docs.google.com/spreadsheets/d/x", map: {} }, loadSheet });
+      renderStep();
+
+      await waitFor(() => expect(loadSheet).toHaveBeenCalledWith("https://docs.google.com/spreadsheets/d/x"));
+    });
+
+    it("renders the mapping selects from cached headers and keeps Continue disabled until program + date are mapped", async () => {
+      seedSheetImport({
+        settings: { url: "https://docs.google.com/spreadsheets/d/x", map: {} },
+        parsed: { headers: ["Program", "Date", "City"], rows: [] },
+      });
+      renderStep();
+
+      expect(await screen.findByLabelText("Production")).toBeInTheDocument();
+      expect(screen.getByLabelText("Date")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /continue/i })).toBeDisabled();
+      expect(screen.getByText(/map the production and date columns/i)).toBeInTheDocument();
+    });
+
+    it("enables Continue and calls onDone once program + date are both mapped via saveSettings", async () => {
+      const saveSettings = vi.fn();
+      seedSheetImport({
+        settings: { url: "https://docs.google.com/spreadsheets/d/x", map: { program: "Program", date: "Date" } },
+        parsed: { headers: ["Program", "Date", "City"], rows: [] },
+        saveSettings,
+      });
+      const { onDone } = renderStep();
+
+      const continueBtn = await screen.findByRole("button", { name: /continue/i });
+      expect(continueBtn).toBeEnabled();
+      fireEvent.click(continueBtn);
+      expect(onDone).toHaveBeenCalledTimes(1);
+    });
+
+    it("is read only (mapping selects disabled) for a viewer without configure_airtable", async () => {
+      vi.mocked(useCan).mockReturnValue(false);
+      seedSheetImport({
+        settings: { url: "https://docs.google.com/spreadsheets/d/x", map: { program: "Program", date: "Date" } },
+        parsed: { headers: ["Program", "Date", "City"], rows: [] },
+      });
+      renderStep();
+
+      expect(await screen.findByLabelText("Production")).toBeDisabled();
+    });
   });
 });

@@ -329,7 +329,19 @@
       "manual": "By hand needs no connection. Continue to add productions.",
       "saveToken": "Save token",
       "connected": "Connected to {{baseName}} › {{tableName}}.",
-      "continue": "Continue"
+      "continue": "Continue",
+      "sheet": {
+        "heading": "Connect Google Sheet",
+        "sub": "Paste the link to your published sheet.",
+        "urlLabel": "Sheet URL",
+        "urlPlaceholder": "https://docs.google.com/spreadsheets/...",
+        "helper": "Publish your sheet to the web as CSV, then paste that link here.",
+        "loadColumns": "Load columns",
+        "loading": "Loading columns",
+        "loaded": "Loaded {{count}} columns.",
+        "invalidUrl": "Paste a published Google Sheets CSV link to continue.",
+        "loadError": "The sheet could not be read. Check the link and try again."
+      }
     },
     "map": {
       "heading": "Map your fields",
@@ -340,7 +352,25 @@
         "link": "Go to Productions"
       },
       "continue": "Continue",
-      "mapIncomplete": "Map the date and sub-program fields to continue."
+      "mapIncomplete": "Map the date and sub-program fields to continue.",
+      "sheet": {
+        "heading": "Map your columns",
+        "sub": "Match each column in your sheet to the field it represents.",
+        "fields": {
+          "program": "Production",
+          "subProgram": "Sub-production",
+          "date": "Date",
+          "city": "City",
+          "session1": "Session 1",
+          "session2": "Session 2",
+          "session3": "Session 3",
+          "venue": "Venue"
+        },
+        "selectPlaceholder": "Choose a column",
+        "notMapped": "Not mapped",
+        "noHeaders": "Go back to Connect and load your sheet's columns first.",
+        "mapIncomplete": "Map the production and date columns to continue."
+      }
     },
     "cities": {
       "heading": "Set a city on every date",
@@ -348,7 +378,21 @@
       "continue": "Continue",
       "incomplete": "Link or create every city to continue.",
       "empty": "No cities to resolve yet. Cities are added and managed in Settings.",
-      "manageLink": "Go to Settings"
+      "manageLink": "Go to Settings",
+      "sheet": {
+        "heading": "Import your dates",
+        "sub": "Run the import to bring your dates in from the sheet.",
+        "importButton": "Import dates now",
+        "importAgain": "Import again",
+        "importing": "Importing",
+        "notYet": "Nothing imported yet. Run the import to bring in your dates.",
+        "resultProcessed": "Processed",
+        "resultNew": "New dates",
+        "resultUpdated": "Updated",
+        "resultHeld": "Held",
+        "heldNote": "Held rows need a city, date, or production before they can import. Link the missing cities in the city catalog, then run the import again.",
+        "manageLink": "Go to Settings"
+      }
     },
     "parts": {
       "title": "Casting breakdown for {{name}}",
