@@ -31,7 +31,7 @@ const base: GetRunningInputV3 = {
   datesCitiesDone: true,
   hasAnyDates: true,
   producerCount: 1,
-  skillsDone: true,
+  skillGaps: 0,
   feeDone: false,
   documentDone: false,
   canManageShows: true,
@@ -108,7 +108,7 @@ describe("composeGetRunningV3", () => {
     // With placeholders (source/skills/fee/document) not done, board is not complete.
     expect(composeGetRunningV3(base).complete).toBe(false);
     // All real+placeholder signals satisfied → complete.
-    const all = composeGetRunningV3({ ...base, skillsDone: true, feeDone: true, documentDone: true });
+    const all = composeGetRunningV3({ ...base, skillGaps: 0, feeDone: true, documentDone: true });
     expect(all.complete).toBe(true);
   });
 });
@@ -135,9 +135,21 @@ describe("composeGetRunningV3 Phase 3 (skills/fee/document are real steps)", () 
   });
 
   it("skills done tracks its input signal", () => {
-    const m = composeGetRunningV3(baseInput({ bookingOn: true, skillsDone: true }));
+    const m = composeGetRunningV3(baseInput({ bookingOn: true, skillGaps: 0 }));
     const bookable = m.phases.find((p) => p.key === "bookable")!;
     expect(bookable.steps.find((s) => s.key === "skills")!.done).toBe(true);
+  });
+
+  it("marks skills done when no part requires a skill nobody holds", () => {
+    const m = composeGetRunningV3(baseInput({ skillGaps: 0 }));
+    const b = m.phases.find((p) => p.key === "bookable")!;
+    expect(b.steps.find((s) => s.key === "skills")!.done).toBe(true);
+  });
+
+  it("keeps skills outstanding while a required skill is held by nobody", () => {
+    const m = composeGetRunningV3(baseInput({ skillGaps: 2 }));
+    const b = m.phases.find((p) => p.key === "bookable")!;
+    expect(b.steps.find((s) => s.key === "skills")!.done).toBe(false);
   });
 
   it("skills actionability follows manage_skills, not edit_booking_settings", () => {

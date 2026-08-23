@@ -62,7 +62,7 @@ const base: GetRunningInputV3 = {
   datesCitiesDone: true,
   hasAnyDates: true,
   producerCount: 1,
-  skillsDone: true,
+  skillGaps: 0,
   feeDone: false,
   documentDone: false,
   canManageShows: true,
@@ -164,7 +164,7 @@ describe("GetRunningBoardV3", () => {
     // lands directly on the "skills" step. As of Phase 3 (Task 6) skills has a real
     // in-panel editor (SkillsStep, reusing the Settings SkillsTab), not the Phase-1
     // placeholder (StepComingSoon).
-    mockModel(composeGetRunningV3({ ...base, skillsDone: false }));
+    mockModel(composeGetRunningV3({ ...base, skillGaps: 1 }));
 
     renderBoard();
 

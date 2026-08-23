@@ -4,7 +4,9 @@ import { useEntitlements } from "@/hooks/useEntitlements";
 import { useBookingSetupStatus, useProducerCount } from "@/hooks/useBookingSetup";
 import { useHireOrderSetupStatus } from "@/hooks/useHireOrderSetup";
 import { useHireOrderExtraSetup } from "@/hooks/useHireOrderExtraSetup";
-import { useSkills } from "@/hooks/useSkills";
+import { useQuery } from "@tanstack/react-query";
+import { fetchSkillEligibilityGaps } from "@/data/skills";
+import { supabase } from "@/integrations/supabase/client";
 import { useDatesSource } from "@/hooks/useDatesSource";
 import { useAirtableConsole } from "@/hooks/useAirtableConsole";
 import { isDatesMapComplete } from "@/data/airtableMapping";
@@ -32,9 +34,10 @@ import { composeGetRunningV3, type GetRunningInputV3, type GetRunningModelV3 } f
  * `isSheetMapComplete` on the saved column map (program + date both set).
  *
  * Phase 3 wires `feeDone`/`documentDone` to whether the org owns
- * its own `hire_order_defaults`/`hire_order_numbering` app_settings row (useHireOrderExtraSetup)
- * — an inherited platform default is not a decision. `skillsDone` remains a cheap best-effort
- * read (the org's skill catalog is non-empty) rather than a new query.
+ * its own `hire_order_defaults`/`hire_order_numbering` app_settings row (useHireOrderExtraSetup),
+ * since an inherited platform default is not a decision. `skillGaps` counts skills required
+ * by some part but held by no active artist (fetchSkillEligibilityGaps), replacing the
+ * earlier best-effort "the catalog is non-empty" read.
  *
  * `options.active` (default `true`) is the CI-review-bot-flagged efficiency gate: callers that
  * mount this hook app-wide regardless of whether v3 is actually on for the org (e.g.
@@ -81,10 +84,17 @@ export function useGetRunningV3(options?: { active?: boolean }): { model: GetRun
   // mounted (and only fetched) when the org's dates source is actually "sheet".
   const sheetImport = useSheetImport(datesSource === "sheet" ? bookingOrgId : null);
 
-  // Cheap best-effort signal for the `skills` step: the org's skill catalog is non-empty.
-  // Only fired for a non-artist viewer in a booking-entitled org, same gating shape as the
-  // other booking-module reads above.
-  const skills = useSkills({ enabled: active && isNonArtist && bookingOn });
+  // Real signal for the `skills` step: skills required by some part but held by no active
+  // artist. Only fired for a non-artist viewer in a booking-entitled org, same gating shape
+  // as the other booking-module reads above. Deliberately NOT in the isLoading gate below
+  // (see the field's doc comment on GetRunningInputV3): this step does not block the board,
+  // so delaying the whole board on it would cost more than the momentary green it can show
+  // while loading.
+  const skillGaps = useQuery({
+    queryKey: ["skills", "gaps", orgId],
+    queryFn: () => fetchSkillEligibilityGaps(supabase, orgId),
+    enabled: active && isNonArtist && bookingOn && !!orgId,
+  });
 
   // Called unconditionally (rules of hooks), same as v1.
   const canManageShows = useCan("manage_productions");
@@ -154,9 +164,7 @@ export function useGetRunningV3(options?: { active?: boolean }): { model: GetRun
     datesCitiesDone,
     hasAnyDates: bookingOn ? booking.status.hasAnyDates : false,
     producerCount,
-    // Phase 1 placeholder: non-empty skill catalog. Defaults to false while the read is
-    // outstanding or the module is off, rather than blocking the whole board on it.
-    skillsDone: bookingOn ? (skills.data?.length ?? 0) > 0 : false,
+    skillGaps: bookingOn ? (skillGaps.data?.length ?? 0) : 0,
     feeDone: hireOrdersOn ? hireExtra.status.feeDone : false,
     documentDone: hireOrdersOn ? hireExtra.status.documentDone : false,
     canManageShows,
