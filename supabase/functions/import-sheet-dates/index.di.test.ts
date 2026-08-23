@@ -41,6 +41,14 @@ Deno.test("import-sheet-dates DI: no Authorization -> 401", async () => {
   assertEquals(res.status, 401);
 });
 
+Deno.test("import-sheet-dates DI: rows not an array -> 400", async () => {
+  const { deps } = makeFakeDeps();
+  const res = await handle(sheetReq({ org_id: ORG, rows: {} }), deps);
+  assertEquals(res.status, 400);
+  const body = await res.json();
+  assertEquals(body.error, "rows must be an array");
+});
+
 Deno.test("import-sheet-dates DI: wrong role (artist) -> 403", async () => {
   const { deps } = makeFakeDeps({
     authUser: { id: "u1" },

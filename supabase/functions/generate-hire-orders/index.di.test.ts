@@ -487,9 +487,11 @@ Deno.test("draft: a sole eligible cast's production fee beats the org default", 
       cast_members: { data: [{ artist_id: "a-A1", cast_id: "C1" }] },
       // C1 is the SOLE eligible cast for this date (per-date table has rows).
       show_date_cast_eligibility: { data: [{ cast_id: "C1" }] },
-      // (C1 x show-1) fee is 250.
+      // (C1 x show-1) fee is 250. draftOrders batches the fee lookup with .in()
+      // for every matched cast_id on the date, so the seed matches on the
+      // reserved __in:cast_id key rather than a plain eq() cast_id.
       cast_production_fees: [
-        { when: { cast_id: "C1" }, data: { fee_amount: 250 } },
+        { when: { "__in:cast_id": JSON.stringify(["C1"]) }, data: [{ cast_id: "C1", fee_amount: 250 }] },
       ],
       hire_orders: [
         { when: { __write: false }, data: [] },
@@ -590,7 +592,7 @@ Deno.test("draft: a booking's own fee beats the sole cast's production fee", asy
       cast_members: { data: [{ artist_id: "a-A1", cast_id: "C1" }] },
       show_date_cast_eligibility: { data: [{ cast_id: "C1" }] },
       cast_production_fees: [
-        { when: { cast_id: "C1" }, data: { fee_amount: 250 } },
+        { when: { "__in:cast_id": JSON.stringify(["C1"]) }, data: [{ cast_id: "C1", fee_amount: 250 }] },
       ],
       hire_orders: [
         { when: { __write: false }, data: [] },
