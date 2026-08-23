@@ -2,14 +2,20 @@ import { useContext, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
+import { Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useCan } from "@/hooks/useCapabilities";
 import { useShows } from "@/hooks/useShows";
 import { fetchCasts } from "@/data/casts";
-import { useCastProductionFees, useUpsertCastProductionFee } from "@/hooks/useCastProductionFees";
+import {
+  useCastProductionFees,
+  useUpsertCastProductionFee,
+  useDeleteCastProductionFee,
+} from "@/hooks/useCastProductionFees";
 import { type FeeBasis } from "@/lib/hireOrders/feeBasis";
 import { OrderDefaultsCard } from "@/components/settings/hireOrders/OrderDefaultsCard";
 import { WizardFooterContext } from "@/components/getRunning/v3/WizardFooterContext";
+import { IconTooltip } from "@/components/common/IconTooltip";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { Metric } from "@/components/ui/metric";
 import { StatusPill } from "@/components/ui/status-pill";
@@ -58,6 +64,7 @@ export function FeeStep({ orgId, onDone }: { orgId: string | null; onDone: () =>
   const showsQuery = useShows();
   const feesQuery = useCastProductionFees(orgId);
   const upsertFee = useUpsertCastProductionFee();
+  const deleteFee = useDeleteCastProductionFee();
 
   const casts = useMemo(() => castsQuery.data ?? [], [castsQuery.data]);
   const shows = useMemo(() => showsQuery.data ?? [], [showsQuery.data]);
@@ -124,9 +131,25 @@ export function FeeStep({ orgId, onDone }: { orgId: string | null; onDone: () =>
                   <span className="text-foreground">
                     {castNameById.get(fee.cast_id) ?? fee.cast_id} &middot; {showNameById.get(fee.show_id) ?? fee.show_id}
                   </span>
-                  <Metric size="body">
-                    {fee.fee_amount ?? t("body.fee.noFee")} {fee.currency}
-                  </Metric>
+                  <div className="flex items-center gap-2">
+                    <Metric size="body">
+                      {fee.fee_amount ?? t("body.fee.noFee")} {fee.currency}
+                    </Metric>
+                    {canEdit && orgId && (
+                      <IconTooltip label={t("body.fee.removeFee")}>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          aria-label={t("body.fee.removeFee")}
+                          disabled={deleteFee.isPending}
+                          onClick={() => deleteFee.mutate({ id: fee.id, orgId })}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </IconTooltip>
+                    )}
+                  </div>
                 </li>
               ))}
             </ul>

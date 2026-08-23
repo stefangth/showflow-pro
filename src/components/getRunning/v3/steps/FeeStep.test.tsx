@@ -49,10 +49,12 @@ vi.mock("@/hooks/useShows", async (orig) => ({
 // castProductionFees.test.ts / useCastProductionFees.test.ts already).
 const feesState = vi.hoisted(() => ({ fees: [] as CastProductionFee[] }));
 const upsertMutate = vi.hoisted(() => vi.fn());
+const deleteMutate = vi.hoisted(() => vi.fn());
 vi.mock("@/hooks/useCastProductionFees", async (orig) => ({
   ...(await orig<typeof import("@/hooks/useCastProductionFees")>()),
   useCastProductionFees: () => ({ data: feesState.fees, isLoading: false, isError: false }),
   useUpsertCastProductionFee: () => ({ mutate: upsertMutate, isPending: false }),
+  useDeleteCastProductionFee: () => ({ mutate: deleteMutate, isPending: false }),
 }));
 
 import { useCan } from "@/hooks/useCapabilities";
@@ -74,6 +76,7 @@ describe("FeeStep", () => {
     castsState.casts = [];
     feesState.fees = [];
     upsertMutate.mockClear();
+    deleteMutate.mockClear();
   });
 
   it("shows the no-casts gate and no fee editor when the org has zero casts", async () => {
@@ -135,6 +138,33 @@ describe("FeeStep", () => {
         expect.anything(),
       ),
     );
+  });
+
+  it("lets a capable viewer delete an existing fee row, falling back to the org default", async () => {
+    castsState.casts = [{ id: "cast-1", name: "Nord Ensemble", org_id: "org-1" } as Cast];
+    feesState.fees = [
+      { id: "fee-1", cast_id: "cast-1", show_id: "show-1", fee_amount: 500, currency: "EUR", fee_basis: "per_date" },
+    ];
+    renderStep();
+
+    await screen.findByText(/Nord Ensemble/);
+    fireEvent.click(screen.getByRole("button", { name: /remove this fee/i }));
+
+    await waitFor(() =>
+      expect(deleteMutate).toHaveBeenCalledWith({ id: "fee-1", orgId: "org-1" }),
+    );
+  });
+
+  it("shows no delete control for an existing fee row when the viewer cannot edit", async () => {
+    vi.mocked(useCan).mockReturnValue(false);
+    castsState.casts = [{ id: "cast-1", name: "Nord Ensemble", org_id: "org-1" } as Cast];
+    feesState.fees = [
+      { id: "fee-1", cast_id: "cast-1", show_id: "show-1", fee_amount: 500, currency: "EUR", fee_basis: "per_date" },
+    ];
+    renderStep();
+
+    await screen.findByText(/Nord Ensemble/);
+    expect(screen.queryByRole("button", { name: /remove this fee/i })).toBeNull();
   });
 
   it("renders read-only (no continue) when the viewer cannot edit", async () => {

@@ -124,6 +124,8 @@ Deno.test("import-sheet-dates DI: resolves show + city, imports, holds unresolve
   assertEquals(logRow.org_id, ORG);
   assertEquals(logRow.held_count, 1);
   assertEquals(logRow.new_count, 1);
+  // imported_count reflects rows actually written (new + updated), not resolved rows sent to the RPC.
+  assertEquals(logRow.imported_count, 1);
 
   // record_log: one imported_new + one held_unresolved
   assertEquals(recordLogInserts.length, 1);
@@ -176,9 +178,22 @@ Deno.test("import-sheet-dates DI: unresolved program -> held", async () => {
     authUser: { id: "u1" },
     tables: { org_memberships: { data: { role: "admin" }, error: null }, ...CATALOG },
   });
+  const recordLogInserts: unknown[] = [];
+  const originalFrom = bindFakeFrom(deps.admin);
+  setFakeFrom(deps.admin, (table: string) => {
+    const chain = originalFrom(table);
+    if (table === "airtable_sync_record_log") {
+      const orig = chain.insert.bind(chain);
+      chain.insert = (p: unknown) => { recordLogInserts.push(p); return (orig as (x: unknown) => ReturnType<typeof orig>)(p); };
+    }
+    return chain;
+  });
   const res = await handle(sheetReq({ org_id: ORG, rows }), deps);
   const body = await res.json();
   assertEquals(body, { processed: 1, new_dates: 0, updated: 0, held: 1, tiers_opened: 0 });
+  const recordRows = recordLogInserts[0] as Array<Record<string, unknown>>;
+  // Reason names the production (program / sub-program), never the bare sub-program alone.
+  assertEquals(recordRows[0].reason, "program 'Dogs / Matinee' not linked");
 });
 
 Deno.test("import-sheet-dates DI: no new dates -> no tier opened", async () => {

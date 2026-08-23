@@ -428,6 +428,7 @@
       "productionLabel": "Produktion",
       "feeLabel": "Gage",
       "save": "Speichern",
+      "removeFee": "Diese Gage entfernen",
       "continue": "Weiter",
       "readOnly": "Vertragseinstellungen legt ein Admin fest. Du kannst sie hier lesen."
     },
