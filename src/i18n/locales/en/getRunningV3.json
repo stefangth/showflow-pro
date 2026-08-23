@@ -308,6 +308,12 @@
     "body": "This org has no module turned on, so there is nothing here to check off."
   },
   "body": {
+    "skills": {
+      "heading": "Skills for your parts",
+      "sub": "Add the skills your parts need, then set them on your artists.",
+      "continue": "Continue",
+      "readOnly": "Managing skills needs the manage skills right, which this account does not have."
+    },
     "source": {
       "heading": "Where do your dates come from",
       "sub": "Pick one. You can add more later.",

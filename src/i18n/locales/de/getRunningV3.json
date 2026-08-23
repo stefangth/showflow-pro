@@ -308,6 +308,12 @@
     "body": "Diese Organisation hat kein Modul eingeschaltet, deshalb gibt es hier nichts abzuhaken."
   },
   "body": {
+    "skills": {
+      "heading": "Skills für deine Positionen",
+      "sub": "Lege die Skills an, die deine Positionen brauchen, und setze sie bei deinen Artists.",
+      "continue": "Weiter",
+      "readOnly": "Skills zu verwalten braucht das Recht Skills verwalten, das dieses Konto nicht hat."
+    },
     "source": {
       "heading": "Woher kommen deine Termine",
       "sub": "Wähle eine Quelle. Du kannst später weitere hinzufügen.",
