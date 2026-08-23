@@ -306,5 +306,16 @@
   "nothingToSetUp": {
     "title": "Nothing to set up yet",
     "body": "This org has no module turned on, so there is nothing here to check off."
+  },
+  "body": {
+    "source": {
+      "heading": "Where do your dates come from",
+      "sub": "Pick one. You can add more later.",
+      "airtable": { "title": "Airtable", "desc": "Sync dates from an Airtable base." },
+      "sheet": { "title": "Google Sheet", "desc": "Import dates from a published sheet.", "badge": "Coming soon" },
+      "manual": { "title": "By hand", "desc": "Add productions and dates yourself." },
+      "continue": "Continue",
+      "readOnly": "Ask an admin to choose a source."
+    }
   }
 }

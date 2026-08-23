@@ -306,5 +306,16 @@
   "nothingToSetUp": {
     "title": "Noch nichts einzurichten",
     "body": "Diese Organisation hat kein Modul eingeschaltet, deshalb gibt es hier nichts abzuhaken."
+  },
+  "body": {
+    "source": {
+      "heading": "Woher kommen deine Termine",
+      "sub": "Wähle eine Quelle. Du kannst später weitere hinzufügen.",
+      "airtable": { "title": "Airtable", "desc": "Termine aus einer Airtable-Base synchronisieren." },
+      "sheet": { "title": "Google Sheet", "desc": "Termine aus einer veröffentlichten Tabelle importieren.", "badge": "Kommt noch" },
+      "manual": { "title": "Von Hand", "desc": "Produktionen und Termine selbst anlegen." },
+      "continue": "Weiter",
+      "readOnly": "Bitte einen Admin, eine Quelle zu wählen."
+    }
   }
 }
