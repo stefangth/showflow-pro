@@ -343,6 +343,11 @@
       "incomplete": "Verknüpfe oder erstelle jede Stadt, um fortzufahren.",
       "empty": "Noch keine Städte zum Auflösen. Städte werden in den Einstellungen verwaltet.",
       "manageLink": "Zu den Einstellungen"
+    },
+    "parts": {
+      "title": "Besetzungsplan für {{name}}",
+      "save": "Speichern",
+      "savedToast": "Besetzungsplan gespeichert"
     }
   }
 }
