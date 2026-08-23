@@ -48,7 +48,15 @@ describe("SourceStep", () => {
     seedSource(null);
     renderStep();
 
-    await waitFor(() => expect(screen.getByRole("radio", { name: /airtable/i })).toBeInTheDocument());
+    // Coarse, name-free wait: just confirm all three radios have mounted before doing
+    // any name-scoped lookup. A getByRole/findByRole with a `name` matcher inside a
+    // waitFor/findBy* retry loop recomputes the accessible name on every poll, which is
+    // slow enough to burn the whole retry budget (see the project's known flake) — so
+    // the retry loop below only ever checks a cheap length, and every name-scoped query
+    // runs exactly once, synchronously, after it resolves.
+    await waitFor(() => expect(screen.getAllByRole("radio")).toHaveLength(3));
+
+    expect(screen.getByRole("radio", { name: /airtable/i })).toBeInTheDocument();
     expect(screen.getByRole("radio", { name: /google sheet/i })).toBeDisabled();
     expect(screen.getByRole("radio", { name: /by hand/i })).toBeInTheDocument();
   });
@@ -57,14 +65,22 @@ describe("SourceStep", () => {
     seedSource("airtable");
     renderStep();
 
-    await waitFor(() => expect(screen.getByRole("radio", { name: /airtable/i })).toBeChecked());
+    // Same two-step pattern: poll on a cheap, name-free signal (some radio has flipped
+    // to checked once useDatesSource's read resolves), then do the single name-scoped
+    // assertion outside the retry loop.
+    await waitFor(() => {
+      const anyChecked = screen.getAllByRole("radio").some((radio) => radio.getAttribute("aria-checked") === "true");
+      expect(anyChecked).toBe(true);
+    });
+    expect(screen.getByRole("radio", { name: /airtable/i })).toBeChecked();
   });
 
   it("selecting By hand and clicking Continue saves manual and calls onDone", async () => {
     seedSource(null);
     const { onDone } = renderStep();
 
-    const manualRadio = await screen.findByRole("radio", { name: /by hand/i });
+    await waitFor(() => expect(screen.getAllByRole("radio")).toHaveLength(3));
+    const manualRadio = screen.getByRole("radio", { name: /by hand/i });
     fireEvent.click(manualRadio);
     const continueButton = screen.getByRole("button", { name: /continue/i });
     fireEvent.click(continueButton);
@@ -85,7 +101,11 @@ describe("SourceStep", () => {
     seedSource("airtable");
     renderStep();
 
-    await waitFor(() => expect(screen.getByRole("radio", { name: /airtable/i })).toBeChecked());
+    await waitFor(() => {
+      const anyChecked = screen.getAllByRole("radio").some((radio) => radio.getAttribute("aria-checked") === "true");
+      expect(anyChecked).toBe(true);
+    });
+    expect(screen.getByRole("radio", { name: /airtable/i })).toBeChecked();
     expect(screen.getByRole("radio", { name: /airtable/i })).toBeDisabled();
     expect(screen.getByRole("radio", { name: /by hand/i })).toBeDisabled();
     expect(screen.queryByRole("button", { name: /continue/i })).not.toBeInTheDocument();
