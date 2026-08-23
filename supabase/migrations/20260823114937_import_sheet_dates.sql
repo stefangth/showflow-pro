@@ -42,23 +42,38 @@ BEGIN
     -- caller passing a foreign show_id under their own (legitimately authorized) p_org.
     -- org_id on the inserted row is still derived from show_id by trg_derive_org_id, but
     -- constraining the candidate set here prevents a cross-org write via that trigger.
+    -- WITH ORDINALITY preserves the row's position in p_rows so duplicates within the
+    -- same batch can be resolved deterministically below (last-row-wins), instead of
+    -- letting two rows for the same (show_id, date) hit the INSERT in one statement,
+    -- which makes ON CONFLICT ... DO UPDATE raise "command cannot affect row a second
+    -- time" and abort the whole call.
     SELECT
-      (r ->> 'show_id')::uuid   AS show_id,
-      (r ->> 'date')::date      AS date,
-      NULLIF(r ->> 'city_id','')::uuid AS city_id,
-      NULLIF(r ->> 'session_1','')::time AS session_1,
-      NULLIF(r ->> 'session_2','')::time AS session_2,
-      NULLIF(r ->> 'session_3','')::time AS session_3,
-      NULLIF(r ->> 'venue','')     AS venue
-    FROM jsonb_array_elements(p_rows) AS r
-    JOIN public.shows ON shows.id = (r ->> 'show_id')::uuid
+      (r.elem ->> 'show_id')::uuid   AS show_id,
+      (r.elem ->> 'date')::date      AS date,
+      NULLIF(r.elem ->> 'city_id','')::uuid AS city_id,
+      NULLIF(r.elem ->> 'session_1','')::time AS session_1,
+      NULLIF(r.elem ->> 'session_2','')::time AS session_2,
+      NULLIF(r.elem ->> 'session_3','')::time AS session_3,
+      NULLIF(r.elem ->> 'venue','')     AS venue,
+      r.ord AS ord
+    FROM jsonb_array_elements(p_rows) WITH ORDINALITY AS r(elem, ord)
+    JOIN public.shows ON shows.id = (r.elem ->> 'show_id')::uuid
     WHERE shows.org_id = p_org
+  ),
+  deduped AS (
+    -- Sheet rows can legitimately repeat a (show_id, date) within one batch (e.g. the
+    -- user re-pasted or the sheet has an accidental duplicate row); keep only the last
+    -- occurrence per key so the INSERT below never sees two rows for the same key.
+    SELECT DISTINCT ON (show_id, date)
+      show_id, date, city_id, session_1, session_2, session_3, venue
+    FROM incoming
+    ORDER BY show_id, date, ord DESC
   ),
   upserted AS (
     INSERT INTO public.show_dates
       (show_id, date, city_id, session_1, session_2, session_3, venue, source)
     SELECT show_id, date, city_id, session_1, session_2, session_3, venue, 'sheet'
-    FROM incoming
+    FROM deduped
     ON CONFLICT (org_id, show_id, date) WHERE source = 'sheet'
     DO UPDATE SET
       city_id   = EXCLUDED.city_id,

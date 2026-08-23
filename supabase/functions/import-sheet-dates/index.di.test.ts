@@ -196,6 +196,84 @@ Deno.test("import-sheet-dates DI: unresolved program -> held", async () => {
   assertEquals(recordRows[0].reason, "program 'Dogs / Matinee' not linked");
 });
 
+Deno.test("import-sheet-dates DI: invalid date -> held, not sent to RPC, no 500", async () => {
+  const rows = [
+    { program: "Cats", subProgram: "Evening", date: "13.01.2026", city: "Berlin", session_1: null, session_2: null, session_3: null, venue: null, rowIndex: 1 },
+  ];
+  const { deps, calls } = makeFakeDeps({
+    authUser: { id: "u1" },
+    tables: { org_memberships: { data: { role: "admin" }, error: null }, ...CATALOG },
+  });
+  const recordLogInserts: unknown[] = [];
+  const originalFrom = bindFakeFrom(deps.admin);
+  setFakeFrom(deps.admin, (table: string) => {
+    const chain = originalFrom(table);
+    if (table === "airtable_sync_record_log") {
+      const orig = chain.insert.bind(chain);
+      chain.insert = (p: unknown) => { recordLogInserts.push(p); return (orig as (x: unknown) => ReturnType<typeof orig>)(p); };
+    }
+    return chain;
+  });
+  const res = await handle(sheetReq({ org_id: ORG, rows }), deps);
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body, { processed: 1, new_dates: 0, updated: 0, held: 1, tiers_opened: 0 });
+  const recordRows = recordLogInserts[0] as Array<Record<string, unknown>>;
+  assertEquals(recordRows[0].reason, "invalid date '13.01.2026'");
+  // Never sent to the RPC.
+  const rpcCalls = calls.filter((c) => c.table === "rpc:import_sheet_dates");
+  assertEquals(rpcCalls.length, 0);
+});
+
+Deno.test("import-sheet-dates DI: unresolved city on an existing sheet date does not hold (updates); on a new date, holds", async () => {
+  const rows = [
+    // Existing sheet date (show_dates seed below has showC1/2026-09-01, source=sheet) re-imported with an unresolved city.
+    { program: "Cats", subProgram: "Evening", date: "2026-09-01", city: "Paris", session_1: "20:00", session_2: null, session_3: null, venue: null, rowIndex: 1 },
+    // A brand-new date with an unresolved city.
+    { program: "Cats", subProgram: "Evening", date: "2026-09-05", city: "Paris", session_1: null, session_2: null, session_3: null, venue: null, rowIndex: 2 },
+  ];
+  const { deps, calls } = makeFakeDeps({
+    authUser: { id: "u1" },
+    tables: {
+      org_memberships: { data: { role: "admin" }, error: null },
+      ...CATALOG,
+      show_dates: { data: [{ id: "sd-1", show_id: "showC1", date: "2026-09-01" }], error: null },
+    },
+    rpcs: {
+      import_sheet_dates: { data: { new_count: 0, updated_count: 1, new_ids: [] }, error: null },
+    },
+  });
+  const recordLogInserts: unknown[] = [];
+  const originalFrom = bindFakeFrom(deps.admin);
+  setFakeFrom(deps.admin, (table: string) => {
+    const chain = originalFrom(table);
+    if (table === "airtable_sync_record_log") {
+      const orig = chain.insert.bind(chain);
+      chain.insert = (p: unknown) => { recordLogInserts.push(p); return (orig as (x: unknown) => ReturnType<typeof orig>)(p); };
+    }
+    return chain;
+  });
+
+  const res = await handle(sheetReq({ org_id: ORG, rows }), deps);
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  // Existing 2026-09-01 row goes through (not held) and updates; the new 2026-09-05 row is held.
+  assertEquals(body, { processed: 2, new_dates: 0, updated: 1, held: 1, tiers_opened: 0 });
+
+  const rpcCalls = calls.filter((c) => c.table === "rpc:import_sheet_dates").map((c) => c.args[0]);
+  assertEquals(rpcCalls.length, 1);
+  const rpcArgs = rpcCalls[0] as { p_rows: Array<{ show_id: string; date: string; city_id: string | null }> };
+  assertEquals(rpcArgs.p_rows.length, 1);
+  assertEquals(rpcArgs.p_rows[0].date, "2026-09-01");
+  assertEquals(rpcArgs.p_rows[0].city_id, null);
+
+  const recordRows = recordLogInserts[0] as Array<Record<string, unknown>>;
+  const heldRow = recordRows.find((r) => r.action === "held_unresolved");
+  assertExists(heldRow);
+  assertEquals(heldRow!.reason, "city 'Paris' not linked");
+  assertEquals((heldRow!.raw_fields as { date?: string }).date, "2026-09-05");
+});
+
 Deno.test("import-sheet-dates DI: no new dates -> no tier opened", async () => {
   const rows = [
     { program: "Cats", subProgram: "Evening", date: "2026-09-01", city: "", session_1: null, session_2: null, session_3: null, venue: null, rowIndex: 1 },

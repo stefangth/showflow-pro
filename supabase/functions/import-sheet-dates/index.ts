@@ -9,6 +9,14 @@ import { realDeps, type Deps } from "../_shared/deps.ts";
 /** Max concurrent open-offer-tier invocations per batch (mirrors airtable-poll). */
 const OFFER_TIER_BATCH_SIZE = 10;
 
+/** Strict ISO calendar-date shape (`YYYY-MM-DD`), the only format `import_sheet_dates`' `::date` cast should ever see. */
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+function isValidIsoDate(value: string): boolean {
+  if (!ISO_DATE_RE.test(value)) return false;
+  return !Number.isNaN(Date.parse(`${value}T00:00:00Z`));
+}
+
 /**
  * One client-mapped Google Sheet row. Mirrors `SheetDateRaw` from
  * `src/lib/sheetImport/mapRows.ts` (the client's `mapSheetRows` output). Re-declared
@@ -111,9 +119,23 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     if (key) cityByKey.set(key, c.id);
   }
 
-  // ── Resolve each row: missing date -> held; unresolved program -> held; a NEW row's
-  //    non-empty unresolved city -> held (city-hold, mirrors airtable-poll); blank city
-  //    imports city-less. ──
+  // Existing sheet-sourced show_dates for this org, keyed `${show_id}|${date}` (date
+  // normalized to YYYY-MM-DD since Postgres may return it as a plain date string).
+  // Used below so the unresolved-city hold applies only to genuinely NEW rows, matching
+  // airtable-poll (an existing row updates through even with an unresolved city).
+  const { data: existingSheetDatesRaw } = await admin
+    .from("show_dates").select("show_id, date")
+    .eq("org_id", orgId).eq("source", "sheet").limit(10000);
+  const existingSheetDateKeys = new Set<string>();
+  for (const r of (existingSheetDatesRaw ?? []) as Array<{ show_id: string; date: string }>) {
+    existingSheetDateKeys.add(`${r.show_id}|${String(r.date).slice(0, 10)}`);
+  }
+
+  // ── Resolve each row: missing/invalid date -> held; unresolved program -> held; a
+  //    NEW row's non-empty unresolved city -> held (city-hold, mirrors airtable-poll,
+  //    via the pre-fetched existing-sheet-dates lookup above); an EXISTING sheet date's
+  //    unresolved city does not hold, so the session/venue update still lands; blank
+  //    city imports city-less. ──
   const resolvedRows: ResolvedRow[] = [];
   const heldOutcomes: RecordOutcome[] = [];
   // Parallel to resolvedRows — the original row + row_ref, so record-log rows for
@@ -127,6 +149,12 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     const date = (row.date ?? "").trim();
     if (!date) {
       heldOutcomes.push({ action: "held_unresolved", show_date_id: null, reason: "missing date", raw_fields: rawFields, row_ref: rowRef });
+      continue;
+    }
+    if (!isValidIsoDate(date)) {
+      // The RPC casts this straight to `::date`; garbage or ambiguous formats (e.g.
+      // "13.01.2026") must never reach it, since a bad cast raises and aborts the whole batch.
+      heldOutcomes.push({ action: "held_unresolved", show_date_id: null, reason: `invalid date '${date}'`, raw_fields: rawFields, row_ref: rowRef });
       continue;
     }
 
@@ -148,11 +176,16 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       const cityKey = buildCityKey(city);
       cityId = cityKey ? cityByKey.get(cityKey) ?? null : null;
       if (!cityId) {
-        heldOutcomes.push({
-          action: "held_unresolved", show_date_id: null,
-          reason: `city '${city}' not linked`, raw_fields: rawFields, row_ref: rowRef,
-        });
-        continue;
+        const isExisting = existingSheetDateKeys.has(`${showId}|${date}`);
+        if (!isExisting) {
+          heldOutcomes.push({
+            action: "held_unresolved", show_date_id: null,
+            reason: `city '${city}' not linked`, raw_fields: rawFields, row_ref: rowRef,
+          });
+          continue;
+        }
+        // Existing sheet date, unresolved city on re-import: let it through with
+        // city_id null (rather than holding) so the session/venue update still lands.
       }
     }
 

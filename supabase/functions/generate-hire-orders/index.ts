@@ -178,30 +178,8 @@ export async function resolveOrderDefaults(
   };
 }
 /**
- * Resolve the per-(cast x production) fee for a booking (Wireflow v3 phase 4).
- *
- * A booking has no cast_id, so the cast is DERIVED (owner-locked rule):
- *   1. the artist's cast memberships — `cast_members` where artist_id = artistId
- *      and org_id = orgId,
- *   2. intersected with the show_date's ELIGIBLE casts: prefer the per-date
- *      `show_date_cast_eligibility` for showDateId; if that table has NO rows for
- *      the date, fall back to `show_cast_eligibility` matched on the date's
- *      (show_id, city_id),
- *   3. if EXACTLY ONE cast results, look up `cast_production_fees` for
- *      (cast_id, show_id) and return its `fee_amount`; zero or many casts
- *      (ambiguous) -> null so the org default wins.
- *
- * Only the fee AMOUNT is used this phase; the (cast x production) row's own
- * currency/basis are intentionally ignored — currency/basis stay from the org
- * default (see the three call sites). Returns `{ amount: null }` for any miss
- * (no memberships, no eligibility, ambiguity, no fee row, or a null fee_amount),
- * which the callers coalesce to `defaults.default_fee`.
- */
-/**
- * Step 2 of `resolveCastProductionFee`, split out so a caller looping over many
- * bookings for the SAME show_date (draftOrders) can fetch this ONCE instead of
- * once per booking — the eligible-cast set is constant for the date, only the
- * artist's own memberships (step 1) vary per booking.
+ * The show_date's eligible-cast set: prefer the per-date `show_date_cast_eligibility`
+ * table; if it has no rows, fall back to the show-level `show_cast_eligibility`.
  */
 async function fetchEligibleCasts(
   admin: Deps["admin"],
