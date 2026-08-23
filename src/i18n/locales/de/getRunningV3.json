@@ -318,7 +318,7 @@
       "heading": "Woher kommen deine Termine",
       "sub": "Wähle eine Quelle. Du kannst später weitere hinzufügen.",
       "airtable": { "title": "Airtable", "desc": "Termine aus einer Airtable-Base synchronisieren." },
-      "sheet": { "title": "Google Sheet", "desc": "Termine aus einer veröffentlichten Tabelle importieren.", "badge": "Kommt noch" },
+      "sheet": { "title": "Google Sheet", "desc": "Termine aus einer veröffentlichten Tabelle importieren." },
       "manual": { "title": "Von Hand", "desc": "Produktionen und Termine selbst anlegen." },
       "continue": "Weiter",
       "readOnly": "Bitte einen Admin, eine Quelle zu wählen."

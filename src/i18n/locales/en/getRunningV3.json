@@ -318,7 +318,7 @@
       "heading": "Where do your dates come from",
       "sub": "Pick one. You can add more later.",
       "airtable": { "title": "Airtable", "desc": "Sync dates from an Airtable base." },
-      "sheet": { "title": "Google Sheet", "desc": "Import dates from a published sheet.", "badge": "Coming soon" },
+      "sheet": { "title": "Google Sheet", "desc": "Import dates from a published sheet." },
       "manual": { "title": "By hand", "desc": "Add productions and dates yourself." },
       "continue": "Continue",
       "readOnly": "Ask an admin to choose a source."
