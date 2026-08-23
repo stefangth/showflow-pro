@@ -76,7 +76,11 @@ BEGIN
     FROM deduped
     ON CONFLICT (org_id, show_id, date) WHERE source = 'sheet'
     DO UPDATE SET
-      city_id   = EXCLUDED.city_id,
+      -- A blank/unresolved city on a re-import must NOT wipe a previously resolved city
+      -- (session/venue updates for that date should still land), so only overwrite when
+      -- the new value is non-null. Session and venue stay unconditional EXCLUDED.*: a
+      -- blank session or venue legitimately clears it.
+      city_id   = COALESCE(EXCLUDED.city_id, public.show_dates.city_id),
       session_1 = EXCLUDED.session_1,
       session_2 = EXCLUDED.session_2,
       session_3 = EXCLUDED.session_3,

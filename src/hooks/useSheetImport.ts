@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import type { SheetDateRaw } from "@/lib/sheetImport/mapRows";
 import type { ParsedSheet } from "@/lib/artistImport/parseSheet";
@@ -71,6 +72,12 @@ export function useSheetImport(orgId: string | null) {
       void qc.invalidateQueries({ queryKey: ["show-dates"] });
       void qc.invalidateQueries({ queryKey: ["bookings"] });
     },
+    // runImport is fired via `mutate` (not awaited) from CitiesStep, so a rejected
+    // request has no other path back to the user: without this, the button just flips
+    // back to idle and the caller can't tell a failed import from one that never ran.
+    onError: () => {
+      toast.error("Import failed. Check the sheet link and your access, then try again.");
+    },
   });
 
   return {
@@ -84,5 +91,6 @@ export function useSheetImport(orgId: string | null) {
     runImport: (rows: SheetDateRaw[]) => runImportMut.mutate(rows),
     importing: runImportMut.isPending,
     result: (runImportMut.data as SheetImportResult | undefined) ?? null,
+    importError: runImportMut.error,
   };
 }

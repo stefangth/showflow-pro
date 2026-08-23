@@ -113,7 +113,10 @@ describe("FeeStep", () => {
     fireEvent.click(addFeeButton);
 
     // Selects are named via aria-label (cast/production), distinguishing them from
-    // OrderDefaultsCard's own currency/fee-basis selects mounted above.
+    // OrderDefaultsCard's own currency/fee-basis selects mounted above. There is no
+    // per-row currency or fee-basis control: the override is amount only, and both
+    // are inherited from the org default (seedAppSettings resolves to
+    // ORDER_DEFAULTS_DEFAULT: EUR / per_date) at save time.
     fireEvent.click(screen.getByRole("combobox", { name: /^cast$/i }));
     fireEvent.click(await screen.findByRole("option", { name: "Nord Ensemble" }));
 

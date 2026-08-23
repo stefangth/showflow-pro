@@ -386,6 +386,7 @@
         "importAgain": "Import again",
         "importing": "Importing",
         "notYet": "Nothing imported yet. Run the import to bring in your dates.",
+        "importError": "The import failed. Check the sheet link and your access, then try again.",
         "resultProcessed": "Processed",
         "resultNew": "New dates",
         "resultUpdated": "Updated",
