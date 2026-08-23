@@ -2,19 +2,13 @@
 
 What's new in ShowFlow, newest first.
 
-## 1.18.0 — August 23, 2026
-
-*Sources: one home for every date feed*
-
-### Improved
-- **Sources** — The Airtable sync settings are now called Sources and also show your Google Sheet imports next to Airtable runs, each tagged by where it came from.
-
 ## 1.17.2 — August 22, 2026
 
 *Clearer, more consistent wording across the app*
 
 ### Improved
 - **"Dates" everywhere** — The scheduling area is now called Dates in every place it appears, matching the sidebar.
+- **Sources** — The Airtable sync settings are now called Sources and also show your Google Sheet imports next to Airtable runs, each tagged by where it came from.
 - **"Production" for the work in your catalog** — Wherever the app means a staged work you set up, it now says production. Individual performances keep the word show.
 - **"Casting breakdown" and "parts"** — What you set up on a production is now its casting breakdown, made of named parts for main and understudy, instead of the vaguer "places".
 
