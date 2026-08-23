@@ -5,23 +5,21 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
-import { Plus, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/features/auth/AuthContext";
 import { useCan } from "@/hooks/useCapabilities";
 import { useCreateShow, useUpdateShow, type ShowWithStats } from "@/hooks/useShows";
 import { useSkills } from "@/hooks/useSkills";
 import { useShowSlots } from "@/hooks/useShowSlots";
-import { saveShowSlots, type SlotDraft, type SlotKind } from "@/data/slots";
+import { saveShowSlots, type SlotDraft } from "@/data/slots";
 import { isSyncedShow, nextSortOrder } from "@/lib/catalog";
-import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { SkillPicker } from "@/components/skills/SkillPicker";
+import { CastingBreakdownFields } from "@/components/catalog/CastingBreakdownFields";
 
 const baseSchema = z.object({
   program: z.string().trim().optional().or(z.literal("")),
@@ -108,32 +106,6 @@ export function ShowFormDialog({
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, show]);
-
-  const updateSlot = (i: number, patch: Partial<SlotDraft>) =>
-    setSlots((prev) => prev.map((s, idx) => (idx === i ? { ...s, ...patch } : s)));
-  const toggleSlotSkill = (i: number, skillId: string) =>
-    setSlots((prev) => prev.map((s, idx) => idx === i
-      ? { ...s, skillIds: s.skillIds.includes(skillId) ? s.skillIds.filter((x) => x !== skillId) : [...s.skillIds, skillId] }
-      : s));
-  // Every new row gets a client-minted id so a retry (dialog stays open on save
-  // failure) re-submits the same array and saveShowSlots resolves already-landed
-  // rows to no-op updates instead of duplicate inserts.
-  const addSlot = () =>
-    setSlots((prev) => [...prev, { id: crypto.randomUUID(), name: "", count: 1, kind: "main", skillIds: [] }]);
-  const removeSlot = (i: number) => setSlots((prev) => prev.filter((_, idx) => idx !== i));
-
-  const skillNameById = new Map((orgSkills ?? []).map((s) => [s.id, s.name] as const));
-  const unionIds = new Set<string>();
-  for (const s of slots) for (const id of s.skillIds) unionIds.add(id);
-  const unionNames = [...unionIds]
-    .map((id) => skillNameById.get(id))
-    .filter((n): n is string => !!n)
-    .sort((a, b) => a.localeCompare(b));
-  const mainTotal = slots.filter((s) => s.kind === "main").reduce((a, s) => a + s.count, 0);
-  const understudyTotal = slots.filter((s) => s.kind === "understudy").reduce((a, s) => a + s.count, 0);
-  const calloutText = unionNames.length > 0
-    ? t("form.callout.withSkills", { skills: unionNames.join(", ") })
-    : t("form.callout.none");
 
   /** Reconcile the show's slot rows, then bust every domain the derived caches feed.
    *  Returns whether the save applied; the caller keeps the dialog open on failure so
@@ -226,94 +198,12 @@ export function ShowFormDialog({
             <Textarea id="description" {...form.register("description")} />
           </div>
 
-          <div className="space-y-2.5">
-            <div className="flex items-baseline justify-between gap-3">
-              <p className="text-sm font-medium">{t("form.slotsHeading")}</p>
-              <p className="font-mono text-xs tabular-nums text-muted-foreground">{t("form.slotTotals", { main: mainTotal, understudy: understudyTotal })}</p>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {t("form.slotsHelp")}
-            </p>
-
-            <div className="space-y-2">
-              {slots.map((s, i) => (
-                <div
-                  key={s.id}
-                  role="group"
-                  aria-label={s.name ? t("form.slotGroupNamed", { name: s.name }) : t("form.slotGroupIndex", { index: i + 1 })}
-                  className="space-y-2 rounded-m border border-border p-2.5"
-                >
-                  <div className="flex items-center gap-2">
-                    <Input
-                      aria-label={t("form.roleNameLabel")}
-                      placeholder={t("form.roleNameLabel")}
-                      className="h-8 flex-1"
-                      value={s.name}
-                      disabled={slotsDisabled}
-                      onChange={(e) => updateSlot(i, { name: e.target.value })}
-                    />
-                    <Input
-                      aria-label={t("form.countLabel")}
-                      inputMode="numeric"
-                      className="h-8 w-14 text-center"
-                      value={String(s.count)}
-                      disabled={slotsDisabled}
-                      onChange={(e) => {
-                        const digits = e.target.value.replace(/[^\d]/g, "");
-                        updateSlot(i, { count: digits === "" ? 0 : parseInt(digits, 10) });
-                      }}
-                    />
-                    <div className="inline-flex overflow-hidden rounded-m border border-border">
-                      {(["main", "understudy"] as SlotKind[]).map((k) => (
-                        <button
-                          key={k}
-                          type="button"
-                          aria-pressed={s.kind === k}
-                          disabled={slotsDisabled}
-                          onClick={() => updateSlot(i, { kind: k })}
-                          className={cn(
-                            "px-2 py-1 text-xs transition-colors",
-                            s.kind === k ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground",
-                            slotsDisabled && "pointer-events-none opacity-50",
-                          )}
-                        >
-                          {k === "main" ? t("form.kindMain") : t("form.kindUnderstudy")}
-                        </button>
-                      ))}
-                    </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 shrink-0"
-                      aria-label={t("form.removeSlot", { name: s.name || t("form.slotFallback") })}
-                      disabled={slotsDisabled}
-                      onClick={() => removeSlot(i)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <SkillPicker
-                    skills={orgSkills ?? []}
-                    selectedIds={s.skillIds}
-                    onToggle={(id) => toggleSlotSkill(i, id)}
-                    disabled={slotsDisabled}
-                    emptyHint={t("form.skillsEmptyHint")}
-                  />
-                </div>
-              ))}
-
-              <Button type="button" variant="outline" size="sm" disabled={slotsDisabled} onClick={addSlot}>
-                <Plus className="mr-1.5 h-3.5 w-3.5" />{t("form.addSlot")}
-              </Button>
-            </div>
-
-            {slots.length > 0 && (
-              <div className="rounded-m border border-primary/20 bg-primary/5 px-3 py-2 text-xs text-primary">
-                {calloutText}
-              </div>
-            )}
-          </div>
+          <CastingBreakdownFields
+            value={slots}
+            onChange={setSlots}
+            skills={orgSkills ?? []}
+            disabled={slotsDisabled}
+          />
 
           <DialogFooter>
             <Button type="submit" disabled={pending}>{pending ? t("form.saving") : isEdit ? t("form.save") : t("form.create")}</Button>
