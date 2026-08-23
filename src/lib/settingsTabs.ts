@@ -71,15 +71,19 @@ export function defaultSettingsTab(isAdmin: boolean, isProducer: boolean = false
 /**
  * The tab SettingsPage should open on, from the raw `?tab=` search param.
  *
- * Anything unrecognised, any admin-only tab asked for by a non-admin, and any super-admin-only
- * tab asked for by a non-super-admin, falls back to the role default rather than selecting a
- * tab with no trigger and no content.
+ * Anything unrecognised, any admin-only tab asked for by a non-admin, any super-admin-only
+ * tab asked for by a non-super-admin, and "get-running" asked for by an admin/producer whose
+ * org has the v3 runtime flag off, falls back to the role default rather than selecting a tab
+ * with no trigger and no content. SettingsPage gates the get-running trigger/content on
+ * `isSuperAdmin || ((isAdmin || isProducer) && v3Enabled)` — a super-admin always sees it (so
+ * this helper never gates it on them), everyone else needs `getRunningEnabled` too.
  */
 export function resolveInitialTab(
   param: string | null,
   isAdmin: boolean,
   isSuperAdmin: boolean = false,
   isProducer: boolean = false,
+  getRunningEnabled: boolean = true,
 ): SettingsTabParam {
   const fallback = defaultSettingsTab(isAdmin, isProducer);
   if (!param) return fallback;
@@ -88,5 +92,6 @@ export function resolveInitialTab(
   if (!match) return fallback;
   if (!isAdmin && ADMIN_ONLY.includes(match)) return fallback;
   if (!isSuperAdmin && SUPER_ADMIN_ONLY.includes(match)) return fallback;
+  if (match === "get-running" && !isSuperAdmin && !getRunningEnabled) return fallback;
   return match;
 }

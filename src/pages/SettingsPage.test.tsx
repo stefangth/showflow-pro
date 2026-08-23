@@ -546,6 +546,23 @@ describe("SettingsPage get-running mirror tab (wireflow v3 phase 5)", () => {
     expect(screen.queryByRole("switch")).not.toBeInTheDocument();
   });
 
+  // CI review-bot finding (correctness): resolveInitialTab used to resolve `?tab=get-running`
+  // to "get-running" for any admin/producer regardless of the org's v3 flag, but
+  // showGetRunning gates the trigger/content on `isSuperAdmin || ((isAdmin || isProducer) &&
+  // v3Enabled)` — so a bookmarked link landed on a tab with no trigger and no content, and
+  // Radix rendered a blank pane. resolveInitialTab now takes the same v3Enabled flag and
+  // falls back to the role default when it's off, so the page falls back to its real "how
+  // this org works" content instead of going blank.
+  it("falls back to the default section (not a blank pane) at ?tab=get-running for a plain admin while v3 is off for the org", async () => {
+    vi.mocked(useAuth).mockReturnValue(DEFAULT_AUTH as never);
+    renderWithProviders(
+      <MemoryRouter initialEntries={["/settings?tab=get-running"]}><SettingsPage /></MemoryRouter>,
+    );
+    expect(await screen.findByRole("tab", { name: /how this org works/i })).toHaveAttribute("aria-selected", "true");
+    expect(screen.queryByRole("tab", { name: /^get running$/i })).not.toBeInTheDocument();
+    expect(screen.queryByTestId("get-running-v3-nothing")).not.toBeInTheDocument();
+  });
+
   // Same invariant the two shared exhaustiveness sweeps above pin for every other
   // SETTINGS_TAB_PARAMS value ("exactly one selected tab") — covering both branches of
   // showGetRunning's OR gate, since neither shared sweep can hold either branch true for a

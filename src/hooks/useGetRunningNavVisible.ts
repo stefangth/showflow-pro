@@ -45,9 +45,15 @@ export function useGetRunningNavVisible(): boolean {
   const orgId = currentOrg?.id ?? null;
   const isNonArtist = hasRole("admin") || hasRole("producer");
 
-  const { model: v1Model } = useGetRunning();
-  const { model: v3Model } = useGetRunningV3();
   const { enabled: v3Enabled, isLoading: v3EnabledLoading } = useGetRunningV3Enabled();
+  const { model: v1Model } = useGetRunning();
+  // Gated on v3Enabled: the CI-review-bot-flagged efficiency fix. This hook is mounted by
+  // AppLayout on every admin/producer route, so an unconditional useGetRunningV3() call fired
+  // its whole booking/hire/skills/dates-source fan-out (plus, for an Airtable org, the ~12-query
+  // useAirtableConsole) on every navigation even when v3 is off for the org (the prod default).
+  // `useGetRunningV3`'s own `active` option keeps its sub-hooks from fetching when inactive
+  // while still calling them (rules of hooks), so v3Model is simply null when v3 is off here.
+  const { model: v3Model } = useGetRunningV3({ active: v3Enabled });
   const [dismissed] = useRailDismissed("getRunning", orgId);
 
   const model = v3Enabled ? v3Model : v1Model;
