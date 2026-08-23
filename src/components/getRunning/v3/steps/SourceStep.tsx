@@ -8,23 +8,21 @@ import { WizardFooterContext } from "@/components/getRunning/v3/WizardFooterCont
 import { Card } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Button } from "@/components/ui/button";
-import { StatusPill } from "@/components/ui/status-pill";
 import { cn } from "@/lib/utils";
 
 type SelectableSource = Exclude<DatesSource, null>;
 
 const SOURCES: SelectableSource[] = ["airtable", "sheet", "manual"];
-// Google Sheet is shown on the roadmap but is not a real choice this phase (its own
-// step body is still `StepComingSoon` in stepRegistryV3.tsx) — this is the one source
-// the card renders disabled regardless of the viewer's capability.
-const CHOOSABLE: ReadonlySet<SelectableSource> = new Set(["airtable", "manual"]);
+// All three sources are real choices as of Wireflow v3 Phase 4 (Task A5): Airtable
+// (Phase 2), Google Sheet (Phase 4), and By hand (Phase 2).
+const CHOOSABLE: ReadonlySet<SelectableSource> = new Set(["airtable", "sheet", "manual"]);
 
 /**
- * The `source` step's body (Wireflow v3 Phase 2, Task 6): pick where dates come from.
- * Airtable and By hand are real choices; Google Sheet is displayed for the roadmap but
- * stays disabled (see CHOOSABLE above). Preselects the org's already-stored choice
- * (`useDatesSource`'s `source`) until the viewer picks something else, then persists via
- * `save` and calls `onDone` so the wizard can advance / mark the step done.
+ * The `source` step's body (Wireflow v3 Phase 2, Task 6; Sheet enabled Phase 4, Task A5):
+ * pick where dates come from. All three sources are real choices (see CHOOSABLE above).
+ * Preselects the org's already-stored choice (`useDatesSource`'s `source`) until the
+ * viewer picks something else, then persists via `save` and calls `onDone` so the wizard
+ * can advance / mark the step done.
  *
  * Portals its primary action into `WizardFooterContext`'s slot once `WizardShell` has
  * mounted it (mirrors `FlowStep`'s `TaskPanelFooterContext` pattern from the v1 in-panel
@@ -91,7 +89,6 @@ export function SourceStep({ orgId, onDone }: { orgId: string | null; onDone: ()
                 <span className="flex flex-col gap-0.5">
                   <span className="flex items-center gap-2 text-control font-medium text-foreground">
                     {t(`body.source.${src}.title`)}
-                    {src === "sheet" && <StatusPill tone="neutral">{t("body.source.sheet.badge")}</StatusPill>}
                   </span>
                   <span className="text-xs text-muted-foreground">{t(`body.source.${src}.desc`)}</span>
                 </span>

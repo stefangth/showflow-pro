@@ -3,7 +3,7 @@ import type { Database, Json } from "@/integrations/supabase/types";
 import type { SheetColumnMap, SheetDateRaw } from "@/lib/sheetImport/mapRows";
 import { resolveOrgSetting, upsertOrgSetting } from "@/data/settings";
 import { fetchPublicSheetCsv } from "@/data/remoteSheet";
-import { parseSheet } from "@/lib/artistImport/parseSheet";
+import { parseSheet, type ParsedSheet } from "@/lib/artistImport/parseSheet";
 
 const SHEET_IMPORT_SETTINGS_KEY = "sheet_import_settings";
 
@@ -42,15 +42,30 @@ export async function saveSheetImportSettings(
   await upsertOrgSetting(client, orgId, SHEET_IMPORT_SETTINGS_KEY, settings as unknown as Json);
 }
 
-/** Fetch the sheet's header row (for the column-mapping UI) by pulling the CSV through the
- *  SSRF-guarded proxy and parsing it client-side. Discards the row data. */
+/**
+ * Fetch and parse the sheet: pulls the CSV through the SSRF-guarded proxy and parses it
+ * client-side into `{ headers, rows }`. The mapping UI only needs the headers, but running
+ * the import needs the parsed rows too (fed through `mapSheetRows`) — this is the one fetch
+ * both share, so the wizard's Cities step can reuse a Connect-step load instead of hitting
+ * the proxy a second time.
+ */
+export async function fetchSheetParsed(
+  client: SupabaseClient<Database>,
+  orgId: string,
+  url: string,
+): Promise<ParsedSheet> {
+  const csv = await fetchPublicSheetCsv(client, url, orgId);
+  return parseSheet(csv, "csv");
+}
+
+/** Fetch the sheet's header row (for the column-mapping UI). Thin wrapper over
+ *  `fetchSheetParsed` that discards the row data. */
 export async function fetchSheetHeaders(
   client: SupabaseClient<Database>,
   orgId: string,
   url: string,
 ): Promise<string[]> {
-  const csv = await fetchPublicSheetCsv(client, url, orgId);
-  const parsed = await parseSheet(csv, "csv");
+  const parsed = await fetchSheetParsed(client, orgId, url);
   return parsed.headers;
 }
 

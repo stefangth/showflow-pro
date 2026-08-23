@@ -329,7 +329,19 @@
       "manual": "Von Hand braucht keine Verbindung. Weiter, um Produktionen hinzuzufügen.",
       "saveToken": "Token speichern",
       "connected": "Verbunden mit {{baseName}} › {{tableName}}.",
-      "continue": "Weiter"
+      "continue": "Weiter",
+      "sheet": {
+        "heading": "Google Sheet verbinden",
+        "sub": "Füge den Link zu deiner veröffentlichten Tabelle ein.",
+        "urlLabel": "Tabellen-URL",
+        "urlPlaceholder": "https://docs.google.com/spreadsheets/...",
+        "helper": "Veröffentliche deine Tabelle im Web als CSV und füge diesen Link hier ein.",
+        "loadColumns": "Spalten laden",
+        "loading": "Spalten werden geladen",
+        "loaded": "{{count}} Spalten geladen.",
+        "invalidUrl": "Füge einen veröffentlichten CSV Link von Google Sheets ein, um fortzufahren.",
+        "loadError": "Die Tabelle konnte nicht gelesen werden. Prüfe den Link und versuche es erneut."
+      }
     },
     "map": {
       "heading": "Felder zuordnen",
@@ -340,7 +352,25 @@
         "link": "Zu Produktionen"
       },
       "continue": "Weiter",
-      "mapIncomplete": "Ordne die Felder Datum und Unterprogramm zu, um fortzufahren."
+      "mapIncomplete": "Ordne die Felder Datum und Unterprogramm zu, um fortzufahren.",
+      "sheet": {
+        "heading": "Spalten zuordnen",
+        "sub": "Ordne jede Spalte deiner Tabelle dem Feld zu, das sie darstellt.",
+        "fields": {
+          "program": "Produktion",
+          "subProgram": "Unterprogramm",
+          "date": "Datum",
+          "city": "Stadt",
+          "session1": "Session 1",
+          "session2": "Session 2",
+          "session3": "Session 3",
+          "venue": "Veranstaltungsort"
+        },
+        "selectPlaceholder": "Spalte wählen",
+        "notMapped": "Nicht zugeordnet",
+        "noHeaders": "Geh zurück zu Verbinden und lade zuerst die Spalten deiner Tabelle.",
+        "mapIncomplete": "Ordne die Felder Produktion und Datum zu, um fortzufahren."
+      }
     },
     "cities": {
       "heading": "Jedem Termin eine Stadt zuordnen",
@@ -348,7 +378,21 @@
       "continue": "Weiter",
       "incomplete": "Verknüpfe oder erstelle jede Stadt, um fortzufahren.",
       "empty": "Noch keine Städte zum Auflösen. Städte werden in den Einstellungen verwaltet.",
-      "manageLink": "Zu den Einstellungen"
+      "manageLink": "Zu den Einstellungen",
+      "sheet": {
+        "heading": "Deine Termine importieren",
+        "sub": "Starte den Import, um deine Termine aus der Tabelle zu holen.",
+        "importButton": "Termine jetzt importieren",
+        "importAgain": "Erneut importieren",
+        "importing": "Import läuft",
+        "notYet": "Noch nichts importiert. Starte den Import, um deine Termine zu holen.",
+        "resultProcessed": "Verarbeitet",
+        "resultNew": "Neue Termine",
+        "resultUpdated": "Aktualisiert",
+        "resultHeld": "Zurückgehalten",
+        "heldNote": "Zurückgehaltene Zeilen brauchen eine Stadt, ein Datum oder eine Produktion, bevor sie importiert werden können. Verknüpfe die fehlenden Städte im Städtekatalog und starte den Import erneut.",
+        "manageLink": "Zu den Einstellungen"
+      }
     },
     "parts": {
       "title": "Besetzungsplan für {{name}}",

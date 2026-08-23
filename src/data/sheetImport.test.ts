@@ -4,7 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import type { SheetDateRaw } from "@/lib/sheetImport/mapRows";
 import {
-  fetchSheetImportSettings, saveSheetImportSettings, fetchSheetHeaders, importSheetDates,
+  fetchSheetImportSettings, saveSheetImportSettings, fetchSheetHeaders, fetchSheetParsed, importSheetDates,
 } from "./sheetImport";
 
 const asClient = (f: ReturnType<typeof createFakeSupabase>) => f as unknown as SupabaseClient<Database>;
@@ -50,6 +50,24 @@ describe("fetchSheetHeaders", () => {
     const fake = createFakeSupabase({ "fn:fetch-remote-sheet": { data: { csv }, error: null } });
     const out = await fetchSheetHeaders(asClient(fake), "org-1", "https://example.com/sheet.csv");
     expect(out).toEqual(["Program", "Date"]);
+    expect(fake.calls).toContainEqual({
+      table: "fn:fetch-remote-sheet",
+      method: "invoke",
+      args: [{ org_id: "org-1", url: "https://example.com/sheet.csv" }],
+    });
+  });
+});
+
+describe("fetchSheetParsed", () => {
+  it("fetches the CSV via the proxy and returns both headers and rows", async () => {
+    const csv = "Program,Date\nShowA,2026-01-01\nShowB,2026-01-02\n";
+    const fake = createFakeSupabase({ "fn:fetch-remote-sheet": { data: { csv }, error: null } });
+    const out = await fetchSheetParsed(asClient(fake), "org-1", "https://example.com/sheet.csv");
+    expect(out.headers).toEqual(["Program", "Date"]);
+    expect(out.rows).toEqual([
+      { Program: "ShowA", Date: "2026-01-01" },
+      { Program: "ShowB", Date: "2026-01-02" },
+    ]);
     expect(fake.calls).toContainEqual({
       table: "fn:fetch-remote-sheet",
       method: "invoke",

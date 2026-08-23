@@ -67,6 +67,45 @@ describe("useSheetImport", () => {
     expect(invalidatedKeys).toContainEqual(["bookings"]);
   });
 
+  it("loadSheet fetches + parses the sheet and caches it under parsed", async () => {
+    const csv = "Program,Date\nShowA,2026-01-01\n";
+    seed({
+      app_settings: { data: [], error: null },
+      "fn:fetch-remote-sheet": { data: { csv }, error: null },
+    });
+
+    const { result } = renderHookWithProviders(() => useSheetImport(ORG_ID));
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.parsed).toBeNull();
+
+    let loaded;
+    await act(async () => {
+      loaded = await result.current.loadSheet("https://example.com/sheet.csv");
+    });
+
+    expect(loaded).toEqual({ headers: ["Program", "Date"], rows: [{ Program: "ShowA", Date: "2026-01-01" }] });
+    expect(result.current.parsed).toEqual(loaded);
+  });
+
+  it("loadHeaders is a headers-only view of loadSheet and also caches parsed", async () => {
+    const csv = "Program,Date\nShowA,2026-01-01\n";
+    seed({
+      app_settings: { data: [], error: null },
+      "fn:fetch-remote-sheet": { data: { csv }, error: null },
+    });
+
+    const { result } = renderHookWithProviders(() => useSheetImport(ORG_ID));
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    let headers;
+    await act(async () => {
+      headers = await result.current.loadHeaders("https://example.com/sheet.csv");
+    });
+
+    expect(headers).toEqual(["Program", "Date"]);
+    expect(result.current.parsed?.rows).toEqual([{ Program: "ShowA", Date: "2026-01-01" }]);
+  });
+
   it("saveSettings persists and invalidates the settings key", async () => {
     seed({ app_settings: { data: [], error: null } });
 
