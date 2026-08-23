@@ -46,6 +46,10 @@ export function useGetRunningNavVisible(): boolean {
   const isNonArtist = hasRole("admin") || hasRole("producer");
 
   const { enabled: v3Enabled, isLoading: v3EnabledLoading } = useGetRunningV3Enabled();
+  // v1 is left ungated (accepted cost): a v3-enabled org pays for this v1 fan-out too even
+  // though v1Model is discarded below. Gating v1 the same `active` way would mean threading
+  // the option through the v1 hook, which is slated for deletion in the v1 cutover, and
+  // v3-enabled orgs are few during rollout, so it is not worth the churn on retiring code.
   const { model: v1Model } = useGetRunning();
   // Gated on v3Enabled: the CI-review-bot-flagged efficiency fix. This hook is mounted by
   // AppLayout on every admin/producer route, so an unconditional useGetRunningV3() call fired

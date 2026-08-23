@@ -8,9 +8,10 @@ import { useGetRunningV3Enabled, useSetGetRunningV3Enabled } from "@/hooks/useGe
 /**
  * Super-admin-only switch for the org's `getrunning_v3_enabled` app_settings override
  * (Task A2's `useGetRunningV3Enabled`/`useSetGetRunningV3Enabled`). Renders `null` for
- * anyone who is not a super-admin, including a plain org admin: this is a platform-level
- * rollout control, not something an org can flip on itself. Embedded in the Settings
- * mirror by Task B2.
+ * anyone who is not a super-admin, so the toggle is only offered to platform staff. Note
+ * this is a UI-level restriction: the underlying app_settings write RLS also permits a
+ * plain org admin to set the key directly (see `GETRUNNING_V3_SETTING_KEY`), so this gate
+ * governs the surface, not the data layer. Embedded in the Settings mirror by Task B2.
  */
 export function GetRunningV3Toggle() {
   const { t } = useTranslation("getRunningV3");
