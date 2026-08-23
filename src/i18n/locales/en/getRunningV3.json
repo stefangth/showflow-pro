@@ -335,6 +335,14 @@
       },
       "continue": "Continue",
       "mapIncomplete": "Map the date and sub-program fields to continue."
+    },
+    "cities": {
+      "heading": "Set a city on every date",
+      "sub": "Link each imported city to a ShowFlow city, or create it if it does not exist yet.",
+      "continue": "Continue",
+      "incomplete": "Link or create every city to continue.",
+      "empty": "No cities to resolve yet. Cities are added and managed in Settings.",
+      "manageLink": "Go to Settings"
     }
   }
 }

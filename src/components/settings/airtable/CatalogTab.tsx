@@ -32,6 +32,11 @@ export interface CatalogTabProps {
   merge: { title: string; description: string; actionLabel: string; onMerge: () => void } | null;
   canWrite: boolean;
   busy?: boolean;
+  /** Which sections to render: "all" (default) keeps the existing Programs + Cities layout;
+   *  "cities" renders only the Cities section (and its bulk-create count reflects city rows
+   *  only) — used by the v3 wizard's `CitiesStep`, which reuses this component's data flow
+   *  and row UI without the Programs half. */
+  section?: "all" | "cities";
 }
 
 const FILTERS: Filter[] = ["All", "Blocking", "Linked"];
@@ -102,7 +107,7 @@ export function CatalogTab(props: CatalogTabProps) {
   const { t } = useTranslation('settingsAirtable');
   const {
     programSource, citySource, programRows, cityRows, programExisting, cityExisting,
-    onLink, onCreate, onUnlink, onBulkCreate, merge, canWrite, busy,
+    onLink, onCreate, onUnlink, onBulkCreate, merge, canWrite, busy, section = "all",
   } = props;
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -134,8 +139,12 @@ export function CatalogTab(props: CatalogTabProps) {
   const filteredCities = cityRows.filter(matchesFilters);
 
   // Only selected UNLINKED rows can be created; the button count and gate track those, not the
-  // raw selection (which may include linked rows that Create would skip).
-  const progCreatable = programRows.filter((r) => isSelected("program", r.key) && r.linkedId === null);
+  // raw selection (which may include linked rows that Create would skip). Programs are
+  // excluded entirely in "cities" mode, even if a caller still passes programRows, since that
+  // section never renders and its rows can't be selected.
+  const progCreatable = section === "all"
+    ? programRows.filter((r) => isSelected("program", r.key) && r.linkedId === null)
+    : [];
   const cityCreatable = cityRows.filter((r) => isSelected("city", r.key) && r.linkedId === null);
   const creatableCount = progCreatable.length + cityCreatable.length;
 
@@ -275,11 +284,15 @@ export function CatalogTab(props: CatalogTabProps) {
       </div>
 
       {/* Programs section */}
-      {/* eslint-disable-next-line no-restricted-syntax -- non-standard tracking (0.1em) */}
-      <p className="px-4 py-2.5 text-eyebrow font-semibold uppercase tracking-[0.1em] text-muted-foreground bg-well-tint border-b border-border">
-        {t('catalogTab.programsSection', { source: programSource })}
-      </p>
-      {filteredPrograms.map((row) => renderRow("program", row, programExisting, "show"))}
+      {section === "all" && (
+        <>
+          {/* eslint-disable-next-line no-restricted-syntax -- non-standard tracking (0.1em) */}
+          <p className="px-4 py-2.5 text-eyebrow font-semibold uppercase tracking-[0.1em] text-muted-foreground bg-well-tint border-b border-border">
+            {t('catalogTab.programsSection', { source: programSource })}
+          </p>
+          {filteredPrograms.map((row) => renderRow("program", row, programExisting, "show"))}
+        </>
+      )}
 
       {/* Cities section */}
       {/* eslint-disable-next-line no-restricted-syntax -- non-standard tracking (0.1em) */}
