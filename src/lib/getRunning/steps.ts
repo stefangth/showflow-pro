@@ -47,6 +47,8 @@ export interface GetRunningStep {
   adminOnly: boolean;
   actionableByViewer: boolean;
   placeholder: boolean;
+  /** Not shown, and excluded from doneCount/totalCount/nextStep. Used when a source choice makes a step moot. */
+  hidden?: boolean;
 }
 
 export interface GetRunningPhaseV3 {
@@ -78,7 +80,12 @@ export interface GetRunningInputV3 {
   hireOrdersOn: boolean;
   booking: BookingSetupStatus | null; // null while unread or module off
   hire: HireOrderSetupStatus | null;
-  datesDone: boolean; // shared Phase-1 signal for source/connect/map/cities
+  /** @deprecated Phase-1 shared placeholder signal, superseded by the four per-step fields below. Unused by composeGetRunningV3; kept until Task 2 removes it. */
+  datesDone: boolean;
+  datesSource: "airtable" | "sheet" | "manual" | null;
+  datesConnectDone: boolean;
+  datesMapDone: boolean;
+  datesCitiesDone: boolean;
   producerCount: number | null; // team step done when > 0
   skillsDone: boolean; // Phase-1 placeholder signal
   feeDone: boolean; // Phase-1 placeholder signal
@@ -114,6 +121,7 @@ interface StepConfig {
   placeholder: boolean;
   /** Producer capability required to act on this step, beyond `!adminOnly`. */
   capability: boolean;
+  hidden?: boolean;
 }
 
 function finalizeStep(phase: GetRunningPhaseKey, cfg: StepConfig, role: GetRunningInputV3["role"]): GetRunningStep {
@@ -125,7 +133,13 @@ function finalizeStep(phase: GetRunningPhaseKey, cfg: StepConfig, role: GetRunni
     adminOnly: cfg.adminOnly,
     actionableByViewer: role === "admin" ? true : !cfg.adminOnly && cfg.capability,
     placeholder: cfg.placeholder,
+    hidden: cfg.hidden,
   };
+}
+
+/** Steps not marked `hidden` (a source choice made them moot). Used for counts, done rollups, and nextStep. */
+function visibleSteps(steps: GetRunningStep[]): GetRunningStep[] {
+  return steps.filter((s) => !s.hidden);
 }
 
 export function composeGetRunningV3(input: GetRunningInputV3): GetRunningModelV3 {
@@ -137,28 +151,30 @@ export function composeGetRunningV3(input: GetRunningInputV3): GetRunningModelV3
   const hardBlock: StepBlock = bookingStep(input.booking, "people")?.block ?? "booking";
 
   if (input.bookingOn) {
+    const isManualSource = input.datesSource === "manual";
     const getDatesConfigs: StepConfig[] = [
-      { key: "source", done: input.datesDone, block: hardBlock, adminOnly: false, placeholder: true, capability: input.canManageShows },
-      { key: "connect", done: input.datesDone, block: hardBlock, adminOnly: false, placeholder: true, capability: input.canManageShows },
-      { key: "map", done: input.datesDone, block: hardBlock, adminOnly: false, placeholder: true, capability: input.canManageShows },
-      { key: "cities", done: input.datesDone, block: hardBlock, adminOnly: false, placeholder: true, capability: input.canManageShows },
+      { key: "source", done: input.datesSource != null, block: hardBlock, adminOnly: false, placeholder: false, capability: input.canManageShows },
+      { key: "connect", done: input.datesConnectDone, block: hardBlock, adminOnly: false, placeholder: false, capability: input.canManageShows, hidden: isManualSource },
+      { key: "map", done: input.datesMapDone, block: hardBlock, adminOnly: false, placeholder: false, capability: input.canManageShows, hidden: isManualSource },
+      { key: "cities", done: input.datesCitiesDone, block: hardBlock, adminOnly: false, placeholder: false, capability: input.canManageShows },
       {
         key: "productions",
         done: bookingStep(input.booking, "slots")?.done ?? false,
         block: bookingStep(input.booking, "slots")?.block ?? null,
         adminOnly: false,
-        placeholder: true,
+        placeholder: false,
         capability: input.canEditScheduling,
       },
     ];
     const getDatesSteps = getDatesConfigs.map((c) => finalizeStep("get_dates", c, input.role));
-    const getDatesDone = getDatesSteps.every((s) => s.done);
+    const getDatesVisible = visibleSteps(getDatesSteps);
+    const getDatesDone = getDatesVisible.every((s) => s.done);
     phases.push({
       key: "get_dates",
       steps: getDatesSteps,
       done: getDatesDone,
-      doneCount: getDatesSteps.filter((s) => s.done).length,
-      totalCount: getDatesSteps.length,
+      doneCount: getDatesVisible.filter((s) => s.done).length,
+      totalCount: getDatesVisible.length,
       block: hardBlock,
       waitsOn: null,
     });
@@ -291,16 +307,17 @@ export function composeGetRunningV3(input: GetRunningInputV3): GetRunningModelV3
   }
 
   const allSteps = phases.flatMap((p) => p.steps);
-  const totalCount = allSteps.length;
-  const doneCount = allSteps.filter((s) => s.done).length;
-  const canFirstOffer = allSteps
+  const allVisibleSteps = visibleSteps(allSteps);
+  const totalCount = allVisibleSteps.length;
+  const doneCount = allVisibleSteps.filter((s) => s.done).length;
+  const canFirstOffer = allVisibleSteps
     .filter((s) => s.block === "offers" || s.block === "booking")
     .every((s) => s.done);
-  const complete = allSteps.every((s) => s.done);
+  const complete = allVisibleSteps.every((s) => s.done);
 
   let nextStep: { phase: GetRunningPhaseKey; key: GetRunningStepKey } | null = null;
   for (const phase of phases) {
-    const firstNotDone = phase.steps.find((s) => !s.done);
+    const firstNotDone = visibleSteps(phase.steps).find((s) => !s.done);
     if (firstNotDone) {
       nextStep = { phase: phase.key, key: firstNotDone.key };
       break;

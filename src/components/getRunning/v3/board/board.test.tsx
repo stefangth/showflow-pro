@@ -37,6 +37,10 @@ const base: GetRunningInputV3 = {
   booking: booking(),
   hire: hire(),
   datesDone: true,
+  datesSource: "airtable",
+  datesConnectDone: true,
+  datesMapDone: true,
+  datesCitiesDone: true,
   producerCount: 1,
   skillsDone: true,
   feeDone: false,
@@ -51,8 +55,8 @@ const base: GetRunningInputV3 = {
 
 describe("HeroCard", () => {
   it("shows the next step title and calls onOpenNext", () => {
-    // datesDone false -> get_dates phase not done -> nextStep is source (get_dates)
-    const model = composeGetRunningV3({ ...base, datesDone: false, booking: booking({ slots: false }) });
+    // datesSource null -> get_dates phase not done -> nextStep is source (get_dates)
+    const model = composeGetRunningV3({ ...base, datesSource: null, booking: booking({ slots: false }) });
     const onOpenNext = vi.fn();
     renderWithProviders(<HeroCard model={model} onOpenNext={onOpenNext} />);
 
@@ -68,7 +72,7 @@ describe("StillShutCard", () => {
   it("shows both the first-ask and first-contract gates when neither is ready", () => {
     const model = composeGetRunningV3({
       ...base,
-      datesDone: false,
+      datesSource: null,
       booking: booking({ slots: false }),
       hire: hire({ terms: false }),
     });

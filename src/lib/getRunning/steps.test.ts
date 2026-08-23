@@ -26,6 +26,10 @@ const base: GetRunningInputV3 = {
   booking: booking(),
   hire: hire(),
   datesDone: true,
+  datesSource: "airtable",
+  datesConnectDone: true,
+  datesMapDone: true,
+  datesCitiesDone: true,
   producerCount: 1,
   skillsDone: true,
   feeDone: false,
@@ -37,6 +41,9 @@ const base: GetRunningInputV3 = {
   canAddArtists: true,
   canInvite: true,
 };
+function baseInput(overrides: Partial<GetRunningInputV3> = {}): GetRunningInputV3 {
+  return { ...base, ...overrides };
+}
 
 describe("composeGetRunningV3", () => {
   it("produces 16 steps across 3 phases when both modules are on", () => {
@@ -57,8 +64,15 @@ describe("composeGetRunningV3", () => {
     expect(m.phases.map((p) => p.key)).toEqual(["paperwork"]);
   });
 
-  it("maps the four dates-in steps to datesDone and productions to the slots step", () => {
-    const m = composeGetRunningV3({ ...base, datesDone: false, booking: booking({ slots: false }) });
+  it("maps the four dates-in steps to their per-step signals and productions to the slots step", () => {
+    const m = composeGetRunningV3({
+      ...base,
+      datesSource: null,
+      datesConnectDone: false,
+      datesMapDone: false,
+      datesCitiesDone: false,
+      booking: booking({ slots: false }),
+    });
     const getDates = m.phases.find((p) => p.key === "get_dates")!;
     const doneByKey = Object.fromEntries(getDates.steps.map((s) => [s.key, s.done]));
     expect(doneByKey).toMatchObject({ source: false, connect: false, map: false, cities: false, productions: false });
@@ -79,7 +93,7 @@ describe("composeGetRunningV3", () => {
   it("marks new steps as placeholders and reuse steps as real", () => {
     const m = composeGetRunningV3(base);
     const byKey = Object.fromEntries(m.phases.flatMap((p) => p.steps).map((s) => [s.key, s.placeholder]));
-    expect(byKey).toMatchObject({ source: true, skills: true, fee: true, document: true, artists: false, flow: false, coverage: false });
+    expect(byKey).toMatchObject({ source: false, skills: true, fee: true, document: true, artists: false, flow: false, coverage: false });
   });
 
   it("a producer cannot act on team (adminOnly)", () => {
@@ -95,5 +109,64 @@ describe("composeGetRunningV3", () => {
     // All real+placeholder signals satisfied → complete.
     const all = composeGetRunningV3({ ...base, skillsDone: true, feeDone: true, documentDone: true });
     expect(all.complete).toBe(true);
+  });
+});
+
+describe("composeGetRunningV3 get_dates phase (Phase 2)", () => {
+  it("source is done once a source is chosen", () => {
+    const m = composeGetRunningV3(baseInput({ bookingOn: true, datesSource: "airtable" }));
+    const dates = m.phases.find((p) => p.key === "get_dates")!;
+    expect(dates.steps.find((s) => s.key === "source")!.done).toBe(true);
+  });
+
+  it("none of the five get_dates steps are placeholders anymore", () => {
+    const m = composeGetRunningV3(baseInput({ bookingOn: true }));
+    const dates = m.phases.find((p) => p.key === "get_dates")!;
+    for (const key of ["source", "connect", "map", "cities", "productions"] as const) {
+      expect(dates.steps.find((s) => s.key === key)!.placeholder).toBe(false);
+    }
+  });
+
+  it("hides connect and map when the source is by-hand, and excludes them from counts", () => {
+    const m = composeGetRunningV3(baseInput({ bookingOn: true, datesSource: "manual" }));
+    const dates = m.phases.find((p) => p.key === "get_dates")!;
+    const connect = dates.steps.find((s) => s.key === "connect")!;
+    const map = dates.steps.find((s) => s.key === "map")!;
+    expect(connect.hidden).toBe(true);
+    expect(map.hidden).toBe(true);
+    // 3 visible get_dates steps (source, cities, productions), not 5
+    expect(dates.steps.filter((s) => !s.hidden).length).toBe(3);
+  });
+
+  it("shows connect and map when the source is airtable", () => {
+    const m = composeGetRunningV3(baseInput({ bookingOn: true, datesSource: "airtable" }));
+    const dates = m.phases.find((p) => p.key === "get_dates")!;
+    expect(dates.steps.find((s) => s.key === "connect")!.hidden).toBeFalsy();
+    expect(dates.steps.find((s) => s.key === "map")!.hidden).toBeFalsy();
+  });
+
+  it("maps per-step done signals (connect/map/cities) independently", () => {
+    const m = composeGetRunningV3(
+      baseInput({ bookingOn: true, datesSource: "airtable", datesConnectDone: true, datesMapDone: false, datesCitiesDone: true }),
+    );
+    const dates = m.phases.find((p) => p.key === "get_dates")!;
+    expect(dates.steps.find((s) => s.key === "connect")!.done).toBe(true);
+    expect(dates.steps.find((s) => s.key === "map")!.done).toBe(false);
+    expect(dates.steps.find((s) => s.key === "cities")!.done).toBe(true);
+  });
+
+  it("nextStep and doneCount ignore hidden steps", () => {
+    // manual source, source+cities done, productions not: nextStep is productions, not the hidden connect
+    const m = composeGetRunningV3(
+      baseInput({
+        bookingOn: true,
+        datesSource: "manual",
+        datesCitiesDone: true,
+        booking: booking({ slots: false }),
+      }),
+    );
+    expect(m.nextStep?.key).toBe("productions");
+    const dates = m.phases.find((p) => p.key === "get_dates")!;
+    expect(dates.totalCount).toBe(3); // hidden connect/map excluded
   });
 });
