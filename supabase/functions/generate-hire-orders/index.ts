@@ -177,6 +177,85 @@ export async function resolveOrderDefaults(
     default_fee_basis: isFeeBasis(raw.default_fee_basis) ? raw.default_fee_basis : "per_date",
   };
 }
+/**
+ * Resolve the per-(cast x production) fee for a booking (Wireflow v3 phase 4).
+ *
+ * A booking has no cast_id, so the cast is DERIVED (owner-locked rule):
+ *   1. the artist's cast memberships — `cast_members` where artist_id = artistId
+ *      and org_id = orgId,
+ *   2. intersected with the show_date's ELIGIBLE casts: prefer the per-date
+ *      `show_date_cast_eligibility` for showDateId; if that table has NO rows for
+ *      the date, fall back to `show_cast_eligibility` matched on the date's
+ *      (show_id, city_id),
+ *   3. if EXACTLY ONE cast results, look up `cast_production_fees` for
+ *      (cast_id, show_id) and return its `fee_amount`; zero or many casts
+ *      (ambiguous) -> null so the org default wins.
+ *
+ * Only the fee AMOUNT is used this phase; the (cast x production) row's own
+ * currency/basis are intentionally ignored — currency/basis stay from the org
+ * default (see the three call sites). Returns `{ amount: null }` for any miss
+ * (no memberships, no eligibility, ambiguity, no fee row, or a null fee_amount),
+ * which the callers coalesce to `defaults.default_fee`.
+ */
+async function resolveCastProductionFee(
+  admin: Deps["admin"],
+  args: {
+    orgId: string;
+    showDateId: string;
+    artistId: string;
+    showId: string;
+    cityId: string | null;
+  },
+): Promise<{ amount: number | null }> {
+  const { orgId, showDateId, artistId, showId, cityId } = args;
+
+  // 1. The artist's cast memberships in this org.
+  const { data: memberRows } = await admin
+    .from("cast_members")
+    .select("cast_id")
+    .eq("artist_id", artistId)
+    .eq("org_id", orgId);
+  const memberships = new Set(
+    ((memberRows ?? []) as unknown as Array<{ cast_id: string }>).map((r) =>
+      r.cast_id
+    ),
+  );
+  if (memberships.size === 0) return { amount: null };
+
+  // 2. The show_date's eligible casts: per-date table first, else the
+  //    show-level (show_id, city_id) fallback when the per-date table is empty.
+  const { data: perDateRows } = await admin
+    .from("show_date_cast_eligibility")
+    .select("cast_id")
+    .eq("show_date_id", showDateId)
+    .eq("org_id", orgId);
+  let eligibleRows = (perDateRows ?? []) as unknown as Array<{ cast_id: string }>;
+  if (eligibleRows.length === 0 && cityId) {
+    const { data: showRows } = await admin
+      .from("show_cast_eligibility")
+      .select("cast_id")
+      .eq("show_id", showId)
+      .eq("city_id", cityId)
+      .eq("org_id", orgId);
+    eligibleRows = (showRows ?? []) as unknown as Array<{ cast_id: string }>;
+  }
+  const eligible = new Set(eligibleRows.map((r) => r.cast_id));
+
+  // 3. Intersect; a fee applies only when the derivation is unambiguous.
+  const intersection = [...memberships].filter((id) => eligible.has(id));
+  if (intersection.length !== 1) return { amount: null };
+
+  const { data: feeRow } = await admin
+    .from("cast_production_fees")
+    .select("fee_amount")
+    .eq("cast_id", intersection[0])
+    .eq("show_id", showId)
+    .eq("org_id", orgId)
+    .maybeSingle();
+  const amount = (feeRow as { fee_amount?: number | null } | null)?.fee_amount;
+  return { amount: amount ?? null };
+}
+
 const LETTERHEAD_DEFAULT: HireOrderLetterhead = {
   legal_name: "",
   address_lines: [],
@@ -311,6 +390,7 @@ interface ManualArtistRow {
 interface ManualShowDateRow {
   id: string;
   date: string;
+  show_id: string;
   venue: string | null;
   city_id: string | null;
   duration_minutes: number | null;
@@ -597,11 +677,21 @@ async function draftOrders(
       if (sessions.length > 0) showflow.sessions = sessions;
       assign(showflow, "fee", b.fee_amount);
 
-      // defaults layer: org default fee (fallback under a booking fee) + currency.
+      // defaults layer: the (cast x production) fee when the booking's cast is
+      // unambiguously derivable, else the org default fee (both are the fallback
+      // UNDER a booking fee) + currency. Currency/basis stay from the org default;
+      // only the cast fee's AMOUNT is used (see resolveCastProductionFee).
+      const castFee = await resolveCastProductionFee(admin, {
+        orgId: org,
+        showDateId: body.show_date_id,
+        artistId: b.artist_id,
+        showId: showDate.show_id,
+        cityId: showDate.city_id,
+      });
       const defLayer: Partial<Record<OrderFieldKey, unknown>> = {
         currency: defaults.currency,
       };
-      assign(defLayer, "fee", defaults.default_fee);
+      assign(defLayer, "fee", castFee.amount ?? defaults.default_fee);
 
       const layers: FieldLayers = { showflow, defaults: defLayer };
       const data = resolveFields(layers);
@@ -827,6 +917,9 @@ async function draftManual(
   const showflow: Partial<Record<OrderFieldKey, unknown>> = {};
   let castCode: string | undefined;
   let numberingDate: string | undefined;
+  // Captured from the linked show_date for per-(cast x production) fee resolution.
+  let manualShowId: string | undefined;
+  let manualCityId: string | null = null;
 
   if (body.artist_id && body.show_date_id) {
     const [{ data: artistRow }, { data: sdRow }] = await Promise.all([
@@ -836,7 +929,7 @@ async function draftManual(
       ).eq("org_id", org).maybeSingle(),
       admin.from("show_dates")
         .select(
-          "id, date, venue, city_id, duration_minutes, session_1, session_2, session_3, shows(program, sub_program)",
+          "id, date, show_id, venue, city_id, duration_minutes, session_1, session_2, session_3, shows(program, sub_program)",
         )
         .eq("id", body.show_date_id).eq("org_id", org).maybeSingle(),
     ]);
@@ -865,13 +958,30 @@ async function draftManual(
       }
       castCode = castCodeFromLabel(sd.shows?.program ?? null);
       numberingDate = sd.date;
+      manualShowId = sd.show_id;
+      manualCityId = sd.city_id;
     }
   }
+
+  // The (cast x production) fee only applies when the order is linked to both an
+  // artist and a show_date (so a cast can be derived); a purely manual order or
+  // one missing either link falls straight to the org default. A producer-typed
+  // manual fee (higher layer) still beats it. Currency/basis stay from the org
+  // default; only the cast fee's AMOUNT is used (see resolveCastProductionFee).
+  const castFee = (body.artist_id && body.show_date_id && manualShowId)
+    ? await resolveCastProductionFee(admin, {
+      orgId: org,
+      showDateId: body.show_date_id,
+      artistId: body.artist_id,
+      showId: manualShowId,
+      cityId: manualCityId,
+    })
+    : { amount: null };
 
   const defLayer: Partial<Record<OrderFieldKey, unknown>> = {
     currency: defaults.currency,
   };
-  assign(defLayer, "fee", defaults.default_fee);
+  assign(defLayer, "fee", castFee.amount ?? defaults.default_fee);
 
   const layers: FieldLayers = { showflow, manual, defaults: defLayer };
   const data = resolveFields(layers);
@@ -1379,10 +1489,24 @@ async function draftBatchArtist(
   const firstSessions = engagementDates[0].sessions ?? [];
   if (firstSessions.length > 0) showflow.sessions = firstSessions;
 
+  // The (cast x production) fee, derived from the FIRST engagement date as the
+  // representative (an aggregate order spans several dates; the cast fee is a
+  // show-level rate). It takes the place of the org default in the default layer;
+  // a producer-entered manual fee (higher layer) still beats it. For a per-date
+  // basis it becomes the UNIT rate that computeFeeTotal multiplies below, exactly
+  // as the org default would. Currency/basis stay from the org default; only the
+  // cast fee's AMOUNT is used (see resolveCastProductionFee).
+  const castFee = await resolveCastProductionFee(deps.admin, {
+    orgId: org,
+    showDateId: firstDate.id,
+    artistId: input.artist_id,
+    showId: firstDate.show_id,
+    cityId: firstDate.city_id,
+  });
   const defaultLayer: NonNullable<FieldLayers["defaults"]> = {
     currency: defaults.currency,
   };
-  assign(defaultLayer, "fee", defaults.default_fee);
+  assign(defaultLayer, "fee", castFee.amount ?? defaults.default_fee);
   const data = resolveFields({ showflow, manual, defaults: defaultLayer });
   data.engagement_dates = { value: engagementDates, source: "showflow" };
 

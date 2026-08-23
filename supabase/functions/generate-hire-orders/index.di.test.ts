@@ -458,6 +458,171 @@ Deno.test("draft stores the org's default terms-template id, not a hardcoded 'st
   assertEquals(row.terms_variant, "full");
 });
 
+// ── per-(cast x production) fee (Wireflow v3 phase 4, task B4) ─────────────
+//
+// Precedence for the snapshot fee is booking/manual fee -> (cast x production)
+// fee -> org default. The (cast x production) fee is resolved by deriving the
+// booking's cast: the artist's cast_members intersected with the show_date's
+// eligible casts (per-date show_date_cast_eligibility, else show_cast_eligibility
+// on show_id + city_id). Exactly one cast -> its cast_production_fees.fee_amount
+// takes the place of the org default in the `default` layer; zero or many casts
+// (ambiguous) -> org default wins.
+
+const DEFAULTS_FEE_100 = {
+  org_id: ORG,
+  value: { default_fee: 100, currency: "EUR" },
+};
+
+Deno.test("draft: a sole eligible cast's production fee beats the org default", async () => {
+  const { deps, calls } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      show_dates: { data: SHOW_DATE_ROW }, // show_id "show-1", city_id "city-1"
+      // Booking carries NO fee of its own, so the resolved fee must fall to the
+      // cast fee rather than the org default.
+      bookings: { data: [booking("b-A1", "a-A1", null, "Ann", "ann@x.de")] },
+      cities: { data: { name: "Berlin" } },
+      // A1 belongs to cast C1.
+      cast_members: { data: [{ cast_id: "C1" }] },
+      // C1 is the SOLE eligible cast for this date (per-date table has rows).
+      show_date_cast_eligibility: { data: [{ cast_id: "C1" }] },
+      // (C1 x show-1) fee is 250.
+      cast_production_fees: [
+        { when: { cast_id: "C1" }, data: { fee_amount: 250 } },
+      ],
+      hire_orders: [
+        { when: { __write: false }, data: [] },
+        { when: { __write: true }, data: { id: "ho-1" } },
+      ],
+      app_settings: [
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS_FEE_100] },
+        { when: { key: "hire_order_numbering" }, data: [NUMBERING] },
+      ],
+    },
+  });
+
+  const res = await handle(
+    makeRequest({
+      headers: JWT,
+      body: { action: "draft", org_id: ORG, show_date_id: SD },
+    }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+
+  const insert = calls.find((c) =>
+    c.table === "hire_orders" && c.method === "insert"
+  );
+  assert(insert, "expected a hire_orders insert");
+  const row = insert!.args[0] as {
+    data: Record<string, { value: unknown; source: string }>;
+    fee_amount: number | null;
+  };
+  assertEquals(row.fee_amount, 250);
+  // The cast fee occupies the DEFAULT layer (in place of the org default).
+  assertEquals(row.data.fee.value, 250);
+  assertEquals(row.data.fee.source, "default");
+});
+
+Deno.test("draft: an artist in two eligible casts is ambiguous, so the org default wins", async () => {
+  const { deps, calls } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      show_dates: { data: SHOW_DATE_ROW },
+      bookings: { data: [booking("b-A2", "a-A2", null, "Bea", "bea@x.de")] },
+      cities: { data: { name: "Berlin" } },
+      // A2 belongs to BOTH C1 and C2.
+      cast_members: { data: [{ cast_id: "C1" }, { cast_id: "C2" }] },
+      // Both C1 and C2 are eligible for this date -> intersection is {C1,C2}.
+      show_date_cast_eligibility: {
+        data: [{ cast_id: "C1" }, { cast_id: "C2" }],
+      },
+      cast_production_fees: [
+        { when: { cast_id: "C1" }, data: { fee_amount: 250 } },
+        { when: { cast_id: "C2" }, data: { fee_amount: 300 } },
+      ],
+      hire_orders: [
+        { when: { __write: false }, data: [] },
+        { when: { __write: true }, data: { id: "ho-2" } },
+      ],
+      app_settings: [
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS_FEE_100] },
+        { when: { key: "hire_order_numbering" }, data: [NUMBERING] },
+      ],
+    },
+  });
+
+  const res = await handle(
+    makeRequest({
+      headers: JWT,
+      body: { action: "draft", org_id: ORG, show_date_id: SD },
+    }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+
+  const insert = calls.find((c) =>
+    c.table === "hire_orders" && c.method === "insert"
+  );
+  assert(insert, "expected a hire_orders insert");
+  const row = insert!.args[0] as {
+    data: Record<string, { value: unknown; source: string }>;
+    fee_amount: number | null;
+  };
+  assertEquals(row.fee_amount, 100); // org default, cast resolution was ambiguous
+  assertEquals(row.data.fee.value, 100);
+  assertEquals(row.data.fee.source, "default");
+});
+
+Deno.test("draft: a booking's own fee beats the sole cast's production fee", async () => {
+  const { deps, calls } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    tables: {
+      org_memberships: { data: { role: "admin" } },
+      show_dates: { data: SHOW_DATE_ROW },
+      // Booking carries its own fee of 400.
+      bookings: { data: [booking("b-A1", "a-A1", 400, "Ann", "ann@x.de")] },
+      cities: { data: { name: "Berlin" } },
+      cast_members: { data: [{ cast_id: "C1" }] },
+      show_date_cast_eligibility: { data: [{ cast_id: "C1" }] },
+      cast_production_fees: [
+        { when: { cast_id: "C1" }, data: { fee_amount: 250 } },
+      ],
+      hire_orders: [
+        { when: { __write: false }, data: [] },
+        { when: { __write: true }, data: { id: "ho-3" } },
+      ],
+      app_settings: [
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS_FEE_100] },
+        { when: { key: "hire_order_numbering" }, data: [NUMBERING] },
+      ],
+    },
+  });
+
+  const res = await handle(
+    makeRequest({
+      headers: JWT,
+      body: { action: "draft", org_id: ORG, show_date_id: SD },
+    }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+
+  const insert = calls.find((c) =>
+    c.table === "hire_orders" && c.method === "insert"
+  );
+  assert(insert, "expected a hire_orders insert");
+  const row = insert!.args[0] as {
+    data: Record<string, { value: unknown; source: string }>;
+    fee_amount: number | null;
+  };
+  assertEquals(row.fee_amount, 400); // booking fee beats the 250 cast fee
+  assertEquals(row.data.fee.value, 400);
+  assertEquals(row.data.fee.source, "showflow");
+});
+
 // ── draft-manual ─────────────────────────────────────────────────────────
 
 Deno.test("draft-manual with only manual fields creates an unlinked draft where every field is source manual", async () => {
