@@ -2,7 +2,7 @@
 -- rows into show_dates keyed on the partial-unique (org_id, show_id, date) WHERE source='sheet'.
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT plan(14);
+SELECT plan(17);
 
 -- Seed with RLS bypassed.
 SET session_replication_role = replica;
@@ -85,6 +85,27 @@ SELECT is(
   (SELECT count(*)::int FROM public.show_dates
     WHERE show_id = '00000000-0000-0000-0000-0000000000c1' AND date = '2026-09-01'),
   1, 'still exactly one row (no duplicate)'
+);
+
+-- 3a. A re-import with a blank/unresolved city (city_id null) must NOT wipe a
+-- previously resolved city, while a session change on that same re-import DOES apply.
+SELECT is(
+  (public.import_sheet_dates(
+     '00000000-0000-0000-0000-0000000000f1',
+     '[{"show_id":"00000000-0000-0000-0000-0000000000c1","date":"2026-09-01","session_1":"20:30"}]'::jsonb
+   ) ->> 'updated_count')::int,
+  1, 're-import with a null city updates the existing sheet row'
+);
+SELECT is(
+  (SELECT city_id FROM public.show_dates
+    WHERE show_id = '00000000-0000-0000-0000-0000000000c1' AND date = '2026-09-01' AND source = 'sheet'),
+  '00000000-0000-0000-0000-0000000000d1'::uuid,
+  'the previously resolved city_id survives a re-import with a null city'
+);
+SELECT is(
+  (SELECT session_1 FROM public.show_dates
+    WHERE show_id = '00000000-0000-0000-0000-0000000000c1' AND date = '2026-09-01' AND source = 'sheet'),
+  '20:30', 'a session change on the same re-import still applies'
 );
 
 -- 3b. Within-batch duplicate keys: two rows in a single call resolving to the same

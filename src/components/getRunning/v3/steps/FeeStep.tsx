@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { resolveOrgSetting } from "@/data/settings";
 import { useCan } from "@/hooks/useCapabilities";
 import { useShows } from "@/hooks/useShows";
 import { fetchCasts } from "@/data/casts";
@@ -12,8 +13,8 @@ import {
   useUpsertCastProductionFee,
   useDeleteCastProductionFee,
 } from "@/hooks/useCastProductionFees";
-import { type FeeBasis } from "@/lib/hireOrders/feeBasis";
-import { OrderDefaultsCard } from "@/components/settings/hireOrders/OrderDefaultsCard";
+import { OrderDefaultsCard, type HireOrderDefaults } from "@/components/settings/hireOrders/OrderDefaultsCard";
+import { ORDER_DEFAULTS_DEFAULT } from "@/components/settings/hireOrders/defaults";
 import { WizardFooterContext } from "@/components/getRunning/v3/WizardFooterContext";
 import { IconTooltip } from "@/components/common/IconTooltip";
 import { Eyebrow } from "@/components/ui/eyebrow";
@@ -23,18 +24,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-/** Kept in sync with OrderDefaultsCard's own CURRENCIES list. */
-const CURRENCIES = ["EUR", "USD", "CHF"];
-
 interface FeeDraft {
   castId: string;
   showId: string;
   feeAmount: number | null;
-  currency: string;
-  feeBasis: FeeBasis;
 }
 
-const EMPTY_DRAFT: FeeDraft = { castId: "", showId: "", feeAmount: null, currency: "EUR", feeBasis: "per_date" };
+const EMPTY_DRAFT: FeeDraft = { castId: "", showId: "", feeAmount: null };
 
 /**
  * The v3 `fee` step body: the org's default fee/currency/basis (`OrderDefaultsCard`,
@@ -65,10 +61,22 @@ export function FeeStep({ orgId, onDone }: { orgId: string | null; onDone: () =>
   const feesQuery = useCastProductionFees(orgId);
   const upsertFee = useUpsertCastProductionFee();
   const deleteFee = useDeleteCastProductionFee();
+  // The per-(cast x production) override is amount only: currency and fee basis are
+  // always inherited from the org default (see resolveCastProductionFee's doc + all 3
+  // generate-hire-orders call sites, which use defaults.currency/basis and only the
+  // cast fee AMOUNT). Read the same org default the settings card reads, so the row
+  // display and the stored currency/basis stay consistent with what generation uses.
+  const orderDefaultsQuery = useQuery({
+    queryKey: ["app-settings", "hire_order_defaults", orgId],
+    queryFn: () => resolveOrgSetting<HireOrderDefaults>(supabase, orgId, "hire_order_defaults", ORDER_DEFAULTS_DEFAULT),
+    enabled: !!orgId,
+  });
 
   const casts = useMemo(() => castsQuery.data ?? [], [castsQuery.data]);
   const shows = useMemo(() => showsQuery.data ?? [], [showsQuery.data]);
   const fees = useMemo(() => feesQuery.data ?? [], [feesQuery.data]);
+  const orgCurrency = orderDefaultsQuery.data?.currency ?? ORDER_DEFAULTS_DEFAULT.currency;
+  const orgFeeBasis = orderDefaultsQuery.data?.default_fee_basis ?? ORDER_DEFAULTS_DEFAULT.default_fee_basis;
 
   const castNameById = useMemo(() => new Map(casts.map((c) => [c.id, c.name])), [casts]);
   const showNameById = useMemo(
@@ -88,8 +96,8 @@ export function FeeStep({ orgId, onDone }: { orgId: string | null; onDone: () =>
         castId: draft.castId,
         showId: draft.showId,
         feeAmount: draft.feeAmount,
-        currency: draft.currency,
-        feeBasis: draft.feeBasis,
+        currency: orgCurrency,
+        feeBasis: orgFeeBasis,
       },
       { onSuccess: () => setDraft(null) },
     );
@@ -133,7 +141,7 @@ export function FeeStep({ orgId, onDone }: { orgId: string | null; onDone: () =>
                   </span>
                   <div className="flex items-center gap-2">
                     <Metric size="body">
-                      {fee.fee_amount ?? t("body.fee.noFee")} {fee.currency}
+                      {fee.fee_amount ?? t("body.fee.noFee")} {orgCurrency}
                     </Metric>
                     {canEdit && orgId && (
                       <IconTooltip label={t("body.fee.removeFee")}>
@@ -182,26 +190,23 @@ export function FeeStep({ orgId, onDone }: { orgId: string | null; onDone: () =>
                 </div>
                 <div className="space-y-1">
                   <label className="text-xs text-muted-foreground">{t("body.fee.feeLabel")}</label>
-                  <Input
-                    type="number"
-                    min={0}
-                    step="0.01"
-                    aria-label={t("body.fee.feeLabel")}
-                    value={draft.feeAmount ?? ""}
-                    onChange={(e) =>
-                      setDraft((d) => (d ? { ...d, feeAmount: e.target.value === "" ? null : Number(e.target.value) } : d))
-                    }
-                  />
+                  <div className="flex items-center gap-1.5">
+                    <Input
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      aria-label={t("body.fee.feeLabel")}
+                      value={draft.feeAmount ?? ""}
+                      onChange={(e) =>
+                        setDraft((d) => (d ? { ...d, feeAmount: e.target.value === "" ? null : Number(e.target.value) } : d))
+                      }
+                    />
+                    {/* Currency is inherited from the org default, not editable per row
+                        (the contract only ever uses the org default currency/basis). */}
+                    <span className="text-xs text-muted-foreground">{orgCurrency}</span>
+                  </div>
                 </div>
                 <div className="flex items-end gap-2">
-                  <Select value={draft.currency} onValueChange={(v) => setDraft((d) => (d ? { ...d, currency: v } : d))}>
-                    <SelectTrigger className="w-20"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {CURRENCIES.map((c) => (
-                        <SelectItem key={c} value={c}>{c}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
                   <Button
                     type="button"
                     size="sm"

@@ -60,6 +60,7 @@ function seedSheetImport(overrides: Partial<SheetImportMock> = {}) {
     runImport: vi.fn(),
     importing: false,
     result: null,
+    importError: null,
   };
   const value = { ...base, ...overrides };
   vi.mocked(useSheetImport).mockReturnValue(value);

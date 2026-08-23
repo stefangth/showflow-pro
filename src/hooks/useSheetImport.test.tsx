@@ -1,10 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { waitFor, act } from "@testing-library/react";
+import { toast } from "sonner";
 import { renderHookWithProviders } from "@/test/renderWithProviders";
 import { createFakeSupabase, type TableSeed } from "@/test/supabaseFake";
 
 const { client } = vi.hoisted(() => ({ client: {} as Record<string, unknown> }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: client }));
+
+vi.mock("sonner", () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
 
 function seed(s: Record<string, TableSeed>) {
   for (const k of Object.keys(client)) delete client[k];
@@ -65,6 +68,28 @@ describe("useSheetImport", () => {
     expect(invalidatedKeys).toContainEqual(["sheet-import", ORG_ID]);
     expect(invalidatedKeys).toContainEqual(["show-dates"]);
     expect(invalidatedKeys).toContainEqual(["bookings"]);
+  });
+
+  it("runImport surfaces a rejected import via toast.error and importError", async () => {
+    seed({
+      app_settings: { data: [], error: null },
+      "fn:import-sheet-dates": { data: null, error: { message: "boom" } },
+    });
+
+    const { result } = renderHookWithProviders(() => useSheetImport(ORG_ID));
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.importError).toBeNull();
+
+    await act(async () => {
+      result.current.runImport([
+        { program: "ShowA", subProgram: "", date: "2026-01-01", city: "Berlin", session_1: "19:00", session_2: null, session_3: null, venue: null, rowIndex: 1 },
+      ]);
+    });
+
+    await waitFor(() => expect(result.current.importing).toBe(false));
+    expect(result.current.importError).toBeTruthy();
+    expect(toast.error).toHaveBeenCalledTimes(1);
+    expect(result.current.result).toBeNull();
   });
 
   it("loadSheet fetches + parses the sheet and caches it under parsed", async () => {

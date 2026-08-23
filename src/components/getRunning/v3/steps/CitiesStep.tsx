@@ -59,7 +59,12 @@ export function CitiesStep({ orgId, onDone }: { orgId: string | null; onDone: ()
   const { source } = useDatesSource(orgId);
   const airtable = useAirtableConsole(orgId, { readOnly: !canEdit, canTriggerSync: false });
   const sheetImport = useSheetImport(orgId);
-  const [importError, setImportError] = useState(false);
+  // Two distinct failure points: loadSheet/mapSheetRows can throw locally (bad URL,
+  // unreadable sheet) before an import ever runs, and runImport itself (the
+  // import-sheet-dates edge fn) can reject after firing. Both need to surface, so
+  // "nothing imported yet" is never confused with "the import failed".
+  const [loadError, setLoadError] = useState(false);
+  const mutationFailed = !!sheetImport.importError;
 
   const isSheet = source === "sheet";
   const loaded = airtable.ready;
@@ -82,13 +87,13 @@ export function CitiesStep({ orgId, onDone }: { orgId: string | null; onDone: ()
 
   const handleImport = async () => {
     if (!sheetImportCanRun || !isSheetMapComplete(sheetMap)) return;
-    setImportError(false);
+    setLoadError(false);
     try {
       const parsed = sheetImport.parsed ?? (await sheetImport.loadSheet(sheetImport.settings.url));
       const rows = mapSheetRows(parsed, sheetMap);
       sheetImport.runImport(rows);
     } catch {
-      setImportError(true);
+      setLoadError(true);
     }
   };
 
@@ -111,7 +116,8 @@ export function CitiesStep({ orgId, onDone }: { orgId: string | null; onDone: ()
                 : t("body.cities.sheet.importButton")}
           </Button>
 
-          {importError && <p className="text-xs text-destructive">{t("body.connect.sheet.loadError")}</p>}
+          {loadError && <p className="text-xs text-destructive">{t("body.connect.sheet.loadError")}</p>}
+          {mutationFailed && <p className="text-xs text-destructive">{t("body.cities.sheet.importError")}</p>}
 
           {sheetResult ? (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -124,9 +130,9 @@ export function CitiesStep({ orgId, onDone }: { orgId: string | null; onDone: ()
                 tone={sheetResult.held > 0 ? "waiting" : "neutral"}
               />
             </div>
-          ) : (
+          ) : !mutationFailed ? (
             <p className="text-sm text-muted-foreground">{t("body.cities.sheet.notYet")}</p>
-          )}
+          ) : null}
 
           {sheetResult && sheetResult.held > 0 && (
             <div className="space-y-1 rounded-l border border-border bg-well-tint px-3.5 py-3">

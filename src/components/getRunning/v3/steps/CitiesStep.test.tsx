@@ -108,6 +108,7 @@ function seedSheetImport(overrides: Partial<SheetImportMock> = {}) {
     runImport: vi.fn(),
     importing: false,
     result: null,
+    importError: null,
   };
   const value = { ...base, ...overrides };
   vi.mocked(useSheetImport).mockReturnValue(value);
@@ -285,6 +286,18 @@ describe("CitiesStep", () => {
       expect(await screen.findByText(/held rows need a city, date, or production/i)).toBeInTheDocument();
       const link = screen.getByRole("link", { name: /settings/i });
       expect(link.getAttribute("href")).toMatch(/\/settings/);
+    });
+
+    it("shows an error note (and no notYet placeholder) when runImport's mutation has failed", async () => {
+      seedSheetImport({
+        settings: { url: "https://docs.google.com/spreadsheets/d/x", map: { program: "Program", date: "Date" } },
+        importError: new Error("boom"),
+      });
+      renderStep();
+
+      expect(await screen.findByText(/import failed/i)).toBeInTheDocument();
+      expect(screen.queryByText(/nothing imported yet/i)).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /continue/i })).toBeDisabled();
     });
 
     it("is read only (Import button disabled) for a viewer without configure_airtable", async () => {

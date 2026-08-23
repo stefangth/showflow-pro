@@ -386,6 +386,7 @@
         "importAgain": "Erneut importieren",
         "importing": "Import läuft",
         "notYet": "Noch nichts importiert. Starte den Import, um deine Termine zu holen.",
+        "importError": "Der Import ist fehlgeschlagen. Prüfe den Tabellenlink und deinen Zugriff und versuche es erneut.",
         "resultProcessed": "Verarbeitet",
         "resultNew": "Neue Termine",
         "resultUpdated": "Aktualisiert",
