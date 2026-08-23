@@ -79,6 +79,23 @@ describe("StepBodyV3", () => {
     }
   });
 
+  it("routes skills/fee/document to their real bodies, not StepComingSoon", () => {
+    // Task 6 (Phase 3): these three used to fall through to StepComingSoon via the
+    // explicit case block; now each has a real in-panel editor (SkillsStep/FeeStep/
+    // DocumentStep) reusing a Settings card, keyed to a heading unique to that body.
+    const cases: [GetRunningStep["key"], RegExp][] = [
+      ["skills", /skills for your parts/i],
+      ["fee", /your default fee/i],
+      ["document", /your contract document/i],
+    ];
+    for (const [key, heading] of cases) {
+      const { unmount } = renderStep(mk(key, false));
+      expect(screen.getByText(heading)).toBeInTheDocument();
+      expect(screen.queryByText(/more on the way/i)).not.toBeInTheDocument();
+      unmount();
+    }
+  });
+
   it("renders the real team body for the team step", () => {
     renderStep(mk("team", false));
     // TeamPanelBody owns this label + button; a stable element it (not a placeholder) renders.

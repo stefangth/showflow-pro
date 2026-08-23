@@ -13,6 +13,9 @@ import { ConnectStep } from "@/components/getRunning/v3/steps/ConnectStep";
 import { MapStep } from "@/components/getRunning/v3/steps/MapStep";
 import { CitiesStep } from "@/components/getRunning/v3/steps/CitiesStep";
 import { ProductionsStep } from "@/components/getRunning/v3/steps/ProductionsStep";
+import { SkillsStep } from "@/components/getRunning/v3/steps/SkillsStep";
+import { FeeStep } from "@/components/getRunning/v3/steps/FeeStep";
+import { DocumentStep } from "@/components/getRunning/v3/steps/DocumentStep";
 import { StepComingSoon } from "./StepComingSoon";
 import type { GetRunningStep, GetRunningStepKey } from "@/lib/getRunning/steps";
 
@@ -37,10 +40,12 @@ const BOOKING_DOMAIN_STEP_KEYS: ReadonlySet<GetRunningStepKey> = new Set(["artis
  *
  * The five "Get dates in" steps (`source`/`connect`/`map`/`cities`/`productions`) have
  * real bodies too (Wireflow v3 Phase 2, Tasks 6-9/11), each owning its own data via the
- * `orgId`/`onDone` props passed straight through. Every remaining `step.placeholder`
- * step (`skills`/`fee`/`document` — see `src/lib/getRunning/steps.ts`'s header comment
- * on Phase-1 being an honest approximation) has no real in-panel editor yet and renders
- * `StepComingSoon` instead, which deep-links out to the step's real home.
+ * `orgId`/`onDone` props passed straight through. As of Phase 3 (Task 6) all 16 steps
+ * have a real in-panel editor: `skills` reuses the Settings `SkillsTab`, `fee` reuses
+ * `OrderDefaultsCard`, and `document` reuses `NumberingCard`. The `step.placeholder`
+ * early-return and `StepComingSoon` below are now dead for every currently-modeled step,
+ * but stay in place as the generic safety net for any future step added with
+ * `placeholder: true` before its body is built (see `src/lib/getRunning/steps.ts`).
  *
  * Data hooks are called unconditionally at the top (same convention as
  * `TaskPanelEditor`/`BookingSetupRail`/`SetupRail`): only one editor renders per mount,
@@ -100,9 +105,11 @@ export function StepBodyV3({
     // the exhaustiveness check below to hold: TypeScript narrows `step.key` across the
     // whole switch, not just the cases after the `if`.
     case "skills":
+      return <SkillsStep orgId={orgId} onDone={onDone} />;
     case "fee":
+      return <FeeStep orgId={orgId} onDone={onDone} />;
     case "document":
-      return <StepComingSoon step={step} />;
+      return <DocumentStep orgId={orgId} onDone={onDone} />;
     default: {
       const exhaustive: never = step.key;
       throw new Error(`No step body registered for ${exhaustive}`);
