@@ -107,11 +107,19 @@ describe("ConnectStep", () => {
     expect(await screen.findByLabelText(/sheet url/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /continue/i })).toBeDisabled();
 
+    // fireEvent wraps the change in `act()`, so the resulting re-render (and the
+    // Continue button's disabled state) is already flushed by the time this call
+    // returns — no need to poll for it. A name-scoped `getByRole` inside a `waitFor`
+    // retry loop is the project's documented RTL flake anti-pattern (see the
+    // SourceStep/MapStep/CitiesStep suites): each poll recomputes the accessible name,
+    // which is slow enough to burn the whole retry budget. Poll a cheap, name-free
+    // signal first if the assertion is ever not already-settled, then do the single
+    // name-scoped query synchronously outside any loop.
     fireEvent.change(screen.getByLabelText(/sheet url/i), {
       target: { value: "https://docs.google.com/spreadsheets/d/x/pub?output=csv&format=csv" },
     });
 
-    await waitFor(() => expect(screen.getByRole("button", { name: /continue/i })).toBeEnabled());
+    expect(screen.getByRole("button", { name: /continue/i })).toBeEnabled();
   });
 
   it("preselects the org's already-saved sheet URL", async () => {
