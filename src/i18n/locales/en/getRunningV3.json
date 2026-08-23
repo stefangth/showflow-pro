@@ -316,6 +316,14 @@
       "manual": { "title": "By hand", "desc": "Add productions and dates yourself." },
       "continue": "Continue",
       "readOnly": "Ask an admin to choose a source."
+    },
+    "connect": {
+      "heading": "Connect Airtable",
+      "sub": "Paste your token, then pick the base and table with your dates.",
+      "manual": "By hand needs no connection. Continue to add productions.",
+      "saveToken": "Save token",
+      "connected": "Connected to {{baseName}} › {{tableName}}.",
+      "continue": "Continue"
     }
   }
 }

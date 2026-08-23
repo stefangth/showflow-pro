@@ -316,6 +316,14 @@
       "manual": { "title": "Von Hand", "desc": "Produktionen und Termine selbst anlegen." },
       "continue": "Weiter",
       "readOnly": "Bitte einen Admin, eine Quelle zu wählen."
+    },
+    "connect": {
+      "heading": "Airtable verbinden",
+      "sub": "Füge deinen Token ein, dann wähle die Base und Tabelle mit deinen Terminen.",
+      "manual": "Von Hand braucht keine Verbindung. Weiter, um Produktionen hinzuzufügen.",
+      "saveToken": "Token speichern",
+      "connected": "Verbunden mit {{baseName}} › {{tableName}}.",
+      "continue": "Weiter"
     }
   }
 }
