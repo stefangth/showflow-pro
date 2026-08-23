@@ -212,7 +212,8 @@ export function GetRunningBoardV3({ context }: { context: "page" | "settings" })
   // on; the same "who does this wait on" signal PhaseRow/WizardShell already read per
   // step, just rolled up to a single board-level line.
   const waitsOnAdmin =
-    role === "producer" && model.phases.some((phase) => phase.steps.some((step) => !step.done && !step.actionableByViewer));
+    role === "producer" &&
+    model.phases.some((phase) => visibleSteps(phase.steps).some((step) => !step.done && !step.actionableByViewer));
   const adminName = adminDisplayName(adminNames, t("footerRole.fallbackAdmin"));
 
   return (
