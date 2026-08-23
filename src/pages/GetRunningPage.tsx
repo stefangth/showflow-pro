@@ -4,6 +4,7 @@ import { Link, Navigate } from "react-router-dom";
 import { Users } from "lucide-react";
 import { useAuth } from "@/features/auth/AuthContext";
 import { useGetRunning } from "@/hooks/useGetRunning";
+import { useGetRunningV3Enabled } from "@/hooks/useGetRunningV3Enabled";
 import { useOrgAdminNames } from "@/hooks/useOrgAdminNames";
 import { GetRunningHeader } from "@/components/getRunning/GetRunningHeader";
 import { PhaseCard } from "@/components/getRunning/PhaseCard";
@@ -12,7 +13,6 @@ import { TaskPanel } from "@/components/getRunning/TaskPanel";
 import { GetRunningBoardV3 } from "@/components/getRunning/v3/GetRunningBoardV3";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ROUTES } from "@/config/app.config";
-import { GETRUNNING_V3 } from "@/config/flags";
 import { producerRoleNote, roleExplainerLinkLabel, ROLE_EXPLAINER_LINK_ROUTE } from "@/lib/dashboard/moduleOnboarding";
 import type { GetRunningModel, GetRunningTask, GetRunningTaskKey } from "@/lib/getRunning/tasks";
 
@@ -68,6 +68,11 @@ export default function GetRunningPage() {
   // header's "wait on {admin}" headline), so the fetch is skipped entirely for an admin
   // viewer, who never renders either.
   const { data: adminNames } = useOrgAdminNames(currentOrg?.id, { enabled: role === "producer" });
+  // Runtime "is v3 live for this org" flag (per-org app_settings override, super-admin
+  // toggled in Settings; falls back to the GETRUNNING_V3 build default). Called
+  // unconditionally alongside the other top-level hooks, above every early return below,
+  // so hook order stays stable regardless of which branch this render takes.
+  const { enabled: v3Enabled } = useGetRunningV3Enabled();
 
   // Runs once per mount, not on every model refetch: without the ref guard, a viewer who
   // deliberately closed the panel (selectedTask -> null) would have it reopened on the
@@ -95,9 +100,10 @@ export default function GetRunningPage() {
     return <Navigate to={ROUTES.AVAILABILITY} replace />;
   }
 
-  // Wireflow v3 board, gated behind GETRUNNING_V3 (default off — see src/config/flags.ts).
-  // Everything below this point is the v1 board, unchanged, for when the flag is off.
-  if (GETRUNNING_V3) {
+  // Wireflow v3 board when the org has it enabled (per-org app_settings override,
+  // super-admin-toggled in Settings; falls back to the GETRUNNING_V3 build default).
+  // Everything below is the v1 board, unchanged, for orgs still on v1.
+  if (v3Enabled) {
     return <GetRunningBoardV3 context="page" />;
   }
 
