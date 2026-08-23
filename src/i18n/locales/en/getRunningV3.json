@@ -343,6 +343,11 @@
       "incomplete": "Link or create every city to continue.",
       "empty": "No cities to resolve yet. Cities are added and managed in Settings.",
       "manageLink": "Go to Settings"
+    },
+    "parts": {
+      "title": "Casting breakdown for {{name}}",
+      "save": "Save",
+      "savedToast": "Casting breakdown saved"
     }
   }
 }
