@@ -52,3 +52,20 @@ export function stepFeatureLink(key: GetRunningStepKey): string {
   const feature = STEP_FEATURE[key];
   return feature.tab ? `${feature.route}?tab=${feature.tab}` : feature.route;
 }
+
+const STEP_KEYS = Object.keys(STEP_FEATURE) as GetRunningStepKey[];
+
+/** Every step whose home is this route (+ optional settings tab), in board order.
+ *  STEP_FEATURE is forward-only and non-injective (e.g. /dates owns 4 steps), so a
+ *  page resolves its "finish setup" target by picking the first not-done step here. */
+export function stepsForRoute(route: string, tab?: SettingsTabParam): GetRunningStepKey[] {
+  return STEP_KEYS.filter((k) => {
+    const f = STEP_FEATURE[k];
+    return f.route === route && (tab === undefined || f.tab === tab);
+  });
+}
+
+/** The paperwork phase's steps. Exported because /contracts (ROUTES.HIRE_ORDERS)
+ *  is not the STEP_FEATURE home of any step — the setup steps live at
+ *  /settings?tab=hire-orders — so the contracts page targets the phase directly. */
+export const PAPERWORK_STEP_KEYS: GetRunningStepKey[] = ["letterhead", "fee", "terms", "document", "countersign"];
