@@ -421,6 +421,7 @@
       "listTitle": "Fees per production and cast",
       "listHint": "Set a fee for one cast and one production when it should differ from your default above.",
       "noCasts": "You have no casts yet. Set them up in Casts and the ladder, then set fees per production and cast here.",
+      "noFee": "n/a",
       "coverageLink": "Casts and the ladder",
       "addFee": "Add a fee",
       "castLabel": "Cast",

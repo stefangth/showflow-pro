@@ -421,6 +421,7 @@
       "listTitle": "Gagen pro Produktion und Cast",
       "listHint": "Setze eine Gage für einen Cast und eine Produktion, wenn sie von deiner Standardgage oben abweichen soll.",
       "noCasts": "Du hast noch keine Casts. Richte sie unter Casts und Rangfolge ein und setze dann hier Gagen pro Produktion und Cast.",
+      "noFee": "n/a",
       "coverageLink": "Casts und Rangfolge",
       "addFee": "Gage hinzufügen",
       "castLabel": "Cast",

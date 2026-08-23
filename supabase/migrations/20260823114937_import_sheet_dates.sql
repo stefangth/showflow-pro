@@ -38,6 +38,10 @@ BEGIN
   END IF;
 
   WITH incoming AS (
+    -- Only rows whose show belongs to p_org survive: this is the sole guard against a
+    -- caller passing a foreign show_id under their own (legitimately authorized) p_org.
+    -- org_id on the inserted row is still derived from show_id by trg_derive_org_id, but
+    -- constraining the candidate set here prevents a cross-org write via that trigger.
     SELECT
       (r ->> 'show_id')::uuid   AS show_id,
       (r ->> 'date')::date      AS date,
@@ -47,6 +51,8 @@ BEGIN
       NULLIF(r ->> 'session_3','')::time AS session_3,
       NULLIF(r ->> 'venue','')     AS venue
     FROM jsonb_array_elements(p_rows) AS r
+    JOIN public.shows ON shows.id = (r ->> 'show_id')::uuid
+    WHERE shows.org_id = p_org
   ),
   upserted AS (
     INSERT INTO public.show_dates
