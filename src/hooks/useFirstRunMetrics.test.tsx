@@ -66,7 +66,7 @@ describe("useFirstRunMetrics", () => {
     // Empty coverage inputs -> resolveCoverage reports no uncovered pairs, so
     // coveredShowCity is trivially true for every (show, city).
     queryClient.setQueryData(["eligibility", "ladder-coverage", ORG_ID, today], {
-      futurePairs: [], showPriorities: [], cityPriorities: [],
+      futurePairs: [], showPriorities: [], cityPriorities: [], nonEmptyCastIds: [],
     });
     queryClient.setQueryData(["hire-orders", "list", ORG_ID, { status: ["draft"] }], [
       { id: "ho1", status: "draft" },
@@ -125,7 +125,7 @@ describe("useFirstRunMetrics", () => {
     queryClient.setQueryData(["bookings", "confirmed-dashboard", ORG_ID], []);
     queryClient.setQueryData(["offer-tiers", "opened-tier1", ORG_ID], []);
     queryClient.setQueryData(["eligibility", "ladder-coverage", ORG_ID, today], {
-      futurePairs: [{ showId: "show-1", cityId: null }], showPriorities: [], cityPriorities: [],
+      futurePairs: [{ showId: "show-1", cityId: null }], showPriorities: [], cityPriorities: [], nonEmptyCastIds: [],
     });
     queryClient.setQueryData(["hire-orders", "list", ORG_ID, { status: ["draft"] }], []);
     queryClient.setQueryData(["bookings", "nav-pending-confirmations", ORG_ID], 0);

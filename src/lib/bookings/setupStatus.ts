@@ -50,6 +50,9 @@ export interface LadderCoverageInputs {
   showPriorities: { showId: string; cityId: string; castId: string; priority: number }[];
   /** cast_city_priority rows for the org. */
   cityPriorities: { cityId: string; castId: string; priority: number }[];
+  /** Ids of casts with at least one member. A cast with no members cannot be asked,
+   *  so ranking it first leaves the pair uncovered however the ladder reads. */
+  nonEmptyCastIds: string[];
 }
 
 export interface CoverageResult {
@@ -160,6 +163,7 @@ export function resolveCoverage(inputs: LadderCoverageInputs): CoverageResult {
   const uncoveredPairs: { showId: string; cityId: string }[] = [];
   let hasNullCity = false;
   const seen = new Set<string>();
+  const staffed = new Set(inputs.nonEmptyCastIds);
   for (const p of inputs.futurePairs) {
     if (p.cityId === null) { hasNullCity = true; continue; }
     const key = `${p.showId}|${p.cityId}`;
@@ -167,7 +171,7 @@ export function resolveCoverage(inputs: LadderCoverageInputs): CoverageResult {
     seen.add(key);
     const scoped = inputs.showPriorities.filter((r) => r.showId === p.showId && r.cityId === p.cityId);
     const ladder = scoped.length > 0 ? scoped : inputs.cityPriorities.filter((r) => r.cityId === p.cityId);
-    if (!ladder.some((r) => r.priority === 1)) uncoveredPairs.push({ showId: p.showId, cityId: p.cityId });
+    if (!ladder.some((r) => r.priority === 1 && staffed.has(r.castId))) uncoveredPairs.push({ showId: p.showId, cityId: p.cityId });
   }
   return { uncoveredPairs, hasNullCity };
 }
