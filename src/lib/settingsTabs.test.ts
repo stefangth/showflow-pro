@@ -77,6 +77,21 @@ describe("resolveInitialTab", () => {
     expect(SETTINGS_TAB_PARAMS).toContain("get-running");
     expect(resolveInitialTab("get-running", true, false, false)).toBe("get-running");
   });
+
+  it("falls back for an admin/producer whose org has the v3 runtime flag off, since SettingsPage renders no get-running trigger/content for them", () => {
+    // Matches SettingsPage's `showGetRunning = isSuperAdmin || ((isAdmin || isProducer) &&
+    // v3Enabled)` gate: without this, a bookmarked ?tab=get-running would resolve to a tab
+    // with no trigger and no content, and Radix would render a blank pane.
+    expect(resolveInitialTab("get-running", true, false, false, false)).toBe("how-it-works");
+  });
+
+  it("honours the get-running deep link for an admin/producer when the v3 runtime flag is on", () => {
+    expect(resolveInitialTab("get-running", true, false, false, true)).toBe("get-running");
+  });
+
+  it("always honours the get-running deep link for a super-admin, regardless of the v3 runtime flag", () => {
+    expect(resolveInitialTab("get-running", false, true, false, false)).toBe("get-running");
+  });
 });
 
 // Whether each value in SETTINGS_TAB_PARAMS actually names a tab SettingsPage renders is

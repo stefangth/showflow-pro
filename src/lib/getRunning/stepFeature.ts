@@ -67,5 +67,7 @@ export function stepsForRoute(route: string, tab?: SettingsTabParam): GetRunning
 
 /** The paperwork phase's steps. Exported because /contracts (ROUTES.HIRE_ORDERS)
  *  is not the STEP_FEATURE home of any step — the setup steps live at
- *  /settings?tab=hire-orders — so the contracts page targets the phase directly. */
-export const PAPERWORK_STEP_KEYS: GetRunningStepKey[] = ["letterhead", "fee", "terms", "document", "countersign"];
+ *  /settings?tab=hire-orders — so the contracts page targets the phase directly. Derived
+ *  from STEP_FEATURE via `stepsForRoute` (rather than a hand-maintained literal) so the two
+ *  can never drift apart. */
+export const PAPERWORK_STEP_KEYS: GetRunningStepKey[] = stepsForRoute(ROUTES.SETTINGS, "hire-orders");

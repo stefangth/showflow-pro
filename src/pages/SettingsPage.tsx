@@ -196,14 +196,18 @@ export default function SettingsPage() {
   const [searchParams] = useSearchParams();
   const tabParam = searchParams.get('tab');
   const navKey = useLocation().key;
-  const [activeTab, setActiveTab] = useState<string>(() => resolveInitialTab(tabParam, isAdmin, isSuperAdmin, isProducer));
+  const [activeTab, setActiveTab] = useState<string>(() => resolveInitialTab(tabParam, isAdmin, isSuperAdmin, isProducer, v3Enabled));
   useEffect(() => {
     // No param means "wherever you were": a link into plain /settings must not drag someone
     // off the tab they are working on back to the role default.
-    if (tabParam) setActiveTab(resolveInitialTab(tabParam, isAdmin, isSuperAdmin, isProducer));
+    if (tabParam) setActiveTab(resolveInitialTab(tabParam, isAdmin, isSuperAdmin, isProducer, v3Enabled));
     // `navKey` is a trigger, not an input: nothing in the callback reads it, which is
     // exactly the point, since a repeat navigation changes nothing else the callback sees.
-  }, [tabParam, isAdmin, isSuperAdmin, isProducer, navKey]);
+    // `v3Enabled` IS an input (not just a trigger like navKey): it starts at the build-flag
+    // default and resolves asynchronously (see useGetRunningV3Enabled), so a bookmarked
+    // `?tab=get-running` opened before the org's real flag value loads must re-resolve once
+    // it does, rather than being stuck on whatever the default answered first.
+  }, [tabParam, isAdmin, isSuperAdmin, isProducer, v3Enabled, navKey]);
   // Keep the Tabs ARIA orientation matched to the actual layout axis: the nav rail is
   // vertical on md+ but a horizontal scroll row below md, so arrow-key roving (Up/Down
   // vs Left/Right) follows the visual direction at each breakpoint. Breakpoint (768px)

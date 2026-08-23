@@ -99,6 +99,24 @@ describe("useGetRunningV3", () => {
     expect(result.current.model!.hireOrdersOn).toBe(false);
   });
 
+  it("returns model null and isLoading false immediately when inactive, and reads nothing", async () => {
+    const { result } = renderHookWithProviders(() => useGetRunningV3({ active: false }), {
+      authOverrides: {
+        currentOrg: TEST_ORG,
+        roles: ["admin"],
+        hasRole: (r) => r === "admin",
+      },
+    });
+
+    // No loading window: an inactive call never fetches, so it settles synchronously.
+    expect(result.current.isLoading).toBe(false);
+    expect(result.current.model).toBeNull();
+    const calls = (client.calls ?? []) as { table: string }[];
+    expect(calls.some((c) => c.table === "shows")).toBe(false);
+    expect(calls.some((c) => c.table === "app_settings")).toBe(false);
+    expect(calls.some((c) => c.table === "skills")).toBe(false);
+  });
+
   it("does not read booking/hire-order setup status for an artist (defensive gate)", async () => {
     const { result } = renderHookWithProviders(() => useGetRunningV3(), {
       authOverrides: {
