@@ -61,6 +61,9 @@ verify_jwt = true
 [functions.fetch-remote-sheet]
 verify_jwt = true
 
+[functions.import-sheet-dates]
+verify_jwt = true
+
 [functions.open-offer-tier]
 verify_jwt = true
 
