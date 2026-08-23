@@ -324,6 +324,17 @@
       "saveToken": "Save token",
       "connected": "Connected to {{baseName}} › {{tableName}}.",
       "continue": "Continue"
+    },
+    "map": {
+      "heading": "Map your fields",
+      "sub": "Match each Airtable column to the ShowFlow field it represents.",
+      "slotsFold": {
+        "title": "Casting breakdown",
+        "body": "Each imported production still needs its casting breakdown, the parts and people per part. Set it on the Productions step.",
+        "link": "Go to Productions"
+      },
+      "continue": "Continue",
+      "mapIncomplete": "Map the date and sub-program fields to continue."
     }
   }
 }

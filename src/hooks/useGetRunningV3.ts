@@ -6,6 +6,7 @@ import { useHireOrderSetupStatus } from "@/hooks/useHireOrderSetup";
 import { useSkills } from "@/hooks/useSkills";
 import { useDatesSource } from "@/hooks/useDatesSource";
 import { useAirtableConsole } from "@/hooks/useAirtableConsole";
+import { isDatesMapComplete } from "@/data/airtableMapping";
 import { composeGetRunningV3, type GetRunningInputV3, type GetRunningModelV3 } from "@/lib/getRunning/steps";
 
 /**
@@ -78,8 +79,14 @@ export function useGetRunningV3(): { model: GetRunningModelV3 | null; isLoading:
   // trivially true; composeGetRunningV3 hides those two steps for a manual source instead of
   // reading their `done`), an Airtable source reads the console's connection + mapping
   // state, and any other source (including none chosen yet) reports both outstanding.
+  // `datesMapDone` uses the shared `isDatesMapComplete` predicate (Controller Ruling C, Task
+  // 8) rather than `airtable.mapped >= airtable.mappedTotal`: that count includes every
+  // mapping slot (city, venue, three sessions, the cancellation status field), most of which
+  // are genuinely optional for a first sync, so gating on it made "map done" unreachable for
+  // a legitimate org that never maps every optional field. `MapStep`'s own Continue gate
+  // reads the same predicate, so the board and the wizard never disagree about "map done".
   const isAirtableConnected = airtable.keyPresent && airtable.hasBaseTable;
-  const isAirtableMapped = airtable.mapped >= airtable.mappedTotal;
+  const isAirtableMapped = isDatesMapComplete(airtable.fieldMap);
   const datesConnectDone = datesSource === "manual" ? true : datesSource === "airtable" ? isAirtableConnected : false;
   const datesMapDone = datesSource === "manual" ? true : datesSource === "airtable" ? isAirtableMapped : false;
   // Advisory-only: 0 while coverage is unread or the org has no upcoming dates, same as the

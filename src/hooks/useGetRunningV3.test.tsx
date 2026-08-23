@@ -116,12 +116,12 @@ describe("useGetRunningV3", () => {
 });
 
 describe("useGetRunningV3 dates signals (Phase 2)", () => {
-  // All nine slots requiredMappedCount() checks, so a fully-mapped fixture reads
-  // mapped === mappedTotal.
-  const FULLY_MAPPED_FIELD_MAP = {
-    date: "Date", program: "Program", sub_program: "Sub Program", city: "City", venue: "Venue",
-    session_1: "Session 1", session_2: "Session 2", session_3: "Session 3", status_field: "Status",
-  };
+  // datesMapDone reads isDatesMapComplete (Controller Ruling C, Task 8): only `date` and
+  // `sub_program` are required, so this fixture deliberately leaves every optional slot
+  // (city, venue, the three sessions, the cancellation status field) unmapped — proving the
+  // map step is reachable for an org that never fills those in, which the old
+  // `mapped >= mappedTotal` definition (all nine slots) made impossible.
+  const REQUIRED_MAPPED_FIELD_MAP = { date: "Date", sub_program: "Sub Program" };
 
   /** Seeds just enough for the hook's whole chain (booking setup + dates source + Airtable
    *  console) to settle without erroring. Only the dates-source / Airtable-console rows are
@@ -147,7 +147,7 @@ describe("useGetRunningV3 dates signals (Phase 2)", () => {
           { key: "getrunning_dates_source", org_id: ORG_ID, value: source },
           { key: "airtable_base_id", org_id: ORG_ID, value: "base1" },
           { key: "airtable_table_name", org_id: ORG_ID, value: "Dates" },
-          { key: "airtable_field_map", org_id: ORG_ID, value: mapped ? FULLY_MAPPED_FIELD_MAP : {} },
+          { key: "airtable_field_map", org_id: ORG_ID, value: mapped ? REQUIRED_MAPPED_FIELD_MAP : {} },
         ],
         error: null,
       },
@@ -162,7 +162,7 @@ describe("useGetRunningV3 dates signals (Phase 2)", () => {
     });
   }
 
-  it("marks connect and map done when the airtable source is connected and fully mapped", async () => {
+  it("marks connect and map done when the airtable source is connected and the required fields (date + sub_program) are mapped, even with every optional field left unmapped", async () => {
     seedDatesSignals("airtable", { connected: true, mapped: true });
 
     const { result } = renderHookWithProviders(() => useGetRunningV3(), {
