@@ -197,33 +197,20 @@ export async function resolveOrderDefaults(
  * (no memberships, no eligibility, ambiguity, no fee row, or a null fee_amount),
  * which the callers coalesce to `defaults.default_fee`.
  */
-async function resolveCastProductionFee(
+/**
+ * Step 2 of `resolveCastProductionFee`, split out so a caller looping over many
+ * bookings for the SAME show_date (draftOrders) can fetch this ONCE instead of
+ * once per booking — the eligible-cast set is constant for the date, only the
+ * artist's own memberships (step 1) vary per booking.
+ */
+async function fetchEligibleCasts(
   admin: Deps["admin"],
-  args: {
-    orgId: string;
-    showDateId: string;
-    artistId: string;
-    showId: string;
-    cityId: string | null;
-  },
-): Promise<{ amount: number | null }> {
-  const { orgId, showDateId, artistId, showId, cityId } = args;
+  args: { orgId: string; showDateId: string; showId: string; cityId: string | null },
+): Promise<Set<string>> {
+  const { orgId, showDateId, showId, cityId } = args;
 
-  // 1. The artist's cast memberships in this org.
-  const { data: memberRows } = await admin
-    .from("cast_members")
-    .select("cast_id")
-    .eq("artist_id", artistId)
-    .eq("org_id", orgId);
-  const memberships = new Set(
-    ((memberRows ?? []) as unknown as Array<{ cast_id: string }>).map((r) =>
-      r.cast_id
-    ),
-  );
-  if (memberships.size === 0) return { amount: null };
-
-  // 2. The show_date's eligible casts: per-date table first, else the
-  //    show-level (show_id, city_id) fallback when the per-date table is empty.
+  // The show_date's eligible casts: per-date table first, else the
+  // show-level (show_id, city_id) fallback when the per-date table is empty.
   const { data: perDateRows } = await admin
     .from("show_date_cast_eligibility")
     .select("cast_id")
@@ -239,7 +226,32 @@ async function resolveCastProductionFee(
       .eq("org_id", orgId);
     eligibleRows = (showRows ?? []) as unknown as Array<{ cast_id: string }>;
   }
-  const eligible = new Set(eligibleRows.map((r) => r.cast_id));
+  return new Set(eligibleRows.map((r) => r.cast_id));
+}
+
+/**
+ * Steps 1 and 3 of `resolveCastProductionFee`, given an already-resolved
+ * `eligible` set for the show_date (see `fetchEligibleCasts`). Per-booking work
+ * only: the artist's cast memberships, then the fee lookup if unambiguous.
+ */
+async function resolveCastProductionFeeWith(
+  admin: Deps["admin"],
+  args: { orgId: string; artistId: string; showId: string; eligible: Set<string> },
+): Promise<{ amount: number | null }> {
+  const { orgId, artistId, showId, eligible } = args;
+
+  // 1. The artist's cast memberships in this org.
+  const { data: memberRows } = await admin
+    .from("cast_members")
+    .select("cast_id")
+    .eq("artist_id", artistId)
+    .eq("org_id", orgId);
+  const memberships = new Set(
+    ((memberRows ?? []) as unknown as Array<{ cast_id: string }>).map((r) =>
+      r.cast_id
+    ),
+  );
+  if (memberships.size === 0) return { amount: null };
 
   // 3. Intersect; a fee applies only when the derivation is unambiguous.
   const intersection = [...memberships].filter((id) => eligible.has(id));
@@ -254,6 +266,47 @@ async function resolveCastProductionFee(
     .maybeSingle();
   const amount = (feeRow as { fee_amount?: number | null } | null)?.fee_amount;
   return { amount: amount ?? null };
+}
+
+/**
+ * Resolve the per-(cast x production) fee for a booking (Wireflow v3 phase 4).
+ *
+ * A booking has no cast_id, so the cast is DERIVED (owner-locked rule):
+ *   1. the artist's cast memberships — `cast_members` where artist_id = artistId
+ *      and org_id = orgId,
+ *   2. intersected with the show_date's ELIGIBLE casts: prefer the per-date
+ *      `show_date_cast_eligibility` for showDateId; if that table has NO rows for
+ *      the date, fall back to `show_cast_eligibility` matched on the date's
+ *      (show_id, city_id),
+ *   3. if EXACTLY ONE cast results, look up `cast_production_fees` for
+ *      (cast_id, show_id) and return its `fee_amount`; zero or many casts
+ *      (ambiguous) -> null so the org default wins.
+ *
+ * Only the fee AMOUNT is used this phase; the (cast x production) row's own
+ * currency/basis are intentionally ignored — currency/basis stay from the org
+ * default (see the three call sites). Returns `{ amount: null }` for any miss
+ * (no memberships, no eligibility, ambiguity, no fee row, or a null fee_amount),
+ * which the callers coalesce to `defaults.default_fee`.
+ *
+ * Single-booking convenience wrapper over `fetchEligibleCasts` +
+ * `resolveCastProductionFeeWith` — used by call sites that resolve exactly one
+ * booking (draftManual, draftBatchArtist). A caller resolving MANY bookings for
+ * the same show_date (draftOrders) should call `fetchEligibleCasts` once and
+ * `resolveCastProductionFeeWith` per booking instead, to avoid the N+1.
+ */
+async function resolveCastProductionFee(
+  admin: Deps["admin"],
+  args: {
+    orgId: string;
+    showDateId: string;
+    artistId: string;
+    showId: string;
+    cityId: string | null;
+  },
+): Promise<{ amount: number | null }> {
+  const { orgId, showDateId, artistId, showId, cityId } = args;
+  const eligible = await fetchEligibleCasts(admin, { orgId, showDateId, showId, cityId });
+  return resolveCastProductionFeeWith(admin, { orgId, artistId, showId, eligible });
 }
 
 const LETTERHEAD_DEFAULT: HireOrderLetterhead = {
@@ -654,6 +707,16 @@ async function draftOrders(
       (t: unknown): t is string => typeof t === "string" && t !== "",
     );
 
+  // The show_date's eligible-cast set is constant across every booking on this
+  // date, so it's fetched ONCE here rather than once per booking inside the loop
+  // (see resolveCastProductionFeeWith's doc comment — avoids an N+1 query).
+  const eligibleCasts = await fetchEligibleCasts(admin, {
+    orgId: org,
+    showDateId: body.show_date_id,
+    showId: showDate.show_id,
+    cityId: showDate.city_id,
+  });
+
   for (const b of bookings) {
     // Per-booking isolation (mirrors issueOrders): an unexpected throw on one
     // booking must not abort the batch into a CORS-less 500.
@@ -681,12 +744,11 @@ async function draftOrders(
       // unambiguously derivable, else the org default fee (both are the fallback
       // UNDER a booking fee) + currency. Currency/basis stay from the org default;
       // only the cast fee's AMOUNT is used (see resolveCastProductionFee).
-      const castFee = await resolveCastProductionFee(admin, {
+      const castFee = await resolveCastProductionFeeWith(admin, {
         orgId: org,
-        showDateId: body.show_date_id,
         artistId: b.artist_id,
         showId: showDate.show_id,
-        cityId: showDate.city_id,
+        eligible: eligibleCasts,
       });
       const defLayer: Partial<Record<OrderFieldKey, unknown>> = {
         currency: defaults.currency,

@@ -428,6 +428,7 @@
       "productionLabel": "Production",
       "feeLabel": "Fee",
       "save": "Save",
+      "removeFee": "Remove this fee",
       "continue": "Continue",
       "readOnly": "Contract settings are set by an admin. You can read them here."
     },

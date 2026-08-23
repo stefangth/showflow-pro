@@ -35,6 +35,14 @@ DROP TRIGGER IF EXISTS trg_derive_org_id ON public.cast_production_fees;
 CREATE TRIGGER trg_derive_org_id BEFORE INSERT ON public.cast_production_fees
   FOR EACH ROW EXECUTE FUNCTION public.derive_org_id_for_cast_production_fee();
 
+-- Symmetric with insert: an UPDATE (e.g. an on-conflict upsert) must re-derive org_id
+-- from show_id and re-check cast/show same-org too, not just insert. Same function:
+-- it already sets NEW.org_id and raises on a cross-org mismatch, which is correct
+-- for UPDATE as well (a same-org fee edit is a no-op re-derivation).
+DROP TRIGGER IF EXISTS trg_derive_org_id_update ON public.cast_production_fees;
+CREATE TRIGGER trg_derive_org_id_update BEFORE UPDATE ON public.cast_production_fees
+  FOR EACH ROW EXECUTE FUNCTION public.derive_org_id_for_cast_production_fee();
+
 CREATE TRIGGER update_cast_production_fees_updated_at
   BEFORE UPDATE ON public.cast_production_fees
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();

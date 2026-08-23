@@ -2,7 +2,6 @@ import { preflight, json } from "../_shared/http.ts";
 import { requireOrgRole } from "../_shared/auth.ts";
 import { requireFeature } from "../_shared/entitlements.ts";
 import { resolveBookingFlow } from "../_shared/bookingFlow.ts";
-import { checkFeature } from "../_shared/entitlements.ts";
 import { buildProgramKey, buildCityKey } from "../_shared/airtableKey.ts";
 import type { Json, TablesInsert } from "../_shared/database.types.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
@@ -138,7 +137,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     if (!showId) {
       heldOutcomes.push({
         action: "held_unresolved", show_date_id: null,
-        reason: `program '${subProgram}' not linked`, raw_fields: rawFields, row_ref: rowRef,
+        reason: `program '${subProgram ? `${program} / ${subProgram}` : program}' not linked`, raw_fields: rawFields, row_ref: rowRef,
       });
       continue;
     }
@@ -227,7 +226,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   let tiersOpened = 0;
   if (newIds.length > 0) {
     const flow = await resolveBookingFlow(admin, orgId);
-    if (flow.active && flow.auto_open_tier1 && flow.artist_acceptance && await checkFeature(admin, orgId, "booking_flow")) {
+    if (flow.active && flow.auto_open_tier1 && flow.artist_acceptance) {
       tiersOpened = await openOfferTierBatch(deps, newIds);
     }
   }
@@ -235,18 +234,19 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   // ── sync-log observability (same column set as airtable-poll, sync_type="sheet_import"). ──
   const status = heldCount > 0 ? "partial" : "success";
   const details = { new: newCount, updated: updatedCount, held: heldCount, records_seen: processed };
-  const { data: logRow } = await admin.from("airtable_sync_log").insert({
+  const { data: logRow, error: logError } = await admin.from("airtable_sync_log").insert({
     org_id: orgId,
     sync_type: "sheet_import",
     status,
     records_processed: processed,
-    imported_count: resolvedRows.length,
+    imported_count: newCount + updatedCount,
     new_count: newCount,
     updated_count: updatedCount,
     held_count: heldCount,
     details: details as Json,
     synced_at: deps.now().toISOString(),
   }).select("id").single();
+  if (logError) console.error("import-sheet-dates: sync_log insert failed", { error: logError });
   const syncLogId = (logRow as { id?: string } | null)?.id ?? null;
 
   if (syncLogId && outcomes.length) {
