@@ -57,15 +57,25 @@ export function useGetRunningV3(): { model: GetRunningModelV3 | null; isLoading:
 
   if (isLoading) return { model: null, isLoading: true };
 
+  // Phase 1 approximation (see header comment): the booking setup status's own `shows`
+  // step, not a real per-signal read yet. Task 2 replaces `datesSource`/`datesConnectDone`/
+  // `datesMapDone`/`datesCitiesDone` with the wizard's real source choice and per-step
+  // completion; until then this mirrors the old shared `datesDone` signal across all four,
+  // with a non-null placeholder source so connect/map stay visible (never hidden).
+  const datesInSignal = bookingOn ? (booking.status.steps.find((s) => s.key === "shows")?.done ?? false) : false;
+
   const input: GetRunningInputV3 = {
     role,
     bookingOn,
     hireOrdersOn,
     booking: bookingOn ? booking.status : null,
     hire: hireOrdersOn ? hire.status : null,
-    // Phase 1 approximation (see header comment): the booking setup status's own `shows`
-    // step, not a real Airtable sync signal.
-    datesDone: bookingOn ? (booking.status.steps.find((s) => s.key === "shows")?.done ?? false) : false,
+    // Deprecated Phase 1 signal, unused by composeGetRunningV3; kept until Task 2 removes it.
+    datesDone: datesInSignal,
+    datesSource: datesInSignal ? "airtable" : null,
+    datesConnectDone: datesInSignal,
+    datesMapDone: datesInSignal,
+    datesCitiesDone: datesInSignal,
     producerCount,
     // Phase 1 placeholder: non-empty skill catalog. Defaults to false while the read is
     // outstanding or the module is off, rather than blocking the whole board on it.
