@@ -84,6 +84,21 @@ function renderBoard() {
   );
 }
 
+function renderBoardAt(context: "page" | "settings", path: string) {
+  return renderWithProviders(
+    <MemoryRouter initialEntries={[path]}>
+      <GetRunningBoardV3 context={context} />
+    </MemoryRouter>,
+    {
+      authOverrides: {
+        currentOrg: TEST_ORG,
+        roles: ["admin"],
+        hasRole: (r) => r === "admin",
+      },
+    },
+  );
+}
+
 describe("GetRunningBoardV3", () => {
   it("shows the board with three phase rows and expands a phase inline on click", () => {
     // get_dates and the artists/coverage/flow/timing/team steps of bookable are all done
@@ -172,6 +187,28 @@ describe("GetRunningBoardV3", () => {
     fireEvent.click(screen.getByRole("button", { name: /see all steps/i }));
 
     expect(scrollIntoView).toHaveBeenCalledWith({ behavior: "smooth", block: "start" });
+  });
+
+  it("opens the ?step= deep link on mount for page context, winning over first-blocking", () => {
+    // Nothing is outstanding (base has every step done), so without the deep link nothing
+    // would auto-open at all. ?step=artists names a visible step in an unblocked phase
+    // (bookable's waitsOn is null once productions/slots is done), so it must win.
+    mockModel(composeGetRunningV3(base));
+
+    renderBoardAt("page", "/get-running?step=artists");
+
+    expect(screen.getByText(/add an artist/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /collapse/i })).toBeInTheDocument();
+  });
+
+  it("ignores ?step= for the settings mirror (context=\"settings\")", () => {
+    mockModel(composeGetRunningV3(base));
+
+    renderBoardAt("settings", "/settings?tab=get-running&step=artists");
+
+    expect(screen.queryByText(/add an artist/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /collapse/i })).not.toBeInTheDocument();
+    expect(screen.getByTestId("phase-row-bookable")).toBeInTheDocument();
   });
 
   it("shows the nothing-to-set-up card when neither module is on", () => {

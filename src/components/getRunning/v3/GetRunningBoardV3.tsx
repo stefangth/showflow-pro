@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useSearchParams } from "react-router-dom";
 import { Users } from "lucide-react";
 import { useAuth } from "@/features/auth/AuthContext";
 import { useOrgAdminNames } from "@/hooks/useOrgAdminNames";
@@ -107,6 +108,12 @@ export function GetRunningBoardV3({ context }: { context: "page" | "settings" })
   // entirely for an admin viewer, same gating shape as v1's GetRunningPage.
   const { data: adminNames } = useOrgAdminNames(currentOrg?.id, { enabled: role === "producer" });
 
+  // The standalone `/get-running` page supports a `?step=<key>` deep link; the Settings
+  // mirror shares the `/settings` URL with every other tab, so it must never read this
+  // param (a `?step=` meant for another tab could otherwise hijack the board).
+  const [searchParams] = useSearchParams();
+  const stepParam = context === "page" ? searchParams.get("step") : null;
+
   const [selectedPhase, setSelectedPhase] = useState<GetRunningPhaseKey | null>(null);
   const [selectedStep, setSelectedStep] = useState<GetRunningStepKey | null>(null);
   const allStepsCardRef = useRef<HTMLDivElement | null>(null);
@@ -114,17 +121,39 @@ export function GetRunningBoardV3({ context }: { context: "page" | "settings" })
   // Runs once per mount, not on every model refetch (mirrors v1's `autoOpenedRef`):
   // without the ref guard, a viewer who deliberately collapsed the wizard would have it
   // reopened on the next background refetch, since the same first-blocking step would
-  // still be found.
+  // still be found. A valid `?step=` deep link wins over the first-blocking auto-open.
+  //
+  // This inlines the same open/guard logic as `handleOpenStep` below (owner phase found +
+  // `waitsOn == null`) rather than calling it directly: `handleOpenStep` is declared further
+  // down, after this component's early `isLoading`/`nothing-to-set-up`/`complete` returns,
+  // so a render that takes one of those early-return paths would still run this effect (all
+  // hooks called before an early return still fire) with `handleOpenStep` never having been
+  // initialized in that render's closure. Reading `owner`/`target` straight from `model` and
+  // calling `setSelectedPhase`/`setSelectedStep` sidesteps that hazard entirely, and is
+  // exactly what `handleOpenStep` reduces to here anyway: `target` is only ever considered
+  // once it has already been confirmed visible on `owner`, so `handleOpenStep`'s own
+  // visibility redirect never fires for it.
   const autoOpenedRef = useRef(false);
   useEffect(() => {
     if (autoOpenedRef.current || !model) return;
+    if (stepParam) {
+      const target = stepParam as GetRunningStepKey;
+      const owner = model.phases.find((p) => visibleSteps(p.steps).some((s) => s.key === target));
+      if (owner && owner.waitsOn == null) {
+        autoOpenedRef.current = true;
+        setSelectedPhase(owner.key);
+        setSelectedStep(target);
+        return;
+      }
+    }
+    // Fall through to the existing first-blocking behaviour.
     autoOpenedRef.current = true;
     const step = firstBlockingStep(model);
     if (step) {
       setSelectedPhase(step.phase);
       setSelectedStep(step.key);
     }
-  }, [model]);
+  }, [model, stepParam]);
 
   if (isLoading || !model) {
     return (
