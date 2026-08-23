@@ -293,6 +293,17 @@
   },
   "footerRole": {
     "admin": "You are seeing this as an admin.",
-    "producer": "You are seeing this as a member of the production team."
+    "producer": "You are seeing this as a member of the production team.",
+    "waitsOnAdmin": "Waits on {{name}}",
+    "fallbackAdmin": "an admin"
+  },
+  "retired": {
+    "title": "Everything here is set up",
+    "body": "Every step is done. Come back any time to review what changed.",
+    "count": "{{done}} of {{total}} done"
+  },
+  "nothingToSetUp": {
+    "title": "Nothing to set up yet",
+    "body": "This org has no module turned on, so there is nothing here to check off."
   }
 }

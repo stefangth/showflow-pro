@@ -293,6 +293,17 @@
   },
   "footerRole": {
     "admin": "Du siehst das hier als Admin.",
-    "producer": "Du siehst das hier als Mitglied des Produktionsteams."
+    "producer": "Du siehst das hier als Mitglied des Produktionsteams.",
+    "waitsOnAdmin": "Wartet auf {{name}}",
+    "fallbackAdmin": "einen Admin"
+  },
+  "retired": {
+    "title": "Hier ist alles eingerichtet",
+    "body": "Jeder Schritt ist erledigt. Schau jederzeit wieder vorbei, um zu prüfen, was sich geändert hat.",
+    "count": "{{done}} von {{total}} erledigt"
+  },
+  "nothingToSetUp": {
+    "title": "Noch nichts einzurichten",
+    "body": "Diese Organisation hat kein Modul eingeschaltet, deshalb gibt es hier nichts abzuhaken."
   }
 }
