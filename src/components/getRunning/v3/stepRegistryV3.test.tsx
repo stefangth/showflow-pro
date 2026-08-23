@@ -52,12 +52,29 @@ describe("StepBodyV3", () => {
   });
 
   it("renders StepComingSoon for every placeholder step key", () => {
-    const placeholderKeys: GetRunningStep["key"][] = [
-      "source", "connect", "map", "cities", "productions", "fee", "document",
-    ];
+    const placeholderKeys: GetRunningStep["key"][] = ["fee", "document"];
     for (const key of placeholderKeys) {
       const { unmount } = renderStep(mk(key, true));
       expect(screen.getByText(/more on the way/i)).toBeInTheDocument();
+      unmount();
+    }
+  });
+
+  it("renders the real body for each get-dates step key, not StepComingSoon", () => {
+    // Each of these five keys ships a real in-panel editor (Wireflow v3 Phase 2, Tasks
+    // 6-9/11); assert a heading unique to that body renders, and that the deep-link
+    // fallback copy does not.
+    const cases: [GetRunningStep["key"], RegExp][] = [
+      ["source", /where do your dates come from/i],
+      ["connect", /connect airtable/i],
+      ["map", /map your fields/i],
+      ["cities", /set a city on every date/i],
+      ["productions", /your productions/i],
+    ];
+    for (const [key, heading] of cases) {
+      const { unmount } = renderStep(mk(key, false));
+      expect(screen.getByText(heading)).toBeInTheDocument();
+      expect(screen.queryByText(/more on the way/i)).not.toBeInTheDocument();
       unmount();
     }
   });
