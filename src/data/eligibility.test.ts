@@ -242,11 +242,14 @@ describe("fetchLadderCoverageInputs", () => {
       show_dates: { data: [{ show_id: "s1", city_id: "c1" }, { show_id: "s1", city_id: null }], error: null },
       show_cast_eligibility: { data: [{ show_id: "s1", city_id: "c1", cast_id: "k1", priority: 1 }], error: null },
       cast_city_priority: { data: [{ city_id: "c1", cast_id: "k2", priority: 2 }], error: null },
+      cast_members: { data: [{ cast_id: "k2" }, { cast_id: "k2" }, { cast_id: "k3" }], error: null },
     });
     const r = await fetchLadderCoverageInputs(asSupabase(client), { orgId: "org-1", today: "2026-08-07" });
     expect(r.futurePairs).toEqual([{ showId: "s1", cityId: "c1" }, { showId: "s1", cityId: null }]);
     expect(r.showPriorities).toEqual([{ showId: "s1", cityId: "c1", castId: "k1", priority: 1 }]);
     expect(r.cityPriorities).toEqual([{ cityId: "c1", castId: "k2", priority: 2 }]);
+    // cast_members has two rows for k2 (two members) and one for k3, deduped to two cast ids.
+    expect(r.nonEmptyCastIds.sort()).toEqual(["k2", "k3"]);
   });
 
   it("scopes show_cast_eligibility to prioritized rows, and show_dates to future non-cancelled dates (calls-level pin, seed data can't prove a dropped filter)", async () => {
@@ -254,6 +257,7 @@ describe("fetchLadderCoverageInputs", () => {
       show_dates: { data: [], error: null },
       show_cast_eligibility: { data: [], error: null },
       cast_city_priority: { data: [], error: null },
+      cast_members: { data: [], error: null },
     });
     await fetchLadderCoverageInputs(asSupabase(client), { orgId: "org-1", today: "2026-08-07" });
     expect(client.calls).toContainEqual({ table: "show_cast_eligibility", method: "not", args: ["priority", "is", null] });

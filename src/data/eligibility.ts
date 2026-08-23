@@ -253,12 +253,17 @@ export async function fetchLadderCoverageInputs(
     .eq("org_id", args.orgId);
   if (cityPri.error) throw cityPri.error;
 
+  const members = await client.from("cast_members").select("cast_id").eq("org_id", args.orgId);
+  if (members.error) throw members.error;
+
   const dateRows = (dates.data ?? []) as { show_id: string; city_id: string | null }[];
   const showRows = (showElig.data ?? []) as { show_id: string; city_id: string; cast_id: string; priority: number }[];
   const cityRows = (cityPri.data ?? []) as { city_id: string; cast_id: string; priority: number }[];
+  const nonEmptyCastIds = [...new Set((members.data ?? []).map((r) => r.cast_id as string))];
   return {
     futurePairs: dateRows.map((r) => ({ showId: r.show_id, cityId: r.city_id })),
     showPriorities: showRows.map((r) => ({ showId: r.show_id, cityId: r.city_id, castId: r.cast_id, priority: r.priority })),
     cityPriorities: cityRows.map((r) => ({ cityId: r.city_id, castId: r.cast_id, priority: r.priority })),
+    nonEmptyCastIds,
   };
 }

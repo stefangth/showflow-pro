@@ -7,6 +7,7 @@ describe("resolveCoverage", () => {
       futurePairs: [{ showId: "s1", cityId: "c1" }],
       showPriorities: [],
       cityPriorities: [{ cityId: "c1", castId: "k1", priority: 1 }],
+      nonEmptyCastIds: ["k1"],
     });
     expect(r.uncoveredPairs).toEqual([]);
     expect(r.hasNullCity).toBe(false);
@@ -17,6 +18,7 @@ describe("resolveCoverage", () => {
       futurePairs: [{ showId: "s1", cityId: "c1" }],
       showPriorities: [],
       cityPriorities: [{ cityId: "c1", castId: "k1", priority: 2 }],
+      nonEmptyCastIds: [],
     });
     expect(r.uncoveredPairs).toEqual([{ showId: "s1", cityId: "c1" }]);
   });
@@ -28,6 +30,7 @@ describe("resolveCoverage", () => {
       futurePairs: [{ showId: "s1", cityId: "c1" }],
       showPriorities: [{ showId: "s1", cityId: "c1", castId: "k9", priority: 2 }],
       cityPriorities: [{ cityId: "c1", castId: "k1", priority: 1 }],
+      nonEmptyCastIds: ["k1"],
     });
     expect(r.uncoveredPairs).toEqual([{ showId: "s1", cityId: "c1" }]);
   });
@@ -36,6 +39,7 @@ describe("resolveCoverage", () => {
     const r = resolveCoverage({
       futurePairs: [{ showId: "s1", cityId: null }],
       showPriorities: [], cityPriorities: [],
+      nonEmptyCastIds: [],
     });
     expect(r.hasNullCity).toBe(true);
     expect(r.uncoveredPairs).toEqual([]);
@@ -45,8 +49,29 @@ describe("resolveCoverage", () => {
     const r = resolveCoverage({
       futurePairs: [{ showId: "s1", cityId: "c1" }, { showId: "s1", cityId: "c1" }],
       showPriorities: [], cityPriorities: [],
+      nonEmptyCastIds: [],
     });
     expect(r.uncoveredPairs).toEqual([{ showId: "s1", cityId: "c1" }]);
+  });
+
+  it("does not count a tier-1 cast with no members as coverage", () => {
+    const r = resolveCoverage({
+      futurePairs: [{ showId: "s1", cityId: "c1" }],
+      showPriorities: [],
+      cityPriorities: [{ cityId: "c1", castId: "empty-cast", priority: 1 }],
+      nonEmptyCastIds: [],
+    });
+    expect(r.uncoveredPairs).toEqual([{ showId: "s1", cityId: "c1" }]);
+  });
+
+  it("counts a tier-1 cast that has members as coverage", () => {
+    const r = resolveCoverage({
+      futurePairs: [{ showId: "s1", cityId: "c1" }],
+      showPriorities: [],
+      cityPriorities: [{ cityId: "c1", castId: "full-cast", priority: 1 }],
+      nonEmptyCastIds: ["full-cast"],
+    });
+    expect(r.uncoveredPairs).toEqual([]);
   });
 });
 
@@ -55,6 +80,7 @@ describe("computeBookingSetupStatus", () => {
     futurePairs: [{ showId: "s1", cityId: "c1" }],
     showPriorities: [{ showId: "s1", cityId: "c1", castId: "k1", priority: 1 }],
     cityPriorities: [],
+    nonEmptyCastIds: ["k1"],
   };
   const base = {
     flowChosen: true,
@@ -124,6 +150,7 @@ describe("computeBookingSetupStatus", () => {
     futurePairs: [{ showId: "s1", cityId: "c1" }],
     showPriorities: [],
     cityPriorities: [],
+    nonEmptyCastIds: [],
   };
 
   it("does not hold a direct-book org up on a ladder nothing it runs reads", () => {
@@ -196,7 +223,7 @@ describe("computeBookingSetupStatus", () => {
       hasAnyShows: false,
       shows: [],
       timingChosen: false,
-      coverage: { futurePairs: [], showPriorities: [], cityPriorities: [] },
+      coverage: { futurePairs: [], showPriorities: [], cityPriorities: [], nonEmptyCastIds: [] },
       artistCount: 0,
       dateCount: 0,
       artistAcceptance: null,
@@ -220,6 +247,7 @@ describe("computeBookingSetupStatus", () => {
         futurePairs: [{ showId: "s1", cityId: "c1" }],
         showPriorities: [{ showId: "s1", cityId: "c1", castId: "k1", priority: 1 }],
         cityPriorities: [],
+        nonEmptyCastIds: ["k1"],
       },
       artistCount: 2,
       dateCount: 1,
@@ -236,7 +264,7 @@ describe("computeBookingSetupStatus", () => {
       hasAnyShows: true,
       shows: [{ main_cast_slots: 4, understudy_slots: 1 }],
       timingChosen: true,
-      coverage: { futurePairs: [], showPriorities: [], cityPriorities: [] },
+      coverage: { futurePairs: [], showPriorities: [], cityPriorities: [], nonEmptyCastIds: [] },
       artistCount: 5,
       dateCount: 4,
       artistAcceptance: true,
@@ -254,7 +282,7 @@ describe("computeBookingSetupStatus", () => {
       hasAnyShows: false,
       shows: [],
       timingChosen: true,
-      coverage: { futurePairs: [], showPriorities: [], cityPriorities: [] },
+      coverage: { futurePairs: [], showPriorities: [], cityPriorities: [], nonEmptyCastIds: [] },
       artistCount: 0,
       dateCount: 0,
       artistAcceptance: true,
@@ -297,7 +325,7 @@ describe("computeBookingSetupStatus", () => {
       ...base,
       coverage: {
         futurePairs: [{ showId: "s1", cityId: "c1" }, { showId: "s2", cityId: null }],
-        showPriorities: [], cityPriorities: [],
+        showPriorities: [], cityPriorities: [], nonEmptyCastIds: [],
       },
     });
     expect(s.steps.find((x) => x.key === "ladder")!.done).toBe(false);

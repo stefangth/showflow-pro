@@ -36,6 +36,7 @@ const COVERAGE: LadderCoverageInputs = {
   ],
   showPriorities: [],
   cityPriorities: [{ cityId: "ham", castId: "nord", priority: 1 }],
+  nonEmptyCastIds: ["nord"],
 };
 
 function seed() {
@@ -127,6 +128,7 @@ describe("LadderPanelBody", () => {
       ],
       showPriorities: [],
       cityPriorities: [{ cityId: "ham", castId: "nord", priority: 1 }],
+      nonEmptyCastIds: ["nord"],
     };
     Object.assign(
       client,
@@ -194,6 +196,7 @@ describe("LadderPanelBody", () => {
         { cityId: "ham", castId: "nord", priority: 1 },
         { cityId: "lei", castId: "sued", priority: 1 },
       ],
+      nonEmptyCastIds: ["nord", "sued"],
     };
 
     const onDone = vi.fn();
@@ -277,7 +280,7 @@ describe("LadderPanelBody", () => {
       );
 
     it("shows the datesNeedCity copy (not the all-covered reassurance) when future dates exist but all lack a city", async () => {
-      renderWith({ futurePairs: [{ showId: "show-1", cityId: null }], showPriorities: [], cityPriorities: [] });
+      renderWith({ futurePairs: [{ showId: "show-1", cityId: null }], showPriorities: [], cityPriorities: [], nonEmptyCastIds: [] });
       // Await the async roster (casts query) so the sync assertions below see a settled DOM.
       expect(await screen.findByText("Nord Ensemble")).toBeInTheDocument();
       expect(screen.getByText(/no city set yet/i)).toBeInTheDocument();
@@ -286,7 +289,7 @@ describe("LadderPanelBody", () => {
     });
 
     it("shows the no-future-dates copy when there are no future dates at all", async () => {
-      renderWith({ futurePairs: [], showPriorities: [], cityPriorities: [] });
+      renderWith({ futurePairs: [], showPriorities: [], cityPriorities: [], nonEmptyCastIds: [] });
       expect(await screen.findByText(/No city has a future date yet/i)).toBeInTheDocument();
     });
   });

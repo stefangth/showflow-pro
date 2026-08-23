@@ -25,6 +25,7 @@ const COVERAGE: LadderCoverageInputs = {
   ],
   showPriorities: [],
   cityPriorities: [{ cityId: "ham", castId: "nord", priority: 1 }],
+  nonEmptyCastIds: ["nord"],
 };
 
 const SHOWS = [
@@ -132,6 +133,7 @@ describe("EligibilityPanelBody", () => {
       ],
       showPriorities: [],
       cityPriorities: [{ cityId: "ham", castId: "nord", priority: 1 }],
+      nonEmptyCastIds: ["nord"],
     };
     Object.assign(
       client,
@@ -202,6 +204,7 @@ describe("EligibilityPanelBody", () => {
       ],
       showPriorities: [],
       cityPriorities: [{ cityId: "ham", castId: "nord", priority: 1 }],
+      nonEmptyCastIds: ["nord"],
     };
     const onDone = vi.fn();
     renderPanel(withNullCity, onDone);
@@ -228,7 +231,7 @@ describe("EligibilityPanelBody", () => {
   });
 
   it("null-city-only backlog: shows datesNeedCity, suppresses the duplicate nullCityNote, keeps the roster", async () => {
-    renderPanel({ futurePairs: [{ showId: "show-1", cityId: null }], showPriorities: [], cityPriorities: [] });
+    renderPanel({ futurePairs: [{ showId: "show-1", cityId: null }], showPriorities: [], cityPriorities: [], nonEmptyCastIds: [] });
     // Await the async roster (casts query) so the sync assertions see a settled DOM.
     expect(await screen.findByText("Nord Ensemble")).toBeInTheDocument();
     expect(screen.getByText(/no city set yet/i)).toBeInTheDocument();

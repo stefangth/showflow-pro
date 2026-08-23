@@ -32,7 +32,7 @@ const h = vi.hoisted(() => ({
   flowTimes: vi.fn(() => ({ data: { windowHours: 48, offerDigestHour: 19, confirmationDigestHour: 20 }, isLoading: false })),
   audit: vi.fn((_keys: string[]): { data: unknown[]; isLoading: boolean } => ({ data: [], isLoading: false })),
   bookingStatus: vi.fn((): { coverage: LadderCoverageInputs | undefined; isLoading: boolean } => ({
-    coverage: { futurePairs: [], showPriorities: [], cityPriorities: [] },
+    coverage: { futurePairs: [], showPriorities: [], cityPriorities: [], nonEmptyCastIds: [] },
     isLoading: false,
   })),
   hireStatus: vi.fn((): { status: HireOrderSetupStatus; isLoading: boolean } => ({
@@ -84,7 +84,7 @@ afterEach(() => {
   h.flowTimes.mockReturnValue({ data: { windowHours: 48, offerDigestHour: 19, confirmationDigestHour: 20 }, isLoading: false });
   h.audit.mockReturnValue({ data: [], isLoading: false });
   h.bookingStatus.mockReturnValue({
-    coverage: { futurePairs: [], showPriorities: [], cityPriorities: [] },
+    coverage: { futurePairs: [], showPriorities: [], cityPriorities: [], nonEmptyCastIds: [] },
     isLoading: false,
   });
   h.hireStatus.mockReturnValue({
@@ -138,6 +138,7 @@ describe("HowThisOrgWorks", () => {
         ],
         showPriorities: [],
         cityPriorities: [{ cityId: "c1", castId: "cast-1", priority: 1 }],
+        nonEmptyCastIds: ["cast-1"],
       },
       isLoading: false,
     });
