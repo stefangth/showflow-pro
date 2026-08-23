@@ -1,0 +1,151 @@
+import { useContext, useState } from "react";
+import { createPortal } from "react-dom";
+import { useTranslation } from "react-i18next";
+import { useCan } from "@/hooks/useCapabilities";
+import { useShows, type ShowWithStats } from "@/hooks/useShows";
+import { showSlots } from "@/lib/settings";
+import { WizardFooterContext } from "@/components/getRunning/v3/WizardFooterContext";
+import { PartsEditorSheet } from "@/components/getRunning/v3/steps/PartsEditorSheet";
+import { Button } from "@/components/ui/button";
+import { StatusPill } from "@/components/ui/status-pill";
+import { Metric } from "@/components/ui/metric";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ShowFormDialog } from "@/components/catalog/ShowFormDialog";
+import { ShowDateFormDialog } from "@/components/shows/ShowDateFormDialog";
+import { showIdentityLabel } from "@/types";
+
+/**
+ * The "productions" step's body (Wireflow v3 Phase 2, Task 11): a compact list of the org's
+ * productions, each row showing its date count and casting-breakdown state (`showSlots`), a
+ * "Set casting breakdown" button opening `PartsEditorSheet` (Task 10) for that row, and two
+ * header actions for adding a production or a date by hand (`ShowFormDialog`/
+ * `ShowDateFormDialog`, the same dialogs the Productions page and show-date cockpit use).
+ *
+ * Continue is gated on at least one production having its parts configured (`showSlots(s) !=
+ * null`), mirroring the booking-setup rail's `slots` step (`productions.done`): a wizard that
+ * let a visitor advance with zero configured productions would reach later steps (skills,
+ * cast ranking) with nothing to rank against.
+ *
+ * `manage_productions` gates the two header "add" actions (creating a production or a date is
+ * production-catalog authorship); `edit_scheduling` gates the per-row "Set casting breakdown"
+ * button, mirroring `ShowFormDialog`'s own `canEditScheduling` gate on its slot repeater. A
+ * viewer with neither capability sees the list read only, with no add/edit affordances,
+ * mirroring `CitiesStep`/`MapStep`'s read-only pattern.
+ *
+ * Portals its Continue into `WizardFooterContext`'s slot, same pattern as the other v3 step
+ * bodies.
+ */
+export function ProductionsStep({ orgId, onDone }: { orgId: string | null; onDone: () => void }): JSX.Element {
+  const { t } = useTranslation("getRunningV3");
+  const footerSlot = useContext(WizardFooterContext);
+  const canManage = useCan("manage_productions");
+  const canSchedule = useCan("edit_scheduling");
+
+  const shows = useShows();
+  const list = shows.data ?? [];
+
+  const [formOpen, setFormOpen] = useState(false);
+  const [dateOpen, setDateOpen] = useState(false);
+  const [partsShow, setPartsShow] = useState<ShowWithStats | null>(null);
+
+  const canContinue = list.some((s) => showSlots(s) != null);
+
+  const continueButton = (
+    <Button type="button" size="sm" disabled={!canContinue} onClick={onDone}>
+      {t("body.productions.continue")}
+    </Button>
+  );
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="space-y-1">
+          <div className="text-title-sm font-semibold tracking-[-0.2px] text-foreground">
+            {t("body.productions.heading")}
+          </div>
+          <p className="text-xs text-muted-foreground">{t("body.productions.sub")}</p>
+        </div>
+        {canManage && (
+          <div className="flex shrink-0 gap-2">
+            <Button type="button" size="sm" variant="outline" onClick={() => setDateOpen(true)}>
+              {t("body.productions.addDate")}
+            </Button>
+            <Button type="button" size="sm" variant="outline" onClick={() => setFormOpen(true)}>
+              {t("body.productions.addProduction")}
+            </Button>
+          </div>
+        )}
+      </div>
+
+      {list.length === 0 ? (
+        canManage ? (
+          <EmptyState
+            title={t("body.productions.empty")}
+            action={{ label: t("body.productions.addProduction"), onClick: () => setFormOpen(true) }}
+          />
+        ) : (
+          <EmptyState title={t("body.productions.readOnlyEmpty")} reason={t("body.productions.readOnlyEmpty")} />
+        )
+      ) : (
+        <div className="overflow-hidden rounded-m border border-border">
+          {list.map((s) => {
+            const slots = showSlots(s);
+            return (
+              <div key={s.id} className="flex items-center gap-3 border-b border-border p-3 last:border-b-0">
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-control font-medium text-foreground">
+                    {s.program}
+                    {s.sub_program ? <span className="text-muted-foreground"> · {s.sub_program}</span> : null}
+                  </div>
+                  <Metric size="inline" className="text-muted-foreground">
+                    {t("body.productions.dateCount", { count: s.dateCount })}
+                  </Metric>
+                </div>
+                {slots ? (
+                  <Metric size="body">
+                    {t("body.productions.parts", { main: slots.main_cast, understudies: slots.understudies })}
+                  </Metric>
+                ) : (
+                  <StatusPill tone="waiting">{t("body.productions.unconfigured")}</StatusPill>
+                )}
+                {canSchedule && (
+                  <Button type="button" size="sm" variant="outline" onClick={() => setPartsShow(s)}>
+                    {t("body.productions.setParts")}
+                  </Button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {list.length > 0 && !canContinue && (
+        <p className="text-xs text-muted-foreground">{t("body.productions.incomplete")}</p>
+      )}
+
+      {footerSlot ? createPortal(continueButton, footerSlot) : continueButton}
+
+      {canManage && <ShowFormDialog open={formOpen} onOpenChange={setFormOpen} allShows={list} />}
+      {canManage && (
+        <ShowDateFormDialog
+          open={dateOpen}
+          onOpenChange={setDateOpen}
+          mode="create"
+          defaultShowId={list[0]?.id ?? null}
+        />
+      )}
+      {partsShow && orgId && (
+        <PartsEditorSheet
+          open
+          onOpenChange={(o) => {
+            if (!o) setPartsShow(null);
+          }}
+          orgId={orgId}
+          showId={partsShow.id}
+          showLabel={showIdentityLabel(partsShow)}
+          onSaved={() => setPartsShow(null)}
+        />
+      )}
+    </div>
+  );
+}
