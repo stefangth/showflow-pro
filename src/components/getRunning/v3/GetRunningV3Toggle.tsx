@@ -31,14 +31,16 @@ export function GetRunningV3Toggle() {
     <Card data-testid="get-running-v3-toggle">
       <CardContent className="flex items-center justify-between gap-4 py-4">
         <div className="min-w-0">
-          <p className="text-control font-medium text-foreground">{t("toggle.title")}</p>
+          <p id="getrunning-v3-toggle-label" className="text-control font-medium text-foreground">
+            {t("toggle.title")}
+          </p>
           <p className="text-caption text-muted-foreground">{t("toggle.description")}</p>
         </div>
         <Switch
           checked={enabled}
           disabled={isLoading || mutation.isPending}
           onCheckedChange={handleCheckedChange}
-          aria-label={t("toggle.title")}
+          aria-labelledby="getrunning-v3-toggle-label"
         />
       </CardContent>
     </Card>

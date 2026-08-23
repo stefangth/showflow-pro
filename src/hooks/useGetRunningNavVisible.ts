@@ -31,6 +31,14 @@ import { useRailDismissed } from "@/components/setup/useRailDismissed";
  * (`complete`/`bookingOn`/`hireOrdersOn`), same rules, just sourced from whichever board is
  * actually live for this org. Both models are read unconditionally (rules of hooks); only
  * the selected one is consulted below, so v1 behavior stays byte-identical when v3 is off.
+ *
+ * `useGetRunningV3Enabled().enabled` itself defaults to the build flag while its own query
+ * is still loading, so it can briefly report the wrong side for an org whose override
+ * disagrees with the build default. Picking a model off a possibly-wrong flag would select
+ * the wrong board's `complete`/dismissed state for that window (a v3-enabled org could
+ * flash `v1Model`'s retirement verdict). So while the flag itself is loading, this hook
+ * treats the model as indeterminate and fails open (visible), the same as the "model still
+ * loading" case above, until the flag settles.
  */
 export function useGetRunningNavVisible(): boolean {
   const { currentOrg, hasRole } = useAuth();
@@ -39,12 +47,13 @@ export function useGetRunningNavVisible(): boolean {
 
   const { model: v1Model } = useGetRunning();
   const { model: v3Model } = useGetRunningV3();
-  const { enabled: v3Enabled } = useGetRunningV3Enabled();
+  const { enabled: v3Enabled, isLoading: v3EnabledLoading } = useGetRunningV3Enabled();
   const [dismissed] = useRailDismissed("getRunning", orgId);
 
   const model = v3Enabled ? v3Model : v1Model;
 
   if (!isNonArtist) return true;
+  if (v3EnabledLoading) return true;
   if (!model) return true;
   // Nothing to set up (no module entitled) → no board, so don't advertise the item.
   if (!model.bookingOn && !model.hireOrdersOn) return false;

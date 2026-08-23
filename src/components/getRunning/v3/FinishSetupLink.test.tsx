@@ -93,7 +93,7 @@ describe("pickFinishStep", () => {
 });
 
 describe("FinishSetupLink", () => {
-  it("renders nothing when v3 is disabled", () => {
+  it("renders nothing when v3 is disabled, without reaching the heavy model hook", () => {
     mockEnabled.mockReturnValue({ enabled: false, isLoading: false });
     mockModel.mockReturnValue({ model: makeModel([makeStep("artists", { done: false })]), isLoading: false });
 
@@ -104,6 +104,24 @@ describe("FinishSetupLink", () => {
     );
 
     expect(container).toBeEmptyDOMElement();
+    // The whole point of the outer/inner split: a v3-disabled org never mounts the
+    // inner component, so useGetRunningV3() (the full board-model composition, incl.
+    // the useAirtableConsole query fan-out) is never called.
+    expect(mockModel).not.toHaveBeenCalled();
+  });
+
+  it("renders nothing while the enabled flag itself is still loading, without reaching the heavy model hook", () => {
+    mockEnabled.mockReturnValue({ enabled: false, isLoading: true });
+    mockModel.mockReturnValue({ model: makeModel([makeStep("artists", { done: false })]), isLoading: false });
+
+    const { container } = renderWithProviders(
+      <MemoryRouter>
+        <FinishSetupLink steps={["artists"]} />
+      </MemoryRouter>,
+    );
+
+    expect(container).toBeEmptyDOMElement();
+    expect(mockModel).not.toHaveBeenCalled();
   });
 
   it("renders nothing while the model is still loading", () => {
