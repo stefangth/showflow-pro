@@ -100,10 +100,11 @@ export function StepBodyV3({
       return <CitiesStep orgId={orgId} onDone={onDone} />;
     case "productions":
       return <ProductionsStep orgId={orgId} onDone={onDone} />;
-    // The remaining placeholder keys are handled above via `step.placeholder` before this
-    // switch is reached, but they must still appear here (rather than in `default`) for
-    // the exhaustiveness check below to hold: TypeScript narrows `step.key` across the
-    // whole switch, not just the cases after the `if`.
+    // skills/fee/document are real steps now (placeholder:false in steps.ts), so they reach
+    // this switch like any other real step rather than being intercepted by the
+    // `if (step.placeholder)` guard above. They need explicit cases (not `default`) so the
+    // exhaustiveness check below holds: every GetRunningStepKey must be handled, or the
+    // `never` assignment fails to compile.
     case "skills":
       return <SkillsStep orgId={orgId} onDone={onDone} />;
     case "fee":
