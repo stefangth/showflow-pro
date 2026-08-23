@@ -12,6 +12,8 @@ const h = vi.hoisted(() => ({
     bookingOn: true,
     hireOrdersOn: true,
   })),
+  v3Model: vi.fn((): { complete: boolean; bookingOn: boolean; hireOrdersOn: boolean } | null => null),
+  v3Enabled: vi.fn(() => false),
   dismissed: vi.fn(() => false),
 }));
 
@@ -20,6 +22,12 @@ vi.mock("@/features/auth/AuthContext", () => ({
 }));
 vi.mock("@/hooks/useGetRunning", () => ({
   useGetRunning: () => ({ model: h.model(), isLoading: false }),
+}));
+vi.mock("@/hooks/useGetRunningV3", () => ({
+  useGetRunningV3: () => ({ model: h.v3Model(), isLoading: false }),
+}));
+vi.mock("@/hooks/useGetRunningV3Enabled", () => ({
+  useGetRunningV3Enabled: () => ({ enabled: h.v3Enabled(), isLoading: false }),
 }));
 vi.mock("@/components/setup/useRailDismissed", () => ({
   useRailDismissed: () => [h.dismissed(), vi.fn(), vi.fn()],
@@ -30,6 +38,8 @@ import { useGetRunningNavVisible } from "./useGetRunningNavVisible";
 afterEach(() => {
   h.hasRole.mockImplementation((r: string) => r === "admin");
   h.model.mockReturnValue(onOrg(false));
+  h.v3Model.mockReturnValue(null);
+  h.v3Enabled.mockReturnValue(false);
   h.dismissed.mockReturnValue(false);
 });
 
@@ -70,6 +80,23 @@ describe("useGetRunningNavVisible", () => {
 
   it("fails open (visible) while the model is still loading (null)", () => {
     h.model.mockReturnValue(null);
+    h.dismissed.mockReturnValue(true);
+    const { result } = renderHook(() => useGetRunningNavVisible());
+    expect(result.current).toBe(true);
+  });
+
+  it("when v3 enabled, hides once the v3 model is complete AND dismissed (ignoring the v1 model)", () => {
+    h.v3Enabled.mockReturnValue(true);
+    h.v3Model.mockReturnValue(onOrg(true));
+    h.model.mockReturnValue(onOrg(false)); // v1 model says "not complete" — must be ignored
+    h.dismissed.mockReturnValue(true);
+    const { result } = renderHook(() => useGetRunningNavVisible());
+    expect(result.current).toBe(false);
+  });
+
+  it("when v3 enabled, stays visible while the v3 model is not complete", () => {
+    h.v3Enabled.mockReturnValue(true);
+    h.v3Model.mockReturnValue(onOrg(false));
     h.dismissed.mockReturnValue(true);
     const { result } = renderHook(() => useGetRunningNavVisible());
     expect(result.current).toBe(true);
