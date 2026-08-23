@@ -69,6 +69,14 @@ describe("resolveInitialTab", () => {
     expect(resolveInitialTab("hire-orders", true)).toBe("hire-orders");
     expect(SETTINGS_TAB_PARAMS).toContain("hire-orders");
   });
+
+  it("deep-links the get-running tab (the Phase 5 Settings mirror of the v3 board)", () => {
+    // Whitelisting here just lets a deep link resolve to the value; SettingsPage does not yet
+    // render a "get-running" trigger/content (that's Task B3), so this is admin+producer gated
+    // in the page, not here.
+    expect(SETTINGS_TAB_PARAMS).toContain("get-running");
+    expect(resolveInitialTab("get-running", true, false, false)).toBe("get-running");
+  });
 });
 
 // Whether each value in SETTINGS_TAB_PARAMS actually names a tab SettingsPage renders is

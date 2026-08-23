@@ -23,6 +23,7 @@
 export const SETTINGS_TAB_PARAMS = [
   "organization",
   "how-it-works",
+  "get-running",
   "permissions",
   "people",
   "activity",
