@@ -80,35 +80,37 @@ export function PhaseIconRail({
       </div>
       <p className="mt-1 text-xs leading-[17px] text-muted-foreground">{t(`phases.${phase.key}.summary`)}</p>
       <div className="mt-3 flex flex-wrap gap-1.5">
-        {phase.steps.map((step) => {
-          const Icon = STEP_ICON[step.key];
-          const blocking = !step.done && step.block !== null;
-          const iconClassName = cn(
-            "flex h-7 w-7 shrink-0 items-center justify-center rounded-s border",
-            step.done && "border-transparent bg-primary text-primary-foreground",
-            !step.done && blocking && `border-transparent ${TONES.waiting.bg} ${TONES.waiting.fg}`,
-            !step.done && !blocking && "border-border bg-transparent text-muted-foreground",
-            locked && "cursor-not-allowed opacity-60",
-          );
-          if (locked) {
-            return (
-              <span key={step.key} title={t(`steps.${step.key}.title`)} className={iconClassName}>
-                <Icon className="h-3.5 w-3.5" strokeWidth={2} />
-              </span>
+        {phase.steps
+          .filter((step) => !step.hidden)
+          .map((step) => {
+            const Icon = STEP_ICON[step.key];
+            const blocking = !step.done && step.block !== null;
+            const iconClassName = cn(
+              "flex h-7 w-7 shrink-0 items-center justify-center rounded-s border",
+              step.done && "border-transparent bg-primary text-primary-foreground",
+              !step.done && blocking && `border-transparent ${TONES.waiting.bg} ${TONES.waiting.fg}`,
+              !step.done && !blocking && "border-border bg-transparent text-muted-foreground",
+              locked && "cursor-not-allowed opacity-60",
             );
-          }
-          return (
-            <button
-              key={step.key}
-              type="button"
-              title={t(`steps.${step.key}.title`)}
-              onClick={() => onOpenStep(step.key)}
-              className={iconClassName}
-            >
-              <Icon className="h-3.5 w-3.5" strokeWidth={2} />
-            </button>
-          );
-        })}
+            if (locked) {
+              return (
+                <span key={step.key} title={t(`steps.${step.key}.title`)} className={iconClassName}>
+                  <Icon className="h-3.5 w-3.5" strokeWidth={2} />
+                </span>
+              );
+            }
+            return (
+              <button
+                key={step.key}
+                type="button"
+                title={t(`steps.${step.key}.title`)}
+                onClick={() => onOpenStep(step.key)}
+                className={iconClassName}
+              >
+                <Icon className="h-3.5 w-3.5" strokeWidth={2} />
+              </button>
+            );
+          })}
       </div>
     </div>
   );

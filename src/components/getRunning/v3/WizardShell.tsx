@@ -46,7 +46,7 @@ function StepDot({ done, current }: { done: boolean; current: boolean }): JSX.El
  */
 export function WizardShell({
   phaseKey,
-  steps,
+  steps: incomingSteps,
   activeKey,
   onSelectStep,
   onCollapse,
@@ -54,6 +54,11 @@ export function WizardShell({
 }: WizardShellProps): JSX.Element {
   const { t } = useTranslation("getRunningV3");
   const [footerSlotEl, setFooterSlotEl] = useState<HTMLDivElement | null>(null);
+
+  // Defensive: the board is expected to pass only visible (non-`hidden`) steps, but this
+  // filter is a cheap, single-purpose backstop so the rail/counter stay correct here too
+  // if a future caller ever forgets to filter upstream.
+  const steps = useMemo(() => incomingSteps.filter((step) => !step.hidden), [incomingSteps]);
 
   const activeIndex = useMemo(() => steps.findIndex((step) => step.key === activeKey), [steps, activeKey]);
   const activeStep: GetRunningStep | undefined = activeIndex >= 0 ? steps[activeIndex] : steps[0];

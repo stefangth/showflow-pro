@@ -122,6 +122,25 @@ describe("PhaseIconRail", () => {
     fireEvent.click(firstIcon);
     expect(onOpenStep).not.toHaveBeenCalled();
   });
+
+  it("does not render an icon for a hidden step (connect/map on a manual dates source)", () => {
+    // A manual dates source marks get_dates' connect/map steps `hidden: true` (steps.ts).
+    // The rail must render only the 3 visible get_dates steps (source/cities/productions),
+    // never an icon for connect or map.
+    const model = composeGetRunningV3({ ...base, datesSource: "manual" });
+    const phase = model.phases.find((p) => p.key === "get_dates")!;
+    expect(phase.steps.filter((s) => s.hidden).map((s) => s.key)).toEqual(["connect", "map"]);
+
+    const onOpenStep = vi.fn();
+    renderWithProviders(<PhaseIconRail phase={phase} onOpenStep={onOpenStep} />);
+
+    const rail = screen.getByTestId("phase-icon-rail-get_dates");
+    const buttons = within(rail).getAllByRole("button");
+    expect(buttons).toHaveLength(3);
+    expect(buttons.map((b) => b.getAttribute("title"))).not.toEqual(
+      expect.arrayContaining([expect.stringMatching(/connect airtable/i), expect.stringMatching(/map your fields/i)]),
+    );
+  });
 });
 
 describe("PhaseRow", () => {
