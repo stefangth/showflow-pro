@@ -348,6 +348,21 @@
       "title": "Casting breakdown for {{name}}",
       "save": "Save",
       "savedToast": "Casting breakdown saved"
+    },
+    "productions": {
+      "heading": "Your productions",
+      "sub": "Check the productions that came in, and add any that are missing.",
+      "addProduction": "Add a production",
+      "addDate": "Add a date",
+      "setParts": "Set casting breakdown",
+      "unconfigured": "Unconfigured",
+      "parts": "{{main}} main + {{understudies}} understudies",
+      "dateCount_one": "{{count}} date",
+      "dateCount_other": "{{count}} dates",
+      "continue": "Continue",
+      "incomplete": "Set at least one casting breakdown to continue.",
+      "empty": "No productions yet. Add your first one to get started.",
+      "readOnlyEmpty": "No productions yet. Ask an admin to add one."
     }
   }
 }

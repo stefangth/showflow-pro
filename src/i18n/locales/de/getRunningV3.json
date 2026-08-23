@@ -348,6 +348,21 @@
       "title": "Besetzungsplan für {{name}}",
       "save": "Speichern",
       "savedToast": "Besetzungsplan gespeichert"
+    },
+    "productions": {
+      "heading": "Deine Produktionen",
+      "sub": "Prüfe die Produktionen, die reingekommen sind, und ergänze, was fehlt.",
+      "addProduction": "Produktion hinzufügen",
+      "addDate": "Termin hinzufügen",
+      "setParts": "Besetzungsplan festlegen",
+      "unconfigured": "Nicht eingerichtet",
+      "parts": "{{main}} Hauptbesetzung + {{understudies}} Zweitbesetzung",
+      "dateCount_one": "{{count}} Termin",
+      "dateCount_other": "{{count}} Termine",
+      "continue": "Weiter",
+      "incomplete": "Richte mindestens einen Besetzungsplan ein, um fortzufahren.",
+      "empty": "Noch keine Produktionen. Lege deine erste an, um zu starten.",
+      "readOnlyEmpty": "Noch keine Produktionen. Bitte einen Admin, eine anzulegen."
     }
   }
 }
