@@ -18,11 +18,11 @@ import { toDateKey } from '@/lib/dates';
 
 export type { Skill, SkillCatalogRow };
 
-export function useSkills() {
+export function useSkills(options?: { enabled?: boolean }) {
   const { currentOrg } = useAuth();
   return useQuery({
     queryKey: ['skills', currentOrg?.id],
-    enabled: !!currentOrg,
+    enabled: (options?.enabled ?? true) && !!currentOrg,
     queryFn: () => fetchSkills(supabase, currentOrg?.id ?? null),
   });
 }

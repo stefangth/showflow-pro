@@ -103,6 +103,22 @@ describe("PhaseIconRail", () => {
     fireEvent.click(buttons[0]);
     expect(onOpenStep).toHaveBeenCalledWith(phase.steps[0].key);
   });
+
+  it("renders inert, non-clickable icons and never fires onOpenStep when locked", () => {
+    const model = composeGetRunningV3({ ...base, booking: booking({ slots: false }) });
+    const phase = model.phases.find((p) => p.key === "bookable")!;
+    expect(phase.waitsOn).toBe("get_dates");
+    const onOpenStep = vi.fn();
+    renderWithProviders(<PhaseIconRail phase={phase} onOpenStep={onOpenStep} locked />);
+
+    const rail = screen.getByTestId("phase-icon-rail-bookable");
+    expect(within(rail).queryAllByRole("button")).toHaveLength(0);
+
+    const firstIcon = rail.querySelector("[title]") as HTMLElement;
+    expect(firstIcon.tagName).toBe("SPAN");
+    fireEvent.click(firstIcon);
+    expect(onOpenStep).not.toHaveBeenCalled();
+  });
 });
 
 describe("PhaseRow", () => {

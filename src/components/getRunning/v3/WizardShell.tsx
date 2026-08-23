@@ -122,7 +122,7 @@ export function WizardShell({
                 </span>
                 <span className="flex flex-col">
                   <span className="text-control font-medium">{t(`steps.${step.key}.title`)}</span>
-                  <span className="text-xs text-[var(--text-faint)]">{t(`steps.${step.key}.hint`)}</span>
+                  <span className="text-xs text-muted-foreground">{t(`steps.${step.key}.hint`)}</span>
                 </span>
               </button>
             );

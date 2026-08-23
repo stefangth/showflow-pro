@@ -54,9 +54,14 @@ const STEP_ICON: Record<GetRunningStepKey, LucideIcon> = {
 export function PhaseIconRail({
   phase,
   onOpenStep,
+  locked = false,
 }: {
   phase: GetRunningPhaseV3;
   onOpenStep: (key: GetRunningStepKey) => void;
+  /** True when `phase.waitsOn` is set: the phase can't be opened yet, so its step icons
+   *  render as inert (no click, no button semantics) rather than expanding the wizard.
+   *  Mirrors `PhaseRow`'s own "Waits on X" no-open-button state. */
+  locked?: boolean;
 }): JSX.Element {
   const { t } = useTranslation("getRunningV3");
 
@@ -78,18 +83,27 @@ export function PhaseIconRail({
         {phase.steps.map((step) => {
           const Icon = STEP_ICON[step.key];
           const blocking = !step.done && step.block !== null;
+          const iconClassName = cn(
+            "flex h-7 w-7 shrink-0 items-center justify-center rounded-s border",
+            step.done && "border-transparent bg-primary text-primary-foreground",
+            !step.done && blocking && `border-transparent ${TONES.waiting.bg} ${TONES.waiting.fg}`,
+            !step.done && !blocking && "border-border bg-transparent text-muted-foreground",
+            locked && "cursor-not-allowed opacity-60",
+          );
+          if (locked) {
+            return (
+              <span key={step.key} title={t(`steps.${step.key}.title`)} className={iconClassName}>
+                <Icon className="h-3.5 w-3.5" strokeWidth={2} />
+              </span>
+            );
+          }
           return (
             <button
               key={step.key}
               type="button"
               title={t(`steps.${step.key}.title`)}
               onClick={() => onOpenStep(step.key)}
-              className={cn(
-                "flex h-7 w-7 shrink-0 items-center justify-center rounded-s border",
-                step.done && "border-transparent bg-primary text-primary-foreground",
-                !step.done && blocking && `border-transparent ${TONES.waiting.bg} ${TONES.waiting.fg}`,
-                !step.done && !blocking && "border-border bg-transparent text-muted-foreground",
-              )}
+              className={iconClassName}
             >
               <Icon className="h-3.5 w-3.5" strokeWidth={2} />
             </button>

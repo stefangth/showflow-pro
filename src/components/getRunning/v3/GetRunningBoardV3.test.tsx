@@ -137,6 +137,36 @@ describe("GetRunningBoardV3", () => {
     expect(screen.queryByTestId(/phase-row-/)).not.toBeInTheDocument();
   });
 
+  it("does not expand a waits-on phase from its rail icon click", () => {
+    // bookable waits on get_dates (slots undone -> get_dates not done), so its rail icons
+    // must render inert and clicking one must not swap the row for the wizard shell.
+    mockModel(composeGetRunningV3({ ...base, booking: booking({ slots: false }) }));
+
+    renderBoard();
+
+    const rail = screen.getByTestId("phase-icon-rail-bookable");
+    expect(within(rail).queryAllByRole("button")).toHaveLength(0);
+
+    const firstIcon = rail.querySelector("[title]") as HTMLElement;
+    fireEvent.click(firstIcon);
+
+    expect(screen.getByTestId("phase-row-bookable")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /collapse/i })).not.toBeInTheDocument();
+  });
+
+  it("scrolls the all-steps card into view when See all steps is clicked", () => {
+    mockModel(composeGetRunningV3(base));
+    renderBoard();
+
+    const scrollIntoView = vi.fn();
+    const allStepsCard = screen.getByTestId("all-steps-card");
+    allStepsCard.scrollIntoView = scrollIntoView;
+
+    fireEvent.click(screen.getByRole("button", { name: /see all steps/i }));
+
+    expect(scrollIntoView).toHaveBeenCalledWith({ behavior: "smooth", block: "start" });
+  });
+
   it("shows the nothing-to-set-up card when neither module is on", () => {
     mockModel(composeGetRunningV3({ ...base, bookingOn: false, hireOrdersOn: false, booking: null, hire: null }));
 

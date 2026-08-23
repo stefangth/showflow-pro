@@ -42,7 +42,7 @@ export function useGetRunningV3(): { model: GetRunningModelV3 | null; isLoading:
   // Cheap best-effort signal for the `skills` step: the org's skill catalog is non-empty.
   // Only fired for a non-artist viewer in a booking-entitled org, same gating shape as the
   // other booking-module reads above.
-  const skills = useSkills();
+  const skills = useSkills({ enabled: isNonArtist && bookingOn });
 
   // Called unconditionally (rules of hooks), same as v1.
   const canManageShows = useCan("manage_productions");

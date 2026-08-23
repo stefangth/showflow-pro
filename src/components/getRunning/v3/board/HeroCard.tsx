@@ -17,9 +17,13 @@ import { MINUTES_PER_STEP } from "@/lib/getRunning/steps";
 export function HeroCard({
   model,
   onOpenNext,
+  onSeeAll,
 }: {
   model: GetRunningModelV3;
   onOpenNext: (phase: GetRunningPhaseKey, step: GetRunningStepKey) => void;
+  /** Optional handler for the "See all steps" button, e.g. scrolling the all-steps card
+   *  into view. Renders as a plain button with no behavior if omitted. */
+  onSeeAll?: () => void;
 }): JSX.Element | null {
   const { t } = useTranslation("getRunningV3");
   const { nextStep } = model;
@@ -49,6 +53,7 @@ export function HeroCard({
         </Button>
         <button
           type="button"
+          onClick={onSeeAll}
           className="rounded-m border border-white/40 px-3 py-1.5 text-control font-medium text-white hover:border-white/60"
         >
           {t("hero.seeAll")}

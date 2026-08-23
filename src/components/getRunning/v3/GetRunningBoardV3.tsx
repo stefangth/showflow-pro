@@ -103,6 +103,7 @@ export function GetRunningBoardV3({ context }: { context: "page" | "settings" })
 
   const [selectedPhase, setSelectedPhase] = useState<GetRunningPhaseKey | null>(null);
   const [selectedStep, setSelectedStep] = useState<GetRunningStepKey | null>(null);
+  const allStepsCardRef = useRef<HTMLDivElement | null>(null);
 
   // Runs once per mount, not on every model refetch (mirrors v1's `autoOpenedRef`):
   // without the ref guard, a viewer who deliberately collapsed the wizard would have it
@@ -144,13 +145,17 @@ export function GetRunningBoardV3({ context }: { context: "page" | "settings" })
   }
 
   const handleOpenStep = (phase: GetRunningPhaseKey, step: GetRunningStepKey) => {
+    // Defense in depth: a phase with `waitsOn` set can't be opened from any path (rail,
+    // hero, row), even if a caller ever forgets to gate its own click handler.
+    const phaseObj = model.phases.find((p) => p.key === phase);
+    if (!phaseObj || phaseObj.waitsOn != null) return;
     setSelectedPhase(phase);
     setSelectedStep(step);
   };
 
   const handleOpenPhase = (phase: GetRunningPhaseKey) => {
     const phaseObj = model.phases.find((p) => p.key === phase);
-    if (!phaseObj) return;
+    if (!phaseObj || phaseObj.waitsOn != null) return;
     setSelectedPhase(phase);
     setSelectedStep(firstStepForPhase(phaseObj.steps));
   };
@@ -158,6 +163,10 @@ export function GetRunningBoardV3({ context }: { context: "page" | "settings" })
   const handleCollapse = () => {
     setSelectedPhase(null);
     setSelectedStep(null);
+  };
+
+  const handleSeeAll = () => {
+    allStepsCardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
   // Advance to the next not-done step in the open phase once its editor saves
@@ -197,7 +206,7 @@ export function GetRunningBoardV3({ context }: { context: "page" | "settings" })
                 key={i}
                 data-testid="get-running-v3-tick"
                 data-filled={filled ? "true" : "false"}
-                className={`h-[3px] flex-1 rounded-full ${filled ? "bg-primary" : "bg-[var(--surface-3)]"}`}
+                className={`h-[3px] flex-1 rounded-full ${filled ? "bg-primary" : "bg-border"}`}
               />
             ))}
           </div>
@@ -207,15 +216,20 @@ export function GetRunningBoardV3({ context }: { context: "page" | "settings" })
         </div>
       </div>
 
-      <HeroCard model={model} onOpenNext={handleOpenStep} />
+      <HeroCard model={model} onOpenNext={handleOpenStep} onSeeAll={handleSeeAll} />
       <StillShutCard model={model} />
 
-      <div data-testid="all-steps-card" className="rounded-l border border-border bg-card p-4">
+      <div ref={allStepsCardRef} data-testid="all-steps-card" className="rounded-l border border-border bg-card p-4">
         <Eyebrow>{t("rails.title", { count: model.totalCount })}</Eyebrow>
         <p className="mt-1 text-xs leading-[17px] text-muted-foreground">{t("rails.hint")}</p>
         <div className="mt-3 flex flex-col gap-3 sm:flex-row">
           {model.phases.map((phase) => (
-            <PhaseIconRail key={phase.key} phase={phase} onOpenStep={(key) => handleOpenStep(phase.key, key)} />
+            <PhaseIconRail
+              key={phase.key}
+              phase={phase}
+              locked={phase.waitsOn != null}
+              onOpenStep={(key) => handleOpenStep(phase.key, key)}
+            />
           ))}
         </div>
       </div>
@@ -243,7 +257,7 @@ export function GetRunningBoardV3({ context }: { context: "page" | "settings" })
 
       {role === "producer" && (
         <div className="flex items-center gap-3 rounded-l border border-border bg-card px-4 py-3">
-          <Users className="h-3.5 w-3.5 shrink-0 text-[var(--text-faint)]" aria-hidden="true" />
+          <Users className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
           <p className="text-xs leading-[17px] text-muted-foreground">{t("footerRole.producer")}</p>
           <div className="flex-1" />
           {waitsOnAdmin && (
