@@ -119,8 +119,9 @@ describe("MapStep", () => {
     seedSettings({ date: "Date", sub_program: "Sub Program" });
     const { onDone } = renderStep();
 
-    await waitFor(() => expect(screen.getByRole("button", { name: /continue/i })).toBeEnabled());
-    fireEvent.click(screen.getByRole("button", { name: /continue/i }));
+    const continueBtn = screen.getByRole("button", { name: /continue/i });
+    await waitFor(() => expect(continueBtn).toBeEnabled());
+    fireEvent.click(continueBtn);
 
     expect(onDone).toHaveBeenCalledTimes(1);
   });
