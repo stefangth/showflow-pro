@@ -1,5 +1,7 @@
 import { useAuth } from "@/features/auth/AuthContext";
 import { useGetRunning } from "@/hooks/useGetRunning";
+import { useGetRunningV3 } from "@/hooks/useGetRunningV3";
+import { useGetRunningV3Enabled } from "@/hooks/useGetRunningV3Enabled";
 import { useRailDismissed } from "@/components/setup/useRailDismissed";
 
 /**
@@ -23,14 +25,24 @@ import { useRailDismissed } from "@/components/setup/useRailDismissed";
  * mid-fetch only to reappear. A nothing-on org (no module entitled) has no board to set
  * up, so the item is hidden outright rather than left pointing at an undismissable
  * "nothing to set up" card.
+ *
+ * When the org has the v3 runtime flag on (`useGetRunningV3Enabled`), retirement is driven
+ * by the v3 board's own model (`useGetRunningV3`) instead of v1's — same fields
+ * (`complete`/`bookingOn`/`hireOrdersOn`), same rules, just sourced from whichever board is
+ * actually live for this org. Both models are read unconditionally (rules of hooks); only
+ * the selected one is consulted below, so v1 behavior stays byte-identical when v3 is off.
  */
 export function useGetRunningNavVisible(): boolean {
   const { currentOrg, hasRole } = useAuth();
   const orgId = currentOrg?.id ?? null;
   const isNonArtist = hasRole("admin") || hasRole("producer");
 
-  const { model } = useGetRunning();
+  const { model: v1Model } = useGetRunning();
+  const { model: v3Model } = useGetRunningV3();
+  const { enabled: v3Enabled } = useGetRunningV3Enabled();
   const [dismissed] = useRailDismissed("getRunning", orgId);
+
+  const model = v3Enabled ? v3Model : v1Model;
 
   if (!isNonArtist) return true;
   if (!model) return true;
