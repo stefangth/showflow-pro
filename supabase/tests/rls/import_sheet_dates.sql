@@ -1,0 +1,100 @@
+-- pgTAP: import_sheet_dates RPC (Phase 4, Task A1). Set-based upsert of Google Sheet
+-- rows into show_dates keyed on the partial-unique (org_id, show_id, date) WHERE source='sheet'.
+BEGIN;
+CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
+SELECT plan(9);
+
+-- Seed with RLS bypassed.
+SET session_replication_role = replica;
+INSERT INTO auth.users (id, email) VALUES
+  ('00000000-0000-0000-0000-0000000000a1', 'v3-import-admin@example.com');
+INSERT INTO public.organizations (id, name, slug) VALUES
+  ('00000000-0000-0000-0000-0000000000f1', 'Org One', 'v3-import-org-one');
+INSERT INTO public.org_memberships (user_id, org_id, role) VALUES
+  ('00000000-0000-0000-0000-0000000000a1', '00000000-0000-0000-0000-0000000000f1', 'admin');
+INSERT INTO public.shows (id, org_id, program, sub_program, status) VALUES
+  ('00000000-0000-0000-0000-0000000000c1', '00000000-0000-0000-0000-0000000000f1', 'Cats', 'Evening', 'active');
+INSERT INTO public.cities (id, org_id, name) VALUES
+  ('00000000-0000-0000-0000-0000000000d1', '00000000-0000-0000-0000-0000000000f1', 'Berlin');
+SET session_replication_role = DEFAULT;
+
+-- 1. service_role has EXECUTE on the RPC (the runtime caller; see Global Constraints).
+SELECT ok(
+  has_function_privilege('service_role', 'public.import_sheet_dates(uuid, jsonb)', 'EXECUTE'),
+  'service_role can execute import_sheet_dates'
+);
+
+-- 2. First import inserts a source=sheet row for the (org, show, date), and returns new_ids.
+DO $$
+DECLARE
+  v_result jsonb;
+  v_new_id uuid;
+BEGIN
+  v_result := public.import_sheet_dates(
+    '00000000-0000-0000-0000-0000000000f1',
+    '[{"show_id":"00000000-0000-0000-0000-0000000000c1","date":"2026-09-01","city_id":"00000000-0000-0000-0000-0000000000d1","session_1":"19:30"}]'::jsonb
+  );
+  PERFORM set_config('pgtap.import_result', v_result::text, true);
+
+  SELECT id INTO v_new_id FROM public.show_dates
+    WHERE show_id = '00000000-0000-0000-0000-0000000000c1' AND date = '2026-09-01' AND source = 'sheet';
+  PERFORM set_config('pgtap.new_date_id', v_new_id::text, true);
+END $$;
+
+SELECT is(
+  (current_setting('pgtap.import_result')::jsonb ->> 'new_count')::int,
+  1,
+  'first import inserts one new date'
+);
+SELECT is(
+  (SELECT count(*)::int FROM public.show_dates
+    WHERE show_id = '00000000-0000-0000-0000-0000000000c1' AND date = '2026-09-01' AND source = 'sheet'),
+  1, 'the inserted row is stamped source=sheet with org_id derived'
+);
+SELECT is(
+  jsonb_array_length(current_setting('pgtap.import_result')::jsonb -> 'new_ids'),
+  1,
+  'new_ids has length 1 on a fresh import'
+);
+SELECT is(
+  (current_setting('pgtap.import_result')::jsonb -> 'new_ids' ->> 0)::uuid,
+  current_setting('pgtap.new_date_id')::uuid,
+  'new_ids contains the inserted row id'
+);
+
+-- 3. Re-importing the same (org, show, date) UPDATES, does not duplicate (idempotent).
+SELECT is(
+  (public.import_sheet_dates(
+     '00000000-0000-0000-0000-0000000000f1',
+     '[{"show_id":"00000000-0000-0000-0000-0000000000c1","date":"2026-09-01","city_id":"00000000-0000-0000-0000-0000000000d1","session_1":"20:00"}]'::jsonb
+   ) ->> 'updated_count')::int,
+  1, 're-import updates the existing sheet row'
+);
+SELECT is(
+  (SELECT session_1 FROM public.show_dates
+    WHERE show_id = '00000000-0000-0000-0000-0000000000c1' AND date = '2026-09-01' AND source = 'sheet'),
+  '20:00', 're-import overwrote session_1'
+);
+SELECT is(
+  (SELECT count(*)::int FROM public.show_dates
+    WHERE show_id = '00000000-0000-0000-0000-0000000000c1' AND date = '2026-09-01'),
+  1, 'still exactly one row (no duplicate)'
+);
+
+-- 4. A non-member caller cannot import (org guard). Impersonate a user with no membership.
+SET session_replication_role = replica;
+INSERT INTO auth.users (id, email) VALUES ('00000000-0000-0000-0000-0000000000a9', 'v3-import-outsider@example.com');
+SET session_replication_role = DEFAULT;
+SELECT set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000a9","role":"authenticated"}', true);
+SET LOCAL ROLE authenticated;
+SELECT throws_ok(
+  $$ SELECT public.import_sheet_dates(
+       '00000000-0000-0000-0000-0000000000f1',
+       '[{"show_id":"00000000-0000-0000-0000-0000000000c1","date":"2026-09-02"}]'::jsonb) $$,
+  'P0001', NULL, 'a non-member cannot import sheet dates'
+);
+RESET ROLE;
+
+SELECT * FROM finish();
+ROLLBACK;

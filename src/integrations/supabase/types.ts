@@ -2213,6 +2213,7 @@ export type Database = {
           session_2: string | null
           session_3: string | null
           show_id: string
+          source: string | null
           status: Database["public"]["Enums"]["show_date_status"]
           updated_at: string
           venue: string | null
@@ -2233,6 +2234,7 @@ export type Database = {
           session_2?: string | null
           session_3?: string | null
           show_id: string
+          source?: string | null
           status?: Database["public"]["Enums"]["show_date_status"]
           updated_at?: string
           venue?: string | null
@@ -2253,6 +2255,7 @@ export type Database = {
           session_2?: string | null
           session_3?: string | null
           show_id?: string
+          source?: string | null
           status?: Database["public"]["Enums"]["show_date_status"]
           updated_at?: string
           venue?: string | null
@@ -2674,6 +2677,10 @@ export type Database = {
           _uid: string
         }
         Returns: boolean
+      }
+      import_sheet_dates: {
+        Args: { p_org: string; p_rows: Json }
+        Returns: Json
       }
       is_capability_enabled: {
         Args: { _capability: string; _org: string }
