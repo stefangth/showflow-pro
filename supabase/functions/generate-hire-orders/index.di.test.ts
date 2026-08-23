@@ -484,7 +484,7 @@ Deno.test("draft: a sole eligible cast's production fee beats the org default", 
       bookings: { data: [booking("b-A1", "a-A1", null, "Ann", "ann@x.de")] },
       cities: { data: { name: "Berlin" } },
       // A1 belongs to cast C1.
-      cast_members: { data: [{ cast_id: "C1" }] },
+      cast_members: { data: [{ artist_id: "a-A1", cast_id: "C1" }] },
       // C1 is the SOLE eligible cast for this date (per-date table has rows).
       show_date_cast_eligibility: { data: [{ cast_id: "C1" }] },
       // (C1 x show-1) fee is 250.
@@ -534,7 +534,9 @@ Deno.test("draft: an artist in two eligible casts is ambiguous, so the org defau
       bookings: { data: [booking("b-A2", "a-A2", null, "Bea", "bea@x.de")] },
       cities: { data: { name: "Berlin" } },
       // A2 belongs to BOTH C1 and C2.
-      cast_members: { data: [{ cast_id: "C1" }, { cast_id: "C2" }] },
+      cast_members: {
+        data: [{ artist_id: "a-A2", cast_id: "C1" }, { artist_id: "a-A2", cast_id: "C2" }],
+      },
       // Both C1 and C2 are eligible for this date -> intersection is {C1,C2}.
       show_date_cast_eligibility: {
         data: [{ cast_id: "C1" }, { cast_id: "C2" }],
@@ -585,7 +587,7 @@ Deno.test("draft: a booking's own fee beats the sole cast's production fee", asy
       // Booking carries its own fee of 400.
       bookings: { data: [booking("b-A1", "a-A1", 400, "Ann", "ann@x.de")] },
       cities: { data: { name: "Berlin" } },
-      cast_members: { data: [{ cast_id: "C1" }] },
+      cast_members: { data: [{ artist_id: "a-A1", cast_id: "C1" }] },
       show_date_cast_eligibility: { data: [{ cast_id: "C1" }] },
       cast_production_fees: [
         { when: { cast_id: "C1" }, data: { fee_amount: 250 } },
