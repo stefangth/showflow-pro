@@ -362,7 +362,8 @@
       "continue": "Continue",
       "incomplete": "Set at least one casting breakdown to continue.",
       "empty": "No productions yet. Add your first one to get started.",
-      "readOnlyEmpty": "No productions yet. Ask an admin to add one."
+      "readOnlyEmpty": "No productions yet. Ask an admin to add one.",
+      "readOnlyReason": "Adding a production needs the manage productions right, which this account does not have."
     }
   }
 }

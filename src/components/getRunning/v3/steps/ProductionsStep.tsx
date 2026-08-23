@@ -91,7 +91,7 @@ export function ProductionsStep({ orgId, onDone }: { orgId: string | null; onDon
             action={{ label: t("body.productions.addProduction"), onClick: () => setFormOpen(true) }}
           />
         ) : (
-          <EmptyState title={t("body.productions.readOnlyEmpty")} reason={t("body.productions.readOnlyEmpty")} />
+          <EmptyState title={t("body.productions.readOnlyEmpty")} reason={t("body.productions.readOnlyReason")} />
         )
       ) : (
         <div className="overflow-hidden rounded-m border border-border">

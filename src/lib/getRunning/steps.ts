@@ -139,7 +139,7 @@ function finalizeStep(phase: GetRunningPhaseKey, cfg: StepConfig, role: GetRunni
 }
 
 /** Steps not marked `hidden` (a source choice made them moot). Used for counts, done rollups, and nextStep. */
-function visibleSteps(steps: GetRunningStep[]): GetRunningStep[] {
+export function visibleSteps(steps: GetRunningStep[]): GetRunningStep[] {
   return steps.filter((s) => !s.hidden);
 }
 

@@ -50,7 +50,10 @@ export function useGetRunningV3(): { model: GetRunningModelV3 | null; isLoading:
   // connection/mapping state. Gated on the same bookingOrgId as the booking module's own
   // reads above, so an artist or a booking-off org never pays for either read.
   const { source: datesSource, isLoading: datesSourceLoading } = useDatesSource(bookingOrgId);
-  const airtable = useAirtableConsole(bookingOrgId, { readOnly: true, canTriggerSync: false });
+  // The console is only consumed below (datesConnectDone/datesMapDone) when the org's dates
+  // source is Airtable, so gate its orgId on that instead of mounting it (and its ~7 queries)
+  // unconditionally for every manual/by-hand org too.
+  const airtable = useAirtableConsole(datesSource === "airtable" ? bookingOrgId : null, { readOnly: true, canTriggerSync: false });
 
   // Cheap best-effort signal for the `skills` step: the org's skill catalog is non-empty.
   // Only fired for a non-artist viewer in a booking-entitled org, same gating shape as the
@@ -65,12 +68,12 @@ export function useGetRunningV3(): { model: GetRunningModelV3 | null; isLoading:
   const canAddArtists = useCan("add_artists");
 
   // `airtable.ready` requires a non-null orgId by construction (see its doc comment), so it
-  // is never true when bookingOrgId is null (booking off, or an artist viewer) — gate on
-  // bookingOrgId directly rather than bookingOn alone, or a disabled console would hold
-  // isLoading true forever.
+  // is never true when the console's orgId is null (a non-Airtable source, booking off, or
+  // an artist viewer) — gate on `datesSource === "airtable"` directly rather than
+  // `bookingOrgId` alone, or a disabled/unmounted console would hold isLoading true forever.
   const isLoading = entitlementsLoading
     || (bookingOn && (booking.isLoading || datesSourceLoading))
-    || (!!bookingOrgId && !airtable.ready)
+    || (datesSource === "airtable" && !airtable.ready)
     || (hireOrdersOn && hire.isLoading);
 
   if (isLoading) return { model: null, isLoading: true };
