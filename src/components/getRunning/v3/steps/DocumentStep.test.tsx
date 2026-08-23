@@ -52,11 +52,19 @@ describe("DocumentStep", () => {
     await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1));
   });
 
-  it("renders read-only (no continue) when the viewer cannot edit", () => {
+  it("renders read-only (no continue) when the viewer cannot edit", async () => {
     vi.mocked(useCan).mockReturnValue(false);
     renderStep();
 
     expect(screen.queryByRole("button", { name: /continue/i })).toBeNull();
     expect(screen.getByText(/set by an admin/i)).toBeInTheDocument();
+
+    // The reused NumberingCard is genuinely put in read-only mode (readOnly={!canEdit}):
+    // once it loads, its Save control is the only button on screen (the wizard Continue is
+    // gone) and it is disabled. Without the readOnly wiring a producer could still write org
+    // numbering. findAllByRole awaits the card's own async query settling.
+    const buttons = await screen.findAllByRole("button");
+    expect(buttons).toHaveLength(1);
+    expect(buttons[0]).toBeDisabled();
   });
 });
