@@ -370,6 +370,14 @@
       "empty": "Noch keine Produktionen. Lege deine erste an, um zu starten.",
       "readOnlyEmpty": "Noch keine Produktionen. Bitte einen Admin, eine anzulegen.",
       "readOnlyReason": "Um eine Produktion hinzuzufügen, brauchst du das Recht Produktionen verwalten, das dieser Account nicht hat."
+    },
+    "fee": {
+      "heading": "Dein Standardhonorar",
+      "sub": "Das Honorar, mit dem ein neuer Vertrag startet. Du kannst es bei jedem einzelnen Vertrag ändern.",
+      "shellTitle": "Honorare pro Produktion und Cast",
+      "shellBody": "Sobald du Casts hast, kannst du hier ein Honorar pro Produktion und Cast setzen. Bis dahin nutzt jeder Vertrag das Standardhonorar oben.",
+      "continue": "Weiter",
+      "readOnly": "Vertragseinstellungen legt ein Admin fest. Du kannst sie hier lesen."
     }
   }
 }

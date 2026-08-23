@@ -370,6 +370,14 @@
       "empty": "No productions yet. Add your first one to get started.",
       "readOnlyEmpty": "No productions yet. Ask an admin to add one.",
       "readOnlyReason": "Adding a production needs the manage productions right, which this account does not have."
+    },
+    "fee": {
+      "heading": "Your default fee",
+      "sub": "The fee a new contract starts from. You can change it on any single contract.",
+      "shellTitle": "Fees per production and cast",
+      "shellBody": "Once you have casts, you can set a fee for each production and cast here. Until then every contract uses the default above.",
+      "continue": "Continue",
+      "readOnly": "Contract settings are set by an admin. You can read them here."
     }
   }
 }
