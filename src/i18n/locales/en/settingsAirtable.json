@@ -1,6 +1,6 @@
 {
   "root": {
-    "selectOrg": "Select an organization to configure Airtable sync."
+    "selectOrg": "Select an organization to configure sync sources."
   },
   "toasts": {
     "settingsSaveError": "Couldn't save Airtable settings. Your last change wasn't stored.",
@@ -118,6 +118,7 @@
     "colNew": "New",
     "colUpdated": "Updated",
     "colHeld": "Held",
+    "colSource": "Source",
     "noRuns": "No runs yet."
   },
   "attentionPanel": {
@@ -265,6 +266,8 @@
       "sinceLastRun": "since last run",
       "today": "today",
       "nextRun": "Next run",
+      "manual": "Manual",
+      "manualImportSub": "manual import",
       "everyInterval": "every {{interval}}",
       "newUpdated": "{{newCount}} new · {{updated}} updated",
       "waitingOnLink": "waiting on a link",
@@ -282,6 +285,10 @@
       "detail_one": "holding {{count}} record",
       "detail_other": "holding {{count}} records"
     }
+  },
+  "source": {
+    "airtable": "Airtable",
+    "sheet": "Sheet"
   },
   "connection": {
     "title": "Connect Airtable",
