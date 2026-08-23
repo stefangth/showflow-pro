@@ -178,11 +178,11 @@ export const HELP_ITEMS: readonly HelpItem[] = [
     },
   },
   {
-    id: 'A4.2', role: 'admin', stage: 4, status: 'new', surface: 'Sync-held email · Settings, Airtable', updated: '2026-08-14',
+    id: 'A4.2', role: 'admin', stage: 4, status: 'new', surface: 'Sync-held email · Settings, Sources', updated: '2026-08-23',
     q: { en: 'Did the Airtable sync work? Why are dates missing?', de: 'Hat der Airtable-Sync funktioniert? Warum fehlen Termine?' },
     a: {
-      en: 'A held sync now emails you as well as posting in app, once per affected set rather than once per record, and points at Settings, Airtable. There the Overview tab lists every held record under "Needs your attention", grouped by cause with a one click fix, and the Activity tab shows the full run history. Held records are never dropped: fix the cause and they import on the next run.',
-      de: 'Ein zurückgehaltener Sync schickt dir jetzt zusätzlich zur In-App-Meldung eine E-Mail, einmal pro betroffenem Set statt einmal pro Datensatz, und verweist auf Einstellungen, Airtable. Dort listet der Tab Überblick jeden zurückgehaltenen Datensatz unter "Braucht deine Aufmerksamkeit", nach Ursache gruppiert und mit einer Korrektur per Klick, und der Tab Aktivität zeigt die vollständige Lauf-Historie. Zurückgehaltene Datensätze gehen nie verloren: Behebe die Ursache, dann kommen sie beim nächsten Lauf rein.',
+      en: 'A held sync now emails you as well as posting in app, once per affected set rather than once per record, and points at Settings, Sources. There the Overview tab lists every held record under "Needs your attention", grouped by cause with a one click fix, and the Activity tab shows the full run history. Held records are never dropped: fix the cause and they import on the next run.',
+      de: 'Ein zurückgehaltener Sync schickt dir jetzt zusätzlich zur In-App-Meldung eine E-Mail, einmal pro betroffenem Set statt einmal pro Datensatz, und verweist auf Einstellungen, Quellen. Dort listet der Tab Überblick jeden zurückgehaltenen Datensatz unter "Braucht deine Aufmerksamkeit", nach Ursache gruppiert und mit einer Korrektur per Klick, und der Tab Aktivität zeigt die vollständige Lauf-Historie. Zurückgehaltene Datensätze gehen nie verloren: Behebe die Ursache, dann kommen sie beim nächsten Lauf rein.',
     },
   },
   {
