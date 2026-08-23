@@ -2,7 +2,7 @@
 -- rows into show_dates keyed on the partial-unique (org_id, show_id, date) WHERE source='sheet'.
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT plan(11);
+SELECT plan(14);
 
 -- Seed with RLS bypassed.
 SET session_replication_role = replica;
@@ -85,6 +85,39 @@ SELECT is(
   (SELECT count(*)::int FROM public.show_dates
     WHERE show_id = '00000000-0000-0000-0000-0000000000c1' AND date = '2026-09-01'),
   1, 'still exactly one row (no duplicate)'
+);
+
+-- 3b. Within-batch duplicate keys: two rows in a single call resolving to the same
+-- (show_id, date) must not raise ON CONFLICT DO UPDATE's "command cannot affect row a
+-- second time" error, must insert exactly one row, and last-row-wins.
+DO $$
+DECLARE
+  v_result jsonb;
+BEGIN
+  v_result := public.import_sheet_dates(
+    '00000000-0000-0000-0000-0000000000f1',
+    '[
+       {"show_id":"00000000-0000-0000-0000-0000000000c1","date":"2026-09-04","session_1":"18:00"},
+       {"show_id":"00000000-0000-0000-0000-0000000000c1","date":"2026-09-04","session_1":"21:15"}
+     ]'::jsonb
+  );
+  PERFORM set_config('pgtap.dup_result', v_result::text, true);
+END $$;
+
+SELECT is(
+  (current_setting('pgtap.dup_result')::jsonb ->> 'new_count')::int,
+  1,
+  'within-batch duplicate keys collapse to one insert, not a raised error'
+);
+SELECT is(
+  (SELECT count(*)::int FROM public.show_dates
+    WHERE show_id = '00000000-0000-0000-0000-0000000000c1' AND date = '2026-09-04'),
+  1, 'only one row exists for the duplicated (show_id, date) key'
+);
+SELECT is(
+  (SELECT session_1 FROM public.show_dates
+    WHERE show_id = '00000000-0000-0000-0000-0000000000c1' AND date = '2026-09-04' AND source = 'sheet'),
+  '21:15', 'the surviving row keeps the last duplicate row''s session_1 (last-row-wins)'
 );
 
 -- 4. A non-member caller cannot import (org guard). Impersonate a user with no membership.

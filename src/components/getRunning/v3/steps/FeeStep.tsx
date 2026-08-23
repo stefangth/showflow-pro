@@ -115,7 +115,7 @@ export function FeeStep({ orgId, onDone }: { orgId: string | null; onDone: () =>
       {!hasCasts ? (
         <div className="flex flex-col items-start gap-1 rounded-l bg-[var(--amber-100)] px-4 py-4">
           <StatusPill tone="waiting">{t("body.fee.coverageLink")}</StatusPill>
-          <p className="text-xs text-[color:var(--amber-600)]">{t("body.fee.noCasts")}</p>
+          <p className="text-xs text-[var(--amber-600)]">{t("body.fee.noCasts")}</p>
         </div>
       ) : (
         <div className="space-y-3 rounded-l border border-border px-4 py-4">
