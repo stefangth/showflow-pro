@@ -193,7 +193,7 @@ describe("SettingsPage grouped vertical nav", () => {
     } as never);
     renderWithProviders(<MemoryRouter><SettingsPage /></MemoryRouter>);
     await screen.findByText("Modules");
-    expect(screen.getByRole("tab", { name: /airtable sync/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /sources/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /booking engine/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /email templates/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /^notifications$/i })).toBeInTheDocument();
@@ -262,7 +262,7 @@ describe("SettingsPage ?tab= deep link", () => {
     renderWithProviders(
       <MemoryRouter initialEntries={["/settings?tab=airtable"]}><SettingsPage /></MemoryRouter>,
     );
-    expect(await screen.findByRole("tab", { name: /airtable sync/i })).toHaveAttribute("aria-selected", "true");
+    expect(await screen.findByRole("tab", { name: /sources/i })).toHaveAttribute("aria-selected", "true");
   });
 
   it("lands on 'How this org works' by default for an admin", async () => {
@@ -395,7 +395,7 @@ describe("SettingsPage ?tab= deep link", () => {
         <SettingsPage />
       </MemoryRouter>,
     );
-    expect(await screen.findByRole("tab", { name: /airtable sync/i })).toHaveAttribute("aria-selected", "true");
+    expect(await screen.findByRole("tab", { name: /sources/i })).toHaveAttribute("aria-selected", "true");
     // Switch by hand in between, so this proves the effect follows the param rather than
     // simply re-running on any state change.
     fireEvent.mouseDown(screen.getByRole("tab", { name: /casts & coverage/i }));
@@ -419,13 +419,13 @@ describe("SettingsPage ?tab= deep link", () => {
         <SettingsPage />
       </MemoryRouter>,
     );
-    expect(await screen.findByRole("tab", { name: /airtable sync/i })).toHaveAttribute("aria-selected", "true");
+    expect(await screen.findByRole("tab", { name: /sources/i })).toHaveAttribute("aria-selected", "true");
 
     fireEvent.mouseDown(screen.getByRole("tab", { name: /casts & coverage/i }));
     expect(await screen.findByRole("tab", { name: /casts & coverage/i })).toHaveAttribute("aria-selected", "true");
 
     fireEvent.click(screen.getByRole("link", { name: /sync report/i }));
-    expect(await screen.findByRole("tab", { name: /airtable sync/i })).toHaveAttribute("aria-selected", "true");
+    expect(await screen.findByRole("tab", { name: /sources/i })).toHaveAttribute("aria-selected", "true");
   });
 });
 

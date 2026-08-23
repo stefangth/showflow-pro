@@ -1,6 +1,6 @@
 {
   "root": {
-    "selectOrg": "Wähle eine Organisation, um den Airtable-Sync einzurichten."
+    "selectOrg": "Wähle eine Organisation, um die Synchronisationsquellen einzurichten."
   },
   "toasts": {
     "settingsSaveError": "Die Airtable-Einstellungen konnten nicht gespeichert werden. Deine letzte Änderung wurde nicht übernommen.",
@@ -118,6 +118,7 @@
     "colNew": "Neu",
     "colUpdated": "Aktualisiert",
     "colHeld": "Gehalten",
+    "colSource": "Quelle",
     "noRuns": "Noch keine Läufe."
   },
   "attentionPanel": {
@@ -265,6 +266,8 @@
       "sinceLastRun": "seit letztem Lauf",
       "today": "heute",
       "nextRun": "Nächster Lauf",
+      "manual": "Manuell",
+      "manualImportSub": "manueller Import",
       "everyInterval": "alle {{interval}}",
       "newUpdated": "{{newCount}} neu · {{updated}} aktualisiert",
       "waitingOnLink": "wartet auf Verknüpfung",
@@ -282,6 +285,10 @@
       "detail_one": "hält {{count}} Datensatz zurück",
       "detail_other": "hält {{count}} Datensätze zurück"
     }
+  },
+  "source": {
+    "airtable": "Airtable",
+    "sheet": "Tabelle"
   },
   "connection": {
     "title": "Airtable verbinden",

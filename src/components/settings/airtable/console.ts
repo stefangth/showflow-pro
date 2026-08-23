@@ -40,6 +40,20 @@ export function runClock(iso: string | null): string {
     : "not yet";
 }
 
+/** Display label for a run's `sync_type`, so the console can tag each run by
+ *  which pipeline produced it (the scheduled Airtable poll vs. a manual Sheet
+ *  import). Falls back to the raw value for any future, unlabeled sync_type. */
+export function sourceLabel(syncType: string, t: TFunction): string {
+  switch (syncType) {
+    case "airtable_poll":
+      return t("source.airtable");
+    case "sheet_import":
+      return t("source.sheet");
+    default:
+      return syncType;
+  }
+}
+
 /** Map a raw sync-log status to a display badge. */
 export function statusBadge(status: string, t: TFunction): { label: string; tone: StatusTone } {
   switch (status) {
@@ -149,16 +163,25 @@ export function deriveKpis(
       sub: t("console.kpis.today"),
       tone: "default",
     },
-    {
-      label: t("console.kpis.nextRun"),
-      value: runClock(
-        latest?.synced_at
-          ? (nextSyncAt(latest.synced_at, settings.airtable_poll_interval_minutes)?.toISOString() ?? null)
-          : null,
-      ),
-      sub: t("console.kpis.everyInterval", { interval: formatInterval(settings.airtable_poll_interval_minutes) }),
-      tone: "default",
-    },
+    latest?.sync_type === "sheet_import"
+      ? {
+          // A manual Sheet import has no polling interval to project forward from —
+          // there is no scheduled next run to show.
+          label: t("console.kpis.nextRun"),
+          value: t("console.kpis.manual"),
+          sub: t("console.kpis.manualImportSub"),
+          tone: "default",
+        }
+      : {
+          label: t("console.kpis.nextRun"),
+          value: runClock(
+            latest?.synced_at
+              ? (nextSyncAt(latest.synced_at, settings.airtable_poll_interval_minutes)?.toISOString() ?? null)
+              : null,
+          ),
+          sub: t("console.kpis.everyInterval", { interval: formatInterval(settings.airtable_poll_interval_minutes) }),
+          tone: "default",
+        },
     {
       label: t("console.kpis.datesIn"),
       value: String(latest?.imported_count ?? 0),

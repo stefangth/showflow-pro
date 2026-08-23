@@ -193,6 +193,19 @@ describe("deriveKpis", () => {
     expect(kpis[2].value).toBe("0");
     expect(kpis[3].value).toBe("2");
   });
+  it("shows an interval-based Next run for an airtable_poll latest run", () => {
+    const kpis = deriveKpis(makeLog({ sync_type: "airtable_poll" }), makeSettings(), [], t);
+    expect(kpis).toHaveLength(4);
+    expect(kpis[1].label).toBe("Next run");
+    expect(kpis[1].sub).toBe("every 15 minutes");
+  });
+  it("shows Manual instead of a scheduled Next run for a sheet_import latest run", () => {
+    const kpis = deriveKpis(makeLog({ sync_type: "sheet_import" }), makeSettings(), [], t);
+    expect(kpis).toHaveLength(4);
+    expect(kpis[1].label).toBe("Next run");
+    expect(kpis[1].value).toBe("Manual");
+    expect(kpis[1].sub).toBe("manual import");
+  });
 });
 
 describe("groupHeldCauses", () => {

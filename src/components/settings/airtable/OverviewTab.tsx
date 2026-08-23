@@ -2,8 +2,9 @@ import type React from "react";
 import { AlertCircle, Check } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
+import { StatusPill } from "@/components/ui/status-pill";
 import type { SyncLogSummary } from "@/data/airtableSync";
-import { statusBadge, runClock, type StatusTone } from "./console";
+import { sourceLabel, statusBadge, runClock, type StatusTone } from "./console";
 import { AttentionPanel } from "./AttentionPanel";
 
 // eslint-disable-next-line no-restricted-syntax -- non-standard tracking (0.1em), not the Eyebrow primitive's 1.6px
@@ -141,10 +142,11 @@ export function OverviewTab({
                     className="h-1.5 w-1.5 shrink-0 rounded-xs"
                     style={{ background: dotColor(badge.tone) }}
                   />
-                  <span className="flex-1 font-mono text-xs tabular-nums text-muted-foreground">
+                  <span className="font-mono text-xs tabular-nums text-muted-foreground">
                     {runClock(run.synced_at)}
                   </span>
-                  <span className="text-control text-foreground">
+                  <StatusPill tone="neutral">{sourceLabel(run.sync_type, t)}</StatusPill>
+                  <span className="flex-1 text-control text-foreground">
                     {t('overviewTab.runSummary', { importedCount: run.imported_count ?? 0, heldCount: run.held_count ?? 0 })}
                   </span>
                 </div>

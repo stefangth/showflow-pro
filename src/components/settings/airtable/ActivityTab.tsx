@@ -2,17 +2,18 @@ import type { CSSProperties } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Skeleton } from "@/components/ui/skeleton";
+import { StatusPill } from "@/components/ui/status-pill";
 import { cn } from "@/lib/utils";
 import type { SyncLogSummary } from "@/data/airtableSync";
 
-import { statusBadge, type StatusTone } from "./console";
+import { sourceLabel, statusBadge, type StatusTone } from "./console";
 
 interface ActivityTabProps {
   runs: SyncLogSummary[];
   loading?: boolean;
 }
 
-const GRID = "grid grid-cols-[minmax(150px,1.6fr)_repeat(5,minmax(56px,1fr))] gap-3";
+const GRID = "grid grid-cols-[minmax(130px,1.4fr)_minmax(64px,0.7fr)_repeat(5,minmax(56px,1fr))] gap-3";
 // eslint-disable-next-line no-restricted-syntax -- non-standard tracking (0.1em)
 const EYEBROW = "text-eyebrow font-semibold uppercase tracking-[0.1em] text-muted-foreground";
 
@@ -40,9 +41,10 @@ export function ActivityTab({ runs, loading }: ActivityTabProps) {
         </p>
       </div>
       <div className="overflow-x-auto">
-        <div className="min-w-[560px]">
+        <div className="min-w-[620px]">
           <div className={cn(GRID, "border-b border-border bg-well-tint px-4 py-2.5", EYEBROW)}>
             <span>{t('activityTab.colStarted')}</span>
+            <span>{t('activityTab.colSource')}</span>
             <span>{t('activityTab.colStatus')}</span>
             <span>{t('activityTab.colRead')}</span>
             <span>{t('activityTab.colNew')}</span>
@@ -55,6 +57,7 @@ export function ActivityTab({ runs, loading }: ActivityTabProps) {
               {[0, 1, 2].map((i) => (
                 <div key={i} className={cn(GRID, "items-center border-b border-border px-4 py-2.5")}>
                   <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-4 w-12" />
                   <Skeleton className="h-4 w-14" />
                   <Skeleton className="h-4 w-8" />
                   <Skeleton className="h-4 w-8" />
@@ -79,6 +82,9 @@ export function ActivityTab({ runs, loading }: ActivityTabProps) {
                 >
                   <span className="text-muted-foreground">
                     {new Date(run.synced_at).toLocaleString()}
+                  </span>
+                  <span>
+                    <StatusPill tone="neutral">{sourceLabel(run.sync_type, t)}</StatusPill>
                   </span>
                   <span>
                     <span
