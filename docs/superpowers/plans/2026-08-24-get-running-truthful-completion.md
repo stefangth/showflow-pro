@@ -145,7 +145,7 @@ it("reports hasAnyDates false for an org with no dates", () => {
 });
 
 it("reports hasAnyDates true for an org whose only dates are in the past", () => {
-  const s = computeBookingSetupStatus({ ...base, dateCount: 4, coverage: { futurePairs: [], showPriorities: [], cityPriorities: [], nonEmptyCastIds: [] } });
+  const s = computeBookingSetupStatus({ ...base, dateCount: 4, coverage: { ...base.coverage, futurePairs: [] } });
   expect(s.hasAnyDates).toBe(true);
 });
 
