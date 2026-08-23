@@ -3,6 +3,7 @@ import type { Database } from "@/integrations/supabase/types";
 
 export interface SyncLogSummary {
   id: string;
+  sync_type: string;
   status: string;
   records_processed: number | null;
   imported_count: number | null;
@@ -13,7 +14,12 @@ export interface SyncLogSummary {
   synced_at: string;
 }
 
-const SYNC_LOG_COLS = "id, status, records_processed, imported_count, new_count, updated_count, held_count, error_details, synced_at";
+const SYNC_LOG_COLS = "id, sync_type, status, records_processed, imported_count, new_count, updated_count, held_count, error_details, synced_at";
+
+// The sync console shows both source types side by side. Allow-list them explicitly
+// (rather than dropping the sync_type filter entirely) so an unrelated future
+// sync_type doesn't silently leak into this history.
+const SYNC_LOG_TYPES = ["airtable_poll", "sheet_import"] as const;
 
 export interface UnresolvedRecord {
   id: string;
@@ -34,7 +40,7 @@ export async function fetchLatestSyncLog(
   const { data, error } = await client
     .from("airtable_sync_log")
     .select(SYNC_LOG_COLS)
-    .eq("org_id", orgId).eq("sync_type", "airtable_poll")
+    .eq("org_id", orgId).in("sync_type", SYNC_LOG_TYPES)
     .order("synced_at", { ascending: false }).limit(1).maybeSingle();
   if (error) throw error;
   return (data ?? null) as SyncLogSummary | null;
@@ -51,7 +57,7 @@ export async function fetchRecentSyncLogs(
   const { data, error } = await client
     .from("airtable_sync_log")
     .select(SYNC_LOG_COLS)
-    .eq("org_id", orgId).eq("sync_type", "airtable_poll")
+    .eq("org_id", orgId).in("sync_type", SYNC_LOG_TYPES)
     .order("synced_at", { ascending: false }).limit(limit);
   if (error) throw error;
   return (data ?? []) as SyncLogSummary[];

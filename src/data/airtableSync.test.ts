@@ -13,11 +13,25 @@ describe("airtableSync data fns", () => {
   });
 
   it("fetchLatestSyncLog returns the most recent log row", async () => {
-    const row = { id: "log-1", status: "partial", imported_count: 3, new_count: 2, updated_count: 1, held_count: 4, synced_at: "2026-06-17T10:00:00Z" };
+    const row = { id: "log-1", sync_type: "airtable_poll", status: "partial", imported_count: 3, new_count: 2, updated_count: 1, held_count: 4, synced_at: "2026-06-17T10:00:00Z" };
     const fake = createFakeSupabase({ airtable_sync_log: { data: row, error: null } });
     const out = await fetchLatestSyncLog(asClient(fake), "org-1");
     expect(out?.id).toBe("log-1");
     expect(out?.held_count).toBe(4);
+    expect(out?.sync_type).toBe("airtable_poll");
+  });
+
+  it("fetchLatestSyncLog returns the newer of an airtable_poll and a sheet_import run", async () => {
+    // The fake doesn't apply order()/limit() itself, so — like the test above — it is
+    // seeded with the single row the real DB's `.order(...).limit(1)` would hand back:
+    // here, a sheet_import run that is newer than a would-be airtable_poll row.
+    const newest = { id: "log-2", sync_type: "sheet_import", status: "success", imported_count: 5, new_count: 5, updated_count: 0, held_count: 0, synced_at: "2026-08-14T09:12:00Z" };
+    const fake = createFakeSupabase({ airtable_sync_log: { data: newest, error: null } });
+    const out = await fetchLatestSyncLog(asClient(fake), "org-1");
+    expect(out?.id).toBe("log-2");
+    expect(out?.sync_type).toBe("sheet_import");
+    // Both source types are allow-listed, so this sheet_import row isn't filtered out.
+    expect(fake.calls).toContainEqual({ table: "airtable_sync_log", method: "in", args: ["sync_type", ["airtable_poll", "sheet_import"]] });
   });
 
   it("fetchUnresolvedRecords returns held + errored rows (excludes imported/updated) with their action", async () => {
@@ -45,8 +59,8 @@ describe("airtableSync data fns", () => {
 
   it("fetchRecentSyncLogs returns the rows, newest first, limited", async () => {
     const rows = [
-      { id: "a", status: "success", imported_count: 1, new_count: 1, updated_count: 0, held_count: 0, error_details: null, synced_at: "2026-08-14T09:12:00Z" },
-      { id: "b", status: "partial", imported_count: 2, new_count: 1, updated_count: 1, held_count: 3, error_details: null, synced_at: "2026-08-14T08:42:00Z" },
+      { id: "a", sync_type: "airtable_poll", status: "success", imported_count: 1, new_count: 1, updated_count: 0, held_count: 0, error_details: null, synced_at: "2026-08-14T09:12:00Z" },
+      { id: "b", sync_type: "airtable_poll", status: "partial", imported_count: 2, new_count: 1, updated_count: 1, held_count: 3, error_details: null, synced_at: "2026-08-14T08:42:00Z" },
     ];
     const fake = createFakeSupabase({ airtable_sync_log: { data: rows, error: null } });
     const out = await fetchRecentSyncLogs(asClient(fake), "org-1", 5);
@@ -54,5 +68,20 @@ describe("airtableSync data fns", () => {
     expect(out[0].id).toBe("a");
     expect(fake.calls).toContainEqual({ table: "airtable_sync_log", method: "order", args: ["synced_at", { ascending: false }] });
     expect(fake.calls).toContainEqual({ table: "airtable_sync_log", method: "limit", args: [5] });
+  });
+
+  it("fetchRecentSyncLogs returns Airtable poll and Sheet import runs together, newest first, each tagged with sync_type", async () => {
+    const rows = [
+      { id: "s1", sync_type: "sheet_import", status: "success", imported_count: 1, new_count: 1, updated_count: 0, held_count: 0, error_details: null, synced_at: "2026-08-14T09:12:00Z" },
+      { id: "p1", sync_type: "airtable_poll", status: "partial", imported_count: 2, new_count: 1, updated_count: 1, held_count: 3, error_details: null, synced_at: "2026-08-14T08:42:00Z" },
+    ];
+    const fake = createFakeSupabase({ airtable_sync_log: { data: rows, error: null } });
+    const out = await fetchRecentSyncLogs(asClient(fake), "org-1", 10);
+    expect(out).toHaveLength(2);
+    expect(out[0]).toMatchObject({ id: "s1", sync_type: "sheet_import" });
+    expect(out[1]).toMatchObject({ id: "p1", sync_type: "airtable_poll" });
+    // The .in() allow-list is exactly these two types, so an unrelated future
+    // sync_type wouldn't silently leak into this console.
+    expect(fake.calls).toContainEqual({ table: "airtable_sync_log", method: "in", args: ["sync_type", ["airtable_poll", "sheet_import"]] });
   });
 });

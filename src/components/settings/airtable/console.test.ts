@@ -19,6 +19,7 @@ const t = i18n.getFixedT("en", "settingsAirtable");
 function makeLog(over: Partial<SyncLogSummary> = {}): SyncLogSummary {
   return {
     id: "log-1",
+    sync_type: "airtable_poll",
     status: "success",
     records_processed: 10,
     imported_count: 8,
