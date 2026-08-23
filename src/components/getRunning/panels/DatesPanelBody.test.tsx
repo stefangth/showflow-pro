@@ -33,6 +33,7 @@ const TEST_ORG = { id: "org-1", name: "Test Org", slug: "test-org", status: "act
 
 const CONNECTED_LOG = {
   id: "log-1",
+  sync_type: "airtable_poll",
   status: "success",
   records_processed: 148,
   imported_count: 140,
