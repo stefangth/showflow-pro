@@ -311,7 +311,9 @@
   "retired": {
     "title": "Everything here is set up",
     "body": "Every step is done. Come back any time to review what changed.",
-    "count": "{{done}} of {{total}} done"
+    "count": "{{done}} of {{total}} done",
+    "hideFromNav": "Hide from the sidebar",
+    "manageInSettings": "Manage in Settings"
   },
   "nothingToSetUp": {
     "title": "Nothing to set up yet",
