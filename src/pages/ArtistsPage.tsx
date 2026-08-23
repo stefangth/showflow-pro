@@ -36,6 +36,9 @@ import { ArtistImportDialog } from '@/components/artists/ArtistImportDialog';
 import { inviteArtistToApp, revokeInvitation, resendInvitation } from '@/data/invitations';
 import { useCan } from '@/hooks/useCapabilities';
 import { PageMini } from '@/components/minis/PageMini';
+import { FinishSetupLink } from '@/components/getRunning/v3/FinishSetupLink';
+import { stepsForRoute } from '@/lib/getRunning/stepFeature';
+import { ROUTES } from '@/config/app.config';
 
 type BookingJoin = {
   id: string; artist_id: string; status: string;
@@ -233,6 +236,7 @@ export default function ArtistsPage() {
           <p className="text-muted-foreground mt-1">{t('page.subtitle')}</p>
         </div>
         <div className="flex items-center gap-2">
+        <FinishSetupLink steps={stepsForRoute(ROUTES.ARTISTS)} />
         {canAddArtists && (
           <Button variant="outline" onClick={() => setImportOpen(true)}>
             <Upload className="h-4 w-4 mr-2" />{t('page.importFromSheet')}

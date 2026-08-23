@@ -46,6 +46,12 @@ import ArtistsPage from "./ArtistsPage";
 describe("ArtistsPage — Part A capability gates", () => {
   beforeEach(() => { vi.clearAllMocks(); });
 
+  it("v3 disabled (default in test env): no finish-setup affordance in the action cluster", () => {
+    mockUseCan({ add_artists: true });
+    renderWithProviders(<ArtistsPage />);
+    expect(screen.queryByRole("link", { name: /finish setup/i })).not.toBeInTheDocument();
+  });
+
   it("add_artists on: shows both Import from sheet and Add Artist", () => {
     mockUseCan({ add_artists: true });
     renderWithProviders(<ArtistsPage />);

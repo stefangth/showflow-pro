@@ -202,6 +202,13 @@ describe("ShowsBookingsPage — empty state on the calendar surface", () => {
     expect(screen.queryByTestId("month-grid")).not.toBeInTheDocument();
     expect(screen.queryByTestId("calendar-surface")).not.toBeInTheDocument();
   });
+
+  it("v3 disabled (default in test env): no finish-setup affordance in the producer header", async () => {
+    showDatesRef.value = [];
+    renderWithProviders(<ShowsBookingsPage />);
+    await screen.findByText("No show dates match the current filters.");
+    expect(screen.queryByRole("link", { name: /finish setup/i })).not.toBeInTheDocument();
+  });
 });
 
 /**

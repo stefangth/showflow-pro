@@ -40,6 +40,9 @@ import { formatDateWithWeekday, parseDateOnly } from '@/lib/dates';
 import { useEditorConfig } from '@/features/editor/EditorContext';
 import { compareCustomValues, customFilterMatches, type CustomFilterState } from '@/lib/customFields';
 import { PageMini } from '@/components/minis/PageMini';
+import { FinishSetupLink } from '@/components/getRunning/v3/FinishSetupLink';
+import { stepsForRoute } from '@/lib/getRunning/stepFeature';
+import { ROUTES } from '@/config/app.config';
 import { CalendarSurface } from '@/components/calendar/surface/CalendarSurface';
 import type { NeedsYouReceipt, NeedsYouReceiptKind } from '@/components/calendar/surface/NeedsYouLens';
 import { toProducerEntries } from '@/lib/calendar/producerData';
@@ -500,6 +503,7 @@ function ProducerShowsBookings() {
           <h1 className="font-display text-display-sm font-semibold tracking-tight">{t('producer.title')}</h1>
           <p className="text-muted-foreground mt-1">{t('producer.subtitle')}</p>
         </div>
+        <FinishSetupLink steps={stepsForRoute(ROUTES.BOOKINGS)} />
       </div>
 
       {canManage && hireOrdersOn && readyCount > 0 && (

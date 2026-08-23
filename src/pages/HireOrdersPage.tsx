@@ -21,6 +21,8 @@ import { orderDate } from "@/lib/hireOrders/orderDate";
 import type { HireOrderStatus } from "@/data/hireOrders";
 import { ROUTES } from "@/config/app.config";
 import { PageMini } from "@/components/minis/PageMini";
+import { FinishSetupLink } from "@/components/getRunning/v3/FinishSetupLink";
+import { PAPERWORK_STEP_KEYS } from "@/lib/getRunning/stepFeature";
 
 /** The spreadsheet-import wizard shipped in Task 5. */
 const IMPORT_READY = true;
@@ -135,6 +137,7 @@ export default function HireOrdersPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <FinishSetupLink steps={PAPERWORK_STEP_KEYS} />
           {IMPORT_READY && (
             <Button variant="outline" disabled={!featureOn} onClick={() => setImportOpen(true)}>
               {t("hireOrdersPage.importFromSpreadsheet")}
