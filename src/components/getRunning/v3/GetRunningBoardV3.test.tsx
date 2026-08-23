@@ -18,6 +18,14 @@ const { client } = vi.hoisted(() => ({ client: {} as Record<string, unknown> }))
 vi.mock("@/integrations/supabase/client", () => ({ supabase: client }));
 vi.mock("@/hooks/useGetRunningV3", () => ({ useGetRunningV3: vi.fn() }));
 
+// The retired state's dismiss control shares the same rail-dismissal hook v1's
+// RetiredBoard uses, spied the same way RetiredBoard.test.tsx does rather than
+// touching real localStorage.
+const dismissFn = vi.fn();
+vi.mock("@/components/setup/useRailDismissed", () => ({
+  useRailDismissed: () => [false, dismissFn, vi.fn()],
+}));
+
 import { useGetRunningV3 } from "@/hooks/useGetRunningV3";
 import { GetRunningBoardV3 } from "./GetRunningBoardV3";
 
@@ -157,6 +165,18 @@ describe("GetRunningBoardV3", () => {
 
     expect(screen.getByTestId("get-running-v3-retired")).toBeInTheDocument();
     expect(screen.queryByTestId(/phase-row-/)).not.toBeInTheDocument();
+  });
+
+  it("retired state offers a hide-from-nav control and a Settings link, and hide dismisses the rail", () => {
+    mockModel(composeGetRunningV3({ ...base, feeDone: true, documentDone: true }));
+
+    renderBoard();
+
+    const settingsLink = screen.getByRole("link", { name: /manage in settings/i });
+    expect(settingsLink.getAttribute("href")).toContain("/settings?tab=get-running");
+
+    fireEvent.click(screen.getByRole("button", { name: /hide from the sidebar/i }));
+    expect(dismissFn).toHaveBeenCalled();
   });
 
   it("does not expand a waits-on phase from its rail icon click", () => {

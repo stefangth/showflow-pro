@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { Users } from "lucide-react";
 import { useAuth } from "@/features/auth/AuthContext";
 import { useOrgAdminNames } from "@/hooks/useOrgAdminNames";
@@ -11,9 +11,12 @@ import { PhaseIconRail } from "@/components/getRunning/v3/board/PhaseIconRail";
 import { PhaseRow } from "@/components/getRunning/v3/board/PhaseRow";
 import { WizardShell } from "@/components/getRunning/v3/WizardShell";
 import { StepBodyV3 } from "@/components/getRunning/v3/stepRegistryV3";
+import { Button } from "@/components/ui/button";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { Metric } from "@/components/ui/metric";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useRailDismissed } from "@/components/setup/useRailDismissed";
+import { ROUTES } from "@/config/app.config";
 import { adminDisplayName } from "@/data/orgAdmins";
 import { visibleSteps } from "@/lib/getRunning/steps";
 import type { GetRunningModelV3, GetRunningPhaseKey, GetRunningStep, GetRunningStepKey } from "@/lib/getRunning/steps";
@@ -44,13 +47,24 @@ function NothingToSetUpV3(): JSX.Element {
  * `GetRunningModel` type (a different shape from `GetRunningModelV3`), and per the task
  * brief this is built inline rather than widening that component's prop type or
  * duplicating v1's dismissal wiring for a board that isn't v1's.
+ *
+ * Rendered as `<RetiredBoardV3 />` (not called as a bare function), so it's a proper
+ * function component and `useRailDismissed` below is legal per the Rules of Hooks.
+ * `orgId` is passed in from the parent rather than re-derived here, matching v1's
+ * `RetiredBoard` prop shape and keeping this in sync with the same `useAuth`-derived
+ * value the rest of `GetRunningBoardV3` uses. "Hide from the sidebar" shares v1's
+ * `useRailDismissed("getRunning", orgId)` key, so dismissing from either board hides the
+ * same sidebar item. "Manage in Settings" opens the Settings mirror of this same board
+ * (`GetRunningSettingsMirror`, `?tab=get-running`), the durable home once the standalone
+ * page is no longer linked from the sidebar.
  */
-function RetiredBoardV3({ model }: { model: GetRunningModelV3 }): JSX.Element {
+function RetiredBoardV3({ model, orgId }: { model: GetRunningModelV3; orgId: string | null }): JSX.Element {
   const { t } = useTranslation("getRunningV3");
+  const [, dismiss] = useRailDismissed("getRunning", orgId);
   return (
     <div
       data-testid="get-running-v3-retired"
-      className="flex w-full flex-col gap-2 rounded-l border border-border bg-card p-6 shadow-elev3"
+      className="flex w-full flex-col gap-3 rounded-l border border-border bg-card p-6 shadow-elev3"
     >
       <div className="flex flex-wrap items-center gap-3">
         <div className="min-w-0 flex-1">
@@ -60,6 +74,14 @@ function RetiredBoardV3({ model }: { model: GetRunningModelV3 }): JSX.Element {
         <Metric size="body" className="text-muted-foreground">
           {t("retired.count", { done: model.doneCount, total: model.totalCount })}
         </Metric>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button asChild variant="secondary" size="sm">
+          <Link to={`${ROUTES.SETTINGS}?tab=get-running`}>{t("retired.manageInSettings")}</Link>
+        </Button>
+        <Button variant="outline" size="sm" onClick={dismiss}>
+          {t("retired.hideFromNav")}
+        </Button>
       </div>
     </div>
   );
@@ -174,7 +196,7 @@ export function GetRunningBoardV3({ context }: { context: "page" | "settings" })
   if (model.complete) {
     return (
       <div className={context === "page" ? "flex flex-col gap-5 p-6" : "flex flex-col gap-5"}>
-        <RetiredBoardV3 model={model} />
+        <RetiredBoardV3 model={model} orgId={orgId} />
       </div>
     );
   }

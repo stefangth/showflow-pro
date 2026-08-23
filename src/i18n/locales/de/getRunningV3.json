@@ -311,7 +311,9 @@
   "retired": {
     "title": "Hier ist alles eingerichtet",
     "body": "Jeder Schritt ist erledigt. Schau jederzeit wieder vorbei, um zu prüfen, was sich geändert hat.",
-    "count": "{{done}} von {{total}} erledigt"
+    "count": "{{done}} von {{total}} erledigt",
+    "hideFromNav": "Aus der Seitenleiste ausblenden",
+    "manageInSettings": "In den Einstellungen verwalten"
   },
   "nothingToSetUp": {
     "title": "Noch nichts einzurichten",
