@@ -378,6 +378,13 @@
       "shellBody": "Sobald du Casts hast, kannst du hier ein Honorar pro Produktion und Cast setzen. Bis dahin nutzt jeder Vertrag das Standardhonorar oben.",
       "continue": "Weiter",
       "readOnly": "Vertragseinstellungen legt ein Admin fest. Du kannst sie hier lesen."
+    },
+    "document": {
+      "heading": "Dein Vertragsdokument",
+      "sub": "Lege fest, wie Vertragsnummern gebildet werden. Das ganze Layout gestaltest du im Vorlageneditor.",
+      "templateLink": "Vorlageneditor öffnen",
+      "continue": "Weiter",
+      "readOnly": "Vertragseinstellungen legt ein Admin fest. Du kannst sie hier lesen."
     }
   }
 }

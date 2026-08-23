@@ -378,6 +378,13 @@
       "shellBody": "Once you have casts, you can set a fee for each production and cast here. Until then every contract uses the default above.",
       "continue": "Continue",
       "readOnly": "Contract settings are set by an admin. You can read them here."
+    },
+    "document": {
+      "heading": "Your contract document",
+      "sub": "Set how contract numbers are built. Style the full layout in the template editor.",
+      "templateLink": "Open the document template editor",
+      "continue": "Continue",
+      "readOnly": "Contract settings are set by an admin. You can read them here."
     }
   }
 }
