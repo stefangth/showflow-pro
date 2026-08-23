@@ -14,7 +14,12 @@ const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 function isValidIsoDate(value: string): boolean {
   if (!ISO_DATE_RE.test(value)) return false;
-  return !Number.isNaN(Date.parse(`${value}T00:00:00Z`));
+  // `Date.parse`/`new Date` silently roll over out-of-range days (e.g. "2026-02-30" ->
+  // "2026-03-02"), so the regex + parse alone lets calendar-invalid dates through. Round-trip
+  // the parsed y/m/d back through Date.UTC and require an exact match, so a rollover is caught.
+  const [y, m, d] = value.split("-").map(Number);
+  const d0 = new Date(Date.UTC(y, m - 1, d));
+  return d0.getUTCFullYear() === y && d0.getUTCMonth() === m - 1 && d0.getUTCDate() === d;
 }
 
 /**

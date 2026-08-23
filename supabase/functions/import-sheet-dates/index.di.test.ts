@@ -225,6 +225,37 @@ Deno.test("import-sheet-dates DI: invalid date -> held, not sent to RPC, no 500"
   assertEquals(rpcCalls.length, 0);
 });
 
+Deno.test("import-sheet-dates DI: calendar-invalid date (2026-02-30) -> held, not sent to RPC, no 500", async () => {
+  // Matches the ISO regex and parses via Date.parse (which silently rolls over to
+  // 2026-03-02), but is not a real calendar date. Must be caught by the strict round-trip.
+  const rows = [
+    { program: "Cats", subProgram: "Evening", date: "2026-02-30", city: "Berlin", session_1: null, session_2: null, session_3: null, venue: null, rowIndex: 1 },
+  ];
+  const { deps, calls } = makeFakeDeps({
+    authUser: { id: "u1" },
+    tables: { org_memberships: { data: { role: "admin" }, error: null }, ...CATALOG },
+  });
+  const recordLogInserts: unknown[] = [];
+  const originalFrom = bindFakeFrom(deps.admin);
+  setFakeFrom(deps.admin, (table: string) => {
+    const chain = originalFrom(table);
+    if (table === "airtable_sync_record_log") {
+      const orig = chain.insert.bind(chain);
+      chain.insert = (p: unknown) => { recordLogInserts.push(p); return (orig as (x: unknown) => ReturnType<typeof orig>)(p); };
+    }
+    return chain;
+  });
+  const res = await handle(sheetReq({ org_id: ORG, rows }), deps);
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body, { processed: 1, new_dates: 0, updated: 0, held: 1, tiers_opened: 0 });
+  const recordRows = recordLogInserts[0] as Array<Record<string, unknown>>;
+  assertEquals(recordRows[0].reason, "invalid date '2026-02-30'");
+  // Never sent to the RPC.
+  const rpcCalls = calls.filter((c) => c.table === "rpc:import_sheet_dates");
+  assertEquals(rpcCalls.length, 0);
+});
+
 Deno.test("import-sheet-dates DI: unresolved city on an existing sheet date does not hold (updates); on a new date, holds", async () => {
   const rows = [
     // Existing sheet date (show_dates seed below has showC1/2026-09-01, source=sheet) re-imported with an unresolved city.

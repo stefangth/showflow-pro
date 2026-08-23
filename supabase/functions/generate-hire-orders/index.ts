@@ -208,30 +208,22 @@ async function fetchEligibleCasts(
 }
 
 /**
- * Steps 1 and 3 of `resolveCastProductionFee`, given an already-resolved
- * `eligible` set for the show_date (see `fetchEligibleCasts`). Per-booking work
- * only: the artist's cast memberships, then the fee lookup if unambiguous.
+ * Step 3 of `resolveCastProductionFee`, given an already-resolved `eligible` set
+ * for the show_date (see `fetchEligibleCasts`) AND the artist's already-resolved
+ * cast `memberships` (see `fetchEligibleCasts`'s sibling batched lookup in
+ * `draftOrders`, or the single-artist query in `resolveCastProductionFee`). Pure
+ * per-booking computation only: intersect, then the fee lookup if unambiguous.
+ * No `cast_members` query here, so a caller resolving many bookings for the same
+ * show_date can batch that lookup once outside the loop instead of once per call.
  */
 async function resolveCastProductionFeeWith(
   admin: Deps["admin"],
-  args: { orgId: string; artistId: string; showId: string; eligible: Set<string> },
+  args: { orgId: string; showId: string; memberships: Set<string>; eligible: Set<string> },
 ): Promise<{ amount: number | null }> {
-  const { orgId, artistId, showId, eligible } = args;
-
-  // 1. The artist's cast memberships in this org.
-  const { data: memberRows } = await admin
-    .from("cast_members")
-    .select("cast_id")
-    .eq("artist_id", artistId)
-    .eq("org_id", orgId);
-  const memberships = new Set(
-    ((memberRows ?? []) as unknown as Array<{ cast_id: string }>).map((r) =>
-      r.cast_id
-    ),
-  );
+  const { orgId, showId, memberships, eligible } = args;
   if (memberships.size === 0) return { amount: null };
 
-  // 3. Intersect; a fee applies only when the derivation is unambiguous.
+  // Intersect; a fee applies only when the derivation is unambiguous.
   const intersection = [...memberships].filter((id) => eligible.has(id));
   if (intersection.length !== 1) return { amount: null };
 
@@ -266,11 +258,14 @@ async function resolveCastProductionFeeWith(
  * (no memberships, no eligibility, ambiguity, no fee row, or a null fee_amount),
  * which the callers coalesce to `defaults.default_fee`.
  *
- * Single-booking convenience wrapper over `fetchEligibleCasts` +
- * `resolveCastProductionFeeWith` — used by call sites that resolve exactly one
- * booking (draftManual, draftBatchArtist). A caller resolving MANY bookings for
- * the same show_date (draftOrders) should call `fetchEligibleCasts` once and
- * `resolveCastProductionFeeWith` per booking instead, to avoid the N+1.
+ * Single-booking convenience wrapper over `fetchEligibleCasts` + a single-artist
+ * `cast_members` lookup + `resolveCastProductionFeeWith` — used by call sites
+ * that resolve exactly one booking (draftManual, draftBatchArtist). A caller
+ * resolving MANY bookings for the same show_date (draftOrders) should call
+ * `fetchEligibleCasts` once and batch the `cast_members` lookup for every
+ * booking's artist_id once (building an artist_id -> Set<cast_id> map), then
+ * call `resolveCastProductionFeeWith` per booking with the precomputed
+ * memberships — avoiding an N+1 on both queries.
  */
 async function resolveCastProductionFee(
   admin: Deps["admin"],
@@ -284,7 +279,18 @@ async function resolveCastProductionFee(
 ): Promise<{ amount: number | null }> {
   const { orgId, showDateId, artistId, showId, cityId } = args;
   const eligible = await fetchEligibleCasts(admin, { orgId, showDateId, showId, cityId });
-  return resolveCastProductionFeeWith(admin, { orgId, artistId, showId, eligible });
+
+  // The artist's cast memberships in this org (single-artist lookup, unbatched).
+  const { data: memberRows } = await admin
+    .from("cast_members")
+    .select("cast_id")
+    .eq("artist_id", artistId)
+    .eq("org_id", orgId);
+  const memberships = new Set(
+    ((memberRows ?? []) as unknown as Array<{ cast_id: string }>).map((r) => r.cast_id),
+  );
+
+  return resolveCastProductionFeeWith(admin, { orgId, showId, memberships, eligible });
 }
 
 const LETTERHEAD_DEFAULT: HireOrderLetterhead = {
@@ -695,6 +701,27 @@ async function draftOrders(
     cityId: showDate.city_id,
   });
 
+  // Likewise, every booking's cast_members lookup is batched into ONE query for
+  // all of this date's artist_ids (rather than one query per booking inside the
+  // loop below), keyed into an artist_id -> Set<cast_id> map.
+  const bookingArtistIds = Array.from(new Set(bookings.map((b) => b.artist_id)));
+  const { data: memberRows } = await admin
+    .from("cast_members")
+    .select("artist_id, cast_id")
+    .in("artist_id", bookingArtistIds)
+    .eq("org_id", org);
+  const membershipsByArtist = new Map<string, Set<string>>();
+  for (
+    const r of (memberRows ?? []) as unknown as Array<{ artist_id: string; cast_id: string }>
+  ) {
+    let set = membershipsByArtist.get(r.artist_id);
+    if (!set) {
+      set = new Set<string>();
+      membershipsByArtist.set(r.artist_id, set);
+    }
+    set.add(r.cast_id);
+  }
+
   for (const b of bookings) {
     // Per-booking isolation (mirrors issueOrders): an unexpected throw on one
     // booking must not abort the batch into a CORS-less 500.
@@ -724,8 +751,8 @@ async function draftOrders(
       // only the cast fee's AMOUNT is used (see resolveCastProductionFee).
       const castFee = await resolveCastProductionFeeWith(admin, {
         orgId: org,
-        artistId: b.artist_id,
         showId: showDate.show_id,
+        memberships: membershipsByArtist.get(b.artist_id) ?? new Set<string>(),
         eligible: eligibleCasts,
       });
       const defLayer: Partial<Record<OrderFieldKey, unknown>> = {

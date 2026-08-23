@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import type { SheetDateRaw } from "@/lib/sheetImport/mapRows";
@@ -27,6 +28,7 @@ const DEFAULT_SETTINGS: SheetImportSettings = { url: "", map: {} };
  * headers-only wrapper kept for callers that only care about column names.
  */
 export function useSheetImport(orgId: string | null) {
+  const { t } = useTranslation("getRunningV3");
   const qc = useQueryClient();
   const SETTINGS_KEY = ["sheet-import", orgId] as const;
   const [parsed, setParsed] = useState<ParsedSheet | null>(null);
@@ -76,7 +78,7 @@ export function useSheetImport(orgId: string | null) {
     // request has no other path back to the user: without this, the button just flips
     // back to idle and the caller can't tell a failed import from one that never ran.
     onError: () => {
-      toast.error("Import failed. Check the sheet link and your access, then try again.");
+      toast.error(t("body.cities.sheet.importError"));
     },
   });
 
