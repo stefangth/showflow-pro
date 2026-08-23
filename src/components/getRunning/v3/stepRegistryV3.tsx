@@ -8,6 +8,11 @@ import { TeamPanelBody } from "@/components/getRunning/panels/TeamPanelBody";
 import { LetterheadStep } from "@/components/hireOrders/setup/LetterheadStep";
 import { TermsStep } from "@/components/hireOrders/setup/TermsStep";
 import { CountersignStep } from "@/components/hireOrders/setup/CountersignStep";
+import { SourceStep } from "@/components/getRunning/v3/steps/SourceStep";
+import { ConnectStep } from "@/components/getRunning/v3/steps/ConnectStep";
+import { MapStep } from "@/components/getRunning/v3/steps/MapStep";
+import { CitiesStep } from "@/components/getRunning/v3/steps/CitiesStep";
+import { ProductionsStep } from "@/components/getRunning/v3/steps/ProductionsStep";
 import { StepComingSoon } from "./StepComingSoon";
 import type { GetRunningStep, GetRunningStepKey } from "@/lib/getRunning/steps";
 
@@ -30,9 +35,11 @@ const BOOKING_DOMAIN_STEP_KEYS: ReadonlySet<GetRunningStepKey> = new Set(["artis
  * one `coverage` read and each firing its own `onDone` on its own gap-closing transition
  * (see each body's own `onDone` doc comment for why that condition is body-specific).
  *
- * Every `step.placeholder` step (`source`/`connect`/`map`/`cities`/`productions`/
- * `skills`/`fee`/`document` — see `src/lib/getRunning/steps.ts`'s header comment on
- * Phase-1 being an honest approximation) has no real in-panel editor yet and renders
+ * The five "Get dates in" steps (`source`/`connect`/`map`/`cities`/`productions`) have
+ * real bodies too (Wireflow v3 Phase 2, Tasks 6-9/11), each owning its own data via the
+ * `orgId`/`onDone` props passed straight through. Every remaining `step.placeholder`
+ * step (`skills`/`fee`/`document` — see `src/lib/getRunning/steps.ts`'s header comment
+ * on Phase-1 being an honest approximation) has no real in-panel editor yet and renders
  * `StepComingSoon` instead, which deep-links out to the step's real home.
  *
  * Data hooks are called unconditionally at the top (same convention as
@@ -78,15 +85,20 @@ export function StepBodyV3({
       return <TermsStep orgId={orgId} onDone={onDone} />;
     case "countersign":
       return <CountersignStep orgId={orgId} onDone={onDone} />;
-    // Placeholder keys are handled above via `step.placeholder` before this switch is
-    // reached, but they must still appear here (rather than in `default`) for the
-    // exhaustiveness check below to hold: TypeScript narrows `step.key` across the whole
-    // switch, not just the cases after the `if`.
     case "source":
+      return <SourceStep orgId={orgId} onDone={onDone} />;
     case "connect":
+      return <ConnectStep orgId={orgId} onDone={onDone} />;
     case "map":
+      return <MapStep orgId={orgId} onDone={onDone} />;
     case "cities":
+      return <CitiesStep orgId={orgId} onDone={onDone} />;
     case "productions":
+      return <ProductionsStep orgId={orgId} onDone={onDone} />;
+    // The remaining placeholder keys are handled above via `step.placeholder` before this
+    // switch is reached, but they must still appear here (rather than in `default`) for
+    // the exhaustiveness check below to hold: TypeScript narrows `step.key` across the
+    // whole switch, not just the cases after the `if`.
     case "skills":
     case "fee":
     case "document":
