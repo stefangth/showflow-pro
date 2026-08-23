@@ -3,6 +3,9 @@
     "eyebrow": "{{org}} · loslegen",
     "title": "Loslegen"
   },
+  "finishSetup": {
+    "label": "Einrichtung abschließen: {{step}}"
+  },
   "toggle": {
     "title": "Loslegen v3",
     "description": "Schaltet das neue Loslegen Board nur für diese Organisation frei. Andere Organisationen sind davon nicht betroffen.",
