@@ -37,6 +37,19 @@ floats above another one.
 
 **[review]** Tint backgrounds use the token roles: `bg-hover-tint` for hover washes, `bg-well-tint` for recessed wells / inactive chips / tracks, `bg-accent-tint` for the active count chip / accent wash. Ad-hoc `bg-muted` and `bg-foreground/N` washes are retired in feature code **[ci]**. Solid accent fills stay on the accent scale (`bg-accent-500` etc.); only the low accent washes moved to `bg-accent-tint`.
 
+**[ci]** No solid fixed-light accent background: `bg-accent-50`, `bg-accent-100`,
+`bg-accent-200` (and their `hover:`/other variants) are lint-banned in feature code. The
+numbered accent scale is immutable across modes (see section 4), so `accent-50` stays the
+same near-white violet in dark mode. Put mode-flipping text (`text-foreground`,
+`text-muted-foreground`, or an inherited default) on top of it and the text goes light in
+dark mode and disappears. For a mode-aware accent surface use the semantic pair
+`bg-accent` / `text-accent-foreground` (it flips: light-violet band + accent-600 text in
+light, accent-900 band + accent-100 text in dark). A deliberate fixed-on-fixed surface (a
+permanently-light chip that pairs the fixed background with a fixed dark stop like
+`text-accent-700`) is the one legitimate exception: annotate it with an
+`eslint-disable-next-line no-restricted-syntax` and a reason (see
+`HeroCard.tsx`'s open-step button for the pattern).
+
 ## 3. Type
 
 The scale is **48 / 32 / 22 / 17 / 14 / 13 / 12 / 11**.

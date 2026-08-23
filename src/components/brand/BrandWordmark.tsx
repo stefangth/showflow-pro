@@ -15,7 +15,10 @@ export function BrandWordmark({ className }: { className?: string }) {
     <div className={cn("flex items-baseline gap-1.5 min-w-0", className)}>
       <span className="font-display text-body font-semibold tracking-[-0.02em] truncate">
         <span className="text-foreground">Show</span>
-        <span className="text-primary">Flow</span>
+        {/* text-accent-text (not text-primary): the DS accent-text role lifts to
+            #C9BCFF on the dark ground so "Flow" clears AA contrast in dark mode,
+            where raw text-primary (#6E5CF6) only hit 3.38:1. See docs/ui-conventions.md §4. */}
+        <span className="text-accent-text">Flow</span>
       </span>
       <a
         href={CHANGELOG_URL}

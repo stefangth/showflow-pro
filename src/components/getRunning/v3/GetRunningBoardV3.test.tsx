@@ -127,8 +127,8 @@ describe("GetRunningBoardV3", () => {
     expect(screen.getByTestId("phase-row-bookable")).toBeInTheDocument();
     expect(screen.getByTestId("phase-row-paperwork")).toBeInTheDocument();
 
-    const paperworkRow = screen.getByTestId("phase-row-paperwork");
-    fireEvent.click(within(paperworkRow).getByRole("button", { name: /continue|start/i }));
+    // The whole bar is the trigger now (the row itself is the button), so click the row.
+    fireEvent.click(screen.getByTestId("phase-row-paperwork"));
 
     // The row is gone, replaced by the wizard shell (its own header/footer chrome), and
     // the OTHER two phases stay as plain rows.
@@ -141,6 +141,23 @@ describe("GetRunningBoardV3", () => {
     expect(screen.queryByText(/more on the way/i)).not.toBeInTheDocument();
   });
 
+  it("reopens an already-completed phase's wizard when its bar is clicked", () => {
+    // Same model as the first test: get_dates is fully done (renders as a done row with a
+    // check, no Start/Continue word) and nothing auto-opens on mount. Clicking that bar
+    // must still reopen the phase — a finished phase is reviewable, not a dead end.
+    mockModel(composeGetRunningV3({ ...base, hire: hire({ letterhead: false }) }));
+
+    renderBoard();
+
+    const getDatesRow = screen.getByTestId("phase-row-get_dates");
+    expect(within(getDatesRow).queryByText(/continue|start/i)).not.toBeInTheDocument();
+    fireEvent.click(getDatesRow);
+
+    // The done row is swapped for the wizard shell in place.
+    expect(screen.queryByTestId("phase-row-get_dates")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /collapse/i })).toBeInTheDocument();
+  });
+
   it("shows the real skills step body inside the wizard, not a placeholder", () => {
     // skills is undone and every other bookable step is done, so opening "bookable"
     // lands directly on the "skills" step. As of Phase 3 (Task 6) skills has a real
@@ -150,8 +167,7 @@ describe("GetRunningBoardV3", () => {
 
     renderBoard();
 
-    const bookableRow = screen.getByTestId("phase-row-bookable");
-    fireEvent.click(within(bookableRow).getByRole("button", { name: /continue|start/i }));
+    fireEvent.click(screen.getByTestId("phase-row-bookable"));
 
     expect(screen.getByText(/skills for your parts/i)).toBeInTheDocument();
     expect(screen.queryByText(/more on the way/i)).not.toBeInTheDocument();

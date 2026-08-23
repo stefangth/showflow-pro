@@ -147,7 +147,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
         {navGroups.map(group => (
           <div key={group.section} className="space-y-0.5">
             {!collapsed && (
-              <Eyebrow section className="px-2.5 pb-1 text-muted-foreground/70">
+              <Eyebrow section className="px-2.5 pb-1 text-muted-foreground">
                 {t(SECTION_KEY[group.section])}
               </Eyebrow>
             )}
@@ -279,7 +279,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 <PopoverContent align="end" side="top" sideOffset={8} className="w-52 p-1">
                   {languagePacksEnabled && (
                     <>
-                      <Eyebrow section className="px-2.5 pb-1 pt-1.5 text-muted-foreground/70">
+                      <Eyebrow section className="px-2.5 pb-1 pt-1.5 text-muted-foreground">
                         {t('account.language')}
                       </Eyebrow>
                       {SUPPORTED_LANGUAGES.map((code) => (

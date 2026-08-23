@@ -172,7 +172,7 @@ describe("PhaseIconRail", () => {
 });
 
 describe("PhaseRow", () => {
-  it("shows Waits on Get dates in when the phase waits on get_dates", () => {
+  it("shows Waits on Get dates in and stays inert (no click, no button) when it waits on get_dates", () => {
     const model = composeGetRunningV3({ ...base, booking: booking({ slots: false }) });
     const phase = model.phases.find((p) => p.key === "bookable")!;
     expect(phase.waitsOn).toBe("get_dates");
@@ -180,15 +180,36 @@ describe("PhaseRow", () => {
     renderWithProviders(<PhaseRow phase={phase} index={2} model={model} onOpen={onOpen} />);
 
     expect(screen.getByText(/waits on get dates in/i)).toBeInTheDocument();
+    // A locked row is not a control: no button, and clicking the bar does nothing.
+    const row = screen.getByTestId("phase-row-bookable");
+    expect(within(row).queryByRole("button")).toBeNull();
+    fireEvent.click(row);
+    expect(onOpen).not.toHaveBeenCalled();
   });
 
-  it("shows Continue for an in-progress phase and calls onOpen when clicked", () => {
+  it("shows Continue for an in-progress phase and calls onOpen when the bar is clicked", () => {
     const model = composeGetRunningV3({ ...base, booking: booking({ ladder: false }) });
     const phase = model.phases.find((p) => p.key === "bookable")!;
     const onOpen = vi.fn();
     renderWithProviders(<PhaseRow phase={phase} index={2} model={model} onOpen={onOpen} />);
 
-    fireEvent.click(screen.getByRole("button", { name: /continue/i }));
+    // The whole bar is the trigger (its accessible name carries the "Continue" word).
+    fireEvent.click(screen.getByTestId("phase-row-bookable"));
     expect(onOpen).toHaveBeenCalledWith("bookable");
+  });
+
+  it("reopens an already-completed phase when its bar is clicked (check marker, no action word)", () => {
+    const model = composeGetRunningV3({ ...base, hire: hire({ letterhead: false }) });
+    const phase = model.phases.find((p) => p.key === "get_dates")!;
+    expect(phase.done).toBe(true);
+    const onOpen = vi.fn();
+    renderWithProviders(<PhaseRow phase={phase} index={1} model={model} onOpen={onOpen} />);
+
+    const row = screen.getByTestId("phase-row-get_dates");
+    // A done phase shows a status check, not a Start/Continue word...
+    expect(within(row).queryByText(/continue|start/i)).not.toBeInTheDocument();
+    // ...but the bar is still a button that reopens it.
+    fireEvent.click(row);
+    expect(onOpen).toHaveBeenCalledWith("get_dates");
   });
 });

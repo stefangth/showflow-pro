@@ -80,6 +80,20 @@ export const uiConventions = {
         selector: "Literal[value=/\\bbg-foreground\\u002F[0-9]/]",
         message: 'Ad hoc foreground-alpha wash. Use bg-hover-tint / bg-well-tint. See docs/ui-conventions.md section 2.',
       },
+      {
+        // Solid fixed-light accent backgrounds. The numbered accent scale
+        // (--accent-50/100/200) is IMMUTABLE across light/dark (identical hex in
+        // both modes), so mode-flipping text on top (text-foreground,
+        // text-muted-foreground, or an inherited default) goes light in dark mode
+        // and turns invisible against the fixed near-white band. Use the
+        // mode-aware bg-accent / bg-accent-tint instead; for a deliberate
+        // fixed-on-fixed surface (a permanently-light chip), pair it with a fixed
+        // stop like text-accent-700 and disable this line with a reason.
+        // (?![0-9]) keeps bg-accent-500/600/... (saturated mid-violets, mode-safe)
+        // out; the \\b lets it still catch variant-prefixed forms (hover:bg-accent-50).
+        selector: "Literal[value=/\\bbg-accent-(?:50|100|200)(?![0-9])/]",
+        message: 'Solid fixed-light accent background: bg-accent-50/100/200 never flip for dark mode, so flipping text on them is invisible in dark. Use bg-accent / bg-accent-tint, or pair with a fixed stop (text-accent-700) and eslint-disable with a reason. See docs/ui-conventions.md section 2.',
+      },
     ],
     'no-restricted-imports': [
       'error',

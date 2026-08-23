@@ -33,6 +33,14 @@ export function HeroCard({
   const minutes = MINUTES_PER_STEP * remaining;
   const stepTitle = t(`steps.${nextStep.key}.title`);
 
+  // Deliberate fixed-on-fixed surface: a permanently-white button on the fixed
+  // `bg-accent-600` hero card (which stays the same hot violet in both themes).
+  // `text-accent-700` is a fixed dark-violet stop, so it reads on white and on
+  // the accent-50 hover in BOTH modes. This is the one legitimate exception to
+  // the fixed-light-background lint rule, hence the explicit disable.
+  // eslint-disable-next-line no-restricted-syntax -- fixed-on-fixed button, text is a fixed dark stop (see comment above)
+  const openStepButtonClass = "bg-white text-accent-700 hover:bg-accent-50";
+
   return (
     <div
       data-testid="hero-card"
@@ -45,7 +53,7 @@ export function HeroCard({
       <div className="mt-4 flex flex-wrap items-center gap-3">
         <Button
           type="button"
-          className="bg-white text-accent-700 hover:bg-accent-50"
+          className={openStepButtonClass}
           onClick={() => onOpenNext(nextStep.phase, nextStep.key)}
         >
           {t("hero.openStep")}

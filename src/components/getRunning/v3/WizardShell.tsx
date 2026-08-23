@@ -81,14 +81,17 @@ export function WizardShell({
 
   return (
     <div className="flex w-full flex-col overflow-hidden rounded-l border border-border bg-card shadow-elev2">
-      {/* Header band */}
-      <div className="flex flex-wrap items-center gap-3 border-b border-accent-100 bg-accent-50 px-4 py-3">
+      {/* Header band. Uses the semantic `bg-accent` / `text-accent-foreground` pair
+          (mode-aware: light-violet band + accent-600 text in light, accent-900 band +
+          accent-100 text in dark) rather than the fixed `bg-accent-50` scale stop, whose
+          hex never flips and would leave light `text-foreground` unreadable in dark. */}
+      <div className="flex flex-wrap items-center gap-3 border-b border-border bg-accent px-4 py-3">
         <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
           <Metric size="inline" className="text-primary-foreground">
             {phaseOrder}
           </Metric>
         </span>
-        <div className="text-title-sm font-semibold tracking-[-0.2px] text-foreground">
+        <div className="text-title-sm font-semibold tracking-[-0.2px] text-accent-foreground">
           {t(`phases.${phaseKey}.name`)}
         </div>
         {blocksFirstAsk && <StatusPill tone="risk">{t("wizard.blocksFirstAsk")}</StatusPill>}
@@ -106,10 +109,16 @@ export function WizardShell({
         </Button>
       </div>
 
-      {/* Body */}
-      <div className="grid grid-cols-[216px_minmax(0,1fr)_268px] items-start gap-0">
+      {/* Body. Single column below `lg` (the fixed 216px rail + 268px guide only leave
+          room for the fluid middle on a wide viewport); the three fixed/fluid columns
+          come back at `lg`. When stacked, the rail/guide switch their side borders for
+          bottom/top borders so the seams still read. */}
+      <div className="grid grid-cols-1 items-start gap-0 lg:grid-cols-[216px_minmax(0,1fr)_268px]">
         {/* Left: step rail */}
-        <nav aria-label={t("wizard.stepsNav")} className="flex flex-col gap-0.5 border-r border-border p-3">
+        <nav
+          aria-label={t("wizard.stepsNav")}
+          className="flex flex-col gap-0.5 border-b border-border p-3 lg:border-b-0 lg:border-r"
+        >
           {steps.map((step) => {
             const isActive = step.key === activeKey;
             return (
@@ -119,15 +128,24 @@ export function WizardShell({
                 onClick={() => onSelectStep(step.key)}
                 aria-current={isActive ? "step" : undefined}
                 className={`flex items-start gap-2 rounded-s px-2 py-1.5 text-left transition-colors ${
-                  isActive ? "bg-accent-50 text-foreground" : "text-muted-foreground hover:bg-hover-tint"
+                  isActive ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-hover-tint"
                 }`}
               >
-                <span className="mt-1">
-                  <StepDot done={step.done} current={isActive} />
-                </span>
-                <span className="flex flex-col">
-                  <span className="text-control font-medium">{t(`steps.${step.key}.title`)}</span>
-                  <span className="text-xs text-muted-foreground">{t(`steps.${step.key}.hint`)}</span>
+                <span className="flex min-w-0 flex-col gap-0.5">
+                  <span className="flex items-start gap-2">
+                    {/* The dot sits in a box exactly one title-line tall (h-[1lh] at the
+                        title's text-control size) and is centered within it, so it lands on
+                        the center of the FIRST line even when the title wraps to two lines,
+                        rather than centering on the whole block or being top-nudged by a
+                        hardcoded margin. */}
+                    <span className="flex h-[1lh] shrink-0 items-center text-control">
+                      <StepDot done={step.done} current={isActive} />
+                    </span>
+                    <span className="text-control font-medium">{t(`steps.${step.key}.title`)}</span>
+                  </span>
+                  {/* Second line, indented past the dot (1.5) + gap (2) = pl-3.5 to stay
+                      aligned under the title. */}
+                  <span className="pl-3.5 text-xs text-muted-foreground">{t(`steps.${step.key}.hint`)}</span>
                 </span>
               </button>
             );
@@ -143,7 +161,7 @@ export function WizardShell({
 
         {/* Right: how this works guide */}
         {activeStep && (
-          <aside className="flex flex-col gap-2 border-l border-border p-4">
+          <aside className="flex flex-col gap-2 border-t border-border p-4 lg:border-t-0 lg:border-l">
             <Eyebrow>{t("wizard.howThisWorks")}</Eyebrow>
             <div className="text-control font-semibold text-foreground">
               {t(`guide.${activeStep.key}.title`)}
