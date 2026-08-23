@@ -3,6 +3,9 @@
     "eyebrow": "{{org}} · get running",
     "title": "Get running"
   },
+  "finishSetup": {
+    "label": "Finish setup: {{step}}"
+  },
   "toggle": {
     "title": "Get running v3",
     "description": "Turns the new get running board on for this org only. Other orgs are not affected.",
