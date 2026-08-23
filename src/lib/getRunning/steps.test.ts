@@ -25,7 +25,6 @@ const base: GetRunningInputV3 = {
   hireOrdersOn: true,
   booking: booking(),
   hire: hire(),
-  datesDone: true,
   datesSource: "airtable",
   datesConnectDone: true,
   datesMapDone: true,

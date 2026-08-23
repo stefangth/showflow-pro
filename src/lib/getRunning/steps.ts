@@ -7,12 +7,15 @@
 // (src/lib/getRunning/tasks.ts) so v1 stays byte-stable; it mirrors v1's `makeBookingTask`/
 // `makeHireTask`/`withActionability` idioms instead of sharing code with them.
 //
-// Phase-1 is an honest approximation: four board steps (source/connect/map/cities) all
-// share the single v1 `datesDone` signal, and four more steps (skills/fee/document, plus
-// the merge that retires `productions`' own body) are placeholders whose UI body is not
+// Phase 2 wires the get_dates split to real per-step signals: `source` reads the org's
+// chosen dates source (useDatesSource), `connect`/`map` read the Airtable console's
+// connection + required-field-mapping state (useAirtableConsole) when that source is
+// chosen (and are hidden, not merely done, for a manual source), and `cities` reads the
+// booking module's `datesWithoutCity` advisory. Four more steps (skills/fee/document, plus
+// the merge that retires `productions`' own body) remain placeholders whose UI body is not
 // built yet (`StepComingSoon`, task 7). See the task-2 brief's mapping table for the exact
-// per-step signal source. Later phases replace the get_dates split and the placeholder
-// signals with real per-signal reads; nothing here should be read as final semantics.
+// per-step signal source. Later phases replace the remaining placeholder signals with real
+// per-signal reads; nothing here should be read as final semantics.
 //
 // No React, no hooks, no data fetching here — a later task wires this to live queries.
 
@@ -80,8 +83,6 @@ export interface GetRunningInputV3 {
   hireOrdersOn: boolean;
   booking: BookingSetupStatus | null; // null while unread or module off
   hire: HireOrderSetupStatus | null;
-  /** @deprecated Phase-1 shared placeholder signal, superseded by the four per-step fields below. Unused by composeGetRunningV3; kept until Task 2 removes it. */
-  datesDone: boolean;
   datesSource: "airtable" | "sheet" | "manual" | null;
   datesConnectDone: boolean;
   datesMapDone: boolean;
