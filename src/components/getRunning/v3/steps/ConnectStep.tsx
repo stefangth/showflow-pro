@@ -35,7 +35,7 @@ export function ConnectStep({ orgId, onDone }: { orgId: string | null; onDone: (
   const footerSlot = useContext(WizardFooterContext);
   const canEdit = useCan("configure_airtable");
   const { source } = useDatesSource(orgId);
-  const airtable = useAirtableConsole(orgId, { canTriggerSync: false });
+  const airtable = useAirtableConsole(orgId, { readOnly: !canEdit, canTriggerSync: false });
   const [tokenValue, setTokenValue] = useState("");
 
   const isAirtable = source === "airtable";

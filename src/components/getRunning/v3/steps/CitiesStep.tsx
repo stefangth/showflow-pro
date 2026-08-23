@@ -6,6 +6,7 @@ import { useCan } from "@/hooks/useCapabilities";
 import { useAirtableConsole } from "@/hooks/useAirtableConsole";
 import { WizardFooterContext } from "@/components/getRunning/v3/WizardFooterContext";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { CatalogTab } from "@/components/settings/airtable/CatalogTab";
 import { ROUTES } from "@/config/app.config";
 
@@ -22,7 +23,11 @@ import { ROUTES } from "@/config/app.config";
  * no Airtable cities yet (a by-hand org, or one that hasn't mapped a city field) sees the
  * empty state instead of an empty `CatalogTab` shell, with a link out to where cities are
  * actually managed (Settings › Casts & coverage) and Continue enabled immediately, since
- * there is nothing to resolve.
+ * there is nothing to resolve. That empty state is only correct once the console's own
+ * queries have settled (`airtable.ready`): while still loading, an org with real unresolved
+ * Airtable cities would otherwise render as "no cities" with Continue already enabled,
+ * letting a visitor click straight through before those rows ever appear. So a loading
+ * console renders a skeleton instead, with Continue disabled.
  *
  * Portals its Continue into `WizardFooterContext`'s slot, same pattern as `SourceStep`/
  * `ConnectStep`/`MapStep`. Read-only viewers (no `configure_airtable` capability) see the
@@ -36,9 +41,10 @@ export function CitiesStep({ orgId, onDone }: { orgId: string | null; onDone: ()
   const canEdit = useCan("configure_airtable");
   const airtable = useAirtableConsole(orgId, { readOnly: !canEdit, canTriggerSync: false });
 
+  const loaded = airtable.ready;
   const cityRows = airtable.cityRows;
-  const isEmpty = cityRows.length === 0;
-  const canContinue = isEmpty || cityRows.every((row) => row.linkedId !== null);
+  const isEmpty = loaded && cityRows.length === 0;
+  const canContinue = loaded && (cityRows.length === 0 || cityRows.every((row) => row.linkedId !== null));
 
   const continueButton = (
     <Button type="button" size="sm" disabled={!canContinue} onClick={onDone}>
@@ -55,7 +61,13 @@ export function CitiesStep({ orgId, onDone }: { orgId: string | null; onDone: ()
         <p className="text-xs text-muted-foreground">{t("body.cities.sub")}</p>
       </div>
 
-      {isEmpty ? (
+      {!loaded ? (
+        <div className="space-y-2">
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-10 w-full" />
+        </div>
+      ) : isEmpty ? (
         <div className="space-y-2 rounded-l border border-border bg-well-tint px-3.5 py-6 text-center">
           <p className="text-sm text-muted-foreground">{t("body.cities.empty")}</p>
           <Link

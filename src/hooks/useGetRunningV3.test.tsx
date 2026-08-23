@@ -201,4 +201,24 @@ describe("useGetRunningV3 dates signals (Phase 2)", () => {
     expect(connect.hidden).toBe(true);
     expect(map.hidden).toBe(true);
   });
+
+  // Fix #3 (efficiency): the Airtable console is only ever consumed by this hook when the
+  // dates source is Airtable (datesConnectDone/datesMapDone). For a manual source it must not
+  // mount the console at all, so a manual/by-hand org never pays for its ~7 always-on queries
+  // (key-status, settings, bases, tables, etc.).
+  it("does not read the Airtable console for a manual dates source", async () => {
+    seedDatesSignals("manual");
+
+    const { result } = renderHookWithProviders(() => useGetRunningV3(), {
+      authOverrides: {
+        currentOrg: TEST_ORG,
+        roles: ["admin"],
+        hasRole: (r) => r === "admin",
+      },
+    });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    const calls = (client.calls ?? []) as { table: string }[];
+    expect(calls.some((c) => c.table === "rpc:get_org_airtable_key_status")).toBe(false);
+  });
 });

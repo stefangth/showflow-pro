@@ -72,7 +72,7 @@ export function CastingBreakdownFields({ value, onChange, skills, disabled = fal
     <div className="space-y-2.5">
       <div className="flex items-baseline justify-between gap-3">
         <p className="text-sm font-medium">{t("form.slotsHeading")}</p>
-        <Metric className="text-muted-foreground">
+        <Metric size="body" className="text-muted-foreground">
           {t("form.slotTotals", { main: mainTotal, understudy: understudyTotal })}
         </Metric>
       </div>

@@ -159,6 +159,32 @@ describe("CitiesStep", () => {
     expect(onDone).toHaveBeenCalledTimes(1);
   });
 
+  // Fix #2 (correctness): while the console's own queries (key-status, settings) are still
+  // in flight, the step must not render the "no cities" empty state with Continue already
+  // enabled — that would let a visitor click through before real unresolved Airtable cities
+  // have had a chance to appear. It should show a loading placeholder instead, Continue
+  // disabled, until the console reports `ready`.
+  it("shows a loading state (not the empty state) and keeps Continue disabled while the console is still loading", async () => {
+    let resolveSettings!: (value: typeof BASE_SETTINGS & { airtable_field_map: Record<string, string> }) => void;
+    mock(fetchAirtableSettings).mockReturnValue(
+      new Promise((resolve) => {
+        resolveSettings = resolve;
+      }),
+    );
+
+    renderStep();
+
+    // Still loading: neither the empty state nor the resolved catalog has rendered, and
+    // Continue must not be clickable yet.
+    expect(screen.queryByText(/no cities to resolve yet/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /continue/i })).toBeDisabled();
+
+    resolveSettings({ ...BASE_SETTINGS, airtable_field_map: { date: "Date" } });
+
+    expect(await screen.findByText(/no cities to resolve yet/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /continue/i })).toBeEnabled();
+  });
+
   it("is read only (link/create controls disabled) for a viewer without configure_airtable", async () => {
     vi.mocked(useCan).mockReturnValue(false);
     seedSettings();

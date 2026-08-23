@@ -362,7 +362,8 @@
       "continue": "Weiter",
       "incomplete": "Richte mindestens einen Besetzungsplan ein, um fortzufahren.",
       "empty": "Noch keine Produktionen. Lege deine erste an, um zu starten.",
-      "readOnlyEmpty": "Noch keine Produktionen. Bitte einen Admin, eine anzulegen."
+      "readOnlyEmpty": "Noch keine Produktionen. Bitte einen Admin, eine anzulegen.",
+      "readOnlyReason": "Um eine Produktion hinzuzufügen, brauchst du das Recht Produktionen verwalten, das dieser Account nicht hat."
     }
   }
 }

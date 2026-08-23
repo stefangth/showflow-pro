@@ -14,6 +14,7 @@ import { Eyebrow } from "@/components/ui/eyebrow";
 import { Metric } from "@/components/ui/metric";
 import { Skeleton } from "@/components/ui/skeleton";
 import { adminDisplayName } from "@/data/orgAdmins";
+import { visibleSteps } from "@/lib/getRunning/steps";
 import type { GetRunningModelV3, GetRunningPhaseKey, GetRunningStep, GetRunningStepKey } from "@/lib/getRunning/steps";
 
 /**
@@ -70,26 +71,16 @@ function RetiredBoardV3({ model }: { model: GetRunningModelV3 }): JSX.Element {
  *  board-level hard block, so without this filter the board would auto-open straight into
  *  a step it should never show for that org). `null` when nothing blocks. */
 function firstBlockingStep(model: GetRunningModelV3): { phase: GetRunningPhaseKey; key: GetRunningStepKey } | null {
-  const flat = model.phases.flatMap((phase) => visible(phase.steps));
+  const flat = model.phases.flatMap((phase) => visibleSteps(phase.steps));
   const found = flat.find((step) => !step.done && (step.block === "offers" || step.block === "booking"));
   return found ? { phase: found.phase, key: found.key } : null;
-}
-
-/** Steps a phase actually shows: a `hidden` step (e.g. `connect`/`map` once the dates
- *  source is "manual") never appears in the wizard rail, is never a navigation target, and
- *  never counts toward the phase's local step counter. Mirrors `visibleSteps` in
- *  `src/lib/getRunning/steps.ts`, which the composer already uses for
- *  doneCount/totalCount/nextStep — this is the render/navigation-layer twin of that same
- *  rule (Task 13a: the model's `hidden` flag was inert here). */
-function visible(steps: GetRunningStep[]): GetRunningStep[] {
-  return steps.filter((step) => !step.hidden);
 }
 
 /** The step a phase opens on when entered without a specific step (`PhaseRow.onOpen`):
  *  the first not-done VISIBLE step, else the phase's first visible step. Never returns a
  *  hidden step's key. */
 function firstStepForPhase(steps: GetRunningStep[]): GetRunningStepKey {
-  const vis = visible(steps);
+  const vis = visibleSteps(steps);
   return vis.find((step) => !step.done)?.key ?? vis[0]?.key ?? steps[0].key;
 }
 
@@ -168,7 +159,7 @@ export function GetRunningBoardV3({ context }: { context: "page" | "settings" })
     // (the rail filters them, the hero card's `nextStep` already excludes them), but if a
     // caller ever passes one anyway, redirect to the phase's first visible not-done step
     // instead of opening the wizard on a step that shouldn't exist for this org.
-    const isVisibleTarget = visible(phaseObj.steps).some((s) => s.key === step);
+    const isVisibleTarget = visibleSteps(phaseObj.steps).some((s) => s.key === step);
     setSelectedPhase(phase);
     setSelectedStep(isVisibleTarget ? step : firstStepForPhase(phaseObj.steps));
   };
@@ -195,7 +186,7 @@ export function GetRunningBoardV3({ context }: { context: "page" | "settings" })
   const handleStepDone = () => {
     const phaseObj = selectedPhase ? model.phases.find((p) => p.key === selectedPhase) : null;
     if (!phaseObj || !selectedStep) return;
-    const vis = visible(phaseObj.steps);
+    const vis = visibleSteps(phaseObj.steps);
     const idx = vis.findIndex((step) => step.key === selectedStep);
     const next = vis.slice(idx + 1).find((step) => !step.done);
     if (next) {
@@ -215,7 +206,7 @@ export function GetRunningBoardV3({ context }: { context: "page" | "settings" })
   const activeStep =
     rawActiveStep && !rawActiveStep.hidden
       ? rawActiveStep
-      : (activePhase ? visible(activePhase.steps).find((s) => !s.done) : undefined) ?? null;
+      : (activePhase ? visibleSteps(activePhase.steps).find((s) => !s.done) : undefined) ?? null;
 
   // A producer viewer waits on the admin whenever any not-done step is not theirs to act
   // on; the same "who does this wait on" signal PhaseRow/WizardShell already read per
@@ -270,7 +261,7 @@ export function GetRunningBoardV3({ context }: { context: "page" | "settings" })
             <WizardShell
               key={phase.key}
               phaseKey={phase.key}
-              steps={visible(activePhase.steps)}
+              steps={visibleSteps(activePhase.steps)}
               activeKey={activeStep.key}
               onSelectStep={(key) => setSelectedStep(key)}
               onCollapse={handleCollapse}
