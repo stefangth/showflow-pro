@@ -1,0 +1,52 @@
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { screen, fireEvent, waitFor } from "@testing-library/react";
+import { renderWithProviders } from "@/test/renderWithProviders";
+
+// Approved fake in a hoisted holder (vi.mock is hoisted above imports) — never a
+// hand-rolled vi.mock chain, per SourceStep.test.tsx. SkillsStep mounts the real
+// SkillsTab, which reads via useSkillCatalog/useSkills (AuthContext currentOrg).
+// The default renderWithProviders AuthContext has `currentOrg: null`, so those
+// queries stay disabled and never touch the supabase singleton — no seeding needed.
+const { client } = vi.hoisted(() => ({ client: {} as Record<string, unknown> }));
+vi.mock("@/integrations/supabase/client", () => ({ supabase: client }));
+
+// useCan drives the read-only gate. Mocked to a controllable flat boolean, same
+// pattern as SourceStep.test.tsx.
+vi.mock("@/hooks/useCapabilities", async (orig) => ({
+  ...(await orig<typeof import("@/hooks/useCapabilities")>()),
+  useCan: vi.fn(),
+}));
+
+import { useCan } from "@/hooks/useCapabilities";
+import { SkillsStep } from "@/components/getRunning/v3/steps/SkillsStep";
+
+function renderStep(onDone = vi.fn()) {
+  // authOverrides opts renderWithProviders into mounting a real AuthContext.Provider
+  // (default currentOrg: null), which SkillsStep's real SkillsTab needs (useAuth()) —
+  // and keeps useSkillCatalog/useSkills disabled (no currentOrg), so they never touch
+  // the supabase singleton.
+  const result = renderWithProviders(<SkillsStep orgId="org-1" onDone={onDone} />, { authOverrides: {} });
+  return { ...result, onDone };
+}
+
+describe("SkillsStep", () => {
+  beforeEach(() => {
+    vi.mocked(useCan).mockReturnValue(true);
+  });
+
+  it("renders the continue action and calls onDone when a capable viewer clicks it", async () => {
+    const { onDone } = renderStep();
+
+    expect(screen.getByText(/skills for your parts/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /continue/i }));
+    await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1));
+  });
+
+  it("shows a read-only note instead of continue when the viewer cannot edit", () => {
+    vi.mocked(useCan).mockReturnValue(false);
+    renderStep();
+
+    expect(screen.queryByRole("button", { name: /continue/i })).toBeNull();
+    expect(screen.getByText(/manage skills right/i)).toBeInTheDocument();
+  });
+});
