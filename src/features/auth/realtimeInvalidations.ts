@@ -20,9 +20,16 @@ export const REALTIME_INVALIDATIONS: Array<{ table: string; keys: unknown[][] }>
   { table: 'cast_city_priority',         keys: [['cast-city-priority'], ['eligibility']] },
   { table: 'cast_members',              keys: [['cast-members'], ['artist-casts'], ['my-cast-memberships'], ['cast-members-counts'], ['cast-roster-counts'], ['eligible-artists'], ['artist-eligible-dates']] }, // cast membership drives both eligibility queries
   // An artist's status decides whether their cast membership counts toward coverage
-  // (fetchCastMemberCounts / fetchLadderCoverageInputs filter to status = 'active'), so
-  // deactivating an artist has to bust those reads too, not just the artist lists.
-  { table: 'artists',                    keys: [['artists'], ['my-artist'], ['cast-members-counts'], ['eligibility']] },
+  // (fetchCastMemberCounts / fetchLadderCoverageInputs filter to status = 'active') and
+  // whether a skill they hold counts as held at all (fetchSkillEligibilityGaps applies the
+  // same filter), so deactivating an artist has to bust those reads too, not just the
+  // artist lists. Without ['skills'], deactivating the sole holder of a required skill
+  // leaves another admin's open Get running board reporting the skills step as done.
+  { table: 'artists',                    keys: [['artists'], ['my-artist'], ['cast-members-counts'], ['eligibility'], ['skills']] },
+  // The join table behind the skill-gap read (['skills','gaps',org], the Get running
+  // skills step) and every artist-skill picker. Writing it is exactly how a gap is
+  // closed, so it has to reach a board open in another session.
+  { table: 'artist_skills',              keys: [['skills'], ['artist-skills']] },
   { table: 'shows',                      keys: [['shows'], ['shows-for-eligibility'], ['shows-program-sub-programs']] },
   { table: 'casts',                      keys: [['casts']] },
   { table: 'cities',                     keys: [['cities']] },
