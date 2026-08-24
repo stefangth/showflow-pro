@@ -44,7 +44,8 @@
     "uploadAria": "Unterschrift der Agentur als PNG hochladen",
     "replaceSignature": "Unterschrift ersetzen",
     "uploadPng": "PNG hochladen",
-    "save": "Briefkopf speichern"
+    "save": "Briefkopf speichern",
+    "legalNameRequired": "Trage den rechtlichen Namen ein, um zu speichern. Ohne dieses Feld kann kein Vertrag ausgestellt werden."
   },
   "numberingCard": {
     "title": "Nummerierung",

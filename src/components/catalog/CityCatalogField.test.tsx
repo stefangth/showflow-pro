@@ -117,6 +117,20 @@ describe("CityCatalogField", () => {
     expect(screen.queryByText(/an admin can add them/i)).toBeNull();
   });
 
+  /**
+   * With no active org there is nowhere to add a city TO, so "an admin can add them in
+   * Settings" is false even when the viewer IS the admin. (The unreachable `form.cities.noOrg`
+   * error copy that used to sit behind this state went with it.)
+   */
+  it("does not tell a viewer with no active org that an admin can add cities in Settings", async () => {
+    Object.assign(client, createFakeSupabase({ cities: { data: [], error: null } }));
+    renderWithProviders(<CityCatalogField orgId={null} />, { authOverrides: { currentOrg: null as never } });
+
+    expect(await screen.findByText("No cities yet.")).toBeInTheDocument();
+    expect(screen.queryByText(/an admin can add them/i)).toBeNull();
+    expect(screen.queryByText(/add the first one here/i)).toBeNull();
+  });
+
   it("says the read failed rather than showing a reassuring empty state", async () => {
     renderField({ error: { message: "boom" } });
     expect(await screen.findByText(/could not be loaded/i)).toBeInTheDocument();

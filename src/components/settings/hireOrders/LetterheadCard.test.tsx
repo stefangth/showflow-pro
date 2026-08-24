@@ -43,9 +43,44 @@ describe("LetterheadCard readOnly (capability floor)", () => {
   });
 
   it("leaves the fields and Save button enabled when readOnly is false", async () => {
+    seedClient({
+      app_settings: {
+        data: [{ key: "hire_order_letterhead", org_id: "org-1", value: { legal_name: "Aurora Productions GmbH", address_lines: [], registration_line: "" } }],
+        error: null,
+      },
+    });
     renderWithProviders(<LetterheadCard orgId="org-1" readOnly={false} />);
     expect(await screen.findByLabelText("Legal name")).toBeEnabled();
     expect(screen.getByRole("button", { name: "Save letterhead" })).toBeEnabled();
+  });
+});
+
+/**
+ * `letterheadDone` (src/lib/hireOrders/setupStatus.ts) is a non-blank `legal_name`, and this
+ * card writes the very key that predicate reads. With Save gated only on readOnly/pending/
+ * orgId, an admin could save a blank name over a real one, get a success toast, and watch
+ * the setup step stay outstanding with nothing on screen saying why. `LetterheadStep`'s
+ * Confirm already mirrors the predicate; this is its twin.
+ */
+describe("LetterheadCard blank legal name", () => {
+  it("refuses to save a blank legal name and says which field is missing", async () => {
+    renderWithProviders(<LetterheadCard orgId="org-1" />);
+    await screen.findByLabelText("Legal name");
+
+    expect(screen.getByRole("button", { name: "Save letterhead" })).toBeDisabled();
+    expect(screen.getByText(/add the legal name to save/i)).toBeInTheDocument();
+  });
+
+  it("refuses to save whitespace, and enables Save once a real name is typed", async () => {
+    renderWithProviders(<LetterheadCard orgId="org-1" />);
+    const legalName = await screen.findByLabelText("Legal name");
+
+    fireEvent.change(legalName, { target: { value: "   " } });
+    expect(screen.getByRole("button", { name: "Save letterhead" })).toBeDisabled();
+
+    fireEvent.change(legalName, { target: { value: "Aurora Productions GmbH" } });
+    expect(screen.getByRole("button", { name: "Save letterhead" })).toBeEnabled();
+    expect(screen.queryByText(/add the legal name to save/i)).toBeNull();
   });
 });
 
@@ -117,6 +152,8 @@ describe("LetterheadCard address field", () => {
   it("parses address to lines only on Save (trailing space trimmed, interior blank kept)", async () => {
     renderWithProviders(<LetterheadCard orgId="org-1" />);
     const address = await screen.findByLabelText("Address");
+    // Save is gated on a non-blank legal name (it mirrors `letterheadDone`), so give it one.
+    fireEvent.change(screen.getByLabelText("Legal name"), { target: { value: "Aurora Productions GmbH" } });
     fireEvent.change(address, { target: { value: "Street 1\n\n10999 Berlin " } });
     fireEvent.click(screen.getByRole("button", { name: "Save letterhead" }));
 
@@ -149,6 +186,8 @@ describe("LetterheadCard agent signature", () => {
     const preview = await screen.findByAltText("Agent signature preview");
     expect(preview).toHaveAttribute("src", "https://signed.test/sig.png");
 
+    // Save mirrors `letterheadDone`: a blank legal name cannot be persisted.
+    fireEvent.change(screen.getByLabelText("Legal name"), { target: { value: "Aurora Productions GmbH" } });
     fireEvent.click(screen.getByRole("button", { name: "Save letterhead" }));
     await waitFor(() => {
       const calls = (client.calls ?? []) as { table: string; method: string; args: unknown[] }[];

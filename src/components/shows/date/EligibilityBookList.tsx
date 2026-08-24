@@ -106,7 +106,16 @@ export function EligibilityBookList({
       </label>
       {typeof totalArtistCount === "number" && (
         <p className="text-xs text-muted-foreground">
-          {requirementFactSentence(t, requiredSkillNames ?? [], artists.length, totalArtistCount)}
+          {/* "qualify and are free" must not count someone already booked on this date.
+              `artists` is the eligible list, which still carries booked artists (they render
+              below with a Booked badge and no Book button), so the booked set comes off
+              here, exactly as the rail's own eligible count does. */}
+          {requirementFactSentence(
+            t,
+            requiredSkillNames ?? [],
+            artists.filter((a) => !bookedArtistIds.has(a.id)).length,
+            totalArtistCount,
+          )}
         </p>
       )}
       {skills && onSkillFilterChange && (() => {

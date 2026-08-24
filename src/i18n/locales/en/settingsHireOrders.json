@@ -44,7 +44,8 @@
     "uploadAria": "Upload agent signature PNG",
     "replaceSignature": "Replace signature",
     "uploadPng": "Upload PNG",
-    "save": "Save letterhead"
+    "save": "Save letterhead",
+    "legalNameRequired": "Add the legal name to save. It is the one field a contract cannot be issued without."
   },
   "numberingCard": {
     "title": "Numbering",

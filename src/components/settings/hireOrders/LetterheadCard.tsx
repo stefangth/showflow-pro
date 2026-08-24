@@ -209,9 +209,21 @@ export function LetterheadCard({ orgId, readOnly = false }: { orgId: string | nu
             )}
           </div>
         </LetterheadFields>
-        <Button onClick={() => save.mutate()} disabled={readOnly || save.isPending || !orgId}>
+        {/* Mirrors `letterheadDone` (src/lib/hireOrders/setupStatus.ts) exactly, as
+            `LetterheadStep`'s Confirm now does. Without it an admin can save a blank legal
+            name into this very app_settings key, get a "Letterhead saved" toast, and watch
+            the setup step stay outstanding with nothing on screen saying why. Deliberately
+            NOT widened to the address or registration line, which that predicate ignores.
+            `?? ""` because the stored JSON is not schema checked. */}
+        <Button
+          onClick={() => save.mutate()}
+          disabled={readOnly || save.isPending || !orgId || (form.legal_name ?? "").trim() === ""}
+        >
           {t("letterheadCard.save")}
         </Button>
+        {!readOnly && (form.legal_name ?? "").trim() === "" && (
+          <p className="text-xs text-muted-foreground">{t("letterheadCard.legalNameRequired")}</p>
+        )}
       </CardContent>
     </Card>
   );

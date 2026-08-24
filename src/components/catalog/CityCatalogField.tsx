@@ -48,13 +48,13 @@ export function CityCatalogField({ orgId }: { orgId: string | null }) {
   const { source } = useDatesSource(orgId);
   const showAirtable = !!orgId && source === "airtable" && canConfigureAirtable;
 
+  // Takes the org id from the call site rather than closing over the nullable one: the only
+  // caller renders inside `showCreate && orgId`, so there is no unreachable "no active
+  // organization" branch left to write copy for.
   const add = useMutation({
-    mutationFn: (name: string) => {
-      if (!orgId) throw new Error(t("form.cities.noOrg"));
-      return createCity(supabase, { name, orgId });
-    },
+    mutationFn: ({ name, orgId: org }: { name: string; orgId: string }) => createCity(supabase, { name, orgId: org }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["cities"] }); },
-    onError: (e: unknown, name: string) => {
+    onError: (e: unknown, { name }: { name: string; orgId: string }) => {
       // A duplicate is the LIKELY failure here: the chip row above literally shows the
       // producer which names already exist, so say which name clashed rather than
       // leaking `duplicate key value violates unique constraint "cities_org_name_uniq"`.
@@ -77,9 +77,16 @@ export function CityCatalogField({ orgId }: { orgId: string | null }) {
         <div className="flex flex-wrap items-center gap-1.5">
           {/* The empty hint has to match the state the producer is actually in: it may only
               point at the inline chip when the chip is there to point at. */}
+          {/* Three states, not two. "An admin can add them in Settings" is only true when
+              there IS an org to add them to; with no active org it is false even for an
+              admin, so that case gets a sentence that claims nothing. */}
           {!citiesQ.isLoading && cities.length === 0 && (
             <p className="text-xs text-muted-foreground">
-              {showCreate ? t("form.cities.empty") : t("form.cities.emptyLocked")}
+              {showCreate
+                ? t("form.cities.empty")
+                : orgId
+                  ? t("form.cities.emptyLocked")
+                  : t("form.cities.emptyNoOrg")}
             </p>
           )}
           {cities.map((c) => (
@@ -90,7 +97,7 @@ export function CityCatalogField({ orgId }: { orgId: string | null }) {
               {c.name}
             </span>
           ))}
-          {showCreate && <CreateCityChip onCreate={(name) => add.mutateAsync(name)} />}
+          {showCreate && orgId && <CreateCityChip onCreate={(name) => add.mutateAsync({ name, orgId })} />}
         </div>
       )}
 
