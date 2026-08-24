@@ -46,11 +46,20 @@ export function MappingTab(props: MappingTabProps) {
   return (
     <div className="bg-card border border-border rounded-l shadow-sm">
       {/* Header: title + required-mapped counter */}
-      <div className="flex items-start justify-between gap-4 px-4 py-3.5 border-b border-border">
-        <div>
-          <h3 className="text-title-sm font-semibold tracking-tight">{t('mappingTab2.title')}</h3>
+      <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2 px-4 py-3.5 border-b border-border">
+        <div className="min-w-0">
+          <h3 className="text-control font-semibold tracking-tight">{t('mappingTab2.title')}</h3>
           <p className="mt-1 text-control text-muted-foreground">
-            {t('mappingTab2.headerPrefix')} <strong className="font-medium text-foreground">{tableName}</strong>{t('mappingTab2.headerSuffix')}
+            {tableName ? (
+              <>
+                {t('mappingTab2.headerPrefix')} <strong className="font-medium text-foreground">{tableName}</strong>{t('mappingTab2.headerSuffix')}
+              </>
+            ) : (
+              // With no table picked the interpolated name is empty and the prefix/suffix
+              // pair renders "...reads from one column in ." Say the same thing without
+              // naming a table rather than leaving a dangling period.
+              t('mappingTab2.headerNoTable')
+            )}
           </p>
         </div>
         <div className="shrink-0 text-right">
@@ -59,8 +68,10 @@ export function MappingTab(props: MappingTabProps) {
         </div>
       </div>
 
-      {/* Two-column mapping table */}
-      <div className="grid grid-cols-2">
+      {/* Two-column mapping table. The label column gives ground before the control
+          column does: a flat 50/50 split collapsed the Select to 94px inside the
+          get-running wizard, where "Not mapped" rendered as "No...". */}
+      <div data-testid="mapping-grid" className="grid grid-cols-[minmax(110px,0.9fr)_minmax(0,1.1fr)]">
         {/* eslint-disable-next-line no-restricted-syntax -- non-standard tracking (0.1em) */}
         <p className="px-4 py-2.5 text-eyebrow font-semibold uppercase tracking-[0.1em] text-muted-foreground border-b border-r border-border">
           {t('mappingTab2.colShowflowField')}

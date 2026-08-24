@@ -177,6 +177,7 @@
     "title": "Field mapping",
     "headerPrefix": "Every ShowFlow field reads from one column in",
     "headerSuffix": ". Catalog links are keyed on Program · Sub-program.",
+    "headerNoTable": "Every ShowFlow field reads from one column in your table. Catalog links are keyed on Program · Sub-program.",
     "requiredMapped": "required mapped",
     "colShowflowField": "ShowFlow field",
     "colAirtableColumn": "Airtable column",
