@@ -25,6 +25,7 @@ export default {
         caption: "12px",       /* captions, count chips */
         control: "13px",       /* buttons, inputs, table cells, nav rows */
         body: "14px",          /* body copy */
+        lead: "16px",          /* page-header sub / lead paragraph under an H1 */
         "title-sm": "17px",    /* card titles */
         title: "22px",         /* section headers */
         "display-sm": "32px",  /* page H1 */

@@ -66,10 +66,16 @@ permanently-light chip that pairs the fixed background with a fixed dark stop li
 
 ## 3. Type
 
-The scale is **48 / 32 / 22 / 17 / 14 / 13 / 12 / 11**.
+The scale is **48 / 32 / 22 / 17 / 16 / 14 / 13 / 12 / 11**.
 
 **13 is the control size** (D5). Buttons, inputs, table cells, tabs and nav rows are 13.
 14 is body copy. 11 is the eyebrow and the badge.
+
+**16 is the page-header sub** (the lead paragraph directly under a page H1): `text-lead`.
+It is the one place body copy steps up from 14. A page sub with no size class inherits the
+browser default, which happens to be 16 but is not a scale token, so it reads as correct
+while being invisible to the token guard. Always write `text-lead` explicitly. Use it only
+for the H1 sub, not for card or section subs, which stay at `text-body` (14).
 
 **[ci]** Half-pixel sizes are gone. 10.5, 11.5, 12.5 and 13.5 do not exist.
 

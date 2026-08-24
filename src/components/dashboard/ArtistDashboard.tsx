@@ -189,7 +189,7 @@ export function ArtistDashboard() {
                 which does not run at all without the module. Gated with a bare
                 conditional rather than ModuleGate so the page shows one notice, not two. */}
             {bookingFlowEnabled && (
-              <p className="text-muted-foreground mt-1">{meter.headerSentence}</p>
+              <p className="text-lead text-muted-foreground mt-1">{meter.headerSentence}</p>
             )}
           </div>
 

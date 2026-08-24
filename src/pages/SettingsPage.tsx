@@ -339,7 +339,7 @@ export default function SettingsPage() {
             <SettingsIcon className="h-7 w-7 text-primary" />
             {t('page.title')}
           </h1>
-          <p className="text-muted-foreground mt-1">
+          <p className="text-lead text-muted-foreground mt-1">
             {t('page.description')}
           </p>
         </div>

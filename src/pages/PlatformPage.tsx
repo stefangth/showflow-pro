@@ -13,7 +13,7 @@ export default function PlatformPage() {
     <div className="space-y-6">
       <div>
         <h1 className="font-display text-display-sm font-semibold tracking-tight">Platform Console</h1>
-        <p className="text-muted-foreground mt-1">Organizations, users, platform admins and defaults</p>
+        <p className="text-lead text-muted-foreground mt-1">Organizations, users, platform admins and defaults</p>
       </div>
       <PageMini page="platform" />
       <Tabs value={tab} onValueChange={setTab}>

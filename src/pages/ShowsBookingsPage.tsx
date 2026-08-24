@@ -501,7 +501,7 @@ function ProducerShowsBookings() {
       <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="font-display text-display-sm font-semibold tracking-tight">{t('producer.title')}</h1>
-          <p className="text-muted-foreground mt-1">{t('producer.subtitle')}</p>
+          <p className="text-lead text-muted-foreground mt-1">{t('producer.subtitle')}</p>
         </div>
         <FinishSetupLink steps={stepsForRoute(ROUTES.BOOKINGS)} />
       </div>
