@@ -194,6 +194,46 @@ export const HELP_ITEMS: readonly HelpItem[] = [
     },
   },
   {
+    id: 'A3.13', role: 'admin', stage: 3, status: 'new', surface: 'Get running board, Map your fields step', updated: '2026-08-24',
+    q: { en: 'Which Airtable columns do I have to map, and what happens if I skip one?', de: 'Welche Airtable-Spalten muss ich zuordnen, und was passiert, wenn ich eine auslasse?' },
+    a: {
+      en: 'The required ones must all be mapped before the sync will run, and the step tells you how many are still missing as a count at the top right. Optional ones, like a third session or the cancellation columns, can wait. One thing the mapping does not cover is the casting breakdown: which parts a production needs and how many people per part is set on the Review your productions step, not here. You can change any mapping later in Settings, Sources.',
+      de: 'Die Pflichtfelder müssen alle zugeordnet sein, bevor der Abgleich läuft, und der Schritt zeigt dir oben rechts als Zähler, wie viele noch fehlen. Optionale wie eine dritte Session oder die Spalten für Absagen können warten. Was die Zuordnung nicht abdeckt, ist die Besetzungsaufstellung: welche Parts eine Produktion braucht und wie viele Personen pro Part, setzt du im Schritt Deine Produktionen prüfen, nicht hier. Jede Zuordnung kannst du später in Einstellungen, Quellen ändern.',
+    },
+  },
+  {
+    id: 'A3.14', role: 'admin', stage: 3, status: 'new', surface: 'Get running board, Set your letterhead step', updated: '2026-08-24',
+    q: { en: 'What goes on the letterhead, and where does it show up?', de: 'Was steht im Briefkopf, und wo taucht er auf?' },
+    a: {
+      en: 'Your legal name, your address and an optional registration line. Only the legal name is required. It prints at the top of every contract you issue, with no exceptions, which is why a missing letterhead blocks issuing. Change it any time in Settings, Contracts: the change applies to contracts you issue from then on, and contracts already issued keep the letterhead they went out with.',
+      de: 'Dein rechtlicher Name, deine Adresse und optional eine Registerzeile. Pflicht ist nur der rechtliche Name. Er steht oben auf jedem Engagementvertrag, den du ausstellst, ohne Ausnahme, deshalb blockiert ein fehlender Briefkopf das Ausstellen. Du kannst ihn jederzeit in Einstellungen, Engagementverträge ändern: die Änderung gilt für alles, was du ab dann ausstellst, und bereits ausgestellte Verträge behalten den Briefkopf, mit dem sie rausgegangen sind.',
+    },
+  },
+  {
+    id: 'A3.15', role: 'admin', stage: 3, status: 'new', surface: 'Get running board, Write your terms step', updated: '2026-08-24',
+    q: { en: 'Where do the contract terms come from, and can I write my own?', de: 'Woher kommen die Vertragsbedingungen, und kann ich eigene schreiben?' },
+    a: {
+      en: 'ShowFlow ships no clauses of its own, so nothing goes out that you did not put there. The step offers a couple of starting points, a standard engagement set and a shorter guest artist set, and adding one gives your organization its own editable copy rather than a link to ours. Reword it, delete clauses, or keep more than one variant for different kinds of engagement. Terms live in Settings, Contracts once setup is done, and a contract cannot be issued until at least one set exists.',
+      de: 'ShowFlow liefert keine eigenen Klauseln, es geht also nichts raus, was du nicht selbst hinterlegt hast. Der Schritt bietet dir ein paar Startpunkte an, ein Standardset für Engagements und ein kürzeres für Gast-Artists, und beim Hinzufügen bekommt deine Organisation eine eigene, bearbeitbare Kopie, keine Verknüpfung zu unserer. Formuliere um, lösche Klauseln, oder behalte mehrere Varianten für verschiedene Arten von Engagement. Die Bedingungen findest du nach dem Setup in Einstellungen, Engagementverträge, und ohne mindestens ein Set lässt sich kein Vertrag ausstellen.',
+    },
+  },
+  {
+    id: 'A3.16', role: 'admin', stage: 3, status: 'new', surface: 'Get running board, Style your contract document step', updated: '2026-08-24',
+    q: { en: 'How are contract numbers built, and can I change the layout?', de: 'Wie werden Vertragsnummern gebildet, und kann ich das Layout ändern?' },
+    a: {
+      en: 'A number is a prefix plus a pattern you write from a small set of tokens: the year, the month, the day, a running sequence, and the cast. The step previews the next number as you type, so you can see the shape before you save it. The layout of the document itself is separate, and the step links straight to the template editor where you can style it and preview the result. Styling applies to every contract you issue from then on. Contracts already issued keep the styling they were issued with.',
+      de: 'Eine Nummer besteht aus einem Präfix und einem Muster, das du aus wenigen Bausteinen zusammensetzt: Jahr, Monat, Tag, eine laufende Nummer und die Besetzung. Der Schritt zeigt dir die nächste Nummer als Vorschau, während du tippst, du siehst die Form also, bevor du speicherst. Das Layout des Dokuments ist davon getrennt, und der Schritt verlinkt direkt in den Vorlagen-Editor, wo du es gestalten und das Ergebnis ansehen kannst. Die Gestaltung gilt für jeden Vertrag, den du ab dann ausstellst. Bereits ausgestellte Verträge behalten ihre.',
+    },
+  },
+  {
+    id: 'A3.17', role: 'admin', stage: 3, status: 'new', surface: 'Get running board, Choose how contracts get signed step', updated: '2026-08-24',
+    q: { en: 'Does the artist sign in the app, or somewhere else?', de: 'Unterschreibt der Artist in der App, oder woanders?' },
+    a: {
+      en: 'Whichever you choose. If the artist signs in ShowFlow, they open the issued contract in the app and sign there, and the signature is stored with the contract along with the time and the IP address it came from. If signing happens outside ShowFlow, on paper or through your own e-signature tool, a producer marks the contract countersigned once it is done. Either way you can issue contracts, and you can change the choice at any time. It applies from then on, not retroactively.',
+      de: 'Wie du möchtest. Unterschreibt der Artist in ShowFlow, öffnet er den ausgestellten Vertrag in der App und unterschreibt dort, und die Unterschrift wird zusammen mit Zeitpunkt und IP-Adresse beim Vertrag gespeichert. Läuft das Unterschreiben außerhalb von ShowFlow, auf Papier oder über euer eigenes Signaturtool, markiert ein Producer den Vertrag als gegengezeichnet, sobald es erledigt ist. Ausstellen kannst du so oder so, und du kannst die Wahl jederzeit ändern. Sie gilt ab dann, nicht rückwirkend.',
+    },
+  },
+  {
     id: 'A4.1', role: 'admin', stage: 4, status: 'new', surface: 'Notifications', updated: '2026-08-14',
     q: { en: 'Why does clicking a notification do nothing?', de: 'Warum passiert nichts, wenn ich auf eine Benachrichtigung klicke?' },
     a: {
