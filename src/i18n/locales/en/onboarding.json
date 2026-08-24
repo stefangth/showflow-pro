@@ -68,7 +68,7 @@
     },
     "countersign": {
       "title": "Countersignature",
-      "todoHint": "Who signs on behalf of the org.",
+      "todoHint": "How the artist signs a contract.",
       "doneHint": "Countersign policy set.",
       "ctaLabel": "Set countersign"
     }

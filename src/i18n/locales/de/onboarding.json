@@ -68,7 +68,7 @@
     },
     "countersign": {
       "title": "Gegenzeichnung",
-      "todoHint": "Wer im Namen der Organisation unterschreibt.",
+      "todoHint": "Wie der Artist einen Engagementvertrag unterschreibt.",
       "doneHint": "Gegenzeichnungsregel festgelegt.",
       "ctaLabel": "Gegenzeichnung festlegen"
     }

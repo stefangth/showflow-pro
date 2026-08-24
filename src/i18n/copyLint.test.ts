@@ -5,6 +5,7 @@ import { HELP_ITEMS } from '@/lib/help/items';
 import { STAGES } from '@/lib/help/stages';
 import { GLOSSARY } from '@/lib/help/glossary';
 import { MINIS, PAGE_KEYS } from '@/lib/minis';
+import { MINI_CHROME } from '@/components/minis/miniChrome';
 import { CUE_LABELS, SEASON_HANDOVER } from '@/lib/demo/scenes';
 import type { Lang } from './config';
 
@@ -40,6 +41,9 @@ const enContent = [
   ...GLOSSARY.map((g) => g.def.en),
   ...Object.values(TERMS).map((t) => t.en),
   ...miniStrings('en'),
+  // Mini chrome is a bilingual Record<Lang, string> rather than an i18n namespace
+  // (PageMiniView is language-pure via a `lang` prop), so it would otherwise escape this scan.
+  ...Object.values(MINI_CHROME).map((c) => c.en),
   ...SEASON_HANDOVER.flatMap((s) => [s.title.en, s.say.en]),
   ...Object.values(CUE_LABELS).map((l) => l.en),
 ];
@@ -50,6 +54,7 @@ const deContent = [
   ...GLOSSARY.map((g) => g.def.de),
   ...Object.values(TERMS).map((t) => t.de),
   ...miniStrings('de'),
+  ...Object.values(MINI_CHROME).map((c) => c.de),
   ...SEASON_HANDOVER.flatMap((s) => [s.title.de, s.say.de]),
   ...Object.values(CUE_LABELS).map((l) => l.de),
 ];
@@ -61,5 +66,15 @@ describe('copy lint', () => {
 
   it('German copy avoids formal "Sie" address', () => {
     for (const s of deContent) expect(FORMAL.test(s), s).toBe(false);
+  });
+
+  // The countersign controls (CountersignFields) choose how the ARTIST signs an issued
+  // contract: in ShowFlow, or outside it. Nothing anywhere picks a signer on behalf of the
+  // org. The wrong-actor sentence had shipped on three separate boards at once (the v1
+  // get-running board, the v3 wizard, and the dashboard stage chain), so it is pinned
+  // across the whole corpus here rather than per namespace.
+  it('no copy claims someone signs on behalf of the org', () => {
+    for (const s of enContent) expect(/on behalf of the org/i.test(s), s).toBe(false);
+    for (const s of deContent) expect(/im Namen der Organisation/i.test(s), s).toBe(false);
   });
 });

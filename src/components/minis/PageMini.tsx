@@ -5,21 +5,11 @@ import { useLanguage } from '@/features/i18n/LanguageContext';
 import { useRailDismissed } from '@/components/setup/useRailDismissed';
 import { StatusPill } from '@/components/ui/status-pill';
 import { PageMiniCollapsed } from './PageMiniCollapsed';
+import { MINI_CHROME } from './miniChrome';
 import type { Lang } from '@/i18n/config';
 import { MINIS, resolveMiniRole, type MiniDef, type MiniRole, type RegisteredPageKey } from '@/lib/minis';
 import { ART } from './illustrations';
 
-/** Resume-bar copy (bilingual). Kept here since it is chrome, not per-page content. */
-const RESUME_HINT: Record<Lang, string> = {
-  en: 'Pick up where you left off',
-  de: 'Mach dort weiter, wo du aufgehört hast',
-};
-const RESUME_CTA: Record<Lang, string> = { en: 'Resume', de: 'Wieder einblenden' };
-/** The step illustrations are drawn from invented tiers, people and audit lines. On an org
- *  that has none of them they would otherwise read as this org's own data, so the panel
- *  labels itself. Sits in the header row, inside the `aria-label`led section, so a screen
- *  reader hears "Example" before it reaches any of the fabricated names. */
-const EXAMPLE_LABEL: Record<Lang, string> = { en: 'Example', de: 'Beispiel' };
 
 const STEP_NUMBERS = ['01', '02', '03', '04'] as const;
 
@@ -42,8 +32,8 @@ export function PageMiniView({ def, role, lang, art, dismissed, onHide, onResume
     return (
       <PageMiniCollapsed
         label={def.eyebrow[lang]}
-        hint={RESUME_HINT[lang]}
-        ctaLabel={RESUME_CTA[lang]}
+        hint={MINI_CHROME.resumeHint[lang]}
+        ctaLabel={MINI_CHROME.resumeCta[lang]}
         onOpen={onResume}
       />
     );
@@ -56,7 +46,10 @@ export function PageMiniView({ def, role, lang, art, dismissed, onHide, onResume
         <span className="text-eyebrow font-semibold uppercase tracking-[0.14em] text-muted-foreground">
           {def.eyebrow[lang]}
         </span>
-        <StatusPill tone="neutral">{EXAMPLE_LABEL[lang]}</StatusPill>
+        {/* The illustrations below render invented tiers, people and audit lines. Labelled
+            here, in the header row inside the `aria-label`led section, so a screen reader
+            hears "Example" before it reaches any of the fabricated names. */}
+        <StatusPill tone="neutral">{MINI_CHROME.example[lang]}</StatusPill>
         <span className="flex-1" />
         {def.subnote && (
           <span className="hidden text-caption text-muted-foreground/70 sm:inline">{def.subnote[lang]}</span>
@@ -66,7 +59,7 @@ export function PageMiniView({ def, role, lang, art, dismissed, onHide, onResume
           onClick={onHide}
           className="text-caption text-muted-foreground transition-colors hover:text-foreground"
         >
-          {lang === 'de' ? 'Ausblenden' : 'Hide'}
+          {MINI_CHROME.hide[lang]}
         </button>
       </div>
 
