@@ -121,12 +121,12 @@
     --red-100: #FCEAEA;
 
     /* ── Radius scale (concentric — never reverse) ── */
-    --radius-xs:   4px;    /* tags, badges, inline chips */
-    --radius-s:    6px;    /* inputs, status dots */
-    --radius-m:    8px;    /* buttons */
-    --radius-l:    10px;   /* cards */
-    --radius-xxl:  20px;   /* app icons */
-    --radius-pill: 999px;  /* capsules (rare — badges use xs) */
+    --radius-xs:   4px;    /* tags, badges, inline chips  -> rounded-chip */
+    --radius-s:    6px;    /* inputs                      -> rounded-field */
+    --radius-m:    8px;    /* buttons, rows inside a card -> rounded-control */
+    --radius-l:   10px;    /* every card                  -> rounded-card */
+    --radius-xxl: 20px;    /* app icons                   -> rounded-icon */
+    --radius-pill: 999px;  /* meters and capsules         -> rounded-pill */
 
     /* ── Spacing / motion / density ──
        These are CSS-only primitives — for hand-written CSS and framer-motion,
