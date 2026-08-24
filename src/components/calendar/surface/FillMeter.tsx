@@ -50,7 +50,7 @@ export function FillMeter({ segments, tone, label, size = 'row', className }: Fi
           />
         ))}
       </div>
-      {label && <span className="font-mono text-eyebrow tabular-nums text-muted-foreground">{label}</span>}
+      {label && <span className="text-eyebrow tabular-nums text-muted-foreground">{label}</span>}
     </div>
   );
 }

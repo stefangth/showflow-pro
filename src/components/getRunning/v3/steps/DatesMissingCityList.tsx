@@ -83,7 +83,7 @@ export function DatesMissingCityList({ orgId, canEdit }: { orgId: string | null;
                 <div className="truncate text-control font-medium text-foreground">
                   {row.show?.program ?? t("body.cities.missingUnknownProduction")}
                 </div>
-                <div className="truncate font-mono text-xs tabular-nums text-muted-foreground">
+                <div className="truncate text-xs tabular-nums text-muted-foreground">
                   {formatDateDMY(row.date)}
                   {row.venue ? ` ${row.venue}` : ""}
                 </div>

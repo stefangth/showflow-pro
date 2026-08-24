@@ -65,7 +65,7 @@ function PhaseIcon({ state, index }: { state: PhaseVisualState; index: number })
   }
   return (
     <span
-      className={`flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full border-[1.5px] font-mono text-eyebrow font-semibold ${
+      className={`flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full border-[1.5px] text-eyebrow font-semibold tabular-nums ${
         state === "blocking" ? "border-primary text-accent-foreground" : "border-border text-[var(--text-faint)]"
       }`}
     >
@@ -334,11 +334,11 @@ export function PhaseCard({ phase, onOpenTask, adminNames, activeKey }: PhaseCar
             )}
           </>
         ) : state === "blocking" ? (
-          <span className="font-mono text-xs font-medium text-accent-foreground">
+          <span className="text-xs font-medium tabular-nums text-accent-foreground">
             {t("phases.counts.leftBlocking", { left: leftCount, blocking: blockingCount })}
           </span>
         ) : (
-          <span className="font-mono text-xs text-[var(--text-faint)]">
+          <span className="text-xs tabular-nums text-[var(--text-faint)]">
             {t("phases.counts.doneOfTotal", { done: doneCount, total: phase.tasks.length })}
           </span>
         )}

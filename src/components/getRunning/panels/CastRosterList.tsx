@@ -30,7 +30,7 @@ export function CastRosterList({ casts, keyPrefix, subline }: {
     <div className="space-y-1.5">
       <div className="flex items-center justify-between gap-2">
         <span className="text-xs text-muted-foreground">{t(`${keyPrefix}.yourCasts`)}</span>
-        <span className="font-mono text-xs text-muted-foreground">
+        <span className="text-xs tabular-nums text-muted-foreground">
           {t(`${keyPrefix}.castCountLabel`, { count: casts.length })}
         </span>
       </div>
@@ -39,9 +39,9 @@ export function CastRosterList({ casts, keyPrefix, subline }: {
           <div key={cast.id} className="flex items-center justify-between gap-3 px-3 py-2">
             <div className="min-w-0">
               <p className="truncate text-sm font-medium text-foreground">{cast.name}</p>
-              {subline && <p className="font-mono text-eyebrow text-muted-foreground">{subline(cast.id)}</p>}
+              {subline && <p className="text-eyebrow tabular-nums text-muted-foreground">{subline(cast.id)}</p>}
             </div>
-            <span className="shrink-0 font-mono text-xs text-muted-foreground">
+            <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
               {t(`${keyPrefix}.memberCount`, { count: cast.memberCount })}
             </span>
           </div>

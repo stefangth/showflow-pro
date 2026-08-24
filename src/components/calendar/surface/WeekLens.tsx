@@ -66,7 +66,7 @@ function WeekBlockCard({
       )}
     >
       <span aria-hidden="true" className={cn('absolute inset-y-0 left-0 w-[3px]', toneSpec.railClass)} />
-      <span className={cn('truncate pl-1.5 font-mono text-eyebrow', TONE_TEXT[toneSpec.tone])}>
+      <span className={cn('truncate pl-1.5 text-eyebrow tabular-nums', TONE_TEXT[toneSpec.tone])}>
         {minutesToLabel(block.startMinutes)}
       </span>
       <p className={cn('truncate pl-1.5 text-caption font-semibold', TONE_TEXT[toneSpec.tone])}>{block.title}</p>
@@ -75,7 +75,7 @@ function WeekBlockCard({
       </p>
       <div className="flex items-center gap-1.5 pl-1.5">
         <FillMeter segments={block.meter} tone={toneSpec.tone} size="chip" />
-        <span className={cn('font-mono text-eyebrow font-medium', TONE_TEXT[toneSpec.tone])}>
+        <span className={cn('text-eyebrow font-medium tabular-nums', TONE_TEXT[toneSpec.tone])}>
           {filled}/{block.meter.length}
         </span>
       </div>
@@ -136,13 +136,13 @@ export function WeekLens({ entries, anchor, onOpenEntry, today = new Date(), cla
               <span className="text-eyebrow font-medium uppercase tracking-wide text-muted-foreground">
                 {weekdays[i]}
               </span>
-              <span className={cn('font-mono text-title-sm tabular-nums', isToday ? 'font-semibold text-primary' : 'text-foreground')}>
+              <span className={cn('text-title-sm tabular-nums', isToday ? 'font-semibold text-primary' : 'text-foreground')}>
                 {day.getDate()}
               </span>
               {unfilled > 0 && (
                 <span
                   data-testid={`week-day-unfilled-${toDateKey(day)}`}
-                  className="font-mono text-eyebrow font-semibold leading-none text-warning"
+                  className="text-eyebrow font-semibold leading-none tabular-nums text-warning"
                 >
                   &minus;{unfilled}
                 </span>
@@ -181,7 +181,7 @@ export function WeekLens({ entries, anchor, onOpenEntry, today = new Date(), cla
               key={m}
               data-testid={`week-hour-${m}`}
               style={{ top: ((m - band.startMinutes) / 60) * HOUR_HEIGHT }}
-              className="absolute right-1.5 -translate-y-1/2 font-mono text-eyebrow text-muted-foreground"
+              className="absolute right-1.5 -translate-y-1/2 text-eyebrow tabular-nums text-muted-foreground"
             >
               {minutesToLabel(m)}
             </span>

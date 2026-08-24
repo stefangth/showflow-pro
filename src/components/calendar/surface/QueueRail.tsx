@@ -66,7 +66,7 @@ export function QueueRail({ queue, clearedToday, shortlist, onOffer, className }
       <div data-testid="queue-rail-progress" className="rounded-control border border-border bg-card p-3.5">
         <div className="mb-2 flex items-baseline justify-between gap-2">
           <Eyebrow>{t('calendar.queue.clearQueueTitle')}</Eyebrow>
-          <span className="whitespace-nowrap font-mono text-xs font-medium tabular-nums text-foreground">
+          <span className="whitespace-nowrap text-xs font-medium tabular-nums text-foreground">
             {t('calendar.queue.clearedToday', { count: clearedToday })}
           </span>
         </div>
@@ -85,7 +85,7 @@ export function QueueRail({ queue, clearedToday, shortlist, onOffer, className }
                 <span className="text-control text-foreground">
                   {t(`calendar.needsYou.groups.${key}`, { days: RISK_WINDOW_DAYS })}
                 </span>
-                <span className="ml-auto font-mono text-xs font-medium tabular-nums text-foreground">
+                <span className="ml-auto text-xs font-medium tabular-nums text-foreground">
                   {count}
                 </span>
               </div>

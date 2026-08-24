@@ -161,7 +161,7 @@ export function AgendaLens({ entries, onOpenEntry, onAction, actionGates, classN
             <Eyebrow className="text-primary">
               {t('calendar.agenda.weekOfHeading', { weekStart: format(week.weekStart, 'd MMM', { locale: dfLocale() }) })}
             </Eyebrow>
-            <span className="font-mono text-eyebrow text-muted-foreground">
+            <span className="text-eyebrow tabular-nums text-muted-foreground">
               {t('calendar.agenda.dateCount', { count: week.entries.length })}
             </span>
           </div>
@@ -197,12 +197,12 @@ export function AgendaLens({ entries, onOpenEntry, onAction, actionGates, classN
                 >
                   <div className="shrink-0 md:w-[62px]">
                     <Eyebrow className="tracking-wide">{format(row.entry.date, 'EEE', { locale: dfLocale() })}</Eyebrow>
-                    <p className="font-mono text-sm font-semibold tabular-nums text-foreground">
+                    <p className="text-sm font-semibold tabular-nums text-foreground">
                       {format(row.entry.date, 'd')}
                     </p>
                   </div>
                   <div className="flex shrink-0 items-center gap-1.5 md:w-[84px]">
-                    <span className="font-mono text-xs tabular-nums text-muted-foreground">{row.time}</span>
+                    <span className="text-xs tabular-nums text-muted-foreground">{row.time}</span>
                     {row.extraSessions > 0 && (
                       <span className="inline-flex items-center rounded-chip bg-accent-tint px-1 text-eyebrow font-medium text-accent-text">
                         +{row.extraSessions}
@@ -217,7 +217,7 @@ export function AgendaLens({ entries, onOpenEntry, onAction, actionGates, classN
                   </div>
                   <div className="flex w-full items-center gap-2 md:w-[150px] md:shrink-0">
                     {meter.length > 0 && <FillMeter segments={meter} tone={toneSpec.tone} />}
-                    <span className={cn('font-mono text-eyebrow font-medium', TONE_TEXT[toneSpec.tone])}>
+                    <span className={cn('text-eyebrow font-medium tabular-nums', TONE_TEXT[toneSpec.tone])}>
                       {t('calendar.agenda.mainFillCount', { filled: row.entry.confirmedMain, total: row.entry.mainSlots })}
                     </span>
                   </div>

@@ -45,7 +45,7 @@ export function RetiredBoard({ model, orgId }: { model: GetRunningModel; orgId: 
             {t("header.body.complete")}
           </p>
         </div>
-        <span className="shrink-0 font-mono text-xs font-medium text-[var(--text-faint)]">
+        <span className="shrink-0 text-xs font-medium tabular-nums text-[var(--text-faint)]">
           {t("retired.count", { done: model.doneCount, total: model.totalCount })}
         </span>
         <Button asChild variant="secondary">

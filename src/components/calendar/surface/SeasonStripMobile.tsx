@@ -71,7 +71,7 @@ function SeasonStripCell({
       className={cn('flex h-[54px] justify-center border-l border-l-border py-0.5', cancelled ? 'items-center' : 'items-end')}
     >
       {cancelled ? (
-        <span aria-hidden="true" className="font-mono text-eyebrow font-semibold leading-none text-destructive">
+        <span aria-hidden="true" className="text-eyebrow font-semibold leading-none text-destructive">
           &times;
         </span>
       ) : cell.mainSlots > 0 ? (
@@ -140,7 +140,7 @@ export function SeasonStripMobile({ entries, anchor, readyIds, onOpenDate, class
                 data-testid={`season-strip-day-${key}`}
                 data-today={today}
                 className={cn(
-                  'flex items-center justify-center border-l border-l-border py-1 font-mono text-eyebrow tabular-nums text-muted-foreground',
+                  'flex items-center justify-center border-l border-l-border py-1 text-eyebrow tabular-nums text-muted-foreground',
                   today && 'bg-accent-tint text-accent-text'
                 )}
               >
@@ -172,7 +172,7 @@ export function SeasonStripMobile({ entries, anchor, readyIds, onOpenDate, class
                 <span className="truncate text-eyebrow font-medium text-foreground">
                   {rowLabel}
                 </span>
-                <span className="font-mono text-eyebrow tabular-nums text-muted-foreground">
+                <span className="text-eyebrow tabular-nums text-muted-foreground">
                   {t('calendar.seasonStripMobile.rowSummary', { count: dateCount, unfilled })}
                 </span>
               </div>
@@ -215,7 +215,7 @@ export function SeasonStripMobile({ entries, anchor, readyIds, onOpenDate, class
                     className={cn('w-1.5 rounded-t-[2px]', heavy ? 'bg-warning' : 'bg-muted-foreground/40')}
                   />
                 )}
-                <span className="font-mono text-eyebrow tabular-nums text-muted-foreground">{openMainSlots}</span>
+                <span className="text-eyebrow tabular-nums text-muted-foreground">{openMainSlots}</span>
               </div>
             );
           })}

@@ -109,7 +109,7 @@ function SeasonCellButton({
       )}
     >
       {cancelled ? (
-        <span aria-hidden="true" className="mb-1.5 font-mono text-eyebrow font-semibold leading-none text-destructive">
+        <span aria-hidden="true" className="mb-1.5 text-eyebrow font-semibold leading-none text-destructive">
           &times;
         </span>
       ) : cell.mainSlots > 0 ? (
@@ -232,7 +232,7 @@ export function SeasonLens({
                 onMouseDown={() => handleColumnMouseDown(key)}
                 onMouseEnter={() => handleColumnMouseEnter(key)}
                 className={cn(
-                  'flex flex-col items-center justify-center gap-0.5 py-1 font-mono text-eyebrow tabular-nums text-muted-foreground',
+                  'flex flex-col items-center justify-center gap-0.5 py-1 text-eyebrow tabular-nums text-muted-foreground',
                   columnBorder(day),
                   inRange && 'bg-accent-tint'
                 )}

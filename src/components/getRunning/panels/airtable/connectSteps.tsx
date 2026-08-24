@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Token } from "@/components/ui/token";
 
 import type { AirtableSettings } from "@/data/airtableSettings";
 import type { AirtableBase, AirtableTable } from "@/data/airtableSchema";
@@ -23,8 +24,8 @@ export function TokenStep({ value, onChange, canWrite }: { value: string; onChan
       <h3 className="text-title-sm font-semibold tracking-tight">{t("setupWizard.tokenStepTitle")}</h3>
       <p className="mt-1.5 text-sm text-muted-foreground">
         {t("setupWizard.tokenHelpPrefix")}{" "}
-        <span className="font-mono text-xs">data.records:read</span> {t("setupWizard.tokenHelpAnd")}{" "}
-        <span className="font-mono text-xs">schema.bases:read</span>.
+        <Token className="text-xs">data.records:read</Token> {t("setupWizard.tokenHelpAnd")}{" "}
+        <Token className="text-xs">schema.bases:read</Token>.
       </p>
       <Input
         type="password"

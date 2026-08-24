@@ -236,7 +236,7 @@ export function EligibilityPanelBody({
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2">
         <span className="text-xs text-muted-foreground">{t("panel.body.eligibility.byProduction")}</span>
-        <span className="font-mono text-xs text-[var(--amber-600)]">
+        <span className="text-xs tabular-nums text-[var(--amber-600)]">
           {t("panel.body.eligibility.gapCount", { count: result.uncoveredPairs.length })}
         </span>
       </div>
@@ -282,7 +282,7 @@ export function EligibilityPanelBody({
                 )}
               </div>
 
-              <p className="mt-1 font-mono text-eyebrow text-muted-foreground">
+              <p className="mt-1 text-eyebrow tabular-nums text-muted-foreground">
                 {t("panel.body.eligibility.dateCount", { count: prod.dateTotal })}
                 {" · "}
                 {t("panel.body.eligibility.cityCount", { count: prod.cityCount })}
@@ -395,7 +395,7 @@ function CastPicker({
                 className="flex w-full items-center justify-between rounded-field px-2 py-1.5 text-left text-sm hover:bg-[var(--surface-3)] disabled:pointer-events-none disabled:opacity-50"
               >
                 <span>{opt.name}</span>
-                <span className="font-mono text-xs text-muted-foreground">
+                <span className="text-xs tabular-nums text-muted-foreground">
                   {t("panel.body.eligibility.memberCount", { count: opt.memberCount })}
                 </span>
               </button>

@@ -58,7 +58,7 @@ export function DoneForYouFeed({
         <Eyebrow className="flex-1">
           {t("feed.title", { day: sinceLabel })}
         </Eyebrow>
-        <span className="font-mono text-caption text-[var(--text-faint)]">{feed.length}</span>
+        <span className="text-caption tabular-nums text-[var(--text-faint)]">{feed.length}</span>
       </div>
       {feed.map((row) => {
         const Icon = KIND_ICON[row.kind];
@@ -78,7 +78,7 @@ export function DoneForYouFeed({
               <Icon className="h-[11px] w-[11px]" />
             </span>
             <p className="m-0 flex-1 text-control leading-[19px]">{feedRowText(t, row, { producerConfirmation, canBook })}</p>
-            <span className="shrink-0 font-mono text-caption text-[var(--text-faint)]">{row.at}</span>
+            <span className="shrink-0 text-caption tabular-nums text-[var(--text-faint)]">{row.at}</span>
             <button
               type="button"
               onClick={() => onAction(row)}

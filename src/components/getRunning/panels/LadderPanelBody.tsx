@@ -245,7 +245,7 @@ export function LadderPanelBody({
 
       <div className="flex items-center justify-between gap-2">
         <span className="text-xs text-muted-foreground">{t("panel.body.ladder.citiesWithDates")}</span>
-        <span className="font-mono text-xs text-[var(--amber-600)]">
+        <span className="text-xs tabular-nums text-[var(--amber-600)]">
           {t("panel.body.ladder.unrankedCount", { count: unrankedCityIds.length })}
         </span>
       </div>
@@ -273,7 +273,7 @@ export function LadderPanelBody({
                 <p className="truncate text-sm font-medium text-foreground">
                   {cityNameById.get(cityId) ?? cityId}
                 </p>
-                <p className="font-mono text-xs text-muted-foreground">
+                <p className="text-xs tabular-nums text-muted-foreground">
                   {t("panel.body.ladder.dateCount", { count: dateCount })}
                   {!tier1 && ` · ${t("panel.body.ladder.noTier1")}`}
                   {tier1Unstaffed && ` · ${t("panel.body.ladder.tier1Empty")}`}
@@ -376,7 +376,7 @@ function CastPicker({
                 className="flex w-full items-center justify-between rounded-field px-2 py-1.5 text-left text-sm hover:bg-[var(--surface-3)] disabled:pointer-events-none disabled:opacity-50"
               >
                 <span>{opt.name}</span>
-                <span className="font-mono text-xs text-muted-foreground">
+                <span className="text-xs tabular-nums text-muted-foreground">
                   {t("panel.body.ladder.memberCount", { count: opt.memberCount })}
                 </span>
               </button>
