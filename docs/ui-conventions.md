@@ -73,8 +73,19 @@ The scale is **48 / 32 / 22 / 17 / 14 / 13 / 12 / 11**.
 
 **[ci]** Half-pixel sizes are gone. 10.5, 11.5, 12.5 and 13.5 do not exist.
 
-**[review]** Every number the user reads is Geist Mono with `tabular-nums`: money, time,
-duration, count, id. Use `<Metric>`.
+**[review]** Every number the user reads is Geist Sans with `tabular-nums`: money, time,
+duration, count, ratio. Use `<Metric>`. Geist Sans with tabular figures measures
+identically to Geist Mono, so a column of `<Metric>` lines up exactly and nothing is
+gained by switching face.
+
+**[review]** Mono means one thing: a machine token. A string a system produced that a
+person may copy, paste, or quote back. An id, a reference number, a key, a scope, a
+function name, a status code, a version. Use `<Token>`. A label is never a token, only
+a value can be.
+
+**[ci]** Raw `font-mono` is banned in feature code. Go through `<Token>`.
+`src/components/ui` and the PDF and email renderers are exempt: a generated document is
+allowed its own typography.
 
 ## 4. Color roles
 

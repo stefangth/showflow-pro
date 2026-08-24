@@ -30,7 +30,10 @@ Hard rules, in order of how often they are broken:
    colon, or "to" for a range. No exclamation marks, no emoji. German is Du-form.
 7. **Plain language in the UI, domain terms in code.** The label is "Waiting on you";
    the identifier is `hold`. New user-facing terms go in `src/i18n/terms.ts`.
-8. **Numbers are `<Metric>`.** Geist Mono, tabular, always.
+8. **Numbers are `<Metric>`.** Geist Sans, tabular figures, always. Mono is only for
+   machine tokens: ids, reference numbers, keys, scopes, function names, status codes,
+   versions. Those are `<Token>`. If a person reads it aloud as a quantity, a date, or
+   a time, it is a `<Metric>`, not a token.
 
 If you believe a rule is wrong, change `docs/ui-conventions.md` in the same PR and say so
 in the description. Do not route around it.
