@@ -115,22 +115,27 @@ export default {
         },
       },
       borderRadius: {
-        /* shadcn compat (--radius = 0.625rem = 10px) */
+        /* shadcn compat (--radius = 0.625rem = 10px). Retired for new code:
+           rounded-sm/md/lg are aliases the design system does not use. */
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
-        /* design-system scale — collision-free keys only.
-           Deliberately NOT `xl`/`2xl`: those are Tailwind built-ins (12px/16px)
-           and overriding them silently resizes existing `rounded-xl`/`rounded-2xl`
-           consumers (sidebar inset, chat bubbles, login card). The 14px step
-           (`--radius-xl`, hero cards/sheets) stays a CSS var — sheets come from
-           shadcn with their own radius, so no utility is needed for it. */
-        xs:   "var(--radius-xs)",   /* 4px  — tags, badges, chips */
-        s:    "var(--radius-s)",    /* 6px  — inputs */
-        m:    "var(--radius-m)",    /* 8px  — buttons */
-        l:    "var(--radius-l)",    /* 10px — cards */
-        xxl:  "var(--radius-xxl)",  /* 20px — app icons */
-        pill: "var(--radius-pill)", /* 999px */
+
+        /* Design-system scale. Semantic words, never single letters.
+           Tailwind owns the suffixes t r b l tl tr br bl s e ss se es ee for its
+           own side, corner and logical-property utilities. A key that reuses one
+           emits a second rule under the same class name and Tailwind wins the
+           cascade on those corners. That is exactly what happened to `l` (cards)
+           and `s` (inputs): every card rendered 4px on the left and 10px on the
+           right until 2026-08-24. scripts/tailwindRadius.test.ts now fails the
+           build if a key ever re-enters that namespace. */
+        chip:    "var(--radius-xs)",   /* 4px   - tags, badges, chips */
+        field:   "var(--radius-s)",    /* 6px   - inputs */
+        control: "var(--radius-m)",    /* 8px   - buttons, rows inside a card */
+        card:    "var(--radius-l)",    /* 10px  - every card, hero included */
+        icon:    "var(--radius-xxl)",  /* 20px  - app icons */
+        pill:    "var(--radius-pill)", /* 999px - meters, capsules */
+        /* There is no hero step. 14px was retired 2026-08-24: one card radius. */
       },
       boxShadow: {
         elev0:     "var(--shadow-0)",
