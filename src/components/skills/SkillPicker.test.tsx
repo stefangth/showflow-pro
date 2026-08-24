@@ -47,4 +47,58 @@ describe("SkillPicker", () => {
     expect(screen.getByRole("button", { name: /piano/i })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByTestId("skill-chip-check")).toBeInTheDocument();
   });
+
+  // `disabled` gates SELECTION. A create ends in onToggle, so it must be fenced by
+  // `disabled` too, or a caller that gated selection off (a capability gate, not just a
+  // transient one) gets a selection anyway by the side door.
+  it("offers no create affordance while selection is disabled", () => {
+    const onToggle = vi.fn();
+    render(
+      <SkillPicker skills={[]} selectedIds={[]} onToggle={onToggle} onCreate={vi.fn()} canCreate disabled emptyHint="none yet" />,
+    );
+    expect(screen.queryByRole("button", { name: /new skill/i })).toBeNull();
+    expect(onToggle).not.toHaveBeenCalled();
+  });
+
+  it("gives the submit control a different accessible name from the trigger", () => {
+    render(<SkillPicker skills={[]} selectedIds={[]} onToggle={vi.fn()} onCreate={vi.fn()} canCreate />);
+    const trigger = screen.getByRole("button", { name: /new skill/i });
+    fireEvent.click(trigger);
+    const submit = screen.getByRole("button", { name: /add skill/i });
+    expect(submit).toHaveAttribute("type", "submit");
+    expect(screen.queryByRole("button", { name: /new skill/i })).toBeNull();
+  });
+
+  it("ignores a submit with a whitespace only name", () => {
+    const onCreate = vi.fn();
+    render(<SkillPicker skills={[]} selectedIds={[]} onToggle={vi.fn()} onCreate={onCreate} canCreate />);
+    fireEvent.click(screen.getByRole("button", { name: /new skill/i }));
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "   " } });
+    fireEvent.submit(screen.getByRole("textbox").closest("form")!);
+    expect(onCreate).not.toHaveBeenCalled();
+  });
+
+  it("does not submit twice while a create is pending", () => {
+    const onCreate = vi.fn().mockReturnValue(new Promise(() => {}));
+    render(<SkillPicker skills={[]} selectedIds={[]} onToggle={vi.fn()} onCreate={onCreate} canCreate />);
+    fireEvent.click(screen.getByRole("button", { name: /new skill/i }));
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "Lead Vocals" } });
+    const form = screen.getByRole("textbox").closest("form")!;
+    fireEvent.submit(form);
+    fireEvent.submit(form);
+    expect(onCreate).toHaveBeenCalledTimes(1);
+  });
+
+  it("leaves the selection untouched when the create is rejected", async () => {
+    const onCreate = vi.fn().mockRejectedValue(new Error("name already taken"));
+    const onToggle = vi.fn();
+    render(<SkillPicker skills={[]} selectedIds={[]} onToggle={onToggle} onCreate={onCreate} canCreate />);
+    fireEvent.click(screen.getByRole("button", { name: /new skill/i }));
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "Piano" } });
+    fireEvent.submit(screen.getByRole("textbox").closest("form")!);
+    await waitFor(() => expect(onCreate).toHaveBeenCalled());
+    expect(onToggle).not.toHaveBeenCalled();
+    // The form stays open with the typed name so an amended name costs one edit.
+    expect(screen.getByRole("textbox")).toHaveValue("Piano");
+  });
 });
