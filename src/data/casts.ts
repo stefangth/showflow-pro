@@ -34,14 +34,22 @@ export async function fetchCasts(
   return (data ?? []) as Cast[];
 }
 
-/** Member count per cast id, for the org. */
+/** ACTIVE member count per cast id, for the org.
+ *
+ *  Counts only members whose artist is active, matching `open-offer-tier`'s own
+ *  `status = 'active'` filter and `fetchLadderCoverageInputs`' staffing rule. A cast
+ *  whose every member has gone inactive can be asked by nobody, so it must read as
+ *  empty everywhere: the cast pickers disable a 0-member cast, and the coverage rule
+ *  refuses to treat it as staffing a city. If the two disagreed, the picker would offer
+ *  a cast that coverage then rejects. */
 export async function fetchCastMemberCounts(
   client: SupabaseClient<Database>,
   orgId: string | null,
 ): Promise<Record<string, number>> {
   if (!orgId) return {};
   const { data, error } = await client
-    .from("cast_members").select("cast_id").eq("org_id", orgId);
+    .from("cast_members").select("cast_id, artists!inner(status)")
+    .eq("org_id", orgId).eq("artists.status", "active");
   if (error) throw error;
   const counts: Record<string, number> = {};
   for (const row of (data ?? []) as { cast_id: string }[]) {

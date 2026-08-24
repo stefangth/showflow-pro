@@ -22,7 +22,7 @@ const TEST_ORG = { id: ORG_ID, name: "Test Org", slug: "test-org", status: "acti
  *  values beyond that (including `skillGaps`) are not asserted here, that is
  *  `steps.test.ts`'s job. This seed only needs to make every query settle so `isLoading`
  *  can flip to false. */
-function fullySeeded() {
+function fullySeeded(overrides: Record<string, TableSeed> = {}) {
   seed({
     org_entitlements: {
       data: [
@@ -42,8 +42,17 @@ function fullySeeded() {
     artists: { data: null, error: null, count: 0 },
     org_memberships: { data: null, error: null, count: 2 },
     skills: { data: [{ id: "skill-1", name: "Lead" }], error: null },
+    ...overrides,
   });
 }
+
+/** One future, non-cancelled date. `fetchSkillEligibilityGaps` scopes its requirement read
+ *  to productions that still have one, so an org with no future dates never reads
+ *  `show_required_skills` at all — which the two gaps tests below need it to do. */
+const LIVE_DATE: TableSeed = {
+  data: [{ id: "date-1", show_id: "show-1", city_id: "city-1", date: "2099-01-01", status: "scheduled" }],
+  error: null,
+};
 
 beforeEach(() => fullySeeded());
 
@@ -189,7 +198,8 @@ describe("useGetRunningV3", () => {
         error: null,
       },
       shows: { data: [], error: null },
-      show_dates: { data: [], error: null },
+      // A future date, so the gaps read actually reaches show_required_skills.
+      show_dates: LIVE_DATE,
       show_cast_eligibility: { data: [], error: null },
       cast_city_priority: { data: [], error: null },
       artists: { data: null, error: null, count: 0 },
@@ -224,7 +234,7 @@ describe("useGetRunningV3", () => {
     const gapsGate = new Promise<void>((resolve) => {
       releaseGaps = resolve;
     });
-    fullySeeded();
+    fullySeeded({ show_dates: LIVE_DATE });
     const realFrom = client.from as (t: string) => unknown;
     client.from = (table: string) => {
       const builder = realFrom(table) as PromiseLike<unknown> & Record<string, unknown>;

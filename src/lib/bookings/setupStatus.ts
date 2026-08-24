@@ -50,8 +50,9 @@ export interface LadderCoverageInputs {
   showPriorities: { showId: string; cityId: string; castId: string; priority: number }[];
   /** cast_city_priority rows for the org. */
   cityPriorities: { cityId: string; castId: string; priority: number }[];
-  /** Ids of casts with at least one member. A cast with no members cannot be asked,
-   *  so ranking it first leaves the pair uncovered however the ladder reads. */
+  /** Ids of casts with at least one ACTIVE member. A cast nobody active belongs to
+   *  cannot be asked (open-offer-tier only offers active artists), so ranking it first
+   *  leaves the pair uncovered however the ladder reads. */
   nonEmptyCastIds: string[];
 }
 
