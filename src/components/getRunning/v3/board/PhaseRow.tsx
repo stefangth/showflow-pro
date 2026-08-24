@@ -1,6 +1,7 @@
 import { Trans, useTranslation } from "react-i18next";
 import { Check } from "lucide-react";
 import { Metric } from "@/components/ui/metric";
+import { TONES } from "@/components/ui/tones";
 import type { GetRunningModelV3, GetRunningPhaseKey, GetRunningPhaseV3 } from "@/lib/getRunning/steps";
 
 /**
@@ -94,7 +95,11 @@ export function PhaseRow({
       {number}
       {body}
       {phase.done ? (
-        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
+        // Green, like the step dots and the phase icon rail. Accent violet here read as
+        // "selected" next to a rail that had just turned green for the same fact.
+        <span
+          className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${TONES.confirmed.bg} ${TONES.confirmed.fg}`}
+        >
           <Check className="h-3.5 w-3.5" strokeWidth={3} />
         </span>
       ) : (

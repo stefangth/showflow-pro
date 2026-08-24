@@ -1,11 +1,9 @@
-import { useContext } from "react";
-import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { useCan } from "@/hooks/useCapabilities";
 import { NumberingCard } from "@/components/settings/hireOrders/NumberingCard";
 import { ROUTES } from "@/config/app.config";
-import { WizardFooterContext } from "@/components/getRunning/v3/WizardFooterContext";
+import { WizardFooterAction } from "@/components/getRunning/v3/WizardFooterAction";
 import { Button } from "@/components/ui/button";
 
 /**
@@ -17,7 +15,6 @@ import { Button } from "@/components/ui/button";
  */
 export function DocumentStep({ orgId, onDone }: { orgId: string | null; onDone: () => void }): JSX.Element {
   const { t } = useTranslation("getRunningV3");
-  const footerSlot = useContext(WizardFooterContext);
   const canEdit = useCan("edit_hire_order_settings");
 
   const continueButton = (
@@ -27,14 +24,7 @@ export function DocumentStep({ orgId, onDone }: { orgId: string | null; onDone: 
   );
 
   return (
-    <div className="space-y-3">
-      <div className="space-y-1">
-        <div className="text-title-sm font-semibold tracking-[-0.2px] text-foreground">
-          {t("body.document.heading")}
-        </div>
-        <p className="text-xs text-muted-foreground">{t("body.document.sub")}</p>
-      </div>
-
+    <div data-testid="step-body-document" className="space-y-3">
       <NumberingCard orgId={orgId} readOnly={!canEdit} />
 
       <Link
@@ -45,11 +35,7 @@ export function DocumentStep({ orgId, onDone }: { orgId: string | null; onDone: 
       </Link>
 
       {canEdit ? (
-        footerSlot ? (
-          createPortal(continueButton, footerSlot)
-        ) : (
-          continueButton
-        )
+        <WizardFooterAction>{continueButton}</WizardFooterAction>
       ) : (
         <p className="text-xs text-muted-foreground">{t("body.document.readOnly")}</p>
       )}

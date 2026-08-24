@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/features/auth/AuthContext';
 import { useLanguage } from '@/features/i18n/LanguageContext';
-import { selectItems, groupByStage, countParams, type HelpFilter } from '@/lib/help/filter';
+import { selectItems, groupByStage, countParams, findItem, type HelpFilter } from '@/lib/help/filter';
 import type { HelpRole } from '@/lib/help/types';
 import { Button } from '@/components/ui/button';
 import { HelpRoleTabs } from '@/components/help/HelpRoleTabs';
@@ -35,6 +36,37 @@ export default function HelpPage() {
     setRole(defaultRole);
     setOpenMap({});
   }
+
+  // Deep links. `/help?item=<id>` is what the get-running wizard's "Read more" links
+  // carry: switch to the tab that owns the answer, expand it, and scroll it into view.
+  // `/help?q=<text>` prefills the search for a topic with no single answer of its own.
+  //
+  // Tracked by the applied VALUE, not a one-shot boolean, so a later in-app link that
+  // only changes the query string still lands, while a re-render with the same params
+  // never reopens something the reader deliberately collapsed. Same "adjust state during
+  // render" idiom as the org reset above. An unknown id resolves to null and the page
+  // renders normally: a stale link from an older build must not blank the help center.
+  const [params] = useSearchParams();
+  const itemParam = params.get('item');
+  const qParam = params.get('q') ?? '';
+  const paramKey = `${itemParam ?? ''}|${qParam}`;
+  const target = itemParam ? findItem(itemParam) : null;
+  const [appliedParams, setAppliedParams] = useState<string | null>(null);
+  if (appliedParams !== paramKey) {
+    setAppliedParams(paramKey);
+    if (target) {
+      setRole(target.role);
+      setOpenMap({ [target.id]: true });
+    }
+    if (qParam) setQuery(qParam);
+  }
+
+  // Scrolling has to wait for the expanded row to exist, so it runs after the commit that
+  // applied the param rather than during it.
+  useEffect(() => {
+    if (!target) return;
+    document.getElementById(`help-${target.id}`)?.scrollIntoView({ block: 'center' });
+  }, [target]);
 
   const matched = selectItems(role, filter, query);
   const groups = groupByStage(matched);

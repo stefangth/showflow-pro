@@ -1,5 +1,4 @@
-import { useContext, useEffect, useState } from "react";
-import { createPortal } from "react-dom";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { useCan } from "@/hooks/useCapabilities";
@@ -8,13 +7,14 @@ import { useAirtableConsole } from "@/hooks/useAirtableConsole";
 import { useSheetImport } from "@/hooks/useSheetImport";
 import { isDatesMapComplete } from "@/data/airtableMapping";
 import { isSheetMapComplete, type SheetColumnMap } from "@/lib/sheetImport/mapRows";
-import { WizardFooterContext } from "@/components/getRunning/v3/WizardFooterContext";
+import { WizardFooterAction } from "@/components/getRunning/v3/WizardFooterAction";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MappingTab } from "@/components/settings/airtable/MappingTab";
 import { stepFeatureLink } from "@/lib/getRunning/stepFeature";
+import type { GetRunningStepKey } from "@/lib/getRunning/steps";
 import { cn } from "@/lib/utils";
 
 /** shadcn Select cannot use "" as an item value, so "not mapped" needs a sentinel,
@@ -64,9 +64,18 @@ const SHEET_FIELDS: { key: keyof SheetColumnMap; required?: boolean }[] = [
  * predicate, mirroring `ConnectStep` (a viewer who arrives at an already-mapped step can
  * still advance, only editing is capability-gated).
  */
-export function MapStep({ orgId, onDone }: { orgId: string | null; onDone: () => void }): JSX.Element {
+export function MapStep({
+  orgId,
+  onDone,
+  onGoToStep,
+}: {
+  orgId: string | null;
+  onDone: () => void;
+  /** Jump the wizard to another step. Used by the not-yet-connected state, which has
+   *  nothing to map until the Connect step has run. */
+  onGoToStep?: (key: GetRunningStepKey) => void;
+}): JSX.Element {
   const { t } = useTranslation("getRunningV3");
-  const footerSlot = useContext(WizardFooterContext);
   const canEdit = useCan("configure_airtable");
   const { source } = useDatesSource(orgId);
   const airtable = useAirtableConsole(orgId, { readOnly: !canEdit, canTriggerSync: false });
@@ -74,6 +83,18 @@ export function MapStep({ orgId, onDone }: { orgId: string | null; onDone: () =>
   const [loadingHeaders, setLoadingHeaders] = useState(false);
 
   const isSheet = source === "sheet";
+  // An Airtable org that has not finished connecting has no columns to choose from, so the
+  // mapping table would render nine required rows over an empty dropdown and no way to
+  // fill any of them. Send them to the step that can actually unblock this instead.
+  //
+  // Gated on `airtable.ready` (the console's own key-status + settings queries having
+  // settled, same flag `CitiesStep` reads) because `keyPresent`/`hasBaseTable` are BOTH
+  // false while those queries are in flight. Without it a fully connected org is told its
+  // base is not connected for as long as the read takes, and offered a button back to a
+  // step it already finished.
+  const airtableResolved = source !== "airtable" || airtable.ready;
+  const awaitingAirtableConnection =
+    source === "airtable" && airtable.ready && !(airtable.keyPresent && airtable.hasBaseTable);
   const sheetUrl = sheetImport.settings.url;
   const headers = sheetImport.parsed?.headers ?? null;
 
@@ -101,7 +122,11 @@ export function MapStep({ orgId, onDone }: { orgId: string | null; onDone: () =>
     sheetImport.saveSettings({ ...sheetImport.settings, map });
   };
 
-  const canContinue = isSheet ? isSheetMapComplete(sheetImport.settings.map) : isDatesMapComplete(airtable.fieldMap);
+  const canContinue = !airtableResolved || awaitingAirtableConnection
+    ? false
+    : isSheet
+      ? isSheetMapComplete(sheetImport.settings.map)
+      : isDatesMapComplete(airtable.fieldMap);
   const tableName = airtable.selectedTable?.name ?? airtable.settings.airtable_table_name;
   const fields = airtable.selectedTable?.fields.map((f) => ({ id: f.id, name: f.name })) ?? [];
 
@@ -112,15 +137,23 @@ export function MapStep({ orgId, onDone }: { orgId: string | null; onDone: () =>
   );
 
   return (
-    <div className="space-y-4">
-      <div className="space-y-1">
-        <div className="text-title-sm font-semibold tracking-[-0.2px] text-foreground">
-          {isSheet ? t("body.map.sheet.heading") : t("body.map.heading")}
+    <div data-testid="step-body-map" className="space-y-4">
+      {!airtableResolved ? (
+        <div className="space-y-2">
+          <Skeleton className="h-9 w-full" />
+          <Skeleton className="h-9 w-full" />
+          <Skeleton className="h-9 w-full" />
         </div>
-        <p className="text-xs text-muted-foreground">{isSheet ? t("body.map.sheet.sub") : t("body.map.sub")}</p>
-      </div>
-
-      {isSheet ? (
+      ) : awaitingAirtableConnection ? (
+        <div className="space-y-2 rounded-l border border-border bg-well-tint px-3.5 py-3">
+          <p className="text-control text-foreground">{t("body.map.notConnected")}</p>
+          {onGoToStep && (
+            <Button type="button" variant="outline" size="sm" onClick={() => onGoToStep("connect")}>
+              {t("body.map.goToConnect")}
+            </Button>
+          )}
+        </div>
+      ) : isSheet ? (
         !sheetUrl ? (
           <p className="text-sm text-muted-foreground">{t("body.map.sheet.noHeaders")}</p>
         ) : loadingHeaders || headers === null ? (
@@ -170,6 +203,10 @@ export function MapStep({ orgId, onDone }: { orgId: string | null; onDone: () =>
           unboundFields={airtable.unboundFields}
           onAddAllCustom={airtable.addAllCustom}
           canWrite={airtable.canWrite}
+          // The wizard shell already titles this step above the card, so the card header
+          // steps down rather than competing with it. In Settings this card is the
+          // section and keeps the full card-title size.
+          dense
         />
       )}
 
@@ -186,13 +223,13 @@ export function MapStep({ orgId, onDone }: { orgId: string | null; onDone: () =>
         </p>
       </div>
 
-      {!canContinue && (
+      {!canContinue && !awaitingAirtableConnection && airtableResolved && (
         <p className="text-xs text-muted-foreground">
           {isSheet ? t("body.map.sheet.mapIncomplete") : t("body.map.mapIncomplete")}
         </p>
       )}
 
-      {footerSlot ? createPortal(continueButton, footerSlot) : continueButton}
+      <WizardFooterAction>{continueButton}</WizardFooterAction>
     </div>
   );
 }

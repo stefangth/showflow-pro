@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { selectItems, groupByStage, countParams } from './filter';
+import { selectItems, groupByStage, countParams, findItem } from './filter';
 import { HELP_ITEMS } from './items';
 
 describe('help filter', () => {
@@ -33,5 +33,16 @@ describe('help filter', () => {
     const filtered = countParams('admin', 'new', '');
     expect(filtered.filtered).toBe(true);
     expect(filtered.matched).toBeLessThanOrEqual(filtered.total);
+  });
+});
+
+describe('findItem', () => {
+  it('resolves a known id', () => {
+    expect(findItem('A3.11')?.role).toBe('admin');
+  });
+
+  it('returns null for an unknown id rather than throwing', () => {
+    // A stale `/help?item=` link is a normal outcome, not an error.
+    expect(findItem('NOPE')).toBeNull();
   });
 });

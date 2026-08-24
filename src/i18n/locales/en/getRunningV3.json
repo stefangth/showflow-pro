@@ -72,7 +72,8 @@
     "stepsNav": "Steps",
     "stepOfRich": "Step <0>{{step}}</0> of <1>{{total}}</1>",
     "stepsDropped_one": "{{count}} step no longer applies",
-    "stepsDropped_other": "{{count}} steps no longer apply"
+    "stepsDropped_other": "{{count}} steps no longer apply",
+    "continue": "Continue"
   },
   "steps": {
     "source": {
@@ -176,10 +177,14 @@
       "body": "The booking engine only offers a date once it knows which city it is in. A date with no city sits idle.",
       "points": [
         "Fix a missing city directly from the Dates list.",
+        "Cast ranking is set per city, so this comes before ranking."
+      ],
+      "article": "Read more about city assignment",
+      "pointsAirtable": [
+        "Fix a missing city directly from the Dates list.",
         "Cast ranking is set per city, so this comes before ranking.",
         "New dates synced from Airtable inherit their city automatically."
-      ],
-      "article": "Read more about city assignment"
+      ]
     },
     "productions": {
       "title": "Review your productions",
@@ -317,7 +322,8 @@
     "body": "Every step is done. Come back any time to review what changed.",
     "count": "{{done}} of {{total}} done",
     "hideFromNav": "Hide from the sidebar",
-    "manageInSettings": "Manage in Settings"
+    "manageInSettings": "Manage in Settings",
+    "settingsBody": "Every step is done. They all stay open below, so you can revisit any of them whenever something changes."
   },
   "nothingToSetUp": {
     "title": "Nothing to set up yet",
@@ -380,7 +386,12 @@
         "loaded": "Loaded {{count}} columns.",
         "invalidUrl": "Paste a published Google Sheets CSV link to continue.",
         "loadError": "The sheet could not be read. Check the link and try again."
-      }
+      },
+      "none": {
+        "heading": "Connect your dates source",
+        "sub": "Pick where your dates come from first, then connect it here."
+      },
+      "pickSourceFirst": "Go back a step and pick where your dates come from. Airtable and Google Sheet connect here. By hand needs no connection."
     },
     "map": {
       "heading": "Map your fields",
@@ -409,7 +420,9 @@
         "notMapped": "Not mapped",
         "noHeaders": "Go back to Connect and load your sheet's columns first.",
         "mapIncomplete": "Map the production and date columns to continue."
-      }
+      },
+      "notConnected": "There is nothing to map yet. Connect your Airtable base first, then its columns show up here.",
+      "goToConnect": "Go to Connect Airtable"
     },
     "cities": {
       "heading": "Set a city on every date",
@@ -449,7 +462,7 @@
       "savedToast": "Casting breakdown saved"
     },
     "productions": {
-      "heading": "Your productions",
+      "heading": "Review your productions",
       "sub": "Check the productions that came in, and add any that are missing.",
       "addProduction": "Add a production",
       "addDate": "Add a date",
@@ -467,7 +480,7 @@
       "readError": "We could not load your productions. Reload the page and try again."
     },
     "fee": {
-      "heading": "Your default fee",
+      "heading": "Set your default fee",
       "sub": "The fee a new contract starts from. You can change it on any single contract.",
       "listTitle": "Fees per production and cast",
       "listHint": "Set a fee for one cast and one production when it should differ from your default above.",
@@ -484,11 +497,43 @@
       "readOnly": "Contract settings are set by an admin. You can read them here."
     },
     "document": {
-      "heading": "Your contract document",
+      "heading": "Style your contract document",
       "sub": "Set how contract numbers are built. Style the full layout in the template editor.",
       "templateLink": "Open the document template editor",
       "continue": "Continue",
       "readOnly": "Contract settings are set by an admin. You can read them here."
+    },
+    "artists": {
+      "heading": "Add your artists",
+      "sub": "Nobody can be booked until your roster has active artists."
+    },
+    "coverage": {
+      "heading": "Rank your casts",
+      "sub": "Cast priorities decide who is asked first in each city."
+    },
+    "flow": {
+      "heading": "Set your booking flow",
+      "sub": "Decide how many groups are asked, and in what order."
+    },
+    "timing": {
+      "heading": "Confirm the ask timing",
+      "sub": "When asks go out, and how long artists have to answer."
+    },
+    "team": {
+      "heading": "Invite your production team",
+      "sub": "Producers can take bookings off your plate once asks start landing."
+    },
+    "letterhead": {
+      "heading": "Set your letterhead",
+      "sub": "Your name, address and logo print at the top of every contract."
+    },
+    "terms": {
+      "heading": "Write your terms",
+      "sub": "ShowFlow ships no default clauses. Start from a template and make it yours."
+    },
+    "countersign": {
+      "heading": "Choose how contracts get signed",
+      "sub": "The route an artist takes to sign the contract you send them."
     }
   }
 }

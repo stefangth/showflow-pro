@@ -1,11 +1,10 @@
-import { useContext, useState } from "react";
-import { createPortal } from "react-dom";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useCan } from "@/hooks/useCapabilities";
 import { useDatesSource } from "@/hooks/useDatesSource";
 import { useAirtableConsole } from "@/hooks/useAirtableConsole";
 import { useSheetImport } from "@/hooks/useSheetImport";
-import { WizardFooterContext } from "@/components/getRunning/v3/WizardFooterContext";
+import { WizardFooterAction } from "@/components/getRunning/v3/WizardFooterAction";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -59,7 +58,6 @@ function looksLikePublishedSheetUrl(raw: string): boolean {
  */
 export function ConnectStep({ orgId, onDone }: { orgId: string | null; onDone: () => void }): JSX.Element {
   const { t } = useTranslation("getRunningV3");
-  const footerSlot = useContext(WizardFooterContext);
   const canEdit = useCan("configure_airtable");
   const { source } = useDatesSource(orgId);
   const airtable = useAirtableConsole(orgId, { readOnly: !canEdit, canTriggerSync: false });
@@ -109,16 +107,7 @@ export function ConnectStep({ orgId, onDone }: { orgId: string | null; onDone: (
   };
 
   return (
-    <div className="space-y-4">
-      <div className="space-y-1">
-        <div className="text-title-sm font-semibold tracking-[-0.2px] text-foreground">
-          {isSheet ? t("body.connect.sheet.heading") : t("body.connect.heading")}
-        </div>
-        <p className="text-xs text-muted-foreground">
-          {isSheet ? t("body.connect.sheet.sub") : t("body.connect.sub")}
-        </p>
-      </div>
-
+    <div data-testid="step-body-connect" className="space-y-4">
       {isAirtable ? (
         connected ? (
           <p className="text-sm text-muted-foreground">
@@ -186,10 +175,16 @@ export function ConnectStep({ orgId, onDone }: { orgId: string | null; onDone: (
           )}
         </div>
       ) : (
-        <p className="text-sm text-muted-foreground">{t("body.connect.manual")}</p>
+        // Two different states share this branch. "manual" genuinely needs no connection.
+        // No source at all is not the same thing: the viewer has simply not chosen yet,
+        // and telling them "by hand needs no connection" answers a question they never
+        // asked. Say what is actually true of each.
+        <p className="text-sm text-muted-foreground">
+          {source === "manual" ? t("body.connect.manual") : t("body.connect.pickSourceFirst")}
+        </p>
       )}
 
-      {footerSlot ? createPortal(continueButton, footerSlot) : continueButton}
+      <WizardFooterAction>{continueButton}</WizardFooterAction>
     </div>
   );
 }

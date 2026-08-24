@@ -4,9 +4,15 @@ What's new in ShowFlow, newest first.
 
 ## 1.17.2 — August 24, 2026
 
-*Skills and cities you can add where you need them, setup readiness you can trust, and clearer wording throughout*
+*A steadier setup walkthrough, skills and cities you can add where you need them, setup readiness you can trust, and clearer wording throughout*
 
 ### Improved
+- **Every setup step now opens the same way** — Each step on the Get running board starts with its own title and a line saying what it is for, and ends with a single action in the footer. Half the steps used to open straight onto a form with no title and no obvious way forward.
+- **The setup walkthrough fits narrower windows** — On a smaller screen the guide column now moves below what you are editing instead of squeezing it, so the fields, tables and dropdowns stay readable. On a phone the whole thing stacks into one column.
+- **"Read more" opens the answer** — The reading links beside each setup step now open the matching answer in the Help center, already expanded, instead of dropping you on a settings page. Five setup steps that had no written answer now have one.
+- **Finished steps read as finished** — A completed step is green everywhere it appears now: in the step list, in the icon row above it, and on the phase itself. It used to show violet in some places, which read as "selected" rather than "done".
+- **Setup stays available after you finish it** — Once every step is done, Get running leaves the sidebar as before, but the full walkthrough stays open under Settings, Get running, so you can revisit any step whenever something changes.
+- **"How this org works" has its own icon** — It shared one with Get running directly below it in Settings.
 - **Add a skill while you write a casting breakdown** — When you set up a production's parts, you can create a skill right there and mark it required in one step, instead of leaving to add it on an artist first. Skills you already have show up alongside it.
 - **Add cities while you set up a production** — The production form now lists the cities you play and lets you add a new one on the spot, so a city is ready by the time you schedule a date. If your dates come from Airtable, city names it found that are not linked yet appear as one click suggestions.
 - **An empty cast no longer counts as ready** — A cast with nobody in it used to satisfy the coverage check for a city, so setup could look finished while no one could actually be asked. It now counts as uncovered until the cast has members.
@@ -18,6 +24,10 @@ What's new in ShowFlow, newest first.
 - **"Casting breakdown" and "parts"** — What you set up on a production is now its casting breakdown, made of named parts for main and understudy, instead of the vaguer "places".
 
 ### Fixed
+- **Setup steps no longer contradict themselves** — Before you pick where your dates come from, the connection step no longer calls itself "Connect Airtable" while telling you that working by hand needs no connection. The field mapping step no longer offers nine columns to match before there is an Airtable base to match them against, and now points you at the step that unblocks it.
+- **The field mapping header reads properly with no table picked** — It used to end mid sentence on a stray full stop where the table name would go.
+- **Cast ranking stops repeating itself** — The step showed your list of casts twice and the same "what this unlocks" note twice in one screen.
+- **A production row fits on a phone** — The production name used to be pushed off screen by the button beside it.
 - **Confirming your letterhead saves it** — Confirm used to be available with the fields empty, and appeared to work while saving nothing. It now waits for your legal name, and no longer claims your details were filled in for you.
 - **A warning when a date is in the past** — Picking a past date for a show now says so, while still letting you save it if you are recording something that already happened.
 - **A date with nobody free no longer says anyone can be asked** — The date view now tells you how many artists can be asked, and says plainly when the answer is nobody. The count of artists who qualify and are free no longer includes people already booked on that date.

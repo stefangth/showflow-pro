@@ -1,5 +1,4 @@
-import { useContext, useState } from "react";
-import { createPortal } from "react-dom";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { useCan } from "@/hooks/useCapabilities";
@@ -7,7 +6,7 @@ import { useDatesSource } from "@/hooks/useDatesSource";
 import { useAirtableConsole } from "@/hooks/useAirtableConsole";
 import { useSheetImport } from "@/hooks/useSheetImport";
 import { isSheetMapComplete, mapSheetRows } from "@/lib/sheetImport/mapRows";
-import { WizardFooterContext } from "@/components/getRunning/v3/WizardFooterContext";
+import { WizardFooterAction } from "@/components/getRunning/v3/WizardFooterAction";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -98,7 +97,6 @@ export function CitiesStep({
   statusError: boolean;
 }): JSX.Element {
   const { t } = useTranslation("getRunningV3");
-  const footerSlot = useContext(WizardFooterContext);
   const canEdit = useCan("configure_airtable");
   const { source } = useDatesSource(orgId);
   const airtable = useAirtableConsole(orgId, { readOnly: !canEdit, canTriggerSync: false });
@@ -182,14 +180,7 @@ export function CitiesStep({
   };
 
   return (
-    <div className="space-y-4">
-      <div className="space-y-1">
-        <div className="text-title-sm font-semibold tracking-[-0.2px] text-foreground">
-          {isSheet ? t("body.cities.sheet.heading") : t("body.cities.heading")}
-        </div>
-        <p className="text-xs text-muted-foreground">{isSheet ? t("body.cities.sheet.sub") : t("body.cities.sub")}</p>
-      </div>
-
+    <div data-testid="step-body-cities" className="space-y-4">
       {isSheet ? (
         <div className="space-y-4">
           <Button type="button" variant="outline" size="sm" disabled={!sheetImportCanRun} onClick={handleImport}>
@@ -293,7 +284,7 @@ export function CitiesStep({
         <p className="text-xs text-muted-foreground">{t("body.cities.incomplete")}</p>
       )}
 
-      {footerSlot ? createPortal(continueButton, footerSlot) : continueButton}
+      <WizardFooterAction>{continueButton}</WizardFooterAction>
     </div>
   );
 }

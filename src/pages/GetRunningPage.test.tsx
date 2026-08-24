@@ -160,6 +160,7 @@ function v3NothingModel(): GetRunningModelV3 {
     canFirstOffer: false,
     complete: false,
     bookingOn: false,
+    datesSource: null,
     hireOrdersOn: false,
     datesWithoutCity: 0,
     datesWithoutCityUnknown: false,

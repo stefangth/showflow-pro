@@ -239,3 +239,46 @@ describe("MapStep", () => {
     });
   });
 });
+
+describe("MapStep, Airtable connection gate", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(useCan).mockReturnValue(true);
+    seedSheetImport();
+  });
+
+  it("never tells a connected org to go and connect while the console read is in flight", async () => {
+    // `keyPresent`/`hasBaseTable` are BOTH false until useAirtableConsole's key-status and
+    // settings queries settle, so an unguarded check accuses a connected org of not being
+    // connected for as long as the read takes.
+    vi.mocked(useDatesSource).mockReturnValue({ source: "airtable", isLoading: false, save: vi.fn(), saving: false });
+    seedSettings({ date: "Date", sub_program: "Sub Program" });
+    renderStep();
+
+    expect(screen.queryByText(/there is nothing to map yet/i)).toBeNull();
+    expect(screen.queryByRole("button", { name: /go to connect airtable/i })).toBeNull();
+
+    // and once it resolves, the real mapping table is what shows.
+    expect(await screen.findByText("Dates")).toBeInTheDocument();
+  });
+
+  it("sends an Airtable org with no base to the Connect step once the read has settled", async () => {
+    vi.mocked(useDatesSource).mockReturnValue({ source: "airtable", isLoading: false, save: vi.fn(), saving: false });
+    mock(fetchAirtableSettings).mockResolvedValue({
+      ...BASE_SETTINGS,
+      airtable_base_id: null,
+      airtable_table_name: null,
+      airtable_field_map: {},
+    });
+    const onGoToStep = vi.fn();
+    renderWithProviders(
+      <MemoryRouter>
+        <MapStep orgId="org-1" onDone={vi.fn()} onGoToStep={onGoToStep} />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: /go to connect airtable/i }));
+    expect(onGoToStep).toHaveBeenCalledWith("connect");
+    expect(screen.getByRole("button", { name: /^continue$/i })).toBeDisabled();
+  });
+});

@@ -45,10 +45,18 @@ export function LadderPanelBody({
   orgId,
   coverage,
   onDone,
+  showCastList = true,
+  showUnlocks = true,
 }: {
   orgId: string | null;
   coverage: LadderCoverageInputs | undefined;
   onDone: () => void;
+  /** The v3 wizard stacks this body with `EligibilityPanelBody` under one `coverage`
+   *  step, and both render the same org cast roster and the same style of unlocks
+   *  callout. Left on, the merged step shows each of them twice in a single scroll.
+   *  Default `true` so v1's TaskPanel and the setup rails are unchanged. */
+  showCastList?: boolean;
+  showUnlocks?: boolean;
 }) {
   const { t } = useTranslation("getRunning");
   const qc = useQueryClient();
@@ -233,7 +241,7 @@ export function LadderPanelBody({
         </form>
       )}
 
-      <CastRosterList casts={castOptions} keyPrefix="panel.body.ladder" subline={rankLabel} />
+      {showCastList && <CastRosterList casts={castOptions} keyPrefix="panel.body.ladder" subline={rankLabel} />}
 
       <div className="flex items-center justify-between gap-2">
         <span className="text-xs text-muted-foreground">{t("panel.body.ladder.citiesWithDates")}</span>
@@ -305,7 +313,7 @@ export function LadderPanelBody({
           such city the datesNeedCity/noCitiesYet empty-state above already explains the
           state; the "Every city with dates has a first group" reassurance would contradict
           it. */}
-      {cityIds.length > 0 && (
+      {showUnlocks && cityIds.length > 0 && (
         <UnlocksNote>
           {firstUnrankedId
             ? t(

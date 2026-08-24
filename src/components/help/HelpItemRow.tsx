@@ -16,7 +16,8 @@ export function HelpItemRow({
 }) {
   const { t } = useTranslation('help');
   return (
-    <div className="border-b-[0.5px] border-border last:border-b-0">
+    // The id is the scroll anchor for `/help?item=<id>` deep links (see HelpPage).
+    <div id={`help-${item.id}`} className="border-b-[0.5px] border-border last:border-b-0">
       <button
         onClick={onToggle}
         aria-expanded={open}

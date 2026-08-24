@@ -3,9 +3,33 @@
     "version": "1.17.2",
     "date": "2026-08-24",
     "dateLabel": "August 24, 2026",
-    "title": "Skills and cities you can add where you need them, setup readiness you can trust, and clearer wording throughout",
+    "title": "A steadier setup walkthrough, skills and cities you can add where you need them, setup readiness you can trust, and clearer wording throughout",
     "changes": {
       "improved": [
+        {
+          "title": "Every setup step now opens the same way",
+          "description": "Each step on the Get running board starts with its own title and a line saying what it is for, and ends with a single action in the footer. Half the steps used to open straight onto a form with no title and no obvious way forward."
+        },
+        {
+          "title": "The setup walkthrough fits narrower windows",
+          "description": "On a smaller screen the guide column now moves below what you are editing instead of squeezing it, so the fields, tables and dropdowns stay readable. On a phone the whole thing stacks into one column."
+        },
+        {
+          "title": "\"Read more\" opens the answer",
+          "description": "The reading links beside each setup step now open the matching answer in the Help center, already expanded, instead of dropping you on a settings page. Five setup steps that had no written answer now have one."
+        },
+        {
+          "title": "Finished steps read as finished",
+          "description": "A completed step is green everywhere it appears now: in the step list, in the icon row above it, and on the phase itself. It used to show violet in some places, which read as \"selected\" rather than \"done\"."
+        },
+        {
+          "title": "Setup stays available after you finish it",
+          "description": "Once every step is done, Get running leaves the sidebar as before, but the full walkthrough stays open under Settings, Get running, so you can revisit any step whenever something changes."
+        },
+        {
+          "title": "\"How this org works\" has its own icon",
+          "description": "It shared one with Get running directly below it in Settings."
+        },
         {
           "title": "Add a skill while you write a casting breakdown",
           "description": "When you set up a production's parts, you can create a skill right there and mark it required in one step, instead of leaving to add it on an artist first. Skills you already have show up alongside it."
@@ -44,6 +68,22 @@
         }
       ],
       "fixed": [
+        {
+          "title": "Setup steps no longer contradict themselves",
+          "description": "Before you pick where your dates come from, the connection step no longer calls itself \"Connect Airtable\" while telling you that working by hand needs no connection. The field mapping step no longer offers nine columns to match before there is an Airtable base to match them against, and now points you at the step that unblocks it."
+        },
+        {
+          "title": "The field mapping header reads properly with no table picked",
+          "description": "It used to end mid sentence on a stray full stop where the table name would go."
+        },
+        {
+          "title": "Cast ranking stops repeating itself",
+          "description": "The step showed your list of casts twice and the same \"what this unlocks\" note twice in one screen."
+        },
+        {
+          "title": "A production row fits on a phone",
+          "description": "The production name used to be pushed off screen by the button beside it."
+        },
         {
           "title": "Confirming your letterhead saves it",
           "description": "Confirm used to be available with the fields empty, and appeared to work while saving nothing. It now waits for your legal name, and no longer claims your details were filled in for you."

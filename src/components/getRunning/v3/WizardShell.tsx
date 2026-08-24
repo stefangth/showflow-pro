@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { X } from "lucide-react";
@@ -9,7 +9,7 @@ import { StatusPill } from "@/components/ui/status-pill";
 import { StatusDot } from "@/components/ui/status-dot";
 import { ROUTES } from "@/config/app.config";
 import type { GetRunningStep, GetRunningStepKey, GetRunningPhaseKey } from "@/lib/getRunning/steps";
-import { stepFeatureLink } from "@/lib/getRunning/stepFeature";
+import { stepHelpLink } from "@/lib/getRunning/stepHelp";
 import { WizardFooterContext } from "./WizardFooterContext";
 
 const PHASE_ORDER: GetRunningPhaseKey[] = ["get_dates", "bookable", "paperwork"];
@@ -20,6 +20,18 @@ export interface WizardShellProps {
   activeKey: GetRunningStepKey; // which step body shows
   onSelectStep: (key: GetRunningStepKey) => void;
   onCollapse: () => void; // header "Collapse"/close and footer "Finish later"
+  /** Advance to the next outstanding step. Backs the shell's own generic Continue, which
+   *  only renders for a step whose body supplies no primary action of its own. */
+  onNext?: () => void;
+  /** Overrides for the middle column's heading/sub i18n keys. Defaults to
+   *  `body.<activeStep.key>.heading` / `.sub`. The board passes these for the two steps
+   *  that read differently per dates source (`connect`, `map`), which the shell itself
+   *  cannot see. */
+  headingKey?: string;
+  subKey?: string;
+  /** Overrides the guide's bullet-list key. Same reason as `headingKey`: some bullets are
+   *  only true for one dates source. */
+  pointsKey?: string;
   children: React.ReactNode; // the step body (from stepRegistryV3)
 }
 
@@ -50,10 +62,22 @@ export function WizardShell({
   activeKey,
   onSelectStep,
   onCollapse,
+  onNext,
+  headingKey,
+  subKey,
+  pointsKey,
   children,
 }: WizardShellProps): JSX.Element {
   const { t } = useTranslation("getRunningV3");
   const [footerSlotEl, setFooterSlotEl] = useState<HTMLDivElement | null>(null);
+  // Whether the open step's body supplies its own primary action. Eight of the sixteen
+  // bodies do (they gate Continue on their own validity); the other eight are components
+  // reused from v1 and the setup rails, which know nothing about this shell. The shell
+  // renders a generic Continue for the latter, so every step ends in exactly one primary
+  // action rather than half of them ending in none.
+  const [hasBodyAction, setHasBodyAction] = useState(false);
+  const register = useCallback((has: boolean) => setHasBodyAction(has), []);
+  const footerValue = useMemo(() => ({ el: footerSlotEl, register }), [footerSlotEl, register]);
 
   // Defensive: the board is expected to pass only visible (non-`hidden`) steps, but this
   // filter is a cheap, single-purpose backstop so the rail/counter stay correct here too
@@ -95,7 +119,10 @@ export function WizardShell({
   const blocksFirstAsk = activeStep?.block === "offers" || activeStep?.block === "booking";
 
   return (
-    <div className="flex w-full flex-col overflow-hidden rounded-l border border-border bg-card shadow-elev2">
+    <div
+      data-testid="wizard-shell"
+      className="@container flex w-full flex-col overflow-hidden rounded-l border border-border bg-card shadow-elev2"
+    >
       {/* Header band. Uses the semantic `bg-accent` / `text-accent-foreground` pair
           (mode-aware: light-violet band + accent-600 text in light, accent-900 band +
           accent-100 text in dark) rather than the fixed `bg-accent-50` scale stop, whose
@@ -129,15 +156,24 @@ export function WizardShell({
         </Button>
       </div>
 
-      {/* Body. Single column below `lg` (the fixed 216px rail + 268px guide only leave
-          room for the fluid middle on a wide viewport); the three fixed/fluid columns
-          come back at `lg`. When stacked, the rail/guide switch their side borders for
-          bottom/top borders so the seams still read. */}
-      <div className="grid grid-cols-1 items-start gap-0 lg:grid-cols-[216px_minmax(0,1fr)_268px]">
+      {/* Body. These are CONTAINER queries against the shell itself, not viewport
+          breakpoints: the wizard renders inside the app content area, which measures
+          `viewport - 316px` (sidebar + page padding), so `lg:` lied about how much room
+          this grid actually had. At viewport 1024 the three fixed/fluid columns resolved
+          to 216px / 222px / 268px and the read-only guide came out wider than the editor.
+          Keyed on the shell's own width, the same wizard lays out correctly on the page,
+          in the narrower Settings mirror, and at any sidebar state.
+            < 672px   one column, everything stacked
+            >= 672px  step rail + editor, guide drops full width underneath
+            >= 1024px the designed three columns
+          The rails are `minmax` rather than fixed so they give ground before the editor
+          does. When stacked, the rail/guide switch their side borders for bottom/top
+          borders so the seams still read. */}
+      <div className="grid grid-cols-1 items-start gap-0 @2xl:grid-cols-[minmax(180px,216px)_minmax(0,1fr)] @5xl:grid-cols-[minmax(180px,216px)_minmax(0,1fr)_minmax(240px,268px)]">
         {/* Left: step rail */}
         <nav
           aria-label={t("wizard.stepsNav")}
-          className="flex flex-col gap-0.5 border-b border-border p-3 lg:border-b-0 lg:border-r"
+          className="flex flex-col gap-0.5 border-b border-border p-3 @2xl:border-b-0 @2xl:border-r"
         >
           {steps.map((step) => {
             const isActive = step.key === activeKey;
@@ -176,26 +212,45 @@ export function WizardShell({
             portal its own primary action into the footer slot below (mirrors
             `TaskPanel`'s `TaskPanelFooterContext` pattern). */}
         <div className="min-w-0 p-4">
-          <WizardFooterContext.Provider value={footerSlotEl}>{children}</WizardFooterContext.Provider>
+          {/* The step title lives here, not in the bodies. Eight bodies are reused from v1
+              and the setup rails and have no title of their own, so half the wizard used
+              to open on a bare form. Owning it here titles all sixteen identically.
+              `key` on the provider resets `hasBodyAction` between steps, so a body that
+              portals nothing cannot inherit the previous body's registration. */}
+          {activeStep && (
+            <div className="mb-4 space-y-1">
+              <h2 className="text-title-sm font-semibold tracking-[-0.2px] text-foreground">
+                {t(headingKey ?? `body.${activeStep.key}.heading`)}
+              </h2>
+              <p className="text-xs text-muted-foreground">{t(subKey ?? `body.${activeStep.key}.sub`)}</p>
+            </div>
+          )}
+          <WizardFooterContext.Provider key={activeStep?.key} value={footerValue}>
+            {children}
+          </WizardFooterContext.Provider>
         </div>
 
         {/* Right: how this works guide */}
         {activeStep && (
-          <aside className="flex flex-col gap-2 border-t border-border p-4 lg:border-t-0 lg:border-l">
+          <aside className="flex flex-col gap-2 border-t border-border p-4 @2xl:col-span-2 @5xl:col-span-1 @5xl:border-t-0 @5xl:border-l">
             <Eyebrow>{t("wizard.howThisWorks")}</Eyebrow>
             <div className="text-control font-semibold text-foreground">
               {t(`guide.${activeStep.key}.title`)}
             </div>
             <p className="text-xs leading-[17px] text-muted-foreground">{t(`guide.${activeStep.key}.body`)}</p>
             <ul className="flex flex-col gap-1 pl-4 text-xs leading-[17px] text-muted-foreground">
-              {(t(`guide.${activeStep.key}.points`, { returnObjects: true }) as string[]).map((point) => (
+              {(t(pointsKey ?? `guide.${activeStep.key}.points`, { returnObjects: true }) as string[]).map((point) => (
                 <li key={point} className="list-disc">
                   {point}
                 </li>
               ))}
             </ul>
+            {/* "Read more about X" is a READING link, so it goes to the help answer for
+                this step, not to the settings page where you would go to DO the thing.
+                It used to resolve through `stepFeatureLink`, which is why "Read more
+                about the Airtable connection" opened /dates. */}
             <Link
-              to={stepFeatureLink(activeStep.key)}
+              to={stepHelpLink(activeStep.key)}
               className="text-xs font-medium text-accent-600 underline-offset-2 hover:underline"
             >
               {t(`guide.${activeStep.key}.article`)}
@@ -208,7 +263,10 @@ export function WizardShell({
       </div>
 
       {/* Footer */}
-      <div className="flex items-center gap-2.5 border-t border-border bg-well-tint px-4 py-3.5">
+      <div
+        data-testid="wizard-footer"
+        className="flex flex-wrap items-center gap-2.5 border-t border-border bg-well-tint px-4 py-3.5"
+      >
         {/* Same "step N of M" fact as the header counter, worded as a full sentence here
             (distinct visible text from the header's bare "N / M") but with the numbers
             still routed through <Metric> (Geist Mono, tabular) per the numbers-are-Metric
@@ -235,6 +293,11 @@ export function WizardShell({
             {t("wizard.finishLater")}
           </Button>
           <div ref={setFooterSlotEl} className="flex items-center gap-2" />
+          {!hasBodyAction && onNext && (
+            <Button type="button" size="sm" onClick={onNext}>
+              {t("wizard.continue")}
+            </Button>
+          )}
         </div>
       </div>
     </div>
