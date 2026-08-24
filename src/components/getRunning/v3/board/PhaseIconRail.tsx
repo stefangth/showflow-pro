@@ -46,8 +46,9 @@ const STEP_ICON: Record<GetRunningStepKey, LucideIcon> = {
 };
 
 /**
- * One rail of a phase's steps: an icon per step (filled once done, amber while it blocks
- * something and is still outstanding, a plain outline otherwise), plus the phase name,
+ * One rail of a phase's steps: an icon per step (green once done, amber while it blocks
+ * something and is still outstanding, a plain outline otherwise, all from `TONES` so the
+ * rail agrees with the wizard's step dots), plus the phase name,
  * a `k / n` counter and its one-line summary. Sits beside its two sibling rails in the
  * "All N steps" card (`GetRunningBoardV3`, Task 9); this component only ever renders one.
  */
@@ -85,9 +86,13 @@ export function PhaseIconRail({
           .map((step) => {
             const Icon = STEP_ICON[step.key];
             const blocking = !step.done && step.block !== null;
+            // The same TONES vocabulary the wizard's own StepDot uses, so a step reads
+            // identically wherever you meet it: green is done, amber is blocking and
+            // still outstanding, a plain outline is pending. Done used to be accent
+            // violet here, which reads as "selected", not "finished".
             const iconClassName = cn(
               "flex h-7 w-7 shrink-0 items-center justify-center rounded-s border",
-              step.done && "border-transparent bg-primary text-primary-foreground",
+              step.done && `border-transparent ${TONES.confirmed.bg} ${TONES.confirmed.fg}`,
               !step.done && blocking && `border-transparent ${TONES.waiting.bg} ${TONES.waiting.fg}`,
               !step.done && !blocking && "border-border bg-transparent text-muted-foreground",
               locked && "cursor-not-allowed opacity-60",
