@@ -2,9 +2,9 @@
 
 What's new in ShowFlow, newest first.
 
-## 1.18.0 — August 24, 2026
+## 1.17.2 — August 24, 2026
 
-*Skills and cities you can add where you need them, and setup readiness you can trust*
+*Skills and cities you can add where you need them, setup readiness you can trust, and clearer wording throughout*
 
 ### New
 - **Add a skill while you write a casting breakdown** — When you set up a production's parts, you can create a skill right there and mark it required in one step, instead of leaving to add it on an artist first. Skills you already have show up alongside it.
@@ -14,22 +14,16 @@ What's new in ShowFlow, newest first.
 - **An empty cast no longer counts as ready** — A cast with nobody in it used to satisfy the coverage check for a city, so setup could look finished while no one could actually be asked. It now counts as uncovered until the cast has members.
 - **Example panels are labelled** — The illustrations that explain a page now carry an Example tag, so the sample names in them are never mistaken for your own data.
 - **Easier to read in dark mode** — The sidebar section labels and the ShowFlow wordmark were too dim against the dark background.
+- **"Dates" everywhere** — The scheduling area is now called Dates in every place it appears, matching the sidebar.
+- **Sources** — The Airtable sync settings are now called Sources and also show your Google Sheet imports next to Airtable runs, each tagged by where it came from.
+- **"Production" for the work in your catalog** — Wherever the app means a staged work you set up, it now says production. Individual performances keep the word show.
+- **"Casting breakdown" and "parts"** — What you set up on a production is now its casting breakdown, made of named parts for main and understudy, instead of the vaguer "places".
 
 ### Fixed
 - **Confirming your letterhead saves it** — Confirm used to be available with the fields empty, and appeared to work while saving nothing. It now waits for your legal name, and no longer claims your details were filled in for you.
 - **A warning when a date is in the past** — Picking a past date for a show now says so, while still letting you save it if you are recording something that already happened.
 - **A date with nobody free no longer says anyone can be asked** — The date view now tells you how many artists can be asked, and says plainly when the answer is nobody. The count of artists who qualify and are free no longer includes people already booked on that date.
 - **Wording that matches what you are looking at** — The countersignature step describes how the artist signs, rather than who signs on your behalf. Where your city list is empty, the date form points you at where cities are managed.
-
-## 1.17.2 — August 22, 2026
-
-*Clearer, more consistent wording across the app*
-
-### Improved
-- **"Dates" everywhere** — The scheduling area is now called Dates in every place it appears, matching the sidebar.
-- **Sources** — The Airtable sync settings are now called Sources and also show your Google Sheet imports next to Airtable runs, each tagged by where it came from.
-- **"Production" for the work in your catalog** — Wherever the app means a staged work you set up, it now says production. Individual performances keep the word show.
-- **"Casting breakdown" and "parts"** — What you set up on a production is now its casting breakdown, made of named parts for main and understudy, instead of the vaguer "places".
 
 ## 1.17.1 — August 21, 2026
 

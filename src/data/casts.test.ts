@@ -3,6 +3,7 @@ import { createFakeSupabase } from "@/test/supabaseFake";
 import {
   fetchCasts,
   fetchCastMemberCounts,
+  fetchCastRosterCounts,
   fetchCastMembers,
   fetchCastEligibility,
   fetchCastCityPriority,
@@ -49,6 +50,36 @@ describe("casts data-access", () => {
     it("throws on error", async () => {
       const fake = createFakeSupabase({ casts: { data: null, error: { message: "boom" } } });
       await expect(fetchCasts(fake as never, "org-1")).rejects.toMatchObject({ message: "boom" });
+    });
+  });
+
+  describe("fetchCastRosterCounts", () => {
+    it("counts every member, including one whose artist is inactive", async () => {
+      const fake = createFakeSupabase({
+        cast_members: [
+          {
+            when: { org_id: "org-1" },
+            data: [{ cast_id: "cast-1" }, { cast_id: "cast-1" }, { cast_id: "cast-1" }],
+            error: null,
+          },
+        ],
+      });
+      const res = await fetchCastRosterCounts(fake as never, "org-1");
+      expect(res).toEqual({ "cast-1": 3 });
+      expect(fake.calls).toContainEqual({ table: "cast_members", method: "eq", args: ["org_id", "org-1"] });
+      // The roster count must NOT narrow to active artists the way the coverage count
+      // does: the Casts card sits one click from a sheet listing every member.
+      expect(fake.calls).not.toContainEqual({
+        table: "cast_members",
+        method: "eq",
+        args: ["artists.status", "active"],
+      });
+    });
+
+    it("returns an empty tally with no org", async () => {
+      const fake = createFakeSupabase({});
+      expect(await fetchCastRosterCounts(fake as never, null)).toEqual({});
+      expect(fake.calls).toEqual([]);
     });
   });
 

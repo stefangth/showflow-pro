@@ -58,6 +58,29 @@ export async function fetchCastMemberCounts(
   return counts;
 }
 
+/** ROSTER member count per cast id, for the org: every member, whatever the artist's
+ *  status.
+ *
+ *  Deliberately separate from `fetchCastMemberCounts` above rather than a flag on it.
+ *  The two answer different questions and the wrong one is silently wrong: coverage asks
+ *  "how many of these can be asked", so it must exclude inactive artists, while the Casts
+ *  card on Artists is a roster surface whose "{n} members" sits one click from a sheet
+ *  that lists every member, active or not. Sharing the active-only count there would make
+ *  the card say 2 next to a list of 3, with nothing on screen explaining the third. */
+export async function fetchCastRosterCounts(
+  client: SupabaseClient<Database>,
+  orgId: string | null,
+): Promise<Record<string, number>> {
+  if (!orgId) return {};
+  const { data, error } = await client.from("cast_members").select("cast_id").eq("org_id", orgId);
+  if (error) throw error;
+  const counts: Record<string, number> = {};
+  for (const row of (data ?? []) as { cast_id: string }[]) {
+    counts[row.cast_id] = (counts[row.cast_id] ?? 0) + 1;
+  }
+  return counts;
+}
+
 /** Members of one cast, with the artist embedded. Scoped by cast_id (org-safe). */
 export async function fetchCastMembers(
   client: SupabaseClient<Database>,
