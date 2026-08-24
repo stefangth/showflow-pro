@@ -40,14 +40,6 @@ const baseProps = {
   onOpenTier: vi.fn(),
   onCloseTier: vi.fn(),
   onPreviewTier: vi.fn(),
-  // design 1e cards
-  show: "Aurora",
-  slots: [],
-  showSkillIds: [] as string[],
-  dateSkillIds: [] as string[],
-  droppedSkillIds: [] as string[],
-  onResetSkills: vi.fn(),
-  onEditSkills: vi.fn(),
   onSetUpNextCast: vi.fn(),
   ladderRows: [NEXT_ROW],
   cityName: "Berlin",
@@ -62,7 +54,7 @@ const baseProps = {
 };
 
 describe("TierTimeline", () => {
-  it("mounts the three cockpit cards in tiered mode", () => {
+  it("mounts the tier-ladder cockpit in tiered mode", () => {
     renderTimeline(
       <TierTimeline
         {...baseProps}
@@ -70,7 +62,6 @@ describe("TierTimeline", () => {
         statusByTier={[{ tier: 1, sent: 2, accepted: 1, pending: 1, cancelled: 0 }]}
       />,
     );
-    expect(screen.getByText("Skills required on this date")).toBeInTheDocument();
     expect(screen.getByText("Ready to ask")).toBeInTheDocument();
     expect(screen.getByText("WHO THIS DATE ASKS · PRODUCTION-SPECIFIC")).toBeInTheDocument();
   });
@@ -98,7 +89,7 @@ describe("TierTimeline", () => {
     );
     expect(screen.getByText(/direct booking/i)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Open offers" })).not.toBeInTheDocument();
-    expect(screen.queryByText("Skills required on this date")).not.toBeInTheDocument();
+    expect(screen.queryByText("WHO THIS DATE ASKS · PRODUCTION-SPECIFIC")).not.toBeInTheDocument();
   });
 
   // Regression: the confirm dialog always claimed offers go out "in the next daily
@@ -202,25 +193,6 @@ describe("TierTimeline", () => {
     fireEvent.click(screen.getByRole("button", { name: /close this round/i }));
     fireEvent.click(screen.getByRole("button", { name: /withdraw unanswered offers/i }));
     expect(onCloseTier).toHaveBeenCalledWith(1, true);
-  });
-
-  it("fires the required-skills reset and edit callbacks", () => {
-    const onResetSkills = vi.fn();
-    const onEditSkills = vi.fn();
-    renderTimeline(
-      <TierTimeline
-        {...baseProps}
-        skills={[{ id: "s1", name: "Juggling" }, { id: "s2", name: "Dance" }]}
-        showSkillIds={["s1"]}
-        dateSkillIds={["s2"]}
-        onResetSkills={onResetSkills}
-        onEditSkills={onEditSkills}
-      />,
-    );
-    fireEvent.click(screen.getByRole("button", { name: "Reset to computed" }));
-    expect(onResetSkills).toHaveBeenCalledTimes(1);
-    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
-    expect(onEditSkills).toHaveBeenCalledTimes(1);
   });
 
   // P3.4: point-of-action narration — what a tier even IS, plus an escape hatch
