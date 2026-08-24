@@ -164,7 +164,11 @@ export function useGetRunningV3(options?: { active?: boolean }): { model: GetRun
     datesCitiesDone,
     hasAnyDates: bookingOn ? booking.status.hasAnyDates : false,
     producerCount,
-    skillGaps: bookingOn ? (skillGaps.data?.length ?? 0) : 0,
+    // An unreadable gaps query (e.g. an RLS misconfiguration on show_required_skills) must
+    // not resolve to 0, which would render the step falsely done. Treat a persistent error
+    // as one outstanding gap so the step stays honestly incomplete; the loading window
+    // still resolves to 0 exactly as before (isError is false while loading).
+    skillGaps: bookingOn ? (skillGaps.isError ? 1 : (skillGaps.data?.length ?? 0)) : 0,
     feeDone: hireOrdersOn ? hireExtra.status.feeDone : false,
     documentDone: hireOrdersOn ? hireExtra.status.documentDone : false,
     canManageShows,
