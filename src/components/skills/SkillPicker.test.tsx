@@ -50,13 +50,58 @@ describe("SkillPicker", () => {
 
   // `disabled` gates SELECTION. A create ends in onToggle, so it must be fenced by
   // `disabled` too, or a caller that gated selection off (a capability gate, not just a
-  // transient one) gets a selection anyway by the side door.
-  it("offers no create affordance while selection is disabled", () => {
+  // transient one) gets a selection anyway by the side door. The fence is INSIDE the chip,
+  // not its mount condition: callers pass composite flags (capability || pending), and
+  // unmounting on a transient pending flag would throw away a half-typed name.
+  it("cannot start a create while selection is disabled", () => {
     const onToggle = vi.fn();
     render(
       <SkillPicker skills={[]} selectedIds={[]} onToggle={onToggle} onCreate={vi.fn()} canCreate disabled emptyHint="none yet" />,
     );
-    expect(screen.queryByRole("button", { name: /new skill/i })).toBeNull();
+    const trigger = screen.getByRole("button", { name: /new skill/i });
+    expect(trigger).toBeDisabled();
+    fireEvent.click(trigger);
+    expect(screen.queryByRole("textbox")).toBeNull();
+    expect(onToggle).not.toHaveBeenCalled();
+  });
+
+  it("cannot complete a create while selection is disabled", () => {
+    const onCreate = vi.fn();
+    const { rerender } = render(
+      <SkillPicker skills={[]} selectedIds={[]} onToggle={vi.fn()} onCreate={onCreate} canCreate />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /new skill/i }));
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "Piano" } });
+    rerender(<SkillPicker skills={[]} selectedIds={[]} onToggle={vi.fn()} onCreate={onCreate} canCreate disabled />);
+    fireEvent.submit(screen.getByRole("textbox").closest("form")!);
+    expect(onCreate).not.toHaveBeenCalled();
+  });
+
+  it("keeps an open form and its typed name across a disabled flip", () => {
+    const onCreate = vi.fn();
+    const props = { skills: [], selectedIds: [], onToggle: vi.fn(), onCreate, canCreate: true };
+    const { rerender } = render(<SkillPicker {...props} />);
+    fireEvent.click(screen.getByRole("button", { name: /new skill/i }));
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "Half typed" } });
+    rerender(<SkillPicker {...props} disabled />);
+    expect(screen.getByRole("textbox")).toHaveValue("Half typed");
+    rerender(<SkillPicker {...props} />);
+    expect(screen.getByRole("textbox")).toHaveValue("Half typed");
+  });
+
+  it("drops a create whose disabled flips true mid flight", async () => {
+    let resolve!: (v: { id: string; name: string }) => void;
+    const onCreate = vi.fn().mockReturnValue(new Promise<{ id: string; name: string }>((r) => { resolve = r; }));
+    const onToggle = vi.fn();
+    const props = { skills: [], selectedIds: [], onToggle, onCreate, canCreate: true };
+    const { rerender } = render(<SkillPicker {...props} />);
+    fireEvent.click(screen.getByRole("button", { name: /new skill/i }));
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "Piano" } });
+    fireEvent.submit(screen.getByRole("textbox").closest("form")!);
+    expect(onCreate).toHaveBeenCalledWith("Piano");
+    rerender(<SkillPicker {...props} disabled />);
+    resolve({ id: "sk-9", name: "Piano" });
+    await waitFor(() => expect(onCreate).toHaveBeenCalledTimes(1));
     expect(onToggle).not.toHaveBeenCalled();
   });
 

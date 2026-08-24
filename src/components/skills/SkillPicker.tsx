@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Check, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -21,8 +21,11 @@ export function SkillPicker({ skills, selectedIds, onToggle, disabled = false, e
 }) {
   // `disabled` fences creation too, not just selection: a create ends in `onToggle`, so
   // leaving the chip live would hand a caller that gated selection off (often a capability
-  // gate, not a transient one) a selection by the side door.
-  const showCreate = canCreate && !!onCreate && !disabled;
+  // gate, not a transient one) a selection by the side door. The fence lives INSIDE the
+  // chip rather than in this mount condition: callers pass a composite flag (a capability
+  // AND a transient pending state), and unmounting on the transient half would throw away
+  // a half-typed skill name.
+  const showCreate = canCreate && !!onCreate;
 
   // No catalog and no way to add to it: the old dead-end hint is still the honest answer.
   if (skills.length === 0 && !showCreate) {
@@ -54,30 +57,42 @@ export function SkillPicker({ skills, selectedIds, onToggle, disabled = false, e
           </button>
         );
       })}
-      {showCreate && <CreateSkillChip onCreate={onCreate} onCreated={onToggle} />}
+      {showCreate && <CreateSkillChip onCreate={onCreate} onCreated={onToggle} disabled={disabled} />}
     </div>
   );
 }
 
 /** The "New skill" chip and the inline form it swaps into. Kept local: it owns only
  *  its own open/pending/name state, which no caller needs to observe. */
-function CreateSkillChip({ onCreate, onCreated }: {
+function CreateSkillChip({ onCreate, onCreated, disabled }: {
   onCreate: (name: string) => Promise<{ id: string; name: string }>;
   onCreated: (skillId: string) => void;
+  /** Hard fence, not a mount condition: blocks opening the form and submitting it, and is
+   *  re-checked after the create resolves so a gate that closes mid-flight (a capability
+   *  refetch revoking `manage_skills`) still cannot land a selection. */
+  disabled: boolean;
 }) {
   const { t } = useTranslation("common");
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [pending, setPending] = useState(false);
+  // Read after the await, where the closed-over `disabled` would be the stale value from
+  // the render that started the create.
+  const disabledRef = useRef(disabled);
+  useEffect(() => { disabledRef.current = disabled; }, [disabled]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     const trimmed = name.trim();
-    // Guards the empty/whitespace name and the double submit while a create is in flight.
-    if (!trimmed || pending) return;
+    // Guards the empty/whitespace name, the double submit while a create is in flight,
+    // and the disabled fence.
+    if (!trimmed || pending || disabledRef.current) return;
     setPending(true);
     try {
       const created = await onCreate(trimmed);
+      // The skill now exists, but the caller stopped allowing selection while we waited,
+      // so close the form without selecting rather than writing past the gate.
+      if (disabledRef.current) { setName(""); setOpen(false); return; }
       onCreated(created.id);
       setName("");
       setOpen(false);
@@ -94,8 +109,13 @@ function CreateSkillChip({ onCreate, onCreated }: {
     return (
       <button
         type="button"
-        onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-1 rounded-full border border-dashed border-border bg-background px-2.5 py-0.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
+        disabled={disabled}
+        onClick={() => { if (!disabled) setOpen(true); }}
+        className={cn(
+          "inline-flex items-center gap-1 rounded-full border border-dashed border-border bg-background px-2.5 py-0.5 text-xs text-muted-foreground transition-colors hover:text-foreground",
+          // Reads as unavailable exactly like the sibling skill chips do.
+          disabled && "opacity-50 pointer-events-none",
+        )}
       >
         <Plus aria-hidden="true" className="h-3 w-3" />
         {t("skillPicker.newSkill")}
@@ -104,10 +124,17 @@ function CreateSkillChip({ onCreate, onCreated }: {
   }
 
   return (
-    <form onSubmit={submit} className="inline-flex items-center gap-1 rounded-full border border-dashed border-border bg-background pl-2.5 pr-0.5 py-0.5">
+    <form
+      onSubmit={submit}
+      className={cn(
+        "inline-flex items-center gap-1 rounded-full border border-dashed border-border bg-background pl-2.5 pr-0.5 py-0.5",
+        disabled && "opacity-50",
+      )}
+    >
       <input
         autoFocus
         value={name}
+        readOnly={disabled}
         onChange={(e) => setName(e.target.value)}
         onKeyDown={(e) => { if (e.key === "Escape") { setOpen(false); setName(""); } }}
         aria-label={t("skillPicker.nameLabel")}
@@ -116,7 +143,7 @@ function CreateSkillChip({ onCreate, onCreated }: {
       />
       <button
         type="submit"
-        disabled={pending || !name.trim()}
+        disabled={pending || disabled || !name.trim()}
         aria-label={t("skillPicker.create")}
         className="inline-flex h-5 w-5 items-center justify-center rounded-full text-primary transition-colors hover:bg-primary/10 disabled:opacity-50"
       >
