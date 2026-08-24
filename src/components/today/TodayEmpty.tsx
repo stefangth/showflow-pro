@@ -12,7 +12,7 @@ export function TodayEmpty({ fillingOnTheirOwn, onLookAtSeason }: TodayEmptyProp
   const { t } = useTranslation("today");
 
   return (
-    <div className="rounded-[var(--radius-xl)] border border-dashed border-border px-8 py-11 text-center">
+    <div className="rounded-card border border-dashed border-border px-8 py-11 text-center">
       <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[var(--green-100)] text-[var(--green-600)]">
         <Check className="h-5 w-5" />
       </span>

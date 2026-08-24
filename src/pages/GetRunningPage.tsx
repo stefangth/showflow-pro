@@ -28,7 +28,7 @@ function NothingToSetUp(): JSX.Element {
   return (
     <div
       data-testid="get-running-nothing"
-      className="flex w-full max-w-[560px] flex-col gap-2 rounded-[var(--radius-xl)] border border-border bg-card p-6 shadow-elev3"
+      className="flex w-full max-w-[560px] flex-col gap-2 rounded-card border border-border bg-card p-6 shadow-elev3"
     >
       <h1 className="text-base font-semibold tracking-[-0.1px] text-foreground">{t("nothingToSetUp.title")}</h1>
       <p className="text-control leading-[19px] text-muted-foreground text-pretty">{t("nothingToSetUp.body")}</p>

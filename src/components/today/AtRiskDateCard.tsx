@@ -103,7 +103,7 @@ export function AtRiskDateCard({
   );
 
   return (
-    <div className="flex items-stretch overflow-hidden rounded-[var(--radius-xl)] border border-border bg-card shadow-elev3">
+    <div className="flex items-stretch overflow-hidden rounded-card border border-border bg-card shadow-elev3">
       <DateRail dateKey={item.date} daysOut={item.daysOut} tone="amber" />
       <div className="flex min-w-0 flex-1 items-start gap-4 p-5">
         <div className="min-w-0 flex-1">
@@ -129,7 +129,7 @@ export function AtRiskDateCard({
               <div
                 key={opt.key}
                 className={cn(
-                  "flex items-center gap-3 rounded-card border border-border p-3.5",
+                  "flex items-center gap-3 rounded-control border border-border p-3.5",
                   i === 0 && "bg-well-tint",
                 )}
               >

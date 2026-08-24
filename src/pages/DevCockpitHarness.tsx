@@ -141,7 +141,7 @@ export default function DevCockpitHarness() {
 
   return (
     <div className="min-h-screen bg-[var(--bg)] p-6">
-      <div className="mx-auto w-full max-w-[1080px] overflow-hidden rounded-[var(--radius-xl)] border-[0.5px] border-[var(--line)] shadow-elev2">
+      <div className="mx-auto w-full max-w-[1080px] overflow-hidden rounded-card border-[0.5px] border-[var(--line)] shadow-elev2">
         <CockpitShell header={header} rail={rail} footer={footer}>
           {tab === "cast" && <CockpitCastList groups={CAST_GROUPS} />}
           {tab === "offers" && (

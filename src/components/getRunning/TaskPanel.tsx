@@ -147,7 +147,7 @@ export function TaskPanel({ task, orgId, onClose, onNext }: TaskPanelProps): JSX
   return (
     <div
       data-testid="task-panel"
-      className="flex h-fit max-h-[calc(100vh-140px)] w-[440px] shrink-0 flex-col overflow-hidden rounded-[var(--radius-xl)] border border-border bg-card shadow-elev3"
+      className="flex h-fit max-h-[calc(100vh-140px)] w-[440px] shrink-0 flex-col overflow-hidden rounded-card border border-border bg-card shadow-elev3"
     >
       <div className="border-b border-border p-4">
         <div className="flex items-start justify-between gap-3">

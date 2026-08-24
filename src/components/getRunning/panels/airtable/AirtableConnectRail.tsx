@@ -84,7 +84,7 @@ export function AirtableConnectRail({ orgId, readOnly, canTriggerSync, onConnect
   // Latch not yet resolved (key-status/settings still loading) — show a skeleton rather than
   // flashing the wrong step. All hooks above have run, so this early return is rules-safe.
   if (activeStep === null) {
-    return <Skeleton className="h-72 w-full rounded-[var(--radius-xl)]" />;
+    return <Skeleton className="h-72 w-full rounded-card" />;
   }
 
   const activeIndex = STEPS.findIndex((s) => s.step === activeStep);
@@ -117,7 +117,7 @@ export function AirtableConnectRail({ orgId, readOnly, canTriggerSync, onConnect
   };
 
   return (
-    <div className="overflow-hidden rounded-[var(--radius-xl)] border border-border bg-card shadow-elev3">
+    <div className="overflow-hidden rounded-card border border-border bg-card shadow-elev3">
       <div className="border-b border-border p-4">
         {/* eslint-disable-next-line no-restricted-syntax -- tracking-[0.1em] differs from the standard Eyebrow's tracking-[1.6px]; not a drop-in swap */}
         <p className="text-eyebrow font-semibold uppercase tracking-[0.1em] text-accent-600">{c.eyebrow}</p>

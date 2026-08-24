@@ -53,7 +53,7 @@ export function DoneForYouFeed({
   const { t } = useTranslation("today");
 
   return (
-    <div className="overflow-hidden rounded-[var(--radius-xl)] border border-border bg-card">
+    <div className="overflow-hidden rounded-card border border-border bg-card">
       <div className="flex items-center gap-2.5 border-b border-border px-[18px] py-3.5">
         <Eyebrow className="flex-1">
           {t("feed.title", { day: sinceLabel })}

@@ -297,8 +297,8 @@ export default function TodayContainer() {
       {isLoading ? (
         <div className="flex max-w-[920px] flex-col gap-5">
           <Skeleton className="h-8 w-64" />
-          <Skeleton className="h-40 w-full rounded-[var(--radius-xl)]" />
-          <Skeleton className="h-32 w-full rounded-[var(--radius-xl)]" />
+          <Skeleton className="h-40 w-full rounded-card" />
+          <Skeleton className="h-32 w-full rounded-card" />
         </div>
       ) : isError || !model ? (
         <Alert variant="destructive" className="max-w-[920px]">

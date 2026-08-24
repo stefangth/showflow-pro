@@ -32,7 +32,7 @@ export function CancelledUntoldCard({ item, onTellCast, onReadFirst }: Cancelled
   const body = t("cancelled.body", { names });
 
   return (
-    <div className="flex items-stretch overflow-hidden rounded-[var(--radius-xl)] border border-border bg-card shadow-elev2">
+    <div className="flex items-stretch overflow-hidden rounded-card border border-border bg-card shadow-elev2">
       <DateRail dateKey={item.date} daysOut={item.daysOut} tone="accent" />
       <div className="flex min-w-0 flex-1 items-start gap-4 p-5">
         <div className="min-w-0 flex-1">

@@ -312,7 +312,7 @@ export function NeedsYouLens({
                     tabIndex={0}
                     onClick={() => onOpenDate(item.dateId)}
                     className={cn(
-                      'flex cursor-pointer flex-col overflow-hidden rounded-[var(--radius-xl)] border-[0.5px] bg-card md:flex-row md:items-stretch',
+                      'flex cursor-pointer flex-col overflow-hidden rounded-card border-[0.5px] bg-card md:flex-row md:items-stretch',
                       isUrgent
                         ? 'border-[var(--accent-200)] shadow-elev3'
                         : 'border-border shadow-elev2'
