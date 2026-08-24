@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { screen, fireEvent, waitFor } from "@testing-library/react";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import { BOOKING_FLOW_DEFAULTS, type FlowTimes } from "@/lib/bookingFlow";
@@ -347,5 +347,90 @@ describe("ShowDateFormDialog", () => {
     const { baseElement } = renderWithProviders(<ShowDateFormDialog open onOpenChange={() => {}} mode="create" />);
     expect(describedByCount(baseElement)).toBe(1);
     expect(screen.getByText(/You can add a date by hand here/)).toBeInTheDocument();
+  });
+
+  // Finding 08: the picker rendered with no `disabled`, so a date could be created in the
+  // PAST with no cue at all (a real first-run audit created 28/07/2026 while "today" was
+  // 24/08/2026 and nothing objected). The product decision is WARN, not block: back-filling
+  // a historical date for records is legitimate and the Airtable sync creates past dates on
+  // a path that never touches this dialog. So these tests assert an inline warning and,
+  // deliberately, that submit stays enabled.
+  describe("past-date warning", () => {
+    // Only Date is faked: Radix Popover's open transition rides requestAnimationFrame, and
+    // faking timers wholesale would leave the picker's content unmounted.
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ["Date"] });
+      vi.setSystemTime(new Date(2026, 7, 24, 12, 0, 0));
+    });
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    // react-day-picker names each day button with its full date, so this picks by calendar
+    // day rather than by DOM position. The dialog opens the picker on the selected month,
+    // or on today's month when nothing is selected yet, so every day used here is in
+    // August 2026.
+    const pickDay = (name: RegExp) => {
+      fireEvent.click(screen.getByTestId("date-trigger"));
+      fireEvent.click(screen.getByRole("button", { name }));
+    };
+
+    const PAST = /this date is in the past/i;
+
+    it("warns when the chosen date is in the past", () => {
+      renderWithProviders(<ShowDateFormDialog open onOpenChange={() => {}} mode="create" defaultShowId="s1" />);
+      pickDay(/August 4th, 2026/);
+      expect(screen.getByText(PAST)).toBeInTheDocument();
+    });
+
+    it("shows no warning for a future date", () => {
+      renderWithProviders(<ShowDateFormDialog open onOpenChange={() => {}} mode="create" defaultShowId="s1" />);
+      pickDay(/August 28th, 2026/);
+      expect(screen.queryByText(PAST)).toBeNull();
+    });
+
+    // A date scheduled for later today is not in the past. This is the boundary the naive
+    // `new Date(str) < new Date()` comparison gets wrong, since the stored value parses to
+    // local midnight, which is always "before now" for any wall clock after 00:00.
+    it("shows no warning for today itself", () => {
+      renderWithProviders(<ShowDateFormDialog open onOpenChange={() => {}} mode="create" defaultShowId="s1" />);
+      pickDay(/August 24th, 2026/);
+      expect(screen.queryByText(PAST)).toBeNull();
+    });
+
+    // Warn, do not block: the producer must still be able to record a show that already ran.
+    it("leaves submit enabled for a past date", () => {
+      renderWithProviders(<ShowDateFormDialog open onOpenChange={() => {}} mode="create" defaultShowId="s1" />);
+      pickDay(/August 4th, 2026/);
+      expect(screen.getByRole("button", { name: /create date/i })).toBeEnabled();
+    });
+
+    // An existing historical date is normal data. Nagging every time someone opens the
+    // dialog to fix a venue typo would be noise about something they did not do and cannot
+    // usefully act on, so the warning stays silent until the date is actually moved.
+    it("does not nag about an already-historical date on open in edit mode", () => {
+      mockFlow = { ...BOOKING_FLOW_DEFAULTS };
+      renderWithProviders(<ShowDateFormDialog open onOpenChange={() => {}} mode="edit" showDate={{ ...editShowDate, date: "2026-07-01" }} />);
+      expect(screen.queryByText(PAST)).toBeNull();
+    });
+
+    // Moving a date INTO the past in edit mode is the same typo the create path guards
+    // against, so the warning must fire there.
+    it("warns when an edit moves the date into the past", () => {
+      mockFlow = { ...BOOKING_FLOW_DEFAULTS };
+      renderWithProviders(<ShowDateFormDialog open onOpenChange={() => {}} mode="edit" showDate={{ ...editShowDate, date: "2026-08-30" }} />);
+      expect(screen.queryByText(PAST)).toBeNull();
+      pickDay(/August 4th, 2026/);
+      expect(screen.getByText(PAST)).toBeInTheDocument();
+    });
+
+    // A synced date's date field is disabled here (Airtable owns it), so the producer cannot
+    // act on the warning at all. Airtable also legitimately syncs past dates. Warning there
+    // would be pure noise about something this dialog cannot change.
+    it("shows no warning for a synced past date, whose date cannot be edited here", () => {
+      mockFlow = { ...BOOKING_FLOW_DEFAULTS };
+      renderWithProviders(<ShowDateFormDialog open onOpenChange={() => {}} mode="edit" showDate={{ ...editShowDate, date: "2026-07-01", airtable_record_id: "rec1" }} />);
+      expect(screen.queryByText(PAST)).toBeNull();
+    });
   });
 });

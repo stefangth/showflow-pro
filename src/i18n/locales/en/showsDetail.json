@@ -118,6 +118,7 @@
     "chooseProduction": "Choose a production",
     "date": "Date",
     "pickDate": "Pick a date",
+    "pastDateWarning": "This date is in the past. You can still save it, for example to record a show that already happened.",
     "movingDateNote": "Moving the date itself does not notify booked artists.",
     "session": "Session {{n}}",
     "sessionPlaceholder": "HH:MM",
