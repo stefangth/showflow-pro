@@ -4,9 +4,7 @@ import { useEntitlements } from "@/hooks/useEntitlements";
 import { useBookingSetupStatus, useProducerCount } from "@/hooks/useBookingSetup";
 import { useHireOrderSetupStatus } from "@/hooks/useHireOrderSetup";
 import { useHireOrderExtraSetup } from "@/hooks/useHireOrderExtraSetup";
-import { useQuery } from "@tanstack/react-query";
-import { fetchSkillEligibilityGaps } from "@/data/skills";
-import { supabase } from "@/integrations/supabase/client";
+import { useSkillGaps } from "@/hooks/useSkills";
 import { useDatesSource } from "@/hooks/useDatesSource";
 import { useAirtableConsole } from "@/hooks/useAirtableConsole";
 import { isDatesMapComplete } from "@/data/airtableMapping";
@@ -90,11 +88,9 @@ export function useGetRunningV3(options?: { active?: boolean }): { model: GetRun
   // (see the field's doc comment on GetRunningInputV3): this step does not block the board,
   // so delaying the whole board on it would cost more than the momentary green it can show
   // while loading.
-  const skillGaps = useQuery({
-    queryKey: ["skills", "gaps", orgId],
-    queryFn: () => fetchSkillEligibilityGaps(supabase, orgId),
-    enabled: active && isNonArtist && bookingOn && !!orgId,
-  });
+  // Shared with `ArtistSkillAssignList` inside the step body (one hook, one cache entry),
+  // so the board's step state and the panel that clears it can never disagree.
+  const skillGaps = useSkillGaps(orgId, { enabled: active && isNonArtist && bookingOn });
 
   // Called unconditionally (rules of hooks), same as v1.
   const canManageShows = useCan("manage_productions");

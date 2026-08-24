@@ -324,14 +324,33 @@
       "heading": "Skills für deine Positionen",
       "sub": "Lege die Skills an, die deine Positionen brauchen, und setze sie bei deinen Artists.",
       "continue": "Weiter",
-      "readOnly": "Skills zu verwalten braucht das Recht Skills verwalten, das dieses Konto nicht hat."
+      "readOnly": "Skills zu verwalten braucht das Recht Skills verwalten, das dieses Konto nicht hat.",
+      "assignHeading": "Skills bei deinen Artists setzen",
+      "assignSub": "Gib jedem Artist die Skills, die er wirklich abdecken kann. Eine Position kann nur ein Artist besetzen, der ihre Skills hat.",
+      "gapLine": "wird von {{productions}} gebraucht, und kein Artist hat ihn.",
+      "gapLineUnknown": "wird von einer Produktion gebraucht, und kein Artist hat ihn.",
+      "gapReadError": "Wir konnten nicht prüfen, welche Skills deine Positionen noch brauchen. Lade die Seite neu und versuche es erneut.",
+      "artistReadError": "Wir konnten deine Artists nicht laden, deshalb können wir nicht zeigen, wer was hat. Lade die Seite neu und versuche es erneut.",
+      "assignError": "Die Änderung wurde nicht gespeichert. Versuche es erneut.",
+      "noCatalog": "Noch keine Skills im Katalog. Lege unten einen an und setze ihn dann bei deinen Artists.",
+      "noArtists": "Noch keine aktiven Artists. Lege zuerst deine Artists an und setze dann ihre Skills.",
+      "noArtistsLink": "Zu den Artists"
     },
     "source": {
       "heading": "Woher kommen deine Termine",
       "sub": "Wähle eine Quelle. Du kannst später weitere hinzufügen.",
-      "airtable": { "title": "Airtable", "desc": "Termine aus einer Airtable-Base synchronisieren." },
-      "sheet": { "title": "Google Sheet", "desc": "Termine aus einer veröffentlichten Tabelle importieren." },
-      "manual": { "title": "Von Hand", "desc": "Produktionen und Termine selbst anlegen." },
+      "airtable": {
+        "title": "Airtable",
+        "desc": "Termine aus einer Airtable-Base synchronisieren."
+      },
+      "sheet": {
+        "title": "Google Sheet",
+        "desc": "Termine aus einer veröffentlichten Tabelle importieren."
+      },
+      "manual": {
+        "title": "Von Hand",
+        "desc": "Produktionen und Termine selbst anlegen."
+      },
       "continue": "Weiter",
       "readOnly": "Bitte einen Admin, eine Quelle zu wählen."
     },

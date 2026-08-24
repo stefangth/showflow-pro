@@ -177,20 +177,47 @@ export async function fetchArtistSkills(
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
-export interface SkillGap { skillId: string; name: string }
+export interface SkillGap {
+  skillId: string;
+  name: string;
+  /** Names of the productions requiring this skill, deduped and sorted, so the gap can be
+   *  reported as "X is required by Winter Gala" rather than by an anonymous "some part".
+   *  Empty when every requiring show has a null `program` (the column is nullable). */
+  productions: string[];
+}
+
+/** Row shape of the show_required_skills → shows join below. */
+interface RequiredSkillJoinRow { skill_id: string; show: { program: string | null } | null }
 
 /** Skills that some part requires but no ACTIVE artist holds. An empty result means the
  *  skill model is coherent, which includes an org that requires no skills at all. Reads
- *  the trigger-maintained `show_required_skills` cache; never write that table. */
+ *  the trigger-maintained `show_required_skills` cache; never write that table.
+ *
+ *  The requirement read is joined to `shows` purely so each gap can name the production
+ *  that is blocked by it (see `SkillGap.productions`); the gap SET is unchanged by the
+ *  join, so every existing consumer of `skillId`/`name` is unaffected. */
 export async function fetchSkillEligibilityGaps(
   client: SupabaseClient<Database>,
   orgId: string | null,
 ): Promise<SkillGap[]> {
   if (!orgId) return [];
-  const required = await client.from("show_required_skills").select("skill_id").eq("org_id", orgId);
+  const required = await client
+    .from("show_required_skills")
+    .select("skill_id, show:shows(program)")
+    .eq("org_id", orgId);
   if (required.error) throw required.error;
-  const requiredIds = [...new Set((required.data ?? []).map((r) => r.skill_id as string))];
+  const requiredRows = (required.data ?? []) as unknown as RequiredSkillJoinRow[];
+  const requiredIds = [...new Set(requiredRows.map((r) => r.skill_id))];
   if (requiredIds.length === 0) return [];
+
+  const productionsBySkill = new Map<string, Set<string>>();
+  for (const row of requiredRows) {
+    const program = row.show?.program?.trim();
+    if (!program) continue;
+    const set = productionsBySkill.get(row.skill_id) ?? new Set<string>();
+    set.add(program);
+    productionsBySkill.set(row.skill_id, set);
+  }
 
   const held = await client
     .from("artist_skills")
@@ -205,7 +232,37 @@ export async function fetchSkillEligibilityGaps(
 
   const named = await client.from("skills").select("id, name").in("id", missing);
   if (named.error) throw named.error;
-  return (named.data ?? []).map((s) => ({ skillId: s.id as string, name: s.name as string }));
+  return (named.data ?? []).map((s) => ({
+    skillId: s.id as string,
+    name: s.name as string,
+    productions: [...(productionsBySkill.get(s.id as string) ?? [])].sort((a, b) => a.localeCompare(b)),
+  }));
+}
+
+/** Add and/or remove artist_skills rows for ONE artist, in that order.
+ *
+ *  The single writer for the artist-skill join: `ArtistProfileSheet`'s save diff and the
+ *  get-running skills panel both call it, so the insert shape (including the `org_id` the
+ *  RLS policies check) lives in one place rather than being re-inlined per surface. Both
+ *  lists may be empty, in which case nothing is written. */
+export async function setArtistSkills(
+  client: SupabaseClient<Database>,
+  { artistId, orgId, add, remove }: { artistId: string; orgId: string; add: string[]; remove: string[] },
+): Promise<void> {
+  if (add.length) {
+    const { error } = await client
+      .from("artist_skills")
+      .insert(add.map((skillId) => ({ artist_id: artistId, skill_id: skillId, org_id: orgId })));
+    if (error) throw error;
+  }
+  if (remove.length) {
+    const { error } = await client
+      .from("artist_skills")
+      .delete()
+      .eq("artist_id", artistId)
+      .in("skill_id", remove);
+    if (error) throw error;
+  }
 }
 
 /** Create a skill from a (trimmed) name, scoped to the given org. */

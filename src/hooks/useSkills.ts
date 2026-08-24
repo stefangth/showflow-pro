@@ -11,12 +11,15 @@ import {
   restoreSkill,
   deleteSkill,
   fetchUpcomingDateCountsBySkill,
+  fetchSkillEligibilityGaps,
+  setArtistSkills,
   type Skill,
   type SkillCatalogRow,
+  type SkillGap,
 } from '@/data/skills';
 import { toDateKey } from '@/lib/dates';
 
-export type { Skill, SkillCatalogRow };
+export type { Skill, SkillCatalogRow, SkillGap };
 
 export function useSkills(options?: { enabled?: boolean }) {
   const { currentOrg } = useAuth();
@@ -43,6 +46,32 @@ export function useArtistSkills(artistId: string | null | undefined) {
 function bustSkillDomains(qc: QueryClient) {
   qc.invalidateQueries({ queryKey: ['skills'] });
   qc.invalidateQueries({ queryKey: ['artist-skills'] });
+}
+
+/** Skills a part requires that no active artist holds. ONE hook, so the get-running board's
+ *  `skills` step state and the panel that clears it read the same cache entry and can never
+ *  disagree about what is still blocking. */
+export function useSkillGaps(orgId: string | null, options?: { enabled?: boolean }) {
+  return useQuery<SkillGap[]>({
+    queryKey: ['skills', 'gaps', orgId],
+    queryFn: () => fetchSkillEligibilityGaps(supabase, orgId),
+    enabled: (options?.enabled ?? true) && !!orgId,
+  });
+}
+
+/** Toggle skills on ONE artist. Busts the skills domain (which includes the gap query above,
+ *  so a gap clears as soon as an artist picks the skill up) and the artists roster, whose
+ *  active-artist read carries the per-artist skill ids this panel renders. */
+export function useSetArtistSkills() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (args: { artistId: string; orgId: string; add: string[]; remove: string[] }) =>
+      setArtistSkills(supabase, args),
+    onSuccess: () => {
+      bustSkillDomains(qc);
+      qc.invalidateQueries({ queryKey: ['artists'] });
+    },
+  });
 }
 
 export function useCreateSkill() {
