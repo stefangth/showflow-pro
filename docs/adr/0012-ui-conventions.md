@@ -51,9 +51,9 @@ reintroduced.
    fewer place a key collision can hide. `--radius-xl` is deleted from `src/index.css`.
 7. Enforcement is two layers, because the config guard and the call site are different
    failure modes. `scripts/tailwindThemeCollisions.test.ts` checks the *config*: it fails
-   the build if a custom theme scale (`borderRadius` today, `fontSize` and `boxShadow`
-   checked defensively) ever defines a key that re-enters a namespace Tailwind already
-   owns. `eslint/ui-conventions.js` checks *call sites*: a developer can still type
+   the build if a custom theme scale (`borderRadius`, `fontSize`, `boxShadow` and
+   `colors`) ever defines a key that re-enters a namespace Tailwind already owns.
+   `eslint/ui-conventions.js` checks *call sites*: a developer can still type
    `rounded-l` today and get Tailwind's legitimate left-side utility with no config
    involved, which reproduces the exact silent failure this ADR describes. The lint rule
    bans a bare (unsized) Tailwind side, corner or logical radius utility in feature code,
