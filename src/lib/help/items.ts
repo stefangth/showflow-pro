@@ -170,6 +170,30 @@ export const HELP_ITEMS: readonly HelpItem[] = [
     },
   },
   {
+    id: 'A3.10', role: 'admin', stage: 3, status: 'new', surface: 'New production, casting breakdown', updated: '2026-08-24',
+    q: { en: 'How do I require a skill that does not exist yet?', de: 'Wie fordere ich einen Skill, den es noch nicht gibt?' },
+    a: {
+      en: 'Create it where you need it. On a production’s casting breakdown each part has a row of skill chips: the ones you already have, plus a New skill chip. Type the name, confirm, and it is created and marked required on that part in one go. You no longer have to add it to an artist first. The same chips appear on the Get running skills step, where you set which of your artists hold it.',
+      de: 'Lege ihn dort an, wo du ihn brauchst. In der Besetzungsaufstellung einer Produktion hat jede Rolle eine Reihe Skill-Chips: die, die du schon hast, plus einen Chip Neuer Skill. Tippe den Namen ein, bestätige, und er wird angelegt und für diese Rolle direkt als erforderlich markiert. Du musst ihn nicht mehr zuerst einem Artist geben. Dieselben Chips findest du im Get running Schritt für Skills, wo du festlegst, welche deiner Artists ihn haben.',
+    },
+  },
+  {
+    id: 'A3.11', role: 'admin', stage: 3, status: 'new', surface: 'Get running board, Set a city on every date', updated: '2026-08-24',
+    q: { en: 'A date has no city. Where do I fix that?', de: 'Ein Termin hat keine Stadt. Wo ändere ich das?' },
+    a: {
+      en: 'On the Get running step Set a city on every date. It lists every upcoming date that is still missing one and gives each a city picker, so you can clear them all in one place. The engine only offers a date once it knows the city, which is why the step holds up your first ask until the list is empty. If the city you need is not in the list yet, add it on the production form or in Settings, then Casts and coverage.',
+      de: 'Im Get running Schritt Jedem Termin eine Stadt geben. Er listet jeden kommenden Termin auf, dem noch eine fehlt, und gibt jedem eine Stadtauswahl, du kannst sie also an einer Stelle alle erledigen. Die Engine bietet einen Termin erst an, wenn sie die Stadt kennt, deshalb hält der Schritt deine erste Anfrage auf, bis die Liste leer ist. Fehlt die Stadt noch, lege sie im Produktionsformular an oder in den Einstellungen unter Besetzungen und Abdeckung.',
+    },
+  },
+  {
+    id: 'A3.12', role: 'admin', stage: 3, status: 'new', surface: 'Get running board', updated: '2026-08-24',
+    q: { en: 'Why did a finished setup step go back to not done?', de: 'Warum ist ein erledigter Setup-Schritt wieder offen?' },
+    a: {
+      en: 'Because it now has something real to check. A step counts as done only when the work it names is actually there, never just because nothing contradicts it yet. Set a city on every date, for example, is not done while you have no dates: it turns green once every date you have has one. That is also why a brand new workspace starts at zero rather than part way along, and why adding your first date can move a step back: it gave the step its first thing to look at.',
+      de: 'Weil er jetzt etwas Echtes zu prüfen hat. Ein Schritt gilt erst als erledigt, wenn die Arbeit, die er nennt, wirklich da ist, nie schon deshalb, weil ihm noch nichts widerspricht. Jedem Termin eine Stadt geben ist zum Beispiel nicht erledigt, solange du keine Termine hast: er wird grün, sobald jeder Termin, den du hast, eine hat. Deshalb startet ein neuer Arbeitsbereich auch bei null statt mittendrin, und deshalb kann dein erster Termin einen Schritt zurücksetzen: er hat ihm das erste gegeben, worauf er schauen kann.',
+    },
+  },
+  {
     id: 'A4.1', role: 'admin', stage: 4, status: 'new', surface: 'Notifications', updated: '2026-08-14',
     q: { en: 'Why does clicking a notification do nothing?', de: 'Warum passiert nichts, wenn ich auf eine Benachrichtigung klicke?' },
     a: {
