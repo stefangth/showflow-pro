@@ -31,6 +31,24 @@ export async function fetchCities(
   return (data ?? []) as CityRow[];
 }
 
+/** Add a city to the org's shared catalog. Cities are org-wide, not per production: the
+ *  production dialog is only a convenient second place to call this from. The per-org
+ *  unique index cities_org_name_uniq raises 23505 on a duplicate; callers surface it. */
+export async function createCity(
+  client: SupabaseClient<Database>,
+  args: { name: string; orgId: string },
+): Promise<{ id: string; name: string }> {
+  const name = args.name.trim();
+  if (!name) throw new Error("A city needs a name");
+  const { data, error } = await client
+    .from("cities")
+    .insert({ name, org_id: args.orgId })
+    .select("id, name")
+    .single();
+  if (error) throw error;
+  return { id: data.id as string, name: data.name as string };
+}
+
 /** Link (or, with null, unlink) a city to an Airtable city-option key. */
 export async function linkCityAirtableKey(
   client: SupabaseClient<Database>,

@@ -20,6 +20,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { CastingBreakdownFields } from "@/components/catalog/CastingBreakdownFields";
+import { CityCatalogField } from "@/components/catalog/CityCatalogField";
 import { useInlineSkillCreate } from "@/components/skills/useInlineSkillCreate";
 
 const baseSchema = z.object({
@@ -212,6 +213,11 @@ export function ShowFormDialog({
             onCreateSkill={createSkillInline}
             canCreateSkill={canManageSkills}
           />
+
+          {/* Cities are an org-wide catalog, not a property of this production; the
+              section says so. It is here because this is where the producer is already
+              thinking about where the production goes. */}
+          <CityCatalogField orgId={currentOrg?.id ?? null} />
 
           <DialogFooter>
             <Button type="submit" disabled={pending}>{pending ? t("form.saving") : isEdit ? t("form.save") : t("form.create")}</Button>
