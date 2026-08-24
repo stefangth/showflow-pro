@@ -69,6 +69,18 @@
     "skillsEmptyHint": "No skills yet. Create the first one here.",
     "skillsEmptyHintLocked": "No skills yet. An admin can add them in Settings.",
     "addSlot": "Add part",
+    "cities": {
+      "heading": "Cities you play",
+      "sub": "Cities are shared across every production. Add one here so it is ready when you schedule a date.",
+      "new": "New city",
+      "nameLabel": "City name",
+      "create": "Add city",
+      "empty": "No cities yet. Add the first one here.",
+      "emptyLocked": "No cities yet. An admin can add them in Settings.",
+      "loadFailed": "Cities could not be loaded. Try again.",
+      "addFailed": "Failed to add the city",
+      "noOrg": "No active organization"
+    },
     "saving": "Saving…",
     "save": "Save",
     "create": "Create",

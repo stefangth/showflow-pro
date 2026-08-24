@@ -14,7 +14,7 @@ import {
   clearCastCityPriority,
 } from "@/data/casts";
 import { fetchShowOptions } from "@/data/shows";
-import { updateCity } from "@/data/cities";
+import { createCity, updateCity } from "@/data/cities";
 import {
   fetchShowPriorityRows,
   setShowCastPriority,
@@ -246,10 +246,7 @@ export function CoveragePanel({ orgId, onOpenCast }: CoveragePanelProps) {
   });
 
   const addCity = useMutation({
-    mutationFn: async (name: string) => {
-      const { error } = await supabase.from("cities").insert({ name, org_id: orgId });
-      if (error) throw error;
-    },
+    mutationFn: (name: string) => createCity(supabase, { name, orgId }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["cities"] });
       setNewCity("");
