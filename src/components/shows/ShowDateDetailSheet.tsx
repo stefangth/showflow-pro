@@ -34,7 +34,6 @@ import {
 } from '@/lib/bookings';
 import { computeUpNext, computeFunnel, computeHeaderCta, buildActivity, computeHireFooter, tierFillCounts } from '@/lib/bookingCockpit';
 import { resolveNextOfferTarget } from '@/lib/offerTarget';
-import { useShowSlots } from '@/hooks/useShowSlots';
 import { useTierCastMap, useTierLadderCounts } from '@/hooks/useTierLadder';
 import { BOOKING_FLOW_DEFAULTS, referenceLabel, type FlowTimes } from '@/lib/bookingFlow';
 import { ROUTES, BOOKING_ENGINE_DEFAULTS } from '@/config/app.config';
@@ -399,7 +398,6 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager, ini
   // direct-book / artist / module-off surfaces never fetch it. Each hook's own
   // `enabled` also stays disabled until its ids resolve.
   const tieredOffersActive = canManage && flow.artist_acceptance;
-  const { data: showSlotsData } = useShowSlots(tieredOffersActive ? showId : null);
   const { data: tierMapData } = useTierCastMap(
     tieredOffersActive ? showId : null,
     tieredOffersActive ? cityId : null,
@@ -546,21 +544,6 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager, ini
     onSuccess: () => { invalidateEligibility(); toast.success(t('showDateSheet.toast.skillRestored')); },
     onError: (e: Error) => toast.error(t('showDateSheet.toast.skillRestoreFailed'), { description: e.message }),
   });
-  // RequiredSkillsCard "Reset to computed": drop every date-add and restore every
-  // drop in one pass, then invalidate once (rather than one toast per skill).
-  const resetDateSkills = useMutation({
-    mutationFn: async () => {
-      const dateAdds = requiredSkillsQ.data?.dateSkillIds ?? [];
-      const drops = dropsQ.data ?? [];
-      await Promise.all([
-        ...dateAdds.map((id) => removeShowDateRequiredSkill(supabase, { showDateId: showDateId!, skillId: id })),
-        ...drops.map((id) => removeShowDateSkillDrop(supabase, { showDateId: showDateId!, skillId: id })),
-      ]);
-    },
-    onSuccess: () => { invalidateEligibility(); toast.success(t('showDateSheet.toast.skillsReset')); },
-    onError: (e: Error) => toast.error(t('showDateSheet.toast.skillsResetFailed'), { description: e.message }),
-  });
-
   const createBookingMutation = useMutation({
     mutationFn: ({ artistId, isUnderstudy }: { artistId: string; isUnderstudy: boolean }) => {
       if (!currentOrg) throw new Error(t('showDateSheet.toast.noActiveOrg'));
@@ -1067,14 +1050,6 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager, ini
                                 onOpenTier={(tier, skillFilterIds) => openOffers.mutate({ tier, skillFilterIds })}
                                 onCloseTier={(tier, withdraw) => closeOffers.mutate({ tier, withdraw })}
                                 onPreviewTier={(tier, skillFilterIds) => setDryRun({ tier, skillFilterIds })}
-                                // design 1e cockpit cards
-                                show={showDate.show?.program ?? ''}
-                                slots={showSlotsData ?? []}
-                                showSkillIds={requiredSkillsQ.data?.showSkillIds ?? []}
-                                dateSkillIds={requiredSkillsQ.data?.dateSkillIds ?? []}
-                                droppedSkillIds={dropsQ.data ?? []}
-                                onResetSkills={() => resetDateSkills.mutate()}
-                                onEditSkills={() => setActiveTab('setup')}
                                 onSetUpNextCast={() => setActiveTab('setup')}
                                 ladderRows={ladderRows}
                                 cityName={showDate.city?.name ?? ''}

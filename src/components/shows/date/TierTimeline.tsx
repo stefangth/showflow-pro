@@ -10,10 +10,8 @@ import { tierConceptNote } from "@/lib/bookings/actionCopy";
 import { ROUTES } from "@/config/app.config";
 import type { OpenedTier, ExcludedDetailEntry } from "@/data/bookings";
 import type { BookingFlow } from "@/lib/bookingFlow";
-import type { SlotDraft } from "@/data/slots";
 import type { TierLadderRow } from "@/data/tierLadder";
 import type { OfferTarget } from "@/lib/offerTarget";
-import { RequiredSkillsCard } from "./RequiredSkillsCard";
 import { TierLadder, type TierLadderRowStatus } from "./TierLadder";
 
 export interface TierTimelineProps {
@@ -45,17 +43,6 @@ export interface TierTimelineProps {
   onPreviewTier: (tier: number, skillFilterIds: string[]) => void;
 
   // ── design 1e cards (hosted here so the sheet's Offers JSX stays one mount) ──
-  /** Program name, for RequiredSkillsCard's subtitle. */
-  show: string;
-  /** Named production slots, for RequiredSkillsCard's provenance. */
-  slots: SlotDraft[];
-  showSkillIds: string[];
-  dateSkillIds: string[];
-  droppedSkillIds: string[];
-  /** Removes all date-adds and drops (sheet-owned mutation). */
-  onResetSkills: () => void;
-  /** Routes to the Setup tab's date configuration. */
-  onEditSkills: () => void;
   /** Routes to where a producer adds the next cast (the date's setup); backs the
    *  empty next-round peek's "Set up a next cast" action. */
   onSetUpNextCast: () => void;
@@ -83,16 +70,16 @@ export interface TierTimelineProps {
   excludedDetail?: ExcludedDetailEntry[];
 }
 
-/** The Offers-tab tiered cockpit (design 1e, consolidated): the computed
- *  required-skills card and the show-specific tier ladder (which now hosts the
- *  next-ask action on its next-round segment), plus the open/close confirm
- *  dialogs. Presentational: all mutations arrive as callbacks; the caller
- *  (ShowDateDetailSheet) owns the underlying queries and mutations. */
+/** The Offers-tab tiered cockpit (design 1e, consolidated): the show-specific tier
+ *  ladder (which hosts the next-ask action on its next-round segment) plus the
+ *  open/close confirm dialogs. The required skills live in the rail's "who can be
+ *  asked" and the Setup tab, so they are no longer duplicated here. Presentational:
+ *  all mutations arrive as callbacks; the caller owns the queries and mutations. */
 export function TierTimeline({
   showDateId, dateLabel, flow, bookings, canManage, hasSession, ladderSource,
   skills, openedTiers, openPending = false, closePending = false,
   onOpenTier, onCloseTier, onPreviewTier,
-  show, slots, showSkillIds, dateSkillIds, droppedSkillIds, onResetSkills, onEditSkills, onSetUpNextCast,
+  onSetUpNextCast,
   ladderRows, cityName, statusByTier, nextTier, dateFilled, nextTierTarget, nextTierCounts,
   requiredSkillNames, requiredSkillIds, candidates, excludedDetail,
 }: TierTimelineProps) {
@@ -203,17 +190,6 @@ export function TierTimeline({
         nextAsk={nextAsk}
         onSetUpNextCast={canManage ? onSetUpNextCast : undefined}
         onCloseTier={(tier) => setCloseTarget(tier)}
-      />
-
-      <RequiredSkillsCard
-        show={show}
-        slots={slots}
-        showSkillIds={showSkillIds}
-        dateSkillIds={dateSkillIds}
-        droppedSkillIds={droppedSkillIds}
-        skills={skills}
-        onReset={onResetSkills}
-        onEdit={onEditSkills}
       />
 
       {/* What a tier even is, stated once — a producer opening this tab for the
