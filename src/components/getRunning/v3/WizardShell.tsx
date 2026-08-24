@@ -9,7 +9,7 @@ import { StatusPill } from "@/components/ui/status-pill";
 import { StatusDot } from "@/components/ui/status-dot";
 import { ROUTES } from "@/config/app.config";
 import type { GetRunningStep, GetRunningStepKey, GetRunningPhaseKey } from "@/lib/getRunning/steps";
-import { stepFeatureLink } from "@/lib/getRunning/stepFeature";
+import { stepHelpLink } from "@/lib/getRunning/stepHelp";
 import { WizardFooterContext } from "./WizardFooterContext";
 
 const PHASE_ORDER: GetRunningPhaseKey[] = ["get_dates", "bookable", "paperwork"];
@@ -245,8 +245,12 @@ export function WizardShell({
                 </li>
               ))}
             </ul>
+            {/* "Read more about X" is a READING link, so it goes to the help answer for
+                this step, not to the settings page where you would go to DO the thing.
+                It used to resolve through `stepFeatureLink`, which is why "Read more
+                about the Airtable connection" opened /dates. */}
             <Link
-              to={stepFeatureLink(activeStep.key)}
+              to={stepHelpLink(activeStep.key)}
               className="text-xs font-medium text-accent-600 underline-offset-2 hover:underline"
             >
               {t(`guide.${activeStep.key}.article`)}

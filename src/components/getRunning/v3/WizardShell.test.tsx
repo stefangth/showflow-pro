@@ -194,3 +194,11 @@ it("stands its own Continue down when the body supplies one", () => {
   expect(within(footer).getByRole("button", { name: "Save timing" })).toBeInTheDocument();
   expect(within(footer).queryByRole("button", { name: /^continue$/i })).not.toBeInTheDocument();
 });
+
+it("sends Read more to the help answer, not to the settings page", () => {
+  renderShell();
+  // `coverage` is the active step in renderShell; its guide link used to resolve through
+  // stepFeatureLink and open /settings?tab=casts-coverage.
+  const link = screen.getByRole("link", { name: /read more about cast ranking/i });
+  expect(link.getAttribute("href")).toMatch(/^\/help\?item=/);
+});
