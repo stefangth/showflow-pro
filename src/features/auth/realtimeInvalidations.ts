@@ -18,8 +18,11 @@ export const REALTIME_INVALIDATIONS: Array<{ table: string; keys: unknown[][] }>
   // Booking-setup ladder-coverage query (['eligibility','ladder-coverage',org], the setup
   // rail's Eligibility step) and the Casts & Cities org-wide priority editor both read this table.
   { table: 'cast_city_priority',         keys: [['cast-city-priority'], ['eligibility']] },
-  { table: 'cast_members',              keys: [['cast-members'], ['artist-casts'], ['my-cast-memberships'], ['cast-members-counts'], ['eligible-artists'], ['artist-eligible-dates']] }, // cast membership drives both eligibility queries
-  { table: 'artists',                    keys: [['artists'], ['my-artist']] },
+  { table: 'cast_members',              keys: [['cast-members'], ['artist-casts'], ['my-cast-memberships'], ['cast-members-counts'], ['cast-roster-counts'], ['eligible-artists'], ['artist-eligible-dates']] }, // cast membership drives both eligibility queries
+  // An artist's status decides whether their cast membership counts toward coverage
+  // (fetchCastMemberCounts / fetchLadderCoverageInputs filter to status = 'active'), so
+  // deactivating an artist has to bust those reads too, not just the artist lists.
+  { table: 'artists',                    keys: [['artists'], ['my-artist'], ['cast-members-counts'], ['eligibility']] },
   { table: 'shows',                      keys: [['shows'], ['shows-for-eligibility'], ['shows-program-sub-programs']] },
   { table: 'casts',                      keys: [['casts']] },
   { table: 'cities',                     keys: [['cities']] },

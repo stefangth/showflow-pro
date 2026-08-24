@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { fetchCasts, fetchCastMemberCounts } from '@/data/casts';
+import { fetchCasts, fetchCastRosterCounts } from '@/data/casts';
 import { useAuth } from '@/features/auth/AuthContext';
 import { useCan } from '@/hooks/useCapabilities';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -33,9 +33,11 @@ export function CastsSection({ onArtistClick }: CastsSectionProps = {}) {
   });
 
   const { data: counts } = useQuery({
-    queryKey: ['cast-members-counts', currentOrg?.id],
+    // Roster count, not the active-only coverage count: the sheet this card opens lists
+    // every member, so the two must agree.
+    queryKey: ['cast-roster-counts', currentOrg?.id],
     enabled: !!currentOrg,
-    queryFn: () => fetchCastMemberCounts(supabase, currentOrg?.id ?? null),
+    queryFn: () => fetchCastRosterCounts(supabase, currentOrg?.id ?? null),
   });
 
   if (!canView) return null;

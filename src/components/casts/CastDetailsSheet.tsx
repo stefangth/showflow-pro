@@ -238,6 +238,7 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['cast-members', cast?.id] });
       qc.invalidateQueries({ queryKey: ['cast-members-counts'] });
+      qc.invalidateQueries({ queryKey: ['cast-roster-counts'] });
       qc.invalidateQueries({ queryKey: ['artist-casts'] });
       qc.invalidateQueries({ queryKey: ['eligible-artists'] });
       qc.invalidateQueries({ queryKey: ['artist-eligible-dates'] });
@@ -251,6 +252,7 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['cast-members', cast?.id] });
       qc.invalidateQueries({ queryKey: ['cast-members-counts'] });
+      qc.invalidateQueries({ queryKey: ['cast-roster-counts'] });
       qc.invalidateQueries({ queryKey: ['artist-casts'] });
       qc.invalidateQueries({ queryKey: ['eligible-artists'] });
       qc.invalidateQueries({ queryKey: ['artist-eligible-dates'] });

@@ -1,9 +1,9 @@
 [
   {
-    "version": "1.18.0",
+    "version": "1.17.2",
     "date": "2026-08-24",
     "dateLabel": "August 24, 2026",
-    "title": "Skills and cities you can add where you need them, and setup readiness you can trust",
+    "title": "Skills and cities you can add where you need them, setup readiness you can trust, and clearer wording throughout",
     "changes": {
       "new": [
         {
@@ -27,6 +27,22 @@
         {
           "title": "Easier to read in dark mode",
           "description": "The sidebar section labels and the ShowFlow wordmark were too dim against the dark background."
+        },
+        {
+          "title": "\"Dates\" everywhere",
+          "description": "The scheduling area is now called Dates in every place it appears, matching the sidebar."
+        },
+        {
+          "title": "Sources",
+          "description": "The Airtable sync settings are now called Sources and also show your Google Sheet imports next to Airtable runs, each tagged by where it came from."
+        },
+        {
+          "title": "\"Production\" for the work in your catalog",
+          "description": "Wherever the app means a staged work you set up, it now says production. Individual performances keep the word show."
+        },
+        {
+          "title": "\"Casting breakdown\" and \"parts\"",
+          "description": "What you set up on a production is now its casting breakdown, made of named parts for main and understudy, instead of the vaguer \"places\"."
         }
       ],
       "fixed": [
@@ -45,32 +61,6 @@
         {
           "title": "Wording that matches what you are looking at",
           "description": "The countersignature step describes how the artist signs, rather than who signs on your behalf. Where your city list is empty, the date form points you at where cities are managed."
-        }
-      ]
-    }
-  },
-  {
-    "version": "1.17.2",
-    "date": "2026-08-22",
-    "dateLabel": "August 22, 2026",
-    "title": "Clearer, more consistent wording across the app",
-    "changes": {
-      "improved": [
-        {
-          "title": "\"Dates\" everywhere",
-          "description": "The scheduling area is now called Dates in every place it appears, matching the sidebar."
-        },
-        {
-          "title": "Sources",
-          "description": "The Airtable sync settings are now called Sources and also show your Google Sheet imports next to Airtable runs, each tagged by where it came from."
-        },
-        {
-          "title": "\"Production\" for the work in your catalog",
-          "description": "Wherever the app means a staged work you set up, it now says production. Individual performances keep the word show."
-        },
-        {
-          "title": "\"Casting breakdown\" and \"parts\"",
-          "description": "What you set up on a production is now its casting breakdown, made of named parts for main and understudy, instead of the vaguer \"places\"."
         }
       ]
     }
