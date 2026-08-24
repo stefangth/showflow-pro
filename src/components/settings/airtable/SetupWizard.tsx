@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Token } from "@/components/ui/token";
 import { cn } from "@/lib/utils";
 
 interface SetupWizardProps {
@@ -111,8 +112,8 @@ export function SetupWizard({
             <h3 className="text-title-sm font-semibold tracking-tight">{t('setupWizard.tokenStepTitle')}</h3>
             <p className="mt-1.5 text-sm text-muted-foreground">
               {t('setupWizard.tokenHelpPrefix')}{" "}
-              <span className="font-mono text-xs">data.records:read</span> {t('setupWizard.tokenHelpAnd')}{" "}
-              <span className="font-mono text-xs">schema.bases:read</span>.
+              <Token className="text-xs">data.records:read</Token> {t('setupWizard.tokenHelpAnd')}{" "}
+              <Token className="text-xs">schema.bases:read</Token>.
             </p>
             <div className="mt-4 flex max-w-[520px] gap-2">
               <Input

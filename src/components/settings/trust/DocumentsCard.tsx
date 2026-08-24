@@ -36,13 +36,13 @@ export function DocumentsCard() {
                      *  the title is what a reviewer is here to identify. It
                      *  wraps instead. */}
                     <span className="block text-sm font-medium">{doc.title}</span>
-                    <span className="block font-mono text-xs text-muted-foreground">{doc.meta}</span>
+                    <span className="block text-xs text-muted-foreground">{doc.meta}</span>
                   </span>
                 </span>
                 <a
                   href={doc.href}
                   {...(isMail ? { rel: "noreferrer" } : { target: "_blank", rel: "noreferrer" })}
-                  className="shrink-0 whitespace-nowrap font-mono text-xs text-primary hover:underline"
+                  className="shrink-0 whitespace-nowrap text-xs text-primary hover:underline"
                 >
                   {doc.cta}
                 </a>

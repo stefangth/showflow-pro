@@ -1,5 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
+import { Token } from "@/components/ui/token";
+import { Metric } from "@/components/ui/metric";
 import { Button } from "@/components/ui/button";
 import { MoreHorizontal, Settings2, TriangleAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -94,8 +96,8 @@ export function CockpitHeader({
           {/* eslint-disable-next-line no-restricted-syntax -- truncating title eyebrow, primitive adoption deferred */}
           <p className="truncate text-eyebrow font-semibold uppercase leading-[14px] tracking-[1.6px] text-accent-600">{title}</p>
           {devBadge && (
-            <Badge variant="outline" className="mt-1 text-xs font-mono text-muted-foreground w-fit">
-              ShowDateDetailSheet.tsx
+            <Badge variant="outline" className="mt-1 text-xs text-muted-foreground w-fit">
+              <Token>ShowDateDetailSheet.tsx</Token>
             </Badge>
           )}
           <p className="mt-[5px] font-display text-title font-semibold leading-7 tracking-[-0.3px]">{dateLine}</p>
@@ -153,7 +155,7 @@ export function CockpitHeader({
           {showEngineStatus && slots && (
             <>
               <div className="flex items-center gap-2">
-                <span className="font-mono text-xs font-medium text-foreground">{t("cockpitHeader.slotsCount", { confirmed: confirmedCount, total })}</span>
+                <Metric className="text-xs font-medium text-foreground">{t("cockpitHeader.slotsCount", { confirmed: confirmedCount, total })}</Metric>
                 <SlotMeter
                   fixed
                   tones={slotMeterTones(confirmedCount, acceptedCount, total)}
@@ -222,7 +224,7 @@ export function CockpitHeader({
               {t.badge && (
                 <span
                   className={cn(
-                    "ml-1.5 rounded-chip px-[5px] py-px font-mono text-eyebrow font-semibold leading-[14px]",
+                    "ml-1.5 rounded-chip px-[5px] py-px text-eyebrow font-semibold leading-[14px]",
                     t.id === "order"
                       ? t.badge === "READY"
                         ? "bg-[var(--green-100)] text-[var(--green-600)]"

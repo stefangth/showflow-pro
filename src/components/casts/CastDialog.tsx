@@ -8,6 +8,7 @@ import { useEditorConfig } from '@/features/editor/EditorContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Token } from '@/components/ui/token';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
@@ -50,8 +51,8 @@ export function CastDialog() {
         <DialogHeader>
           <DialogTitle className="font-display">{t('castDialog.newCast')}</DialogTitle>
           {isEditorMode && isRealAdmin && (
-            <Badge variant="outline" className="text-xs font-mono text-muted-foreground w-fit">
-              CastDialog.tsx
+            <Badge variant="outline" className="text-xs text-muted-foreground w-fit">
+              <Token>CastDialog.tsx</Token>
             </Badge>
           )}
         </DialogHeader>

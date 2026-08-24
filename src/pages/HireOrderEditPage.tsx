@@ -24,6 +24,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { HireOrderStatusBadge } from "@/components/hireOrders/HireOrderStatusBadge";
+import { Token } from "@/components/ui/token";
 import { FieldSection } from "@/components/hireOrders/edit/FieldSection";
 import { useOrderBlockers } from "@/hooks/useOrderBlockers";
 import { SetupCallout } from "@/components/hireOrders/edit/SetupCallout";
@@ -476,7 +477,7 @@ export default function HireOrderEditPage() {
         <Alert>
           <AlertTitle>{t("editPage.readOnlyTitle")}</AlertTitle>
           <AlertDescription>
-            <span className="font-mono">{order.order_no}</span> {t("editPage.readOnlyBody", { status: order.status })}
+            <Token>{order.order_no}</Token> {t("editPage.readOnlyBody", { status: order.status })}
           </AlertDescription>
         </Alert>
         <Button onClick={() => navigate(ROUTES.HIRE_ORDER_DETAIL.replace(":id", order.id))}>{t("editPage.viewOrder")}</Button>
@@ -533,7 +534,7 @@ export default function HireOrderEditPage() {
             {/* eslint-disable-next-line no-restricted-syntax -- 12px + tracking-wide page-header caption, not the 11px Eyebrow pattern */}
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("editPage.editHireOrder")}</p>
             <div className="flex items-center gap-2">
-              <h1 className="font-mono text-lg text-foreground">{order.order_no}</h1>
+              <h1 className="text-lg text-foreground"><Token>{order.order_no}</Token></h1>
               <HireOrderStatusBadge status={order.status} />
             </div>
           </div>
@@ -619,7 +620,7 @@ export default function HireOrderEditPage() {
             <FieldSection fieldKey="sessions" label={FIELD_LABELS.sessions} source={displayData.sessions?.source}>
               <Input
                 id="ho-edit-sessions"
-                className="font-mono"
+                className="tabular-nums"
                 placeholder={t("editPage.sessionsPlaceholder")}
                 value={fieldString(displayData, "sessions")}
                 onChange={(e) => handleFieldChange("sessions", e.target.value)}
@@ -637,7 +638,7 @@ export default function HireOrderEditPage() {
                   inputMode="decimal"
                   min="0"
                   step="0.01"
-                  className="font-mono"
+                  className="tabular-nums"
                   value={fieldString(displayData, "fee")}
                   onChange={(e) => handleFieldChange("fee", e.target.value)}
                 />

@@ -15,7 +15,7 @@ export function HelpFooterCards() {
           <p className="text-sm leading-relaxed text-muted-foreground">{t('stuck.body')}</p>
         </div>
       </section>
-      <p className="font-mono text-eyebrow text-muted-foreground/60">{t('footnote')}</p>
+      <p className="text-eyebrow text-muted-foreground/60">{t('footnote')}</p>
     </>
   );
 }

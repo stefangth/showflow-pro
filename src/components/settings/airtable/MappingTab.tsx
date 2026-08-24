@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SHOWFLOW_FIELDS, type AirtableFieldMap } from "@/data/airtableMapping";
+import { Metric } from "@/components/ui/metric";
 import { cn } from "@/lib/utils";
 
 /** shadcn Select cannot use "" as an item value, so "not mapped" needs a sentinel. */
@@ -70,9 +71,9 @@ export function MappingTab(props: MappingTabProps) {
           </p>
         </div>
         <div className="shrink-0 text-right">
-          <p className={cn("font-mono tabular-nums font-medium", dense ? "text-control" : "text-title-sm")}>
+          <Metric className={cn("font-medium", dense ? "text-control" : "text-title-sm")}>
             {mapped} / {total}
-          </p>
+          </Metric>
           <p className="mt-0.5 text-xs text-muted-foreground">{t('mappingTab2.requiredMapped')}</p>
         </div>
       </div>

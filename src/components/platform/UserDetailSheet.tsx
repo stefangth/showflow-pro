@@ -15,6 +15,7 @@ import { formatLastActivity } from "./platformFormat";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Token } from "@/components/ui/token";
 import { Button } from "@/components/ui/button";
 import { IconTooltip } from "@/components/common/IconTooltip";
 import { Input } from "@/components/ui/input";
@@ -234,7 +235,7 @@ export function UserDetailSheet({ user: propUser, open, onOpenChange }: Props) {
           </div>
           <SheetDescription>{user.email}</SheetDescription>
           <div className="flex items-center gap-1 text-xs text-muted-foreground">
-            <span className="font-mono truncate">{user.id}</span>
+            <Token className="truncate">{user.id}</Token>
             <IconTooltip label="Copy user id">
               <Button
                 type="button"

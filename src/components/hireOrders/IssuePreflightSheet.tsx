@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { BlockerList } from "./BlockerList";
+import { Token } from "@/components/ui/token";
 
 export interface PreflightOrder {
   id: string;
@@ -50,8 +51,8 @@ export function IssuePreflightSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="flex w-full flex-col gap-0 sm:max-w-lg">
         <SheetHeader className="text-left">
-          <p className="font-mono text-xs text-muted-foreground">
-            {order?.order_no ?? t("preflightSheet.draftFallback")} · {order?.artistName ?? ""}
+          <p className="text-xs text-muted-foreground">
+            <Token>{order?.order_no ?? t("preflightSheet.draftFallback")}</Token> · {order?.artistName ?? ""}
           </p>
           <SheetTitle className="font-display">
             {isLoading

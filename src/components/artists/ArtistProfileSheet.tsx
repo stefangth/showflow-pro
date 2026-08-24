@@ -12,6 +12,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Token } from '@/components/ui/token';
+import { Metric } from '@/components/ui/metric';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
@@ -217,8 +219,8 @@ export function ArtistProfileSheet({ artistId, open, onOpenChange }: Props) {
             {canEdit ? t('sheet.descEdit') : t('sheet.descView')}
           </SheetDescription>
           {isEditorMode && isRealAdmin && (
-            <Badge variant="outline" className="text-xs font-mono text-muted-foreground w-fit">
-              ArtistProfileSheet.tsx
+            <Badge variant="outline" className="text-xs text-muted-foreground w-fit">
+              <Token>ArtistProfileSheet.tsx</Token>
             </Badge>
           )}
         </SheetHeader>
@@ -298,9 +300,9 @@ export function ArtistProfileSheet({ artistId, open, onOpenChange }: Props) {
             <div className="space-y-2">
               <div className="flex items-baseline justify-between gap-3">
                 <label className="text-sm font-medium">{t('sheet.skillsLabel')}</label>
-                <p className="font-mono text-eyebrow tabular-nums text-muted-foreground">
+                <Metric className="text-eyebrow text-muted-foreground">
                   {t('sheet.catalogCount', { held: selectedSkills.length, total: catalogDenominator })}
-                </p>
+                </Metric>
               </div>
               {canEdit && (
                 <p className="text-xs leading-[17px] text-muted-foreground">
@@ -328,9 +330,9 @@ export function ArtistProfileSheet({ artistId, open, onOpenChange }: Props) {
                           loading, upcomingDateCounts is undefined and every row would
                           otherwise flash the false "Not required yet" default. */}
                       {showSkillCounts && upcomingDateCounts && (
-                        <span className="font-mono text-eyebrow tabular-nums text-accent-text">
+                        <Metric className="text-eyebrow text-accent-text">
                           {count > 0 ? t('sheet.upcomingDates', { count }) : t('sheet.notRequiredYet')}
-                        </span>
+                        </Metric>
                       )}
                       {canEdit && (
                         <button

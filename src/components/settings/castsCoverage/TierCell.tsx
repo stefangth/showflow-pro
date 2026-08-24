@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Metric } from "@/components/ui/metric";
 import { cn } from "@/lib/utils";
 import type { CoverageCastRef } from "./coverageMatrix";
 
@@ -65,9 +66,9 @@ export function TierCell({ tier, slot, options, disabled, onSelect, onClear }: T
                 className="flex w-full items-center justify-between rounded-field px-2 py-1.5 text-left text-sm hover:bg-[var(--surface-3)]"
               >
                 <span>{opt.name}</span>
-                <span className="font-mono text-xs text-muted-foreground">
+                <Metric className="text-xs text-muted-foreground">
                   {t('tierCell.memberCount', { count: opt.memberCount })}
-                </span>
+                </Metric>
               </button>
             ))
           )}

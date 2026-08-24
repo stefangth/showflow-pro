@@ -85,7 +85,7 @@ export function RehearsalBlock({ orgId }: { orgId: string | null }) {
           {run.data.candidates.map((c) => (
             <div key={c.id} className="border-b border-border p-2 text-sm last:border-b-0">{c.name}</div>
           ))}
-          <div className="p-2.5 font-mono text-eyebrow text-muted-foreground">{foot}</div>
+          <div className="p-2.5 text-eyebrow text-muted-foreground">{foot}</div>
         </div>
       )}
     </div>

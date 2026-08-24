@@ -12,6 +12,7 @@ import { DemoOutbox } from "@/components/demo/DemoOutbox";
 import { SandboxLinkDialog } from "@/components/demo/SandboxLinkDialog";
 import { SceneSelect } from "@/components/demo/SceneSelect";
 import { formatTimestampLocal } from "@/lib/dates";
+import { Metric } from "@/components/ui/metric";
 
 const ROLE_OPTIONS: AppRole[] = ["admin", "producer", "artist"];
 
@@ -62,14 +63,14 @@ export function DemoBar() {
           ))}
         </div>
       </div>
-      <div className="flex shrink-0 items-center gap-1.5 whitespace-nowrap font-mono text-xs text-muted-foreground">
+      <div className="flex shrink-0 items-center gap-1.5 whitespace-nowrap text-xs text-muted-foreground">
         <Clock className="h-3.5 w-3.5 shrink-0" />
-        <span>{simNow ? formatTimestampLocal(simNow) : "now"}</span>
+        <Metric className="text-xs">{simNow ? formatTimestampLocal(simNow) : "now"}</Metric>
         <Button
           size="sm"
           variant="secondary"
           disabled={isAdvancing}
-          className="h-6 px-1.5 text-xs font-mono"
+          className="h-6 px-1.5 text-xs"
           onClick={() => advanceClock("10m")}
         >
           +10m
@@ -78,7 +79,7 @@ export function DemoBar() {
           size="sm"
           variant="secondary"
           disabled={isAdvancing}
-          className="h-6 px-1.5 text-xs font-mono"
+          className="h-6 px-1.5 text-xs"
           onClick={() => advanceClock("1d")}
         >
           +1d

@@ -1,5 +1,6 @@
 import { Eye } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { Token } from "@/components/ui/token";
 
 /** Static "view only" notice for producers (or anyone without the
  *  `configure_airtable` capability): the console renders read-only, the
@@ -11,7 +12,7 @@ export function ReadOnlyBanner() {
       <Eye className="h-4 w-4 shrink-0 text-muted-foreground" />
       <p className="text-sm text-muted-foreground">
         {t('readOnlyBanner.prefix')}{" "}
-        <span className="font-mono text-xs">configure_airtable</span> {t('readOnlyBanner.suffix')}
+        <Token className="text-xs">configure_airtable</Token> {t('readOnlyBanner.suffix')}
       </p>
     </div>
   );

@@ -215,14 +215,18 @@ describe("HireOrdersPage", () => {
     expect(kpiValue("Value committed")).toBe("€10,000.00");
   });
 
-  it("renders the table with mono order number, stacked artist/venue, mono date, right-aligned fee, and a status badge", async () => {
+  it("renders the table with a mono order number, stacked artist/venue, a sans date, right-aligned fee, and a status badge", async () => {
     renderPage();
-    const row = await screen.findByText("HO-2026-0201-1");
-    expect(row).toHaveClass("font-mono");
+    // The order number is a machine token (<Token>, mono); its cell (<td>) and the
+    // Token span share the same text, so scope the class check to the span.
+    await screen.findByText("HO-2026-0201-1");
+    expect(screen.getByText("HO-2026-0201-1", { selector: "span" })).toHaveClass("font-mono");
     expect(screen.getByText("Ada Lovelace")).toBeInTheDocument();
     expect(screen.getByText("Main Hall")).toBeInTheDocument();
+    // The date is a quantity, not a token: sans, but still tabular for column alignment.
     const dateCell = screen.getByText("01/02/2030");
-    expect(dateCell).toHaveClass("font-mono");
+    expect(dateCell).not.toHaveClass("font-mono");
+    expect(dateCell).toHaveClass("tabular-nums");
     const feeCell = screen.getByText("€1,000.00");
     expect(feeCell).toHaveClass("text-right");
     // "Draft" also labels a filter chip button — scope to the status badge div.

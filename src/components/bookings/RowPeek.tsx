@@ -49,7 +49,7 @@ export function RowPeek({ dateLabel, peek, canConfirm, confirming, onConfirm, on
           {t("rowPeek.openDate")}
         </Button>
       </div>
-      <p className="mt-2.5 font-mono text-eyebrow text-[var(--text-faint)]">{t("rowPeek.keyHint")}</p>
+      <p className="mt-2.5 text-eyebrow text-[var(--text-faint)]">{t("rowPeek.keyHint")}</p>
     </div>
   );
 }

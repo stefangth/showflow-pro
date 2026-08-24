@@ -8,7 +8,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { cn } from "@/lib/utils";
 import { formatDateDMY } from "@/lib/dates";
 import { openPdfBase64 } from "@/lib/hireOrders/openPdf";
 import type { OrderData } from "@/lib/hireOrders/types";
@@ -39,14 +38,14 @@ function snapshot(data: OrderData, key: keyof OrderData): string {
   return String(v);
 }
 
-/** Read-only fact cell for the review grid. `mono` renders the value in the
- *  mono face (dates, durations) per the design. */
-function Fact({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+/** Read-only fact cell for the review grid. Values are quantities (dates,
+ *  durations) as often as prose, so the cell keeps tabular figures throughout. */
+function Fact({ label, value }: { label: string; value: string }) {
   const { t } = useTranslation("hireOrdersPages");
   return (
     <div className="space-y-0.5">
       <p className="text-xs text-muted-foreground">{label}</p>
-      <p className={cn("text-sm text-foreground", mono && "font-mono")}>{value || t("common.notSet")}</p>
+      <p className="text-sm tabular-nums text-foreground">{value || t("common.notSet")}</p>
     </div>
   );
 }
@@ -231,9 +230,9 @@ export function GenerateHireOrderDialog({ open, onOpenChange, order, showDate, o
           <div className="grid grid-cols-2 gap-x-4 gap-y-3">
             <Fact label={t("generateDialog.producer")} value={producerName} />
             <Fact label={t("generateDialog.artist")} value={artistName} />
-            <Fact label={t("generateDialog.date")} value={dateStr ? formatDateDMY(dateStr) : ""} mono />
+            <Fact label={t("generateDialog.date")} value={dateStr ? formatDateDMY(dateStr) : ""} />
             <Fact label={t("generateDialog.venue")} value={venue} />
-            <Fact label={t("generateDialog.duration")} value={duration} mono />
+            <Fact label={t("generateDialog.duration")} value={duration} />
             <Fact label={t("generateDialog.castReference")} value={castRef} />
           </div>
 

@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Token } from "@/components/ui/token";
 import { useAuth } from "@/features/auth/AuthContext";
 import { useCreateSandboxLink, useRevokeSandboxLink, useSandboxLinks } from "@/hooks/useDemo";
 import { formatTimestampDMY } from "@/lib/dates";
@@ -41,7 +42,7 @@ function LinkRow({ link, onRevoke }: { link: SandboxLink; onRevoke: (token: stri
   return (
     <li className="flex items-center gap-2 py-2">
       <div className="min-w-0 flex-1">
-        <p className="truncate font-mono text-xs">{url}</p>
+        <Token className="block truncate text-xs">{url}</Token>
         <p className="text-xs text-muted-foreground">Expires {formatTimestampDMY(link.expires_at)}</p>
       </div>
       {status === "active" ? (
@@ -124,7 +125,7 @@ export function SandboxLinkDialog() {
 
         {newUrl && (
           <div className="flex items-center gap-2 rounded-control border border-border bg-primary/5 px-2 py-1.5">
-            <p className="min-w-0 flex-1 truncate font-mono text-xs">{newUrl}</p>
+            <Token className="block min-w-0 flex-1 truncate text-xs">{newUrl}</Token>
             <Button size="sm" variant="secondary" className="h-7 px-2" onClick={() => copyLink(newUrl)}>
               <Copy className="h-3.5 w-3.5" /> Copy
             </Button>

@@ -22,6 +22,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { Token } from "@/components/ui/token";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { NOTIFICATION_CHANNELS, type NotificationChannel } from "@/lib/notificationCategories";
 import { visibleNotificationCategories } from "@/lib/notificationAudience";
@@ -173,7 +174,7 @@ export default function ProfilePage() {
                     <p className="text-sm font-medium">{t("details.email")}</p>
                     <p className="text-xs text-muted-foreground mt-0.5">{t("details.emailHint")}</p>
                   </div>
-                  <span className="font-mono text-xs text-foreground">{user?.email ?? ""}</span>
+                  <Token className="text-xs text-foreground">{user?.email ?? ""}</Token>
                   <Badge variant="neutral">{t("details.emailFixed")}</Badge>
                 </GroupRow>
                 <form

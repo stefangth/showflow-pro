@@ -6,6 +6,7 @@ import { isImpersonating } from '@/features/auth/orgRoles';
 import { ROUTES, roleLabel } from '@/config/app.config';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Token } from '@/components/ui/token';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -322,7 +323,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 <Badge variant="outline" className="border-warning text-warning">
                   Viewing as: {viewAsUser.roles.map(roleLabel).join(', ') || 'no role'}
                 </Badge>
-                <p className="text-eyebrow font-mono text-warning truncate">{viewAsUser.email}</p>
+                <Token className="block text-eyebrow text-warning truncate">{viewAsUser.email}</Token>
               </div>
             )}
             <DemoBadge />

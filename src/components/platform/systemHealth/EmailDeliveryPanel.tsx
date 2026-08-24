@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { StatusPill } from "@/components/ui/status-pill";
 import { StatusDot } from "@/components/ui/status-dot";
 import { redactEmail, redactEmailsInText } from "@/lib/identity";
+import { Token } from "@/components/ui/token";
 import { EMAIL_HEALTH } from "@/config/app.config";
 import { healthTone, healthLabel, type EmailHealth, type HealthState } from "@/lib/systemHealth";
 
@@ -61,7 +62,7 @@ export function EmailDeliveryPanel({
             {h.byTemplate.map((t) => (
               <div key={t.templateName} className="flex items-center gap-3 rounded-card border border-border p-2.5">
                 <StatusDot tone={healthTone(t.bounced > 0 || t.failed > 0 ? "degraded" : "operational")} />
-                <span className="flex-1 truncate font-mono text-sm">{t.templateName}</span>
+                <Token className="flex-1 truncate text-sm">{t.templateName}</Token>
                 <span className="text-xs text-muted-foreground">{t.sent} sent · {t.bounced} bounced · {t.failed} failed</span>
                 <span className="min-w-[52px] text-right text-sm font-medium tabular-nums">{pct(t.deliveryRate)}</span>
               </div>
@@ -76,7 +77,7 @@ export function EmailDeliveryPanel({
             {h.recentIssues.map((i, idx) => (
               <div key={idx} className="flex items-center gap-3 border-b border-border py-1.5 last:border-0">
                 <Badge variant="outline" className={`text-eyebrow ${badge(i.status)}`}>{i.status}</Badge>
-                <span className="font-mono text-xs text-muted-foreground">{redactEmail(i.recipientEmail)}</span>
+                <Token className="text-xs text-muted-foreground">{redactEmail(i.recipientEmail)}</Token>
                 <span className="flex-1 truncate text-xs text-muted-foreground">{redactEmailsInText(i.errorMessage) ?? i.templateName}</span>
                 <span className="text-xs text-muted-foreground">{new Date(i.occurredAt).toLocaleString()}</span>
               </div>

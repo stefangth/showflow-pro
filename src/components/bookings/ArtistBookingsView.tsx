@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Token } from '@/components/ui/token';
 import { TimeframeFilter, type TimeframeValue } from '@/components/filters/TimeframeFilter';
 import { SortControl, type SortValue } from '@/components/filters/SortControl';
 import { ViewToggle, type ViewMode } from '@/components/filters/ViewToggle';
@@ -222,8 +223,8 @@ export function ArtistBookingsView() {
                 <TableHeader>
                   <TableRow>
                     {columnHeaders.map(({ columnId, headerLabel }) => (
-                      <TableHead key={columnId} className={isEditorMode ? 'font-mono text-xs' : 'text-xs'}>
-                        {headerLabel}
+                      <TableHead key={columnId} className="text-xs">
+                        {isEditorMode ? <Token>{headerLabel}</Token> : headerLabel}
                       </TableHead>
                     ))}
                   </TableRow>

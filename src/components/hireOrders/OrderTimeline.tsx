@@ -113,7 +113,7 @@ export function OrderTimeline({ status, createdAt, issuedAt, seenAt, countersign
               >
                 {t(labelKey)}
               </p>
-              {ts && <p className="text-xs font-mono text-muted-foreground">{ts}</p>}
+              {ts && <p className="text-xs tabular-nums text-muted-foreground">{ts}</p>}
             </div>
           </li>
         );

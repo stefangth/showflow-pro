@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { Metric } from "@/components/ui/metric";
 import { FileSignature } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -63,7 +64,7 @@ export function AvailabilityFirstRun({
             {t("firstRun.setup.label")}
           </div>
           <div className="mt-2 flex items-baseline gap-1.5">
-            <span className="font-mono text-title font-semibold tracking-[-0.4px]">{done}</span>
+            <Metric className="text-title font-semibold tracking-[-0.4px]">{done}</Metric>
             <span className="text-xs text-[var(--text-faint)]">{t("firstRun.setup.ofOne")}</span>
           </div>
           <div className="mt-2.5 flex gap-[3px]">

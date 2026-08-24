@@ -68,7 +68,7 @@ function HireOrdersRail() {
                 )}
                 {(audit.data ?? []).map((e) => (
                   <div key={e.id} className="border-t border-border pt-2 mt-2 first:border-t-0 first:mt-1.5">
-                    <p className="font-mono text-eyebrow text-muted-foreground">
+                    <p className="text-eyebrow text-muted-foreground">
                       {formatDateDMY(e.created_at.slice(0, 10))} · {e.actorName ?? t("hireOrdersTab.rail.systemActor")}
                     </p>
                     <p className="mt-0.5 text-xs">{describeEntry(e, t)}</p>

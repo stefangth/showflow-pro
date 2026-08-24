@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 import { APP_META, CHANGELOG_URL } from "@/config/app.config";
+import { Token } from "@/components/ui/token";
 
 /**
  * Two-tone ShowFlow wordmark + version pill. Shared by the desktop sidebar and the
@@ -26,9 +27,9 @@ export function BrandWordmark({ className }: { className?: string }) {
         rel="noopener noreferrer"
         title="What's new in ShowFlow"
         aria-label={`View changelog (version ${APP_META.VERSION})`}
-        className="ml-auto shrink-0 rounded border border-border px-1 py-px font-mono text-eyebrow font-medium tabular-nums text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground"
+        className="ml-auto shrink-0 rounded border border-border px-1 py-px text-eyebrow font-medium text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground"
       >
-        v{APP_META.VERSION}
+        <Token>v{APP_META.VERSION}</Token>
       </a>
     </div>
   );

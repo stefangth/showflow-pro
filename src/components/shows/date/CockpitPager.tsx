@@ -1,8 +1,9 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { Metric } from "@/components/ui/metric";
 
 export interface CockpitPagerProps {
-  /** Mono label, e.g. "Date 3 of 11". */
+  /** Tabular sans label, e.g. "Date 3 of 11". */
   label: string;
   onPrev: () => void;
   onNext: () => void;
@@ -29,7 +30,7 @@ export function CockpitPager({ label, onPrev, onNext, prevDisabled, nextDisabled
       <button type="button" aria-label={t("cockpitPager.nextDate")} className={arrowCls} onClick={onNext} disabled={nextDisabled}>
         <ChevronRight className="h-4 w-4" />
       </button>
-      <span className="font-mono text-xs text-muted-foreground">{label}</span>
+      <Metric className="text-xs text-muted-foreground">{label}</Metric>
     </div>
   );
 }

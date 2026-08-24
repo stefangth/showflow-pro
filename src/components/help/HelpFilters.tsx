@@ -2,6 +2,7 @@ import { Search } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { HelpFilter } from '@/lib/help/filter';
 import { cn } from '@/lib/utils';
+import { Metric } from '@/components/ui/metric';
 
 const FILTERS: { key: HelpFilter; labelKey: 'filter.all' | 'filter.new' }[] = [
   { key: 'all', labelKey: 'filter.all' },
@@ -52,7 +53,7 @@ export function HelpFilters({
           </button>
         ))}
       </div>
-      <span className="font-mono text-xs text-muted-foreground">{countLabel}</span>
+      <Metric className="text-xs text-muted-foreground">{countLabel}</Metric>
     </div>
   );
 }

@@ -9,6 +9,7 @@ import {
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { HireOrderStatusBadge } from "@/components/hireOrders/HireOrderStatusBadge";
+import { Token } from "@/components/ui/token";
 import { OrderFactsRail } from "@/components/hireOrders/OrderFactsRail";
 import { IssuePreflightSheet, type PreflightOrder } from "./IssuePreflightSheet";
 import { formatMoney } from "@/lib/hireOrders/money";
@@ -151,7 +152,7 @@ export function OrderSlideOver({ order, open, onOpenChange, orgId }: Props) {
           <>
             <SheetHeader>
               <div className="flex items-center gap-2">
-                <SheetTitle className="font-mono text-base">{displayOrder.order_no}</SheetTitle>
+                <SheetTitle className="text-base"><Token>{displayOrder.order_no}</Token></SheetTitle>
                 <HireOrderStatusBadge status={displayOrder.status} />
               </div>
             </SheetHeader>
@@ -178,7 +179,7 @@ export function OrderSlideOver({ order, open, onOpenChange, orgId }: Props) {
                 <div>
                   {/* eslint-disable-next-line no-restricted-syntax -- dl/dt field label, not a standard eyebrow */}
                   <dt className="text-xs uppercase tracking-wide text-muted-foreground">{t("slideOver.date")}</dt>
-                  <dd className="mt-0.5 font-mono text-foreground">{dateStr ? formatDateDMY(dateStr) : t("common.notSet")}</dd>
+                  <dd className="mt-0.5 tabular-nums text-foreground">{dateStr ? formatDateDMY(dateStr) : t("common.notSet")}</dd>
                 </div>
               </dl>
 

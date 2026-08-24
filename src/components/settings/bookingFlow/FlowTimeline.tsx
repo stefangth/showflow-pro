@@ -182,7 +182,7 @@ export function FlowTimeline({
               max={23}
               value={times.offerDigestHour}
               disabled={disabled || respOff || flow.offer_delivery !== "digest"}
-              className="w-16 font-mono"
+              className="w-16 tabular-nums"
               onChange={(e) => onTimesChange({ offerDigestHour: Number(e.target.value) })}
             />
           </label>
@@ -194,7 +194,7 @@ export function FlowTimeline({
               max={336}
               value={times.windowHours}
               disabled={disabled || respOff}
-              className="w-16 font-mono"
+              className="w-16 tabular-nums"
               onChange={(e) => onTimesChange({ windowHours: Number(e.target.value) })}
             />
           </label>
@@ -253,7 +253,7 @@ export function FlowTimeline({
               </SelectContent>
             </Select>
           )}
-          <span className="rounded-control border border-border bg-well-tint px-2.5 py-1.5 font-mono text-xs text-muted-foreground">
+          <span className="rounded-control border border-border bg-well-tint px-2.5 py-1.5 text-xs text-muted-foreground">
             {referencePreview}
           </span>
         </div>
@@ -325,7 +325,7 @@ export function FlowTimeline({
                 max={23}
                 value={times.confirmationDigestHour}
                 disabled={disabled || !flow.confirmation_digest}
-                className="w-16 font-mono"
+                className="w-16 tabular-nums"
                 onChange={(e) => onTimesChange({ confirmationDigestHour: Number(e.target.value) })}
               />
             </label>

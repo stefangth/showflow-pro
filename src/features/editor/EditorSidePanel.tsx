@@ -7,6 +7,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Token } from '@/components/ui/token';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -49,8 +50,8 @@ export function EditorSidePanel({ open, onOpenChange }: EditorSidePanelProps) {
         <SheetHeader className="px-6 pt-6 pb-4 border-b border-border shrink-0">
           <SheetTitle className="flex items-center gap-2">
             Page Settings
-            <Badge variant="outline" className="text-xs font-mono font-normal">
-              {location.pathname}
+            <Badge variant="outline" className="font-normal">
+              <Token className="text-xs">{location.pathname}</Token>
             </Badge>
           </SheetTitle>
         </SheetHeader>
@@ -262,7 +263,7 @@ function PermissionsTab({
           <div className="space-y-2">
             {TABLE_KEYS.map(tableKey => (
               <div key={tableKey} className="grid grid-cols-4 gap-2 items-center py-1">
-                <span className="text-sm font-mono text-xs">{tableKey}</span>
+                <Token className="text-sm text-xs">{tableKey}</Token>
                 {ALL_ROLES.map(role => (
                   <Select
                     key={role}

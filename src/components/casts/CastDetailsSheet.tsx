@@ -22,6 +22,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { IconTooltip } from '@/components/common/IconTooltip';
 import { Badge } from '@/components/ui/badge';
+import { Token } from '@/components/ui/token';
+import { Metric } from '@/components/ui/metric';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { Search, X, Plus, Pencil, Check } from 'lucide-react';
@@ -336,7 +338,7 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
               <>
                 <span
                   aria-hidden
-                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-card bg-accent-tint font-mono text-body font-semibold text-accent-text"
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-card bg-accent-tint text-body font-semibold text-accent-text"
                 >
                   {initialsOf(cast?.name ?? '')}
                 </span>
@@ -377,14 +379,14 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
               <div key={k.label} className="rounded-card border border-border bg-well-tint px-3.5 py-3">
                 {/* eslint-disable-next-line no-restricted-syntax -- KPI tile label, KpiTile adoption deferred to primitive-adoption task */}
                 <p className="text-eyebrow font-semibold uppercase tracking-[1.6px] text-muted-foreground">{k.label}</p>
-                <p className="mt-1.5 font-mono text-2xl font-semibold tabular-nums text-foreground">{k.value}</p>
+                <Metric size="lg" className="mt-1.5">{k.value}</Metric>
               </div>
             ))}
           </div>
 
           {isEditorMode && isRealAdmin && (
-            <Badge variant="outline" className="mt-3 w-fit font-mono text-xs text-muted-foreground">
-              CastDetailsSheet.tsx
+            <Badge variant="outline" className="mt-3 w-fit text-xs text-muted-foreground">
+              <Token>CastDetailsSheet.tsx</Token>
             </Badge>
           )}
         </SheetHeader>
@@ -417,9 +419,9 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
             <section>
               <div className="mb-2 flex items-baseline justify-between">
                 <h4 className="text-sm font-semibold text-foreground">{t('castDetails.roster.title')}</h4>
-                <span className="font-mono text-eyebrow tabular-nums text-muted-foreground">
+                <Metric className="text-eyebrow text-muted-foreground">
                   {t('castDetails.roster.count', { count: memberCount })}
-                </span>
+                </Metric>
               </div>
               <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
                 {(members ?? []).map((m) => {
@@ -453,9 +455,9 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
                         </span>
                       )}
                       <span className="flex-1" />
-                      <span className="whitespace-nowrap font-mono text-eyebrow tabular-nums text-[color:var(--text-faint)]">
+                      <Metric className="whitespace-nowrap text-eyebrow text-[color:var(--text-faint)]">
                         {t('castDetails.roster.dates', { count: dates })}
-                      </span>
+                      </Metric>
                       <IconTooltip label={t('castDetails.removeMember', { name: m.artist.name })}>
                         <Button
                           size="icon"

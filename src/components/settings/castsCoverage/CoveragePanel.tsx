@@ -32,6 +32,7 @@ import { IconTooltip } from "@/components/common/IconTooltip";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Trash2, ChevronRight, Plus, Pencil, Check, X } from "lucide-react";
 import { CastDetailsSheet } from "@/components/casts/CastDetailsSheet";
+import { Metric } from "@/components/ui/metric";
 import type { Cast } from "@/types";
 import { TierCell } from "./TierCell";
 import {
@@ -695,14 +696,14 @@ function KpiCard({ label, value, note, tone }: { label: string; value: number; n
       <CardContent className="space-y-1 p-4">
         {/* eslint-disable-next-line no-restricted-syntax -- non-standard tracking (1.2px) */}
         <p className="text-eyebrow font-semibold uppercase tracking-[1.2px] text-muted-foreground">{label}</p>
-        <p
+        <Metric
+          size="lg"
           className={cn(
-            "font-mono text-2xl font-semibold tabular-nums",
             tone === "red" ? "text-[var(--red-600)]" : tone === "amber" ? "text-[var(--amber-600)]" : "text-foreground",
           )}
         >
           {value}
-        </p>
+        </Metric>
         <p className="text-xs text-muted-foreground">{note}</p>
       </CardContent>
     </Card>
