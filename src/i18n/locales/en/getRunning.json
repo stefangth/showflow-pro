@@ -23,7 +23,8 @@
     },
     "datesWithoutCity_one": "1 date has no city yet, so the engine can't offer it.",
     "datesWithoutCity_other": "{{count}} dates have no city yet, so the engine can't offer them.",
-    "datesWithoutCityLink": "Fix on Dates"
+    "datesWithoutCityLink": "Fix on Dates",
+    "datesWithoutCityUnknown": "We could not check which dates still need a city. Reload, or open Dates to see for yourself."
   },
   "nothingToSetUp": {
     "title": "Nothing to set up",
@@ -160,8 +161,8 @@
         "castCreated": "Cast created",
         "castCreateFailed": "Could not create cast",
         "citiesWithDates": "Cities with dates",
-        "unrankedCount_one": "{{count}} unranked",
-        "unrankedCount_other": "{{count}} unranked",
+        "unrankedCount_one": "{{count}} not covered",
+        "unrankedCount_other": "{{count}} not covered",
         "dateCount_one": "{{count}} date",
         "dateCount_other": "{{count}} dates",
         "noTier1": "no first group",
@@ -172,7 +173,7 @@
         "memberCount_other": "{{count}} members",
         "unlocks_one": "Rank {{city}} too and {{count}} date becomes askable in tonight's daily send.",
         "unlocks_other": "Rank {{city}} too and {{count}} dates become askable in tonight's daily send.",
-        "unlocksDone": "Every city with dates has a first group.",
+        "unlocksDone": "Every city with dates has a first group with members.",
         "tierUpdated": "Group {{tier}} set",
         "tierUpdateFailed": "Could not set group {{tier}}",
         "yourCasts": "Your casts",
@@ -184,7 +185,11 @@
         "castRankMulti_other": "Ranked in {{count}} cities",
         "castNotRanked": "Not ranked yet",
         "noCitiesYet": "No city has a future date yet, so there is nothing to rank. Casts you add now will wait here.",
-        "datesNeedCity": "Your upcoming dates have no city set yet, so there is nothing to rank until you add one on the date."
+        "datesNeedCity": "Your upcoming dates have no city set yet, so there is nothing to rank until you add one on the date.",
+        "tier1Empty": "first group has no members",
+        "unlocksStaff_one": "Add members to the first group in {{city}} and {{count}} date becomes askable in tonight's daily send.",
+        "unlocksStaff_other": "Add members to the first group in {{city}} and {{count}} dates become askable in tonight's daily send.",
+        "emptyCastHint": "Casts with no members are greyed out. Add members to one first."
       },
       "eligibility": {
         "gapCount_one": "{{count}} gap",
@@ -198,7 +203,7 @@
         "nullCityNote": "Some dates have no city set. Fix the date to include it.",
         "unlocks_one": "Link a cast to {{show}} and its {{count}} date becomes askable.",
         "unlocks_other": "Link a cast to {{show}} and its {{count}} dates become askable.",
-        "unlocksDone": "Every production and city has a cast in the first group.",
+        "unlocksDone": "Every production and city has a first group with members.",
         "castLinked": "Cast linked",
         "castLinkFailed": "Could not link cast",
         "byProduction": "Coverage by production",
@@ -210,7 +215,9 @@
         "castCountLabel_one": "{{count}} cast",
         "castCountLabel_other": "{{count}} casts",
         "noProductionsYet": "No production has a future date yet, so there is nothing to cover. Casts you add now will wait here.",
-        "datesNeedCity": "Your upcoming dates have no city set yet, so there is nothing to cover until you add one on the date."
+        "datesNeedCity": "Your upcoming dates have no city set yet, so there is nothing to cover until you add one on the date.",
+        "castEmpty": "The cast ranked first in {{cities}} has no members yet.",
+        "emptyCastHint": "Casts with no members are greyed out. Add members to one first."
       }
     }
   },

@@ -144,9 +144,15 @@ export function useGetRunningV3(options?: { active?: boolean }): { model: GetRun
     : datesSource === "airtable" ? isAirtableMapped
     : datesSource === "sheet" ? isSheetMapped
     : false;
-  // Advisory-only: 0 while coverage is unread or the org has no upcoming dates, same as the
-  // booking module's own field (see setupStatus.ts's doc comment on `datesWithoutCity`).
-  const datesCitiesDone = bookingOn ? booking.status.datesWithoutCity === 0 : false;
+  // `datesWithoutCity` is `coverage?.futurePairs.filter(...).length ?? 0`, so a FAILED
+  // coverage read reports 0 exactly like a clean one. Consulting `booking.isError` is what
+  // stops that 0 from turning the `cities` step green (and, through `canFirstOffer`, hiding
+  // the "your first ask is shut" card) on a read nobody can vouch for. The loading gate
+  // above covers `isLoading` only, so this is the branch that catches a failure. Matches
+  // the fail-closed shape its three neighbours (artistCount, dateCount, skillGaps) already
+  // use: unread means outstanding.
+  const datesCitiesUnknown = bookingOn && booking.isError;
+  const datesCitiesDone = bookingOn ? !booking.isError && booking.status.datesWithoutCity === 0 : false;
 
   const input: GetRunningInputV3 = {
     role,
@@ -158,13 +164,21 @@ export function useGetRunningV3(options?: { active?: boolean }): { model: GetRun
     datesConnectDone,
     datesMapDone,
     datesCitiesDone,
+    datesCitiesUnknown,
     hasAnyDates: bookingOn ? booking.status.hasAnyDates : false,
     producerCount,
     // An unreadable gaps query (e.g. an RLS misconfiguration on show_required_skills) must
     // not resolve to 0, which would render the step falsely done. Treat a persistent error
-    // as one outstanding gap so the step stays honestly incomplete; the loading window
-    // still resolves to 0 exactly as before (isError is false while loading).
-    skillGaps: bookingOn ? (skillGaps.isError ? 1 : (skillGaps.data?.length ?? 0)) : 0,
+    // as one outstanding gap so the step stays honestly incomplete.
+    //
+    // `isLoading` counts too, and for the same reason: this query is deliberately OUTSIDE
+    // the board's isLoading gate above, so the board renders while it is still in flight.
+    // Resolving that window to 0 marked the `skills` step done on every mount, and for an
+    // otherwise-finished org flipped `model.complete` true long enough to flash the retired
+    // "Everything here is set up" board before the gaps landed. A DISABLED query (booking
+    // off) reports `isLoading: false` in React Query v5, so the `bookingOn` branch below is
+    // unaffected by this.
+    skillGaps: bookingOn ? (skillGaps.isError || skillGaps.isLoading ? 1 : (skillGaps.data?.length ?? 0)) : 0,
     feeDone: hireOrdersOn ? hireExtra.status.feeDone : false,
     documentDone: hireOrdersOn ? hireExtra.status.documentDone : false,
     canManageShows,

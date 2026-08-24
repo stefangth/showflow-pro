@@ -211,6 +211,90 @@ describe("useGetRunningV3", () => {
       expect(bookable.steps.find((s) => s.key === "skills")!.done).toBe(false);
     });
   });
+
+  /**
+   * `skillGaps` is deliberately outside the board's isLoading gate, so the board renders
+   * while that query is still in flight. Resolving the in-flight window to 0 marked the
+   * `skills` step done on every mount, and for an otherwise-finished org flipped
+   * `model.complete` true long enough to flash the retired "Everything here is set up"
+   * board before the gaps landed.
+   */
+  it("does not report the skills step done while the gaps read is still in flight", async () => {
+    let releaseGaps: (() => void) | null = null;
+    const gapsGate = new Promise<void>((resolve) => {
+      releaseGaps = resolve;
+    });
+    fullySeeded();
+    const realFrom = client.from as (t: string) => unknown;
+    client.from = (table: string) => {
+      const builder = realFrom(table) as PromiseLike<unknown> & Record<string, unknown>;
+      // Hold ONLY the gaps read (show_required_skills) open; every other query settles.
+      if (table !== "show_required_skills") return builder;
+      const then = builder.then.bind(builder) as PromiseLike<unknown>["then"];
+      builder.then = ((onOk: never, onErr: never) =>
+        gapsGate.then(() => then(onOk, onErr))) as PromiseLike<unknown>["then"];
+      return builder;
+    };
+
+    const { result } = renderHookWithProviders(() => useGetRunningV3(), {
+      authOverrides: { currentOrg: TEST_ORG, roles: ["admin"], hasRole: (r) => r === "admin" },
+    });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    const bookable = result.current.model!.phases.find((p) => p.key === "bookable")!;
+    expect(bookable.steps.find((s) => s.key === "skills")!.done).toBe(false);
+    expect(result.current.model!.complete).toBe(false);
+
+    releaseGaps!();
+  });
+
+  /**
+   * `BookingSetupStatus.datesWithoutCity` is `coverage?.futurePairs.filter(...).length ?? 0`,
+   * so a FAILED coverage read reports 0 exactly like a clean one. The hook consulted only
+   * `isLoading`, so an errored read turned the `cities` step GREEN, counted it toward
+   * `canFirstOffer`, and made the "your first ask is shut" card disappear, while the step's
+   * own BODY (which does read `statusError`) showed a read error. Unread means outstanding.
+   */
+  it("does not report the cities step done when the coverage read errors out", async () => {
+    seed({
+      org_entitlements: {
+        data: [
+          { feature: "booking_flow", enabled: true },
+          { feature: "hire_orders", enabled: false },
+        ],
+        error: null,
+      },
+      app_settings: {
+        data: [{ key: "booking_flow", org_id: ORG_ID, value: { active: true } }],
+        error: null,
+      },
+      shows: { data: [], error: null },
+      // The date COUNT read succeeds (the org has dates), so `hasAnyDates` is true and the
+      // only thing left that could hold the step open is the failed coverage read.
+      show_dates: { data: [], error: null, count: 3 },
+      show_cast_eligibility: { data: [], error: null },
+      cast_city_priority: { data: [], error: null },
+      // fetchLadderCoverageInputs reads cast_members last: this is what makes the whole
+      // coverage query reject, leaving datesWithoutCity at its fail-open 0.
+      cast_members: { data: null, error: new Error("permission denied") },
+      artists: { data: null, error: null, count: 3 },
+      org_memberships: { data: null, error: null, count: 2 },
+      skills: { data: [], error: null },
+    });
+
+    const { result } = renderHookWithProviders(() => useGetRunningV3(), {
+      authOverrides: { currentOrg: TEST_ORG, roles: ["admin"], hasRole: (r) => r === "admin" },
+    });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    await waitFor(() => {
+      const getDates = result.current.model!.phases.find((p) => p.key === "get_dates")!;
+      expect(getDates.steps.find((s) => s.key === "cities")!.done).toBe(false);
+    });
+    // And the advisory says it does not know, rather than reporting a reassuring 0.
+    expect(result.current.model!.datesWithoutCityUnknown).toBe(true);
+    expect(result.current.model!.canFirstOffer).toBe(false);
+  });
 });
 
 describe("useGetRunningV3 dates signals (Phase 2)", () => {

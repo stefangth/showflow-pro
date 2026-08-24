@@ -165,6 +165,40 @@ describe("useGetRunning", () => {
     expect(teamTask!.done).toBe(true);
   });
 
+  /**
+   * `datesWithoutCity` is 0 for a failed coverage read exactly as for a clean one, and the
+   * header/retired board render 0 as silence. The v1 board shares both components, so it
+   * has to flag the failure too.
+   */
+  it("flags the null-city advisory unknown when the coverage read fails", async () => {
+    fullySeeded();
+    seed({
+      org_entitlements: {
+        data: [
+          { feature: "booking_flow", enabled: true },
+          { feature: "hire_orders", enabled: false },
+        ],
+        error: null,
+      },
+      app_settings: { data: [{ key: "booking_flow", org_id: ORG_ID, value: { active: true } }], error: null },
+      shows: { data: [], error: null },
+      show_dates: { data: [], error: null },
+      show_cast_eligibility: { data: [], error: null },
+      cast_city_priority: { data: [], error: null },
+      cast_members: { data: null, error: new Error("permission denied") },
+      artists: { data: null, error: null, count: 0 },
+      org_memberships: { data: null, error: null, count: 0 },
+    });
+
+    const { result } = renderHookWithProviders(() => useGetRunning(), {
+      authOverrides: { currentOrg: TEST_ORG, roles: ["admin"], hasRole: (r) => r === "admin" },
+    });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    await waitFor(() => expect(result.current.model!.datesWithoutCityUnknown).toBe(true));
+    expect(result.current.model!.datesWithoutCity).toBe(0);
+  });
+
   it("does not read booking/hire-order setup status for an artist (defensive gate)", async () => {
     const { result } = renderHookWithProviders(() => useGetRunning(), {
       authOverrides: {

@@ -56,8 +56,12 @@ export interface GetRunningModel {
   /** Non-blocking advisory: count of future dates with no city set. Such dates cannot be
    *  offered until a city is added (the engine bails on a city-less date), but this never
    *  gates readiness — the header shows it as a calm "N dates need a city" line. 0 when
-   *  booking is off or coverage is unread. */
+   *  booking is off or coverage is unread, so never read it without the flag below. */
   datesWithoutCity: number;
+  /** The coverage read behind `datesWithoutCity` FAILED, so the count is unknown. Without
+   *  this the header and the retired board render an unreadable count as silence, which an
+   *  admin reads as "no date is missing a city". */
+  datesWithoutCityUnknown: boolean;
 }
 
 export interface GetRunningInput {
@@ -67,6 +71,9 @@ export interface GetRunningInput {
   booking: BookingSetupStatus | null; // null while unread or module off
   hire: HireOrderSetupStatus | null;
   datesDone: boolean; // Airtable connected+synced OR shows exist by hand
+  /** The booking-setup coverage read failed, so `datesWithoutCity` is unknown rather than
+   *  0. Optional (default false) so every existing caller keeps its meaning. */
+  datesCitiesUnknown?: boolean;
   producerCount: number | null; // team step done when > 0
   canManageShows: boolean; // viewer holds manage_productions (create shows: the `dates` task)
   canEditScheduling: boolean; // viewer holds edit_scheduling (write show_slots: the `slots` task)
@@ -240,7 +247,9 @@ export function composeGetRunning(input: GetRunningInput): GetRunningModel {
     complete,
     bookingOn: input.bookingOn,
     hireOrdersOn: input.hireOrdersOn,
-    datesWithoutCity: input.bookingOn ? (input.booking?.datesWithoutCity ?? 0) : 0,
+    // Unknown reports 0 AND flags itself, so no consumer can read the 0 as "none".
+    datesWithoutCity: input.bookingOn && !input.datesCitiesUnknown ? (input.booking?.datesWithoutCity ?? 0) : 0,
+    datesWithoutCityUnknown: input.bookingOn ? input.datesCitiesUnknown === true : false,
   };
 }
 

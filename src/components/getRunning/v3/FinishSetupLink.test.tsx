@@ -55,6 +55,7 @@ function makeModel(steps: GetRunningStep[]): GetRunningModelV3 {
     bookingOn: true,
     hireOrdersOn: false,
     datesWithoutCity: 0,
+    datesWithoutCityUnknown: false,
     nextStep: null,
   };
 }

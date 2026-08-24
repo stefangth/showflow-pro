@@ -24,6 +24,7 @@ const COMPLETE_MODEL: GetRunningModel = {
   bookingOn: true,
   hireOrdersOn: false,
   datesWithoutCity: 0,
+  datesWithoutCityUnknown: false,
 };
 
 function authAs(opts: {

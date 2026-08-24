@@ -15,6 +15,7 @@ function makeModel(overrides: Partial<GetRunningModel> = {}): GetRunningModel {
     bookingOn: true,
     hireOrdersOn: true,
     datesWithoutCity: 0,
+    datesWithoutCityUnknown: false,
     ...overrides,
   };
 }
@@ -87,6 +88,26 @@ describe("GetRunningHeader", () => {
     renderWithProviders(<GetRunningHeader model={makeModel({ datesWithoutCity: 0 })} orgName="Nordstadt Produktionen" />);
     expect(screen.queryByText(/no city yet/i)).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /Fix on Dates/i })).not.toBeInTheDocument();
+  });
+
+  /**
+   * `datesWithoutCity` is 0 for a FAILED coverage read exactly as it is for a clean one, and
+   * this line renders only above 0. So a broken read showed nothing at all, which an admin
+   * reads as "every date has a city". Unread means outstanding.
+   */
+  it("says the count is unknown, rather than nothing, when the read failed", () => {
+    renderWithProviders(
+      <MemoryRouter>
+        <GetRunningHeader
+          model={makeModel({ datesWithoutCity: 0, datesWithoutCityUnknown: true })}
+          orgName="Nordstadt Produktionen"
+        />
+      </MemoryRouter>,
+    );
+    expect(screen.getByText(/could not check which dates still need a city/i)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Fix on Dates/i })).toBeInTheDocument();
+    // And it never states a count it does not have.
+    expect(screen.queryByText(/0 dates have no city/i)).toBeNull();
   });
 
   it("renders the eyebrow with the org name and the footer note", () => {

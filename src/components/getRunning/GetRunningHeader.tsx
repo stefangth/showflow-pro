@@ -84,10 +84,16 @@ export function GetRunningHeader({ model, orgName, role, adminNames }: {
             until a city is set, but that is a per-date data gap, not a setup blocker, so it
             never changes the headline/state above. It reads as a calm line pointing at
             /dates, where the city is actually fixed. */}
-        {model.datesWithoutCity > 0 && (
+        {/* An unreadable count is NOT a count of zero: without this branch a failed coverage
+            read renders as no line at all, which reads as "every date has a city". */}
+        {(model.datesWithoutCityUnknown || model.datesWithoutCity > 0) && (
           <p className="mt-2.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
             <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--amber-600)]" aria-hidden="true" />
-            <span>{t("header.datesWithoutCity", { count: model.datesWithoutCity })}</span>
+            <span>
+              {model.datesWithoutCityUnknown
+                ? t("header.datesWithoutCityUnknown")
+                : t("header.datesWithoutCity", { count: model.datesWithoutCity })}
+            </span>
             <Link to={ROUTES.BOOKINGS} className="font-medium text-accent-600 hover:text-accent-700">
               {t("header.datesWithoutCityLink")}
             </Link>

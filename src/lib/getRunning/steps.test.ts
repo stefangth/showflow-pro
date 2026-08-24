@@ -240,5 +240,22 @@ describe("composeGetRunningV3 get_dates phase (Phase 2)", () => {
     const m = composeGetRunningV3(baseInput({ hasAnyDates: true, datesCitiesDone: true }));
     const dates = m.phases.find((p) => p.key === "get_dates")!;
     expect(dates.steps.find((s) => s.key === "cities")!.done).toBe(true);
+    expect(m.datesWithoutCityUnknown).toBe(false);
+  });
+
+  // Unread means outstanding: a coverage read that failed reports 0 city-less dates exactly
+  // like a clean one, so the composer must be told which of the two it is holding.
+  it("keeps the cities step outstanding, and flags the advisory unknown, when the read failed", () => {
+    const m = composeGetRunningV3(baseInput({ hasAnyDates: true, datesCitiesDone: true, datesCitiesUnknown: true }));
+    const dates = m.phases.find((p) => p.key === "get_dates")!;
+    expect(dates.steps.find((s) => s.key === "cities")!.done).toBe(false);
+    expect(m.datesWithoutCityUnknown).toBe(true);
+    expect(m.datesWithoutCity).toBe(0);
+    expect(m.complete).toBe(false);
+  });
+
+  it("never reports the advisory unknown when booking is off", () => {
+    const m = composeGetRunningV3(baseInput({ bookingOn: false, booking: null, datesCitiesUnknown: true }));
+    expect(m.datesWithoutCityUnknown).toBe(false);
   });
 });

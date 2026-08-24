@@ -434,7 +434,7 @@ describe("firstOfferBlockingCount", () => {
 describe("getRunningState", () => {
   const model = (over: Partial<GetRunningModel>): GetRunningModel => ({
     phases: [], doneCount: 0, totalCount: 1, canFirstOffer: false, complete: false,
-    bookingOn: true, hireOrdersOn: false, datesWithoutCity: 0, ...over,
+    bookingOn: true, hireOrdersOn: false, datesWithoutCity: 0, datesWithoutCityUnknown: false, ...over,
   });
   it("is blocking while the first offer is held up", () => {
     expect(getRunningState(model({ canFirstOffer: false, complete: false }))).toBe("blocking");

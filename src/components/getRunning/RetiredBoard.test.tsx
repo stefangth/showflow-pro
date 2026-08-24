@@ -20,6 +20,7 @@ function makeModel(over: Partial<GetRunningModel> = {}): GetRunningModel {
     bookingOn: true,
     hireOrdersOn: true,
     datesWithoutCity: 0,
+    datesWithoutCityUnknown: false,
     ...over,
   };
 }
@@ -67,5 +68,13 @@ describe("RetiredBoard", () => {
   it("omits the advisory when every date has a city", () => {
     renderBoard({ datesWithoutCity: 0 });
     expect(screen.queryByText(/no city yet/i)).not.toBeInTheDocument();
+  });
+
+  // Same fail-open as the header: an unreadable count rendered as silence, which reads as
+  // "nothing is missing" exactly when setup otherwise says it is done.
+  it("says the count is unknown, rather than nothing, when the read failed", () => {
+    renderBoard({ datesWithoutCity: 0, datesWithoutCityUnknown: true });
+    expect(screen.getByText(/could not check which dates still need a city/i)).toBeInTheDocument();
+    expect(screen.queryByText(/0 dates have no city/i)).toBeNull();
   });
 });

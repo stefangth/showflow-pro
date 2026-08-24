@@ -126,13 +126,13 @@ function boardModel(over: Partial<GetRunningModel> = {}): GetRunningModel {
       ] },
     ],
     doneCount: 0, totalCount: 8, canFirstOffer: false, complete: false,
-    bookingOn: true, hireOrdersOn: false, datesWithoutCity: 0, ...over,
+    bookingOn: true, hireOrdersOn: false, datesWithoutCity: 0, datesWithoutCityUnknown: false, ...over,
   };
 }
 // A nothing-on org (no modules licensed): the board has no tasks, so an admin/producer
 // falls back to the dashboard handoff exactly as a fresh un-provisioned org would.
 function nothingOnModel(): GetRunningModel {
-  return { phases: [], doneCount: 0, totalCount: 0, canFirstOffer: true, complete: true, bookingOn: false, hireOrdersOn: false, datesWithoutCity: 0 };
+  return { phases: [], doneCount: 0, totalCount: 0, canFirstOffer: true, complete: true, bookingOn: false, hireOrdersOn: false, datesWithoutCity: 0, datesWithoutCityUnknown: false };
 }
 const getRunningHolder: { model: GetRunningModel | null; isLoading: boolean } = { model: boardModel(), isLoading: false };
 vi.mock("@/hooks/useGetRunning", () => ({
@@ -1041,7 +1041,7 @@ describe("resolveHandoffPrimary", () => {
 describe("resolveBoardHandoffState", () => {
   const model = (over: Partial<GetRunningModel>): GetRunningModel => ({
     phases: [], doneCount: 0, totalCount: 1, canFirstOffer: false, complete: false,
-    bookingOn: true, hireOrdersOn: false, datesWithoutCity: 0, ...over,
+    bookingOn: true, hireOrdersOn: false, datesWithoutCity: 0, datesWithoutCityUnknown: false, ...over,
   });
   it("is blocking while the first offer is held up", () => {
     expect(resolveBoardHandoffState(model({ canFirstOffer: false, complete: false }))).toBe("blocking");
