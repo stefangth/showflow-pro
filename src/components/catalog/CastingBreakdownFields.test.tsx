@@ -132,6 +132,20 @@ describe("CastingBreakdownFields", () => {
     expect(onChange).not.toHaveBeenCalled();
   });
 
+  it("shows the inline hint next to the chip, not instead of it", () => {
+    renderWithProviders(
+      <CastingBreakdownFields
+        value={[{ id: "r1", name: "Lead", count: 1, kind: "main", skillIds: [] }]}
+        onChange={vi.fn()}
+        skills={[]}
+        onCreateSkill={vi.fn()}
+        canCreateSkill
+      />,
+    );
+    expect(screen.getByText(/create the first one here/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /new skill/i })).toBeInTheDocument();
+  });
+
   it("offers no create affordance without the capability", () => {
     renderWithProviders(
       <CastingBreakdownFields
@@ -142,5 +156,8 @@ describe("CastingBreakdownFields", () => {
       />,
     );
     expect(screen.queryByRole("button", { name: /new skill/i })).toBeNull();
+    // The hint must not point at an affordance this viewer does not have.
+    expect(screen.queryByText(/create the first one here/i)).toBeNull();
+    expect(screen.getByText(/an admin can add them in settings/i)).toBeInTheDocument();
   });
 });

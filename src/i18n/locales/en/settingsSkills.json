@@ -59,6 +59,7 @@
     "deleted": "Skill deleted",
     "deleteFailed": "Failed to delete skill",
     "collisionArchived": "A skill named \"{{name}}\" is archived. Use Restore to bring it back.",
-    "collisionExists": "A skill named \"{{name}}\" already exists."
+    "collisionExists": "A skill named \"{{name}}\" already exists.",
+    "collisionMaybeArchived": "A skill named \"{{name}}\" already exists. It may be archived: check Settings > Skills."
   }
 }

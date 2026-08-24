@@ -16,11 +16,13 @@ function isNameTaken(e: unknown): boolean {
  * keep the selection clean), so without this the producer would get a form that just sits
  * there.
  *
- * `activeSkills` is the picker's own catalog, which excludes archived skills. That split is
- * what lets one handler tell the two collisions apart: a name already in that list is a
- * plain duplicate, while a name that passes the check and is then rejected by the org_id +
- * name unique index must belong to an ARCHIVED skill, which Settings > Skills restores.
- * Copy is reused from `settingsSkills`, where the same two cases are already worded.
+ * `activeSkills` is the picker's own catalog, which excludes archived skills, so a name
+ * already in that list is a plain duplicate and is caught with no round trip. A name that
+ * passes that check and is then rejected by the org_id + name unique index is USUALLY an
+ * archived skill, but not always: the index is case-sensitive while the pre-check is not,
+ * and a stale cache, a concurrent create, or a row RLS did not return produce the same
+ * rejection. So that branch says the name is taken and offers Settings > Skills as the
+ * place to look, rather than promising a Restore that may not be there.
  */
 export function useInlineSkillCreate(activeSkills: { id: string; name: string }[]) {
   const { t } = useTranslation("settingsSkills");
@@ -34,7 +36,7 @@ export function useInlineSkillCreate(activeSkills: { id: string; name: string }[
     try {
       return await createSkill.mutateAsync(name);
     } catch (e) {
-      toast.error(isNameTaken(e) ? t("toast.collisionArchived", { name }) : toErrorMessage(e, t("toast.addFailed")));
+      toast.error(isNameTaken(e) ? t("toast.collisionMaybeArchived", { name }) : toErrorMessage(e, t("toast.addFailed")));
       throw e;
     }
   };

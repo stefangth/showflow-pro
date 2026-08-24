@@ -27,7 +27,7 @@ export function SkillPicker({ skills, selectedIds, onToggle, disabled = false, e
   // a half-typed skill name.
   const showCreate = canCreate && !!onCreate;
 
-  // No catalog and no way to add to it: the old dead-end hint is still the honest answer.
+  // No catalog and no way to add to it: the hint IS the whole answer.
   if (skills.length === 0 && !showCreate) {
     return emptyHint ? <p className="text-xs text-muted-foreground">{emptyHint}</p> : null;
   }
@@ -35,6 +35,12 @@ export function SkillPicker({ skills, selectedIds, onToggle, disabled = false, e
   const selected = new Set(selectedIds);
   return (
     <div className="flex flex-wrap items-center gap-1.5">
+      {/* An empty catalog still needs a word of explanation next to the create chip.
+          Callers pass copy that matches the state they put the picker in: a hint that
+          points at inline creation must only be handed over when the chip is there. */}
+      {skills.length === 0 && emptyHint && (
+        <p className="text-xs text-muted-foreground">{emptyHint}</p>
+      )}
       {skills.map((s) => {
         const on = selected.has(s.id);
         return (

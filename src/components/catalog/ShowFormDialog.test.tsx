@@ -199,7 +199,7 @@ describe("ShowFormDialog", () => {
     expect(createSkill).not.toHaveBeenCalled();
   });
 
-  it("names the archived clash when the insert is rejected by the unique index", async () => {
+  it("points at Settings when the insert is rejected by the unique index", async () => {
     Object.assign(client, createFakeSupabase({ skills: { data: [], error: null } }));
     createSkill.mockRejectedValueOnce({ code: "23505", message: "duplicate key value violates unique constraint" });
     renderWithProviders(<ShowFormDialog open onOpenChange={() => {}} allShows={[]} />);
@@ -209,7 +209,7 @@ describe("ShowFormDialog", () => {
     fireEvent.change(within(slot1).getByLabelText(/skill name/i), { target: { value: "Tap" } });
     fireEvent.click(within(slot1).getByRole("button", { name: /add skill/i }));
 
-    await waitFor(() => expect(toast.error).toHaveBeenCalledWith(expect.stringMatching(/archived/i)));
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith(expect.stringMatching(/may be archived/i)));
   });
 
   it("manage_skills off: no inline create affordance", async () => {

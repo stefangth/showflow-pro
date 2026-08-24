@@ -152,7 +152,7 @@ export function CastingBreakdownFields({
               selectedIds={row.skillIds}
               onToggle={(id) => toggleRowSkill(i, id)}
               disabled={disabled}
-              emptyHint={t("form.skillsEmptyHint")}
+              emptyHint={canCreateSkill && onCreateSkill ? t("form.skillsEmptyHint") : t("form.skillsEmptyHintLocked")}
               onCreate={onCreateSkill}
               canCreate={canCreateSkill}
             />

@@ -132,12 +132,28 @@ describe("SkillPicker", () => {
     expect(outerSubmit).not.toHaveBeenCalled();
   });
 
+  // Driven through Enter, NOT the confirm button: the button carries its own disabled
+  // attribute, so clicking it would pass even if the guard inside submit() were deleted.
+  // Enter reaches submit() unshielded, so this pins the guard itself.
   it("ignores a submit with a whitespace only name", () => {
     const onCreate = vi.fn();
     render(<SkillPicker skills={[]} selectedIds={[]} onToggle={vi.fn()} onCreate={onCreate} canCreate />);
     fireEvent.click(screen.getByRole("button", { name: /new skill/i }));
     fireEvent.change(screen.getByRole("textbox"), { target: { value: "   " } });
-    fireEvent.click(screen.getByRole("button", { name: /add skill/i }));
+    fireEvent.keyDown(screen.getByRole("textbox"), { key: "Enter" });
+    expect(onCreate).not.toHaveBeenCalled();
+  });
+
+  // `readOnly` keeps the draft on screen but still lets Enter reach submit(), so the
+  // disabled fence, not the input, is what has to stop it.
+  it("ignores Enter while selection is disabled", () => {
+    const onCreate = vi.fn();
+    const props = { skills: [], selectedIds: [], onToggle: vi.fn(), onCreate, canCreate: true };
+    const { rerender } = render(<SkillPicker {...props} />);
+    fireEvent.click(screen.getByRole("button", { name: /new skill/i }));
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "Piano" } });
+    rerender(<SkillPicker {...props} disabled />);
+    fireEvent.keyDown(screen.getByRole("textbox"), { key: "Enter" });
     expect(onCreate).not.toHaveBeenCalled();
   });
 
@@ -146,9 +162,11 @@ describe("SkillPicker", () => {
     render(<SkillPicker skills={[]} selectedIds={[]} onToggle={vi.fn()} onCreate={onCreate} canCreate />);
     fireEvent.click(screen.getByRole("button", { name: /new skill/i }));
     fireEvent.change(screen.getByRole("textbox"), { target: { value: "Lead Vocals" } });
-    const confirm = screen.getByRole("button", { name: /add skill/i });
-    fireEvent.click(confirm);
-    fireEvent.click(confirm);
+    // Enter twice, not two clicks: the confirm button disables itself while pending, so
+    // clicking could never reach the `pending` guard this test exists to protect.
+    const input = screen.getByRole("textbox");
+    fireEvent.keyDown(input, { key: "Enter" });
+    fireEvent.keyDown(input, { key: "Enter" });
     expect(onCreate).toHaveBeenCalledTimes(1);
   });
 

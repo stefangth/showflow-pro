@@ -67,6 +67,7 @@
     "removeSlot": "Remove {{name}}",
     "slotFallback": "part",
     "skillsEmptyHint": "No skills yet. Create the first one here.",
+    "skillsEmptyHintLocked": "No skills yet. An admin can add them in Settings.",
     "addSlot": "Add part",
     "saving": "Saving…",
     "save": "Save",
