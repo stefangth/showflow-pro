@@ -1000,7 +1000,9 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager, ini
                   chatUnread={0}
                   chatPreview={null}
                   onOpenChat={() => setActiveTab('chat')}
-                  showEditSetup={canManage}
+                  // The rail persists across tabs, so hide its jump-to-Setup CTA once
+                  // Setup is active: it would point where the user already is.
+                  showEditSetup={canManage && activeTab !== 'setup'}
                   onEditSetup={() => setActiveTab('setup')}
                 />
               }
