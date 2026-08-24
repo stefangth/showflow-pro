@@ -168,7 +168,7 @@ describe("design-system radius scale", () => {
 npx vitest run scripts/tailwindRadius.test.ts
 ```
 
-Expected: FAIL. The first test reports `["s", "l"]` instead of `[]`. The second and third fail because `chip`, `field`, `control`, `card`, `hero`, `icon` do not exist yet. If the first test passes, stop: the config has already been changed and this plan's premise needs rechecking.
+Expected: FAIL. The first test reports `["s", "l"]` instead of `[]`. The second and third fail because `chip`, `field`, `control`, `card`, `icon` do not exist yet. If the first test passes, stop: the config has already been changed and this plan's premise needs rechecking.
 
 - [ ] **Step 3: Commit the failing test**
 
@@ -186,7 +186,7 @@ git commit -m "add failing guard test for radius key collisions"
 
 **Interfaces:**
 - Consumes: the failing test from Task 1.
-- Produces: the utilities `rounded-chip`, `rounded-field`, `rounded-control`, `rounded-card`, `rounded-hero`, `rounded-icon`, `rounded-pill`. Every later task uses these names.
+- Produces: the utilities `rounded-chip`, `rounded-field`, `rounded-control`, `rounded-card`, `rounded-icon`, `rounded-pill`. Every later task uses these names.
 
 - [ ] **Step 1: Replace the borderRadius block**
 
@@ -491,12 +491,12 @@ Replace the rule whose selector is `"Literal[value=/\\brounded-\\[[0-9]+px\\]/]"
       {
         selector: "Literal[value=/\\brounded-\\[[0-9.]+(px|rem)\\]/]",
         message:
-          "Bracket radius. Use rounded-chip|field|control|card|hero|icon|pill. See section 2.",
+          "Bracket radius. Use rounded-chip|field|control|card|icon|pill. See section 2.",
       },
       {
         selector: "Literal[value=/\\brounded-\\[var\\(--radius-/]",
         message:
-          "Radius token written by hand. Every step has a utility now: rounded-chip|field|control|card|hero|icon|pill. See section 2.",
+          "Radius token written by hand. Every step has a utility now: rounded-chip|field|control|card|icon|pill. See section 2.",
       },
 ```
 
@@ -514,7 +514,7 @@ The rule matching `rounded-(sm|md|lg)` still names the old letters. Replace its 
 
 ```js
         message:
-          "Retired shadcn radius alias. Use the design-system scale: chip (4), field (6), control (8), card (10), hero (14). See section 2.",
+          "Retired shadcn radius alias. Use the design-system scale: chip (4), field (6), control (8), card (10). See section 2.",
 ```
 
 - [ ] **Step 4: Confirm lint is clean**
@@ -668,6 +668,6 @@ Write the PR body to a file and use `--body-file`. Do not use a heredoc: apostro
 
 **Placeholder scan.** No TBDs. Every code step carries the literal text to write. Task 6 Step 4 offers the reviewer a choice between two concrete remedies rather than leaving it open, because the right answer depends on whether the follow-up sweep lands soon.
 
-**Type consistency.** The seven key names `chip field control card hero icon pill` are identical in the Task 1 test, the Task 2 config, the Task 3 and 4 migrations, the Task 5 docs, the Task 6 lint messages, and the Task 7 probes. The CSS variable names are unchanged throughout, which is what keeps Task 3 a pure utility-layer rename.
+**Type consistency.** The six key names `chip field control card icon pill` are identical in the Task 1 test, the Task 2 config, the Task 3 and 4 migrations, the Task 5 docs, the Task 6 lint messages, and the Task 7 probes. The CSS variable names are unchanged throughout, which is what keeps Task 3 a pure utility-layer rename.
 
 **Known risk.** Task 3 rewrites 287 strings with a regex. The lookahead is the only thing protecting `rounded-lg`, `rounded-sm`, `rounded-md`, `rounded-l-md` and `rounded-r-md`. Task 3 Step 3 verifies all five survive before the commit, and Task 7 Step 3 catches anything the grep missed by inspecting the emitted CSS.

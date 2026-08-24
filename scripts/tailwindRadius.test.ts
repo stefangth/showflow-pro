@@ -31,6 +31,25 @@ describe("design-system radius scale", () => {
     expect(collisions).toEqual([]);
   });
 
+  it("uses no dash-segmented key whose first segment collides", () => {
+    // A key like `t-lg` still emits `rounded-t-lg`, colliding with
+    // Tailwind's own `rounded-t-lg` side utility, even though the whole
+    // key `t-lg` is not itself a reserved suffix. Split on the first dash
+    // and check the leading segment too.
+    const collisions = Object.keys(radii).filter((key) =>
+      RESERVED_RADIUS_SUFFIXES.has(key.split("-")[0]),
+    );
+    expect(collisions).toEqual([]);
+  });
+
+  it("catches a dashed key such as `t-lg` that a plain set-membership check would miss", () => {
+    const probeRadii: Record<string, string> = { ...radii, "t-lg": "1px" };
+    const collisions = Object.keys(probeRadii).filter((key) =>
+      RESERVED_RADIUS_SUFFIXES.has(key.split("-")[0]),
+    );
+    expect(collisions).toEqual(["t-lg"]);
+  });
+
   it("exposes the full semantic scale", () => {
     for (const key of ["chip", "field", "control", "card", "icon", "pill"]) {
       expect(Object.keys(radii)).toContain(key);

@@ -24,7 +24,7 @@ site. Never the other way round.
 
 **[ci]** No raw hex, no `rgba()`, no bracket sizes in a feature component. Tokens only.
 Outside `src/components/ui` the lint fails on `#rrggbb`, `text-[Npx]`, `rounded-[Npx]`
-and bracket alpha.
+or `rounded-[Nrem]`, `rounded-[var(--radius-…)]`, and bracket alpha.
 
 **[review]** Radii use the design-system scale, which is named in words, not letters:
 `chip` (4) `field` (6) `control` (8) `card` (10) `icon` (20) `pill` (999).

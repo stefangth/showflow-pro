@@ -251,13 +251,13 @@ export function LadderPanelBody({
       </div>
 
       {cityIds.length === 0 ? (
-        <p className="rounded-card border border-border bg-accent-tint px-3 py-2.5 text-xs leading-[17px] text-muted-foreground">
+        <p className="rounded-control border border-border bg-accent-tint px-3 py-2.5 text-xs leading-[17px] text-muted-foreground">
           {/* "No future dates at all" vs "dates exist but all lack a city": with a
               null-city-only backlog, futurePairs is non-empty but cityIds is []. */}
           {t(futurePairs.length > 0 ? "panel.body.ladder.datesNeedCity" : "panel.body.ladder.noCitiesYet")}
         </p>
       ) : (
-      <div className="divide-y divide-border rounded-card border border-border">
+      <div className="divide-y divide-border rounded-control border border-border">
         {cityIds.map((cityId) => {
           const tiers = tiersByCity.get(cityId) ?? [];
           const tier1 = tiers.find((r) => r.priority === 1);
