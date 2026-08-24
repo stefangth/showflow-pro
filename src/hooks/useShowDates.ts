@@ -11,6 +11,12 @@ function useDateInvalidation(alsoBookings: boolean) {
   const qc = useQueryClient();
   return () => {
     qc.invalidateQueries({ queryKey: ["show-dates"] });
+    // A date's city and production are read by the eligibility domain too: the get-running
+    // board's `cities` step reads `datesWithoutCity` off `["eligibility", "ladder-coverage",
+    // ...]`, and coverage itself is per (show, city). Without this, clearing the last
+    // city-less date emptied the list and enabled Continue while the board's own dot stayed
+    // red on a cache nothing had busted.
+    qc.invalidateQueries({ queryKey: ["eligibility"] });
     if (alsoBookings) qc.invalidateQueries({ queryKey: ["bookings"] });
   };
 }

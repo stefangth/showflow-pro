@@ -46,7 +46,9 @@ export function PartsEditorSheet({
 }: PartsEditorSheetProps): JSX.Element {
   const { t } = useTranslation("getRunningV3");
   const queryClient = useQueryClient();
-  const { data: orgSkills } = useSkills();
+  // Same fail-closed read as ShowFormDialog: an errored catalog must not render as an empty
+  // one, or every picker invites a duplicate of a skill the org already has.
+  const { data: orgSkills, isError: skillsUnreadable } = useSkills();
   // A missing skill must be nameable here, where the breakdown is written. Creation is
   // `manage_skills`, separate from the save-pending flag that gates editing.
   const canManageSkills = useCan("manage_skills");
@@ -80,6 +82,10 @@ export function PartsEditorSheet({
       queryClient.invalidateQueries({ queryKey: ["shows"] });
       queryClient.invalidateQueries({ queryKey: ["show-dates"] });
       queryClient.invalidateQueries({ queryKey: ["eligibility"] });
+      // Same reason as ShowFormDialog's list: a slot row's required skills feed
+      // `["skills", "gaps", ...]`, so requiring a skill here must refresh the gap read the
+      // board's `skills` step and the assign panel both render from.
+      queryClient.invalidateQueries({ queryKey: ["skills"] });
       queryClient.invalidateQueries({ queryKey: ["eligible-artists"] });
       queryClient.invalidateQueries({ queryKey: ["artist-eligible-dates"] });
       queryClient.invalidateQueries({ queryKey: ["offer-tiers"] });
@@ -106,6 +112,7 @@ export function PartsEditorSheet({
           disabled={saveMutation.isPending}
           onCreateSkill={createSkillInline}
           canCreateSkill={canManageSkills}
+          skillsUnreadable={skillsUnreadable}
         />
 
         <SheetFooter>

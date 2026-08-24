@@ -92,4 +92,49 @@ describe("PartsEditorSheet", () => {
     expect(await screen.findByRole("button", { name: "Singing" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /new skill/i })).toBeInTheDocument();
   });
+
+  /**
+   * A slot row carries the skills its part REQUIRES, which is one half of the
+   * `["skills", "gaps", ...]` read the board's `skills` step and the assign panel both
+   * render from. Saving here without busting the skills domain left the step green and the
+   * gap callout empty on a gap this very save had created.
+   */
+  it("invalidates the skills domain on save, so a newly required skill shows as a gap", async () => {
+    const { queryClient } = renderSheet();
+    const invalidate = vi.spyOn(queryClient, "invalidateQueries");
+
+    await waitFor(() => expect(screen.getByDisplayValue("Lead")).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: /save/i }));
+
+    await waitFor(() => {
+      const keys = invalidate.mock.calls.map((c) => JSON.stringify((c[0] as { queryKey: unknown }).queryKey));
+      expect(keys).toContain(JSON.stringify(["skills"]));
+    });
+  });
+
+  /**
+   * An unread catalog arrives as `[]` exactly like an empty one, so every picker fell to
+   * SkillPicker's empty branch and printed "No skills yet. Create the first one here." to an
+   * org whose catalog is full, inviting duplicates with only the 23505 constraint behind it.
+   */
+  it("says the skill catalog could not be read instead of inviting a duplicate", async () => {
+    Object.assign(
+      client,
+      createFakeSupabase({
+        show_slots: {
+          data: [{ id: "slot-1", name: "Lead", slot_count: 1, kind: "main", sort_order: 0 }],
+          error: null,
+        },
+        show_slot_required_skills: { data: [], error: null },
+        skills: { data: null, error: new Error("permission denied") },
+      }),
+    );
+    renderSheet();
+
+    expect(await screen.findByText(/could not load your skills/i)).toBeInTheDocument();
+    expect(screen.queryByText(/create the first one here/i)).toBeNull();
+    // And creation is withheld: a "New skill" affordance over an unread catalog is exactly
+    // how a duplicate gets made.
+    expect(screen.queryByRole("button", { name: /new skill/i })).toBeNull();
+  });
 });

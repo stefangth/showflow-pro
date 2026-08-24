@@ -38,6 +38,12 @@ export interface CastingBreakdownFieldsProps {
    *  `disabled`: you can be allowed to edit the breakdown without being allowed to grow the
    *  org's skill catalog. */
   canCreateSkill?: boolean;
+  /** The org skill catalog could NOT be read, as opposed to being empty. Both arrive here as
+   *  `skills: []`, and treating them the same made every picker print "No skills yet. Create
+   *  the first one here." to an org whose catalog is full, inviting duplicates of skills that
+   *  already exist with only the 23505 unique constraint left to catch them. When true the
+   *  pickers say the read failed and creation is withheld. */
+  skillsUnreadable?: boolean;
 }
 
 /**
@@ -48,6 +54,7 @@ export interface CastingBreakdownFieldsProps {
  */
 export function CastingBreakdownFields({
   value, onChange, skills, disabled = false, onCreateSkill, canCreateSkill = false,
+  skillsUnreadable = false,
 }: CastingBreakdownFieldsProps) {
   const { t } = useTranslation("productions");
 
@@ -88,6 +95,9 @@ export function CastingBreakdownFields({
       <p className="text-xs text-muted-foreground">
         {t("form.slotsHelp")}
       </p>
+      {skillsUnreadable && (
+        <p className="text-xs text-destructive">{t("form.skillsLoadFailed")}</p>
+      )}
 
       <div className="space-y-2">
         {value.map((row, i) => (
@@ -152,9 +162,15 @@ export function CastingBreakdownFields({
               selectedIds={row.skillIds}
               onToggle={(id) => toggleRowSkill(i, id)}
               disabled={disabled}
-              emptyHint={canCreateSkill && onCreateSkill ? t("form.skillsEmptyHint") : t("form.skillsEmptyHintLocked")}
-              onCreate={onCreateSkill}
-              canCreate={canCreateSkill}
+              emptyHint={
+                skillsUnreadable
+                  ? t("form.skillsLoadFailed")
+                  : canCreateSkill && onCreateSkill
+                    ? t("form.skillsEmptyHint")
+                    : t("form.skillsEmptyHintLocked")
+              }
+              onCreate={skillsUnreadable ? undefined : onCreateSkill}
+              canCreate={canCreateSkill && !skillsUnreadable}
             />
           </div>
         ))}

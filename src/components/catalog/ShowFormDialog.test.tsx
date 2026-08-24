@@ -244,4 +244,40 @@ describe("ShowFormDialog", () => {
     expect(screen.getByRole("button", { name: /add part/i })).toBeDisabled();
     expect(screen.getByLabelText(/^program/i)).not.toBeDisabled();
   });
+
+  /**
+   * A slot row carries the skills its part REQUIRES, one half of the `["skills", "gaps", ...]`
+   * read behind the get-running board's `skills` step. This save busted seven domains and
+   * never that one, so marking a skill required left the step green and the gap callout empty.
+   */
+  it("invalidates the skills domain after saving slots", async () => {
+    Object.assign(client, createFakeSupabase(TWO_SKILLS));
+    const { queryClient } = renderWithProviders(
+      <ShowFormDialog open onOpenChange={() => {}} allShows={[]} />,
+    );
+    const invalidate = vi.spyOn(queryClient, "invalidateQueries");
+
+    fireEvent.change(screen.getByLabelText(/^program/i), { target: { value: "Hamlet" } });
+    fireEvent.click(screen.getByRole("button", { name: /create/i }));
+
+    await waitFor(() => expect(saveShowSlots).toHaveBeenCalled());
+    await waitFor(() => {
+      const keys = invalidate.mock.calls.map((c) => JSON.stringify((c[0] as { queryKey: unknown }).queryKey));
+      expect(keys).toContain(JSON.stringify(["skills"]));
+    });
+  });
+
+  /**
+   * An unread catalog arrives as `[]` exactly like an empty one, so the breakdown's pickers
+   * printed "No skills yet. Create the first one here." to an org whose catalog is full.
+   */
+  it("says the skill catalog could not be read instead of inviting a duplicate", async () => {
+    Object.assign(client, createFakeSupabase({ skills: { data: null, error: new Error("permission denied") } }));
+    renderWithProviders(<ShowFormDialog open onOpenChange={() => {}} allShows={[]} />);
+
+    expect(await screen.findByText(/could not load your skills/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /add part/i }));
+    expect(screen.queryByText(/create the first one here/i)).toBeNull();
+    expect(screen.queryByRole("button", { name: /new skill/i })).toBeNull();
+  });
 });

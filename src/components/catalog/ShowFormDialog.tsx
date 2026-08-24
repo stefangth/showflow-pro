@@ -62,7 +62,9 @@ export function ShowFormDialog({
   // slot-count fields.
   const slotsDisabled = !canEditScheduling || pending;
 
-  const { data: orgSkills } = useSkills();
+  // `isError` matters as much as the data: an unread catalog also arrives as `[]`, and the
+  // breakdown's pickers would then invite the producer to create skills that already exist.
+  const { data: orgSkills, isError: skillsUnreadable } = useSkills();
   // Growing the skill catalog is `manage_skills`, not the `edit_scheduling` behind
   // `slotsDisabled`: a producer may be allowed to write the breakdown without being
   // allowed to invent skills.
@@ -129,6 +131,11 @@ export function ShowFormDialog({
       queryClient.invalidateQueries({ queryKey: ["shows"] });
       queryClient.invalidateQueries({ queryKey: ["show-dates"] });
       queryClient.invalidateQueries({ queryKey: ["eligibility"] });
+      // A slot row carries the skills the part REQUIRES, which is one half of the
+      // `["skills", "gaps", ...]` read (the other being who holds them). Marking a skill
+      // required here without busting the skills domain left the get-running board's
+      // `skills` step green and its gap callout empty on a gap this save had just created.
+      queryClient.invalidateQueries({ queryKey: ["skills"] });
       queryClient.invalidateQueries({ queryKey: ["eligible-artists"] });
       queryClient.invalidateQueries({ queryKey: ["artist-eligible-dates"] });
       queryClient.invalidateQueries({ queryKey: ["offer-tiers"] });
@@ -212,6 +219,7 @@ export function ShowFormDialog({
             disabled={slotsDisabled}
             onCreateSkill={createSkillInline}
             canCreateSkill={canManageSkills}
+            skillsUnreadable={skillsUnreadable}
           />
 
           {/* Cities are an org-wide catalog, not a property of this production; the

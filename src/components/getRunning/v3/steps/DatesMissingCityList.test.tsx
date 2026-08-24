@@ -83,6 +83,26 @@ describe("DatesMissingCityList", () => {
     expect(screen.getByRole("combobox")).toBeDisabled();
   });
 
+  /**
+   * The board's `cities` step reads `datesWithoutCity` off the `["eligibility", ...]`
+   * coverage query, not off `["show-dates", ...]`. `useUpdateShowDate` busted only the
+   * latter, so clearing the last row here emptied this list and enabled Continue while the
+   * board's own dot stayed red on a cache nothing had invalidated.
+   */
+  it("invalidates the eligibility domain after a city is set, so the board agrees", async () => {
+    const { queryClient } = renderList();
+    const invalidate = vi.spyOn(queryClient, "invalidateQueries");
+
+    await screen.findByText("Hamlet");
+    fireEvent.click(screen.getByRole("combobox"));
+    fireEvent.click(await screen.findByRole("option", { name: "Munich" }));
+
+    await waitFor(() => {
+      const keys = invalidate.mock.calls.map((c) => JSON.stringify((c[0] as { queryKey: unknown }).queryKey));
+      expect(keys).toContain(JSON.stringify(["eligibility"]));
+    });
+  });
+
   it("links out to Settings for a city that does not exist yet", async () => {
     renderList();
 
