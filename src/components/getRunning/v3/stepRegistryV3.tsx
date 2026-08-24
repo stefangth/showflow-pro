@@ -62,7 +62,13 @@ export function StepBodyV3({
   onDone: () => void;
 }): JSX.Element {
   const bookingOrgId = BOOKING_DOMAIN_STEP_KEYS.has(step.key) ? orgId : null;
-  const { coverage, artistCount, status, isLoading: bookingLoading } = useBookingSetupStatus(bookingOrgId);
+  const {
+    coverage,
+    artistCount,
+    status,
+    isLoading: bookingLoading,
+    isError: bookingError,
+  } = useBookingSetupStatus(bookingOrgId);
 
   if (step.placeholder) {
     return <StepComingSoon step={step} />;
@@ -97,9 +103,19 @@ export function StepBodyV3({
     case "map":
       return <MapStep orgId={orgId} onDone={onDone} />;
     case "cities":
-      // `null` while the booking-setup read is in flight, so the step renders a skeleton
-      // rather than flashing "No dates yet" at an org that has hundreds.
-      return <CitiesStep orgId={orgId} onDone={onDone} hasAnyDates={bookingLoading ? null : status.hasAnyDates} />;
+      // `null` whenever the booking-setup read is unresolved, in flight OR failed:
+      // `computeBookingSetupStatus` reports `hasAnyDates: false` for a failed
+      // `fetchShowDateCount` (`dateCount.data ?? null`), which would render "No dates yet" to
+      // an org with hundreds. `statusError` splits the two so the step can show a skeleton
+      // for one and an error for the other instead of a skeleton that never resolves.
+      return (
+        <CitiesStep
+          orgId={orgId}
+          onDone={onDone}
+          hasAnyDates={bookingLoading || bookingError ? null : status.hasAnyDates}
+          statusError={bookingError}
+        />
+      );
     case "productions":
       return <ProductionsStep orgId={orgId} onDone={onDone} />;
     // skills/fee/document are real steps now (placeholder:false in steps.ts), so they reach

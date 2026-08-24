@@ -147,6 +147,12 @@ let dateCount = 1;
 function seedDateCount(n: number) {
   dateCount = n;
 }
+/** The booking-status read having FAILED (as opposed to still loading), which reaches the
+ *  step as `hasAnyDates = null` + `statusError = true`. */
+let statusError = false;
+function seedStatusError(failed: boolean) {
+  statusError = failed;
+}
 
 type MissingCityRow = { id: string; date: string; venue?: string | null; program?: string };
 function seedDatesWithoutCity(rows: MissingCityRow[]) {
@@ -163,7 +169,12 @@ function seedDatesWithoutCity(rows: MissingCityRow[]) {
 function renderStep(onDone = vi.fn()) {
   const result = renderWithProviders(
     <MemoryRouter>
-      <CitiesStep orgId="org-1" onDone={onDone} hasAnyDates={dateCount > 0} />
+      <CitiesStep
+        orgId="org-1"
+        onDone={onDone}
+        hasAnyDates={statusError ? null : dateCount > 0}
+        statusError={statusError}
+      />
     </MemoryRouter>,
     { authOverrides: { currentOrg: TEST_ORG } },
   );
@@ -178,6 +189,7 @@ describe("CitiesStep", () => {
     seedSheetImport();
     mock(fetchCitiesForLinking).mockResolvedValue([]);
     seedDateCount(1);
+    seedStatusError(false);
     seedDatesWithoutCity([]);
   });
 
@@ -211,6 +223,42 @@ describe("CitiesStep", () => {
       const [, id, patch] = mock(updateShowDate).mock.calls[0];
       expect(id).toBe("d1");
       expect(patch).toEqual({ city_id: "c1" });
+    });
+
+    // Both reads fail CLOSED. A failed missing-city read reports 0 unresolved dates and a
+    // failed date-count read reports "no dates", so believing either restores the dead end
+    // this step exists to close: Continue enabled over a block that is still standing.
+    it("shows an error (not the resolved note) and keeps Continue disabled when the dates read fails", async () => {
+      mock(fetchUpcomingDatesWithoutCity).mockRejectedValue(new Error("boom"));
+      renderStep();
+
+      expect(await screen.findByText(/could not check which dates/i)).toBeInTheDocument();
+      expect(screen.queryByText(/no cities to resolve yet/i)).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /continue/i })).toBeDisabled();
+    });
+
+    it("shows an error (not a no-dates state) and keeps Continue disabled when the date-count read fails", async () => {
+      seedStatusError(true);
+      renderStep();
+
+      expect(await screen.findByText(/could not check which dates/i)).toBeInTheDocument();
+      expect(screen.queryByText(/no dates yet/i)).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /continue/i })).toBeDisabled();
+    });
+
+    // An Airtable org reaches "dates with no city" routinely (airtable-poll only HOLDS a
+    // record when the city field is mapped, non-empty and unlinkable), and resolving those
+    // rows needs catalog cities to exist. Hiding the catalog would strand the org, since
+    // Continue requires both the rows resolved AND every imported cityRow linked.
+    it("renders the imported-city catalog beneath the row list, not instead of it", async () => {
+      seedSettings();
+      seedDatesWithoutCity([{ id: "d1", date: "2026-09-04", venue: "Stadthalle" }]);
+      renderStep();
+
+      expect(await screen.findByText(/stadthalle/i)).toBeInTheDocument();
+      expect(screen.getByText("Berlin")).toBeInTheDocument();
+      expect(screen.getByText("Munich")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /continue/i })).toBeDisabled();
     });
 
     it("shows a no-dates state, not a resolved state, when the org has no dates", async () => {

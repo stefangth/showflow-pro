@@ -396,6 +396,7 @@
       "missingHeading": "Dates without a city",
       "missingSub": "Pick a city for every date. A date with no city cannot be filled.",
       "missingUnknownProduction": "Untitled production",
+      "readError": "We could not check which dates still need a city. Reload the page and try again.",
       "assignCity": "Assign a city",
       "sheet": {
         "heading": "Import your dates",
