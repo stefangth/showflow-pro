@@ -171,6 +171,46 @@ describe("useGetRunningV3", () => {
     expect(paper.steps.find((s) => s.key === "fee")!.done).toBe(true);
     expect(paper.steps.find((s) => s.key === "document")!.done).toBe(false);
   });
+
+  it("does not report the skills step done when the gaps read errors out", async () => {
+    // An unreadable show_required_skills read (e.g. an RLS misconfiguration) must not be
+    // mistaken for "no gaps": skillGaps.data stays undefined forever, so a naive
+    // `data?.length ?? 0` would falsely report the step done. Fail closed instead.
+    seed({
+      org_entitlements: {
+        data: [
+          { feature: "booking_flow", enabled: true },
+          { feature: "hire_orders", enabled: true },
+        ],
+        error: null,
+      },
+      app_settings: {
+        data: [{ key: "booking_flow", org_id: ORG_ID, value: { active: true } }],
+        error: null,
+      },
+      shows: { data: [], error: null },
+      show_dates: { data: [], error: null },
+      show_cast_eligibility: { data: [], error: null },
+      cast_city_priority: { data: [], error: null },
+      artists: { data: null, error: null, count: 0 },
+      org_memberships: { data: null, error: null, count: 2 },
+      show_required_skills: { data: null, error: new Error("permission denied") },
+    });
+
+    const { result } = renderHookWithProviders(() => useGetRunningV3(), {
+      authOverrides: {
+        currentOrg: TEST_ORG,
+        roles: ["admin"],
+        hasRole: (r) => r === "admin",
+      },
+    });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    await waitFor(() => {
+      const bookable = result.current.model!.phases.find((p) => p.key === "bookable")!;
+      expect(bookable.steps.find((s) => s.key === "skills")!.done).toBe(false);
+    });
+  });
 });
 
 describe("useGetRunningV3 dates signals (Phase 2)", () => {
