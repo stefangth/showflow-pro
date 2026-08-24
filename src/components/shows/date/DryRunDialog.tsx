@@ -15,6 +15,12 @@ export interface DryRunDialogProps {
   /** The dry-run result once the preview query resolves; null before/while loading. */
   result: DryRunResult | null;
   loading: boolean;
+  /** True when the dry-run query failed (e.g. the open-offer-tier edge function is
+   *  unavailable). Renders an error state instead of falling through to a false
+   *  "send 0 asks" body, which is indistinguishable from a real zero-eligibility result. */
+  error?: boolean;
+  /** Re-run the failed dry-run, from the error state. */
+  onRetry?: () => void;
   flow: Pick<BookingFlow, "offer_delivery">;
   /** True while the open-tier mutation is in flight — blocks a double confirm. */
   confirmPending?: boolean;
@@ -24,7 +30,7 @@ export interface DryRunDialogProps {
 /** Preview-who-gets-offers dialog for a tier, backed by `dryRunOfferTier`.
  *  Presentational: the caller owns the dry-run query and the actual open-tier mutation. */
 export function DryRunDialog({
-  open, onOpenChange, tier, result, loading, flow, confirmPending = false, onConfirm,
+  open, onOpenChange, tier, result, loading, error = false, onRetry, flow, confirmPending = false, onConfirm,
 }: DryRunDialogProps) {
   const { t } = useTranslation("showsDetail");
   const candidates = result?.candidates ?? [];
@@ -34,7 +40,8 @@ export function DryRunDialog({
   // Zero candidates means nobody would get an offer: disable even without an explicit
   // `message` (e.g. every eligible artist is already booked, blocked, or inactive).
   // `confirmPending` blocks a second click while the open-tier mutation is in flight.
-  const confirmDisabled = notReady || hasMessage || n === 0 || confirmPending;
+  // A failed check (`error`) can never be confirmed either.
+  const confirmDisabled = notReady || error || hasMessage || n === 0 || confirmPending;
 
   const deliverySentence = flow.offer_delivery === "digest"
     ? t("dryRunDialog.deliveryDigest")
@@ -47,14 +54,18 @@ export function DryRunDialog({
           <DialogTitle>
             {loading || tier == null
               ? t("dryRunDialog.checkingTitle")
-              : t("dryRunDialog.openingTitle", { tier, count: n })}
+              : error
+                ? t("dryRunDialog.errorTitle")
+                : t("dryRunDialog.openingTitle", { tier, count: n })}
           </DialogTitle>
           <DialogDescription>
             {loading
               ? t("dryRunDialog.checkingDesc")
-              : hasMessage
-                ? t("dryRunDialog.notReadyDesc")
-                : deliverySentence}
+              : error
+                ? t("dryRunDialog.errorDesc")
+                : hasMessage
+                  ? t("dryRunDialog.notReadyDesc")
+                  : deliverySentence}
           </DialogDescription>
         </DialogHeader>
 
@@ -63,6 +74,12 @@ export function DryRunDialog({
             <Skeleton className="h-4 w-3/4" />
             <Skeleton className="h-4 w-1/2" />
           </div>
+        ) : error ? (
+          onRetry && (
+            <div>
+              <Button variant="outline" size="sm" onClick={onRetry}>{t("dryRunDialog.retry")}</Button>
+            </div>
+          )
         ) : hasMessage ? (
           <p className="text-sm text-muted-foreground">{result?.message}</p>
         ) : (

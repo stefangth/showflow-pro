@@ -1071,6 +1071,8 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager, ini
                                 tier={dryRun?.tier ?? null}
                                 result={dryRunQ.data ?? null}
                                 loading={dryRunQ.isLoading}
+                                error={dryRunQ.isError}
+                                onRetry={() => dryRunQ.refetch()}
                                 flow={flow}
                                 confirmPending={openOffers.isPending}
                                 onConfirm={() => {
