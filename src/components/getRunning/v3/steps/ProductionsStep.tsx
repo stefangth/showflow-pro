@@ -121,8 +121,16 @@ export function ProductionsStep({ orgId, onDone }: { orgId: string | null; onDon
           {list.map((s) => {
             const slots = showSlots(s);
             return (
-              <div key={s.id} className="flex items-center gap-3 border-b border-border p-3 last:border-b-0">
-                <div className="min-w-0 flex-1">
+              // Wraps rather than overflowing: the name, the parts figure and the action
+              // do not fit on one line in a narrow host (the wizard's single-column size
+              // is ~260px, where this row used to push the production name off screen and
+              // clip the button). The name keeps the full first line; the rest reflows
+              // under it.
+              <div
+                key={s.id}
+                className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border p-3 last:border-b-0"
+              >
+                <div className="min-w-0 flex-1 basis-full sm:basis-auto">
                   <div className="truncate text-control font-medium text-foreground">
                     {s.program}
                     {s.sub_program ? <span className="text-muted-foreground"> · {s.sub_program}</span> : null}
@@ -139,7 +147,13 @@ export function ProductionsStep({ orgId, onDone }: { orgId: string | null; onDon
                   <StatusPill tone="waiting">{t("body.productions.unconfigured")}</StatusPill>
                 )}
                 {canSchedule && (
-                  <Button type="button" size="sm" variant="outline" onClick={() => setPartsShow(s)}>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="ml-auto shrink-0"
+                    onClick={() => setPartsShow(s)}
+                  >
                     {t("body.productions.setParts")}
                   </Button>
                 )}

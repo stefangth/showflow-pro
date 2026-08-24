@@ -231,3 +231,17 @@ describe("PhaseIconRail tones", () => {
     expect(done.className).not.toContain("bg-primary");
   });
 });
+
+describe("PhaseRow done marker", () => {
+  it("marks a finished phase with the same green the rail and the dots use", () => {
+    const model = composeGetRunningV3({ ...base, feeDone: true, documentDone: true });
+    const phase = model.phases.find((p) => p.key === "paperwork")!;
+    renderWithProviders(<PhaseRow phase={phase} index={3} model={model} onOpen={vi.fn()} />);
+
+    const row = screen.getByTestId("phase-row-paperwork");
+    const marker = row.querySelector("span.rounded-full:last-of-type");
+    expect(phase.done).toBe(true);
+    expect(row.innerHTML).toContain(TONES.confirmed.bg);
+    expect(marker?.className ?? row.innerHTML).not.toContain("bg-primary text-primary-foreground");
+  });
+});
