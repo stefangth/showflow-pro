@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { screen, fireEvent, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { renderWithProviders } from "@/test/renderWithProviders";
@@ -31,6 +31,11 @@ vi.mock("@/components/setup/useRailDismissed", () => ({
   useRailDismissed: () => [false, dismissFn, vi.fn()],
 }));
 
+// The phase handoff is a `sonner` toast (the codebase's side-effect convention), spied the
+// same way the step-body suites in this folder spy it rather than rendering a Toaster.
+vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.fn(), warning: vi.fn() } }));
+
+import { toast } from "sonner";
 import { useGetRunningV3 } from "@/hooks/useGetRunningV3";
 import { GetRunningBoardV3 } from "./GetRunningBoardV3";
 
@@ -284,6 +289,117 @@ describe("GetRunningBoardV3", () => {
     expect(screen.queryByText(/add an artist/i)).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /collapse/i })).not.toBeInTheDocument();
     expect(screen.getByTestId("phase-row-bookable")).toBeInTheDocument();
+  });
+
+  // Findings 06/07: a step that completes IMPLICITLY from data (no explicit Continue) used
+  // to turn green under the viewer with no advance, and finishing a phase's last step
+  // collapsed the whole wizard with no confirmation of what was finished.
+  describe("advance and phase handoff", () => {
+    beforeEach(() => {
+      vi.mocked(toast.success).mockClear();
+    });
+
+    const board = (
+      <MemoryRouter>
+        <GetRunningBoardV3 context="page" />
+      </MemoryRouter>
+    );
+
+    it("advances to the next outstanding step when the open step completes from data alone", () => {
+      // artists and skills both outstanding; neither blocks, so nothing auto-opens.
+      mockModel(composeGetRunningV3({ ...base, booking: booking({ people: false }), skillGaps: 1 }));
+      const { rerender } = renderBoard();
+
+      fireEvent.click(screen.getByTestId("phase-row-bookable"));
+      expect(screen.getByText(/add an artist/i)).toBeInTheDocument();
+
+      // A background refetch: the roster now has artists, so `artists` flips done under
+      // the viewer with no explicit save on this board.
+      mockModel(composeGetRunningV3({ ...base, skillGaps: 1 }));
+      rerender(board);
+
+      expect(screen.getByText(/skills for your parts/i)).toBeInTheDocument();
+      expect(screen.queryByText(/add an artist/i)).not.toBeInTheDocument();
+    });
+
+    it("does not bounce a viewer forward off a step that was already done when they opened it", () => {
+      // Only `skills` is outstanding in bookable, so the phase opens on it; the viewer
+      // deliberately clicks BACK to the finished `artists` step to review it.
+      mockModel(composeGetRunningV3({ ...base, skillGaps: 1 }));
+      const { rerender } = renderBoard();
+
+      fireEvent.click(screen.getByTestId("phase-row-bookable"));
+      // Scoped to the wizard's own step nav: the phase rail above it offers icon buttons
+      // with the same accessible name.
+      const stepsNav = screen.getByRole("navigation", { name: /steps/i });
+      fireEvent.click(within(stepsNav).getByRole("button", { name: /add your artists/i }));
+      expect(screen.getByText(/add an artist/i)).toBeInTheDocument();
+
+      rerender(board);
+
+      expect(screen.getByText(/add an artist/i)).toBeInTheDocument();
+      expect(screen.queryByText(/skills for your parts/i)).not.toBeInTheDocument();
+    });
+
+    it("does not reopen or move a wizard the viewer collapsed when a step later completes", () => {
+      mockModel(composeGetRunningV3({ ...base, booking: booking({ people: false }), skillGaps: 1 }));
+      const { rerender } = renderBoard();
+
+      fireEvent.click(screen.getByTestId("phase-row-bookable"));
+      fireEvent.click(screen.getByRole("button", { name: /collapse/i }));
+      expect(screen.getByTestId("phase-row-bookable")).toBeInTheDocument();
+
+      mockModel(composeGetRunningV3({ ...base, skillGaps: 1 }));
+      rerender(board);
+
+      expect(screen.getByTestId("phase-row-bookable")).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /collapse/i })).not.toBeInTheDocument();
+    });
+
+    it("confirms the finished phase and names the next one instead of closing silently", () => {
+      // `cities` is the only outstanding step in get_dates (and blocks, so it auto-opens);
+      // paperwork still has fee and document outstanding, so there IS a next phase.
+      mockModel(composeGetRunningV3({ ...base, datesCitiesDone: false }));
+      const { rerender } = renderBoard();
+      expect(screen.getByRole("button", { name: /collapse/i })).toBeInTheDocument();
+
+      mockModel(composeGetRunningV3(base));
+      rerender(board);
+
+      expect(vi.mocked(toast.success)).toHaveBeenCalledWith("Get dates in is done. Next up: Paperwork.");
+      // And the wizard hands back to the board rather than sitting on a finished phase.
+      expect(screen.getByTestId("phase-row-get_dates")).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /collapse/i })).not.toBeInTheDocument();
+    });
+
+    it("does not name a next phase when the finished phase was the last outstanding one", () => {
+      // `document` is the only outstanding step on the whole board, and it is the last
+      // visible step of paperwork: finishing it finishes everything.
+      mockModel(composeGetRunningV3({ ...base, feeDone: true }));
+      const { rerender } = renderBoard();
+
+      fireEvent.click(screen.getByTestId("phase-row-paperwork"));
+      expect(screen.getByText(/set how contract numbers are built/i)).toBeInTheDocument();
+
+      mockModel(composeGetRunningV3({ ...base, feeDone: true, documentDone: true }));
+      rerender(board);
+
+      expect(vi.mocked(toast.success)).toHaveBeenCalledWith("Paperwork is done. That was the last step on this board.");
+      expect(screen.getByTestId("get-running-v3-retired")).toBeInTheDocument();
+    });
+
+    it("confirms the phase on an explicit save too, not only on an implicit one", () => {
+      // The document step's Continue calls `onDone` straight through, so this exercises
+      // the explicit `handleStepDone` path rather than the data-driven effect.
+      mockModel(composeGetRunningV3({ ...base, feeDone: true }));
+      renderBoard();
+
+      fireEvent.click(screen.getByTestId("phase-row-paperwork"));
+      fireEvent.click(screen.getByRole("button", { name: /^continue$/i }));
+
+      expect(vi.mocked(toast.success)).toHaveBeenCalledWith("Paperwork is done. That was the last step on this board.");
+      expect(screen.getByTestId("phase-row-paperwork")).toBeInTheDocument();
+    });
   });
 
   it("shows the nothing-to-set-up card when neither module is on", () => {

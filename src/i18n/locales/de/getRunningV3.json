@@ -67,6 +67,8 @@
     "adminOnly": "Nur Admin",
     "waitsOnAdmin": "Wartet auf deinen Admin",
     "footerNote": "Änderungen hier werden laufend gespeichert.",
+    "phaseDone": "{{phase}} ist fertig. Das war der letzte Schritt auf diesem Board.",
+    "phaseDoneNext": "{{phase}} ist fertig. Weiter geht es mit: {{next}}.",
     "stepsNav": "Schritte",
     "stepOfRich": "Schritt <0>{{step}}</0> von <1>{{total}}</1>"
   },
