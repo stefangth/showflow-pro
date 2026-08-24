@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { Badge, MiniCard, MiniField, MiniWell, MiniCheck, MiniButton, MiniWeek } from '../atoms';
+import { Metric } from '@/components/ui/metric';
 
 /**
  * The four Availability-mini illustrations, in step order:
@@ -50,10 +51,10 @@ export const availabilityArt: readonly [ReactNode, ReactNode, ReactNode, ReactNo
       <Badge variant="accent" dot>Offer</Badge>
     </div>
     <MiniField label="Sessions">
-      <span className="font-mono tabular-nums">S1 19:30 · S2 22:00</span>
+      <Metric>S1 19:30 · S2 22:00</Metric>
     </MiniField>
     <MiniField label="Answer by">
-      <span className="font-mono tabular-nums">25/07 · 19:00</span>
+      <Metric>25/07 · 19:00</Metric>
     </MiniField>
     <div className="flex gap-2">
       <MiniButton primary>Accept</MiniButton>
@@ -67,21 +68,21 @@ export const availabilityArt: readonly [ReactNode, ReactNode, ReactNode, ReactNo
       <MiniCheck />
       <div>
         <div className="text-caption text-foreground">Accepted</div>
-        <div className="font-mono text-eyebrow tabular-nums text-muted-foreground/70">22/07 · 20:11</div>
+        <Metric className="block text-eyebrow text-muted-foreground/70">22/07 · 20:11</Metric>
       </div>
     </div>
     <div className="flex items-start gap-2">
       <MiniCheck />
       <div>
         <div className="text-caption text-foreground">Confirmed by producer</div>
-        <div className="font-mono text-eyebrow tabular-nums text-muted-foreground/70">23/07 · 09:02</div>
+        <Metric className="block text-eyebrow text-muted-foreground/70">23/07 · 09:02</Metric>
       </div>
     </div>
     <div className="flex items-start gap-2">
       <MiniCheck />
       <div>
         <div className="text-caption text-foreground">Chat opens</div>
-        <div className="font-mono text-eyebrow tabular-nums text-muted-foreground/70">with the date</div>
+        <div className="text-eyebrow text-muted-foreground/70">with the date</div>
       </div>
     </div>
   </MiniCard>,

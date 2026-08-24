@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Eyebrow } from "@/components/ui/eyebrow";
+import { Metric } from "@/components/ui/metric";
 import { cn } from "@/lib/utils";
 
 export interface StagedChange {
@@ -36,9 +37,9 @@ export function StagedChangesCard({
     <div className="rounded-card border border-border shadow-elev2 bg-card">
       <div className="px-4 pt-4">
         <Eyebrow>{t("stagedChangesCard.heading")}</Eyebrow>
-        <p className="mt-1 font-mono tabular-nums text-title font-medium text-foreground">
+        <Metric className="mt-1 text-title font-medium text-foreground">
           {count}
-        </p>
+        </Metric>
         <p className="text-caption text-muted-foreground">{scopeLine}</p>
       </div>
 

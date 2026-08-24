@@ -8,6 +8,7 @@ import { describeJobHealth, deriveJobStatus, healthTone, healthLabel, CRON_JOB_T
 import type { HealthDay } from "@/lib/uptime";
 import { SYSTEM_HEALTH_BUDGET as budget, SYSTEM_HEALTH } from "@/config/app.config";
 import type { CronHealthRow } from "@/data/platform";
+import { Token } from "@/components/ui/token";
 
 export function ScheduledJobsPanel({ cronRows, metrics, healthDaily }: {
   cronRows: CronHealthRow[]; metrics: EdgeFnMetric[]; healthDaily: HealthDay[];
@@ -29,7 +30,7 @@ export function ScheduledJobsPanel({ cronRows, metrics, healthDaily }: {
             <div key={c.job_name} className="rounded-card border border-border p-3">
               <div className="flex items-center gap-3">
                 <StatusDot tone={healthTone(state)} />
-                <span className="font-mono text-sm font-medium flex-1 truncate">{c.job_name}</span>
+                <Token className="text-sm font-medium flex-1 truncate">{c.job_name}</Token>
                 <StatusPill tone={healthTone(state)} dot>{healthLabel(state)}</StatusPill>
               </div>
               <div className="mt-3">

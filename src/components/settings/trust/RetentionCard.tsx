@@ -50,7 +50,7 @@ export function RetentionCard() {
                *  period beneath it, still right-aligned by `ml-auto`. */}
               <div className="flex flex-wrap items-baseline justify-between gap-x-3">
                 <dt className="font-medium">{row.item}</dt>
-                <dd className="ml-auto whitespace-nowrap text-right font-mono text-xs text-muted-foreground">
+                <dd className="ml-auto whitespace-nowrap text-right text-xs tabular-nums text-muted-foreground">
                   {row.period}
                 </dd>
               </div>

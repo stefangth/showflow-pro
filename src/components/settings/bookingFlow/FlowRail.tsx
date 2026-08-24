@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Metric } from "@/components/ui/metric";
 import {
   describeAuditEntry,
   flowPreviewRows,
@@ -67,7 +68,7 @@ export function FlowRail(props: {
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
           {lifecycleChips(flow).map((c, i) => (
             <span key={c.label} className="inline-flex items-center gap-1.5">
-              {i > 0 && <span className="font-mono text-xs text-muted-foreground">→</span>}
+              {i > 0 && <span className="text-xs text-muted-foreground">→</span>}
               <Badge variant="secondary" className={TONE_CLASS[c.tone]}>
                 {c.label}
               </Badge>
@@ -92,7 +93,7 @@ export function FlowRail(props: {
         <div className="mt-2.5 space-y-1.5">
           {flowPreviewRows(flow, times).map((r, i) => (
             <div key={i} className="flex gap-2.5 text-xs">
-              <span className="w-14 flex-none text-right font-mono text-eyebrow text-muted-foreground">{r.at}</span>
+              <Metric className="w-14 flex-none text-right text-eyebrow text-muted-foreground">{r.at}</Metric>
               <span>{r.text}</span>
             </div>
           ))}
@@ -126,7 +127,7 @@ export function FlowRail(props: {
               {audit.length === 0 && <p className="mt-1.5 text-xs text-muted-foreground">{t("flowRail.historyEmpty")}</p>}
               {audit.map((e) => (
                 <div key={e.id} className="border-t border-border pt-2 mt-2 first:border-t-0 first:mt-1.5">
-                  <p className="font-mono text-eyebrow text-muted-foreground">
+                  <p className="text-eyebrow text-muted-foreground">
                     {formatDateDMY(e.created_at.slice(0, 10))} · {e.actorName ?? t("flowRail.actorSystem")}
                   </p>
                   <p className="mt-0.5 text-xs">{describeAuditEntry(e)}</p>

@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Token } from '@/components/ui/token';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -153,7 +154,7 @@ export function EditorToolbar() {
               <SelectItem value="__none__">(none)</SelectItem>
               {(iamUsers ?? []).map(u => (
                 <SelectItem key={u.id} value={u.id} className="text-xs">
-                  <span className="font-mono">{u.email}</span>
+                  <Token>{u.email}</Token>
                   {u.roles.length > 0 && (
                     <span className="ml-2 text-muted-foreground">— {u.roles.map(roleLabel).join(', ')}</span>
                   )}
@@ -234,8 +235,8 @@ export function EditorPageBadge() {
 
   return (
     <div className="mb-4">
-      <Badge variant="neutral" className="font-mono">
-        {ROUTE_TO_FILE[location.pathname] ?? 'Unknown page'}
+      <Badge variant="neutral">
+        <Token>{ROUTE_TO_FILE[location.pathname] ?? 'Unknown page'}</Token>
       </Badge>
     </div>
   );

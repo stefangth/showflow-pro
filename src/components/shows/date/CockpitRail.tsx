@@ -2,6 +2,7 @@ import { Clock, MapPin, Ticket } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { Metric } from "@/components/ui/metric";
 import type { ActivityItem, UpNextItem } from "@/lib/bookingCockpit";
 
 export interface CockpitRailProps {
@@ -105,7 +106,7 @@ export function CockpitRail({
           {times && (
             <p className="flex items-center gap-2">
               <Clock className="h-3.5 w-3.5 shrink-0" />
-              <span className="font-mono text-xs">{times}</span>
+              <Metric className="text-xs">{times}</Metric>
             </p>
           )}
           {(venue || city) && (
@@ -221,7 +222,7 @@ export function CockpitRail({
             <ul data-testid="cockpit-activity" className="space-y-[11px]">
               {activity.map((a, i) => (
                 <li key={`${a.iso}-${i}`} className="grid grid-cols-[46px_1fr] gap-2">
-                  <span className="font-mono text-eyebrow font-medium leading-4 text-[var(--text-faint)]">{shortStamp(a.iso, activity[0]?.iso)}</span>
+                  <Metric className="text-eyebrow font-medium leading-4 text-[var(--text-faint)]">{shortStamp(a.iso, activity[0]?.iso)}</Metric>
                   <span className="text-xs leading-4 text-muted-foreground">{a.text}</span>
                 </li>
               ))}
@@ -239,7 +240,7 @@ export function CockpitRail({
           {chatUnread > 0 && (
             <span
               data-testid="chat-unread"
-              className="rounded-chip bg-accent-500 px-1.5 py-px font-mono text-eyebrow font-semibold leading-[15px] text-white"
+              className="rounded-chip bg-accent-500 px-1.5 py-px text-eyebrow tabular-nums font-semibold leading-[15px] text-white"
             >
               {chatUnread}
             </span>

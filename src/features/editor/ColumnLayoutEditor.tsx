@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Eye, EyeOff, GripHorizontal, RotateCcw, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Token } from '@/components/ui/token';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/features/auth/AuthContext';
@@ -156,7 +157,7 @@ export function ColumnLayoutEditor({ pageKey }: ColumnLayoutEditorProps) {
               <TooltipTrigger asChild>
                 <span className={col.visible ? '' : 'line-through'}>{label}</span>
               </TooltipTrigger>
-              <TooltipContent className="font-mono">{col.columnId}</TooltipContent>
+              <TooltipContent><Token>{col.columnId}</Token></TooltipContent>
             </Tooltip>
 
             <Tooltip>

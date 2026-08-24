@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
+import { Metric } from '@/components/ui/metric';
 
 /**
  * Shared miniature atoms for page-mini illustrations. All token-only and data-free:
@@ -36,7 +37,7 @@ export function MiniWell({ icon, label, trailing }: { icon?: ReactNode; label: R
     <div className="flex items-center gap-2 rounded-field border-[0.5px] border-border bg-well-tint px-2.5 py-2">
       {icon}
       <span className="min-w-0 flex-1 truncate text-caption text-muted-foreground">{label}</span>
-      {trailing && <span className="shrink-0 font-mono text-eyebrow text-muted-foreground/80">{trailing}</span>}
+      {trailing && <Metric className="shrink-0 text-eyebrow text-muted-foreground/80">{trailing}</Metric>}
     </div>
   );
 }
@@ -83,7 +84,7 @@ export function MiniMeter({ pct, label }: { pct: number; label: string }) {
       <span className="h-1 flex-1 overflow-hidden rounded-full bg-well-tint">
         <span className="block h-full rounded-full bg-accent-500" style={{ width: `${Math.max(0, Math.min(100, pct))}%` }} />
       </span>
-      <span className="shrink-0 font-mono text-eyebrow tabular-nums text-muted-foreground">{label}</span>
+      <Metric className="shrink-0 text-eyebrow text-muted-foreground">{label}</Metric>
     </div>
   );
 }
@@ -100,7 +101,7 @@ export function MiniTimelineRow({ initials, name, detail, time, tone = 'bg-accen
         <span className="block truncate text-caption text-foreground">
           <span className="font-medium">{name}</span> {detail}
         </span>
-        <span className="block font-mono text-eyebrow tabular-nums text-muted-foreground/70">{time}</span>
+        <Metric className="block text-eyebrow text-muted-foreground/70">{time}</Metric>
       </span>
     </div>
   );
@@ -134,12 +135,12 @@ export function MiniWeek({ days }: { days: readonly { n: number; tone: DayTone }
   return (
     <div className="grid grid-cols-7 gap-1">
       {days.map((d, i) => (
-        <span
+        <Metric
           key={i}
-          className={cn('flex aspect-square items-center justify-center rounded-chip border-[0.5px] font-mono text-eyebrow font-semibold tabular-nums', fill[d.tone])}
+          className={cn('flex aspect-square items-center justify-center rounded-chip border-[0.5px] text-eyebrow font-semibold', fill[d.tone])}
         >
           {d.n}
-        </span>
+        </Metric>
       ))}
     </div>
   );

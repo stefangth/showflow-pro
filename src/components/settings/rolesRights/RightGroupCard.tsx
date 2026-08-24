@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import { Metric } from "@/components/ui/metric";
 import { cn } from "@/lib/utils";
 
 interface RightGroupCardProps {
@@ -25,9 +26,9 @@ export function RightGroupCard({
       <div className="flex items-center justify-between gap-4 px-4 py-3 border-b border-[var(--line)]">
         <p className="text-sm font-medium text-foreground">{group}</p>
         <div className="flex items-center gap-3 shrink-0">
-          <span className="font-mono text-caption text-muted-foreground">
+          <Metric className="text-caption text-muted-foreground">
             {summary}
-          </span>
+          </Metric>
           <button
             type="button"
             onClick={onToggleAll}

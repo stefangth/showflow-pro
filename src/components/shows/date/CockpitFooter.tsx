@@ -29,7 +29,7 @@ export function CockpitFooter({ badgeLabel, ready, detail, ctaLabel, ctaDisabled
         <p className="text-sm font-medium leading-[18px] text-foreground">{t("cockpitFooter.hireOrder")}</p>
         <span
           className={cn(
-            "ml-1.5 rounded-chip px-[5px] py-px font-mono text-eyebrow font-semibold leading-[14px]",
+            "ml-1.5 rounded-chip px-[5px] py-px text-eyebrow font-semibold leading-[14px]",
             ready
               ? "bg-[var(--green-100)] text-[var(--green-600)]"
               : "bg-[var(--amber-100)] text-[var(--amber-600)]",

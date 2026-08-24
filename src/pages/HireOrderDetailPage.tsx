@@ -23,6 +23,7 @@ import { SignHireOrderDialog } from "@/components/hireOrders/SignHireOrderDialog
 import { invokeHireOrderAction, type HireOrderRow } from "@/data/hireOrders";
 import { supabase } from "@/integrations/supabase/client";
 import { formatMoney } from "@/lib/hireOrders/money";
+import { Token } from "@/components/ui/token";
 import { formatDateDMY } from "@/lib/dates";
 import { ROUTES } from "@/config/app.config";
 import type { OrderData } from "@/lib/hireOrders/types";
@@ -229,10 +230,10 @@ function HireOrderDetail({
   const fee = order.fee_amount != null ? formatMoney(order.fee_amount, order.fee_currency, i18n.language) : null;
 
   const subtitleParts = [
-    <span key="no" className="font-mono">{order.order_no}</span>,
+    <Token key="no">{order.order_no}</Token>,
     artistName,
     venue,
-    dateStr ? <span key="date" className="font-mono">{formatDateDMY(dateStr)}</span> : null,
+    dateStr ? <span key="date" className="tabular-nums">{formatDateDMY(dateStr)}</span> : null,
   ].filter(Boolean);
 
   return (

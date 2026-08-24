@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
 import { Badge, MiniCard, MiniField, MiniRow, MiniAvatar, MiniCheck, MiniButton } from '../atoms';
+import { Token } from '@/components/ui/token';
+import { Metric } from '@/components/ui/metric';
 
 /**
  * The four Hire orders-mini illustrations, in step order:
@@ -11,12 +13,12 @@ export const hireOrdersArt: readonly [ReactNode, ReactNode, ReactNode, ReactNode
   // 01 Draft from booking — the auto-drafted order snapshot
   <MiniCard key="h1">
     <div className="flex items-center justify-between gap-2">
-      <span className="font-mono text-eyebrow font-semibold">SF-2026-0724-1</span>
+      <Token className="text-eyebrow font-semibold">SF-2026-0724-1</Token>
       <Badge variant="neutral">Draft</Badge>
     </div>
     <MiniField label="Artist">Theo Brandt</MiniField>
     <MiniField label="Fee">
-      <span className="font-mono tabular-nums">€480.00</span> <Badge variant="neutral">Manual</Badge>
+      <Metric>€480.00</Metric> <Badge variant="neutral">Manual</Badge>
     </MiniField>
     <MiniField label="Duration">90 min <Badge variant="neutral">Default</Badge></MiniField>
   </MiniCard>,
@@ -25,7 +27,7 @@ export const hireOrdersArt: readonly [ReactNode, ReactNode, ReactNode, ReactNode
   <MiniCard key="h2">
     <MiniRow avatar={<MiniAvatar initials="TB" tone="bg-accent-700" />} name="Theo Brandt" sub="theo.brandt@posteo.de" />
     <MiniField label="PDF">
-      <span className="font-mono text-eyebrow">SF-2026-0724-1.pdf</span>
+      <Token className="text-eyebrow">SF-2026-0724-1.pdf</Token>
     </MiniField>
     <MiniField label="Status">
       <Badge variant="hold">Awaiting countersign</Badge>
@@ -38,21 +40,21 @@ export const hireOrdersArt: readonly [ReactNode, ReactNode, ReactNode, ReactNode
       <MiniCheck />
       <div>
         <div className="text-caption text-foreground">Drafted</div>
-        <div className="font-mono text-eyebrow tabular-nums text-muted-foreground/70">22/07 · 09:14</div>
+        <Metric className="block text-eyebrow text-muted-foreground/70">22/07 · 09:14</Metric>
       </div>
     </div>
     <div className="flex items-start gap-2">
       <MiniCheck />
       <div>
         <div className="text-caption text-foreground">Issued</div>
-        <div className="font-mono text-eyebrow tabular-nums text-muted-foreground/70">22/07 · 11:02</div>
+        <Metric className="block text-eyebrow text-muted-foreground/70">22/07 · 11:02</Metric>
       </div>
     </div>
     <div className="flex items-start gap-2">
       <MiniCheck />
       <div>
         <div className="text-caption text-foreground">Opened by artist</div>
-        <div className="font-mono text-eyebrow tabular-nums text-muted-foreground/70">22/07 · 18:47</div>
+        <Metric className="block text-eyebrow text-muted-foreground/70">22/07 · 18:47</Metric>
       </div>
     </div>
     <div className="flex items-start gap-2">

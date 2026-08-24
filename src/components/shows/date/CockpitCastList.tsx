@@ -148,7 +148,7 @@ function Row({
           <p className={cn("text-sm leading-[18px]", row.open ? "font-normal text-[var(--text-faint)]" : "font-medium text-foreground")}>
             {row.name ?? t("cockpitCastList.openSlot")}
           </p>
-          <p className={cn("mt-px font-mono text-eyebrow leading-[14px]", row.open ? "text-[var(--amber-600)]" : "text-[var(--text-faint)]")}>
+          <p className={cn("mt-px text-eyebrow leading-[14px]", row.open ? "text-[var(--amber-600)]" : "text-[var(--text-faint)]")}>
             {row.meta}
           </p>
         </div>

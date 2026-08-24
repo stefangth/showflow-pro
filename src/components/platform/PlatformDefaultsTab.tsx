@@ -322,7 +322,7 @@ function HireOrderTermsLibraryCard() {
           <Textarea
             id="t-terms-library"
             rows={16}
-            className="font-mono text-xs"
+            className="text-xs"
             value={text}
             onChange={(e) => setText(e.target.value)}
           />

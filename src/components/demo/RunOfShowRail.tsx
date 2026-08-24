@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Eyebrow } from "@/components/ui/eyebrow";
+import { Metric } from "@/components/ui/metric";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -165,9 +166,9 @@ export function RunOfShowRail() {
                 onClick={() => goToScene(scene.id)}
                 className="flex w-full items-start gap-2 text-left"
               >
-                <span
+                <Metric
                   className={cn(
-                    "mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center font-mono text-eyebrow",
+                    "mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center text-eyebrow",
                     active ? "font-semibold text-primary" : "text-muted-foreground",
                   )}
                 >
@@ -176,7 +177,7 @@ export function RunOfShowRail() {
                   ) : (
                     String(i + 1).padStart(2, "0")
                   )}
-                </span>
+                </Metric>
                 <span className="min-w-0 flex-1">
                   <span className={cn("block text-control", active ? "font-semibold text-foreground" : "text-foreground/80")}>
                     {sceneTitle(scene, lang)}

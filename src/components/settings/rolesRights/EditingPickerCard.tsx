@@ -1,6 +1,7 @@
 import { Users } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Eyebrow } from "@/components/ui/eyebrow";
+import { Metric } from "@/components/ui/metric";
 
 interface EditingPickerCardProps {
   roleOnCount: string;
@@ -31,9 +32,9 @@ export function EditingPickerCard({ roleOnCount }: EditingPickerCardProps) {
             </p>
             <p className="text-caption text-muted-foreground">{t("editingPicker.teamDefault")}</p>
           </div>
-          <span className="shrink-0 font-mono tabular-nums text-caption text-muted-foreground">
+          <Metric className="shrink-0 text-caption text-muted-foreground">
             {roleOnCount}
-          </span>
+          </Metric>
         </div>
       </div>
     </div>

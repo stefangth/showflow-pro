@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusPill } from "@/components/ui/status-pill";
+import { Metric } from "@/components/ui/metric";
 import { cn } from "@/lib/utils";
 import type { SyncLogSummary } from "@/data/airtableSync";
 
@@ -75,21 +76,18 @@ export function ActivityTab({ runs, loading }: ActivityTabProps) {
               return (
                 <div
                   key={run.id}
-                  className={cn(
-                    GRID,
-                    "items-center border-b border-border px-4 py-2.5 font-mono text-xs tabular-nums",
-                  )}
+                  className={cn(GRID, "items-center border-b border-border px-4 py-2.5 text-xs")}
                 >
-                  <span className="text-muted-foreground">
+                  <Metric className="text-xs text-muted-foreground">
                     {new Date(run.synced_at).toLocaleString()}
-                  </span>
+                  </Metric>
                   <span>
                     <StatusPill tone="neutral">{sourceLabel(run.sync_type, t)}</StatusPill>
                   </span>
                   <span>
                     <span
                       className={cn(
-                        "inline-flex items-center rounded-chip px-1.5 py-0.5 font-sans text-eyebrow font-medium",
+                        "inline-flex items-center rounded-chip px-1.5 py-0.5 text-eyebrow font-medium",
                         badgeClass(badge.tone),
                       )}
                       style={badgeStyle(badge.tone)}
@@ -97,10 +95,10 @@ export function ActivityTab({ runs, loading }: ActivityTabProps) {
                       {badge.label}
                     </span>
                   </span>
-                  <span>{run.records_processed ?? 0}</span>
-                  <span>{run.new_count ?? 0}</span>
-                  <span>{run.updated_count ?? 0}</span>
-                  <span style={held > 0 ? { color: "var(--amber-600)" } : undefined}>{held}</span>
+                  <Metric className="text-xs">{run.records_processed ?? 0}</Metric>
+                  <Metric className="text-xs">{run.new_count ?? 0}</Metric>
+                  <Metric className="text-xs">{run.updated_count ?? 0}</Metric>
+                  <span className="tabular-nums" style={held > 0 ? { color: "var(--amber-600)" } : undefined}>{held}</span>
                 </div>
               );
             })

@@ -83,7 +83,7 @@ function ExceptionsMark() {
   // row height — a fraction of a pixel, but the point of a declared row height
   // is that there are no steps at all.
   return (
-    <sup aria-hidden="true" className="ml-0.5 font-mono text-eyebrow leading-[0]">
+    <sup aria-hidden="true" className="ml-0.5 text-eyebrow leading-[0]">
       1
     </sup>
   );
@@ -370,7 +370,7 @@ export function VisibilityMatrix() {
         id={EXCEPTIONS_NOTE_ID}
         className="flex max-w-2xl gap-2 text-xs leading-4 text-muted-foreground"
       >
-        <span aria-hidden="true" className="font-mono">
+        <span aria-hidden="true">
           1
         </span>
         <span>{CROSS_ORG_EXCEPTIONS_NOTE}</span>

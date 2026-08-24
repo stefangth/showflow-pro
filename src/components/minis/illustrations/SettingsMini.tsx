@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { Badge, MiniCard, MiniField, MiniWell, MiniCheck, MiniTimelineRow } from '../atoms';
+import { Metric } from '@/components/ui/metric';
 
 /**
  * The four Settings-mini illustrations, in step order:
@@ -12,10 +13,10 @@ export const settingsArt: readonly [ReactNode, ReactNode, ReactNode, ReactNode] 
   <MiniCard key="s1">
     <MiniField label="Response window">48 h</MiniField>
     <MiniField label="Offer digest">
-      <span className="font-mono tabular-nums">19:00</span> Berlin
+      <Metric>19:00</Metric> Berlin
     </MiniField>
     <MiniField label="Confirmation">
-      <span className="font-mono tabular-nums">20:00</span> Berlin
+      <Metric>20:00</Metric> Berlin
     </MiniField>
   </MiniCard>,
 

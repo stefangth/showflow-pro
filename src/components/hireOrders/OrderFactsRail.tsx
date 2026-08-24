@@ -3,8 +3,6 @@ import { useTranslation } from "react-i18next";
 interface Fact {
   label: string;
   value: string;
-  /** Render the value in the mono face (durations, times). */
-  mono?: boolean;
 }
 
 interface Props {
@@ -25,9 +23,9 @@ export function OrderFactsRail({ fee, duration, sessions }: Props) {
   const { t } = useTranslation("hireOrdersPages");
   const facts: Fact[] = [
     { label: t("factsRail.fee"), value: fee ?? t("common.notSet") },
-    { label: t("factsRail.duration"), value: duration ?? t("common.notSet"), mono: true },
+    { label: t("factsRail.duration"), value: duration ?? t("common.notSet") },
   ];
-  if (sessions) facts.push({ label: t("factsRail.sessions"), value: sessions, mono: true });
+  if (sessions) facts.push({ label: t("factsRail.sessions"), value: sessions });
 
   return (
     <div>
@@ -37,7 +35,7 @@ export function OrderFactsRail({ fee, duration, sessions }: Props) {
         {facts.map((f) => (
           <div key={f.label} className="flex items-baseline justify-between gap-3">
             <dt className="text-sm text-muted-foreground">{f.label}</dt>
-            <dd className={`text-sm text-foreground text-right ${f.mono ? "font-mono" : ""}`}>{f.value}</dd>
+            <dd className="text-sm tabular-nums text-foreground text-right">{f.value}</dd>
           </div>
         ))}
       </dl>

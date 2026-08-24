@@ -7,6 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { HireOrderStatusBadge } from "@/components/hireOrders/HireOrderStatusBadge";
+import { Token } from "@/components/ui/token";
 import { BatchIssuePreflightDialog, type BatchPreflightOrder } from "./BatchIssuePreflightDialog";
 import { formatMoney } from "@/lib/hireOrders/money";
 import { formatDateDMY, isPastDate, pastRowClassName } from "@/lib/dates";
@@ -189,12 +190,12 @@ export function OrdersTable({ orders, orgId, onRowClick }: Props) {
                       aria-label={t("ordersTable.selectRowAria", { orderNo: o.order_no })}
                     />
                   </TableCell>
-                  <TableCell className="font-mono text-sm">{o.order_no}</TableCell>
+                  <TableCell className="text-sm"><Token>{o.order_no}</Token></TableCell>
                   <TableCell>
                     <div className="text-sm font-medium text-foreground">{o.artists?.name ?? t("common.unknownArtist")}</div>
                     <div className="text-xs text-muted-foreground">{o.show_dates?.venue || t("common.notSet")}</div>
                   </TableCell>
-                  <TableCell className="font-mono text-sm whitespace-nowrap">
+                  <TableCell className="text-sm tabular-nums whitespace-nowrap">
                     {o.show_dates?.date ? formatDateDMY(o.show_dates.date) : t("common.notSet")}
                   </TableCell>
                   <TableCell numeric className="text-sm">

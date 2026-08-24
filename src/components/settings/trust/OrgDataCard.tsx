@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Metric } from "@/components/ui/metric";
 import { useOrgDataStats } from "@/hooks/useTrustStats";
 import { useOrgMembers } from "@/hooks/useOrgMembers";
 import { useAuth } from "@/features/auth/AuthContext";
@@ -33,12 +34,12 @@ function TileValue({
   // paused) and left `value` empty. Neither is a "0", which would be false.
   if (isError || !value) {
     return (
-      <span className="font-mono text-sm text-muted-foreground" title={t('orgDataCard.unavailableTooltip')}>
+      <span className="tabular-nums text-sm text-muted-foreground" title={t('orgDataCard.unavailableTooltip')}>
         {t('orgDataCard.unavailable')}
       </span>
     );
   }
-  return <span className="font-mono text-sm font-medium tabular-nums">{value}</span>;
+  return <Metric className="text-sm font-medium">{value}</Metric>;
 }
 
 function Tile({

@@ -116,27 +116,27 @@ export default function DevGetRunningHarness() {
   return (
     <div className="min-h-screen bg-background p-8">
       <div className="mx-auto flex max-w-[820px] flex-col gap-8">
-        <h1 className="font-mono text-sm text-muted-foreground">/dev/get-running · phase-card scenarios</h1>
+        <h1 className="text-sm text-muted-foreground">/dev/get-running · phase-card scenarios</h1>
 
         <section className="flex flex-col gap-2">
-          <div className="font-mono text-xs text-[var(--text-faint)]">header</div>
+          <div className="text-xs text-[var(--text-faint)]">header</div>
           <GetRunningHeader model={headerModel} orgName="Nordstadt Produktionen" role="admin" />
         </section>
 
         {SCENARIOS.map((s) => (
           <section key={s.label} className="flex flex-col gap-2">
-            <div className="font-mono text-xs text-[var(--text-faint)]">{s.label}</div>
+            <div className="text-xs text-[var(--text-faint)]">{s.label}</div>
             <PhaseCard phase={s.phase} role="admin" onOpenTask={() => {}} />
           </section>
         ))}
 
         <section className="flex flex-col gap-2">
-          <div className="font-mono text-xs text-[var(--text-faint)]">retired board (all complete)</div>
+          <div className="text-xs text-[var(--text-faint)]">retired board (all complete)</div>
           <RetiredBoard model={retiredModel} orgId={null} />
         </section>
 
         <section className="flex flex-col gap-2">
-          <div className="font-mono text-xs text-[var(--text-faint)]">v3 board (always on here, regardless of the per-org flag)</div>
+          <div className="text-xs text-[var(--text-faint)]">v3 board (always on here, regardless of the per-org flag)</div>
           <GetRunningBoardV3 context="page" />
         </section>
       </div>

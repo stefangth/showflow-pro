@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { IconTooltip } from '@/components/common/IconTooltip';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Metric } from '@/components/ui/metric';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
@@ -384,9 +385,9 @@ export default function ArtistsPage() {
                             </span>
                           ))}
                           {skills.length > 3 && (
-                            <span className="inline-flex h-5 items-center rounded-chip px-1.5 font-mono text-eyebrow font-medium text-muted-foreground">
+                            <Metric className="inline-flex h-5 items-center rounded-chip px-1.5 text-eyebrow font-medium text-muted-foreground">
                               +{skills.length - 3}
-                            </span>
+                            </Metric>
                           )}
                         </div>
                       </div>

@@ -97,7 +97,7 @@ export function StatusHeader({
             <p className={cn(EYEBROW, "text-muted-foreground")}>{kpi.label}</p>
             <p
               className={cn(
-                "mt-1.5 font-mono text-title-sm font-medium tabular-nums",
+                "mt-1.5 text-title-sm font-medium tabular-nums",
                 kpiClass(kpi.tone),
               )}
               style={kpiStyle(kpi.tone)}

@@ -8,6 +8,7 @@ import type { OrderData } from "@/lib/hireOrders/types";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Token } from "@/components/ui/token";
 
 const EMPTY_TERMS: HireOrderTermsSetting = { templates: [], default_id: null };
 
@@ -103,7 +104,7 @@ export function BatchIssuePreflightDialog({
               {blocked.map(({ order, blockers }) => (
                 <div key={order.id} className="rounded-card border border-border p-3">
                   <p className="text-sm font-medium">{order.artistName}</p>
-                  <p className="font-mono text-xs text-muted-foreground">{order.order_no ?? t("batchPreflight.draftFallback")}</p>
+                  <Token className="block text-xs text-muted-foreground">{order.order_no ?? t("batchPreflight.draftFallback")}</Token>
                   <p className="mt-1 text-xs text-[var(--amber-600)]">
                     {blockers.map((b) => BLOCKER_COPY[b.key].label).join(", ")}
                   </p>

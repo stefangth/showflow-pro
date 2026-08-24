@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Metric } from "@/components/ui/metric";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { buildCapabilityInventory } from "@/lib/trust/capabilityInventory";
 
@@ -56,7 +57,7 @@ export function CapabilitiesCard() {
               <AccordionTrigger className="py-3 text-sm hover:no-underline">
                 <span className="flex items-center gap-2">
                   <span className="font-medium">{group.group}</span>
-                  <span className="font-mono text-eyebrow text-muted-foreground">{group.countLabel}</span>
+                  <Metric className="text-eyebrow text-muted-foreground">{group.countLabel}</Metric>
                 </span>
               </AccordionTrigger>
               <AccordionContent>
@@ -71,7 +72,7 @@ export function CapabilitiesCard() {
                         <p className="mt-0.5 text-xs leading-4 text-muted-foreground">{entry.description}</p>
                       </div>
                       <span
-                        className={`shrink-0 whitespace-nowrap font-mono text-eyebrow font-medium ${
+                        className={`shrink-0 whitespace-nowrap text-eyebrow font-medium ${
                           entry.defaultEnabled ? "text-[var(--green-600)]" : "text-muted-foreground"
                         }`}
                       >

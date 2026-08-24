@@ -3,6 +3,7 @@ import { AlertCircle, Check } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { StatusPill } from "@/components/ui/status-pill";
+import { Metric } from "@/components/ui/metric";
 import type { SyncLogSummary } from "@/data/airtableSync";
 import { sourceLabel, statusBadge, runClock, type StatusTone } from "./console";
 import { AttentionPanel } from "./AttentionPanel";
@@ -142,9 +143,9 @@ export function OverviewTab({
                     className="h-1.5 w-1.5 shrink-0 rounded-chip"
                     style={{ background: dotColor(badge.tone) }}
                   />
-                  <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                  <Metric className="text-xs text-muted-foreground">
                     {runClock(run.synced_at)}
-                  </span>
+                  </Metric>
                   <StatusPill tone="neutral">{sourceLabel(run.sync_type, t)}</StatusPill>
                   <span className="flex-1 text-control text-foreground">
                     {t('overviewTab.runSummary', { importedCount: run.imported_count ?? 0, heldCount: run.held_count ?? 0 })}

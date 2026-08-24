@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Metric } from "@/components/ui/metric";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { TierLadderRow } from "@/data/tierLadder";
@@ -99,7 +100,7 @@ export function TierLadder({ rows, city, openedTiers, statusByTier, nextTier, on
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
                   {!opened && (
-                    <Badge variant="neutral" className="font-mono">{row.matchCount}</Badge>
+                    <Badge variant="neutral"><Metric>{row.matchCount}</Metric></Badge>
                   )}
                   {opened && !opened.closed && (
                     <Button type="button" variant="secondary" size="sm" onClick={() => onCloseTier(row.tier)}>

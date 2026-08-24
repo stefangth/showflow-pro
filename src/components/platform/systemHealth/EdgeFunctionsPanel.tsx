@@ -10,6 +10,7 @@ import { SYSTEM_HEALTH_BUDGET as budget, SYSTEM_HEALTH } from "@/config/app.conf
 import type { HealthDay } from "@/lib/uptime";
 import { useEdgeFnLogs } from "@/hooks/useSystemHealth";
 import { edgeLogUnavailableMessage } from "./edgeLogCopy";
+import { Token } from "@/components/ui/token";
 
 /** Status-code histogram as sorted "code × count" chips, faults first. A bare
  *  error count cannot answer "what went wrong"; the exact code can. */
@@ -47,7 +48,7 @@ function EdgeFnRow({ m, rollup }: { m: EdgeFnMetric; rollup: HealthDay[] }) {
     <div className="rounded-card border border-border p-3">
       <div className="flex items-center gap-3">
         <StatusDot tone={healthTone(state)} />
-        <span className="font-mono text-sm font-medium flex-1 truncate">{m.fn}</span>
+        <Token className="text-sm font-medium flex-1 truncate">{m.fn}</Token>
         <StatusPill tone={healthTone(state)} dot>{healthLabel(state)}</StatusPill>
       </div>
       <div className="mt-3">
@@ -61,14 +62,14 @@ function EdgeFnRow({ m, rollup }: { m: EdgeFnMetric; rollup: HealthDay[] }) {
       {chips.length > 0 && (
         <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
           {chips.map((c) => (
-            <span
+            <Token
               key={c.code}
               className={c.code >= 500
-                ? "rounded-control bg-destructive/10 px-2 py-0.5 font-mono text-destructive"
-                : "rounded-control bg-warning/10 px-2 py-0.5 font-mono text-warning"}
+                ? "rounded-control bg-destructive/10 px-2 py-0.5 text-destructive"
+                : "rounded-control bg-warning/10 px-2 py-0.5 text-warning"}
             >
               {c.code} × {c.count}
-            </span>
+            </Token>
           ))}
           {hasFaults && succeeded === 0 && (
             <span className="text-muted-foreground">no 2xx in this window</span>
@@ -94,9 +95,9 @@ function EdgeFnRow({ m, rollup }: { m: EdgeFnMetric; rollup: HealthDay[] }) {
               {logs.isError && <p className="text-xs text-muted-foreground">{edgeLogUnavailableMessage(logs.error)}</p>}
               {logs.data?.length === 0 && <p className="text-xs text-muted-foreground">No error output in this window.</p>}
               {logs.data?.map((l, i) => (
-                <p key={i} className="font-mono text-eyebrow leading-relaxed text-muted-foreground">
+                <Token key={i} className="block text-eyebrow leading-relaxed text-muted-foreground">
                   {l.at.slice(11, 19)} {l.message}
-                </p>
+                </Token>
               ))}
             </div>
           )}

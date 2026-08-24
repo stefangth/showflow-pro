@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { Token } from "@/components/ui/token";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Trash2, CheckCircle2, KeyRound, Lock, Loader2, AlertCircle } from "lucide-react";
@@ -305,9 +306,9 @@ function ManageConnectionDialog(p: ManageConnectionProps) {
                 </div>
                 <p className="text-sm text-muted-foreground">
                   {t('manageDialog.token.helpPrefix')}{' '}
-                  <span className="font-mono text-xs">data.records:read</span>{' '}
+                  <Token className="text-xs">data.records:read</Token>{' '}
                   {t('manageDialog.token.helpAnd')}{' '}
-                  <span className="font-mono text-xs">schema.bases:read</span>.
+                  <Token className="text-xs">schema.bases:read</Token>.
                 </p>
               </>
             )}

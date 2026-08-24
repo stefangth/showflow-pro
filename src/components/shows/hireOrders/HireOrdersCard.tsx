@@ -12,6 +12,7 @@ import { useHireOrdersForDate, useHireOrderAction, useMyHireOrders } from "@/hoo
 import type { HireOrderRow } from "@/data/hireOrders";
 import { HireOrderStatusBadge } from "@/components/hireOrders/HireOrderStatusBadge";
 import { HireOrderReadyBanner } from "@/components/hireOrders/HireOrderReadyBanner";
+import { Token } from "@/components/ui/token";
 import { GenerateHireOrderDialog } from "./GenerateHireOrderDialog";
 import type { HireOrderBooking, HireOrderShowDate } from "./types";
 
@@ -72,7 +73,7 @@ function ArtistHireOrders({ showDateId }: Props) {
       </CardHeader>
       <CardContent>
         <div className="flex items-center justify-between gap-3 rounded-card border border-border p-3">
-          <p className="text-sm font-mono text-muted-foreground">{order.order_no}</p>
+          <Token className="text-sm text-muted-foreground">{order.order_no}</Token>
           <div className="flex items-center gap-2 shrink-0">
             <HireOrderStatusBadge status={order.status} />
             <Button size="sm" variant="outline" onClick={handleDownload} disabled={action.isPending}>
@@ -167,7 +168,7 @@ function ProducerHireOrders({ showDateId, showDate, bookings, canManage }: Props
                       <p className="text-sm font-medium text-foreground truncate">
                         {o.artists?.name ?? t("common.unknownArtist")}
                       </p>
-                      <p className="text-xs font-mono text-muted-foreground">{o.order_no}</p>
+                      <Token className="block text-xs text-muted-foreground">{o.order_no}</Token>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       <HireOrderStatusBadge status={o.status} />

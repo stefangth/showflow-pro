@@ -4,6 +4,7 @@ import { isImpersonating } from '@/features/auth/orgRoles';
 import { useLanguage } from '@/features/i18n/LanguageContext';
 import { useRailDismissed } from '@/components/setup/useRailDismissed';
 import { StatusPill } from '@/components/ui/status-pill';
+import { Metric } from '@/components/ui/metric';
 import { PageMiniCollapsed } from './PageMiniCollapsed';
 import { MINI_CHROME } from './miniChrome';
 import type { Lang } from '@/i18n/config';
@@ -67,7 +68,7 @@ export function PageMiniView({ def, role, lang, art, dismissed, onHide, onResume
         {steps.map((step, i) => (
           <div key={i} className="flex flex-col gap-3 rounded-card border-[0.5px] border-border bg-background p-4">
             <div className="flex items-center gap-2">
-              <span className="font-mono text-caption font-semibold text-accent-600">{STEP_NUMBERS[i]}</span>
+              <Metric className="text-caption font-semibold text-accent-600">{STEP_NUMBERS[i]}</Metric>
               {/* eslint-disable-next-line no-restricted-syntax -- step-number label shares a flex row with the numeral span, not the sole child <Eyebrow> requires */}
               <span className="text-eyebrow font-semibold uppercase tracking-[0.14em] text-accent-600">
                 {step.label[lang]}

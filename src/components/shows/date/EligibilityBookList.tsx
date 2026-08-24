@@ -11,6 +11,7 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { Metric } from "@/components/ui/metric";
 import { unrestrictedEligibilityNote } from "@/lib/bookings/actionCopy";
 
 /** Joins strings for prose: "A", "A and B", "A, B, and C". No em dashes (house style). */
@@ -153,7 +154,7 @@ export function EligibilityBookList({
                   >
                     {s.name}
                     {hasSkillData && (
-                      <span className="font-mono text-eyebrow opacity-75">{count}</span>
+                      <Metric className="text-eyebrow opacity-75">{count}</Metric>
                     )}
                   </button>
                 );

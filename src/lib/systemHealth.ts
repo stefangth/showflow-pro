@@ -35,17 +35,30 @@ export function healthLabel(state: HealthState): string {
  *  from an older proxy response still renders (just without a time in its tooltip). */
 export interface EdgeFnOutcome { status: number; ms: number; at?: string }
 
-/** One-line detail for a single run tick — the timeline's hover tooltip.
- *  Status code first: it is the whole reason someone is pointing at a red tick. */
-export function describeOutcome(o: EdgeFnOutcome): string {
-  const parts = [o.status > 0 ? `HTTP ${o.status}` : "no response", seconds(o.ms)];
+/** `describeOutcome` split into its two typographic halves: `status` is the
+ *  machine token (an HTTP status, or "no response") a reader might quote back
+ *  when filing a fault; `rest` is the duration and, when present, the local
+ *  timestamp — quantities, not tokens. Callers that render the two halves
+ *  differently (RecentRunsList: `status` in `<Token>`, `rest` in sans) use
+ *  this; `describeOutcome` stays the single-string form for anything that
+ *  just wants one line of text (e.g. a title attribute). */
+export function describeOutcomeParts(o: EdgeFnOutcome): { status: string; rest: string } {
+  const status = o.status > 0 ? `HTTP ${o.status}` : "no response";
+  const rest = [seconds(o.ms)];
   // A full local timestamp, not lib/dates' date-only helpers: "which day" is useless
   // when you are placing a fault inside the last 24 hours. The Analytics API's row
   // shape is only partly verified, so an unparseable value drops the segment rather
   // than rendering "Invalid Date" into the tooltip.
   const at = o.at ? new Date(o.at) : null;
-  if (at && !Number.isNaN(at.getTime())) parts.push(at.toLocaleString());
-  return parts.join(" · ");
+  if (at && !Number.isNaN(at.getTime())) rest.push(at.toLocaleString());
+  return { status, rest: rest.join(" · ") };
+}
+
+/** One-line detail for a single run tick — the timeline's hover tooltip.
+ *  Status code first: it is the whole reason someone is pointing at a red tick. */
+export function describeOutcome(o: EdgeFnOutcome): string {
+  const { status, rest } = describeOutcomeParts(o);
+  return [status, rest].join(" · ");
 }
 
 /** Per-function metrics from the platform-edge-metrics proxy over the lookback window.

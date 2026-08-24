@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { Badge, MiniCard, MiniField, MiniRow, MiniAvatar, MiniButton } from '../atoms';
+import { Token } from '@/components/ui/token';
 
 /**
  * The four Platform-mini illustrations, in step order:
@@ -12,7 +13,7 @@ export const platformArt: readonly [ReactNode, ReactNode, ReactNode, ReactNode] 
   <MiniCard key="f1">
     <MiniField label="Organization">Zirkus Nord</MiniField>
     <MiniField label="First admin">
-      <span className="font-mono text-eyebrow">ada@zirkusnord.de</span>
+      <Token className="text-eyebrow">ada@zirkusnord.de</Token>
     </MiniField>
     <MiniButton primary>Provision</MiniButton>
   </MiniCard>,
