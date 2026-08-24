@@ -18,6 +18,7 @@
 create or replace function public.backfill_getrunning_dates_source()
 returns integer
 language plpgsql
+set search_path = public
 as $$
 declare
   v_count integer;
