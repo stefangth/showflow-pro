@@ -425,6 +425,8 @@
       "missingUnknownProduction": "Produktion ohne Titel",
       "readError": "Wir konnten nicht prüfen, welche Termine noch eine Stadt brauchen. Lade die Seite neu und versuche es erneut.",
       "assignCity": "Stadt zuweisen",
+      "catalogError": "Wir konnten deine Städte nicht laden, deshalb sind die Auswahlfelder unten leer. Lade die Seite neu und versuche es erneut.",
+      "assignFailed": "Wir konnten die Stadt nicht speichern. Der Termin hat weiterhin keine Stadt. Versuche es erneut.",
       "sheet": {
         "heading": "Deine Termine importieren",
         "sub": "Starte den Import, um deine Termine aus der Tabelle zu holen.",
@@ -461,7 +463,8 @@
       "empty": "Noch keine Produktionen. Lege deine erste an, um zu starten.",
       "readOnlyEmpty": "Noch keine Produktionen. Bitte einen Admin, eine anzulegen.",
       "readOnlyReason": "Um eine Produktion hinzuzufügen, brauchst du das Recht Produktionen verwalten, das dieser Account nicht hat.",
-      "noDates": "Füge mindestens einen Termin hinzu, um fortzufahren. Eine Produktion ohne Termine hat nichts zu besetzen."
+      "noDates": "Füge mindestens einen Termin hinzu, um fortzufahren. Eine Produktion ohne Termine hat nichts zu besetzen.",
+      "readError": "Wir konnten deine Produktionen nicht laden. Lade die Seite neu und versuche es erneut."
     },
     "fee": {
       "heading": "Deine Standardgage",

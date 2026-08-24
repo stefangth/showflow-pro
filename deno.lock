@@ -1,6 +1,7 @@
 {
   "version": "5",
   "specifiers": {
+    "npm:@axe-core/playwright@^4.13.0": "4.13.0_playwright-core@1.62.1",
     "npm:@eslint/js@^9.32.0": "9.39.4",
     "npm:@hookform/resolvers@^3.10.0": "3.10.0_react-hook-form@7.77.0__react@18.3.1_react@18.3.1",
     "npm:@playwright/test@^1.62.1": "1.62.1",
@@ -106,6 +107,13 @@
       "dependencies": [
         "@jridgewell/gen-mapping",
         "@jridgewell/trace-mapping"
+      ]
+    },
+    "@axe-core/playwright@4.13.0_playwright-core@1.62.1": {
+      "integrity": "sha512-6YLx+kxXu5GJceG4ozFg+33a2EMTdjYwWGloJ3sb9Kta5pp+ZNS53uxGVog5JetIY8s++P5UrtX+cri+u0VAVg==",
+      "dependencies": [
+        "axe-core",
+        "playwright-core"
       ]
     },
     "@babel/code-frame@7.29.7": {
@@ -2640,6 +2648,9 @@
         "postcss-value-parser"
       ],
       "bin": true
+    },
+    "axe-core@4.13.0": {
+      "integrity": "sha512-UzGt8zg7Ny8djbYMhxl2zuEevVa7r2gJjYY5Lwr1xM7+XU2nd6CkIWFTVcCIbAP63vSz71NaVyyuSk9lHKcy0A=="
     },
     "b4a@1.8.1": {
       "integrity": "sha512-aiqre1Nr0B/6DgE2N5vwTc+2/oQZ4Wh1t4NznYY4E00y8LCt6NqdRv81so00oo27D8MVKTpUa/MwUUtBLXCoDw=="
@@ -6278,6 +6289,7 @@
   "workspace": {
     "packageJson": {
       "dependencies": [
+        "npm:@axe-core/playwright@^4.13.0",
         "npm:@eslint/js@^9.32.0",
         "npm:@hookform/resolvers@^3.10.0",
         "npm:@playwright/test@^1.62.1",

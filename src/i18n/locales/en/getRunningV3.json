@@ -425,6 +425,8 @@
       "missingUnknownProduction": "Untitled production",
       "readError": "We could not check which dates still need a city. Reload the page and try again.",
       "assignCity": "Assign a city",
+      "catalogError": "We could not load your cities, so the pickers below are empty. Reload the page and try again.",
+      "assignFailed": "We could not save that city. The date still has no city. Try again.",
       "sheet": {
         "heading": "Import your dates",
         "sub": "Run the import to bring your dates in from the sheet.",
@@ -461,7 +463,8 @@
       "empty": "No productions yet. Add your first one to get started.",
       "readOnlyEmpty": "No productions yet. Ask an admin to add one.",
       "readOnlyReason": "Adding a production needs the manage productions right, which this account does not have.",
-      "noDates": "Add at least one date to continue. A production with no dates has nothing to fill."
+      "noDates": "Add at least one date to continue. A production with no dates has nothing to fill.",
+      "readError": "We could not load your productions. Reload the page and try again."
     },
     "fee": {
       "heading": "Your default fee",

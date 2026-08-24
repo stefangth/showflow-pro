@@ -138,6 +138,28 @@ describe("ProductionsStep", () => {
     expect(screen.getByText(/no productions yet/i)).toBeInTheDocument();
   });
 
+  /**
+   * `shows.data ?? []` is also what an ERRORED read looks like, so an org WITH productions
+   * was told it had none and invited to create one, which duplicates a production. The
+   * failed read must say it failed.
+   */
+  it("shows a read error instead of the empty state when the productions read fails", () => {
+    showsQuery.mockReturnValue({ data: undefined, isLoading: false, isError: true });
+    renderStep();
+
+    expect(screen.getByText(/could not load your productions/i)).toBeInTheDocument();
+    expect(screen.queryByText(/no productions yet/i)).toBeNull();
+    expect(screen.getByRole("button", { name: /continue/i })).toBeDisabled();
+  });
+
+  it("shows no empty state while the productions read is still loading", () => {
+    showsQuery.mockReturnValue({ data: undefined, isLoading: true, isError: false });
+    renderStep();
+
+    expect(screen.queryByText(/no productions yet/i)).toBeNull();
+    expect(screen.queryByText(/could not load your productions/i)).toBeNull();
+  });
+
   it("hides add/edit controls for a read only viewer", () => {
     mockUseCan({ manage_productions: false, manage_show_dates: false, edit_scheduling: false });
     renderStep();

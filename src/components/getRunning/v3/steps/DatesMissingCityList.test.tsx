@@ -15,7 +15,9 @@ vi.mock("@/data/showDates", () => ({
 vi.mock("@/data/cities", () => ({
   fetchCitiesForLinking: vi.fn(() => Promise.resolve([])),
 }));
+vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.fn(), warning: vi.fn() } }));
 
+import { toast } from "sonner";
 import { fetchUpcomingDatesWithoutCity, updateShowDate } from "@/data/showDates";
 import { fetchCitiesForLinking } from "@/data/cities";
 import { DatesMissingCityList } from "./DatesMissingCityList";
@@ -101,6 +103,37 @@ describe("DatesMissingCityList", () => {
       const keys = invalidate.mock.calls.map((c) => JSON.stringify((c[0] as { queryKey: unknown }).queryKey));
       expect(keys).toContain(JSON.stringify(["eligibility"]));
     });
+  });
+
+  /**
+   * The optimistic pick flips the row's dot to confirmed and shows the chosen city at once.
+   * A FAILED write left both standing, so a date whose `city_id` is still null read as
+   * resolved on a step chipped "Blocks your first ask".
+   */
+  it("reverts the row and says so when the city write fails", async () => {
+    mock(updateShowDate).mockRejectedValue(new Error("permission denied"));
+    renderList();
+
+    await screen.findByText("Hamlet");
+    fireEvent.click(screen.getByRole("combobox"));
+    fireEvent.click(await screen.findByRole("option", { name: "Munich" }));
+
+    await waitFor(() => expect(vi.mocked(toast.error)).toHaveBeenCalled());
+    // The picked city is gone from the trigger: the row is back to unresolved.
+    await waitFor(() => expect(screen.getByRole("combobox")).toHaveTextContent(/assign a city/i));
+    expect(screen.getByRole("combobox")).not.toHaveTextContent("Munich");
+  });
+
+  /**
+   * A failed city read leaves every picker empty. Rendering that silently sends the producer
+   * hunting through dropdowns that will never have anything in them.
+   */
+  it("surfaces a failed city catalog read and holds the pickers disabled", async () => {
+    mock(fetchCitiesForLinking).mockRejectedValue(new Error("network"));
+    renderList();
+
+    expect(await screen.findByText(/could not load your cities/i)).toBeInTheDocument();
+    expect(screen.getByRole("combobox")).toBeDisabled();
   });
 
   it("links out to Settings for a city that does not exist yet", async () => {

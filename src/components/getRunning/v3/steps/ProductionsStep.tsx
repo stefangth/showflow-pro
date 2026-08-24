@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { StatusPill } from "@/components/ui/status-pill";
 import { Metric } from "@/components/ui/metric";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ShowFormDialog } from "@/components/catalog/ShowFormDialog";
 import { ShowDateFormDialog } from "@/components/shows/ShowDateFormDialog";
 import { showIdentityLabel } from "@/types";
@@ -90,7 +92,20 @@ export function ProductionsStep({ orgId, onDone }: { orgId: string | null; onDon
         )}
       </div>
 
-      {list.length === 0 ? (
+      {/* The list read fails CLOSED, ahead of the empty branch. `shows.data ?? []` is also
+          what an ERRORED or still-loading read looks like, and the empty state below tells an
+          org with productions that it has none and invites it to create another one. Continue
+          is already disabled in both states; only the body was lying. */}
+      {shows.isError ? (
+        <Alert variant="destructive">
+          <AlertDescription>{t("body.productions.readError")}</AlertDescription>
+        </Alert>
+      ) : shows.isLoading ? (
+        <div className="space-y-2">
+          <Skeleton className="h-14 w-full" />
+          <Skeleton className="h-14 w-full" />
+        </div>
+      ) : list.length === 0 ? (
         canManage ? (
           <EmptyState
             title={t("body.productions.empty")}
