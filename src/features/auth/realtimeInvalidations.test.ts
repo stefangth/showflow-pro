@@ -105,6 +105,28 @@ describe("REALTIME_INVALIDATIONS — Offers cockpit tier-ladder headcounts", () 
   });
 });
 
+// The Get running skills step reads ['skills','gaps',org], which counts a skill as held
+// only when an ACTIVE artist holds it. Both halves of that sentence are live-editable from
+// another session, so both tables have to reach the board or it keeps reporting a gap that
+// is closed, or done when the last holder just went inactive.
+describe("REALTIME_INVALIDATIONS — skill-gap freshness", () => {
+  it("refreshes ['skills'] when artist_skills changes", () => {
+    expect(hasKey("artist_skills", "skills")).toBe(true);
+  });
+
+  it("refreshes ['artist-skills'] when artist_skills changes", () => {
+    expect(hasKey("artist_skills", "artist-skills")).toBe(true);
+  });
+
+  it("refreshes ['skills'] when artists changes, since a gap counts active holders only", () => {
+    expect(hasKey("artists", "skills")).toBe(true);
+  });
+
+  it("refreshes ['cast-members-counts'] when artists changes, for the same reason", () => {
+    expect(hasKey("artists", "cast-members-counts")).toBe(true);
+  });
+});
+
 describe("REALTIME_INVALIDATIONS — map integrity", () => {
   it("lists no known-dead key prefixes (renamed/typo'd keys that no query uses)", () => {
     // Keys confirmed to have zero `useQuery` consumers in src as of this audit.
