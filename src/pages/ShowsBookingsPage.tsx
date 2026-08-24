@@ -43,6 +43,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { useDatesSource } from '@/hooks/useDatesSource';
 import { useAirtableConsole } from '@/hooks/useAirtableConsole';
+import { useSheetImport } from '@/hooks/useSheetImport';
 import { showSlots } from '@/lib/settings';
 import { formatDateWithWeekday, parseDateOnly } from '@/lib/dates';
 import { useEditorConfig } from '@/features/editor/EditorContext';
@@ -170,22 +171,24 @@ function ProducerShowsBookings() {
   const { hasRole, currentOrg } = useAuth();
   const navigate = useNavigate();
   const canManage = hasRole('admin') || hasRole('producer');
-  const isAdmin = hasRole('admin');
   const orgId = currentOrg?.id ?? null;
-  // Import options for the "New date" split button, reusing the existing flows. The
-  // Airtable console is only activated for an Airtable-sourced org (mirrors
-  // useGetRunningV3) so non-Airtable orgs don't pay for its connection queries; a
-  // connected admin gets an inline "Sync now", everyone else is routed into the
-  // Get Running dates flow where these imports are set up and run.
+  // Import options for the "New date" split button, reusing the existing flows. An org
+  // has exactly one dates source, so "set up" is per-source. The Airtable/sheet hooks
+  // are each activated only for their own source (mirrors useGetRunningV3) so other orgs
+  // don't pay for their connection queries. Once a source is set up, its menu item opens
+  // that source's import settings/importer; otherwise it routes into the Get Running
+  // dates flow where the source is set up. Airtable's import settings live in Settings
+  // (visible to admin and producer); the sheet importer lives in the Get Running connect
+  // step (there is no Settings tab for it).
   const { source: datesSource } = useDatesSource(orgId);
-  const airtable = useAirtableConsole(datesSource === 'airtable' ? orgId : null, {
-    canTriggerSync: isAdmin,
-  });
-  const airtableCanSync = datesSource === 'airtable' && isAdmin && airtable.keyPresent && airtable.hasBaseTable;
-  const handleImportAirtable = () => {
-    if (airtableCanSync) airtable.syncNow();
-    else navigate(ROUTES.GET_RUNNING);
-  };
+  const airtable = useAirtableConsole(datesSource === 'airtable' ? orgId : null, { readOnly: true });
+  const sheet = useSheetImport(datesSource === 'sheet' ? orgId : null);
+  const airtableSetUp = datesSource === 'airtable' && airtable.keyPresent && airtable.hasBaseTable;
+  const sheetSetUp = datesSource === 'sheet' && !!sheet.settings.url;
+  const handleImportAirtable = () =>
+    navigate(airtableSetUp ? `${ROUTES.SETTINGS}?tab=airtable` : ROUTES.GET_RUNNING);
+  const handleImportSheet = () =>
+    navigate(sheetSetUp ? `${ROUTES.GET_RUNNING}?step=connect` : ROUTES.GET_RUNNING);
   const bookingOn = useFeature('booking_flow');
   // Hire-order CTA: module gate + generate capability + which dates are ready.
   const hireOrdersOn = useFeature('hire_orders');
@@ -591,7 +594,7 @@ function ProducerShowsBookings() {
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={() => setNewDateOpen(true)}>{t('producer.datesMenu.byHand')}</DropdownMenuItem>
                 <DropdownMenuItem onClick={handleImportAirtable}>{t('producer.datesMenu.airtable')}</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate(ROUTES.GET_RUNNING)}>{t('producer.datesMenu.sheet')}</DropdownMenuItem>
+                <DropdownMenuItem onClick={handleImportSheet}>{t('producer.datesMenu.sheet')}</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>

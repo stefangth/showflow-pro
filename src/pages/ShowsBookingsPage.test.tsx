@@ -54,12 +54,12 @@ const { showDatesRef } = vi.hoisted(() => ({
 // the router's navigate spy, the org's dates source, and the Airtable console's
 // connection + sync spy. Defaults keep every pre-existing test unchanged (producer,
 // no source, disconnected Airtable).
-const { authRef, navigateSpy, syncNowSpy, datesSourceRef, airtableRef } = vi.hoisted(() => ({
+const { authRef, navigateSpy, datesSourceRef, airtableRef, sheetRef } = vi.hoisted(() => ({
   authRef: { value: { roles: ["producer"] as string[] } },
   navigateSpy: vi.fn(),
-  syncNowSpy: vi.fn(),
   datesSourceRef: { value: null as null | "airtable" | "sheet" | "manual" },
   airtableRef: { value: { keyPresent: false, hasBaseTable: false } },
+  sheetRef: { value: { settings: { url: "", map: {} } } },
 }));
 
 // A no-op realtime channel stand-in: ShowsBookingsPage subscribes to
@@ -84,7 +84,10 @@ vi.mock("@/hooks/useDatesSource", () => ({
   useDatesSource: () => ({ source: datesSourceRef.value, isLoading: false, save: vi.fn(), saving: false }),
 }));
 vi.mock("@/hooks/useAirtableConsole", () => ({
-  useAirtableConsole: () => ({ ...airtableRef.value, syncNow: syncNowSpy }),
+  useAirtableConsole: () => airtableRef.value,
+}));
+vi.mock("@/hooks/useSheetImport", () => ({
+  useSheetImport: () => sheetRef.value,
 }));
 // v3 is the app default now; pin it off so the finish-setup affordance test genuinely
 // exercises the v1 path (this page's supabase mock has no `.from`, so the flag query can
@@ -155,8 +158,8 @@ beforeEach(() => {
   authRef.value = { roles: ["producer"] };
   datesSourceRef.value = null;
   airtableRef.value = { keyPresent: false, hasBaseTable: false };
+  sheetRef.value = { settings: { url: "", map: {} } };
   navigateSpy.mockClear();
-  syncNowSpy.mockClear();
 });
 
 describe("ShowsBookingsPage — producer no default timeframe bound + past-day dimming (calendar surface)", () => {
@@ -287,54 +290,62 @@ describe("ShowsBookingsPage — STATUS_LABEL recomputes on language change (Task
 /**
  * "New date" split button (Option A): the primary click still opens the manual
  * ShowDateFormDialog, and a chevron menu surfaces the two existing import flows
- * (Airtable, sheet). Reuse rules: sheet always routes into the Get Running flow
- * (there is no standalone sheet-import dialog); Airtable syncs inline only for a
- * connected admin Airtable org and otherwise routes to setup too.
+ * (Airtable, sheet). Routing rules: once a source is set up, its item opens that
+ * source's importer/import settings (Airtable → Settings, sheet → the Get Running
+ * connect step); otherwise it routes into Get Running to set the source up.
  */
 describe("ShowsBookingsPage — New date split button import options", () => {
   beforeEach(() => {
     showDatesRef.value = [showDate({ id: "sd-1", date: "2030-06-20", show_id: "s1" })];
   });
 
+  // Radix's DropdownMenuTrigger opens on pointerdown or Enter/Space, not a plain
+  // synthetic click; jsdom has no PointerEvent, so use the keyboard path.
+  async function openMenu() {
+    fireEvent.keyDown(await screen.findByRole("button", { name: "More ways to add dates" }), { key: "Enter" });
+  }
+
   it("surfaces by-hand, Airtable, and sheet in the chevron menu", async () => {
     renderWithProviders(<ShowsBookingsPage />);
-    // Radix's DropdownMenuTrigger opens on pointerdown or Enter/Space, not a plain
-    // synthetic click; jsdom has no PointerEvent, so use the keyboard path.
-    fireEvent.keyDown(await screen.findByRole("button", { name: "More ways to add dates" }), { key: "Enter" });
+    await openMenu();
     expect(await screen.findByText("New date by hand")).toBeInTheDocument();
     expect(screen.getByText("Import from Airtable")).toBeInTheDocument();
     expect(screen.getByText("Import from sheet")).toBeInTheDocument();
   });
 
-  it("routes sheet import into the Get Running flow", async () => {
+  it("routes Airtable import to setup when the org's Airtable source is not connected", async () => {
+    datesSourceRef.value = "airtable";
+    airtableRef.value = { keyPresent: false, hasBaseTable: false };
     renderWithProviders(<ShowsBookingsPage />);
-    // Radix's DropdownMenuTrigger opens on pointerdown or Enter/Space, not a plain
-    // synthetic click; jsdom has no PointerEvent, so use the keyboard path.
-    fireEvent.keyDown(await screen.findByRole("button", { name: "More ways to add dates" }), { key: "Enter" });
+    await openMenu();
+    fireEvent.click(await screen.findByText("Import from Airtable"));
+    expect(navigateSpy).toHaveBeenCalledWith("/get-running");
+  });
+
+  it("opens the Airtable import settings once the Airtable source is set up", async () => {
+    datesSourceRef.value = "airtable";
+    airtableRef.value = { keyPresent: true, hasBaseTable: true };
+    renderWithProviders(<ShowsBookingsPage />);
+    await openMenu();
+    fireEvent.click(await screen.findByText("Import from Airtable"));
+    expect(navigateSpy).toHaveBeenCalledWith("/settings?tab=airtable");
+  });
+
+  it("routes sheet import to setup when no sheet is configured", async () => {
+    datesSourceRef.value = "sheet";
+    sheetRef.value = { settings: { url: "", map: {} } };
+    renderWithProviders(<ShowsBookingsPage />);
+    await openMenu();
     fireEvent.click(await screen.findByText("Import from sheet"));
     expect(navigateSpy).toHaveBeenCalledWith("/get-running");
   });
 
-  it("routes Airtable import to setup when the org is not a connected Airtable org", async () => {
+  it("opens the sheet importer once a sheet is configured", async () => {
+    datesSourceRef.value = "sheet";
+    sheetRef.value = { settings: { url: "https://docs.google.com/spreadsheets/d/x/pub?output=csv", map: {} } };
     renderWithProviders(<ShowsBookingsPage />);
-    // Radix's DropdownMenuTrigger opens on pointerdown or Enter/Space, not a plain
-    // synthetic click; jsdom has no PointerEvent, so use the keyboard path.
-    fireEvent.keyDown(await screen.findByRole("button", { name: "More ways to add dates" }), { key: "Enter" });
-    fireEvent.click(await screen.findByText("Import from Airtable"));
-    expect(navigateSpy).toHaveBeenCalledWith("/get-running");
-    expect(syncNowSpy).not.toHaveBeenCalled();
-  });
-
-  it("syncs Airtable inline for a connected admin Airtable org, without navigating", async () => {
-    authRef.value = { roles: ["admin", "producer"] };
-    datesSourceRef.value = "airtable";
-    airtableRef.value = { keyPresent: true, hasBaseTable: true };
-    renderWithProviders(<ShowsBookingsPage />);
-    // Radix's DropdownMenuTrigger opens on pointerdown or Enter/Space, not a plain
-    // synthetic click; jsdom has no PointerEvent, so use the keyboard path.
-    fireEvent.keyDown(await screen.findByRole("button", { name: "More ways to add dates" }), { key: "Enter" });
-    fireEvent.click(await screen.findByText("Import from Airtable"));
-    expect(syncNowSpy).toHaveBeenCalledTimes(1);
-    expect(navigateSpy).not.toHaveBeenCalled();
+    await openMenu();
+    fireEvent.click(await screen.findByText("Import from sheet"));
+    expect(navigateSpy).toHaveBeenCalledWith("/get-running?step=connect");
   });
 });
