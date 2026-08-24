@@ -132,7 +132,7 @@ export function TaskRow({ task, onOpen, adminNames, active = false }: TaskRowPro
           {/* Quiet route label: names where this step's setting really lives (question 1),
               so the board teaches the app even before a panel is opened. Hidden on the
               narrowest widths so it never crowds the description. */}
-          <span className="hidden shrink-0 font-mono text-eyebrow text-[var(--text-faint)] sm:inline">
+          <span className="hidden shrink-0 text-eyebrow text-[var(--text-faint)] sm:inline">
             {t(TASK_FEATURE[task.key].shortKey)}
           </span>
         </div>

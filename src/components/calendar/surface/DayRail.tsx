@@ -91,7 +91,7 @@ export function DayRail({
             <div key={i} className="flex items-center gap-2">
               <span className={cn('h-1 w-2.5 shrink-0 rounded-full', stat.dotClass)} />
               <span className="text-control text-foreground">{stat.label}</span>
-              <span className="ml-auto font-mono text-xs font-medium tabular-nums text-foreground">
+              <span className="ml-auto text-xs font-medium tabular-nums text-foreground">
                 {stat.value}
               </span>
             </div>

@@ -51,11 +51,11 @@ export function DateRail({ dateKey, daysOut, tone }: DateRailProps) {
       <Eyebrow tone={TONE_TO_TONES[tone]}>
         {format(date, "EEE", { locale: dfLocale() })}
       </Eyebrow>
-      <p className={cn("m-0 font-mono text-display-sm font-semibold leading-8", toneClasses.text)}>
+      <p className={cn("m-0 text-display-sm font-semibold leading-8 tabular-nums", toneClasses.text)}>
         {format(date, "dd", { locale: dfLocale() })}
       </p>
       <p className="m-0 text-eyebrow text-muted-foreground">{format(date, "MMM", { locale: dfLocale() })}</p>
-      <p className={cn("m-0 mt-1.5 font-mono text-eyebrow", toneClasses.text)}>
+      <p className={cn("m-0 mt-1.5 text-eyebrow tabular-nums", toneClasses.text)}>
         {t("calendar.needsYou.note.atRiskLeadDays", { count: daysOut })}
       </p>
     </div>

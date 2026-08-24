@@ -202,7 +202,7 @@ export function MonthGrid({
               )}
 
               <div className="flex items-center justify-between">
-                <span className={cn('font-mono text-xs tabular-nums text-foreground', cell.isToday && 'font-semibold')}>
+                <span className={cn('text-xs tabular-nums text-foreground', cell.isToday && 'font-semibold')}>
                   {cell.dayNum}
                 </span>
                 {cell.flag && (
@@ -232,7 +232,7 @@ export function MonthGrid({
                         className="mt-0.5 flex items-center gap-1"
                       >
                         {chip.time && (
-                          <span className={cn('font-mono text-eyebrow opacity-80', TONE_TEXT[chip.tone])}>{chip.time}</span>
+                          <span className={cn('text-eyebrow tabular-nums opacity-80', TONE_TEXT[chip.tone])}>{chip.time}</span>
                         )}
                         {(chip.extraSessions ?? 0) > 0 && (
                           <span

@@ -184,7 +184,7 @@ function ProducerDayCard({ entry }: { entry: ProducerDateEntry }) {
           {entry.subProgram ? ` · ${entry.subProgram}` : ''}
         </p>
         {entry.session1 && (
-          <span className="shrink-0 whitespace-nowrap font-mono text-eyebrow text-muted-foreground">
+          <span className="shrink-0 whitespace-nowrap text-eyebrow tabular-nums text-muted-foreground">
             {sessionLabel(entry.session1)}
           </span>
         )}
@@ -198,7 +198,7 @@ function ProducerDayCard({ entry }: { entry: ProducerDateEntry }) {
       {meter ? (
         <div className="mt-1.5 flex items-center gap-2">
           <FillMeter segments={meter} tone={toneSpec.tone} />
-          <span className={cn('font-mono text-eyebrow font-medium', TONE_TEXT[toneSpec.tone])}>
+          <span className={cn('text-eyebrow font-medium tabular-nums', TONE_TEXT[toneSpec.tone])}>
             {entry.confirmedMain}/{entry.mainSlots} main
           </span>
         </div>
@@ -225,7 +225,7 @@ function ArtistDayCard({ entry, statusLabels }: { entry: ArtistDateEntry; status
           {entry.subProgram ? ` · ${entry.subProgram}` : ''}
         </p>
         {entry.session1 && (
-          <span className="shrink-0 whitespace-nowrap font-mono text-eyebrow text-muted-foreground">
+          <span className="shrink-0 whitespace-nowrap text-eyebrow tabular-nums text-muted-foreground">
             {sessionLabel(entry.session1)}
           </span>
         )}
@@ -327,7 +327,7 @@ export function DayDetail({
                 <Eyebrow className={cn('tracking-wide', tile.warn ? 'text-warning' : undefined)}>
                   {tile.label}
                 </Eyebrow>
-                <p className={cn('mt-0.5 font-mono text-sm font-semibold', tile.warn ? 'text-warning' : 'text-foreground')}>
+                <p className={cn('mt-0.5 text-sm font-semibold tabular-nums', tile.warn ? 'text-warning' : 'text-foreground')}>
                   {tile.value}
                 </p>
               </div>
@@ -363,7 +363,7 @@ export function DayDetail({
           </div>
         )}
 
-        <p className="font-mono text-eyebrow text-muted-foreground">{t('common:calendar.day.keyHint')}</p>
+        <p className="text-eyebrow text-muted-foreground">{t('common:calendar.day.keyHint')}</p>
       </div>
     </div>
   );

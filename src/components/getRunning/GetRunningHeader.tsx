@@ -106,7 +106,7 @@ export function GetRunningHeader({ model, orgName, role, adminNames }: {
           {t("progress.title")}
         </Eyebrow>
         <div className="mt-2 flex items-baseline gap-1.5">
-          <span className="font-mono text-title font-semibold tracking-[-0.4px] text-foreground">
+          <span className="text-title font-semibold tabular-nums tracking-[-0.4px] text-foreground">
             {model.doneCount}
           </span>
           <span className="text-xs text-[var(--text-faint)]">{t("progress.of", { total: model.totalCount })}</span>

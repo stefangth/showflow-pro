@@ -68,7 +68,7 @@ export function DatesPanelBody({
                 {t("panel.body.dates.syncedAt", { time: formatTimestampLocal(latest.synced_at) })}
               </span>
             </div>
-            <span className="shrink-0 font-mono text-xs text-muted-foreground">
+            <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
               {t("panel.body.dates.recordCount", { count: latest.records_processed ?? 0 })}
             </span>
           </div>

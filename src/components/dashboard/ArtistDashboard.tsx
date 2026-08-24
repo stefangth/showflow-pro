@@ -28,6 +28,7 @@ import { UnlinkedArtistCard } from '@/components/artists/UnlinkedArtistCard';
 import { respondToOffer } from '@/data/bookings';
 import { acceptConsequenceNote } from '@/lib/bookings/actionCopy';
 import { termLabel } from '@/i18n/terms';
+import { Token } from '@/components/ui/token';
 import type { Lang } from '@/i18n/config';
 
 type BookingLite = { id: string; show_date_id: string; status: string; offer_expires_at: string | null };
@@ -267,7 +268,7 @@ export function ArtistDashboard() {
                               <p className="m-0 text-eyebrow font-semibold uppercase tracking-[1.6px] text-accent-text">
                                 {format(date, 'EEE', { locale: dfLocale() })}
                               </p>
-                              <p className="m-0 font-mono text-display-sm font-semibold leading-8 text-accent-text">
+                              <p className="m-0 text-display-sm font-semibold leading-8 tabular-nums text-accent-text">
                                 {format(date, 'd', { locale: dfLocale() })}
                               </p>
                               <p className="m-0 text-eyebrow text-muted-foreground">
@@ -305,7 +306,7 @@ export function ArtistDashboard() {
                                   {tAvail('offer.decline')}
                                 </Button>
                                 {deadline && (
-                                  <span className="ml-1.5 font-mono text-xs text-warning">{deadline}</span>
+                                  <span className="ml-1.5 text-xs tabular-nums text-warning">{deadline}</span>
                                 )}
                               </div>
                             </div>
@@ -371,7 +372,7 @@ export function ArtistDashboard() {
                         )}
                       >
                         <Link to={ROUTES.HIRE_ORDER_DETAIL.replace(':id', o.id)} className="min-w-0 flex-1">
-                          <p className="text-sm font-mono font-medium text-foreground truncate">{o.order_no}</p>
+                          <Token className="block text-sm font-medium text-foreground truncate">{o.order_no}</Token>
                           {subtitle && <p className="text-xs text-muted-foreground truncate">{subtitle}</p>}
                         </Link>
                         <div className="flex items-center gap-2 shrink-0">

@@ -126,9 +126,9 @@ function SummaryRow({ title, detail, mono, badge, action, onAction, stepNumber, 
       </span>
       <div className="min-w-0 flex-1">
         <p className={cn("text-control font-medium", emphasis && "font-semibold")}>{title}</p>
-        <p className={cn("mt-0.5 text-xs text-muted-foreground", mono && "font-mono text-eyebrow")}>{detail}</p>
+        <p className={cn("mt-0.5 text-xs text-muted-foreground", mono && "text-eyebrow")}>{detail}</p>
       </div>
-      {badge && <span className="shrink-0 font-mono text-xs font-medium text-accent-text">{badge}</span>}
+      {badge && <span className="shrink-0 text-xs font-medium tabular-nums text-accent-text">{badge}</span>}
       {action && (
         <Button type="button" variant="secondary" size="sm" className="shrink-0 text-xs font-medium" onClick={onAction}>
           {action}

@@ -332,7 +332,7 @@ export function NeedsYouLens({
                       </Eyebrow>
                       <p
                         className={cn(
-                          'font-mono text-display-sm font-semibold leading-8 tabular-nums',
+                          'text-display-sm font-semibold leading-8 tabular-nums',
                           isUrgent ? 'text-accent-text' : 'text-foreground'
                         )}
                       >
@@ -341,7 +341,7 @@ export function NeedsYouLens({
                       <p className="text-eyebrow text-muted-foreground">
                         {format(item.entry.date, 'MMM', { locale: dfLocale() })}
                       </p>
-                      {lead && <p className="font-mono text-eyebrow text-[var(--text-faint)] md:mt-1.5">{lead}</p>}
+                      {lead && <p className="text-eyebrow tabular-nums text-[var(--text-faint)] md:mt-1.5">{lead}</p>}
                     </div>
 
                     {/* 2. Content column — eyebrow+countdown, title, detail, meter, people, note. */}
@@ -353,7 +353,7 @@ export function NeedsYouLens({
                         {item.group === 'expires-today' && item.earliestExpiry && (
                           <span
                             data-testid={`needs-you-expiry-${item.dateId}`}
-                            className="font-mono text-eyebrow font-medium text-[var(--red-600)]"
+                            className="text-eyebrow font-medium tabular-nums text-[var(--red-600)]"
                           >
                             {t('calendar.needsYou.expires', { time: format(item.earliestExpiry, 'HH:mm') })}
                           </span>
@@ -369,7 +369,7 @@ export function NeedsYouLens({
                       {meter.length > 0 && (
                         <div className="mt-2.5 flex items-center gap-2">
                           <FillMeter segments={meter} tone={toneSpec.tone} />
-                          <span className="font-mono text-caption font-medium text-muted-foreground">
+                          <span className="text-caption font-medium tabular-nums text-muted-foreground">
                             {item.entry.confirmedMain}/{item.entry.mainSlots}
                           </span>
                         </div>
@@ -472,7 +472,7 @@ export function NeedsYouLens({
       <div data-testid="needs-you-receipts" className="overflow-hidden rounded-card border-[0.5px] border-border bg-well-tint">
         <div className="flex items-center gap-2 border-b-[0.5px] border-border px-3.5 py-2.5">
           <Eyebrow>{t('calendar.needsYou.clearedToday')}</Eyebrow>
-          <span className="font-mono text-eyebrow text-muted-foreground">{receipts.length}</span>
+          <span className="text-eyebrow tabular-nums text-muted-foreground">{receipts.length}</span>
           <button
             type="button"
             className="ml-auto text-control font-medium text-accent-text hover:underline disabled:pointer-events-none disabled:opacity-50"

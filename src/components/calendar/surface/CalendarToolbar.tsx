@@ -27,7 +27,7 @@ export function CalendarToolbar({ children, keyHint, className }: CalendarToolba
       {keyHint && (
         <span
           data-testid="calendar-toolbar-key-hint"
-          className="shrink-0 font-mono text-eyebrow text-[var(--text-faint)]"
+          className="shrink-0 text-eyebrow text-[var(--text-faint)]"
         >
           {keyHint}
         </span>

@@ -224,7 +224,7 @@ export function AirtableConnectRail({ orgId, readOnly, canTriggerSync, onConnect
       </div>
 
       <div className="flex items-center gap-2.5 border-t border-border bg-well-tint px-4 py-3.5">
-        <span className="font-mono text-xs font-medium text-accent-600">{t("rail.footer.stepOf", { n: activeIndex + 1 })}</span>
+        <span className="text-xs font-medium tabular-nums text-accent-600">{t("rail.footer.stepOf", { n: activeIndex + 1 })}</span>
         <span className="text-xs text-muted-foreground">{t("rail.footer.savedAsYouGo")}</span>
         <span className="flex-1" />
         <Button type="button" variant="outline" onClick={onLater}>{t("rail.footer.later")}</Button>

@@ -95,7 +95,7 @@ export function AllDatesLens({ entries, onBlock, hireOrderHref, statusLabels, to
             className="flex flex-col items-start gap-2 border-b border-border/60 px-3.5 py-3 last:border-b-0 hover:bg-hover-tint md:flex-row md:items-center md:gap-3.5 md:py-2.5"
           >
             <div className="flex items-center gap-2 md:contents">
-              <span className="font-mono text-control font-medium tabular-nums text-foreground md:w-24 md:shrink-0">
+              <span className="text-control font-medium tabular-nums text-foreground md:w-24 md:shrink-0">
                 {format(entry.date, 'd MMM', { locale: dfLocale() })}
               </span>
               <span className="text-xs text-muted-foreground md:w-[42px] md:shrink-0">{format(entry.date, 'EEE', { locale: dfLocale() })}</span>
@@ -107,7 +107,7 @@ export function AllDatesLens({ entries, onBlock, hireOrderHref, statusLabels, to
               </p>
               {entry.venue && <p className="truncate text-xs text-muted-foreground">{entry.venue}</p>}
             </div>
-            <span className="font-mono text-xs tabular-nums text-muted-foreground md:w-[52px] md:shrink-0">
+            <span className="text-xs tabular-nums text-muted-foreground md:w-[52px] md:shrink-0">
               {sessionLabel(entry.session1)}
             </span>
             <span

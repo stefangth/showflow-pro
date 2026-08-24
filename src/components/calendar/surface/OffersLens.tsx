@@ -94,7 +94,7 @@ export function OffersLens({
             >
               <div className="flex w-full shrink-0 flex-row items-center justify-start gap-2 border-b border-border bg-well-tint px-4 py-2.5 text-left md:w-[92px] md:flex-col md:items-center md:justify-center md:gap-0 md:border-b-0 md:border-r md:px-0 md:py-4 md:text-center">
                 <Eyebrow>{format(entry.date, 'EEE', { locale: dfLocale() })}</Eyebrow>
-                <p className="font-mono text-display-sm font-semibold leading-8 tabular-nums text-foreground">
+                <p className="text-display-sm font-semibold leading-8 tabular-nums text-foreground">
                   {format(entry.date, 'd')}
                 </p>
                 <p className="text-eyebrow text-muted-foreground">{format(entry.date, 'MMM', { locale: dfLocale() })}</p>
@@ -169,7 +169,7 @@ export function OffersLens({
       </div>
 
       <div className="flex items-center gap-2.5 px-0.5">
-        <span className="whitespace-nowrap font-mono text-eyebrow text-muted-foreground">
+        <span className="whitespace-nowrap text-eyebrow text-muted-foreground">
           {t('calendar.offersProgress.keyboardHint')}
         </span>
         <span
@@ -190,7 +190,7 @@ export function OffersLens({
       <div className="overflow-hidden rounded-control border border-border bg-well-tint">
         <div className="flex items-center gap-2 border-b border-border px-3.5 py-2.5">
           <Eyebrow>{t('calendar.offersAnswered.title')}</Eyebrow>
-          <span className="font-mono text-eyebrow text-muted-foreground">{answeredToday.length}</span>
+          <span className="text-eyebrow tabular-nums text-muted-foreground">{answeredToday.length}</span>
           {/* "Undo last" is an inert stub for now — wired up in a later wave. */}
           <span className="ml-auto cursor-pointer text-xs font-medium text-primary">{t('calendar.offersAnswered.undoLast')}</span>
         </div>
@@ -200,7 +200,7 @@ export function OffersLens({
             data-testid={`answered-row-${i}`}
             className="flex items-center gap-3 border-b border-border/60 px-3.5 py-2.5 last:border-b-0"
           >
-            <span className="w-[52px] shrink-0 font-mono text-xs font-medium tabular-nums text-muted-foreground">
+            <span className="w-[52px] shrink-0 text-xs font-medium tabular-nums text-muted-foreground">
               {row.date}
             </span>
             <span className="min-w-0 flex-1 truncate text-control font-medium text-foreground">{row.title}</span>
@@ -228,7 +228,7 @@ export function OffersLens({
             data-testid={`not-offered-row-${entry.id}`}
             className="flex items-center gap-3 border-b border-border/60 px-3.5 py-2.5 last:border-b-0"
           >
-            <span className="w-[52px] shrink-0 font-mono text-xs font-medium tabular-nums text-muted-foreground">
+            <span className="w-[52px] shrink-0 text-xs font-medium tabular-nums text-muted-foreground">
               {format(entry.date, 'd MMM', { locale: dfLocale() })}
             </span>
             <span className="min-w-0 flex-1 truncate text-control font-medium text-foreground">
