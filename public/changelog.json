@@ -27,6 +27,10 @@
           "description": "Once every step is done, Get running leaves the sidebar as before, but the full walkthrough stays open under Settings, Get running, so you can revisit any step whenever something changes."
         },
         {
+          "title": "The guided setup is the standard for every workspace",
+          "description": "The step by step Get running walkthrough now opens for everyone as the default way to get set up, so a new workspace starts in the same guided onboarding."
+        },
+        {
           "title": "\"How this org works\" has its own icon",
           "description": "It shared one with Get running directly below it in Settings."
         },
