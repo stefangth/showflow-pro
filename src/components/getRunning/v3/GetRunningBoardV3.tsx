@@ -20,6 +20,7 @@ import { useRailDismissed } from "@/components/setup/useRailDismissed";
 import { ROUTES } from "@/config/app.config";
 import { adminDisplayName } from "@/data/orgAdmins";
 import { visibleSteps } from "@/lib/getRunning/steps";
+import { stepHeadingKeys } from "@/lib/getRunning/stepHeading";
 import type { GetRunningModelV3, GetRunningPhaseKey, GetRunningStep, GetRunningStepKey } from "@/lib/getRunning/steps";
 
 /**
@@ -444,8 +445,9 @@ export function GetRunningBoardV3({ context }: { context: "page" | "settings" })
               onSelectStep={(key) => setSelectedStep(key)}
               onCollapse={handleCollapse}
               onNext={handleStepDone}
+              {...stepHeadingKeys(activeStep.key, model.datesSource)}
             >
-              <StepBodyV3 step={activeStep} orgId={orgId} onDone={handleStepDone} />
+              <StepBodyV3 step={activeStep} orgId={orgId} onDone={handleStepDone} onGoToStep={setSelectedStep} />
             </WizardShell>
           ) : (
             <div key={phase.key} className="overflow-hidden rounded-l border border-border bg-card">

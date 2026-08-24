@@ -175,7 +175,13 @@ export function ConnectStep({ orgId, onDone }: { orgId: string | null; onDone: (
           )}
         </div>
       ) : (
-        <p className="text-sm text-muted-foreground">{t("body.connect.manual")}</p>
+        // Two different states share this branch. "manual" genuinely needs no connection.
+        // No source at all is not the same thing: the viewer has simply not chosen yet,
+        // and telling them "by hand needs no connection" answers a question they never
+        // asked. Say what is actually true of each.
+        <p className="text-sm text-muted-foreground">
+          {source === "manual" ? t("body.connect.manual") : t("body.connect.pickSourceFirst")}
+        </p>
       )}
 
       <WizardFooterAction>{continueButton}</WizardFooterAction>

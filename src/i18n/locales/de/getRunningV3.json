@@ -381,7 +381,12 @@
         "loaded": "{{count}} Spalten geladen.",
         "invalidUrl": "Füge einen veröffentlichten CSV Link von Google Sheets ein, um fortzufahren.",
         "loadError": "Die Tabelle konnte nicht gelesen werden. Prüfe den Link und versuche es erneut."
-      }
+      },
+      "none": {
+        "heading": "Verbinde deine Datenquelle",
+        "sub": "Wähle zuerst, woher deine Termine kommen, dann verbinde die Quelle hier."
+      },
+      "pickSourceFirst": "Geh einen Schritt zurück und wähle, woher deine Termine kommen. Airtable und Google Sheet werden hier verbunden. Von Hand braucht keine Verbindung."
     },
     "map": {
       "heading": "Felder zuordnen",
@@ -410,7 +415,9 @@
         "notMapped": "Nicht zugeordnet",
         "noHeaders": "Geh zurück zu Verbinden und lade zuerst die Spalten deiner Tabelle.",
         "mapIncomplete": "Ordne die Felder Produktion und Datum zu, um fortzufahren."
-      }
+      },
+      "notConnected": "Es gibt noch nichts zuzuordnen. Verbinde zuerst deine Airtable Base, dann erscheinen ihre Spalten hier.",
+      "goToConnect": "Zu Airtable verbinden"
     },
     "cities": {
       "heading": "Jedem Termin eine Stadt zuordnen",

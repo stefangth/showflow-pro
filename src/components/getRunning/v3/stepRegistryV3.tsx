@@ -56,10 +56,14 @@ export function StepBodyV3({
   step,
   orgId,
   onDone,
+  onGoToStep,
 }: {
   step: GetRunningStep;
   orgId: string | null;
   onDone: () => void;
+  /** Move the wizard to a named step. Only the `map` body uses it today, to send an
+   *  Airtable org that has not connected yet back to the step that can unblock it. */
+  onGoToStep?: (key: GetRunningStepKey) => void;
 }): JSX.Element {
   const bookingOrgId = BOOKING_DOMAIN_STEP_KEYS.has(step.key) ? orgId : null;
   const {
@@ -101,7 +105,7 @@ export function StepBodyV3({
     case "connect":
       return <ConnectStep orgId={orgId} onDone={onDone} />;
     case "map":
-      return <MapStep orgId={orgId} onDone={onDone} />;
+      return <MapStep orgId={orgId} onDone={onDone} onGoToStep={onGoToStep} />;
     case "cities":
       // `null` whenever the booking-setup read is unresolved, in flight OR failed:
       // `computeBookingSetupStatus` reports `hasAnyDates: false` for a failed

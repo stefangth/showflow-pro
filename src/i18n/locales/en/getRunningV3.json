@@ -381,7 +381,12 @@
         "loaded": "Loaded {{count}} columns.",
         "invalidUrl": "Paste a published Google Sheets CSV link to continue.",
         "loadError": "The sheet could not be read. Check the link and try again."
-      }
+      },
+      "none": {
+        "heading": "Connect your dates source",
+        "sub": "Pick where your dates come from first, then connect it here."
+      },
+      "pickSourceFirst": "Go back a step and pick where your dates come from. Airtable and Google Sheet connect here. By hand needs no connection."
     },
     "map": {
       "heading": "Map your fields",
@@ -410,7 +415,9 @@
         "notMapped": "Not mapped",
         "noHeaders": "Go back to Connect and load your sheet's columns first.",
         "mapIncomplete": "Map the production and date columns to continue."
-      }
+      },
+      "notConnected": "There is nothing to map yet. Connect your Airtable base first, then its columns show up here.",
+      "goToConnect": "Go to Connect Airtable"
     },
     "cities": {
       "heading": "Set a city on every date",
