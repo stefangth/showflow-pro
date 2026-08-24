@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react';
 import { Badge, MiniCard, MiniField, MiniWell, MiniRow, MiniAvatar } from '../atoms';
-import { Token } from '@/components/ui/token';
 
 /**
  * The four Artists-mini illustrations, in step order:
@@ -18,7 +17,7 @@ export const artistsArt: readonly [ReactNode, ReactNode, ReactNode, ReactNode] =
       trailing={<Badge variant="confirmed">Active</Badge>}
     />
     <MiniField label="Booking phone">
-      <Token>+49 30 1234 567</Token>
+      <span className="tabular-nums">+49 30 1234 567</span>
     </MiniField>
   </MiniCard>,
 

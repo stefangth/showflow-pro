@@ -52,7 +52,7 @@ export function IssuePreflightSheet({
       <SheetContent className="flex w-full flex-col gap-0 sm:max-w-lg">
         <SheetHeader className="text-left">
           <p className="text-xs text-muted-foreground">
-            <Token>{order?.order_no ?? t("preflightSheet.draftFallback")}</Token> · {order?.artistName ?? ""}
+            {order?.order_no ? <Token>{order.order_no}</Token> : t("preflightSheet.draftFallback")} · {order?.artistName ?? ""}
           </p>
           <SheetTitle className="font-display">
             {isLoading

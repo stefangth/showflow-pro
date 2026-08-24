@@ -699,6 +699,7 @@ function KpiCard({ label, value, note, tone }: { label: string; value: number; n
         <Metric
           size="lg"
           className={cn(
+            "block",
             tone === "red" ? "text-[var(--red-600)]" : tone === "amber" ? "text-[var(--amber-600)]" : "text-foreground",
           )}
         >

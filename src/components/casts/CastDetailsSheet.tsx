@@ -379,7 +379,7 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
               <div key={k.label} className="rounded-card border border-border bg-well-tint px-3.5 py-3">
                 {/* eslint-disable-next-line no-restricted-syntax -- KPI tile label, KpiTile adoption deferred to primitive-adoption task */}
                 <p className="text-eyebrow font-semibold uppercase tracking-[1.6px] text-muted-foreground">{k.label}</p>
-                <Metric size="lg" className="mt-1.5">{k.value}</Metric>
+                <Metric size="lg" className="mt-1.5 block">{k.value}</Metric>
               </div>
             ))}
           </div>

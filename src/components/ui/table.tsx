@@ -70,7 +70,7 @@ const TableCell = React.forwardRef<HTMLTableCellElement, TableCellProps>(
       ref={ref}
       className={cn(
         "px-4 py-0 text-control align-middle [&:has([role=checkbox])]:pr-0",
-        numeric && "text-right font-mono tabular-nums",
+        numeric && "text-right tabular-nums",
         className,
       )}
       {...props}

@@ -104,7 +104,11 @@ export function BatchIssuePreflightDialog({
               {blocked.map(({ order, blockers }) => (
                 <div key={order.id} className="rounded-card border border-border p-3">
                   <p className="text-sm font-medium">{order.artistName}</p>
-                  <Token className="block text-xs text-muted-foreground">{order.order_no ?? t("batchPreflight.draftFallback")}</Token>
+                  {order.order_no ? (
+                    <Token className="block text-xs text-muted-foreground">{order.order_no}</Token>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">{t("batchPreflight.draftFallback")}</p>
+                  )}
                   <p className="mt-1 text-xs text-[var(--amber-600)]">
                     {blockers.map((b) => BLOCKER_COPY[b.key].label).join(", ")}
                   </p>

@@ -4,7 +4,7 @@ import { TableCell, TableHead } from "./table";
 
 describe("Table primitives", () => {
   describe("TableCell with numeric prop", () => {
-    it("right-aligns and monospaces numeric cells", () => {
+    it("right-aligns numeric cells with tabular sans figures, never mono", () => {
       render(
         <table>
           <tbody>
@@ -16,8 +16,10 @@ describe("Table primitives", () => {
       );
       const cell = screen.getByText("42");
       expect(cell.className).toContain("text-right");
-      expect(cell.className).toContain("font-mono");
       expect(cell.className).toContain("tabular-nums");
+      // Money and counts in a table column are Geist Sans with tabular figures,
+      // which measures identically to Geist Mono. Mono is only for <Token>.
+      expect(cell.className).not.toContain("font-mono");
     });
 
     it("does not add numeric classes when numeric is false", () => {

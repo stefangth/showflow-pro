@@ -83,9 +83,12 @@ person may copy, paste, or quote back. An id, a reference number, a key, a scope
 function name, a status code, a version. Use `<Token>`. A label is never a token, only
 a value can be.
 
-**[ci]** Raw `font-mono` is banned in feature code. Go through `<Token>`.
-`src/components/ui` and the PDF and email renderers are exempt: a generated document is
-allowed its own typography.
+**[ci]** Raw `font-mono` is banned in feature code, in a plain string and in a template
+literal alike. Go through `<Token>`. The `ignores` array in `eslint/ui-conventions.js`
+carries the full exemption list: `src/components/ui/**` (where `Token` itself lives),
+`src/**/*.test.{ts,tsx}`, the PDF and email renderers (`src/lib/hireOrders/pdf/**`,
+`src/lib/emailTemplates/**`), and `src/lib/avatar.ts`. A generated document is allowed
+its own typography.
 
 ## 4. Color roles
 
