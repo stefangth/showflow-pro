@@ -334,7 +334,11 @@
       "assignError": "That change did not save. Try again.",
       "noCatalog": "No skills in the catalog yet. Add one below, then set it on your artists.",
       "noArtists": "No active artists yet. Add your artists first, then set their skills.",
-      "noArtistsLink": "Go to artists"
+      "noArtistsLink": "Go to artists",
+      "catalogReadError": "We could not load your skill catalog, so we cannot show the skills to pick from. Reload the page and try again.",
+      "filterPlaceholder": "Search artists by name",
+      "filterNoMatch": "No artist matches that name.",
+      "showAll": "Show all {{count}} artists"
     },
     "source": {
       "heading": "Where do your dates come from",

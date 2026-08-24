@@ -334,7 +334,11 @@
       "assignError": "Die Änderung wurde nicht gespeichert. Versuche es erneut.",
       "noCatalog": "Noch keine Skills im Katalog. Lege unten einen an und setze ihn dann bei deinen Artists.",
       "noArtists": "Noch keine aktiven Artists. Lege zuerst deine Artists an und setze dann ihre Skills.",
-      "noArtistsLink": "Zu den Artists"
+      "noArtistsLink": "Zu den Artists",
+      "catalogReadError": "Wir konnten deinen Skill Katalog nicht laden, deshalb können wir die Skills zur Auswahl nicht zeigen. Lade die Seite neu und versuche es erneut.",
+      "filterPlaceholder": "Artists nach Namen suchen",
+      "filterNoMatch": "Kein Artist passt zu diesem Namen.",
+      "showAll": "Alle {{count}} Artists zeigen"
     },
     "source": {
       "heading": "Woher kommen deine Termine",
