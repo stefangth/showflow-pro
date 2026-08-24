@@ -79,6 +79,10 @@
       "emptyLocked": "Noch keine Städte. Ein Admin kann sie in den Einstellungen anlegen.",
       "loadFailed": "Städte konnten nicht geladen werden. Versuche es erneut.",
       "addFailed": "Stadt konnte nicht hinzugefügt werden",
+      "duplicate": "{{name}} steht schon in der Städteliste.",
+      "nameRequired": "Gib der Stadt einen Namen.",
+      "airtableHint": "Diese Städtenamen kamen aus Airtable und haben hier noch keine Stadt. Füge eine hinzu, um sie zu verknüpfen.",
+      "linkLabel": "{{name}} aus Airtable hinzufügen",
       "noOrg": "Keine aktive Organisation"
     },
     "saving": "Speichert…",

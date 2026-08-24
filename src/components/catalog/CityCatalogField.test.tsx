@@ -18,8 +18,22 @@ vi.mock("@/hooks/useCapabilities", async (orig) => ({
   useCan: vi.fn(),
 }));
 
+// The Airtable console is heavyweight (roughly ten queries), so the field mounts it only
+// for an org whose dates source IS Airtable. Both hooks are mocked so the tests can seed
+// the source and assert the console is never even called for the other sources.
+vi.mock("@/hooks/useDatesSource", () => ({ useDatesSource: vi.fn() }));
+vi.mock("@/hooks/useAirtableConsole", () => ({ useAirtableConsole: vi.fn() }));
+
+import { toast } from "sonner";
 import { useCan } from "@/hooks/useCapabilities";
+import { useDatesSource } from "@/hooks/useDatesSource";
+import { useAirtableConsole } from "@/hooks/useAirtableConsole";
 import { CityCatalogField } from "./CityCatalogField";
+
+const onCreate = vi.fn();
+function airtableConsole(over: Partial<ReturnType<typeof useAirtableConsole>> = {}) {
+  return { canWrite: true, ready: true, cityRows: [], onCreate, ...over } as unknown as ReturnType<typeof useAirtableConsole>;
+}
 
 function renderField(opts: { cities?: { id: string; name: string }[]; error?: { message: string } }) {
   Object.assign(
@@ -38,7 +52,9 @@ function renderField(opts: { cities?: { id: string; name: string }[]; error?: { 
 describe("CityCatalogField", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(useCan).mockReturnValue(true);
+    vi.mocked(useCan).mockImplementation(() => true);
+    vi.mocked(useDatesSource).mockReturnValue({ source: null, isLoading: false, save: vi.fn(), saving: false });
+    vi.mocked(useAirtableConsole).mockReturnValue(airtableConsole());
     createCity.mockResolvedValue({ id: "c-9", name: "Leipzig" });
   });
 
@@ -105,5 +121,62 @@ describe("CityCatalogField", () => {
     renderField({ error: { message: "boom" } });
     expect(await screen.findByText(/could not be loaded/i)).toBeInTheDocument();
     expect(screen.queryByText(/no cities yet/i)).toBeNull();
+  });
+
+  it("names a duplicate city instead of showing the raw Postgres error", async () => {
+    createCity.mockRejectedValue({ code: "23505", message: 'duplicate key value violates unique constraint "cities_org_name_uniq"' });
+    renderField({ cities: [{ id: "c1", name: "Bremen" }] });
+    fireEvent.click(await screen.findByRole("button", { name: /new city/i }));
+    const input = screen.getByRole("textbox", { name: /city name/i });
+    fireEvent.change(input, { target: { value: "Bremen" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    await waitFor(() => expect(toast.error).toHaveBeenCalled());
+    const msg = vi.mocked(toast.error).mock.calls[0][0] as string;
+    expect(msg).toMatch(/Bremen/);
+    expect(msg).not.toMatch(/duplicate key|constraint/i);
+  });
+
+  it("never surfaces the data layer's blank-name sentinel as copy", async () => {
+    createCity.mockRejectedValue(new Error("CITY_NAME_REQUIRED"));
+    renderField({ cities: [] });
+    fireEvent.click(await screen.findByRole("button", { name: /new city/i }));
+    const input = screen.getByRole("textbox", { name: /city name/i });
+    fireEvent.change(input, { target: { value: "Leipzig" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    await waitFor(() => expect(toast.error).toHaveBeenCalled());
+    expect(vi.mocked(toast.error).mock.calls[0][0]).not.toMatch(/CITY_NAME_REQUIRED/);
+  });
+
+  describe("Airtable unresolved cities", () => {
+    const KAMPNAGEL = { key: "kampnagel", display: "Kampnagel", linkedId: null, linkedLabel: null };
+    const LINKED = { key: "bremen", display: "Bremen", linkedId: "c1", linkedLabel: "Bremen" };
+
+    it("offers a create-and-link chip per unlinked imported city", async () => {
+      vi.mocked(useDatesSource).mockReturnValue({ source: "airtable", isLoading: false, save: vi.fn(), saving: false });
+      vi.mocked(useAirtableConsole).mockReturnValue(airtableConsole({ cityRows: [KAMPNAGEL, LINKED] }));
+      renderField({ cities: [] });
+      const chip = await screen.findByRole("button", { name: /kampnagel/i });
+      // Already-linked imported names are not offered again.
+      expect(screen.queryByRole("button", { name: /bremen/i })).toBeNull();
+      fireEvent.click(chip);
+      expect(onCreate).toHaveBeenCalledWith("city", KAMPNAGEL);
+    });
+
+    it("does not mount the console at all for a non-Airtable org", async () => {
+      vi.mocked(useDatesSource).mockReturnValue({ source: "manual", isLoading: false, save: vi.fn(), saving: false });
+      renderField({ cities: [{ id: "c1", name: "Bremen" }] });
+      expect(await screen.findByText("Bremen")).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /kampnagel/i })).toBeNull();
+      expect(useAirtableConsole).not.toHaveBeenCalled();
+    });
+
+    it("shows nothing extra to a producer without configure_airtable, and skips the console", async () => {
+      vi.mocked(useCan).mockImplementation((action: string) => action !== "configure_airtable");
+      vi.mocked(useDatesSource).mockReturnValue({ source: "airtable", isLoading: false, save: vi.fn(), saving: false });
+      renderField({ cities: [] });
+      expect(await screen.findByRole("button", { name: /new city/i })).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /kampnagel/i })).toBeNull();
+      expect(useAirtableConsole).not.toHaveBeenCalled();
+    });
   });
 });
