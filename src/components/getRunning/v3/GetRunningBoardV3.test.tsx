@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { screen, fireEvent, within } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import { createFakeSupabase } from "@/test/supabaseFake";
@@ -299,6 +299,12 @@ describe("GetRunningBoardV3", () => {
       vi.mocked(toast.success).mockClear();
     });
 
+    // One test below swaps in a SEEDED fake client; restore the suite's no-seed default so
+    // it cannot leak into the tests that follow.
+    afterEach(() => {
+      Object.assign(client, createFakeSupabase({}));
+    });
+
     const board = (
       <MemoryRouter>
         <GetRunningBoardV3 context="page" />
@@ -386,6 +392,61 @@ describe("GetRunningBoardV3", () => {
 
       expect(vi.mocked(toast.success)).toHaveBeenCalledWith("Paperwork is done. That was the last step on this board.");
       expect(screen.getByTestId("get-running-v3-retired")).toBeInTheDocument();
+    });
+
+    // Regression: `selectedStep` can legitimately name a step that has since become HIDDEN
+    // (`connect`/`map` when the dates source flips to "manual"). The board already handles
+    // that on the render side by falling back to the phase's first visible not-done step
+    // WITHOUT rewriting `selectedStep`, so the fallback editor's `onDone` arrives naming a
+    // step that is no longer in the visible list. That must still advance: the pre-refactor
+    // `vis.slice(idx + 1)` self-healed on `idx === -1` (it degenerates to `slice(0)`), and
+    // losing that turned the fallback editor's Continue into a no-op, i.e. a stuck wizard.
+    it("advances from a step that has become hidden instead of dead-ending the wizard", async () => {
+      Object.assign(
+        client,
+        createFakeSupabase({
+          shows: {
+            data: [
+              {
+                id: "show-1",
+                org_id: "org-1",
+                program: "Nussknacker",
+                sub_program: null,
+                status: "active",
+                main_cast_slots: 2,
+                understudy_slots: 1,
+                sort_order: 1,
+              },
+            ],
+            error: null,
+          },
+          show_dates: { data: [], error: null },
+        }),
+      );
+      // Airtable source with `connect` outstanding and blocking, so the wizard auto-opens
+      // on `connect`. `productions` (booking `slots`) is the only OTHER outstanding step.
+      mockModel(
+        composeGetRunningV3({ ...base, datesConnectDone: false, datesMapDone: false, booking: booking({ slots: false }) }),
+      );
+      const { rerender } = renderBoard();
+      expect(screen.getByRole("button", { name: /collapse/i })).toBeInTheDocument();
+
+      // The source flips to "manual": `connect` (still the selected step) is now hidden, so
+      // the board renders `productions` as the fallback body.
+      mockModel(composeGetRunningV3({ ...base, datesSource: "manual", booking: booking({ slots: false }) }));
+      rerender(board);
+      // The sub-line also appears in the wizard's step nav, hence findAllByText.
+      expect((await screen.findAllByText(/check the productions that came in/i)).length).toBeGreaterThan(0);
+
+      // First Continue repairs the stale selection onto the step actually on screen, the
+      // second finishes the phase. Before the fix neither click did anything at all.
+      const continueButton = () => screen.getByRole("button", { name: /^continue$/i });
+      await waitFor(() => expect(continueButton()).toBeEnabled());
+      fireEvent.click(continueButton());
+      fireEvent.click(continueButton());
+
+      expect(vi.mocked(toast.success)).toHaveBeenCalledWith("Get dates in is done. Next up: Paperwork.");
+      expect(screen.getByTestId("phase-row-get_dates")).toBeInTheDocument();
     });
 
     it("confirms the phase on an explicit save too, not only on an implicit one", () => {

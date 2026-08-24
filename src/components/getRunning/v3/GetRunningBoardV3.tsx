@@ -136,7 +136,18 @@ function advanceAfterStep(
   if (!phase) return null;
   const vis = visibleSteps(phase.steps);
   const idx = vis.findIndex((s) => s.key === stepKey);
-  if (idx === -1) return null;
+  // `stepKey` can name a step that has since become HIDDEN (`connect`/`map` once the dates
+  // source flips to "manual"). The board keeps rendering in that state by falling back to
+  // the phase's first visible not-done step WITHOUT rewriting `selectedStep`, so the
+  // fallback editor's `onDone` arrives here naming a step that is no longer in `vis`.
+  // Repair the selection onto that same first outstanding step rather than returning null:
+  // the pre-refactor `vis.slice(idx + 1)` self-healed exactly this way on `idx === -1`
+  // (it degenerates to `slice(0)`), and without it the fallback editor's Continue is a
+  // no-op and the wizard dead-ends.
+  if (idx === -1) {
+    const firstOpen = vis.find((s) => !s.done);
+    return firstOpen ? { kind: "next", key: firstOpen.key } : null;
+  }
   const next = vis.slice(idx + 1).find((s) => !s.done) ?? vis.slice(0, idx).find((s) => !s.done);
   if (next) return { kind: "next", key: next.key };
   // The model can be one refetch stale here (the explicit path fires the moment an editor
