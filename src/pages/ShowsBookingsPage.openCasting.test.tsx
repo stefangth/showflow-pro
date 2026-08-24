@@ -25,6 +25,7 @@ vi.mock("@/features/auth/AuthContext", () => ({
 }));
 vi.mock("react-router-dom", () => ({
   useSearchParams: () => [new URLSearchParams(), vi.fn()],
+  useNavigate: () => vi.fn(),
 }));
 vi.mock("@/data/showDates", async (orig) => ({
   ...(await orig<typeof import("@/data/showDates")>()),

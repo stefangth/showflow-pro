@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -17,7 +17,7 @@ import { fetchShowDatesList } from '@/data/showDates';
 import { useAuth } from '@/features/auth/AuthContext';
 import { Input } from '@/components/ui/input';
 import { pagerPosition } from '@/lib/bookingCockpit';
-import { Search } from 'lucide-react';
+import { ChevronDown, Search } from 'lucide-react';
 import { parseISO } from 'date-fns';
 import type { TimeframeValue } from '@/components/filters/TimeframeFilter';
 import { SortControl, type SortValue } from '@/components/filters/SortControl';
@@ -34,7 +34,15 @@ import { useDatesReadyForHireOrder, useHireOrderAction } from '@/hooks/useHireOr
 import { useFeature } from '@/hooks/useEntitlements';
 import { useCan } from '@/hooks/useCapabilities';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useDatesSource } from '@/hooks/useDatesSource';
+import { useAirtableConsole } from '@/hooks/useAirtableConsole';
 import { showSlots } from '@/lib/settings';
 import { formatDateWithWeekday, parseDateOnly } from '@/lib/dates';
 import { useEditorConfig } from '@/features/editor/EditorContext';
@@ -160,8 +168,24 @@ function ProducerShowsBookings() {
   const [newDateOpen, setNewDateOpen] = useState(false);
   const [wizardOpen, setWizardOpen] = useState(false);
   const { hasRole, currentOrg } = useAuth();
+  const navigate = useNavigate();
   const canManage = hasRole('admin') || hasRole('producer');
+  const isAdmin = hasRole('admin');
   const orgId = currentOrg?.id ?? null;
+  // Import options for the "New date" split button, reusing the existing flows. The
+  // Airtable console is only activated for an Airtable-sourced org (mirrors
+  // useGetRunningV3) so non-Airtable orgs don't pay for its connection queries; a
+  // connected admin gets an inline "Sync now", everyone else is routed into the
+  // Get Running dates flow where these imports are set up and run.
+  const { source: datesSource } = useDatesSource(orgId);
+  const airtable = useAirtableConsole(datesSource === 'airtable' ? orgId : null, {
+    canTriggerSync: isAdmin,
+  });
+  const airtableCanSync = datesSource === 'airtable' && isAdmin && airtable.keyPresent && airtable.hasBaseTable;
+  const handleImportAirtable = () => {
+    if (airtableCanSync) airtable.syncNow();
+    else navigate(ROUTES.GET_RUNNING);
+  };
   const bookingOn = useFeature('booking_flow');
   // Hire-order CTA: module gate + generate capability + which dates are ready.
   const hireOrdersOn = useFeature('hire_orders');
@@ -552,7 +576,26 @@ function ProducerShowsBookings() {
           })}
         />
         <SortControl value={sort} onChange={setSort} chronoLabel={t('producer.sortChronoLabel')} extraOptions={sortExtraOptions} />
-        {canManage && <Button className="ml-auto" onClick={() => setNewDateOpen(true)}>{t('producer.newDate')}</Button>}
+        {canManage && (
+          <div className="ml-auto flex items-center">
+            <Button className="rounded-r-none" onClick={() => setNewDateOpen(true)}>{t('producer.newDate')}</Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  className="rounded-l-none border-l border-primary-foreground/25 px-2"
+                  aria-label={t('producer.datesMenu.aria')}
+                >
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setNewDateOpen(true)}>{t('producer.datesMenu.byHand')}</DropdownMenuItem>
+                <DropdownMenuItem onClick={handleImportAirtable}>{t('producer.datesMenu.airtable')}</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate(ROUTES.GET_RUNNING)}>{t('producer.datesMenu.sheet')}</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        )}
       </div>
 
       {isLoading ? (
