@@ -136,7 +136,7 @@ export default function DevGetRunningHarness() {
         </section>
 
         <section className="flex flex-col gap-2">
-          <div className="font-mono text-xs text-[var(--text-faint)]">v3 board (always on here, regardless of GETRUNNING_V3)</div>
+          <div className="font-mono text-xs text-[var(--text-faint)]">v3 board (always on here, regardless of the per-org flag)</div>
           <GetRunningBoardV3 context="page" />
         </section>
       </div>

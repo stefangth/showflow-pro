@@ -12,6 +12,10 @@ import { createFakeSupabase, type TableSeed } from "@/test/supabaseFake";
 // status/search filtering end to end.
 const { client } = vi.hoisted(() => ({ client: {} as Record<string, unknown> }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: client }));
+// v3 is the app default now; pin it off so the finish-setup affordance test genuinely
+// exercises the v1 path rather than relying on the setup model happening to have no
+// actionable step for the contracts route.
+vi.mock("@/hooks/useGetRunningV3Enabled", () => ({ useGetRunningV3Enabled: () => ({ enabled: false, isLoading: false }) }));
 vi.mock("@/features/auth/AuthContext", () => ({ useAuth: vi.fn() }));
 vi.mock("@/components/minis/PageMini", () => ({ PageMini: () => null }));
 // The slide-over's Issue/Void buttons read useCan; a flat true mock is
@@ -182,7 +186,7 @@ describe("HireOrdersPage", () => {
     expect(document.body.textContent).not.toMatch(/[—–]/);
   });
 
-  it("v3 disabled (default in test env): no finish-setup affordance in the action cluster", async () => {
+  it("v3 off: no finish-setup affordance in the action cluster", async () => {
     renderPage();
     await screen.findByText("Contracts");
     expect(screen.queryByRole("link", { name: /finish setup/i })).not.toBeInTheDocument();

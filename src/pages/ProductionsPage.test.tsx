@@ -6,6 +6,10 @@ const reorderShows = vi.fn((..._a: unknown[]) => Promise.resolve());
 const archiveShow = vi.fn((..._a: unknown[]) => Promise.resolve());
 const deleteShow = vi.fn((..._a: unknown[]) => Promise.resolve());
 vi.mock("@/integrations/supabase/client", () => ({ supabase: {} }));
+// v3 is the app default now; pin it off so the finish-setup affordance test genuinely
+// exercises the v1 path (this page mocks the supabase client as {}, so there is no fake
+// client to seed a getrunning_v3_enabled row into).
+vi.mock("@/hooks/useGetRunningV3Enabled", () => ({ useGetRunningV3Enabled: () => ({ enabled: false, isLoading: false }) }));
 vi.mock("@/features/auth/AuthContext", () => ({ useAuth: () => ({ currentOrg: { id: "org-1" }, user: { id: "u1" }, hasRole: () => true }) }));
 vi.mock("@/hooks/useCapabilities", async (orig) => ({ ...(await orig<typeof import("@/hooks/useCapabilities")>()), useCan: vi.fn() }));
 vi.mock("@/data/shows", async (orig) => ({ ...(await orig<typeof import("@/data/shows")>()), reorderShows: (...a: unknown[]) => reorderShows(...a), archiveShow: (...a: unknown[]) => archiveShow(...a), deleteShow: (...a: unknown[]) => deleteShow(...a) }));
@@ -123,7 +127,7 @@ describe("ProductionsPage", () => {
     expect(screen.getByText(/3 dates/)).toBeInTheDocument();
   });
 
-  it("v3 disabled (default in test env): no finish-setup affordance beside New production", () => {
+  it("v3 off: no finish-setup affordance beside New production", () => {
     renderWithProviders(<ProductionsPage />);
     expect(screen.queryByRole("link", { name: /finish setup/i })).not.toBeInTheDocument();
   });

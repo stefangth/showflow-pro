@@ -45,6 +45,9 @@ const { client, hireOrderMutate } = vi.hoisted(() => ({
   hireOrderMutate: vi.fn(),
 }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: client }));
+// v3 is the app default now; pin it off so the producer header's finish-setup affordance
+// (a react-router <Link>, and this file mocks react-router-dom) never renders here.
+vi.mock("@/hooks/useGetRunningV3Enabled", () => ({ useGetRunningV3Enabled: () => ({ enabled: false, isLoading: false }) }));
 
 function seedClient(seed: Record<string, unknown>) {
   for (const key of Object.keys(client)) delete client[key];

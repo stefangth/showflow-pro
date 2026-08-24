@@ -16,9 +16,19 @@ describe("getRunningFlag data-access", () => {
     expect(enabled).toBe(true);
   });
 
-  it("falls back to the build-flag default when no row exists", async () => {
-    // GETRUNNING_V3 is false in the test env (VITE_GETRUNNING_V3 unset) → fallback false.
+  it("defaults to v3 on when no row exists", async () => {
+    // v3 is the app default now (the build-flag fork was retired from the runtime path),
+    // so an org with no override resolves to true.
     const fake = createFakeSupabase({ app_settings: { data: [], error: null } });
+    const enabled = await fetchGetRunningV3Enabled(asSupabase(fake), "org-1");
+    expect(enabled).toBe(true);
+  });
+
+  it("returns the org override when a false row exists", async () => {
+    // The one way back to the v1 board: an explicit false override (super-admin toggle).
+    const fake = createFakeSupabase({
+      app_settings: { data: [{ org_id: "org-1", value: false }], error: null },
+    });
     const enabled = await fetchGetRunningV3Enabled(asSupabase(fake), "org-1");
     expect(enabled).toBe(false);
   });

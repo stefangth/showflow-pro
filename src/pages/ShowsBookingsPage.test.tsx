@@ -69,6 +69,10 @@ vi.mock("@/integrations/supabase/client", () => ({
 vi.mock("@/features/auth/AuthContext", () => ({
   useAuth: () => ({ hasRole: (r: string) => r === "producer", currentOrg: { id: "org-1" } }),
 }));
+// v3 is the app default now; pin it off so the finish-setup affordance test genuinely
+// exercises the v1 path (this page's supabase mock has no `.from`, so the flag query can
+// not resolve a real value here).
+vi.mock("@/hooks/useGetRunningV3Enabled", () => ({ useGetRunningV3Enabled: () => ({ enabled: false, isLoading: false }) }));
 vi.mock("react-router-dom", () => ({
   useSearchParams: () => [new URLSearchParams(), vi.fn()],
 }));
@@ -203,7 +207,7 @@ describe("ShowsBookingsPage — empty state on the calendar surface", () => {
     expect(screen.queryByTestId("calendar-surface")).not.toBeInTheDocument();
   });
 
-  it("v3 disabled (default in test env): no finish-setup affordance in the producer header", async () => {
+  it("v3 off: no finish-setup affordance in the producer header", async () => {
     showDatesRef.value = [];
     renderWithProviders(<ShowsBookingsPage />);
     await screen.findByText("No show dates match the current filters.");

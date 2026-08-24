@@ -33,16 +33,26 @@ import { useGetRunningV3 } from "@/hooks/useGetRunningV3";
 import GetRunningPage from "./GetRunningPage";
 
 /** Seeds the shared fake supabase client. Defaults to an empty app_settings table (no
- *  org override), so useGetRunningV3Enabled resolves to the GETRUNNING_V3 build default
- *  (false in tests) for every pre-existing test below, matching their behavior before
- *  Task A3 wired the page to the runtime flag. */
+ *  org override), so useGetRunningV3Enabled resolves to the app default, which is now v3
+ *  (the build-flag fork was retired at the v3 cutover). Tests that exercise the retained
+ *  v1 board seed an explicit `getrunning_v3_enabled = false` override via `seedV1()`. */
 function seed(s: Record<string, TableSeed> = { app_settings: { data: [], error: null } }) {
   for (const k of Object.keys(client)) delete client[k];
   Object.assign(client, createFakeSupabase(s));
 }
 
+/** Seed the org onto the v1 board: the one remaining way there now that v3 is the default. */
+function seedV1() {
+  seed({ app_settings: { data: [{ org_id: TEST_ORG.id, key: "getrunning_v3_enabled", value: false }], error: null } });
+}
+
 beforeEach(() => {
   seed();
+  // v3 is the default board now, so even a v1 test renders GetRunningBoardV3 for the
+  // first paint (while the `false` override query is in flight, `enabled` defaults to
+  // true). Give that board's live-data hook a safe default so the transient v3 render
+  // never crashes on an undefined model; individual v3 tests override it as needed.
+  vi.mocked(useGetRunningV3).mockReturnValue({ model: v3NothingModel(), isLoading: false });
 });
 
 const TEST_ORG = { id: "org-1", name: "Nordstadt Produktionen", slug: "nordstadt", status: "active", is_demo: false };
@@ -124,24 +134,28 @@ describe("GetRunningPage edge states", () => {
     expect(screen.queryByTestId(/phase-card-/)).not.toBeInTheDocument();
   });
 
-  it("shows a single nothing-to-set-up card when neither module is on, no board", () => {
+  it("shows a single nothing-to-set-up card when neither module is on, no board", async () => {
     authAs("admin");
+    seedV1();
     vi.mocked(useGetRunning).mockReturnValue({ model: emptyModel(), isLoading: false });
 
     renderPage();
+
+    await screen.findByTestId("get-running-nothing");
 
     expect(screen.getByTestId("get-running-nothing")).toBeInTheDocument();
     expect(screen.queryByTestId(/phase-card-/)).not.toBeInTheDocument();
     expect(screen.queryByTestId("get-running-retired")).not.toBeInTheDocument();
   });
 
-  it("renders the board for a producer viewer when a module is on", () => {
+  it("renders the board for a producer viewer when a module is on", async () => {
     authAs("producer");
+    seedV1();
     vi.mocked(useGetRunning).mockReturnValue({ model: boardModel(), isLoading: false });
 
     renderPage();
 
-    expect(screen.getByTestId("phase-card-get_dates")).toBeInTheDocument();
+    expect(await screen.findByTestId("phase-card-get_dates")).toBeInTheDocument();
     expect(screen.queryByTestId("get-running-nothing")).not.toBeInTheDocument();
   });
 });
@@ -184,11 +198,23 @@ describe("GetRunningPage runtime v3 toggle (Task A3)", () => {
     expect(screen.queryByTestId("get-running-nothing")).not.toBeInTheDocument();
   });
 
-  it("renders the v1 board when there is no org override (build flag off in tests)", async () => {
+  it("renders the v3 board by default when there is no org override", async () => {
     authAs("admin");
     vi.mocked(useGetRunning).mockReturnValue({ model: boardModel(), isLoading: false });
     vi.mocked(useGetRunningV3).mockReturnValue({ model: v3NothingModel(), isLoading: false });
-    // Default seed() from beforeEach: empty app_settings, no org override.
+    // Default seed() from beforeEach: empty app_settings, no org override -> v3 default.
+
+    renderPage();
+
+    expect(await screen.findByTestId("get-running-v3-nothing")).toBeInTheDocument();
+    expect(screen.queryByTestId(/phase-card-/)).not.toBeInTheDocument();
+  });
+
+  it("renders the v1 board when the org override disables v3", async () => {
+    authAs("admin");
+    seedV1();
+    vi.mocked(useGetRunning).mockReturnValue({ model: boardModel(), isLoading: false });
+    vi.mocked(useGetRunningV3).mockReturnValue({ model: v3NothingModel(), isLoading: false });
 
     renderPage();
 
