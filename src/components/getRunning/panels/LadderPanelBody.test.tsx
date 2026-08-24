@@ -57,7 +57,10 @@ function seed() {
         ],
         error: null,
       },
-      cast_members: { data: [], error: null },
+      // Both casts have a member: an EMPTY cast cannot cover a city (resolveCoverage
+      // requires a staffed tier 1), so the picker greys those out and ranking one would
+      // not close the gap.
+      cast_members: { data: [{ cast_id: "nord", org_id: "org-1" }, { cast_id: "sued", org_id: "org-1" }], error: null },
       // Empty on both selects setCastCityPriority runs (city+cast, then city+priority) —
       // so it falls straight to a plain insert, no bump-out branch.
       cast_city_priority: { data: [], error: null },
@@ -148,7 +151,7 @@ describe("LadderPanelBody", () => {
           ],
           error: null,
         },
-        cast_members: { data: [], error: null },
+        cast_members: { data: [{ cast_id: "nord", org_id: "org-1" }, { cast_id: "sued", org_id: "org-1" }], error: null },
         cast_city_priority: { data: [], error: null },
       }),
     );
@@ -269,6 +272,101 @@ describe("LadderPanelBody", () => {
       await waitFor(() =>
         expect((screen.getByPlaceholderText("Cast name") as HTMLInputElement).value).toBe(""),
       );
+    });
+  });
+
+  /**
+   * The audit's own reproduction org: two casts, no cast members, and the empty cast ranked
+   * first. `resolveCoverage` requires a STAFFED tier 1, so the board's `coverage` step is
+   * correctly red — while this panel, which computed its own parallel `priority === 1` view,
+   * printed "0 unranked", an accent chip naming the empty cast, and "Every city with dates
+   * has a first group". A blocking body reporting itself resolved, with no way for `onDone`
+   * to ever fire.
+   */
+  describe("a tier-1 cast with no members", () => {
+    const EMPTY_TIER1: LadderCoverageInputs = {
+      futurePairs: [{ showId: "show-1", cityId: "ham" }],
+      showPriorities: [],
+      cityPriorities: [{ cityId: "ham", castId: "nord", priority: 1 }],
+      // The whole point: `nord` IS ranked first in Hamburg, and has nobody in it.
+      nonEmptyCastIds: [],
+    };
+
+    function renderEmptyTier1() {
+      Object.assign(
+        client,
+        createFakeSupabase({
+          cities: { data: [{ id: "ham", name: "Hamburg", org_id: "org-1", airtable_city_key: null }], error: null },
+          casts: {
+            data: [
+              { id: "nord", name: "Nord Ensemble", org_id: "org-1" },
+              { id: "sued", name: "Süd Ensemble", org_id: "org-1" },
+            ],
+            error: null,
+          },
+          cast_members: { data: [], error: null },
+          cast_city_priority: { data: [], error: null },
+        }),
+      );
+      return renderWithProviders(
+        <LadderPanelBody orgId="org-1" coverage={EMPTY_TIER1} onDone={vi.fn()} />,
+        { authOverrides: { currentOrg: TEST_ORG, roles: ["admin"], hasRole: (r) => r === "admin" } },
+      );
+    }
+
+    it("counts the city as not covered instead of reporting zero gaps", async () => {
+      renderEmptyTier1();
+      await screen.findByText("Hamburg");
+
+      expect(screen.getByText("1 not covered")).toBeInTheDocument();
+      expect(screen.queryByText("0 not covered")).toBeNull();
+    });
+
+    it("does not claim every city has a first group, and says the group is empty", async () => {
+      renderEmptyTier1();
+      await screen.findByText("Hamburg");
+
+      expect(screen.queryByText(/has a first group with members\.$/i)).toBeNull();
+      expect(screen.getByText(/first group has no members/i)).toBeInTheDocument();
+      // And it names the actual fix, rather than "Rank Hamburg too" for a ranked city.
+      expect(screen.getByText(/add members to the first group in hamburg/i)).toBeInTheDocument();
+    });
+
+    it("will not let an empty cast be picked as the first group", async () => {
+      Object.assign(
+        client,
+        createFakeSupabase({
+          cities: { data: [{ id: "lei", name: "Leipzig", org_id: "org-1", airtable_city_key: null }], error: null },
+          casts: {
+            data: [
+              { id: "nord", name: "Nord Ensemble", org_id: "org-1" },
+              { id: "sued", name: "Süd Ensemble", org_id: "org-1" },
+            ],
+            error: null,
+          },
+          cast_members: { data: [{ cast_id: "nord", org_id: "org-1" }], error: null },
+          cast_city_priority: { data: [], error: null },
+        }),
+      );
+      renderWithProviders(
+        <LadderPanelBody
+          orgId="org-1"
+          coverage={{
+            futurePairs: [{ showId: "show-1", cityId: "lei" }],
+            showPriorities: [],
+            cityPriorities: [],
+            nonEmptyCastIds: ["nord"],
+          }}
+          onDone={vi.fn()}
+        />,
+        { authOverrides: { currentOrg: TEST_ORG, roles: ["admin"], hasRole: (r) => r === "admin" } },
+      );
+
+      fireEvent.click(await screen.findByRole("button", { name: /pick the first group/i }));
+
+      // Süd has nobody in it: ranking it would write cleanly and leave the gap standing.
+      expect(await screen.findByRole("button", { name: /süd ensemble/i })).toBeDisabled();
+      expect(screen.getByRole("button", { name: /nord ensemble/i })).toBeEnabled();
     });
   });
 

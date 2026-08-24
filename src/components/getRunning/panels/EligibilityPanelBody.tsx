@@ -29,6 +29,10 @@ interface ProductionCoverage {
   cityCount: number;
   dateTotal: number;
   uncoveredCityIds: string[];
+  /** Uncovered cities that DO have a tier-1 cast, which simply has no members. A different
+   *  gap from "nothing is ranked here", with a different fix, so it gets its own line
+   *  instead of being described as "No cast in {{cities}} yet", which is false for it. */
+  unstaffedCityIds: string[];
   coveringCastIds: string[];
 }
 
@@ -152,6 +156,7 @@ export function EligibilityPanelBody({
     return order.map((showId) => {
       const cityIds = cityIdsByShow.get(showId)!;
       const uncoveredCityIds: string[] = [];
+      const unstaffedCityIds: string[] = [];
       const coveringCastIds: string[] = [];
       const seenCast = new Set<string>();
       let dateTotal = 0;
@@ -159,6 +164,10 @@ export function EligibilityPanelBody({
         dateTotal += dateCountByPair[`${showId}|${cityId}`] ?? 0;
         if (uncoveredKeys.has(`${showId}|${cityId}`)) {
           uncoveredCityIds.push(cityId);
+          // Uncovered WITH a tier-1 cast can only mean that cast has no members
+          // (`resolveCoverage` requires a staffed tier 1), which is the state the old
+          // single "No cast yet" line described wrongly.
+          if (coveringCastId(showId, cityId) !== null) unstaffedCityIds.push(cityId);
           continue;
         }
         const castId = coveringCastId(showId, cityId);
@@ -167,7 +176,7 @@ export function EligibilityPanelBody({
           coveringCastIds.push(castId);
         }
       }
-      return { showId, cityCount: cityIds.length, dateTotal, uncoveredCityIds, coveringCastIds };
+      return { showId, cityCount: cityIds.length, dateTotal, uncoveredCityIds, unstaffedCityIds, coveringCastIds };
     });
   }, [futurePairs, coverage, dateCountByPair, uncoveredKeys]);
 
@@ -240,9 +249,10 @@ export function EligibilityPanelBody({
       <div className="space-y-2">
         {productions.map((prod) => {
           const hasGap = prod.uncoveredCityIds.length > 0;
-          const uncoveredCityNames = prod.uncoveredCityIds
-            .map((id) => cityNameById.get(id) ?? id)
-            .join(", ");
+          const unstaffedSet = new Set(prod.unstaffedCityIds);
+          const cityNames = (ids: string[]) => ids.map((id) => cityNameById.get(id) ?? id).join(", ");
+          const unrankedCityNames = cityNames(prod.uncoveredCityIds.filter((id) => !unstaffedSet.has(id)));
+          const unstaffedCityNames = cityNames(prod.unstaffedCityIds);
 
           return (
             <div
@@ -291,9 +301,17 @@ export function EligibilityPanelBody({
                 )}
               </div>
 
-              {hasGap && (
+              {/* Two different gaps, said separately: nothing ranked here, and a ranked cast
+                  with nobody in it. A production can be in both states at once (different
+                  cities), so these are not exclusive. */}
+              {hasGap && unrankedCityNames !== "" && (
                 <p className="mt-2 text-eyebrow text-muted-foreground">
-                  {t("panel.body.eligibility.noCastYet", { cities: uncoveredCityNames })}
+                  {t("panel.body.eligibility.noCastYet", { cities: unrankedCityNames })}
+                </p>
+              )}
+              {hasGap && unstaffedCityNames !== "" && (
+                <p className="mt-2 text-eyebrow text-muted-foreground">
+                  {t("panel.body.eligibility.castEmpty", { cities: unstaffedCityNames })}
                 </p>
               )}
             </div>
@@ -327,7 +345,13 @@ export function EligibilityPanelBody({
 /** A gap card's cast picker: a dashed accent chip that opens a popover list of the
  *  org's casts (name + member count), the same option-list shape as `LadderPanelBody`'s
  *  `CastPicker` / `TierCell`'s option list — minus any clear action, since this panel
- *  only ever links a cast, it never unlinks one. */
+ *  only ever links a cast, it never unlinks one.
+ *
+ *  A cast with NO members is offered but not selectable: linking it writes cleanly and
+ *  toasts "Cast linked" while the gap stays exactly where it was, because `resolveCoverage`
+ *  requires a STAFFED tier 1. Showing it greyed out with its member count says why the fix
+ *  is elsewhere; hiding it would leave an admin hunting for a cast they can see in the
+ *  roster above. */
 function CastPicker({
   options,
   onSelect,
@@ -358,11 +382,12 @@ function CastPicker({
               <button
                 key={opt.id}
                 type="button"
+                disabled={opt.memberCount === 0}
                 onClick={() => {
                   onSelect(opt.id);
                   setOpen(false);
                 }}
-                className="flex w-full items-center justify-between rounded-[var(--radius-s)] px-2 py-1.5 text-left text-sm hover:bg-[var(--surface-3)]"
+                className="flex w-full items-center justify-between rounded-[var(--radius-s)] px-2 py-1.5 text-left text-sm hover:bg-[var(--surface-3)] disabled:pointer-events-none disabled:opacity-50"
               >
                 <span>{opt.name}</span>
                 <span className="font-mono text-xs text-muted-foreground">
@@ -372,6 +397,11 @@ function CastPicker({
             ))
           )}
         </div>
+        {options.some((o) => o.memberCount === 0) && (
+          <p className="px-2 py-1.5 text-xs text-muted-foreground">
+            {t("panel.body.eligibility.emptyCastHint")}
+          </p>
+        )}
       </PopoverContent>
     </Popover>
   );

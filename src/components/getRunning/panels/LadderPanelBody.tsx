@@ -106,9 +106,22 @@ export function LadderPanelBody({
     for (const arr of map.values()) arr.sort((a, b) => a.priority - b.priority);
     return map;
   }, [cityPriorities]);
+  // The staffing rule, read from the SAME field `resolveCoverage` reads
+  // (`LadderCoverageInputs.nonEmptyCastIds`). A cast with no members cannot be asked, so a
+  // city whose first group is empty is not covered however the ladder reads: the board's
+  // `coverage` step goes red for it. This panel used to test `priority === 1` alone, so on
+  // an org with an empty cast ranked first it printed "0 unranked" and "Every city with
+  // dates has a first group" inside a step the board was blocking on, and `onDone` could
+  // never fire. One rule, one place.
+  const staffedCastIds = useMemo(() => new Set(coverage?.nonEmptyCastIds ?? []), [coverage]);
+  const isStaffedTier1 = (row: { castId: string; priority: number }) =>
+    row.priority === 1 && staffedCastIds.has(row.castId);
   const unrankedCityIds = useMemo(
-    () => cityIds.filter((id) => !(tiersByCity.get(id) ?? []).some((r) => r.priority === 1)),
-    [cityIds, tiersByCity],
+    () =>
+      cityIds.filter(
+        (id) => !(tiersByCity.get(id) ?? []).some((r) => r.priority === 1 && staffedCastIds.has(r.castId)),
+      ),
+    [cityIds, tiersByCity, staffedCastIds],
   );
 
   const setPriority = useMutation({
@@ -159,6 +172,10 @@ export function LadderPanelBody({
   const firstUnrankedId = unrankedCityIds[0];
   const firstUnrankedName = firstUnrankedId ? cityNameById.get(firstUnrankedId) ?? "" : "";
   const firstUnrankedCount = firstUnrankedId ? dateCountByCity[firstUnrankedId] ?? 0 : 0;
+  // "Rank {{city}} too" is false for a city that IS ranked and whose first group is simply
+  // empty. Same gap, different fix, so it gets its own sentence.
+  const firstUnrankedIsUnstaffed =
+    !!firstUnrankedId && (tiersByCity.get(firstUnrankedId) ?? []).some((r) => r.priority === 1);
 
   // Where each cast is ranked across the org's city ladders, so a cast made ANYWHERE (this
   // panel, /artists, Settings) is visible here with its standing — not only as an option
@@ -236,6 +253,9 @@ export function LadderPanelBody({
         {cityIds.map((cityId) => {
           const tiers = tiersByCity.get(cityId) ?? [];
           const tier1 = tiers.find((r) => r.priority === 1);
+          // Ranked but unstaffed is its own state, and it is a blocking one: say which of
+          // the two it is rather than showing the cast chip as though the city were covered.
+          const tier1Unstaffed = !!tier1 && !isStaffedTier1(tier1);
           const maxPriority = tiers.reduce((max, r) => Math.max(max, r.priority), 0);
           const dateCount = dateCountByCity[cityId] ?? 0;
 
@@ -248,12 +268,13 @@ export function LadderPanelBody({
                 <p className="font-mono text-xs text-muted-foreground">
                   {t("panel.body.ladder.dateCount", { count: dateCount })}
                   {!tier1 && ` · ${t("panel.body.ladder.noTier1")}`}
+                  {tier1Unstaffed && ` · ${t("panel.body.ladder.tier1Empty")}`}
                 </p>
               </div>
               <div className="flex shrink-0 items-center gap-2">
                 {tier1 ? (
                   <>
-                    <Badge variant="accent">{castNameById.get(tier1.castId) ?? ""}</Badge>
+                    <Badge variant={tier1Unstaffed ? "risk" : "accent"}>{castNameById.get(tier1.castId) ?? ""}</Badge>
                     <CastPicker
                       label={t("panel.body.ladder.addTierN", { n: maxPriority + 1 })}
                       options={castOptions}
@@ -287,7 +308,10 @@ export function LadderPanelBody({
       {cityIds.length > 0 && (
         <UnlocksNote>
           {firstUnrankedId
-            ? t("panel.body.ladder.unlocks", { count: firstUnrankedCount, city: firstUnrankedName })
+            ? t(
+                firstUnrankedIsUnstaffed ? "panel.body.ladder.unlocksStaff" : "panel.body.ladder.unlocks",
+                { count: firstUnrankedCount, city: firstUnrankedName },
+              )
             : t("panel.body.ladder.unlocksDone")}
         </UnlocksNote>
       )}
@@ -332,11 +356,16 @@ function CastPicker({
               <button
                 key={opt.id}
                 type="button"
+                // A cast with no members cannot cover the city (`resolveCoverage` requires a
+                // STAFFED tier 1), so ranking it here would write cleanly, toast, and leave
+                // the gap standing. Greyed out with its member count rather than hidden, so
+                // the reason is on screen.
+                disabled={opt.memberCount === 0}
                 onClick={() => {
                   onSelect(opt.id);
                   setOpen(false);
                 }}
-                className="flex w-full items-center justify-between rounded-[var(--radius-s)] px-2 py-1.5 text-left text-sm hover:bg-[var(--surface-3)]"
+                className="flex w-full items-center justify-between rounded-[var(--radius-s)] px-2 py-1.5 text-left text-sm hover:bg-[var(--surface-3)] disabled:pointer-events-none disabled:opacity-50"
               >
                 <span>{opt.name}</span>
                 <span className="font-mono text-xs text-muted-foreground">
@@ -346,6 +375,11 @@ function CastPicker({
             ))
           )}
         </div>
+        {options.some((o) => o.memberCount === 0) && (
+          <p className="px-2 py-1.5 text-xs text-muted-foreground">
+            {t("panel.body.ladder.emptyCastHint")}
+          </p>
+        )}
       </PopoverContent>
     </Popover>
   );
