@@ -102,6 +102,38 @@ export async function fetchUpcomingShowDates<T>(
   return (data ?? []) as unknown as T[];
 }
 
+/** One future, non-cancelled date that carries no city, for the get-running cities step. */
+export interface DateMissingCity {
+  id: string;
+  date: string;
+  venue: string | null;
+  show: { program: string; sub_program: string | null } | null;
+}
+
+/** The org's future, non-cancelled dates with no city set.
+ *
+ *  The filter is deliberately identical to the one behind `BookingSetupStatus.datesWithoutCity`
+ *  (`coverage.futurePairs.filter(p => p.cityId === null)`): future, not cancelled, null city.
+ *  If the two ever drift, the cities step would list N rows while the blocking counter says
+ *  something else, and a visitor could resolve every row it shows and still be blocked. */
+export async function fetchUpcomingDatesWithoutCity(
+  client: SupabaseClient<Database>,
+  orgId: string | null,
+  today: string,
+): Promise<DateMissingCity[]> {
+  if (!orgId) return [];
+  const { data, error } = await client
+    .from("show_dates")
+    .select("id, date, venue, show:shows(program, sub_program)")
+    .eq("org_id", orgId)
+    .is("city_id", null)
+    .gte("date", today)
+    .neq("status", "cancelled")
+    .order("date", { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as unknown as DateMissingCity[];
+}
+
 /** How many non-cancelled dates the org has, past or future. The get-running board
  *  uses this to tell "no dates yet" (first run) from "no upcoming dates" (between
  *  seasons); counting only future dates would make an established org look blank. */

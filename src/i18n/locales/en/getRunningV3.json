@@ -391,6 +391,12 @@
       "incomplete": "Link or create every city to continue.",
       "empty": "No cities to resolve yet. Cities are added and managed in Settings.",
       "manageLink": "Go to Settings",
+      "noDates": "No dates yet. Add your first date, then give it a city.",
+      "noDatesLink": "Go to productions",
+      "missingHeading": "Dates without a city",
+      "missingSub": "Pick a city for every date. A date with no city cannot be filled.",
+      "missingUnknownProduction": "Untitled production",
+      "assignCity": "Assign a city",
       "sheet": {
         "heading": "Import your dates",
         "sub": "Run the import to bring your dates in from the sheet.",

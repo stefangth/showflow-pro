@@ -67,6 +67,17 @@ vi.mock("@/data/customFields", () => ({
   upsertCustomFieldDef: vi.fn(() => Promise.resolve()),
   deleteCustomFieldDef: vi.fn(() => Promise.resolve()),
 }));
+// The step now also reads the org's future, non-cancelled dates that carry no city (the
+// manual/sheet paths never produce Airtable `cityRows`, so that read is what makes the step
+// able to clear its own block). Mocked at the data-access layer, same rule as the Airtable
+// modules above: the REAL `useDatesMissingCity`/`useUpdateShowDate` hooks run.
+vi.mock("@/data/showDates", () => ({
+  fetchUpcomingDatesWithoutCity: vi.fn(() => Promise.resolve([])),
+  createShowDate: vi.fn(),
+  updateShowDate: vi.fn(() => Promise.resolve()),
+  cancelShowDate: vi.fn(),
+  deleteShowDate: vi.fn(),
+}));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.fn(), warning: vi.fn() } }));
 
 // useCan drives the read/write gate, same controllable-boolean pattern as MapStep.test.tsx.
@@ -89,6 +100,7 @@ import { useDatesSource } from "@/hooks/useDatesSource";
 import { useSheetImport } from "@/hooks/useSheetImport";
 import { fetchAirtableSettings } from "@/data/airtableSettings";
 import { fetchCitiesForLinking, importCitiesFromOptions } from "@/data/cities";
+import { fetchUpcomingDatesWithoutCity, updateShowDate } from "@/data/showDates";
 import { CitiesStep } from "./CitiesStep";
 
 type Fn = ReturnType<typeof vi.fn>;
@@ -127,11 +139,33 @@ function seedSettings() {
   mock(fetchAirtableSettings).mockResolvedValue({ ...BASE_SETTINGS, airtable_field_map: { date: "Date", city: "City" } });
 }
 
+const TEST_ORG = { id: "org-1", name: "Org", suspended_at: null } as never;
+
+/** `hasAnyDates` reaches the step as a prop (from `BookingSetupStatus`), so the seed is a
+ *  plain variable read at render time rather than another mocked module. */
+let dateCount = 1;
+function seedDateCount(n: number) {
+  dateCount = n;
+}
+
+type MissingCityRow = { id: string; date: string; venue?: string | null; program?: string };
+function seedDatesWithoutCity(rows: MissingCityRow[]) {
+  mock(fetchUpcomingDatesWithoutCity).mockResolvedValue(
+    rows.map((r) => ({
+      id: r.id,
+      date: r.date,
+      venue: r.venue ?? null,
+      show: { program: r.program ?? "Hamlet", sub_program: null },
+    })),
+  );
+}
+
 function renderStep(onDone = vi.fn()) {
   const result = renderWithProviders(
     <MemoryRouter>
-      <CitiesStep orgId="org-1" onDone={onDone} />
+      <CitiesStep orgId="org-1" onDone={onDone} hasAnyDates={dateCount > 0} />
     </MemoryRouter>,
+    { authOverrides: { currentOrg: TEST_ORG } },
   );
   return { ...result, onDone };
 }
@@ -143,6 +177,51 @@ describe("CitiesStep", () => {
     vi.mocked(useDatesSource).mockReturnValue({ source: null, isLoading: false, save: vi.fn(), saving: false });
     seedSheetImport();
     mock(fetchCitiesForLinking).mockResolvedValue([]);
+    seedDateCount(1);
+    seedDatesWithoutCity([]);
+  });
+
+  describe("dates that have no city", () => {
+    it("lists dates that have no city instead of claiming there is nothing to resolve", async () => {
+      seedDatesWithoutCity([{ id: "d1", date: "2026-09-04", venue: "Stadthalle" }]);
+      renderStep();
+
+      expect(await screen.findByText(/stadthalle/i)).toBeInTheDocument();
+      expect(screen.queryByText(/no cities to resolve yet/i)).not.toBeInTheDocument();
+    });
+
+    it("keeps Continue disabled while a date still has no city", async () => {
+      seedDatesWithoutCity([{ id: "d1", date: "2026-09-04", venue: "Stadthalle" }]);
+      renderStep();
+
+      await screen.findByText(/stadthalle/i);
+      expect(screen.getByRole("button", { name: /continue/i })).toBeDisabled();
+    });
+
+    it("writes the picked city through updateShowDate", async () => {
+      seedDatesWithoutCity([{ id: "d1", date: "2026-09-04", venue: "Stadthalle" }]);
+      mock(fetchCitiesForLinking).mockResolvedValue([{ id: "c1", name: "Berlin", airtable_city_key: null }]);
+      renderStep();
+
+      await screen.findByText(/stadthalle/i);
+      fireEvent.click(screen.getByRole("combobox"));
+      fireEvent.click(await screen.findByRole("option", { name: "Berlin" }));
+
+      await waitFor(() => expect(mock(updateShowDate)).toHaveBeenCalled());
+      const [, id, patch] = mock(updateShowDate).mock.calls[0];
+      expect(id).toBe("d1");
+      expect(patch).toEqual({ city_id: "c1" });
+    });
+
+    it("shows a no-dates state, not a resolved state, when the org has no dates", async () => {
+      seedDatesWithoutCity([]);
+      seedDateCount(0);
+      renderStep();
+
+      expect(await screen.findByText(/no dates yet/i)).toBeInTheDocument();
+      expect(screen.queryByText(/no cities to resolve yet/i)).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /continue/i })).toBeDisabled();
+    });
   });
 
   it("renders both unlinked cities with link/create controls and keeps Continue disabled", async () => {
