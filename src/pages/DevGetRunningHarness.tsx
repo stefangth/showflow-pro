@@ -107,6 +107,7 @@ const headerModel: GetRunningModel = {
   bookingOn: true,
   hireOrdersOn: true,
   datesWithoutCity: 0,
+  datesWithoutCityUnknown: false,
 };
 
 const retiredModel: GetRunningModel = { ...headerModel, doneCount: 11, complete: true, canFirstOffer: true };

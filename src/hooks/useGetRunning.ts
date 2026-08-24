@@ -71,6 +71,10 @@ export function useGetRunning(): { model: GetRunningModel | null; isLoading: boo
     // Phase 1 approximation (see header comment): the booking setup status's own `shows`
     // step, not a real Airtable sync signal.
     datesDone: bookingOn ? (booking.status.steps.find((s) => s.key === "shows")?.done ?? false) : false,
+    // `datesWithoutCity` is 0 for a FAILED coverage read exactly as it is for a clean one,
+    // and the header/retired board render 0 as silence. Flag the failure so they say the
+    // count is unknown instead of implying every date has a city.
+    datesCitiesUnknown: bookingOn && booking.isError,
     producerCount,
     canManageShows,
     canEditScheduling,

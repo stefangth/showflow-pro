@@ -58,10 +58,14 @@ export function RetiredBoard({ model, orgId }: { model: GetRunningModel; orgId: 
           setup measure, not a per-date one), so carry the same non-blocking advisory the
           in-progress header shows. Without it the only surface that warns "N dates can't be
           offered until they have a city" would vanish exactly when setup reads as done. */}
-      {model.datesWithoutCity > 0 && (
+      {(model.datesWithoutCityUnknown || model.datesWithoutCity > 0) && (
         <p className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
           <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--amber-600)]" aria-hidden="true" />
-          <span>{t("header.datesWithoutCity", { count: model.datesWithoutCity })}</span>
+          <span>
+            {model.datesWithoutCityUnknown
+              ? t("header.datesWithoutCityUnknown")
+              : t("header.datesWithoutCity", { count: model.datesWithoutCity })}
+          </span>
           <Link to={ROUTES.BOOKINGS} className="font-medium text-accent-600 hover:text-accent-700">
             {t("header.datesWithoutCityLink")}
           </Link>

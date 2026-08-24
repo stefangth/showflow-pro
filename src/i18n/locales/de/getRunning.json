@@ -23,7 +23,8 @@
     },
     "datesWithoutCity_one": "1 Termin hat noch keine Stadt, daher kann die Engine ihn nicht anfragen.",
     "datesWithoutCity_other": "{{count}} Termine haben noch keine Stadt, daher kann die Engine sie nicht anfragen.",
-    "datesWithoutCityLink": "In Terminen beheben"
+    "datesWithoutCityLink": "In Terminen beheben",
+    "datesWithoutCityUnknown": "Wir konnten nicht prüfen, welche Termine noch eine Stadt brauchen. Lade neu oder schau selbst in den Terminen nach."
   },
   "nothingToSetUp": {
     "title": "Nichts einzurichten",
@@ -160,8 +161,8 @@
         "castCreated": "Besetzung erstellt",
         "castCreateFailed": "Besetzung konnte nicht erstellt werden",
         "citiesWithDates": "Städte mit Terminen",
-        "unrankedCount_one": "{{count}} ohne Rang",
-        "unrankedCount_other": "{{count}} ohne Rang",
+        "unrankedCount_one": "{{count}} nicht abgedeckt",
+        "unrankedCount_other": "{{count}} nicht abgedeckt",
         "dateCount_one": "{{count}} Termin",
         "dateCount_other": "{{count}} Termine",
         "noTier1": "keine erste Gruppe",
@@ -172,7 +173,7 @@
         "memberCount_other": "{{count}} Mitglieder",
         "unlocks_one": "Reihe auch {{city}} und {{count}} Termin wird in der heutigen täglichen Sendung anfragbar.",
         "unlocks_other": "Reihe auch {{city}} und {{count}} Termine werden in der heutigen täglichen Sendung anfragbar.",
-        "unlocksDone": "Jede Stadt mit Terminen hat eine erste Gruppe.",
+        "unlocksDone": "Jede Stadt mit Terminen hat eine erste Gruppe mit Mitgliedern.",
         "tierUpdated": "Gruppe {{tier}} gesetzt",
         "tierUpdateFailed": "Gruppe {{tier}} konnte nicht gesetzt werden",
         "yourCasts": "Deine Besetzungen",
@@ -184,7 +185,11 @@
         "castRankMulti_other": "In {{count}} Städten gereiht",
         "castNotRanked": "Noch nicht gereiht",
         "noCitiesYet": "Noch hat keine Stadt einen zukünftigen Termin, also gibt es nichts zu reihen. Besetzungen, die du jetzt anlegst, warten hier.",
-        "datesNeedCity": "Deine kommenden Termine haben noch keine Stadt, also gibt es nichts zu reihen, bis du am Termin eine hinzufügst."
+        "datesNeedCity": "Deine kommenden Termine haben noch keine Stadt, also gibt es nichts zu reihen, bis du am Termin eine hinzufügst.",
+        "tier1Empty": "erste Gruppe hat keine Mitglieder",
+        "unlocksStaff_one": "Füge der ersten Gruppe in {{city}} Mitglieder hinzu und {{count}} Termin wird in der heutigen täglichen Sendung anfragbar.",
+        "unlocksStaff_other": "Füge der ersten Gruppe in {{city}} Mitglieder hinzu und {{count}} Termine werden in der heutigen täglichen Sendung anfragbar.",
+        "emptyCastHint": "Besetzungen ohne Mitglieder sind ausgegraut. Füge dort zuerst Mitglieder hinzu."
       },
       "eligibility": {
         "gapCount_one": "{{count}} Lücke",
@@ -198,7 +203,7 @@
         "nullCityNote": "Manche Termine haben keine Stadt gesetzt. Behebe das Datum, damit es eine Stadt hat.",
         "unlocks_one": "Verknüpfe eine Besetzung mit {{show}} und {{count}} Termin wird anfragbar.",
         "unlocks_other": "Verknüpfe eine Besetzung mit {{show}} und {{count}} Termine werden anfragbar.",
-        "unlocksDone": "Jede Produktion und Stadt hat eine Besetzung in der ersten Gruppe.",
+        "unlocksDone": "Jede Produktion und Stadt hat eine erste Gruppe mit Mitgliedern.",
         "castLinked": "Besetzung verknüpft",
         "castLinkFailed": "Besetzung konnte nicht verknüpft werden",
         "byProduction": "Abdeckung nach Produktion",
@@ -210,7 +215,9 @@
         "castCountLabel_one": "{{count}} Besetzung",
         "castCountLabel_other": "{{count}} Besetzungen",
         "noProductionsYet": "Noch hat keine Produktion einen zukünftigen Termin, also gibt es nichts abzudecken. Besetzungen, die du jetzt anlegst, warten hier.",
-        "datesNeedCity": "Deine kommenden Termine haben noch keine Stadt, also gibt es nichts abzudecken, bis du am Termin eine hinzufügst."
+        "datesNeedCity": "Deine kommenden Termine haben noch keine Stadt, also gibt es nichts abzudecken, bis du am Termin eine hinzufügst.",
+        "castEmpty": "Die zuerst gereihte Besetzung in {{cities}} hat noch keine Mitglieder.",
+        "emptyCastHint": "Besetzungen ohne Mitglieder sind ausgegraut. Füge dort zuerst Mitglieder hinzu."
       }
     }
   },

@@ -66,8 +66,13 @@ export interface GetRunningModelV3 {
   complete: boolean;
   bookingOn: boolean;
   hireOrdersOn: boolean;
-  /** Non-blocking advisory: count of future dates with no city set. Mirrors v1's field. */
+  /** Non-blocking advisory: count of future dates with no city set. Mirrors v1's field.
+   *  0 when the read is UNKNOWN, so never read it without `datesWithoutCityUnknown`. */
   datesWithoutCity: number;
+  /** The coverage read that `datesWithoutCity` is derived from failed, so the count is not
+   *  known. Unread means outstanding: a consumer must say so rather than render the silence
+   *  of `datesWithoutCity === 0` as "every date has a city". */
+  datesWithoutCityUnknown: boolean;
   nextStep: { phase: GetRunningPhaseKey; key: GetRunningStepKey } | null;
 }
 
@@ -81,6 +86,10 @@ export interface GetRunningInputV3 {
   datesConnectDone: boolean;
   datesMapDone: boolean;
   datesCitiesDone: boolean;
+  /** The coverage read behind `datesCitiesDone`/`datesWithoutCity` failed. Optional, and
+   *  `false` by default, so every existing caller keeps its meaning; when true the `cities`
+   *  step can never be done and the advisory reports itself unknown instead of 0. */
+  datesCitiesUnknown?: boolean;
   /** The org has at least one non-cancelled date. Guards the two get_dates steps that
    *  would otherwise be vacuously true on a blank org: "every date has a city" holds
    *  trivially with no dates, and "review your productions" says nothing about dates. */
@@ -164,7 +173,7 @@ export function composeGetRunningV3(input: GetRunningInputV3): GetRunningModelV3
       { key: "source", done: input.datesSource != null, block: hardBlock, adminOnly: false, placeholder: false, capability: input.canManageShows },
       { key: "connect", done: input.datesConnectDone, block: hardBlock, adminOnly: false, placeholder: false, capability: input.canManageShows, hidden: isManualSource },
       { key: "map", done: input.datesMapDone, block: hardBlock, adminOnly: false, placeholder: false, capability: input.canManageShows, hidden: isManualSource },
-      { key: "cities", done: input.hasAnyDates && input.datesCitiesDone, block: hardBlock, adminOnly: false, placeholder: false, capability: input.canManageShows },
+      { key: "cities", done: input.hasAnyDates && input.datesCitiesDone && !input.datesCitiesUnknown, block: hardBlock, adminOnly: false, placeholder: false, capability: input.canManageShows },
       {
         key: "productions",
         done: input.hasAnyDates && (bookingStep(input.booking, "slots")?.done ?? false),
@@ -340,7 +349,9 @@ export function composeGetRunningV3(input: GetRunningInputV3): GetRunningModelV3
     complete,
     bookingOn: input.bookingOn,
     hireOrdersOn: input.hireOrdersOn,
-    datesWithoutCity: input.bookingOn ? (input.booking?.datesWithoutCity ?? 0) : 0,
+    // Unknown reports 0 AND flags itself, so no consumer can read the 0 as "none".
+    datesWithoutCity: input.bookingOn && !input.datesCitiesUnknown ? (input.booking?.datesWithoutCity ?? 0) : 0,
+    datesWithoutCityUnknown: input.bookingOn ? input.datesCitiesUnknown === true : false,
     nextStep,
   };
 }

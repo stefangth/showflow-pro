@@ -65,6 +65,7 @@ function emptyModel(overrides: Partial<GetRunningModel> = {}): GetRunningModel {
     bookingOn: false,
     hireOrdersOn: false,
     datesWithoutCity: 0,
+    datesWithoutCityUnknown: false,
     ...overrides,
   };
 }
@@ -87,6 +88,7 @@ function boardModel(): GetRunningModel {
     bookingOn: true,
     hireOrdersOn: false,
     datesWithoutCity: 0,
+    datesWithoutCityUnknown: false,
   };
 }
 
@@ -160,6 +162,7 @@ function v3NothingModel(): GetRunningModelV3 {
     bookingOn: false,
     hireOrdersOn: false,
     datesWithoutCity: 0,
+    datesWithoutCityUnknown: false,
     nextStep: null,
   };
 }
