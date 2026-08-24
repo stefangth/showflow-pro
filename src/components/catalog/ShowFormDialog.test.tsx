@@ -92,6 +92,24 @@ describe("ShowFormDialog", () => {
     expect(saveArg.slots[1].id).toEqual(expect.any(String));
   });
 
+  it("mounts the org-wide cities section, whose inline field is NOT a nested form", async () => {
+    Object.assign(client, createFakeSupabase({
+      ...TWO_SKILLS,
+      cities: { data: [{ id: "c1", name: "Bremen", airtable_city_key: null }], error: null },
+    }));
+    renderWithProviders(<ShowFormDialog open onOpenChange={() => {}} allShows={[]} />);
+
+    expect(await screen.findByText(/cities you play/i)).toBeInTheDocument();
+    expect(await screen.findByText("Bremen")).toBeInTheDocument();
+
+    // Direct structural assertion, not an indirect "the outer submit never fired": jsdom
+    // does not implement implicit form submission, so only this fails fast and for the
+    // right reason if the create chip is ever turned back into a <form>.
+    const outerForm = screen.getByRole("button", { name: /^create$/i }).closest("form");
+    fireEvent.click(screen.getByRole("button", { name: /new city/i }));
+    expect(screen.getByRole("textbox", { name: /city name/i }).closest("form")).toBe(outerForm);
+  });
+
   it("edit: seeds the show's slots, adds a skill to one, and saves the union (patch omits slot counts)", async () => {
     Object.assign(client, createFakeSupabase(TWO_SKILLS));
     fetchShowSlots.mockResolvedValue([{ id: "slot-1", name: "Leads", count: 2, kind: "main", skillIds: ["sk-1"] }]);

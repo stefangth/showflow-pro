@@ -31,6 +31,11 @@ export async function fetchCities(
   return (data ?? []) as CityRow[];
 }
 
+/** Thrown by `createCity` for a blank name. A sentinel, not prose: the data layer has no
+ *  `t()`, so hardcoded English here would be one `toErrorMessage` away from a toast.
+ *  Callers match on it and own the copy. */
+export const CITY_NAME_REQUIRED = "CITY_NAME_REQUIRED";
+
 /** Add a city to the org's shared catalog. Cities are org-wide, not per production: the
  *  production dialog is only a convenient second place to call this from. The per-org
  *  unique index cities_org_name_uniq raises 23505 on a duplicate; callers surface it. */
@@ -39,7 +44,7 @@ export async function createCity(
   args: { name: string; orgId: string },
 ): Promise<{ id: string; name: string }> {
   const name = args.name.trim();
-  if (!name) throw new Error("A city needs a name");
+  if (!name) throw new Error(CITY_NAME_REQUIRED);
   const { data, error } = await client
     .from("cities")
     .insert({ name, org_id: args.orgId })

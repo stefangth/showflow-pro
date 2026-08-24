@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { createFakeSupabase } from "@/test/supabaseFake";
-import { createCity, fetchCities, fetchCitiesForLinking, linkCityAirtableKey, importCitiesFromOptions, mergeCities, updateCity } from "./cities";
+import { CITY_NAME_REQUIRED, createCity, fetchCities, fetchCitiesForLinking, linkCityAirtableKey, importCitiesFromOptions, mergeCities, updateCity } from "./cities";
 
 describe("cities data-access", () => {
   it("fetchCitiesForLinking selects link fields for the org", async () => {
@@ -69,7 +69,8 @@ describe("cities data-access", () => {
 
   it("createCity refuses a blank name without touching the client", async () => {
     const fake = createFakeSupabase({});
-    await expect(createCity(fake as never, { name: "   ", orgId: "org-1" })).rejects.toThrow(/name/i);
+    // A sentinel, not prose: the data layer must never hand a caller English copy.
+    await expect(createCity(fake as never, { name: "   ", orgId: "org-1" })).rejects.toThrow(CITY_NAME_REQUIRED);
     expect(fake.calls).toEqual([]);
   });
 
