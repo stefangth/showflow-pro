@@ -26,11 +26,18 @@ site. Never the other way round.
 Outside `src/components/ui` the lint fails on `#rrggbb`, `text-[Npx]`, `rounded-[Npx]`
 and bracket alpha.
 
-**[review]** Radii use the design-system scale (`xs s m l xl xxl pill`). The shadcn
-aliases `rounded-sm`, `rounded-md` and `rounded-lg` are retired.
+**[review]** Radii use the design-system scale, which is named in words, not letters:
+`chip` (4) `field` (6) `control` (8) `card` (10) `icon` (20) `pill` (999).
+There is no hero step: every card is 10px, including a full bleed feature card.
+The shadcn aliases `rounded-sm`, `rounded-md` and `rounded-lg` are retired.
 
-**[review]** Radii nest inward. A card at 10 holds a button at 8 holds a chip at 4. Never
-reversed.
+**[ci]** Never name a radius key with a single letter. Tailwind owns the suffixes
+`t r b l tl tr br bl s e ss se es ee` for its side, corner and logical-property
+utilities, and a key that reuses one silently loses the cascade on those corners.
+`scripts/tailwindRadius.test.ts` fails the build if a key re-enters that namespace.
+
+**[review]** Radii nest inward. A card at 10 holds a row or button at 8 holds a chip at 4.
+Never reversed, never tied. A card inside a card steps down to 8; it does not repeat 10.
 
 **[review]** A hairline carries elevation on the page. Shadow only where the surface
 floats above another one.
