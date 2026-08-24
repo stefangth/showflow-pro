@@ -10,6 +10,7 @@ import { isSheetMapComplete, mapSheetRows } from "@/lib/sheetImport/mapRows";
 import { WizardFooterContext } from "@/components/getRunning/v3/WizardFooterContext";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { KpiTile } from "@/components/ui/kpi-tile";
 import { CatalogTab } from "@/components/settings/airtable/CatalogTab";
 import { DatesMissingCityList } from "@/components/getRunning/v3/steps/DatesMissingCityList";
@@ -33,18 +34,24 @@ import { ROUTES } from "@/config/app.config";
  * those rows ever appear. So a loading console renders a skeleton instead, with Continue
  * disabled.
  *
- * The non-sheet body picks between four states, in this order ("Get running truthful
- * completion", Task 4, which fixed the dead end where all four collapsed into one):
+ * The non-sheet body picks between these states, in this order ("Get running truthful
+ * completion", Task 4, which fixed the dead end where they all collapsed into one):
+ *   0. either read FAILED (`missing.isError` / `statusError`) - a destructive alert. Both
+ *      reads fail closed: a failed `useDatesMissingCity` reports 0 unresolved dates, and a
+ *      failed date-count read reports "no dates", so neither may be believed;
  *   1. no dates at all (`hasAnyDates === false`) - nothing to give a city to yet, so point
  *      at the productions step rather than claiming the step is resolved;
  *   2. real dates with no city (`useDatesMissingCity`) - `DatesMissingCityList`, the only
- *      body that exists on the by-hand and sheet paths, where `cityRows` is always empty;
- *   3. imported Airtable city strings (`cityRows`) - the existing `CatalogTab`;
+ *      body that exists on the by-hand and sheet paths, where `cityRows` is always empty,
+ *      PLUS `CatalogTab` beneath it when the org also has imported city strings (see the
+ *      comment at that branch for why the two must not be exclusive);
+ *   3. imported Airtable city strings (`cityRows`) alone - the existing `CatalogTab`;
  *   4. otherwise the resolved/empty note, with a link out to where cities are actually
  *      managed (Settings › Casts & coverage) and Continue enabled, since nothing is left.
  * `hasAnyDates` arrives as a prop (`BookingSetupStatus.hasAnyDates`, resolved by
- * `StepBodyV3`) and is `null` while that read is in flight, which renders the skeleton: a
- * loading org must not flash "No dates yet" at an org that has hundreds.
+ * `StepBodyV3`) and is `null` whenever that read is unresolved, which renders the skeleton
+ * while loading and the alert once `statusError` says it failed: a loading or broken read
+ * must not flash "No dates yet" at an org that has hundreds.
  *
  * Continue is gated on state 1 AND 2 being clear too, not only on the imported rows. Before
  * Task 4 the manual path had `cityRows.length === 0`, so Continue was enabled the moment the
@@ -73,11 +80,18 @@ export function CitiesStep({
   orgId,
   onDone,
   hasAnyDates,
+  statusError,
 }: {
   orgId: string | null;
   onDone: () => void;
-  /** `BookingSetupStatus.hasAnyDates`; `null` while that read is still in flight. */
+  /** `BookingSetupStatus.hasAnyDates`; `null` while that read is unresolved (in flight OR
+   *  failed). Never coerce a failed read to `false`: `fetchShowDateCount` failing would
+   *  otherwise render "No dates yet" to an org with hundreds. */
   hasAnyDates: boolean | null;
+  /** True when the booking-status read FAILED, as opposed to still loading. Splits the two
+   *  reasons `hasAnyDates` is null so a failure gets an error body rather than a skeleton
+   *  that never resolves, and loading never flashes an error. */
+  statusError: boolean;
 }): JSX.Element {
   const { t } = useTranslation("getRunningV3");
   const footerSlot = useContext(WizardFooterContext);
@@ -100,7 +114,11 @@ export function CitiesStep({
   // Continue gate below can never disagree about how many dates are still unresolved.
   const missing = useDatesMissingCity(orgId);
   const missingCount = missing.data?.length ?? 0;
-  const settled = loaded && hasAnyDates !== null && !missing.isLoading;
+  // Both reads fail CLOSED. `missingCount` falls back to 0 on a failed read, so without
+  // `!missing.isError` here the body would drop through to the "no cities to resolve yet"
+  // note with Continue ENABLED, restoring the exact dead end this step exists to close.
+  const readFailed = missing.isError || statusError;
+  const settled = loaded && hasAnyDates !== null && !missing.isLoading && !missing.isError;
   const isEmpty = settled && hasAnyDates && missingCount === 0 && cityRows.length === 0;
 
   const sheetResult = sheetImport.result;
@@ -117,6 +135,28 @@ export function CitiesStep({
     <Button type="button" size="sm" disabled={!canContinue} onClick={onDone}>
       {t("body.cities.continue")}
     </Button>
+  );
+
+  // Hoisted so it can render either on its own (nothing but imported rows left to resolve)
+  // or stacked under `DatesMissingCityList` (an Airtable org with both), without the two
+  // call sites drifting apart.
+  const catalog = (
+    <CatalogTab
+      section="cities"
+      programSource={airtable.programSource}
+      citySource={airtable.citySource}
+      programRows={[]}
+      cityRows={cityRows}
+      programExisting={[]}
+      cityExisting={airtable.cityExisting}
+      onLink={airtable.onLink}
+      onCreate={airtable.onCreate}
+      onUnlink={airtable.onUnlink}
+      onBulkCreate={airtable.onBulkCreate}
+      merge={airtable.mergeSuggestion}
+      canWrite={airtable.canWrite}
+      busy={airtable.catalogBusy}
+    />
   );
 
   const handleImport = async () => {
@@ -180,6 +220,10 @@ export function CitiesStep({
             </div>
           )}
         </div>
+      ) : readFailed ? (
+        <Alert variant="destructive">
+          <AlertDescription>{t("body.cities.readError")}</AlertDescription>
+        </Alert>
       ) : !settled ? (
         <div className="space-y-2">
           <Skeleton className="h-10 w-full" />
@@ -197,7 +241,17 @@ export function CitiesStep({
           </Link>
         </div>
       ) : missingCount > 0 ? (
-        <DatesMissingCityList orgId={orgId} canEdit={canEdit} />
+        // The row list AND, when the org has imported city strings, the catalog beneath it.
+        // These are deliberately NOT exclusive: an Airtable org reaches this state routinely
+        // (airtable-poll/index.ts:506 holds a record only when the city field is mapped, the
+        // value is non-empty, AND it fails to link, so a blank City cell or an unmapped city
+        // field imports with city_id null), and resolving the rows above needs catalog cities
+        // to exist, which is exactly what CatalogTab is for. Hiding it here would strand
+        // those orgs: Continue requires both the rows resolved and every cityRow linked.
+        <div className="space-y-4">
+          <DatesMissingCityList orgId={orgId} canEdit={canEdit} />
+          {cityRows.length > 0 && catalog}
+        </div>
       ) : isEmpty ? (
         <div className="space-y-2 rounded-l border border-border bg-well-tint px-3.5 py-6 text-center">
           <p className="text-sm text-muted-foreground">{t("body.cities.empty")}</p>
@@ -209,22 +263,7 @@ export function CitiesStep({
           </Link>
         </div>
       ) : (
-        <CatalogTab
-          section="cities"
-          programSource={airtable.programSource}
-          citySource={airtable.citySource}
-          programRows={[]}
-          cityRows={cityRows}
-          programExisting={[]}
-          cityExisting={airtable.cityExisting}
-          onLink={airtable.onLink}
-          onCreate={airtable.onCreate}
-          onUnlink={airtable.onUnlink}
-          onBulkCreate={airtable.onBulkCreate}
-          merge={airtable.mergeSuggestion}
-          canWrite={airtable.canWrite}
-          busy={airtable.catalogBusy}
-        />
+        catalog
       )}
 
       {/* Scoped to the imported-rows branch: the no-dates and missing-city bodies carry their

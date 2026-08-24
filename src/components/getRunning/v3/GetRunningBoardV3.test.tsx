@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { screen, fireEvent, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { renderWithProviders } from "@/test/renderWithProviders";
+import { createFakeSupabase } from "@/test/supabaseFake";
 import { composeGetRunningV3, type GetRunningInputV3, type GetRunningModelV3 } from "@/lib/getRunning/steps";
 import type { BookingSetupStatus } from "@/lib/bookings/setupStatus";
 import type { HireOrderSetupStatus } from "@/lib/hireOrders/setupStatus";
@@ -17,6 +18,10 @@ import type { HireOrderSetupStatus } from "@/lib/hireOrders/setupStatus";
 const { client } = vi.hoisted(() => ({ client: {} as Record<string, unknown> }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: client }));
 vi.mock("@/hooks/useGetRunningV3", () => ({ useGetRunningV3: vi.fn() }));
+// A no-seed fake client (rather than the bare `{}` this suite used to mock in): the
+// deep-link test below opens real step bodies, whose own hooks read the singleton. With no
+// seeds every read resolves empty, which is all those assertions need.
+Object.assign(client, createFakeSupabase({}));
 
 // The retired state's dismiss control shares the same rail-dismissal hook v1's
 // RetiredBoard uses, spied the same way RetiredBoard.test.tsx does rather than
@@ -248,6 +253,27 @@ describe("GetRunningBoardV3", () => {
 
     expect(screen.getByText(/add an artist/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /collapse/i })).toBeInTheDocument();
+  });
+
+  // Regression: `?step=` used to be applied behind a one-shot `autoOpenedRef`, which is
+  // spent on the board's first render with a model. An in-app link that only changes the
+  // query string (the cities step's "Go to productions", the single affordance the no-dates
+  // state offers) therefore moved the URL and nothing else, and only appeared to work from
+  // the Settings mirror because that route remounts the board.
+  it("re-opens the named step when an in-app link changes ?step= after mount", async () => {
+    // Manual source with no dates: get_dates opens on `cities`, whose body renders the
+    // no-dates well and its link into the productions step.
+    mockModel(composeGetRunningV3({ ...base, datesSource: "manual", hasAnyDates: false, datesCitiesDone: false }));
+
+    renderBoardAt("page", "/get-running?step=cities");
+
+    const link = await screen.findByRole("link", { name: /go to productions/i });
+    fireEvent.click(link);
+
+    // The wizard actually moved: the productions body is mounted, and the cities body is gone.
+    // The step's own sub-line also appears in the wizard's step list, hence findAllByText.
+    expect((await screen.findAllByText(/check the productions that came in/i)).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/no dates yet/i)).not.toBeInTheDocument();
   });
 
   it("ignores ?step= for the settings mirror (context=\"settings\")", () => {

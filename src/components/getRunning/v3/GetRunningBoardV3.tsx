@@ -152,42 +152,54 @@ export function GetRunningBoardV3({ context }: { context: "page" | "settings" })
   const [selectedStep, setSelectedStep] = useState<GetRunningStepKey | null>(null);
   const allStepsCardRef = useRef<HTMLDivElement | null>(null);
 
-  // Runs once per mount, not on every model refetch (mirrors v1's `autoOpenedRef`):
-  // without the ref guard, a viewer who deliberately collapsed the wizard would have it
-  // reopened on the next background refetch, since the same first-blocking step would
-  // still be found. A valid `?step=` deep link wins over the first-blocking auto-open.
-  //
-  // This inlines the same open/guard logic as `handleOpenStep` below (owner phase found +
-  // `waitsOn == null`) rather than calling it directly: `handleOpenStep` is declared further
-  // down, after this component's early `isLoading`/`nothing-to-set-up`/`complete` returns,
-  // so a render that takes one of those early-return paths would still run this effect (all
-  // hooks called before an early return still fire) with `handleOpenStep` never having been
-  // initialized in that render's closure. Reading `owner`/`target` straight from `model` and
-  // calling `setSelectedPhase`/`setSelectedStep` sidesteps that hazard entirely, and is
-  // exactly what `handleOpenStep` reduces to here anyway: `target` is only ever considered
-  // once it has already been confirmed visible on `owner`, so `handleOpenStep`'s own
-  // visibility redirect never fires for it.
+  // Both effects below inline the same open/guard logic as `handleOpenStep` further down
+  // (owner phase found + `waitsOn == null`) rather than calling it: `handleOpenStep` is
+  // declared after this component's early `isLoading`/`nothing-to-set-up`/`complete` returns,
+  // so a render that takes one of those paths would still run these effects (all hooks called
+  // before an early return still fire) with `handleOpenStep` never initialized in that
+  // render's closure. Reading `owner`/`target` straight from `model` sidesteps that hazard,
+  // and is exactly what `handleOpenStep` reduces to here anyway: `target` is only ever
+  // considered once confirmed visible on `owner`, so its visibility redirect never fires.
   const autoOpenedRef = useRef(false);
+
+  // `?step=` is tracked by the value LAST APPLIED, not by a one-shot boolean. A boolean was
+  // wrong: it is spent on the board's first render with a model, so an in-app link that only
+  // changes the query string (e.g. the cities step's "Go to productions") moved the URL and
+  // nothing else — the wizard stayed where it was. It appeared to work from the Settings
+  // mirror purely because that route remounts the board. Keyed on the value, a param that
+  // CHANGES always re-opens, while a background model refetch (same param) never reopens a
+  // wizard the viewer deliberately collapsed.
+  const appliedParamRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!model || !stepParam || appliedParamRef.current === stepParam) return;
+    const target = stepParam as GetRunningStepKey;
+    const owner = model.phases.find((p) => visibleSteps(p.steps).some((s) => s.key === target));
+    // A locked phase still cannot be opened from a deep link. Left unapplied (not recorded)
+    // so it resolves if that phase later unlocks while the param is still on the URL.
+    if (!owner || owner.waitsOn != null) return;
+    appliedParamRef.current = stepParam;
+    // A deep link satisfies the once-per-mount auto-open too, so the effect below does not
+    // then yank the viewer to the first blocking step instead.
+    autoOpenedRef.current = true;
+    setSelectedPhase(owner.key);
+    setSelectedStep(target);
+  }, [model, stepParam]);
+
+  // Runs once per mount, not on every model refetch (mirrors v1's `autoOpenedRef`): without
+  // the ref guard, a viewer who deliberately collapsed the wizard would have it reopened on
+  // the next background refetch, since the same first-blocking step would still be found.
+  // Declared after the deep-link effect so a valid `?step=` (which sets `autoOpenedRef` in
+  // the same commit) wins over the first-blocking auto-open; an unresolvable param falls
+  // through to it.
   useEffect(() => {
     if (autoOpenedRef.current || !model) return;
-    if (stepParam) {
-      const target = stepParam as GetRunningStepKey;
-      const owner = model.phases.find((p) => visibleSteps(p.steps).some((s) => s.key === target));
-      if (owner && owner.waitsOn == null) {
-        autoOpenedRef.current = true;
-        setSelectedPhase(owner.key);
-        setSelectedStep(target);
-        return;
-      }
-    }
-    // Fall through to the existing first-blocking behaviour.
     autoOpenedRef.current = true;
     const step = firstBlockingStep(model);
     if (step) {
       setSelectedPhase(step.phase);
       setSelectedStep(step.key);
     }
-  }, [model, stepParam]);
+  }, [model]);
 
   if (isLoading || !model) {
     return (

@@ -396,6 +396,7 @@
       "missingHeading": "Termine ohne Stadt",
       "missingSub": "Wähle für jeden Termin eine Stadt. Ein Termin ohne Stadt kann nicht besetzt werden.",
       "missingUnknownProduction": "Produktion ohne Titel",
+      "readError": "Wir konnten nicht prüfen, welche Termine noch eine Stadt brauchen. Lade die Seite neu und versuche es erneut.",
       "assignCity": "Stadt zuweisen",
       "sheet": {
         "heading": "Deine Termine importieren",
