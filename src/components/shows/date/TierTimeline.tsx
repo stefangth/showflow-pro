@@ -188,17 +188,6 @@ export function TierTimeline({
         <p className="text-xs text-muted-foreground">{t("tierTimeline.usingShowPriorities")}</p>
       )}
 
-      <RequiredSkillsCard
-        show={show}
-        slots={slots}
-        showSkillIds={showSkillIds}
-        dateSkillIds={dateSkillIds}
-        droppedSkillIds={droppedSkillIds}
-        skills={skills}
-        onReset={onResetSkills}
-        onEdit={onEditSkills}
-      />
-
       <TierLadder
         rows={ladderRows}
         city={cityName}
@@ -210,6 +199,17 @@ export function TierTimeline({
         noNextCast={noNextCast}
         nextAsk={nextAsk}
         onCloseTier={(tier) => setCloseTarget(tier)}
+      />
+
+      <RequiredSkillsCard
+        show={show}
+        slots={slots}
+        showSkillIds={showSkillIds}
+        dateSkillIds={dateSkillIds}
+        droppedSkillIds={droppedSkillIds}
+        skills={skills}
+        onReset={onResetSkills}
+        onEdit={onEditSkills}
       />
 
       {/* What a tier even is, stated once — a producer opening this tab for the
