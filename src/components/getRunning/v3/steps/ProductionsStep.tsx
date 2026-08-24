@@ -51,7 +51,13 @@ export function ProductionsStep({ orgId, onDone }: { orgId: string | null; onDon
   const [dateOpen, setDateOpen] = useState(false);
   const [partsShow, setPartsShow] = useState<ShowWithStats | null>(null);
 
-  const canContinue = list.some((s) => showSlots(s) != null);
+  // The step's own `done` is `hasAnyDates && slotsDone` (src/lib/getRunning/steps.ts), so
+  // the gate must ask both. With productions configured and zero dates, a slots-only gate
+  // enabled Continue, completed nothing, and the wizard's advance wrapped BACKWARDS to
+  // `cities`, whose body says "Go to productions": a loop with no way out.
+  const hasAnyDates = list.some((s) => s.dateCount > 0);
+  const slotsReady = list.some((s) => showSlots(s) != null);
+  const canContinue = slotsReady && hasAnyDates;
 
   const continueButton = (
     <Button type="button" size="sm" disabled={!canContinue} onClick={onDone}>
@@ -126,8 +132,14 @@ export function ProductionsStep({ orgId, onDone }: { orgId: string | null; onDon
         </div>
       )}
 
-      {list.length > 0 && !canContinue && (
+      {/* Name the reason that actually applies. Nothing in this step's copy mentioned dates
+          before, so an org with configured breakdowns and no dates had no way to tell why
+          Continue was off. */}
+      {list.length > 0 && !slotsReady && (
         <p className="text-xs text-muted-foreground">{t("body.productions.incomplete")}</p>
+      )}
+      {list.length > 0 && slotsReady && !hasAnyDates && (
+        <p className="text-xs text-muted-foreground">{t("body.productions.noDates")}</p>
       )}
 
       {footerSlot ? createPortal(continueButton, footerSlot) : continueButton}

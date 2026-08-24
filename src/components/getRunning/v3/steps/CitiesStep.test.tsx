@@ -396,10 +396,31 @@ describe("CitiesStep", () => {
       const { onDone } = renderStep();
 
       expect(await screen.findByText("2")).toBeInTheDocument();
+      // Continue also waits on the city-less-dates read, which fails closed while in flight.
       const continueBtn = screen.getByRole("button", { name: /continue/i });
-      expect(continueBtn).toBeEnabled();
+      await waitFor(() => expect(continueBtn).toBeEnabled());
       fireEvent.click(continueBtn);
       expect(onDone).toHaveBeenCalledTimes(1);
+    });
+
+    /**
+     * Audit finding 02, still live for one of the three sources: a sheet import can land
+     * rows with `city_id` null, and the sheet branch gated Continue on the run alone while
+     * `DatesMissingCityList` rendered only on the non-sheet branch. A sheet org walked
+     * straight past a step flagged "Blocks your first ask" with the block still standing.
+     */
+    it("keeps Continue disabled and shows the city-less dates when an import landed rows with no city", async () => {
+      mock(fetchUpcomingDatesWithoutCity).mockResolvedValue([
+        { id: "d1", date: "2026-09-01", show_id: "s1", program: "Carmen", sub_program: null },
+      ]);
+      seedSheetImport({
+        settings: { url: "https://docs.google.com/spreadsheets/d/x", map: { program: "Program", date: "Date" } },
+        result: { processed: 2, new_dates: 2, updated: 0, held: 0, tiers_opened: 1 },
+      });
+      renderStep();
+
+      expect(await screen.findByText(/dates without a city/i)).toBeInTheDocument();
+      await waitFor(() => expect(screen.getByRole("button", { name: /continue/i })).toBeDisabled());
     });
 
     it("keeps Continue disabled and shows the held note when a run held every row", async () => {

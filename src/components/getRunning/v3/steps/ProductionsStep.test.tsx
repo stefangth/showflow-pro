@@ -81,9 +81,11 @@ describe("ProductionsStep", () => {
     expect(screen.getByRole("button", { name: /continue/i })).toBeDisabled();
   });
 
-  it("enables Continue once a production has parts configured, and calls onDone on click", () => {
+  it("enables Continue once a production has parts configured and a date, and calls onDone on click", () => {
     showsQuery.mockReturnValue({
-      data: [{ ...SHOWS[0], main_cast_slots: 2, understudy_slots: 1 }],
+      // Both halves of the step's own `done` (`hasAnyDates && slotsDone`): a breakdown AND
+      // at least one date.
+      data: [{ ...SHOWS[0], main_cast_slots: 2, understudy_slots: 1, dateCount: 3 }],
       isLoading: false,
       isError: false,
     });
@@ -94,6 +96,26 @@ describe("ProductionsStep", () => {
 
     fireEvent.click(continueBtn);
     expect(onDone).toHaveBeenCalledTimes(1);
+  });
+
+  /**
+   * The step's model `done` is `hasAnyDates && slotsDone`, but Continue asked only about
+   * slots. With productions configured and zero dates, Continue was enabled, completed
+   * nothing, and the wizard's advance wrapped BACKWARDS to `cities`, whose body says "Go to
+   * productions": a loop with no exit. Nothing in the copy mentioned dates either.
+   */
+  it("keeps Continue disabled, and says why, when configured productions have no dates", () => {
+    showsQuery.mockReturnValue({
+      data: [{ ...SHOWS[0], main_cast_slots: 2, understudy_slots: 1, dateCount: 0 }],
+      isLoading: false,
+      isError: false,
+    });
+    renderStep();
+
+    expect(screen.getByRole("button", { name: /continue/i })).toBeDisabled();
+    expect(screen.getByText(/add at least one date to continue/i)).toBeInTheDocument();
+    // The slots reason is the wrong one here and must not also render.
+    expect(screen.queryByText(/set at least one casting breakdown/i)).toBeNull();
   });
 
   it("clicking Set casting breakdown opens the PartsEditorSheet for that production", async () => {

@@ -67,7 +67,11 @@ import { ROUTES } from "@/config/app.config";
  * `SheetImportResult` doesn't carry which cities were held — a richer per-run breakdown is
  * Phase 5's "Sources console" work (see the task brief's design note), not this lean pass.
  * Continue is gated on an import having actually landed rows (`new_dates + updated > 0`),
- * not merely having been run once, so a run that held everything can't be waved through.
+ * not merely having been run once, so a run that held everything can't be waved through,
+ * AND on no date being left without a city (`useDatesMissingCity`, the same gate and the
+ * same `DatesMissingCityList` body the other two sources get). An imported row can land with
+ * `city_id` null, and this step is the one place that is fixed; without that gate a sheet
+ * org advanced past a step flagged "Blocks your first ask" with the block still standing.
  *
  * Portals its Continue into `WizardFooterContext`'s slot, same pattern as `SourceStep`/
  * `ConnectStep`/`MapStep`. Read-only viewers (no `configure_airtable` capability) see the
@@ -127,8 +131,14 @@ export function CitiesStep({
   const sheetImportCanRun = canEdit && sheetMapReady && !!sheetImport.settings.url && !sheetImport.importing;
   const sheetContinue = !!sheetResult && sheetResult.new_dates + sheetResult.updated > 0;
 
+  // The sheet branch is the third source through the SAME step, and it must clear the same
+  // block: an import that lands rows with no city leaves the step's own gate ("a date with
+  // no city cannot be filled") standing. Gating the sheet branch on the run alone let a
+  // sheet org walk past a step flagged "Blocks your first ask" while its own list of
+  // city-less dates sat unrendered. Fails closed on an unread `missing` exactly as the
+  // non-sheet branch does.
   const canContinue = isSheet
-    ? sheetContinue
+    ? sheetContinue && !readFailed && !missing.isLoading && missingCount === 0
     : settled && hasAnyDates === true && missingCount === 0 && cityRows.every((row) => row.linkedId !== null);
 
   const continueButton = (
@@ -219,6 +229,17 @@ export function CitiesStep({
               </Link>
             </div>
           )}
+
+          {/* The same city-less-dates body the by-hand and Airtable paths get. An imported
+              row can land with no city (a blank City cell, or one that did not resolve), and
+              this step is where that is fixed on every other source. */}
+          {readFailed ? (
+            <Alert variant="destructive">
+              <AlertDescription>{t("body.cities.readError")}</AlertDescription>
+            </Alert>
+          ) : missingCount > 0 ? (
+            <DatesMissingCityList orgId={orgId} canEdit={canEdit} />
+          ) : null}
         </div>
       ) : readFailed ? (
         <Alert variant="destructive">

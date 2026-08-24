@@ -47,7 +47,7 @@ describe("SkillsStep", () => {
     renderStep();
 
     expect(screen.queryByRole("button", { name: /continue/i })).toBeNull();
-    expect(screen.getByText(/manage skills right/i)).toBeInTheDocument();
+    expect(screen.getByText(/manage skills or the edit artists right/i)).toBeInTheDocument();
   });
 
   it("gates on manage_skills, not edit_booking_settings", async () => {
@@ -57,7 +57,32 @@ describe("SkillsStep", () => {
     vi.mocked(useCan).mockImplementation((action) => action === "manage_skills");
     const { onDone } = renderStep();
 
-    expect(screen.queryByText(/manage skills right/i)).toBeNull();
+    expect(screen.queryByText(/manage skills or the edit artists right/i)).toBeNull();
+    fireEvent.click(await screen.findByRole("button", { name: /continue/i }));
+    await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1));
+  });
+
+  /**
+   * The assign list writes `artist_skills`, which `ArtistProfileSheet` gates on
+   * `edit_artists`. It used to be gated here on `manage_skills` (which defaults ON for
+   * producers), so an org that had switched `edit_artists` off for producers still let one
+   * rewrite every artist's skills through this step.
+   */
+  it("asks for edit_artists, the capability the artist_skills write actually needs", () => {
+    vi.mocked(useCan).mockImplementation((action) => action === "manage_skills");
+    renderStep();
+
+    expect(screen.getByText(/set skills on your artists/i)).toBeInTheDocument();
+    // Before the fix this step only ever read manage_skills, so a producer in an org that
+    // had turned edit_artists off could still rewrite artists' skills from here.
+    expect(vi.mocked(useCan).mock.calls.map((c) => c[0])).toContain("edit_artists");
+  });
+
+  it("keeps continue for a viewer who holds only edit_artists", async () => {
+    vi.mocked(useCan).mockImplementation((action) => action === "edit_artists");
+    const { onDone } = renderStep();
+
+    expect(screen.queryByText(/manage skills or the edit artists right/i)).toBeNull();
     fireEvent.click(await screen.findByRole("button", { name: /continue/i }));
     await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1));
   });

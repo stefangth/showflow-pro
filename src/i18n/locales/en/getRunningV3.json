@@ -328,7 +328,7 @@
       "heading": "Skills for your parts",
       "sub": "Add the skills your parts need, then set them on your artists.",
       "continue": "Continue",
-      "readOnly": "Managing skills needs the manage skills right, which this account does not have.",
+      "readOnly": "Skills here need the manage skills or the edit artists right, and this account has neither.",
       "assignHeading": "Set skills on your artists",
       "assignSub": "Give every artist the skills they can actually cover. A part can only be filled by an artist who holds its skills.",
       "gapLine": "is required by {{productions}}, and no artist holds it.",
@@ -460,7 +460,8 @@
       "incomplete": "Set at least one casting breakdown to continue.",
       "empty": "No productions yet. Add your first one to get started.",
       "readOnlyEmpty": "No productions yet. Ask an admin to add one.",
-      "readOnlyReason": "Adding a production needs the manage productions right, which this account does not have."
+      "readOnlyReason": "Adding a production needs the manage productions right, which this account does not have.",
+      "noDates": "Add at least one date to continue. A production with no dates has nothing to fill."
     },
     "fee": {
       "heading": "Your default fee",
