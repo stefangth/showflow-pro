@@ -105,7 +105,7 @@ export function CastingBreakdownFields({
             key={row.id ?? i}
             role="group"
             aria-label={row.name ? t("form.slotGroupNamed", { name: row.name }) : t("form.slotGroupIndex", { index: i + 1 })}
-            className="space-y-2 rounded-m border border-border p-2.5"
+            className="space-y-2 rounded-control border border-border p-2.5"
           >
             <div className="flex items-center gap-2">
               <Input
@@ -127,7 +127,7 @@ export function CastingBreakdownFields({
                   updateRow(i, { count: digits === "" ? 0 : parseInt(digits, 10) });
                 }}
               />
-              <div className="inline-flex overflow-hidden rounded-m border border-border">
+              <div className="inline-flex overflow-hidden rounded-control border border-border">
                 {(["main", "understudy"] as SlotKind[]).map((k) => (
                   <button
                     key={k}
@@ -181,7 +181,7 @@ export function CastingBreakdownFields({
       </div>
 
       {value.length > 0 && (
-        <div className="rounded-m border border-primary/20 bg-primary/5 px-3 py-2 text-xs text-primary">
+        <div className="rounded-control border border-primary/20 bg-primary/5 px-3 py-2 text-xs text-primary">
           {calloutText}
         </div>
       )}

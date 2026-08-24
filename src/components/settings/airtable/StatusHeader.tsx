@@ -60,13 +60,13 @@ export function StatusHeader({
 }: StatusHeaderProps) {
   const { t } = useTranslation('settingsAirtable');
   return (
-    <div className="rounded-l border border-border bg-card shadow-sm">
+    <div className="rounded-card border border-border bg-card shadow-sm">
       <div className="flex items-start justify-between gap-4 p-4">
         <div className="min-w-0">
           <p className={cn(EYEBROW, "text-accent-600")}>{eyebrow}</p>
           <div className="mt-1.5 flex items-center gap-2.5">
             <span
-              className={cn("h-2 w-2 shrink-0 rounded-s", dotClass(status.tone))}
+              className={cn("h-2 w-2 shrink-0 rounded-field", dotClass(status.tone))}
               style={dotStyle(status.tone)}
             />
             <h2 className="font-display text-title font-semibold tracking-tight">

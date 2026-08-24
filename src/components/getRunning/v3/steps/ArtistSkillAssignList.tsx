@@ -111,7 +111,7 @@ export function ArtistSkillAssignList({ orgId, canEdit }: { orgId: string | null
           <Skeleton className="h-12 w-full" />
         </div>
       ) : rows.length === 0 ? (
-        <div className="space-y-2 rounded-l border border-border bg-well-tint px-3.5 py-6 text-center">
+        <div className="space-y-2 rounded-card border border-border bg-well-tint px-3.5 py-6 text-center">
           <p className="text-sm text-muted-foreground">{t("body.skills.noArtists")}</p>
           <Link
             to={`${ROUTES.GET_RUNNING}?step=artists`}
@@ -136,7 +136,7 @@ export function ArtistSkillAssignList({ orgId, canEdit }: { orgId: string | null
           {matched.length === 0 ? (
             <p className="text-xs text-muted-foreground">{t("body.skills.filterNoMatch")}</p>
           ) : (
-            <ul className="divide-y divide-border overflow-hidden rounded-l border border-border">
+            <ul className="divide-y divide-border overflow-hidden rounded-card border border-border">
               {visible.map((artist) => (
                 <li key={artist.id} className="flex flex-wrap items-center justify-between gap-3 px-3.5 py-2.5">
                   <div className="min-w-0 truncate text-control font-medium text-foreground">{artist.name}</div>

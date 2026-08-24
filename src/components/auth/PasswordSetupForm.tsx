@@ -118,7 +118,7 @@ export function PasswordSetupForm({ mode, onSuccess, onCancel }: PasswordSetupFo
           )}
           <PasswordInput id="new-password" label="New password" value={password} onChange={(event) => form.setValue("password", event.target.value, { shouldValidate: form.formState.isSubmitted })} invalid={!!passwordError} describedBy={`password-requirements password-strength${passwordError ? " new-password-error" : ""}`} />
           {passwordError && <p id="new-password-error" className="text-xs text-destructive">{passwordError.message}</p>}
-          <div id="password-requirements" aria-live="polite" className="rounded-m border border-border bg-well-tint px-3 py-2 text-xs text-muted-foreground">
+          <div id="password-requirements" aria-live="polite" className="rounded-control border border-border bg-well-tint px-3 py-2 text-xs text-muted-foreground">
             <p className="font-medium text-foreground">Password requirements</p>
             <p>Use at least {MIN_PASSWORD_LENGTH} characters.</p>
             <p id="password-strength"><span className="font-medium text-foreground">Password strength:</span> <span>{strength}</span></p>

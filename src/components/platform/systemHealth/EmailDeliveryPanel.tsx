@@ -12,7 +12,7 @@ const toneForRate = (rate: number, warn: number, down: number) =>
 
 function Kpi({ label, value, sub, tone }: { label: string; value: string; sub: string; tone: string }) {
   return (
-    <div className="rounded-l bg-well-tint p-3">
+    <div className="rounded-card bg-well-tint p-3">
       <div className="text-xs text-muted-foreground">{label}</div>
       <div className={`mt-1 text-2xl font-medium tabular-nums ${tone}`}>{value}</div>
       <div className="mt-1 text-xs text-muted-foreground">{sub}</div>
@@ -34,7 +34,7 @@ export function EmailDeliveryPanel({
         <CardTitle className="font-display text-base">Email delivery</CardTitle>
         <StatusPill tone={healthTone(state)} dot>{healthLabel(state)}</StatusPill>
         <span className="flex-1" />
-        <div className="inline-flex overflow-hidden rounded-m border border-border text-xs">
+        <div className="inline-flex overflow-hidden rounded-control border border-border text-xs">
           {EMAIL_HEALTH.windowOptions.map((m) => (
             <button key={m} onClick={() => onWindowChange(m)}
               className={`px-3 py-1 ${window === m ? "bg-well-tint font-medium text-foreground" : "text-muted-foreground"}`}>
@@ -59,7 +59,7 @@ export function EmailDeliveryPanel({
           <div className="mb-2 text-sm font-medium text-muted-foreground">By template</div>
           <div className="space-y-1.5">
             {h.byTemplate.map((t) => (
-              <div key={t.templateName} className="flex items-center gap-3 rounded-l border border-border p-2.5">
+              <div key={t.templateName} className="flex items-center gap-3 rounded-card border border-border p-2.5">
                 <StatusDot tone={healthTone(t.bounced > 0 || t.failed > 0 ? "degraded" : "operational")} />
                 <span className="flex-1 truncate font-mono text-sm">{t.templateName}</span>
                 <span className="text-xs text-muted-foreground">{t.sent} sent · {t.bounced} bounced · {t.failed} failed</span>

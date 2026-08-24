@@ -46,14 +46,14 @@ export function DemoBar() {
       </div>
       <div className="flex shrink-0 items-center gap-2">
         <span className="text-xs text-muted-foreground">Role</span>
-        <div role="group" className="inline-flex items-center gap-0.5 rounded-m bg-well-tint p-0.5">
+        <div role="group" className="inline-flex items-center gap-0.5 rounded-control bg-well-tint p-0.5">
           {ROLE_OPTIONS.map((r) => (
             <button
               key={r}
               type="button"
               aria-pressed={viewAsRole === r}
               onClick={() => setViewAsRole(viewAsRole === r ? null : r)}
-              className={`h-6 whitespace-nowrap rounded-m px-2.5 text-xs font-medium ${
+              className={`h-6 whitespace-nowrap rounded-control px-2.5 text-xs font-medium ${
                 viewAsRole === r ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"
               }`}
             >

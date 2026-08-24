@@ -84,7 +84,7 @@ export function DayRail({
         actionGates={actionGates}
       />
 
-      <div className="rounded-l border-[0.5px] border-border bg-well-tint p-3.5">
+      <div className="rounded-card border-[0.5px] border-border bg-well-tint p-3.5">
         <Eyebrow className="mb-2.5">{statsTitle}</Eyebrow>
         <div className="flex flex-col gap-2">
           {stats.map((stat, i) => (
@@ -99,12 +99,12 @@ export function DayRail({
         </div>
       </div>
 
-      <div className="rounded-l border-[0.5px] border-border bg-card p-3.5">
+      <div className="rounded-card border-[0.5px] border-border bg-card p-3.5">
         <Eyebrow className="mb-2.5">{t('common:calendar.rail.legendTitle')}</Eyebrow>
         <div className="flex flex-col gap-1.5">
           {legend.map((item, i) => (
             <div key={i} className="flex items-center gap-2">
-              <span className="relative h-[11px] w-4 shrink-0 overflow-hidden rounded-xs">
+              <span className="relative h-[11px] w-4 shrink-0 overflow-hidden rounded-chip">
                 <span className={cn('absolute inset-0', item.badgeClass)} />
                 <span className={cn('absolute inset-y-0 left-0 w-0.5', item.railClass)} />
               </span>

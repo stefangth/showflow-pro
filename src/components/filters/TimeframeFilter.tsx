@@ -64,7 +64,7 @@ export function TimeframeFilter({ value, onChange, className }: Props) {
             <button
               key={p.key}
               onClick={() => { const r = p.range(); onChange({ from: r.from, to: r.to, preset: p.key }); setOpen(false); }}
-              className={cn('text-sm text-left px-2 py-1.5 rounded-s hover:bg-accent', value.preset === p.key && 'bg-accent font-medium')}
+              className={cn('text-sm text-left px-2 py-1.5 rounded-field hover:bg-accent', value.preset === p.key && 'bg-accent font-medium')}
             >
               {p.label}
             </button>
@@ -72,7 +72,7 @@ export function TimeframeFilter({ value, onChange, className }: Props) {
           <Separator className="my-1" />
           <button
             onClick={() => { onChange({ from: null, to: null }); setOpen(false); }}
-            className="text-sm text-left px-2 py-1.5 rounded-s hover:bg-accent text-muted-foreground"
+            className="text-sm text-left px-2 py-1.5 rounded-field hover:bg-accent text-muted-foreground"
           >
             Any time
           </button>

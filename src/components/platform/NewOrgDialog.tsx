@@ -94,7 +94,7 @@ export function NewOrgDialog() {
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-3 border border-border rounded-m p-4">
+          <div className="space-y-3 border border-border rounded-control p-4">
             <p className="text-sm font-medium">Modules</p>
             {FEATURE_KEYS.map((key) => {
               const def = FEATURE_REGISTRY[key];

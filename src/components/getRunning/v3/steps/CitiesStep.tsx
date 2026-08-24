@@ -210,7 +210,7 @@ export function CitiesStep({
           ) : null}
 
           {sheetResult && sheetResult.held > 0 && (
-            <div className="space-y-1 rounded-l border border-border bg-well-tint px-3.5 py-3">
+            <div className="space-y-1 rounded-card border border-border bg-well-tint px-3.5 py-3">
               <p className="text-xs text-muted-foreground">{t("body.cities.sheet.heldNote")}</p>
               <Link
                 to={`${ROUTES.SETTINGS}?tab=casts-coverage`}
@@ -243,7 +243,7 @@ export function CitiesStep({
           <Skeleton className="h-10 w-full" />
         </div>
       ) : !hasAnyDates ? (
-        <div className="space-y-2 rounded-l border border-border bg-well-tint px-3.5 py-6 text-center">
+        <div className="space-y-2 rounded-card border border-border bg-well-tint px-3.5 py-6 text-center">
           <p className="text-sm text-muted-foreground">{t("body.cities.noDates")}</p>
           <Link
             to={`${ROUTES.GET_RUNNING}?step=productions`}
@@ -265,7 +265,7 @@ export function CitiesStep({
           {cityRows.length > 0 && catalog}
         </div>
       ) : isEmpty ? (
-        <div className="space-y-2 rounded-l border border-border bg-well-tint px-3.5 py-6 text-center">
+        <div className="space-y-2 rounded-card border border-border bg-well-tint px-3.5 py-6 text-center">
           <p className="text-sm text-muted-foreground">{t("body.cities.empty")}</p>
           <Link
             to={`${ROUTES.SETTINGS}?tab=casts-coverage`}

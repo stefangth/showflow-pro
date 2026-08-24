@@ -37,7 +37,7 @@ export function SegmentedControl<T extends string>({
     <div
       role="tablist"
       className={cn(
-        "items-center rounded-m bg-well-tint p-[2px]",
+        "items-center rounded-control bg-well-tint p-[2px]",
         scrollable ? "flex gap-2 overflow-x-auto snap-x" : "inline-flex gap-[2px]",
         className,
       )}
@@ -56,7 +56,7 @@ export function SegmentedControl<T extends string>({
             disabled={disabled}
             onClick={() => onChange(option.value)}
             className={cn(
-              "inline-flex h-[29px] cursor-pointer items-center gap-1.5 rounded-s px-3 text-control font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50",
+              "inline-flex h-[29px] cursor-pointer items-center gap-1.5 rounded-field px-3 text-control font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50",
               scrollable && "shrink-0 snap-start",
               active
                 ? "bg-card text-foreground shadow-elev1"
@@ -67,7 +67,7 @@ export function SegmentedControl<T extends string>({
             {option.count != null && (
               <span
                 className={cn(
-                  "inline-flex h-4 min-w-4 items-center justify-center rounded-xs px-1 font-mono text-eyebrow font-semibold tabular-nums",
+                  "inline-flex h-4 min-w-4 items-center justify-center rounded-chip px-1 font-mono text-eyebrow font-semibold tabular-nums",
                   active ? "bg-accent-tint text-accent-text" : "bg-well-tint text-muted-foreground",
                 )}
               >

@@ -66,7 +66,7 @@ export function AttentionPanel({
 }: AttentionPanelProps) {
   const { t } = useTranslation('settingsAirtable');
   return (
-    <div className="rounded-l border border-border bg-card shadow-sm">
+    <div className="rounded-card border border-border bg-card shadow-sm">
       <div className="flex items-center justify-between gap-3 border-b border-border p-4">
         <div>
           <h3 className="text-title-sm font-semibold tracking-[-0.1px] text-foreground">

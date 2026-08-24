@@ -15,7 +15,7 @@ import { StatusDot } from "./status-dot";
  * Radius stays 4. Badges are not pills.
  */
 const badgeVariants = cva(
-  "inline-flex items-center gap-1 rounded-xs border px-1.5 py-0 h-5 text-[11px] font-medium tracking-wide transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+  "inline-flex items-center gap-1 rounded-chip border px-1.5 py-0 h-5 text-[11px] font-medium tracking-wide transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
   {
     variants: {
       variant: {

@@ -150,7 +150,7 @@ export function FlowStep({ orgId, onDone }: { orgId: string | null; onDone: () =
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
           {chips.map((c) => (
             <span key={c.label} className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-2 py-0.5 text-xs font-medium">
-              <span className={cn("h-1.5 w-1.5 rounded-s", CHIP_TONE[c.tone])} />
+              <span className={cn("h-1.5 w-1.5 rounded-field", CHIP_TONE[c.tone])} />
               {c.label}
             </span>
           ))}

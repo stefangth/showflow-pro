@@ -18,7 +18,7 @@ function OutlineButton({ label, modified, active, onClick }: OutlineButtonProps)
       aria-current={active ? "true" : undefined}
       onClick={onClick}
       className={cn(
-        "flex w-full items-center justify-between gap-2 rounded-m px-2 py-1.5 text-left text-sm transition-colors",
+        "flex w-full items-center justify-between gap-2 rounded-control px-2 py-1.5 text-left text-sm transition-colors",
         active ? "bg-accent-tint text-accent-800" : "hover:bg-hover-tint",
       )}
     >

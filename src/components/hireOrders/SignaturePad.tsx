@@ -84,7 +84,7 @@ export function SignaturePad({ value, onChange, disabled }: Props) {
           }}
         />
         {typed.trim() !== "" && (
-          <div className="rounded-m border border-border bg-well-tint px-4 py-3 font-serif text-2xl text-foreground">
+          <div className="rounded-control border border-border bg-well-tint px-4 py-3 font-serif text-2xl text-foreground">
             {typed}
           </div>
         )}
@@ -93,7 +93,7 @@ export function SignaturePad({ value, onChange, disabled }: Props) {
         <canvas
           ref={setCanvas}
           className={cn(
-            "h-40 w-full rounded-m border border-border bg-background touch-none",
+            "h-40 w-full rounded-control border border-border bg-background touch-none",
             disabled && "pointer-events-none opacity-50",
           )}
         />

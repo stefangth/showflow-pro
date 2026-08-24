@@ -61,7 +61,7 @@ function WeekBlockCard({
       onClick={() => onOpenEntry(block.entryId)}
       style={{ top, height: heightPx }}
       className={cn(
-        'absolute inset-x-1 flex flex-col justify-between overflow-hidden rounded-s border-[0.5px] border-border px-1.5 py-1 text-left shadow-elev1',
+        'absolute inset-x-1 flex flex-col justify-between overflow-hidden rounded-field border-[0.5px] border-border px-1.5 py-1 text-left shadow-elev1',
         TONE_BG[toneSpec.tone]
       )}
     >
@@ -116,7 +116,7 @@ export function WeekLens({ entries, anchor, onOpenEntry, today = new Date(), cla
     <div
       data-testid="week-lens"
       className={cn(
-        'flex w-full flex-col overflow-hidden rounded-l border-[0.5px] border-border bg-card shadow-elev2',
+        'flex w-full flex-col overflow-hidden rounded-card border-[0.5px] border-border bg-card shadow-elev2',
         className
       )}
     >
@@ -164,7 +164,7 @@ export function WeekLens({ entries, anchor, onOpenEntry, today = new Date(), cla
                 type="button"
                 data-testid={`week-untimed-${item.entryId}`}
                 onClick={() => onOpenEntry(item.entryId)}
-                className="truncate rounded-xs bg-well-tint px-1.5 py-0.5 text-left text-eyebrow font-medium text-foreground hover:bg-hover-tint"
+                className="truncate rounded-chip bg-well-tint px-1.5 py-0.5 text-left text-eyebrow font-medium text-foreground hover:bg-hover-tint"
               >
                 {item.title}
               </button>

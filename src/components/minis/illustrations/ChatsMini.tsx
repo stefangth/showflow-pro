@@ -42,12 +42,12 @@ export const chatsArt: readonly [ReactNode, ReactNode, ReactNode, ReactNode] = [
   // 03 Talk about the date — outgoing and incoming chat bubbles
   <MiniCard key="c3">
     <div className="flex flex-col gap-1.5">
-      <span className="ml-auto max-w-[85%] rounded-m rounded-br-none bg-accent-500 px-2.5 py-1.5 text-eyebrow text-white">
+      <span className="ml-auto max-w-[85%] rounded-control rounded-br-none bg-accent-500 px-2.5 py-1.5 text-eyebrow text-white">
         Doors 19:00, soundcheck moved to 17:30.
       </span>
       <span className="flex flex-col">
         <span className="text-eyebrow font-medium text-muted-foreground">Theo Brandt</span>
-        <span className="mr-auto max-w-[85%] rounded-m rounded-bl-none bg-well-tint px-2.5 py-1.5 text-eyebrow text-foreground">
+        <span className="mr-auto max-w-[85%] rounded-control rounded-bl-none bg-well-tint px-2.5 py-1.5 text-eyebrow text-foreground">
           Understood, I will be there at 17:00.
         </span>
       </span>

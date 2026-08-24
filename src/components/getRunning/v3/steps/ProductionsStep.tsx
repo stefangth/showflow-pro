@@ -126,7 +126,7 @@ export function ProductionsStep({ orgId, onDone }: { orgId: string | null; onDon
           />
         )
       ) : (
-        <div className="overflow-hidden rounded-m border border-border">
+        <div className="overflow-hidden rounded-control border border-border">
           {list.map((s) => {
             const slots = showSlots(s);
             return (

@@ -35,7 +35,7 @@ function NothingToSetUpV3(): JSX.Element {
   return (
     <div
       data-testid="get-running-v3-nothing"
-      className="flex w-full max-w-[560px] flex-col gap-2 rounded-l border border-border bg-card p-6 shadow-elev3"
+      className="flex w-full max-w-[560px] flex-col gap-2 rounded-card border border-border bg-card p-6 shadow-elev3"
     >
       <h1 className="text-base font-semibold tracking-[-0.1px] text-foreground">{t("nothingToSetUp.title")}</h1>
       <p className="text-control leading-[19px] text-muted-foreground text-pretty">{t("nothingToSetUp.body")}</p>
@@ -76,7 +76,7 @@ function RetiredBoardV3({
   return (
     <div
       data-testid="get-running-v3-retired"
-      className="flex w-full flex-col gap-3 rounded-l border border-border bg-card p-6 shadow-elev3"
+      className="flex w-full flex-col gap-3 rounded-card border border-border bg-card p-6 shadow-elev3"
     >
       <div className="flex flex-wrap items-center gap-3">
         <div className="min-w-0 flex-1">
@@ -437,7 +437,7 @@ export function GetRunningBoardV3({ context }: { context: "page" | "settings" })
         </>
       )}
 
-      <div ref={allStepsCardRef} data-testid="all-steps-card" className="rounded-l border border-border bg-card p-4">
+      <div ref={allStepsCardRef} data-testid="all-steps-card" className="rounded-card border border-border bg-card p-4">
         <Eyebrow>{t("rails.title", { count: model.totalCount })}</Eyebrow>
         <p className="mt-1 text-xs leading-[17px] text-muted-foreground">{t("rails.hint")}</p>
         <div className="mt-3 flex flex-col gap-3 sm:flex-row">
@@ -468,7 +468,7 @@ export function GetRunningBoardV3({ context }: { context: "page" | "settings" })
               <StepBodyV3 step={activeStep} orgId={orgId} onDone={handleStepDone} onGoToStep={setSelectedStep} />
             </WizardShell>
           ) : (
-            <div key={phase.key} className="overflow-hidden rounded-l border border-border bg-card">
+            <div key={phase.key} className="overflow-hidden rounded-card border border-border bg-card">
               <PhaseRow phase={phase} index={i + 1} model={model} onOpen={handleOpenPhase} />
             </div>
           ),
@@ -476,7 +476,7 @@ export function GetRunningBoardV3({ context }: { context: "page" | "settings" })
       </div>
 
       {role === "producer" && (
-        <div className="flex items-center gap-3 rounded-l border border-border bg-card px-4 py-3">
+        <div className="flex items-center gap-3 rounded-card border border-border bg-card px-4 py-3">
           <Users className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
           <p className="text-xs leading-[17px] text-muted-foreground">{t("footerRole.producer")}</p>
           <div className="flex-1" />

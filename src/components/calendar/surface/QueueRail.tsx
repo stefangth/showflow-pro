@@ -63,7 +63,7 @@ export function QueueRail({ queue, clearedToday, shortlist, onOffer, className }
 
   return (
     <div data-testid="queue-rail" className={cn('flex flex-col gap-3', className)}>
-      <div data-testid="queue-rail-progress" className="rounded-m border border-border bg-card p-3.5">
+      <div data-testid="queue-rail-progress" className="rounded-control border border-border bg-card p-3.5">
         <div className="mb-2 flex items-baseline justify-between gap-2">
           <Eyebrow>{t('calendar.queue.clearQueueTitle')}</Eyebrow>
           <span className="whitespace-nowrap font-mono text-xs font-medium tabular-nums text-foreground">
@@ -95,7 +95,7 @@ export function QueueRail({ queue, clearedToday, shortlist, onOffer, className }
       </div>
 
       {shortlist && (
-        <div data-testid="queue-rail-shortlist" className="overflow-hidden rounded-m border border-border bg-card">
+        <div data-testid="queue-rail-shortlist" className="overflow-hidden rounded-control border border-border bg-card">
           <div className="border-b border-border px-3.5 py-2.5">
             <Eyebrow>{t('calendar.queue.shortlistTitle')}</Eyebrow>
             <p className="mt-0.5 truncate text-xs text-muted-foreground">{shortlist.dateLabel}</p>
@@ -128,7 +128,7 @@ export function QueueRail({ queue, clearedToday, shortlist, onOffer, className }
         </div>
       )}
 
-      <div data-testid="queue-rail-rules" className="rounded-m border border-border bg-well-tint p-3.5">
+      <div data-testid="queue-rail-rules" className="rounded-control border border-border bg-well-tint p-3.5">
         <Eyebrow className="mb-2.5">{t('calendar.queue.rulesTitle')}</Eyebrow>
         <ul className="flex flex-col gap-1.5 text-xs text-muted-foreground">
           {RULE_KEYS.map((key) => (

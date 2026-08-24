@@ -41,7 +41,7 @@ export function LinkedAccountPanel({
   const effectiveDigestEmail = resolveContactEmail({ authEmail: account?.email, bookingEmail });
 
   return (
-    <div className="space-y-2 rounded-m border border-border p-3">
+    <div className="space-y-2 rounded-control border border-border p-3">
       <div className="flex items-center justify-between">
         <span className="text-sm font-medium">{t("linked.title")}</span>
         <AccountStatusChip state={state} />

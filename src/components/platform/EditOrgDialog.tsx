@@ -106,7 +106,7 @@ export function EditOrgDialog({ org, onClose }: { org: OrgStat | null; onClose: 
           </div>
           <DialogFooter><Button type="submit" disabled={mutation.isPending}>Save</Button></DialogFooter>
         </form>
-        <div className="mt-6 border border-border rounded-m p-4 space-y-3">
+        <div className="mt-6 border border-border rounded-control p-4 space-y-3">
           <p className="text-sm font-medium">Modules</p>
           {FEATURE_KEYS.map((key) => {
             const def = FEATURE_REGISTRY[key];
@@ -127,7 +127,7 @@ export function EditOrgDialog({ org, onClose }: { org: OrgStat | null; onClose: 
             );
           })}
         </div>
-        <div className="mt-6 rounded-l border border-border p-4">
+        <div className="mt-6 rounded-card border border-border p-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium">User rights</p>

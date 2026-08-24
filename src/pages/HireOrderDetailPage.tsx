@@ -293,16 +293,16 @@ function HireOrderDetail({
               </p>
             </div>
           ) : pdfUrlLoading || !pdfUrl ? (
-            <Skeleton className="h-[600px] w-full rounded-l" />
+            <Skeleton className="h-[600px] w-full rounded-card" />
           ) : (
             <iframe
               title={t("detailPage.iframeTitle")}
               src={pdfUrl}
-              className="h-[600px] w-full rounded-l border border-border bg-background lg:h-[720px]"
+              className="h-[600px] w-full rounded-card border border-border bg-background lg:h-[720px]"
             />
           )}
           {canSign && (
-            <div className="mt-3 rounded-l border border-accent-200 bg-accent-tint p-4">
+            <div className="mt-3 rounded-card border border-accent-200 bg-accent-tint p-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-accent-text">{t("detailPage.needsSignatureTitle")}</p>
@@ -405,7 +405,7 @@ function PrimaryAction({
   }
   if (canManage && status === "countersigned") {
     return (
-      <div className="flex items-center gap-2 rounded-l border border-[var(--green-600-a30)] bg-[var(--green-100)] px-3 py-2 text-sm font-medium text-[var(--green-600)]">
+      <div className="flex items-center gap-2 rounded-card border border-[var(--green-600-a30)] bg-[var(--green-100)] px-3 py-2 text-sm font-medium text-[var(--green-600)]">
         <CheckCircle2 className="h-4 w-4 shrink-0" />
         {t("detailPage.countersignedByArtist")}
       </div>

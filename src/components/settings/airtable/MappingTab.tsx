@@ -49,7 +49,7 @@ export function MappingTab(props: MappingTabProps) {
   );
 
   return (
-    <div className="bg-card border border-border rounded-l shadow-sm">
+    <div className="bg-card border border-border rounded-card shadow-sm">
       {/* Header: title + required-mapped counter */}
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2 px-4 py-3.5 border-b border-border">
         <div className="min-w-0">

@@ -212,7 +212,7 @@ export function SeasonLens({
       <div
         data-testid="season-grid"
         className={cn(
-          'w-full overflow-x-auto rounded-l border-[0.5px] border-border bg-card shadow-elev2',
+          'w-full overflow-x-auto rounded-card border-[0.5px] border-border bg-card shadow-elev2',
           dragging && 'select-none'
         )}
       >

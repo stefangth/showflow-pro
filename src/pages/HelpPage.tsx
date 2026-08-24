@@ -109,7 +109,7 @@ export default function HelpPage() {
       ))}
 
       {groups.length === 0 && (
-        <div className="rounded-l border-[0.5px] border-border bg-well-tint p-8 text-center">
+        <div className="rounded-card border-[0.5px] border-border bg-well-tint p-8 text-center">
           <p className="mb-1 text-sm font-semibold text-foreground">{t('empty.title')}</p>
           <p className="mb-3.5 text-sm text-muted-foreground">{t('empty.body')}</p>
           <Button onClick={clearFilters}>{t('empty.clear')}</Button>

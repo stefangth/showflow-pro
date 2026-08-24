@@ -45,7 +45,7 @@ export function FirstOfferCard() {
   const artistRow = inPracticeRows(flow ?? BOOKING_FLOW_DEFAULTS, t).find((r) => r.who === "Artist");
 
   return (
-    <div className="rounded-l border border-accent-200 bg-accent-tint p-4">
+    <div className="rounded-card border border-accent-200 bg-accent-tint p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-sm font-semibold text-accent-text">Your first ask</p>

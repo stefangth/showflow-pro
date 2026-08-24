@@ -120,7 +120,7 @@ export function SeasonStripMobile({ entries, anchor, readyIds, onOpenDate, class
 
       <div
         data-testid="season-strip-scroll"
-        className="w-full overflow-x-auto rounded-m border border-border bg-card"
+        className="w-full overflow-x-auto rounded-control border border-border bg-card"
       >
         {/* Date header row. */}
         <div className="grid border-b border-border" style={{ gridTemplateColumns: gridCols }}>

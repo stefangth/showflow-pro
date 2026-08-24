@@ -733,10 +733,10 @@ export default function HireOrderEditPage() {
               <iframe
                 title={t("editPage.iframeTitle")}
                 src={previewSrc}
-                className="h-[600px] w-full rounded-l border border-border bg-background lg:h-[720px]"
+                className="h-[600px] w-full rounded-card border border-border bg-background lg:h-[720px]"
               />
             ) : (
-              <Skeleton className="h-[600px] w-full rounded-l" />
+              <Skeleton className="h-[600px] w-full rounded-card" />
             )}
           </div>
         </div>

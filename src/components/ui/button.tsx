@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
  * no longer forces a 16px icon (finding 12).
  */
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-m text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-control text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0",
   {
     variants: {
       variant: {
@@ -28,10 +28,10 @@ const buttonVariants = cva(
         ghost: "hover:bg-accent hover:text-accent-foreground active:bg-accent/80",
       },
       size: {
-        sm: "h-[26px] rounded-m px-2.5 [&_svg]:size-[14px]",
+        sm: "h-[26px] rounded-control px-2.5 [&_svg]:size-[14px]",
         default: "h-9 px-3 py-2 [&_svg]:size-4",
-        lg: "h-10 rounded-m px-5 [&_svg]:size-4",
-        icon: "h-7 w-7 rounded-s [&_svg]:size-4",
+        lg: "h-10 rounded-control px-5 [&_svg]:size-4",
+        icon: "h-7 w-7 rounded-field [&_svg]:size-4",
       },
     },
     defaultVariants: { variant: "default", size: "default" },

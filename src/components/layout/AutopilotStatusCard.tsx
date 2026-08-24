@@ -53,9 +53,9 @@ export function AutopilotStatusCard() {
   const to = isArtistOnly ? ROUTES.AVAILABILITY : `${ROUTES.SETTINGS}?tab=booking`;
 
   return (
-    <div className="mx-2 mt-2 rounded-l border border-sidebar-border bg-background/70 px-3 py-2.5 shadow-elev1">
+    <div className="mx-2 mt-2 rounded-card border border-sidebar-border bg-background/70 px-3 py-2.5 shadow-elev1">
       <div className="flex items-center gap-2">
-        <span className="h-1.5 w-1.5 shrink-0 rounded-s bg-success" aria-hidden="true" />
+        <span className="h-1.5 w-1.5 shrink-0 rounded-field bg-success" aria-hidden="true" />
         <p className="m-0 text-caption font-semibold text-foreground">{title}</p>
       </div>
       <p className="m-0 mt-2 text-caption leading-4 text-muted-foreground">{body}</p>

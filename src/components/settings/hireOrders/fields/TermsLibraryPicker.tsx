@@ -31,7 +31,7 @@ export function TermsLibraryPicker({
   }
   if (library.length === 0) {
     return (
-      <p className="rounded-l border border-dashed border-border p-3 text-xs text-muted-foreground">
+      <p className="rounded-card border border-dashed border-border p-3 text-xs text-muted-foreground">
         {t("termsLibraryPicker.empty")}
       </p>
     );
@@ -43,7 +43,7 @@ export function TermsLibraryPicker({
       {library.map((tpl) => {
         const isHeld = held.has(tpl.id);
         return (
-          <div key={tpl.id} className="flex items-start gap-3 rounded-l border border-border p-3">
+          <div key={tpl.id} className="flex items-start gap-3 rounded-card border border-border p-3">
             <Checkbox
               id={`${idPrefix}-${tpl.id}`}
               className="mt-0.5"

@@ -800,7 +800,7 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
                       {t("wizard.resetAllToSelected")}
                     </Button>
                     {selectedArtistIds.length > 0 && selectedShowDateIds.length > 0 && (
-                      <div className="overflow-x-auto rounded-l border">
+                      <div className="overflow-x-auto rounded-card border">
                         <table className="w-full text-left text-sm">
                           <thead className="bg-well-tint text-xs text-muted-foreground">
                             <tr>
@@ -899,7 +899,7 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
                     </Select>
                   </div>
                 </div>
-                <div className="rounded-l border border-accent-200 bg-accent-tint p-3">
+                <div className="rounded-card border border-accent-200 bg-accent-tint p-3">
                   <p className="text-xs text-accent-text" data-testid="wiz-fee-summary">
                     {feeSummaryText()}
                   </p>
@@ -957,7 +957,7 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
                     if (!schedule) return null;
                     const label = date ? dateOptionLabel(date) : dateId;
                     return (
-                      <div key={dateId} role="group" aria-label={t("wizard.runningOrderAria", { label })} className="space-y-4 rounded-l border p-3">
+                      <div key={dateId} role="group" aria-label={t("wizard.runningOrderAria", { label })} className="space-y-4 rounded-card border p-3">
                         <p className="font-medium text-foreground">{label}</p>
                         <div className="space-y-1.5">
                           <Label htmlFor={`wiz-duration-${dateId}`}>{t("wizard.durationMinutes")}</Label>
@@ -1049,7 +1049,7 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
                             key={artistId}
                             role="group"
                             aria-label={t("wizard.artistDatesAria", { name: artistName })}
-                            className="rounded-l border p-3"
+                            className="rounded-card border p-3"
                           >
                             <p className="font-medium text-foreground">{artistName}</p>
                             <ul className="mt-1 space-y-1 text-sm text-muted-foreground">
@@ -1076,7 +1076,7 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
                         const durationText = schedule.durationMin.trim() !== "" ? t("common.minutes", { value: schedule.durationMin }) : t("common.notSet");
                         const sessionsText = sessionRowsToStrings(schedule.sessions).join(" · ") || t("common.notSet");
                         return (
-                          <div key={dateId} role="group" aria-label={t("wizard.runningOrderAria", { label })} className="rounded-l border p-3">
+                          <div key={dateId} role="group" aria-label={t("wizard.runningOrderAria", { label })} className="rounded-card border p-3">
                             <p className="font-medium text-foreground">{label}</p>
                             <div className="mt-1 grid grid-cols-2 gap-x-4 gap-y-1">
                               <div className="space-y-0.5">
@@ -1100,7 +1100,7 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
                     </div>
                   </>
                 )}
-                <div className="flex items-center gap-3 rounded-l border border-dashed border-border p-4 text-muted-foreground">
+                <div className="flex items-center gap-3 rounded-card border border-dashed border-border p-4 text-muted-foreground">
                   <FileText className="h-8 w-8 shrink-0" />
                   <p className="text-xs">{t("wizard.previewAvailable")}</p>
                 </div>

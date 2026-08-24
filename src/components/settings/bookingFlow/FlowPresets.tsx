@@ -94,7 +94,7 @@ export function FlowPresets({
           disabled={disabled}
           onClick={() => onSelect(p)}
           className={cn(
-            "flex flex-col rounded-l border border-border bg-card p-3 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50",
+            "flex flex-col rounded-card border border-border bg-card p-3 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50",
             active === p ? "border-primary ring-1 ring-primary bg-accent" : "hover:border-input",
           )}
         >

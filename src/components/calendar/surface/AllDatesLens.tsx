@@ -60,7 +60,7 @@ export function AllDatesLens({ entries, onBlock, hireOrderHref, statusLabels, to
     <div
       data-testid="all-dates-lens"
       className={cn(
-        'overflow-hidden rounded-l border border-border bg-card shadow-elev1',
+        'overflow-hidden rounded-card border border-border bg-card shadow-elev1',
         className
       )}
     >
@@ -112,7 +112,7 @@ export function AllDatesLens({ entries, onBlock, hireOrderHref, statusLabels, to
             </span>
             <span
               className={cn(
-                'inline-flex h-5 items-center whitespace-nowrap rounded-xs px-1.5 text-eyebrow font-medium md:w-[104px] md:shrink-0',
+                'inline-flex h-5 items-center whitespace-nowrap rounded-chip px-1.5 text-eyebrow font-medium md:w-[104px] md:shrink-0',
                 toneSpec.badgeClass
               )}
             >

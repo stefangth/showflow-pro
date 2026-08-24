@@ -449,7 +449,7 @@ export function NeedsYouLens({
             <button
               type="button"
               data-testid="needs-you-queue-fold-trigger"
-              className="group flex w-full items-center justify-between gap-2 rounded-m border border-border bg-card px-3.5 py-2.5 text-left"
+              className="group flex w-full items-center justify-between gap-2 rounded-control border border-border bg-card px-3.5 py-2.5 text-left"
             >
               {/* eslint-disable-next-line no-restricted-syntax -- inline <span> inside a <button>; <Eyebrow> renders a block <p>, invalid button content */}
               <span className="text-eyebrow font-semibold uppercase tracking-[1.6px] text-muted-foreground">
@@ -469,7 +469,7 @@ export function NeedsYouLens({
         </Collapsible>
       )}
 
-      <div data-testid="needs-you-receipts" className="overflow-hidden rounded-l border-[0.5px] border-border bg-well-tint">
+      <div data-testid="needs-you-receipts" className="overflow-hidden rounded-card border-[0.5px] border-border bg-well-tint">
         <div className="flex items-center gap-2 border-b-[0.5px] border-border px-3.5 py-2.5">
           <Eyebrow>{t('calendar.needsYou.clearedToday')}</Eyebrow>
           <span className="font-mono text-eyebrow text-muted-foreground">{receipts.length}</span>
@@ -495,7 +495,7 @@ export function NeedsYouLens({
               <span
                 data-testid={`needs-you-receipt-pill-${i}`}
                 className={cn(
-                  'inline-flex h-5 shrink-0 items-center whitespace-nowrap rounded-xs px-1.5 text-eyebrow font-medium',
+                  'inline-flex h-5 shrink-0 items-center whitespace-nowrap rounded-chip px-1.5 text-eyebrow font-medium',
                   TONE_BG[tone],
                   TONE_TEXT[tone]
                 )}

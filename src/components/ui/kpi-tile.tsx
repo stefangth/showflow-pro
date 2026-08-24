@@ -23,7 +23,7 @@ export function KpiTile({
   className?: string;
 }) {
   return (
-    <div className={cn('rounded-l bg-card p-[14px]', className)}>
+    <div className={cn('rounded-card bg-card p-[14px]', className)}>
       <Eyebrow tone={tone}>{label}</Eyebrow>
       <p className="mt-1">
         <Metric size="lg">{value}</Metric>

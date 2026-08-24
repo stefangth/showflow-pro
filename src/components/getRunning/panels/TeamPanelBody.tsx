@@ -88,7 +88,7 @@ export function TeamPanelBody({ orgId }: { orgId: string | null }) {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
-          <span className="flex shrink-0 items-center rounded-s border border-border bg-well-tint px-2.5 text-xs font-medium text-muted-foreground">
+          <span className="flex shrink-0 items-center rounded-field border border-border bg-well-tint px-2.5 text-xs font-medium text-muted-foreground">
             {roleLabel("producer")}
           </span>
         </div>

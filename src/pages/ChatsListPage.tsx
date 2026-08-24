@@ -52,7 +52,7 @@ export default function ChatsListPage() {
 
       {isLoading ? (
         <div className="grid gap-3">
-          {[1, 2, 3].map(i => <Skeleton key={i} className="h-20 rounded-l" />)}
+          {[1, 2, 3].map(i => <Skeleton key={i} className="h-20 rounded-card" />)}
         </div>
       ) : visible.length === 0 ? (
         <Card><CardContent className="py-10 text-center text-muted-foreground">{t('list.empty')}</CardContent></Card>

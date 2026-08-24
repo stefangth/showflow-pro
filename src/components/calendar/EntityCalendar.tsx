@@ -47,13 +47,13 @@ export function EntityCalendar<T>({ items, getDate, renderItem, emptyMessage = '
 
   return (
     <div className="space-y-4">
-      <div className="inline-flex rounded-m border border-input bg-background p-0.5">
+      <div className="inline-flex rounded-control border border-input bg-background p-0.5">
         {(['month', 'agenda'] as const).map(m => (
           <button
             key={m}
             onClick={() => setMode(m)}
             className={cn(
-              'inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-s transition-colors',
+              'inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-field transition-colors',
               mode === m ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
             )}
           >

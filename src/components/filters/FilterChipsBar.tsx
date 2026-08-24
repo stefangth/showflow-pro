@@ -206,7 +206,7 @@ export function FilterChipsBar<TStatus extends string>({
                     type="button"
                     data-testid={`add-filter-option-${item.kind.replace(':', '-')}`}
                     onClick={() => setPickerKind(item.kind)}
-                    className="flex items-center w-full gap-2 px-2 py-1.5 rounded-s text-sm hover:bg-accent text-left"
+                    className="flex items-center w-full gap-2 px-2 py-1.5 rounded-field text-sm hover:bg-accent text-left"
                   >
                     {item.label}
                   </button>
@@ -233,7 +233,7 @@ export function FilterChipsBar<TStatus extends string>({
                       type="button"
                       data-testid={`add-filter-status-${opt.value}`}
                       onClick={() => { onStatusChange(opt.value); closePicker(false); }}
-                      className="flex items-center w-full gap-2 px-2 py-1.5 rounded-s text-sm hover:bg-accent text-left"
+                      className="flex items-center w-full gap-2 px-2 py-1.5 rounded-field text-sm hover:bg-accent text-left"
                     >
                       {opt.label}
                     </button>

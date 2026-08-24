@@ -336,7 +336,7 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
               <>
                 <span
                   aria-hidden
-                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-l bg-accent-tint font-mono text-body font-semibold text-accent-text"
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-card bg-accent-tint font-mono text-body font-semibold text-accent-text"
                 >
                   {initialsOf(cast?.name ?? '')}
                 </span>
@@ -374,7 +374,7 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
           {/* KPI rail */}
           <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
             {kpis.map((k) => (
-              <div key={k.label} className="rounded-l border border-border bg-well-tint px-3.5 py-3">
+              <div key={k.label} className="rounded-card border border-border bg-well-tint px-3.5 py-3">
                 {/* eslint-disable-next-line no-restricted-syntax -- KPI tile label, KpiTile adoption deferred to primitive-adoption task */}
                 <p className="text-eyebrow font-semibold uppercase tracking-[1.6px] text-muted-foreground">{k.label}</p>
                 <p className="mt-1.5 font-mono text-2xl font-semibold tabular-nums text-foreground">{k.value}</p>
@@ -396,9 +396,9 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
             {coverageGapCities.length > 0 && (
               <div
                 data-coverage-gap
-                className="flex items-center gap-3 rounded-m border border-border bg-[var(--amber-100)] px-3 py-2.5"
+                className="flex items-center gap-3 rounded-control border border-border bg-[var(--amber-100)] px-3 py-2.5"
               >
-                <span className="inline-flex h-5 shrink-0 items-center rounded-xs bg-card px-1.5 text-eyebrow font-medium text-[var(--amber-600)]">
+                <span className="inline-flex h-5 shrink-0 items-center rounded-chip bg-card px-1.5 text-eyebrow font-medium text-[var(--amber-600)]">
                   {t('castDetails.coverageGap.badge')}
                 </span>
                 <p className="flex-1 text-control text-[var(--amber-600)]">
@@ -431,7 +431,7 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
                     .sort((a, b) => a.localeCompare(b))[0];
                   const dates = bookingCounts?.get(m.artist_id) ?? 0;
                   return (
-                    <div key={m.id} className="flex h-10 items-center gap-2.5 rounded-m border border-border bg-card px-2">
+                    <div key={m.id} className="flex h-10 items-center gap-2.5 rounded-control border border-border bg-card px-2">
                       <span
                         aria-hidden
                         className="flex h-6 w-6 shrink-0 items-center justify-center rounded-pill text-eyebrow font-semibold"
@@ -448,7 +448,7 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
                         {m.artist.name}
                       </button>
                       {skill && (
-                        <span className="inline-flex h-5 shrink-0 items-center whitespace-nowrap rounded-xs bg-accent-tint px-1.5 text-eyebrow font-medium text-accent-text">
+                        <span className="inline-flex h-5 shrink-0 items-center whitespace-nowrap rounded-chip bg-accent-tint px-1.5 text-eyebrow font-medium text-accent-text">
                           {skill}
                         </span>
                       )}
@@ -504,7 +504,7 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
                       <div
                         key={a.id}
                         data-candidate
-                        className="flex items-center justify-between rounded-m px-2 py-1.5 hover:bg-hover-tint"
+                        className="flex items-center justify-between rounded-control px-2 py-1.5 hover:bg-hover-tint"
                       >
                         <div className="flex items-center gap-2">
                           <p className="text-sm text-foreground">{a.name}</p>
@@ -547,12 +547,12 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
                       <div
                         key={city.id}
                         data-city-row
-                        className="flex flex-wrap items-center gap-3 rounded-m border border-border px-2.5 py-2"
+                        className="flex flex-wrap items-center gap-3 rounded-control border border-border px-2.5 py-2"
                       >
                         <span className="w-24 shrink-0 text-control font-medium text-foreground">{city.name}</span>
                         <span
                           className={cn(
-                            'inline-flex h-5 shrink-0 items-center rounded-xs border px-1.5 text-eyebrow font-medium',
+                            'inline-flex h-5 shrink-0 items-center rounded-chip border px-1.5 text-eyebrow font-medium',
                             tier === 1
                               ? 'border-accent-200 bg-accent-tint text-accent-text'
                               : 'border-border bg-well-tint text-muted-foreground',
@@ -571,7 +571,7 @@ export function CastDetailsSheet({ cast, open, onOpenChange, onArtistClick }: Pr
                                 disabled={!canManage}
                                 onClick={() => toggleEligibility.mutate({ cityId: city.id, showId: s.id, on: !on })}
                                 className={cn(
-                                  'inline-flex h-6 items-center gap-1.5 rounded-s border px-2 text-xs font-medium transition-colors',
+                                  'inline-flex h-6 items-center gap-1.5 rounded-field border px-2 text-xs font-medium transition-colors',
                                   on
                                     ? 'border-accent-200 bg-accent-tint text-accent-text'
                                     : 'border-border bg-well-tint text-muted-foreground',

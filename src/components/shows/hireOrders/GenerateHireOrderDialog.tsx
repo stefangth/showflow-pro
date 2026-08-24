@@ -238,7 +238,7 @@ export function GenerateHireOrderDialog({ open, onOpenChange, order, showDate, o
           </div>
 
           {/* Engagement fee — the only editable monetary field (v1 is fee-only) */}
-          <div className="rounded-l border border-accent-200 bg-accent-tint p-3 space-y-1.5">
+          <div className="rounded-card border border-accent-200 bg-accent-tint p-3 space-y-1.5">
             <Label htmlFor="hire-order-fee" className="text-xs text-accent-text">{t("generateDialog.engagementFee")}</Label>
             <div className="flex items-center gap-2">
               <Input
@@ -340,7 +340,7 @@ export function GenerateHireOrderDialog({ open, onOpenChange, order, showDate, o
           </div>
 
           {/* Info note (fee-only copy) */}
-          <div className="rounded-l bg-well-tint p-3">
+          <div className="rounded-card bg-well-tint p-3">
             <p className="text-xs text-muted-foreground">
               {t("generateDialog.infoNote")}
             </p>

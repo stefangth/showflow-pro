@@ -396,7 +396,7 @@ function ArtistAvailability() {
                   already booked on. */}
               <select
                 aria-label={t('blocked.selectAriaLabel')}
-                className="flex h-10 w-44 rounded-m border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex h-10 w-44 rounded-control border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 value={newBlockDate}
                 onChange={(e) => setNewBlockDate(e.target.value)}
                 disabled={blockableDates.length === 0}
@@ -439,7 +439,7 @@ function ArtistAvailability() {
           {(blockedDates?.length ?? 0) > 0 && (
             <div className="space-y-1.5 pt-1">
               {blockedDates!.map((b) => (
-                <div key={b.id} className="flex items-center gap-3 text-sm p-2 rounded-m border border-border">
+                <div key={b.id} className="flex items-center gap-3 text-sm p-2 rounded-control border border-border">
                   <span className="font-medium w-28 shrink-0">
                     {formatDayMonthShortYear(b.date)}
                   </span>

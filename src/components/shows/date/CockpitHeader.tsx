@@ -165,7 +165,7 @@ export function CockpitHeader({
                 <>
                   <span className="h-3.5 w-px bg-[var(--line)]" />
                   <span className={cn("inline-flex items-center gap-1.5 text-xs", STATUS_TEXT[statusTone])}>
-                    <span className={cn("h-1.5 w-1.5 rounded-xs", STATUS_DOT[statusTone])} />
+                    <span className={cn("h-1.5 w-1.5 rounded-chip", STATUS_DOT[statusTone])} />
                     {statusText}
                   </span>
                 </>

@@ -89,7 +89,7 @@ export function SlotsStep({ orgId, onDone }: { orgId: string | null; onDone: () 
         <p className="text-xs text-muted-foreground">
           A date with no casting breakdown never reads as full, so it can't reach fully filled or auto-draft a hire order.
         </p>
-        <div className="flex items-center gap-2.5 rounded-m border border-dashed border-border p-3">
+        <div className="flex items-center gap-2.5 rounded-control border border-dashed border-border p-3">
           <span className="min-w-0 flex-1 text-sm text-muted-foreground">
             {hasActiveShows
               ? "Every active production already has its casting breakdown set."
@@ -108,7 +108,7 @@ export function SlotsStep({ orgId, onDone }: { orgId: string | null; onDone: () 
       <p className="text-xs text-muted-foreground">
         A date with no casting breakdown never reads as full, so it can't reach fully filled or auto-draft a hire order.
       </p>
-      <div className="overflow-hidden rounded-m border border-border">
+      <div className="overflow-hidden rounded-control border border-border">
         {unset.map((s) => (
           <div key={s.id} className="flex items-center gap-2.5 border-b border-border p-2 last:border-b-0">
             <span className="min-w-0 flex-1 truncate text-sm">

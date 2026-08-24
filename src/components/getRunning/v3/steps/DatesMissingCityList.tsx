@@ -73,7 +73,7 @@ export function DatesMissingCityList({ orgId, canEdit }: { orgId: string | null;
         </Alert>
       )}
 
-      <ul className="divide-y divide-border overflow-hidden rounded-l border border-border">
+      <ul className="divide-y divide-border overflow-hidden rounded-card border border-border">
         {rows.map((row) => {
           const picked = resolved[row.id];
           return (

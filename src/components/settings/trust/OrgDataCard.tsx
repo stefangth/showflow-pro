@@ -58,7 +58,7 @@ function Tile({
     // public page's real cards (var(--surface) + 0.5px var(--line) +
     // var(--shadow-1) on the page ground). The border carries the definition
     // alongside the fill so the tile reads as a coherent container.
-    <div className="flex flex-col gap-1.5 rounded-l border border-border bg-well-tint p-3.5">
+    <div className="flex flex-col gap-1.5 rounded-card border border-border bg-well-tint p-3.5">
       {/* eslint-disable-next-line no-restricted-syntax -- non-standard tracking (tracking-widest) */}
       <div className="text-eyebrow font-semibold uppercase tracking-widest text-muted-foreground">
         {label}
