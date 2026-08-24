@@ -43,7 +43,7 @@ export function AirtableConnect({ orgId, readOnly, canTriggerSync, onLater }: Ai
   const [forcedStep, setForcedStep] = useState<AirtableConnectStep | null>(null);
 
   if (mode === null) {
-    return <Skeleton className="h-64 w-full rounded-[var(--radius-xl)]" />;
+    return <Skeleton className="h-64 w-full rounded-card" />;
   }
 
   if (mode === "summary") {

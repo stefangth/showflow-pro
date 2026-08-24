@@ -38,7 +38,7 @@ export function AirtableConnectionSummary({ orgId, readOnly, canTriggerSync, onE
   const catalogIncomplete = c.heldCount > 0;
 
   return (
-    <div className="flex flex-col overflow-hidden rounded-[var(--radius-xl)] border border-border bg-card shadow-elev3">
+    <div className="flex flex-col overflow-hidden rounded-card border border-border bg-card shadow-elev3">
       <div className="border-b border-border p-4">
         {/* eslint-disable-next-line no-restricted-syntax -- tracking-[0.1em] differs from the standard Eyebrow's tracking-[1.6px]; not a drop-in swap */}
         <p className="text-eyebrow font-semibold uppercase tracking-[0.1em] text-accent-600">{c.eyebrow}</p>

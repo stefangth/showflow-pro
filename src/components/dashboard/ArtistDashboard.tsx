@@ -260,7 +260,7 @@ export function ArtistDashboard() {
                         return (
                           <div
                             key={d.id}
-                            className="flex items-stretch overflow-hidden rounded-[var(--radius-xl)] border border-border bg-card shadow-elev2"
+                            className="flex items-stretch overflow-hidden rounded-card border border-border bg-card shadow-elev2"
                           >
                             <div className="flex w-[92px] shrink-0 flex-col items-center justify-center gap-0.5 border-r border-border bg-accent-tint py-5">
                               {/* eslint-disable-next-line no-restricted-syntax -- weekday eyebrow inside a date-tile stack, primitive adoption deferred */}

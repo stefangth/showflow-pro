@@ -33,7 +33,7 @@ export function RetiredBoard({ model, orgId }: { model: GetRunningModel; orgId: 
   return (
     <div
       data-testid="get-running-retired"
-      className="flex w-full max-w-[1100px] flex-col gap-4 rounded-[var(--radius-xl)] border border-border bg-background p-6 shadow-elev3"
+      className="flex w-full max-w-[1100px] flex-col gap-4 rounded-card border border-border bg-background p-6 shadow-elev3"
     >
       <div className="flex flex-wrap items-center gap-x-4 gap-y-3 rounded-[var(--radius-l)] border border-border bg-card p-4">
         <span className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">

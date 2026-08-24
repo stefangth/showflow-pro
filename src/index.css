@@ -125,7 +125,6 @@
     --radius-s:    6px;    /* inputs, status dots */
     --radius-m:    8px;    /* buttons */
     --radius-l:    10px;   /* cards */
-    --radius-xl:   14px;   /* hero cards, sheets */
     --radius-xxl:  20px;   /* app icons */
     --radius-pill: 999px;  /* capsules (rare — badges use xs) */
 
