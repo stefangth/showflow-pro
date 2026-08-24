@@ -113,6 +113,44 @@ describe("ArtistSkillAssignList", () => {
     expect(await screen.findByText(/could not check which skills/i)).toBeInTheDocument();
   });
 
+  it("fails closed when the skill catalog read fails: an error, never 'no skills in the catalog yet'", async () => {
+    // Without this branch every row's SkillPicker takes its own empty-catalog path and
+    // prints "No skills in the catalog yet", which on an errored read is a lie that sends
+    // the admin to add skills that already exist.
+    vi.mocked(fetchSkills).mockRejectedValue(new Error("boom"));
+    seedArtists([{ id: "a1", name: "Mara Lindqvist" }]);
+    renderList();
+
+    expect(await screen.findByText(/could not load your skill catalog/i)).toBeInTheDocument();
+    expect(screen.queryByText(/no skills in the catalog yet/i)).toBeNull();
+  });
+
+  it("stays bounded at the product's 200+ artist scale, and filters by name", async () => {
+    seedArtists(Array.from({ length: 200 }, (_, i) => ({ id: `a${i}`, name: `Artist ${i}` })));
+    seedCatalog([{ id: "sk-1", name: "Lead Vocals" }]);
+    renderList();
+
+    // 200 rows of chips inside a wizard step is not a usable surface: render a bounded
+    // page until the viewer asks for the rest.
+    await waitFor(() => expect(screen.getAllByRole("listitem").length).toBe(25));
+    expect(screen.getByRole("button", { name: /show all 200 artists/i })).toBeInTheDocument();
+
+    // A name filter reaches an artist far outside that first page.
+    fireEvent.change(screen.getByRole("textbox", { name: /search artists by name/i }), {
+      target: { value: "Artist 187" },
+    });
+    await waitFor(() => expect(screen.getAllByRole("listitem").length).toBe(1));
+    expect(screen.getByText("Artist 187")).toBeInTheDocument();
+  });
+
+  it("shows the whole roster once the viewer asks for it", async () => {
+    seedArtists(Array.from({ length: 40 }, (_, i) => ({ id: `a${i}`, name: `Artist ${i}` })));
+    renderList();
+
+    fireEvent.click(await screen.findByRole("button", { name: /show all 40 artists/i }));
+    await waitFor(() => expect(screen.getAllByRole("listitem").length).toBe(40));
+  });
+
   it("disables the pickers for a viewer who cannot manage skills", async () => {
     seedArtists([{ id: "a1", name: "Mara Lindqvist" }]);
     seedCatalog([{ id: "sk-1", name: "Lead Vocals" }]);
