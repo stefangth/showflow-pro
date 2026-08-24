@@ -23,7 +23,7 @@ const schema = z.object({
   slug: z.string().min(1, "Required").regex(/^[a-z0-9-]+$/, "lowercase letters, numbers, hyphens"),
   adminEmail: z.string().email("Valid email required"),
   role: z.enum(["admin", "producer", "artist"]),
-  features: z.record(z.boolean()),
+  features: z.record(z.string(), z.boolean()),
 });
 type FormValues = z.infer<typeof schema>;
 
