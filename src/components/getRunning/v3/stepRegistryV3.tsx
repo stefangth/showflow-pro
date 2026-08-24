@@ -82,10 +82,18 @@ export function StepBodyV3({
     case "artists":
       return <PeoplePanelBody orgId={orgId} artistCount={artistCount} />;
     case "coverage":
+      // v3 merges v1's separate `ladder` and `eligibility` steps into one. Both bodies
+      // print the org's cast roster and both end in an unlocks callout, so stacked
+      // verbatim the step showed the same casts twice and the same callout twice in one
+      // scroll. The ranking half keeps the roster (it is what you rank), the
+      // per-production half keeps the closing callout, and a rule separates the two.
+      // Neither needs a heading from here: each half already labels itself ("Cities with
+      // dates" / "Coverage by production").
       return (
-        <div className="space-y-4">
-          <LadderPanelBody coverage={coverage} orgId={orgId} onDone={onDone} />
-          <EligibilityPanelBody coverage={coverage} orgId={orgId} onDone={onDone} />
+        <div className="space-y-5">
+          <LadderPanelBody coverage={coverage} orgId={orgId} onDone={onDone} showUnlocks={false} />
+          <div className="border-t border-border" />
+          <EligibilityPanelBody coverage={coverage} orgId={orgId} onDone={onDone} showCastList={false} />
         </div>
       );
     case "flow":

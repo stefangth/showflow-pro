@@ -16,6 +16,10 @@ const SOURCE_AWARE: ReadonlySet<GetRunningStepKey> = new Set(["connect", "map", 
 export interface StepHeadingKeys {
   headingKey: string;
   subKey: string;
+  /** The guide's bullet list. `cities` carries an extra Airtable-only bullet ("new dates
+   *  synced from Airtable inherit their city"), which is a promise a manual or sheet org
+   *  will never see kept. */
+  pointsKey: string;
 }
 
 /**
@@ -27,11 +31,13 @@ export interface StepHeadingKeys {
  * over a body that said "By hand needs no connection".
  */
 export function stepHeadingKeys(key: GetRunningStepKey, source: DatesSource): StepHeadingKeys {
+  const pointsKey =
+    key === "cities" && source === "airtable" ? "guide.cities.pointsAirtable" : `guide.${key}.points`;
   if (key === "connect" && source == null) {
-    return { headingKey: "body.connect.none.heading", subKey: "body.connect.none.sub" };
+    return { headingKey: "body.connect.none.heading", subKey: "body.connect.none.sub", pointsKey };
   }
   if (SOURCE_AWARE.has(key) && source === "sheet") {
-    return { headingKey: `body.${key}.sheet.heading`, subKey: `body.${key}.sheet.sub` };
+    return { headingKey: `body.${key}.sheet.heading`, subKey: `body.${key}.sheet.sub`, pointsKey };
   }
-  return { headingKey: `body.${key}.heading`, subKey: `body.${key}.sub` };
+  return { headingKey: `body.${key}.heading`, subKey: `body.${key}.sub`, pointsKey };
 }

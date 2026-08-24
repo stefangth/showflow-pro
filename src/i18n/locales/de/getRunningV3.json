@@ -177,10 +177,14 @@
       "body": "Die Booking-Engine bietet einen Termin erst an, wenn sie weiß, in welcher Stadt er liegt. Ein Termin ohne Stadt bleibt liegen.",
       "points": [
         "Fehlende Stadt direkt in der Terminliste ergänzen.",
+        "Die Rangfolge der Besetzung wird pro Stadt gesetzt, das kommt also danach."
+      ],
+      "article": "Mehr über die Stadtzuordnung lesen",
+      "pointsAirtable": [
+        "Fehlende Stadt direkt in der Terminliste ergänzen.",
         "Die Rangfolge der Besetzung wird pro Stadt gesetzt, das kommt also danach.",
         "Neue Termine aus Airtable übernehmen ihre Stadt automatisch."
-      ],
-      "article": "Mehr über die Stadtzuordnung lesen"
+      ]
     },
     "productions": {
       "title": "Deine Produktionen prüfen",

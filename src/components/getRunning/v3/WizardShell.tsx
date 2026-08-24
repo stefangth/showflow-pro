@@ -29,6 +29,9 @@ export interface WizardShellProps {
    *  cannot see. */
   headingKey?: string;
   subKey?: string;
+  /** Overrides the guide's bullet-list key. Same reason as `headingKey`: some bullets are
+   *  only true for one dates source. */
+  pointsKey?: string;
   children: React.ReactNode; // the step body (from stepRegistryV3)
 }
 
@@ -62,6 +65,7 @@ export function WizardShell({
   onNext,
   headingKey,
   subKey,
+  pointsKey,
   children,
 }: WizardShellProps): JSX.Element {
   const { t } = useTranslation("getRunningV3");
@@ -235,7 +239,7 @@ export function WizardShell({
             </div>
             <p className="text-xs leading-[17px] text-muted-foreground">{t(`guide.${activeStep.key}.body`)}</p>
             <ul className="flex flex-col gap-1 pl-4 text-xs leading-[17px] text-muted-foreground">
-              {(t(`guide.${activeStep.key}.points`, { returnObjects: true }) as string[]).map((point) => (
+              {(t(pointsKey ?? `guide.${activeStep.key}.points`, { returnObjects: true }) as string[]).map((point) => (
                 <li key={point} className="list-disc">
                   {point}
                 </li>

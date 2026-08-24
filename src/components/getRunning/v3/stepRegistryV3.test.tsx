@@ -99,6 +99,13 @@ describe("StepBodyV3", () => {
     expect(screen.getByText(/coverage by production/i)).toBeInTheDocument();
   });
 
+  it("prints the unlocks callout once on the merged coverage step, not once per half", () => {
+    renderStep(mk("coverage", false));
+    // Both bodies end in an UnlocksNote of their own. Stacked verbatim the merged step
+    // showed two of them in a single scroll.
+    expect(screen.queryAllByText(/what this unlocks/i).length).toBeLessThanOrEqual(1);
+  });
+
   it("throws for an unregistered step key (exhaustiveness guard)", () => {
     const badStep = { ...mk("team", false), key: "not-a-real-key" } as unknown as GetRunningStep;
     expect(() => renderStep(badStep)).toThrow();

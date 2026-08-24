@@ -24,6 +24,14 @@ it("leaves every other step on its plain keys", () => {
     expect(stepHeadingKeys("letterhead", source)).toEqual({
       headingKey: "body.letterhead.heading",
       subKey: "body.letterhead.sub",
+      pointsKey: "guide.letterhead.points",
     });
+  }
+});
+
+it("only promises Airtable city inheritance to an Airtable org", () => {
+  expect(stepHeadingKeys("cities", "airtable").pointsKey).toBe("guide.cities.pointsAirtable");
+  for (const source of ["sheet", "manual", null] as const) {
+    expect(stepHeadingKeys("cities", source).pointsKey).toBe("guide.cities.points");
   }
 });

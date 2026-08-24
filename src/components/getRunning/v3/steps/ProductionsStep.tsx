@@ -70,14 +70,17 @@ export function ProductionsStep({ orgId, onDone }: { orgId: string | null; onDon
       {/* The step's title and sub line come from the shell. What is left here is the
           action bar, so it right-aligns on its own row. */}
       <div className="flex items-start justify-end gap-3">
-        {(canManageDates || canManage) && (
+        {/* With an empty list the empty state below already offers "Add a production",
+            so the header offers only the other action. Two identical buttons a hundred
+            pixels apart read as two different things. */}
+        {(canManageDates || (canManage && list.length > 0)) && (
           <div className="flex shrink-0 flex-wrap justify-end gap-2">
             {canManageDates && (
               <Button type="button" size="sm" variant="outline" onClick={() => setDateOpen(true)}>
                 {t("body.productions.addDate")}
               </Button>
             )}
-            {canManage && (
+            {canManage && list.length > 0 && (
               <Button type="button" size="sm" variant="outline" onClick={() => setFormOpen(true)}>
                 {t("body.productions.addProduction")}
               </Button>
@@ -102,11 +105,16 @@ export function ProductionsStep({ orgId, onDone }: { orgId: string | null; onDon
       ) : list.length === 0 ? (
         canManage ? (
           <EmptyState
+            size="inline"
             title={t("body.productions.empty")}
             action={{ label: t("body.productions.addProduction"), onClick: () => setFormOpen(true) }}
           />
         ) : (
-          <EmptyState title={t("body.productions.readOnlyEmpty")} reason={t("body.productions.readOnlyReason")} />
+          <EmptyState
+            size="inline"
+            title={t("body.productions.readOnlyEmpty")}
+            reason={t("body.productions.readOnlyReason")}
+          />
         )
       ) : (
         <div className="overflow-hidden rounded-m border border-border">

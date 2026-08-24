@@ -177,10 +177,14 @@
       "body": "The booking engine only offers a date once it knows which city it is in. A date with no city sits idle.",
       "points": [
         "Fix a missing city directly from the Dates list.",
+        "Cast ranking is set per city, so this comes before ranking."
+      ],
+      "article": "Read more about city assignment",
+      "pointsAirtable": [
+        "Fix a missing city directly from the Dates list.",
         "Cast ranking is set per city, so this comes before ranking.",
         "New dates synced from Airtable inherit their city automatically."
-      ],
-      "article": "Read more about city assignment"
+      ]
     },
     "productions": {
       "title": "Review your productions",
