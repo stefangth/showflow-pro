@@ -38,7 +38,7 @@ import { useShowSlots } from '@/hooks/useShowSlots';
 import { useTierCastMap, useTierLadderCounts } from '@/hooks/useTierLadder';
 import { BOOKING_FLOW_DEFAULTS, referenceLabel, type FlowTimes } from '@/lib/bookingFlow';
 import { ROUTES, BOOKING_ENGINE_DEFAULTS } from '@/config/app.config';
-import { formatDateDMY, formatFullWeekdayDate } from '@/lib/dates';
+import { formatDateDMY, formatFullWeekdayDate, formatTimeShort } from '@/lib/dates';
 import {
   openOfferTier, fetchOfferTiers, fetchOpenedTiers, closeOfferTier,
   dryRunOfferTier, createBooking, updateBookingStatusGuarded, bulkConfirmSoftBooked,
@@ -761,12 +761,19 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager, ini
   const statusByTier = (openedQ.data ?? []).map((o) => {
     const counts = tierFillCounts(bookings, o.tier);
     const inTier = bookings.filter((b) => b.offer_tier === o.tier);
+    // Earliest still-pending offer expiry in the tier, preformatted to a local time
+    // ("17:00") for the ladder segment's "expires …" line.
+    const earliestExpiry = inTier
+      .filter((b) => b.status === 'suggested' && b.offer_expires_at)
+      .map((b) => b.offer_expires_at as string)
+      .sort()[0] ?? null;
     return {
       tier: o.tier,
       sent: inTier.length,
       accepted: counts.accepted,
       pending: counts.pending,
       cancelled: inTier.filter((b) => b.status === 'cancelled').length,
+      expiresLabel: earliestExpiry ? formatTimeShort(earliestExpiry) : null,
     };
   });
 

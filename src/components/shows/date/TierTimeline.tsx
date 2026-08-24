@@ -13,7 +13,6 @@ import type { BookingFlow } from "@/lib/bookingFlow";
 import type { SlotDraft } from "@/data/slots";
 import type { TierLadderRow } from "@/data/tierLadder";
 import type { OfferTarget } from "@/lib/offerTarget";
-import { NextOfferHero } from "./NextOfferHero";
 import { RequiredSkillsCard } from "./RequiredSkillsCard";
 import { TierLadder, type TierLadderRowStatus } from "./TierLadder";
 
@@ -81,9 +80,10 @@ export interface TierTimelineProps {
   excludedDetail?: ExcludedDetailEntry[];
 }
 
-/** The Offers-tab tiered cockpit (design 1e): the next-offer hero, the computed
- *  required-skills card, and the show-specific tier ladder, plus the open/close
- *  confirm dialogs. Presentational: all mutations arrive as callbacks; the caller
+/** The Offers-tab tiered cockpit (design 1e, consolidated): the computed
+ *  required-skills card and the show-specific tier ladder (which now hosts the
+ *  next-ask action on its next-round segment), plus the open/close confirm
+ *  dialogs. Presentational: all mutations arrive as callbacks; the caller
  *  (ShowDateDetailSheet) owns the underlying queries and mutations. */
 export function TierTimeline({
   showDateId, dateLabel, flow, bookings, canManage, hasSession, ladderSource,
@@ -154,28 +154,38 @@ export function TierTimeline({
     closed: !!o.closedAt || !canManage,
   }));
 
+  // The next-ask block, folded into the ladder's next-round segment (design 1e
+  // consolidation): the same target/counts/candidates + open/see/narrow the hero
+  // used, or null when there is nothing to ask next or the viewer can't manage.
+  const nextAsk = canManage && nextTier != null && nextTierTarget && nextTierCounts
+    ? {
+        target: nextTierTarget,
+        counts: nextTierCounts,
+        candidates,
+        requiredSkillNames,
+        onOpen: () => setOpenTarget(nextTier),
+        onSeeArtists: () => onPreviewTier(nextTier, skillFilterIds),
+        onNarrow: () => setNarrowActive((a) => !a),
+        narrowActive,
+        narrowSkills,
+        narrowSkillIds: skillFilterIds,
+        onToggleNarrowSkill: (id: string) =>
+          setSkillFilterIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id])),
+      }
+    : null;
+  // Headline "ready to ask" count = the next round's match count (option B); hidden
+  // when there is nothing to ask next.
+  const headlineCount = nextAsk ? nextAsk.counts.matchCount : null;
+  // Always peek the next round: true when no cast is configured after the round
+  // currently being asked/open, so the ladder shows an empty next-round segment.
+  const highestOpened = openedTiers.reduce<number | null>((m, o) => Math.max(m ?? 0, o.tier), null);
+  const focusTier = nextTier ?? highestOpened;
+  const noNextCast = focusTier != null && !ladderRows.some((r) => r.tier > focusTier);
+
   return (
     <div className="space-y-4" data-show-date-id={showDateId} aria-label={t("tierTimeline.offerTierTimeline")}>
       {ladderSource === "show" && (
         <p className="text-xs text-muted-foreground">{t("tierTimeline.usingShowPriorities")}</p>
-      )}
-
-      {canManage && nextTier != null && nextTierTarget && nextTierCounts && (
-        <NextOfferHero
-          target={nextTierTarget}
-          counts={nextTierCounts}
-          candidates={candidates}
-          requiredSkillNames={requiredSkillNames}
-          onOpen={() => setOpenTarget(nextTier)}
-          onSeeArtists={() => onPreviewTier(nextTier, skillFilterIds)}
-          onNarrow={() => setNarrowActive((a) => !a)}
-          narrowActive={narrowActive}
-          narrowSkills={narrowSkills}
-          narrowSkillIds={skillFilterIds}
-          onToggleNarrowSkill={(id) =>
-            setSkillFilterIds((prev) =>
-              prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id])}
-        />
       )}
 
       <RequiredSkillsCard
@@ -196,6 +206,9 @@ export function TierTimeline({
         statusByTier={statusByTier}
         nextTier={canManage ? nextTier : null}
         filled={dateFilled}
+        headlineCount={headlineCount}
+        noNextCast={noNextCast}
+        nextAsk={nextAsk}
         onCloseTier={(tier) => setCloseTarget(tier)}
       />
 

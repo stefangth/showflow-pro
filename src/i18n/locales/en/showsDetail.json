@@ -267,9 +267,15 @@
     "missDetail": " · {{count}} miss a required skill",
     "stateFilled": "Filled · {{accepted}} accepted",
     "stateOpen": "{{pending}} pending",
+    "stateOpenExpires": "{{pending}} pending · expires {{time}}",
     "stateClosed": "Closed · {{accepted}} accepted",
     "closeTier": "Close this round",
-    "closeTierN": "Close round {{tier}}"
+    "closeTierN": "Close round {{tier}}",
+    "readyToAsk": "Ready to ask",
+    "openOffers": "Open offers",
+    "askOptions": "More ask options",
+    "nextRound": "Next round",
+    "noNextCast": "No next cast set up"
   },
   "tierTimeline": {
     "directBooking": "Direct booking: producers book from who can be asked",

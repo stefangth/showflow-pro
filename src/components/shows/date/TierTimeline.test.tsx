@@ -70,22 +70,24 @@ describe("TierTimeline", () => {
       />,
     );
     expect(screen.getByText("Skills required on this date")).toBeInTheDocument();
-    expect(screen.getByText(/NEXT ASK/)).toBeInTheDocument();
+    expect(screen.getByText("Ready to ask")).toBeInTheDocument();
     expect(screen.getByText("WHO THIS DATE ASKS · PRODUCTION-SPECIFIC")).toBeInTheDocument();
   });
 
   it("opens the confirm dialog from the hero and fires onOpenTier for the next tier", () => {
     const onOpenTier = vi.fn();
     renderTimeline(<TierTimeline {...baseProps} onOpenTier={onOpenTier} />);
-    fireEvent.click(screen.getByRole("button", { name: /open tier 1/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Open offers" }));
     fireEvent.click(screen.getByRole("button", { name: /^start asking$/i }));
     expect(onOpenTier).toHaveBeenCalledWith(1, []);
   });
 
-  it("fires onPreviewTier for the next tier when 'See the N artists' is clicked", () => {
+  it("fires onPreviewTier for the next tier when 'See the N artists' is clicked", async () => {
     const onPreviewTier = vi.fn();
     renderTimeline(<TierTimeline {...baseProps} onPreviewTier={onPreviewTier} />);
-    fireEvent.click(screen.getByRole("button", { name: /see the 2 artists/i }));
+    // See/Narrow moved into the next round's overflow menu (Radix opens on Enter).
+    fireEvent.keyDown(screen.getByRole("button", { name: "More ask options" }), { key: "Enter" });
+    fireEvent.click(await screen.findByText(/see the 2 artists/i));
     expect(onPreviewTier).toHaveBeenCalledWith(1, []);
   });
 
@@ -94,7 +96,7 @@ describe("TierTimeline", () => {
       <TierTimeline {...baseProps} flow={{ artist_acceptance: false, offer_delivery: "digest" }} />,
     );
     expect(screen.getByText(/direct booking/i)).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /open tier 1/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Open offers" })).not.toBeInTheDocument();
     expect(screen.queryByText("Skills required on this date")).not.toBeInTheDocument();
   });
 
@@ -104,14 +106,14 @@ describe("TierTimeline", () => {
     renderTimeline(
       <TierTimeline {...baseProps} flow={{ artist_acceptance: true, offer_delivery: "immediate" }} />,
     );
-    fireEvent.click(screen.getByRole("button", { name: /open tier 1/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Open offers" }));
     expect(screen.getByText(/emailed the moment the tier opens/i)).toBeInTheDocument();
     expect(screen.queryByText(/daily offer digest/i)).not.toBeInTheDocument();
   });
 
   it("confirm copy mentions the daily digest for digest delivery", () => {
     renderTimeline(<TierTimeline {...baseProps} />);
-    fireEvent.click(screen.getByRole("button", { name: /open tier 1/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Open offers" }));
     expect(screen.getByText(/next daily offer digest/i)).toBeInTheDocument();
   });
 
@@ -119,7 +121,7 @@ describe("TierTimeline", () => {
   // dialog's confirm could fire onOpenTier twice while the mutation was in flight.
   it("disables the confirm action while the open mutation is pending", () => {
     const { rerender } = renderTimeline(<TierTimeline {...baseProps} />);
-    fireEvent.click(screen.getByRole("button", { name: /open tier 1/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Open offers" }));
     expect(screen.getByRole("button", { name: /^start asking$/i })).toBeEnabled();
     rerender(<MemoryRouter><TierTimeline {...baseProps} openPending /></MemoryRouter>);
     expect(screen.getByRole("button", { name: /^start asking$/i })).toBeDisabled();
@@ -132,14 +134,15 @@ describe("TierTimeline", () => {
     expect(screen.queryByText("Using production-specific priorities")).not.toBeInTheDocument();
   });
 
-  it("opens with the toggled narrow-skill ids", () => {
+  it("opens with the toggled narrow-skill ids", async () => {
     const onOpenTier = vi.fn();
     renderTimeline(
       <TierTimeline {...baseProps} skills={[{ id: "s1", name: "Juggling" }]} onOpenTier={onOpenTier} />,
     );
-    fireEvent.click(screen.getByRole("button", { name: /narrow this ask/i }));
+    fireEvent.keyDown(screen.getByRole("button", { name: "More ask options" }), { key: "Enter" });
+    fireEvent.click(await screen.findByText(/narrow this ask/i));
     fireEvent.click(screen.getByRole("button", { name: "Juggling" }));
-    fireEvent.click(screen.getByRole("button", { name: /open tier 1/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Open offers" }));
     fireEvent.click(screen.getByRole("button", { name: /^start asking$/i }));
     expect(onOpenTier).toHaveBeenCalledWith(1, ["s1"]);
   });
@@ -149,18 +152,19 @@ describe("TierTimeline", () => {
     renderTimeline(
       <TierTimeline {...baseProps} skills={[{ id: "s1", name: "Juggling" }]} onOpenTier={onOpenTier} />,
     );
-    fireEvent.click(screen.getByRole("button", { name: /open tier 1/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Open offers" }));
     fireEvent.click(screen.getByRole("button", { name: /^start asking$/i }));
     expect(onOpenTier).toHaveBeenCalledWith(1, []);
   });
 
   // Regression: skillFilterIds carried over across tier selections; the narrow cue
   // in the (non-cast) tier confirm copy must still name the toggled skill.
-  it("names the toggled narrow skill in the tier confirm dialog cue", () => {
+  it("names the toggled narrow skill in the tier confirm dialog cue", async () => {
     renderTimeline(<TierTimeline {...baseProps} skills={[{ id: "s1", name: "Juggling" }]} />);
-    fireEvent.click(screen.getByRole("button", { name: /narrow this ask/i }));
+    fireEvent.keyDown(screen.getByRole("button", { name: "More ask options" }), { key: "Enter" });
+    fireEvent.click(await screen.findByText(/narrow this ask/i));
     fireEvent.click(screen.getByRole("button", { name: "Juggling" }));
-    fireEvent.click(screen.getByRole("button", { name: /open tier 1/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Open offers" }));
     expect(
       screen.getByText(/Only artists with all of these skills receive offers: Juggling\./),
     ).toBeInTheDocument();
@@ -177,7 +181,7 @@ describe("TierTimeline", () => {
         requiredSkillNames={["Vocals"]}
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: /open offers to cast a/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Open offers" }));
     expect(screen.getByText("Open offers to Cast A?")).toBeInTheDocument();
     expect(screen.getByText(/4 of the 5 artists in Cast A get an offer/)).toBeInTheDocument();
   });

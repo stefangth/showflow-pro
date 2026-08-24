@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { screen, fireEvent } from "@testing-library/react";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import type { TierLadderRow } from "@/data/tierLadder";
-import { TierLadder, type TierLadderProps } from "./TierLadder";
+import { TierLadder, type TierLadderProps, type NextAsk } from "./TierLadder";
 
 const ROWS: TierLadderRow[] = [
   {
@@ -44,11 +44,31 @@ function renderLadder(overrides: Partial<TierLadderProps> = {}) {
       statusByTier={[{ tier: 1, sent: 9, accepted: 4, pending: 3, cancelled: 2 }]}
       nextTier={2}
       filled={false}
+      headlineCount={null}
+      noNextCast={false}
+      nextAsk={null}
       onCloseTier={onCloseTier}
       {...overrides}
     />,
   );
   return { ...utils, onCloseTier };
+}
+
+function makeNextAsk(overrides: Partial<NextAsk> = {}): NextAsk {
+  return {
+    target: { kind: "cast" as const, tier: 2, cast: { id: "cast-b", name: "Cast B" } },
+    counts: ROWS[1],
+    candidates: [{ id: "a1", name: "Marta Feld" }],
+    requiredSkillNames: ["Piano"],
+    onOpen: vi.fn(),
+    onSeeArtists: vi.fn(),
+    onNarrow: vi.fn(),
+    narrowActive: false,
+    narrowSkills: [],
+    narrowSkillIds: [],
+    onToggleNarrowSkill: vi.fn(),
+    ...overrides,
+  };
 }
 
 describe("TierLadder", () => {
@@ -94,5 +114,43 @@ describe("TierLadder", () => {
     renderLadder({ openedTiers: [{ tier: 1, closed: true }], filled: true });
     expect(screen.getByText("Filled · 4 accepted")).toBeInTheDocument();
     expect(screen.queryByText(/^Closed/)).not.toBeInTheDocument();
+  });
+
+  it("shows an open round's expiry time when the caller supplies one", () => {
+    renderLadder({ statusByTier: [{ tier: 1, sent: 9, accepted: 4, pending: 3, cancelled: 2, expiresLabel: "17:00" }] });
+    expect(screen.getByText("3 pending · expires 17:00")).toBeInTheDocument();
+  });
+
+  it("renders the ready-to-ask headline count when given", () => {
+    renderLadder({ headlineCount: 7 });
+    expect(screen.getByText("Ready to ask")).toBeInTheDocument();
+    expect(screen.getByText("7")).toBeInTheDocument();
+  });
+
+  it("peeks an empty next round when no next cast is set up and the date is unfilled", () => {
+    renderLadder({ noNextCast: true });
+    expect(screen.getByText("Next round")).toBeInTheDocument();
+    expect(screen.getByText("No next cast set up")).toBeInTheDocument();
+  });
+
+  it("hides the empty peek once the date is filled", () => {
+    renderLadder({ noNextCast: true, filled: true, openedTiers: [{ tier: 1, closed: true }] });
+    expect(screen.queryByText("No next cast set up")).not.toBeInTheDocument();
+  });
+
+  it("puts the Open action on the next round and fires onOpen", () => {
+    const nextAsk = makeNextAsk();
+    renderLadder({ nextAsk });
+    const openBtn = screen.getByRole("button", { name: "Open offers" });
+    fireEvent.click(openBtn);
+    expect(nextAsk.onOpen).toHaveBeenCalledTimes(1);
+    // The next ask's body sentence renders beneath the strip.
+    expect(screen.getByText(/Cast B/)).toBeInTheDocument();
+  });
+
+  it("disables Open when the next round has no matching artists", () => {
+    const nextAsk = makeNextAsk({ counts: { ...ROWS[1], matchCount: 0 } });
+    renderLadder({ nextAsk });
+    expect(screen.getByRole("button", { name: "Open offers" })).toBeDisabled();
   });
 });

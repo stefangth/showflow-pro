@@ -59,6 +59,13 @@ export function formatTimestampLocal(input: string): string {
   return new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(input));
 }
 
+/** Format just the local time of an ISO timestamp, e.g. `17:00` (`17:00` in
+ *  German). For compact "expires at" labels where the day is already implied. */
+export function formatTimeShort(input: string): string {
+  const locale = i18n.language?.startsWith('de') ? 'de-DE' : 'en-GB';
+  return new Intl.DateTimeFormat(locale, { timeStyle: "short" }).format(new Date(input));
+}
+
 /** Format with weekday + dd/MM/yyyy, e.g. `Mon, 23/04/2026` (`Mo, 23/04/2026` in German). */
 export function formatDateWithWeekday(input: string | Date): string {
   const d = typeof input === 'string' ? parseDateOnly(input) : input;
