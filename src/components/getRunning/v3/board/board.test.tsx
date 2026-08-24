@@ -6,6 +6,7 @@ import type { BookingSetupStatus } from "@/lib/bookings/setupStatus";
 import type { HireOrderSetupStatus } from "@/lib/hireOrders/setupStatus";
 import { HeroCard } from "./HeroCard";
 import { StillShutCard } from "./StillShutCard";
+import { TONES } from "@/components/ui/tones";
 import { PhaseIconRail } from "./PhaseIconRail";
 import { PhaseRow } from "./PhaseRow";
 
@@ -212,5 +213,35 @@ describe("PhaseRow", () => {
     // ...but the bar is still a button that reopens it.
     fireEvent.click(row);
     expect(onOpen).toHaveBeenCalledWith("get_dates");
+  });
+});
+
+describe("PhaseIconRail tones", () => {
+  it("paints a done step the same green the wizard's step dots use", () => {
+    const model = composeGetRunningV3(base);
+    const phase = model.phases.find((p) => p.key === "bookable")!;
+    renderWithProviders(<PhaseIconRail phase={phase} onOpenStep={vi.fn()} />);
+
+    const rail = screen.getByTestId("phase-icon-rail-bookable");
+    const done = within(rail).getAllByRole("button")[0];
+    expect(phase.steps[0].done).toBe(true);
+    // The rail used to paint done in accent violet (`bg-primary`), which reads as
+    // "selected", while StatusDot two inches away painted the same state green.
+    expect(done.className).toContain(TONES.confirmed.bg);
+    expect(done.className).not.toContain("bg-primary");
+  });
+});
+
+describe("PhaseRow done marker", () => {
+  it("marks a finished phase with the same green the rail and the dots use", () => {
+    const model = composeGetRunningV3({ ...base, feeDone: true, documentDone: true });
+    const phase = model.phases.find((p) => p.key === "paperwork")!;
+    renderWithProviders(<PhaseRow phase={phase} index={3} model={model} onOpen={vi.fn()} />);
+
+    const row = screen.getByTestId("phase-row-paperwork");
+    const marker = row.querySelector("span.rounded-full:last-of-type");
+    expect(phase.done).toBe(true);
+    expect(row.innerHTML).toContain(TONES.confirmed.bg);
+    expect(marker?.className ?? row.innerHTML).not.toContain("bg-primary text-primary-foreground");
   });
 });

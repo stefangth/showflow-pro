@@ -63,10 +63,15 @@ export function EligibilityPanelBody({
   orgId,
   coverage,
   onDone,
+  showCastList = true,
 }: {
   orgId: string | null;
   coverage: LadderCoverageInputs | undefined;
   onDone: () => void;
+  /** See `LadderPanelBody`'s prop of the same name: the v3 `coverage` step stacks both
+   *  bodies, and only one of them should print the org cast roster. Default `true` so
+   *  every other host is unchanged. */
+  showCastList?: boolean;
 }) {
   const { t } = useTranslation("getRunning");
   const qc = useQueryClient();
@@ -236,7 +241,7 @@ export function EligibilityPanelBody({
         </span>
       </div>
 
-      <CastRosterList casts={castOptions} keyPrefix="panel.body.eligibility" />
+      {showCastList && <CastRosterList casts={castOptions} keyPrefix="panel.body.eligibility" />}
 
       {productions.length === 0 && (
         <p className="rounded-[var(--radius-l)] border border-border bg-accent-tint px-3 py-2.5 text-xs leading-[17px] text-muted-foreground">

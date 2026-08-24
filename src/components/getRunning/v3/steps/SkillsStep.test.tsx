@@ -37,7 +37,8 @@ describe("SkillsStep", () => {
   it("renders the continue action and calls onDone when a capable viewer clicks it", async () => {
     const { onDone } = renderStep();
 
-    expect(screen.getByText(/skills for your parts/i)).toBeInTheDocument();
+    // The step title moved to WizardShell; this is the body's own section heading.
+    expect(screen.getByText(/set skills on your artists/i)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /continue/i }));
     await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1));
   });

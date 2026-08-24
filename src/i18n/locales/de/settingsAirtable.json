@@ -177,6 +177,7 @@
     "title": "Feldzuordnung",
     "headerPrefix": "Jedes ShowFlow-Feld liest aus einer Spalte in",
     "headerSuffix": ". Katalogverknüpfungen basieren auf Programm · Unterprogramm.",
+    "headerNoTable": "Jedes ShowFlow Feld liest aus genau einer Spalte deiner Tabelle. Katalog Verknüpfungen laufen über Programm · Unterprogramm.",
     "requiredMapped": "erforderlich zugeordnet",
     "colShowflowField": "ShowFlow-Feld",
     "colAirtableColumn": "Airtable-Spalte",

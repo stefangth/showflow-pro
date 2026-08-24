@@ -56,10 +56,14 @@ export function StepBodyV3({
   step,
   orgId,
   onDone,
+  onGoToStep,
 }: {
   step: GetRunningStep;
   orgId: string | null;
   onDone: () => void;
+  /** Move the wizard to a named step. Only the `map` body uses it today, to send an
+   *  Airtable org that has not connected yet back to the step that can unblock it. */
+  onGoToStep?: (key: GetRunningStepKey) => void;
 }): JSX.Element {
   const bookingOrgId = BOOKING_DOMAIN_STEP_KEYS.has(step.key) ? orgId : null;
   const {
@@ -78,10 +82,18 @@ export function StepBodyV3({
     case "artists":
       return <PeoplePanelBody orgId={orgId} artistCount={artistCount} />;
     case "coverage":
+      // v3 merges v1's separate `ladder` and `eligibility` steps into one. Both bodies
+      // print the org's cast roster and both end in an unlocks callout, so stacked
+      // verbatim the step showed the same casts twice and the same callout twice in one
+      // scroll. The ranking half keeps the roster (it is what you rank), the
+      // per-production half keeps the closing callout, and a rule separates the two.
+      // Neither needs a heading from here: each half already labels itself ("Cities with
+      // dates" / "Coverage by production").
       return (
-        <div className="space-y-4">
-          <LadderPanelBody coverage={coverage} orgId={orgId} onDone={onDone} />
-          <EligibilityPanelBody coverage={coverage} orgId={orgId} onDone={onDone} />
+        <div className="space-y-5">
+          <LadderPanelBody coverage={coverage} orgId={orgId} onDone={onDone} showUnlocks={false} />
+          <div className="border-t border-border" />
+          <EligibilityPanelBody coverage={coverage} orgId={orgId} onDone={onDone} showCastList={false} />
         </div>
       );
     case "flow":
@@ -101,7 +113,7 @@ export function StepBodyV3({
     case "connect":
       return <ConnectStep orgId={orgId} onDone={onDone} />;
     case "map":
-      return <MapStep orgId={orgId} onDone={onDone} />;
+      return <MapStep orgId={orgId} onDone={onDone} onGoToStep={onGoToStep} />;
     case "cities":
       // `null` whenever the booking-setup read is unresolved, in flight OR failed:
       // `computeBookingSetupStatus` reports `hasAnyDates: false` for a failed

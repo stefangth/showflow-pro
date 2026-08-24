@@ -1,10 +1,9 @@
-import { useContext, useState } from "react";
-import { createPortal } from "react-dom";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useCan } from "@/hooks/useCapabilities";
 import { useDatesSource } from "@/hooks/useDatesSource";
 import type { DatesSource } from "@/data/datesSource";
-import { WizardFooterContext } from "@/components/getRunning/v3/WizardFooterContext";
+import { WizardFooterAction } from "@/components/getRunning/v3/WizardFooterAction";
 import { Card } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Button } from "@/components/ui/button";
@@ -36,7 +35,6 @@ const CHOOSABLE: ReadonlySet<SelectableSource> = new Set(["airtable", "sheet", "
  */
 export function SourceStep({ orgId, onDone }: { orgId: string | null; onDone: () => void }): JSX.Element {
   const { t } = useTranslation("getRunningV3");
-  const footerSlot = useContext(WizardFooterContext);
   const canChoose = useCan("manage_productions");
   const { source, save, saving } = useDatesSource(orgId);
   const [selected, setSelected] = useState<SelectableSource | null>(null);
@@ -56,14 +54,7 @@ export function SourceStep({ orgId, onDone }: { orgId: string | null; onDone: ()
   );
 
   return (
-    <div className="space-y-3">
-      <div className="space-y-1">
-        <div className="text-title-sm font-semibold tracking-[-0.2px] text-foreground">
-          {t("body.source.heading")}
-        </div>
-        <p className="text-xs text-muted-foreground">{t("body.source.sub")}</p>
-      </div>
-
+    <div data-testid="step-body-source" className="space-y-3">
       <RadioGroup
         value={active ?? ""}
         onValueChange={(value) => setSelected(value as SelectableSource)}
@@ -99,11 +90,7 @@ export function SourceStep({ orgId, onDone }: { orgId: string | null; onDone: ()
       </RadioGroup>
 
       {canChoose ? (
-        footerSlot ? (
-          createPortal(continueButton, footerSlot)
-        ) : (
-          continueButton
-        )
+        <WizardFooterAction>{continueButton}</WizardFooterAction>
       ) : (
         <p className="text-xs text-muted-foreground">{t("body.source.readOnly")}</p>
       )}

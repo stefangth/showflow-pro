@@ -1,10 +1,9 @@
-import { useContext, useState } from "react";
-import { createPortal } from "react-dom";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useCan } from "@/hooks/useCapabilities";
 import { useShows, type ShowWithStats } from "@/hooks/useShows";
 import { showSlots } from "@/lib/settings";
-import { WizardFooterContext } from "@/components/getRunning/v3/WizardFooterContext";
+import { WizardFooterAction } from "@/components/getRunning/v3/WizardFooterAction";
 import { PartsEditorSheet } from "@/components/getRunning/v3/steps/PartsEditorSheet";
 import { Button } from "@/components/ui/button";
 import { StatusPill } from "@/components/ui/status-pill";
@@ -41,7 +40,6 @@ import { showIdentityLabel } from "@/types";
  */
 export function ProductionsStep({ orgId, onDone }: { orgId: string | null; onDone: () => void }): JSX.Element {
   const { t } = useTranslation("getRunningV3");
-  const footerSlot = useContext(WizardFooterContext);
   const canManage = useCan("manage_productions");
   const canManageDates = useCan("manage_show_dates");
   const canSchedule = useCan("edit_scheduling");
@@ -61,6 +59,10 @@ export function ProductionsStep({ orgId, onDone }: { orgId: string | null; onDon
   const slotsReady = list.some((s) => showSlots(s) != null);
   const canContinue = slotsReady && hasAnyDates;
 
+  // True only in the one branch that renders `EmptyState` with its own "Add a production"
+  // action: a settled, successful, empty read for a viewer who may create one.
+  const emptyStateOwnsAdd = !shows.isError && !shows.isLoading && list.length === 0 && canManage;
+
   const continueButton = (
     <Button type="button" size="sm" disabled={!canContinue} onClick={onDone}>
       {t("body.productions.continue")}
@@ -68,22 +70,26 @@ export function ProductionsStep({ orgId, onDone }: { orgId: string | null; onDon
   );
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="space-y-1">
-          <div className="text-title-sm font-semibold tracking-[-0.2px] text-foreground">
-            {t("body.productions.heading")}
-          </div>
-          <p className="text-xs text-muted-foreground">{t("body.productions.sub")}</p>
-        </div>
-        {(canManageDates || canManage) && (
-          <div className="flex shrink-0 gap-2">
+    <div data-testid="step-body-productions" className="space-y-4">
+      {/* The step's title and sub line come from the shell. What is left here is the
+          action bar, so it right-aligns on its own row.
+
+          The header drops its "Add a production" ONLY when the empty state below is the
+          thing on screen, since that state carries the same action and two identical
+          buttons a hundred pixels apart read as two different things. Keyed on the empty
+          state actually rendering, not on `list.length`: `list` is also `[]` while the
+          read is in flight and when it FAILS, and in those branches there is no empty
+          state to inherit the action from, so hiding it would leave a producer with no
+          way to create a production at all. */}
+      <div className="flex items-start justify-end gap-3">
+        {(canManageDates || (canManage && !emptyStateOwnsAdd)) && (
+          <div className="flex shrink-0 flex-wrap justify-end gap-2">
             {canManageDates && (
               <Button type="button" size="sm" variant="outline" onClick={() => setDateOpen(true)}>
                 {t("body.productions.addDate")}
               </Button>
             )}
-            {canManage && (
+            {canManage && !emptyStateOwnsAdd && (
               <Button type="button" size="sm" variant="outline" onClick={() => setFormOpen(true)}>
                 {t("body.productions.addProduction")}
               </Button>
@@ -108,19 +114,32 @@ export function ProductionsStep({ orgId, onDone }: { orgId: string | null; onDon
       ) : list.length === 0 ? (
         canManage ? (
           <EmptyState
+            size="inline"
             title={t("body.productions.empty")}
             action={{ label: t("body.productions.addProduction"), onClick: () => setFormOpen(true) }}
           />
         ) : (
-          <EmptyState title={t("body.productions.readOnlyEmpty")} reason={t("body.productions.readOnlyReason")} />
+          <EmptyState
+            size="inline"
+            title={t("body.productions.readOnlyEmpty")}
+            reason={t("body.productions.readOnlyReason")}
+          />
         )
       ) : (
         <div className="overflow-hidden rounded-m border border-border">
           {list.map((s) => {
             const slots = showSlots(s);
             return (
-              <div key={s.id} className="flex items-center gap-3 border-b border-border p-3 last:border-b-0">
-                <div className="min-w-0 flex-1">
+              // Wraps rather than overflowing: the name, the parts figure and the action
+              // do not fit on one line in a narrow host (the wizard's single-column size
+              // is ~260px, where this row used to push the production name off screen and
+              // clip the button). The name keeps the full first line; the rest reflows
+              // under it.
+              <div
+                key={s.id}
+                className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border p-3 last:border-b-0"
+              >
+                <div className="min-w-0 flex-1 basis-full sm:basis-auto">
                   <div className="truncate text-control font-medium text-foreground">
                     {s.program}
                     {s.sub_program ? <span className="text-muted-foreground"> · {s.sub_program}</span> : null}
@@ -137,7 +156,13 @@ export function ProductionsStep({ orgId, onDone }: { orgId: string | null; onDon
                   <StatusPill tone="waiting">{t("body.productions.unconfigured")}</StatusPill>
                 )}
                 {canSchedule && (
-                  <Button type="button" size="sm" variant="outline" onClick={() => setPartsShow(s)}>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="ml-auto shrink-0"
+                    onClick={() => setPartsShow(s)}
+                  >
                     {t("body.productions.setParts")}
                   </Button>
                 )}
@@ -157,7 +182,7 @@ export function ProductionsStep({ orgId, onDone }: { orgId: string | null; onDon
         <p className="text-xs text-muted-foreground">{t("body.productions.noDates")}</p>
       )}
 
-      {footerSlot ? createPortal(continueButton, footerSlot) : continueButton}
+      <WizardFooterAction>{continueButton}</WizardFooterAction>
 
       {canManage && <ShowFormDialog open={formOpen} onOpenChange={setFormOpen} allShows={list} />}
       {canManageDates && (

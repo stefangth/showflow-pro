@@ -72,7 +72,8 @@
     "stepsNav": "Schritte",
     "stepOfRich": "Schritt <0>{{step}}</0> von <1>{{total}}</1>",
     "stepsDropped_one": "{{count}} Schritt entfällt",
-    "stepsDropped_other": "{{count}} Schritte entfallen"
+    "stepsDropped_other": "{{count}} Schritte entfallen",
+    "continue": "Weiter"
   },
   "steps": {
     "source": {
@@ -176,10 +177,14 @@
       "body": "Die Booking-Engine bietet einen Termin erst an, wenn sie weiß, in welcher Stadt er liegt. Ein Termin ohne Stadt bleibt liegen.",
       "points": [
         "Fehlende Stadt direkt in der Terminliste ergänzen.",
+        "Die Rangfolge der Besetzung wird pro Stadt gesetzt, das kommt also danach."
+      ],
+      "article": "Mehr über die Stadtzuordnung lesen",
+      "pointsAirtable": [
+        "Fehlende Stadt direkt in der Terminliste ergänzen.",
         "Die Rangfolge der Besetzung wird pro Stadt gesetzt, das kommt also danach.",
         "Neue Termine aus Airtable übernehmen ihre Stadt automatisch."
-      ],
-      "article": "Mehr über die Stadtzuordnung lesen"
+      ]
     },
     "productions": {
       "title": "Deine Produktionen prüfen",
@@ -317,7 +322,8 @@
     "body": "Jeder Schritt ist erledigt. Schau jederzeit wieder vorbei, um zu prüfen, was sich geändert hat.",
     "count": "{{done}} von {{total}} erledigt",
     "hideFromNav": "Aus der Seitenleiste ausblenden",
-    "manageInSettings": "In den Einstellungen verwalten"
+    "manageInSettings": "In den Einstellungen verwalten",
+    "settingsBody": "Jeder Schritt ist erledigt. Sie bleiben alle unten offen, du kannst also jederzeit zu jedem zurück, wenn sich etwas ändert."
   },
   "nothingToSetUp": {
     "title": "Noch nichts einzurichten",
@@ -380,7 +386,12 @@
         "loaded": "{{count}} Spalten geladen.",
         "invalidUrl": "Füge einen veröffentlichten CSV Link von Google Sheets ein, um fortzufahren.",
         "loadError": "Die Tabelle konnte nicht gelesen werden. Prüfe den Link und versuche es erneut."
-      }
+      },
+      "none": {
+        "heading": "Verbinde deine Datenquelle",
+        "sub": "Wähle zuerst, woher deine Termine kommen, dann verbinde die Quelle hier."
+      },
+      "pickSourceFirst": "Geh einen Schritt zurück und wähle, woher deine Termine kommen. Airtable und Google Sheet werden hier verbunden. Von Hand braucht keine Verbindung."
     },
     "map": {
       "heading": "Felder zuordnen",
@@ -409,7 +420,9 @@
         "notMapped": "Nicht zugeordnet",
         "noHeaders": "Geh zurück zu Verbinden und lade zuerst die Spalten deiner Tabelle.",
         "mapIncomplete": "Ordne die Felder Produktion und Datum zu, um fortzufahren."
-      }
+      },
+      "notConnected": "Es gibt noch nichts zuzuordnen. Verbinde zuerst deine Airtable Base, dann erscheinen ihre Spalten hier.",
+      "goToConnect": "Zu Airtable verbinden"
     },
     "cities": {
       "heading": "Jedem Termin eine Stadt zuordnen",
@@ -449,7 +462,7 @@
       "savedToast": "Besetzungsplan gespeichert"
     },
     "productions": {
-      "heading": "Deine Produktionen",
+      "heading": "Deine Produktionen prüfen",
       "sub": "Prüfe die Produktionen, die reingekommen sind, und ergänze, was fehlt.",
       "addProduction": "Produktion hinzufügen",
       "addDate": "Termin hinzufügen",
@@ -467,7 +480,7 @@
       "readError": "Wir konnten deine Produktionen nicht laden. Lade die Seite neu und versuche es erneut."
     },
     "fee": {
-      "heading": "Deine Standardgage",
+      "heading": "Deine Standardgage festlegen",
       "sub": "Die Gage, mit der ein neuer Engagementvertrag startet. Du kannst sie bei jedem einzelnen Engagementvertrag ändern.",
       "listTitle": "Gagen pro Produktion und Cast",
       "listHint": "Setze eine Gage für einen Cast und eine Produktion, wenn sie von deiner Standardgage oben abweichen soll.",
@@ -484,11 +497,43 @@
       "readOnly": "Vertragseinstellungen legt ein Admin fest. Du kannst sie hier lesen."
     },
     "document": {
-      "heading": "Dein Vertragsdokument",
+      "heading": "Dein Vertragsdokument gestalten",
       "sub": "Lege fest, wie Vertragsnummern gebildet werden. Das ganze Layout gestaltest du im Vorlageneditor.",
       "templateLink": "Vorlageneditor öffnen",
       "continue": "Weiter",
       "readOnly": "Vertragseinstellungen legt ein Admin fest. Du kannst sie hier lesen."
+    },
+    "artists": {
+      "heading": "Deine Artists hinzufügen",
+      "sub": "Niemand kann gebucht werden, bis dein Roster aktive Artists hat."
+    },
+    "coverage": {
+      "heading": "Deine Besetzungen ranken",
+      "sub": "Die Rangfolge der Besetzung entscheidet, wer in jeder Stadt zuerst gefragt wird."
+    },
+    "flow": {
+      "heading": "Deinen Buchungsablauf festlegen",
+      "sub": "Lege fest, wie viele Gruppen gefragt werden und in welcher Reihenfolge."
+    },
+    "timing": {
+      "heading": "Timing der Anfrage bestätigen",
+      "sub": "Wann Anfragen rausgehen und wie lange Artists zum Antworten haben."
+    },
+    "team": {
+      "heading": "Dein Produktionsteam einladen",
+      "sub": "Producer können dir Buchungen abnehmen, sobald die ersten Anfragen laufen."
+    },
+    "letterhead": {
+      "heading": "Deinen Briefkopf setzen",
+      "sub": "Dein Name, deine Adresse und dein Logo stehen oben auf jedem Engagementvertrag."
+    },
+    "terms": {
+      "heading": "Deine Bedingungen schreiben",
+      "sub": "ShowFlow liefert keine Standardklauseln. Starte mit einer Vorlage und mach sie zu deiner."
+    },
+    "countersign": {
+      "heading": "Festlegen, wie Verträge unterschrieben werden",
+      "sub": "Der Weg, auf dem ein Artist den Vertrag unterschreibt, den du ihm schickst."
     }
   }
 }

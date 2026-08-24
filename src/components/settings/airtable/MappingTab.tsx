@@ -25,6 +25,11 @@ export interface MappingTabProps {
   /** Adds every unboundField as a custom field. */
   onAddAllCustom: () => void;
   canWrite: boolean;
+  /** Renders the card header one step down the type scale. The get-running wizard already
+   *  titles the step above this card, so a 17px card title there competes with the step's
+   *  own heading; in Settings this card IS the section, and its title matches its sibling
+   *  cards' 17px. Defaults to the Settings size so no existing host changes. */
+  dense?: boolean;
 }
 
 /** Presentational Field-mapping tab of the Airtable Sync console: a two-column
@@ -33,7 +38,7 @@ export interface MappingTabProps {
  *  "unread columns" footer. All data + callbacks arrive via props. */
 export function MappingTab(props: MappingTabProps) {
   const { t } = useTranslation('settingsAirtable');
-  const { tableName, fields, fieldMap, onSetField, mapped, total, optionNames, unboundFields, onAddAllCustom, canWrite } = props;
+  const { tableName, fields, fieldMap, onSetField, mapped, total, optionNames, unboundFields, onAddAllCustom, canWrite, dense = false } = props;
   const readOnly = !canWrite;
 
   const columnOptions = (
@@ -46,21 +51,36 @@ export function MappingTab(props: MappingTabProps) {
   return (
     <div className="bg-card border border-border rounded-l shadow-sm">
       {/* Header: title + required-mapped counter */}
-      <div className="flex items-start justify-between gap-4 px-4 py-3.5 border-b border-border">
-        <div>
-          <h3 className="text-title-sm font-semibold tracking-tight">{t('mappingTab2.title')}</h3>
+      <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2 px-4 py-3.5 border-b border-border">
+        <div className="min-w-0">
+          <h3 className={cn("font-semibold tracking-tight", dense ? "text-control" : "text-title-sm")}>
+            {t('mappingTab2.title')}
+          </h3>
           <p className="mt-1 text-control text-muted-foreground">
-            {t('mappingTab2.headerPrefix')} <strong className="font-medium text-foreground">{tableName}</strong>{t('mappingTab2.headerSuffix')}
+            {tableName ? (
+              <>
+                {t('mappingTab2.headerPrefix')} <strong className="font-medium text-foreground">{tableName}</strong>{t('mappingTab2.headerSuffix')}
+              </>
+            ) : (
+              // With no table picked the interpolated name is empty and the prefix/suffix
+              // pair renders "...reads from one column in ." Say the same thing without
+              // naming a table rather than leaving a dangling period.
+              t('mappingTab2.headerNoTable')
+            )}
           </p>
         </div>
         <div className="shrink-0 text-right">
-          <p className="font-mono tabular-nums text-title-sm font-medium">{mapped} / {total}</p>
+          <p className={cn("font-mono tabular-nums font-medium", dense ? "text-control" : "text-title-sm")}>
+            {mapped} / {total}
+          </p>
           <p className="mt-0.5 text-xs text-muted-foreground">{t('mappingTab2.requiredMapped')}</p>
         </div>
       </div>
 
-      {/* Two-column mapping table */}
-      <div className="grid grid-cols-2">
+      {/* Two-column mapping table. The label column gives ground before the control
+          column does: a flat 50/50 split collapsed the Select to 94px inside the
+          get-running wizard, where "Not mapped" rendered as "No...". */}
+      <div data-testid="mapping-grid" className="grid grid-cols-[minmax(110px,0.9fr)_minmax(0,1.1fr)]">
         {/* eslint-disable-next-line no-restricted-syntax -- non-standard tracking (0.1em) */}
         <p className="px-4 py-2.5 text-eyebrow font-semibold uppercase tracking-[0.1em] text-muted-foreground border-b border-r border-border">
           {t('mappingTab2.colShowflowField')}

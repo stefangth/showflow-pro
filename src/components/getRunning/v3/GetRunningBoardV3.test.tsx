@@ -474,3 +474,41 @@ describe("GetRunningBoardV3", () => {
     expect(screen.queryByTestId(/phase-row-/)).not.toBeInTheDocument();
   });
 });
+
+describe("a finished board", () => {
+  const completeInput = { feeDone: true, documentDone: true } as const;
+
+  it("still retires the standalone page down to its summary card", () => {
+    mockModel(composeGetRunningV3({ ...base, ...completeInput }));
+    renderBoard();
+
+    expect(screen.getByTestId("get-running-v3-retired")).toBeInTheDocument();
+    expect(screen.queryByTestId("all-steps-card")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("phase-icon-rail-get_dates")).not.toBeInTheDocument();
+  });
+
+  it("keeps the rail and every wizard reachable inside the Settings mirror", () => {
+    // Settings is the durable home for this board: the sidebar item goes away when setup
+    // finishes, so collapsing Settings to a summary card too would strand all sixteen
+    // wizards with nowhere left to open them.
+    mockModel(composeGetRunningV3({ ...base, ...completeInput }));
+    renderBoardAt("settings", "/settings?tab=get-running");
+
+    expect(screen.getByTestId("all-steps-card")).toBeInTheDocument();
+    expect(screen.getByTestId("phase-icon-rail-get_dates")).toBeInTheDocument();
+  });
+
+  it("still says the setup is finished inside the Settings mirror", () => {
+    mockModel(composeGetRunningV3({ ...base, ...completeInput }));
+    renderBoardAt("settings", "/settings?tab=get-running");
+
+    expect(screen.getByTestId("get-running-v3-retired")).toBeInTheDocument();
+  });
+
+  it("does not tell a finished org what is still shut", () => {
+    mockModel(composeGetRunningV3({ ...base, ...completeInput }));
+    renderBoardAt("settings", "/settings?tab=get-running");
+
+    expect(screen.queryByText(/is shut until this is done/i)).not.toBeInTheDocument();
+  });
+});

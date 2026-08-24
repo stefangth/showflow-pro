@@ -620,3 +620,19 @@ describe("SettingsPage producer capability read-only floor", () => {
     expect(await screen.findByRole("switch")).toBeEnabled();
   });
 });
+
+describe("Settings nav icons", () => {
+  it("does not give How this org works and Get running the same icon", async () => {
+    vi.mocked(useAuth).mockReturnValue(DEFAULT_AUTH as never);
+    renderWithProviders(<MemoryRouter><SettingsPage /></MemoryRouter>);
+    await screen.findByText("Modules");
+
+    // lucide stamps its component name into the svg class, so this reads the actual mark.
+    // Rocket is Get running's identity, in this nav and in the sidebar; the Get running
+    // tab itself only appears for a v3-enabled org, so assert against the mark rather
+    // than against a row that may not be rendered.
+    const mark = screen.getByRole("tab", { name: /how this org works/i }).querySelector("svg")?.getAttribute("class") ?? "";
+    expect(mark).not.toBe("");
+    expect(mark).not.toContain("lucide-rocket");
+  });
+});

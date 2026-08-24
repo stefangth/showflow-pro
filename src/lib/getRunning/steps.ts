@@ -73,6 +73,11 @@ export interface GetRunningModelV3 {
    *  known. Unread means outstanding: a consumer must say so rather than render the silence
    *  of `datesWithoutCity === 0` as "every date has a city". */
   datesWithoutCityUnknown: boolean;
+  /** The org's chosen dates source, echoed straight back from the input. The board needs
+   *  it to title the three source-aware steps (see `stepHeading.ts`), and reading it off
+   *  the model keeps that one read shared with everything else the composer already does
+   *  with it. `null` when no source has been picked yet. */
+  datesSource: "airtable" | "sheet" | "manual" | null;
   nextStep: { phase: GetRunningPhaseKey; key: GetRunningStepKey } | null;
 }
 
@@ -352,6 +357,7 @@ export function composeGetRunningV3(input: GetRunningInputV3): GetRunningModelV3
     // Unknown reports 0 AND flags itself, so no consumer can read the 0 as "none".
     datesWithoutCity: input.bookingOn && !input.datesCitiesUnknown ? (input.booking?.datesWithoutCity ?? 0) : 0,
     datesWithoutCityUnknown: input.bookingOn ? input.datesCitiesUnknown === true : false,
+    datesSource: input.datesSource,
     nextStep,
   };
 }
