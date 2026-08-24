@@ -344,7 +344,7 @@
   "letterheadStep": {
     "saved": "Briefkopf gespeichert",
     "loadError": "Briefkopf konnte nicht geladen werden. {{message}}",
-    "intro": "Aus deinem Organisationsprofil übernommen. Prüfe es und bestätige dann. Es wird oben auf jedem Vertrag gedruckt.",
+    "intro": "Dein juristischer Name, deine Adresse und deine Registernummer werden oben auf jedem Vertrag gedruckt. Der juristische Name ist erforderlich.",
     "confirm": "Briefkopf bestätigen"
   },
   "producerWaiting": {

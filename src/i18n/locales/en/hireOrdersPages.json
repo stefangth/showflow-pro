@@ -344,7 +344,7 @@
   "letterheadStep": {
     "saved": "Letterhead saved",
     "loadError": "Could not load the letterhead. {{message}}",
-    "intro": "Pulled from your organization profile. Check it, then confirm. It prints at the top of every contract.",
+    "intro": "Your legal name, address and registration line print at the top of every contract. The legal name is required.",
     "confirm": "Confirm letterhead"
   },
   "producerWaiting": {

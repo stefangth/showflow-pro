@@ -79,6 +79,31 @@ describe("LetterheadStep", () => {
     });
   });
 
+  // Confirm must be gated on exactly the predicate `letterheadDone` uses, or pressing it
+  // writes a blank payload, toasts success and advances the wizard while the step stays
+  // outstanding: the user believes they confirmed and nothing happened.
+  it("keeps Confirm disabled while the legal name is blank", async () => {
+    seedClient({
+      app_settings: {
+        data: [{ key: "hire_order_letterhead", org_id: "org-1", value: { legal_name: "   ", address_lines: [], registration_line: "" } }],
+        error: null,
+      },
+    });
+    renderWithProviders(<LetterheadStep orgId="org-1" onDone={vi.fn()} />);
+    expect(await screen.findByRole("button", { name: /confirm letterhead/i })).toBeDisabled();
+  });
+
+  it("enables Confirm once a legal name is present", async () => {
+    seedClient({
+      app_settings: {
+        data: [{ key: "hire_order_letterhead", org_id: "org-1", value: { legal_name: "Bootstrap Productions GmbH", address_lines: [], registration_line: "" } }],
+        error: null,
+      },
+    });
+    renderWithProviders(<LetterheadStep orgId="org-1" onDone={vi.fn()} />);
+    expect(await screen.findByRole("button", { name: /confirm letterhead/i })).toBeEnabled();
+  });
+
   // The form was a COPY of the stored setting, filled in by a seed-once effect, so
   // the commit that opened the isLoading gate rendered an interactive panel whose
   // form was still the blank default -- and Confirm persists it verbatim (merging

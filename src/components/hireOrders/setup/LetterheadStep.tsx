@@ -54,6 +54,14 @@ export function LetterheadStep({ orgId, onDone }: { orgId: string | null; onDone
     onError: (e: Error) => toast.error(e.message),
   });
 
+  // Gated on exactly the predicate `letterheadDone` (src/lib/hireOrders/setupStatus.ts)
+  // uses, so Confirm can never be a no-op: an enabled button that saves a blank legal
+  // name would toast success and advance the wizard while the step stays outstanding.
+  // Do not widen this to the address or registration line, which letterheadDone ignores.
+  // `?? ""` because the stored JSON is not schema checked: a value written before this
+  // field existed has no legal_name at runtime, whatever the type says.
+  const canConfirm = (form.legal_name ?? "").trim().length > 0;
+
   // Same guards as LetterheadCard, for the same reason. Rendering the form before the
   // read has landed (or after it failed) seeds it from LETTERHEAD_DEFAULT's blanks, and
   // Confirm then merges onto `undefined`: the agent name, agent email and agent
@@ -81,7 +89,7 @@ export function LetterheadStep({ orgId, onDone }: { orgId: string | null; onDone
         onChange={setForm}
         onAddressTextChange={setAddressText}
       />
-      <Button size="sm" disabled={save.isPending || !orgId} onClick={() => save.mutate()}>
+      <Button size="sm" disabled={!canConfirm || save.isPending || !orgId} onClick={() => save.mutate()}>
         {t("letterheadStep.confirm")}
       </Button>
     </div>
