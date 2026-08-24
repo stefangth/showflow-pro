@@ -56,6 +56,9 @@ export interface TierTimelineProps {
   onResetSkills: () => void;
   /** Routes to the Setup tab's date configuration. */
   onEditSkills: () => void;
+  /** Routes to where a producer adds the next cast (the date's setup); backs the
+   *  empty next-round peek's "Set up a next cast" action. */
+  onSetUpNextCast: () => void;
   /** Per-tier headcounts for the tier ladder card. */
   ladderRows: TierLadderRow[];
   /** City name, for the tier ladder subtitle. */
@@ -89,7 +92,7 @@ export function TierTimeline({
   showDateId, dateLabel, flow, bookings, canManage, hasSession, ladderSource,
   skills, openedTiers, openPending = false, closePending = false,
   onOpenTier, onCloseTier, onPreviewTier,
-  show, slots, showSkillIds, dateSkillIds, droppedSkillIds, onResetSkills, onEditSkills,
+  show, slots, showSkillIds, dateSkillIds, droppedSkillIds, onResetSkills, onEditSkills, onSetUpNextCast,
   ladderRows, cityName, statusByTier, nextTier, dateFilled, nextTierTarget, nextTierCounts,
   requiredSkillNames, requiredSkillIds, candidates, excludedDetail,
 }: TierTimelineProps) {
@@ -198,6 +201,7 @@ export function TierTimeline({
         headlineCount={headlineCount}
         noNextCast={noNextCast}
         nextAsk={nextAsk}
+        onSetUpNextCast={canManage ? onSetUpNextCast : undefined}
         onCloseTier={(tier) => setCloseTarget(tier)}
       />
 

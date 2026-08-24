@@ -138,6 +138,19 @@ describe("TierLadder", () => {
     expect(screen.queryByText("No next cast set up")).not.toBeInTheDocument();
   });
 
+  it("offers a set-up-next-cast action on the empty peek and fires it", () => {
+    const onSetUpNextCast = vi.fn();
+    renderLadder({ noNextCast: true, onSetUpNextCast });
+    fireEvent.click(screen.getByRole("button", { name: "Set up a next cast" }));
+    expect(onSetUpNextCast).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows no set-up action on the peek when the viewer can't manage", () => {
+    renderLadder({ noNextCast: true });
+    expect(screen.getByText("No next cast set up")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Set up a next cast" })).not.toBeInTheDocument();
+  });
+
   it("puts the Open action on the next round and fires onOpen", () => {
     const nextAsk = makeNextAsk();
     renderLadder({ nextAsk });

@@ -1075,6 +1075,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager, ini
                                 droppedSkillIds={dropsQ.data ?? []}
                                 onResetSkills={() => resetDateSkills.mutate()}
                                 onEditSkills={() => setActiveTab('setup')}
+                                onSetUpNextCast={() => setActiveTab('setup')}
                                 ladderRows={ladderRows}
                                 cityName={showDate.city?.name ?? ''}
                                 statusByTier={statusByTier}
