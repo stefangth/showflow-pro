@@ -12,6 +12,8 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { KpiTile } from "@/components/ui/kpi-tile";
 import { CatalogTab } from "@/components/settings/airtable/CatalogTab";
+import { DatesMissingCityList } from "@/components/getRunning/v3/steps/DatesMissingCityList";
+import { useDatesMissingCity } from "@/hooks/useShowDates";
 import { ROUTES } from "@/config/app.config";
 
 /**
@@ -24,15 +26,30 @@ import { ROUTES } from "@/config/app.config";
  * all come from that component, unchanged.
  *
  * Cities "cannot be skipped" (Controller Ruling, see the step brief): Continue is gated on
- * every `cityRows` entry having a `linkedId`, not on some separate confirmation. An org with
- * no Airtable cities yet (a by-hand org, or one that hasn't mapped a city field) sees the
- * empty state instead of an empty `CatalogTab` shell, with a link out to where cities are
- * actually managed (Settings › Casts & coverage) and Continue enabled immediately, since
- * there is nothing to resolve. That empty state is only correct once the console's own
- * queries have settled (`airtable.ready`): while still loading, an org with real unresolved
- * Airtable cities would otherwise render as "no cities" with Continue already enabled,
- * letting a visitor click straight through before those rows ever appear. So a loading
- * console renders a skeleton instead, with Continue disabled.
+ * every `cityRows` entry having a `linkedId`, not on some separate confirmation. That empty
+ * state is only correct once the console's own queries have settled (`airtable.ready`):
+ * while still loading, an org with real unresolved Airtable cities would otherwise render as
+ * "no cities" with Continue already enabled, letting a visitor click straight through before
+ * those rows ever appear. So a loading console renders a skeleton instead, with Continue
+ * disabled.
+ *
+ * The non-sheet body picks between four states, in this order ("Get running truthful
+ * completion", Task 4, which fixed the dead end where all four collapsed into one):
+ *   1. no dates at all (`hasAnyDates === false`) - nothing to give a city to yet, so point
+ *      at the productions step rather than claiming the step is resolved;
+ *   2. real dates with no city (`useDatesMissingCity`) - `DatesMissingCityList`, the only
+ *      body that exists on the by-hand and sheet paths, where `cityRows` is always empty;
+ *   3. imported Airtable city strings (`cityRows`) - the existing `CatalogTab`;
+ *   4. otherwise the resolved/empty note, with a link out to where cities are actually
+ *      managed (Settings › Casts & coverage) and Continue enabled, since nothing is left.
+ * `hasAnyDates` arrives as a prop (`BookingSetupStatus.hasAnyDates`, resolved by
+ * `StepBodyV3`) and is `null` while that read is in flight, which renders the skeleton: a
+ * loading org must not flash "No dates yet" at an org that has hundreds.
+ *
+ * Continue is gated on state 1 AND 2 being clear too, not only on the imported rows. Before
+ * Task 4 the manual path had `cityRows.length === 0`, so Continue was enabled the moment the
+ * step opened and `onDone` collapsed the wizard while the block it claims to clear was still
+ * standing.
  *
  * `source === "sheet"` is this step's actual import trigger (Task A5): "Import dates now"
  * gets the parsed sheet (`useSheetImport`'s cached `parsed`, reloading via `loadSheet` if
@@ -52,7 +69,16 @@ import { ROUTES } from "@/config/app.config";
  * only to resolution state, mirroring `MapStep` (a viewer who arrives at an already-resolved
  * step can still advance).
  */
-export function CitiesStep({ orgId, onDone }: { orgId: string | null; onDone: () => void }): JSX.Element {
+export function CitiesStep({
+  orgId,
+  onDone,
+  hasAnyDates,
+}: {
+  orgId: string | null;
+  onDone: () => void;
+  /** `BookingSetupStatus.hasAnyDates`; `null` while that read is still in flight. */
+  hasAnyDates: boolean | null;
+}): JSX.Element {
   const { t } = useTranslation("getRunningV3");
   const footerSlot = useContext(WizardFooterContext);
   const canEdit = useCan("configure_airtable");
@@ -69,7 +95,13 @@ export function CitiesStep({ orgId, onDone }: { orgId: string | null; onDone: ()
   const isSheet = source === "sheet";
   const loaded = airtable.ready;
   const cityRows = airtable.cityRows;
-  const isEmpty = loaded && cityRows.length === 0;
+
+  // Shares its cache entry with `DatesMissingCityList`'s own call, so the list and the
+  // Continue gate below can never disagree about how many dates are still unresolved.
+  const missing = useDatesMissingCity(orgId);
+  const missingCount = missing.data?.length ?? 0;
+  const settled = loaded && hasAnyDates !== null && !missing.isLoading;
+  const isEmpty = settled && hasAnyDates && missingCount === 0 && cityRows.length === 0;
 
   const sheetResult = sheetImport.result;
   const sheetMap = sheetImport.settings.map;
@@ -77,7 +109,9 @@ export function CitiesStep({ orgId, onDone }: { orgId: string | null; onDone: ()
   const sheetImportCanRun = canEdit && sheetMapReady && !!sheetImport.settings.url && !sheetImport.importing;
   const sheetContinue = !!sheetResult && sheetResult.new_dates + sheetResult.updated > 0;
 
-  const canContinue = isSheet ? sheetContinue : loaded && (cityRows.length === 0 || cityRows.every((row) => row.linkedId !== null));
+  const canContinue = isSheet
+    ? sheetContinue
+    : settled && hasAnyDates === true && missingCount === 0 && cityRows.every((row) => row.linkedId !== null);
 
   const continueButton = (
     <Button type="button" size="sm" disabled={!canContinue} onClick={onDone}>
@@ -146,12 +180,24 @@ export function CitiesStep({ orgId, onDone }: { orgId: string | null; onDone: ()
             </div>
           )}
         </div>
-      ) : !loaded ? (
+      ) : !settled ? (
         <div className="space-y-2">
           <Skeleton className="h-10 w-full" />
           <Skeleton className="h-10 w-full" />
           <Skeleton className="h-10 w-full" />
         </div>
+      ) : !hasAnyDates ? (
+        <div className="space-y-2 rounded-l border border-border bg-well-tint px-3.5 py-6 text-center">
+          <p className="text-sm text-muted-foreground">{t("body.cities.noDates")}</p>
+          <Link
+            to={`${ROUTES.GET_RUNNING}?step=productions`}
+            className="inline-block text-control font-medium text-accent-600 underline-offset-2 hover:underline"
+          >
+            {t("body.cities.noDatesLink")}
+          </Link>
+        </div>
+      ) : missingCount > 0 ? (
+        <DatesMissingCityList orgId={orgId} canEdit={canEdit} />
       ) : isEmpty ? (
         <div className="space-y-2 rounded-l border border-border bg-well-tint px-3.5 py-6 text-center">
           <p className="text-sm text-muted-foreground">{t("body.cities.empty")}</p>
@@ -181,7 +227,11 @@ export function CitiesStep({ orgId, onDone }: { orgId: string | null; onDone: ()
         />
       )}
 
-      {!canContinue && !isSheet && <p className="text-xs text-muted-foreground">{t("body.cities.incomplete")}</p>}
+      {/* Scoped to the imported-rows branch: the no-dates and missing-city bodies carry their
+          own explanation, and "Link or create every city" would misdescribe both. */}
+      {!isSheet && settled && hasAnyDates === true && missingCount === 0 && !canContinue && (
+        <p className="text-xs text-muted-foreground">{t("body.cities.incomplete")}</p>
+      )}
 
       {footerSlot ? createPortal(continueButton, footerSlot) : continueButton}
     </div>

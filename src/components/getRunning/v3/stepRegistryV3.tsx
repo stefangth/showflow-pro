@@ -25,7 +25,7 @@ import type { GetRunningStep, GetRunningStepKey } from "@/lib/getRunning/steps";
  *  for a booking-readiness fetch when it opens `letterhead`/`terms`/`countersign`, and a
  *  placeholder step never pays for it either (its body is `StepComingSoon`, which reads
  *  none of it). */
-const BOOKING_DOMAIN_STEP_KEYS: ReadonlySet<GetRunningStepKey> = new Set(["artists", "coverage"]);
+const BOOKING_DOMAIN_STEP_KEYS: ReadonlySet<GetRunningStepKey> = new Set(["artists", "coverage", "cities"]);
 
 /**
  * Mounts the existing step editor for a `GetRunningStep` inside the v3 `WizardShell`'s
@@ -62,7 +62,7 @@ export function StepBodyV3({
   onDone: () => void;
 }): JSX.Element {
   const bookingOrgId = BOOKING_DOMAIN_STEP_KEYS.has(step.key) ? orgId : null;
-  const { coverage, artistCount } = useBookingSetupStatus(bookingOrgId);
+  const { coverage, artistCount, status, isLoading: bookingLoading } = useBookingSetupStatus(bookingOrgId);
 
   if (step.placeholder) {
     return <StepComingSoon step={step} />;
@@ -97,7 +97,9 @@ export function StepBodyV3({
     case "map":
       return <MapStep orgId={orgId} onDone={onDone} />;
     case "cities":
-      return <CitiesStep orgId={orgId} onDone={onDone} />;
+      // `null` while the booking-setup read is in flight, so the step renders a skeleton
+      // rather than flashing "No dates yet" at an org that has hundreds.
+      return <CitiesStep orgId={orgId} onDone={onDone} hasAnyDates={bookingLoading ? null : status.hasAnyDates} />;
     case "productions":
       return <ProductionsStep orgId={orgId} onDone={onDone} />;
     // skills/fee/document are real steps now (placeholder:false in steps.ts), so they reach
