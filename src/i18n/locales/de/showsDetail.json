@@ -118,6 +118,7 @@
     "chooseProduction": "Produktion auswählen",
     "date": "Termin",
     "pickDate": "Termin wählen",
+    "pastDateWarning": "Dieser Termin liegt in der Vergangenheit. Du kannst ihn trotzdem speichern, zum Beispiel um eine bereits gespielte Show zu erfassen.",
     "movingDateNote": "Das Verschieben des Termins selbst benachrichtigt keine gebuchten Artists.",
     "session": "Session {{n}}",
     "sessionPlaceholder": "HH:MM",

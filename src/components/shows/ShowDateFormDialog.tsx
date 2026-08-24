@@ -20,7 +20,7 @@ import { showSlots } from "@/lib/settings";
 import { scheduleChangeNote } from "@/lib/notifications/scheduleChangeCopy";
 import { dateSourceNote } from "@/lib/bookings/actionCopy";
 import { showIdentityLabel } from "@/types";
-import { toDateKey, parseDateOnly, formatDateDMY } from "@/lib/dates";
+import { toDateKey, parseDateOnly, formatDateDMY, isPastDate } from "@/lib/dates";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -218,6 +218,19 @@ export function ShowDateFormDialog({
   // structural guarantee rather than a coincidence a later edit to changeNote's mode gate
   // could quietly break.
   const dialogDescription = mode === "create" ? dateSourceNote(tAction) : changeNote;
+  // Warn, never block: back-filling a historical date for records is legitimate, and the
+  // Airtable sync creates past dates on a path that never touches this dialog, so the picker
+  // keeps every cell selectable and submit stays enabled. The warning only has to stop the
+  // typo. `isPastDate` compares two `toDateKey` calendar days, so it is timezone-safe on both
+  // sides and today itself is never "past" (a date scheduled for later today is not a typo).
+  // Withheld in two states where the sentence would be noise rather than a catch:
+  //   - a synced date, whose date field is disabled here (Airtable owns it), so the producer
+  //     could not act on the warning even if they wanted to;
+  //   - an edit that has not moved the date, since an already-historical date is normal data
+  //     and nagging about it every time someone opens the dialog to fix a venue says nothing
+  //     about anything the user just did.
+  const dateMoved = mode === "create" || (!!showDate && dateStr !== showDate.date);
+  const pastDateWarning = !synced && dateMoved && !!selectedDate && isPastDate(selectedDate);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -262,6 +275,7 @@ export function ShowDateFormDialog({
               <p className="text-xs text-muted-foreground">{t("showDateForm.movingDateNote")}</p>
             )}
             {err.date && <p className="text-xs text-destructive">{err.date.message}</p>}
+            {pastDateWarning && <p className="text-xs text-warning">{t("showDateForm.pastDateWarning")}</p>}
             {dupWarning && <p className="text-xs text-warning">{dupWarning}</p>}
           </div>
 
