@@ -32,9 +32,9 @@ import { useRailDismissed } from "@/components/setup/useRailDismissed";
  * actually live for this org. Both models are read unconditionally (rules of hooks); only
  * the selected one is consulted below, so v1 behavior stays byte-identical when v3 is off.
  *
- * `useGetRunningV3Enabled().enabled` itself defaults to the build flag while its own query
- * is still loading, so it can briefly report the wrong side for an org whose override
- * disagrees with the build default. Picking a model off a possibly-wrong flag would select
+ * `useGetRunningV3Enabled().enabled` itself defaults to `true` (v3 is the app default since
+ * the cutover) while its own query is still loading, so it can briefly report the wrong side
+ * for an org whose override disagrees with that default. Picking a model off a possibly-wrong flag would select
  * the wrong board's `complete`/dismissed state for that window (a v3-enabled org could
  * flash `v1Model`'s retirement verdict). So while the flag itself is loading, this hook
  * treats the model as indeterminate and fails open (visible), the same as the "model still
@@ -48,15 +48,19 @@ export function useGetRunningNavVisible(): boolean {
   const { enabled: v3Enabled, isLoading: v3EnabledLoading } = useGetRunningV3Enabled();
   // v1 is left ungated (accepted cost): a v3-enabled org pays for this v1 fan-out too even
   // though v1Model is discarded below. Gating v1 the same `active` way would mean threading
-  // the option through the v1 hook, which is slated for deletion in the v1 cutover, and
-  // v3-enabled orgs are few during rollout, so it is not worth the churn on retiring code.
+  // the option through the v1 hook, which is slated for deletion in the v1 cutover; since v3
+  // is now the default, orgs still on v1 (explicit false override) are the minority, so it is
+  // not worth the churn on retiring code.
   const { model: v1Model } = useGetRunning();
   // Gated on v3Enabled: the CI-review-bot-flagged efficiency fix. This hook is mounted by
   // AppLayout on every admin/producer route, so an unconditional useGetRunningV3() call fired
   // its whole booking/hire/skills/dates-source fan-out (plus, for an Airtable org, the ~12-query
-  // useAirtableConsole) on every navigation even when v3 is off for the org (the prod default).
-  // `useGetRunningV3`'s own `active` option keeps its sub-hooks from fetching when inactive
-  // while still calling them (rules of hooks), so v3Model is simply null when v3 is off here.
+  // useAirtableConsole) on every navigation. Since the cutover v3 is on by default, so this
+  // fan-out now runs for every entitled org except those with an explicit false override; that
+  // is the intended cost of the board being live (React Query caches it, and the board page
+  // itself triggers the same reads — see the docstring). The `active` gate still spares the
+  // explicit-v1 orgs. `useGetRunningV3`'s own `active` option keeps its sub-hooks from fetching
+  // when inactive while still calling them (rules of hooks), so v3Model is null when v3 is off.
   const { model: v3Model } = useGetRunningV3({ active: v3Enabled });
   const [dismissed] = useRailDismissed("getRunning", orgId);
 
