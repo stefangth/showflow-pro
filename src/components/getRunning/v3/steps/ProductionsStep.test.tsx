@@ -180,3 +180,35 @@ describe("ProductionsStep", () => {
     expect(screen.queryByRole("button", { name: /^add a date$/i })).not.toBeInTheDocument();
   });
 });
+
+describe("ProductionsStep, the add-a-production action", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockUseCan();
+    showsQuery.mockReturnValue({ data: SHOWS, isLoading: false, isError: false });
+  });
+
+  it("keeps the header action when the list read fails", () => {
+    // `shows.data ?? []` is empty for an ERRORED read too, but the error branch renders an
+    // Alert, not the empty state that carries the replacement action. Gating the header
+    // button on the list being empty stranded a producer with no way to create anything.
+    showsQuery.mockReturnValue({ data: undefined, isLoading: false, isError: true });
+    renderStep();
+
+    expect(screen.getByRole("button", { name: /add a production/i })).toBeInTheDocument();
+  });
+
+  it("keeps the header action while the list read is still loading", () => {
+    showsQuery.mockReturnValue({ data: undefined, isLoading: true, isError: false });
+    renderStep();
+
+    expect(screen.getByRole("button", { name: /add a production/i })).toBeInTheDocument();
+  });
+
+  it("offers the action exactly once on a settled, empty list", () => {
+    showsQuery.mockReturnValue({ data: [], isLoading: false, isError: false });
+    renderStep();
+
+    expect(screen.getAllByRole("button", { name: /add a production/i })).toHaveLength(1);
+  });
+});

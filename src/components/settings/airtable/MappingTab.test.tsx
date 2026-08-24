@@ -34,3 +34,17 @@ it("gives the control column room so a narrow host does not truncate the value",
   // wizard, where "Not mapped" rendered as "No...".
   expect(grid.className).toContain("minmax");
 });
+
+it("keeps the Settings card title at the card-title size by default", () => {
+  // Every sibling card in the Settings Airtable console (ActivityTab, AttentionPanel,
+  // SetupWizard, CatalogTab) uses text-title-sm; this card must not read as their child.
+  render(<MappingTab {...base} tableName="Shows" />);
+  expect(screen.getByRole("heading", { name: /field mapping/i }).className).toContain("text-title-sm");
+});
+
+it("steps the title down when the host already titles the section", () => {
+  render(<MappingTab {...base} tableName="Shows" dense />);
+  const heading = screen.getByRole("heading", { name: /field mapping/i });
+  expect(heading.className).toContain("text-control");
+  expect(heading.className).not.toContain("text-title-sm");
+});

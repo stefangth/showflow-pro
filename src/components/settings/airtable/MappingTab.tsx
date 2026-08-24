@@ -25,6 +25,11 @@ export interface MappingTabProps {
   /** Adds every unboundField as a custom field. */
   onAddAllCustom: () => void;
   canWrite: boolean;
+  /** Renders the card header one step down the type scale. The get-running wizard already
+   *  titles the step above this card, so a 17px card title there competes with the step's
+   *  own heading; in Settings this card IS the section, and its title matches its sibling
+   *  cards' 17px. Defaults to the Settings size so no existing host changes. */
+  dense?: boolean;
 }
 
 /** Presentational Field-mapping tab of the Airtable Sync console: a two-column
@@ -33,7 +38,7 @@ export interface MappingTabProps {
  *  "unread columns" footer. All data + callbacks arrive via props. */
 export function MappingTab(props: MappingTabProps) {
   const { t } = useTranslation('settingsAirtable');
-  const { tableName, fields, fieldMap, onSetField, mapped, total, optionNames, unboundFields, onAddAllCustom, canWrite } = props;
+  const { tableName, fields, fieldMap, onSetField, mapped, total, optionNames, unboundFields, onAddAllCustom, canWrite, dense = false } = props;
   const readOnly = !canWrite;
 
   const columnOptions = (
@@ -48,7 +53,9 @@ export function MappingTab(props: MappingTabProps) {
       {/* Header: title + required-mapped counter */}
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2 px-4 py-3.5 border-b border-border">
         <div className="min-w-0">
-          <h3 className="text-control font-semibold tracking-tight">{t('mappingTab2.title')}</h3>
+          <h3 className={cn("font-semibold tracking-tight", dense ? "text-control" : "text-title-sm")}>
+            {t('mappingTab2.title')}
+          </h3>
           <p className="mt-1 text-control text-muted-foreground">
             {tableName ? (
               <>
@@ -63,7 +70,9 @@ export function MappingTab(props: MappingTabProps) {
           </p>
         </div>
         <div className="shrink-0 text-right">
-          <p className="font-mono tabular-nums text-title-sm font-medium">{mapped} / {total}</p>
+          <p className={cn("font-mono tabular-nums font-medium", dense ? "text-control" : "text-title-sm")}>
+            {mapped} / {total}
+          </p>
           <p className="mt-0.5 text-xs text-muted-foreground">{t('mappingTab2.requiredMapped')}</p>
         </div>
       </div>

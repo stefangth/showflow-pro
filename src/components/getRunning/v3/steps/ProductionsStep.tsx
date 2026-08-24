@@ -59,6 +59,10 @@ export function ProductionsStep({ orgId, onDone }: { orgId: string | null; onDon
   const slotsReady = list.some((s) => showSlots(s) != null);
   const canContinue = slotsReady && hasAnyDates;
 
+  // True only in the one branch that renders `EmptyState` with its own "Add a production"
+  // action: a settled, successful, empty read for a viewer who may create one.
+  const emptyStateOwnsAdd = !shows.isError && !shows.isLoading && list.length === 0 && canManage;
+
   const continueButton = (
     <Button type="button" size="sm" disabled={!canContinue} onClick={onDone}>
       {t("body.productions.continue")}
@@ -68,19 +72,24 @@ export function ProductionsStep({ orgId, onDone }: { orgId: string | null; onDon
   return (
     <div data-testid="step-body-productions" className="space-y-4">
       {/* The step's title and sub line come from the shell. What is left here is the
-          action bar, so it right-aligns on its own row. */}
+          action bar, so it right-aligns on its own row.
+
+          The header drops its "Add a production" ONLY when the empty state below is the
+          thing on screen, since that state carries the same action and two identical
+          buttons a hundred pixels apart read as two different things. Keyed on the empty
+          state actually rendering, not on `list.length`: `list` is also `[]` while the
+          read is in flight and when it FAILS, and in those branches there is no empty
+          state to inherit the action from, so hiding it would leave a producer with no
+          way to create a production at all. */}
       <div className="flex items-start justify-end gap-3">
-        {/* With an empty list the empty state below already offers "Add a production",
-            so the header offers only the other action. Two identical buttons a hundred
-            pixels apart read as two different things. */}
-        {(canManageDates || (canManage && list.length > 0)) && (
+        {(canManageDates || (canManage && !emptyStateOwnsAdd)) && (
           <div className="flex shrink-0 flex-wrap justify-end gap-2">
             {canManageDates && (
               <Button type="button" size="sm" variant="outline" onClick={() => setDateOpen(true)}>
                 {t("body.productions.addDate")}
               </Button>
             )}
-            {canManage && list.length > 0 && (
+            {canManage && !emptyStateOwnsAdd && (
               <Button type="button" size="sm" variant="outline" onClick={() => setFormOpen(true)}>
                 {t("body.productions.addProduction")}
               </Button>

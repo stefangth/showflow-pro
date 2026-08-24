@@ -202,3 +202,45 @@ it("sends Read more to the help answer, not to the settings page", () => {
   const link = screen.getByRole("link", { name: /read more about cast ranking/i });
   expect(link.getAttribute("href")).toMatch(/^\/help\?item=/);
 });
+
+it("never shows two primary actions at once when the open step changes", () => {
+  // The at-rest invariant either side of a step change: exactly one primary action.
+  // NOTE this cannot catch the frame-timing half of the same bug (registration in a
+  // passive effect painted BOTH buttons for one frame on letterhead -> fee): RTL wraps
+  // render/rerender in act(), which flushes passive effects before the assertion, and
+  // jsdom has no paint to observe. That half is addressed by `WizardFooterAction` using
+  // useLayoutEffect; this test guards the settled state.
+  const { rerender } = render(
+    <MemoryRouter>
+      <WizardShell
+        phaseKey="bookable"
+        steps={steps}
+        activeKey="artists"
+        onSelectStep={vi.fn()}
+        onCollapse={vi.fn()}
+        onNext={vi.fn()}
+      >
+        <div>NO ACTION BODY</div>
+      </WizardShell>
+    </MemoryRouter>
+  );
+  expect(within(screen.getByTestId("wizard-footer")).getAllByRole("button", { name: /^continue$/i })).toHaveLength(1);
+
+  rerender(
+    <MemoryRouter>
+      <WizardShell
+        phaseKey="bookable"
+        steps={steps}
+        activeKey="coverage"
+        onSelectStep={vi.fn()}
+        onCollapse={vi.fn()}
+        onNext={vi.fn()}
+      >
+        <WizardFooterAction>
+          <button type="button">Continue</button>
+        </WizardFooterAction>
+      </WizardShell>
+    </MemoryRouter>
+  );
+  expect(within(screen.getByTestId("wizard-footer")).getAllByRole("button", { name: /^continue$/i })).toHaveLength(1);
+});

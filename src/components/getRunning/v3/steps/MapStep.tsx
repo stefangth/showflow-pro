@@ -86,7 +86,15 @@ export function MapStep({
   // An Airtable org that has not finished connecting has no columns to choose from, so the
   // mapping table would render nine required rows over an empty dropdown and no way to
   // fill any of them. Send them to the step that can actually unblock this instead.
-  const awaitingAirtableConnection = source === "airtable" && !(airtable.keyPresent && airtable.hasBaseTable);
+  //
+  // Gated on `airtable.ready` (the console's own key-status + settings queries having
+  // settled, same flag `CitiesStep` reads) because `keyPresent`/`hasBaseTable` are BOTH
+  // false while those queries are in flight. Without it a fully connected org is told its
+  // base is not connected for as long as the read takes, and offered a button back to a
+  // step it already finished.
+  const airtableResolved = source !== "airtable" || airtable.ready;
+  const awaitingAirtableConnection =
+    source === "airtable" && airtable.ready && !(airtable.keyPresent && airtable.hasBaseTable);
   const sheetUrl = sheetImport.settings.url;
   const headers = sheetImport.parsed?.headers ?? null;
 
@@ -114,7 +122,7 @@ export function MapStep({
     sheetImport.saveSettings({ ...sheetImport.settings, map });
   };
 
-  const canContinue = awaitingAirtableConnection
+  const canContinue = !airtableResolved || awaitingAirtableConnection
     ? false
     : isSheet
       ? isSheetMapComplete(sheetImport.settings.map)
@@ -130,7 +138,13 @@ export function MapStep({
 
   return (
     <div data-testid="step-body-map" className="space-y-4">
-      {awaitingAirtableConnection ? (
+      {!airtableResolved ? (
+        <div className="space-y-2">
+          <Skeleton className="h-9 w-full" />
+          <Skeleton className="h-9 w-full" />
+          <Skeleton className="h-9 w-full" />
+        </div>
+      ) : awaitingAirtableConnection ? (
         <div className="space-y-2 rounded-l border border-border bg-well-tint px-3.5 py-3">
           <p className="text-control text-foreground">{t("body.map.notConnected")}</p>
           {onGoToStep && (
@@ -189,6 +203,10 @@ export function MapStep({
           unboundFields={airtable.unboundFields}
           onAddAllCustom={airtable.addAllCustom}
           canWrite={airtable.canWrite}
+          // The wizard shell already titles this step above the card, so the card header
+          // steps down rather than competing with it. In Settings this card is the
+          // section and keeps the full card-title size.
+          dense
         />
       )}
 
@@ -205,7 +223,7 @@ export function MapStep({
         </p>
       </div>
 
-      {!canContinue && !awaitingAirtableConnection && (
+      {!canContinue && !awaitingAirtableConnection && airtableResolved && (
         <p className="text-xs text-muted-foreground">
           {isSheet ? t("body.map.sheet.mapIncomplete") : t("body.map.mapIncomplete")}
         </p>
