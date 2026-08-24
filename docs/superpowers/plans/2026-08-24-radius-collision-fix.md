@@ -500,17 +500,13 @@ Replace the rule whose selector is `"Literal[value=/\\brounded-\\[[0-9]+px\\]/]"
       },
 ```
 
-- [ ] **Step 2: Add the missing border-width rule**
+- [ ] **Step 2: Do NOT add a border-width rule in this plan**
 
-The "no bracket sizes" convention covers radius, text size and alpha, but never covered border width, which is why 17 `border-[0.5px]` uses passed lint. Add:
+This was in an earlier draft and was removed at pre-flight. Recording why, so nobody re-adds it here:
 
-```js
-      {
-        selector: "Literal[value=/\\bborder-\\[[0-9.]+(px|rem)\\]/]",
-        message:
-          "Bracket border width. Use the border utilities, or add a token if a hairline is really needed. See section 2.",
-      },
-```
+The "no bracket sizes" convention covers radius, text size and alpha but never border width, which is why bracket border widths pass lint. However there are **41** such uses in feature code today, and `npm run lint` runs at `--max-warnings 0`, so a `warn` severity fails the build exactly like an `error` does. Adding the rule now leaves only two bad options: break the build, or scatter 41 disable comments. Both are worse than waiting.
+
+The rule belongs in the follow-up plan that actually fixes those 41 sites, since `border-[0.5px]` to `border` is a visual change needing a look at each surface. Take no action in this step.
 
 - [ ] **Step 3: Update the retired-alias message**
 
@@ -521,18 +517,30 @@ The rule matching `rounded-(sm|md|lg)` still names the old letters. Replace its 
           "Retired shadcn radius alias. Use the design-system scale: chip (4), field (6), control (8), card (10), hero (14). See section 2.",
 ```
 
-- [ ] **Step 4: Run lint and expect the border-width rule to fire**
+- [ ] **Step 4: Confirm lint is clean**
 
 ```bash
 npx eslint src --max-warnings 0
 ```
 
-Expected: FAIL, reporting roughly 17 `border-[0.5px]` violations. These are real and were previously invisible. They are **out of scope for this plan**, so silence them for now rather than restyling surfaces here: add `// eslint-disable-next-line no-restricted-syntax` with the reason `border-[0.5px] hairline, scheduled for the card-primitive sweep` above each, or, if the reviewer prefers, change the new rule's severity to `"warn"` and note it. Record the decision in the commit message.
+Expected: clean. Both new radius rules should find nothing, because Task 4 removed the last `rounded-[var(--radius-xl)]` and there are no bracket px radius values in feature code. `src/components/ui/**` is exempt from these rules (see `eslint.config.js`), which is why `status-dot.tsx`'s `rounded-[2px]` does not trip them.
 
-- [ ] **Step 5: Confirm lint is clean**
+If either rule does fire, that is a genuine miss from Task 3 or 4. Fix the offending call site rather than weakening the rule.
+
+- [ ] **Step 5: Prove the new rules actually work**
+
+A rule that never fires might be a rule that cannot fire. Verify by temporarily breaking one file:
 
 ```bash
-npx eslint src --max-warnings 0
+printf '\nconst probe = "rounded-[var(--radius-l)] border-2";\n' >> src/components/today/TodayEmpty.tsx
+npx eslint src/components/today/TodayEmpty.tsx
+```
+
+Expected: FAIL, citing the "Radius token written by hand" message. Then revert:
+
+```bash
+git checkout src/components/today/TodayEmpty.tsx
+npx eslint src/components/today/TodayEmpty.tsx
 ```
 
 Expected: clean.
@@ -540,8 +548,8 @@ Expected: clean.
 - [ ] **Step 6: Commit**
 
 ```bash
-git add eslint/ui-conventions.js src
-git commit -m "fix radius lint message and catch bracket radius and border widths"
+git add eslint/ui-conventions.js
+git commit -m "fix radius lint message and catch hand written radius tokens"
 ```
 
 ---
