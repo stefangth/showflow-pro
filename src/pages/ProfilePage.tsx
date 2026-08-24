@@ -156,7 +156,7 @@ export default function ProfilePage() {
     <div className="space-y-6">
       <div>
         <h1 className="font-display text-display-sm font-semibold tracking-tight">{t("page.title")}</h1>
-        <p className="text-muted-foreground mt-1">{t("page.subtitle")}</p>
+        <p className="text-lead text-muted-foreground mt-1">{t("page.subtitle")}</p>
       </div>
 
       <div className="flex gap-5 items-start">

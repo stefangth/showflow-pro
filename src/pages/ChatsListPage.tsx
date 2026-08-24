@@ -43,7 +43,7 @@ export default function ChatsListPage() {
         <h1 className="font-display text-display-sm font-semibold tracking-tight flex items-center gap-3">
           <MessageSquare className="h-7 w-7 text-primary" /> {t('list.title')}
         </h1>
-        <p className="text-muted-foreground mt-1">
+        <p className="text-lead text-muted-foreground mt-1">
           {t('list.subtitle', { days: CHAT_ARCHIVE_DAYS })}
         </p>
       </div>

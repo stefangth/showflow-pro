@@ -193,7 +193,7 @@ export default function ProductionsPage() {
       <div className="flex items-center justify-between gap-3">
         <div>
           <h1 className="font-display text-display-sm font-semibold tracking-tight">{t("page.title")}</h1>
-          <p className="text-muted-foreground mt-1">{t("page.description")}</p>
+          <p className="text-lead text-muted-foreground mt-1">{t("page.description")}</p>
         </div>
         <div className="flex items-center gap-2">
           <FinishSetupLink steps={stepsForRoute(ROUTES.PRODUCTIONS)} />

@@ -58,7 +58,7 @@ export function TodayHeader({
       <h1 className="m-0 mt-1 text-display-sm font-semibold tracking-[-0.6px]">
         {done ? t("header.headlineDone") : t("header.headline", { count: openCount })}
       </h1>
-      <p className="m-0 mt-1.5 text-sm text-muted-foreground">
+      <p className="m-0 mt-1.5 text-lead text-muted-foreground">
         {done
           ? t("header.subDone", { bookedText })
           : t("header.sub", { count: fillingOnTheirOwn, bookedText })}

@@ -183,7 +183,7 @@ export function ArtistBookingsView() {
     <div className="space-y-6">
       <div>
         <h1 className="font-display text-display-sm font-semibold tracking-tight">{pageCopy.title}</h1>
-        <p className="text-muted-foreground mt-1">{pageCopy.subtitle}</p>
+        <p className="text-lead text-muted-foreground mt-1">{pageCopy.subtitle}</p>
       </div>
 
       <ModuleGate feature="booking_flow">
