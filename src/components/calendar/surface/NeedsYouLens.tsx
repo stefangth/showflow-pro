@@ -396,9 +396,9 @@ export function NeedsYouLens({
                     {/* 3. Action column — primary (full width), up to 2 secondary side by side. */}
                     <div
                       className={cn(
-                        'flex shrink-0 flex-col justify-center gap-2 border-t-[0.5px] border-border px-4 py-3.5',
-                        'md:w-[232px] md:border-l-[0.5px] md:border-t-0',
-                        isUrgent ? 'bg-card' : 'bg-well-tint'
+                        'flex shrink-0 flex-col justify-center gap-2 px-4 py-3.5',
+                        'md:w-[232px]',
+                        'bg-card'
                       )}
                     >
                       <Button
