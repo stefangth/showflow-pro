@@ -67,6 +67,7 @@
     "removeSlot": "{{name}} entfernen",
     "slotFallback": "Position",
     "skillsEmptyHint": "Noch keine Skills. Lege den ersten hier an.",
+    "skillsEmptyHintLocked": "Noch keine Skills. Ein Admin kann sie in den Einstellungen anlegen.",
     "addSlot": "Position hinzufügen",
     "saving": "Speichert…",
     "save": "Speichern",

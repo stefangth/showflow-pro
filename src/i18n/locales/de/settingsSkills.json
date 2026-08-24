@@ -59,6 +59,7 @@
     "deleted": "Skill gelöscht",
     "deleteFailed": "Skill konnte nicht gelöscht werden",
     "collisionArchived": "Ein Skill namens \"{{name}}\" ist archiviert. Nutze Wiederherstellen, um ihn zurückzuholen.",
-    "collisionExists": "Ein Skill namens \"{{name}}\" existiert bereits."
+    "collisionExists": "Ein Skill namens \"{{name}}\" existiert bereits.",
+    "collisionMaybeArchived": "Ein Skill namens \"{{name}}\" existiert bereits. Er ist eventuell archiviert: schau in Einstellungen > Skills."
   }
 }
