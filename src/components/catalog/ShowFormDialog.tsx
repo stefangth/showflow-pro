@@ -20,6 +20,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { CastingBreakdownFields } from "@/components/catalog/CastingBreakdownFields";
+import { useInlineSkillCreate } from "@/components/skills/useInlineSkillCreate";
 
 const baseSchema = z.object({
   program: z.string().trim().optional().or(z.literal("")),
@@ -61,6 +62,11 @@ export function ShowFormDialog({
   const slotsDisabled = !canEditScheduling || pending;
 
   const { data: orgSkills } = useSkills();
+  // Growing the skill catalog is `manage_skills`, not the `edit_scheduling` behind
+  // `slotsDisabled`: a producer may be allowed to write the breakdown without being
+  // allowed to invent skills.
+  const canManageSkills = useCan("manage_skills");
+  const createSkillInline = useInlineSkillCreate(orgSkills ?? []);
   // The named slot rows the production authors (role name, count, main/understudy,
   // per-slot required skills). shows.main_cast_slots/understudy_slots and
   // show_required_skills are trigger-maintained caches derived from these.
@@ -203,6 +209,8 @@ export function ShowFormDialog({
             onChange={setSlots}
             skills={orgSkills ?? []}
             disabled={slotsDisabled}
+            onCreateSkill={createSkillInline}
+            canCreateSkill={canManageSkills}
           />
 
           <DialogFooter>

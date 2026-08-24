@@ -81,8 +81,7 @@ function CreateSkillChip({ onCreate, onCreated, disabled }: {
   const disabledRef = useRef(disabled);
   useEffect(() => { disabledRef.current = disabled; }, [disabled]);
 
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
+  async function submit() {
     const trimmed = name.trim();
     // Guards the empty/whitespace name, the double submit while a create is in flight,
     // and the disabled fence.
@@ -91,14 +90,14 @@ function CreateSkillChip({ onCreate, onCreated, disabled }: {
     try {
       const created = await onCreate(trimmed);
       // The skill now exists, but the caller stopped allowing selection while we waited,
-      // so close the form without selecting rather than writing past the gate.
+      // so close the field without selecting rather than writing past the gate.
       if (disabledRef.current) { setName(""); setOpen(false); return; }
       onCreated(created.id);
       setName("");
       setOpen(false);
     } catch {
       // A rejected create (a name collision, a lost connection) must leave the selection
-      // untouched and must not escape the picker. The form stays open with the typed name
+      // untouched and must not escape the picker. The field stays open with the typed name
       // so the producer can amend it. The caller surfaces the reason.
     } finally {
       setPending(false);
@@ -124,8 +123,13 @@ function CreateSkillChip({ onCreate, onCreated, disabled }: {
   }
 
   return (
-    <form
-      onSubmit={submit}
+    // Deliberately NOT a <form>: this chip renders inside ShowFormDialog's production
+    // <form>, and a nested form both breaks HTML nesting and bubbles its submit into the
+    // outer one, saving the production behind the producer's back. Enter and the check
+    // button call submit() directly instead.
+    <div
+      role="group"
+      aria-label={t("skillPicker.newSkill")}
       className={cn(
         "inline-flex items-center gap-1 rounded-full border border-dashed border-border bg-background pl-2.5 pr-0.5 py-0.5",
         disabled && "opacity-50",
@@ -136,19 +140,24 @@ function CreateSkillChip({ onCreate, onCreated, disabled }: {
         value={name}
         readOnly={disabled}
         onChange={(e) => setName(e.target.value)}
-        onKeyDown={(e) => { if (e.key === "Escape") { setOpen(false); setName(""); } }}
+        onKeyDown={(e) => {
+          if (e.key === "Escape") { setOpen(false); setName(""); }
+          // Enter must not reach the enclosing form, which would submit the production.
+          if (e.key === "Enter") { e.preventDefault(); void submit(); }
+        }}
         aria-label={t("skillPicker.nameLabel")}
         placeholder={t("skillPicker.nameLabel")}
         className="w-28 bg-transparent text-xs text-foreground outline-none placeholder:text-muted-foreground"
       />
       <button
-        type="submit"
+        type="button"
+        onClick={() => void submit()}
         disabled={pending || disabled || !name.trim()}
         aria-label={t("skillPicker.create")}
         className="inline-flex h-5 w-5 items-center justify-center rounded-full text-primary transition-colors hover:bg-primary/10 disabled:opacity-50"
       >
         <Check aria-hidden="true" className="h-3 w-3" />
       </button>
-    </form>
+    </div>
   );
 }

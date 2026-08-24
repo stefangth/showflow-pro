@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { fireEvent, screen, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import { CastingBreakdownFields, type SlotDraftRow } from "./CastingBreakdownFields";
 
@@ -75,5 +75,72 @@ describe("CastingBreakdownFields", () => {
     );
     expect(screen.getByText(/2 main/i)).toBeInTheDocument();
     expect(screen.getByText(/1 understudy/i)).toBeInTheDocument();
+  });
+
+  it("adds a newly created skill to the part's required skills", async () => {
+    const onChange = vi.fn();
+    const onCreateSkill = vi.fn().mockResolvedValue({ id: "sk-9", name: "Lead Vocals" });
+    renderWithProviders(
+      <CastingBreakdownFields
+        value={[{ id: "r1", name: "Lead", count: 1, kind: "main", skillIds: [] }]}
+        onChange={onChange}
+        skills={[]}
+        onCreateSkill={onCreateSkill}
+        canCreateSkill
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /new skill/i }));
+    fireEvent.change(screen.getByRole("textbox", { name: /skill name/i }), { target: { value: "Lead Vocals" } });
+    fireEvent.click(screen.getByRole("button", { name: /add skill/i }));
+    await waitFor(() =>
+      expect(onChange).toHaveBeenCalledWith([expect.objectContaining({ skillIds: ["sk-9"] })]),
+    );
+  });
+
+  // The affordance is not only an empty-catalog fallback: an org with skills still needs
+  // to name a new one while writing the breakdown.
+  it("offers inline creation alongside a non empty catalog", () => {
+    renderWithProviders(
+      <CastingBreakdownFields
+        value={[{ id: "r1", name: "Lead", count: 1, kind: "main", skillIds: [] }]}
+        onChange={vi.fn()}
+        skills={SKILLS}
+        onCreateSkill={vi.fn()}
+        canCreateSkill
+      />,
+    );
+    expect(screen.getByRole("button", { name: "Singing" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /new skill/i })).toBeInTheDocument();
+  });
+
+  it("leaves the required skills untouched when the create is rejected", async () => {
+    const onChange = vi.fn();
+    const onCreateSkill = vi.fn().mockRejectedValue(new Error("name already taken"));
+    renderWithProviders(
+      <CastingBreakdownFields
+        value={[{ id: "r1", name: "Lead", count: 1, kind: "main", skillIds: [] }]}
+        onChange={onChange}
+        skills={[]}
+        onCreateSkill={onCreateSkill}
+        canCreateSkill
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /new skill/i }));
+    fireEvent.change(screen.getByRole("textbox", { name: /skill name/i }), { target: { value: "Singing" } });
+    fireEvent.click(screen.getByRole("button", { name: /add skill/i }));
+    await waitFor(() => expect(onCreateSkill).toHaveBeenCalled());
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it("offers no create affordance without the capability", () => {
+    renderWithProviders(
+      <CastingBreakdownFields
+        value={[{ id: "r1", name: "Lead", count: 1, kind: "main", skillIds: [] }]}
+        onChange={vi.fn()}
+        skills={[]}
+        onCreateSkill={vi.fn()}
+      />,
+    );
+    expect(screen.queryByRole("button", { name: /new skill/i })).toBeNull();
   });
 });

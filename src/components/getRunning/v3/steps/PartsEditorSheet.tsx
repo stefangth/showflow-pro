@@ -5,8 +5,10 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useShowSlots } from "@/hooks/useShowSlots";
 import { useSkills } from "@/hooks/useSkills";
+import { useCan } from "@/hooks/useCapabilities";
 import { saveShowSlots, type SlotDraft } from "@/data/slots";
 import { CastingBreakdownFields } from "@/components/catalog/CastingBreakdownFields";
+import { useInlineSkillCreate } from "@/components/skills/useInlineSkillCreate";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 
@@ -45,6 +47,10 @@ export function PartsEditorSheet({
   const { t } = useTranslation("getRunningV3");
   const queryClient = useQueryClient();
   const { data: orgSkills } = useSkills();
+  // A missing skill must be nameable here, where the breakdown is written. Creation is
+  // `manage_skills`, separate from the save-pending flag that gates editing.
+  const canManageSkills = useCan("manage_skills");
+  const createSkillInline = useInlineSkillCreate(orgSkills ?? []);
   const slotsQ = useShowSlots(open ? showId : undefined);
 
   const [slots, setSlots] = useState<SlotDraft[]>([]);
@@ -98,6 +104,8 @@ export function PartsEditorSheet({
           onChange={setSlots}
           skills={orgSkills ?? []}
           disabled={saveMutation.isPending}
+          onCreateSkill={createSkillInline}
+          canCreateSkill={canManageSkills}
         />
 
         <SheetFooter>
