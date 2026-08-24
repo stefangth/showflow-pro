@@ -18,7 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import { Settings as SettingsIcon, Database, Bell, Wand2, Save, MapPin, BookOpen, Building2, FileSignature, ShieldCheck, Lock, Sparkles, Users, Activity, Rocket } from 'lucide-react';
+import { Settings as SettingsIcon, Database, Bell, Wand2, Save, MapPin, BookOpen, Building2, FileSignature, ShieldCheck, Lock, Sparkles, Users, Activity, Rocket, Compass } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { upsertOrgSetting, mergeOrgRows } from '@/data/settings';
 import { computeSettingsDirtyKeys } from '@/lib/settings';
@@ -286,7 +286,10 @@ export default function SettingsPage() {
 
   const navGroups: { heading: string; items: { value: string; label: string; icon: typeof Building2; show: boolean; moduleState?: boolean }[] }[] = [
     { heading: t('nav.groups.organization'), items: [
-      { value: "how-it-works", label: t('nav.items.howItWorks'), icon: Rocket, show: isAdmin || isProducer },
+      // Rocket is Get running's identity, both in the row below and in the sidebar
+      // (src/components/layout/navItems.ts). This tab is the read-only reference for how
+      // the org is currently configured, so it carries its own mark.
+      { value: "how-it-works", label: t('nav.items.howItWorks'), icon: Compass, show: isAdmin || isProducer },
       { value: "get-running", label: t('nav.items.getRunning'), icon: Rocket, show: showGetRunning },
       { value: "permissions", label: t('nav.items.permissions'), icon: ShieldCheck, show: isAdmin },
       { value: "casts-coverage", label: t('nav.items.castsCoverage'), icon: MapPin, show: isAdmin || isProducer },
