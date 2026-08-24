@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
+import { toast } from "sonner";
 import { useCities } from "@/hooks/useCities";
 import { useDatesMissingCity, useUpdateShowDate } from "@/hooks/useShowDates";
 import { StatusDot } from "@/components/ui/status-dot";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatDateDMY } from "@/lib/dates";
 import { ROUTES } from "@/config/app.config";
@@ -37,6 +39,11 @@ export function DatesMissingCityList({ orgId, canEdit }: { orgId: string | null;
   // Rows picked in this session, kept until the refetch removes them, so the dot can flip to
   // confirmed instead of the row simply disappearing under the pointer.
   const [resolved, setResolved] = useState<Record<string, string>>({});
+  // Bumped per row when a write fails. Radix's Select keeps its own internal value once it
+  // has one, so dropping the `resolved` entry alone leaves the failed city still shown in
+  // the trigger; folding this counter into the Select's key remounts it back to the
+  // placeholder, which is what "this date still has no city" has to look like.
+  const [reverts, setReverts] = useState<Record<string, number>>({});
 
   if (dates.isLoading) {
     return (
@@ -57,6 +64,15 @@ export function DatesMissingCityList({ orgId, canEdit }: { orgId: string | null;
         <p className="text-xs text-muted-foreground">{t("body.cities.missingSub")}</p>
       </div>
 
+      {/* A failed city read leaves every picker below with nothing in it. Without this the
+          producer opens each dropdown, finds it empty, and is told nothing: the catalog may
+          be full and simply unreadable right now. */}
+      {cities.isError && (
+        <Alert variant="destructive">
+          <AlertDescription>{t("body.cities.catalogError")}</AlertDescription>
+        </Alert>
+      )}
+
       <ul className="divide-y divide-border overflow-hidden rounded-l border border-border">
         {rows.map((row) => {
           const picked = resolved[row.id];
@@ -73,11 +89,30 @@ export function DatesMissingCityList({ orgId, canEdit }: { orgId: string | null;
                 </div>
               </div>
               <Select
+                key={`${row.id}-${reverts[row.id] ?? 0}`}
                 value={picked ?? undefined}
-                disabled={!canEdit || update.isPending}
+                disabled={!canEdit || update.isPending || cities.isLoading || cities.isError}
                 onValueChange={(cityId) => {
                   setResolved((prev) => ({ ...prev, [row.id]: cityId }));
-                  update.mutate({ id: row.id, patch: { city_id: cityId } });
+                  update.mutate(
+                    { id: row.id, patch: { city_id: cityId } },
+                    {
+                      // The optimistic `resolved` entry flips the dot to confirmed the instant
+                      // the pick lands. If the write then FAILS (RLS denial, network drop),
+                      // nothing else rolls it back, so the row would keep a green dot and a
+                      // selected city for a date whose `city_id` is still null, on a step
+                      // chipped "Blocks your first ask". Drop the entry and say so.
+                      onError: () => {
+                        setResolved((prev) => {
+                          const next = { ...prev };
+                          delete next[row.id];
+                          return next;
+                        });
+                        setReverts((prev) => ({ ...prev, [row.id]: (prev[row.id] ?? 0) + 1 }));
+                        toast.error(t("body.cities.assignFailed"));
+                      },
+                    },
+                  );
                 }}
               >
                 <SelectTrigger className="w-40" aria-label={t("body.cities.assignCity")}>
