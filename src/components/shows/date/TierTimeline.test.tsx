@@ -52,6 +52,7 @@ const baseProps = {
   cityName: "Berlin",
   statusByTier: [] as { tier: number; sent: number; accepted: number; pending: number; cancelled: number }[],
   nextTier: 1 as number | null,
+  dateFilled: false,
   nextTierTarget: { kind: "tier" as const, tier: 1 },
   nextTierCounts: NEXT_ROW as TierLadderRow | null,
   requiredSkillNames: [] as string[],

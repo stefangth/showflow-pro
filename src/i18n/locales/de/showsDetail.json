@@ -265,7 +265,11 @@
     "statusCounts": "{{sent}} angefragt · {{accepted}} zugesagt · {{pending}} wartend · {{cancelled}} storniert",
     "matchCounts": "{{matchCount}} von {{castTotal}} Artists passen{{missDetail}}",
     "missDetail": " · {{count}} fehlt eine erforderliche Fähigkeit",
-    "closeTier": "Diese Runde schließen"
+    "stateFilled": "Besetzt · {{accepted}} zugesagt",
+    "stateOpen": "{{pending}} wartend",
+    "stateClosed": "Geschlossen · {{accepted}} zugesagt",
+    "closeTier": "Diese Runde schließen",
+    "closeTierN": "Runde {{tier}} schließen"
   },
   "tierTimeline": {
     "directBooking": "Direktbuchung: Das Produktionsteam bucht aus wer angefragt werden kann",

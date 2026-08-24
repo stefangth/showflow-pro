@@ -65,6 +65,8 @@ export interface TierTimelineProps {
   statusByTier: TierLadderRowStatus[];
   /** The next tier to offer to (accent ring + hero), or null when all are opened. */
   nextTier: number | null;
+  /** Whether the date's parts are filled, gating the tier ladder's green state. */
+  dateFilled: boolean;
   /** The resolved next-offer target (single cast or the tier fallback). */
   nextTierTarget: OfferTarget | null;
   /** The next tier's ladder row (hero counts + cast-aware confirm copy). */
@@ -88,7 +90,7 @@ export function TierTimeline({
   skills, openedTiers, openPending = false, closePending = false,
   onOpenTier, onCloseTier, onPreviewTier,
   show, slots, showSkillIds, dateSkillIds, droppedSkillIds, onResetSkills, onEditSkills,
-  ladderRows, cityName, statusByTier, nextTier, nextTierTarget, nextTierCounts,
+  ladderRows, cityName, statusByTier, nextTier, dateFilled, nextTierTarget, nextTierCounts,
   requiredSkillNames, requiredSkillIds, candidates, excludedDetail,
 }: TierTimelineProps) {
   const { t } = useTranslation("showsDetail");
@@ -193,6 +195,7 @@ export function TierTimeline({
         openedTiers={ladderOpenedTiers}
         statusByTier={statusByTier}
         nextTier={canManage ? nextTier : null}
+        filled={dateFilled}
         onCloseTier={(tier) => setCloseTarget(tier)}
       />
 

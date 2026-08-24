@@ -43,6 +43,7 @@ function renderLadder(overrides: Partial<TierLadderProps> = {}) {
       openedTiers={[{ tier: 1, closed: false }]}
       statusByTier={[{ tier: 1, sent: 9, accepted: 4, pending: 3, cancelled: 2 }]}
       nextTier={2}
+      filled={false}
       onCloseTier={onCloseTier}
       {...overrides}
     />,
@@ -57,41 +58,41 @@ describe("TierLadder", () => {
     expect(screen.getByText("Casts in priority order for Berlin")).toBeInTheDocument();
   });
 
-  it("shows the opened tier's status line and a Close tier control", () => {
+  it("shows an open round's pending line and a Close control", () => {
     renderLadder();
-    expect(
-      screen.getByText("9 asked · 4 said yes · 3 waiting · 2 cancelled"),
-    ).toBeInTheDocument();
+    // Open (opened, not closed, date not filled): concise pending line, not the
+    // full sent/accepted/pending/cancelled breakdown.
+    expect(screen.getByText("3 pending")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Close this round" })).toBeInTheDocument();
   });
 
-  it("shows the next tier's match line and count badge, with no Close tier control", () => {
+  it("shows the next round's match line", () => {
     renderLadder();
     expect(screen.getByText("7 of 9 artists match")).toBeInTheDocument();
-    expect(screen.getByText("7")).toBeInTheDocument();
   });
 
-  it("shows a later tier's match line with its miss-skill detail", () => {
+  it("shows a later round's match line with its miss-skill detail", () => {
     renderLadder();
     expect(screen.getByText("4 of 11 artists match · 7 miss a required skill")).toBeInTheDocument();
   });
 
-  it("renders Close tier only for the opened tier, and clicking it fires onCloseTier with that tier", () => {
+  it("clicking Close fires onCloseTier with the open round's tier", () => {
     const { onCloseTier } = renderLadder();
-    const closeButtons = screen.getAllByRole("button", { name: "Close this round" });
-    expect(closeButtons).toHaveLength(1);
-
-    fireEvent.click(closeButtons[0]);
+    fireEvent.click(screen.getByRole("button", { name: "Close this round" }));
     expect(onCloseTier).toHaveBeenCalledTimes(1);
     expect(onCloseTier).toHaveBeenCalledWith(1);
   });
 
-  it("does not render Close tier for an opened tier that is already closed", () => {
-    renderLadder({ openedTiers: [{ tier: 1, closed: true }] });
-    expect(screen.queryByRole("button", { name: "Close this round" })).not.toBeInTheDocument();
-    // Still shows the status line for the closed tier.
-    expect(
-      screen.getByText("9 asked · 4 said yes · 3 waiting · 2 cancelled"),
-    ).toBeInTheDocument();
+  it("a closed round on an unfilled date reads Closed (purple), not Filled, and has no Close control", () => {
+    renderLadder({ openedTiers: [{ tier: 1, closed: true }], filled: false });
+    expect(screen.getByText("Closed · 4 accepted")).toBeInTheDocument();
+    expect(screen.queryByText(/^Filled/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Close/ })).not.toBeInTheDocument();
+  });
+
+  it("an opened round turns green (Filled) only once the date's parts are filled", () => {
+    renderLadder({ openedTiers: [{ tier: 1, closed: true }], filled: true });
+    expect(screen.getByText("Filled · 4 accepted")).toBeInTheDocument();
+    expect(screen.queryByText(/^Closed/)).not.toBeInTheDocument();
   });
 });
