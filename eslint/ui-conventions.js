@@ -79,7 +79,7 @@ export const uiConventions = {
         // Bare Tailwind side/corner/logical radius utility: rounded-t,
         // rounded-l, rounded-tl, rounded-s, rounded-es, and so on, with no
         // size suffix. This is the call-site half of the collision fixed by
-        // scripts/tailwindRadius.test.ts: the config guard keeps our OWN
+        // scripts/tailwindThemeCollisions.test.ts: the config guard keeps our OWN
         // scale from re-entering this namespace, but nothing stopped a
         // developer typing a Tailwind side utility directly and silently
         // rounding only one side. A *sized* form like rounded-l-md or
