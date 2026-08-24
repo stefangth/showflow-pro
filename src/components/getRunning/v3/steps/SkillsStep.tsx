@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { useCan } from "@/hooks/useCapabilities";
 import { SkillsTab } from "@/components/settings/skills/SkillsTab";
+import { ArtistSkillAssignList } from "@/components/getRunning/v3/steps/ArtistSkillAssignList";
 import { WizardFooterContext } from "@/components/getRunning/v3/WizardFooterContext";
 import { Button } from "@/components/ui/button";
 
@@ -39,6 +40,12 @@ export function SkillsStep({ orgId, onDone }: { orgId: string | null; onDone: ()
         </div>
         <p className="text-xs text-muted-foreground">{t("body.skills.sub")}</p>
       </div>
+
+      {/* The step's own block is "a part requires a skill no active artist holds", which the
+          catalog manager below cannot clear. The assign list comes FIRST so the blocking
+          reason and its fix are what the step opens on; SkillsTab stays mounted beneath for
+          catalog work (rename, archive, add). */}
+      <ArtistSkillAssignList orgId={orgId} canEdit={canEdit} />
 
       {orgId ? <SkillsTab orgId={orgId} /> : null}
 

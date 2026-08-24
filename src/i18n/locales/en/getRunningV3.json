@@ -324,14 +324,33 @@
       "heading": "Skills for your parts",
       "sub": "Add the skills your parts need, then set them on your artists.",
       "continue": "Continue",
-      "readOnly": "Managing skills needs the manage skills right, which this account does not have."
+      "readOnly": "Managing skills needs the manage skills right, which this account does not have.",
+      "assignHeading": "Set skills on your artists",
+      "assignSub": "Give every artist the skills they can actually cover. A part can only be filled by an artist who holds its skills.",
+      "gapLine": "is required by {{productions}}, and no artist holds it.",
+      "gapLineUnknown": "is required by a production, and no artist holds it.",
+      "gapReadError": "We could not check which skills your parts still need. Reload the page and try again.",
+      "artistReadError": "We could not load your artists, so we cannot show who holds what. Reload the page and try again.",
+      "assignError": "That change did not save. Try again.",
+      "noCatalog": "No skills in the catalog yet. Add one below, then set it on your artists.",
+      "noArtists": "No active artists yet. Add your artists first, then set their skills.",
+      "noArtistsLink": "Go to artists"
     },
     "source": {
       "heading": "Where do your dates come from",
       "sub": "Pick one. You can add more later.",
-      "airtable": { "title": "Airtable", "desc": "Sync dates from an Airtable base." },
-      "sheet": { "title": "Google Sheet", "desc": "Import dates from a published sheet." },
-      "manual": { "title": "By hand", "desc": "Add productions and dates yourself." },
+      "airtable": {
+        "title": "Airtable",
+        "desc": "Sync dates from an Airtable base."
+      },
+      "sheet": {
+        "title": "Google Sheet",
+        "desc": "Import dates from a published sheet."
+      },
+      "manual": {
+        "title": "By hand",
+        "desc": "Add productions and dates yourself."
+      },
       "continue": "Continue",
       "readOnly": "Ask an admin to choose a source."
     },

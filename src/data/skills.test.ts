@@ -3,7 +3,7 @@ import { createFakeSupabase } from "@/test/supabaseFake";
 import { asSupabase } from "@/test/castHelpers";
 import {
   fetchSkills, fetchSkillCatalog, renameSkill, archiveSkill, restoreSkill,
-  deleteSkill, fetchUpcomingDateCountsBySkill, fetchSkillEligibilityGaps,
+  deleteSkill, fetchUpcomingDateCountsBySkill, fetchSkillEligibilityGaps, setArtistSkills,
 } from "./skills";
 
 describe("fetchSkills", () => {
@@ -104,14 +104,34 @@ describe("fetchUpcomingDateCountsBySkill", () => {
 });
 
 describe("fetchSkillEligibilityGaps", () => {
-  it("returns skills required by a part that no active artist holds", async () => {
+  it("returns skills required by a part that no active artist holds, naming the productions", async () => {
     const client = createFakeSupabase({
-      show_required_skills: { data: [{ skill_id: "sk-1" }, { skill_id: "sk-2" }], error: null },
+      show_required_skills: {
+        data: [
+          { skill_id: "sk-1", show: { program: "Winter Gala" } },
+          { skill_id: "sk-1", show: { program: "Autumn Revue" } },
+          { skill_id: "sk-2", show: { program: "Winter Gala" } },
+        ],
+        error: null,
+      },
       artist_skills: { data: [{ skill_id: "sk-2" }], error: null },
       skills: { data: [{ id: "sk-1", name: "Lead Vocals" }, { id: "sk-2", name: "Piano" }], error: null },
     });
     const gaps = await fetchSkillEligibilityGaps(asSupabase(client), "org-1");
-    expect(gaps).toEqual([{ skillId: "sk-1", name: "Lead Vocals" }]);
+    // Productions are deduped and sorted, so the callout copy reads the same on every render.
+    expect(gaps).toEqual([{ skillId: "sk-1", name: "Lead Vocals", productions: ["Autumn Revue", "Winter Gala"] }]);
+  });
+
+  it("reports a gap with no production names when the requiring show has no program", async () => {
+    const client = createFakeSupabase({
+      show_required_skills: { data: [{ skill_id: "sk-1", show: { program: null } }], error: null },
+      artist_skills: { data: [], error: null },
+      skills: { data: [{ id: "sk-1", name: "Lead Vocals" }], error: null },
+    });
+    // shows.program is nullable, so the gap must still surface, just without a name to blame.
+    expect(await fetchSkillEligibilityGaps(asSupabase(client), "org-1")).toEqual([
+      { skillId: "sk-1", name: "Lead Vocals", productions: [] },
+    ]);
   });
 
   it("returns no gaps when no part requires a skill", async () => {
@@ -121,5 +141,27 @@ describe("fetchSkillEligibilityGaps", () => {
       skills: { data: [], error: null },
     });
     expect(await fetchSkillEligibilityGaps(asSupabase(client), "org-1")).toEqual([]);
+  });
+});
+
+describe("setArtistSkills", () => {
+  it("inserts the added rows with the org id and deletes only the removed skills", async () => {
+    const client = createFakeSupabase({ artist_skills: { data: [], error: null } });
+    await setArtistSkills(asSupabase(client), {
+      artistId: "a1", orgId: "org-1", add: ["sk-1", "sk-2"], remove: ["sk-9"],
+    });
+    const calls = client.calls.filter((c) => c.table === "artist_skills");
+    expect(calls.find((c) => c.method === "insert")?.args[0]).toEqual([
+      { artist_id: "a1", skill_id: "sk-1", org_id: "org-1" },
+      { artist_id: "a1", skill_id: "sk-2", org_id: "org-1" },
+    ]);
+    expect(calls.some((c) => c.method === "delete")).toBe(true);
+    expect(calls.find((c) => c.method === "in")?.args).toEqual(["skill_id", ["sk-9"]]);
+  });
+
+  it("writes nothing when both lists are empty", async () => {
+    const client = createFakeSupabase({ artist_skills: { data: [], error: null } });
+    await setArtistSkills(asSupabase(client), { artistId: "a1", orgId: "org-1", add: [], remove: [] });
+    expect(client.calls.filter((c) => c.table === "artist_skills")).toHaveLength(0);
   });
 });

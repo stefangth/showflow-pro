@@ -20,6 +20,7 @@ import { useOrgMembers } from '@/hooks/useOrgMembers';
 import { usePendingInvitedArtists } from '@/hooks/usePendingInvitedArtists';
 import { artistAccountState } from '@/lib/artistAccount';
 import { inviteArtistToApp, resendInvitation, fetchOrgInvitations } from '@/data/invitations';
+import { setArtistSkills } from '@/data/skills';
 import { LinkedAccountPanel } from './LinkedAccountPanel';
 import { ROUTES } from '@/config/app.config';
 import type { Artist, ArtistStatus } from '@/types';
@@ -173,20 +174,14 @@ export function ArtistProfileSheet({ artistId, open, onOpenChange }: Props) {
       const toAdd = selectedSkills.filter((s) => !initial.has(s.id));
       const removeIds = [...initial].filter((id) => !nextIds.has(id));
 
-      if (toAdd.length) {
-        const { error } = await supabase
-          .from('artist_skills')
-          .insert(toAdd.map((s) => ({ artist_id: artistId!, skill_id: s.id, org_id: currentOrg.id })));
-        if (error) throw error;
-      }
-      if (removeIds.length) {
-        const { error } = await supabase
-          .from('artist_skills')
-          .delete()
-          .eq('artist_id', artistId!)
-          .in('skill_id', removeIds);
-        if (error) throw error;
-      }
+      // Shared with the get-running skills panel (src/data/skills.ts) so the join's
+      // insert shape, including the org_id RLS checks, exists in exactly one place.
+      await setArtistSkills(supabase, {
+        artistId: artistId!,
+        orgId: currentOrg.id,
+        add: toAdd.map((s) => s.id),
+        remove: removeIds,
+      });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['artists'] });
