@@ -72,6 +72,12 @@ reintroduced.
 - The radius scale is renamed from single letters to whole words, and every card and
   input that silently rendered the wrong corners now renders the intended radius.
   `scripts/tailwindThemeCollisions.test.ts` fails the build if a key ever re-enters a
-  Tailwind-owned namespace again, for any custom scale this project extends, not only
-  `borderRadius`. `eslint/ui-conventions.js` fails the build on a bare Tailwind side
+  Tailwind-owned namespace again. It guards four scales, not only `borderRadius`:
+  `borderRadius`, `fontSize`, `boxShadow` and `colors`, resolved so that both extend-mode
+  and replace-mode keys are covered, and it also flags a `fontSize` or `boxShadow` key
+  named after a colour because `text-*` and `shadow-*` render colours too. The other
+  extended scales (`fontFamily`, `screens`, `keyframes`, `animation`) stay unguarded: their
+  namespaces have no static or directional siblings to collide with. A same-family override
+  such as `rounded-lg` or `shadow-inner` emits one rule and is never flagged.
+  `eslint/ui-conventions.js` fails the build on a bare Tailwind side
   utility at a call site, closing the gap the config guard alone cannot reach.

@@ -34,8 +34,14 @@ The shadcn aliases `rounded-sm`, `rounded-md` and `rounded-lg` are retired.
 **[ci]** Never name a radius key with a single letter. Tailwind owns the suffixes
 `t r b l tl tr br bl s e ss se es ee` for its side, corner and logical-property
 utilities, and a key that reuses one silently loses the cascade on those corners.
-`scripts/tailwindThemeCollisions.test.ts` fails the build if a key re-enters that namespace,
-for `borderRadius` and every other custom theme scale this project extends.
+`scripts/tailwindThemeCollisions.test.ts` fails the build if a key re-enters that namespace.
+It guards four scales: `borderRadius`, `fontSize`, `boxShadow` and `colors`, in both extend
+and replace mode. It also flags a `fontSize` or `boxShadow` key named after a colour, since
+`text-*` and `shadow-*` render colours too. `fontFamily`, `screens`, `keyframes` and
+`animation` are extended but not guarded: those namespaces have no static or directional
+siblings for a key to collide with. Redefining a key of Tailwind's own scale for the same
+utility (`rounded-lg`, `shadow-inner`) is a same-family override, not a collision, and is
+deliberately not flagged.
 
 **[review]** Radii nest inward. A card at 10 holds a row or button at 8 holds a chip at 4.
 Never reversed, never tied. A card inside a card steps down to 8; it does not repeat 10.
