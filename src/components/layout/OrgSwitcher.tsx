@@ -32,7 +32,16 @@ export function OrgSwitcher({ collapsed }: { collapsed?: boolean }) {
           size="sm"
           aria-label="Switch organization"
           className={cn(
+            // This control sits on the sidebar, so it has to wear sidebar tokens.
+            // `secondary` ships the page-card surface (--card / --border / elev1),
+            // which diverges from --sidebar-background in BOTH modes and in
+            // opposite directions: lighter in light, darker in dark. Clearing the
+            // fill lets it inherit the sidebar in every theme. The hairline border
+            // stays, so the control keeps the affordance a text label needs
+            // (see ADR 0012 D2 in components/ui/button.tsx).
             'w-full justify-between gap-2 px-2.5 py-2 h-auto text-control font-medium text-sidebar-foreground/80',
+            'bg-transparent border-sidebar-border shadow-none',
+            'hover:bg-hover-tint hover:text-sidebar-foreground active:bg-hover-tint',
             collapsed && 'justify-center px-0',
           )}
         >

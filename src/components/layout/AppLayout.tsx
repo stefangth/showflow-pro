@@ -259,7 +259,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
             </IconTooltip>
           </div>
         ) : (
-          <div className="rounded-l border border-sidebar-border bg-background/70 px-2.5 py-2 shadow-sm">
+          <div className="rounded-l border border-sidebar-border px-2.5 py-2">
             <div className="flex items-center gap-2.5">
               <Avatar className="h-8 w-8 shrink-0">
                 <AvatarFallback seed={user?.email ?? ''}>{initials}</AvatarFallback>
