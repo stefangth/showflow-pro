@@ -83,7 +83,7 @@
       "nameRequired": "Gib der Stadt einen Namen.",
       "airtableHint": "Diese Städtenamen kamen aus Airtable und haben hier noch keine Stadt. Füge eine hinzu, um sie zu verknüpfen.",
       "linkLabel": "{{name}} aus Airtable hinzufügen",
-      "noOrg": "Keine aktive Organisation"
+      "emptyNoOrg": "Noch keine Städte."
     },
     "saving": "Speichert…",
     "save": "Speichern",
@@ -100,6 +100,7 @@
       "noActiveOrg": "Keine aktive Organisation",
       "updated": "Produktion aktualisiert",
       "created": "Produktion erstellt"
-    }
+    },
+    "skillsLoadFailed": "Wir konnten deine Skills nicht laden, daher fehlen in dieser Liste womöglich welche. Lade die Seite neu und versuche es erneut."
   }
 }

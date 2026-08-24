@@ -210,6 +210,9 @@ describe("HireOrdersTab", () => {
 
       // Guard against the alert becoming a permanent state: the happy path still works.
       expect(await screen.findByLabelText("Legal name")).toBeInTheDocument();
+      // Save mirrors `letterheadDone`: enabled once the legal name is non-blank, which is
+      // the state a recovered read leaves an admin able to reach.
+      fireEvent.change(screen.getByLabelText("Legal name"), { target: { value: "Aurora Productions GmbH" } });
       expect(screen.getByRole("button", { name: "Save letterhead" })).toBeEnabled();
       expect(screen.queryByText(/could not load/i)).not.toBeInTheDocument();
     });
@@ -248,6 +251,7 @@ describe("HireOrdersTab", () => {
       renderTab({ readOnly: false });
 
       expect(await screen.findByLabelText("Legal name")).toBeEnabled();
+      fireEvent.change(screen.getByLabelText("Legal name"), { target: { value: "Aurora Productions GmbH" } });
       expect(screen.getByRole("button", { name: "Save letterhead" })).toBeEnabled();
       expect(screen.getByRole("radio", { name: /outside showflow/i })).toBeEnabled();
     });

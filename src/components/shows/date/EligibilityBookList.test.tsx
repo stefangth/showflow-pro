@@ -224,6 +224,28 @@ describe("EligibilityBookList", () => {
     expect(screen.queryByText("Only ask artists with")).not.toBeInTheDocument();
   });
 
+  /**
+   * "qualify and are free" must not count someone already booked on this date. The list
+   * itself still carries booked artists (they render with a Booked badge and no Book
+   * button), so a fully booked date claimed there were people left to ask. The branch's own
+   * last commit fixed exactly this on the rail; this is its nearest neighbour.
+   */
+  it("does not count already-booked artists as free", () => {
+    renderWithProviders(
+      <EligibilityBookList
+        artists={[{ id: "a1", name: "Marta" }, { id: "a2", name: "Jonas" }, { id: "a3", name: "Lena" }]}
+        bookedArtistIds={new Set(["a1", "a2"])}
+        onBook={vi.fn()}
+        booking={false}
+        requiredSkillNames={[]}
+        totalArtistCount={3}
+      />,
+    );
+    expect(
+      screen.getByText("This date has no skill requirements · 1 of 3 artists qualify and are free."),
+    ).toBeInTheDocument();
+  });
+
   it("states there are no skill requirements when the date requires none", () => {
     renderWithProviders(
       <EligibilityBookList
