@@ -4,29 +4,22 @@ What's new in ShowFlow, newest first.
 
 ## 1.18.0 — August 24, 2026
 
-*Setup that tells you the truth, and skills and cities you can add where you need them*
+*Skills and cities you can add where you need them, and setup readiness you can trust*
 
 ### New
 - **Add a skill while you write a casting breakdown** — When you set up a production's parts, you can create a skill right there and mark it required in one step, instead of leaving to add it on an artist first. Skills you already have show up alongside it.
 - **Add cities while you set up a production** — The production form now lists the cities you play and lets you add a new one on the spot, so a city is ready by the time you schedule a date. If your dates come from Airtable, city names it found that are not linked yet appear as one click suggestions.
-- **Give your artists their skills from the setup step** — The skills step now lists your artists and lets you set each one's skills in place, and it names any skill a part requires that nobody holds yet.
-- **Fix dates that have no city from the setup step** — The step that asks for a city on every date now lists the dates that are missing one and lets you pick a city for each, instead of only handling names brought in from Airtable.
 
 ### Improved
-- **Setup progress only counts work you have done** — A step no longer turns green just because there is nothing to check yet. A brand new workspace starts at zero, "every date has a city" is not treated as done when you have no dates, and a cast with no members no longer counts as covering a city.
-- **Adding your first date no longer sends progress backwards** — Progress used to drop when you added a date, because steps that had been counted as done suddenly had something real to check.
-- **Setup says when a phase is finished** — Completing the last step of a phase now confirms it and names what is next, instead of quietly closing.
-- **Steps move on the same way however they finish** — A step that completes on its own from your data now advances just like one you saved by hand.
-- **Reopen a finished setup phase** — Clicking anywhere on a finished phase reopens it, so you can go back and review what you set up.
+- **An empty cast no longer counts as ready** — A cast with nobody in it used to satisfy the coverage check for a city, so setup could look finished while no one could actually be asked. It now counts as uncovered until the cast has members.
 - **Example panels are labelled** — The illustrations that explain a page now carry an Example tag, so the sample names in them are never mistaken for your own data.
+- **Easier to read in dark mode** — The sidebar section labels and the ShowFlow wordmark were too dim against the dark background.
 
 ### Fixed
-- **Setup is readable in dark mode** — The setup wizard's header and its selected step were near invisible in dark mode. The sidebar section labels and the ShowFlow wordmark are also easier to read.
-- **Setup works on a narrow screen** — The wizard's three columns overlapped into unreadable text below a certain width. They now stack.
-- **A step that says it blocks you can now unblock you** — The city step used to report that it was holding up your first ask while telling you there was nothing to resolve.
 - **Confirming your letterhead saves it** — Confirm used to be available with the fields empty, and appeared to work while saving nothing. It now waits for your legal name, and no longer claims your details were filled in for you.
 - **A warning when a date is in the past** — Picking a past date for a show now says so, while still letting you save it if you are recording something that already happened.
-- **Wording that matches what you are looking at** — The countersignature step describes how the artist signs, rather than who signs for you. A date with nobody eligible no longer says anyone can be asked, and now tells you how many artists can. Where a city list is empty, the date form points you at where cities are managed.
+- **A date with nobody free no longer says anyone can be asked** — The date view now tells you how many artists can be asked, and says plainly when the answer is nobody. The count of artists who qualify and are free no longer includes people already booked on that date.
+- **Wording that matches what you are looking at** — The countersignature step describes how the artist signs, rather than who signs on your behalf. Where your city list is empty, the date form points you at where cities are managed.
 
 ## 1.17.2 — August 22, 2026
 

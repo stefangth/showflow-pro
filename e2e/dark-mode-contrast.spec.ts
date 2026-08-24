@@ -20,7 +20,31 @@ import AxeBuilder from "@axe-core/playwright";
 import type { Page } from "@playwright/test";
 import { loginAsAndAwaitDashboard } from "./helpers/auth";
 import { seedConsent } from "./helpers/consent";
+import { adminClient } from "./helpers/supabase";
 import { TEST_ADMIN_EMAIL, TEST_ADMIN_PASSWORD } from "./global-setup";
+
+const BOOTSTRAP_ORG_ID = "00000000-0000-0000-0000-00000000b007";
+const V3_KEY = "getrunning_v3_enabled";
+
+/**
+ * The v3 board is gated on the build-time `VITE_GETRUNNING_V3`, which is set only in
+ * `.env.development` and is therefore OFF in the production build CI serves. Without
+ * this, the suite renders the v1 board and none of the markup under test exists.
+ *
+ * `useGetRunningV3Enabled` prefers a per-org `app_settings` row over the build flag, so
+ * seeding that row is the documented way to pin the board on. Removed again in
+ * `afterAll` so the org is left as it was found, matching `hire-orders.spec.ts`.
+ */
+async function setV3Board(enabled: boolean): Promise<void> {
+  const { error } = await adminClient()
+    .from("app_settings")
+    .upsert({ org_id: BOOTSTRAP_ORG_ID, key: V3_KEY, value: enabled }, { onConflict: "org_id,key" });
+  if (error) throw error;
+}
+
+async function clearV3Board(): Promise<void> {
+  await adminClient().from("app_settings").delete().eq("org_id", BOOTSTRAP_ORG_ID).eq("key", V3_KEY);
+}
 
 // Force next-themes to dark before the app mounts. next-themes reads this
 // localStorage key (`attribute="class"`, default storageKey `theme`) on mount and
@@ -65,6 +89,14 @@ async function expectNoContrastViolations(page: Page): Promise<void> {
 }
 
 test.describe("dark mode contrast", () => {
+  test.beforeAll(async () => {
+    await setV3Board(true);
+  });
+
+  test.afterAll(async () => {
+    await clearV3Board();
+  });
+
   test.beforeEach(async ({ page }) => {
     await seedConsent(page);
     await forceDarkTheme(page);
@@ -73,11 +105,19 @@ test.describe("dark mode contrast", () => {
 
   test("the Get running board and its expanded wizard pass color contrast", async ({ page }) => {
     await page.goto("/get-running");
-    // Open a phase so the WizardShell (the component that carried the original
-    // bug) is actually mounted and included in the audit. The hero card's
-    // primary button is always present while the board is not complete.
-    await page.getByRole("button", { name: /open this step/i }).click();
-    await expect(page.getByRole("button", { name: /collapse/i }).first()).toBeVisible();
+    // Prove we are on the v3 board before auditing it: the v1 board renders entirely
+    // different markup, and asserting on it would silently audit the wrong component
+    // while still passing. This heading only exists on v3.
+    await expect(page.getByRole("heading", { name: /^get running$/i })).toBeVisible();
+    // Open a phase so the WizardShell (the component that carried the original bug) is
+    // actually mounted and included in the audit. The hero card's primary action is
+    // present while the board is not complete; if the board is complete there is no
+    // wizard to audit, so fall through to auditing the retired board as rendered.
+    const openStep = page.getByRole("button", { name: /open this step/i });
+    if (await openStep.isVisible().catch(() => false)) {
+      await openStep.click();
+      await expect(page.getByRole("button", { name: /collapse/i }).first()).toBeVisible();
+    }
     await expectNoContrastViolations(page);
   });
 
