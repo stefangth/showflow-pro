@@ -6,11 +6,9 @@ What's new in ShowFlow, newest first.
 
 *Skills and cities you can add where you need them, setup readiness you can trust, and clearer wording throughout*
 
-### New
+### Improved
 - **Add a skill while you write a casting breakdown** — When you set up a production's parts, you can create a skill right there and mark it required in one step, instead of leaving to add it on an artist first. Skills you already have show up alongside it.
 - **Add cities while you set up a production** — The production form now lists the cities you play and lets you add a new one on the spot, so a city is ready by the time you schedule a date. If your dates come from Airtable, city names it found that are not linked yet appear as one click suggestions.
-
-### Improved
 - **An empty cast no longer counts as ready** — A cast with nobody in it used to satisfy the coverage check for a city, so setup could look finished while no one could actually be asked. It now counts as uncovered until the cast has members.
 - **Example panels are labelled** — The illustrations that explain a page now carry an Example tag, so the sample names in them are never mistaken for your own data.
 - **Easier to read in dark mode** — The sidebar section labels and the ShowFlow wordmark were too dim against the dark background.
