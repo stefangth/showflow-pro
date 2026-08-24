@@ -265,7 +265,11 @@
     "statusCounts": "{{sent}} asked · {{accepted}} said yes · {{pending}} waiting · {{cancelled}} cancelled",
     "matchCounts": "{{matchCount}} of {{castTotal}} artists match{{missDetail}}",
     "missDetail": " · {{count}} miss a required skill",
-    "closeTier": "Close this round"
+    "stateFilled": "Filled · {{accepted}} accepted",
+    "stateOpen": "{{pending}} pending",
+    "stateClosed": "Closed · {{accepted}} accepted",
+    "closeTier": "Close this round",
+    "closeTierN": "Close round {{tier}}"
   },
   "tierTimeline": {
     "directBooking": "Direct booking: producers book from who can be asked",

@@ -1074,6 +1074,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager, ini
                                 cityName={showDate.city?.name ?? ''}
                                 statusByTier={statusByTier}
                                 nextTier={nextTier}
+                                dateFilled={showDate.status === 'fully_filled'}
                                 nextTierTarget={nextTierTarget}
                                 nextTierCounts={nextTierCounts}
                                 requiredSkillNames={skillChips}
