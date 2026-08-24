@@ -169,11 +169,11 @@ export function WizardShell({
           The rails are `minmax` rather than fixed so they give ground before the editor
           does. When stacked, the rail/guide switch their side borders for bottom/top
           borders so the seams still read. */}
-      <div className="grid grid-cols-1 items-start gap-0 @2xl:grid-cols-[minmax(180px,216px)_minmax(0,1fr)] @5xl:grid-cols-[minmax(180px,216px)_minmax(0,1fr)_minmax(240px,268px)]">
+      <div className="grid grid-cols-1 items-stretch gap-0 @2xl:grid-cols-[minmax(180px,216px)_minmax(0,1fr)] @5xl:grid-cols-[minmax(180px,216px)_minmax(0,1fr)_minmax(240px,268px)]">
         {/* Left: step rail */}
         <nav
           aria-label={t("wizard.stepsNav")}
-          className="flex flex-col gap-0.5 border-b border-border p-3 @2xl:border-b-0 @2xl:border-r"
+          className="flex flex-col gap-0.5 border-b border-border bg-background p-3 @2xl:border-b-0 @2xl:border-r"
         >
           {steps.map((step) => {
             const isActive = step.key === activeKey;
@@ -232,7 +232,7 @@ export function WizardShell({
 
         {/* Right: how this works guide */}
         {activeStep && (
-          <aside className="flex flex-col gap-2 border-t border-border p-4 @2xl:col-span-2 @5xl:col-span-1 @5xl:border-t-0 @5xl:border-l">
+          <aside className="flex flex-col gap-2 border-t border-border bg-background p-4 @2xl:col-span-2 @5xl:col-span-1 @5xl:border-t-0 @5xl:border-l">
             <Eyebrow>{t("wizard.howThisWorks")}</Eyebrow>
             <div className="text-control font-semibold text-foreground">
               {t(`guide.${activeStep.key}.title`)}
@@ -265,7 +265,7 @@ export function WizardShell({
       {/* Footer */}
       <div
         data-testid="wizard-footer"
-        className="flex flex-wrap items-center gap-2.5 border-t border-border bg-well-tint px-4 py-3.5"
+        className="flex flex-wrap items-center gap-2.5 border-t border-border bg-background px-4 py-3.5"
       >
         {/* Same "step N of M" fact as the header counter, worded as a full sentence here
             (distinct visible text from the header's bare "N / M") but with the numbers
