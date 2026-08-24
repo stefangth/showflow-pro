@@ -60,14 +60,14 @@ import { SETTINGS_TAB_PARAMS } from "@/lib/settingsTabs";
 import SettingsPage from "./SettingsPage";
 
 // "get-running"'s trigger/content is gated on `isSuperAdmin || ((isAdmin || isProducer) &&
-// v3Enabled)` (task B3), unlike every other value in SETTINGS_TAB_PARAMS, which is a plain
-// role gate that holds for the whole file under DEFAULT_AUTH. The two exhaustiveness sweeps
-// below render every param under a FIXED admin/producer auth with v3 left at its default
-// (disabled, matching production), so "get-running" would have no trigger there and the
-// "exactly one selected tab" assertion would see zero. Excluded here and covered instead by
-// its own dedicated deep-link tests in the "SettingsPage get-running mirror tab" describe
-// block below, which exercise both branches of the OR (super-admin, and admin/producer with
-// the org override on) that this shared sweep can't express for a single param value.
+// v3Enabled)` (task B3), and `v3Enabled` resolves through an async `app_settings` query,
+// unlike every other value in SETTINGS_TAB_PARAMS whose plain role gate holds synchronously
+// under DEFAULT_AUTH. v3 is the app default now, so its trigger does render under
+// admin/producer auth, but only once that async query settles; the exhaustiveness sweeps
+// below assert on triggers synchronously, so "get-running" is excluded here to avoid racing
+// that resolution. It is covered instead by its own dedicated tests in the "SettingsPage
+// get-running mirror tab" describe block below, which seed the override explicitly (both
+// on and off) and await the trigger.
 const WIRED_SETTINGS_TAB_PARAMS = SETTINGS_TAB_PARAMS.filter((tab) => tab !== "get-running");
 
 // Every render wraps in a MemoryRouter: the page reads `?tab=` through useSearchParams and
@@ -483,12 +483,16 @@ describe("SettingsPage get-running mirror tab (wireflow v3 phase 5)", () => {
   }
 
   it("shows a super-admin the trigger even with v3 disabled for the org", async () => {
+    seedV3Override("org-1", false);
     vi.mocked(useAuth).mockReturnValue({ ...DEFAULT_AUTH, isSuperAdmin: true } as never);
     renderWithProviders(<MemoryRouter><SettingsPage /></MemoryRouter>);
     expect(await screen.findByRole("tab", { name: /^get running$/i })).toBeInTheDocument();
   });
 
   it("hides the trigger from a plain admin while v3 is disabled for the org", async () => {
+    // v3 is the app default now, so the trigger only stays hidden from a plain admin when
+    // the org has an explicit false override; seed it rather than relying on the default.
+    seedV3Override("org-1", false);
     vi.mocked(useAuth).mockReturnValue(DEFAULT_AUTH as never);
     renderWithProviders(<MemoryRouter><SettingsPage /></MemoryRouter>);
     await screen.findByRole("tab", { name: /how this org works/i });
@@ -518,8 +522,8 @@ describe("SettingsPage get-running mirror tab (wireflow v3 phase 5)", () => {
     expect(await screen.findByRole("tab", { name: /^get running$/i })).toBeInTheDocument();
     unmount();
 
-    for (const k of Object.keys(client)) delete client[k];
-    Object.assign(client, createFakeSupabase(BASE_SEED));
+    // v3 is the app default now, so the "off" half needs an explicit false override.
+    seedV3Override("org-1", false);
     vi.mocked(useAuth).mockReturnValue(producerAuth as never);
     renderWithProviders(<MemoryRouter><SettingsPage /></MemoryRouter>);
     await screen.findByRole("tab", { name: /how this org works/i });
@@ -555,6 +559,7 @@ describe("SettingsPage get-running mirror tab (wireflow v3 phase 5)", () => {
   // falls back to the role default when it's off, so the page falls back to its real "how
   // this org works" content instead of going blank.
   it("falls back to the default section (not a blank pane) at ?tab=get-running for a plain admin while v3 is off for the org", async () => {
+    seedV3Override("org-1", false);
     vi.mocked(useAuth).mockReturnValue(DEFAULT_AUTH as never);
     renderWithProviders(
       <MemoryRouter initialEntries={["/settings?tab=get-running"]}><SettingsPage /></MemoryRouter>,

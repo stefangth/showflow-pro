@@ -1,15 +1,15 @@
 import { useMutation, useQuery, useQueryClient, type UseMutationResult } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/features/auth/AuthContext";
-import { GETRUNNING_V3 } from "@/config/flags";
 import { fetchGetRunningV3Enabled, setGetRunningV3Enabled } from "@/data/getRunningFlag";
 
 /**
  * Effective "is the v3 Get running board live for this org" runtime flag: the org's
- * `getrunning_v3_enabled` app_settings override if present, else the build-time
- * `GETRUNNING_V3` default. `enabled` defaults to the build flag while the query is
- * loading (or when there is no active org), so first paint always matches the build
- * default and never flashes the wrong board.
+ * `getrunning_v3_enabled` app_settings override if present, else `true`. Wireflow v3 is
+ * now the app default (the build-time `GETRUNNING_V3` env fork was retired from the
+ * runtime path); `enabled` therefore defaults to `true` while the query is loading (or
+ * when there is no active org), so first paint shows the v3 board and never flashes the
+ * v1 one. An org falls back to v1 only via an explicit `false` override.
  */
 export function useGetRunningV3Enabled(): { enabled: boolean; isLoading: boolean } {
   const { currentOrg } = useAuth();
@@ -19,7 +19,7 @@ export function useGetRunningV3Enabled(): { enabled: boolean; isLoading: boolean
     enabled: !!orgId,
     queryFn: () => fetchGetRunningV3Enabled(supabase, orgId),
   });
-  return { enabled: q.data ?? GETRUNNING_V3, isLoading: q.isLoading };
+  return { enabled: q.data ?? true, isLoading: q.isLoading };
 }
 
 /**

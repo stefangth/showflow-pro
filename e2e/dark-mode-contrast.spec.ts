@@ -27,13 +27,12 @@ const BOOTSTRAP_ORG_ID = "00000000-0000-0000-0000-00000000b007";
 const V3_KEY = "getrunning_v3_enabled";
 
 /**
- * The v3 board is gated on the build-time `VITE_GETRUNNING_V3`, which is set only in
- * `.env.development` and is therefore OFF in the production build CI serves. Without
- * this, the suite renders the v1 board and none of the markup under test exists.
- *
- * `useGetRunningV3Enabled` prefers a per-org `app_settings` row over the build flag, so
- * seeding that row is the documented way to pin the board on. Removed again in
- * `afterAll` so the org is left as it was found, matching `hire-orders.spec.ts`.
+ * The v3 board is the app default now, so it renders without any seeding. This still
+ * writes an explicit `getrunning_v3_enabled = true` row so the board is pinned on
+ * deterministically regardless of any org override present in the fixture, and to keep
+ * the test self-documenting. `useGetRunningV3Enabled` prefers a per-org `app_settings`
+ * row over the default. Removed again in `afterAll` so the org is left as it was found,
+ * matching `hire-orders.spec.ts`.
  */
 async function setV3Board(enabled: boolean): Promise<void> {
   const { error } = await adminClient()

@@ -35,6 +35,10 @@ Object.assign(client, createFakeSupabase({
   cast_members: { data: [], error: null },
   "rpc:list_pending_invited_artists": { data: ["a-invited"], error: null },
   org_invitations: { data: [{ id: "inv-1", artist_id: "a-invited", email: "ivy@x.com" }], error: null },
+  // v3 is the app default now, so pin this org to the v1 board with an explicit false
+  // override: these tests cover capability gates and invitations, not the v3 finish-setup
+  // affordance, and its <Link> would otherwise need a router these router-free renders lack.
+  app_settings: { data: [{ org_id: "o1", key: "getrunning_v3_enabled", value: false }], error: null },
 }));
 
 import { useCan } from "@/hooks/useCapabilities";
@@ -46,7 +50,7 @@ import ArtistsPage from "./ArtistsPage";
 describe("ArtistsPage — Part A capability gates", () => {
   beforeEach(() => { vi.clearAllMocks(); });
 
-  it("v3 disabled (default in test env): no finish-setup affordance in the action cluster", () => {
+  it("v3 disabled (explicit override): no finish-setup affordance in the action cluster", () => {
     mockUseCan({ add_artists: true });
     renderWithProviders(<ArtistsPage />);
     expect(screen.queryByRole("link", { name: /finish setup/i })).not.toBeInTheDocument();

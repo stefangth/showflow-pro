@@ -29,7 +29,7 @@ describe("useGetRunningV3Enabled", () => {
     await waitFor(() => expect(result.current.enabled).toBe(true));
   });
 
-  it("falls back to the build default while there is no active org", async () => {
+  it("defaults to v3 on while there is no active org", async () => {
     seed({ app_settings: { data: [], error: null } });
 
     const { result } = renderHookWithProviders(() => useGetRunningV3Enabled(), {
@@ -37,9 +37,9 @@ describe("useGetRunningV3Enabled", () => {
     });
 
     // No org id: the query never fires (enabled: !!orgId), so isLoading stays false and
-    // `enabled` reports the build-time GETRUNNING_V3 default rather than hanging on "true".
+    // `enabled` reports the v3 default (v3 is the app default now) rather than hanging.
     await waitFor(() => expect(result.current.isLoading).toBe(false));
-    expect(result.current.enabled).toBe(false);
+    expect(result.current.enabled).toBe(true);
   });
 });
 

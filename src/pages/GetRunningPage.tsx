@@ -69,7 +69,7 @@ export default function GetRunningPage() {
   // viewer, who never renders either.
   const { data: adminNames } = useOrgAdminNames(currentOrg?.id, { enabled: role === "producer" });
   // Runtime "is v3 live for this org" flag (per-org app_settings override, super-admin
-  // toggled in Settings; falls back to the GETRUNNING_V3 build default). Called
+  // toggled in Settings; defaults to true now that v3 is the app default). Called
   // unconditionally alongside the other top-level hooks, above every early return below,
   // so hook order stays stable regardless of which branch this render takes.
   const { enabled: v3Enabled } = useGetRunningV3Enabled();
@@ -100,9 +100,9 @@ export default function GetRunningPage() {
     return <Navigate to={ROUTES.AVAILABILITY} replace />;
   }
 
-  // Wireflow v3 board when the org has it enabled (per-org app_settings override,
-  // super-admin-toggled in Settings; falls back to the GETRUNNING_V3 build default).
-  // Everything below is the v1 board, unchanged, for orgs still on v1.
+  // Wireflow v3 board is the default for every org now; everything below is the v1 board,
+  // retained unchanged and reached only when an org has an explicit
+  // `getrunning_v3_enabled = false` override (super-admin-toggled in Settings).
   if (v3Enabled) {
     return <GetRunningBoardV3 context="page" />;
   }
