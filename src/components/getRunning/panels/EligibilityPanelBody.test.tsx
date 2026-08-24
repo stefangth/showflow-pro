@@ -53,7 +53,9 @@ function seed() {
         ],
         error: null,
       },
-      cast_members: { data: [], error: null },
+      // Both casts have a member: an EMPTY cast cannot cover a (show, city) pair, so the
+      // picker greys those out and linking one would leave the gap standing.
+      cast_members: { data: [{ cast_id: "nord", org_id: "org-1" }, { cast_id: "sued", org_id: "org-1" }], error: null },
       // Empty on setShowCastPriority's existence select, so it falls straight to a
       // plain insert, no update-existing branch.
       show_cast_eligibility: { data: [], error: null },
@@ -161,7 +163,7 @@ describe("EligibilityPanelBody", () => {
           ],
           error: null,
         },
-        cast_members: { data: [], error: null },
+        cast_members: { data: [{ cast_id: "nord", org_id: "org-1" }, { cast_id: "sued", org_id: "org-1" }], error: null },
         show_cast_eligibility: { data: [], error: null },
       }),
     );
@@ -238,6 +240,61 @@ describe("EligibilityPanelBody", () => {
     // The pre-existing nullCityNote must NOT also render (it would say the same thing twice).
     expect(screen.queryByText(/Fix the date to include it/i)).not.toBeInTheDocument();
     // And the all-covered UnlocksNote reassurance is suppressed in this state too.
-    expect(screen.queryByText(/has a cast in the first group/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/has a first group with members/i)).not.toBeInTheDocument();
+  });
+
+  /**
+   * The gap surfaces correctly here (this panel uses the real `resolveCoverage`), but the
+   * reason it printed did not: "No cast in Hamburg yet" is false when a cast IS ranked first
+   * and merely has nobody in it. Worse, the picker happily offered another empty cast, whose
+   * link would write cleanly, toast "Cast linked", and leave the gap exactly where it was.
+   */
+  describe("a first-group cast with no members", () => {
+    const EMPTY_TIER1: LadderCoverageInputs = {
+      futurePairs: [{ showId: "show-1", cityId: "ham" }],
+      showPriorities: [],
+      cityPriorities: [{ cityId: "ham", castId: "nord", priority: 1 }],
+      nonEmptyCastIds: [],
+    };
+
+    it("says the ranked cast is empty rather than that no cast is ranked", async () => {
+      renderPanel(EMPTY_TIER1);
+      await screen.findByText("Carmen");
+
+      expect(screen.getByText(/ranked first in hamburg has no members/i)).toBeInTheDocument();
+      expect(screen.queryByText(/no cast in hamburg yet/i)).toBeNull();
+    });
+
+    it("will not offer an empty cast as the fix", async () => {
+      Object.assign(
+        client,
+        createFakeSupabase({
+          shows: { data: SHOWS, error: null },
+          show_dates: { data: [], error: null },
+          cities: { data: [{ id: "ham", name: "Hamburg", org_id: "org-1", airtable_city_key: null }], error: null },
+          casts: {
+            data: [
+              { id: "nord", name: "Nord Ensemble", org_id: "org-1" },
+              { id: "sued", name: "Süd Ensemble", org_id: "org-1" },
+            ],
+            error: null,
+          },
+          cast_members: { data: [{ cast_id: "nord", org_id: "org-1" }], error: null },
+          show_cast_eligibility: { data: [], error: null },
+        }),
+      );
+      renderPanel({
+        futurePairs: [{ showId: "show-1", cityId: "ham" }],
+        showPriorities: [],
+        cityPriorities: [],
+        nonEmptyCastIds: ["nord"],
+      });
+
+      fireEvent.click(await screen.findByRole("button", { name: /link a cast/i }));
+
+      expect(await screen.findByRole("button", { name: /süd ensemble/i })).toBeDisabled();
+      expect(screen.getByRole("button", { name: /nord ensemble/i })).toBeEnabled();
+      expect(screen.getByText(/casts with no members are greyed out/i)).toBeInTheDocument();
+    });
   });
 });
