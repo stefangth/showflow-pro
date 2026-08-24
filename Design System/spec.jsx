@@ -250,15 +250,16 @@ function SpacingDemo() {
 }
 
 // ── Radius demo ────────────────────────────────────────────────────────────
+// This file is retained brand history per ADR 0012. docs/ui-conventions.md is
+// the working spec; the table below matches it as of the 2026-08-24 rename.
 function RadiusDemo() {
   const items = [
-    [4,  '--radius-xs',  'Tags, inline chips'],
-    [6,  '--radius-s',   'Inputs, status dots'],
-    [8,  '--radius-m',   'Buttons, cards'],
-    [10, '--radius-l',   'Section cards'],
-    [14, '--radius-xl',  'Hero cards, sheets'],
+    [4,  '--radius-xs',  'Tags, chips'],
+    [6,  '--radius-s',   'Inputs'],
+    [8,  '--radius-m',   'Buttons, rows inside a card'],
+    [10, '--radius-l',   'Every card'],
     [20, '--radius-xxl', 'App icons'],
-    [999,'--radius-pill','Pills, capsules'],
+    [999,'--radius-pill','Meters, capsules'],
   ];
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 12 }}>
