@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { Check, MoreHorizontal } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -215,7 +215,9 @@ export function TierLadder({
   const showPeek = noNextCast && !filled;
 
   return (
-    <Card elevation={2}>
+    // overflow-hidden so the full-bleed strip's accent bars and open-state tint clip
+    // to the card's rounded corners.
+    <Card elevation={2} className="overflow-hidden">
       <CardHeader className="space-y-1.5">
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1.5">
@@ -236,11 +238,13 @@ export function TierLadder({
           )}
         </div>
       </CardHeader>
-      <CardContent className="space-y-3">
-        <ul
-          aria-label={t("tierLadder.ariaLabel")}
-          className="flex flex-col overflow-hidden rounded-card border border-border sm:flex-row"
-        >
+      {/* The rounds run edge to edge as regions of the card, not a bordered box inside
+          it: one hairline separates them from the header, the segments' own left accent
+          bars carry state and act as dividers. */}
+      <ul
+        aria-label={t("tierLadder.ariaLabel")}
+        className="mt-4 flex flex-col border-t border-border sm:flex-row"
+      >
           {segments.map((seg) => {
             const showOpen = seg.state === "next" && nextAsk != null;
             return (
@@ -320,10 +324,13 @@ export function TierLadder({
               )}
             </li>
           )}
-        </ul>
+      </ul>
 
-        {nextAsk && <NextAskDetail nextAsk={nextAsk} />}
-      </CardContent>
+      {nextAsk && (
+        <div className="border-t border-border p-4">
+          <NextAskDetail nextAsk={nextAsk} />
+        </div>
+      )}
     </Card>
   );
 }
@@ -348,7 +355,7 @@ function NextAskDetail({ nextAsk }: { nextAsk: NextAsk }) {
     : null;
 
   return (
-    <div className="space-y-2 border-t-[0.5px] border-border pt-3">
+    <div className="space-y-2">
       <p className="text-sm text-muted-foreground">{bodySentence}</p>
 
       {namesLine && (
