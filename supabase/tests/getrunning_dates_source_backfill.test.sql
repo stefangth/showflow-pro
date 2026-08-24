@@ -70,10 +70,21 @@ INSERT INTO public.app_settings (org_id, key, value) VALUES
   ('a1a1a1a1-0000-4000-8000-000000000008','airtable_base_id', to_jsonb(''::text)),
   ('a1a1a1a1-0000-4000-8000-000000000008','airtable_sync_enabled', to_jsonb(false));
 
--- Run the backfill. Five orgs get a fresh row (0001,0002,0003,0004,0007); 0006 already has
--- one (skipped), 0005/0008 have nothing to infer.
-SELECT is(public.backfill_getrunning_dates_source(), 5,
-  'first run stamps exactly the five inferable orgs');
+-- Run the backfill. Its return counts EVERY inferable org in the database (CI applies
+-- seed.sql after migrations, so seeded orgs are unstamped and counted here too) -- assert
+-- the fixture-scoped effect, not the global count. Five fixtures get a fresh row
+-- (0001,0002,0003,0004,0007); 0006 already has one (skipped), 0005/0008 have nothing to infer.
+SELECT public.backfill_getrunning_dates_source();
+SELECT is(
+  (SELECT count(*)::int FROM public.app_settings
+   WHERE key = 'getrunning_dates_source'
+     AND org_id IN (
+       'a1a1a1a1-0000-4000-8000-000000000001',
+       'a1a1a1a1-0000-4000-8000-000000000002',
+       'a1a1a1a1-0000-4000-8000-000000000003',
+       'a1a1a1a1-0000-4000-8000-000000000004',
+       'a1a1a1a1-0000-4000-8000-000000000007')),
+  5, 'first run stamps exactly the five inferable fixture orgs');
 
 SELECT is(
   (SELECT value #>> '{}' FROM public.app_settings
