@@ -627,7 +627,7 @@ Then open `/today` with an at-risk date present, if the seed has one, and confir
     let rules; try { rules = sheet.cssRules; } catch (e) { continue; }
     for (const r of rules) {
       if (!r.selectorText) continue;
-      const m = r.selectorText.match(/^\.rounded-(chip|field|control|card|hero|icon|pill)$/);
+      const m = r.selectorText.match(/^\.rounded-(chip|field|control|card|icon|pill)$/);
       if (m) dupes[m[1]] = (dupes[m[1]] || 0) + 1;
     }
   }
