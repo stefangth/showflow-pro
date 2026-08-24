@@ -118,3 +118,23 @@ it("says how many steps dropped out when a choice hides some, and announces it",
   expect(note).toBeInTheDocument();
   expect(note.closest("[aria-live='polite']")).not.toBeNull();
 });
+
+it("keys its body layout off the wizard's own width, not the viewport", () => {
+  renderShell();
+  const root = document.querySelector("[data-testid='wizard-shell']");
+  expect(root?.className).toContain("@container");
+
+  const grid = document.querySelector("nav[aria-label='Steps']")?.parentElement;
+  // No viewport-keyed `lg:` column template survives: at viewport 1024 the wizard is only
+  // ~708px wide, which is what crushed the editor column to 222px between the two rails.
+  expect(grid?.className).not.toMatch(/\blg:grid-cols-/);
+  expect(grid?.className).toContain("@2xl:grid-cols-");
+  expect(grid?.className).toContain("@5xl:grid-cols-");
+});
+
+it("drops the guide below the editor at the two-column size", () => {
+  renderShell();
+  const aside = document.querySelector("aside");
+  expect(aside?.className).toContain("@2xl:col-span-2");
+  expect(aside?.className).toContain("@5xl:col-span-1");
+});

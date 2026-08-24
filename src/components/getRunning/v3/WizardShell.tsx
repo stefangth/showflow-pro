@@ -95,7 +95,10 @@ export function WizardShell({
   const blocksFirstAsk = activeStep?.block === "offers" || activeStep?.block === "booking";
 
   return (
-    <div className="flex w-full flex-col overflow-hidden rounded-l border border-border bg-card shadow-elev2">
+    <div
+      data-testid="wizard-shell"
+      className="@container flex w-full flex-col overflow-hidden rounded-l border border-border bg-card shadow-elev2"
+    >
       {/* Header band. Uses the semantic `bg-accent` / `text-accent-foreground` pair
           (mode-aware: light-violet band + accent-600 text in light, accent-900 band +
           accent-100 text in dark) rather than the fixed `bg-accent-50` scale stop, whose
@@ -129,15 +132,24 @@ export function WizardShell({
         </Button>
       </div>
 
-      {/* Body. Single column below `lg` (the fixed 216px rail + 268px guide only leave
-          room for the fluid middle on a wide viewport); the three fixed/fluid columns
-          come back at `lg`. When stacked, the rail/guide switch their side borders for
-          bottom/top borders so the seams still read. */}
-      <div className="grid grid-cols-1 items-start gap-0 lg:grid-cols-[216px_minmax(0,1fr)_268px]">
+      {/* Body. These are CONTAINER queries against the shell itself, not viewport
+          breakpoints: the wizard renders inside the app content area, which measures
+          `viewport - 316px` (sidebar + page padding), so `lg:` lied about how much room
+          this grid actually had. At viewport 1024 the three fixed/fluid columns resolved
+          to 216px / 222px / 268px and the read-only guide came out wider than the editor.
+          Keyed on the shell's own width, the same wizard lays out correctly on the page,
+          in the narrower Settings mirror, and at any sidebar state.
+            < 672px   one column, everything stacked
+            >= 672px  step rail + editor, guide drops full width underneath
+            >= 1024px the designed three columns
+          The rails are `minmax` rather than fixed so they give ground before the editor
+          does. When stacked, the rail/guide switch their side borders for bottom/top
+          borders so the seams still read. */}
+      <div className="grid grid-cols-1 items-start gap-0 @2xl:grid-cols-[minmax(180px,216px)_minmax(0,1fr)] @5xl:grid-cols-[minmax(180px,216px)_minmax(0,1fr)_minmax(240px,268px)]">
         {/* Left: step rail */}
         <nav
           aria-label={t("wizard.stepsNav")}
-          className="flex flex-col gap-0.5 border-b border-border p-3 lg:border-b-0 lg:border-r"
+          className="flex flex-col gap-0.5 border-b border-border p-3 @2xl:border-b-0 @2xl:border-r"
         >
           {steps.map((step) => {
             const isActive = step.key === activeKey;
@@ -181,7 +193,7 @@ export function WizardShell({
 
         {/* Right: how this works guide */}
         {activeStep && (
-          <aside className="flex flex-col gap-2 border-t border-border p-4 lg:border-t-0 lg:border-l">
+          <aside className="flex flex-col gap-2 border-t border-border p-4 @2xl:col-span-2 @5xl:col-span-1 @5xl:border-t-0 @5xl:border-l">
             <Eyebrow>{t("wizard.howThisWorks")}</Eyebrow>
             <div className="text-control font-semibold text-foreground">
               {t(`guide.${activeStep.key}.title`)}
