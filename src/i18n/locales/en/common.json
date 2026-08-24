@@ -47,6 +47,10 @@
   "breadcrumb": {
     "home": "Home"
   },
+  "skillPicker": {
+    "newSkill": "New skill",
+    "nameLabel": "Skill name"
+  },
   "account": {
     "language": "Language",
     "profile": "Profile",
