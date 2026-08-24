@@ -267,9 +267,15 @@
     "missDetail": " · {{count}} fehlt eine erforderliche Fähigkeit",
     "stateFilled": "Besetzt · {{accepted}} zugesagt",
     "stateOpen": "{{pending}} wartend",
+    "stateOpenExpires": "{{pending}} wartend · läuft ab um {{time}}",
     "stateClosed": "Geschlossen · {{accepted}} zugesagt",
     "closeTier": "Diese Runde schließen",
-    "closeTierN": "Runde {{tier}} schließen"
+    "closeTierN": "Runde {{tier}} schließen",
+    "readyToAsk": "Bereit zum Anfragen",
+    "openOffers": "Angebote öffnen",
+    "askOptions": "Weitere Anfrageoptionen",
+    "nextRound": "Nächste Runde",
+    "noNextCast": "Keine nächste Besetzung eingerichtet"
   },
   "tierTimeline": {
     "directBooking": "Direktbuchung: Das Produktionsteam bucht aus wer angefragt werden kann",
