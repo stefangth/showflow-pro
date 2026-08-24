@@ -67,6 +67,8 @@
     "adminOnly": "Admin only",
     "waitsOnAdmin": "Waits on your admin",
     "footerNote": "Changes here are saved as you go.",
+    "phaseDone": "{{phase}} is done. That was the last step on this board.",
+    "phaseDoneNext": "{{phase}} is done. Next up: {{next}}.",
     "stepsNav": "Steps",
     "stepOfRich": "Step <0>{{step}}</0> of <1>{{total}}</1>"
   },

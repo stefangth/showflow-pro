@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useSearchParams } from "react-router-dom";
 import { Users } from "lucide-react";
+import { toast } from "sonner";
 import { useAuth } from "@/features/auth/AuthContext";
 import { useOrgAdminNames } from "@/hooks/useOrgAdminNames";
 import { useGetRunningV3 } from "@/hooks/useGetRunningV3";
@@ -111,6 +112,40 @@ function firstBlockingStep(model: GetRunningModelV3): { phase: GetRunningPhaseKe
   return found ? { phase: found.phase, key: found.key } : null;
 }
 
+/** What happens once the step the wizard sits on is finished: either the next outstanding
+ *  step of the same phase, or "this phase has nothing left", carrying the next phase that
+ *  still has outstanding work (`null` when this was the last outstanding phase on the
+ *  board, which is also the point `model.complete` flips and the retired board takes over).
+ *
+ *  Both the explicit path (an editor calling `onDone`) and the implicit one (the open step
+ *  turning done from data alone) route through this, so the two advance identically.
+ *
+ *  The search wraps: the first outstanding step AFTER the current one, else the first one
+ *  BEFORE it. Without the wrap, a viewer who jumped ahead in the step nav and finished a
+ *  later step would be told the phase is finished while an earlier step is still open. */
+type StepAdvance =
+  | { kind: "next"; key: GetRunningStepKey }
+  | { kind: "phaseDone"; nextPhase: GetRunningPhaseKey | null };
+
+function advanceAfterStep(
+  model: GetRunningModelV3,
+  phaseKey: GetRunningPhaseKey,
+  stepKey: GetRunningStepKey,
+): StepAdvance | null {
+  const phase = model.phases.find((p) => p.key === phaseKey);
+  if (!phase) return null;
+  const vis = visibleSteps(phase.steps);
+  const idx = vis.findIndex((s) => s.key === stepKey);
+  if (idx === -1) return null;
+  const next = vis.slice(idx + 1).find((s) => !s.done) ?? vis.slice(0, idx).find((s) => !s.done);
+  if (next) return { kind: "next", key: next.key };
+  // The model can be one refetch stale here (the explicit path fires the moment an editor
+  // saves), so "is anything left" is only ever asked of the OTHER phases, whose steps this
+  // save did not touch.
+  const nextPhase = model.phases.find((p) => p.key !== phaseKey && visibleSteps(p.steps).some((s) => !s.done));
+  return { kind: "phaseDone", nextPhase: nextPhase?.key ?? null };
+}
+
 /** The step a phase opens on when entered without a specific step (`PhaseRow.onOpen`):
  *  the first not-done VISIBLE step, else the phase's first visible step. Never returns a
  *  hidden step's key. */
@@ -201,6 +236,62 @@ export function GetRunningBoardV3({ context }: { context: "page" | "settings" })
     }
   }, [model]);
 
+  // The phase handoff (both paths): name the phase that just finished, and the next one
+  // that still has outstanding work. When nothing else is outstanding there is no next
+  // phase to name, so the copy says so instead of inventing one — the board itself flips
+  // to its retired state on the same data.
+  const announcePhaseDone = useCallback(
+    (finished: GetRunningPhaseKey, nextPhase: GetRunningPhaseKey | null) => {
+      const phase = t(`phases.${finished}.name`);
+      toast.success(
+        nextPhase ? t("wizard.phaseDoneNext", { phase, next: t(`phases.${nextPhase}.name`) }) : t("wizard.phaseDone", { phase }),
+      );
+    },
+    [t],
+  );
+
+  // Findings 06/07: a step that completes IMPLICITLY from data (the roster gains an artist,
+  // the last skill gap closes, the fee row appears) used to turn green under the viewer and
+  // leave them parked on a finished step, while steps that save through an explicit action
+  // advanced. This effect makes the two consistent.
+  //
+  // `lastSeenRef` records the open step AND its done-ness at the moment it became the open
+  // step, which is what separates the three cases that must stay distinct:
+  //   - "it just became done while I was looking at it" -> a false->true transition on the
+  //     SAME key, the only case that advances;
+  //   - "it was already done when I arrived" (a viewer clicking BACK to a finished step, or
+  //     reopening a finished phase) -> the first observation of that key records done:true,
+  //     and no transition is ever seen, so nothing bounces them forward;
+  //   - "I collapsed the wizard" -> no open step at all, so the ref is cleared and the
+  //     effect returns before it can select anything. Nothing here ever opens a wizard;
+  //     it only ever moves or closes one the viewer already has open.
+  // A background refetch that changes nothing therefore does nothing.
+  const lastSeenRef = useRef<{ key: GetRunningStepKey; done: boolean } | null>(null);
+  useEffect(() => {
+    if (!model || !selectedPhase || !selectedStep) {
+      lastSeenRef.current = null;
+      return;
+    }
+    const phase = model.phases.find((p) => p.key === selectedPhase);
+    const step = phase ? visibleSteps(phase.steps).find((s) => s.key === selectedStep) : undefined;
+    if (!step) {
+      lastSeenRef.current = null;
+      return;
+    }
+    const seen = lastSeenRef.current;
+    lastSeenRef.current = { key: step.key, done: step.done };
+    if (!seen || seen.key !== step.key || seen.done || !step.done) return;
+    const advance = advanceAfterStep(model, selectedPhase, step.key);
+    if (!advance) return;
+    if (advance.kind === "next") {
+      setSelectedStep(advance.key);
+      return;
+    }
+    announcePhaseDone(selectedPhase, advance.nextPhase);
+    setSelectedPhase(null);
+    setSelectedStep(null);
+  }, [model, selectedPhase, selectedStep, announcePhaseDone]);
+
   if (isLoading || !model) {
     return (
       <div className={context === "page" ? "flex flex-col gap-5 p-6" : "flex flex-col gap-5"}>
@@ -256,19 +347,19 @@ export function GetRunningBoardV3({ context }: { context: "page" | "settings" })
   };
 
   // Advance to the next not-done step in the open phase once its editor saves
-  // successfully; collapse back to the board once nothing is left in that phase.
-  // Mirrors v1 `handleNext` (`GetRunningPage.tsx`).
+  // successfully; hand back to the board with a confirmation once nothing is left in that
+  // phase. Shares `advanceAfterStep` with the data-driven effect above so an explicit save
+  // and an implicit completion behave identically.
   const handleStepDone = () => {
-    const phaseObj = selectedPhase ? model.phases.find((p) => p.key === selectedPhase) : null;
-    if (!phaseObj || !selectedStep) return;
-    const vis = visibleSteps(phaseObj.steps);
-    const idx = vis.findIndex((step) => step.key === selectedStep);
-    const next = vis.slice(idx + 1).find((step) => !step.done);
-    if (next) {
-      setSelectedStep(next.key);
-    } else {
-      handleCollapse();
+    if (!selectedPhase || !selectedStep) return;
+    const advance = advanceAfterStep(model, selectedPhase, selectedStep);
+    if (!advance) return;
+    if (advance.kind === "next") {
+      setSelectedStep(advance.key);
+      return;
     }
+    announcePhaseDone(selectedPhase, advance.nextPhase);
+    handleCollapse();
   };
 
   const activePhase = selectedPhase ? model.phases.find((p) => p.key === selectedPhase) : null;
