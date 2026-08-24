@@ -3,6 +3,7 @@ import { useAuth } from '@/features/auth/AuthContext';
 import { isImpersonating } from '@/features/auth/orgRoles';
 import { useLanguage } from '@/features/i18n/LanguageContext';
 import { useRailDismissed } from '@/components/setup/useRailDismissed';
+import { StatusPill } from '@/components/ui/status-pill';
 import { PageMiniCollapsed } from './PageMiniCollapsed';
 import type { Lang } from '@/i18n/config';
 import { MINIS, resolveMiniRole, type MiniDef, type MiniRole, type RegisteredPageKey } from '@/lib/minis';
@@ -14,6 +15,11 @@ const RESUME_HINT: Record<Lang, string> = {
   de: 'Mach dort weiter, wo du aufgehört hast',
 };
 const RESUME_CTA: Record<Lang, string> = { en: 'Resume', de: 'Wieder einblenden' };
+/** The step illustrations are drawn from invented tiers, people and audit lines. On an org
+ *  that has none of them they would otherwise read as this org's own data, so the panel
+ *  labels itself. Sits in the header row, inside the `aria-label`led section, so a screen
+ *  reader hears "Example" before it reaches any of the fabricated names. */
+const EXAMPLE_LABEL: Record<Lang, string> = { en: 'Example', de: 'Beispiel' };
 
 const STEP_NUMBERS = ['01', '02', '03', '04'] as const;
 
@@ -50,6 +56,7 @@ export function PageMiniView({ def, role, lang, art, dismissed, onHide, onResume
         <span className="text-eyebrow font-semibold uppercase tracking-[0.14em] text-muted-foreground">
           {def.eyebrow[lang]}
         </span>
+        <StatusPill tone="neutral">{EXAMPLE_LABEL[lang]}</StatusPill>
         <span className="flex-1" />
         {def.subnote && (
           <span className="hidden text-caption text-muted-foreground/70 sm:inline">{def.subnote[lang]}</span>

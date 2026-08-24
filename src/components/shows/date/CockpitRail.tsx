@@ -14,6 +14,13 @@ export interface CockpitRailProps {
   notes?: string | null;
   castChips: Array<{ label: string; kind: "inherited" | "override" }>;
   skillChips: string[];
+  /** How many artists can actually be asked for this date, or `null` when the viewer
+   *  cannot resolve that (an artist cannot read the org roster, and the derivation fails
+   *  closed while it loads or errors). Only ever used to qualify the no-restrictions line:
+   *  "no restrictions" is about skills and casts, and on its own it reads as "you have
+   *  people to ask" on a date where nobody is eligible. `null` keeps the line silent about
+   *  a count rather than claiming a false zero. */
+  eligibleCount?: number | null;
   /** Read-only org custom fields (Airtable-synced or manually configured)
    *  for this show_date, already formatted for display. Omitted/empty hides
    *  the section entirely. */
@@ -84,7 +91,8 @@ const UP_NEXT_DOT: Record<UpNextItem["tone"], string> = {
 };
 
 export function CockpitRail({
-  times, venue, city, source, notes, castChips, skillChips, customFields = [], upNext = [], activity,
+  times, venue, city, source, notes, castChips, skillChips, eligibleCount = null,
+  customFields = [], upNext = [], activity,
   chatUnread, chatPreview, onOpenChat, onEditSetup, showEditSetup = true,
 }: CockpitRailProps) {
   const { t } = useTranslation("showsDetail");
@@ -137,7 +145,13 @@ export function CockpitRail({
       <div className="space-y-2">
         <SectionLabel>{t("cockpitRail.eligibility")}</SectionLabel>
         {castChips.length === 0 && skillChips.length === 0 ? (
-          <p className="text-xs text-muted-foreground">{t("cockpitRail.noRestrictions")}</p>
+          <p className="text-xs text-muted-foreground">
+            {eligibleCount === null
+              ? t("cockpitRail.noRestrictions")
+              : eligibleCount === 0
+                ? t("cockpitRail.noRestrictionsEmpty")
+                : t("cockpitRail.noRestrictionsCount", { count: eligibleCount })}
+          </p>
         ) : (
           <div className="flex flex-wrap gap-[5px]">
             {castChips.map((c) =>

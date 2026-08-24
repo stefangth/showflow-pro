@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { screen, fireEvent, waitFor } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import { BOOKING_FLOW_DEFAULTS, type FlowTimes } from "@/lib/bookingFlow";
 import { BOOKING_ENGINE_DEFAULTS } from "@/config/app.config";
@@ -14,7 +15,7 @@ let mockBookingFlowEnabled = true;
 let mockBookingFlowPending = false;
 vi.mock("@/integrations/supabase/client", () => ({ supabase: {} }));
 vi.mock("@/features/auth/AuthContext", () => ({ useAuth: () => ({ currentOrg: { id: "org-1" }, user: { id: "u1" }, hasRole: () => true }) }));
-vi.mock("@/data/showDates", async (orig) => ({ ...(await orig<typeof import("@/data/showDates")>()), createShowDate: (...a: unknown[]) => createShowDate(...a), updateShowDate: (...a: unknown[]) => updateShowDate(...a), fetchShowDatesForShow: () => Promise.resolve([]) }));
+vi.mock("@/data/showDates", async (orig) => ({ ...(await orig<typeof import("@/data/showDates")>()), createShowDate: (...a: unknown[]) => createShowDate(...a), updateShowDate: (...a: unknown[]) => updateShowDate(...a), fetchShowDatesForShow: () => Promise.resolve(mockExistingDates) }));
 vi.mock("@/data/bookings", async (orig) => ({ ...(await orig<typeof import("@/data/bookings")>()), openOfferTier: (...a: unknown[]) => openOfferTier(...a), fetchOpenedTiers: (...a: unknown[]) => fetchOpenedTiers(...a) }));
 vi.mock("@/hooks/useBookingFlow", async (orig) => ({
   ...(await orig<typeof import("@/hooks/useBookingFlow")>()),
@@ -31,7 +32,10 @@ vi.mock("@/hooks/useShows", async (orig) => ({ ...(await orig<typeof import("@/h
   { id: "s1", program: "Configured", sub_program: null, status: "active", main_cast_slots: 2, understudy_slots: 1, airtable_program_key: null, sort_order: 1, category: null, description: null, dateCount: 0 },
   { id: "s2", program: "NoSlots", sub_program: null, status: "active", main_cast_slots: null, understudy_slots: null, airtable_program_key: null, sort_order: 2, category: null, description: null, dateCount: 0 },
 ], isLoading: false }) }));
-vi.mock("@/hooks/useCities", async (orig) => ({ ...(await orig<typeof import("@/hooks/useCities")>()), useCities: () => ({ data: [{ id: "c1", name: "Berlin", airtable_city_key: null }] }) }));
+let mockExistingDates: unknown[] = [];
+let mockCities: Array<{ id: string; name: string; airtable_city_key: string | null }> = [];
+let mockCitiesState = { isLoading: false, isError: false };
+vi.mock("@/hooks/useCities", async (orig) => ({ ...(await orig<typeof import("@/hooks/useCities")>()), useCities: () => ({ data: mockCities, ...mockCitiesState }) }));
 
 import { ShowDateFormDialog } from "./ShowDateFormDialog";
 
@@ -42,6 +46,9 @@ describe("ShowDateFormDialog", () => {
     mockFlowTimes = undefined;
     mockBookingFlowEnabled = true;
     mockBookingFlowPending = false;
+    mockCities = [{ id: "c1", name: "Berlin", airtable_city_key: null }];
+    mockCitiesState = { isLoading: false, isError: false };
+    mockExistingDates = [];
   });
 
   // The create-mode tier-1 default mirrors the org's booking flow (Settings > Booking flow >
@@ -432,5 +439,76 @@ describe("ShowDateFormDialog", () => {
       renderWithProviders(<ShowDateFormDialog open onOpenChange={() => {}} mode="edit" showDate={{ ...editShowDate, date: "2026-07-01", airtable_record_id: "rec1" }} />);
       expect(screen.queryByText(PAST)).toBeNull();
     });
+  });
+  // The City select is a plain picker over an org-wide catalog. When that catalog is empty
+  // it offered nothing and pointed nowhere, so a producer had no way to learn where cities
+  // come from. Cities are managed in Settings > Casts & coverage (the production dialog's
+  // inline creator is a second door onto the SAME org catalog, not a per-date one).
+  describe("empty city catalog", () => {
+    const HINT = /cities are managed for the whole organisation in settings|no cities yet/i;
+
+    it("points at where cities are managed when the catalog is empty", () => {
+      mockCities = [];
+      renderWithProviders(
+        <MemoryRouter>
+          <ShowDateFormDialog open onOpenChange={() => {}} mode="create" defaultShowId="s1" />
+        </MemoryRouter>,
+      );
+      expect(screen.getByText(HINT)).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: /casts/i })).toHaveAttribute("href", "/settings?tab=casts-coverage");
+    });
+
+    it("shows no hint when the catalog has cities", () => {
+      renderWithProviders(<ShowDateFormDialog open onOpenChange={() => {}} mode="create" defaultShowId="s1" />);
+      expect(screen.queryByText(HINT)).toBeNull();
+    });
+
+    // An empty ARRAY and an unread catalog are different facts. A failed or in flight read
+    // must never render as a reassuring "no cities yet".
+    it("claims nothing while the catalog read is in flight or failed", () => {
+      mockCities = [];
+      mockCitiesState = { isLoading: true, isError: false };
+      const { unmount } = renderWithProviders(
+        <MemoryRouter>
+          <ShowDateFormDialog open onOpenChange={() => {}} mode="create" defaultShowId="s1" />
+        </MemoryRouter>,
+      );
+      expect(screen.queryByText(HINT)).toBeNull();
+      unmount();
+
+      mockCitiesState = { isLoading: false, isError: true };
+      renderWithProviders(
+        <MemoryRouter>
+          <ShowDateFormDialog open onOpenChange={() => {}} mode="create" defaultShowId="s1" />
+        </MemoryRouter>,
+      );
+      expect(screen.queryByText(HINT)).toBeNull();
+    });
+  });
+
+  // Both date warnings render inside an open Radix popover, under the calendar. Without a
+  // live region a screen-reader user picking a past or duplicate day hears nothing at all.
+  it("announces the past-date warning as a live status", () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(2026, 7, 24, 12, 0, 0));
+    try {
+      renderWithProviders(<ShowDateFormDialog open onOpenChange={() => {}} mode="create" defaultShowId="s1" />);
+      fireEvent.click(screen.getByTestId("date-trigger"));
+      fireEvent.click(screen.getByRole("button", { name: /August 4th, 2026/ }));
+      const warning = screen.getByText(/this date is in the past/i);
+      expect(warning).toHaveAttribute("role", "status");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+  // The duplicate-date warning shares the past-date warning's spot under the calendar and
+  // had the identical gap: rendered inside an open popover with no live region.
+  it("announces the duplicate-date warning as a live status", async () => {
+    mockExistingDates = [{ id: "d9", show_id: "s1", date: "2026-08-28", status: "open" }];
+    renderWithProviders(<ShowDateFormDialog open onOpenChange={() => {}} mode="create" defaultShowId="s1" />);
+    fireEvent.click(screen.getByTestId("date-trigger"));
+    fireEvent.click(screen.getByRole("button", { name: /August 28th, 2026/ }));
+    const warning = await screen.findByText(/a non-cancelled date already exists/i);
+    expect(warning).toHaveAttribute("role", "status");
   });
 });

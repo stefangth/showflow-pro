@@ -24,6 +24,18 @@ describe('PageMiniView', () => {
     expect(screen.getByText('Audit trail')).toBeInTheDocument();
   });
 
+  // The illustrations render invented tiers, people and audit lines. On an org that has
+  // none of them that reads as real data, so the panel has to say it is an illustration.
+  it('labels the illustration as an example', () => {
+    renderWithProviders(<PageMiniView {...base} role="admin" lang="en" dismissed={false} />);
+    expect(screen.getByText(/example/i)).toBeInTheDocument();
+  });
+
+  it('labels the illustration as an example in German too', () => {
+    renderWithProviders(<PageMiniView {...base} role="admin" lang="de" dismissed={false} />);
+    expect(screen.getByText('Beispiel')).toBeInTheDocument();
+  });
+
   it('calls onHide when Hide is clicked', () => {
     const onHide = vi.fn();
     renderWithProviders(<PageMiniView {...base} role="admin" lang="en" dismissed={false} onHide={onHide} />);

@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { ROUTES } from "@/config/app.config";
 import { useAuth } from "@/features/auth/AuthContext";
 import { useShows } from "@/hooks/useShows";
 import { useCities } from "@/hooks/useCities";
@@ -65,7 +67,11 @@ export function ShowDateFormDialog({
   const { currentOrg } = useAuth();
   const queryClient = useQueryClient();
   const { data: shows } = useShows();
-  const { data: cities } = useCities();
+  const citiesQ = useCities();
+  const cities = citiesQ.data;
+  // An empty ARRAY and an unread catalog are different facts: a failed or in flight read
+  // must never render as a reassuring "no cities yet" (same rule as CityCatalogField).
+  const noCitiesYet = !citiesQ.isLoading && !citiesQ.isError && (cities ?? []).length === 0;
   const { data: flow } = useBookingFlow();
   const { data: flowTimes } = useFlowTimes(currentOrg?.id ?? null);
   // This note makes a factual claim about what the server-side digest pipeline will do for
@@ -275,8 +281,8 @@ export function ShowDateFormDialog({
               <p className="text-xs text-muted-foreground">{t("showDateForm.movingDateNote")}</p>
             )}
             {err.date && <p className="text-xs text-destructive">{err.date.message}</p>}
-            {pastDateWarning && <p className="text-xs text-warning">{t("showDateForm.pastDateWarning")}</p>}
-            {dupWarning && <p className="text-xs text-warning">{dupWarning}</p>}
+            {pastDateWarning && <p role="status" className="text-xs text-warning">{t("showDateForm.pastDateWarning")}</p>}
+            {dupWarning && <p role="status" className="text-xs text-warning">{dupWarning}</p>}
           </div>
 
           <div className="grid grid-cols-3 gap-3">
@@ -302,6 +308,22 @@ export function ShowDateFormDialog({
                   {(cities ?? []).map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                 </SelectContent>
               </Select>
+              {/* Cities are ONE org-wide catalog owned by Settings > Casts & coverage. This
+                  picker cannot create one, and with an empty catalog it offers nothing and
+                  points nowhere, so say where they come from. The production dialog's inline
+                  creator is a second door onto the same catalog, not a per-date one, so it
+                  is not what this hint points at. */}
+              {noCitiesYet && (
+                <p className="text-xs text-muted-foreground">
+                  {t("showDateForm.noCitiesHint")}{" "}
+                  <Link
+                    to={`${ROUTES.SETTINGS}?tab=casts-coverage`}
+                    className="font-medium text-accent-600 underline-offset-2 hover:underline"
+                  >
+                    {t("showDateForm.noCitiesLink")}
+                  </Link>
+                </p>
+              )}
             </div>
           </div>
 
