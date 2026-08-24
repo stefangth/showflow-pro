@@ -244,7 +244,7 @@ export function EligibilityPanelBody({
       {showCastList && <CastRosterList casts={castOptions} keyPrefix="panel.body.eligibility" />}
 
       {productions.length === 0 && (
-        <p className="rounded-[var(--radius-l)] border border-border bg-accent-tint px-3 py-2.5 text-xs leading-[17px] text-muted-foreground">
+        <p className="rounded-card border border-border bg-accent-tint px-3 py-2.5 text-xs leading-[17px] text-muted-foreground">
           {/* Distinguish "no future dates at all" from "dates exist but all lack a city":
               with a null-city-only backlog, futurePairs is non-empty but productions is [] */}
           {t(futurePairs.length > 0 ? "panel.body.eligibility.datesNeedCity" : "panel.body.eligibility.noProductionsYet")}
@@ -263,7 +263,7 @@ export function EligibilityPanelBody({
             <div
               key={prod.showId}
               className={cn(
-                "rounded-[var(--radius-l)] border p-3",
+                "rounded-card border p-3",
                 hasGap ? "border-accent-200" : "border-border",
               )}
             >
@@ -292,7 +292,7 @@ export function EligibilityPanelBody({
                 {prod.coveringCastIds.map((castId) => (
                   <span
                     key={castId}
-                    className="inline-flex h-6 items-center gap-1.5 rounded-[var(--radius-s)] border border-accent-200 bg-accent-tint px-2 text-xs font-medium text-accent-text"
+                    className="inline-flex h-6 items-center gap-1.5 rounded-field border border-accent-200 bg-accent-tint px-2 text-xs font-medium text-accent-text"
                   >
                     <Users className="h-3 w-3" />
                     {castNameById.get(castId) ?? castId}
@@ -371,7 +371,7 @@ function CastPicker({
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="inline-flex h-6 shrink-0 items-center rounded-[var(--radius-s)] border border-dashed border-accent-200 px-2.5 text-xs font-medium text-accent-text hover:bg-accent"
+          className="inline-flex h-6 shrink-0 items-center rounded-field border border-dashed border-accent-200 px-2.5 text-xs font-medium text-accent-text hover:bg-accent"
         >
           {t("panel.body.eligibility.linkACast")}
         </button>
@@ -392,7 +392,7 @@ function CastPicker({
                   onSelect(opt.id);
                   setOpen(false);
                 }}
-                className="flex w-full items-center justify-between rounded-[var(--radius-s)] px-2 py-1.5 text-left text-sm hover:bg-[var(--surface-3)] disabled:pointer-events-none disabled:opacity-50"
+                className="flex w-full items-center justify-between rounded-field px-2 py-1.5 text-left text-sm hover:bg-[var(--surface-3)] disabled:pointer-events-none disabled:opacity-50"
               >
                 <span>{opt.name}</span>
                 <span className="font-mono text-xs text-muted-foreground">

@@ -57,7 +57,7 @@ export function AvailabilityFirstRun({
             {t("firstRun.body")}
           </p>
         </div>
-        <div className="w-full shrink-0 rounded-[var(--radius-l)] border border-border bg-card p-3.5 sm:w-[236px]">
+        <div className="w-full shrink-0 rounded-card border border-border bg-card p-3.5 sm:w-[236px]">
           {/* eslint-disable-next-line no-restricted-syntax -- eyebrow label above the progress metric, primitive adoption deferred */}
           <div className="text-eyebrow font-semibold uppercase tracking-[1.6px] text-[var(--text-faint)]">
             {t("firstRun.setup.label")}
@@ -77,7 +77,7 @@ export function AvailabilityFirstRun({
 
       {/* The one task — retires the moment a date is blocked */}
       {!stepDone && (
-        <div className="flex items-start gap-3.5 rounded-[var(--radius-l)] border border-accent-300 bg-card p-4 shadow-elev2">
+        <div className="flex items-start gap-3.5 rounded-card border border-accent-300 bg-card p-4 shadow-elev2">
           <span className="mt-[3px] h-4 w-4 shrink-0 rounded-full border-[1.5px] border-primary" aria-hidden="true" />
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
@@ -95,7 +95,7 @@ export function AvailabilityFirstRun({
       )}
 
       {/* Rules inherited from the org — read-only reference, always shown */}
-      <div className="rounded-[var(--radius-l)] border border-border bg-card">
+      <div className="rounded-card border border-border bg-card">
         <div className="flex items-center gap-2 border-b border-border bg-well-tint px-4 py-3">
           {/* eslint-disable-next-line no-restricted-syntax -- section heading followed by a spacer + sibling, primitive adoption deferred */}
           <span className="text-eyebrow font-semibold uppercase tracking-[1.6px] text-muted-foreground">

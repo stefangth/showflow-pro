@@ -32,7 +32,7 @@ export function TierCell({ tier, slot, options, disabled, onSelect, onClear }: T
           disabled={disabled}
           aria-label={slot ? t('tierCell.tierWithName', { tier, name: slot.name }) : t('tierCell.setTier', { tier })}
           className={cn(
-            "flex w-full flex-col items-start gap-0.5 rounded-[var(--radius-s)] border px-2.5 py-1.5 text-left text-sm transition-colors",
+            "flex w-full flex-col items-start gap-0.5 rounded-field border px-2.5 py-1.5 text-left text-sm transition-colors",
             slot
               ? "border-border bg-card hover:bg-[var(--surface-3)]"
               : "border-dashed border-border text-muted-foreground hover:bg-[var(--surface-3)]",
@@ -62,7 +62,7 @@ export function TierCell({ tier, slot, options, disabled, onSelect, onClear }: T
                 type="button"
                 aria-label={t('tierCell.assign', { name: opt.name })}
                 onClick={() => onSelect(opt.id)}
-                className="flex w-full items-center justify-between rounded-[var(--radius-s)] px-2 py-1.5 text-left text-sm hover:bg-[var(--surface-3)]"
+                className="flex w-full items-center justify-between rounded-field px-2 py-1.5 text-left text-sm hover:bg-[var(--surface-3)]"
               >
                 <span>{opt.name}</span>
                 <span className="font-mono text-xs text-muted-foreground">
@@ -77,7 +77,7 @@ export function TierCell({ tier, slot, options, disabled, onSelect, onClear }: T
               <button
                 type="button"
                 onClick={onClear}
-                className="flex w-full items-center rounded-[var(--radius-s)] px-2 py-1.5 text-left text-sm text-destructive hover:bg-[var(--surface-3)]"
+                className="flex w-full items-center rounded-field px-2 py-1.5 text-left text-sm text-destructive hover:bg-[var(--surface-3)]"
               >
                 {t('tierCell.clearSlot')}
               </button>

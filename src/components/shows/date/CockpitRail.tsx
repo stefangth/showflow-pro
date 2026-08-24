@@ -158,14 +158,14 @@ export function CockpitRail({
               c.kind === "inherited" ? (
                 <span
                   key={`inherited-${c.label}`}
-                  className="rounded-[var(--radius-xs)] border-[0.5px] border-[var(--line-strong)] px-[7px] py-[3px] text-xs text-muted-foreground"
+                  className="rounded-chip border-[0.5px] border-[var(--line-strong)] px-[7px] py-[3px] text-xs text-muted-foreground"
                 >
                   {c.label} <span className="opacity-60">{t("cockpitRail.inherited")}</span>
                 </span>
               ) : (
                 <span
                   key={`override-${c.label}`}
-                  className="rounded-[var(--radius-xs)] bg-[var(--surface-3)] px-[7px] py-[3px] text-xs font-medium text-foreground"
+                  className="rounded-chip bg-[var(--surface-3)] px-[7px] py-[3px] text-xs font-medium text-foreground"
                 >
                   {c.label}
                 </span>
@@ -174,7 +174,7 @@ export function CockpitRail({
             {skillChips.map((s) => (
               <span
                 key={s}
-                className="rounded-[var(--radius-xs)] bg-accent-tint px-[7px] py-[3px] text-xs font-medium text-accent-text"
+                className="rounded-chip bg-accent-tint px-[7px] py-[3px] text-xs font-medium text-accent-text"
               >
                 {s}
               </span>
@@ -185,7 +185,7 @@ export function CockpitRail({
           <Button
             variant="outline"
             size="sm"
-            className="mt-1 h-[30px] w-full rounded-[var(--radius-m)] border-[0.5px] border-[var(--line-strong)] bg-[var(--surface)] text-xs font-medium text-[var(--text)] hover:bg-[var(--surface-3)] hover:text-[var(--text)]"
+            className="mt-1 h-[30px] w-full rounded-control border-[0.5px] border-[var(--line-strong)] bg-[var(--surface)] text-xs font-medium text-[var(--text)] hover:bg-[var(--surface-3)] hover:text-[var(--text)]"
             onClick={onEditSetup}
           >
             {t("cockpitRail.editDateSetup")}
@@ -202,7 +202,7 @@ export function CockpitRail({
               {upNext.map((it, i) => (
                 <span
                   key={`${it.tone}-${i}`}
-                  className="inline-flex items-center gap-2 rounded-[var(--radius-pill)] border-[0.5px] border-[var(--line-strong)] bg-[var(--surface)] px-2.5 py-1 text-xs text-muted-foreground"
+                  className="inline-flex items-center gap-2 rounded-pill border-[0.5px] border-[var(--line-strong)] bg-[var(--surface)] px-2.5 py-1 text-xs text-muted-foreground"
                 >
                   <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", UP_NEXT_DOT[it.tone])} />
                   {it.text}
@@ -239,7 +239,7 @@ export function CockpitRail({
           {chatUnread > 0 && (
             <span
               data-testid="chat-unread"
-              className="rounded-[var(--radius-xs)] bg-accent-500 px-1.5 py-px font-mono text-eyebrow font-semibold leading-[15px] text-white"
+              className="rounded-chip bg-accent-500 px-1.5 py-px font-mono text-eyebrow font-semibold leading-[15px] text-white"
             >
               {chatUnread}
             </span>

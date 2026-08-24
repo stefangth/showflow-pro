@@ -213,7 +213,7 @@ function PaperworkTiles({
               key={task.key}
               data-testid={`paperwork-tile-${task.key}`}
               data-active={active}
-              className={`flex-1 rounded-[var(--radius-m)] border p-3 text-left shadow-elev1 transition-colors ${
+              className={`flex-1 rounded-control border p-3 text-left shadow-elev1 transition-colors ${
                 active ? "border-primary bg-primary/10" : "border-border bg-card"
               }`}
             >
@@ -237,7 +237,7 @@ function PaperworkTiles({
             data-active={active}
             type="button"
             onClick={() => onOpenTask(task.key)}
-            className={`flex-1 rounded-[var(--radius-m)] border p-3 text-left shadow-elev1 transition-colors ${
+            className={`flex-1 rounded-control border p-3 text-left shadow-elev1 transition-colors ${
               active ? "border-primary bg-primary/10" : "border-border bg-card"
             }`}
           >
@@ -299,7 +299,7 @@ export function PhaseCard({ phase, onOpenTask, adminNames, activeKey }: PhaseCar
   // px-4/pb-3.5 padding so nothing is clipped, but keep any new edge-flush, ring- or
   // popover-bearing control off the card border for that reason.
   return (
-    <div className={`overflow-hidden rounded-[var(--radius-l)] ${CARD_CLASS[state]}`} data-testid={`phase-card-${phase.key}`}>
+    <div className={`overflow-hidden rounded-card ${CARD_CLASS[state]}`} data-testid={`phase-card-${phase.key}`}>
       <div className={`flex flex-wrap items-center gap-3 px-4 py-3.5 ${HEADER_CLASS[state]}`}>
         <PhaseIcon state={state} index={orderIndex} />
         <div

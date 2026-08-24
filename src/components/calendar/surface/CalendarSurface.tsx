@@ -699,7 +699,7 @@ export function CalendarSurface({
               data-testid="date-peek-popover"
             >
               {peekEntry && (
-                <div className="rounded-[var(--radius-l)] border border-border bg-[var(--surface)] shadow-elev3">
+                <div className="rounded-card border border-border bg-[var(--surface)] shadow-elev3">
                   <RowPeek
                     dateLabel={format(peekEntry.date, 'EEE d MMM', { locale: dfLocale() })}
                     peek={peek}

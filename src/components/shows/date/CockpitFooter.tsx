@@ -29,7 +29,7 @@ export function CockpitFooter({ badgeLabel, ready, detail, ctaLabel, ctaDisabled
         <p className="text-sm font-medium leading-[18px] text-foreground">{t("cockpitFooter.hireOrder")}</p>
         <span
           className={cn(
-            "ml-1.5 rounded-[var(--radius-xs)] px-[5px] py-px font-mono text-eyebrow font-semibold leading-[14px]",
+            "ml-1.5 rounded-chip px-[5px] py-px font-mono text-eyebrow font-semibold leading-[14px]",
             ready
               ? "bg-[var(--green-100)] text-[var(--green-600)]"
               : "bg-[var(--amber-100)] text-[var(--amber-600)]",
@@ -45,7 +45,7 @@ export function CockpitFooter({ badgeLabel, ready, detail, ctaLabel, ctaDisabled
         disabled={ctaDisabled}
         variant="secondary"
         className={cn(
-          "h-[34px] shrink-0 rounded-[var(--radius-m)]",
+          "h-[34px] shrink-0 rounded-control",
           // Solid brand-accent only when the action is actually available; a ready-but-
           // disabled CTA (draft generating, or no generate permission) falls back to the
           // muted `secondary` disabled look rather than a faded accent.

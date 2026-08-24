@@ -11,7 +11,7 @@ export interface CockpitPagerProps {
 }
 
 const arrowCls =
-  "inline-flex h-7 w-7 items-center justify-center rounded-[var(--radius-s)] border-[0.5px] border-[var(--line-strong)] bg-[var(--surface)] text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-2)] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-[var(--surface)]";
+  "inline-flex h-7 w-7 items-center justify-center rounded-field border-[0.5px] border-[var(--line-strong)] bg-[var(--surface)] text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-2)] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-[var(--surface)]";
 
 /**
  * The cockpit's top pager bar (prototype's command rail): prev/next through the

@@ -12,7 +12,7 @@ import { Eyebrow } from "@/components/ui/eyebrow";
 export function UnlocksNote({ children }: { children: ReactNode }) {
   const { t } = useTranslation("getRunning");
   return (
-    <div className="flex flex-col gap-1 rounded-[var(--radius-l)] border border-accent-200 bg-accent p-3">
+    <div className="flex flex-col gap-1 rounded-card border border-accent-200 bg-accent p-3">
       <Eyebrow className="text-accent-foreground">
         {t("panel.unlocksLabel")}
       </Eyebrow>

@@ -72,7 +72,7 @@ function Avatar({ row }: { row: CastRow }) {
   );
 }
 
-const STATUS_BADGE_BASE = "rounded-[var(--radius-xs)] px-2 py-[3px] text-xs font-medium";
+const STATUS_BADGE_BASE = "rounded-chip px-2 py-[3px] text-xs font-medium";
 
 function StatusBadge({ status }: { status: NonNullable<CastRow["status"]> }) {
   const { t } = useTranslation("showsDetail");
@@ -159,7 +159,7 @@ function Row({
           <button
             type="button"
             onClick={row.onConfirm}
-            className="h-[30px] rounded-[var(--radius-m)] border-[0.5px] border-[var(--line-strong)] bg-[var(--surface)] px-2.5 text-xs font-medium text-foreground transition-colors hover:bg-[var(--surface-2)]"
+            className="h-[30px] rounded-control border-[0.5px] border-[var(--line-strong)] bg-[var(--surface)] px-2.5 text-xs font-medium text-foreground transition-colors hover:bg-[var(--surface-2)]"
           >
             {t("cockpitCastList.confirm")}
           </button>
@@ -168,7 +168,7 @@ function Row({
           <button
             type="button"
             onClick={row.onSlotAction}
-            className="h-[30px] whitespace-nowrap rounded-[var(--radius-m)] border-[0.5px] border-[var(--line-strong)] bg-[var(--surface)] px-2.5 text-xs font-medium text-foreground transition-colors hover:bg-[var(--surface-2)]"
+            className="h-[30px] whitespace-nowrap rounded-control border-[0.5px] border-[var(--line-strong)] bg-[var(--surface)] px-2.5 text-xs font-medium text-foreground transition-colors hover:bg-[var(--surface-2)]"
           >
             {row.slotActionLabel}
           </button>
@@ -181,7 +181,7 @@ function Row({
               // Hidden until the row is hovered/focused. `pointer-events-none` while
               // hidden so it is never a tap target on touch (no hover) — otherwise an
               // invisible control could fire an unconfirmed cancel.
-              className="h-[30px] rounded-[var(--radius-m)] px-2 text-xs font-medium text-[var(--text-muted)] opacity-0 transition pointer-events-none hover:text-[var(--red-600)] focus-visible:pointer-events-auto focus-visible:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100"
+              className="h-[30px] rounded-control px-2 text-xs font-medium text-[var(--text-muted)] opacity-0 transition pointer-events-none hover:text-[var(--red-600)] focus-visible:pointer-events-auto focus-visible:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100"
             >
               {t("cockpitCastList.cancel")}
             </button>
@@ -256,7 +256,7 @@ export function CockpitCastList({
       {groups.map((g) => (
         <div
           key={g.key}
-          className="overflow-hidden rounded-[var(--radius-l)] border-[0.5px] border-[var(--line)] bg-[var(--surface)]"
+          className="overflow-hidden rounded-card border-[0.5px] border-[var(--line)] bg-[var(--surface)]"
         >
           {/* eslint-disable-next-line no-restricted-syntax -- group header combines title + count, not a plain Eyebrow */}
           <p className="border-b-[0.5px] border-[var(--line)] px-3.5 py-3 text-eyebrow font-semibold uppercase leading-[14px] tracking-[1.6px] text-muted-foreground">

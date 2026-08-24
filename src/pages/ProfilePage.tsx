@@ -162,7 +162,7 @@ export default function ProfilePage() {
         <div className={cn("flex-1 min-w-0 space-y-4", !isArtistOnly && "max-w-2xl")}>
 
           {/* Details */}
-          <div className="rounded-[var(--radius-l)] border border-border bg-card overflow-hidden shadow-elev1">
+          <div className="rounded-card border border-border bg-card overflow-hidden shadow-elev1">
             <GroupHeader>{t("details.title")}</GroupHeader>
             {isLoading ? (
               <div className="p-4"><Skeleton className="h-24 w-full" /></div>
@@ -213,7 +213,7 @@ export default function ProfilePage() {
           </div>
 
           {/* Sign-in */}
-          <div className="rounded-[var(--radius-l)] border border-border bg-card overflow-hidden shadow-elev1">
+          <div className="rounded-card border border-border bg-card overflow-hidden shadow-elev1">
             <GroupHeader>{t("security.title")}</GroupHeader>
             <GroupRow>
               <div className="min-w-0 flex-1">
@@ -252,7 +252,7 @@ export default function ProfilePage() {
           </div>
 
           {/* What reaches you */}
-          <div className="rounded-[var(--radius-l)] border border-border bg-card overflow-hidden shadow-elev1">
+          <div className="rounded-card border border-border bg-card overflow-hidden shadow-elev1">
             <GroupHeader
               right={
                 <div className="flex flex-1 items-center justify-end gap-4">
@@ -286,7 +286,7 @@ export default function ProfilePage() {
           </div>
 
           {/* Your data */}
-          <div className="rounded-[var(--radius-l)] border border-border bg-card overflow-hidden shadow-elev1">
+          <div className="rounded-card border border-border bg-card overflow-hidden shadow-elev1">
             <GroupHeader>{t("data.title")}</GroupHeader>
             <GroupRow>
               <div className="min-w-0 flex-1">
@@ -334,7 +334,7 @@ export default function ProfilePage() {
 
         {isArtistOnly && (
           <div className="w-[300px] shrink-0 space-y-3">
-            <div className="rounded-[var(--radius-l)] border border-border bg-card p-3.5">
+            <div className="rounded-card border border-border bg-card p-3.5">
               {/* eslint-disable-next-line no-restricted-syntax -- non-standard tracking-[1.2px], not the Eyebrow's tracking-[1.6px] */}
               <p className="text-eyebrow font-semibold uppercase tracking-[1.2px] text-muted-foreground">{t("reference.title")}</p>
               <div className="mt-2.5 flex flex-col gap-2.5">
@@ -364,7 +364,7 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            <div className="rounded-[var(--radius-l)] border border-border bg-card p-3.5">
+            <div className="rounded-card border border-border bg-card p-3.5">
               {/* eslint-disable-next-line no-restricted-syntax -- non-standard tracking-[1.2px], not the Eyebrow's tracking-[1.6px] */}
               <p className="text-eyebrow font-semibold uppercase tracking-[1.2px] text-muted-foreground">{t("language.title")}</p>
               {languagePacksEnabled && (
@@ -384,7 +384,7 @@ export default function ProfilePage() {
               <p className="mt-2 text-xs text-muted-foreground text-pretty">{t("language.hint")}</p>
             </div>
 
-            <div className="rounded-[var(--radius-l)] border border-border bg-well-tint p-3.5 text-xs text-muted-foreground text-pretty">
+            <div className="rounded-card border border-border bg-well-tint p-3.5 text-xs text-muted-foreground text-pretty">
               {t("sidebarNote")}
             </div>
           </div>
