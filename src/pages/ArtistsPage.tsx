@@ -254,7 +254,7 @@ export default function ArtistsPage() {
                 <Input type="email" placeholder={t('page.dialog.emailPlaceholder')} value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} required={alsoInvite} />
                 <Input placeholder={t('page.dialog.phonePlaceholder')} value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} />
                 <Textarea placeholder={t('page.dialog.bioPlaceholder')} value={form.bio} onChange={e => setForm(f => ({ ...f, bio: e.target.value }))} />
-                <div className="flex items-start gap-2 rounded-m border border-border p-3">
+                <div className="flex items-start gap-2 rounded-control border border-border p-3">
                   <Checkbox id="also-invite" checked={alsoInvite} onCheckedChange={(v) => setAlsoInvite(!!v)} className="mt-0.5" />
                   <div className="space-y-1">
                     <label htmlFor="also-invite" className="text-sm font-medium leading-none">{t('page.dialog.alsoInvite')}</label>
@@ -290,7 +290,7 @@ export default function ArtistsPage() {
 
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[1,2,3].map(i => <Skeleton key={i} className="h-40 rounded-l" />)}
+          {[1,2,3].map(i => <Skeleton key={i} className="h-40 rounded-card" />)}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -378,13 +378,13 @@ export default function ArtistsPage() {
                           {skills.slice(0, 3).map(s => (
                             <span
                               key={s.id}
-                              className="inline-flex h-5 items-center rounded-xs bg-accent-tint px-1.5 text-eyebrow font-medium text-accent-text"
+                              className="inline-flex h-5 items-center rounded-chip bg-accent-tint px-1.5 text-eyebrow font-medium text-accent-text"
                             >
                               {s.name}
                             </span>
                           ))}
                           {skills.length > 3 && (
-                            <span className="inline-flex h-5 items-center rounded-xs px-1.5 font-mono text-eyebrow font-medium text-muted-foreground">
+                            <span className="inline-flex h-5 items-center rounded-chip px-1.5 font-mono text-eyebrow font-medium text-muted-foreground">
                               +{skills.length - 3}
                             </span>
                           )}
@@ -399,7 +399,7 @@ export default function ArtistsPage() {
                           {artistCasts.get(artist.id)!.map(c => (
                             <span
                               key={c.id}
-                              className="inline-flex h-5 items-center rounded-xs border-[0.5px] border-[var(--line-strong)] px-1.5 text-eyebrow font-medium text-muted-foreground"
+                              className="inline-flex h-5 items-center rounded-chip border-[0.5px] border-[var(--line-strong)] px-1.5 text-eyebrow font-medium text-muted-foreground"
                             >
                               {c.name}
                             </span>

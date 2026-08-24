@@ -34,7 +34,7 @@ export function SetupCallout({ orgId, blockers, isLoading, isError }: SetupCallo
 
   if (isError) {
     return (
-      <div className="mb-3 flex items-center gap-2.5 rounded-l border border-border p-3">
+      <div className="mb-3 flex items-center gap-2.5 rounded-card border border-border p-3">
         <AlertTriangle className="h-4 w-4 shrink-0 text-[var(--amber-600)]" />
         <p className="text-sm text-muted-foreground">
           {t("setupCallout.checkError")}
@@ -56,7 +56,7 @@ export function SetupCallout({ orgId, blockers, isLoading, isError }: SetupCallo
         : t("setupCallout.headlineBack");
 
   return (
-    <div className="mb-3 rounded-l border border-accent-200 bg-accent-tint p-3">
+    <div className="mb-3 rounded-card border border-accent-200 bg-accent-tint p-3">
       <p className="text-sm font-semibold text-accent-text">{headline}</p>
       <p className="mt-0.5 text-xs text-muted-foreground">
         {t("setupCallout.body")}

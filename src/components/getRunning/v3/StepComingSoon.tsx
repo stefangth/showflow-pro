@@ -18,7 +18,7 @@ export function StepComingSoon({ step }: { step: GetRunningStep }): JSX.Element 
   const { t } = useTranslation("getRunningV3");
 
   return (
-    <div className="flex flex-col items-start gap-2 rounded-l border border-dashed border-border px-4 py-6">
+    <div className="flex flex-col items-start gap-2 rounded-card border border-dashed border-border px-4 py-6">
       <Eyebrow>{t("comingSoon.title")}</Eyebrow>
       <p className="text-xs leading-[17px] text-muted-foreground">{t("comingSoon.body")}</p>
       <Link

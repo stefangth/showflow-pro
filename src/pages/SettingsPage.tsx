@@ -352,7 +352,7 @@ export default function SettingsPage() {
       </div>
 
       {isDirty && !hidePageLevelSave && (
-        <div className="flex items-center justify-between gap-4 rounded-l border border-warning bg-warning/10 px-4 py-2.5 text-sm text-warning">
+        <div className="flex items-center justify-between gap-4 rounded-card border border-warning bg-warning/10 px-4 py-2.5 text-sm text-warning">
           <span>{t('page.unsavedChanges')}</span>
           <Button size="sm" onClick={handleSave} disabled={saveMutation.isPending}>
             <Save className="h-3.5 w-3.5 mr-1.5" />
@@ -390,7 +390,7 @@ export default function SettingsPage() {
                   <TabsTrigger
                     key={item.value}
                     value={item.value}
-                    className="shrink-0 justify-start gap-2 rounded-m px-3 py-2 text-muted-foreground data-[state=active]:bg-well-tint data-[state=active]:text-foreground data-[state=active]:shadow-none hover:bg-hover-tint md:w-full"
+                    className="shrink-0 justify-start gap-2 rounded-control px-3 py-2 text-muted-foreground data-[state=active]:bg-well-tint data-[state=active]:text-foreground data-[state=active]:shadow-none hover:bg-hover-tint md:w-full"
                   >
                     <item.icon className="h-4 w-4 shrink-0" />
                     <span>{item.label}</span>
@@ -467,7 +467,7 @@ export default function SettingsPage() {
                 )}
                 <div className="space-y-2">
                   {auditLogs?.map((log) => (
-                    <div key={log.id} className="flex items-center justify-between p-3 rounded-l border border-border text-sm">
+                    <div key={log.id} className="flex items-center justify-between p-3 rounded-card border border-border text-sm">
                       <div>
                         <span className="font-medium">{log.action}</span>
                         {log.booking?.artist?.name && <span className="text-muted-foreground"> — {log.booking.artist.name}</span>}

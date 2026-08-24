@@ -17,7 +17,7 @@ export function OrgSwitcher({ collapsed }: { collapsed?: boolean }) {
   if (orgs.length <= 1) {
     if (collapsed) return null;
     return (
-      <div className="flex items-center gap-2 rounded-s px-2.5 py-2 text-control font-medium text-sidebar-foreground/80">
+      <div className="flex items-center gap-2 rounded-field px-2.5 py-2 text-control font-medium text-sidebar-foreground/80">
         <Building2 className="h-[14px] w-[14px] shrink-0" />
         <span className="truncate">{currentOrg.name}</span>
       </div>

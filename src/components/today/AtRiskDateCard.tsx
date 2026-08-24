@@ -129,7 +129,7 @@ export function AtRiskDateCard({
               <div
                 key={opt.key}
                 className={cn(
-                  "flex items-center gap-3 rounded-l border border-border p-3.5",
+                  "flex items-center gap-3 rounded-card border border-border p-3.5",
                   i === 0 && "bg-well-tint",
                 )}
               >

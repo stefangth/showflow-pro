@@ -126,7 +126,7 @@ export function OrdersTable({ orders, orgId, onRowClick }: Props) {
   return (
     <div className="space-y-3">
       {someSelected && (
-        <div className="flex items-center justify-between rounded-l border border-border bg-well-tint px-4 py-2">
+        <div className="flex items-center justify-between rounded-card border border-border bg-well-tint px-4 py-2">
           <p className="text-sm text-muted-foreground">{t("ordersTable.selected", { count: selected.size })}</p>
           <Button size="sm" onClick={handleIssueSelected} disabled={!canIssueSelected || action.isPending}>
             {t("ordersTable.issueSelected")}

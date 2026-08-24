@@ -36,7 +36,7 @@ export function UptimeBar({ rows, days, now = new Date() }: {
                 <span
                   data-uptime-day
                   data-state={c.state}
-                  className={cn("h-6 min-w-[3px] flex-1 rounded-s cursor-default", TONE[c.state])}
+                  className={cn("h-6 min-w-[3px] flex-1 rounded-field cursor-default", TONE[c.state])}
                 />
               </TooltipTrigger>
               <TooltipContent side="top" className="px-2 py-1 text-xs">

@@ -318,9 +318,9 @@ export function ArtistProfileSheet({ artistId, open, onOpenChange }: Props) {
                     <div
                       key={skill.id}
                       data-testid={`skill-row-${skill.id}`}
-                      className="flex h-[34px] items-center gap-2.5 rounded-l border border-accent-200 bg-accent-tint pl-2.5 pr-2"
+                      className="flex h-[34px] items-center gap-2.5 rounded-card border border-accent-200 bg-accent-tint pl-2.5 pr-2"
                     >
-                      <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-xs bg-primary text-primary-foreground">
+                      <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-chip bg-primary text-primary-foreground">
                         <Check className="h-[11px] w-[11px]" strokeWidth={3} />
                       </span>
                       <span className="flex-1 truncate text-sm font-medium text-accent-text">{skill.name}</span>
@@ -337,7 +337,7 @@ export function ArtistProfileSheet({ artistId, open, onOpenChange }: Props) {
                           type="button"
                           aria-label={t('sheet.removeSkill', { name: skill.name })}
                           onClick={() => setSelectedSkills((prev) => prev.filter((s) => s.id !== skill.id))}
-                          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-m text-accent-text hover:bg-destructive/10 hover:text-destructive"
+                          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-control text-accent-text hover:bg-destructive/10 hover:text-destructive"
                         >
                           <X className="h-3.5 w-3.5" />
                         </button>
@@ -356,7 +356,7 @@ export function ArtistProfileSheet({ artistId, open, onOpenChange }: Props) {
                           key={skill.id}
                           type="button"
                           onClick={() => setSelectedSkills((prev) => [...prev, skill])}
-                          className="inline-flex h-[26px] items-center gap-1.5 rounded-m border border-input bg-background px-2.5 text-xs font-medium text-foreground hover:bg-accent-tint"
+                          className="inline-flex h-[26px] items-center gap-1.5 rounded-control border border-input bg-background px-2.5 text-xs font-medium text-foreground hover:bg-accent-tint"
                         >
                           <Plus className="h-3 w-3" />
                           {skill.name}

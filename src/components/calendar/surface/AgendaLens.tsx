@@ -124,7 +124,7 @@ export function AgendaLens({ entries, onOpenEntry, onAction, actionGates, classN
       <div
         role="group"
         aria-label={t('calendar.agenda.groupingLabel')}
-        className="flex items-center justify-end gap-0.5 self-end rounded-m border border-border p-0.5"
+        className="flex items-center justify-end gap-0.5 self-end rounded-control border border-border p-0.5"
       >
         <button
           type="button"
@@ -132,7 +132,7 @@ export function AgendaLens({ entries, onOpenEntry, onAction, actionGates, classN
           aria-pressed={grouping === 'per-date'}
           onClick={() => setGroupingPersisted('per-date')}
           className={cn(
-            'rounded-s px-2 py-1 text-xs transition-colors',
+            'rounded-field px-2 py-1 text-xs transition-colors',
             grouping === 'per-date'
               ? 'bg-accent-tint font-medium text-accent-text'
               : 'text-muted-foreground hover:text-foreground'
@@ -146,7 +146,7 @@ export function AgendaLens({ entries, onOpenEntry, onAction, actionGates, classN
           aria-pressed={grouping === 'per-show'}
           onClick={() => setGroupingPersisted('per-show')}
           className={cn(
-            'rounded-s px-2 py-1 text-xs transition-colors',
+            'rounded-field px-2 py-1 text-xs transition-colors',
             grouping === 'per-show'
               ? 'bg-accent-tint font-medium text-accent-text'
               : 'text-muted-foreground hover:text-foreground'
@@ -165,7 +165,7 @@ export function AgendaLens({ entries, onOpenEntry, onAction, actionGates, classN
               {t('calendar.agenda.dateCount', { count: week.entries.length })}
             </span>
           </div>
-          <div className="overflow-hidden rounded-l border-[0.5px] border-border bg-card">
+          <div className="overflow-hidden rounded-card border-[0.5px] border-border bg-card">
             {week.entries.flatMap(entry => buildAgendaRows(entry, grouping)).map(row => {
               const toneSpec = PRODUCER_TONES[row.entry.status];
               const meter =
@@ -204,7 +204,7 @@ export function AgendaLens({ entries, onOpenEntry, onAction, actionGates, classN
                   <div className="flex shrink-0 items-center gap-1.5 md:w-[84px]">
                     <span className="font-mono text-xs tabular-nums text-muted-foreground">{row.time}</span>
                     {row.extraSessions > 0 && (
-                      <span className="inline-flex items-center rounded-xs bg-accent-tint px-1 text-eyebrow font-medium text-accent-text">
+                      <span className="inline-flex items-center rounded-chip bg-accent-tint px-1 text-eyebrow font-medium text-accent-text">
                         +{row.extraSessions}
                       </span>
                     )}
@@ -223,7 +223,7 @@ export function AgendaLens({ entries, onOpenEntry, onAction, actionGates, classN
                   </div>
                   <span
                     className={cn(
-                      'inline-flex h-5 w-24 shrink-0 items-center whitespace-nowrap rounded-xs px-1.5 text-eyebrow font-medium',
+                      'inline-flex h-5 w-24 shrink-0 items-center whitespace-nowrap rounded-chip px-1.5 text-eyebrow font-medium',
                       toneSpec.badgeClass
                     )}
                   >

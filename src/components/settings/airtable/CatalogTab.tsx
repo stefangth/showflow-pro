@@ -171,7 +171,7 @@ export function CatalogTab(props: CatalogTabProps) {
           aria-label={t('catalogTab.selectRowAria', { display: row.display })}
           aria-pressed={sel}
           className={cn(
-            "h-4 w-4 rounded-xs border flex items-center justify-center",
+            "h-4 w-4 rounded-chip border flex items-center justify-center",
             sel ? "bg-primary border-primary" : "border-border bg-card",
           )}
         >
@@ -181,7 +181,7 @@ export function CatalogTab(props: CatalogTabProps) {
         <div className="min-w-0 flex items-center gap-2">
           <span className="text-sm font-medium truncate">{row.display}</span>
           {holding > 0 && (
-            <span className="h-[18px] shrink-0 inline-flex items-center rounded-xs bg-[var(--amber-100)] px-1.5 text-eyebrow font-medium text-[color:var(--amber-600)]">
+            <span className="h-[18px] shrink-0 inline-flex items-center rounded-chip bg-[var(--amber-100)] px-1.5 text-eyebrow font-medium text-[color:var(--amber-600)]">
               {t('catalogTab.holding', { count: holding })}
             </span>
           )}
@@ -232,7 +232,7 @@ export function CatalogTab(props: CatalogTabProps) {
   };
 
   return (
-    <div className="bg-card border border-border rounded-l shadow-sm">
+    <div className="bg-card border border-border rounded-card shadow-sm">
       {/* Header */}
       <div className="px-4 py-3.5 border-b border-border">
         <h3 className="text-title-sm font-semibold tracking-tight">{t('catalogTab.title')}</h3>
@@ -253,7 +253,7 @@ export function CatalogTab(props: CatalogTabProps) {
             className="h-8 pl-8 bg-well-tint text-sm"
           />
         </div>
-        <div className="inline-flex gap-0.5 p-0.5 rounded-m bg-well-tint">
+        <div className="inline-flex gap-0.5 p-0.5 rounded-control bg-well-tint">
           {FILTERS.map((f) => {
             const active = filter === f;
             return (

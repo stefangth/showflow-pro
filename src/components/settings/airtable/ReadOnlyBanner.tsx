@@ -7,7 +7,7 @@ import { useTranslation } from "react-i18next";
 export function ReadOnlyBanner() {
   const { t } = useTranslation('settingsAirtable');
   return (
-    <div className="flex items-center gap-2.5 rounded-l border border-border bg-well-tint px-3.5 py-2.5">
+    <div className="flex items-center gap-2.5 rounded-card border border-border bg-well-tint px-3.5 py-2.5">
       <Eye className="h-4 w-4 shrink-0 text-muted-foreground" />
       <p className="text-sm text-muted-foreground">
         {t('readOnlyBanner.prefix')}{" "}

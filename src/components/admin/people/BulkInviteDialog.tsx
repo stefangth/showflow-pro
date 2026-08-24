@@ -131,7 +131,7 @@ export function BulkInviteDialog({ open, onOpenChange, members, invites, dedupeH
             </SelectContent>
           </Select>
           {rows.length > 0 && (
-            <div className="max-h-40 overflow-y-auto space-y-1 rounded-l border border-border p-2">
+            <div className="max-h-40 overflow-y-auto space-y-1 rounded-card border border-border p-2">
               {rows.map((r) => (
                 <div key={r.email} className="flex items-center justify-between gap-2 text-sm">
                   <span className="truncate">{r.email}</span>

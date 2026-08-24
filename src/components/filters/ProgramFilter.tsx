@@ -34,9 +34,9 @@ export function ProgramFilter({ options, value, onChange, className }: Props) {
               <button
                 key={opt}
                 onClick={() => toggle(opt)}
-                className="flex items-center w-full gap-2 px-2 py-1.5 rounded-s text-sm hover:bg-accent text-left"
+                className="flex items-center w-full gap-2 px-2 py-1.5 rounded-field text-sm hover:bg-accent text-left"
               >
-                <div className={cn('h-4 w-4 rounded-s border flex items-center justify-center', selected ? 'bg-primary border-primary text-primary-foreground' : 'border-input')}>
+                <div className={cn('h-4 w-4 rounded-field border flex items-center justify-center', selected ? 'bg-primary border-primary text-primary-foreground' : 'border-input')}>
                   {selected && <Check className="h-3 w-3" />}
                 </div>
                 <span className="truncate">{opt}</span>

@@ -59,7 +59,7 @@ export function CastsSection({ onArtistClick }: CastsSectionProps = {}) {
               <button
                 key={c.id}
                 onClick={() => setActiveCast(c)}
-                className="text-left p-3 rounded-l border border-border hover:bg-hover-tint transition-colors"
+                className="text-left p-3 rounded-card border border-border hover:bg-hover-tint transition-colors"
               >
                 <p className="font-medium text-sm">{c.name}</p>
                 <p className="text-xs text-muted-foreground mt-1">

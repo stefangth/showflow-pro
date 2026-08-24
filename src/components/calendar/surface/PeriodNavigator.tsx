@@ -19,7 +19,7 @@ export function PeriodNavigator({ label, onPrev, onNext, onToday, className }: P
     <div className={cn('flex items-center gap-2', className)}>
       <div
         data-testid="period-navigator-pill"
-        className="inline-flex h-8 items-center gap-0.5 rounded-m border border-[var(--line-strong)] bg-card px-0.5"
+        className="inline-flex h-8 items-center gap-0.5 rounded-control border border-[var(--line-strong)] bg-card px-0.5"
       >
         <Button
           type="button"

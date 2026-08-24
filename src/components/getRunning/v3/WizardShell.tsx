@@ -45,7 +45,7 @@ function StepDot({ done, current }: { done: boolean; current: boolean }): JSX.El
   if (current) {
     return <StatusDot tone="accent" />;
   }
-  return <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-xs border border-border" aria-hidden="true" />;
+  return <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-chip border border-border" aria-hidden="true" />;
 }
 
 /**
@@ -121,7 +121,7 @@ export function WizardShell({
   return (
     <div
       data-testid="wizard-shell"
-      className="@container flex w-full flex-col overflow-hidden rounded-l border border-border bg-card shadow-elev2"
+      className="@container flex w-full flex-col overflow-hidden rounded-card border border-border bg-card shadow-elev2"
     >
       {/* Header band. Uses the semantic `bg-accent` / `text-accent-foreground` pair
           (mode-aware: light-violet band + accent-600 text in light, accent-900 band +
@@ -183,7 +183,7 @@ export function WizardShell({
                 type="button"
                 onClick={() => onSelectStep(step.key)}
                 aria-current={isActive ? "step" : undefined}
-                className={`flex items-start gap-2 rounded-s px-2 py-1.5 text-left transition-colors ${
+                className={`flex items-start gap-2 rounded-field px-2 py-1.5 text-left transition-colors ${
                   isActive ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-hover-tint"
                 }`}
               >

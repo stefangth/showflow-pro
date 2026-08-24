@@ -59,7 +59,7 @@ export function FlowRail(props: {
           locked comes from the from-address input, which the page-level Save handles
           instead. The page-level banner carries that messaging. */}
       {!locked && dirtyCount > 0 && (
-        <div className="rounded-l bg-[var(--amber-100)] px-3 py-2 text-xs font-medium text-[var(--amber-600)]">
+        <div className="rounded-card bg-[var(--amber-100)] px-3 py-2 text-xs font-medium text-[var(--amber-600)]">
           {t("flowRail.unsavedDraft", { count: dirtyCount })}
         </div>
       )}

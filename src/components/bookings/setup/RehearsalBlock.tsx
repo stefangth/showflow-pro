@@ -78,7 +78,7 @@ export function RehearsalBlock({ orgId }: { orgId: string | null }) {
         </Button>
       )}
       {run.data && (
-        <div className="mt-2.5 overflow-hidden rounded-m border border-border bg-card">
+        <div className="mt-2.5 overflow-hidden rounded-control border border-border bg-card">
           <div className="border-b border-border p-2.5 text-xs text-muted-foreground">
             {run.data.message ?? `Tier 1, ${run.data.candidates.length} artist${run.data.candidates.length === 1 ? "" : "s"} would be offered`}
           </div>

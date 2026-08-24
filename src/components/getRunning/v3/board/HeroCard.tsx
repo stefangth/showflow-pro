@@ -62,7 +62,7 @@ export function HeroCard({
         <button
           type="button"
           onClick={onSeeAll}
-          className="rounded-m border border-white/40 px-3 py-1.5 text-control font-medium text-white hover:border-white/60"
+          className="rounded-control border border-white/40 px-3 py-1.5 text-control font-medium text-white hover:border-white/60"
         >
           {t("hero.seeAll")}
         </button>

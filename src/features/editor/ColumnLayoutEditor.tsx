@@ -123,7 +123,7 @@ export function ColumnLayoutEditor({ pageKey }: ColumnLayoutEditorProps) {
   if (!isEditorMode || defs.length === 0) return null;
 
   return (
-    <div className="flex flex-wrap items-center gap-2 px-3 py-2 rounded-l border border-warning/40 bg-warning/5 text-sm mb-3">
+    <div className="flex flex-wrap items-center gap-2 px-3 py-2 rounded-card border border-warning/40 bg-warning/5 text-sm mb-3">
       {/* Label */}
       <span className="text-xs text-muted-foreground shrink-0 font-medium flex items-center gap-1.5">
         Columns

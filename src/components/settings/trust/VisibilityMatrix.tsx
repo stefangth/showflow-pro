@@ -125,7 +125,7 @@ function RolePicker({ value, onChange }: { value: TrustRole; onChange: (r: Trust
     <div
       role="radiogroup"
       aria-label={t('visibilityMatrix.roleToInspect')}
-      className="inline-flex gap-0.5 rounded-l bg-well-tint p-0.5"
+      className="inline-flex gap-0.5 rounded-card bg-well-tint p-0.5"
     >
       {TRUST_ROLES.map((role, index) => {
         const selected = role.value === value;
@@ -140,7 +140,7 @@ function RolePicker({ value, onChange }: { value: TrustRole; onChange: (r: Trust
             onClick={() => onChange(role.value)}
             onKeyDown={(event) => handleKeyDown(event, index)}
             className={cn(
-              "whitespace-nowrap rounded-s px-3.5 py-1.5 text-caption font-medium transition-colors",
+              "whitespace-nowrap rounded-field px-3.5 py-1.5 text-caption font-medium transition-colors",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
               // Selection is carried by the raised surface and a NEUTRAL
               // hairline, never by `--ring`. Two reasons, both keyboard-facing:

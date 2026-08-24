@@ -40,7 +40,7 @@ export function PageMiniView({ def, role, lang, art, dismissed, onHide, onResume
   }
 
   return (
-    <section className="rounded-l border-[0.5px] border-border bg-card p-4" aria-label={def.eyebrow[lang]}>
+    <section className="rounded-card border-[0.5px] border-border bg-card p-4" aria-label={def.eyebrow[lang]}>
       <div className="flex items-center gap-3 pb-3">
         {/* eslint-disable-next-line no-restricted-syntax -- inline label sharing a flex row with the spacer/subnote/hide-button, not the sole child <Eyebrow> requires */}
         <span className="text-eyebrow font-semibold uppercase tracking-[0.14em] text-muted-foreground">
@@ -65,7 +65,7 @@ export function PageMiniView({ def, role, lang, art, dismissed, onHide, onResume
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {steps.map((step, i) => (
-          <div key={i} className="flex flex-col gap-3 rounded-l border-[0.5px] border-border bg-background p-4">
+          <div key={i} className="flex flex-col gap-3 rounded-card border-[0.5px] border-border bg-background p-4">
             <div className="flex items-center gap-2">
               <span className="font-mono text-caption font-semibold text-accent-600">{STEP_NUMBERS[i]}</span>
               {/* eslint-disable-next-line no-restricted-syntax -- step-number label shares a flex row with the numeral span, not the sole child <Eyebrow> requires */}

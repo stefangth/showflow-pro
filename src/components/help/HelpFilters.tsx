@@ -32,7 +32,7 @@ export function HelpFilters({
           onChange={(e) => onQuery(e.target.value)}
           placeholder={t('search')}
           aria-label={t('search')}
-          className="h-9 w-full rounded-l border-[0.5px] border-border bg-card pl-8 pr-3 text-sm text-foreground shadow-sm outline-none focus:border-accent-400"
+          className="h-9 w-full rounded-card border-[0.5px] border-border bg-card pl-8 pr-3 text-sm text-foreground shadow-sm outline-none focus:border-accent-400"
         />
       </div>
       <div className="flex gap-1.5">

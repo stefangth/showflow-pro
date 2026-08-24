@@ -44,7 +44,7 @@ function EdgeFnRow({ m, rollup }: { m: EdgeFnMetric; rollup: HealthDay[] }) {
   const logs = useEdgeFnLogs(m.fn, open);
 
   return (
-    <div className="rounded-l border border-border p-3">
+    <div className="rounded-card border border-border p-3">
       <div className="flex items-center gap-3">
         <StatusDot tone={healthTone(state)} />
         <span className="font-mono text-sm font-medium flex-1 truncate">{m.fn}</span>
@@ -64,8 +64,8 @@ function EdgeFnRow({ m, rollup }: { m: EdgeFnMetric; rollup: HealthDay[] }) {
             <span
               key={c.code}
               className={c.code >= 500
-                ? "rounded-m bg-destructive/10 px-2 py-0.5 font-mono text-destructive"
-                : "rounded-m bg-warning/10 px-2 py-0.5 font-mono text-warning"}
+                ? "rounded-control bg-destructive/10 px-2 py-0.5 font-mono text-destructive"
+                : "rounded-control bg-warning/10 px-2 py-0.5 font-mono text-warning"}
             >
               {c.code} × {c.count}
             </span>
@@ -89,7 +89,7 @@ function EdgeFnRow({ m, rollup }: { m: EdgeFnMetric; rollup: HealthDay[] }) {
             {open ? "Hide recent errors" : "View recent errors"}
           </button>
           {open && (
-            <div className="mt-2 rounded-m bg-well-tint p-2">
+            <div className="mt-2 rounded-control bg-well-tint p-2">
               {logs.isLoading && <p className="text-xs text-muted-foreground">Loading log lines.</p>}
               {logs.isError && <p className="text-xs text-muted-foreground">{edgeLogUnavailableMessage(logs.error)}</p>}
               {logs.data?.length === 0 && <p className="text-xs text-muted-foreground">No error output in this window.</p>}

@@ -161,7 +161,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                     key={item.to}
                     aria-disabled="true"
                     title={`${item.label} is not enabled for this organization`}
-                    className="flex cursor-not-allowed items-center gap-2.5 rounded-s px-2.5 py-2 text-control font-medium text-muted-foreground/50"
+                    className="flex cursor-not-allowed items-center gap-2.5 rounded-field px-2.5 py-2 text-control font-medium text-muted-foreground/50"
                   >
                     <span className="relative shrink-0">
                       <item.icon className="h-[14px] w-[14px]" />
@@ -182,7 +182,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                   onClick={() => setMobileOpen(false)}
                   className={({ isActive }) =>
                     cn(
-                      'flex items-center gap-2.5 rounded-s px-2.5 py-2 text-control font-medium transition-colors',
+                      'flex items-center gap-2.5 rounded-field px-2.5 py-2 text-control font-medium transition-colors',
                       hiddenForRole ? 'opacity-40' : '',
                       isActive
                         ? 'bg-sidebar-accent text-sidebar-accent-foreground font-semibold'
@@ -259,7 +259,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
             </IconTooltip>
           </div>
         ) : (
-          <div className="rounded-l border border-sidebar-border px-2.5 py-2">
+          <div className="rounded-card border border-sidebar-border px-2.5 py-2">
             <div className="flex items-center gap-2.5">
               <Avatar className="h-8 w-8 shrink-0">
                 <AvatarFallback seed={user?.email ?? ''}>{initials}</AvatarFallback>
@@ -285,7 +285,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                       {SUPPORTED_LANGUAGES.map((code) => (
                         <button
                           key={code}
-                          className="flex w-full items-center gap-2.5 rounded-m px-2.5 py-2 text-control text-foreground hover:bg-hover-tint transition-colors"
+                          className="flex w-full items-center gap-2.5 rounded-control px-2.5 py-2 text-control text-foreground hover:bg-hover-tint transition-colors"
                           onClick={() => { setLang(code); setProfileMenuOpen(false); }}
                           aria-pressed={lang === code}
                         >
@@ -298,13 +298,13 @@ export default function AppLayout({ children }: AppLayoutProps) {
                     </>
                   )}
                   <button
-                    className="flex w-full items-center gap-2.5 rounded-m px-2.5 py-2 text-control text-foreground hover:bg-hover-tint transition-colors"
+                    className="flex w-full items-center gap-2.5 rounded-control px-2.5 py-2 text-control text-foreground hover:bg-hover-tint transition-colors"
                     onClick={() => { setProfileMenuOpen(false); navigate(ROUTES.PROFILE); }}
                   >
                     <User className="h-[14px] w-[14px]" /> {t('account.profile')}
                   </button>
                   <button
-                    className="flex w-full items-center gap-2.5 rounded-m px-2.5 py-2 text-control text-foreground hover:bg-hover-tint transition-colors"
+                    className="flex w-full items-center gap-2.5 rounded-control px-2.5 py-2 text-control text-foreground hover:bg-hover-tint transition-colors"
                     onClick={() => { setProfileMenuOpen(false); handleSignOut(); }}
                   >
                     <LogOut className="h-[14px] w-[14px]" /> {t('account.signOut')}
@@ -372,7 +372,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
         {/* Top bar — 52 px */}
         <header className="flex items-center gap-3 h-[52px] px-6 border-b-[0.5px] border-border bg-background shrink-0">
           <button
-            className="lg:hidden p-1 -ml-1 rounded-m hover:bg-hover-tint transition-colors"
+            className="lg:hidden p-1 -ml-1 rounded-control hover:bg-hover-tint transition-colors"
             onClick={() => setMobileOpen(true)}
             aria-label="Open navigation"
           >

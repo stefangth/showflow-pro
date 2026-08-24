@@ -415,7 +415,7 @@ export function HireOrderImportDialog({ open, onOpenChange, orgId }: Props) {
         {step === "source" && (
           <div className="space-y-4">
             <label
-              className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-l border border-dashed border-border p-8 text-center hover:bg-hover-tint"
+              className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-card border border-dashed border-border p-8 text-center hover:bg-hover-tint"
               onDragOver={(e) => e.preventDefault()}
               onDrop={(e) => { e.preventDefault(); const f = e.dataTransfer.files?.[0]; if (f) onFile(f); }}
             >

@@ -48,7 +48,7 @@ function TimelineStep({
         </span>
         {!last && <span className="w-0.5 flex-1 bg-input" />}
       </div>
-      <div className="mb-2.5 flex-1 rounded-l border border-border bg-card p-3.5">
+      <div className="mb-2.5 flex-1 rounded-card border border-border bg-card p-3.5">
         <div className="flex items-center gap-2.5">
           <div className="flex-1">
             <p className="text-sm font-semibold">{title}</p>
@@ -150,7 +150,7 @@ export function FlowTimeline({
         chips={respOff ? skippedChip : undefined}
       >
         <div className="flex flex-wrap items-center gap-4">
-          <div className="inline-flex rounded-m bg-well-tint p-0.5" role="group" aria-label={t("flowTimeline.steps.notifyArtists.deliveryGroupAria")}>
+          <div className="inline-flex rounded-control bg-well-tint p-0.5" role="group" aria-label={t("flowTimeline.steps.notifyArtists.deliveryGroupAria")}>
             {(["digest", "immediate"] as const).map((mode) => (
               <button
                 key={mode}
@@ -253,7 +253,7 @@ export function FlowTimeline({
               </SelectContent>
             </Select>
           )}
-          <span className="rounded-m border border-border bg-well-tint px-2.5 py-1.5 font-mono text-xs text-muted-foreground">
+          <span className="rounded-control border border-border bg-well-tint px-2.5 py-1.5 font-mono text-xs text-muted-foreground">
             {referencePreview}
           </span>
         </div>
@@ -276,7 +276,7 @@ export function FlowTimeline({
         }
       >
         {respOff && (
-          <p className="rounded-m bg-[var(--amber-100)] px-2.5 py-1.5 text-xs text-[var(--amber-600)]">
+          <p className="rounded-control bg-[var(--amber-100)] px-2.5 py-1.5 text-xs text-[var(--amber-600)]">
             {t("flowTimeline.steps.artistAcceptance.offNotice")}
           </p>
         )}
@@ -300,7 +300,7 @@ export function FlowTimeline({
         }
       >
         {respOff && (
-          <p className="rounded-m bg-well-tint px-2.5 py-1.5 text-xs text-muted-foreground">
+          <p className="rounded-control bg-well-tint px-2.5 py-1.5 text-xs text-muted-foreground">
             {t("flowTimeline.steps.producerConfirmation.offNotice")}
           </p>
         )}

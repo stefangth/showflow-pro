@@ -18,8 +18,8 @@ interface FillMeterProps {
 /** Segment dimensions per size, matching the canonical mock: row bars are
  *  14x7px with a 2px gap; chip ticks are 4x8px with a 1.5px gap. */
 const SIZE_CLASSES: Record<FillMeterSize, { gap: string; bar: string }> = {
-  row: { gap: 'gap-0.5', bar: 'h-1.5 w-3.5 rounded-xs' },
-  chip: { gap: 'gap-[1.5px]', bar: 'h-2 w-1 rounded-xs' },
+  row: { gap: 'gap-0.5', bar: 'h-1.5 w-3.5 rounded-chip' },
+  chip: { gap: 'gap-[1.5px]', bar: 'h-2 w-1 rounded-chip' },
 };
 
 /**

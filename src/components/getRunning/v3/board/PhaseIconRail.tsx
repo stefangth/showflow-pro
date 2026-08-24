@@ -69,7 +69,7 @@ export function PhaseIconRail({
   return (
     <div
       data-testid={`phase-icon-rail-${phase.key}`}
-      className="min-w-0 flex-1 rounded-l border border-border bg-card p-3.5"
+      className="min-w-0 flex-1 rounded-card border border-border bg-card p-3.5"
     >
       <div className="flex items-baseline justify-between gap-2">
         <div className="text-control font-semibold text-foreground">{t(`phases.${phase.key}.name`)}</div>
@@ -91,7 +91,7 @@ export function PhaseIconRail({
             // still outstanding, a plain outline is pending. Done used to be accent
             // violet here, which reads as "selected", not "finished".
             const iconClassName = cn(
-              "flex h-7 w-7 shrink-0 items-center justify-center rounded-s border",
+              "flex h-7 w-7 shrink-0 items-center justify-center rounded-field border",
               step.done && `border-transparent ${TONES.confirmed.bg} ${TONES.confirmed.fg}`,
               !step.done && blocking && `border-transparent ${TONES.waiting.bg} ${TONES.waiting.fg}`,
               !step.done && !blocking && "border-border bg-transparent text-muted-foreground",

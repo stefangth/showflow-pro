@@ -129,7 +129,7 @@ export function MonthGrid({
   return (
     <div
       className={cn(
-        'w-full overflow-hidden rounded-l border-[0.5px] border-border bg-card shadow-elev2',
+        'w-full overflow-hidden rounded-card border-[0.5px] border-border bg-card shadow-elev2',
         className
       )}
       data-testid="month-grid"
@@ -220,7 +220,7 @@ export function MonthGrid({
                     key={chipIndex}
                     data-testid={`month-grid-chip-${key}-${chipIndex}`}
                     className={cn(
-                      'rounded-xs border-l-2 py-0.5 pl-1.5 pr-1 text-eyebrow',
+                      'rounded-chip border-l-2 py-0.5 pl-1.5 pr-1 text-eyebrow',
                       TONE_RAIL[chip.tone],
                       TONE_BG[chip.tone]
                     )}
@@ -237,7 +237,7 @@ export function MonthGrid({
                         {(chip.extraSessions ?? 0) > 0 && (
                           <span
                             data-testid={`month-grid-chip-sessions-${key}-${chipIndex}`}
-                            className="inline-flex items-center rounded-xs bg-accent-tint px-1 text-eyebrow font-medium text-accent-text"
+                            className="inline-flex items-center rounded-chip bg-accent-tint px-1 text-eyebrow font-medium text-accent-text"
                           >
                             +{chip.extraSessions}
                           </span>

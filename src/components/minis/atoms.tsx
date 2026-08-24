@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge';
 /** The inner illustration panel (a small "card" inside a step). */
 export function MiniCard({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <div className={cn('flex flex-col gap-2.5 rounded-m border-[0.5px] border-border bg-card p-3', className)}>
+    <div className={cn('flex flex-col gap-2.5 rounded-control border-[0.5px] border-border bg-card p-3', className)}>
       {children}
     </div>
   );
@@ -33,7 +33,7 @@ export function MiniField({ label, children }: { label: string; children: ReactN
 /** A recessed "well" row (e.g. a tier line or a summary chip). */
 export function MiniWell({ icon, label, trailing }: { icon?: ReactNode; label: ReactNode; trailing?: ReactNode }) {
   return (
-    <div className="flex items-center gap-2 rounded-s border-[0.5px] border-border bg-well-tint px-2.5 py-2">
+    <div className="flex items-center gap-2 rounded-field border-[0.5px] border-border bg-well-tint px-2.5 py-2">
       {icon}
       <span className="min-w-0 flex-1 truncate text-caption text-muted-foreground">{label}</span>
       {trailing && <span className="shrink-0 font-mono text-eyebrow text-muted-foreground/80">{trailing}</span>}
@@ -111,7 +111,7 @@ export function MiniButton({ children, primary }: { children: ReactNode; primary
   return (
     <span
       className={cn(
-        'inline-flex h-7 flex-1 items-center justify-center rounded-s border-[0.5px] text-caption font-medium',
+        'inline-flex h-7 flex-1 items-center justify-center rounded-field border-[0.5px] text-caption font-medium',
         primary
           ? 'border-accent-600 bg-accent-500 text-white'
           : 'border-border bg-card text-foreground',
@@ -136,7 +136,7 @@ export function MiniWeek({ days }: { days: readonly { n: number; tone: DayTone }
       {days.map((d, i) => (
         <span
           key={i}
-          className={cn('flex aspect-square items-center justify-center rounded-xs border-[0.5px] font-mono text-eyebrow font-semibold tabular-nums', fill[d.tone])}
+          className={cn('flex aspect-square items-center justify-center rounded-chip border-[0.5px] font-mono text-eyebrow font-semibold tabular-nums', fill[d.tone])}
         >
           {d.n}
         </span>

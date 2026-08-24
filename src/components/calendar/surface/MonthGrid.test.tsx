@@ -190,7 +190,7 @@ describe('MonthGrid', () => {
     render(<MonthGrid cells={buildCells()} onSelectDay={vi.fn()} onOpenDay={vi.fn()} />);
     const wrapper = screen.getByTestId('month-grid');
     expect(wrapper.className).toContain('bg-card');
-    expect(wrapper.className).toContain('rounded-l');
+    expect(wrapper.className).toContain('rounded-card');
     expect(wrapper.className).toContain('border-[0.5px]');
     expect(wrapper.className).toContain('shadow-elev2');
   });

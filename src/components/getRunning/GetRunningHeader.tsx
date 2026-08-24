@@ -124,7 +124,7 @@ export function GetRunningHeader({ model, orgName, role, adminNames }: {
         <div className="mt-3 flex flex-col gap-2 border-t border-border pt-2.5">
           {modules.map((m) => (
             <div key={m.key} data-testid={`get-running-module-${m.key}`} className="flex items-baseline gap-[7px]">
-              <div className={`h-1.5 w-1.5 shrink-0 rounded-xs ${m.on ? "bg-primary" : "bg-[var(--text-faint)]"}`} />
+              <div className={`h-1.5 w-1.5 shrink-0 rounded-chip ${m.on ? "bg-primary" : "bg-[var(--text-faint)]"}`} />
               <div className="text-xs font-medium text-foreground">{m.label}</div>
               <div className="flex-1" />
               <div className={`text-eyebrow font-semibold ${m.on ? "text-accent-600" : "text-[var(--text-faint)]"}`}>

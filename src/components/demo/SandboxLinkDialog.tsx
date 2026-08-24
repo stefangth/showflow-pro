@@ -123,7 +123,7 @@ export function SandboxLinkDialog() {
         </div>
 
         {newUrl && (
-          <div className="flex items-center gap-2 rounded-m border border-border bg-primary/5 px-2 py-1.5">
+          <div className="flex items-center gap-2 rounded-control border border-border bg-primary/5 px-2 py-1.5">
             <p className="min-w-0 flex-1 truncate font-mono text-xs">{newUrl}</p>
             <Button size="sm" variant="secondary" className="h-7 px-2" onClick={() => copyLink(newUrl)}>
               <Copy className="h-3.5 w-3.5" /> Copy

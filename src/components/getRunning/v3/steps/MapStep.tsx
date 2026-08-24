@@ -145,7 +145,7 @@ export function MapStep({
           <Skeleton className="h-9 w-full" />
         </div>
       ) : awaitingAirtableConnection ? (
-        <div className="space-y-2 rounded-l border border-border bg-well-tint px-3.5 py-3">
+        <div className="space-y-2 rounded-card border border-border bg-well-tint px-3.5 py-3">
           <p className="text-control text-foreground">{t("body.map.notConnected")}</p>
           {onGoToStep && (
             <Button type="button" variant="outline" size="sm" onClick={() => onGoToStep("connect")}>
@@ -210,7 +210,7 @@ export function MapStep({
         />
       )}
 
-      <div className="space-y-1 rounded-l border border-border bg-well-tint px-3.5 py-3">
+      <div className="space-y-1 rounded-card border border-border bg-well-tint px-3.5 py-3">
         <p className="text-control font-medium text-foreground">{t("body.map.slotsFold.title")}</p>
         <p className="text-xs text-muted-foreground">
           {t("body.map.slotsFold.body")}{" "}

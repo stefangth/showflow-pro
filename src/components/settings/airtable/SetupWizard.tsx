@@ -48,7 +48,7 @@ export function SetupWizard({
   const { t } = useTranslation('settingsAirtable');
   const currentStep = keyPresent ? 2 : 1;
   return (
-    <div className="overflow-hidden rounded-l border border-border bg-card shadow-sm">
+    <div className="overflow-hidden rounded-card border border-border bg-card shadow-sm">
       <div className="border-b border-border p-5">
         <p className={EYEBROW}>{t('setupWizard.eyebrow')}</p>
         <h2 className="mt-1.5 font-display text-title font-semibold tracking-tight">

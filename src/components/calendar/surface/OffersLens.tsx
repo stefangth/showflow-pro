@@ -90,7 +90,7 @@ export function OffersLens({
               // `md:` restores the desktop 3-column row exactly at >=768px
               // (matching `useIsMobile`'s breakpoint) — every `md:`-only
               // utility below reproduces a value this card already had.
-              className="flex flex-col overflow-hidden rounded-l border border-border bg-card shadow-elev1 md:flex-row md:items-stretch"
+              className="flex flex-col overflow-hidden rounded-card border border-border bg-card shadow-elev1 md:flex-row md:items-stretch"
             >
               <div className="flex w-full shrink-0 flex-row items-center justify-start gap-2 border-b border-border bg-well-tint px-4 py-2.5 text-left md:w-[92px] md:flex-col md:items-center md:justify-center md:gap-0 md:border-b-0 md:border-r md:px-0 md:py-4 md:text-center">
                 <Eyebrow>{format(entry.date, 'EEE', { locale: dfLocale() })}</Eyebrow>
@@ -154,7 +154,7 @@ export function OffersLens({
                         old one read "Waiting on the office" for every org. */}
                     <span
                       className={cn(
-                        'inline-flex h-5 shrink-0 items-center whitespace-nowrap rounded-xs px-1.5 text-eyebrow font-medium',
+                        'inline-flex h-5 shrink-0 items-center whitespace-nowrap rounded-chip px-1.5 text-eyebrow font-medium',
                         toneSpec.badgeClass
                       )}
                     >
@@ -187,7 +187,7 @@ export function OffersLens({
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-m border border-border bg-well-tint">
+      <div className="overflow-hidden rounded-control border border-border bg-well-tint">
         <div className="flex items-center gap-2 border-b border-border px-3.5 py-2.5">
           <Eyebrow>{t('calendar.offersAnswered.title')}</Eyebrow>
           <span className="font-mono text-eyebrow text-muted-foreground">{answeredToday.length}</span>
@@ -207,7 +207,7 @@ export function OffersLens({
             <span className="truncate text-xs text-muted-foreground">{row.venue}</span>
             <span
               className={cn(
-                'ml-auto inline-flex h-5 shrink-0 items-center whitespace-nowrap rounded-xs px-1.5 text-eyebrow font-medium',
+                'ml-auto inline-flex h-5 shrink-0 items-center whitespace-nowrap rounded-chip px-1.5 text-eyebrow font-medium',
                 row.badgeClass
               )}
             >
@@ -217,7 +217,7 @@ export function OffersLens({
         ))}
       </div>
 
-      <div className="overflow-hidden rounded-m border border-border bg-card">
+      <div className="overflow-hidden rounded-control border border-border bg-card">
         <div className="flex items-center gap-2 border-b border-border px-3.5 py-2.5">
           <Eyebrow>{t('calendar.notOffered.title')}</Eyebrow>
           <span className="ml-auto text-xs text-muted-foreground">{t('calendar.notOffered.eligibleFromCasts')}</span>

@@ -26,7 +26,7 @@ export function StillShutCard({ model }: { model: GetRunningModelV3 }): JSX.Elem
   const nothingShut = firstAskCount === 0 && firstContractCount === 0;
 
   return (
-    <div data-testid="still-shut-card" className="rounded-l border border-border bg-card p-4">
+    <div data-testid="still-shut-card" className="rounded-card border border-border bg-card p-4">
       <Eyebrow>{t("stillShut.title")}</Eyebrow>
       <div className="mt-3 flex flex-col gap-2.5">
         {firstAskCount > 0 && (

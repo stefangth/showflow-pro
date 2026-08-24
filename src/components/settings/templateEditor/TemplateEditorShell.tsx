@@ -21,7 +21,7 @@ export function TemplateEditorShell({ title, breadcrumb, actions, outline, previ
         </div>
         {actions && <div className="flex items-center gap-2">{actions}</div>}
       </div>
-      <ResizablePanelGroup direction="horizontal" className="flex-1 rounded-l border">
+      <ResizablePanelGroup direction="horizontal" className="flex-1 rounded-card border">
         <ResizablePanel defaultSize={22} minSize={16}>{outline}</ResizablePanel>
         <ResizableHandle withHandle />
         <ResizablePanel defaultSize={50} minSize={30}>{preview}</ResizablePanel>

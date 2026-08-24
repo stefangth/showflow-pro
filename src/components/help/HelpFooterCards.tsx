@@ -10,7 +10,7 @@ export function HelpFooterCards() {
   return (
     <>
       <section className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(300px,1fr))]">
-        <div className="rounded-l border-[0.5px] border-border bg-card p-4">
+        <div className="rounded-card border-[0.5px] border-border bg-card p-4">
           <Eyebrow tone="accent" className="mb-2">{t('stuck.eyebrow')}</Eyebrow>
           <p className="text-sm leading-relaxed text-muted-foreground">{t('stuck.body')}</p>
         </div>

@@ -20,7 +20,7 @@ const Card = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      "rounded-l border bg-card text-card-foreground",
+      "rounded-card border bg-card text-card-foreground",
       elevation === 2 && "shadow-elev2",
       elevation === 3 && "shadow-elev3",
       className,

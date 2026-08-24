@@ -198,7 +198,7 @@ export function SkillsTab({ orgId }: { orgId: string }) {
             </Button>
           </div>
 
-          <div className="overflow-hidden rounded-l border border-border">
+          <div className="overflow-hidden rounded-card border border-border">
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">

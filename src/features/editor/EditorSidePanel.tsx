@@ -138,7 +138,7 @@ function AccessTab({
             return (
               <div
                 key={route}
-                className={`rounded-l border p-3 space-y-2 ${isCurrentPage ? 'border-primary/40 bg-primary/5' : 'border-border'}`}
+                className={`rounded-card border p-3 space-y-2 ${isCurrentPage ? 'border-primary/40 bg-primary/5' : 'border-border'}`}
               >
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium">{ROUTE_LABELS[route]}</span>

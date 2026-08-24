@@ -169,7 +169,7 @@ export function EligibilityBookList({
         <p className="text-sm text-muted-foreground">{t("eligibilityBookList.noEligible")}</p>
       )}
       {artists.map((a) => (
-        <div key={a.id} className="flex items-center justify-between rounded-l border border-border p-3">
+        <div key={a.id} className="flex items-center justify-between rounded-card border border-border p-3">
           <p className="text-sm font-medium">{a.name}</p>
           {bookedArtistIds.has(a.id) ? (
             <Badge variant="secondary" className="bg-well-tint text-muted-foreground">{t("eligibilityBookList.booked")}</Badge>

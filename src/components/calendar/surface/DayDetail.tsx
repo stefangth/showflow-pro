@@ -293,7 +293,7 @@ export function DayDetail({
   const primaryDisabled = primaryGate?.disabled ?? false;
 
   return (
-    <div className={cn('overflow-hidden rounded-l border-[0.5px] border-border bg-card shadow-elev2', className)}>
+    <div className={cn('overflow-hidden rounded-card border-[0.5px] border-border bg-card shadow-elev2', className)}>
       <div data-testid="day-rail-header" className="border-b-[0.5px] border-border px-4 pb-3 pt-3.5">
         <Eyebrow className={cn('mb-1', TONE_TEXT[header.eyebrowTone])}>{header.eyebrow}</Eyebrow>
         <h3 className="text-title-sm font-semibold tracking-tight text-foreground">{header.title}</h3>
@@ -320,7 +320,7 @@ export function DayDetail({
                 key={tile.key}
                 data-testid={`day-detail-tile-${tile.key}`}
                 className={cn(
-                  'rounded-m border px-3 py-2',
+                  'rounded-control border px-3 py-2',
                   tile.warn ? 'border-warning/40 bg-warning/10' : 'border-border'
                 )}
               >

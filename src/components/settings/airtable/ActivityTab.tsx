@@ -33,7 +33,7 @@ function badgeStyle(tone: StatusTone): CSSProperties | undefined {
 export function ActivityTab({ runs, loading }: ActivityTabProps) {
   const { t } = useTranslation('settingsAirtable');
   return (
-    <div className="rounded-l border border-border bg-card shadow-sm">
+    <div className="rounded-card border border-border bg-card shadow-sm">
       <div className="border-b border-border p-4">
         <h3 className="text-title-sm font-semibold tracking-tight">{t('activityTab.title')}</h3>
         <p className="mt-1 text-sm text-muted-foreground">
@@ -89,7 +89,7 @@ export function ActivityTab({ runs, loading }: ActivityTabProps) {
                   <span>
                     <span
                       className={cn(
-                        "inline-flex items-center rounded-xs px-1.5 py-0.5 font-sans text-eyebrow font-medium",
+                        "inline-flex items-center rounded-chip px-1.5 py-0.5 font-sans text-eyebrow font-medium",
                         badgeClass(badge.tone),
                       )}
                       style={badgeStyle(badge.tone)}

@@ -5,7 +5,7 @@ export function CountChip({ active = false, children }: { active?: boolean; chil
   return (
     <span
       className={cn(
-        'inline-flex h-4 min-w-4 items-center justify-center rounded-xs px-1 font-mono text-[10px] font-semibold tabular-nums',
+        'inline-flex h-4 min-w-4 items-center justify-center rounded-chip px-1 font-mono text-[10px] font-semibold tabular-nums',
         active ? 'bg-accent-50 text-accent-text' : 'bg-muted text-muted-foreground',
       )}
     >

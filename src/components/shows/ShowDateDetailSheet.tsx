@@ -966,7 +966,7 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager, ini
                       meter's place); only the cancelled notice remains a banner. */}
                   {showDate.status === 'cancelled' && (
                     <div className="px-6 pt-4">
-                      <div className="rounded-l border border-destructive/30 bg-destructive/10 p-3">
+                      <div className="rounded-card border border-destructive/30 bg-destructive/10 p-3">
                         <p className="text-sm font-medium text-destructive">{t('showDateSheet.banner.cancelled')}</p>
                         {showDate.cancellation_reason && (
                           <p className="text-sm text-destructive/90 mt-0.5">{showDate.cancellation_reason}</p>

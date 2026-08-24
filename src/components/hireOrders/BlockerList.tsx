@@ -139,7 +139,7 @@ export function BlockerList({ orgId, blockers, onFixOrderField, idPrefix = "bloc
   return (
     <div className="space-y-2.5">
       {blockers.map((b) => (
-        <div key={b.key} className="flex gap-2.5 rounded-l border border-border p-3">
+        <div key={b.key} className="flex gap-2.5 rounded-card border border-border p-3">
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-[var(--amber-600)]" />
           <div className="min-w-0 flex-1">
             <p className="text-sm font-medium">{BLOCKER_COPY[b.key].label}</p>

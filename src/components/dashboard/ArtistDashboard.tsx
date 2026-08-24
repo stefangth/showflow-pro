@@ -366,7 +366,7 @@ export function ArtistDashboard() {
                       <div
                         key={o.id}
                         className={cn(
-                          'flex items-center justify-between gap-3 rounded-l border border-border p-3',
+                          'flex items-center justify-between gap-3 rounded-card border border-border p-3',
                           pastRowClassName(parsedDate),
                         )}
                       >
@@ -412,7 +412,7 @@ export function ArtistDashboard() {
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {myMemberships!.map(m => (
-                    <div key={m.id} className="flex items-center justify-between p-2 rounded-m border border-border">
+                    <div key={m.id} className="flex items-center justify-between p-2 rounded-control border border-border">
                       <p className="text-sm font-medium">{m.cast?.name ?? '—'}</p>
                       <Badge variant="outline" className="text-xs">{t('artist.member')}</Badge>
                     </div>
