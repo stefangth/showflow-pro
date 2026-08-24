@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { SkillPicker } from "./SkillPicker";
 
 const SKILLS = [{ id: "s1", name: "judge" }, { id: "s2", name: "juggling" }];
@@ -19,5 +19,32 @@ describe("SkillPicker", () => {
   it("shows the empty hint when there are no skills", () => {
     render(<SkillPicker skills={[]} selectedIds={[]} onToggle={() => {}} emptyHint="No skills yet." />);
     expect(screen.getByText("No skills yet.")).toBeInTheDocument();
+  });
+
+  it("renders a create affordance instead of dead text when the catalog is empty", () => {
+    render(<SkillPicker skills={[]} selectedIds={[]} onToggle={vi.fn()} onCreate={vi.fn()} canCreate emptyHint="none yet" />);
+    expect(screen.getByRole("button", { name: /new skill/i })).toBeInTheDocument();
+  });
+
+  it("keeps the plain hint when creation is not allowed", () => {
+    render(<SkillPicker skills={[]} selectedIds={[]} onToggle={vi.fn()} emptyHint="none yet" />);
+    expect(screen.getByText("none yet")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /new skill/i })).toBeNull();
+  });
+
+  it("selects the newly created skill without waiting for a refetch", async () => {
+    const onCreate = vi.fn().mockResolvedValue({ id: "sk-9", name: "Lead Vocals" });
+    const onToggle = vi.fn();
+    render(<SkillPicker skills={[]} selectedIds={[]} onToggle={onToggle} onCreate={onCreate} canCreate />);
+    fireEvent.click(screen.getByRole("button", { name: /new skill/i }));
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "Lead Vocals" } });
+    fireEvent.submit(screen.getByRole("textbox").closest("form")!);
+    await waitFor(() => expect(onToggle).toHaveBeenCalledWith("sk-9"));
+  });
+
+  it("marks a selected skill with a check", () => {
+    render(<SkillPicker skills={[{ id: "sk-1", name: "Piano" }]} selectedIds={["sk-1"]} onToggle={vi.fn()} />);
+    expect(screen.getByRole("button", { name: /piano/i })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByTestId("skill-chip-check")).toBeInTheDocument();
   });
 });
