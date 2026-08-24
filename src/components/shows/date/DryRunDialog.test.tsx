@@ -105,6 +105,49 @@ describe("DryRunDialog", () => {
     expect(screen.getByRole("button", { name: /open round 1/i })).toBeDisabled();
   });
 
+  // Regression: when the dry-run query FAILS (e.g. the open-offer-tier edge function
+  // is unavailable / 503s), the dialog used to fall through to its zero-candidates body
+  // and render a confident "send 0 asks" with all-zero exclusion counts, indistinguishable
+  // from a genuine "nobody is eligible" result. A failed check must read as an error, not 0.
+  it("shows an error state instead of a false '0 asks' when the dry run fails", () => {
+    renderWithProviders(
+      <DryRunDialog
+        open
+        onOpenChange={() => {}}
+        tier={1}
+        result={null}
+        loading={false}
+        error
+        flow={{ offer_delivery: "digest" }}
+        onConfirm={vi.fn()}
+      />,
+    );
+    expect(screen.getByText(/couldn't check who gets asked/i)).toBeInTheDocument();
+    // The failure must NOT masquerade as a real zero-eligibility result.
+    expect(screen.queryByText(/Excluded:/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/would send 0 asks/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /open round 1/i })).toBeDisabled();
+  });
+
+  it("fires onRetry from the error state", () => {
+    const onRetry = vi.fn();
+    renderWithProviders(
+      <DryRunDialog
+        open
+        onOpenChange={() => {}}
+        tier={1}
+        result={null}
+        loading={false}
+        error
+        onRetry={onRetry}
+        flow={{ offer_delivery: "digest" }}
+        onConfirm={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /try again/i }));
+    expect(onRetry).toHaveBeenCalledTimes(1);
+  });
+
   it("renders the not-eligible and missing-skills exclusion rows", () => {
     renderWithProviders(
       <DryRunDialog
