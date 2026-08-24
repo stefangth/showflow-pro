@@ -122,6 +122,17 @@ export const uiConventions = {
         selector: "Literal[value=/\\bbg-accent-(?:50|100|200)(?![0-9])/]",
         message: 'Solid fixed-light accent background: bg-accent-50/100/200 never flip for dark mode, so flipping text on them is invisible in dark. Use bg-accent / bg-accent-tint, or pair with a fixed stop (text-accent-700) and eslint-disable with a reason. See docs/ui-conventions.md section 2.',
       },
+      {
+        // Mono means one thing: a machine token. A string a system produced that
+        // a person may copy, paste, or quote back. Numbers the user reads as
+        // quantities, dates or times are `<Metric>`, which renders tabular
+        // figures in the sans face and measures identically to mono, so a column
+        // still lines up exactly. src/components/ui is exempt via eslint.config.js,
+        // which is where Token itself lives.
+        selector: "Literal[value=/\\bfont-mono\\b/]",
+        message:
+          'Raw font-mono. Mono is only for machine tokens: use <Token>. A number the user reads is <Metric>. See section 3.',
+      },
     ],
     'no-restricted-imports': [
       'error',
