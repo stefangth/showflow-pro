@@ -76,6 +76,27 @@ export const uiConventions = {
           'Retired shadcn radius alias. Use the design-system scale: chip (4), field (6), control (8), card (10). See section 2.',
       },
       {
+        // Bare Tailwind side/corner/logical radius utility: rounded-t,
+        // rounded-l, rounded-tl, rounded-s, rounded-es, and so on, with no
+        // size suffix. This is the call-site half of the collision fixed by
+        // scripts/tailwindRadius.test.ts: the config guard keeps our OWN
+        // scale from re-entering this namespace, but nothing stopped a
+        // developer typing a Tailwind side utility directly and silently
+        // rounding only one side. A *sized* form like rounded-l-md or
+        // rounded-tl-lg is Tailwind's real, legitimate side utility and must
+        // stay legal, so the negative lookahead requires the suffix be
+        // followed by a non-word, non-dash boundary. Two-letter corner/
+        // logical suffixes are listed before their one-letter prefixes
+        // (tl before t, ss before s, ...) so the longer match is attempted
+        // first. \\w in the lookahead also keeps this from firing on
+        // rounded-chip/field/control/card/icon/pill, none of which start
+        // with a reserved suffix letter.
+        selector:
+          "Literal[value=/\\brounded-(tl|tr|br|bl|ss|se|es|ee|t|r|b|l|s|e)(?![-\\w])/]",
+        message:
+          'Bare Tailwind side radius. This rounds only one side and is almost always a mistake. Use rounded-chip|field|control|card|icon|pill. See section 2.',
+      },
+      {
         // bg-muted used as a solid wash is retired in feature code; use a tint token
         // or an explicit surface. Excludes bg-muted-foreground. \\u002F guards the "/"
         // (esquery treats a literal / as the regex terminator).

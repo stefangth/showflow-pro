@@ -34,7 +34,8 @@ The shadcn aliases `rounded-sm`, `rounded-md` and `rounded-lg` are retired.
 **[ci]** Never name a radius key with a single letter. Tailwind owns the suffixes
 `t r b l tl tr br bl s e ss se es ee` for its side, corner and logical-property
 utilities, and a key that reuses one silently loses the cascade on those corners.
-`scripts/tailwindRadius.test.ts` fails the build if a key re-enters that namespace.
+`scripts/tailwindThemeCollisions.test.ts` fails the build if a key re-enters that namespace,
+for `borderRadius` and every other custom theme scale this project extends.
 
 **[review]** Radii nest inward. A card at 10 holds a row or button at 8 holds a chip at 4.
 Never reversed, never tied. A card inside a card steps down to 8; it does not repeat 10.

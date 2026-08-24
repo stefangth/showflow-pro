@@ -127,7 +127,7 @@ export default {
            emits a second rule under the same class name and Tailwind wins the
            cascade on those corners. That is exactly what happened to `l` (cards)
            and `s` (inputs): every card rendered 4px on the left and 10px on the
-           right until 2026-08-24. scripts/tailwindRadius.test.ts now fails the
+           right until 2026-08-24. scripts/tailwindThemeCollisions.test.ts now fails the
            build if a key ever re-enters that namespace. */
         chip:    "var(--radius-xs)",   /* 4px   - tags, badges, chips */
         field:   "var(--radius-s)",    /* 6px   - inputs */
