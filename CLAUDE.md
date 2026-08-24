@@ -18,7 +18,8 @@ Hard rules, in order of how often they are broken:
    `bg-foreground/[0.04]` outside `src/components/ui`. `eslint/ui-conventions.js` is wired
    into the CI gate (Wave 2) and runs at `--max-warnings 0`, so a raw value fails the
    build. Write token-clean regardless: use the `fontSize` scale (`text-control` etc.),
-   the radius scale (`rounded-s|m|l`), and semantic colour tokens.
+   the radius scale (`rounded-chip|field|control|card|icon|pill`), and semantic colour
+   tokens.
 3. **13px is the control size.** Buttons, inputs, table cells, nav rows. 14 is body.
    11 is the eyebrow.
 4. **Uppercase text is `<Eyebrow>`.** Never hand-write
