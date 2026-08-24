@@ -10,10 +10,11 @@ copy voice or component behaviour from that folder.
 
 Hard rules, in order of how often they are broken:
 
-1. **Check `src/components/ui` first.** 54 primitives exist. If one is close, use it with
+1. **Check `src/components/ui` first.** 58 primitives exist. If one is close, use it with
    `className`. Do not write a local version. The eight most-reimplemented patterns are
    now primitives too: `Eyebrow`, `StatusPill`, `StatusDot`, `KpiTile`, `EmptyState`,
-   `Metric`, `CountChip`, `PageHeader`.
+   `Metric`, `CountChip`, `PageHeader`. `Token` joins them: it is the only way to render
+   Geist Mono in feature code, and only a machine token earns it (see rule 8).
 2. **No raw values.** No hex, no `rgba()`, no `text-[13px]`, no `rounded-[10px]`, no
    `bg-foreground/[0.04]` outside `src/components/ui`. `eslint/ui-conventions.js` is wired
    into the CI gate (Wave 2) and runs at `--max-warnings 0`, so a raw value fails the

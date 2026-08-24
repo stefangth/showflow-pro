@@ -11,6 +11,7 @@ import type { HealthDay } from "@/lib/uptime";
 import { useEdgeFnLogs } from "@/hooks/useSystemHealth";
 import { edgeLogUnavailableMessage } from "./edgeLogCopy";
 import { Token } from "@/components/ui/token";
+import { Metric } from "@/components/ui/metric";
 
 /** Status-code histogram as sorted "code × count" chips, faults first. A bare
  *  error count cannot answer "what went wrong"; the exact code can. */
@@ -95,9 +96,9 @@ function EdgeFnRow({ m, rollup }: { m: EdgeFnMetric; rollup: HealthDay[] }) {
               {logs.isError && <p className="text-xs text-muted-foreground">{edgeLogUnavailableMessage(logs.error)}</p>}
               {logs.data?.length === 0 && <p className="text-xs text-muted-foreground">No error output in this window.</p>}
               {logs.data?.map((l, i) => (
-                <Token key={i} className="block text-eyebrow leading-relaxed text-muted-foreground">
-                  {l.at.slice(11, 19)} {l.message}
-                </Token>
+                <p key={i} className="text-eyebrow leading-relaxed text-muted-foreground">
+                  <Metric>{l.at.slice(11, 19)}</Metric> <Token>{l.message}</Token>
+                </p>
               ))}
             </div>
           )}

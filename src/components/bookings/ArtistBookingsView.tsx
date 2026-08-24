@@ -9,7 +9,6 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Token } from '@/components/ui/token';
 import { TimeframeFilter, type TimeframeValue } from '@/components/filters/TimeframeFilter';
 import { SortControl, type SortValue } from '@/components/filters/SortControl';
 import { ViewToggle, type ViewMode } from '@/components/filters/ViewToggle';
@@ -33,7 +32,7 @@ import { formatDateDMY, parseDateOnly, isPastDate, pastRowClassName } from '@/li
 import { showIdentityLabel } from '@/types';
 import { cn } from '@/lib/utils';
 import { ROUTES } from '@/config/app.config';
-import { useColumnTemplate, useEditorConfig } from '@/features/editor/EditorContext';
+import { useColumnTemplate } from '@/features/editor/EditorContext';
 import { useColumnHeaders } from '@/features/editor/useColumnHeaders';
 import { ColumnLayoutEditor } from '@/features/editor/ColumnLayoutEditor';
 
@@ -86,7 +85,6 @@ export function ArtistBookingsView() {
   const pageCopy = bookingsViewCopy(flow, tFlow);
   const statusLabels = bookingStatusLabels(flow, tFlow);
   const { orderedColumns, visibleCount } = useColumnTemplate('bookings-artist');
-  const { isEditorMode } = useEditorConfig();
   const columnHeaders = useColumnHeaders(orderedColumns);
   // Default to All time (not the Upcoming preset the producer surfaces use): an
   // artist should see every date they hold a commitment on, including a past
@@ -224,7 +222,7 @@ export function ArtistBookingsView() {
                   <TableRow>
                     {columnHeaders.map(({ columnId, headerLabel }) => (
                       <TableHead key={columnId} className="text-xs">
-                        {isEditorMode ? <Token>{headerLabel}</Token> : headerLabel}
+                        {headerLabel}
                       </TableHead>
                     ))}
                   </TableRow>

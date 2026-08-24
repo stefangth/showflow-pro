@@ -37,7 +37,7 @@ export function StagedChangesCard({
     <div className="rounded-card border border-border shadow-elev2 bg-card">
       <div className="px-4 pt-4">
         <Eyebrow>{t("stagedChangesCard.heading")}</Eyebrow>
-        <Metric className="mt-1 text-title font-medium text-foreground">
+        <Metric className="mt-1 block text-title font-medium text-foreground">
           {count}
         </Metric>
         <p className="text-caption text-muted-foreground">{scopeLine}</p>

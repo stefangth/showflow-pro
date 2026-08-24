@@ -133,6 +133,18 @@ export const uiConventions = {
         message:
           'Raw font-mono. Mono is only for machine tokens: use <Token>. A number the user reads is <Metric>. See section 3.',
       },
+      {
+        // The Literal selector above sees only plain strings, so a template
+        // literal className (className={`font-mono ${x}`}) slipped through.
+        // Template literals are in active use for classNames in this codebase,
+        // so this is a real evasion path, not a theoretical one. A template
+        // literal's static chunks are TemplateElement nodes; match their raw
+        // text. Applied to this rule only: the sibling rules above keep their
+        // existing Literal-only reach.
+        selector: "TemplateElement[value.raw=/\\bfont-mono\\b/]",
+        message:
+          'Raw font-mono. Mono is only for machine tokens: use <Token>. A number the user reads is <Metric>. See section 3.',
+      },
     ],
     'no-restricted-imports': [
       'error',

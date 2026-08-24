@@ -60,7 +60,7 @@ export function AirtableConnectionSummary({ orgId, readOnly, canTriggerSync, onE
           done
           title={t("manageDialog.baseTable.label")}
           detail={baseTableLine}
-          mono
+          dense
           action={canWrite ? t("connection.change") : undefined}
           onAction={() => onEditStep("baseTable")}
         />
@@ -89,7 +89,10 @@ export function AirtableConnectionSummary({ orgId, readOnly, canTriggerSync, onE
 interface SummaryRowProps {
   title: string;
   detail: string;
-  mono?: boolean;
+  /** Renders the detail line one step smaller, for a dense multi part value
+   *  such as the base > table > view > frequency line. Was named `mono` while
+   *  that line was Geist Mono; it is plain sans now, so the name says size. */
+  dense?: boolean;
   badge?: string;
   action?: string;
   onAction: () => void;
@@ -103,7 +106,7 @@ interface SummaryRowProps {
 
 /** One collapsed group row: a status dot, a title + one-line detail, an optional
  *  mapped-count badge, and an edit affordance that re-opens the rail on this step. */
-function SummaryRow({ title, detail, mono, badge, action, onAction, stepNumber, done, emphasis, dashed }: SummaryRowProps) {
+function SummaryRow({ title, detail, dense, badge, action, onAction, stepNumber, done, emphasis, dashed }: SummaryRowProps) {
   const finished = done || stepNumber === undefined;
   return (
     <div
@@ -126,7 +129,7 @@ function SummaryRow({ title, detail, mono, badge, action, onAction, stepNumber, 
       </span>
       <div className="min-w-0 flex-1">
         <p className={cn("text-control font-medium", emphasis && "font-semibold")}>{title}</p>
-        <p className={cn("mt-0.5 text-xs text-muted-foreground", mono && "text-eyebrow")}>{detail}</p>
+        <p className={cn("mt-0.5 text-xs text-muted-foreground", dense && "text-eyebrow")}>{detail}</p>
       </div>
       {badge && <span className="shrink-0 text-xs font-medium tabular-nums text-accent-text">{badge}</span>}
       {action && (

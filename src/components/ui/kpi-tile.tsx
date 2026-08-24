@@ -4,7 +4,7 @@ import { Metric } from './metric';
 import type { Tone } from './tones';
 
 /**
- * The KPI tile. Uniform 14px padding, no shadow, mono tabular value. Replaces the
+ * The KPI tile. Uniform 14px padding, no shadow, tabular sans value. Replaces the
  * two divergent implementations (OrdersKpis used Card, SeasonKpis deliberately did
  * not because Card's shadow and asymmetric padding were wrong; Card is now fixed,
  * but the tile is still worth having once).

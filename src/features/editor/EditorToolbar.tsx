@@ -236,7 +236,11 @@ export function EditorPageBadge() {
   return (
     <div className="mb-4">
       <Badge variant="neutral">
-        <Token>{ROUTE_TO_FILE[location.pathname] ?? 'Unknown page'}</Token>
+        {ROUTE_TO_FILE[location.pathname] ? (
+          <Token>{ROUTE_TO_FILE[location.pathname]}</Token>
+        ) : (
+          'Unknown page'
+        )}
       </Badge>
     </div>
   );

@@ -67,7 +67,7 @@ export function SegmentedControl<T extends string>({
             {option.count != null && (
               <span
                 className={cn(
-                  "inline-flex h-4 min-w-4 items-center justify-center rounded-chip px-1 font-mono text-eyebrow font-semibold tabular-nums",
+                  "inline-flex h-4 min-w-4 items-center justify-center rounded-chip px-1 text-eyebrow font-semibold tabular-nums",
                   active ? "bg-accent-tint text-accent-text" : "bg-well-tint text-muted-foreground",
                 )}
               >
