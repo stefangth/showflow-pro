@@ -34,7 +34,7 @@ export function CastRosterList({ casts, keyPrefix, subline }: {
           {t(`${keyPrefix}.castCountLabel`, { count: casts.length })}
         </span>
       </div>
-      <div className="divide-y divide-border rounded-[var(--radius-l)] border border-border">
+      <div className="divide-y divide-border rounded-card border border-border">
         {casts.map((cast) => (
           <div key={cast.id} className="flex items-center justify-between gap-3 px-3 py-2">
             <div className="min-w-0">

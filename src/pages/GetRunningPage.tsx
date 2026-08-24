@@ -171,7 +171,7 @@ export default function GetRunningPage() {
               already carries (the `onboarding` catalog's `producerRole.note`), laid out as the
               design's icon + text + right-aligned link row rather than that card's stacked one. */}
           {role === "producer" && (
-            <div className="flex items-center gap-3 rounded-[var(--radius-l)] border border-border bg-card px-4 py-3">
+            <div className="flex items-center gap-3 rounded-card border border-border bg-card px-4 py-3">
               <Users className="h-3.5 w-3.5 shrink-0 text-[var(--text-faint)]" aria-hidden="true" />
               <p className="text-xs leading-[17px] text-muted-foreground">{producerRoleNote(tOnboarding)}</p>
               <div className="flex-1" />

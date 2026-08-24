@@ -260,7 +260,7 @@ export function RolesRightsTab({ orgId }: RolesRightsTabProps) {
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
         <div className="space-y-4">
-          <div className="space-y-3 rounded-[var(--radius-l)] border border-border bg-card p-4 shadow-elev2">
+          <div className="space-y-3 rounded-card border border-border bg-card p-4 shadow-elev2">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <SegmentedControl value={activePreset} onChange={applyPreset} options={PRESET_OPTIONS} />
               <Button

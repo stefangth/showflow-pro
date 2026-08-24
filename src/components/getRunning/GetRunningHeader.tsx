@@ -101,7 +101,7 @@ export function GetRunningHeader({ model, orgName, role, adminNames }: {
         )}
       </div>
 
-      <div className="w-[236px] shrink-0 rounded-[var(--radius-l)] border border-border bg-card p-3.5">
+      <div className="w-[236px] shrink-0 rounded-card border border-border bg-card p-3.5">
         <Eyebrow className="text-[var(--text-faint)]">
           {t("progress.title")}
         </Eyebrow>

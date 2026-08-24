@@ -425,7 +425,7 @@ export function CoveragePanel({ orgId, onOpenCast }: CoveragePanelProps) {
                         key={c.id}
                         type="button"
                         onClick={() => (onOpenCast ? onOpenCast(c.id) : setActiveCast(c))}
-                        className="flex w-full items-center justify-between gap-2 rounded-[var(--radius-s)] px-2 py-2 text-left text-sm hover:bg-[var(--surface-3)]"
+                        className="flex w-full items-center justify-between gap-2 rounded-field px-2 py-2 text-left text-sm hover:bg-[var(--surface-3)]"
                       >
                         <span className="min-w-0 flex-1">
                           <span className="block truncate font-medium text-foreground">{c.name}</span>
@@ -485,7 +485,7 @@ export function CoveragePanel({ orgId, onOpenCast }: CoveragePanelProps) {
                     return (
                       <div
                         key={c.id}
-                        className="flex items-center justify-between gap-2 rounded-[var(--radius-s)] px-2 py-2 text-sm"
+                        className="flex items-center justify-between gap-2 rounded-field px-2 py-2 text-sm"
                       >
                         {isEditing ? (
                           <>
@@ -584,7 +584,7 @@ export function CoveragePanel({ orgId, onOpenCast }: CoveragePanelProps) {
                       type="button"
                       onClick={() => setSelectedShowId(s.id)}
                       className={cn(
-                        "flex w-full items-center justify-between gap-2 rounded-[var(--radius-s)] px-2 py-2 text-left text-sm",
+                        "flex w-full items-center justify-between gap-2 rounded-field px-2 py-2 text-left text-sm",
                         selected ? "bg-[var(--surface-3)] font-medium text-foreground" : "text-muted-foreground hover:bg-[var(--surface-3)]",
                       )}
                     >
@@ -601,7 +601,7 @@ export function CoveragePanel({ orgId, onOpenCast }: CoveragePanelProps) {
 
           <div className="space-y-4">
             {effectiveShowId && (
-              <div className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-l)] border border-border bg-card p-3">
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-card border border-border bg-card p-3">
                 <p className="text-sm text-muted-foreground">
                   {overriddenCount === 0
                     ? t('coverage.followsDefault', { show: showName, count: cities.length })

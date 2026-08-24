@@ -53,7 +53,7 @@ export function TeamPanelBody({ orgId }: { orgId: string | null }) {
   return (
     <div className="space-y-3">
       {(members ?? []).length > 0 && (
-        <div className="space-y-1.5 rounded-[var(--radius-l)] bg-well-tint p-2.5">
+        <div className="space-y-1.5 rounded-card bg-well-tint p-2.5">
           {(members ?? []).map((m) => {
             const name = m.display_name || m.email || "";
             return (

@@ -257,7 +257,7 @@ export function OwnershipPanel({ orgId }: Props) {
             return (
               <div
                 key={program}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-l)] border border-border bg-[var(--amber-100)] p-3"
+                className="flex flex-wrap items-center justify-between gap-3 rounded-card border border-border bg-[var(--amber-100)] p-3"
               >
                 <p className="flex items-center gap-2 text-sm text-[var(--amber-600)]">
                   <TriangleAlert className="h-4 w-4 shrink-0" />
@@ -298,7 +298,7 @@ export function OwnershipPanel({ orgId }: Props) {
           </CardHeader>
           <CardContent className="space-y-4">
             {composerOpen && (
-              <div className="space-y-2 rounded-[var(--radius-m)] border border-border bg-[var(--surface-2)] p-3">
+              <div className="space-y-2 rounded-control border border-border bg-[var(--surface-2)] p-3">
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5 items-end">
                   <div className="space-y-1">
                     <Label className="text-xs">{t('ownership.memberLabel')}</Label>
@@ -381,7 +381,7 @@ export function OwnershipPanel({ orgId }: Props) {
                           const name = ownerName(a);
                           const cityName = a.city_id ? citiesById.get(a.city_id) ?? a.city_id : null;
                           return (
-                            <div key={a.id} className="flex items-center gap-3 rounded-[var(--radius-m)] border border-border p-2 text-sm">
+                            <div key={a.id} className="flex items-center gap-3 rounded-control border border-border p-2 text-sm">
                               <Avatar className="h-8 w-8">
                                 <AvatarFallback seed={a.producer_user_id}>{initials(name)}</AvatarFallback>
                               </Avatar>
@@ -464,7 +464,7 @@ export function OwnershipPanel({ orgId }: Props) {
               </div>
             </div>
 
-            <div className="space-y-1.5 rounded-[var(--radius-m)] border border-accent-200 bg-accent-tint p-3">
+            <div className="space-y-1.5 rounded-control border border-accent-200 bg-accent-tint p-3">
               {/* eslint-disable-next-line no-restricted-syntax -- non-standard tracking (1.2px) */}
               <p className="text-eyebrow font-semibold uppercase tracking-[1.2px] text-accent-text">{t('ownership.notified')}</p>
               <p className="text-sm font-semibold text-foreground">

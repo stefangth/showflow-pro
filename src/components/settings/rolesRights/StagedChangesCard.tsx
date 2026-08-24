@@ -33,7 +33,7 @@ export function StagedChangesCard({
 }: StagedChangesCardProps) {
   const { t } = useTranslation("settingsRolesRights");
   return (
-    <div className="rounded-[var(--radius-l)] border border-border shadow-elev2 bg-card">
+    <div className="rounded-card border border-border shadow-elev2 bg-card">
       <div className="px-4 pt-4">
         <Eyebrow>{t("stagedChangesCard.heading")}</Eyebrow>
         <p className="mt-1 font-mono tabular-nums text-title font-medium text-foreground">
@@ -57,7 +57,7 @@ export function StagedChangesCard({
                 >
                   <span
                     className={cn(
-                      "mt-1.5 h-[6px] w-[6px] shrink-0 rounded-[var(--radius-xs)]",
+                      "mt-1.5 h-[6px] w-[6px] shrink-0 rounded-chip",
                       change.on ? "bg-[var(--green-600)]" : "bg-[var(--red-600)]",
                     )}
                     aria-hidden="true"

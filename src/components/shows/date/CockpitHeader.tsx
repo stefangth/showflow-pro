@@ -124,7 +124,7 @@ export function CockpitHeader({
                 <button
                   type="button"
                   aria-label={t("cockpitHeader.moreActions")}
-                  className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--radius-m)] border border-[var(--line-strong)] bg-[var(--surface)] text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-2)]"
+                  className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-control border border-[var(--line-strong)] bg-[var(--surface)] text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-2)]"
                 >
                   <MoreHorizontal className="h-[18px] w-[18px]" />
                 </button>
@@ -222,7 +222,7 @@ export function CockpitHeader({
               {t.badge && (
                 <span
                   className={cn(
-                    "ml-1.5 rounded-[var(--radius-xs)] px-[5px] py-px font-mono text-eyebrow font-semibold leading-[14px]",
+                    "ml-1.5 rounded-chip px-[5px] py-px font-mono text-eyebrow font-semibold leading-[14px]",
                     t.id === "order"
                       ? t.badge === "READY"
                         ? "bg-[var(--green-100)] text-[var(--green-600)]"

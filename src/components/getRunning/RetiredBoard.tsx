@@ -35,7 +35,7 @@ export function RetiredBoard({ model, orgId }: { model: GetRunningModel; orgId: 
       data-testid="get-running-retired"
       className="flex w-full max-w-[1100px] flex-col gap-4 rounded-card border border-border bg-background p-6 shadow-elev3"
     >
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-3 rounded-[var(--radius-l)] border border-border bg-card p-4">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-3 rounded-card border border-border bg-card p-4">
         <span className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
           <Check className="h-[15px] w-[15px]" strokeWidth={2.5} />
         </span>
@@ -73,13 +73,13 @@ export function RetiredBoard({ model, orgId }: { model: GetRunningModel; orgId: 
       )}
 
       <div className="flex flex-col gap-4 sm:flex-row">
-        <div className="flex-1 rounded-[var(--radius-l)] border border-border bg-card p-4">
+        <div className="flex-1 rounded-card border border-border bg-card p-4">
           <Eyebrow className="text-[var(--text-faint)]">{t("retired.cards.whereItGoes.title")}</Eyebrow>
           <p className="mt-2 text-control leading-[19px] text-muted-foreground text-pretty">
             {t("retired.cards.whereItGoes.body")}
           </p>
         </div>
-        <div className="flex-1 rounded-[var(--radius-l)] border border-border bg-card p-4">
+        <div className="flex-1 rounded-card border border-border bg-card p-4">
           <Eyebrow className="text-[var(--text-faint)]">{t("retired.cards.whenItComesBack.title")}</Eyebrow>
           <p className="mt-2 text-control leading-[19px] text-muted-foreground text-pretty">
             {t("retired.cards.whenItComesBack.body")}

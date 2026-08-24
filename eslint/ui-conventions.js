@@ -29,8 +29,14 @@ export const uiConventions = {
         message: 'Bracket type size. The scale is 48/32/22/17/14/13/12/11. 13 is the control size. See section 3.',
       },
       {
-        selector: "Literal[value=/\\brounded-\\[[0-9]+px\\]/]",
-        message: 'Bracket radius. Use rounded-xs|s|m|l|xl|xxl|pill. See section 2.',
+        selector: "Literal[value=/\\brounded-\\[[0-9.]+(px|rem)\\]/]",
+        message:
+          'Bracket radius. Use rounded-chip|field|control|card|icon|pill. See section 2.',
+      },
+      {
+        selector: "Literal[value=/\\brounded-\\[var\\(--radius-/]",
+        message:
+          'Radius token written by hand. Every step has a utility now: rounded-chip|field|control|card|icon|pill. See section 2.',
       },
       {
         // Bracket alpha only: bg-foreground/[0.04], text-x/[0.6]. Valid
@@ -66,7 +72,8 @@ export const uiConventions = {
       },
       {
         selector: "Literal[value=/\\brounded-(sm|md|lg)\\b/]",
-        message: 'Retired shadcn radius alias. Use the design-system scale: s (6), m (8), l (10). See section 2.',
+        message:
+          'Retired shadcn radius alias. Use the design-system scale: chip (4), field (6), control (8), card (10). See section 2.',
       },
       {
         // bg-muted used as a solid wash is retired in feature code; use a tint token

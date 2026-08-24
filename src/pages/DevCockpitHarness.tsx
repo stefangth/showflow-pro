@@ -71,7 +71,7 @@ export default function DevCockpitHarness() {
       <div className="min-h-screen bg-[var(--bg)] p-10">
         {/* Hug the RowPeek's own width (320px), mirroring the real app's
             `PopoverContent w-auto` so there is no right-side dead space. */}
-        <div className="mx-auto w-fit rounded-[var(--radius-l)] border border-border bg-[var(--surface)] shadow-elev3">
+        <div className="mx-auto w-fit rounded-card border border-border bg-[var(--surface)] shadow-elev3">
           <RowPeek dateLabel="Thu 12 Mar" peek={peek} canConfirm confirming={false} onConfirm={noop} onOpen={noop} />
         </div>
       </div>
