@@ -9,11 +9,13 @@ import { Button } from "@/components/ui/button";
 
 /**
  * The v3 `skills` step body (Phase 3): the org skill catalog, reusing the Settings
- * `SkillsTab`. `SkillsTab` self-gates its own writes on the `manage_skills`
- * capability, so this step gates its Continue vs read-only note on the SAME capability
- * (the model's `capability` for this step is also `manage_skills`) — otherwise a producer
- * who can edit skills (manage_skills defaults on) would see an editable catalog with the
- * Continue hidden and a false "you lack the manage skills right" note. Continue simply advances the wizard
+ * `SkillsTab`, above which sits the assign list that actually clears the step's block.
+ *
+ * The two halves write different tables and are gated on different capabilities:
+ * `SkillsTab` writes the CATALOG and self-gates on `manage_skills`; `ArtistSkillAssignList`
+ * writes `artist_skills`, which `ArtistProfileSheet` gates on `edit_artists`. Continue is
+ * enabled when the viewer holds either, so a producer who can do half the step is not shown
+ * a false "you lack the right" note. Continue simply advances the wizard
  * (`onDone`) — done-ness is derived by the model from the catalog being non-empty,
  * the same "the dialogs persist, the body advances" pattern as `ProductionsStep`.
  *
@@ -24,7 +26,16 @@ import { Button } from "@/components/ui/button";
 export function SkillsStep({ orgId, onDone }: { orgId: string | null; onDone: () => void }): JSX.Element {
   const { t } = useTranslation("getRunningV3");
   const footerSlot = useContext(WizardFooterContext);
-  const canEdit = useCan("manage_skills");
+  const canEditCatalog = useCan("manage_skills");
+  // Writing `artist_skills` is `edit_artists`, NOT `manage_skills`: that is the capability
+  // `ArtistProfileSheet` gates the identical write on, and the one an org expects to hold
+  // back when it decides producers may not change artists. Gating the assign list on
+  // `manage_skills` (which defaults on for producers) let a producer rewrite every artist's
+  // skills through this step in an org that had turned `edit_artists` off for them.
+  const canAssign = useCan("edit_artists");
+  // Either half of this step is enough to have work here, so either enables Continue; the
+  // read-only note is only true when neither does.
+  const canEdit = canEditCatalog || canAssign;
 
   const continueButton = (
     <Button type="button" size="sm" onClick={onDone}>
@@ -45,7 +56,7 @@ export function SkillsStep({ orgId, onDone }: { orgId: string | null; onDone: ()
           catalog manager below cannot clear. The assign list comes FIRST so the blocking
           reason and its fix are what the step opens on; SkillsTab stays mounted beneath for
           catalog work (rename, archive, add). */}
-      <ArtistSkillAssignList orgId={orgId} canEdit={canEdit} />
+      <ArtistSkillAssignList orgId={orgId} canEdit={canAssign} />
 
       {orgId ? <SkillsTab orgId={orgId} /> : null}
 

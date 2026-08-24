@@ -420,7 +420,9 @@ describe("GetRunningBoardV3", () => {
             ],
             error: null,
           },
-          show_dates: { data: [], error: null },
+          // The productions step's Continue mirrors its own `done` (`hasAnyDates &&
+          // slotsDone`), so the fixture needs a date as well as a breakdown.
+          show_dates: { data: [{ id: "d1", show_id: "show-1", org_id: "org-1", status: "scheduled" }], error: null },
         }),
       );
       // Airtable source with `connect` outstanding and blocking, so the wizard auto-opens

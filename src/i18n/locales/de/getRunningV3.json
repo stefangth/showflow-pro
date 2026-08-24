@@ -328,7 +328,7 @@
       "heading": "Skills für deine Positionen",
       "sub": "Lege die Skills an, die deine Positionen brauchen, und setze sie bei deinen Artists.",
       "continue": "Weiter",
-      "readOnly": "Skills zu verwalten braucht das Recht Skills verwalten, das dieses Konto nicht hat.",
+      "readOnly": "Skills brauchen hier das Recht Skills verwalten oder Artists bearbeiten. Dieses Konto hat keines davon.",
       "assignHeading": "Skills bei deinen Artists setzen",
       "assignSub": "Gib jedem Artist die Skills, die er wirklich abdecken kann. Eine Position kann nur ein Artist besetzen, der ihre Skills hat.",
       "gapLine": "wird von {{productions}} gebraucht, und kein Artist hat ihn.",
@@ -460,7 +460,8 @@
       "incomplete": "Richte mindestens einen Besetzungsplan ein, um fortzufahren.",
       "empty": "Noch keine Produktionen. Lege deine erste an, um zu starten.",
       "readOnlyEmpty": "Noch keine Produktionen. Bitte einen Admin, eine anzulegen.",
-      "readOnlyReason": "Um eine Produktion hinzuzufügen, brauchst du das Recht Produktionen verwalten, das dieser Account nicht hat."
+      "readOnlyReason": "Um eine Produktion hinzuzufügen, brauchst du das Recht Produktionen verwalten, das dieser Account nicht hat.",
+      "noDates": "Füge mindestens einen Termin hinzu, um fortzufahren. Eine Produktion ohne Termine hat nichts zu besetzen."
     },
     "fee": {
       "heading": "Deine Standardgage",
