@@ -19,7 +19,10 @@ export function SkillPicker({ skills, selectedIds, onToggle, disabled = false, e
    *  Creation needs `manage_skills`, selection needs the caller's own capability. */
   canCreate?: boolean;
 }) {
-  const showCreate = canCreate && !!onCreate;
+  // `disabled` fences creation too, not just selection: a create ends in `onToggle`, so
+  // leaving the chip live would hand a caller that gated selection off (often a capability
+  // gate, not a transient one) a selection by the side door.
+  const showCreate = canCreate && !!onCreate && !disabled;
 
   // No catalog and no way to add to it: the old dead-end hint is still the honest answer.
   if (skills.length === 0 && !showCreate) {
@@ -114,7 +117,7 @@ function CreateSkillChip({ onCreate, onCreated }: {
       <button
         type="submit"
         disabled={pending || !name.trim()}
-        aria-label={t("skillPicker.newSkill")}
+        aria-label={t("skillPicker.create")}
         className="inline-flex h-5 w-5 items-center justify-center rounded-full text-primary transition-colors hover:bg-primary/10 disabled:opacity-50"
       >
         <Check aria-hidden="true" className="h-3 w-3" />
