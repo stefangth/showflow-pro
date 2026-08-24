@@ -1,5 +1,83 @@
 [
   {
+    "version": "1.18.0",
+    "date": "2026-08-24",
+    "dateLabel": "August 24, 2026",
+    "title": "Setup that tells you the truth, and skills and cities you can add where you need them",
+    "changes": {
+      "new": [
+        {
+          "title": "Add a skill while you write a casting breakdown",
+          "description": "When you set up a production's parts, you can create a skill right there and mark it required in one step, instead of leaving to add it on an artist first. Skills you already have show up alongside it."
+        },
+        {
+          "title": "Add cities while you set up a production",
+          "description": "The production form now lists the cities you play and lets you add a new one on the spot, so a city is ready by the time you schedule a date. If your dates come from Airtable, city names it found that are not linked yet appear as one click suggestions."
+        },
+        {
+          "title": "Give your artists their skills from the setup step",
+          "description": "The skills step now lists your artists and lets you set each one's skills in place, and it names any skill a part requires that nobody holds yet."
+        },
+        {
+          "title": "Fix dates that have no city from the setup step",
+          "description": "The step that asks for a city on every date now lists the dates that are missing one and lets you pick a city for each, instead of only handling names brought in from Airtable."
+        }
+      ],
+      "improved": [
+        {
+          "title": "Setup progress only counts work you have done",
+          "description": "A step no longer turns green just because there is nothing to check yet. A brand new workspace starts at zero, \"every date has a city\" is not treated as done when you have no dates, and a cast with no members no longer counts as covering a city."
+        },
+        {
+          "title": "Adding your first date no longer sends progress backwards",
+          "description": "Progress used to drop when you added a date, because steps that had been counted as done suddenly had something real to check."
+        },
+        {
+          "title": "Setup says when a phase is finished",
+          "description": "Completing the last step of a phase now confirms it and names what is next, instead of quietly closing."
+        },
+        {
+          "title": "Steps move on the same way however they finish",
+          "description": "A step that completes on its own from your data now advances just like one you saved by hand."
+        },
+        {
+          "title": "Reopen a finished setup phase",
+          "description": "Clicking anywhere on a finished phase reopens it, so you can go back and review what you set up."
+        },
+        {
+          "title": "Example panels are labelled",
+          "description": "The illustrations that explain a page now carry an Example tag, so the sample names in them are never mistaken for your own data."
+        }
+      ],
+      "fixed": [
+        {
+          "title": "Setup is readable in dark mode",
+          "description": "The setup wizard's header and its selected step were near invisible in dark mode. The sidebar section labels and the ShowFlow wordmark are also easier to read."
+        },
+        {
+          "title": "Setup works on a narrow screen",
+          "description": "The wizard's three columns overlapped into unreadable text below a certain width. They now stack."
+        },
+        {
+          "title": "A step that says it blocks you can now unblock you",
+          "description": "The city step used to report that it was holding up your first ask while telling you there was nothing to resolve."
+        },
+        {
+          "title": "Confirming your letterhead saves it",
+          "description": "Confirm used to be available with the fields empty, and appeared to work while saving nothing. It now waits for your legal name, and no longer claims your details were filled in for you."
+        },
+        {
+          "title": "A warning when a date is in the past",
+          "description": "Picking a past date for a show now says so, while still letting you save it if you are recording something that already happened."
+        },
+        {
+          "title": "Wording that matches what you are looking at",
+          "description": "The countersignature step describes how the artist signs, rather than who signs for you. A date with nobody eligible no longer says anyone can be asked, and now tells you how many artists can. Where a city list is empty, the date form points you at where cities are managed."
+        }
+      ]
+    }
+  },
+  {
     "version": "1.17.2",
     "date": "2026-08-22",
     "dateLabel": "August 22, 2026",
