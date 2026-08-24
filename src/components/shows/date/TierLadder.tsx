@@ -83,6 +83,10 @@ export interface TierLadderProps {
   noNextCast: boolean;
   /** The next-ask action block, or null when there is nothing to ask next. */
   nextAsk: NextAsk | null;
+  /** Routes to where a producer adds the next cast (the date's setup). When given,
+   *  the empty next-round peek offers a "Set up a next cast" action; omit for a
+   *  viewer who can't manage the date. */
+  onSetUpNextCast?: () => void;
   /** Fires the sheet's `closeOfferTier` mutation for the given tier. */
   onCloseTier: (tier: number) => void;
 }
@@ -178,7 +182,7 @@ function initials(name: string): string {
  * segment per row below `sm`.
  */
 export function TierLadder({
-  rows, city, openedTiers, statusByTier, nextTier, filled, headlineCount, noNextCast, nextAsk, onCloseTier,
+  rows, city, openedTiers, statusByTier, nextTier, filled, headlineCount, noNextCast, nextAsk, onSetUpNextCast, onCloseTier,
 }: TierLadderProps) {
   const { t } = useTranslation("showsDetail");
 
@@ -303,6 +307,17 @@ export function TierLadder({
               <span className="absolute left-0 top-0 h-full w-[3px] bg-border" aria-hidden />
               <p className="text-control font-medium text-muted-foreground">{t("tierLadder.nextRound")}</p>
               <p className="mt-0.5 text-xs text-muted-foreground">{t("tierLadder.noNextCast")}</p>
+              {onSetUpNextCast && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="mt-2"
+                  onClick={onSetUpNextCast}
+                >
+                  {t("tierLadder.setUpNextCast")}
+                </Button>
+              )}
             </li>
           )}
         </ul>

@@ -275,7 +275,8 @@
     "openOffers": "Angebote öffnen",
     "askOptions": "Weitere Anfrageoptionen",
     "nextRound": "Nächste Runde",
-    "noNextCast": "Keine nächste Besetzung eingerichtet"
+    "noNextCast": "Keine nächste Besetzung eingerichtet",
+    "setUpNextCast": "Nächste Besetzung einrichten"
   },
   "tierTimeline": {
     "directBooking": "Direktbuchung: Das Produktionsteam bucht aus wer angefragt werden kann",

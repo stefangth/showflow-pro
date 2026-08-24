@@ -275,7 +275,8 @@
     "openOffers": "Open offers",
     "askOptions": "More ask options",
     "nextRound": "Next round",
-    "noNextCast": "No next cast set up"
+    "noNextCast": "No next cast set up",
+    "setUpNextCast": "Set up a next cast"
   },
   "tierTimeline": {
     "directBooking": "Direct booking: producers book from who can be asked",

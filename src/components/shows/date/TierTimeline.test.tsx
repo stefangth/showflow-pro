@@ -48,6 +48,7 @@ const baseProps = {
   droppedSkillIds: [] as string[],
   onResetSkills: vi.fn(),
   onEditSkills: vi.fn(),
+  onSetUpNextCast: vi.fn(),
   ladderRows: [NEXT_ROW],
   cityName: "Berlin",
   statusByTier: [] as { tier: number; sent: number; accepted: number; pending: number; cancelled: number }[],
