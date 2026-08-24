@@ -1,10 +1,9 @@
-import { useContext, useState } from "react";
-import { createPortal } from "react-dom";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useCan } from "@/hooks/useCapabilities";
 import { useShows, type ShowWithStats } from "@/hooks/useShows";
 import { showSlots } from "@/lib/settings";
-import { WizardFooterContext } from "@/components/getRunning/v3/WizardFooterContext";
+import { WizardFooterAction } from "@/components/getRunning/v3/WizardFooterAction";
 import { PartsEditorSheet } from "@/components/getRunning/v3/steps/PartsEditorSheet";
 import { Button } from "@/components/ui/button";
 import { StatusPill } from "@/components/ui/status-pill";
@@ -41,7 +40,6 @@ import { showIdentityLabel } from "@/types";
  */
 export function ProductionsStep({ orgId, onDone }: { orgId: string | null; onDone: () => void }): JSX.Element {
   const { t } = useTranslation("getRunningV3");
-  const footerSlot = useContext(WizardFooterContext);
   const canManage = useCan("manage_productions");
   const canManageDates = useCan("manage_show_dates");
   const canSchedule = useCan("edit_scheduling");
@@ -68,16 +66,12 @@ export function ProductionsStep({ orgId, onDone }: { orgId: string | null; onDon
   );
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="space-y-1">
-          <div className="text-title-sm font-semibold tracking-[-0.2px] text-foreground">
-            {t("body.productions.heading")}
-          </div>
-          <p className="text-xs text-muted-foreground">{t("body.productions.sub")}</p>
-        </div>
+    <div data-testid="step-body-productions" className="space-y-4">
+      {/* The step's title and sub line come from the shell. What is left here is the
+          action bar, so it right-aligns on its own row. */}
+      <div className="flex items-start justify-end gap-3">
         {(canManageDates || canManage) && (
-          <div className="flex shrink-0 gap-2">
+          <div className="flex shrink-0 flex-wrap justify-end gap-2">
             {canManageDates && (
               <Button type="button" size="sm" variant="outline" onClick={() => setDateOpen(true)}>
                 {t("body.productions.addDate")}
@@ -157,7 +151,7 @@ export function ProductionsStep({ orgId, onDone }: { orgId: string | null; onDon
         <p className="text-xs text-muted-foreground">{t("body.productions.noDates")}</p>
       )}
 
-      {footerSlot ? createPortal(continueButton, footerSlot) : continueButton}
+      <WizardFooterAction>{continueButton}</WizardFooterAction>
 
       {canManage && <ShowFormDialog open={formOpen} onOpenChange={setFormOpen} allShows={list} />}
       {canManageDates && (

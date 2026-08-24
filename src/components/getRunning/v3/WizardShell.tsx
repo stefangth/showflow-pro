@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { X } from "lucide-react";
@@ -20,6 +20,15 @@ export interface WizardShellProps {
   activeKey: GetRunningStepKey; // which step body shows
   onSelectStep: (key: GetRunningStepKey) => void;
   onCollapse: () => void; // header "Collapse"/close and footer "Finish later"
+  /** Advance to the next outstanding step. Backs the shell's own generic Continue, which
+   *  only renders for a step whose body supplies no primary action of its own. */
+  onNext?: () => void;
+  /** Overrides for the middle column's heading/sub i18n keys. Defaults to
+   *  `body.<activeStep.key>.heading` / `.sub`. The board passes these for the two steps
+   *  that read differently per dates source (`connect`, `map`), which the shell itself
+   *  cannot see. */
+  headingKey?: string;
+  subKey?: string;
   children: React.ReactNode; // the step body (from stepRegistryV3)
 }
 
@@ -50,10 +59,21 @@ export function WizardShell({
   activeKey,
   onSelectStep,
   onCollapse,
+  onNext,
+  headingKey,
+  subKey,
   children,
 }: WizardShellProps): JSX.Element {
   const { t } = useTranslation("getRunningV3");
   const [footerSlotEl, setFooterSlotEl] = useState<HTMLDivElement | null>(null);
+  // Whether the open step's body supplies its own primary action. Eight of the sixteen
+  // bodies do (they gate Continue on their own validity); the other eight are components
+  // reused from v1 and the setup rails, which know nothing about this shell. The shell
+  // renders a generic Continue for the latter, so every step ends in exactly one primary
+  // action rather than half of them ending in none.
+  const [hasBodyAction, setHasBodyAction] = useState(false);
+  const register = useCallback((has: boolean) => setHasBodyAction(has), []);
+  const footerValue = useMemo(() => ({ el: footerSlotEl, register }), [footerSlotEl, register]);
 
   // Defensive: the board is expected to pass only visible (non-`hidden`) steps, but this
   // filter is a cheap, single-purpose backstop so the rail/counter stay correct here too
@@ -188,7 +208,22 @@ export function WizardShell({
             portal its own primary action into the footer slot below (mirrors
             `TaskPanel`'s `TaskPanelFooterContext` pattern). */}
         <div className="min-w-0 p-4">
-          <WizardFooterContext.Provider value={footerSlotEl}>{children}</WizardFooterContext.Provider>
+          {/* The step title lives here, not in the bodies. Eight bodies are reused from v1
+              and the setup rails and have no title of their own, so half the wizard used
+              to open on a bare form. Owning it here titles all sixteen identically.
+              `key` on the provider resets `hasBodyAction` between steps, so a body that
+              portals nothing cannot inherit the previous body's registration. */}
+          {activeStep && (
+            <div className="mb-4 space-y-1">
+              <h2 className="text-title-sm font-semibold tracking-[-0.2px] text-foreground">
+                {t(headingKey ?? `body.${activeStep.key}.heading`)}
+              </h2>
+              <p className="text-xs text-muted-foreground">{t(subKey ?? `body.${activeStep.key}.sub`)}</p>
+            </div>
+          )}
+          <WizardFooterContext.Provider key={activeStep?.key} value={footerValue}>
+            {children}
+          </WizardFooterContext.Provider>
         </div>
 
         {/* Right: how this works guide */}
@@ -220,7 +255,10 @@ export function WizardShell({
       </div>
 
       {/* Footer */}
-      <div className="flex items-center gap-2.5 border-t border-border bg-well-tint px-4 py-3.5">
+      <div
+        data-testid="wizard-footer"
+        className="flex flex-wrap items-center gap-2.5 border-t border-border bg-well-tint px-4 py-3.5"
+      >
         {/* Same "step N of M" fact as the header counter, worded as a full sentence here
             (distinct visible text from the header's bare "N / M") but with the numbers
             still routed through <Metric> (Geist Mono, tabular) per the numbers-are-Metric
@@ -247,6 +285,11 @@ export function WizardShell({
             {t("wizard.finishLater")}
           </Button>
           <div ref={setFooterSlotEl} className="flex items-center gap-2" />
+          {!hasBodyAction && onNext && (
+            <Button type="button" size="sm" onClick={onNext}>
+              {t("wizard.continue")}
+            </Button>
+          )}
         </div>
       </div>
     </div>

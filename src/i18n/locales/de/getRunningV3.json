@@ -72,7 +72,8 @@
     "stepsNav": "Schritte",
     "stepOfRich": "Schritt <0>{{step}}</0> von <1>{{total}}</1>",
     "stepsDropped_one": "{{count}} Schritt entfällt",
-    "stepsDropped_other": "{{count}} Schritte entfallen"
+    "stepsDropped_other": "{{count}} Schritte entfallen",
+    "continue": "Weiter"
   },
   "steps": {
     "source": {
@@ -449,7 +450,7 @@
       "savedToast": "Besetzungsplan gespeichert"
     },
     "productions": {
-      "heading": "Deine Produktionen",
+      "heading": "Deine Produktionen prüfen",
       "sub": "Prüfe die Produktionen, die reingekommen sind, und ergänze, was fehlt.",
       "addProduction": "Produktion hinzufügen",
       "addDate": "Termin hinzufügen",
@@ -467,7 +468,7 @@
       "readError": "Wir konnten deine Produktionen nicht laden. Lade die Seite neu und versuche es erneut."
     },
     "fee": {
-      "heading": "Deine Standardgage",
+      "heading": "Deine Standardgage festlegen",
       "sub": "Die Gage, mit der ein neuer Engagementvertrag startet. Du kannst sie bei jedem einzelnen Engagementvertrag ändern.",
       "listTitle": "Gagen pro Produktion und Cast",
       "listHint": "Setze eine Gage für einen Cast und eine Produktion, wenn sie von deiner Standardgage oben abweichen soll.",
@@ -484,11 +485,43 @@
       "readOnly": "Vertragseinstellungen legt ein Admin fest. Du kannst sie hier lesen."
     },
     "document": {
-      "heading": "Dein Vertragsdokument",
+      "heading": "Dein Vertragsdokument gestalten",
       "sub": "Lege fest, wie Vertragsnummern gebildet werden. Das ganze Layout gestaltest du im Vorlageneditor.",
       "templateLink": "Vorlageneditor öffnen",
       "continue": "Weiter",
       "readOnly": "Vertragseinstellungen legt ein Admin fest. Du kannst sie hier lesen."
+    },
+    "artists": {
+      "heading": "Deine Artists hinzufügen",
+      "sub": "Niemand kann gebucht werden, bis dein Roster aktive Artists hat."
+    },
+    "coverage": {
+      "heading": "Deine Besetzungen ranken",
+      "sub": "Die Rangfolge der Besetzung entscheidet, wer in jeder Stadt zuerst gefragt wird."
+    },
+    "flow": {
+      "heading": "Deinen Buchungsablauf festlegen",
+      "sub": "Lege fest, wie viele Gruppen gefragt werden und in welcher Reihenfolge."
+    },
+    "timing": {
+      "heading": "Timing der Anfrage bestätigen",
+      "sub": "Wann Anfragen rausgehen und wie lange Artists zum Antworten haben."
+    },
+    "team": {
+      "heading": "Dein Produktionsteam einladen",
+      "sub": "Producer können dir Buchungen abnehmen, sobald die ersten Anfragen laufen."
+    },
+    "letterhead": {
+      "heading": "Deinen Briefkopf setzen",
+      "sub": "Dein Name, deine Adresse und dein Logo stehen oben auf jedem Engagementvertrag."
+    },
+    "terms": {
+      "heading": "Deine Bedingungen schreiben",
+      "sub": "ShowFlow liefert keine Standardklauseln. Starte mit einer Vorlage und mach sie zu deiner."
+    },
+    "countersign": {
+      "heading": "Festlegen, wie Verträge unterschrieben werden",
+      "sub": "Der Weg, auf dem ein Artist den Vertrag unterschreibt, den du ihm schickst."
     }
   }
 }

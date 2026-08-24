@@ -1,5 +1,4 @@
-import { useContext, useEffect, useState } from "react";
-import { createPortal } from "react-dom";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { useCan } from "@/hooks/useCapabilities";
@@ -8,7 +7,7 @@ import { useAirtableConsole } from "@/hooks/useAirtableConsole";
 import { useSheetImport } from "@/hooks/useSheetImport";
 import { isDatesMapComplete } from "@/data/airtableMapping";
 import { isSheetMapComplete, type SheetColumnMap } from "@/lib/sheetImport/mapRows";
-import { WizardFooterContext } from "@/components/getRunning/v3/WizardFooterContext";
+import { WizardFooterAction } from "@/components/getRunning/v3/WizardFooterAction";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -66,7 +65,6 @@ const SHEET_FIELDS: { key: keyof SheetColumnMap; required?: boolean }[] = [
  */
 export function MapStep({ orgId, onDone }: { orgId: string | null; onDone: () => void }): JSX.Element {
   const { t } = useTranslation("getRunningV3");
-  const footerSlot = useContext(WizardFooterContext);
   const canEdit = useCan("configure_airtable");
   const { source } = useDatesSource(orgId);
   const airtable = useAirtableConsole(orgId, { readOnly: !canEdit, canTriggerSync: false });
@@ -112,14 +110,7 @@ export function MapStep({ orgId, onDone }: { orgId: string | null; onDone: () =>
   );
 
   return (
-    <div className="space-y-4">
-      <div className="space-y-1">
-        <div className="text-title-sm font-semibold tracking-[-0.2px] text-foreground">
-          {isSheet ? t("body.map.sheet.heading") : t("body.map.heading")}
-        </div>
-        <p className="text-xs text-muted-foreground">{isSheet ? t("body.map.sheet.sub") : t("body.map.sub")}</p>
-      </div>
-
+    <div data-testid="step-body-map" className="space-y-4">
       {isSheet ? (
         !sheetUrl ? (
           <p className="text-sm text-muted-foreground">{t("body.map.sheet.noHeaders")}</p>
@@ -192,7 +183,7 @@ export function MapStep({ orgId, onDone }: { orgId: string | null; onDone: () =>
         </p>
       )}
 
-      {footerSlot ? createPortal(continueButton, footerSlot) : continueButton}
+      <WizardFooterAction>{continueButton}</WizardFooterAction>
     </div>
   );
 }

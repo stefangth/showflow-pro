@@ -443,6 +443,7 @@ export function GetRunningBoardV3({ context }: { context: "page" | "settings" })
               activeKey={activeStep.key}
               onSelectStep={(key) => setSelectedStep(key)}
               onCollapse={handleCollapse}
+              onNext={handleStepDone}
             >
               <StepBodyV3 step={activeStep} orgId={orgId} onDone={handleStepDone} />
             </WizardShell>

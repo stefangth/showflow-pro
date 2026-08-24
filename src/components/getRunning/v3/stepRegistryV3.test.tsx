@@ -62,18 +62,12 @@ describe("StepBodyV3", () => {
 
   it("renders the real body for each get-dates step key, not StepComingSoon", () => {
     // Each of these five keys ships a real in-panel editor (Wireflow v3 Phase 2, Tasks
-    // 6-9/11); assert a heading unique to that body renders, and that the deep-link
-    // fallback copy does not.
-    const cases: [GetRunningStep["key"], RegExp][] = [
-      ["source", /where do your dates come from/i],
-      ["connect", /connect airtable/i],
-      ["map", /map your fields/i],
-      ["cities", /set a city on every date/i],
-      ["productions", /your productions/i],
-    ];
-    for (const [key, heading] of cases) {
+    // 6-9/11). Keyed on each body's own testid rather than its title: the step title is
+    // the shell's now, and several of these bodies render only a Continue in this
+    // harness's loading state, so there is no distinctive copy left to sniff for.
+    for (const key of ["source", "connect", "map", "cities", "productions"] as GetRunningStep["key"][]) {
       const { unmount } = renderStep(mk(key, false));
-      expect(screen.getByText(heading)).toBeInTheDocument();
+      expect(screen.getByTestId(`step-body-${key}`)).toBeInTheDocument();
       expect(screen.queryByText(/more on the way/i)).not.toBeInTheDocument();
       unmount();
     }
@@ -83,14 +77,9 @@ describe("StepBodyV3", () => {
     // Task 6 (Phase 3): these three used to fall through to StepComingSoon via the
     // explicit case block; now each has a real in-panel editor (SkillsStep/FeeStep/
     // DocumentStep) reusing a Settings card, keyed to a heading unique to that body.
-    const cases: [GetRunningStep["key"], RegExp][] = [
-      ["skills", /skills for your parts/i],
-      ["fee", /your default fee/i],
-      ["document", /your contract document/i],
-    ];
-    for (const [key, heading] of cases) {
+    for (const key of ["skills", "fee", "document"] as GetRunningStep["key"][]) {
       const { unmount } = renderStep(mk(key, false));
-      expect(screen.getByText(heading)).toBeInTheDocument();
+      expect(screen.getByTestId(`step-body-${key}`)).toBeInTheDocument();
       expect(screen.queryByText(/more on the way/i)).not.toBeInTheDocument();
       unmount();
     }

@@ -1,7 +1,8 @@
 import { it, expect, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { WizardShell } from "./WizardShell";
+import { WizardFooterAction } from "./WizardFooterAction";
 import type { GetRunningStep } from "@/lib/getRunning/steps";
 
 const steps: GetRunningStep[] = [
@@ -137,4 +138,59 @@ it("drops the guide below the editor at the two-column size", () => {
   const aside = document.querySelector("aside");
   expect(aside?.className).toContain("@2xl:col-span-2");
   expect(aside?.className).toContain("@5xl:col-span-1");
+});
+
+it("titles every step from the shell, including bodies that render no heading of their own", () => {
+  // `artists` is one of the eight steps whose body is reused from v1 and the setup rails.
+  render(
+    <MemoryRouter>
+      <WizardShell phaseKey="bookable" steps={steps} activeKey="artists" onSelectStep={vi.fn()} onCollapse={vi.fn()}>
+        <div>BODY</div>
+      </WizardShell>
+    </MemoryRouter>
+  );
+  expect(screen.getByRole("heading", { name: /add your artists/i })).toBeInTheDocument();
+});
+
+it("offers a Continue in the footer when the body portals no action of its own", () => {
+  const onNext = vi.fn();
+  render(
+    <MemoryRouter>
+      <WizardShell
+        phaseKey="bookable"
+        steps={steps}
+        activeKey="artists"
+        onSelectStep={vi.fn()}
+        onCollapse={vi.fn()}
+        onNext={onNext}
+      >
+        <div>BODY</div>
+      </WizardShell>
+    </MemoryRouter>
+  );
+  const footer = screen.getByTestId("wizard-footer");
+  fireEvent.click(within(footer).getByRole("button", { name: /^continue$/i }));
+  expect(onNext).toHaveBeenCalledTimes(1);
+});
+
+it("stands its own Continue down when the body supplies one", () => {
+  render(
+    <MemoryRouter>
+      <WizardShell
+        phaseKey="bookable"
+        steps={steps}
+        activeKey="artists"
+        onSelectStep={vi.fn()}
+        onCollapse={vi.fn()}
+        onNext={vi.fn()}
+      >
+        <WizardFooterAction>
+          <button type="button">Save timing</button>
+        </WizardFooterAction>
+      </WizardShell>
+    </MemoryRouter>
+  );
+  const footer = screen.getByTestId("wizard-footer");
+  expect(within(footer).getByRole("button", { name: "Save timing" })).toBeInTheDocument();
+  expect(within(footer).queryByRole("button", { name: /^continue$/i })).not.toBeInTheDocument();
 });

@@ -1,10 +1,8 @@
-import { useContext } from "react";
-import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { useCan } from "@/hooks/useCapabilities";
 import { SkillsTab } from "@/components/settings/skills/SkillsTab";
 import { ArtistSkillAssignList } from "@/components/getRunning/v3/steps/ArtistSkillAssignList";
-import { WizardFooterContext } from "@/components/getRunning/v3/WizardFooterContext";
+import { WizardFooterAction } from "@/components/getRunning/v3/WizardFooterAction";
 import { Button } from "@/components/ui/button";
 
 /**
@@ -25,7 +23,6 @@ import { Button } from "@/components/ui/button";
  */
 export function SkillsStep({ orgId, onDone }: { orgId: string | null; onDone: () => void }): JSX.Element {
   const { t } = useTranslation("getRunningV3");
-  const footerSlot = useContext(WizardFooterContext);
   const canEditCatalog = useCan("manage_skills");
   // Writing `artist_skills` is `edit_artists`, NOT `manage_skills`: that is the capability
   // `ArtistProfileSheet` gates the identical write on, and the one an org expects to hold
@@ -44,14 +41,7 @@ export function SkillsStep({ orgId, onDone }: { orgId: string | null; onDone: ()
   );
 
   return (
-    <div className="space-y-3">
-      <div className="space-y-1">
-        <div className="text-title-sm font-semibold tracking-[-0.2px] text-foreground">
-          {t("body.skills.heading")}
-        </div>
-        <p className="text-xs text-muted-foreground">{t("body.skills.sub")}</p>
-      </div>
-
+    <div data-testid="step-body-skills" className="space-y-3">
       {/* The step's own block is "a part requires a skill no active artist holds", which the
           catalog manager below cannot clear. The assign list comes FIRST so the blocking
           reason and its fix are what the step opens on; SkillsTab stays mounted beneath for
@@ -61,11 +51,7 @@ export function SkillsStep({ orgId, onDone }: { orgId: string | null; onDone: ()
       {orgId ? <SkillsTab orgId={orgId} /> : null}
 
       {canEdit ? (
-        footerSlot ? (
-          createPortal(continueButton, footerSlot)
-        ) : (
-          continueButton
-        )
+        <WizardFooterAction>{continueButton}</WizardFooterAction>
       ) : (
         <p className="text-xs text-muted-foreground">{t("body.skills.readOnly")}</p>
       )}

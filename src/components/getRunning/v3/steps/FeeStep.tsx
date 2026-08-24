@@ -1,5 +1,4 @@
-import { useContext, useMemo, useState } from "react";
-import { createPortal } from "react-dom";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { Trash2 } from "lucide-react";
@@ -15,7 +14,7 @@ import {
 } from "@/hooks/useCastProductionFees";
 import { OrderDefaultsCard, type HireOrderDefaults } from "@/components/settings/hireOrders/OrderDefaultsCard";
 import { ORDER_DEFAULTS_DEFAULT } from "@/components/settings/hireOrders/defaults";
-import { WizardFooterContext } from "@/components/getRunning/v3/WizardFooterContext";
+import { WizardFooterAction } from "@/components/getRunning/v3/WizardFooterAction";
 import { IconTooltip } from "@/components/common/IconTooltip";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { Metric } from "@/components/ui/metric";
@@ -49,7 +48,6 @@ const EMPTY_DRAFT: FeeDraft = { castId: "", showId: "", feeAmount: null };
  */
 export function FeeStep({ orgId, onDone }: { orgId: string | null; onDone: () => void }): JSX.Element {
   const { t } = useTranslation("getRunningV3");
-  const footerSlot = useContext(WizardFooterContext);
   const canEdit = useCan("edit_hire_order_settings");
 
   const castsQuery = useQuery({
@@ -110,14 +108,7 @@ export function FeeStep({ orgId, onDone }: { orgId: string | null; onDone: () =>
   );
 
   return (
-    <div className="space-y-3">
-      <div className="space-y-1">
-        <div className="text-title-sm font-semibold tracking-[-0.2px] text-foreground">
-          {t("body.fee.heading")}
-        </div>
-        <p className="text-xs text-muted-foreground">{t("body.fee.sub")}</p>
-      </div>
-
+    <div data-testid="step-body-fee" className="space-y-3">
       <OrderDefaultsCard orgId={orgId} readOnly={!canEdit} />
 
       {!hasCasts ? (
@@ -227,11 +218,7 @@ export function FeeStep({ orgId, onDone }: { orgId: string | null; onDone: () =>
       )}
 
       {canEdit ? (
-        footerSlot ? (
-          createPortal(continueButton, footerSlot)
-        ) : (
-          continueButton
-        )
+        <WizardFooterAction>{continueButton}</WizardFooterAction>
       ) : (
         <p className="text-xs text-muted-foreground">{t("body.fee.readOnly")}</p>
       )}
