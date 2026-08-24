@@ -13,11 +13,15 @@
 --
 -- Idempotent: the not-exists guard (and the ON CONFLICT) mean a re-run inserts nothing.
 -- Kept as a callable function (not inline DML) so supabase/tests exercises the same code
--- that runs in production. Not invoked by any client/edge caller -> execute revoked from
--- public/anon/authenticated.
+-- that runs in production. SECURITY DEFINER + REVOKE mirrors the sibling
+-- backfill_show_slots_from_legacy: the only callers are the migration (owner) and the
+-- pgTAP suite (superuser), and DEFINER means a future manual re-run bypasses RLS
+-- consistently instead of silently under-counting under a differently-privileged role.
+-- No service_role grant is needed since no edge/client caller invokes it.
 create or replace function public.backfill_getrunning_dates_source()
 returns integer
 language plpgsql
+security definer
 set search_path = public
 as $$
 declare
