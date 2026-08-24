@@ -15,12 +15,19 @@ const saveShowSlots = vi.fn((..._a: unknown[]) => Promise.resolve());
 const fetchShowSlots = vi.fn((..._a: unknown[]) => Promise.resolve([] as SlotDraft[]));
 vi.mock("@/data/slots", async (orig) => ({ ...(await orig<typeof import("@/data/slots")>()), saveShowSlots: (...a: unknown[]) => saveShowSlots(...a), fetchShowSlots: (...a: unknown[]) => fetchShowSlots(...a) }));
 
+// Inline skill creation from the casting breakdown writes through the same data-access
+// function as Settings > Skills; mock it so the test can assert the call and reject it.
+const createSkill = vi.fn((..._a: unknown[]) => Promise.resolve({ id: "sk-9", name: "Lead Vocals" }));
+vi.mock("@/data/skills", async (orig) => ({ ...(await orig<typeof import("@/data/skills")>()), createSkill: (...a: unknown[]) => createSkill(...a) }));
+vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.fn(), warning: vi.fn() } }));
+
 const { client } = vi.hoisted(() => ({ client: {} as Record<string, unknown> }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: client }));
 Object.assign(client, createFakeSupabase({ skills: { data: [], error: null } }));
 vi.mock("@/features/auth/AuthContext", () => ({ useAuth: () => ({ currentOrg: { id: "org-1" }, user: { id: "u1" }, hasRole: () => true }) }));
 vi.mock("@/hooks/useCapabilities", async (orig) => ({ ...(await orig<typeof import("@/hooks/useCapabilities")>()), useCan: vi.fn() }));
 
+import { toast } from "sonner";
 import { useCan } from "@/hooks/useCapabilities";
 import { ShowFormDialog } from "./ShowFormDialog";
 
@@ -156,6 +163,61 @@ describe("ShowFormDialog", () => {
     expect(screen.getByText(/synced from airtable/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/^program/i)).toBeDisabled();
     expect(screen.getByRole("button", { name: /add part/i })).not.toBeDisabled();
+  });
+
+  it("creates a skill inline and saves the part requiring it", async () => {
+    Object.assign(client, createFakeSupabase({ skills: { data: [], error: null } }));
+    renderWithProviders(<ShowFormDialog open onOpenChange={() => {}} allShows={[]} />);
+    fireEvent.change(screen.getByLabelText(/^program/i), { target: { value: "Hamlet" } });
+    fireEvent.click(screen.getByRole("button", { name: /add part/i }));
+    const slot1 = screen.getByRole("group", { name: "Part 1" });
+    fireEvent.change(within(slot1).getByLabelText(/part name/i), { target: { value: "Ophelia" } });
+
+    fireEvent.click(within(slot1).getByRole("button", { name: /new skill/i }));
+    fireEvent.change(within(slot1).getByLabelText(/skill name/i), { target: { value: "Lead Vocals" } });
+    fireEvent.click(within(slot1).getByRole("button", { name: /add skill/i }));
+    await waitFor(() => expect(createSkill).toHaveBeenCalledWith(client, "Lead Vocals", "org-1"));
+
+    fireEvent.click(screen.getByRole("button", { name: /create/i }));
+    await waitFor(() => expect(saveShowSlots).toHaveBeenCalled());
+    const saveArg = saveShowSlots.mock.calls[0][1] as { slots: SlotDraft[] };
+    expect(saveArg.slots).toEqual([expect.objectContaining({ name: "Ophelia", skillIds: ["sk-9"] })]);
+  });
+
+  it("names the clash instead of failing silently when the skill name is taken", async () => {
+    Object.assign(client, createFakeSupabase(TWO_SKILLS));
+    renderWithProviders(<ShowFormDialog open onOpenChange={() => {}} allShows={[]} />);
+    fireEvent.click(screen.getByRole("button", { name: /add part/i }));
+    const slot1 = screen.getByRole("group", { name: "Part 1" });
+    await within(slot1).findByRole("button", { name: "Singing" });
+
+    fireEvent.click(within(slot1).getByRole("button", { name: /new skill/i }));
+    fireEvent.change(within(slot1).getByLabelText(/skill name/i), { target: { value: "singing" } });
+    fireEvent.click(within(slot1).getByRole("button", { name: /add skill/i }));
+
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith(expect.stringMatching(/already exists/i)));
+    expect(createSkill).not.toHaveBeenCalled();
+  });
+
+  it("names the archived clash when the insert is rejected by the unique index", async () => {
+    Object.assign(client, createFakeSupabase({ skills: { data: [], error: null } }));
+    createSkill.mockRejectedValueOnce({ code: "23505", message: "duplicate key value violates unique constraint" });
+    renderWithProviders(<ShowFormDialog open onOpenChange={() => {}} allShows={[]} />);
+    fireEvent.click(screen.getByRole("button", { name: /add part/i }));
+    const slot1 = screen.getByRole("group", { name: "Part 1" });
+    fireEvent.click(within(slot1).getByRole("button", { name: /new skill/i }));
+    fireEvent.change(within(slot1).getByLabelText(/skill name/i), { target: { value: "Tap" } });
+    fireEvent.click(within(slot1).getByRole("button", { name: /add skill/i }));
+
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith(expect.stringMatching(/archived/i)));
+  });
+
+  it("manage_skills off: no inline create affordance", async () => {
+    Object.assign(client, createFakeSupabase({ skills: { data: [], error: null } }));
+    vi.mocked(useCan).mockImplementation((action: string) => action !== "manage_skills");
+    renderWithProviders(<ShowFormDialog open onOpenChange={() => {}} allShows={[]} />);
+    fireEvent.click(screen.getByRole("button", { name: /add part/i }));
+    expect(screen.queryByRole("button", { name: /new skill/i })).toBeNull();
   });
 
   it("edit_scheduling off: the slot repeater is disabled, other fields stay editable", () => {

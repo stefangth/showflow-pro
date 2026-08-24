@@ -31,6 +31,13 @@ export interface CastingBreakdownFieldsProps {
   onChange: (rows: SlotDraftRow[]) => void;
   skills: SkillOption[];
   disabled?: boolean;
+  /** Creates a skill and resolves to it, so the row can require it straight away. Optional:
+   *  a consumer that does not offer creation simply omits it. */
+  onCreateSkill?: (name: string) => Promise<SkillOption>;
+  /** `manage_skills`, which is a different capability from the `edit_scheduling` behind
+   *  `disabled`: you can be allowed to edit the breakdown without being allowed to grow the
+   *  org's skill catalog. */
+  canCreateSkill?: boolean;
 }
 
 /**
@@ -39,7 +46,9 @@ export interface CastingBreakdownFieldsProps {
  * required-skills-union callout. Fully controlled (`value`/`onChange`) so both
  * `ShowFormDialog` and the PartsEditor sheet can own the draft state themselves.
  */
-export function CastingBreakdownFields({ value, onChange, skills, disabled = false }: CastingBreakdownFieldsProps) {
+export function CastingBreakdownFields({
+  value, onChange, skills, disabled = false, onCreateSkill, canCreateSkill = false,
+}: CastingBreakdownFieldsProps) {
   const { t } = useTranslation("productions");
 
   const updateRow = (i: number, patch: Partial<SlotDraftRow>) =>
@@ -144,6 +153,8 @@ export function CastingBreakdownFields({ value, onChange, skills, disabled = fal
               onToggle={(id) => toggleRowSkill(i, id)}
               disabled={disabled}
               emptyHint={t("form.skillsEmptyHint")}
+              onCreate={onCreateSkill}
+              canCreate={canCreateSkill}
             />
           </div>
         ))}

@@ -81,4 +81,15 @@ describe("PartsEditorSheet", () => {
     expect(onOpenChange).toHaveBeenCalledWith(false);
     expect(vi.mocked(toast.success)).toHaveBeenCalled();
   });
+
+  // The sheet is where a producer writes a breakdown, so a missing skill must be
+  // nameable here and not send them to Settings first.
+  it("offers inline skill creation next to the catalog skills", async () => {
+    renderSheet();
+    await waitFor(() => {
+      expect(screen.getByDisplayValue("Lead")).toBeInTheDocument();
+    });
+    expect(await screen.findByRole("button", { name: "Singing" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /new skill/i })).toBeInTheDocument();
+  });
 });

@@ -38,7 +38,7 @@ describe("SkillPicker", () => {
     render(<SkillPicker skills={[]} selectedIds={[]} onToggle={onToggle} onCreate={onCreate} canCreate />);
     fireEvent.click(screen.getByRole("button", { name: /new skill/i }));
     fireEvent.change(screen.getByRole("textbox"), { target: { value: "Lead Vocals" } });
-    fireEvent.submit(screen.getByRole("textbox").closest("form")!);
+    fireEvent.click(screen.getByRole("button", { name: /add skill/i }));
     await waitFor(() => expect(onToggle).toHaveBeenCalledWith("sk-9"));
   });
 
@@ -73,7 +73,7 @@ describe("SkillPicker", () => {
     fireEvent.click(screen.getByRole("button", { name: /new skill/i }));
     fireEvent.change(screen.getByRole("textbox"), { target: { value: "Piano" } });
     rerender(<SkillPicker skills={[]} selectedIds={[]} onToggle={vi.fn()} onCreate={onCreate} canCreate disabled />);
-    fireEvent.submit(screen.getByRole("textbox").closest("form")!);
+    fireEvent.click(screen.getByRole("button", { name: /add skill/i }));
     expect(onCreate).not.toHaveBeenCalled();
   });
 
@@ -97,7 +97,7 @@ describe("SkillPicker", () => {
     const { rerender } = render(<SkillPicker {...props} />);
     fireEvent.click(screen.getByRole("button", { name: /new skill/i }));
     fireEvent.change(screen.getByRole("textbox"), { target: { value: "Piano" } });
-    fireEvent.submit(screen.getByRole("textbox").closest("form")!);
+    fireEvent.click(screen.getByRole("button", { name: /add skill/i }));
     expect(onCreate).toHaveBeenCalledWith("Piano");
     rerender(<SkillPicker {...props} disabled />);
     resolve({ id: "sk-9", name: "Piano" });
@@ -105,13 +105,31 @@ describe("SkillPicker", () => {
     expect(onToggle).not.toHaveBeenCalled();
   });
 
-  it("gives the submit control a different accessible name from the trigger", () => {
+  // The chip renders inside ShowFormDialog's production <form>, so it must not be a form
+  // of its own and its confirm control must not be a submit button: either would save the
+  // production the moment a producer names a skill.
+  it("confirms without submitting any enclosing form", () => {
     render(<SkillPicker skills={[]} selectedIds={[]} onToggle={vi.fn()} onCreate={vi.fn()} canCreate />);
-    const trigger = screen.getByRole("button", { name: /new skill/i });
-    fireEvent.click(trigger);
-    const submit = screen.getByRole("button", { name: /add skill/i });
-    expect(submit).toHaveAttribute("type", "submit");
+    fireEvent.click(screen.getByRole("button", { name: /new skill/i }));
+    const confirm = screen.getByRole("button", { name: /add skill/i });
+    expect(confirm).toHaveAttribute("type", "button");
+    expect(screen.getByRole("textbox").closest("form")).toBeNull();
     expect(screen.queryByRole("button", { name: /new skill/i })).toBeNull();
+  });
+
+  it("creates on Enter without letting the key reach an enclosing form", () => {
+    const onCreate = vi.fn().mockResolvedValue({ id: "sk-9", name: "Piano" });
+    const outerSubmit = vi.fn((e: React.FormEvent) => e.preventDefault());
+    render(
+      <form onSubmit={outerSubmit}>
+        <SkillPicker skills={[]} selectedIds={[]} onToggle={vi.fn()} onCreate={onCreate} canCreate />
+      </form>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /new skill/i }));
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "Piano" } });
+    fireEvent.keyDown(screen.getByRole("textbox"), { key: "Enter" });
+    expect(onCreate).toHaveBeenCalledWith("Piano");
+    expect(outerSubmit).not.toHaveBeenCalled();
   });
 
   it("ignores a submit with a whitespace only name", () => {
@@ -119,7 +137,7 @@ describe("SkillPicker", () => {
     render(<SkillPicker skills={[]} selectedIds={[]} onToggle={vi.fn()} onCreate={onCreate} canCreate />);
     fireEvent.click(screen.getByRole("button", { name: /new skill/i }));
     fireEvent.change(screen.getByRole("textbox"), { target: { value: "   " } });
-    fireEvent.submit(screen.getByRole("textbox").closest("form")!);
+    fireEvent.click(screen.getByRole("button", { name: /add skill/i }));
     expect(onCreate).not.toHaveBeenCalled();
   });
 
@@ -128,9 +146,9 @@ describe("SkillPicker", () => {
     render(<SkillPicker skills={[]} selectedIds={[]} onToggle={vi.fn()} onCreate={onCreate} canCreate />);
     fireEvent.click(screen.getByRole("button", { name: /new skill/i }));
     fireEvent.change(screen.getByRole("textbox"), { target: { value: "Lead Vocals" } });
-    const form = screen.getByRole("textbox").closest("form")!;
-    fireEvent.submit(form);
-    fireEvent.submit(form);
+    const confirm = screen.getByRole("button", { name: /add skill/i });
+    fireEvent.click(confirm);
+    fireEvent.click(confirm);
     expect(onCreate).toHaveBeenCalledTimes(1);
   });
 
@@ -140,7 +158,7 @@ describe("SkillPicker", () => {
     render(<SkillPicker skills={[]} selectedIds={[]} onToggle={onToggle} onCreate={onCreate} canCreate />);
     fireEvent.click(screen.getByRole("button", { name: /new skill/i }));
     fireEvent.change(screen.getByRole("textbox"), { target: { value: "Piano" } });
-    fireEvent.submit(screen.getByRole("textbox").closest("form")!);
+    fireEvent.click(screen.getByRole("button", { name: /add skill/i }));
     await waitFor(() => expect(onCreate).toHaveBeenCalled());
     expect(onToggle).not.toHaveBeenCalled();
     // The form stays open with the typed name so an amended name costs one edit.
