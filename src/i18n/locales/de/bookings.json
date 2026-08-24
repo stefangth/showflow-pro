@@ -225,6 +225,12 @@
     "subtitle": "Alle geplanten Termine und der Besetzungsstatus an einem Ort.",
     "setupChecklist": "Einrichtungscheckliste",
     "newDate": "Neuer Termin",
+    "datesMenu": {
+      "aria": "Mehr Wege, Termine hinzuzufügen",
+      "byHand": "Neuer Termin von Hand",
+      "airtable": "Aus Airtable importieren",
+      "sheet": "Aus Tabelle importieren"
+    },
     "hireOrderReady": {
       "title_one": "{{count}} Termin ist voll besetzt. Bereit für seinen Vertrag.",
       "title_other": "{{count}} Termine sind voll besetzt. Bereit für ihre Verträge.",

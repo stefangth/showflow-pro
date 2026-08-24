@@ -225,6 +225,12 @@
     "subtitle": "All scheduled dates and cast status in one place.",
     "setupChecklist": "Setup checklist",
     "newDate": "New date",
+    "datesMenu": {
+      "aria": "More ways to add dates",
+      "byHand": "New date by hand",
+      "airtable": "Import from Airtable",
+      "sheet": "Import from sheet"
+    },
     "hireOrderReady": {
       "title_one": "{{count}} date is fully filled. Ready for its contract.",
       "title_other": "{{count}} dates are fully filled. Ready for their contracts.",
