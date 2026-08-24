@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { X } from "lucide-react";
@@ -71,6 +71,21 @@ export function WizardShell({
   const stepOfLabel = t("wizard.stepOf", { step: stepNumber, total: totalSteps });
   const stepCounter = `${stepNumber} / ${totalSteps}`;
 
+  // A source choice (Airtable / sheet / manual) hides steps that no longer apply, so the
+  // counter can go from "1 / 5" to "3 / 3" in one move. Both numbers are honest, and
+  // renumbering to fake continuity would not be, so instead say what actually happened.
+  // The note is derived from a real shrink observed while mounted, never from a guess, and
+  // clears the moment the list grows again (a choice reversed) so it cannot outlive its
+  // fact. The whole counter group is a polite live region, so the change is spoken rather
+  // than silently swapping under a screen-reader user.
+  const [droppedSteps, setDroppedSteps] = useState(0);
+  const prevTotal = useRef(totalSteps);
+  useEffect(() => {
+    if (totalSteps < prevTotal.current) setDroppedSteps(prevTotal.current - totalSteps);
+    else if (totalSteps > prevTotal.current) setDroppedSteps(0);
+    prevTotal.current = totalSteps;
+  }, [totalSteps]);
+
   // Per the design, a red "blocks your first ask" chip means the step gates the FIRST offer:
   // that's true for the get_dates phase (block: "booking", nothing can be offered until dates
   // exist) and the bookable phase's own offers-blocking steps (block: "offers"). The
@@ -100,9 +115,14 @@ export function WizardShell({
           <StatusPill tone="waiting">{t("wizard.waitsOnAdmin")}</StatusPill>
         )}
         <div className="flex-1" />
-        <span aria-label={stepOfLabel} className="text-control text-muted-foreground">
-          <Metric size="body">{stepCounter}</Metric>
-        </span>
+        <div aria-live="polite" className="flex items-center gap-2">
+          {droppedSteps > 0 && (
+            <StatusPill tone="neutral">{t("wizard.stepsDropped", { count: droppedSteps })}</StatusPill>
+          )}
+          <span aria-label={stepOfLabel} className="text-control text-muted-foreground">
+            <Metric size="body">{stepCounter}</Metric>
+          </span>
+        </div>
         <Button type="button" variant="outline" size="sm" onClick={onCollapse}>
           <X className="h-3.5 w-3.5" aria-hidden="true" />
           {t("wizard.collapse")}

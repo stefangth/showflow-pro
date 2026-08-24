@@ -70,7 +70,9 @@
     "phaseDone": "{{phase}} is done. That was the last step on this board.",
     "phaseDoneNext": "{{phase}} is done. Next up: {{next}}.",
     "stepsNav": "Steps",
-    "stepOfRich": "Step <0>{{step}}</0> of <1>{{total}}</1>"
+    "stepOfRich": "Step <0>{{step}}</0> of <1>{{total}}</1>",
+    "stepsDropped_one": "{{count}} step no longer applies",
+    "stepsDropped_other": "{{count}} steps no longer apply"
   },
   "steps": {
     "source": {
@@ -134,8 +136,8 @@
       "hint": "Choose the layout that goes out on every contract."
     },
     "countersign": {
-      "title": "Set your countersignature",
-      "hint": "Who signs on behalf of the org."
+      "title": "Choose how contracts get signed",
+      "hint": "The artist's signing route."
     }
   },
   "guide": {
@@ -290,14 +292,14 @@
       "article": "Read more about the contract document"
     },
     "countersign": {
-      "title": "Set your countersignature",
-      "body": "Decide who signs on behalf of the org on every issued contract.",
+      "title": "Choose how contracts get signed",
+      "body": "Choose how the artist signs an issued contract: in ShowFlow, or somewhere else.",
       "points": [
-        "A missing countersignature blocks issuing.",
-        "You can change the signer at any time.",
-        "The signature appears on every contract from here on."
+        "In ShowFlow, the artist signs in the app and the signature is stored with the contract.",
+        "Outside ShowFlow, a producer marks the contract countersigned once the artist has signed elsewhere.",
+        "Either way you can issue contracts. Change the choice at any time, and it applies from then on."
       ],
-      "article": "Read more about countersignature"
+      "article": "Read more about signing"
     }
   },
   "comingSoon": {

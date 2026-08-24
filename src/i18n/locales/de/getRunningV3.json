@@ -70,7 +70,9 @@
     "phaseDone": "{{phase}} ist fertig. Das war der letzte Schritt auf diesem Board.",
     "phaseDoneNext": "{{phase}} ist fertig. Weiter geht es mit: {{next}}.",
     "stepsNav": "Schritte",
-    "stepOfRich": "Schritt <0>{{step}}</0> von <1>{{total}}</1>"
+    "stepOfRich": "Schritt <0>{{step}}</0> von <1>{{total}}</1>",
+    "stepsDropped_one": "{{count}} Schritt entfällt",
+    "stepsDropped_other": "{{count}} Schritte entfallen"
   },
   "steps": {
     "source": {
@@ -134,8 +136,8 @@
       "hint": "Wähle das Layout, das auf jedem Engagementvertrag rausgeht."
     },
     "countersign": {
-      "title": "Deine Gegenzeichnung festlegen",
-      "hint": "Wer im Namen der Organisation unterschreibt."
+      "title": "Festlegen, wie Verträge unterschrieben werden",
+      "hint": "Der Unterschriftsweg für den Artist."
     }
   },
   "guide": {
@@ -290,14 +292,14 @@
       "article": "Mehr über das Vertragsdokument lesen"
     },
     "countersign": {
-      "title": "Deine Gegenzeichnung festlegen",
-      "body": "Entscheide, wer im Namen der Organisation auf jedem ausgestellten Engagementvertrag unterschreibt.",
+      "title": "Festlegen, wie Verträge unterschrieben werden",
+      "body": "Lege fest, wie der Artist einen ausgestellten Engagementvertrag unterschreibt: in ShowFlow oder anderswo.",
       "points": [
-        "Eine fehlende Gegenzeichnung blockiert das Ausstellen.",
-        "Du kannst die unterschreibende Person jederzeit ändern.",
-        "Die Unterschrift erscheint ab jetzt auf jedem Engagementvertrag."
+        "In ShowFlow unterschreibt der Artist in der App, und die Unterschrift wird zum Engagementvertrag gespeichert.",
+        "Außerhalb von ShowFlow markiert das Produktionsteam den Engagementvertrag als gegengezeichnet, sobald der Artist anderswo unterschrieben hat.",
+        "Ausstellen kannst du in beiden Fällen. Du kannst die Wahl jederzeit ändern, sie gilt dann ab diesem Zeitpunkt."
       ],
-      "article": "Mehr über die Gegenzeichnung lesen"
+      "article": "Mehr über das Unterschreiben lesen"
     }
   },
   "comingSoon": {

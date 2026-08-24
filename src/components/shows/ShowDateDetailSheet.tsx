@@ -985,6 +985,14 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager, ini
                   notes={showDate.notes}
                   castChips={castChips}
                   skillChips={skillChips}
+                  // Only a viewer who can manage the date can read the org roster the
+                  // eligible list is derived from (an artist's own read is RLS-scoped, so
+                  // the derivation would report a false 0), and the derivation fails closed
+                  // while it loads or errors. Anything but a resolved, readable list stays
+                  // `null`, which keeps the rail's line silent about a count.
+                  eligibleCount={
+                    canManage && !directListLoading && !directListError ? eligibleArtistList.length : null
+                  }
                   customFields={customFieldRows}
                   // Expiry is folded into the header status line; the rail keeps
                   // the lower-priority digest-send / auto-escalate signals.

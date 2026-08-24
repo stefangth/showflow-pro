@@ -125,3 +125,27 @@ describe("CockpitRail", () => {
     expect(screen.queryByText(/^details$/i)).not.toBeInTheDocument();
   });
 });
+
+// "Anyone can be asked." was rendered on a date with zero eligible artists, where it reads
+// as "you have people to ask". The unrestricted case has to state which of the two it is.
+describe("CockpitRail eligibility copy", () => {
+  const open = { ...base, castChips: [], skillChips: [] };
+
+  it("says nobody is eligible yet when the unrestricted pool is empty", () => {
+    render(<CockpitRail {...open} eligibleCount={0} />);
+    expect(screen.getByText(/nobody can be asked yet/i)).toBeInTheDocument();
+    expect(screen.queryByText("Anyone can be asked.")).toBeNull();
+  });
+
+  it("states the eligible count when the unrestricted pool is not empty", () => {
+    render(<CockpitRail {...open} eligibleCount={4} />);
+    expect(screen.getByText(/4 artists can be asked/i)).toBeInTheDocument();
+  });
+
+  it("claims no count when the eligible pool is unknown to this viewer", () => {
+    render(<CockpitRail {...open} eligibleCount={null} />);
+    expect(screen.getByText(/no cast or skill restrictions/i)).toBeInTheDocument();
+    expect(screen.queryByText(/\d+ artists? can be asked/i)).toBeNull();
+    expect(screen.queryByText(/nobody can be asked/i)).toBeNull();
+  });
+});
