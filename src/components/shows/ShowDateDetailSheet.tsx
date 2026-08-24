@@ -990,8 +990,17 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager, ini
                   // the derivation would report a false 0), and the derivation fails closed
                   // while it loads or errors. Anything but a resolved, readable list stays
                   // `null`, which keeps the rail's line silent about a count.
+                  //
+                  // `deriveDirectBookList` filters by cast, skill and blocked dates only, so
+                  // an already-booked artist stays in it (EligibilityBookList renders them
+                  // with a Booked badge and no Book button). The rail's line is about who is
+                  // left to ASK, so the booked set comes off. `bookedArtistIds` already
+                  // excludes cancelled bookings, and an unresolved `bookingsForDate` is
+                  // already part of `directListLoading`, so no extra gate is needed.
                   eligibleCount={
-                    canManage && !directListLoading && !directListError ? eligibleArtistList.length : null
+                    canManage && !directListLoading && !directListError
+                      ? eligibleArtistList.filter((a) => !bookedArtistIds.has(a.id)).length
+                      : null
                   }
                   customFields={customFieldRows}
                   // Expiry is folded into the header status line; the rail keeps

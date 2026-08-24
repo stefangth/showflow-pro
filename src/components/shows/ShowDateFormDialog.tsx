@@ -281,8 +281,21 @@ export function ShowDateFormDialog({
               <p className="text-xs text-muted-foreground">{t("showDateForm.movingDateNote")}</p>
             )}
             {err.date && <p className="text-xs text-destructive">{err.date.message}</p>}
-            {pastDateWarning && <p role="status" className="text-xs text-warning">{t("showDateForm.pastDateWarning")}</p>}
-            {dupWarning && <p role="status" className="text-xs text-warning">{dupWarning}</p>}
+            {/* One live region for both date warnings, always mounted (empty when there is
+                nothing to say) so only its CONTENTS change. A `role="status"` element that
+                mounts together with its own text is unreliably announced: several assistive
+                technologies only announce mutations inside a region that already existed,
+                and both warnings render inside an open Radix popover where nothing else
+                would speak for them. Same persistent sr-only pattern as PeopleTab's search
+                status; the visible copy below stays purely visual so nothing is announced
+                twice. */}
+            <p data-testid="date-warning-status" className="sr-only" role="status" aria-live="polite">
+              {[pastDateWarning ? t("showDateForm.pastDateWarning") : null, dupWarning]
+                .filter(Boolean)
+                .join(" ")}
+            </p>
+            {pastDateWarning && <p className="text-xs text-warning">{t("showDateForm.pastDateWarning")}</p>}
+            {dupWarning && <p className="text-xs text-warning">{dupWarning}</p>}
           </div>
 
           <div className="grid grid-cols-3 gap-3">

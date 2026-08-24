@@ -183,3 +183,60 @@ describe("ShowDateDetailSheet direct-book wiring (design 1h)", () => {
     expect(pianoChip.textContent).not.toBe("Piano");
   });
 });
+
+/**
+ * The rail's eligibility line counts who can be asked. `deriveDirectBookList` filters by
+ * cast, skill and blocked dates only, so an already-booked artist stays in the list (the
+ * book list renders them with a Booked badge and no Book button). On a fully-booked
+ * unrestricted date the line must not claim there is anyone left to ask.
+ */
+describe("ShowDateDetailSheet rail eligibility count", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(useAuth).mockReturnValue({
+      hasRole: (r: string) => r === "producer",
+      roles: ["producer"],
+      user: { id: "u1" },
+      currentOrg: { id: "org-1", name: "Aurora Productions" },
+    } as never);
+    vi.mocked(useCan).mockReturnValue(true);
+    vi.mocked(useFeature).mockImplementation((f) => f === "booking_flow");
+  });
+
+  // No required skills and no cast eligibility -> the rail takes the no-restrictions branch.
+  const unrestricted = (bookings: unknown[]) => ({
+    show_dates: { data: SHOW_DATE, error: null },
+    bookings: { data: bookings, error: null },
+    casts: { data: [], error: null },
+    show_date_cast_eligibility: { data: [], error: null },
+    blocked_dates: { data: [], error: null },
+    show_required_skills: { data: [], error: null },
+    show_date_required_skills: { data: [], error: null },
+    artists: { data: [{ id: "a1", name: "Marta Feld" }, { id: "a2", name: "Jonas Trier" }], error: null },
+    artist_skills: { data: [], error: null },
+  });
+
+  const booking = (id: string, artistId: string, status: string) => ({
+    id, show_date_id: "sd-1", artist_id: artistId, status, is_understudy: false,
+    offer_expires_at: null, artist: { id: artistId, name: artistId },
+  });
+
+  it("counts only artists who are not already booked", async () => {
+    seedClient(unrestricted([booking("bk-1", "a1", "confirmed")]));
+    renderSheet();
+    expect(await screen.findByText(/1 artist can be asked/i)).toBeInTheDocument();
+  });
+
+  it("says nobody can be asked when every eligible artist is already booked", async () => {
+    seedClient(unrestricted([booking("bk-1", "a1", "confirmed"), booking("bk-2", "a2", "soft_booked")]));
+    renderSheet();
+    expect(await screen.findByText(/nobody can be asked yet/i)).toBeInTheDocument();
+  });
+
+  // A cancelled booking frees the artist again, so they are askable.
+  it("counts an artist whose only booking was cancelled", async () => {
+    seedClient(unrestricted([booking("bk-1", "a1", "cancelled"), booking("bk-2", "a2", "confirmed")]));
+    renderSheet();
+    expect(await screen.findByText(/1 artist can be asked/i)).toBeInTheDocument();
+  });
+});

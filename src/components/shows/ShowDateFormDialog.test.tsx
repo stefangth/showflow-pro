@@ -387,7 +387,8 @@ describe("ShowDateFormDialog", () => {
     it("warns when the chosen date is in the past", () => {
       renderWithProviders(<ShowDateFormDialog open onOpenChange={() => {}} mode="create" defaultShowId="s1" />);
       pickDay(/August 4th, 2026/);
-      expect(screen.getByText(PAST)).toBeInTheDocument();
+      // Two nodes now: the persistent sr-only live region and the visible copy.
+      expect(screen.getAllByText(PAST).length).toBeGreaterThan(0);
     });
 
     it("shows no warning for a future date", () => {
@@ -428,7 +429,8 @@ describe("ShowDateFormDialog", () => {
       renderWithProviders(<ShowDateFormDialog open onOpenChange={() => {}} mode="edit" showDate={{ ...editShowDate, date: "2026-08-30" }} />);
       expect(screen.queryByText(PAST)).toBeNull();
       pickDay(/August 4th, 2026/);
-      expect(screen.getByText(PAST)).toBeInTheDocument();
+      // Two nodes now: the persistent sr-only live region and the visible copy.
+      expect(screen.getAllByText(PAST).length).toBeGreaterThan(0);
     });
 
     // A synced date's date field is disabled here (Airtable owns it), so the producer cannot
@@ -445,7 +447,7 @@ describe("ShowDateFormDialog", () => {
   // come from. Cities are managed in Settings > Casts & coverage (the production dialog's
   // inline creator is a second door onto the SAME org catalog, not a per-date one).
   describe("empty city catalog", () => {
-    const HINT = /cities are managed for the whole organisation in settings|no cities yet/i;
+    const HINT = /cities are managed for the whole organization in settings|no cities yet/i;
 
     it("points at where cities are managed when the catalog is empty", () => {
       mockCities = [];
@@ -488,18 +490,30 @@ describe("ShowDateFormDialog", () => {
 
   // Both date warnings render inside an open Radix popover, under the calendar. Without a
   // live region a screen-reader user picking a past or duplicate day hears nothing at all.
-  it("announces the past-date warning as a live status", () => {
-    vi.useFakeTimers({ toFake: ["Date"] });
-    vi.setSystemTime(new Date(2026, 7, 24, 12, 0, 0));
-    try {
+  // The region has to PRE-EXIST the text: several assistive technologies only announce
+  // mutations inside a region that was already there, so a role="status" element that
+  // mounts together with its own text is unreliable (PeopleTab has the same pattern).
+  describe("date warning announcements", () => {
+    const region = () => screen.getByTestId("date-warning-status");
+
+    it("keeps the live region mounted and empty when there is nothing to warn about", () => {
       renderWithProviders(<ShowDateFormDialog open onOpenChange={() => {}} mode="create" defaultShowId="s1" />);
-      fireEvent.click(screen.getByTestId("date-trigger"));
-      fireEvent.click(screen.getByRole("button", { name: /August 4th, 2026/ }));
-      const warning = screen.getByText(/this date is in the past/i);
-      expect(warning).toHaveAttribute("role", "status");
-    } finally {
-      vi.useRealTimers();
-    }
+      expect(region()).toHaveAttribute("aria-live", "polite");
+      expect(region()).toHaveTextContent("");
+    });
+
+    it("announces the past-date warning through that region", () => {
+      vi.useFakeTimers({ toFake: ["Date"] });
+      vi.setSystemTime(new Date(2026, 7, 24, 12, 0, 0));
+      try {
+        renderWithProviders(<ShowDateFormDialog open onOpenChange={() => {}} mode="create" defaultShowId="s1" />);
+        fireEvent.click(screen.getByTestId("date-trigger"));
+        fireEvent.click(screen.getByRole("button", { name: /August 4th, 2026/ }));
+        expect(region()).toHaveTextContent(/this date is in the past/i);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
   });
   // The duplicate-date warning shares the past-date warning's spot under the calendar and
   // had the identical gap: rendered inside an open popover with no live region.
@@ -508,7 +522,9 @@ describe("ShowDateFormDialog", () => {
     renderWithProviders(<ShowDateFormDialog open onOpenChange={() => {}} mode="create" defaultShowId="s1" />);
     fireEvent.click(screen.getByTestId("date-trigger"));
     fireEvent.click(screen.getByRole("button", { name: /August 28th, 2026/ }));
-    const warning = await screen.findByText(/a non-cancelled date already exists/i);
-    expect(warning).toHaveAttribute("role", "status");
+    await screen.findAllByText(/a non-cancelled date already exists/i);
+    expect(screen.getByTestId("date-warning-status")).toHaveTextContent(
+      /a non-cancelled date already exists/i,
+    );
   });
 });

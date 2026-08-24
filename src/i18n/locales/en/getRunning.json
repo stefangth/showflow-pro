@@ -269,7 +269,7 @@
     },
     "countersign": {
       "title": "Countersignature",
-      "description": "Who signs on behalf of the org.",
+      "description": "How the artist signs a contract.",
       "action": "Open"
     }
   },

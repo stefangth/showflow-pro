@@ -269,7 +269,7 @@
     },
     "countersign": {
       "title": "Gegenzeichnung",
-      "description": "Wer im Namen der Organisation unterschreibt.",
+      "description": "Wie der Artist einen Engagementvertrag unterschreibt.",
       "action": "Öffnen"
     }
   },
