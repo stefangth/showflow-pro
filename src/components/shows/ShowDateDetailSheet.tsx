@@ -1045,14 +1045,12 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager, ini
                 {activeTab === 'offers' && (
                   <ModuleGate feature="booking_flow">
                     {canManage && showDate.status !== 'cancelled' && (
-                      <Card elevation={2}>
-                        <CardHeader>
-                          <CardTitle className="font-display text-base">
-                            {flow.artist_acceptance ? t('showDateSheet.tabs.offers') : t('showDateSheet.tabs.book')}
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                          {flow.artist_acceptance ? (
+                      // No outer "Asks" card: the tab nav already names this section,
+                      // and wrapping the required-skills + tier-ladder cards in a
+                      // titled card nested cards two deep. The tiered path renders its
+                      // cards as peers; only the direct-book list keeps a card of its
+                      // own (it is a single list, not a set of peer cards).
+                      flow.artist_acceptance ? (
                             <>
                               <TierTimeline
                                 showDateId={showDate.id}
@@ -1104,6 +1102,11 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager, ini
                               />
                             </>
                           ) : (
+                            <Card elevation={2}>
+                              <CardHeader>
+                                <CardTitle className="font-display text-base">{t('showDateSheet.tabs.book')}</CardTitle>
+                              </CardHeader>
+                              <CardContent>
                             <EligibilityBookList
                               artists={eligibleArtistList}
                               loading={directListLoading}
@@ -1138,9 +1141,9 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager, ini
                               // chips whose count equals the whole qualifying list.
                               requiredSkillIds={requiredSkillsQ.data?.all ?? []}
                             />
-                          )}
-                        </CardContent>
-                      </Card>
+                              </CardContent>
+                            </Card>
+                          )
                     )}
                   </ModuleGate>
                 )}
