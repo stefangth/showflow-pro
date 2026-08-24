@@ -74,8 +74,8 @@ export async function fetchTierCastMap(
 }
 
 export interface TierLadderRow extends TierCast {
-  /** Raw member-position count across the tier's cast(s) (the "of M" denominator),
-   *  from `fetchCastMemberCounts` — independent of artist active status. */
+  /** Member-position count across the tier's cast(s) (the "of M" denominator), from
+   *  `fetchCastMemberCounts` — active members only, matching the engine's own filter. */
   castTotal: number;
   /** Active members of the tier's cast(s) who hold every required skill, are not
    *  blocked on the date, and do not already have a non-cancelled booking for it. */

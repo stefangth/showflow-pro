@@ -263,5 +263,24 @@ describe("fetchLadderCoverageInputs", () => {
     expect(client.calls).toContainEqual({ table: "show_cast_eligibility", method: "not", args: ["priority", "is", null] });
     expect(client.calls).toContainEqual({ table: "show_dates", method: "neq", args: ["status", "cancelled"] });
     expect(client.calls).toContainEqual({ table: "show_dates", method: "gte", args: ["date", "2026-08-07"] });
+    expect(client.calls).toContainEqual({ table: "cast_members", method: "eq", args: ["artists.status", "active"] });
+  });
+
+  it("a cast whose only members are inactive is NOT staffed (open-offer-tier would offer it to nobody)", async () => {
+    // The array seed answers the active-filtered read with k2 only; the unfiltered read
+    // (what the buggy version issues) still returns k3, whose sole member has gone
+    // inactive. Treating k3 as staffing its city is exactly the vacuous completion the
+    // coverage rule exists to remove.
+    const client = createFakeSupabase({
+      show_dates: { data: [], error: null },
+      show_cast_eligibility: { data: [], error: null },
+      cast_city_priority: { data: [], error: null },
+      cast_members: [
+        { when: { org_id: "org-1", "artists.status": "active" }, data: [{ cast_id: "k2" }], error: null },
+        { when: { org_id: "org-1" }, data: [{ cast_id: "k2" }, { cast_id: "k3" }], error: null },
+      ],
+    });
+    const r = await fetchLadderCoverageInputs(asSupabase(client), { orgId: "org-1", today: "2026-08-07" });
+    expect(r.nonEmptyCastIds).toEqual(["k2"]);
   });
 });

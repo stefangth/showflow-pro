@@ -71,6 +71,21 @@ describe("casts data-access", () => {
       expect(res["cast-2"]).toBeUndefined();
     });
 
+    it("counts only ACTIVE members, so an all-inactive cast reads as empty", async () => {
+      // The pickers disable a 0-member cast, and the coverage rule refuses to treat one as
+      // staffing a city. A cast whose members have all gone inactive can be asked by
+      // nobody (open-offer-tier filters on status = 'active'), so it must count as empty
+      // in both places or the picker would offer a cast coverage then rejects.
+      const fake = createFakeSupabase({
+        cast_members: [
+          { when: { org_id: "org-1", "artists.status": "active" }, data: [{ cast_id: "cast-1" }], error: null },
+          { when: { org_id: "org-1" }, data: [{ cast_id: "cast-1" }, { cast_id: "cast-gone" }], error: null },
+        ],
+      });
+      expect(await fetchCastMemberCounts(fake as never, "org-1")).toEqual({ "cast-1": 1 });
+      expect(fake.calls).toContainEqual({ table: "cast_members", method: "eq", args: ["artists.status", "active"] });
+    });
+
     it("returns {} for a null org without querying", async () => {
       const fake = createFakeSupabase({});
       expect(await fetchCastMemberCounts(fake as never, null)).toEqual({});

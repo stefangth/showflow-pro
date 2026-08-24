@@ -253,7 +253,16 @@ export async function fetchLadderCoverageInputs(
     .eq("org_id", args.orgId);
   if (cityPri.error) throw cityPri.error;
 
-  const members = await client.from("cast_members").select("cast_id").eq("org_id", args.orgId);
+  // STAFFED, not merely non-empty: the member's artist must be active. `open-offer-tier`
+  // filters cast members by `status = 'active'` before building its offer list, so a cast
+  // whose every member has since gone inactive opens a tier to nobody. Counting it as
+  // staffing the city would make the coverage rule report a shut first ask as covered.
+  // Same reason `fetchSkillEligibilityGaps` joins `artists!inner(status)`.
+  const members = await client
+    .from("cast_members")
+    .select("cast_id, artists!inner(status)")
+    .eq("org_id", args.orgId)
+    .eq("artists.status", "active");
   if (members.error) throw members.error;
 
   const dateRows = (dates.data ?? []) as { show_id: string; city_id: string | null }[];

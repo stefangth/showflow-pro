@@ -104,13 +104,17 @@ describe("fetchUpcomingDateCountsBySkill", () => {
 });
 
 describe("fetchSkillEligibilityGaps", () => {
+  /** One future non-cancelled date per requiring show, so the gap read is not scoped away. */
+  const LIVE_DATES = { data: [{ show_id: "show-1" }, { show_id: "show-2" }], error: null };
+
   it("returns skills required by a part that no active artist holds, naming the productions", async () => {
     const client = createFakeSupabase({
+      show_dates: LIVE_DATES,
       show_required_skills: {
         data: [
-          { skill_id: "sk-1", show: { program: "Winter Gala" } },
-          { skill_id: "sk-1", show: { program: "Autumn Revue" } },
-          { skill_id: "sk-2", show: { program: "Winter Gala" } },
+          { skill_id: "sk-1", show_id: "show-1", show: { program: "Winter Gala" } },
+          { skill_id: "sk-1", show_id: "show-2", show: { program: "Autumn Revue" } },
+          { skill_id: "sk-2", show_id: "show-1", show: { program: "Winter Gala" } },
         ],
         error: null,
       },
@@ -124,7 +128,8 @@ describe("fetchSkillEligibilityGaps", () => {
 
   it("reports a gap with no production names when the requiring show has no program", async () => {
     const client = createFakeSupabase({
-      show_required_skills: { data: [{ skill_id: "sk-1", show: { program: null } }], error: null },
+      show_dates: LIVE_DATES,
+      show_required_skills: { data: [{ skill_id: "sk-1", show_id: "show-1", show: { program: null } }], error: null },
       artist_skills: { data: [], error: null },
       skills: { data: [{ id: "sk-1", name: "Lead Vocals" }], error: null },
     });
@@ -136,11 +141,43 @@ describe("fetchSkillEligibilityGaps", () => {
 
   it("returns no gaps when no part requires a skill", async () => {
     const client = createFakeSupabase({
+      show_dates: LIVE_DATES,
       show_required_skills: { data: [], error: null },
       artist_skills: { data: [], error: null },
       skills: { data: [], error: null },
     });
     expect(await fetchSkillEligibilityGaps(asSupabase(client), "org-1")).toEqual([]);
+  });
+
+  it("ignores a requirement whose production has no future date left (a finished run cannot block)", async () => {
+    // show-9 still carries a required-skill row (the trigger-maintained cache is never
+    // pruned) but its only dates are in the past, so there is nothing left to ask about.
+    // Reading the cache by org alone would block the skills step for this org forever.
+    const client = createFakeSupabase({
+      show_dates: { data: [{ show_id: "show-1" }], error: null },
+      show_required_skills: {
+        data: [{ skill_id: "sk-9", show_id: "show-9", show: { program: "Last Season" } }],
+        error: null,
+      },
+      artist_skills: { data: [], error: null },
+      skills: { data: [{ id: "sk-9", name: "Fire Breathing" }], error: null },
+    });
+    expect(await fetchSkillEligibilityGaps(asSupabase(client), "org-1")).toEqual([]);
+  });
+
+  it("scopes the date read to future non-cancelled dates and never queries requirements for an org with none", async () => {
+    const client = createFakeSupabase({
+      show_dates: { data: [], error: null },
+      show_required_skills: { data: [{ skill_id: "sk-1", show_id: "show-1", show: { program: "Ghost" } }], error: null },
+      artist_skills: { data: [], error: null },
+      skills: { data: [{ id: "sk-1", name: "Lead Vocals" }], error: null },
+    });
+    expect(await fetchSkillEligibilityGaps(asSupabase(client), "org-1")).toEqual([]);
+    // Seed data cannot prove a dropped filter, so pin the filters at the calls level.
+    expect(client.calls).toContainEqual({ table: "show_dates", method: "eq", args: ["org_id", "org-1"] });
+    expect(client.calls).toContainEqual({ table: "show_dates", method: "neq", args: ["status", "cancelled"] });
+    expect(client.calls.some((c) => c.table === "show_dates" && c.method === "gte")).toBe(true);
+    expect(client.calls.some((c) => c.table === "show_required_skills")).toBe(false);
   });
 });
 

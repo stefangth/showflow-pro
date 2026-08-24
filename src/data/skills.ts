@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
+import { toDateKey } from "@/lib/dates";
 
 export type Skill = { id: string; name: string };
 
@@ -189,9 +190,10 @@ export interface SkillGap {
 /** Row shape of the show_required_skills → shows join below. */
 interface RequiredSkillJoinRow { skill_id: string; show: { program: string | null } | null }
 
-/** Skills that some part requires but no ACTIVE artist holds. An empty result means the
- *  skill model is coherent, which includes an org that requires no skills at all. Reads
- *  the trigger-maintained `show_required_skills` cache; never write that table.
+/** Skills that some UPCOMING part requires but no ACTIVE artist holds. An empty result
+ *  means the skill model is coherent, which includes an org that requires no skills at
+ *  all and an org with no future dates left to fill. Reads the trigger-maintained
+ *  `show_required_skills` cache; never write that table.
  *
  *  The requirement read is joined to `shows` purely so each gap can name the production
  *  that is blocked by it (see `SkillGap.productions`); the gap SET is unchanged by the
@@ -201,10 +203,34 @@ export async function fetchSkillEligibilityGaps(
   orgId: string | null,
 ): Promise<SkillGap[]> {
   if (!orgId) return [];
+
+  // Scope the requirement read to productions that still have something to ask about:
+  // a FUTURE, non-cancelled date. `show_required_skills` is a trigger-maintained cache
+  // that is not pruned when a production is archived or runs out of dates, so reading it
+  // by org alone lets a requirement from a finished production block the skills step
+  // forever, for an org with nothing left to book.
+  //
+  // FUTURE dates (not "any non-cancelled date", the convention `hasAnyDates` uses): the
+  // two coexist on purpose. `hasAnyDates` asks "is this a blank org or an established one
+  // between seasons", so it must count past dates. This step asks "is an ask blocked
+  // right now", the same question the coverage rule asks, and only a future date can be
+  // asked about. Using the any-date convention here would keep an established org between
+  // seasons permanently incomplete, which is exactly the invariant it exists to protect.
+  const liveDates = await client
+    .from("show_dates")
+    .select("show_id")
+    .eq("org_id", orgId)
+    .neq("status", "cancelled")
+    .gte("date", toDateKey(new Date()));
+  if (liveDates.error) throw liveDates.error;
+  const liveShowIds = [...new Set(((liveDates.data ?? []) as { show_id: string }[]).map((r) => r.show_id))];
+  if (liveShowIds.length === 0) return [];
+
   const required = await client
     .from("show_required_skills")
     .select("skill_id, show:shows(program)")
-    .eq("org_id", orgId);
+    .eq("org_id", orgId)
+    .in("show_id", liveShowIds);
   if (required.error) throw required.error;
   const requiredRows = (required.data ?? []) as unknown as RequiredSkillJoinRow[];
   const requiredIds = [...new Set(requiredRows.map((r) => r.skill_id))];
