@@ -81,7 +81,11 @@ function RetiredBoardV3({
       <div className="flex flex-wrap items-center gap-3">
         <div className="min-w-0 flex-1">
           <div className="text-base font-semibold tracking-[-0.1px] text-foreground">{t("retired.title")}</div>
-          <p className="mt-0.5 text-control leading-[19px] text-muted-foreground text-pretty">{t("retired.body")}</p>
+          <p className="mt-0.5 text-control leading-[19px] text-muted-foreground text-pretty">
+            {/* In Settings the wizards are still rendered underneath this card, so say so
+                rather than "come back any time", which reads as if there were nothing here. */}
+            {t(context === "settings" ? "retired.settingsBody" : "retired.body")}
+          </p>
         </div>
         <Metric size="body" className="text-muted-foreground">
           {t("retired.count", { done: model.doneCount, total: model.totalCount })}
@@ -320,9 +324,14 @@ export function GetRunningBoardV3({ context }: { context: "page" | "settings" })
     );
   }
 
-  if (model.complete) {
+  // A finished board retires the standalone PAGE only. The sidebar item goes away once
+  // setup is done, which makes the Settings mirror the durable home for these sixteen
+  // wizards: collapsing that to a summary card too would leave an org with no way back
+  // into any of them. So Settings keeps the rail and the phase rows, and shows the
+  // summary card as a header above them instead of in place of them.
+  if (model.complete && context === "page") {
     return (
-      <div className={context === "page" ? "flex flex-col gap-5 p-6" : "flex flex-col gap-5"}>
+      <div className="flex flex-col gap-5 p-6">
         <RetiredBoardV3 model={model} orgId={orgId} context={context} />
       </div>
     );
@@ -416,8 +425,17 @@ export function GetRunningBoardV3({ context }: { context: "page" | "settings" })
         </div>
       </div>
 
-      <HeroCard model={model} onOpenNext={handleOpenStep} onSeeAll={handleSeeAll} />
-      <StillShutCard model={model} />
+      {/* "What is still shut" and "one thing at a time" are progress copy. On a finished
+          board they would be answering a question nobody is asking, so the summary card
+          takes their place. */}
+      {model.complete ? (
+        <RetiredBoardV3 model={model} orgId={orgId} context={context} />
+      ) : (
+        <>
+          <HeroCard model={model} onOpenNext={handleOpenStep} onSeeAll={handleSeeAll} />
+          <StillShutCard model={model} />
+        </>
+      )}
 
       <div ref={allStepsCardRef} data-testid="all-steps-card" className="rounded-l border border-border bg-card p-4">
         <Eyebrow>{t("rails.title", { count: model.totalCount })}</Eyebrow>

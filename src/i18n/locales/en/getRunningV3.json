@@ -322,7 +322,8 @@
     "body": "Every step is done. Come back any time to review what changed.",
     "count": "{{done}} of {{total}} done",
     "hideFromNav": "Hide from the sidebar",
-    "manageInSettings": "Manage in Settings"
+    "manageInSettings": "Manage in Settings",
+    "settingsBody": "Every step is done. They all stay open below, so you can revisit any of them whenever something changes."
   },
   "nothingToSetUp": {
     "title": "Nothing to set up yet",

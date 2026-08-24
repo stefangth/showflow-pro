@@ -322,7 +322,8 @@
     "body": "Jeder Schritt ist erledigt. Schau jederzeit wieder vorbei, um zu prüfen, was sich geändert hat.",
     "count": "{{done}} von {{total}} erledigt",
     "hideFromNav": "Aus der Seitenleiste ausblenden",
-    "manageInSettings": "In den Einstellungen verwalten"
+    "manageInSettings": "In den Einstellungen verwalten",
+    "settingsBody": "Jeder Schritt ist erledigt. Sie bleiben alle unten offen, du kannst also jederzeit zu jedem zurück, wenn sich etwas ändert."
   },
   "nothingToSetUp": {
     "title": "Noch nichts einzurichten",
