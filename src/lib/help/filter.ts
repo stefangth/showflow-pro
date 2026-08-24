@@ -40,3 +40,10 @@ export function countParams(
     newCount: mine.filter((i) => i.status === 'new').length,
   };
 }
+
+/** One item by its stable id, or null. The id is what `/help?item=` carries, so an id
+ *  that no longer exists must resolve to null rather than throw: a stale link from an
+ *  older build is a normal outcome, and the page falls back to its plain render. */
+export function findItem(id: string): HelpItem | null {
+  return HELP_ITEMS.find((i) => i.id === id) ?? null;
+}
