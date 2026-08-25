@@ -2,7 +2,6 @@ import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { ROUTES } from "@/config/app.config";
-import { useGetRunningV3Enabled } from "@/hooks/useGetRunningV3Enabled";
 import { useGetRunningV3 } from "@/hooks/useGetRunningV3";
 import { visibleSteps, type GetRunningModelV3, type GetRunningStepKey } from "@/lib/getRunning/steps";
 
@@ -32,31 +31,18 @@ export function pickFinishStep(model: GetRunningModelV3, candidates: GetRunningS
  * the v3 `/get-running` board (`?step=<key>`, the same param `GetRunningBoardV3` already
  * reads to auto-open a step) at the first one that is still outstanding for the viewer.
  *
- * Split into an outer gate + inner component so a v3-disabled org never pays for
- * `useGetRunningV3()` — which composes the whole board model, including the entire
- * `useAirtableConsole` query fan-out. Since the v3 cutover, v3-on is the default, so the
- * orgs this spares are those with an explicit `getrunning_v3_enabled = false` override plus
- * the brief flag-loading window (the outer gate returns null while `isLoading`). The outer
- * component only calls the cheap `useGetRunningV3Enabled()` flag check; the inner component,
- * which calls the heavy hook, is not rendered (and its hooks not evaluated) until the flag
- * says v3 is live for this org. This keeps the conditional strictly at the component-render
- * level, not inside a single component's hook order.
- */
-export function FinishSetupLink({ steps }: { steps: GetRunningStepKey[] }) {
-  const { enabled, isLoading } = useGetRunningV3Enabled();
-
-  if (!enabled || isLoading) return null;
-
-  return <FinishSetupLinkInner steps={steps} />;
-}
-
-/**
  * Renders nothing while the live model is still loading, or when none of the candidates are
  * actionable for this viewer right now (`pickFinishStep` returns null) — including the steady
  * state where everything in `steps` is already done, so the affordance disappears on its own
  * rather than linking to a board with nothing left to do.
+ *
+ * Previously split into an outer `useGetRunningV3Enabled()` gate + this inner component, so a
+ * v3-disabled org never paid for `useGetRunningV3()` (the whole board-model composition,
+ * including the `useAirtableConsole` query fan-out). With the v3 cutover making v3
+ * unconditional, that gate is always on, so it was dropped: this component now calls the
+ * live model hook directly.
  */
-function FinishSetupLinkInner({ steps }: { steps: GetRunningStepKey[] }) {
+export function FinishSetupLink({ steps }: { steps: GetRunningStepKey[] }) {
   const { t } = useTranslation("getRunningV3");
   const { model, isLoading } = useGetRunningV3();
 
