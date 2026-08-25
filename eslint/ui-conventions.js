@@ -26,7 +26,7 @@ export const uiConventions = {
       },
       {
         selector: "Literal[value=/\\btext-\\[[0-9.]+px\\]/]",
-        message: 'Bracket type size. The scale is 48/32/22/17/14/13/12/11. 13 is the control size. See section 3.',
+        message: 'Bracket type size. The scale is 48/32/22/17/16/14/13/12/11. 13 is the control size. See section 3.',
       },
       {
         selector: "Literal[value=/\\brounded-\\[[0-9.]+(px|rem)\\]/]",

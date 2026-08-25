@@ -1039,61 +1039,61 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager, ini
                       // cards as peers; only the direct-book list keeps a card of its
                       // own (it is a single list, not a set of peer cards).
                       flow.artist_acceptance ? (
-                            <>
-                              <TierTimeline
-                                showDateId={showDate.id}
-                                dateLabel={formatDateDMY(showDate.date)}
-                                flow={flow}
-                                bookings={bookingsForDate ?? []}
-                                canManage={canRunOfferEngine}
-                                hasSession={hasSession}
-                                ladderSource={tiersQ.data?.source ?? "org"}
-                                skills={orgSkills ?? []}
-                                openedTiers={openedQ.data ?? []}
-                                openPending={openOffers.isPending}
-                                closePending={closeOffers.isPending}
-                                onOpenTier={(tier, skillFilterIds) => openOffers.mutate({ tier, skillFilterIds })}
-                                onCloseTier={(tier, withdraw) => closeOffers.mutate({ tier, withdraw })}
-                                onPreviewTier={(tier, skillFilterIds) => setDryRun({ tier, skillFilterIds })}
-                                onSetUpNextCast={() => setActiveTab('setup')}
-                                ladderRows={ladderRows}
-                                cityName={showDate.city?.name ?? ''}
-                                statusByTier={statusByTier}
-                                nextTier={nextTier}
-                                dateFilled={showDate.status === 'fully_filled'}
-                                nextTierTarget={nextTierTarget}
-                                nextTierCounts={nextTierCounts}
-                                requiredSkillNames={skillChips}
-                                requiredSkillIds={requiredSkillsQ.data?.all ?? []}
-                                candidates={nextTierCandidates}
-                                excludedDetail={nextTierExcludedDetail}
-                              />
-                              <DryRunDialog
-                                open={Boolean(dryRun)}
-                                onOpenChange={(o) => { if (!o) setDryRun(null); }}
-                                tier={dryRun?.tier ?? null}
-                                result={dryRunQ.data ?? null}
-                                loading={dryRunQ.isLoading}
-                                error={dryRunQ.isError}
-                                onRetry={() => dryRunQ.refetch()}
-                                // isLoading stays false on a post-error refetch (status is
-                                // 'error', not 'pending'), so drive the retry's loading
-                                // feedback off isFetching while still in the error state.
-                                retrying={dryRunQ.isFetching && dryRunQ.isError}
-                                flow={flow}
-                                confirmPending={openOffers.isPending}
-                                onConfirm={() => {
-                                  if (dryRun) openOffers.mutate({ tier: dryRun.tier, skillFilterIds: dryRun.skillFilterIds });
-                                  setDryRun(null);
-                                }}
-                              />
-                            </>
-                          ) : (
-                            <Card elevation={2}>
-                              <CardHeader>
-                                <CardTitle className="font-display text-base">{t('showDateSheet.tabs.book')}</CardTitle>
-                              </CardHeader>
-                              <CardContent>
+                        <>
+                          <TierTimeline
+                            showDateId={showDate.id}
+                            dateLabel={formatDateDMY(showDate.date)}
+                            flow={flow}
+                            bookings={bookingsForDate ?? []}
+                            canManage={canRunOfferEngine}
+                            hasSession={hasSession}
+                            ladderSource={tiersQ.data?.source ?? "org"}
+                            skills={orgSkills ?? []}
+                            openedTiers={openedQ.data ?? []}
+                            openPending={openOffers.isPending}
+                            closePending={closeOffers.isPending}
+                            onOpenTier={(tier, skillFilterIds) => openOffers.mutate({ tier, skillFilterIds })}
+                            onCloseTier={(tier, withdraw) => closeOffers.mutate({ tier, withdraw })}
+                            onPreviewTier={(tier, skillFilterIds) => setDryRun({ tier, skillFilterIds })}
+                            onSetUpNextCast={() => setActiveTab('setup')}
+                            ladderRows={ladderRows}
+                            cityName={showDate.city?.name ?? ''}
+                            statusByTier={statusByTier}
+                            nextTier={nextTier}
+                            dateFilled={showDate.status === 'fully_filled'}
+                            nextTierTarget={nextTierTarget}
+                            nextTierCounts={nextTierCounts}
+                            requiredSkillNames={skillChips}
+                            requiredSkillIds={requiredSkillsQ.data?.all ?? []}
+                            candidates={nextTierCandidates}
+                            excludedDetail={nextTierExcludedDetail}
+                          />
+                          <DryRunDialog
+                            open={Boolean(dryRun)}
+                            onOpenChange={(o) => { if (!o) setDryRun(null); }}
+                            tier={dryRun?.tier ?? null}
+                            result={dryRunQ.data ?? null}
+                            loading={dryRunQ.isLoading}
+                            error={dryRunQ.isError}
+                            onRetry={() => dryRunQ.refetch()}
+                            // isLoading stays false on a post-error refetch (status is
+                            // 'error', not 'pending'), so drive the retry's loading
+                            // feedback off isFetching while still in the error state.
+                            retrying={dryRunQ.isFetching && dryRunQ.isError}
+                            flow={flow}
+                            confirmPending={openOffers.isPending}
+                            onConfirm={() => {
+                              if (dryRun) openOffers.mutate({ tier: dryRun.tier, skillFilterIds: dryRun.skillFilterIds });
+                              setDryRun(null);
+                            }}
+                          />
+                        </>
+                      ) : (
+                        <Card elevation={2}>
+                          <CardHeader>
+                            <CardTitle className="font-display text-base">{t('showDateSheet.tabs.book')}</CardTitle>
+                          </CardHeader>
+                          <CardContent>
                             <EligibilityBookList
                               artists={eligibleArtistList}
                               loading={directListLoading}
@@ -1128,9 +1128,9 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager, ini
                               // chips whose count equals the whole qualifying list.
                               requiredSkillIds={requiredSkillsQ.data?.all ?? []}
                             />
-                              </CardContent>
-                            </Card>
-                          )
+                          </CardContent>
+                        </Card>
+                      )
                     )}
                   </ModuleGate>
                 )}
