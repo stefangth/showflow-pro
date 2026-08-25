@@ -71,26 +71,14 @@ describe("resolveInitialTab", () => {
   });
 
   it("deep-links the get-running tab (the Phase 5 Settings mirror of the v3 board)", () => {
-    // Whitelisting here just lets a deep link resolve to the value; SettingsPage does not yet
-    // render a "get-running" trigger/content (that's Task B3), so this is admin+producer gated
-    // in the page, not here.
+    // Whitelisting here just lets a deep link resolve to the value; SettingsPage renders
+    // its "get-running" trigger/content for every admin/producer unconditionally.
     expect(SETTINGS_TAB_PARAMS).toContain("get-running");
     expect(resolveInitialTab("get-running", true, false, false)).toBe("get-running");
   });
 
-  it("falls back for an admin/producer whose org has the v3 runtime flag off, since SettingsPage renders no get-running trigger/content for them", () => {
-    // Matches SettingsPage's `showGetRunning = isSuperAdmin || ((isAdmin || isProducer) &&
-    // v3Enabled)` gate: without this, a bookmarked ?tab=get-running would resolve to a tab
-    // with no trigger and no content, and Radix would render a blank pane.
-    expect(resolveInitialTab("get-running", true, false, false, false)).toBe("how-it-works");
-  });
-
-  it("honours the get-running deep link for an admin/producer when the v3 runtime flag is on", () => {
-    expect(resolveInitialTab("get-running", true, false, false, true)).toBe("get-running");
-  });
-
-  it("always honours the get-running deep link for a super-admin, regardless of the v3 runtime flag", () => {
-    expect(resolveInitialTab("get-running", false, true, false, false)).toBe("get-running");
+  it("honours the get-running deep link for a super-admin too", () => {
+    expect(resolveInitialTab("get-running", false, true, false)).toBe("get-running");
   });
 });
 

@@ -16,8 +16,8 @@ import { useRailDismissed } from "@/components/setup/useRailDismissed";
  * `useGetRunningV3` already gates its own heavy reads on role + each module's entitlement
  * (see its own docstring), so this hook pays for nothing extra beyond what a non-artist
  * viewer at a booking_flow-or-hire_orders org was already going to pay for the moment
- * they open the Get running board themselves — this just lets the sidebar read the same
- * answer.
+ * they open the Get running board themselves, even though it now mounts on every
+ * admin/producer route to decide the sidebar item's visibility.
  *
  * Fails open (visible) while `model` is still loading, so the item never blinks away
  * mid-fetch only to reappear. A nothing-on org (no module entitled) has no board to set
@@ -28,7 +28,7 @@ export function useGetRunningNavVisible(): boolean {
   const { currentOrg, hasRole } = useAuth();
   const orgId = currentOrg?.id ?? null;
   const isNonArtist = hasRole("admin") || hasRole("producer");
-  const { model } = useGetRunningV3({ active: true });
+  const { model } = useGetRunningV3();
   const [dismissed] = useRailDismissed("getRunning", orgId);
 
   if (!isNonArtist) return true;
