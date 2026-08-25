@@ -24,9 +24,9 @@ const CHOOSABLE: ReadonlySet<SelectableSource> = new Set(["airtable", "sheet", "
  * can advance / mark the step done.
  *
  * Portals its primary action into `WizardFooterContext`'s slot once `WizardShell` has
- * mounted it (mirrors `FlowStep`'s `TaskPanelFooterContext` pattern from the v1 in-panel
- * editors), falling back to an inline button when the context is null — e.g. rendered
- * outside `WizardShell`, as in this component's own tests.
+ * mounted it (the same footer-portal pattern the v3 wizard steps use), falling back to an
+ * inline button when the context is null, e.g. rendered outside `WizardShell`, as in this
+ * component's own tests.
  *
  * Read-only viewers (no `manage_productions` capability) see the org's current choice
  * but every card renders disabled and there is no Continue button, only a short note to

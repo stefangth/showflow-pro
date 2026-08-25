@@ -70,6 +70,12 @@ vi.mock("@/components/shows/ShowDateDetailSheet", () => ({
 }));
 vi.mock("@/components/shows/ShowDateFormDialog", () => ({ ShowDateFormDialog: () => null }));
 vi.mock("@/components/hireOrders/NewOrderWizard", () => ({ NewOrderWizard: () => null }));
+// This page renders FinishSetupLink (v3 is unconditional now), which calls the live
+// useGetRunningV3 model hook and, when it resolves an actionable step, renders a real
+// react-router <Link>. These renders are router-free (no MemoryRouter), so stub the model
+// as null/not-loading here to keep FinishSetupLink's early return and avoid needing a router
+// just for an affordance these tests are not about.
+vi.mock("@/hooks/useGetRunningV3", () => ({ useGetRunningV3: () => ({ model: null, isLoading: false }) }));
 
 import ShowsBookingsPage from "./ShowsBookingsPage";
 

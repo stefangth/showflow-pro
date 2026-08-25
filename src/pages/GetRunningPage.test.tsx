@@ -4,56 +4,39 @@ import { MemoryRouter, Routes, Route } from "react-router-dom";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import { createFakeSupabase, type TableSeed } from "@/test/supabaseFake";
 import { ROUTES } from "@/config/app.config";
-import type { GetRunningModel } from "@/lib/getRunning/tasks";
 import type { GetRunningModelV3 } from "@/lib/getRunning/steps";
 
-// GetRunningPage reads useAuth (org/role) and useGetRunning (the composed board model)
-// directly. Both are mocked here — useAuth as a vi.fn() (same harness as
-// HireOrderEditPage.test.tsx), useGetRunning as a vi.fn() so each test can hand back an
-// exact model shape without seeding every table the underlying booking/hire-order setup
-// reads touch (that live-data wiring is covered by useGetRunning.test.tsx). A real
+// Post v3-cutover, GetRunningPage is a thin two-way fork: an artist (direct URL hit only,
+// the nav item is admin/producer-gated) is bounced to Availability via useAuth().hasRole;
+// everyone else renders the real GetRunningBoardV3 (context="page"). The v1 board
+// (GetRunningHeader/PhaseCard/RetiredBoard/TaskPanel) and the useGetRunning/
+// useGetRunningV3Enabled runtime-flag fork are gone from this page entirely.
+//
+// useAuth is mocked as a vi.fn() (same harness as HireOrderEditPage.test.tsx). A real
 // MemoryRouter is used (not a Link stub) because the artist branch renders a real
 // <Navigate>, and the test asserts on where the router actually lands.
 //
-// The page also reads useGetRunningV3Enabled (Task A3), which resolves the runtime flag
-// through the real supabase client rather than through a mocked hook, so `client` is
-// seeded per-test with createFakeSupabase (mirroring useGetRunningV3Enabled.test.tsx)
-// instead of staying an empty object. useGetRunningV3 (the v3 board's own live-data hook)
-// IS mocked, same as GetRunningBoardV3.test.tsx, so a v3-enabled render doesn't also have
-// to seed every table that board's model composition touches.
+// GetRunningBoardV3 itself is rendered for real (not mocked) so a passing test proves the
+// actual v3 board mounts, not a stand-in. Its own live-data hook, useGetRunningV3, IS
+// mocked (same as GetRunningBoardV3.test.tsx) so this file doesn't have to seed every
+// table that board's model composition touches -- that wiring is covered by
+// useGetRunningV3.test.tsx and GetRunningBoardV3.test.tsx. `client` stays mocked because
+// GetRunningBoardV3 unconditionally calls useOrgAdminNames (react-query, gated by
+// `enabled: role === "producer"`), which needs a working supabase client even when its
+// query never actually fires.
 const { client } = vi.hoisted(() => ({ client: {} as Record<string, unknown> }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: client }));
 vi.mock("@/features/auth/AuthContext", () => ({ useAuth: vi.fn() }));
-vi.mock("@/hooks/useGetRunning", () => ({ useGetRunning: vi.fn() }));
 vi.mock("@/hooks/useGetRunningV3", () => ({ useGetRunningV3: vi.fn() }));
 
 import { useAuth } from "@/features/auth/AuthContext";
-import { useGetRunning } from "@/hooks/useGetRunning";
 import { useGetRunningV3 } from "@/hooks/useGetRunningV3";
 import GetRunningPage from "./GetRunningPage";
 
-/** Seeds the shared fake supabase client. Defaults to an empty app_settings table (no
- *  org override), so useGetRunningV3Enabled resolves to the app default, which is now v3
- *  (the build-flag fork was retired at the v3 cutover). Tests that exercise the retained
- *  v1 board seed an explicit `getrunning_v3_enabled = false` override via `seedV1()`. */
-function seed(s: Record<string, TableSeed> = { app_settings: { data: [], error: null } }) {
+function seed(s: Record<string, TableSeed> = {}) {
   for (const k of Object.keys(client)) delete client[k];
   Object.assign(client, createFakeSupabase(s));
 }
-
-/** Seed the org onto the v1 board: the one remaining way there now that v3 is the default. */
-function seedV1() {
-  seed({ app_settings: { data: [{ org_id: TEST_ORG.id, key: "getrunning_v3_enabled", value: false }], error: null } });
-}
-
-beforeEach(() => {
-  seed();
-  // v3 is the default board now, so even a v1 test renders GetRunningBoardV3 for the
-  // first paint (while the `false` override query is in flight, `enabled` defaults to
-  // true). Give that board's live-data hook a safe default so the transient v3 render
-  // never crashes on an undefined model; individual v3 tests override it as needed.
-  vi.mocked(useGetRunningV3).mockReturnValue({ model: v3NothingModel(), isLoading: false });
-});
 
 const TEST_ORG = { id: "org-1", name: "Nordstadt Produktionen", slug: "nordstadt", status: "active", is_demo: false };
 
@@ -65,107 +48,9 @@ function authAs(role: "admin" | "producer" | "artist") {
   } as never);
 }
 
-function emptyModel(overrides: Partial<GetRunningModel> = {}): GetRunningModel {
-  return {
-    phases: [],
-    doneCount: 0,
-    totalCount: 0,
-    canFirstOffer: false,
-    complete: true,
-    bookingOn: false,
-    hireOrdersOn: false,
-    datesWithoutCity: 0,
-    datesWithoutCityUnknown: false,
-    ...overrides,
-  };
-}
-
-function boardModel(): GetRunningModel {
-  return {
-    phases: [
-      {
-        key: "get_dates",
-        tasks: [
-          { key: "dates", phase: "get_dates", done: false, block: null, adminOnly: false, actionableByViewer: true },
-          { key: "slots", phase: "get_dates", done: false, block: "offers", adminOnly: false, actionableByViewer: true },
-        ],
-      },
-    ],
-    doneCount: 0,
-    totalCount: 2,
-    canFirstOffer: false,
-    complete: false,
-    bookingOn: true,
-    hireOrdersOn: false,
-    datesWithoutCity: 0,
-    datesWithoutCityUnknown: false,
-  };
-}
-
-function renderPage() {
-  return renderWithProviders(
-    <MemoryRouter initialEntries={[ROUTES.GET_RUNNING]}>
-      <Routes>
-        <Route path={ROUTES.GET_RUNNING} element={<GetRunningPage />} />
-        <Route path={ROUTES.AVAILABILITY} element={<div>AVAILABILITY STUB</div>} />
-      </Routes>
-    </MemoryRouter>,
-  );
-}
-
-describe("GetRunningPage edge states", () => {
-  it("shows a skeleton while loading, not the board", () => {
-    authAs("admin");
-    vi.mocked(useGetRunning).mockReturnValue({ model: null, isLoading: true });
-
-    renderPage();
-
-    expect(document.querySelector('[class*="animate-pulse"]')).toBeInTheDocument();
-    expect(screen.queryByTestId(/phase-card-/)).not.toBeInTheDocument();
-  });
-
-  it("redirects an artist viewer to /availability instead of rendering the board", () => {
-    authAs("artist");
-    vi.mocked(useGetRunning).mockReturnValue({ model: boardModel(), isLoading: false });
-
-    renderPage();
-
-    expect(screen.getByText("AVAILABILITY STUB")).toBeInTheDocument();
-    expect(screen.queryByTestId(/phase-card-/)).not.toBeInTheDocument();
-  });
-
-  it("shows a single nothing-to-set-up card when neither module is on, no board", async () => {
-    authAs("admin");
-    seedV1();
-    vi.mocked(useGetRunning).mockReturnValue({ model: emptyModel(), isLoading: false });
-
-    renderPage();
-
-    await screen.findByTestId("get-running-nothing");
-
-    expect(screen.getByTestId("get-running-nothing")).toBeInTheDocument();
-    expect(screen.queryByTestId(/phase-card-/)).not.toBeInTheDocument();
-    expect(screen.queryByTestId("get-running-retired")).not.toBeInTheDocument();
-  });
-
-  it("renders the board for a producer viewer when a module is on", async () => {
-    authAs("producer");
-    seedV1();
-    vi.mocked(useGetRunning).mockReturnValue({ model: boardModel(), isLoading: false });
-
-    renderPage();
-
-    expect(await screen.findByTestId("phase-card-get_dates")).toBeInTheDocument();
-    expect(screen.queryByTestId("get-running-nothing")).not.toBeInTheDocument();
-  });
-});
-
-// A minimal v3 model that lands on GetRunningBoardV3's "nothing to set up" branch
-// (bookingOn/hireOrdersOn both false) — a cheap, real render of the actual v3 component
-// tree that still avoids seeding every table useGetRunningV3's live-data reads touch
-// (that wiring is covered by useGetRunningV3.test.tsx and GetRunningBoardV3.test.tsx).
-// Its testid (`get-running-v3-nothing`) is distinct from v1's own `get-running-nothing`,
-// so asserting on it proves the v3 board rendered, not v1's.
+/** A minimal v3 model that lands GetRunningBoardV3 on its "nothing to set up" branch
+ *  (bookingOn/hireOrdersOn both false) -- a cheap, real render of the actual v3 component
+ *  tree that still avoids seeding every table useGetRunningV3's live-data reads touch. */
 function v3NothingModel(): GetRunningModelV3 {
   return {
     phases: [],
@@ -182,43 +67,52 @@ function v3NothingModel(): GetRunningModelV3 {
   };
 }
 
-describe("GetRunningPage runtime v3 toggle (Task A3)", () => {
-  it("renders the v3 board when the org override enables it", async () => {
+beforeEach(() => {
+  seed();
+  vi.mocked(useGetRunningV3).mockReturnValue({ model: v3NothingModel(), isLoading: false });
+});
+
+function renderPage() {
+  return renderWithProviders(
+    <MemoryRouter initialEntries={[ROUTES.GET_RUNNING]}>
+      <Routes>
+        <Route path={ROUTES.GET_RUNNING} element={<GetRunningPage />} />
+        <Route path={ROUTES.AVAILABILITY} element={<div>AVAILABILITY STUB</div>} />
+      </Routes>
+    </MemoryRouter>,
+  );
+}
+
+describe("GetRunningPage", () => {
+  it("renders the v3 board for an admin and no v1 header", async () => {
     authAs("admin");
-    vi.mocked(useGetRunning).mockReturnValue({ model: boardModel(), isLoading: false });
-    vi.mocked(useGetRunningV3).mockReturnValue({ model: v3NothingModel(), isLoading: false });
-    seed({
-      app_settings: { data: [{ org_id: TEST_ORG.id, key: "getrunning_v3_enabled", value: true }], error: null },
-    });
 
     renderPage();
 
-    expect(await screen.findByTestId("get-running-v3-nothing")).toBeInTheDocument();
-    expect(screen.queryByTestId(/phase-card-/)).not.toBeInTheDocument();
-    expect(screen.queryByTestId("get-running-nothing")).not.toBeInTheDocument();
+    // GetRunningBoardV3's root testid, added in this cutover; present on every branch of
+    // that component (loading/nothing/retired/board).
+    expect(await screen.findByTestId("get-running-board-v3")).toBeInTheDocument();
+    // "get-running-tick" is the v1 GetRunningHeader's own progress-tick testid (distinct
+    // from the v3 board's "get-running-v3-tick") -- its absence proves the v1 header never
+    // mounted, not merely that this particular model has zero ticks.
+    expect(screen.queryByTestId("get-running-tick")).toBeNull();
   });
 
-  it("renders the v3 board by default when there is no org override", async () => {
-    authAs("admin");
-    vi.mocked(useGetRunning).mockReturnValue({ model: boardModel(), isLoading: false });
-    vi.mocked(useGetRunningV3).mockReturnValue({ model: v3NothingModel(), isLoading: false });
-    // Default seed() from beforeEach: empty app_settings, no org override -> v3 default.
+  it("renders the v3 board for a producer and no v1 header", async () => {
+    authAs("producer");
 
     renderPage();
 
-    expect(await screen.findByTestId("get-running-v3-nothing")).toBeInTheDocument();
-    expect(screen.queryByTestId(/phase-card-/)).not.toBeInTheDocument();
+    expect(await screen.findByTestId("get-running-board-v3")).toBeInTheDocument();
+    expect(screen.queryByTestId("get-running-tick")).toBeNull();
   });
 
-  it("renders the v1 board when the org override disables v3", async () => {
-    authAs("admin");
-    seedV1();
-    vi.mocked(useGetRunning).mockReturnValue({ model: boardModel(), isLoading: false });
-    vi.mocked(useGetRunningV3).mockReturnValue({ model: v3NothingModel(), isLoading: false });
+  it("redirects an artist to Availability instead of rendering any board", () => {
+    authAs("artist");
 
     renderPage();
 
-    expect(await screen.findByTestId("phase-card-get_dates")).toBeInTheDocument();
-    expect(screen.queryByTestId("get-running-v3-nothing")).not.toBeInTheDocument();
+    expect(screen.getByText("AVAILABILITY STUB")).toBeInTheDocument();
+    expect(screen.queryByTestId("get-running-board-v3")).toBeNull();
   });
 });

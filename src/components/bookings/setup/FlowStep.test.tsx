@@ -31,6 +31,7 @@ vi.mock("@/integrations/supabase/client", () => ({ supabase: {} }));
 
 import { FlowStep } from "./FlowStep";
 import { BOOKING_FLOW_DEFAULTS, BOOKING_FLOW_TEMPLATE_DEFAULTS, applyPreset } from "@/lib/bookingFlow";
+import { WizardFooterContext } from "@/components/getRunning/v3/WizardFooterContext";
 
 beforeEach(() => {
   flowRef.value = { ...BOOKING_FLOW_DEFAULTS };
@@ -96,6 +97,20 @@ describe("FlowStep", () => {
   it("enables saving once the org's own flow is in hand", async () => {
     renderWithProviders(<FlowStep orgId="org-1" onDone={() => {}} />);
     expect(await screen.findByRole("button", { name: /use classic/i })).toBeEnabled();
+  });
+
+  it("portals its primary action into the wizard footer slot when one is provided", async () => {
+    const slotEl = document.createElement("div");
+    slotEl.setAttribute("data-testid", "wizard-footer-slot");
+    const register = vi.fn();
+    renderWithProviders(
+      <WizardFooterContext.Provider value={{ el: slotEl, register }}>
+        <FlowStep orgId="org-1" onDone={() => {}} />
+      </WizardFooterContext.Provider>,
+    );
+    // The save button renders inside the provided slot, not loose in the body.
+    await waitFor(() => expect(slotEl.querySelector("button")).toBeTruthy());
+    expect(register).toHaveBeenCalledWith(true);
   });
 
   it("persists the selected template identity with the onboarding flow", async () => {

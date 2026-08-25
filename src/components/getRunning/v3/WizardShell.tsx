@@ -54,7 +54,8 @@ function StepDot({ done, current }: { done: boolean; current: boolean }): JSX.El
  * step, the step counter, and Collapse), a three-column body grid (left step rail, middle
  * `children`, right "How this works" guide for the active step), and a sticky footer
  * (step counter, a note, "Finish later", and the footer-portal mount other components can
- * consume via `WizardFooterContext`, mirroring `TaskPanel`'s `TaskPanelFooterContext`).
+ * consume via `WizardFooterContext`, mirroring v1 `TaskPanel`'s now-retired footer-portal
+ * pattern).
  */
 export function WizardShell({
   phaseKey,
@@ -209,8 +210,8 @@ export function WizardShell({
         </nav>
 
         {/* Middle: step body. Wrapped in the footer-portal context so a step body can
-            portal its own primary action into the footer slot below (mirrors
-            `TaskPanel`'s `TaskPanelFooterContext` pattern). */}
+            portal its own primary action into the footer slot below (mirrors v1
+            `TaskPanel`'s now-retired footer-portal pattern). */}
         <div className="min-w-0 p-4">
           {/* The step title lives here, not in the bodies. Eight bodies are reused from v1
               and the setup rails and have no title of their own, so half the wizard used

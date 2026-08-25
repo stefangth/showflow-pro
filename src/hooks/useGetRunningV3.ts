@@ -37,16 +37,11 @@ import { composeGetRunningV3, type GetRunningInputV3, type GetRunningModelV3 } f
  * by some part but held by no active artist (fetchSkillEligibilityGaps), replacing the
  * earlier best-effort "the catalog is non-empty" read.
  *
- * `options.active` (default `true`) is the CI-review-bot-flagged efficiency gate: callers that
- * mount this hook app-wide regardless of whether v3 is actually on for the org (e.g.
- * `useGetRunningNavVisible`, consulted by `AppLayout` on every admin/producer route) pass
- * `active: v3Enabled` so the ~12 fan-out queries below (booking/hire/skills/dates-source plus,
- * for an Airtable org, the whole `useAirtableConsole`) never fire when v3 is off for that org —
- * the prod default. All sub-hooks are still CALLED unconditionally (rules of hooks); only their
- * `orgId`/`enabled` inputs are gated on `active`, so an inactive call fetches nothing.
+ * Runs unconditionally: every caller wants this board's live data, so every sub-hook below
+ * fires whenever the viewer's role and the relevant module's entitlement allow it, with no
+ * further caller-supplied gate.
  */
-export function useGetRunningV3(options?: { active?: boolean }): { model: GetRunningModelV3 | null; isLoading: boolean } {
-  const active = options?.active ?? true;
+export function useGetRunningV3(): { model: GetRunningModelV3 | null; isLoading: boolean } {
   const { currentOrg, hasRole } = useAuth();
   const orgId = currentOrg?.id ?? null;
   const isNonArtist = hasRole("admin") || hasRole("producer");
@@ -56,19 +51,14 @@ export function useGetRunningV3(options?: { active?: boolean }): { model: GetRun
   const bookingOn = features.has("booking_flow");
   const hireOrdersOn = features.has("hire_orders");
 
-  // While inactive, every gated orgId collapses to null and every gated `enabled` flag is
-  // false, so each sub-hook's own `enabled: !!orgId` (or explicit `enabled` param) fetches
-  // nothing — see the `options.active` doc note above.
-  const gateOrgId = active ? orgId : null;
-
   // Gate each module's readiness reads on BOTH role and the module's entitlement, same
   // plumbing as v1's useGetRunning / useDashboardFirstRun.
-  const bookingOrgId = isNonArtist && bookingOn ? gateOrgId : null;
-  const hireOrgId = isNonArtist && hireOrdersOn ? gateOrgId : null;
+  const bookingOrgId = isNonArtist && bookingOn ? orgId : null;
+  const hireOrgId = isNonArtist && hireOrdersOn ? orgId : null;
   const booking = useBookingSetupStatus(bookingOrgId);
   const hire = useHireOrderSetupStatus(hireOrgId);
   const hireExtra = useHireOrderExtraSetup(hireOrgId);
-  const producerCount = useProducerCount(gateOrgId, active && isNonArtist && bookingOn);
+  const producerCount = useProducerCount(orgId, isNonArtist && bookingOn);
 
   // The get_dates wizard's chosen source, and (only for an Airtable source) its console
   // connection/mapping state. Gated on the same bookingOrgId as the booking module's own
@@ -90,7 +80,7 @@ export function useGetRunningV3(options?: { active?: boolean }): { model: GetRun
   // while loading.
   // Shared with `ArtistSkillAssignList` inside the step body (one hook, one cache entry),
   // so the board's step state and the panel that clears it can never disagree.
-  const skillGaps = useSkillGaps(orgId, { enabled: active && isNonArtist && bookingOn });
+  const skillGaps = useSkillGaps(orgId, { enabled: isNonArtist && bookingOn });
 
   // Called unconditionally (rules of hooks), same as v1.
   const canManageShows = useCan("manage_productions");
@@ -101,12 +91,6 @@ export function useGetRunningV3(options?: { active?: boolean }): { model: GetRun
   const canManageSkills = useCan("manage_skills");
   const canEditHire = useCan("edit_hire_order_settings");
   const canAddArtists = useCan("add_artists");
-
-  // Inactive: every sub-hook above was called (rules of hooks) but fetched nothing (gated
-  // orgIds/enabled flags are all false), so there is no live data to compose a model from.
-  // Return before the isLoading/model composition below rather than let it build a model
-  // out of empty inputs.
-  if (!active) return { model: null, isLoading: false };
 
   // `airtable.ready` requires a non-null orgId by construction (see its doc comment), so it
   // is never true when the console's orgId is null (a non-Airtable source, booking off, or

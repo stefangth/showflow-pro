@@ -164,8 +164,8 @@ export function composeGetRunning(input: GetRunningInput): GetRunningModel {
   // The null-city half is a PER-DATE data gap, not an org-setup failure: a city-less date
   // can't be offered until a city is set, yet every other date offers fine. If we let it
   // keep `eligibility` open, `model.complete` would stay false and the board would never
-  // retire on a stray Airtable date with no city (see useGetRunningNavVisible / RetiredBoard,
-  // both keyed on `model.complete`). So on the board we take the coverage-only signal (the
+  // retire on a stray Airtable date with no city (see useGetRunningNavVisible, keyed on
+  // `model.complete`). So on the board we take the coverage-only signal (the
   // `ladder` step's own `done`, which is exactly `uncoveredPairs.length === 0`, per-show
   // overrides already merged in by resolveCoverage), and surface the null-city gap instead
   // as the non-blocking `datesWithoutCity` advisory (header + panel), pointing at /dates.
@@ -254,8 +254,9 @@ export function composeGetRunning(input: GetRunningInput): GetRunningModel {
 }
 
 /** Count of not-done tasks that hold up the org's first offer (the offers/booking
- *  blockers `canFirstOffer` is derived from). Shared by GetRunningHeader and the
- *  accept-invite handoff so both report the same number. */
+ *  blockers `canFirstOffer` is derived from). Consumed by the accept-invite handoff
+ *  summary, and shares this module's composed model with the post-login landing
+ *  (`HomeLanding`, via `useGetRunning`) so neither surface can drift from the other. */
 export function firstOfferBlockingCount(model: GetRunningModel): number {
   return model.phases
     .flatMap((p) => p.tasks)
@@ -264,7 +265,8 @@ export function firstOfferBlockingCount(model: GetRunningModel): number {
 
 /** The board's one headline state: every task done -> "complete"; the first offer can go
  *  out but optional tasks remain -> "ready"; still held up -> "blocking". Single source of
- *  truth so GetRunningHeader and the accept-invite handoff summary can never disagree. */
+ *  truth for the accept-invite handoff summary, mirrored by the post-login landing
+ *  (`HomeLanding`, via `useGetRunning`'s `model.complete`) so neither can disagree. */
 export type GetRunningState = "blocking" | "ready" | "complete";
 export function getRunningState(model: GetRunningModel): GetRunningState {
   return model.complete ? "complete" : model.canFirstOffer ? "ready" : "blocking";

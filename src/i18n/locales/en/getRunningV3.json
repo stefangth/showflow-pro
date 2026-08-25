@@ -6,13 +6,6 @@
   "finishSetup": {
     "label": "Finish setup: {{step}}"
   },
-  "toggle": {
-    "title": "Get running v3",
-    "description": "Turns the new get running board on for this org only. Other orgs are not affected.",
-    "enabledToast": "Get running v3 turned on for this org.",
-    "disabledToast": "Get running v3 turned off for this org.",
-    "errorToast": "Could not save that change. Try again."
-  },
   "progress": {
     "done": "{{done}} of {{total}} done"
   },

@@ -25,8 +25,8 @@ function initials(name: string): string {
  * email field, and a fixed "Production Team" role, wired straight to the existing
  * `create-invitation` path (`useInvitationMutations`) — no link-out to People. Only
  * ever mounted for an admin viewer: `team.adminOnly` makes `actionableByViewer` false
- * for a producer, so `TaskPanel` renders `WaitsOnPanelBody` instead of this component
- * for anyone else (see TaskPanel.tsx) — this body does not re-check the role itself.
+ * for a producer, so v1's now-retired `TaskPanel` rendered `WaitsOnPanelBody` instead of
+ * this component for anyone else. This body does not re-check the role itself.
  */
 export function TeamPanelBody({ orgId }: { orgId: string | null }) {
   const { t } = useTranslation("getRunning");

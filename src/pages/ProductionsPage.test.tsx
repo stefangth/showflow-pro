@@ -6,10 +6,8 @@ const reorderShows = vi.fn((..._a: unknown[]) => Promise.resolve());
 const archiveShow = vi.fn((..._a: unknown[]) => Promise.resolve());
 const deleteShow = vi.fn((..._a: unknown[]) => Promise.resolve());
 vi.mock("@/integrations/supabase/client", () => ({ supabase: {} }));
-// v3 is the app default now; pin it off so the finish-setup affordance test genuinely
-// exercises the v1 path (this page mocks the supabase client as {}, so there is no fake
-// client to seed a getrunning_v3_enabled row into).
-vi.mock("@/hooks/useGetRunningV3Enabled", () => ({ useGetRunningV3Enabled: () => ({ enabled: false, isLoading: false }) }));
+// v3 is the app default. This page mocks the supabase client as {}, so the real
+// useGetRunningV3 that FinishSetupLink runs finds no actionable step and renders nothing.
 vi.mock("@/features/auth/AuthContext", () => ({ useAuth: () => ({ currentOrg: { id: "org-1" }, user: { id: "u1" }, hasRole: () => true }) }));
 vi.mock("@/hooks/useCapabilities", async (orig) => ({ ...(await orig<typeof import("@/hooks/useCapabilities")>()), useCan: vi.fn() }));
 vi.mock("@/data/shows", async (orig) => ({ ...(await orig<typeof import("@/data/shows")>()), reorderShows: (...a: unknown[]) => reorderShows(...a), archiveShow: (...a: unknown[]) => archiveShow(...a), deleteShow: (...a: unknown[]) => deleteShow(...a) }));

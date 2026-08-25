@@ -49,7 +49,6 @@ import NotFound from "./pages/NotFound";
 // `import.meta.env.DEV` is statically false in production builds, so both the
 // import and the route below are dead-code-eliminated from deployed bundles.
 const DevCockpitHarness = import.meta.env.DEV ? lazy(() => import("./pages/DevCockpitHarness")) : null;
-const DevGetRunningHarness = import.meta.env.DEV ? lazy(() => import("./pages/DevGetRunningHarness")) : null;
 
 // Lazy-loaded so @react-pdf/renderer (the browser PDF preview it drives) stays
 // out of the main bundle — it only loads when an admin/producer actually opens
@@ -82,9 +81,6 @@ const App = () => (
             <Route path={ROUTES.LOGIN} element={<LoginPage />} />
             {DevCockpitHarness && (
               <Route path="/dev/cockpit" element={<Suspense fallback={null}><DevCockpitHarness /></Suspense>} />
-            )}
-            {DevGetRunningHarness && (
-              <Route path="/dev/get-running" element={<Suspense fallback={null}><DevGetRunningHarness /></Suspense>} />
             )}
             <Route path={ROUTES.SIGNUP} element={<Navigate to={ROUTES.LOGIN} replace />} />
             <Route path={ROUTES.DASHBOARD} element={<ProtectedRoute><AppLayout><DashboardPage /></AppLayout></ProtectedRoute>} />

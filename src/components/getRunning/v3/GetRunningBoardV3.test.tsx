@@ -24,8 +24,7 @@ vi.mock("@/hooks/useGetRunningV3", () => ({ useGetRunningV3: vi.fn() }));
 Object.assign(client, createFakeSupabase({}));
 
 // The retired state's dismiss control shares the same rail-dismissal hook v1's
-// RetiredBoard uses, spied the same way RetiredBoard.test.tsx does rather than
-// touching real localStorage.
+// RetiredBoard used, spied here rather than touching real localStorage.
 const dismissFn = vi.fn();
 vi.mock("@/components/setup/useRailDismissed", () => ({
   useRailDismissed: () => [false, dismissFn, vi.fn()],
