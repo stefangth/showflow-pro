@@ -89,9 +89,9 @@ vi.mock("@/hooks/useAirtableDatesReady", () => ({
 vi.mock("@/hooks/useSheetImport", () => ({
   useSheetImport: () => sheetRef.value,
 }));
-// v3 is the app default now; pin it off so the finish-setup affordance test genuinely
-// exercises the v1 path (this page's supabase mock has no `.from`, so the flag query can
-// not resolve a real value here).
+// No useGetRunningV3 stub needed here (unlike the sibling ShowsBookingsPage specs): this
+// page's supabase mock returns no rows, so FinishSetupLink's live useGetRunningV3 finds no
+// actionable step and renders nothing.
 vi.mock("react-router-dom", () => ({
   useSearchParams: () => [new URLSearchParams(), vi.fn()],
   useNavigate: () => navigateSpy,

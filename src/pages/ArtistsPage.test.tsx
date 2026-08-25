@@ -41,9 +41,8 @@ Object.assign(client, createFakeSupabase({
   cast_members: { data: [], error: null },
   "rpc:list_pending_invited_artists": { data: ["a-invited"], error: null },
   org_invitations: { data: [{ id: "inv-1", artist_id: "a-invited", email: "ivy@x.com" }], error: null },
-  // v3 is the app default now, so pin this org to the v1 board with an explicit false
-  // override: these tests cover capability gates and invitations, not the v3 finish-setup
-  // affordance, and its <Link> would otherwise need a router these router-free renders lack.
+  // Empty: these tests cover capability gates and invitations, not the finish-setup
+  // affordance (already neutralized by the useGetRunningV3 stub above).
   app_settings: { data: [], error: null },
 }));
 
