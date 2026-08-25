@@ -11,9 +11,9 @@ import { createContext } from "react";
  *
  * Bodies should not read this directly. Use `WizardFooterAction`, which does both halves.
  *
- * Mirrors `TaskPanelFooterContext` (`src/components/getRunning/TaskPanelFooterContext.ts`):
- * lives in its own leaf module so a step body can read it without importing `WizardShell`,
- * which would cycle (`WizardShell` -> step registry -> step body -> back to `WizardShell`).
+ * Mirrors v1's now-retired `TaskPanelFooterContext`: lives in its own leaf module so a
+ * step body can read it without importing `WizardShell`, which would cycle (`WizardShell`
+ * -> step registry -> step body -> back to `WizardShell`).
  */
 export interface WizardFooterSlot {
   el: HTMLDivElement | null;

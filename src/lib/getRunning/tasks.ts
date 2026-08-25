@@ -164,8 +164,8 @@ export function composeGetRunning(input: GetRunningInput): GetRunningModel {
   // The null-city half is a PER-DATE data gap, not an org-setup failure: a city-less date
   // can't be offered until a city is set, yet every other date offers fine. If we let it
   // keep `eligibility` open, `model.complete` would stay false and the board would never
-  // retire on a stray Airtable date with no city (see useGetRunningNavVisible / RetiredBoard,
-  // both keyed on `model.complete`). So on the board we take the coverage-only signal (the
+  // retire on a stray Airtable date with no city (see useGetRunningNavVisible, keyed on
+  // `model.complete`). So on the board we take the coverage-only signal (the
   // `ladder` step's own `done`, which is exactly `uncoveredPairs.length === 0`, per-show
   // overrides already merged in by resolveCoverage), and surface the null-city gap instead
   // as the non-blocking `datesWithoutCity` advisory (header + panel), pointing at /dates.
