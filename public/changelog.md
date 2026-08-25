@@ -2,7 +2,7 @@
 
 What's new in ShowFlow, newest first.
 
-## 1.17.2 — August 24, 2026
+## 1.17.2 — August 25, 2026
 
 *A steadier setup walkthrough, skills and cities you can add where you need them, setup readiness you can trust, and clearer wording throughout*
 
@@ -23,8 +23,11 @@ What's new in ShowFlow, newest first.
 - **Sources** — The Airtable sync settings are now called Sources and also show your Google Sheet imports next to Airtable runs, each tagged by where it came from.
 - **"Production" for the work in your catalog** — Wherever the app means a staged work you set up, it now says production. Individual performances keep the word show.
 - **"Casting breakdown" and "parts"** — What you set up on a production is now its casting breakdown, made of named parts for main and understudy, instead of the vaguer "places".
+- **Import dates from the New date button** — The New date button now has a menu to bring your dates in from Airtable or a Google Sheet, alongside adding one by hand. Once a source is set up, the menu opens its importer or settings.
+- **A clearer picture of who a date asks** — The rounds on a date now read as one strip in priority order, with a single Open offers on the round that is up next and a look ahead to the round after it, which says plainly when no next cast is set up yet.
 
 ### Fixed
+- **The "who gets asked" preview no longer shows a false zero** — When the eligibility check cannot complete, the preview now says so and offers a retry, instead of showing zero people with a greyed out send button.
 - **Setup steps no longer contradict themselves** — Before you pick where your dates come from, the connection step no longer calls itself "Connect Airtable" while telling you that working by hand needs no connection. The field mapping step no longer offers nine columns to match before there is an Airtable base to match them against, and now points you at the step that unblocks it.
 - **The field mapping header reads properly with no table picked** — It used to end mid sentence on a stray full stop where the table name would go.
 - **Cast ranking stops repeating itself** — The step showed your list of casts twice and the same "what this unlocks" note twice in one screen.

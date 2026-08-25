@@ -1,8 +1,8 @@
 [
   {
     "version": "1.17.2",
-    "date": "2026-08-24",
-    "dateLabel": "August 24, 2026",
+    "date": "2026-08-25",
+    "dateLabel": "August 25, 2026",
     "title": "A steadier setup walkthrough, skills and cities you can add where you need them, setup readiness you can trust, and clearer wording throughout",
     "changes": {
       "improved": [
@@ -69,9 +69,21 @@
         {
           "title": "\"Casting breakdown\" and \"parts\"",
           "description": "What you set up on a production is now its casting breakdown, made of named parts for main and understudy, instead of the vaguer \"places\"."
+        },
+        {
+          "title": "Import dates from the New date button",
+          "description": "The New date button now has a menu to bring your dates in from Airtable or a Google Sheet, alongside adding one by hand. Once a source is set up, the menu opens its importer or settings."
+        },
+        {
+          "title": "A clearer picture of who a date asks",
+          "description": "The rounds on a date now read as one strip in priority order, with a single Open offers on the round that is up next and a look ahead to the round after it, which says plainly when no next cast is set up yet."
         }
       ],
       "fixed": [
+        {
+          "title": "The \"who gets asked\" preview no longer shows a false zero",
+          "description": "When the eligibility check cannot complete, the preview now says so and offers a retry, instead of showing zero people with a greyed out send button."
+        },
         {
           "title": "Setup steps no longer contradict themselves",
           "description": "Before you pick where your dates come from, the connection step no longer calls itself \"Connect Airtable\" while telling you that working by hand needs no connection. The field mapping step no longer offers nine columns to match before there is an Airtable base to match them against, and now points you at the step that unblocks it."
