@@ -113,7 +113,7 @@ export function DryRunDialog({
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>{t("dryRunDialog.cancel")}</Button>
           <Button onClick={onConfirm} disabled={confirmDisabled}>
-            {tier != null ? t("dryRunDialog.openTierConfirm", { tier, count: n }) : t("dryRunDialog.openTier")}
+            {error || tier == null ? t("dryRunDialog.openTier") : t("dryRunDialog.openTierConfirm", { tier, count: n })}
           </Button>
         </DialogFooter>
       </DialogContent>
