@@ -1074,6 +1074,10 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager, ini
                                 loading={dryRunQ.isLoading}
                                 error={dryRunQ.isError}
                                 onRetry={() => dryRunQ.refetch()}
+                                // isLoading stays false on a post-error refetch (status is
+                                // 'error', not 'pending'), so drive the retry's loading
+                                // feedback off isFetching while still in the error state.
+                                retrying={dryRunQ.isFetching && dryRunQ.isError}
                                 flow={flow}
                                 confirmPending={openOffers.isPending}
                                 onConfirm={() => {

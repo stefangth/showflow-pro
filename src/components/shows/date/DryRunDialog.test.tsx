@@ -131,6 +131,28 @@ describe("DryRunDialog", () => {
     expect(screen.getByRole("button", { name: /^open round$/i })).toBeDisabled();
   });
 
+  // Regression: React Query's isLoading stays false on a post-error refetch (status is
+  // 'error', not 'pending'), so the retry gave no feedback and could be clicked into
+  // concurrent requests. `retrying` (isFetching && isError) drives the loading state.
+  it("shows a loading state while a retry is in flight, not the retry button", () => {
+    renderWithProviders(
+      <DryRunDialog
+        open
+        onOpenChange={() => {}}
+        tier={1}
+        result={null}
+        loading={false}
+        error
+        retrying
+        onRetry={vi.fn()}
+        flow={{ offer_delivery: "digest" }}
+        onConfirm={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole("status")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /try again/i })).not.toBeInTheDocument();
+  });
+
   it("fires onRetry from the error state", () => {
     const onRetry = vi.fn();
     renderWithProviders(
