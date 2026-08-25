@@ -5,12 +5,14 @@ import { renderWithProviders } from "@/test/renderWithProviders";
 import { createFakeSupabase, type TableSeed } from "@/test/supabaseFake";
 import { composeGetRunningV3, type GetRunningInputV3, type GetRunningModelV3 } from "@/lib/getRunning/steps";
 
-// GetRunningSettingsMirror just stacks GetRunningV3Toggle (Task A4) above
-// GetRunningBoardV3 (context="settings"), so this suite mirrors both siblings' harnesses:
-// GetRunningV3Toggle.test.tsx's fake-client seed of app_settings for the toggle's
-// live-data hooks, and GetRunningBoardV3.test.tsx's useGetRunningV3 mock + real composer
-// for the board, rather than seeding every table the underlying booking/hire-order setup
-// reads touch.
+// GetRunningSettingsMirror is just GetRunningBoardV3 (context="settings") in its own
+// wrapper: the v3 cutover (wireflow v3 phase 5) dropped the GetRunningV3Toggle it used to
+// stack above the board, since the board is unconditional now and there is no remaining
+// org-level runtime flag for a super-admin to flip. This suite still seeds `app_settings`
+// via the fake client (SettingsPage-adjacent components under this tree may still touch
+// it) and mocks useGetRunningV3 with a real composer output, same as
+// GetRunningBoardV3.test.tsx, rather than seeding every table the underlying
+// booking/hire-order setup reads touch.
 //
 // MemoryRouter is required (not optional) even though this mirror renders with
 // context="settings" and never reads `?step=`: GetRunningBoardV3 (Phase 5) calls
@@ -63,7 +65,7 @@ function mockModel(model: GetRunningModelV3) {
 }
 
 describe("GetRunningSettingsMirror", () => {
-  it("renders the v3 board", () => {
+  it("renders the settings-context board and no v3 toggle", () => {
     seed({ app_settings: { data: [], error: null } });
     mockModel(composeGetRunningV3(base));
 
@@ -74,10 +76,18 @@ describe("GetRunningSettingsMirror", () => {
       { authOverrides: { isSuperAdmin: false, currentOrg: TEST_ORG, roles: ["admin"], hasRole: (r) => r === "admin" } },
     );
 
+    expect(screen.getByTestId("get-running-board-v3")).toBeInTheDocument();
     expect(screen.getByTestId("get-running-v3-nothing")).toBeInTheDocument();
+    // toggle.title copy — the v3 cutover (wireflow v3 phase 5) dropped GetRunningV3Toggle
+    // from this mirror, since the board is unconditional now and there is no org-level
+    // runtime flag left for a super-admin to flip.
+    expect(screen.queryByText(/get running v3/i)).toBeNull();
+    expect(screen.queryByRole("switch")).not.toBeInTheDocument();
   });
 
-  it("also renders the toggle switch for a super-admin", async () => {
+  // Super-admins used to see an extra toggle switch above the board; that surface is gone,
+  // so a super-admin now sees exactly the same board as anyone else.
+  it("renders no toggle switch for a super-admin either", () => {
     seed({ app_settings: { data: [], error: null } });
     mockModel(composeGetRunningV3(base));
 
@@ -88,7 +98,8 @@ describe("GetRunningSettingsMirror", () => {
       { authOverrides: { isSuperAdmin: true, currentOrg: TEST_ORG, roles: ["admin"], hasRole: (r) => r === "admin" } },
     );
 
-    expect(await screen.findByRole("switch")).toBeInTheDocument();
     expect(screen.getByTestId("get-running-v3-nothing")).toBeInTheDocument();
+    expect(screen.queryByRole("switch")).not.toBeInTheDocument();
+    expect(screen.queryByText(/get running v3/i)).toBeNull();
   });
 });

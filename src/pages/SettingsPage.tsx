@@ -37,7 +37,6 @@ import { EmailTemplatesTab } from '@/components/settings/emailTemplates/EmailTem
 import { PeopleTab } from '@/components/admin/people/PeopleTab';
 import { HowThisOrgWorks } from '@/components/getRunning/HowThisOrgWorks';
 import { GetRunningSettingsMirror } from '@/components/getRunning/v3/GetRunningSettingsMirror';
-import { useGetRunningV3Enabled } from '@/hooks/useGetRunningV3Enabled';
 import { Badge } from '@/components/ui/badge';
 import { PageMini } from '@/components/minis/PageMini';
 
@@ -80,7 +79,6 @@ export default function SettingsPage() {
   const qc = useQueryClient();
   const bookingFlowEntitled = useFeature('booking_flow');
   const hireOrdersEntitled = useFeature('hire_orders');
-  const { enabled: v3Enabled } = useGetRunningV3Enabled();
 
   const { data: settings, isLoading } = useQuery({
     queryKey: ['app-settings', 'all', orgId],
@@ -143,10 +141,9 @@ export default function SettingsPage() {
   const isProducer = hasRole('producer');
   const canEnter = isAdmin || isProducer;
 
-  // The Settings mirror of the /get-running board (wireflow v3 phase 5): a super-admin can
-  // always reach it (to flip the org's runtime override), while an admin or producer only
-  // sees it once that override is on for their org.
-  const showGetRunning = isSuperAdmin || ((isAdmin || isProducer) && v3Enabled);
+  // The Settings mirror of the /get-running board (wireflow v3 cutover): the board is
+  // unconditional now, so any admin, producer, or super-admin can reach it.
+  const showGetRunning = isSuperAdmin || isAdmin || isProducer;
 
   // Broad Settings, read-only floor: these tabs are now visible to producers, but every
   // write control inside them stays gated behind its own capability (admins always pass,
@@ -196,18 +193,14 @@ export default function SettingsPage() {
   const [searchParams] = useSearchParams();
   const tabParam = searchParams.get('tab');
   const navKey = useLocation().key;
-  const [activeTab, setActiveTab] = useState<string>(() => resolveInitialTab(tabParam, isAdmin, isSuperAdmin, isProducer, v3Enabled));
+  const [activeTab, setActiveTab] = useState<string>(() => resolveInitialTab(tabParam, isAdmin, isSuperAdmin, isProducer));
   useEffect(() => {
     // No param means "wherever you were": a link into plain /settings must not drag someone
     // off the tab they are working on back to the role default.
-    if (tabParam) setActiveTab(resolveInitialTab(tabParam, isAdmin, isSuperAdmin, isProducer, v3Enabled));
+    if (tabParam) setActiveTab(resolveInitialTab(tabParam, isAdmin, isSuperAdmin, isProducer));
     // `navKey` is a trigger, not an input: nothing in the callback reads it, which is
     // exactly the point, since a repeat navigation changes nothing else the callback sees.
-    // `v3Enabled` IS an input (not just a trigger like navKey): it starts at the build-flag
-    // default and resolves asynchronously (see useGetRunningV3Enabled), so a bookmarked
-    // `?tab=get-running` opened before the org's real flag value loads must re-resolve once
-    // it does, rather than being stuck on whatever the default answered first.
-  }, [tabParam, isAdmin, isSuperAdmin, isProducer, v3Enabled, navKey]);
+  }, [tabParam, isAdmin, isSuperAdmin, isProducer, navKey]);
   // Keep the Tabs ARIA orientation matched to the actual layout axis: the nav rail is
   // vertical on md+ but a horizontal scroll row below md, so arrow-key roving (Up/Down
   // vs Left/Right) follows the visual direction at each breakpoint. Breakpoint (768px)
