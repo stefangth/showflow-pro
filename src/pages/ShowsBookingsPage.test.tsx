@@ -92,7 +92,6 @@ vi.mock("@/hooks/useSheetImport", () => ({
 // v3 is the app default now; pin it off so the finish-setup affordance test genuinely
 // exercises the v1 path (this page's supabase mock has no `.from`, so the flag query can
 // not resolve a real value here).
-vi.mock("@/hooks/useGetRunningV3Enabled", () => ({ useGetRunningV3Enabled: () => ({ enabled: false, isLoading: false }) }));
 vi.mock("react-router-dom", () => ({
   useSearchParams: () => [new URLSearchParams(), vi.fn()],
   useNavigate: () => navigateSpy,

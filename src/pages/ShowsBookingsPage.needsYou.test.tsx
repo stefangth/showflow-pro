@@ -71,9 +71,11 @@ const { hireOrderMutate } = vi.hoisted(() => ({ hireOrderMutate: vi.fn() }));
 
 const { client } = vi.hoisted(() => ({ client: {} as Record<string, unknown> }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: client }));
-// v3 is the app default now; pin it off so the producer header's finish-setup affordance
-// (a react-router <Link>, and this file mocks react-router-dom) never renders here.
-vi.mock("@/hooks/useGetRunningV3Enabled", () => ({ useGetRunningV3Enabled: () => ({ enabled: false, isLoading: false }) }));
+// v3 is the app default now, so the producer header's FinishSetupLink calls the live
+// useGetRunningV3 model hook unconditionally. Stub it to a null/not-loading model so
+// FinishSetupLink's early return keeps it from rendering a real react-router <Link> here
+// (this file mocks react-router-dom without a Link export).
+vi.mock("@/hooks/useGetRunningV3", () => ({ useGetRunningV3: () => ({ model: null, isLoading: false }) }));
 
 function seedClient(seed: Record<string, unknown>) {
   for (const key of Object.keys(client)) delete client[key];

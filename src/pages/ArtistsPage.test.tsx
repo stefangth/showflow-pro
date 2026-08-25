@@ -27,6 +27,12 @@ vi.mock("@/components/artists/ArtistImportDialog", () => ({
     <div data-testid="import-dialog" data-can-invite={String(canInvite)} />
   ),
 }));
+// This page renders FinishSetupLink (v3 is unconditional now), which calls the live
+// useGetRunningV3 model hook and, when it resolves an actionable step, renders a real
+// react-router <Link>. These renders are router-free (no MemoryRouter), so stub the model
+// as null/not-loading here to keep FinishSetupLink's early return and avoid needing a router
+// just for an affordance these tests are not about.
+vi.mock("@/hooks/useGetRunningV3", () => ({ useGetRunningV3: () => ({ model: null, isLoading: false }) }));
 
 Object.assign(client, createFakeSupabase({
   artists: { data: artists, error: null },
@@ -38,7 +44,7 @@ Object.assign(client, createFakeSupabase({
   // v3 is the app default now, so pin this org to the v1 board with an explicit false
   // override: these tests cover capability gates and invitations, not the v3 finish-setup
   // affordance, and its <Link> would otherwise need a router these router-free renders lack.
-  app_settings: { data: [{ org_id: "o1", key: "getrunning_v3_enabled", value: false }], error: null },
+  app_settings: { data: [], error: null },
 }));
 
 import { useCan } from "@/hooks/useCapabilities";
