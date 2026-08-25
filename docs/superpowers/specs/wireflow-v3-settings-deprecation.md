@@ -49,3 +49,17 @@ a "Continue in Get running" link to the matching wizard step (`stepFeature.ts` +
 valid `?tab=` deep-link target; it just stops being a second copy of the same form. This
 document does not authorize that change; it only records the recommendation so an owner
 can approve it as a separate, scoped follow-up.
+
+## Cutover done (2026-08-25)
+
+The v1 board and its per-org `getrunning_v3_enabled` override plus super-admin toggle were
+deleted; the v3 board is now the only board for every org. `GetRunningPage` renders
+`GetRunningBoardV3` unconditionally, the Settings mirror tab shows for every admin,
+producer, and super-admin, and the build flag `GETRUNNING_V3` is gone. The pure model
+(`src/lib/getRunning/tasks.ts`) and the `useGetRunning` hook were kept as the shared
+board-summary model for the post-login landing and the accept-invite handoff, and the v3
+wizard's reused panel bodies (`panels/{People,Ladder,Eligibility,Team}PanelBody`,
+`panels/airtable/*`) were kept as well.
+
+The four "redirect into board (later)" rows above remain untouched: each Settings tab is
+still the canonical editor, and none was redirected or retired in this cutover.
