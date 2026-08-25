@@ -20,30 +20,10 @@ import AxeBuilder from "@axe-core/playwright";
 import type { Page } from "@playwright/test";
 import { loginAsAndAwaitDashboard } from "./helpers/auth";
 import { seedConsent } from "./helpers/consent";
-import { adminClient } from "./helpers/supabase";
 import { TEST_ADMIN_EMAIL, TEST_ADMIN_PASSWORD } from "./global-setup";
 
-const BOOTSTRAP_ORG_ID = "00000000-0000-0000-0000-00000000b007";
-const V3_KEY = "getrunning_v3_enabled";
-
-/**
- * The v3 board is the app default now, so it renders without any seeding. This still
- * writes an explicit `getrunning_v3_enabled = true` row so the board is pinned on
- * deterministically regardless of any org override present in the fixture, and to keep
- * the test self-documenting. `useGetRunningV3Enabled` prefers a per-org `app_settings`
- * row over the default. Removed again in `afterAll` so the org is left as it was found,
- * matching `hire-orders.spec.ts`.
- */
-async function setV3Board(enabled: boolean): Promise<void> {
-  const { error } = await adminClient()
-    .from("app_settings")
-    .upsert({ org_id: BOOTSTRAP_ORG_ID, key: V3_KEY, value: enabled }, { onConflict: "org_id,key" });
-  if (error) throw error;
-}
-
-async function clearV3Board(): Promise<void> {
-  await adminClient().from("app_settings").delete().eq("org_id", BOOTSTRAP_ORG_ID).eq("key", V3_KEY);
-}
+// The get-running board is v3 for every org, so it renders with no seeding. The former
+// per-org getrunning_v3_enabled override and its hook were deleted in the v3 cutover.
 
 // Force next-themes to dark before the app mounts. next-themes reads this
 // localStorage key (`attribute="class"`, default storageKey `theme`) on mount and
@@ -88,14 +68,6 @@ async function expectNoContrastViolations(page: Page): Promise<void> {
 }
 
 test.describe("dark mode contrast", () => {
-  test.beforeAll(async () => {
-    await setV3Board(true);
-  });
-
-  test.afterAll(async () => {
-    await clearV3Board();
-  });
-
   test.beforeEach(async ({ page }) => {
     await seedConsent(page);
     await forceDarkTheme(page);
