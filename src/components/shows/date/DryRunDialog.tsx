@@ -21,6 +21,10 @@ export interface DryRunDialogProps {
   error?: boolean;
   /** Re-run the failed dry-run, from the error state. */
   onRetry?: () => void;
+  /** True while a post-error retry is in flight. React Query's `isLoading` stays false
+   *  once the query has settled into `error` (status is `error`, not `pending`), so the
+   *  caller passes `isFetching && isError` here to drive the retry's loading feedback. */
+  retrying?: boolean;
   flow: Pick<BookingFlow, "offer_delivery">;
   /** True while the open-tier mutation is in flight — blocks a double confirm. */
   confirmPending?: boolean;
@@ -30,13 +34,17 @@ export interface DryRunDialogProps {
 /** Preview-who-gets-offers dialog for a tier, backed by `dryRunOfferTier`.
  *  Presentational: the caller owns the dry-run query and the actual open-tier mutation. */
 export function DryRunDialog({
-  open, onOpenChange, tier, result, loading, error = false, onRetry, flow, confirmPending = false, onConfirm,
+  open, onOpenChange, tier, result, loading, error = false, onRetry, retrying = false, flow, confirmPending = false, onConfirm,
 }: DryRunDialogProps) {
   const { t } = useTranslation("showsDetail");
   const candidates = result?.candidates ?? [];
   const n = candidates.length;
   const hasMessage = !!result?.message;
-  const notReady = loading || tier == null || !result;
+  // A retry-in-flight reads as "checking" too: show the skeleton, swap the retry
+  // button out (so it can't be clicked again into concurrent requests), and keep
+  // confirm disabled.
+  const busy = loading || retrying;
+  const notReady = busy || tier == null || !result;
   // Zero candidates means nobody would get an offer: disable even without an explicit
   // `message` (e.g. every eligible artist is already booked, blocked, or inactive).
   // `confirmPending` blocks a second click while the open-tier mutation is in flight.
@@ -52,14 +60,14 @@ export function DryRunDialog({
       <DialogContent aria-label={t("dryRunDialog.previewOfferTier")}>
         <DialogHeader>
           <DialogTitle>
-            {loading || tier == null
+            {busy || tier == null
               ? t("dryRunDialog.checkingTitle")
               : error
                 ? t("dryRunDialog.errorTitle")
                 : t("dryRunDialog.openingTitle", { tier, count: n })}
           </DialogTitle>
           <DialogDescription>
-            {loading
+            {busy
               ? t("dryRunDialog.checkingDesc")
               : error
                 ? t("dryRunDialog.errorDesc")
@@ -69,7 +77,7 @@ export function DryRunDialog({
           </DialogDescription>
         </DialogHeader>
 
-        {loading ? (
+        {busy ? (
           <div className="space-y-2" role="status" aria-label={t("dryRunDialog.loadingPreview")}>
             <Skeleton className="h-4 w-3/4" />
             <Skeleton className="h-4 w-1/2" />
