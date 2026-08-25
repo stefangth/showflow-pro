@@ -455,14 +455,22 @@ deleted; the v3 board is now the only board for every org. The four "redirect in
 (later)" rows above remain untouched — each Settings tab is still the canonical editor.
 ```
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 4: Live verify against the local stack (visual + functional)** — prove the v3 board still works after the deletion. This is done by the MAIN session (browser tools), not a subagent.
+  - Ensure the local stack is up (`npm run local:up`) and start the dev server via `preview_start { name: <dev server from .claude/launch.json> }` (LOCAL Supabase; autologin as seeded `admin@example.com`).
+  - Navigate to `/get-running`. Confirm: the v3 board renders (hero + phase rail + steps), NOT the old v1 header/phase-card layout; `read_console_messages` shows no errors.
+  - Open a step (e.g. the flow step) and confirm its primary action sits in the wizard sticky footer (the FlowStep → `WizardFooterAction` migration), with exactly one primary button.
+  - Go to `Settings → Get running` mirror tab: confirm the board renders there and there is NO "Get running v3" toggle card above it.
+  - Visit `/dev/get-running` and confirm it 404s / renders nothing (harness deleted).
+  - Capture a screenshot of the `/get-running` board for the PR.
+
+- [ ] **Step 5: Commit**
 
 ```bash
 git add docs/superpowers/specs/wireflow-v3-settings-deprecation.md
 git commit -m "v3 cutover: record v1 board deletion in the deprecation map"
 ```
 
-- [ ] **Step 5: Open the PR** (via `gh pr create`, per the memory note that the GitHub MCP PAT 403s on PR creation). No changelog, no version bump; PR body states this is internal cutover cleanup that deletes the v1 board and the super-admin-only v3 toggle, with v3 already live as the default.
+- [ ] **Step 6: Open the PR** (via `gh pr create`, per the memory note that the GitHub MCP PAT 403s on PR creation). No changelog, no version bump; PR body states this is internal cutover cleanup that deletes the v1 board and the super-admin-only v3 toggle, with v3 already live as the default.
 
 ---
 
