@@ -123,10 +123,12 @@ describe("DryRunDialog", () => {
       />,
     );
     expect(screen.getByText(/couldn't check who gets asked/i)).toBeInTheDocument();
-    // The failure must NOT masquerade as a real zero-eligibility result.
+    // The failure must NOT masquerade as a real zero-eligibility result: neither the
+    // body's excluded line nor the confirm button's false "send 0 asks" count.
     expect(screen.queryByText(/Excluded:/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/would send 0 asks/i)).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /open round 1/i })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: /send 0 asks/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^open round$/i })).toBeDisabled();
   });
 
   it("fires onRetry from the error state", () => {

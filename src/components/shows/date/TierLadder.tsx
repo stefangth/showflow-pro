@@ -132,10 +132,10 @@ function tierLabel(t: TFunction<"showsDetail">, tier: number): string {
 /** The cast name for a cast target, else the tier label. */
 function targetLabel(t: TFunction<"showsDetail">, target: OfferTarget): string {
   if (target.kind === "cast") return target.cast.name;
-  return target.tier === 99 ? t("nextOfferHero.adHocCasts") : t("nextOfferHero.tierN", { tier: target.tier });
+  return target.tier === 99 ? t("tierLadder.adHocCasts") : t("tierLadder.tierN", { tier: target.tier });
 }
 
-/** The one-sentence "who this ask reaches" body, reusing the nextOfferHero copy. */
+/** The one-sentence "who this ask reaches" body. */
 function buildBodySentence(
   t: TFunction<"showsDetail">,
   target: OfferTarget,
@@ -143,21 +143,21 @@ function buildBodySentence(
   requiredSkillNames: string[],
 ): string {
   const label = targetLabel(t, target);
-  const artistWord = t("nextOfferHero.artistWord", { count: counts.castTotal });
+  const artistWord = t("tierLadder.artistWord", { count: counts.castTotal });
   const first = requiredSkillNames.length > 0
-    ? t("nextOfferHero.bodyWithSkills", {
+    ? t("tierLadder.bodyWithSkills", {
         count: counts.matchCount, matchCount: counts.matchCount, castTotal: counts.castTotal,
         artistWord, label, skills: requiredSkillNames.join(", "),
       })
-    : t("nextOfferHero.bodyAvailable", {
+    : t("tierLadder.bodyAvailable", {
         count: counts.matchCount, matchCount: counts.matchCount, castTotal: counts.castTotal,
         artistWord, label,
       });
   const priorTier = target.tier - 1;
   if (priorTier <= 0) {
-    return t("nextOfferHero.tier1Suffix", { first, blocked: counts.blockedCount });
+    return t("tierLadder.tier1Suffix", { first, blocked: counts.blockedCount });
   }
-  return t("nextOfferHero.priorSuffix", {
+  return t("tierLadder.priorSuffix", {
     first, blocked: counts.blockedCount, alreadyOffered: counts.alreadyOfferedCount,
   });
 }
@@ -285,10 +285,10 @@ export function TierLadder({
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="start">
                         <DropdownMenuItem onClick={nextAsk.onSeeArtists}>
-                          {t("nextOfferHero.seeArtists", { count: nextAsk.counts.matchCount })}
+                          {t("tierLadder.seeArtists", { count: nextAsk.counts.matchCount })}
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={nextAsk.onNarrow}>
-                          {t("nextOfferHero.narrowOffer")}
+                          {t("tierLadder.narrowOffer")}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -344,14 +344,14 @@ function NextAskDetail({ nextAsk }: { nextAsk: NextAsk }) {
   const bodySentence = buildBodySentence(t, target, counts, requiredSkillNames);
 
   const exclusionParts: string[] = [];
-  if (counts.missingSkillCount > 0) exclusionParts.push(t("nextOfferHero.missReqSkill", { count: counts.missingSkillCount }));
-  if (counts.blockedCount > 0) exclusionParts.push(t("nextOfferHero.blockedOnDate", { count: counts.blockedCount }));
+  if (counts.missingSkillCount > 0) exclusionParts.push(t("tierLadder.missReqSkill", { count: counts.missingSkillCount }));
+  if (counts.blockedCount > 0) exclusionParts.push(t("tierLadder.blockedOnDate", { count: counts.blockedCount }));
   const exclusionLine = exclusionParts.length > 0 ? exclusionParts.join(" · ") : null;
 
   const shown = candidates.slice(0, 4);
   const extra = Math.max(0, candidates.length - 4);
   const namesLine = shown.length > 0
-    ? `${shown.map((c) => c.name).join(", ")}${extra > 0 ? t("nextOfferHero.andMore", { count: extra }) : ""}`
+    ? `${shown.map((c) => c.name).join(", ")}${extra > 0 ? t("tierLadder.andMore", { count: extra }) : ""}`
     : null;
 
   return (
@@ -375,12 +375,12 @@ function NextAskDetail({ nextAsk }: { nextAsk: NextAsk }) {
 
       {nextAsk.narrowActive && (
         <div className="space-y-1.5 pt-1">
-          <p className="text-xs text-muted-foreground">{t("nextOfferHero.onlyOfferWith")}</p>
+          <p className="text-xs text-muted-foreground">{t("tierLadder.onlyOfferWith")}</p>
           <SkillPicker
             skills={nextAsk.narrowSkills}
             selectedIds={nextAsk.narrowSkillIds}
             onToggle={(id) => nextAsk.onToggleNarrowSkill(id)}
-            emptyHint={t("nextOfferHero.noExtraSkills")}
+            emptyHint={t("tierLadder.noExtraSkills")}
           />
         </div>
       )}

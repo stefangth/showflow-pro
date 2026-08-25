@@ -745,11 +745,12 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager, ini
     const counts = tierFillCounts(bookings, o.tier);
     const inTier = bookings.filter((b) => b.offer_tier === o.tier);
     // Earliest still-pending offer expiry in the tier, preformatted to a local time
-    // ("17:00") for the ladder segment's "expires …" line.
+    // ("17:00") for the ladder segment's "expires …" line. Compare by parsed instant,
+    // not lexically, so a differing timezone-offset serialization can't reorder them.
     const earliestExpiry = inTier
       .filter((b) => b.status === 'suggested' && b.offer_expires_at)
       .map((b) => b.offer_expires_at as string)
-      .sort()[0] ?? null;
+      .sort((a, b) => new Date(a).getTime() - new Date(b).getTime())[0] ?? null;
     return {
       tier: o.tier,
       sent: inTier.length,

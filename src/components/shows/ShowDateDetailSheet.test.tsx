@@ -59,8 +59,8 @@ vi.mock("@/components/shows/date/DryRunDialog", () => ({ DryRunDialog: () => nul
 vi.mock("@/components/shows/date/EligibilityBookList", () => ({ EligibilityBookList: () => null }));
 // Stub exposes the exact `canManage` prop it was handed so the open/close-tier
 // gate (run_offer_engine) can be asserted without needing TierTimeline's own deps.
-// Also surfaces `nextTier` (the prop that gates the real NextOfferHero's
-// visibility: `canManage && nextTier != null && ...`) so the gap-aware
+// Also surfaces `nextTier` (the prop that gates the tier ladder's next-ask
+// block visibility: `canManage && nextTier != null && ...`) so the gap-aware
 // derivation can be asserted here without re-implementing the real component.
 vi.mock("@/components/shows/date/TierTimeline", () => ({
   TierTimeline: ({ canManage, nextTier }: { canManage: boolean; nextTier: number | null }) =>
@@ -365,7 +365,7 @@ describe("ShowDateDetailSheet capability gates", () => {
     renderSheet();
     await clickTab(/^asks$/i);
     // nextTier reaches the (mocked) TierTimeline as 3, not null -- the prop that
-    // gates the real NextOfferHero's visibility, so this proves the hero would
+    // gates the tier ladder's next-ask block, so this proves the ask would
     // render instead of disappearing into the gap.
     expect(await screen.findByTestId("tier-timeline-can-manage")).toHaveAttribute("data-next-tier", "3");
 
@@ -381,5 +381,16 @@ describe("ShowDateDetailSheet capability gates", () => {
       expect(body.tier).toBe(3);
       expect(body.show_date_id).toBe("sd-1");
     });
+  });
+
+  it("hides the rail 'Edit date setup' CTA on the Setup tab, shows it elsewhere", async () => {
+    renderSheet();
+    // Default tab (Cast): the persistent rail's jump-to-Setup CTA is available.
+    expect(await screen.findByRole("button", { name: /edit date setup/i })).toBeInTheDocument();
+    // On the Setup tab it would only point where the user already is, so it's hidden.
+    await clickTab(/^setup$/i);
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: /edit date setup/i })).not.toBeInTheDocument(),
+    );
   });
 });
