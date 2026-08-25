@@ -6,13 +6,6 @@
   "finishSetup": {
     "label": "Einrichtung abschließen: {{step}}"
   },
-  "toggle": {
-    "title": "Loslegen v3",
-    "description": "Schaltet das neue Loslegen Board nur für diese Organisation frei. Andere Organisationen sind davon nicht betroffen.",
-    "enabledToast": "Loslegen v3 für diese Organisation eingeschaltet.",
-    "disabledToast": "Loslegen v3 für diese Organisation ausgeschaltet.",
-    "errorToast": "Konnte das nicht speichern. Versuch es noch einmal."
-  },
   "progress": {
     "done": "{{done}} von {{total}} erledigt"
   },

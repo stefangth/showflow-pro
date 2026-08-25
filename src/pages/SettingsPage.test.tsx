@@ -15,10 +15,8 @@ import { composeGetRunningV3, type GetRunningInputV3 } from "@/lib/getRunning/st
 // entitled to booking_flow, "org-1" (used by every other test) has no matching entry and
 // falls back to `{ data: [] }`, which resolves to the registry default (entitled) — same
 // as before this file seeded the table at all.
-// Base per-table seed, factored out so the get-running describe block below can reseed
-// `app_settings` alone (per test, to flip the org's `getrunning_v3_enabled` override) while
-// keeping every other table this page's tree reaches intact, then restore this exact shape
-// afterwards.
+// Base per-table seed for the fake client this whole file shares, so every table the
+// page's tree can reach resolves instead of hanging or throwing.
 const BASE_SEED: Record<string, TableSeed> = {
   app_settings: { data: [], error: null },
   shows: { data: [], error: null },
