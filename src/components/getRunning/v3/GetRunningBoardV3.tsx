@@ -310,7 +310,10 @@ export function GetRunningBoardV3({ context }: { context: "page" | "settings" })
 
   if (isLoading || !model) {
     return (
-      <div className={context === "page" ? "flex flex-col gap-5 p-6" : "flex flex-col gap-5"}>
+      <div
+        data-testid="get-running-board-v3"
+        className={context === "page" ? "flex flex-col gap-5 p-6" : "flex flex-col gap-5"}
+      >
         <Skeleton className="h-[140px] w-full" />
       </div>
     );
@@ -318,7 +321,10 @@ export function GetRunningBoardV3({ context }: { context: "page" | "settings" })
 
   if (!model.bookingOn && !model.hireOrdersOn) {
     return (
-      <div className={context === "page" ? "flex flex-col gap-5 p-6" : "flex flex-col gap-5"}>
+      <div
+        data-testid="get-running-board-v3"
+        className={context === "page" ? "flex flex-col gap-5 p-6" : "flex flex-col gap-5"}
+      >
         <NothingToSetUpV3 />
       </div>
     );
@@ -331,7 +337,7 @@ export function GetRunningBoardV3({ context }: { context: "page" | "settings" })
   // summary card as a header above them instead of in place of them.
   if (model.complete && context === "page") {
     return (
-      <div className="flex flex-col gap-5 p-6">
+      <div data-testid="get-running-board-v3" className="flex flex-col gap-5 p-6">
         <RetiredBoardV3 model={model} orgId={orgId} context={context} />
       </div>
     );
@@ -404,7 +410,10 @@ export function GetRunningBoardV3({ context }: { context: "page" | "settings" })
   const adminName = adminDisplayName(adminNames, t("footerRole.fallbackAdmin"));
 
   return (
-    <div className={context === "page" ? "flex flex-col gap-5 p-6" : "flex flex-col gap-5"}>
+    <div
+      data-testid="get-running-board-v3"
+      className={context === "page" ? "flex flex-col gap-5 p-6" : "flex flex-col gap-5"}
+    >
       <div>
         <Eyebrow tone="accent">{t("header.eyebrow", { org: currentOrg?.name ?? "" })}</Eyebrow>
         <h1 className="mt-2 text-display-sm font-semibold tracking-[-0.4px] text-foreground">{t("header.title")}</h1>
