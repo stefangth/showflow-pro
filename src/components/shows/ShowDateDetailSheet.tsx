@@ -697,10 +697,12 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager, ini
   // Header status line: reuse the existing up-next signal, degrade to a fill
   // status. Cancelled short-circuits everything.
   const pendingCount = bookings.filter((b) => b.status === 'suggested').length;
+  // Compare by parsed instant, not lexically, so a differing timezone-offset
+  // serialization of offer_expires_at can't reorder them (see statusByTier below).
   const nextExpiry = bookings
     .filter((b) => b.status === 'suggested' && b.offer_expires_at)
     .map((b) => b.offer_expires_at as string)
-    .sort()[0] ?? null;
+    .sort((a, b) => new Date(a).getTime() - new Date(b).getTime())[0] ?? null;
   const upNextItems = computeUpNext({
     flow,
     times: effectiveTimes,
