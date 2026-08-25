@@ -54,11 +54,11 @@ const { showDatesRef } = vi.hoisted(() => ({
 // the router's navigate spy, the org's dates source, and the Airtable console's
 // connection + sync spy. Defaults keep every pre-existing test unchanged (producer,
 // no source, disconnected Airtable).
-const { authRef, navigateSpy, datesSourceRef, airtableRef, sheetRef } = vi.hoisted(() => ({
+const { authRef, navigateSpy, datesSourceRef, airtableReadyRef, sheetRef } = vi.hoisted(() => ({
   authRef: { value: { roles: ["producer"] as string[] } },
   navigateSpy: vi.fn(),
   datesSourceRef: { value: null as null | "airtable" | "sheet" | "manual" },
-  airtableRef: { value: { keyPresent: false, hasBaseTable: false } },
+  airtableReadyRef: { value: false },
   sheetRef: { value: { settings: { url: "", map: {} } } },
 }));
 
@@ -83,8 +83,8 @@ vi.mock("@/features/auth/AuthContext", () => ({
 vi.mock("@/hooks/useDatesSource", () => ({
   useDatesSource: () => ({ source: datesSourceRef.value, isLoading: false, save: vi.fn(), saving: false }),
 }));
-vi.mock("@/hooks/useAirtableConsole", () => ({
-  useAirtableConsole: () => airtableRef.value,
+vi.mock("@/hooks/useAirtableDatesReady", () => ({
+  useAirtableDatesReady: () => airtableReadyRef.value,
 }));
 vi.mock("@/hooks/useSheetImport", () => ({
   useSheetImport: () => sheetRef.value,
@@ -157,7 +157,7 @@ beforeEach(() => {
   canRef.value = true;
   authRef.value = { roles: ["producer"] };
   datesSourceRef.value = null;
-  airtableRef.value = { keyPresent: false, hasBaseTable: false };
+  airtableReadyRef.value = false;
   sheetRef.value = { settings: { url: "", map: {} } };
   navigateSpy.mockClear();
 });
@@ -315,7 +315,7 @@ describe("ShowsBookingsPage — New date split button import options", () => {
 
   it("routes Airtable import to setup when the org's Airtable source is not connected", async () => {
     datesSourceRef.value = "airtable";
-    airtableRef.value = { keyPresent: false, hasBaseTable: false };
+    airtableReadyRef.value = false;
     renderWithProviders(<ShowsBookingsPage />);
     await openMenu();
     fireEvent.click(await screen.findByText("Import from Airtable"));
@@ -324,7 +324,7 @@ describe("ShowsBookingsPage — New date split button import options", () => {
 
   it("opens the Airtable import settings once the Airtable source is set up", async () => {
     datesSourceRef.value = "airtable";
-    airtableRef.value = { keyPresent: true, hasBaseTable: true };
+    airtableReadyRef.value = true;
     renderWithProviders(<ShowsBookingsPage />);
     await openMenu();
     fireEvent.click(await screen.findByText("Import from Airtable"));

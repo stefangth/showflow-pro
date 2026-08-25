@@ -42,7 +42,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useDatesSource } from '@/hooks/useDatesSource';
-import { useAirtableConsole } from '@/hooks/useAirtableConsole';
+import { useAirtableDatesReady } from '@/hooks/useAirtableDatesReady';
 import { useSheetImport } from '@/hooks/useSheetImport';
 import { showSlots } from '@/lib/settings';
 import { formatDateWithWeekday, parseDateOnly } from '@/lib/dates';
@@ -173,17 +173,18 @@ function ProducerShowsBookings() {
   const canManage = hasRole('admin') || hasRole('producer');
   const orgId = currentOrg?.id ?? null;
   // Import options for the "New date" split button, reusing the existing flows. An org
-  // has exactly one dates source, so "set up" is per-source. The Airtable/sheet hooks
-  // are each activated only for their own source (mirrors useGetRunningV3) so other orgs
-  // don't pay for their connection queries. Once a source is set up, its menu item opens
-  // that source's import settings/importer; otherwise it routes into the Get Running
-  // dates flow where the source is set up. Airtable's import settings live in Settings
-  // (visible to admin and producer); the sheet importer lives in the Get Running connect
-  // step (there is no Settings tab for it).
+  // has exactly one dates source, so "set up" is per-source. The readiness checks are
+  // each activated only for their own source (mirrors useGetRunningV3) so other orgs
+  // don't pay for their connection queries, and the Airtable one uses the lightweight
+  // useAirtableDatesReady (two reads) rather than the full console. Once a source is set
+  // up, its menu item opens that source's import settings/importer; otherwise it routes
+  // into the Get Running dates flow where the source is set up. Airtable's import settings
+  // live in Settings (visible to admin and producer); the sheet importer lives in the Get
+  // Running connect step (there is no Settings tab for it).
   const { source: datesSource } = useDatesSource(orgId);
-  const airtable = useAirtableConsole(datesSource === 'airtable' ? orgId : null, { readOnly: true });
+  const airtableReady = useAirtableDatesReady(datesSource === 'airtable' ? orgId : null);
   const sheet = useSheetImport(datesSource === 'sheet' ? orgId : null);
-  const airtableSetUp = datesSource === 'airtable' && airtable.keyPresent && airtable.hasBaseTable;
+  const airtableSetUp = datesSource === 'airtable' && airtableReady;
   const sheetSetUp = datesSource === 'sheet' && !!sheet.settings.url;
   const handleImportAirtable = () =>
     navigate(airtableSetUp ? `${ROUTES.SETTINGS}?tab=airtable` : ROUTES.GET_RUNNING);
