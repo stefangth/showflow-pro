@@ -146,6 +146,19 @@ export const SYSTEM_MAP_NODES: SystemMapNode[] = [
       Cite: "20260710233405_email_log_prune_and_anonymize.sql",
     },
   },
+  {
+    id: "c_prune_syncrecords",
+    column: "trigger",
+    kind: "cron",
+    label: "prune-airtable-sync-record-log clock",
+    sub: "17 3 * * * — daily 03:17, no edge fn",
+    subsystems: ["airtable"],
+    detail: {
+      Fires: "DELETE from airtable_sync_record_log older than 30 days — direct SQL, no net.http_post",
+      Note: "bounds a table that airtable-poll appends to every poll; invisible to cron-health-watcher, check cron.job_run_details for liveness",
+      Cite: "20260901120000_prune_airtable_sync_record_log.sql",
+    },
+  },
   // ---- triggers: user groups (4)
   {
     id: "u_artist",

@@ -652,13 +652,19 @@ async function syncOrg(deps: Deps, orgId: string, baseId: string, tableName: str
   if (syncLogId && outcomes.length) {
     // org_id is derived by trg_derive_org_id from sync_log_id (20260617164248) —
     // the generated Insert type can't know that, hence the Omit + single cast.
+    // raw_fields is only persisted for the rare, actionable outcomes (imported_new,
+    // error). held_unresolved and updated records recur on every poll while a
+    // program/city stays unlinked, so snapshotting their full Airtable payload each
+    // time balloons the table (>1GB in prod). The UI never reads raw_fields, so
+    // dropping it for those actions loses nothing — the reason + record id remain.
+    const KEEP_RAW: ReadonlySet<RecordAction> = new Set(["imported_new", "error"]);
     const recordRows = outcomes.map((o): Omit<TablesInsert<"airtable_sync_record_log">, "org_id"> => ({
       sync_log_id: syncLogId,
       airtable_record_id: o.airtable_record_id,
       action: o.action,
       show_date_id: o.show_date_id,
       reason: o.reason,
-      raw_fields: o.raw_fields as Json,
+      raw_fields: KEEP_RAW.has(o.action) ? (o.raw_fields as Json) : null,
     }));
     await admin.from("airtable_sync_record_log").insert(recordRows as TablesInsert<"airtable_sync_record_log">[]);
     const importedZeroFromNonEmpty = recordsSeen > 0 && processed === 0;
