@@ -10,6 +10,14 @@
 -- The UI ("Last sync report") only ever reads the latest sync run's rows, so a 30-day
 -- window is comfortably more history than any consumer uses.
 
+-- Support the nightly prune's range scan. The table's only created_at-bearing index
+-- is the composite (org_id, created_at), which the planner can't use for a filter that
+-- doesn't also constrain org_id, so a bare `created_at < ...` DELETE would seq-scan the
+-- whole table every night. Mirror email_send_log_created_idx (20260710231816) with a
+-- standalone created_at index.
+CREATE INDEX IF NOT EXISTS idx_airtable_sync_record_log_created
+  ON public.airtable_sync_record_log (created_at);
+
 -- Idempotent: drop any prior instance of this job first (mirrors 20260514290000).
 DO $$
 BEGIN
