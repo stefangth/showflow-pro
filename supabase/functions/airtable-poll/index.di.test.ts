@@ -765,6 +765,53 @@ Deno.test("airtable-poll: unresolvable show → record held, held count in total
   assertEquals(body.held, 1);
 });
 
+// ─── raw_fields is only persisted for imported_new / error ───────────────────
+
+Deno.test("airtable-poll: held/updated record log rows omit raw_fields; imported_new keeps it", async () => {
+  const records = [
+    makeRecord("recUNKNOWN", {
+      Date: "2026-07-03",
+      SubProgram: "UnknownShow", // unlinked program → held_unresolved
+    }),
+    makeRecord("recKNOWN", {
+      Date: "2026-07-04",
+      SubProgram: "TestShow", // linked → imported_new
+    }),
+  ];
+
+  const { deps } = makeHappyDeps({ airtableRecords: records });
+
+  let recordLogRows: Array<Record<string, unknown>> = [];
+  const originalFrom = bindFakeFrom(deps.admin);
+  setFakeFrom(deps.admin, (table: string) => {
+    const chain = originalFrom(table);
+    if (table === "show_dates") {
+      const orig = chain.insert.bind(chain);
+      chain.insert = (p: unknown) => {
+        const insertChain = (orig as (x: unknown) => ReturnType<typeof orig>)(p);
+        insertChain.single = () => Promise.resolve({ data: { id: "new-date-uuid-known" }, error: null });
+        return insertChain;
+      };
+    }
+    if (table === "airtable_sync_record_log") {
+      const orig = chain.insert.bind(chain);
+      chain.insert = (p: unknown) => {
+        recordLogRows = p as Array<Record<string, unknown>>;
+        return (orig as (x: unknown) => ReturnType<typeof orig>)(p);
+      };
+    }
+    return chain;
+  });
+
+  const res = await handle(authReq(), deps);
+  assertEquals(res.status, 200);
+
+  const held = recordLogRows.find((r) => r.action === "held_unresolved");
+  const imported = recordLogRows.find((r) => r.action === "imported_new");
+  assertEquals(held?.raw_fields, null);
+  assertEquals(imported !== undefined && imported.raw_fields !== null, true);
+});
+
 // ─── New-date detection: invokeFunction ──────────────────────────────────────
 
 Deno.test("airtable-poll: new date → invokeFunction('open-offer-tier', { show_date_id, tier: 1 })", async () => {
