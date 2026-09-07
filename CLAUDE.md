@@ -133,7 +133,7 @@ These are public values (anon key, not service role). Never commit `.env`. The s
 
 ## Versioning & changelog
 
-- **Semver tags on releases.** Tag the release commit `vMAJOR.MINOR.PATCH` (`git tag -a v1.4.0 -m "<theme>"` then `git push origin --tags`). MINOR = new user-facing features, PATCH = fixes, MAJOR = breaking changes. Tags exist through `v1.9.0` (all of `v1.4.1`–`v1.9.0` were cut in one catch-up batch on Jul 15, 2026) — every release since (`1.9.1`–`1.15.0`, current) has shipped without a tag; catch up the tagging when convenient, don't skip it going forward.
+- **Semver tags on releases.** Tag the release commit `vMAJOR.MINOR.PATCH` (`git tag -a v1.4.0 -m "<theme>"` then `git push origin --tags`). MINOR = new user-facing features, PATCH = fixes, MAJOR = breaking changes. Tags exist through `v1.9.0` (all of `v1.4.1`–`v1.9.0` were cut in one catch-up batch on Jul 15, 2026) — every release since (`1.9.1`–`1.17.2`, current) has shipped without a tag; catch up the tagging when convenient, don't skip it going forward.
 - **Bump the version in two places to match the tag:** `version` in `package.json` and `APP_META.VERSION` in `src/config/app.config.ts` (the latter renders next to the brand name in the top-left of `AppLayout`).
 - **Update `public/changelog.md`** (the single source of truth). Add a newest-first block: `## X.Y.Z — Mon D, YYYY`, a one-line `*theme*`, then `### New` / `### Improved` / `### Fixed` bullets written for end users (no refactors, tests, CI, or docs). Bullets use the form `- **Title** — description`. Never mention super-admin or platform-admin actions (Platform console, org provisioning, org-module toggles, etc.) — there is no public super-admin or platform-admin role, so those changes have no customer-facing angle and don't belong in this file at all.
 - **Regenerate the JSON:** `deno run --allow-read --allow-write scripts/changelog-to-json.ts` rewrites `public/changelog.json` from the markdown — never hand-edit the JSON.
@@ -156,23 +156,23 @@ src/
     artists/       # ArtistProfileSheet
     availability/  # ArtistAvailabilityCalendar, AvailabilityPicker, OfferResponseButtons
     bookings/      # ArtistBookingsView and booking surfaces
-                   #   + setup/ (BookingSetupRail, BookingProducerWaitingCard, EligibilityStep,
-                   #   FirstOfferCard, FlowStep, LadderStep, RehearsalBlock, SlotsStep, TimingStep
-                   #   — the guided booking-flow setup checklist shown on Shows & Bookings until
-                   #   the first offer can go out; note CoverageSteps.test.tsx in this directory
-                   #   is a misnamed leftover that actually tests EligibilityStep — there is no
-                   #   CoverageSteps component)
+                   #   + setup/ (FirstOfferCard, FlowStep, RehearsalBlock, SlotsStep, TimingStep —
+                   #   step editors reused as `/get-running` task-panel bodies; the standalone
+                   #   setup-rail chrome that used to host them here — BookingSetupRail,
+                   #   BookingProducerWaitingCard — was retired in the Get running cutover, see
+                   #   `getRunning/` below. EligibilityStep/LadderStep moved to
+                   #   `getRunning/panels/{Eligibility,Ladder}PanelBody.tsx`)
     brand/         # StageMark — brand mark SVG (variants: mono outline "mark", violet tile "tile")
     calendar/      # EntityCalendar (shared month grid)
     casts/         # Cast grouping UI (dialog, sheet, section)
     chat/          # ChatPanel, MessageBubble (per-show-date threads)
     common/        # IconTooltip — shared tooltip-wrapped-icon-button helper
     consent/       # CookieConsentBanner (bottom-fixed GDPR banner), CookieConsentDialog (per-category toggles)
-    dashboard/     # Role-specific dashboards (ArtistDashboard, …)
-                   #   + firstRun/ (DashboardWelcome, DashboardWelcomeCollapsed, DashboardSetupRail,
-                   #   SamplePreview, useDashboardFirstRun, useArtistOnboardingStatus — the "dashboard
-                   #   first run" onboarding + sample-data preview shown until a workspace has real
-                   #   bookings, gated per role/module)
+    dashboard/     # Role-specific dashboards (ArtistDashboard for artists; admin/producer land
+                   #   on `/get-running` instead — see `getRunning/` below). The old firstRun/
+                   #   welcome-panel + sample-data-preview onboarding was deleted in the Get
+                   #   running cutover (2026-08-25); DashboardPage itself still renders at
+                   #   ROUTES.DASHBOARD (`/today`)
     demo/          # Sales Demo Mode UI (visible only inside an `is_demo` org): DemoBar
                    #   (top bar: scene selector, sim clock, reset/wipe, outbox, sandbox-link
                    #   dialog), DemoBadge (sidebar "DEMO" pill), DemoOutbox (captured-send
@@ -181,6 +181,24 @@ src/
                    #   useSandboxLinks in src/hooks/useDemo.ts) and copies the public
                    #   `/sandbox/:token` URL (SandboxViewerPage) for a leave-behind demo tour
     filters/       # Reusable filter/sort/view-toggle controls
+    getRunning/    # The `/get-running` onboarding board ("Wireflow v3", shipped 2026-08-25 as the
+                   #   unconditional default for every org, replacing the old dashboard first-run
+                   #   panel + per-module setup rails + SetupChecklistSheet chrome in one place).
+                   #   v3/ is the board itself: GetRunningBoardV3 (owns loading / "nothing to set
+                   #   up" / retirement states), WizardShell + WizardFooterAction/WizardFooterContext
+                   #   (panel chrome — a step's primary action portals into the shell's footer),
+                   #   stepRegistryV3.tsx (task key → step editor), FinishSetupLink,
+                   #   GetRunningSettingsMirror (the same board rendered inside Settings → Get
+                   #   running, so it stays reachable after the sidebar item hides on completion),
+                   #   board/ (HeroCard, PhaseIconRail, PhaseRow, StillShutCard), steps/ (CitiesStep,
+                   #   ConnectStep, DocumentStep, FeeStep, MapStep, PartsEditorSheet,
+                   #   ProductionsStep, SkillsStep, SourceStep + support lists). panels/ holds the
+                   #   panel bodies shared with the wizard (People/Ladder/Eligibility/TeamPanelBody
+                   #   — the old bookings/setup EligibilityStep and LadderStep live here now,
+                   #   CastRosterList, UnlocksNote, airtable/). HowThisOrgWorks.tsx is the read-only
+                   #   provenance card shown once setup is complete and reused as a Settings tab.
+                   #   Pure model in `src/lib/getRunning/` (see lib/ below); `useGetRunning` /
+                   #   `useGetRunningV3` in `src/hooks/` wire it to live data
     platform/      # Super-admin platform console UI (OrganizationsTab, PlatformAdminsTab,
                    #   PlatformDefaultsTab, EditOrgDialog, NewOrgDialog, OrgInvitePopover,
                    #   OrgMembersPopover, SystemHealthTab, UsersTab + UserDetailSheet — a cross-org
@@ -204,8 +222,9 @@ src/
                    #   used by the HireOrderDetailPage viewer; edit/ (FieldSection, ProvenanceChip,
                    #   SetupCallout — support for HireOrderEditPage); import/ (HireOrderImportDialog +
                    #   MapStep/RangeStep/ResolveStep/ReviewStep — bulk hire-order import wizard);
-                   #   setup/ (SetupRail, CountersignStep, LetterheadStep, TermsStep,
-                   #   ProducerWaitingCard — the guided hire-orders setup checklist)
+                   #   setup/ (CountersignStep, LetterheadStep, TermsStep — step editors reused as
+                   #   `/get-running` task-panel bodies; the standalone SetupRail/ProducerWaitingCard
+                   #   chrome that used to host them here was retired in the Get running cutover)
     settings/      # AirtableSyncTab (schema-driven mapping + catalog linking), OrganizationTab,
                    #   CastsCitiesTab, ProductionOwnershipTab, DocumentationTab (+ MarkdownDoc,
                    #   SystemMapCanvas, SystemMapReference — Settings → Documentation → System Map),
@@ -236,9 +255,10 @@ src/
                    #   + trust/ (TrustDataTab, OrgDataCard, VisibilityMatrix, RetentionCard,
                    #   YourDataCard, DocumentsCard — Settings → Trust & data, the in-app half of
                    #   the Trust Center; renders src/lib/trust/facts.ts scoped to the active org)
-    setup/         # Shared module-onboarding-rail chrome used by dashboard/bookings/hire-orders setup
-                   #   checklists: SetupChecklistSheet, SetupStepRow, setupRailMode.ts (banner →
-                   #   collapsed bar → button → hidden), useModuleOnboardingRail, useRailDismissed
+    setup/         # useRailDismissed — the one survivor of the pre-Get-running setup-rail chrome
+                   #   (SetupChecklistSheet, SetupStepRow, setupRailMode.ts, useModuleOnboardingRail
+                   #   were all deleted in the 2026-08-25 cutover). Now a small localStorage-backed
+                   #   dismiss-state hook reused by GetRunningBoardV3's nav-visibility logic and PageMini
     layout/        # AppLayout (sidebar + topbar shell), NotificationsList (notification bell popover)
     minis/         # Page minis: PageMini (frame: pure PageMiniView + thin container),
                    #   atoms.tsx (token-only miniature atoms) and illustrations/<Page>Mini.tsx
@@ -297,10 +317,14 @@ src/
                    #   useNavCounts (sidebar badge counts),
                    #   useSystemHealth (useCronHealth, useEdgeFnLogs/Metrics, useEmailHealth,
                    #   useHealthDaily), useShows/useShowDates/useCities/useAllCities,
-                   #   useBookingFlow (effective org booking-flow policy), useBookingSetup
-                   #   (booking-setup-rail readiness), useHireOrders (draft/issue/preview/
-                   #   download-url actions, terms, useDatesReadyForHireOrder), useHireOrderSetup
-                   #   (hire-orders-setup-rail readiness), useOrderBlockers (issuing blockers),
+                   #   useBookingFlow (effective org booking-flow policy), useBookingSetup /
+                   #   useHireOrderSetup / useHireOrderExtraSetup (per-module setup-readiness
+                   #   signals, now consumed by the `/get-running` composer rather than a rail),
+                   #   useGetRunning / useGetRunningV3 (wire src/lib/getRunning/tasks.ts to live
+                   #   queries), useGetRunningNavVisible (sidebar item hides once the board is
+                   #   dismissed-and-complete), useHireOrders (draft/issue/preview/
+                   #   download-url actions, terms, useDatesReadyForHireOrder),
+                   #   useOrderBlockers (issuing blockers),
                    #   useMyBlockedDatesCount, usePlatformUsers (Platform → Users query/mutations),
                    #   useSettingsAudit)
                    #   + UI hooks (use-mobile, use-toast)
@@ -316,22 +340,33 @@ src/
                    #   (the two per-org gating registries, see Key files table), identity.ts
                    #   (re-exports the login-email-first contact resolution from
                    #   _shared/identity.ts — see ADR-0011), notificationCategories.ts,
+                   #   getRunning/ (pure `/get-running` board model: tasks.ts composes
+                   #   src/lib/bookings/setupStatus.ts's computeBookingSetupStatus +
+                   #   src/lib/hireOrders/setupStatus.ts's computeSetupStatus + a few extra
+                   #   signals into one ordered 11-task/3-phase model; steps.ts, stepFeature.ts,
+                   #   stepHeading.ts, stepHelp.ts — no React, no data fetching, TDD'd),
                    #   minis/ (page-mini content: types.ts, pages/<page>.ts bilingual MiniDefs,
                    #   index.ts MINIS registry, resolveMiniRole; illustrations live in
                    #   src/components/minis. See the New page checklist)
   pages/           # One file per route, default-exported
-                   #   Key pages: DashboardPage, ShowsBookingsPage (ROUTES.BOOKINGS),
+                   #   Key pages: DashboardPage (ROUTES.DASHBOARD, `/today`), ShowsBookingsPage
+                   #     (ROUTES.BOOKINGS, `/dates` — nav label "Dates"),
                    #   ProductionsPage (ROUTES.PRODUCTIONS) — admin+producer catalog CRUD + drag-reorder,
                    #   ArtistsPage (admin+producer), AvailabilityPage (artist),
-                   #   AdminPage, SettingsPage, ChatsListPage
+                   #   GetRunningPage (ROUTES.GET_RUNNING, `/get-running`) — role-gates itself
+                   #     (artist bounces to Availability) and renders the one Wireflow v3 board;
+                   #     see `getRunning/` in components/ and lib/ above
+                   #   SettingsPage, ChatsListPage
                    #   ProfilePage (ROUTES.PROFILE) — user profile + in-app password change
                    #   ResetPasswordPage (ROUTES.RESET_PASSWORD) — request + set (public, no auth)
                    #   PlatformPage (ROUTES.PLATFORM) — super-admin console; uses PlatformRoute
-                   #   HireOrdersPage (ROUTES.HIRE_ORDERS, /hire-orders) — list page (KPIs, table,
-                   #     slide-over, new-order wizard, import dialog) with its own setup rail; feature-gated
-                   #   HireOrderDetailPage (ROUTES.HIRE_ORDER_DETAIL, /hire-orders/:id): the
+                   #   HireOrdersPage (ROUTES.HIRE_ORDERS, `/contracts`) — list page (KPIs, table,
+                   #     slide-over, new-order wizard, import dialog); feature-gated. Route constant
+                   #     names and code still say "hire order(s)"; only the URL changed to
+                   #     `/contracts` — the sidebar nav label is still "Hire orders"
+                   #   HireOrderDetailPage (ROUTES.HIRE_ORDER_DETAIL, `/contracts/:id`): the
                    #     single hire-order viewer (admin/producer/artist; feature-gated route)
-                   #   HireOrderEditPage (ROUTES.HIRE_ORDER_EDIT, /hire-orders/:id/edit) — edit a
+                   #   HireOrderEditPage (ROUTES.HIRE_ORDER_EDIT, `/contracts/:id/edit`) — edit a
                    #     draft order's snapshotted fields before issuing; feature-gated
                    #   EmailTemplateEditorPage (ROUTES.EMAIL_TEMPLATE) — WYSIWYG editor over
                    #     email_copy/email_theme for one transactional template + live preview;
@@ -348,6 +383,9 @@ src/
                    #   DevCockpitHarness — dev-only (import.meta.env.DEV-gated, registered
                    #     directly in App.tsx, not via ROUTES) visual harness for pixel-diffing the
                    #     show-date cockpit against its design prototype; never mounted in production
+                   #   No standalone AdminPage anymore — ROUTES.ADMIN (`/admin`) is a bare redirect
+                   #     to `/settings?tab=people` (Get running cutover folded Admin into Settings);
+                   #     the People pane itself still lives at src/components/admin/people/
                    #   Public pages (no auth): UnsubscribePage, PrivacyPage, ImpressumPage,
                    #   AcceptInvitePage, ResetPasswordPage, AuthCallbackPage,
                    #   SandboxViewerPage (ROUTES.SANDBOX, /sandbox/:token) — the leave-behind
@@ -413,7 +451,7 @@ When adding a new page:
 2. Create `src/pages/YourPage.tsx` with a default export.
 3. Register in `src/App.tsx` with `<ProtectedRoute requiredRoles={[...]}>`.
 4. Add a nav item in `src/components/layout/` with matching role gating (give it a `labelKey` so the label is translatable).
-5. **Page mini (convention).** Every route explains its own module in a four-step, role-aware mini pinned below the setup rail. Add a `PageKey` + a `MiniDef` at `src/lib/minis/pages/<page>.ts` (bilingual EN + DE, informal "Du", reuse `src/i18n/terms.ts` `TERMS`), register it in `src/lib/minis/index.ts`, build its token-only illustration at `src/components/minis/illustrations/<Page>Mini.tsx` (add it to the `ART` barrel), and drop `<PageMini page="<page>" />` into the page at the header→body seam. Copy is guarded by `minis.test.ts` (structure + en≠de) and `copyLint.test.ts` (no dashes, Du). If a page has no mini, state "No mini." with a reason in the PR. See `docs/superpowers/specs/2026-08-14-page-minis-design.md`.
+5. **Page mini (convention).** Every route explains its own module in a four-step, role-aware mini pinned at the header→body seam. Add a `PageKey` + a `MiniDef` at `src/lib/minis/pages/<page>.ts` (bilingual EN + DE, informal "Du", reuse `src/i18n/terms.ts` `TERMS`), register it in `src/lib/minis/index.ts`, build its token-only illustration at `src/components/minis/illustrations/<Page>Mini.tsx` (add it to the `ART` barrel), and drop `<PageMini page="<page>" />` into the page at the header→body seam. Copy is guarded by `minis.test.ts` (structure + en≠de) and `copyLint.test.ts` (no dashes, Du). If a page has no mini, state "No mini." with a reason in the PR. See `docs/superpowers/specs/2026-08-14-page-minis-design.md`.
 6. **Help center impact.** If the change alters what an admin, producer, or artist would ask, or how the app answers it, update the Help content (`src/lib/help/items.ts`, EN + DE, "Du") in the SAME PR, or state "No help center impact." in the PR description. The help center is authored at spec time, not retrofitted later.
 
 ### Internationalization (i18n)
@@ -425,7 +463,7 @@ When adding a new page:
 - No em/en dashes in copy; German uses the informal "Du". `src/i18n/copyLint.test.ts` enforces both.
 - The language setting is global (account menu → `src/features/i18n/LanguageContext.tsx`), defaults to the browser language, and persists to localStorage. Rolling i18n across the rest of the app UI is incremental, one namespace per domain behind `fallbackLng` — see `docs/superpowers/specs/2026-08-14-i18n-and-help-page-design.md`.
 - **A brand-new user-facing surface is authored through `t()` from the start** — the incremental rollout below is about migrating *existing* English, not a licence to ship new hardcoded copy that "we'll localize later". Add the surface's keys to the right domain namespace in the same PR (e.g. the calendar surface's producer copy lives in `bookings:calendar.*`, artist copy in `availability:calendar.*`, and role-agnostic chrome in `common:calendar.*`), so it never needs a follow-up i18n pass. Purely calendrical labels that date-fns already localizes (weekday-header names) stay on the `dfLocale()` path in `src/lib/dates.ts`, not `t()`.
-- **Phase 2 (in progress): per-domain namespaces beyond shell chrome.** The `dashboard` namespace is the first domain migrated. `src/lib/dashboard/stageChain.ts` and `moduleOnboarding.ts` still return hardcoded English copy on purpose — that content is deferred to a future `onboarding` namespace shared with the bookings and hire-orders setup rails, rather than migrated piecemeal per module. The whole language switcher, including German, is gated behind the `language_packages` entitlement (`src/lib/entitlements.ts`), which ships DARK: `defaultEnabled: false`, so a fresh org runs English-only until a super-admin turns it on for that org (Platform → Organizations). `AppLayout` force-resets the runtime to English whenever the entitlement is off, so translated strings never leak to an org that hasn't been granted the module.
+- **Phase 2 (in progress): per-domain namespaces beyond shell chrome.** The `dashboard` namespace is the first domain migrated. `src/lib/dashboard/stageChain.ts` and `moduleOnboarding.ts` still return hardcoded English copy on purpose — that content is deferred to a future `onboarding` namespace shared with the `/get-running` board (these modules now feed `HowThisOrgWorks`, `useGetRunning`, and provenance hooks rather than the deleted dashboard-firstRun/setup-rail UI), rather than migrated piecemeal per module. The whole language switcher, including German, is gated behind the `language_packages` entitlement (`src/lib/entitlements.ts`), which ships DARK: `defaultEnabled: false`, so a fresh org runs English-only until a super-admin turns it on for that org (Platform → Organizations). `AppLayout` force-resets the runtime to English whenever the entitlement is off, so translated strings never leak to an org that hasn't been granted the module.
 
 ### Edge functions
 
