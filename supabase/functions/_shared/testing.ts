@@ -21,6 +21,31 @@ export function setFakeFrom(client: unknown, from: (table: string) => unknown): 
   (client as { from: (table: string) => unknown }).from = from;
 }
 
+/** The fake client's untyped `rpc`, bound, so tests can wrap it (see `setFakeRpc`). */
+export function bindFakeRpc(client: unknown): (name: string, params?: unknown) => Promise<FakeResult> {
+  const c = client as { rpc: (name: string, params?: unknown) => Promise<FakeResult> };
+  return c.rpc.bind(c);
+}
+
+/** Install a replacement `rpc` on a fake client, the rpc counterpart to `setFakeFrom`.
+ *  Tests use it to make one RPC fail transiently (e.g. a gateway 504) and then succeed. */
+export function setFakeRpc(client: unknown, rpc: (name: string, params?: unknown) => Promise<FakeResult>): void {
+  (client as { rpc: (name: string, params?: unknown) => Promise<FakeResult> }).rpc = rpc;
+}
+
+/** Make the named RPC return a transient `Gateway Timeout` error on its first call only.
+ *  The failing call is still recorded in `calls`, so tests can count attempts. */
+export function failRpcOnce(client: unknown, name: string): void {
+  const original = bindFakeRpc(client);
+  let failed = false;
+  setFakeRpc(client, (n, params) => {
+    const result = original(n, params);
+    if (n !== name || failed) return result;
+    failed = true;
+    return result.then(() => ({ data: null, error: { message: "Gateway Timeout" } }));
+  });
+}
+
 export interface RecordedCall { table: string; method: string; args: unknown[]; }
 
 /** A single seed: the result returned for every query to a table (backward-compatible form).

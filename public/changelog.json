@@ -1,5 +1,19 @@
 [
   {
+    "version": "1.17.3",
+    "date": "2026-09-11",
+    "dateLabel": "September 11, 2026",
+    "title": "Offers close on time, every hour",
+    "changes": {
+      "fixed": [
+        {
+          "title": "Offers expire on schedule",
+          "description": "When an artist does not answer in time, their offer now reliably closes at the hourly check. A brief connection hiccup could occasionally make that check miss its turn, so an expired offer stayed open up to an hour longer, and so did the step that moves casting on to the next cast."
+        }
+      ]
+    }
+  },
+  {
     "version": "1.17.2",
     "date": "2026-08-25",
     "dateLabel": "August 25, 2026",

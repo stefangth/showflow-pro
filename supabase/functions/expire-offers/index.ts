@@ -1,8 +1,9 @@
 import { preflight, json } from "../_shared/http.ts";
 import { requireCronOrRole } from "../_shared/auth.ts";
 import { realDeps, emailWasSent, type Deps } from "../_shared/deps.ts";
-import { countAccepted, countPendingNotExpired, isFutureOrToday, requiredPrimarySlots } from "../_shared/tierFill.ts";
+import { berlinDateKey, countAccepted, countPendingNotExpired, isFutureOrToday, requiredPrimarySlots } from "../_shared/tierFill.ts";
 import { getActiveOrgs } from "../_shared/settings.ts";
+import { retryOnError, retryOnThrow } from "../_shared/retry.ts";
 import { resolveOrgLocale } from "../_shared/orgLocale.ts";
 import { filterEntitledOrgs } from "../_shared/entitlements.ts";
 import { resolveBookingFlow, referenceLabel, type BookingFlow } from "../_shared/bookingFlow.ts";
@@ -47,14 +48,16 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   try {
     // Module gate: only orgs entitled to booking_flow ever enter the reminder pass.
     // filterEntitledOrgs is a single batched org_entitlements read, not a per-org RPC.
-    reminderOrgs = await filterEntitledOrgs(admin, await getActiveOrgs(admin), 'booking_flow')
+    // Retried once: a failed read leaves zero orgs, which skips the expiry step below
+    // while the run still reports 200, so a transient gateway 504 must not end it here.
+    reminderOrgs = await filterEntitledOrgs(admin, await retryOnThrow(() => getActiveOrgs(admin)), 'booking_flow')
   } catch (e) {
     console.error('expire-offers: failed to fetch active orgs for reminder pass', { error: (e as Error).message })
   }
 
-  // 1. Expire stale offers
+  // 1. Expire stale offers (idempotent, so safe to retry once on a transient error)
   if (reminderOrgs.length > 0) {
-    const { error: rpcErr } = await admin.rpc('expire_soft_bookings')
+    const { error: rpcErr } = await retryOnError(() => admin.rpc('expire_soft_bookings'))
     if (rpcErr) return json({ error: `expire_soft_bookings: ${rpcErr.message}` }, 500)
   }
 
@@ -223,12 +226,15 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     }
   }
 
-  // 2. Find open tiers that have never been escalated
+  // 2. Find open tiers that have never been escalated, on dates that can still fill.
+  // Past dates are dropped here (Berlin today, same key as isFutureOrToday) so the scan
+  // stops re-reading every past-dated tier each hour; the in-loop guard stays as well.
   const { data: openTiers } = await admin
     .from('show_date_offer_tiers')
-    .select('id, show_date_id, tier, escalation_notified_at')
+    .select('id, show_date_id, tier, escalation_notified_at, show_dates!inner(date)')
     .is('closed_at', null)
     .is('escalation_notified_at', null)
+    .gte('show_dates.date', berlinDateKey(now))
 
   if (!openTiers || openTiers.length === 0) return json({ expired: true, escalations: 0, reminders_sent: remindersSent })
 

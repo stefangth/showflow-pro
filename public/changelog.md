@@ -2,6 +2,13 @@
 
 What's new in ShowFlow, newest first.
 
+## 1.17.3 — September 11, 2026
+
+*Offers close on time, every hour*
+
+### Fixed
+- **Offers expire on schedule** — When an artist does not answer in time, their offer now reliably closes at the hourly check. A brief connection hiccup could occasionally make that check miss its turn, so an expired offer stayed open up to an hour longer, and so did the step that moves casting on to the next cast.
+
 ## 1.17.2 — August 25, 2026
 
 *A steadier setup walkthrough, skills and cities you can add where you need them, setup readiness you can trust, and clearer wording throughout*

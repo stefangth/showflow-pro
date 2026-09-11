@@ -291,13 +291,13 @@ export const SYSTEM_MAP_NODES: SystemMapNode[] = [
     subsystems: ["booking"],
     detail: {
       Trigger: "hourly cron + manual",
-      Auth: "requireCronOrRole(admin,producer) · verify_jwt=false",
+      Auth: "requireCronOrRole(admin,producer) · verify_jwt=false · cron secret lookup retried once, a lookup that still fails → 503 (outage), not 401",
       Gate: "reminder pass ∧ escalation scan limited to orgs entitled to the booking_flow module (filterEntitledOrgs, single batched org_entitlements read); auto-escalation is additionally gated on the booking flow being active (not switched off, flow.active) ∧ the org being active (not suspended, activeOrgIds); it is one of two service-role paths (with airtable-poll's tier-1 auto-open) that can open a tier without ever going through open-offer-tier's own JWT-only requireFeature gate; expire_soft_bookings() itself carries a second, independent copy of the entitlement gate (AND is_feature_enabled(org_id,'booking_flow')) so a lapsed offer in an unentitled org is frozen, not cancelled",
       Reminder: "24h-before-expiry pass, gated on active ∧ expiry_reminder ∧ artist_acceptance: offer-expiry-reminder email + offer_expiring in-app, idempotent via bookings.reminder_sent_at",
       Writes:
-        "expire_soft_bookings() RPC (gated on booking_flow) → cancels overdue suggested in entitled orgs only · notifications (offer_expiring, tier_escalated, cast_escalation_requested) · escalation stamp",
+        "expire_soft_bookings() RPC (gated on booking_flow, idempotent, retried once on a transient error) → cancels overdue suggested in entitled orgs only · notifications (offer_expiring, tier_escalated, cast_escalation_requested) · escalation stamp",
       Effects: "auto_escalate on: closes the short tier, opens the next tier of the SAME effective ladder that opened it via open-offer-tier, notifies tier_escalated (no email); otherwise, or on a failed auto-open, falls back to cast-escalation-requested email + notification to producers",
-      Rule: "escalate once per tier when 0 pending non-expired ∧ accepted < required",
+      Rule: "escalate once per tier when 0 pending non-expired ∧ accepted < required; past show dates (Berlin) are dropped in the open-tier query itself",
       Cite: "expire-offers/index.ts:23-361",
     },
   },
