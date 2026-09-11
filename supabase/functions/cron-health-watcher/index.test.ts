@@ -14,12 +14,12 @@ Deno.test("cron-health-watcher: wrong cron secret -> 401", async () => {
   assertEquals(res.status, 401);
 });
 
-Deno.test("cron-health-watcher: a non-2xx for a healthy job alerts once (in-app + email)", async () => {
+Deno.test("cron-health-watcher: a single non-2xx for a healthy job does not alert yet (debounce)", async () => {
   const { deps, calls, invokeCalls } = makeFakeDeps({
     tables: {
       app_settings: { data: { value: SECRET } },
       platform_admins: { data: [{ user_id: "super-1" }] },
-      cron_health_state: { data: [{ job_name: "offer-digest", status: "healthy", alerted_at: null, last_ok_at: "2026-06-22T19:00:00Z", consecutive_failures: 0 }] },
+      cron_health_state: { data: [{ job_name: "offer-digest", status: "healthy", alerted_at: null, last_ok_at: "2026-06-22T19:00:00Z", consecutive_failures: 0, last_observation_key: "req:0" }] },
     },
     rpcs: {
       cron_health_scan: { data: [{ job_name: "offer-digest", request_id: 1, dispatched_at: recent, status_code: 404, timed_out: false, error_msg: null, responded_at: recent }] },
@@ -29,7 +29,39 @@ Deno.test("cron-health-watcher: a non-2xx for a healthy job alerts once (in-app 
   });
   const res = await handle(cronReq(), deps);
   assertEquals(res.status, 200);
-  assertEquals(calls.some((c) => c.table === "notifications" && c.method === "insert"), true);
+  // First failed observation is recorded (status failing, consecutive_failures 1) but NOT announced:
+  // a lone self-healing 500/503/401 must not email every super-admin. alerted_at stays null.
+  const upsert = calls.find((c) => c.table === "cron_health_state" && c.method === "upsert");
+  const payload = (upsert?.args?.[0] ?? {}) as { status?: string; consecutive_failures?: number; alerted_at?: string | null };
+  assertEquals(payload.status, "failing");
+  assertEquals(payload.consecutive_failures, 1);
+  assertEquals(payload.alerted_at, null);
+  assertEquals(invokeCalls.filter((c) => c.name === "send-transactional-email").length, 0);
+  assertEquals(calls.some((c) => c.table === "notifications" && c.method === "insert"), false);
+  assertEquals(calls.some((c) => c.table === "cron_health_log" && c.method === "insert"), false);
+  assertEquals((await res.json()).newly_failing, 0);
+});
+
+Deno.test("cron-health-watcher: a second consecutive non-2xx alerts once (in-app + email)", async () => {
+  const { deps, calls, invokeCalls } = makeFakeDeps({
+    tables: {
+      app_settings: { data: { value: SECRET } },
+      platform_admins: { data: [{ user_id: "super-1" }] },
+      // Already failed once (consecutive 1), not yet alerted. A NEW failed dispatch (req:2) is the 2nd in a row.
+      cron_health_state: { data: [{ job_name: "offer-digest", status: "failing", alerted_at: null, last_ok_at: "2026-06-22T19:00:00Z", consecutive_failures: 1, last_observation_key: "req:1" }] },
+    },
+    rpcs: {
+      cron_health_scan: { data: [{ job_name: "offer-digest", request_id: 2, dispatched_at: recent, status_code: 404, timed_out: false, error_msg: null, responded_at: recent }] },
+      resolve_user_contacts: { data: [{ user_id: "super-1", email: "ops@test.com", display_name: "Ops" }] },
+    },
+    now: NOW,
+  });
+  const res = await handle(cronReq(), deps);
+  assertEquals(res.status, 200);
+  const upsert = calls.find((c) => c.table === "cron_health_state" && c.method === "upsert");
+  const payload = (upsert?.args?.[0] ?? {}) as { consecutive_failures?: number; alerted_at?: string | null };
+  assertEquals(payload.consecutive_failures, 2);
+  assertEquals(payload.alerted_at, NOW.toISOString());
   // related_entity_id is a uuid column and org_id is nullable — both MUST be null for a platform
   // alert, else Postgres rejects the insert (uuid-cast error / not-null violation) and the alert
   // silently never reaches super-admins.
@@ -37,9 +69,34 @@ Deno.test("cron-health-watcher: a non-2xx for a healthy job alerts once (in-app 
   const rows = (notif?.args?.[0] ?? []) as Array<Record<string, unknown>>;
   assertEquals(rows[0]?.related_entity_id, null);
   assertEquals(rows[0]?.org_id, null);
+  assertEquals(calls.some((c) => c.table === "cron_health_log" && c.method === "insert"), true);
   const email = invokeCalls.find((c) => c.name === "send-transactional-email");
   assertEquals((email?.body as { template_name?: string })?.template_name, "cron-health-alert");
   assertEquals((email?.body as { recipient_email?: string })?.recipient_email, "ops@test.com");
+  assertEquals((await res.json()).newly_failing, 1);
+});
+
+Deno.test("cron-health-watcher: a healthy run after a single un-alerted blip recovers silently", async () => {
+  const { deps, calls, invokeCalls } = makeFakeDeps({
+    tables: {
+      app_settings: { data: { value: SECRET } },
+      platform_admins: { data: [{ user_id: "super-1" }] },
+      // Failed once, never alerted (alerted_at null) — the debounce means no incident was ever announced,
+      // so its recovery must be silent (no "recovered" notification, no email).
+      cron_health_state: { data: [{ job_name: "offer-digest", status: "failing", alerted_at: null, last_ok_at: "2026-06-22T19:00:00Z", consecutive_failures: 1, last_observation_key: "req:1" }] },
+    },
+    rpcs: { cron_health_scan: { data: [{ job_name: "offer-digest", request_id: 2, dispatched_at: recent, status_code: 200, timed_out: false, error_msg: null, responded_at: recent }] } },
+    now: NOW,
+  });
+  const res = await handle(cronReq(), deps);
+  assertEquals(res.status, 200);
+  const upsert = calls.find((c) => c.table === "cron_health_state" && c.method === "upsert");
+  const payload = (upsert?.args?.[0] ?? {}) as { status?: string; consecutive_failures?: number };
+  assertEquals(payload.status, "healthy");
+  assertEquals(payload.consecutive_failures, 0);
+  assertEquals(calls.some((c) => c.table === "notifications" && c.method === "insert"), false);
+  assertEquals(invokeCalls.filter((c) => c.name === "send-transactional-email").length, 0);
+  assertEquals((await res.json()).recovered, 0);
 });
 
 Deno.test("cron-health-watcher: does not re-alert a job already failing", async () => {
