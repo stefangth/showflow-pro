@@ -1,5 +1,5 @@
 import { assertEquals } from "./test-asserts.ts";
-import { makeFakeDeps, makeRequest } from "./testing.ts";
+import { failRpcOnce, makeFakeDeps, makeRequest } from "./testing.ts";
 import { requireRole, requireOrgRole, requireCronOrRole, requireCronSecret, isServiceRole, constantTimeEqual } from "./auth.ts";
 
 Deno.test("requireRole rejects a request with no Bearer token (401)", async () => {
@@ -98,6 +98,37 @@ Deno.test("requireCronSecret rejects a wrong cron secret (401)", async () => {
   const out = await requireCronSecret(deps, makeRequest({ headers: { "X-Cron-Secret": "nope" } }));
   assertEquals(out.ok, false);
   if (!out.ok) assertEquals(out.response.status, 401);
+});
+
+Deno.test("requireCronSecret rejects a missing header (401) without looking the secret up", async () => {
+  const { deps, calls } = makeFakeDeps({ rpcs: { get_cron_secret: { data: "secret123", error: null } } });
+  const out = await requireCronSecret(deps, makeRequest());
+  assertEquals(out.ok, false);
+  if (!out.ok) assertEquals(out.response.status, 401);
+  assertEquals(calls.some((c) => c.table === "rpc:get_cron_secret"), false);
+});
+
+Deno.test("requireCronSecret retries a transient secret-lookup error once and then accepts", async () => {
+  const { deps, calls, client } = makeFakeDeps({ rpcs: { get_cron_secret: { data: "secret123", error: null } } });
+  failRpcOnce(client, "get_cron_secret");
+  const out = await requireCronSecret(deps, makeRequest({ headers: { "X-Cron-Secret": "secret123" } }));
+  assertEquals(out.ok, true);
+  assertEquals(calls.filter((c) => c.table === "rpc:get_cron_secret").length, 2);
+});
+
+Deno.test("requireCronSecret reports a failed secret lookup as 503, not a false 401", async () => {
+  // A gateway 504 on get_cron_secret used to leave the stored secret empty, so a
+  // correct header was reported as "Unauthorized". It is an outage, not bad auth.
+  const { deps, calls } = makeFakeDeps({
+    rpcs: { get_cron_secret: { data: null, error: { message: "Gateway Timeout" } } },
+  });
+  const out = await requireCronOrRole(deps, makeRequest({ headers: { "X-Cron-Secret": "secret123" } }), ["admin"]);
+  assertEquals(out.ok, false);
+  if (!out.ok) {
+    assertEquals(out.response.status, 503);
+    assertEquals(await out.response.json(), { error: "Cron secret lookup failed" });
+  }
+  assertEquals(calls.filter((c) => c.table === "rpc:get_cron_secret").length, 2);
 });
 
 Deno.test("constantTimeEqual: equal strings → true, unequal (same/diff length) → false", () => {

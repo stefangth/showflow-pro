@@ -1,6 +1,7 @@
 import type { Database } from "./database.types.ts";
 import type { Deps } from "./deps.ts";
 import { json } from "./http.ts";
+import { retryOnError } from "./retry.ts";
 
 /** The org-membership role enum, as generated from the DB schema. */
 export type AppRole = Database["public"]["Enums"]["app_role"];
@@ -115,13 +116,20 @@ export async function requireSuperAdmin(deps: Deps, req: Request): Promise<AuthO
  * migration 20260702120010_cron_secret_to_vault.sql). PostgREST cannot reach the
  * vault/private schemas, so we read it through the service-role-only public RPC
  * `get_cron_secret`. Comparison stays constant-time to avoid a timing oracle.
- * A missing or mismatched header → 401.
+ * A missing or mismatched header → 401. A lookup that fails even after one retry
+ * (a gateway 504, see retry.ts) → 503: that is an outage, not bad credentials, and
+ * reporting it as 401 used to send every such blip to the health console as auth.
  */
 export async function requireCronSecret(deps: Deps, req: Request): Promise<AuthOutcome> {
   const cronSecret = req.headers.get("X-Cron-Secret");
-  const { data: stored } = await deps.admin.rpc("get_cron_secret");
+  if (!cronSecret) return { ok: false, response: json({ error: "Unauthorized" }, 401) };
+  const { data: stored, error } = await retryOnError(() => deps.admin.rpc("get_cron_secret"));
+  if (error) {
+    console.error("requireCronSecret: get_cron_secret lookup failed", { error: error.message });
+    return { ok: false, response: json({ error: "Cron secret lookup failed" }, 503) };
+  }
   const storedSecret = (stored as string | null) ?? "";
-  if (!cronSecret || !constantTimeEqual(cronSecret, storedSecret)) {
+  if (!constantTimeEqual(cronSecret, storedSecret)) {
     return { ok: false, response: json({ error: "Unauthorized" }, 401) };
   }
   return { ok: true, userId: null };

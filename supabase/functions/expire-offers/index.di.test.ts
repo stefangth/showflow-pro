@@ -1,5 +1,5 @@
 import { assertEquals, assertExists } from "../_shared/test-asserts.ts";
-import { bindFakeFrom, makeFakeDeps, makeRequest, setFakeFrom } from "../_shared/testing.ts";
+import { bindFakeFrom, createFakeClient, failRpcOnce, makeFakeDeps, makeRequest, setFakeFrom } from "../_shared/testing.ts";
 import { handle } from "./index.ts";
 
 function assertStringIncludes(actual: string, expected: string, msg?: string): void {
@@ -132,6 +132,60 @@ Deno.test("expire-offers: expire_soft_bookings RPC error → 500 with message", 
   assertEquals(res.status, 500);
   const body = await res.json();
   assertStringIncludes(body.error, "boom");
+});
+
+// ─── Transient gateway timeouts (Supabase's API gateway 504s ~0.5% of calls at 5 s) ──
+
+Deno.test("expire-offers: a transient expire_soft_bookings error is retried once → 200", async () => {
+  const { deps, calls, client } = makeFakeDeps({
+    tables: {
+      app_settings: appSettingsSeed(),
+      organizations: { data: [{ id: "org-1" }], error: null },
+      show_date_offer_tiers: { data: [], error: null },
+    },
+    rpcs: { expire_soft_bookings: { data: null, error: null } },
+  });
+  failRpcOnce(client, "expire_soft_bookings");
+  const res = await handle(cronReq(), deps);
+  assertEquals(res.status, 200);
+  assertEquals(calls.filter((c) => c.table === "rpc:expire_soft_bookings").length, 2);
+});
+
+Deno.test("expire-offers: a persistent expire_soft_bookings error → 500 after exactly two attempts", async () => {
+  const { deps, calls } = makeFakeDeps({
+    tables: { app_settings: appSettingsSeed(), organizations: { data: [{ id: "org-1" }], error: null } },
+    rpcs: { expire_soft_bookings: { data: null, error: { message: "Gateway Timeout" } } },
+  });
+  const res = await handle(cronReq(), deps);
+  assertEquals(res.status, 500);
+  assertEquals(calls.filter((c) => c.table === "rpc:expire_soft_bookings").length, 2);
+});
+
+Deno.test("expire-offers: a transient organizations read error is retried, so expiry still runs", async () => {
+  // Before: a single failed org read left zero entitled orgs, which silently skipped
+  // expire_soft_bookings while the job still reported 200.
+  const { deps, calls, client } = makeFakeDeps({
+    tables: {
+      app_settings: appSettingsSeed(),
+      organizations: { data: [{ id: "org-1" }], error: null },
+      show_date_offer_tiers: { data: [], error: null },
+    },
+    rpcs: { expire_soft_bookings: { data: null, error: null } },
+  });
+  const failing = createFakeClient({
+    tables: { organizations: { data: null, error: { message: "Gateway Timeout" } } },
+  }).client;
+  const original = bindFakeFrom(client);
+  let orgReads = 0;
+  setFakeFrom(client, (table: string) => {
+    if (table !== "organizations") return original(table);
+    orgReads += 1;
+    return orgReads === 1 ? failing.from(table) : original(table);
+  });
+  const res = await handle(cronReq(), deps);
+  assertEquals(res.status, 200);
+  assertEquals(orgReads, 2);
+  assertEquals(calls.some((c) => c.table === "rpc:expire_soft_bookings"), true);
 });
 
 // ─── No open tiers → zero escalations ────────────────────────────────────────
@@ -714,6 +768,27 @@ Deno.test("expire-offers: open tier query filters by escalation_notified_at IS N
     (c) => c.args[0] === "escalation_notified_at" && c.args[1] === null,
   );
   assertEquals(hasEscalationFilter, true);
+});
+
+Deno.test("expire-offers: open tier query skips past show dates at the source (Berlin today)", async () => {
+  // Past-dated tiers can never escalate; filtering them in the query stops the hourly
+  // scan from re-reading every one of them forever. The in-loop isFutureOrToday guard
+  // stays as defense in depth (covered by the "past date is never escalated" test).
+  const { deps, calls } = makeFakeDeps({
+    tables: {
+      app_settings: appSettingsSeed(),
+      show_date_offer_tiers: { data: [], error: null },
+    },
+    rpcs: { expire_soft_bookings: { data: null, error: null } },
+    now: FIXED_NOW,
+  });
+  await handle(cronReq(), deps);
+
+  const tierCalls = calls.filter((c) => c.table === "show_date_offer_tiers");
+  const select = tierCalls.find((c) => c.method === "select");
+  assertStringIncludes(String(select?.args[0]), "show_dates!inner(date)");
+  const gte = tierCalls.find((c) => c.method === "gte");
+  assertEquals(gte?.args, ["show_dates.date", "2026-06-01"]);
 });
 
 // ─── Response body ────────────────────────────────────────────────────────────
