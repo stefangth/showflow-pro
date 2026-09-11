@@ -6,10 +6,15 @@ import { appUrl } from "../_shared/app-url.ts";
 /**
  * Cron-health watcher. Every ~15 min: read the latest HTTP outcome per cron job
  * (via cron_health_scan, which joins cron_health_dispatch -> net._http_response),
- * update cron_health_state, append failures to cron_health_log, and on a
- * transition INTO failure (healthy/unknown -> failing/stale) alert all super-admins
- * once (in-app notification + email). On recovery (-> healthy) send an in-app
- * notification only (no email). Idempotent via cron_health_state.alerted_at.
+ * update cron_health_state, and alert all super-admins once (in-app notification +
+ * email) when a job's failure is confirmed. Failures are DEBOUNCED: an HTTP failure
+ * (non-2xx/timeout) must recur for two distinct observations in a row before it is
+ * announced, so a single self-healing 500/503/401 does not email anyone. Staleness
+ * (the cron stopped firing) is already sustained and alerts on first detection. The
+ * announced incident is also appended to cron_health_log at that point. On recovery
+ * (-> healthy) send an in-app notification only (no email), and only if the incident
+ * was actually announced. Idempotent via cron_health_state.alerted_at, which is the
+ * single marker of an announced-and-ongoing incident.
  *
  * A 404'd function cannot report its own absence, so health is observed from the
  * cron (caller) side. Detection per known job:
@@ -126,9 +131,11 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     }
 
     const prev = prevByJob.get(jobName);
-    const prevStatus = prev?.status ?? "unknown";
     const failing = status !== "healthy";
-    const wasFailing = prevStatus === "failing" || prevStatus === "stale";
+    // alerted_at is the source of truth for "an incident has been announced" — it is stamped only when
+    // an alert actually goes out (below) and cleared on recovery. It gates both re-alerting and whether
+    // a recovery is worth announcing, so a debounced blip that never alerted also recovers silently.
+    const prevAlerted = prev?.alerted_at != null;
 
     // consecutive_failures counts distinct failed OBSERVATIONS, not watcher passes. An hourly job
     // scanned by a */15 watcher re-reads the same dispatch row up to 4 times; incrementing on each
@@ -137,6 +144,17 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       ? `stale:${row.dispatched_at}`
       : `req:${row.request_id}`;
     const repeatObservation = prev?.last_observation_key === observationKey;
+    const consecutiveFailures = failing
+      ? (repeatObservation ? (prev?.consecutive_failures ?? 0) : (prev?.consecutive_failures ?? 0) + 1)
+      : 0;
+
+    // Debounce transient HTTP blips: a job that returns non-2xx/timeout must fail TWO distinct
+    // observations in a row before we announce it, so a single self-healing 500/503/401 no longer
+    // emails every super-admin (the flapping that produced ~12 alert emails overnight). Staleness is
+    // already a sustained condition — silence past the max-silence window, which carries a >=60m buffer,
+    // and by nature has only one observation to count — so it still alerts on first detection.
+    const alertThreshold = status === "stale" ? 1 : 2;
+    const announce = failing && !prevAlerted && consecutiveFailures >= alertThreshold;
 
     const { error: upsertErr } = await admin.from("cron_health_state").upsert({
       job_name: jobName,
@@ -146,33 +164,29 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       last_dispatched_at: row.dispatched_at,
       last_ok_at: status === "healthy" ? now.toISOString() : (prev?.last_ok_at ?? null),
       last_error: error,
-      consecutive_failures: failing
-        ? (repeatObservation ? (prev?.consecutive_failures ?? 0) : (prev?.consecutive_failures ?? 0) + 1)
-        : 0,
+      consecutive_failures: consecutiveFailures,
       last_observation_key: observationKey,
-      // Only stamp alerted_at when an alert is actually sent (the !wasFailing transition below).
-      // When already failing, preserve the existing value (may be null if a prior write was lost) —
-      // never fabricate a timestamp.
-      alerted_at: failing ? (wasFailing ? (prev?.alerted_at ?? null) : now.toISOString()) : null,
+      // Stamp alerted_at only when we actually announce this run; preserve it while an announced
+      // incident continues (may be null if a prior write was lost) — never fabricate a timestamp;
+      // clear it on recovery.
+      alerted_at: failing ? (prevAlerted ? (prev?.alerted_at ?? null) : (announce ? now.toISOString() : null)) : null,
       updated_at: now.toISOString(),
     }, { onConflict: "job_name" });
     // Guard the write like the reads above: if the state didn't persist, skip alerting this run.
-    // Otherwise a dropped write leaves prevStatus stale ("healthy") and we'd re-alert every run (storm).
+    // Otherwise a dropped write leaves prev unadvanced and we could re-alert on a later run (storm).
     if (upsertErr) {
       console.error("cron-health-watcher: state upsert failed, skipping alerts for", jobName, upsertErr);
       continue;
     }
     assessed++;
 
-    if (failing) {
-      if (!wasFailing) {
-        // Log once per failure incident (on the transition), not every run — a sustained outage would
-        // otherwise flood cron_health_log and make get_cron_health's recent_failures N copies of one event.
-        await admin.from("cron_health_log").insert({ job_name: jobName, status_code: statusCode, error });
-        newlyFailing++;
-        await alertSuperAdmins(deps, jobName, statusCode, error, prev?.last_ok_at ?? null);
-      }
-    } else if (wasFailing) {
+    if (announce) {
+      // Log once per announced incident (on the crossing), not every run — a sustained outage would
+      // otherwise flood cron_health_log and make get_cron_health's recent_failures N copies of one event.
+      await admin.from("cron_health_log").insert({ job_name: jobName, status_code: statusCode, error });
+      newlyFailing++;
+      await alertSuperAdmins(deps, jobName, statusCode, error, prev?.last_ok_at ?? null);
+    } else if (!failing && prevAlerted) {
       recovered++;
       await notifyRecovery(deps, jobName);
     }

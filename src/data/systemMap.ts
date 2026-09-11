@@ -580,7 +580,7 @@ export const SYSTEM_MAP_NODES: SystemMapNode[] = [
       Trigger: "cron every 15 min",
       Auth: "requireCronOrRole with empty role list — only the secret can authorize",
       Writes: "cron_health_state/log · notifications (cron_health_alert) · prunes old rows",
-      Effects: "cron-health-alert email to super-admins on failure transition; in-app only on recovery",
+      Effects: "cron-health-alert email to super-admins once an HTTP failure recurs twice in a row (staleness alerts on first detection); in-app only on recovery",
       BlindSpot: "cannot observe its own liveness — check cron.job_run_details externally",
       Cite: "cron-health-watcher/index.ts:21-163",
     },

@@ -518,13 +518,22 @@ describe("ShowDateFormDialog", () => {
   // The duplicate-date warning shares the past-date warning's spot under the calendar and
   // had the identical gap: rendered inside an open popover with no live region.
   it("announces the duplicate-date warning as a live status", async () => {
-    mockExistingDates = [{ id: "d9", show_id: "s1", date: "2026-08-28", status: "open" }];
-    renderWithProviders(<ShowDateFormDialog open onOpenChange={() => {}} mode="create" defaultShowId="s1" />);
-    fireEvent.click(screen.getByTestId("date-trigger"));
-    fireEvent.click(screen.getByRole("button", { name: /August 28th, 2026/ }));
-    await screen.findAllByText(/a non-cancelled date already exists/i);
-    expect(screen.getByTestId("date-warning-status")).toHaveTextContent(
-      /a non-cancelled date already exists/i,
-    );
+    // Pin the clock so the calendar always opens on August 2026 and the "August 28th, 2026" day is
+    // a selectable (non-past) button — matching the sibling past-date test above. Without this the
+    // test only passed while the real "today" was still in August 2026; it broke once the month rolled over.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(2026, 7, 24, 12, 0, 0));
+    try {
+      mockExistingDates = [{ id: "d9", show_id: "s1", date: "2026-08-28", status: "open" }];
+      renderWithProviders(<ShowDateFormDialog open onOpenChange={() => {}} mode="create" defaultShowId="s1" />);
+      fireEvent.click(screen.getByTestId("date-trigger"));
+      fireEvent.click(screen.getByRole("button", { name: /August 28th, 2026/ }));
+      await screen.findAllByText(/a non-cancelled date already exists/i);
+      expect(screen.getByTestId("date-warning-status")).toHaveTextContent(
+        /a non-cancelled date already exists/i,
+      );
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
