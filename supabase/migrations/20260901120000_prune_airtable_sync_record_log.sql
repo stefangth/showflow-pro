@@ -9,6 +9,9 @@
 --
 -- The UI ("Last sync report") only ever reads the latest sync run's rows, so a 30-day
 -- window is comfortably more history than any consumer uses.
+--
+-- Not applied by the Sep 1 production deploy (the Supabase integration failed with a
+-- read-only-transaction error). Re-touched on 2026-09-11 to trigger the deploy again.
 
 -- Support the nightly prune's range scan. The table's only created_at-bearing index
 -- is the composite (org_id, created_at), which the planner can't use for a filter that
