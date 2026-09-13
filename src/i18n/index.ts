@@ -1,6 +1,7 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import { SUPPORTED_LANGUAGES, DEFAULT_LANGUAGE, detectInitialLang } from './config';
+import { VOCABULARY, DEFAULT_ORG_KIND } from '@/lib/orgKind';
 import enCommon from './locales/en/common.json';
 import deCommon from './locales/de/common.json';
 import enHelp from './locales/en/help.json';
@@ -89,9 +90,11 @@ export const resources = {
   },
 } as const;
 
+const initialLang = detectInitialLang();
+
 i18n.use(initReactI18next).init({
   resources,
-  lng: detectInitialLang(),
+  lng: initialLang,
   fallbackLng: DEFAULT_LANGUAGE,
   supportedLngs: SUPPORTED_LANGUAGES as unknown as string[],
   ns: [
@@ -104,7 +107,7 @@ i18n.use(initReactI18next).init({
   ],
   defaultNS: 'common',
   returnEmptyString: false,
-  interpolation: { escapeValue: false },
+  interpolation: { escapeValue: false, defaultVariables: VOCABULARY[DEFAULT_ORG_KIND][initialLang] },
 });
 
 export default i18n;
