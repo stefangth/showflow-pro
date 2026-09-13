@@ -90,6 +90,8 @@ export function anOrganization(overrides: Partial<OrgRow> = {}): OrgRow {
     status: "active",
     is_demo: false,
     created_by: null,
+    org_kind: "production",
+    org_kind_set_at: null,
     created_at: ISO,
     updated_at: ISO,
     ...overrides,
