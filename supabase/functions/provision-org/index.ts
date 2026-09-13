@@ -7,6 +7,7 @@ import { resolveOrgSetting } from "../_shared/settings.ts";
 import { FEATURE_KEYS, FEATURE_REGISTRY, type FeatureKey } from "../_shared/entitlements.ts";
 import { BOOKING_FLOW_TEMPLATE_DEFAULTS, normalizeBookingFlowTemplates } from "../_shared/bookingFlow.ts";
 import type { Json } from "../_shared/database.types.ts";
+import { isOrgKind, DEFAULT_ORG_KIND } from "../_shared/orgKind.ts";
 
 type Body = {
   name: string;
@@ -15,6 +16,7 @@ type Body = {
   role?: "admin" | "producer" | "artist";
   app_origin: string;
   entitlements?: Record<string, boolean>;
+  org_kind?: string;
 };
 
 export async function handle(req: Request, deps: Deps): Promise<Response> {
@@ -32,12 +34,14 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     const appOrigin = body?.app_origin?.replace(/\/$/, "");
     if (!name || !slug || !email || !appOrigin) return json({ error: "Invalid payload" }, 400);
     if (!["admin", "producer", "artist"].includes(role)) return json({ error: "Invalid role" }, 400);
+    const orgKind = body?.org_kind ?? DEFAULT_ORG_KIND;
+    if (!isOrgKind(orgKind)) return json({ error: "Invalid workspace type" }, 400);
 
     // Atomic DB work runs as the caller (auth.uid() = the super-admin) so provision_org's
     // internal is_super_admin check passes; SECURITY DEFINER does the privileged inserts.
     const authHeader = req.headers.get("Authorization")!;
     const { data, error } = await deps.userClient(authHeader)
-      .rpc("provision_org", { p_name: name, p_slug: slug, p_admin_email: email, p_role: role });
+      .rpc("provision_org", { p_name: name, p_slug: slug, p_admin_email: email, p_role: role, p_org_kind: orgKind });
     if (error) {
       const code = (error as { code?: string }).code;
       if (code === "23505") return json({ error: "That slug is already taken" }, 409);

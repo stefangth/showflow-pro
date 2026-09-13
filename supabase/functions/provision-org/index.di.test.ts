@@ -369,3 +369,40 @@ Deno.test("provision-org: role admin (the common case) never resolves offersExpe
   const msg = sent[0].body as { templateData: { offersExpected?: boolean } };
   assertEquals(msg.templateData.offersExpected, undefined);
 });
+
+Deno.test("provision-org: forwards org_kind to the rpc", async () => {
+  const { deps, calls } = makeFakeDeps({
+    authUser: { id: "u1" },
+    tables: { platform_admins: { data: { user_id: "u1" }, error: null } },
+    rpcs: { provision_org: { data: { org_id: "org-9", token: "tok-9" }, error: null } },
+    usersById: {},
+    generateLinkResult: { data: { properties: { action_link: "https://app.test/reset-password?redirect=x" } }, error: null },
+  });
+  const res = await handle(makeRequest({ headers: { Authorization: "Bearer x" }, body: { ...body, org_kind: "staffing" } }), deps);
+  assertEquals(res.status, 200);
+  const rpc = calls.find((c) => c.table === "rpc:provision_org");
+  assertEquals((rpc?.args?.[0] as { p_org_kind?: string })?.p_org_kind, "staffing");
+});
+
+Deno.test("provision-org: defaults org_kind to production when omitted", async () => {
+  const { deps, calls } = makeFakeDeps({
+    authUser: { id: "u1" },
+    tables: { platform_admins: { data: { user_id: "u1" }, error: null } },
+    rpcs: { provision_org: { data: { org_id: "org-9", token: "tok-9" }, error: null } },
+    usersById: {},
+    generateLinkResult: { data: { properties: { action_link: "https://app.test/reset-password?redirect=x" } }, error: null },
+  });
+  await handle(makeRequest({ headers: { Authorization: "Bearer x" }, body }), deps);
+  const rpc = calls.find((c) => c.table === "rpc:provision_org");
+  assertEquals((rpc?.args?.[0] as { p_org_kind?: string })?.p_org_kind, "production");
+});
+
+Deno.test("provision-org: 400 on unknown org_kind", async () => {
+  const { deps } = makeFakeDeps({
+    authUser: { id: "u1" },
+    tables: { platform_admins: { data: { user_id: "u1" }, error: null } },
+  });
+  const res = await handle(makeRequest({ headers: { Authorization: "Bearer x" }, body: { ...body, org_kind: "circus" } }), deps);
+  assertEquals(res.status, 400);
+  assertEquals((await res.json()).error, "Invalid workspace type");
+});
