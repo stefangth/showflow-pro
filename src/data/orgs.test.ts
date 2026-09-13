@@ -13,7 +13,7 @@ describe("fetchMyMemberships", () => {
     ];
     const fake = createFakeSupabase({ org_memberships: { data: rows, error: null } });
     const result = await fetchMyMemberships(fake as never, "u1");
-    expect(result).toEqual(rows);
+    expect(result).toEqual(rows.map((r) => ({ ...r, organizations: { ...r.organizations, org_kind: "production" } })));
     expect(fake.calls).toContainEqual({ table: "org_memberships", method: "eq", args: ["user_id", "u1"] });
   });
 

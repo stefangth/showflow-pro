@@ -13,7 +13,7 @@ vi.mock("@/features/auth/AuthContext", () => ({ useAuth: vi.fn() }));
 import { useAuth } from "@/features/auth/AuthContext";
 import { EditorProvider, useEditor } from "./EditorContext";
 
-const ORG = { id: "o1", name: "Acme", slug: "acme", status: "active", is_demo: false };
+const ORG = { id: "o1", name: "Acme", slug: "acme", status: "active", is_demo: false, org_kind: "production" as const, org_kind_set_at: null };
 const KEY = "showflow_editor_mode";
 
 /** Mutable so a test can resolve identity AFTER mount, as AuthProvider really does. */

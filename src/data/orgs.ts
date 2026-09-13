@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
+import { coerceOrgKind, type OrgKind } from "@/lib/orgKind";
 
 type AppRole = Database["public"]["Enums"]["app_role"];
 
@@ -9,6 +10,10 @@ export interface Organization {
   slug: string;
   status: string;
   is_demo: boolean;
+  /** Workspace type. Drives vocabulary and presentation only (src/lib/orgKind.ts). */
+  org_kind: OrgKind;
+  /** When the kind was explicitly chosen; null while still on the default. */
+  org_kind_set_at: string | null;
 }
 
 export interface Membership {
@@ -24,10 +29,23 @@ export async function fetchMyMemberships(
 ): Promise<Membership[]> {
   const { data, error } = await client
     .from("org_memberships")
-    .select("org_id, role, organizations ( id, name, slug, status, is_demo )")
+    .select("org_id, role, organizations ( id, name, slug, status, is_demo, org_kind, org_kind_set_at )")
     .eq("user_id", userId);
   if (error) throw error;
-  return (data ?? []) as unknown as Membership[];
+  const rows = (data ?? []) as unknown as Membership[];
+  return rows.map((m) => (m.organizations
+    ? { ...m, organizations: { ...m.organizations, org_kind: coerceOrgKind(m.organizations.org_kind) } }
+    : m));
+}
+
+/** Set the org's workspace type (admin-only RPC; super-admins pass). Stamps org_kind_set_at. */
+export async function setOrgKind(
+  client: SupabaseClient<Database>,
+  orgId: string,
+  kind: OrgKind,
+): Promise<void> {
+  const { error } = await client.rpc("set_org_kind", { p_org: orgId, p_kind: kind });
+  if (error) throw error;
 }
 
 export interface OrgProducer {

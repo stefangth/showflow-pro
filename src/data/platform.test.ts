@@ -19,14 +19,14 @@ describe("data/platform", () => {
   it("fetchAllOrgs reads organizations ordered by name", async () => {
     const rows = [{ id: "o1", name: "A", slug: "a", status: "active" }];
     const fake = createFakeSupabase({ organizations: { data: rows, error: null } });
-    expect(await fetchAllOrgs(fake as never)).toEqual(rows);
+    expect(await fetchAllOrgs(fake as never)).toEqual(rows.map((r) => ({ ...r, org_kind: "production" })));
     expect(fake.calls).toContainEqual({ table: "organizations", method: "order", args: ["name"] });
   });
 
   it("fetchPlatformOrgStats calls the rpc", async () => {
     const stats = [{ org_id: "o1", name: "A", slug: "a", status: "active", member_count: 1, active_artist_count: 0, bookings_30d: 0, last_activity_at: null }];
     const fake = createFakeSupabase({ "rpc:platform_org_stats": { data: stats, error: null } });
-    expect(await fetchPlatformOrgStats(fake as never)).toEqual(stats);
+    expect(await fetchPlatformOrgStats(fake as never)).toEqual(stats.map((s) => ({ ...s, org_kind: "production" })));
   });
 
   it("provisionOrg invokes the edge function with the mapped body and returns org_id", async () => {

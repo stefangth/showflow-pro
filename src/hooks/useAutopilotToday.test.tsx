@@ -45,7 +45,7 @@ function bookRow(id: string, count: number): FeedInput {
 }
 
 const authOverrides = {
-  currentOrg: { id: "org-1", name: "Acme", slug: "acme", status: "active", is_demo: false },
+  currentOrg: { id: "org-1", name: "Acme", slug: "acme", status: "active", is_demo: false, org_kind: "production" as const, org_kind_set_at: null },
 };
 
 beforeEach(() => {

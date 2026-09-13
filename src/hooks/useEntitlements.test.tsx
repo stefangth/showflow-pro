@@ -10,7 +10,7 @@ import { renderHookWithProviders } from "@/test/renderWithProviders";
 import { partialMock } from "@/test/castHelpers";
 import { useModuleGate } from "./useEntitlements";
 
-const ORG = { id: "org-1", name: "Acme", slug: "acme", status: "active", is_demo: false };
+const ORG = { id: "org-1", name: "Acme", slug: "acme", status: "active", is_demo: false, org_kind: "production" as const, org_kind_set_at: null };
 
 function mockAuth(over: Partial<ReturnType<typeof useAuth>> = {}) {
   vi.mocked(useAuth).mockReturnValue(

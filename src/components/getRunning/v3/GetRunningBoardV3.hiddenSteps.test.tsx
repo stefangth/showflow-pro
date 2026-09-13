@@ -35,7 +35,7 @@ vi.mock("@/components/getRunning/v3/stepRegistryV3", () => ({
 import { useGetRunningV3 } from "@/hooks/useGetRunningV3";
 import { GetRunningBoardV3 } from "./GetRunningBoardV3";
 
-const TEST_ORG = { id: "org-1", name: "Nordstadt Produktionen", slug: "nordstadt", status: "active", is_demo: false };
+const TEST_ORG = { id: "org-1", name: "Nordstadt Produktionen", slug: "nordstadt", status: "active", is_demo: false, org_kind: "production" as const, org_kind_set_at: null };
 
 function booking(overrides: Partial<Record<string, boolean>> = {}): BookingSetupStatus {
   const keys = ["shows", "slots", "flow", "people", "ladder", "eligibility", "timing"];

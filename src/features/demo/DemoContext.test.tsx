@@ -24,7 +24,7 @@ vi.mock("@/hooks/useDemo", async (importOriginal) => {
   };
 });
 
-const demoOrg = { id: "o1", name: "n", slug: "s", status: "active" as const, is_demo: true };
+const demoOrg = { id: "o1", name: "n", slug: "s", status: "active" as const, is_demo: true, org_kind: "production" as const, org_kind_set_at: null };
 
 function Probe() {
   const { currentScene, simNow, prospectLabel, volume, goToScene, advanceClock, setProspectLabel, setVolume, reset } =

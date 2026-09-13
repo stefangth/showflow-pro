@@ -29,7 +29,7 @@ vi.mock('@/hooks/useDemo', async (importOriginal) => {
   };
 });
 
-const DEMO_ORG = { id: 'o1', name: 'n', slug: 's', status: 'active', is_demo: true } as const;
+const DEMO_ORG = { id: 'o1', name: 'n', slug: 's', status: 'active', is_demo: true, org_kind: "production", org_kind_set_at: null } as const;
 
 describe('SandboxLinkDialog', () => {
   beforeEach(() => {

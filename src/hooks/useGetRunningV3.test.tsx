@@ -14,7 +14,7 @@ function seed(s: Record<string, TableSeed>) {
 import { useGetRunningV3 } from "./useGetRunningV3";
 
 const ORG_ID = "org-1";
-const TEST_ORG = { id: ORG_ID, name: "Test Org", slug: "test-org", status: "active", is_demo: false };
+const TEST_ORG = { id: ORG_ID, name: "Test Org", slug: "test-org", status: "active", is_demo: false, org_kind: "production" as const, org_kind_set_at: null };
 
 /** A fully entitled, fully configured org: every table read this hook's chain of hooks
  *  touches resolves without error. Mirrors `useGetRunning.test.tsx`'s `fullySeeded()`, plus

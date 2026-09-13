@@ -11,13 +11,13 @@ import { formatTimestampLocal } from '@/lib/dates';
 // via the `authOverrides` option (a test-only AuthContext.Provider mounted underneath it).
 describe('DemoBadge', () => {
   it('shows DEMO inside a demo org', () => {
-    render(<DemoBadge />, { authOverrides: { currentOrg: { id: 'o', name: 'n', slug: 's', status: 'active', is_demo: true } } });
+    render(<DemoBadge />, { authOverrides: { currentOrg: { id: 'o', name: 'n', slug: 's', status: 'active', is_demo: true, org_kind: "production", org_kind_set_at: null } } });
     expect(screen.getByText('DEMO')).toBeInTheDocument();
   });
 
   it('renders nothing outside a demo org', () => {
     const { container } = render(<DemoBadge />, {
-      authOverrides: { currentOrg: { id: 'o', name: 'n', slug: 's', status: 'active', is_demo: false } },
+      authOverrides: { currentOrg: { id: 'o', name: 'n', slug: 's', status: 'active', is_demo: false, org_kind: "production", org_kind_set_at: null } },
     });
     expect(container).toBeEmptyDOMElement();
   });
@@ -53,7 +53,7 @@ vi.mock('@/hooks/useDemo', async (importOriginal) => {
   };
 });
 
-const DEMO_ORG = { id: 'o', name: 'n', slug: 's', status: 'active', is_demo: true } as const;
+const DEMO_ORG = { id: 'o', name: 'n', slug: 's', status: 'active', is_demo: true, org_kind: "production", org_kind_set_at: null } as const;
 
 describe('DemoBar', () => {
   beforeEach(() => {
@@ -62,13 +62,13 @@ describe('DemoBar', () => {
   });
 
   it('shows the demo mode indicator inside a demo org', () => {
-    render(<DemoBar />, { authOverrides: { currentOrg: { id: 'o', name: 'n', slug: 's', status: 'active', is_demo: true } } });
+    render(<DemoBar />, { authOverrides: { currentOrg: { id: 'o', name: 'n', slug: 's', status: 'active', is_demo: true, org_kind: "production", org_kind_set_at: null } } });
     expect(screen.getByText('Demo mode')).toBeInTheDocument();
   });
 
   it('renders nothing outside a demo org', () => {
     const { container } = render(<DemoBar />, {
-      authOverrides: { currentOrg: { id: 'o', name: 'n', slug: 's', status: 'active', is_demo: false } },
+      authOverrides: { currentOrg: { id: 'o', name: 'n', slug: 's', status: 'active', is_demo: false, org_kind: "production", org_kind_set_at: null } },
     });
     expect(container).toBeEmptyDOMElement();
   });
@@ -77,13 +77,13 @@ describe('DemoBar', () => {
     // The role switcher flips effectiveHasRole client-side, so a non-admin must not
     // see the bar and grant themselves an admin view (gated on the real role).
     const { container } = render(<DemoBar />, {
-      authOverrides: { roles: ['producer'], currentOrg: { id: 'o', name: 'n', slug: 's', status: 'active', is_demo: true } },
+      authOverrides: { roles: ['producer'], currentOrg: { id: 'o', name: 'n', slug: 's', status: 'active', is_demo: true, org_kind: "production", org_kind_set_at: null } },
     });
     expect(container).toBeEmptyDOMElement();
   });
 
   it('clicking a role button switches the active viewAsRole via setViewAsRole', () => {
-    render(<DemoBar />, { authOverrides: { currentOrg: { id: 'o', name: 'n', slug: 's', status: 'active', is_demo: true } } });
+    render(<DemoBar />, { authOverrides: { currentOrg: { id: 'o', name: 'n', slug: 's', status: 'active', is_demo: true, org_kind: "production", org_kind_set_at: null } } });
 
     const producerButton = screen.getByRole('button', { name: 'Production Team' });
     expect(producerButton).toHaveAttribute('aria-pressed', 'false');
@@ -98,7 +98,7 @@ describe('DemoBar', () => {
 
   it('reset triggers the reset action only after confirming', () => {
     resetMutate.mockClear();
-    render(<DemoBar />, { authOverrides: { currentOrg: { id: 'o', name: 'n', slug: 's', status: 'active', is_demo: true } } });
+    render(<DemoBar />, { authOverrides: { currentOrg: { id: 'o', name: 'n', slug: 's', status: 'active', is_demo: true, org_kind: "production", org_kind_set_at: null } } });
 
     // The bar's Reset button opens a confirmation dialog; nothing fires yet.
     fireEvent.click(screen.getByRole('button', { name: /reset/i }));
@@ -187,7 +187,7 @@ describe('DemoOutbox', () => {
       },
     ];
     render(<DemoOutbox />, {
-      authOverrides: { currentOrg: { id: 'o1', name: 'n', slug: 's', status: 'active', is_demo: true } },
+      authOverrides: { currentOrg: { id: 'o1', name: 'n', slug: 's', status: 'active', is_demo: true, org_kind: "production", org_kind_set_at: null } },
     });
 
     fireEvent.click(screen.getByRole('button', { name: /outbox/i }));
@@ -198,7 +198,7 @@ describe('DemoOutbox', () => {
   it('shows the empty state with no captured sends', () => {
     capturedSends = [];
     render(<DemoOutbox />, {
-      authOverrides: { currentOrg: { id: 'o1', name: 'n', slug: 's', status: 'active', is_demo: true } },
+      authOverrides: { currentOrg: { id: 'o1', name: 'n', slug: 's', status: 'active', is_demo: true, org_kind: "production", org_kind_set_at: null } },
     });
 
     fireEvent.click(screen.getByRole('button', { name: /outbox/i }));

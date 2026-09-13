@@ -31,7 +31,7 @@ function seed(s: Record<string, TableSeed>) {
 import { useGetRunningV3 } from "@/hooks/useGetRunningV3";
 import { GetRunningSettingsMirror } from "./GetRunningSettingsMirror";
 
-const TEST_ORG = { id: "org-1", name: "Test Org", slug: "test-org", status: "active", is_demo: false };
+const TEST_ORG = { id: "org-1", name: "Test Org", slug: "test-org", status: "active", is_demo: false, org_kind: "production" as const, org_kind_set_at: null };
 
 // Neither module is on, which is the shallowest board state (get-running-v3-nothing) and
 // keeps this suite from needing to build booking/hire fixtures at all, unlike

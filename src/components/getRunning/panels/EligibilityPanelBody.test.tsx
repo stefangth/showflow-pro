@@ -12,7 +12,7 @@ import type { LadderCoverageInputs } from "@/lib/bookings/setupStatus";
 const { client } = vi.hoisted(() => ({ client: {} as Record<string, unknown> }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: client }));
 
-const TEST_ORG = { id: "org-1", name: "Test Org", slug: "test-org", status: "active", is_demo: false };
+const TEST_ORG = { id: "org-1", name: "Test Org", slug: "test-org", status: "active", is_demo: false, org_kind: "production" as const, org_kind_set_at: null };
 
 // Hamburg (show "Carmen") is covered by the org-wide city ladder (tier 1 "nord");
 // Leipzig (show "Die Zauberflöte") has a future date but no tier-1 cast anywhere

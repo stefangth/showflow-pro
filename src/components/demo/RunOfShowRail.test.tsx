@@ -30,7 +30,7 @@ vi.mock("@/hooks/useDemo", async (importOriginal) => {
   };
 });
 
-const DEMO_ORG = { id: "o1", name: "n", slug: "s", status: "active" as const, is_demo: true };
+const DEMO_ORG = { id: "o1", name: "n", slug: "s", status: "active" as const, is_demo: true, org_kind: "production" as const, org_kind_set_at: null };
 
 function renderRail(currentOrg: AuthContextType["currentOrg"] = DEMO_ORG) {
   return render(
@@ -61,7 +61,7 @@ describe("RunOfShowRail", () => {
   });
 
   it("renders nothing outside a demo org", () => {
-    const { container } = renderRail({ ...DEMO_ORG, is_demo: false });
+    const { container } = renderRail({ ...DEMO_ORG, is_demo: false, org_kind: "production" as const, org_kind_set_at: null });
     expect(container).toBeEmptyDOMElement();
   });
 
