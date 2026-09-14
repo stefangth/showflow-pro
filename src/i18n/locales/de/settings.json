@@ -44,7 +44,7 @@
   },
   "notifications": {
     "title": "Benachrichtigungen",
-    "description": "Steuere In-App-Benachrichtigungen für Buchungen und Terminänderungen.",
+    "description": "Steuere In-App-Benachrichtigungen für Buchungen und Planänderungen.",
     "enable": "In-App-Benachrichtigungen aktivieren",
     "hint": "{{roleProducer}} und {{Artists}} erhalten Benachrichtigungen in Echtzeit."
   },

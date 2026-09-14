@@ -19,7 +19,9 @@
     "respondedOfTotal_staffing": "{{responded}} von {{total}} Schichten",
     "unansweredMore": "+{{count}} weitere",
     "offer": {
-      "question": "Kannst Du diesen Termin übernehmen?",
+      "question": "$t(dashboard:artist.offer.question_{{kind}})",
+      "question_production": "Kannst Du diesen Termin übernehmen?",
+      "question_staffing": "Kannst Du diese Schicht übernehmen?",
       "acceptNote": "Sag Ja, und die Position gehört Dir, niemand muss das danach noch bestätigen.",
       "acceptNoteConfirm": "Sag Ja, und die Position ist so gut wie Deine, Dein {{roleProducer}} muss sie noch bestätigen."
     }

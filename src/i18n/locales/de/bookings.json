@@ -265,7 +265,7 @@
     },
     "noHireOrderPermission": "Du hast keine Berechtigung, {{HireOrders}} zu entwerfen",
     "noConfirmPermission": "Du hast keine Berechtigung, {{Artists}} zu buchen",
-    "searchPlaceholder": "Programm, Spielstätte, Stadt suchen…",
+    "searchPlaceholder": "Programm, Veranstaltungsort, Stadt suchen…",
     "sortChronoLabel": "Datum",
     "sortAsc": "{{label}} ↑",
     "sortDesc": "{{label}} ↓",

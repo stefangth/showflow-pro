@@ -124,7 +124,7 @@
   "sortChronoLabel": "Datum",
   "offersLoadError": "Deine Anfragen konnten nicht geladen werden. Bitte aktualisiere · sperre keine Termine, bevor das geladen ist, sonst werden offene Anfragen möglicherweise nicht angezeigt.",
   "emptyUnanswered": "Keine Anfragen, die auf dich warten. Gut gemacht.",
-  "emptyAll": "Noch keine Termine.",
+  "emptyAll": "Noch keine {{ShowDates}}.",
   "firstRun": {
     "eyebrow": "{{org}} · dein Kalender",
     "headline": "Eine Sache hier gehört dir, und sie dauert zwei Minuten",

@@ -118,7 +118,7 @@
   "sortChronoLabel": "Date",
   "offersLoadError": "Failed to load your asks. Please refresh · don't block dates until this loads, as pending asks may not be shown.",
   "emptyUnanswered": "No asks waiting on you. Great work.",
-  "emptyAll": "No dates yet.",
+  "emptyAll": "No {{showDates}} yet.",
   "firstRun": {
     "eyebrow": "{{org}} · your calendar",
     "headline": "One thing here is yours, and it takes two minutes",
