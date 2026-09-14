@@ -110,7 +110,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
 
     const ageMin = (now.getTime() - new Date(row.dispatched_at).getTime()) / 60000;
     let status: "healthy" | "failing" | "stale";
-    let statusCode: number | null = null;
+    let statusCode: number | null;
     let error: string | null = null;
 
     if (ageMin > KNOWN_JOBS[jobName]) {

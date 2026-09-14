@@ -194,13 +194,16 @@ export default function SettingsPage() {
   const tabParam = searchParams.get('tab');
   const navKey = useLocation().key;
   const [activeTab, setActiveTab] = useState<string>(() => resolveInitialTab(tabParam, isAdmin, isSuperAdmin, isProducer));
-  useEffect(() => {
-    // No param means "wherever you were": a link into plain /settings must not drag someone
-    // off the tab they are working on back to the role default.
+  // No param means "wherever you were": a link into plain /settings must not drag someone
+  // off the tab they are working on back to the role default. Adjust-during-render tracking
+  // the same inputs the effect depended on (navKey is the repeat-navigation trigger)
+  // instead of a setState-in-effect.
+  const [tabSync, setTabSync] = useState({ tabParam, isAdmin, isSuperAdmin, isProducer, navKey });
+  if (tabSync.tabParam !== tabParam || tabSync.isAdmin !== isAdmin || tabSync.isSuperAdmin !== isSuperAdmin
+    || tabSync.isProducer !== isProducer || tabSync.navKey !== navKey) {
+    setTabSync({ tabParam, isAdmin, isSuperAdmin, isProducer, navKey });
     if (tabParam) setActiveTab(resolveInitialTab(tabParam, isAdmin, isSuperAdmin, isProducer));
-    // `navKey` is a trigger, not an input: nothing in the callback reads it, which is
-    // exactly the point, since a repeat navigation changes nothing else the callback sees.
-  }, [tabParam, isAdmin, isSuperAdmin, isProducer, navKey]);
+  }
   // Keep the Tabs ARIA orientation matched to the actual layout axis: the nav rail is
   // vertical on md+ but a horizontal scroll row below md, so arrow-key roving (Up/Down
   // vs Left/Right) follows the visual direction at each breakpoint. Breakpoint (768px)

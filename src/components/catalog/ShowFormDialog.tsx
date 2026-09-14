@@ -85,12 +85,18 @@ export function ShowFormDialog({
   const createdShowIdRef = useRef<string | null>(null);
 
   const slotsQ = useShowSlots(open ? show?.id : undefined);
+  // Open/close session seeding: kept as an effect (external-system sync; Radix keeps
+  // the dialog mounted across close/reopen), not the render-time "adjust during render"
+  // form, which observably double-renders the sibling PartsEditorSheet. Only the
+  // reset-to-empty on close trips set-state-in-effect (the seed from query data is an
+  // allowed external sync).
   useEffect(() => {
     if (!open) {
       // Closing discards unsaved slot edits (they must never survive into the next
       // session's save) and ends the create session.
       slotsSeededForRef.current = null;
       createdShowIdRef.current = null;
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset on close discards unsaved edits; see above
       setSlots([]);
       return;
     }
@@ -193,6 +199,7 @@ export function ShowFormDialog({
             {synced && <Badge variant="secondary" className="bg-well-tint text-muted-foreground">{t("form.syncedBadge")}</Badge>}
           </DialogTitle>
         </DialogHeader>
+        {/* eslint-disable-next-line react-hooks/refs -- react-hook-form's handleSubmit defers onSubmit to the submit event; the compiler can't see that and flags onSubmit's ref reads as render-time access */}
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-1.5">
             <Label htmlFor="program">{t("form.programLabel")}</Label>

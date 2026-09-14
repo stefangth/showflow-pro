@@ -232,7 +232,11 @@ function ProducerShowsBookings() {
     void confirmHoldsForDate(dateId);
   };
 
-  useEffect(() => {
+  // Seed filters + deep-link target from the URL once, at first render, instead of
+  // a mount setState-in-effect. Guarded so it runs a single time.
+  const [urlSeeded, setUrlSeeded] = useState(false);
+  if (!urlSeeded) {
+    setUrlSeeded(true);
     const status = searchParams.get('status');
     const from = searchParams.get('from');
     const to = searchParams.get('to');
@@ -254,8 +258,7 @@ function ProducerShowsBookings() {
       if (searchParams.get('tab') === 'offers') setSheetInitialTab('offers');
       setActiveShowDateId(dateParam);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }
 
   // Realtime: invalidate when bookings or show_dates change
   useEffect(() => {

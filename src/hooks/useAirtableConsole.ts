@@ -233,7 +233,7 @@ export function useAirtableConsole(
   const bases = basesQ.data?.bases ?? [];
   const tables = tablesQ.data?.tables ?? [];
 
-  let schemaState: "idle" | "loading" | "accessible" | "fallback" = "idle";
+  let schemaState: "idle" | "loading" | "accessible" | "fallback";
   let fallbackCause: FallbackCause = "no-scope";
   if (!keyPresent) {
     schemaState = "idle";

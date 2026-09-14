@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { Download, Eye, Pencil, Send } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -67,9 +67,13 @@ export function OrderSlideOver({ order, open, onOpenChange, orgId }: Props) {
 
   const [preflightOpen, setPreflightOpen] = useState(false);
 
-  const lastOrderRef = useRef<HireOrderListRow | null>(null);
-  if (order) lastOrderRef.current = order;
-  const displayOrder = order ?? lastOrderRef.current;
+  // Latch the last non-null order so the panel keeps showing real content while it
+  // animates closed (HireOrdersPage nulls `order` in the same update that flips
+  // `open` to false). React's "adjust state during render" pattern: only advance
+  // when a new order arrives, so `displayOrder` retains the previous value once
+  // `order` goes null — without a render-time ref write (react-hooks/refs).
+  const [displayOrder, setDisplayOrder] = useState<HireOrderListRow | null>(order);
+  if (order && order !== displayOrder) setDisplayOrder(order);
 
   // Follow the mode the order was ISSUED under (frozen in issue_snapshot), not the
   // org's current setting — an electronic-issued order keeps the manual flip withheld

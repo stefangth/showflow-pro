@@ -69,20 +69,22 @@ export function EditorProvider({ children }: { children: ReactNode }) {
   // render identity has not loaded: isSuperAdmin is false, making
   // canEdit false for everyone. An initializer runs once and would never see access
   // arrive, and a write-through effect on that same render would delete the flag it
-  // was meant to read.
-  useEffect(() => {
-    if (canEdit && localStorage.getItem(EDITOR_MODE_KEY) === 'true') {
+  // was meant to read. Adjust-during-render (the first time access resolves) instead
+  // of a setState-in-effect.
+  const [restored, setRestored] = useState(false);
+  if (canEdit && !restored) {
+    setRestored(true);
+    if (localStorage.getItem(EDITOR_MODE_KEY) === 'true') {
       setIsEditorMode(true);
     }
-  }, [canEdit]);
+  }
 
   // If the user loses editor access, exit editor mode. The stored flag is left alone so
-  // regaining access restores it; sign-out clears it explicitly in AuthContext.
-  useEffect(() => {
-    if (!canEdit && isEditorMode) {
-      setIsEditorMode(false);
-    }
-  }, [canEdit, isEditorMode]);
+  // regaining access restores it; sign-out clears it explicitly in AuthContext. Guarded
+  // during render (converges) instead of a setState-in-effect.
+  if (!canEdit && isEditorMode) {
+    setIsEditorMode(false);
+  }
 
   // Persistence is written at the two user actions rather than by an effect mirroring
   // state, so it can never fire on a render where access is still unresolved.

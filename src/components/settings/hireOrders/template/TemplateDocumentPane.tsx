@@ -39,6 +39,10 @@ export function TemplateDocumentPane({ input }: TemplateDocumentPaneProps) {
 
   useEffect(() => {
     const id = ++runId.current;
+    // Debounced async PDF render (external-system sync): pending must flip the moment
+    // the debounce starts, so this synchronous reset is correct here, not the derived
+    // state set-state-in-effect targets.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPending(true);
     const timer = window.setTimeout(async () => {
       try {

@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { useAuth } from "@/features/auth/AuthContext";
 import type { AppRole } from "@/config/app.config";
@@ -80,10 +80,13 @@ export function DemoProvider({ children }: { children: ReactNode }) {
   // initializer is safe: there is no "identity not yet loaded" first render to miss.
   const [isBarHidden, setBarHidden] = useState<boolean>(() => readBarHidden(orgId));
   // Re-read the per-org flag when the active org changes, so a bar hidden in org A does
-  // not carry its hidden state into org B (each org keeps its own flag).
-  useEffect(() => {
+  // not carry its hidden state into org B (each org keeps its own flag). Adjust-during-
+  // render on the org transition instead of a setState-in-effect.
+  const [prevOrgId, setPrevOrgId] = useState(orgId);
+  if (orgId !== prevOrgId) {
+    setPrevOrgId(orgId);
     setBarHidden(readBarHidden(orgId));
-  }, [orgId]);
+  }
   const resetMut = useResetDemo();
   const updateDemoState = useUpdateDemoState();
   // Only demo orgs carry a demo_state row — gate the read so switching to (or
