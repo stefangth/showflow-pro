@@ -155,3 +155,26 @@ describe("resolveEmailCopy EN-only staffing coverage", () => {
     expect(p["hire-order-countersigned.ctaLabel"]).toBe("View signed contract");
   });
 });
+
+// The DE hire-order short-form labels/CTAs, now tokenized (the DE default equals the
+// registry word "Engagementvertrag", so byte-identity holds and staffing can swap).
+describe("resolveEmailCopy DE hire-order staffing coverage", () => {
+  it("production keeps the DE Engagementvertrag wording", () => {
+    const p = resolveEmailCopy(undefined, "de");
+    expect(p["hire-order-issued.orderLabel"]).toBe("Engagementvertrag.");
+    expect(p["hire-order-issued.signCtaLabel"]).toBe("Engagementvertrag prüfen");
+    expect(p["hire-order-countersigned.orderLabel"]).toBe("Engagementvertrag.");
+    expect(p["hire-order-countersigned.ctaLabel"]).toBe(
+      "Unterschriebenen Engagementvertrag ansehen",
+    );
+  });
+  it("staffing swaps the DE hire-order labels to Arbeitsauftrag", () => {
+    const s = resolveEmailCopy(undefined, "de", VOCABULARY.staffing.de);
+    expect(s["hire-order-issued.orderLabel"]).toBe("Arbeitsauftrag.");
+    expect(s["hire-order-countersigned.orderLabel"]).toBe("Arbeitsauftrag.");
+    expect(s["hire-order-issued.signCtaLabel"]).toBe("Arbeitsauftrag prüfen");
+    expect(s["hire-order-countersigned.ctaLabel"]).toBe(
+      "Unterschriebenen Arbeitsauftrag ansehen",
+    );
+  });
+});

@@ -85,7 +85,7 @@ Deno.test("renders a parseable pdf with the core fields", async () => {
   // Assert what the document SAYS, not just that bytes exist: a PDF of the
   // right size with blank pages would pass the two checks above.
   const text = await extractPdfText(bytes);
-  assertStringIncludes(text, "Performance hire order");
+  assertStringIncludes(text, "Performance contract");
   assertStringIncludes(text, "HO-2026-0615-B1");
   assertStringIncludes(text, "Nord Productions GmbH");
   assertStringIncludes(text, "Colosseum Berlin");
@@ -173,7 +173,7 @@ Deno.test("omitting copy renders the stock defaults unchanged", async () => {
   // so existing callers/tests are byte-for-byte unaffected.
   const text = await extractPdfText(await renderHireOrderPdf(makeRenderFixture()));
   assertStringIncludes(text, "Terms & conditions");
-  assertStringIncludes(text, "Performance hire order");
+  assertStringIncludes(text, "Performance contract");
 });
 
 const BASE: RenderInput = {
