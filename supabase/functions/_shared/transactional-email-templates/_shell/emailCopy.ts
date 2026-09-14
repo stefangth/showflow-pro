@@ -455,10 +455,10 @@ export const EMAIL_COPY_DE: EmailCopy = {
   "hire-order-issued.greeting": "Hallo {{artistName}},",
   "hire-order-issued.intro": "Dein Engagementvertrag für {{dateLabel}} im {{venue}} ist bereit. Sieh Dir die Details unten an und lade Deine Kopie herunter.",
   "hire-order-issued.ctaLabel": "Ansehen und herunterladen",
-  "hire-order-issued.signCtaLabel": "Vertrag prüfen",
+  "hire-order-issued.signCtaLabel": "Engagementvertrag prüfen",
   "hire-order-issued.footer": "Fragen? Wende Dich an Deine Ansprechperson, sie hilft Dir gerne weiter.",
   "hire-order-issued.previewText": "Dein Engagementvertrag für {{dateLabel}} im {{venue}}",
-  "hire-order-issued.orderLabel": "Vertrag.",
+  "hire-order-issued.orderLabel": "Engagementvertrag.",
   "hire-order-issued.engagementDatesLabel": "Engagementtermine.",
   "hire-order-issued.venueLabel": "Veranstaltungsort.",
   "hire-order-issued.cityLabel": "Stadt.",
@@ -475,10 +475,10 @@ export const EMAIL_COPY_DE: EmailCopy = {
   "hire-order-countersigned.heading": "Dein Engagementvertrag ist unterschrieben",
   "hire-order-countersigned.greeting": "Hallo {{artistName}},",
   "hire-order-countersigned.intro": "Dein Engagementvertrag für {{dateLabel}} im {{venue}} ist vollständig unterschrieben. Eine Kopie ist zu Deinen Unterlagen beigefügt.",
-  "hire-order-countersigned.ctaLabel": "Unterschriebenen Vertrag ansehen",
+  "hire-order-countersigned.ctaLabel": "Unterschriebenen Engagementvertrag ansehen",
   "hire-order-countersigned.footer": "Fragen? Wende Dich an Deine Ansprechperson, sie hilft Dir gerne weiter.",
   "hire-order-countersigned.previewText": "Dein Engagementvertrag für {{dateLabel}} ist unterschrieben",
-  "hire-order-countersigned.orderLabel": "Vertrag.",
+  "hire-order-countersigned.orderLabel": "Engagementvertrag.",
   "hire-order-countersigned.dateLabel": "Datum.",
   "hire-order-countersigned.venueLabel": "Veranstaltungsort.",
   "hire-order-countersigned.artistFallback": "Du",
@@ -721,8 +721,9 @@ const EMAIL_COPY_VOCAB_TEMPLATES: Record<EmailLocale, Partial<Record<EmailCopyKe
     "offer-immediate.showFallback": "a {{production}}",
     "cast-escalation-requested.showFallback": "a {{production}}",
     "tier-at-risk.showFallback": "a {{production}}",
-    // EN-only. {{HireOrder}}="Contract" (prod) / "Work order" (staffing); the DE literal
-    // "Vertrag" differs from the registry "Engagementvertrag", so DE stays a clean default.
+    // {{HireOrder}}="Contract" (prod) / "Work order" (staffing). DE is now tokenized too
+    // (see the de map below): the DE default is "Engagementvertrag", which equals the
+    // registry word, so byte-identity holds and staffing swaps to "Arbeitsauftrag".
     "hire-order-issued.orderLabel": "{{HireOrder}}.",
     "hire-order-countersigned.orderLabel": "{{HireOrder}}.",
     "hire-order-issued.signCtaLabel": "Review {{hireOrder}}",
@@ -753,6 +754,13 @@ const EMAIL_COPY_VOCAB_TEMPLATES: Record<EmailLocale, Partial<Record<EmailCopyKe
     "artist-offer-digest.showLabel": "{{Production}}",
     "artist-confirmation-digest.showLabel": "{{Production}}",
     "cast-escalation-requested.showLabel": "{{Production}}",
+    // {{HireOrder}}="Engagementvertrag" (prod, byte-identical to the DE default) /
+    // "Arbeitsauftrag" (staffing). Now that the DE default equals the registry word,
+    // these tokenize instead of staying clean defaults.
+    "hire-order-issued.orderLabel": "{{HireOrder}}.",
+    "hire-order-countersigned.orderLabel": "{{HireOrder}}.",
+    "hire-order-issued.signCtaLabel": "{{HireOrder}} prüfen",
+    "hire-order-countersigned.ctaLabel": "Unterschriebenen {{HireOrder}} ansehen",
   },
 };
 

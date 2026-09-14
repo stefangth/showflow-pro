@@ -48,6 +48,26 @@ describe("resolveHireOrderCopy org_kind vocabulary", () => {
     expect(de.party_cast_reference).toBe("Team: {{castRef}}");
   });
 
+  it("swaps the hire-order noun in the header, title and certificate lead", () => {
+    // Production keeps the reconciled clean prose (byte-identical to the defaults).
+    const enProd = resolveHireOrderCopy(undefined, "en");
+    expect(enProd.header_eyebrow).toBe("Performance contract");
+    expect(enProd.title_lead).toBe("This contract confirms the engagement of");
+    const deProd = resolveHireOrderCopy(undefined, "de");
+    expect(deProd.title_lead).toBe("Dieser Engagementvertrag bestätigt das Engagement von");
+
+    // Staffing swaps the noun everywhere it is tokenized.
+    const enStaff = resolveHireOrderCopy(undefined, "en", VOCABULARY.staffing.en);
+    expect(enStaff.header_eyebrow).toBe("Performance work order");
+    expect(enStaff.title_lead).toBe("This work order confirms the engagement of");
+    expect(applyTokens(enStaff.cert_lead, { orderNo: "HO-1" })).toBe(
+      "Electronic signature record for work order HO-1.",
+    );
+    const deStaff = resolveHireOrderCopy(undefined, "de", VOCABULARY.staffing.de);
+    expect(deStaff.header_eyebrow).toBe("Arbeitsauftrag");
+    expect(deStaff.title_lead).toBe("Dieser Arbeitsauftrag bestätigt das Engagement von");
+  });
+
   it("leaves the runtime token verbatim through the vocab pass, then fills it via applyTokens", () => {
     const en = resolveHireOrderCopy(undefined, "en", VOCABULARY.staffing.en);
     // castRef is a runtime data token, not a vocab key, so the vocab pass skips it.
