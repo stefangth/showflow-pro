@@ -95,3 +95,27 @@ describe("PRODUCTION_VOCAB stays in sync with the org_kind registry", () => {
     expect(PRODUCTION_VOCAB.de).toEqual(VOCABULARY.production.de);
   });
 });
+
+// Backward-compat: a per-org override saved before the {{cast}}/{{artist}} runtime tokens
+// were renamed must still resolve the real cast/artist name, not the vocabulary noun.
+describe("legacy runtime tokens in stored overrides", () => {
+  it("rewrites {{cast}}/{{artist}} in an override to {{castRef}}/{{artistName}} before the vocab pass", () => {
+    const copy = resolveHireOrderCopy(
+      { party_cast_reference: "Old ref: {{cast}}", signature_for_artist: "The Artist, {{artist}}" },
+      "en",
+      VOCABULARY.staffing.en,
+    );
+    // The runtime tokens survive the vocab pass under their new names for applyTokens.
+    expect(copy.party_cast_reference).toBe("Old ref: {{castRef}}");
+    expect(copy.signature_for_artist).toBe("The Artist, {{artistName}}");
+    // applyTokens then fills the real values.
+    expect(applyTokens(copy.party_cast_reference, { castRef: "Ensemble A", artistName: "Nora" }))
+      .toBe("Old ref: Ensemble A");
+    expect(applyTokens(copy.signature_for_artist, { castRef: "Ensemble A", artistName: "Nora" }))
+      .toBe("The Artist, Nora");
+  });
+  it("still substitutes a {{Cast}} vocabulary token inside an override", () => {
+    const copy = resolveHireOrderCopy({ party_cast_reference: "{{Cast}}: {{cast}}" }, "en", VOCABULARY.staffing.en);
+    expect(copy.party_cast_reference).toBe("Team: {{castRef}}");
+  });
+});

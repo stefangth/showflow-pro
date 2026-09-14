@@ -342,7 +342,19 @@ export function resolveHireOrderCopy(
   const table = vocab ?? PRODUCTION_VOCAB[locale];
   const templates = HIRE_ORDER_COPY_VOCAB_TEMPLATES[locale];
   for (const key of Object.keys(out) as CopyKey[]) {
-    const source = out[key] === base[key] ? (templates[key] ?? out[key]) : out[key];
+    const overridden = out[key] !== base[key];
+    let source = overridden ? out[key] : (templates[key] ?? out[key]);
+    // Backward-compat: a per-org override saved before Task 2 may still contain the old
+    // runtime tokens {{cast}}/{{artist}} (the names the PDF editor documented before they
+    // were renamed to {{castRef}}/{{artistName}} to avoid colliding with the cast/artist
+    // vocabulary keys). In a customized value those always meant the runtime cast/artist
+    // name, so rewrite them to the new names before the vocabulary pass; otherwise the
+    // vocab pass would turn {{cast}} into the noun and applyTokens, which now fills only
+    // castRef/artistName, would never resolve it. Defaults/templates already use the new
+    // names and skip this branch.
+    if (overridden) {
+      source = source.replace(/\{\{cast\}\}/g, "{{castRef}}").replace(/\{\{artist\}\}/g, "{{artistName}}");
+    }
     out[key] = substituteVocabulary(source, table);
   }
   return out;
