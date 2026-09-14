@@ -164,7 +164,7 @@ describe("ProductionsStep", () => {
     mockUseCan({ manage_productions: false, manage_show_dates: false, edit_scheduling: false });
     renderStep();
 
-    expect(screen.queryByRole("button", { name: /^add a production$/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^add a new production$/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^add a date$/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /set casting breakdown/i })).not.toBeInTheDocument();
   });
@@ -176,7 +176,7 @@ describe("ProductionsStep", () => {
     mockUseCan({ manage_show_dates: false });
     renderStep();
 
-    expect(screen.getByRole("button", { name: /^add a production$/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^add a new production$/i })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^add a date$/i })).not.toBeInTheDocument();
   });
 });
@@ -195,20 +195,20 @@ describe("ProductionsStep, the add-a-production action", () => {
     showsQuery.mockReturnValue({ data: undefined, isLoading: false, isError: true });
     renderStep();
 
-    expect(screen.getByRole("button", { name: /add a production/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /add a new production/i })).toBeInTheDocument();
   });
 
   it("keeps the header action while the list read is still loading", () => {
     showsQuery.mockReturnValue({ data: undefined, isLoading: true, isError: false });
     renderStep();
 
-    expect(screen.getByRole("button", { name: /add a production/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /add a new production/i })).toBeInTheDocument();
   });
 
   it("offers the action exactly once on a settled, empty list", () => {
     showsQuery.mockReturnValue({ data: [], isLoading: false, isError: false });
     renderStep();
 
-    expect(screen.getAllByRole("button", { name: /add a production/i })).toHaveLength(1);
+    expect(screen.getAllByRole("button", { name: /add a new production/i })).toHaveLength(1);
   });
 });

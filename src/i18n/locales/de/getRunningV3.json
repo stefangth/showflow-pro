@@ -32,11 +32,11 @@
   "phases": {
     "get_dates": {
       "name": "Termine reinholen",
-      "summary": "Bring deine Produktionen und Termine in ShowFlow, damit es etwas zu buchen gibt."
+      "summary": "Bring deine {{productions}} und Termine in ShowFlow, damit es etwas zu buchen gibt."
     },
     "bookable": {
       "name": "Buchbar machen",
-      "summary": "Füge deine Artists hinzu, ranke deine Besetzungen und lege fest, wie Anfragen rausgehen."
+      "summary": "Füge deine {{artists}} hinzu, ranke deine {{casts}} und lege fest, wie Anfragen rausgehen."
     },
     "paperwork": {
       "name": "Papierkram",
@@ -75,11 +75,11 @@
     },
     "source": {
       "title": "Wähle, woher deine Termine kommen",
-      "hint": "Verbinde Airtable oder lege Produktionen von Hand an."
+      "hint": "Verbinde Airtable oder lege {{productions}} von Hand an."
     },
     "connect": {
       "title": "Airtable verbinden",
-      "hint": "Verknüpfe deine Base, damit Produktionen automatisch synchronisiert werden."
+      "hint": "Verknüpfe deine Base, damit {{productions}} automatisch synchronisiert werden."
     },
     "map": {
       "title": "Felder zuordnen",
@@ -90,20 +90,20 @@
       "hint": "Die Engine kann einen Termin erst anbieten, wenn er eine Stadt hat."
     },
     "productions": {
-      "title": "Deine Produktionen prüfen",
-      "hint": "Prüfe die eingegangenen Produktionen und ergänze fehlende."
+      "title": "Deine {{productions}} prüfen",
+      "hint": "Prüfe die eingegangenen {{productions}} und ergänze fehlende."
     },
     "artists": {
-      "title": "Deine Artists hinzufügen",
-      "hint": "Niemand kann gebucht werden, bis dein Roster aktive Artists hat."
+      "title": "Deine {{artists}} hinzufügen",
+      "hint": "Niemand kann gebucht werden, bis dein Roster aktive {{artists}} hat."
     },
     "skills": {
-      "title": "Skills bei deinen Artists setzen",
-      "hint": "Skills entscheiden, welche Artists zu welchem Part passen."
+      "title": "Skills bei deinen {{artists}} setzen",
+      "hint": "Skills entscheiden, welche {{artists}} zu welchem Part passen."
     },
     "coverage": {
-      "title": "Deine Besetzungen ranken",
-      "hint": "Die Rangfolge der Besetzung entscheidet, wer zuerst gefragt wird."
+      "title": "Deine {{casts}} ranken",
+      "hint": "{{Cast}}-Prioritäten entscheiden, wer zuerst gefragt wird."
     },
     "flow": {
       "title": "Deinen Buchungsablauf festlegen",
@@ -111,11 +111,11 @@
     },
     "timing": {
       "title": "Timing der Anfrage bestätigen",
-      "hint": "Wann Anfragen rausgehen und wie lange Artists zum Antworten haben."
+      "hint": "Wann Anfragen rausgehen und wie lange {{artists}} zum Antworten haben."
     },
     "team": {
-      "title": "Dein Produktionsteam einladen",
-      "hint": "Producer können dir Buchungen abnehmen."
+      "title": "Dein {{roleProducer}} einladen",
+      "hint": "{{roleProducer}} kann dir Buchungen abnehmen."
     },
     "letterhead": {
       "title": "Deinen Briefkopf setzen",
@@ -135,7 +135,7 @@
     },
     "countersign": {
       "title": "Festlegen, wie Verträge unterschrieben werden",
-      "hint": "Der Unterschriftsweg für den Artist."
+      "hint": "Der Unterschriftsweg des {{artist}}s."
     }
   },
   "guide": {
@@ -153,7 +153,7 @@
       "title": "Wähle, woher deine Termine kommen",
       "body": "Jeder weitere Schritt liest von deinen Terminen: Besetzungsplan, Prioritäten und wer gefragt werden kann. Wähle die Quelle, die zu deinem Team passt.",
       "points": [
-        "Airtable-Sync bringt Produktionen und Termine stündlich automatisch rein.",
+        "Airtable-Sync bringt {{productions}} und Termine stündlich automatisch rein.",
         "Von Hand geht auch, und du kannst beides mischen.",
         "Du kannst es dir später anders überlegen, ohne etwas zu verlieren."
       ],
@@ -161,7 +161,7 @@
     },
     "connect": {
       "title": "Airtable verbinden",
-      "body": "Verknüpfe deine Airtable-Base, damit ShowFlow deine Produktionen und Termine direkt lesen kann, ohne manuelles Kopieren.",
+      "body": "Verknüpfe deine Airtable-Base, damit ShowFlow deine {{productions}} und Termine direkt lesen kann, ohne manuelles Kopieren.",
       "points": [
         "Füge deinen Airtable-Token ein, um Lesezugriff zu geben.",
         "Wähle die Base und Tabelle mit deinen Terminen.",
@@ -171,7 +171,7 @@
     },
     "map": {
       "title": "Felder zuordnen",
-      "body": "Ordne jede Airtable-Spalte dem Feld in ShowFlow zu, das sie darstellt, damit jeder Termin mit der richtigen Produktion, dem richtigen Datum und der richtigen Stadt ankommt.",
+      "body": "Ordne jede Airtable-Spalte dem Feld in ShowFlow zu, das sie darstellt, damit jeder Termin zu {{production}}, Datum und Stadt richtig zugeordnet ist.",
       "points": [
         "Pflichtfelder müssen zugeordnet sein, bevor der Sync laufen kann.",
         "Optionale Felder kannst du jetzt oder später zuordnen.",
@@ -184,54 +184,54 @@
       "body": "Die Booking-Engine bietet einen Termin erst an, wenn sie weiß, in welcher Stadt er liegt. Ein Termin ohne Stadt bleibt liegen.",
       "points": [
         "Fehlende Stadt direkt in der Terminliste ergänzen.",
-        "Die Rangfolge der Besetzung wird pro Stadt gesetzt, das kommt also danach."
+        "{{Cast}}-Rangfolge wird pro Stadt gesetzt, das kommt also danach."
       ],
       "article": "Mehr über die Stadtzuordnung lesen",
       "pointsAirtable": [
         "Fehlende Stadt direkt in der Terminliste ergänzen.",
-        "Die Rangfolge der Besetzung wird pro Stadt gesetzt, das kommt also danach.",
+        "{{Cast}}-Rangfolge wird pro Stadt gesetzt, das kommt also danach.",
         "Neue Termine aus Airtable übernehmen ihre Stadt automatisch."
       ]
     },
     "productions": {
-      "title": "Deine Produktionen prüfen",
-      "body": "Deine Produktionen sind das Werk, für das du Artists buchst. Prüfe die eingegangenen und ergänze fehlende.",
+      "title": "Deine {{productions}} prüfen",
+      "body": "Deine {{productions}} sind das Werk, für das du {{artists}} buchst. Prüfe die eingegangenen und ergänze fehlende.",
       "points": [
-        "Jede Produktion braucht einen gesetzten Besetzungsplan.",
-        "Du kannst die Details einer Produktion jederzeit bearbeiten.",
-        "Neue Termine hängen an einer bestehenden oder neuen Produktion."
+        "Pro {{production}} ist ein gesetzter Besetzungsplan Pflicht.",
+        "Die Details zu {{production}} kannst du jederzeit bearbeiten.",
+        "Neue Termine hängen an {{production}}, ob bestehend oder neu."
       ],
-      "article": "Mehr über Produktionen lesen"
+      "article": "Mehr über {{productions}} lesen"
     },
     "artists": {
-      "title": "Deine Artists hinzufügen",
-      "body": "Niemand kann gebucht werden, bis dein Roster aktive Artists hat. Füge sie von Hand hinzu oder importiere eine Tabelle.",
+      "title": "Deine {{artists}} hinzufügen",
+      "body": "Niemand kann gebucht werden, bis dein Roster aktive {{artists}} hat. Füge sie von Hand hinzu oder importiere eine Tabelle.",
       "points": [
-        "Artists bekommen keine Email, bis du sie zu einem Termin anfragst.",
+        "{{Artists}} bekommen keine Email, bis du sie zu einem Termin anfragst.",
         "Der Import einer Tabelle geht schneller bei einem großen Roster.",
-        "Du kannst jederzeit weitere Artists hinzufügen."
+        "Du kannst jederzeit weitere {{artists}} hinzufügen."
       ],
-      "article": "Mehr über das Hinzufügen von Artists lesen"
+      "article": "Mehr über das Hinzufügen von {{artists}} lesen"
     },
     "skills": {
-      "title": "Skills bei deinen Artists setzen",
-      "body": "Skills sagen der Booking-Engine, welche Artists zu welchem Part im Besetzungsplan passen.",
+      "title": "Skills bei deinen {{artists}} setzen",
+      "body": "Skills sagen der Booking-Engine, welche {{artists}} zu welchem Part im Besetzungsplan passen.",
       "points": [
         "Ein Part ohne passenden Skill hat niemanden, der infrage kommt.",
-        "Du kannst Skills für mehrere Artists auf einmal setzen.",
+        "Du kannst Skills für mehrere {{artists}} auf einmal setzen.",
         "Skills lassen sich später ändern, ohne vergangene Buchungen zu berühren."
       ],
       "article": "Mehr über Skills lesen"
     },
     "coverage": {
-      "title": "Deine Besetzungen ranken",
-      "body": "Die Rangfolge der Besetzung entscheidet, wer in jeder Stadt zuerst gefragt wird. Eine Stadt ohne erste Gruppe öffnet für niemanden.",
+      "title": "Deine {{casts}} ranken",
+      "body": "{{Cast}}-Prioritäten entscheiden, wer in jeder Stadt zuerst gefragt wird. Eine Stadt ohne erste Gruppe öffnet für niemanden.",
       "points": [
         "Ranke mindestens eine Gruppe pro Stadt mit einem Termin.",
-        "Die eigene Besetzung einer Produktion schlägt die Stadt-Rangfolge.",
-        "Die Rangfolge gilt pro Stadt, nicht pro Produktion."
+        "{{production}}-{{cast}} schlägt die Stadt-Rangfolge.",
+        "Die Rangfolge gilt pro Stadt, nicht pro {{production}}."
       ],
-      "article": "Mehr über die Rangfolge der Besetzung lesen"
+      "article": "Mehr über {{cast}}-Rangfolge lesen"
     },
     "flow": {
       "title": "Deinen Buchungsablauf festlegen",
@@ -245,7 +245,7 @@
     },
     "timing": {
       "title": "Timing der Anfrage bestätigen",
-      "body": "Das legt fest, wann Anfragen rausgehen und wie lange ein Artist zum Antworten hat, bevor die Anfrage abläuft.",
+      "body": "Das legt fest, wann Anfragen rausgehen und wie lange ein {{artist}} zum Antworten hat, bevor die Anfrage abläuft.",
       "points": [
         "Der tägliche Versand passiert zur Stunde, die du wählst.",
         "Ein längeres Antwortfenster bedeutet ein langsameres Füllen.",
@@ -254,12 +254,12 @@
       "article": "Mehr über das Timing der Anfrage lesen"
     },
     "team": {
-      "title": "Dein Produktionsteam einladen",
-      "body": "Die Producer, die Termine planen, Anfragen laufen lassen und die Besetzung buchen. Das Buchen kann auch bei dir bleiben.",
+      "title": "Dein {{roleProducer}} einladen",
+      "body": "{{roleProducer}} plant Termine, lässt Anfragen laufen und bucht {{cast}}. Das Buchen kann auch bei dir bleiben.",
       "points": [
-        "Eingeladene Producer bekommen eine Einladung per Email.",
-        "Du kannst den Zugriff eines Producers jederzeit entziehen.",
-        "Producer sehen nur die Termine ihrer Organisation."
+        "Wer zu {{roleProducer}} eingeladen wird, bekommt eine Einladung per Email.",
+        "Du kannst den Zugriff auf {{roleProducer}} jederzeit entziehen.",
+        "{{roleProducer}} sieht nur die Termine der eigenen Organisation."
       ],
       "article": "Mehr über dein Team lesen"
     },
@@ -305,10 +305,10 @@
     },
     "countersign": {
       "title": "Festlegen, wie Verträge unterschrieben werden",
-      "body": "Lege fest, wie der Artist einen ausgestellten Engagementvertrag unterschreibt: in ShowFlow oder anderswo.",
+      "body": "Lege fest, wie ein {{artist}} einen ausgestellten Engagementvertrag unterschreibt: in ShowFlow oder anderswo.",
       "points": [
-        "In ShowFlow unterschreibt der Artist in der App, und die Unterschrift wird zum Engagementvertrag gespeichert.",
-        "Außerhalb von ShowFlow markiert das Produktionsteam den Engagementvertrag als gegengezeichnet, sobald der Artist anderswo unterschrieben hat.",
+        "In ShowFlow unterschreibt ein {{artist}} in der App, und die Unterschrift wird zum Engagementvertrag gespeichert.",
+        "Außerhalb von ShowFlow markiert {{roleProducer}} den Engagementvertrag als gegengezeichnet, sobald ein {{artist}} anderswo unterschrieben hat.",
         "Ausstellen kannst du in beiden Fällen. Du kannst die Wahl jederzeit ändern, sie gilt dann ab diesem Zeitpunkt."
       ],
       "article": "Mehr über das Unterschreiben lesen"
@@ -320,7 +320,7 @@
   },
   "footerRole": {
     "admin": "Du siehst das hier als Admin.",
-    "producer": "Du siehst das hier als Mitglied des Produktionsteams.",
+    "producer": "Du siehst das hier als Mitglied von {{roleProducer}}.",
     "waitsOnAdmin": "Wartet auf {{name}}",
     "fallbackAdmin": "einen Admin"
   },
@@ -339,23 +339,23 @@
   "body": {
     "skills": {
       "heading": "Skills für deine Positionen",
-      "sub": "Lege die Skills an, die deine Positionen brauchen, und setze sie bei deinen Artists.",
+      "sub": "Lege die Skills an, die deine Positionen brauchen, und setze sie bei deinen {{artists}}.",
       "continue": "Weiter",
-      "readOnly": "Skills brauchen hier das Recht Skills verwalten oder Artists bearbeiten. Dieses Konto hat keines davon.",
-      "assignHeading": "Skills bei deinen Artists setzen",
-      "assignSub": "Gib jedem Artist die Skills, die er wirklich abdecken kann. Eine Position kann nur ein Artist besetzen, der ihre Skills hat.",
-      "gapLine": "wird von {{productionNames}} gebraucht, und kein Artist hat ihn.",
-      "gapLineUnknown": "wird von einer Produktion gebraucht, und kein Artist hat ihn.",
+      "readOnly": "Skills brauchen hier das Recht Skills verwalten oder {{artists}} bearbeiten. Dieses Konto hat keines davon.",
+      "assignHeading": "Skills bei deinen {{artists}} setzen",
+      "assignSub": "Gib jedem {{artist}} nur die Skills, die tatsächlich zutreffen. Eine Position kann nur ein {{artist}} mit den passenden Skills besetzen.",
+      "gapLine": "wird von {{productionNames}} gebraucht, und kein {{artist}} hat ihn.",
+      "gapLineUnknown": "wird von {{production}} gebraucht, und kein {{artist}} hat ihn.",
       "gapReadError": "Wir konnten nicht prüfen, welche Skills deine Positionen noch brauchen. Lade die Seite neu und versuche es erneut.",
-      "artistReadError": "Wir konnten deine Artists nicht laden, deshalb können wir nicht zeigen, wer was hat. Lade die Seite neu und versuche es erneut.",
+      "artistReadError": "Wir konnten deine {{artists}} nicht laden, deshalb können wir nicht zeigen, wer was hat. Lade die Seite neu und versuche es erneut.",
       "assignError": "Die Änderung wurde nicht gespeichert. Versuche es erneut.",
-      "noCatalog": "Noch keine Skills im Katalog. Lege unten einen an und setze ihn dann bei deinen Artists.",
-      "noArtists": "Noch keine aktiven Artists. Lege zuerst deine Artists an und setze dann ihre Skills.",
-      "noArtistsLink": "Zu den Artists",
+      "noCatalog": "Noch keine Skills im Katalog. Lege unten einen an und setze ihn dann bei deinen {{artists}}.",
+      "noArtists": "Noch keine aktiven {{artists}}. Lege zuerst deine {{artists}} an und setze dann ihre Skills.",
+      "noArtistsLink": "Zu den {{artists}}",
       "catalogReadError": "Wir konnten deinen Skill Katalog nicht laden, deshalb können wir die Skills zur Auswahl nicht zeigen. Lade die Seite neu und versuche es erneut.",
-      "filterPlaceholder": "Artists nach Namen suchen",
-      "filterNoMatch": "Kein Artist passt zu diesem Namen.",
-      "showAll": "Alle {{count}} Artists zeigen"
+      "filterPlaceholder": "{{artists}} nach Namen suchen",
+      "filterNoMatch": "Kein {{artist}} passt zu diesem Namen.",
+      "showAll": "Alle {{count}} {{artists}} zeigen"
     },
     "workspace": {
       "heading": "Was für ein Arbeitsbereich ist das",
@@ -376,7 +376,7 @@
       },
       "manual": {
         "title": "Von Hand",
-        "desc": "Produktionen und Termine selbst anlegen."
+        "desc": "{{productions}} und Termine selbst anlegen."
       },
       "continue": "Weiter",
       "readOnly": "Bitte einen Admin, eine Quelle zu wählen."
@@ -384,7 +384,7 @@
     "connect": {
       "heading": "Airtable verbinden",
       "sub": "Füge deinen Token ein, dann wähle die Base und Tabelle mit deinen Terminen.",
-      "manual": "Von Hand braucht keine Verbindung. Weiter, um Produktionen hinzuzufügen.",
+      "manual": "Von Hand braucht keine Verbindung. Weiter, um {{productions}} hinzuzufügen.",
       "saveToken": "Token speichern",
       "connected": "Verbunden mit {{baseName}} › {{tableName}}.",
       "continue": "Weiter",
@@ -411,8 +411,8 @@
       "sub": "Ordne jede Airtable-Spalte dem Feld in ShowFlow zu, das sie darstellt.",
       "slotsFold": {
         "title": "Besetzungsplan",
-        "body": "Jede importierte Produktion braucht noch ihren Besetzungsplan, die Parts und die Personen pro Part. Richte ihn im Schritt Produktionen ein.",
-        "link": "Zu Produktionen"
+        "body": "{{production}}, einmal importiert, braucht noch den Besetzungsplan, die Parts und die Personen pro Part. Richte ihn im Schritt {{Productions}} ein.",
+        "link": "Zu {{Productions}}"
       },
       "continue": "Weiter",
       "mapIncomplete": "Ordne die Felder Datum und Unterprogramm zu, um fortzufahren.",
@@ -420,8 +420,8 @@
         "heading": "Spalten zuordnen",
         "sub": "Ordne jede Spalte deiner Tabelle dem Feld zu, das sie darstellt.",
         "fields": {
-          "program": "Produktion",
-          "subProgram": "Unterprogramm",
+          "program": "{{Production}}",
+          "subProgram": "Unter-{{production}}",
           "date": "Datum",
           "city": "Stadt",
           "session1": "Session 1",
@@ -432,7 +432,7 @@
         "selectPlaceholder": "Spalte wählen",
         "notMapped": "Nicht zugeordnet",
         "noHeaders": "Geh zurück zu Verbinden und lade zuerst die Spalten deiner Tabelle.",
-        "mapIncomplete": "Ordne die Felder Produktion und Datum zu, um fortzufahren."
+        "mapIncomplete": "Ordne die Felder {{production}} und Datum zu, um fortzufahren."
       },
       "notConnected": "Es gibt noch nichts zuzuordnen. Verbinde zuerst deine Airtable Base, dann erscheinen ihre Spalten hier.",
       "goToConnect": "Zu Airtable verbinden"
@@ -445,10 +445,10 @@
       "empty": "Noch keine Städte zum Auflösen. Städte werden in den Einstellungen verwaltet.",
       "manageLink": "Zu den Einstellungen",
       "noDates": "Noch keine Termine. Lege deinen ersten Termin an und gib ihm dann eine Stadt.",
-      "noDatesLink": "Zu den Produktionen",
+      "noDatesLink": "Zu den {{productions}}",
       "missingHeading": "Termine ohne Stadt",
       "missingSub": "Wähle für jeden Termin eine Stadt. Ein Termin ohne Stadt kann nicht besetzt werden.",
-      "missingUnknownProduction": "Produktion ohne Titel",
+      "missingUnknownProduction": "{{production}} ohne Titel",
       "readError": "Wir konnten nicht prüfen, welche Termine noch eine Stadt brauchen. Lade die Seite neu und versuche es erneut.",
       "assignCity": "Stadt zuweisen",
       "catalogError": "Wir konnten deine Städte nicht laden, deshalb sind die Auswahlfelder unten leer. Lade die Seite neu und versuche es erneut.",
@@ -465,7 +465,7 @@
         "resultNew": "Neue Termine",
         "resultUpdated": "Aktualisiert",
         "resultHeld": "Zurückgehalten",
-        "heldNote": "Zurückgehaltene Zeilen brauchen eine Stadt, ein Datum oder eine Produktion, bevor sie importiert werden können. Verknüpfe die fehlenden Städte im Städtekatalog und starte den Import erneut.",
+        "heldNote": "Zurückgehaltene Zeilen brauchen eine Stadt, ein Datum oder {{production}}, bevor sie importiert werden können. Verknüpfe die fehlenden Städte im Städtekatalog und starte den Import erneut.",
         "manageLink": "Zu den Einstellungen"
       }
     },
@@ -475,34 +475,34 @@
       "savedToast": "Besetzungsplan gespeichert"
     },
     "productions": {
-      "heading": "Deine Produktionen prüfen",
-      "sub": "Prüfe die Produktionen, die reingekommen sind, und ergänze, was fehlt.",
-      "addProduction": "Produktion hinzufügen",
+      "heading": "Deine {{productions}} prüfen",
+      "sub": "Prüfe die {{productions}}, die reingekommen sind, und ergänze, was fehlt.",
+      "addProduction": "{{production}} hinzufügen",
       "addDate": "Termin hinzufügen",
       "setParts": "Besetzungsplan festlegen",
       "unconfigured": "Nicht eingerichtet",
-      "parts": "{{main}} Hauptbesetzung + {{understudyCount}} Zweitbesetzung",
+      "parts": "{{main}} Hauptbesetzung + {{understudyCount}} {{understudies}}",
       "dateCount_one": "{{count}} Termin",
       "dateCount_other": "{{count}} Termine",
       "continue": "Weiter",
       "incomplete": "Richte mindestens einen Besetzungsplan ein, um fortzufahren.",
-      "empty": "Noch keine Produktionen. Lege deine erste an, um zu starten.",
-      "readOnlyEmpty": "Noch keine Produktionen. Bitte einen Admin, eine anzulegen.",
-      "readOnlyReason": "Um eine Produktion hinzuzufügen, brauchst du das Recht Produktionen verwalten, das dieser Account nicht hat.",
-      "noDates": "Füge mindestens einen Termin hinzu, um fortzufahren. Eine Produktion ohne Termine hat nichts zu besetzen.",
-      "readError": "Wir konnten deine Produktionen nicht laden. Lade die Seite neu und versuche es erneut."
+      "empty": "Noch keine {{productions}}. Lege deine erste an, um zu starten.",
+      "readOnlyEmpty": "Noch keine {{productions}}. Bitte einen Admin, eine anzulegen.",
+      "readOnlyReason": "Um {{production}} hinzuzufügen, brauchst du das Recht {{productions}} verwalten, das dieser Account nicht hat.",
+      "noDates": "Füge mindestens einen Termin hinzu, um fortzufahren. Für {{production}} ohne Termine gibt es nichts zu besetzen.",
+      "readError": "Wir konnten deine {{productions}} nicht laden. Lade die Seite neu und versuche es erneut."
     },
     "fee": {
       "heading": "Deine Standardgage festlegen",
       "sub": "Die Gage, mit der ein neuer Engagementvertrag startet. Du kannst sie bei jedem einzelnen Engagementvertrag ändern.",
-      "listTitle": "Gagen pro Produktion und Cast",
-      "listHint": "Setze eine Gage für einen Cast und eine Produktion, wenn sie von deiner Standardgage oben abweichen soll.",
-      "noCasts": "Du hast noch keine Casts. Richte sie unter Casts und Rangfolge ein und setze dann hier Gagen pro Produktion und Cast.",
+      "listTitle": "Gagen pro {{production}} und {{cast}}",
+      "listHint": "Setze eine Gage pro {{cast}} und {{production}}, wenn sie von deiner Standardgage oben abweichen soll.",
+      "noCasts": "Du hast noch keine {{casts}}. Richte sie unter {{Casts}} und Rangfolge ein und setze dann hier Gagen pro {{production}} und {{cast}}.",
       "noFee": "n/a",
-      "coverageLink": "Casts und Rangfolge",
+      "coverageLink": "{{Casts}} und Rangfolge",
       "addFee": "Gage hinzufügen",
-      "castLabel": "Cast",
-      "productionLabel": "Produktion",
+      "castLabel": "{{Cast}}",
+      "productionLabel": "{{Production}}",
       "feeLabel": "Gage",
       "save": "Speichern",
       "removeFee": "Diese Gage entfernen",
@@ -517,12 +517,12 @@
       "readOnly": "Vertragseinstellungen legt ein Admin fest. Du kannst sie hier lesen."
     },
     "artists": {
-      "heading": "Deine Artists hinzufügen",
-      "sub": "Niemand kann gebucht werden, bis dein Roster aktive Artists hat."
+      "heading": "Deine {{artists}} hinzufügen",
+      "sub": "Niemand kann gebucht werden, bis dein Roster aktive {{artists}} hat."
     },
     "coverage": {
-      "heading": "Deine Besetzungen ranken",
-      "sub": "Die Rangfolge der Besetzung entscheidet, wer in jeder Stadt zuerst gefragt wird."
+      "heading": "Deine {{casts}} ranken",
+      "sub": "{{Cast}}-Prioritäten entscheiden, wer in jeder Stadt zuerst gefragt wird."
     },
     "flow": {
       "heading": "Deinen Buchungsablauf festlegen",
@@ -530,11 +530,11 @@
     },
     "timing": {
       "heading": "Timing der Anfrage bestätigen",
-      "sub": "Wann Anfragen rausgehen und wie lange Artists zum Antworten haben."
+      "sub": "Wann Anfragen rausgehen und wie lange {{artists}} zum Antworten haben."
     },
     "team": {
-      "heading": "Dein Produktionsteam einladen",
-      "sub": "Producer können dir Buchungen abnehmen, sobald die ersten Anfragen laufen."
+      "heading": "Dein {{roleProducer}} einladen",
+      "sub": "{{roleProducer}} kann dir Buchungen abnehmen, sobald die ersten Anfragen laufen."
     },
     "letterhead": {
       "heading": "Deinen Briefkopf setzen",
@@ -546,7 +546,7 @@
     },
     "countersign": {
       "heading": "Festlegen, wie Verträge unterschrieben werden",
-      "sub": "Der Weg, auf dem ein Artist den Vertrag unterschreibt, den du ihm schickst."
+      "sub": "Der Weg, auf dem ein {{artist}} den Vertrag unterschreibt, den du ihm schickst."
     }
   }
 }
