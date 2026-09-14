@@ -3,11 +3,19 @@ import { screen, fireEvent, waitFor } from "@testing-library/react";
 import { renderWithProviders } from "@/test/renderWithProviders";
 
 const renameOrg = vi.fn((..._a: unknown[]) => Promise.resolve());
+const setOrgKind = vi.fn((..._a: unknown[]) => Promise.resolve());
 const refreshOrgs = vi.fn(() => Promise.resolve());
-vi.mock("@/data/orgs", async (orig) => ({ ...(await orig<typeof import("@/data/orgs")>()), renameOrg: (...a: unknown[]) => renameOrg(...a) }));
+vi.mock("@/data/orgs", async (orig) => ({
+  ...(await orig<typeof import("@/data/orgs")>()),
+  renameOrg: (...a: unknown[]) => renameOrg(...a),
+  setOrgKind: (...a: unknown[]) => setOrgKind(...a),
+}));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: {} }));
 vi.mock("@/features/auth/AuthContext", () => ({
-  useAuth: () => ({ currentOrg: { id: "org-1", name: "Acme", slug: "acme", status: "active" }, refreshOrgs }),
+  useAuth: () => ({
+    currentOrg: { id: "org-1", name: "Acme", slug: "acme", status: "active", is_demo: false, org_kind: "production", org_kind_set_at: null },
+    refreshOrgs,
+  }),
 }));
 
 // Controllable entitlement + org-language data for the workspace-language picker.
@@ -85,6 +93,23 @@ describe("OrganizationTab", () => {
       renderWithProviders(<OrganizationTab readOnly />);
       expect(await screen.findByLabelText(/workspace language/i)).toBeDisabled();
       expect(setOrgLanguage).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("workspace type picker", () => {
+    it("shows the workspace type and saves a change through setOrgKind, then refreshes orgs", async () => {
+      renderWithProviders(<OrganizationTab />);
+      const select = screen.getByLabelText(/workspace type/i);
+      expect(select).toHaveTextContent(/live production/i);
+      fireEvent.click(select);
+      fireEvent.click(await screen.findByRole("option", { name: /staffing agency/i }));
+      await waitFor(() => expect(setOrgKind).toHaveBeenCalledWith(expect.anything(), "org-1", "staffing"));
+      await waitFor(() => expect(refreshOrgs).toHaveBeenCalled());
+    });
+
+    it("disables the workspace type picker when readOnly", () => {
+      renderWithProviders(<OrganizationTab readOnly />);
+      expect(screen.getByLabelText(/workspace type/i)).toBeDisabled();
     });
   });
 });
