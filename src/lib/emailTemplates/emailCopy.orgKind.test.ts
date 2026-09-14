@@ -136,3 +136,22 @@ describe("PRODUCTION_VOCAB stays in sync with the org_kind registry", () => {
     expect(PRODUCTION_VOCAB.de).toEqual(VOCABULARY.production.de);
   });
 });
+
+// EN-only keys added after the first audit pass (subject-line fallback + hire-order
+// labels/CTAs). Byte-identical for production, swapped for staffing in English.
+describe("resolveEmailCopy EN-only staffing coverage", () => {
+  it("staffing swaps the EN show fallback (feeds the subject) and hire-order labels", () => {
+    const s = resolveEmailCopy(undefined, "en", VOCABULARY.staffing.en);
+    expect(s["offer-immediate.showFallback"]).toBe("a client");
+    expect(s["tier-at-risk.showFallback"]).toBe("a client");
+    expect(s["hire-order-issued.orderLabel"]).toBe("Work order.");
+    expect(s["hire-order-issued.signCtaLabel"]).toBe("Review work order");
+    expect(s["hire-order-countersigned.ctaLabel"]).toBe("View signed work order");
+  });
+  it("production keeps the EN wording for those keys", () => {
+    const p = resolveEmailCopy(undefined, "en");
+    expect(p["offer-immediate.showFallback"]).toBe("a production");
+    expect(p["hire-order-issued.orderLabel"]).toBe("Contract.");
+    expect(p["hire-order-countersigned.ctaLabel"]).toBe("View signed contract");
+  });
+});

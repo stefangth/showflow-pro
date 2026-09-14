@@ -679,7 +679,13 @@ export const PRODUCTION_VOCAB: Record<EmailLocale, Record<string, string>> = {
  * {{noun}} token in the defaults would leak into any direct or default render. Under the
  * production table every value here substitutes back to the exact clean default, which
  * is the byte-identity guarantee (guarded by emailCopy.orgKind.test.ts). Keys are a
- * subset of EmailCopyKey; the same key exists in both locales.
+ * subset of EmailCopyKey. Most keys exist in both locales, but a few are EN-only: where
+ * the German literal does not equal the registry's German production word (the hire-order
+ * short form "Vertrag" vs the registry "Engagementvertrag") or needs article agreement a
+ * bare variable cannot give ("eine Produktion" vs staffing "Kunde"), tokenizing German
+ * would break DE byte-identity, so the German key stays a clean-prose default until that
+ * wording is reconciled. English is the canonical, always-on locale (German ships behind
+ * the language_packages entitlement), so EN staffing still gets the swapped word.
  */
 const EMAIL_COPY_VOCAB_TEMPLATES: Record<EmailLocale, Partial<Record<EmailCopyKey, string>>> = {
   en: {
@@ -707,6 +713,17 @@ const EMAIL_COPY_VOCAB_TEMPLATES: Record<EmailLocale, Partial<Record<EmailCopyKe
     "artist-offer-digest.showLabel": "{{Production}}",
     "artist-confirmation-digest.showLabel": "{{Production}}",
     "cast-escalation-requested.showLabel": "{{Production}}",
+    // EN-only (see the map's doc comment). {{production}} feeds the subject line via
+    // SUBJECT_RESOLVERS; production "a production" is byte-identical, staffing "a client".
+    "offer-immediate.showFallback": "a {{production}}",
+    "cast-escalation-requested.showFallback": "a {{production}}",
+    "tier-at-risk.showFallback": "a {{production}}",
+    // EN-only. {{HireOrder}}="Contract" (prod) / "Work order" (staffing); the DE literal
+    // "Vertrag" differs from the registry "Engagementvertrag", so DE stays a clean default.
+    "hire-order-issued.orderLabel": "{{HireOrder}}.",
+    "hire-order-countersigned.orderLabel": "{{HireOrder}}.",
+    "hire-order-issued.signCtaLabel": "Review {{hireOrder}}",
+    "hire-order-countersigned.ctaLabel": "View signed {{hireOrder}}",
   },
   de: {
     "offer-immediate.intro": "Du wurdest zu {{referenceLabel}} am {{where}} gefragt. Sag ja, und der {{showDate}} ist für Dich reserviert. Sag nein, und das wird Dir nicht angerechnet und wirkt sich auf keinen anderen {{showDate}} aus. Antworte innerhalb von {{hours}} Stunden.",
