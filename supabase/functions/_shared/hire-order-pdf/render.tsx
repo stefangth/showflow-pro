@@ -412,9 +412,9 @@ function HireOrderDoc(input: RenderInput & { available?: ReadonlySet<FontFamilyK
     ? engagementDates.map((item) => formatDateDMY(item.date)).join(" · ")
     : formatDateDMY(date);
   const billing = role && cast
-    ? applyTokens(copy.billing_role_and_cast, { role, cast })
+    ? applyTokens(copy.billing_role_and_cast, { role, castRef: cast })
     : cast
-    ? applyTokens(copy.billing_cast_only, { cast })
+    ? applyTokens(copy.billing_cast_only, { castRef: cast })
     : role;
 
   return (
@@ -465,7 +465,7 @@ function HireOrderDoc(input: RenderInput & { available?: ReadonlySet<FontFamilyK
             <Text style={s.partyLabel}>{copy.party_artist_label}</Text>
             <Text style={s.partyName}>{artist}</Text>
             {email ? <Text style={s.partyLine}>{email}</Text> : null}
-            {cast ? <Text style={s.partyLine}>{applyTokens(copy.party_cast_reference, { cast })}</Text> : null}
+            {cast ? <Text style={s.partyLine}>{applyTokens(copy.party_cast_reference, { castRef: cast })}</Text> : null}
             {role ? <Text style={s.partyLine}>{applyTokens(copy.party_engagement, { role })}</Text> : null}
           </View>
         </View>
@@ -595,7 +595,7 @@ function HireOrderDoc(input: RenderInput & { available?: ReadonlySet<FontFamilyK
           </View>
           <View style={s.signatureGap} />
           <View style={s.signature}>
-            <Text style={s.signatureFor}>{applyTokens(copy.signature_for_artist, { artist })}</Text>
+            <Text style={s.signatureFor}>{applyTokens(copy.signature_for_artist, { artistName: artist })}</Text>
             {signature
               ? (signature.method === "drawn" && signature.imageDataUrl
                 ? <Image style={s.sigMarkImage} src={signature.imageDataUrl} />
