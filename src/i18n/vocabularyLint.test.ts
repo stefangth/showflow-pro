@@ -5,15 +5,26 @@ import { englishSources, scanBareNouns, capitalisedTokens } from "./vocabularySc
 import { VOCABULARY } from "@/lib/orgKind";
 
 /**
- * Ratchet: the number of bare domain nouns in English copy may never grow. The copy audit
- * (PR 2 tasks 7 to 13) drives BASELINE to 0, then Task 14 replaces it with ALLOW.
- * `VOCAB_REPORT=1 npx vitest run src/i18n/vocabularyLint.test.ts` prints every hit.
+ * Gate: every bare domain noun left in English copy must be justified. The copy audit
+ * (PR 2 tasks 7 to 13) drove the count to 0 substitutable nouns; the strings below keep a
+ * bare noun on purpose (machine tokens, example values, DB identifiers) and are allowlisted
+ * with a reason. Anything else that mentions a domain noun must use a vocabulary variable.
+ * `VOCAB_REPORT=1 npx vitest run src/i18n/vocabularyLint.test.ts` prints every remaining hit.
  */
-const BASELINE = 8; // measured count as of this commit; never raise it, PR 2 drives it to 0.
-// Raised once, from 737, when "contract(s)" joined the NOUN regex: it is the production value of
-// {{hireOrder}}, so a literal "contract" in copy is a missed substitution a staffing org would read.
-// Raised again when "skill(s)" joined the regex, for the same reason: a staffing org reads
-// "qualification", so a literal "skill" in copy is a missed substitution.
+const ALLOW: Record<string, string> = {
+  "settingsHireOrders.numberingCard.description":
+    "documents the {cast} and {cast|seq} numbering placeholders, machine tokens",
+  "settingsHireOrders.letterheadFields.legalNamePlaceholder":
+    "example company legal name, a proper noun in the customer's letterhead",
+  "hireOrdersPages.blockerList.legalNamePlaceholder":
+    "example company legal name, a proper noun in the customer's letterhead",
+  "hireOrdersPages.wizard.emailPlaceholder":
+    "example email address, a proper noun shown as an input placeholder",
+  "settingsAirtable.manageDialog.baseTable.tableNamePlaceholder":
+    "example Airtable table name, a proper noun in the customer's base",
+  "settingsTrust.orgDataCard.outsideReachNote":
+    "names the shows and show_dates DB tables, machine identifiers",
+};
 
 // Key-path prefixes exempt from the scan: copy that legitimately names both vocabularies
 // (the workspace-type picker explains what each option means).
@@ -30,12 +41,15 @@ const SKIP_PATHS = [
 describe("vocabulary ratchet", () => {
   const sources = englishSources();
 
-  it("bare domain nouns in English copy do not exceed the baseline", () => {
+  it("bare domain nouns outside the allowlist are gone", () => {
     const hits = scanBareNouns(sources, SKIP_PATHS);
     const lines = hits.map((h) => `${h.path} (${h.count})`);
     const total = hits.reduce((s, h) => s + h.count, 0);
     if (process.env.VOCAB_REPORT) console.log(`${lines.join("\n")}\nTOTAL ${total}`);
-    expect(total, `bare nouns grew past the baseline. Offenders:\n${lines.join("\n")}`).toBeLessThanOrEqual(BASELINE);
+    const offenders = hits.filter((h) => !(h.path in ALLOW));
+    expect(offenders.map((h) => `${h.path} (${h.count})`), "bare domain noun outside the allowlist").toEqual([]);
+    const stale = Object.keys(ALLOW).filter((p) => !hits.some((h) => h.path === p));
+    expect(stale, "allowlist entries that no longer match anything").toEqual([]);
   });
 
   it("every capitalised {{Token}} is a vocabulary key", () => {

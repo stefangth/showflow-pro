@@ -9,7 +9,7 @@
     "retry": "Erneut versuchen",
     "groups": {
       "Booking engine": "Buchungs-Engine",
-      "Hire orders": "Engagementverträge",
+      "Hire orders": "{{HireOrders}}",
       "Accounts & access": "Konten & Zugriff",
       "System": "System"
     },

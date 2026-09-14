@@ -87,6 +87,7 @@ const IDENTICAL_OK: Record<string, string> = {
   'settingsHireOrders.templateInspector.textSectionHeading': '"Text" is identical in German',
 
   // settingsEmailTemplates
+  'settingsEmailTemplates.emailTemplatesTab.groups.Hire orders': 'whole value is one vocabulary variable, resolved per language by the vocabulary table',
   'settingsEmailTemplates.emailTemplatesTab.groups.System': '"System" is identical in German',
   'settingsEmailTemplates.emailTemplateInspector.text': '"Text" is identical in German',
   'settingsEmailTemplates.emailTemplateInspector.weightOptions.medium': 'typographic loanword "Medium"',

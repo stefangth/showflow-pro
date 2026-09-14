@@ -70,7 +70,7 @@ Every word in the app assumes the customer is a live-show production company: sh
 ### R4. Copy audit (locale files)
 
 - Every user-facing sentence in `src/i18n/locales/{en,de}/*.json` that names a domain noun uses the vocabulary variable instead: `"Add your first {{show}}"`. Applies to nav labels in `common.json`, page titles, empty states, minis, onboarding, help.
-- **German grammar rule.** Articles and case endings follow the noun, so a sentence that needs "die Show" or "des Artists" cannot take a bare variable. Resolution, in order of preference: reword article-free; otherwise add a per-kind sentence key (`"fullMsg_production"` / `"fullMsg_staffing"`, selected with i18next `context: kind`). Never add a fifth noun form for case. Expect a few dozen such strings.
+- **German grammar rule.** Articles and case endings follow the noun, so a sentence that needs "die Show" or "des Artists" cannot take a bare variable. Resolution, in order of preference: reword article-free; otherwise add German-only per-kind sibling keys (`key_production` / `key_staffing`) and set the base key to `$t(ns:path.key_{{kind}})`, which i18next resolves through the `kind` vocabulary variable with no call-site changes (pinned by `kindVariants.test.ts`). Never add a fifth noun form for case. Expect a few dozen such strings.
 - `TERMS` in `src/i18n/terms.ts` becomes kind-aware for `cast`, `understudy`, `hireOrder`: `termLabel(key, lang, kind = 'production')`. Other terms are unchanged.
 - `ROLE_LABELS` stays as the production table; `roleLabel(role, kind = 'production')` returns `VOCABULARY[kind].en.roleProducer` for `producer`. The `_shared/roles.ts` mirror follows through the generator. The `producer` role value is never changed or compared against a label.
 - **Noun scanner test** (`src/i18n/vocabularyLint.test.ts`): scans every English locale file for bare `show(s)`, `artist(s)`, `production(s)`, `cast`, `understudy`, `hire order(s)` outside a small explicit allowlist (proper nouns, "ShowFlow", strings the audit deliberately left). CI fails on a new bare noun. Same pattern as `copyLint.test.ts`.
@@ -107,7 +107,7 @@ Gated by `useOrgKind() === 'staffing'`:
 
 | Layer | What |
 |---|---|
-| Unit | registry key parity + copy-lint on vocabulary values; `VocabularyBridge` re-render; `roleLabel(role, kind)`; `termLabel` by kind; noun scanner; `resolveMiniRole` with `byKind`; `OrgKindSelect` |
+| Unit | registry key parity + copy-lint on vocabulary values; `VocabularyBridge` re-render; `roleLabel(role, kind)`; `termLabel` by kind; noun scanner; `vocabularyDiff.test.ts` (production byte-identity report vs `origin/main`); `resolveMiniRole` with `byKind`; `OrgKindSelect` |
 | Data | `fetchOrgs` selects `org_kind`; `setOrgKind` calls the RPC (supabaseFake) |
 | pgTAP | CHECK constraint rejects unknown kinds; `set_org_kind` rejects non-admins and accepts admins and super-admins; `has_function_privilege` for `service_role` |
 | Deno | `resolveOrgKind` (row, null org, read error); `resolveEmailCopy` and `resolveHireOrderCopy` byte-identical with defaults, substituted with `staffing`; `provision-org` accepts and rejects `org_kind` values |
@@ -120,8 +120,8 @@ Coverage thresholds unchanged.
 Three PRs, each shippable, invisible to production orgs until PR 3:
 
 1. **Mechanism.** R1, R2, R3, R7, the noun scanner (allowlisting everything, tightened in PR 2). Production vocabulary wired; every string reads as today.
-2. **Copy audit.** R4 in full, EN and DE, plus the email and PDF copy maps converted to variables. Mechanical; run by a subagent with the noun scanner as the acceptance gate, German reviewed by the owner.
-3. **Presentation and server.** R5, R6, the preview toggle, help answer, changelog.
+2. **Copy audit.** R4 in full, EN and DE (locale files only). Mechanical; run by a subagent with the noun scanner as the acceptance gate, German reviewed by the owner.
+3. **Presentation and server.** R5, R6, the preview toggle, help answer, changelog, plus the email and PDF copy maps converted to variables (moved here from PR 2: the edge copy maps are file-mode mirrors that cannot import the locale table, so they belong with the R6 server work).
 
 Changelog: one `### New` entry, "Workspace type", written for admins, in the release that ships PR 3. Help center impact: yes (R5.3). Page minis: yes (R5.2). System map: no automation change, no update.
 
