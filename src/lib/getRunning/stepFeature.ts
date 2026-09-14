@@ -3,7 +3,7 @@
 // panel's breadcrumb eyebrow + deep link, the board row's quiet route label, and the
 // producer waits-on panel's Settings link.
 //
-// This mirrors v1's taskFeature.ts idiom but targets the 16-step Wireflow v3 model.
+// This mirrors v1's taskFeature.ts idiom but targets the 17-step Wireflow v3 model.
 // No React here — pure data + a link builder — so the composer's tests and the panel/row
 // components can all read it without pulling in routing.
 

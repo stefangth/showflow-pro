@@ -7,7 +7,7 @@ import type { GetRunningModelV3 } from "@/lib/getRunning/steps";
 /**
  * "What is still shut": the two things a brand-new org actually cares about (can I ask an
  * artist yet, can I issue a contract yet), each gated behind whatever steps still block it
- * — never the raw 16-step checklist. Reads `canFirstOffer` and each step's own `block`
+ * — never the raw 17-step checklist. Reads `canFirstOffer` and each step's own `block`
  * straight off the model rather than re-deriving anything: "first ask" is shut while any
  * `offers`/`booking`-blocking step is outstanding, "first contract" is shut while any
  * `issuing`-blocking step is outstanding (the paperwork phase's letterhead/terms/
