@@ -7,6 +7,7 @@ import { preflight, json } from "../_shared/http.ts";
 import { requireRole } from "../_shared/auth.ts";
 import { realDeps, type Deps } from "../_shared/deps.ts";
 import { coerceLocale, type ServerLocale } from "../_shared/orgLocale.ts";
+import { coerceOrgKind, type OrgKind } from "../_shared/orgKind.ts";
 
 // Renders registered templates with optional per-template overrides.
 // Auth: Supabase JWT — admin or producer role required.
@@ -27,6 +28,9 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   // Preview language. Explicit and NOT entitlement-gated: this is admin QA, so an
   // admin can preview either language regardless of the org's own setting.
   let locale: ServerLocale = "en"
+  // Preview workspace type. Explicit and NOT tied to the active org: this is admin QA,
+  // so an admin can preview either vocabulary regardless of the org's own org_kind.
+  let kind: OrgKind = "production"
   // Sample-data override for the requested template. A template that renders one of
   // several variants off its data (org-invitation's four role action lines) is
   // otherwise only previewable in whichever variant its previewData hardcodes.
@@ -47,6 +51,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       }
       highlightRole = body.highlightRole
       locale = coerceLocale(body.locale)
+      kind = coerceOrgKind(body.kind)
       if (body.dataOverride && typeof body.dataOverride === 'object' && !Array.isArray(body.dataOverride)) {
         dataOverride = body.dataOverride as TemplateData
       }
@@ -110,6 +115,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
         themeOverride,
         highlightRole,
         locale,
+        kind,
       })
       if (!presentation) throw new Error(`Template '${name}' not found during presentation resolution`)
 
