@@ -57,7 +57,7 @@ const LIVE_DATE: TableSeed = {
 beforeEach(() => fullySeeded());
 
 describe("useGetRunningV3", () => {
-  it("returns a 16-step model for an admin with both modules on", async () => {
+  it("returns a 17-step model for an admin with both modules on", async () => {
     const { result } = renderHookWithProviders(() => useGetRunningV3(), {
       authOverrides: {
         currentOrg: TEST_ORG,
@@ -71,7 +71,7 @@ describe("useGetRunningV3", () => {
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
     expect(result.current.model).not.toBeNull();
-    expect(result.current.model!.totalCount).toBe(16);
+    expect(result.current.model!.totalCount).toBe(17);
     expect(result.current.model!.bookingOn).toBe(true);
     expect(result.current.model!.hireOrdersOn).toBe(true);
   });

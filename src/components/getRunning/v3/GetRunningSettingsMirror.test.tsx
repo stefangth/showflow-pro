@@ -47,6 +47,7 @@ const base: GetRunningInputV3 = {
   datesMapDone: true,
   datesCitiesDone: true,
   hasAnyDates: true,
+  orgKindChosen: true,
   producerCount: 1,
   skillGaps: 0,
   feeDone: false,

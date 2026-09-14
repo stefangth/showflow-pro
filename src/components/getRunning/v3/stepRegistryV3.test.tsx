@@ -92,6 +92,11 @@ describe("StepBodyV3", () => {
     expect(screen.getByRole("button", { name: /send invite/i })).toBeInTheDocument();
   });
 
+  it("renders WorkspaceStep for the workspace key", () => {
+    renderStep(mk("workspace", false));
+    expect(screen.getByTestId("step-body-workspace")).toBeInTheDocument();
+  });
+
   it("renders both LadderPanelBody and EligibilityPanelBody for the merged coverage step", () => {
     renderStep(mk("coverage", false));
     // Each body owns a distinct label from its own copy set — assert both render.

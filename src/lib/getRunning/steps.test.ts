@@ -30,6 +30,7 @@ const base: GetRunningInputV3 = {
   datesMapDone: true,
   datesCitiesDone: true,
   hasAnyDates: true,
+  orgKindChosen: true,
   producerCount: 1,
   skillGaps: 0,
   feeDone: false,
@@ -47,17 +48,17 @@ function baseInput(overrides: Partial<GetRunningInputV3> = {}): GetRunningInputV
 }
 
 describe("composeGetRunningV3", () => {
-  it("produces 16 steps across 3 phases when both modules are on", () => {
+  it("produces 17 steps across 3 phases when both modules are on", () => {
     const m = composeGetRunningV3(base);
     expect(m.phases.map((p) => p.key)).toEqual(["get_dates", "bookable", "paperwork"]);
-    expect(m.totalCount).toBe(16);
-    expect(m.phases.flatMap((p) => p.steps)).toHaveLength(16);
+    expect(m.totalCount).toBe(17);
+    expect(m.phases.flatMap((p) => p.steps)).toHaveLength(17);
   });
 
   it("drops the paperwork phase and shrinks the denominator when hire_orders is off", () => {
     const m = composeGetRunningV3({ ...base, hireOrdersOn: false, hire: null });
     expect(m.phases.map((p) => p.key)).toEqual(["get_dates", "bookable"]);
-    expect(m.totalCount).toBe(11);
+    expect(m.totalCount).toBe(12);
   });
 
   it("shows only the paperwork phase when booking_flow is off", () => {
@@ -187,8 +188,8 @@ describe("composeGetRunningV3 get_dates phase (Phase 2)", () => {
     const map = dates.steps.find((s) => s.key === "map")!;
     expect(connect.hidden).toBe(true);
     expect(map.hidden).toBe(true);
-    // 3 visible get_dates steps (source, cities, productions), not 5
-    expect(dates.steps.filter((s) => !s.hidden).length).toBe(3);
+    // 4 visible get_dates steps (workspace, source, cities, productions), not 6
+    expect(dates.steps.filter((s) => !s.hidden).length).toBe(4);
   });
 
   it("shows connect and map when the source is airtable", () => {
@@ -220,7 +221,7 @@ describe("composeGetRunningV3 get_dates phase (Phase 2)", () => {
     );
     expect(m.nextStep?.key).toBe("productions");
     const dates = m.phases.find((p) => p.key === "get_dates")!;
-    expect(dates.totalCount).toBe(3); // hidden connect/map excluded
+    expect(dates.totalCount).toBe(4); // hidden connect/map excluded
   });
 
   it("keeps the cities step outstanding for an org with no dates at all", () => {
@@ -257,5 +258,21 @@ describe("composeGetRunningV3 get_dates phase (Phase 2)", () => {
   it("never reports the advisory unknown when booking is off", () => {
     const m = composeGetRunningV3(baseInput({ bookingOn: false, booking: null, datesCitiesUnknown: true }));
     expect(m.datesWithoutCityUnknown).toBe(false);
+  });
+
+  it("puts the workspace step first in get_dates, done only once the kind was chosen, admin-only", () => {
+    const m = composeGetRunningV3({ ...base, orgKindChosen: false });
+    const dates = m.phases.find((p) => p.key === "get_dates")!;
+    expect(dates.steps[0].key).toBe("workspace");
+    expect(dates.steps[0].done).toBe(false);
+    expect(dates.steps[0].adminOnly).toBe(true);
+    expect(m.nextStep).toEqual({ phase: "get_dates", key: "workspace" });
+    const chosen = composeGetRunningV3({ ...base, orgKindChosen: true });
+    expect(chosen.phases[0].steps[0].done).toBe(true);
+  });
+
+  it("the workspace step does not block the first offer", () => {
+    const m = composeGetRunningV3({ ...base, orgKindChosen: false });
+    expect(m.canFirstOffer).toBe(true);
   });
 });

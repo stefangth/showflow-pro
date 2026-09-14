@@ -3,8 +3,8 @@ import { STEP_FEATURE, stepFeatureLink, stepsForRoute, PAPERWORK_STEP_KEYS } fro
 import { ROUTES } from "@/config/app.config";
 
 describe("stepFeature", () => {
-  it("covers all 16 step keys", () => {
-    expect(Object.keys(STEP_FEATURE)).toHaveLength(16);
+  it("covers all 17 step keys", () => {
+    expect(Object.keys(STEP_FEATURE)).toHaveLength(17);
   });
 
   it("routes coverage to the casts-coverage settings tab", () => {

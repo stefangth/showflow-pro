@@ -64,6 +64,7 @@ const base: GetRunningInputV3 = {
   datesMapDone: true,
   datesCitiesDone: true,
   hasAnyDates: true,
+  orgKindChosen: true,
   producerCount: 1,
   skillGaps: 0,
   feeDone: true,
@@ -97,7 +98,7 @@ function renderBoard() {
 }
 
 describe("GetRunningBoardV3 hidden steps (manual dates source)", () => {
-  it("shows only the 3 visible get_dates steps in the wizard rail and step count, never connect/map", () => {
+  it("shows only the 4 visible get_dates steps in the wizard rail and step count, never connect/map", () => {
     // datesSource "manual" marks connect/map hidden (steps.ts). Cities left undone so the
     // get_dates phase isn't fully done (a done phase renders a checkmark, no Continue
     // button — see PhaseRow). Note: with cities undone and hard-blocking, the board's own
@@ -124,15 +125,16 @@ describe("GetRunningBoardV3 hidden steps (manual dates source)", () => {
     // word "Connect", so a substring match on the rail's full text would false-negative.
     const nav = screen.getByRole("navigation", { name: /steps/i });
     const railButtons = within(nav).getAllByRole("button");
-    expect(railButtons).toHaveLength(3);
+    expect(railButtons).toHaveLength(4);
     expect(within(nav).getByText("Choose where your dates come from")).toBeInTheDocument();
     expect(within(nav).getByText("Set a city on every date")).toBeInTheDocument();
     expect(within(nav).getByText("Review your productions")).toBeInTheDocument();
     expect(within(nav).queryByText("Connect Airtable")).not.toBeInTheDocument();
     expect(within(nav).queryByText("Map your fields")).not.toBeInTheDocument();
 
-    // Header step counter reflects the visible total (3), not the full phase.steps length (5).
-    expect(screen.getByLabelText(/step 1 of 3/i)).toBeInTheDocument();
+    // Header step counter reflects the visible total (4: workspace + source/cities/productions),
+    // not the full phase.steps length (6). "source" is opened directly, so it is step 2 (workspace is 1).
+    expect(screen.getByLabelText(/step 2 of 4/i)).toBeInTheDocument();
   });
 
   it("advancing from source skips the hidden connect/map steps and lands on cities", () => {
@@ -155,7 +157,7 @@ describe("GetRunningBoardV3 hidden steps (manual dates source)", () => {
     fireEvent.click(within(iconRail).getByTitle(/choose where your dates come from/i));
 
     expect(screen.getByText("STEP_BODY:source")).toBeInTheDocument();
-    expect(screen.getByLabelText(/step 1 of 3/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/step 2 of 4/i)).toBeInTheDocument();
 
     // Fire the mocked step body's onDone. The OLD (buggy) logic advanced through the raw
     // phase.steps array and would have landed on "connect" (index 1) next; the fix walks
@@ -165,6 +167,6 @@ describe("GetRunningBoardV3 hidden steps (manual dates source)", () => {
     expect(screen.getByText("STEP_BODY:cities")).toBeInTheDocument();
     expect(screen.queryByText("STEP_BODY:connect")).not.toBeInTheDocument();
     expect(screen.queryByText("STEP_BODY:map")).not.toBeInTheDocument();
-    expect(screen.getByLabelText(/step 2 of 3/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/step 3 of 4/i)).toBeInTheDocument();
   });
 });

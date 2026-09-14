@@ -29,6 +29,7 @@ export interface StepFeature {
 }
 
 export const STEP_FEATURE: Record<GetRunningStepKey, StepFeature> = {
+  workspace: { route: ROUTES.SETTINGS, tab: "organization", crumbKey: "feature.crumb.workspace", shortKey: "feature.short.workspace" },
   source: { route: ROUTES.BOOKINGS, crumbKey: "feature.crumb.source", shortKey: "feature.short.source" },
   connect: { route: ROUTES.BOOKINGS, crumbKey: "feature.crumb.connect", shortKey: "feature.short.connect" },
   map: { route: ROUTES.BOOKINGS, crumbKey: "feature.crumb.map", shortKey: "feature.short.map" },
