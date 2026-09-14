@@ -46,7 +46,9 @@ export type VocabKey =
   | "cast" | "casts" | "Cast" | "Casts"
   | "understudy" | "understudies" | "Understudy" | "Understudies"
   | "skill" | "skills" | "Skill" | "Skills"
-  | "hireOrder" | "hireOrders" | "HireOrder" | "HireOrders";
+  | "hireOrder" | "hireOrders" | "HireOrder" | "HireOrders"
+  | "roleProducer"
+  | "kind";
 
 export type Vocabulary = Record<VocabKey, string>;
 
@@ -61,6 +63,7 @@ export const VOCABULARY: Record<OrgKind, Record<OrgKindLang, Vocabulary>> = {
       understudy: "understudy", understudies: "understudies", Understudy: "Understudy", Understudies: "Understudies",
       skill: "skill", skills: "skills", Skill: "Skill", Skills: "Skills",
       hireOrder: "contract", hireOrders: "contracts", HireOrder: "Contract", HireOrders: "Contracts",
+      roleProducer: "Production Team", kind: "production",
     },
     de: {
       show: "Show", shows: "Shows", Show: "Show", Shows: "Shows",
@@ -71,6 +74,7 @@ export const VOCABULARY: Record<OrgKind, Record<OrgKindLang, Vocabulary>> = {
       understudy: "Zweitbesetzung", understudies: "Zweitbesetzungen", Understudy: "Zweitbesetzung", Understudies: "Zweitbesetzungen",
       skill: "Skill", skills: "Skills", Skill: "Skill", Skills: "Skills",
       hireOrder: "Engagementvertrag", hireOrders: "Engagementverträge", HireOrder: "Engagementvertrag", HireOrders: "Engagementverträge",
+      roleProducer: "Production Team", kind: "production",
     },
   },
   staffing: {
@@ -83,6 +87,7 @@ export const VOCABULARY: Record<OrgKind, Record<OrgKindLang, Vocabulary>> = {
       understudy: "standby", understudies: "standbys", Understudy: "Standby", Understudies: "Standbys",
       skill: "qualification", skills: "qualifications", Skill: "Qualification", Skills: "Qualifications",
       hireOrder: "work order", hireOrders: "work orders", HireOrder: "Work order", HireOrders: "Work orders",
+      roleProducer: "Booking team", kind: "staffing",
     },
     de: {
       show: "Projekt", shows: "Projekte", Show: "Projekt", Shows: "Projekte",
@@ -93,7 +98,19 @@ export const VOCABULARY: Record<OrgKind, Record<OrgKindLang, Vocabulary>> = {
       understudy: "Ersatz", understudies: "Ersatzkräfte", Understudy: "Ersatz", Understudies: "Ersatzkräfte",
       skill: "Qualifikation", skills: "Qualifikationen", Skill: "Qualifikation", Skills: "Qualifikationen",
       hireOrder: "Arbeitsauftrag", hireOrders: "Arbeitsaufträge", HireOrder: "Arbeitsauftrag", HireOrders: "Arbeitsaufträge",
+      roleProducer: "Buchungsteam", kind: "staffing",
     },
   },
 };
+
+/**
+ * Plain {{name}} substitution from a vocabulary table, for copy that does not go through
+ * i18next (Help items, glossary, page minis, and in PR 3 the email and PDF copy maps).
+ * Unknown tokens (runtime variables like {{count}}) are left verbatim.
+ */
+export function interpolateVocabulary(text: string, vocab: Vocabulary): string {
+  return text.replace(/\{\{(\w+)\}\}/g, (whole, name: string) =>
+    Object.prototype.hasOwnProperty.call(vocab, name) ? vocab[name as VocabKey] : whole,
+  );
+}
 // <<< ORG KIND REGISTRY MIRROR <<<
