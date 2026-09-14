@@ -2,12 +2,12 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Finish the workspace-type feature so a `staffing` org reads and receives staffing content everywhere the words alone are not enough. Two halves: R5 (client presentation differences: understudy controls hidden, page-mini and help variants, staffing sample text, role-intro nouns) and R6 (server-generated content: transactional emails and hire-order PDFs render the org's vocabulary). Plus the admin preview toggle, the "what does workspace type change" help answer, the changelog entry, and the version bump. After this PR the feature is fully live for staffing orgs; production orgs still render byte-identically to today.
+**Goal:** Finish the workspace-type feature so a `staffing` org reads and receives staffing content everywhere the words alone are not enough. Two halves: R5 (client presentation differences: standby labels read the workspace word, page-mini and help variants, role-intro nouns) and R6 (server-generated content: transactional emails and hire-order PDFs render the org's vocabulary). Plus the admin preview toggle, the "what does workspace type change" help answer, the changelog entry, and the version bump. After this PR the feature is fully live for staffing orgs; production orgs still render byte-identically to today.
 
 **Architecture:** PR 1 installed the mechanism (`org_kind` column, `set_org_kind` RPC, `src/lib/orgKind.ts` registry mirrored to the edge, `useOrgKind()`, `VocabularyBridge`, `OrgKindSelect`, the four pickers). PR 2 converted the client locale files, glossary, minis and help copy to `{{noun}}` variables, and made `termLabel`/`roleLabel` kind-aware. This PR adds the pieces that variables alone cannot express:
 
 1. **R6 server (do first).** `resolveEmailCopy` and `resolveHireOrderCopy` gain a `kind` parameter and run `interpolateVocabulary` over the resolved copy record. The two copy maps (`emailCopy.ts`, `pdfCopy.ts`, both file-mode mirror sources under `src/`) get their domain nouns rewritten as `{{noun}}` variables. `kind` threads through `resolveTemplatePresentation` + `send-transactional-email`, and through the issue/preview render sites in `generate-hire-orders`. `preview-transactional-email` accepts an explicit `body.kind` for admin QA.
-2. **R5 presentation.** A single gate, `useOrgKind() === 'staffing'`, hides understudy controls. `MiniDef` and `HelpItem` gain an optional `byKind` for the few places a structurally different variant is needed. Sample text and role-intro nouns follow the vocabulary.
+2. **R5 presentation.** Standby stays for both workspace types and reads the org's vocabulary word (production "Understudy", staffing "Standby"); nothing is hidden. PR 2 already tokenized almost every understudy label, so this PR only closes the last hardcoded spots. `MiniDef` and `HelpItem` gain an optional `byKind` for the few places a structurally different variant is needed. Role-intro nouns follow the vocabulary.
 
 **Tech Stack:** React 18, TypeScript, react-i18next 15 / i18next 23, @tanstack/react-query 5, Supabase (Deno edge functions, `@react-pdf`/react-email renderers), Vitest, Playwright. No migration and no schema change (the column, RPC and resolver all shipped in PR 1).
 
@@ -32,7 +32,7 @@
 
 The surface maps done for this plan turned up gaps between the spec's wording and the current tree. Each is resolved below with a recommendation; the two marked **CONFIRM** want a yes or no from the owner at the Task 0 gate before their task starts. Item 5 is an owner-approved deviation from the byte-identity bar, recorded here so the plan and the shipped code agree.
 
-1. **R5.4 sample data is orphaned. CONFIRM (recommend: drop from PR 3).** The spec names a `SamplePreview` component and a "Get running preview". Neither exists. The only fixture is `SAMPLE_PREVIEW` in `src/lib/dashboard/firstRun.ts`, and nothing in `src/**` imports it (it and its sibling first-run exports are dead code). The Get running board is fully i18n-driven and PR 2 already converted its nouns. So there is no live render site for staffing sample text. Recommendation: do not build staffing fixtures for dead code. Task 10 is written as a small, optional "make the orphaned fixture kind-neutral through the vocabulary if the owner still wants it" and is skipped by default. If the owner has a first-run rewire coming, we do it in that project, not here.
+1. **R5.4 sample data is orphaned. CONFIRMED 2026-09-14: dropped.** The spec names a `SamplePreview` component and a "Get running preview". Neither exists, and `SAMPLE_PREVIEW` is unreachable (no importer in `src`, edge, `seed.sql`, or scripts; demo orgs are seeded server-side and cannot consume a frontend constant, so it never renders there either). The only fixture is `SAMPLE_PREVIEW` in `src/lib/dashboard/firstRun.ts`, and nothing in `src/**` imports it (it and its sibling first-run exports are dead code). The Get running board is fully i18n-driven and PR 2 already converted its nouns. So there is no live render site for staffing sample text. Recommendation: do not build staffing fixtures for dead code. Task 10 is written as a small, optional "make the orphaned fixture kind-neutral through the vocabulary if the owner still wants it" and is skipped by default. If the owner has a first-run rewire coming, we do it in that project, not here.
 
 2. **R5.2 minis: only the `bookings` mini exists. CONFIRM scope.** The spec's "first pass: Get running, Today, Dates minis" is inaccurate: there is no Get running mini and no Today (Dashboard) mini. All existing minis already interpolate `{{noun}}` vocabulary, so the noun swap already works for staffing today. The only thing variables cannot do is show a structurally different mini. The single mini with genuinely production-specific structure is `productions` (its illustration and one step name understudies and slots). Recommendation: add an optional `byKind` to `MiniDef` (Task 8) and use it only where a structural difference is real, starting with `productions`. Do not invent Get running / Today minis in this PR.
 
@@ -69,6 +69,8 @@ The owner's standing rule: mock up user-facing changes and get explicit approval
 - [ ] **Step 2: Publish it as an Artifact** (title "Workspace type staffing view", favicon "🏷️") and send the owner: "PR 3 presentation for approval: staffing cockpit (understudy controls hidden) and the email preview toggle. Also two scope confirms in Panel C: drop the orphaned sample-data task, and scope minis to the productions mini only. Yes, or changes?"
 
 - [ ] **Step 3: STOP.** Do not start Task 1 until the owner answers. Record any wording or scope changes and apply them to the affected tasks. If the owner rejects decision 1 or 2, expand Task 10 / Task 8 accordingly before continuing.
+
+**Task 0 outcome (2026-09-14):** Owner approved building R5. Decision 1 confirmed (drop the orphaned sample data; verified unreachable including by demo orgs). Decision 2 confirmed (minis scoped to `productions`). **Panel A is SUPERSEDED:** the owner chose to keep standby for staffing and swap only the word, not hide it, so there is no standby-hidden view to mock. The staffing standby word is the standard vocabulary swap already approved in PR 1/PR 2, so no new mockup is required. Task 7 is reframed accordingly (finish tokenizing the residual hardcoded labels rather than hide controls). Panel B (email preview toggle, Task 6) is unaffected and still applies.
 
 ---
 
@@ -215,40 +217,31 @@ The owner's standing rule: mock up user-facing changes and get explicit approval
 
 ---
 
-## Task 7: Hide understudy controls for staffing (R5.1)
+## Task 7: Finish standby vocabulary so staffing reads its word (R5.1)
 
-The full inventory (ten controls, none currently reading `useOrgKind`) is in the map below. The gate is a single expression, `useOrgKind() === 'staffing'`, surfaced as a tiny helper so the intent reads the same everywhere and the pure/lib layers can be tested without a hook.
+**Reframed per owner decision (2026-09-14): standby is kept for both workspace types and reads the org's vocabulary word (production "Understudy", staffing "Standby" / DE "Ersatz"). Nothing is hidden.** PR 2 already tokenized almost every understudy label with the `{{Understudy}}` family, and `VocabularyBridge` (mounted unconditionally in `AppLayout`, no entitlement gate) already feeds the staffing table, so those surfaces already swap for a staffing org today. Verified already-working via tokens: `showsDetail` (`bookAsUnderstudy`, `bookUnderstudyTitle/Desc`, `assignedArtists.understudies`), `productions` (`slotTotals`, `kindUnderstudy`), `bookingCopy` (`understudyLine`, `understudySlotOpen`), `settingsBookingFlow` (`understudyPromotion.*`), `getRunning`. So there is no `showsUnderstudies` gate and no hook; this task only closes the spots that bypass i18n and so still print English "Understudy" for every org.
 
 **Files:**
-- Create: `src/lib/orgKindPresentation.ts` (pure: `showsUnderstudies(kind: OrgKind): boolean` returning `kind !== 'staffing'`, plus a doc comment naming what is hidden and why the data is untouched) and `src/lib/orgKindPresentation.test.ts`
-- Create: `src/hooks/useShowsUnderstudies.ts` (thin: `useShowsUnderstudies() => showsUnderstudies(useOrgKind())`) and its test
-- Modify (add the gate, keep production rendering identical):
-  1. `src/components/catalog/CastingBreakdownFields.tsx` (main/understudy toggle + understudy total)
-  2. `src/components/bookings/setup/SlotsStep.tsx` ("u/s" slot input)
-  3. `src/pages/ProductionsPage.tsx` + `src/features/editor/columnRegistries.ts` (the `understudy_slots` column and the combined slots cell)
-  4. `src/lib/cockpitCast.ts` + `src/components/shows/date/CockpitCastList.tsx` (the "Understudies" cast group)
-  5. `src/components/shows/ShowDateDetailSheet.tsx` (the "Understudies" section in `AssignedArtistsCard`)
-  6. `src/components/shows/date/EligibilityBookList.tsx` ("Book as understudy" checkbox + confirm copy)
-  7. `src/components/calendar/surface/NeedsYouLens.tsx` (the "(US)" pill) + `src/components/calendar/surface/CalendarSurface.tsx` / `src/lib/bookingCockpit.ts` (the "understudy parts open" peek)
-  8. `src/components/settings/bookingFlow/FlowTimeline.tsx` (the "Understudy promotion" switch)
-  9. `src/lib/bookings/actionCopy.ts` (the cancel-dialog auto-promote line, already gated on `understudyPromotionEnabled`; also gate on kind)
-  10. decorative minis in `src/components/minis/illustrations/BookingsMini.tsx` / `ProductionsMini.tsx` (fold into Task 8, not here)
+- Modify: `src/lib/cockpitCast.ts` (the `buildCastGroups` group titles `"Main cast"` / `"Understudies"` at :125/:130 are hardcoded string arguments and never swap; accept the two titles as resolved parameters from the caller) and `src/lib/cockpitCast.test.ts`
+- Modify: `src/components/shows/ShowDateDetailSheet.tsx` (the `buildCastGroups` caller: pass `t`-resolved titles using the `{{Understudies}}` token and a `main {{cast}}` string, so staffing reads "Standbys" / "main team" and production is byte-identical) and its test
+- Modify: `src/components/bookings/setup/SlotsStep.tsx` (the raw `u/s` label at :121 through a vocab-tokenized `t()` key; the default slot name `"Understudy"` at :66 through the `{{Understudy}}` vocabulary) and its test
+- Modify: `src/i18n/locales/en/bookings.json` + `de/bookings.json` (`calendar.needsYou.understudyAbbrev` is a hardcoded "US"; make it kind-aware so staffing reads a standby abbreviation, or drop the abbreviation). Minor; decide during Step 3.
 - Modify the co-located test of each surface.
 
 **Interfaces:**
-- Produces: `showsUnderstudies(kind)` and `useShowsUnderstudies()`. Every surface renders unchanged for production; for staffing the understudy control is not rendered. `is_understudy`, the auto-promote trigger, and stored understudy rows are untouched, so switching back to production shows the data again.
+- Produces: every understudy-labelled surface reads the org's vocabulary word. No hiding, no `showsUnderstudies` helper, no hook. Production is byte-identical (the production vocab word equals "Understudy" / "Understudies"). `is_understudy`, the auto-promote trigger, and stored rows are untouched (they never were the concern; standby is a live concept for both kinds now).
 
-- [ ] **Step 1: Write the pure + hook tests first.** `showsUnderstudies('production') === true`, `showsUnderstudies('staffing') === false`. Hook test: staffing org gives `false`, no org gives `true`.
+- [ ] **Step 1: cockpitCast titles.** Write a failing `cockpitCast.test.ts` case asserting `buildCastGroups` uses the passed-in titles (so the group heading is caller-controlled, not the literal "Understudies"). Change `buildCastGroups` to take the two group titles (main, understudy) as parameters. In `ShowDateDetailSheet`, pass `t('showDateSheet.cockpit.mainCastGroup')` / `t('showDateSheet.cockpit.understudyGroup')` (add these keys with `main {{cast}}` and `{{Understudies}}` tokens to `showsDetail.json` EN + DE). Assert staffing renders "Standbys", production renders "Understudies".
 
-- [ ] **Step 2: Implement the helper and hook.** Keep them tiny and documented.
+- [ ] **Step 2: SlotsStep.** Write a failing render test: under a staffing org the `u/s` label and the default slot name read the staffing word; under production they read "Understudy". Replace the raw `<label>u/s</label>` with a tokenized `t()` key (`{{Understudy}}` or a short form) and the hardcoded `name: "Understudy"` default with the vocabulary word (resolve via the `{{Understudy}}` token available to the component).
 
-- [ ] **Step 3: For each of surfaces 1 to 9, write a failing render test then gate it.** Pattern per surface: render under a staffing org (`authOverrides: { currentOrg: { ...org, org_kind: 'staffing' } }`) and assert the understudy control is absent; render under production and assert it is present (regression guard). Then wrap the control in `showsUnderstudies` / `useShowsUnderstudies()`. For `cockpitCast.ts` (pure), pass kind in and stop building the "Understudies" group when hidden. For the booking-flow "Understudy promotion" switch, hide the timeline step for staffing but leave the stored `understudy_promotion` flag untouched (the promote trigger still runs if data exists; it simply has no standby rows to promote). Keep each surface a separate commit so a regression is easy to bisect.
+- [ ] **Step 3: understudyAbbrev.** Decide: either make `calendar.needsYou.understudyAbbrev` a `byKind`/vocab-driven abbreviation (production "US", staffing "SB") or drop the abbreviation for staffing. Add the test for whichever is chosen. Keep EN + DE in parity.
 
-- [ ] **Step 4: Confirm no data path changed.** Grep the diff for any change to `is_understudy` writes, the promote RPC, or the DB. There must be none. Add or keep a test asserting that a staffing org with an existing understudy row still stores and reads it (data preserved, just not shown).
+- [ ] **Step 4: Confirm no data path changed and nothing is hidden.** Grep the diff: no change to `is_understudy` writes, the promote RPC, or any render gate that removes a control. Every surface still renders for both kinds; only the words differ. Add/keep a test that a staffing org with an existing understudy row still stores, reads, and DISPLAYS it (now labelled "Standby").
 
-- [ ] **Step 5: Run the affected suites + lint + typecheck.** `npx vitest run src/components/shows src/components/bookings src/components/catalog src/components/calendar src/components/settings/bookingFlow src/lib && npx eslint <changed> --max-warnings 0 && npx tsc -p tsconfig.app.json --noEmit`.
+- [ ] **Step 5: Run the affected suites + lint + typecheck + copy gates.** `npx vitest run src/components/shows src/components/bookings src/components/calendar src/lib src/i18n && npx eslint <changed> --max-warnings 0 && npx tsc -p tsconfig.app.json --noEmit`. The noun/vocabulary and dash gates must stay green.
 
-- [ ] **Step 6: Commit each surface** with an imperative message, e.g. `hide understudy cast group for staffing orgs`.
+- [ ] **Step 6: Commit** with an imperative message, e.g. `render standby cast group and slot labels in workspace vocabulary`.
 
 ---
 
@@ -260,7 +253,7 @@ Scoped per decision 2 to the `productions` mini (the only structurally productio
 - Modify: `src/lib/minis/types.ts` (add optional `byKind?: Partial<Record<OrgKind, MiniSteps>>` to `MiniDef`, or a per-variant override; pick the shape the test in Step 1 pins)
 - Modify: `src/lib/minis/resolveMiniRole.ts` or the `PageMini` resolution path to pick the kind variant when present (the cleanest place is `PageMini.tsx`, which already knows the vocab/kind; `resolveMiniRole` stays role-only)
 - Modify: `src/lib/minis/pages/productions.ts` (add a staffing variant only where the shared vocabulary tokens are not enough, e.g. the understudy/slots step)
-- Modify: `src/components/minis/illustrations/ProductionsMini.tsx`, `BookingsMini.tsx` (the hardcoded "Understudy" / "understudy" decorative labels become a `{{Understudy}}` token or are hidden for staffing via the vocab/kind the mini already receives)
+- Modify: `src/components/minis/illustrations/ProductionsMini.tsx`, `BookingsMini.tsx` (the hardcoded "Understudy" / "understudy" decorative labels become a `{{Understudy}}` token so staffing reads "Standby"; nothing is hidden)
 - Modify: `src/lib/minis/minis.test.ts` (extend to cover the `byKind` structure: same 4-step / bilingual / non-verbatim checks for any kind variant), and `src/components/minis/PageMini.test.tsx` (assert `productions` under staffing renders the staffing variant)
 
 **Interfaces:**
@@ -360,7 +353,7 @@ Per CLAUDE.md: MINOR bump for a new user-facing feature. Current version `1.17.3
 **Files:**
 - Modify: `e2e/org-kind.spec.ts`
 
-- [ ] **Step 1: Add a scenario** that, with an org set to staffing, opens a show-date cockpit and asserts no "Standbys" group and no "Book as standby" control render, then switches the org back to production and asserts they return. Keep it one focused scenario; the settings-switch/nav-words scenario from PR 1 already covers vocabulary.
+- [ ] **Step 1: Add a scenario** that, with an org set to staffing, opens a show-date cockpit and asserts the standby cast group renders with the staffing word ("Standbys", not "Understudies") and the book-as-standby control reads the staffing word, then switches the org back to production and asserts "Understudy"/"Understudies" return. Keep it one focused scenario; the settings-switch/nav-words scenario from PR 1 already covers vocabulary.
 
 - [ ] **Step 2: Run** `npx playwright test --config=e2e/playwright.config.ts org-kind` against the local stack (`npm run local:up`). Commit `add staffing presentation e2e smoke`.
 
@@ -372,7 +365,7 @@ Per CLAUDE.md: MINOR bump for a new user-facing feature. Current version `1.17.3
 - Modify: `docs/superpowers/specs/2026-09-14-org-kind-workspace-type-design.md` (record the four deviations from "Open decisions" as resolved notes, same way PR 2 wrote its deviations back)
 - Modify: `memory.md` (add a Recent changes row and correct the stale `1.15.0` to the current version; note PR 1 to PR 3 landed)
 
-- [ ] **Step 1: Write the deviations into the spec** so the spec and the code agree: R5.2 minis scoped to `productions`; R5.4 sample data deferred (dead code); R5.5 `roleDescription` kind-aware but no render site; the PDF runtime-token rename in R6.
+- [ ] **Step 1: Write the deviations into the spec** so the spec and the code agree: R5.1 reframed (standby kept for both workspace types and vocabulary-worded, not hidden, per owner decision 2026-09-14; only the residual hardcoded labels were tokenized, PR 2 having tokenized the rest); R5.2 minis scoped to `productions`; R5.4 sample data dropped (orphaned dead code, unreachable including by demo orgs); R5.5 `roleDescription` kind-aware and wired at its live render sites (AcceptInvitePage + People pane); the PDF runtime-token rename in R6.
 
 - [ ] **Step 2: Run the full local gate.** `npm run verify:fast` (lint, typecheck, build, unit+coverage, Deno) and, against the local stack, `npm run verify:full` (adds pgTAP + Playwright). Also `npm run sync:mirrors:check` and all three typecheck projects. Everything green.
 
@@ -388,9 +381,9 @@ Per CLAUDE.md: MINOR bump for a new user-facing feature. Current version `1.17.3
 
 | Layer | What |
 |---|---|
-| Unit | `resolveEmailCopy`/`resolveHireOrderCopy` byte-identical for production, substituted for staffing; PDF token-rename render identity; `showsUnderstudies` + `useShowsUnderstudies`; each understudy surface hidden for staffing / shown for production; `MiniDef.byKind` resolution + `productions` staffing render; help `aByKind` render + count + dash gate; `roleDescription(role, kind)` |
+| Unit | `resolveEmailCopy`/`resolveHireOrderCopy` byte-identical for production, substituted for staffing; PDF token-rename render identity; each residual hardcoded understudy label reads the org vocabulary word (staffing "Standby", production "Understudy"), cockpit group titles and slot labels included; `MiniDef.byKind` resolution + `productions` staffing render; help `aByKind` render + count + dash gate; `roleDescription(role, kind)` |
 | Data | email-template preview data-access forwards `kind` |
 | Deno | `send-transactional-email` and `generate-hire-orders` (issue, preview, snapshot re-render no-op) render staffing vs production; `preview-transactional-email` honours `body.kind`; production defaults byte-identical |
-| E2E | staffing cockpit hides standby controls, production shows them |
+| E2E | staffing cockpit standby group reads the staffing word, production reads "Understudy" |
 
 Coverage thresholds unchanged. Production orgs render byte-identically at every layer; that is the release gate.
