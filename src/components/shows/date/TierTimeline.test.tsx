@@ -63,7 +63,7 @@ describe("TierTimeline", () => {
       />,
     );
     expect(screen.getByText("Ready to ask")).toBeInTheDocument();
-    expect(screen.getByText("WHO THIS DATE ASKS · PRODUCTION-SPECIFIC")).toBeInTheDocument();
+    expect(screen.getByText("Who this date asks · production-specific")).toBeInTheDocument();
   });
 
   it("opens the confirm dialog from the hero and fires onOpenTier for the next tier", () => {
@@ -89,7 +89,7 @@ describe("TierTimeline", () => {
     );
     expect(screen.getByText(/direct booking/i)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Open offers" })).not.toBeInTheDocument();
-    expect(screen.queryByText("WHO THIS DATE ASKS · PRODUCTION-SPECIFIC")).not.toBeInTheDocument();
+    expect(screen.queryByText("Who this date asks · production-specific")).not.toBeInTheDocument();
   });
 
   // Regression: the confirm dialog always claimed offers go out "in the next daily

@@ -130,6 +130,14 @@ const IDENTICAL_OK: Record<string, string> = {
   'showsDetail.cockpitRail.details': 'common word "Details", identical in German (matches profile.details.title)',
   'showsDetail.showDateForm.session': 'domain loanword "Session"',
   'showsDetail.showDateForm.sessionPlaceholder': 'time-format symbol "HH:MM"',
+  'showsDetail.showDateSheet.castFallback': 'whole value is one vocabulary variable, so both languages carry the same token and the noun resolves per language at runtime',
+  'showsDetail.showDateSheet.assignedArtists.understudies': 'whole value is one vocabulary variable, so both languages carry the same token and the noun resolves per language at runtime',
+  'showsDetail.showDateSheet.tabs.cast': 'whole value is one vocabulary variable, so both languages carry the same token and the noun resolves per language at runtime',
+  'showsDetail.showDateSheet.tabs.order': 'whole value is one vocabulary variable, so both languages carry the same token and the noun resolves per language at runtime',
+  'showsDetail.showDateForm.production': 'whole value is one vocabulary variable, so both languages carry the same token and the noun resolves per language at runtime',
+  'showsDetail.cockpitFooter.hireOrder': 'whole value is one vocabulary variable, so both languages carry the same token and the noun resolves per language at runtime',
+  'showsDetail.castDetails.eyebrow': 'whole value is one vocabulary variable, so both languages carry the same token and the noun resolves per language at runtime',
+  'showsDetail.castsSection.casts': 'whole value is one vocabulary variable, so both languages carry the same token and the noun resolves per language at runtime',
 
   // chats
   'chats.list.title': 'loanword "Chats", identical in German',
