@@ -31,8 +31,8 @@
   },
   "phases": {
     "get_dates": {
-      "name": "Get dates in",
-      "summary": "Bring your {{productions}} and dates into ShowFlow so there is something to book."
+      "name": "Get {{showDates}} in",
+      "summary": "Bring your {{productions}} and {{showDates}} into ShowFlow so there is something to book."
     },
     "bookable": {
       "name": "Make it bookable",
@@ -74,7 +74,7 @@
       "hint": "Live production or staffing agency. Sets the words the app uses."
     },
     "source": {
-      "title": "Choose where your dates come from",
+      "title": "Choose where your {{showDates}} come from",
       "hint": "Connect Airtable or add {{productions}} by hand."
     },
     "connect": {
@@ -86,8 +86,8 @@
       "hint": "Match your Airtable columns to ShowFlow's fields."
     },
     "cities": {
-      "title": "Set a city on every date",
-      "hint": "The engine can only offer a date once it has a city."
+      "title": "Set a city on every {{showDate}}",
+      "hint": "The engine can only offer the {{showDate}} once it has a city."
     },
     "productions": {
       "title": "Review your {{productions}}",
@@ -98,8 +98,8 @@
       "hint": "Nobody can be booked until your roster has active {{artists}}."
     },
     "skills": {
-      "title": "Set skills on your {{artists}}",
-      "hint": "Skills decide which {{artists}} match which part."
+      "title": "Set {{skills}} on your {{artists}}",
+      "hint": "{{Skills}} decide which {{artists}} match which part."
     },
     "coverage": {
       "title": "Rank your {{casts}}",
@@ -150,28 +150,28 @@
       "article": "Read more about workspace types"
     },
     "source": {
-      "title": "Choose where your dates come from",
-      "body": "Every downstream step reads from your dates: parts breakdown, priorities and who can be asked. Pick the source that fits how your team already works.",
+      "title": "Choose where your {{showDates}} come from",
+      "body": "Every downstream step reads from your {{showDates}}: parts breakdown, priorities and who can be asked. Pick the source that fits how your team already works.",
       "points": [
-        "Airtable sync brings {{productions}} and dates in automatically, hourly.",
+        "Airtable sync brings {{productions}} and {{showDates}} in automatically, hourly.",
         "Adding by hand works too, and you can mix both.",
         "You can change your mind later without losing anything."
       ],
-      "article": "Read more about syncing dates"
+      "article": "Read more about syncing {{showDates}}"
     },
     "connect": {
       "title": "Connect Airtable",
-      "body": "Link your Airtable base so ShowFlow can read your {{productions}} and dates directly, with no manual copying.",
+      "body": "Link your Airtable base so ShowFlow can read your {{productions}} and {{showDates}} directly, with no manual copying.",
       "points": [
         "Paste your Airtable token to grant read access.",
-        "Pick the base and table that hold your dates.",
+        "Pick the base and table that hold your {{showDates}}.",
         "ShowFlow checks the connection before you continue."
       ],
       "article": "Read more about the Airtable connection"
     },
     "map": {
       "title": "Map your fields",
-      "body": "Match each Airtable column to the ShowFlow field it represents, so every date arrives with the right {{production}}, date and city.",
+      "body": "Match each Airtable column to the ShowFlow field it represents, so every {{showDate}} arrives with the right {{production}}, date and city.",
       "points": [
         "Required fields must be mapped before sync can run.",
         "Optional fields can be mapped now or skipped for later.",
@@ -180,17 +180,17 @@
       "article": "Read more about field mapping"
     },
     "cities": {
-      "title": "Set a city on every date",
-      "body": "The booking engine only offers a date once it knows which city it is in. A date with no city sits idle.",
+      "title": "Set a city on every {{showDate}}",
+      "body": "The booking engine only offers the {{showDate}} once it knows which city it is in. {{ShowDates}} with no city sit idle.",
       "points": [
-        "Fix a missing city directly from the Dates list.",
+        "Fix a missing city directly from the {{ShowDates}} list.",
         "{{Cast}} ranking is set per city, so this comes before ranking."
       ],
       "article": "Read more about city assignment",
       "pointsAirtable": [
-        "Fix a missing city directly from the Dates list.",
+        "Fix a missing city directly from the {{ShowDates}} list.",
         "{{Cast}} ranking is set per city, so this comes before ranking.",
-        "New dates synced from Airtable inherit their city automatically."
+        "New {{showDates}} synced from Airtable inherit their city automatically."
       ]
     },
     "productions": {
@@ -199,7 +199,7 @@
       "points": [
         "Each {{production}} needs its parts breakdown set.",
         "You can edit any {{production}}'s details at any time.",
-        "New dates attach to an existing {{production}} or a new one."
+        "New {{showDates}} attach to an existing {{production}} or a new one."
       ],
       "article": "Read more about {{productions}}"
     },
@@ -207,27 +207,27 @@
       "title": "Add your {{artists}}",
       "body": "Nobody can be booked until your roster has active {{artists}}. Add them by hand or import a sheet.",
       "points": [
-        "{{Artists}} get no email until you ask them about a date.",
+        "{{Artists}} get no email until you ask them about one {{showDate}}.",
         "Importing a sheet is faster for a large roster.",
         "You can add more {{artists}} at any time."
       ],
       "article": "Read more about adding {{artists}}"
     },
     "skills": {
-      "title": "Set skills on your {{artists}}",
-      "body": "Skills tell the booking engine which {{artists}} match which part in your breakdown.",
+      "title": "Set {{skills}} on your {{artists}}",
+      "body": "{{Skills}} tell the booking engine which {{artists}} match which part in your breakdown.",
       "points": [
-        "A part with no matching skill has nobody eligible.",
-        "You can set skills for several {{artists}} at once.",
-        "Skills can be edited later without affecting past bookings."
+        "A part with no matching {{skill}} has nobody eligible.",
+        "You can set {{skills}} for several {{artists}} at once.",
+        "{{Skills}} can be edited later without affecting past bookings."
       ],
-      "article": "Read more about skills"
+      "article": "Read more about {{skills}}"
     },
     "coverage": {
       "title": "Rank your {{casts}}",
       "body": "{{Cast}} priorities decide who is asked first in each city. A city with no first group opens to nobody.",
       "points": [
-        "Rank at least one group per city with a date.",
+        "Rank at least one group per city with {{showDates}}.",
         "Each {{production}}'s own {{cast}} beats the city ranking.",
         "Ranking is per city, not per {{production}}."
       ],
@@ -255,11 +255,11 @@
     },
     "team": {
       "title": "Invite your {{roleProducer}}",
-      "body": "{{roleProducer}} plans dates, runs asks and books the {{cast}}. Booking can stay with you if you prefer.",
+      "body": "{{roleProducer}} plans {{showDates}}, runs asks and books the {{cast}}. Booking can stay with you if you prefer.",
       "points": [
         "People invited to {{roleProducer}} get an email invite.",
         "You can revoke access for anyone on {{roleProducer}} at any time.",
-        "{{roleProducer}} sees only the dates in their org."
+        "{{roleProducer}} sees only the {{showDates}} in their org."
       ],
       "article": "Read more about your team"
     },
@@ -338,21 +338,21 @@
   },
   "body": {
     "skills": {
-      "heading": "Skills for your parts",
-      "sub": "Add the skills your parts need, then set them on your {{artists}}.",
+      "heading": "{{Skills}} for your parts",
+      "sub": "Add the {{skills}} your parts need, then set them on your {{artists}}.",
       "continue": "Continue",
-      "readOnly": "Skills here need the manage skills or the edit {{artists}} right, and this account has neither.",
-      "assignHeading": "Set skills on your {{artists}}",
-      "assignSub": "Give every {{artist}} the skills they can actually cover. A part can only be filled by the {{artist}} who holds its skills.",
+      "readOnly": "{{Skills}} here need the manage {{skills}} or the edit {{artists}} right, and this account has neither.",
+      "assignHeading": "Set {{skills}} on your {{artists}}",
+      "assignSub": "Give every {{artist}} the {{skills}} they can actually cover. A part can only be filled by the {{artist}} who holds its {{skills}}.",
       "gapLine": "is required by {{productionNames}}, and no {{artist}} holds it.",
       "gapLineUnknown": "is required by one {{production}}, and no {{artist}} holds it.",
-      "gapReadError": "We could not check which skills your parts still need. Reload the page and try again.",
+      "gapReadError": "We could not check which {{skills}} your parts still need. Reload the page and try again.",
       "artistReadError": "We could not load your {{artists}}, so we cannot tell who holds what. Reload the page and try again.",
       "assignError": "That change did not save. Try again.",
-      "noCatalog": "No skills in the catalog yet. Add one below, then set it on your {{artists}}.",
-      "noArtists": "No active {{artists}} yet. Add your {{artists}} first, then set their skills.",
+      "noCatalog": "No {{skills}} in the catalog yet. Add one below, then set it on your {{artists}}.",
+      "noArtists": "No active {{artists}} yet. Add your {{artists}} first, then set their {{skills}}.",
       "noArtistsLink": "Go to {{artists}}",
-      "catalogReadError": "We could not load your skill catalog, so we cannot list the skills to pick from. Reload the page and try again.",
+      "catalogReadError": "We could not load your {{skill}} catalog, so we cannot list the {{skills}} to pick from. Reload the page and try again.",
       "filterPlaceholder": "Search {{artists}} by name",
       "filterNoMatch": "No {{artist}} matches that name.",
       "showAll": "See all {{count}} {{artists}}"
@@ -364,26 +364,26 @@
       "readOnly": "Ask an admin to choose the workspace type."
     },
     "source": {
-      "heading": "Where do your dates come from",
+      "heading": "Where do your {{showDates}} come from",
       "sub": "Pick one. You can add more later.",
       "airtable": {
         "title": "Airtable",
-        "desc": "Sync dates from an Airtable base."
+        "desc": "Sync {{showDates}} from an Airtable base."
       },
       "sheet": {
         "title": "Google Sheet",
-        "desc": "Import dates from a published sheet."
+        "desc": "Import {{showDates}} from a published sheet."
       },
       "manual": {
         "title": "By hand",
-        "desc": "Add {{productions}} and dates yourself."
+        "desc": "Add {{productions}} and {{showDates}} yourself."
       },
       "continue": "Continue",
       "readOnly": "Ask an admin to choose a source."
     },
     "connect": {
       "heading": "Connect Airtable",
-      "sub": "Paste your token, then pick the base and table with your dates.",
+      "sub": "Paste your token, then pick the base and table with your {{showDates}}.",
       "manual": "By hand needs no connection. Continue to add {{productions}}.",
       "saveToken": "Save token",
       "connected": "Connected to {{baseName}} › {{tableName}}.",
@@ -401,10 +401,10 @@
         "loadError": "The sheet could not be read. Check the link and try again."
       },
       "none": {
-        "heading": "Connect your dates source",
-        "sub": "Pick where your dates come from first, then connect it here."
+        "heading": "Connect your {{showDates}} source",
+        "sub": "Pick where your {{showDates}} come from first, then connect it here."
       },
-      "pickSourceFirst": "Go back a step and pick where your dates come from. Airtable and Google Sheet connect here. By hand needs no connection."
+      "pickSourceFirst": "Go back a step and pick where your {{showDates}} come from. Airtable and Google Sheet connect here. By hand needs no connection."
     },
     "map": {
       "heading": "Map your fields",
@@ -438,31 +438,31 @@
       "goToConnect": "Go to Connect Airtable"
     },
     "cities": {
-      "heading": "Set a city on every date",
+      "heading": "Set a city on every {{showDate}}",
       "sub": "Link each imported city to a ShowFlow city, or create it if it does not exist yet.",
       "continue": "Continue",
       "incomplete": "Link or create every city to continue.",
       "empty": "No cities to resolve yet. Cities are added and managed in Settings.",
       "manageLink": "Go to Settings",
-      "noDates": "No dates yet. Add your first date, then give it a city.",
+      "noDates": "No {{showDates}} yet. Add your first {{showDate}}, then give it a city.",
       "noDatesLink": "Go to {{productions}}",
-      "missingHeading": "Dates without a city",
-      "missingSub": "Pick a city for every date. A date with no city cannot be filled.",
+      "missingHeading": "{{ShowDates}} without a city",
+      "missingSub": "Pick a city for every {{showDate}}. {{ShowDates}} with no city cannot be filled.",
       "missingUnknownProduction": "Untitled {{production}}",
-      "readError": "We could not check which dates still need a city. Reload the page and try again.",
+      "readError": "We could not check which {{showDates}} still need a city. Reload the page and try again.",
       "assignCity": "Assign a city",
       "catalogError": "We could not load your cities, so the pickers below are empty. Reload the page and try again.",
-      "assignFailed": "We could not save that city. The date still has no city. Try again.",
+      "assignFailed": "We could not save that city. The {{showDate}} still has no city. Try again.",
       "sheet": {
-        "heading": "Import your dates",
-        "sub": "Run the import to bring your dates in from the sheet.",
-        "importButton": "Import dates now",
+        "heading": "Import your {{showDates}}",
+        "sub": "Run the import to bring your {{showDates}} in from the sheet.",
+        "importButton": "Import {{showDates}} now",
         "importAgain": "Import again",
         "importing": "Importing",
-        "notYet": "Nothing imported yet. Run the import to bring in your dates.",
+        "notYet": "Nothing imported yet. Run the import to bring in your {{showDates}}.",
         "importError": "The import failed. Check the sheet link and your access, then try again.",
         "resultProcessed": "Processed",
-        "resultNew": "New dates",
+        "resultNew": "New {{showDates}}",
         "resultUpdated": "Updated",
         "resultHeld": "Held",
         "heldNote": "Held rows need a city, date, or {{production}} before they can import. Link the missing cities in the city catalog, then run the import again.",
@@ -478,18 +478,18 @@
       "heading": "Review your {{productions}}",
       "sub": "Check the {{productions}} that came in, and add any that are missing.",
       "addProduction": "Add a new {{production}}",
-      "addDate": "Add a date",
+      "addDate": "Add a new {{showDate}}",
       "setParts": "Set parts breakdown",
       "unconfigured": "Unconfigured",
       "parts": "{{main}} main + {{understudyCount}} {{understudies}}",
-      "dateCount_one": "{{count}} date",
-      "dateCount_other": "{{count}} dates",
+      "dateCount_one": "{{count}} {{showDate}}",
+      "dateCount_other": "{{count}} {{showDates}}",
       "continue": "Continue",
       "incomplete": "Set at least one parts breakdown to continue.",
       "empty": "No {{productions}} yet. Add your first one to get started.",
       "readOnlyEmpty": "No {{productions}} yet. Ask an admin to add one.",
       "readOnlyReason": "Adding a new {{production}} needs the manage {{productions}} right, which this account does not have.",
-      "noDates": "Add at least one date to continue. Any {{production}} with no dates has nothing to fill.",
+      "noDates": "Add at least one {{showDate}} to continue. Any {{production}} with no {{showDates}} has nothing to fill.",
       "readError": "We could not load your {{productions}}. Reload the page and try again."
     },
     "fee": {
