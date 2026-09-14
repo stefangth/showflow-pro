@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolveEmailCopy } from "./emailCopy";
+import { PRODUCTION_VOCAB, resolveEmailCopy } from "./emailCopy";
 import { VOCABULARY } from "@/lib/orgKind";
 
 // Pre-change (origin/main) English strings for every noun-bearing key this PR rewrote
@@ -124,5 +124,15 @@ describe("resolveEmailCopy org_kind vocabulary", () => {
       VOCABULARY.staffing.en,
     );
     expect(copy["org-invitation.heading"]).toBe("Join the Project team");
+  });
+});
+
+// PRODUCTION_VOCAB is a hand-maintained, import-free copy of VOCABULARY.production
+// (the emailCopy mirror must import nothing). Guard against silent desync if the
+// registry changes: the fallback table must stay identical to the source of truth.
+describe("PRODUCTION_VOCAB stays in sync with the org_kind registry", () => {
+  it("matches VOCABULARY.production for en and de", () => {
+    expect(PRODUCTION_VOCAB.en).toEqual(VOCABULARY.production.en);
+    expect(PRODUCTION_VOCAB.de).toEqual(VOCABULARY.production.de);
   });
 });
