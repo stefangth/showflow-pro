@@ -1,20 +1,31 @@
 import { HELP_ITEMS, type HelpItem } from './items';
 import type { HelpRole } from './types';
 import { STAGES } from './stages';
+import { DEFAULT_ORG_KIND, VOCABULARY, interpolateVocabulary, type OrgKind } from '@/lib/orgKind';
 
 export type HelpFilter = 'all' | 'new';
 
 /** Items for one role, narrowed by the active filter + free-text search.
  *  Search matches across BOTH languages and the surface label, so an English
- *  product term still matches for a reader browsing in German (and vice versa). */
-export function selectItems(role: HelpRole, filter: HelpFilter, query: string): HelpItem[] {
+ *  product term still matches for a reader browsing in German (and vice versa).
+ *  The copy carries vocabulary placeholders ({{hireOrder}}, {{cast}}, ...), so the
+ *  haystack is built from the DISPLAYED text: the EN half interpolated with the active
+ *  kind's EN table, the DE half with its DE table. That way searching either language's
+ *  displayed noun ('contract'/'Engagementvertrag') matches the item that shows it. */
+export function selectItems(
+  role: HelpRole,
+  filter: HelpFilter,
+  query: string,
+  kind: OrgKind = DEFAULT_ORG_KIND,
+): HelpItem[] {
   const q = query.trim().toLowerCase();
   return HELP_ITEMS.filter((i) => {
     if (i.role !== role) return false;
     if (filter === 'new' && i.status !== 'new') return false;
     if (!q) return true;
-    const hay = `${i.q.en} ${i.q.de} ${i.a.en} ${i.a.de} ${i.surface}`.toLowerCase();
-    return hay.includes(q);
+    const en = interpolateVocabulary(`${i.q.en} ${i.a.en}`, VOCABULARY[kind].en);
+    const de = interpolateVocabulary(`${i.q.de} ${i.a.de} ${i.surface}`, VOCABULARY[kind].de);
+    return `${en} ${de}`.toLowerCase().includes(q);
   });
 }
 

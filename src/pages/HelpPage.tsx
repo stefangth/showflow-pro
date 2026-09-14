@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/features/auth/AuthContext';
 import { useLanguage } from '@/features/i18n/LanguageContext';
+import { useOrgKind } from '@/hooks/useOrgKind';
 import { selectItems, groupByStage, countParams, findItem, type HelpFilter } from '@/lib/help/filter';
 import type { HelpRole } from '@/lib/help/types';
 import { Button } from '@/components/ui/button';
@@ -17,6 +18,7 @@ const ROLE_ORDER: HelpRole[] = ['admin', 'producer', 'artist'];
 export default function HelpPage() {
   const { t } = useTranslation('help');
   const { lang } = useLanguage();
+  const orgKind = useOrgKind();
   const { roles, currentOrg } = useAuth();
   const orgName = currentOrg?.name ?? '';
 
@@ -68,7 +70,7 @@ export default function HelpPage() {
     document.getElementById(`help-${target.id}`)?.scrollIntoView({ block: 'center' });
   }, [target]);
 
-  const matched = selectItems(role, filter, query);
+  const matched = selectItems(role, filter, query, orgKind);
   const groups = groupByStage(matched);
   const c = countParams(role, filter, query, matched);
   const countLabel = c.filtered
