@@ -92,9 +92,10 @@ const IDENTICAL_OK: Record<string, string> = {
 
   // settingsRolesRights
   'settingsRolesRights.tab.presets.standard': '"Standard" is identical in German',
-  'settingsRolesRights.editingPicker.productionTeam': 'role label "Production Team" kept untranslated',
+  'settingsRolesRights.editingPicker.productionTeam': 'whole value is one vocabulary variable, so both languages carry the same token and the noun resolves per language at runtime',
   'settingsRolesRights.changeLog.transition': 'interpolation + arrow only ("{{from}} -> {{to}}")',
-  'settingsRolesRights.capabilityGroups.artists': 'role noun "Artists" kept untranslated (TERMS convention)',
+  'settingsRolesRights.capabilityGroups.artists': 'whole value is one vocabulary variable, so both languages carry the same token and the noun resolves per language at runtime',
+  'settingsRolesRights.capabilityGroups.hireOrders': 'whole value is one vocabulary variable, so both languages carry the same token and the noun resolves per language at runtime',
 
   // admin
   'admin.bulk.placeholder': 'example email addresses only (alex@email.com / sam@email.com)',
@@ -118,6 +119,14 @@ const IDENTICAL_OK: Record<string, string> = {
   'hireOrdersPages.wizard.feePlaceholder': 'numeric placeholder "0.00"',
   'hireOrdersPages.slideOver.artist': 'role noun "Artist" kept untranslated (TERMS)',
   'hireOrdersPages.provenanceChip.showflow': 'abbreviation "SF" of the ShowFlow proper noun',
+  'hireOrdersPages.hireOrdersPage.title': 'whole value is one vocabulary variable, so both languages carry the same token and the noun resolves per language at runtime',
+  'hireOrdersPages.ordersTable.colOrder': 'whole value is one vocabulary variable, so both languages carry the same token and the noun resolves per language at runtime',
+  'hireOrdersPages.mapStep.cast': 'whole value is one vocabulary variable, so both languages carry the same token and the noun resolves per language at runtime',
+  'hireOrdersPages.generateDialog.producer': 'whole value is one vocabulary variable, so both languages carry the same token and the noun resolves per language at runtime',
+  'hireOrdersPages.ordersCard.hireOrder': 'whole value is one vocabulary variable, so both languages carry the same token and the noun resolves per language at runtime',
+  'hireOrdersPages.ordersCard.hireOrders': 'whole value is one vocabulary variable, so both languages carry the same token and the noun resolves per language at runtime',
+  'hireOrdersPages.detailPage.title': 'whole value is one vocabulary variable, so both languages carry the same token and the noun resolves per language at runtime',
+  'hireOrdersPages.editPage.cast': 'whole value is one vocabulary variable, so both languages carry the same token and the noun resolves per language at runtime',
   'hireOrdersPages.reviewStep.colArtist': 'role noun "Artist" kept untranslated (TERMS)',
   'hireOrdersPages.reviewStep.colStatus': '"Status" is identical in German',
   'hireOrdersPages.generateDialog.artist': 'role noun "Artist" kept untranslated (TERMS)',

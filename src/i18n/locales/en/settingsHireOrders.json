@@ -4,7 +4,7 @@
       "letterhead": "Letterhead",
       "terms": "Terms",
       "numbering": "Numbering",
-      "orderDefaults": "Contract defaults",
+      "orderDefaults": "{{HireOrder}} defaults",
       "countersign": "Countersign mode",
       "copy": "PDF copy",
       "theme": "PDF template"
@@ -12,24 +12,24 @@
     "entryUpdated": "{{label}} updated",
     "rail": {
       "aboutTitle": "About this tab",
-      "aboutBody": "Each card saves independently. Changes apply to the next contract generated for this organization, not to documents already issued.",
+      "aboutBody": "Each card saves independently. Changes apply to the next {{hireOrder}} generated for this organization, not to documents already issued.",
       "historyTitle": "Change history",
       "historyError": "Could not load change history.",
       "historyEmpty": "No changes recorded yet.",
       "systemActor": "System"
     },
-    "disabled": "Contracts are not enabled for this organization. Contact your ShowFlow administrator to enable the module."
+    "disabled": "{{HireOrders}} are not enabled for this organization. Contact your ShowFlow administrator to enable the module."
   },
   "countersignCard": {
     "title": "Countersign mode",
-    "description": "How the artist's signature is captured once a contract is issued.",
+    "description": "How the {{artist}}'s signature is captured once the {{hireOrder}} is issued.",
     "save": "Save countersign mode",
     "saved": "Countersign mode saved",
     "loadError": "Could not load the countersign settings."
   },
   "letterheadCard": {
     "title": "Letterhead",
-    "description": "Appears at the top of every contract PDF alongside the Hiring party block.",
+    "description": "Appears at the top of every {{hireOrder}} PDF alongside the Hiring party block.",
     "saved": "Letterhead saved",
     "loadError": "Could not load the letterhead settings.",
     "pngOnly": "Please choose a PNG image",
@@ -37,7 +37,7 @@
     "agentName": "Agent name (optional)",
     "agentEmail": "Agent email (optional)",
     "agentSignature": "Agent signature (optional)",
-    "agentSignatureHelp": "A PNG of the booking agent's signature, drawn on the producer line of issued contracts. Save the letterhead to apply.",
+    "agentSignatureHelp": "A PNG of the booking agent's signature, drawn on the signature line of issued {{hireOrders}}. Save the letterhead to apply.",
     "signaturePreviewAlt": "Agent signature preview",
     "signatureOnFile": "Signature on file",
     "remove": "Remove",
@@ -45,11 +45,11 @@
     "replaceSignature": "Replace signature",
     "uploadPng": "Upload PNG",
     "save": "Save letterhead",
-    "legalNameRequired": "Add the legal name to save. It is the one field a contract cannot be issued without."
+    "legalNameRequired": "Add the legal name to save. It is the one field no {{hireOrder}} can be issued without."
   },
   "numberingCard": {
     "title": "Numbering",
-    "description": "Controls the number stamped on every contract. Supported tokens: {prefix}, {yyyy}, {mm}, {dd}, {mmdd}, {seq}, {cast}, {cast|seq}.",
+    "description": "Controls the number stamped on every {{hireOrder}}. Supported tokens: {prefix}, {yyyy}, {mm}, {dd}, {mmdd}, {seq}, {cast}, {cast|seq}.",
     "saved": "Numbering saved",
     "loadError": "Could not load the numbering settings.",
     "prefix": "Prefix",
@@ -58,21 +58,21 @@
     "save": "Save numbering"
   },
   "orderDefaultsCard": {
-    "title": "Contract defaults",
-    "description": "Prefills a new contract's fee, basis, and currency. A per-date fee is multiplied by the number of engagement dates on the contract. A producer can always adjust it per contract.",
-    "saved": "Contract defaults saved",
-    "loadError": "Could not load the contract defaults.",
+    "title": "{{HireOrder}} defaults",
+    "description": "Prefills a new {{hireOrder}}'s fee, basis, and currency. A per-{{showDate}} fee is multiplied by the number of engagement {{showDates}} on the {{hireOrder}}. {{roleProducer}} can always adjust it per {{hireOrder}}.",
+    "saved": "{{HireOrder}} defaults saved",
+    "loadError": "Could not load the {{hireOrder}} defaults.",
     "defaultFee": "Default fee",
     "noDefault": "No default",
     "currency": "Currency",
     "feeBasis": "Fee basis",
-    "perDate": "Per date",
-    "totalAllDates": "Total for all dates",
+    "perDate": "Per {{showDate}}",
+    "totalAllDates": "Total for all {{showDates}}",
     "save": "Save defaults"
   },
   "pdfTemplateCard": {
     "title": "PDF template",
-    "description": "Wording, fonts, sizes, and colours for the contract PDF. Edit any element and see the document update as you type. Changes apply to the next contract issued, not to documents already issued.",
+    "description": "Wording, fonts, sizes, and colours for the {{hireOrder}} PDF. Edit any element and see the document update as you type. Changes apply to the next {{hireOrder}} issued, not to documents already issued.",
     "loadError": "Could not load the PDF template settings.",
     "summary": "{{family}} at {{percent}}%, {{customised}}",
     "customisedNone": "no customised elements",
@@ -82,12 +82,12 @@
   },
   "termsVariantsCard": {
     "title": "Terms",
-    "description": "Templates of clauses printed on the contract PDF. A contract picks one template when it is issued, and one template is marked as the default. ShowFlow ships no default clauses, so your organization authors its own.",
+    "description": "Templates of clauses printed on the {{hireOrder}} PDF. Each {{hireOrder}} picks one template when it is issued, and one template is marked as the default. ShowFlow ships no default clauses, so your organization authors its own.",
     "saved": "Terms saved",
     "loadError": "Could not load the terms settings.",
     "clausesHeading": "Clauses",
     "addClause": "Add clause",
-    "noClauses": "No clauses yet. Add the clauses your organization wants printed on a \"{{label}}\" contract before issuing one.",
+    "noClauses": "No clauses yet. Add the clauses your organization wants printed on a \"{{label}}\" {{hireOrder}} before issuing one.",
     "clauseTitlePlaceholder": "Clause title",
     "clauseTitleAria": "{{label}} clause {{index}} title",
     "removeClause": "Remove clause",
@@ -107,12 +107,12 @@
     "save": "Save terms"
   },
   "countersignFields": {
-    "electronicTitle": "Artist signs in ShowFlow",
-    "electronicBody": "The artist reviews and signs the issued contract in the app. Signature, timestamp and IP are stored with it.",
+    "electronicTitle": "{{Artist}} signs in ShowFlow",
+    "electronicBody": "The {{artist}} reviews and signs the issued {{hireOrder}} in the app. Signature, timestamp and IP are stored with it.",
     "manualTitle": "Signatures handled outside ShowFlow",
-    "manualBody": "A producer marks the contract countersigned once the artist has signed elsewhere.",
-    "emailProducersTitle": "Also email producers the signed copy",
-    "emailProducersBody": "When the artist signs, email the assigned producers a copy. Producers are notified in-app either way."
+    "manualBody": "{{roleProducer}} marks the {{hireOrder}} countersigned once the {{artist}} has signed elsewhere.",
+    "emailProducersTitle": "Also email {{roleProducer}} the signed copy",
+    "emailProducersBody": "When the {{artist}} signs, email the assigned {{roleProducer}} a copy. {{roleProducer}} is notified in-app either way."
   },
   "letterheadFields": {
     "legalName": "Legal name",
@@ -133,7 +133,7 @@
     "renderError": "Could not render the preview.",
     "updating": "Updating",
     "ariaLabel": "Document preview",
-    "iframeTitle": "Contract preview"
+    "iframeTitle": "{{HireOrder}} preview"
   },
   "templateEditorPage": {
     "saved": "PDF template saved",

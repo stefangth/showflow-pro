@@ -4,7 +4,7 @@
       "letterhead": "Briefkopf",
       "terms": "Bedingungen",
       "numbering": "Nummerierung",
-      "orderDefaults": "Vertragsvorgaben",
+      "orderDefaults": "Vorgaben für {{HireOrders}}",
       "countersign": "Gegenzeichnungsmodus",
       "copy": "PDF-Texte",
       "theme": "PDF-Vorlage"
@@ -12,24 +12,24 @@
     "entryUpdated": "{{label}} aktualisiert",
     "rail": {
       "aboutTitle": "Über diesen Tab",
-      "aboutBody": "Jede Karte speichert unabhängig. Änderungen gelten für den nächsten Engagementvertrag, der für diese Organisation erstellt wird, nicht für bereits ausgestellte Dokumente.",
+      "aboutBody": "Jede Karte speichert unabhängig. Änderungen gelten für den nächsten {{HireOrder}}, der für diese Organisation erstellt wird, nicht für bereits ausgestellte Dokumente.",
       "historyTitle": "Änderungsverlauf",
       "historyError": "Der Änderungsverlauf konnte nicht geladen werden.",
       "historyEmpty": "Noch keine Änderungen erfasst.",
       "systemActor": "System"
     },
-    "disabled": "Engagementverträge sind für diese Organisation nicht aktiviert. Wende dich an deine ShowFlow-Administration, um das Modul zu aktivieren."
+    "disabled": "{{HireOrders}} sind für diese Organisation nicht aktiviert. Wende dich an deine ShowFlow-Administration, um das Modul zu aktivieren."
   },
   "countersignCard": {
     "title": "Gegenzeichnungsmodus",
-    "description": "Wie die Unterschrift des Artists erfasst wird, sobald ein Engagementvertrag ausgestellt wurde.",
+    "description": "Wie die Unterschrift vom {{Artist}} erfasst wird, sobald der {{HireOrder}} ausgestellt wurde.",
     "save": "Gegenzeichnungsmodus speichern",
     "saved": "Gegenzeichnungsmodus gespeichert",
     "loadError": "Die Einstellungen zur Gegenzeichnung konnten nicht geladen werden."
   },
   "letterheadCard": {
     "title": "Briefkopf",
-    "description": "Erscheint oben auf jedem Engagementvertrag-PDF neben dem Block für die auftraggebende Partei.",
+    "description": "Erscheint oben auf jedem {{HireOrder}}-PDF neben dem Block für die auftraggebende Partei.",
     "saved": "Briefkopf gespeichert",
     "loadError": "Die Briefkopf-Einstellungen konnten nicht geladen werden.",
     "pngOnly": "Bitte wähle ein PNG-Bild aus",
@@ -37,7 +37,7 @@
     "agentName": "Name der Agentur (optional)",
     "agentEmail": "E-Mail der Agentur (optional)",
     "agentSignature": "Unterschrift der Agentur (optional)",
-    "agentSignatureHelp": "Ein PNG der Unterschrift der Booking-Agentur, das auf der Produzentenzeile ausgestellter Engagementverträge erscheint. Speichere den Briefkopf, um es zu übernehmen.",
+    "agentSignatureHelp": "Ein PNG der Unterschrift der Booking-Agentur, das auf der Unterschriftszeile ausgestellter {{HireOrders}} erscheint. Speichere den Briefkopf, um es zu übernehmen.",
     "signaturePreviewAlt": "Vorschau der Agentur-Unterschrift",
     "signatureOnFile": "Unterschrift hinterlegt",
     "remove": "Entfernen",
@@ -45,11 +45,11 @@
     "replaceSignature": "Unterschrift ersetzen",
     "uploadPng": "PNG hochladen",
     "save": "Briefkopf speichern",
-    "legalNameRequired": "Trage den rechtlichen Namen ein, um zu speichern. Ohne dieses Feld kann kein Vertrag ausgestellt werden."
+    "legalNameRequired": "Trage den rechtlichen Namen ein, um zu speichern. Ohne dieses Feld kann kein {{HireOrder}} ausgestellt werden."
   },
   "numberingCard": {
     "title": "Nummerierung",
-    "description": "Steuert die Nummer, die auf jedem Engagementvertrag steht. Unterstützte Platzhalter: {prefix}, {yyyy}, {mm}, {dd}, {mmdd}, {seq}, {cast}, {cast|seq}.",
+    "description": "Steuert die Nummer, die auf jedem {{HireOrder}} steht. Unterstützte Platzhalter: {prefix}, {yyyy}, {mm}, {dd}, {mmdd}, {seq}, {cast}, {cast|seq}.",
     "saved": "Nummerierung gespeichert",
     "loadError": "Die Nummerierungseinstellungen konnten nicht geladen werden.",
     "prefix": "Präfix",
@@ -58,21 +58,21 @@
     "save": "Nummerierung speichern"
   },
   "orderDefaultsCard": {
-    "title": "Vertragsvorgaben",
-    "description": "Füllt Honorar, Berechnungsart und Währung eines neuen Engagementvertrags vor. Ein Honorar pro Termin wird mit der Anzahl der Engagement-Termine im Vertrag multipliziert. Das Produktionsteam kann es jederzeit pro Vertrag anpassen.",
-    "saved": "Vertragsvorgaben gespeichert",
-    "loadError": "Die Vertragsvorgaben konnten nicht geladen werden.",
+    "title": "Vorgaben für {{HireOrders}}",
+    "description": "Füllt Honorar, Berechnungsart und Währung für einen neuen {{HireOrder}} vor. Ein Honorar pro {{ShowDate}} wird mit der Anzahl der Engagement-{{ShowDates}} im {{HireOrder}} multipliziert. Das {{roleProducer}} kann es jederzeit pro {{HireOrder}} anpassen.",
+    "saved": "Vorgaben für {{HireOrders}} gespeichert",
+    "loadError": "Die Vorgaben für {{HireOrders}} konnten nicht geladen werden.",
     "defaultFee": "Standardhonorar",
     "noDefault": "Kein Standardwert",
     "currency": "Währung",
     "feeBasis": "Berechnungsart",
-    "perDate": "Pro Termin",
-    "totalAllDates": "Gesamt für alle Termine",
+    "perDate": "Pro {{ShowDate}}",
+    "totalAllDates": "Gesamt für alle {{ShowDates}}",
     "save": "Vorgaben speichern"
   },
   "pdfTemplateCard": {
     "title": "PDF-Vorlage",
-    "description": "Texte, Schriften, Größen und Farben für das Engagementvertrag-PDF. Bearbeite ein Element und sieh die Änderung sofort im Dokument. Änderungen gelten für den nächsten ausgestellten Vertrag, nicht für bereits ausgestellte Dokumente.",
+    "description": "Texte, Schriften, Größen und Farben für das {{HireOrder}}-PDF. Bearbeite ein Element und sieh die Änderung sofort im Dokument. Änderungen gelten für den nächsten ausgestellten {{HireOrder}}, nicht für bereits ausgestellte Dokumente.",
     "loadError": "Die Einstellungen der PDF-Vorlage konnten nicht geladen werden.",
     "summary": "{{family}} bei {{percent}}%, {{customised}}",
     "customisedNone": "keine angepassten Elemente",
@@ -82,12 +82,12 @@
   },
   "termsVariantsCard": {
     "title": "Bedingungen",
-    "description": "Vorlagen mit Klauseln, die auf dem Engagementvertrag-PDF stehen. Ein Engagementvertrag wählt beim Ausstellen eine Vorlage, und eine Vorlage ist als Standard markiert. ShowFlow liefert keine Standardklauseln, deine Organisation erstellt ihre eigenen.",
+    "description": "Vorlagen mit Klauseln, die auf dem {{HireOrder}}-PDF stehen. Jeder {{HireOrder}} wählt beim Ausstellen eine Vorlage, und eine Vorlage ist als Standard markiert. ShowFlow liefert keine Standardklauseln, deine Organisation erstellt ihre eigenen.",
     "saved": "Bedingungen gespeichert",
     "loadError": "Die Bedingungen konnten nicht geladen werden.",
     "clausesHeading": "Klauseln",
     "addClause": "Klausel hinzufügen",
-    "noClauses": "Noch keine Klauseln. Füge die Klauseln hinzu, die deine Organisation auf einem Engagementvertrag mit \"{{label}}\" sehen möchte, bevor du einen ausstellst.",
+    "noClauses": "Noch keine Klauseln. Füge die Klauseln hinzu, die deine Organisation auf einem {{HireOrder}} mit \"{{label}}\" sehen möchte, bevor du einen ausstellst.",
     "clauseTitlePlaceholder": "Klauseltitel",
     "clauseTitleAria": "{{label}} Klausel {{index}} Titel",
     "removeClause": "Klausel entfernen",
@@ -107,12 +107,12 @@
     "save": "Bedingungen speichern"
   },
   "countersignFields": {
-    "electronicTitle": "Artist unterschreibt in ShowFlow",
-    "electronicBody": "Der Artist prüft und unterschreibt den ausgestellten Vertrag in der App. Unterschrift, Zeitstempel und IP-Adresse werden dazu gespeichert.",
+    "electronicTitle": "{{Artist}} unterschreibt in ShowFlow",
+    "electronicBody": "{{Artists}} prüfen und unterschreiben den ausgestellten {{HireOrder}} in der App. Unterschrift, Zeitstempel und IP-Adresse werden dazu gespeichert.",
     "manualTitle": "Unterschriften außerhalb von ShowFlow",
-    "manualBody": "Das Produktionsteam markiert den Vertrag als gegengezeichnet, sobald der Artist anderswo unterschrieben hat.",
-    "emailProducersTitle": "Auch dem Produktionsteam die unterschriebene Kopie mailen",
-    "emailProducersBody": "Wenn der Artist unterschreibt, erhält das zugewiesene Produktionsteam eine Kopie per E-Mail. Das Produktionsteam wird in der App in jedem Fall benachrichtigt."
+    "manualBody": "Das {{roleProducer}} markiert den {{HireOrder}} als gegengezeichnet, sobald die {{Artists}} anderswo unterschrieben haben.",
+    "emailProducersTitle": "Auch dem {{roleProducer}} die unterschriebene Kopie mailen",
+    "emailProducersBody": "Wenn {{Artists}} unterschreiben, erhält das zugewiesene {{roleProducer}} eine Kopie per E-Mail. Das {{roleProducer}} wird in der App in jedem Fall benachrichtigt."
   },
   "letterheadFields": {
     "legalName": "Rechtlicher Name",
@@ -133,7 +133,7 @@
     "renderError": "Die Vorschau konnte nicht gerendert werden.",
     "updating": "Wird aktualisiert",
     "ariaLabel": "Dokumentvorschau",
-    "iframeTitle": "Vorschau des Engagementvertrags"
+    "iframeTitle": "{{HireOrder}}-Vorschau"
   },
   "templateEditorPage": {
     "saved": "PDF-Vorlage gespeichert",

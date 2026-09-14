@@ -2,7 +2,7 @@
   "tab": {
     "eyebrow": "ORGANISATION · ZUGRIFF",
     "title": "Rollen & Rechte",
-    "description": "Lege Rechte für das gesamte Production Team fest. Admins haben immer alle Rechte.",
+    "description": "Lege Rechte für das gesamte {{roleProducer}} fest. Admins haben immer alle Rechte.",
     "changeLogButton": "Änderungsprotokoll",
     "resetToBaseline": "Auf Ausgangswert zurücksetzen",
     "searchPlaceholder": "Rechte durchsuchen...",
@@ -20,8 +20,8 @@
       "off": "Aus"
     },
     "groupSummary": "{{on}} von {{total}} an",
-    "stagedScopeLine": "Gilt für den Production Team Standard.",
-    "productionTeamRoleName": "das Production Team",
+    "stagedScopeLine": "Gilt für den {{roleProducer}} Standard.",
+    "productionTeamRoleName": "das {{roleProducer}}",
     "transition": {
       "on": "Aus -> An",
       "off": "An -> Aus",
@@ -38,8 +38,8 @@
   },
   "editingPicker": {
     "eyebrow": "Bearbeiten",
-    "description": "Rechte gelten für das gesamte Production Team.",
-    "productionTeam": "Production Team",
+    "description": "Rechte gelten für das gesamte {{roleProducer}}.",
+    "productionTeam": "{{roleProducer}}",
     "teamDefault": "Team-Standard"
   },
   "groupCard": {
@@ -68,128 +68,128 @@
   },
   "capabilities": {
     "producer_can_invite": {
-      "label": "Artists zur App einladen",
-      "description": "Das Production Team kann Artists App-Login-Einladungen schicken."
+      "label": "{{Artists}} zur App einladen",
+      "description": "Das {{roleProducer}} kann {{Artists}} App-Login-Einladungen schicken."
     },
     "producer_can_manage_invitations": {
-      "label": "Artist-Einladungen widerrufen oder erneut senden",
-      "description": "Das Production Team kann ausstehende Artist-Einladungen widerrufen oder erneut senden."
+      "label": "{{Artist}}-Einladungen widerrufen oder erneut senden",
+      "description": "Das {{roleProducer}} kann ausstehende {{Artist}}-Einladungen widerrufen oder erneut senden."
     },
     "producer_can_manage_productions": {
-      "label": "Produktionen anlegen und bearbeiten",
-      "description": "Das Production Team kann Produktionen anlegen und bearbeiten."
+      "label": "{{Productions}} anlegen und bearbeiten",
+      "description": "Das {{roleProducer}} kann {{Productions}} anlegen und bearbeiten."
     },
     "producer_can_archive_productions": {
-      "label": "Produktionen archivieren",
-      "description": "Das Production Team kann Produktionen archivieren und wieder aktivieren."
+      "label": "{{Productions}} archivieren",
+      "description": "Das {{roleProducer}} kann {{Productions}} archivieren und wieder aktivieren."
     },
     "producer_can_reorder_productions": {
-      "label": "Produktionen neu sortieren",
-      "description": "Das Production Team kann die Produktionsliste per Ziehen neu ordnen."
+      "label": "{{Productions}} neu sortieren",
+      "description": "Das {{roleProducer}} kann die Liste der {{Productions}} per Ziehen neu ordnen."
     },
     "producer_can_hard_delete_productions": {
-      "label": "Produktionen löschen",
-      "description": "Das Production Team kann Produktionen dauerhaft löschen."
+      "label": "{{Productions}} löschen",
+      "description": "Das {{roleProducer}} kann {{Productions}} dauerhaft löschen."
     },
     "producer_can_manage_show_dates": {
-      "label": "Termine anlegen und bearbeiten",
-      "description": "Das Production Team kann Termine anlegen und bearbeiten."
+      "label": "{{ShowDates}} anlegen und bearbeiten",
+      "description": "Das {{roleProducer}} kann {{ShowDates}} anlegen und bearbeiten."
     },
     "producer_can_hard_delete_show_dates": {
-      "label": "Termine löschen",
-      "description": "Das Production Team kann Termine dauerhaft löschen."
+      "label": "{{ShowDates}} löschen",
+      "description": "Das {{roleProducer}} kann {{ShowDates}} dauerhaft löschen."
     },
     "producer_can_manage_casts": {
-      "label": "Besetzungen verwalten",
-      "description": "Das Production Team kann Besetzungen anlegen, bearbeiten und löschen."
+      "label": "{{Casts}} verwalten",
+      "description": "Das {{roleProducer}} kann {{Casts}} anlegen, bearbeiten und löschen."
     },
     "producer_can_run_offer_engine": {
       "label": "Anfragen verschicken und schließen",
-      "description": "Das Production Team kann Anfragen verschicken und schließen."
+      "description": "Das {{roleProducer}} kann Anfragen verschicken und schließen."
     },
     "producer_can_confirm_bookings": {
       "label": "Buchungen bestätigen",
-      "description": "Das Production Team kann Artists bestätigen, die zugesagt haben."
+      "description": "Das {{roleProducer}} kann {{Artists}} bestätigen, die zugesagt haben."
     },
     "producer_can_edit_booking_settings": {
       "label": "Booking-Engine-Einstellungen bearbeiten",
-      "description": "Das Production Team kann die Booking-Engine-Einstellungen ändern."
+      "description": "Das {{roleProducer}} kann die Booking-Engine-Einstellungen ändern."
     },
     "producer_can_add_artists": {
-      "label": "Artists hinzufügen und importieren",
-      "description": "Das Production Team kann einzelne Artists anlegen und per Massenimport hinzufügen."
+      "label": "{{Artists}} hinzufügen und importieren",
+      "description": "Das {{roleProducer}} kann einzelne {{Artists}} anlegen und per Massenimport hinzufügen."
     },
     "producer_can_edit_artists": {
-      "label": "Artist-Details, Skills und Status bearbeiten",
-      "description": "Das Production Team kann Artist-Datensätze bearbeiten."
+      "label": "{{Artist}}-Details, {{Skills}} und Status bearbeiten",
+      "description": "Das {{roleProducer}} kann {{Artist}}-Datensätze bearbeiten."
     },
     "producer_can_view_linked_accounts": {
       "label": "Einladungen verknüpfter Konten erneut senden",
-      "description": "Das Production Team kann die App-Login-Einladung eines Artists erneut senden."
+      "description": "Das {{roleProducer}} kann App-Login-Einladungen an {{Artists}} erneut senden."
     },
     "producer_can_generate_hire_orders": {
-      "label": "Engagementverträge erstellen und als Entwurf anlegen",
-      "description": "Das Production Team kann Engagementverträge als Entwurf anlegen."
+      "label": "{{HireOrders}} erstellen und als Entwurf anlegen",
+      "description": "Das {{roleProducer}} kann {{HireOrders}} als Entwurf anlegen."
     },
     "producer_can_issue_hire_orders": {
-      "label": "Engagementverträge ausstellen",
-      "description": "Das Production Team kann Engagementverträge ausstellen und das PDF per E-Mail an Artists schicken."
+      "label": "{{HireOrders}} ausstellen",
+      "description": "Das {{roleProducer}} kann {{HireOrders}} ausstellen und das PDF per E-Mail an {{Artists}} schicken."
     },
     "producer_can_void_hire_orders": {
-      "label": "Engagementverträge für ungültig erklären",
-      "description": "Das Production Team kann ausgestellte Engagementverträge für ungültig erklären."
+      "label": "{{HireOrders}} für ungültig erklären",
+      "description": "Das {{roleProducer}} kann ausgestellte {{HireOrders}} für ungültig erklären."
     },
     "producer_can_manage_countersign": {
       "label": "Gegenzeichnung verwalten",
-      "description": "Das Production Team kann den Gegenzeichnungsschritt verwalten."
+      "description": "Das {{roleProducer}} kann den Gegenzeichnungsschritt verwalten."
     },
     "producer_can_edit_hire_order_settings": {
-      "label": "Einstellungen für Engagementverträge bearbeiten",
-      "description": "Das Production Team kann Briefkopf, Nummerierung und Vertragsbedingungen ändern."
+      "label": "Einstellungen für {{HireOrders}} bearbeiten",
+      "description": "Das {{roleProducer}} kann Briefkopf, Nummerierung und Bedingungen ändern."
     },
     "producer_can_rename_org": {
       "label": "Organisation umbenennen",
-      "description": "Das Production Team kann die Organisation umbenennen."
+      "description": "Das {{roleProducer}} kann die Organisation umbenennen."
     },
     "producer_can_manage_ownership": {
-      "label": "Produktions-Zuständigkeit verwalten",
-      "description": "Das Production Team kann die Zuständigkeit für Produktionen zuweisen."
+      "label": "Zuständigkeit für {{Productions}} verwalten",
+      "description": "Das {{roleProducer}} kann die Zuständigkeit für {{Productions}} zuweisen."
     },
     "producer_can_manage_cities": {
-      "label": "Besetzungen und Städte verwalten",
-      "description": "Das Production Team kann die Listen für Besetzungen und Städte verwalten."
+      "label": "{{Casts}} und Städte verwalten",
+      "description": "Das {{roleProducer}} kann die Listen für {{Casts}} und Städte verwalten."
     },
     "producer_can_manage_skills": {
-      "label": "Skills-Katalog verwalten",
-      "description": "Das Production Team kann Skills anlegen, umbenennen und archivieren."
+      "label": "{{Skills}}-Katalog verwalten",
+      "description": "Das {{roleProducer}} kann {{Skills}} anlegen, umbenennen und archivieren."
     },
     "producer_can_edit_filter_settings": {
       "label": "Filter- und Benachrichtigungsstandards bearbeiten",
-      "description": "Das Production Team kann die Standardwerte für Filter und Benachrichtigungen der Organisation ändern."
+      "description": "Das {{roleProducer}} kann die Standardwerte für Filter und Benachrichtigungen der Organisation ändern."
     },
     "producer_can_edit_scheduling": {
       "label": "Planungseinstellungen bearbeiten",
-      "description": "Das Production Team kann die Planungseinstellungen ändern."
+      "description": "Das {{roleProducer}} kann die Planungseinstellungen ändern."
     },
     "producer_can_configure_airtable": {
       "label": "Airtable-Sync konfigurieren",
-      "description": "Das Production Team kann die Airtable-Zuordnung und die Schlüssel bearbeiten."
+      "description": "Das {{roleProducer}} kann die Airtable-Zuordnung und die Schlüssel bearbeiten."
     },
     "producer_can_trigger_sync": {
       "label": "Manuellen Sync auslösen",
-      "description": "Das Production Team kann einen Airtable-Sync auf Abruf starten."
+      "description": "Das {{roleProducer}} kann einen Airtable-Sync auf Abruf starten."
     },
     "producer_can_edit_email_templates": {
       "label": "E-Mail-Vorlagen bearbeiten",
-      "description": "Das Production Team kann E-Mail-Texte und das Branding ändern."
+      "description": "Das {{roleProducer}} kann E-Mail-Texte und das Branding ändern."
     }
   },
   "capabilityGroups": {
     "membersAndAccess": "Mitglieder & Zugriff",
-    "productionsAndShowDates": "Produktionen & Termine",
+    "productionsAndShowDates": "{{Productions}} & {{ShowDates}}",
     "bookingsAndEngine": "Buchungen & Booking Engine",
-    "artists": "Artists",
-    "hireOrders": "Engagementverträge",
+    "artists": "{{Artists}}",
+    "hireOrders": "{{HireOrders}}",
     "settingsAndOrganization": "Einstellungen & Organisation",
     "integrations": "Integrationen",
     "email": "E-Mail"

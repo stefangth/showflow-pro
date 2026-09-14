@@ -515,7 +515,7 @@ describe("HireOrdersPage", () => {
       hire_order_dates: { data: [], error: null },
     });
     renderPage();
-    expect(await screen.findByText(/2 dates are fully cast and ready/i)).toBeInTheDocument();
+    expect(await screen.findByText(/2 dates are fully filled and ready/i)).toBeInTheDocument();
     // A semantic token, not a numbered accent stop: those are identical in light
     // and dark by design, so bare on a card the link failed contrast in dark.
     expect(screen.getByText(/Generate from Dates/).className).toContain("text-primary");

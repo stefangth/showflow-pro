@@ -118,10 +118,10 @@ describe("HireOrdersTab", () => {
     authAs("org-on");
     renderTab();
     await screen.findByText("Countersign mode");
-    expect(screen.queryByLabelText(/also email producers the signed copy/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/also email production team the signed copy/i)).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("radio", { name: /artist signs in showflow/i }));
-    const checkbox = screen.getByRole("checkbox", { name: /also email producers the signed copy/i });
+    const checkbox = screen.getByRole("checkbox", { name: /also email production team the signed copy/i });
     expect(checkbox).toBeInTheDocument();
     expect(checkbox).toHaveAttribute("aria-checked", "false");
 
@@ -134,7 +134,7 @@ describe("HireOrdersTab", () => {
     renderTab();
     await screen.findByText("Countersign mode");
     fireEvent.click(screen.getByRole("radio", { name: /artist signs in showflow/i }));
-    fireEvent.click(screen.getByRole("checkbox", { name: /also email producers the signed copy/i }));
+    fireEvent.click(screen.getByRole("checkbox", { name: /also email production team the signed copy/i }));
     fireEvent.click(screen.getByRole("button", { name: "Save countersign mode" }));
 
     await waitFor(() => {
