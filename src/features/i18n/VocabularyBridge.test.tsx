@@ -6,6 +6,7 @@ import { renderWithProviders } from "@/test/renderWithProviders";
 import { AuthContext, type AuthContextType } from "@/features/auth/AuthContext";
 import i18n from "@/i18n";
 import { VocabularyBridge } from "./VocabularyBridge";
+import { VOCABULARY } from "@/lib/orgKind";
 import type { Organization } from "@/data/orgs";
 
 function Probe() {
@@ -75,5 +76,18 @@ describe("VocabularyBridge", () => {
     await act(async () => { await i18n.changeLanguage("de"); });
     expect(await screen.findByText("Deine Personen")).toBeInTheDocument();
     await act(async () => { await i18n.changeLanguage("en"); });
+  });
+
+  it("resets defaultVariables to the production table on unmount so a public route can't inherit stale words", async () => {
+    const { unmount } = renderWithProviders(
+      <VocabularyBridge />,
+      { authOverrides: { currentOrg: org("staffing") } },
+    );
+    const lang = i18n.language as "en" | "de";
+    // Mount applied the staffing table to the singleton.
+    expect(i18n.options.interpolation?.defaultVariables).toBe(VOCABULARY.staffing[lang]);
+    await act(async () => { unmount(); });
+    // Unmount (sign-out to a layout-less page) reset it to production, so no staffing words leak.
+    expect(i18n.options.interpolation?.defaultVariables).toBe(VOCABULARY.production[lang]);
   });
 });
