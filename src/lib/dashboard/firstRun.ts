@@ -4,7 +4,7 @@ import { TEAM_STEP_KEY, teamStepMeta, type OnboardingModuleKey } from "./moduleO
 import type {
   ComposeInput, ComposeResult, ComposedStep, DashboardRole, InheritedRule,
   ModuleOnboardingDef, ModuleStatusLite, OnboardingCtx, OnboardingStepMeta,
-  SamplePreviewData, WelcomeCopy,
+  WelcomeCopy,
 } from "./types";
 
 /** Namespace-bound translator the copy builders below read from (the `onboarding` catalog). */
@@ -208,41 +208,3 @@ export function collapsedCopy(role: DashboardRole, complete: boolean, remaining:
   };
 }
 
-// Only admin/producer render the sample preview (the empty-org "what this becomes"
-// state). Artists always have real per-user content, so there is no artist fixture.
-export const SAMPLE_PREVIEW: Record<Exclude<DashboardRole, "artist">, SamplePreviewData> = {
-  admin: {
-    stats: [
-      { title: "Live dates", value: "34", label: "upcoming" },
-      { title: "Waiting on a confirm", value: "6", label: "bookings" },
-      { title: "Roster", value: "41", label: "artists" },
-    ],
-    queue: [
-      { title: "6 artists accepted and are waiting on a confirm", hint: "Kammerkonzert 12 Aug, Nachtstück 14 Aug", when: "now", cta: "Confirm", tone: "accent" },
-      { title: "2 offers expire at 17:00", hint: "Tier 1 · Nachtstück 14 Aug", when: "17:00", cta: "Open date", tone: "warning" },
-      { title: "Airtable sync brought in 4 new dates", hint: "None of them have cast slots set", when: "09:04", cta: "Review", tone: "faint" },
-    ],
-    week: [
-      { date: "10 Aug", ref: "Kammerkonzert · Halle B", status: "Cast complete" },
-      { date: "12 Aug", ref: "Kammerkonzert · Halle B", status: "Tier 2 open · 1 of 3" },
-      { date: "14 Aug", ref: "Nachtstück · Studio", status: "2 offers expire 17:00" },
-    ],
-  },
-  producer: {
-    stats: [
-      { title: "Waiting on you", value: "4", label: "confirmations" },
-      { title: "Expiring today", value: "2", label: "offers" },
-      { title: "Unfilled tiers", value: "3", label: "dates" },
-    ],
-    queue: [
-      { title: "4 artists accepted and are waiting on a confirm", hint: "Kammerkonzert 12 Aug, Nachtstück 14 Aug", when: "now", cta: "Confirm", tone: "accent" },
-      { title: "2 offers expire at 17:00", hint: "Tier 1 · Nachtstück 14 Aug", when: "17:00", cta: "Open date", tone: "warning" },
-      { title: "1 contract awaits your countersign", hint: "Nora Lindqvist", when: "today", cta: "Sign", tone: "faint" },
-    ],
-    week: [
-      { date: "10 Aug", ref: "Kammerkonzert · Halle B", status: "Cast complete" },
-      { date: "12 Aug", ref: "Kammerkonzert · Halle B", status: "Tier 2 open · 1 of 3" },
-      { date: "14 Aug", ref: "Nachtstück · Studio", status: "2 offers expire 17:00" },
-    ],
-  },
-};

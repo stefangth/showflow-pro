@@ -73,14 +73,6 @@ export interface WelcomeCopy {
   progressHint: string;
 }
 
-export interface SampleStat { title: string; value: string; label: string; }
-export interface SampleQueueRow {
-  title: string; hint: string; when: string; cta: string;
-  tone: "accent" | "warning" | "faint";
-}
-export interface SampleWeekRow { date: string; ref: string; status: string; }
-export interface SamplePreviewData { stats: SampleStat[]; queue: SampleQueueRow[]; week: SampleWeekRow[]; }
-
 export interface ComposeInput {
   enabled: Set<FeatureKey>;
   role: DashboardRole;
