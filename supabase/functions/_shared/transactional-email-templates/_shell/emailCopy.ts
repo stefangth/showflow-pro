@@ -629,23 +629,139 @@ function withLegacyCarryForward<T extends Record<string, unknown>>(raw: Record<s
   return target;
 }
 
-/** Merge valid, non-blank per-org copy over a fresh complete default record. An explicit
- *  (non-blank) override for the CURRENT key always wins over a carried-forward legacy
- *  one; a present-but-blank current-key value does not count as explicit, so the legacy
- *  value still carries forward in that case. */
+/** Plain {{name}} substitution from a resolved vocabulary table. A local, import-free
+ *  copy of interpolateVocabulary (src/lib/orgKind.ts): this file is a whole-file mirror
+ *  that must import nothing (the edge twin resolves ../orgKind at a different relative
+ *  depth than this source's ../orgKind, so no single import path works on both sides).
+ *  Unknown tokens (runtime variables like {{orgName}}, {{count}}, {{date}}) are left
+ *  verbatim. */
+function substituteVocabulary(text: string, vocab: Record<string, string>): string {
+  return text.replace(/\{\{(\w+)\}\}/g, (whole, name: string) =>
+    Object.prototype.hasOwnProperty.call(vocab, name) ? vocab[name] : whole,
+  );
+}
+
+/** Production vocabulary fallback, used when resolveEmailCopy is called WITHOUT an
+ *  explicit vocab table (the caller threads the org's workspace-type table in; until it
+ *  does, and for every plain call, this stands in). Its words MUST equal
+ *  VOCABULARY.production in src/lib/orgKind.ts, which is exactly what keeps a plain
+ *  resolveEmailCopy(...) byte-identical to the pre-variable prose. Import-free by the
+ *  mirror rule above. */
+const PRODUCTION_VOCAB: Record<EmailLocale, Record<string, string>> = {
+  en: {
+    show: "show", shows: "shows", Show: "Show", Shows: "Shows",
+    showDate: "date", showDates: "dates", ShowDate: "Date", ShowDates: "Dates",
+    artist: "artist", artists: "artists", Artist: "Artist", Artists: "Artists",
+    production: "production", productions: "productions", Production: "Production", Productions: "Productions",
+    cast: "cast", casts: "casts", Cast: "Cast", Casts: "Casts",
+    understudy: "understudy", understudies: "understudies", Understudy: "Understudy", Understudies: "Understudies",
+    skill: "skill", skills: "skills", Skill: "Skill", Skills: "Skills",
+    hireOrder: "contract", hireOrders: "contracts", HireOrder: "Contract", HireOrders: "Contracts",
+    roleProducer: "Production Team", kind: "production",
+  },
+  de: {
+    show: "Show", shows: "Shows", Show: "Show", Shows: "Shows",
+    showDate: "Termin", showDates: "Termine", ShowDate: "Termin", ShowDates: "Termine",
+    artist: "Artist", artists: "Artists", Artist: "Artist", Artists: "Artists",
+    production: "Produktion", productions: "Produktionen", Production: "Produktion", Productions: "Produktionen",
+    cast: "Besetzung", casts: "Besetzungen", Cast: "Besetzung", Casts: "Besetzungen",
+    understudy: "Zweitbesetzung", understudies: "Zweitbesetzungen", Understudy: "Zweitbesetzung", Understudies: "Zweitbesetzungen",
+    skill: "Skill", skills: "Skills", Skill: "Skill", Skills: "Skills",
+    hireOrder: "Engagementvertrag", hireOrders: "Engagementverträge", HireOrder: "Engagementvertrag", HireOrders: "Engagementverträge",
+    roleProducer: "Production Team", kind: "production",
+  },
+};
+
+/**
+ * Vocabulary templates: the copy keys that name a domain noun, authored with {{noun}}
+ * variables. resolveEmailCopy substitutes these against the resolved workspace-type
+ * table (staffing swaps the words) for any key still at its language default. Kept
+ * SEPARATE from EMAIL_COPY_DEFAULTS / EMAIL_COPY_DE, which stay clean prose, because
+ * every template component and subject function reads those default maps RAW (their
+ * `_emailCopy = EMAIL_COPY_DEFAULTS` fallback and `template.subject`), so a bare
+ * {{noun}} token in the defaults would leak into any direct or default render. Under the
+ * production table every value here substitutes back to the exact clean default, which
+ * is the byte-identity guarantee (guarded by emailCopy.orgKind.test.ts). Keys are a
+ * subset of EmailCopyKey; the same key exists in both locales.
+ */
+const EMAIL_COPY_VOCAB_TEMPLATES: Record<EmailLocale, Partial<Record<EmailCopyKey, string>>> = {
+  en: {
+    "offer-immediate.intro": "You have been asked about {{referenceLabel}} on {{where}}. Say yes and the {{showDate}} is held for you. Say no and it will not count against you, and it does not affect any other {{showDate}}. Answer within {{hours}} hours.",
+    "artist-offer-digest.intro": "You have {{count}} {{pendingOffer}}. Say yes and the {{showDate}} is held for you. Say no and it will not count against you, and it does not affect any other {{showDate}}.",
+    "offer-expiry-reminder.introSingular": "One of your asks needs an answer within the next 24 hours. Answer soon to keep the {{showDate}}.",
+    "offer-expiry-reminder.introPlural": "{{count}} of your asks need an answer within the next 24 hours. Answer soon to keep the {{showDates}}.",
+    "hire-order-issued.subject": "Your {{hireOrder}} for {{dateLabel}} at {{venue}}",
+    "hire-order-issued.heading": "Your {{hireOrder}} is ready",
+    "hire-order-issued.intro": "Your {{hireOrder}} for {{dateLabel}} at {{venue}} is ready. Review the details below and download your copy.",
+    "hire-order-issued.previewText": "Your {{hireOrder}} for {{dateLabel}} at {{venue}}",
+    "hire-order-issued.signPrompt": "Review and sign your {{hireOrder}} online to confirm.",
+    "hire-order-countersigned.subject": "Your {{hireOrder}} for {{dateLabel}} is signed",
+    "hire-order-countersigned.heading": "Your {{hireOrder}} is signed",
+    "hire-order-countersigned.intro": "Your {{hireOrder}} for {{dateLabel}} at {{venue}} is fully signed. A copy is attached for your records.",
+    "hire-order-countersigned.previewText": "Your {{hireOrder}} for {{dateLabel}} is signed",
+    "org-invitation.productIntro": "ShowFlow is where {{orgName}} plans its {{productions}} and books the {{artists}} for them.",
+    "org-invitation.roleIntroAdmin": "You get full control of this workspace, including people, {{casts}}, settings, and every booking.",
+    "org-invitation.roleIntroProducer": "You plan {{productions}} and show dates, and book {{artists}} into them.",
+    "org-invitation.roleIntroArtist": "You are on the roster. You get booked for {{productions}} and can see every confirmed engagement.",
+    "airtable-sync-held.topReasonUnlinkedProgram": "not linked to one of your {{productions}}",
+  },
+  de: {
+    "offer-immediate.intro": "Du wurdest zu {{referenceLabel}} am {{where}} gefragt. Sag ja, und der {{showDate}} ist für Dich reserviert. Sag nein, und das wird Dir nicht angerechnet und wirkt sich auf keinen anderen {{showDate}} aus. Antworte innerhalb von {{hours}} Stunden.",
+    "artist-offer-digest.intro": "Du hast {{count}} {{pendingOffer}}. Sag ja, und der {{showDate}} ist für Dich reserviert. Sag nein, und das wird Dir nicht angerechnet und wirkt sich auf keinen anderen {{showDate}} aus.",
+    "offer-expiry-reminder.introSingular": "Eine Deiner Anfragen braucht innerhalb der nächsten 24 Stunden eine Antwort. Antworte bald, um Dir den {{showDate}} zu sichern.",
+    "offer-expiry-reminder.introPlural": "{{count}} Deiner Anfragen brauchen innerhalb der nächsten 24 Stunden eine Antwort. Antworte bald, um Dir die {{showDates}} zu sichern.",
+    "hire-order-issued.subject": "Dein {{hireOrder}} für {{dateLabel}} im {{venue}}",
+    "hire-order-issued.heading": "Dein {{hireOrder}} ist bereit",
+    "hire-order-issued.intro": "Dein {{hireOrder}} für {{dateLabel}} im {{venue}} ist bereit. Sieh Dir die Details unten an und lade Deine Kopie herunter.",
+    "hire-order-issued.previewText": "Dein {{hireOrder}} für {{dateLabel}} im {{venue}}",
+    "hire-order-issued.signPrompt": "Prüfe und unterschreibe Deinen {{hireOrder}} online, um ihn zu bestätigen.",
+    "hire-order-countersigned.subject": "Dein {{hireOrder}} für {{dateLabel}} ist unterschrieben",
+    "hire-order-countersigned.heading": "Dein {{hireOrder}} ist unterschrieben",
+    "hire-order-countersigned.intro": "Dein {{hireOrder}} für {{dateLabel}} im {{venue}} ist vollständig unterschrieben. Eine Kopie ist zu Deinen Unterlagen beigefügt.",
+    "hire-order-countersigned.previewText": "Dein {{hireOrder}} für {{dateLabel}} ist unterschrieben",
+    "org-invitation.productIntro": "ShowFlow ist die Plattform, auf der {{orgName}} seine {{productions}} plant und die {{artists}} dafür bucht.",
+    "org-invitation.roleIntroAdmin": "Du hast die volle Kontrolle über diesen Workspace, einschließlich Personen, {{casts}}, Einstellungen und jeder Buchung.",
+    "org-invitation.roleIntroProducer": "Du planst {{productions}} und Show-Termine und buchst {{artists}} dafür.",
+    "org-invitation.roleIntroArtist": "Du stehst auf der Liste. Du wirst für {{productions}} gebucht und siehst jedes bestätigte Engagement.",
+    "airtable-sync-held.topReasonUnlinkedProgram": "nicht mit einer Deiner {{productions}} verknüpft",
+  },
+};
+
+/** Merge valid, non-blank per-org copy over a fresh complete default record, then
+ *  substitute {{noun}} vocabulary variables. An explicit (non-blank) override for the
+ *  CURRENT key always wins over a carried-forward legacy one; a present-but-blank
+ *  current-key value does not count as explicit, so the legacy value still carries
+ *  forward in that case.
+ *
+ *  `vocab` is a RESOLVED vocabulary table (VOCABULARY[kind][locale] shape, typed
+ *  structurally as Record<string, string> so this file imports nothing). When omitted it
+ *  falls back to the production words for `locale`; since those equal the hardcoded
+ *  nouns, a plain call (or a production table) is byte-identical to before {{noun}}
+ *  variables existed. A staffing table swaps the words. A key still at its language
+ *  default draws its noun from the vocabulary template above; a key an admin overrode (or
+ *  that carried a legacy value forward) is substituted as authored, so a {{Show}} in a
+ *  custom string still resolves. Runtime tokens ({{orgName}}, {{count}}, dates) are
+ *  always left for applyEmailTokens. */
 export function resolveEmailCopy(
   override?: EmailCopyOverride | string | null,
   locale: EmailLocale = "en",
+  vocab?: Record<string, string>,
 ): EmailCopy {
   const input = parseOverride(override);
   const raw = input as Record<string, unknown>;
   // Select the language base; a sparse per-org override still layers on top of
-  // whichever base was chosen. English is byte-identical to before (default).
+  // whichever base was chosen.
   const base = locale === "de" ? EMAIL_COPY_DE : EMAIL_COPY_DEFAULTS;
   const resolved = withLegacyCarryForward(raw, { ...base } as EmailCopy);
   for (const key of Object.keys(EMAIL_COPY_DEFAULTS) as EmailCopyKey[]) {
     const value = input[key];
     if (hasExplicitValue(value)) resolved[key] = value;
+  }
+  const table = vocab ?? PRODUCTION_VOCAB[locale];
+  const templates = EMAIL_COPY_VOCAB_TEMPLATES[locale];
+  for (const key of Object.keys(resolved) as EmailCopyKey[]) {
+    const source = resolved[key] === base[key] ? (templates[key] ?? resolved[key]) : resolved[key];
+    resolved[key] = substituteVocabulary(source, table);
   }
   return resolved;
 }
