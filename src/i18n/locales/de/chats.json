@@ -1,14 +1,20 @@
 {
   "list": {
     "title": "Chats",
-    "subtitle": "Ein Chat pro Termin. {{days}} Tage nach der Show ausgeblendet.",
+    "subtitle": "$t(chats:list.subtitle_{{kind}})",
+    "subtitle_production": "Ein Chat pro Termin. {{days}} Tage nach der Show ausgeblendet.",
+    "subtitle_staffing": "Ein Chat pro Schicht. {{days}} Tage nach dem Projekt ausgeblendet.",
     "empty": "Keine aktiven Chats.",
     "open": "Offen"
   },
   "panel": {
     "loading": "Chat wird geladen…",
-    "notParticipant": "Der Chat steht nur dem Production Team, Admins und Artists offen, die für diesen Termin gebucht sind oder zugesagt haben.",
-    "archivedNotice": "Dieser Chat wurde {{days}} Tage nach der Show archiviert.",
+    "notParticipant": "$t(chats:panel.notParticipant_{{kind}})",
+    "notParticipant_production": "Der Chat steht nur dem Production Team, Admins und Artists offen, die für diesen Termin gebucht sind oder zugesagt haben.",
+    "notParticipant_staffing": "Der Chat steht nur dem Buchungsteam, Admins und Personen offen, die für diese Schicht gebucht sind oder zugesagt haben.",
+    "archivedNotice": "$t(chats:panel.archivedNotice_{{kind}})",
+    "archivedNotice_production": "Dieser Chat wurde {{days}} Tage nach der Show archiviert.",
+    "archivedNotice_staffing": "Dieser Chat wurde {{days}} Tage nach dem Projekt archiviert.",
     "title": "Chat",
     "archivedBadge": "Archiviert (schreibgeschützt)",
     "emptyMessages": "Noch keine Nachrichten. Sag Hallo.",

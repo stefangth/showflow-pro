@@ -120,7 +120,7 @@ describe("ArtistBookingsView — past active booking merge (July 31 regression)"
     expect(screen.getByText("Old Hall")).toBeInTheDocument();
     // Artist-facing wording: the yes is theirs, the next move is the production
     // team's. It read "Said yes, waiting on you" (the producer's view) before.
-    expect(screen.getByText("Said yes · waiting on your production team")).toBeInTheDocument();
+    expect(screen.getByText("Said yes · waiting on your Production Team")).toBeInTheDocument();
 
     // Grayed but interactive: PAST_DATE_TINT on the row, no pointer-events change.
     const row = dateCell.closest("tr");

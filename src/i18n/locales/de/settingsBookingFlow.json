@@ -28,7 +28,7 @@
     "custom": "Eigene",
     "describe": {
       "paused": "Buchungsablauf pausiert. Es werden keine neuen Anfragen, Erinnerungen, Tagesversände oder Bestätigungen versendet.",
-      "directBooking": "Künstler werden direkt gebucht, niemand muss vorher antworten.",
+      "directBooking": "{{Artists}} werden direkt gebucht, niemand muss vorher antworten.",
       "tierAuto": "Die erste Anfrage geht automatisch raus",
       "tierManual": "Du verschickst jede Anfrage selbst",
       "deliveryImmediate": "Anfragen werden sofort verschickt",
@@ -62,60 +62,70 @@
     },
     "steps": {
       "dateCreated": {
-        "title": "Termin erstellt",
-        "desc": "Über Airtable-Sync oder in der App, so oder so tritt der Termin hier in den Ablauf ein."
+        "title": "{{ShowDate}} erstellt",
+        "desc": "$t(settingsBookingFlow:flowTimeline.steps.dateCreated.desc_{{kind}})",
+        "desc_production": "Über Airtable-Sync oder in der App, so oder so tritt der Termin hier in den Ablauf ein.",
+        "desc_staffing": "Über Airtable-Sync oder in der App, so oder so tritt die Schicht hier in den Ablauf ein."
       },
       "openOfferTier": {
         "title": "Erste Anfrage verschicken",
         "desc": "Fragt alle an, die in dieser Gruppe angefragt werden können.",
-        "autoOpenLabel": "Die erste Gruppe automatisch anfragen, wenn ein neuer Termin bereit ist",
+        "autoOpenLabel": "$t(settingsBookingFlow:flowTimeline.steps.openOfferTier.autoOpenLabel_{{kind}})",
+        "autoOpenLabel_production": "Die erste Gruppe automatisch anfragen, wenn ein neuer Termin bereit ist",
+        "autoOpenLabel_staffing": "Die erste Gruppe automatisch anfragen, wenn eine neue Schicht bereit ist",
         "autoOpenAria": "Erste Gruppe automatisch anfragen",
         "autoEscalateLabel": "Automatisch zur nächsten Gruppe wechseln, wenn die Antwortfrist zu früh endet",
         "autoEscalateAria": "Automatisch zur nächsten Gruppe wechseln",
-        "atRiskLabel": "Das Produktionsteam benachrichtigen, wenn die angefragte Gruppe die verbleibenden Positionen nicht füllen kann",
+        "atRiskLabel": "Das {{roleProducer}} benachrichtigen, wenn die angefragte Gruppe die verbleibenden Positionen nicht füllen kann",
         "atRiskAria": "Risiko-Warnungen",
-        "atRiskHelper": "Wird stündlich geprüft. Eine Warnung wird versendet, wenn gebuchte Künstler plus laufende offene Anfragen weniger sind als die benötigten Positionen."
+        "atRiskHelper": "Wird stündlich geprüft. Eine Warnung wird versendet, wenn gebuchte {{Artists}} plus laufende offene Anfragen weniger sind als die benötigten Positionen."
       },
       "notifyArtists": {
-        "title": "Künstler benachrichtigen",
-        "desc": "Wie und wann Anfragen die Künstler erreichen. Die Antwortfrist beginnt mit der Zustellung.",
+        "title": "{{Artists}} benachrichtigen",
+        "desc": "Wie und wann Anfragen die {{Artists}} erreichen. Die Antwortfrist beginnt mit der Zustellung.",
         "deliveryGroupAria": "Anfragezustellung",
         "dailyDigest": "Tagesversand · {{hour}}",
         "immediate": "Sofort",
         "digestHourLabel": "Uhrzeit Tagesversand (Berlin, Deutschland)",
         "responseWindowLabel": "Antwortfrist (Std)",
-        "expiryReminderLabel": "Künstler 24 Std vor Ablauf ihrer Antwortfrist erinnern",
+        "expiryReminderLabel": "{{Artists}} 24 Std vor Ablauf ihrer Antwortfrist erinnern",
         "expiryReminderAria": "Ablauf-Erinnerung",
         "referenceFieldLabel": "Referenzfeld",
         "referenceFieldAria": "Referenzfeld",
         "referenceFieldOptions": {
-          "show": "Produktionsbezeichnung (Standard)",
+          "show": "$t(settingsBookingFlow:flowTimeline.steps.notifyArtists.referenceFieldOptions.show_{{kind}})",
+          "show_production": "Produktionsbezeichnung (Standard)",
+          "show_staffing": "Kundenbezeichnung (Standard)",
           "program": "Nur Programm",
           "custom": "Benutzerdefiniertes Feld…"
         }
       },
       "artistAcceptance": {
-        "title": "Künstlerannahme",
-        "desc": "Künstler sagen direkt aus ihrem Kalender zu oder ab. Aus bedeutet, das Produktionsteam bucht direkt, ganz ohne Anfragen.",
-        "aria": "Künstlerannahme",
-        "offNotice": "Anfragen, Tagesversände und Antwortfristen werden übersprungen. Das Produktionsteam bucht aus der Liste, wer angefragt werden kann. Der erste Kontaktpunkt für den Künstler ist die Bestätigung."
+        "title": "Annahme durch {{Artists}}",
+        "desc": "{{Artists}} sagen direkt aus ihrem Kalender zu oder ab. Aus bedeutet, das {{roleProducer}} bucht direkt, ganz ohne Anfragen.",
+        "aria": "Annahme durch {{Artists}}",
+        "offNotice": "Anfragen, Tagesversände und Antwortfristen werden übersprungen. Das {{roleProducer}} bucht aus der Liste, wer angefragt werden kann. Der erste Kontaktpunkt für {{Artists}} ist die Bestätigung."
       },
       "producerConfirmation": {
         "title": "Das letzte Wort",
-        "desc": "Du prüfst Künstler, die zugesagt haben, und bestätigst die Besetzung. Aus bedeutet, eine Zusage bucht sofort.",
+        "desc": "$t(settingsBookingFlow:flowTimeline.steps.producerConfirmation.desc_{{kind}})",
+        "desc_production": "Du prüfst Artists, die zugesagt haben, und bestätigst die Besetzung. Aus bedeutet, eine Zusage bucht sofort.",
+        "desc_staffing": "Du prüfst Personen, die zugesagt haben, und bestätigst das Team. Aus bedeutet, eine Zusage bucht sofort.",
         "aria": "Das letzte Wort",
-        "offNotice": "Wenn die Künstlerannahme aus ist, ist die Buchung selbst die Bestätigung, dieser Schritt kann daher nicht übersprungen werden."
+        "offNotice": "Wenn die Annahme durch {{Artists}} aus ist, ist die Buchung selbst die Bestätigung, dieser Schritt kann daher nicht übersprungen werden."
       },
       "confirmationDigest": {
         "title": "Bestätigungsversand",
-        "desc": "Tägliche Zusammenfassungs-E-Mail an neu gebuchte Künstler.",
+        "desc": "Tägliche Zusammenfassungs-E-Mail an neu gebuchte {{Artists}}.",
         "hourLabel": "Stunde (Berlin, Deutschland)",
         "aria": "Bestätigungsversand"
       },
       "understudyPromotion": {
-        "title": "Zweitbesetzung-Beförderung",
-        "desc": "Wenn eine Hauptbesetzungs-Buchung storniert wird, wird automatisch die am längsten wartende Zweitbesetzung befördert, die zugesagt hat.",
-        "aria": "Zweitbesetzung-Beförderung"
+        "title": "{{Understudy}}-Beförderung",
+        "desc": "$t(settingsBookingFlow:flowTimeline.steps.understudyPromotion.desc_{{kind}})",
+        "desc_production": "Wenn eine Hauptbesetzungs-Buchung storniert wird, wird automatisch die am längsten wartende Zweitbesetzung befördert, die zugesagt hat.",
+        "desc_staffing": "Wenn eine Buchung im Hauptteam storniert wird, wird automatisch der am längsten wartende Ersatz befördert, der zugesagt hat.",
+        "aria": "{{Understudy}}-Beförderung"
       }
     }
   }

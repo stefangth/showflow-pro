@@ -2,7 +2,7 @@
   "page": {
     "title": "Settings",
     "description": "Configure integrations, booking behaviour, and notifications. Changes apply immediately.",
-    "accessRequired": "Admin or producer access required",
+    "accessRequired": "Admin or {{roleProducer}} access required",
     "loading": "Loading settings…",
     "saveSuccess": "Settings saved",
     "saveError": "Failed to save",
@@ -28,14 +28,14 @@
       "getRunning": "Get running",
       "permissions": "Roles & rights",
       "trust": "Trust & data",
-      "castsCoverage": "Casts & coverage",
-      "skills": "Skills",
+      "castsCoverage": "{{Casts}} & coverage",
+      "skills": "{{Skills}}",
       "people": "People",
       "activity": "Activity",
       "airtable": "Sources",
       "emailTemplates": "Email templates",
       "booking": "Booking engine",
-      "hireOrders": "Contracts",
+      "hireOrders": "{{HireOrders}}",
       "notifications": "Notifications",
       "docs": "Documentation"
     },
@@ -46,7 +46,7 @@
     "title": "Notifications",
     "description": "Control in-app alerts for bookings and schedule changes.",
     "enable": "Enable in-app notifications",
-    "hint": "Producers and artists receive real-time alerts."
+    "hint": "{{roleProducer}} and {{artists}} receive real-time alerts."
   },
   "activity": {
     "title": "Booking activity",
@@ -64,7 +64,7 @@
     "renamed": "Organization renamed",
     "language": {
       "label": "Workspace language",
-      "help": "The language of emails and contract PDFs your workspace sends. Each person still picks their own app language in their account menu.",
+      "help": "The language of emails and {{hireOrder}} PDFs your workspace sends. Each person still picks their own app language in their account menu.",
       "saved": "Workspace language updated"
     },
     "kind": {
@@ -78,8 +78,8 @@
     "rightsUpdated": "Rights updated.",
     "policyUpdated": "Policy updated.",
     "confirmTitle": "Change a sensitive right?",
-    "confirmDescriptionGrant": "Grant \"{{label}}\" for producers. This is a sensitive right.",
-    "confirmDescriptionRemove": "Remove \"{{label}}\" for producers. This is a sensitive right.",
+    "confirmDescriptionGrant": "Grant \"{{label}}\" for {{roleProducer}}. This is a sensitive right.",
+    "confirmDescriptionRemove": "Remove \"{{label}}\" for {{roleProducer}}. This is a sensitive right.",
     "cancel": "Cancel",
     "confirm": "Confirm",
     "row": {

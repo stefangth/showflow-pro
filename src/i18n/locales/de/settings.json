@@ -2,7 +2,7 @@
   "page": {
     "title": "Einstellungen",
     "description": "Konfiguriere Integrationen, Buchungsverhalten und Benachrichtigungen. Änderungen wirken sich sofort aus.",
-    "accessRequired": "Zugriff für Admin oder Production Team erforderlich",
+    "accessRequired": "Zugriff für Admin oder {{roleProducer}} erforderlich",
     "loading": "Einstellungen werden geladen…",
     "saveSuccess": "Einstellungen gespeichert",
     "saveError": "Speichern fehlgeschlagen",
@@ -28,14 +28,14 @@
       "getRunning": "Loslegen",
       "permissions": "Rollen und Rechte",
       "trust": "Vertrauen und Daten",
-      "castsCoverage": "Besetzung und Abdeckung",
-      "skills": "Skills",
+      "castsCoverage": "{{Casts}} und Abdeckung",
+      "skills": "{{Skills}}",
       "people": "Personen",
       "activity": "Aktivität",
       "airtable": "Quellen",
       "emailTemplates": "E-Mail-Vorlagen",
       "booking": "Booking Engine",
-      "hireOrders": "Engagementverträge",
+      "hireOrders": "{{HireOrders}}",
       "notifications": "Benachrichtigungen",
       "docs": "Dokumentation"
     },
@@ -46,7 +46,7 @@
     "title": "Benachrichtigungen",
     "description": "Steuere In-App-Benachrichtigungen für Buchungen und Terminänderungen.",
     "enable": "In-App-Benachrichtigungen aktivieren",
-    "hint": "Production Team und Artists erhalten Benachrichtigungen in Echtzeit."
+    "hint": "{{roleProducer}} und {{Artists}} erhalten Benachrichtigungen in Echtzeit."
   },
   "activity": {
     "title": "Buchungsaktivität",
@@ -64,7 +64,7 @@
     "renamed": "Organisation umbenannt",
     "language": {
       "label": "Sprache des Arbeitsbereichs",
-      "help": "Die Sprache der E-Mails und Engagementvertrag-PDFs, die dein Arbeitsbereich versendet. Jede Person wählt ihre eigene App-Sprache weiterhin im Kontomenü.",
+      "help": "Die Sprache der E-Mails und {{hireOrder}}-PDFs, die dein Arbeitsbereich versendet. Jede Person wählt ihre eigene App-Sprache weiterhin im Kontomenü.",
       "saved": "Sprache des Arbeitsbereichs aktualisiert"
     },
     "kind": {
@@ -78,8 +78,8 @@
     "rightsUpdated": "Rechte aktualisiert.",
     "policyUpdated": "Richtlinie aktualisiert.",
     "confirmTitle": "Sensibles Recht ändern?",
-    "confirmDescriptionGrant": "Gewähre Production Team das Recht \"{{label}}\". Das ist ein sensibles Recht.",
-    "confirmDescriptionRemove": "Entziehe Production Team das Recht \"{{label}}\". Das ist ein sensibles Recht.",
+    "confirmDescriptionGrant": "Gewähre {{roleProducer}} das Recht \"{{label}}\". Das ist ein sensibles Recht.",
+    "confirmDescriptionRemove": "Entziehe {{roleProducer}} das Recht \"{{label}}\". Das ist ein sensibles Recht.",
     "cancel": "Abbrechen",
     "confirm": "Bestätigen",
     "row": {

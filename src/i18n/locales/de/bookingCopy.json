@@ -2,22 +2,36 @@
   "actionCopy": {
     "confirm": {
       "bareConsequence": "Buchen gibt ihnen die Position.",
-      "withDigest": "Buchen gibt ihnen die Position. Der Artist sieht es sofort in der App. Die Buchungs-E-Mail geht mit dem täglichen Versand um {{time}} raus.",
-      "appOnly": "Buchen gibt ihnen die Position und benachrichtigt den Artist sofort in der App."
+      "withDigest": "$t(bookingCopy:actionCopy.confirm.withDigest_{{kind}})",
+      "withDigest_production": "Buchen gibt ihnen die Position. Der Artist sieht es sofort in der App. Die Buchungs-E-Mail geht mit dem täglichen Versand um {{time}} raus.",
+      "withDigest_staffing": "Buchen gibt ihnen die Position. Das Teammitglied sieht es sofort in der App. Die Buchungs-E-Mail geht mit dem täglichen Versand um {{time}} raus.",
+      "appOnly": "$t(bookingCopy:actionCopy.confirm.appOnly_{{kind}})",
+      "appOnly_production": "Buchen gibt ihnen die Position und benachrichtigt den Artist sofort in der App.",
+      "appOnly_staffing": "Buchen gibt ihnen die Position und benachrichtigt das Teammitglied sofort in der App."
     },
     "accept": {
       "holdTitle": "Zugesagt",
-      "holdDescription": "Du hast zugesagt. Dein Production Team hat als Nächstes das letzte Wort.",
+      "holdDescription": "Du hast zugesagt. Dein {{roleProducer}} hat als Nächstes das letzte Wort.",
       "bookedTitle": "Zugesagt. Du bist gebucht."
     },
     "softBookedMeaning": "Zugesagt, wartet auf dich. Nicht gebucht, bis du es buchst.",
-    "tierConceptNote": "Besetzungen werden in Prioritätsreihenfolge angefragt. Das Anfragen startet mit der ersten Runde. Wenn sie den Termin nicht füllen kann, öffnest du die nächste Runde.",
-    "dateSourceNote": "Du kannst hier einen Termin von Hand hinzufügen. Wenn dein Workspace mit Airtable synchronisiert, aktualisieren sich diese Termine von selbst, und ein Termin, den du hier hinzufügst, wird von einer Synchronisierung nicht verändert.",
-    "unrestrictedEligibility": "Dieser Termin hat keine Besetzungsgrenzen, also kann jede Person in {{org}} hier gebucht werden.",
+    "tierConceptNote": "$t(bookingCopy:actionCopy.tierConceptNote_{{kind}})",
+    "tierConceptNote_production": "Besetzungen werden in Prioritätsreihenfolge angefragt. Das Anfragen startet mit der ersten Runde. Wenn sie den Termin nicht füllen kann, öffnest du die nächste Runde.",
+    "tierConceptNote_staffing": "Teams werden in Prioritätsreihenfolge angefragt. Das Anfragen startet mit der ersten Runde. Wenn sie die Schicht nicht füllen kann, öffnest du die nächste Runde.",
+    "dateSourceNote": "$t(bookingCopy:actionCopy.dateSourceNote_{{kind}})",
+    "dateSourceNote_production": "Du kannst hier einen Termin von Hand hinzufügen. Wenn dein Workspace mit Airtable synchronisiert, aktualisieren sich diese Termine von selbst, und ein Termin, den du hier hinzufügst, wird von einer Synchronisierung nicht verändert.",
+    "dateSourceNote_staffing": "Du kannst hier eine Schicht von Hand hinzufügen. Wenn dein Workspace mit Airtable synchronisiert, aktualisieren sich diese Schichten von selbst, und eine Schicht, die du hier hinzufügst, wird von einer Synchronisierung nicht verändert.",
+    "unrestrictedEligibility": "$t(bookingCopy:actionCopy.unrestrictedEligibility_{{kind}})",
+    "unrestrictedEligibility_production": "Dieser Termin hat keine Besetzungsgrenzen, also kann jede Person in {{org}} hier gebucht werden.",
+    "unrestrictedEligibility_staffing": "Diese Schicht hat keine Teamgrenzen, also kann jede Person in {{org}} hier gebucht werden.",
     "cancel": {
       "title": "Buchung von {{artistName}} stornieren?",
-      "understudyLine": "Wenn {{artistName}} in der Hauptbesetzung ist, rückt die am längsten wartende Zweitbesetzung, die zugesagt hat, automatisch nach.",
-      "whoHearsFallback": "Der Artist wird in der App benachrichtigt."
+      "understudyLine": "$t(bookingCopy:actionCopy.cancel.understudyLine_{{kind}})",
+      "understudyLine_production": "Wenn {{artistName}} in der Hauptbesetzung ist, rückt die am längsten wartende Zweitbesetzung, die zugesagt hat, automatisch nach.",
+      "understudyLine_staffing": "Wenn {{artistName}} im Hauptteam ist, rückt der am längsten wartende Ersatz, der zugesagt hat, automatisch nach.",
+      "whoHearsFallback": "$t(bookingCopy:actionCopy.cancel.whoHearsFallback_{{kind}})",
+      "whoHearsFallback_production": "Der Artist wird in der App benachrichtigt.",
+      "whoHearsFallback_staffing": "Das Teammitglied wird in der App benachrichtigt."
     }
   },
   "timingCopy": {
@@ -25,25 +39,25 @@
     "scope": {
       "berlin": "Die Zeiten des täglichen Versands enthalten ihre Zeitzone.",
       "offNote": "Diese Zeiten ändern nichts, solange der Buchungsablauf aus ist.",
-      "directBookDeadFields": "Du buchst Artists direkt, also ändern das Antwortfenster und die Uhrzeit des täglichen Versands nichts.",
+      "directBookDeadFields": "Du buchst {{Artists}} direkt, also ändern das Antwortfenster und die Uhrzeit des täglichen Versands nichts.",
       "onlyConfirmationLive": "Nur die Uhrzeit für den Buchungsversand ist aktiv.",
-      "confirmationHourStillLive": "Die Uhrzeit für den Buchungsversand läuft trotzdem und legt fest, wann gebuchte Artists in der App über Terminänderungen benachrichtigt werden."
+      "confirmationHourStillLive": "Die Uhrzeit für den Buchungsversand läuft trotzdem und legt fest, wann gebuchte {{Artists}} in der App über Planänderungen benachrichtigt werden."
     },
     "tonight": {
-      "directConfirm": "Neu gebuchte Artists bekommen den Buchungsversand um {{time}}.",
-      "digestConfirm_one": "Wenn eine Runde öffnet, gehen Anfragen mit dem nächsten Versand um {{offerTime}} raus. Artists haben {{count}} Stunde Zeit zu antworten, und Buchungen gehen um {{time}} raus.",
-      "digestConfirm_other": "Wenn eine Runde öffnet, gehen Anfragen mit dem nächsten Versand um {{offerTime}} raus. Artists haben {{count}} Stunden Zeit zu antworten, und Buchungen gehen um {{time}} raus.",
-      "digestNoConfirm_one": "Wenn eine Runde öffnet, gehen Anfragen mit dem nächsten Versand um {{offerTime}} raus. Artists haben {{count}} Stunde Zeit zu antworten.",
-      "digestNoConfirm_other": "Wenn eine Runde öffnet, gehen Anfragen mit dem nächsten Versand um {{offerTime}} raus. Artists haben {{count}} Stunden Zeit zu antworten.",
-      "immediateConfirm_one": "Wenn eine Runde öffnet, gehen Anfragen sofort per E-Mail raus. Artists haben {{count}} Stunde Zeit zu antworten, und Buchungen gehen um {{time}} raus.",
-      "immediateConfirm_other": "Wenn eine Runde öffnet, gehen Anfragen sofort per E-Mail raus. Artists haben {{count}} Stunden Zeit zu antworten, und Buchungen gehen um {{time}} raus.",
-      "immediateNoConfirm_one": "Wenn eine Runde öffnet, gehen Anfragen sofort per E-Mail raus. Artists haben {{count}} Stunde Zeit zu antworten.",
-      "immediateNoConfirm_other": "Wenn eine Runde öffnet, gehen Anfragen sofort per E-Mail raus. Artists haben {{count}} Stunden Zeit zu antworten."
+      "directConfirm": "Neu gebuchte {{Artists}} bekommen den Buchungsversand um {{time}}.",
+      "digestConfirm_one": "Wenn eine Runde öffnet, gehen Anfragen mit dem nächsten Versand um {{offerTime}} raus. {{Artists}} haben {{count}} Stunde Zeit zu antworten, und Buchungen gehen um {{time}} raus.",
+      "digestConfirm_other": "Wenn eine Runde öffnet, gehen Anfragen mit dem nächsten Versand um {{offerTime}} raus. {{Artists}} haben {{count}} Stunden Zeit zu antworten, und Buchungen gehen um {{time}} raus.",
+      "digestNoConfirm_one": "Wenn eine Runde öffnet, gehen Anfragen mit dem nächsten Versand um {{offerTime}} raus. {{Artists}} haben {{count}} Stunde Zeit zu antworten.",
+      "digestNoConfirm_other": "Wenn eine Runde öffnet, gehen Anfragen mit dem nächsten Versand um {{offerTime}} raus. {{Artists}} haben {{count}} Stunden Zeit zu antworten.",
+      "immediateConfirm_one": "Wenn eine Runde öffnet, gehen Anfragen sofort per E-Mail raus. {{Artists}} haben {{count}} Stunde Zeit zu antworten, und Buchungen gehen um {{time}} raus.",
+      "immediateConfirm_other": "Wenn eine Runde öffnet, gehen Anfragen sofort per E-Mail raus. {{Artists}} haben {{count}} Stunden Zeit zu antworten, und Buchungen gehen um {{time}} raus.",
+      "immediateNoConfirm_one": "Wenn eine Runde öffnet, gehen Anfragen sofort per E-Mail raus. {{Artists}} haben {{count}} Stunde Zeit zu antworten.",
+      "immediateNoConfirm_other": "Wenn eine Runde öffnet, gehen Anfragen sofort per E-Mail raus. {{Artists}} haben {{count}} Stunden Zeit zu antworten."
     }
   },
   "cockpit": {
     "upNext": {
-      "direct": "Direktbuchung: Das Production Team bucht aus wer angefragt werden kann",
+      "direct": "Direktbuchung: Das {{roleProducer}} bucht aus wer angefragt werden kann",
       "digest": "Täglicher Versand · {{time}}",
       "expiry_one": "{{count}} Anfrage läuft {{date}} ab",
       "expiry_other": "{{count}} Anfragen laufen {{date}} ab",
@@ -55,8 +69,8 @@
       "acceptedWaiting": "{{count}} zugesagt, warten auf dich",
       "mainSlotOpen_one": "{{count}} Hauptposition frei",
       "mainSlotOpen_other": "{{count}} Hauptpositionen frei",
-      "understudySlotOpen_one": "{{count}} Zweitbesetzungsposition frei",
-      "understudySlotOpen_other": "{{count}} Zweitbesetzungspositionen frei",
+      "understudySlotOpen_one": "{{count}} Position für {{Understudy}} frei",
+      "understudySlotOpen_other": "{{count}} Positionen für {{Understudies}} frei",
       "readyToConfirm": "Wartet auf dich"
     },
     "headerCta": {
@@ -74,7 +88,7 @@
     "hireFooter": {
       "ready": "BEREIT",
       "left": "{{count}} OFFEN",
-      "detailReady": "Alle Positionen gebucht, erstellt einen Vertrag pro Artist",
+      "detailReady": "Alle Positionen gebucht, erstellt einen {{hireOrder}} pro {{Artist}}",
       "detailWaiting": "Warten auf {{remaining}} von {{total}} Positionen"
     }
   }

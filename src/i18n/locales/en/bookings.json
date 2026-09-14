@@ -9,7 +9,7 @@
     },
     "toolbar": {
       "keyHint": {
-        "needsYou": "Click a card to open its date",
+        "needsYou": "Click a card to open its {{showDate}}",
         "month": "⏎ open · Space preview",
         "monthArtist": "⏎ open",
         "week": "⏎ / Space open",
@@ -19,7 +19,7 @@
     },
     "header": {
       "eyebrow": "BOOKINGS",
-      "title": "Dates"
+      "title": "{{ShowDates}}"
     },
     "stat": {
       "confirmedThisMonth": "Booked this month",
@@ -27,78 +27,78 @@
     },
     "bulk": {
       "confirmHolds": "Book who said yes",
-      "generateHireOrders": "Draft contracts"
+      "generateHireOrders": "Draft {{hireOrders}}"
     },
     "fab": {
-      "newDate": "New date"
+      "newDate": "New {{showDate}}"
     },
     "rail": {
       "statsTitle": "This month"
     },
     "producerStatus": {
       "fully_filled": "Fully filled",
-      "partially_filled": "Casting",
+      "partially_filled": "Filling",
       "open": "Open",
       "cancelled": "Cancelled",
       "unconfigured": "Unconfigured"
     },
     "primary": {
       "confirmHolds": "Book who said yes",
-      "generateHireOrder": "Draft the contract"
+      "generateHireOrder": "Draft the {{hireOrder}}"
     },
     "day": {
-      "eyebrowCasting": "casting",
+      "eyebrowCasting": "filling",
       "eyebrowFullyFilled": "fully filled",
-      "subCasting_one": "{{count}} date · {{open}} parts still open",
-      "subCasting_other": "{{count}} dates · {{open}} parts still open",
-      "subComplete_one": "{{count}} date · cast complete",
-      "subComplete_other": "{{count}} dates · cast complete",
-      "empty": "No dates scheduled on this day."
+      "subCasting_one": "{{count}} {{showDate}} · {{open}} parts still open",
+      "subCasting_other": "{{count}} {{showDates}} · {{open}} parts still open",
+      "subComplete_one": "{{count}} {{showDate}} · {{cast}} complete",
+      "subComplete_other": "{{count}} {{showDates}} · {{cast}} complete",
+      "empty": "No {{showDates}} scheduled on this day."
     },
     "needsYou": {
       "groups": {
         "expires-today": "Book today",
-        "at-risk": "At risk · under-cast inside {{days}} days",
+        "at-risk": "At risk · short of people inside {{days}} days",
         "ready-to-issue": "Ready to send",
         "cancelled": "Cancelled · needs a decision"
       },
       "scopeChips": {
         "all": "All",
         "expires-today": "Waiting on you",
-        "at-risk": "Casting",
-        "ready-to-issue": "Contracts",
+        "at-risk": "Filling",
+        "ready-to-issue": "{{HireOrders}}",
         "cancelled": "Cancelled"
       },
       "primary": {
         "confirmHolds_one": "Book {{count}} who said yes",
         "confirmHolds_other": "Book {{count}} who said yes",
-        "openCasting": "Open casting",
-        "generateHireOrder": "Draft the contract",
-        "notifyCast": "Notify cast"
+        "openCasting": "Start filling",
+        "generateHireOrder": "Draft the {{hireOrder}}",
+        "notifyCast": "Notify {{cast}}"
       },
       "secondary": {
         "extend": "Extend 24h",
         "release": "Release",
-        "cancelDate": "Cancel date",
+        "cancelDate": "Cancel {{showDate}}",
         "preview": "Preview",
         "undoCancel": "Undo cancel"
       },
       "bulk": {
         "confirmAll": "Book all",
-        "generateHireOrders_one": "Draft {{count}} contract",
-        "generateHireOrders_other": "Draft {{count}} contracts"
+        "generateHireOrders_one": "Draft {{count}} {{hireOrder}}",
+        "generateHireOrders_other": "Draft {{count}} {{hireOrders}}"
       },
       "note": {
-        "expiresToday_one": "{{count}} artist who said yes will lose the part if you don't book them today.",
-        "expiresToday_other": "{{count}} artists who said yes will lose their parts if you don't book them today.",
+        "expiresToday_one": "{{count}} {{artist}} who said yes will lose the part if you don't book them today.",
+        "expiresToday_other": "{{count}} {{artists}} who said yes will lose their parts if you don't book them today.",
         "atRisk": "{{slots}}, {{lead}}.",
         "atRiskSlots_one": "{{count}} open part",
         "atRiskSlots_other": "{{count}} open parts",
         "atRiskLeadToday": "today",
         "atRiskLeadDays_one": "in {{count}} day",
         "atRiskLeadDays_other": "in {{count}} days",
-        "readyToIssue": "Cast is booked and ready for its contract.",
-        "cancelled": "The cast has not been notified about this cancellation yet."
+        "readyToIssue": "{{Cast}} is booked and ready for its {{hireOrder}}.",
+        "cancelled": "The {{cast}} has not been notified about this cancellation yet."
       },
       "expires": "Answer by {{time}}",
       "understudyAbbrev": "US",
@@ -110,27 +110,27 @@
       "clearQueueTitle": "Clear the queue",
       "clearedToday": "{{count}} cleared today",
       "shortlistTitle": "Shortlist",
-      "shortlistEmpty": "Nobody who can be asked for this date.",
+      "shortlistEmpty": "Nobody who can be asked for this {{showDate}}.",
       "offerButton": "Ask",
       "rulesTitle": "What lands here",
       "rules": {
         "expiresToday": "Asks with today's answer-by deadline, so they do not lapse unanswered.",
-        "atRisk": "An under-cast date inside {{days}} days of the show.",
-        "readyToIssue": "Dates whose cast is booked and ready for a contract.",
-        "cancelled": "Cancelled dates the cast has not been notified about yet."
+        "atRisk": "Any {{showDate}} short of people inside {{days}} days of the {{show}}.",
+        "readyToIssue": "{{ShowDates}} whose {{cast}} is booked and ready for its {{hireOrder}}.",
+        "cancelled": "Cancelled {{showDates}} the {{cast}} has not been notified about yet."
       }
     },
     "agenda": {
-      "generateHireOrder": "Draft the contract",
+      "generateHireOrder": "Draft the {{hireOrder}}",
       "confirmHolds": "Book who said yes",
-      "openCasting": "Open casting",
+      "openCasting": "Start filling",
       "weekOfHeading": "Week of {{weekStart}}",
-      "dateCount_one": "{{count}} date",
-      "dateCount_other": "{{count}} dates",
+      "dateCount_one": "{{count}} {{showDate}}",
+      "dateCount_other": "{{count}} {{showDates}}",
       "mainFillCount": "{{filled}}/{{total}} main",
       "groupingLabel": "Grouping",
-      "groupingPerDate": "Per date",
-      "groupingPerShow": "Per show"
+      "groupingPerDate": "Per {{showDate}}",
+      "groupingPerShow": "Per {{show}}"
     },
     "week": {
       "tbdLabel": "TBD"
@@ -140,47 +140,47 @@
       "cellTooltip": "{{filled}}/{{total}} main · {{status}}",
       "programHeader": "Program",
       "untitled": "Untitled",
-      "rowSummary_one": "{{count}} date · {{unfilled}} unfilled",
-      "rowSummary_other": "{{count}} dates · {{unfilled}} unfilled",
+      "rowSummary_one": "{{count}} {{showDate}} · {{unfilled}} unfilled",
+      "rowSummary_other": "{{count}} {{showDates}} · {{unfilled}} unfilled",
       "unfilledSlotsHeader": "Unfilled parts"
     },
     "seasonKpis": {
       "unfilledMainSlotsLabel": "Unfilled main parts",
-      "unfilledMainSlotsNote_one": "across {{count}} date",
-      "unfilledMainSlotsNote_other": "across {{count}} dates",
-      "allMainCastFilled": "all main cast filled",
+      "unfilledMainSlotsNote_one": "across {{count}} {{showDate}}",
+      "unfilledMainSlotsNote_other": "across {{count}} {{showDates}}",
+      "allMainCastFilled": "all main {{cast}} filled",
       "heaviestWeekLabel": "Heaviest week",
-      "heaviestWeekNote_one": "{{count}} date · {{open}} parts open",
-      "heaviestWeekNote_other": "{{count}} dates · {{open}} parts open",
-      "readyForHireOrderLabel": "Ready for contract",
-      "readyForHireOrderNoteFilled": "fully filled, no contract yet",
+      "heaviestWeekNote_one": "{{count}} {{showDate}} · {{open}} parts open",
+      "heaviestWeekNote_other": "{{count}} {{showDates}} · {{open}} parts open",
+      "readyForHireOrderLabel": "Ready for {{hireOrder}}",
+      "readyForHireOrderNoteFilled": "fully filled, no {{hireOrder}} yet",
       "readyForHireOrderNoteNone": "none waiting"
     },
     "seasonStripMobile": {
       "heading": "Season load · {{month}}",
       "swipeHint": "swipe →",
       "cornerLabel": "Season",
-      "rowSummary_one": "{{count}} date · -{{unfilled}}",
-      "rowSummary_other": "{{count}} dates · -{{unfilled}}",
+      "rowSummary_one": "{{count}} {{showDate}} · -{{unfilled}}",
+      "rowSummary_other": "{{count}} {{showDates}} · -{{unfilled}}",
       "cellTooltip": "{{filled}}/{{total}} main",
       "openFooterLabel": "Open"
     }
   },
   "rowPeek": {
     "eyebrowUnconfigured": "unconfigured",
-    "noConfig": "Set the casting breakdown in Settings to track fill.",
+    "noConfig": "Set the parts breakdown in Settings to track fill.",
     "confirming": "Booking…",
     "confirm": "Book {{count}}",
-    "openDate": "Open date",
+    "openDate": "Open {{showDate}}",
     "keyHint": "Space to peek · Enter to open"
   },
   "artist": {
-    "cancelHint": "Need to cancel a date you confirmed? Message your producer in the date's chat and they will update the booking.",
+    "cancelHint": "Need to cancel one {{showDate}} you confirmed? Message your {{roleProducer}} in the {{showDate}} chat and they will update the booking.",
     "sortChronoLabel": "Date",
     "loadError": "Failed to load your bookings. Please refresh.",
-    "hireOrderLink": "Contract",
-    "emptyState": "No dates yet. Once you're added to a cast, dates you're asked about appear here.",
-    "calendarEmpty": "No dates yet"
+    "hireOrderLink": "{{HireOrder}}",
+    "emptyState": "No {{showDates}} yet. Once you're added to one {{cast}}, {{showDates}} you're asked about appear here.",
+    "calendarEmpty": "No {{showDates}} yet"
   },
   "status": {
     "open": "Open",
@@ -213,7 +213,7 @@
       "notified": "Notified {{count}}",
       "offered": "Asked {{count}}",
       "confirmedAll": "Booked who said yes",
-      "generatedAll": "Drafted the contract"
+      "generatedAll": "Drafted the {{hireOrder}}"
     }
   },
   "producer": {
@@ -221,30 +221,30 @@
       "confirmed": "Booked {{count}}",
       "nothingToConfirm": "Nothing to book, it moved on"
     },
-    "title": "Dates",
-    "subtitle": "All scheduled dates and cast status in one place.",
+    "title": "{{ShowDates}}",
+    "subtitle": "All scheduled {{showDates}} and {{cast}} status in one place.",
     "setupChecklist": "Setup checklist",
-    "newDate": "New date",
+    "newDate": "New {{showDate}}",
     "datesMenu": {
-      "aria": "More ways to add dates",
-      "byHand": "New date by hand",
+      "aria": "More ways to add {{showDates}}",
+      "byHand": "New {{showDate}} by hand",
       "airtable": "Import from Airtable",
       "sheet": "Import from sheet"
     },
     "hireOrderReady": {
-      "title_one": "{{count}} date is fully filled. Ready for its contract.",
-      "title_other": "{{count}} dates are fully filled. Ready for their contracts.",
-      "description": "Create the contracts to confirm the engagements and send them for countersignature.",
-      "cta": "Draft contracts"
+      "title_one": "{{count}} {{showDate}} is fully filled. Ready for its {{hireOrder}}.",
+      "title_other": "{{count}} {{showDates}} are fully filled. Ready for their {{hireOrders}}.",
+      "description": "Create the {{hireOrders}} to confirm the engagements and send them for countersignature.",
+      "cta": "Draft {{hireOrders}}"
     },
-    "noHireOrderPermission": "You don't have permission to draft contracts",
-    "noConfirmPermission": "You don't have permission to book artists",
+    "noHireOrderPermission": "You don't have permission to draft {{hireOrders}}",
+    "noConfirmPermission": "You don't have permission to book {{artists}}",
     "searchPlaceholder": "Search program, venue, city…",
     "sortChronoLabel": "Date",
     "sortAsc": "{{label}} ↑",
     "sortDesc": "{{label}} ↓",
-    "generateHireOrder": "Draft the contract",
-    "emptyState": "No show dates match the current filters.",
-    "calendarEmpty": "No show dates scheduled"
+    "generateHireOrder": "Draft the {{hireOrder}}",
+    "emptyState": "No {{showDates}} match the current filters.",
+    "calendarEmpty": "No {{showDates}} scheduled"
   }
 }

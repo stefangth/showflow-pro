@@ -107,7 +107,7 @@ describe("ArtistDashboard hire-orders card (Task 14)", () => {
     // The zero-state now renders only after the query resolves (not while loading /
     // on error), so wait for it rather than asserting synchronously.
     expect(
-      await screen.findByText(/your contracts show up here/i),
+      await screen.findByText(/your contracts appear here/i),
     ).toBeInTheDocument();
     // No em/en dashes in the zero-state copy.
     expect(document.body.textContent).not.toMatch(/[—–]/);
@@ -124,7 +124,7 @@ describe("ArtistDashboard hire-orders card (Task 14)", () => {
 
     await screen.findByText("Dashboard");
     expect(screen.queryByText("Your contracts")).not.toBeInTheDocument();
-    expect(screen.queryByText(/your contracts show up here/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/your contracts appear here/i)).not.toBeInTheDocument();
   });
 
   it("tints a hire-order row whose snapshotted date is in the past (Plan B Task 2), leaves a future one untinted", async () => {

@@ -22,9 +22,9 @@
     "day": {
       "nothingScheduled": "nothing scheduled",
       "pickADay": "Pick a day",
-      "pickADayHint": "Select a day to see its dates and act on them.",
+      "pickADayHint": "Select a day to see its {{showDates}} and act on them.",
       "keyHint": "↵ open · space select",
-      "openDate": "Open date"
+      "openDate": "Open {{showDate}}"
     }
   },
   "nav": {
@@ -33,13 +33,13 @@
     "system": "System",
     "getRunning": "Get running",
     "dashboard": "Today",
-    "bookings": "Dates",
-    "hireOrders": "Contracts",
+    "bookings": "{{ShowDates}}",
+    "hireOrders": "{{HireOrders}}",
     "availability": "Availability",
     "chats": "Chats",
     "help": "Help",
-    "productions": "Productions",
-    "artists": "Artists",
+    "productions": "{{Productions}}",
+    "artists": "{{Artists}}",
     "admin": "Admin",
     "settings": "Settings",
     "platform": "Platform"
@@ -48,9 +48,9 @@
     "home": "Home"
   },
   "skillPicker": {
-    "newSkill": "New skill",
-    "nameLabel": "Skill name",
-    "create": "Add skill"
+    "newSkill": "New {{skill}}",
+    "nameLabel": "{{Skill}} name",
+    "create": "Add {{skill}}"
   },
   "account": {
     "language": "Language",

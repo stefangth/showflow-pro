@@ -37,7 +37,7 @@ describe("bookingStatusLabels", () => {
   it("offer orgs keep existing labels", () => {
     const labels = bookingStatusLabels(classic, t);
     expect(labels).toMatchObject({
-      suggested: "Asked", soft_booked: "Said yes · waiting on your production team",
+      suggested: "Asked", soft_booked: "Said yes · waiting on your Production Team",
       confirmed: "Booked", unanswered: "Not asked yet",
     });
   });

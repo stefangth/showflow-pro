@@ -9,7 +9,9 @@
     },
     "toolbar": {
       "keyHint": {
-        "needsYou": "Klick auf eine Karte öffnet den Termin",
+        "needsYou": "$t(bookings:calendar.toolbar.keyHint.needsYou_{{kind}})",
+        "needsYou_production": "Klick auf eine Karte öffnet den Termin",
+        "needsYou_staffing": "Klick auf eine Karte öffnet die Schicht",
         "month": "⏎ öffnen · Leertaste Vorschau",
         "monthArtist": "⏎ öffnen",
         "week": "⏎ / Leertaste öffnen",
@@ -19,7 +21,7 @@
     },
     "header": {
       "eyebrow": "BUCHUNGEN",
-      "title": "Termine"
+      "title": "{{ShowDates}}"
     },
     "stat": {
       "confirmedThisMonth": "Diesen Monat gebucht",
@@ -27,78 +29,86 @@
     },
     "bulk": {
       "confirmHolds": "Buchen, wer zugesagt hat",
-      "generateHireOrders": "Verträge entwerfen"
+      "generateHireOrders": "{{HireOrders}} entwerfen"
     },
     "fab": {
-      "newDate": "Neuer Termin"
+      "newDate": "$t(bookings:calendar.fab.newDate_{{kind}})",
+      "newDate_production": "Neuer Termin",
+      "newDate_staffing": "Neue Schicht"
     },
     "rail": {
       "statsTitle": "Dieser Monat"
     },
     "producerStatus": {
       "fully_filled": "Voll besetzt",
-      "partially_filled": "Besetzung läuft",
+      "partially_filled": "Wird gefüllt",
       "open": "Offen",
       "cancelled": "Storniert",
       "unconfigured": "Nicht konfiguriert"
     },
     "primary": {
       "confirmHolds": "Buchen, wer zugesagt hat",
-      "generateHireOrder": "Vertrag entwerfen"
+      "generateHireOrder": "{{HireOrder}} entwerfen"
     },
     "day": {
-      "eyebrowCasting": "Besetzung läuft",
+      "eyebrowCasting": "wird gefüllt",
       "eyebrowFullyFilled": "voll besetzt",
-      "subCasting_one": "{{count}} Termin · {{open}} Positionen noch offen",
-      "subCasting_other": "{{count}} Termine · {{open}} Positionen noch offen",
-      "subComplete_one": "{{count}} Termin · Besetzung komplett",
-      "subComplete_other": "{{count}} Termine · Besetzung komplett",
-      "empty": "An diesem Tag sind keine Termine geplant."
+      "subCasting_one": "{{count}} {{ShowDate}} · {{open}} Positionen noch offen",
+      "subCasting_other": "{{count}} {{ShowDates}} · {{open}} Positionen noch offen",
+      "subComplete_one": "{{count}} {{ShowDate}} · {{Cast}} komplett",
+      "subComplete_other": "{{count}} {{ShowDates}} · {{Cast}} komplett",
+      "empty": "An diesem Tag sind keine {{ShowDates}} geplant."
     },
     "needsYou": {
       "groups": {
         "expires-today": "Heute buchen",
-        "at-risk": "Im Risiko · unterbesetzt in {{days}} Tagen",
+        "at-risk": "Im Risiko · zu wenige Personen in {{days}} Tagen",
         "ready-to-issue": "Bereit zum Versenden",
         "cancelled": "Storniert · Entscheidung nötig"
       },
       "scopeChips": {
         "all": "Alle",
         "expires-today": "Wartet auf dich",
-        "at-risk": "Besetzung",
-        "ready-to-issue": "Verträge",
+        "at-risk": "Füllen",
+        "ready-to-issue": "{{HireOrders}}",
         "cancelled": "Storniert"
       },
       "primary": {
         "confirmHolds_one": "{{count}} buchen, der zugesagt hat",
         "confirmHolds_other": "{{count}} buchen, die zugesagt haben",
-        "openCasting": "Besetzung öffnen",
-        "generateHireOrder": "Vertrag entwerfen",
-        "notifyCast": "Besetzung benachrichtigen"
+        "openCasting": "Füllen starten",
+        "generateHireOrder": "{{HireOrder}} entwerfen",
+        "notifyCast": "{{Cast}} benachrichtigen"
       },
       "secondary": {
         "extend": "Um 24 Std. verlängern",
         "release": "Freigeben",
-        "cancelDate": "Termin absagen",
+        "cancelDate": "{{ShowDate}} absagen",
         "preview": "Vorschau",
         "undoCancel": "Absage rückgängig"
       },
       "bulk": {
         "confirmAll": "Alle buchen",
-        "generateHireOrders_one": "{{count}} Vertrag entwerfen",
-        "generateHireOrders_other": "{{count}} Verträge entwerfen"
+        "generateHireOrders_one": "{{count}} {{HireOrder}} entwerfen",
+        "generateHireOrders_other": "{{count}} {{HireOrders}} entwerfen"
       },
       "note": {
-        "expiresToday_one": "{{count}} Artist, der zugesagt hat, verliert die Position, wenn du ihn heute nicht buchst.",
-        "expiresToday_other": "{{count}} Artists, die zugesagt haben, verlieren ihre Positionen, wenn du sie heute nicht buchst.",
+        "expiresToday_one": "$t(bookings:calendar.needsYou.note.expiresToday_{{kind}}_one)",
+        "expiresToday_production_one": "{{count}} Artist, der zugesagt hat, verliert die Position, wenn du ihn heute nicht buchst.",
+        "expiresToday_staffing_one": "{{count}} Teammitglied, das zugesagt hat, verliert die Position, wenn du es heute nicht buchst.",
+        "expiresToday_other": "{{count}} {{Artists}}, die zugesagt haben, verlieren ihre Positionen, wenn du sie heute nicht buchst.",
         "atRisk": "{{slots}}, {{lead}}.",
         "atRiskSlots_one": "{{count}} offene Position",
         "atRiskSlots_other": "{{count}} offene Positionen",
         "atRiskLeadToday": "heute",
         "atRiskLeadDays_one": "in {{count}} Tag",
         "atRiskLeadDays_other": "in {{count}} Tagen",
-        "readyToIssue": "Die Besetzung ist gebucht und bereit für ihren Vertrag.",
-        "cancelled": "Die Besetzung wurde über diese Absage noch nicht informiert."
+        "readyToIssue": "$t(bookings:calendar.needsYou.note.readyToIssue_{{kind}})",
+        "readyToIssue_production": "Die Besetzung ist gebucht und bereit für ihren Engagementvertrag.",
+        "readyToIssue_staffing": "Das Team ist gebucht und bereit für seinen Arbeitsauftrag.",
+        "cancelled": "$t(bookings:calendar.needsYou.note.cancelled_{{kind}})",
+        "cancelled_production": "Die Besetzung wurde über diese Absage noch nicht informiert.",
+        "cancelled_staffing": "Das Team wurde über diese Absage noch nicht informiert."
       },
       "expires": "Antworten bis {{time}}",
       "understudyAbbrev": "ZB",
@@ -110,27 +120,33 @@
       "clearQueueTitle": "Warteschlange abarbeiten",
       "clearedToday": "{{count}} heute erledigt",
       "shortlistTitle": "Auswahlliste",
-      "shortlistEmpty": "Niemand kann für diesen Termin angefragt werden.",
+      "shortlistEmpty": "$t(bookings:calendar.queue.shortlistEmpty_{{kind}})",
+      "shortlistEmpty_production": "Niemand kann für diesen Termin angefragt werden.",
+      "shortlistEmpty_staffing": "Niemand kann für diese Schicht angefragt werden.",
       "offerButton": "Anfragen",
       "rulesTitle": "Was hier landet",
       "rules": {
         "expiresToday": "Anfragen mit heutiger Antwortfrist, damit sie nicht unbeantwortet verfallen.",
-        "atRisk": "Ein unterbesetzter Termin innerhalb von {{days}} Tagen vor der Show.",
-        "readyToIssue": "Termine, deren Besetzung gebucht und bereit für einen Vertrag ist.",
-        "cancelled": "Stornierte Termine, über die die Besetzung noch nicht informiert wurde."
+        "atRisk": "$t(bookings:calendar.queue.rules.atRisk_{{kind}})",
+        "atRisk_production": "Ein Termin mit zu wenigen Personen innerhalb von {{days}} Tagen vor der Show.",
+        "atRisk_staffing": "Eine Schicht mit zu wenigen Personen innerhalb von {{days}} Tagen vor dem Projekt.",
+        "readyToIssue": "{{ShowDates}}, deren {{Cast}} gebucht und bereit für einen {{hireOrder}} ist.",
+        "cancelled": "$t(bookings:calendar.queue.rules.cancelled_{{kind}})",
+        "cancelled_production": "Stornierte Termine, über die die Besetzung noch nicht informiert wurde.",
+        "cancelled_staffing": "Stornierte Schichten, über die das Team noch nicht informiert wurde."
       }
     },
     "agenda": {
-      "generateHireOrder": "Vertrag entwerfen",
+      "generateHireOrder": "{{HireOrder}} entwerfen",
       "confirmHolds": "Buchen, wer zugesagt hat",
-      "openCasting": "Besetzung öffnen",
+      "openCasting": "Füllen starten",
       "weekOfHeading": "Woche vom {{weekStart}}",
-      "dateCount_one": "{{count}} Termin",
-      "dateCount_other": "{{count}} Termine",
+      "dateCount_one": "{{count}} {{ShowDate}}",
+      "dateCount_other": "{{count}} {{ShowDates}}",
       "mainFillCount": "{{filled}}/{{total}} Haupt",
       "groupingLabel": "Gruppierung",
-      "groupingPerDate": "Pro Termin",
-      "groupingPerShow": "Pro Vorstellung"
+      "groupingPerDate": "Pro {{ShowDate}}",
+      "groupingPerShow": "Pro {{Show}}"
     },
     "week": {
       "tbdLabel": "n.n."
@@ -140,47 +156,51 @@
       "cellTooltip": "{{filled}}/{{total}} Haupt · {{status}}",
       "programHeader": "Programm",
       "untitled": "Ohne Titel",
-      "rowSummary_one": "{{count}} Termin · {{unfilled}} unbesetzt",
-      "rowSummary_other": "{{count}} Termine · {{unfilled}} unbesetzt",
+      "rowSummary_one": "{{count}} {{ShowDate}} · {{unfilled}} unbesetzt",
+      "rowSummary_other": "{{count}} {{ShowDates}} · {{unfilled}} unbesetzt",
       "unfilledSlotsHeader": "Unbesetzte Positionen"
     },
     "seasonKpis": {
       "unfilledMainSlotsLabel": "Unbesetzte Hauptpositionen",
-      "unfilledMainSlotsNote_one": "über {{count}} Termin",
-      "unfilledMainSlotsNote_other": "über {{count}} Termine",
-      "allMainCastFilled": "gesamte Hauptbesetzung besetzt",
+      "unfilledMainSlotsNote_one": "über {{count}} {{ShowDate}}",
+      "unfilledMainSlotsNote_other": "über {{count}} {{ShowDates}}",
+      "allMainCastFilled": "alle Hauptpositionen besetzt",
       "heaviestWeekLabel": "Stärkste Woche",
-      "heaviestWeekNote_one": "{{count}} Termin · {{open}} Positionen offen",
-      "heaviestWeekNote_other": "{{count}} Termine · {{open}} Positionen offen",
-      "readyForHireOrderLabel": "Bereit für Vertrag",
-      "readyForHireOrderNoteFilled": "voll besetzt, noch kein Vertrag",
+      "heaviestWeekNote_one": "{{count}} {{ShowDate}} · {{open}} Positionen offen",
+      "heaviestWeekNote_other": "{{count}} {{ShowDates}} · {{open}} Positionen offen",
+      "readyForHireOrderLabel": "Bereit für {{HireOrder}}",
+      "readyForHireOrderNoteFilled": "voll besetzt, noch kein {{hireOrder}}",
       "readyForHireOrderNoteNone": "keine ausstehend"
     },
     "seasonStripMobile": {
       "heading": "Saison-Auslastung · {{month}}",
       "swipeHint": "wischen →",
       "cornerLabel": "Saison",
-      "rowSummary_one": "{{count}} Termin · -{{unfilled}}",
-      "rowSummary_other": "{{count}} Termine · -{{unfilled}}",
+      "rowSummary_one": "{{count}} {{ShowDate}} · -{{unfilled}}",
+      "rowSummary_other": "{{count}} {{ShowDates}} · -{{unfilled}}",
       "cellTooltip": "{{filled}}/{{total}} Haupt",
       "openFooterLabel": "Offen"
     }
   },
   "rowPeek": {
     "eyebrowUnconfigured": "nicht konfiguriert",
-    "noConfig": "Lege in den Einstellungen den Besetzungsplan fest, um den Füllstand zu verfolgen.",
+    "noConfig": "Lege in den Einstellungen die Aufteilung der Positionen fest, um den Füllstand zu verfolgen.",
     "confirming": "Wird gebucht…",
     "confirm": "{{count}} buchen",
-    "openDate": "Termin öffnen",
+    "openDate": "{{ShowDate}} öffnen",
     "keyHint": "Leertaste für Vorschau · Enter zum Öffnen"
   },
   "artist": {
-    "cancelHint": "Du musst einen bestätigten Termin absagen? Schreib deinem Produktionsteam im Chat des Termins, dann aktualisieren sie die Buchung.",
+    "cancelHint": "$t(bookings:artist.cancelHint_{{kind}})",
+    "cancelHint_production": "Du musst einen bestätigten Termin absagen? Schreib deinem Production Team im Chat des Termins, dann aktualisieren sie die Buchung.",
+    "cancelHint_staffing": "Du musst eine bestätigte Schicht absagen? Schreib deinem Buchungsteam im Chat der Schicht, dann aktualisieren sie die Buchung.",
     "sortChronoLabel": "Datum",
     "loadError": "Deine Buchungen konnten nicht geladen werden. Bitte aktualisiere.",
-    "hireOrderLink": "Vertrag",
-    "emptyState": "Noch keine Termine. Sobald du einer Besetzung hinzugefügt wirst, erscheinen Termine, für die du angefragt wirst, hier.",
-    "calendarEmpty": "Noch keine Termine"
+    "hireOrderLink": "{{HireOrder}}",
+    "emptyState": "$t(bookings:artist.emptyState_{{kind}})",
+    "emptyState_production": "Noch keine Termine. Sobald du einer Besetzung hinzugefügt wirst, erscheinen Termine, für die du angefragt wirst, hier.",
+    "emptyState_staffing": "Noch keine Schichten. Sobald du einem Team hinzugefügt wirst, erscheinen Schichten, für die du angefragt wirst, hier.",
+    "calendarEmpty": "Noch keine {{ShowDates}}"
   },
   "status": {
     "open": "Offen",
@@ -213,7 +233,7 @@
       "notified": "{{count}} benachrichtigt",
       "offered": "{{count}} angefragt",
       "confirmedAll": "Gebucht, wer zugesagt hat",
-      "generatedAll": "Vertrag entworfen"
+      "generatedAll": "{{HireOrder}} entworfen"
     }
   },
   "producer": {
@@ -221,30 +241,36 @@
       "confirmed": "{{count}} gebucht",
       "nothingToConfirm": "Nichts zu buchen, es hat sich schon erledigt"
     },
-    "title": "Termine",
-    "subtitle": "Alle geplanten Termine und der Besetzungsstatus an einem Ort.",
+    "title": "{{ShowDates}}",
+    "subtitle": "Alle geplanten {{ShowDates}} und der Status der {{casts}} an einem Ort.",
     "setupChecklist": "Einrichtungscheckliste",
-    "newDate": "Neuer Termin",
+    "newDate": "$t(bookings:producer.newDate_{{kind}})",
+    "newDate_production": "Neuer Termin",
+    "newDate_staffing": "Neue Schicht",
     "datesMenu": {
-      "aria": "Mehr Wege, Termine hinzuzufügen",
-      "byHand": "Neuer Termin von Hand",
+      "aria": "Mehr Wege, {{ShowDates}} hinzuzufügen",
+      "byHand": "$t(bookings:producer.datesMenu.byHand_{{kind}})",
+      "byHand_production": "Neuer Termin von Hand",
+      "byHand_staffing": "Neue Schicht von Hand",
       "airtable": "Aus Airtable importieren",
       "sheet": "Aus Tabelle importieren"
     },
     "hireOrderReady": {
-      "title_one": "{{count}} Termin ist voll besetzt. Bereit für seinen Vertrag.",
-      "title_other": "{{count}} Termine sind voll besetzt. Bereit für ihre Verträge.",
-      "description": "Erstelle die Verträge, um die Engagements zu bestätigen und sie zur Gegenzeichnung zu versenden.",
-      "cta": "Verträge entwerfen"
+      "title_one": "$t(bookings:producer.hireOrderReady.title_{{kind}}_one)",
+      "title_production_one": "{{count}} Termin ist voll besetzt. Bereit für seinen Engagementvertrag.",
+      "title_staffing_one": "{{count}} Schicht ist voll besetzt. Bereit für ihren Arbeitsauftrag.",
+      "title_other": "{{count}} {{ShowDates}} sind voll besetzt. Bereit für ihre {{hireOrders}}.",
+      "description": "Erstelle die {{hireOrders}}, um die Engagements zu bestätigen und sie zur Gegenzeichnung zu versenden.",
+      "cta": "{{HireOrders}} entwerfen"
     },
-    "noHireOrderPermission": "Du hast keine Berechtigung, Verträge zu entwerfen",
-    "noConfirmPermission": "Du hast keine Berechtigung, Artists zu buchen",
+    "noHireOrderPermission": "Du hast keine Berechtigung, {{HireOrders}} zu entwerfen",
+    "noConfirmPermission": "Du hast keine Berechtigung, {{Artists}} zu buchen",
     "searchPlaceholder": "Programm, Spielstätte, Stadt suchen…",
     "sortChronoLabel": "Datum",
     "sortAsc": "{{label}} ↑",
     "sortDesc": "{{label}} ↓",
-    "generateHireOrder": "Vertrag entwerfen",
-    "emptyState": "Keine Termine entsprechen den aktuellen Filtern.",
-    "calendarEmpty": "Keine Termine geplant"
+    "generateHireOrder": "{{HireOrder}} entwerfen",
+    "emptyState": "Keine {{ShowDates}} entsprechen den aktuellen Filtern.",
+    "calendarEmpty": "Keine {{ShowDates}} geplant"
   }
 }

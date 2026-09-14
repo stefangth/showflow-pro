@@ -27,14 +27,20 @@ const IDENTICAL_OK: Record<string, string> = {
   'bookings.calendar.needsYou.note.atRisk': 'interpolation + punctuation only ("{{slots}}, {{lead}}."), no translatable words',
   'availability.calendar.day.session': 'domain loanword "Session", kept untranslated (matches showsDetail.showDateForm.session)',
   'availability.calendar.allDates.headerSession': 'domain loanword "Session", kept untranslated',
-  'availability.calendar.allDates.headerShow': 'loanword "Show", kept untranslated across the app (matches settingsCastsCoverage)',
+  'availability.calendar.allDates.headerShow': 'whole value is one vocabulary variable, resolved per language by the vocabulary table',
+  'availability.calendar.allDates.hireOrder': 'whole value is one vocabulary variable, resolved per language by the vocabulary table',
 
+  'bookings.calendar.header.title': 'whole value is one vocabulary variable, resolved per language by the vocabulary table',
+  'bookings.calendar.needsYou.scopeChips.ready-to-issue': 'whole value is one vocabulary variable, resolved per language by the vocabulary table',
+  'bookings.artist.hireOrderLink': 'whole value is one vocabulary variable, resolved per language by the vocabulary table',
+  'bookings.producer.title': 'whole value is one vocabulary variable, resolved per language by the vocabulary table',
   'bookings.filters.status': '"Status" is identical in German',
   'bookings.producer.sortAsc': 'interpolation + arrow only, no translatable words',
   'bookings.producer.sortDesc': 'interpolation + arrow only, no translatable words',
 
   // settings namespace (core shell)
-  'settings.nav.items.skills': 'loanword "Skills", kept untranslated across the app',
+  'settings.nav.items.skills': 'whole value is one vocabulary variable, resolved per language by the vocabulary table',
+  'settings.nav.items.hireOrders': 'whole value is one vocabulary variable, resolved per language by the vocabulary table',
   'settings.organization.slugLabel': 'technical term "Slug", never translated',
   'settings.permissions.row.admin': 'role name "Admin" is not translated (ROLE_LABELS)',
   'settings.permissions.row.roleRight': 'interpolation only ("{{role}}: {{label}}"), no words',

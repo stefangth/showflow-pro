@@ -1,7 +1,7 @@
 {
   "availabilityPage": {
     "direct": {
-      "title": "My Dates",
+      "title": "My {{ShowDates}}",
       "subtitle": "Your bookings and availability. Mark dates you're not free."
     },
     "offer": {
@@ -11,13 +11,13 @@
   },
   "bookingsView": {
     "title": "My Bookings",
-    "offerSubtitle": "Dates you've been asked about, based on your cast eligibility.",
-    "directSubtitle": "Dates you're booked for, based on your cast eligibility."
+    "offerSubtitle": "{{ShowDates}} you've been asked about, based on your {{cast}} eligibility.",
+    "directSubtitle": "{{ShowDates}} you're booked for, based on your {{cast}} eligibility."
   },
   "statusLabels": {
     "offer": {
       "suggested": "Asked",
-      "soft_booked": "Said yes · waiting on your production team",
+      "soft_booked": "Said yes · waiting on your {{roleProducer}}",
       "soft_booked_autoConfirm": "Said yes",
       "confirmed": "Booked",
       "unanswered": "Not asked yet",
@@ -25,7 +25,7 @@
     },
     "direct": {
       "suggested": "Asked",
-      "soft_booked": "Said yes · waiting on your production team",
+      "soft_booked": "Said yes · waiting on your {{roleProducer}}",
       "soft_booked_autoConfirm": "Said yes",
       "confirmed": "Booked",
       "unanswered": "Not asked yet",
@@ -35,16 +35,16 @@
   "meter": {
     "offer": {
       "title": "Answer rate",
-      "headerSentence": "Your answer rate on dates you've been asked about.",
+      "headerSentence": "Your answer rate on {{showDates}} you've been asked about.",
       "footer": "Click to see your open asks →",
-      "explainer": "Counts dates you said yes to or were booked for, out of dates you were asked about. It is just for you, no one is scored on it."
+      "explainer": "Counts {{showDates}} you said yes to or were booked for, out of {{showDates}} you were asked about. It is just for you, no one is scored on it."
     },
     "direct": {
-      "title": "Booked dates",
-      "headerSentence": "Your booked share of the dates you're eligible for.",
-      "footer": "Click to see your dates →",
-      "explainer": "Dates you are booked for, out of dates you are eligible for."
+      "title": "Booked {{showDates}}",
+      "headerSentence": "Your booked share of the {{showDates}} you're eligible for.",
+      "footer": "Click to see your {{showDates}} →",
+      "explainer": "{{ShowDates}} you are booked for, out of {{showDates}} you are eligible for."
     }
   },
-  "deliveryHint": "Artists get asked by email as soon as a tier opens."
+  "deliveryHint": "{{Artists}} get asked by email as soon as a tier opens."
 }

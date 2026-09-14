@@ -153,7 +153,7 @@ describe("ArtistBookingsView flow-aware copy (Task 4)", () => {
     renderWithProviders(<ArtistBookingsView />);
 
     expect(
-      await screen.findByText(/need to cancel a date you confirmed\? message your producer in the date's chat/i),
+      await screen.findByText(/need to cancel one date you confirmed\? message your Production Team in the date chat/i),
     ).toBeInTheDocument();
   });
 
@@ -172,7 +172,7 @@ describe("ArtistBookingsView flow-aware copy (Task 4)", () => {
     // signpost is gated away because there is no confirmed booking to cancel.
     expect(await screen.findByRole("heading", { name: "My Bookings" })).toBeInTheDocument();
     expect(
-      screen.queryByText(/need to cancel a date you confirmed/i),
+      screen.queryByText(/need to cancel one date you confirmed/i),
     ).not.toBeInTheDocument();
   });
 
@@ -206,7 +206,7 @@ describe("ArtistBookingsView flow-aware copy (Task 4)", () => {
 
     expect(await screen.findByRole("heading", { name: "My Bookings" })).toBeInTheDocument();
     expect(
-      screen.queryByText(/need to cancel a date you confirmed/i),
+      screen.queryByText(/need to cancel one date you confirmed/i),
     ).not.toBeInTheDocument();
   });
 });

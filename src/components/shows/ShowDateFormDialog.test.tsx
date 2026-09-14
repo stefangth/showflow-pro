@@ -321,14 +321,14 @@ describe("ShowDateFormDialog", () => {
   it("states the dates-source note in create mode", () => {
     renderWithProviders(<ShowDateFormDialog open onOpenChange={() => {}} mode="create" />);
     expect(
-      screen.getByText(/You can add a date by hand here\. If your workspace syncs from Airtable/),
+      screen.getByText(/You can add one date by hand here\. If your workspace syncs from Airtable/),
     ).toBeInTheDocument();
   });
 
   it("does not state the dates-source note in edit mode", () => {
     mockFlow = { ...BOOKING_FLOW_DEFAULTS };
     renderWithProviders(<ShowDateFormDialog open onOpenChange={() => {}} mode="edit" showDate={editShowDate} />);
-    expect(screen.queryByText(/You can add a date by hand here/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/You can add one date by hand here/)).not.toBeInTheDocument();
   });
 
   // Radix wires DialogDescription to the dialog's aria-describedby. Two descriptions in one
@@ -353,7 +353,7 @@ describe("ShowDateFormDialog", () => {
   it("backs the dialog's aria-describedby with exactly one description in create mode", () => {
     const { baseElement } = renderWithProviders(<ShowDateFormDialog open onOpenChange={() => {}} mode="create" />);
     expect(describedByCount(baseElement)).toBe(1);
-    expect(screen.getByText(/You can add a date by hand here/)).toBeInTheDocument();
+    expect(screen.getByText(/You can add one date by hand here/)).toBeInTheDocument();
   });
 
   // Finding 08: the picker rendered with no `disabled`, so a date could be created in the

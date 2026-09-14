@@ -13,14 +13,16 @@
     "keySaveFailed": "Airtable-Schlüssel konnte nicht gespeichert werden",
     "keyDeleted": "Airtable-API-Schlüssel gelöscht",
     "keyDeleteFailed": "Airtable-Schlüssel konnte nicht gelöscht werden",
-    "alreadyMatchesShow": "Entspricht bereits einer Produktion im Katalog. Es verknüpft sich beim nächsten Sync.",
-    "nothingToCreateShows": "Nichts zu erstellen. Diese Optionen entsprechen bereits Produktionen im Katalog.",
-    "showCreatedAndLinked": "Produktion erstellt und verknüpft",
+    "alreadyMatchesShow": "$t(settingsAirtable:toasts.alreadyMatchesShow_{{kind}})",
+    "alreadyMatchesShow_production": "Entspricht bereits einer Produktion im Katalog. Es verknüpft sich beim nächsten Sync.",
+    "alreadyMatchesShow_staffing": "Entspricht bereits einem Kunden im Katalog. Es verknüpft sich beim nächsten Sync.",
+    "nothingToCreateShows": "Nichts zu erstellen. Diese Optionen entsprechen bereits {{Productions}} im Katalog.",
+    "showCreatedAndLinked": "{{Production}} erstellt und verknüpft",
     "createFailed": "Erstellen fehlgeschlagen",
     "alreadyMatchesCity": "Entspricht bereits einer Stadt im Katalog.",
     "cityCreatedAndLinked": "Stadt erstellt und verknüpft",
     "cityLinked": "Stadt verknüpft",
-    "createdSelectedShows": "Die ausgewählten Produktionen wurden erstellt",
+    "createdSelectedShows": "Die ausgewählten {{productions}} wurden erstellt",
     "createdSelectedCities": "Die ausgewählten Städte wurden erstellt",
     "linked": "Verknüpft",
     "linkFailed": "Verknüpfen fehlgeschlagen",
@@ -55,7 +57,7 @@
   "mappingTab": {
     "pickBaseAndTable": "Wähle zuerst eine Basis und eine Tabelle. Öffne",
     "manageConnectionLink": "Verbindung verwalten",
-    "pickBaseAndTableSuffix": "um festzulegen, wo deine Produktionen liegen."
+    "pickBaseAndTableSuffix": "um festzulegen, wo deine {{productions}} liegen."
   },
   "autosaveStatus": {
     "saving": "Speichert…",
@@ -122,7 +124,7 @@
     "noRuns": "Noch keine Läufe."
   },
   "attentionPanel": {
-    "fixLabelPrograms": "Produktionen erstellen",
+    "fixLabelPrograms": "{{Productions}} erstellen",
     "fixLabelCities": "Städte erstellen",
     "title": "Braucht deine Aufmerksamkeit",
     "description_one": "{{count}} Datensatz wurde beim letzten Lauf zurückgehalten. Zurückgehaltene Datensätze gehen nie verloren, behebe die Ursache und sie werden beim nächsten Lauf importiert.",
@@ -144,7 +146,9 @@
     "blankKeyPlaceholder": "·",
     "create": "Erstellen",
     "title": "Katalogverknüpfungen",
-    "description": "Jede Airtable-Option entspricht genau einer ShowFlow-Produktion oder -Stadt. Nicht verknüpfte Optionen halten ihre Datensätze zurück.",
+    "description": "$t(settingsAirtable:catalogTab.description_{{kind}})",
+    "description_production": "Jede Airtable-Option entspricht genau einer ShowFlow-Produktion oder -Stadt. Nicht verknüpfte Optionen halten ihre Datensätze zurück.",
+    "description_staffing": "Jede Airtable-Option entspricht genau einem ShowFlow-Kunden oder einer Stadt. Nicht verknüpfte Optionen halten ihre Datensätze zurück.",
     "searchPlaceholder": "Optionen und Ziele durchsuchen…",
     "searchAriaLabel": "Optionen und Ziele durchsuchen",
     "filters": {
@@ -161,7 +165,7 @@
     "linkAriaLabel": "{{noun}} für {{display}} verknüpfen oder anlegen",
     "linkSearchPlaceholder": "{{noun}} durchsuchen…",
     "entityNoun": {
-      "show": "Show",
+      "show": "{{Show}}",
       "city": "Stadt"
     }
   },
@@ -216,17 +220,17 @@
       "connectTitle": "Verbinden",
       "connectHint": "Persönliches Zugriffstoken",
       "baseTableTitle": "Basis und Tabelle",
-      "baseTableHint": "Wähle, wo deine Produktionen liegen",
+      "baseTableHint": "Wähle, wo deine {{productions}} liegen",
       "mapFieldsTitle": "Felder zuordnen",
       "mapFieldsHint": "Datum, Programm, Stadt, Sessions",
       "linkCatalogTitle": "Katalog verknüpfen",
-      "linkCatalogHint": "Optionen deinen Produktionen zuordnen"
+      "linkCatalogHint": "Optionen deinen {{productions}} zuordnen"
     },
     "eyebrow": "Airtable · Einrichtung",
     "heading": "Verbinde eine Basis in vier Schritten",
     "subheading": "Bis zum letzten Schritt wird nichts synchronisiert. Du kannst jederzeit pausieren und zurückkommen, jeder Schritt speichert sofort.",
     "baseTableStepTitle": "Basis und Tabelle",
-    "baseTableStepDescription": "Dein Token ist gespeichert. Wähle die Airtable-Basis und -Tabelle, in der deine Produktionen liegen, um die Verbindung abzuschließen. Bis dahin wird nichts synchronisiert.",
+    "baseTableStepDescription": "Dein Token ist gespeichert. Wähle die Airtable-Basis und -Tabelle, in der deine {{productions}} liegen, um die Verbindung abzuschließen. Bis dahin wird nichts synchronisiert.",
     "chooseBaseAndTable": "Basis und Tabelle wählen",
     "tokenStepTitle": "Persönliches Zugriffstoken",
     "tokenHelpPrefix": "Verschlüsselt im Vault gespeichert und nie wieder angezeigt. Benötigt",
@@ -276,8 +280,12 @@
       "allResolved": "alle aufgelöst"
     },
     "causes": {
-      "programTitle_one": "{{count}} Programmoption hat keine Produktion im Katalog",
-      "programTitle_other": "{{count}} Programmoptionen haben keine Produktion im Katalog",
+      "programTitle_one": "$t(settingsAirtable:console.causes.programTitle_{{kind}}_one)",
+      "programTitle_production_one": "{{count}} Programmoption hat keine Produktion im Katalog",
+      "programTitle_staffing_one": "{{count}} Programmoption hat keinen Kunden im Katalog",
+      "programTitle_other": "$t(settingsAirtable:console.causes.programTitle_{{kind}}_other)",
+      "programTitle_production_other": "{{count}} Programmoptionen haben keine Produktion im Katalog",
+      "programTitle_staffing_other": "{{count}} Programmoptionen haben keinen Kunden im Katalog",
       "cityTitle_one": "{{count}} Stadtoption hat keine Stadt im Katalog",
       "cityTitle_other": "{{count}} Stadtoptionen haben keine Stadt im Katalog",
       "missingDateTitle_one": "{{count}} Datensatz hat eine leere Datumszelle",
@@ -301,7 +309,7 @@
     "change": "Ändern",
     "requiredCount": "{{mapped}} von {{total}} erforderlich",
     "mapSessions": "Sessions zuordnen",
-    "catalogHint": "Ordne Optionen deinen Produktionen zu. Nicht verknüpfte Optionen halten ihre Datensätze zurück.",
+    "catalogHint": "Ordne Optionen deinen {{productions}} zu. Nicht verknüpfte Optionen halten ihre Datensätze zurück.",
     "reviewCatalog": "Prüfen"
   },
   "rail": {

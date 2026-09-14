@@ -6,7 +6,7 @@
       "unavailableTitle": "Diese Anfrage ist nicht mehr verfügbar",
       "unavailableDesc": "Sie wurde vielleicht zurückgezogen, oder die Antwortzeit ist abgelaufen. Aktualisiere, um den aktuellen Stand zu sehen.",
       "declinedTitle": "Du hast abgesagt",
-      "declinedDesc": "Wenn du absagst, zählt das nicht gegen dich, und es hat keine Auswirkung auf andere Termine.",
+      "declinedDesc": "Wenn du absagst, zählt das nicht gegen dich, und es hat keine Auswirkung auf andere {{ShowDates}}.",
       "errorTitle": "Fehler"
     }
   },
@@ -19,7 +19,7 @@
     "lens": {
       "offers": "Anfragen",
       "month": "Monat",
-      "allDates": "Alle Termine"
+      "allDates": "Alle {{ShowDates}}"
     },
     "header": {
       "eyebrow": "VERFÜGBARKEIT",
@@ -42,11 +42,13 @@
     "day": {
       "session": "Session",
       "expires": "Antworten bis",
-      "sub": "So steht es um diesen Termin",
+      "sub": "$t(availability:calendar.day.sub_{{kind}})",
+      "sub_production": "So steht es um diesen Termin",
+      "sub_staffing": "So steht es um diese Schicht",
       "empty": "An diesem Tag wurde dir nichts angefragt.",
       "primaryAccept": "Anfrage beantworten",
       "primaryBlock": "Termin sperren",
-      "messageProducer": "Produktionsteam schreiben"
+      "messageProducer": "{{roleProducer}} schreiben"
     },
     "monthFlag": {
       "answer": "antwort",
@@ -68,24 +70,28 @@
     },
     "notOffered": {
       "title": "Später diesen Monat · noch nicht angefragt",
-      "eligibleFromCasts": "Aus deinen Besetzungen"
+      "eligibleFromCasts": "Aus deinen {{casts}}"
     },
     "allDates": {
       "headerDate": "Datum",
       "headerDay": "Tag",
-      "headerShow": "Produktion",
+      "headerShow": "{{Production}}",
       "headerSession": "Session",
       "headerMyStatus": "Mein Status",
-      "hireOrder": "Vertrag"
+      "hireOrder": "{{HireOrder}}"
     },
     "shared": {
       "blockDate": "Termin sperren"
     },
-    "ineligibleReason": "Dieser Termin wurde dir nicht angefragt. Termine, die dir angefragt werden können, ergeben sich aus deinen Besetzungen und den dafür nötigen Skills.",
+    "ineligibleReason": "$t(availability:calendar.ineligibleReason_{{kind}})",
+    "ineligibleReason_production": "Dieser Termin wurde dir nicht angefragt. Termine, die dir angefragt werden können, ergeben sich aus deinen Besetzungen und den dafür nötigen Skills.",
+    "ineligibleReason_staffing": "Diese Schicht wurde dir nicht angefragt. Schichten, die dir angefragt werden können, ergeben sich aus deinen Teams und den dafür nötigen Qualifikationen.",
     "prevMonth": "Voriger Monat",
     "nextMonth": "Nächster Monat",
     "loadError": "Deine Buchungen oder deine nicht freien Termine konnten nicht geladen werden · Status kann unvollständig sein. Bitte aktualisiere.",
-    "empty": "Noch keine Termine. Sobald du einer Besetzung hinzugefügt wirst, erscheinen hier Termine, die dir angefragt werden können.",
+    "empty": "$t(availability:calendar.empty_{{kind}})",
+    "empty_production": "Noch keine Termine. Sobald du einer Besetzung hinzugefügt wirst, erscheinen hier Termine, die dir angefragt werden können.",
+    "empty_staffing": "Noch keine Schichten. Sobald du einem Team hinzugefügt wirst, erscheinen hier Schichten, die dir angefragt werden können.",
     "label": {
       "booked": "Gebucht",
       "hold": "Zugesagt",
@@ -94,7 +100,7 @@
     },
     "popover": {
       "confirmed": "Gebucht",
-      "hold": "Zugesagt · wartet auf dein Produktionsteam"
+      "hold": "Zugesagt · wartet auf dein {{roleProducer}}"
     },
     "legend": {
       "title": "Legende:",
@@ -104,7 +110,7 @@
       "offerPending": "Angefragt",
       "blocked": "Nicht frei"
     },
-    "srIneligible": "Abgeblendete Termine wurden dir nicht angefragt. Termine, die dir angefragt werden können, ergeben sich aus deinen Besetzungen und den dafür nötigen Skills."
+    "srIneligible": "Abgeblendete {{ShowDates}} wurden dir nicht angefragt. {{ShowDates}}, die dir angefragt werden können, ergeben sich aus deinen {{casts}} und den dafür nötigen {{skills}}."
   },
   "toast": {
     "dateBlocked": "Als nicht frei markiert",
@@ -122,14 +128,14 @@
   "firstRun": {
     "eyebrow": "{{org}} · dein Kalender",
     "headline": "Eine Sache hier gehört dir, und sie dauert zwei Minuten",
-    "body": "Sperre die Termine, die du nicht spielen kannst. Sie fallen aus der Liste, bevor dich jemand bucht, damit du nur von Terminen hörst, die passen. Alles andere auf dieser Seite legt die Organisation fest.",
+    "body": "Sperre die Termine, die du nicht übernehmen kannst. Sie fallen aus der Liste, bevor dich jemand bucht, damit du nur von Terminen hörst, die passen. Alles andere auf dieser Seite legt die Organisation fest.",
     "setup": {
       "label": "Dein Setup",
       "ofOne": "von 1 erledigt",
-      "hint": "Ein leerer Kalender ist eine gültige Antwort. Sperre nur die Termine, die du nicht spielen kannst."
+      "hint": "Ein leerer Kalender ist eine gültige Antwort. Sperre nur die Termine, die du nicht übernehmen kannst."
     },
     "task": {
-      "title": "Sperre, was du nicht spielen kannst",
+      "title": "Sperre, was du nicht übernehmen kannst",
       "blocksNothing": "Blockiert nichts",
       "body": "Von dir gesperrte Termine fallen aus der Liste, bevor dich jemand bucht, damit du nur von Terminen hörst, die passen.",
       "cta": "Termine sperren"
@@ -137,21 +143,25 @@
     "rules": {
       "heading": "So wirst du hier gebucht",
       "setBy": "Festgelegt von {{org}}. Das kannst du nicht ändern.",
-      "eligibilityTitle": "Wer angefragt wird, ergibt sich aus deiner Besetzung",
-      "eligibilityBody": "Ein Termin erscheint, wenn eine Besetzung, in der du bist, dafür angefragt werden kann und du alle nötigen Skills hast.",
+      "eligibilityTitle": "$t(availability:firstRun.rules.eligibilityTitle_{{kind}})",
+      "eligibilityTitle_production": "Wer angefragt wird, ergibt sich aus deiner Besetzung",
+      "eligibilityTitle_staffing": "Wer angefragt wird, ergibt sich aus deinem Team",
+      "eligibilityBody": "$t(availability:firstRun.rules.eligibilityBody_{{kind}})",
+      "eligibilityBody_production": "Ein Termin erscheint, wenn eine Besetzung, in der du bist, dafür angefragt werden kann und du alle nötigen Skills hast.",
+      "eligibilityBody_staffing": "Eine Schicht erscheint, wenn ein Team, in dem du bist, dafür angefragt werden kann und du alle nötigen Qualifikationen hast.",
       "offersTitle": "Anfragen kommen per E-Mail",
-      "offersBody": "Eine tägliche Sendung um {{time}}, nie eine Mail pro Termin. Wenn du zusagst, hältst du dir die Position frei, bis dein Produktionsteam das letzte Wort hat.",
+      "offersBody": "Eine tägliche Sendung um {{time}}, nie eine Mail pro {{ShowDate}}. Wenn du zusagst, hältst du dir die Position frei, bis dein {{roleProducer}} das letzte Wort hat.",
       "offersBodyDirect": "Du wirst direkt gebucht, es gibt also nichts zu beantworten.",
       "windowTitle": "Antworte innerhalb von {{hours}} Stunden",
       "windowBody": "Danach läuft die Anfrage ab und geht an die Nächsten in der Reihe."
     },
-    "hireOrdersFooter": "Verträge sind aktiv. Du unterschreibst im Browser und das gegengezeichnete PDF landet in deiner Mail.",
+    "hireOrdersFooter": "{{HireOrders}} sind aktiv. Du unterschreibst im Browser und das gegengezeichnete PDF landet in deiner Mail.",
     "bookingOffTitle": "Verfügbarkeit",
-    "bookingOff": "Termine laufen in ShowFlow für diese Organisation nicht, hier gibt es also nichts einzurichten."
+    "bookingOff": "{{ShowDates}} laufen in ShowFlow für diese Organisation nicht, hier gibt es also nichts einzurichten."
   },
   "blocked": {
     "title": "Gesperrte Termine",
-    "description": "Markiere Termine, an denen du nicht spielen kannst, damit das System dich dazu nicht anfragt. Termine, für die du bereits gebucht bist, sind davon nicht betroffen.",
+    "description": "Markiere Termine, an denen du nicht verfügbar bist, damit das System dich dazu nicht anfragt. Termine, für die du bereits gebucht bist, sind davon nicht betroffen.",
     "dateLabel": "Datum",
     "selectAriaLabel": "Termin sperren",
     "noEligibleOption": "Keine Termine verfügbar",
