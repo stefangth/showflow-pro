@@ -968,4 +968,4 @@ export const DOCUMENTS_NOTE = "Everything below is public. The DPA is a reply by
  *  byte — see the `generatedAt` finding). A hand-bumped value lives in the
  *  tree, survives rebase/amend/squash, and stays stable under repeated
  *  `--check` runs, which is what the drift gate needs. */
-export const FACTS_LAST_REVIEWED = "2026-08-19";
+export const FACTS_LAST_REVIEWED = "2026-09-14";

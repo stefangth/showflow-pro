@@ -41,7 +41,7 @@ describe("capability registry", () => {
       role: "producer",
       group: "Email",
       label: "Edit email templates",
-      description: "Producers can change email copy and branding.",
+      description: "Production Team can change email copy and branding.",
       risk: "sensitive",
       defaultEnabled: false,
     });
